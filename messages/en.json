@@ -1,0 +1,70 @@
+{
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "loading": "Loading..."
+  },
+  "components": {
+    "shadcn": {
+      "breadcrumb": {
+        "navLabel": "Breadcrumb",
+        "more": "More"
+      },
+      "carousel": {
+        "nextSlide": "Next slide",
+        "previousSlide": "Previous slide",
+        "carouselLabel": "Carousel"
+      },
+      "dialog": {
+        "close": "Close"
+      },
+      "command": {
+        "title": "Command palette",
+        "description": "Search for a command to run..."
+      },
+      "pagination": {
+        "navLabel": "Pagination",
+        "previousPage": "Previous",
+        "nextPage": "Next",
+        "goToPreviousPage": "Go to previous page",
+        "goToNextPage": "Go to next page",
+        "morePages": "More pages"
+      },
+      "sheet": {
+        "close": "Close"
+      }
+    },
+    "custom": {
+      "defaultErrorComponent": {
+        "heading": "Something went wrong",
+        "message": "Please refresh the page and try again."
+      },
+      "defaultNotFoundComponent": {
+        "heading": "Page not found",
+        "message": "The page you are looking for does not exist."
+      },
+      "defaultPendingComponent": {
+        "loading": "Loading\u2026"
+      }
+    }
+  },
+  "homePage": {
+    "aboutLink": "Learn about M'Arte",
+    "description": "A production-grade Cloudflare-native e-commerce platform.",
+    "title": "Welcome to M'Arte"
+  },
+  "aboutPage": {
+    "about": "About M'Arte",
+    "description": "This is a production-grade, highly performant, and scalable e-commerce app built with Domain-Driven Design.",
+    "goHome": "Go to home page"
+  },
+  "emails": {
+    "test": {
+      "preview": "Test email preview",
+      "title": "Hello from M'Arte",
+      "body": "This is a test email."
+    }
+  }
+}

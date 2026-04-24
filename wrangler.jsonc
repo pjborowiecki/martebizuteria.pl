@@ -1,0 +1,89 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "martebizuteria",
+  "main": "./src/server.ts",
+  "compatibility_date": "2026-04-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "keep_vars": true,
+  "vars": {
+    "APP_ENV": "development"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "placement": {
+    "mode": "smart"
+  },
+  // "routes": [
+  //   {
+  //     "custom_domain": true,
+  //     "pattern": "martebizuteria.pl"
+  //   }
+  // ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "env": {
+    "preview": {
+      "name": "martebizuteria-preview",
+      "vars": {
+        "APP_ENV": "preview"
+      },
+      "ratelimits": [],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "martebizuteria-preview",
+          "database_id": "1660d0df-fff9-463b-bbc6-dec65f754302",
+          "migrations_dir": "./src/integrations/drizzle-orm/migrations",
+          "remote": true
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "IMAGES",
+          "bucket_name": "martebizuteria-preview",
+          "remote": true
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "CACHE",
+          "id": "d6727c712d3443cc9e79be1bf42a6f0c",
+          "remote": true
+        }
+      ]
+    },
+    "production": {
+      "name": "martebizuteria",
+      "vars": {
+        "APP_ENV": "production"
+      },
+      "ratelimits": [],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "martebizuteria",
+          "database_id": "2bf4f35e-0a01-43c0-8a10-df5cc84ceb89",
+          "migrations_dir": "./src/integrations/drizzle-orm/migrations",
+          "remote": true
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "IMAGES",
+          "bucket_name": "martebizuteria",
+          "remote": true
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "CACHE",
+          "id": "4126270a35e74667baf2966b87d15aaa",
+          "remote": true
+        }
+      ]
+    }
+  }
+}

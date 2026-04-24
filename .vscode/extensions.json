@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "VoidZero.vite-plus-extension-pack",
+    "SonarSource.sonarlint-vscode",
+    "usernamehw.errorlens",
+    "yoavbls.pretty-ts-errors",
+    "bradlc.vscode-tailwindcss",
+    "lokalise.i18n-ally"
+  ]
+}
