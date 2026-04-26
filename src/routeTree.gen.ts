@@ -12,6 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char123LocaleChar125RouteImport } from './routes/{-$locale}'
 import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$locale}.index'
 import { Route as Char123LocaleChar125AboutRouteImport } from './routes/{-$locale}.about'
+import { Route as Char123LocaleChar125ProductsIndexRouteImport } from './routes/{-$locale}.products.index'
+import { Route as Char123LocaleChar125CollectionsIndexRouteImport } from './routes/{-$locale}.collections.index'
+import { Route as Char123LocaleChar125CategoriesIndexRouteImport } from './routes/{-$locale}.categories.index'
+import { Route as Char123LocaleChar125ProductsHandleRouteImport } from './routes/{-$locale}.products.$handle'
+import { Route as Char123LocaleChar125CollectionsHandleRouteImport } from './routes/{-$locale}.collections.$handle'
+import { Route as Char123LocaleChar125CategoriesHandleRouteImport } from './routes/{-$locale}.categories.$handle'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 
 const Char123LocaleChar125Route = Char123LocaleChar125RouteImport.update({
@@ -31,6 +37,42 @@ const Char123LocaleChar125AboutRoute =
     path: '/about',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
+const Char123LocaleChar125ProductsIndexRoute =
+  Char123LocaleChar125ProductsIndexRouteImport.update({
+    id: '/products/',
+    path: '/products/',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125CollectionsIndexRoute =
+  Char123LocaleChar125CollectionsIndexRouteImport.update({
+    id: '/collections/',
+    path: '/collections/',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125CategoriesIndexRoute =
+  Char123LocaleChar125CategoriesIndexRouteImport.update({
+    id: '/categories/',
+    path: '/categories/',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125ProductsHandleRoute =
+  Char123LocaleChar125ProductsHandleRouteImport.update({
+    id: '/products/$handle',
+    path: '/products/$handle',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125CollectionsHandleRoute =
+  Char123LocaleChar125CollectionsHandleRouteImport.update({
+    id: '/collections/$handle',
+    path: '/collections/$handle',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125CategoriesHandleRoute =
+  Char123LocaleChar125CategoriesHandleRouteImport.update({
+    id: '/categories/$handle',
+    path: '/categories/$handle',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -42,11 +84,23 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
+  '/{-$locale}/collections/$handle': typeof Char123LocaleChar125CollectionsHandleRoute
+  '/{-$locale}/products/$handle': typeof Char123LocaleChar125ProductsHandleRoute
+  '/{-$locale}/categories/': typeof Char123LocaleChar125CategoriesIndexRoute
+  '/{-$locale}/collections/': typeof Char123LocaleChar125CollectionsIndexRoute
+  '/{-$locale}/products/': typeof Char123LocaleChar125ProductsIndexRoute
 }
 export interface FileRoutesByTo {
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
   '/{-$locale}': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
+  '/{-$locale}/collections/$handle': typeof Char123LocaleChar125CollectionsHandleRoute
+  '/{-$locale}/products/$handle': typeof Char123LocaleChar125ProductsHandleRoute
+  '/{-$locale}/categories': typeof Char123LocaleChar125CategoriesIndexRoute
+  '/{-$locale}/collections': typeof Char123LocaleChar125CollectionsIndexRoute
+  '/{-$locale}/products': typeof Char123LocaleChar125ProductsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -54,6 +108,12 @@ export interface FileRoutesById {
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
+  '/{-$locale}/collections/$handle': typeof Char123LocaleChar125CollectionsHandleRoute
+  '/{-$locale}/products/$handle': typeof Char123LocaleChar125ProductsHandleRoute
+  '/{-$locale}/categories/': typeof Char123LocaleChar125CategoriesIndexRoute
+  '/{-$locale}/collections/': typeof Char123LocaleChar125CollectionsIndexRoute
+  '/{-$locale}/products/': typeof Char123LocaleChar125ProductsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -62,14 +122,35 @@ export interface FileRouteTypes {
     | '/{-$locale}/about'
     | '/{-$locale}/'
     | '/api/auth/$'
+    | '/{-$locale}/categories/$handle'
+    | '/{-$locale}/collections/$handle'
+    | '/{-$locale}/products/$handle'
+    | '/{-$locale}/categories/'
+    | '/{-$locale}/collections/'
+    | '/{-$locale}/products/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/{-$locale}/about' | '/{-$locale}' | '/api/auth/$'
+  to:
+    | '/{-$locale}/about'
+    | '/{-$locale}'
+    | '/api/auth/$'
+    | '/{-$locale}/categories/$handle'
+    | '/{-$locale}/collections/$handle'
+    | '/{-$locale}/products/$handle'
+    | '/{-$locale}/categories'
+    | '/{-$locale}/collections'
+    | '/{-$locale}/products'
   id:
     | '__root__'
     | '/{-$locale}'
     | '/{-$locale}/about'
     | '/{-$locale}/'
     | '/api/auth/$'
+    | '/{-$locale}/categories/$handle'
+    | '/{-$locale}/collections/$handle'
+    | '/{-$locale}/products/$handle'
+    | '/{-$locale}/categories/'
+    | '/{-$locale}/collections/'
+    | '/{-$locale}/products/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -100,6 +181,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125AboutRouteImport
       parentRoute: typeof Char123LocaleChar125Route
     }
+    '/{-$locale}/products/': {
+      id: '/{-$locale}/products/'
+      path: '/products'
+      fullPath: '/{-$locale}/products/'
+      preLoaderRoute: typeof Char123LocaleChar125ProductsIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/collections/': {
+      id: '/{-$locale}/collections/'
+      path: '/collections'
+      fullPath: '/{-$locale}/collections/'
+      preLoaderRoute: typeof Char123LocaleChar125CollectionsIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/categories/': {
+      id: '/{-$locale}/categories/'
+      path: '/categories'
+      fullPath: '/{-$locale}/categories/'
+      preLoaderRoute: typeof Char123LocaleChar125CategoriesIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/products/$handle': {
+      id: '/{-$locale}/products/$handle'
+      path: '/products/$handle'
+      fullPath: '/{-$locale}/products/$handle'
+      preLoaderRoute: typeof Char123LocaleChar125ProductsHandleRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/collections/$handle': {
+      id: '/{-$locale}/collections/$handle'
+      path: '/collections/$handle'
+      fullPath: '/{-$locale}/collections/$handle'
+      preLoaderRoute: typeof Char123LocaleChar125CollectionsHandleRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/categories/$handle': {
+      id: '/{-$locale}/categories/$handle'
+      path: '/categories/$handle'
+      fullPath: '/{-$locale}/categories/$handle'
+      preLoaderRoute: typeof Char123LocaleChar125CategoriesHandleRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -113,11 +236,29 @@ declare module '@tanstack/react-router' {
 interface Char123LocaleChar125RouteChildren {
   Char123LocaleChar125AboutRoute: typeof Char123LocaleChar125AboutRoute
   Char123LocaleChar125IndexRoute: typeof Char123LocaleChar125IndexRoute
+  Char123LocaleChar125CategoriesHandleRoute: typeof Char123LocaleChar125CategoriesHandleRoute
+  Char123LocaleChar125CollectionsHandleRoute: typeof Char123LocaleChar125CollectionsHandleRoute
+  Char123LocaleChar125ProductsHandleRoute: typeof Char123LocaleChar125ProductsHandleRoute
+  Char123LocaleChar125CategoriesIndexRoute: typeof Char123LocaleChar125CategoriesIndexRoute
+  Char123LocaleChar125CollectionsIndexRoute: typeof Char123LocaleChar125CollectionsIndexRoute
+  Char123LocaleChar125ProductsIndexRoute: typeof Char123LocaleChar125ProductsIndexRoute
 }
 
 const Char123LocaleChar125RouteChildren: Char123LocaleChar125RouteChildren = {
   Char123LocaleChar125AboutRoute: Char123LocaleChar125AboutRoute,
   Char123LocaleChar125IndexRoute: Char123LocaleChar125IndexRoute,
+  Char123LocaleChar125CategoriesHandleRoute:
+    Char123LocaleChar125CategoriesHandleRoute,
+  Char123LocaleChar125CollectionsHandleRoute:
+    Char123LocaleChar125CollectionsHandleRoute,
+  Char123LocaleChar125ProductsHandleRoute:
+    Char123LocaleChar125ProductsHandleRoute,
+  Char123LocaleChar125CategoriesIndexRoute:
+    Char123LocaleChar125CategoriesIndexRoute,
+  Char123LocaleChar125CollectionsIndexRoute:
+    Char123LocaleChar125CollectionsIndexRoute,
+  Char123LocaleChar125ProductsIndexRoute:
+    Char123LocaleChar125ProductsIndexRoute,
 }
 
 const Char123LocaleChar125RouteWithChildren =

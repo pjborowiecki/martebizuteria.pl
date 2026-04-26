@@ -17,6 +17,7 @@ interface ActiveLinkProps {
 
 export interface LocalizedLinkProps {
   readonly to: LocalizedTo;
+  readonly params?: Readonly<Record<string, string | number | undefined>>;
   readonly children?: ReactNode;
   readonly className?: string;
   readonly style?: Readonly<CSSProperties>;
@@ -36,39 +37,66 @@ function buildLocalizedPath(to: LocalizedTo): string {
   if (to === "/") {
     return "/{-$locale}";
   }
+
   return `/{-$locale}${to}`;
 }
 
-export function LocalizedLink({
-  to,
-  children,
-  className,
-  style,
-  id,
-  target,
-  rel,
-  onClick,
-  activeProps,
-  inactiveProps,
-  ...ariaProps
-}: LocalizedLinkProps): JSX.Element {
+interface InternalLinkProps {
+  readonly localizedTo: string;
+  readonly props: LocalizedLinkProps;
+}
+
+function LinkWithParams({ localizedTo, props }: Readonly<InternalLinkProps>): JSX.Element {
   return (
     <Link
-      to={buildLocalizedPath(to)}
-      className={className}
-      style={style}
-      id={id}
-      target={target}
-      rel={rel}
-      onClick={onClick}
-      activeProps={activeProps}
-      inactiveProps={inactiveProps}
-      aria-label={ariaProps["aria-label"]}
-      aria-current={ariaProps["aria-current"]}
-      aria-describedby={ariaProps["aria-describedby"]}
-      aria-hidden={ariaProps["aria-hidden"]}
+      to={localizedTo}
+      params={props.params}
+      className={props.className}
+      style={props.style}
+      id={props.id}
+      target={props.target}
+      rel={props.rel}
+      onClick={props.onClick}
+      activeProps={props.activeProps}
+      inactiveProps={props.inactiveProps}
+      aria-label={props["aria-label"]}
+      aria-current={props["aria-current"]}
+      aria-describedby={props["aria-describedby"]}
+      aria-hidden={props["aria-hidden"]}
     >
-      {children}
+      {props.children}
     </Link>
   );
+}
+
+function LinkWithoutParams({ localizedTo, props }: Readonly<InternalLinkProps>): JSX.Element {
+  return (
+    <Link
+      to={localizedTo}
+      className={props.className}
+      style={props.style}
+      id={props.id}
+      target={props.target}
+      rel={props.rel}
+      onClick={props.onClick}
+      activeProps={props.activeProps}
+      inactiveProps={props.inactiveProps}
+      aria-label={props["aria-label"]}
+      aria-current={props["aria-current"]}
+      aria-describedby={props["aria-describedby"]}
+      aria-hidden={props["aria-hidden"]}
+    >
+      {props.children}
+    </Link>
+  );
+}
+
+export function LocalizedLink(props: Readonly<LocalizedLinkProps>): JSX.Element {
+  const localizedTo = buildLocalizedPath(props.to);
+
+  if (props.params !== undefined) {
+    return <LinkWithParams localizedTo={localizedTo} props={props} />;
+  }
+
+  return <LinkWithoutParams localizedTo={localizedTo} props={props} />;
 }

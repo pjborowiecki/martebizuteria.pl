@@ -60,6 +60,39 @@
     "description": "This is a production-grade, highly performant, and scalable e-commerce app built with Domain-Driven Design.",
     "goHome": "Go to home page"
   },
+  "productsPage": {
+    "title": "All Products",
+    "description": "Browse our complete collection of exquisite jewelry.",
+    "noProductsFound": "No products found."
+  },
+  "productPage": {
+    "metaTitle": "{title} | M'Arte",
+    "addToCart": "Add to cart",
+    "unavailable": "Unavailable",
+    "outOfStock": "Out of stock",
+    "notFound": "Product not found",
+    "priceRange": "{min} - {max}"
+  },
+  "collectionsPage": {
+    "title": "Collections",
+    "description": "Discover our curated collections.",
+    "noCollectionsFound": "No collections found."
+  },
+  "collectionPage": {
+    "metaTitle": "{title} | M'Arte",
+    "noProductsFound": "No products found in this collection.",
+    "notFound": "Collection not found"
+  },
+  "categoriesPage": {
+    "title": "Categories",
+    "description": "Browse by category.",
+    "noCategoriesFound": "No categories found."
+  },
+  "categoryPage": {
+    "metaTitle": "{title} | M'Arte",
+    "noProductsFound": "No products found in this category.",
+    "notFound": "Category not found"
+  },
   "emails": {
     "test": {
       "preview": "Test email preview",

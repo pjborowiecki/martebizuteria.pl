@@ -1,3 +1,4 @@
+/* eslint-disable eslint-plugin-import/max-dependencies */
 import type { JSX, ReactNode } from "react";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,12 +10,9 @@ import { ThemesProvider } from "~/src/providers/themes-provider";
 
 import { deLocalizeUrl, localizeUrl } from "~/src/lib/utils";
 
-import {
-  DefaultErrorComponent,
-  DefaultNotFoundComponent,
-  DefaultPendingComponent
-} from "~/src/components/custom/default-router-components";
-
+import { DefaultErrorComponent } from "./components/custom/default-error-component";
+import { DefaultNotFoundComponent } from "./components/custom/default-not-found-component";
+import { DefaultPendingComponent } from "./components/custom/default-pending-component";
 import { routeTree } from "~/src/routeTree.gen";
 
 const FIVE_MINS_IN_MS = 300_000;
