@@ -136,10 +136,15 @@ export default defineConfig({
     }
   },
   plugins: lazyPlugins(async () => {
-    const { cloudflare } = await import("@cloudflare/vite-plugin");
     const { tanstackStart } = await import("@tanstack/react-start/plugin/vite");
     const { default: tailwindcss } = await import("@tailwindcss/vite");
     const { default: react } = await import("@vitejs/plugin-react");
+
+    if (process.env.VITEST !== undefined) {
+      return [tailwindcss(), tanstackStart(), react()];
+    }
+
+    const { cloudflare } = await import("@cloudflare/vite-plugin");
 
     return [cloudflare({ viteEnvironment: { name: "ssr" } }), tailwindcss(), tanstackStart(), react()];
   }),
@@ -148,7 +153,10 @@ export default defineConfig({
   server: { port: 3000 },
   staged: { "*": "vp check --fix" },
   test: {
+    exclude: ["node_modules/**", "opensrc/**", "dist/**", "scripts/**"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
     isolate: false,
+    passWithNoTests: true,
     pool: "threads"
   }
 });
