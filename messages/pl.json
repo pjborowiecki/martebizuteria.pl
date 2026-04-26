@@ -60,6 +60,39 @@
     "description": "To produkcyjna, wysoko wydajna i skalowalna aplikacja e-commerce zbudowana zgodnie z zasadami Domain-Driven Design.",
     "goHome": "Idź do strony głównej"
   },
+  "productsPage": {
+    "title": "Wszystkie produkty",
+    "description": "Przeglądaj naszą pełną kolekcję wykwintnej biżuterii.",
+    "noProductsFound": "Nie znaleziono produktów."
+  },
+  "productPage": {
+    "metaTitle": "{title} | M'Arte",
+    "addToCart": "Dodaj do koszyka",
+    "unavailable": "Niedostępne",
+    "outOfStock": "Brak w magazynie",
+    "notFound": "Nie znaleziono produktu",
+    "priceRange": "{min} - {max}"
+  },
+  "collectionsPage": {
+    "title": "Kolekcje",
+    "description": "Odkryj nasze wyselekcjonowane kolekcje.",
+    "noCollectionsFound": "Nie znaleziono kolekcji."
+  },
+  "collectionPage": {
+    "metaTitle": "{title} | M'Arte",
+    "noProductsFound": "Nie znaleziono produktów w tej kolekcji.",
+    "notFound": "Nie znaleziono kolekcji"
+  },
+  "categoriesPage": {
+    "title": "Kategorie",
+    "description": "Przeglądaj według kategorii.",
+    "noCategoriesFound": "Nie znaleziono kategorii."
+  },
+  "categoryPage": {
+    "metaTitle": "{title} | M'Arte",
+    "noProductsFound": "Nie znaleziono produktów w tej kategorii.",
+    "notFound": "Nie znaleziono kategorii"
+  },
   "emails": {
     "test": {
       "preview": "Podgląd testowego e-maila",

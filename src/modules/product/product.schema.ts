@@ -3,6 +3,7 @@ import { index, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { category } from "~/src/modules/category/category.schema";
 import { collection } from "~/src/modules/collection/collection.schema";
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
 
 export const product = sqliteTable(
   "product",
@@ -41,11 +42,7 @@ export const product = sqliteTable(
   ]
 );
 
-// ---------------------------------------------------------------------------
-// Relations
-// ---------------------------------------------------------------------------
-
-export const productRelations = relations(product, ({ one }) => ({
+export const productRelations = relations(product, ({ one, many }) => ({
   category: one(category, {
     fields: [product.categoryId],
     references: [category.id]
@@ -53,5 +50,6 @@ export const productRelations = relations(product, ({ one }) => ({
   collection: one(collection, {
     fields: [product.collectionId],
     references: [collection.id]
-  })
+  }),
+  variants: many(productVariant)
 }));

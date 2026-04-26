@@ -41,6 +41,8 @@
     "db:studio:production": "bun --env-file=.env.production vp exec drizzle-kit studio --config src/integrations/drizzle-orm/drizzle.config.ts",
     "db:admin": "vp exec wrangler d1 execute martebizuteria-preview",
     "db:admin:production": "vp exec wrangler d1 execute martebizuteria",
+    "db:seed": "vp exec wrangler d1 execute martebizuteria-preview --remote --file=scripts/seed.sql",
+    "db:seed:production": "vp exec wrangler d1 execute martebizuteria --remote --file=scripts/seed.sql",
     "check": "vp check",
     "check:staged": "vp staged",
     "lint": "vp lint",
