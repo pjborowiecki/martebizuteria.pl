@@ -3,4 +3,10 @@ import { drizzle } from "drizzle-orm/d1";
 
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas";
 
-export const db = drizzle(env.DB, { schema });
+const { DB } = env;
+
+if (!(DB instanceof Object)) {
+  throw new TypeError("[drizzle] D1 binding 'DB' is not available. Ensure the 'd1_databases' binding is configured in wrangler.jsonc.");
+}
+
+export const db = drizzle(DB, { schema });

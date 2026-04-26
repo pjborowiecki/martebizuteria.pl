@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: ["main"]
   pull_request:
     branches: ["**"]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -17,9 +20,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: "lts"
+          node-version: "22"
           cache: true
           run-install: true
 
@@ -33,11 +40,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: "lts"
+          node-version: "22"
           cache: true
           run-install: true
 
       - name: Run tests
-        run: vp test
+        run: vp test --run

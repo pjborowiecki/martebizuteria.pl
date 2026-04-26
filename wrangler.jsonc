@@ -24,6 +24,29 @@
     "directory": "./public",
     "binding": "ASSETS"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "martebizuteria-preview",
+      "database_id": "1660d0df-fff9-463b-bbc6-dec65f754302",
+      "migrations_dir": "./src/integrations/drizzle-orm/migrations",
+      "remote": true
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "IMAGES",
+      "bucket_name": "martebizuteria-preview",
+      "remote": true
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "d6727c712d3443cc9e79be1bf42a6f0c",
+      "remote": true
+    }
+  ],
   "env": {
     "preview": {
       "name": "martebizuteria-preview",
