@@ -12,9 +12,11 @@ import { TranslationsProvider } from "~/src/providers/translations-provider";
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
 
+import type { ImagePrefetchService } from "~/src/lib/_utils/image";
 import { buildLocalizedUrl, extractLocaleFromPath, getBaseURL } from "~/src/lib/utils";
 
 interface RouterContext {
+  imagePrefetchService: ImagePrefetchService;
   queryClient: QueryClient;
 }
 

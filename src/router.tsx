@@ -8,6 +8,7 @@ import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query
 
 import { ThemesProvider } from "~/src/providers/themes-provider";
 
+import { ImagePrefetchService } from "~/src/lib/_utils/image";
 import { deLocalizeUrl, localizeUrl } from "~/src/lib/utils";
 
 import { DefaultErrorComponent } from "./components/custom/default-error-component";
@@ -22,7 +23,9 @@ function getContext() {
     defaultOptions: { queries: { gcTime: FIVE_MINS_IN_MS } }
   });
 
-  return { queryClient };
+  const imagePrefetchService = new ImagePrefetchService();
+
+  return { imagePrefetchService, queryClient };
 }
 
 export function getRouter() {

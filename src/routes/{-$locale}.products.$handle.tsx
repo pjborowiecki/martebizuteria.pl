@@ -6,6 +6,10 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
+import { prefetchSingleProductImage } from "~/src/lib/_utils/image";
+
+import { Image } from "~/src/components/custom/image";
+
 import { productQueryOptions } from "~/src/modules/product/product.queries";
 
 interface PageMeta {
@@ -27,6 +31,8 @@ export const Route = createFileRoute("/{-$locale}/products/$handle")({
       notFound({ throw: true });
       return { description: "", title: "" };
     }
+
+    prefetchSingleProductImage(data, context.imagePrefetchService);
     return { description: data.description, title: data.title };
   }
 });
@@ -71,5 +77,5 @@ function ProductImage({ thumbnail, title }: Readonly<{ thumbnail: string | null;
     return <span className="text-muted-foreground">No Image</span>;
   }
 
-  return <img src={thumbnail} alt={title} className="h-full w-full object-cover" />;
+  return <Image src={thumbnail} alt={title} className="h-full w-full object-cover" width={512} height={512} />;
 }
