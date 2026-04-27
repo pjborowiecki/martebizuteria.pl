@@ -6,6 +6,9 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
+import { prefetchProductThumbnails } from "~/src/lib/_utils/image";
+
+import { Image } from "~/src/components/custom/image";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
 import { categoryQueryOptions } from "~/src/modules/category/category.queries";
@@ -33,6 +36,8 @@ export const Route = createFileRoute("/{-$locale}/categories/$handle")({
       notFound({ throw: true });
       return { description: "", title: "" };
     }
+
+    prefetchProductThumbnails(data.products, context.imagePrefetchService);
     return { description: data.description, title: data.name };
   }
 });
@@ -90,5 +95,5 @@ function ProductImage({ thumbnail, title }: Readonly<{ thumbnail: string | null;
     return <span className="text-muted-foreground/50">No Image</span>;
   }
 
-  return <img src={thumbnail} alt={title} className="h-full w-full object-cover" />;
+  return <Image src={thumbnail} alt={title} className="h-full w-full object-cover" width={256} height={256} />;
 }

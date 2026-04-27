@@ -6,6 +6,9 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
+import { prefetchProductThumbnails } from "~/src/lib/_utils/image";
+
+import { Image } from "~/src/components/custom/image";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
 import { productsQueryOptions } from "~/src/modules/product/product.queries";
@@ -20,7 +23,8 @@ export const Route = createFileRoute("/{-$locale}/products/")({
     ]
   }),
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(productsQueryOptions());
+    const products = await context.queryClient.ensureQueryData(productsQueryOptions());
+    prefetchProductThumbnails(products, context.imagePrefetchService);
   }
 });
 
@@ -72,5 +76,5 @@ function ProductImage({ thumbnail, title }: Readonly<{ thumbnail: string | null;
     return <span className="text-muted-foreground/50">No Image</span>;
   }
 
-  return <img src={thumbnail} alt={title} className="h-full w-full object-cover" />;
+  return <Image src={thumbnail} alt={title} className="h-full w-full object-cover" height={256} width={256} />;
 }
