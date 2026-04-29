@@ -8,12 +8,16 @@ import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanst
 import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
 
+import { ThemesProvider } from "~/src/providers/themes-provider";
+import { TooltipProvider } from "~/src/providers/tooltip-provider";
 import { TranslationsProvider } from "~/src/providers/translations-provider";
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
 
 import type { ImagePrefetchService } from "~/src/lib/_utils/image";
 import { buildLocalizedUrl, extractLocaleFromPath, getBaseURL } from "~/src/lib/utils";
+
+import { Toaster } from "~/src/components/shadcn/sonner";
 
 interface RouterContext {
   imagePrefetchService: ImagePrefetchService;
@@ -48,8 +52,8 @@ const Route = createRootRouteWithContext<RouterContext>()({
       ],
       meta: [
         { charSet: "utf8" },
-        { content: "width=device-width, initial-scale=1", name: "viewport" },
         { title: CONSTANTS.APP_NAME },
+        { content: "width=device-width, initial-scale=1", name: "viewport" },
         { content: "Handcrafted jewellery by M'Arte.", name: "description" },
         { content: "website", property: "og:type" },
         { content: CONSTANTS.APP_NAME, property: "og:site_name" },
@@ -73,9 +77,15 @@ function RootComponent() {
 
   return (
     <TranslationsProvider locale={locale}>
-      <RootDocument locale={locale}>
-        <Outlet />
-      </RootDocument>
+      <ThemesProvider>
+        <TooltipProvider>
+          <RootDocument locale={locale}>
+            <Outlet />
+            <Toaster />
+            <Scripts />
+          </RootDocument>
+        </TooltipProvider>
+      </ThemesProvider>
     </TranslationsProvider>
   );
 }
@@ -86,10 +96,7 @@ function RootDocument({ children, locale }: Readonly<{ children: ReactNode; loca
       <head>
         <HeadContent />
       </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
