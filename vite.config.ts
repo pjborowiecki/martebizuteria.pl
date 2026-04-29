@@ -107,32 +107,43 @@ export default defineConfig({
       typeAware: true,
       typeCheck: true
     },
+    overrides: [
+      {
+        files: ["src/components/shadcn/label.tsx"],
+        rules: {
+          "jsx-a11y/label-has-associated-control": "off"
+        }
+      },
+      {
+        files: ["src/components/shadcn/pagination.tsx"],
+        rules: {
+          // The <a> is a Base UI render slot — children are injected by the parent component
+          "jsx-a11y/anchor-has-content": "off"
+        }
+      }
+    ],
     plugins: ["typescript", "react", "react-perf", "jsx-a11y", "unicorn", "import", "promise", "vitest", "oxc", "eslint"],
     rules: {
+      "capitalized-comments": "off",
+      "consistent-return": "off",
       "func-style": "off",
       "id-length": "off",
       "import/consistent-type-specifier-style": "off",
       "import/exports-last": "off",
       "import/group-exports": "off",
+      "import/max-dependencies": "off",
       "import/no-named-export": "off",
       "import/no-namespace": "off",
       "import/prefer-default-export": "off",
+      "max-lines": ["error", { max: 800 }],
+      "max-lines-per-function": ["error", { max: 150 }],
+      "max-statements": ["error", { max: 20 }],
+      "no-ternary": "off",
       "react/jsx-max-depth": ["error", { max: 5 }],
+      "react/jsx-props-no-spreading": "off",
       "react/react-in-jsx-scope": "off",
       "sort-imports": "off",
-      "typescript/prefer-readonly-parameter-types": [
-        "error",
-        {
-          allow: [
-            { from: "package", name: "ReactNode", package: "react" },
-            { from: "package", name: "ReactNode", package: "@types/react" },
-            { from: "package", name: "ClassValue", package: "clsx" },
-            { from: "lib", name: "Promise" }
-          ],
-          ignoreInferredTypes: true,
-          treatMethodsAsReadonly: true
-        }
-      ]
+      "typescript/prefer-readonly-parameter-types": "off"
     }
   },
   plugins: lazyPlugins(async () => {
