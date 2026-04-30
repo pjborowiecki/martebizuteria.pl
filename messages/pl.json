@@ -47,6 +47,106 @@
       },
       "defaultPendingComponent": {
         "loading": "Ładowanie\u2026"
+      },
+      "footer": {
+        "brand": "M'Arte",
+        "description": "Ręcznie tworzona biżuteria z naturalnych kamieni i srebra próby 925. Każdy element to unikatowe dzieło sztuki.",
+        "info": "Informacje",
+        "about": "Kim jesteśmy",
+        "contact": "Dane kontaktowe",
+        "account": "Panel klienta",
+        "legal": "Prawne",
+        "terms": "Regulamin sklepu",
+        "privacy": "Polityka prywatności",
+        "returns": "Wymiana i zwroty",
+        "tips": "Porady",
+        "care": "Jak dbać o biżuterię",
+        "copyright": "© 2026 M'Arte. Wszelkie prawa zastrzeżone.",
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "twitter": "Twitter"
+      },
+      "navigation": {
+        "brand": "M'ARTE",
+        "openMenu": "Otwórz menu",
+        "menuTrigger": "Menu",
+        "closeMenu": "Zamknij",
+        "search": "Szukaj",
+        "searchOverlay": {
+          "placeholder": "Szukaj w M'ARTE…",
+          "close": "Zamknij",
+          "noResults": "Brak wyników",
+          "noResultsHint": "Spróbuj innego hasła lub przejrzyj nasze kolekcje.",
+          "sectionProducts": "Produkty",
+          "sectionCategories": "Kategorie",
+          "sectionCollections": "Kolekcje",
+          "sectionPages": "Strony",
+          "viewAll": "Zobacz wszystkie wyniki",
+          "trending": "Popularne wyszukiwania",
+          "trendingItems": {
+            "earrings": "Kolczyki",
+            "silver": "Srebro 925",
+            "newArrivals": "Nowości",
+            "rings": "Pierścionki",
+            "giftEdit": "Prezenty"
+          },
+          "pages": {
+            "brand": "Marka",
+            "allProducts": "Wszystkie produkty"
+          }
+        },
+        "productCard": {
+          "addToWishlist": "Dodaj do listy życzeń",
+          "removeFromWishlist": "Usuń z listy życzeń",
+          "share": "Udostępnij",
+          "addToCart": "Dodaj do koszyka",
+          "added": "Dodano"
+        },
+        "account": "Konto",
+        "cart": "Koszyk",
+        "desktopNavLabel": "Główne",
+        "overlayNavLabel": "Nawigacja",
+        "desktop": {
+          "newArrivals": "Nowości",
+          "silver925": "Srebro 925",
+          "brand": "Marka"
+        },
+        "menu": {
+          "primary": {
+            "newArrivals": "Nowości",
+            "silver": "Srebro",
+            "silverItalic": "925",
+            "collections": "Kolekcje",
+            "brand": "Marka"
+          },
+          "secondary": {
+            "client": "Klient",
+            "help": "Pomoc"
+          },
+          "links": {
+            "login": "Logowanie",
+            "myAccount": "Moje konto",
+            "cart": "Koszyk",
+            "cartCount": "({count})",
+            "contact": "Kontakt",
+            "shipping": "Dostawa i zwroty",
+            "faq": "FAQ"
+          },
+          "footer": {
+            "tagline": "M'ARTE © 2026",
+            "instagram": "Instagram",
+            "pinterest": "Pinterest"
+          },
+          "imageAlt": "Biżuteria — zdjęcie edytorialne"
+        }
+      },
+      "productCard": {
+        "addToCart": "Dodaj do Koszyka",
+        "added": "Dodano",
+        "addToWishlist": "Dodaj do Ulubionych",
+        "removeFromWishlist": "Usuń z Ulubionych",
+        "share": "Udostępnij",
+        "quickView": "Szybki Podgląd"
       }
     }
   },
@@ -55,9 +155,270 @@
     "description": "Produkcyjna platforma e-commerce natywna dla Cloudflare.",
     "title": "Witaj w M'Arte"
   },
+  "landingPage": {
+    "meta": {
+      "description": "Ręcznie wykonywana biżuteria srebrna i damska od M'Arte — polska pracownia, czyste formy i srebro próby 925.",
+      "title": "M'Arte | Biżuteria artystyczna"
+    },
+    "hero": {
+      "eyebrow": "Cyfrowe Atelier",
+      "titleLine1": "Duch",
+      "titleLine2": "Tworzenia",
+      "description": "M'ARTE to coś więcej niż marka. To dialog między naturalnymi kamieniami a współczesną formą, tworzony w Polsce z jubilerską precyzją.",
+      "ctaPrimary": "Kup nowości",
+      "ctaSecondary": "Poznaj kolekcje",
+      "scrollHint": "Przewiń, aby odkryć",
+      "imageAlt": "Edytorialowa kompozycja biżuterii na kamieniu"
+    },
+    "values": {
+      "eyebrow": "Nasze filary",
+      "title": "Co nas definiuje",
+      "craft": {
+        "title": "Rzemiosło atelier",
+        "description": "Każde wykończenie dopracowujemy ręcznie, zachowując subtelne ślady unikatowego charakteru."
+      },
+      "material": {
+        "title": "Szlachetne materiały",
+        "description": "Srebro próby 925, starannie wybrane kamienie i zbalansowane złocenia do codziennej elegancji."
+      },
+      "service": {
+        "title": "Obsługa premium",
+        "description": "Indywidualne doradztwo, eleganckie pakowanie i płynna dostawa dopasowana do Twojego rytmu."
+      }
+    },
+    "newArrivals": {
+      "eyebrow": "Sezonowy drop",
+      "title": "Kolekcja Aura",
+      "description": "Wyselekcjonowane, rzeźbiarskie formy i subtelny blask zaprojektowane dla nowoczesnych rytuałów.",
+      "cta": "Zobacz wszystkie produkty",
+      "items": {
+        "lapis": {
+          "name": "Naszyjnik Lapis Orbit",
+          "details": "Pozłacane srebro / lapis lazuli",
+          "price": "329 PLN"
+        },
+        "aurelia": {
+          "name": "Kolczyki Aurelia Hoops",
+          "details": "Srebro 925 / lustrzane wykończenie",
+          "price": "289 PLN"
+        },
+        "azure": {
+          "name": "Kolczyki Azure Drop",
+          "details": "Pozłacane srebro / kobaltowe kamienie",
+          "price": "249 PLN"
+        },
+        "heritage": {
+          "name": "Bransoleta Heritage Chain",
+          "details": "Fakturowane ogniwa / ciepłe złoto",
+          "price": "359 PLN"
+        },
+        "pearl": {
+          "name": "Choker Pearl Whisper",
+          "details": "Perły słodkowodne / zapięcie 925",
+          "price": "319 PLN"
+        },
+        "midnight": {
+          "name": "Pierścionek Midnight Signet",
+          "details": "Czarny onyks / polerowany profil",
+          "price": "279 PLN"
+        }
+      }
+    },
+    "categories": {
+      "eyebrow": "Kolekcje w ruchu",
+      "title": "Horyzontalna kuracja",
+      "description": "Przewijaj światy M'ARTE, gdzie faktura, światło i forma budują spójną opowieść.",
+      "panelEyebrow": "Fokus kolekcji",
+      "cta": "Poznaj kolekcję",
+      "panels": {
+        "aurora": {
+          "title": "Aurora Forms",
+          "description": "Warstwowe łańcuchy i subtelnie fasetowane kamienie zaprojektowane do eleganckich stylizacji."
+        },
+        "stone": {
+          "title": "Stone Dialogue",
+          "description": "Organiczne kontury inspirowane rzeźbioną powierzchnią minerałów i archiwami atelier."
+        },
+        "nightfall": {
+          "title": "Nightfall Edit",
+          "description": "Wyraziste sylwetki i rzeźbiarskie refleksy stworzone na wieczorne wyjścia."
+        }
+      }
+    },
+    "experience": {
+      "eyebrow": "Doświadczenie bespoke",
+      "titleLine1": "Współtworzymy",
+      "titleLine2": "to, co wyjątkowe.",
+      "description": "Współpracuj z naszym zespołem projektowym nad autorską formą — od cyfrowej koncepcji po ręczne wykończenie.",
+      "ctaPrimary": "Zapytaj prywatnie",
+      "ctaSecondary": "Zobacz portfolio",
+      "videoAria": "Wideo pokazujące rzemiosło jubilerskie"
+    },
+    "archive": {
+      "eyebrow": "Edytorial",
+      "title": "Z archiwum",
+      "imageAlt": "Biurko projektowe z narzędziami atelier",
+      "articles": {
+        "golden": "Złota proporcja w projektowaniu",
+        "sustainability": "Zrównoważenie i rzadkie minerały",
+        "engraving": "Sztuka ręcznego grawerunku"
+      }
+    },
+    "breaker": {
+      "text": "Cichy luksus, zbudowany na intencji."
+    },
+    "manifesto": {
+      "eyebrow": "Punkt widzenia",
+      "title": "Nie podążamy za sezonami.",
+      "subtitle": "Podążamy za przekonaniem.",
+      "paragraph1": "W świecie, który nagradza szybkość, wybraliśmy powolność. Każdy element M'ARTE zaczyna się od pytania — nie 'co się sprzeda', ale 'co zasługuje na istnienie.' Odpowiedź jest zawsze ta sama: tylko to, co sami chcielibyśmy nosić.",
+      "paragraph2": "Srebro jest naszym płótnem. Kamienie — naszą interpunkcją. A powściągliwość jest językiem, którym mówimy — bo prawdziwa elegancja nigdy nie była głośna. Przychodzi cicho, zostaje na stałe i ujawnia się z czasem.",
+      "paragraph3": "To nie jest szybka moda przetłumaczona na metal. To biżuteria jako architektura — przemyślana, strukturalna, stworzona, by przeżyć moment, który ją zainspirował.",
+      "closing": "Witaj w atelier."
+    },
+    "philosophy": {
+      "eyebrow": "Nasza filozofia",
+      "title": "Projektowane, by przetrwać",
+      "paragraph1": "Wierzymy w przedmioty, które przeżywają swój sezon. Każda forma M'ARTE rodzi się z umiaru — mniej kolekcji, głębsza intencja — bo trwałość jest ostatecznym luksusem.",
+      "paragraph2": "Nasze atelier pracuje w rytmie rzemiosła, nie handlu. Od pierwszego wycinania w wosku po finalny połysk — każdy gest jest celowy, każda powierzchnia przemyślana.",
+      "signature": "— M'ARTE Atelier, Warszawa"
+    },
+    "silver": {
+      "eyebrow": "Kolekcja Premium",
+      "badge": "Srebro 925",
+      "titleMain": "Srebro",
+      "titleAccent": "925",
+      "title": "Rzeźbione światło",
+      "description": "Nasza flagowa kolekcja ze srebra próby 925. Każdy element jest starannie wykonany przez rzemieślników z wieloletnim doświadczeniem. Połączenie tradycji z nowoczesnym designem tworzy biżuterię, która zachwyca na każdą okazję.",
+      "ctaPrimary": "Odkryj Kolekcję",
+      "ctaSecondary": "Dowiedz się więcej",
+      "imageAlt": "Minimalistyczna martwa natura z biżuterią",
+      "imageBadgeEyebrow": "Nowość",
+      "imageBadgeTitle": "Kolekcja Jesień 2026",
+      "stats": {
+        "purity": {
+          "value": "925",
+          "label": "Próba srebra"
+        },
+        "handmade": {
+          "value": "100%",
+          "label": "Ręcznie robione"
+        },
+        "warranty": {
+          "value": "2 lata",
+          "label": "Gwarancja"
+        }
+      }
+    },
+    "editorial": {
+      "eyebrow": "Momenty edytorialowe",
+      "title": "Historie w nowoczesnych proporcjach",
+      "description": "Wizualny dziennik, w którym biżuteria spotyka architekturę, ruch tkanin i światło.",
+      "cta": "Czytaj journal",
+      "cards": {
+        "atelier": {
+          "title": "Ikony Atelier",
+          "description": "Nasze najbardziej pożądane formy, dopracowane przez pokolenia eksperymentów."
+        },
+        "light": {
+          "title": "Ciche światło",
+          "description": "Miękkie refleksy i subtelny kontrast dla codziennych stylizacji."
+        },
+        "muse": {
+          "title": "Nowa muza",
+          "description": "Studium pewności siebie, precyzji i współczesnej kobiecości."
+        }
+      }
+    },
+    "brand": {
+      "eyebrow": "Nasze dziedzictwo",
+      "title": "Dom zbudowany na intencji",
+      "description": "Od szkicu po finalny połysk, każdą premierę prowadzą proporcja, faktura i ponadczasowość.",
+      "quote": "„Biżuteria powinna być jak druga skóra: osobista, świetlista i dyskretnie wyrazista.”",
+      "author": "Dyrekcja kreatywna — M'ARTE Studio"
+    },
+    "maison": {
+      "eyebrow": "Nasze dziedzictwo",
+      "title": "The Maison",
+      "description": "M'Arte powstało, by łączyć tradycję złotniczą z cyfrową precyzją. Każdy projekt opowiada o cierpliwym rzemiośle i nowoczesnym minimalizmie.",
+      "cta": "Poznaj naszą historię",
+      "mainImageAlt": "Ręczne tworzenie biżuterii",
+      "overlayImageAlt": "Zbliżenie na pierścionek solitaire"
+    },
+    "newsletter": {
+      "title": "Bądź blisko M'ARTE",
+      "description": "Otrzymuj prywatne premiery, wskazówki stylizacyjne i informacje o limitowanych kolekcjach.",
+      "placeholder": "Adres e-mail",
+      "cta": "Zapisz się",
+      "note": "Zapisując się, wyrażasz zgodę na komunikację marketingową i akceptujesz politykę prywatności."
+    },
+    "shopCategories": {
+      "eyebrow": "Przeglądaj według typu",
+      "title": "Kategorie",
+      "description": "Odkryj pełen asortyment ręcznie tworzonej biżuterii — od rzeźbiarskich kolczyków po wyraziste pierścionki.",
+      "cta": "Zobacz wszystkie kategorie",
+      "items": {
+        "earrings": { "name": "Kolczyki", "count": "24 sztuki" },
+        "necklaces": { "name": "Naszyjniki", "count": "18 sztuk" },
+        "bracelets": { "name": "Bransoletki", "count": "15 sztuk" },
+        "rings": { "name": "Pierścionki", "count": "21 sztuk" },
+        "chokers": { "name": "Chokery", "count": "9 sztuk" },
+        "pendants": { "name": "Zawieszki", "count": "12 sztuk" }
+      }
+    },
+    "shopCollections": {
+      "eyebrow": "Kuratorskie edycje",
+      "title": "Nasze Kolekcje",
+      "description": "Tematyczne selekcje stworzone wokół nastroju, sezonu i okazji.",
+      "cta": "Zobacz wszystkie kolekcje",
+      "items": {
+        "newArrivals": {
+          "name": "Nowości",
+          "description": "Najnowsze dodatki do naszego atelier — świeże formy i sezonowe kamienie."
+        },
+        "bestsellers": {
+          "name": "Bestsellery",
+          "description": "Najbardziej pożądane modele, wybierane raz za razem przez naszą społeczność."
+        },
+        "gifts": {
+          "name": "Edycja prezentowa",
+          "description": "Przemyślane selekcje na każdą okazję, w autorskim opakowaniu M'ARTE."
+        }
+      }
+    },
+    "gallery": {
+      "title": "Wnętrze kolekcji",
+      "cta": "Zobacz pełny lookbook",
+      "items": {
+        "ritual": "Kompozycja biżuterii w rytuale codzienności",
+        "stone": "Detal rzemieślniczy na naturalnym kamieniu",
+        "signature": "Warstwowe kompozycje signature M'ARTE"
+      }
+    }
+  },
   "aboutPage": {
     "about": "O M'Arte",
     "description": "To produkcyjna, wysoko wydajna i skalowalna aplikacja e-commerce zbudowana zgodnie z zasadami Domain-Driven Design.",
+    "goHome": "Idź do strony głównej"
+  },
+  "accountPage": {
+    "title": "Konto",
+    "description": "Logowanie i historia zamówień pojawią się tutaj.",
+    "goHome": "Idź do strony głównej"
+  },
+  "cartPage": {
+    "title": "Koszyk",
+    "description": "Twój koszyk pojawi się tutaj.",
+    "goHome": "Idź do strony głównej"
+  },
+  "faqPage": {
+    "title": "FAQ",
+    "description": "Najczęściej zadawane pytania pojawią się tutaj.",
+    "goHome": "Idź do strony głównej"
+  },
+  "exchangesAndReturnsPage": {
+    "title": "Zwroty i wymiana",
+    "description": "Szczegóły wysyłki, wymiany i zwrotów pojawią się tutaj.",
     "goHome": "Idź do strony głównej"
   },
   "productsPage": {

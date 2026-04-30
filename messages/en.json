@@ -47,6 +47,106 @@
       },
       "defaultPendingComponent": {
         "loading": "Loading\u2026"
+      },
+      "footer": {
+        "brand": "M'Arte",
+        "description": "Handcrafted jewelry made of natural stones and 925 sterling silver. Each piece is a unique work of art.",
+        "info": "Information",
+        "about": "Who we are",
+        "contact": "Contact details",
+        "account": "Customer panel",
+        "legal": "Legal",
+        "terms": "Store regulations",
+        "privacy": "Privacy policy",
+        "returns": "Exchanges and returns",
+        "tips": "Tips",
+        "care": "How to care for jewelry",
+        "copyright": "© 2026 M'Arte. All rights reserved.",
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "twitter": "Twitter"
+      },
+      "navigation": {
+        "brand": "M'ARTE",
+        "openMenu": "Open menu",
+        "menuTrigger": "Menu",
+        "closeMenu": "Close",
+        "search": "Search",
+        "searchOverlay": {
+          "placeholder": "Search M'ARTE…",
+          "close": "Close",
+          "noResults": "No results found",
+          "noResultsHint": "Try a different term or explore our collections.",
+          "sectionProducts": "Products",
+          "sectionCategories": "Categories",
+          "sectionCollections": "Collections",
+          "sectionPages": "Pages",
+          "viewAll": "View all results",
+          "trending": "Popular searches",
+          "trendingItems": {
+            "earrings": "Earrings",
+            "silver": "Silver 925",
+            "newArrivals": "New arrivals",
+            "rings": "Rings",
+            "giftEdit": "Gift edit"
+          },
+          "pages": {
+            "brand": "The Maison",
+            "allProducts": "All Products"
+          }
+        },
+        "productCard": {
+          "addToWishlist": "Add to wishlist",
+          "removeFromWishlist": "Remove from wishlist",
+          "share": "Share",
+          "addToCart": "Add to cart",
+          "added": "Added"
+        },
+        "account": "Account",
+        "cart": "Cart",
+        "desktopNavLabel": "Primary",
+        "overlayNavLabel": "Site navigation",
+        "desktop": {
+          "newArrivals": "New arrivals",
+          "silver925": "Silver 925",
+          "brand": "Brand"
+        },
+        "menu": {
+          "primary": {
+            "newArrivals": "New arrivals",
+            "silver": "Silver",
+            "silverItalic": "925",
+            "collections": "Collections",
+            "brand": "Brand"
+          },
+          "secondary": {
+            "client": "Client",
+            "help": "Help"
+          },
+          "links": {
+            "login": "Login",
+            "myAccount": "My account",
+            "cart": "Cart",
+            "cartCount": "({count})",
+            "contact": "Contact",
+            "shipping": "Shipping & returns",
+            "faq": "FAQ"
+          },
+          "footer": {
+            "tagline": "M'ARTE © 2026",
+            "instagram": "Instagram",
+            "pinterest": "Pinterest"
+          },
+          "imageAlt": "Editorial jewelry"
+        }
+      },
+      "productCard": {
+        "addToCart": "Add to Cart",
+        "added": "Added",
+        "addToWishlist": "Add to Wishlist",
+        "removeFromWishlist": "Remove from Wishlist",
+        "share": "Share",
+        "quickView": "Quick View"
       }
     }
   },
@@ -55,9 +155,270 @@
     "description": "A production-grade Cloudflare-native e-commerce platform.",
     "title": "Welcome to M'Arte"
   },
+  "landingPage": {
+    "meta": {
+      "description": "Handcrafted silver and fine jewellery by M'Arte — Polish atelier, timeless design, and sterling 925.",
+      "title": "M'Arte | Handcrafted Jewellery"
+    },
+    "hero": {
+      "eyebrow": "The Digital Atelier",
+      "titleLine1": "The Spirit of",
+      "titleLine2": "Creation",
+      "description": "M'ARTE is more than a maison. It is a dialogue between earth-born stones and contemporary form, shaped in Poland with a couture-level attention to detail.",
+      "ctaPrimary": "Shop new arrivals",
+      "ctaSecondary": "Explore collections",
+      "scrollHint": "Scroll to discover",
+      "imageAlt": "Editorial jewelry composition on stone"
+    },
+    "values": {
+      "eyebrow": "Our pillars",
+      "title": "What defines us",
+      "craft": {
+        "title": "Atelier craft",
+        "description": "Every finish is completed by hand, preserving subtle traces that make each piece unique."
+      },
+      "material": {
+        "title": "Noble materials",
+        "description": "925 sterling silver, curated stones, and carefully balanced plating selected for daily elegance."
+      },
+      "service": {
+        "title": "Private service",
+        "description": "Personalized advice, elegant wrapping, and seamless delivery shaped around your rhythm."
+      }
+    },
+    "newArrivals": {
+      "eyebrow": "Seasonal reveal",
+      "title": "The Aura Collection",
+      "description": "A curated edit of sculptural silhouettes and quiet sparkle made for modern rituals.",
+      "cta": "View all products",
+      "items": {
+        "lapis": {
+          "name": "Lapis Orbit Necklace",
+          "details": "Gold plated silver / lapis lazuli",
+          "price": "329 PLN"
+        },
+        "aurelia": {
+          "name": "Aurelia Hoops",
+          "details": "925 silver / mirror finish",
+          "price": "289 PLN"
+        },
+        "azure": {
+          "name": "Azure Drop Earrings",
+          "details": "Gold vermeil / cobalt stones",
+          "price": "249 PLN"
+        },
+        "heritage": {
+          "name": "Heritage Chain Bracelet",
+          "details": "Textured links / warm gold tone",
+          "price": "359 PLN"
+        },
+        "pearl": {
+          "name": "Pearl Whisper Choker",
+          "details": "Freshwater pearls / 925 clasp",
+          "price": "319 PLN"
+        },
+        "midnight": {
+          "name": "Midnight Signet Ring",
+          "details": "Black onyx / polished profile",
+          "price": "279 PLN"
+        }
+      }
+    },
+    "categories": {
+      "eyebrow": "Collections in motion",
+      "title": "Horizontal curation",
+      "description": "Scroll through signature worlds where texture, light, and form build a cohesive visual story.",
+      "panelEyebrow": "Collection focus",
+      "cta": "Explore the collection",
+      "panels": {
+        "aurora": {
+          "title": "Aurora Forms",
+          "description": "Layered chains and softly faceted stones designed to glow against neutral tailoring."
+        },
+        "stone": {
+          "title": "Stone Dialogue",
+          "description": "Organic contours inspired by carved mineral surfaces and museum archive studies."
+        },
+        "nightfall": {
+          "title": "Nightfall Edit",
+          "description": "High-contrast silhouettes with sculptural highlights for evening precision."
+        }
+      }
+    },
+    "experience": {
+      "eyebrow": "The bespoke experience",
+      "titleLine1": "Co-creating",
+      "titleLine2": "the extraordinary.",
+      "description": "Collaborate with our designers to shape a signature piece, from digital concept to final hand polish.",
+      "ctaPrimary": "Inquire privately",
+      "ctaSecondary": "View portfolio",
+      "videoAria": "Bespoke jewelry craftsmanship video"
+    },
+    "archive": {
+      "eyebrow": "Editorial",
+      "title": "From the Archive",
+      "imageAlt": "Design desk with atelier tools",
+      "articles": {
+        "golden": "The Golden Ratio in Design",
+        "sustainability": "Sustainability & Rare Earths",
+        "engraving": "The Craft of Hand Engraving"
+      }
+    },
+    "breaker": {
+      "text": "Quiet luxury, composed with intention."
+    },
+    "manifesto": {
+      "eyebrow": "A point of view",
+      "title": "We don't follow seasons.",
+      "subtitle": "We follow conviction.",
+      "paragraph1": "In a world that rewards speed, we chose slowness. Every M'ARTE piece begins with a question — not 'what will sell,' but 'what deserves to exist.' The answer is always the same: only what we would wear ourselves.",
+      "paragraph2": "Silver is our canvas. Stones are our punctuation. And restraint is the language we speak — because true elegance has never been loud. It arrives quietly, stays permanently, and reveals itself over time.",
+      "paragraph3": "This is not fast fashion translated into metal. This is jewelry as architecture — considered, structural, and built to outlive the moment that inspired it.",
+      "closing": "Welcome to the atelier."
+    },
+    "philosophy": {
+      "eyebrow": "Our philosophy",
+      "title": "Designed to endure",
+      "paragraph1": "We believe in objects that outlast their season. Each M'ARTE piece is conceived with restraint — fewer collections, deeper intention — because permanence is the ultimate luxury.",
+      "paragraph2": "Our atelier works at the pace of craft, not commerce. From the first wax carving to the final polish, every gesture is deliberate, every surface considered.",
+      "signature": "— M'ARTE Atelier, Warsaw"
+    },
+    "silver": {
+      "eyebrow": "Premium Collection",
+      "badge": "Silver 925",
+      "titleMain": "Silver",
+      "titleAccent": "925",
+      "title": "Sculpted Light",
+      "description": "Our signature line celebrates refined geometry and fluid highlights. Designed to layer effortlessly from daytime tailoring to evening statement looks.",
+      "ctaPrimary": "Explore Collection",
+      "ctaSecondary": "Learn More",
+      "imageAlt": "Minimal jewelry still life in warm light",
+      "imageBadgeEyebrow": "New",
+      "imageBadgeTitle": "Autumn Collection 2026",
+      "stats": {
+        "purity": {
+          "value": "925",
+          "label": "Silver purity"
+        },
+        "handmade": {
+          "value": "100%",
+          "label": "Handcrafted"
+        },
+        "warranty": {
+          "value": "2 years",
+          "label": "Warranty"
+        }
+      }
+    },
+    "editorial": {
+      "eyebrow": "Editorial moments",
+      "title": "Stories in modern proportion",
+      "description": "A visual journal where jewelry meets architecture, textile movement, and light.",
+      "cta": "Read the journal",
+      "cards": {
+        "atelier": {
+          "title": "The Atelier Icons",
+          "description": "Our most coveted pieces, refined through generations of experimentation."
+        },
+        "light": {
+          "title": "Quiet Light",
+          "description": "Soft reflections and subtle contrast for effortless daytime styling."
+        },
+        "muse": {
+          "title": "The New Muse",
+          "description": "A study of confidence, precision, and contemporary femininity."
+        }
+      }
+    },
+    "brand": {
+      "eyebrow": "Our legacy",
+      "title": "A house built on intention",
+      "description": "From sketch to final polish, each release is guided by proportion, tactility, and timelessness.",
+      "quote": "“Jewelry should feel like a second skin: personal, luminous, and quietly powerful.”",
+      "author": "Creative direction — M'ARTE Studio"
+    },
+    "maison": {
+      "eyebrow": "Our heritage",
+      "title": "The Maison",
+      "description": "M'Arte was born to bridge ancient goldsmithing knowledge with the digital frontier. Each piece reflects artisanal patience and contemporary restraint.",
+      "cta": "Read our story",
+      "mainImageAlt": "Crafting jewelry by hand",
+      "overlayImageAlt": "Close-up of a solitaire ring"
+    },
+    "newsletter": {
+      "title": "Stay close to M'ARTE",
+      "description": "Receive private previews, styling notes, and limited edition announcements.",
+      "placeholder": "Email address",
+      "cta": "Subscribe",
+      "note": "By subscribing, you agree to receive marketing communications and accept our privacy policy."
+    },
+    "shopCategories": {
+      "eyebrow": "Browse by type",
+      "title": "Categories",
+      "description": "Explore our full range of handcrafted jewelry, from sculptural earrings to statement rings.",
+      "cta": "View all categories",
+      "items": {
+        "earrings": { "name": "Earrings", "count": "24 pieces" },
+        "necklaces": { "name": "Necklaces", "count": "18 pieces" },
+        "bracelets": { "name": "Bracelets", "count": "15 pieces" },
+        "rings": { "name": "Rings", "count": "21 pieces" },
+        "chokers": { "name": "Chokers", "count": "9 pieces" },
+        "pendants": { "name": "Pendants", "count": "12 pieces" }
+      }
+    },
+    "shopCollections": {
+      "eyebrow": "Curated edits",
+      "title": "Our Collections",
+      "description": "Themed selections curated around mood, season, and occasion.",
+      "cta": "View all collections",
+      "items": {
+        "newArrivals": {
+          "name": "New Arrivals",
+          "description": "The latest additions to our atelier — fresh forms and seasonal stones."
+        },
+        "bestsellers": {
+          "name": "Bestsellers",
+          "description": "The most sought-after pieces, chosen again and again by our community."
+        },
+        "gifts": {
+          "name": "Gift Edit",
+          "description": "Thoughtful selections for every occasion, presented in signature M'ARTE packaging."
+        }
+      }
+    },
+    "gallery": {
+      "title": "Inside the collection",
+      "cta": "View full lookbook",
+      "items": {
+        "ritual": "Jewelry ritual composition",
+        "stone": "Craft detail on natural stone",
+        "signature": "Signature M'ARTE layering pieces"
+      }
+    }
+  },
   "aboutPage": {
     "about": "About M'Arte",
     "description": "This is a production-grade, highly performant, and scalable e-commerce app built with Domain-Driven Design.",
+    "goHome": "Go to home page"
+  },
+  "accountPage": {
+    "title": "Account",
+    "description": "Sign in and order history will appear here.",
+    "goHome": "Go to home page"
+  },
+  "cartPage": {
+    "title": "Cart",
+    "description": "Your cart will appear here.",
+    "goHome": "Go to home page"
+  },
+  "faqPage": {
+    "title": "FAQ",
+    "description": "Frequently asked questions will appear here.",
+    "goHome": "Go to home page"
+  },
+  "exchangesAndReturnsPage": {
+    "title": "Exchanges & returns",
+    "description": "Shipping, exchanges, and return policy details will appear here.",
     "goHome": "Go to home page"
   },
   "productsPage": {

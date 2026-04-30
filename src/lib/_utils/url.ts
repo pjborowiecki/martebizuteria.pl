@@ -12,3 +12,16 @@ export function getBaseURL(): string {
 
   return CONSTANTS.DEFAULT_APP_URL;
 }
+
+export function getAssetURL(path: string): string {
+  const baseUrl: unknown = import.meta.env.VITE_R2_URL;
+
+  if (typeof baseUrl !== "string" || baseUrl === "") {
+    return `/${path.replace(/^\//, "")}`;
+  }
+
+  const cleanBase = baseUrl.replace(/\/$/, "");
+  const cleanPath = path.replace(/^\//, "");
+
+  return `${cleanBase}/${cleanPath}`;
+}

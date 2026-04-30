@@ -11,7 +11,9 @@ export interface CustomImageProps {
   readonly decoding?: "async" | "auto" | "sync";
   readonly height: number;
   readonly loading?: "eager" | "lazy";
+  readonly priority?: boolean;
   readonly quality?: number;
+  readonly sizes?: string;
   readonly src: string;
   readonly width: number;
 }
@@ -22,8 +24,10 @@ export function Image({
   className,
   decoding = "async",
   height,
-  loading = "eager",
+  loading,
+  priority = false,
   quality,
+  sizes,
   src,
   width
 }: Readonly<CustomImageProps>): JSX.Element {
@@ -31,6 +35,8 @@ export function Image({
     let targetQuality = IMAGE_CONSTANTS.DEFAULT_QUALITY;
     if (quality !== undefined) {
       targetQuality = quality;
+    } else if (priority) {
+      targetQuality = IMAGE_CONSTANTS.HIGH_QUALITY;
     }
 
     return getOptimizedImageUrl({
@@ -39,11 +45,18 @@ export function Image({
       src,
       width
     });
-  }, [height, quality, src, width]);
+  }, [height, priority, quality, src, width]);
 
   let finalBackground: string | undefined = undefined;
   if (typeof blurDataURL === "string") {
     finalBackground = blurDataURL;
+  }
+
+  let resolvedLoading: "eager" | "lazy" = "lazy";
+  if (priority) {
+    resolvedLoading = "eager";
+  } else if (loading !== undefined) {
+    resolvedLoading = loading;
   }
 
   return (
@@ -51,9 +64,11 @@ export function Image({
       alt={alt}
       background={finalBackground}
       className={className}
-      decoding={decoding}
+      decoding={priority ? "sync" : decoding}
+      fetchPriority={priority ? "high" : undefined}
       height={height}
-      loading={loading}
+      loading={resolvedLoading}
+      sizes={sizes}
       src={optimizedSrc}
       width={width}
     />

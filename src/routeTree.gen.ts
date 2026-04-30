@@ -11,6 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char123LocaleChar125RouteImport } from './routes/{-$locale}'
 import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$locale}.index'
+import { Route as Char123LocaleChar125FaqRouteImport } from './routes/{-$locale}.faq'
+import { Route as Char123LocaleChar125ExchangesAndReturnsRouteImport } from './routes/{-$locale}.exchanges-and-returns'
+import { Route as Char123LocaleChar125CartRouteImport } from './routes/{-$locale}.cart'
+import { Route as Char123LocaleChar125AccountRouteImport } from './routes/{-$locale}.account'
 import { Route as Char123LocaleChar125AboutRouteImport } from './routes/{-$locale}.about'
 import { Route as Char123LocaleChar125ProductsIndexRouteImport } from './routes/{-$locale}.products.index'
 import { Route as Char123LocaleChar125CollectionsIndexRouteImport } from './routes/{-$locale}.collections.index'
@@ -29,6 +33,29 @@ const Char123LocaleChar125IndexRoute =
   Char123LocaleChar125IndexRouteImport.update({
     id: '/',
     path: '/',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125FaqRoute = Char123LocaleChar125FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => Char123LocaleChar125Route,
+} as any)
+const Char123LocaleChar125ExchangesAndReturnsRoute =
+  Char123LocaleChar125ExchangesAndReturnsRouteImport.update({
+    id: '/exchanges-and-returns',
+    path: '/exchanges-and-returns',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125CartRoute =
+  Char123LocaleChar125CartRouteImport.update({
+    id: '/cart',
+    path: '/cart',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125AccountRoute =
+  Char123LocaleChar125AccountRouteImport.update({
+    id: '/account',
+    path: '/account',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
 const Char123LocaleChar125AboutRoute =
@@ -82,6 +109,10 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
+  '/{-$locale}/account': typeof Char123LocaleChar125AccountRoute
+  '/{-$locale}/cart': typeof Char123LocaleChar125CartRoute
+  '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125ExchangesAndReturnsRoute
+  '/{-$locale}/faq': typeof Char123LocaleChar125FaqRoute
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
@@ -93,6 +124,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
+  '/{-$locale}/account': typeof Char123LocaleChar125AccountRoute
+  '/{-$locale}/cart': typeof Char123LocaleChar125CartRoute
+  '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125ExchangesAndReturnsRoute
+  '/{-$locale}/faq': typeof Char123LocaleChar125FaqRoute
   '/{-$locale}': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
@@ -106,6 +141,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
+  '/{-$locale}/account': typeof Char123LocaleChar125AccountRoute
+  '/{-$locale}/cart': typeof Char123LocaleChar125CartRoute
+  '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125ExchangesAndReturnsRoute
+  '/{-$locale}/faq': typeof Char123LocaleChar125FaqRoute
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
@@ -120,6 +159,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/{-$locale}'
     | '/{-$locale}/about'
+    | '/{-$locale}/account'
+    | '/{-$locale}/cart'
+    | '/{-$locale}/exchanges-and-returns'
+    | '/{-$locale}/faq'
     | '/{-$locale}/'
     | '/api/auth/$'
     | '/{-$locale}/categories/$handle'
@@ -131,6 +174,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/{-$locale}/about'
+    | '/{-$locale}/account'
+    | '/{-$locale}/cart'
+    | '/{-$locale}/exchanges-and-returns'
+    | '/{-$locale}/faq'
     | '/{-$locale}'
     | '/api/auth/$'
     | '/{-$locale}/categories/$handle'
@@ -143,6 +190,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/{-$locale}'
     | '/{-$locale}/about'
+    | '/{-$locale}/account'
+    | '/{-$locale}/cart'
+    | '/{-$locale}/exchanges-and-returns'
+    | '/{-$locale}/faq'
     | '/{-$locale}/'
     | '/api/auth/$'
     | '/{-$locale}/categories/$handle'
@@ -172,6 +223,34 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/{-$locale}/'
       preLoaderRoute: typeof Char123LocaleChar125IndexRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/faq': {
+      id: '/{-$locale}/faq'
+      path: '/faq'
+      fullPath: '/{-$locale}/faq'
+      preLoaderRoute: typeof Char123LocaleChar125FaqRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/exchanges-and-returns': {
+      id: '/{-$locale}/exchanges-and-returns'
+      path: '/exchanges-and-returns'
+      fullPath: '/{-$locale}/exchanges-and-returns'
+      preLoaderRoute: typeof Char123LocaleChar125ExchangesAndReturnsRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/cart': {
+      id: '/{-$locale}/cart'
+      path: '/cart'
+      fullPath: '/{-$locale}/cart'
+      preLoaderRoute: typeof Char123LocaleChar125CartRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/account': {
+      id: '/{-$locale}/account'
+      path: '/account'
+      fullPath: '/{-$locale}/account'
+      preLoaderRoute: typeof Char123LocaleChar125AccountRouteImport
       parentRoute: typeof Char123LocaleChar125Route
     }
     '/{-$locale}/about': {
@@ -235,6 +314,10 @@ declare module '@tanstack/react-router' {
 
 interface Char123LocaleChar125RouteChildren {
   Char123LocaleChar125AboutRoute: typeof Char123LocaleChar125AboutRoute
+  Char123LocaleChar125AccountRoute: typeof Char123LocaleChar125AccountRoute
+  Char123LocaleChar125CartRoute: typeof Char123LocaleChar125CartRoute
+  Char123LocaleChar125ExchangesAndReturnsRoute: typeof Char123LocaleChar125ExchangesAndReturnsRoute
+  Char123LocaleChar125FaqRoute: typeof Char123LocaleChar125FaqRoute
   Char123LocaleChar125IndexRoute: typeof Char123LocaleChar125IndexRoute
   Char123LocaleChar125CategoriesHandleRoute: typeof Char123LocaleChar125CategoriesHandleRoute
   Char123LocaleChar125CollectionsHandleRoute: typeof Char123LocaleChar125CollectionsHandleRoute
@@ -246,6 +329,11 @@ interface Char123LocaleChar125RouteChildren {
 
 const Char123LocaleChar125RouteChildren: Char123LocaleChar125RouteChildren = {
   Char123LocaleChar125AboutRoute: Char123LocaleChar125AboutRoute,
+  Char123LocaleChar125AccountRoute: Char123LocaleChar125AccountRoute,
+  Char123LocaleChar125CartRoute: Char123LocaleChar125CartRoute,
+  Char123LocaleChar125ExchangesAndReturnsRoute:
+    Char123LocaleChar125ExchangesAndReturnsRoute,
+  Char123LocaleChar125FaqRoute: Char123LocaleChar125FaqRoute,
   Char123LocaleChar125IndexRoute: Char123LocaleChar125IndexRoute,
   Char123LocaleChar125CategoriesHandleRoute:
     Char123LocaleChar125CategoriesHandleRoute,

@@ -25,6 +25,8 @@ export interface LocalizedLinkProps {
   readonly target?: "_blank" | "_self" | "_parent" | "_top";
   readonly rel?: string;
   readonly onClick?: MouseEventHandler<HTMLAnchorElement>;
+  readonly onMouseEnter?: MouseEventHandler<HTMLAnchorElement>;
+  readonly onMouseLeave?: MouseEventHandler<HTMLAnchorElement>;
   readonly activeProps?: Readonly<ActiveLinkProps>;
   readonly inactiveProps?: Readonly<ActiveLinkProps>;
   readonly "aria-label"?: string;
@@ -57,6 +59,8 @@ function LinkWithParams({ localizedTo, props }: Readonly<InternalLinkProps>): JS
       target={props.target}
       rel={props.rel}
       onClick={props.onClick}
+      onMouseEnter={props.onMouseEnter}
+      onMouseLeave={props.onMouseLeave}
       activeProps={props.activeProps}
       inactiveProps={props.inactiveProps}
       aria-label={props["aria-label"]}
@@ -79,6 +83,8 @@ function LinkWithoutParams({ localizedTo, props }: Readonly<InternalLinkProps>):
       target={props.target}
       rel={props.rel}
       onClick={props.onClick}
+      onMouseEnter={props.onMouseEnter}
+      onMouseLeave={props.onMouseLeave}
       activeProps={props.activeProps}
       inactiveProps={props.inactiveProps}
       aria-label={props["aria-label"]}
