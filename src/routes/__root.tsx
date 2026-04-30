@@ -19,6 +19,9 @@ import { buildLocalizedUrl, extractLocaleFromPath, getBaseURL } from "~/src/lib/
 
 import { Toaster } from "~/src/components/shadcn/sonner";
 
+// eslint-disable-next-line import/no-unassigned-import
+import "~/src/styles/globals.css";
+
 interface RouterContext {
   imagePrefetchService: ImagePrefetchService;
   queryClient: QueryClient;

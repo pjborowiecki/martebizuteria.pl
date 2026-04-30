@@ -1,0 +1,634 @@
+VITE+ - The Unified Toolchain for the Web
+
+[1m[94mpass:[39m[0m All 190 files are correctly formatted [2m(466ms, 10 threads)[0m
+[1m[31merror:[39m[0m Lint or type issues found
+x eslint-plugin-unicorn(no-null): Do not use `null` literals
+    ,-[src/components/custom/landing/navigation/components/fullscreen-menu/primary-nav.tsx:41:17]
+ 40 |               </span>
+ 41 |             ) : null}
+    :                 ^^^^
+ 42 |           </button>
+    `----
+  help: Replace `null` with `undefined`.
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+    ,-[src/components/custom/landing/navigation/components/fullscreen-menu/primary-nav.tsx:26:22]
+ 25 |                 )}
+ 26 | ,->             onClick={() => {
+ 27 | |                 handleNavigateToHash(item.hash);
+ 28 | `->             }}
+ 29 |                 onMouseEnter={() => {
+    `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+    ,-[src/components/custom/landing/navigation/components/fullscreen-menu/primary-nav.tsx:29:27]
+ 28 |                 }}
+ 29 | ,->             onMouseEnter={() => {
+ 30 | |                 handleHover(i);
+ 31 | `->             }}
+ 32 |               >
+    `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseEnter
+    ,-[src/components/custom/landing/navigation/components/navigation/mobile-menu-toggle.tsx:37:27]
+ 36 |       }}
+ 37 |       onMouseEnter={hover.onMouseEnter}
+    :                           ^^^^^^^^^^^^
+ 38 |       onMouseLeave={hover.onMouseLeave}
+    `----
+  help: Handler function for onMouseEnter prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseLeave
+    ,-[src/components/custom/landing/navigation/components/navigation/mobile-menu-toggle.tsx:38:27]
+ 37 |       onMouseEnter={hover.onMouseEnter}
+ 38 |       onMouseLeave={hover.onMouseLeave}
+    :                           ^^^^^^^^^^^^
+ 39 |       className="flex h-10 shrink-0 items-center gap-2.5 rounded-none px-1.5 text-foreground transition-colors hover:bg-transparent hover:text-muted-foreground focus-visible:bg-transparent active:bg-transparent aria-expanded:bg-transparent sm:gap-3 sm:px-2"
+    `----
+  help: Handler function for onMouseLeave prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+    ,-[src/components/custom/landing/navigation/components/navigation/mobile-menu-toggle.tsx:34:16]
+ 33 |           aria-label={t("openMenu")}
+ 34 | ,->       onClick={() => {
+ 35 | |           setMenuOpen(true);
+ 36 | `->       }}
+ 37 |           onMouseEnter={hover.onMouseEnter}
+    `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+    ,-[src/components/custom/landing/navigation/components/fullscreen-menu/secondary-nav.tsx:34:123]
+ 33 |               {t(labelKey)}{" "}
+ 34 |               {hasCount ? <span className="text-primary-foreground/40">{t("menu.links.cartCount", { count: 0 })}</span> : null}
+    :                                                                                                                           ^^^^
+ 35 |             </LocalizedLink>
+    `----
+  help: Replace `null` with `undefined`.
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+    ,-[src/components/custom/landing/navigation/components/fullscreen-menu/secondary-nav.tsx:43:20]
+ 42 |               type="button"
+ 43 | ,->           onClick={() => {
+ 44 | |               handleNavigateToHash("#marka");
+ 45 | `->           }}
+ 46 |               className={cn("w-max cursor-pointer border-0 bg-transparent p-0 text-left outline-none", linkStyles)}
+    `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseEnter
+    ,-[src/components/custom/landing/navigation/components/navigation/brand-logo.tsx:20:31]
+ 19 |           to="/"
+ 20 |           onMouseEnter={hover.onMouseEnter}
+    :                               ^^^^^^^^^^^^
+ 21 |           onMouseLeave={hover.onMouseLeave}
+    `----
+  help: Handler function for onMouseEnter prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseLeave
+    ,-[src/components/custom/landing/navigation/components/navigation/brand-logo.tsx:21:31]
+ 20 |           onMouseEnter={hover.onMouseEnter}
+ 21 |           onMouseLeave={hover.onMouseLeave}
+    :                               ^^^^^^^^^^^^
+ 22 |           className="font-serif text-3xl leading-none tracking-tight text-foreground uppercase md:text-4xl"
+    `----
+  help: Handler function for onMouseLeave prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseEnter
+    ,-[src/components/custom/landing/navigation/components/navigation/nav-link.tsx:27:27]
+ 26 |       }}
+ 27 |       onMouseEnter={hover.onMouseEnter}
+    :                           ^^^^^^^^^^^^
+ 28 |       onMouseLeave={hover.onMouseLeave}
+    `----
+  help: Handler function for onMouseEnter prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseLeave
+    ,-[src/components/custom/landing/navigation/components/navigation/nav-link.tsx:28:27]
+ 27 |       onMouseEnter={hover.onMouseEnter}
+ 28 |       onMouseLeave={hover.onMouseLeave}
+    :                           ^^^^^^^^^^^^
+ 29 |       aria-current={active ? "page" : undefined}
+    `----
+  help: Handler function for onMouseLeave prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+    ,-[src/components/custom/landing/navigation/components/navigation/nav-link.tsx:24:16]
+ 23 |           variant="ghost"
+ 24 | ,->       onClick={() => {
+ 25 | |           handleNavigateToHash(hash);
+ 26 | `->       }}
+ 27 |           onMouseEnter={hover.onMouseEnter}
+    `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseEnter
+    ,-[src/components/custom/landing/navigation/components/navigation/user-utility-nav.tsx:36:35]
+ 35 |         }}
+ 36 |         onMouseEnter={searchHover.onMouseEnter}
+    :                                   ^^^^^^^^^^^^
+ 37 |         onMouseLeave={searchHover.onMouseLeave}
+    `----
+  help: Handler function for onMouseEnter prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseLeave
+    ,-[src/components/custom/landing/navigation/components/navigation/user-utility-nav.tsx:37:35]
+ 36 |         onMouseEnter={searchHover.onMouseEnter}
+ 37 |         onMouseLeave={searchHover.onMouseLeave}
+    :                                   ^^^^^^^^^^^^
+ 38 |         className="inline-flex size-10 shrink-0 rounded-none transition-colors hover:bg-transparent hover:text-muted-foreground focus-visible:bg-transparent active:bg-transparent aria-expanded:bg-transparent"
+    `----
+  help: Handler function for onMouseLeave prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseEnter
+    ,-[src/components/custom/landing/navigation/components/navigation/user-utility-nav.tsx:47:36]
+ 46 |         aria-label={t("account")}
+ 47 |         onMouseEnter={accountHover.onMouseEnter}
+    :                                    ^^^^^^^^^^^^
+ 48 |         onMouseLeave={accountHover.onMouseLeave}
+    `----
+  help: Handler function for onMouseEnter prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseLeave
+    ,-[src/components/custom/landing/navigation/components/navigation/user-utility-nav.tsx:48:36]
+ 47 |         onMouseEnter={accountHover.onMouseEnter}
+ 48 |         onMouseLeave={accountHover.onMouseLeave}
+    :                                    ^^^^^^^^^^^^
+ 49 |         className={cn(
+    `----
+  help: Handler function for onMouseLeave prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseEnter
+    ,-[src/components/custom/landing/navigation/components/navigation/user-utility-nav.tsx:61:33]
+ 60 |         aria-label={t("cart")}
+ 61 |         onMouseEnter={cartHover.onMouseEnter}
+    :                                 ^^^^^^^^^^^^
+ 62 |         onMouseLeave={cartHover.onMouseLeave}
+    `----
+  help: Handler function for onMouseEnter prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react(jsx-handler-names): Invalid handler name: onMouseLeave
+    ,-[src/components/custom/landing/navigation/components/navigation/user-utility-nav.tsx:62:33]
+ 61 |         onMouseEnter={cartHover.onMouseEnter}
+ 62 |         onMouseLeave={cartHover.onMouseLeave}
+    :                                 ^^^^^^^^^^^^
+ 63 |         className={cn(
+    `----
+  help: Handler function for onMouseLeave prop key must be a camelCase name beginning with 'handle' only
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+    ,-[src/components/custom/landing/navigation/components/navigation/user-utility-nav.tsx:33:18]
+ 32 |             aria-label={t("search")}
+ 33 | ,->         onClick={() => {
+ 34 | |             setSearchOpen(true);
+ 35 | `->         }}
+ 36 |             onMouseEnter={searchHover.onMouseEnter}
+    `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+    ,-[src/components/custom/landing/navigation/store/navigation-store.ts:16:16]
+ 15 |   menuOpen: false,
+ 16 |   pendingHash: null,
+    :                ^^^^
+ 17 |   scrolled: false,
+    `----
+  help: Replace `null` with `undefined`.
+
+  x eslint(no-shadow): 'setPendingHash' is already declared in the upper scope.
+    ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:86:57]
+ 85 |   routerRef.current = router;
+ 86 |   const { menuOpen, setMenuOpen, scrolled, setScrolled, setPendingHash } = useNavigationStore(
+    :                                                         ^^^^^^^|^^^^^^
+    :                                                                `-- shadowed declaration is here
+ 87 |     useShallow((s) => ({
+    `----
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:191:36]
+ 190 | 
+ 191 |               const { pendingHash, setPendingHash } = useNavigationStore.getState();
+     :                                    ^^^^^^^|^^^^^^
+     :                                           `-- 'setPendingHash' is declared here
+ 192 |               if (pendingHash) {
+     `----
+  help: Consider renaming 'setPendingHash' to avoid shadowing the variable from the outer scope.
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+    ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:80:72]
+ 79 | 
+ 80 | const NavigationContext = createContext<NavigationContextValue | null>(null);
+    :                                                                        ^^^^
+ 81 | 
+    `----
+  help: Replace `null` with `undefined`.
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:162:28]
+ 161 |       } else {
+ 162 |         parallax.current = null;
+     :                            ^^^^
+ 163 |       }
+     `----
+  help: Replace `null` with `undefined`.
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:194:32]
+ 193 |                 scrollToSection(pendingHash, routerRef.current.navigate);
+ 194 |                 setPendingHash(null);
+     :                                ^^^^
+ 195 |               }
+     `----
+  help: Replace `null` with `undefined`.
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:243:29]
+ 242 |             tl.kill();
+ 243 |             tlRef.current = null;
+     :                             ^^^^
+ 244 |           };
+     `----
+  help: Replace `null` with `undefined`.
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:251:28]
+ 250 |         mm.revert();
+ 251 |         parallax.current = null;
+     :                            ^^^^
+ 252 |         parallaxTargetRef.current = null;
+     `----
+  help: Replace `null` with `undefined`.
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:252:37]
+ 251 |         parallax.current = null;
+ 252 |         parallaxTargetRef.current = null;
+     :                                     ^^^^
+ 253 |       };
+     `----
+  help: Replace `null` with `undefined`.
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:321:41]
+ 320 |       const { y = -2, scale = 1.08, enterDuration = 0.42, leaveDuration = 0.48 } = options ?? {};
+ 321 |       let element: HTMLElement | null = null;
+     :                                         ^^^^
+ 322 | 
+     `----
+  help: Delete this code.
+
+  x eslint(no-duplicate-imports): 'react' import is duplicated
+   ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:3:55]
+ 2 | 
+ 3 | import type { MouseEvent, ReactNode, RefObject } from "react";
+   :                                                       ^^^|^^^
+   :                                                          `-- Can be merged with this import
+ 4 | import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+   :                                                                                   ^^^|^^^
+   :                                                                                      `-- This import is duplicated
+ 5 | 
+   `----
+  help: Merge the duplicated import into a single import statement
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:456:26]
+ 455 |                 if (!items?.length) {
+ 456 |                   return null;
+     :                          ^^^^
+ 457 |                 }
+     `----
+  help: Delete this code.
+
+  x eslint(no-duplicate-imports): 'react' import is duplicated
+   ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:3:52]
+ 2 | 
+ 3 | import type { JSX, KeyboardEvent, ReactNode } from "react";
+   :                                                    ^^^|^^^
+   :                                                       `-- Can be merged with this import
+ 4 | import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+   :                                                                   ^^^|^^^
+   :                                                                      `-- This import is duplicated
+ 5 | 
+   `----
+  help: Merge the duplicated import into a single import statement
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:121:18]
+ 120 |             className={cn(rowClassName, "w-full cursor-pointer border-0 bg-transparent p-0 text-left outline-none")}
+ 121 | ,->         onClick={() => {
+ 122 | |             onNavigate();
+ 123 | |             handleNavigateToHash(href);
+ 124 | `->         }}
+ 125 |           >
+     `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:138:18]
+ 137 |             to="/products/$handle"
+ 138 | ,->         onClick={() => {
+ 139 | |             onNavigate();
+ 140 | `->         }}
+ 141 |           >
+     `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:154:18]
+ 153 |             to="/categories/$handle"
+ 154 | ,->         onClick={() => {
+ 155 | |             onNavigate();
+ 156 | `->         }}
+ 157 |           >
+     `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:170:18]
+ 169 |             to="/collections/$handle"
+ 170 | ,->         onClick={() => {
+ 171 | |             onNavigate();
+ 172 | `->         }}
+ 173 |           >
+     `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:184:18]
+ 183 |             to="/products"
+ 184 | ,->         onClick={() => {
+ 185 | |             onNavigate();
+ 186 | `->         }}
+ 187 |           >
+     `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:197:16]
+ 196 |           to="/products"
+ 197 | ,->       onClick={() => {
+ 198 | |           onNavigate();
+ 199 | `->       }}
+ 200 |         >
+     `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:395:23]
+ 394 |                 value={query}
+ 395 | ,->             onChange={(e) => {
+ 396 | |                 setQuery(e.target.value);
+ 397 | `->             }}
+ 398 |                 onKeyDown={handleKeyDown}
+     `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:407:24]
+ 406 |                   type="button"
+ 407 | ,->               onClick={() => {
+ 408 | |                   setQuery("");
+ 409 | `->               }}
+ 410 |                   className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+     `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:430:30]
+ 429 |                         type="button"
+ 430 | ,->                     onClick={() => {
+ 431 | |                         setQuery(t(`searchOverlay.trendingItems.${key}`));
+ 432 | `->                     }}
+ 433 |                         className="rounded-full border border-border/80 px-5 py-2.5 text-[11px] tracking-[0.18em] text-muted-foreground uppercase transition-all hover:border-foreground hover:text-foreground"
+     `----
+  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
+
+  x eslint-plugin-import(no-unassigned-import): Imported module should be assigned
+    ,-[src/routes/__root.tsx:22:1]
+ 21 | 
+ 22 | import "~/src/styles/globals.css";
+    : ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 23 | 
+    `----
+  help: Consider assigning the import to a variable or removing it if it's unused.
+
+  x eslint-plugin-import(no-named-as-default): Module "gsap" has named export "gsap"
+   ,-[src/components/custom/smooth-scroll.tsx:6:8]
+ 5 | 
+ 6 | import gsap from "gsap";
+   :        ^^^^
+ 7 | import { ScrollTrigger } from "gsap/ScrollTrigger";
+   `----
+  help: Using default import as "gsap" can be confusing. Use another name for default import to avoid confusion.
+
+  x eslint(no-duplicate-imports): 'react' import is duplicated
+   ,-[src/components/custom/smooth-scroll.tsx:3:37]
+ 2 | 
+ 3 | import type { JSX, ReactNode } from "react";
+   :                                     ^^^|^^^
+   :                                        `-- Can be merged with this import
+ 4 | import { useEffect, useRef } from "react";
+   :                                   ^^^|^^^
+   :                                      `-- This import is duplicated
+ 5 | 
+   `----
+  help: Merge the duplicated import into a single import statement
+
+  x eslint(no-magic-numbers): No magic number: 1000
+    ,-[src/components/custom/smooth-scroll.tsx:27:24]
+ 26 |     const raf = (time: number) => {
+ 27 |       lenis.raf(time * 1000);
+    :                        ^^^^
+ 28 |     };
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 0
+    ,-[src/components/custom/smooth-scroll.tsx:31:30]
+ 30 |     gsap.ticker.add(raf);
+ 31 |     gsap.ticker.lagSmoothing(0);
+    :                              ^
+ 32 | 
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint-plugin-jest(require-hook): Require setup and teardown code to be within a hook.
+    ,-[src/components/custom/smooth-scroll.tsx:10:1]
+  9 | 
+ 10 | gsap.registerPlugin(ScrollTrigger);
+    : ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 11 | 
+    `----
+  help: This should be done within a hook
+
+  x eslint-plugin-react(jsx-no-useless-fragment): Fragments should contain more than one child.
+    ,-[src/components/custom/smooth-scroll.tsx:40:10]
+ 39 | 
+ 40 |   return <>{children}</>;
+    :          ^^
+ 41 | }
+    `----
+
+  x eslint-plugin-unicorn(no-null): Do not use `null` literals
+    ,-[src/components/custom/smooth-scroll.tsx:36:26]
+ 35 |       lenis.destroy();
+ 36 |       lenisRef.current = null;
+    :                          ^^^^
+ 37 |     };
+    `----
+  help: Replace `null` with `undefined`.
+
+  x eslint(no-magic-numbers): No magic number: 2
+     ,-[src/data/landing-data.ts:149:17]
+ 148 | export const LANDING_SHOP_CATEGORY_SLOTS = {
+ 149 |   bracelets: sc[2],
+     :                 ^
+ 150 |   chokers: sc[4],
+     `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 4
+     ,-[src/data/landing-data.ts:150:15]
+ 149 |   bracelets: sc[2],
+ 150 |   chokers: sc[4],
+     :               ^
+ 151 |   earrings: sc[0],
+     `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 0
+     ,-[src/data/landing-data.ts:151:16]
+ 150 |   chokers: sc[4],
+ 151 |   earrings: sc[0],
+     :                ^
+ 152 |   necklaces: sc[1],
+     `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 1
+     ,-[src/data/landing-data.ts:152:17]
+ 151 |   earrings: sc[0],
+ 152 |   necklaces: sc[1],
+     :                 ^
+ 153 |   pendants: sc[5],
+     `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 5
+     ,-[src/data/landing-data.ts:153:16]
+ 152 |   necklaces: sc[1],
+ 153 |   pendants: sc[5],
+     :                ^
+ 154 |   rings: sc[3]
+     `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 3
+     ,-[src/data/landing-data.ts:154:13]
+ 153 |   pendants: sc[5],
+ 154 |   rings: sc[3]
+     :             ^
+ 155 | } as const;
+     `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x typescript-eslint(no-unsafe-type-assertion): Unsafe type assertion: type '"/api/auth/$" | "/{-$locale}" | "/{-$locale}/about" | "/{-$locale}/account" | "/{-$locale}/cart" | "/{-$locale}/categories" | "/{-$locale}/categories/$handle" | "/{-$locale}/collections" | ... 5 more ... | "/{-$locale}/products/$handle"' is more narrow than the original type.
+    ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:32:10]
+ 31 |   }
+ 32 |   return `/{-$locale}${path}` as RouterTo;
+    :          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 33 | }
+    `----
+
+  x typescript-eslint(no-confusing-void-expression): Returning a void expression from an arrow function shorthand is forbidden.
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:138:69]
+ 137 |       }
+ 138 |       const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+     :                                                                     ^^^^^^^^^^^^^^^^^^
+ 139 |       document.addEventListener("keydown", onKeyDown);
+     `----
+  help: Add braces to the arrow function.
+
+  x typescript-eslint(strict-void-return): Value-returning function used in a context where a void function is expected.
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:139:44]
+ 138 |       const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+ 139 |       document.addEventListener("keydown", onKeyDown);
+     :                                            ^^^^^^^^^
+ 140 |       return () => {
+     `----
+
+  x typescript-eslint(strict-void-return): Value-returning function used in a context where a void function is expected.
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:141:49]
+ 140 |       return () => {
+ 141 |         document.removeEventListener("keydown", onKeyDown);
+     :                                                 ^^^^^^^^^
+ 142 |       };
+     `----
+
+  x typescript-eslint(no-unsafe-type-assertion): Unsafe type assertion: type '{ reduced: boolean; desktop: boolean; }' is more narrow than the original type.
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:170:40]
+ 169 |         (context) => {
+ 170 |           const { reduced, desktop } = context.conditions as { reduced: boolean; desktop: boolean };
+     :                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 171 | 
+     `----
+
+  x typescript-eslint(strict-boolean-expressions): Unexpected nullable string value in conditional. Please handle the nullish and empty string cases explicitly.
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:192:19]
+ 191 |               const { pendingHash, setPendingHash } = useNavigationStore.getState();
+ 192 |               if (pendingHash) {
+     :                   ^^^^^^^^^^^
+ 193 |                 scrollToSection(pendingHash, routerRef.current.navigate);
+     `----
+
+  x typescript-eslint(no-unsafe-type-assertion): Unsafe type assertion: type 'HTMLElement' is more narrow than the original type.
+     ,-[src/components/custom/landing/navigation/components/navigation/navigation-provider.tsx:301:16]
+ 300 |     }
+ 301 |     const el = e.currentTarget as HTMLElement;
+     :                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 302 |     const xPos = (e.clientX / el.clientWidth - 0.5) * 2;
+     `----
+
+  x typescript-eslint(strict-boolean-expressions): Unexpected object value in conditional. An object is always truthy.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:266:12]
+ 265 |       const key = item.type;
+ 266 |       if (!groups[key]) {
+     :            ^^^^^^^^^^^
+ 267 |         groups[key] = [];
+     `----
+
+  x typescript-eslint(strict-boolean-expressions): Unexpected nullable string value in conditional. Please handle the nullish and empty string cases explicitly.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:465:28]
+ 464 |                         <SearchResultLink key={item.href + item.name} href={item.href} onNavigate={handleClose}>
+ 465 |                           {item.image && (
+     :                            ^^^^^^^^^^
+ 466 |                             <div className="relative size-14 shrink-0 overflow-hidden bg-secondary lg:size-16">
+     `----
+
+  x typescript-eslint(strict-boolean-expressions): Unexpected nullable string value in conditional. Please handle the nullish and empty string cases explicitly.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:477:29]
+ 476 |                           )}
+ 477 |                           {!item.image && <div className="size-14 shrink-0 lg:size-16" />}
+     :                             ^^^^^^^^^^
+ 478 |                           <div className="min-w-0 flex-1">
+     `----
+
+  x typescript-eslint(strict-boolean-expressions): Unexpected nullable string value in conditional. Please handle the nullish and empty string cases explicitly.
+     ,-[src/components/custom/landing/navigation/components/search/search-overlay.tsx:480:30]
+ 479 |                             <p className="truncate font-serif text-base tracking-wide lg:text-lg">{item.name}</p>
+ 480 |                             {item.detail && (
+     :                              ^^^^^^^^^^^
+ 481 |                               <p className="mt-0.5 truncate text-[11px] tracking-[0.15em] text-muted-foreground uppercase">{item.detail}</p>
+     `----
+
+  x typescript-eslint(unbound-method): Avoid referencing unbound methods which may cause unintentional scoping of `this`.
+    ,-[src/components/custom/smooth-scroll.tsx:24:24]
+ 23 | 
+ 24 |     lenis.on("scroll", ScrollTrigger.update);
+    :                        ^^^^^^^^^^^^^^^^^^^^|
+    :                                  |         `-- This reference may be unbound and lose `this` context
+ 25 | 
+    `----
+  help: If your function does not access `this`, you can annotate it with `this: void`, or consider using an arrow function instead.
+
+Found 67 errors and 0 warnings in 167 files (1.0s, 10 threads)

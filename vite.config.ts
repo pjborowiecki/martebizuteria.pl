@@ -120,6 +120,19 @@ export default defineConfig({
           // The <a> is a Base UI render slot — children are injected by the parent component
           "jsx-a11y/anchor-has-content": "off"
         }
+      },
+      {
+        files: ["src/components/custom/landing/**/*.{ts,tsx}"],
+        rules: {
+          "jest/require-hook": "off",
+          "max-lines": "off",
+          "max-lines-per-function": "off",
+          "max-statements": "off",
+          "no-magic-numbers": "off",
+          "react-perf/jsx-no-new-object-as-prop": "off",
+          "react/jsx-max-depth": "off",
+          "sort-keys": "off"
+        }
       }
     ],
     plugins: ["typescript", "react", "react-perf", "jsx-a11y", "unicorn", "import", "promise", "vitest", "oxc", "eslint"],

@@ -8,9 +8,9 @@ import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query
 import { ImagePrefetchService } from "~/src/lib/_utils/image";
 import { deLocalizeUrl, localizeUrl } from "~/src/lib/utils";
 
-import { DefaultErrorComponent } from "./components/custom/default-error-component";
-import { DefaultNotFoundComponent } from "./components/custom/default-not-found-component";
-import { DefaultPendingComponent } from "./components/custom/default-pending-component";
+import { DefaultErrorComponent } from "./components/custom/defaults/default-error-component";
+import { DefaultNotFoundComponent } from "./components/custom/defaults/default-not-found-component";
+import { DefaultPendingComponent } from "./components/custom/defaults/default-pending-component";
 import { routeTree } from "~/src/routeTree.gen";
 
 const ONE_MIN_IN_MS = 60_000;

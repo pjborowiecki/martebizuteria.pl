@@ -93,6 +93,13 @@ export function getOptimizedImageUrl({
   width
 }: Readonly<{ height: number; quality: number | undefined; src: string; width: number }>): string {
   try {
+    if (src.startsWith("http://") || src.startsWith("https://")) {
+      const url = new URL(src);
+      if (url.hostname === "images.unsplash.com" || url.hostname.endsWith(".unsplash.com") || url.hostname.endsWith(".r2.dev")) {
+        return src;
+      }
+    }
+
     let resolvedQuality = IMAGE_CONSTANTS.DEFAULT_QUALITY;
     if (quality !== undefined) {
       resolvedQuality = quality;

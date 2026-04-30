@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
@@ -9,23 +10,16 @@ import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl
 
 import { isValidLocale } from "~/src/lib/utils";
 
-import { LandingPageExperience } from "~/src/components/custom/landing/landing-page-experience";
+import { LocalizedLink } from "~/src/components/custom/localized-link";
 
-interface HomePageMeta {
+interface CartPageMeta {
   readonly description: string;
   readonly title: string;
 }
 
-function getLandingMeta(messages: Messages | undefined): HomePageMeta {
-  const title = messages?.landingPage.meta.title ?? CONSTANTS.APP_NAME;
-  const description = messages?.landingPage.meta.description ?? "";
-
-  return { description, title };
-}
-
-export const Route = createFileRoute("/{-$locale}/")({
-  component: HomePage,
-  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<HomePageMeta> }>) => ({
+export const Route = createFileRoute("/{-$locale}/cart")({
+  component: CartPage,
+  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<CartPageMeta> }>) => ({
     meta: [
       { title: loaderData?.title ?? CONSTANTS.APP_NAME },
       { content: loaderData?.description ?? "", name: "description" },
@@ -43,14 +37,27 @@ export const Route = createFileRoute("/{-$locale}/")({
 
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
-    return getLandingMeta(messages);
+    return {
+      description: messages?.cartPage.description ?? "",
+      title: messages?.cartPage.title ?? CONSTANTS.APP_NAME
+    } satisfies CartPageMeta;
   }
 });
 
-function HomePage(): JSX.Element {
+function CartPage(): JSX.Element {
+  const t = useTranslations("cartPage");
+
   return (
-    <main>
-      <LandingPageExperience />
+    <main className="flex min-h-screen flex-col items-center justify-center space-y-6 p-4">
+      <h1 className="text-4xl font-bold tracking-tight">{t("title")}</h1>
+
+      <div className="max-w-prose text-center text-muted-foreground">
+        <p>{t("description")}</p>
+      </div>
+
+      <LocalizedLink className="text-primary underline-offset-4 hover:underline" to="/">
+        {t("goHome")}
+      </LocalizedLink>
     </main>
   );
 }

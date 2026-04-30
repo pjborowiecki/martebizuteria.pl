@@ -1,6 +1,12 @@
+import type { JSX } from "react";
+
 import { createFileRoute, notFound, Outlet } from "@tanstack/react-router";
 
 import { isValidLocale } from "~/src/lib/utils";
+
+import { Footer } from "~/src/components/custom/landing/footer/footer";
+import { Navigation } from "~/src/components/custom/landing/navigation/components/navigation/navigation";
+import { SmoothScroll } from "~/src/components/custom/smooth-scroll";
 
 export const Route = createFileRoute("/{-$locale}")({
   beforeLoad: ({ params }) => {
@@ -13,6 +19,12 @@ export const Route = createFileRoute("/{-$locale}")({
   component: MainLayout
 });
 
-function MainLayout() {
-  return <Outlet />;
+function MainLayout(): JSX.Element {
+  return (
+    <SmoothScroll>
+      <Navigation />
+      <Outlet />
+      <Footer />
+    </SmoothScroll>
+  );
 }
