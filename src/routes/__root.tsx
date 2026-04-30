@@ -47,11 +47,19 @@ const Route = createRootRouteWithContext<RouterContext>()({
 
     return {
       links: [
-        { href: "https://fonts.googleapis.com", rel: "preconnect" },
-        { crossOrigin: "anonymous", href: "https://fonts.gstatic.com", rel: "preconnect" },
         {
-          href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Manrope:wght@300;400;500;600;700&display=swap",
-          rel: "stylesheet"
+          as: "font",
+          crossOrigin: "anonymous",
+          href: "/fonts/manrope-latin-wght-normal.woff2",
+          rel: "preload",
+          type: "font/woff2"
+        },
+        {
+          as: "font",
+          crossOrigin: "anonymous",
+          href: "/fonts/cormorant-garamond-latin-400-normal.woff2",
+          rel: "preload",
+          type: "font/woff2"
         },
         { href: canonicalUrl, rel: "canonical" },
         ...CONSTANTS.LOCALES.map((loc) => ({
