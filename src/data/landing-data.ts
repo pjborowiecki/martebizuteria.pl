@@ -10,38 +10,45 @@ export const LANDING_PRODUCTS = [
     priceKey: "newArrivals.items.lapis.price"
   },
   {
-    detailsKey: "newArrivals.items.aurelia.details",
+    detailsKey: "newArrivals.items.onyks.details",
     image: "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&w=1200&q=80",
-    nameKey: "newArrivals.items.aurelia.name",
-    priceKey: "newArrivals.items.aurelia.price"
+    nameKey: "newArrivals.items.onyks.name",
+    priceKey: "newArrivals.items.onyks.price"
   },
   {
-    detailsKey: "newArrivals.items.azure.details",
+    detailsKey: "newArrivals.items.vintageOnyksSilver.details",
     image: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=1200&q=80",
-    nameKey: "newArrivals.items.azure.name",
-    priceKey: "newArrivals.items.azure.price"
+    nameKey: "newArrivals.items.vintageOnyksSilver.name",
+    priceKey: "newArrivals.items.vintageOnyksSilver.price"
   },
   {
-    detailsKey: "newArrivals.items.heritage.details",
+    detailsKey: "newArrivals.items.vintageOnyksGolden.details",
     image: "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?auto=format&fit=crop&w=1200&q=80",
-    nameKey: "newArrivals.items.heritage.name",
-    priceKey: "newArrivals.items.heritage.price"
+    nameKey: "newArrivals.items.vintageOnyksGolden.name",
+    priceKey: "newArrivals.items.vintageOnyksGolden.price"
   },
   {
-    detailsKey: "newArrivals.items.pearl.details",
+    detailsKey: "newArrivals.items.ginkgo.details",
     image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=1200&q=80",
-    nameKey: "newArrivals.items.pearl.name",
-    priceKey: "newArrivals.items.pearl.price"
+    nameKey: "newArrivals.items.ginkgo.name",
+    priceKey: "newArrivals.items.ginkgo.price"
   },
   {
-    detailsKey: "newArrivals.items.midnight.details",
+    detailsKey: "newArrivals.items.oliwin.details",
     image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=1200&q=80",
-    nameKey: "newArrivals.items.midnight.name",
-    priceKey: "newArrivals.items.midnight.price"
+    nameKey: "newArrivals.items.oliwin.name",
+    priceKey: "newArrivals.items.oliwin.price"
   }
 ] as const;
 
 export const LANDING_CATEGORY_PANELS = [
+  {
+    buttonTextKey: "categories.panels.necklaces.buttonText",
+    image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1600&q=85",
+    subtitleKey: "categories.panels.necklaces.subtitle",
+    tagKey: "categories.panels.necklaces.tag",
+    titleKey: "categories.panels.necklaces.title"
+  },
   {
     buttonTextKey: "categories.panels.earrings.buttonText",
     image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1600&q=85",
@@ -57,13 +64,6 @@ export const LANDING_CATEGORY_PANELS = [
     titleKey: "categories.panels.chokers.title"
   },
   {
-    buttonTextKey: "categories.panels.rings.buttonText",
-    image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1600&q=85",
-    subtitleKey: "categories.panels.rings.subtitle",
-    tagKey: "categories.panels.rings.tag",
-    titleKey: "categories.panels.rings.title"
-  },
-  {
     buttonTextKey: "categories.panels.bracelets.buttonText",
     image: "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?auto=format&fit=crop&w=1600&q=85",
     subtitleKey: "categories.panels.bracelets.subtitle",
@@ -76,13 +76,6 @@ export const LANDING_CATEGORY_PANELS = [
     subtitleKey: "categories.panels.birthdayBracelets.subtitle",
     tagKey: "categories.panels.birthdayBracelets.tag",
     titleKey: "categories.panels.birthdayBracelets.title"
-  },
-  {
-    buttonTextKey: "categories.panels.other.buttonText",
-    image: "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=1600&q=85",
-    subtitleKey: "categories.panels.other.subtitle",
-    tagKey: "categories.panels.other.tag",
-    titleKey: "categories.panels.other.title"
   }
 ] as const;
 
@@ -123,13 +116,13 @@ export const LANDING_SHOP_CATEGORIES = [
     countKey: "shopCategories.items.chokers.count",
     image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=800&q=80",
     nameKey: "shopCategories.items.chokers.name",
-    slug: "kolczyki"
+    slug: "chokery"
   },
   {
-    countKey: "shopCategories.items.pendants.count",
+    countKey: "shopCategories.items.birthdayBracelets.count",
     image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=800&q=80",
-    nameKey: "shopCategories.items.pendants.name",
-    slug: "naszyjniki"
+    nameKey: "shopCategories.items.birthdayBracelets.name",
+    slug: "bransoletki-urodzinowe"
   }
 ] as const;
 
