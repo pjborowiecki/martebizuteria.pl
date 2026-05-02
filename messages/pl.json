@@ -160,7 +160,7 @@
       "description": "Ręcznie wykonywana biżuteria srebrna i damska od M'Arte — polska pracownia, czyste formy i srebro próby 925.",
       "title": "M'Arte | Biżuteria artystyczna"
     },
-    "hero": {
+    "heroSection": {
       "eyebrow": "Codzienna elegancja",
       "titleLine1": "Prawdziwa sztuka,",
       "titleLine2": "bez kompromisów",
@@ -170,7 +170,7 @@
       "scrollHint": "Przewiń by odkryć świat M'ARTE",
       "imageAlt": "Edytorialowa kompozycja biżuterii na kamieniu"
     },
-    "values": {
+    "valuesSection": {
       "eyebrow": "Standard M'ARTE",
       "title": "Jakość najwyszej próby",
       "craft": {
@@ -186,7 +186,7 @@
         "description": "Od momentu wyboru po otwarcia pudełka. Zapewniamy płynny proces zakupowy i eleganckie pakowanie, które zamienia zakupy w nagrodę dla samej siebie."
       }
     },
-    "newArrivals": {
+    "newArrivalsSection": {
       "eyebrow": "Premiery M'ARTE",
       "title": "Nowe wzory do odkrycia",
       "description": "Wyselekcjonowane, autorskie formy i szlachetny blask. Nowe projekty stworzone z myślą o Twoich codziennych rytuałach i ponadczasowej elegancji.",
@@ -224,7 +224,7 @@
         }
       }
     },
-    "categories": {
+    "categoriesSection": {
       "eyebrow": "Kategorie",
       "title": "Przestrzeń wyboru",
       "description": "Nasza biżuteria przybiera różne kształty, ale trzyma się jednej zasady: bezkompromisowej jakości. Przejdź przez kategorie i znajdź formę, której brakuje w Twojej przestrzeni.",
@@ -261,7 +261,7 @@
         }
       }
     },
-    "experience": {
+    "videoExperienceSection": {
       "eyebrow": "Ręczne wykonanie",
       "titleLine1": "Współtworzymy",
       "titleLine2": "to, co wyjątkowe.",
@@ -269,7 +269,7 @@
       "ctaPrimary": "Zobacz kolekcje",
       "ctaSecondary": "Poznaj wszystkie produkty"
     },
-    "archive": {
+    "archiveSection": {
       "eyebrow": "Przewodnik M'ARTE",
       "title": "Szczegół ma znaczenie",
       "imageAlt": "Biurko projektowe z narzędziami atelier",
@@ -279,10 +279,10 @@
         "engraving": "Przewodnik po minerałach: znaczenie i wybór kamieni naturalnych"
       }
     },
-    "breaker": {
+    "breakerSection": {
       "text": "Cichy luksus, zbudowany na intencji."
     },
-    "manifesto": {
+    "manifestoSection": {
       "eyebrow": "Filozofia marki",
       "title": "Nie podążamy za sezonami.",
       "subtitle": "Podążamy za przekonaniem.",
@@ -291,14 +291,14 @@
       "paragraph3": "To nie jest szybka moda przetłumaczona na metal. To biżuteria jako architektura — przemyślana, trwała forma, która staje się solidną bazą Twojego wizerunku.",
       "closing": "Witaj w świecie M'ARTE."
     },
-    "philosophy": {
+    "philosophySection": {
       "eyebrow": "Trwałe wartości",
       "title": "Projektowane, by przetrwać",
       "paragraph1": "Wierzymy w przedmioty, które przeżywają swój sezon. Każda forma M'ARTE rodzi się z umiaru — mniej kolekcji, głębsza intencja — bo trwałość jest ostatecznym luksusem.",
       "paragraph2": "Nasze studio nie pracuje w rytmie handlu, a rzemiosła, nie handlu. Od pierwszego wycinania w wosku po finalny połysk — każdy gest jest celowy, każda powierzchnia przemyślana.",
       "signature": "— M'ARTE Atelier, Warszawa"
     },
-    "silver": {
+    "silverPremiumSection": {
       "eyebrow": "Kolekcja Premium",
       "titleMain": "Srebro",
       "titleAccent": "925",
@@ -321,7 +321,7 @@
         }
       }
     },
-    "maison": {
+    "maisonHeritageSection": {
       "eyebrow": "O marce",
       "title": "Tradycja i precyzja",
       "description": "Powstaliśmy, by połączyć klasyczne techniki jubilerskie z nowoczesną, surową formą. Każdy z naszych projektów to wynik precyzyjnej pracy i bezkompromisowego podejścia do minimalizmu.",
@@ -329,7 +329,7 @@
       "mainImageAlt": "Ręczne tworzenie biżuterii",
       "overlayImageAlt": "Zbliżenie na pierścionek solitaire"
     },
-    "newsletter": {
+    "newsletterSection": {
       "eyebrow": "Newsletter",
       "title": "Bądź blisko M'ARTE",
       "description": "Bądź na bieżąco z nowymi produktami i odbieraj prywatne kody zniżkowe dostępne tylko dla subskrybentów.",
@@ -337,7 +337,7 @@
       "cta": "Dołącz do nas",
       "note": "Zapisując się wyrażasz zgodę na przetwarzanie danych w celach marketingowych, zgodnie z Regulaminem i Polityką Prywatności."
     },
-    "shopCategories": {
+    "shopCategoriesSection": {
       "eyebrow": "Przeglądaj według typu",
       "title": "Kategorie",
       "description": "Odkryj pełen asortyment ręcznie tworzonej biżuterii — od rzeźbiarskich kolczyków po wyraziste pierścionki.",
@@ -369,7 +369,7 @@
         }
       }
     },
-    "shopCollections": {
+    "shopCollectionsSection": {
       "eyebrow": "Kuratorskie edycje",
       "title": "Nasze Kolekcje",
       "description": "Tematyczne selekcje stworzone wokół nastroju, sezonu i okazji.",
