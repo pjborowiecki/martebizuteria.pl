@@ -46,7 +46,7 @@
         "message": "The page you are looking for does not exist."
       },
       "defaultPendingComponent": {
-        "loading": "Loading\u2026"
+        "loading": "Loading…"
       },
       "footer": {
         "brand": "M'Arte",
@@ -157,144 +157,155 @@
   },
   "landingPage": {
     "meta": {
-      "description": "Handcrafted silver and fine jewellery by M'Arte — Polish atelier, timeless design, and sterling 925.",
-      "title": "M'Arte | Handcrafted Jewellery"
+      "description": "Handcrafted silver and women's jewelry by M'Arte — Polish atelier, pure forms, and 925 silver.",
+      "title": "M'Arte | Handcrafted Jewelry"
     },
     "hero": {
-      "eyebrow": "The Digital Atelier",
-      "titleLine1": "The Spirit of",
-      "titleLine2": "Creation",
-      "description": "M'ARTE is more than a maison. It is a dialogue between earth-born stones and contemporary form, shaped in Poland with a couture-level attention to detail.",
-      "ctaPrimary": "Shop new arrivals",
-      "ctaSecondary": "Explore collections",
-      "scrollHint": "Scroll to discover",
+      "eyebrow": "Everyday elegance",
+      "titleLine1": "True art,",
+      "titleLine2": "without compromises",
+      "description": "In a world of mass copies, choose uniqueness. M'Arte is raw minerals and precious metals that will become an intimate extension of your identity.",
+      "ctaPrimary": "Find something for yourself",
+      "ctaSecondary": "Get to know us better",
+      "scrollHint": "Scroll to discover the world of M'ARTE",
       "imageAlt": "Editorial jewelry composition on stone"
     },
     "values": {
-      "eyebrow": "Our pillars",
-      "title": "What defines us",
+      "eyebrow": "The M'ARTE standard",
+      "title": "Quality of the highest purity",
       "craft": {
-        "title": "Atelier craft",
-        "description": "Every finish is completed by hand, preserving subtle traces that make each piece unique."
+        "title": "Hand precision",
+        "description": "You receive a detail perfected by artisans. Subtle differences in texture are proof that you wear a true unique piece, not a mass cast."
       },
       "material": {
-        "title": "Noble materials",
-        "description": "925 sterling silver, curated stones, and carefully balanced plating selected for daily elegance."
+        "title": "Precious materials",
+        "description": "925 silver and selected minerals. We create with metals that beautifully interact with light and give a feeling of luxury on the skin."
       },
       "service": {
-        "title": "Private service",
-        "description": "Personalized advice, elegant wrapping, and seamless delivery shaped around your rhythm."
+        "title": "Details that bring joy",
+        "description": "From the moment of choice to opening the box. We ensure a seamless shopping process and elegant packaging that turns shopping into a reward for yourself."
       }
     },
     "newArrivals": {
-      "eyebrow": "Seasonal reveal",
-      "title": "The Aura Collection",
-      "description": "A curated edit of sculptural silhouettes and quiet sparkle made for modern rituals.",
+      "eyebrow": "M'ARTE premieres",
+      "title": "New designs to discover",
+      "description": "Curated, original forms and noble glow. New designs created for your daily rituals and timeless elegance.",
       "cta": "View all products",
       "items": {
         "lapis": {
-          "name": "Lapis Orbit Necklace",
-          "details": "Gold plated silver / lapis lazuli",
-          "price": "329 PLN"
+          "name": "Lapis Lazuli Necklace",
+          "details": "Gold-plated silver / lapis lazuli",
+          "price": "379 PLN"
         },
-        "aurelia": {
-          "name": "Aurelia Hoops",
+        "onyks": {
+          "name": "Onyx Necklace",
           "details": "925 silver / mirror finish",
-          "price": "289 PLN"
+          "price": "379 PLN"
         },
-        "azure": {
-          "name": "Azure Drop Earrings",
-          "details": "Gold vermeil / cobalt stones",
-          "price": "249 PLN"
+        "vintageOnyksSilver": {
+          "name": "Vintage Onyx Earrings Silver",
+          "details": "925 silver / cobalt stones",
+          "price": "450 PLN"
         },
-        "heritage": {
-          "name": "Heritage Chain Bracelet",
-          "details": "Textured links / warm gold tone",
-          "price": "359 PLN"
+        "vintageOnyksGolden": {
+          "name": "Vintage Onyx Earrings Gold-plated",
+          "details": "Gold-plated silver / warm gold",
+          "price": "450 PLN"
         },
-        "pearl": {
-          "name": "Pearl Whisper Choker",
-          "details": "Freshwater pearls / 925 clasp",
-          "price": "319 PLN"
+        "ginkgo": {
+          "name": "Ginkgo Necklace",
+          "details": "Gold-plated silver / ginkgo leaf",
+          "price": "239 PLN"
         },
-        "midnight": {
-          "name": "Midnight Signet Ring",
-          "details": "Black onyx / polished profile",
-          "price": "279 PLN"
+        "oliwin": {
+          "name": "Olivine Choker",
+          "details": "925 silver / olivine",
+          "price": "189 PLN"
         }
       }
     },
     "categories": {
-      "eyebrow": "Collections in motion",
-      "title": "Horizontal curation",
-      "description": "Scroll through signature worlds where texture, light, and form build a cohesive visual story.",
-      "panelEyebrow": "Collection focus",
-      "cta": "Explore the collection",
+      "eyebrow": "Categories",
+      "title": "Space of choice",
+      "description": "Our jewelry takes various shapes, but adheres to one principle: uncompromising quality. Browse the categories and find the form missing in your space.",
       "panels": {
-        "aurora": {
-          "title": "Aurora Forms",
-          "description": "Layered chains and softly faceted stones designed to glow against neutral tailoring."
+        "necklaces": {
+          "tag": "Necklaces",
+          "title": "Refined simplicity",
+          "subtitle": "Forms gracing the collarbone line and pure proportions. Created to be an intimate accent worn close to the heart.",
+          "buttonText": "Discover necklaces"
         },
-        "stone": {
-          "title": "Stone Dialogue",
-          "description": "Organic contours inspired by carved mineral surfaces and museum archive studies."
+        "earrings": {
+          "tag": "Earrings",
+          "title": "Precise accents",
+          "subtitle": "From minimalist studs to stronger forms. Designed to frame the face and be a distinct point of your image.",
+          "buttonText": "Explore earrings"
         },
-        "nightfall": {
-          "title": "Nightfall Edit",
-          "description": "High-contrast silhouettes with sculptural highlights for evening precision."
+        "chokers": {
+          "tag": "Chokers",
+          "title": "Strong lines",
+          "subtitle": "Solid weaves and minerals arranged close to the body. A structural detail that catches light and effortlessly defines the entire styling.",
+          "buttonText": "Explore chokers"
+        },
+        "bracelets": {
+          "tag": "Bracelets",
+          "title": "Fluid structures",
+          "subtitle": "Polished metal that softly drapes on the wrist. Created to be worn solo or build strong, layered compositions.",
+          "buttonText": "Explore bracelets"
+        },
+        "birthdayBracelets": {
+          "tag": "Birthday Edition",
+          "title": "Personal talisman",
+          "subtitle": "Natural stones assigned to birth months. A thoughtful accent captured in our raw aesthetic, staying with you for years.",
+          "buttonText": "Discover your stone"
         }
       }
     },
     "experience": {
-      "eyebrow": "The bespoke experience",
-      "titleLine1": "Co-creating",
-      "titleLine2": "the extraordinary.",
-      "description": "Collaborate with our designers to shape a signature piece, from digital concept to final hand polish.",
-      "ctaPrimary": "Inquire privately",
-      "ctaSecondary": "View portfolio",
-      "videoAria": "Bespoke jewelry craftsmanship video"
+      "eyebrow": "Handcrafted",
+      "titleLine1": "We co-create",
+      "titleLine2": "what is unique.",
+      "description": "Some stories deserve their own shape. From the first inspiration to manual finishing – we create jewelry that exists in only one copy. Yours.",
+      "ctaPrimary": "View collections",
+      "ctaSecondary": "Explore all products"
     },
     "archive": {
-      "eyebrow": "Editorial",
-      "title": "From the Archive",
+      "eyebrow": "M'ARTE Guide",
+      "title": "Details matter",
       "imageAlt": "Design desk with atelier tools",
       "articles": {
-        "golden": "The Golden Ratio in Design",
-        "sustainability": "Sustainability & Rare Earths",
-        "engraving": "The Craft of Hand Engraving"
+        "golden": "Care ritual: how to properly care for your daily jewelry",
+        "sustainability": "The art of proportion: how to build layered compositions",
+        "engraving": "Mineral guide: meaning and choice of natural stones"
       }
     },
     "breaker": {
-      "text": "Quiet luxury, composed with intention."
+      "text": "Quiet luxury, built on intention."
     },
     "manifesto": {
-      "eyebrow": "A point of view",
+      "eyebrow": "Brand philosophy",
       "title": "We don't follow seasons.",
       "subtitle": "We follow conviction.",
-      "paragraph1": "In a world that rewards speed, we chose slowness. Every M'ARTE piece begins with a question — not 'what will sell,' but 'what deserves to exist.' The answer is always the same: only what we would wear ourselves.",
-      "paragraph2": "Silver is our canvas. Stones are our punctuation. And restraint is the language we speak — because true elegance has never been loud. It arrives quietly, stays permanently, and reveals itself over time.",
-      "paragraph3": "This is not fast fashion translated into metal. This is jewelry as architecture — considered, structural, and built to outlive the moment that inspired it.",
-      "closing": "Welcome to the atelier."
+      "paragraph1": "We believe that in a world rewarding speed, the greatest luxury is time dedicated to detail. We reject mass production in favor of forms that truly deserve to exist.",
+      "paragraph2": "Silver is our canvas, natural stones are our punctuation. We create for those who know that true elegance is never loud. It speaks through detail and uncompromising quality.",
+      "paragraph3": "This is not fast fashion translated into metal. This is jewelry as architecture — a considered, durable form that becomes a solid foundation of your image.",
+      "closing": "Welcome to the world of M'ARTE."
     },
     "philosophy": {
-      "eyebrow": "Our philosophy",
+      "eyebrow": "Enduring values",
       "title": "Designed to endure",
-      "paragraph1": "We believe in objects that outlast their season. Each M'ARTE piece is conceived with restraint — fewer collections, deeper intention — because permanence is the ultimate luxury.",
-      "paragraph2": "Our atelier works at the pace of craft, not commerce. From the first wax carving to the final polish, every gesture is deliberate, every surface considered.",
+      "paragraph1": "We believe in objects that outlast their season. Each M'ARTE form is born from restraint — fewer collections, deeper intention — because permanence is the ultimate luxury.",
+      "paragraph2": "Our studio works at the rhythm of craft, not commerce. From the first wax carving to the final polish — every gesture is deliberate, every surface considered.",
       "signature": "— M'ARTE Atelier, Warsaw"
     },
     "silver": {
       "eyebrow": "Premium Collection",
-      "badge": "Silver 925",
       "titleMain": "Silver",
       "titleAccent": "925",
-      "title": "Sculpted Light",
-      "description": "Our signature line celebrates refined geometry and fluid highlights. Designed to layer effortlessly from daytime tailoring to evening statement looks.",
-      "ctaPrimary": "Explore Collection",
-      "ctaSecondary": "Learn More",
-      "imageAlt": "Minimal jewelry still life in warm light",
-      "imageBadgeEyebrow": "New",
-      "imageBadgeTitle": "Autumn Collection 2026",
+      "description": "Our flagship 925 silver collection. Each piece is carefully crafted by artisans with years of experience. The combination of tradition and modern design creates jewelry that delights on every occasion.",
+      "ctaPrimary": "Discover the Collection",
+      "ctaSecondary": "View all products",
+      "imageAlt": "Minimalist jewelry still life",
       "stats": {
         "purity": {
           "value": "925",
@@ -302,7 +313,7 @@
         },
         "handmade": {
           "value": "100%",
-          "label": "Handcrafted"
+          "label": "Handmade"
         },
         "warranty": {
           "value": "2 years",
@@ -310,89 +321,72 @@
         }
       }
     },
-    "editorial": {
-      "eyebrow": "Editorial moments",
-      "title": "Stories in modern proportion",
-      "description": "A visual journal where jewelry meets architecture, textile movement, and light.",
-      "cta": "Read the journal",
-      "cards": {
-        "atelier": {
-          "title": "The Atelier Icons",
-          "description": "Our most coveted pieces, refined through generations of experimentation."
-        },
-        "light": {
-          "title": "Quiet Light",
-          "description": "Soft reflections and subtle contrast for effortless daytime styling."
-        },
-        "muse": {
-          "title": "The New Muse",
-          "description": "A study of confidence, precision, and contemporary femininity."
-        }
-      }
-    },
-    "brand": {
-      "eyebrow": "Our legacy",
-      "title": "A house built on intention",
-      "description": "From sketch to final polish, each release is guided by proportion, tactility, and timelessness.",
-      "quote": "“Jewelry should feel like a second skin: personal, luminous, and quietly powerful.”",
-      "author": "Creative direction — M'ARTE Studio"
-    },
     "maison": {
-      "eyebrow": "Our heritage",
-      "title": "The Maison",
-      "description": "M'Arte was born to bridge ancient goldsmithing knowledge with the digital frontier. Each piece reflects artisanal patience and contemporary restraint.",
-      "cta": "Read our story",
-      "mainImageAlt": "Crafting jewelry by hand",
+      "eyebrow": "About the brand",
+      "title": "Tradition and precision",
+      "description": "We were founded to combine classic jewelry techniques with modern, raw forms. Each of our projects is the result of precise work and an uncompromising approach to minimalism.",
+      "cta": "Discover our story",
+      "mainImageAlt": "Handcrafting jewelry",
       "overlayImageAlt": "Close-up of a solitaire ring"
     },
     "newsletter": {
+      "eyebrow": "Newsletter",
       "title": "Stay close to M'ARTE",
-      "description": "Receive private previews, styling notes, and limited edition announcements.",
+      "description": "Stay up to date with new products and receive private discount codes available only for subscribers.",
       "placeholder": "Email address",
-      "cta": "Subscribe",
-      "note": "By subscribing, you agree to receive marketing communications and accept our privacy policy."
+      "cta": "Join us",
+      "note": "By subscribing, you agree to the processing of data for marketing purposes, in accordance with the Terms and Privacy Policy."
     },
     "shopCategories": {
       "eyebrow": "Browse by type",
       "title": "Categories",
-      "description": "Explore our full range of handcrafted jewelry, from sculptural earrings to statement rings.",
+      "description": "Discover the full range of handcrafted jewelry — from sculptural earrings to statement rings.",
       "cta": "View all categories",
       "items": {
-        "earrings": { "name": "Earrings", "count": "24 pieces" },
-        "necklaces": { "name": "Necklaces", "count": "18 pieces" },
-        "bracelets": { "name": "Bracelets", "count": "15 pieces" },
-        "rings": { "name": "Rings", "count": "21 pieces" },
-        "chokers": { "name": "Chokers", "count": "9 pieces" },
-        "pendants": { "name": "Pendants", "count": "12 pieces" }
+        "earrings": {
+          "name": "Earrings",
+          "count": "24 pieces"
+        },
+        "necklaces": {
+          "name": "Necklaces",
+          "count": "18 pieces"
+        },
+        "bracelets": {
+          "name": "Bracelets",
+          "count": "15 pieces"
+        },
+        "rings": {
+          "name": "Rings",
+          "count": "21 pieces"
+        },
+        "chokers": {
+          "name": "Chokers",
+          "count": "9 pieces"
+        },
+        "birthdayBracelets": {
+          "name": "Birthday Bracelets",
+          "count": "12 pieces"
+        }
       }
     },
     "shopCollections": {
-      "eyebrow": "Curated edits",
+      "eyebrow": "Curated editions",
       "title": "Our Collections",
-      "description": "Themed selections curated around mood, season, and occasion.",
+      "description": "Themed selections created around mood, season, and occasion.",
       "cta": "View all collections",
       "items": {
         "newArrivals": {
           "name": "New Arrivals",
           "description": "The latest additions to our atelier — fresh forms and seasonal stones."
         },
-        "bestsellers": {
-          "name": "Bestsellers",
-          "description": "The most sought-after pieces, chosen again and again by our community."
+        "silver": {
+          "name": "Silver 925",
+          "description": "Timeless jewelry made of the highest quality 925 silver."
         },
-        "gifts": {
-          "name": "Gift Edit",
-          "description": "Thoughtful selections for every occasion, presented in signature M'ARTE packaging."
+        "gold": {
+          "name": "Gold 585",
+          "description": "A collection of 585 gold jewelry, created to last."
         }
-      }
-    },
-    "gallery": {
-      "title": "Inside the collection",
-      "cta": "View full lookbook",
-      "items": {
-        "ritual": "Jewelry ritual composition",
-        "stone": "Craft detail on natural stone",
-        "signature": "Signature M'ARTE layering pieces"
       }
     }
   },

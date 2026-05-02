@@ -14,12 +14,13 @@ export interface ProductCardProps {
   readonly compact?: boolean;
   readonly detail: string;
   readonly href: LocalizedTo;
+  readonly params?: Readonly<Record<string, string | number | undefined>>;
   readonly image: string;
   readonly name: string;
   readonly onAddToCart?: () => void;
   readonly onWishlistToggle?: () => void;
   readonly parallax?: boolean;
-  readonly price: string;
+  readonly price?: string;
   readonly sizes?: string;
   readonly wishlisted?: boolean;
 }
@@ -30,6 +31,7 @@ export function ProductCard({
   compact = false,
   detail,
   href,
+  params,
   image,
   name,
   onAddToCart,
@@ -103,7 +105,7 @@ export function ProductCard({
   );
 
   return (
-    <LocalizedLink className={cn("group/card block", className)} to={href}>
+    <LocalizedLink className={cn("group/card block", className)} to={href} params={params}>
       {/* ── Image container ── */}
       <div className={cn("relative aspect-4/5 overflow-hidden bg-secondary", parallax && "parallax-wrap")}>
         {/* Image layer */}
@@ -185,7 +187,7 @@ export function ProductCard({
           {name}
         </h3>
         <p className="text-xs text-muted-foreground">{detail}</p>
-        <p className={cn("text-[11px] tracking-[0.22em] uppercase tabular-nums", !compact && "mt-1")}>{price}</p>
+        {price !== undefined && <p className={cn("text-[11px] tracking-[0.22em] uppercase tabular-nums", !compact && "mt-1")}>{price}</p>}
       </div>
     </LocalizedLink>
   );

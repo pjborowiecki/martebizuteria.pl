@@ -19,6 +19,8 @@ import { buildLocalizedUrl, extractLocaleFromPath, getBaseURL } from "~/src/lib/
 
 import { Toaster } from "~/src/components/shadcn/sonner";
 
+import { CustomCursor } from "~/src/components/custom/custom-cursor";
+
 // eslint-disable-next-line import/no-unassigned-import
 import "~/src/styles/globals.css";
 
@@ -105,7 +107,10 @@ function RootDocument({ children, locale }: Readonly<{ children: ReactNode; loca
       <head>
         <HeadContent />
       </head>
-      <body>{children}</body>
+      <body>
+        <CustomCursor />
+        {children}
+      </body>
     </html>
   );
 }

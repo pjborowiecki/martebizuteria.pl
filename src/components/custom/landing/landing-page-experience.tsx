@@ -6,8 +6,8 @@ import { useTranslations } from "use-intl";
 import { ScrollTrigger, gsap, useGSAP } from "~/src/lib/gsap";
 import { getAssetURL } from "~/src/lib/utils";
 
+import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
 import { Badge } from "~/src/components/shadcn/badge";
-import { buttonVariants } from "~/src/components/shadcn/button";
 import { Input } from "~/src/components/shadcn/input";
 import { Separator } from "~/src/components/shadcn/separator";
 
@@ -22,58 +22,78 @@ const VIDEO_SRC = getAssetURL("marketing/landing-video.mp4");
 const PRODUCTS = [
   {
     detailsKey: "newArrivals.items.lapis.details",
-    image: getAssetURL("placeholder.svg"),
+    image: getAssetURL("products/lapis_lazuli_main.webp"),
     nameKey: "newArrivals.items.lapis.name",
     priceKey: "newArrivals.items.lapis.price"
   },
   {
-    detailsKey: "newArrivals.items.aurelia.details",
-    image: getAssetURL("placeholder.svg"),
-    nameKey: "newArrivals.items.aurelia.name",
-    priceKey: "newArrivals.items.aurelia.price"
+    detailsKey: "newArrivals.items.onyks.details",
+    image: getAssetURL("products/onyks_main.webp"),
+    nameKey: "newArrivals.items.onyks.name",
+    priceKey: "newArrivals.items.onyks.price"
   },
   {
-    detailsKey: "newArrivals.items.azure.details",
-    image: getAssetURL("placeholder.svg"),
-    nameKey: "newArrivals.items.azure.name",
-    priceKey: "newArrivals.items.azure.price"
+    detailsKey: "newArrivals.items.vintageOnyksSilver.details",
+    image: getAssetURL("products/vintage_onyks_main.webp"),
+    nameKey: "newArrivals.items.vintageOnyksSilver.name",
+    priceKey: "newArrivals.items.vintageOnyksSilver.price"
   },
   {
-    detailsKey: "newArrivals.items.heritage.details",
-    image: getAssetURL("placeholder.svg"),
-    nameKey: "newArrivals.items.heritage.name",
-    priceKey: "newArrivals.items.heritage.price"
+    detailsKey: "newArrivals.items.vintageOnyksGolden.details",
+    image: getAssetURL("products/vintage_onyks_golden_main.webp"),
+    nameKey: "newArrivals.items.vintageOnyksGolden.name",
+    priceKey: "newArrivals.items.vintageOnyksGolden.price"
   },
   {
-    detailsKey: "newArrivals.items.pearl.details",
-    image: getAssetURL("placeholder.svg"),
-    nameKey: "newArrivals.items.pearl.name",
-    priceKey: "newArrivals.items.pearl.price"
+    detailsKey: "newArrivals.items.ginkgo.details",
+    image: getAssetURL("products/ginkgo_main.webp"),
+    nameKey: "newArrivals.items.ginkgo.name",
+    priceKey: "newArrivals.items.ginkgo.price"
   },
   {
-    detailsKey: "newArrivals.items.midnight.details",
-    image: getAssetURL("placeholder.svg"),
-    nameKey: "newArrivals.items.midnight.name",
-    priceKey: "newArrivals.items.midnight.price"
+    detailsKey: "newArrivals.items.oliwin.details",
+    image: getAssetURL("products/oliwin_main.webp"),
+    nameKey: "newArrivals.items.oliwin.name",
+    priceKey: "newArrivals.items.oliwin.price"
   }
 ] as const;
 
 /** Panel art — use stable Unsplash IDs; avoid parallax-wrap here (GSAP + next/image fill can fail in horizontal pin) */
 const CATEGORY_PANELS = [
   {
-    descriptionKey: "categories.panels.aurora.description",
-    image: getAssetURL("placeholder.svg"),
-    titleKey: "categories.panels.aurora.title"
+    buttonTextKey: "categories.panels.necklaces.buttonText",
+    image: getAssetURL("categories/necklaces.webp"),
+    subtitleKey: "categories.panels.necklaces.subtitle",
+    tagKey: "categories.panels.necklaces.tag",
+    titleKey: "categories.panels.necklaces.title"
   },
   {
-    descriptionKey: "categories.panels.stone.description",
-    image: getAssetURL("placeholder.svg"),
-    titleKey: "categories.panels.stone.title"
+    buttonTextKey: "categories.panels.earrings.buttonText",
+    image: getAssetURL("categories/earrings.webp"),
+    subtitleKey: "categories.panels.earrings.subtitle",
+    tagKey: "categories.panels.earrings.tag",
+    titleKey: "categories.panels.earrings.title"
   },
   {
-    descriptionKey: "categories.panels.nightfall.description",
-    image: getAssetURL("placeholder.svg"),
-    titleKey: "categories.panels.nightfall.title"
+    buttonTextKey: "categories.panels.chokers.buttonText",
+    image: getAssetURL("categories/chokers.webp"),
+    subtitleKey: "categories.panels.chokers.subtitle",
+    tagKey: "categories.panels.chokers.tag",
+    titleKey: "categories.panels.chokers.title"
+  },
+  {
+    buttonTextKey: "categories.panels.bracelets.buttonText",
+    image: getAssetURL("categories/bracelets.webp"),
+    subtitleKey: "categories.panels.bracelets.subtitle",
+    tagKey: "categories.panels.bracelets.tag",
+    titleKey: "categories.panels.bracelets.title"
+  },
+  {
+    buttonTextKey: "categories.panels.birthdayBracelets.buttonText",
+    image: getAssetURL("categories/birthday_bracelets.webp"),
+    subtitleKey: "categories.panels.birthdayBracelets.subtitle",
+    tagKey: "categories.panels.birthdayBracelets.tag",
+    titleKey: "categories.panels.birthdayBracelets.title"
   }
 ] as const;
 
@@ -86,81 +106,64 @@ const ARCHIVE_ARTICLES = [
 const SHOP_CATEGORIES = [
   {
     countKey: "shopCategories.items.earrings.count",
-    image: getAssetURL("placeholder.svg"),
+    image: getAssetURL("categories/earrings_alt.webp"),
     nameKey: "shopCategories.items.earrings.name",
     slug: "kolczyki"
   },
   {
     countKey: "shopCategories.items.necklaces.count",
-    image: getAssetURL("placeholder.svg"),
+    image: getAssetURL("categories/necklaces_alt.webp"),
     nameKey: "shopCategories.items.necklaces.name",
     slug: "naszyjniki"
   },
   {
     countKey: "shopCategories.items.bracelets.count",
-    image: getAssetURL("placeholder.svg"),
+    image: getAssetURL("categories/bracelets_alt.webp"),
     nameKey: "shopCategories.items.bracelets.name",
     slug: "bransoletki"
   },
   {
-    countKey: "shopCategories.items.rings.count",
-    image: getAssetURL("placeholder.svg"),
-    nameKey: "shopCategories.items.rings.name",
-    slug: "pierscionki"
+    countKey: "shopCategories.items.birthdayBracelets.count",
+    image: getAssetURL("categories/birthday_bracelets_alt.webp"),
+    nameKey: "shopCategories.items.birthdayBracelets.name",
+    slug: "bransoletki-urodzinowe"
   },
   {
     countKey: "shopCategories.items.chokers.count",
-    image: getAssetURL("placeholder.svg"),
+    image: getAssetURL("categories/chokers_alt.webp"),
     nameKey: "shopCategories.items.chokers.name",
-    slug: "kolczyki"
-  },
-  {
-    countKey: "shopCategories.items.pendants.count",
-    image: getAssetURL("placeholder.svg"),
-    nameKey: "shopCategories.items.pendants.name",
-    slug: "naszyjniki"
+    slug: "chokery"
   }
 ] as const;
 
 const SHOP_COLLECTIONS = [
   {
     descKey: "shopCollections.items.newArrivals.description",
-    image: getAssetURL("placeholder.svg"),
+    image: getAssetURL("collections/new_arrivals.webp"),
     nameKey: "shopCollections.items.newArrivals.name",
     slug: "nowosci"
   },
   {
-    descKey: "shopCollections.items.bestsellers.description",
-    image: getAssetURL("placeholder.svg"),
-    nameKey: "shopCollections.items.bestsellers.name",
-    slug: "bestsellery"
+    descKey: "shopCollections.items.silver.description",
+    image: getAssetURL("collections/silver925.webp"),
+    nameKey: "shopCollections.items.silver.name",
+    slug: "srebro-925"
   },
   {
-    descKey: "shopCollections.items.gifts.description",
-    image: getAssetURL("placeholder.svg"),
-    nameKey: "shopCollections.items.gifts.name",
-    slug: "prezenty"
-  }
-] as const;
-
-const GALLERY_IMAGES = [
-  {
-    altKey: "gallery.items.ritual",
-    image: getAssetURL("placeholder.svg")
-  },
-  {
-    altKey: "gallery.items.stone",
-    image: getAssetURL("placeholder.svg")
-  },
-  {
-    altKey: "gallery.items.signature",
-    image: getAssetURL("placeholder.svg")
+    descKey: "shopCollections.items.gold.description",
+    image: getAssetURL("collections/gold585.webp"),
+    nameKey: "shopCollections.items.gold.name",
+    slug: "zloto-585"
   }
 ] as const;
 
 export function LandingPageExperience(): JSX.Element {
   const t = useTranslations("landingPage");
   const root = useRef<HTMLDivElement>(null);
+  const videoSectionRef = useRef<HTMLElement>(null);
+  const valuesSectionRef = useRef<HTMLElement>(null);
+  const horizontalSectionRef = useRef<HTMLElement>(null);
+  const horizontalTrackRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
@@ -214,8 +217,8 @@ export function LandingPageExperience(): JSX.Element {
           );
         });
 
-        const videoSection = root.current?.querySelector<HTMLElement>(".video-section");
-        const valuesSection = root.current?.querySelector<HTMLElement>(".values-section");
+        const videoSection = videoSectionRef.current;
+        const valuesSection = valuesSectionRef.current;
 
         if (videoSection && valuesSection) {
           gsap.to(videoSection, {
@@ -243,8 +246,8 @@ export function LandingPageExperience(): JSX.Element {
       });
 
       mm.add("(min-width: 1024px) and (prefers-reduced-motion: no-preference)", () => {
-        const section = root.current?.querySelector<HTMLElement>(".horizontal-section");
-        const track = root.current?.querySelector<HTMLElement>(".horizontal-track");
+        const section = horizontalSectionRef.current;
+        const track = horizontalTrackRef.current;
         if (!section || !track) {
           return;
         }
@@ -253,10 +256,20 @@ export function LandingPageExperience(): JSX.Element {
           ease: "none",
           scrollTrigger: {
             anticipatePin: 1,
-            end: () => `+=${track.scrollWidth - section.clientWidth}`,
+            end: () => `+=${(track.scrollWidth - section.clientWidth) * 1.5}`,
             invalidateOnRefresh: true,
             pin: true,
-            scrub: true,
+            // very low scrub for immediate responsiveness
+            scrub: 0.1,
+            snap: {
+              snapTo: 1 / CATEGORY_PANELS.length,
+              duration: { min: 0.4, max: 0.8 },
+              // snap immediately when scroll ends
+              delay: 0,
+              // ALWAYS snap to the next category regardless of scroll distance
+              directional: true,
+              ease: "power2.inOut"
+            },
             start: "top top",
             trigger: section
           },
@@ -296,7 +309,7 @@ export function LandingPageExperience(): JSX.Element {
                 </LocalizedLink>
                 <LocalizedLink
                   to="/collections"
-                  className="inline-flex h-13 items-center justify-center px-10 text-sm font-medium tracking-wide transition-colors hover:text-foreground/70"
+                  className="inline-flex h-13 items-center justify-center border border-foreground/20 px-8 text-[11px] tracking-[0.2em] uppercase transition-colors hover:border-foreground/50"
                 >
                   {t("hero.ctaSecondary")}
                 </LocalizedLink>
@@ -309,22 +322,28 @@ export function LandingPageExperience(): JSX.Element {
             </div>
           </div>
 
-          <div className="parallax-wrap reveal relative aspect-[5/6] overflow-hidden bg-card">
-            <Image
-              alt={t("hero.imageAlt")}
-              className="parallax-img absolute inset-0 size-full object-cover"
-              height={2160}
-              priority
-              sizes="(max-width: 1024px) 100vw, 56vw"
-              src={HERO_IMG}
-              width={1800}
-            />
-          </div>
+          <AspectRatio ratio={5 / 6} className="parallax-wrap reveal overflow-hidden bg-card">
+            <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
+              <Image
+                alt={t("hero.imageAlt")}
+                className="absolute inset-0 size-full object-cover"
+                height={2160}
+                priority
+                sizes="(max-width: 1024px) 100vw, 56vw"
+                src={HERO_IMG}
+                width={1800}
+              />
+            </div>
+          </AspectRatio>
         </div>
       </section>
 
       {/* ── Video experience ── */}
-      <section id="experience" className="video-section relative z-0 flex min-h-svh items-end overflow-hidden bg-primary text-white">
+      <section
+        ref={videoSectionRef}
+        id="experience"
+        className="video-section relative z-0 flex min-h-svh items-end overflow-hidden bg-primary text-white"
+      >
         {/* Video layer */}
         <div className="absolute inset-0">
           <video
@@ -384,7 +403,7 @@ export function LandingPageExperience(): JSX.Element {
       </section>
 
       {/* ── Values ── */}
-      <section className="values-section relative z-10 bg-background py-20 lg:py-32">
+      <section ref={valuesSectionRef} className="values-section relative z-10 bg-background py-20 lg:py-32">
         <div className="mx-auto max-w-400 px-6 lg:px-12">
           <div className="reveal mb-12 max-w-xl space-y-3">
             <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("values.eyebrow")}</p>
@@ -393,16 +412,18 @@ export function LandingPageExperience(): JSX.Element {
 
           <div className="grid gap-y-10 md:grid-cols-12 md:gap-x-6 lg:gap-x-10">
             <div className="reveal md:col-span-5 md:row-span-2">
-              <div className="parallax-wrap relative aspect-[3/4] overflow-hidden bg-secondary">
-                <Image
-                  alt={t("values.craft.title")}
-                  className="parallax-img absolute inset-0 size-full object-cover"
-                  height={1000}
-                  sizes="(max-width: 768px) 100vw, 40vw"
-                  src={getAssetURL("marketing/archive-editorial.webp")}
-                  width={800}
-                />
-              </div>
+              <AspectRatio ratio={3 / 4} className="parallax-wrap overflow-hidden bg-secondary">
+                <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
+                  <Image
+                    alt={t("values.craft.title")}
+                    className="absolute inset-0 size-full object-cover"
+                    height={1000}
+                    sizes="(max-width: 768px) 100vw, 40vw"
+                    src={getAssetURL("marketing/standard.webp")}
+                    width={800}
+                  />
+                </div>
+              </AspectRatio>
             </div>
 
             <div className="reveal flex flex-col justify-end space-y-3 md:col-span-7">
@@ -489,7 +510,7 @@ export function LandingPageExperience(): JSX.Element {
         <div className="space-y-6">
           {CATEGORY_PANELS.map((panel, index) => (
             <article key={panel.titleKey} className="reveal overflow-hidden border border-border/60 bg-background">
-              <div className="relative aspect-[5/4] w-full overflow-hidden bg-muted">
+              <AspectRatio ratio={5 / 4} className="w-full overflow-hidden bg-muted">
                 <Image
                   alt={t(panel.titleKey)}
                   className="absolute inset-0 size-full object-cover"
@@ -499,16 +520,16 @@ export function LandingPageExperience(): JSX.Element {
                   src={panel.image}
                   width={1250}
                 />
-              </div>
+              </AspectRatio>
               <div className="space-y-3 px-1 py-5 sm:px-2 sm:py-6">
-                <p className="text-[10px] tracking-[0.22em] text-muted-foreground uppercase">{t("categories.panelEyebrow")}</p>
-                <h3 className="font-serif text-3xl leading-[1.05] tracking-tight sm:text-4xl">{t(panel.titleKey)}</h3>
-                <p className="max-w-prose text-sm/relaxed text-foreground/85 sm:text-base/relaxed">{t(panel.descriptionKey)}</p>
+                <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t(panel.tagKey)}</p>
+                <h3 className="font-serif text-2xl leading-[1.05] tracking-tight sm:text-3xl">{t(panel.titleKey)}</h3>
+                <p className="max-w-prose text-sm/relaxed text-muted-foreground">{t(panel.subtitleKey)}</p>
                 <LocalizedLink
                   to="/collections"
                   className="inline-flex pt-1 text-[11px] tracking-[0.18em] text-foreground uppercase underline-offset-4 transition-colors hover:text-muted-foreground"
                 >
-                  {t("categories.cta")}
+                  {t(panel.buttonTextKey)}
                 </LocalizedLink>
               </div>
             </article>
@@ -517,10 +538,14 @@ export function LandingPageExperience(): JSX.Element {
       </section>
 
       {/* ── Horizontal categories (desktop pinned) ── */}
-      <section id="kolekcje" className="horizontal-section relative hidden overflow-hidden bg-background lg:block">
-        <div className="horizontal-track flex w-max">
+      <section
+        ref={horizontalSectionRef}
+        id="kolekcje"
+        className="horizontal-section relative hidden overflow-hidden bg-background lg:block"
+      >
+        <div ref={horizontalTrackRef} className="horizontal-track flex w-max will-change-transform">
           {/* Title panel */}
-          <article className="flex h-screen w-screen items-center px-12">
+          <article className="flex h-screen w-screen shrink-0 items-center px-12">
             <div className="mx-auto max-w-400 space-y-4">
               <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("categories.eyebrow")}</p>
               <h2 className="font-serif text-5xl leading-tight md:text-6xl lg:text-7xl">{t("categories.title")}</h2>
@@ -529,20 +554,20 @@ export function LandingPageExperience(): JSX.Element {
           </article>
 
           {CATEGORY_PANELS.map((panel, index) => (
-            <article key={panel.titleKey} className="flex h-screen w-screen items-center px-8 sm:px-12">
+            <article key={panel.titleKey} className="flex h-screen w-screen shrink-0 items-center px-8 sm:px-12">
               <div className="mx-auto grid w-full max-w-400 grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] lg:gap-14">
                 <div className="order-2 space-y-5 self-center lg:order-1 lg:space-y-6">
-                  <p className="text-[11px] tracking-[0.26em] text-foreground/55 uppercase">{t("categories.panelEyebrow")}</p>
-                  <h3 className="font-serif text-5xl leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">{t(panel.titleKey)}</h3>
-                  <p className="max-w-md text-lg/relaxed text-foreground/80 md:text-xl/relaxed">{t(panel.descriptionKey)}</p>
+                  <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t(panel.tagKey)}</p>
+                  <h3 className="font-serif text-4xl leading-[0.95] tracking-tight md:text-5xl lg:text-6xl">{t(panel.titleKey)}</h3>
+                  <p className="max-w-md text-sm/relaxed text-muted-foreground md:text-base/relaxed">{t(panel.subtitleKey)}</p>
                   <LocalizedLink
                     to="/collections"
                     className="inline-flex h-13 items-center justify-center rounded-none bg-primary px-10 text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
                   >
-                    {t("categories.cta")}
+                    {t(panel.buttonTextKey)}
                   </LocalizedLink>
                 </div>
-                <div className="relative order-1 aspect-[4/5] w-full overflow-hidden bg-muted lg:order-2 lg:aspect-[5/6]">
+                <AspectRatio ratio={4 / 5} className="order-1 w-full overflow-hidden bg-muted lg:order-2 lg:aspect-5/6">
                   <Image
                     alt={t(panel.titleKey)}
                     className="absolute inset-0 size-full object-cover"
@@ -552,7 +577,7 @@ export function LandingPageExperience(): JSX.Element {
                     src={panel.image}
                     width={1000}
                   />
-                </div>
+                </AspectRatio>
               </div>
             </article>
           ))}
@@ -562,16 +587,18 @@ export function LandingPageExperience(): JSX.Element {
       {/* ── Archive / editorial ── */}
       <section className="mx-auto max-w-400 px-6 py-16 lg:px-12 lg:py-24">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-center lg:gap-12">
-          <div className="parallax-wrap reveal relative aspect-[4/5] overflow-hidden bg-card">
-            <Image
-              alt={t("archive.imageAlt")}
-              className="parallax-img absolute inset-0 size-full object-cover"
-              height={1600}
-              sizes="(max-width: 1024px) 100vw, 45vw"
-              src={getAssetURL("marketing/archive-editorial.webp")}
-              width={1280}
-            />
-          </div>
+          <AspectRatio ratio={4 / 5} className="parallax-wrap reveal overflow-hidden bg-card">
+            <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
+              <Image
+                alt={t("archive.imageAlt")}
+                className="absolute inset-0 size-full object-cover"
+                height={1600}
+                sizes="(max-width: 1024px) 100vw, 45vw"
+                src={getAssetURL("marketing/editorial.webp")}
+                width={1280}
+              />
+            </div>
+          </AspectRatio>
           <div className="reveal space-y-5">
             <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("archive.eyebrow")}</p>
             <h2 className="font-serif text-5xl leading-[0.98]">{t("archive.title")}</h2>
@@ -594,8 +621,8 @@ export function LandingPageExperience(): JSX.Element {
 
       {/* ── Breaker ── */}
       <section className="mx-auto max-w-400 px-6 pb-16 lg:px-12 lg:pb-24">
-        <div className="reveal bg-secondary px-8 py-16 text-center">
-          <p className="font-serif text-4xl leading-tight md:text-5xl">{t("breaker.text")}</p>
+        <div className="reveal px-8 py-16 text-center">
+          <p className="font-serif text-4xl leading-tight italic md:text-5xl">{t("breaker.text")}</p>
         </div>
       </section>
 
@@ -605,6 +632,7 @@ export function LandingPageExperience(): JSX.Element {
           <div className="space-y-4">
             <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("shopCategories.eyebrow")}</p>
             <h2 className="font-serif text-5xl leading-[0.94] tracking-tight md:text-6xl lg:text-7xl">{t("shopCategories.title")}</h2>
+            <p className="max-w-xl text-sm/relaxed text-muted-foreground">{t("shopCategories.description")}</p>
           </div>
           <LocalizedLink
             to="/categories"
@@ -617,7 +645,7 @@ export function LandingPageExperience(): JSX.Element {
         {/* Row 1 — golden ratio 8 : 5 */}
         <div className="reveal grid gap-5 lg:grid-cols-[8fr_5fr] lg:gap-6">
           <LocalizedLink className="group block" params={{ handle: SHOP_CATEGORIES[0].slug }} to="/categories/$handle">
-            <div className="relative aspect-[4/5] overflow-hidden bg-neutral-100 lg:aspect-[8/5]">
+            <AspectRatio ratio={4 / 5} className="overflow-hidden bg-neutral-100 lg:aspect-8/5">
               <Image
                 alt={t(SHOP_CATEGORIES[0].nameKey)}
                 className="absolute inset-0 size-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:scale-[1.03]"
@@ -626,14 +654,14 @@ export function LandingPageExperience(): JSX.Element {
                 src={SHOP_CATEGORIES[0].image}
                 width={1000}
               />
-            </div>
+            </AspectRatio>
             <div className="mt-5 flex items-baseline justify-between gap-4">
               <h3 className="font-serif text-xl tracking-tight lg:text-2xl">{t(SHOP_CATEGORIES[0].nameKey)}</h3>
               <span className="text-[10px] tracking-[0.22em] text-foreground/35 uppercase">{t(SHOP_CATEGORIES[0].countKey)}</span>
             </div>
           </LocalizedLink>
           <LocalizedLink className="group block" params={{ handle: SHOP_CATEGORIES[1].slug }} to="/categories/$handle">
-            <div className="relative aspect-[4/5] overflow-hidden bg-neutral-100 lg:aspect-[8/5]">
+            <AspectRatio ratio={4 / 5} className="overflow-hidden bg-neutral-100 lg:aspect-square">
               <Image
                 alt={t(SHOP_CATEGORIES[1].nameKey)}
                 className="absolute inset-0 size-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:scale-[1.03]"
@@ -642,7 +670,7 @@ export function LandingPageExperience(): JSX.Element {
                 src={SHOP_CATEGORIES[1].image}
                 width={1000}
               />
-            </div>
+            </AspectRatio>
             <div className="mt-5 flex items-baseline justify-between gap-4">
               <h3 className="font-serif text-xl tracking-tight lg:text-2xl">{t(SHOP_CATEGORIES[1].nameKey)}</h3>
               <span className="text-[10px] tracking-[0.22em] text-foreground/35 uppercase">{t(SHOP_CATEGORIES[1].countKey)}</span>
@@ -653,7 +681,7 @@ export function LandingPageExperience(): JSX.Element {
         {/* Row 2 — reversed golden ratio 5 : 8 */}
         <div className="reveal mt-10 grid grid-cols-2 gap-5 lg:mt-14 lg:grid-cols-[5fr_8fr] lg:gap-6">
           <LocalizedLink className="group block" params={{ handle: SHOP_CATEGORIES[2].slug }} to="/categories/$handle">
-            <div className="relative aspect-[4/5] overflow-hidden bg-neutral-100 lg:aspect-[5/3]">
+            <AspectRatio ratio={4 / 5} className="overflow-hidden bg-neutral-100 lg:aspect-square">
               <Image
                 alt={t(SHOP_CATEGORIES[2].nameKey)}
                 className="absolute inset-0 size-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:scale-[1.03]"
@@ -662,14 +690,14 @@ export function LandingPageExperience(): JSX.Element {
                 src={SHOP_CATEGORIES[2].image}
                 width={1000}
               />
-            </div>
+            </AspectRatio>
             <div className="mt-5 flex items-baseline justify-between gap-4">
               <h3 className="font-serif text-xl tracking-tight lg:text-2xl">{t(SHOP_CATEGORIES[2].nameKey)}</h3>
               <span className="text-[10px] tracking-[0.22em] text-foreground/35 uppercase">{t(SHOP_CATEGORIES[2].countKey)}</span>
             </div>
           </LocalizedLink>
           <LocalizedLink className="group block" params={{ handle: SHOP_CATEGORIES[3].slug }} to="/categories/$handle">
-            <div className="relative aspect-[4/5] overflow-hidden bg-neutral-100 lg:aspect-[5/3]">
+            <AspectRatio ratio={4 / 5} className="overflow-hidden bg-neutral-100 lg:aspect-8/5">
               <Image
                 alt={t(SHOP_CATEGORIES[3].nameKey)}
                 className="absolute inset-0 size-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:scale-[1.03]"
@@ -678,7 +706,7 @@ export function LandingPageExperience(): JSX.Element {
                 src={SHOP_CATEGORIES[3].image}
                 width={1000}
               />
-            </div>
+            </AspectRatio>
             <div className="mt-5 flex items-baseline justify-between gap-4">
               <h3 className="font-serif text-xl tracking-tight lg:text-2xl">{t(SHOP_CATEGORIES[3].nameKey)}</h3>
               <span className="text-[10px] tracking-[0.22em] text-foreground/35 uppercase">{t(SHOP_CATEGORIES[3].countKey)}</span>
@@ -686,50 +714,25 @@ export function LandingPageExperience(): JSX.Element {
           </LocalizedLink>
         </div>
 
-        {/* Row 3 — Fibonacci trio 3 : 5 : 5 */}
-        <div className="reveal mt-10 grid grid-cols-2 gap-5 lg:mt-14 lg:grid-cols-[3fr_5fr_5fr] lg:gap-6">
+        {/* Row 3 — golden ratio 8 : 5 (matching row 1 width) */}
+        <div className="reveal mt-10 grid gap-5 lg:mt-14 lg:grid-cols-[8fr_5fr] lg:gap-6">
           <LocalizedLink className="group block" params={{ handle: SHOP_CATEGORIES[4].slug }} to="/categories/$handle">
-            <div className="relative aspect-[4/5] overflow-hidden bg-neutral-100 lg:aspect-[5/8]">
+            <AspectRatio ratio={4 / 5} className="overflow-hidden bg-neutral-100 lg:aspect-8/5">
               <Image
                 alt={t(SHOP_CATEGORIES[4].nameKey)}
                 className="absolute inset-0 size-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:scale-[1.03]"
                 height={800}
-                sizes="(max-width: 1024px) 50vw, 23vw"
+                sizes="(max-width: 1024px) 100vw, 62vw"
                 src={SHOP_CATEGORIES[4].image}
-                width={640}
+                width={1000}
               />
-            </div>
+            </AspectRatio>
             <div className="mt-5 flex items-baseline justify-between gap-4">
               <h3 className="font-serif text-xl tracking-tight lg:text-2xl">{t(SHOP_CATEGORIES[4].nameKey)}</h3>
               <span className="text-[10px] tracking-[0.22em] text-foreground/35 uppercase">{t(SHOP_CATEGORIES[4].countKey)}</span>
             </div>
           </LocalizedLink>
-          <LocalizedLink
-            className="group col-span-2 block sm:col-span-1"
-            params={{ handle: SHOP_CATEGORIES[5].slug }}
-            to="/categories/$handle"
-          >
-            <div className="relative aspect-[3/2] overflow-hidden bg-neutral-100 sm:aspect-[4/5] lg:aspect-[5/8]">
-              <Image
-                alt={t(SHOP_CATEGORIES[5].nameKey)}
-                className="absolute inset-0 size-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:scale-[1.03]"
-                height={800}
-                sizes="(max-width: 1024px) 100vw, 38vw"
-                src={SHOP_CATEGORIES[5].image}
-                width={1000}
-              />
-            </div>
-            <div className="mt-5 flex items-baseline justify-between gap-4">
-              <h3 className="font-serif text-xl tracking-tight lg:text-2xl">{t(SHOP_CATEGORIES[5].nameKey)}</h3>
-              <span className="text-[10px] tracking-[0.22em] text-foreground/35 uppercase">{t(SHOP_CATEGORIES[5].countKey)}</span>
-            </div>
-          </LocalizedLink>
-          <div className="col-span-2 flex flex-col justify-end sm:col-span-1">
-            <div className="space-y-5 py-8 lg:py-0">
-              <Separator className="line-reveal max-w-16 bg-foreground/20" />
-              <p className="max-w-xs text-sm/relaxed text-foreground/45">{t("shopCategories.description")}</p>
-            </div>
-          </div>
+          <div className="hidden lg:block" />
         </div>
       </section>
 
@@ -761,7 +764,7 @@ export function LandingPageExperience(): JSX.Element {
             <div className="flex items-center gap-4">
               <LocalizedLink
                 to="/collections"
-                className="inline-flex h-12 items-center justify-center border border-primary-foreground/25 px-8 text-[11px] tracking-[0.2em] text-primary-foreground uppercase transition-colors hover:border-primary-foreground/60 hover:bg-primary-foreground/5"
+                className="inline-flex h-12 items-center justify-center bg-primary-foreground px-8 text-[11px] tracking-[0.2em] text-primary uppercase transition-colors hover:bg-primary-foreground/90"
               >
                 {t("silver.ctaPrimary")}
               </LocalizedLink>
@@ -795,21 +798,18 @@ export function LandingPageExperience(): JSX.Element {
 
           {/* Right — image with floating badge */}
           <div className="reveal relative">
-            <div className="parallax-wrap relative aspect-[4/5] overflow-hidden bg-primary-foreground/5">
-              <Image
-                alt={t("silver.imageAlt")}
-                className="parallax-img absolute inset-0 size-full object-cover"
-                height={1400}
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                src={getAssetURL("marketing/archive-editorial.webp")}
-                width={1120}
-              />
-            </div>
-            {/* Floating collection badge */}
-            <div className="absolute -bottom-4 left-4 z-10 border border-primary-foreground/15 bg-primary/90 px-5 py-4 backdrop-blur-md sm:left-6 lg:-bottom-5 lg:left-8 lg:px-6 lg:py-5">
-              <p className="text-[9px] tracking-[0.22em] text-primary-foreground/45 uppercase">{t("silver.imageBadgeEyebrow")}</p>
-              <p className="mt-1 font-serif text-sm text-primary-foreground lg:text-base">{t("silver.imageBadgeTitle")}</p>
-            </div>
+            <AspectRatio ratio={9 / 10} className="parallax-wrap overflow-hidden bg-primary-foreground/5">
+              <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
+                <Image
+                  alt={t("silver.imageAlt")}
+                  className="absolute inset-0 size-full object-cover object-[center_80%]"
+                  height={1400}
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  src={getAssetURL("marketing/silver925_premium.webp")}
+                  width={1120}
+                />
+              </div>
+            </AspectRatio>
           </div>
         </div>
       </section>
@@ -821,31 +821,41 @@ export function LandingPageExperience(): JSX.Element {
             <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("maison.eyebrow")}</p>
             <h2 className="font-serif text-5xl leading-[0.98]">{t("maison.title")}</h2>
             <p className="max-w-xl text-sm/relaxed text-muted-foreground">{t("maison.description")}</p>
-            <LocalizedLink className={buttonVariants({ variant: "outline" })} to="/collections">
+            <LocalizedLink
+              className="inline-flex h-13 items-center justify-center rounded-none bg-primary px-10 text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
+              to="/collections"
+            >
               {t("maison.cta")}
             </LocalizedLink>
           </div>
           <div className="reveal relative mx-auto w-full max-w-2xl">
-            <div className="parallax-wrap relative aspect-[16/11] overflow-hidden bg-card">
-              <Image
-                alt={t("maison.mainImageAlt")}
-                className="parallax-img absolute inset-0 size-full object-cover"
-                height={1100}
-                sizes="(max-width: 1024px) 100vw, 54vw"
-                src={getAssetURL("marketing/archive-editorial.webp")}
-                width={1600}
-              />
-            </div>
-            <div className="parallax-wrap absolute -bottom-10 -left-8 hidden aspect-square w-54 overflow-hidden border-8 border-background bg-card shadow-sm lg:block">
-              <Image
-                alt={t("maison.overlayImageAlt")}
-                className="parallax-img absolute inset-0 size-full object-cover"
-                height={800}
-                sizes="240px"
-                src={getAssetURL("marketing/archive-editorial.webp")}
-                width={800}
-              />
-            </div>
+            <AspectRatio ratio={16 / 11} className="parallax-wrap overflow-hidden bg-card">
+              <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
+                <Image
+                  alt={t("maison.mainImageAlt")}
+                  className="absolute inset-0 size-full object-cover"
+                  height={1100}
+                  sizes="(max-width: 1024px) 100vw, 54vw"
+                  src={getAssetURL("marketing/about.webp")}
+                  width={1600}
+                />
+              </div>
+            </AspectRatio>
+            <AspectRatio
+              ratio={1}
+              className="parallax-wrap absolute -bottom-10 -left-8 hidden w-54 overflow-hidden border-8 border-background bg-card shadow-sm lg:block"
+            >
+              <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
+                <Image
+                  alt={t("maison.overlayImageAlt")}
+                  className="absolute inset-0 size-full object-cover"
+                  height={800}
+                  sizes="240px"
+                  src={getAssetURL("marketing/about2.webp")}
+                  width={800}
+                />
+              </div>
+            </AspectRatio>
           </div>
         </div>
       </section>
@@ -858,7 +868,10 @@ export function LandingPageExperience(): JSX.Element {
             <h2 className="font-serif text-4xl leading-tight md:text-5xl">{t("shopCollections.title")}</h2>
             <p className="max-w-xl text-sm/relaxed text-muted-foreground">{t("shopCollections.description")}</p>
           </div>
-          <LocalizedLink className={buttonVariants({ variant: "outline" })} to="/collections">
+          <LocalizedLink
+            to="/collections"
+            className="inline-flex h-12 shrink-0 items-center justify-center border border-foreground/20 px-8 text-[11px] tracking-[0.2em] uppercase transition-colors hover:border-foreground/50 sm:self-end"
+          >
             {t("shopCollections.cta")}
           </LocalizedLink>
         </div>
@@ -866,7 +879,7 @@ export function LandingPageExperience(): JSX.Element {
         <div className="grid gap-6 md:grid-cols-3">
           {SHOP_COLLECTIONS.map((col) => (
             <LocalizedLink key={col.nameKey} className="reveal group block" params={{ handle: col.slug }} to="/collections/$handle">
-              <div className="parallax-wrap relative aspect-[4/5] overflow-hidden bg-secondary">
+              <AspectRatio ratio={4 / 5} className="parallax-wrap overflow-hidden bg-secondary">
                 <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
                   <Image
                     alt={t(col.nameKey)}
@@ -877,11 +890,12 @@ export function LandingPageExperience(): JSX.Element {
                     width={960}
                   />
                 </div>
-                <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-5">
-                  <p className="font-serif text-2xl leading-snug text-white">{t(col.nameKey)}</p>
-                  <p className="text-xs/relaxed text-white/75">{t(col.descKey)}</p>
-                </div>
+              </AspectRatio>
+              <div className="mt-5 space-y-2">
+                <h3 className="font-serif text-xl leading-snug transition-colors duration-500 group-hover:text-muted-foreground lg:text-2xl">
+                  {t(col.nameKey)}
+                </h3>
+                <p className="text-sm/relaxed text-muted-foreground">{t(col.descKey)}</p>
               </div>
             </LocalizedLink>
           ))}
@@ -892,8 +906,8 @@ export function LandingPageExperience(): JSX.Element {
       <section className="bg-secondary/40 py-20 lg:py-28">
         <div className="reveal mx-auto max-w-400 px-6 lg:px-12">
           <div className="mx-auto max-w-3xl space-y-6 text-center">
-            <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("newsletter.title")}</p>
-            <h2 className="font-serif text-4xl leading-tight md:text-5xl lg:text-6xl">{t("newsletter.title")}</h2>
+            <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("newsletter.eyebrow")}</p>
+            <h2 className="font-serif text-4xl leading-tight md:text-5xl">{t("newsletter.title")}</h2>
             <p className="mx-auto max-w-lg text-base/relaxed text-foreground/60 md:text-lg/relaxed">{t("newsletter.description")}</p>
           </div>
 
@@ -914,30 +928,6 @@ export function LandingPageExperience(): JSX.Element {
             </div>
             <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/60">{t("newsletter.note")}</p>
           </div>
-        </div>
-      </section>
-
-      {/* ── Gallery ── */}
-      <section className="mx-auto max-w-400 space-y-8 px-6 pb-24 lg:px-12">
-        <div className="reveal flex items-center justify-between gap-4">
-          <h2 className="font-serif text-4xl md:text-5xl">{t("gallery.title")}</h2>
-          <LocalizedLink className={buttonVariants({ variant: "outline" })} to="/collections">
-            {t("gallery.cta")}
-          </LocalizedLink>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {GALLERY_IMAGES.map((item) => (
-            <div key={item.altKey} className="parallax-wrap reveal relative aspect-[4/5] overflow-hidden bg-card">
-              <Image
-                alt={t(item.altKey)}
-                className="parallax-img absolute inset-0 size-full object-cover"
-                height={1120}
-                sizes="(max-width: 768px) 100vw, 33vw"
-                src={item.image}
-                width={896}
-              />
-            </div>
-          ))}
         </div>
       </section>
     </div>

@@ -43,19 +43,46 @@ export const LANDING_PRODUCTS = [
 
 export const LANDING_CATEGORY_PANELS = [
   {
-    descriptionKey: "categories.panels.aurora.description",
-    image: "https://images.unsplash.com/photo-1588444837495-c6cfeb53ae8d?auto=format&fit=crop&w=1600&q=85",
-    titleKey: "categories.panels.aurora.title"
+    buttonTextKey: "categories.panels.earrings.buttonText",
+    image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1600&q=85",
+    subtitleKey: "categories.panels.earrings.subtitle",
+    tagKey: "categories.panels.earrings.tag",
+    titleKey: "categories.panels.earrings.title"
   },
   {
-    descriptionKey: "categories.panels.stone.description",
-    image: "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=1600&q=85",
-    titleKey: "categories.panels.stone.title"
+    buttonTextKey: "categories.panels.chokers.buttonText",
+    image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=1600&q=85",
+    subtitleKey: "categories.panels.chokers.subtitle",
+    tagKey: "categories.panels.chokers.tag",
+    titleKey: "categories.panels.chokers.title"
   },
   {
-    descriptionKey: "categories.panels.nightfall.description",
+    buttonTextKey: "categories.panels.rings.buttonText",
+    image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1600&q=85",
+    subtitleKey: "categories.panels.rings.subtitle",
+    tagKey: "categories.panels.rings.tag",
+    titleKey: "categories.panels.rings.title"
+  },
+  {
+    buttonTextKey: "categories.panels.bracelets.buttonText",
     image: "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?auto=format&fit=crop&w=1600&q=85",
-    titleKey: "categories.panels.nightfall.title"
+    subtitleKey: "categories.panels.bracelets.subtitle",
+    tagKey: "categories.panels.bracelets.tag",
+    titleKey: "categories.panels.bracelets.title"
+  },
+  {
+    buttonTextKey: "categories.panels.birthdayBracelets.buttonText",
+    image: "https://images.unsplash.com/photo-1601821765780-754fa98637c1?auto=format&fit=crop&w=1600&q=85",
+    subtitleKey: "categories.panels.birthdayBracelets.subtitle",
+    tagKey: "categories.panels.birthdayBracelets.tag",
+    titleKey: "categories.panels.birthdayBracelets.title"
+  },
+  {
+    buttonTextKey: "categories.panels.other.buttonText",
+    image: "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=1600&q=85",
+    subtitleKey: "categories.panels.other.subtitle",
+    tagKey: "categories.panels.other.tag",
+    titleKey: "categories.panels.other.title"
   }
 ] as const;
 

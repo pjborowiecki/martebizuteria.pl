@@ -172,3 +172,18 @@
     @apply bg-background font-sans text-foreground antialiased;
   }
 }
+
+@media (pointer: fine) {
+  :root,
+  body,
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"],
+  .hover-target,
+  summary {
+    cursor: none !important;
+  }
+}
