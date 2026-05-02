@@ -418,7 +418,70 @@
   "productsPage": {
     "title": "Wszystkie produkty",
     "description": "Przeglądaj naszą pełną kolekcję wykwintnej biżuterii.",
-    "noProductsFound": "Nie znaleziono produktów."
+    "noProductsFound": "Nie znaleziono produktów.",
+    "products": {
+      "item1": {
+        "name": "Aura Hoop I",
+        "category": "Kolczyki"
+      },
+      "item2": {
+        "name": "Lune Drop",
+        "category": "Kolczyki"
+      },
+      "item3": {
+        "name": "Contour Stud",
+        "category": "Kolczyki"
+      },
+      "item4": {
+        "name": "Arc Cuff",
+        "category": "Bransoletka"
+      },
+      "item5": {
+        "name": "Pebble Thread",
+        "category": "Naszyjnik"
+      },
+      "item6": {
+        "name": "Forma II",
+        "category": "Pierścionek"
+      },
+      "item7": {
+        "name": "Silhouette Ring",
+        "category": "Pierścionek"
+      },
+      "item8": {
+        "name": "Meridian Chain",
+        "category": "Naszyjnik"
+      },
+      "item9": {
+        "name": "Eclipse Pendant",
+        "category": "Naszyjnik"
+      },
+      "item10": {
+        "name": "Horizon Bangle",
+        "category": "Bransoletka"
+      },
+      "item11": {
+        "name": "Veil Choker",
+        "category": "Choker"
+      },
+      "item12": {
+        "name": "Nova Ear Cuff",
+        "category": "Kolczyki"
+      }
+    },
+    "categories": {
+      "earrings": "Kolczyki",
+      "necklaces": "Naszyjniki",
+      "bracelets": "Bransoletki",
+      "rings": "Pierścionki",
+      "chokers": "Chokery",
+      "pendants": "Wisiorki"
+    },
+    "collections": {
+      "newArrivals": "Nowości",
+      "bestsellers": "Bestsellery",
+      "giftEdit": "Prezenty"
+    }
   },
   "productPage": {
     "metaTitle": "{title} | M'Arte",
