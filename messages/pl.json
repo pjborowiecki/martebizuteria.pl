@@ -46,7 +46,7 @@
         "message": "Strona, której szukasz, nie istnieje."
       },
       "defaultPendingComponent": {
-        "loading": "Ładowanie\u2026"
+        "loading": "Ładowanie…"
       },
       "footer": {
         "brand": "M'Arte",
@@ -161,140 +161,151 @@
       "title": "M'Arte | Biżuteria artystyczna"
     },
     "hero": {
-      "eyebrow": "Cyfrowe Atelier",
-      "titleLine1": "Duch",
-      "titleLine2": "Tworzenia",
-      "description": "M'ARTE to coś więcej niż marka. To dialog między naturalnymi kamieniami a współczesną formą, tworzony w Polsce z jubilerską precyzją.",
-      "ctaPrimary": "Kup nowości",
-      "ctaSecondary": "Poznaj kolekcje",
-      "scrollHint": "Przewiń, aby odkryć",
+      "eyebrow": "Codzienna elegancja",
+      "titleLine1": "Prawdziwa sztuka,",
+      "titleLine2": "bez kompromisów",
+      "description": "W świecie masowych kopii wybierz unikatowość. M'Arte to surowe minerały i szlachetne kruszce, które staną się intymnym przedłużeniem Twojej tożsamości.",
+      "ctaPrimary": "Znajdź coś dla siebie",
+      "ctaSecondary": "Poznaj nas bliżej",
+      "scrollHint": "Przewiń by odkryć świat M'ARTE",
       "imageAlt": "Edytorialowa kompozycja biżuterii na kamieniu"
     },
     "values": {
-      "eyebrow": "Nasze filary",
-      "title": "Co nas definiuje",
+      "eyebrow": "Standard M'ARTE",
+      "title": "Jakość najwyszej próby",
       "craft": {
-        "title": "Rzemiosło atelier",
-        "description": "Każde wykończenie dopracowujemy ręcznie, zachowując subtelne ślady unikatowego charakteru."
+        "title": "Ręczna precyzja",
+        "description": "Otrzymujesz detal dopracowany przez rzemieślników. Subtelne różnice w fakturze to dowód, że nosisz prawdziwy unikat, a nie masowy odlew."
       },
       "material": {
         "title": "Szlachetne materiały",
-        "description": "Srebro próby 925, starannie wybrane kamienie i zbalansowane złocenia do codziennej elegancji."
+        "description": "Srebro próby 925 i wyselekcjonowane minerały. Tworzymy z kruszców, które pięknie współpracują ze światłem i dają poczucie luksusu na skórze."
       },
       "service": {
-        "title": "Obsługa premium",
-        "description": "Indywidualne doradztwo, eleganckie pakowanie i płynna dostawa dopasowana do Twojego rytmu."
+        "title": "Detale, które cieszą",
+        "description": "Od momentu wyboru po otwarcia pudełka. Zapewniamy płynny proces zakupowy i eleganckie pakowanie, które zamienia zakupy w nagrodę dla samej siebie."
       }
     },
     "newArrivals": {
-      "eyebrow": "Sezonowy drop",
-      "title": "Kolekcja Aura",
-      "description": "Wyselekcjonowane, rzeźbiarskie formy i subtelny blask zaprojektowane dla nowoczesnych rytuałów.",
+      "eyebrow": "Premiery M'ARTE",
+      "title": "Nowe wzory do odkrycia",
+      "description": "Wyselekcjonowane, autorskie formy i szlachetny blask. Nowe projekty stworzone z myślą o Twoich codziennych rytuałach i ponadczasowej elegancji.",
       "cta": "Zobacz wszystkie produkty",
       "items": {
         "lapis": {
-          "name": "Naszyjnik Lapis Orbit",
+          "name": "Naszyjnik Lapis Lazuli",
           "details": "Pozłacane srebro / lapis lazuli",
-          "price": "329 PLN"
+          "price": "379 PLN"
         },
-        "aurelia": {
-          "name": "Kolczyki Aurelia Hoops",
+        "onyks": {
+          "name": "Naszyjnik Onyks",
           "details": "Srebro 925 / lustrzane wykończenie",
-          "price": "289 PLN"
+          "price": "379 PLN"
         },
-        "azure": {
-          "name": "Kolczyki Azure Drop",
-          "details": "Pozłacane srebro / kobaltowe kamienie",
-          "price": "249 PLN"
+        "vintageOnyksSilver": {
+          "name": "Kolczyki Vintage Onyks srebro",
+          "details": "Srebro 925 / kobaltowe kamienie",
+          "price": "450 PLN"
         },
-        "heritage": {
-          "name": "Bransoleta Heritage Chain",
-          "details": "Fakturowane ogniwa / ciepłe złoto",
-          "price": "359 PLN"
+        "vintageOnyksGolden": {
+          "name": "Kolczyki Vintage Onyks pozłacane",
+          "details": "Pozłacane srebro / ciepłe złoto",
+          "price": "450 PLN"
         },
-        "pearl": {
-          "name": "Choker Pearl Whisper",
-          "details": "Perły słodkowodne / zapięcie 925",
-          "price": "319 PLN"
+        "ginkgo": {
+          "name": "Naszyjnik Ginkgo",
+          "details": "Pozłacane srebro / listek miłorzębu",
+          "price": "239 PLN"
         },
-        "midnight": {
-          "name": "Pierścionek Midnight Signet",
-          "details": "Czarny onyks / polerowany profil",
-          "price": "279 PLN"
+        "oliwin": {
+          "name": "Choker Oliwin",
+          "details": "Srebro 925 / oliwin",
+          "price": "189 PLN"
         }
       }
     },
     "categories": {
-      "eyebrow": "Kolekcje w ruchu",
-      "title": "Horyzontalna kuracja",
-      "description": "Przewijaj światy M'ARTE, gdzie faktura, światło i forma budują spójną opowieść.",
-      "panelEyebrow": "Fokus kolekcji",
-      "cta": "Poznaj kolekcję",
+      "eyebrow": "Kategorie",
+      "title": "Przestrzeń wyboru",
+      "description": "Nasza biżuteria przybiera różne kształty, ale trzyma się jednej zasady: bezkompromisowej jakości. Przejdź przez kategorie i znajdź formę, której brakuje w Twojej przestrzeni.",
       "panels": {
-        "aurora": {
-          "title": "Aurora Forms",
-          "description": "Warstwowe łańcuchy i subtelnie fasetowane kamienie zaprojektowane do eleganckich stylizacji."
+        "necklaces": {
+          "tag": "Naszyjniki",
+          "title": "Wyrafinowana prostota",
+          "subtitle": "Kruszące linię obojczyka formy i czyste proporcje. Stworzone, by stanowić intymny akcent noszony blisko serca.",
+          "buttonText": "Odkryj naszyjniki"
         },
-        "stone": {
-          "title": "Stone Dialogue",
-          "description": "Organiczne kontury inspirowane rzeźbioną powierzchnią minerałów i archiwami atelier."
+        "earrings": {
+          "tag": "Kolczyki",
+          "title": "Precyzyjne akcenty",
+          "subtitle": "Od minimalistycznych sztyftów po mocniejsze formy. Zaprojektowane, by ramować twarz i stanowić wyrazisty punkt Twojego wizerunku.",
+          "buttonText": "Poznaj kolczyki"
         },
-        "nightfall": {
-          "title": "Nightfall Edit",
-          "description": "Wyraziste sylwetki i rzeźbiarskie refleksy stworzone na wieczorne wyjścia."
+        "chokers": {
+          "tag": "Chokery",
+          "title": "Mocne linie",
+          "subtitle": "Solidne sploty i minerały ułożone blisko ciała. Strukturalny detal, który łapie światło i bez wysiłku definiuje całą stylizację.",
+          "buttonText": "Poznaj chokery"
+        },
+        "bracelets": {
+          "tag": "Bransoletki",
+          "title": "Płynne struktury",
+          "subtitle": "Szlifowany metal, który miękko układa się na nadgarstku. Stworzone do noszenia solo lub budowania mocnych, warstwowych kompozycji.",
+          "buttonText": "Poznaj bransoletki"
+        },
+        "birthdayBracelets": {
+          "tag": "Edycja Urodzinowa",
+          "title": "Osobisty talizman",
+          "subtitle": "Naturalne kamienie przypisane miesiącom narodzin. Przemyślany akcent ujęty w naszą surową estetykę, który zostaje z Tobą na lata.",
+          "buttonText": "Odkryj swój kamień"
         }
       }
     },
     "experience": {
-      "eyebrow": "Doświadczenie bespoke",
+      "eyebrow": "Ręczne wykonanie",
       "titleLine1": "Współtworzymy",
       "titleLine2": "to, co wyjątkowe.",
-      "description": "Współpracuj z naszym zespołem projektowym nad autorską formą — od cyfrowej koncepcji po ręczne wykończenie.",
-      "ctaPrimary": "Zapytaj prywatnie",
-      "ctaSecondary": "Zobacz portfolio",
-      "videoAria": "Wideo pokazujące rzemiosło jubilerskie"
+      "description": "Niektóre historie zasługują na własny kształt. Od pierwszej inspiracji po ręczne wykończenie – tworzymy biżuterię, która istnieje tylko w jednym egzemplarzu. Twoim.",
+      "ctaPrimary": "Zobacz kolekcje",
+      "ctaSecondary": "Poznaj wszystkie produkty"
     },
     "archive": {
-      "eyebrow": "Edytorial",
-      "title": "Z archiwum",
+      "eyebrow": "Przewodnik M'ARTE",
+      "title": "Szczegół ma znaczenie",
       "imageAlt": "Biurko projektowe z narzędziami atelier",
       "articles": {
-        "golden": "Złota proporcja w projektowaniu",
-        "sustainability": "Zrównoważenie i rzadkie minerały",
-        "engraving": "Sztuka ręcznego grawerunku"
+        "golden": "Rytuał pielęgnacji: jak prawidłowo dbać o biżuterię na co dzień",
+        "sustainability": "Sztuka proporcji: jak budować warstwowe kompozycje",
+        "engraving": "Przewodnik po minerałach: znaczenie i wybór kamieni naturalnych"
       }
     },
     "breaker": {
       "text": "Cichy luksus, zbudowany na intencji."
     },
     "manifesto": {
-      "eyebrow": "Punkt widzenia",
+      "eyebrow": "Filozofia marki",
       "title": "Nie podążamy za sezonami.",
       "subtitle": "Podążamy za przekonaniem.",
-      "paragraph1": "W świecie, który nagradza szybkość, wybraliśmy powolność. Każdy element M'ARTE zaczyna się od pytania — nie 'co się sprzeda', ale 'co zasługuje na istnienie.' Odpowiedź jest zawsze ta sama: tylko to, co sami chcielibyśmy nosić.",
-      "paragraph2": "Srebro jest naszym płótnem. Kamienie — naszą interpunkcją. A powściągliwość jest językiem, którym mówimy — bo prawdziwa elegancja nigdy nie była głośna. Przychodzi cicho, zostaje na stałe i ujawnia się z czasem.",
-      "paragraph3": "To nie jest szybka moda przetłumaczona na metal. To biżuteria jako architektura — przemyślana, strukturalna, stworzona, by przeżyć moment, który ją zainspirował.",
-      "closing": "Witaj w atelier."
+      "paragraph1": "Wierzymy, że w świecie, który nagradza szybkość, największym luksusem jest czas poświęcony na detal. Odrzucamy masową produkcję na rzecz form, które naprawdę zasługują na istnienie.",
+      "paragraph2": "Srebro to nasze płótno, naturalne kamienie to nasza interpunkcja. Tworzymy dla tych, którzy wiedzą, że prawdziwa elegancja nigdy nie jest głośna. Przemawia detalem i bezkompromisową jakością.",
+      "paragraph3": "To nie jest szybka moda przetłumaczona na metal. To biżuteria jako architektura — przemyślana, trwała forma, która staje się solidną bazą Twojego wizerunku.",
+      "closing": "Witaj w świecie M'ARTE."
     },
     "philosophy": {
-      "eyebrow": "Nasza filozofia",
+      "eyebrow": "Trwałe wartości",
       "title": "Projektowane, by przetrwać",
       "paragraph1": "Wierzymy w przedmioty, które przeżywają swój sezon. Każda forma M'ARTE rodzi się z umiaru — mniej kolekcji, głębsza intencja — bo trwałość jest ostatecznym luksusem.",
-      "paragraph2": "Nasze atelier pracuje w rytmie rzemiosła, nie handlu. Od pierwszego wycinania w wosku po finalny połysk — każdy gest jest celowy, każda powierzchnia przemyślana.",
+      "paragraph2": "Nasze studio nie pracuje w rytmie handlu, a rzemiosła, nie handlu. Od pierwszego wycinania w wosku po finalny połysk — każdy gest jest celowy, każda powierzchnia przemyślana.",
       "signature": "— M'ARTE Atelier, Warszawa"
     },
     "silver": {
       "eyebrow": "Kolekcja Premium",
-      "badge": "Srebro 925",
       "titleMain": "Srebro",
       "titleAccent": "925",
-      "title": "Rzeźbione światło",
       "description": "Nasza flagowa kolekcja ze srebra próby 925. Każdy element jest starannie wykonany przez rzemieślników z wieloletnim doświadczeniem. Połączenie tradycji z nowoczesnym designem tworzy biżuterię, która zachwyca na każdą okazję.",
       "ctaPrimary": "Odkryj Kolekcję",
-      "ctaSecondary": "Dowiedz się więcej",
+      "ctaSecondary": "Zobacz wszystkie produkty",
       "imageAlt": "Minimalistyczna martwa natura z biżuterią",
-      "imageBadgeEyebrow": "Nowość",
-      "imageBadgeTitle": "Kolekcja Jesień 2026",
       "stats": {
         "purity": {
           "value": "925",
@@ -310,47 +321,21 @@
         }
       }
     },
-    "editorial": {
-      "eyebrow": "Momenty edytorialowe",
-      "title": "Historie w nowoczesnych proporcjach",
-      "description": "Wizualny dziennik, w którym biżuteria spotyka architekturę, ruch tkanin i światło.",
-      "cta": "Czytaj journal",
-      "cards": {
-        "atelier": {
-          "title": "Ikony Atelier",
-          "description": "Nasze najbardziej pożądane formy, dopracowane przez pokolenia eksperymentów."
-        },
-        "light": {
-          "title": "Ciche światło",
-          "description": "Miękkie refleksy i subtelny kontrast dla codziennych stylizacji."
-        },
-        "muse": {
-          "title": "Nowa muza",
-          "description": "Studium pewności siebie, precyzji i współczesnej kobiecości."
-        }
-      }
-    },
-    "brand": {
-      "eyebrow": "Nasze dziedzictwo",
-      "title": "Dom zbudowany na intencji",
-      "description": "Od szkicu po finalny połysk, każdą premierę prowadzą proporcja, faktura i ponadczasowość.",
-      "quote": "„Biżuteria powinna być jak druga skóra: osobista, świetlista i dyskretnie wyrazista.”",
-      "author": "Dyrekcja kreatywna — M'ARTE Studio"
-    },
     "maison": {
-      "eyebrow": "Nasze dziedzictwo",
-      "title": "The Maison",
-      "description": "M'Arte powstało, by łączyć tradycję złotniczą z cyfrową precyzją. Każdy projekt opowiada o cierpliwym rzemiośle i nowoczesnym minimalizmie.",
+      "eyebrow": "O marce",
+      "title": "Tradycja i precyzja",
+      "description": "Powstaliśmy, by połączyć klasyczne techniki jubilerskie z nowoczesną, surową formą. Każdy z naszych projektów to wynik precyzyjnej pracy i bezkompromisowego podejścia do minimalizmu.",
       "cta": "Poznaj naszą historię",
       "mainImageAlt": "Ręczne tworzenie biżuterii",
       "overlayImageAlt": "Zbliżenie na pierścionek solitaire"
     },
     "newsletter": {
+      "eyebrow": "Newsletter",
       "title": "Bądź blisko M'ARTE",
-      "description": "Otrzymuj prywatne premiery, wskazówki stylizacyjne i informacje o limitowanych kolekcjach.",
+      "description": "Bądź na bieżąco z nowymi produktami i odbieraj prywatne kody zniżkowe dostępne tylko dla subskrybentów.",
       "placeholder": "Adres e-mail",
-      "cta": "Zapisz się",
-      "note": "Zapisując się, wyrażasz zgodę na komunikację marketingową i akceptujesz politykę prywatności."
+      "cta": "Dołącz do nas",
+      "note": "Zapisując się wyrażasz zgodę na przetwarzanie danych w celach marketingowych, zgodnie z Regulaminem i Polityką Prywatności."
     },
     "shopCategories": {
       "eyebrow": "Przeglądaj według typu",
@@ -358,12 +343,30 @@
       "description": "Odkryj pełen asortyment ręcznie tworzonej biżuterii — od rzeźbiarskich kolczyków po wyraziste pierścionki.",
       "cta": "Zobacz wszystkie kategorie",
       "items": {
-        "earrings": { "name": "Kolczyki", "count": "24 sztuki" },
-        "necklaces": { "name": "Naszyjniki", "count": "18 sztuk" },
-        "bracelets": { "name": "Bransoletki", "count": "15 sztuk" },
-        "rings": { "name": "Pierścionki", "count": "21 sztuk" },
-        "chokers": { "name": "Chokery", "count": "9 sztuk" },
-        "pendants": { "name": "Zawieszki", "count": "12 sztuk" }
+        "earrings": {
+          "name": "Kolczyki",
+          "count": "24 sztuki"
+        },
+        "necklaces": {
+          "name": "Naszyjniki",
+          "count": "18 sztuk"
+        },
+        "bracelets": {
+          "name": "Bransoletki",
+          "count": "15 sztuk"
+        },
+        "rings": {
+          "name": "Pierścionki",
+          "count": "21 sztuk"
+        },
+        "chokers": {
+          "name": "Chokery",
+          "count": "9 sztuk"
+        },
+        "birthdayBracelets": {
+          "name": "Bransoletki urodzinowe",
+          "count": "12 sztuk"
+        }
       }
     },
     "shopCollections": {
@@ -376,50 +379,41 @@
           "name": "Nowości",
           "description": "Najnowsze dodatki do naszego atelier — świeże formy i sezonowe kamienie."
         },
-        "bestsellers": {
-          "name": "Bestsellery",
-          "description": "Najbardziej pożądane modele, wybierane raz za razem przez naszą społeczność."
+        "silver": {
+          "name": "Srebro 925",
+          "description": "Ponadczasowa biżuteria wykonana z najwyższej próby srebra 925."
         },
-        "gifts": {
-          "name": "Edycja prezentowa",
-          "description": "Przemyślane selekcje na każdą okazję, w autorskim opakowaniu M'ARTE."
+        "gold": {
+          "name": "Złoto 585",
+          "description": "Kolekcja złotej biżuterii próby 585, stworzona by trwać."
         }
-      }
-    },
-    "gallery": {
-      "title": "Wnętrze kolekcji",
-      "cta": "Zobacz pełny lookbook",
-      "items": {
-        "ritual": "Kompozycja biżuterii w rytuale codzienności",
-        "stone": "Detal rzemieślniczy na naturalnym kamieniu",
-        "signature": "Warstwowe kompozycje signature M'ARTE"
       }
     }
   },
   "aboutPage": {
     "about": "O M'Arte",
     "description": "To produkcyjna, wysoko wydajna i skalowalna aplikacja e-commerce zbudowana zgodnie z zasadami Domain-Driven Design.",
-    "goHome": "Idź do strony głównej"
+    "goHome": "Przejdź do strony głównej"
   },
   "accountPage": {
     "title": "Konto",
     "description": "Logowanie i historia zamówień pojawią się tutaj.",
-    "goHome": "Idź do strony głównej"
+    "goHome": "Przejdź do strony głównej"
   },
   "cartPage": {
     "title": "Koszyk",
     "description": "Twój koszyk pojawi się tutaj.",
-    "goHome": "Idź do strony głównej"
+    "goHome": "Przejdź do strony głównej"
   },
   "faqPage": {
     "title": "FAQ",
     "description": "Najczęściej zadawane pytania pojawią się tutaj.",
-    "goHome": "Idź do strony głównej"
+    "goHome": "Przejdź do strony głównej"
   },
   "exchangesAndReturnsPage": {
     "title": "Zwroty i wymiana",
     "description": "Szczegóły wysyłki, wymiany i zwrotów pojawią się tutaj.",
-    "goHome": "Idź do strony głównej"
+    "goHome": "Przejdź do strony głównej"
   },
   "productsPage": {
     "title": "Wszystkie produkty",

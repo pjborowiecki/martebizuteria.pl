@@ -8,8 +8,7 @@ import { CONSTANTS } from "~/src/constants";
 
 import { prefetchProductThumbnails } from "~/src/lib/_utils/image";
 
-import { Image } from "~/src/components/custom/image";
-import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { ProductCard } from "~/src/components/custom/landing/product-card";
 
 import { productsQueryOptions } from "~/src/modules/product/product.queries";
 import type { Product } from "~/src/modules/product/product.types";
@@ -44,7 +43,7 @@ function ProductsPage(): JSX.Element {
         {firstProduct !== undefined && (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductListItem key={product.id} product={product} />
             ))}
           </div>
         )}
@@ -53,28 +52,16 @@ function ProductsPage(): JSX.Element {
   );
 }
 
-function ProductCard({
-  product
-}: Readonly<{
-  product: Pick<Product["select"], "id" | "title" | "description" | "thumbnail" | "handle">;
-}>): JSX.Element {
+function ProductListItem({ product }: Readonly<{ product: Product["select"] }>): JSX.Element {
   const params = useMemo(() => ({ handle: product.handle }), [product.handle]);
 
   return (
-    <LocalizedLink to="/products/$handle" params={params} className="group block rounded-lg border p-4 transition-shadow hover:shadow-lg">
-      <div className="mb-4 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-muted">
-        <ProductImage thumbnail={product.thumbnail} title={product.title} />
-      </div>
-      <h2 className="font-semibold group-hover:underline">{product.title}</h2>
-      {product.description !== null && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{product.description}</p>}
-    </LocalizedLink>
+    <ProductCard
+      href="/products/$handle"
+      params={params}
+      image={product.thumbnail ?? ""}
+      name={product.title}
+      detail={product.description ?? ""}
+    />
   );
-}
-
-function ProductImage({ thumbnail, title }: Readonly<{ thumbnail: string | null; title: string }>): JSX.Element {
-  if (thumbnail === null) {
-    return <span className="text-muted-foreground/50">No Image</span>;
-  }
-
-  return <Image src={thumbnail} alt={title} className="h-full w-full object-cover" height={256} width={256} />;
 }
