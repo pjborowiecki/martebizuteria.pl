@@ -8,7 +8,7 @@ import { CONSTANTS } from "~/src/constants";
 
 import { prefetchProductThumbnails } from "~/src/lib/_utils/image";
 
-import { ProductCard } from "~/src/components/custom/landing/product-card";
+import { ProductCard } from "~/src/components/custom/landing-page/product-card";
 
 import { productsQueryOptions } from "~/src/modules/product/product.queries";
 import type { Product } from "~/src/modules/product/product.types";

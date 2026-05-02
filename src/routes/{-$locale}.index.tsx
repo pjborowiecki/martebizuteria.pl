@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { type JSX, useRef } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -9,7 +9,23 @@ import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl
 
 import { isValidLocale } from "~/src/lib/utils";
 
-import { LandingPageExperience } from "~/src/components/custom/landing/landing-page-experience";
+import { ArchiveSection } from "~/src/components/custom/landing-page/sections/archive-section";
+import { BreakerSection } from "~/src/components/custom/landing-page/sections/breaker-section";
+import { DesktopCategoriesSection } from "~/src/components/custom/landing-page/sections/desktop-categories-section";
+import { HeroSection } from "~/src/components/custom/landing-page/sections/hero-section";
+import { MaisonHeritageSection } from "~/src/components/custom/landing-page/sections/maison-heritage-section";
+import { ManifestoSection } from "~/src/components/custom/landing-page/sections/manifesto-section";
+import { MobileCategoriesSection } from "~/src/components/custom/landing-page/sections/mobile-categories-section";
+import { NewArrivalsSection } from "~/src/components/custom/landing-page/sections/new-arrivals-section";
+import { NewsletterSection } from "~/src/components/custom/landing-page/sections/newsletter-section";
+import { PhilosophySection } from "~/src/components/custom/landing-page/sections/philosophy-section";
+import { ShopCategoriesSection } from "~/src/components/custom/landing-page/sections/shop-categories-section";
+import { ShopCollectionsSection } from "~/src/components/custom/landing-page/sections/shop-collections-section";
+import { SilverPremiumSection } from "~/src/components/custom/landing-page/sections/silver-premium-section";
+import { ValuesSection } from "~/src/components/custom/landing-page/sections/values-section";
+import { VideoExperienceSection } from "~/src/components/custom/landing-page/sections/video-experience-section";
+
+import { useLandingAnimations } from "~/src/hooks/use-landing-animations";
 
 interface HomePageMeta {
   readonly description: string;
@@ -48,9 +64,29 @@ export const Route = createFileRoute("/{-$locale}/")({
 });
 
 function HomePage(): JSX.Element {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useLandingAnimations({
+    rootRef
+  });
+
   return (
-    <main>
-      <LandingPageExperience />
+    <main ref={rootRef} className="bg-background text-foreground">
+      <HeroSection />
+      <VideoExperienceSection />
+      <ValuesSection />
+      <ManifestoSection />
+      <NewArrivalsSection />
+      <MobileCategoriesSection />
+      <DesktopCategoriesSection />
+      <ArchiveSection />
+      <BreakerSection />
+      <ShopCategoriesSection />
+      <PhilosophySection />
+      <SilverPremiumSection />
+      <MaisonHeritageSection />
+      <ShopCollectionsSection />
+      <NewsletterSection />
     </main>
   );
 }

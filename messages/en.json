@@ -160,7 +160,7 @@
       "description": "Handcrafted silver and women's jewelry by M'Arte — Polish atelier, pure forms, and 925 silver.",
       "title": "M'Arte | Handcrafted Jewelry"
     },
-    "hero": {
+    "heroSection": {
       "eyebrow": "Everyday elegance",
       "titleLine1": "True art,",
       "titleLine2": "without compromises",
@@ -170,7 +170,7 @@
       "scrollHint": "Scroll to discover the world of M'ARTE",
       "imageAlt": "Editorial jewelry composition on stone"
     },
-    "values": {
+    "valuesSection": {
       "eyebrow": "The M'ARTE standard",
       "title": "Quality of the highest purity",
       "craft": {
@@ -186,7 +186,7 @@
         "description": "From the moment of choice to opening the box. We ensure a seamless shopping process and elegant packaging that turns shopping into a reward for yourself."
       }
     },
-    "newArrivals": {
+    "newArrivalsSection": {
       "eyebrow": "M'ARTE premieres",
       "title": "New designs to discover",
       "description": "Curated, original forms and noble glow. New designs created for your daily rituals and timeless elegance.",
@@ -224,7 +224,7 @@
         }
       }
     },
-    "categories": {
+    "categoriesSection": {
       "eyebrow": "Categories",
       "title": "Space of choice",
       "description": "Our jewelry takes various shapes, but adheres to one principle: uncompromising quality. Browse the categories and find the form missing in your space.",
@@ -261,7 +261,7 @@
         }
       }
     },
-    "experience": {
+    "videoExperienceSection": {
       "eyebrow": "Handcrafted",
       "titleLine1": "We co-create",
       "titleLine2": "what is unique.",
@@ -269,7 +269,7 @@
       "ctaPrimary": "View collections",
       "ctaSecondary": "Explore all products"
     },
-    "archive": {
+    "archiveSection": {
       "eyebrow": "M'ARTE Guide",
       "title": "Details matter",
       "imageAlt": "Design desk with atelier tools",
@@ -279,10 +279,10 @@
         "engraving": "Mineral guide: meaning and choice of natural stones"
       }
     },
-    "breaker": {
+    "breakerSection": {
       "text": "Quiet luxury, built on intention."
     },
-    "manifesto": {
+    "manifestoSection": {
       "eyebrow": "Brand philosophy",
       "title": "We don't follow seasons.",
       "subtitle": "We follow conviction.",
@@ -291,14 +291,14 @@
       "paragraph3": "This is not fast fashion translated into metal. This is jewelry as architecture — a considered, durable form that becomes a solid foundation of your image.",
       "closing": "Welcome to the world of M'ARTE."
     },
-    "philosophy": {
+    "philosophySection": {
       "eyebrow": "Enduring values",
       "title": "Designed to endure",
       "paragraph1": "We believe in objects that outlast their season. Each M'ARTE form is born from restraint — fewer collections, deeper intention — because permanence is the ultimate luxury.",
       "paragraph2": "Our studio works at the rhythm of craft, not commerce. From the first wax carving to the final polish — every gesture is deliberate, every surface considered.",
       "signature": "— M'ARTE Atelier, Warsaw"
     },
-    "silver": {
+    "silverPremiumSection": {
       "eyebrow": "Premium Collection",
       "titleMain": "Silver",
       "titleAccent": "925",
@@ -321,7 +321,7 @@
         }
       }
     },
-    "maison": {
+    "maisonHeritageSection": {
       "eyebrow": "About the brand",
       "title": "Tradition and precision",
       "description": "We were founded to combine classic jewelry techniques with modern, raw forms. Each of our projects is the result of precise work and an uncompromising approach to minimalism.",
@@ -329,7 +329,7 @@
       "mainImageAlt": "Handcrafting jewelry",
       "overlayImageAlt": "Close-up of a solitaire ring"
     },
-    "newsletter": {
+    "newsletterSection": {
       "eyebrow": "Newsletter",
       "title": "Stay close to M'ARTE",
       "description": "Stay up to date with new products and receive private discount codes available only for subscribers.",
@@ -337,7 +337,7 @@
       "cta": "Join us",
       "note": "By subscribing, you agree to the processing of data for marketing purposes, in accordance with the Terms and Privacy Policy."
     },
-    "shopCategories": {
+    "shopCategoriesSection": {
       "eyebrow": "Browse by type",
       "title": "Categories",
       "description": "Discover the full range of handcrafted jewelry — from sculptural earrings to statement rings.",
@@ -369,7 +369,7 @@
         }
       }
     },
-    "shopCollections": {
+    "shopCollectionsSection": {
       "eyebrow": "Curated editions",
       "title": "Our Collections",
       "description": "Themed selections created around mood, season, and occasion.",
