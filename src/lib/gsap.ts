@@ -3,7 +3,7 @@ import { gsap } from "gsap";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-if (typeof globalThis !== "undefined") {
+if (typeof document !== "undefined") {
   gsap.registerPlugin(useGSAP, ScrollToPlugin, ScrollTrigger);
   gsap.defaults({ duration: 0.8, ease: "power3.out" });
 }

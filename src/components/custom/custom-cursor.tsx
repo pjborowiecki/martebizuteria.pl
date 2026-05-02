@@ -10,12 +10,11 @@ export function CustomCursor() {
   const [isHovering, setIsHovering] = useState(false);
 
   useGSAP(() => {
-    // Only run on devices with a fine pointer (mouse)
-    const isFinePointer = globalThis.matchMedia("(pointer: fine)").matches;
+    const isFinePointer = typeof document !== "undefined" && globalThis.matchMedia("(pointer: fine)").matches;
     if (!isFinePointer) {
       return;
     }
-    // Initialize quickTo for high performance following with a very slight cinematic smooth
+
     const cursorX = gsap.quickTo(cursorRef.current, "x", { duration: 0.1, ease: "power3.out" });
     const cursorY = gsap.quickTo(cursorRef.current, "y", { duration: 0.1, ease: "power3.out" });
 
@@ -38,7 +37,7 @@ export function CustomCursor() {
   }, []);
 
   useEffect(() => {
-    const isFinePointer = globalThis.matchMedia("(pointer: fine)").matches;
+    const isFinePointer = typeof document !== "undefined" && globalThis.matchMedia("(pointer: fine)").matches;
     if (!isFinePointer) {
       return;
     }
