@@ -1,4 +1,4 @@
-import { type JSX, useState } from "react";
+import { type JSX, useCallback, useEffect, useState } from "react";
 
 import { useTranslations } from "use-intl";
 
@@ -6,12 +6,15 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/
 import { Button } from "~/src/components/shadcn/button";
 import { Separator } from "~/src/components/shadcn/separator";
 
-import { QuantityPicker } from "~/src/components/custom/product-page/quantity-picker";
+import { QuantityPicker } from "~/src/components/custom/pages/product-page/quantity-picker";
 
-import { PRODUCT_DETAIL_KEYS, type ProductData } from "~/src/data/product-data";
+import { PRODUCT_DETAIL_KEYS, PRODUCT_GALLERY_MOCK, type ProductData } from "~/src/data/product-data";
+import { useCartStore } from "~/src/stores/cart.store";
 
 const MIN_QUANTITY = 1;
+const RESET_ADDED_TIMEOUT = 2000;
 const DEFAULT_ACCORDION_VALUE = ["description"];
+const [firstImage] = PRODUCT_GALLERY_MOCK;
 
 export interface ProductHeroInfoProps {
   readonly product: ProductData;
@@ -20,6 +23,40 @@ export interface ProductHeroInfoProps {
 export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element {
   const t = useTranslations("productPage.heroSection");
   const [quantity, setQuantity] = useState(MIN_QUANTITY);
+  const [isAdded, setIsAdded] = useState(false);
+  const { addItem } = useCartStore();
+
+  const handleAddToCart = useCallback(() => {
+    const size = t("size", { fallback: "One Size" });
+    const material = t("material");
+
+    addItem({
+      id: `${product.handle}-${size}-${material}`,
+      image: product.thumbnail ?? firstImage ?? "",
+      material,
+      price: t("price"),
+      qty: Math.max(MIN_QUANTITY, quantity),
+      size,
+      slug: product.handle,
+      title: product.title
+    });
+
+    setIsAdded(true);
+  }, [addItem, product, quantity, t]);
+
+  useEffect(() => {
+    if (!isAdded) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsAdded(false);
+    }, RESET_ADDED_TIMEOUT);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isAdded]);
 
   return (
     <aside className="reveal space-y-6 lg:sticky lg:top-24 lg:self-start">
@@ -42,9 +79,10 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
 
         <Button
           className="h-14 flex-1 bg-foreground px-8 text-[12px] tracking-[0.24em] text-background uppercase hover:bg-foreground/90"
+          onClick={handleAddToCart}
           type="button"
         >
-          {t("addToCart")}
+          {isAdded ? t("addedToCart", { fallback: "Dodano" }) : t("addToCart")}
         </Button>
       </div>
 

@@ -8,9 +8,9 @@ import { CONSTANTS } from "~/src/constants";
 
 import { prefetchSingleProductImage } from "~/src/lib/_utils/image";
 
-import { ProductHeroSection } from "~/src/components/custom/product-page/sections/product-hero-section";
-import { ProductParallaxSection } from "~/src/components/custom/product-page/sections/product-parallax-section";
-import { ProductRelatedSection } from "~/src/components/custom/product-page/sections/product-related-section";
+import { ProductHeroSection } from "~/src/components/custom/pages/product-page/sections/product-hero-section";
+import { ProductParallaxSection } from "~/src/components/custom/pages/product-page/sections/product-parallax-section";
+import { ProductRelatedSection } from "~/src/components/custom/pages/product-page/sections/product-related-section";
 
 import { PRODUCT_GALLERY_MOCK, PRODUCT_RELATED_MOCK } from "~/src/data/product-data";
 import { useProductAnimations } from "~/src/hooks/use-product-animations";

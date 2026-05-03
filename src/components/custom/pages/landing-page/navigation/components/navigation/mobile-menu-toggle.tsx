@@ -6,8 +6,8 @@ import { useTranslations } from "use-intl";
 
 import { Button } from "~/src/components/shadcn/button";
 
-import { useNavigation } from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-provider";
-import { NAVIGATION_MENU_ID } from "~/src/components/custom/landing-page/navigation/constants";
+import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
+import { NAVIGATION_MENU_ID } from "~/src/components/custom/pages/landing-page/navigation/constants";
 
 function MenuMark(): JSX.Element {
   return (

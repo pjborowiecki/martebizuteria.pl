@@ -4,8 +4,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
-import { useNavigation } from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-provider";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
 
 export function BrandLogo(): JSX.Element {
   const t = useTranslations("components.custom.navigation");
