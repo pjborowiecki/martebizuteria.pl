@@ -15,8 +15,8 @@ export function CustomCursor() {
       return;
     }
 
-    const cursorX = gsap.quickTo(cursorRef.current, "x", { duration: 0.1, ease: "power3.out" });
-    const cursorY = gsap.quickTo(cursorRef.current, "y", { duration: 0.1, ease: "power3.out" });
+    const cursorX = gsap.quickTo(cursorRef.current, "x", { duration: 0.04, ease: "power3.out" });
+    const cursorY = gsap.quickTo(cursorRef.current, "y", { duration: 0.04, ease: "power3.out" });
 
     let hasMoved = false;
 
@@ -72,7 +72,7 @@ export function CustomCursor() {
     <div
       ref={cursorRef}
       className={cn(
-        "pointer-events-none invisible fixed top-0 left-0 z-9999 -mt-2 -ml-2 flex h-4 w-4 items-center justify-center rounded-full opacity-0 mix-blend-difference transition-all duration-300 ease-out will-change-transform",
+        "pointer-events-none invisible fixed top-0 left-0 z-9999 -mt-2 -ml-2 flex h-4 w-4 items-center justify-center rounded-full opacity-0 mix-blend-difference transition-all duration-150 ease-out will-change-transform",
         {
           "scale-100 bg-white": !isHovering,
           "scale-[2.5] bg-white/20 backdrop-blur-md": isHovering

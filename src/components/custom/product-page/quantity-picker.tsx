@@ -1,0 +1,52 @@
+import { type JSX, useCallback } from "react";
+
+import { Minus, Plus } from "lucide-react";
+import { useTranslations } from "use-intl";
+
+import { Button } from "~/src/components/shadcn/button";
+
+const MIN_QUANTITY = 1;
+
+export interface QuantityPickerProps {
+  readonly quantity: number;
+  readonly setQuantity: (quantity: number | ((prev: number) => number)) => void;
+}
+
+export function QuantityPicker({ quantity, setQuantity }: QuantityPickerProps): JSX.Element {
+  const t = useTranslations("productPage.heroSection");
+
+  const handleDecrease = useCallback(() => {
+    setQuantity((q) => Math.max(MIN_QUANTITY, q - MIN_QUANTITY));
+  }, [setQuantity]);
+
+  const handleIncrease = useCallback(() => {
+    setQuantity((q) => q + MIN_QUANTITY);
+  }, [setQuantity]);
+
+  return (
+    <div className="flex items-center gap-4">
+      <span className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("quantity")}</span>
+      <div className="flex h-14 items-center border border-border">
+        <Button
+          aria-label={t("decreaseQuantity")}
+          className="size-14 rounded-none hover:bg-secondary"
+          onClick={handleDecrease}
+          type="button"
+          variant="ghost"
+        >
+          <Minus className="size-4" />
+        </Button>
+        <span className="flex h-14 w-12 items-center justify-center border-x border-border text-sm font-medium">{quantity}</span>
+        <Button
+          aria-label={t("increaseQuantity")}
+          className="size-14 rounded-none hover:bg-secondary"
+          onClick={handleIncrease}
+          type="button"
+          variant="ghost"
+        >
+          <Plus className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
