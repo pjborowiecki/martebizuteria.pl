@@ -7,7 +7,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { gsap, useGSAP } from "~/src/lib/gsap";
 
-import { useNavigationStore } from "~/src/components/custom/landing-page/navigation/store/navigation-store";
+import { useNavigationStore } from "~/src/components/custom/pages/landing-page/navigation/store/navigation-store";
 
 const ZERO_RESULTS = 0;
 const FOCUS_TIMEOUT_MS = 300;

@@ -5,7 +5,7 @@ import { useMemo, type JSX } from "react";
 import { useTranslations } from "use-intl";
 
 import { Image } from "~/src/components/custom/image";
-import { PRIMARY } from "~/src/components/custom/landing-page/navigation/constants";
+import { PRIMARY } from "~/src/components/custom/pages/landing-page/navigation/constants";
 
 const ACTIVE_INDEX = 0;
 

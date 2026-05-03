@@ -4,7 +4,7 @@ import { useTranslations } from "use-intl";
 
 import { Separator } from "~/src/components/shadcn/separator";
 
-import { ProductCard } from "~/src/components/custom/landing-page/product-card";
+import { ProductCard } from "~/src/components/custom/product-card";
 
 import { useProductAnimations } from "~/src/hooks/use-product-animations";
 

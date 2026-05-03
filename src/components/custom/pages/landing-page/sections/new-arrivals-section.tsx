@@ -2,8 +2,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
-import { ProductCard } from "~/src/components/custom/landing-page/product-card";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { ProductCard } from "~/src/components/custom/product-card";
 
 import { LANDING_PRODUCTS } from "~/src/data/landing-data";
 

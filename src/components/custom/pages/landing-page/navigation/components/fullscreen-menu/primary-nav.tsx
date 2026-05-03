@@ -6,8 +6,8 @@ import { useTranslations } from "use-intl";
 
 import { cn } from "~/src/lib/utils";
 
-import { useNavigation } from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-provider";
-import { PRIMARY } from "~/src/components/custom/landing-page/navigation/constants";
+import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
+import { PRIMARY } from "~/src/components/custom/pages/landing-page/navigation/constants";
 
 const PAD_LENGTH = 2;
 

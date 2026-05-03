@@ -6,7 +6,7 @@ import { cn } from "~/src/lib/utils";
 
 import { Button } from "~/src/components/shadcn/button";
 
-import { useNavigation } from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-provider";
+import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
 
 interface NavLinkProps {
   hash: string;

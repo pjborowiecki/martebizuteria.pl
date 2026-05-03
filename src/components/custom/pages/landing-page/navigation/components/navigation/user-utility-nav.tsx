@@ -10,11 +10,14 @@ import { cn } from "~/src/lib/utils";
 
 import { Button, buttonVariants } from "~/src/components/shadcn/button";
 
-import { useNavigation } from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-provider";
-import { useNavigationStore } from "~/src/components/custom/landing-page/navigation/store/navigation-store";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
+import { useNavigationStore } from "~/src/components/custom/pages/landing-page/navigation/store/navigation-store";
+
+import { useCartStore } from "~/src/stores/cart.store";
 
 const utilityIcon = "size-[1.125rem] text-foreground";
+const INITIAL_COUNT = 0;
 
 export function UserUtilityNav(): JSX.Element {
   const t = useTranslations("components.custom.navigation");
@@ -23,6 +26,9 @@ export function UserUtilityNav(): JSX.Element {
   const accountHover = getHoverProps();
   const cartHover = getHoverProps({ scale: 1.06 });
   const setSearchOpen = useNavigationStore(useShallow((s) => s.setSearchOpen));
+
+  const { items } = useCartStore();
+  const itemCount = items.reduce((sum, item) => sum + item.qty, INITIAL_COUNT);
 
   const handleSearchMouseEnter = searchHover.onMouseEnter;
   const handleSearchMouseLeave = searchHover.onMouseLeave;
@@ -76,7 +82,7 @@ export function UserUtilityNav(): JSX.Element {
       >
         <span ref={cartHover.ref} className="inline-flex items-center gap-2 will-change-transform">
           <ShoppingBag aria-hidden className={utilityIcon} strokeWidth={1.15} />
-          <span className="text-[11px] font-light tracking-[0.2em] text-foreground/90 tabular-nums">{0}</span>
+          <span className="text-[11px] font-light tracking-[0.2em] text-foreground/90 tabular-nums">{itemCount}</span>
         </span>
       </LocalizedLink>
     </div>

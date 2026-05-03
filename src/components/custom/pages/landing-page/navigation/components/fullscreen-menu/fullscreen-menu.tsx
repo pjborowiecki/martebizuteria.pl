@@ -2,13 +2,13 @@
 
 import { type CSSProperties, useMemo, type JSX } from "react";
 
-import { ImageShowcase } from "~/src/components/custom/landing-page/navigation/components/fullscreen-menu/image-showcase";
-import { MenuFooter } from "~/src/components/custom/landing-page/navigation/components/fullscreen-menu/menu-footer";
-import { MenuHeader } from "~/src/components/custom/landing-page/navigation/components/fullscreen-menu/menu-header";
-import { PrimaryNav } from "~/src/components/custom/landing-page/navigation/components/fullscreen-menu/primary-nav";
-import { SecondaryNav } from "~/src/components/custom/landing-page/navigation/components/fullscreen-menu/secondary-nav";
-import { useNavigation } from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-provider";
-import { NAVIGATION_MENU_ID } from "~/src/components/custom/landing-page/navigation/constants";
+import { ImageShowcase } from "~/src/components/custom/pages/landing-page/navigation/components/fullscreen-menu/image-showcase";
+import { MenuFooter } from "~/src/components/custom/pages/landing-page/navigation/components/fullscreen-menu/menu-footer";
+import { MenuHeader } from "~/src/components/custom/pages/landing-page/navigation/components/fullscreen-menu/menu-header";
+import { PrimaryNav } from "~/src/components/custom/pages/landing-page/navigation/components/fullscreen-menu/primary-nav";
+import { SecondaryNav } from "~/src/components/custom/pages/landing-page/navigation/components/fullscreen-menu/secondary-nav";
+import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
+import { NAVIGATION_MENU_ID } from "~/src/components/custom/pages/landing-page/navigation/constants";
 
 export function FullscreenMenu(): JSX.Element {
   const { containerRef, panelRef, mounted, handleClose, handleMouseMove } = useNavigation();

@@ -3,8 +3,8 @@ import { type JSX } from "react";
 import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
 
 import { Image } from "~/src/components/custom/image";
-import { ProductBreadcrumb } from "~/src/components/custom/product-page/product-breadcrumb";
-import { ProductHeroInfo } from "~/src/components/custom/product-page/product-hero-info";
+import { ProductBreadcrumb } from "~/src/components/custom/pages/product-page/product-breadcrumb";
+import { ProductHeroInfo } from "~/src/components/custom/pages/product-page/product-hero-info";
 
 import type { ProductData } from "~/src/data/product-data";
 

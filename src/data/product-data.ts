@@ -38,4 +38,5 @@ export interface ProductData {
   readonly subtitle: string | null;
   readonly thumbnail: string | null;
   readonly title: string;
+  readonly handle: string;
 }

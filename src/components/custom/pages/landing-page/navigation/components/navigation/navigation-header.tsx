@@ -4,7 +4,7 @@ import type { JSX, ReactNode } from "react";
 
 import { cn } from "~/src/lib/utils";
 
-import { useNavigation } from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-provider";
+import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
 
 export function NavigationHeader({ children }: Readonly<{ children: ReactNode }>): JSX.Element {
   const { scrolled } = useNavigation();

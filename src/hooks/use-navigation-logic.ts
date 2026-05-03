@@ -6,8 +6,8 @@ import { useShallow } from "zustand/react/shallow";
 
 import { ScrollTrigger, gsap, useGSAP } from "~/src/lib/gsap";
 
-import * as CONSTANTS from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-constants";
-import { useNavigationStore } from "~/src/components/custom/landing-page/navigation/store/navigation-store";
+import * as CONSTANTS from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-constants";
+import { useNavigationStore } from "~/src/components/custom/pages/landing-page/navigation/store/navigation-store";
 
 export interface HoverOptions {
   y?: number;

@@ -6,8 +6,8 @@ import { useTranslations } from "use-intl";
 
 import { cn } from "~/src/lib/utils";
 
-import { useNavigation } from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-provider";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
 
 const SECONDARY_CLIENT_LINKS = [
   { href: "/account", labelKey: "menu.links.login" as const },

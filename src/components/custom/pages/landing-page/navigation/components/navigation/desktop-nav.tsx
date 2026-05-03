@@ -4,7 +4,7 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
-import { NavLink } from "~/src/components/custom/landing-page/navigation/components/navigation/nav-link";
+import { NavLink } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/nav-link";
 
 interface NavConfig {
   hash: string;

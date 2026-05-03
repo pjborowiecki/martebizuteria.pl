@@ -9,21 +9,21 @@ import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl
 
 import { isValidLocale } from "~/src/lib/utils";
 
-import { ArchiveSection } from "~/src/components/custom/landing-page/sections/archive-section";
-import { BreakerSection } from "~/src/components/custom/landing-page/sections/breaker-section";
-import { DesktopCategoriesSection } from "~/src/components/custom/landing-page/sections/desktop-categories-section";
-import { HeroSection } from "~/src/components/custom/landing-page/sections/hero-section";
-import { MaisonHeritageSection } from "~/src/components/custom/landing-page/sections/maison-heritage-section";
-import { ManifestoSection } from "~/src/components/custom/landing-page/sections/manifesto-section";
-import { MobileCategoriesSection } from "~/src/components/custom/landing-page/sections/mobile-categories-section";
-import { NewArrivalsSection } from "~/src/components/custom/landing-page/sections/new-arrivals-section";
-import { NewsletterSection } from "~/src/components/custom/landing-page/sections/newsletter-section";
-import { PhilosophySection } from "~/src/components/custom/landing-page/sections/philosophy-section";
-import { ShopCategoriesSection } from "~/src/components/custom/landing-page/sections/shop-categories-section";
-import { ShopCollectionsSection } from "~/src/components/custom/landing-page/sections/shop-collections-section";
-import { SilverPremiumSection } from "~/src/components/custom/landing-page/sections/silver-premium-section";
-import { ValuesSection } from "~/src/components/custom/landing-page/sections/values-section";
-import { VideoExperienceSection } from "~/src/components/custom/landing-page/sections/video-experience-section";
+import { ArchiveSection } from "~/src/components/custom/pages/landing-page/sections/archive-section";
+import { BreakerSection } from "~/src/components/custom/pages/landing-page/sections/breaker-section";
+import { DesktopCategoriesSection } from "~/src/components/custom/pages/landing-page/sections/desktop-categories-section";
+import { HeroSection } from "~/src/components/custom/pages/landing-page/sections/hero-section";
+import { MaisonHeritageSection } from "~/src/components/custom/pages/landing-page/sections/maison-heritage-section";
+import { ManifestoSection } from "~/src/components/custom/pages/landing-page/sections/manifesto-section";
+import { MobileCategoriesSection } from "~/src/components/custom/pages/landing-page/sections/mobile-categories-section";
+import { NewArrivalsSection } from "~/src/components/custom/pages/landing-page/sections/new-arrivals-section";
+import { NewsletterSection } from "~/src/components/custom/pages/landing-page/sections/newsletter-section";
+import { PhilosophySection } from "~/src/components/custom/pages/landing-page/sections/philosophy-section";
+import { ShopCategoriesSection } from "~/src/components/custom/pages/landing-page/sections/shop-categories-section";
+import { ShopCollectionsSection } from "~/src/components/custom/pages/landing-page/sections/shop-collections-section";
+import { SilverPremiumSection } from "~/src/components/custom/pages/landing-page/sections/silver-premium-section";
+import { ValuesSection } from "~/src/components/custom/pages/landing-page/sections/values-section";
+import { VideoExperienceSection } from "~/src/components/custom/pages/landing-page/sections/video-experience-section";
 
 import { useLandingAnimations } from "~/src/hooks/use-landing-animations";
 

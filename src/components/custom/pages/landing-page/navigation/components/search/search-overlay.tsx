@@ -10,8 +10,8 @@ import { cn } from "~/src/lib/utils";
 import { Separator } from "~/src/components/shadcn/separator";
 
 import { Image } from "~/src/components/custom/image";
-import { useNavigation } from "~/src/components/custom/landing-page/navigation/components/navigation/navigation-provider";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
 
 import { TRENDING_KEYS, type SearchResult, useSearchOverlayLogic } from "~/src/hooks/use-search-overlay-logic";
 
