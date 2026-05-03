@@ -484,12 +484,68 @@
     }
   },
   "productPage": {
+    "loadingRelated": "Wczytywanie powiązanych produktów...",
     "metaTitle": "{title} | M'Arte",
     "addToCart": "Dodaj do koszyka",
     "unavailable": "Niedostępne",
     "outOfStock": "Brak w magazynie",
     "notFound": "Nie znaleziono produktu",
-    "priceRange": "{min} - {max}"
+    "priceRange": "{min} - {max}",
+    "heroSection": {
+      "breadcrumbHome": "Strona główna",
+      "breadcrumbProducts": "Produkty",
+      "collection": "Kolekcja",
+      "subtitle": "Wyjątkowe rzemiosło",
+      "price": "Od 310 PLN",
+      "material": "Srebro 925 / Pozłacane 18k złotem",
+      "sku": "SKU: MRT-0001",
+      "quantity": "Ilość",
+      "decreaseQuantity": "Zmniejsz ilość",
+      "increaseQuantity": "Zwiększ ilość",
+      "addToCart": "Dodaj do koszyka",
+      "details": {
+        "description": {
+          "title": "Opis",
+          "text": "Każdy element jest starannie wykonywany ręcznie w naszej pracowni."
+        },
+        "materials": {
+          "title": "Materiały",
+          "text": "Wykonane z najwyższej jakości, zrównoważonych metali."
+        },
+        "dimensions": {
+          "title": "Wymiary",
+          "text": "Rozmiar uniwersalny. Regulowany łańcuszek 40-45cm."
+        },
+        "care": {
+          "title": "Pielęgnacja",
+          "text": "Przechowuj w suchym miejscu. Unikaj bezpośredniego kontaktu z perfumami."
+        },
+        "shipping": {
+          "title": "Dostawa i zwroty",
+          "text": "Darmowa dostawa dla zamówień powyżej 500 PLN. 30 dni na zwrot."
+        }
+      }
+    },
+    "relatedSection": {
+      "title": "Uzupełnij wygląd",
+      "related": {
+        "arcCuff": {
+          "detail": "Srebro z kamieniem księżycowym",
+          "name": "Arc Cuff",
+          "price": "520 PLN"
+        },
+        "silhouetteRing": {
+          "detail": "Srebro próby 925",
+          "name": "Silhouette Ring",
+          "price": "310 PLN"
+        },
+        "formaII": {
+          "detail": "Srebro pozłacane",
+          "name": "Forma II",
+          "price": "480 PLN"
+        }
+      }
+    }
   },
   "collectionsPage": {
     "title": "Kolekcje",
