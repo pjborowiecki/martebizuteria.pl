@@ -74,7 +74,7 @@ export function NavigationProvider({ children }: Readonly<{ children: ReactNode 
         void router.navigate({ to: menuPathToRouterTo(hash) });
         return;
       }
-      const id = hash.replace(/^#/, "");
+      const id = hash.replace(/^#/u, "");
       if (menuOpen) {
         setPendingHashGlobal(id);
         setMenuOpen(false);
