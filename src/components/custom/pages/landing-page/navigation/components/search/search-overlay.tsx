@@ -82,9 +82,9 @@ function SearchResultLinkTarget({
   onPathClick: () => void;
   children: ReactNode;
 }>): JSX.Element {
-  const productMatch = /^\/products\/([^/]+)$/.exec(href);
-  const categoryMatch = /^\/categories\/([^/]+)$/.exec(href);
-  const collectionMatch = /^\/collections\/([^/]+)$/.exec(href);
+  const productMatch = /^\/products\/([^/]+)$/u.exec(href);
+  const categoryMatch = /^\/categories\/([^/]+)$/u.exec(href);
+  const collectionMatch = /^\/collections\/([^/]+)$/u.exec(href);
 
   const MATCH_INDEX = 1;
   const handle1 = productMatch?.[MATCH_INDEX] ?? "";

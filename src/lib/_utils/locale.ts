@@ -14,10 +14,10 @@ export interface ReadonlyUrl {
   readonly toString: () => string;
 }
 
-const IGNORED_PATHS_REGEX = /^\/(?:api|rpc)(?:\/|$)/;
-const LOCALE_SEGMENT_REGEX = /^\/([a-z]{2})(?:\/|$)/;
+const IGNORED_PATHS_REGEX = /^\/(?:api|rpc)(?:\/|$)/u;
+const LOCALE_SEGMENT_REGEX = /^\/([a-z]{2})(?:\/|$)/u;
 
-const COOKIE_LOCALE_REGEX = new RegExp(String.raw`(?:^|;\s*)${CONSTANTS.LOCALE_COOKIE_NAME}=([^;]*)`);
+const COOKIE_LOCALE_REGEX = new RegExp(String.raw`(?:^|;\s*)${CONSTANTS.LOCALE_COOKIE_NAME}=([^;]*)`, "u");
 
 const LOCALE_SET = new Set<string>(CONSTANTS.LOCALES);
 

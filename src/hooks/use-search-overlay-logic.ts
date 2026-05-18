@@ -128,7 +128,7 @@ function useAllItems(tp: (key: string) => string, t: (key: string) => string) {
 }
 
 function normalize(str: string): string {
-  return str.toLowerCase().replaceAll(/[^a-z0-9\s]/g, "");
+  return str.toLowerCase().replaceAll(/[^a-z0-9\s]/gu, "");
 }
 
 export function useSearchOverlayLogic(overlayRef: RefObject<HTMLDialogElement | null>, inputRef: RefObject<HTMLInputElement | null>) {
