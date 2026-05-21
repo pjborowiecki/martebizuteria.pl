@@ -2,6 +2,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
 
 import { Image } from "~/src/components/custom/image";
@@ -42,7 +44,7 @@ export function MobileCategoriesSection(): JSX.Element {
               <h3 className="font-serif text-2xl leading-[1.05] tracking-tight sm:text-3xl">{t(panel.titleKey)}</h3>
               <p className="max-w-prose text-sm/relaxed text-muted-foreground">{t(panel.subtitleKey)}</p>
               <LocalizedLink
-                to="/collections"
+                to={CONSTANTS.ROUTES.COLLECTIONS}
                 className="inline-flex pt-1 text-[11px] tracking-[0.18em] text-foreground uppercase underline-offset-4 transition-colors hover:text-muted-foreground"
               >
                 {t(panel.buttonTextKey)}

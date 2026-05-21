@@ -2,6 +2,8 @@ import { type JSX, useRef } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { gsap, useGSAP } from "~/src/lib/gsap";
 
 import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
@@ -76,7 +78,7 @@ export function DesktopCategoriesSection(): JSX.Element {
                 <h3 className="font-serif text-4xl leading-[0.95] tracking-tight md:text-5xl lg:text-6xl">{t(panel.titleKey)}</h3>
                 <p className="max-w-[280px] text-[13px]/relaxed text-muted-foreground">{t(panel.subtitleKey)}</p>
                 <LocalizedLink
-                  to="/collections"
+                  to={CONSTANTS.ROUTES.COLLECTIONS}
                   className="inline-flex h-13 items-center justify-center rounded-none bg-primary px-10 text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   {t(panel.buttonTextKey)}

@@ -2,6 +2,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { ProductCard } from "~/src/components/custom/product-card";
 
@@ -19,7 +21,7 @@ export function NewArrivalsSection(): JSX.Element {
           <p className="max-w-xl text-sm/relaxed text-muted-foreground">{t("description")}</p>
         </div>
         <LocalizedLink
-          to="/products"
+          to={CONSTANTS.ROUTES.PRODUCTS}
           className="inline-flex h-13 items-center justify-center rounded-none bg-primary px-10 text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
         >
           {t("cta")}

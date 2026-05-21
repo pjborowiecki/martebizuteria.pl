@@ -71,7 +71,7 @@ function CartPage(): JSX.Element {
         </div>
         <LocalizedLink
           className="hidden text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground sm:inline"
-          to="/products"
+          to={CONSTANTS.ROUTES.PRODUCTS}
         >
           {t("continueShopping")}
         </LocalizedLink>
@@ -90,7 +90,7 @@ function CartPage(): JSX.Element {
 
             <LocalizedLink
               className="mt-6 inline-flex text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground sm:hidden"
-              to="/products"
+              to={CONSTANTS.ROUTES.PRODUCTS}
             >
               {t("continueShopping")}
             </LocalizedLink>
@@ -101,7 +101,7 @@ function CartPage(): JSX.Element {
       ) : (
         <div className="flex flex-col items-center justify-center space-y-6 py-20 text-center">
           <p className="max-w-prose text-muted-foreground">{t("description")}</p>
-          <LocalizedLink className="text-primary underline-offset-4 hover:underline" to="/">
+          <LocalizedLink className="text-primary underline-offset-4 hover:underline" to={CONSTANTS.ROUTES.HOME}>
             {t("goHome")}
           </LocalizedLink>
         </div>

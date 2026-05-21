@@ -1,0 +1,75 @@
+import type { JSX } from "react";
+
+import { createFileRoute } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
+
+import { CONSTANTS } from "~/src/constants";
+import type { Locale } from "~/src/constants/types";
+
+import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
+
+import { isValidLocale } from "~/src/lib/utils";
+
+import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { AuthDivider } from "~/src/components/custom/pages/auth/auth-divider";
+import { AuthHeader } from "~/src/components/custom/pages/auth/auth-header";
+import { SignUpWithPasswordForm } from "~/src/components/custom/pages/auth/sign-up-with-password-form";
+import { SocialProviders } from "~/src/components/custom/pages/auth/social-providers";
+
+interface SignUpPageMeta {
+  readonly description: string;
+  readonly title: string;
+}
+
+export const Route = createFileRoute("/{-$locale}/auth/sign-up")({
+  component: SignUpPage,
+  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<SignUpPageMeta> }>) => ({
+    meta: [
+      { title: loaderData?.title ?? CONSTANTS.APP_NAME },
+      { content: loaderData?.description ?? "", name: "description" },
+      { content: loaderData?.title ?? CONSTANTS.APP_NAME, property: "og:title" },
+      { content: loaderData?.description ?? "", property: "og:description" }
+    ]
+  }),
+  loader: ({ context, params }) => {
+    const { locale: rawLocale } = params;
+    let locale: Locale = CONSTANTS.DEFAULT_LOCALE;
+
+    if (typeof rawLocale === "string" && isValidLocale(rawLocale)) {
+      locale = rawLocale;
+    }
+
+    const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
+
+    return {
+      description: messages?.auth.signUpPage.meta.description ?? "",
+      title: messages?.auth.signUpPage.meta.title ?? CONSTANTS.APP_NAME
+    } satisfies SignUpPageMeta;
+  }
+});
+
+function SignUpPage(): JSX.Element {
+  const t = useTranslations("auth.signUpPage");
+
+  return (
+    <>
+      <AuthHeader title={t("title")} subtitle={t("subtitle")} />
+
+      <SignUpWithPasswordForm submitText={t("submit")} termsText={t("terms")} />
+
+      <AuthDivider />
+
+      <SocialProviders />
+
+      <p className="text-center text-sm text-muted-foreground">
+        {t("hasAccount")}{" "}
+        <LocalizedLink
+          to={CONSTANTS.ROUTES.AUTH_SIGN_IN}
+          className="text-foreground underline underline-offset-4 transition-colors hover:text-foreground/60"
+        >
+          {t("signInInstead")}
+        </LocalizedLink>
+      </p>
+    </>
+  );
+}

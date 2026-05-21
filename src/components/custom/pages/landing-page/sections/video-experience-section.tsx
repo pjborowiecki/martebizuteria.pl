@@ -2,6 +2,8 @@ import { type JSX, useRef } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { gsap, useGSAP } from "~/src/lib/gsap";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
@@ -76,13 +78,13 @@ export function VideoExperienceSection(): JSX.Element {
 
         <div className="reveal flex shrink-0 flex-wrap items-center justify-end gap-3 self-end pb-[env(safe-area-inset-bottom)] sm:gap-4 lg:self-auto lg:pb-0">
           <LocalizedLink
-            to="/account"
+            to={CONSTANTS.ROUTES.ACCOUNT}
             className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-none bg-white px-8 text-sm font-medium tracking-wide text-black transition-colors hover:bg-white/90"
           >
             {t("ctaPrimary")}
           </LocalizedLink>
           <LocalizedLink
-            to="/collections"
+            to={CONSTANTS.ROUTES.COLLECTIONS}
             className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-none border border-white/50 bg-white/5 px-8 text-sm font-medium tracking-wide text-white backdrop-blur-sm transition-colors hover:border-white/70 hover:bg-white/15"
           >
             {t("ctaSecondary")}

@@ -6,6 +6,8 @@ import { Search, ShoppingBag, UserRound } from "lucide-react";
 import { useTranslations } from "use-intl";
 import { useShallow } from "zustand/react/shallow";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { cn } from "~/src/lib/utils";
 
 import { Button, buttonVariants } from "~/src/components/shadcn/button";
@@ -57,7 +59,7 @@ export function UserUtilityNav(): JSX.Element {
         </span>
       </Button>
       <LocalizedLink
-        to="/account"
+        to={CONSTANTS.ROUTES.ACCOUNT}
         aria-label={t("account")}
         onMouseEnter={handleAccountMouseEnter}
         onMouseLeave={handleAccountMouseLeave}
@@ -71,7 +73,7 @@ export function UserUtilityNav(): JSX.Element {
         </span>
       </LocalizedLink>
       <LocalizedLink
-        to="/cart"
+        to={CONSTANTS.ROUTES.CART}
         aria-label={t("cart")}
         onMouseEnter={handleCartMouseEnter}
         onMouseLeave={handleCartMouseLeave}

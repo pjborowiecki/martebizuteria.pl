@@ -5,6 +5,8 @@ import type { JSX } from "react";
 import { CircleX } from "lucide-react";
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { Button } from "~/src/components/shadcn/button";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
@@ -17,7 +19,7 @@ export function MenuHeader(): JSX.Element {
   return (
     <div data-menu-header className="flex h-20 shrink-0 items-center justify-between px-6 lg:px-12">
       <LocalizedLink
-        to="/"
+        to={CONSTANTS.ROUTES.HOME}
         className="font-serif text-3xl tracking-tight text-primary-foreground uppercase md:text-4xl"
         onClick={handleClose}
       >

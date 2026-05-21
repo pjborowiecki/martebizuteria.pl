@@ -4,6 +4,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { cn } from "~/src/lib/utils";
 
 export function MenuFooter(): JSX.Element {
@@ -15,10 +17,10 @@ export function MenuFooter(): JSX.Element {
     <div data-menu-footer className="mx-auto mt-auto flex w-full max-w-400 flex-row items-end justify-between px-6 pb-8 lg:px-12">
       <p className="text-xs font-light tracking-widest text-primary-foreground/50 uppercase">{t("menu.footer.tagline")}</p>
       <div className="flex gap-8">
-        <a className={linkStyles} href="https://instagram.com" rel="noopener noreferrer" target="_blank">
+        <a className={linkStyles} href={CONSTANTS.SOCIALS.INSTAGRAM} rel="noopener noreferrer" target="_blank">
           {t("menu.footer.instagram")}
         </a>
-        <a className={cn(linkStyles, "hidden sm:block")} href="https://pinterest.com" rel="noopener noreferrer" target="_blank">
+        <a className={cn(linkStyles, "hidden sm:block")} href={CONSTANTS.SOCIALS.PINTEREST} rel="noopener noreferrer" target="_blank">
           {t("menu.footer.pinterest")}
         </a>
       </div>

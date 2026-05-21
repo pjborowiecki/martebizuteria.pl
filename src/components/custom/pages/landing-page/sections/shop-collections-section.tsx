@@ -2,6 +2,8 @@ import { useMemo, type JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
 
 import { Image } from "~/src/components/custom/image";
@@ -22,7 +24,7 @@ function CollectionCard({ collection }: Readonly<CollectionCardProps>): JSX.Elem
   const params = useMemo(() => ({ handle: collection.slug }), [collection.slug]);
 
   return (
-    <LocalizedLink className="reveal group block" params={params} to="/collections/$handle">
+    <LocalizedLink className="reveal group block" params={params} to={CONSTANTS.ROUTES.COLLECTION}>
       <AspectRatio className="parallax-wrap overflow-hidden bg-secondary" ratio={ASPECT_RATIO_PORTRAIT}>
         <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
           <Image
@@ -57,7 +59,7 @@ export function ShopCollectionsSection(): JSX.Element {
           <p className="max-w-xl text-sm/relaxed text-muted-foreground">{t("description")}</p>
         </div>
         <LocalizedLink
-          to="/collections"
+          to={CONSTANTS.ROUTES.COLLECTIONS}
           className="inline-flex h-12 shrink-0 items-center justify-center border border-foreground/20 px-8 text-[11px] tracking-[0.2em] uppercase transition-colors hover:border-foreground/50 sm:self-end"
         >
           {t("cta")}

@@ -147,6 +147,26 @@
         "removeFromWishlist": "Usuń z Ulubionych",
         "share": "Udostępnij",
         "quickView": "Szybki Podgląd"
+      },
+      "authLayout": {
+        "imageAlt": "Edytorialna kompozycja biżuterii na kamiennej fakturze",
+        "imageQuote": "Elegancja to nie bycie zauważonym — to bycie zapamiętanym.",
+        "imageAttribution": "M'ARTE Atelier — Warszawa"
+      },
+      "authHeader": {
+        "brand": "M'ARTE"
+      },
+      "authForm": {
+        "firstName": "Imię",
+        "lastName": "Nazwisko",
+        "email": "Adres e-mail",
+        "password": "Hasło"
+      },
+      "authDivider": {
+        "or": "lub"
+      },
+      "socialProviders": {
+        "google": "Kontynuuj z Google"
       }
     }
   },
@@ -606,6 +626,32 @@
     "metaTitle": "{title} | M'Arte",
     "noProductsFound": "Nie znaleziono produktów w tej kategorii.",
     "notFound": "Nie znaleziono kategorii"
+  },
+  "auth": {
+    "signInPage": {
+      "meta": {
+        "title": "Logowanie | M'Arte",
+        "description": "Zaloguj się do konta M'Arte, aby śledzić zamówienia, zarządzać listą życzeń i cieszyć się spersonalizowanym doświadczeniem."
+      },
+      "title": "Witaj ponownie",
+      "subtitle": "Zaloguj się do swojego konta, aby kontynuować.",
+      "forgotPassword": "Nie pamiętasz hasła?",
+      "submit": "Zaloguj się",
+      "noAccount": "Nie masz konta?",
+      "createAccount": "Utwórz konto"
+    },
+    "signUpPage": {
+      "meta": {
+        "title": "Utwórz konto | M'Arte",
+        "description": "Dołącz do M'ARTE, aby odkrywać ręcznie tworzoną biżuterię i ekskluzywne kolekcje."
+      },
+      "title": "Utwórz konto",
+      "subtitle": "Dołącz do M'ARTE, aby odkrywać ręcznie tworzoną biżuterię i ekskluzywne kolekcje.",
+      "terms": "Akceptuję Regulamin i Politykę Prywatności. Rozumiem, że moje dane będą przetwarzane zgodnie z Polityką Prywatności.",
+      "submit": "Utwórz konto",
+      "hasAccount": "Masz już konto?",
+      "signInInstead": "Zaloguj się"
+    }
   },
   "emails": {
     "test": {

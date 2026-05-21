@@ -55,7 +55,7 @@ function FaqPage(): JSX.Element {
         <p>{t("description")}</p>
       </div>
 
-      <LocalizedLink className="text-primary underline-offset-4 hover:underline" to="/">
+      <LocalizedLink to={CONSTANTS.ROUTES.HOME} className="text-primary underline-offset-4 hover:underline">
         {t("goHome")}
       </LocalizedLink>
     </main>

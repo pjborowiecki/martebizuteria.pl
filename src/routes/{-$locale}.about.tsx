@@ -55,7 +55,7 @@ function AboutPage(): JSX.Element {
         <p>{t("description")}</p>
       </div>
 
-      <LocalizedLink to="/" className="text-primary underline-offset-4 hover:underline">
+      <LocalizedLink to={CONSTANTS.ROUTES.HOME} className="text-primary underline-offset-4 hover:underline">
         {t("goHome")}
       </LocalizedLink>
     </main>

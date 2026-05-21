@@ -2,6 +2,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { LocalizedLink, type LocalizedTo } from "~/src/components/custom/localized-link";
 
 const FooterLink = ({ to, children }: { to: LocalizedTo; children: React.ReactNode }) => (
@@ -83,25 +85,25 @@ export function Footer(): JSX.Element {
           <div className="flex flex-col space-y-4">
             <h3 className="mb-2 text-xs font-medium tracking-widest text-primary-foreground/50 uppercase">{t("info")}</h3>
             <ul className="space-y-3 text-sm">
-              <FooterLink to="/about">{t("about")}</FooterLink>
-              <FooterLink to="/about">{t("contact")}</FooterLink>
-              <FooterLink to="/account">{t("account")}</FooterLink>
+              <FooterLink to={CONSTANTS.ROUTES.ABOUT}>{t("about")}</FooterLink>
+              <FooterLink to={CONSTANTS.ROUTES.ABOUT}>{t("contact")}</FooterLink>
+              <FooterLink to={CONSTANTS.ROUTES.ACCOUNT}>{t("account")}</FooterLink>
             </ul>
           </div>
 
           <div className="flex flex-col space-y-4">
             <h3 className="mb-2 text-xs font-medium tracking-widest text-primary-foreground/50 uppercase">{t("legal")}</h3>
             <ul className="space-y-3 text-sm">
-              <FooterLink to="/faq">{t("terms")}</FooterLink>
-              <FooterLink to="/faq">{t("privacy")}</FooterLink>
-              <FooterLink to="/exchanges-and-returns">{t("returns")}</FooterLink>
+              <FooterLink to={CONSTANTS.ROUTES.FAQ}>{t("terms")}</FooterLink>
+              <FooterLink to={CONSTANTS.ROUTES.FAQ}>{t("privacy")}</FooterLink>
+              <FooterLink to={CONSTANTS.ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
             </ul>
           </div>
 
           <div className="flex flex-col space-y-4">
             <h3 className="mb-2 text-xs font-medium tracking-widest text-primary-foreground/50 uppercase">{t("tips")}</h3>
             <ul className="space-y-3 text-sm">
-              <FooterLink to="/faq">{t("care")}</FooterLink>
+              <FooterLink to={CONSTANTS.ROUTES.FAQ}>{t("care")}</FooterLink>
             </ul>
           </div>
         </div>
@@ -111,21 +113,21 @@ export function Footer(): JSX.Element {
 
           <div className="flex items-center space-x-6">
             <LocalizedLink
-              to="/"
+              to={CONSTANTS.ROUTES.HOME}
               className="text-primary-foreground/50 transition-colors hover:text-primary-foreground"
               aria-label={t("instagram")}
             >
               <InstagramIcon title={t("instagram")} className="h-5 w-5" />
             </LocalizedLink>
             <LocalizedLink
-              to="/"
+              to={CONSTANTS.ROUTES.HOME}
               className="text-primary-foreground/50 transition-colors hover:text-primary-foreground"
               aria-label={t("twitter")}
             >
               <TwitterIcon title={t("twitter")} className="h-5 w-5" />
             </LocalizedLink>
             <LocalizedLink
-              to="/"
+              to={CONSTANTS.ROUTES.HOME}
               className="text-primary-foreground/50 transition-colors hover:text-primary-foreground"
               aria-label={t("facebook")}
             >

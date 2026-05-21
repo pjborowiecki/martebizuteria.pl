@@ -2,6 +2,8 @@ import { useMemo, type JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
 
 import { Image } from "~/src/components/custom/image";
@@ -24,7 +26,7 @@ function CategoryCard({ category, aspectRatioClass, sizes }: Readonly<CategoryCa
   const params = useMemo(() => ({ handle: category.slug }), [category.slug]);
 
   return (
-    <LocalizedLink className="group block" params={params} to="/categories/$handle">
+    <LocalizedLink className="group block" params={params} to={CONSTANTS.ROUTES.CATEGORY}>
       <AspectRatio className={`overflow-hidden bg-neutral-100 ${aspectRatioClass}`} ratio={ASPECT_RATIO_PORTRAIT}>
         <Image
           alt={t(category.nameKey)}
@@ -57,7 +59,7 @@ export function ShopCategoriesSection(): JSX.Element {
           <p className="max-w-xl text-sm/relaxed text-muted-foreground">{t("description")}</p>
         </div>
         <LocalizedLink
-          to="/categories"
+          to={CONSTANTS.ROUTES.CATEGORIES}
           className="inline-flex h-12 shrink-0 items-center justify-center border border-foreground/20 px-8 text-[11px] tracking-[0.2em] uppercase transition-colors hover:border-foreground/50 sm:self-end"
         >
           {t("cta")}

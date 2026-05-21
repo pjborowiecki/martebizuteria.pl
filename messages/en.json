@@ -147,6 +147,26 @@
         "removeFromWishlist": "Remove from Wishlist",
         "share": "Share",
         "quickView": "Quick View"
+      },
+      "authLayout": {
+        "imageAlt": "Editorial jewelry composition on textured stone",
+        "imageQuote": "Elegance is not about being noticed, it's about being remembered.",
+        "imageAttribution": "M'ARTE Atelier — Warsaw"
+      },
+      "authHeader": {
+        "brand": "M'ARTE"
+      },
+      "authForm": {
+        "firstName": "First name",
+        "lastName": "Last name",
+        "email": "Email address",
+        "password": "Password"
+      },
+      "authDivider": {
+        "or": "or"
+      },
+      "socialProviders": {
+        "google": "Continue with Google"
       }
     }
   },
@@ -606,6 +626,32 @@
     "metaTitle": "{title} | M'Arte",
     "noProductsFound": "No products found in this category.",
     "notFound": "Category not found"
+  },
+  "auth": {
+    "signInPage": {
+      "meta": {
+        "title": "Sign In | M'Arte",
+        "description": "Sign in to your M'Arte account to track orders, manage your wishlist, and enjoy a personalised experience."
+      },
+      "title": "Welcome back",
+      "subtitle": "Sign in to your account to continue your journey.",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign in",
+      "noAccount": "Don't have an account?",
+      "createAccount": "Create one"
+    },
+    "signUpPage": {
+      "meta": {
+        "title": "Create an Account | M'Arte",
+        "description": "Join M'ARTE to discover handcrafted jewelry and exclusive collections."
+      },
+      "title": "Create an account",
+      "subtitle": "Join M'ARTE to discover handcrafted jewelry and exclusive collections.",
+      "terms": "I agree to the Terms of Service and Privacy Policy. I understand that my data will be processed in accordance with the Privacy Policy.",
+      "submit": "Create account",
+      "hasAccount": "Already have an account?",
+      "signInInstead": "Sign in"
+    }
   },
   "emails": {
     "test": {
