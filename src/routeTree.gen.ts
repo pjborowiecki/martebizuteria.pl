@@ -14,6 +14,7 @@ import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$local
 import { Route as Char123LocaleChar125FaqRouteImport } from './routes/{-$locale}.faq'
 import { Route as Char123LocaleChar125ExchangesAndReturnsRouteImport } from './routes/{-$locale}.exchanges-and-returns'
 import { Route as Char123LocaleChar125CartRouteImport } from './routes/{-$locale}.cart'
+import { Route as Char123LocaleChar125AuthRouteImport } from './routes/{-$locale}.auth'
 import { Route as Char123LocaleChar125AccountRouteImport } from './routes/{-$locale}.account'
 import { Route as Char123LocaleChar125AboutRouteImport } from './routes/{-$locale}.about'
 import { Route as Char123LocaleChar125ProductsIndexRouteImport } from './routes/{-$locale}.products.index'
@@ -22,6 +23,8 @@ import { Route as Char123LocaleChar125CategoriesIndexRouteImport } from './route
 import { Route as Char123LocaleChar125ProductsHandleRouteImport } from './routes/{-$locale}.products.$handle'
 import { Route as Char123LocaleChar125CollectionsHandleRouteImport } from './routes/{-$locale}.collections.$handle'
 import { Route as Char123LocaleChar125CategoriesHandleRouteImport } from './routes/{-$locale}.categories.$handle'
+import { Route as Char123LocaleChar125AuthSignUpRouteImport } from './routes/{-$locale}.auth.sign-up'
+import { Route as Char123LocaleChar125AuthSignInRouteImport } from './routes/{-$locale}.auth.sign-in'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 
 const Char123LocaleChar125Route = Char123LocaleChar125RouteImport.update({
@@ -50,6 +53,12 @@ const Char123LocaleChar125CartRoute =
   Char123LocaleChar125CartRouteImport.update({
     id: '/cart',
     path: '/cart',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125AuthRoute =
+  Char123LocaleChar125AuthRouteImport.update({
+    id: '/auth',
+    path: '/auth',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
 const Char123LocaleChar125AccountRoute =
@@ -100,6 +109,18 @@ const Char123LocaleChar125CategoriesHandleRoute =
     path: '/categories/$handle',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
+const Char123LocaleChar125AuthSignUpRoute =
+  Char123LocaleChar125AuthSignUpRouteImport.update({
+    id: '/sign-up',
+    path: '/sign-up',
+    getParentRoute: () => Char123LocaleChar125AuthRoute,
+  } as any)
+const Char123LocaleChar125AuthSignInRoute =
+  Char123LocaleChar125AuthSignInRouteImport.update({
+    id: '/sign-in',
+    path: '/sign-in',
+    getParentRoute: () => Char123LocaleChar125AuthRoute,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -110,11 +131,14 @@ export interface FileRoutesByFullPath {
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
   '/{-$locale}/account': typeof Char123LocaleChar125AccountRoute
+  '/{-$locale}/auth': typeof Char123LocaleChar125AuthRouteWithChildren
   '/{-$locale}/cart': typeof Char123LocaleChar125CartRoute
   '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125ExchangesAndReturnsRoute
   '/{-$locale}/faq': typeof Char123LocaleChar125FaqRoute
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/{-$locale}/auth/sign-in': typeof Char123LocaleChar125AuthSignInRoute
+  '/{-$locale}/auth/sign-up': typeof Char123LocaleChar125AuthSignUpRoute
   '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
   '/{-$locale}/collections/$handle': typeof Char123LocaleChar125CollectionsHandleRoute
   '/{-$locale}/products/$handle': typeof Char123LocaleChar125ProductsHandleRoute
@@ -125,11 +149,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
   '/{-$locale}/account': typeof Char123LocaleChar125AccountRoute
+  '/{-$locale}/auth': typeof Char123LocaleChar125AuthRouteWithChildren
   '/{-$locale}/cart': typeof Char123LocaleChar125CartRoute
   '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125ExchangesAndReturnsRoute
   '/{-$locale}/faq': typeof Char123LocaleChar125FaqRoute
   '/{-$locale}': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/{-$locale}/auth/sign-in': typeof Char123LocaleChar125AuthSignInRoute
+  '/{-$locale}/auth/sign-up': typeof Char123LocaleChar125AuthSignUpRoute
   '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
   '/{-$locale}/collections/$handle': typeof Char123LocaleChar125CollectionsHandleRoute
   '/{-$locale}/products/$handle': typeof Char123LocaleChar125ProductsHandleRoute
@@ -142,11 +169,14 @@ export interface FileRoutesById {
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
   '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
   '/{-$locale}/account': typeof Char123LocaleChar125AccountRoute
+  '/{-$locale}/auth': typeof Char123LocaleChar125AuthRouteWithChildren
   '/{-$locale}/cart': typeof Char123LocaleChar125CartRoute
   '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125ExchangesAndReturnsRoute
   '/{-$locale}/faq': typeof Char123LocaleChar125FaqRoute
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/{-$locale}/auth/sign-in': typeof Char123LocaleChar125AuthSignInRoute
+  '/{-$locale}/auth/sign-up': typeof Char123LocaleChar125AuthSignUpRoute
   '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
   '/{-$locale}/collections/$handle': typeof Char123LocaleChar125CollectionsHandleRoute
   '/{-$locale}/products/$handle': typeof Char123LocaleChar125ProductsHandleRoute
@@ -160,11 +190,14 @@ export interface FileRouteTypes {
     | '/{-$locale}'
     | '/{-$locale}/about'
     | '/{-$locale}/account'
+    | '/{-$locale}/auth'
     | '/{-$locale}/cart'
     | '/{-$locale}/exchanges-and-returns'
     | '/{-$locale}/faq'
     | '/{-$locale}/'
     | '/api/auth/$'
+    | '/{-$locale}/auth/sign-in'
+    | '/{-$locale}/auth/sign-up'
     | '/{-$locale}/categories/$handle'
     | '/{-$locale}/collections/$handle'
     | '/{-$locale}/products/$handle'
@@ -175,11 +208,14 @@ export interface FileRouteTypes {
   to:
     | '/{-$locale}/about'
     | '/{-$locale}/account'
+    | '/{-$locale}/auth'
     | '/{-$locale}/cart'
     | '/{-$locale}/exchanges-and-returns'
     | '/{-$locale}/faq'
     | '/{-$locale}'
     | '/api/auth/$'
+    | '/{-$locale}/auth/sign-in'
+    | '/{-$locale}/auth/sign-up'
     | '/{-$locale}/categories/$handle'
     | '/{-$locale}/collections/$handle'
     | '/{-$locale}/products/$handle'
@@ -191,11 +227,14 @@ export interface FileRouteTypes {
     | '/{-$locale}'
     | '/{-$locale}/about'
     | '/{-$locale}/account'
+    | '/{-$locale}/auth'
     | '/{-$locale}/cart'
     | '/{-$locale}/exchanges-and-returns'
     | '/{-$locale}/faq'
     | '/{-$locale}/'
     | '/api/auth/$'
+    | '/{-$locale}/auth/sign-in'
+    | '/{-$locale}/auth/sign-up'
     | '/{-$locale}/categories/$handle'
     | '/{-$locale}/collections/$handle'
     | '/{-$locale}/products/$handle'
@@ -244,6 +283,13 @@ declare module '@tanstack/react-router' {
       path: '/cart'
       fullPath: '/{-$locale}/cart'
       preLoaderRoute: typeof Char123LocaleChar125CartRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/auth': {
+      id: '/{-$locale}/auth'
+      path: '/auth'
+      fullPath: '/{-$locale}/auth'
+      preLoaderRoute: typeof Char123LocaleChar125AuthRouteImport
       parentRoute: typeof Char123LocaleChar125Route
     }
     '/{-$locale}/account': {
@@ -302,6 +348,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125CategoriesHandleRouteImport
       parentRoute: typeof Char123LocaleChar125Route
     }
+    '/{-$locale}/auth/sign-up': {
+      id: '/{-$locale}/auth/sign-up'
+      path: '/sign-up'
+      fullPath: '/{-$locale}/auth/sign-up'
+      preLoaderRoute: typeof Char123LocaleChar125AuthSignUpRouteImport
+      parentRoute: typeof Char123LocaleChar125AuthRoute
+    }
+    '/{-$locale}/auth/sign-in': {
+      id: '/{-$locale}/auth/sign-in'
+      path: '/sign-in'
+      fullPath: '/{-$locale}/auth/sign-in'
+      preLoaderRoute: typeof Char123LocaleChar125AuthSignInRouteImport
+      parentRoute: typeof Char123LocaleChar125AuthRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -312,9 +372,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface Char123LocaleChar125AuthRouteChildren {
+  Char123LocaleChar125AuthSignInRoute: typeof Char123LocaleChar125AuthSignInRoute
+  Char123LocaleChar125AuthSignUpRoute: typeof Char123LocaleChar125AuthSignUpRoute
+}
+
+const Char123LocaleChar125AuthRouteChildren: Char123LocaleChar125AuthRouteChildren =
+  {
+    Char123LocaleChar125AuthSignInRoute: Char123LocaleChar125AuthSignInRoute,
+    Char123LocaleChar125AuthSignUpRoute: Char123LocaleChar125AuthSignUpRoute,
+  }
+
+const Char123LocaleChar125AuthRouteWithChildren =
+  Char123LocaleChar125AuthRoute._addFileChildren(
+    Char123LocaleChar125AuthRouteChildren,
+  )
+
 interface Char123LocaleChar125RouteChildren {
   Char123LocaleChar125AboutRoute: typeof Char123LocaleChar125AboutRoute
   Char123LocaleChar125AccountRoute: typeof Char123LocaleChar125AccountRoute
+  Char123LocaleChar125AuthRoute: typeof Char123LocaleChar125AuthRouteWithChildren
   Char123LocaleChar125CartRoute: typeof Char123LocaleChar125CartRoute
   Char123LocaleChar125ExchangesAndReturnsRoute: typeof Char123LocaleChar125ExchangesAndReturnsRoute
   Char123LocaleChar125FaqRoute: typeof Char123LocaleChar125FaqRoute
@@ -330,6 +407,7 @@ interface Char123LocaleChar125RouteChildren {
 const Char123LocaleChar125RouteChildren: Char123LocaleChar125RouteChildren = {
   Char123LocaleChar125AboutRoute: Char123LocaleChar125AboutRoute,
   Char123LocaleChar125AccountRoute: Char123LocaleChar125AccountRoute,
+  Char123LocaleChar125AuthRoute: Char123LocaleChar125AuthRouteWithChildren,
   Char123LocaleChar125CartRoute: Char123LocaleChar125CartRoute,
   Char123LocaleChar125ExchangesAndReturnsRoute:
     Char123LocaleChar125ExchangesAndReturnsRoute,

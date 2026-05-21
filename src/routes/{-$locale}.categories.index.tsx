@@ -55,7 +55,7 @@ function CategoryCard({
 
   return (
     <LocalizedLink
-      to="/categories/$handle"
+      to={CONSTANTS.ROUTES.CATEGORY}
       params={params}
       className="group block rounded-xl border bg-card p-6 text-card-foreground transition-all hover:shadow-md"
     >

@@ -2,6 +2,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { getAssetURL } from "~/src/lib/utils";
 
 import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
@@ -28,13 +30,13 @@ export function SilverPremiumSection(): JSX.Element {
 
           <div className="flex items-center gap-4">
             <LocalizedLink
-              to="/collections"
+              to={CONSTANTS.ROUTES.COLLECTIONS}
               className="inline-flex h-12 items-center justify-center bg-primary-foreground px-8 text-[11px] tracking-[0.2em] text-primary uppercase transition-colors hover:bg-primary-foreground/90"
             >
               {t("ctaPrimary")}
             </LocalizedLink>
             <LocalizedLink
-              to="/categories"
+              to={CONSTANTS.ROUTES.CATEGORIES}
               className="inline-flex h-12 items-center justify-center border border-primary-foreground/25 px-8 text-[11px] tracking-[0.2em] text-primary-foreground uppercase transition-colors hover:border-primary-foreground/60 hover:bg-primary-foreground/5"
             >
               {t("ctaSecondary")}

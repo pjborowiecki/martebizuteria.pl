@@ -1,9 +1,9 @@
-"use client";
-
 import { type JSX, type ReactNode, useCallback, useMemo, useRef } from "react";
 
 import { ArrowRight, Search, X } from "lucide-react";
 import { useTranslations } from "use-intl";
+
+import { CONSTANTS } from "~/src/constants";
 
 import { cn } from "~/src/lib/utils";
 
@@ -16,7 +16,7 @@ import { useNavigation } from "~/src/components/custom/pages/landing-page/naviga
 import { TRENDING_KEYS, type SearchResult, useSearchOverlayLogic } from "~/src/hooks/use-search-overlay-logic";
 
 const rowClassName =
-  "group flex items-center gap-4 border-b border-border/40 py-3.5 transition-colors last:border-b-0 hover:bg-secondary/30 lg:gap-5 lg:py-4";
+  "group flex items-center gap-4 border-b border-border/40 py-3.5 transition-colors last:borde r-b-0 hover:bg-secondary/30 lg:gap-5 lg:py-4";
 
 function TrendingTag({ tagKey, onClick }: Readonly<{ tagKey: string; onClick: (key: string) => void }>) {
   const t = useTranslations("components.custom.navigation");
@@ -98,7 +98,7 @@ function SearchResultLinkTarget({
 
   if (productMatch) {
     return (
-      <LocalizedLink className={rowClassName} params={paramsProduct} to="/products/$handle" onClick={onPathClick}>
+      <LocalizedLink className={rowClassName} params={paramsProduct} to={CONSTANTS.ROUTES.PRODUCT} onClick={onPathClick}>
         {children}
       </LocalizedLink>
     );
@@ -106,7 +106,7 @@ function SearchResultLinkTarget({
 
   if (categoryMatch) {
     return (
-      <LocalizedLink className={rowClassName} params={paramsCategory} to="/categories/$handle" onClick={onPathClick}>
+      <LocalizedLink className={rowClassName} params={paramsCategory} to={CONSTANTS.ROUTES.CATEGORY} onClick={onPathClick}>
         {children}
       </LocalizedLink>
     );
@@ -114,14 +114,14 @@ function SearchResultLinkTarget({
 
   if (collectionMatch) {
     return (
-      <LocalizedLink className={rowClassName} params={paramsCollection} to="/collections/$handle" onClick={onPathClick}>
+      <LocalizedLink className={rowClassName} params={paramsCollection} to={CONSTANTS.ROUTES.COLLECTION} onClick={onPathClick}>
         {children}
       </LocalizedLink>
     );
   }
 
   return (
-    <LocalizedLink className={rowClassName} to="/products" onClick={onPathClick}>
+    <LocalizedLink className={rowClassName} to={CONSTANTS.ROUTES.PRODUCTS} onClick={onPathClick}>
       {children}
     </LocalizedLink>
   );
@@ -205,7 +205,7 @@ function ViewAllLink({ onClick }: Readonly<{ onClick: () => void }>): JSX.Elemen
   return (
     <div className="pt-2 text-center">
       <LocalizedLink
-        to="/products"
+        to={CONSTANTS.ROUTES.PRODUCTS}
         onClick={onClick}
         className="inline-flex items-center gap-2 text-[11px] tracking-[0.2em] text-muted-foreground uppercase transition-colors hover:text-foreground"
       >

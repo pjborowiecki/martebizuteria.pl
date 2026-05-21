@@ -1,9 +1,21 @@
 export const ROUTES = {
+  ABOUT: "/about",
+  ACCOUNT: "/account",
   ADMIN: "/admin",
   AUTH_EMAIL_VERIFICATION: "/auth/email-verification",
   AUTH_FORGOT_PASSWORD: "/auth/forgot-password",
   AUTH_RESET_PASSWORD: "/auth/reset-password",
   AUTH_SIGN_IN: "/auth/sign-in",
   AUTH_SIGN_UP: "/auth/sign-up",
-  HOME: "/"
+  CART: "/cart",
+  CATEGORIES: "/categories",
+  CATEGORY: "/categories/$handle",
+  CHECKOUT: "/checkout",
+  COLLECTION: "/collections/$handle",
+  COLLECTIONS: "/collections",
+  EXCHANGES_AND_RETURNS: "/exchanges-and-returns",
+  FAQ: "/faq",
+  HOME: "/",
+  PRODUCT: "/products/$handle",
+  PRODUCTS: "/products"
 } as const;

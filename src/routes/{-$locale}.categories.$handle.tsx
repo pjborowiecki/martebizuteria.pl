@@ -80,7 +80,11 @@ function ProductCard({
   const params = useMemo(() => ({ handle: product.handle }), [product.handle]);
 
   return (
-    <LocalizedLink to="/products/$handle" params={params} className="group block rounded-lg border p-4 transition-shadow hover:shadow-lg">
+    <LocalizedLink
+      to={CONSTANTS.ROUTES.PRODUCT}
+      params={params}
+      className="group block rounded-lg border p-4 transition-shadow hover:shadow-lg"
+    >
       <div className="mb-4 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-muted">
         <ProductImage thumbnail={product.thumbnail} title={product.title} />
       </div>

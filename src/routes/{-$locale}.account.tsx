@@ -55,7 +55,7 @@ function AccountPage(): JSX.Element {
         <p>{t("description")}</p>
       </div>
 
-      <LocalizedLink className="text-primary underline-offset-4 hover:underline" to="/">
+      <LocalizedLink className="text-primary underline-offset-4 hover:underline" to={CONSTANTS.ROUTES.HOME}>
         {t("goHome")}
       </LocalizedLink>
     </main>

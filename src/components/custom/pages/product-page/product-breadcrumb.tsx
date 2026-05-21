@@ -2,6 +2,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,8 +15,8 @@ import {
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
-const HOME_LINK = <LocalizedLink to="/" />;
-const PRODUCTS_LINK = <LocalizedLink to="/products" />;
+const HOME_LINK = <LocalizedLink to={CONSTANTS.ROUTES.HOME} />;
+const PRODUCTS_LINK = <LocalizedLink to={CONSTANTS.ROUTES.PRODUCTS} />;
 
 export interface ProductBreadcrumbProps {
   readonly productTitle: string;

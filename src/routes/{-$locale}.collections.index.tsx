@@ -51,7 +51,7 @@ function CollectionCard({ collection }: Readonly<{ collection: Pick<Collection["
 
   return (
     <LocalizedLink
-      to="/collections/$handle"
+      to={CONSTANTS.ROUTES.COLLECTION}
       params={params}
       className="group block rounded-xl border bg-card p-6 text-card-foreground transition-all hover:shadow-md"
     >

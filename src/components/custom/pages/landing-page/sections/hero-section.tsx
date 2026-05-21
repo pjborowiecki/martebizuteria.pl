@@ -2,6 +2,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
 import { Badge } from "~/src/components/shadcn/badge";
 import { Separator } from "~/src/components/shadcn/separator";
@@ -43,13 +45,13 @@ export function HeroSection(): JSX.Element {
 
             <div className="reveal flex flex-wrap items-center gap-4">
               <LocalizedLink
-                to="/products"
+                to={CONSTANTS.ROUTES.PRODUCTS}
                 className="inline-flex h-13 items-center justify-center rounded-none bg-primary px-10 text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 {t("ctaPrimary")}
               </LocalizedLink>
               <LocalizedLink
-                to="/collections"
+                to={CONSTANTS.ROUTES.COLLECTIONS}
                 className="inline-flex h-13 items-center justify-center border border-foreground/20 px-8 text-[11px] tracking-[0.2em] uppercase transition-colors hover:border-foreground/50"
               >
                 {t("ctaSecondary")}

@@ -3,6 +3,8 @@ import { type JSX, useCallback, useMemo } from "react";
 import { Minus, Plus, X } from "lucide-react";
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { Button } from "~/src/components/shadcn/button";
 
 import { Image } from "~/src/components/custom/image";
@@ -36,7 +38,11 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
 
   return (
     <div className="grid grid-cols-[100px_1fr] gap-5 py-6 sm:grid-cols-[120px_1fr] sm:gap-6 lg:grid-cols-[140px_1fr] lg:py-8">
-      <LocalizedLink className="group relative aspect-4/5 overflow-hidden bg-secondary" params={productParams} to="/products/$handle">
+      <LocalizedLink
+        className="group relative aspect-4/5 overflow-hidden bg-secondary"
+        params={productParams}
+        to={CONSTANTS.ROUTES.PRODUCT}
+      >
         <Image
           alt={item.title ?? t(item.nameKey ?? "items.item1.name")}
           className="size-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
@@ -53,7 +59,7 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
             <LocalizedLink
               className="font-serif text-base tracking-tight transition-colors hover:text-muted-foreground sm:text-lg"
               params={productParams}
-              to="/products/$handle"
+              to={CONSTANTS.ROUTES.PRODUCT}
             >
               {item.title ?? t(item.nameKey ?? "items.item1.name")}
             </LocalizedLink>

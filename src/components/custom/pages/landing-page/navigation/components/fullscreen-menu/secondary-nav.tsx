@@ -4,6 +4,8 @@ import { type JSX, useCallback } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { cn } from "~/src/lib/utils";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
@@ -49,10 +51,10 @@ export function SecondaryNav(): JSX.Element {
         >
           {t("menu.links.contact")}
         </button>
-        <LocalizedLink to="/exchanges-and-returns" onClick={handleClose} className={linkStyles}>
+        <LocalizedLink to={CONSTANTS.ROUTES.EXCHANGES_AND_RETURNS} onClick={handleClose} className={linkStyles}>
           {t("menu.links.shipping")}
         </LocalizedLink>
-        <LocalizedLink to="/faq" onClick={handleClose} className={linkStyles}>
+        <LocalizedLink to={CONSTANTS.ROUTES.FAQ} onClick={handleClose} className={linkStyles}>
           {t("menu.links.faq")}
         </LocalizedLink>
       </div>

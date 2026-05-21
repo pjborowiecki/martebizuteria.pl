@@ -2,6 +2,8 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { getAssetURL } from "~/src/lib/utils";
 
 import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
@@ -23,7 +25,7 @@ export function MaisonHeritageSection(): JSX.Element {
           <p className="max-w-xl text-sm/relaxed text-muted-foreground">{t("description")}</p>
           <LocalizedLink
             className="inline-flex h-13 items-center justify-center rounded-none bg-primary px-10 text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
-            to="/collections"
+            to={CONSTANTS.ROUTES.COLLECTIONS}
           >
             {t("cta")}
           </LocalizedLink>
