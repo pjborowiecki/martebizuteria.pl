@@ -1,5 +1,4 @@
 export * from "./_utils/ui";
-export * from "./_utils/email";
 export * from "./_utils/image";
 export * from "./_utils/images";
 export * from "./_utils/locale";

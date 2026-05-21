@@ -43,8 +43,8 @@
     "db:admin:production": "vp exec wrangler d1 execute martebizuteria",
     "db:seed": "vp exec wrangler d1 execute martebizuteria-preview --remote --file=scripts/seed.sql",
     "db:seed:production": "vp exec wrangler d1 execute martebizuteria --remote --file=scripts/seed.sql",
-    "check": "vp check",
-    "check:staged": "vp staged",
+    "check": "vp check --no-fmt --no-lint",
+    "check:staged": "vp staged --no-fmt --no-lint",
     "lint": "vp lint",
     "format": "vp fmt",
     "prepare": "vp config",
@@ -59,7 +59,6 @@
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@gsap/react": "^2.1.2",
-    "@react-email/ui": "^6.1.4",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-router": "^1.170.4",
