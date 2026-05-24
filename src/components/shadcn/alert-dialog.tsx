@@ -1,4 +1,4 @@
-"use client";
+"";
 
 import { type ComponentProps, type JSX, useMemo } from "react";
 

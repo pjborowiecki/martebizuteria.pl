@@ -1,5 +1,3 @@
-"use client";
-
 import { type MouseEvent, type RefObject, useCallback, useRef, useState } from "react";
 
 import { useShallow } from "zustand/react/shallow";

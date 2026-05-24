@@ -19,9 +19,6 @@ import { buildLocalizedUrl, extractLocaleFromPath, getBaseURL } from "~/src/lib/
 
 import { Toaster } from "~/src/components/shadcn/sonner";
 
-import { CustomCursor } from "~/src/components/custom/custom-cursor";
-
-// eslint-disable-next-line import/no-unassigned-import
 import "~/src/styles/globals.css";
 
 interface RouterContext {
@@ -115,10 +112,7 @@ function RootDocument({ children, locale }: Readonly<{ children: ReactNode; loca
       <head>
         <HeadContent />
       </head>
-      <body>
-        <CustomCursor />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

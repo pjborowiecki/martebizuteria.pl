@@ -1,5 +1,3 @@
-"use client";
-
 import { type ChangeEvent, type KeyboardEvent, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslations } from "use-intl";

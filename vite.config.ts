@@ -147,6 +147,7 @@ export default defineConfig({
       "import/max-dependencies": "off",
       "import/no-named-export": "off",
       "import/no-namespace": "off",
+      "import/no-unassigned-import": "off",
       "import/prefer-default-export": "off",
       "max-lines": ["error", { max: 800 }],
       "max-lines-per-function": ["error", { max: 150 }],

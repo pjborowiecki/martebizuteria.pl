@@ -1,4 +1,4 @@
-import type { CSSProperties, JSX, MouseEventHandler, ReactNode } from "react";
+import { type CSSProperties, forwardRef, type MouseEventHandler, type ReactNode } from "react";
 
 import { Link } from "@tanstack/react-router";
 
@@ -48,61 +48,65 @@ interface InternalLinkProps {
   readonly props: LocalizedLinkProps;
 }
 
-function LinkWithParams({ localizedTo, props }: Readonly<InternalLinkProps>): JSX.Element {
-  return (
-    <Link
-      to={localizedTo}
-      params={props.params}
-      className={props.className}
-      style={props.style}
-      id={props.id}
-      target={props.target}
-      rel={props.rel}
-      onClick={props.onClick}
-      onMouseEnter={props.onMouseEnter}
-      onMouseLeave={props.onMouseLeave}
-      activeProps={props.activeProps}
-      inactiveProps={props.inactiveProps}
-      aria-label={props["aria-label"]}
-      aria-current={props["aria-current"]}
-      aria-describedby={props["aria-describedby"]}
-      aria-hidden={props["aria-hidden"]}
-    >
-      {props.children}
-    </Link>
-  );
-}
+const LinkWithParams = forwardRef<HTMLAnchorElement, InternalLinkProps>(({ localizedTo, props }, ref) => (
+  <Link
+    ref={ref}
+    to={localizedTo}
+    params={props.params}
+    className={props.className}
+    style={props.style}
+    id={props.id}
+    target={props.target}
+    rel={props.rel}
+    onClick={props.onClick}
+    onMouseEnter={props.onMouseEnter}
+    onMouseLeave={props.onMouseLeave}
+    activeProps={props.activeProps}
+    inactiveProps={props.inactiveProps}
+    aria-label={props["aria-label"]}
+    aria-current={props["aria-current"]}
+    aria-describedby={props["aria-describedby"]}
+    aria-hidden={props["aria-hidden"]}
+  >
+    {props.children}
+  </Link>
+));
 
-function LinkWithoutParams({ localizedTo, props }: Readonly<InternalLinkProps>): JSX.Element {
-  return (
-    <Link
-      to={localizedTo}
-      className={props.className}
-      style={props.style}
-      id={props.id}
-      target={props.target}
-      rel={props.rel}
-      onClick={props.onClick}
-      onMouseEnter={props.onMouseEnter}
-      onMouseLeave={props.onMouseLeave}
-      activeProps={props.activeProps}
-      inactiveProps={props.inactiveProps}
-      aria-label={props["aria-label"]}
-      aria-current={props["aria-current"]}
-      aria-describedby={props["aria-describedby"]}
-      aria-hidden={props["aria-hidden"]}
-    >
-      {props.children}
-    </Link>
-  );
-}
+LinkWithParams.displayName = "LinkWithParams";
 
-export function LocalizedLink(props: Readonly<LocalizedLinkProps>): JSX.Element {
+const LinkWithoutParams = forwardRef<HTMLAnchorElement, InternalLinkProps>(({ localizedTo, props }, ref) => (
+  <Link
+    ref={ref}
+    to={localizedTo}
+    className={props.className}
+    style={props.style}
+    id={props.id}
+    target={props.target}
+    rel={props.rel}
+    onClick={props.onClick}
+    onMouseEnter={props.onMouseEnter}
+    onMouseLeave={props.onMouseLeave}
+    activeProps={props.activeProps}
+    inactiveProps={props.inactiveProps}
+    aria-label={props["aria-label"]}
+    aria-current={props["aria-current"]}
+    aria-describedby={props["aria-describedby"]}
+    aria-hidden={props["aria-hidden"]}
+  >
+    {props.children}
+  </Link>
+));
+
+LinkWithoutParams.displayName = "LinkWithoutParams";
+
+export const LocalizedLink = forwardRef<HTMLAnchorElement, LocalizedLinkProps>((props, ref) => {
   const localizedTo = buildLocalizedPath(props.to);
 
   if (props.params !== undefined) {
-    return <LinkWithParams localizedTo={localizedTo} props={props} />;
+    return <LinkWithParams localizedTo={localizedTo} props={props} ref={ref} />;
   }
 
-  return <LinkWithoutParams localizedTo={localizedTo} props={props} />;
-}
+  return <LinkWithoutParams localizedTo={localizedTo} props={props} ref={ref} />;
+});
+
+LocalizedLink.displayName = "LocalizedLink";

@@ -1,4 +1,4 @@
-"use client";
+"";
 
 import {
   type ComponentProps,
@@ -196,7 +196,12 @@ function ChartTooltipItem({
       ) : (
         <itemConfig.icon />
       )}
-      <div className={cn("flex flex-1 justify-between leading-none", { "items-center": !nestLabel, "items-end": nestLabel })}>
+      <div
+        className={cn("flex flex-1 justify-between leading-none", {
+          "items-center": !nestLabel,
+          "items-end": nestLabel
+        })}
+      >
         <div className="grid gap-1.5">
           {nestLabel ? tooltipLabel : undefined}
           <span className="text-muted-foreground">{itemConfig?.label ?? item.name}</span>

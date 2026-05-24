@@ -10,104 +10,76 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char123LocaleChar125RouteImport } from './routes/{-$locale}'
-import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$locale}.index'
-import { Route as Char123LocaleChar125FaqRouteImport } from './routes/{-$locale}.faq'
-import { Route as Char123LocaleChar125ExchangesAndReturnsRouteImport } from './routes/{-$locale}.exchanges-and-returns'
-import { Route as Char123LocaleChar125CartRouteImport } from './routes/{-$locale}.cart'
 import { Route as Char123LocaleChar125AuthRouteImport } from './routes/{-$locale}.auth'
-import { Route as Char123LocaleChar125AccountRouteImport } from './routes/{-$locale}.account'
-import { Route as Char123LocaleChar125AboutRouteImport } from './routes/{-$locale}.about'
-import { Route as Char123LocaleChar125ProductsIndexRouteImport } from './routes/{-$locale}.products.index'
-import { Route as Char123LocaleChar125CollectionsIndexRouteImport } from './routes/{-$locale}.collections.index'
-import { Route as Char123LocaleChar125CategoriesIndexRouteImport } from './routes/{-$locale}.categories.index'
-import { Route as Char123LocaleChar125ProductsHandleRouteImport } from './routes/{-$locale}.products.$handle'
-import { Route as Char123LocaleChar125CollectionsHandleRouteImport } from './routes/{-$locale}.collections.$handle'
-import { Route as Char123LocaleChar125CategoriesHandleRouteImport } from './routes/{-$locale}.categories.$handle'
+import { Route as Char123LocaleChar125AdminRouteImport } from './routes/{-$locale}.admin'
+import { Route as Char123LocaleChar125StorefrontRouteImport } from './routes/{-$locale}._storefront'
+import { Route as Char123LocaleChar125AdminIndexRouteImport } from './routes/{-$locale}.admin.index'
+import { Route as Char123LocaleChar125StorefrontIndexRouteImport } from './routes/{-$locale}._storefront.index'
 import { Route as Char123LocaleChar125AuthSignUpRouteImport } from './routes/{-$locale}.auth.sign-up'
 import { Route as Char123LocaleChar125AuthSignInRouteImport } from './routes/{-$locale}.auth.sign-in'
+import { Route as Char123LocaleChar125AdminSettingsRouteImport } from './routes/{-$locale}.admin.settings'
+import { Route as Char123LocaleChar125AdminMarketingRouteImport } from './routes/{-$locale}.admin.marketing'
+import { Route as Char123LocaleChar125AdminCouponsRouteImport } from './routes/{-$locale}.admin.coupons'
+import { Route as Char123LocaleChar125AdminContentRouteImport } from './routes/{-$locale}.admin.content'
+import { Route as Char123LocaleChar125AdminCatalogRouteImport } from './routes/{-$locale}.admin.catalog'
+import { Route as Char123LocaleChar125AdminAuditRouteImport } from './routes/{-$locale}.admin.audit'
+import { Route as Char123LocaleChar125StorefrontFaqRouteImport } from './routes/{-$locale}._storefront.faq'
+import { Route as Char123LocaleChar125StorefrontExchangesAndReturnsRouteImport } from './routes/{-$locale}._storefront.exchanges-and-returns'
+import { Route as Char123LocaleChar125StorefrontCartRouteImport } from './routes/{-$locale}._storefront.cart'
+import { Route as Char123LocaleChar125StorefrontAccountRouteImport } from './routes/{-$locale}._storefront.account'
+import { Route as Char123LocaleChar125StorefrontAboutRouteImport } from './routes/{-$locale}._storefront.about'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
+import { Route as Char123LocaleChar125AdminOrdersIndexRouteImport } from './routes/{-$locale}.admin.orders.index'
+import { Route as Char123LocaleChar125AdminCustomersIndexRouteImport } from './routes/{-$locale}.admin.customers.index'
+import { Route as Char123LocaleChar125AdminCatalogIndexRouteImport } from './routes/{-$locale}.admin.catalog.index'
+import { Route as Char123LocaleChar125StorefrontProductsIndexRouteImport } from './routes/{-$locale}._storefront.products.index'
+import { Route as Char123LocaleChar125StorefrontCollectionsIndexRouteImport } from './routes/{-$locale}._storefront.collections.index'
+import { Route as Char123LocaleChar125StorefrontCategoriesIndexRouteImport } from './routes/{-$locale}._storefront.categories.index'
+import { Route as Char123LocaleChar125AdminOrdersOrderIdRouteImport } from './routes/{-$locale}.admin.orders.$orderId'
+import { Route as Char123LocaleChar125AdminCustomersIdRouteImport } from './routes/{-$locale}.admin.customers.$id'
+import { Route as Char123LocaleChar125StorefrontProductsHandleRouteImport } from './routes/{-$locale}._storefront.products.$handle'
+import { Route as Char123LocaleChar125StorefrontCollectionsHandleRouteImport } from './routes/{-$locale}._storefront.collections.$handle'
+import { Route as Char123LocaleChar125StorefrontCategoriesHandleRouteImport } from './routes/{-$locale}._storefront.categories.$handle'
+import { Route as Char123LocaleChar125AdminCatalogProductsIndexRouteImport } from './routes/{-$locale}.admin.catalog.products.index'
+import { Route as Char123LocaleChar125AdminCatalogCollectionsIndexRouteImport } from './routes/{-$locale}.admin.catalog.collections.index'
+import { Route as Char123LocaleChar125AdminCatalogCategoriesIndexRouteImport } from './routes/{-$locale}.admin.catalog.categories.index'
+import { Route as Char123LocaleChar125AdminCatalogProductsHandleRouteImport } from './routes/{-$locale}.admin.catalog.products.$handle'
+import { Route as Char123LocaleChar125AdminCatalogCollectionsHandleRouteImport } from './routes/{-$locale}.admin.catalog.collections.$handle'
+import { Route as Char123LocaleChar125AdminCatalogCategoriesHandleRouteImport } from './routes/{-$locale}.admin.catalog.categories.$handle'
 
 const Char123LocaleChar125Route = Char123LocaleChar125RouteImport.update({
   id: '/{-$locale}',
   path: '/{-$locale}',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char123LocaleChar125IndexRoute =
-  Char123LocaleChar125IndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => Char123LocaleChar125Route,
-  } as any)
-const Char123LocaleChar125FaqRoute = Char123LocaleChar125FaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
-  getParentRoute: () => Char123LocaleChar125Route,
-} as any)
-const Char123LocaleChar125ExchangesAndReturnsRoute =
-  Char123LocaleChar125ExchangesAndReturnsRouteImport.update({
-    id: '/exchanges-and-returns',
-    path: '/exchanges-and-returns',
-    getParentRoute: () => Char123LocaleChar125Route,
-  } as any)
-const Char123LocaleChar125CartRoute =
-  Char123LocaleChar125CartRouteImport.update({
-    id: '/cart',
-    path: '/cart',
-    getParentRoute: () => Char123LocaleChar125Route,
-  } as any)
 const Char123LocaleChar125AuthRoute =
   Char123LocaleChar125AuthRouteImport.update({
     id: '/auth',
     path: '/auth',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
-const Char123LocaleChar125AccountRoute =
-  Char123LocaleChar125AccountRouteImport.update({
-    id: '/account',
-    path: '/account',
+const Char123LocaleChar125AdminRoute =
+  Char123LocaleChar125AdminRouteImport.update({
+    id: '/admin',
+    path: '/admin',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
-const Char123LocaleChar125AboutRoute =
-  Char123LocaleChar125AboutRouteImport.update({
-    id: '/about',
-    path: '/about',
+const Char123LocaleChar125StorefrontRoute =
+  Char123LocaleChar125StorefrontRouteImport.update({
+    id: '/_storefront',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
-const Char123LocaleChar125ProductsIndexRoute =
-  Char123LocaleChar125ProductsIndexRouteImport.update({
-    id: '/products/',
-    path: '/products/',
-    getParentRoute: () => Char123LocaleChar125Route,
+const Char123LocaleChar125AdminIndexRoute =
+  Char123LocaleChar125AdminIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
   } as any)
-const Char123LocaleChar125CollectionsIndexRoute =
-  Char123LocaleChar125CollectionsIndexRouteImport.update({
-    id: '/collections/',
-    path: '/collections/',
-    getParentRoute: () => Char123LocaleChar125Route,
-  } as any)
-const Char123LocaleChar125CategoriesIndexRoute =
-  Char123LocaleChar125CategoriesIndexRouteImport.update({
-    id: '/categories/',
-    path: '/categories/',
-    getParentRoute: () => Char123LocaleChar125Route,
-  } as any)
-const Char123LocaleChar125ProductsHandleRoute =
-  Char123LocaleChar125ProductsHandleRouteImport.update({
-    id: '/products/$handle',
-    path: '/products/$handle',
-    getParentRoute: () => Char123LocaleChar125Route,
-  } as any)
-const Char123LocaleChar125CollectionsHandleRoute =
-  Char123LocaleChar125CollectionsHandleRouteImport.update({
-    id: '/collections/$handle',
-    path: '/collections/$handle',
-    getParentRoute: () => Char123LocaleChar125Route,
-  } as any)
-const Char123LocaleChar125CategoriesHandleRoute =
-  Char123LocaleChar125CategoriesHandleRouteImport.update({
-    id: '/categories/$handle',
-    path: '/categories/$handle',
-    getParentRoute: () => Char123LocaleChar125Route,
+const Char123LocaleChar125StorefrontIndexRoute =
+  Char123LocaleChar125StorefrontIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
   } as any)
 const Char123LocaleChar125AuthSignUpRoute =
   Char123LocaleChar125AuthSignUpRouteImport.update({
@@ -121,126 +93,406 @@ const Char123LocaleChar125AuthSignInRoute =
     path: '/sign-in',
     getParentRoute: () => Char123LocaleChar125AuthRoute,
   } as any)
+const Char123LocaleChar125AdminSettingsRoute =
+  Char123LocaleChar125AdminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125AdminMarketingRoute =
+  Char123LocaleChar125AdminMarketingRouteImport.update({
+    id: '/marketing',
+    path: '/marketing',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125AdminCouponsRoute =
+  Char123LocaleChar125AdminCouponsRouteImport.update({
+    id: '/coupons',
+    path: '/coupons',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125AdminContentRoute =
+  Char123LocaleChar125AdminContentRouteImport.update({
+    id: '/content',
+    path: '/content',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125AdminCatalogRoute =
+  Char123LocaleChar125AdminCatalogRouteImport.update({
+    id: '/catalog',
+    path: '/catalog',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125AdminAuditRoute =
+  Char123LocaleChar125AdminAuditRouteImport.update({
+    id: '/audit',
+    path: '/audit',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125StorefrontFaqRoute =
+  Char123LocaleChar125StorefrontFaqRouteImport.update({
+    id: '/faq',
+    path: '/faq',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontExchangesAndReturnsRoute =
+  Char123LocaleChar125StorefrontExchangesAndReturnsRouteImport.update({
+    id: '/exchanges-and-returns',
+    path: '/exchanges-and-returns',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontCartRoute =
+  Char123LocaleChar125StorefrontCartRouteImport.update({
+    id: '/cart',
+    path: '/cart',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontAccountRoute =
+  Char123LocaleChar125StorefrontAccountRouteImport.update({
+    id: '/account',
+    path: '/account',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontAboutRoute =
+  Char123LocaleChar125StorefrontAboutRouteImport.update({
+    id: '/about',
+    path: '/about',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char123LocaleChar125AdminOrdersIndexRoute =
+  Char123LocaleChar125AdminOrdersIndexRouteImport.update({
+    id: '/orders/',
+    path: '/orders/',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125AdminCustomersIndexRoute =
+  Char123LocaleChar125AdminCustomersIndexRouteImport.update({
+    id: '/customers/',
+    path: '/customers/',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125AdminCatalogIndexRoute =
+  Char123LocaleChar125AdminCatalogIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+  } as any)
+const Char123LocaleChar125StorefrontProductsIndexRoute =
+  Char123LocaleChar125StorefrontProductsIndexRouteImport.update({
+    id: '/products/',
+    path: '/products/',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontCollectionsIndexRoute =
+  Char123LocaleChar125StorefrontCollectionsIndexRouteImport.update({
+    id: '/collections/',
+    path: '/collections/',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontCategoriesIndexRoute =
+  Char123LocaleChar125StorefrontCategoriesIndexRouteImport.update({
+    id: '/categories/',
+    path: '/categories/',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125AdminOrdersOrderIdRoute =
+  Char123LocaleChar125AdminOrdersOrderIdRouteImport.update({
+    id: '/orders/$orderId',
+    path: '/orders/$orderId',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125AdminCustomersIdRoute =
+  Char123LocaleChar125AdminCustomersIdRouteImport.update({
+    id: '/customers/$id',
+    path: '/customers/$id',
+    getParentRoute: () => Char123LocaleChar125AdminRoute,
+  } as any)
+const Char123LocaleChar125StorefrontProductsHandleRoute =
+  Char123LocaleChar125StorefrontProductsHandleRouteImport.update({
+    id: '/products/$handle',
+    path: '/products/$handle',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontCollectionsHandleRoute =
+  Char123LocaleChar125StorefrontCollectionsHandleRouteImport.update({
+    id: '/collections/$handle',
+    path: '/collections/$handle',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontCategoriesHandleRoute =
+  Char123LocaleChar125StorefrontCategoriesHandleRouteImport.update({
+    id: '/categories/$handle',
+    path: '/categories/$handle',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125AdminCatalogProductsIndexRoute =
+  Char123LocaleChar125AdminCatalogProductsIndexRouteImport.update({
+    id: '/products/',
+    path: '/products/',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+  } as any)
+const Char123LocaleChar125AdminCatalogCollectionsIndexRoute =
+  Char123LocaleChar125AdminCatalogCollectionsIndexRouteImport.update({
+    id: '/collections/',
+    path: '/collections/',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+  } as any)
+const Char123LocaleChar125AdminCatalogCategoriesIndexRoute =
+  Char123LocaleChar125AdminCatalogCategoriesIndexRouteImport.update({
+    id: '/categories/',
+    path: '/categories/',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+  } as any)
+const Char123LocaleChar125AdminCatalogProductsHandleRoute =
+  Char123LocaleChar125AdminCatalogProductsHandleRouteImport.update({
+    id: '/products/$handle',
+    path: '/products/$handle',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+  } as any)
+const Char123LocaleChar125AdminCatalogCollectionsHandleRoute =
+  Char123LocaleChar125AdminCatalogCollectionsHandleRouteImport.update({
+    id: '/collections/$handle',
+    path: '/collections/$handle',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+  } as any)
+const Char123LocaleChar125AdminCatalogCategoriesHandleRoute =
+  Char123LocaleChar125AdminCatalogCategoriesHandleRouteImport.update({
+    id: '/categories/$handle',
+    path: '/categories/$handle',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
-  '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
-  '/{-$locale}/account': typeof Char123LocaleChar125AccountRoute
+  '/{-$locale}/admin': typeof Char123LocaleChar125AdminRouteWithChildren
   '/{-$locale}/auth': typeof Char123LocaleChar125AuthRouteWithChildren
-  '/{-$locale}/cart': typeof Char123LocaleChar125CartRoute
-  '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125ExchangesAndReturnsRoute
-  '/{-$locale}/faq': typeof Char123LocaleChar125FaqRoute
-  '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/{-$locale}/about': typeof Char123LocaleChar125StorefrontAboutRoute
+  '/{-$locale}/account': typeof Char123LocaleChar125StorefrontAccountRoute
+  '/{-$locale}/cart': typeof Char123LocaleChar125StorefrontCartRoute
+  '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
+  '/{-$locale}/faq': typeof Char123LocaleChar125StorefrontFaqRoute
+  '/{-$locale}/admin/audit': typeof Char123LocaleChar125AdminAuditRoute
+  '/{-$locale}/admin/catalog': typeof Char123LocaleChar125AdminCatalogRouteWithChildren
+  '/{-$locale}/admin/content': typeof Char123LocaleChar125AdminContentRoute
+  '/{-$locale}/admin/coupons': typeof Char123LocaleChar125AdminCouponsRoute
+  '/{-$locale}/admin/marketing': typeof Char123LocaleChar125AdminMarketingRoute
+  '/{-$locale}/admin/settings': typeof Char123LocaleChar125AdminSettingsRoute
   '/{-$locale}/auth/sign-in': typeof Char123LocaleChar125AuthSignInRoute
   '/{-$locale}/auth/sign-up': typeof Char123LocaleChar125AuthSignUpRoute
-  '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
-  '/{-$locale}/collections/$handle': typeof Char123LocaleChar125CollectionsHandleRoute
-  '/{-$locale}/products/$handle': typeof Char123LocaleChar125ProductsHandleRoute
-  '/{-$locale}/categories/': typeof Char123LocaleChar125CategoriesIndexRoute
-  '/{-$locale}/collections/': typeof Char123LocaleChar125CollectionsIndexRoute
-  '/{-$locale}/products/': typeof Char123LocaleChar125ProductsIndexRoute
+  '/{-$locale}/': typeof Char123LocaleChar125StorefrontIndexRoute
+  '/{-$locale}/admin/': typeof Char123LocaleChar125AdminIndexRoute
+  '/{-$locale}/categories/$handle': typeof Char123LocaleChar125StorefrontCategoriesHandleRoute
+  '/{-$locale}/collections/$handle': typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
+  '/{-$locale}/products/$handle': typeof Char123LocaleChar125StorefrontProductsHandleRoute
+  '/{-$locale}/admin/customers/$id': typeof Char123LocaleChar125AdminCustomersIdRoute
+  '/{-$locale}/admin/orders/$orderId': typeof Char123LocaleChar125AdminOrdersOrderIdRoute
+  '/{-$locale}/categories/': typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
+  '/{-$locale}/collections/': typeof Char123LocaleChar125StorefrontCollectionsIndexRoute
+  '/{-$locale}/products/': typeof Char123LocaleChar125StorefrontProductsIndexRoute
+  '/{-$locale}/admin/catalog/': typeof Char123LocaleChar125AdminCatalogIndexRoute
+  '/{-$locale}/admin/customers/': typeof Char123LocaleChar125AdminCustomersIndexRoute
+  '/{-$locale}/admin/orders/': typeof Char123LocaleChar125AdminOrdersIndexRoute
+  '/{-$locale}/admin/catalog/categories/$handle': typeof Char123LocaleChar125AdminCatalogCategoriesHandleRoute
+  '/{-$locale}/admin/catalog/collections/$handle': typeof Char123LocaleChar125AdminCatalogCollectionsHandleRoute
+  '/{-$locale}/admin/catalog/products/$handle': typeof Char123LocaleChar125AdminCatalogProductsHandleRoute
+  '/{-$locale}/admin/catalog/categories/': typeof Char123LocaleChar125AdminCatalogCategoriesIndexRoute
+  '/{-$locale}/admin/catalog/collections/': typeof Char123LocaleChar125AdminCatalogCollectionsIndexRoute
+  '/{-$locale}/admin/catalog/products/': typeof Char123LocaleChar125AdminCatalogProductsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
-  '/{-$locale}/account': typeof Char123LocaleChar125AccountRoute
+  '/{-$locale}': typeof Char123LocaleChar125StorefrontIndexRoute
   '/{-$locale}/auth': typeof Char123LocaleChar125AuthRouteWithChildren
-  '/{-$locale}/cart': typeof Char123LocaleChar125CartRoute
-  '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125ExchangesAndReturnsRoute
-  '/{-$locale}/faq': typeof Char123LocaleChar125FaqRoute
-  '/{-$locale}': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/{-$locale}/about': typeof Char123LocaleChar125StorefrontAboutRoute
+  '/{-$locale}/account': typeof Char123LocaleChar125StorefrontAccountRoute
+  '/{-$locale}/cart': typeof Char123LocaleChar125StorefrontCartRoute
+  '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
+  '/{-$locale}/faq': typeof Char123LocaleChar125StorefrontFaqRoute
+  '/{-$locale}/admin/audit': typeof Char123LocaleChar125AdminAuditRoute
+  '/{-$locale}/admin/content': typeof Char123LocaleChar125AdminContentRoute
+  '/{-$locale}/admin/coupons': typeof Char123LocaleChar125AdminCouponsRoute
+  '/{-$locale}/admin/marketing': typeof Char123LocaleChar125AdminMarketingRoute
+  '/{-$locale}/admin/settings': typeof Char123LocaleChar125AdminSettingsRoute
   '/{-$locale}/auth/sign-in': typeof Char123LocaleChar125AuthSignInRoute
   '/{-$locale}/auth/sign-up': typeof Char123LocaleChar125AuthSignUpRoute
-  '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
-  '/{-$locale}/collections/$handle': typeof Char123LocaleChar125CollectionsHandleRoute
-  '/{-$locale}/products/$handle': typeof Char123LocaleChar125ProductsHandleRoute
-  '/{-$locale}/categories': typeof Char123LocaleChar125CategoriesIndexRoute
-  '/{-$locale}/collections': typeof Char123LocaleChar125CollectionsIndexRoute
-  '/{-$locale}/products': typeof Char123LocaleChar125ProductsIndexRoute
+  '/{-$locale}/admin': typeof Char123LocaleChar125AdminIndexRoute
+  '/{-$locale}/categories/$handle': typeof Char123LocaleChar125StorefrontCategoriesHandleRoute
+  '/{-$locale}/collections/$handle': typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
+  '/{-$locale}/products/$handle': typeof Char123LocaleChar125StorefrontProductsHandleRoute
+  '/{-$locale}/admin/customers/$id': typeof Char123LocaleChar125AdminCustomersIdRoute
+  '/{-$locale}/admin/orders/$orderId': typeof Char123LocaleChar125AdminOrdersOrderIdRoute
+  '/{-$locale}/categories': typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
+  '/{-$locale}/collections': typeof Char123LocaleChar125StorefrontCollectionsIndexRoute
+  '/{-$locale}/products': typeof Char123LocaleChar125StorefrontProductsIndexRoute
+  '/{-$locale}/admin/catalog': typeof Char123LocaleChar125AdminCatalogIndexRoute
+  '/{-$locale}/admin/customers': typeof Char123LocaleChar125AdminCustomersIndexRoute
+  '/{-$locale}/admin/orders': typeof Char123LocaleChar125AdminOrdersIndexRoute
+  '/{-$locale}/admin/catalog/categories/$handle': typeof Char123LocaleChar125AdminCatalogCategoriesHandleRoute
+  '/{-$locale}/admin/catalog/collections/$handle': typeof Char123LocaleChar125AdminCatalogCollectionsHandleRoute
+  '/{-$locale}/admin/catalog/products/$handle': typeof Char123LocaleChar125AdminCatalogProductsHandleRoute
+  '/{-$locale}/admin/catalog/categories': typeof Char123LocaleChar125AdminCatalogCategoriesIndexRoute
+  '/{-$locale}/admin/catalog/collections': typeof Char123LocaleChar125AdminCatalogCollectionsIndexRoute
+  '/{-$locale}/admin/catalog/products': typeof Char123LocaleChar125AdminCatalogProductsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
-  '/{-$locale}/about': typeof Char123LocaleChar125AboutRoute
-  '/{-$locale}/account': typeof Char123LocaleChar125AccountRoute
+  '/{-$locale}/_storefront': typeof Char123LocaleChar125StorefrontRouteWithChildren
+  '/{-$locale}/admin': typeof Char123LocaleChar125AdminRouteWithChildren
   '/{-$locale}/auth': typeof Char123LocaleChar125AuthRouteWithChildren
-  '/{-$locale}/cart': typeof Char123LocaleChar125CartRoute
-  '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125ExchangesAndReturnsRoute
-  '/{-$locale}/faq': typeof Char123LocaleChar125FaqRoute
-  '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/{-$locale}/_storefront/about': typeof Char123LocaleChar125StorefrontAboutRoute
+  '/{-$locale}/_storefront/account': typeof Char123LocaleChar125StorefrontAccountRoute
+  '/{-$locale}/_storefront/cart': typeof Char123LocaleChar125StorefrontCartRoute
+  '/{-$locale}/_storefront/exchanges-and-returns': typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
+  '/{-$locale}/_storefront/faq': typeof Char123LocaleChar125StorefrontFaqRoute
+  '/{-$locale}/admin/audit': typeof Char123LocaleChar125AdminAuditRoute
+  '/{-$locale}/admin/catalog': typeof Char123LocaleChar125AdminCatalogRouteWithChildren
+  '/{-$locale}/admin/content': typeof Char123LocaleChar125AdminContentRoute
+  '/{-$locale}/admin/coupons': typeof Char123LocaleChar125AdminCouponsRoute
+  '/{-$locale}/admin/marketing': typeof Char123LocaleChar125AdminMarketingRoute
+  '/{-$locale}/admin/settings': typeof Char123LocaleChar125AdminSettingsRoute
   '/{-$locale}/auth/sign-in': typeof Char123LocaleChar125AuthSignInRoute
   '/{-$locale}/auth/sign-up': typeof Char123LocaleChar125AuthSignUpRoute
-  '/{-$locale}/categories/$handle': typeof Char123LocaleChar125CategoriesHandleRoute
-  '/{-$locale}/collections/$handle': typeof Char123LocaleChar125CollectionsHandleRoute
-  '/{-$locale}/products/$handle': typeof Char123LocaleChar125ProductsHandleRoute
-  '/{-$locale}/categories/': typeof Char123LocaleChar125CategoriesIndexRoute
-  '/{-$locale}/collections/': typeof Char123LocaleChar125CollectionsIndexRoute
-  '/{-$locale}/products/': typeof Char123LocaleChar125ProductsIndexRoute
+  '/{-$locale}/_storefront/': typeof Char123LocaleChar125StorefrontIndexRoute
+  '/{-$locale}/admin/': typeof Char123LocaleChar125AdminIndexRoute
+  '/{-$locale}/_storefront/categories/$handle': typeof Char123LocaleChar125StorefrontCategoriesHandleRoute
+  '/{-$locale}/_storefront/collections/$handle': typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
+  '/{-$locale}/_storefront/products/$handle': typeof Char123LocaleChar125StorefrontProductsHandleRoute
+  '/{-$locale}/admin/customers/$id': typeof Char123LocaleChar125AdminCustomersIdRoute
+  '/{-$locale}/admin/orders/$orderId': typeof Char123LocaleChar125AdminOrdersOrderIdRoute
+  '/{-$locale}/_storefront/categories/': typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
+  '/{-$locale}/_storefront/collections/': typeof Char123LocaleChar125StorefrontCollectionsIndexRoute
+  '/{-$locale}/_storefront/products/': typeof Char123LocaleChar125StorefrontProductsIndexRoute
+  '/{-$locale}/admin/catalog/': typeof Char123LocaleChar125AdminCatalogIndexRoute
+  '/{-$locale}/admin/customers/': typeof Char123LocaleChar125AdminCustomersIndexRoute
+  '/{-$locale}/admin/orders/': typeof Char123LocaleChar125AdminOrdersIndexRoute
+  '/{-$locale}/admin/catalog/categories/$handle': typeof Char123LocaleChar125AdminCatalogCategoriesHandleRoute
+  '/{-$locale}/admin/catalog/collections/$handle': typeof Char123LocaleChar125AdminCatalogCollectionsHandleRoute
+  '/{-$locale}/admin/catalog/products/$handle': typeof Char123LocaleChar125AdminCatalogProductsHandleRoute
+  '/{-$locale}/admin/catalog/categories/': typeof Char123LocaleChar125AdminCatalogCategoriesIndexRoute
+  '/{-$locale}/admin/catalog/collections/': typeof Char123LocaleChar125AdminCatalogCollectionsIndexRoute
+  '/{-$locale}/admin/catalog/products/': typeof Char123LocaleChar125AdminCatalogProductsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/{-$locale}'
+    | '/{-$locale}/admin'
+    | '/{-$locale}/auth'
+    | '/api/auth/$'
     | '/{-$locale}/about'
     | '/{-$locale}/account'
-    | '/{-$locale}/auth'
     | '/{-$locale}/cart'
     | '/{-$locale}/exchanges-and-returns'
     | '/{-$locale}/faq'
-    | '/{-$locale}/'
-    | '/api/auth/$'
+    | '/{-$locale}/admin/audit'
+    | '/{-$locale}/admin/catalog'
+    | '/{-$locale}/admin/content'
+    | '/{-$locale}/admin/coupons'
+    | '/{-$locale}/admin/marketing'
+    | '/{-$locale}/admin/settings'
     | '/{-$locale}/auth/sign-in'
     | '/{-$locale}/auth/sign-up'
+    | '/{-$locale}/'
+    | '/{-$locale}/admin/'
     | '/{-$locale}/categories/$handle'
     | '/{-$locale}/collections/$handle'
     | '/{-$locale}/products/$handle'
+    | '/{-$locale}/admin/customers/$id'
+    | '/{-$locale}/admin/orders/$orderId'
     | '/{-$locale}/categories/'
     | '/{-$locale}/collections/'
     | '/{-$locale}/products/'
+    | '/{-$locale}/admin/catalog/'
+    | '/{-$locale}/admin/customers/'
+    | '/{-$locale}/admin/orders/'
+    | '/{-$locale}/admin/catalog/categories/$handle'
+    | '/{-$locale}/admin/catalog/collections/$handle'
+    | '/{-$locale}/admin/catalog/products/$handle'
+    | '/{-$locale}/admin/catalog/categories/'
+    | '/{-$locale}/admin/catalog/collections/'
+    | '/{-$locale}/admin/catalog/products/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/{-$locale}'
+    | '/{-$locale}/auth'
+    | '/api/auth/$'
     | '/{-$locale}/about'
     | '/{-$locale}/account'
-    | '/{-$locale}/auth'
     | '/{-$locale}/cart'
     | '/{-$locale}/exchanges-and-returns'
     | '/{-$locale}/faq'
-    | '/{-$locale}'
-    | '/api/auth/$'
+    | '/{-$locale}/admin/audit'
+    | '/{-$locale}/admin/content'
+    | '/{-$locale}/admin/coupons'
+    | '/{-$locale}/admin/marketing'
+    | '/{-$locale}/admin/settings'
     | '/{-$locale}/auth/sign-in'
     | '/{-$locale}/auth/sign-up'
+    | '/{-$locale}/admin'
     | '/{-$locale}/categories/$handle'
     | '/{-$locale}/collections/$handle'
     | '/{-$locale}/products/$handle'
+    | '/{-$locale}/admin/customers/$id'
+    | '/{-$locale}/admin/orders/$orderId'
     | '/{-$locale}/categories'
     | '/{-$locale}/collections'
     | '/{-$locale}/products'
+    | '/{-$locale}/admin/catalog'
+    | '/{-$locale}/admin/customers'
+    | '/{-$locale}/admin/orders'
+    | '/{-$locale}/admin/catalog/categories/$handle'
+    | '/{-$locale}/admin/catalog/collections/$handle'
+    | '/{-$locale}/admin/catalog/products/$handle'
+    | '/{-$locale}/admin/catalog/categories'
+    | '/{-$locale}/admin/catalog/collections'
+    | '/{-$locale}/admin/catalog/products'
   id:
     | '__root__'
     | '/{-$locale}'
-    | '/{-$locale}/about'
-    | '/{-$locale}/account'
+    | '/{-$locale}/_storefront'
+    | '/{-$locale}/admin'
     | '/{-$locale}/auth'
-    | '/{-$locale}/cart'
-    | '/{-$locale}/exchanges-and-returns'
-    | '/{-$locale}/faq'
-    | '/{-$locale}/'
     | '/api/auth/$'
+    | '/{-$locale}/_storefront/about'
+    | '/{-$locale}/_storefront/account'
+    | '/{-$locale}/_storefront/cart'
+    | '/{-$locale}/_storefront/exchanges-and-returns'
+    | '/{-$locale}/_storefront/faq'
+    | '/{-$locale}/admin/audit'
+    | '/{-$locale}/admin/catalog'
+    | '/{-$locale}/admin/content'
+    | '/{-$locale}/admin/coupons'
+    | '/{-$locale}/admin/marketing'
+    | '/{-$locale}/admin/settings'
     | '/{-$locale}/auth/sign-in'
     | '/{-$locale}/auth/sign-up'
-    | '/{-$locale}/categories/$handle'
-    | '/{-$locale}/collections/$handle'
-    | '/{-$locale}/products/$handle'
-    | '/{-$locale}/categories/'
-    | '/{-$locale}/collections/'
-    | '/{-$locale}/products/'
+    | '/{-$locale}/_storefront/'
+    | '/{-$locale}/admin/'
+    | '/{-$locale}/_storefront/categories/$handle'
+    | '/{-$locale}/_storefront/collections/$handle'
+    | '/{-$locale}/_storefront/products/$handle'
+    | '/{-$locale}/admin/customers/$id'
+    | '/{-$locale}/admin/orders/$orderId'
+    | '/{-$locale}/_storefront/categories/'
+    | '/{-$locale}/_storefront/collections/'
+    | '/{-$locale}/_storefront/products/'
+    | '/{-$locale}/admin/catalog/'
+    | '/{-$locale}/admin/customers/'
+    | '/{-$locale}/admin/orders/'
+    | '/{-$locale}/admin/catalog/categories/$handle'
+    | '/{-$locale}/admin/catalog/collections/$handle'
+    | '/{-$locale}/admin/catalog/products/$handle'
+    | '/{-$locale}/admin/catalog/categories/'
+    | '/{-$locale}/admin/catalog/collections/'
+    | '/{-$locale}/admin/catalog/products/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -257,34 +509,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/{-$locale}/': {
-      id: '/{-$locale}/'
-      path: '/'
-      fullPath: '/{-$locale}/'
-      preLoaderRoute: typeof Char123LocaleChar125IndexRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/{-$locale}/faq': {
-      id: '/{-$locale}/faq'
-      path: '/faq'
-      fullPath: '/{-$locale}/faq'
-      preLoaderRoute: typeof Char123LocaleChar125FaqRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/{-$locale}/exchanges-and-returns': {
-      id: '/{-$locale}/exchanges-and-returns'
-      path: '/exchanges-and-returns'
-      fullPath: '/{-$locale}/exchanges-and-returns'
-      preLoaderRoute: typeof Char123LocaleChar125ExchangesAndReturnsRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/{-$locale}/cart': {
-      id: '/{-$locale}/cart'
-      path: '/cart'
-      fullPath: '/{-$locale}/cart'
-      preLoaderRoute: typeof Char123LocaleChar125CartRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
     '/{-$locale}/auth': {
       id: '/{-$locale}/auth'
       path: '/auth'
@@ -292,61 +516,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125AuthRouteImport
       parentRoute: typeof Char123LocaleChar125Route
     }
-    '/{-$locale}/account': {
-      id: '/{-$locale}/account'
-      path: '/account'
-      fullPath: '/{-$locale}/account'
-      preLoaderRoute: typeof Char123LocaleChar125AccountRouteImport
+    '/{-$locale}/admin': {
+      id: '/{-$locale}/admin'
+      path: '/admin'
+      fullPath: '/{-$locale}/admin'
+      preLoaderRoute: typeof Char123LocaleChar125AdminRouteImport
       parentRoute: typeof Char123LocaleChar125Route
     }
-    '/{-$locale}/about': {
-      id: '/{-$locale}/about'
-      path: '/about'
-      fullPath: '/{-$locale}/about'
-      preLoaderRoute: typeof Char123LocaleChar125AboutRouteImport
+    '/{-$locale}/_storefront': {
+      id: '/{-$locale}/_storefront'
+      path: ''
+      fullPath: '/{-$locale}'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontRouteImport
       parentRoute: typeof Char123LocaleChar125Route
     }
-    '/{-$locale}/products/': {
-      id: '/{-$locale}/products/'
-      path: '/products'
-      fullPath: '/{-$locale}/products/'
-      preLoaderRoute: typeof Char123LocaleChar125ProductsIndexRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
+    '/{-$locale}/admin/': {
+      id: '/{-$locale}/admin/'
+      path: '/'
+      fullPath: '/{-$locale}/admin/'
+      preLoaderRoute: typeof Char123LocaleChar125AdminIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
     }
-    '/{-$locale}/collections/': {
-      id: '/{-$locale}/collections/'
-      path: '/collections'
-      fullPath: '/{-$locale}/collections/'
-      preLoaderRoute: typeof Char123LocaleChar125CollectionsIndexRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/{-$locale}/categories/': {
-      id: '/{-$locale}/categories/'
-      path: '/categories'
-      fullPath: '/{-$locale}/categories/'
-      preLoaderRoute: typeof Char123LocaleChar125CategoriesIndexRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/{-$locale}/products/$handle': {
-      id: '/{-$locale}/products/$handle'
-      path: '/products/$handle'
-      fullPath: '/{-$locale}/products/$handle'
-      preLoaderRoute: typeof Char123LocaleChar125ProductsHandleRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/{-$locale}/collections/$handle': {
-      id: '/{-$locale}/collections/$handle'
-      path: '/collections/$handle'
-      fullPath: '/{-$locale}/collections/$handle'
-      preLoaderRoute: typeof Char123LocaleChar125CollectionsHandleRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
-    }
-    '/{-$locale}/categories/$handle': {
-      id: '/{-$locale}/categories/$handle'
-      path: '/categories/$handle'
-      fullPath: '/{-$locale}/categories/$handle'
-      preLoaderRoute: typeof Char123LocaleChar125CategoriesHandleRouteImport
-      parentRoute: typeof Char123LocaleChar125Route
+    '/{-$locale}/_storefront/': {
+      id: '/{-$locale}/_storefront/'
+      path: '/'
+      fullPath: '/{-$locale}/'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
     }
     '/{-$locale}/auth/sign-up': {
       id: '/{-$locale}/auth/sign-up'
@@ -362,6 +558,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125AuthSignInRouteImport
       parentRoute: typeof Char123LocaleChar125AuthRoute
     }
+    '/{-$locale}/admin/settings': {
+      id: '/{-$locale}/admin/settings'
+      path: '/settings'
+      fullPath: '/{-$locale}/admin/settings'
+      preLoaderRoute: typeof Char123LocaleChar125AdminSettingsRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/admin/marketing': {
+      id: '/{-$locale}/admin/marketing'
+      path: '/marketing'
+      fullPath: '/{-$locale}/admin/marketing'
+      preLoaderRoute: typeof Char123LocaleChar125AdminMarketingRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/admin/coupons': {
+      id: '/{-$locale}/admin/coupons'
+      path: '/coupons'
+      fullPath: '/{-$locale}/admin/coupons'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCouponsRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/admin/content': {
+      id: '/{-$locale}/admin/content'
+      path: '/content'
+      fullPath: '/{-$locale}/admin/content'
+      preLoaderRoute: typeof Char123LocaleChar125AdminContentRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/admin/catalog': {
+      id: '/{-$locale}/admin/catalog'
+      path: '/catalog'
+      fullPath: '/{-$locale}/admin/catalog'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/admin/audit': {
+      id: '/{-$locale}/admin/audit'
+      path: '/audit'
+      fullPath: '/{-$locale}/admin/audit'
+      preLoaderRoute: typeof Char123LocaleChar125AdminAuditRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/_storefront/faq': {
+      id: '/{-$locale}/_storefront/faq'
+      path: '/faq'
+      fullPath: '/{-$locale}/faq'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontFaqRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/_storefront/exchanges-and-returns': {
+      id: '/{-$locale}/_storefront/exchanges-and-returns'
+      path: '/exchanges-and-returns'
+      fullPath: '/{-$locale}/exchanges-and-returns'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontExchangesAndReturnsRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/_storefront/cart': {
+      id: '/{-$locale}/_storefront/cart'
+      path: '/cart'
+      fullPath: '/{-$locale}/cart'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontCartRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/_storefront/account': {
+      id: '/{-$locale}/_storefront/account'
+      path: '/account'
+      fullPath: '/{-$locale}/account'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontAccountRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/_storefront/about': {
+      id: '/{-$locale}/_storefront/about'
+      path: '/about'
+      fullPath: '/{-$locale}/about'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontAboutRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -369,8 +642,251 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/{-$locale}/admin/orders/': {
+      id: '/{-$locale}/admin/orders/'
+      path: '/orders'
+      fullPath: '/{-$locale}/admin/orders/'
+      preLoaderRoute: typeof Char123LocaleChar125AdminOrdersIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/admin/customers/': {
+      id: '/{-$locale}/admin/customers/'
+      path: '/customers'
+      fullPath: '/{-$locale}/admin/customers/'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCustomersIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/admin/catalog/': {
+      id: '/{-$locale}/admin/catalog/'
+      path: '/'
+      fullPath: '/{-$locale}/admin/catalog/'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    }
+    '/{-$locale}/_storefront/products/': {
+      id: '/{-$locale}/_storefront/products/'
+      path: '/products'
+      fullPath: '/{-$locale}/products/'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontProductsIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/_storefront/collections/': {
+      id: '/{-$locale}/_storefront/collections/'
+      path: '/collections'
+      fullPath: '/{-$locale}/collections/'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontCollectionsIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/_storefront/categories/': {
+      id: '/{-$locale}/_storefront/categories/'
+      path: '/categories'
+      fullPath: '/{-$locale}/categories/'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontCategoriesIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/admin/orders/$orderId': {
+      id: '/{-$locale}/admin/orders/$orderId'
+      path: '/orders/$orderId'
+      fullPath: '/{-$locale}/admin/orders/$orderId'
+      preLoaderRoute: typeof Char123LocaleChar125AdminOrdersOrderIdRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/admin/customers/$id': {
+      id: '/{-$locale}/admin/customers/$id'
+      path: '/customers/$id'
+      fullPath: '/{-$locale}/admin/customers/$id'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCustomersIdRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminRoute
+    }
+    '/{-$locale}/_storefront/products/$handle': {
+      id: '/{-$locale}/_storefront/products/$handle'
+      path: '/products/$handle'
+      fullPath: '/{-$locale}/products/$handle'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontProductsHandleRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/_storefront/collections/$handle': {
+      id: '/{-$locale}/_storefront/collections/$handle'
+      path: '/collections/$handle'
+      fullPath: '/{-$locale}/collections/$handle'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontCollectionsHandleRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/_storefront/categories/$handle': {
+      id: '/{-$locale}/_storefront/categories/$handle'
+      path: '/categories/$handle'
+      fullPath: '/{-$locale}/categories/$handle'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontCategoriesHandleRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/admin/catalog/products/': {
+      id: '/{-$locale}/admin/catalog/products/'
+      path: '/products'
+      fullPath: '/{-$locale}/admin/catalog/products/'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogProductsIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    }
+    '/{-$locale}/admin/catalog/collections/': {
+      id: '/{-$locale}/admin/catalog/collections/'
+      path: '/collections'
+      fullPath: '/{-$locale}/admin/catalog/collections/'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogCollectionsIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    }
+    '/{-$locale}/admin/catalog/categories/': {
+      id: '/{-$locale}/admin/catalog/categories/'
+      path: '/categories'
+      fullPath: '/{-$locale}/admin/catalog/categories/'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogCategoriesIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    }
+    '/{-$locale}/admin/catalog/products/$handle': {
+      id: '/{-$locale}/admin/catalog/products/$handle'
+      path: '/products/$handle'
+      fullPath: '/{-$locale}/admin/catalog/products/$handle'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogProductsHandleRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    }
+    '/{-$locale}/admin/catalog/collections/$handle': {
+      id: '/{-$locale}/admin/catalog/collections/$handle'
+      path: '/collections/$handle'
+      fullPath: '/{-$locale}/admin/catalog/collections/$handle'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogCollectionsHandleRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    }
+    '/{-$locale}/admin/catalog/categories/$handle': {
+      id: '/{-$locale}/admin/catalog/categories/$handle'
+      path: '/categories/$handle'
+      fullPath: '/{-$locale}/admin/catalog/categories/$handle'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogCategoriesHandleRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    }
   }
 }
+
+interface Char123LocaleChar125StorefrontRouteChildren {
+  Char123LocaleChar125StorefrontAboutRoute: typeof Char123LocaleChar125StorefrontAboutRoute
+  Char123LocaleChar125StorefrontAccountRoute: typeof Char123LocaleChar125StorefrontAccountRoute
+  Char123LocaleChar125StorefrontCartRoute: typeof Char123LocaleChar125StorefrontCartRoute
+  Char123LocaleChar125StorefrontExchangesAndReturnsRoute: typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
+  Char123LocaleChar125StorefrontFaqRoute: typeof Char123LocaleChar125StorefrontFaqRoute
+  Char123LocaleChar125StorefrontIndexRoute: typeof Char123LocaleChar125StorefrontIndexRoute
+  Char123LocaleChar125StorefrontCategoriesHandleRoute: typeof Char123LocaleChar125StorefrontCategoriesHandleRoute
+  Char123LocaleChar125StorefrontCollectionsHandleRoute: typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
+  Char123LocaleChar125StorefrontProductsHandleRoute: typeof Char123LocaleChar125StorefrontProductsHandleRoute
+  Char123LocaleChar125StorefrontCategoriesIndexRoute: typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
+  Char123LocaleChar125StorefrontCollectionsIndexRoute: typeof Char123LocaleChar125StorefrontCollectionsIndexRoute
+  Char123LocaleChar125StorefrontProductsIndexRoute: typeof Char123LocaleChar125StorefrontProductsIndexRoute
+}
+
+const Char123LocaleChar125StorefrontRouteChildren: Char123LocaleChar125StorefrontRouteChildren =
+  {
+    Char123LocaleChar125StorefrontAboutRoute:
+      Char123LocaleChar125StorefrontAboutRoute,
+    Char123LocaleChar125StorefrontAccountRoute:
+      Char123LocaleChar125StorefrontAccountRoute,
+    Char123LocaleChar125StorefrontCartRoute:
+      Char123LocaleChar125StorefrontCartRoute,
+    Char123LocaleChar125StorefrontExchangesAndReturnsRoute:
+      Char123LocaleChar125StorefrontExchangesAndReturnsRoute,
+    Char123LocaleChar125StorefrontFaqRoute:
+      Char123LocaleChar125StorefrontFaqRoute,
+    Char123LocaleChar125StorefrontIndexRoute:
+      Char123LocaleChar125StorefrontIndexRoute,
+    Char123LocaleChar125StorefrontCategoriesHandleRoute:
+      Char123LocaleChar125StorefrontCategoriesHandleRoute,
+    Char123LocaleChar125StorefrontCollectionsHandleRoute:
+      Char123LocaleChar125StorefrontCollectionsHandleRoute,
+    Char123LocaleChar125StorefrontProductsHandleRoute:
+      Char123LocaleChar125StorefrontProductsHandleRoute,
+    Char123LocaleChar125StorefrontCategoriesIndexRoute:
+      Char123LocaleChar125StorefrontCategoriesIndexRoute,
+    Char123LocaleChar125StorefrontCollectionsIndexRoute:
+      Char123LocaleChar125StorefrontCollectionsIndexRoute,
+    Char123LocaleChar125StorefrontProductsIndexRoute:
+      Char123LocaleChar125StorefrontProductsIndexRoute,
+  }
+
+const Char123LocaleChar125StorefrontRouteWithChildren =
+  Char123LocaleChar125StorefrontRoute._addFileChildren(
+    Char123LocaleChar125StorefrontRouteChildren,
+  )
+
+interface Char123LocaleChar125AdminCatalogRouteChildren {
+  Char123LocaleChar125AdminCatalogIndexRoute: typeof Char123LocaleChar125AdminCatalogIndexRoute
+  Char123LocaleChar125AdminCatalogCategoriesHandleRoute: typeof Char123LocaleChar125AdminCatalogCategoriesHandleRoute
+  Char123LocaleChar125AdminCatalogCollectionsHandleRoute: typeof Char123LocaleChar125AdminCatalogCollectionsHandleRoute
+  Char123LocaleChar125AdminCatalogProductsHandleRoute: typeof Char123LocaleChar125AdminCatalogProductsHandleRoute
+  Char123LocaleChar125AdminCatalogCategoriesIndexRoute: typeof Char123LocaleChar125AdminCatalogCategoriesIndexRoute
+  Char123LocaleChar125AdminCatalogCollectionsIndexRoute: typeof Char123LocaleChar125AdminCatalogCollectionsIndexRoute
+  Char123LocaleChar125AdminCatalogProductsIndexRoute: typeof Char123LocaleChar125AdminCatalogProductsIndexRoute
+}
+
+const Char123LocaleChar125AdminCatalogRouteChildren: Char123LocaleChar125AdminCatalogRouteChildren =
+  {
+    Char123LocaleChar125AdminCatalogIndexRoute:
+      Char123LocaleChar125AdminCatalogIndexRoute,
+    Char123LocaleChar125AdminCatalogCategoriesHandleRoute:
+      Char123LocaleChar125AdminCatalogCategoriesHandleRoute,
+    Char123LocaleChar125AdminCatalogCollectionsHandleRoute:
+      Char123LocaleChar125AdminCatalogCollectionsHandleRoute,
+    Char123LocaleChar125AdminCatalogProductsHandleRoute:
+      Char123LocaleChar125AdminCatalogProductsHandleRoute,
+    Char123LocaleChar125AdminCatalogCategoriesIndexRoute:
+      Char123LocaleChar125AdminCatalogCategoriesIndexRoute,
+    Char123LocaleChar125AdminCatalogCollectionsIndexRoute:
+      Char123LocaleChar125AdminCatalogCollectionsIndexRoute,
+    Char123LocaleChar125AdminCatalogProductsIndexRoute:
+      Char123LocaleChar125AdminCatalogProductsIndexRoute,
+  }
+
+const Char123LocaleChar125AdminCatalogRouteWithChildren =
+  Char123LocaleChar125AdminCatalogRoute._addFileChildren(
+    Char123LocaleChar125AdminCatalogRouteChildren,
+  )
+
+interface Char123LocaleChar125AdminRouteChildren {
+  Char123LocaleChar125AdminAuditRoute: typeof Char123LocaleChar125AdminAuditRoute
+  Char123LocaleChar125AdminCatalogRoute: typeof Char123LocaleChar125AdminCatalogRouteWithChildren
+  Char123LocaleChar125AdminContentRoute: typeof Char123LocaleChar125AdminContentRoute
+  Char123LocaleChar125AdminCouponsRoute: typeof Char123LocaleChar125AdminCouponsRoute
+  Char123LocaleChar125AdminMarketingRoute: typeof Char123LocaleChar125AdminMarketingRoute
+  Char123LocaleChar125AdminSettingsRoute: typeof Char123LocaleChar125AdminSettingsRoute
+  Char123LocaleChar125AdminIndexRoute: typeof Char123LocaleChar125AdminIndexRoute
+  Char123LocaleChar125AdminCustomersIdRoute: typeof Char123LocaleChar125AdminCustomersIdRoute
+  Char123LocaleChar125AdminOrdersOrderIdRoute: typeof Char123LocaleChar125AdminOrdersOrderIdRoute
+  Char123LocaleChar125AdminCustomersIndexRoute: typeof Char123LocaleChar125AdminCustomersIndexRoute
+  Char123LocaleChar125AdminOrdersIndexRoute: typeof Char123LocaleChar125AdminOrdersIndexRoute
+}
+
+const Char123LocaleChar125AdminRouteChildren: Char123LocaleChar125AdminRouteChildren =
+  {
+    Char123LocaleChar125AdminAuditRoute: Char123LocaleChar125AdminAuditRoute,
+    Char123LocaleChar125AdminCatalogRoute:
+      Char123LocaleChar125AdminCatalogRouteWithChildren,
+    Char123LocaleChar125AdminContentRoute:
+      Char123LocaleChar125AdminContentRoute,
+    Char123LocaleChar125AdminCouponsRoute:
+      Char123LocaleChar125AdminCouponsRoute,
+    Char123LocaleChar125AdminMarketingRoute:
+      Char123LocaleChar125AdminMarketingRoute,
+    Char123LocaleChar125AdminSettingsRoute:
+      Char123LocaleChar125AdminSettingsRoute,
+    Char123LocaleChar125AdminIndexRoute: Char123LocaleChar125AdminIndexRoute,
+    Char123LocaleChar125AdminCustomersIdRoute:
+      Char123LocaleChar125AdminCustomersIdRoute,
+    Char123LocaleChar125AdminOrdersOrderIdRoute:
+      Char123LocaleChar125AdminOrdersOrderIdRoute,
+    Char123LocaleChar125AdminCustomersIndexRoute:
+      Char123LocaleChar125AdminCustomersIndexRoute,
+    Char123LocaleChar125AdminOrdersIndexRoute:
+      Char123LocaleChar125AdminOrdersIndexRoute,
+  }
+
+const Char123LocaleChar125AdminRouteWithChildren =
+  Char123LocaleChar125AdminRoute._addFileChildren(
+    Char123LocaleChar125AdminRouteChildren,
+  )
 
 interface Char123LocaleChar125AuthRouteChildren {
   Char123LocaleChar125AuthSignInRoute: typeof Char123LocaleChar125AuthSignInRoute
@@ -389,42 +905,16 @@ const Char123LocaleChar125AuthRouteWithChildren =
   )
 
 interface Char123LocaleChar125RouteChildren {
-  Char123LocaleChar125AboutRoute: typeof Char123LocaleChar125AboutRoute
-  Char123LocaleChar125AccountRoute: typeof Char123LocaleChar125AccountRoute
+  Char123LocaleChar125StorefrontRoute: typeof Char123LocaleChar125StorefrontRouteWithChildren
+  Char123LocaleChar125AdminRoute: typeof Char123LocaleChar125AdminRouteWithChildren
   Char123LocaleChar125AuthRoute: typeof Char123LocaleChar125AuthRouteWithChildren
-  Char123LocaleChar125CartRoute: typeof Char123LocaleChar125CartRoute
-  Char123LocaleChar125ExchangesAndReturnsRoute: typeof Char123LocaleChar125ExchangesAndReturnsRoute
-  Char123LocaleChar125FaqRoute: typeof Char123LocaleChar125FaqRoute
-  Char123LocaleChar125IndexRoute: typeof Char123LocaleChar125IndexRoute
-  Char123LocaleChar125CategoriesHandleRoute: typeof Char123LocaleChar125CategoriesHandleRoute
-  Char123LocaleChar125CollectionsHandleRoute: typeof Char123LocaleChar125CollectionsHandleRoute
-  Char123LocaleChar125ProductsHandleRoute: typeof Char123LocaleChar125ProductsHandleRoute
-  Char123LocaleChar125CategoriesIndexRoute: typeof Char123LocaleChar125CategoriesIndexRoute
-  Char123LocaleChar125CollectionsIndexRoute: typeof Char123LocaleChar125CollectionsIndexRoute
-  Char123LocaleChar125ProductsIndexRoute: typeof Char123LocaleChar125ProductsIndexRoute
 }
 
 const Char123LocaleChar125RouteChildren: Char123LocaleChar125RouteChildren = {
-  Char123LocaleChar125AboutRoute: Char123LocaleChar125AboutRoute,
-  Char123LocaleChar125AccountRoute: Char123LocaleChar125AccountRoute,
+  Char123LocaleChar125StorefrontRoute:
+    Char123LocaleChar125StorefrontRouteWithChildren,
+  Char123LocaleChar125AdminRoute: Char123LocaleChar125AdminRouteWithChildren,
   Char123LocaleChar125AuthRoute: Char123LocaleChar125AuthRouteWithChildren,
-  Char123LocaleChar125CartRoute: Char123LocaleChar125CartRoute,
-  Char123LocaleChar125ExchangesAndReturnsRoute:
-    Char123LocaleChar125ExchangesAndReturnsRoute,
-  Char123LocaleChar125FaqRoute: Char123LocaleChar125FaqRoute,
-  Char123LocaleChar125IndexRoute: Char123LocaleChar125IndexRoute,
-  Char123LocaleChar125CategoriesHandleRoute:
-    Char123LocaleChar125CategoriesHandleRoute,
-  Char123LocaleChar125CollectionsHandleRoute:
-    Char123LocaleChar125CollectionsHandleRoute,
-  Char123LocaleChar125ProductsHandleRoute:
-    Char123LocaleChar125ProductsHandleRoute,
-  Char123LocaleChar125CategoriesIndexRoute:
-    Char123LocaleChar125CategoriesIndexRoute,
-  Char123LocaleChar125CollectionsIndexRoute:
-    Char123LocaleChar125CollectionsIndexRoute,
-  Char123LocaleChar125ProductsIndexRoute:
-    Char123LocaleChar125ProductsIndexRoute,
 }
 
 const Char123LocaleChar125RouteWithChildren =

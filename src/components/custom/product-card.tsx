@@ -83,7 +83,7 @@ function useProductCardLogic({
       const shareAsync = async () => {
         if (typeof navigator.share === "function") {
           try {
-            await navigator.share({ title: name, url: href as string });
+            await navigator.share({ title: name, url: href });
           } catch {
             // ignore
           }

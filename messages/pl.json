@@ -166,7 +166,8 @@
         "or": "lub"
       },
       "socialProviders": {
-        "google": "Kontynuuj z Google"
+        "google": "Kontynuuj z Google",
+        "facebook": "Kontynuuj z Facebook"
       }
     }
   },
@@ -658,6 +659,859 @@
       "preview": "Podgląd testowego e-maila",
       "title": "Witaj od M'Arte",
       "body": "To jest testowy e-mail."
+    }
+  },
+  "admin": {
+    "brand": "M'ARTE",
+    "subtitle": "Panel administracyjny",
+    "customerDetail": {
+      "breadcrumb": {
+        "dashboard": "Pulpit",
+        "customers": "Klienci"
+      },
+      "actions": {
+        "sendEmail": "Wyślij e-mail",
+        "createOrder": "Utwórz zamówienie"
+      },
+      "kpi": {
+        "totalSpent": "Całkowite wydatki",
+        "orders": "Zamówienia",
+        "avgOrder": "Średnie zamówienie",
+        "returnRate": "Wskaźnik powrotów"
+      },
+      "spending": {
+        "title": "Aktywność zakupowa",
+        "subtitle": "Miesięczne wydatki z ostatnich 12 miesięcy"
+      },
+      "categoryBreakdown": {
+        "title": "Podział na kategorie"
+      },
+      "orders": {
+        "title": "Historia zamówień",
+        "viewAll": "Zobacz wszystko",
+        "columns": {
+          "order": "Zamówienie",
+          "date": "Data",
+          "items": "Przedmioty",
+          "total": "Suma",
+          "status": "Status",
+          "payment": "Płatność"
+        },
+        "status": {
+          "delivered": "Dostarczone",
+          "shipped": "Wysłane",
+          "returned": "Zwrócone",
+          "processing": "W trakcie"
+        },
+        "payment": {
+          "paid": "Opłacone",
+          "refunded": "Zwrócone",
+          "pending": "Oczekujące"
+        }
+      },
+      "profile": {
+        "memberSince": "Członek od {date}",
+        "lastActive": "Ostatnia aktywność {time}",
+        "preferences": "Preferencje",
+        "preferredCategory": "Preferowana kategoria",
+        "preferredCollection": "Preferowana kolekcja"
+      },
+      "tags": {
+        "title": "Tagi"
+      },
+      "notes": {
+        "title": "Wewnętrzne notatki",
+        "edit": "Edytuj notatki"
+      },
+      "timeline": {
+        "title": "Oś czasu aktywności"
+      }
+    },
+    "customers": {
+      "title": "Klienci",
+      "description": "Zarządzaj listą klientów, przeglądaj historię zakupów i eksportuj dane.",
+      "searchPlaceholder": "Szukaj klientów...",
+      "actions": {
+        "export": "Eksportuj dane",
+        "sendEmail": "Wyślij e-mail"
+      },
+      "columns": {
+        "customer": "Klient",
+        "location": "Lokalizacja",
+        "orders": "Zamówienia",
+        "spent": "Wydano łącznie",
+        "lastOrder": "Ostatnie zamówienie",
+        "tier": "Poziom"
+      },
+      "pagination": {
+        "showing": "Wyświetlanie 1-19 z 2 847 klientów",
+        "previous": "Poprzednia",
+        "next": "Następna"
+      },
+      "stats": {
+        "totalCustomers": {
+          "label": "Wszyscy klienci",
+          "value": "2 847"
+        },
+        "vipCustomers": {
+          "label": "Klienci VIP",
+          "value": "124"
+        },
+        "averageLTV": {
+          "label": "Średnie LTV",
+          "value": "$4 280"
+        },
+        "returningRate": {
+          "label": "Powracający",
+          "value": "68%"
+        },
+        "vsPrevious": "vs poprzedni miesiąc"
+      }
+    },
+    "nav": {
+      "main": "Menu główne",
+      "dashboard": "Pulpit",
+      "catalog": "Katalog",
+      "products": "Produkty",
+      "categories": "Kategorie",
+      "collections": "Kolekcje",
+      "orders": "Zamówienia",
+      "customers": "Klienci",
+      "tools": "Narzędzia",
+      "marketing": "Marketing",
+      "coupons": "Kupony",
+      "content": "Treść",
+      "audit": "Dziennik zdarzeń",
+      "settings": "Ustawienia"
+    },
+    "catalog": {
+      "title": "Katalog",
+      "description": "Zarządzaj produktami, zapasami i kategoriami w swoim sklepie.",
+      "productsTitle": "Produkty",
+      "productsDescription": "Zarządzaj poszczególnymi produktami i ich wariantami.",
+      "actions": {
+        "addProduct": "Dodaj produkt",
+        "export": "Eksportuj"
+      },
+      "rowActions": {
+        "edit": "Edytuj produkt",
+        "viewStorefront": "Zobacz w sklepie",
+        "copyId": "Kopiuj ID: {id}",
+        "manageVariants": "Zarządzaj wariantami",
+        "copyLink": "Kopiuj link",
+        "delete": "Usuń produkt"
+      },
+      "columns": {
+        "category": "Kategoria",
+        "collection": "Kolekcja",
+        "price": "Cena",
+        "product": "Produkt",
+        "ref": "Nr",
+        "status": "Status",
+        "stock": "Zapasy"
+      },
+      "status": {
+        "active": "Aktywny",
+        "draft": "Szkic",
+        "low": "Niski stan"
+      },
+      "filter": "Filtruj",
+      "pagination": {
+        "next": "Następna",
+        "previous": "Poprzednia",
+        "showing": "Wyświetlanie 1-10 z 241 produktów"
+      },
+      "searchPlaceholder": "Szukaj w katalogu...",
+      "stats": {
+        "activeProducts": {
+          "label": "Aktywne produkty",
+          "value": "216"
+        },
+        "draftProducts": {
+          "label": "Szkice",
+          "value": "18"
+        },
+        "lowStock": {
+          "label": "Niski stan",
+          "value": "14"
+        },
+        "totalProducts": {
+          "label": "Wszystkie produkty",
+          "value": "248"
+        },
+        "vsPrevious": "vs poprzedni miesiąc"
+      }
+    },
+    "categories": {
+      "title": "Kategorie",
+      "description": "Organizuj swoje produkty w kolekcje i kategorie.",
+      "actions": {
+        "addCategory": "Dodaj kategorię"
+      },
+      "form": {
+        "cancel": "Anuluj",
+        "changeImage": "Zmień zdjęcie",
+        "create": "Utwórz kategorię",
+        "created": "Utworzono",
+        "delete": "Usuń",
+        "description": "Opis",
+        "descriptionPlaceholder": "Wprowadź opis kategorii...",
+        "displayOptions": "Opcje wyświetlania",
+        "featuredLabel": "Wyróżniona kategoria",
+        "id": "ID",
+        "imageHint": "Obsługuje JPG, PNG, WEBP. Max 5MB.",
+        "mediaTitle": "Media",
+        "metaDescription": "Opis Meta",
+        "metaDescriptionPlaceholder": "Krótki opis dla wyników wyszukiwania...",
+        "metaTitle": "Tytuł Meta",
+        "metaTitlePlaceholder": "np. Nazwa kategorii - Nazwa sklepu",
+        "name": "Nazwa",
+        "namePlaceholder": "np. Naszyjniki",
+        "noParent": "Brak",
+        "parentCategory": "Kategoria nadrzędna",
+        "products": "Produkty",
+        "removeImage": "Usuń",
+        "save": "Zapisz zmiany",
+        "saveDraft": "Zapisz jako szkic",
+        "sectionBasic": "Podstawowe informacje",
+        "sectionSeo": "Optymalizacja pod kątem wyszukiwarek",
+        "showInFilters": "Pokaż w filtrach",
+        "showInNav": "Pokaż w nawigacji",
+        "slug": "Slug URL",
+        "sortOrder": "Kolejność sortowania",
+        "status": "Status",
+        "summary": "Podsumowanie",
+        "titleAdd": "Dodaj nową kategorię",
+        "updated": "Ostatnia aktualizacja",
+        "uploadImage": "Prześlij zdjęcie"
+      },
+      "rowActions": {
+        "edit": "Edytuj kategorię",
+        "viewProducts": "Zobacz produkty",
+        "copyId": "Kopiuj ID: {id}",
+        "copyLink": "Kopiuj link",
+        "delete": "Usuń kategorię"
+      },
+      "columns": {
+        "description": "Opis",
+        "name": "Kategoria",
+        "products": "Produkty",
+        "slug": "Slug",
+        "status": "Status"
+      },
+      "statusActive": "Aktywna",
+      "statusDraft": "Szkic",
+      "searchPlaceholder": "Szukaj kategorii...",
+      "stats": {
+        "active": {
+          "label": "Aktywne kategorie",
+          "value": "216"
+        },
+        "avgProducts": {
+          "label": "Śr. produktów/kategorię",
+          "value": "14.2"
+        },
+        "draft": {
+          "label": "Szkice",
+          "value": "18"
+        },
+        "total": {
+          "label": "Wszystkie kategorie",
+          "value": "248"
+        },
+        "vsPrevious": "vs poprzedni miesiąc"
+      },
+      "statusActive": "Aktywny",
+      "statusDraft": "Szkic"
+    },
+    "collections": {
+      "title": "Kolekcje",
+      "description": "Zgrupuj swoje produkty w wyselekcjonowane kolekcje.",
+      "actions": {
+        "addCollection": "Dodaj kolekcję"
+      },
+      "columns": {
+        "description": "Opis",
+        "collection": "Kolekcja",
+        "products": "Produkty",
+        "slug": "Slug",
+        "status": "Status"
+      },
+      "statusActive": "Aktywny",
+      "statusDraft": "Szkic",
+      "searchPlaceholder": "Szukaj kolekcji...",
+      "form": {
+        "titleAdd": "Dodaj nową kolekcję",
+        "delete": "Usuń",
+        "cancel": "Anuluj",
+        "saveDraft": "Zapisz jako szkic",
+        "create": "Utwórz kolekcję",
+        "save": "Zapisz zmiany",
+        "sectionBasic": "Podstawowe informacje",
+        "name": "Nazwa",
+        "namePlaceholder": "np. Letnia kolekcja",
+        "slug": "URL Slug",
+        "description": "Opis",
+        "descriptionPlaceholder": "Wpisz opis kolekcji...",
+        "mediaTitle": "Media",
+        "coverImage": "Zdjęcie główne",
+        "changeImage": "Zmień zdjęcie",
+        "removeImage": "Usuń",
+        "uploadImage": "Prześlij zdjęcie",
+        "imageHint": "Obsługuje JPG, PNG, WEBP. Max 5MB.",
+        "sectionSeo": "Optymalizacja (SEO)",
+        "metaTitle": "Tytuł Meta",
+        "metaTitlePlaceholder": "np. Nazwa kolekcji - Nazwa sklepu",
+        "metaDescription": "Opis Meta",
+        "metaDescriptionPlaceholder": "Krótki opis do wyników wyszukiwania...",
+        "status": "Status",
+        "featuredLabel": "Wyróżniona kolekcja",
+        "displayOptions": "Opcje wyświetlania",
+        "showOnHomepage": "Pokaż na stronie głównej",
+        "showInNav": "Pokaż w nawigacji",
+        "summary": "Podsumowanie",
+        "products": "Produkty",
+        "id": "ID",
+        "created": "Utworzono",
+        "updated": "Ostatnia aktualizacja"
+      },
+      "stats": {
+        "active": {
+          "label": "Aktywne Kolekcje",
+          "value": "24"
+        },
+        "avgProducts": {
+          "label": "Średnio Produktów/Kolekcję",
+          "value": "12.5"
+        },
+        "draft": {
+          "label": "Szkice",
+          "value": "4"
+        },
+        "total": {
+          "label": "Wszystkie Kolekcje",
+          "value": "28"
+        },
+        "vsPrevious": "vs poprzedni miesiąc"
+      }
+    },
+    "newProduct": {
+      "actions": {
+        "discard": "Odrzuć",
+        "publish": "Opublikuj",
+        "saveChanges": "Zapisz zmiany",
+        "saveDraft": "Zapisz szkic"
+      },
+      "basic": {
+        "description": "Opis",
+        "descriptionPlaceholder": "Napisz szczegółowy opis produktu...",
+        "material": "Materiał",
+        "name": "Nazwa produktu",
+        "namePlaceholder": "np. Minimalistyczne złote kolczyki",
+        "ref": "Referencja / SKU",
+        "selectMaterial": "Wybierz materiał...",
+        "title": "Podstawowe szczegóły"
+      },
+      "breadcrumb": {
+        "catalog": "Katalog",
+        "dashboard": "Panel"
+      },
+      "inventory": {
+        "quantity": "Ilość",
+        "sellWhenOOS": "Kontynuuj sprzedaż gdy brak w magazynie",
+        "title": "Zapasy",
+        "trackInventory": "Śledź ilość"
+      },
+      "media": {
+        "dragDrop": "Przeciągnij i upuść zdjęcia tutaj",
+        "formats": "Obsługuje JPG, PNG, WEBP. Max 5MB.",
+        "title": "Media"
+      },
+      "organization": {
+        "title": "Organizacja",
+        "category": "Kategoria",
+        "collection": "Kolekcja",
+        "selectCategory": "Wybierz kategorię...",
+        "selectCollection": "Wybierz kolekcję..."
+      },
+      "pricing": {
+        "compareAt": "Cena przed obniżką",
+        "cost": "Koszt za sztukę",
+        "hint": "Klienci tego nie zobaczą.",
+        "price": "Cena",
+        "title": "Ceny i Zapasy"
+      },
+      "seo": {
+        "metaDescription": "Opis Meta",
+        "metaDescriptionPlaceholder": "Krótki opis produktu dla wyników wyszukiwania...",
+        "metaTitle": "Tytuł Meta",
+        "metaTitlePlaceholder": "np. Nazwa Produktu - Nazwa Sklepu",
+        "slug": "Slug URL",
+        "title": "Optymalizacja wyszukiwarek"
+      },
+      "shipping": {
+        "fulfillmentTime": "Czas realizacji",
+        "dimensions": "Wymiary",
+        "requiresShipping": "To jest produkt fizyczny",
+        "title": "Wysyłka",
+        "weight": "Waga",
+        "unit": "Jednostka",
+        "days": "Dni",
+        "weeks": "Tygodnie",
+        "months": "Miesiące"
+      },
+      "status": {
+        "active": "Aktywny",
+        "archived": "Zarchiwizowany",
+        "draft": "Szkic",
+        "featured": "Polecany Produkt",
+        "title": "Status Produktu",
+        "low": "Niski stan"
+      },
+      "tags": {
+        "placeholder": "Dodaj tag...",
+        "title": "Tagi"
+      },
+      "title": "Dodaj Nowy Produkt",
+      "editTitle": "Edytuj Produkt",
+      "variants": {
+        "add": "Dodaj wariant",
+        "addFirst": "Dodaj swój pierwszy wariant produktu",
+        "name": "Wariant",
+        "namePlaceholder": "np. Rozmiar",
+        "optionValue": "Wartość opcji",
+        "price": "Cena",
+        "stock": "Zapas",
+        "title": "Warianty",
+        "valuePlaceholder": "np. Mały"
+      }
+    },
+    "user": {
+      "name": "Jane Doe",
+      "role": "Administrator",
+      "initials": "JD"
+    },
+    "dashboard": {
+      "title": "Pulpit",
+      "description": "Przegląd wyników Twojego sklepu i ostatniej aktywności.",
+      "stats": {
+        "vsPrevious": "względem zeszłego miesiąca",
+        "revenue": {
+          "label": "Całkowity przychód",
+          "value": "142 300 zł"
+        },
+        "orders": {
+          "label": "Całkowita liczba zamówień",
+          "value": "1 429"
+        },
+        "customers": {
+          "label": "Nowi klienci",
+          "value": "342"
+        },
+        "views": {
+          "label": "Wyświetlenia",
+          "value": "84 200"
+        }
+      },
+      "chart": {
+        "title": "Przegląd przychodów",
+        "description": "Całkowity przychód z ostatnich 10 miesięcy",
+        "last7": "Ostatnie 7 dni",
+        "last30": "Ostatnie 30 dni"
+      },
+      "avgOrder": {
+        "label": "Średnia wartość zamówienia",
+        "value": "248,50 zł",
+        "trend": "+4,2%"
+      },
+      "totalSales": {
+        "label": "Całkowita sprzedaż (od początku roku)",
+        "value": "842 500,00 zł",
+        "period": "Zobacz raport roczny"
+      },
+      "recentOrders": {
+        "title": "Ostatnie zamówienia",
+        "viewAll": "Zobacz wszystkie",
+        "columns": {
+          "order": "Zamówienie",
+          "customer": "Klient",
+          "date": "Data",
+          "total": "Razem",
+          "payment": "Płatność",
+          "fulfillment": "Realizacja"
+        },
+        "status": {
+          "unfulfilled": "Nie zrealizowano",
+          "shipped": "Wysłane",
+          "delivered": "Dostarczone",
+          "pending": "Oczekujące",
+          "paid": "Opłacone",
+          "refunded": "Zwrócone",
+          "authorized": "Zautoryzowane"
+        }
+      },
+      "topProducts": {
+        "title": "Najlepiej sprzedające się produkty",
+        "sold": "sztuk"
+      }
+    },
+    "audit": {
+      "title": "Dziennik audytu",
+      "description": "Śledź wszystkie zdarzenia systemowe i działania administracyjne.",
+      "breadcrumb": {
+        "dashboard": "Pulpit"
+      },
+      "stats": {
+        "totalEvents": "Wszystkie zdarzenia",
+        "today": "Dzisiaj",
+        "warnings": "Ostrzeżenia",
+        "errors": "Błędy"
+      },
+      "categories": {
+        "all": "Wszystko",
+        "orders": "Zamówienia",
+        "email": "E-mail",
+        "customers": "Klienci",
+        "catalog": "Katalog",
+        "settings": "Ustawienia",
+        "auth": "Autoryzacja"
+      },
+      "severity": {
+        "info": "Informacja",
+        "success": "Sukces",
+        "warning": "Ostrzeżenie",
+        "error": "Błąd"
+      },
+      "dateRange": {
+        "all": "Cały okres",
+        "today": "Dzisiaj",
+        "7d": "7 dni",
+        "30d": "30 dni",
+        "custom": "Własny",
+        "from": "Od",
+        "to": "Do",
+        "apply": "Zastosuj"
+      },
+      "columns": {
+        "status": "Status",
+        "event": "Zdarzenie",
+        "target": "Cel",
+        "detail": "Szczegóły",
+        "category": "Kategoria",
+        "actor": "Użytkownik",
+        "timestamp": "Data i czas",
+        "ip": "IP"
+      },
+      "actions": {
+        "email_sent": "E-mail wysłany",
+        "email_failed": "E-mail nieudany",
+        "email_deferred": "E-mail odroczony",
+        "order_shipped": "Zamówienie wysłane",
+        "order_placed": "Zamówienie złożone",
+        "order_payment_captured": "Płatność pobrana",
+        "order_fulfillment_started": "Realizacja rozpoczęta",
+        "order_refund_initiated": "Zwrot zainicjowany",
+        "settings_updated": "Ustawienia zaktualizowane",
+        "product_updated": "Produkt zaktualizowany",
+        "product_created": "Produkt utworzony",
+        "product_deleted": "Produkt usunięty",
+        "customer_tier_upgrade": "Awans poziomu",
+        "customer_registered": "Klient zarejestrowany",
+        "auth_login": "Logowanie",
+        "auth_login_failed": "Logowanie nieudane"
+      },
+      "searchPlaceholder": "Szukaj zdarzeń…",
+      "clearFilter": "Wyczyść",
+      "empty": "Brak zdarzeń pasujących do filtrów.",
+      "pagination": {
+        "showing": "Wyświetlanie {count} z {total} zdarzeń",
+        "previous": "Poprzednia",
+        "next": "Następna"
+      }
+    },
+    "settings": {
+      "title": "Ustawienia",
+      "description": "Zarządzaj konfiguracją i preferencjami sklepu.",
+      "tabs": {
+        "general": "Ogólne",
+        "account": "Konto",
+        "shipping": "Wysyłka",
+        "appearance": "Wygląd",
+        "security": "Bezpieczeństwo",
+        "localization": "Lokalizacja"
+      },
+      "general": {
+        "storeInfo": {
+          "title": "Informacje o sklepie",
+          "description": "Podstawowe dane o Twoim sklepie.",
+          "name": "Nazwa sklepu",
+          "email": "E-mail kontaktowy",
+          "desc": "Opis"
+        },
+        "preferences": {
+          "title": "Preferencje",
+          "description": "Konfiguruj działanie sklepu.",
+          "maintenance": {
+            "label": "Tryb konserwacji",
+            "description": "Tymczasowo wyłącz witrynę sklepu dla odwiedzających."
+          },
+          "inventoryTracking": {
+            "label": "Śledzenie zapasów",
+            "description": "Automatycznie śledź poziom zapasów dla wszystkich produktów."
+          },
+          "autoFulfillment": {
+            "label": "Automatyczna realizacja",
+            "description": "Automatycznie realizuj zamówienia po pobraniu płatności."
+          },
+          "orderConfirmation": {
+            "label": "E-maile potwierdzenia zamówienia",
+            "description": "Wyślij e-mail z potwierdzeniem po złożeniu zamówienia."
+          }
+        },
+        "save": "Zapisz zmiany"
+      },
+      "comingSoon": "Ta sekcja będzie dostępna wkrótce."
+    },
+    "orders": {
+      "title": "Zamówienia",
+      "description": "Zarządzaj i śledź zamówienia klientów.",
+      "actions": {
+        "export": "Eksportuj",
+        "newOrder": "Nowe zamówienie"
+      },
+      "stats": {
+        "totalOrders": { "label": "Zamówienia ogółem", "value": "1 284" },
+        "pending": { "label": "Oczekujące", "value": "23" },
+        "revenue": { "label": "Przychód", "value": "142 850 $" },
+        "avgValue": { "label": "Średnia wartość", "value": "2 845 $" },
+        "vsPrevious": "vs. poprzedni okres"
+      },
+      "tabs": {
+        "all": "Wszystkie",
+        "pending": "Oczekujące",
+        "unfulfilled": "Niezrealizowane",
+        "shipped": "Wysłane",
+        "delivered": "Dostarczone"
+      },
+      "searchPlaceholder": "Szukaj zamówień…",
+      "columns": {
+        "order": "Zamówienie",
+        "customer": "Klient",
+        "date": "Data",
+        "items": "Produkty",
+        "total": "Suma",
+        "payment": "Płatność",
+        "fulfillment": "Realizacja"
+      },
+      "payment": {
+        "paid": "Opłacone",
+        "authorized": "Autoryzowane",
+        "refunded": "Zwrócone"
+      },
+      "fulfillment": {
+        "unfulfilled": "Niezrealizowane",
+        "pending": "Oczekujące",
+        "shipped": "Wysłane",
+        "delivered": "Dostarczone",
+        "returned": "Zwrócone"
+      },
+      "pagination": {
+        "showing": "Wyświetlanie {count} z {total} zamówień",
+        "previous": "Poprzednia",
+        "next": "Następna"
+      },
+      "rowActions": {
+        "viewOrder": "Zobacz zamówienie",
+        "copyId": "Kopiuj #{id}",
+        "fulfill": "Realizuj zamówienie",
+        "markShipped": "Oznacz jako wysłane",
+        "printInvoice": "Drukuj fakturę",
+        "refund": "Zwrot",
+        "cancel": "Anuluj zamówienie"
+      }
+    },
+    "orderDetail": {
+      "actions": {
+        "print": "Drukuj",
+        "refund": "Zwrot",
+        "fulfill": "Realizuj"
+      },
+      "meta": {
+        "date": "Data",
+        "status": "Status",
+        "payment": "Płatność",
+        "channel": "Kanał",
+        "total": "Suma"
+      },
+      "status": {
+        "shipped": "Wysłano",
+        "delivered": "Dostarczono",
+        "pending": "Oczekujące",
+        "unfulfilled": "Niezrealizowane",
+        "returned": "Zwrócone",
+        "cancelled": "Anulowane"
+      },
+      "payment": {
+        "paid": "Opłacone",
+        "authorized": "Autoryzowane",
+        "refunded": "Zwrócone",
+        "pending": "Oczekujące"
+      },
+      "fulfillment": {
+        "title": "Realizacja",
+        "steps": {
+          "confirmed": "Potwierdzone",
+          "processing": "Przetwarzanie",
+          "shipped": "Wysłane",
+          "outForDelivery": "W drodze",
+          "delivered": "Dostarczone"
+        }
+      },
+      "items": {
+        "title": "Produkty",
+        "columns": {
+          "product": "Produkt",
+          "sku": "SKU",
+          "qty": "Ilość",
+          "price": "Cena",
+          "total": "Suma"
+        }
+      },
+      "summary": {
+        "subtotal": "Suma częściowa",
+        "shipping": "Wysyłka",
+        "tax": "Podatek",
+        "total": "Suma"
+      },
+      "timeline": {
+        "title": "Aktywność",
+        "emailStatus": {
+          "delivered": "Dostarczono",
+          "failed": "Niepowodzenie",
+          "bounced": "Odrzucono",
+          "deferred": "Opóźniono"
+        }
+      },
+      "customer": {
+        "title": "Klient",
+        "ordersCount": "{count} zamówień",
+        "viewProfile": "Zobacz profil"
+      },
+      "shipping": {
+        "title": "Adres wysyłki",
+        "estimatedDelivery": "Planowana dostawa"
+      },
+      "billing": {
+        "title": "Adres rozliczeniowy",
+        "sameAsShipping": "Taki sam jak wysyłki"
+      },
+      "paymentDetails": {
+        "title": "Płatność"
+      },
+      "tags": {
+        "title": "Tagi"
+      },
+      "notes": {
+        "title": "Notatki wewnętrzne",
+        "edit": "Edytuj"
+      }
+    },
+    "marketing": {
+      "title": "Kampanie marketingowe",
+      "description": "Zarządzaj kampaniami promocyjnymi, śledź zasięgi, kliknięcia i konwersje.",
+      "actions": {
+        "newCampaign": "Nowa kampania"
+      },
+      "stats": {
+        "totalCampaigns": { "label": "Wszystkie kampanie", "value": "12" },
+        "activeCampaigns": { "label": "Aktywne kampanie", "value": "3" },
+        "totalReach": { "label": "Całkowity zasięg", "value": "19.4K" },
+        "totalRevenue": { "label": "Całkowity przychód", "value": "85 200 PLN" }
+      },
+      "chart": {
+        "title": "Zaangażowanie kampanii",
+        "description": "Pokazuje średni współczynnik otwarć i kliknięć z ostatnich miesięcy"
+      },
+      "campaigns": {
+        "title": "Przegląd kampanii",
+        "columns": {
+          "campaign": "Kampania",
+          "type": "Kanał",
+          "status": "Status",
+          "sent": "Zasięg",
+          "openRate": "Wskaźnik otwarć",
+          "revenue": "Przychód"
+        }
+      },
+      "status": {
+        "active": "Aktywna",
+        "completed": "Zakończona",
+        "draft": "Szkic"
+      }
+    },
+    "coupons": {
+      "title": "Kupony rabatowe",
+      "description": "Zarządzaj kodami promocyjnymi, zniżkami i darmową dostawą.",
+      "actions": {
+        "createCoupon": "Nowy kupon"
+      },
+      "stats": {
+        "activeCoupons": { "label": "Aktywne kupony", "value": "18" },
+        "totalRedemptions": { "label": "Liczba użyć", "value": "1 492" },
+        "revenueSaved": { "label": "Zaoszczędzone", "value": "12 450 PLN" },
+        "avgDiscount": { "label": "Średni rabat", "value": "18%" }
+      },
+      "columns": {
+        "code": "Kod",
+        "type": "Typ",
+        "discount": "Zniżka",
+        "minOrder": "Min. zamówienie",
+        "usage": "Użycia",
+        "status": "Status",
+        "expires": "Wygasa",
+        "actions": "Akcje"
+      },
+      "status": {
+        "active": "Aktywny",
+        "scheduled": "Zaplanowany",
+        "expired": "Wygasły"
+      }
+    },
+    "content": {
+      "title": "Zarządzanie treścią",
+      "description": "Zarządzaj stronami, artykułami i banerami promocyjnymi w swoim sklepie.",
+      "actions": {
+        "newPage": "Nowa strona"
+      },
+      "types": {
+        "pages": {
+          "title": "Strony",
+          "description": "Strony statyczne"
+        },
+        "banners": {
+          "title": "Banery",
+          "description": "Banery promocyjne"
+        },
+        "articles": {
+          "title": "Artykuły",
+          "description": "Wpisy na blogu i artykuły"
+        }
+      },
+      "pagesTable": {
+        "title": "Wszystkie strony",
+        "columns": {
+          "title": "Tytuł",
+          "path": "Ścieżka",
+          "sections": "Sekcje",
+          "lastEdited": "Ostatnia edycja",
+          "status": "Status",
+          "actions": "Akcje"
+        }
+      },
+      "status": {
+        "published": "Opublikowana",
+        "draft": "Szkic"
+      }
     }
   }
 }
