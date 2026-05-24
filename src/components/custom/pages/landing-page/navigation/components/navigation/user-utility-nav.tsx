@@ -1,5 +1,3 @@
-"use client";
-
 import { type JSX, useCallback } from "react";
 
 import { Search, ShoppingBag, UserRound } from "lucide-react";

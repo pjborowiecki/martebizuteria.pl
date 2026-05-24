@@ -1,4 +1,4 @@
-"use client";
+"";
 
 import { type JSX, type ReactNode, useCallback } from "react";
 
@@ -44,7 +44,10 @@ export function NavLink({ hash, active = false, children }: Readonly<NavLinkProp
         aria-hidden
         className={cn(
           "pointer-events-none absolute bottom-0 left-0 h-px w-full origin-center bg-current transition-transform duration-500 ease-out motion-reduce:transition-none",
-          { "scale-x-0 opacity-75 group-hover/button:scale-x-100": !active, "scale-x-100 opacity-[0.92]": active }
+          {
+            "scale-x-0 opacity-75 group-hover/button:scale-x-100": !active,
+            "scale-x-100 opacity-[0.92]": active
+          }
         )}
       />
     </Button>

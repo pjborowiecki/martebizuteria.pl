@@ -1,4 +1,4 @@
-"use client";
+"";
 
 import type { CSSProperties, JSX } from "react";
 

@@ -166,7 +166,8 @@
         "or": "or"
       },
       "socialProviders": {
-        "google": "Continue with Google"
+        "google": "Continue with Google",
+        "facebook": "Continue with Facebook"
       }
     }
   },
@@ -658,6 +659,859 @@
       "preview": "Test email preview",
       "title": "Hello from M'Arte",
       "body": "This is a test email."
+    }
+  },
+  "admin": {
+    "brand": "M'ARTE",
+    "subtitle": "Admin panel",
+    "customerDetail": {
+      "breadcrumb": {
+        "dashboard": "Dashboard",
+        "customers": "Customers"
+      },
+      "actions": {
+        "sendEmail": "Send Email",
+        "createOrder": "Create Order"
+      },
+      "kpi": {
+        "totalSpent": "Total Spent",
+        "orders": "Orders",
+        "avgOrder": "Average Order",
+        "returnRate": "Returning Rate"
+      },
+      "spending": {
+        "title": "Spending Activity",
+        "subtitle": "Monthly spending over the last 12 months"
+      },
+      "categoryBreakdown": {
+        "title": "Category Breakdown"
+      },
+      "orders": {
+        "title": "Order History",
+        "viewAll": "View All",
+        "columns": {
+          "order": "Order",
+          "date": "Date",
+          "items": "Items",
+          "total": "Total",
+          "status": "Status",
+          "payment": "Payment"
+        },
+        "status": {
+          "delivered": "Delivered",
+          "shipped": "Shipped",
+          "returned": "Returned",
+          "processing": "Processing"
+        },
+        "payment": {
+          "paid": "Paid",
+          "refunded": "Refunded",
+          "pending": "Pending"
+        }
+      },
+      "profile": {
+        "memberSince": "Member since {date}",
+        "lastActive": "Last active {time}",
+        "preferences": "Preferences",
+        "preferredCategory": "Preferred Category",
+        "preferredCollection": "Preferred Collection"
+      },
+      "tags": {
+        "title": "Tags"
+      },
+      "notes": {
+        "title": "Internal Notes",
+        "edit": "Edit Notes"
+      },
+      "timeline": {
+        "title": "Activity Timeline"
+      }
+    },
+    "customers": {
+      "title": "Customers",
+      "description": "Manage your customer list, view purchase history, and export data.",
+      "searchPlaceholder": "Search customers...",
+      "actions": {
+        "export": "Export Data",
+        "sendEmail": "Send Email"
+      },
+      "columns": {
+        "customer": "Customer",
+        "location": "Location",
+        "orders": "Orders",
+        "spent": "Total Spent",
+        "lastOrder": "Last Order",
+        "tier": "Tier"
+      },
+      "pagination": {
+        "showing": "Showing 1-19 of 2,847 customers",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "stats": {
+        "totalCustomers": {
+          "label": "Total Customers",
+          "value": "2,847"
+        },
+        "vipCustomers": {
+          "label": "VIP Customers",
+          "value": "124"
+        },
+        "averageLTV": {
+          "label": "Average LTV",
+          "value": "$4,280"
+        },
+        "returningRate": {
+          "label": "Returning Rate",
+          "value": "68%"
+        },
+        "vsPrevious": "vs last month"
+      }
+    },
+    "nav": {
+      "main": "Main menu",
+      "dashboard": "Dashboard",
+      "catalog": "Catalog",
+      "products": "Products",
+      "categories": "Categories",
+      "collections": "Collections",
+      "orders": "Orders",
+      "customers": "Customers",
+      "tools": "Tools",
+      "marketing": "Marketing",
+      "coupons": "Coupons",
+      "content": "Content",
+      "audit": "Audit Log",
+      "settings": "Settings"
+    },
+    "catalog": {
+      "title": "Catalog",
+      "description": "Manage your store's products, inventory, and categories.",
+      "productsTitle": "Products",
+      "productsDescription": "Manage your store's individual products and their variants.",
+      "actions": {
+        "addProduct": "Add Product",
+        "export": "Export"
+      },
+      "rowActions": {
+        "edit": "Edit product",
+        "viewStorefront": "View on storefront",
+        "copyId": "Copy ID: {id}",
+        "manageVariants": "Manage variants",
+        "copyLink": "Copy link",
+        "delete": "Delete product"
+      },
+      "columns": {
+        "category": "Category",
+        "collection": "Collection",
+        "price": "Price",
+        "product": "Product",
+        "ref": "Ref",
+        "status": "Status",
+        "stock": "Stock"
+      },
+      "status": {
+        "active": "Active",
+        "draft": "Draft",
+        "low": "Low Stock"
+      },
+      "filter": "Filter",
+      "pagination": {
+        "next": "Next",
+        "previous": "Previous",
+        "showing": "Showing 1-10 of 241 products"
+      },
+      "searchPlaceholder": "Search catalog...",
+      "stats": {
+        "activeProducts": {
+          "label": "Active Products",
+          "value": "216"
+        },
+        "draftProducts": {
+          "label": "Drafts",
+          "value": "18"
+        },
+        "lowStock": {
+          "label": "Low Stock",
+          "value": "14"
+        },
+        "totalProducts": {
+          "label": "Total Products",
+          "value": "248"
+        },
+        "vsPrevious": "vs last month"
+      }
+    },
+    "categories": {
+      "title": "Categories",
+      "description": "Organize your products into collections and categories.",
+      "actions": {
+        "addCategory": "Add category"
+      },
+      "form": {
+        "cancel": "Cancel",
+        "changeImage": "Change image",
+        "create": "Create category",
+        "created": "Created",
+        "delete": "Delete",
+        "description": "Description",
+        "descriptionPlaceholder": "Enter category description...",
+        "displayOptions": "Display Options",
+        "featuredLabel": "Featured Category",
+        "id": "ID",
+        "imageHint": "Supports JPG, PNG, WEBP. Max 5MB.",
+        "mediaTitle": "Media",
+        "metaDescription": "Meta Description",
+        "metaDescriptionPlaceholder": "A brief description for search engine results...",
+        "metaTitle": "Meta Title",
+        "metaTitlePlaceholder": "e.g. Category Name - Store Name",
+        "name": "Name",
+        "namePlaceholder": "e.g. Necklaces",
+        "noParent": "None",
+        "parentCategory": "Parent Category",
+        "products": "Products",
+        "removeImage": "Remove",
+        "save": "Save changes",
+        "saveDraft": "Save as draft",
+        "sectionBasic": "Basic Details",
+        "sectionSeo": "Search Engine Optimization",
+        "showInFilters": "Show in filters",
+        "showInNav": "Show in navigation",
+        "slug": "URL Slug",
+        "sortOrder": "Sort Order",
+        "status": "Status",
+        "summary": "Summary",
+        "titleAdd": "Add New Category",
+        "updated": "Last updated",
+        "uploadImage": "Upload Image"
+      },
+      "rowActions": {
+        "edit": "Edit category",
+        "viewProducts": "View products",
+        "copyId": "Copy ID: {id}",
+        "copyLink": "Copy link",
+        "delete": "Delete category"
+      },
+      "columns": {
+        "description": "Description",
+        "name": "Category",
+        "products": "Products",
+        "slug": "Slug",
+        "status": "Status"
+      },
+      "statusActive": "Active",
+      "statusDraft": "Draft",
+      "searchPlaceholder": "Search categories...",
+      "stats": {
+        "active": {
+          "label": "Active Categories",
+          "value": "216"
+        },
+        "avgProducts": {
+          "label": "Avg. Products/Category",
+          "value": "14.2"
+        },
+        "draft": {
+          "label": "Drafts",
+          "value": "18"
+        },
+        "total": {
+          "label": "Total Categories",
+          "value": "248"
+        },
+        "vsPrevious": "vs last month"
+      },
+      "statusActive": "Active",
+      "statusDraft": "Draft"
+    },
+    "collections": {
+      "title": "Collections",
+      "description": "Group your products into curated collections.",
+      "actions": {
+        "addCollection": "Add collection"
+      },
+      "columns": {
+        "description": "Description",
+        "collection": "Collection",
+        "products": "Products",
+        "slug": "Slug",
+        "status": "Status"
+      },
+      "statusActive": "Active",
+      "statusDraft": "Draft",
+      "searchPlaceholder": "Search collections...",
+      "form": {
+        "titleAdd": "Add New Collection",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "saveDraft": "Save as draft",
+        "create": "Create collection",
+        "save": "Save changes",
+        "sectionBasic": "Basic Details",
+        "name": "Name",
+        "namePlaceholder": "e.g. Summer Collection",
+        "slug": "URL Slug",
+        "description": "Description",
+        "descriptionPlaceholder": "Enter collection description...",
+        "mediaTitle": "Media",
+        "coverImage": "Cover Image",
+        "changeImage": "Change image",
+        "removeImage": "Remove",
+        "uploadImage": "Upload Image",
+        "imageHint": "Supports JPG, PNG, WEBP. Max 5MB.",
+        "sectionSeo": "Search Engine Optimization",
+        "metaTitle": "Meta Title",
+        "metaTitlePlaceholder": "e.g. Collection Name - Store Name",
+        "metaDescription": "Meta Description",
+        "metaDescriptionPlaceholder": "A brief description for search engine results...",
+        "status": "Status",
+        "featuredLabel": "Featured Collection",
+        "displayOptions": "Display Options",
+        "showOnHomepage": "Show on homepage",
+        "showInNav": "Show in navigation",
+        "summary": "Summary",
+        "products": "Products",
+        "id": "ID",
+        "created": "Created",
+        "updated": "Last updated"
+      },
+      "stats": {
+        "active": {
+          "label": "Active Collections",
+          "value": "24"
+        },
+        "avgProducts": {
+          "label": "Avg. Products/Collection",
+          "value": "12.5"
+        },
+        "draft": {
+          "label": "Drafts",
+          "value": "4"
+        },
+        "total": {
+          "label": "Total Collections",
+          "value": "28"
+        },
+        "vsPrevious": "vs last month"
+      }
+    },
+    "newProduct": {
+      "actions": {
+        "discard": "Discard",
+        "publish": "Publish",
+        "saveChanges": "Save changes",
+        "saveDraft": "Save draft"
+      },
+      "basic": {
+        "description": "Description",
+        "descriptionPlaceholder": "Write a detailed description of the product...",
+        "material": "Material",
+        "name": "Product Name",
+        "namePlaceholder": "e.g. Minimalist Gold Hoop",
+        "ref": "Reference / SKU",
+        "selectMaterial": "Select material...",
+        "title": "Basic Details"
+      },
+      "breadcrumb": {
+        "catalog": "Catalog",
+        "dashboard": "Dashboard"
+      },
+      "inventory": {
+        "quantity": "Quantity",
+        "sellWhenOOS": "Continue selling when out of stock",
+        "title": "Inventory",
+        "trackInventory": "Track quantity"
+      },
+      "media": {
+        "dragDrop": "Drag & drop your images here",
+        "formats": "Supports JPG, PNG, WEBP. Max 5MB.",
+        "title": "Media"
+      },
+      "organization": {
+        "title": "Organization",
+        "category": "Category",
+        "collection": "Collection",
+        "selectCategory": "Select category...",
+        "selectCollection": "Select collection..."
+      },
+      "pricing": {
+        "compareAt": "Compare at price",
+        "cost": "Cost per item",
+        "hint": "Customers won't see this.",
+        "price": "Price",
+        "title": "Pricing & Inventory"
+      },
+      "seo": {
+        "metaDescription": "Meta Description",
+        "metaDescriptionPlaceholder": "A brief description of the product for search engine results...",
+        "metaTitle": "Meta Title",
+        "metaTitlePlaceholder": "e.g. Product Name - Store Name",
+        "slug": "URL Slug",
+        "title": "Search Engine Optimization"
+      },
+      "shipping": {
+        "fulfillmentTime": "Fulfillment Time",
+        "dimensions": "Dimensions",
+        "requiresShipping": "This is a physical product",
+        "title": "Shipping",
+        "weight": "Weight",
+        "unit": "Unit",
+        "days": "Days",
+        "weeks": "Weeks",
+        "months": "Months"
+      },
+      "status": {
+        "active": "Active",
+        "archived": "Archived",
+        "draft": "Draft",
+        "featured": "Featured Product",
+        "title": "Product Status",
+        "low": "Low Stock"
+      },
+      "tags": {
+        "placeholder": "Add a tag...",
+        "title": "Tags"
+      },
+      "title": "Add New Product",
+      "editTitle": "Edit Product",
+      "variants": {
+        "add": "Add variant",
+        "addFirst": "Add your first product variant",
+        "name": "Variant",
+        "namePlaceholder": "e.g. Size",
+        "optionValue": "Option Value",
+        "price": "Price",
+        "stock": "Stock",
+        "title": "Variants",
+        "valuePlaceholder": "e.g. Small"
+      }
+    },
+    "user": {
+      "name": "Jane Doe",
+      "role": "Administrator",
+      "initials": "JD"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "description": "Overview of your store's performance and recent activity.",
+      "stats": {
+        "vsPrevious": "vs last month",
+        "revenue": {
+          "label": "Total Revenue",
+          "value": "$142,300"
+        },
+        "orders": {
+          "label": "Total Orders",
+          "value": "1,429"
+        },
+        "customers": {
+          "label": "New Customers",
+          "value": "342"
+        },
+        "views": {
+          "label": "Page Views",
+          "value": "84,200"
+        }
+      },
+      "chart": {
+        "title": "Revenue Overview",
+        "description": "Showing total revenue for the last 10 months",
+        "last7": "Last 7 days",
+        "last30": "Last 30 days"
+      },
+      "avgOrder": {
+        "label": "Average Order Value",
+        "value": "$248.50",
+        "trend": "+4.2%"
+      },
+      "totalSales": {
+        "label": "Total Sales (YTD)",
+        "value": "$842,500.00",
+        "period": "View annual report"
+      },
+      "recentOrders": {
+        "title": "Recent Orders",
+        "viewAll": "View all",
+        "columns": {
+          "order": "Order",
+          "customer": "Customer",
+          "date": "Date",
+          "total": "Total",
+          "payment": "Payment",
+          "fulfillment": "Fulfillment"
+        },
+        "status": {
+          "unfulfilled": "Unfulfilled",
+          "shipped": "Shipped",
+          "delivered": "Delivered",
+          "pending": "Pending",
+          "paid": "Paid",
+          "refunded": "Refunded",
+          "authorized": "Authorized"
+        }
+      },
+      "topProducts": {
+        "title": "Top Selling Products",
+        "sold": "sold"
+      }
+    },
+    "audit": {
+      "title": "Audit Log",
+      "description": "Track all system events and administrative actions.",
+      "breadcrumb": {
+        "dashboard": "Dashboard"
+      },
+      "stats": {
+        "totalEvents": "Total events",
+        "today": "Today",
+        "warnings": "Warnings",
+        "errors": "Errors"
+      },
+      "categories": {
+        "all": "All",
+        "orders": "Orders",
+        "email": "Email",
+        "customers": "Customers",
+        "catalog": "Catalog",
+        "settings": "Settings",
+        "auth": "Auth"
+      },
+      "severity": {
+        "info": "Info",
+        "success": "Success",
+        "warning": "Warning",
+        "error": "Error"
+      },
+      "dateRange": {
+        "all": "All time",
+        "today": "Today",
+        "7d": "7 days",
+        "30d": "30 days",
+        "custom": "Custom",
+        "from": "From",
+        "to": "To",
+        "apply": "Apply"
+      },
+      "columns": {
+        "status": "Status",
+        "event": "Event",
+        "target": "Target",
+        "detail": "Detail",
+        "category": "Category",
+        "actor": "Actor",
+        "timestamp": "Timestamp",
+        "ip": "IP"
+      },
+      "actions": {
+        "email_sent": "Email sent",
+        "email_failed": "Email failed",
+        "email_deferred": "Email deferred",
+        "order_shipped": "Order shipped",
+        "order_placed": "Order placed",
+        "order_payment_captured": "Payment captured",
+        "order_fulfillment_started": "Fulfillment started",
+        "order_refund_initiated": "Refund initiated",
+        "settings_updated": "Settings updated",
+        "product_updated": "Product updated",
+        "product_created": "Product created",
+        "product_deleted": "Product deleted",
+        "customer_tier_upgrade": "Tier upgrade",
+        "customer_registered": "Customer registered",
+        "auth_login": "Login",
+        "auth_login_failed": "Login failed"
+      },
+      "searchPlaceholder": "Search events…",
+      "clearFilter": "Clear",
+      "empty": "No events match the current filters.",
+      "pagination": {
+        "showing": "Showing {count} of {total} events",
+        "previous": "Previous",
+        "next": "Next"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Manage your store configuration and preferences.",
+      "tabs": {
+        "general": "General",
+        "account": "Account",
+        "shipping": "Shipping",
+        "appearance": "Appearance",
+        "security": "Security",
+        "localization": "Localization"
+      },
+      "general": {
+        "storeInfo": {
+          "title": "Store Information",
+          "description": "Basic details about your store.",
+          "name": "Store name",
+          "email": "Contact email",
+          "desc": "Description"
+        },
+        "preferences": {
+          "title": "Preferences",
+          "description": "Configure how your store operates.",
+          "maintenance": {
+            "label": "Maintenance mode",
+            "description": "Temporarily disable the storefront for visitors."
+          },
+          "inventoryTracking": {
+            "label": "Inventory tracking",
+            "description": "Automatically track stock levels for all products."
+          },
+          "autoFulfillment": {
+            "label": "Automatic fulfillment",
+            "description": "Automatically fulfill orders when payment is captured."
+          },
+          "orderConfirmation": {
+            "label": "Order confirmation emails",
+            "description": "Send a confirmation email when an order is placed."
+          }
+        },
+        "save": "Save changes"
+      },
+      "comingSoon": "This section is coming soon."
+    },
+    "orders": {
+      "title": "Orders",
+      "description": "Manage and track customer orders.",
+      "actions": {
+        "export": "Export",
+        "newOrder": "New Order"
+      },
+      "stats": {
+        "totalOrders": { "label": "Total Orders", "value": "1,284" },
+        "pending": { "label": "Pending", "value": "23" },
+        "revenue": { "label": "Revenue", "value": "$142,850" },
+        "avgValue": { "label": "Avg. Value", "value": "$2,845" },
+        "vsPrevious": "vs. previous period"
+      },
+      "tabs": {
+        "all": "All",
+        "pending": "Pending",
+        "unfulfilled": "Unfulfilled",
+        "shipped": "Shipped",
+        "delivered": "Delivered"
+      },
+      "searchPlaceholder": "Search orders…",
+      "columns": {
+        "order": "Order",
+        "customer": "Customer",
+        "date": "Date",
+        "items": "Items",
+        "total": "Total",
+        "payment": "Payment",
+        "fulfillment": "Fulfillment"
+      },
+      "payment": {
+        "paid": "Paid",
+        "authorized": "Authorized",
+        "refunded": "Refunded"
+      },
+      "fulfillment": {
+        "unfulfilled": "Unfulfilled",
+        "pending": "Pending",
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "returned": "Returned"
+      },
+      "pagination": {
+        "showing": "Showing {count} of {total} orders",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "rowActions": {
+        "viewOrder": "View order",
+        "copyId": "Copy #{id}",
+        "fulfill": "Fulfill order",
+        "markShipped": "Mark as shipped",
+        "printInvoice": "Print invoice",
+        "refund": "Refund",
+        "cancel": "Cancel order"
+      }
+    },
+    "orderDetail": {
+      "actions": {
+        "print": "Print",
+        "refund": "Refund",
+        "fulfill": "Fulfill"
+      },
+      "meta": {
+        "date": "Date",
+        "status": "Status",
+        "payment": "Payment",
+        "channel": "Channel",
+        "total": "Total"
+      },
+      "status": {
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "pending": "Pending",
+        "unfulfilled": "Unfulfilled",
+        "returned": "Returned",
+        "cancelled": "Cancelled"
+      },
+      "payment": {
+        "paid": "Paid",
+        "authorized": "Authorized",
+        "refunded": "Refunded",
+        "pending": "Pending"
+      },
+      "fulfillment": {
+        "title": "Fulfillment",
+        "steps": {
+          "confirmed": "Confirmed",
+          "processing": "Processing",
+          "shipped": "Shipped",
+          "outForDelivery": "Out for Delivery",
+          "delivered": "Delivered"
+        }
+      },
+      "items": {
+        "title": "Items",
+        "columns": {
+          "product": "Product",
+          "sku": "SKU",
+          "qty": "Qty",
+          "price": "Price",
+          "total": "Total"
+        }
+      },
+      "summary": {
+        "subtotal": "Subtotal",
+        "shipping": "Shipping",
+        "tax": "Tax",
+        "total": "Total"
+      },
+      "timeline": {
+        "title": "Activity",
+        "emailStatus": {
+          "delivered": "Delivered",
+          "failed": "Failed",
+          "bounced": "Bounced",
+          "deferred": "Deferred"
+        }
+      },
+      "customer": {
+        "title": "Customer",
+        "ordersCount": "{count} orders",
+        "viewProfile": "View profile"
+      },
+      "shipping": {
+        "title": "Shipping Address",
+        "estimatedDelivery": "Est. delivery"
+      },
+      "billing": {
+        "title": "Billing Address",
+        "sameAsShipping": "Same as shipping"
+      },
+      "paymentDetails": {
+        "title": "Payment"
+      },
+      "tags": {
+        "title": "Tags"
+      },
+      "notes": {
+        "title": "Internal Notes",
+        "edit": "Edit"
+      }
+    },
+    "marketing": {
+      "title": "Marketing Campaigns",
+      "description": "Manage promotional campaigns, track impressions, click rates, and conversions.",
+      "actions": {
+        "newCampaign": "New Campaign"
+      },
+      "stats": {
+        "totalCampaigns": { "label": "Total Campaigns", "value": "12" },
+        "activeCampaigns": { "label": "Active Campaigns", "value": "3" },
+        "totalReach": { "label": "Total Reach", "value": "19.4K" },
+        "totalRevenue": { "label": "Total Revenue", "value": "$85,200" }
+      },
+      "chart": {
+        "title": "Campaign Engagement",
+        "description": "Showing average open rate and click rate for recent months"
+      },
+      "campaigns": {
+        "title": "Campaign Overview",
+        "columns": {
+          "campaign": "Campaign",
+          "type": "Channel",
+          "status": "Status",
+          "sent": "Reach",
+          "openRate": "Open Rate",
+          "revenue": "Revenue"
+        }
+      },
+      "status": {
+        "active": "Active",
+        "completed": "Completed",
+        "draft": "Draft"
+      }
+    },
+    "coupons": {
+      "title": "Discount Coupons",
+      "description": "Manage promotional codes, discounts, and free shipping offers.",
+      "actions": {
+        "createCoupon": "Create Coupon"
+      },
+      "stats": {
+        "activeCoupons": { "label": "Active Coupons", "value": "18" },
+        "totalRedemptions": { "label": "Total Redemptions", "value": "1,492" },
+        "revenueSaved": { "label": "Revenue Saved", "value": "$12,450" },
+        "avgDiscount": { "label": "Avg Discount", "value": "18%" }
+      },
+      "columns": {
+        "code": "Code",
+        "type": "Type",
+        "discount": "Discount",
+        "minOrder": "Min. Order",
+        "usage": "Usage",
+        "status": "Status",
+        "expires": "Expires",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "scheduled": "Scheduled",
+        "expired": "Expired"
+      }
+    },
+    "content": {
+      "title": "Content Management",
+      "description": "Manage your store's pages, articles, and promotional banners.",
+      "actions": {
+        "newPage": "New Page"
+      },
+      "types": {
+        "pages": {
+          "title": "Pages",
+          "description": "Static pages"
+        },
+        "banners": {
+          "title": "Banners",
+          "description": "Promotional banners"
+        },
+        "articles": {
+          "title": "Articles",
+          "description": "Blog posts and articles"
+        }
+      },
+      "pagesTable": {
+        "title": "All Pages",
+        "columns": {
+          "title": "Title",
+          "path": "Path",
+          "sections": "Sections",
+          "lastEdited": "Last Edited",
+          "status": "Status",
+          "actions": "Actions"
+        }
+      },
+      "status": {
+        "published": "Published",
+        "draft": "Draft"
+      }
     }
   }
 }

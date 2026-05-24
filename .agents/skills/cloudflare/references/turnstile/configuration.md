@@ -206,7 +206,7 @@ import Turnstile from 'svelte-turnstile';
 
 ```tsx
 // app/components/TurnstileWidget.tsx
-"use client";
+"";
 import { useEffect, useRef } from "react";
 
 export default function TurnstileWidget({ sitekey, onSuccess }) {

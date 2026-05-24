@@ -1,4 +1,4 @@
-"use client";
+"";
 
 import { type CSSProperties, useMemo, type JSX } from "react";
 

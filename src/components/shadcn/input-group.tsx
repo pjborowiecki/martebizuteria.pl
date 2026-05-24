@@ -1,4 +1,4 @@
-"use client";
+"";
 
 import type { ComponentProps, JSX } from "react";
 
@@ -14,7 +14,7 @@ function InputGroup({ className, ...props }: Readonly<ComponentProps<"div">>): J
   return (
     <div
       className={cn(
-        "group/input-group relative flex min-h-11 w-full min-w-0 items-center rounded-none border-0 border-b border-border bg-secondary transition-[color,background-color,border-color] outline-none focus-within:border-foreground focus-within:ring-0 in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-disabled:cursor-not-allowed has-disabled:bg-muted/60 has-disabled:opacity-60 has-[[data-slot][aria-invalid=true]]:border-destructive has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto dark:bg-input/30 dark:has-disabled:bg-input/80 dark:has-[[data-slot][aria-invalid=true]]:border-destructive has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
+        "group/input-group relative flex min-h-11 w-full min-w-0 items-center rounded-none border-0 border-b border-border bg-background transition-[color,background-color,border-color] outline-none focus-within:border-foreground focus-within:ring-0 in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-disabled:cursor-not-allowed has-disabled:bg-muted/60 has-disabled:opacity-60 has-[[data-slot][aria-invalid=true]]:border-destructive has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto dark:bg-input/30 dark:has-disabled:bg-input/80 dark:has-[[data-slot][aria-invalid=true]]:border-destructive has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
         className
       )}
       data-slot="input-group"
@@ -24,7 +24,7 @@ function InputGroup({ className, ...props }: Readonly<ComponentProps<"div">>): J
 }
 
 const inputGroupAddonVariants = cva(
-  "flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-xs font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-lg [&>svg:not([class*='size-'])]:size-4",
+  "flex h-auto cursor-text items-center justify-center gap-2 py-2.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-lg [&>svg:not([class*='size-'])]:size-4",
   {
     defaultVariants: {
       align: "inline-start"

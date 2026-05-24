@@ -1,4 +1,4 @@
-"use client";
+"";
 
 import { type CSSProperties, createContext, type JSX, useContext, useMemo } from "react";
 

@@ -1,5 +1,3 @@
-"use client";
-
 import { type ReactNode, type RefObject, createContext, useCallback, useContext, useMemo, useRef } from "react";
 
 import { useRouter } from "@tanstack/react-router";
