@@ -165,13 +165,19 @@ export default defineConfig({
     const { default: tailwindcss } = await import("@tailwindcss/vite");
     const { default: react } = await import("@vitejs/plugin-react");
 
+    const startOpts = {
+      importProtection: {
+        enabled: false
+      }
+    };
+
     if (process.env.VITEST !== undefined) {
-      return [tailwindcss(), tanstackStart(), react()];
+      return [tailwindcss(), tanstackStart(startOpts), react()];
     }
 
     const { cloudflare } = await import("@cloudflare/vite-plugin");
 
-    return [cloudflare({ viteEnvironment: { name: "ssr" } }), tailwindcss(), tanstackStart(), react()];
+    return [cloudflare({ viteEnvironment: { name: "ssr" } }), tailwindcss(), tanstackStart(startOpts), react()];
   }),
 
   resolve: { tsconfigPaths: true },
