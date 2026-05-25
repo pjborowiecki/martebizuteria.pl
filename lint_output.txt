@@ -1,0 +1,66 @@
+VITE+ - The Unified Toolchain for the Web
+
+[1m[31merror:[39m[0m Lint or type issues found
+x eslint(no-unused-vars): Identifier 'Save' is imported but never used.
+   ,-[src/routes/{-$locale}.account.profile.tsx:6:33]
+ 5 | import { createFileRoute } from "@tanstack/react-router";
+ 6 | import { AlertTriangle, Pencil, Save, X } from "lucide-react";
+   :                                 ^^|^
+   :                                   `-- 'Save' is imported here
+ 7 | import { useTranslations } from "use-intl";
+   `----
+  help: Consider removing this import.
+
+  x eslint(no-unused-vars): Identifier 'X' is imported but never used.
+   ,-[src/routes/{-$locale}.account.profile.tsx:6:39]
+ 5 | import { createFileRoute } from "@tanstack/react-router";
+ 6 | import { AlertTriangle, Pencil, Save, X } from "lucide-react";
+   :                                       |
+   :                                       `-- 'X' is imported here
+ 7 | import { useTranslations } from "use-intl";
+   `----
+  help: Consider removing this import.
+
+  x react(jsx-no-undef): 'Check' is not defined.
+    ,-[src/routes/{-$locale}.account.profile.tsx:74:23]
+ 73 |       <Button variant="ghost" size="icon-xs" onClick={handleToggle}>
+ 74 |         {isEditing ? <Check className="size-4" strokeWidth={1.5} /> : <Pencil className="size-3.5" strokeWidth={1.5} />}
+    :                       ^^^^^
+ 75 |       </Button>
+    `----
+
+  x typescript(TS6133): 'Save' is declared but its value is never read.
+   ,-[src/routes/{-$locale}.account.profile.tsx:6:33]
+ 5 | import { createFileRoute } from "@tanstack/react-router";
+ 6 | import { AlertTriangle, Pencil, Save, X } from "lucide-react";
+   :                                 ^^^^
+ 7 | import { useTranslations } from "use-intl";
+   `----
+
+  x typescript(TS6133): 'X' is declared but its value is never read.
+   ,-[src/routes/{-$locale}.account.profile.tsx:6:39]
+ 5 | import { createFileRoute } from "@tanstack/react-router";
+ 6 | import { AlertTriangle, Pencil, Save, X } from "lucide-react";
+   :                                       ^
+ 7 | import { useTranslations } from "use-intl";
+   `----
+
+  x typescript(TS2304): Cannot find name 'Check'.
+    ,-[src/routes/{-$locale}.account.profile.tsx:74:23]
+ 73 |       <Button variant="ghost" size="icon-xs" onClick={handleToggle}>
+ 74 |         {isEditing ? <Check className="size-4" strokeWidth={1.5} /> : <Pencil className="size-3.5" strokeWidth={1.5} />}
+    :                       ^^^^^
+ 75 |       </Button>
+    `----
+
+  x typescript(TS2322): Type '{ key: FieldKey; field: { key: FieldKey; label: string; type: string; }; editing: FieldKey | undefined; setEditing: (key: FieldKey | undefined) => void; values: { ...; }; setValues: Dispatch<...>; onSave: () => void; onCancel: (key: FieldKey) => void; }' is not assignable to type 'IntrinsicAttributes & Readonly<{ editing: FieldKey | undefined; field: { key:
+  | FieldKey; label: string; type: string; }; setEditing: (key: FieldKey | undefined) => void; setValues: Dispatch<...>; values: { ...; }; }>'.
+     ,-[src/routes/{-$locale}.account.profile.tsx:127:13]
+ 126 |             setValues={setValues}
+ 127 |             onSave={handleSave}
+     :             ^^^^^^
+ 128 |             onCancel={handleCancel}
+     `----
+
+Found 7 errors and 0 warnings in 354 files (5.0s, 10 threads)
+[1m[94mpass:[39m[0m Formatting completed for checked files [2m(7.0s)[0m
