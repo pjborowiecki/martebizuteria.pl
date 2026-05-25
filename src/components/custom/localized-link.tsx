@@ -1,6 +1,4 @@
-import { type CSSProperties, forwardRef, type MouseEventHandler, type ReactNode } from "react";
-
-import { Link } from "@tanstack/react-router";
+import { Link, type LinkComponentProps } from "@tanstack/react-router";
 
 import type { FileRouteTypes } from "~/src/routeTree.gen";
 
@@ -10,32 +8,14 @@ type StripLocalePrefix<Path extends string> = Path extends `/{-$locale}${infer R
 
 export type LocalizedTo = StripLocalePrefix<LocalizedFullPaths>;
 
-interface ActiveLinkProps {
-  readonly className?: string;
-  readonly style?: Readonly<CSSProperties>;
-}
+type BaseLinkProps = LinkComponentProps;
 
-export interface LocalizedLinkProps {
+export type LocalizedLinkProps = Omit<BaseLinkProps, "to" | "params"> & {
   readonly to: LocalizedTo;
   readonly params?: Readonly<Record<string, string | number | undefined>>;
-  readonly children?: ReactNode;
-  readonly className?: string;
-  readonly style?: Readonly<CSSProperties>;
-  readonly id?: string;
-  readonly target?: "_blank" | "_self" | "_parent" | "_top";
-  readonly rel?: string;
-  readonly onClick?: MouseEventHandler<HTMLAnchorElement>;
-  readonly onMouseEnter?: MouseEventHandler<HTMLAnchorElement>;
-  readonly onMouseLeave?: MouseEventHandler<HTMLAnchorElement>;
-  readonly activeProps?: Readonly<ActiveLinkProps>;
-  readonly inactiveProps?: Readonly<ActiveLinkProps>;
-  readonly "aria-label"?: string;
-  readonly "aria-current"?: boolean | "page" | "step" | "location" | "date" | "time";
-  readonly "aria-describedby"?: string;
-  readonly "aria-hidden"?: boolean;
-}
+};
 
-function buildLocalizedPath(to: LocalizedTo): string {
+function buildLocalizedPath(to: LocalizedTo): LocalizedFullPaths {
   if (to === "/") {
     return "/{-$locale}";
   }
@@ -43,70 +23,20 @@ function buildLocalizedPath(to: LocalizedTo): string {
   return `/{-$locale}${to}`;
 }
 
-interface InternalLinkProps {
-  readonly localizedTo: string;
-  readonly props: LocalizedLinkProps;
-}
+export function LocalizedLink({ to, params, children, ...rest }: LocalizedLinkProps) {
+  const localizedTo = buildLocalizedPath(to);
 
-const LinkWithParams = forwardRef<HTMLAnchorElement, InternalLinkProps>(({ localizedTo, props }, ref) => (
-  <Link
-    ref={ref}
-    to={localizedTo}
-    params={props.params}
-    className={props.className}
-    style={props.style}
-    id={props.id}
-    target={props.target}
-    rel={props.rel}
-    onClick={props.onClick}
-    onMouseEnter={props.onMouseEnter}
-    onMouseLeave={props.onMouseLeave}
-    activeProps={props.activeProps}
-    inactiveProps={props.inactiveProps}
-    aria-label={props["aria-label"]}
-    aria-current={props["aria-current"]}
-    aria-describedby={props["aria-describedby"]}
-    aria-hidden={props["aria-hidden"]}
-  >
-    {props.children}
-  </Link>
-));
-
-LinkWithParams.displayName = "LinkWithParams";
-
-const LinkWithoutParams = forwardRef<HTMLAnchorElement, InternalLinkProps>(({ localizedTo, props }, ref) => (
-  <Link
-    ref={ref}
-    to={localizedTo}
-    className={props.className}
-    style={props.style}
-    id={props.id}
-    target={props.target}
-    rel={props.rel}
-    onClick={props.onClick}
-    onMouseEnter={props.onMouseEnter}
-    onMouseLeave={props.onMouseLeave}
-    activeProps={props.activeProps}
-    inactiveProps={props.inactiveProps}
-    aria-label={props["aria-label"]}
-    aria-current={props["aria-current"]}
-    aria-describedby={props["aria-describedby"]}
-    aria-hidden={props["aria-hidden"]}
-  >
-    {props.children}
-  </Link>
-));
-
-LinkWithoutParams.displayName = "LinkWithoutParams";
-
-export const LocalizedLink = forwardRef<HTMLAnchorElement, LocalizedLinkProps>((props, ref) => {
-  const localizedTo = buildLocalizedPath(props.to);
-
-  if (props.params !== undefined) {
-    return <LinkWithParams localizedTo={localizedTo} props={props} ref={ref} />;
+  if (params !== undefined) {
+    return (
+      <Link to={localizedTo} params={params} {...rest}>
+        {children}
+      </Link>
+    );
   }
 
-  return <LinkWithoutParams localizedTo={localizedTo} props={props} ref={ref} />;
-});
-
-LocalizedLink.displayName = "LocalizedLink";
+  return (
+    <Link to={localizedTo} {...rest}>
+      {children}
+    </Link>
+  );
+}
