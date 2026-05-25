@@ -425,6 +425,9 @@
     "title": "Koszyk",
     "description": "Twój koszyk pojawi się tutaj.",
     "goHome": "Przejdź do strony głównej",
+    "emptyTitle": "Twoja kolekcja czeka",
+    "emptySubtitle": "Każdy element M'Arte jest tworzony, by go odkryć, nie pospieszyć. Nie spiesz się — Twój idealny element już na Ciebie czeka.",
+    "exploreCta": "Odkryj Kolekcję",
     "itemCount": "{count, plural, =0 {Brak produktów} one {# produkt} few {# produkty} many {# produktów} other {# produktów}}",
     "continueShopping": "Kontynuuj zakupy",
     "removeItem": "Usuń produkt",
@@ -461,6 +464,83 @@
         "material": "Srebro 925 / surowe",
         "size": "Rozmiar uniwersalny",
         "price": "280 PLN"
+      }
+    }
+  },
+  "checkoutPage": {
+    "title": "Kasa",
+    "secureCheckout": "Bezpieczna Kasa",
+    "metadata": {
+      "description": "Dokończ zamówienie bezpiecznie w M'Arte."
+    },
+    "checkoutSummary": {
+      "title": "Twoje zamówienie",
+      "subtotal": "Suma częściowa",
+      "delivery": "Dostawa",
+      "deliveryCalculated": "Wyliczone w następnym kroku",
+      "total": "Razem"
+    },
+    "checkoutForm": {
+      "steps": {
+        "billing": "Adres dostawy",
+        "delivery": "Metoda dostawy",
+        "payment": "Płatność",
+        "overview": "Podsumowanie i złożenie zamówienia"
+      },
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
+      "addressLine1": "Adres",
+      "postalCode": "Kod pocztowy",
+      "city": "Miasto",
+      "country": "Kraj",
+      "continueToDelivery": "Dalej: dostawa",
+      "continueToPayment": "Dalej: płatność",
+      "continueToReview": "Podsumowanie zamówienia",
+      "deliveryMethods": {
+        "courier": "Kurier",
+        "locker": "Paczkomat",
+        "in_store": "Odbiór osobisty"
+      },
+      "deliverySubsteps": {
+        "courier": "Standardowa dostawa kurierem (2–4 dni robocze). Darmowa dla zamówień powyżej 300 PLN.",
+        "locker": "Dostawa do paczkomatu (1–2 dni robocze). Wybierz preferowany paczkomat na następnym etapie.",
+        "inStore": "Odbiór w naszym warszawskim atelier. Gotowe w ciągu 24 godzin od potwierdzenia zamówienia."
+      },
+      "paymentMethods": {
+        "card": "Karta kredytowa",
+        "blik": "BLIK",
+        "bank_transfer": "Przelew bankowy"
+      },
+      "paymentSubsteps": {
+        "blik": "Po złożeniu zamówienia otrzymasz żądanie kodu BLIK w aplikacji bankowej.",
+        "bankTransfer": "Dane do przelewu zostaną podane po złożeniu zamówienia. Przesyłka wysyłana po zaksięgowaniu płatności."
+      },
+      "cardholderName": "Imię i nazwisko posiadacza karty",
+      "cardNumber": "Numer karty",
+      "cardExpiry": "Ważność",
+      "cardCvv": "CVV",
+      "saveCard": "Zapisz tę kartę na przyszłe zakupy",
+      "shippingTo": "Adres dostawy",
+      "deliveryMethod": "Metoda dostawy",
+      "paymentInformation": "Płatność",
+      "billingAddress": "Adres rozliczeniowy",
+      "sameAsShipping": "Taki sam jak adres dostawy",
+      "estDeliveryPlaceholder": "Przewidywana dostawa w 2–4 dni robocze",
+      "cardSummary": "Karta kończąca się na {endingDigits}",
+      "placeOrder": "Złóż zamówienie",
+      "termsAgreement": "Składając zamówienie, akceptujesz Regulamin i Politykę Prywatności.",
+      "placeholderItemName": "Aura Hoop I",
+      "placeholderItemDetails": "Srebro 925 / lustrzane · Rozmiar uniwersalny",
+      "placeholderItemPrice": "340 PLN",
+      "validation": {
+        "firstNameRequired": "Imię jest wymagane",
+        "lastNameRequired": "Nazwisko jest wymagane",
+        "addressRequired": "Adres jest wymagany",
+        "cityRequired": "Miasto jest wymagane",
+        "postCodeRequired": "Kod pocztowy jest wymagany",
+        "countryRequired": "Kraj jest wymagany",
+        "deliveryRequired": "Wybierz metodę dostawy",
+        "paymentRequired": "Wybierz metodę płatności"
       }
     }
   },

@@ -59,6 +59,7 @@
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@gsap/react": "^2.1.2",
+    "@hookform/resolvers": "^5.4.0",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-router": "^1.170.4",
@@ -82,6 +83,7 @@
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.6",
     "react-email": "^6.1.4",
+    "react-hook-form": "^7.76.1",
     "react-resizable-panels": "^4.11.1",
     "recharts": "^3.8.1",
     "sonner": "^2.0.7",

@@ -44,7 +44,7 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
         to={CONSTANTS.ROUTES.PRODUCT}
       >
         <Image
-          alt={item.title ?? t(item.nameKey ?? "items.item1.name")}
+          alt={item.title}
           className="size-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
           height={200}
           sizes="140px"
@@ -61,10 +61,10 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
               params={productParams}
               to={CONSTANTS.ROUTES.PRODUCT}
             >
-              {item.title ?? t(item.nameKey ?? "items.item1.name")}
+              {item.title}
             </LocalizedLink>
-            <p className="mt-1 text-xs text-muted-foreground">{item.material ?? t(item.materialKey ?? "items.item1.material")}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{item.size ?? t(item.sizeKey ?? "items.item1.size")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{item.material}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{item.size}</p>
           </div>
           <Button
             aria-label={t("removeItem")}
@@ -78,7 +78,7 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
         </div>
 
         <div className="mt-4 flex items-end justify-between gap-4">
-          <div className="flex h-9 items-center border border-border">
+          <div className="flex h-9 items-center border border-foreground/15">
             <Button
               aria-label={t("decreaseQty")}
               className="size-9 rounded-none text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -101,7 +101,7 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
             </Button>
           </div>
 
-          <p className="text-sm tracking-wide">{item.price ?? t(item.priceKey ?? "items.item1.price")}</p>
+          <p className="text-sm tracking-wide">{item.price}</p>
         </div>
       </div>
     </div>

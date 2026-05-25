@@ -8,7 +8,10 @@ import { cn } from "~/src/lib/utils";
 import { Image } from "~/src/components/custom/image";
 import { LocalizedLink, type LocalizedTo } from "~/src/components/custom/localized-link";
 
+import { useCartStore } from "~/src/stores/cart.store";
+
 const ADD_TO_CART_TIMEOUT_MS = 1800;
+const DEFAULT_SIZE = "One Size";
 
 export interface ProductCardProps {
   readonly badge?: string;
@@ -24,25 +27,35 @@ export interface ProductCardProps {
   readonly parallax?: boolean;
   readonly price?: string;
   readonly sizes?: string;
+  readonly slug?: string;
   readonly wishlisted?: boolean;
 }
 
 function useProductCardLogic({
+  detail,
   href,
+  image,
   initialWishlisted,
   name,
   onAddToCart,
-  onWishlistToggle
+  onWishlistToggle,
+  price,
+  slug
 }: {
+  detail: string;
   href: LocalizedTo;
+  image: string;
   initialWishlisted: boolean;
   name: string;
   onAddToCart?: () => void;
   onWishlistToggle?: () => void;
+  price?: string;
+  slug?: string;
 }) {
   const [wishlisted, setWishlisted] = useState(initialWishlisted);
   const [justAdded, setJustAdded] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(globalThis.undefined);
+  const { addItem } = useCartStore();
 
   const stop = useCallback((e: MouseEvent) => {
     e.preventDefault();
@@ -63,10 +76,25 @@ function useProductCardLogic({
   const handleAddToCart = useCallback(
     (e: MouseEvent) => {
       stop(e);
+
+      const itemSlug = slug ?? (typeof href === "string" ? (href.split("/").pop() ?? "unknown") : "unknown");
+
+      addItem({
+        id: `${itemSlug}-${DEFAULT_SIZE}-${detail}`,
+        image,
+        material: detail,
+        price: price ?? "",
+        size: DEFAULT_SIZE,
+        slug: itemSlug,
+        title: name
+      });
+
       setJustAdded(true);
+
       if (onAddToCart !== undefined) {
         onAddToCart();
       }
+
       if (timeoutRef.current !== undefined) {
         globalThis.clearTimeout(timeoutRef.current);
       }
@@ -74,7 +102,7 @@ function useProductCardLogic({
         setJustAdded(false);
       }, ADD_TO_CART_TIMEOUT_MS);
     },
-    [stop, onAddToCart]
+    [stop, addItem, slug, href, detail, image, price, name, onAddToCart]
   );
 
   const handleShare = useCallback(
@@ -83,7 +111,7 @@ function useProductCardLogic({
       const shareAsync = async () => {
         if (typeof navigator.share === "function") {
           try {
-            await navigator.share({ title: name, url: href });
+            await navigator.share({ title: name, url: href as string });
           } catch {
             // ignore
           }
@@ -118,15 +146,20 @@ export function ProductCard({
   parallax = false,
   price,
   sizes = "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw",
+  slug,
   wishlisted: initialWishlisted = false
 }: Readonly<ProductCardProps>): JSX.Element {
   const t = useTranslations("components.custom.productCard");
   const { handleAddToCart, handleShare, handleWishlist, justAdded, wishlisted } = useProductCardLogic({
+    detail,
     href,
+    image,
     initialWishlisted,
     name,
     onAddToCart,
-    onWishlistToggle
+    onWishlistToggle,
+    price,
+    slug
   });
 
   return (
@@ -138,35 +171,29 @@ export function ProductCard({
           <Image
             src={image}
             alt={name}
-            height={960}
-            width={768}
+            width={600}
+            height={750}
             sizes={sizes}
-            className="h-full w-full object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.25,0.46,0.45,0.94)] will-change-transform group-hover/card:scale-[1.06]"
+            className="object-cover transition-[transform,filter] duration-700 ease-out group-hover/card:scale-[1.03]"
           />
         </div>
 
-        {/* Hover darkening */}
-        <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-500 group-hover/card:bg-black/10" />
-
-        {/* Bottom gradient — always subtle, stronger on hover */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-linear-to-t from-black/0 transition-opacity duration-500 group-hover/card:from-black/40" />
-
-        {/* Badge (New, Bestseller, etc.) */}
+        {/* Badge */}
         {badge !== undefined && (
-          <span className="absolute top-3 left-3 z-10 bg-background px-2.5 py-1 text-[9px] font-medium tracking-[0.22em] uppercase">
+          <span className="absolute top-3 left-3 z-10 bg-foreground px-3 py-1.5 text-[10px] font-medium tracking-[0.26em] text-background uppercase">
             {badge}
           </span>
         )}
 
-        {/* ── Top-right actions: Wishlist + Share ── */}
-        <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+        {/* ── Top-right actions ── */}
+        <div className="absolute top-2.5 right-2.5 z-10 flex flex-col gap-1">
           <button
             type="button"
             onClick={handleWishlist}
             aria-label={wishlisted ? t("removeFromWishlist") : t("addToWishlist")}
             className={cn(
-              "backdrop-blur-0 flex size-11 cursor-pointer items-center justify-center bg-background/0 transition-all duration-300",
-              "opacity-0 group-hover/card:opacity-100",
+              "flex size-11 cursor-pointer items-center justify-center transition-all duration-300",
+              wishlisted ? "opacity-100" : "opacity-0 group-hover/card:opacity-100",
               wishlisted && "opacity-100"
             )}
           >
