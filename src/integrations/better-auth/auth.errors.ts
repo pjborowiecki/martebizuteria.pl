@@ -1,0 +1,31 @@
+export const AUTH_ERRORS = {
+  ACCOUNT_NOT_FOUND: "accountNotFound",
+  BANNED_USER: "bannedUser",
+  COULD_NOT_CREATE_SESSION: "couldNotCreateSession",
+  CREDENTIAL_ACCOUNT_NOT_FOUND: "credentialAccountNotFound",
+  EMAIL_NOT_VERIFIED: "emailNotVerified",
+  EMAIL_PASSWORD_DISABLED: "emailPasswordDisabled",
+  EMAIL_PASSWORD_SIGN_UP_DISABLED: "emailPasswordSignUpDisabled",
+  FAILED_TO_CREATE_SESSION: "failedToCreateSession",
+  FAILED_TO_CREATE_USER: "failedToCreateUser",
+  FAILED_TO_GET_SESSION: "failedToGetSession",
+  FAILED_TO_UPDATE_USER: "failedToUpdateUser",
+  INTERNAL_SERVER_ERROR: "internalServerError",
+  INVALID_EMAIL: "invalidEmail",
+  INVALID_EMAIL_OR_PASSWORD: "invalidEmailOrPassword",
+  INVALID_PASSWORD: "invalidPassword",
+  INVALID_TOKEN: "invalidToken",
+  LINKED_ACCOUNT_ALREADY_EXISTS: "linkedAccountAlreadyExists",
+  PASSWORD_TOO_LONG: "passwordTooLong",
+  PASSWORD_TOO_SHORT: "passwordTooShort",
+  PROVIDER_NOT_CONFIGURED: "providerNotConfigured",
+  SESSION_EXPIRED: "sessionExpired",
+  SOCIAL_ACCOUNT_ALREADY_LINKED: "socialAccountAlreadyLinked",
+  TOO_MANY_ATTEMPTS: "tooManyAttempts",
+  TOO_MANY_REQUESTS: "tooManyRequests",
+  UNKNOWN_ERROR: "unknownError",
+  USER_ALREADY_EXISTS: "userAlreadyExists",
+  USER_NOT_FOUND: "userNotFound"
+} as const;
+
+export type AuthErrorCode = keyof typeof AUTH_ERRORS;

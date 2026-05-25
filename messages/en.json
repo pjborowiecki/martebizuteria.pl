@@ -150,7 +150,7 @@
       },
       "authLayout": {
         "imageAlt": "Editorial jewelry composition on textured stone",
-        "imageQuote": "Elegance is not about being noticed, it's about being remembered.",
+        "imageQuote": "Adornments as unique as the moments they celebrate.",
         "imageAttribution": "M'ARTE Atelier — Warsaw"
       },
       "authHeader": {
@@ -317,7 +317,7 @@
       "title": "Designed to endure",
       "paragraph1": "We believe in objects that outlast their season. Each M'ARTE form is born from restraint — fewer collections, deeper intention — because permanence is the ultimate luxury.",
       "paragraph2": "Our studio works at the rhythm of craft, not commerce. From the first wax carving to the final polish — every gesture is deliberate, every surface considered.",
-      "signature": "— M'ARTE Atelier, Warsaw"
+      "signature": "— M'ARTE"
     },
     "silverPremiumSection": {
       "eyebrow": "Premium Collection",
@@ -718,6 +718,8 @@
       "subtitle": "Sign in to your account to continue your journey.",
       "forgotPassword": "Forgot password?",
       "submit": "Sign in",
+      "submitting": "Signing in…",
+      "success": "Welcome back!",
       "noAccount": "Don't have an account?",
       "createAccount": "Create one"
     },
@@ -730,8 +732,58 @@
       "subtitle": "Join M'ARTE to discover handcrafted jewelry and exclusive collections.",
       "terms": "I agree to the Terms of Service and Privacy Policy. I understand that my data will be processed in accordance with the Privacy Policy.",
       "submit": "Create account",
+      "submitting": "Creating account…",
+      "success": "Account created successfully!",
       "hasAccount": "Already have an account?",
       "signInInstead": "Sign in"
+    },
+    "errors": {
+      "accountNotFound": "Account not found.",
+      "bannedUser": "Your account has been suspended.",
+      "couldNotCreateSession": "Could not create session. Please try again.",
+      "credentialAccountNotFound": "No account found with these credentials.",
+      "emailNotVerified": "Please verify your email address first.",
+      "emailPasswordDisabled": "Email/password sign-in is not available.",
+      "emailPasswordSignUpDisabled": "Email/password sign-up is not available.",
+      "failedToCreateSession": "Could not create session. Please try again.",
+      "failedToCreateUser": "Could not create account. Please try again.",
+      "failedToGetSession": "Could not retrieve session.",
+      "failedToUpdateUser": "Could not update account. Please try again.",
+      "internalServerError": "An internal error occurred. Please try again later.",
+      "invalidEmail": "Please enter a valid email address.",
+      "invalidEmailOrPassword": "Invalid email or password.",
+      "invalidPassword": "Invalid password.",
+      "invalidToken": "Invalid or expired token.",
+      "linkedAccountAlreadyExists": "This account is already linked.",
+      "passwordTooLong": "Password is too long.",
+      "passwordTooShort": "Password is too short.",
+      "providerNotConfigured": "This sign-in provider is not configured.",
+      "sessionExpired": "Your session has expired. Please sign in again.",
+      "socialAccountAlreadyLinked": "This social account is already linked to another user.",
+      "tooManyAttempts": "Too many attempts. Please try again later.",
+      "tooManyRequests": "Too many requests. Please slow down.",
+      "unknownError": "Something went wrong. Please try again.",
+      "userAlreadyExists": "An account with this email already exists.",
+      "userNotFound": "No account found with this email."
+    },
+    "validations": {
+      "invalidEmail": "Please enter a valid email address.",
+      "passwordRequired": "Password is required.",
+      "confirmPasswordRequired": "Please confirm your password.",
+      "firstNameRequired": "First name is required.",
+      "lastNameRequired": "Last name is required.",
+      "atLeastMinCharactersLong": "At least 8 characters long",
+      "atLeastOneUppercase": "At least one uppercase letter",
+      "atLeastOneSpecialCharacter": "At least one special character",
+      "passwordsMustMatch": "Passwords do not match."
+    },
+    "oAuth": {
+      "google": "Continue with Google",
+      "github": "Continue with GitHub",
+      "success": "Signed in successfully!"
+    },
+    "signOut": {
+      "success": "Signed out successfully!"
     }
   },
   "emails": {

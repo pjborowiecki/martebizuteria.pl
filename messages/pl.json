@@ -150,8 +150,8 @@
       },
       "authLayout": {
         "imageAlt": "Edytorialna kompozycja biżuterii na kamiennej fakturze",
-        "imageQuote": "Elegancja to nie bycie zauważonym — to bycie zapamiętanym.",
-        "imageAttribution": "M'ARTE Atelier — Warszawa"
+        "imageQuote": "Biżuteria tak wyjątkowa, jak chwile, które celebrujesz.",
+        "imageAttribution": "M'ARTE"
       },
       "authHeader": {
         "brand": "M'ARTE"
@@ -718,6 +718,8 @@
       "subtitle": "Zaloguj się do swojego konta, aby kontynuować.",
       "forgotPassword": "Nie pamiętasz hasła?",
       "submit": "Zaloguj się",
+      "submitting": "Logowanie…",
+      "success": "Witaj ponownie!",
       "noAccount": "Nie masz konta?",
       "createAccount": "Utwórz konto"
     },
@@ -730,8 +732,58 @@
       "subtitle": "Dołącz do M'ARTE, aby odkrywać ręcznie tworzoną biżuterię i ekskluzywne kolekcje.",
       "terms": "Akceptuję Regulamin i Politykę Prywatności. Rozumiem, że moje dane będą przetwarzane zgodnie z Polityką Prywatności.",
       "submit": "Utwórz konto",
+      "submitting": "Tworzenie konta…",
+      "success": "Konto utworzone pomyślnie!",
       "hasAccount": "Masz już konto?",
       "signInInstead": "Zaloguj się"
+    },
+    "errors": {
+      "accountNotFound": "Nie znaleziono konta.",
+      "bannedUser": "Twoje konto zostało zawieszone.",
+      "couldNotCreateSession": "Nie udało się utworzyć sesji. Spróbuj ponownie.",
+      "credentialAccountNotFound": "Nie znaleziono konta z tymi danymi.",
+      "emailNotVerified": "Najpierw potwierdź swój adres e-mail.",
+      "emailPasswordDisabled": "Logowanie e-mailem i hasłem jest niedostępne.",
+      "emailPasswordSignUpDisabled": "Rejestracja e-mailem i hasłem jest niedostępna.",
+      "failedToCreateSession": "Nie udało się utworzyć sesji. Spróbuj ponownie.",
+      "failedToCreateUser": "Nie udało się utworzyć konta. Spróbuj ponownie.",
+      "failedToGetSession": "Nie udało się pobrać sesji.",
+      "failedToUpdateUser": "Nie udało się zaktualizować konta. Spróbuj ponownie.",
+      "internalServerError": "Wystąpił błąd wewnętrzny. Spróbuj ponownie później.",
+      "invalidEmail": "Podaj prawidłowy adres e-mail.",
+      "invalidEmailOrPassword": "Nieprawidłowy e-mail lub hasło.",
+      "invalidPassword": "Nieprawidłowe hasło.",
+      "invalidToken": "Nieprawidłowy lub wygasły token.",
+      "linkedAccountAlreadyExists": "To konto jest już powiązane.",
+      "passwordTooLong": "Hasło jest za długie.",
+      "passwordTooShort": "Hasło jest za krótkie.",
+      "providerNotConfigured": "Ten dostawca logowania nie jest skonfigurowany.",
+      "sessionExpired": "Twoja sesja wygasła. Zaloguj się ponownie.",
+      "socialAccountAlreadyLinked": "To konto społecznościowe jest już powiązane z innym użytkownikiem.",
+      "tooManyAttempts": "Zbyt wiele prób. Spróbuj ponownie później.",
+      "tooManyRequests": "Zbyt wiele żądań. Zwolnij.",
+      "unknownError": "Coś poszło nie tak. Spróbuj ponownie.",
+      "userAlreadyExists": "Konto z tym adresem e-mail już istnieje.",
+      "userNotFound": "Nie znaleziono konta z tym adresem e-mail."
+    },
+    "validations": {
+      "invalidEmail": "Podaj prawidłowy adres e-mail.",
+      "passwordRequired": "Hasło jest wymagane.",
+      "confirmPasswordRequired": "Potwierdź swoje hasło.",
+      "firstNameRequired": "Imię jest wymagane.",
+      "lastNameRequired": "Nazwisko jest wymagane.",
+      "atLeastMinCharactersLong": "Co najmniej 8 znaków",
+      "atLeastOneUppercase": "Co najmniej jedna wielka litera",
+      "atLeastOneSpecialCharacter": "Co najmniej jeden znak specjalny",
+      "passwordsMustMatch": "Hasła muszą się zgadzać."
+    },
+    "oAuth": {
+      "google": "Kontynuuj z Google",
+      "github": "Kontynuuj z GitHub",
+      "success": "Zalogowano pomyślnie!"
+    },
+    "signOut": {
+      "success": "Wylogowano pomyślnie!"
     }
   },
   "emails": {

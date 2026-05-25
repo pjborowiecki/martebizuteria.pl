@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { type JSX } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
@@ -55,10 +55,8 @@ function SignUpPage(): JSX.Element {
     <>
       <AuthHeader title={t("title")} subtitle={t("subtitle")} />
 
-      <SignUpWithPasswordForm submitText={t("submit")} termsText={t("terms")} />
-
+      <SignUpWithPasswordForm />
       <AuthDivider />
-
       <SocialProviders />
 
       <p className="text-center text-sm text-muted-foreground">
