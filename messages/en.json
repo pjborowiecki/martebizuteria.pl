@@ -425,6 +425,9 @@
     "title": "Cart",
     "description": "Your cart will appear here.",
     "goHome": "Go to home page",
+    "emptyTitle": "Your collection awaits",
+    "emptySubtitle": "Each M'Arte piece is crafted to be discovered, not rushed. Take your time — your perfect piece is waiting.",
+    "exploreCta": "Explore the Collection",
     "itemCount": "{count, plural, =0 {No items} =1 {1 item} other {# items}}",
     "continueShopping": "Continue shopping",
     "removeItem": "Remove item",
@@ -461,6 +464,83 @@
         "material": "925 silver / textured",
         "size": "One Size",
         "price": "280 PLN"
+      }
+    }
+  },
+  "checkoutPage": {
+    "title": "Checkout",
+    "secureCheckout": "Secure Checkout",
+    "metadata": {
+      "description": "Complete your order securely at M'Arte."
+    },
+    "checkoutSummary": {
+      "title": "Your Order",
+      "subtotal": "Subtotal",
+      "delivery": "Delivery",
+      "deliveryCalculated": "Calculated at next step",
+      "total": "Total"
+    },
+    "checkoutForm": {
+      "steps": {
+        "billing": "Shipping Address",
+        "delivery": "Delivery Method",
+        "payment": "Payment",
+        "overview": "Review & Place Order"
+      },
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "addressLine1": "Address",
+      "postalCode": "Postal Code",
+      "city": "City",
+      "country": "Country",
+      "continueToDelivery": "Continue to Delivery",
+      "continueToPayment": "Continue to Payment",
+      "continueToReview": "Review Order",
+      "deliveryMethods": {
+        "courier": "Courier",
+        "locker": "Parcel Locker",
+        "in_store": "In-Store Pickup"
+      },
+      "deliverySubsteps": {
+        "courier": "Standard courier delivery (2–4 business days). Free for orders above 300 PLN.",
+        "locker": "Parcel locker delivery (1–2 business days). Select your preferred locker at the next stage.",
+        "inStore": "Pick up at our Warsaw atelier. Ready within 24 hours of order confirmation."
+      },
+      "paymentMethods": {
+        "card": "Credit Card",
+        "blik": "BLIK",
+        "bank_transfer": "Bank Transfer"
+      },
+      "paymentSubsteps": {
+        "blik": "You will receive a BLIK code request on your banking app after placing the order.",
+        "bankTransfer": "Transfer details will be provided after placing the order. The order ships once the payment is received."
+      },
+      "cardholderName": "Cardholder Name",
+      "cardNumber": "Card Number",
+      "cardExpiry": "Expiry",
+      "cardCvv": "CVV",
+      "saveCard": "Save this card for future purchases",
+      "shippingTo": "Shipping To",
+      "deliveryMethod": "Delivery Method",
+      "paymentInformation": "Payment",
+      "billingAddress": "Billing Address",
+      "sameAsShipping": "Same as shipping address",
+      "estDeliveryPlaceholder": "Est. delivery in 2–4 business days",
+      "cardSummary": "Card ending in {endingDigits}",
+      "placeOrder": "Place Order",
+      "termsAgreement": "By placing your order you agree to our Terms of Service and Privacy Policy.",
+      "placeholderItemName": "Aura Hoop I",
+      "placeholderItemDetails": "925 silver / mirror finish · One Size",
+      "placeholderItemPrice": "340 PLN",
+      "validation": {
+        "firstNameRequired": "First name is required",
+        "lastNameRequired": "Last name is required",
+        "addressRequired": "Address is required",
+        "cityRequired": "City is required",
+        "postCodeRequired": "Postal code is required",
+        "countryRequired": "Country is required",
+        "deliveryRequired": "Please select a delivery method",
+        "paymentRequired": "Please select a payment method"
       }
     }
   },

@@ -11,9 +11,11 @@ export const Route = createFileRoute("/{-$locale}/_storefront")({
 
 function StorefrontLayout(): JSX.Element {
   return (
-    <div>
+    <div className="flex min-h-dvh flex-col">
       <Navigation />
-      <Outlet />
+      <div className="flex flex-1 flex-col">
+        <Outlet />
+      </div>
       <Footer />
     </div>
   );
