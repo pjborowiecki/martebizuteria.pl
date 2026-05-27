@@ -133,6 +133,14 @@ export default defineConfig({
           "react/jsx-max-depth": "off",
           "sort-keys": "off"
         }
+      },
+      {
+        files: ["src/components/custom/pages/auth/**/*.{ts,tsx}"],
+        rules: {
+          "max-lines-per-function": "off",
+          "react-perf/jsx-no-new-function-as-prop": "off",
+          "react/jsx-max-depth": "off"
+        }
       }
     ],
     plugins: ["typescript", "react", "react-perf", "jsx-a11y", "unicorn", "import", "promise", "vitest", "oxc", "eslint"],

@@ -21,6 +21,8 @@ import { Route as Char123LocaleChar125AccountIndexRouteImport } from './routes/{
 import { Route as Char123LocaleChar125StorefrontIndexRouteImport } from './routes/{-$locale}._storefront.index'
 import { Route as Char123LocaleChar125AuthSignUpRouteImport } from './routes/{-$locale}.auth.sign-up'
 import { Route as Char123LocaleChar125AuthSignInRouteImport } from './routes/{-$locale}.auth.sign-in'
+import { Route as Char123LocaleChar125AuthResetPasswordRouteImport } from './routes/{-$locale}.auth.reset-password'
+import { Route as Char123LocaleChar125AuthForgotPasswordRouteImport } from './routes/{-$locale}.auth.forgot-password'
 import { Route as Char123LocaleChar125AdminSettingsRouteImport } from './routes/{-$locale}.admin.settings'
 import { Route as Char123LocaleChar125AdminMarketingRouteImport } from './routes/{-$locale}.admin.marketing'
 import { Route as Char123LocaleChar125AdminCouponsRouteImport } from './routes/{-$locale}.admin.coupons'
@@ -33,6 +35,8 @@ import { Route as Char123LocaleChar125AccountProfileRouteImport } from './routes
 import { Route as Char123LocaleChar125AccountPaymentRouteImport } from './routes/{-$locale}.account.payment'
 import { Route as Char123LocaleChar125AccountOverviewRouteImport } from './routes/{-$locale}.account.overview'
 import { Route as Char123LocaleChar125AccountAddressesRouteImport } from './routes/{-$locale}.account.addresses'
+import { Route as Char123LocaleChar125StorefrontTermsOfServiceRouteImport } from './routes/{-$locale}._storefront.terms-of-service'
+import { Route as Char123LocaleChar125StorefrontPrivacyPolicyRouteImport } from './routes/{-$locale}._storefront.privacy-policy'
 import { Route as Char123LocaleChar125StorefrontFaqRouteImport } from './routes/{-$locale}._storefront.faq'
 import { Route as Char123LocaleChar125StorefrontExchangesAndReturnsRouteImport } from './routes/{-$locale}._storefront.exchanges-and-returns'
 import { Route as Char123LocaleChar125StorefrontCartRouteImport } from './routes/{-$locale}._storefront.cart'
@@ -128,6 +132,18 @@ const Char123LocaleChar125AuthSignInRoute =
     path: '/sign-in',
     getParentRoute: () => Char123LocaleChar125AuthRoute,
   } as any)
+const Char123LocaleChar125AuthResetPasswordRoute =
+  Char123LocaleChar125AuthResetPasswordRouteImport.update({
+    id: '/reset-password',
+    path: '/reset-password',
+    getParentRoute: () => Char123LocaleChar125AuthRoute,
+  } as any)
+const Char123LocaleChar125AuthForgotPasswordRoute =
+  Char123LocaleChar125AuthForgotPasswordRouteImport.update({
+    id: '/forgot-password',
+    path: '/forgot-password',
+    getParentRoute: () => Char123LocaleChar125AuthRoute,
+  } as any)
 const Char123LocaleChar125AdminSettingsRoute =
   Char123LocaleChar125AdminSettingsRouteImport.update({
     id: '/settings',
@@ -199,6 +215,18 @@ const Char123LocaleChar125AccountAddressesRoute =
     id: '/addresses',
     path: '/addresses',
     getParentRoute: () => Char123LocaleChar125AccountRoute,
+  } as any)
+const Char123LocaleChar125StorefrontTermsOfServiceRoute =
+  Char123LocaleChar125StorefrontTermsOfServiceRouteImport.update({
+    id: '/terms-of-service',
+    path: '/terms-of-service',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontPrivacyPolicyRoute =
+  Char123LocaleChar125StorefrontPrivacyPolicyRouteImport.update({
+    id: '/privacy-policy',
+    path: '/privacy-policy',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
   } as any)
 const Char123LocaleChar125StorefrontFaqRoute =
   Char123LocaleChar125StorefrontFaqRouteImport.update({
@@ -355,6 +383,8 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/cart': typeof Char123LocaleChar125StorefrontCartRoute
   '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
   '/{-$locale}/faq': typeof Char123LocaleChar125StorefrontFaqRoute
+  '/{-$locale}/privacy-policy': typeof Char123LocaleChar125StorefrontPrivacyPolicyRoute
+  '/{-$locale}/terms-of-service': typeof Char123LocaleChar125StorefrontTermsOfServiceRoute
   '/{-$locale}/account/addresses': typeof Char123LocaleChar125AccountAddressesRoute
   '/{-$locale}/account/overview': typeof Char123LocaleChar125AccountOverviewRoute
   '/{-$locale}/account/payment': typeof Char123LocaleChar125AccountPaymentRoute
@@ -367,6 +397,8 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/admin/coupons': typeof Char123LocaleChar125AdminCouponsRoute
   '/{-$locale}/admin/marketing': typeof Char123LocaleChar125AdminMarketingRoute
   '/{-$locale}/admin/settings': typeof Char123LocaleChar125AdminSettingsRoute
+  '/{-$locale}/auth/forgot-password': typeof Char123LocaleChar125AuthForgotPasswordRoute
+  '/{-$locale}/auth/reset-password': typeof Char123LocaleChar125AuthResetPasswordRoute
   '/{-$locale}/auth/sign-in': typeof Char123LocaleChar125AuthSignInRoute
   '/{-$locale}/auth/sign-up': typeof Char123LocaleChar125AuthSignUpRoute
   '/{-$locale}/': typeof Char123LocaleChar125StorefrontIndexRoute
@@ -401,6 +433,8 @@ export interface FileRoutesByTo {
   '/{-$locale}/cart': typeof Char123LocaleChar125StorefrontCartRoute
   '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
   '/{-$locale}/faq': typeof Char123LocaleChar125StorefrontFaqRoute
+  '/{-$locale}/privacy-policy': typeof Char123LocaleChar125StorefrontPrivacyPolicyRoute
+  '/{-$locale}/terms-of-service': typeof Char123LocaleChar125StorefrontTermsOfServiceRoute
   '/{-$locale}/account/addresses': typeof Char123LocaleChar125AccountAddressesRoute
   '/{-$locale}/account/overview': typeof Char123LocaleChar125AccountOverviewRoute
   '/{-$locale}/account/payment': typeof Char123LocaleChar125AccountPaymentRoute
@@ -412,6 +446,8 @@ export interface FileRoutesByTo {
   '/{-$locale}/admin/coupons': typeof Char123LocaleChar125AdminCouponsRoute
   '/{-$locale}/admin/marketing': typeof Char123LocaleChar125AdminMarketingRoute
   '/{-$locale}/admin/settings': typeof Char123LocaleChar125AdminSettingsRoute
+  '/{-$locale}/auth/forgot-password': typeof Char123LocaleChar125AuthForgotPasswordRoute
+  '/{-$locale}/auth/reset-password': typeof Char123LocaleChar125AuthResetPasswordRoute
   '/{-$locale}/auth/sign-in': typeof Char123LocaleChar125AuthSignInRoute
   '/{-$locale}/auth/sign-up': typeof Char123LocaleChar125AuthSignUpRoute
   '/{-$locale}/account': typeof Char123LocaleChar125AccountIndexRoute
@@ -450,6 +486,8 @@ export interface FileRoutesById {
   '/{-$locale}/_storefront/cart': typeof Char123LocaleChar125StorefrontCartRoute
   '/{-$locale}/_storefront/exchanges-and-returns': typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
   '/{-$locale}/_storefront/faq': typeof Char123LocaleChar125StorefrontFaqRoute
+  '/{-$locale}/_storefront/privacy-policy': typeof Char123LocaleChar125StorefrontPrivacyPolicyRoute
+  '/{-$locale}/_storefront/terms-of-service': typeof Char123LocaleChar125StorefrontTermsOfServiceRoute
   '/{-$locale}/account/addresses': typeof Char123LocaleChar125AccountAddressesRoute
   '/{-$locale}/account/overview': typeof Char123LocaleChar125AccountOverviewRoute
   '/{-$locale}/account/payment': typeof Char123LocaleChar125AccountPaymentRoute
@@ -462,6 +500,8 @@ export interface FileRoutesById {
   '/{-$locale}/admin/coupons': typeof Char123LocaleChar125AdminCouponsRoute
   '/{-$locale}/admin/marketing': typeof Char123LocaleChar125AdminMarketingRoute
   '/{-$locale}/admin/settings': typeof Char123LocaleChar125AdminSettingsRoute
+  '/{-$locale}/auth/forgot-password': typeof Char123LocaleChar125AuthForgotPasswordRoute
+  '/{-$locale}/auth/reset-password': typeof Char123LocaleChar125AuthResetPasswordRoute
   '/{-$locale}/auth/sign-in': typeof Char123LocaleChar125AuthSignInRoute
   '/{-$locale}/auth/sign-up': typeof Char123LocaleChar125AuthSignUpRoute
   '/{-$locale}/_storefront/': typeof Char123LocaleChar125StorefrontIndexRoute
@@ -501,6 +541,8 @@ export interface FileRouteTypes {
     | '/{-$locale}/cart'
     | '/{-$locale}/exchanges-and-returns'
     | '/{-$locale}/faq'
+    | '/{-$locale}/privacy-policy'
+    | '/{-$locale}/terms-of-service'
     | '/{-$locale}/account/addresses'
     | '/{-$locale}/account/overview'
     | '/{-$locale}/account/payment'
@@ -513,6 +555,8 @@ export interface FileRouteTypes {
     | '/{-$locale}/admin/coupons'
     | '/{-$locale}/admin/marketing'
     | '/{-$locale}/admin/settings'
+    | '/{-$locale}/auth/forgot-password'
+    | '/{-$locale}/auth/reset-password'
     | '/{-$locale}/auth/sign-in'
     | '/{-$locale}/auth/sign-up'
     | '/{-$locale}/'
@@ -547,6 +591,8 @@ export interface FileRouteTypes {
     | '/{-$locale}/cart'
     | '/{-$locale}/exchanges-and-returns'
     | '/{-$locale}/faq'
+    | '/{-$locale}/privacy-policy'
+    | '/{-$locale}/terms-of-service'
     | '/{-$locale}/account/addresses'
     | '/{-$locale}/account/overview'
     | '/{-$locale}/account/payment'
@@ -558,6 +604,8 @@ export interface FileRouteTypes {
     | '/{-$locale}/admin/coupons'
     | '/{-$locale}/admin/marketing'
     | '/{-$locale}/admin/settings'
+    | '/{-$locale}/auth/forgot-password'
+    | '/{-$locale}/auth/reset-password'
     | '/{-$locale}/auth/sign-in'
     | '/{-$locale}/auth/sign-up'
     | '/{-$locale}/account'
@@ -595,6 +643,8 @@ export interface FileRouteTypes {
     | '/{-$locale}/_storefront/cart'
     | '/{-$locale}/_storefront/exchanges-and-returns'
     | '/{-$locale}/_storefront/faq'
+    | '/{-$locale}/_storefront/privacy-policy'
+    | '/{-$locale}/_storefront/terms-of-service'
     | '/{-$locale}/account/addresses'
     | '/{-$locale}/account/overview'
     | '/{-$locale}/account/payment'
@@ -607,6 +657,8 @@ export interface FileRouteTypes {
     | '/{-$locale}/admin/coupons'
     | '/{-$locale}/admin/marketing'
     | '/{-$locale}/admin/settings'
+    | '/{-$locale}/auth/forgot-password'
+    | '/{-$locale}/auth/reset-password'
     | '/{-$locale}/auth/sign-in'
     | '/{-$locale}/auth/sign-up'
     | '/{-$locale}/_storefront/'
@@ -725,6 +777,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125AuthSignInRouteImport
       parentRoute: typeof Char123LocaleChar125AuthRoute
     }
+    '/{-$locale}/auth/reset-password': {
+      id: '/{-$locale}/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/{-$locale}/auth/reset-password'
+      preLoaderRoute: typeof Char123LocaleChar125AuthResetPasswordRouteImport
+      parentRoute: typeof Char123LocaleChar125AuthRoute
+    }
+    '/{-$locale}/auth/forgot-password': {
+      id: '/{-$locale}/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/{-$locale}/auth/forgot-password'
+      preLoaderRoute: typeof Char123LocaleChar125AuthForgotPasswordRouteImport
+      parentRoute: typeof Char123LocaleChar125AuthRoute
+    }
     '/{-$locale}/admin/settings': {
       id: '/{-$locale}/admin/settings'
       path: '/settings'
@@ -808,6 +874,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$locale}/account/addresses'
       preLoaderRoute: typeof Char123LocaleChar125AccountAddressesRouteImport
       parentRoute: typeof Char123LocaleChar125AccountRoute
+    }
+    '/{-$locale}/_storefront/terms-of-service': {
+      id: '/{-$locale}/_storefront/terms-of-service'
+      path: '/terms-of-service'
+      fullPath: '/{-$locale}/terms-of-service'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontTermsOfServiceRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/{-$locale}/_storefront/privacy-policy': {
+      id: '/{-$locale}/_storefront/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/{-$locale}/privacy-policy'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontPrivacyPolicyRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
     }
     '/{-$locale}/_storefront/faq': {
       id: '/{-$locale}/_storefront/faq'
@@ -985,6 +1065,8 @@ interface Char123LocaleChar125StorefrontRouteChildren {
   Char123LocaleChar125StorefrontCartRoute: typeof Char123LocaleChar125StorefrontCartRoute
   Char123LocaleChar125StorefrontExchangesAndReturnsRoute: typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
   Char123LocaleChar125StorefrontFaqRoute: typeof Char123LocaleChar125StorefrontFaqRoute
+  Char123LocaleChar125StorefrontPrivacyPolicyRoute: typeof Char123LocaleChar125StorefrontPrivacyPolicyRoute
+  Char123LocaleChar125StorefrontTermsOfServiceRoute: typeof Char123LocaleChar125StorefrontTermsOfServiceRoute
   Char123LocaleChar125StorefrontIndexRoute: typeof Char123LocaleChar125StorefrontIndexRoute
   Char123LocaleChar125StorefrontCategoriesHandleRoute: typeof Char123LocaleChar125StorefrontCategoriesHandleRoute
   Char123LocaleChar125StorefrontCollectionsHandleRoute: typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
@@ -1004,6 +1086,10 @@ const Char123LocaleChar125StorefrontRouteChildren: Char123LocaleChar125Storefron
       Char123LocaleChar125StorefrontExchangesAndReturnsRoute,
     Char123LocaleChar125StorefrontFaqRoute:
       Char123LocaleChar125StorefrontFaqRoute,
+    Char123LocaleChar125StorefrontPrivacyPolicyRoute:
+      Char123LocaleChar125StorefrontPrivacyPolicyRoute,
+    Char123LocaleChar125StorefrontTermsOfServiceRoute:
+      Char123LocaleChar125StorefrontTermsOfServiceRoute,
     Char123LocaleChar125StorefrontIndexRoute:
       Char123LocaleChar125StorefrontIndexRoute,
     Char123LocaleChar125StorefrontCategoriesHandleRoute:
@@ -1141,12 +1227,18 @@ const Char123LocaleChar125AdminRouteWithChildren =
   )
 
 interface Char123LocaleChar125AuthRouteChildren {
+  Char123LocaleChar125AuthForgotPasswordRoute: typeof Char123LocaleChar125AuthForgotPasswordRoute
+  Char123LocaleChar125AuthResetPasswordRoute: typeof Char123LocaleChar125AuthResetPasswordRoute
   Char123LocaleChar125AuthSignInRoute: typeof Char123LocaleChar125AuthSignInRoute
   Char123LocaleChar125AuthSignUpRoute: typeof Char123LocaleChar125AuthSignUpRoute
 }
 
 const Char123LocaleChar125AuthRouteChildren: Char123LocaleChar125AuthRouteChildren =
   {
+    Char123LocaleChar125AuthForgotPasswordRoute:
+      Char123LocaleChar125AuthForgotPasswordRoute,
+    Char123LocaleChar125AuthResetPasswordRoute:
+      Char123LocaleChar125AuthResetPasswordRoute,
     Char123LocaleChar125AuthSignInRoute: Char123LocaleChar125AuthSignInRoute,
     Char123LocaleChar125AuthSignUpRoute: Char123LocaleChar125AuthSignUpRoute,
   }

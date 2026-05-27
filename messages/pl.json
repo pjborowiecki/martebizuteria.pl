@@ -730,12 +730,37 @@
       },
       "title": "Utwórz konto",
       "subtitle": "Dołącz do M'ARTE, aby odkrywać ręcznie tworzoną biżuterię i ekskluzywne kolekcje.",
-      "terms": "Akceptuję Regulamin i Politykę Prywatności. Rozumiem, że moje dane będą przetwarzane zgodnie z Polityką Prywatności.",
+      "terms": "Kontynuując, akceptujesz <terms>Regulamin</terms> i <privacy>Politykę Prywatności</privacy>.",
       "submit": "Utwórz konto",
       "submitting": "Tworzenie konta…",
       "success": "Konto utworzone pomyślnie!",
       "hasAccount": "Masz już konto?",
       "signInInstead": "Zaloguj się"
+    },
+    "forgotPasswordPage": {
+      "meta": {
+        "title": "Odzyskaj hasło | M'ARTE",
+        "description": "Zresetuj hasło do swojego konta M'ARTE."
+      },
+      "title": "Zresetuj hasło",
+      "subtitle": "Podaj adres e-mail, a wyślemy Ci link do zresetowania hasła.",
+      "submit": "Wyślij link resetujący",
+      "submitting": "Wysyłanie...",
+      "success": "Sprawdź skrzynkę e-mail, aby odebrać link resetujący.",
+      "checkEmail": "Wysłaliśmy link resetujący hasło na Twój adres e-mail. Prosimy o sprawdzenie skrzynki.",
+      "backToSignIn": "Wróć do logowania"
+    },
+    "resetPasswordPage": {
+      "meta": {
+        "title": "Nowe Hasło | M'ARTE",
+        "description": "Ustaw nowe hasło dla swojego konta M'ARTE."
+      },
+      "title": "Nowe hasło",
+      "subtitle": "Wprowadź nowe hasło do swojego konta.",
+      "submit": "Zresetuj hasło",
+      "submitting": "Resetowanie...",
+      "success": "Twoje hasło zostało pomyślnie zresetowane.",
+      "invalidToken": "Nieprawidłowy lub wygasły link resetujący. Prosimy o wygenerowanie nowego."
     },
     "errors": {
       "accountNotFound": "Nie znaleziono konta.",
@@ -765,6 +790,30 @@
       "unknownError": "Coś poszło nie tak. Spróbuj ponownie.",
       "userAlreadyExists": "Konto z tym adresem e-mail już istnieje.",
       "userNotFound": "Nie znaleziono konta z tym adresem e-mail."
+    },
+    "email": {
+      "resetPassword": {
+        "subject": "Zresetuj swoje hasło - M'ARTE",
+        "greeting": "Cześć {name},",
+        "message": "Ktoś niedawno poprosił o zmianę hasła do Twojego konta M'ARTE. Jeśli to byłeś Ty, możesz ustawić nowe hasło tutaj:",
+        "cta": "Zresetuj hasło",
+        "ignore": "Jeśli nie chcesz zmieniać hasła lub o to nie prosiłeś, po prostu zignoruj i usuń tę wiadomość.",
+        "security": "Aby zapewnić bezpieczeństwo swojego konta, nie przekazuj tego e-maila nikomu."
+      },
+      "verifyEmail": {
+        "subject": "Zweryfikuj swój adres e-mail - M'ARTE",
+        "greeting": "Cześć {name},",
+        "message": "Proszę zweryfikować swój adres e-mail, aby dokończyć rejestrację konta M'ARTE.",
+        "cta": "Zweryfikuj e-mail",
+        "ignore": "Jeśli nie zakładałeś konta, po prostu zignoruj i usuń tę wiadomość."
+      },
+      "changeEmail": {
+        "subject": "Zweryfikuj swój nowy adres e-mail - M'ARTE",
+        "greeting": "Cześć {name},",
+        "message": "Niedawno poprosiłeś o zmianę adresu e-mail przypisanego do Twojego konta M'ARTE. Proszę zweryfikować nowy adres e-mail, aby zakończyć proces.",
+        "cta": "Zweryfikuj nowy e-mail",
+        "ignore": "Jeśli to nie Ty prosiłeś o zmianę, zignoruj tę wiadomość, a Twoje konto pozostanie bezpieczne."
+      }
     },
     "validations": {
       "invalidEmail": "Podaj prawidłowy adres e-mail.",
@@ -1886,5 +1935,13 @@
       "closeDialogConfirm": "Wpisz DELETE aby potwierdzić",
       "closeDialogCancel": "Anuluj"
     }
+  },
+  "privacyPolicyPage": {
+    "title": "Polityka Prywatności",
+    "description": "Przeczytaj naszą politykę prywatności, aby zrozumieć, jak chronimy Twoje dane."
+  },
+  "termsOfServicePage": {
+    "title": "Regulamin",
+    "description": "Przeczytaj regulamin przed skorzystaniem z naszej strony."
   }
 }

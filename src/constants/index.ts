@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, LOCALES } from "~/src/constants/_constants/locales";
 import { STATIC_PAGES } from "~/src/constants/_constants/pages";
+import { ACTIONS, RESOURCES, ROLES } from "~/src/constants/_constants/permissions";
 import { ROUTES } from "~/src/constants/_constants/routes";
 import { SOCIALS } from "~/src/constants/_constants/socials";
 import { DEFAULT_TIMEZONE, TIME_ZONES } from "~/src/constants/_constants/timezone";
@@ -21,6 +22,7 @@ const PAYMENT_METHOD = {
 const PAYMENT_METHODS = [PAYMENT_METHOD.CARD, PAYMENT_METHOD.BLIK, PAYMENT_METHOD.BANK_TRANSFER] as const;
 
 export const CONSTANTS = {
+  ACTIONS,
   APP_GITHUB_OWNER: "pjborowiecki",
   APP_GITHUB_REPO: "martebizuteria.pl_tanstack_start",
   APP_NAME: "M'Arte",
@@ -35,6 +37,8 @@ export const CONSTANTS = {
   LOCALE_COOKIE_NAME: "marte_locale",
   PAYMENT_METHOD,
   PAYMENT_METHODS,
+  RESOURCES,
+  ROLES,
   ROUTES,
   SOCIALS,
   STATIC_PAGES,

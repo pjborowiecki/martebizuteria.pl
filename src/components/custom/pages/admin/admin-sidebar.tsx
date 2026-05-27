@@ -17,16 +17,27 @@ import {
   ShoppingBag,
   ShoppingCart,
   Tag,
-  Users
+  Users,
+  LogOut
 } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
+import { signOut } from "~/src/integrations/better-auth/auth.client";
+
 import { cn } from "~/src/lib/utils";
 
 import { Avatar, AvatarFallback } from "~/src/components/shadcn/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/src/components/shadcn/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "~/src/components/shadcn/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -45,6 +56,8 @@ import {
 } from "~/src/components/shadcn/sidebar";
 
 import { LocalizedLink, type LocalizedTo } from "~/src/components/custom/localized-link";
+
+import { Route as AdminRoute } from "~/src/routes/{-$locale}.admin";
 
 interface NavItem {
   readonly href: LocalizedTo;
@@ -256,33 +269,97 @@ function AdminSidebarMainGroup({
 function AdminSidebarFooter(_props: Record<string, never>): JSX.Element {
   const t = useTranslations("admin");
 
+  const handleSignOut = useCallback(async () => {
+    await signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          globalThis.location.href = CONSTANTS.ROUTES.AUTH_SIGN_IN;
+        }
+      }
+    });
+  }, []);
+
+  const onSignOutClick = useCallback(() => {
+    void handleSignOut();
+  }, [handleSignOut]);
+
+  const trigger = useMemo(
+    () => (
+      <SidebarMenuButton
+        size="lg"
+        tooltip={t("user.name")}
+        className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+      >
+        <AdminSidebarUser />
+      </SidebarMenuButton>
+    ),
+    [t]
+  );
+
   return (
     <SidebarFooter className="pb-4">
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" tooltip={t("user.name")} className="cursor-default hover:bg-transparent active:bg-transparent">
-            <AdminSidebarUser />
-          </SidebarMenuButton>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={trigger} />
+            <DropdownMenuContent
+              side="top"
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+              align="end"
+              sideOffset={4}
+            >
+              <AdminSidebarUserDropdown isDropdown />
+              <DropdownMenuSeparator />
+              <AdminSidebarSignOutItem onSignOutClick={onSignOutClick} />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
     </SidebarFooter>
   );
 }
 
-function AdminSidebarUser(): JSX.Element {
+function AdminSidebarSignOutItem({ onSignOutClick }: { readonly onSignOutClick: () => void }): JSX.Element {
   const t = useTranslations("admin");
+  return (
+    <DropdownMenuItem onClick={onSignOutClick} className="cursor-pointer">
+      <LogOut className="mr-2 size-4" />
+      {t("user.signOut")}
+    </DropdownMenuItem>
+  );
+}
+
+function AdminSidebarUserDropdown({ isDropdown }: { readonly isDropdown: boolean }): JSX.Element {
+  return (
+    <DropdownMenuLabel className="p-0 font-normal">
+      <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+        <AdminSidebarUser isDropdown={isDropdown} />
+      </div>
+    </DropdownMenuLabel>
+  );
+}
+
+const INITIALS_START = 0;
+const INITIALS_END = 2;
+
+function AdminSidebarUser({ isDropdown = false }: { readonly isDropdown?: boolean }): JSX.Element {
+  const { user } = AdminRoute.useRouteContext();
+  const initials = user.name.slice(INITIALS_START, INITIALS_END).toUpperCase();
+
   return (
     <>
       <Avatar size="sm" className="rounded-md after:rounded-md">
-        <AvatarFallback className="rounded-md bg-sidebar-accent text-[10px] font-semibold">{t("user.initials")}</AvatarFallback>
+        <AvatarFallback className="rounded-md bg-sidebar-accent text-[10px] font-semibold">{initials}</AvatarFallback>
       </Avatar>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[12px] leading-none font-medium">{t("user.name")}</p>
-        <p className="mt-0.5 truncate text-[10px] leading-none text-sidebar-foreground/50">{t("user.role")}</p>
+      <div className="min-w-0 flex-1 text-left">
+        <p className="truncate text-[12px] leading-none font-medium">{user.name}</p>
+        <p className="mt-0.5 truncate text-[10px] leading-none text-sidebar-foreground/50">{user.email}</p>
       </div>
-      <div className="shrink-0">
-        <ChevronRight className="size-3.5 text-sidebar-foreground/30" strokeWidth={1.5} />
-      </div>
+      {!isDropdown && (
+        <div className="shrink-0">
+          <ChevronRight className="size-3.5 text-sidebar-foreground/30" strokeWidth={1.5} />
+        </div>
+      )}
     </>
   );
 }

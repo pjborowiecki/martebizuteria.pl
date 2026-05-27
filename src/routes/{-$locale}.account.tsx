@@ -1,6 +1,6 @@
 import { type JSX, Suspense, useMemo } from "react";
 
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
@@ -12,12 +12,27 @@ import { isValidLocale } from "~/src/lib/utils";
 import { AccountSidebar } from "~/src/components/custom/account/account-sidebar";
 import { Navigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation";
 
+import { getSessionFn } from "~/src/modules/session/session.actions";
+
 interface AccountPageMeta {
   readonly description: string;
   readonly title: string;
 }
 
 export const Route = createFileRoute("/{-$locale}/account")({
+  beforeLoad: async () => {
+    const session = await getSessionFn();
+
+    if (!session?.user) {
+      redirect({
+        throw: true,
+        to: `/{-$locale}${CONSTANTS.ROUTES.AUTH_SIGN_IN}`
+      });
+      throw new Error("Redirecting");
+    }
+
+    return { user: session.user };
+  },
   component: AccountLayout,
   head: ({ loaderData }: Readonly<{ loaderData?: Readonly<AccountPageMeta> }>) => ({
     meta: [

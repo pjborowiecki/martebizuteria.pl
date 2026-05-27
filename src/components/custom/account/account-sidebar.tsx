@@ -1,11 +1,13 @@
 "use client";
 
-import type { JSX } from "react";
+import { type JSX, useCallback } from "react";
 
 import { CreditCard, Heart, LayoutDashboard, LogOut, MapPin, Package, Shield, User } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
+
+import { signOut } from "~/src/integrations/better-auth/auth.client";
 
 import { Button } from "~/src/components/shadcn/button";
 import { Separator } from "~/src/components/shadcn/separator";
@@ -35,6 +37,20 @@ const EXACT_MATCH = { exact: true } as const;
 
 export function AccountSidebar(): JSX.Element {
   const t = useTranslations("account.sidebar");
+
+  const handleSignOut = useCallback(async () => {
+    await signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          globalThis.location.href = CONSTANTS.ROUTES.AUTH_SIGN_IN;
+        }
+      }
+    });
+  }, []);
+
+  const onSignOutClick = useCallback(() => {
+    void handleSignOut();
+  }, [handleSignOut]);
 
   return (
     <aside className="hidden lg:sticky lg:top-28 lg:block lg:w-[220px] lg:shrink-0 lg:self-start">
@@ -66,6 +82,7 @@ export function AccountSidebar(): JSX.Element {
         </div>
 
         <Button
+          onClick={onSignOutClick}
           variant="ghost"
           className="flex w-full cursor-pointer items-center justify-start gap-3 rounded-md px-3 py-2 text-[13px] tracking-[0.02em] text-muted-foreground hover:bg-muted/30 hover:text-foreground"
         >
