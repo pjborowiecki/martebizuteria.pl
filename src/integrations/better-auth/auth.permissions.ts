@@ -1,0 +1,77 @@
+import { createAccessControl } from "better-auth/plugins/access";
+import { defaultStatements } from "better-auth/plugins/admin/access";
+
+import { CONSTANTS } from "~/src/constants";
+
+export const PERMISSIONS_STATEMENTS = {
+  ...defaultStatements,
+  [CONSTANTS.RESOURCES.ORDER]: [CONSTANTS.ACTIONS.READ, CONSTANTS.ACTIONS.UPDATE, CONSTANTS.ACTIONS.REFUND],
+  [CONSTANTS.RESOURCES.PRODUCT]: [
+    CONSTANTS.ACTIONS.CREATE,
+    CONSTANTS.ACTIONS.READ,
+    CONSTANTS.ACTIONS.UPDATE,
+    CONSTANTS.ACTIONS.DELETE,
+    CONSTANTS.ACTIONS.PUBLISH
+  ],
+  [CONSTANTS.RESOURCES.SETTINGS]: [CONSTANTS.ACTIONS.MANAGE]
+} as const;
+
+export const ac = createAccessControl(PERMISSIONS_STATEMENTS);
+
+const ALL_USER_PERMISSIONS = [
+  "create",
+  "list",
+  "set-role",
+  "ban",
+  "impersonate",
+  "impersonate-admins",
+  "delete",
+  "set-password",
+  "get",
+  "update"
+] as const;
+
+const ALL_SESSION_PERMISSIONS = ["list", "revoke", "delete"] as const;
+
+export const ROLES_CONFIG = {
+  [CONSTANTS.ROLES.ADMIN]: ac.newRole({
+    [CONSTANTS.RESOURCES.ORDER]: [CONSTANTS.ACTIONS.READ, CONSTANTS.ACTIONS.UPDATE, CONSTANTS.ACTIONS.REFUND],
+    [CONSTANTS.RESOURCES.PRODUCT]: [
+      CONSTANTS.ACTIONS.CREATE,
+      CONSTANTS.ACTIONS.READ,
+      CONSTANTS.ACTIONS.UPDATE,
+      CONSTANTS.ACTIONS.DELETE,
+      CONSTANTS.ACTIONS.PUBLISH
+    ],
+    [CONSTANTS.RESOURCES.SETTINGS]: [CONSTANTS.ACTIONS.MANAGE],
+    session: [...ALL_SESSION_PERMISSIONS],
+    user: [...ALL_USER_PERMISSIONS]
+  }),
+  [CONSTANTS.ROLES.MANAGER]: ac.newRole({
+    [CONSTANTS.RESOURCES.ORDER]: [CONSTANTS.ACTIONS.READ, CONSTANTS.ACTIONS.UPDATE],
+    [CONSTANTS.RESOURCES.PRODUCT]: [
+      CONSTANTS.ACTIONS.CREATE,
+      CONSTANTS.ACTIONS.READ,
+      CONSTANTS.ACTIONS.UPDATE,
+      CONSTANTS.ACTIONS.DELETE,
+      CONSTANTS.ACTIONS.PUBLISH
+    ],
+    [CONSTANTS.RESOURCES.SETTINGS]: [],
+    session: [],
+    user: ["list", "get"]
+  }),
+  [CONSTANTS.ROLES.SUPPORT]: ac.newRole({
+    [CONSTANTS.RESOURCES.ORDER]: [CONSTANTS.ACTIONS.READ, CONSTANTS.ACTIONS.REFUND],
+    [CONSTANTS.RESOURCES.PRODUCT]: [CONSTANTS.ACTIONS.READ],
+    [CONSTANTS.RESOURCES.SETTINGS]: [],
+    session: [],
+    user: ["list", "get"]
+  }),
+  [CONSTANTS.ROLES.USER]: ac.newRole({
+    [CONSTANTS.RESOURCES.ORDER]: [],
+    [CONSTANTS.RESOURCES.PRODUCT]: [],
+    [CONSTANTS.RESOURCES.SETTINGS]: [],
+    session: [],
+    user: []
+  })
+} as const;

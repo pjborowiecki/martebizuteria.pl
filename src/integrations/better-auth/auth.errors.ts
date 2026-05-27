@@ -1,4 +1,4 @@
-export const AUTH_ERRORS = {
+export const AUTH_ERRORS: Record<string, string> = {
   ACCOUNT_NOT_FOUND: "accountNotFound",
   BANNED_USER: "bannedUser",
   COULD_NOT_CREATE_SESSION: "couldNotCreateSession",
@@ -26,6 +26,4 @@ export const AUTH_ERRORS = {
   UNKNOWN_ERROR: "unknownError",
   USER_ALREADY_EXISTS: "userAlreadyExists",
   USER_NOT_FOUND: "userNotFound"
-} as const;
-
-export type AuthErrorCode = keyof typeof AUTH_ERRORS;
+};

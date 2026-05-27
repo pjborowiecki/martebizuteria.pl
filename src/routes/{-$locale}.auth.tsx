@@ -1,11 +1,27 @@
 import type { JSX } from "react";
 
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+
+import { CONSTANTS } from "~/src/constants";
 
 import { AuthEditorial } from "~/src/components/custom/pages/auth/auth-editorial";
 import { Navigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation";
 
+import { getSessionFn } from "~/src/modules/session/session.actions";
+
 export const Route = createFileRoute("/{-$locale}/auth")({
+  beforeLoad: async () => {
+    const session = await getSessionFn();
+
+    if (session?.user) {
+      const isAdmin = session.user.role === CONSTANTS.ROLES.ADMIN || session.user.role === CONSTANTS.ROLES.MANAGER;
+
+      redirect({
+        throw: true,
+        to: `/{-$locale}${isAdmin ? CONSTANTS.ROUTES.ADMIN : CONSTANTS.ROUTES.ACCOUNT}`
+      });
+    }
+  },
   component: AuthLayoutRoute
 });
 

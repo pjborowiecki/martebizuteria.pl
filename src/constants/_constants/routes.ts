@@ -25,6 +25,12 @@ export const ROUTES = {
   ADMIN_PRODUCT: "/admin/catalog/products/$handle",
   ADMIN_PRODUCTS: "/admin/catalog/products",
   ADMIN_SETTINGS: "/admin/settings",
+  API_AUTH: {
+    FORGET_PASSWORD: "/forget-password",
+    RESET_PASSWORD: "/reset-password",
+    SIGN_IN_EMAIL: "/sign-in/email",
+    SIGN_UP_EMAIL: "/sign-up/email"
+  },
   AUTH_EMAIL_VERIFICATION: "/auth/email-verification",
   AUTH_FORGOT_PASSWORD: "/auth/forgot-password",
   AUTH_RESET_PASSWORD: "/auth/reset-password",
@@ -39,6 +45,8 @@ export const ROUTES = {
   EXCHANGES_AND_RETURNS: "/exchanges-and-returns",
   FAQ: "/faq",
   HOME: "/",
+  PRIVACY_POLICY: "/privacy-policy",
   PRODUCT: "/products/$handle",
-  PRODUCTS: "/products"
+  PRODUCTS: "/products",
+  TERMS_OF_SERVICE: "/terms-of-service"
 } as const;

@@ -730,12 +730,37 @@
       },
       "title": "Create an account",
       "subtitle": "Join M'ARTE to discover handcrafted jewelry and exclusive collections.",
-      "terms": "I agree to the Terms of Service and Privacy Policy. I understand that my data will be processed in accordance with the Privacy Policy.",
+      "terms": "By continuing, you agree to our <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
       "submit": "Create account",
       "submitting": "Creating account…",
       "success": "Account created successfully!",
       "hasAccount": "Already have an account?",
       "signInInstead": "Sign in"
+    },
+    "forgotPasswordPage": {
+      "meta": {
+        "title": "Forgot Password | M'ARTE",
+        "description": "Reset your M'ARTE account password."
+      },
+      "title": "Reset password",
+      "subtitle": "Enter your email address and we'll send you a link to reset your password.",
+      "submit": "Send reset link",
+      "submitting": "Sending...",
+      "success": "Check your email for a reset link.",
+      "checkEmail": "We've sent a password reset link to your email. Please check your inbox.",
+      "backToSignIn": "Back to sign in"
+    },
+    "resetPasswordPage": {
+      "meta": {
+        "title": "Set New Password | M'ARTE",
+        "description": "Set a new password for your M'ARTE account."
+      },
+      "title": "New password",
+      "subtitle": "Enter a new password for your account.",
+      "submit": "Reset password",
+      "submitting": "Resetting...",
+      "success": "Your password has been successfully reset.",
+      "invalidToken": "Invalid or expired password reset link. Please request a new one."
     },
     "errors": {
       "accountNotFound": "Account not found.",
@@ -765,6 +790,30 @@
       "unknownError": "Something went wrong. Please try again.",
       "userAlreadyExists": "An account with this email already exists.",
       "userNotFound": "No account found with this email."
+    },
+    "email": {
+      "resetPassword": {
+        "subject": "Reset your password - M'ARTE",
+        "greeting": "Hello {name},",
+        "message": "Someone recently requested a password change for your M'ARTE account. If this was you, you can set a new password here:",
+        "cta": "Reset password",
+        "ignore": "If you don't want to change your password or didn't request this, just ignore and delete this message.",
+        "security": "To keep your account secure, please don't forward this email to anyone."
+      },
+      "verifyEmail": {
+        "subject": "Verify your email address - M'ARTE",
+        "greeting": "Hello {name},",
+        "message": "Please verify your email address to complete your M'ARTE account registration.",
+        "cta": "Verify email",
+        "ignore": "If you didn't create an account, just ignore and delete this message."
+      },
+      "changeEmail": {
+        "subject": "Verify your new email address - M'ARTE",
+        "greeting": "Hello {name},",
+        "message": "You recently requested to change the email address associated with your M'ARTE account. Please verify your new email address to complete the process.",
+        "cta": "Verify new email",
+        "ignore": "If you didn't request this change, please ignore this email and your account will remain secure."
+      }
     },
     "validations": {
       "invalidEmail": "Please enter a valid email address.",
@@ -1886,5 +1935,13 @@
       "closeDialogConfirm": "Type DELETE to confirm",
       "closeDialogCancel": "Cancel"
     }
+  },
+  "privacyPolicyPage": {
+    "title": "Privacy Policy",
+    "description": "Read our privacy policy to understand how we handle your data."
+  },
+  "termsOfServicePage": {
+    "title": "Terms of Service",
+    "description": "Read our terms of service before using our website."
   }
 }

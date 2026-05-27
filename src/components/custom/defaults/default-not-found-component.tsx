@@ -2,7 +2,9 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
-export function DefaultNotFoundComponent(): JSX.Element {
+import { TranslationsProvider } from "~/src/providers/translations-provider";
+
+function NotFoundContent(): JSX.Element {
   const t = useTranslations("components.custom.defaultNotFoundComponent");
 
   return (
@@ -10,5 +12,13 @@ export function DefaultNotFoundComponent(): JSX.Element {
       <h2 className="font-semibold">{t("heading")}</h2>
       <p className="text-sm text-muted-foreground">{t("message")}</p>
     </div>
+  );
+}
+
+export function DefaultNotFoundComponent(): JSX.Element {
+  return (
+    <TranslationsProvider>
+      <NotFoundContent />
+    </TranslationsProvider>
   );
 }

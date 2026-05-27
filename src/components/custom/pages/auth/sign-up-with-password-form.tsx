@@ -1,4 +1,3 @@
-/* eslint-disable react-perf/jsx-no-new-function-as-prop, react/jsx-max-depth, max-lines-per-function */
 import { type JSX, type SyntheticEvent, useCallback, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,18 +14,14 @@ import { AUTH_ERRORS } from "~/src/integrations/better-auth/auth.errors";
 import { type SignUpFormValues, signUpWithPasswordSchema } from "~/src/integrations/better-auth/auth.schemas";
 
 import { Button } from "~/src/components/shadcn/button";
-import { Checkbox } from "~/src/components/shadcn/checkbox";
 import { Field, FieldContent, FieldError, FieldGroup, FieldLabel } from "~/src/components/shadcn/field";
 import { Input } from "~/src/components/shadcn/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "~/src/components/shadcn/input-group";
 
+import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { PasswordToggle } from "~/src/components/custom/pages/auth/password-toggle";
 
 const LABEL_CLASS = "text-[11px] tracking-[0.18em] text-muted-foreground uppercase";
-
-function getAuthErrorKey(errorCode: string): string {
-  return (AUTH_ERRORS as Record<string, string>)[errorCode] ?? AUTH_ERRORS.UNKNOWN_ERROR;
-}
 
 export function SignUpWithPasswordForm(): JSX.Element {
   const [showPassword, setShowPassword] = useState(false);
@@ -56,7 +51,8 @@ export function SignUpWithPasswordForm(): JSX.Element {
         email: data.email,
         fetchOptions: {
           onError: (ctx) => {
-            toast.error(t(`auth.errors.${getAuthErrorKey(String(ctx.error.code ?? "UNKNOWN_ERROR"))}`));
+            const errCode = String(ctx.error.code ?? "UNKNOWN_ERROR");
+            toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
           },
           onSuccess: () => {
             toast.success(t("auth.signUpPage.success"));
@@ -212,10 +208,26 @@ export function SignUpWithPasswordForm(): JSX.Element {
         />
       </FieldGroup>
 
-      <label className="flex items-start gap-3 pt-1">
-        <Checkbox name="terms" required className="mt-0.5" />
-        <span className="text-xs leading-relaxed text-muted-foreground">{t("auth.signUpPage.terms")}</span>
-      </label>
+      <p className="px-4 text-center text-[11px] leading-relaxed text-muted-foreground/70">
+        {t.rich("auth.signUpPage.terms", {
+          privacy: (chunks) => (
+            <LocalizedLink
+              to={CONSTANTS.ROUTES.PRIVACY_POLICY}
+              className="underline underline-offset-4 transition-colors hover:text-foreground"
+            >
+              {chunks}
+            </LocalizedLink>
+          ),
+          terms: (chunks) => (
+            <LocalizedLink
+              to={CONSTANTS.ROUTES.TERMS_OF_SERVICE}
+              className="underline underline-offset-4 transition-colors hover:text-foreground"
+            >
+              {chunks}
+            </LocalizedLink>
+          )
+        })}
+      </p>
 
       <Button size="xl" type="submit" className="w-full gap-2.5 tracking-wide" disabled={isSubmitting}>
         {isSubmitting && <Loader2 aria-hidden className="size-4 animate-spin" />}

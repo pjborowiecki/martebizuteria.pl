@@ -11,6 +11,8 @@ import { Separator } from "~/src/components/shadcn/separator";
 import { Image } from "~/src/components/custom/image";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
+import { Route as AccountRoute } from "~/src/routes/{-$locale}.account";
+
 export const Route = createFileRoute("/{-$locale}/account/overview")({
   component: AccountOverviewPage
 });
@@ -176,14 +178,18 @@ function LoyaltyCard(): JSX.Element {
   );
 }
 
+const FIRST_NAME_INDEX = 0;
+
 function AccountOverviewPage(): JSX.Element {
   const t = useTranslations("account.overview");
+  const { user } = AccountRoute.useRouteContext();
+  const firstName = user.name.split(" ")[FIRST_NAME_INDEX] ?? user.name;
 
   return (
     <div>
       <div className="mb-10 space-y-3">
         <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{t("greeting")}</p>
-        <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("title", { name: "Anna" })}</h1>
+        <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("title", { name: firstName })}</h1>
       </div>
 
       <StatsGrid />

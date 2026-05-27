@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useRouterState } from "@tanstack/react-router";
 import { IntlProvider } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
@@ -10,11 +11,27 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
 
 interface TranslationsProviderProps {
   children: ReactNode;
-  locale: Locale;
+  locale?: Locale;
 }
 
-export function TranslationsProvider({ children, locale }: Readonly<TranslationsProviderProps>) {
-  const { data: messages } = useSuspenseQuery(messagesQueryOptions(locale));
+export function TranslationsProvider({ children, locale: propLocale }: Readonly<TranslationsProviderProps>) {
+  const routerState = useRouterState();
+
+  const pathLocale = CONSTANTS.LOCALES.find(
+    (loc) => routerState.location.pathname.startsWith(`/${loc}/`) || routerState.location.pathname === `/${loc}`
+  );
+
+  const locale = propLocale ?? pathLocale ?? CONSTANTS.DEFAULT_LOCALE;
+
+  const { data: messages, isPending } = useQuery(messagesQueryOptions(locale));
+
+  if (isPending || !messages) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="animate-pulse text-sm text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <IntlProvider locale={locale} messages={messages} timeZone={CONSTANTS.DEFAULT_TIMEZONE}>

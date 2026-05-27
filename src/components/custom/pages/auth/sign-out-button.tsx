@@ -12,10 +12,6 @@ import { AUTH_ERRORS } from "~/src/integrations/better-auth/auth.errors";
 
 import { Button } from "~/src/components/shadcn/button";
 
-function getAuthErrorKey(errorCode: string): string {
-  return (AUTH_ERRORS as Record<string, string>)[errorCode] ?? AUTH_ERRORS.UNKNOWN_ERROR;
-}
-
 export function SignOutButton(): JSX.Element {
   const [isPending, startTransition] = useTransition();
 
@@ -27,8 +23,8 @@ export function SignOutButton(): JSX.Element {
       await signOut({
         fetchOptions: {
           onError: (ctx) => {
-            const key = getAuthErrorKey(String(ctx.error.code ?? "UNKNOWN_ERROR"));
-            toast.error(t(`auth.errors.${key}`));
+            const errCode = String(ctx.error.code ?? "UNKNOWN_ERROR");
+            toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
           },
           onSuccess: () => {
             toast.success(t("auth.signOut.success"));

@@ -12,6 +12,7 @@ export const session = sqliteTable(
       .notNull(),
     expiresAt: text("expires_at").notNull(),
     id: text("id").primaryKey(),
+    impersonatedBy: text("impersonated_by"),
     ipAddress: text("ip_address", { length: 45 }),
     token: text("token", { length: 16_384 }).notNull().unique(),
     updatedAt: text("updated_at")

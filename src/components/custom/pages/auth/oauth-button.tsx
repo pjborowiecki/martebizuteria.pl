@@ -13,10 +13,6 @@ import { Button } from "~/src/components/shadcn/button";
 
 type Provider = "google" | "github";
 
-function getAuthErrorKey(errorCode: string): string {
-  return (AUTH_ERRORS as Record<string, string>)[errorCode] ?? AUTH_ERRORS.UNKNOWN_ERROR;
-}
-
 interface OAuthButtonProps {
   readonly Icon: ComponentType<SVGProps<SVGSVGElement>>;
   readonly label: string;
@@ -34,8 +30,8 @@ export function OAuthButton({ Icon, label, provider }: Readonly<OAuthButtonProps
         callbackURL: `/{-$locale}${CONSTANTS.ROUTES.ACCOUNT_OVERVIEW}`,
         fetchOptions: {
           onError: (ctx) => {
-            const key = getAuthErrorKey(String(ctx.error.code ?? "UNKNOWN_ERROR"));
-            toast.error(t(`auth.errors.${key}`));
+            const errCode = String(ctx.error.code ?? "UNKNOWN_ERROR");
+            toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
           },
           onSuccess: () => {
             toast.success(t("auth.oAuth.success"));
