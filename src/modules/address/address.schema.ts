@@ -26,9 +26,7 @@ export const address = sqliteTable(
       .$defaultFn(() => new Date().toISOString())
       .$onUpdateFn(() => new Date().toISOString())
       .notNull(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" })
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" })
   },
   (table) => [index("address_userId_idx").on(table.userId)]
 );

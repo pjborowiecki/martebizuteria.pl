@@ -1,6 +1,7 @@
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { transformUrl } from "unpic";
 
+import { getAssetURL } from "~/src/lib/_utils/url";
 import { getBaseURL } from "~/src/lib/utils";
 
 import type { Product } from "~/src/modules/product/product.types";
@@ -32,6 +33,17 @@ try {
 const viteDomain: unknown = import.meta.env.VITE_IMAGE_CDN_DOMAIN;
 if (typeof viteDomain === "string" && viteDomain.length > IMAGE_CONSTANTS.ZERO) {
   IMAGE_CONSTANTS.CDN_DOMAIN = viteDomain;
+}
+
+// Placeholder asset that lives in the R2 bucket.
+export const PLACEHOLDER_IMAGE = getAssetURL("placeholder.svg");
+
+// TEMPORARY: dynamic product/category/collection media has not been uploaded to
+// R2 yet, so the thumbnails stored in the DB resolve to 404s. Until real assets
+// exist, every DB-sourced image renders the bucket's placeholder. Once media is
+// live, change the body to `src !== undefined && src !== null && src !== "" ? src : PLACEHOLDER_IMAGE`.
+export function getProductImageUrl(_src?: string | null): string {
+  return PLACEHOLDER_IMAGE;
 }
 
 export interface PrefetchImageConfig {

@@ -8,11 +8,11 @@ import { SidebarInset, SidebarProvider } from "~/src/components/shadcn/sidebar";
 
 import { AdminSidebar } from "~/src/components/custom/pages/admin/admin-sidebar";
 
-import { getSessionFn } from "~/src/modules/session/session.actions";
+import { sessionQueries } from "~/src/modules/session/session.queries";
 
 export const Route = createFileRoute("/{-$locale}/admin")({
   beforeLoad: async () => {
-    const session = await getSessionFn();
+    const session = await sessionQueries.getSessionFn();
 
     if (!session?.user) {
       redirect({

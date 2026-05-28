@@ -1,5 +1,3 @@
-"";
-
 import type { JSX } from "react";
 
 import { Separator as SeparatorPrimitive } from "@base-ui/react/separator";

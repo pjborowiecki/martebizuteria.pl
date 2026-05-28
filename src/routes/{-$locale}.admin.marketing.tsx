@@ -18,7 +18,7 @@ export const Route = createFileRoute("/{-$locale}/admin/marketing")({
   component: MarketingPage
 });
 
-export function MarketingPage(): JSX.Element {
+function MarketingPage(): JSX.Element {
   const t = useTranslations("admin");
 
   const bcList = useMemo(

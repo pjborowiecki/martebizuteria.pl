@@ -425,9 +425,9 @@
     "title": "Cart",
     "description": "Your cart will appear here.",
     "goHome": "Go to home page",
-    "emptyTitle": "Your collection awaits",
-    "emptySubtitle": "Each M'Arte piece is crafted to be discovered, not rushed. Take your time — your perfect piece is waiting.",
-    "exploreCta": "Explore the Collection",
+    "emptyTitle": "Your cart is empty",
+    "emptySubtitle": "You don't have any items in your cart yet. Start by exploring our pieces.",
+    "exploreCta": "Browse products",
     "itemCount": "{count, plural, =0 {No items} =1 {1 item} other {# items}}",
     "continueShopping": "Continue shopping",
     "removeItem": "Remove item",
@@ -443,8 +443,9 @@
       "note": "Shipping & taxes calculated at checkout."
     },
     "trust": {
-      "freeShipping": "Complimentary shipping",
-      "freeReturns": "Free 30-day returns"
+      "securePayment": "Secure payment",
+      "returns": "30-day returns",
+      "freeShipping": "Free delivery over 300 zł"
     },
     "items": {
       "item1": {
@@ -474,37 +475,74 @@
       "description": "Complete your order securely at M'Arte."
     },
     "checkoutSummary": {
-      "title": "Your Order",
       "subtotal": "Subtotal",
       "delivery": "Delivery",
       "deliveryCalculated": "Calculated at next step",
-      "total": "Total"
+      "total": "Total",
+      "edit": "Edit",
+      "free": "Free",
+      "itemsCount": "Products ({count})"
+    },
+    "checkoutSuccess": {
+      "title": "Order Confirmed",
+      "description": "Thank you for your purchase! We have received your order and are processing it. You will receive a confirmation at the email address you provided shortly.",
+      "continueShopping": "Return to store"
     },
     "checkoutForm": {
+      "paymentCard": "Card",
+      "paymentBlik": "BLIK",
+      "paymentBank": "Przelewy24",
+      "savedAddresses": "Saved Addresses",
+      "noSavedAddresses": "No saved addresses.",
+      "blikCode": "BLIK Code",
+      "blikRedirect": "Enter the 6-digit BLIK code from your banking app.",
+      "p24Redirect": "After clicking 'Continue to Review', you will be redirected to Przelewy24 to complete the payment.",
+      "addressBilling": "Billing Address",
       "steps": {
-        "billing": "Shipping Address",
+        "contact": "Contact Details",
+        "billing": "Address",
         "delivery": "Delivery Method",
-        "payment": "Payment",
-        "overview": "Review & Place Order"
+        "payment": "Payment"
       },
+      "email": "Email",
+      "phone": "Mobile Phone",
       "firstName": "First Name",
       "lastName": "Last Name",
       "addressLine1": "Address",
       "postalCode": "Postal Code",
       "city": "City",
       "country": "Country",
-      "continueToDelivery": "Continue to Delivery",
-      "continueToPayment": "Continue to Payment",
-      "continueToReview": "Review Order",
+      "continueToAddress": "Address",
+      "continueToDelivery": "Delivery Method",
+      "continueToPayment": "Payment",
+      "continueToReview": "Summary",
+      "paymentMethodsIntro": "Choose how you'd like to pay. All transactions are encrypted and securely processed by Stripe.",
+      "paymentUnavailable": "We couldn't prepare your payment",
+      "paymentUnavailableHint": "Some items in your cart may no longer be available. Please review your cart and try again.",
+      "retry": "Try again",
+      "backToCart": "Back to cart",
+      "payNow": "Pay {amount}",
+      "processingPayment": "Processing…",
       "deliveryMethods": {
         "courier": "Courier",
         "locker": "Parcel Locker",
         "in_store": "In-Store Pickup"
       },
+      "selectLocker": "Select Parcel Locker",
+      "searchCity": "Enter city name...",
+      "loadingLockers": "Searching for lockers...",
+      "noLockers": "No parcel lockers found in this city.",
+      "minChars": "Enter at least 3 characters...",
+      "selectedLocker": "Selected Parcel Locker:",
       "deliverySubsteps": {
         "courier": "Standard courier delivery (2–4 business days). Free for orders above 300 PLN.",
         "locker": "Parcel locker delivery (1–2 business days). Select your preferred locker at the next stage.",
-        "inStore": "Pick up at our Warsaw atelier. Ready within 24 hours of order confirmation."
+        "inStore": "Pick up at our Warsaw atelier. Ready within 24 hours of order confirmation.",
+        "courierText": "Standard delivery typically takes 1-3 business days. You will receive a tracking link once your order has shipped.",
+        "inStoreText": "Pick up your order at one of our boutique locations. You will be notified when your items are ready.",
+        "lockerText": "Have your package delivered to a secure parcel locker (e.g. InPost Paczkomat).",
+        "lockerTitle": "InPost Parcel Lockers",
+        "from": "From"
       },
       "paymentMethods": {
         "card": "Credit Card",
@@ -513,7 +551,9 @@
       },
       "paymentSubsteps": {
         "blik": "You will receive a BLIK code request on your banking app after placing the order.",
-        "bankTransfer": "Transfer details will be provided after placing the order. The order ships once the payment is received."
+        "bankTransfer": "Transfer details will be provided after placing the order. The order ships once the payment is received.",
+        "bankTransferText": "After clicking \"Complete Order\", you will be securely redirected to Przelewy24 to choose your bank and complete the payment.",
+        "p24Title": "Przelewy24 (P24)"
       },
       "cardholderName": "Cardholder Name",
       "cardNumber": "Card Number",
@@ -523,12 +563,22 @@
       "shippingTo": "Shipping To",
       "deliveryMethod": "Delivery Method",
       "paymentInformation": "Payment",
+      "paymentTitle": "Payment Method",
       "billingAddress": "Billing Address",
+      "shippingAddress": "Shipping Address",
       "sameAsShipping": "Same as shipping address",
+      "saveShippingAddress": "Save this shipping address for future use",
+      "saveBillingAddress": "Save this billing address for future use",
       "estDeliveryPlaceholder": "Est. delivery in 2–4 business days",
+      "deliveryNotes": "Delivery Instructions (Optional)",
+      "deliveryNotesPlaceholder": "e.g. Leave at the front door",
+      "storeLocation": "Store Location",
+      "storeLocationPlaceholder": "e.g. Warsaw, Mokotowska 50",
+      "lockerId": "Locker ID / Paczkomat Code",
+      "lockerIdPlaceholder": "e.g. WAW123A",
       "cardSummary": "Card ending in {endingDigits}",
-      "placeOrder": "Place Order",
-      "termsAgreement": "By placing your order you agree to our Terms of Service and Privacy Policy.",
+      "placeOrder": "Order & Pay",
+      "termsAgreement": "By placing your order you agree to our <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
       "placeholderItemName": "Aura Hoop I",
       "placeholderItemDetails": "925 silver / mirror finish · One Size",
       "placeholderItemPrice": "340 PLN",
@@ -536,11 +586,29 @@
         "firstNameRequired": "First name is required",
         "lastNameRequired": "Last name is required",
         "addressRequired": "Address is required",
+        "blikCodeRequired": "Valid 6-digit BLIK code is required",
+        "cardholderNameRequired": "Cardholder name is required",
+        "cardDetailsRequired": "Please enter valid payment details",
+        "emailInvalid": "Please enter a valid email address",
+        "phoneRequired": "Phone number is required",
+        "phoneInvalid": "Please enter a valid phone number",
+        "postCodeInvalid": "Invalid postal code format (e.g. 00-000)",
+        "paymentFailed": "Payment failed. Please try again.",
         "cityRequired": "City is required",
         "postCodeRequired": "Postal code is required",
         "countryRequired": "Country is required",
         "deliveryRequired": "Please select a delivery method",
         "paymentRequired": "Please select a payment method"
+      },
+      "errors": {
+        "insufficientInventory": "Some items in your cart are out of stock.",
+        "productNotFound": "A product in your cart is no longer available.",
+        "variantNotFound": "A selected option is no longer available.",
+        "paymentSessionStale": "Your previous payment attempt is still processing or has expired. We've refreshed the payment — please choose a method and try again.",
+        "unknownError": "Something went wrong. Please try again."
+      },
+      "countries": {
+        "PL": "Poland"
       }
     }
   },
@@ -840,6 +908,16 @@
       "preview": "Test email preview",
       "title": "Hello from M'Arte",
       "body": "This is a test email."
+    },
+    "orderConfirmation": {
+      "subject": "Order confirmation - M'ARTE",
+      "preview": "Your M'ARTE order is confirmed",
+      "greeting": "Thank you for your order!",
+      "message": "We've received your payment and your order is now being prepared. Here's a summary of your purchase:",
+      "orderLabel": "Order reference",
+      "totalLabel": "Total",
+      "footer": "We'll email you again as soon as your order is fulfilled.",
+      "thanks": "M'ARTE"
     }
   },
   "admin": {

@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react";
+import { type JSX, type MouseEvent, useCallback } from "react";
 
 import { Copy, Eye, MoreHorizontal, Search } from "lucide-react";
 import { useTranslations } from "use-intl";
@@ -127,7 +127,7 @@ function CampaignRow({ campaign }: { readonly campaign: (typeof CAMPAIGNS)[numbe
     draft: t("marketing.status.draft")
   }[campaign.status];
 
-  const stopPropagation = useCallback((e: React.MouseEvent) => {
+  const stopPropagation = useCallback((e: MouseEvent) => {
     e.stopPropagation();
   }, []);
 

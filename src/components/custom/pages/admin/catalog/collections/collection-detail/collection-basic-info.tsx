@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useMemo } from "react";
+import { type ChangeEvent, type JSX, useCallback, useMemo } from "react";
 
 import { useTranslations } from "use-intl";
 
@@ -29,21 +29,21 @@ export function CollectionBasicInfo({
   const t = useTranslations("admin");
 
   const handleNameChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       onNameChange(e.target.value);
     },
     [onNameChange]
   );
 
   const handleSlugChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       onSlugChange(e.target.value);
     },
     [onSlugChange]
   );
 
   const handleDescriptionChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    (e: ChangeEvent<HTMLTextAreaElement>) => {
       onDescriptionChange(e.target.value);
     },
     [onDescriptionChange]

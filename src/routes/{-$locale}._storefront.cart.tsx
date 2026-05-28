@@ -1,7 +1,7 @@
 import { type JSX, Fragment, useMemo } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, RotateCcw, ShoppingBag, Truck } from "lucide-react";
+import { ArrowRight, ShoppingBag } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
@@ -9,7 +9,7 @@ import type { Locale } from "~/src/constants/types";
 
 import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
 
-import { cn, isValidLocale } from "~/src/lib/utils";
+import { isValidLocale } from "~/src/lib/utils";
 
 import { Separator } from "~/src/components/shadcn/separator";
 
@@ -53,18 +53,30 @@ export const Route = createFileRoute("/{-$locale}/_storefront/cart")({
 
 const INITIAL_COUNT = 0;
 
+// Matches the sticky navbar height (`h-20`). Subtracting it lets the cart fill
+// the first viewport exactly, so the footer only appears on scroll.
+const FULL_VIEWPORT_STYLE = { minHeight: "calc(100dvh - 5rem)" } as const;
+
 function CartPage(): JSX.Element {
   const t = useTranslations("cartPage");
-  const { items } = useCartStore();
+  const { items, cartTotal } = useCartStore();
 
   const itemCount = items.reduce((sum, item) => sum + item.qty, INITIAL_COUNT);
-
-  const subtotal = "1,040 PLN";
-
   const tParams = useMemo(() => ({ count: itemCount }), [itemCount]);
 
+  const CENTS_IN_ZLOTY = 100;
+  const total = cartTotal() / CENTS_IN_ZLOTY;
+  const subtotal = new Intl.NumberFormat("pl-PL", {
+    currency: "PLN",
+    style: "currency"
+  }).format(total);
+
+  if (items.length <= INITIAL_COUNT) {
+    return <EmptyCart />;
+  }
+
   return (
-    <main className={cn("mx-auto w-full max-w-400 px-6 py-12 lg:px-12 lg:py-20", items.length <= INITIAL_COUNT && "flex flex-1 flex-col")}>
+    <main className="mx-auto w-full max-w-400 px-6 py-12 lg:px-12 lg:py-20" style={FULL_VIEWPORT_STYLE}>
       <div className="mb-10 flex items-baseline justify-between lg:mb-14">
         <div className="space-y-2">
           <h1 className="font-serif text-4xl tracking-tight md:text-5xl lg:text-6xl">{t("title")}</h1>
@@ -78,63 +90,51 @@ function CartPage(): JSX.Element {
         </LocalizedLink>
       </div>
 
-      {items.length > INITIAL_COUNT ? (
-        <div className="grid gap-12 lg:grid-cols-[1fr_380px] lg:gap-16 xl:gap-20">
-          <div>
-            <Separator className="bg-foreground/10" />
-            {items.map((item) => (
-              <Fragment key={item.id}>
-                <CartItemCard item={item} />
-                <Separator className="bg-foreground/10" />
-              </Fragment>
-            ))}
+      <div className="grid gap-12 lg:grid-cols-[1fr_380px] lg:gap-16 xl:gap-20">
+        <div>
+          <Separator className="bg-foreground/10" />
+          {items.map((item) => (
+            <Fragment key={item.id}>
+              <CartItemCard item={item} />
+              <Separator className="bg-foreground/10" />
+            </Fragment>
+          ))}
 
-            <LocalizedLink
-              className="mt-6 inline-flex text-sm text-foreground/50 underline underline-offset-4 transition-colors hover:text-foreground sm:hidden"
-              to={CONSTANTS.ROUTES.PRODUCTS}
-            >
-              {t("continueShopping")}
-            </LocalizedLink>
-          </div>
-
-          <CartSummary subtotal={subtotal} />
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
-          {/* Decorative icon */}
-          <div className="mb-10 flex size-24 items-center justify-center border border-border/30 bg-muted/20">
-            <ShoppingBag className="size-8 text-muted-foreground/40" strokeWidth={1} />
-          </div>
-
-          {/* Heading */}
-          <h2 className="mb-4 font-serif text-3xl tracking-tight text-foreground md:text-4xl">{t("emptyTitle")}</h2>
-
-          {/* Subtitle */}
-          <p className="mx-auto mb-10 max-w-md text-sm leading-relaxed text-muted-foreground">{t("emptySubtitle")}</p>
-
-          {/* CTA */}
           <LocalizedLink
+            className="mt-6 inline-flex text-sm text-foreground/50 underline underline-offset-4 transition-colors hover:text-foreground sm:hidden"
             to={CONSTANTS.ROUTES.PRODUCTS}
-            className="group inline-flex min-h-12 items-center gap-2 bg-foreground px-10 text-xs font-medium tracking-[0.2em] text-background uppercase transition-opacity hover:opacity-90"
           >
-            {t("exploreCta")}
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" strokeWidth={1.25} />
+            {t("continueShopping")}
           </LocalizedLink>
-
-          {/* Trust badges */}
-          <div className="mt-14 flex flex-col items-center gap-4 sm:flex-row sm:gap-8">
-            <div className="flex items-center gap-2.5 text-xs tracking-[0.15em] text-muted-foreground/60 uppercase">
-              <Truck className="size-4" strokeWidth={1.25} />
-              <span>{t("trust.freeShipping")}</span>
-            </div>
-            <Separator orientation="vertical" className="hidden h-4 sm:block" />
-            <div className="flex items-center gap-2.5 text-xs tracking-[0.15em] text-muted-foreground/60 uppercase">
-              <RotateCcw className="size-4" strokeWidth={1.25} />
-              <span>{t("trust.freeReturns")}</span>
-            </div>
-          </div>
         </div>
-      )}
+
+        <CartSummary subtotal={subtotal} />
+      </div>
+    </main>
+  );
+}
+
+function EmptyCart(): JSX.Element {
+  const t = useTranslations("cartPage");
+
+  return (
+    <main
+      className="mx-auto flex w-full max-w-400 flex-col items-center justify-center px-6 py-16 text-center lg:px-12"
+      style={FULL_VIEWPORT_STYLE}
+    >
+      <div className="mb-8 flex size-20 items-center justify-center rounded-full border border-border/60 bg-muted/20">
+        <ShoppingBag className="size-7 text-muted-foreground/60" strokeWidth={1.25} />
+      </div>
+
+      <h1 className="mb-9 font-serif text-3xl tracking-tight text-foreground md:text-4xl">{t("emptyTitle")}</h1>
+
+      <LocalizedLink
+        to={CONSTANTS.ROUTES.PRODUCTS}
+        className="group inline-flex min-h-12 items-center gap-2 border border-foreground/25 px-10 text-xs font-medium tracking-[0.2em] text-foreground uppercase transition-colors hover:border-foreground/60"
+      >
+        {t("exploreCta")}
+        <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" strokeWidth={1.25} />
+      </LocalizedLink>
     </main>
   );
 }

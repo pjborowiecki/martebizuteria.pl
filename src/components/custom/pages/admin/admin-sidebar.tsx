@@ -1,5 +1,3 @@
-"";
-
 import { type JSX, type MouseEvent, useCallback, useMemo } from "react";
 
 import { useLocation, useRouter } from "@tanstack/react-router";

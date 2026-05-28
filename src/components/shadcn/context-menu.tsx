@@ -1,5 +1,3 @@
-"";
-
 import type { ComponentProps, JSX } from "react";
 
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";

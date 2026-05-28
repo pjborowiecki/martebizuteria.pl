@@ -1,5 +1,3 @@
-"";
-
 import { type JSX, type ReactNode, useCallback } from "react";
 
 import { cn } from "~/src/lib/utils";

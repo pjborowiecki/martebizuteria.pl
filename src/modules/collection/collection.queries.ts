@@ -1,49 +1,38 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
 
-import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
+import { collectionAccessors } from "~/src/modules/collection/collection.accessors";
 
-import { collection } from "~/src/modules/collection/collection.schema";
-import { product } from "~/src/modules/product/product.schema";
+const fetchCollectionsFn = createServerFn({ method: "GET" }).handler(() => collectionAccessors.getCollectionsQuery.execute());
 
-export const fetchCollectionsFn = createServerFn({ method: "GET" }).handler(() =>
-  db.query.collection.findMany({
-    limit: 20,
-    orderBy: (collections, { desc }) => [desc(collections.createdAt)]
-  })
-);
-
-export const fetchCollectionByHandleFn = createServerFn({ method: "GET" })
+const fetchCollectionByHandleFn = createServerFn({ method: "GET" })
   .inputValidator((handle: string) => handle)
   .handler(async ({ data: handle }) => {
-    const coll = await db.query.collection.findFirst({
-      where: eq(collection.handle, handle)
-    });
+    const coll = await collectionAccessors.getCollectionByHandleQuery.execute({ handle });
 
     if (coll === undefined) {
       return false;
     }
 
-    const products = await db.query.product.findMany({
-      limit: 20,
-      where: eq(product.collectionId, coll.id),
-      with: {
-        variants: true
-      }
-    });
+    const products = await collectionAccessors.getProductsByCollectionIdQuery.execute({ collectionId: coll.id });
 
     return { ...coll, products };
   });
 
-export const collectionsQueryOptions = () =>
-  queryOptions({
-    queryFn: () => fetchCollectionsFn(),
-    queryKey: ["collections"]
-  });
+export const collectionQueries = {
+  fetchCollectionByHandleFn,
+  fetchCollectionsFn
+};
 
-export const collectionQueryOptions = (handle: string) =>
-  queryOptions({
-    queryFn: () => fetchCollectionByHandleFn({ data: handle }),
-    queryKey: ["collection", handle]
-  });
+export const collectionQueryOptions = {
+  collectionQueryOptions: (handle: string) =>
+    queryOptions({
+      queryFn: () => fetchCollectionByHandleFn({ data: handle }),
+      queryKey: ["collection", handle]
+    }),
+  collectionsQueryOptions: () =>
+    queryOptions({
+      queryFn: () => fetchCollectionsFn(),
+      queryKey: ["collections"]
+    })
+};

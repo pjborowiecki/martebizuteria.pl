@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "agent-email-inbox": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/agent-email-inbox/SKILL.md",
+      "computedHash": "25ffa798578026fcfdc5bdbe5b10ec2d2cd1784f8a94344c0ac055f3a82b57d4"
+    },
     "building-admin-dashboard-customizations": {
       "source": "medusajs/medusa-agent-skills",
       "sourceType": "github",
@@ -49,7 +55,8 @@
     "email-best-practices": {
       "source": "resend/resend-skills",
       "sourceType": "github",
-      "computedHash": "73502c047040e1d55b1c90c86b661784279f0956de06d7dc74738c904d122c22"
+      "skillPath": "skills/email-best-practices/SKILL.md",
+      "computedHash": "c7218333381fa335b8a912bd55b3bb58b5b567a174f9e1d8b41940ff82f1a6b6"
     },
     "gsap-core": {
       "source": "greensock/gsap-skills",
@@ -142,7 +149,20 @@
     "react-email": {
       "source": "resend/resend-skills",
       "sourceType": "github",
-      "computedHash": "d1fe70541c06ebf1cc58b774d35634399c466e55684776cfba6768a2079ad79b"
+      "skillPath": "skills/react-email/SKILL.md",
+      "computedHash": "070a814e7ae89542250de27a0b03d8020ca1e8c57abf6304ecff527057c70256"
+    },
+    "resend": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/resend/SKILL.md",
+      "computedHash": "936851c3e22e6de1d416134a9cd170d7540ddebe5a1c0113eef66537c843c6ed"
+    },
+    "resend-cli": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/resend-cli/SKILL.md",
+      "computedHash": "8253f110ec3cbaac56153fc9051eeb7d3e8dbba03c31b49981aeb4d6f036d6d7"
     },
     "storefront-best-practices": {
       "source": "medusajs/medusa-agent-skills",

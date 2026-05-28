@@ -1,5 +1,3 @@
-"";
-
 import type { JSX } from "react";
 
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";

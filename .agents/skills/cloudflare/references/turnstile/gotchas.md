@@ -112,7 +112,6 @@ useEffect(() => {
 **Solution:** Use `'use client'` or dynamic import with `ssr: false`.
 
 ```tsx
-"";
 export default function Turnstile() {
   /* component */
 }

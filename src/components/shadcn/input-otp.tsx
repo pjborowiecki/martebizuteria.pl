@@ -1,5 +1,3 @@
-"";
-
 import { type ComponentProps, type JSX, useContext } from "react";
 
 import { OTPInput, OTPInputContext, type OTPInputProps as BaseOTPInputProps } from "input-otp";

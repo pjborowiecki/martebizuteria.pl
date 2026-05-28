@@ -2,17 +2,20 @@ import { type JSX, useMemo } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { useFormatter, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { prefetchProductThumbnails } from "~/src/lib/_utils/image";
+import { getProductImageUrl, prefetchProductThumbnails } from "~/src/lib/_utils/image";
 
 import { Image } from "~/src/components/custom/image";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
 import { categoryQueryOptions } from "~/src/modules/category/category.queries";
 import type { Product } from "~/src/modules/product/product.types";
+
+const CENTS_PER_UNIT = 100;
+const FIRST_VARIANT_INDEX = 0;
 
 interface PageMeta {
   readonly description?: string | null;
@@ -31,7 +34,8 @@ export const Route = createFileRoute("/{-$locale}/_storefront/categories/$handle
     ]
   }),
   loader: async ({ context, params }) => {
-    const data = await context.queryClient.ensureQueryData(categoryQueryOptions(params.handle));
+    const data = await context.queryClient.ensureQueryData(categoryQueryOptions.categoryQueryOptions(params.handle));
+
     if (data === false) {
       notFound({ throw: true });
       return { description: "", title: "" };
@@ -45,7 +49,7 @@ export const Route = createFileRoute("/{-$locale}/_storefront/categories/$handle
 function CategoryPage(): JSX.Element {
   const t = useTranslations("categoryPage");
   const { handle } = Route.useParams();
-  const { data: category } = useSuspenseQuery(categoryQueryOptions(handle));
+  const { data: category } = useSuspenseQuery(categoryQueryOptions.categoryQueryOptions(handle));
 
   if (category === false) {
     return <div>{t("notFound")}</div>;
@@ -75,9 +79,16 @@ function CategoryPage(): JSX.Element {
 function ProductCard({
   product
 }: Readonly<{
-  product: Pick<Product["select"], "id" | "title" | "description" | "thumbnail" | "handle">;
+  product: Pick<Product["select"], "id" | "title" | "description" | "thumbnail" | "handle"> & {
+    readonly variants?: readonly { readonly price: number }[];
+  };
 }>): JSX.Element {
   const params = useMemo(() => ({ handle: product.handle }), [product.handle]);
+  const format = useFormatter();
+
+  const variantPrice = product.variants?.[FIRST_VARIANT_INDEX]?.price;
+  const price =
+    variantPrice === undefined ? undefined : format.number(variantPrice / CENTS_PER_UNIT, { currency: "PLN", style: "currency" });
 
   return (
     <LocalizedLink
@@ -90,14 +101,11 @@ function ProductCard({
       </div>
       <h2 className="font-semibold group-hover:underline">{product.title}</h2>
       {product.description !== null && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{product.description}</p>}
+      {price !== undefined && <p className="mt-2 text-sm font-medium">{price}</p>}
     </LocalizedLink>
   );
 }
 
 function ProductImage({ thumbnail, title }: Readonly<{ thumbnail: string | null; title: string }>): JSX.Element {
-  if (thumbnail === null) {
-    return <span className="text-muted-foreground/50">No Image</span>;
-  }
-
-  return <Image src={thumbnail} alt={title} className="h-full w-full object-cover" width={256} height={256} />;
+  return <Image src={getProductImageUrl(thumbnail)} alt={title} className="h-full w-full object-cover" width={256} height={256} />;
 }

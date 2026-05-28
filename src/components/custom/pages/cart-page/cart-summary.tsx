@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 
-import { RotateCcw, Truck } from "lucide-react";
+import { RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
@@ -51,14 +51,18 @@ export function CartSummary({ subtotal }: Readonly<CartSummaryProps>): JSX.Eleme
       </div>
 
       {/* Trust signals */}
-      <div className="mt-6 grid grid-cols-2 gap-4">
-        <div className="flex items-center gap-2.5 text-muted-foreground/60">
-          <Truck className="size-4 shrink-0" strokeWidth={1.25} />
-          <span className="text-[11px] leading-tight">{t("trust.freeShipping")}</span>
+      <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6">
+        <div className="flex items-center gap-2 text-muted-foreground/80">
+          <ShieldCheck className="size-4 shrink-0" strokeWidth={1.5} />
+          <span className="text-xs leading-tight">{t("trust.securePayment")}</span>
         </div>
-        <div className="flex items-center gap-2.5 text-muted-foreground/60">
-          <RotateCcw className="size-4 shrink-0" strokeWidth={1.25} />
-          <span className="text-[11px] leading-tight">{t("trust.freeReturns")}</span>
+        <div className="flex items-center gap-2 text-muted-foreground/80">
+          <Truck className="size-4 shrink-0" strokeWidth={1.5} />
+          <span className="text-xs leading-tight">{t("trust.freeShipping")}</span>
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground/80">
+          <RotateCcw className="size-4 shrink-0" strokeWidth={1.5} />
+          <span className="text-xs leading-tight">{t("trust.returns")}</span>
         </div>
       </div>
     </aside>

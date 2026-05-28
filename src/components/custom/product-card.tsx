@@ -12,6 +12,7 @@ import { useCartStore } from "~/src/stores/cart.store";
 
 const ADD_TO_CART_TIMEOUT_MS = 1800;
 const DEFAULT_SIZE = "One Size";
+const FALLBACK_PRICE = 0;
 
 export interface ProductCardProps {
   readonly badge?: string;
@@ -26,6 +27,7 @@ export interface ProductCardProps {
   readonly onWishlistToggle?: () => void;
   readonly parallax?: boolean;
   readonly price?: string;
+  readonly rawPrice?: number;
   readonly sizes?: string;
   readonly slug?: string;
   readonly wishlisted?: boolean;
@@ -40,6 +42,7 @@ function useProductCardLogic({
   onAddToCart,
   onWishlistToggle,
   price,
+  rawPrice,
   slug
 }: {
   detail: string;
@@ -50,6 +53,7 @@ function useProductCardLogic({
   onAddToCart?: () => void;
   onWishlistToggle?: () => void;
   price?: string;
+  rawPrice?: number;
   slug?: string;
 }) {
   const [wishlisted, setWishlisted] = useState(initialWishlisted);
@@ -84,6 +88,7 @@ function useProductCardLogic({
         image,
         material: detail,
         price: price ?? "",
+        rawPrice: rawPrice ?? FALLBACK_PRICE,
         size: DEFAULT_SIZE,
         slug: itemSlug,
         title: name
@@ -102,7 +107,7 @@ function useProductCardLogic({
         setJustAdded(false);
       }, ADD_TO_CART_TIMEOUT_MS);
     },
-    [stop, addItem, slug, href, detail, image, price, name, onAddToCart]
+    [stop, addItem, slug, href, detail, image, price, rawPrice, name, onAddToCart]
   );
 
   const handleShare = useCallback(
@@ -111,13 +116,13 @@ function useProductCardLogic({
       const shareAsync = async () => {
         if (typeof navigator.share === "function") {
           try {
-            await navigator.share({ title: name, url: href as string });
+            await navigator.share({ title: name, url: href });
           } catch {
             // ignore
           }
         } else {
           try {
-            await navigator.clipboard.writeText(globalThis.location.origin + (href as string));
+            await navigator.clipboard.writeText(globalThis.location.origin + href);
           } catch {
             // ignore
           }
@@ -145,6 +150,7 @@ export function ProductCard({
   onWishlistToggle,
   parallax = false,
   price,
+  rawPrice,
   sizes = "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw",
   slug,
   wishlisted: initialWishlisted = false
@@ -159,6 +165,7 @@ export function ProductCard({
     onAddToCart,
     onWishlistToggle,
     price,
+    rawPrice,
     slug
   });
 

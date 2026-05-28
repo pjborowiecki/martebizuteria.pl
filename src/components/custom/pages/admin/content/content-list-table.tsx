@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react";
+import { type JSX, type MouseEvent, useCallback } from "react";
 
 import { Copy, ExternalLink, MoreHorizontal, Search, Trash2 } from "lucide-react";
 import { useTranslations } from "use-intl";
@@ -115,7 +115,7 @@ function ContentRow({ page }: { readonly page: (typeof PAGES)[number] }): JSX.El
     published: t("content.status.published")
   }[page.status];
 
-  const stopPropagation = useCallback((e: React.MouseEvent) => {
+  const stopPropagation = useCallback((e: MouseEvent) => {
     e.stopPropagation();
   }, []);
 

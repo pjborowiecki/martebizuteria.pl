@@ -1,5 +1,3 @@
-"";
-
 import { type ComponentProps, type JSX, type ReactNode, useMemo } from "react";
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
@@ -46,7 +44,6 @@ interface DialogContentProps extends DialogPrimitive.Popup.Props {
 function DialogContent({ children, className, showCloseButton = true, ...props }: Readonly<DialogContentProps>): JSX.Element {
   const t = useTranslations("components.shadcn.dialog");
 
-  // Memoize the render prop to prevent unstable references and satisfy react-perf
   const closeButtonRender = useMemo(() => <Button className="absolute top-2 right-2" size="icon-sm" variant="ghost" />, []);
 
   let closeButtonNode: ReactNode = undefined;

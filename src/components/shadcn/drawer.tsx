@@ -1,5 +1,3 @@
-"";
-
 import type { ComponentProps, JSX } from "react";
 
 import { Drawer as DrawerPrimitive } from "vaul";

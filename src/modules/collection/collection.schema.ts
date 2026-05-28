@@ -10,7 +10,10 @@ export const collection = sqliteTable(
       .notNull(),
     handle: text("handle", { length: 255 }).notNull().unique(),
     id: text("id").primaryKey(),
+    image: text("image", { length: 2048 }),
     metadata: text("metadata"),
+    seoDescription: text("seo_description"),
+    seoTitle: text("seo_title"),
     title: text("title", { length: 255 }).notNull(),
     updatedAt: text("updated_at")
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)

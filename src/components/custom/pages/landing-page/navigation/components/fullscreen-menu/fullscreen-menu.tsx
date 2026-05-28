@@ -1,5 +1,3 @@
-"";
-
 import { type CSSProperties, useMemo, type JSX } from "react";
 
 import { ImageShowcase } from "~/src/components/custom/pages/landing-page/navigation/components/fullscreen-menu/image-showcase";

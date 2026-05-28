@@ -17,7 +17,7 @@ export const Route = createFileRoute("/{-$locale}/admin/coupons")({
   component: CouponsPage
 });
 
-export function CouponsPage(): JSX.Element {
+function CouponsPage(): JSX.Element {
   const t = useTranslations("admin");
 
   const bcList = useMemo(

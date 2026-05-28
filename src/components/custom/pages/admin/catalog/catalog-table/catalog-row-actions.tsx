@@ -1,5 +1,3 @@
-"";
-
 import { type JSX, useMemo } from "react";
 
 import { Copy, Edit2, Eye, Link2, MoreHorizontal, PackageOpen, Trash2 } from "lucide-react";

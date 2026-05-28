@@ -8,7 +8,7 @@ import { CONSTANTS } from "~/src/constants";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
-import { collectionsQueryOptions } from "~/src/modules/collection/collection.queries";
+import { collectionQueryOptions } from "~/src/modules/collection/collection.queries";
 import type { Collection } from "~/src/modules/collection/collection.types";
 
 export const Route = createFileRoute("/{-$locale}/_storefront/collections/")({
@@ -17,13 +17,13 @@ export const Route = createFileRoute("/{-$locale}/_storefront/collections/")({
     meta: [{ title: `Collections | ${CONSTANTS.APP_NAME}` }, { content: "Discover our curated collections.", name: "description" }]
   }),
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(collectionsQueryOptions());
+    await context.queryClient.ensureQueryData(collectionQueryOptions.collectionsQueryOptions());
   }
 });
 
 function CollectionsPage(): JSX.Element {
   const t = useTranslations("collectionsPage");
-  const { data: collections } = useSuspenseQuery(collectionsQueryOptions());
+  const { data: collections } = useSuspenseQuery(collectionQueryOptions.collectionsQueryOptions());
 
   const [firstCollection] = collections;
 

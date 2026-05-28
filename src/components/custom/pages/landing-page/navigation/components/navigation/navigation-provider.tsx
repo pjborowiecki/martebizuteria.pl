@@ -1,4 +1,4 @@
-import { type ReactNode, type RefObject, createContext, useCallback, useContext, useMemo, useRef } from "react";
+import { createContext, type MouseEvent, type ReactNode, type RefObject, useCallback, useContext, useMemo, useRef } from "react";
 
 import { useRouter } from "@tanstack/react-router";
 
@@ -39,7 +39,7 @@ export interface NavigationContextValue {
   mounted: boolean;
   handleClose: () => void;
   handleHover: (index: number) => void;
-  handleMouseMove: (e: React.MouseEvent) => void;
+  handleMouseMove: (e: MouseEvent) => void;
   menuOpen: boolean;
   setMenuOpen: (open: boolean) => void;
   scrolled: boolean;

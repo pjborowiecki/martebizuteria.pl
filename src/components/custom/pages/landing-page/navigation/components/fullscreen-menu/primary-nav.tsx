@@ -1,5 +1,3 @@
-"";
-
 import { type JSX, useCallback } from "react";
 
 import { useTranslations } from "use-intl";

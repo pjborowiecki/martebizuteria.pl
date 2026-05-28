@@ -61,7 +61,7 @@ Using `env.EMAIL.send()` (recommended — no extra dependencies):
 
 ```typescript
 async email(message, env, ctx) {
-  const subject = message.headers.get("subject") || "";
+  const subject = message.headers.get("subject") ||
   await env.EMAIL.send({
     to: message.from,
     from: message.to,

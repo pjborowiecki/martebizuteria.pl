@@ -1,6 +1,9 @@
 import { relations, sql } from "drizzle-orm";
-import { index, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+import { checkout } from "~/src/modules/checkout/checkout.schema";
+import { deliveryMethod } from "~/src/modules/delivery-method/delivery-method.schema";
+import { payment } from "~/src/modules/payment/payment.schema";
 import { user } from "~/src/modules/user/user.schema";
 
 const DEFAULT_MONETARY_VALUE = 0;
@@ -8,34 +11,42 @@ const DEFAULT_MONETARY_VALUE = 0;
 export const order = sqliteTable(
   "order",
   {
+    canceledAt: text("canceled_at"),
+    checkoutId: text("checkout_id").references(() => checkout.id, { onDelete: "set null" }),
     createdAt: text("created_at")
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
       .$defaultFn(() => new Date().toISOString())
       .notNull(),
     currencyCode: text("currency_code", { length: 3 }).default("PLN").notNull(),
-    discountTotal: real("discount_total").default(DEFAULT_MONETARY_VALUE).notNull(),
+    customerNote: text("customer_note"),
+    deliveredAt: text("delivered_at"),
+    deliveryMethodId: text("delivery_method_id").references(() => deliveryMethod.id, { onDelete: "set null" }),
+    discountId: text("discount_id"),
+    discountTotal: integer("discount_total").default(DEFAULT_MONETARY_VALUE).notNull(),
     email: text("email", { length: 320 }).notNull(),
     fulfillmentStatus: text("fulfillment_status", {
       enum: ["not_fulfilled", "partially_fulfilled", "fulfilled", "shipped", "delivered", "cancelled"]
     })
       .default("not_fulfilled")
       .notNull(),
-    id: text("id").primaryKey(),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    lockerId: text("locker_id"),
     metadata: text("metadata"),
-    paymentStatus: text("payment_status", {
-      enum: ["awaiting", "captured", "refunded", "failed"]
-    })
-      .default("awaiting")
-      .notNull(),
-    shippingTotal: real("shipping_total").default(DEFAULT_MONETARY_VALUE).notNull(),
+    paymentId: text("payment_id").references(() => payment.id, { onDelete: "set null" }),
+    shippedAt: text("shipped_at"),
+    shippingTotal: integer("shipping_total").default(DEFAULT_MONETARY_VALUE).notNull(),
     status: text("status", {
       enum: ["pending", "processing", "completed", "cancelled", "refunded"]
     })
       .default("pending")
       .notNull(),
-    subtotal: real("subtotal").default(DEFAULT_MONETARY_VALUE).notNull(),
-    taxTotal: real("tax_total").default(DEFAULT_MONETARY_VALUE).notNull(),
-    total: real("total").default(DEFAULT_MONETARY_VALUE).notNull(),
+    subtotal: integer("subtotal").default(DEFAULT_MONETARY_VALUE).notNull(),
+    taxTotal: integer("tax_total").default(DEFAULT_MONETARY_VALUE).notNull(),
+    total: integer("total").default(DEFAULT_MONETARY_VALUE).notNull(),
+    trackingNumber: text("tracking_number"),
+    trackingUrl: text("tracking_url", { length: 2048 }),
     updatedAt: text("updated_at")
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
       .$defaultFn(() => new Date().toISOString())
@@ -51,6 +62,18 @@ export const order = sqliteTable(
 );
 
 export const orderRelations = relations(order, ({ one }) => ({
+  checkout: one(checkout, {
+    fields: [order.checkoutId],
+    references: [checkout.id]
+  }),
+  deliveryMethod: one(deliveryMethod, {
+    fields: [order.deliveryMethodId],
+    references: [deliveryMethod.id]
+  }),
+  payment: one(payment, {
+    fields: [order.paymentId],
+    references: [payment.id]
+  }),
   user: one(user, {
     fields: [order.userId],
     references: [user.id]

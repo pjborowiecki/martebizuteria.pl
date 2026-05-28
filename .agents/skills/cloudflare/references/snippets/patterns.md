@@ -38,7 +38,7 @@ export default {
 ```javascript
 export default {
   async fetch(request) {
-    const cookies = request.headers.get("Cookie") || "";
+    const cookies = request.headers.get("Cookie") ||
     let variant = cookies.match(/ab_test=([AB])/)?.[1] || (Math.random() < 0.5 ? "A" : "B");
 
     const req = new Request(request);

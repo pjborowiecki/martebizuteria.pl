@@ -1,5 +1,3 @@
-"";
-
 import type { ComponentProps, JSX } from "react";
 
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";

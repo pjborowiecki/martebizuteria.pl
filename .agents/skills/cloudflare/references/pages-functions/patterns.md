@@ -74,7 +74,7 @@ async function rateLimit(ctx: EventContext<Env>) {
 ```typescript
 // JSON & file upload
 export async function onRequestPost(ctx) {
-  const ct = ctx.request.headers.get("content-type") || "";
+  const ct = ctx.request.headers.get("content-type") ||
   if (ct.includes("application/json")) return Response.json(await ctx.request.json());
   if (ct.includes("multipart/form-data")) {
     const file = (await ctx.request.formData()).get("file") as File;

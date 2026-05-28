@@ -1,6 +1,8 @@
 import { type JSX, useCallback, useEffect, useState } from "react";
 
-import { useTranslations } from "use-intl";
+import { useFormatter, useTranslations } from "use-intl";
+
+import { getProductImageUrl } from "~/src/lib/_utils/image";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/src/components/shadcn/accordion";
 import { Button } from "~/src/components/shadcn/button";
@@ -8,23 +10,30 @@ import { Separator } from "~/src/components/shadcn/separator";
 
 import { QuantityPicker } from "~/src/components/custom/pages/product-page/quantity-picker";
 
-import { PRODUCT_DETAIL_KEYS, PRODUCT_GALLERY_MOCK, type ProductData } from "~/src/data/product-data";
+import { PRODUCT_DETAIL_KEYS, type ProductData } from "~/src/data/product-data";
 import { useCartStore } from "~/src/stores/cart.store";
 
 const MIN_QUANTITY = 1;
 const RESET_ADDED_TIMEOUT = 2000;
 const DEFAULT_ACCORDION_VALUE = ["description"];
-const [firstImage] = PRODUCT_GALLERY_MOCK;
+const CENTS_PER_UNIT = 100;
+const FIRST_VARIANT_INDEX = 0;
+const FALLBACK_PRICE = 0;
 
 export interface ProductHeroInfoProps {
-  readonly product: ProductData;
+  readonly product: ProductData & { readonly variants?: readonly { readonly price: number }[] };
 }
 
 export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element {
   const t = useTranslations("productPage.heroSection");
+  const format = useFormatter();
   const [quantity, setQuantity] = useState(MIN_QUANTITY);
   const [isAdded, setIsAdded] = useState(false);
   const { addItem } = useCartStore();
+
+  const variantPrice = product.variants?.[FIRST_VARIANT_INDEX]?.price;
+  const price =
+    variantPrice === undefined ? t("price") : format.number(variantPrice / CENTS_PER_UNIT, { currency: "PLN", style: "currency" });
 
   const handleAddToCart = useCallback(() => {
     const size = t("size", { fallback: "One Size" });
@@ -32,17 +41,18 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
 
     addItem({
       id: `${product.handle}-${size}-${material}`,
-      image: product.thumbnail ?? firstImage ?? "",
+      image: getProductImageUrl(product.thumbnail),
       material,
-      price: t("price"),
+      price,
       qty: Math.max(MIN_QUANTITY, quantity),
+      rawPrice: variantPrice ?? FALLBACK_PRICE,
       size,
       slug: product.handle,
       title: product.title
     });
 
     setIsAdded(true);
-  }, [addItem, product, quantity, t]);
+  }, [addItem, price, product, quantity, t, variantPrice]);
 
   useEffect(() => {
     if (!isAdded) {
@@ -63,12 +73,12 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
       <header className="space-y-3">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{product.collection?.title ?? t("collection")}</p>
         <h1 className="font-serif text-4xl leading-tight md:text-5xl">{product.title}</h1>
-        <p className="font-serif text-lg text-muted-foreground italic">{product.subtitle ?? t("subtitle")}</p>
+        <p className="text-[10px] tracking-wider text-muted-foreground/60">{t("sku")}</p>
       </header>
 
       <Separator className="bg-border" />
 
-      <p className="text-lg tracking-[0.06em]">{t("price")}</p>
+      <p className="text-lg tracking-[0.06em]">{price}</p>
 
       <p className="text-xs tracking-wide text-muted-foreground">{t("material")}</p>
 
@@ -85,8 +95,6 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
           {isAdded ? t("addedToCart", { fallback: "Dodano" }) : t("addToCart")}
         </Button>
       </div>
-
-      <p className="text-[10px] tracking-wider text-muted-foreground/60">{t("sku")}</p>
 
       <Separator className="bg-border" />
 

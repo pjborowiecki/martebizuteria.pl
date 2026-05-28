@@ -7,11 +7,11 @@ import { CONSTANTS } from "~/src/constants";
 import { AuthEditorial } from "~/src/components/custom/pages/auth/auth-editorial";
 import { Navigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation";
 
-import { getSessionFn } from "~/src/modules/session/session.actions";
+import { sessionQueries } from "~/src/modules/session/session.queries";
 
 export const Route = createFileRoute("/{-$locale}/auth")({
   beforeLoad: async () => {
-    const session = await getSessionFn();
+    const session = await sessionQueries.getSessionFn();
 
     if (session?.user) {
       const isAdmin = session.user.role === CONSTANTS.ROLES.ADMIN || session.user.role === CONSTANTS.ROLES.MANAGER;

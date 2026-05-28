@@ -14,3 +14,13 @@ export { orderItem, orderItemRelations } from "~/src/modules/order-item/order-it
 export { order, orderRelations } from "~/src/modules/order/order.schema";
 export { productVariant, productVariantRelations } from "~/src/modules/product-variant/product-variant.schema";
 export { product, productRelations } from "~/src/modules/product/product.schema";
+export { inventory, inventoryRelations } from "~/src/modules/inventory/inventory.schema";
+export { cart, cartRelations } from "~/src/modules/cart/cart.schema";
+export { cartItem, cartItemRelations } from "~/src/modules/cart-item/cart-item.schema";
+export { checkout, checkoutRelations } from "~/src/modules/checkout/checkout.schema";
+export { payment, paymentRelations } from "~/src/modules/payment/payment.schema";
+export { courier, courierRelations } from "~/src/modules/courier/courier.schema";
+export { deliveryMethod, deliveryMethodRelations } from "~/src/modules/delivery-method/delivery-method.schema";
+export { discount, discountRelations } from "~/src/modules/discount/discount.schema";
+export { productOption, productOptionRelations } from "~/src/modules/product-option/product-option.schema";
+export { productOptionValue, productOptionValueRelations } from "~/src/modules/product-option-value/product-option-value.schema";

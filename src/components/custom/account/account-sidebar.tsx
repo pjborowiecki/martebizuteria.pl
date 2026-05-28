@@ -1,5 +1,3 @@
-"use client";
-
 import { type JSX, useCallback } from "react";
 
 import { CreditCard, Heart, LayoutDashboard, LogOut, MapPin, Package, Shield, User } from "lucide-react";

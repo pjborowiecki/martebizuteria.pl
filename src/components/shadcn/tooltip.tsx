@@ -1,5 +1,3 @@
-"";
-
 import type { JSX } from "react";
 
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";

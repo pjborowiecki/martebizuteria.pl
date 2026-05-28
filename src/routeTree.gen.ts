@@ -15,6 +15,7 @@ import { Route as Char123LocaleChar125AuthRouteImport } from './routes/{-$locale
 import { Route as Char123LocaleChar125AdminRouteImport } from './routes/{-$locale}.admin'
 import { Route as Char123LocaleChar125AccountRouteImport } from './routes/{-$locale}.account'
 import { Route as Char123LocaleChar125StorefrontRouteImport } from './routes/{-$locale}._storefront'
+import { Route as DevEmailsRouteImport } from './routes/dev.emails'
 import { Route as Char123LocaleChar125CheckoutIndexRouteImport } from './routes/{-$locale}.checkout.index'
 import { Route as Char123LocaleChar125AdminIndexRouteImport } from './routes/{-$locale}.admin.index'
 import { Route as Char123LocaleChar125AccountIndexRouteImport } from './routes/{-$locale}.account.index'
@@ -41,6 +42,7 @@ import { Route as Char123LocaleChar125StorefrontFaqRouteImport } from './routes/
 import { Route as Char123LocaleChar125StorefrontExchangesAndReturnsRouteImport } from './routes/{-$locale}._storefront.exchanges-and-returns'
 import { Route as Char123LocaleChar125StorefrontCartRouteImport } from './routes/{-$locale}._storefront.cart'
 import { Route as Char123LocaleChar125StorefrontAboutRouteImport } from './routes/{-$locale}._storefront.about'
+import { Route as ApiWebhooksStripeRouteImport } from './routes/api.webhooks.stripe'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as Char123LocaleChar125AdminOrdersIndexRouteImport } from './routes/{-$locale}.admin.orders.index'
 import { Route as Char123LocaleChar125AdminCustomersIndexRouteImport } from './routes/{-$locale}.admin.customers.index'
@@ -96,6 +98,11 @@ const Char123LocaleChar125StorefrontRoute =
     id: '/_storefront',
     getParentRoute: () => Char123LocaleChar125Route,
   } as any)
+const DevEmailsRoute = DevEmailsRouteImport.update({
+  id: '/dev/emails',
+  path: '/dev/emails',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char123LocaleChar125CheckoutIndexRoute =
   Char123LocaleChar125CheckoutIndexRouteImport.update({
     id: '/',
@@ -252,6 +259,11 @@ const Char123LocaleChar125StorefrontAboutRoute =
     path: '/about',
     getParentRoute: () => Char123LocaleChar125StorefrontRoute,
   } as any)
+const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
+  id: '/api/webhooks/stripe',
+  path: '/api/webhooks/stripe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -374,11 +386,13 @@ const Char123LocaleChar125AdminCatalogCategoriesHandleRoute =
 
 export interface FileRoutesByFullPath {
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
+  '/dev/emails': typeof DevEmailsRoute
   '/{-$locale}/account': typeof Char123LocaleChar125AccountRouteWithChildren
   '/{-$locale}/admin': typeof Char123LocaleChar125AdminRouteWithChildren
   '/{-$locale}/auth': typeof Char123LocaleChar125AuthRouteWithChildren
   '/{-$locale}/checkout': typeof Char123LocaleChar125CheckoutRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/{-$locale}/about': typeof Char123LocaleChar125StorefrontAboutRoute
   '/{-$locale}/cart': typeof Char123LocaleChar125StorefrontCartRoute
   '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
@@ -427,8 +441,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/{-$locale}': typeof Char123LocaleChar125StorefrontIndexRoute
+  '/dev/emails': typeof DevEmailsRoute
   '/{-$locale}/auth': typeof Char123LocaleChar125AuthRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/{-$locale}/about': typeof Char123LocaleChar125StorefrontAboutRoute
   '/{-$locale}/cart': typeof Char123LocaleChar125StorefrontCartRoute
   '/{-$locale}/exchanges-and-returns': typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
@@ -476,12 +492,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
+  '/dev/emails': typeof DevEmailsRoute
   '/{-$locale}/_storefront': typeof Char123LocaleChar125StorefrontRouteWithChildren
   '/{-$locale}/account': typeof Char123LocaleChar125AccountRouteWithChildren
   '/{-$locale}/admin': typeof Char123LocaleChar125AdminRouteWithChildren
   '/{-$locale}/auth': typeof Char123LocaleChar125AuthRouteWithChildren
   '/{-$locale}/checkout': typeof Char123LocaleChar125CheckoutRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/{-$locale}/_storefront/about': typeof Char123LocaleChar125StorefrontAboutRoute
   '/{-$locale}/_storefront/cart': typeof Char123LocaleChar125StorefrontCartRoute
   '/{-$locale}/_storefront/exchanges-and-returns': typeof Char123LocaleChar125StorefrontExchangesAndReturnsRoute
@@ -532,11 +550,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/{-$locale}'
+    | '/dev/emails'
     | '/{-$locale}/account'
     | '/{-$locale}/admin'
     | '/{-$locale}/auth'
     | '/{-$locale}/checkout'
     | '/api/auth/$'
+    | '/api/webhooks/stripe'
     | '/{-$locale}/about'
     | '/{-$locale}/cart'
     | '/{-$locale}/exchanges-and-returns'
@@ -585,8 +605,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/{-$locale}'
+    | '/dev/emails'
     | '/{-$locale}/auth'
     | '/api/auth/$'
+    | '/api/webhooks/stripe'
     | '/{-$locale}/about'
     | '/{-$locale}/cart'
     | '/{-$locale}/exchanges-and-returns'
@@ -633,12 +655,14 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/{-$locale}'
+    | '/dev/emails'
     | '/{-$locale}/_storefront'
     | '/{-$locale}/account'
     | '/{-$locale}/admin'
     | '/{-$locale}/auth'
     | '/{-$locale}/checkout'
     | '/api/auth/$'
+    | '/api/webhooks/stripe'
     | '/{-$locale}/_storefront/about'
     | '/{-$locale}/_storefront/cart'
     | '/{-$locale}/_storefront/exchanges-and-returns'
@@ -688,7 +712,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   Char123LocaleChar125Route: typeof Char123LocaleChar125RouteWithChildren
+  DevEmailsRoute: typeof DevEmailsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -734,6 +760,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$locale}'
       preLoaderRoute: typeof Char123LocaleChar125StorefrontRouteImport
       parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/dev/emails': {
+      id: '/dev/emails'
+      path: '/dev/emails'
+      fullPath: '/dev/emails'
+      preLoaderRoute: typeof DevEmailsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/{-$locale}/checkout/': {
       id: '/{-$locale}/checkout/'
@@ -916,6 +949,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/{-$locale}/about'
       preLoaderRoute: typeof Char123LocaleChar125StorefrontAboutRouteImport
       parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
+    '/api/webhooks/stripe': {
+      id: '/api/webhooks/stripe'
+      path: '/api/webhooks/stripe'
+      fullPath: '/api/webhooks/stripe'
+      preLoaderRoute: typeof ApiWebhooksStripeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -1287,7 +1327,9 @@ const Char123LocaleChar125RouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   Char123LocaleChar125Route: Char123LocaleChar125RouteWithChildren,
+  DevEmailsRoute: DevEmailsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

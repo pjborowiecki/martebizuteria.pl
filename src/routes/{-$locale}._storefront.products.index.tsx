@@ -2,16 +2,21 @@ import { type JSX, useMemo } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { useFormatter, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { prefetchProductThumbnails } from "~/src/lib/_utils/image";
+import { getProductImageUrl, prefetchProductThumbnails } from "~/src/lib/_utils/image";
 
 import { ProductCard } from "~/src/components/custom/product-card";
 
-import { productsQueryOptions } from "~/src/modules/product/product.queries";
+import { productQueryOptions } from "~/src/modules/product/product.queries";
 import type { Product } from "~/src/modules/product/product.types";
+
+const CENTS_PER_UNIT = 100;
+const FIRST_VARIANT_INDEX = 0;
+
+const FALLBACK_PRICE = 0;
 
 export const Route = createFileRoute("/{-$locale}/_storefront/products/")({
   component: ProductsPage,
@@ -22,14 +27,14 @@ export const Route = createFileRoute("/{-$locale}/_storefront/products/")({
     ]
   }),
   loader: async ({ context }) => {
-    const products = await context.queryClient.ensureQueryData(productsQueryOptions());
+    const products = await context.queryClient.ensureQueryData(productQueryOptions.productsQueryOptions());
     prefetchProductThumbnails(products, context.imagePrefetchService);
   }
 });
 
 function ProductsPage(): JSX.Element {
   const t = useTranslations("productsPage");
-  const { data: products } = useSuspenseQuery(productsQueryOptions());
+  const { data: products } = useSuspenseQuery(productQueryOptions.productsQueryOptions());
 
   const [firstProduct] = products;
 
@@ -52,16 +57,25 @@ function ProductsPage(): JSX.Element {
   );
 }
 
-function ProductListItem({ product }: Readonly<{ product: Product["select"] }>): JSX.Element {
+function ProductListItem({
+  product
+}: Readonly<{ product: Product["select"] & { readonly variants?: readonly { readonly price: number }[] } }>): JSX.Element {
   const params = useMemo(() => ({ handle: product.handle }), [product.handle]);
+  const format = useFormatter();
+
+  const variantPrice = product.variants?.[FIRST_VARIANT_INDEX]?.price;
+  const price =
+    variantPrice === undefined ? undefined : format.number(variantPrice / CENTS_PER_UNIT, { currency: "PLN", style: "currency" });
 
   return (
     <ProductCard
       href="/products/$handle"
       params={params}
-      image={product.thumbnail ?? ""}
+      image={getProductImageUrl(product.thumbnail)}
       name={product.title}
       detail={product.description ?? ""}
+      price={price}
+      rawPrice={variantPrice ?? FALLBACK_PRICE}
     />
   );
 }

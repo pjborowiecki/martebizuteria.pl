@@ -1,5 +1,3 @@
-"";
-
 import { type ReactNode, useEffect, useRef } from "react";
 
 import Lenis from "lenis";

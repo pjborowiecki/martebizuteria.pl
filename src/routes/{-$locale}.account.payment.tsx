@@ -1,5 +1,3 @@
-"use client";
-
 import { type JSX, useCallback, useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -23,9 +21,30 @@ interface PaymentMethod {
 }
 
 const INITIAL_METHODS: PaymentMethod[] = [
-  { expiry: "12/26", id: "pm-1", isDefault: true, last4: "4242", name: "Maria Kowalska", type: "visa" },
-  { expiry: "09/25", id: "pm-2", isDefault: false, last4: "8529", name: "Maria Kowalska", type: "mastercard" },
-  { expiry: "04/27", id: "pm-3", isDefault: false, last4: "3782", name: "Maria Kowalska", type: "amex" }
+  {
+    expiry: "12/26",
+    id: "pm-1",
+    isDefault: true,
+    last4: "4242",
+    name: "Maria Kowalska",
+    type: "visa"
+  },
+  {
+    expiry: "09/25",
+    id: "pm-2",
+    isDefault: false,
+    last4: "8529",
+    name: "Maria Kowalska",
+    type: "mastercard"
+  },
+  {
+    expiry: "04/27",
+    id: "pm-3",
+    isDefault: false,
+    last4: "3782",
+    name: "Maria Kowalska",
+    type: "amex"
+  }
 ];
 
 const CARD_BRANDS: Record<string, string> = {

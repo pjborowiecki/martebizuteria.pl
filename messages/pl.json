@@ -425,9 +425,9 @@
     "title": "Koszyk",
     "description": "Twój koszyk pojawi się tutaj.",
     "goHome": "Przejdź do strony głównej",
-    "emptyTitle": "Twoja kolekcja czeka",
-    "emptySubtitle": "Każdy element M'Arte jest tworzony, by go odkryć, nie pospieszyć. Nie spiesz się — Twój idealny element już na Ciebie czeka.",
-    "exploreCta": "Odkryj Kolekcję",
+    "emptyTitle": "Twój koszyk jest pusty",
+    "emptySubtitle": "Nie masz jeszcze żadnych produktów w koszyku. Zacznij od przeglądania naszej oferty.",
+    "exploreCta": "Przeglądaj produkty",
     "itemCount": "{count, plural, =0 {Brak produktów} one {# produkt} few {# produkty} many {# produktów} other {# produktów}}",
     "continueShopping": "Kontynuuj zakupy",
     "removeItem": "Usuń produkt",
@@ -435,7 +435,7 @@
     "increaseQty": "Zwiększ ilość",
     "summary": {
       "title": "Podsumowanie",
-      "subtotal": "Suma częściowa",
+      "subtotal": "Produkty",
       "shipping": "Dostawa",
       "shippingValue": "Obliczana przy kasie",
       "total": "Suma",
@@ -443,8 +443,9 @@
       "note": "Koszty dostawy wyliczane są na etapie kasy."
     },
     "trust": {
-      "freeShipping": "Darmowa dostawa",
-      "freeReturns": "Darmowy zwrot 30 dni"
+      "securePayment": "Bezpieczne płatności",
+      "returns": "30 dni na zwrot",
+      "freeShipping": "Bezpłatna dostawa od 300 zł"
     },
     "items": {
       "item1": {
@@ -469,42 +470,84 @@
   },
   "checkoutPage": {
     "title": "Kasa",
-    "secureCheckout": "Bezpieczna Kasa",
+    "secureCheckout": "Bezpieczna Finalizacja Zamówienia",
     "metadata": {
       "description": "Dokończ zamówienie bezpiecznie w M'Arte."
     },
     "checkoutSummary": {
       "title": "Twoje zamówienie",
-      "subtotal": "Suma częściowa",
+      "subtotal": "Produkty",
       "delivery": "Dostawa",
-      "deliveryCalculated": "Wyliczone w następnym kroku",
-      "total": "Razem"
+      "deliveryCalculated": "Wyliczane w kolejnym kroku",
+      "total": "Razem",
+      "edit": "Edytuj",
+      "free": "Za darmo",
+      "itemsCount": "Produkty ({count})"
+    },
+    "checkoutSuccess": {
+      "title": "Zamówienie potwierdzone",
+      "description": "Dziękujemy za zakupy! Otrzymaliśmy Twoje zamówienie i przystąpiliśmy do jego realizacji. Wkrótce otrzymasz potwierdzenie na podany adres e-mail.",
+      "continueShopping": "Powrót na stronę sklepu"
     },
     "checkoutForm": {
+      "paymentCard": "Karta",
+      "paymentBlik": "BLIK",
+      "paymentBank": "Przelewy24",
+      "savedAddresses": "Zapisane adresy",
+      "noSavedAddresses": "Brak zapisanych adresów.",
+      "blikCode": "Kod BLIK",
+      "blikRedirect": "Wpisz 6-cyfrowy kod BLIK z aplikacji bankowej.",
+      "p24Redirect": "Po kliknięciu 'Podsumowanie zamówienia' zostaniesz przekierowany do Przelewy24 w celu opłacenia zamówienia.",
+      "addressBilling": "Adres rozliczeniowy",
       "steps": {
-        "billing": "Adres dostawy",
-        "delivery": "Metoda dostawy",
-        "payment": "Płatność",
-        "overview": "Podsumowanie i złożenie zamówienia"
+        "contact": "Dane kontaktowe",
+        "billing": "Adres",
+        "delivery": "Sposób dostawy",
+        "payment": "Płatność"
       },
+      "email": "E-mail",
+      "phone": "Numer telefonu komórkowego",
       "firstName": "Imię",
       "lastName": "Nazwisko",
       "addressLine1": "Adres",
       "postalCode": "Kod pocztowy",
       "city": "Miasto",
       "country": "Kraj",
-      "continueToDelivery": "Dalej: dostawa",
-      "continueToPayment": "Dalej: płatność",
-      "continueToReview": "Podsumowanie zamówienia",
+      "continueToAddress": "Adres",
+      "continueToDelivery": "Sposób dostawy",
+      "continueToPayment": "Płatność",
+      "continueToReview": "Podsumowanie",
+      "paymentMethodsIntro": "Wybierz sposób płatności. Wszystkie transakcje są szyfrowane i bezpiecznie przetwarzane przez Stripe.",
+      "paymentUnavailable": "Nie udało się przygotować płatności",
+      "paymentUnavailableHint": "Niektóre produkty w koszyku mogą być już niedostępne. Sprawdź koszyk i spróbuj ponownie.",
+      "retry": "Spróbuj ponownie",
+      "backToCart": "Wróć do koszyka",
+      "payNow": "Zapłać {amount}",
+      "processingPayment": "Przetwarzanie…",
       "deliveryMethods": {
         "courier": "Kurier",
-        "locker": "Paczkomat",
-        "in_store": "Odbiór osobisty"
+        "locker": "Paczkomaty InPost",
+        "in_store": "Odbiór Osobisty"
       },
+      "selectLocker": "Wybierz Paczkomat",
+      "searchCity": "Wpisz nazwę miejscowości...",
+      "loadingLockers": "Szukam paczkomatów...",
+      "noLockers": "Brak paczkomatów w tej miejscowości.",
+      "minChars": "Wpisz minimum 3 znaki...",
+      "loadingMethods": "Ładowanie dostępnych metod dostawy...",
+      "selectedLocker": "Wybrany Paczkomat:",
       "deliverySubsteps": {
         "courier": "Standardowa dostawa kurierem (2–4 dni robocze). Darmowa dla zamówień powyżej 300 PLN.",
         "locker": "Dostawa do paczkomatu (1–2 dni robocze). Wybierz preferowany paczkomat na następnym etapie.",
-        "inStore": "Odbiór w naszym warszawskim atelier. Gotowe w ciągu 24 godzin od potwierdzenia zamówienia."
+        "inStore": "Odbiór w naszym warszawskim atelier. Gotowe w ciągu 24 godzin od potwierdzenia zamówienia.",
+        "courierTitle": "Wybierz kuriera",
+        "courierText": "Standardowa dostawa zajmuje zazwyczaj 1-3 dni robocze. Otrzymasz link do śledzenia przesyłki, gdy zamówienie zostanie wysłane.",
+        "inStoreText": "Odbierz zamówienie w jednym z naszych butików. Zostaniesz powiadomiony, gdy będzie gotowe.",
+        "lockerText": "Odbierz wygodnie w wybranym Paczkomacie InPost o dowolnej porze.",
+        "lockerTitle": "Paczkomaty InPost",
+        "inStoreTitle": "Odbiór Osobisty",
+        "free": "Bezpłatnie",
+        "from": "Od"
       },
       "paymentMethods": {
         "card": "Karta kredytowa",
@@ -513,7 +556,9 @@
       },
       "paymentSubsteps": {
         "blik": "Po złożeniu zamówienia otrzymasz żądanie kodu BLIK w aplikacji bankowej.",
-        "bankTransfer": "Dane do przelewu zostaną podane po złożeniu zamówienia. Przesyłka wysyłana po zaksięgowaniu płatności."
+        "bankTransfer": "Dane do przelewu zostaną podane po złożeniu zamówienia. Przesyłka wysyłana po zaksięgowaniu płatności.",
+        "bankTransferText": "Po kliknięciu \"Złóż zamówienie\", zostaniesz bezpiecznie przekierowany do Przelewy24, aby wybrać swój bank i dokończyć płatność.",
+        "p24Title": "Przelewy24 (P24)"
       },
       "cardholderName": "Imię i nazwisko posiadacza karty",
       "cardNumber": "Numer karty",
@@ -523,24 +568,52 @@
       "shippingTo": "Adres dostawy",
       "deliveryMethod": "Metoda dostawy",
       "paymentInformation": "Płatność",
+      "paymentTitle": "Metoda płatności",
       "billingAddress": "Adres rozliczeniowy",
+      "shippingAddress": "Adres dostawy",
       "sameAsShipping": "Taki sam jak adres dostawy",
+      "saveShippingAddress": "Zapisz ten adres dostawy na przyszłość",
+      "saveBillingAddress": "Zapisz ten adres rozliczeniowy na przyszłość",
       "estDeliveryPlaceholder": "Przewidywana dostawa w 2–4 dni robocze",
+      "deliveryNotes": "Instrukcje dostawy (opcjonalnie)",
+      "deliveryNotesPlaceholder": "np. Zostaw pod drzwiami",
+      "storeLocation": "Lokalizacja butiku",
+      "storeLocationPlaceholder": "np. Warszawa, Mokotowska 50",
+      "lockerId": "Kod Paczkomatu",
+      "lockerIdPlaceholder": "np. WAW123A",
       "cardSummary": "Karta kończąca się na {endingDigits}",
-      "placeOrder": "Złóż zamówienie",
-      "termsAgreement": "Składając zamówienie, akceptujesz Regulamin i Politykę Prywatności.",
+      "placeOrder": "Zamawiam i płacę",
+      "termsAgreement": "Składając zamówienie, akceptujesz <terms>Regulamin</terms> i <privacy>Politykę Prywatności</privacy>.",
       "placeholderItemName": "Aura Hoop I",
       "placeholderItemDetails": "Srebro 925 / lustrzane · Rozmiar uniwersalny",
       "placeholderItemPrice": "340 PLN",
       "validation": {
+        "addressRequired": "Adres jest wymagany",
+        "blikCodeRequired": "Wymagany jest poprawny 6-cyfrowy kod BLIK",
+        "cardholderNameRequired": "Imię i nazwisko posiadacza karty jest wymagane",
+        "cardDetailsRequired": "Proszę podać prawidłowe dane płatności",
+        "emailInvalid": "Wprowadź prawidłowy adres e-mail",
+        "phoneRequired": "Numer telefonu jest wymagany",
+        "phoneInvalid": "Wprowadź prawidłowy numer telefonu",
+        "postCodeInvalid": "Nieprawidłowy format kodu pocztowego (np. 00-000)",
+        "paymentFailed": "Płatność nie powiodła się. Spróbuj ponownie.",
         "firstNameRequired": "Imię jest wymagane",
         "lastNameRequired": "Nazwisko jest wymagane",
-        "addressRequired": "Adres jest wymagany",
         "cityRequired": "Miasto jest wymagane",
         "postCodeRequired": "Kod pocztowy jest wymagany",
         "countryRequired": "Kraj jest wymagany",
         "deliveryRequired": "Wybierz metodę dostawy",
         "paymentRequired": "Wybierz metodę płatności"
+      },
+      "errors": {
+        "insufficientInventory": "Niektórych produktów z koszyka brakuje na stanie.",
+        "productNotFound": "Produkt z koszyka nie jest już dostępny.",
+        "variantNotFound": "Wybrany wariant nie jest już dostępny.",
+        "paymentSessionStale": "Twoja poprzednia próba płatności jest jeszcze przetwarzana lub wygasła. Odświeżyliśmy płatność — wybierz metodę i spróbuj ponownie.",
+        "unknownError": "Coś poszło nie tak. Spróbuj ponownie."
+      },
+      "countries": {
+        "PL": "Polska"
       }
     }
   },
@@ -840,6 +913,16 @@
       "preview": "Podgląd testowego e-maila",
       "title": "Witaj od M'Arte",
       "body": "To jest testowy e-mail."
+    },
+    "orderConfirmation": {
+      "subject": "Potwierdzenie zamówienia - M'ARTE",
+      "preview": "Twoje zamówienie M'ARTE zostało potwierdzone",
+      "greeting": "Dziękujemy za zamówienie!",
+      "message": "Otrzymaliśmy Twoją płatność, a Twoje zamówienie jest już przygotowywane. Oto podsumowanie zakupu:",
+      "orderLabel": "Numer zamówienia",
+      "totalLabel": "Razem",
+      "footer": "Wyślemy kolejną wiadomość, gdy tylko Twoje zamówienie zostanie zrealizowane.",
+      "thanks": "M'ARTE"
     }
   },
   "admin": {
@@ -1569,7 +1652,7 @@
         }
       },
       "summary": {
-        "subtotal": "Suma częściowa",
+        "subtotal": "Produkty",
         "shipping": "Wysyłka",
         "tax": "Podatek",
         "total": "Suma"
@@ -1796,7 +1879,7 @@
       "eyebrow": "Szczegóły zamówienia",
       "items": "Przedmioty",
       "qty": "Ilość",
-      "subtotal": "Suma częściowa",
+      "subtotal": "Produkty",
       "shipping": "Dostawa",
       "tax": "Podatek",
       "total": "Suma",

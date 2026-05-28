@@ -104,7 +104,7 @@ await message.forward("dest@example.com");
 const subj = message.headers.get("subject").toLowerCase();
 
 // ✅ CORRECT
-const subj = message.headers.get("subject")?.toLowerCase() || "";
+const subj = message.headers.get("subject")?.toLowerCase() ||
 ```
 
 ## Limits
@@ -160,12 +160,13 @@ export default {
 ### Check Status
 
 ```typescript
-const auth = message.headers.get("authentication-results") || "";
-console.log({
-  spf: auth.includes("spf=pass"),
-  dkim: auth.includes("dkim=pass"),
-  dmarc: auth.includes("dmarc=pass"),
-});
+const auth =
+  message.headers.get("authentication-results") ||
+  console.log({
+    spf: auth.includes("spf=pass"),
+    dkim: auth.includes("dkim=pass"),
+    dmarc: auth.includes("dmarc=pass"),
+  });
 
 if (!auth.includes("pass")) {
   message.setReject("Failed auth");

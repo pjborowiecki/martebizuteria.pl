@@ -1,5 +1,3 @@
-"";
-
 import type { JSX } from "react";
 
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";

@@ -24,7 +24,6 @@
     "directory": "./public",
     "binding": "ASSETS"
   },
-  "send_email": [{ "name": "EMAIL" }],
   "d1_databases": [
     {
       "binding": "DB",
@@ -54,7 +53,6 @@
       "vars": {
         "APP_ENV": "preview"
       },
-      "send_email": [{ "name": "EMAIL" }],
       "ratelimits": [],
       "d1_databases": [
         {
@@ -85,7 +83,6 @@
       "vars": {
         "APP_ENV": "production"
       },
-      "send_email": [{ "name": "EMAIL" }],
       "ratelimits": [],
       "d1_databases": [
         {

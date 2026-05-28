@@ -1,5 +1,3 @@
-"";
-
 import type { JSX } from "react";
 
 import { CircleX } from "lucide-react";
