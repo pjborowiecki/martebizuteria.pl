@@ -12,7 +12,7 @@ import { isValidLocale } from "~/src/lib/utils";
 import { AccountSidebar } from "~/src/components/custom/account/account-sidebar";
 import { Navigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation";
 
-import { getSessionFn } from "~/src/modules/session/session.actions";
+import { sessionQueries } from "~/src/modules/session/session.queries";
 
 interface AccountPageMeta {
   readonly description: string;
@@ -21,7 +21,7 @@ interface AccountPageMeta {
 
 export const Route = createFileRoute("/{-$locale}/account")({
   beforeLoad: async () => {
-    const session = await getSessionFn();
+    const session = await sessionQueries.getSessionFn();
 
     if (!session?.user) {
       redirect({

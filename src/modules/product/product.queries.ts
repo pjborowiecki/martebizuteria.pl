@@ -1,30 +1,14 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
 
-import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
+import { productAccessors } from "~/src/modules/product/product.accessors";
 
-import { product } from "~/src/modules/product/product.schema";
+const fetchProductsFn = createServerFn({ method: "GET" }).handler(() => productAccessors.getPublishedProductsQuery.execute());
 
-export const fetchProductsFn = createServerFn({ method: "GET" }).handler(() =>
-  db.query.product.findMany({
-    limit: 20,
-    orderBy: (products, { desc }) => [desc(products.createdAt)],
-    where: eq(product.status, "published")
-  })
-);
-
-export const fetchProductByHandleFn = createServerFn({ method: "GET" })
+const fetchProductByHandleFn = createServerFn({ method: "GET" })
   .inputValidator((handle: string) => handle)
   .handler(async ({ data: handle }) => {
-    const prod = await db.query.product.findFirst({
-      where: eq(product.handle, handle),
-      with: {
-        category: true,
-        collection: true,
-        variants: true
-      }
-    });
+    const prod = await productAccessors.getProductByHandleQuery.execute({ handle });
 
     if (prod === undefined) {
       return false;
@@ -33,14 +17,36 @@ export const fetchProductByHandleFn = createServerFn({ method: "GET" })
     return prod;
   });
 
-export const productsQueryOptions = () =>
-  queryOptions({
-    queryFn: () => fetchProductsFn(),
-    queryKey: ["products"]
+const fetchRelatedProductsFn = createServerFn({ method: "GET" })
+  .inputValidator((categoryId: string | null) => categoryId)
+  .handler(({ data: categoryId }) => {
+    if (categoryId === null) {
+      return [];
+    }
+
+    return productAccessors.getRelatedProductsQuery.execute({ categoryId });
   });
 
-export const productQueryOptions = (handle: string) =>
-  queryOptions({
-    queryFn: () => fetchProductByHandleFn({ data: handle }),
-    queryKey: ["product", handle]
-  });
+export const productQueries = {
+  fetchProductByHandleFn,
+  fetchProductsFn,
+  fetchRelatedProductsFn
+};
+
+export const productQueryOptions = {
+  productQueryOptions: (handle: string) =>
+    queryOptions({
+      queryFn: () => fetchProductByHandleFn({ data: handle }),
+      queryKey: ["product", handle]
+    }),
+  productsQueryOptions: () =>
+    queryOptions({
+      queryFn: () => fetchProductsFn(),
+      queryKey: ["products"]
+    }),
+  relatedProductsQueryOptions: (categoryId: string | null) =>
+    queryOptions({
+      queryFn: () => fetchRelatedProductsFn({ data: categoryId }),
+      queryKey: ["related-products", categoryId]
+    })
+};

@@ -1,5 +1,3 @@
-"";
-
 import { type ComponentProps, type JSX, useMemo } from "react";
 
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";

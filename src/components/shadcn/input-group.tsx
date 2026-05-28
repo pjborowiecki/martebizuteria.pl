@@ -1,5 +1,3 @@
-"";
-
 import type { ComponentProps, JSX } from "react";
 
 import { cva, type VariantProps } from "class-variance-authority";

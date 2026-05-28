@@ -1,5 +1,3 @@
-"";
-
 import { type ComponentProps, type JSX, useMemo } from "react";
 
 import { Select as SelectPrimitive } from "@base-ui/react/select";

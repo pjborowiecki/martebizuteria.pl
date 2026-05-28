@@ -1,5 +1,3 @@
-"";
-
 import { type CSSProperties, createContext, type JSX, useContext, useMemo } from "react";
 
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";

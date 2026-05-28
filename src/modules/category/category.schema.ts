@@ -13,11 +13,14 @@ export const category = sqliteTable(
     description: text("description"),
     handle: text("handle", { length: 255 }).notNull().unique(),
     id: text("id").primaryKey(),
+    image: text("image", { length: 2048 }),
     isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
     metadata: text("metadata"),
     name: text("name", { length: 255 }).notNull(),
     parentId: text("parent_id"),
     position: integer("position").default(DEFAULT_POSITION).notNull(),
+    seoDescription: text("seo_description"),
+    seoTitle: text("seo_title"),
     updatedAt: text("updated_at")
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
       .$defaultFn(() => new Date().toISOString())

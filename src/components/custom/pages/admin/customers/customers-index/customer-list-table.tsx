@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react";
+import { type JSX, type MouseEvent, useCallback } from "react";
 
 import { useNavigate } from "@tanstack/react-router";
 import { Copy, Eye, MoreHorizontal, Search } from "lucide-react";
@@ -127,14 +127,14 @@ function CustomerRow({ customer }: { readonly customer: (typeof CUSTOMERS)[numbe
   }, [navigate, customer.id]);
 
   const handleCopyClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: MouseEvent) => {
       e.stopPropagation();
       void navigator.clipboard.writeText(customer.id);
     },
     [customer.id]
   );
 
-  const stopPropagation = useCallback((e: React.MouseEvent) => {
+  const stopPropagation = useCallback((e: MouseEvent) => {
     e.stopPropagation();
   }, []);
 

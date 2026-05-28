@@ -1,5 +1,3 @@
-"";
-
 import { useMemo, type JSX } from "react";
 
 import { useTranslations } from "use-intl";

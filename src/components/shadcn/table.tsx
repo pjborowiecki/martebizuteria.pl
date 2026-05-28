@@ -1,5 +1,3 @@
-"";
-
 import type { ComponentProps, JSX } from "react";
 
 import { cn } from "~/src/lib/utils";

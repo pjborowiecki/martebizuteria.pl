@@ -8,7 +8,7 @@ import { CONSTANTS } from "~/src/constants";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
-import { categoriesQueryOptions } from "~/src/modules/category/category.queries";
+import { categoryQueryOptions } from "~/src/modules/category/category.queries";
 import type { Category } from "~/src/modules/category/category.types";
 
 export const Route = createFileRoute("/{-$locale}/_storefront/categories/")({
@@ -17,13 +17,13 @@ export const Route = createFileRoute("/{-$locale}/_storefront/categories/")({
     meta: [{ title: `Categories | ${CONSTANTS.APP_NAME}` }, { content: "Browse by category.", name: "description" }]
   }),
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(categoriesQueryOptions());
+    await context.queryClient.ensureQueryData(categoryQueryOptions.categoriesQueryOptions());
   }
 });
 
 function CategoriesPage(): JSX.Element {
   const t = useTranslations("categoriesPage");
-  const { data: categories } = useSuspenseQuery(categoriesQueryOptions());
+  const { data: categories } = useSuspenseQuery(categoryQueryOptions.categoriesQueryOptions());
 
   const [firstCategory] = categories;
 

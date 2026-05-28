@@ -1,2 +1,5 @@
 # Local source mirrors / vendored clones (not this app)
 opensrc/
+
+# Personal scratch notes — not authoritative for architecture
+NOTES.md

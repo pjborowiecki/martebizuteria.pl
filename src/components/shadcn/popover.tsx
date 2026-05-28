@@ -1,5 +1,3 @@
-"";
-
 import type { ComponentProps, JSX } from "react";
 
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";

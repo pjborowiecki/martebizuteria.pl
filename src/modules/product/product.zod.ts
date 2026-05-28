@@ -12,6 +12,3 @@ export const productZodSchemas = {
   select: createSelectSchema(product),
   update: createUpdateSchema(product)
 };
-
-// Derived enum type — inferred from column definition, exported for reuse
-export type ProductStatus = (typeof product.$inferSelect)["status"];

@@ -1,5 +1,3 @@
-"";
-
 import { type ComponentProps, createContext, type JSX, useContext, useEffect, useMemo, useRef } from "react";
 
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";

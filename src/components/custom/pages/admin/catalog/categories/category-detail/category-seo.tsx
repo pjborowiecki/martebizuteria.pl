@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useMemo } from "react";
+import { type ChangeEvent, type JSX, useCallback, useMemo } from "react";
 
 import { useTranslations } from "use-intl";
 
@@ -32,21 +32,21 @@ export function CategorySeo({
   const t = useTranslations("admin");
 
   const handleMetaTitleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       onMetaTitleChange(e.target.value);
     },
     [onMetaTitleChange]
   );
 
   const handleSlugChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       onSlugChange(e.target.value);
     },
     [onSlugChange]
   );
 
   const handleMetaDescriptionChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    (e: ChangeEvent<HTMLTextAreaElement>) => {
       onMetaDescriptionChange(e.target.value);
     },
     [onMetaDescriptionChange]

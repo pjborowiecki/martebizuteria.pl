@@ -14,5 +14,4 @@ export const orderZodSchemas = {
 };
 
 export type OrderStatus = (typeof order.$inferSelect)["status"];
-export type OrderPaymentStatus = (typeof order.$inferSelect)["paymentStatus"];
 export type OrderFulfillmentStatus = (typeof order.$inferSelect)["fulfillmentStatus"];

@@ -21,6 +21,7 @@ export const user = sqliteTable("user", {
   name: text("name", { length: 256 }).notNull(),
   phone: text("phone", { length: 32 }),
   role: text("role"),
+  stripeCustomerId: text("stripe_customer_id"),
   twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).default(false),
   updatedAt: text("updated_at")
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)

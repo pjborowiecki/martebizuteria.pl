@@ -1,5 +1,3 @@
-"";
-
 import type { CSSProperties, JSX } from "react";
 
 import { useTheme } from "@wrksz/themes/client";

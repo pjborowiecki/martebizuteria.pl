@@ -1,5 +1,3 @@
-"";
-
 import type { ComponentProps, JSX } from "react";
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";

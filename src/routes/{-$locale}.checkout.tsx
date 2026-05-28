@@ -1,7 +1,6 @@
-import { type JSX, Suspense, useMemo } from "react";
+import { type JSX } from "react";
 
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
 import { z } from "zod/v4";
 
 import { CONSTANTS } from "~/src/constants";
@@ -11,10 +10,7 @@ import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl
 
 import { isValidLocale } from "~/src/lib/utils";
 
-import { Skeleton } from "~/src/components/shadcn/skeleton";
-
 import { CheckoutHeader } from "~/src/components/custom/checkout/components/checkout-header";
-import { CheckoutSummary } from "~/src/components/custom/checkout/components/checkout-summary";
 
 const DEFAULT_STEP = 1;
 const MIN_STEP = 1;
@@ -27,8 +23,17 @@ function coerceStep(value: unknown): number {
   return DEFAULT_STEP;
 }
 
+// The router's default (JSON-based) search parser decodes `?success=true` as a
+// boolean, and post-payment redirects (e.g. Przelewy24) land on that URL. Accept
+// the boolean (and a stringified fallback), and drop anything else so a stray
+// param never throws past validateSearch.
+function coerceSuccess(value: unknown): boolean | undefined {
+  return value === true || value === "true" ? true : undefined;
+}
+
 const checkoutSearchSchema = z.object({
-  step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP))
+  step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
+  success: z.preprocess(coerceSuccess, z.boolean().optional())
 });
 
 interface CheckoutPageMeta {
@@ -67,36 +72,12 @@ export const Route = createFileRoute("/{-$locale}/checkout")({
   validateSearch: checkoutSearchSchema
 });
 
-function SummarySkeleton(): JSX.Element {
-  return (
-    <div className="space-y-4 border border-border bg-card p-6 md:p-8">
-      <Skeleton className="h-8 w-1/2 rounded-none" />
-      <Skeleton className="h-4 w-full rounded-none" />
-      <Skeleton className="h-4 w-full rounded-none" />
-      <Skeleton className="h-4 w-2/3 rounded-none" />
-    </div>
-  );
-}
-
 function CheckoutLayout(): JSX.Element {
-  const t = useTranslations("checkoutPage");
-  const summarySkeleton = useMemo(() => <SummarySkeleton />, []);
-
   return (
     <div className="min-h-dvh bg-background font-light">
       <main className="mx-auto w-full max-w-400 px-6 py-10 md:py-14 lg:px-12">
         <CheckoutHeader />
-        <h1 className="mb-6 font-serif text-4xl tracking-tight text-foreground md:mb-8 md:text-5xl lg:text-6xl">{t("title")}</h1>
-        <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-16">
-          <div className="lg:col-span-8">
-            <Outlet />
-          </div>
-          <div className="lg:col-span-4">
-            <Suspense fallback={summarySkeleton}>
-              <CheckoutSummary />
-            </Suspense>
-          </div>
-        </div>
+        <Outlet />
       </main>
     </div>
   );

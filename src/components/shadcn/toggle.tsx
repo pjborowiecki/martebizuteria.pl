@@ -1,5 +1,3 @@
-"";
-
 import type { JSX } from "react";
 
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";

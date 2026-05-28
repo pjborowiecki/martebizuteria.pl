@@ -1,5 +1,3 @@
-"";
-
 import type { JSX } from "react";
 
 import { ArrowUpRight } from "lucide-react";

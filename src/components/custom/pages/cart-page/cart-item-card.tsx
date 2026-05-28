@@ -5,6 +5,8 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
+import { getProductImageUrl } from "~/src/lib/_utils/image";
+
 import { Button } from "~/src/components/shadcn/button";
 
 import { Image } from "~/src/components/custom/image";
@@ -48,7 +50,7 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
           className="size-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
           height={200}
           sizes="140px"
-          src={item.image}
+          src={getProductImageUrl(item.image)}
           width={160}
         />
       </LocalizedLink>
@@ -101,7 +103,18 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
             </Button>
           </div>
 
-          <p className="text-sm tracking-wide">{item.price}</p>
+          <p className="text-sm tracking-wide">
+            {(() => {
+              const CENTS_IN_ZLOTY = 100;
+              const FALLBACK_PRICE = 0;
+              return new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" }).format(
+                (item.rawPrice ??
+                  (isNaN(parseFloat((item.price ?? "0").replaceAll(/[^0-9,.]/gu, "").replaceAll(",", ".")))
+                    ? FALLBACK_PRICE
+                    : parseFloat((item.price ?? "0").replaceAll(/[^0-9,.]/gu, "").replaceAll(",", ".")) * CENTS_IN_ZLOTY)) / CENTS_IN_ZLOTY
+              );
+            })()}
+          </p>
         </div>
       </div>
     </div>

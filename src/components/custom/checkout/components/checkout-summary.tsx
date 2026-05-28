@@ -1,48 +1,90 @@
-"use client";
+import { type JSX } from "react";
 
-import type { JSX } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useWatch } from "react-hook-form";
+import { useFormatter, useTranslations } from "use-intl";
 
-import { useTranslations } from "use-intl";
+import { getProductImageUrl } from "~/src/lib/_utils/image";
 
+import { useCheckoutForm } from "~/src/components/custom/checkout/components/checkout-form-provider";
 import { Image } from "~/src/components/custom/image";
+
+import { deliveryMethodQueries } from "~/src/modules/delivery-method/delivery-method.queries";
+import { type CartItem, useCartStore } from "~/src/stores/cart.store";
+
+const CENTS_IN_ZLOTY = 100;
+const FALLBACK_PRICE = 0;
+
+const getItemPrice = (item: CartItem) => {
+  let p = item.rawPrice;
+  if (p === undefined) {
+    const parsed = Number.parseFloat((item.price ?? "0").replaceAll(/[^0-9,.]/gu, "").replaceAll(",", "."));
+    p = Number.isNaN(parsed) ? FALLBACK_PRICE : parsed * CENTS_IN_ZLOTY;
+  }
+  return p;
+};
 
 export function CheckoutSummary(): JSX.Element {
   const t = useTranslations("checkoutPage");
+  const format = useFormatter();
+  const { items, cartTotal, itemCount } = useCartStore();
+
+  const { control } = useCheckoutForm();
+  const deliveryMethodId = useWatch({ control, name: "deliveryMethod" });
+
+  const { data: deliveryMethods = [] } = useQuery(deliveryMethodQueries.deliveryMethodsQueryOptions());
+
+  const selectedDeliveryMethod = deliveryMethods.find((m) => m.id === deliveryMethodId);
+  const deliveryCostCents = selectedDeliveryMethod?.price ?? FALLBACK_PRICE;
+
+  const subtotalCents = cartTotal();
+  const totalCents = subtotalCents + deliveryCostCents;
+
+  const money = (cents: number) => format.number(cents / CENTS_IN_ZLOTY, { currency: "PLN", style: "currency" });
+
+  const deliveryLabel = (() => {
+    if (selectedDeliveryMethod === undefined) {
+      return t("checkoutSummary.deliveryCalculated");
+    }
+    return deliveryCostCents === FALLBACK_PRICE ? t("checkoutSummary.free") : money(deliveryCostCents);
+  })();
 
   return (
-    <aside className="sticky top-24 border border-border/30 bg-muted/30 p-6 text-card-foreground md:p-8">
-      <h2 className="mb-8 font-serif text-3xl tracking-tight text-foreground md:text-4xl">{t("checkoutSummary.title")}</h2>
-
-      <div className="mb-8 flex items-center gap-4 border-b border-border/40 pb-8">
-        <div className="relative size-16 shrink-0 bg-muted/40">
-          <Image
-            src="https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=200&q=80"
-            alt="Aura Hoop I"
-            width={64}
-            height={64}
-            className="size-full object-cover"
-          />
+    <aside className="sticky top-24 border border-border/50 bg-muted/40 p-6 text-card-foreground md:p-8">
+      <div className="space-y-4 text-[12px]">
+        <div className="flex justify-between gap-4">
+          <span className="font-medium tracking-[0.18em] text-foreground/80 uppercase">
+            {t("checkoutSummary.itemsCount", { count: itemCount() })}
+          </span>
+          <span className="font-light tracking-wider text-foreground tabular-nums">{money(subtotalCents)}</span>
         </div>
-        <div className="min-w-0 flex-1 space-y-1">
-          <h4 className="text-sm font-normal tracking-[0.12em] text-foreground uppercase">{t("checkoutForm.placeholderItemName")}</h4>
-          <p className="text-xs text-muted-foreground italic">{t("checkoutForm.placeholderItemDetails")}</p>
-          <p className="mt-1 font-medium text-foreground tabular-nums">{t("checkoutForm.placeholderItemPrice")}</p>
+        <div className="flex justify-between gap-4 text-muted-foreground">
+          <span className="font-medium tracking-[0.18em] uppercase">{t("checkoutSummary.delivery")}</span>
+          <span className="font-light tracking-wider tabular-nums">{deliveryLabel}</span>
+        </div>
+        <div className="mt-2 flex justify-between gap-4 border-t border-border/30 pt-6">
+          <span className="text-[14px] font-medium tracking-[0.18em] text-foreground uppercase">{t("checkoutSummary.total")}</span>
+          <span className="text-[14px] font-medium tracking-wider text-foreground tabular-nums">{money(totalCents)}</span>
         </div>
       </div>
 
-      <div className="space-y-4 text-sm">
-        <div className="flex justify-between gap-4">
-          <span className="text-sm font-medium tracking-[0.18em] text-muted-foreground uppercase">{t("checkoutSummary.subtotal")}</span>
-          <span className="font-medium text-foreground tabular-nums">{t("checkoutForm.placeholderItemPrice")}</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-sm font-medium tracking-[0.18em] text-muted-foreground uppercase">{t("checkoutSummary.delivery")}</span>
-          <span className="text-muted-foreground tabular-nums">{t("checkoutSummary.deliveryCalculated")}</span>
-        </div>
-        <div className="flex justify-between gap-4 border-t border-border/40 pt-6 font-medium">
-          <span className="text-lg font-medium tracking-[0.16em] text-foreground uppercase">{t("checkoutSummary.total")}</span>
-          <span className="font-medium text-foreground tabular-nums">{t("checkoutForm.placeholderItemPrice")}</span>
-        </div>
+      <div className="mt-8 space-y-6 border-t border-foreground/20 pt-8">
+        {items.map((item) => (
+          <div key={item.id} className="flex items-start gap-5">
+            <div className="relative size-20 shrink-0 bg-muted/40">
+              <Image src={getProductImageUrl(item.image)} alt={item.title} width={80} height={80} className="size-full object-cover" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1.5 pt-1">
+              <h4 className="text-[11px] font-medium tracking-[0.18em] text-foreground uppercase">{item.title}</h4>
+              <p className="text-[11px] font-light text-muted-foreground/80 italic">
+                {item.material} {item.material !== "" && item.size !== "" ? "/" : ""} {item.size}
+              </p>
+              <p className="pt-2 text-[13px] font-light tracking-wide text-foreground tabular-nums">
+                {item.qty} x {money(getItemPrice(item))}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
     </aside>
   );

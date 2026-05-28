@@ -36,6 +36,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           VITE_APP_URL: ${{ vars.VITE_APP_URL }}
           VITE_R2_URL: ${{ vars.VITE_R2_URL }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.VITE_STRIPE_PUBLISHABLE_KEY }}
           CLOUDFLARE_ENV: production
         run: vp run deploy:production
 
@@ -48,8 +49,11 @@ jobs:
           AUTH_GOOGLE_CLIENT_SECRET: ${{ secrets.AUTH_GOOGLE_CLIENT_SECRET }}
           AUTH_GITHUB_CLIENT_ID: ${{ secrets.AUTH_GITHUB_CLIENT_ID }}
           AUTH_GITHUB_CLIENT_SECRET: ${{ secrets.AUTH_GITHUB_CLIENT_SECRET }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          RESEND_EMAIL_FROM: ${{ secrets.RESEND_EMAIL_FROM }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
         run: |
           printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | vp exec wrangler secret put CLOUDFLARE_ACCOUNT_ID --config dist/server/wrangler.json
           printf '%s' "$CLOUDFLARE_API_TOKEN" | vp exec wrangler secret put CLOUDFLARE_ACCESS_TOKEN --config dist/server/wrangler.json
@@ -58,5 +62,8 @@ jobs:
           printf '%s' "$AUTH_GOOGLE_CLIENT_SECRET" | vp exec wrangler secret put AUTH_GOOGLE_CLIENT_SECRET --config dist/server/wrangler.json
           printf '%s' "$AUTH_GITHUB_CLIENT_ID" | vp exec wrangler secret put AUTH_GITHUB_CLIENT_ID --config dist/server/wrangler.json
           printf '%s' "$AUTH_GITHUB_CLIENT_SECRET" | vp exec wrangler secret put AUTH_GITHUB_CLIENT_SECRET --config dist/server/wrangler.json
-          printf '%s' "$EMAIL_FROM" | vp exec wrangler secret put EMAIL_FROM --config dist/server/wrangler.json
+          printf '%s' "$RESEND_EMAIL_FROM" | vp exec wrangler secret put RESEND_EMAIL_FROM --config dist/server/wrangler.json
+          printf '%s' "$RESEND_API_KEY" | vp exec wrangler secret put RESEND_API_KEY --config dist/server/wrangler.json
           printf '%s' "$SENTRY_AUTH_TOKEN" | vp exec wrangler secret put SENTRY_AUTH_TOKEN --config dist/server/wrangler.json
+          printf '%s' "$STRIPE_SECRET_KEY" | vp exec wrangler secret put STRIPE_SECRET_KEY --config dist/server/wrangler.json
+          printf '%s' "$STRIPE_WEBHOOK_SECRET" | vp exec wrangler secret put STRIPE_WEBHOOK_SECRET --config dist/server/wrangler.json

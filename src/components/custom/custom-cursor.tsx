@@ -1,5 +1,3 @@
-"";
-
 import { useEffect, useRef, useState } from "react";
 
 import { gsap, useGSAP } from "~/src/lib/gsap";

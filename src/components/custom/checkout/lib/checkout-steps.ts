@@ -1,11 +1,15 @@
 import type { ComponentType } from "react";
 
-import type { CheckoutFormSchema } from "~/src/components/custom/checkout/lib/checkout.schema";
+import { type CheckoutFormSchema, checkoutSchema } from "~/src/modules/checkout/checkout.zod";
+
+const STEP_NOT_FOUND = -1;
+const LAST_STEP_OFFSET = 1;
+const FIRST_PATH_SEGMENT = 0;
 
 export const CHECKOUT_STEP_ID = {
   BILLING: "billing",
+  CONTACT: "contact",
   DELIVERY: "delivery",
-  OVERVIEW: "overview",
   PAYMENT: "payment"
 } as const;
 
@@ -18,49 +22,89 @@ export interface CheckoutStepConfig {
   readonly titleKey: string;
 }
 
+async function loadContactStep(): Promise<{ default: ComponentType }> {
+  const m = await import("~/src/components/custom/checkout/components/_steps/contact-step");
+  return { default: m.ContactStep };
+}
+
 async function loadAddressStep(): Promise<{ default: ComponentType }> {
-  const m = await import("~/src/components/custom/checkout/components/steps/address-step");
+  const m = await import("~/src/components/custom/checkout/components/_steps/address-step");
   return { default: m.AddressStep };
 }
 
 async function loadDeliveryStep(): Promise<{ default: ComponentType }> {
-  const m = await import("~/src/components/custom/checkout/components/steps/delivery-step");
+  const m = await import("~/src/components/custom/checkout/components/_steps/delivery-step");
   return { default: m.DeliveryStep };
 }
 
 async function loadPaymentStep(): Promise<{ default: ComponentType }> {
-  const m = await import("~/src/components/custom/checkout/components/steps/payment-step");
+  const m = await import("~/src/components/custom/checkout/components/_steps/payment-step");
   return { default: m.PaymentStep };
-}
-
-async function loadOverviewStep(): Promise<{ default: ComponentType }> {
-  const m = await import("~/src/components/custom/checkout/components/steps/overview-step");
-  return { default: m.OverviewStep };
 }
 
 export const CHECKOUT_STEPS: readonly CheckoutStepConfig[] = [
   {
+    component: loadContactStep,
+    fields: ["email", "phone"],
+    id: CHECKOUT_STEP_ID.CONTACT,
+    titleKey: "steps.contact"
+  },
+  {
     component: loadAddressStep,
-    fields: ["firstName", "lastName", "addressLine1", "postCode", "city", "country"],
+    fields: [
+      "firstName",
+      "lastName",
+      "address1",
+      "postalCode",
+      "city",
+      "countryCode",
+      "sameAsShipping",
+      "billingFirstName",
+      "billingLastName",
+      "billingAddress1",
+      "billingPostalCode",
+      "billingCity",
+      "billingCountryCode"
+    ],
     id: CHECKOUT_STEP_ID.BILLING,
     titleKey: "steps.billing"
   },
   {
     component: loadDeliveryStep,
-    fields: ["deliveryMethod"],
+    fields: ["deliveryMethod", "lockerId"],
     id: CHECKOUT_STEP_ID.DELIVERY,
     titleKey: "steps.delivery"
   },
   {
     component: loadPaymentStep,
-    fields: ["paymentMethod", "cardholderName", "cardNumber", "cardExpiry", "cardCvv"],
+    fields: [],
     id: CHECKOUT_STEP_ID.PAYMENT,
     titleKey: "steps.payment"
-  },
-  {
-    component: loadOverviewStep,
-    fields: [],
-    id: CHECKOUT_STEP_ID.OVERVIEW,
-    titleKey: "steps.overview"
   }
 ] as const;
+
+/**
+ * The single source of truth for step access: a shopper may open any step they
+ * have already completed, plus the first step that is still incomplete — never
+ * one beyond it. Completeness is derived from the same zod schema that validates
+ * the form (so the guard can never drift from the real rules, including the
+ * billing/locker `superRefine` branches): a step is incomplete when any of its
+ * fields appears in the schema's validation issues.
+ *
+ * Returns the index of the furthest step the shopper is allowed to open. This
+ * lets the form clamp `?step=N` so deep links (e.g. jumping straight to payment)
+ * can't bypass the contact/address/delivery steps.
+ */
+export function getFurthestReachableStepIndex(values: CheckoutFormSchema): number {
+  const result = checkoutSchema.safeParse(values);
+  if (result.success) {
+    return CHECKOUT_STEPS.length - LAST_STEP_OFFSET;
+  }
+
+  const invalidFields = new Set(
+    result.error.issues.map((issue) => issue.path[FIRST_PATH_SEGMENT]).filter((path): path is string => typeof path === "string")
+  );
+
+  const firstIncompleteIndex = CHECKOUT_STEPS.findIndex((step) => step.fields.some((field) => invalidFields.has(field)));
+  return firstIncompleteIndex === STEP_NOT_FOUND ? CHECKOUT_STEPS.length - LAST_STEP_OFFSET : firstIncompleteIndex;
+}

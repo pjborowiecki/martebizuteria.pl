@@ -1,5 +1,3 @@
-"use client";
-
 import type { JSX } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";

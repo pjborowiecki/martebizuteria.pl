@@ -19,12 +19,15 @@ export const product = sqliteTable(
     description: text("description"),
     handle: text("handle", { length: 255 }).notNull().unique(),
     id: text("id").primaryKey(),
-    images: text("images"),
+    images: text("images", { mode: "json" }).$type<string[]>(),
     metadata: text("metadata"),
+    seoDescription: text("seo_description"),
+    seoTitle: text("seo_title"),
     status: text("status", { enum: ["draft", "published", "archived"] })
       .default("draft")
       .notNull(),
     subtitle: text("subtitle", { length: 512 }),
+    tags: text("tags", { mode: "json" }).$type<string[]>(),
     thumbnail: text("thumbnail", { length: 2048 }),
     title: text("title", { length: 512 }).notNull(),
     updatedAt: text("updated_at")

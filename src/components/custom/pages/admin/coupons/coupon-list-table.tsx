@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react";
+import { type JSX, type MouseEvent, useCallback } from "react";
 
 import { Copy, Eye, MoreHorizontal, Search, Trash2 } from "lucide-react";
 import { useTranslations } from "use-intl";
@@ -27,7 +27,7 @@ const STATUS_STYLES = {
 
 export function CouponListTable(): JSX.Element {
   return (
-    <Card className="flex min-h-0 flex-1 flex-col border-border/40 bg-gradient-to-br from-pink-500/10 via-rose-500/5 to-transparent shadow-none">
+    <Card className="flex min-h-0 flex-1 flex-col border-border/40 bg-linear-to-br from-pink-500/10 via-rose-500/5 to-transparent shadow-none">
       <CardContent className="flex min-h-0 flex-1 flex-col p-0">
         <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-6 py-4">
           <div className="relative">
@@ -122,14 +122,14 @@ function CouponRow({ coupon }: { readonly coupon: (typeof COUPONS)[number] }): J
   }[coupon.status];
 
   const handleCopyCodeClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: MouseEvent) => {
       e.stopPropagation();
       void navigator.clipboard.writeText(coupon.code);
     },
     [coupon.code]
   );
 
-  const stopPropagation = useCallback((e: React.MouseEvent) => {
+  const stopPropagation = useCallback((e: MouseEvent) => {
     e.stopPropagation();
   }, []);
 

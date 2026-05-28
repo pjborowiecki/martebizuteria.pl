@@ -1,6 +1,8 @@
-import type { ReactNode, JSX } from "react";
+"use client";
 
-import { ThemeProvider as WrkszThemeProvider } from "@wrksz/themes/next";
+import { type JSX, type ReactNode } from "react";
+
+import { ClientThemeProvider as WrkszThemeProvider } from "@wrksz/themes/client";
 
 import { CONSTANTS } from "~/src/constants";
 

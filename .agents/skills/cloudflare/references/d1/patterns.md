@@ -40,7 +40,7 @@ async function searchUsers(filters: { name?: string; email?: string; active?: bo
     conditions.push("active = ?");
     params.push(filters.active ? 1 : 0);
   }
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` :
   return await env.DB.prepare(`SELECT * FROM users ${whereClause}`)
     .bind(...params)
     .all();

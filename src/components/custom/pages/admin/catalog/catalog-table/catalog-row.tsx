@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react";
+import { type JSX, type MouseEvent, useCallback } from "react";
 
 import { useRouter } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
@@ -45,11 +45,11 @@ export function CatalogRow({ product }: CatalogRowProps): JSX.Element {
     });
   }, [router, product.id]);
 
-  const handleCheckboxClick = useCallback((e: React.MouseEvent<HTMLTableCellElement>) => {
+  const handleCheckboxClick = useCallback((e: MouseEvent<HTMLTableCellElement>) => {
     e.stopPropagation();
   }, []);
 
-  const handleActionsClick = useCallback((e: React.MouseEvent<HTMLTableCellElement>) => {
+  const handleActionsClick = useCallback((e: MouseEvent<HTMLTableCellElement>) => {
     e.stopPropagation();
   }, []);
 

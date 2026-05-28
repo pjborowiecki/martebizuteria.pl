@@ -1,1176 +1,308 @@
-$ vp lint
 
-  x import(first): Import statements must come first
-    ,-[src/components/custom/pages/auth/forgot-password-form.tsx:27:1]
- 26 | 
- 27 | import { Button } from "~/src/components/shadcn/button";
-    : ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 28 | import { Field, FieldContent, FieldError, FieldLabel } from "~/src/components/shadcn/field";
+  x eslint(no-magic-numbers): No magic number: 0
+    ,-[src/stores/cart.store.ts:57:33]
+ 56 |             const parsed = parseFloat((item.price || "0").replace(/[^0-9,.]/g, "").replace(",", "."));
+ 57 |             p = isNaN(parsed) ? 0 : parsed * 100;
+    :                                 ^
+ 58 |           }
     `----
-  help: Move import statement to the top of the file
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
 
-  x import(first): Import statements must come first
-    ,-[src/components/custom/pages/auth/forgot-password-form.tsx:28:1]
- 27 | import { Button } from "~/src/components/shadcn/button";
- 28 | import { Field, FieldContent, FieldError, FieldLabel } from "~/src/components/shadcn/field";
-    : ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 29 | import { Input } from "~/src/components/shadcn/input";
+  x eslint(no-magic-numbers): No magic number: 100
+    ,-[src/stores/cart.store.ts:57:46]
+ 56 |             const parsed = parseFloat((item.price || "0").replace(/[^0-9,.]/g, "").replace(",", "."));
+ 57 |             p = isNaN(parsed) ? 0 : parsed * 100;
+    :                                              ^^^
+ 58 |           }
     `----
-  help: Move import statement to the top of the file
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
 
-  x import(first): Import statements must come first
-    ,-[src/components/custom/pages/auth/forgot-password-form.tsx:29:1]
- 28 | import { Field, FieldContent, FieldError, FieldLabel } from "~/src/components/shadcn/field";
- 29 | import { Input } from "~/src/components/shadcn/input";
-    : ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 30 | 
+  x eslint(require-unicode-regexp): Use the 'u' flag.
+    ,-[src/stores/cart.store.ts:56:67]
+ 55 |           if (p === undefined) {
+ 56 |             const parsed = parseFloat((item.price || "0").replace(/[^0-9,.]/g, "").replace(",", "."));
+    :                                                                   ^^^^^^^^^^^
+ 57 |             p = isNaN(parsed) ? 0 : parsed * 100;
     `----
-  help: Move import statement to the top of the file
+  help: Add the 'u' flag.
+  note: The 'u' and 'v' flags enable Unicode-aware regular expression behavior and stricter pattern parsing.
+
+  x unicorn(prefer-string-replace-all): Prefer `String#replaceAll()` over `String#replace()` when using a regex with the global flag.
+    ,-[src/stores/cart.store.ts:56:59]
+ 55 |           if (p === undefined) {
+ 56 |             const parsed = parseFloat((item.price || "0").replace(/[^0-9,.]/g, "").replace(",", "."));
+    :                                                           ^^^^^^^
+ 57 |             p = isNaN(parsed) ? 0 : parsed * 100;
+    `----
+  help: Replace `replace` with `replaceAll`.
+
+  x eslint(no-magic-numbers): No magic number: 0
+    ,-[src/routes/{-$locale}._storefront.products.index.tsx:76:33]
+ 75 |       price={price}
+ 76 |       rawPrice={variantPrice ?? 0}
+    :                                 ^
+ 77 |     />
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 100
+    ,-[src/routes/{-$locale}._storefront.cart.tsx:62:31]
+ 61 | 
+ 62 |   const total = cartTotal() / 100;
+    :                               ^^^
+ 63 |   const subtotal = new Intl.NumberFormat("pl-PL", {
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 0
+    ,-[src/components/custom/product-card.tsx:90:31]
+ 89 |         price: price ?? "",
+ 90 |         rawPrice: rawPrice ?? 0,
+    :                               ^
+ 91 |         size: DEFAULT_SIZE,
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 100
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:17:56]
+ 16 |   const totalCents = cartTotal();
+ 17 |   const subtotalFormatted = format.number(totalCents / 100, { currency: "PLN", style: "currency" });
+    :                                                        ^^^
+ 18 | 
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 100
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:20:53]
+ 19 |   // TODO: Add shipping logic later, assuming 0 for now or free shipping
+ 20 |   const totalFormatted = format.number(totalCents / 100, { currency: "PLN", style: "currency" });
+    :                                                     ^^^
+ 21 | 
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 0
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:26:27]
+ 25 |       const parsed = parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", "."));
+ 26 |       p = isNaN(parsed) ? 0 : parsed * 100;
+    :                           ^
+ 27 |     }
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 100
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:26:40]
+ 25 |       const parsed = parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", "."));
+ 26 |       p = isNaN(parsed) ? 0 : parsed * 100;
+    :                                        ^^^
+ 27 |     }
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 100
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:46:64]
+ 45 |             <p className="mt-1 font-medium text-foreground tabular-nums">
+ 46 |               {item.qty} x {format.number(getItemPrice(item) / 100, { currency: "PLN", style: "currency" })}
+    :                                                                ^^^
+ 47 |             </p>
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-warning-comments): Unexpected 'todo' comment: TODO: Add shipping logic later, assuming...
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:19:3]
+ 18 | 
+ 19 |   // TODO: Add shipping logic later, assuming 0 for now or free shipping
+    :   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 20 |   const totalFormatted = format.number(totalCents / 100, { currency: "PLN", style: "currency" });
+    `----
+  help: Remove or rephrase this comment
+
+  x eslint(require-unicode-regexp): Use the 'u' flag.
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:25:61]
+ 24 |     if (p === undefined) {
+ 25 |       const parsed = parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", "."));
+    :                                                             ^^^^^^^^^^^
+ 26 |       p = isNaN(parsed) ? 0 : parsed * 100;
+    `----
+  help: Add the 'u' flag.
+  note: The 'u' and 'v' flags enable Unicode-aware regular expression behavior and stricter pattern parsing.
+
+  x unicorn(consistent-function-scoping): Function `getItemPrice` does not capture any variables from its parent scope
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:22:9]
+ 10 | 
+ 11 | export function CheckoutSummary(): JSX.Element {
+    :                 ^^^^^^^|^^^^^^^
+    :                        `-- Outer scope where this function is defined
+ 12 |   const t = useTranslations("checkoutPage");
+ 13 |   const format = useFormatter();
+ 14 |   const { items, cartTotal } = useCartStore();
+ 15 | 
+ 16 |   const totalCents = cartTotal();
+ 17 |   const subtotalFormatted = format.number(totalCents / 100, { currency: "PLN", style: "currency" });
+ 18 | 
+ 19 |   // TODO: Add shipping logic later, assuming 0 for now or free shipping
+ 20 |   const totalFormatted = format.number(totalCents / 100, { currency: "PLN", style: "currency" });
+ 21 | 
+ 22 |   const getItemPrice = (item: CartItem) => {
+    :         ^^^^^^|^^^^^
+    :               `-- This function does not use any variables from the parent function
+ 23 |     let p = item.rawPrice;
+    `----
+  help: Move `getItemPrice` to the outer scope to avoid recreating it on every call.
+
+  x unicorn(no-null): Do not use `null` literals
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:38:131]
+ 37 |           <div className="relative size-16 shrink-0 bg-muted/40">
+ 38 |             {item.image ? <Image src={item.image} alt={item.title} width={64} height={64} className="size-full object-cover" /> : null}
+    :                                                                                                                                   ^^^^
+ 39 |           </div>
+    `----
+  help: Replace `null` with `undefined`.
+
+  x unicorn(prefer-string-replace-all): Prefer `String#replaceAll()` over `String#replace()` when using a regex with the global flag.
+    ,-[src/components/custom/checkout/components/checkout-summary.tsx:25:53]
+ 24 |     if (p === undefined) {
+ 25 |       const parsed = parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", "."));
+    :                                                     ^^^^^^^
+ 26 |       p = isNaN(parsed) ? 0 : parsed * 100;
+    `----
+  help: Replace `replace` with `replaceAll`.
+
+  x eslint(no-magic-numbers): No magic number: 0
+     ,-[src/components/custom/pages/cart-page/cart-item-card.tsx:108:21]
+ 107 |                 (isNaN(parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", ".")))
+ 108 |                   ? 0
+     :                     ^
+ 109 |                   : parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", ".")) * 100)) / 100
+     `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 100
+     ,-[src/components/custom/pages/cart-page/cart-item-card.tsx:109:98]
+ 108 |                   ? 0
+ 109 |                   : parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", ".")) * 100)) / 100
+     :                                                                                                  ^^^
+ 110 |             )}
+     `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(no-magic-numbers): No magic number: 100
+     ,-[src/components/custom/pages/cart-page/cart-item-card.tsx:109:106]
+ 108 |                   ? 0
+ 109 |                   : parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", ".")) * 100)) / 100
+     :                                                                                                          ^^^
+ 110 |             )}
+     `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
+
+  x eslint(require-unicode-regexp): Use the 'u' flag.
+     ,-[src/components/custom/pages/cart-page/cart-item-card.tsx:107:63]
+ 106 |               (item.rawPrice ??
+ 107 |                 (isNaN(parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", ".")))
+     :                                                               ^^^^^^^^^^^
+ 108 |                   ? 0
+     `----
+  help: Add the 'u' flag.
+  note: The 'u' and 'v' flags enable Unicode-aware regular expression behavior and stricter pattern parsing.
+
+  x eslint(require-unicode-regexp): Use the 'u' flag.
+     ,-[src/components/custom/pages/cart-page/cart-item-card.tsx:109:60]
+ 108 |                   ? 0
+ 109 |                   : parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", ".")) * 100)) / 100
+     :                                                            ^^^^^^^^^^^
+ 110 |             )}
+     `----
+  help: Add the 'u' flag.
+  note: The 'u' and 'v' flags enable Unicode-aware regular expression behavior and stricter pattern parsing.
+
+  x unicorn(prefer-string-replace-all): Prefer `String#replaceAll()` over `String#replace()` when using a regex with the global flag.
+     ,-[src/components/custom/pages/cart-page/cart-item-card.tsx:107:55]
+ 106 |               (item.rawPrice ??
+ 107 |                 (isNaN(parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", ".")))
+     :                                                       ^^^^^^^
+ 108 |                   ? 0
+     `----
+  help: Replace `replace` with `replaceAll`.
+
+  x unicorn(prefer-string-replace-all): Prefer `String#replaceAll()` over `String#replace()` when using a regex with the global flag.
+     ,-[src/components/custom/pages/cart-page/cart-item-card.tsx:109:52]
+ 108 |                   ? 0
+ 109 |                   : parseFloat((item.price ?? "0").replace(/[^0-9,.]/g, "").replace(",", ".")) * 100)) / 100
+     :                                                    ^^^^^^^
+ 110 |             )}
+     `----
+  help: Replace `replace` with `replaceAll`.
+
+  x eslint(no-magic-numbers): No magic number: 0
+    ,-[src/components/custom/pages/product-page/product-hero-info.tsx:45:33]
+ 44 |       price,
+ 45 |       rawPrice: variantPrice ?? 0,
+    :                                 ^
+ 46 |       qty: Math.max(MIN_QUANTITY, quantity),
+    `----
+  help: Use a named constant instead of a magic number to make the code more readable and maintainable.
 
   x eslint(sort-keys): Object keys should be sorted
-    ,-[src/components/custom/pages/auth/forgot-password-form.tsx:46:41]
- 45 |           if (hasForgetPassword(authClient)) {
- 46 | ,->         await authClient.forgetPassword({
- 47 | |             email: data.email,
- 48 | |             redirectTo: "/auth/reset-password",
- 49 | |             fetchOptions: {
- 50 | |               onError: (ctx: ErrorContext) => {
- 51 | |                 const errCode = ctx.error?.message ?? "UNKNOWN_ERROR";
- 52 | |                 toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
- 53 | |               },
- 54 | |               onSuccess: () => {
- 55 | |                 setHasSubmitted(true);
- 56 | |                 toast.success(t("auth.forgotPasswordPage.success"));
- 57 | |               }
- 58 | |             }
- 59 | `->         });
- 60 |           }
+    ,-[src/components/custom/pages/product-page/product-hero-info.tsx:40:13]
+ 39 |     
+ 40 | ,->     addItem({
+ 41 | |         id: `${product.handle}-${size}-${material}`,
+ 42 | |         image: product.thumbnail ?? firstImage ?? "",
+ 43 | |         material,
+ 44 | |         price,
+ 45 | |         rawPrice: variantPrice ?? 0,
+ 46 | |         qty: Math.max(MIN_QUANTITY, quantity),
+ 47 | |         size,
+ 48 | |         slug: product.handle,
+ 49 | |         title: product.title
+ 50 | `->     });
+ 51 |     
     `----
-  help: Replace `email: data.email,
-                  redirectTo: "/auth/reset-password",
-                  fetchOptions: {
-                    onError: (ctx: ErrorContext) => {
-                      const errCode = ctx.error?.message ?? "UNKNOWN_ERROR";
-                      toast.error(t(`auth.errors.${AUTH_ER...` with `email: data.email,
-                  fetchOptions: {
-                    onError: (ctx: ErrorContext) => {
-                      const errCode = ctx.error?.message ?? "UNKNOWN_ERROR";
-                      toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`))...`.
+  help: Replace `id: `${product.handle}-${size}-${material}`,
+              image: product.thumbnail ?? firstImage ?? "",
+              material,
+              price,
+              rawPrice: variantPrice ?? 0,
+              qty: Math.max(MIN_QUANTITY, quantity),
+              size,
+              slug: product.handle,
+              titl...` with `id: `${product.handle}-${size}-${material}`,
+              image: product.thumbnail ?? firstImage ?? "",
+              material,
+              price,
+              qty: Math.max(MIN_QUANTITY, quantity),
+              rawPrice: variantPrice ?? 0,
+              size,
+              slug: product.handle,
+              titl...`.
 
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/forgot-password-form.tsx:88:17]
-  87 |             name="email"
-  88 | ,->         render={({ field, fieldState }) => (
-  89 | |             <Field>
-  90 | |               <FieldLabel htmlFor="forgot-password-email" className={LABEL_CLASS}>
-  91 | |                 {t("components.custom.authForm.email")}
-  92 | |               </FieldLabel>
-  93 | |               <FieldContent>
-  94 | |                 <Input
-  95 | |                   {...field}
-  96 | |                   id="forgot-password-email"
-  97 | |                   type="email"
-  98 | |                   autoComplete="email"
-  99 | |                   aria-invalid={fieldState.invalid}
- 100 | |                   disabled={isSubmitting}
- 101 | |                   placeholder="john@example.com"
- 102 | |                 />
- 103 | |                 {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 104 | |               </FieldContent>
- 105 | |             </Field>
- 106 | `->         )}
- 107 |           />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/integrations/better-auth/auth.schemas.ts:42:13]
- 41 |       return z
- 42 | ,->     .object({
- 43 | |         password: z
- 44 | |           .string()
- 45 | |           .min(MIN_PASSWORD_LENGTH, {
- 46 | |             message: t("auth.validations.atLeastMinCharactersLong")
- 47 | |           })
- 48 | |           .regex(/[A-Z]/u, { message: t("auth.validations.atLeastOneUppercase") })
- 49 | |           .regex(/[^A-Za-z0-9]/u, { message: t("auth.validations.atLeastOneSpecialCharacter") }),
- 50 | |         confirmPassword: z.string().min(MIN_REQUIRED_LENGTH, { message: t("auth.validations.confirmPasswordRequired") })
- 51 | `->     })
- 52 |         .refine((data) => data.password === data.confirmPassword, {
+  x react-hooks(exhaustive-deps): React Hook useCallback has a missing dependency: 'variantPrice'
+    ,-[src/components/custom/pages/product-page/product-hero-info.tsx:53:6]
+ 44 |       price,
+ 45 |       rawPrice: variantPrice ?? 0,
+    :                 ^^^^^^|^^^^^
+    :                       `-- useCallback uses `variantPrice` here
+ 46 |       qty: Math.max(MIN_QUANTITY, quantity),
+ 47 |       size,
+ 48 |       slug: product.handle,
+ 49 |       title: product.title
+ 50 |     });
+ 51 | 
+ 52 |     setIsAdded(true);
+ 53 |   }, [addItem, product, quantity, price, t]);
+    :      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 54 | 
     `----
-  help: Replace `password: z
-                .string()
-                .min(MIN_PASSWORD_LENGTH, {
-                  message: t("auth.validations.atLeastMinCharactersLong")
-                })
-                .regex(/[A-Z]/u, { message: t("auth.validations.atLeastOneUppercase") })
-                .regex(/[^A-Za-z0-9]/u, ...` with `confirmPassword: z.string().min(MIN_REQUIRED_LENGTH, { message: t("auth.validations.confirmPasswordRequired") }),
-              password: z
-                .string()
-                .min(MIN_PASSWORD_LENGTH, {
-                  message: t("auth.validations.atLeastMinCharactersLong")
-            ...`.
+  help: Either include it or remove the dependency array.
 
-  x eslint(sort-keys): Object keys should be sorted
-     ,-[src/integrations/better-auth/auth.server.tsx:22:32]
-  21 |     
-  22 | ,-> export const auth = betterAuth({
-  23 | |     account: { accountLinking: { enabled: true, trustedProviders: ["google", "github"] } },
-  24 | |     advanced: {
-  25 | |       backgroundTasks: { handler: scheduleBackgroundWork },
-  26 | |       database: { generateId: () => uuidv7() }
-  27 | |     },
-  28 | |     appName: CONSTANTS.APP_NAME,
-  29 | |     baseURL: env.VITE_APP_URL,
-  30 | |     database: drizzleAdapter(db, { provider: "sqlite", schema }),
-  31 | |     emailAndPassword: {
-  32 | |       enabled: true,
-  33 | |       requireEmailVerification: true,
-  34 | |       sendResetPassword: async ({ user, url }) => {
-  35 | |         const locale = getCurrentLocale();
-  36 | |   
-  37 | |         await sendEmail({
-  38 | |           to: user.email,
-  39 | |           subject: getResetPasswordSubject(locale),
-  40 | |           html: await render(<ResetPassword name={user.name} resetPasswordUrl={url} locale={locale} />),
-  41 | |           text: await render(<ResetPassword name={user.name} resetPasswordUrl={url} locale={locale} />, { plainText: true })
-  42 | |         });
-  43 | |       }
-  44 | |     },
-  45 | |     emailVerification: {
-  46 | |       sendOnSignUp: true,
-  47 | |       autoSignInAfterVerification: true,
-  48 | |       sendVerificationEmail: async ({
-  49 | |         user,
-  50 | |         url
-  51 | |       }: {
-  52 | |         readonly url: string;
-  53 | |         readonly user: { readonly email: string; readonly name: string };
-  54 | |       }) => {
-  55 | |         const locale = getCurrentLocale();
-  56 | |   
-  57 | |         await sendEmail({
-  58 | |           to: user.email,
-  59 | |           subject: getVerifyEmailSubject(locale),
-  60 | |           html: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={locale} />),
-  61 | |           text: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={locale} />, {
-  62 | |             plainText: true
-  63 | |           })
-  64 | |         });
-  65 | |       }
-  66 | |     },
-  67 | |     user: {
-  68 | |       changeEmail: {
-  69 | |         enabled: true,
-  70 | |         sendChangeEmailVerification: async ({
-  71 | |           user,
-  72 | |           url
-  73 | |         }: {
-  74 | |           readonly url: string;
-  75 | |           readonly user: { readonly email: string; readonly name: string };
-  76 | |         }) => {
-  77 | |           const locale = getCurrentLocale();
-  78 | |   
-  79 | |           await sendEmail({
-  80 | |             to: user.email,
-  81 | |             subject: getChangeEmailSubject(locale),
-  82 | |             html: await render(<ChangeEmail name={user.name} verificationUrl={url} locale={locale} />),
-  83 | |             text: await render(<ChangeEmail name={user.name} verificationUrl={url} locale={locale} />, {
-  84 | |               plainText: true
-  85 | |             })
-  86 | |           });
-  87 | |         }
-  88 | |       },
-  89 | |       additionalFields: {}
-  90 | |     },
-  91 | |     experimental: { joins: true },
-  92 | |     plugins: [tanstackStartCookies()],
-  93 | |     secret: env.AUTH_SECRET,
-  94 | |     session: { cookieCache: { enabled: true, maxAge: COOKIE_CACHE_MAX_AGE_IN_SECONDS } },
-  95 | |     socialProviders: {
-  96 | |       github: { clientId: env.AUTH_GITHUB_CLIENT_ID, clientSecret: env.AUTH_GITHUB_CLIENT_SECRET },
-  97 | |       google: { clientId: env.AUTH_GOOGLE_CLIENT_ID, clientSecret: env.AUTH_GOOGLE_CLIENT_SECRET }
-  98 | |     },
-  99 | |     telemetry: { enabled: false },
- 100 | |     trustedOrigins: [env.VITE_APP_URL]
- 101 | `-> });
-     `----
-  help: Replace `account: { accountLinking: { enabled: true, trustedProviders: ["google", "github"] } },
-          advanced: {
-            backgroundTasks: { handler: scheduleBackgroundWork },
-            database: { generateId: () => uuidv7() }
-          },
-          appName: CONSTANTS.APP_NAME,
-          baseURL: env....` with `account: { accountLinking: { enabled: true, trustedProviders: ["google", "github"] } },
-          advanced: {
-            backgroundTasks: { handler: scheduleBackgroundWork },
-            database: { generateId: () => uuidv7() }
-          },
-          appName: CONSTANTS.APP_NAME,
-          baseURL: env....`.
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/integrations/better-auth/auth.server.tsx:37:23]
- 36 |     
- 37 | ,->       await sendEmail({
- 38 | |           to: user.email,
- 39 | |           subject: getResetPasswordSubject(locale),
- 40 | |           html: await render(<ResetPassword name={user.name} resetPasswordUrl={url} locale={locale} />),
- 41 | |           text: await render(<ResetPassword name={user.name} resetPasswordUrl={url} locale={locale} />, { plainText: true })
- 42 | `->       });
- 43 |         }
+  x eslint(curly): Expected { after 'if' condition.
+    ,-[src/components/custom/checkout/components/steps/overview-step.tsx:19:24]
+ 18 |   const getCountryName = (code?: string) => {
+ 19 |     if (code === "PL") return locale === "pl" ? "Polska" : "Poland";
+    :                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 20 |     return code;
     `----
-  help: Replace `to: user.email,
-                subject: getResetPasswordSubject(locale),
-                html: await render(<ResetPassword name={user.name} resetPasswordUrl={url} locale={locale} />),
-                text: await render(<ResetPassword name={user.name} resetPasswordUrl={url} local...` with `html: await render(<ResetPassword name={user.name} resetPasswordUrl={url} locale={locale} />),
-                subject: getResetPasswordSubject(locale),
-                text: await render(<ResetPassword name={user.name} resetPasswordUrl={url} locale={locale} />, { plainTe...`.
+  help: Replace `return locale === "pl" ? "Polska" : "Poland";` with `{return locale === "pl" ? "Polska" : "Poland";}`.
 
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/integrations/better-auth/auth.server.tsx:45:22]
- 44 |       },
- 45 | ,->   emailVerification: {
- 46 | |       sendOnSignUp: true,
- 47 | |       autoSignInAfterVerification: true,
- 48 | |       sendVerificationEmail: async ({
- 49 | |         user,
- 50 | |         url
- 51 | |       }: {
- 52 | |         readonly url: string;
- 53 | |         readonly user: { readonly email: string; readonly name: string };
- 54 | |       }) => {
- 55 | |         const locale = getCurrentLocale();
- 56 | |   
- 57 | |         await sendEmail({
- 58 | |           to: user.email,
- 59 | |           subject: getVerifyEmailSubject(locale),
- 60 | |           html: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={locale} />),
- 61 | |           text: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={locale} />, {
- 62 | |             plainText: true
- 63 | |           })
- 64 | |         });
- 65 | |       }
- 66 | `->   },
- 67 |       user: {
-    `----
-  help: Replace `sendOnSignUp: true,
-            autoSignInAfterVerification: true,
-            sendVerificationEmail: async ({
-              user,
-              url
-            }: {
-              readonly url: string;
-              readonly user: { readonly email: string; readonly name: string };
-            }) => {
-              const locale...` with `autoSignInAfterVerification: true,
-            sendOnSignUp: true,
-            sendVerificationEmail: async ({
-              user,
-              url
-            }: {
-              readonly url: string;
-              readonly user: { readonly email: string; readonly name: string };
-            }) => {
-              const locale...`.
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/integrations/better-auth/auth.server.tsx:57:23]
- 56 |     
- 57 | ,->       await sendEmail({
- 58 | |           to: user.email,
- 59 | |           subject: getVerifyEmailSubject(locale),
- 60 | |           html: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={locale} />),
- 61 | |           text: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={locale} />, {
- 62 | |             plainText: true
- 63 | |           })
- 64 | `->       });
- 65 |         }
-    `----
-  help: Replace `to: user.email,
-                subject: getVerifyEmailSubject(locale),
-                html: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={locale} />),
-                text: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={local...` with `html: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={locale} />),
-                subject: getVerifyEmailSubject(locale),
-                text: await render(<VerifyEmail name={user.name} verificationUrl={url} locale={locale} />, {
-                  plain...`.
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/integrations/better-auth/auth.server.tsx:67:9]
- 66 |       },
- 67 | ,->   user: {
- 68 | |       changeEmail: {
- 69 | |         enabled: true,
- 70 | |         sendChangeEmailVerification: async ({
- 71 | |           user,
- 72 | |           url
- 73 | |         }: {
- 74 | |           readonly url: string;
- 75 | |           readonly user: { readonly email: string; readonly name: string };
- 76 | |         }) => {
- 77 | |           const locale = getCurrentLocale();
- 78 | |   
- 79 | |           await sendEmail({
- 80 | |             to: user.email,
- 81 | |             subject: getChangeEmailSubject(locale),
- 82 | |             html: await render(<ChangeEmail name={user.name} verificationUrl={url} locale={locale} />),
- 83 | |             text: await render(<ChangeEmail name={user.name} verificationUrl={url} locale={locale} />, {
- 84 | |               plainText: true
- 85 | |             })
- 86 | |           });
- 87 | |         }
- 88 | |       },
- 89 | |       additionalFields: {}
- 90 | `->   },
- 91 |       experimental: { joins: true },
-    `----
-  help: Replace `changeEmail: {
-              enabled: true,
-              sendChangeEmailVerification: async ({
-                user,
-                url
-              }: {
-                readonly url: string;
-                readonly user: { readonly email: string; readonly name: string };
-              }) => {
-                const locale ...` with `additionalFields: {},
-            changeEmail: {
-              enabled: true,
-              sendChangeEmailVerification: async ({
-                user,
-                url
-              }: {
-                readonly url: string;
-                readonly user: { readonly email: string; readonly name: string };
-              }) ...`.
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/integrations/better-auth/auth.server.tsx:79:25]
- 78 |     
- 79 | ,->         await sendEmail({
- 80 | |             to: user.email,
- 81 | |             subject: getChangeEmailSubject(locale),
- 82 | |             html: await render(<ChangeEmail name={user.name} verificationUrl={url} locale={locale} />),
- 83 | |             text: await render(<ChangeEmail name={user.name} verificationUrl={url} locale={locale} />, {
- 84 | |               plainText: true
- 85 | |             })
- 86 | `->         });
- 87 |           }
-    `----
-  help: Replace `to: user.email,
-                  subject: getChangeEmailSubject(locale),
-                  html: await render(<ChangeEmail name={user.name} verificationUrl={url} locale={locale} />),
-                  text: await render(<ChangeEmail name={user.name} verificationUrl={url} locale=...` with `html: await render(<ChangeEmail name={user.name} verificationUrl={url} locale={locale} />),
-                  subject: getChangeEmailSubject(locale),
-                  text: await render(<ChangeEmail name={user.name} verificationUrl={url} locale={locale} />, {
-                   ...`.
-
-  x react(jsx-max-depth): JSX nesting depth of 6 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/sign-in-with-password-form.tsx:131:19]
- 130 |                 <InputGroupAddon align="inline-end">
- 131 |                   <PasswordToggle show={showPassword} onToggle={togglePassword} />
-     :                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 132 |                 </InputGroupAddon>
-     `----
-
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/sign-in-with-password-form.tsx:80:17]
-  79 |             name="email"
-  80 | ,->         render={({ field, fieldState }) => (
-  81 | |             <Field>
-  82 | |               <FieldLabel htmlFor="sign-in-email" className={LABEL_CLASS}>
-  83 | |                 {t("components.custom.authForm.email")}
-  84 | |               </FieldLabel>
-  85 | |               <FieldContent>
-  86 | |                 <Input
-  87 | |                   {...field}
-  88 | |                   id="sign-in-email"
-  89 | |                   type="email"
-  90 | |                   autoComplete="email"
-  91 | |                   aria-invalid={fieldState.invalid}
-  92 | |                   disabled={isSubmitting}
-  93 | |                   placeholder="john@example.com"
-  94 | |                 />
-  95 | |                 {fieldState.error !== undefined && (
-  96 | |                   <FieldError>{fieldState.error.message}</FieldError>
-  97 | |                 )}
-  98 | |               </FieldContent>
-  99 | |             </Field>
- 100 | `->         )}
- 101 |           />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/sign-in-with-password-form.tsx:106:17]
- 105 |             name="password"
- 106 | ,->         render={({ field, fieldState }) => (
- 107 | |             <Field>
- 108 | |               <FieldLabel className={LABEL_CLASS}>
- 109 | |                 <span className="flex w-full items-baseline justify-between">
- 110 | |                   <label htmlFor="sign-in-password">{t("components.custom.authForm.password")}</label>
- 111 | |                   <LocalizedLink
- 112 | |                     to={CONSTANTS.ROUTES.AUTH_FORGOT_PASSWORD}
- 113 | |                     className="text-[11px] text-muted-foreground/70 normal-case underline underline-offset-4 transition-colors hover:text-foreground"
- 114 | |                   >
- 115 | |                     {t("auth.signInPage.forgotPassword")}
- 116 | |                   </LocalizedLink>
- 117 | |                 </span>
- 118 | |               </FieldLabel>
- 119 | |               <FieldContent>
- 120 | |                 <InputGroup>
- 121 | |                   <InputGroupInput
- 122 | |                     {...field}
- 123 | |                     id="sign-in-password"
- 124 | |                     type={showPassword ? "text" : "password"}
- 125 | |                     autoComplete="current-password"
- 126 | |                     aria-invalid={fieldState.invalid}
- 127 | |                     disabled={isSubmitting}
- 128 | |                     placeholder="••••••••"
- 129 | |                   />
- 130 | |                   <InputGroupAddon align="inline-end">
- 131 | |                     <PasswordToggle show={showPassword} onToggle={togglePassword} />
- 132 | |                   </InputGroupAddon>
- 133 | |                 </InputGroup>
- 134 | |                 {fieldState.error !== undefined && (
- 135 | |                   <FieldError>{fieldState.error.message}</FieldError>
- 136 | |                 )}
- 137 | |               </FieldContent>
- 138 | |             </Field>
- 139 | `->         )}
- 140 |           />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/components/custom/pages/auth/reset-password-form.tsx:51:27]
- 50 |         async (data: ResetPasswordFormValues) => {
- 51 | ,->       await resetPassword({
- 52 | |           newPassword: data.password,
- 53 | |           token,
- 54 | |           fetchOptions: {
- 55 | |             onError: (ctx: ErrorContext) => {
- 56 | |               const errCode = ctx.error?.message ?? "UNKNOWN_ERROR";
- 57 | |               toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
- 58 | |             },
- 59 | |             onSuccess: () => {
- 60 | |               toast.success(t("auth.resetPasswordPage.success"));
- 61 | |               void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.AUTH_SIGN_IN}` });
- 62 | |             }
- 63 | |           }
- 64 | `->       });
- 65 |         },
-    `----
-  help: Replace `newPassword: data.password,
-                token,
-                fetchOptions: {
-                  onError: (ctx: ErrorContext) => {
-                    const errCode = ctx.error?.message ?? "UNKNOWN_ERROR";
-                    toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.U...` with `fetchOptions: {
-                  onError: (ctx: ErrorContext) => {
-                    const errCode = ctx.error?.message ?? "UNKNOWN_ERROR";
-                    toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
-                  },
-                  onSuccess:...`.
-
-  x react(jsx-max-depth): JSX nesting depth of 6 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/reset-password-form.tsx:101:19]
- 100 |                 <InputGroupAddon align="inline-end">
- 101 |                   <PasswordToggle show={showPassword} onToggle={togglePassword} />
-     :                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 102 |                 </InputGroupAddon>
-     `----
-
-  x react(jsx-max-depth): JSX nesting depth of 6 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/reset-password-form.tsx:130:19]
- 129 |                 <InputGroupAddon align="inline-end">
- 130 |                   <PasswordToggle show={showConfirmPassword} onToggle={toggleConfirmPassword} />
-     :                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 131 |                 </InputGroupAddon>
-     `----
-
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/reset-password-form.tsx:84:17]
-  83 |             name="password"
-  84 | ,->         render={({ field, fieldState }) => (
-  85 | |             <Field>
-  86 | |               <FieldLabel htmlFor="reset-password" className={LABEL_CLASS}>
-  87 | |                 {t("components.custom.authForm.password")}
-  88 | |               </FieldLabel>
-  89 | |               <FieldContent>
-  90 | |                 <InputGroup>
-  91 | |                   <InputGroupInput
-  92 | |                     {...field}
-  93 | |                     id="reset-password"
-  94 | |                     type={showPassword ? "text" : "password"}
-  95 | |                     autoComplete="new-password"
-  96 | |                     aria-invalid={fieldState.invalid}
-  97 | |                     disabled={isSubmitting}
-  98 | |                     placeholder="••••••••"
-  99 | |                   />
- 100 | |                   <InputGroupAddon align="inline-end">
- 101 | |                     <PasswordToggle show={showPassword} onToggle={togglePassword} />
- 102 | |                   </InputGroupAddon>
- 103 | |                 </InputGroup>
- 104 | |                 {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 105 | |               </FieldContent>
- 106 | |             </Field>
- 107 | `->         )}
- 108 |           />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/reset-password-form.tsx:113:17]
- 112 |             name="confirmPassword"
- 113 | ,->         render={({ field, fieldState }) => (
- 114 | |             <Field>
- 115 | |               <FieldLabel htmlFor="reset-confirm-password" className={LABEL_CLASS}>
- 116 | |                 {t("components.custom.authForm.confirmPassword")}
- 117 | |               </FieldLabel>
- 118 | |               <FieldContent>
- 119 | |                 <InputGroup>
- 120 | |                   <InputGroupInput
- 121 | |                     {...field}
- 122 | |                     id="reset-confirm-password"
- 123 | |                     type={showConfirmPassword ? "text" : "password"}
- 124 | |                     autoComplete="new-password"
- 125 | |                     aria-invalid={fieldState.invalid}
- 126 | |                     disabled={isSubmitting}
- 127 | |                     placeholder="••••••••"
- 128 | |                   />
- 129 | |                   <InputGroupAddon align="inline-end">
- 130 | |                     <PasswordToggle show={showConfirmPassword} onToggle={toggleConfirmPassword} />
- 131 | |                   </InputGroupAddon>
- 132 | |                 </InputGroup>
- 133 | |                 {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 134 | |               </FieldContent>
- 135 | |             </Field>
- 136 | `->         )}
- 137 |           />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/integrations/react-email/templates/reset-password.tsx:56:30]
- 55 |     
- 56 | ,-> ResetPassword.PreviewProps = {
- 57 | |     name: "Jane Doe",
- 58 | |     resetPasswordUrl: "https://martebizuteria.pl/en/auth/reset-password?token=12345",
- 59 | |     locale: "en"
- 60 | `-> } satisfies ResetPasswordProps;
-    `----
-  help: Replace `name: "Jane Doe",
-          resetPasswordUrl: "https://martebizuteria.pl/en/auth/reset-password?token=12345",
-          locale: "en"` with `locale: "en",
-          name: "Jane Doe",
-          resetPasswordUrl: "https://martebizuteria.pl/en/auth/reset-password?token=12345"`.
-
-  x react(no-unescaped-entities): `'` can be escaped with &apos; or &lsquo; or &#39; or &rsquo;
-    ,-[src/integrations/react-email/templates/reset-password.tsx:32:43]
- 31 |         <Body className="bg-white font-sans">
- 32 |           <Preview>Reset your password - M'ARTE</Preview>
-    :                                           ^
- 33 |           <Container className="mx-auto mt-10 max-w-xl border border-solid border-gray-200 p-10">
-    `----
-
-  x react(no-unescaped-entities): `'` can be escaped with &apos; or &lsquo; or &#39; or &rsquo;
-    ,-[src/integrations/react-email/templates/reset-password.tsx:34:120]
- 33 |           <Container className="mx-auto mt-10 max-w-xl border border-solid border-gray-200 p-10">
- 34 |             <Heading className="text-brand mb-6 text-center font-serif text-2xl font-light tracking-widest uppercase">M'ARTE</Heading>
-    :                                                                                                                        ^
- 35 |             <Hr className="my-8 border-solid border-gray-200" />
-    `----
-
-  x react-perf(jsx-no-new-object-as-prop): JSX attribute values should not contain objects created in the same scope.
-    ,-[src/integrations/react-email/templates/reset-password.tsx:20:17]
- 19 |           <Tailwind
- 20 | ,->         config={{
- 21 | |             theme: {
- 22 | |               extend: {
- 23 | |                 colors: {
- 24 | |                   brand: "#09090b"
- 25 | |                 }
- 26 | |               }
- 27 | |             }
- 28 | `->         }}
- 29 |           >
-    `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/integrations/react-email/templates/verify-email.tsx:57:28]
- 56 |     
- 57 | ,-> VerifyEmail.PreviewProps = {
- 58 | |     name: "Jane Doe",
- 59 | |     verificationUrl: "https://martebizuteria.pl/en/auth/verify-email?token=12345",
- 60 | |     locale: "en"
- 61 | `-> } satisfies VerifyEmailProps;
-    `----
-  help: Replace `name: "Jane Doe",
-          verificationUrl: "https://martebizuteria.pl/en/auth/verify-email?token=12345",
-          locale: "en"` with `locale: "en",
-          name: "Jane Doe",
-          verificationUrl: "https://martebizuteria.pl/en/auth/verify-email?token=12345"`.
-
-  x react(no-unescaped-entities): `'` can be escaped with &apos; or &lsquo; or &#39; or &rsquo;
-    ,-[src/integrations/react-email/templates/verify-email.tsx:33:49]
- 32 |         <Body className="bg-white font-sans">
- 33 |           <Preview>Verify your email address - M'ARTE</Preview>
-    :                                                 ^
- 34 |           <Container className="mx-auto mt-10 max-w-xl border border-solid border-gray-200 p-10">
-    `----
-
-  x react(no-unescaped-entities): `'` can be escaped with &apos; or &lsquo; or &#39; or &rsquo;
-    ,-[src/integrations/react-email/templates/verify-email.tsx:35:120]
- 34 |           <Container className="mx-auto mt-10 max-w-xl border border-solid border-gray-200 p-10">
- 35 |             <Heading className="text-brand mb-6 text-center font-serif text-2xl font-light tracking-widest uppercase">M'ARTE</Heading>
-    :                                                                                                                        ^
- 36 |             <Hr className="my-8 border-solid border-gray-200" />
-    `----
-
-  x react(no-unescaped-entities): `'` can be escaped with &apos; or &lsquo; or &#39; or &rsquo;
-    ,-[src/integrations/react-email/templates/verify-email.tsx:49:93]
- 48 |             <Hr className="my-8 border-solid border-gray-200" />
- 49 |             <Text className="text-center text-xs tracking-[0.2em] text-gray-400 uppercase">M'ARTE</Text>
-    :                                                                                             ^
- 50 |           </Container>
-    `----
-
-  x react-perf(jsx-no-new-object-as-prop): JSX attribute values should not contain objects created in the same scope.
-    ,-[src/integrations/react-email/templates/verify-email.tsx:21:17]
- 20 |           <Tailwind
- 21 | ,->         config={{
- 22 | |             theme: {
- 23 | |               extend: {
- 24 | |                 colors: {
- 25 | |                   brand: "#09090b"
- 26 | |                 }
- 27 | |               }
- 28 | |             }
- 29 | `->         }}
- 30 |           >
-    `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/integrations/react-email/templates/change-email.tsx:56:28]
- 55 |     
- 56 | ,-> ChangeEmail.PreviewProps = {
- 57 | |     name: "Jane Doe",
- 58 | |     verificationUrl: "https://martebizuteria.pl/en/auth/verify-email?token=12345",
- 59 | |     locale: "en"
- 60 | `-> } satisfies ChangeEmailProps;
-    `----
-  help: Replace `name: "Jane Doe",
-          verificationUrl: "https://martebizuteria.pl/en/auth/verify-email?token=12345",
-          locale: "en"` with `locale: "en",
-          name: "Jane Doe",
-          verificationUrl: "https://martebizuteria.pl/en/auth/verify-email?token=12345"`.
-
-  x react(no-unescaped-entities): `'` can be escaped with &apos; or &lsquo; or &#39; or &rsquo;
-    ,-[src/integrations/react-email/templates/change-email.tsx:34:120]
- 33 |           <Container className="mx-auto mt-10 max-w-xl border border-solid border-gray-200 p-10">
- 34 |             <Heading className="text-brand mb-6 text-center font-serif text-2xl font-light tracking-widest uppercase">M'ARTE</Heading>
-    :                                                                                                                        ^
- 35 |             <Hr className="my-8 border-solid border-gray-200" />
-    `----
-
-  x react(no-unescaped-entities): `'` can be escaped with &apos; or &lsquo; or &#39; or &rsquo;
-    ,-[src/integrations/react-email/templates/change-email.tsx:48:93]
- 47 |             <Hr className="my-8 border-solid border-gray-200" />
- 48 |             <Text className="text-center text-xs tracking-[0.2em] text-gray-400 uppercase">M'ARTE Atelier, Warsaw</Text>
-    :                                                                                             ^
- 49 |           </Container>
-    `----
-
-  x react-perf(jsx-no-new-object-as-prop): JSX attribute values should not contain objects created in the same scope.
-    ,-[src/integrations/react-email/templates/change-email.tsx:20:17]
- 19 |           <Tailwind
- 20 | ,->         config={{
- 21 | |             theme: {
- 22 | |               extend: {
- 23 | |                 colors: {
- 24 | |                   brand: "#09090b"
- 25 | |                 }
- 26 | |               }
- 27 | |             }
- 28 | `->         }}
- 29 |           >
-    `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x eslint(max-lines-per-function): The function `SignUpWithPasswordForm` has too many lines (198). Maximum allowed is 150.
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:26:8]
-  25 |     
-  26 | ,-> export function SignUpWithPasswordForm(): JSX.Element {
-  27 | |     const [showPassword, setShowPassword] = useState(false);
-  28 | |     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  29 | |   
-  30 | |     const navigate = useNavigate();
-  31 | |     const t = useTranslations();
-  32 | |   
-  33 | |     const formSchema = signUpWithPasswordSchema(t);
-  34 | |     const form = useForm<SignUpFormValues>({
-  35 | |       defaultValues: { confirmPassword: "", email: "", firstName: "", lastName: "", password: "" },
-  36 | |       mode: "onChange",
-  37 | |       resolver: zodResolver(formSchema)
-  38 | |     });
-  39 | |   
-  40 | |     const togglePassword = useCallback(() => {
-  41 | |       setShowPassword((prev) => !prev);
-  42 | |     }, []);
-  43 | |   
-  44 | |     const toggleConfirmPassword = useCallback(() => {
-  45 | |       setShowConfirmPassword((prev) => !prev);
-  46 | |     }, []);
-  47 | |   
-  48 | |     const onSubmit = useCallback(
-  49 | |       async (data: SignUpFormValues) => {
-  50 | |         await signUp.email({
-  51 | |           email: data.email,
-  52 | |           fetchOptions: {
-  53 | |             onError: (ctx) => {
-  54 | |               const errCode = String(ctx.error.code ?? "UNKNOWN_ERROR");
-  55 | |               toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
-  56 | |             },
-  57 | |             onSuccess: () => {
-  58 | |               toast.success(t("auth.signUpPage.success"));
-  59 | |               void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.ACCOUNT_OVERVIEW}` });
-  60 | |             }
-  61 | |           },
-  62 | |           name: `${data.firstName} ${data.lastName}`.trim(),
-  63 | |           password: data.password
-  64 | |         });
-  65 | |       },
-  66 | |       [navigate, t]
-  67 | |     );
-  68 | |   
-  69 | |     const handleFormSubmit = useCallback(
-  70 | |       (e: SyntheticEvent<HTMLFormElement>) => {
-  71 | |         e.preventDefault();
-  72 | |         void form.handleSubmit(onSubmit)(e);
-  73 | |       },
-  74 | |       [form, onSubmit]
-  75 | |     );
-  76 | |   
-  77 | |     const { isSubmitting } = form.formState;
-  78 | |   
-  79 | |     return (
-  80 | |       <form id="sign-up-form" onSubmit={handleFormSubmit} className="space-y-5">
-  81 | |         <FieldGroup className="flex flex-col gap-5">
-  82 | |           <div className="grid gap-5 sm:grid-cols-2">
-  83 | |             <Controller
-  84 | |               control={form.control}
-  85 | |               name="firstName"
-  86 | |               render={({ field, fieldState }) => (
-  87 | |                 <Field>
-  88 | |                   <FieldLabel htmlFor="sign-up-first-name" className={LABEL_CLASS}>
-  89 | |                     {t("components.custom.authForm.firstName")}
-  90 | |                   </FieldLabel>
-  91 | |                   <FieldContent>
-  92 | |                     <Input
-  93 | |                       {...field}
-  94 | |                       id="sign-up-first-name"
-  95 | |                       autoComplete="given-name"
-  96 | |                       aria-invalid={fieldState.invalid}
-  97 | |                       disabled={isSubmitting}
-  98 | |                     />
-  99 | |                     {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 100 | |                   </FieldContent>
- 101 | |                 </Field>
- 102 | |               )}
- 103 | |             />
- 104 | |   
- 105 | |             <Controller
- 106 | |               control={form.control}
- 107 | |               name="lastName"
- 108 | |               render={({ field, fieldState }) => (
- 109 | |                 <Field>
- 110 | |                   <FieldLabel htmlFor="sign-up-last-name" className={LABEL_CLASS}>
- 111 | |                     {t("components.custom.authForm.lastName")}
- 112 | |                   </FieldLabel>
- 113 | |                   <FieldContent>
- 114 | |                     <Input
- 115 | |                       {...field}
- 116 | |                       id="sign-up-last-name"
- 117 | |                       autoComplete="family-name"
- 118 | |                       aria-invalid={fieldState.invalid}
- 119 | |                       disabled={isSubmitting}
- 120 | |                     />
- 121 | |                     {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 122 | |                   </FieldContent>
- 123 | |                 </Field>
- 124 | |               )}
- 125 | |             />
- 126 | |           </div>
- 127 | |   
- 128 | |           <Controller
- 129 | |             control={form.control}
- 130 | |             name="email"
- 131 | |             render={({ field, fieldState }) => (
- 132 | |               <Field>
- 133 | |                 <FieldLabel htmlFor="sign-up-email" className={LABEL_CLASS}>
- 134 | |                   {t("components.custom.authForm.email")}
- 135 | |                 </FieldLabel>
- 136 | |                 <FieldContent>
- 137 | |                   <Input
- 138 | |                     {...field}
- 139 | |                     id="sign-up-email"
- 140 | |                     type="email"
- 141 | |                     autoComplete="email"
- 142 | |                     aria-invalid={fieldState.invalid}
- 143 | |                     disabled={isSubmitting}
- 144 | |                     placeholder="john@example.com"
- 145 | |                   />
- 146 | |                   {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 147 | |                 </FieldContent>
- 148 | |               </Field>
- 149 | |             )}
- 150 | |           />
- 151 | |   
- 152 | |           <Controller
- 153 | |             control={form.control}
- 154 | |             name="password"
- 155 | |             render={({ field, fieldState }) => (
- 156 | |               <Field>
- 157 | |                 <FieldLabel htmlFor="sign-up-password" className={LABEL_CLASS}>
- 158 | |                   {t("components.custom.authForm.password")}
- 159 | |                 </FieldLabel>
- 160 | |                 <FieldContent>
- 161 | |                   <InputGroup>
- 162 | |                     <InputGroupInput
- 163 | |                       {...field}
- 164 | |                       id="sign-up-password"
- 165 | |                       type={showPassword ? "text" : "password"}
- 166 | |                       autoComplete="new-password"
- 167 | |                       aria-invalid={fieldState.invalid}
- 168 | |                       disabled={isSubmitting}
- 169 | |                       placeholder="••••••••"
- 170 | |                     />
- 171 | |                     <InputGroupAddon align="inline-end">
- 172 | |                       <PasswordToggle show={showPassword} onToggle={togglePassword} />
- 173 | |                     </InputGroupAddon>
- 174 | |                   </InputGroup>
- 175 | |                   {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 176 | |                 </FieldContent>
- 177 | |               </Field>
- 178 | |             )}
- 179 | |           />
- 180 | |   
- 181 | |           <Controller
- 182 | |             control={form.control}
- 183 | |             name="confirmPassword"
- 184 | |             render={({ field, fieldState }) => (
- 185 | |               <Field>
- 186 | |                 <FieldLabel htmlFor="sign-up-confirm-password" className={LABEL_CLASS}>
- 187 | |                   {t("components.custom.authForm.password")}
- 188 | |                 </FieldLabel>
- 189 | |                 <FieldContent>
- 190 | |                   <InputGroup>
- 191 | |                     <InputGroupInput
- 192 | |                       {...field}
- 193 | |                       id="sign-up-confirm-password"
- 194 | |                       type={showConfirmPassword ? "text" : "password"}
- 195 | |                       autoComplete="new-password"
- 196 | |                       aria-invalid={fieldState.invalid}
- 197 | |                       disabled={isSubmitting}
- 198 | |                       placeholder="••••••••"
- 199 | |                     />
- 200 | |                     <InputGroupAddon align="inline-end">
- 201 | |                       <PasswordToggle show={showConfirmPassword} onToggle={toggleConfirmPassword} />
- 202 | |                     </InputGroupAddon>
- 203 | |                   </InputGroup>
- 204 | |                   {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 205 | |                 </FieldContent>
- 206 | |               </Field>
- 207 | |             )}
- 208 | |           />
- 209 | |         </FieldGroup>
- 210 | |   
- 211 | |         <label className="flex items-start gap-3 pt-1">
- 212 | |           <Checkbox name="terms" required className="mt-0.5" />
- 213 | |           <span className="text-xs leading-relaxed text-muted-foreground">{t("auth.signUpPage.terms")}</span>
- 214 | |         </label>
- 215 | |   
- 216 | |         <Button size="xl" type="submit" className="w-full gap-2.5 tracking-wide" disabled={isSubmitting}>
- 217 | |           {isSubmitting && <Loader2 aria-hidden className="size-4 animate-spin" />}
- 218 | |           {isSubmitting ? t("auth.signUpPage.submitting") : t("auth.signUpPage.submit")}
- 219 | |           {!isSubmitting && <ArrowRight className="size-4" />}
- 220 | |         </Button>
- 221 | |       </form>
- 222 | |     );
- 223 | `-> }
-     `----
-  help: Consider splitting it into smaller functions.
-
-  x react(jsx-max-depth): JSX nesting depth of 6 exceeds the configured maximum of 5
-    ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:92:19]
- 91 |                     <FieldContent>
- 92 | ,->                   <Input
- 93 | |                       {...field}
- 94 | |                       id="sign-up-first-name"
- 95 | |                       autoComplete="given-name"
- 96 | |                       aria-invalid={fieldState.invalid}
- 97 | |                       disabled={isSubmitting}
- 98 | `->                   />
- 99 |                       {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
-    `----
-
-  x react(jsx-max-depth): JSX nesting depth of 6 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:99:54]
-  98 |                   />
-  99 |                   {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
-     :                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 100 |                 </FieldContent>
-     `----
-
-  x react(jsx-max-depth): JSX nesting depth of 6 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:114:19]
- 113 |                     <FieldContent>
- 114 | ,->                   <Input
- 115 | |                       {...field}
- 116 | |                       id="sign-up-last-name"
- 117 | |                       autoComplete="family-name"
- 118 | |                       aria-invalid={fieldState.invalid}
- 119 | |                       disabled={isSubmitting}
- 120 | `->                   />
- 121 |                       {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
-     `----
-
-  x react(jsx-max-depth): JSX nesting depth of 6 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:121:54]
- 120 |                   />
- 121 |                   {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
-     :                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 122 |                 </FieldContent>
-     `----
-
-  x react(jsx-max-depth): JSX nesting depth of 6 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:162:19]
- 161 |                     <InputGroup>
- 162 | ,->                   <InputGroupInput
- 163 | |                       {...field}
- 164 | |                       id="sign-up-password"
- 165 | |                       type={showPassword ? "text" : "password"}
- 166 | |                       autoComplete="new-password"
- 167 | |                       aria-invalid={fieldState.invalid}
- 168 | |                       disabled={isSubmitting}
- 169 | |                       placeholder="••••••••"
- 170 | `->                   />
- 171 |                       <InputGroupAddon align="inline-end">
-     `----
-
-  x react(jsx-max-depth): JSX nesting depth of 7 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:172:21]
- 171 |                   <InputGroupAddon align="inline-end">
- 172 |                     <PasswordToggle show={showPassword} onToggle={togglePassword} />
-     :                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 173 |                   </InputGroupAddon>
-     `----
-
-  x react(jsx-max-depth): JSX nesting depth of 6 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:191:19]
- 190 |                     <InputGroup>
- 191 | ,->                   <InputGroupInput
- 192 | |                       {...field}
- 193 | |                       id="sign-up-confirm-password"
- 194 | |                       type={showConfirmPassword ? "text" : "password"}
- 195 | |                       autoComplete="new-password"
- 196 | |                       aria-invalid={fieldState.invalid}
- 197 | |                       disabled={isSubmitting}
- 198 | |                       placeholder="••••••••"
- 199 | `->                   />
- 200 |                       <InputGroupAddon align="inline-end">
-     `----
-
-  x react(jsx-max-depth): JSX nesting depth of 7 exceeds the configured maximum of 5
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:201:21]
- 200 |                   <InputGroupAddon align="inline-end">
- 201 |                     <PasswordToggle show={showConfirmPassword} onToggle={toggleConfirmPassword} />
-     :                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 202 |                   </InputGroupAddon>
-     `----
-
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:86:21]
-  85 |                 name="firstName"
-  86 | ,->             render={({ field, fieldState }) => (
-  87 | |                 <Field>
-  88 | |                   <FieldLabel htmlFor="sign-up-first-name" className={LABEL_CLASS}>
-  89 | |                     {t("components.custom.authForm.firstName")}
-  90 | |                   </FieldLabel>
-  91 | |                   <FieldContent>
-  92 | |                     <Input
-  93 | |                       {...field}
-  94 | |                       id="sign-up-first-name"
-  95 | |                       autoComplete="given-name"
-  96 | |                       aria-invalid={fieldState.invalid}
-  97 | |                       disabled={isSubmitting}
-  98 | |                     />
-  99 | |                     {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 100 | |                   </FieldContent>
- 101 | |                 </Field>
- 102 | `->             )}
- 103 |               />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:108:21]
- 107 |                 name="lastName"
- 108 | ,->             render={({ field, fieldState }) => (
- 109 | |                 <Field>
- 110 | |                   <FieldLabel htmlFor="sign-up-last-name" className={LABEL_CLASS}>
- 111 | |                     {t("components.custom.authForm.lastName")}
- 112 | |                   </FieldLabel>
- 113 | |                   <FieldContent>
- 114 | |                     <Input
- 115 | |                       {...field}
- 116 | |                       id="sign-up-last-name"
- 117 | |                       autoComplete="family-name"
- 118 | |                       aria-invalid={fieldState.invalid}
- 119 | |                       disabled={isSubmitting}
- 120 | |                     />
- 121 | |                     {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 122 | |                   </FieldContent>
- 123 | |                 </Field>
- 124 | `->             )}
- 125 |               />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:131:19]
- 130 |               name="email"
- 131 | ,->           render={({ field, fieldState }) => (
- 132 | |               <Field>
- 133 | |                 <FieldLabel htmlFor="sign-up-email" className={LABEL_CLASS}>
- 134 | |                   {t("components.custom.authForm.email")}
- 135 | |                 </FieldLabel>
- 136 | |                 <FieldContent>
- 137 | |                   <Input
- 138 | |                     {...field}
- 139 | |                     id="sign-up-email"
- 140 | |                     type="email"
- 141 | |                     autoComplete="email"
- 142 | |                     aria-invalid={fieldState.invalid}
- 143 | |                     disabled={isSubmitting}
- 144 | |                     placeholder="john@example.com"
- 145 | |                   />
- 146 | |                   {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 147 | |                 </FieldContent>
- 148 | |               </Field>
- 149 | `->           )}
- 150 |             />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:155:19]
- 154 |               name="password"
- 155 | ,->           render={({ field, fieldState }) => (
- 156 | |               <Field>
- 157 | |                 <FieldLabel htmlFor="sign-up-password" className={LABEL_CLASS}>
- 158 | |                   {t("components.custom.authForm.password")}
- 159 | |                 </FieldLabel>
- 160 | |                 <FieldContent>
- 161 | |                   <InputGroup>
- 162 | |                     <InputGroupInput
- 163 | |                       {...field}
- 164 | |                       id="sign-up-password"
- 165 | |                       type={showPassword ? "text" : "password"}
- 166 | |                       autoComplete="new-password"
- 167 | |                       aria-invalid={fieldState.invalid}
- 168 | |                       disabled={isSubmitting}
- 169 | |                       placeholder="••••••••"
- 170 | |                     />
- 171 | |                     <InputGroupAddon align="inline-end">
- 172 | |                       <PasswordToggle show={showPassword} onToggle={togglePassword} />
- 173 | |                     </InputGroupAddon>
- 174 | |                   </InputGroup>
- 175 | |                   {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 176 | |                 </FieldContent>
- 177 | |               </Field>
- 178 | `->           )}
- 179 |             />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x react-perf(jsx-no-new-function-as-prop): JSX attribute values should not contain functions created in the same scope.
-     ,-[src/components/custom/pages/auth/sign-up-with-password-form.tsx:184:19]
- 183 |               name="confirmPassword"
- 184 | ,->           render={({ field, fieldState }) => (
- 185 | |               <Field>
- 186 | |                 <FieldLabel htmlFor="sign-up-confirm-password" className={LABEL_CLASS}>
- 187 | |                   {t("components.custom.authForm.password")}
- 188 | |                 </FieldLabel>
- 189 | |                 <FieldContent>
- 190 | |                   <InputGroup>
- 191 | |                     <InputGroupInput
- 192 | |                       {...field}
- 193 | |                       id="sign-up-confirm-password"
- 194 | |                       type={showConfirmPassword ? "text" : "password"}
- 195 | |                       autoComplete="new-password"
- 196 | |                       aria-invalid={fieldState.invalid}
- 197 | |                       disabled={isSubmitting}
- 198 | |                       placeholder="••••••••"
- 199 | |                     />
- 200 | |                     <InputGroupAddon align="inline-end">
- 201 | |                       <PasswordToggle show={showConfirmPassword} onToggle={toggleConfirmPassword} />
- 202 | |                     </InputGroupAddon>
- 203 | |                   </InputGroup>
- 204 | |                   {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
- 205 | |                 </FieldContent>
- 206 | |               </Field>
- 207 | `->           )}
- 208 |             />
-     `----
-  help: simplify props or memoize props in the parent component (https://react.dev/reference/react/memo#my-component-rerenders-when-a-prop-is-an-object-or-array).
-
-  x eslint(sort-keys): Object keys should be sorted
-    ,-[src/routes/{-$locale}.auth.reset-password.tsx:26:73]
- 25 |     
- 26 | ,-> export const Route = createFileRoute("/{-$locale}/auth/reset-password")({
- 27 | |     component: ResetPasswordPage,
- 28 | |     validateSearch: resetPasswordSearchSchema,
- 29 | |     head: ({ loaderData }: Readonly<{ loaderData?: Readonly<ResetPasswordPageMeta> }>) => ({
- 30 | |       meta: [
- 31 | |         { title: loaderData?.title ?? CONSTANTS.APP_NAME },
- 32 | |         { content: loaderData?.description ?? "", name: "description" },
- 33 | |         { content: loaderData?.title ?? CONSTANTS.APP_NAME, property: "og:title" },
- 34 | |         { content: loaderData?.description ?? "", property: "og:description" }
- 35 | |       ]
- 36 | |     }),
- 37 | |     loader: ({ context, params }) => {
- 38 | |       const { locale: rawLocale } = params;
- 39 | |       let locale: Locale = CONSTANTS.DEFAULT_LOCALE;
- 40 | |   
- 41 | |       if (typeof rawLocale === "string" && isValidLocale(rawLocale)) {
- 42 | |         locale = rawLocale;
- 43 | |       }
- 44 | |   
- 45 | |       const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
- 46 | |   
- 47 | |       return {
- 48 | |         description: messages?.auth.resetPasswordPage.meta.description ?? "",
- 49 | |         title: messages?.auth.resetPasswordPage.meta.title ?? CONSTANTS.APP_NAME
- 50 | |       } satisfies ResetPasswordPageMeta;
- 51 | |     }
- 52 | `-> });
- 53 |     
-    `----
-  help: Replace `component: ResetPasswordPage,
-          validateSearch: resetPasswordSearchSchema,
-          head: ({ loaderData }: Readonly<{ loaderData?: Readonly<ResetPasswordPageMeta> }>) => ({
-            meta: [
-              { title: loaderData?.title ?? CONSTANTS.APP_NAME },
-              { content: loa...` with `component: ResetPasswordPage,
-          head: ({ loaderData }: Readonly<{ loaderData?: Readonly<ResetPasswordPageMeta> }>) => ({
-            meta: [
-              { title: loaderData?.title ?? CONSTANTS.APP_NAME },
-              { content: loaderData?.description ?? "", name: "descriptio...`.
-
-Found 0 warnings and 48 errors.
-Finished in 2.3s on 387 files with 545 rules using 10 threads.
-error: script "lint" exited with code 1
+Found 0 warnings and 28 errors.
+Finished in 4.1s on 434 files with 545 rules using 10 threads.

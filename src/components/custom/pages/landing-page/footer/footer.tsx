@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { type JSX, type ReactNode, type SVGProps } from "react";
 
 import { useTranslations } from "use-intl";
 
@@ -6,7 +6,7 @@ import { CONSTANTS } from "~/src/constants";
 
 import { LocalizedLink, type LocalizedTo } from "~/src/components/custom/localized-link";
 
-const FooterLink = ({ to, children }: { to: LocalizedTo; children: React.ReactNode }) => (
+const FooterLink = ({ to, children }: { to: LocalizedTo; children: ReactNode }) => (
   <li>
     <LocalizedLink to={to} className="text-primary-foreground/80 transition-colors hover:text-primary-foreground">
       {children}
@@ -14,7 +14,7 @@ const FooterLink = ({ to, children }: { to: LocalizedTo; children: React.ReactNo
   </li>
 );
 
-const FacebookIcon = (props: React.SVGProps<SVGSVGElement> & { title: string }) => (
+const FacebookIcon = (props: SVGProps<SVGSVGElement> & { title: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -32,7 +32,7 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement> & { title: string }) 
   </svg>
 );
 
-const InstagramIcon = (props: React.SVGProps<SVGSVGElement> & { title: string }) => (
+const InstagramIcon = (props: SVGProps<SVGSVGElement> & { title: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -52,7 +52,7 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement> & { title: string })
   </svg>
 );
 
-const TwitterIcon = (props: React.SVGProps<SVGSVGElement> & { title: string }) => (
+const TwitterIcon = (props: SVGProps<SVGSVGElement> & { title: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"

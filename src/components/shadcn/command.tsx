@@ -1,5 +1,3 @@
-"";
-
 import type { ComponentProps, JSX, ReactNode } from "react";
 
 import { Command as CommandPrimitive } from "cmdk";

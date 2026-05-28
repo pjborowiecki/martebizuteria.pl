@@ -111,7 +111,7 @@ export default {
 ```typescript
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const cookies = request.headers.get("Cookie") || "";
+    const cookies = request.headers.get("Cookie") ||
     const variant = cookies.includes("variant=b") ? "b" : "a";
     const url = new URL(request.url);
     if (url.pathname === "/") {

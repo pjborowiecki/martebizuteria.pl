@@ -1,6 +1,4 @@
-"use client";
-
-import { type JSX, useCallback, useRef, useState } from "react";
+import { type ChangeEvent, type Dispatch, type JSX, type SetStateAction, useCallback, useRef, useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Pencil, Save, X } from "lucide-react";
@@ -46,13 +44,13 @@ function PersonalInfoField({
   onCancel: (key: FieldKey) => void;
   onSave: () => void;
   setEditing: (key: FieldKey | undefined) => void;
-  setValues: React.Dispatch<React.SetStateAction<typeof PROFILE>>;
+  setValues: Dispatch<SetStateAction<typeof PROFILE>>;
   values: typeof PROFILE;
 }>): JSX.Element {
   const isEditing = editing === field.key;
 
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       setValues((v) => ({ ...v, [field.key]: e.target.value }));
     },
     [field.key, setValues]
@@ -284,7 +282,7 @@ function CloseAccountDialog({
   const t = useTranslations("account.profile");
 
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       setCloseConfirmation(e.target.value);
     },
     [setCloseConfirmation]

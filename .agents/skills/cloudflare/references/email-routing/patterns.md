@@ -103,7 +103,7 @@ export default {
 ```typescript
 export default {
   async email(message, env, ctx) {
-    const subject = message.headers.get("subject")?.toLowerCase() || "";
+    const subject = message.headers.get("subject")?.toLowerCase() ||
 
     if (subject.includes("[urgent]")) {
       await message.forward("oncall@corp.com");
