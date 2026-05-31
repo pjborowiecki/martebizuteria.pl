@@ -4,7 +4,12 @@ import { STATIC_PAGES } from "~/src/constants/_constants/pages";
 import { ACTIONS, RESOURCES, ROLES } from "~/src/constants/_constants/permissions";
 import { ROUTES } from "~/src/constants/_constants/routes";
 import { SOCIALS } from "~/src/constants/_constants/socials";
-import { CHECKOUT_PAYMENT_METHOD_ORDER, STRIPE_CURRENCY, STRIPE_WEBHOOK_EVENTS } from "~/src/constants/_constants/stripe";
+import {
+  CHECKOUT_PAYMENT_METHOD_ORDER,
+  STRIPE_CURRENCY,
+  STRIPE_API_VERSION,
+  STRIPE_WEBHOOK_EVENTS
+} from "~/src/constants/_constants/stripe";
 import { DEFAULT_TIMEZONE, TIME_ZONES } from "~/src/constants/_constants/timezone";
 
 export const CONSTANTS = {
@@ -25,6 +30,7 @@ export const CONSTANTS = {
   ROUTES,
   SOCIALS,
   STATIC_PAGES,
+  STRIPE_API_VERSION,
   STRIPE_CURRENCY,
   STRIPE_WEBHOOK_EVENTS,
   TIME_ZONES

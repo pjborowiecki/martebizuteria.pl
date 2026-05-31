@@ -37,6 +37,7 @@ export function OrdersToolbar({ activeTab, onQueryChange, onTabChange, query }: 
           strokeWidth={1.5}
         />
         <input
+          aria-label={t("orders.searchPlaceholder")}
           className="h-9 w-64 rounded-lg border border-border/50 bg-background pr-4 pl-10 text-sm text-foreground transition-colors placeholder:text-muted-foreground/40 focus:border-border focus:outline-none"
           onChange={handleSearchChange}
           placeholder={t("orders.searchPlaceholder")}

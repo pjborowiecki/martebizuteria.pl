@@ -28,6 +28,7 @@ export function CategoriesTable({ categories }: Readonly<{ categories: readonly 
             />
             <input
               type="text"
+              aria-label={t("categories.searchPlaceholder")}
               placeholder={t("categories.searchPlaceholder")}
               className="h-9 w-72 rounded-lg border border-border/50 bg-background pr-4 pl-10 text-sm transition-colors placeholder:text-muted-foreground/40 focus:border-border focus:outline-none"
             />
@@ -53,7 +54,7 @@ function CategoriesTableHeader(): JSX.Element {
     <TableHeader>
       <TableRow className="hover:bg-transparent">
         <TableHead className="w-12 pl-6">
-          <input type="checkbox" className="size-4 rounded border-border accent-foreground" />
+          <input type="checkbox" aria-label={t("a11y.selectAll")} className="size-4 rounded border-border accent-foreground" />
         </TableHead>
         <TableHead className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
           {t("categories.columns.name")}
@@ -110,7 +111,7 @@ function CategoryRow({ category }: Readonly<{ category: CategoryItem }>): JSX.El
   return (
     <TableRow className="group cursor-pointer" onClick={handleRowClick}>
       <TableCell className="pl-6" onClick={handleCheckboxClick}>
-        <input type="checkbox" className="size-4 rounded border-border accent-foreground" />
+        <input type="checkbox" aria-label={t("a11y.selectRow")} className="size-4 rounded border-border accent-foreground" />
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-3">

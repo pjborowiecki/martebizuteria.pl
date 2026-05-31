@@ -17,6 +17,7 @@ export function CatalogToolbar(): JSX.Element {
         />
         <input
           type="text"
+          aria-label={t("catalog.searchPlaceholder")}
           placeholder={t("catalog.searchPlaceholder")}
           className="h-9 w-72 rounded-lg border border-border/50 bg-background pr-4 pl-10 text-sm text-foreground transition-colors placeholder:text-muted-foreground/40 focus:border-border focus:outline-none"
         />

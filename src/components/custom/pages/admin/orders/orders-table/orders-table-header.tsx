@@ -13,7 +13,7 @@ export function OrdersTableHeader(): JSX.Element {
     <TableHeader>
       <TableRow className="hover:bg-transparent">
         <TableHead className={`w-12 pl-6 ${HEADER_CLASS}`}>
-          <input className="size-4 rounded border-border accent-foreground" type="checkbox" />
+          <input aria-label={t("a11y.selectAll")} className="size-4 rounded border-border accent-foreground" type="checkbox" />
         </TableHead>
         <TableHead className={HEADER_CLASS}>{t("orders.columns.order")}</TableHead>
         <TableHead className={HEADER_CLASS}>{t("orders.columns.customer")}</TableHead>

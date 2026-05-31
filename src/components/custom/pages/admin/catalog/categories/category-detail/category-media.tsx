@@ -54,6 +54,7 @@ function ImagePlaceholder({ onAddImage }: Readonly<{ onAddImage: () => void }>):
     <div className="flex flex-col items-start gap-4 sm:flex-row">
       <button
         type="button"
+        aria-label={t("categories.form.uploadImage")}
         className="flex w-full max-w-[280px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/30 transition-all hover:border-foreground/20 hover:bg-muted/50"
         onClick={onAddImage}
       >

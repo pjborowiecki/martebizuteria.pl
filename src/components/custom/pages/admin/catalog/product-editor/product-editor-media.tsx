@@ -28,6 +28,7 @@ function UploadButton(): JSX.Element {
   return (
     <button
       type="button"
+      aria-label={t("media.dragDrop")}
       className="flex w-full max-w-[280px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/30 transition-all hover:border-foreground/20 hover:bg-muted/50"
     >
       <div className="flex flex-col items-center gap-2 py-10">

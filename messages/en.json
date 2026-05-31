@@ -288,7 +288,8 @@
       "titleLine2": "what is unique.",
       "description": "Some stories deserve their own shape. From the first inspiration to manual finishing – we create jewelry that exists in only one copy. Yours.",
       "ctaPrimary": "View collections",
-      "ctaSecondary": "Explore all products"
+      "ctaSecondary": "Explore all products",
+      "videoLabel": "M'Arte atelier ambience video"
     },
     "archiveSection": {
       "eyebrow": "M'ARTE Guide",
@@ -923,6 +924,10 @@
   "admin": {
     "brand": "M'ARTE",
     "subtitle": "Admin panel",
+    "a11y": {
+      "selectAll": "Select all rows",
+      "selectRow": "Select row"
+    },
     "customerDetail": {
       "breadcrumb": {
         "dashboard": "Dashboard",

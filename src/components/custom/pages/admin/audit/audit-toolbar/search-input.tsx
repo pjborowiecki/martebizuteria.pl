@@ -25,6 +25,7 @@ export function SearchInput({ onChange, value }: SearchInputProps): JSX.Element 
         strokeWidth={1.5}
       />
       <input
+        aria-label={t("audit.searchPlaceholder")}
         className="h-7 w-48 rounded-md border border-border/50 bg-background pr-3 pl-8 text-xs transition-colors placeholder:text-muted-foreground/40 focus:border-border focus:outline-none"
         onChange={handleChange}
         placeholder={t("audit.searchPlaceholder")}

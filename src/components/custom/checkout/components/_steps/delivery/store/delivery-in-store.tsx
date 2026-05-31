@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
+
 export function DeliveryInStore(): JSX.Element {
   const t = useTranslations("checkoutPage.checkoutForm");
 

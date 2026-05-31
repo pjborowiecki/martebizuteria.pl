@@ -271,6 +271,7 @@ export function SearchOverlay(): JSX.Element {
           <input
             ref={inputRef}
             type="text"
+            aria-label={t("searchOverlay.placeholder")}
             value={query}
             onChange={handleQueryChange}
             onKeyDown={handleKeyDown}
