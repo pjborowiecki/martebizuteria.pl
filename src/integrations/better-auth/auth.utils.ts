@@ -1,32 +1,11 @@
-import { getRequest } from "@tanstack/react-start/server";
+import { z } from "zod/v4";
 
-const VERCEL_REQUEST_CONTEXT = Symbol.for("@vercel/request-context");
+import { AUTH_ERRORS } from "~/src/integrations/better-auth/auth.errors";
 
-interface ExecutionContext {
-  waitUntil?: (promise: Promise<unknown>) => void;
-}
+const authErrorSchema = z.object({ code: z.string() });
 
-type VercelGlobal = typeof globalThis & {
-  [VERCEL_REQUEST_CONTEXT]?: { get?: () => ExecutionContext };
-};
-
-function isThenable(value: unknown): value is Promise<unknown> {
-  return typeof value === "object" && value !== null && "then" in value && typeof (value as Record<string, unknown>).then === "function";
-}
-
-export function scheduleBackgroundWork(promise: Promise<unknown>): void {
-  if (!isThenable(promise)) {
-    throw new TypeError(`Expected a Promise, got ${typeof promise}`);
-  }
-
-  const req = getRequest() as Request & ExecutionContext;
-  if (req.waitUntil) {
-    req.waitUntil(promise);
-    return;
-  }
-
-  const vercelGlobal = globalThis as VercelGlobal;
-  const vercelCtx = vercelGlobal[VERCEL_REQUEST_CONTEXT]?.get?.();
-
-  vercelCtx?.waitUntil?.(promise);
+export function getAuthErrorMessage(t: (key: string) => string, error: unknown): string {
+  const { data } = authErrorSchema.safeParse(error);
+  const key = AUTH_ERRORS[data?.code ?? ""] ?? AUTH_ERRORS.UNKNOWN_ERROR;
+  return t(`auth.errors.${key}`);
 }

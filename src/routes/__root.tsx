@@ -19,6 +19,8 @@ import { buildLocalizedUrl, extractLocaleFromPath, getBaseURL } from "~/src/lib/
 
 import { Toaster } from "~/src/components/shadcn/sonner";
 
+import { VerificationToast } from "~/src/components/custom/pages/auth/verification-toast";
+
 import "~/src/styles/globals.css";
 
 interface RouterContext {
@@ -97,6 +99,7 @@ function RootComponent() {
         <TooltipProvider>
           <RootDocument locale={locale}>
             <Outlet />
+            <VerificationToast />
             <Toaster />
             <Scripts />
           </RootDocument>

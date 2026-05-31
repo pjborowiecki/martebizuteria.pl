@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { auth } from "~/src/integrations/better-auth/auth.server";
+import { auth } from "~/src/integrations/better-auth/auth._server";
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors";
 import { stripe } from "~/src/integrations/stripe/stripe.server";
 

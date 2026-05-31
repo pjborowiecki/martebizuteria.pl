@@ -7,8 +7,8 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { signOut } from "~/src/integrations/better-auth/auth.client";
-import { AUTH_ERRORS } from "~/src/integrations/better-auth/auth.errors";
+import { signOut } from "~/src/integrations/better-auth/auth._client";
+import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.utils";
 
 import { Button } from "~/src/components/shadcn/button";
 
@@ -23,12 +23,15 @@ export function SignOutButton(): JSX.Element {
       await signOut({
         fetchOptions: {
           onError: (ctx) => {
-            const errCode = String(ctx.error.code ?? "UNKNOWN_ERROR");
-            toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
+            toast.error(t("auth.toast.errorTitle"), {
+              description: getAuthErrorMessage(t, ctx.error)
+            });
           },
           onSuccess: () => {
-            toast.success(t("auth.signOut.success"));
-            void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.AUTH_SIGN_IN}` });
+            toast.success(t("auth.toast.signOutTitle"), {
+              description: t("auth.toast.signOutDescription")
+            });
+            void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.HOME}` });
           }
         }
       });

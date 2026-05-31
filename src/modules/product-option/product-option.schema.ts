@@ -1,5 +1,7 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
 import { productOptionValue } from "~/src/modules/product-option-value/product-option-value.schema";
 import { product } from "~/src/modules/product/product.schema";
@@ -7,10 +9,6 @@ import { product } from "~/src/modules/product/product.schema";
 export const productOption = sqliteTable(
   "product_option",
   {
-    createdAt: text("created_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .notNull(),
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
@@ -18,11 +16,7 @@ export const productOption = sqliteTable(
       .notNull()
       .references(() => product.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
-    updatedAt: text("updated_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .$onUpdateFn(() => new Date().toISOString())
-      .notNull()
+    ...timestamps()
   },
   (table) => [index("product_option_productId_idx").on(table.productId)]
 );

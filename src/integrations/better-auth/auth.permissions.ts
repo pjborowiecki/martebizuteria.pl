@@ -2,6 +2,7 @@ import { createAccessControl } from "better-auth/plugins/access";
 import { defaultStatements } from "better-auth/plugins/admin/access";
 
 import { CONSTANTS } from "~/src/constants";
+import type { Role } from "~/src/constants/types";
 
 export const PERMISSIONS_STATEMENTS = {
   ...defaultStatements,
@@ -17,6 +18,10 @@ export const PERMISSIONS_STATEMENTS = {
 } as const;
 
 export const ac = createAccessControl(PERMISSIONS_STATEMENTS);
+
+export function hasAdminAccess(role: string | null | undefined): role is Role {
+  return typeof role === "string" && (CONSTANTS.ADMIN_PANEL_ROLES as readonly string[]).includes(role);
+}
 
 const ALL_USER_PERMISSIONS = [
   "create",
@@ -47,27 +52,7 @@ export const ROLES_CONFIG = {
     session: [...ALL_SESSION_PERMISSIONS],
     user: [...ALL_USER_PERMISSIONS]
   }),
-  [CONSTANTS.ROLES.MANAGER]: ac.newRole({
-    [CONSTANTS.RESOURCES.ORDER]: [CONSTANTS.ACTIONS.READ, CONSTANTS.ACTIONS.UPDATE],
-    [CONSTANTS.RESOURCES.PRODUCT]: [
-      CONSTANTS.ACTIONS.CREATE,
-      CONSTANTS.ACTIONS.READ,
-      CONSTANTS.ACTIONS.UPDATE,
-      CONSTANTS.ACTIONS.DELETE,
-      CONSTANTS.ACTIONS.PUBLISH
-    ],
-    [CONSTANTS.RESOURCES.SETTINGS]: [],
-    session: [],
-    user: ["list", "get"]
-  }),
-  [CONSTANTS.ROLES.SUPPORT]: ac.newRole({
-    [CONSTANTS.RESOURCES.ORDER]: [CONSTANTS.ACTIONS.READ, CONSTANTS.ACTIONS.REFUND],
-    [CONSTANTS.RESOURCES.PRODUCT]: [CONSTANTS.ACTIONS.READ],
-    [CONSTANTS.RESOURCES.SETTINGS]: [],
-    session: [],
-    user: ["list", "get"]
-  }),
-  [CONSTANTS.ROLES.USER]: ac.newRole({
+  [CONSTANTS.ROLES.CUSTOMER]: ac.newRole({
     [CONSTANTS.RESOURCES.ORDER]: [],
     [CONSTANTS.RESOURCES.PRODUCT]: [],
     [CONSTANTS.RESOURCES.SETTINGS]: [],

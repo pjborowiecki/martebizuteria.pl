@@ -3,7 +3,7 @@ import { type JSX, type MouseEvent, useCallback, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "use-intl";
 
-import { useSession } from "~/src/integrations/better-auth/auth.client";
+import { useSession } from "~/src/integrations/better-auth/auth._client";
 
 import { Button } from "~/src/components/shadcn/button";
 import { FieldGroup } from "~/src/components/shadcn/field";

@@ -1,8 +1,15 @@
 import { type ChangeEvent, type Dispatch, type JSX, type SetStateAction, useCallback, useRef, useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Pencil, Save, X } from "lucide-react";
+import { toast } from "sonner";
 import { useTranslations } from "use-intl";
+
+import { CONSTANTS } from "~/src/constants";
+
+import { authClient } from "~/src/integrations/better-auth/auth._client";
+import { useTimeZone } from "~/src/integrations/use-intl/i18n.timezone";
 
 import { cn } from "~/src/lib/utils";
 
@@ -168,6 +175,58 @@ const CURRENCY_OPTIONS = [
 const PREF_SELECT_TRIGGER_CLASS =
   "mt-1.5 flex h-auto w-full items-center justify-between rounded-none border-0 border-b border-border bg-transparent p-0 pb-2 text-[14px] shadow-none transition-colors outline-none hover:bg-transparent focus:border-foreground focus:ring-0 focus-visible:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-foreground";
 
+const TIMEZONE_OPTIONS: readonly string[] =
+  typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : CONSTANTS.TIME_ZONES;
+
+function TimezoneField(): JSX.Element {
+  const t = useTranslations("account.profile");
+  const current = useTimeZone();
+
+  const mutation = useMutation({
+    mutationFn: async (timezone: string) => {
+      const { error } = await authClient.updateUser({ timezone });
+      if (error) {
+        throw new Error(error.message ?? "Failed to update timezone");
+      }
+    },
+    onError: () => {
+      toast.error(t("timezoneError"));
+    },
+    onSuccess: () => {
+      toast.success(t("timezoneSaved"));
+    }
+  });
+
+  const { mutate } = mutation;
+
+  const handleChange = useCallback(
+    (val: string | null) => {
+      if (val !== null && val !== current) {
+        mutate(val);
+      }
+    },
+    [current, mutate]
+  );
+
+  return (
+    <div className="py-4">
+      <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{t("timezone")}</Label>
+      <Select value={current} onValueChange={handleChange} disabled={mutation.isPending}>
+        <SelectTrigger className={PREF_SELECT_TRIGGER_CLASS}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {TIMEZONE_OPTIONS.map((tz) => (
+            <SelectItem key={tz} value={tz}>
+              {tz}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function PreferencesSection(): JSX.Element {
   const t = useTranslations("account.profile");
   const [values, setValues] = useState(PROFILE);
@@ -225,6 +284,8 @@ function PreferencesSection(): JSX.Element {
             </SelectContent>
           </Select>
         </div>
+
+        <TimezoneField />
 
         <div className="flex items-center justify-between py-4">
           <div>

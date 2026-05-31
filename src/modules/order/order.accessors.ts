@@ -104,7 +104,7 @@ async function refundOrder({ fullyRefunded, refundedAmount, restock, transaction
   await db.batch([
     db
       .update(payment)
-      .set({ refundedAmount, refundedAt: new Date().toISOString(), status: fullyRefunded ? "refunded" : "succeeded" })
+      .set({ refundedAmount, refundedAt: new Date(), status: fullyRefunded ? "refunded" : "succeeded" })
       .where(eq(payment.id, settled.paymentId)),
     ...(fullyRefunded && settled.orderId !== undefined
       ? [db.update(order).set({ status: "refunded" }).where(eq(order.id, settled.orderId))]

@@ -26,7 +26,7 @@ export const ROUTES = {
   ADMIN_PRODUCTS: "/admin/catalog/products",
   ADMIN_SETTINGS: "/admin/settings",
   API_AUTH: {
-    FORGET_PASSWORD: "/forget-password",
+    REQUEST_PASSWORD_RESET: "/request-password-reset",
     RESET_PASSWORD: "/reset-password",
     SIGN_IN_EMAIL: "/sign-in/email",
     SIGN_UP_EMAIL: "/sign-up/email"

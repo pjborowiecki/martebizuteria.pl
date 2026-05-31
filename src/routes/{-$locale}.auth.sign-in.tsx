@@ -55,19 +55,21 @@ function SignInPage(): JSX.Element {
     <>
       <AuthHeader title={t("title")} subtitle={t("subtitle")} />
 
-      <SignInWithPasswordForm />
-      <AuthDivider />
-      <SocialProviders />
+      <div className="space-y-6">
+        <SignInWithPasswordForm />
+        <AuthDivider />
+        <SocialProviders />
 
-      <p className="text-center text-sm text-muted-foreground">
-        {t("noAccount")}{" "}
-        <LocalizedLink
-          to={CONSTANTS.ROUTES.AUTH_SIGN_UP}
-          className="text-foreground underline underline-offset-4 transition-colors hover:text-foreground/60"
-        >
-          {t("createAccount")}
-        </LocalizedLink>
-      </p>
+        <p className="text-center text-sm text-muted-foreground">
+          {t("noAccount")}{" "}
+          <LocalizedLink
+            to={CONSTANTS.ROUTES.AUTH_SIGN_UP}
+            className="text-foreground underline underline-offset-4 transition-colors hover:text-foreground/60"
+          >
+            {t("createAccount")}
+          </LocalizedLink>
+        </p>
+      </div>
     </>
   );
 }

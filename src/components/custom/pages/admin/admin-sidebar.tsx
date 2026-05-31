@@ -22,7 +22,7 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { signOut } from "~/src/integrations/better-auth/auth.client";
+import { signOut } from "~/src/integrations/better-auth/auth._client";
 
 import { cn } from "~/src/lib/utils";
 

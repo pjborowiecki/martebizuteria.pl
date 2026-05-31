@@ -5,7 +5,7 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { signOut } from "~/src/integrations/better-auth/auth.client";
+import { signOut } from "~/src/integrations/better-auth/auth._client";
 
 import { Button } from "~/src/components/shadcn/button";
 import { Separator } from "~/src/components/shadcn/separator";
@@ -40,7 +40,7 @@ export function AccountSidebar(): JSX.Element {
     await signOut({
       fetchOptions: {
         onSuccess: () => {
-          globalThis.location.href = CONSTANTS.ROUTES.AUTH_SIGN_IN;
+          globalThis.location.href = CONSTANTS.ROUTES.HOME;
         }
       }
     });

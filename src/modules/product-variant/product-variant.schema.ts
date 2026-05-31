@@ -1,5 +1,7 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
 import { inventory } from "~/src/modules/inventory/inventory.schema";
 import { product } from "~/src/modules/product/product.schema";
@@ -11,10 +13,6 @@ export const productVariant = sqliteTable(
   {
     barcode: text("barcode", { length: 255 }),
     compareAtPrice: integer("compare_at_price"),
-    createdAt: text("created_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .notNull(),
     id: text("id").primaryKey(),
     manageInventory: integer("manage_inventory", { mode: "boolean" }).default(true).notNull(),
     metadata: text("metadata"),
@@ -24,12 +22,8 @@ export const productVariant = sqliteTable(
       .references(() => product.id, { onDelete: "cascade" }),
     sku: text("sku", { length: 255 }).unique(),
     title: text("title", { length: 512 }).notNull(),
-    updatedAt: text("updated_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .$onUpdateFn(() => new Date().toISOString())
-      .notNull(),
-    weight: real("weight")
+    weight: real("weight"),
+    ...timestamps()
   },
   (table) => [index("product_variant_productId_idx").on(table.productId), index("product_variant_sku_idx").on(table.sku)]
 );

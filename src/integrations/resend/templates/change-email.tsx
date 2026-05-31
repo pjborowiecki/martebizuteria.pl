@@ -4,8 +4,6 @@ import type { Locale } from "~/src/constants/types";
 
 import { getMessagesForLocale } from "~/src/integrations/use-intl/i18n.queries";
 
-export const getChangeEmailSubject = (locale: Locale) => getMessagesForLocale(locale).auth.email.changeEmail.subject;
-
 interface ChangeEmailProps {
   name?: string;
   verificationUrl: string;

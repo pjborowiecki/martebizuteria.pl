@@ -1,9 +1,11 @@
 export const ROLES = {
   ADMIN: "admin",
-  MANAGER: "manager",
-  SUPPORT: "support",
-  USER: "user"
+  CUSTOMER: "customer"
 } as const;
+
+export const DEFAULT_ROLE = ROLES.CUSTOMER;
+
+export const ADMIN_PANEL_ROLES = [ROLES.ADMIN] as const;
 
 export const RESOURCES = {
   ORDER: "order",

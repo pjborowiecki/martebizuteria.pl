@@ -1,10 +1,11 @@
 import { type JSX, Suspense, useMemo } from "react";
 
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
 
+import { requireUser } from "~/src/integrations/better-auth/auth.guards";
 import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
 
 import { isValidLocale } from "~/src/lib/utils";
@@ -12,27 +13,13 @@ import { isValidLocale } from "~/src/lib/utils";
 import { AccountSidebar } from "~/src/components/custom/account/account-sidebar";
 import { Navigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation";
 
-import { sessionQueries } from "~/src/modules/session/session.queries";
-
 interface AccountPageMeta {
   readonly description: string;
   readonly title: string;
 }
 
 export const Route = createFileRoute("/{-$locale}/account")({
-  beforeLoad: async () => {
-    const session = await sessionQueries.getSessionFn();
-
-    if (!session?.user) {
-      redirect({
-        throw: true,
-        to: `/{-$locale}${CONSTANTS.ROUTES.AUTH_SIGN_IN}`
-      });
-      throw new Error("Redirecting");
-    }
-
-    return { user: session.user };
-  },
+  beforeLoad: async () => ({ user: await requireUser() }),
   component: AccountLayout,
   head: ({ loaderData }: Readonly<{ loaderData?: Readonly<AccountPageMeta> }>) => ({
     meta: [

@@ -84,5 +84,20 @@ export function handleLocaleMiddleware(request: Readonly<LocaleMiddlewareRequest
     return resolveLocaleForPath(request.url, urlLocale, request.headers.get("cookie"));
   }
 
+  // Default-locale pages are prefix-less, so reaching here means the user is
+  // browsing in the default locale. Keep the cookie in sync (it is the only
+  // locale signal available to "ignored" paths like /api/auth/*); otherwise a
+  // stale non-default cookie from an earlier visit would leak into, e.g.,
+  // verification email subjects.
+  const cookieLocale = parseLocaleCookie(request.headers.get("cookie") ?? undefined);
+  if (cookieLocale !== CONSTANTS.DEFAULT_LOCALE) {
+    return {
+      setCookie: {
+        name: CONSTANTS.LOCALE_COOKIE_NAME,
+        value: CONSTANTS.DEFAULT_LOCALE
+      }
+    };
+  }
+
   return {};
 }

@@ -12,7 +12,7 @@ export function AuthHeader({ title, subtitle }: Readonly<{ title: string; subtit
       </LocalizedLink>
       <div>
         <h1 className="font-serif text-3xl tracking-tight sm:text-4xl">{title}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
       </div>
     </div>
   );
