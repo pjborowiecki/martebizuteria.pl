@@ -1,4 +1,4 @@
-import { type JSX, type SyntheticEvent, useCallback, useState } from "react";
+import { type JSX, type ReactNode, type SyntheticEvent, useCallback, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
@@ -22,6 +22,23 @@ import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { PasswordToggle } from "~/src/components/custom/pages/auth/password-toggle";
 
 const LABEL_CLASS = "text-[11px] tracking-[0.18em] text-muted-foreground uppercase";
+const LEGAL_LINK_CLASS = "underline underline-offset-4 transition-colors hover:text-foreground";
+
+function renderPrivacyChunk(chunks: ReactNode): JSX.Element {
+  return (
+    <LocalizedLink to={CONSTANTS.ROUTES.PRIVACY_POLICY} className={LEGAL_LINK_CLASS}>
+      {chunks}
+    </LocalizedLink>
+  );
+}
+
+function renderTermsChunk(chunks: ReactNode): JSX.Element {
+  return (
+    <LocalizedLink to={CONSTANTS.ROUTES.TERMS_OF_SERVICE} className={LEGAL_LINK_CLASS}>
+      {chunks}
+    </LocalizedLink>
+  );
+}
 
 export function SignUpWithPasswordForm(): JSX.Element {
   const [showPassword, setShowPassword] = useState(false);
@@ -210,22 +227,8 @@ export function SignUpWithPasswordForm(): JSX.Element {
 
       <p className="px-4 text-center text-[11px] leading-relaxed text-muted-foreground/70">
         {t.rich("auth.signUpPage.terms", {
-          privacy: (chunks) => (
-            <LocalizedLink
-              to={CONSTANTS.ROUTES.PRIVACY_POLICY}
-              className="underline underline-offset-4 transition-colors hover:text-foreground"
-            >
-              {chunks}
-            </LocalizedLink>
-          ),
-          terms: (chunks) => (
-            <LocalizedLink
-              to={CONSTANTS.ROUTES.TERMS_OF_SERVICE}
-              className="underline underline-offset-4 transition-colors hover:text-foreground"
-            >
-              {chunks}
-            </LocalizedLink>
-          )
+          privacy: renderPrivacyChunk,
+          terms: renderTermsChunk
         })}
       </p>
 

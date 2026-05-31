@@ -56,7 +56,7 @@ export function CatalogRow({ product }: CatalogRowProps): JSX.Element {
   return (
     <TableRow className="group cursor-pointer" onClick={handleRowClick}>
       <TableCell className="pl-6" onClick={handleCheckboxClick}>
-        <input type="checkbox" className="size-4 rounded border-border accent-foreground" />
+        <input type="checkbox" aria-label={t("a11y.selectRow")} className="size-4 rounded border-border accent-foreground" />
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-3">

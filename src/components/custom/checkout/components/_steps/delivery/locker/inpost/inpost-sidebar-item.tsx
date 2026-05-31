@@ -31,6 +31,7 @@ export function InpostSidebarItem({ point }: InpostSidebarItemProps): JSX.Elemen
   const renderButton = useMemo(
     () => (
       <button
+        aria-label={point.name}
         className={cn(
           "flex w-full items-start gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-muted focus:bg-muted focus:outline-none",
           isSelected && "bg-muted ring-1 ring-foreground/20"
@@ -39,7 +40,7 @@ export function InpostSidebarItem({ point }: InpostSidebarItemProps): JSX.Elemen
         type="button"
       />
     ),
-    [handleSelect, isSelected]
+    [handleSelect, isSelected, point.name]
   );
 
   return (

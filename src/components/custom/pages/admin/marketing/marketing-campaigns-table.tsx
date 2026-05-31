@@ -43,6 +43,7 @@ export function MarketingCampaignsTable(): JSX.Element {
             />
             <input
               type="text"
+              aria-label="Search campaigns"
               placeholder="Search campaigns..."
               className="h-9 w-72 rounded-lg border border-border/50 bg-background pr-4 pl-10 text-sm text-foreground transition-colors placeholder:text-muted-foreground/40 focus:border-border focus:outline-none"
             />
@@ -72,7 +73,7 @@ function CampaignTableHeader(): JSX.Element {
     <TableHeader className="bg-background/40 backdrop-blur-md">
       <TableRow className="hover:bg-transparent">
         <TableHead className="w-12 pl-6 text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
-          <input type="checkbox" className="size-4 rounded border-border accent-foreground" />
+          <input type="checkbox" aria-label={t("a11y.selectAll")} className="size-4 rounded border-border accent-foreground" />
         </TableHead>
         <TableHead className="pl-0 text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
           {t("marketing.campaigns.columns.campaign")}
@@ -134,7 +135,7 @@ function CampaignRow({ campaign }: { readonly campaign: (typeof CAMPAIGNS)[numbe
   return (
     <TableRow className="group cursor-pointer">
       <TableCell className="pl-6">
-        <input type="checkbox" className="size-4 rounded border-border accent-foreground" />
+        <input type="checkbox" aria-label={t("a11y.selectRow")} className="size-4 rounded border-border accent-foreground" />
       </TableCell>
       <TableCell className="pl-0">
         <div>

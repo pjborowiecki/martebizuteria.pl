@@ -122,6 +122,7 @@ function VariantRow({
       <GripVertical className="size-3.5 cursor-grab text-muted-foreground/20" strokeWidth={1.5} />
       <input
         type="text"
+        aria-label={t("variants.name")}
         value={variant.name}
         onChange={handleNameChange}
         placeholder={t("variants.namePlaceholder")}
@@ -129,6 +130,7 @@ function VariantRow({
       />
       <input
         type="text"
+        aria-label={t("variants.optionValue")}
         placeholder={t("variants.valuePlaceholder")}
         className="h-8 rounded border-0 bg-transparent px-2 text-sm ring-1 ring-transparent transition-all placeholder:text-muted-foreground/30 hover:ring-border/40 focus:bg-background focus:ring-2 focus:ring-foreground/20 focus:outline-none"
       />
@@ -136,6 +138,7 @@ function VariantRow({
         <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-muted-foreground/30">$</span>
         <input
           type="text"
+          aria-label={t("variants.price")}
           value={variant.price}
           onChange={handlePriceChange}
           placeholder="0.00"
@@ -144,6 +147,7 @@ function VariantRow({
       </div>
       <input
         type="text"
+        aria-label={t("variants.stock")}
         value={variant.stock}
         onChange={handleStockChange}
         placeholder="0"

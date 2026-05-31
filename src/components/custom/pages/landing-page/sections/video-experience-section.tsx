@@ -44,6 +44,7 @@ export function VideoExperienceSection(): JSX.Element {
     >
       <div className="absolute inset-0">
         <video
+          aria-label={t("videoLabel")}
           className="h-full w-full object-cover"
           autoPlay
           muted

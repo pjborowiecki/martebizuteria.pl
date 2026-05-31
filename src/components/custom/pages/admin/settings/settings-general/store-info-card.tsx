@@ -20,6 +20,7 @@ export function StoreInfoCard(): JSX.Element {
         <label className="block space-y-2">
           <span className="text-sm font-medium">{t("settings.general.storeInfo.name")}</span>
           <input
+            aria-label={t("settings.general.storeInfo.name")}
             className="block h-10 w-full rounded-lg border border-border/50 bg-background px-4 text-sm transition-colors focus:border-border focus:outline-none"
             defaultValue={STORE_INFO_DEFAULTS.name}
             type="text"
@@ -28,6 +29,7 @@ export function StoreInfoCard(): JSX.Element {
         <label className="block space-y-2">
           <span className="text-sm font-medium">{t("settings.general.storeInfo.email")}</span>
           <input
+            aria-label={t("settings.general.storeInfo.email")}
             className="block h-10 w-full rounded-lg border border-border/50 bg-background px-4 text-sm transition-colors focus:border-border focus:outline-none"
             defaultValue={STORE_INFO_DEFAULTS.email}
             type="email"
@@ -36,6 +38,7 @@ export function StoreInfoCard(): JSX.Element {
         <label className="block space-y-2">
           <span className="text-sm font-medium">{t("settings.general.storeInfo.desc")}</span>
           <textarea
+            aria-label={t("settings.general.storeInfo.desc")}
             className="block w-full resize-none rounded-lg border border-border/50 bg-background px-4 py-2.5 text-sm transition-colors focus:border-border focus:outline-none"
             defaultValue={STORE_INFO_DEFAULTS.description}
             rows={3}

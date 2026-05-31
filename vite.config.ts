@@ -161,6 +161,7 @@ export default defineConfig({
       "max-lines-per-function": ["error", { max: 150 }],
       "max-statements": ["error", { max: 20 }],
       "no-ternary": "off",
+      "prefer-arrow-callback": "off",
       "react/jsx-max-depth": ["error", { max: 5 }],
       "react/jsx-props-no-spreading": "off",
       "react/react-in-jsx-scope": "off",

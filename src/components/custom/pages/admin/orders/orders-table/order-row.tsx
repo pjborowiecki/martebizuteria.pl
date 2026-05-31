@@ -41,7 +41,7 @@ export function OrderRow({ order }: OrderRowProps): JSX.Element {
   return (
     <TableRow className="group cursor-pointer" onClick={handleRowClick}>
       <TableCell className="pl-6" onClick={handleCellClick}>
-        <input className="size-4 rounded border-border accent-foreground" type="checkbox" />
+        <input aria-label={t("a11y.selectRow")} className="size-4 rounded border-border accent-foreground" type="checkbox" />
       </TableCell>
       <TableCell className="font-mono text-sm font-medium">{`#${order.id}`}</TableCell>
       <TableCell>

@@ -11,7 +11,7 @@ export function CatalogTableHeader(): JSX.Element {
     <TableHeader>
       <TableRow className="hover:bg-transparent">
         <TableHead className="w-12 pl-6">
-          <input type="checkbox" className="size-4 rounded border-border accent-foreground" />
+          <input type="checkbox" aria-label={t("a11y.selectAll")} className="size-4 rounded border-border accent-foreground" />
         </TableHead>
         <TableHead className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
           {t("catalog.columns.product")}

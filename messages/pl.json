@@ -288,7 +288,8 @@
       "titleLine2": "to, co wyjątkowe.",
       "description": "Niektóre historie zasługują na własny kształt. Od pierwszej inspiracji po ręczne wykończenie – tworzymy biżuterię, która istnieje tylko w jednym egzemplarzu. Twoim.",
       "ctaPrimary": "Zobacz kolekcje",
-      "ctaSecondary": "Poznaj wszystkie produkty"
+      "ctaSecondary": "Poznaj wszystkie produkty",
+      "videoLabel": "Film z atmosferą atelier M'Arte"
     },
     "archiveSection": {
       "eyebrow": "Przewodnik M'ARTE",
@@ -928,6 +929,10 @@
   "admin": {
     "brand": "M'ARTE",
     "subtitle": "Panel administracyjny",
+    "a11y": {
+      "selectAll": "Zaznacz wszystkie wiersze",
+      "selectRow": "Zaznacz wiersz"
+    },
     "customerDetail": {
       "breadcrumb": {
         "dashboard": "Pulpit",

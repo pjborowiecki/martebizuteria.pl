@@ -1,3 +1,5 @@
+export const STRIPE_API_VERSION = "2026-05-27.dahlia" as const;
+
 export const CHECKOUT_PAYMENT_METHOD_ORDER = ["card", "blik", "p24"] as const;
 
 export const STRIPE_CURRENCY = "pln" as const;
