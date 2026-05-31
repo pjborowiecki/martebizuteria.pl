@@ -1,39 +1,15 @@
 import { type JSX, Suspense } from "react";
 
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
-import { CONSTANTS } from "~/src/constants";
+import { requireAdmin } from "~/src/integrations/better-auth/auth.guards";
 
 import { SidebarInset, SidebarProvider } from "~/src/components/shadcn/sidebar";
 
 import { AdminSidebar } from "~/src/components/custom/pages/admin/admin-sidebar";
 
-import { sessionQueries } from "~/src/modules/session/session.queries";
-
 export const Route = createFileRoute("/{-$locale}/admin")({
-  beforeLoad: async () => {
-    const session = await sessionQueries.getSessionFn();
-
-    if (!session?.user) {
-      redirect({
-        throw: true,
-        to: `/{-$locale}${CONSTANTS.ROUTES.AUTH_SIGN_IN}`
-      });
-      throw new Error("Redirecting");
-    }
-
-    const isAdmin = session.user.role === CONSTANTS.ROLES.ADMIN || session.user.role === CONSTANTS.ROLES.MANAGER;
-
-    if (!isAdmin) {
-      redirect({
-        throw: true,
-        to: `/{-$locale}${CONSTANTS.ROUTES.ACCOUNT}`
-      });
-      throw new Error("Redirecting");
-    }
-
-    return { user: session.user };
-  },
+  beforeLoad: async () => ({ user: await requireAdmin() }),
   component: AdminLayoutRoute
 });
 

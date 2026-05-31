@@ -1,5 +1,3 @@
-import { createElement } from "react";
-
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, anonymous, multiSession, twoFactor } from "better-auth/plugins";
@@ -9,21 +7,18 @@ import { v7 as uuidv7 } from "uuid";
 
 import { CONSTANTS } from "~/src/constants";
 
+import { authActions } from "~/src/integrations/better-auth/auth.actions";
+import { scheduleBackgroundWork } from "~/src/integrations/better-auth/auth.background";
 import { ac, ROLES_CONFIG } from "~/src/integrations/better-auth/auth.permissions";
-import { scheduleBackgroundWork } from "~/src/integrations/better-auth/auth.utils";
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas";
-import { ChangeEmail, getChangeEmailSubject } from "~/src/integrations/resend/templates/change-email";
-import { ResetPassword, getResetPasswordSubject } from "~/src/integrations/resend/templates/reset-password";
-import { VerifyEmail, getVerifyEmailSubject } from "~/src/integrations/resend/templates/verify-email";
-
-import { sendEmail } from "~/src/lib/_utils/email";
-import { getCurrentLocale } from "~/src/lib/_utils/locale";
 
 const MAX_FORGET_PASSWORD_ATTEMPTS = 3;
 const MAX_LOGIN_ATTEMPTS = 5;
 const MAX_RESET_PASSWORD_ATTEMPTS = 5;
 const MAX_SIGNUP_ATTEMPTS = 3;
+
+const MAX_CONCURRENT_SESSIONS = 5;
 
 const MIN_KV_TTL_IN_SECONDS = 60;
 const RATE_LIMIT_MAX_REQUESTS = 100;
@@ -53,48 +48,24 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    sendResetPassword: ({ user, url }) => {
-      const locale = getCurrentLocale();
-
-      scheduleBackgroundWork(
-        sendEmail({
-          react: createElement(ResetPassword, { locale, name: user.name, resetPasswordUrl: url }),
-          subject: getResetPasswordSubject(locale),
-          to: user.email
-        })
-      );
-
-      return Promise.resolve();
-    }
+    sendResetPassword: authActions.sendResetPassword
   },
   emailVerification: {
     autoSignInAfterVerification: true,
     sendOnSignUp: true,
-    sendVerificationEmail: ({ user, url }: { readonly url: string; readonly user: { readonly email: string; readonly name: string } }) => {
-      const locale = getCurrentLocale();
-
-      scheduleBackgroundWork(
-        sendEmail({
-          react: createElement(VerifyEmail, { locale, name: user.name, verificationUrl: url }),
-          subject: getVerifyEmailSubject(locale),
-          to: user.email
-        })
-      );
-
-      return Promise.resolve();
-    }
+    sendVerificationEmail: authActions.sendVerificationEmail
   },
   experimental: { joins: true },
   plugins: [
     admin({
       ac,
-      adminRoles: [CONSTANTS.ROLES.ADMIN, CONSTANTS.ROLES.MANAGER],
-      defaultRole: CONSTANTS.ROLES.USER,
+      adminRoles: [...CONSTANTS.ADMIN_PANEL_ROLES],
+      defaultRole: CONSTANTS.DEFAULT_ROLE,
       roles: ROLES_CONFIG
     }),
     anonymous(),
     multiSession({
-      maximumSessions: 5
+      maximumSessions: MAX_CONCURRENT_SESSIONS
     }),
     twoFactor({
       issuer: CONSTANTS.APP_NAME
@@ -103,7 +74,7 @@ export const auth = betterAuth({
   ],
   rateLimit: {
     customRules: {
-      [CONSTANTS.ROUTES.API_AUTH.FORGET_PASSWORD]: {
+      [CONSTANTS.ROUTES.API_AUTH.REQUEST_PASSWORD_RESET]: {
         max: MAX_FORGET_PASSWORD_ATTEMPTS,
         window: RATE_LIMIT_WINDOW_IN_SECONDS
       },
@@ -126,17 +97,12 @@ export const auth = betterAuth({
     window: RATE_LIMIT_WINDOW_IN_SECONDS
   },
   secondaryStorage: {
-    delete: async (key: string) => {
-      await env.CACHE.delete(key);
-    },
-    get: async (key: string) => {
-      const value = await env.CACHE.get(key);
-      return value === null ? undefined : (JSON.parse(value) as unknown);
-    },
-    set: async (key: string, value: unknown, ttl?: number) => {
-      const kvTtl = ttl === undefined ? MIN_KV_TTL_IN_SECONDS : Math.max(ttl, MIN_KV_TTL_IN_SECONDS);
-      await env.CACHE.put(key, JSON.stringify(value), { expirationTtl: kvTtl });
-    }
+    delete: (key: string) => env.CACHE.delete(key),
+    get: async (key: string) => (await env.CACHE.get(key, "json")) ?? undefined,
+    set: (key: string, value: unknown, ttl?: number) =>
+      env.CACHE.put(key, JSON.stringify(value), {
+        expirationTtl: Math.max(ttl ?? MIN_KV_TTL_IN_SECONDS, MIN_KV_TTL_IN_SECONDS)
+      })
   },
   secret: env.AUTH_SECRET,
   session: { cookieCache: { enabled: true, maxAge: COOKIE_CACHE_MAX_AGE_IN_SECONDS } },
@@ -147,28 +113,16 @@ export const auth = betterAuth({
   telemetry: { enabled: false },
   trustedOrigins: [env.VITE_APP_URL],
   user: {
-    additionalFields: {},
+    additionalFields: {
+      timezone: {
+        input: true,
+        required: false,
+        type: "string"
+      }
+    },
     changeEmail: {
       enabled: true,
-      sendChangeEmailConfirmation: ({
-        user,
-        url
-      }: {
-        readonly url: string;
-        readonly user: { readonly email: string; readonly name: string };
-      }) => {
-        const locale = getCurrentLocale();
-
-        scheduleBackgroundWork(
-          sendEmail({
-            react: createElement(ChangeEmail, { locale, name: user.name, verificationUrl: url }),
-            subject: getChangeEmailSubject(locale),
-            to: user.email
-          })
-        );
-
-        return Promise.resolve();
-      }
+      sendChangeEmailConfirmation: authActions.sendChangeEmailConfirmation
     }
   }
 });

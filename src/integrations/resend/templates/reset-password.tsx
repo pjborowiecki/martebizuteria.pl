@@ -4,8 +4,6 @@ import type { Locale } from "~/src/constants/types";
 
 import { getMessagesForLocale } from "~/src/integrations/use-intl/i18n.queries";
 
-export const getResetPasswordSubject = (locale: Locale) => getMessagesForLocale(locale).auth.email.resetPassword.subject;
-
 interface ResetPasswordProps {
   name?: string;
   resetPasswordUrl: string;

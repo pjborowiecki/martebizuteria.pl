@@ -1,6 +1,5 @@
 import { type ComponentProps, type JSX, useCallback } from "react";
 
-import { Check } from "lucide-react";
 import { type Control, type ControllerFieldState, useController } from "react-hook-form";
 import { useTranslations } from "use-intl";
 
@@ -13,52 +12,13 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "~/src/components/s
 import { Label } from "~/src/components/shadcn/label";
 import { RadioGroup, RadioGroupItem } from "~/src/components/shadcn/radio-group";
 
+import { FloatingLabel, isFieldValid, toStringValue, VALID_INPUT_CLASS, ValidCheck } from "~/src/components/custom/floating-field";
+
 import type { CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod";
 
 const LABEL_CLASS = "font-medium text-[10px] text-muted-foreground uppercase tracking-[0.22em]";
 
-const FLOATING_LABEL_CLASS = cn(
-  "pointer-events-none absolute top-[22px] left-3 z-10 origin-left -translate-y-1/2 text-sm font-normal whitespace-nowrap text-muted-foreground normal-case transition-all duration-200",
-  "peer-focus:top-0 peer-focus:text-[10px] peer-focus:font-medium peer-focus:tracking-[0.22em] peer-focus:uppercase",
-  "peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-[10px] peer-[:not(:placeholder-shown)]:font-medium peer-[:not(:placeholder-shown)]:tracking-[0.22em] peer-[:not(:placeholder-shown)]:uppercase",
-  "peer-aria-[invalid=true]:text-destructive"
-);
-
 const PHONE_PREFIX = "+48";
-
-const VALID_INPUT_CLASS = "border-green-600 focus-visible:border-green-600";
-
-function FloatingLabel({
-  className,
-  htmlFor,
-  label,
-  required
-}: Readonly<{
-  className?: string;
-  htmlFor: string;
-  label: string;
-  required?: boolean;
-}>): JSX.Element {
-  return (
-    <label htmlFor={htmlFor} className={cn(FLOATING_LABEL_CLASS, className)}>
-      {label}
-      {required === true && <span className="text-destructive"> *</span>}
-    </label>
-  );
-}
-
-function ValidCheck({ show }: Readonly<{ show: boolean }>): JSX.Element | undefined {
-  if (!show) {
-    return undefined;
-  }
-  return (
-    <Check
-      aria-hidden
-      strokeWidth={1.75}
-      className="pointer-events-none absolute top-[22px] right-3 size-4 max-w-4 -translate-y-1/2 text-green-600"
-    />
-  );
-}
 
 // Validation messages are stored as translation keys (e.g. "validation.emailRequired"),
 // so the single place they're rendered also resolves them.
@@ -70,16 +30,6 @@ function FieldErrorMessage({ fieldState }: Readonly<{ fieldState: ControllerFiel
     return undefined;
   }
   return <FieldError>{t(message)}</FieldError>;
-}
-
-function toStringValue(value: unknown): string {
-  return typeof value === "string" ? value : "";
-}
-
-// A field shows its "valid" affordance (green border + check) only once the
-// shopper has touched and left it with a non-empty, error-free value.
-function isFieldValid(fieldState: ControllerFieldState, value: string): boolean {
-  return fieldState.isTouched && !fieldState.invalid && value !== "";
 }
 
 /* ── Text Input Field ─────────────────────────────────────────────── */
@@ -147,18 +97,18 @@ export function CheckoutPhoneField({ className, control, label, name, required }
   if (fieldState.invalid) {
     prefixBorderClass = "border-destructive";
   } else if (showValid) {
-    prefixBorderClass = "border-green-600";
+    prefixBorderClass = "border-success";
   }
 
   return (
     <Field className={className} data-invalid={fieldState.invalid}>
       <div className="flex items-end gap-2">
-        {/* h-11 + items-center matches the input's centred value, and the border
-            mirrors the input's state so the underline stays continuous across
-            the prefix and the number. */}
+        {/* pt-2 + h-11 drops the prefix to the input's (bottom-weighted) value
+            baseline, and the border mirrors the input's state so the underline
+            stays continuous across the prefix and the number. */}
         <div
           className={cn(
-            "flex h-11 shrink-0 items-center border-0 border-b bg-background px-3 text-sm text-foreground dark:bg-input/30",
+            "flex h-11 shrink-0 items-center border-0 border-b bg-background px-3 pt-2 text-sm text-foreground dark:bg-input/30",
             prefixBorderClass
           )}
         >

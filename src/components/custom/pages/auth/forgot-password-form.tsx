@@ -3,63 +3,55 @@ import { type JSX, type SyntheticEvent, useCallback, useState } from "react";
 import type { ErrorContext } from "@better-fetch/fetch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
-import { authClient } from "~/src/integrations/better-auth/auth.client";
-import { AUTH_ERRORS } from "~/src/integrations/better-auth/auth.errors";
+import { CONSTANTS } from "~/src/constants";
+
+import { authClient } from "~/src/integrations/better-auth/auth._client";
 import { type ForgotPasswordFormValues, forgotPasswordSchema } from "~/src/integrations/better-auth/auth.schemas";
+import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.utils";
+
+import { buildLocalizedUrl } from "~/src/lib/utils";
 
 import { Button } from "~/src/components/shadcn/button";
-import { Field, FieldContent, FieldError, FieldLabel } from "~/src/components/shadcn/field";
-import { Input } from "~/src/components/shadcn/input";
 
-export function hasForgetPassword(client: typeof authClient): client is typeof authClient & {
-  forgetPassword: (data: {
-    email: string;
-    redirectTo?: string;
-    fetchOptions?: {
-      onError?: (ctx: ErrorContext) => void;
-      onSuccess?: () => void;
-    };
-  }) => Promise<unknown>;
-} {
-  return "forgetPassword" in client;
-}
-
-const LABEL_CLASS = "text-[11px] tracking-[0.18em] text-muted-foreground uppercase";
+import { AuthTextField } from "~/src/components/custom/pages/auth/auth-fields";
 
 export function ForgotPasswordForm(): JSX.Element {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const t = useTranslations();
+  const locale = useLocale();
 
   const formSchema = forgotPasswordSchema(t);
   const form = useForm<ForgotPasswordFormValues>({
     defaultValues: { email: "" },
+    mode: "onTouched",
     resolver: zodResolver(formSchema)
   });
 
   const onSubmit = useCallback(
     async (data: ForgotPasswordFormValues) => {
-      if (hasForgetPassword(authClient)) {
-        await authClient.forgetPassword({
-          email: data.email,
-          fetchOptions: {
-            onError: (ctx: ErrorContext) => {
-              const errCode = ctx.error?.message ?? "UNKNOWN_ERROR";
-              toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
-            },
-            onSuccess: () => {
-              setHasSubmitted(true);
-              toast.success(t("auth.forgotPasswordPage.success"));
-            }
+      await authClient.requestPasswordReset({
+        email: data.email,
+        fetchOptions: {
+          onError: (ctx: ErrorContext) => {
+            toast.error(t("auth.toast.errorTitle"), {
+              description: getAuthErrorMessage(t, ctx.error)
+            });
           },
-          redirectTo: "/auth/reset-password"
-        });
-      }
+          onSuccess: () => {
+            setHasSubmitted(true);
+            toast.success(t("auth.toast.forgotPasswordTitle"), {
+              description: t("auth.toast.forgotPasswordDescription")
+            });
+          }
+        },
+        redirectTo: buildLocalizedUrl("", CONSTANTS.ROUTES.AUTH_RESET_PASSWORD, locale)
+      });
     },
-    [t]
+    [locale, t]
   );
 
   const handleFormSubmit = useCallback(
@@ -82,28 +74,15 @@ export function ForgotPasswordForm(): JSX.Element {
 
   return (
     <form id="forgot-password-form" onSubmit={handleFormSubmit} className="space-y-5">
-      <Controller
+      <AuthTextField
         control={form.control}
         name="email"
-        render={({ field, fieldState }) => (
-          <Field>
-            <FieldLabel htmlFor="forgot-password-email" className={LABEL_CLASS}>
-              {t("components.custom.authForm.email")}
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                {...field}
-                id="forgot-password-email"
-                type="email"
-                autoComplete="email"
-                aria-invalid={fieldState.invalid}
-                disabled={isSubmitting}
-                placeholder="john@example.com"
-              />
-              {fieldState.error !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
-            </FieldContent>
-          </Field>
-        )}
+        id="forgot-password-email"
+        type="email"
+        label={t("components.custom.authForm.email")}
+        autoComplete="email"
+        disabled={isSubmitting}
+        required
       />
 
       <Button size="xl" type="submit" className="w-full gap-2.5 tracking-wide" disabled={isSubmitting}>

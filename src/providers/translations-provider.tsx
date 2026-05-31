@@ -8,6 +8,7 @@ import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
+import { useTimeZone } from "~/src/integrations/use-intl/i18n.timezone";
 
 interface TranslationsProviderProps {
   children: ReactNode;
@@ -25,6 +26,8 @@ export function TranslationsProvider({ children, locale: propLocale }: Readonly<
 
   const { data: messages, isPending } = useQuery(messagesQueryOptions(locale));
 
+  const timeZone = useTimeZone();
+
   if (isPending || !messages) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -34,7 +37,7 @@ export function TranslationsProvider({ children, locale: propLocale }: Readonly<
   }
 
   return (
-    <IntlProvider locale={locale} messages={messages} timeZone={CONSTANTS.DEFAULT_TIMEZONE}>
+    <IntlProvider locale={locale} messages={messages} timeZone={timeZone}>
       {children}
     </IntlProvider>
   );

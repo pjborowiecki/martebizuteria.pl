@@ -1,41 +1,42 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
 import { address } from "~/src/modules/address/address.schema";
 import { cart } from "~/src/modules/cart/cart.schema";
 import { deliveryMethod } from "~/src/modules/delivery-method/delivery-method.schema";
+import { discount } from "~/src/modules/discount/discount.schema";
 import { user } from "~/src/modules/user/user.schema";
 
 export const checkout = sqliteTable(
   "checkout",
   {
-    billingAddressId: text("billing_address_id").references(() => address.id, { onDelete: "set null" }),
+    billingAddressId: text("billing_address_id").references(() => address.id, {
+      onDelete: "set null"
+    }),
     // Nullable if cart is cleared after checkout
     cartId: text("cart_id").references(() => cart.id, { onDelete: "set null" }),
-    createdAt: text("created_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .notNull(),
     customerNote: text("customer_note"),
-    deliveryMethodId: text("delivery_method_id").references(() => deliveryMethod.id, { onDelete: "set null" }),
+    deliveryMethodId: text("delivery_method_id").references(() => deliveryMethod.id, {
+      onDelete: "set null"
+    }),
     discountId: text("discount_id"),
     email: text("email", { length: 320 }).notNull(),
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     lockerId: text("locker_id"),
-    shippingAddressId: text("shipping_address_id").references(() => address.id, { onDelete: "set null" }),
+    shippingAddressId: text("shipping_address_id").references(() => address.id, {
+      onDelete: "set null"
+    }),
     status: text("status", {
       enum: ["pending", "processing", "completed", "failed", "abandoned"]
     })
       .default("pending")
       .notNull(),
-    updatedAt: text("updated_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .$onUpdateFn(() => new Date().toISOString())
-      .notNull(),
-    userId: text("user_id").references(() => user.id, { onDelete: "set null" })
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps()
   },
   (table) => [
     index("checkout_cartId_idx").on(table.cartId),
@@ -56,6 +57,10 @@ export const checkoutRelations = relations(checkout, ({ one }) => ({
   deliveryMethod: one(deliveryMethod, {
     fields: [checkout.deliveryMethodId],
     references: [deliveryMethod.id]
+  }),
+  discount: one(discount, {
+    fields: [checkout.discountId],
+    references: [discount.id]
   }),
   shippingAddress: one(address, {
     fields: [checkout.shippingAddressId],

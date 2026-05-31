@@ -1,15 +1,13 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
 const DEFAULT_POSITION = 0;
 
 export const category = sqliteTable(
   "category",
   {
-    createdAt: text("created_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .notNull(),
     description: text("description"),
     handle: text("handle", { length: 255 }).notNull().unique(),
     id: text("id").primaryKey(),
@@ -21,11 +19,7 @@ export const category = sqliteTable(
     position: integer("position").default(DEFAULT_POSITION).notNull(),
     seoDescription: text("seo_description"),
     seoTitle: text("seo_title"),
-    updatedAt: text("updated_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .$onUpdateFn(() => new Date().toISOString())
-      .notNull()
+    ...timestamps()
   },
   (table) => [index("category_handle_idx").on(table.handle), index("category_parentId_idx").on(table.parentId)]
 );

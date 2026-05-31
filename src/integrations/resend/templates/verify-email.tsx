@@ -1,58 +1,47 @@
-import { Html, Head, Preview, Body, Container, Heading, Text, Button, Tailwind, Hr, Section } from "react-email";
+import type { JSX } from "react";
+
+import { Button, Heading, Section, Text } from "react-email";
 
 import type { Locale } from "~/src/constants/types";
 
+import { EmailLayout } from "~/src/integrations/resend/templates/email-layout";
 import { getMessagesForLocale } from "~/src/integrations/use-intl/i18n.queries";
 
-export const getVerifyEmailSubject = (locale: Locale) => getMessagesForLocale(locale).auth.email.verifyEmail.subject;
-
 interface VerifyEmailProps {
+  locale: Locale;
   name?: string;
   verificationUrl: string;
-  locale: Locale;
 }
 
-const tailwindConfig = {
-  theme: {
-    extend: {
-      colors: {
-        brand: "#09090b"
-      }
-    }
-  }
-};
-
-export const VerifyEmail = ({ name, verificationUrl, locale }: VerifyEmailProps) => {
+export function VerifyEmail({ locale, name, verificationUrl }: Readonly<VerifyEmailProps>): JSX.Element {
   const t = getMessagesForLocale(locale).auth.email.verifyEmail;
 
   return (
-    <Html lang={locale}>
-      <Tailwind config={tailwindConfig}>
-        <Head />
-        <Body className="bg-white font-sans">
-          <Preview>Verify your email address - M&apos;ARTE</Preview>
-          <Container className="mx-auto mt-10 max-w-xl border border-solid border-gray-200 p-10">
-            <Heading className="text-brand mb-6 text-center font-serif text-2xl font-light tracking-widest uppercase">M&apos;ARTE</Heading>
-            <Hr className="my-8 border-solid border-gray-200" />
-            <Text className="text-[14px] leading-[24px] text-black">{t.greeting.replace("{name}", name ?? "")}</Text>
-            <Text className="text-[14px] leading-[24px] text-black">{t.message}</Text>
-            <Section className="mt-[32px] mb-[32px] text-center">
-              <Button
-                className="rounded bg-[#000000] px-5 py-3 text-center text-[12px] font-semibold text-white no-underline"
-                href={verificationUrl}
-              >
-                {t.cta}
-              </Button>
-            </Section>
-            <Text className="text-[14px] leading-[24px] text-black">{t.ignore}</Text>
-            <Hr className="my-8 border-solid border-gray-200" />
-            <Text className="text-center text-[12px] leading-[24px] tracking-[0.2em] text-gray-400 uppercase">M&apos;ARTE</Text>
-          </Container>
-        </Body>
-      </Tailwind>
-    </Html>
+    <EmailLayout footer={t.footer} locale={locale} preview={t.preview} tagline={t.tagline}>
+      <Heading className="text-ink m-0 text-center font-serif text-[27px] leading-[34px] font-normal tracking-[0.01em]">
+        {t.heading}
+      </Heading>
+
+      <Text className="text-ink mt-[26px] mb-0 text-[15px] leading-[26px]">{t.greeting.replace("{name}", name ?? "")}</Text>
+      <Text className="text-ink mt-[14px] mb-0 text-[15px] leading-[26px]">{t.message}</Text>
+
+      <Section className="my-[36px] text-center">
+        <Button
+          className="bg-ink rounded-none px-[42px] py-[16px] text-center text-[12px] leading-[12px] font-semibold tracking-[0.18em] text-white uppercase no-underline"
+          href={verificationUrl}
+        >
+          {t.cta}
+        </Button>
+      </Section>
+
+      <Text className="m-0 text-[13px] leading-[22px] text-muted">{t.expiry}</Text>
+      <Text className="mt-[10px] mb-0 text-[13px] leading-[22px] text-muted">{t.ignore}</Text>
+
+      <Text className="text-ink mt-[30px] mb-0 text-[15px] leading-[24px]">{t.signoff}</Text>
+      <Text className="text-ink m-0 font-serif text-[15px] leading-[24px] italic">{t.sender}</Text>
+    </EmailLayout>
   );
-};
+}
 
 VerifyEmail.PreviewProps = {
   locale: "en",

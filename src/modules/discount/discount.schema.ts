@@ -1,5 +1,7 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
 import { cart } from "~/src/modules/cart/cart.schema";
 import { checkout } from "~/src/modules/checkout/checkout.schema";
@@ -11,25 +13,17 @@ export const discount = sqliteTable(
   "discount",
   {
     code: text("code").notNull().unique(),
-    createdAt: text("created_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .notNull(),
-    endsAt: text("ends_at"),
+    endsAt: timestamp("ends_at"),
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
-    startsAt: text("starts_at"),
+    startsAt: timestamp("starts_at"),
     type: text("type", { enum: ["percentage", "fixed_amount", "free_shipping"] }).notNull(),
-    updatedAt: text("updated_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .$onUpdateFn(() => new Date().toISOString())
-      .notNull(),
     usageCount: integer("usage_count").default(DEFAULT_USAGE_COUNT).notNull(),
     usageLimit: integer("usage_limit"),
-    value: integer("value").notNull()
+    value: integer("value").notNull(),
+    ...timestamps()
   },
   (table) => [index("discount_code_idx").on(table.code)]
 );

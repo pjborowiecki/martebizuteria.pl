@@ -1,7 +1,7 @@
 import { DELIVERY_METHOD, DELIVERY_METHODS } from "~/src/constants/_constants/delivery";
 import { DEFAULT_LOCALE, LOCALES } from "~/src/constants/_constants/locales";
 import { STATIC_PAGES } from "~/src/constants/_constants/pages";
-import { ACTIONS, RESOURCES, ROLES } from "~/src/constants/_constants/permissions";
+import { ACTIONS, ADMIN_PANEL_ROLES, DEFAULT_ROLE, RESOURCES, ROLES } from "~/src/constants/_constants/permissions";
 import { ROUTES } from "~/src/constants/_constants/routes";
 import { SOCIALS } from "~/src/constants/_constants/socials";
 import {
@@ -14,12 +14,14 @@ import { DEFAULT_TIMEZONE, TIME_ZONES } from "~/src/constants/_constants/timezon
 
 export const CONSTANTS = {
   ACTIONS,
+  ADMIN_PANEL_ROLES,
   APP_GITHUB_OWNER: "pjborowiecki",
   APP_GITHUB_REPO: "martebizuteria.pl_tanstack_start",
   APP_NAME: "M'Arte",
   CHECKOUT_PAYMENT_METHOD_ORDER,
   DEFAULT_APP_URL: "http://localhost:3000",
   DEFAULT_LOCALE,
+  DEFAULT_ROLE,
   DEFAULT_TIMEZONE,
   DELIVERY_METHOD,
   DELIVERY_METHODS,

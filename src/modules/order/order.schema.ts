@@ -1,8 +1,11 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
 import { checkout } from "~/src/modules/checkout/checkout.schema";
 import { deliveryMethod } from "~/src/modules/delivery-method/delivery-method.schema";
+import { discount } from "~/src/modules/discount/discount.schema";
 import { payment } from "~/src/modules/payment/payment.schema";
 import { user } from "~/src/modules/user/user.schema";
 
@@ -11,15 +14,11 @@ const DEFAULT_MONETARY_VALUE = 0;
 export const order = sqliteTable(
   "order",
   {
-    canceledAt: text("canceled_at"),
+    canceledAt: timestamp("canceled_at"),
     checkoutId: text("checkout_id").references(() => checkout.id, { onDelete: "set null" }),
-    createdAt: text("created_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .notNull(),
     currencyCode: text("currency_code", { length: 3 }).default("PLN").notNull(),
     customerNote: text("customer_note"),
-    deliveredAt: text("delivered_at"),
+    deliveredAt: timestamp("delivered_at"),
     deliveryMethodId: text("delivery_method_id").references(() => deliveryMethod.id, { onDelete: "set null" }),
     discountId: text("discount_id"),
     discountTotal: integer("discount_total").default(DEFAULT_MONETARY_VALUE).notNull(),
@@ -35,7 +34,7 @@ export const order = sqliteTable(
     lockerId: text("locker_id"),
     metadata: text("metadata"),
     paymentId: text("payment_id").references(() => payment.id, { onDelete: "set null" }),
-    shippedAt: text("shipped_at"),
+    shippedAt: timestamp("shipped_at"),
     shippingTotal: integer("shipping_total").default(DEFAULT_MONETARY_VALUE).notNull(),
     status: text("status", {
       enum: ["pending", "processing", "completed", "cancelled", "refunded"]
@@ -47,12 +46,8 @@ export const order = sqliteTable(
     total: integer("total").default(DEFAULT_MONETARY_VALUE).notNull(),
     trackingNumber: text("tracking_number"),
     trackingUrl: text("tracking_url", { length: 2048 }),
-    updatedAt: text("updated_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .$onUpdateFn(() => new Date().toISOString())
-      .notNull(),
-    userId: text("user_id").references(() => user.id, { onDelete: "set null" })
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps()
   },
   (table) => [
     index("order_userId_idx").on(table.userId),
@@ -69,6 +64,10 @@ export const orderRelations = relations(order, ({ one }) => ({
   deliveryMethod: one(deliveryMethod, {
     fields: [order.deliveryMethodId],
     references: [deliveryMethod.id]
+  }),
+  discount: one(discount, {
+    fields: [order.discountId],
+    references: [discount.id]
   }),
   payment: one(payment, {
     fields: [order.paymentId],

@@ -1,4 +1,4 @@
-import { type JSX } from "react";
+import { type JSX, type ReactNode } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslations } from "use-intl";
@@ -19,6 +19,24 @@ import { SocialProviders } from "~/src/components/custom/pages/auth/social-provi
 interface SignUpPageMeta {
   readonly description: string;
   readonly title: string;
+}
+
+const LEGAL_LINK_CLASS = "text-foreground underline underline-offset-4 transition-colors hover:text-foreground/60";
+
+function renderTermsChunk(chunks: ReactNode): JSX.Element {
+  return (
+    <LocalizedLink to={CONSTANTS.ROUTES.TERMS_OF_SERVICE} className={LEGAL_LINK_CLASS}>
+      {chunks}
+    </LocalizedLink>
+  );
+}
+
+function renderPrivacyChunk(chunks: ReactNode): JSX.Element {
+  return (
+    <LocalizedLink to={CONSTANTS.ROUTES.PRIVACY_POLICY} className={LEGAL_LINK_CLASS}>
+      {chunks}
+    </LocalizedLink>
+  );
 }
 
 export const Route = createFileRoute("/{-$locale}/auth/sign-up")({
@@ -55,19 +73,26 @@ function SignUpPage(): JSX.Element {
     <>
       <AuthHeader title={t("title")} subtitle={t("subtitle")} />
 
-      <SignUpWithPasswordForm />
-      <AuthDivider />
-      <SocialProviders />
+      <div className="space-y-6">
+        <SignUpWithPasswordForm />
+        <AuthDivider />
+        <SocialProviders />
 
-      <p className="text-center text-sm text-muted-foreground">
-        {t("hasAccount")}{" "}
-        <LocalizedLink
-          to={CONSTANTS.ROUTES.AUTH_SIGN_IN}
-          className="text-foreground underline underline-offset-4 transition-colors hover:text-foreground/60"
-        >
-          {t("signInInstead")}
-        </LocalizedLink>
-      </p>
+        <div className="space-y-2 text-center text-sm text-muted-foreground">
+          <p>
+            {t.rich("terms", {
+              privacy: renderPrivacyChunk,
+              terms: renderTermsChunk
+            })}
+          </p>
+          <p>
+            {t("hasAccount")}{" "}
+            <LocalizedLink to={CONSTANTS.ROUTES.AUTH_SIGN_IN} className={LEGAL_LINK_CLASS}>
+              {t("signInInstead")}
+            </LocalizedLink>
+          </p>
+        </div>
+      </div>
     </>
   );
 }

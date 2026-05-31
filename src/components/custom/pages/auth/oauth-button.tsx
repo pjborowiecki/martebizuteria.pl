@@ -2,12 +2,14 @@ import { type ComponentType, type JSX, type SVGProps, useCallback, useTransition
 
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { authClient } from "~/src/integrations/better-auth/auth.client";
-import { AUTH_ERRORS } from "~/src/integrations/better-auth/auth.errors";
+import { authClient } from "~/src/integrations/better-auth/auth._client";
+import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.utils";
+
+import { buildLocalizedUrl } from "~/src/lib/utils";
 
 import { Button } from "~/src/components/shadcn/button";
 
@@ -23,24 +25,28 @@ export function OAuthButton({ Icon, label, provider }: Readonly<OAuthButtonProps
   const [isPending, startTransition] = useTransition();
 
   const t = useTranslations();
+  const locale = useLocale();
 
   const handleOAuth = useCallback(() => {
     startTransition(async () => {
       await authClient.signIn.social({
-        callbackURL: `/{-$locale}${CONSTANTS.ROUTES.ACCOUNT_OVERVIEW}`,
+        callbackURL: buildLocalizedUrl("", CONSTANTS.ROUTES.ACCOUNT_OVERVIEW, locale),
         fetchOptions: {
           onError: (ctx) => {
-            const errCode = String(ctx.error.code ?? "UNKNOWN_ERROR");
-            toast.error(t(`auth.errors.${AUTH_ERRORS[errCode] ?? AUTH_ERRORS.UNKNOWN_ERROR}`));
+            toast.error(t("auth.toast.errorTitle"), {
+              description: getAuthErrorMessage(t, ctx.error)
+            });
           },
           onSuccess: () => {
-            toast.success(t("auth.oAuth.success"));
+            toast.success(t("auth.toast.signInTitle"), {
+              description: t("auth.toast.signInDescription")
+            });
           }
         },
         provider
       });
     });
-  }, [provider, t]);
+  }, [locale, provider, t]);
 
   return (
     <Button
@@ -51,7 +57,7 @@ export function OAuthButton({ Icon, label, provider }: Readonly<OAuthButtonProps
       onClick={handleOAuth}
       id={`oauth-button-${provider}`}
       aria-label={t(`auth.oAuth.${provider}`)}
-      className="w-full gap-3 border-border/50 hover:border-border"
+      className="w-full gap-3 border-border/50 bg-muted text-sm hover:border-border hover:bg-background md:text-sm dark:bg-input/50 dark:hover:bg-input/30"
     >
       {isPending ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
       {label}

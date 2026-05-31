@@ -32,6 +32,8 @@ const Toaster = ({ ...props }: Readonly<ToasterProps>): JSX.Element => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      position="top-right"
+      closeButton
       icons={TOASTER_ICONS}
       style={TOASTER_STYLE}
       toastOptions={TOASTER_OPTIONS}

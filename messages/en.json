@@ -160,7 +160,8 @@
         "firstName": "First name",
         "lastName": "Last name",
         "email": "Email address",
-        "password": "Password"
+        "password": "Password",
+        "confirmPassword": "Confirm password"
       },
       "authDivider": {
         "or": "or"
@@ -778,6 +779,21 @@
     "notFound": "Category not found"
   },
   "auth": {
+    "toast": {
+      "errorTitle": "Something went wrong",
+      "signInTitle": "Welcome back",
+      "signInDescription": "You're signed in to your M'Arte account.",
+      "signUpTitle": "Almost there",
+      "signUpDescription": "If this address wasn't already registered, we've sent it a confirmation link. Please check your inbox.",
+      "signOutTitle": "Signed out",
+      "signOutDescription": "You've been securely signed out. We look forward to welcoming you back.",
+      "forgotPasswordTitle": "Check your inbox",
+      "forgotPasswordDescription": "If an account exists for this address, a secure link to reset your password is on its way.",
+      "resetPasswordTitle": "Password updated",
+      "resetPasswordDescription": "Your new password is set. You can now sign in with it.",
+      "verifiedTitle": "Email confirmed",
+      "verifiedDescription": "Welcome to M'Arte — you're now signed in to your account."
+    },
     "signInPage": {
       "meta": {
         "title": "Sign In | M'Arte",
@@ -788,7 +804,6 @@
       "forgotPassword": "Forgot password?",
       "submit": "Sign in",
       "submitting": "Signing in…",
-      "success": "Welcome back!",
       "noAccount": "Don't have an account?",
       "createAccount": "Create one"
     },
@@ -797,12 +812,11 @@
         "title": "Create an Account | M'Arte",
         "description": "Join M'ARTE to discover handcrafted jewelry and exclusive collections."
       },
-      "title": "Create an account",
-      "subtitle": "Join M'ARTE to discover handcrafted jewelry and exclusive collections.",
+      "title": "Stay with us a little longer",
+      "subtitle": "Track your orders and keep the jewelry that caught your eye, so you can return to it whenever you like.",
       "terms": "By continuing, you agree to our <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
       "submit": "Create account",
       "submitting": "Creating account…",
-      "success": "Account created successfully!",
       "hasAccount": "Already have an account?",
       "signInInstead": "Sign in"
     },
@@ -815,7 +829,6 @@
       "subtitle": "Enter your email address and we'll send you a link to reset your password.",
       "submit": "Send reset link",
       "submitting": "Sending...",
-      "success": "Check your email for a reset link.",
       "checkEmail": "We've sent a password reset link to your email. Please check your inbox.",
       "backToSignIn": "Back to sign in"
     },
@@ -828,7 +841,6 @@
       "subtitle": "Enter a new password for your account.",
       "submit": "Reset password",
       "submitting": "Resetting...",
-      "success": "Your password has been successfully reset.",
       "invalidToken": "Invalid or expired password reset link. Please request a new one."
     },
     "errors": {
@@ -870,11 +882,18 @@
         "security": "To keep your account secure, please don't forward this email to anyone."
       },
       "verifyEmail": {
-        "subject": "Verify your email address - M'ARTE",
-        "greeting": "Hello {name},",
-        "message": "Please verify your email address to complete your M'ARTE account registration.",
-        "cta": "Verify email",
-        "ignore": "If you didn't create an account, just ignore and delete this message."
+        "subject": "Welcome to M'Arte — confirm your email",
+        "preview": "One last step to activate your M'Arte account.",
+        "heading": "Welcome to M'Arte",
+        "greeting": "Dear {name},",
+        "message": "Thank you for joining M'Arte. Each of our pieces is crafted by hand in our Warsaw atelier, and it is a pleasure to welcome you. To complete your registration and secure your account, please confirm your email address below.",
+        "cta": "Confirm my email",
+        "expiry": "For your security, this link will expire in 60 minutes.",
+        "ignore": "If this message reached you by mistake, you may simply disregard it — no account will be created.",
+        "signoff": "With warm regards,",
+        "sender": "The M'Arte Atelier",
+        "tagline": "Handcrafted Jewelry",
+        "footer": "M'Arte Atelier · Warsaw, Poland"
       },
       "changeEmail": {
         "subject": "Verify your new email address - M'ARTE",
@@ -897,11 +916,7 @@
     },
     "oAuth": {
       "google": "Continue with Google",
-      "github": "Continue with GitHub",
-      "success": "Signed in successfully!"
-    },
-    "signOut": {
-      "success": "Signed out successfully!"
+      "github": "Continue with GitHub"
     }
   },
   "emails": {
@@ -1996,6 +2011,9 @@
       "preferences": "Preferences",
       "language": "Language",
       "currency": "Currency",
+      "timezone": "Timezone",
+      "timezoneSaved": "Timezone updated",
+      "timezoneError": "Could not update timezone",
       "newsletter": "Newsletter",
       "subscribed": "Subscribed",
       "notSubscribed": "Not Subscribed",

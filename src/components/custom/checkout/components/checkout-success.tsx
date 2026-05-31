@@ -21,7 +21,7 @@ export function CheckoutSuccess(): JSX.Element {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-12 text-center md:py-24">
-      <CheckCircle2 className="size-16 text-green-600 md:size-20" strokeWidth={1} />
+      <CheckCircle2 className="size-16 text-success md:size-20" strokeWidth={1} />
       <div className="space-y-2">
         <h2 className="font-serif text-3xl md:text-4xl">{t("title")}</h2>
         <p className="max-w-md text-sm text-muted-foreground md:text-base">{t("description")}</p>

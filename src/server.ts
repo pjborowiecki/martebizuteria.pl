@@ -1,5 +1,6 @@
 import handler from "@tanstack/react-start/server-entry";
 
+import { executionContextStorage } from "~/src/integrations/better-auth/auth.background";
 import { createCookieHeader, handleLocaleMiddleware } from "~/src/integrations/use-intl/i18n.middleware";
 
 import { generateSitemapXml } from "~/src/lib/utils";
@@ -60,13 +61,17 @@ const server: ExportedHandler<Env> = {
       return redirect;
     }
 
-    const response = await handler.fetch(request, {
-      context: {
-        env,
-        passThroughOnException: ctx.passThroughOnException.bind(ctx),
-        waitUntil: ctx.waitUntil.bind(ctx)
-      }
-    });
+    const waitUntil = ctx.waitUntil.bind(ctx);
+
+    const response = await executionContextStorage.run({ waitUntil }, () =>
+      handler.fetch(request, {
+        context: {
+          env,
+          passThroughOnException: ctx.passThroughOnException.bind(ctx),
+          waitUntil
+        }
+      })
+    );
 
     if (!setCookie) {
       return response;

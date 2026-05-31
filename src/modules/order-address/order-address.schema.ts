@@ -1,5 +1,7 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
 import { order } from "~/src/modules/order/order.schema";
 
@@ -10,10 +12,6 @@ export const orderAddress = sqliteTable(
     address2: text("address2", { length: 512 }),
     city: text("city", { length: 256 }).notNull(),
     countryCode: text("country_code", { length: 2 }).notNull(),
-    createdAt: text("created_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .notNull(),
     firstName: text("first_name", { length: 256 }).notNull(),
     id: text("id")
       .primaryKey()
@@ -26,11 +24,7 @@ export const orderAddress = sqliteTable(
     postalCode: text("postal_code", { length: 32 }),
     province: text("province", { length: 256 }),
     type: text("type", { enum: ["shipping", "billing"] }).notNull(),
-    updatedAt: text("updated_at")
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
-      .$defaultFn(() => new Date().toISOString())
-      .$onUpdateFn(() => new Date().toISOString())
-      .notNull()
+    ...timestamps()
   },
   (table) => [index("order_address_orderId_idx").on(table.orderId), index("order_address_type_idx").on(table.type)]
 );

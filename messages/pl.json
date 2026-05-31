@@ -160,7 +160,8 @@
         "firstName": "Imię",
         "lastName": "Nazwisko",
         "email": "Adres e-mail",
-        "password": "Hasło"
+        "password": "Hasło",
+        "confirmPassword": "Powtórz hasło"
       },
       "authDivider": {
         "or": "lub"
@@ -783,6 +784,21 @@
     "notFound": "Nie znaleziono kategorii"
   },
   "auth": {
+    "toast": {
+      "errorTitle": "Coś poszło nie tak",
+      "signInTitle": "Witaj ponownie",
+      "signInDescription": "Zalogowano do Twojego konta M'Arte.",
+      "signUpTitle": "Już prawie gotowe",
+      "signUpDescription": "Jeśli ten adres nie był jeszcze zarejestrowany, wysłaliśmy na niego link potwierdzający. Sprawdź swoją skrzynkę.",
+      "signOutTitle": "Wylogowano",
+      "signOutDescription": "Bezpiecznie wylogowano z konta. Z przyjemnością powitamy Cię ponownie.",
+      "forgotPasswordTitle": "Sprawdź skrzynkę",
+      "forgotPasswordDescription": "Jeśli konto dla tego adresu istnieje, bezpieczny link do zmiany hasła jest już w drodze.",
+      "resetPasswordTitle": "Hasło zaktualizowane",
+      "resetPasswordDescription": "Twoje nowe hasło zostało ustawione. Możesz się teraz zalogować.",
+      "verifiedTitle": "Adres e-mail potwierdzony",
+      "verifiedDescription": "Witaj w M'Arte — masz już dostęp do swojego konta."
+    },
     "signInPage": {
       "meta": {
         "title": "Logowanie | M'Arte",
@@ -793,7 +809,6 @@
       "forgotPassword": "Nie pamiętasz hasła?",
       "submit": "Zaloguj się",
       "submitting": "Logowanie…",
-      "success": "Witaj ponownie!",
       "noAccount": "Nie masz konta?",
       "createAccount": "Utwórz konto"
     },
@@ -802,12 +817,11 @@
         "title": "Utwórz konto | M'Arte",
         "description": "Dołącz do M'ARTE, aby odkrywać ręcznie tworzoną biżuterię i ekskluzywne kolekcje."
       },
-      "title": "Utwórz konto",
-      "subtitle": "Dołącz do M'ARTE, aby odkrywać ręcznie tworzoną biżuterię i ekskluzywne kolekcje.",
+      "title": "Zostań z nami na dłużej",
+      "subtitle": "Śledź swoje zamówienia i zachowaj biżuterię, która wpadła Ci w oko, aby móc do niej wrócić w dowolnej chwili.",
       "terms": "Kontynuując, akceptujesz <terms>Regulamin</terms> i <privacy>Politykę Prywatności</privacy>.",
       "submit": "Utwórz konto",
       "submitting": "Tworzenie konta…",
-      "success": "Konto utworzone pomyślnie!",
       "hasAccount": "Masz już konto?",
       "signInInstead": "Zaloguj się"
     },
@@ -820,7 +834,6 @@
       "subtitle": "Podaj adres e-mail, a wyślemy Ci link do zresetowania hasła.",
       "submit": "Wyślij link resetujący",
       "submitting": "Wysyłanie...",
-      "success": "Sprawdź skrzynkę e-mail, aby odebrać link resetujący.",
       "checkEmail": "Wysłaliśmy link resetujący hasło na Twój adres e-mail. Prosimy o sprawdzenie skrzynki.",
       "backToSignIn": "Wróć do logowania"
     },
@@ -833,7 +846,6 @@
       "subtitle": "Wprowadź nowe hasło do swojego konta.",
       "submit": "Zresetuj hasło",
       "submitting": "Resetowanie...",
-      "success": "Twoje hasło zostało pomyślnie zresetowane.",
       "invalidToken": "Nieprawidłowy lub wygasły link resetujący. Prosimy o wygenerowanie nowego."
     },
     "errors": {
@@ -875,11 +887,18 @@
         "security": "Aby zapewnić bezpieczeństwo swojego konta, nie przekazuj tego e-maila nikomu."
       },
       "verifyEmail": {
-        "subject": "Zweryfikuj swój adres e-mail - M'ARTE",
-        "greeting": "Cześć {name},",
-        "message": "Proszę zweryfikować swój adres e-mail, aby dokończyć rejestrację konta M'ARTE.",
-        "cta": "Zweryfikuj e-mail",
-        "ignore": "Jeśli nie zakładałeś konta, po prostu zignoruj i usuń tę wiadomość."
+        "subject": "Witaj w M'Arte — potwierdź swój adres e-mail",
+        "preview": "Ostatni krok, aby aktywować Twoje konto M'Arte.",
+        "heading": "Witaj w M'Arte",
+        "greeting": "Witaj {name},",
+        "message": "Dziękujemy za dołączenie do M'Arte. Każdą biżuterię tworzymy ręcznie w naszej warszawskiej pracowni i z przyjemnością witamy Cię w gronie naszych klientów. Aby dokończyć rejestrację i zabezpieczyć konto, potwierdź poniżej swój adres e-mail.",
+        "cta": "Potwierdź adres e-mail",
+        "expiry": "Ze względów bezpieczeństwa ten link wygaśnie po 60 minutach.",
+        "ignore": "Jeśli ta wiadomość trafiła do Ciebie przez pomyłkę, po prostu ją zignoruj — żadne konto nie zostanie utworzone.",
+        "signoff": "Z pozdrowieniami,",
+        "sender": "Pracownia M'Arte",
+        "tagline": "Biżuteria tworzona ręcznie",
+        "footer": "Pracownia M'Arte · Warszawa, Polska"
       },
       "changeEmail": {
         "subject": "Zweryfikuj swój nowy adres e-mail - M'ARTE",
@@ -902,11 +921,7 @@
     },
     "oAuth": {
       "google": "Kontynuuj z Google",
-      "github": "Kontynuuj z GitHub",
-      "success": "Zalogowano pomyślnie!"
-    },
-    "signOut": {
-      "success": "Wylogowano pomyślnie!"
+      "github": "Kontynuuj z GitHub"
     }
   },
   "emails": {
@@ -2001,6 +2016,9 @@
       "preferences": "Preferencje",
       "language": "Język",
       "currency": "Waluta",
+      "timezone": "Strefa czasowa",
+      "timezoneSaved": "Zaktualizowano strefę czasową",
+      "timezoneError": "Nie udało się zaktualizować strefy czasowej",
       "newsletter": "Newsletter",
       "subscribed": "Zasubskrybowano",
       "notSubscribed": "Nie zasubskrybowano",

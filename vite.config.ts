@@ -109,6 +109,14 @@ export default defineConfig({
     },
     overrides: [
       {
+        // Server-only Cloudflare Workers runtime module: AsyncLocalStorage is the
+        // only way to thread the ExecutionContext's waitUntil through Better Auth.
+        files: ["src/integrations/better-auth/auth.background.ts"],
+        rules: {
+          "import/no-nodejs-modules": "off"
+        }
+      },
+      {
         files: ["src/components/shadcn/label.tsx"],
         rules: {
           "jsx-a11y/label-has-associated-control": "off"
