@@ -23,19 +23,19 @@ function buildLocalizedPath(to: LocalizedTo): LocalizedFullPaths {
   return `/{-$locale}${to}`;
 }
 
-export function LocalizedLink({ to, params, children, ...rest }: LocalizedLinkProps) {
+export function LocalizedLink({ to, params, children, preload = "intent", ...rest }: LocalizedLinkProps) {
   const localizedTo = buildLocalizedPath(to);
 
   if (params !== undefined) {
     return (
-      <Link to={localizedTo} params={params} {...rest}>
+      <Link to={localizedTo} params={params} preload={preload} {...rest}>
         {children}
       </Link>
     );
   }
 
   return (
-    <Link to={localizedTo} {...rest}>
+    <Link to={localizedTo} preload={preload} {...rest}>
       {children}
     </Link>
   );

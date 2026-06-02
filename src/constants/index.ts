@@ -12,6 +12,8 @@ import {
 } from "~/src/constants/_constants/stripe";
 import { DEFAULT_TIMEZONE, TIME_ZONES } from "~/src/constants/_constants/timezone";
 
+import { COLLECTION_STATUS, COLLECTION_STATUSES, DEFAULT_COLLECTION_STATUS } from "~/src/modules/collection/collection.constants";
+
 export const CONSTANTS = {
   ACTIONS,
   ADMIN_PANEL_ROLES,
@@ -19,7 +21,10 @@ export const CONSTANTS = {
   APP_GITHUB_REPO: "martebizuteria.pl_tanstack_start",
   APP_NAME: "M'Arte",
   CHECKOUT_PAYMENT_METHOD_ORDER,
+  COLLECTION_STATUS,
+  COLLECTION_STATUSES,
   DEFAULT_APP_URL: "http://localhost:3000",
+  DEFAULT_COLLECTION_STATUS,
   DEFAULT_LOCALE,
   DEFAULT_ROLE,
   DEFAULT_TIMEZONE,

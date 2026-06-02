@@ -1,51 +1,45 @@
-import { type JSX, useMemo } from "react";
+import { type JSX } from "react";
 
+import type { QueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
-import { useTranslations } from "use-intl";
 
-import { CONSTANTS } from "~/src/constants";
+import { isServer } from "~/src/lib/is-server";
 
-import { Button } from "~/src/components/shadcn/button";
+import { CollectionsTableContent } from "~/src/components/custom/pages/admin/catalog/collections/components/collections-table";
+import {
+  CollectionsSheetProvider,
+  useCollectionsSheetState
+} from "~/src/components/custom/pages/admin/catalog/collections/hooks/use-collections-sheet";
 
-import { LocalizedLink } from "~/src/components/custom/localized-link";
-import { AdminHeader } from "~/src/components/custom/pages/admin/admin-header";
-import { CatalogTabs } from "~/src/components/custom/pages/admin/catalog/catalog-tabs";
-import { CollectionsStats } from "~/src/components/custom/pages/admin/catalog/collections/collections-stats";
-import { CollectionsTable } from "~/src/components/custom/pages/admin/catalog/collections/collections-table";
+import { COLLECTION_QUERY_STALE_MS } from "~/src/modules/collection/collection.constants";
+import { collectionQueryOptions } from "~/src/modules/collection/collection.queries";
 
-import { COLLECTIONS } from "~/src/data/collections-data";
+async function prefetchCollectionsQueries(context: { queryClient: QueryClient }): Promise<void> {
+  const collections = collectionQueryOptions.adminCollectionsQueryOptions();
+  const stats = collectionQueryOptions.collectionStatsQueryOptions();
+
+  if (isServer()) {
+    await Promise.all([context.queryClient.ensureQueryData(collections), context.queryClient.ensureQueryData(stats)]);
+    return;
+  }
+
+  void context.queryClient.prefetchQuery(collections);
+  void context.queryClient.prefetchQuery(stats);
+}
 
 export const Route = createFileRoute("/{-$locale}/admin/catalog/collections/")({
-  component: AdminCatalogCollectionsRoute
+  component: CollectionsIndexRoute,
+  loader: ({ context }) => prefetchCollectionsQueries(context),
+  shouldReload: false,
+  staleTime: COLLECTION_QUERY_STALE_MS
 });
 
-function AdminCatalogCollectionsRoute(): JSX.Element {
-  const t = useTranslations("admin");
-
-  const newParams = useMemo(() => ({ handle: "new" }), []);
-  const addCollectionLink = useMemo(() => <LocalizedLink to={CONSTANTS.ROUTES.ADMIN_COLLECTION} params={newParams} />, [newParams]);
-
-  const headerActions = useMemo(
-    () => (
-      <Button size="sm" className="h-9 gap-2 bg-foreground text-sm text-background hover:bg-foreground/90" render={addCollectionLink}>
-        <Plus className="size-4" strokeWidth={1.5} />
-        {t("collections.actions.addCollection")}
-      </Button>
-    ),
-    [t, addCollectionLink]
-  );
-
-  const tabs = useMemo(() => <CatalogTabs active="collections" />, []);
+function CollectionsIndexRoute(): JSX.Element {
+  const sheetState = useCollectionsSheetState();
 
   return (
-    <>
-      <AdminHeader title={t("collections.title")} description={t("collections.description")} actions={headerActions} tabs={tabs} />
-
-      <div className="flex-1 space-y-5 p-8">
-        <CollectionsStats />
-        <CollectionsTable collections={COLLECTIONS} />
-      </div>
-    </>
+    <CollectionsSheetProvider value={sheetState}>
+      <CollectionsTableContent />
+    </CollectionsSheetProvider>
   );
 }

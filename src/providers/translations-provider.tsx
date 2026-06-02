@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 import { IntlProvider } from "use-intl";
 
@@ -24,17 +24,8 @@ export function TranslationsProvider({ children, locale: propLocale }: Readonly<
 
   const locale = propLocale ?? pathLocale ?? CONSTANTS.DEFAULT_LOCALE;
 
-  const { data: messages, isPending } = useQuery(messagesQueryOptions(locale));
-
+  const { data: messages } = useSuspenseQuery(messagesQueryOptions(locale));
   const timeZone = useTimeZone();
-
-  if (isPending || !messages) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="animate-pulse text-sm text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <IntlProvider locale={locale} messages={messages} timeZone={timeZone}>

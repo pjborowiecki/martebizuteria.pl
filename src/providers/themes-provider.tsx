@@ -4,9 +4,8 @@ import { type JSX, type ReactNode } from "react";
 
 import { ClientThemeProvider as WrkszThemeProvider } from "@wrksz/themes/client";
 
-import { CONSTANTS } from "~/src/constants";
+import { THEME_STORAGE_KEY } from "~/src/lib/theme-init-script";
 
-const THEME_STORAGE_KEY = `${CONSTANTS.APP_NAME}-theme`;
 const THEMES = ["light", "dark"];
 
 export interface ThemesProviderProps {

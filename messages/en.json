@@ -936,6 +936,24 @@
       "thanks": "M'ARTE"
     }
   },
+  "dataGrid": {
+    "view": {
+      "label": "Show or hide columns",
+      "columns": "Toggle columns",
+      "reset": "Reset table settings to defaults"
+    },
+    "sortBy": "Sort by {column}",
+    "resizeColumn": "Resize {column} column",
+    "pagination": {
+      "rowsPerPage": "Rows per page",
+      "page": "Page {page} of {total}",
+      "showing": "{from}\u2013{to} of {count}",
+      "first": "First page",
+      "previous": "Previous page",
+      "next": "Next page",
+      "last": "Last page"
+    }
+  },
   "admin": {
     "brand": "M'ARTE",
     "subtitle": "Admin panel",
@@ -1201,24 +1219,76 @@
         "vsPrevious": "vs last month"
       }
     },
+    "media": {
+      "cta": "Click to upload or drag and drop",
+      "hint": "JPG, PNG, WEBP or AVIF · up to 5MB",
+      "uploading": "Uploading…",
+      "dropHere": "Drop image to upload",
+      "change": "Change",
+      "remove": "Remove",
+      "errorTitle": "Upload failed",
+      "errorUpload": "The image could not be uploaded. Please try again.",
+      "errorInvalidType": "Unsupported file type. Use JPG, PNG, WEBP or AVIF.",
+      "errorTooLarge": "Image is too large. Maximum size is 5MB.",
+      "main": "Main",
+      "setMain": "Set as main",
+      "addMore": "Add images",
+      "reorderAria": "Image {position} of {total}. Use arrow keys to reorder."
+    },
     "collections": {
       "title": "Collections",
       "description": "Group your products into curated collections.",
       "actions": {
-        "addCollection": "Add collection"
+        "addCollection": "Add collection",
+        "exportCsv": "Download table as CSV",
+        "refresh": "Reload table data"
       },
       "columns": {
         "description": "Description",
         "collection": "Collection",
+        "createdAt": "Created at",
+        "image": "Image",
         "products": "Products",
         "slug": "Slug",
         "status": "Status"
       },
+      "filter": {
+        "status": "Filter by status",
+        "allStatuses": "All statuses"
+      },
+      "bulk": {
+        "selected": "{count} selected",
+        "delete": "Delete ({count})",
+        "confirmTitle": "Delete collections?",
+        "confirmDescription": "This will permanently delete {count} collection(s). This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      },
       "statusActive": "Active",
       "statusDraft": "Draft",
       "searchPlaceholder": "Search collections...",
+      "empty": "No collections yet. Create your first one.",
+      "reorder": {
+        "handle": "Drag to reorder, or use arrow keys"
+      },
+      "rowActions": {
+        "edit": "Edit collection",
+        "viewProducts": "View products",
+        "copyId": "Copy ID",
+        "copyLink": "Copy link",
+        "delete": "Delete collection",
+        "copyIdToast": "Collection ID copied to clipboard",
+        "copyLinkToast": "Collection link copied to clipboard",
+        "deleteTitle": "Delete collection?",
+        "deleteDescription": "This will permanently delete \u201c{title}\u201d. This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      },
       "form": {
         "titleAdd": "Add New Collection",
+        "titleEdit": "Edit collection",
+        "sheetDescription": "Create a new collection. It will be added to the end of the list.",
+        "sheetDescriptionEdit": "Update this collection’s details, status, and media.",
         "delete": "Delete",
         "cancel": "Cancel",
         "saveDraft": "Save as draft",
@@ -1228,19 +1298,11 @@
         "name": "Name",
         "namePlaceholder": "e.g. Summer Collection",
         "slug": "URL Slug",
+        "slugHint": "Generated from the name until you edit this field.",
         "description": "Description",
         "descriptionPlaceholder": "Enter collection description...",
         "mediaTitle": "Media",
         "coverImage": "Cover Image",
-        "changeImage": "Change image",
-        "removeImage": "Remove",
-        "uploadImage": "Upload Image",
-        "imageHint": "Supports JPG, PNG, WEBP. Max 5MB.",
-        "sectionSeo": "Search Engine Optimization",
-        "metaTitle": "Meta Title",
-        "metaTitlePlaceholder": "e.g. Collection Name - Store Name",
-        "metaDescription": "Meta Description",
-        "metaDescriptionPlaceholder": "A brief description for search engine results...",
         "status": "Status",
         "featuredLabel": "Featured Collection",
         "displayOptions": "Display Options",
@@ -1250,7 +1312,29 @@
         "products": "Products",
         "id": "ID",
         "created": "Created",
-        "updated": "Last updated"
+        "updated": "Last updated",
+        "validation": {
+          "nameRequired": "Name is required",
+          "nameTooLong": "Name is too long",
+          "slugRequired": "URL slug is required",
+          "slugInvalid": "Use lowercase letters, numbers and hyphens only",
+          "descriptionTooLong": "Description is too long"
+        }
+      },
+      "toast": {
+        "createSuccessTitle": "Collection created",
+        "createSuccessDescription": "Your collection has been created successfully.",
+        "updateSuccessTitle": "Collection saved",
+        "updateSuccessDescription": "Your changes have been saved.",
+        "errorTitle": "Something went wrong",
+        "errorDescription": "The collection could not be created. Please try again.",
+        "duplicateHandle": "A collection with this URL slug already exists.",
+        "reorderErrorTitle": "Couldn't save order",
+        "reorderErrorDescription": "The new collection order could not be saved. Please try again.",
+        "deleteSuccessTitle": "Collections deleted",
+        "deleteSuccessDescription": "Deleted {count} collection(s).",
+        "deleteErrorTitle": "Couldn't delete",
+        "deleteErrorDescription": "The selected collections could not be deleted. Please try again."
       },
       "stats": {
         "active": {
@@ -1259,6 +1343,7 @@
         },
         "avgProducts": {
           "label": "Avg. Products/Collection",
+          "caption": "~{count} products assigned",
           "value": "12.5"
         },
         "draft": {
@@ -1269,6 +1354,7 @@
           "label": "Total Collections",
           "value": "28"
         },
+        "shareCaption": "{percent}% of total",
         "vsPrevious": "vs last month"
       }
     },

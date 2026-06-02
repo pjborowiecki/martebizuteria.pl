@@ -3,6 +3,7 @@ name: tanstack-config
 description: Opinionated toolkit for building, versioning, and publishing high-quality JavaScript/TypeScript packages.
 ---
 
+
 ## Overview
 
 TanStack Config provides an opinionated, minimal-configuration toolkit for JavaScript/TypeScript package development. It includes Vite-powered build configuration, ESLint presets, publish automation with semantic versioning, and integrations with TypeScript, Prettier, Changesets, and GitHub Actions. Designed for monorepo workflows with pnpm and Nx.
@@ -24,45 +25,49 @@ pnpm add @tanstack/config -D
 
 ```typescript
 // vite.config.ts
-import { defineConfig, mergeConfig } from "vitest/config";
-import { tanstackViteConfig } from "@tanstack/config/vite";
+import { defineConfig, mergeConfig } from 'vitest/config'
+import { tanstackViteConfig } from '@tanstack/config/vite'
 
 const config = defineConfig({
   // Your custom Vite config
-});
+})
 
 export default mergeConfig(
   config,
   tanstackViteConfig({
-    entry: "./src/index.ts",
-    srcDir: "./src",
-    exclude: ["./src/__tests__"],
-  }),
-);
+    entry: './src/index.ts',
+    srcDir: './src',
+    exclude: ['./src/__tests__'],
+  })
+)
 ```
 
 ### Multiple Entry Points
 
 ```typescript
-import { tanstackViteConfig } from "@tanstack/config/vite";
+import { tanstackViteConfig } from '@tanstack/config/vite'
 
 export default tanstackViteConfig({
-  entry: ["./src/index.ts", "./src/adapters.ts", "./src/utils.ts"],
-  srcDir: "./src",
-});
+  entry: [
+    './src/index.ts',
+    './src/adapters.ts',
+    './src/utils.ts',
+  ],
+  srcDir: './src',
+})
 ```
 
 ### Build Options
 
 ```typescript
 tanstackViteConfig({
-  entry: "./src/index.ts",
-  srcDir: "./src",
-  exclude: ["./src/__tests__", "./src/**/*.test.ts"],
+  entry: './src/index.ts',
+  srcDir: './src',
+  exclude: ['./src/__tests__', './src/**/*.test.ts'],
   // Generates ESM and CJS outputs
   // Generates .d.ts declaration files
   // Handles tree-shaking configuration
-});
+})
 ```
 
 ## ESLint Configuration
@@ -71,26 +76,26 @@ tanstackViteConfig({
 
 ```javascript
 // eslint.config.js
-import { tanstackEslintConfig } from "@tanstack/config/eslint";
+import { tanstackEslintConfig } from '@tanstack/config/eslint'
 
-export default tanstackEslintConfig;
+export default tanstackEslintConfig
 ```
 
 ### Extending the Config
 
 ```javascript
 // eslint.config.js
-import { tanstackEslintConfig } from "@tanstack/config/eslint";
+import { tanstackEslintConfig } from '@tanstack/config/eslint'
 
 export default [
   ...tanstackEslintConfig,
   {
     rules: {
       // Custom overrides
-      "@typescript-eslint/no-explicit-any": "warn",
+      '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
-];
+]
 ```
 
 ## Publishing
@@ -99,13 +104,13 @@ export default [
 
 ```typescript
 // publish.config.ts or used via CLI
-import { tanstackPublishConfig } from "@tanstack/config/publish";
+import { tanstackPublishConfig } from '@tanstack/config/publish'
 
 export default tanstackPublishConfig({
   // Publint-compliant defaults
   // Semantic versioning automation
   // Changelog generation
-});
+})
 ```
 
 ### Package.json Setup
@@ -218,7 +223,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "pnpm"
+          cache: 'pnpm'
       - run: pnpm install
       - run: pnpm build
       - run: pnpm lint
@@ -244,7 +249,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: "https://registry.npmjs.org"
+          registry-url: 'https://registry.npmjs.org'
       - run: pnpm install
       - run: pnpm build
       - name: Create Release Pull Request or Publish
@@ -263,8 +268,8 @@ jobs:
 ```yaml
 # pnpm-workspace.yaml
 packages:
-  - "packages/*"
-  - "examples/*"
+  - 'packages/*'
+  - 'examples/*'
 ```
 
 ### Nx Configuration

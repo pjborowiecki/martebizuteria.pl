@@ -56,45 +56,6 @@ export const COLLECTIONS: readonly CollectionItem[] = [
   }
 ];
 
-export interface CollectionStatItem {
-  readonly key: string;
-  readonly trend: string;
-  readonly up: boolean;
-  readonly color: string;
-  readonly spark: readonly { readonly v: number }[];
-}
-
-export const COLLECTION_STATS: readonly CollectionStatItem[] = [
-  {
-    color: "hsl(var(--foreground))",
-    key: "total",
-    spark: [{ v: 3 }, { v: 3 }, { v: 4 }, { v: 4 }, { v: 4 }, { v: 5 }, { v: 5 }, { v: 5 }],
-    trend: "+1",
-    up: true
-  },
-  {
-    color: "hsl(142 71% 45%)",
-    key: "active",
-    spark: [{ v: 3 }, { v: 3 }, { v: 3 }, { v: 3 }, { v: 3 }, { v: 4 }, { v: 4 }, { v: 4 }],
-    trend: "+1",
-    up: true
-  },
-  {
-    color: "hsl(var(--muted-foreground))",
-    key: "draft",
-    spark: [{ v: 0 }, { v: 0 }, { v: 1 }, { v: 1 }, { v: 1 }, { v: 1 }, { v: 1 }, { v: 1 }],
-    trend: "0",
-    up: true
-  },
-  {
-    color: "hsl(221 83% 53%)",
-    key: "avgProducts",
-    spark: [{ v: 40 }, { v: 42 }, { v: 43 }, { v: 45 }, { v: 46 }, { v: 48 }, { v: 49 }, { v: 50 }],
-    trend: "+5.2%",
-    up: true
-  }
-];
-
 export const MOCK_COLLECTIONS: Record<
   string,
   {

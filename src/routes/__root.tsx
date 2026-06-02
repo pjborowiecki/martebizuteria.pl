@@ -15,6 +15,9 @@ import { TranslationsProvider } from "~/src/providers/translations-provider";
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
 
 import type { ImagePrefetchService } from "~/src/lib/_utils/image";
+import { isAdminPathname } from "~/src/lib/admin-route";
+import { DATAGRID_PREFS_INIT_SCRIPT } from "~/src/lib/datagrid-init-script";
+import { adminShellCriticalStyle, THEME_INIT_SCRIPT } from "~/src/lib/theme-init-script";
 import { buildLocalizedUrl, extractLocaleFromPath, getBaseURL } from "~/src/lib/utils";
 
 import { Toaster } from "~/src/components/shadcn/sonner";
@@ -22,6 +25,9 @@ import { Toaster } from "~/src/components/shadcn/sonner";
 import { VerificationToast } from "~/src/components/custom/pages/auth/verification-toast";
 
 import "~/src/styles/globals.css";
+
+const THEME_INIT_SCRIPT_HTML = { __html: THEME_INIT_SCRIPT };
+const DATAGRID_PREFS_INIT_SCRIPT_HTML = { __html: DATAGRID_PREFS_INIT_SCRIPT };
 
 interface RouterContext {
   imagePrefetchService: ImagePrefetchService;
@@ -43,6 +49,7 @@ const Route = createRootRouteWithContext<RouterContext>()({
 
     const canonicalUrl = buildLocalizedUrl(appUrl, path, locale);
     const xDefaultUrl = buildLocalizedUrl(appUrl, path, CONSTANTS.DEFAULT_LOCALE);
+    const adminCriticalStyle = adminShellCriticalStyle(path);
 
     return {
       links: [
@@ -77,7 +84,8 @@ const Route = createRootRouteWithContext<RouterContext>()({
         { content: CONSTANTS.APP_NAME, property: "og:site_name" },
         { content: locale, property: "og:locale" },
         { content: "summary_large_image", name: "twitter:card" }
-      ]
+      ],
+      styles: adminCriticalStyle === undefined ? undefined : [{ children: adminCriticalStyle }]
     };
   },
   loader: async ({ context, location }) => {
@@ -91,13 +99,13 @@ const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
-  const { locale } = Route.useLoaderData();
+  const { internalPathname, locale } = Route.useLoaderData();
 
   return (
     <TranslationsProvider locale={locale}>
       <ThemesProvider>
         <TooltipProvider>
-          <RootDocument locale={locale}>
+          <RootDocument internalPathname={internalPathname} locale={locale}>
             <Outlet />
             <VerificationToast />
             <Toaster />
@@ -109,10 +117,14 @@ function RootComponent() {
   );
 }
 
-function RootDocument({ children, locale }: Readonly<{ children: ReactNode; locale: Locale }>) {
+function RootDocument({ children, internalPathname, locale }: Readonly<{ children: ReactNode; internalPathname: string; locale: Locale }>) {
+  const isAdmin = isAdminPathname(internalPathname);
+
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning {...(isAdmin ? { "data-admin-shell": "" } : {})}>
       <head>
+        <script dangerouslySetInnerHTML={THEME_INIT_SCRIPT_HTML} />
+        <script dangerouslySetInnerHTML={DATAGRID_PREFS_INIT_SCRIPT_HTML} />
         <HeadContent />
       </head>
       <body>{children}</body>
