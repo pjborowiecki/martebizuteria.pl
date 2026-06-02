@@ -10,6 +10,7 @@ import { useTranslations } from "use-intl";
 import { CONSTANTS } from "~/src/constants";
 
 import { signIn } from "~/src/integrations/better-auth/auth._client";
+import { hasAdminAccess } from "~/src/integrations/better-auth/auth.permissions";
 import { type SignInFormValues, signInWithPasswordSchema } from "~/src/integrations/better-auth/auth.schemas";
 import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.utils";
 
@@ -17,6 +18,8 @@ import { Button } from "~/src/components/shadcn/button";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { AuthPasswordField, AuthTextField } from "~/src/components/custom/pages/auth/auth-fields";
+
+import { sessionQueries } from "~/src/modules/session/session.queries";
 
 export function SignInWithPasswordForm(): JSX.Element {
   const navigate = useNavigate();
@@ -39,11 +42,15 @@ export function SignInWithPasswordForm(): JSX.Element {
               description: getAuthErrorMessage(t, ctx.error)
             });
           },
-          onSuccess: () => {
+          onSuccess: async () => {
             toast.success(t("auth.toast.signInTitle"), {
               description: t("auth.toast.signInDescription")
             });
-            void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.ACCOUNT_OVERVIEW}` });
+            const session = await sessionQueries.getSessionFn();
+            const to = hasAdminAccess(session?.user.role)
+              ? `/{-$locale}${CONSTANTS.ROUTES.ADMIN_OVERVIEW}`
+              : `/{-$locale}${CONSTANTS.ROUTES.ACCOUNT_OVERVIEW}`;
+            void navigate({ to });
           }
         },
         password: data.password

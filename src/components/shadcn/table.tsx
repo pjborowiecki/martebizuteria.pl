@@ -29,16 +29,7 @@ function TableFooter({ className, ...props }: ComponentProps<"tfoot">): JSX.Elem
 }
 
 function TableRow({ className, ...props }: ComponentProps<"tr">): JSX.Element {
-  return (
-    <tr
-      data-slot="table-row"
-      className={cn(
-        "border-b border-border transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
-        className
-      )}
-      {...props}
-    />
-  );
+  return <tr data-slot="table-row" className={cn("border-b border-border transition-colors", className)} {...props} />;
 }
 
 function TableHead({ className, ...props }: ComponentProps<"th">): JSX.Element {

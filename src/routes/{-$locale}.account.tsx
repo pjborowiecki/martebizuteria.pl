@@ -10,7 +10,7 @@ import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl
 
 import { isValidLocale } from "~/src/lib/utils";
 
-import { AccountSidebar } from "~/src/components/custom/account/account-sidebar";
+import { AccountSidebar } from "~/src/components/custom/pages/account/account-sidebar";
 import { Navigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation";
 
 interface AccountPageMeta {

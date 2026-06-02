@@ -64,12 +64,12 @@ interface NavItem {
 }
 
 const SIMPLE_NAV: readonly NavItem[] = [
-  { href: CONSTANTS.ROUTES.ADMIN, icon: LayoutDashboard, labelKey: "nav.dashboard" },
+  { href: CONSTANTS.ROUTES.ADMIN_OVERVIEW, icon: LayoutDashboard, labelKey: "nav.dashboard" },
   { href: CONSTANTS.ROUTES.ADMIN_ORDERS, icon: ShoppingCart, labelKey: "nav.orders" },
   { href: CONSTANTS.ROUTES.ADMIN_CUSTOMERS, icon: Users, labelKey: "nav.customers" }
 ];
 
-const SIMPLE_NAV_ITEMS = SIMPLE_NAV.filter((item) => item.href !== CONSTANTS.ROUTES.ADMIN);
+const SIMPLE_NAV_ITEMS = SIMPLE_NAV.filter((item) => item.href !== CONSTANTS.ROUTES.ADMIN_OVERVIEW);
 
 const CATALOG_SUB: readonly NavItem[] = [
   { href: CONSTANTS.ROUTES.ADMIN_PRODUCTS, icon: ShoppingBag, labelKey: "nav.products" },
@@ -89,8 +89,8 @@ const SYSTEM_NAV: readonly NavItem[] = [
 ];
 
 function matchRoute(pathname: string, href: string): boolean {
-  if (href === CONSTANTS.ROUTES.ADMIN) {
-    return pathname.endsWith(CONSTANTS.ROUTES.ADMIN);
+  if (href === CONSTANTS.ROUTES.ADMIN_OVERVIEW) {
+    return pathname.endsWith(CONSTANTS.ROUTES.ADMIN_OVERVIEW);
   }
 
   if (href === CONSTANTS.ROUTES.ADMIN_CATALOG) {
@@ -213,7 +213,7 @@ function AdminSidebarMainGroup({
   readonly handleCatalogClick: (e: MouseEvent<HTMLButtonElement>) => void;
 }): JSX.Element {
   const t = useTranslations("admin");
-  const adminLink = useMemo(() => <LocalizedLink to={CONSTANTS.ROUTES.ADMIN} />, []);
+  const adminLink = useMemo(() => <LocalizedLink to={CONSTANTS.ROUTES.ADMIN_OVERVIEW} />, []);
   const catalogTriggerButton = useMemo(
     () => (
       <SidebarMenuButton
@@ -231,11 +231,11 @@ function AdminSidebarMainGroup({
     <>
       <SidebarMenuItem>
         <SidebarMenuButton
-          isActive={matchRoute(pathname, CONSTANTS.ROUTES.ADMIN)}
+          isActive={matchRoute(pathname, CONSTANTS.ROUTES.ADMIN_OVERVIEW)}
           tooltip={t("nav.dashboard")}
           size="default"
           render={adminLink}
-          className={cn(matchRoute(pathname, CONSTANTS.ROUTES.ADMIN) && "bg-sidebar-accent font-medium")}
+          className={cn(matchRoute(pathname, CONSTANTS.ROUTES.ADMIN_OVERVIEW) && "bg-sidebar-accent font-medium")}
         >
           <LayoutDashboard className="size-4" strokeWidth={1.5} />
           <span className="text-[13px]">{t("nav.dashboard")}</span>

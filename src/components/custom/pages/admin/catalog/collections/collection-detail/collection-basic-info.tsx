@@ -8,9 +8,10 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "~/src/components/s
 import { Label } from "~/src/components/shadcn/label";
 import { Textarea } from "~/src/components/shadcn/textarea";
 
+import { COLLECTION_COLUMN_LENGTH } from "~/src/modules/collection/collection.constants";
+
 export interface CollectionBasicInfoProps {
   description: string;
-  isNew: boolean;
   name: string;
   onDescriptionChange: (val: string) => void;
   onNameChange: (val: string) => void;
@@ -49,7 +50,7 @@ export function CollectionBasicInfo({
     [onDescriptionChange]
   );
 
-  const charCount = useMemo(() => `${description.length}/500`, [description.length]);
+  const charCount = useMemo(() => `${description.length}/${COLLECTION_COLUMN_LENGTH.description}`, [description.length]);
 
   return (
     <Card>

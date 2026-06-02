@@ -7,6 +7,7 @@ import { CONSTANTS } from "~/src/constants";
 import { cn } from "~/src/lib/utils";
 
 import { LocalizedLink, type LocalizedTo } from "~/src/components/custom/localized-link";
+import { ADMIN_LAYOUT_BG_CLASS } from "~/src/components/custom/pages/admin/admin-layout.styles";
 
 interface CatalogTabsProps {
   readonly active: "products" | "categories" | "collections";
@@ -16,7 +17,12 @@ export function CatalogTabs({ active }: CatalogTabsProps): JSX.Element {
   const t = useTranslations("admin");
 
   return (
-    <div className="scrollbar-hide flex h-12 w-full items-center gap-6 overflow-x-auto border-b border-border/40 px-6">
+    <div
+      className={cn(
+        "scrollbar-hide flex h-12 w-full items-center gap-6 overflow-x-auto border-b border-border/40 px-6",
+        ADMIN_LAYOUT_BG_CLASS
+      )}
+    >
       <TabLink href={CONSTANTS.ROUTES.ADMIN_CATALOG} label={t("nav.products")} isActive={active === "products"} />
       <TabLink href={CONSTANTS.ROUTES.ADMIN_CATEGORIES} label={t("nav.categories")} isActive={active === "categories"} />
       <TabLink href={CONSTANTS.ROUTES.ADMIN_COLLECTIONS} label={t("nav.collections")} isActive={active === "collections"} />

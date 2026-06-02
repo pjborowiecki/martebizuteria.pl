@@ -2,10 +2,13 @@ import { type JSX, type ReactNode } from "react";
 
 import { ArrowLeft, ChevronRight } from "lucide-react";
 
+import { cn } from "~/src/lib/utils";
+
 import { Separator } from "~/src/components/shadcn/separator";
 import { SidebarTrigger } from "~/src/components/shadcn/sidebar";
 
 import { LocalizedLink, type LocalizedTo } from "~/src/components/custom/localized-link";
+import { ADMIN_LAYOUT_BG_CLASS } from "~/src/components/custom/pages/admin/admin-layout.styles";
 
 interface AdminHeaderProps {
   readonly actions?: ReactNode;
@@ -20,7 +23,7 @@ const EMPTY_LENGTH = 0;
 
 export function AdminHeader({ actions, backHref, breadcrumbs, description, tabs, title }: Readonly<AdminHeaderProps>): JSX.Element {
   return (
-    <div className="sticky top-0 z-20 flex flex-col bg-background">
+    <div className={cn("sticky top-0 z-20 flex flex-col", ADMIN_LAYOUT_BG_CLASS)}>
       <header className="flex h-16 shrink-0 items-center gap-4 border-b border-sidebar-border bg-sidebar px-6 text-sidebar-foreground">
         {backHref === undefined ? (
           <SidebarTrigger className="-ml-1 shrink-0 transition-opacity hover:bg-transparent hover:opacity-70" />

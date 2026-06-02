@@ -1,23 +1,27 @@
 import type { JSX } from "react";
 
-import { useTranslations } from "use-intl";
+import { useRouterState } from "@tanstack/react-router";
 
 import { TranslationsProvider } from "~/src/providers/translations-provider";
 
-function PendingContent(): JSX.Element {
-  const t = useTranslations("components.custom.defaultPendingComponent");
+import { isAdminPathname } from "~/src/lib/admin-route";
+import { cn } from "~/src/lib/utils";
 
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <p className="animate-pulse text-sm text-muted-foreground">{t("loading")}</p>
-    </div>
-  );
+function PendingShell(): JSX.Element {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  if (isAdminPathname(pathname)) {
+    // Keep admin chrome visible; child routes use Suspense fallbacks for dynamic regions.
+    return <div className="min-h-0" aria-hidden />;
+  }
+
+  return <div className={cn("min-h-svh w-full bg-background")} aria-busy="true" aria-label="Loading" />;
 }
 
 export function DefaultPendingComponent(): JSX.Element {
   return (
     <TranslationsProvider>
-      <PendingContent />
+      <PendingShell />
     </TranslationsProvider>
   );
 }

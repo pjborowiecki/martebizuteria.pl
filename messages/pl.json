@@ -941,6 +941,24 @@
       "thanks": "M'ARTE"
     }
   },
+  "dataGrid": {
+    "view": {
+      "label": "Pokaż lub ukryj kolumny",
+      "columns": "Przełącz kolumny",
+      "reset": "Przywróć domyślne ustawienia tabeli"
+    },
+    "sortBy": "Sortuj wg {column}",
+    "resizeColumn": "Zmień szerokość kolumny {column}",
+    "pagination": {
+      "rowsPerPage": "Wierszy na stronę",
+      "page": "Strona {page} z {total}",
+      "showing": "{from}\u2013{to} z {count}",
+      "first": "Pierwsza strona",
+      "previous": "Poprzednia strona",
+      "next": "Następna strona",
+      "last": "Ostatnia strona"
+    }
+  },
   "admin": {
     "brand": "M'ARTE",
     "subtitle": "Panel administracyjny",
@@ -950,7 +968,7 @@
     },
     "customerDetail": {
       "breadcrumb": {
-        "dashboard": "Pulpit",
+        "dashboard": "Podsumowanie",
         "customers": "Klienci"
       },
       "actions": {
@@ -1054,7 +1072,7 @@
     },
     "nav": {
       "main": "Menu główne",
-      "dashboard": "Pulpit",
+      "dashboard": "Podsumowanie",
       "catalog": "Katalog",
       "products": "Produkty",
       "categories": "Kategorie",
@@ -1206,24 +1224,76 @@
         "vsPrevious": "vs poprzedni miesiąc"
       }
     },
+    "media": {
+      "cta": "Kliknij, aby przesłać lub przeciągnij i upuść",
+      "hint": "JPG, PNG, WEBP lub AVIF · do 5MB",
+      "uploading": "Przesyłanie…",
+      "dropHere": "Upuść zdjęcie, aby przesłać",
+      "change": "Zmień",
+      "remove": "Usuń",
+      "errorTitle": "Przesyłanie nie powiodło się",
+      "errorUpload": "Nie udało się przesłać zdjęcia. Spróbuj ponownie.",
+      "errorInvalidType": "Nieobsługiwany typ pliku. Użyj JPG, PNG, WEBP lub AVIF.",
+      "errorTooLarge": "Zdjęcie jest zbyt duże. Maksymalny rozmiar to 5MB.",
+      "main": "Główne",
+      "setMain": "Ustaw jako główne",
+      "addMore": "Dodaj zdjęcia",
+      "reorderAria": "Zdjęcie {position} z {total}. Użyj strzałek, aby zmienić kolejność."
+    },
     "collections": {
       "title": "Kolekcje",
       "description": "Zgrupuj swoje produkty w wyselekcjonowane kolekcje.",
       "actions": {
-        "addCollection": "Dodaj kolekcję"
+        "addCollection": "Dodaj kolekcję",
+        "exportCsv": "Pobierz dane jako CSV",
+        "refresh": "Odśwież dane tabeli"
       },
       "columns": {
         "description": "Opis",
         "collection": "Kolekcja",
+        "createdAt": "Data utworzenia",
+        "image": "Zdjęcie",
         "products": "Produkty",
         "slug": "Slug",
         "status": "Status"
       },
+      "filter": {
+        "status": "Filtruj wg statusu",
+        "allStatuses": "Wszystkie statusy"
+      },
+      "bulk": {
+        "selected": "Zaznaczono: {count}",
+        "delete": "Usuń ({count})",
+        "confirmTitle": "Usunąć kolekcje?",
+        "confirmDescription": "Spowoduje to trwałe usunięcie {count} kolekcji. Tej operacji nie można cofnąć.",
+        "cancel": "Anuluj",
+        "confirm": "Usuń"
+      },
       "statusActive": "Aktywny",
-      "statusDraft": "Szkic",
+      "statusDraft": "Wersja robocza",
       "searchPlaceholder": "Szukaj kolekcji...",
+      "empty": "Brak kolekcji. Utwórz pierwszą.",
+      "reorder": {
+        "handle": "Przeciągnij, aby zmienić kolejność, lub użyj strzałek"
+      },
+      "rowActions": {
+        "edit": "Edytuj kolekcję",
+        "viewProducts": "Zobacz produkty",
+        "copyId": "Kopiuj ID",
+        "copyLink": "Kopiuj link",
+        "delete": "Usuń kolekcję",
+        "copyIdToast": "Skopiowano ID kolekcji do schowka",
+        "copyLinkToast": "Skopiowano link kolekcji do schowka",
+        "deleteTitle": "Usunąć kolekcję?",
+        "deleteDescription": "Spowoduje to trwałe usunięcie kolekcji \u201e{title}\u201d. Tej operacji nie można cofnąć.",
+        "cancel": "Anuluj",
+        "confirm": "Usuń"
+      },
       "form": {
         "titleAdd": "Dodaj nową kolekcję",
+        "titleEdit": "Edytuj kolekcję",
+        "sheetDescription": "Utwórz nową kolekcję. Zostanie dodana na końcu listy.",
+        "sheetDescriptionEdit": "Zaktualizuj szczegóły, status i media tej kolekcji.",
         "delete": "Usuń",
         "cancel": "Anuluj",
         "saveDraft": "Zapisz jako szkic",
@@ -1233,19 +1303,11 @@
         "name": "Nazwa",
         "namePlaceholder": "np. Letnia kolekcja",
         "slug": "URL Slug",
+        "slugHint": "Uzupełniane z nazwy, dopóki nie edytujesz tego pola ręcznie.",
         "description": "Opis",
         "descriptionPlaceholder": "Wpisz opis kolekcji...",
         "mediaTitle": "Media",
         "coverImage": "Zdjęcie główne",
-        "changeImage": "Zmień zdjęcie",
-        "removeImage": "Usuń",
-        "uploadImage": "Prześlij zdjęcie",
-        "imageHint": "Obsługuje JPG, PNG, WEBP. Max 5MB.",
-        "sectionSeo": "Optymalizacja (SEO)",
-        "metaTitle": "Tytuł Meta",
-        "metaTitlePlaceholder": "np. Nazwa kolekcji - Nazwa sklepu",
-        "metaDescription": "Opis Meta",
-        "metaDescriptionPlaceholder": "Krótki opis do wyników wyszukiwania...",
         "status": "Status",
         "featuredLabel": "Wyróżniona kolekcja",
         "displayOptions": "Opcje wyświetlania",
@@ -1255,7 +1317,29 @@
         "products": "Produkty",
         "id": "ID",
         "created": "Utworzono",
-        "updated": "Ostatnia aktualizacja"
+        "updated": "Ostatnia aktualizacja",
+        "validation": {
+          "nameRequired": "Nazwa jest wymagana",
+          "nameTooLong": "Nazwa jest zbyt długa",
+          "slugRequired": "Slug URL jest wymagany",
+          "slugInvalid": "Używaj tylko małych liter, cyfr i myślników",
+          "descriptionTooLong": "Opis jest zbyt długi"
+        }
+      },
+      "toast": {
+        "createSuccessTitle": "Kolekcja utworzona",
+        "createSuccessDescription": "Twoja kolekcja została pomyślnie utworzona.",
+        "updateSuccessTitle": "Kolekcja zapisana",
+        "updateSuccessDescription": "Zmiany zostały zapisane.",
+        "errorTitle": "Coś poszło nie tak",
+        "errorDescription": "Nie udało się utworzyć kolekcji. Spróbuj ponownie.",
+        "duplicateHandle": "Kolekcja z tym slugiem URL już istnieje.",
+        "reorderErrorTitle": "Nie udało się zapisać kolejności",
+        "reorderErrorDescription": "Nie udało się zapisać nowej kolejności kolekcji. Spróbuj ponownie.",
+        "deleteSuccessTitle": "Usunięto kolekcje",
+        "deleteSuccessDescription": "Usunięto {count} kolekcji.",
+        "deleteErrorTitle": "Nie udało się usunąć",
+        "deleteErrorDescription": "Nie udało się usunąć wybranych kolekcji. Spróbuj ponownie."
       },
       "stats": {
         "active": {
@@ -1264,16 +1348,18 @@
         },
         "avgProducts": {
           "label": "Średnio Produktów/Kolekcję",
+          "caption": "~{count} produktów przypisanych",
           "value": "12.5"
         },
         "draft": {
-          "label": "Szkice",
+          "label": "Wersje robocze",
           "value": "4"
         },
         "total": {
           "label": "Wszystkie Kolekcje",
           "value": "28"
         },
+        "shareCaption": "{percent}% wszystkich",
         "vsPrevious": "vs poprzedni miesiąc"
       }
     },
@@ -1374,7 +1460,7 @@
       "initials": "JD"
     },
     "dashboard": {
-      "title": "Pulpit",
+      "title": "Podsumowanie",
       "description": "Przegląd wyników Twojego sklepu i ostatniej aktywności.",
       "stats": {
         "vsPrevious": "względem zeszłego miesiąca",
@@ -1441,7 +1527,7 @@
       "title": "Dziennik audytu",
       "description": "Śledź wszystkie zdarzenia systemowe i działania administracyjne.",
       "breadcrumb": {
-        "dashboard": "Pulpit"
+        "dashboard": "Podsumowanie"
       },
       "stats": {
         "totalEvents": "Wszystkie zdarzenia",

@@ -3,6 +3,7 @@ name: tanstack-pacer
 description: Framework-agnostic debouncing, throttling, rate limiting, queuing, and batching utilities.
 ---
 
+
 ## Overview
 
 TanStack Pacer provides a unified, type-safe toolkit for controlling function execution timing. It offers class-based APIs, factory functions, and React hooks for debouncing, throttling, rate limiting, queuing, and batching.
@@ -25,32 +26,38 @@ Delays execution until after a period of inactivity.
 ### Class API
 
 ```typescript
-import { Debouncer } from "@tanstack/pacer";
+import { Debouncer } from '@tanstack/pacer'
 
-const debouncer = new Debouncer((query: string) => fetchSearchResults(query), {
-  wait: 300, // ms of inactivity before execution
-  leading: false, // Execute on leading edge (default: false)
-  trailing: true, // Execute on trailing edge (default: true)
-  maxWait: 1000, // Force execution after 1s of continuous calls
-  enabled: true,
-  onExecute: (result) => console.log(result),
-});
+const debouncer = new Debouncer(
+  (query: string) => fetchSearchResults(query),
+  {
+    wait: 300,            // ms of inactivity before execution
+    leading: false,       // Execute on leading edge (default: false)
+    trailing: true,       // Execute on trailing edge (default: true)
+    maxWait: 1000,        // Force execution after 1s of continuous calls
+    enabled: true,
+    onExecute: (result) => console.log(result),
+  }
+)
 
-debouncer.maybeExecute("search term");
-debouncer.cancel();
-debouncer.getExecutionCount();
-debouncer.setOptions({ wait: 500 }); // Dynamic reconfiguration
+debouncer.maybeExecute('search term')
+debouncer.cancel()
+debouncer.getExecutionCount()
+debouncer.setOptions({ wait: 500 }) // Dynamic reconfiguration
 ```
 
 ### Factory Function
 
 ```typescript
-import { debounce } from "@tanstack/pacer";
+import { debounce } from '@tanstack/pacer'
 
-const debouncedSearch = debounce((query: string) => fetchResults(query), { wait: 300 });
+const debouncedSearch = debounce(
+  (query: string) => fetchResults(query),
+  { wait: 300 }
+)
 
-debouncedSearch("term");
-debouncedSearch.cancel();
+debouncedSearch('term')
+debouncedSearch.cancel()
 ```
 
 ### React Hooks
@@ -61,19 +68,19 @@ import {
   useDebouncedCallback,
   useDebouncedState,
   useDebouncedValue,
-} from "@tanstack/react-pacer";
+} from '@tanstack/react-pacer'
 
 // Full debouncer instance
-const debouncer = useDebouncer(fn, { wait: 300 });
+const debouncer = useDebouncer(fn, { wait: 300 })
 
 // Simple debounced function
-const debouncedFn = useDebouncedCallback(fn, { wait: 300 });
+const debouncedFn = useDebouncedCallback(fn, { wait: 300 })
 
 // Debounced state management
-const [debouncedValue, setValue] = useDebouncedState(initialValue, { wait: 300 });
+const [debouncedValue, setValue] = useDebouncedState(initialValue, { wait: 300 })
 
 // Debounced reactive value
-const debouncedValue = useDebouncedValue(reactiveValue, { wait: 300 });
+const debouncedValue = useDebouncedValue(reactiveValue, { wait: 300 })
 ```
 
 ## Throttling
@@ -83,18 +90,21 @@ Limits execution to at most once per interval.
 ### Class API
 
 ```typescript
-import { Throttler } from "@tanstack/pacer";
+import { Throttler } from '@tanstack/pacer'
 
-const throttler = new Throttler((position: { x: number; y: number }) => updatePosition(position), {
-  wait: 100, // Minimum interval between executions
-  leading: true, // Execute immediately on first call (default: true)
-  trailing: true, // Execute after interval with last args (default: true)
-  enabled: true,
-  onExecute: (result) => console.log(result),
-});
+const throttler = new Throttler(
+  (position: { x: number; y: number }) => updatePosition(position),
+  {
+    wait: 100,            // Minimum interval between executions
+    leading: true,        // Execute immediately on first call (default: true)
+    trailing: true,       // Execute after interval with last args (default: true)
+    enabled: true,
+    onExecute: (result) => console.log(result),
+  }
+)
 
-throttler.maybeExecute({ x: 100, y: 200 });
-throttler.cancel();
+throttler.maybeExecute({ x: 100, y: 200 })
+throttler.cancel()
 ```
 
 ### React Hooks
@@ -105,10 +115,10 @@ import {
   useThrottledCallback,
   useThrottledState,
   useThrottledValue,
-} from "@tanstack/react-pacer";
+} from '@tanstack/react-pacer'
 
-const throttledFn = useThrottledCallback(handleScroll, { wait: 100 });
-const [throttledPos, setPos] = useThrottledState({ x: 0, y: 0 }, { wait: 100 });
+const throttledFn = useThrottledCallback(handleScroll, { wait: 100 })
+const [throttledPos, setPos] = useThrottledState({ x: 0, y: 0 }, { wait: 100 })
 ```
 
 ## Rate Limiting
@@ -118,19 +128,22 @@ Controls execution with a maximum count within a time window.
 ### Class API
 
 ```typescript
-import { RateLimiter } from "@tanstack/pacer";
+import { RateLimiter } from '@tanstack/pacer'
 
-const limiter = new RateLimiter(async (endpoint: string) => fetch(endpoint).then((r) => r.json()), {
-  limit: 10, // Max executions per window
-  window: 60000, // Time window in ms (60s)
-  enabled: true,
-  onExecute: (result) => console.log(result),
-  onReject: (...args) => console.warn("Rate limited:", args),
-});
+const limiter = new RateLimiter(
+  async (endpoint: string) => fetch(endpoint).then(r => r.json()),
+  {
+    limit: 10,            // Max executions per window
+    window: 60000,        // Time window in ms (60s)
+    enabled: true,
+    onExecute: (result) => console.log(result),
+    onReject: (...args) => console.warn('Rate limited:', args),
+  }
+)
 
-limiter.maybeExecute("/api/data"); // Rejected if limit exceeded
-limiter.getExecutionCount();
-limiter.getRejectionCount();
+limiter.maybeExecute('/api/data')  // Rejected if limit exceeded
+limiter.getExecutionCount()
+limiter.getRejectionCount()
 ```
 
 ### React Hooks
@@ -141,9 +154,9 @@ import {
   useRateLimitedCallback,
   useRateLimitedState,
   useRateLimitedValue,
-} from "@tanstack/react-pacer";
+} from '@tanstack/react-pacer'
 
-const rateLimitedFn = useRateLimitedCallback(apiCall, { limit: 5, window: 1000 });
+const rateLimitedFn = useRateLimitedCallback(apiCall, { limit: 5, window: 1000 })
 ```
 
 ## Queuing
@@ -151,21 +164,21 @@ const rateLimitedFn = useRateLimitedCallback(apiCall, { limit: 5, window: 1000 }
 Sequential execution with configurable concurrency.
 
 ```typescript
-import { Queue } from "@tanstack/pacer";
+import { Queue } from '@tanstack/pacer'
 
 const queue = new Queue({
-  concurrency: 1, // Max concurrent tasks
-  started: true, // Start processing immediately
-});
+  concurrency: 1,         // Max concurrent tasks
+  started: true,          // Start processing immediately
+})
 
-queue.add(() => uploadFile(file1));
-queue.add(() => uploadFile(file2));
+queue.add(() => uploadFile(file1))
+queue.add(() => uploadFile(file2))
 
-queue.start();
-queue.pause();
-queue.clear();
-queue.getSize(); // Pending count
-queue.getPending(); // Currently executing count
+queue.start()
+queue.pause()
+queue.clear()
+queue.getSize()           // Pending count
+queue.getPending()        // Currently executing count
 ```
 
 ## Batching
@@ -173,46 +186,49 @@ queue.getPending(); // Currently executing count
 Groups calls for combined processing.
 
 ```typescript
-import { Batcher } from "@tanstack/pacer";
+import { Batcher } from '@tanstack/pacer'
 
-const batcher = new Batcher((items: LogEntry[]) => sendBatchToServer(items), {
-  maxSize: 50, // Auto-flush at 50 items
-  wait: 1000, // Auto-flush after 1s
-});
+const batcher = new Batcher(
+  (items: LogEntry[]) => sendBatchToServer(items),
+  {
+    maxSize: 50,          // Auto-flush at 50 items
+    wait: 1000,           // Auto-flush after 1s
+  }
+)
 
-batcher.add(logEntry); // Accumulates
-batcher.flush(); // Manual flush
-batcher.getSize(); // Current batch size
-batcher.clear(); // Discard batch
+batcher.add(logEntry)    // Accumulates
+batcher.flush()          // Manual flush
+batcher.getSize()        // Current batch size
+batcher.clear()          // Discard batch
 ```
 
 ## Async Variants
 
 ```typescript
-import { AsyncDebouncer, asyncDebounce, AsyncThrottler, asyncThrottle } from "@tanstack/pacer";
+import { AsyncDebouncer, asyncDebounce, AsyncThrottler, asyncThrottle } from '@tanstack/pacer'
 
 const asyncDebouncer = new AsyncDebouncer(
   async (query: string) => {
-    const response = await fetch(`/api/search?q=${query}`);
-    return response.json();
+    const response = await fetch(`/api/search?q=${query}`)
+    return response.json()
   },
-  { wait: 300 },
-);
+  { wait: 300 }
+)
 
 // React async hooks
-import { useAsyncDebouncer, useAsyncThrottler } from "@tanstack/react-pacer";
+import { useAsyncDebouncer, useAsyncThrottler } from '@tanstack/react-pacer'
 ```
 
 ## Choosing the Right Utility
 
-| Scenario         | Utility        | Why                              |
-| ---------------- | -------------- | -------------------------------- |
-| Search input     | Debouncer      | Wait for user to stop typing     |
-| Scroll events    | Throttler      | Periodic updates during activity |
-| API protection   | RateLimiter    | Hard limit on call frequency     |
-| File uploads     | Queue          | Sequential processing            |
-| Analytics events | Batcher        | Group for efficiency             |
-| Network requests | AsyncDebouncer | Handle abort/retry               |
+| Scenario | Utility | Why |
+|----------|---------|-----|
+| Search input | Debouncer | Wait for user to stop typing |
+| Scroll events | Throttler | Periodic updates during activity |
+| API protection | RateLimiter | Hard limit on call frequency |
+| File uploads | Queue | Sequential processing |
+| Analytics events | Batcher | Group for efficiency |
+| Network requests | AsyncDebouncer | Handle abort/retry |
 
 ## Leading vs Trailing Edge
 
