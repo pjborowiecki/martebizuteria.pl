@@ -58,7 +58,7 @@ export function CollectionSheet({ collection, mode, onOpenChange, open }: Collec
 
           <CollectionForm>
             <div className="space-y-10 px-6 py-6">
-              <BasicDetailsSection />
+              <BasicDetailsSection recordId={collection?.id} />
               <StatusSection />
               <MediaSection />
             </div>

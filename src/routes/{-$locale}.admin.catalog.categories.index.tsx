@@ -1,51 +1,37 @@
-import { type JSX, useMemo } from "react";
+import { type JSX } from "react";
 
+import type { QueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
-import { useTranslations } from "use-intl";
 
-import { CONSTANTS } from "~/src/constants";
+import { CategoriesTableContent } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-table";
+import {
+  CategoriesSheetProvider,
+  useCategoriesSheetState
+} from "~/src/components/custom/pages/admin/catalog/categories/hooks/use-categories-sheet";
 
-import { Button } from "~/src/components/shadcn/button";
+import { CATEGORY_QUERY_STALE_MS } from "~/src/modules/category/category.constants";
+import { categoryQueryOptions } from "~/src/modules/category/category.queries";
 
-import { LocalizedLink } from "~/src/components/custom/localized-link";
-import { AdminHeader } from "~/src/components/custom/pages/admin/admin-header";
-import { CatalogTabs } from "~/src/components/custom/pages/admin/catalog/catalog-tabs";
-import { CategoriesStats } from "~/src/components/custom/pages/admin/catalog/categories/categories-stats";
-import { CategoriesTable } from "~/src/components/custom/pages/admin/catalog/categories/categories-table";
-
-import { CATEGORIES, CATEGORY_STATS } from "~/src/data/categories-data";
+async function prefetchCategoriesQueries(context: { queryClient: QueryClient }): Promise<void> {
+  await Promise.all([
+    context.queryClient.ensureQueryData(categoryQueryOptions.adminCategoriesQueryOptions()),
+    context.queryClient.ensureQueryData(categoryQueryOptions.categoryStatsQueryOptions())
+  ]);
+}
 
 export const Route = createFileRoute("/{-$locale}/admin/catalog/categories/")({
-  component: AdminCatalogCategoriesRoute
+  component: CategoriesIndexRoute,
+  loader: ({ context }) => prefetchCategoriesQueries(context),
+  shouldReload: false,
+  staleTime: CATEGORY_QUERY_STALE_MS
 });
 
-function AdminCatalogCategoriesRoute(): JSX.Element {
-  const t = useTranslations("admin");
-
-  const newParams = useMemo(() => ({ handle: "new" }), []);
-  const addCategoryLink = useMemo(() => <LocalizedLink to={CONSTANTS.ROUTES.ADMIN_CATEGORY} params={newParams} />, [newParams]);
-
-  const headerActions = useMemo(
-    () => (
-      <Button size="sm" className="h-9 gap-2 bg-foreground text-sm text-background hover:bg-foreground/90" render={addCategoryLink}>
-        <Plus className="size-4" strokeWidth={1.5} />
-        {t("categories.actions.addCategory")}
-      </Button>
-    ),
-    [t, addCategoryLink]
-  );
-
-  const tabs = useMemo(() => <CatalogTabs active="categories" />, []);
+function CategoriesIndexRoute(): JSX.Element {
+  const sheetState = useCategoriesSheetState();
 
   return (
-    <>
-      <AdminHeader title={t("categories.title")} description={t("categories.description")} actions={headerActions} tabs={tabs} />
-
-      <div className="flex-1 space-y-5 p-8">
-        <CategoriesStats stats={CATEGORY_STATS} />
-        <CategoriesTable categories={CATEGORIES} />
-      </div>
-    </>
+    <CategoriesSheetProvider value={sheetState}>
+      <CategoriesTableContent />
+    </CategoriesSheetProvider>
   );
 }

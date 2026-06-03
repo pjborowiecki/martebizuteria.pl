@@ -182,7 +182,7 @@
 
   html[data-admin-shell],
   html[data-admin-shell] body {
-    background-color: #f4f4f5;
+    background-color: var(--sidebar);
     color-scheme: light;
   }
 
@@ -204,6 +204,36 @@
     --input: oklch(0.92 0.004 286.32);
     --ring: oklch(0.871 0.006 286.286);
     color-scheme: light;
+  }
+}
+
+@layer components {
+  /**
+   * Horizontal scroll on admin datagrids (`DataTableContainer`).
+   * Uses admin main tokens so the thumb/track match table borders and muted chrome.
+   */
+  [data-admin-main] [data-slot="data-table-container"] {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 38%, var(--border)) var(--muted);
+  }
+
+  [data-admin-main] [data-slot="data-table-container"]::-webkit-scrollbar {
+    height: 0.5rem;
+  }
+
+  [data-admin-main] [data-slot="data-table-container"]::-webkit-scrollbar-track {
+    background-color: var(--muted);
+    border-block-start: 1px solid color-mix(in oklab, var(--border) 65%, transparent);
+  }
+
+  [data-admin-main] [data-slot="data-table-container"]::-webkit-scrollbar-thumb {
+    border: 2px solid var(--muted);
+    border-radius: 9999px;
+    background-color: color-mix(in oklab, var(--muted-foreground) 38%, var(--border));
+  }
+
+  [data-admin-main] [data-slot="data-table-container"]::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--muted-foreground) 52%, var(--border));
   }
 }
 

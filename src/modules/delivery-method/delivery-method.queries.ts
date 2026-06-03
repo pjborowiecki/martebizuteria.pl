@@ -1,6 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { deliveryMethodAccessors } from "~/src/modules/delivery-method/delivery-method.accessors";
 
 const getDeliveryMethods = createServerFn({ method: "GET" }).handler(async () => {
@@ -19,7 +21,7 @@ const getDeliveryMethods = createServerFn({ method: "GET" }).handler(async () =>
 const deliveryMethodsQueryOptions = () =>
   queryOptions({
     queryFn: () => getDeliveryMethods(),
-    queryKey: ["deliveryMethods"]
+    queryKey: CONSTANTS.QUERY_KEYS.DELIVERY_METHOD.ALL
   });
 
 export const deliveryMethodQueries = {

@@ -4,7 +4,8 @@
     "no": "Nie",
     "confirm": "Potwierdź",
     "cancel": "Anuluj",
-    "loading": "Ładowanie..."
+    "loading": "Ładowanie...",
+    "noDataToDisplay": "Brak danych do wyświetlenia"
   },
   "components": {
     "shadcn": {
@@ -944,7 +945,7 @@
   "dataGrid": {
     "view": {
       "label": "Pokaż lub ukryj kolumny",
-      "columns": "Przełącz kolumny",
+      "columns": "Widoczność kolumn",
       "reset": "Przywróć domyślne ustawienia tabeli"
     },
     "sortBy": "Sortuj wg {column}",
@@ -1148,80 +1149,137 @@
       "title": "Kategorie",
       "description": "Organizuj swoje produkty w kolekcje i kategorie.",
       "actions": {
-        "addCategory": "Dodaj kategorię"
+        "addCategory": "Dodaj kategorię",
+        "exportCsv": "Pobierz dane jako CSV",
+        "refresh": "Odśwież dane tabeli"
       },
-      "form": {
-        "cancel": "Anuluj",
-        "changeImage": "Zmień zdjęcie",
-        "create": "Utwórz kategorię",
-        "created": "Utworzono",
-        "delete": "Usuń",
+      "columns": {
+        "category": "Kategoria",
+        "createdAt": "Data utworzenia",
         "description": "Opis",
-        "descriptionPlaceholder": "Wprowadź opis kategorii...",
-        "displayOptions": "Opcje wyświetlania",
-        "featuredLabel": "Wyróżniona kategoria",
+        "editedAt": "Ostatnia edycja",
         "id": "ID",
-        "imageHint": "Obsługuje JPG, PNG, WEBP. Max 5MB.",
-        "mediaTitle": "Media",
-        "metaDescription": "Opis Meta",
-        "metaDescriptionPlaceholder": "Krótki opis dla wyników wyszukiwania...",
-        "metaTitle": "Tytuł Meta",
-        "metaTitlePlaceholder": "np. Nazwa kategorii - Nazwa sklepu",
-        "name": "Nazwa",
-        "namePlaceholder": "np. Naszyjniki",
-        "noParent": "Brak",
-        "parentCategory": "Kategoria nadrzędna",
+        "image": "Zdjęcie",
+        "parent": "Kategoria nadrzędna",
         "products": "Produkty",
-        "removeImage": "Usuń",
-        "save": "Zapisz zmiany",
-        "saveDraft": "Zapisz jako szkic",
-        "sectionBasic": "Podstawowe informacje",
-        "sectionSeo": "Optymalizacja pod kątem wyszukiwarek",
-        "showInFilters": "Pokaż w filtrach",
-        "showInNav": "Pokaż w nawigacji",
-        "slug": "Slug URL",
-        "sortOrder": "Kolejność sortowania",
+        "shortDescription": "Krótki opis",
+        "slug": "Slug",
         "status": "Status",
-        "summary": "Podsumowanie",
-        "titleAdd": "Dodaj nową kategorię",
-        "updated": "Ostatnia aktualizacja",
-        "uploadImage": "Prześlij zdjęcie"
+        "subtitle": "Podtytuł",
+        "title": "Tytuł"
+      },
+      "filter": {
+        "status": "Filtruj wg statusu",
+        "allStatuses": "Wszystkie statusy"
+      },
+      "bulk": {
+        "selected": "Zaznaczono: {count}",
+        "delete": "Usuń ({count})",
+        "confirmTitle": "Usunąć kategorie?",
+        "confirmDescription": "Spowoduje to trwałe usunięcie {count} kategorii. Tej operacji nie można cofnąć.",
+        "cancel": "Anuluj",
+        "confirm": "Usuń"
+      },
+      "statusActive": "Aktywny",
+      "statusDraft": "Wersja robocza",
+      "searchPlaceholder": "Szukaj kategorii...",
+      "reorder": {
+        "handle": "Przeciągnij, aby zmienić kolejność, lub użyj strzałek"
       },
       "rowActions": {
         "edit": "Edytuj kategorię",
         "viewProducts": "Zobacz produkty",
-        "copyId": "Kopiuj ID: {id}",
+        "copyId": "Kopiuj ID",
         "copyLink": "Kopiuj link",
-        "delete": "Usuń kategorię"
+        "delete": "Usuń kategorię",
+        "copyIdToast": "Skopiowano ID kategorii do schowka",
+        "copyLinkToast": "Skopiowano link kategorii do schowka",
+        "deleteTitle": "Usunąć kategorię?",
+        "deleteDescription": "Spowoduje to trwałe usunięcie kategorii \u201e{title}\u201d. Tej operacji nie można cofnąć.",
+        "cancel": "Anuluj",
+        "confirm": "Usuń"
       },
-      "columns": {
+      "form": {
+        "titleAdd": "Dodaj nową kategorię",
+        "titleEdit": "Edytuj kategorię",
+        "sheetDescription": "Utwórz nową kategorię. Zostanie dodana na końcu listy.",
+        "sheetDescriptionEdit": "Zaktualizuj szczegóły, status i media tej kategorii.",
+        "cancel": "Anuluj",
+        "create": "Utwórz kategorię",
+        "save": "Zapisz zmiany",
+        "sectionBasic": "Podstawowe informacje",
+        "sectionParent": "Hierarchia",
+        "title": "Tytuł",
+        "titlePlaceholder": "np. Naszyjniki",
+        "slug": "URL Slug",
+        "slugHint": "Uzupełniane z tytułu, dopóki nie edytujesz tego pola ręcznie.",
+        "parentCategory": "Kategoria nadrzędna",
+        "noParent": "Brak",
         "description": "Opis",
-        "name": "Kategoria",
-        "products": "Produkty",
-        "slug": "Slug",
-        "status": "Status"
+        "descriptionPlaceholder": "Wprowadź pełny opis kategorii...",
+        "shortDescription": "Krótki opis",
+        "shortDescriptionPlaceholder": "Krótkie podsumowanie na karty i listy...",
+        "subtitle": "Podtytuł",
+        "subtitlePlaceholder": "Linia pod tytułem kategorii...",
+        "mediaTitle": "Media",
+        "image": "Zdjęcie",
+        "id": "ID",
+        "status": "Status",
+        "displayOptions": "Opcje wyświetlania",
+        "hints": {
+          "id": "Stały identyfikator kategorii. Używany w panelu i API; nie można go zmienić po utworzeniu.",
+          "title": "Nazwa widoczna w nawigacji sklepu i na stronach kategorii.",
+          "slug": "Fragment adresu URL tej kategorii. Uzupełniany z tytułu, dopóki nie edytujesz go ręcznie. Tylko małe litery, cyfry i myślniki.",
+          "subtitle": "Opcjonalna linia pod tytułem kategorii.",
+          "shortDescription": "Krótkie podsumowanie na karty, listy i podglądy.",
+          "description": "Pełny opis na stronie kategorii.",
+          "parentCategory": "Opcjonalna kategoria nadrzędna. Zostaw puste dla kategorii głównej.",
+          "status": "Szkice są ukryte w sklepie; aktywne są widoczne dla klientów.",
+          "image": "Zdjęcie kategorii w sklepie i w panelu."
+        },
+        "validation": {
+          "titleRequired": "Tytuł jest wymagany",
+          "titleTooLong": "Tytuł jest zbyt długi",
+          "slugRequired": "Slug URL jest wymagany",
+          "slugInvalid": "Używaj tylko małych liter, cyfr i myślników",
+          "descriptionTooLong": "Opis jest zbyt długi",
+          "shortDescriptionTooLong": "Krótki opis jest zbyt długi",
+          "subtitleTooLong": "Podtytuł jest zbyt długi"
+        }
       },
-      "statusActive": "Aktywny",
-      "statusDraft": "Szkic",
-      "searchPlaceholder": "Szukaj kategorii...",
+      "toast": {
+        "createSuccessTitle": "Kategoria utworzona",
+        "createSuccessDescription": "Twoja kategoria została pomyślnie utworzona.",
+        "updateSuccessTitle": "Kategoria zapisana",
+        "updateSuccessDescription": "Zmiany zostały zapisane.",
+        "errorTitle": "Coś poszło nie tak",
+        "errorDescription": "Nie udało się zapisać kategorii. Spróbuj ponownie.",
+        "duplicateHandle": "Kategoria z tym slugiem URL już istnieje.",
+        "reorderErrorTitle": "Nie udało się zapisać kolejności",
+        "reorderErrorDescription": "Nie udało się zapisać nowej kolejności kategorii. Spróbuj ponownie.",
+        "deleteSuccessTitle": "Usunięto kategorie",
+        "deleteSuccessDescription": "Usunięto {count} kategorii.",
+        "deleteErrorTitle": "Nie udało się usunąć",
+        "deleteErrorDescription": "Nie udało się usunąć wybranych kategorii. Spróbuj ponownie.",
+        "deleteHasChildrenDescription": "Usuń lub przenieś kategorie podrzędne przed usunięciem kategorii nadrzędnej.",
+        "deleteHasProductsDescription": "Przypisz produkty do innych kategorii lub usuń je, zanim usuniesz te kategorie.",
+        "invalidParent": "Wybierz prawidłową kategorię nadrzędną — nie może to być ta kategoria ani jej podkategoria."
+      },
       "stats": {
         "active": {
-          "label": "Aktywne kategorie",
-          "value": "216"
+          "label": "Aktywne kategorie"
         },
         "avgProducts": {
-          "label": "Śr. produktów/kategorię",
-          "value": "14.2"
+          "label": "Średnio produktów/kategorię",
+          "caption": "~{count} produktów przypisanych"
         },
         "draft": {
-          "label": "Szkice",
-          "value": "18"
+          "label": "Wersje robocze"
         },
         "total": {
-          "label": "Wszystkie kategorie",
-          "value": "248"
+          "label": "Wszystkie kategorie"
         },
-        "vsPrevious": "vs poprzedni miesiąc"
+        "shareCaption": "{percent}% wszystkich"
       }
     },
     "media": {
@@ -1252,6 +1310,8 @@
         "description": "Opis",
         "collection": "Kolekcja",
         "createdAt": "Data utworzenia",
+        "editedAt": "Ostatnia edycja",
+        "id": "ID",
         "image": "Zdjęcie",
         "products": "Produkty",
         "slug": "Slug",
@@ -1272,7 +1332,6 @@
       "statusActive": "Aktywny",
       "statusDraft": "Wersja robocza",
       "searchPlaceholder": "Szukaj kolekcji...",
-      "empty": "Brak kolekcji. Utwórz pierwszą.",
       "reorder": {
         "handle": "Przeciągnij, aby zmienić kolejność, lub użyj strzałek"
       },
@@ -1311,6 +1370,14 @@
         "status": "Status",
         "featuredLabel": "Wyróżniona kolekcja",
         "displayOptions": "Opcje wyświetlania",
+        "hints": {
+          "id": "Stały identyfikator kolekcji. Używany w panelu i API; nie można go zmienić po utworzeniu.",
+          "name": "Nazwa widoczna w sklepie i na stronach kolekcji.",
+          "slug": "Fragment adresu URL tej kolekcji. Uzupełniany z nazwy, dopóki nie edytujesz go ręcznie. Tylko małe litery, cyfry i myślniki.",
+          "description": "Tekst marketingowy na stronie kolekcji i w podglądach.",
+          "status": "Szkice są ukryte w sklepie; aktywne są widoczne dla klientów.",
+          "coverImage": "Zdjęcie okładki na stronie kolekcji i w listach."
+        },
         "showOnHomepage": "Pokaż na stronie głównej",
         "showInNav": "Pokaż w nawigacji",
         "summary": "Podsumowanie",
@@ -1339,7 +1406,8 @@
         "deleteSuccessTitle": "Usunięto kolekcje",
         "deleteSuccessDescription": "Usunięto {count} kolekcji.",
         "deleteErrorTitle": "Nie udało się usunąć",
-        "deleteErrorDescription": "Nie udało się usunąć wybranych kolekcji. Spróbuj ponownie."
+        "deleteErrorDescription": "Nie udało się usunąć wybranych kolekcji. Spróbuj ponownie.",
+        "deleteHasProductsDescription": "Przypisz produkty do innych kolekcji lub usuń je, zanim usuniesz te kolekcje."
       },
       "stats": {
         "active": {
@@ -1590,7 +1658,6 @@
       },
       "searchPlaceholder": "Szukaj zdarzeń…",
       "clearFilter": "Wyczyść",
-      "empty": "Brak zdarzeń pasujących do filtrów.",
       "pagination": {
         "showing": "Wyświetlanie {count} z {total} zdarzeń",
         "previous": "Poprzednia",

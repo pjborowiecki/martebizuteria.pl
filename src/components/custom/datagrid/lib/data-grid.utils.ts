@@ -1,11 +1,14 @@
-import type { Column, ColumnDef, ColumnSizingState, RowData, Table } from "@tanstack/react-table";
+import type { Column, ColumnDef, ColumnSizingState, Header, RowData, Table } from "@tanstack/react-table";
 
 import { getDataGridColumnWidth } from "~/src/components/custom/datagrid/lib/data-grid-column-widths";
+import { getDataGridColumnLayoutWidth, type DataGridTableLayout } from "~/src/components/custom/datagrid/lib/data-grid-table-layout";
 
 const NOT_FOUND_INDEX = -1;
 const REMOVE_ONE = 1;
 const NO_DELETE = 0;
 const ZERO = 0;
+const DEFAULT_SAVED_COLUMN_MAX_WIDTH_PX = 720;
+const FILL_COLUMN_MAX_WIDTH_MULTIPLIER = 2.5;
 
 /** Column ids that must never receive persisted/CSS-var widths (shared across admin datagrids). */
 export const DATAGRID_UTILITY_COLUMN_IDS = ["actions", "drag", "image", "select"] as const;
@@ -28,14 +31,21 @@ function getColumnDefId<TData extends RowData>(column: ColumnDef<TData>): string
   return accessorKey;
 }
 
-/** Ids of columns with `enableResizing: false` — excluded from persisted sizing. */
+function columnDefAbsorbsTrailingSlack<TData extends RowData>(column: ColumnDef<TData>): boolean {
+  return column.meta?.absorbsTrailingSlack === true;
+}
+
+/** Ids of columns excluded from persisted sizing (fixed utility + slack absorber). */
 export function getNonResizableColumnIds<TData extends RowData>(columns: ColumnDef<TData>[]): string[] {
   return columns.flatMap((column) => {
-    if (column.enableResizing !== false) {
+    const id = getColumnDefId(column);
+    if (id === undefined) {
       return [];
     }
-    const id = getColumnDefId(column);
-    return id === undefined ? [] : [id];
+    if (column.enableResizing === false || columnDefAbsorbsTrailingSlack(column)) {
+      return [id];
+    }
+    return [];
   });
 }
 
@@ -49,6 +59,34 @@ export function buildDataGridColumnMinSizes<TData extends RowData>(columns: Colu
     const { minSize } = column;
     if (id !== undefined && typeof minSize === "number" && Number.isFinite(minSize)) {
       next[id] = minSize;
+    }
+    return next;
+  }, {});
+}
+
+function readColumnDefMaxWidth<TData extends RowData>(column: ColumnDef<TData>): number | undefined {
+  const { maxSize, minSize, size } = column;
+  if (typeof maxSize === "number" && Number.isFinite(maxSize)) {
+    return maxSize;
+  }
+  if (typeof size === "number" && Number.isFinite(size)) {
+    const expanded = Math.round(size * FILL_COLUMN_MAX_WIDTH_MULTIPLIER);
+    const floor = typeof minSize === "number" && Number.isFinite(minSize) ? minSize : size;
+    return Math.min(Math.max(expanded, floor), DEFAULT_SAVED_COLUMN_MAX_WIDTH_PX);
+  }
+  return DEFAULT_SAVED_COLUMN_MAX_WIDTH_PX;
+}
+
+/** Per-column maximum widths for clamping persisted sizing and CSS vars (resizable columns only). */
+export function buildDataGridColumnMaxSizes<TData extends RowData>(columns: ColumnDef<TData>[]): Record<string, number> {
+  return columns.reduce<Record<string, number>>((next, column) => {
+    if (column.enableResizing === false) {
+      return next;
+    }
+    const id = getColumnDefId(column);
+    const maxWidth = readColumnDefMaxWidth(column);
+    if (id !== undefined && maxWidth !== undefined) {
+      next[id] = maxWidth;
     }
     return next;
   }, {});
@@ -68,6 +106,33 @@ export function clampDataGridColumnSizingToMins(
   }
 
   return next;
+}
+
+export function clampDataGridColumnSizingToMaxes(
+  sizing: ColumnSizingState,
+  columnMaxSizes: Readonly<Record<string, number>> = {},
+  fallbackMaxWidthPx: number = DEFAULT_SAVED_COLUMN_MAX_WIDTH_PX
+): ColumnSizingState {
+  const next: ColumnSizingState = { ...sizing };
+
+  for (const [id, size] of Object.entries(next)) {
+    if (typeof size === "number" && Number.isFinite(size)) {
+      const maxSize = columnMaxSizes[id] ?? fallbackMaxWidthPx;
+      if (size > maxSize) {
+        next[id] = maxSize;
+      }
+    }
+  }
+
+  return next;
+}
+
+export function clampDataGridColumnSizing(
+  sizing: ColumnSizingState,
+  columnMinSizes: Readonly<Record<string, number>>,
+  columnMaxSizes: Readonly<Record<string, number>> = {}
+): ColumnSizingState {
+  return clampDataGridColumnSizingToMaxes(clampDataGridColumnSizingToMins(sizing, columnMinSizes), columnMaxSizes);
 }
 
 export function measureDataGridContainerWidth(event: Event): number {
@@ -91,6 +156,28 @@ export function omitNonResizableColumnSizing(sizing: ColumnSizingState, nonResiz
   }
 
   return next;
+}
+
+/**
+ * Leaf header row used for `<colgroup>`, `<th>`, and `<td>` (left → center → right).
+ * Prefer the deepest header group and skip placeholders so column add/remove cannot desync layout.
+ */
+export function getDataGridLayoutHeaders<TData extends RowData>(table: Table<TData>): Header<TData, unknown>[] {
+  const headerGroups = table.getHeaderGroups();
+  if (headerGroups.length === ZERO) {
+    return [];
+  }
+
+  const leafGroup = headerGroups[headerGroups.length - REMOVE_ONE];
+  return leafGroup.headers.filter((header) => !header.isPlaceholder);
+}
+
+export function getDataGridLayoutColumns<TData extends RowData>(table: Table<TData>): Column<TData>[] {
+  const headers = getDataGridLayoutHeaders(table);
+  if (headers.length === ZERO) {
+    return table.getVisibleLeafColumns();
+  }
+  return headers.map((header) => header.column);
 }
 
 /** Default column order from a `columns` array (declaration order in the column defs). */
@@ -168,8 +255,21 @@ export interface DataGridPinLayout {
   readonly tableWidth: number;
 }
 
+export function getDataGridRightPinnedScrollPaddingPx<TData extends RowData>(
+  layoutColumns: readonly Column<TData>[],
+  columnSizing: ColumnSizingState,
+  tableLayout: DataGridTableLayout | undefined
+): number {
+  return layoutColumns.reduce((sum, column) => {
+    if (column.getIsPinned() !== "right") {
+      return sum;
+    }
+    return sum + getDataGridColumnLayoutWidth(column, columnSizing, tableLayout);
+  }, ZERO);
+}
+
 function getDataGridRightPinOffset<TData extends RowData>(table: Table<TData>, column: Column<TData>, layout?: DataGridPinLayout): number {
-  const columns = table.getVisibleLeafColumns();
+  const columns = getDataGridLayoutColumns(table);
   const REVERSE_STEP = 1;
   let offset = ZERO;
 
@@ -196,7 +296,7 @@ export function getDataGridPinOffset<TData extends RowData>(input: DataGridPinOf
     return undefined;
   }
 
-  const columns = table.getVisibleLeafColumns();
+  const columns = getDataGridLayoutColumns(table);
 
   if (isPinned === "left") {
     let offset = ZERO;

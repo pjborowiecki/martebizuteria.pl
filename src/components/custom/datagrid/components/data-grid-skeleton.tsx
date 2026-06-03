@@ -6,10 +6,10 @@ import { cn } from "~/src/lib/utils";
 
 import { TableCell, TableRow } from "~/src/components/shadcn/table";
 
+import { renderDataGridSkeletonContent } from "~/src/components/custom/datagrid/components/data-grid-skeleton-content";
 import { useDataGridColumnMetrics } from "~/src/components/custom/datagrid/hooks/use-data-grid-column-metrics";
 import { DATA_GRID_BODY_CELL_CLASS, DATA_GRID_BODY_ROW_CLASS } from "~/src/components/custom/datagrid/lib/data-grid-body.styles";
 import { buildDataGridCellStyle } from "~/src/components/custom/datagrid/lib/data-grid-cell-style";
-import { renderDataGridSkeletonContent } from "~/src/components/custom/datagrid/lib/data-grid-skeleton-content";
 
 interface DataGridSkeletonProps<TData extends RowData> {
   readonly columns: readonly Column<TData>[];

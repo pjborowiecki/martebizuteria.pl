@@ -8,10 +8,13 @@ import { cn } from "~/src/lib/utils";
 
 import { TableHead } from "~/src/components/shadcn/table";
 
+import {
+  buildDataGridHeaderCellContent,
+  renderDataGridHeaderLabel
+} from "~/src/components/custom/datagrid/components/data-grid-header-content";
 import { useDataGridColumnMetrics } from "~/src/components/custom/datagrid/hooks/use-data-grid-column-metrics";
 import { buildDataGridCellStyle } from "~/src/components/custom/datagrid/lib/data-grid-cell-style";
 import { createDataGridColumnResizeHandler } from "~/src/components/custom/datagrid/lib/data-grid-column-resize";
-import { buildDataGridHeaderCellContent, renderDataGridHeaderLabel } from "~/src/components/custom/datagrid/lib/data-grid-header-content";
 import {
   DATA_GRID_HEADER_CELL_CLASS,
   DATA_GRID_HEADER_CELL_SORTED_CLASS,

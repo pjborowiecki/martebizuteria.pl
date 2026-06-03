@@ -8,7 +8,6 @@ import { cn } from "~/src/lib/utils";
 import { Field, FieldError } from "~/src/components/shadcn/field";
 import { Input } from "~/src/components/shadcn/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "~/src/components/shadcn/input-group";
-import { Label } from "~/src/components/shadcn/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/components/shadcn/select";
 import { Textarea } from "~/src/components/shadcn/textarea";
 
@@ -18,6 +17,7 @@ import {
   COLLECTION_SHEET_SELECT_CLASS,
   COLLECTION_SHEET_TEXTAREA_CLASS
 } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-sheet.styles";
+import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/components/catalog-form-field-label";
 
 import { COLLECTION_FORM_VALIDATION_KEYS } from "~/src/modules/collection/collection.constants";
 import type { Collection } from "~/src/modules/collection/collection.types";
@@ -36,29 +36,26 @@ function FieldErrorMessage({ fieldState }: Readonly<{ fieldState: ControllerFiel
   return <FieldError>{message}</FieldError>;
 }
 
-function LabelRow({ children, counter }: Readonly<{ children: string; counter?: string }>): JSX.Element {
-  if (counter === undefined) {
-    return <Label className="text-[13px] font-medium text-foreground">{children}</Label>;
-  }
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <Label className="text-[13px] font-medium text-foreground">{children}</Label>
-      <span className="text-[12px] text-muted-foreground tabular-nums">{counter}</span>
-    </div>
-  );
-}
-
 /* ── Text field ───────────────────────────────────────────────────── */
 
 interface CollectionTextFieldProps extends Omit<ComponentProps<typeof Input>, "name"> {
   readonly control: Control<Collection["formValues"]>;
   readonly label: string;
+  readonly labelHint?: string;
   readonly name: FieldName;
   readonly counterMax?: number;
   readonly onValueChange?: (value: string) => void;
 }
 
-export function CollectionTextField({ control, label, name, counterMax, onValueChange, ...rest }: CollectionTextFieldProps): JSX.Element {
+export function CollectionTextField({
+  control,
+  label,
+  labelHint,
+  name,
+  counterMax,
+  onValueChange,
+  ...rest
+}: CollectionTextFieldProps): JSX.Element {
   const { field, fieldState } = useController({ control, name });
   const { value } = field;
 
@@ -74,12 +71,13 @@ export function CollectionTextField({ control, label, name, counterMax, onValueC
 
   return (
     <Field className="gap-2" data-invalid={fieldState.invalid}>
-      <LabelRow counter={counter}>{label}</LabelRow>
+      <CatalogFormFieldLabel counter={counter} hint={labelHint} label={label} />
       <Input
         {...rest}
         {...field}
         value={value}
         onChange={handleChange}
+        maxLength={counterMax}
         aria-invalid={fieldState.invalid}
         className={COLLECTION_SHEET_INPUT_CLASS}
       />
@@ -92,9 +90,10 @@ export function CollectionTextField({ control, label, name, counterMax, onValueC
 
 interface CollectionSlugFieldProps {
   readonly control: Control<Collection["formValues"]>;
+  readonly counterMax?: number;
   readonly disabled?: boolean;
-  readonly hint?: string;
   readonly label: string;
+  readonly labelHint?: string;
   readonly name: FieldName;
   readonly normalize: (value: string) => string;
   readonly onManualEdit?: () => void;
@@ -102,14 +101,18 @@ interface CollectionSlugFieldProps {
 
 export function CollectionSlugField({
   control,
+  counterMax,
   disabled,
-  hint,
   label,
+  labelHint,
   name,
   normalize,
   onManualEdit
 }: CollectionSlugFieldProps): JSX.Element {
   const { field, fieldState } = useController({ control, name });
+  const { value } = field;
+
+  const counter = counterMax === undefined ? undefined : `${value.length}/${counterMax}`;
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -121,21 +124,21 @@ export function CollectionSlugField({
 
   return (
     <Field className="gap-2" data-invalid={fieldState.invalid}>
-      <Label className="text-[13px] font-medium text-foreground">{label}</Label>
+      <CatalogFormFieldLabel counter={counter} hint={labelHint} label={label} />
       <InputGroup className={COLLECTION_SHEET_INPUT_GROUP_CLASS}>
         <InputGroupAddon className="border-r border-border pr-3 text-[13px] font-normal text-muted-foreground">
           /collections/
         </InputGroupAddon>
         <InputGroupInput
           {...field}
-          value={field.value}
+          value={value}
           onChange={handleChange}
           disabled={disabled}
+          maxLength={counterMax}
           placeholder="collection-name"
           aria-invalid={fieldState.invalid}
         />
       </InputGroup>
-      {hint !== undefined && <p className="text-[12px] leading-relaxed text-muted-foreground">{hint}</p>}
       <FieldErrorMessage fieldState={fieldState} />
     </Field>
   );
@@ -146,6 +149,7 @@ export function CollectionSlugField({
 interface CollectionTextareaFieldProps extends Omit<ComponentProps<typeof Textarea>, "name"> {
   readonly control: Control<Collection["formValues"]>;
   readonly label: string;
+  readonly labelHint?: string;
   readonly name: FieldName;
   readonly counterMax?: number;
 }
@@ -153,6 +157,7 @@ interface CollectionTextareaFieldProps extends Omit<ComponentProps<typeof Textar
 export function CollectionTextareaField({
   control,
   label,
+  labelHint,
   name,
   counterMax,
   className,
@@ -165,11 +170,12 @@ export function CollectionTextareaField({
 
   return (
     <Field className="gap-2" data-invalid={fieldState.invalid}>
-      <LabelRow counter={counter}>{label}</LabelRow>
+      <CatalogFormFieldLabel counter={counter} hint={labelHint} label={label} />
       <Textarea
         {...rest}
         {...field}
         value={value}
+        maxLength={counterMax}
         aria-invalid={fieldState.invalid}
         className={cn(COLLECTION_SHEET_TEXTAREA_CLASS, className)}
       />

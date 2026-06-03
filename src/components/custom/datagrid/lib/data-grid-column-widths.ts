@@ -1,5 +1,7 @@
 import type { Column, ColumnSizingState, RowData } from "@tanstack/react-table";
 
+import { columnAbsorbsTrailingSlack, readColumnDesignWidth } from "~/src/components/custom/datagrid/lib/data-grid-table-layout";
+
 /** Width from column def only — never from `columnSizing` state. */
 export function getFixedDataGridColumnDefSize<TData extends RowData>(column: Column<TData>): number | undefined {
   const { maxSize, minSize, size } = column.columnDef;
@@ -32,10 +34,19 @@ export function getDataGridColumnWidth<TData extends RowData>(column: Column<TDa
 }
 
 export function getDataGridLayoutColumnWidth<TData extends RowData>(column: Column<TData>, columnSizing: ColumnSizingState): number {
+  if (columnAbsorbsTrailingSlack(column)) {
+    return readColumnDesignWidth(column);
+  }
+
   const override = columnSizing[column.id];
   if (column.getCanResize() && typeof override === "number" && Number.isFinite(override)) {
     const defMin = getDataGridColumnDefMinSize(column);
-    return defMin === undefined ? override : Math.max(override, defMin);
+    const { maxSize } = column.columnDef;
+    const clamped = defMin === undefined ? override : Math.max(override, defMin);
+    if (typeof maxSize === "number" && Number.isFinite(maxSize)) {
+      return Math.min(clamped, maxSize);
+    }
+    return clamped;
   }
   return getDataGridColumnWidth(column);
 }

@@ -11,12 +11,20 @@ import {
 import { useCollectionForm } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-provider";
 import { CollectionFormSection } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-section";
 import { slugify } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form.utils";
+import { CatalogFormReadOnlyField } from "~/src/components/custom/pages/admin/catalog/components/catalog-form-read-only-field";
+import { CATALOG_FORM_DESCRIPTION_TEXTAREA_CLASS } from "~/src/components/custom/pages/admin/catalog/components/catalog-form.styles";
 
 import { COLLECTION_COLUMN_LENGTH } from "~/src/modules/collection/collection.constants";
 
-export function BasicDetailsSection(): JSX.Element {
+interface BasicDetailsSectionProps {
+  /** Row id from the sheet (edit mode); preferred over form context when both are set. */
+  readonly recordId?: string;
+}
+
+export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionProps>): JSX.Element {
   const t = useTranslations("admin");
-  const { control, isPending, setValue } = useCollectionForm();
+  const { collectionId, control, isPending, mode, setValue } = useCollectionForm();
+  const displayId = recordId ?? (mode === "edit" ? collectionId : undefined);
 
   // The handle tracks the title until the user takes manual control of it.
   const [handleLocked, setHandleLocked] = useState(false);
@@ -36,11 +44,16 @@ export function BasicDetailsSection(): JSX.Element {
 
   return (
     <CollectionFormSection icon={Info} title={t("collections.form.sectionBasic")}>
+      {displayId !== undefined && displayId !== "" && (
+        <CatalogFormReadOnlyField label={t("collections.form.id")} hint={t("collections.form.hints.id")} value={displayId} />
+      )}
       <CollectionTextField
         control={control}
         name="title"
         label={t("collections.form.name")}
+        labelHint={t("collections.form.hints.name")}
         placeholder={t("collections.form.namePlaceholder")}
+        counterMax={COLLECTION_COLUMN_LENGTH.title}
         disabled={isPending}
         onValueChange={handleTitleChange}
       />
@@ -48,7 +61,8 @@ export function BasicDetailsSection(): JSX.Element {
         control={control}
         name="handle"
         label={t("collections.form.slug")}
-        hint={t("collections.form.slugHint")}
+        labelHint={t("collections.form.hints.slug")}
+        counterMax={COLLECTION_COLUMN_LENGTH.handle}
         normalize={slugify}
         onManualEdit={lockHandle}
         disabled={isPending}
@@ -57,9 +71,11 @@ export function BasicDetailsSection(): JSX.Element {
         control={control}
         name="description"
         label={t("collections.form.description")}
+        labelHint={t("collections.form.hints.description")}
         placeholder={t("collections.form.descriptionPlaceholder")}
         counterMax={COLLECTION_COLUMN_LENGTH.description}
-        rows={4}
+        className={CATALOG_FORM_DESCRIPTION_TEXTAREA_CLASS}
+        rows={6}
         disabled={isPending}
       />
     </CollectionFormSection>

@@ -46,6 +46,19 @@ function readColumnMinWidth<TData extends RowData>(column: Column<TData>): numbe
   return ZERO;
 }
 
+/** Canonical width from the column def — ignores stray persisted `columnSizing` overrides. */
+export function readColumnDesignWidth<TData extends RowData>(column: Column<TData>): number {
+  const { size } = column.columnDef;
+  if (typeof size === "number" && Number.isFinite(size)) {
+    return size;
+  }
+  return readColumnMinWidth(column);
+}
+
+function readSlackAbsorberWidth<TData extends RowData>(column: Column<TData>): number {
+  return readColumnDesignWidth(column);
+}
+
 /** Sum of columns with explicit widths (excludes fill + slack absorber). */
 export function getDataGridIntrinsicColumnsWidthSum<TData extends RowData>(
   columns: readonly Column<TData>[],
@@ -61,19 +74,20 @@ export function getDataGridIntrinsicColumnsWidthSum<TData extends RowData>(
 
 function resolveFlexFillLayout<TData extends RowData>(input: {
   readonly absorberColumn: Column<TData> | undefined;
-  readonly columnSizing: ColumnSizingState;
   readonly intrinsicSum: number;
   readonly minFill: number;
   readonly tableClientWidth: number;
 }): DataGridTableLayout {
-  const { absorberColumn, columnSizing, intrinsicSum, minFill, tableClientWidth } = input;
-  const absorberWidth = absorberColumn === undefined ? ZERO : getDataGridLayoutColumnWidth(absorberColumn, columnSizing);
+  const { absorberColumn, intrinsicSum, minFill, tableClientWidth } = input;
+  const absorberWidth = absorberColumn === undefined ? ZERO : readSlackAbsorberWidth(absorberColumn);
+
+  const fillColumnWidth = Math.max(minFill, tableClientWidth - intrinsicSum - absorberWidth);
 
   return {
     fillColumnIsUserSized: false,
-    fillColumnWidth: Math.max(minFill, tableClientWidth - intrinsicSum - absorberWidth),
+    fillColumnWidth,
     slackAbsorberColumnWidth: absorberWidth,
-    tableWidth: tableClientWidth
+    tableWidth: Math.max(tableClientWidth, intrinsicSum + fillColumnWidth + absorberWidth)
   };
 }
 
@@ -87,7 +101,9 @@ function resolveUserSizedFillLayout<TData extends RowData>(input: {
   const { absorberColumn, intrinsicSum, minFill, preferredFillWidth, tableClientWidth } = input;
   const fillWidth = Math.max(minFill, preferredFillWidth);
   const minAbsorber = absorberColumn === undefined ? ZERO : readColumnMinWidth(absorberColumn);
-  const absorberWidth = absorberColumn === undefined ? ZERO : Math.max(minAbsorber, tableClientWidth - intrinsicSum - fillWidth);
+  const designAbsorber = absorberColumn === undefined ? ZERO : readSlackAbsorberWidth(absorberColumn);
+  const expandedAbsorber = tableClientWidth - intrinsicSum - fillWidth;
+  const absorberWidth = absorberColumn === undefined ? ZERO : Math.min(designAbsorber, Math.max(minAbsorber, expandedAbsorber));
 
   return {
     fillColumnIsUserSized: true,
@@ -129,7 +145,7 @@ export function resolveDataGridTableLayout<TData extends RowData>(input: {
   const preferredFillWidth = typeof preferred === "number" && Number.isFinite(preferred) ? preferred : undefined;
 
   if (preferredFillWidth === undefined) {
-    return resolveFlexFillLayout({ absorberColumn, columnSizing, intrinsicSum, minFill, tableClientWidth });
+    return resolveFlexFillLayout({ absorberColumn, intrinsicSum, minFill, tableClientWidth });
   }
 
   return resolveUserSizedFillLayout({
@@ -154,8 +170,11 @@ export function getDataGridColumnLayoutWidth<TData extends RowData>(
     return layout.fillColumnWidth;
   }
 
-  if (columnAbsorbsTrailingSlack(column) && layout.fillColumnIsUserSized) {
-    return layout.slackAbsorberColumnWidth;
+  if (columnAbsorbsTrailingSlack(column)) {
+    if (layout.fillColumnIsUserSized) {
+      return Math.min(layout.slackAbsorberColumnWidth, readSlackAbsorberWidth(column));
+    }
+    return readSlackAbsorberWidth(column);
   }
 
   return getDataGridLayoutColumnWidth(column, columnSizing);

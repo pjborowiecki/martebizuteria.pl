@@ -51,9 +51,9 @@ export const collectionZodSchemas = {
     productCount: z.number()
   }),
   createInput: collectionCreateInputSchema,
-  deleteInput: z.array(z.string().min(COLLECTION_MIN_LENGTH)).min(COLLECTION_MIN_LENGTH),
+  deleteInput: z.array(z.uuid()).min(COLLECTION_MIN_LENGTH),
   insert: createInsertSchema(collection),
-  reorderInput: z.array(z.string().min(COLLECTION_MIN_LENGTH)).min(COLLECTION_MIN_LENGTH),
+  reorderInput: z.array(z.uuid()).min(COLLECTION_MIN_LENGTH),
   select: collectionSelectSchema,
   stats: z.object({
     active: z.number(),
@@ -63,6 +63,6 @@ export const collectionZodSchemas = {
   }),
   update: createUpdateSchema(collection),
   updateInput: collectionCreateInputSchema.extend({
-    id: z.string().min(COLLECTION_MIN_LENGTH)
+    id: z.uuid()
   })
 };

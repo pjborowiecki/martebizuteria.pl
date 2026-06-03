@@ -2,8 +2,9 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
-import { Table, TableBody, TableCell, TableRow } from "~/src/components/shadcn/table";
+import { Table, TableBody } from "~/src/components/shadcn/table";
 
+import { DataGridEmptyRow } from "~/src/components/custom/datagrid/components/data-grid-empty-row";
 import { AuditEventRow } from "~/src/components/custom/pages/admin/audit/audit-table/audit-event-row";
 import { AuditTableHeader } from "~/src/components/custom/pages/admin/audit/audit-table/audit-table-header";
 
@@ -17,7 +18,7 @@ interface AuditTableProps {
 }
 
 export function AuditTable({ events }: AuditTableProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("common");
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -28,13 +29,7 @@ export function AuditTable({ events }: AuditTableProps): JSX.Element {
             {events.map((event) => (
               <AuditEventRow event={event} key={event.id} />
             ))}
-            {events.length === EMPTY_LIST_LENGTH && (
-              <TableRow>
-                <TableCell className="py-12 text-center text-sm text-muted-foreground" colSpan={TABLE_COLUMN_COUNT}>
-                  {t("audit.empty")}
-                </TableCell>
-              </TableRow>
-            )}
+            {events.length === EMPTY_LIST_LENGTH && <DataGridEmptyRow colSpan={TABLE_COLUMN_COUNT} message={t("noDataToDisplay")} />}
           </TableBody>
         </Table>
       </div>

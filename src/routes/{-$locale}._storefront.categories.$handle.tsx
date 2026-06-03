@@ -42,7 +42,7 @@ export const Route = createFileRoute("/{-$locale}/_storefront/categories/$handle
     }
 
     prefetchProductThumbnails(data.products, context.imagePrefetchService);
-    return { description: data.description, title: data.name };
+    return { description: data.description, title: data.title };
   }
 });
 
@@ -60,7 +60,7 @@ function CategoryPage(): JSX.Element {
   return (
     <main className="container mx-auto px-4 py-12">
       <div className="mb-12 max-w-2xl">
-        <h1 className="mb-4 text-4xl font-bold tracking-tight">{category.name}</h1>
+        <h1 className="mb-4 text-4xl font-bold tracking-tight">{category.title}</h1>
         {category.description !== null && <p className="text-lg text-muted-foreground">{category.description}</p>}
       </div>
 

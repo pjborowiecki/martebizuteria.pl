@@ -1,4 +1,4 @@
-import { eq, inArray, isNotNull, max, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, max, sql } from "drizzle-orm";
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 
@@ -8,41 +8,48 @@ import type { Collection } from "~/src/modules/collection/collection.types";
 import { product } from "~/src/modules/product/product.schema";
 
 const EMPTY_LENGTH = 0;
+const ZERO_COUNT = 0;
 
-const getCollectionsQuery = db.query.collection
+/** Admin: all collections, manual order. */
+const getAdminCollectionsQuery = db.query.collection
   .findMany({
     orderBy: (collections, { asc, desc }) => [asc(collections.rank), desc(collections.createdAt)]
   })
   .prepare();
 
+/** Admin: lookup by handle (any status). */
 const getCollectionByHandleQuery = db.query.collection
   .findFirst({
     where: eq(collection.handle, sql.placeholder("handle"))
   })
   .prepare();
 
-const getProductsByCollectionIdQuery = db.query.product
+/** Storefront: active collections, manual order. */
+const getStorefrontCollectionsQuery = db.query.collection
   .findMany({
-    limit: 20,
-    where: eq(product.collectionId, sql.placeholder("collectionId")),
-    with: { variants: true }
+    orderBy: (collections, { asc }) => [asc(collections.rank)],
+    where: eq(collection.status, COLLECTION_STATUS.ACTIVE)
   })
   .prepare();
 
-/** One grouped row per collection with its product count; avoids an N+1 per row. */
+/** Storefront: active collection by handle. */
+const getStorefrontCollectionByHandleQuery = db.query.collection
+  .findFirst({
+    where: and(eq(collection.handle, sql.placeholder("handle")), eq(collection.status, COLLECTION_STATUS.ACTIVE))
+  })
+  .prepare();
+
 const getProductCountsQuery = db
   .select({ collectionId: product.collectionId, count: sql<number>`count(*)` })
   .from(product)
   .groupBy(product.collectionId)
   .prepare();
 
-/** Highest rank currently in use, so a new collection can be appended to the end. */
 const getMaxRankQuery = db
   .select({ value: max(collection.rank) })
   .from(collection)
   .prepare();
 
-/** One row of aggregate counts: total collections plus a breakdown by status. */
 const getCollectionStatusCountsQuery = db
   .select({
     active: sql<number>`sum(case when ${collection.status} = ${COLLECTION_STATUS.ACTIVE} then 1 else 0 end)`,
@@ -52,18 +59,29 @@ const getCollectionStatusCountsQuery = db
   .from(collection)
   .prepare();
 
-/** Total number of products assigned to any collection (used for the average). */
 const getCollectionProductTotalQuery = db
   .select({ value: sql<number>`count(*)` })
   .from(product)
   .where(isNotNull(product.collectionId))
   .prepare();
 
+async function countProductsForCollections(collectionIds: readonly string[]): Promise<number> {
+  if (collectionIds.length === EMPTY_LENGTH) {
+    return ZERO_COUNT;
+  }
+
+  const [row] = await db
+    .select({ value: count() })
+    .from(product)
+    .where(inArray(product.collectionId, [...collectionIds]));
+
+  return row?.value ?? ZERO_COUNT;
+}
+
 async function insertCollection(values: Collection["insert"]): Promise<void> {
   await db.insert(collection).values(values);
 }
 
-/** Bulk-rewrites ranks in a single `UPDATE ... CASE` statement (one round-trip). */
 async function setCollectionRanks(updates: readonly { id: string; rank: number }[]): Promise<void> {
   if (updates.length === EMPTY_LENGTH) {
     return;
@@ -76,7 +94,6 @@ async function setCollectionRanks(updates: readonly { id: string; rank: number }
   await db.update(collection).set({ rank: rankExpression }).where(inArray(collection.id, ids));
 }
 
-/** Removes every collection whose id is in `ids` in a single statement. */
 async function deleteCollections(ids: readonly string[]): Promise<void> {
   if (ids.length === EMPTY_LENGTH) {
     return;
@@ -90,14 +107,16 @@ async function updateCollection(id: string, values: Partial<Collection["insert"]
 }
 
 export const collectionAccessors = {
+  countProductsForCollections,
   deleteCollections,
+  getAdminCollectionsQuery,
   getCollectionByHandleQuery,
   getCollectionProductTotalQuery,
   getCollectionStatusCountsQuery,
-  getCollectionsQuery,
   getMaxRankQuery,
   getProductCountsQuery,
-  getProductsByCollectionIdQuery,
+  getStorefrontCollectionByHandleQuery,
+  getStorefrontCollectionsQuery,
   insertCollection,
   setCollectionRanks,
   updateCollection

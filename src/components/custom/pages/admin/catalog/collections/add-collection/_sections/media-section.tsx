@@ -9,6 +9,7 @@ import { Field } from "~/src/components/shadcn/field";
 import { ImageUpload } from "~/src/components/custom/admin/image-upload/components/image-upload";
 import { useCollectionForm } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-provider";
 import { CollectionFormSection } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-section";
+import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/components/catalog-form-field-label";
 
 export function MediaSection(): JSX.Element {
   const t = useTranslations("admin");
@@ -24,7 +25,8 @@ export function MediaSection(): JSX.Element {
 
   return (
     <CollectionFormSection icon={ImageIcon} title={t("collections.form.mediaTitle")}>
-      <Field data-invalid={fieldState.invalid}>
+      <Field className="gap-2" data-invalid={fieldState.invalid}>
+        <CatalogFormFieldLabel hint={t("collections.form.hints.coverImage")} label={t("collections.form.coverImage")} />
         <ImageUpload
           value={field.value}
           onChange={handleChange}

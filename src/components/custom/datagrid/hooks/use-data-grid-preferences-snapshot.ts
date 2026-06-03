@@ -1,5 +1,8 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 
+import type { ColumnPinningState, VisibilityState } from "@tanstack/react-table";
+
+import { useStableColumnPinning } from "~/src/components/custom/datagrid/hooks/use-stable-column-pinning";
 import {
   defaultPreferencesSnapshot,
   loadDataGridPreferences,
@@ -12,7 +15,10 @@ import {
 
 export interface UseDataGridPreferencesSnapshotOptions {
   readonly canonicalOrder: readonly string[];
+  readonly columnMaxSizes: Readonly<Record<string, number>>;
   readonly columnMinSizes: Readonly<Record<string, number>>;
+  readonly columnPinning?: ColumnPinningState;
+  readonly defaultColumnVisibility?: VisibilityState;
   readonly lockedColumnIds: readonly string[];
   readonly persistenceKey: string;
 }
@@ -22,59 +28,62 @@ export interface DataGridPreferencesSnapshotApi {
   readonly snapshot: DataGridPreferencesSnapshot;
 }
 
-/** Subscribes to persisted layout prefs; hydrates from localStorage after the first paint. */
+/** Subscribes to persisted layout prefs; hydrates from localStorage on first client read. */
 export function useDataGridPreferencesSnapshot({
   canonicalOrder,
+  columnMaxSizes,
   columnMinSizes,
+  columnPinning = {},
+  defaultColumnVisibility = {},
   lockedColumnIds,
   persistenceKey
 }: UseDataGridPreferencesSnapshotOptions): DataGridPreferencesSnapshotApi {
   const columnMinSizesRef = useRef(columnMinSizes);
   columnMinSizesRef.current = columnMinSizes;
+  const columnMaxSizesRef = useRef(columnMaxSizes);
+  columnMaxSizesRef.current = columnMaxSizes;
+  const stableColumnPinning = useStableColumnPinning(columnPinning);
 
   const storeRef = useRef<DataGridPreferencesStore | null>(null);
+  const storePersistenceKeyRef = useRef<string | null>(null);
+
+  const serverSnapshot = useMemo(
+    () => defaultPreferencesSnapshot(canonicalOrder, defaultColumnVisibility, stableColumnPinning),
+    [canonicalOrder, defaultColumnVisibility, stableColumnPinning]
+  );
 
   const getStore = useCallback((): DataGridPreferencesStore => {
-    storeRef.current ??= createDataGridPreferencesStore({
-      canonicalOrder,
-      columnMinSizes: columnMinSizesRef.current,
-      lockedColumnIds,
-      persistenceKey
-    });
-    return storeRef.current;
-  }, [canonicalOrder, lockedColumnIds, persistenceKey]);
+    if (storeRef.current === null || storePersistenceKeyRef.current !== persistenceKey) {
+      storePersistenceKeyRef.current = persistenceKey;
+      const initialSnapshot =
+        typeof document === "undefined"
+          ? serverSnapshot
+          : loadDataGridPreferences({
+              canonicalOrder,
+              columnMaxSizes: columnMaxSizesRef.current,
+              columnMinSizes: columnMinSizesRef.current,
+              columnPinning: stableColumnPinning,
+              defaultColumnVisibility,
+              lockedColumnIds,
+              persistenceKey
+            });
 
-  const serverSnapshot = useMemo(() => defaultPreferencesSnapshot(canonicalOrder), [canonicalOrder]);
-  const preferencesHydratedRef = useRef(false);
+      storeRef.current = createDataGridPreferencesStore({
+        canonicalOrder,
+        columnMaxSizes: columnMaxSizesRef.current,
+        columnMinSizes: columnMinSizesRef.current,
+        initialSnapshot,
+        lockedColumnIds,
+        persistenceKey
+      });
+    }
+
+    return storeRef.current;
+  }, [canonicalOrder, defaultColumnVisibility, lockedColumnIds, persistenceKey, serverSnapshot, stableColumnPinning]);
 
   const getServerSnapshot = useCallback(() => serverSnapshot, [serverSnapshot]);
 
-  const getClientSnapshot = useCallback(() => {
-    if (!preferencesHydratedRef.current) {
-      return serverSnapshot;
-    }
-
-    return getStore().getSnapshot();
-  }, [getStore, serverSnapshot]);
-
-  useLayoutEffect(
-    function hydrateDataGridPreferencesFromStorage() {
-      if (typeof document === "undefined") {
-        return;
-      }
-
-      preferencesHydratedRef.current = true;
-      getStore().setSnapshot(
-        loadDataGridPreferences({
-          canonicalOrder,
-          columnMinSizes: columnMinSizesRef.current,
-          lockedColumnIds,
-          persistenceKey
-        })
-      );
-    },
-    [canonicalOrder, getStore, lockedColumnIds, persistenceKey]
-  );
+  const getClientSnapshot = useCallback(() => getStore().getSnapshot(), [getStore]);
 
   const snapshot = useSyncExternalStore(
     (onStoreChange) => {

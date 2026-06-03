@@ -2,6 +2,8 @@ import { type UseMutationResult, useMutation, useQueryClient } from "@tanstack/r
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { collectionMutations } from "~/src/modules/collection/collection.mutations";
 
 /**
@@ -22,8 +24,8 @@ export function useReorderCollections(): UseMutationResult<{ ok: boolean }, Erro
     },
     onSettled: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["admin", "collections"] }),
-        queryClient.invalidateQueries({ queryKey: ["collections"] })
+        queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.COLLECTION.ADMIN.ALL }),
+        queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.COLLECTION.ALL })
       ]);
     }
   });

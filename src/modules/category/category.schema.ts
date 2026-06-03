@@ -1,27 +1,39 @@
 import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { type AnySQLiteColumn, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
-const DEFAULT_POSITION = 0;
+import {
+  CATEGORY_COLUMN_LENGTH,
+  CATEGORY_DEFAULT_RANK,
+  CATEGORY_STATUSES,
+  DEFAULT_CATEGORY_STATUS
+} from "~/src/modules/category/category.constants";
 
 export const category = sqliteTable(
   "category",
   {
-    description: text("description"),
-    handle: text("handle", { length: 255 }).notNull().unique(),
-    id: text("id").primaryKey(),
-    image: text("image", { length: 2048 }),
-    isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
-    metadata: text("metadata"),
-    name: text("name", { length: 255 }).notNull(),
-    parentId: text("parent_id"),
-    position: integer("position").default(DEFAULT_POSITION).notNull(),
-    seoDescription: text("seo_description"),
-    seoTitle: text("seo_title"),
+    description: text("description", { length: CATEGORY_COLUMN_LENGTH.description }),
+    handle: text("handle", { length: CATEGORY_COLUMN_LENGTH.handle }).notNull().unique(),
+    id: text("id", { length: CATEGORY_COLUMN_LENGTH.id }).primaryKey(),
+    image: text("image", { length: CATEGORY_COLUMN_LENGTH.image }),
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, never> | null>(),
+    parentId: text("parent_id", { length: CATEGORY_COLUMN_LENGTH.parentId }).references((): AnySQLiteColumn => category.id, {
+      onDelete: "set null"
+    }),
+    rank: integer("rank").notNull().default(CATEGORY_DEFAULT_RANK),
+    shortDescription: text("short_description", {
+      length: CATEGORY_COLUMN_LENGTH.shortDescription
+    }),
+    status: text("status", { enum: CATEGORY_STATUSES }).notNull().default(DEFAULT_CATEGORY_STATUS),
+    subtitle: text("subtitle", { length: CATEGORY_COLUMN_LENGTH.subtitle }),
+    title: text("title", { length: CATEGORY_COLUMN_LENGTH.title }).notNull(),
     ...timestamps()
   },
-  (table) => [index("category_handle_idx").on(table.handle), index("category_parentId_idx").on(table.parentId)]
+  (table) => [
+    index("category_parent_rank_idx").on(table.parentId, table.rank),
+    index("category_status_parent_rank_idx").on(table.status, table.parentId, table.rank)
+  ]
 );
 
 export const categoryRelations = relations(category, ({ one, many }) => ({

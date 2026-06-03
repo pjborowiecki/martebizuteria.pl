@@ -1,27 +1,32 @@
 import { useMemo } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useTranslations } from "use-intl";
 
 import { useDataGridInstance } from "~/src/components/custom/datagrid/hooks/use-data-grid-instance";
+import { createCatalogTableGlobalFilterFn } from "~/src/components/custom/datagrid/lib/catalog-table-global-filter";
 import type { DataGridContextValue, RowReorderApi } from "~/src/components/custom/datagrid/lib/data-grid.types";
 import { getDataGridColumnIds } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 import { useCollectionColumns } from "~/src/components/custom/pages/admin/catalog/collections/components/collections-columns";
 import { useCollectionOrdering } from "~/src/components/custom/pages/admin/catalog/collections/hooks/use-collection-ordering";
 import { useReorderCollections } from "~/src/components/custom/pages/admin/catalog/collections/hooks/use-reorder-collections";
 import { collectionsDataGrid } from "~/src/components/custom/pages/admin/catalog/collections/utils/collections-data-grid";
+import { getCollectionAdminSearchParts } from "~/src/components/custom/pages/admin/catalog/lib/catalog-admin-table-search";
 
-import { COLLECTION_TABLE_COLUMN_PINNING } from "~/src/modules/collection/collection.constants";
+import {
+  COLLECTION_STATUS,
+  COLLECTION_STATUS_LABEL_KEYS,
+  COLLECTION_TABLE_COLUMN_PINNING,
+  COLLECTION_TABLE_DEFAULT_COLUMN_VISIBILITY
+} from "~/src/modules/collection/collection.constants";
 import { collectionQueryOptions } from "~/src/modules/collection/collection.queries";
 import type { Collection } from "~/src/modules/collection/collection.types";
 
-const EMPTY_COLLECTIONS: Collection["adminListItem"][] = [];
 const NONE = 0;
 
 /**
- * Assembles the collections datagrid: it fetches the data, layers the optimistic
- * rank reordering on top of a full TanStack Table instance, and returns the
- * context value consumed by `collectionsDataGrid`.
+ * Assembles the collections datagrid. List data is loaded via `useSuspenseQuery`
+ * (prefetched in the route loader); `isFetching` drives skeleton rows on refresh.
  */
 interface UseCollectionsDataGridOptions {
   readonly onRowClick?: (collection: Collection["adminListItem"]) => void;
@@ -29,24 +34,33 @@ interface UseCollectionsDataGridOptions {
 
 export function useCollectionsDataGrid({ onRowClick }: UseCollectionsDataGridOptions): DataGridContextValue<Collection["adminListItem"]> {
   const t = useTranslations("admin");
-  const { data: collections, isLoading, isRefetching } = useQuery(collectionQueryOptions.adminCollectionsQueryOptions());
-  const resolvedCollections = collections ?? EMPTY_COLLECTIONS;
-  const showSkeletonRows = isLoading || isRefetching;
+  const { data: collections, isFetching } = useSuspenseQuery(collectionQueryOptions.adminCollectionsQueryOptions());
+  const showSkeletonRows = isFetching;
 
   const reorder = useReorderCollections();
-  const ordering = useCollectionOrdering(resolvedCollections, reorder);
+  const ordering = useCollectionOrdering(collections, reorder);
   const columns = useCollectionColumns();
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns]);
+
+  const globalFilterFn = useMemo(
+    () =>
+      createCatalogTableGlobalFilterFn<Collection["adminListItem"]>((row) => {
+        const statusLabel = t(
+          row.status === COLLECTION_STATUS.ACTIVE ? COLLECTION_STATUS_LABEL_KEYS.active : COLLECTION_STATUS_LABEL_KEYS.draft
+        );
+        return getCollectionAdminSearchParts(row, statusLabel);
+      }),
+    [t]
+  );
 
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
     columns,
     data: ordering.items,
+    defaultColumnVisibility: COLLECTION_TABLE_DEFAULT_COLUMN_VISIBILITY,
     getRowId: (row) => row.id,
+    globalFilterFn,
     initialColumnOrder,
-    initialColumnPinning: {
-      left: [...COLLECTION_TABLE_COLUMN_PINNING.left],
-      right: [...COLLECTION_TABLE_COLUMN_PINNING.right]
-    },
+    initialColumnPinning: COLLECTION_TABLE_COLUMN_PINNING,
     persistenceKey: collectionsDataGrid.persistenceKey
   });
 
@@ -71,7 +85,6 @@ export function useCollectionsDataGrid({ onRowClick }: UseCollectionsDataGridOpt
   return useMemo(
     () => ({
       columnReorder,
-      emptyMessage: t("collections.empty"),
       hasPreferenceOverrides,
       isLoading: showSkeletonRows,
       onRowClick,

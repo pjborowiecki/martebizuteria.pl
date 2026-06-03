@@ -54,7 +54,6 @@ export interface DataGridContextValue<TData extends RowData> {
   readonly columnReorder: ColumnReorderApi;
   /** Matches `createDataGrid` / localStorage key (drives CSS var column widths). */
   readonly persistenceKey: string;
-  readonly emptyMessage: string;
   /** When set, clicking a row opens detail/edit unless the click target is interactive. */
   readonly onRowClick?: (row: TData) => void;
   readonly hasPreferenceOverrides: boolean;

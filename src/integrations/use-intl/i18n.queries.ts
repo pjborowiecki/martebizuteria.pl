@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 
+import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
 
 import type en from "~/messages/en.json";
@@ -29,6 +30,6 @@ export const messagesQueryOptions = (locale: Locale) =>
   queryOptions({
     gcTime: Infinity,
     queryFn: () => fetchMessages({ data: locale }),
-    queryKey: ["messages", locale],
+    queryKey: CONSTANTS.QUERY_KEYS.MESSAGES.byLocale(locale),
     staleTime: Infinity
   });
