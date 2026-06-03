@@ -1,21 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
-import type { ColumnSizingState, VisibilityState } from "@tanstack/react-table";
+import type { ColumnPinningState, ColumnSizingState, VisibilityState } from "@tanstack/react-table";
 
+import { useDataGridPersistEffects } from "~/src/components/custom/datagrid/hooks/use-data-grid-persist-effects";
 import { useDataGridPreferencesSnapshot } from "~/src/components/custom/datagrid/hooks/use-data-grid-preferences-snapshot";
+import { useStableColumnPinning } from "~/src/components/custom/datagrid/hooks/use-stable-column-pinning";
 import {
   clearDataGridPreferences,
   defaultPreferencesSnapshot,
-  hasDataGridPreferenceOverrides,
-  prepareDataGridPreferencesSnapshot,
-  writeDataGridPreferences
+  hasDataGridPreferenceOverrides
 } from "~/src/components/custom/datagrid/lib/data-grid-preferences";
-import { clampDataGridColumnSizingToMins, omitNonResizableColumnSizing } from "~/src/components/custom/datagrid/lib/data-grid.utils";
-
-const PERSIST_DEBOUNCE_MS = 300;
+import { clampDataGridColumnSizing, omitNonResizableColumnSizing } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 
 export interface UseDataGridPreferencesOptions {
+  readonly columnMaxSizes: Readonly<Record<string, number>>;
   readonly columnMinSizes: Readonly<Record<string, number>>;
+  readonly columnPinning?: ColumnPinningState;
+  readonly defaultColumnVisibility?: VisibilityState;
   readonly initialColumnOrder: readonly string[];
   readonly nonResizableColumnIds: readonly string[];
   readonly persistenceKey: string;
@@ -34,22 +35,31 @@ export interface DataGridPreferencesApi {
 
 /**
  * Per-table layout preferences (order, widths, visibility) backed by localStorage.
- * Client `getSnapshot` reads storage synchronously (paired with the head bootstrap script).
+ * Client `getSnapshot` reads the preferences store (hydrated from localStorage on first use).
  */
 export function useDataGridPreferences({
+  columnMaxSizes,
   columnMinSizes,
+  columnPinning = {},
+  defaultColumnVisibility = {},
   initialColumnOrder,
   nonResizableColumnIds,
   persistenceKey
 }: UseDataGridPreferencesOptions): DataGridPreferencesApi {
   const canonicalOrder = useMemo(() => [...initialColumnOrder], [initialColumnOrder]);
+  const stableColumnPinning = useStableColumnPinning(columnPinning);
   const lockedColumnIds = useMemo(() => [...nonResizableColumnIds], [nonResizableColumnIds]);
   const columnMinSizesRef = useRef(columnMinSizes);
   columnMinSizesRef.current = columnMinSizes;
+  const columnMaxSizesRef = useRef(columnMaxSizes);
+  columnMaxSizesRef.current = columnMaxSizes;
 
   const { getStore, snapshot } = useDataGridPreferencesSnapshot({
     canonicalOrder,
+    columnMaxSizes,
     columnMinSizes,
+    columnPinning: stableColumnPinning,
+    defaultColumnVisibility,
     lockedColumnIds,
     persistenceKey
   });
@@ -58,40 +68,17 @@ export function useDataGridPreferences({
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
 
-  useEffect(
-    function persistDataGridPreferences() {
-      if (skipPersistRef.current) {
-        skipPersistRef.current = false;
-        return;
-      }
-
-      const timer = globalThis.setTimeout(() => {
-        writeDataGridPreferences(persistenceKey, prepareDataGridPreferencesSnapshot(snapshot, lockedColumnIds));
-      }, PERSIST_DEBOUNCE_MS);
-
-      return () => {
-        globalThis.clearTimeout(timer);
-      };
-    },
-    [lockedColumnIds, persistenceKey, snapshot]
-  );
-
-  useEffect(
-    function flushDataGridPreferencesBeforeUnload() {
-      function flush() {
-        writeDataGridPreferences(persistenceKey, prepareDataGridPreferencesSnapshot(snapshotRef.current, lockedColumnIds));
-      }
-
-      globalThis.addEventListener("beforeunload", flush);
-      globalThis.addEventListener("pagehide", flush);
-
-      return () => {
-        globalThis.removeEventListener("beforeunload", flush);
-        globalThis.removeEventListener("pagehide", flush);
-      };
-    },
-    [lockedColumnIds, persistenceKey]
-  );
+  const persistTimerRef = useDataGridPersistEffects({
+    canonicalOrder,
+    columnMaxSizesRef,
+    columnPinning: stableColumnPinning,
+    defaultColumnVisibility,
+    lockedColumnIds,
+    persistenceKey,
+    skipPersistRef,
+    snapshot,
+    snapshotRef
+  });
 
   const setColumnOrder = useCallback(
     (updater: string[] | ((current: string[]) => string[])) => {
@@ -109,7 +96,11 @@ export function useDataGridPreferences({
       const nextSizing = typeof updater === "function" ? updater(cleaned) : updater;
       getStore().setSnapshot({
         ...current,
-        columnSizing: clampDataGridColumnSizingToMins(omitNonResizableColumnSizing(nextSizing, lockedColumnIds), columnMinSizesRef.current)
+        columnSizing: clampDataGridColumnSizing(
+          omitNonResizableColumnSizing(nextSizing, lockedColumnIds),
+          columnMinSizesRef.current,
+          columnMaxSizesRef.current
+        )
       });
     },
     [getStore, lockedColumnIds]
@@ -125,12 +116,26 @@ export function useDataGridPreferences({
   );
 
   const resetPreferences = useCallback(() => {
+    if (persistTimerRef.current !== undefined) {
+      globalThis.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = undefined;
+    }
+
     clearDataGridPreferences(persistenceKey, canonicalOrder);
     skipPersistRef.current = true;
-    getStore().setSnapshot(defaultPreferencesSnapshot(canonicalOrder));
-  }, [canonicalOrder, getStore, persistenceKey]);
+    getStore().setSnapshot(defaultPreferencesSnapshot(canonicalOrder, defaultColumnVisibility, stableColumnPinning));
+  }, [canonicalOrder, defaultColumnVisibility, getStore, persistenceKey, persistTimerRef, stableColumnPinning]);
 
-  const hasPreferenceOverrides = useMemo(() => hasDataGridPreferenceOverrides(snapshot, canonicalOrder), [canonicalOrder, snapshot]);
+  const hasPreferenceOverrides = useMemo(
+    () =>
+      hasDataGridPreferenceOverrides({
+        canonicalOrder,
+        current: snapshot,
+        defaultColumnVisibility,
+        pinning: stableColumnPinning
+      }),
+    [canonicalOrder, defaultColumnVisibility, snapshot, stableColumnPinning]
+  );
 
   return {
     columnOrder: [...snapshot.columnOrder],

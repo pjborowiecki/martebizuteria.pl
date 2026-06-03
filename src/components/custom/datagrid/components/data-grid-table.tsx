@@ -1,16 +1,17 @@
 import { type JSX, useMemo, useRef } from "react";
 
 import type { RowData, Table } from "@tanstack/react-table";
+import { useTranslations } from "use-intl";
 
 import { cn } from "~/src/lib/utils";
 
 import { DataTable, DataTableContainer, dataTableContentStyle } from "~/src/components/shadcn/data-table";
-import { TableBody, TableCell, TableHeader, TableRow } from "~/src/components/shadcn/table";
+import { TableBody, TableHeader, TableRow } from "~/src/components/shadcn/table";
 
 import { DataGridHeaderCell } from "~/src/components/custom/datagrid/components/data-grid-header-cell";
 import { DataGridLayoutProvider } from "~/src/components/custom/datagrid/components/data-grid-layout-context";
-import { DataGridRow } from "~/src/components/custom/datagrid/components/data-grid-row";
-import { DataGridSkeleton } from "~/src/components/custom/datagrid/components/data-grid-skeleton";
+import { DataGridTableBody } from "~/src/components/custom/datagrid/components/data-grid-table-body";
+import { useDataGridLayoutColumns } from "~/src/components/custom/datagrid/hooks/use-data-grid-layout-columns";
 import { useDatagridContainerWidth } from "~/src/components/custom/datagrid/hooks/use-datagrid-table-layout";
 import { buildDataGridColumnWidthStyle } from "~/src/components/custom/datagrid/lib/data-grid-column-width";
 import { DATA_GRID_HEADER_ROW_CLASS } from "~/src/components/custom/datagrid/lib/data-grid-header.styles";
@@ -21,13 +22,13 @@ import {
   resolveDataGridTableLayout
 } from "~/src/components/custom/datagrid/lib/data-grid-table-layout";
 import type { ColumnReorderApi, RowReorderApi } from "~/src/components/custom/datagrid/lib/data-grid.types";
+import { getDataGridLayoutHeaders, getDataGridRightPinnedScrollPaddingPx } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 
-const NO_ROWS = 0;
 const MAX_SKELETON_ROWS = 5;
 const UNMEASURED_CONTAINER_WIDTH = 0;
+const ZERO = 0;
 interface DataGridTableProps<TData extends RowData> {
   readonly columnReorder: ColumnReorderApi;
-  readonly emptyMessage: string;
   readonly isLoading: boolean;
   readonly onRowClick?: (row: TData) => void;
   readonly persistenceKey: string;
@@ -37,69 +38,64 @@ interface DataGridTableProps<TData extends RowData> {
 
 export function DataGridTable<TData extends RowData>({
   columnReorder,
-  emptyMessage,
   isLoading,
   onRowClick,
   persistenceKey,
   rowReorder,
   table
 }: DataGridTableProps<TData>): JSX.Element {
+  const t = useTranslations("common");
   const containerRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
-  const visibleColumns = table.getVisibleLeafColumns();
-  const visibleColumnCount = visibleColumns.length;
-  const { columnSizing } = table.getState();
+  const { columnSizing, pagination } = table.getState();
+  const layoutColumns = useDataGridLayoutColumns(table);
+  const layoutHeaders = getDataGridLayoutHeaders(table);
+  const visibleColumnCount = layoutColumns.length;
 
-  const tableMinWidth = useMemo(() => getDataGridTableMinWidth(visibleColumns, columnSizing), [columnSizing, visibleColumns]);
+  const tableMinWidth = useMemo(() => getDataGridTableMinWidth(layoutColumns, columnSizing), [columnSizing, layoutColumns]);
   const layoutKey = tableMinWidth + visibleColumnCount;
   const tableClientWidth = useDatagridContainerWidth(containerRef, layoutKey);
 
   const hasMeasuredContainer = tableClientWidth > UNMEASURED_CONTAINER_WIDTH;
 
   const tableLayout = useMemo(
-    () => (hasMeasuredContainer ? resolveDataGridTableLayout({ columnSizing, columns: visibleColumns, tableClientWidth }) : undefined),
-    [columnSizing, hasMeasuredContainer, tableClientWidth, visibleColumns]
+    () => (hasMeasuredContainer ? resolveDataGridTableLayout({ columnSizing, columns: layoutColumns, tableClientWidth }) : undefined),
+    [columnSizing, hasMeasuredContainer, layoutColumns, tableClientWidth]
   );
 
   const tableWidth = useMemo(
-    () => getDataGridContentWidth({ columnSizing, columns: visibleColumns, tableClientWidth }),
-    [columnSizing, tableClientWidth, visibleColumns]
+    () => getDataGridContentWidth({ columnSizing, columns: layoutColumns, tableClientWidth }),
+    [columnSizing, layoutColumns, tableClientWidth]
   );
 
   const tableStyle = useMemo(
     () => dataTableContentStyle({ containerWidthPx: tableClientWidth, layoutWidthPx: tableWidth, minWidthPx: tableMinWidth }),
     [tableClientWidth, tableMinWidth, tableWidth]
   );
-  const layoutValue = useMemo(() => ({ tableClientWidth, tableLayout, tableWidth }), [tableClientWidth, tableLayout, tableWidth]);
+  const resolvedTableWidth = Math.max(tableMinWidth, tableWidth);
+  const rightPinnedScrollPaddingPx = useMemo(
+    () => getDataGridRightPinnedScrollPaddingPx(layoutColumns, columnSizing, tableLayout),
+    [columnSizing, layoutColumns, tableLayout]
+  );
 
-  const skeletonRowCount = Math.min(table.getState().pagination.pageSize, MAX_SKELETON_ROWS);
+  const containerStyle = useMemo(
+    () => (rightPinnedScrollPaddingPx > ZERO ? { scrollPaddingInlineEnd: rightPinnedScrollPaddingPx } : undefined),
+    [rightPinnedScrollPaddingPx]
+  );
 
-  const tableBody = useMemo(() => {
-    if (isLoading) {
-      return <DataGridSkeleton rowCount={skeletonRowCount} columns={visibleColumns} persistenceKey={persistenceKey} table={table} />;
-    }
+  const layoutValue = useMemo(
+    () => ({ tableClientWidth, tableLayout, tableWidth: resolvedTableWidth }),
+    [resolvedTableWidth, tableClientWidth, tableLayout]
+  );
 
-    if (rows.length === NO_ROWS) {
-      return (
-        <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={visibleColumnCount} className="h-24 border-b border-border/60 text-center text-muted-foreground">
-            {emptyMessage}
-          </TableCell>
-        </TableRow>
-      );
-    }
-
-    return rows.map((row) => (
-      <DataGridRow key={row.id} row={row} rowReorder={rowReorder} persistenceKey={persistenceKey} onRowClick={onRowClick} />
-    ));
-  }, [emptyMessage, isLoading, onRowClick, persistenceKey, rowReorder, rows, skeletonRowCount, table, visibleColumnCount, visibleColumns]);
+  const skeletonRowCount = Math.min(pagination.pageSize, MAX_SKELETON_ROWS);
 
   return (
     <DataGridLayoutProvider value={layoutValue}>
-      <DataTableContainer ref={containerRef}>
+      <DataTableContainer ref={containerRef} style={containerStyle}>
         <DataTable className="w-full" style={tableStyle}>
           <colgroup>
-            {visibleColumns.map((column) => (
+            {layoutColumns.map((column) => (
               <col
                 key={column.id}
                 style={buildDataGridColumnWidthStyle({
@@ -112,18 +108,26 @@ export function DataGridTable<TData extends RowData>({
             ))}
           </colgroup>
           <TableHeader className="bg-muted [&_tr]:border-border/60">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow
-                key={headerGroup.id}
-                className={cn(DATA_GRID_HEADER_ROW_CLASS, String.raw`[&>th:last-child>button.group\/resize]:hidden`)}
-              >
-                {headerGroup.headers.map((header) => (
-                  <DataGridHeaderCell key={header.id} header={header} columnReorder={columnReorder} persistenceKey={persistenceKey} />
-                ))}
-              </TableRow>
-            ))}
+            <TableRow className={cn(DATA_GRID_HEADER_ROW_CLASS, String.raw`[&>th:last-child>button.group\/resize]:hidden`)}>
+              {layoutHeaders.map((header) => (
+                <DataGridHeaderCell key={header.id} header={header} columnReorder={columnReorder} persistenceKey={persistenceKey} />
+              ))}
+            </TableRow>
           </TableHeader>
-          <TableBody className="[&_tr:last-child>td]:border-b-0">{tableBody}</TableBody>
+          <TableBody className="[&_tr:last-child>td]:border-b-0">
+            <DataGridTableBody
+              columns={layoutColumns}
+              emptyMessage={t("noDataToDisplay")}
+              isLoading={isLoading}
+              onRowClick={onRowClick}
+              persistenceKey={persistenceKey}
+              rowReorder={rowReorder}
+              rows={rows}
+              skeletonRowCount={skeletonRowCount}
+              table={table}
+              visibleColumnCount={visibleColumnCount}
+            />
+          </TableBody>
         </DataTable>
       </DataTableContainer>
     </DataGridLayoutProvider>

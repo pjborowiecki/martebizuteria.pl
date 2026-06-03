@@ -155,6 +155,69 @@
       "when": 1780496134762,
       "tag": "20260603141534_strange_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1780498055274,
+      "tag": "20260603144735_category_column_lengths",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1780498550326,
+      "tag": "20260603145550_category_subtitle_short_description",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1780498647705,
+      "tag": "20260603145727_collection_id_and_category_seo_title",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1780498920000,
+      "tag": "20260603150200_category_status_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1780499700000,
+      "tag": "20260603151500_category_drop_seo_description",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1780500000000,
+      "tag": "20260603152000_category_name_to_title",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1780567861247,
+      "tag": "20260604101101_lethal_stingray",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1780572000000,
+      "tag": "20260604120000_catalog_indexes_and_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1780568655240,
+      "tag": "20260604102415_mighty_stepford_cuckoos",
+      "breakpoints": true
     }
   ]
 }

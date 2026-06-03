@@ -1,6 +1,9 @@
 import { sql } from "drizzle-orm";
 import { integer } from "drizzle-orm/sqlite-core";
 
+/** Canonical string form of a UUID (v4/v7): `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`. */
+export const UUID_STRING_LENGTH = 36;
+
 export const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" });
 
 const nowMs = sql`(unixepoch() * 1000)`;

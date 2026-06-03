@@ -6,7 +6,7 @@ import {
   columnFillUsesFlexWidth,
   resolveDataGridTableLayout
 } from "~/src/components/custom/datagrid/lib/data-grid-table-layout";
-import { measureDataGridContainerWidth } from "~/src/components/custom/datagrid/lib/data-grid.utils";
+import { getDataGridLayoutColumns, measureDataGridContainerWidth } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 
 const RESIZE_DIRECTION_LTR = 1;
 const RESIZE_DIRECTION_RTL = -1;
@@ -157,7 +157,7 @@ function beginColumnResizeContext<TData extends RowData>(header: Header<TData, u
   const { column } = header;
   const { table } = header.getContext();
   const containerWidth = measureDataGridContainerWidth(event);
-  const columns = table.getVisibleLeafColumns();
+  const columns = getDataGridLayoutColumns(table);
   const { columnSizing } = table.getState();
   const isFillColumn = columnFillsRemainingWidth(column);
   const minSize = readFillColumnMinSize(column, table);

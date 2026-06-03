@@ -6,6 +6,7 @@ import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 import { category } from "~/src/modules/category/category.schema";
 import { collection } from "~/src/modules/collection/collection.schema";
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
+import { DEFAULT_PRODUCT_STATUS, PRODUCT_STATUSES } from "~/src/modules/product/product.constants";
 
 export const product = sqliteTable(
   "product",
@@ -21,9 +22,7 @@ export const product = sqliteTable(
     metadata: text("metadata"),
     seoDescription: text("seo_description"),
     seoTitle: text("seo_title"),
-    status: text("status", { enum: ["draft", "published", "archived"] })
-      .default("draft")
-      .notNull(),
+    status: text("status", { enum: PRODUCT_STATUSES }).default(DEFAULT_PRODUCT_STATUS).notNull(),
     subtitle: text("subtitle", { length: 512 }),
     tags: text("tags", { mode: "json" }).$type<string[]>(),
     thumbnail: text("thumbnail", { length: 2048 }),
@@ -32,10 +31,9 @@ export const product = sqliteTable(
     ...timestamps()
   },
   (table) => [
-    index("product_handle_idx").on(table.handle),
-    index("product_status_idx").on(table.status),
-    index("product_categoryId_idx").on(table.categoryId),
-    index("product_collectionId_idx").on(table.collectionId)
+    index("product_status_createdAt_idx").on(table.status, table.createdAt),
+    index("product_category_status_idx").on(table.categoryId, table.status),
+    index("product_collection_status_idx").on(table.collectionId, table.status)
   ]
 );
 
@@ -49,4 +47,8 @@ export const productRelations = relations(product, ({ one, many }) => ({
     references: [collection.id]
   }),
   variants: many(productVariant)
+}));
+
+export const collectionRelations = relations(collection, ({ many }) => ({
+  products: many(product)
 }));

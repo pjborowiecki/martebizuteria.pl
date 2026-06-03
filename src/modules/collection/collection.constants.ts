@@ -1,6 +1,9 @@
+import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils";
+
 export const COLLECTION_COLUMN_LENGTH = {
   description: 1024,
   handle: 255,
+  id: UUID_STRING_LENGTH,
   image: 2048,
   title: 255
 } as const;
@@ -24,6 +27,7 @@ export const DEFAULT_COLLECTION_STATUS: CollectionStatus = COLLECTION_STATUS.DRA
 
 export const COLLECTION_ERROR_CODES = {
   DUPLICATE_HANDLE: "DUPLICATE_HANDLE",
+  HAS_PRODUCTS: "HAS_PRODUCTS",
   UNAUTHORIZED: "UNAUTHORIZED"
 } as const;
 
@@ -50,11 +54,18 @@ export const COLLECTION_TABLE_COLUMN_ID = {
   createdAt: "createdAt",
   description: "description",
   drag: "drag",
+  editedAt: "editedAt",
   image: "image",
   productCount: "productCount",
+  recordId: "recordId",
   select: "select",
   status: "status",
   title: "title"
+} as const;
+
+export const COLLECTION_TABLE_DEFAULT_COLUMN_VISIBILITY = {
+  [COLLECTION_TABLE_COLUMN_ID.editedAt]: false,
+  [COLLECTION_TABLE_COLUMN_ID.recordId]: false
 } as const;
 
 export const COLLECTION_TABLE_COLUMN_SIZE = {
@@ -62,15 +73,17 @@ export const COLLECTION_TABLE_COLUMN_SIZE = {
   createdAt: 160,
   description: 360,
   drag: 40,
-  image: 60,
+  editedAt: 160,
+  image: 72,
   productCount: 120,
+  recordId: 320,
   status: 140,
-  title: 260
+  title: 200
 } as const;
 
 export const COLLECTION_TABLE_COLUMN_PINNING = {
   left: [COLLECTION_TABLE_COLUMN_ID.select, COLLECTION_TABLE_COLUMN_ID.drag],
   right: [COLLECTION_TABLE_COLUMN_ID.actions]
-} as const;
+};
 
 export const COLLECTION_QUERY_STALE_MS = 60_000;

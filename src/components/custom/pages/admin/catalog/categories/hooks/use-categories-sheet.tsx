@@ -1,0 +1,73 @@
+import { createContext, type JSX, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+
+import type { Category } from "~/src/modules/category/category.types";
+
+export type CategoriesSheetMode = "closed" | "create" | "edit";
+
+export interface CategoriesSheetState {
+  readonly category: Category["adminListItem"] | undefined;
+  readonly mode: CategoriesSheetMode;
+}
+
+export interface CategoriesSheetApi {
+  readonly category: Category["adminListItem"] | undefined;
+  readonly close: () => void;
+  readonly mode: CategoriesSheetMode;
+  readonly open: boolean;
+  readonly openCreate: () => void;
+  readonly openEdit: (category: Category["adminListItem"]) => void;
+  readonly setOpen: (open: boolean) => void;
+}
+
+const CLOSED_STATE: CategoriesSheetState = { category: undefined, mode: "closed" };
+
+const CategoriesSheetContext = createContext<CategoriesSheetApi | undefined>(undefined);
+
+/** Controls the shared create/edit category sheet for the list page. */
+export function useCategoriesSheetState(): CategoriesSheetApi {
+  const [state, setState] = useState<CategoriesSheetState>(CLOSED_STATE);
+
+  const openCreate = useCallback(() => {
+    setState({ category: undefined, mode: "create" });
+  }, []);
+
+  const openEdit = useCallback((category: Category["adminListItem"]) => {
+    setState({ category, mode: "edit" });
+  }, []);
+
+  const close = useCallback(() => {
+    setState(CLOSED_STATE);
+  }, []);
+
+  const setOpen = useCallback((open: boolean) => {
+    if (!open) {
+      setState(CLOSED_STATE);
+    }
+  }, []);
+
+  return useMemo(
+    () => ({
+      category: state.category,
+      close,
+      mode: state.mode,
+      open: state.mode !== "closed",
+      openCreate,
+      openEdit,
+      setOpen
+    }),
+    [close, openCreate, openEdit, setOpen, state.category, state.mode]
+  );
+}
+
+export function CategoriesSheetProvider({ children, value }: Readonly<{ children: ReactNode; value: CategoriesSheetApi }>): JSX.Element {
+  const { Provider } = CategoriesSheetContext;
+  return <Provider value={value}>{children}</Provider>;
+}
+
+export function useCategoriesSheet(): CategoriesSheetApi {
+  const context = useContext(CategoriesSheetContext);
+  if (context === undefined) {
+    throw new Error("useCategoriesSheet must be used within CategoriesSheetProvider");
+  }
+  return context;
+}

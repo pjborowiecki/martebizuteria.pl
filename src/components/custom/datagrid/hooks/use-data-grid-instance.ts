@@ -4,6 +4,7 @@ import {
   type ColumnPinningState,
   type ColumnSizingInfoState,
   type ColumnFiltersState,
+  type VisibilityState,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
@@ -12,6 +13,7 @@ import {
   type RowData,
   type RowSelectionState,
   type SortingState,
+  type FilterFn,
   type Table,
   type TableOptions,
   useReactTable
@@ -21,7 +23,11 @@ import { useColumnReorder } from "~/src/components/custom/datagrid/hooks/use-col
 import { useDataGridPreferences } from "~/src/components/custom/datagrid/hooks/use-data-grid-preferences";
 import { DEFAULT_COLUMN_SIZING_INFO } from "~/src/components/custom/datagrid/lib/data-grid-column-sizing-info";
 import type { ColumnReorderApi } from "~/src/components/custom/datagrid/lib/data-grid.types";
-import { buildDataGridColumnMinSizes, getNonResizableColumnIds } from "~/src/components/custom/datagrid/lib/data-grid.utils";
+import {
+  buildDataGridColumnMaxSizes,
+  buildDataGridColumnMinSizes,
+  getNonResizableColumnIds
+} from "~/src/components/custom/datagrid/lib/data-grid.utils";
 
 const FIRST_PAGE_INDEX = 0;
 const DEFAULT_PAGE_SIZE = 10;
@@ -35,8 +41,12 @@ export interface UseDataGridInstanceOptions<TData extends RowData> {
   readonly getRowId: TableOptions<TData>["getRowId"];
   readonly initialColumnOrder: readonly string[];
   readonly initialColumnPinning?: ColumnPinningState;
+  /** Columns hidden until toggled on (e.g. `{ editedAt: false }`). */
+  readonly defaultColumnVisibility?: VisibilityState;
   /** Stable id for localStorage (e.g. `admin.catalog.collections`). */
   readonly persistenceKey: string;
+  /** Overrides default `includesString` (e.g. catalog tables that search handle + status labels). */
+  readonly globalFilterFn?: FilterFn<TData>;
 }
 
 export interface DataGridInstance<TData extends RowData> {
@@ -59,10 +69,15 @@ export function useDataGridInstance<TData extends RowData>({
   getRowId,
   initialColumnOrder,
   initialColumnPinning,
-  persistenceKey
+  defaultColumnVisibility,
+  persistenceKey,
+  globalFilterFn
 }: UseDataGridInstanceOptions<TData>): DataGridInstance<TData> {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>(initialColumnPinning ?? {});
+  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>(() => ({
+    left: initialColumnPinning?.left === undefined ? undefined : [...initialColumnPinning.left],
+    right: initialColumnPinning?.right === undefined ? undefined : [...initialColumnPinning.right]
+  }));
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [globalFilter, setGlobalFilter] = useState("");
@@ -71,8 +86,17 @@ export function useDataGridInstance<TData extends RowData>({
 
   const nonResizableColumnIds = useMemo(() => getNonResizableColumnIds(columns), [columns]);
   const columnMinSizes = useMemo(() => buildDataGridColumnMinSizes(columns), [columns]);
+  const columnMaxSizes = useMemo(() => buildDataGridColumnMaxSizes(columns), [columns]);
 
-  const preferences = useDataGridPreferences({ columnMinSizes, initialColumnOrder, nonResizableColumnIds, persistenceKey });
+  const preferences = useDataGridPreferences({
+    columnMaxSizes,
+    columnMinSizes,
+    columnPinning: initialColumnPinning,
+    defaultColumnVisibility,
+    initialColumnOrder,
+    nonResizableColumnIds,
+    persistenceKey
+  });
 
   const columnReorder = useColumnReorder({
     columnOrder: preferences.columnOrder,
@@ -92,7 +116,7 @@ export function useDataGridInstance<TData extends RowData>({
     getPaginationRowModel: getPaginationRowModel(),
     getRowId,
     getSortedRowModel: getSortedRowModel(),
-    globalFilterFn: "includesString",
+    globalFilterFn: globalFilterFn ?? "includesString",
     onColumnFiltersChange: setColumnFilters,
     onColumnOrderChange: preferences.setColumnOrder,
     onColumnPinningChange: setColumnPinning,

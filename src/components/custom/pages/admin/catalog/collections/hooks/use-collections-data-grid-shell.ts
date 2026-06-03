@@ -24,17 +24,13 @@ export function useCollectionsDataGridShell(): DataGridContextValue<Collection["
     data: EMPTY_COLLECTIONS,
     getRowId: (row) => row.id,
     initialColumnOrder,
-    initialColumnPinning: {
-      left: [...COLLECTION_TABLE_COLUMN_PINNING.left],
-      right: [...COLLECTION_TABLE_COLUMN_PINNING.right]
-    },
+    initialColumnPinning: COLLECTION_TABLE_COLUMN_PINNING,
     persistenceKey: collectionsDataGrid.persistenceKey
   });
 
   return useMemo(
     () => ({
       columnReorder,
-      emptyMessage: t("collections.empty"),
       hasPreferenceOverrides,
       isLoading: true,
       onRowClick: undefined,

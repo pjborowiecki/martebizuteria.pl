@@ -1,0 +1,60 @@
+import { type JSX, useCallback, useMemo } from "react";
+
+import { ListFilter } from "lucide-react";
+import { useTranslations } from "use-intl";
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/components/shadcn/select";
+
+import { categoriesDataGrid } from "~/src/components/custom/pages/admin/catalog/categories/utils/categories-data-grid";
+
+import { CATEGORY_STATUS } from "~/src/modules/category/category.constants";
+
+const ALL_VALUE = "all";
+
+/** Faceted status filter wired to the `status` column's filter value. */
+export function CategoriesStatusFilter(): JSX.Element {
+  const t = useTranslations("admin");
+  const { table } = categoriesDataGrid.useDataGrid();
+  const column = table.getColumn("status");
+  const rawFilter = column?.getFilterValue();
+  const current = typeof rawFilter === "string" ? rawFilter : ALL_VALUE;
+
+  const options = useMemo(
+    () => [
+      { label: t("categories.filter.allStatuses"), value: ALL_VALUE },
+      { label: t("categories.statusActive"), value: CATEGORY_STATUS.ACTIVE },
+      { label: t("categories.statusDraft"), value: CATEGORY_STATUS.DRAFT }
+    ],
+    [t]
+  );
+
+  const handleChange = useCallback(
+    (value: string | null) => {
+      if (value === null) {
+        return;
+      }
+      column?.setFilterValue(value === ALL_VALUE ? undefined : value);
+    },
+    [column]
+  );
+
+  return (
+    <Select items={options} value={current} onValueChange={handleChange}>
+      <SelectTrigger
+        size="sm"
+        className="h-9 w-[200px] gap-2 rounded-lg text-xs data-[size=sm]:h-9"
+        aria-label={t("categories.filter.status")}
+      >
+        <ListFilter className="size-3.5 text-muted-foreground/60" strokeWidth={1.5} />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}

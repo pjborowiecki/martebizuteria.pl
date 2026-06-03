@@ -1,7 +1,8 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 
+import { PRODUCT_STATUS, PRODUCT_STOREFRONT_LIST_LIMIT } from "~/src/modules/product/product.constants";
 import { product } from "~/src/modules/product/product.schema";
 
 // NOTE: this is intentionally NOT a prepared statement. A variable-length `IN`
@@ -17,13 +18,14 @@ const getProductsWithInventoryByHandles = (handles: readonly string[]) =>
 
 const getPublishedProductsQuery = db.query.product
   .findMany({
-    limit: 20,
+    limit: PRODUCT_STOREFRONT_LIST_LIMIT,
     orderBy: (products, { desc }) => [desc(products.createdAt)],
-    where: eq(product.status, "published"),
+    where: eq(product.status, PRODUCT_STATUS.PUBLISHED),
     with: { variants: true }
   })
   .prepare();
 
+/** Admin / checkout: any status by handle. */
 const getProductByHandleQuery = db.query.product
   .findFirst({
     where: eq(product.handle, sql.placeholder("handle")),
@@ -31,11 +33,37 @@ const getProductByHandleQuery = db.query.product
   })
   .prepare();
 
-const getRelatedProductsQuery = db.query.product
+/** Storefront PDP: published products only. */
+const getPublishedProductByHandleQuery = db.query.product
+  .findFirst({
+    where: and(eq(product.handle, sql.placeholder("handle")), eq(product.status, PRODUCT_STATUS.PUBLISHED)),
+    with: { category: true, collection: true, variants: true }
+  })
+  .prepare();
+
+const getPublishedProductsByCategoryIdQuery = db.query.product
+  .findMany({
+    limit: PRODUCT_STOREFRONT_LIST_LIMIT,
+    orderBy: (products, { desc }) => [desc(products.createdAt)],
+    where: and(eq(product.categoryId, sql.placeholder("categoryId")), eq(product.status, PRODUCT_STATUS.PUBLISHED)),
+    with: { variants: true }
+  })
+  .prepare();
+
+const getPublishedProductsByCollectionIdQuery = db.query.product
+  .findMany({
+    limit: PRODUCT_STOREFRONT_LIST_LIMIT,
+    orderBy: (products, { desc }) => [desc(products.createdAt)],
+    where: and(eq(product.collectionId, sql.placeholder("collectionId")), eq(product.status, PRODUCT_STATUS.PUBLISHED)),
+    with: { variants: true }
+  })
+  .prepare();
+
+const getPublishedRelatedProductsQuery = db.query.product
   .findMany({
     limit: 3,
     orderBy: (products, { desc }) => [desc(products.createdAt)],
-    where: eq(product.categoryId, sql.placeholder("categoryId")),
+    where: and(eq(product.categoryId, sql.placeholder("categoryId")), eq(product.status, PRODUCT_STATUS.PUBLISHED)),
     with: { variants: true }
   })
   .prepare();
@@ -43,6 +71,9 @@ const getRelatedProductsQuery = db.query.product
 export const productAccessors = {
   getProductByHandleQuery,
   getProductsWithInventoryByHandles,
+  getPublishedProductByHandleQuery,
+  getPublishedProductsByCategoryIdQuery,
+  getPublishedProductsByCollectionIdQuery,
   getPublishedProductsQuery,
-  getRelatedProductsQuery
+  getPublishedRelatedProductsQuery
 };

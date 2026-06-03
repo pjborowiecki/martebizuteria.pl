@@ -9,6 +9,7 @@ export { verification } from "~/src/modules/verification/verification.schema";
 export { address, addressRelations } from "~/src/modules/address/address.schema";
 export { category, categoryRelations } from "~/src/modules/category/category.schema";
 export { collection } from "~/src/modules/collection/collection.schema";
+export { collectionRelations } from "~/src/modules/product/product.schema";
 export { orderAddress, orderAddressRelations } from "~/src/modules/order-address/order-address.schema";
 export { orderItem, orderItemRelations } from "~/src/modules/order-item/order-item.schema";
 export { order, orderRelations } from "~/src/modules/order/order.schema";

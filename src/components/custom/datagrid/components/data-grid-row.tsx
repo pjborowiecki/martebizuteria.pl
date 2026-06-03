@@ -1,12 +1,13 @@
-import { type CSSProperties, type DragEvent, type JSX, type MouseEvent, useCallback, useMemo } from "react";
+import { type CSSProperties, type DragEvent, type JSX, type MouseEvent, type ReactNode, useCallback, useMemo } from "react";
 
-import { type Cell, flexRender, type Row, type RowData } from "@tanstack/react-table";
+import { type Cell, type Column, flexRender, type Row, type RowData, type Table } from "@tanstack/react-table";
 
 import { cn } from "~/src/lib/utils";
 
 import { TableCell, TableRow } from "~/src/components/shadcn/table";
 
 import { useDataGridColumnMetrics } from "~/src/components/custom/datagrid/hooks/use-data-grid-column-metrics";
+import { useDataGridLayoutColumns } from "~/src/components/custom/datagrid/hooks/use-data-grid-layout-columns";
 import { DATA_GRID_BODY_CELL_CLASS, DATA_GRID_BODY_ROW_CLASS } from "~/src/components/custom/datagrid/lib/data-grid-body.styles";
 import { buildDataGridCellStyle } from "~/src/components/custom/datagrid/lib/data-grid-cell-style";
 import { consumeDataGridRowClickSuppression } from "~/src/components/custom/datagrid/lib/data-grid-row-click";
@@ -17,14 +18,15 @@ interface DataGridRowProps<TData extends RowData> {
   readonly persistenceKey: string;
   readonly row: Row<TData>;
   readonly rowReorder: RowReorderApi | undefined;
+  readonly table: Table<TData>;
 }
 
-function DataGridCell<TData extends RowData>({
-  cell,
-  persistenceKey
-}: Readonly<{ cell: Cell<TData, unknown>; persistenceKey: string }>): JSX.Element {
-  const { column } = cell;
-  const { table } = cell.getContext();
+function DataGridLayoutCell<TData extends RowData>({
+  children,
+  column,
+  persistenceKey,
+  table
+}: Readonly<{ children?: ReactNode; column: Column<TData>; persistenceKey: string; table: Table<TData> }>): JSX.Element {
   const { pinLayout, tableLayout, widthPx } = useDataGridColumnMetrics(column, table);
   const isPinned = column.getIsPinned();
   const isLastLeftPinned = isPinned === "left" && column.getIsLastColumn("left");
@@ -56,14 +58,36 @@ function DataGridCell<TData extends RowData>({
         "sticky z-10": isPinned !== false
       })}
     >
-      {flexRender(column.columnDef.cell, cell.getContext())}
+      {children}
     </TableCell>
   );
 }
 
-export function DataGridRow<TData extends RowData>({ onRowClick, persistenceKey, row, rowReorder }: DataGridRowProps<TData>): JSX.Element {
+function DataGridCell<TData extends RowData>({
+  cell,
+  persistenceKey
+}: Readonly<{ cell: Cell<TData, unknown>; persistenceKey: string }>): JSX.Element {
+  const { column } = cell;
+  const { table } = cell.getContext();
+
+  return (
+    <DataGridLayoutCell column={column} persistenceKey={persistenceKey} table={table}>
+      {flexRender(column.columnDef.cell, cell.getContext())}
+    </DataGridLayoutCell>
+  );
+}
+
+export function DataGridRow<TData extends RowData>({
+  onRowClick,
+  persistenceKey,
+  row,
+  rowReorder,
+  table
+}: DataGridRowProps<TData>): JSX.Element {
   const reorderEnabled = rowReorder?.enabled === true;
   const isDragging = rowReorder?.draggingId === row.id;
+  const layoutColumns = useDataGridLayoutColumns(table);
+  const cellsByColumnId = useMemo(() => new Map(row.getAllCells().map((cell) => [cell.column.id, cell])), [row]);
 
   const handleDragEnter = useCallback(() => {
     if (reorderEnabled) {
@@ -115,9 +139,13 @@ export function DataGridRow<TData extends RowData>({ onRowClick, persistenceKey,
         "opacity-40": isDragging
       })}
     >
-      {row.getVisibleCells().map((cell) => (
-        <DataGridCell key={cell.id} cell={cell} persistenceKey={persistenceKey} />
-      ))}
+      {layoutColumns.map((column) => {
+        const cell = cellsByColumnId.get(column.id);
+        if (cell === undefined) {
+          return <DataGridLayoutCell key={column.id} column={column} persistenceKey={persistenceKey} table={table} />;
+        }
+        return <DataGridCell key={cell.id} cell={cell} persistenceKey={persistenceKey} />;
+      })}
     </TableRow>
   );
 }

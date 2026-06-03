@@ -4,7 +4,8 @@
     "no": "No",
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "noDataToDisplay": "No data to display"
   },
   "components": {
     "shadcn": {
@@ -939,7 +940,7 @@
   "dataGrid": {
     "view": {
       "label": "Show or hide columns",
-      "columns": "Toggle columns",
+      "columns": "Column visibility",
       "reset": "Reset table settings to defaults"
     },
     "sortBy": "Sort by {column}",
@@ -1143,80 +1144,137 @@
       "title": "Categories",
       "description": "Organize your products into collections and categories.",
       "actions": {
-        "addCategory": "Add category"
-      },
-      "form": {
-        "cancel": "Cancel",
-        "changeImage": "Change image",
-        "create": "Create category",
-        "created": "Created",
-        "delete": "Delete",
-        "description": "Description",
-        "descriptionPlaceholder": "Enter category description...",
-        "displayOptions": "Display Options",
-        "featuredLabel": "Featured Category",
-        "id": "ID",
-        "imageHint": "Supports JPG, PNG, WEBP. Max 5MB.",
-        "mediaTitle": "Media",
-        "metaDescription": "Meta Description",
-        "metaDescriptionPlaceholder": "A brief description for search engine results...",
-        "metaTitle": "Meta Title",
-        "metaTitlePlaceholder": "e.g. Category Name - Store Name",
-        "name": "Name",
-        "namePlaceholder": "e.g. Necklaces",
-        "noParent": "None",
-        "parentCategory": "Parent Category",
-        "products": "Products",
-        "removeImage": "Remove",
-        "save": "Save changes",
-        "saveDraft": "Save as draft",
-        "sectionBasic": "Basic Details",
-        "sectionSeo": "Search Engine Optimization",
-        "showInFilters": "Show in filters",
-        "showInNav": "Show in navigation",
-        "slug": "URL Slug",
-        "sortOrder": "Sort Order",
-        "status": "Status",
-        "summary": "Summary",
-        "titleAdd": "Add New Category",
-        "updated": "Last updated",
-        "uploadImage": "Upload Image"
-      },
-      "rowActions": {
-        "edit": "Edit category",
-        "viewProducts": "View products",
-        "copyId": "Copy ID: {id}",
-        "copyLink": "Copy link",
-        "delete": "Delete category"
+        "addCategory": "Add category",
+        "exportCsv": "Download table as CSV",
+        "refresh": "Reload table data"
       },
       "columns": {
+        "category": "Category",
+        "createdAt": "Created at",
         "description": "Description",
-        "name": "Category",
+        "editedAt": "Last edited",
+        "id": "ID",
+        "image": "Image",
+        "parent": "Parent category",
         "products": "Products",
+        "shortDescription": "Short description",
         "slug": "Slug",
-        "status": "Status"
+        "status": "Status",
+        "subtitle": "Subtitle",
+        "title": "Title"
+      },
+      "filter": {
+        "status": "Filter by status",
+        "allStatuses": "All statuses"
+      },
+      "bulk": {
+        "selected": "{count} selected",
+        "delete": "Delete ({count})",
+        "confirmTitle": "Delete categories?",
+        "confirmDescription": "This will permanently delete {count} category(ies). This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
       },
       "statusActive": "Active",
       "statusDraft": "Draft",
       "searchPlaceholder": "Search categories...",
+      "reorder": {
+        "handle": "Drag to reorder, or use arrow keys"
+      },
+      "rowActions": {
+        "edit": "Edit category",
+        "viewProducts": "View products",
+        "copyId": "Copy ID",
+        "copyLink": "Copy link",
+        "delete": "Delete category",
+        "copyIdToast": "Category ID copied to clipboard",
+        "copyLinkToast": "Category link copied to clipboard",
+        "deleteTitle": "Delete category?",
+        "deleteDescription": "This will permanently delete \u201c{title}\u201d. This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      },
+      "form": {
+        "titleAdd": "Add New Category",
+        "titleEdit": "Edit category",
+        "sheetDescription": "Create a new category. It will be added to the end of the list.",
+        "sheetDescriptionEdit": "Update this category\u2019s details, status, and media.",
+        "cancel": "Cancel",
+        "create": "Create category",
+        "save": "Save changes",
+        "sectionBasic": "Basic Details",
+        "sectionParent": "Hierarchy",
+        "title": "Title",
+        "titlePlaceholder": "e.g. Necklaces",
+        "slug": "URL Slug",
+        "slugHint": "Generated from the title until you edit this field.",
+        "parentCategory": "Parent Category",
+        "noParent": "None",
+        "description": "Description",
+        "descriptionPlaceholder": "Enter the full category description...",
+        "shortDescription": "Short description",
+        "shortDescriptionPlaceholder": "Brief summary for cards and listings...",
+        "subtitle": "Subtitle",
+        "subtitlePlaceholder": "Supporting line under the category title...",
+        "mediaTitle": "Media",
+        "image": "Image",
+        "id": "ID",
+        "status": "Status",
+        "displayOptions": "Display Options",
+        "hints": {
+          "id": "Permanent identifier for this category. Used in the admin and APIs; it cannot be changed after creation.",
+          "title": "Public name shown in the storefront navigation and category pages.",
+          "slug": "URL path segment for this category. Filled from the title until you edit it manually. Use lowercase letters, numbers, and hyphens only.",
+          "subtitle": "Optional supporting line displayed under the category title.",
+          "shortDescription": "Brief summary used in cards, listings, and previews.",
+          "description": "Full description shown on the category page.",
+          "parentCategory": "Optional parent for nested categories. Leave empty for a top-level category.",
+          "status": "Draft categories are hidden from the storefront; active categories are visible to customers.",
+          "image": "Hero or thumbnail image for this category in the storefront and admin."
+        },
+        "validation": {
+          "titleRequired": "Title is required",
+          "titleTooLong": "Title is too long",
+          "slugRequired": "URL slug is required",
+          "slugInvalid": "Use lowercase letters, numbers and hyphens only",
+          "descriptionTooLong": "Description is too long",
+          "shortDescriptionTooLong": "Short description is too long",
+          "subtitleTooLong": "Subtitle is too long"
+        }
+      },
+      "toast": {
+        "createSuccessTitle": "Category created",
+        "createSuccessDescription": "Your category has been created successfully.",
+        "updateSuccessTitle": "Category saved",
+        "updateSuccessDescription": "Your changes have been saved.",
+        "errorTitle": "Something went wrong",
+        "errorDescription": "The category could not be saved. Please try again.",
+        "duplicateHandle": "A category with this URL slug already exists.",
+        "reorderErrorTitle": "Couldn't save order",
+        "reorderErrorDescription": "The new category order could not be saved. Please try again.",
+        "deleteSuccessTitle": "Categories deleted",
+        "deleteSuccessDescription": "Deleted {count} category(ies).",
+        "deleteErrorTitle": "Couldn't delete",
+        "deleteErrorDescription": "The selected categories could not be deleted. Please try again.",
+        "deleteHasChildrenDescription": "Remove or reassign child categories before deleting a parent category.",
+        "deleteHasProductsDescription": "Reassign or remove products from these categories before deleting them.",
+        "invalidParent": "Choose a valid parent category that is not this category or one of its descendants."
+      },
       "stats": {
         "active": {
-          "label": "Active Categories",
-          "value": "216"
+          "label": "Active Categories"
         },
         "avgProducts": {
           "label": "Avg. Products/Category",
-          "value": "14.2"
+          "caption": "~{count} products assigned"
         },
         "draft": {
-          "label": "Drafts",
-          "value": "18"
+          "label": "Drafts"
         },
         "total": {
-          "label": "Total Categories",
-          "value": "248"
+          "label": "Total Categories"
         },
-        "vsPrevious": "vs last month"
+        "shareCaption": "{percent}% of total"
       }
     },
     "media": {
@@ -1247,6 +1305,8 @@
         "description": "Description",
         "collection": "Collection",
         "createdAt": "Created at",
+        "editedAt": "Last edited",
+        "id": "ID",
         "image": "Image",
         "products": "Products",
         "slug": "Slug",
@@ -1267,7 +1327,6 @@
       "statusActive": "Active",
       "statusDraft": "Draft",
       "searchPlaceholder": "Search collections...",
-      "empty": "No collections yet. Create your first one.",
       "reorder": {
         "handle": "Drag to reorder, or use arrow keys"
       },
@@ -1306,6 +1365,14 @@
         "status": "Status",
         "featuredLabel": "Featured Collection",
         "displayOptions": "Display Options",
+        "hints": {
+          "id": "Permanent identifier for this collection. Used in the admin and APIs; it cannot be changed after creation.",
+          "name": "Public name shown in the storefront and collection pages.",
+          "slug": "URL path segment for this collection. Filled from the name until you edit it manually. Use lowercase letters, numbers, and hyphens only.",
+          "description": "Marketing copy shown on the collection page and in previews.",
+          "status": "Draft collections are hidden from the storefront; active collections are visible to customers.",
+          "coverImage": "Cover image used on the collection page and in listings."
+        },
         "showOnHomepage": "Show on homepage",
         "showInNav": "Show in navigation",
         "summary": "Summary",
@@ -1334,7 +1401,8 @@
         "deleteSuccessTitle": "Collections deleted",
         "deleteSuccessDescription": "Deleted {count} collection(s).",
         "deleteErrorTitle": "Couldn't delete",
-        "deleteErrorDescription": "The selected collections could not be deleted. Please try again."
+        "deleteErrorDescription": "The selected collections could not be deleted. Please try again.",
+        "deleteHasProductsDescription": "Reassign or remove products from these collections before deleting them."
       },
       "stats": {
         "active": {
@@ -1585,7 +1653,6 @@
       },
       "searchPlaceholder": "Search events…",
       "clearFilter": "Clear",
-      "empty": "No events match the current filters.",
       "pagination": {
         "showing": "Showing {count} of {total} events",
         "previous": "Previous",

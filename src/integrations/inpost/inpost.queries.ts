@@ -1,5 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { fetchPointsByCity } from "~/src/integrations/inpost/inpost.api";
 
 const ONE_DAY_IN_MS = 86_400_000;
@@ -13,7 +15,7 @@ export const inpostQueryOptions = {
       enabled: city.trim().length >= MIN_CITY_LENGTH,
       gcTime: TWO_DAYS_IN_MS,
       queryFn: () => fetchPointsByCity(city),
-      queryKey: ["inpost-points", "city", city.trim().toLowerCase()],
+      queryKey: CONSTANTS.QUERY_KEYS.INPOST.byCity(city),
       staleTime: ONE_DAY_IN_MS
     })
 };

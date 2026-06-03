@@ -14,7 +14,7 @@ export const collection = sqliteTable(
   {
     description: text("description", { length: COLLECTION_COLUMN_LENGTH.description }),
     handle: text("handle", { length: COLLECTION_COLUMN_LENGTH.handle }).notNull().unique(),
-    id: text("id").primaryKey(),
+    id: text("id", { length: COLLECTION_COLUMN_LENGTH.id }).primaryKey(),
     image: text("image", { length: COLLECTION_COLUMN_LENGTH.image }),
     metadata: text("metadata", { mode: "json" }).$type<Record<string, never> | null>(),
     rank: integer("rank").notNull().default(COLLECTION_DEFAULT_RANK),
@@ -22,5 +22,5 @@ export const collection = sqliteTable(
     title: text("title", { length: COLLECTION_COLUMN_LENGTH.title }).notNull(),
     ...timestamps()
   },
-  (table) => [index("collection_handle_idx").on(table.handle), index("collection_rank_idx").on(table.rank)]
+  (table) => [index("collection_status_rank_idx").on(table.status, table.rank)]
 );

@@ -24,19 +24,46 @@ function dataGridColumnWidthValue(persistenceKey: string, columnId: string, fall
 
 const MIN_COLUMN_SIZE = 0;
 
-/** Syncs saved column widths to `documentElement` (head script + live resize). */
-export function applyDataGridColumnSizingCssVars(persistenceKey: string, sizing: ColumnSizingState): void {
+export interface SyncDataGridColumnSizingCssVarsInput {
+  readonly columnIds: readonly string[];
+  readonly columnMaxSizes?: Readonly<Record<string, number>>;
+  readonly persistenceKey: string;
+  readonly sizing: ColumnSizingState;
+}
+
+/** Clears stale vars, then applies clamped saved widths (head script + live resize). */
+export function syncDataGridColumnSizingCssVars({
+  columnIds,
+  columnMaxSizes = {},
+  persistenceKey,
+  sizing
+}: SyncDataGridColumnSizingCssVarsInput): void {
   if (typeof document === "undefined") {
     return;
   }
 
   const root = document.documentElement;
 
+  for (const columnId of columnIds) {
+    root.style.removeProperty(dataGridColumnWidthCssVar(persistenceKey, columnId));
+  }
+
   for (const [columnId, size] of Object.entries(sizing)) {
     if (typeof size === "number" && Number.isFinite(size) && size > MIN_COLUMN_SIZE) {
-      root.style.setProperty(dataGridColumnWidthCssVar(persistenceKey, columnId), `${size}px`);
+      const maxSize = columnMaxSizes[columnId];
+      const widthPx = maxSize === undefined ? size : Math.min(size, maxSize);
+      root.style.setProperty(dataGridColumnWidthCssVar(persistenceKey, columnId), `${widthPx}px`);
     }
   }
+}
+
+/** @deprecated Prefer `syncDataGridColumnSizingCssVars` so orphan vars (e.g. former slack columns) are cleared. */
+export function applyDataGridColumnSizingCssVars(persistenceKey: string, sizing: ColumnSizingState): void {
+  syncDataGridColumnSizingCssVars({
+    columnIds: Object.keys(sizing),
+    persistenceKey,
+    sizing
+  });
 }
 
 export function clearDataGridColumnSizingCssVars(persistenceKey: string, columnIds: readonly string[]): void {

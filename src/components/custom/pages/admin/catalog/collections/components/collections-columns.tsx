@@ -3,7 +3,6 @@ import { type JSX, useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useFormatter, useTranslations } from "use-intl";
 
-import { Badge } from "~/src/components/shadcn/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/components/shadcn/tooltip";
 
 import { selectionColumn } from "~/src/components/custom/datagrid/components/selection-column";
@@ -11,14 +10,15 @@ import { fixedDataGridColumnWidth } from "~/src/components/custom/datagrid/lib/d
 import { Image } from "~/src/components/custom/image";
 import { CollectionReorderCell } from "~/src/components/custom/pages/admin/catalog/collections/components/collection-reorder-cell";
 import { CollectionsRowActions } from "~/src/components/custom/pages/admin/catalog/collections/components/collections-row-actions";
+import { CatalogStatusBadge } from "~/src/components/custom/pages/admin/catalog/components/catalog-status-badge";
+import { CatalogTitleHandleCell } from "~/src/components/custom/pages/admin/catalog/components/catalog-title-handle-cell";
 
 import {
   COLLECTION_STATUS,
   COLLECTION_STATUS_LABEL_KEYS,
   COLLECTION_TABLE_A11Y_KEYS,
   COLLECTION_TABLE_COLUMN_ID,
-  COLLECTION_TABLE_COLUMN_SIZE,
-  type CollectionStatus
+  COLLECTION_TABLE_COLUMN_SIZE
 } from "~/src/modules/collection/collection.constants";
 import type { Collection } from "~/src/modules/collection/collection.types";
 
@@ -46,18 +46,6 @@ function CollectionDescriptionCell({ description }: Readonly<{ description: stri
       <TooltipTrigger render={trigger} />
       <TooltipContent className="max-w-sm whitespace-normal">{description}</TooltipContent>
     </Tooltip>
-  );
-}
-
-function CollectionStatusBadge({
-  status,
-  t
-}: Readonly<{ status: CollectionStatus; t: ReturnType<typeof useTranslations<"admin">> }>): JSX.Element {
-  const isActive = status === COLLECTION_STATUS.ACTIVE;
-  return (
-    <Badge variant={isActive ? "default" : "secondary"} className="text-[11px]">
-      {isActive ? t(COLLECTION_STATUS_LABEL_KEYS.active) : t(COLLECTION_STATUS_LABEL_KEYS.draft)}
-    </Badge>
   );
 }
 
@@ -97,19 +85,31 @@ export function useCollectionColumns() {
         ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.image)
       }),
       columnHelper.accessor("title", {
-        cell: ({ row }) => (
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="truncate text-sm font-medium uppercase">{row.original.title}</span>
-            <span className="truncate font-mono text-xs text-muted-foreground">{row.original.handle}</span>
-          </div>
-        ),
+        cell: ({ row }) => <CatalogTitleHandleCell handle={row.original.handle} title={row.original.title} />,
         header: t("collections.columns.collection"),
         id: COLLECTION_TABLE_COLUMN_ID.title,
         meta: { skeletonVariant: "title" },
         size: COLLECTION_TABLE_COLUMN_SIZE.title
       }),
+      columnHelper.accessor((row) => row.id, {
+        cell: ({ row }) => <span className="block truncate font-mono text-xs text-muted-foreground">{row.original.id}</span>,
+        header: t("collections.columns.id"),
+        id: COLLECTION_TABLE_COLUMN_ID.recordId,
+        meta: { cellClassName: "overflow-hidden", headClassName: "overflow-hidden", skeletonVariant: "text" },
+        minSize: COLLECTION_TABLE_COLUMN_SIZE.recordId,
+        size: COLLECTION_TABLE_COLUMN_SIZE.recordId
+      }),
       columnHelper.accessor("status", {
-        cell: ({ getValue }) => <CollectionStatusBadge status={getValue()} t={t} />,
+        cell: ({ getValue }) => {
+          const status = getValue();
+          const isActive = status === COLLECTION_STATUS.ACTIVE;
+          return (
+            <CatalogStatusBadge
+              isActive={isActive}
+              label={t(isActive ? COLLECTION_STATUS_LABEL_KEYS.active : COLLECTION_STATUS_LABEL_KEYS.draft)}
+            />
+          );
+        },
         filterFn: "equalsString",
         header: t("collections.columns.status"),
         id: COLLECTION_TABLE_COLUMN_ID.status,
@@ -137,9 +137,21 @@ export function useCollectionColumns() {
         ),
         header: t("collections.columns.createdAt"),
         id: COLLECTION_TABLE_COLUMN_ID.createdAt,
-        meta: { absorbsTrailingSlack: true, skeletonVariant: "date" },
+        maxSize: 320,
+        meta: { skeletonVariant: "date" },
         minSize: COLLECTION_TABLE_COLUMN_SIZE.createdAt,
         size: COLLECTION_TABLE_COLUMN_SIZE.createdAt
+      }),
+      columnHelper.accessor("updatedAt", {
+        cell: ({ getValue }) => (
+          <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
+        ),
+        header: t("collections.columns.editedAt"),
+        id: COLLECTION_TABLE_COLUMN_ID.editedAt,
+        maxSize: 320,
+        meta: { skeletonVariant: "date" },
+        minSize: COLLECTION_TABLE_COLUMN_SIZE.editedAt,
+        size: COLLECTION_TABLE_COLUMN_SIZE.editedAt
       }),
       columnHelper.display({
         cell: ({ row }) => <CollectionsRowActions collection={row.original} />,

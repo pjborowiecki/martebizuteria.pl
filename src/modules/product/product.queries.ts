@@ -1,6 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { productAccessors } from "~/src/modules/product/product.accessors";
 
 const fetchProductsFn = createServerFn({ method: "GET" }).handler(() => productAccessors.getPublishedProductsQuery.execute());
@@ -8,7 +10,7 @@ const fetchProductsFn = createServerFn({ method: "GET" }).handler(() => productA
 const fetchProductByHandleFn = createServerFn({ method: "GET" })
   .inputValidator((handle: string) => handle)
   .handler(async ({ data: handle }) => {
-    const prod = await productAccessors.getProductByHandleQuery.execute({ handle });
+    const prod = await productAccessors.getPublishedProductByHandleQuery.execute({ handle });
 
     if (prod === undefined) {
       return false;
@@ -24,7 +26,7 @@ const fetchRelatedProductsFn = createServerFn({ method: "GET" })
       return [];
     }
 
-    return productAccessors.getRelatedProductsQuery.execute({ categoryId });
+    return productAccessors.getPublishedRelatedProductsQuery.execute({ categoryId });
   });
 
 export const productQueries = {
@@ -37,16 +39,16 @@ export const productQueryOptions = {
   productQueryOptions: (handle: string) =>
     queryOptions({
       queryFn: () => fetchProductByHandleFn({ data: handle }),
-      queryKey: ["product", handle]
+      queryKey: CONSTANTS.QUERY_KEYS.PRODUCT.byHandle(handle)
     }),
   productsQueryOptions: () =>
     queryOptions({
       queryFn: () => fetchProductsFn(),
-      queryKey: ["products"]
+      queryKey: CONSTANTS.QUERY_KEYS.PRODUCT.ALL
     }),
   relatedProductsQueryOptions: (categoryId: string | null) =>
     queryOptions({
       queryFn: () => fetchRelatedProductsFn({ data: categoryId }),
-      queryKey: ["related-products", categoryId]
+      queryKey: CONSTANTS.QUERY_KEYS.PRODUCT.byCategoryId(categoryId)
     })
 };

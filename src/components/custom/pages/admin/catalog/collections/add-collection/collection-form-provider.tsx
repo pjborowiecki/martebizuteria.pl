@@ -16,6 +16,8 @@ import { type Control, type UseFormSetError, type UseFormSetValue, useForm } fro
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { adminListItemToFormValues } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form.utils";
 
 import { COLLECTION_ERROR_CODES } from "~/src/modules/collection/collection.constants";
@@ -36,6 +38,7 @@ const DEFAULT_VALUES: Collection["formValues"] = {
 export type CollectionFormMode = "create" | "edit";
 
 export interface CollectionFormContextValue {
+  readonly collectionId: string | undefined;
   readonly control: Control<Collection["formValues"]>;
   readonly dismiss: () => void;
   readonly isPending: boolean;
@@ -61,9 +64,9 @@ function useCollectionMutation({ collectionId, mode, onCompleted, setError }: Us
 
   const invalidate = useCallback(async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["collections"] }),
-      queryClient.invalidateQueries({ queryKey: ["admin", "collections"] }),
-      queryClient.invalidateQueries({ queryKey: ["admin", "collections", "stats"] })
+      queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.COLLECTION.ALL }),
+      queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.COLLECTION.ADMIN.ALL }),
+      queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.COLLECTION.ADMIN.STATS })
     ]);
   }, [queryClient]);
 
@@ -166,13 +169,6 @@ export function CollectionFormProvider({
   );
 
   useEffect(
-    function syncCollectionFormValues() {
-      resetFormState(initialValues);
-    },
-    [initialValues, resetFormState]
-  );
-
-  useEffect(
     function resetCollectionFormOnClose() {
       if (!open) {
         resetFormState(initialValues);
@@ -214,6 +210,7 @@ export function CollectionFormProvider({
 
   const value = useMemo<CollectionFormContextValue>(
     () => ({
+      collectionId,
       control,
       dismiss,
       isPending,
@@ -223,7 +220,7 @@ export function CollectionFormProvider({
       setUploading: setIsUploading,
       setValue
     }),
-    [control, dismiss, handleSubmit, isPending, isUploading, mode, setValue]
+    [collectionId, control, dismiss, handleSubmit, isPending, isUploading, mode, setValue]
   );
 
   return (

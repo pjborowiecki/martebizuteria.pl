@@ -2,6 +2,7 @@ import { DELIVERY_METHOD, DELIVERY_METHODS } from "~/src/constants/_constants/de
 import { DEFAULT_LOCALE, LOCALES } from "~/src/constants/_constants/locales";
 import { STATIC_PAGES } from "~/src/constants/_constants/pages";
 import { ACTIONS, ADMIN_PANEL_ROLES, DEFAULT_ROLE, RESOURCES, ROLES } from "~/src/constants/_constants/permissions";
+import { QUERY_KEYS } from "~/src/constants/_constants/query-keys";
 import { ROUTES } from "~/src/constants/_constants/routes";
 import { SOCIALS } from "~/src/constants/_constants/socials";
 import {
@@ -32,6 +33,7 @@ export const CONSTANTS = {
   DELIVERY_METHODS,
   LOCALES,
   LOCALE_COOKIE_NAME: "marte_locale",
+  QUERY_KEYS,
   RESOURCES,
   ROLES,
   ROUTES,

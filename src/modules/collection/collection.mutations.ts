@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { v7 as uuidv7 } from "uuid";
 
 import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions";
 
@@ -9,8 +10,8 @@ import { collectionZodSchemas } from "~/src/modules/collection/collection.zod";
 
 const NO_RANK = -1;
 const RANK_STEP = 1;
+const ZERO_COUNT = 0;
 
-/** Maps the validated form payload onto a `collection` row. */
 function toCollectionRow(input: Collection["createInput"], id: string, rank: number): Collection["insert"] {
   return {
     description: input.description,
@@ -35,11 +36,10 @@ const createCollectionFn = createServerFn({ method: "POST" })
       throw new Error(COLLECTION_ERROR_CODES.DUPLICATE_HANDLE);
     }
 
-    // Append new collections to the end of the manual order.
     const [maxRank] = await collectionAccessors.getMaxRankQuery.execute();
     const nextRank = (maxRank?.value ?? NO_RANK) + RANK_STEP;
 
-    const id = crypto.randomUUID();
+    const id = uuidv7();
     await collectionAccessors.insertCollection(toCollectionRow(data, id, nextRank));
 
     return { handle: data.handle, id };
@@ -60,6 +60,11 @@ const deleteCollectionsFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => collectionZodSchemas.deleteInput.parse(data))
   .handler(async ({ data: ids }) => {
     await assertAdmin();
+
+    const productCount = await collectionAccessors.countProductsForCollections(ids);
+    if (productCount > ZERO_COUNT) {
+      throw new Error(COLLECTION_ERROR_CODES.HAS_PRODUCTS);
+    }
 
     await collectionAccessors.deleteCollections(ids);
 

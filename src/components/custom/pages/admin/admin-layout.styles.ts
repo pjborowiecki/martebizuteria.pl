@@ -1,3 +1,6 @@
+/** Matches `:root --sidebar`; fills viewport + `scrollbar-gutter` behind the main column. */
+export const ADMIN_SHELL_CHROME_BG = "oklch(0.141 0.005 285.823)";
+
 /** Light zinc canvas for admin main (sidebar stays dark via `bg-sidebar`). */
 export const ADMIN_LAYOUT_BG_CLASS = "bg-zinc-100";
 

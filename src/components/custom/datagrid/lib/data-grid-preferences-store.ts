@@ -1,4 +1,4 @@
-import { applyDataGridColumnSizingCssVars } from "~/src/components/custom/datagrid/lib/data-grid-column-width";
+import { syncDataGridColumnSizingCssVars } from "~/src/components/custom/datagrid/lib/data-grid-column-width";
 import {
   defaultPreferencesSnapshot,
   readDataGridPreferences,
@@ -17,15 +17,17 @@ export interface DataGridPreferencesStore {
 
 export interface DataGridPreferencesStoreConfig {
   readonly canonicalOrder: readonly string[];
+  readonly columnMaxSizes: Readonly<Record<string, number>>;
   readonly columnMinSizes: Readonly<Record<string, number>>;
+  readonly initialSnapshot?: DataGridPreferencesSnapshot;
   readonly lockedColumnIds: readonly string[];
   readonly persistenceKey: string;
 }
 
 export function createDataGridPreferencesStore(config: DataGridPreferencesStoreConfig): DataGridPreferencesStore {
-  const { canonicalOrder, persistenceKey } = config;
+  const { canonicalOrder, columnMaxSizes, initialSnapshot, persistenceKey } = config;
 
-  let snapshot = defaultPreferencesSnapshot(canonicalOrder);
+  let snapshot = initialSnapshot ?? defaultPreferencesSnapshot(canonicalOrder);
 
   const listeners = new Set<Listener>();
 
@@ -34,7 +36,12 @@ export function createDataGridPreferencesStore(config: DataGridPreferencesStoreC
     setSnapshot: (next: DataGridPreferencesSnapshot) => {
       snapshot = next;
       if (typeof document !== "undefined") {
-        applyDataGridColumnSizingCssVars(persistenceKey, snapshot.columnSizing);
+        syncDataGridColumnSizingCssVars({
+          columnIds: canonicalOrder,
+          columnMaxSizes,
+          persistenceKey,
+          sizing: snapshot.columnSizing
+        });
       }
       for (const listener of listeners) {
         listener();
@@ -62,9 +69,13 @@ export function bootstrapAllDataGridColumnSizingFromStorage(): void {
     if (storageKey !== null && storageKey.startsWith(STORAGE_PREFIX)) {
       const persistenceKey = storageKey.slice(STORAGE_PREFIX.length);
       const stored = readDataGridPreferences(persistenceKey);
-      if (stored?.columnSizing !== undefined) {
-        const columnIds = stored.columnOrder ?? Object.keys(stored.columnSizing);
-        applyDataGridColumnSizingCssVars(persistenceKey, sanitizeColumnSizing({ columnIds, saved: stored.columnSizing }));
+      if (stored !== undefined) {
+        const columnIds = stored.columnOrder ?? Object.keys(stored.columnSizing ?? {});
+        syncDataGridColumnSizingCssVars({
+          columnIds,
+          persistenceKey,
+          sizing: sanitizeColumnSizing({ columnIds, saved: stored.columnSizing })
+        });
       }
     }
   }

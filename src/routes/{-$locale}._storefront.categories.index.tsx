@@ -49,7 +49,7 @@ function CategoriesPage(): JSX.Element {
 function CategoryCard({
   category
 }: Readonly<{
-  category: Pick<Category["select"], "id" | "name" | "handle" | "description">;
+  category: Pick<Category["select"], "id" | "title" | "handle" | "description">;
 }>): JSX.Element {
   const params = useMemo(() => ({ handle: category.handle }), [category.handle]);
 
@@ -59,7 +59,7 @@ function CategoryCard({
       params={params}
       className="group block rounded-xl border bg-card p-6 text-card-foreground transition-all hover:shadow-md"
     >
-      <h2 className="text-xl font-semibold group-hover:underline">{category.name}</h2>
+      <h2 className="text-xl font-semibold group-hover:underline">{category.title}</h2>
       {category.description !== null && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{category.description}</p>}
     </LocalizedLink>
   );

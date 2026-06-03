@@ -1,0 +1,96 @@
+import { type JSX, useCallback, useMemo } from "react";
+
+import { useTranslations } from "use-intl";
+
+import { Button } from "~/src/components/shadcn/button";
+
+import { DataGridShell } from "~/src/components/custom/datagrid/components/data-grid-shell";
+import { CategorySheet } from "~/src/components/custom/pages/admin/catalog/categories/add-category/category-sheet";
+import { CategoriesBulkActions } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-bulk-actions";
+import { CategoriesExportAction } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-export-action";
+import { CategoriesRefreshAction } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-refresh-action";
+import { CategoriesStats } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-stats";
+import { CategoriesStatusFilter } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-status-filter";
+import { useCategoriesDataGrid } from "~/src/components/custom/pages/admin/catalog/categories/hooks/use-categories-data-grid";
+import {
+  CategoriesSheetProvider,
+  useCategoriesSheet,
+  useCategoriesSheetState
+} from "~/src/components/custom/pages/admin/catalog/categories/hooks/use-categories-sheet";
+import { categoriesDataGrid } from "~/src/components/custom/pages/admin/catalog/categories/utils/categories-data-grid";
+
+const { Body, Pagination, Provider, Toolbar } = categoriesDataGrid;
+
+function CategoriesTableToolbarActions(): JSX.Element {
+  const t = useTranslations("admin");
+  const { openCreate } = useCategoriesSheet();
+
+  const addButton = useMemo(
+    () => (
+      <Button
+        type="button"
+        size="sm"
+        className="h-9 cursor-pointer bg-foreground px-4 text-[13px] text-background shadow-none transition-colors hover:bg-foreground/80"
+        onClick={openCreate}
+      >
+        {t("categories.actions.addCategory")}
+      </Button>
+    ),
+    [openCreate, t]
+  );
+
+  return (
+    <>
+      <CategoriesBulkActions />
+      {addButton}
+    </>
+  );
+}
+
+export function CategoriesTableContent(): JSX.Element {
+  const sheet = useCategoriesSheet();
+  const grid = useCategoriesDataGrid({ onRowClick: sheet.openEdit });
+
+  const handleSheetOpenChange = useCallback(
+    (open: boolean) => {
+      sheet.setOpen(open);
+    },
+    [sheet]
+  );
+
+  const toolbarActions = useMemo(() => <CategoriesTableToolbarActions />, []);
+
+  const sheetMode = sheet.mode === "closed" ? "create" : sheet.mode;
+
+  return (
+    <>
+      <Provider value={grid}>
+        <div className="space-y-5">
+          <CategoriesStats />
+          <DataGridShell>
+            <Toolbar actions={toolbarActions}>
+              <CategoriesRefreshAction />
+              <CategoriesExportAction />
+              <CategoriesStatusFilter />
+            </Toolbar>
+            <Body />
+            <Pagination />
+          </DataGridShell>
+        </div>
+      </Provider>
+
+      {sheet.open && <CategorySheet open onOpenChange={handleSheetOpenChange} mode={sheetMode} category={sheet.category} />}
+    </>
+  );
+}
+
+/** Categories list: a reorderable, filterable, paginated datagrid (includes sheet). */
+export function CategoriesTable(): JSX.Element {
+  const sheetState = useCategoriesSheetState();
+
+  return (
+    <CategoriesSheetProvider value={sheetState}>
+      <CategoriesTableContent />
+    </CategoriesSheetProvider>
+  );
+}

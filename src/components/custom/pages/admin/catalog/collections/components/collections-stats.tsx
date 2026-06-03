@@ -1,6 +1,6 @@
 import { type JSX, useCallback } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useTranslations } from "use-intl";
 
 import { COLLECTION_STAT_CARDS } from "~/src/components/custom/pages/admin/catalog/collections/collections-stats.config";
@@ -19,8 +19,8 @@ const TABLE_PAGE_INDEX_START = 0;
 /** Lives inside `collectionsDataGrid.Provider` so cards can sync the status filter. */
 export function CollectionsStats(): JSX.Element {
   const t = useTranslations("admin");
-  const { data: resolvedStats, isLoading, isRefetching } = useQuery(collectionQueryOptions.collectionStatsQueryOptions());
-  const valuesPending = isLoading || isRefetching || resolvedStats === undefined;
+  const { data: resolvedStats, isFetching } = useSuspenseQuery(collectionQueryOptions.collectionStatsQueryOptions());
+  const valuesPending = isFetching;
 
   const { table } = collectionsDataGrid.useDataGrid();
   const statusColumn = table.getColumn("status");
@@ -38,11 +38,8 @@ export function CollectionsStats(): JSX.Element {
   return (
     <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {COLLECTION_STAT_CARDS.map((config) => {
-        const value = resolvedStats?.[config.key];
-        const caption =
-          valuesPending || value === undefined || resolvedStats === undefined
-            ? undefined
-            : buildCollectionStatCaption({ key: config.key, stats: resolvedStats, t, value });
+        const value = resolvedStats[config.key];
+        const caption = valuesPending ? undefined : buildCollectionStatCaption({ key: config.key, stats: resolvedStats, t, value });
 
         return (
           <CollectionStatCard
