@@ -19,7 +19,7 @@ export const CONSTANTS = {
   ACTIONS,
   ADMIN_PANEL_ROLES,
   APP_GITHUB_OWNER: "pjborowiecki",
-  APP_GITHUB_REPO: "martebizuteria.pl_tanstack_start",
+  APP_GITHUB_REPO: "martebizuteria.pl",
   APP_NAME: "M'Arte",
   CHECKOUT_PAYMENT_METHOD_ORDER,
   COLLECTION_STATUS,

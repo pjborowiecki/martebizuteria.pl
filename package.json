@@ -10,7 +10,7 @@
   ],
   "homepage": "https://martebizuteria.pjborowiecki.workers.dev",
   "bugs": {
-    "url": "https://github.com/pjborowiecki/martebizuteria.pl_tanstack_start/issues"
+    "url": "https://github.com/pjborowiecki/martebizuteria.pl/issues"
   },
   "license": "SEE LICENSE IN LICENSE.md",
   "author": {
@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/pjborowiecki/martebizuteria.pl_tanstack_start.git"
+    "url": "https://github.com/pjborowiecki/martebizuteria.pl.git"
   },
   "type": "module",
   "scripts": {
