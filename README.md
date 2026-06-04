@@ -700,4 +700,4 @@ martebizuteria/
 
 Source is available under [LICENSE.md](./LICENSE.md) (Creative Commons **BY-NC 4.0**). Third-party names (Cloudflare, Stripe, React, TanStack, etc.) are trademarks of their respective owners.
 
-[Piotr Borowiecki](https://pjborowiecki.com) · [Issues](https://github.com/pjborowiecki/martebizuteria.pl_tanstack_start/issues)
+[Piotr Borowiecki](https://pjborowiecki.com) · [Issues](https://github.com/pjborowiecki/martebizuteria.pl/issues)
