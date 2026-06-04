@@ -12,14 +12,14 @@ import { categoryMutations } from "~/src/modules/category/category.mutations";
  * storefront category queries (the latter is ordered by rank too).
  */
 export function useReorderCategories(): UseMutationResult<{ ok: boolean }, Error, readonly string[]> {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (orderedIds: readonly string[]) => categoryMutations.reorderCategoriesFn({ data: [...orderedIds] }),
     onError: () => {
-      toast.error(t("categories.toast.reorderErrorTitle"), {
-        description: t("categories.toast.reorderErrorDescription")
+      toast.error(t("toast.reorderErrorTitle"), {
+        description: t("toast.reorderErrorDescription")
       });
     },
     onSettled: async () => {

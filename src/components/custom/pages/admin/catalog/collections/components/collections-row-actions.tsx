@@ -37,7 +37,7 @@ interface CollectionsRowActionsProps {
 }
 
 export function CollectionsRowActions({ collection }: CollectionsRowActionsProps): JSX.Element {
-  const t = useTranslations("admin.collections.rowActions");
+  const t = useTranslations("pages.admin.catalog.collections.rowActions");
   const router = useRouter();
   const { locale } = useParams({ strict: false });
   const { openEdit } = useCollectionsSheet();

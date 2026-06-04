@@ -22,7 +22,7 @@ export const Route = createFileRoute("/{-$locale}/admin/customers/$id")({
 });
 
 function AdminCustomerDetailRoute(): JSX.Element {
-  const t = useTranslations("admin.customerDetail");
+  const t = useTranslations("pages.admin.customerDetail");
 
   const breadcrumbs = useMemo(
     () => [

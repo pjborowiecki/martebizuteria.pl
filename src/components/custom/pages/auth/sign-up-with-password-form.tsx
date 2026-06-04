@@ -38,13 +38,13 @@ export function SignUpWithPasswordForm(): JSX.Element {
         email: data.email,
         fetchOptions: {
           onError: (ctx) => {
-            toast.error(t("auth.toast.errorTitle"), {
+            toast.error(t("pages.auth.toast.errorTitle"), {
               description: getAuthErrorMessage(t, ctx.error)
             });
           },
           onSuccess: () => {
-            toast.success(t("auth.toast.signUpTitle"), {
-              description: t("auth.toast.signUpDescription")
+            toast.success(t("pages.auth.toast.signUpTitle"), {
+              description: t("pages.auth.toast.signUpDescription")
             });
             void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.AUTH_SIGN_IN}` });
           }
@@ -122,7 +122,7 @@ export function SignUpWithPasswordForm(): JSX.Element {
 
       <Button size="xl" type="submit" className="w-full gap-3.5 tracking-wide" disabled={isSubmitting}>
         {isSubmitting && <Loader2 aria-hidden className="size-4 animate-spin" />}
-        {isSubmitting ? t("auth.signUpPage.submitting") : t("auth.signUpPage.submit")}
+        {isSubmitting ? t("pages.auth.sign-up.submitting") : t("pages.auth.sign-up.submit")}
         {!isSubmitting && <ArrowRight className="size-4" />}
       </Button>
     </form>

@@ -33,7 +33,8 @@ interface CatalogRowProps {
 }
 
 export function CatalogRow({ product }: CatalogRowProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog");
+  const tAdmin = useTranslations("pages.admin");
   const router = useRouter();
   const statusInfo = STATUS_MAP[product.status] ?? { variant: "secondary" };
 
@@ -56,7 +57,7 @@ export function CatalogRow({ product }: CatalogRowProps): JSX.Element {
   return (
     <TableRow className="group cursor-pointer" onClick={handleRowClick}>
       <TableCell className="pl-6" onClick={handleCheckboxClick}>
-        <input type="checkbox" aria-label={t("a11y.selectRow")} className="size-4 rounded border-border accent-foreground" />
+        <input type="checkbox" aria-label={tAdmin("a11y.selectRow")} className="size-4 rounded border-border accent-foreground" />
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-3">
@@ -75,7 +76,7 @@ export function CatalogRow({ product }: CatalogRowProps): JSX.Element {
       </TableCell>
       <TableCell>
         <Badge variant={statusInfo.variant} className="text-[11px]">
-          {t(`catalog.status.${product.status}`)}
+          {t(`status.${product.status}`)}
         </Badge>
       </TableCell>
       <TableCell className="pr-6" onClick={handleActionsClick}>

@@ -11,7 +11,7 @@ export const Route = createFileRoute("/{-$locale}/admin/audit")({
 });
 
 function AuditPage(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <>

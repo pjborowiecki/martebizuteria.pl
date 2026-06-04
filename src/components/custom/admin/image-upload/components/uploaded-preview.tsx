@@ -19,7 +19,7 @@ export interface UploadedPreviewProps {
 
 /** Filled state of the single uploader: shows the image with change/remove actions. */
 export function UploadedPreview({ disabled, isUploading, onPick, onRemove, overlaySrc, value }: UploadedPreviewProps): JSX.Element {
-  const t = useTranslations("admin.media");
+  const t = useTranslations("pages.admin.media");
   const overlayStyle = useMemo<CSSProperties>(() => ({ backgroundImage: `url(${overlaySrc})` }), [overlaySrc]);
 
   return (

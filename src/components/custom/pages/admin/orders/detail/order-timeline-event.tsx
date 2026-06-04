@@ -16,7 +16,7 @@ interface OrderTimelineEventProps {
 }
 
 export function OrderTimelineEvent({ event }: OrderTimelineEventProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const Icon = TIMELINE_ICONS[event.type] ?? TIMELINE_DEFAULT_ICON;
   const emailStatus = event.type === "email" && event.status !== undefined ? EMAIL_STATUS_CONFIG[event.status] : undefined;
   const eventKey = `${event.date}-${event.type}-${event.description.slice(TIMELINE_KEY_SLICE_START, TIMELINE_KEY_SLICE_LENGTH)}`;

@@ -21,7 +21,7 @@ const tailwindConfig = {
 };
 
 export const ChangeEmail = ({ name, verificationUrl, locale }: ChangeEmailProps) => {
-  const t = getMessagesForLocale(locale).auth.email.changeEmail;
+  const t = getMessagesForLocale(locale).pages.auth.email.changeEmail;
   return (
     <Html lang={locale}>
       <Tailwind config={tailwindConfig}>

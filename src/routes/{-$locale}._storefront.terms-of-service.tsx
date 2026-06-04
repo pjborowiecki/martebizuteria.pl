@@ -38,14 +38,14 @@ export const Route = createFileRoute("/{-$locale}/_storefront/terms-of-service")
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.termsOfServicePage.description ?? "",
-      title: messages?.termsOfServicePage.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages["terms-of-service"].description ?? "",
+      title: messages?.pages["terms-of-service"].title ?? CONSTANTS.APP_NAME
     } satisfies TermsOfServicePageMeta;
   }
 });
 
 function TermsOfServicePage(): JSX.Element {
-  const t = useTranslations("termsOfServicePage");
+  const t = useTranslations("pages.terms-of-service");
 
   return (
     <main className="flex min-h-[60vh] flex-col items-center justify-center space-y-6 p-4">

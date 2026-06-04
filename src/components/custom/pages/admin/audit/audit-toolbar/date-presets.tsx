@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl";
 const DATE_PRESET_KEYS = ["all", "today", "7d", "30d"] as const;
 
 export function DatePresets(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="flex items-center gap-0.5">

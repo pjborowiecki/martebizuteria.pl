@@ -14,7 +14,7 @@ import { LocalizedLink } from "~/src/components/custom/localized-link";
 const ASPECT_RATIO_TALL = 0.9;
 
 export function SilverPremiumSection(): JSX.Element {
-  const t = useTranslations("landingPage.silverPremiumSection");
+  const t = useTranslations("pages.landing.silverPremiumSection");
 
   return (
     <section id="srebro" className="bg-primary text-primary-foreground">

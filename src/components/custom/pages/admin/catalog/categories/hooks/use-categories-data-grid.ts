@@ -33,7 +33,7 @@ interface UseCategoriesDataGridOptions {
 }
 
 export function useCategoriesDataGrid({ onRowClick }: UseCategoriesDataGridOptions): DataGridContextValue<Category["adminListItem"]> {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { data: categories, isFetching } = useSuspenseQuery(categoryQueryOptions.adminCategoriesQueryOptions());
   const showSkeletonRows = isFetching;
 
@@ -87,7 +87,7 @@ export function useCategoriesDataGrid({ onRowClick }: UseCategoriesDataGridOptio
       persistenceKey: categoriesDataGrid.persistenceKey,
       resetPreferences,
       rowReorder,
-      searchPlaceholder: t("categories.searchPlaceholder"),
+      searchPlaceholder: t("searchPlaceholder"),
       table
     }),
     [columnReorder, hasPreferenceOverrides, onRowClick, resetPreferences, rowReorder, showSkeletonRows, t, table]

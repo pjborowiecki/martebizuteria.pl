@@ -15,7 +15,7 @@ import { categoryQueryOptions } from "~/src/modules/category/category.queries";
 const NO_ACTIVE_FETCHES = 0;
 
 export function CategoriesRefreshAction(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const queryClient = useQueryClient();
   const categoriesFetching = useIsFetching({ queryKey: categoryQueryOptions.adminCategoriesQueryOptions().queryKey });
   const statsFetching = useIsFetching({ queryKey: categoryQueryOptions.categoryStatsQueryOptions().queryKey });
@@ -31,7 +31,7 @@ export function CategoriesRefreshAction(): JSX.Element {
       <Button
         variant="outline"
         size="icon-lg"
-        aria-label={t("categories.actions.refresh")}
+        aria-label={t("actions.refresh")}
         aria-busy={isRefreshing}
         disabled={isRefreshing}
         onClick={handleRefresh}
@@ -42,5 +42,5 @@ export function CategoriesRefreshAction(): JSX.Element {
     [handleRefresh, isRefreshing, t]
   );
 
-  return <DataGridIconTooltip label={t("categories.actions.refresh")} trigger={button} />;
+  return <DataGridIconTooltip label={t("actions.refresh")} trigger={button} />;
 }

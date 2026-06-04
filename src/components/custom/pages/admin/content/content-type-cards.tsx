@@ -7,7 +7,7 @@ import { Card, CardContent } from "~/src/components/shadcn/card";
 import { CONTENT_TYPES } from "~/src/data/content-data";
 
 export function ContentTypeCards(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="mb-5 grid shrink-0 gap-5 sm:grid-cols-3">

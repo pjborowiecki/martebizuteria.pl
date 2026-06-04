@@ -23,7 +23,7 @@ export interface ProductBreadcrumbProps {
 }
 
 export function ProductBreadcrumb({ productTitle }: ProductBreadcrumbProps): JSX.Element {
-  const t = useTranslations("productPage.heroSection");
+  const t = useTranslations("pages.product.heroSection");
 
   return (
     <Breadcrumb className="reveal mx-auto max-w-400 px-6 pt-8 lg:px-12 lg:pt-10">

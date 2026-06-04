@@ -21,7 +21,7 @@ const tailwindConfig = {
 };
 
 export const ResetPassword = ({ name, resetPasswordUrl, locale }: ResetPasswordProps) => {
-  const t = getMessagesForLocale(locale).auth.email.resetPassword;
+  const t = getMessagesForLocale(locale).pages.auth.email.resetPassword;
 
   return (
     <Html lang={locale}>

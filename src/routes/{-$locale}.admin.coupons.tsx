@@ -18,7 +18,7 @@ export const Route = createFileRoute("/{-$locale}/admin/coupons")({
 });
 
 function CouponsPage(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const bcList = useMemo(
     () => [{ href: CONSTANTS.ROUTES.ADMIN, label: t("nav.dashboard") } satisfies { href: LocalizedTo; label: string }],

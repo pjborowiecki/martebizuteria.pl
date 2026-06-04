@@ -14,7 +14,7 @@ interface VerifyEmailProps {
 }
 
 export function VerifyEmail({ locale, name, verificationUrl }: Readonly<VerifyEmailProps>): JSX.Element {
-  const t = getMessagesForLocale(locale).auth.email.verifyEmail;
+  const t = getMessagesForLocale(locale).pages.auth.email.verifyEmail;
 
   return (
     <EmailLayout footer={t.footer} locale={locale} preview={t.preview} tagline={t.tagline}>

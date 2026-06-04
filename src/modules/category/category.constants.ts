@@ -37,18 +37,18 @@ export const CATEGORY_ERROR_CODES = {
 } as const;
 
 export const CATEGORY_FORM_VALIDATION_KEYS = {
-  descriptionTooLong: "categories.form.validation.descriptionTooLong",
-  shortDescriptionTooLong: "categories.form.validation.shortDescriptionTooLong",
-  slugInvalid: "categories.form.validation.slugInvalid",
-  slugRequired: "categories.form.validation.slugRequired",
-  subtitleTooLong: "categories.form.validation.subtitleTooLong",
-  titleRequired: "categories.form.validation.titleRequired",
-  titleTooLong: "categories.form.validation.titleTooLong"
+  descriptionTooLong: "form.validation.descriptionTooLong",
+  shortDescriptionTooLong: "form.validation.shortDescriptionTooLong",
+  slugInvalid: "form.validation.slugInvalid",
+  slugRequired: "form.validation.slugRequired",
+  subtitleTooLong: "form.validation.subtitleTooLong",
+  titleRequired: "form.validation.titleRequired",
+  titleTooLong: "form.validation.titleTooLong"
 } as const;
 
 export const CATEGORY_STATUS_LABEL_KEYS: Record<CategoryStatus, string> = {
-  active: "categories.statusActive",
-  draft: "categories.statusDraft"
+  active: "statusActive",
+  draft: "statusDraft"
 };
 
 export const CATEGORY_TABLE_A11Y_KEYS = {

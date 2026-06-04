@@ -16,7 +16,7 @@ import { LANDING_HERO_IMG } from "~/src/data/landing-data";
 const ASPECT_RATIO_TALL = 0.833_333;
 
 function HeroTitle(): JSX.Element {
-  const t = useTranslations("landingPage.heroSection");
+  const t = useTranslations("pages.landing.heroSection");
   return (
     <h1 className="font-serif text-5xl leading-[0.94] tracking-tight md:text-6xl lg:text-7xl">
       {t("titleLine1")}
@@ -27,7 +27,7 @@ function HeroTitle(): JSX.Element {
 }
 
 export function HeroSection(): JSX.Element {
-  const t = useTranslations("landingPage.heroSection");
+  const t = useTranslations("pages.landing.heroSection");
 
   return (
     <section className="mx-auto max-w-400 px-6 pt-10 pb-16 lg:px-12 lg:pt-14 lg:pb-20">

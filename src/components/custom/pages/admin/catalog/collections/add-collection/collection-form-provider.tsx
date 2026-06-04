@@ -59,7 +59,7 @@ interface UseCollectionMutationOptions {
 }
 
 function useCollectionMutation({ collectionId, mode, onCompleted, setError }: UseCollectionMutationOptions) {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const queryClient = useQueryClient();
 
   const invalidate = useCallback(async () => {
@@ -75,15 +75,15 @@ function useCollectionMutation({ collectionId, mode, onCompleted, setError }: Us
       const code = error instanceof Error ? error.message : "";
 
       if (code.includes(COLLECTION_ERROR_CODES.DUPLICATE_HANDLE)) {
-        setError("handle", { message: t("collections.toast.duplicateHandle"), type: "manual" });
-        toast.error(t("collections.toast.errorTitle"), {
-          description: t("collections.toast.duplicateHandle")
+        setError("handle", { message: t("toast.duplicateHandle"), type: "manual" });
+        toast.error(t("toast.errorTitle"), {
+          description: t("toast.duplicateHandle")
         });
         return;
       }
 
-      toast.error(t("collections.toast.errorTitle"), {
-        description: t("collections.toast.errorDescription")
+      toast.error(t("toast.errorTitle"), {
+        description: t("toast.errorDescription")
       });
     },
     [setError, t]
@@ -94,8 +94,8 @@ function useCollectionMutation({ collectionId, mode, onCompleted, setError }: Us
     onError: handleError,
     onSuccess: async () => {
       await invalidate();
-      toast.success(t("collections.toast.createSuccessTitle"), {
-        description: t("collections.toast.createSuccessDescription")
+      toast.success(t("toast.createSuccessTitle"), {
+        description: t("toast.createSuccessDescription")
       });
       onCompleted();
     }
@@ -111,8 +111,8 @@ function useCollectionMutation({ collectionId, mode, onCompleted, setError }: Us
     onError: handleError,
     onSuccess: async () => {
       await invalidate();
-      toast.success(t("collections.toast.updateSuccessTitle"), {
-        description: t("collections.toast.updateSuccessDescription")
+      toast.success(t("toast.updateSuccessTitle"), {
+        description: t("toast.updateSuccessDescription")
       });
       onCompleted();
     }

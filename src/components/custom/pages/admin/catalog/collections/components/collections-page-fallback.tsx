@@ -12,7 +12,7 @@ import { collectionsDataGrid } from "~/src/components/custom/pages/admin/catalog
 const { Body, Pagination, Provider } = collectionsDataGrid;
 
 function CollectionsToolbarFallback(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-transparent px-4 py-3">
@@ -22,7 +22,7 @@ function CollectionsToolbarFallback(): JSX.Element {
         <Skeleton className="size-9 shrink-0 rounded-lg" />
         <Skeleton className="h-9 w-36 rounded-lg" />
       </div>
-      <Skeleton className="h-9 w-36 rounded-lg" aria-label={t("collections.actions.addCollection")} />
+      <Skeleton className="h-9 w-36 rounded-lg" aria-label={t("actions.addCollection")} />
     </div>
   );
 }

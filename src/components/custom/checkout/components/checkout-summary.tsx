@@ -25,7 +25,7 @@ const getItemPrice = (item: CartItem) => {
 };
 
 export function CheckoutSummary(): JSX.Element {
-  const t = useTranslations("checkoutPage");
+  const t = useTranslations("pages.checkout");
   const format = useFormatter();
   const { items, cartTotal, itemCount } = useCartStore();
 

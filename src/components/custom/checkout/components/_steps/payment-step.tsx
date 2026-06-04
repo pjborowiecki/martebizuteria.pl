@@ -82,7 +82,7 @@ function PaymentSkeleton(): JSX.Element {
 }
 
 function PaymentError({ onRetry }: Readonly<{ onRetry: () => void }>): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
 
   return (
     <div className="flex flex-col items-center gap-4 border border-destructive/30 bg-destructive/5 px-6 py-10 text-center">
@@ -107,7 +107,7 @@ function PaymentError({ onRetry }: Readonly<{ onRetry: () => void }>): JSX.Eleme
 }
 
 function PaymentForm({ onReset, onRetry }: Readonly<{ onReset: () => Promise<void>; onRetry: () => void }>): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
   const navigate = useNavigate();
 
   const { getValues } = useCheckoutForm();
@@ -208,7 +208,7 @@ interface CheckoutSessionLoader {
 }
 
 function useCheckoutSessionLoader(): CheckoutSessionLoader {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
   const { theme } = useTheme();
   const { checkoutSession, getValues, onEdit, setCheckoutSession } = useCheckoutForm();
 
@@ -308,7 +308,7 @@ function useCheckoutSessionLoader(): CheckoutSessionLoader {
 
 export function PaymentStep(): JSX.Element {
   const locale = useLocale();
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
 
   const stripePromise = useMemo(() => getStripe(locale), [locale]);
   const { isLoading, loadError, options, resetSession, retry, sessionId } = useCheckoutSessionLoader();

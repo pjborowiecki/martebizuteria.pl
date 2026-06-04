@@ -20,7 +20,7 @@ const EMPTY_LENGTH = 0;
 const OFFSET_LAST = 1;
 
 export function ProductEditorVariants({ onAdd, onRemove, onUpdate, variants }: Readonly<ProductEditorVariantsProps>): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   return (
     <Card>
@@ -85,7 +85,7 @@ function VariantRow({
   onUpdate: (id: number, field: keyof ProductVariant, value: string) => void;
   variant: ProductVariant;
 }>): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   const handleNameChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {

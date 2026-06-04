@@ -27,7 +27,7 @@ const MAX_VISIBLE_IMAGES = 3;
 const OVERLAP_STYLE = { marginLeft: "-0.5rem" };
 
 function OrdersPage(): JSX.Element {
-  const t = useTranslations("account.orders");
+  const t = useTranslations("pages.account.orders");
   const [filter, setFilter] = useState<FilterOption>("all");
 
   const filteredOrders = useMemo(() => (filter === "all" ? ORDERS : ORDERS.filter((o) => o.status === filter)), [filter]);
@@ -74,7 +74,7 @@ function FilterButton({
   opt: FilterOption;
   setFilter: (f: FilterOption) => void;
 }>): JSX.Element {
-  const t = useTranslations("account.orders");
+  const t = useTranslations("pages.account.orders");
   const isActive = currentFilter === opt;
   const onClick = useCallback(() => {
     setFilter(opt);
@@ -122,7 +122,7 @@ function OrderRowHeader({
   order: (typeof ORDERS)[number];
   toggleExpanded: () => void;
 }>): JSX.Element {
-  const t = useTranslations("account.orders");
+  const t = useTranslations("pages.account.orders");
 
   return (
     <button
@@ -161,7 +161,7 @@ function OrderRowHeader({
 }
 
 function OrderRowDetails({ order }: OrderRowProps): JSX.Element {
-  const t = useTranslations("account.orders");
+  const t = useTranslations("pages.account.orders");
 
   const orderParams = useMemo(() => ({ id: order.id }), [order.id]);
 
@@ -199,7 +199,7 @@ function OrderRowItem({
 }: Readonly<{
   item: (typeof ORDERS)[number]["items"][number];
 }>): JSX.Element {
-  const t = useTranslations("account.orders");
+  const t = useTranslations("pages.account.orders");
 
   return (
     <div className="flex items-center gap-4 py-3">

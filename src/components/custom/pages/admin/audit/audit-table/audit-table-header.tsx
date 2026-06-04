@@ -7,7 +7,7 @@ import { TableHead, TableHeader, TableRow } from "~/src/components/shadcn/table"
 const HEADER_CLASS = "text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60";
 
 export function AuditTableHeader(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <TableHeader className="sticky top-0 z-10 bg-background shadow-[0_1px_0_hsl(var(--border)/0.4)]">

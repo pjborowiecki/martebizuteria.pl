@@ -68,7 +68,7 @@ const FULFILLMENT_COLORS: Record<string, string> = {
 };
 
 export function DashboardRecentOrders(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="border-border/40 bg-gradient-to-br from-cyan-500/10 via-sky-500/5 to-transparent shadow-none xl:col-span-3">
@@ -108,7 +108,7 @@ export function DashboardRecentOrders(): JSX.Element {
 }
 
 function RecentOrderRow({ order }: { readonly order: (typeof RECENT_ORDERS)[number] }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <TableRow className="hover:bg-transparent">

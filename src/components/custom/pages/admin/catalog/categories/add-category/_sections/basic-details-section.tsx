@@ -22,7 +22,7 @@ interface BasicDetailsSectionProps {
 }
 
 export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionProps>): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { categoryId, control, isPending, mode, setValue } = useCategoryForm();
   const displayId = recordId ?? (mode === "edit" ? categoryId : undefined);
 
@@ -42,16 +42,16 @@ export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionPr
   }, []);
 
   return (
-    <CategoryFormSection icon={Info} title={t("categories.form.sectionBasic")}>
+    <CategoryFormSection icon={Info} title={t("form.sectionBasic")}>
       {displayId !== undefined && displayId !== "" && (
-        <CatalogFormReadOnlyField label={t("categories.form.id")} hint={t("categories.form.hints.id")} value={displayId} />
+        <CatalogFormReadOnlyField label={t("form.id")} hint={t("form.hints.id")} value={displayId} />
       )}
       <CategoryTextField
         control={control}
         name="title"
-        label={t("categories.form.title")}
-        labelHint={t("categories.form.hints.title")}
-        placeholder={t("categories.form.titlePlaceholder")}
+        label={t("form.title")}
+        labelHint={t("form.hints.title")}
+        placeholder={t("form.titlePlaceholder")}
         counterMax={CATEGORY_COLUMN_LENGTH.title}
         disabled={isPending}
         onValueChange={handleTitleChange}
@@ -59,8 +59,8 @@ export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionPr
       <CategorySlugField
         control={control}
         name="handle"
-        label={t("categories.form.slug")}
-        labelHint={t("categories.form.hints.slug")}
+        label={t("form.slug")}
+        labelHint={t("form.hints.slug")}
         counterMax={CATEGORY_COLUMN_LENGTH.handle}
         normalize={slugify}
         onManualEdit={lockHandle}
@@ -69,18 +69,18 @@ export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionPr
       <CategoryTextField
         control={control}
         name="subtitle"
-        label={t("categories.form.subtitle")}
-        labelHint={t("categories.form.hints.subtitle")}
-        placeholder={t("categories.form.subtitlePlaceholder")}
+        label={t("form.subtitle")}
+        labelHint={t("form.hints.subtitle")}
+        placeholder={t("form.subtitlePlaceholder")}
         counterMax={CATEGORY_COLUMN_LENGTH.subtitle}
         disabled={isPending}
       />
       <CategoryTextareaField
         control={control}
         name="shortDescription"
-        label={t("categories.form.shortDescription")}
-        labelHint={t("categories.form.hints.shortDescription")}
-        placeholder={t("categories.form.shortDescriptionPlaceholder")}
+        label={t("form.shortDescription")}
+        labelHint={t("form.hints.shortDescription")}
+        placeholder={t("form.shortDescriptionPlaceholder")}
         counterMax={CATEGORY_COLUMN_LENGTH.shortDescription}
         rows={3}
         disabled={isPending}
@@ -88,9 +88,9 @@ export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionPr
       <CategoryTextareaField
         control={control}
         name="description"
-        label={t("categories.form.description")}
-        labelHint={t("categories.form.hints.description")}
-        placeholder={t("categories.form.descriptionPlaceholder")}
+        label={t("form.description")}
+        labelHint={t("form.hints.description")}
+        placeholder={t("form.descriptionPlaceholder")}
         counterMax={CATEGORY_COLUMN_LENGTH.description}
         className={CATALOG_FORM_DESCRIPTION_TEXTAREA_CLASS}
         rows={7}

@@ -47,7 +47,7 @@ export const Route = createFileRoute("/{-$locale}/_storefront/categories/$handle
 });
 
 function CategoryPage(): JSX.Element {
-  const t = useTranslations("categoryPage");
+  const t = useTranslations("pages.category");
   const { handle } = Route.useParams();
   const { data: category } = useSuspenseQuery(categoryQueryOptions.categoryQueryOptions(handle));
 

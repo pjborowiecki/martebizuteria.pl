@@ -12,7 +12,7 @@ import { CollectionFormSection } from "~/src/components/custom/pages/admin/catal
 import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/components/catalog-form-field-label";
 
 export function MediaSection(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const { control, isPending, setUploading } = useCollectionForm();
   const { field, fieldState } = useController({ control, name: "image" });
 
@@ -24,9 +24,9 @@ export function MediaSection(): JSX.Element {
   );
 
   return (
-    <CollectionFormSection icon={ImageIcon} title={t("collections.form.mediaTitle")}>
+    <CollectionFormSection icon={ImageIcon} title={t("form.mediaTitle")}>
       <Field className="gap-2" data-invalid={fieldState.invalid}>
-        <CatalogFormFieldLabel hint={t("collections.form.hints.coverImage")} label={t("collections.form.coverImage")} />
+        <CatalogFormFieldLabel hint={t("form.hints.coverImage")} label={t("form.coverImage")} />
         <ImageUpload
           value={field.value}
           onChange={handleChange}

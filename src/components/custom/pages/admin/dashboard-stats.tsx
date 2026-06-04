@@ -15,7 +15,7 @@ const STAT_CARDS = [
 ] as const;
 
 export function DashboardStats(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">

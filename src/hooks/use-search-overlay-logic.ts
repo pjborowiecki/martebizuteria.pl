@@ -131,7 +131,7 @@ function normalize(str: string): string {
 
 export function useSearchOverlayLogic(overlayRef: RefObject<HTMLDialogElement | null>, inputRef: RefObject<HTMLInputElement | null>) {
   const t = useTranslations("components.custom.navigation");
-  const tp = useTranslations("productsPage");
+  const tp = useTranslations("pages.products");
 
   const { searchOpen, setSearchOpen } = useNavigationStore(
     useShallow((s) => ({ searchOpen: s.searchOpen, setSearchOpen: s.setSearchOpen }))

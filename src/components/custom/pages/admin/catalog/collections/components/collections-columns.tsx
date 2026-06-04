@@ -54,14 +54,15 @@ function CollectionDescriptionCell({ description }: Readonly<{ description: stri
  * for the datagrid (see {@link getDataGridColumnIds} in `use-collections-data-grid`).
  */
 export function useCollectionColumns() {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
+  const tAdmin = useTranslations("pages.admin");
   const format = useFormatter();
 
   return useMemo(
     () => [
       selectionColumn(columnHelper, {
-        all: t(COLLECTION_TABLE_A11Y_KEYS.selectAll),
-        row: t(COLLECTION_TABLE_A11Y_KEYS.selectRow)
+        all: tAdmin(COLLECTION_TABLE_A11Y_KEYS.selectAll),
+        row: tAdmin(COLLECTION_TABLE_A11Y_KEYS.selectRow)
       }),
       columnHelper.display({
         cell: ({ row }) => <CollectionReorderCell id={row.original.id} />,
@@ -79,21 +80,21 @@ export function useCollectionColumns() {
       columnHelper.display({
         cell: ({ row }) => <CollectionImageCell title={row.original.title} image={row.original.image} />,
         enableSorting: false,
-        header: t("collections.columns.image"),
+        header: t("columns.image"),
         id: COLLECTION_TABLE_COLUMN_ID.image,
         meta: { skeletonVariant: "thumbnail" },
         ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.image)
       }),
       columnHelper.accessor("title", {
         cell: ({ row }) => <CatalogTitleHandleCell handle={row.original.handle} title={row.original.title} />,
-        header: t("collections.columns.collection"),
+        header: t("columns.collection"),
         id: COLLECTION_TABLE_COLUMN_ID.title,
         meta: { skeletonVariant: "title" },
         size: COLLECTION_TABLE_COLUMN_SIZE.title
       }),
       columnHelper.accessor((row) => row.id, {
         cell: ({ row }) => <span className="block truncate font-mono text-xs text-muted-foreground">{row.original.id}</span>,
-        header: t("collections.columns.id"),
+        header: t("columns.id"),
         id: COLLECTION_TABLE_COLUMN_ID.recordId,
         meta: { cellClassName: "overflow-hidden", headClassName: "overflow-hidden", skeletonVariant: "text" },
         minSize: COLLECTION_TABLE_COLUMN_SIZE.recordId,
@@ -111,21 +112,21 @@ export function useCollectionColumns() {
           );
         },
         filterFn: "equalsString",
-        header: t("collections.columns.status"),
+        header: t("columns.status"),
         id: COLLECTION_TABLE_COLUMN_ID.status,
         meta: { skeletonVariant: "badge" },
         size: COLLECTION_TABLE_COLUMN_SIZE.status
       }),
       columnHelper.accessor("productCount", {
         cell: ({ getValue }) => <span className="font-mono text-sm">{getValue()}</span>,
-        header: t("collections.columns.products"),
+        header: t("columns.products"),
         id: COLLECTION_TABLE_COLUMN_ID.productCount,
         meta: { cellClassName: "text-right", headClassName: "text-right", skeletonVariant: "number" },
         size: COLLECTION_TABLE_COLUMN_SIZE.productCount
       }),
       columnHelper.accessor("description", {
         cell: ({ getValue }) => <CollectionDescriptionCell description={getValue() ?? ""} />,
-        header: t("collections.columns.description"),
+        header: t("columns.description"),
         id: COLLECTION_TABLE_COLUMN_ID.description,
         meta: { fillsRemainingWidth: true, skeletonVariant: "text" },
         minSize: COLLECTION_TABLE_COLUMN_SIZE.description,
@@ -135,7 +136,7 @@ export function useCollectionColumns() {
         cell: ({ getValue }) => (
           <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
         ),
-        header: t("collections.columns.createdAt"),
+        header: t("columns.createdAt"),
         id: COLLECTION_TABLE_COLUMN_ID.createdAt,
         maxSize: 320,
         meta: { skeletonVariant: "date" },
@@ -146,7 +147,7 @@ export function useCollectionColumns() {
         cell: ({ getValue }) => (
           <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
         ),
-        header: t("collections.columns.editedAt"),
+        header: t("columns.editedAt"),
         id: COLLECTION_TABLE_COLUMN_ID.editedAt,
         maxSize: 320,
         meta: { skeletonVariant: "date" },
@@ -167,6 +168,6 @@ export function useCollectionColumns() {
         ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.actions)
       })
     ],
-    [format, t]
+    [format, t, tAdmin]
   );
 }

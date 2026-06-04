@@ -12,14 +12,14 @@ import { collectionMutations } from "~/src/modules/collection/collection.mutatio
  * storefront collection queries (the latter is ordered by rank too).
  */
 export function useReorderCollections(): UseMutationResult<{ ok: boolean }, Error, readonly string[]> {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (orderedIds: readonly string[]) => collectionMutations.reorderCollectionsFn({ data: [...orderedIds] }),
     onError: () => {
-      toast.error(t("collections.toast.reorderErrorTitle"), {
-        description: t("collections.toast.reorderErrorDescription")
+      toast.error(t("toast.reorderErrorTitle"), {
+        description: t("toast.reorderErrorDescription")
       });
     },
     onSettled: async () => {

@@ -18,7 +18,7 @@ export const Route = createFileRoute("/{-$locale}/account/orders/$id")({
 });
 
 function OrderDetailPage(): JSX.Element {
-  const t = useTranslations("account.orderDetail");
+  const t = useTranslations("pages.account.orderDetail");
   const { id } = Route.useParams();
   const navigate = useNavigate();
 
@@ -115,7 +115,7 @@ function OrderItem({
 }: Readonly<{
   item: (typeof ORDER_DETAIL)["items"][number];
 }>): JSX.Element {
-  const t = useTranslations("account.orderDetail");
+  const t = useTranslations("pages.account.orderDetail");
 
   return (
     <div className="flex items-center gap-5 py-5">
@@ -137,7 +137,7 @@ function OrderItem({
 }
 
 function ShippingAddressBlock({ order }: Readonly<{ order: typeof ORDER_DETAIL }>): JSX.Element {
-  const t = useTranslations("account.orderDetail");
+  const t = useTranslations("pages.account.orderDetail");
   return (
     <div>
       <h3 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("shippingAddress")}</h3>
@@ -155,7 +155,7 @@ function ShippingAddressBlock({ order }: Readonly<{ order: typeof ORDER_DETAIL }
 }
 
 function PaymentInfoBlock({ order }: Readonly<{ order: typeof ORDER_DETAIL }>): JSX.Element {
-  const t = useTranslations("account.orderDetail");
+  const t = useTranslations("pages.account.orderDetail");
   return (
     <div>
       <h3 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("paymentInfo")}</h3>
@@ -175,7 +175,7 @@ const FIRST_INDEX = 0;
 const LAST_OFFSET = 1;
 
 function TimelineBlock({ order }: Readonly<{ order: typeof ORDER_DETAIL }>): JSX.Element {
-  const t = useTranslations("account.orderDetail");
+  const t = useTranslations("pages.account.orderDetail");
   return (
     <div>
       <h3 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("timeline")}</h3>

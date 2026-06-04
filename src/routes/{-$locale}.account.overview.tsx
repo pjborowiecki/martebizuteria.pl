@@ -66,7 +66,7 @@ const LOYALTY_PROGRESS_PERCENT = Math.round((LOYALTY_POINTS / LOYALTY_PROGRESS_M
 const LOYALTY_PROGRESS_STYLE = { width: `${LOYALTY_PROGRESS_PERCENT}%` } as const;
 
 function StatsGrid(): JSX.Element {
-  const t = useTranslations("account.overview");
+  const t = useTranslations("pages.account.overview");
 
   return (
     <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-4">
@@ -81,7 +81,7 @@ function StatsGrid(): JSX.Element {
 }
 
 function ActivityFeed(): JSX.Element {
-  const t = useTranslations("account.overview");
+  const t = useTranslations("pages.account.overview");
 
   return (
     <section>
@@ -123,7 +123,7 @@ function RecommendationCard({ item }: Readonly<{ item: (typeof RECOMMENDATIONS)[
 }
 
 function Recommendations(): JSX.Element {
-  const t = useTranslations("account.overview");
+  const t = useTranslations("pages.account.overview");
 
   return (
     <section>
@@ -151,7 +151,7 @@ function Recommendations(): JSX.Element {
 }
 
 function LoyaltyCard(): JSX.Element {
-  const t = useTranslations("account.overview");
+  const t = useTranslations("pages.account.overview");
 
   return (
     <section>
@@ -181,7 +181,7 @@ function LoyaltyCard(): JSX.Element {
 const FIRST_NAME_INDEX = 0;
 
 function AccountOverviewPage(): JSX.Element {
-  const t = useTranslations("account.overview");
+  const t = useTranslations("pages.account.overview");
   const { user } = AccountRoute.useRouteContext();
   const firstName = user.name.split(" ")[FIRST_NAME_INDEX] ?? user.name;
 

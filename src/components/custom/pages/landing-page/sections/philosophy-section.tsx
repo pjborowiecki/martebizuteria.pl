@@ -5,7 +5,7 @@ import { useTranslations } from "use-intl";
 import { Separator } from "~/src/components/shadcn/separator";
 
 export function PhilosophySection(): JSX.Element {
-  const t = useTranslations("landingPage.philosophySection");
+  const t = useTranslations("pages.landing.philosophySection");
 
   return (
     <section className="mx-auto max-w-400 px-6 pb-20 lg:px-12 lg:pb-28">

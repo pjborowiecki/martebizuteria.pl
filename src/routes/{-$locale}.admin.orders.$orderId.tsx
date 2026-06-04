@@ -17,7 +17,7 @@ export const Route = createFileRoute("/{-$locale}/admin/orders/$orderId")({
 
 function AdminOrderDetailRoute(): JSX.Element {
   const { orderId } = Route.useParams();
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const breadcrumbs = useMemo(
     () => [

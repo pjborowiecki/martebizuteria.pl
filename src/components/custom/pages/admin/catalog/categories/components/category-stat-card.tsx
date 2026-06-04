@@ -54,7 +54,7 @@ export function CategoryStatCard({
   onFilter,
   valuesPending
 }: Readonly<CategoryStatCardProps>): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { filterStatus, gradient, icon: Icon, key } = config;
   const isFilterable = onFilter !== undefined && (filterStatus !== undefined || key === "total");
   const isActive = key === "total" ? activeFilter === undefined : activeFilter === filterStatus;
@@ -84,7 +84,7 @@ export function CategoryStatCard({
   const content = (
     <CardContent className="flex h-full items-start justify-between gap-4 p-5">
       <div className="min-w-0 flex-1 space-y-2">
-        <p className={STAT_LABEL_CLASS}>{t(`categories.stats.${key}.label`)}</p>
+        <p className={STAT_LABEL_CLASS}>{t(`stats.${key}.label`)}</p>
         <div className={STAT_VALUE_SLOT_CLASS}>
           {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={STAT_VALUE_CLASS}>{displayValue}</p>}
         </div>
@@ -131,7 +131,7 @@ function formatCategoryStatValue(key: CategoryStatKey, value: number): string {
 interface BuildCategoryStatCaptionInput {
   readonly key: CategoryStatKey;
   readonly stats: Category["stats"];
-  readonly t: ReturnType<typeof useTranslations<"admin">>;
+  readonly t: ReturnType<typeof useTranslations<"pages.admin.catalog.categories">>;
   readonly value: number;
 }
 
@@ -139,11 +139,11 @@ export function buildCategoryStatCaption({ key, stats, t, value }: Readonly<Buil
   const sharePercent = key === "active" || key === "draft" ? statShare(value, stats.total) : undefined;
 
   if (sharePercent !== undefined) {
-    return t("categories.stats.shareCaption", { percent: sharePercent });
+    return t("stats.shareCaption", { percent: sharePercent });
   }
 
   if (key === "avgProducts") {
-    return t("categories.stats.avgProducts.caption", {
+    return t("stats.avgProducts.caption", {
       count: Math.round(stats.avgProducts * stats.total).toLocaleString()
     });
   }

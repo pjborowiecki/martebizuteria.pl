@@ -23,7 +23,7 @@ interface OrderRowProps {
 }
 
 export function OrderRow({ order }: OrderRowProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const router = useRouter();
   const payStyle = PAYMENT_BADGE_STYLES[order.payment] ?? DEFAULT_PAY_STYLE;
   const dotColor = FULFILLMENT_DOT_COLORS[order.fulfillment] ?? DEFAULT_DOT_COLOR;

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/{-$locale}/admin/customers/")({
 });
 
 function AdminCustomersRoute(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <>

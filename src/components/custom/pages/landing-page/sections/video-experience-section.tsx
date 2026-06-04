@@ -11,7 +11,7 @@ import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { LANDING_VIDEO_POSTER, LANDING_VIDEO_SRC } from "~/src/data/landing-data";
 
 export function VideoExperienceSection(): JSX.Element {
-  const t = useTranslations("landingPage.videoExperienceSection");
+  const t = useTranslations("pages.landing.videoExperienceSection");
   const sectionRef = useRef<HTMLElement>(null);
 
   useGSAP(

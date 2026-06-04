@@ -34,7 +34,7 @@ export function ProductEditorSidebar({
   tagInput,
   tags
 }: Readonly<ProductEditorSidebarProps>): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   const statusLabel = {
     active: t("status.active"),
@@ -112,7 +112,7 @@ export function ProductEditorSidebar({
 }
 
 function ShippingCard(): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   return (
     <Card>
@@ -140,7 +140,7 @@ function StatusSelect({
   statusLabel: string;
   onStatusChange: (status: "draft" | "active" | "archived") => void;
 }>): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   const handleValueChange = useCallback(
     (val: "draft" | "active" | "archived" | null) => {
@@ -198,7 +198,7 @@ function TagInput({
   onTagInputKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
   onAddTag: () => void;
 }>): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
   return (
     <div className="flex gap-2">
       <Input
@@ -216,7 +216,7 @@ function TagInput({
 }
 
 function FulfillmentTimeField(): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
   return (
     <div className="space-y-2">
       <Label>{t("shipping.fulfillmentTime")}</Label>
@@ -238,7 +238,7 @@ function FulfillmentTimeField(): JSX.Element {
 }
 
 function WeightDimensionsField(): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">

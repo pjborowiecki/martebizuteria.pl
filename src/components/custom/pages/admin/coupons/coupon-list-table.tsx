@@ -61,7 +61,7 @@ export function CouponListTable(): JSX.Element {
 }
 
 function CouponTableHeader(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <TableHeader className="sticky top-0 z-10 bg-background/40 backdrop-blur-md">
@@ -95,7 +95,7 @@ function CouponTableHeader(): JSX.Element {
 }
 
 function CouponTablePagination(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="flex shrink-0 items-center justify-between border-t border-border/40 px-6 py-4">
@@ -113,7 +113,7 @@ function CouponTablePagination(): JSX.Element {
 }
 
 function CouponRow({ coupon }: { readonly coupon: (typeof COUPONS)[number] }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const statusStyle = STATUS_STYLES[coupon.status];
   const statusLabel = {

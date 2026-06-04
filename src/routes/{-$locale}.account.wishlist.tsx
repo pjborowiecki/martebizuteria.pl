@@ -78,7 +78,7 @@ export const Route = createFileRoute("/{-$locale}/account/wishlist")({
 });
 
 function WishlistProduct({ item, onRemove }: Readonly<{ item: WishlistItem; onRemove: (id: string) => void }>): JSX.Element {
-  const t = useTranslations("account.wishlist");
+  const t = useTranslations("pages.account.wishlist");
 
   const handleToggle = useCallback(() => {
     onRemove(item.id);
@@ -101,7 +101,7 @@ function WishlistProduct({ item, onRemove }: Readonly<{ item: WishlistItem; onRe
 }
 
 function WishlistPage(): JSX.Element {
-  const t = useTranslations("account.wishlist");
+  const t = useTranslations("pages.account.wishlist");
   const [items, setItems] = useState<WishlistItem[]>(INITIAL_ITEMS);
 
   const removeItem = useCallback((id: string) => {

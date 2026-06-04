@@ -10,8 +10,8 @@ export function SocialProviders(): JSX.Element {
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <OAuthButton provider="google" label={t("auth.oAuth.google")} Icon={GoogleIcon} />
-      <OAuthButton provider="github" label={t("auth.oAuth.github")} Icon={GithubIcon} />
+      <OAuthButton provider="google" label={t("pages.auth.oauth.google")} Icon={GoogleIcon} />
+      <OAuthButton provider="github" label={t("pages.auth.oauth.github")} Icon={GithubIcon} />
     </div>
   );
 }

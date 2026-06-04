@@ -22,7 +22,7 @@ import { collectionsDataGrid } from "~/src/components/custom/pages/admin/catalog
 const { Body, Pagination, Provider, Toolbar } = collectionsDataGrid;
 
 function CollectionsTableToolbarActions(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const { openCreate } = useCollectionsSheet();
 
   const addButton = useMemo(
@@ -33,7 +33,7 @@ function CollectionsTableToolbarActions(): JSX.Element {
         className="h-9 cursor-pointer bg-foreground px-4 text-[13px] text-background shadow-none transition-colors hover:bg-foreground/80"
         onClick={openCreate}
       >
-        {t("collections.actions.addCollection")}
+        {t("actions.addCollection")}
       </Button>
     ),
     [openCreate, t]

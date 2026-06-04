@@ -15,7 +15,7 @@ const ASPECT_RATIO_LANDSCAPE = 1.25;
 const FIRST_INDEX = 0;
 
 export function MobileCategoriesSection(): JSX.Element {
-  const t = useTranslations("landingPage.categoriesSection");
+  const t = useTranslations("pages.landing.categoriesSection");
 
   return (
     <section className="mx-auto max-w-400 space-y-8 px-6 pb-8 lg:hidden lg:px-12">

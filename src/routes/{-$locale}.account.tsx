@@ -40,8 +40,8 @@ export const Route = createFileRoute("/{-$locale}/account")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.accountPage.description ?? "",
-      title: messages?.accountPage.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages.account.meta.description ?? "",
+      title: messages?.pages.account.meta.title ?? CONSTANTS.APP_NAME
     } satisfies AccountPageMeta;
   }
 });

@@ -16,7 +16,7 @@ const EMPTY_LENGTH = 0;
 const courierIcon = <Truck className="size-6" strokeWidth={1.25} />;
 
 export function DeliveryCourier(): JSX.Element | undefined {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
   const format = useFormatter();
 
   const { control } = useCheckoutForm();

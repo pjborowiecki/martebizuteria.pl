@@ -22,7 +22,7 @@ interface CategoryCardProps {
 }
 
 function CategoryCard({ category, aspectRatioClass, sizes }: Readonly<CategoryCardProps>): JSX.Element {
-  const t = useTranslations("landingPage.shopCategoriesSection");
+  const t = useTranslations("pages.landing.shopCategoriesSection");
   const params = useMemo(() => ({ handle: category.slug }), [category.slug]);
 
   return (
@@ -46,7 +46,7 @@ function CategoryCard({ category, aspectRatioClass, sizes }: Readonly<CategoryCa
 }
 
 export function ShopCategoriesSection(): JSX.Element {
-  const t = useTranslations("landingPage.shopCategoriesSection");
+  const t = useTranslations("pages.landing.shopCategoriesSection");
 
   const [cat1, cat2, cat3, cat4, cat5] = LANDING_SHOP_CATEGORIES;
 

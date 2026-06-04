@@ -1,0 +1,91 @@
+{
+  "actions": {
+    "discard": "Odrzuć",
+    "publish": "Opublikuj",
+    "saveChanges": "Zapisz zmiany",
+    "saveDraft": "Zapisz szkic"
+  },
+  "basic": {
+    "description": "Opis",
+    "descriptionPlaceholder": "Napisz szczegółowy opis produktu...",
+    "material": "Materiał",
+    "name": "Nazwa produktu",
+    "namePlaceholder": "np. Minimalistyczne złote kolczyki",
+    "ref": "Referencja / SKU",
+    "selectMaterial": "Wybierz materiał...",
+    "title": "Podstawowe szczegóły"
+  },
+  "breadcrumb": {
+    "catalog": "Katalog",
+    "dashboard": "Panel"
+  },
+  "inventory": {
+    "quantity": "Ilość",
+    "sellWhenOOS": "Kontynuuj sprzedaż gdy brak w magazynie",
+    "title": "Zapasy",
+    "trackInventory": "Śledź ilość"
+  },
+  "media": {
+    "dragDrop": "Przeciągnij i upuść zdjęcia tutaj",
+    "formats": "Obsługuje JPG, PNG, WEBP. Max 5MB.",
+    "title": "Media"
+  },
+  "organization": {
+    "title": "Organizacja",
+    "category": "Kategoria",
+    "collection": "Kolekcja",
+    "selectCategory": "Wybierz kategorię...",
+    "selectCollection": "Wybierz kolekcję..."
+  },
+  "pricing": {
+    "compareAt": "Cena przed obniżką",
+    "cost": "Koszt za sztukę",
+    "hint": "Klienci tego nie zobaczą.",
+    "price": "Cena",
+    "title": "Ceny i Zapasy"
+  },
+  "seo": {
+    "metaDescription": "Opis Meta",
+    "metaDescriptionPlaceholder": "Krótki opis produktu dla wyników wyszukiwania...",
+    "metaTitle": "Tytuł Meta",
+    "metaTitlePlaceholder": "np. Nazwa Produktu - Nazwa Sklepu",
+    "slug": "Slug URL",
+    "title": "Optymalizacja wyszukiwarek"
+  },
+  "shipping": {
+    "fulfillmentTime": "Czas realizacji",
+    "dimensions": "Wymiary",
+    "requiresShipping": "To jest produkt fizyczny",
+    "title": "Wysyłka",
+    "weight": "Waga",
+    "unit": "Jednostka",
+    "days": "Dni",
+    "weeks": "Tygodnie",
+    "months": "Miesiące"
+  },
+  "status": {
+    "active": "Aktywny",
+    "archived": "Zarchiwizowany",
+    "draft": "Szkic",
+    "featured": "Polecany Produkt",
+    "title": "Status Produktu",
+    "low": "Niski stan"
+  },
+  "tags": {
+    "placeholder": "Dodaj tag...",
+    "title": "Tagi"
+  },
+  "title": "Dodaj Nowy Produkt",
+  "editTitle": "Edytuj Produkt",
+  "variants": {
+    "add": "Dodaj wariant",
+    "addFirst": "Dodaj swój pierwszy wariant produktu",
+    "name": "Wariant",
+    "namePlaceholder": "np. Rozmiar",
+    "optionValue": "Wartość opcji",
+    "price": "Cena",
+    "stock": "Zapas",
+    "title": "Warianty",
+    "valuePlaceholder": "np. Mały"
+  }
+}

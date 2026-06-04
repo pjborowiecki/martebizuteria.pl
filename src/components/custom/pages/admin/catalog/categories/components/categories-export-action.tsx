@@ -13,7 +13,7 @@ function escapeCsvField(value: string): string {
 }
 
 export function CategoriesExportAction(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { table } = categoriesDataGrid.useDataGrid();
 
   const handleExport = useCallback(() => {
@@ -52,12 +52,12 @@ export function CategoriesExportAction(): JSX.Element {
 
   const button = useMemo(
     () => (
-      <Button variant="outline" size="icon-lg" aria-label={t("categories.actions.exportCsv")} onClick={handleExport}>
+      <Button variant="outline" size="icon-lg" aria-label={t("actions.exportCsv")} onClick={handleExport}>
         <FileSpreadsheet className="size-4" strokeWidth={1.5} />
       </Button>
     ),
     [handleExport, t]
   );
 
-  return <DataGridIconTooltip label={t("categories.actions.exportCsv")} trigger={button} />;
+  return <DataGridIconTooltip label={t("actions.exportCsv")} trigger={button} />;
 }

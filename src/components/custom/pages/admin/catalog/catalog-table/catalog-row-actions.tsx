@@ -19,7 +19,7 @@ interface CatalogRowActionsProps {
 }
 
 export function CatalogRowActions({ productId }: CatalogRowActionsProps): JSX.Element {
-  const t = useTranslations("admin.catalog.rowActions");
+  const t = useTranslations("pages.admin.catalog.rowActions");
 
   const trigger = useMemo(
     () => (

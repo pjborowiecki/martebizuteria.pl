@@ -15,7 +15,7 @@ const EMPTY_CATEGORIES: Category["adminListItem"][] = [];
 
 /** Empty grid used only for layout-matched skeletons (header, toolbar, row placeholders). */
 export function useCategoriesDataGridShell(): DataGridContextValue<Category["adminListItem"]> {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const columns = useCategoryColumns();
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns]);
 
@@ -37,7 +37,7 @@ export function useCategoriesDataGridShell(): DataGridContextValue<Category["adm
       persistenceKey: categoriesDataGrid.persistenceKey,
       resetPreferences,
       rowReorder: undefined,
-      searchPlaceholder: t("categories.searchPlaceholder"),
+      searchPlaceholder: t("searchPlaceholder"),
       table
     }),
     [columnReorder, hasPreferenceOverrides, resetPreferences, t, table]

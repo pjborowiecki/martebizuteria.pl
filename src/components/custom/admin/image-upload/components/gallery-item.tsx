@@ -41,7 +41,7 @@ export function GalleryItem({
   onSetMain,
   total
 }: GalleryItemProps): JSX.Element {
-  const t = useTranslations("admin.media");
+  const t = useTranslations("pages.admin.media");
 
   const handleDragStart = useCallback(() => {
     onDragStartItem(image.id);

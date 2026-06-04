@@ -10,7 +10,7 @@ interface AuditFooterProps {
 }
 
 export function AuditFooter({ filteredCount, totalCount }: AuditFooterProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="flex shrink-0 items-center justify-between border-t border-border/40 bg-background px-6 py-2">

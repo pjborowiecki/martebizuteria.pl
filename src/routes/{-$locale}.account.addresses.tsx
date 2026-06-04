@@ -83,7 +83,7 @@ function AddressFormField({ colSpan, label, type }: Readonly<{ colSpan?: boolean
 }
 
 function AddressForm({ onCancel }: Readonly<{ onCancel: () => void }>): JSX.Element {
-  const t = useTranslations("account.addresses");
+  const t = useTranslations("pages.account.addresses");
 
   return (
     <div className="border-b border-border py-6">
@@ -121,7 +121,7 @@ function AddressForm({ onCancel }: Readonly<{ onCancel: () => void }>): JSX.Elem
 }
 
 function AddressCard({ addr }: Readonly<{ addr: Address }>): JSX.Element {
-  const t = useTranslations("account.addresses");
+  const t = useTranslations("pages.account.addresses");
 
   return (
     <div className="group flex gap-5 py-6">
@@ -172,7 +172,7 @@ function FilterButton({
   opt: FilterOption;
   setFilter: (f: FilterOption) => void;
 }>): JSX.Element {
-  const t = useTranslations("account.addresses");
+  const t = useTranslations("pages.account.addresses");
   const isActive = currentFilter === opt;
   const onClick = useCallback(() => {
     setFilter(opt);
@@ -190,7 +190,7 @@ function FilterButton({
 }
 
 function AddressesPage(): JSX.Element {
-  const t = useTranslations("account.addresses");
+  const t = useTranslations("pages.account.addresses");
   const addresses = INITIAL_ADDRESSES;
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState<FilterOption>("shipping");

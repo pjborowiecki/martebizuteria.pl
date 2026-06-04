@@ -14,7 +14,7 @@ interface DeleteResult {
 
 /** Batch-deletes the given collections, then revalidates the admin and storefront lists. */
 export function useDeleteCollections(): UseMutationResult<DeleteResult, Error, readonly string[]> {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -23,14 +23,14 @@ export function useDeleteCollections(): UseMutationResult<DeleteResult, Error, r
       const code = error instanceof Error ? error.message : "";
 
       if (code.includes(COLLECTION_ERROR_CODES.HAS_PRODUCTS)) {
-        toast.error(t("collections.toast.deleteErrorTitle"), {
-          description: t("collections.toast.deleteHasProductsDescription")
+        toast.error(t("toast.deleteErrorTitle"), {
+          description: t("toast.deleteHasProductsDescription")
         });
         return;
       }
 
-      toast.error(t("collections.toast.deleteErrorTitle"), {
-        description: t("collections.toast.deleteErrorDescription")
+      toast.error(t("toast.deleteErrorTitle"), {
+        description: t("toast.deleteErrorDescription")
       });
     },
     onSettled: async () => {
@@ -40,8 +40,8 @@ export function useDeleteCollections(): UseMutationResult<DeleteResult, Error, r
       ]);
     },
     onSuccess: (result) => {
-      toast.success(t("collections.toast.deleteSuccessTitle"), {
-        description: t("collections.toast.deleteSuccessDescription", {
+      toast.success(t("toast.deleteSuccessTitle"), {
+        description: t("toast.deleteSuccessDescription", {
           count: String(result.deleted)
         })
       });

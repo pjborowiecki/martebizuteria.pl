@@ -38,14 +38,14 @@ export const Route = createFileRoute("/{-$locale}/_storefront/faq")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.faqPage.description ?? "",
-      title: messages?.faqPage.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages.faq.description ?? "",
+      title: messages?.pages.faq.title ?? CONSTANTS.APP_NAME
     } satisfies FaqPageMeta;
   }
 });
 
 function FaqPage(): JSX.Element {
-  const t = useTranslations("faqPage");
+  const t = useTranslations("pages.faq");
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center space-y-6 p-4">

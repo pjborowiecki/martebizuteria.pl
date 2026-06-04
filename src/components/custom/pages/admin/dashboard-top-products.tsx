@@ -38,7 +38,7 @@ const TOP_PRODUCTS = [
 ] as const;
 
 export function DashboardTopProducts(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="border-border/40 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent shadow-none">

@@ -13,7 +13,7 @@ interface CategoryPillProps {
 }
 
 export function CategoryPill({ cat, category, onCategoryChange }: CategoryPillProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const handleClick = useCallback(() => {
     onCategoryChange(cat);
   }, [onCategoryChange, cat]);

@@ -23,7 +23,7 @@ const PHONE_PREFIX = "+48";
 // Validation messages are stored as translation keys (e.g. "validation.emailRequired"),
 // so the single place they're rendered also resolves them.
 function FieldErrorMessage({ fieldState }: Readonly<{ fieldState: ControllerFieldState }>): JSX.Element | undefined {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
   const message = fieldState.error?.message;
 
   if (!fieldState.invalid || message === undefined || message === "") {

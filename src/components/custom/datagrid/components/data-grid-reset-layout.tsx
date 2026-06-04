@@ -14,7 +14,7 @@ interface DataGridResetLayoutProps {
 
 /** Restores default column order, widths, and visibility for this table. */
 export function DataGridResetLayout({ disabled, onReset }: DataGridResetLayoutProps): JSX.Element {
-  const t = useTranslations("dataGrid");
+  const t = useTranslations("components.datagrid");
 
   const handleClick = useCallback(() => {
     onReset();

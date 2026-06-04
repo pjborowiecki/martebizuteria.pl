@@ -67,7 +67,7 @@ export function MarketingCampaignsTable(): JSX.Element {
 }
 
 function CampaignTableHeader(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <TableHeader className="bg-background/40 backdrop-blur-md">
@@ -100,7 +100,7 @@ function CampaignTableHeader(): JSX.Element {
 }
 
 function CampaignTablePagination(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="flex shrink-0 items-center justify-between border-t border-border/40 px-6 py-4">
@@ -118,7 +118,7 @@ function CampaignTablePagination(): JSX.Element {
 }
 
 function CampaignRow({ campaign }: { readonly campaign: (typeof CAMPAIGNS)[number] }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const statusStyle = STATUS_STYLE_MAP[campaign.status];
   const typeStyle = TYPE_STYLE_MAP[campaign.type];

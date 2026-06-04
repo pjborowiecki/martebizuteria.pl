@@ -23,7 +23,7 @@ const NO_SELECTION = 0;
 
 /** Selection summary + batch-delete action, shown only while rows are selected. */
 export function CollectionsBulkActions(): JSX.Element | undefined {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const { table } = collectionsDataGrid.useDataGrid();
   const [open, setOpen] = useState(false);
   const deleteCollections = useDeleteCollections();
@@ -45,7 +45,7 @@ export function CollectionsBulkActions(): JSX.Element | undefined {
     () => (
       <Button variant="outline" size="sm" className="h-9 gap-2 border-destructive/30 text-xs text-destructive hover:bg-destructive/10">
         <Trash2 className="size-3.5" strokeWidth={1.5} />
-        {t("collections.bulk.delete", { count })}
+        {t("bulk.delete", { count })}
       </Button>
     ),
     [t, count]
@@ -57,19 +57,19 @@ export function CollectionsBulkActions(): JSX.Element | undefined {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">{t("collections.bulk.selected", { count })}</span>
+      <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">{t("bulk.selected", { count })}</span>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogTrigger render={trigger} />
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("collections.bulk.confirmTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("collections.bulk.confirmDescription", { count })}</AlertDialogDescription>
+            <AlertDialogTitle>{t("bulk.confirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("bulk.confirmDescription", { count })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteCollections.isPending}>{t("collections.bulk.cancel")}</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteCollections.isPending}>{t("bulk.cancel")}</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={handleConfirm} disabled={deleteCollections.isPending} className="gap-1.5">
               {deleteCollections.isPending && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
-              {t("collections.bulk.confirm")}
+              {t("bulk.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

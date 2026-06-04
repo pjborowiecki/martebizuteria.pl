@@ -10,7 +10,7 @@ import { InpostSelector } from "~/src/components/custom/checkout/components/_ste
 import { useCheckoutForm } from "~/src/components/custom/checkout/components/checkout-form-provider";
 
 export function DeliveryLocker(): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
 
   const { control } = useCheckoutForm();
   const { field, fieldState } = useController({ control, name: "lockerId" });

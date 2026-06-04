@@ -14,7 +14,7 @@ export interface CollectionMediaProps {
 }
 
 export function CollectionMedia({ image, onImageChange }: CollectionMediaProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
 
   const handleRemoveImage = useCallback(() => {
     onImageChange("");
@@ -27,7 +27,7 @@ export function CollectionMedia({ image, onImageChange }: CollectionMediaProps):
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base font-semibold">{t("collections.form.mediaTitle")}</CardTitle>
+        <CardTitle className="text-base font-semibold">{t("form.mediaTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
         {image ? (
@@ -48,13 +48,13 @@ export function CollectionMedia({ image, onImageChange }: CollectionMediaProps):
 }
 
 function ImagePlaceholder({ onAddImage }: Readonly<{ onAddImage: () => void }>): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
 
   return (
     <div className="flex flex-col items-start gap-4 sm:flex-row">
       <button
         type="button"
-        aria-label={t("collections.form.uploadImage")}
+        aria-label={t("form.uploadImage")}
         className="flex w-full max-w-[280px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/30 transition-all hover:border-foreground/20 hover:bg-muted/50"
         onClick={onAddImage}
       >
@@ -62,8 +62,8 @@ function ImagePlaceholder({ onAddImage }: Readonly<{ onAddImage: () => void }>):
           <div className="flex size-10 items-center justify-center rounded-full bg-foreground/5">
             <Upload className="size-5 text-muted-foreground/60" strokeWidth={1.5} />
           </div>
-          <p className="text-[13px] font-medium">{t("collections.form.uploadImage")}</p>
-          <p className="text-[11px] text-muted-foreground/60">{t("collections.form.imageHint")}</p>
+          <p className="text-[13px] font-medium">{t("form.uploadImage")}</p>
+          <p className="text-[11px] text-muted-foreground/60">{t("form.imageHint")}</p>
         </div>
       </button>
     </div>
@@ -71,17 +71,17 @@ function ImagePlaceholder({ onAddImage }: Readonly<{ onAddImage: () => void }>):
 }
 
 function ImageHoverActions({ onRemoveImage }: Readonly<{ onRemoveImage: () => void }>): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
 
   return (
     <div className="flex gap-2">
       <Button variant="secondary" size="sm" className="h-8 gap-1.5 text-[12px]">
         <ImagePlus className="size-3.5" strokeWidth={1.5} />
-        {t("collections.form.changeImage")}
+        {t("form.changeImage")}
       </Button>
       <Button variant="secondary" size="sm" className="h-8 gap-1.5 text-[12px]" onClick={onRemoveImage}>
         <X className="size-3.5" strokeWidth={1.5} />
-        {t("collections.form.removeImage")}
+        {t("form.removeImage")}
       </Button>
     </div>
   );

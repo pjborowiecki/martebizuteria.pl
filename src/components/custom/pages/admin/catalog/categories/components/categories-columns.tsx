@@ -54,14 +54,15 @@ function CategoryDescriptionCell({ description }: Readonly<{ description: string
  * for the datagrid (see {@link getDataGridColumnIds} in `use-categories-data-grid`).
  */
 export function useCategoryColumns() {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
+  const tAdmin = useTranslations("pages.admin");
   const format = useFormatter();
 
   return useMemo(
     () => [
       selectionColumn(columnHelper, {
-        all: t(CATEGORY_TABLE_A11Y_KEYS.selectAll),
-        row: t(CATEGORY_TABLE_A11Y_KEYS.selectRow)
+        all: tAdmin(CATEGORY_TABLE_A11Y_KEYS.selectAll),
+        row: tAdmin(CATEGORY_TABLE_A11Y_KEYS.selectRow)
       }),
       columnHelper.display({
         cell: ({ row }) => <CategoryReorderCell id={row.original.id} />,
@@ -79,21 +80,21 @@ export function useCategoryColumns() {
       columnHelper.display({
         cell: ({ row }) => <CategoryImageCell image={row.original.image} title={row.original.title} />,
         enableSorting: false,
-        header: t("categories.columns.image"),
+        header: t("columns.image"),
         id: CATEGORY_TABLE_COLUMN_ID.image,
         meta: { skeletonVariant: "thumbnail" },
         ...fixedDataGridColumnWidth(CATEGORY_TABLE_COLUMN_SIZE.image)
       }),
       columnHelper.accessor("title", {
         cell: ({ row }) => <CatalogTitleHandleCell handle={row.original.handle} title={row.original.title} />,
-        header: t("categories.columns.title"),
+        header: t("columns.title"),
         id: CATEGORY_TABLE_COLUMN_ID.title,
         meta: { skeletonVariant: "title" },
         size: CATEGORY_TABLE_COLUMN_SIZE.title
       }),
       columnHelper.accessor((row) => row.id, {
         cell: ({ row }) => <span className="block truncate font-mono text-xs text-muted-foreground">{row.original.id}</span>,
-        header: t("categories.columns.id"),
+        header: t("columns.id"),
         id: CATEGORY_TABLE_COLUMN_ID.recordId,
         meta: { cellClassName: "overflow-hidden", headClassName: "overflow-hidden", skeletonVariant: "text" },
         minSize: CATEGORY_TABLE_COLUMN_SIZE.recordId,
@@ -111,14 +112,14 @@ export function useCategoryColumns() {
           );
         },
         filterFn: "equalsString",
-        header: t("categories.columns.status"),
+        header: t("columns.status"),
         id: CATEGORY_TABLE_COLUMN_ID.status,
         meta: { skeletonVariant: "badge" },
         size: CATEGORY_TABLE_COLUMN_SIZE.status
       }),
       columnHelper.accessor("productCount", {
         cell: ({ getValue }) => <span className="font-mono text-sm">{getValue()}</span>,
-        header: t("categories.columns.products"),
+        header: t("columns.products"),
         id: CATEGORY_TABLE_COLUMN_ID.productCount,
         meta: { cellClassName: "text-right", headClassName: "text-right", skeletonVariant: "number" },
         size: CATEGORY_TABLE_COLUMN_SIZE.productCount
@@ -131,28 +132,28 @@ export function useCategoryColumns() {
           }
           return <span className="truncate text-sm">{parentTitle}</span>;
         },
-        header: t("categories.columns.parent"),
+        header: t("columns.parent"),
         id: CATEGORY_TABLE_COLUMN_ID.parent,
         meta: { skeletonVariant: "text" },
         size: CATEGORY_TABLE_COLUMN_SIZE.parent
       }),
       columnHelper.accessor("subtitle", {
         cell: ({ getValue }) => <CategoryDescriptionCell description={getValue() ?? ""} />,
-        header: t("categories.columns.subtitle"),
+        header: t("columns.subtitle"),
         id: CATEGORY_TABLE_COLUMN_ID.subtitle,
         meta: { skeletonVariant: "text" },
         size: CATEGORY_TABLE_COLUMN_SIZE.subtitle
       }),
       columnHelper.accessor("shortDescription", {
         cell: ({ getValue }) => <CategoryDescriptionCell description={getValue() ?? ""} />,
-        header: t("categories.columns.shortDescription"),
+        header: t("columns.shortDescription"),
         id: CATEGORY_TABLE_COLUMN_ID.shortDescription,
         meta: { skeletonVariant: "text" },
         size: CATEGORY_TABLE_COLUMN_SIZE.shortDescription
       }),
       columnHelper.accessor("description", {
         cell: ({ getValue }) => <CategoryDescriptionCell description={getValue() ?? ""} />,
-        header: t("categories.columns.description"),
+        header: t("columns.description"),
         id: CATEGORY_TABLE_COLUMN_ID.description,
         meta: { fillsRemainingWidth: true, skeletonVariant: "text" },
         minSize: CATEGORY_TABLE_COLUMN_SIZE.description,
@@ -162,7 +163,7 @@ export function useCategoryColumns() {
         cell: ({ getValue }) => (
           <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
         ),
-        header: t("categories.columns.createdAt"),
+        header: t("columns.createdAt"),
         id: CATEGORY_TABLE_COLUMN_ID.createdAt,
         maxSize: 320,
         meta: { skeletonVariant: "date" },
@@ -173,7 +174,7 @@ export function useCategoryColumns() {
         cell: ({ getValue }) => (
           <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
         ),
-        header: t("categories.columns.editedAt"),
+        header: t("columns.editedAt"),
         id: CATEGORY_TABLE_COLUMN_ID.editedAt,
         maxSize: 320,
         meta: { skeletonVariant: "date" },
@@ -194,6 +195,6 @@ export function useCategoryColumns() {
         ...fixedDataGridColumnWidth(CATEGORY_TABLE_COLUMN_SIZE.actions)
       })
     ],
-    [format, t]
+    [format, t, tAdmin]
   );
 }

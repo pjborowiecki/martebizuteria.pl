@@ -21,7 +21,7 @@ export const Route = createFileRoute("/{-$locale}/admin/catalog/products/")({
 });
 
 function AdminCatalogIndexRoute(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog");
 
   const newParams = useMemo(() => ({ handle: "new" }), []);
   const addProductLink = useMemo(() => <LocalizedLink to={CONSTANTS.ROUTES.ADMIN_PRODUCT} params={newParams} />, [newParams]);
@@ -35,11 +35,11 @@ function AdminCatalogIndexRoute(): JSX.Element {
           className="h-9 gap-2 border-sidebar-border bg-sidebar text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <Download className="size-4" strokeWidth={1.5} />
-          {t("catalog.actions.export")}
+          {t("actions.export")}
         </Button>
         <Button size="sm" className="h-9 gap-2 bg-foreground text-sm text-background hover:bg-foreground/90" render={addProductLink}>
           <Plus className="size-4" strokeWidth={1.5} />
-          {t("catalog.actions.addProduct")}
+          {t("actions.addProduct")}
         </Button>
       </>
     ),
@@ -50,7 +50,7 @@ function AdminCatalogIndexRoute(): JSX.Element {
 
   return (
     <>
-      <AdminHeader title={t("catalog.productsTitle")} description={t("catalog.productsDescription")} actions={catalogActions} tabs={tabs} />
+      <AdminHeader title={t("productsTitle")} description={t("productsDescription")} actions={catalogActions} tabs={tabs} />
 
       <div className="flex-1 space-y-5 p-8">
         <CatalogStats stats={PRODUCT_STATS} />

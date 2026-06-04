@@ -1,0 +1,17 @@
+{
+  "test": {
+    "preview": "Test email preview",
+    "title": "Hello from M'Arte",
+    "body": "This is a test email."
+  },
+  "orderConfirmation": {
+    "subject": "Order confirmation - M'ARTE",
+    "preview": "Your M'ARTE order is confirmed",
+    "greeting": "Thank you for your order!",
+    "message": "We've received your payment and your order is now being prepared. Here's a summary of your purchase:",
+    "orderLabel": "Order reference",
+    "totalLabel": "Total",
+    "footer": "We'll email you again as soon as your order is fulfilled.",
+    "thanks": "M'ARTE"
+  }
+}

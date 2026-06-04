@@ -33,8 +33,8 @@ interface HomePageMeta {
 }
 
 function getLandingMeta(messages: Messages | undefined): HomePageMeta {
-  const title = messages?.landingPage.meta.title ?? CONSTANTS.APP_NAME;
-  const description = messages?.landingPage.meta.description ?? "";
+  const title = messages?.pages.landing.meta.title ?? CONSTANTS.APP_NAME;
+  const description = messages?.pages.landing.meta.description ?? "";
 
   return { description, title };
 }

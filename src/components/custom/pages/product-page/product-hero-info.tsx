@@ -25,7 +25,7 @@ export interface ProductHeroInfoProps {
 }
 
 export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element {
-  const t = useTranslations("productPage.heroSection");
+  const t = useTranslations("pages.product.heroSection");
   const format = useFormatter();
   const [quantity, setQuantity] = useState(MIN_QUANTITY);
   const [isAdded, setIsAdded] = useState(false);

@@ -19,7 +19,7 @@ export interface GalleryAddTileProps {
 
 /** The "add more" tile of the gallery: click-or-drop to append multiple files. */
 export function GalleryAddTile({ disabled, isUploading, onFiles }: GalleryAddTileProps): JSX.Element {
-  const t = useTranslations("admin.media");
+  const t = useTranslations("pages.admin.media");
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
 

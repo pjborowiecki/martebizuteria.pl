@@ -38,14 +38,14 @@ export const Route = createFileRoute("/{-$locale}/_storefront/about")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.aboutPage.description ?? "",
-      title: messages?.aboutPage.about ?? CONSTANTS.APP_NAME
+      description: messages?.pages.about.description ?? "",
+      title: messages?.pages.about.about ?? CONSTANTS.APP_NAME
     } satisfies AboutPageMeta;
   }
 });
 
 function AboutPage(): JSX.Element {
-  const t = useTranslations("aboutPage");
+  const t = useTranslations("pages.about");
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center space-y-6 p-4">

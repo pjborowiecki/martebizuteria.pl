@@ -38,13 +38,13 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps): JSX.Elemen
       await resetPassword({
         fetchOptions: {
           onError: (ctx: ErrorContext) => {
-            toast.error(t("auth.toast.errorTitle"), {
+            toast.error(t("pages.auth.toast.errorTitle"), {
               description: getAuthErrorMessage(t, ctx.error)
             });
           },
           onSuccess: () => {
-            toast.success(t("auth.toast.resetPasswordTitle"), {
-              description: t("auth.toast.resetPasswordDescription")
+            toast.success(t("pages.auth.toast.resetPasswordTitle"), {
+              description: t("pages.auth.toast.resetPasswordDescription")
             });
             void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.AUTH_SIGN_IN}` });
           }
@@ -90,7 +90,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps): JSX.Elemen
 
       <Button size="xl" type="submit" className="w-full gap-2.5 tracking-wide" disabled={isSubmitting}>
         {isSubmitting && <Loader2 aria-hidden className="size-4 animate-spin" />}
-        {isSubmitting ? t("auth.resetPasswordPage.submitting") : t("auth.resetPasswordPage.submit")}
+        {isSubmitting ? t("pages.auth.reset-password.submitting") : t("pages.auth.reset-password.submit")}
         {!isSubmitting && <ArrowRight className="size-4" />}
       </Button>
     </form>

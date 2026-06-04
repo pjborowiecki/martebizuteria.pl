@@ -13,7 +13,7 @@ import { DEMO_LINE_ITEMS, DEMO_SUMMARY } from "~/src/data/order-detail-data";
 const HEADER_CLASS = "text-xs font-medium uppercase tracking-wider text-muted-foreground/60";
 
 export function OrderLineItemsCard(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">

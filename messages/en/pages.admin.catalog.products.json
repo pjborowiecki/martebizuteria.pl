@@ -1,0 +1,91 @@
+{
+  "actions": {
+    "discard": "Discard",
+    "publish": "Publish",
+    "saveChanges": "Save changes",
+    "saveDraft": "Save draft"
+  },
+  "basic": {
+    "description": "Description",
+    "descriptionPlaceholder": "Write a detailed description of the product...",
+    "material": "Material",
+    "name": "Product Name",
+    "namePlaceholder": "e.g. Minimalist Gold Hoop",
+    "ref": "Reference / SKU",
+    "selectMaterial": "Select material...",
+    "title": "Basic Details"
+  },
+  "breadcrumb": {
+    "catalog": "Catalog",
+    "dashboard": "Dashboard"
+  },
+  "inventory": {
+    "quantity": "Quantity",
+    "sellWhenOOS": "Continue selling when out of stock",
+    "title": "Inventory",
+    "trackInventory": "Track quantity"
+  },
+  "media": {
+    "dragDrop": "Drag & drop your images here",
+    "formats": "Supports JPG, PNG, WEBP. Max 5MB.",
+    "title": "Media"
+  },
+  "organization": {
+    "title": "Organization",
+    "category": "Category",
+    "collection": "Collection",
+    "selectCategory": "Select category...",
+    "selectCollection": "Select collection..."
+  },
+  "pricing": {
+    "compareAt": "Compare at price",
+    "cost": "Cost per item",
+    "hint": "Customers won't see this.",
+    "price": "Price",
+    "title": "Pricing & Inventory"
+  },
+  "seo": {
+    "metaDescription": "Meta Description",
+    "metaDescriptionPlaceholder": "A brief description of the product for search engine results...",
+    "metaTitle": "Meta Title",
+    "metaTitlePlaceholder": "e.g. Product Name - Store Name",
+    "slug": "URL Slug",
+    "title": "Search Engine Optimization"
+  },
+  "shipping": {
+    "fulfillmentTime": "Fulfillment Time",
+    "dimensions": "Dimensions",
+    "requiresShipping": "This is a physical product",
+    "title": "Shipping",
+    "weight": "Weight",
+    "unit": "Unit",
+    "days": "Days",
+    "weeks": "Weeks",
+    "months": "Months"
+  },
+  "status": {
+    "active": "Active",
+    "archived": "Archived",
+    "draft": "Draft",
+    "featured": "Featured Product",
+    "title": "Product Status",
+    "low": "Low Stock"
+  },
+  "tags": {
+    "placeholder": "Add a tag...",
+    "title": "Tags"
+  },
+  "title": "Add New Product",
+  "editTitle": "Edit Product",
+  "variants": {
+    "add": "Add variant",
+    "addFirst": "Add your first product variant",
+    "name": "Variant",
+    "namePlaceholder": "e.g. Size",
+    "optionValue": "Option Value",
+    "price": "Price",
+    "stock": "Stock",
+    "title": "Variants",
+    "valuePlaceholder": "e.g. Small"
+  }
+}

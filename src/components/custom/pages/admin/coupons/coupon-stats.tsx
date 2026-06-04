@@ -19,7 +19,7 @@ export function CouponStats(): JSX.Element {
 }
 
 function CouponStatCard({ stat }: { stat: (typeof COUPON_STATS)[number] }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="overflow-hidden shadow-none">

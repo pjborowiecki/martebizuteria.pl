@@ -13,7 +13,7 @@ import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catal
 import { COLLECTION_STATUSES, COLLECTION_STATUS_LABEL_KEYS } from "~/src/modules/collection/collection.constants";
 
 export function StatusSection(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const { control, isPending } = useCollectionForm();
 
   const statusOptions = useMemo(
@@ -26,16 +26,10 @@ export function StatusSection(): JSX.Element {
   );
 
   return (
-    <CollectionFormSection icon={CircleDot} title={t("collections.form.displayOptions")}>
+    <CollectionFormSection icon={CircleDot} title={t("form.displayOptions")}>
       <Field className="gap-2">
-        <CatalogFormFieldLabel hint={t("collections.form.hints.status")} label={t("collections.form.status")} />
-        <CollectionSelectField
-          control={control}
-          name="status"
-          ariaLabel={t("collections.form.status")}
-          options={statusOptions}
-          disabled={isPending}
-        />
+        <CatalogFormFieldLabel hint={t("form.hints.status")} label={t("form.status")} />
+        <CollectionSelectField control={control} name="status" ariaLabel={t("form.status")} options={statusOptions} disabled={isPending} />
       </Field>
     </CollectionFormSection>
   );

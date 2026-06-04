@@ -15,7 +15,7 @@ const EMPTY_COLLECTIONS: Collection["adminListItem"][] = [];
 
 /** Empty grid used only for layout-matched skeletons (header, toolbar, row placeholders). */
 export function useCollectionsDataGridShell(): DataGridContextValue<Collection["adminListItem"]> {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const columns = useCollectionColumns();
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns]);
 
@@ -37,7 +37,7 @@ export function useCollectionsDataGridShell(): DataGridContextValue<Collection["
       persistenceKey: collectionsDataGrid.persistenceKey,
       resetPreferences,
       rowReorder: undefined,
-      searchPlaceholder: t("collections.searchPlaceholder"),
+      searchPlaceholder: t("searchPlaceholder"),
       table
     }),
     [columnReorder, hasPreferenceOverrides, resetPreferences, t, table]

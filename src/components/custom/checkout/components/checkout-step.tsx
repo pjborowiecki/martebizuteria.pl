@@ -78,7 +78,7 @@ function StepSkeleton(): JSX.Element {
 const stepSkeletonElement = <StepSkeleton />;
 
 export function CheckoutStep({ stepConfig, stepIndex }: Readonly<{ stepConfig: CheckoutStepConfig; stepIndex: number }>): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
 
   const { activeStepIndex, onEdit } = useCheckoutForm();
 

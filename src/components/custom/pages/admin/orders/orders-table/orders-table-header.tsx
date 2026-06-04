@@ -7,7 +7,7 @@ import { TableHead, TableHeader, TableRow } from "~/src/components/shadcn/table"
 const HEADER_CLASS = "text-xs font-medium uppercase tracking-wider text-muted-foreground/60";
 
 export function OrdersTableHeader(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <TableHeader>

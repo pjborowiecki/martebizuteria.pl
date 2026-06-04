@@ -13,7 +13,7 @@ interface CategoryReorderCellProps {
 
 /** Drag handle / keyboard control that reorders a category row by rank. */
 export function CategoryReorderCell({ id }: CategoryReorderCellProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { rowReorder } = categoriesDataGrid.useDataGrid();
   const enabled = rowReorder?.enabled === true;
 
@@ -50,7 +50,7 @@ export function CategoryReorderCell({ id }: CategoryReorderCellProps): JSX.Eleme
         onDragStart={handleDragStart}
         onDragEnd={rowReorder?.onRowDrop}
         onKeyDown={handleKeyDown}
-        aria-label={t("categories.reorder.handle")}
+        aria-label={t("reorder.handle")}
         className="shrink-0 cursor-grab text-muted-foreground/50 hover:bg-transparent hover:text-foreground active:cursor-grabbing disabled:cursor-not-allowed"
       >
         <GripVertical className="size-4" strokeWidth={1.5} />

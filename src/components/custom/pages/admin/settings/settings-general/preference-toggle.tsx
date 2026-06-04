@@ -11,7 +11,7 @@ interface PreferenceToggleProps {
 }
 
 export function PreferenceToggle({ settingKey }: PreferenceToggleProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">

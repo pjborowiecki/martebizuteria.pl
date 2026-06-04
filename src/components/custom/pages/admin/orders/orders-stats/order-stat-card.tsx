@@ -14,7 +14,7 @@ interface OrderStatCardProps {
 }
 
 export function OrderStatCard({ stat }: OrderStatCardProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="overflow-hidden border-border/40 bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-transparent shadow-none">

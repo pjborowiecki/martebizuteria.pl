@@ -44,15 +44,15 @@ export const Route = createFileRoute("/{-$locale}/auth/reset-password")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.auth.resetPasswordPage.meta.description ?? "",
-      title: messages?.auth.resetPasswordPage.meta.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages.auth["reset-password"].meta.description ?? "",
+      title: messages?.pages.auth["reset-password"].meta.title ?? CONSTANTS.APP_NAME
     } satisfies ResetPasswordPageMeta;
   },
   validateSearch: resetPasswordSearchSchema
 });
 
 function ResetPasswordPage(): JSX.Element {
-  const t = useTranslations("auth.resetPasswordPage");
+  const t = useTranslations("pages.auth.reset-password");
   const { token } = Route.useSearch();
 
   if (token === undefined || token === "") {

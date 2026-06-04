@@ -13,7 +13,7 @@ interface OrdersTabButtonProps {
 }
 
 export function OrdersTabButton({ isActive, onSelect, tab }: OrdersTabButtonProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const handleClick = useCallback(() => {
     onSelect(tab);
   }, [onSelect, tab]);

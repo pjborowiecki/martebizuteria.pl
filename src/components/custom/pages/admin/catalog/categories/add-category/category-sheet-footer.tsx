@@ -12,17 +12,17 @@ import {
 
 /** Sticky footer: cancel + primary submit for the category sheet. */
 export function CategorySheetFooter(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { dismiss, isPending, isUploading, mode } = useCategoryForm();
   const isSubmitDisabled = isPending || isUploading;
 
-  const submitLabel = mode === "create" ? t("categories.form.create") : t("categories.form.save");
+  const submitLabel = mode === "create" ? t("form.create") : t("form.save");
 
   return (
     <div className="shrink-0 border-t border-border bg-background px-6 py-4">
       <div className="flex flex-row justify-end gap-3">
         <Button type="button" variant="outline" size="default" className="min-w-[88px]" disabled={isPending} onClick={dismiss}>
-          {t("categories.form.cancel")}
+          {t("form.cancel")}
         </Button>
         <Button type="submit" form={CATEGORY_FORM_ID} disabled={isSubmitDisabled} className="min-w-[140px] gap-2">
           {isPending && <Loader2 aria-hidden className="size-4 animate-spin" />}
