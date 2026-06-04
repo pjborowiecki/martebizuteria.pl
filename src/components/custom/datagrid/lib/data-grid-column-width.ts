@@ -9,9 +9,9 @@ import {
   type DataGridTableLayout
 } from "~/src/components/custom/datagrid/lib/data-grid-table-layout";
 
-/** Slug for CSS custom properties (`admin.catalog.collections` → `admin-catalog-collections`). */
+/** Slug for CSS custom properties (`admin.catalog.attributes:v6` → `admin-catalog-attributes-v6`). */
 export function dataGridPersistenceKeySlug(persistenceKey: string): string {
-  return persistenceKey.replaceAll(".", "-");
+  return persistenceKey.replaceAll(".", "-").replaceAll(":", "-");
 }
 
 export function dataGridColumnWidthCssVar(persistenceKey: string, columnId: string): string {

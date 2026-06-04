@@ -59,6 +59,25 @@
     "create": "Utwórz kolekcję",
     "save": "Zapisz zmiany",
     "sectionBasic": "Podstawowe informacje",
+    "localePicker": {
+      "filledCountHint": "nazwa w każdym języku"
+    },
+    "nameLocale": {
+      "pl": "Nazwa (PL)",
+      "en": "Nazwa (EN)"
+    },
+    "nameLocalePlaceholder": {
+      "pl": "np. Letnia kolekcja",
+      "en": "np. Summer Collection"
+    },
+    "descriptionLocale": {
+      "pl": "Opis (PL)",
+      "en": "Opis (EN)"
+    },
+    "descriptionLocalePlaceholder": {
+      "pl": "Wpisz opis kolekcji...",
+      "en": "Enter collection description..."
+    },
     "name": "Nazwa",
     "namePlaceholder": "np. Letnia kolekcja",
     "slug": "URL Slug",
@@ -73,8 +92,16 @@
     "hints": {
       "id": "Stały identyfikator kolekcji. Używany w panelu i API; nie można go zmienić po utworzeniu.",
       "name": "Nazwa widoczna w sklepie i na stronach kolekcji.",
+      "nameLocale": {
+        "pl": "Nazwa kolekcji w sklepie (polski). Wymagane.",
+        "en": "Nazwa kolekcji w sklepie (angielski). Wymagane."
+      },
       "slug": "Fragment adresu URL tej kolekcji. Uzupełniany z nazwy, dopóki nie edytujesz go ręcznie. Tylko małe litery, cyfry i myślniki.",
       "description": "Tekst marketingowy na stronie kolekcji i w podglądach.",
+      "descriptionLocale": {
+        "pl": "Tekst marketingowy na stronie kolekcji (polski).",
+        "en": "Tekst marketingowy na stronie kolekcji (angielski)."
+      },
       "status": "Szkice są ukryte w sklepie; aktywne są widoczne dla klientów.",
       "coverImage": "Zdjęcie okładki na stronie kolekcji i w listach."
     },
@@ -86,11 +113,14 @@
     "created": "Utworzono",
     "updated": "Ostatnia aktualizacja",
     "validation": {
+      "LOCALE_TITLE_REQUIRED": "Uzupełnij to pole w tym języku.",
       "nameRequired": "Nazwa jest wymagana",
       "nameTooLong": "Nazwa jest zbyt długa",
       "slugRequired": "Slug URL jest wymagany",
       "slugInvalid": "Używaj tylko małych liter, cyfr i myślników",
-      "descriptionTooLong": "Opis jest zbyt długi"
+      "descriptionTooLong": "Opis jest zbyt długi",
+      "submitBlockedTitle": "Popraw błędy w formularzu",
+      "submitBlockedDescription": "Sprawdź podświetlone pola i spróbuj ponownie."
     }
   },
   "toast": {

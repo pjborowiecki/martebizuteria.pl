@@ -13,7 +13,7 @@ import { OrderTimelineCard } from "~/src/components/custom/pages/admin/orders/de
 
 export function OrderDetailPage(): JSX.Element {
   return (
-    <div className="flex-1 p-8">
+    <div className="min-h-0 flex-1 overflow-y-auto p-8">
       <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
         {/* Main content */}
         <div className="space-y-6">

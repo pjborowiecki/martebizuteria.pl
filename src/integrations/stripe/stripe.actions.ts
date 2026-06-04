@@ -8,18 +8,20 @@ import { auth } from "~/src/integrations/better-auth/auth._server";
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors";
 import { stripe } from "~/src/integrations/stripe/stripe.server";
 
+import { isSellPriceCentsValid } from "~/src/lib/_utils/currency";
 import { getCurrentLocale } from "~/src/lib/_utils/locale";
 import { getBaseURL } from "~/src/lib/_utils/url";
 
-import { checkoutAccessors } from "~/src/modules/checkout/checkout.accessors";
+import { checkoutMutations } from "~/src/modules/checkout/checkout.mutations";
 import { checkoutSchema } from "~/src/modules/checkout/checkout.zod";
 import { deliveryMethodAccessors } from "~/src/modules/delivery-method/delivery-method.accessors";
 import { inventoryAccessors } from "~/src/modules/inventory/inventory.accessors";
+import { reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils";
 import { paymentAccessors } from "~/src/modules/payment/payment.accessors";
 import { productAccessors } from "~/src/modules/product/product.accessors";
 
 const MIN_ITEMS_COUNT = 1;
-const FIRST_VARIANT_INDEX = 0;
+const MIN_CART_FIELD_LENGTH = 1;
 const EMPTY_VARIANTS_COUNT = 0;
 
 const NO_COST = 0;
@@ -38,13 +40,15 @@ async function resolveShippingCost(deliveryMethodId: string): Promise<number> {
 }
 
 const cartItemSchema = z.object({
-  id: z.string(),
-  material: z.string(),
+  id: z.string().min(MIN_CART_FIELD_LENGTH),
+  image: z.string(),
   price: z.string(),
   qty: z.number().positive(),
-  size: z.string(),
-  slug: z.string(),
-  title: z.string()
+  rawPrice: z.number().nonnegative(),
+  slug: z.string().min(MIN_CART_FIELD_LENGTH),
+  title: z.string(),
+  variantId: z.string().min(MIN_CART_FIELD_LENGTH),
+  variantTitle: z.string()
 });
 
 const createCheckoutSessionInputSchema = z.object({
@@ -82,9 +86,13 @@ function resolveVariant(products: ResolvedProducts, item: CartItem): { product: 
     throw new Error(CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND);
   }
 
-  const variant = product.variants.find((v) => v.title === `${item.size} / ${item.material}`) ?? product.variants[FIRST_VARIANT_INDEX];
+  const variant = product.variants.find((v) => v.id === item.variantId);
   if (variant === undefined) {
     throw new Error(CHECKOUT_ERROR_CODES.VARIANT_NOT_FOUND);
+  }
+
+  if (!isSellPriceCentsValid(variant.price)) {
+    throw new Error(CHECKOUT_ERROR_CODES.INVALID_PRICE);
   }
 
   return { product, variant };
@@ -95,7 +103,8 @@ async function resolveOrderLines(items: CartItem[]): Promise<OrderLine[]> {
 
   return items.map((item) => {
     const { variant } = resolveVariant(products, item);
-    return { priceCents: variant.price, qty: item.qty, title: item.title, variantId: variant.id };
+    const lineTitle = item.variantTitle === "" ? item.title : `${item.title} — ${item.variantTitle}`;
+    return { priceCents: variant.price, qty: item.qty, title: lineTitle, variantId: variant.id };
   });
 }
 
@@ -114,6 +123,7 @@ async function validateAndCalculateItems(items: CartItem[]) {
       ...item,
       currentVersion: inv.version,
       inventoryId: inv.id,
+      lineTitle: item.variantTitle === "" ? item.title : `${item.title} — ${item.variantTitle}`,
       priceCents: variant.price,
       productId: product.id,
       variantId: variant.id,
@@ -213,15 +223,15 @@ const createCheckoutSessionFn = createServerFn({ method: "POST" })
     const lines: OrderLine[] = validatedItems.map((item) => ({
       priceCents: item.priceCents,
       qty: item.qty,
-      title: item.title,
+      title: item.lineTitle,
       variantId: item.variantId
     }));
     const shippingCost = await resolveShippingCost(data.checkoutValues.deliveryMethod);
 
-    await inventoryAccessors.reserveInventoryForItems(validatedItems);
+    await reserveInventoryForItems(validatedItems);
 
     try {
-      const checkoutId = await checkoutAccessors.createCheckoutAndAddress(data.checkoutValues, userId, email);
+      const checkoutId = await checkoutMutations.createCheckoutAndAddress(data.checkoutValues, userId, email);
 
       const result = await createStripeSession({ checkoutId, email, lines, shippingCost, userId });
 

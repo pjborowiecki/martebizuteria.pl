@@ -39,7 +39,7 @@ function AdminCustomersRoute(): JSX.Element {
         description={t("customers.description")}
         title={t("customers.title")}
       />
-      <div className="flex h-[calc(100vh-64px)] flex-col p-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-8">
         <CustomerStats />
         <CustomerListTable />
       </div>

@@ -7,14 +7,18 @@ import { cn } from "~/src/lib/utils";
 import { Card, CardContent } from "~/src/components/shadcn/card";
 import { Skeleton } from "~/src/components/shadcn/skeleton";
 
-import { ADMIN_CARD_CLASS } from "~/src/components/custom/pages/admin/admin-layout.styles";
+import {
+  ADMIN_CARD_CLASS,
+  ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
+  ADMIN_STAT_CARD_FILTER_HOVER_CLASS
+} from "~/src/components/custom/pages/admin/admin-layout.styles";
 import type {
   CollectionStatCardConfig,
   CollectionStatKey
 } from "~/src/components/custom/pages/admin/catalog/collections/collections-stats.config";
 
-import type { COLLECTION_STATUS } from "~/src/modules/collection/collection.constants";
-import type { Collection } from "~/src/modules/collection/collection.types";
+import type { COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants";
+import type { Collection } from "~/src/modules/product-collection/product-collection.types";
 
 const STAT_LABEL_CLASS = "text-[13px] leading-5 text-muted-foreground";
 const STAT_VALUE_CLASS = "text-3xl leading-9 font-semibold tracking-tight tabular-nums";
@@ -77,8 +81,8 @@ export function CollectionStatCard({
     ADMIN_CARD_CLASS,
     "bg-gradient-to-br from-transparent",
     gradient,
-    isFilterable && !valuesPending && "hover:border-border/35",
-    isFilterable && isActive && "border-border/50"
+    isFilterable && !valuesPending && ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
+    isFilterable && isActive && ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS
   );
 
   const content = (

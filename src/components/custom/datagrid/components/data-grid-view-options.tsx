@@ -25,15 +25,20 @@ function columnLabel<TData extends RowData>(column: Column<TData>): string {
 }
 
 function ColumnToggleItem<TData extends RowData>({ column }: Readonly<{ column: Column<TData> }>): JSX.Element {
+  const isVisible = column.getIsVisible();
+
   const handleChange = useCallback(
     (checked: boolean) => {
+      if (checked === column.getIsVisible()) {
+        return;
+      }
       column.toggleVisibility(checked);
     },
     [column]
   );
 
   return (
-    <DropdownMenuCheckboxItem checked={column.getIsVisible()} onCheckedChange={handleChange}>
+    <DropdownMenuCheckboxItem checked={isVisible} onCheckedChange={handleChange}>
       {columnLabel(column)}
     </DropdownMenuCheckboxItem>
   );

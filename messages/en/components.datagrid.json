@@ -5,6 +5,7 @@
     "reset": "Reset table settings to defaults"
   },
   "sortBy": "Sort by {column}",
+  "reorderColumn": "Drag to reorder {column} column",
   "resizeColumn": "Resize {column} column",
   "pagination": {
     "rowsPerPage": "Rows per page",

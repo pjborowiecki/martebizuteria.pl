@@ -1,6 +1,6 @@
 import { createContext, type JSX, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 
-import type { Category } from "~/src/modules/category/category.types";
+import type { Category } from "~/src/modules/product-category/product-category.types";
 
 export type CategoriesSheetMode = "closed" | "create" | "edit";
 

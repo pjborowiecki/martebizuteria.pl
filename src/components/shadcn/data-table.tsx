@@ -7,7 +7,7 @@ const DataTableContainer = forwardRef<HTMLDivElement, ComponentProps<"div">>(fun
   { className, ...props },
   ref
 ): JSX.Element {
-  return <div ref={ref} data-slot="data-table-container" className={cn("relative w-full min-w-0 overflow-x-auto", className)} {...props} />;
+  return <div ref={ref} data-slot="data-table-container" className={cn("relative w-full min-w-0", className)} {...props} />;
 });
 
 const UNMEASURED_CONTAINER_WIDTH = 0;

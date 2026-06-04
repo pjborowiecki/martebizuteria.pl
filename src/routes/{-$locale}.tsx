@@ -2,8 +2,7 @@ import type { JSX } from "react";
 
 import { createFileRoute, notFound, Outlet, useRouterState } from "@tanstack/react-router";
 
-import { isAdminPathname } from "~/src/lib/admin-route";
-import { isValidLocale } from "~/src/lib/utils";
+import { isAdminPathname, isValidLocale } from "~/src/lib/utils";
 
 import { SmoothScroll } from "~/src/components/custom/smooth-scroll";
 

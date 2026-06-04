@@ -11,8 +11,8 @@ import {
 } from "~/src/components/custom/pages/admin/catalog/categories/components/category-stat-card";
 import { categoriesDataGrid } from "~/src/components/custom/pages/admin/catalog/categories/utils/categories-data-grid";
 
-import type { CATEGORY_STATUS } from "~/src/modules/category/category.constants";
-import { categoryQueryOptions } from "~/src/modules/category/category.queries";
+import type { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants";
+import { categoryQueryOptions } from "~/src/modules/product-category/product-category.queries";
 
 const TABLE_PAGE_INDEX_START = 0;
 

@@ -1,7 +1,7 @@
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 
-import { CONSTANTS } from "~/src/constants";
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, LOCALES } from "~/src/constants/_constants/locales";
 import type { Locale } from "~/src/constants/types";
 
 export interface ReadonlyUrl {
@@ -17,9 +17,9 @@ export interface ReadonlyUrl {
 const IGNORED_PATHS_REGEX = /^\/(?:api|rpc)(?:\/|$)/u;
 const LOCALE_SEGMENT_REGEX = /^\/([a-z]{2})(?:\/|$)/u;
 
-const COOKIE_LOCALE_REGEX = new RegExp(String.raw`(?:^|;\s*)${CONSTANTS.LOCALE_COOKIE_NAME}=([^;]*)`, "u");
+const COOKIE_LOCALE_REGEX = new RegExp(String.raw`(?:^|;\s*)${LOCALE_COOKIE_NAME}=([^;]*)`, "u");
 
-const LOCALE_SET = new Set<string>(CONSTANTS.LOCALES);
+const LOCALE_SET = new Set<string>(LOCALES);
 
 export function isValidLocale(locale: string): locale is Locale {
   return LOCALE_SET.has(locale);
@@ -32,7 +32,7 @@ export function shouldIgnorePath(pathname: string): boolean {
 export function extractLocaleFromPath(pathname: string): Locale | undefined {
   const [, segment] = LOCALE_SEGMENT_REGEX.exec(pathname) ?? [];
 
-  if (segment !== undefined && isValidLocale(segment) && segment !== CONSTANTS.DEFAULT_LOCALE) {
+  if (segment !== undefined && isValidLocale(segment) && segment !== DEFAULT_LOCALE) {
     return segment;
   }
 
@@ -75,7 +75,7 @@ function normalizeStrippedPath(strippedPath: string): string {
 export function localizeUrl(url: ReadonlyUrl): URL {
   const locale = getCurrentLocale();
 
-  if (shouldIgnorePath(url.pathname) || locale === CONSTANTS.DEFAULT_LOCALE || extractLocaleFromPath(url.pathname) !== undefined) {
+  if (shouldIgnorePath(url.pathname) || locale === DEFAULT_LOCALE || extractLocaleFromPath(url.pathname) !== undefined) {
     return new URL(url.toString());
   }
 
@@ -107,17 +107,17 @@ export const getCurrentLocale = createIsomorphicFn()
 
     if (shouldIgnorePath(pathname)) {
       const cookie = request.headers.get("cookie") ?? undefined;
-      return parseLocaleCookie(cookie) ?? CONSTANTS.DEFAULT_LOCALE;
+      return parseLocaleCookie(cookie) ?? DEFAULT_LOCALE;
     }
 
-    return extractLocaleFromPath(pathname) ?? CONSTANTS.DEFAULT_LOCALE;
+    return extractLocaleFromPath(pathname) ?? DEFAULT_LOCALE;
   })
   .client((routerPathname?: string): Locale => {
     const pathname = routerPathname ?? globalThis.location.pathname;
 
     if (shouldIgnorePath(pathname)) {
-      return parseLocaleCookie(document.cookie) ?? CONSTANTS.DEFAULT_LOCALE;
+      return parseLocaleCookie(document.cookie) ?? DEFAULT_LOCALE;
     }
 
-    return extractLocaleFromPath(pathname) ?? CONSTANTS.DEFAULT_LOCALE;
+    return extractLocaleFromPath(pathname) ?? DEFAULT_LOCALE;
   });

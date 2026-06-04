@@ -3,7 +3,7 @@ import handler from "@tanstack/react-start/server-entry";
 import { executionContextStorage } from "~/src/integrations/better-auth/auth.background";
 import { createCookieHeader, handleLocaleMiddleware } from "~/src/integrations/use-intl/i18n.middleware";
 
-import { generateSitemapXml } from "~/src/lib/utils";
+import { generateSitemapXml } from "~/src/lib/_utils/sitemap";
 
 export interface RequestContext {
   env: Env;

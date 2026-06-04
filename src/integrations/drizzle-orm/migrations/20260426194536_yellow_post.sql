@@ -10,10 +10,10 @@ CREATE TABLE `category` (
 	`position` integer DEFAULT 0 NOT NULL,
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL
 );
---> statement-breakpoint
-CREATE UNIQUE INDEX `category_handle_unique` ON `category` (`handle`);--> statement-breakpoint
-CREATE INDEX `category_handle_idx` ON `category` (`handle`);--> statement-breakpoint
-CREATE INDEX `category_parentId_idx` ON `category` (`parent_id`);--> statement-breakpoint
+
+CREATE UNIQUE INDEX `category_handle_unique` ON `category` (`handle`);
+CREATE INDEX `category_handle_idx` ON `category` (`handle`);
+CREATE INDEX `category_parentId_idx` ON `category` (`parent_id`);
 CREATE TABLE `collection` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`handle` text(255) NOT NULL,
@@ -22,9 +22,9 @@ CREATE TABLE `collection` (
 	`title` text(255) NOT NULL,
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL
 );
---> statement-breakpoint
-CREATE UNIQUE INDEX `collection_handle_unique` ON `collection` (`handle`);--> statement-breakpoint
-CREATE INDEX `collection_handle_idx` ON `collection` (`handle`);--> statement-breakpoint
+
+CREATE UNIQUE INDEX `collection_handle_unique` ON `collection` (`handle`);
+CREATE INDEX `collection_handle_idx` ON `collection` (`handle`);
 CREATE TABLE `customer` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`email` text(320) NOT NULL,
@@ -36,9 +36,9 @@ CREATE TABLE `customer` (
 	`phone` text(32),
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL
 );
---> statement-breakpoint
-CREATE UNIQUE INDEX `customer_email_unique` ON `customer` (`email`);--> statement-breakpoint
-CREATE INDEX `customer_email_idx` ON `customer` (`email`);--> statement-breakpoint
+
+CREATE UNIQUE INDEX `customer_email_unique` ON `customer` (`email`);
+CREATE INDEX `customer_email_idx` ON `customer` (`email`);
 CREATE TABLE `customer_address` (
 	`address1` text(512) NOT NULL,
 	`address2` text(512),
@@ -56,8 +56,8 @@ CREATE TABLE `customer_address` (
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	FOREIGN KEY (`customer_id`) REFERENCES `customer`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE INDEX `customer_address_customerId_idx` ON `customer_address` (`customer_id`);--> statement-breakpoint
+
+CREATE INDEX `customer_address_customerId_idx` ON `customer_address` (`customer_id`);
 CREATE TABLE `order` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`currency_code` text(3) DEFAULT 'PLN' NOT NULL,
@@ -76,10 +76,10 @@ CREATE TABLE `order` (
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	FOREIGN KEY (`customer_id`) REFERENCES `customer`(`id`) ON UPDATE no action ON DELETE set null
 );
---> statement-breakpoint
-CREATE INDEX `order_customerId_idx` ON `order` (`customer_id`);--> statement-breakpoint
-CREATE INDEX `order_status_idx` ON `order` (`status`);--> statement-breakpoint
-CREATE INDEX `order_createdAt_idx` ON `order` (`created_at`);--> statement-breakpoint
+
+CREATE INDEX `order_customerId_idx` ON `order` (`customer_id`);
+CREATE INDEX `order_status_idx` ON `order` (`status`);
+CREATE INDEX `order_createdAt_idx` ON `order` (`created_at`);
 CREATE TABLE `order_address` (
 	`address1` text(512) NOT NULL,
 	`address2` text(512),
@@ -95,9 +95,9 @@ CREATE TABLE `order_address` (
 	`type` text(16) NOT NULL,
 	FOREIGN KEY (`order_id`) REFERENCES `order`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE INDEX `order_address_orderId_idx` ON `order_address` (`order_id`);--> statement-breakpoint
-CREATE INDEX `order_address_type_idx` ON `order_address` (`type`);--> statement-breakpoint
+
+CREATE INDEX `order_address_orderId_idx` ON `order_address` (`order_id`);
+CREATE INDEX `order_address_type_idx` ON `order_address` (`type`);
 CREATE TABLE `order_item` (
 	`id` text PRIMARY KEY NOT NULL,
 	`metadata` text,
@@ -111,8 +111,8 @@ CREATE TABLE `order_item` (
 	`variant_title` text(512),
 	FOREIGN KEY (`order_id`) REFERENCES `order`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE INDEX `order_item_orderId_idx` ON `order_item` (`order_id`);--> statement-breakpoint
+
+CREATE INDEX `order_item_orderId_idx` ON `order_item` (`order_id`);
 CREATE TABLE `product` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`description` text,
@@ -126,10 +126,10 @@ CREATE TABLE `product` (
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`weight` real
 );
---> statement-breakpoint
-CREATE UNIQUE INDEX `product_handle_unique` ON `product` (`handle`);--> statement-breakpoint
-CREATE INDEX `product_handle_idx` ON `product` (`handle`);--> statement-breakpoint
-CREATE INDEX `product_status_idx` ON `product` (`status`);--> statement-breakpoint
+
+CREATE UNIQUE INDEX `product_handle_unique` ON `product` (`handle`);
+CREATE INDEX `product_handle_idx` ON `product` (`handle`);
+CREATE INDEX `product_status_idx` ON `product` (`status`);
 CREATE TABLE `product_category` (
 	`category_id` text NOT NULL,
 	`product_id` text NOT NULL,
@@ -137,8 +137,8 @@ CREATE TABLE `product_category` (
 	FOREIGN KEY (`category_id`) REFERENCES `category`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`product_id`) REFERENCES `product`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE INDEX `product_category_categoryId_idx` ON `product_category` (`category_id`);--> statement-breakpoint
+
+CREATE INDEX `product_category_categoryId_idx` ON `product_category` (`category_id`);
 CREATE TABLE `product_collection` (
 	`collection_id` text NOT NULL,
 	`product_id` text NOT NULL,
@@ -146,8 +146,8 @@ CREATE TABLE `product_collection` (
 	FOREIGN KEY (`collection_id`) REFERENCES `collection`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`product_id`) REFERENCES `product`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE INDEX `product_collection_collectionId_idx` ON `product_collection` (`collection_id`);--> statement-breakpoint
+
+CREATE INDEX `product_collection_collectionId_idx` ON `product_collection` (`collection_id`);
 CREATE TABLE `product_image` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`id` text PRIMARY KEY NOT NULL,
@@ -157,8 +157,8 @@ CREATE TABLE `product_image` (
 	`url` text(2048) NOT NULL,
 	FOREIGN KEY (`product_id`) REFERENCES `product`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE INDEX `product_image_productId_idx` ON `product_image` (`product_id`);--> statement-breakpoint
+
+CREATE INDEX `product_image_productId_idx` ON `product_image` (`product_id`);
 CREATE TABLE `product_option` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`id` text PRIMARY KEY NOT NULL,
@@ -167,8 +167,8 @@ CREATE TABLE `product_option` (
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	FOREIGN KEY (`product_id`) REFERENCES `product`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE INDEX `product_option_productId_idx` ON `product_option` (`product_id`);--> statement-breakpoint
+
+CREATE INDEX `product_option_productId_idx` ON `product_option` (`product_id`);
 CREATE TABLE `product_option_value` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`id` text PRIMARY KEY NOT NULL,
@@ -177,8 +177,8 @@ CREATE TABLE `product_option_value` (
 	`value` text(512) NOT NULL,
 	FOREIGN KEY (`option_id`) REFERENCES `product_option`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE INDEX `product_option_value_optionId_idx` ON `product_option_value` (`option_id`);--> statement-breakpoint
+
+CREATE INDEX `product_option_value_optionId_idx` ON `product_option_value` (`option_id`);
 CREATE TABLE `product_variant` (
 	`allow_backorder` integer DEFAULT false NOT NULL,
 	`barcode` text(255),
@@ -196,10 +196,10 @@ CREATE TABLE `product_variant` (
 	`weight` real,
 	FOREIGN KEY (`product_id`) REFERENCES `product`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE UNIQUE INDEX `product_variant_sku_unique` ON `product_variant` (`sku`);--> statement-breakpoint
-CREATE INDEX `product_variant_productId_idx` ON `product_variant` (`product_id`);--> statement-breakpoint
-CREATE INDEX `product_variant_sku_idx` ON `product_variant` (`sku`);--> statement-breakpoint
+
+CREATE UNIQUE INDEX `product_variant_sku_unique` ON `product_variant` (`sku`);
+CREATE INDEX `product_variant_productId_idx` ON `product_variant` (`product_id`);
+CREATE INDEX `product_variant_sku_idx` ON `product_variant` (`sku`);
 CREATE TABLE `product_variant_option_value` (
 	`option_value_id` text NOT NULL,
 	`variant_id` text NOT NULL,
@@ -207,5 +207,5 @@ CREATE TABLE `product_variant_option_value` (
 	FOREIGN KEY (`option_value_id`) REFERENCES `product_option_value`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`variant_id`) REFERENCES `product_variant`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
+
 CREATE INDEX `product_variant_option_value_optionValueId_idx` ON `product_variant_option_value` (`option_value_id`);

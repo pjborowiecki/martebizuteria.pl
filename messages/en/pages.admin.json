@@ -5,6 +5,9 @@
     "selectAll": "Select all rows",
     "selectRow": "Select row"
   },
+  "catalogForm": {
+    "requiredFieldHint": "Required field."
+  },
   "customerDetail": {
     "breadcrumb": {
       "dashboard": "Dashboard",
@@ -116,6 +119,7 @@
     "products": "Products",
     "categories": "Categories",
     "collections": "Collections",
+    "attributes": "Attributes",
     "orders": "Orders",
     "customers": "Customers",
     "tools": "Tools",

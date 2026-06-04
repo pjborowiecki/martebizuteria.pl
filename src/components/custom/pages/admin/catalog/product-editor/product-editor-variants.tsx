@@ -1,165 +1,140 @@
-import { type ChangeEvent, type JSX, useCallback } from "react";
+import { type JSX, useCallback } from "react";
 
-import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { useFormContext, useWatch } from "react-hook-form";
 import { useTranslations } from "use-intl";
 
 import { cn } from "~/src/lib/utils";
 
+import { Badge } from "~/src/components/shadcn/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/components/shadcn/card";
+import { Input } from "~/src/components/shadcn/input";
 
-import type { ProductVariant } from "~/src/data/catalog-data";
-
-interface ProductEditorVariantsProps {
-  readonly onAdd: () => void;
-  readonly onRemove: (id: number) => void;
-  readonly onUpdate: (id: number, field: keyof ProductVariant, value: string) => void;
-  readonly variants: readonly ProductVariant[];
-}
+import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-field-label";
+import { CatalogIntegerInput } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-integer-input";
+import { CatalogMoneyInput } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-money-input";
+import type { ProductFormValues } from "~/src/components/custom/pages/admin/catalog/product-editor/product-form.utils";
 
 const EMPTY_LENGTH = 0;
 const OFFSET_LAST = 1;
+const ZERO_QUANTITY = 0;
 
-export function ProductEditorVariants({ onAdd, onRemove, onUpdate, variants }: Readonly<ProductEditorVariantsProps>): JSX.Element {
-  const t = useTranslations("pages.admin.catalog.products");
+/** Variant name grows; SKU/price/stock stay compact to avoid dead space between columns. */
+const VARIANT_GRID_CLASS = "grid grid-cols-[minmax(0,2fr)_minmax(108px,1fr)_minmax(116px,1fr)_minmax(80px,0.85fr)] items-center gap-3";
+
+interface ProductEditorVariantsProps {
+  readonly embedded?: boolean;
+}
+
+export function ProductEditorVariants({ embedded = false }: Readonly<ProductEditorVariantsProps>): JSX.Element {
+  const t = useTranslations("pages.admin.catalog.products.variants");
+  const tProducts = useTranslations("pages.admin.catalog.products");
+  const { control } = useFormContext<ProductFormValues>();
+  const variants = useWatch({ control, defaultValue: [], name: "variants" });
+
+  const table =
+    variants.length === EMPTY_LENGTH ? (
+      <p className="text-sm text-muted-foreground">{t("generateHint")}</p>
+    ) : (
+      <div className="overflow-x-auto">
+        <div className="min-w-[520px] overflow-hidden rounded-lg ring-1 ring-border/40">
+          <div className={cn(VARIANT_GRID_CLASS, "border-b border-border/30 bg-muted/20 px-3 py-2.5")}>
+            <CatalogFormFieldLabel label={t("name")} />
+            <CatalogFormFieldLabel hint={tProducts("form.hints.variantSku")} label={t("sku")} />
+            <CatalogFormFieldLabel hint={tProducts("form.hints.variantPrice")} label={t("price")} />
+            <CatalogFormFieldLabel hint={tProducts("form.hints.variantStock")} label={t("stockQuantity")} />
+          </div>
+
+          {variants.map((variant, index) => (
+            <VariantRow index={index} isLast={index === variants.length - OFFSET_LAST} key={variant.id ?? `${variant.title}-${index}`} />
+          ))}
+        </div>
+      </div>
+    );
+
+  if (embedded) {
+    return table;
+  }
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base font-semibold">{t("variants.title")}</CardTitle>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="flex items-center gap-1 text-[12px] font-medium text-foreground/60 transition-colors hover:text-foreground"
-        >
-          <Plus className="size-3.5" strokeWidth={1.5} />
-          {t("variants.add")}
-        </button>
+      <CardHeader>
+        <CardTitle className="text-base font-semibold">{t("title")}</CardTitle>
       </CardHeader>
-      <CardContent>
-        {variants.length === EMPTY_LENGTH ? (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border/50 py-8 text-muted-foreground/50 transition-colors hover:border-foreground/20 hover:text-muted-foreground"
-          >
-            <Plus className="size-4" strokeWidth={1.5} />
-            <span className="text-[13px]">{t("variants.addFirst")}</span>
-          </button>
-        ) : (
-          <div className="overflow-hidden rounded-lg ring-1 ring-border/40">
-            <div className="grid grid-cols-[20px_1fr_1fr_110px_80px_28px] items-center gap-2 bg-secondary/30 px-3 py-2">
-              <span />
-              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground/50 uppercase">{t("variants.name")}</span>
-              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground/50 uppercase">
-                {t("variants.optionValue")}
-              </span>
-              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground/50 uppercase">{t("variants.price")}</span>
-              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground/50 uppercase">{t("variants.stock")}</span>
-              <span />
-            </div>
-
-            {variants.map((variant, idx) => (
-              <VariantRow
-                key={variant.id}
-                isLast={idx === variants.length - OFFSET_LAST}
-                onRemove={onRemove}
-                onUpdate={onUpdate}
-                variant={variant}
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
+      <CardContent>{table}</CardContent>
     </Card>
   );
 }
 
-function VariantRow({
-  isLast,
-  onRemove,
-  onUpdate,
-  variant
-}: Readonly<{
-  isLast: boolean;
-  onRemove: (id: number) => void;
-  onUpdate: (id: number, field: keyof ProductVariant, value: string) => void;
-  variant: ProductVariant;
-}>): JSX.Element {
-  const t = useTranslations("pages.admin.catalog.products");
+function VariantRow({ index, isLast }: Readonly<{ index: number; isLast: boolean }>): JSX.Element {
+  const t = useTranslations("pages.admin.catalog.products.variants");
+  const { control, setValue } = useFormContext<ProductFormValues>();
+  const variant = useWatch({ control, name: `variants.${index}` });
 
-  const handleNameChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      onUpdate(variant.id, "name", e.target.value);
+  const updateField = useCallback(
+    (field: "sku" | "price", value: string) => {
+      setValue(`variants.${index}.${field}`, value, { shouldDirty: true });
     },
-    [onUpdate, variant.id]
+    [index, setValue]
+  );
+
+  const handleSkuChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      updateField("sku", event.target.value);
+    },
+    [updateField]
   );
 
   const handlePriceChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      onUpdate(variant.id, "price", e.target.value);
+    (value: string) => {
+      updateField("price", value);
     },
-    [onUpdate, variant.id]
+    [updateField]
   );
 
   const handleStockChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      onUpdate(variant.id, "stock", e.target.value);
+    (quantity: number) => {
+      setValue(`variants.${index}.quantity`, quantity, { shouldDirty: true });
     },
-    [onUpdate, variant.id]
+    [index, setValue]
   );
 
-  const handleRemove = useCallback(() => {
-    onRemove(variant.id);
-  }, [onRemove, variant.id]);
+  const optionEntries = Object.entries(variant?.optionValues ?? {});
 
   return (
-    <div
-      className={cn(
-        "group grid grid-cols-[20px_1fr_1fr_110px_80px_28px] items-center gap-2 px-3 py-2 transition-colors hover:bg-secondary/20",
-        !isLast && "border-b border-border/20"
-      )}
-    >
-      <GripVertical className="size-3.5 cursor-grab text-muted-foreground/20" strokeWidth={1.5} />
-      <input
-        type="text"
-        aria-label={t("variants.name")}
-        value={variant.name}
-        onChange={handleNameChange}
-        placeholder={t("variants.namePlaceholder")}
-        className="h-8 rounded border-0 bg-transparent px-2 text-sm ring-1 ring-transparent transition-all placeholder:text-muted-foreground/30 hover:ring-border/40 focus:bg-background focus:ring-2 focus:ring-foreground/20 focus:outline-none"
-      />
-      <input
-        type="text"
-        aria-label={t("variants.optionValue")}
-        placeholder={t("variants.valuePlaceholder")}
-        className="h-8 rounded border-0 bg-transparent px-2 text-sm ring-1 ring-transparent transition-all placeholder:text-muted-foreground/30 hover:ring-border/40 focus:bg-background focus:ring-2 focus:ring-foreground/20 focus:outline-none"
-      />
-      <div className="relative">
-        <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-muted-foreground/30">$</span>
-        <input
-          type="text"
-          aria-label={t("variants.price")}
-          value={variant.price}
-          onChange={handlePriceChange}
-          placeholder="0.00"
-          className="h-8 w-full rounded border-0 bg-transparent pr-2 pl-6 font-mono text-sm ring-1 ring-transparent transition-all placeholder:text-muted-foreground/30 hover:ring-border/40 focus:bg-background focus:ring-2 focus:ring-foreground/20 focus:outline-none"
-        />
+    <div className={cn(VARIANT_GRID_CLASS, "px-3 py-2.5", !isLast && "border-b border-border/20")}>
+      <div className="min-w-0 space-y-1">
+        <p className="truncate text-sm font-medium">{variant?.title}</p>
+        {optionEntries.length > EMPTY_LENGTH && (
+          <div className="flex flex-wrap gap-1">
+            {optionEntries.map(([optionTitle, value]) => (
+              <Badge key={`${optionTitle}-${value}`} className="text-[10px] font-normal" variant="outline">
+                {optionTitle}: {value}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
-      <input
+      <Input
+        aria-label={t("sku")}
+        variant="sheet"
+        className="min-w-0 font-mono"
+        onChange={handleSkuChange}
+        placeholder="SKU"
         type="text"
-        aria-label={t("variants.stock")}
-        value={variant.stock}
-        onChange={handleStockChange}
-        placeholder="0"
-        className="h-8 rounded border-0 bg-transparent px-2 text-center font-mono text-sm ring-1 ring-transparent transition-all placeholder:text-muted-foreground/30 hover:ring-border/40 focus:bg-background focus:ring-2 focus:ring-foreground/20 focus:outline-none"
+        value={variant?.sku ?? ""}
       />
-      <button
-        type="button"
-        onClick={handleRemove}
-        className="flex size-7 items-center justify-center rounded text-transparent transition-all group-hover:text-muted-foreground/40 hover:text-red-500!"
-      >
-        <Trash2 className="size-3" strokeWidth={1.5} />
-      </button>
+      <div className="relative min-w-0">
+        <span className="pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2 text-sm text-muted-foreground/40">PLN</span>
+        <CatalogMoneyInput aria-label={t("price")} className="pl-12" onValueChange={handlePriceChange} value={variant?.price ?? ""} />
+      </div>
+      <CatalogIntegerInput
+        aria-label={t("stockQuantity")}
+        className="min-w-0 text-center"
+        min={ZERO_QUANTITY}
+        onValueChange={handleStockChange}
+        placeholder="0"
+        value={variant?.quantity ?? ZERO_QUANTITY}
+      />
     </div>
   );
 }

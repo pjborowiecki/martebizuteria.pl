@@ -54,7 +54,7 @@ function ContentPage(): JSX.Element {
     <div className="flex h-[calc(100vh-64px)] flex-col">
       <AdminHeader title={t("content.title")} description={t("content.description")} breadcrumbs={bcList} actions={actionButtons} />
 
-      <div className="flex flex-1 flex-col overflow-y-auto p-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-8">
         <ContentTypeCards />
         <ContentListTable />
       </div>

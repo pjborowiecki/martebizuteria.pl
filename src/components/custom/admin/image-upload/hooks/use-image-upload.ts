@@ -23,7 +23,7 @@ export interface UseImageUploadResult {
  * state, and error toasts — so the components only deal with presentation.
  */
 export function useImageUpload(folder: MediaFolder, onUploadingChange?: (uploading: boolean) => void): UseImageUploadResult {
-  const t = useTranslations("pages.admin.media");
+  const t = useTranslations("pages.admin");
   const [pendingCount, setPendingCount] = useState(EMPTY_COUNT);
   const isUploading = pendingCount > EMPTY_COUNT;
 
@@ -34,11 +34,11 @@ export function useImageUpload(folder: MediaFolder, onUploadingChange?: (uploadi
   const validate = useCallback(
     (file: File): boolean => {
       if (!isAcceptedImageMime(file.type)) {
-        toast.error(t("errorTitle"), { description: t("errorInvalidType") });
+        toast.error(t("media.errorTitle"), { description: t("media.errorInvalidType") });
         return false;
       }
       if (file.size === EMPTY_COUNT || file.size > MAX_IMAGE_BYTES) {
-        toast.error(t("errorTitle"), { description: t("errorTooLarge") });
+        toast.error(t("media.errorTitle"), { description: t("media.errorTooLarge") });
         return false;
       }
       return true;
@@ -75,7 +75,7 @@ export function useImageUpload(folder: MediaFolder, onUploadingChange?: (uploadi
         }
 
         if (failed > EMPTY_COUNT) {
-          toast.error(t("errorTitle"), { description: t("errorUpload") });
+          toast.error(t("media.errorTitle"), { description: t("media.errorUpload") });
         }
 
         return urls;

@@ -1,0 +1,170 @@
+{
+  "title": "Atrybuty",
+  "description": "Pola specyfikacji wielokrotnego użytku (materiały, wymiary, pielęgnacja itd.) przypisywane do produktów.",
+  "actions": {
+    "addProperty": "Dodaj atrybut",
+    "exportCsv": "Pobierz tabelę jako CSV",
+    "refresh": "Odśwież dane tabeli"
+  },
+  "columns": {
+    "handle": "Handle",
+    "title": "Atrybut",
+    "type": "Typ",
+    "allowedValues": "Dozwolone wartości",
+    "unit": "Jednostka",
+    "products": "Produkty",
+    "id": "ID",
+    "createdAt": "Data utworzenia",
+    "editedAt": "Ostatnia edycja"
+  },
+  "types": {
+    "text": "Tekst",
+    "number": "Liczba",
+    "boolean": "Tak / Nie",
+    "select": "Lista (jeden wybór)",
+    "multiselect": "Lista (wiele wyborów)"
+  },
+  "filter": {
+    "type": "Filtruj wg typu",
+    "allTypes": "Wszystkie typy"
+  },
+  "searchPlaceholder": "Szukaj atrybutu...",
+  "reorder": {
+    "handle": "Przeciągnij, aby zmienić kolejność, lub użyj strzałek"
+  },
+  "bulk": {
+    "selected": "Zaznaczono: {count}",
+    "delete": "Usuń ({count})",
+    "confirmTitle": "Usunąć atrybuty?",
+    "confirmDescription": "To trwale usunie {count} atrybutów. Atrybuty używane na produktach nie zostaną usunięte.",
+    "cancel": "Anuluj",
+    "confirm": "Usuń"
+  },
+  "rowActions": {
+    "edit": "Edytuj atrybut",
+    "copyId": "Kopiuj ID",
+    "copyUrlSlug": "Kopiuj URL Slug",
+    "delete": "Usuń atrybut",
+    "copyIdToast": "ID atrybutu skopiowano do schowka",
+    "copyUrlSlugToast": "URL Slug skopiowano do schowka",
+    "deleteTitle": "Usunąć atrybut?",
+    "deleteDescription": "To trwale usunie „{title}”. Atrybuty przypisane do produktów nie mogą zostać usunięte.",
+    "cancel": "Anuluj",
+    "confirm": "Usuń"
+  },
+  "form": {
+    "titleAdd": "Dodaj atrybut",
+    "titleEdit": "Edytuj atrybut",
+    "sheetDescription": "Utwórz pole specyfikacji wielokrotnego użytku, które zespół może przypisywać do produktów.",
+    "sheetDescriptionEdit": "Zaktualizuj nazwy w językach sklepu, typ wartości i dozwolone opcje.",
+    "localePicker": {
+      "label": "Język",
+      "filledCount": "{filled} z {total} uzupełnione",
+      "filledCountHint": "nazwa i etykiety opcji w każdym języku",
+      "incompleteHint": "Uzupełnij wymagane pola w językach: {locales}.",
+      "incompleteToastTitle": "Brakuje tłumaczeń",
+      "incompleteToastDescription": "Uzupełnij nazwę (i etykiety opcji, jeśli dotyczy) w językach: {locales}.",
+      "incompleteAllowedValuesDescription": "Uzupełnij etykiety opcji w językach: {locales}."
+    },
+    "sectionBasic": "Podstawowe dane",
+    "sectionValue": "Ustawienia wartości",
+    "cancel": "Anuluj",
+    "create": "Utwórz atrybut",
+    "save": "Zapisz zmiany",
+    "slug": "URL Slug",
+    "slugHint": "Uzupełniany z polskiej nazwy, dopóki nie edytujesz tego pola.",
+    "slugPlaceholder": "materialy",
+    "titleLocale": {
+      "pl": "Nazwa (PL)",
+      "en": "Nazwa (EN)"
+    },
+    "titleLocalePlaceholder": {
+      "pl": "Materiały",
+      "en": "Materials"
+    },
+    "type": "Typ wartości",
+    "unit": "Jednostka",
+    "unitNone": "Brak jednostki",
+    "unitCustom": "Inna jednostka…",
+    "unitCustomPlaceholder": "np. kt, cal",
+    "unitSelectPlaceholder": "Wybierz jednostkę",
+    "allowedValues": "Dozwolone wartości",
+    "allowedValueAdd": "Dodaj opcję",
+    "allowedValueRemove": "Usuń opcję",
+    "allowedValueLabel": {
+      "pl": "Etykieta (PL)",
+      "en": "Etykieta (EN)"
+    },
+    "allowedValuePlaceholder": {
+      "pl": "np. 3 cm",
+      "en": "np. 3 cm"
+    },
+    "id": "ID",
+    "hints": {
+      "id": "Stały identyfikator atrybutu w panelu i API. Po utworzeniu nie można go zmienić.",
+      "titleLocale": {
+        "pl": "Etykieta widoczna w panelu i na stronie produktu (polski). Wymagana.",
+        "en": "Etykieta w sklepie (angielski). Wymagana."
+      },
+      "slug": "Stabilny klucz dla API i szablonów. Uzupełniany z nazwy w języku domyślnym sklepu, dopóki nie edytujesz go ręcznie. Tylko małe litery, cyfry i myślniki.",
+      "type": "Sposób zapisu i walidacji wartości przypisanych do produktu.",
+      "unit": "Szybki wybór popularnych jednostek lub wpisanie własnej. Dotyczy tylko atrybutów typu liczba.",
+      "allowedValues": "Dla listy (jeden lub wiele wyborów): zdefiniuj opcje z etykietą w każdym języku sklepu. W bazie zapisywany jest stabilny klucz (slug z etykiety w języku domyślnym).",
+      "allowedValueLocale": {
+        "pl": "Etykieta opcji po polsku (wymagana).",
+        "en": "Etykieta opcji po angielsku (wymagana)."
+      }
+    },
+    "validation": {
+      "LOCALE_TITLE_REQUIRED": "Uzupełnij to pole w tym języku.",
+      "ALLOWED_VALUES_REQUIRED": "Dodaj co najmniej jedną dozwoloną wartość dla tego typu.",
+      "HANDLE_REQUIRED": "Podaj URL Slug.",
+      "HANDLE_INVALID": "Użyj małych liter, cyfr i myślników (np. materialy).",
+      "submitBlockedTitle": "Formularz wymaga poprawek",
+      "submitBlockedDescription": "Sprawdź podświetlone pola i spróbuj ponownie."
+    }
+  },
+  "toast": {
+    "createSuccessTitle": "Atrybut utworzony",
+    "createSuccessDescription": "Atrybut został pomyślnie utworzony.",
+    "updateSuccessTitle": "Atrybut zapisany",
+    "updateSuccessDescription": "Zmiany zostały zapisane.",
+    "errorTitle": "Coś poszło nie tak",
+    "errorDescription": "Nie udało się zapisać atrybutu. Spróbuj ponownie.",
+    "duplicateHandle": "Atrybut z tym adresem URL (slug) już istnieje.",
+    "reorderErrorTitle": "Nie udało się zapisać kolejności",
+    "reorderErrorDescription": "Nowa kolejność atrybutów nie została zapisana. Spróbuj ponownie.",
+    "deleteSuccessTitle": "Atrybuty usunięte",
+    "deleteSuccessDescription": "Usunięto {count} atrybutów.",
+    "deleteErrorTitle": "Nie udało się usunąć",
+    "deleteErrorDescription": "Nie udało się usunąć wybranych atrybutów. Spróbuj ponownie.",
+    "deleteInUseDescription": "Co najmniej jeden atrybut jest przypisany do produktów. Usuń go z produktów przed usunięciem.",
+    "allowedValueIncompleteTitle": "Brakuje etykiet",
+    "allowedValueIncompleteDescription": "Uzupełnij etykietę opcji w językach: {locales}.",
+    "allowedValueSlugEmptyTitle": "Nie można dodać opcji",
+    "allowedValueSlugEmptyDescription": "Podaj polską etykietę, z której powstanie klucz opcji (slug).",
+    "allowedValueDuplicateTitle": "Opcja już istnieje",
+    "allowedValueDuplicateDescription": "Inna pozycja na liście ma ten sam klucz — zmień polską etykietę."
+  },
+  "delete": {
+    "title": "Usuń atrybuty",
+    "description": "Atrybuty używane na produktach nie mogą zostać usunięte.",
+    "confirm": "Usuń"
+  },
+  "empty": "Brak atrybutów. Dodaj pola, które zespół może ponownie używać na produktach.",
+  "stats": {
+    "total": {
+      "label": "Wszystkie atrybuty"
+    },
+    "inUse": {
+      "label": "Używane na produktach"
+    },
+    "unused": {
+      "label": "Nieużywane"
+    },
+    "withChoices": {
+      "label": "Z listą wyboru"
+    },
+    "shareCaption": "{percent}% wszystkich"
+  }
+}

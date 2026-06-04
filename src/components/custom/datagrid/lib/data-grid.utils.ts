@@ -169,19 +169,27 @@ export function getDataGridLayoutHeaders<TData extends RowData>(table: Table<TDa
   }
 
   const leafGroup = headerGroups[headerGroups.length - REMOVE_ONE];
-  return leafGroup.headers.filter((header) => !header.isPlaceholder);
+  return leafGroup.headers.filter(
+    (header) => !header.isPlaceholder && header.column.getIsVisible() && header.column.columnDef.meta?.filterOnly !== true
+  );
 }
 
 export function getDataGridLayoutColumns<TData extends RowData>(table: Table<TData>): Column<TData>[] {
   const headers = getDataGridLayoutHeaders(table);
   if (headers.length === ZERO) {
-    return table.getVisibleLeafColumns();
+    return table.getVisibleLeafColumns().filter((column) => column.columnDef.meta?.filterOnly !== true);
   }
   return headers.map((header) => header.column);
 }
 
+/** Minimal column shape for reading declaration order ids (avoids TanStack `ColumnDef` TValue variance). */
+type DataGridColumnIdSource = Readonly<{
+  accessorKey?: string | number | symbol;
+  id?: string;
+}>;
+
 /** Default column order from a `columns` array (declaration order in the column defs). */
-export function getDataGridColumnIds<TData extends RowData>(columns: ColumnDef<TData>[]): string[] {
+export function getDataGridColumnIds(columns: readonly DataGridColumnIdSource[]): string[] {
   return columns.flatMap((column) => {
     if (typeof column.id === "string") {
       return [column.id];

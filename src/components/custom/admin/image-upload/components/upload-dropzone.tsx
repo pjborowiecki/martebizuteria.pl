@@ -27,7 +27,7 @@ export function UploadDropzone({
   onDrop,
   onPick
 }: UploadDropzoneProps): JSX.Element {
-  const t = useTranslations("pages.admin.media");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="relative">
@@ -46,13 +46,13 @@ export function UploadDropzone({
         )}
       >
         <ImageUp aria-hidden className="size-6 text-muted-foreground" strokeWidth={1.5} />
-        <span className="text-[13px] font-medium">{t("cta")}</span>
-        <span className="text-[11px] text-muted-foreground/70">{t("hint")}</span>
+        <span className="text-[13px] font-medium">{t("media.cta")}</span>
+        <span className="text-[11px] text-muted-foreground/70">{t("media.hint")}</span>
       </Button>
 
       {isDragging && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-foreground/60 bg-background/80">
-          <span className="text-[12px] font-medium">{t("dropHere")}</span>
+          <span className="text-[12px] font-medium">{t("media.dropHere")}</span>
         </div>
       )}
     </div>

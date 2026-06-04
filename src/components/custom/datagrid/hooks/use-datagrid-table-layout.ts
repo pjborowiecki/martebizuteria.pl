@@ -16,7 +16,8 @@ export function useDatagridContainerWidth(containerRef: RefObject<HTMLElement | 
       const element = scrollContainer;
 
       function updateWidth(): void {
-        setClientWidth(element.clientWidth);
+        const nextWidth = element.clientWidth;
+        setClientWidth((previous) => (previous === nextWidth ? previous : nextWidth));
       }
 
       updateWidth();

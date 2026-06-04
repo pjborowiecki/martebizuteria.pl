@@ -62,10 +62,45 @@
     "save": "Zapisz zmiany",
     "sectionBasic": "Podstawowe informacje",
     "sectionParent": "Hierarchia",
-    "title": "Tytuł",
+    "localePicker": {
+      "filledCountHint": "tytuł w każdym języku"
+    },
+    "titleLocale": {
+      "pl": "Tytuł (PL)",
+      "en": "Tytuł (EN)"
+    },
+    "titleLocalePlaceholder": {
+      "pl": "np. Naszyjniki",
+      "en": "np. Necklaces"
+    },
+    "subtitleLocale": {
+      "pl": "Podtytuł (PL)",
+      "en": "Podtytuł (EN)"
+    },
+    "subtitleLocalePlaceholder": {
+      "pl": "Linia pod tytułem kategorii...",
+      "en": "Supporting line under the category title..."
+    },
+    "shortDescriptionLocale": {
+      "pl": "Krótki opis (PL)",
+      "en": "Krótki opis (EN)"
+    },
+    "shortDescriptionLocalePlaceholder": {
+      "pl": "Krótkie podsumowanie na karty i listy...",
+      "en": "Brief summary for cards and listings..."
+    },
+    "descriptionLocale": {
+      "pl": "Opis (PL)",
+      "en": "Opis (EN)"
+    },
+    "descriptionLocalePlaceholder": {
+      "pl": "Wprowadź pełny opis kategorii...",
+      "en": "Enter the full category description..."
+    },
+    "title": "Kategoria",
     "titlePlaceholder": "np. Naszyjniki",
     "slug": "URL Slug",
-    "slugHint": "Uzupełniane z tytułu, dopóki nie edytujesz tego pola ręcznie.",
+    "slugHint": "Uzupełniane z kategorii, dopóki nie edytujesz tego pola ręcznie.",
     "parentCategory": "Kategoria nadrzędna",
     "noParent": "Brak",
     "description": "Opis",
@@ -82,22 +117,41 @@
     "hints": {
       "id": "Stały identyfikator kategorii. Używany w panelu i API; nie można go zmienić po utworzeniu.",
       "title": "Nazwa widoczna w nawigacji sklepu i na stronach kategorii.",
+      "titleLocale": {
+        "pl": "Nazwa kategorii w sklepie (polski). Wymagane.",
+        "en": "Nazwa kategorii w sklepie (angielski). Wymagane."
+      },
       "slug": "Fragment adresu URL tej kategorii. Uzupełniany z tytułu, dopóki nie edytujesz go ręcznie. Tylko małe litery, cyfry i myślniki.",
       "subtitle": "Opcjonalna linia pod tytułem kategorii.",
+      "subtitleLocale": {
+        "pl": "Opcjonalna linia pod tytułem (polski).",
+        "en": "Opcjonalna linia pod tytułem (angielski)."
+      },
       "shortDescription": "Krótkie podsumowanie na karty, listy i podglądy.",
+      "shortDescriptionLocale": {
+        "pl": "Krótkie podsumowanie na karty i listy (polski).",
+        "en": "Krótkie podsumowanie na karty i listy (angielski)."
+      },
       "description": "Pełny opis na stronie kategorii.",
+      "descriptionLocale": {
+        "pl": "Pełny opis na stronie kategorii (polski).",
+        "en": "Pełny opis na stronie kategorii (angielski)."
+      },
       "parentCategory": "Opcjonalna kategoria nadrzędna. Zostaw puste dla kategorii głównej.",
       "status": "Szkice są ukryte w sklepie; aktywne są widoczne dla klientów.",
       "image": "Zdjęcie kategorii w sklepie i w panelu."
     },
     "validation": {
+      "LOCALE_TITLE_REQUIRED": "Uzupełnij to pole w tym języku.",
       "titleRequired": "Tytuł jest wymagany",
       "titleTooLong": "Tytuł jest zbyt długi",
       "slugRequired": "Slug URL jest wymagany",
       "slugInvalid": "Używaj tylko małych liter, cyfr i myślników",
       "descriptionTooLong": "Opis jest zbyt długi",
       "shortDescriptionTooLong": "Krótki opis jest zbyt długi",
-      "subtitleTooLong": "Podtytuł jest zbyt długi"
+      "subtitleTooLong": "Podtytuł jest zbyt długi",
+      "submitBlockedTitle": "Popraw błędy w formularzu",
+      "submitBlockedDescription": "Sprawdź podświetlone pola i spróbuj ponownie."
     }
   },
   "toast": {

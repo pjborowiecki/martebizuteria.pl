@@ -99,17 +99,31 @@ function resolveUserSizedFillLayout<TData extends RowData>(input: {
   readonly tableClientWidth: number;
 }): DataGridTableLayout {
   const { absorberColumn, intrinsicSum, minFill, preferredFillWidth, tableClientWidth } = input;
-  const fillWidth = Math.max(minFill, preferredFillWidth);
-  const minAbsorber = absorberColumn === undefined ? ZERO : readColumnMinWidth(absorberColumn);
-  const designAbsorber = absorberColumn === undefined ? ZERO : readSlackAbsorberWidth(absorberColumn);
-  const expandedAbsorber = tableClientWidth - intrinsicSum - fillWidth;
-  const absorberWidth = absorberColumn === undefined ? ZERO : Math.min(designAbsorber, Math.max(minAbsorber, expandedAbsorber));
+  const preferredFill = Math.max(minFill, preferredFillWidth);
+
+  if (absorberColumn === undefined) {
+    // Catalog tables have no trailing slack absorber: grow the fill column so widths sum to the
+    // container. Otherwise `table-layout: fixed` distributes slack into utility columns (select/actions).
+    const fillWidth = Math.max(preferredFill, tableClientWidth - intrinsicSum);
+
+    return {
+      fillColumnIsUserSized: true,
+      fillColumnWidth: fillWidth,
+      slackAbsorberColumnWidth: ZERO,
+      tableWidth: Math.max(tableClientWidth, intrinsicSum + fillWidth)
+    };
+  }
+
+  const minAbsorber = readColumnMinWidth(absorberColumn);
+  const designAbsorber = readSlackAbsorberWidth(absorberColumn);
+  const expandedAbsorber = tableClientWidth - intrinsicSum - preferredFill;
+  const absorberWidth = Math.min(designAbsorber, Math.max(minAbsorber, expandedAbsorber));
 
   return {
     fillColumnIsUserSized: true,
-    fillColumnWidth: fillWidth,
+    fillColumnWidth: preferredFill,
     slackAbsorberColumnWidth: absorberWidth,
-    tableWidth: Math.max(tableClientWidth, intrinsicSum + fillWidth + absorberWidth)
+    tableWidth: Math.max(tableClientWidth, intrinsicSum + preferredFill + absorberWidth)
   };
 }
 

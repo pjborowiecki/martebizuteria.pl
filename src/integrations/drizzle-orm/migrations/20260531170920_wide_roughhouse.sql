@@ -1,4 +1,4 @@
-PRAGMA defer_foreign_keys=true;--> statement-breakpoint
+PRAGMA defer_foreign_keys=true;
 CREATE TABLE `__new_user` (
 	`ban_expires` integer,
 	`ban_reason` text,
@@ -18,8 +18,8 @@ CREATE TABLE `__new_user` (
 	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch() * 1000) NOT NULL
 );
---> statement-breakpoint
-INSERT INTO `__new_user`("ban_expires", "ban_reason", "banned", "email", "email_verified", "id", "image", "is_anonymous", "metadata", "name", "phone", "role", "stripe_customer_id", "timezone", "two_factor_enabled", "created_at", "updated_at") SELECT "ban_expires", "ban_reason", "banned", "email", "email_verified", "id", "image", "is_anonymous", "metadata", "name", "phone", CASE WHEN "role" = 'admin' THEN 'admin' ELSE 'customer' END, "stripe_customer_id", "timezone", "two_factor_enabled", "created_at", "updated_at" FROM `user`;--> statement-breakpoint
-DROP TABLE `user`;--> statement-breakpoint
-ALTER TABLE `__new_user` RENAME TO `user`;--> statement-breakpoint
+
+INSERT INTO `__new_user`("ban_expires", "ban_reason", "banned", "email", "email_verified", "id", "image", "is_anonymous", "metadata", "name", "phone", "role", "stripe_customer_id", "timezone", "two_factor_enabled", "created_at", "updated_at") SELECT "ban_expires", "ban_reason", "banned", "email", "email_verified", "id", "image", "is_anonymous", "metadata", "name", "phone", CASE WHEN "role" = 'admin' THEN 'admin' ELSE 'customer' END, "stripe_customer_id", "timezone", "two_factor_enabled", "created_at", "updated_at" FROM `user`;
+DROP TABLE `user`;
+ALTER TABLE `__new_user` RENAME TO `user`;
 CREATE UNIQUE INDEX `user_email_unique` ON `user` (`email`);

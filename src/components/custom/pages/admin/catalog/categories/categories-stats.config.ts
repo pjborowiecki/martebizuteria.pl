@@ -1,7 +1,7 @@
 import { CheckCircle2, FolderTree, type LucideIcon, Package, PencilLine } from "lucide-react";
 
-import { CATEGORY_STATUS } from "~/src/modules/category/category.constants";
-import type { Category } from "~/src/modules/category/category.types";
+import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants";
+import type { Category } from "~/src/modules/product-category/product-category.types";
 
 export type CategoryStatKey = keyof Category["stats"];
 

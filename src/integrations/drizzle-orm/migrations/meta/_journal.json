@@ -218,6 +218,104 @@
       "when": 1780568655240,
       "tag": "20260604102415_mighty_stepford_cuckoos",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1780575600000,
+      "tag": "20260604150000_product_drop_seo_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1780576200000,
+      "tag": "20260604160000_catalog_attributes_and_product_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1780576800000,
+      "tag": "20260604170000_product_catalog_schema_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1780597093993,
+      "tag": "20260604181813_supreme_night_nurse",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1780684800000,
+      "tag": "20260605120000_attribute_titles_and_allowed_values",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1780771200000,
+      "tag": "20260606120000_rename_attribute_to_product_attribute",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1780615795396,
+      "tag": "20260604232955_curved_wallow",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "6",
+      "when": 1780780800000,
+      "tag": "20260605140000_catalog_plp_and_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1780662624624,
+      "tag": "20260605123024_sparkling_umar",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1780669530404,
+      "tag": "20260605142530_dapper_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
+      "when": 1780848100000,
+      "tag": "20260607140000_repair_category_collection_locale_maps",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1780936800000,
+      "tag": "20260608140000_product_rank",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1780940400000,
+      "tag": "20260608150000_product_drop_weight",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1780735705960,
+      "tag": "20260606084825_fuzzy_miek",
+      "breakpoints": true
     }
   ]
 }

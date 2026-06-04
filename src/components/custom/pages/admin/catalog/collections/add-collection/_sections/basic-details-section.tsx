@@ -1,23 +1,28 @@
-import { type JSX, useCallback, useState } from "react";
+import { type ChangeEvent, type JSX, useCallback, useMemo, useState } from "react";
 
 import { Info } from "lucide-react";
+import { useController } from "react-hook-form";
 import { useTranslations } from "use-intl";
 
-import {
-  CollectionSlugField,
-  CollectionTextField,
-  CollectionTextareaField
-} from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-fields";
+import { Field } from "~/src/components/shadcn/field";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "~/src/components/shadcn/input-group";
+
 import { useCollectionForm } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-provider";
 import { CollectionFormSection } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-section";
-import { slugify } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form.utils";
-import { CatalogFormReadOnlyField } from "~/src/components/custom/pages/admin/catalog/components/catalog-form-read-only-field";
-import { CATALOG_FORM_DESCRIPTION_TEXTAREA_CLASS } from "~/src/components/custom/pages/admin/catalog/components/catalog-form.styles";
+import { CatalogFormFieldError } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-field-error";
+import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-field-label";
+import { CatalogFormReadOnlyField } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-read-only-field";
+import {
+  CollectionCatalogLocaleFormField,
+  CollectionCatalogLocaleTextareaFormField,
+  type CatalogLocaleFieldsCopy
+} from "~/src/components/custom/pages/admin/catalog/form/components/catalog-locale-fields";
+import { catalogFieldStringValue } from "~/src/components/custom/pages/admin/catalog/form/lib/catalog-form.utils";
+import { normalizeSlugInput, slugify } from "~/src/components/custom/pages/admin/catalog/form/lib/catalog-slug.utils";
 
-import { COLLECTION_COLUMN_LENGTH } from "~/src/modules/collection/collection.constants";
+import { COLLECTION_COLUMN_LENGTH, COLLECTION_FORM_VALIDATION_KEYS } from "~/src/modules/product-collection/product-collection.constants";
 
 interface BasicDetailsSectionProps {
-  /** Row id from the sheet (edit mode); preferred over form context when both are set. */
   readonly recordId?: string;
 }
 
@@ -25,11 +30,30 @@ export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionPr
   const t = useTranslations("pages.admin.catalog.collections");
   const { collectionId, control, isPending, mode, setValue } = useCollectionForm();
   const displayId = recordId ?? (mode === "edit" ? collectionId : undefined);
-
-  // The handle tracks the title until the user takes manual control of it.
+  const validationKeySet = useMemo(() => new Set<string>(Object.values(COLLECTION_FORM_VALIDATION_KEYS)), []);
+  const { field: handleField, fieldState: handleFieldState } = useController({ control, name: "handle" });
+  const handleValue = catalogFieldStringValue(handleField.value);
   const [handleLocked, setHandleLocked] = useState(false);
 
-  const handleTitleChange = useCallback(
+  const titleCopy = useMemo<CatalogLocaleFieldsCopy>(
+    () => ({
+      hint: (locale) => t(`form.hints.nameLocale.${locale}`),
+      label: (locale) => t(`form.nameLocale.${locale}`),
+      placeholder: (locale) => t(`form.nameLocalePlaceholder.${locale}`)
+    }),
+    [t]
+  );
+
+  const descriptionCopy = useMemo<CatalogLocaleFieldsCopy>(
+    () => ({
+      hint: (locale) => t(`form.hints.descriptionLocale.${locale}`),
+      label: (locale) => t(`form.descriptionLocale.${locale}`),
+      placeholder: (locale) => t(`form.descriptionLocalePlaceholder.${locale}`)
+    }),
+    [t]
+  );
+
+  const syncHandleFromTitle = useCallback(
     (value: string) => {
       if (!handleLocked) {
         setValue("handle", slugify(value), { shouldValidate: false });
@@ -38,45 +62,70 @@ export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionPr
     [handleLocked, setValue]
   );
 
-  const lockHandle = useCallback(() => {
-    setHandleLocked(true);
-  }, []);
+  const handleSlugInputChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setHandleLocked(true);
+      handleField.onChange(normalizeSlugInput(event.target.value));
+    },
+    [handleField]
+  );
+
+  const handleSlugBlur = useCallback(() => {
+    handleField.onChange(slugify(handleValue));
+  }, [handleField, handleValue]);
 
   return (
     <CollectionFormSection icon={Info} title={t("form.sectionBasic")}>
       {displayId !== undefined && displayId !== "" && (
-        <CatalogFormReadOnlyField label={t("form.id")} hint={t("form.hints.id")} value={displayId} />
+        <CatalogFormReadOnlyField hint={t("form.hints.id")} label={t("form.id")} value={displayId} />
       )}
-      <CollectionTextField
+
+      <CollectionCatalogLocaleFormField
         control={control}
-        name="title"
-        label={t("form.name")}
-        labelHint={t("form.hints.name")}
-        placeholder={t("form.namePlaceholder")}
-        counterMax={COLLECTION_COLUMN_LENGTH.title}
+        copy={titleCopy}
         disabled={isPending}
-        onValueChange={handleTitleChange}
+        maxLength={COLLECTION_COLUMN_LENGTH.title}
+        name="titles"
+        onDefaultLocaleChange={syncHandleFromTitle}
+        required
+        translateValidation={t}
+        validationKeySet={validationKeySet}
       />
-      <CollectionSlugField
+
+      <Field className="gap-2" data-invalid={handleFieldState.invalid}>
+        <CatalogFormFieldLabel
+          counter={`${handleValue.length}/${COLLECTION_COLUMN_LENGTH.handle}`}
+          hint={t("form.hints.slug")}
+          label={t("form.slug")}
+          required
+        />
+        <InputGroup variant="sheet">
+          <InputGroupAddon className="border-r border-border pr-3 text-[13px] font-normal text-muted-foreground">
+            /collections/
+          </InputGroupAddon>
+          <InputGroupInput
+            {...handleField}
+            aria-invalid={handleFieldState.invalid}
+            disabled={isPending}
+            maxLength={COLLECTION_COLUMN_LENGTH.handle}
+            onBlur={handleSlugBlur}
+            onChange={handleSlugInputChange}
+            placeholder="collection-name"
+            value={handleValue}
+          />
+        </InputGroup>
+        <CatalogFormFieldError fieldState={handleFieldState} translate={t} validationKeySet={validationKeySet} />
+      </Field>
+
+      <CollectionCatalogLocaleTextareaFormField
         control={control}
-        name="handle"
-        label={t("form.slug")}
-        labelHint={t("form.hints.slug")}
-        counterMax={COLLECTION_COLUMN_LENGTH.handle}
-        normalize={slugify}
-        onManualEdit={lockHandle}
+        copy={descriptionCopy}
         disabled={isPending}
-      />
-      <CollectionTextareaField
-        control={control}
-        name="description"
-        label={t("form.description")}
-        labelHint={t("form.hints.description")}
-        placeholder={t("form.descriptionPlaceholder")}
-        counterMax={COLLECTION_COLUMN_LENGTH.description}
-        className={CATALOG_FORM_DESCRIPTION_TEXTAREA_CLASS}
+        maxLength={COLLECTION_COLUMN_LENGTH.description}
+        name="descriptions"
         rows={6}
-        disabled={isPending}
+        translateValidation={t}
+        validationKeySet={validationKeySet}
       />
     </CollectionFormSection>
   );

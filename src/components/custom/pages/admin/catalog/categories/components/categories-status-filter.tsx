@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 
 import { categoriesDataGrid } from "~/src/components/custom/pages/admin/catalog/categories/utils/categories-data-grid";
 
-import { CATEGORY_STATUS } from "~/src/modules/category/category.constants";
+import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants";
 
 const ALL_VALUE = "all";
 

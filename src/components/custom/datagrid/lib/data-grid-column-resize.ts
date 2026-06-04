@@ -1,9 +1,11 @@
 import type { Column, ColumnSizingState, Header, RowData, Table } from "@tanstack/react-table";
 
 import { idleColumnSizingInfo } from "~/src/components/custom/datagrid/lib/data-grid-column-sizing-info";
+import { getDataGridLayoutColumnWidth } from "~/src/components/custom/datagrid/lib/data-grid-column-widths";
 import {
   columnFillsRemainingWidth,
   columnFillUsesFlexWidth,
+  readColumnDesignWidth,
   resolveDataGridTableLayout
 } from "~/src/components/custom/datagrid/lib/data-grid-table-layout";
 import { getDataGridLayoutColumns, measureDataGridContainerWidth } from "~/src/components/custom/datagrid/lib/data-grid.utils";
@@ -164,7 +166,10 @@ function beginColumnResizeContext<TData extends RowData>(header: Header<TData, u
   const measuredWidth = isFillColumn ? measureHeaderCellWidth(event) : undefined;
   const usesFlexFill = columnFillUsesFlexWidth({ column, columnSizing });
   const layout = resolveDataGridTableLayout({ columnSizing, columns, tableClientWidth: containerWidth });
-  const startWidth = usesFlexFill ? (measuredWidth ?? layout?.fillColumnWidth ?? column.getSize()) : (measuredWidth ?? column.getSize());
+  const layoutWidth = getDataGridLayoutColumnWidth(column, columnSizing);
+  const startWidth = usesFlexFill
+    ? (measuredWidth ?? layout?.fillColumnWidth ?? readColumnDesignWidth(column))
+    : (measuredWidth ?? layoutWidth);
   const direction = table.options.columnResizeDirection === "rtl" ? RESIZE_DIRECTION_RTL : RESIZE_DIRECTION_LTR;
 
   if (isFillColumn && usesFlexFill) {

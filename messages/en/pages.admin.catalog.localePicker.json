@@ -1,0 +1,12 @@
+{
+  "label": "Language",
+  "filledCount": "{filled} of {total} filled",
+  "filledCountHint": "required names in each language",
+  "incompleteHint": "Complete required fields for: {locales}.",
+  "incompleteToastTitle": "Missing translations",
+  "incompleteToastDescription": "Fill in the required name for: {locales}.",
+  "localeNames": {
+    "en": "English",
+    "pl": "Polish"
+  }
+}

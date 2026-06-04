@@ -56,7 +56,7 @@ function AdminCustomerDetailRoute(): JSX.Element {
     <>
       <AdminHeader backHref={CONSTANTS.ROUTES.ADMIN_CUSTOMERS} title={CUSTOMER.id} breadcrumbs={breadcrumbs} actions={headerActions} />
 
-      <div className="flex-1 p-8">
+      <div className="min-h-0 flex-1 overflow-y-auto p-8">
         <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
           {/* ── Main content ── */}
           <div className="space-y-8">

@@ -7,7 +7,8 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState
+  useState,
+  useSyncExternalStore
 } from "react";
 
 import { mergeProps } from "@base-ui/react/merge-props";
@@ -15,6 +16,7 @@ import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 
+import { readSidebarPreference, SIDEBAR_PREFERENCE_CHANGE_EVENT, writeSidebarPreference } from "~/src/lib/sidebar-preference";
 import { cn } from "~/src/lib/utils";
 
 import { Button } from "~/src/components/shadcn/button";
@@ -26,9 +28,23 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/components/shadcn
 
 import { useIsMobile } from "~/src/hooks/use-mobile";
 
-const SIDEBAR_STORAGE_KEY = "sidebar_state";
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_ICON = "4rem";
+
+function subscribeSidebarPreference(onStoreChange: () => void): () => void {
+  globalThis.addEventListener(SIDEBAR_PREFERENCE_CHANGE_EVENT, onStoreChange);
+  return () => {
+    globalThis.removeEventListener(SIDEBAR_PREFERENCE_CHANGE_EVENT, onStoreChange);
+  };
+}
+
+function usePersistedSidebarOpen(defaultOpen: boolean): boolean {
+  return useSyncExternalStore(
+    subscribeSidebarPreference,
+    () => readSidebarPreference(defaultOpen),
+    () => defaultOpen
+  );
+}
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 const SIDEBAR_MOBILE_TITLE = "Sidebar";
 const SIDEBAR_MOBILE_DESCRIPTION = "Displays the mobile sidebar.";
@@ -79,24 +95,17 @@ function SidebarProvider({
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = useState(false);
 
-  // This is the internal state of the sidebar.
-  // We use openProp and setOpenProp for control from outside the component.
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(() => {
-    const persistedOpen = globalThis.localStorage?.getItem(SIDEBAR_STORAGE_KEY);
-    return persistedOpen === null ? defaultOpen : persistedOpen === "1";
-  });
-  const open = openProp ?? uncontrolledOpen;
+  const persistedOpen = usePersistedSidebarOpen(defaultOpen);
+  const open = openProp ?? persistedOpen;
 
   const setOpen = useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value;
       if (setOpenProp) {
         setOpenProp(openState);
-      } else {
-        setUncontrolledOpen(openState);
       }
 
-      globalThis.localStorage?.setItem(SIDEBAR_STORAGE_KEY, openState ? "1" : "0");
+      writeSidebarPreference(openState);
     },
     [setOpenProp, open]
   );
@@ -605,7 +614,7 @@ function SidebarMenuSub({ className, ...props }: ComponentProps<"ul">): JSX.Elem
       data-slot="sidebar-menu-sub"
       data-sidebar="menu-sub"
       className={cn(
-        "mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5 group-data-[collapsible=icon]:hidden",
+        "mr-0 ml-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border py-0.5 pr-0 pl-2.5 group-data-[collapsible=icon]:hidden",
         className
       )}
       {...props}
@@ -618,7 +627,7 @@ function SidebarMenuSubItem({ className, ...props }: ComponentProps<"li">): JSX.
     <li
       data-slot="sidebar-menu-sub-item"
       data-sidebar="menu-sub-item"
-      className={cn("group/menu-sub-item relative", className)}
+      className={cn("group/menu-sub-item relative w-full", className)}
       {...props}
     />
   );
@@ -640,7 +649,7 @@ function SidebarMenuSubButton({
     props: mergeProps<"a">(
       {
         className: cn(
-          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-lg px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-xs data-[size=sm]:text-xs data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
+          "flex h-7 w-full min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-lg px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-xs data-[size=sm]:text-xs data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
           className
         )
       },

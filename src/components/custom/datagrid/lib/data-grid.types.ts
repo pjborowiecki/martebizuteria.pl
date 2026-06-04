@@ -1,7 +1,17 @@
 import type { RowData, Table } from "@tanstack/react-table";
 
 /** Loading placeholder shape for a datagrid body cell (set per column in `meta`). */
-export type DataGridSkeletonVariant = "badge" | "checkbox" | "date" | "icon" | "iconEnd" | "number" | "text" | "thumbnail" | "title";
+export type DataGridSkeletonVariant =
+  | "badge"
+  | "checkbox"
+  | "date"
+  | "icon"
+  | "iconEnd"
+  | "number"
+  | "recordId"
+  | "text"
+  | "thumbnail"
+  | "title";
 
 /**
  * Per-column presentation hints honoured by the generic header/body cells.
@@ -15,6 +25,8 @@ declare module "@tanstack/react-table" {
     readonly fillsRemainingWidth?: boolean;
     /** Expands when the fill column is user-sized so the table still spans the container. */
     readonly absorbsTrailingSlack?: boolean;
+    /** Hidden from header/body layout; kept on the table model for filters only. */
+    readonly filterOnly?: boolean;
     /** Clicks on this column do not fire `onRowClick`. */
     readonly preventRowClick?: boolean;
     readonly skeletonVariant?: DataGridSkeletonVariant;
@@ -56,6 +68,8 @@ export interface DataGridContextValue<TData extends RowData> {
   readonly persistenceKey: string;
   /** When set, clicking a row opens detail/edit unless the click target is interactive. */
   readonly onRowClick?: (row: TData) => void;
+  /** Optional warm-up before a row click (e.g. prefetch edit payload on pointer enter). */
+  readonly onRowPointerEnter?: (row: TData) => void;
   readonly hasPreferenceOverrides: boolean;
   readonly isLoading: boolean;
   readonly resetPreferences: () => void;

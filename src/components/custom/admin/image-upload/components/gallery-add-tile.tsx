@@ -14,12 +14,13 @@ import { Spinner } from "~/src/components/shadcn/spinner";
 export interface GalleryAddTileProps {
   readonly disabled: boolean;
   readonly isUploading: boolean;
+  readonly layout?: "grid-tile" | "dropzone";
   readonly onFiles: (files: readonly File[]) => void;
 }
 
 /** The "add more" tile of the gallery: click-or-drop to append multiple files. */
-export function GalleryAddTile({ disabled, isUploading, onFiles }: GalleryAddTileProps): JSX.Element {
-  const t = useTranslations("pages.admin.media");
+export function GalleryAddTile({ disabled, isUploading, layout = "grid-tile", onFiles }: GalleryAddTileProps): JSX.Element {
+  const t = useTranslations("pages.admin");
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
 
@@ -62,36 +63,67 @@ export function GalleryAddTile({ disabled, isUploading, onFiles }: GalleryAddTil
     [disabled, onFiles]
   );
 
+  const isDropzone = layout === "dropzone";
+  let label = t("media.addMore");
+  if (isUploading) {
+    label = t("media.uploading");
+  } else if (isDropzone) {
+    label = t("media.cta");
+  }
+  const hint = isDropzone ? t("media.hint") : undefined;
+
+  const pickerButton = (
+    <Button
+      variant="outline"
+      onClick={openPicker}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      disabled={disabled}
+      className={cn(
+        "flex-col whitespace-normal shadow-none",
+        isDropzone
+          ? "h-auto w-full gap-2 rounded-md border border-dashed border-border bg-background px-6 py-9 text-center hover:border-foreground/50 hover:bg-muted/25"
+          : "size-full gap-1.5 rounded-lg border-dashed border-border/60 bg-muted/30 p-3 text-center hover:border-foreground/40 hover:bg-muted/50",
+        isDraggingFile && (isDropzone ? "border-foreground bg-muted/30" : "border-foreground/60 bg-muted/60")
+      )}
+    >
+      {isUploading && <Spinner className={cn("text-muted-foreground", isDropzone ? "size-6" : "size-5")} />}
+      {!isUploading && (
+        <ImagePlus aria-hidden className={cn("text-muted-foreground", isDropzone ? "size-6" : "size-5")} strokeWidth={1.5} />
+      )}
+      <span className={cn("font-medium text-muted-foreground", isDropzone ? "text-[13px]" : "text-[11px]")}>{label}</span>
+      {hint !== undefined && <span className="text-[11px] text-muted-foreground/70">{hint}</span>}
+    </Button>
+  );
+
+  const fileInput = (
+    <Input
+      ref={inputRef}
+      type="file"
+      accept={ACCEPTED_IMAGE_ACCEPT_ATTR}
+      multiple
+      className="sr-only"
+      tabIndex={-1}
+      aria-hidden
+      disabled={disabled}
+      onChange={handleInputChange}
+    />
+  );
+
+  if (isDropzone) {
+    return (
+      <div className="w-full">
+        {fileInput}
+        {pickerButton}
+      </div>
+    );
+  }
+
   return (
     <li className="aspect-square">
-      <Input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPTED_IMAGE_ACCEPT_ATTR}
-        multiple
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden
-        disabled={disabled}
-        onChange={handleInputChange}
-      />
-      <Button
-        variant="outline"
-        onClick={openPicker}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        disabled={disabled}
-        className={cn(
-          "size-full flex-col gap-1.5 rounded-lg border-dashed border-border/60 bg-muted/30 p-3 text-center whitespace-normal",
-          "hover:border-foreground/40 hover:bg-muted/50",
-          isDraggingFile && "border-foreground/60 bg-muted/60"
-        )}
-      >
-        {isUploading && <Spinner className="size-5 text-muted-foreground" />}
-        {!isUploading && <ImagePlus aria-hidden className="size-5 text-muted-foreground" strokeWidth={1.5} />}
-        <span className="text-[11px] font-medium text-muted-foreground">{isUploading ? t("uploading") : t("addMore")}</span>
-      </Button>
+      {fileInput}
+      {pickerButton}
     </li>
   );
 }

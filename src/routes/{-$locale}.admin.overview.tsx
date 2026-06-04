@@ -20,7 +20,7 @@ function AdminOverviewPage(): JSX.Element {
     <>
       <AdminHeader title={t("dashboard.title")} description={t("dashboard.description")} />
 
-      <div className="flex-1 space-y-6 p-8">
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-8">
         <DashboardStats />
         <DashboardCharts />
         <div className="grid gap-5 xl:grid-cols-4">

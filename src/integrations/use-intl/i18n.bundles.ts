@@ -10,9 +10,12 @@ import enEmails from "~/messages/en/emails.json";
 import enPagesAbout from "~/messages/en/pages.about.json";
 import enPagesAccount from "~/messages/en/pages.account.json";
 import enPagesAccountMeta from "~/messages/en/pages.account.meta.json";
+import enPagesAdminCatalogAttributes from "~/messages/en/pages.admin.catalog.attributes.json";
 import enPagesAdminCatalogCategories from "~/messages/en/pages.admin.catalog.categories.json";
 import enPagesAdminCatalogCollections from "~/messages/en/pages.admin.catalog.collections.json";
 import enPagesAdminCatalog from "~/messages/en/pages.admin.catalog.json";
+import enPagesAdminCatalogLocalePicker from "~/messages/en/pages.admin.catalog.localePicker.json";
+import enPagesAdminCatalogProductsCatalogList from "~/messages/en/pages.admin.catalog.products.catalogList.json";
 import enPagesAdminCatalogProducts from "~/messages/en/pages.admin.catalog.products.json";
 import enPagesAdmin from "~/messages/en/pages.admin.json";
 import enPagesAuthEmail from "~/messages/en/pages.auth.email.json";
@@ -46,9 +49,12 @@ import plEmails from "~/messages/pl/emails.json";
 import plPagesAbout from "~/messages/pl/pages.about.json";
 import plPagesAccount from "~/messages/pl/pages.account.json";
 import plPagesAccountMeta from "~/messages/pl/pages.account.meta.json";
+import plPagesAdminCatalogAttributes from "~/messages/pl/pages.admin.catalog.attributes.json";
 import plPagesAdminCatalogCategories from "~/messages/pl/pages.admin.catalog.categories.json";
 import plPagesAdminCatalogCollections from "~/messages/pl/pages.admin.catalog.collections.json";
 import plPagesAdminCatalog from "~/messages/pl/pages.admin.catalog.json";
+import plPagesAdminCatalogLocalePicker from "~/messages/pl/pages.admin.catalog.localePicker.json";
+import plPagesAdminCatalogProductsCatalogList from "~/messages/pl/pages.admin.catalog.products.catalogList.json";
 import plPagesAdminCatalogProducts from "~/messages/pl/pages.admin.catalog.products.json";
 import plPagesAdmin from "~/messages/pl/pages.admin.json";
 import plPagesAuthEmail from "~/messages/pl/pages.auth.email.json";
@@ -90,9 +96,11 @@ const EN_MESSAGES = {
       ...enPagesAdmin,
       catalog: {
         ...enPagesAdminCatalog,
+        attributes: enPagesAdminCatalogAttributes,
         categories: enPagesAdminCatalogCategories,
         collections: enPagesAdminCatalogCollections,
-        products: enPagesAdminCatalogProducts
+        localePicker: enPagesAdminCatalogLocalePicker,
+        products: { ...enPagesAdminCatalogProducts, catalogList: enPagesAdminCatalogProductsCatalogList }
       }
     },
     auth: {
@@ -138,9 +146,11 @@ const PL_MESSAGES = {
       ...plPagesAdmin,
       catalog: {
         ...plPagesAdminCatalog,
+        attributes: plPagesAdminCatalogAttributes,
         categories: plPagesAdminCatalogCategories,
         collections: plPagesAdminCatalogCollections,
-        products: plPagesAdminCatalogProducts
+        localePicker: plPagesAdminCatalogLocalePicker,
+        products: { ...plPagesAdminCatalogProducts, catalogList: plPagesAdminCatalogProductsCatalogList }
       }
     },
     auth: {

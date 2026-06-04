@@ -10,3 +10,7 @@ if (!(DB instanceof Object)) {
 }
 
 export const db = drizzle(DB, { schema });
+
+type BatchFirstParameter<T extends (...args: never) => unknown> = T extends (first: infer P, ...rest: never[]) => unknown ? P : never;
+
+export type DbBatchInput = BatchFirstParameter<typeof db.batch>;

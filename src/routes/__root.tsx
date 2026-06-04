@@ -15,19 +15,21 @@ import { TranslationsProvider } from "~/src/providers/translations-provider";
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
 
 import type { ImagePrefetchService } from "~/src/lib/_utils/image";
-import { isAdminPathname } from "~/src/lib/admin-route";
-import { DATAGRID_PREFS_INIT_SCRIPT } from "~/src/lib/datagrid-init-script";
-import { adminShellCriticalStyle, THEME_INIT_SCRIPT } from "~/src/lib/theme-init-script";
-import { buildLocalizedUrl, extractLocaleFromPath, getBaseURL } from "~/src/lib/utils";
+import { adminSidebarCollapsedCriticalStyle, SIDEBAR_INIT_SCRIPT } from "~/src/lib/sidebar-preference";
+import { isAdminPathname, buildLocalizedUrl, extractLocaleFromPath, getBaseURL } from "~/src/lib/utils";
 
 import { Toaster } from "~/src/components/shadcn/sonner";
 
 import { VerificationToast } from "~/src/components/custom/pages/auth/verification-toast";
 
+import { DATAGRID_PREFS_INIT_SCRIPT } from "~/scripts/datagrid-init-script";
+import { adminShellCriticalStyle, THEME_INIT_SCRIPT } from "~/scripts/theme-init-script";
+
 import "~/src/styles/globals.css";
 
 const THEME_INIT_SCRIPT_HTML = { __html: THEME_INIT_SCRIPT };
 const DATAGRID_PREFS_INIT_SCRIPT_HTML = { __html: DATAGRID_PREFS_INIT_SCRIPT };
+const SIDEBAR_INIT_SCRIPT_HTML = { __html: SIDEBAR_INIT_SCRIPT };
 
 interface RouterContext {
   imagePrefetchService: ImagePrefetchService;
@@ -49,7 +51,7 @@ const Route = createRootRouteWithContext<RouterContext>()({
 
     const canonicalUrl = buildLocalizedUrl(appUrl, path, locale);
     const xDefaultUrl = buildLocalizedUrl(appUrl, path, CONSTANTS.DEFAULT_LOCALE);
-    const adminCriticalStyle = adminShellCriticalStyle(path);
+    const adminCriticalStyle = [adminShellCriticalStyle(path), adminSidebarCollapsedCriticalStyle(path)].filter(Boolean).join("");
 
     return {
       links: [
@@ -85,7 +87,7 @@ const Route = createRootRouteWithContext<RouterContext>()({
         { content: locale, property: "og:locale" },
         { content: "summary_large_image", name: "twitter:card" }
       ],
-      styles: adminCriticalStyle === undefined ? undefined : [{ children: adminCriticalStyle }]
+      styles: adminCriticalStyle === "" ? undefined : [{ children: adminCriticalStyle }]
     };
   },
   loader: async ({ context, location }) => {
@@ -124,6 +126,7 @@ function RootDocument({ children, internalPathname, locale }: Readonly<{ childre
     <html lang={locale} suppressHydrationWarning {...(isAdmin ? { "data-admin-shell": "" } : {})}>
       <head>
         <script dangerouslySetInnerHTML={THEME_INIT_SCRIPT_HTML} />
+        <script dangerouslySetInnerHTML={SIDEBAR_INIT_SCRIPT_HTML} />
         <script dangerouslySetInnerHTML={DATAGRID_PREFS_INIT_SCRIPT_HTML} />
         <HeadContent />
       </head>

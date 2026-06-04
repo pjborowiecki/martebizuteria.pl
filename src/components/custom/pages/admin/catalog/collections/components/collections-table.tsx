@@ -2,9 +2,8 @@ import { type JSX, useCallback, useMemo } from "react";
 
 import { useTranslations } from "use-intl";
 
-import { Button } from "~/src/components/shadcn/button";
-
 import { DataGridShell } from "~/src/components/custom/datagrid/components/data-grid-shell";
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/components/custom/pages/admin/admin-layout.styles";
 import { CollectionSheet } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-sheet";
 import { CollectionsBulkActions } from "~/src/components/custom/pages/admin/catalog/collections/components/collections-bulk-actions";
 import { CollectionsExportAction } from "~/src/components/custom/pages/admin/catalog/collections/components/collections-export-action";
@@ -18,6 +17,7 @@ import {
   useCollectionsSheetState
 } from "~/src/components/custom/pages/admin/catalog/collections/hooks/use-collections-sheet";
 import { collectionsDataGrid } from "~/src/components/custom/pages/admin/catalog/collections/utils/collections-data-grid";
+import { CatalogToolbarAddButton } from "~/src/components/custom/pages/admin/catalog/toolbar/components/catalog-toolbar-add-button";
 
 const { Body, Pagination, Provider, Toolbar } = collectionsDataGrid;
 
@@ -25,24 +25,10 @@ function CollectionsTableToolbarActions(): JSX.Element {
   const t = useTranslations("pages.admin.catalog.collections");
   const { openCreate } = useCollectionsSheet();
 
-  const addButton = useMemo(
-    () => (
-      <Button
-        type="button"
-        size="sm"
-        className="h-9 cursor-pointer bg-foreground px-4 text-[13px] text-background shadow-none transition-colors hover:bg-foreground/80"
-        onClick={openCreate}
-      >
-        {t("actions.addCollection")}
-      </Button>
-    ),
-    [openCreate, t]
-  );
-
   return (
     <>
       <CollectionsBulkActions />
-      {addButton}
+      <CatalogToolbarAddButton onClick={openCreate}>{t("actions.addCollection")}</CatalogToolbarAddButton>
     </>
   );
 }
@@ -65,7 +51,7 @@ export function CollectionsTableContent(): JSX.Element {
   return (
     <>
       <Provider value={grid}>
-        <div className="space-y-5">
+        <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>
           <CollectionsStats />
           <DataGridShell>
             <Toolbar actions={toolbarActions}>

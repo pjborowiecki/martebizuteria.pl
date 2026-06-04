@@ -1,9 +1,12 @@
 import { type ComponentProps, type JSX, useMemo } from "react";
 
 import { Select as SelectPrimitive } from "@base-ui/react/select";
+import { cva, type VariantProps } from "class-variance-authority";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 import { cn } from "~/src/lib/utils";
+
+import { sheetSelectTriggerClassName } from "~/src/components/shadcn/sheet-control.styles";
 
 const DEFAULT_SIDE_OFFSET = 4;
 const DEFAULT_ALIGN_OFFSET = 0;
@@ -18,9 +21,24 @@ function SelectValue({ className, ...props }: Readonly<SelectPrimitive.Value.Pro
   return <SelectPrimitive.Value data-slot="select-value" className={cn("flex flex-1 text-left", className)} {...props} />;
 }
 
-interface SelectTriggerProps extends SelectPrimitive.Trigger.Props {
-  readonly size?: "sm" | "default";
-}
+const selectTriggerVariants = cva(
+  "flex items-center justify-between gap-1.5 whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  {
+    defaultVariants: {
+      size: "default"
+    },
+    variants: {
+      size: {
+        default:
+          "h-8 w-fit rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-xs focus-visible:border-ring data-placeholder:text-muted-foreground dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4",
+        sheet: sheetSelectTriggerClassName,
+        sm: "h-7 w-fit rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-xs focus-visible:border-ring data-placeholder:text-muted-foreground dark:bg-input/30 dark:hover:bg-input/50 [&_svg:not([class*='size-'])]:size-4"
+      }
+    }
+  }
+);
+
+interface SelectTriggerProps extends SelectPrimitive.Trigger.Props, VariantProps<typeof selectTriggerVariants> {}
 
 function SelectTrigger({ className, size = "default", children, ...props }: Readonly<SelectTriggerProps>): JSX.Element {
   const iconEl = useMemo(() => <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />, []);
@@ -29,10 +47,7 @@ function SelectTrigger({ className, size = "default", children, ...props }: Read
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
-      className={cn(
-        "flex w-fit items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-xs whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-lg *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className
-      )}
+      className={cn(selectTriggerVariants({ size }), className)}
       {...props}
     >
       {children}
@@ -90,22 +105,29 @@ function SelectLabel({ className, ...props }: Readonly<SelectPrimitive.GroupLabe
   );
 }
 
-function SelectItem({ className, children, ...props }: Readonly<SelectPrimitive.Item.Props>): JSX.Element {
+interface SelectItemProps extends SelectPrimitive.Item.Props {
+  readonly showIndicator?: boolean;
+}
+
+function SelectItem({ className, children, showIndicator = true, ...props }: Readonly<SelectItemProps>): JSX.Element {
   const indicatorEl = useMemo(() => <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />, []);
 
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-none py-2 pr-8 pl-3 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "relative flex w-full cursor-default items-center gap-2 rounded-none py-2 pl-3 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        showIndicator ? "pr-8" : "pr-3",
         className
       )}
       {...props}
     >
       <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap">{children}</SelectPrimitive.ItemText>
-      <SelectPrimitive.ItemIndicator render={indicatorEl}>
-        <CheckIcon className="pointer-events-none" />
-      </SelectPrimitive.ItemIndicator>
+      {showIndicator && (
+        <SelectPrimitive.ItemIndicator render={indicatorEl}>
+          <CheckIcon className="pointer-events-none" />
+        </SelectPrimitive.ItemIndicator>
+      )}
     </SelectPrimitive.Item>
   );
 }

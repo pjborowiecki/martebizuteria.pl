@@ -23,7 +23,7 @@ const EMPTY_LENGTH = 0;
 
 export function AdminHeader({ actions, backHref, breadcrumbs, description, tabs, title }: Readonly<AdminHeaderProps>): JSX.Element {
   return (
-    <div className={cn("sticky top-0 z-20 flex flex-col", ADMIN_LAYOUT_BG_CLASS)}>
+    <div className={cn("sticky top-0 z-20 flex shrink-0 flex-col", ADMIN_LAYOUT_BG_CLASS)}>
       <header className="flex h-16 shrink-0 items-center gap-4 border-b border-sidebar-border bg-sidebar px-6 text-sidebar-foreground">
         {backHref === undefined ? (
           <SidebarTrigger className="-ml-1 shrink-0 transition-opacity hover:bg-transparent hover:opacity-70" />

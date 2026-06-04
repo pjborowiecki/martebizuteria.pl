@@ -1,4 +1,13 @@
-import { type CSSProperties, type DragEvent, type JSX, useCallback, useMemo } from "react";
+import {
+  type CSSProperties,
+  type DragEvent,
+  type JSX,
+  type MouseEvent,
+  type ReactNode,
+  type TouchEvent,
+  useCallback,
+  useMemo
+} from "react";
 
 import { type Header, type RowData } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
@@ -42,6 +51,52 @@ function SortIcon({ direction }: Readonly<{ direction: false | "asc" | "desc" }>
   return <ChevronsUpDown className="size-3.5 opacity-0 transition-opacity group-hover/head:opacity-70" strokeWidth={2} />;
 }
 
+/** Label area: grab cursor on hover for reorder; right padding keeps the resize hit zone clear. */
+function ColumnReorderHeaderArea({
+  children,
+  columnId,
+  columnReorder,
+  label,
+  leavesRoomForResize
+}: Readonly<{
+  children: ReactNode;
+  columnId: string;
+  columnReorder: ColumnReorderApi;
+  label: string;
+  leavesRoomForResize: boolean;
+}>): JSX.Element {
+  const t = useTranslations("components.datagrid");
+
+  const handleDragStart = useCallback(
+    (event: DragEvent<HTMLFieldSetElement>) => {
+      event.stopPropagation();
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", columnId);
+      columnReorder.onColumnDragStart(columnId);
+    },
+    [columnId, columnReorder]
+  );
+
+  const handleColumnDragEnd = useCallback(() => {
+    columnReorder.onColumnDragEnd();
+  }, [columnReorder]);
+
+  return (
+    <fieldset
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleColumnDragEnd}
+      aria-label={t("reorderColumn", { column: label })}
+      className={cn("m-0 flex min-w-0 flex-1 touch-none items-center border-0 p-0 select-none", {
+        "cursor-grab active:cursor-grabbing": true,
+        "pr-3": leavesRoomForResize
+      })}
+    >
+      {children}
+    </fieldset>
+  );
+}
+
 function ColumnResizeHandle<TData extends RowData>({
   header,
   label
@@ -54,15 +109,25 @@ function ColumnResizeHandle<TData extends RowData>({
     header.column.resetSize();
   }, [header]);
 
+  const handleResizePointerDown = useCallback(
+    (event: MouseEvent<HTMLButtonElement> | TouchEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      event.preventDefault();
+      handleResize(event);
+    },
+    [handleResize]
+  );
+
   return (
     <button
       type="button"
       tabIndex={-1}
-      onMouseDown={handleResize}
-      onTouchStart={handleResize}
+      draggable={false}
+      onMouseDown={handleResizePointerDown}
+      onTouchStart={handleResizePointerDown}
       onDoubleClick={handleResetSize}
       aria-label={t("resizeColumn", { column: label })}
-      className="group/resize absolute top-0 -right-1.5 z-10 flex h-full w-3 cursor-col-resize touch-none justify-center select-none"
+      className="group/resize absolute top-0 -right-1 z-10 flex h-full w-4 cursor-col-resize touch-none justify-center select-none"
     >
       <div
         className={cn("h-full transition-colors", {
@@ -112,15 +177,6 @@ export function DataGridHeaderCell<TData extends RowData>({
     [column]
   );
 
-  const handleDragStart = useCallback(
-    (event: DragEvent<HTMLTableCellElement>) => {
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", column.id);
-      columnReorder.onColumnDragStart(column.id);
-    },
-    [column.id, columnReorder]
-  );
-
   const handleDragEnter = useCallback(() => {
     columnReorder.onColumnDragOver(column.id);
   }, [column.id, columnReorder]);
@@ -143,6 +199,9 @@ export function DataGridHeaderCell<TData extends RowData>({
     sortLabel: t("sortBy", { column: label })
   });
 
+  /** `text-right` on headers clips the label start when the column is narrow; body cells keep alignment via `cellClassName`. */
+  const headClassName = column.columnDef.meta?.headClassName?.replaceAll(/\btext-right\b/gu, "text-left");
+
   return (
     <TableHead
       onDragEnter={canDrag ? handleDragEnter : undefined}
@@ -150,25 +209,29 @@ export function DataGridHeaderCell<TData extends RowData>({
       onDrop={canDrag ? handleDrop : undefined}
       style={headStyle}
       data-pinned={isPinned === false ? undefined : isPinned}
-      className={cn(DATA_GRID_HEADER_CELL_CLASS, isSorted && DATA_GRID_HEADER_CELL_SORTED_CLASS, column.columnDef.meta?.headClassName, {
+      className={cn(DATA_GRID_HEADER_CELL_CLASS, isSorted && DATA_GRID_HEADER_CELL_SORTED_CLASS, headClassName, {
         "bg-muted": isPinned !== false && !isSorted,
         "border-r border-border/60": isPinned === "left" && isLastLeftPinned,
-        "border-r border-border/60 group-[&:last-child]:border-r-0": isPinned === false,
+        "border-r border-border/60 group-last:border-r-0": isPinned === false,
         "border-r-0 border-l border-border/60": isPinned === "right" && isFirstRightPinned,
         "opacity-40": columnReorder.draggedColumnId === column.id,
         "overflow-hidden": isFixedWidth,
-        "sticky z-20": isPinned !== false
+        "sticky top-0 z-30": isPinned !== false
       })}
     >
-      <div
-        draggable={canDrag}
-        onDragStart={canDrag ? handleDragStart : undefined}
-        onDragEnd={canDrag ? columnReorder.onColumnDragEnd : undefined}
-        className={cn("flex items-center", {
-          "cursor-grab active:cursor-grabbing": canDrag
-        })}
-      >
-        {content}
+      <div className="flex min-w-0 items-center">
+        {canDrag ? (
+          <ColumnReorderHeaderArea
+            columnId={column.id}
+            columnReorder={columnReorder}
+            label={label}
+            leavesRoomForResize={column.getCanResize()}
+          >
+            {content}
+          </ColumnReorderHeaderArea>
+        ) : (
+          content
+        )}
       </div>
       {column.getCanResize() && <ColumnResizeHandle header={header} label={label} />}
     </TableHead>

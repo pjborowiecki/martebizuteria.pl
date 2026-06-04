@@ -6,9 +6,12 @@ import type emails from "~/messages/en/emails.json";
 import type pagesAbout from "~/messages/en/pages.about.json";
 import type pagesAccount from "~/messages/en/pages.account.json";
 import type pagesAccountMeta from "~/messages/en/pages.account.meta.json";
+import type pagesAdminCatalogAttributes from "~/messages/en/pages.admin.catalog.attributes.json";
 import type pagesAdminCatalogCategories from "~/messages/en/pages.admin.catalog.categories.json";
 import type pagesAdminCatalogCollections from "~/messages/en/pages.admin.catalog.collections.json";
 import type pagesAdminCatalog from "~/messages/en/pages.admin.catalog.json";
+import type pagesAdminCatalogLocalePicker from "~/messages/en/pages.admin.catalog.localePicker.json";
+import type pagesAdminCatalogProductsCatalogList from "~/messages/en/pages.admin.catalog.products.catalogList.json";
 import type pagesAdminCatalogProducts from "~/messages/en/pages.admin.catalog.products.json";
 import type pagesAdmin from "~/messages/en/pages.admin.json";
 import type pagesAuthEmail from "~/messages/en/pages.auth.email.json";
@@ -50,7 +53,11 @@ export interface Messages {
       readonly catalog: typeof pagesAdminCatalog & {
         readonly categories: typeof pagesAdminCatalogCategories;
         readonly collections: typeof pagesAdminCatalogCollections;
-        readonly products: typeof pagesAdminCatalogProducts;
+        readonly products: typeof pagesAdminCatalogProducts & {
+          readonly catalogList: typeof pagesAdminCatalogProductsCatalogList;
+        };
+        readonly attributes: typeof pagesAdminCatalogAttributes;
+        readonly localePicker: typeof pagesAdminCatalogLocalePicker;
       };
     };
     readonly auth: {

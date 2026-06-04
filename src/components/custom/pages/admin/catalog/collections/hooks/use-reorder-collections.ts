@@ -4,7 +4,7 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { collectionMutations } from "~/src/modules/collection/collection.mutations";
+import { collectionMutations } from "~/src/modules/product-collection/product-collection.mutations";
 
 /**
  * Persists a new collection display order. The list keeps its own optimistic

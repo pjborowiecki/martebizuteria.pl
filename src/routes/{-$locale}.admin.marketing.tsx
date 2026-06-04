@@ -49,7 +49,7 @@ function MarketingPage(): JSX.Element {
     <>
       <AdminHeader title={t("marketing.title")} description={t("marketing.description")} breadcrumbs={bcList} actions={actionButtons} />
 
-      <div className="flex flex-col gap-6 p-8">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-8">
         <MarketingStats />
         <MarketingEngagementChart />
         <MarketingCampaignsTable />

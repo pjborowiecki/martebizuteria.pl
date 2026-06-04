@@ -8,13 +8,38 @@ import { TableCell, TableRow } from "~/src/components/shadcn/table";
 
 import { useDataGridColumnMetrics } from "~/src/components/custom/datagrid/hooks/use-data-grid-column-metrics";
 import { useDataGridLayoutColumns } from "~/src/components/custom/datagrid/hooks/use-data-grid-layout-columns";
-import { DATA_GRID_BODY_CELL_CLASS, DATA_GRID_BODY_ROW_CLASS } from "~/src/components/custom/datagrid/lib/data-grid-body.styles";
 import { buildDataGridCellStyle } from "~/src/components/custom/datagrid/lib/data-grid-cell-style";
 import { consumeDataGridRowClickSuppression } from "~/src/components/custom/datagrid/lib/data-grid-row-click";
 import type { RowReorderApi } from "~/src/components/custom/datagrid/lib/data-grid.types";
 
+/** Skeleton / empty placeholder row count when the grid has no data. */
+export const DATA_GRID_EMPTY_PLACEHOLDER_ROW_COUNT = 5;
+
+/** Center row index for the empty-state message when {@link DATA_GRID_EMPTY_PLACEHOLDER_ROW_COUNT} is 5. */
+export const DATA_GRID_EMPTY_MESSAGE_ROW_INDEX = 2;
+
+/** Fixed inner height for placeholder rows (`p-2` + `h-9` ⇒ 52px row — `min-h` on `<td>` is ignored). */
+export const DATA_GRID_PLACEHOLDER_CELL_INNER_CLASS = "box-border flex h-9 w-full min-w-0 shrink-0 items-center";
+
+/** Locks tbody height when the grid has no rows (5 × 52px). */
+export const DATA_GRID_PLACEHOLDER_TBODY_CLASS = "min-h-[260px]";
+
+export const DATA_GRID_BODY_CELL_CLASS = cn(
+  "border-b border-border/60 bg-card transition-colors group-hover:bg-muted group-data-[state=selected]:bg-muted"
+);
+
+/** Shared with {@link DataGridSkeleton} and {@link DataGridEmptyRow}. */
+export const DATA_GRID_BODY_ROW_CLASS = cn("group border-border/50 transition-colors");
+
+/** Placeholder rows (empty + zero-row skeleton) — no row hover tint on cells. */
+export const DATA_GRID_PLACEHOLDER_BODY_ROW_CLASS = cn(DATA_GRID_BODY_ROW_CLASS, "border-b-0 hover:bg-transparent [&>td]:align-middle");
+
+/** Overrides {@link DATA_GRID_BODY_CELL_CLASS} group-hover so imaginary rows stay flat. */
+export const DATA_GRID_PLACEHOLDER_BODY_CELL_CLASS = cn(DATA_GRID_BODY_CELL_CLASS, "border-b-0 group-hover:bg-card hover:bg-card");
+
 interface DataGridRowProps<TData extends RowData> {
   readonly onRowClick?: (row: TData) => void;
+  readonly onRowPointerEnter?: (row: TData) => void;
   readonly persistenceKey: string;
   readonly row: Row<TData>;
   readonly rowReorder: RowReorderApi | undefined;
@@ -79,6 +104,7 @@ function DataGridCell<TData extends RowData>({
 
 export function DataGridRow<TData extends RowData>({
   onRowClick,
+  onRowPointerEnter,
   persistenceKey,
   row,
   rowReorder,
@@ -126,11 +152,16 @@ export function DataGridRow<TData extends RowData>({
     [onRowClick, row.original]
   );
 
+  const handleRowPointerEnter = useCallback(() => {
+    onRowPointerEnter?.(row.original);
+  }, [onRowPointerEnter, row.original]);
+
   return (
     <TableRow
       data-dragging={isDragging || undefined}
       data-state={row.getIsSelected() ? "selected" : undefined}
       onClick={onRowClick === undefined ? undefined : handleRowClick}
+      onPointerEnter={onRowPointerEnter === undefined ? undefined : handleRowPointerEnter}
       onDragEnter={reorderEnabled ? handleDragEnter : undefined}
       onDragOver={reorderEnabled ? handleDragOver : undefined}
       onDrop={reorderEnabled ? handleDrop : undefined}

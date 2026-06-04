@@ -5,9 +5,10 @@
     "reset": "Przywróć domyślne ustawienia tabeli"
   },
   "sortBy": "Sortuj wg {column}",
+  "reorderColumn": "Przeciągnij, aby zmienić kolejność kolumny {column}",
   "resizeColumn": "Zmień szerokość kolumny {column}",
   "pagination": {
-    "rowsPerPage": "Wierszy na stronę",
+    "rowsPerPage": "Wyników na stronę",
     "page": "Strona {page} z {total}",
     "showing": "{from}–{to} z {count}",
     "first": "Pierwsza strona",

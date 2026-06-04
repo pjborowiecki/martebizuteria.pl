@@ -9,8 +9,8 @@ import {
   useCategoriesSheetState
 } from "~/src/components/custom/pages/admin/catalog/categories/hooks/use-categories-sheet";
 
-import { CATEGORY_QUERY_STALE_MS } from "~/src/modules/category/category.constants";
-import { categoryQueryOptions } from "~/src/modules/category/category.queries";
+import { CATEGORY_QUERY_STALE_MS } from "~/src/modules/product-category/product-category.constants";
+import { categoryQueryOptions } from "~/src/modules/product-category/product-category.queries";
 
 async function prefetchCategoriesQueries(context: { queryClient: QueryClient }): Promise<void> {
   await Promise.all([

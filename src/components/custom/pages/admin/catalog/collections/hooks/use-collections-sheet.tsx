@@ -1,6 +1,6 @@
 import { createContext, type JSX, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 
-import type { Collection } from "~/src/modules/collection/collection.types";
+import type { Collection } from "~/src/modules/product-collection/product-collection.types";
 
 export type CollectionsSheetMode = "closed" | "create" | "edit";
 

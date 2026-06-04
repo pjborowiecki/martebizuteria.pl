@@ -2,9 +2,8 @@ import { type JSX, useCallback, useMemo } from "react";
 
 import { useTranslations } from "use-intl";
 
-import { Button } from "~/src/components/shadcn/button";
-
 import { DataGridShell } from "~/src/components/custom/datagrid/components/data-grid-shell";
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/components/custom/pages/admin/admin-layout.styles";
 import { CategorySheet } from "~/src/components/custom/pages/admin/catalog/categories/add-category/category-sheet";
 import { CategoriesBulkActions } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-bulk-actions";
 import { CategoriesExportAction } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-export-action";
@@ -18,6 +17,7 @@ import {
   useCategoriesSheetState
 } from "~/src/components/custom/pages/admin/catalog/categories/hooks/use-categories-sheet";
 import { categoriesDataGrid } from "~/src/components/custom/pages/admin/catalog/categories/utils/categories-data-grid";
+import { CatalogToolbarAddButton } from "~/src/components/custom/pages/admin/catalog/toolbar/components/catalog-toolbar-add-button";
 
 const { Body, Pagination, Provider, Toolbar } = categoriesDataGrid;
 
@@ -25,24 +25,10 @@ function CategoriesTableToolbarActions(): JSX.Element {
   const t = useTranslations("pages.admin.catalog.categories");
   const { openCreate } = useCategoriesSheet();
 
-  const addButton = useMemo(
-    () => (
-      <Button
-        type="button"
-        size="sm"
-        className="h-9 cursor-pointer bg-foreground px-4 text-[13px] text-background shadow-none transition-colors hover:bg-foreground/80"
-        onClick={openCreate}
-      >
-        {t("actions.addCategory")}
-      </Button>
-    ),
-    [openCreate, t]
-  );
-
   return (
     <>
       <CategoriesBulkActions />
-      {addButton}
+      <CatalogToolbarAddButton onClick={openCreate}>{t("actions.addCategory")}</CatalogToolbarAddButton>
     </>
   );
 }
@@ -65,7 +51,7 @@ export function CategoriesTableContent(): JSX.Element {
   return (
     <>
       <Provider value={grid}>
-        <div className="space-y-5">
+        <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>
           <CategoriesStats />
           <DataGridShell>
             <Toolbar actions={toolbarActions}>

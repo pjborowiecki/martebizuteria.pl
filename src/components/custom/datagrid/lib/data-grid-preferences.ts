@@ -19,12 +19,23 @@ const MIN_SAVED_COLUMN_SIZE = 0;
 /** TanStack row ids also use `id`; catalog tables renamed this column to `recordId`. */
 const LEGACY_RECORD_ID_COLUMN_KEY = "id";
 const RECORD_ID_COLUMN_KEY = "recordId";
+/** Attributes table renamed the title column from `handle` to `title`. */
+const LEGACY_ATTRIBUTE_TITLE_COLUMN_KEY = "handle";
+const ATTRIBUTE_TITLE_COLUMN_KEY = "title";
 
-function migrateLegacyRecordIdPreferenceKey(columnId: string, canonical: ReadonlySet<string>): string {
+function migrateLegacyColumnPreferenceKey(columnId: string, canonical: ReadonlySet<string>): string {
   if (columnId === LEGACY_RECORD_ID_COLUMN_KEY && canonical.has(RECORD_ID_COLUMN_KEY)) {
     return RECORD_ID_COLUMN_KEY;
   }
+  if (columnId === LEGACY_ATTRIBUTE_TITLE_COLUMN_KEY && canonical.has(ATTRIBUTE_TITLE_COLUMN_KEY)) {
+    return ATTRIBUTE_TITLE_COLUMN_KEY;
+  }
   return columnId;
+}
+
+/** Legacy attribute slug column width must not shrink the title column after `handle` → `title`. */
+function skipLegacyColumnSizingMigration(sourceId: string, migratedId: string): boolean {
+  return sourceId === LEGACY_ATTRIBUTE_TITLE_COLUMN_KEY && migratedId === ATTRIBUTE_TITLE_COLUMN_KEY;
 }
 
 function dedupeColumnOrder(order: readonly string[]): string[] {
@@ -141,7 +152,7 @@ export function sanitizeColumnOrder(
   }
 
   const canonicalSet = new Set(canonical);
-  const migrated = dedupeColumnOrder(saved.map((id) => migrateLegacyRecordIdPreferenceKey(id, canonicalSet)));
+  const migrated = dedupeColumnOrder(saved.map((id) => migrateLegacyColumnPreferenceKey(id, canonicalSet)));
   const filtered = migrated.filter((id) => canonicalSet.has(id));
   const withMissing = insertMissingColumnsAtCanonicalPositions(filtered, canonical);
 
@@ -188,8 +199,9 @@ export function sanitizeColumnSizing({
   const next: ColumnSizingState = {};
 
   for (const [id, size] of Object.entries(saved)) {
-    const columnId = migrateLegacyRecordIdPreferenceKey(id, allowed);
+    const columnId = migrateLegacyColumnPreferenceKey(id, allowed);
     if (
+      !skipLegacyColumnSizingMigration(id, columnId) &&
       allowed.has(columnId) &&
       !fixed.has(columnId) &&
       typeof size === "number" &&
@@ -205,17 +217,25 @@ export function sanitizeColumnSizing({
   return clampDataGridColumnSizing(next, columnMinSizes, columnMaxSizes);
 }
 
-export function sanitizeColumnVisibility(
-  saved: VisibilityState | undefined,
-  columnIds: readonly string[],
-  defaults: VisibilityState = {}
-): VisibilityState {
+export interface SanitizeColumnVisibilityInput {
+  readonly columnIds: readonly string[];
+  readonly defaults?: VisibilityState;
+  readonly forcedHiddenColumnIds?: readonly string[];
+  readonly saved?: VisibilityState;
+}
+
+export function sanitizeColumnVisibility({
+  columnIds,
+  defaults = {},
+  forcedHiddenColumnIds = [],
+  saved
+}: SanitizeColumnVisibilityInput): VisibilityState {
   const allowed = new Set(columnIds);
   const next: VisibilityState = {};
 
   if (saved !== undefined) {
     for (const [id, visible] of Object.entries(saved)) {
-      const columnId = migrateLegacyRecordIdPreferenceKey(id, allowed);
+      const columnId = migrateLegacyColumnPreferenceKey(id, allowed);
       if (allowed.has(columnId) && typeof visible === "boolean" && next[columnId] === undefined) {
         next[columnId] = visible;
       }
@@ -225,6 +245,18 @@ export function sanitizeColumnVisibility(
   for (const [id, visible] of Object.entries(defaults)) {
     if (allowed.has(id) && next[id] === undefined) {
       next[id] = visible;
+    }
+  }
+
+  for (const columnId of forcedHiddenColumnIds) {
+    if (allowed.has(columnId)) {
+      next[columnId] = false;
+    }
+  }
+
+  for (const columnId of DATAGRID_UTILITY_COLUMN_IDS) {
+    if (allowed.has(columnId)) {
+      next[columnId] = true;
     }
   }
 
@@ -317,7 +349,7 @@ export function defaultPreferencesSnapshot(
   return {
     columnOrder: sanitizeColumnOrder(undefined, canonicalOrder, pinning),
     columnSizing: {},
-    columnVisibility: sanitizeColumnVisibility(undefined, canonicalOrder, defaultColumnVisibility)
+    columnVisibility: sanitizeColumnVisibility({ columnIds: canonicalOrder, defaults: defaultColumnVisibility })
   };
 }
 
@@ -327,6 +359,7 @@ export interface DataGridPreferencesLoadInput {
   readonly columnMinSizes?: Readonly<Record<string, number>>;
   readonly columnPinning?: DataGridColumnPinningOrder;
   readonly defaultColumnVisibility?: VisibilityState;
+  readonly forcedHiddenColumnIds?: readonly string[];
   readonly lockedColumnIds?: readonly string[];
   readonly persistenceKey: string;
 }
@@ -337,6 +370,7 @@ export function loadDataGridPreferences({
   columnMinSizes = {},
   columnPinning = {},
   defaultColumnVisibility = {},
+  forcedHiddenColumnIds = [],
   lockedColumnIds = [],
   persistenceKey
 }: DataGridPreferencesLoadInput): DataGridPreferencesSnapshot {
@@ -359,7 +393,12 @@ export function loadDataGridPreferences({
   return {
     columnOrder: sanitizeColumnOrder(stored?.columnOrder, canonicalOrder, columnPinning),
     columnSizing,
-    columnVisibility: sanitizeColumnVisibility(stored?.columnVisibility, canonicalOrder, defaultColumnVisibility)
+    columnVisibility: sanitizeColumnVisibility({
+      columnIds: canonicalOrder,
+      defaults: defaultColumnVisibility,
+      forcedHiddenColumnIds,
+      saved: stored?.columnVisibility
+    })
   };
 }
 
@@ -371,4 +410,32 @@ export function prepareDataGridPreferencesSnapshot(
     ...snapshot,
     columnSizing: omitNonResizableColumnSizing(snapshot.columnSizing, lockedColumnIds)
   };
+}
+
+function sameColumnSizing(a: ColumnSizingState, b: ColumnSizingState): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) {
+    return false;
+  }
+
+  return aKeys.every((key) => a[key] === b[key]);
+}
+
+function sameColumnVisibility(a: VisibilityState, b: VisibilityState): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) {
+    return false;
+  }
+
+  return aKeys.every((key) => a[key] === b[key]);
+}
+
+export function sameDataGridPreferencesSnapshot(a: DataGridPreferencesSnapshot, b: DataGridPreferencesSnapshot): boolean {
+  return (
+    sameOrder(a.columnOrder, b.columnOrder) &&
+    sameColumnSizing(a.columnSizing, b.columnSizing) &&
+    sameColumnVisibility(a.columnVisibility, b.columnVisibility)
+  );
 }

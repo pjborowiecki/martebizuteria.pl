@@ -13,7 +13,9 @@ interface DataGridTableBodyProps<TData extends RowData> {
   readonly columns: Column<TData>[];
   readonly emptyMessage: string;
   readonly isLoading: boolean;
+  readonly isPlaceholderBody: boolean;
   readonly onRowClick?: (row: TData) => void;
+  readonly onRowPointerEnter?: (row: TData) => void;
   readonly persistenceKey: string;
   readonly rowReorder: RowReorderApi | undefined;
   readonly rows: Row<TData>[];
@@ -26,7 +28,9 @@ export function DataGridTableBody<TData extends RowData>({
   columns,
   emptyMessage,
   isLoading,
+  isPlaceholderBody,
   onRowClick,
+  onRowPointerEnter,
   persistenceKey,
   rowReorder,
   rows,
@@ -35,7 +39,15 @@ export function DataGridTableBody<TData extends RowData>({
   visibleColumnCount
 }: DataGridTableBodyProps<TData>): JSX.Element | JSX.Element[] {
   if (isLoading) {
-    return <DataGridSkeleton rowCount={skeletonRowCount} columns={columns} persistenceKey={persistenceKey} table={table} />;
+    return (
+      <DataGridSkeleton
+        columns={columns}
+        isPlaceholderBody={isPlaceholderBody}
+        persistenceKey={persistenceKey}
+        rowCount={skeletonRowCount}
+        table={table}
+      />
+    );
   }
 
   if (rows.length === NO_ROWS) {
@@ -43,6 +55,14 @@ export function DataGridTableBody<TData extends RowData>({
   }
 
   return rows.map((row) => (
-    <DataGridRow key={row.id} row={row} rowReorder={rowReorder} persistenceKey={persistenceKey} table={table} onRowClick={onRowClick} />
+    <DataGridRow
+      key={row.id}
+      row={row}
+      rowReorder={rowReorder}
+      persistenceKey={persistenceKey}
+      table={table}
+      onRowClick={onRowClick}
+      onRowPointerEnter={onRowPointerEnter}
+    />
   ));
 }

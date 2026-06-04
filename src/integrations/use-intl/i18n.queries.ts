@@ -21,6 +21,6 @@ export const messagesQueryOptions = (locale: Locale) =>
   queryOptions({
     gcTime: Infinity,
     queryFn: () => fetchMessages({ data: locale }),
-    queryKey: CONSTANTS.QUERY_KEYS.MESSAGES.byLocale(locale),
+    queryKey: [...CONSTANTS.QUERY_KEYS.MESSAGES.BY_LOCALE, locale] as const,
     staleTime: Infinity
   });

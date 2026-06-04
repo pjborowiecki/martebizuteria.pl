@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useMemo } from "react";
+import { type JSX, useCallback, useEffect, useMemo } from "react";
 
 import type { RowData, Table } from "@tanstack/react-table";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
@@ -7,14 +7,15 @@ import { useTranslations } from "use-intl";
 import { Button } from "~/src/components/shadcn/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/components/shadcn/select";
 
+import {
+  DATA_GRID_PAGE_SIZE_OPTIONS,
+  isDataGridPageSize,
+  normalizeDataGridPageSize
+} from "~/src/components/custom/datagrid/lib/data-grid-pagination.constants";
+
 const FIRST_PAGE = 0;
 const PAGE_OFFSET = 1;
 const NO_ROWS = 0;
-const PAGE_SIZE_SM = 10;
-const PAGE_SIZE_MD = 20;
-const PAGE_SIZE_LG = 30;
-const PAGE_SIZE_XL = 50;
-const PAGE_SIZE_OPTIONS = [PAGE_SIZE_SM, PAGE_SIZE_MD, PAGE_SIZE_LG, PAGE_SIZE_XL] as const;
 
 interface DataGridPaginationProps<TData extends RowData> {
   readonly table: Table<TData>;
@@ -29,12 +30,21 @@ export function DataGridPagination<TData extends RowData>({ table }: DataGridPag
   const from = totalRows === NO_ROWS ? NO_ROWS : pageIndex * pageSize + PAGE_OFFSET;
   const to = Math.min((pageIndex + PAGE_OFFSET) * pageSize, totalRows);
 
-  const sizeOptions = useMemo(() => PAGE_SIZE_OPTIONS.map((size) => ({ label: String(size), value: String(size) })), []);
+  const sizeOptions = useMemo(() => DATA_GRID_PAGE_SIZE_OPTIONS.map((size) => ({ label: String(size), value: String(size) })), []);
+
+  useEffect(() => {
+    if (!isDataGridPageSize(pageSize)) {
+      table.setPageSize(normalizeDataGridPageSize(pageSize));
+    }
+  }, [pageSize, table]);
 
   const handlePageSizeChange = useCallback(
     (value: string | null) => {
       if (value !== null) {
-        table.setPageSize(Number(value));
+        const nextPageSize = Number(value);
+        if (isDataGridPageSize(nextPageSize)) {
+          table.setPageSize(nextPageSize);
+        }
       }
     },
     [table]
@@ -54,12 +64,12 @@ export function DataGridPagination<TData extends RowData>({ table }: DataGridPag
   }, [table, pageCount]);
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border/60 bg-transparent px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex shrink-0 flex-col gap-3 border-t border-border/60 bg-transparent px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <span className="whitespace-nowrap">{t("pagination.rowsPerPage")}</span>
           <Select items={sizeOptions} value={String(pageSize)} onValueChange={handlePageSizeChange}>
-            <SelectTrigger size="sm" className="w-16">
+            <SelectTrigger size="sm" className="w-[4.25rem]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

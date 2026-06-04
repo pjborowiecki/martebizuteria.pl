@@ -22,6 +22,10 @@ import {
 import { useColumnReorder } from "~/src/components/custom/datagrid/hooks/use-column-reorder";
 import { useDataGridPreferences } from "~/src/components/custom/datagrid/hooks/use-data-grid-preferences";
 import { DEFAULT_COLUMN_SIZING_INFO } from "~/src/components/custom/datagrid/lib/data-grid-column-sizing-info";
+import {
+  DATA_GRID_DEFAULT_PAGE_SIZE,
+  normalizeDataGridPageSize
+} from "~/src/components/custom/datagrid/lib/data-grid-pagination.constants";
 import type { ColumnReorderApi } from "~/src/components/custom/datagrid/lib/data-grid.types";
 import {
   buildDataGridColumnMaxSizes,
@@ -30,7 +34,6 @@ import {
 } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 
 const FIRST_PAGE_INDEX = 0;
-const DEFAULT_PAGE_SIZE = 10;
 const MIN_COLUMN_SIZE = 36;
 
 export interface UseDataGridInstanceOptions<TData extends RowData> {
@@ -43,10 +46,17 @@ export interface UseDataGridInstanceOptions<TData extends RowData> {
   readonly initialColumnPinning?: ColumnPinningState;
   /** Columns hidden until toggled on (e.g. `{ editedAt: false }`). */
   readonly defaultColumnVisibility?: VisibilityState;
+  /** Filter-only columns that must never render (overrides saved visibility). */
+  readonly forcedHiddenColumnIds?: readonly string[];
   /** Stable id for localStorage (e.g. `admin.catalog.collections`). */
   readonly persistenceKey: string;
   /** Overrides default `includesString` (e.g. catalog tables that search handle + status labels). */
   readonly globalFilterFn?: FilterFn<TData>;
+  readonly manualPagination?: boolean;
+  readonly onPaginationChange?: (updater: PaginationState | ((previous: PaginationState) => PaginationState)) => void;
+  readonly pageCount?: number;
+  readonly pagination?: PaginationState;
+  readonly rowCount?: number;
 }
 
 export interface DataGridInstance<TData extends RowData> {
@@ -64,14 +74,20 @@ export interface DataGridInstance<TData extends RowData> {
 export function useDataGridInstance<TData extends RowData>({
   columns,
   data,
-  defaultPageSize = DEFAULT_PAGE_SIZE,
+  defaultPageSize = DATA_GRID_DEFAULT_PAGE_SIZE,
   enableRowSelection = true,
   getRowId,
   initialColumnOrder,
   initialColumnPinning,
   defaultColumnVisibility,
+  forcedHiddenColumnIds,
   persistenceKey,
-  globalFilterFn
+  globalFilterFn,
+  manualPagination = false,
+  onPaginationChange,
+  pageCount,
+  pagination: controlledPagination,
+  rowCount
 }: UseDataGridInstanceOptions<TData>): DataGridInstance<TData> {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>(() => ({
@@ -81,7 +97,12 @@ export function useDataGridInstance<TData extends RowData>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [globalFilter, setGlobalFilter] = useState("");
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: FIRST_PAGE_INDEX, pageSize: defaultPageSize });
+  const [internalPagination, setInternalPagination] = useState<PaginationState>({
+    pageIndex: FIRST_PAGE_INDEX,
+    pageSize: normalizeDataGridPageSize(defaultPageSize)
+  });
+  const pagination = controlledPagination ?? internalPagination;
+  const setPagination = onPaginationChange ?? setInternalPagination;
   const [columnSizingInfo, setColumnSizingInfo] = useState<ColumnSizingInfoState>(DEFAULT_COLUMN_SIZING_INFO);
 
   const nonResizableColumnIds = useMemo(() => getNonResizableColumnIds(columns), [columns]);
@@ -93,6 +114,7 @@ export function useDataGridInstance<TData extends RowData>({
     columnMinSizes,
     columnPinning: initialColumnPinning,
     defaultColumnVisibility,
+    forcedHiddenColumnIds,
     initialColumnOrder,
     nonResizableColumnIds,
     persistenceKey
@@ -113,10 +135,11 @@ export function useDataGridInstance<TData extends RowData>({
     enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    ...(manualPagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
     getRowId,
     getSortedRowModel: getSortedRowModel(),
     globalFilterFn: globalFilterFn ?? "includesString",
+    manualPagination,
     onColumnFiltersChange: setColumnFilters,
     onColumnOrderChange: preferences.setColumnOrder,
     onColumnPinningChange: setColumnPinning,
@@ -127,6 +150,8 @@ export function useDataGridInstance<TData extends RowData>({
     onPaginationChange: setPagination,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
+    pageCount,
+    rowCount,
     state: {
       columnFilters,
       columnOrder: preferences.columnOrder,

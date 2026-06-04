@@ -18,9 +18,9 @@ import {
   CATEGORY_STATUS_LABEL_KEYS,
   CATEGORY_TABLE_COLUMN_PINNING,
   CATEGORY_TABLE_DEFAULT_COLUMN_VISIBILITY
-} from "~/src/modules/category/category.constants";
-import { categoryQueryOptions } from "~/src/modules/category/category.queries";
-import type { Category } from "~/src/modules/category/category.types";
+} from "~/src/modules/product-category/product-category.constants";
+import { categoryQueryOptions } from "~/src/modules/product-category/product-category.queries";
+import type { Category } from "~/src/modules/product-category/product-category.types";
 
 const NONE = 0;
 

@@ -1,20 +1,10 @@
 import { type JSX, type MouseEvent, useCallback, useMemo, useState } from "react";
 
 import { useParams, useRouter } from "@tanstack/react-router";
-import { Copy, Edit2, Link2, Loader2, MoreHorizontal, PackageSearch, Trash2 } from "lucide-react";
+import { Copy, Edit2, Link2, MoreHorizontal, PackageSearch, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "~/src/components/shadcn/alert-dialog";
 import { Button } from "~/src/components/shadcn/button";
 import {
   DropdownMenu,
@@ -27,8 +17,11 @@ import {
 import { suppressNextDataGridRowClick } from "~/src/components/custom/datagrid/lib/data-grid-row-click";
 import { useCategoriesSheet } from "~/src/components/custom/pages/admin/catalog/categories/hooks/use-categories-sheet";
 import { useDeleteCategories } from "~/src/components/custom/pages/admin/catalog/categories/hooks/use-delete-categories";
+import { CatalogDeleteConfirmDialog } from "~/src/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog";
+import { useCatalogRowActionMenu } from "~/src/components/custom/pages/admin/catalog/dialog/lib/use-catalog-row-action-menu";
 
-import type { Category } from "~/src/modules/category/category.types";
+import type { Category } from "~/src/modules/product-category/product-category.types";
+import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils";
 
 const ITEM_CLASS = "px-3 py-2.5 text-[13px] gap-3";
 
@@ -38,13 +31,18 @@ interface CategoriesRowActionsProps {
 
 export function CategoriesRowActions({ category }: CategoriesRowActionsProps): JSX.Element {
   const t = useTranslations("pages.admin.catalog.categories.rowActions");
+  const adminLocale = useLocale();
   const router = useRouter();
   const { locale } = useParams({ strict: false });
   const { openEdit } = useCategoriesSheet();
   const deleteCategories = useDeleteCategories();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const { closeMenuAndRequestDeleteConfirm, handleConfirmOpenChange, handleMenuOpenChange, menuOpen } = useCatalogRowActionMenu(
+    confirmOpen,
+    setConfirmOpen
+  );
 
-  const { handle, id, title } = category;
+  const { handle, id } = category;
 
   const storefrontHref = useMemo(
     () => router.buildLocation({ params: { handle, locale }, to: "/{-$locale}/categories/$handle" }).href,
@@ -70,16 +68,16 @@ export function CategoriesRowActions({ category }: CategoriesRowActionsProps): J
   }, [storefrontHref, t]);
 
   const handleDelete = useCallback(() => {
-    setConfirmOpen(true);
-  }, []);
+    closeMenuAndRequestDeleteConfirm();
+  }, [closeMenuAndRequestDeleteConfirm]);
 
   const handleConfirmDelete = useCallback(() => {
     deleteCategories.mutate([id], {
       onSuccess: () => {
-        setConfirmOpen(false);
+        handleConfirmOpenChange(false);
       }
     });
-  }, [deleteCategories, id]);
+  }, [deleteCategories, handleConfirmOpenChange, id]);
 
   const runMenuAction = useCallback(
     (action: () => void) => (event: MouseEvent) => {
@@ -90,12 +88,6 @@ export function CategoriesRowActions({ category }: CategoriesRowActionsProps): J
     },
     []
   );
-
-  const handleMenuOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      suppressNextDataGridRowClick();
-    }
-  }, []);
 
   const stopRowClick = useCallback((event: MouseEvent) => {
     event.stopPropagation();
@@ -112,7 +104,7 @@ export function CategoriesRowActions({ category }: CategoriesRowActionsProps): J
 
   return (
     <>
-      <DropdownMenu onOpenChange={handleMenuOpenChange}>
+      <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
         <DropdownMenuTrigger render={trigger} />
         <DropdownMenuContent align="end" className="min-w-52 p-1.5">
           <DropdownMenuItem className={ITEM_CLASS} onClick={runMenuAction(handleEdit)}>
@@ -140,26 +132,16 @@ export function CategoriesRowActions({ category }: CategoriesRowActionsProps): J
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("deleteDescription", { title })}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteCategories.isPending}>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleteCategories.isPending}
-              className="gap-1.5"
-            >
-              {deleteCategories.isPending && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
-              {t("confirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CatalogDeleteConfirmDialog
+        cancelLabel={t("cancel")}
+        confirmLabel={t("confirm")}
+        description={t("deleteDescription", { title: resolveCategoryTitle(category.titles, adminLocale) })}
+        isPending={deleteCategories.isPending}
+        onConfirm={handleConfirmDelete}
+        onOpenChange={handleConfirmOpenChange}
+        open={confirmOpen}
+        title={t("deleteTitle")}
+      />
     </>
   );
 }

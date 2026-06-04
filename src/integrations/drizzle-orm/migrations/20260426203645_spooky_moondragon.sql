@@ -1,4 +1,4 @@
-PRAGMA foreign_keys=OFF;--> statement-breakpoint
+PRAGMA foreign_keys=OFF;
 CREATE TABLE `__new_order_item` (
 	`id` text PRIMARY KEY NOT NULL,
 	`metadata` text,
@@ -12,9 +12,9 @@ CREATE TABLE `__new_order_item` (
 	`variant_title` text(512),
 	FOREIGN KEY (`order_id`) REFERENCES `order`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-INSERT INTO `__new_order_item`("id", "metadata", "order_id", "product_id", "quantity", "thumbnail", "title", "unit_price", "variant_id", "variant_title") SELECT "id", "metadata", "order_id", "product_id", "quantity", "thumbnail", "title", "unit_price", "variant_id", "variant_title" FROM `order_item`;--> statement-breakpoint
-DROP TABLE `order_item`;--> statement-breakpoint
-ALTER TABLE `__new_order_item` RENAME TO `order_item`;--> statement-breakpoint
-PRAGMA foreign_keys=ON;--> statement-breakpoint
+
+INSERT INTO `__new_order_item`("id", "metadata", "order_id", "product_id", "quantity", "thumbnail", "title", "unit_price", "variant_id", "variant_title") SELECT "id", "metadata", "order_id", "product_id", "quantity", "thumbnail", "title", "unit_price", "variant_id", "variant_title" FROM `order_item`;
+DROP TABLE `order_item`;
+ALTER TABLE `__new_order_item` RENAME TO `order_item`;
+PRAGMA foreign_keys=ON;
 CREATE INDEX `order_item_orderId_idx` ON `order_item` (`order_id`);

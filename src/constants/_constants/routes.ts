@@ -10,6 +10,7 @@ export const ROUTES = {
   ACCOUNT_SESSIONS: "/account/sessions",
   ACCOUNT_WISHLIST: "/account/wishlist",
   ADMIN: "/admin",
+  ADMIN_ATTRIBUTES: "/admin/catalog/attributes",
   ADMIN_AUDIT: "/admin/audit",
   ADMIN_CATALOG: "/admin/catalog",
   ADMIN_CATEGORIES: "/admin/catalog/categories",
@@ -23,7 +24,6 @@ export const ROUTES = {
   ADMIN_MARKETING: "/admin/marketing",
   ADMIN_ORDERS: "/admin/orders",
   ADMIN_OVERVIEW: "/admin/overview",
-  ADMIN_PRODUCT: "/admin/catalog/products/$handle",
   ADMIN_PRODUCTS: "/admin/catalog/products",
   ADMIN_SETTINGS: "/admin/settings",
   API_AUTH: {

@@ -11,8 +11,8 @@ import {
 } from "~/src/components/custom/pages/admin/catalog/collections/components/collection-stat-card";
 import { collectionsDataGrid } from "~/src/components/custom/pages/admin/catalog/collections/utils/collections-data-grid";
 
-import type { COLLECTION_STATUS } from "~/src/modules/collection/collection.constants";
-import { collectionQueryOptions } from "~/src/modules/collection/collection.queries";
+import type { COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants";
+import { collectionQueryOptions } from "~/src/modules/product-collection/product-collection.queries";
 
 const TABLE_PAGE_INDEX_START = 0;
 

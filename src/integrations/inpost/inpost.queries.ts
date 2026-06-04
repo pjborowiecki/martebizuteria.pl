@@ -15,7 +15,7 @@ export const inpostQueryOptions = {
       enabled: city.trim().length >= MIN_CITY_LENGTH,
       gcTime: TWO_DAYS_IN_MS,
       queryFn: () => fetchPointsByCity(city),
-      queryKey: CONSTANTS.QUERY_KEYS.INPOST.byCity(city),
+      queryKey: [...CONSTANTS.QUERY_KEYS.INPOST.BY_CITY, city.trim().toLowerCase()] as const,
       staleTime: ONE_DAY_IN_MS
     })
 };

@@ -18,9 +18,9 @@ import {
   COLLECTION_STATUS_LABEL_KEYS,
   COLLECTION_TABLE_COLUMN_PINNING,
   COLLECTION_TABLE_DEFAULT_COLUMN_VISIBILITY
-} from "~/src/modules/collection/collection.constants";
-import { collectionQueryOptions } from "~/src/modules/collection/collection.queries";
-import type { Collection } from "~/src/modules/collection/collection.types";
+} from "~/src/modules/product-collection/product-collection.constants";
+import { collectionQueryOptions } from "~/src/modules/product-collection/product-collection.queries";
+import type { Collection } from "~/src/modules/product-collection/product-collection.types";
 
 const NONE = 0;
 

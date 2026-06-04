@@ -10,7 +10,7 @@ import { LocalizedLink, type LocalizedTo } from "~/src/components/custom/localiz
 import { ADMIN_LAYOUT_BG_CLASS } from "~/src/components/custom/pages/admin/admin-layout.styles";
 
 interface CatalogTabsProps {
-  readonly active: "products" | "categories" | "collections";
+  readonly active: "products" | "categories" | "collections" | "attributes";
 }
 
 export function CatalogTabs({ active }: CatalogTabsProps): JSX.Element {
@@ -26,6 +26,7 @@ export function CatalogTabs({ active }: CatalogTabsProps): JSX.Element {
       <TabLink href={CONSTANTS.ROUTES.ADMIN_CATALOG} label={t("nav.products")} isActive={active === "products"} />
       <TabLink href={CONSTANTS.ROUTES.ADMIN_CATEGORIES} label={t("nav.categories")} isActive={active === "categories"} />
       <TabLink href={CONSTANTS.ROUTES.ADMIN_COLLECTIONS} label={t("nav.collections")} isActive={active === "collections"} />
+      <TabLink href={CONSTANTS.ROUTES.ADMIN_ATTRIBUTES} label={t("nav.attributes")} isActive={active === "attributes"} />
     </div>
   );
 }

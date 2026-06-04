@@ -12,31 +12,31 @@ import {
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type Control, type UseFormSetError, type UseFormSetValue, useForm } from "react-hook-form";
+import { type Control, type FieldErrors, type UseFormSetError, type UseFormSetValue, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { adminListItemToFormValues } from "~/src/components/custom/pages/admin/catalog/categories/add-category/category-form.utils";
+import { localesWithIncompleteCategoryFormValues } from "~/src/components/custom/pages/admin/catalog/categories/add-category/category-form-locale.utils";
+import {
+  adminListItemToFormValues,
+  createDefaultCategoryFormValues
+} from "~/src/components/custom/pages/admin/catalog/categories/add-category/category-form.utils";
+import {
+  formatCatalogLocaleList,
+  useCatalogFormLocaleControls
+} from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-locale-controls";
 
-import { CATEGORY_ERROR_CODES } from "~/src/modules/category/category.constants";
-import { categoryMutations } from "~/src/modules/category/category.mutations";
-import type { Category } from "~/src/modules/category/category.types";
-import { categoryFormSchema } from "~/src/modules/category/category.zod";
+import { CATEGORY_ERROR_CODES } from "~/src/modules/product-category/product-category.constants";
+import { categoryMutations } from "~/src/modules/product-category/product-category.mutations";
+import type { Category } from "~/src/modules/product-category/product-category.types";
+import { categoryFormSchema } from "~/src/modules/product-category/product-category.zod";
 
 export const CATEGORY_FORM_ID = "category-form";
 
-const DEFAULT_VALUES: Category["formValues"] = {
-  description: "",
-  handle: "",
-  image: "",
-  parentId: "",
-  shortDescription: "",
-  status: "draft",
-  subtitle: "",
-  title: ""
-};
+const DEFAULT_VALUES = createDefaultCategoryFormValues();
+const ZERO_LENGTH = 0;
 
 export type CategoryFormMode = "create" | "edit";
 
@@ -150,6 +150,9 @@ export function CategoryFormProvider({
   onSuccess,
   open
 }: Readonly<CategoryFormProviderProps>): JSX.Element {
+  const t = useTranslations("pages.admin.catalog.categories");
+  const tLocale = useTranslations("pages.admin.catalog.localePicker");
+  const { focusIncompleteLocales } = useCatalogFormLocaleControls();
   const categoryId = category?.id;
 
   const initialValues = useMemo(
@@ -212,11 +215,33 @@ export function CategoryFormProvider({
     [mutate]
   );
 
+  const onSubmitInvalid = useCallback(
+    (_errors: FieldErrors<Category["formValues"]>) => {
+      const values = form.getValues();
+      const incompleteLocales = localesWithIncompleteCategoryFormValues(values);
+
+      if (incompleteLocales.length > ZERO_LENGTH) {
+        focusIncompleteLocales(incompleteLocales);
+        toast.error(tLocale("incompleteToastTitle"), {
+          description: tLocale("incompleteToastDescription", {
+            locales: formatCatalogLocaleList(incompleteLocales, (locale) => tLocale(`localeNames.${locale}`))
+          })
+        });
+        return;
+      }
+
+      toast.error(t("form.validation.submitBlockedTitle"), {
+        description: t("form.validation.submitBlockedDescription")
+      });
+    },
+    [focusIncompleteLocales, form, t, tLocale]
+  );
+
   const handleSubmit = useCallback(
     (e?: BaseSyntheticEvent) => {
-      void form.handleSubmit(onSubmit)(e);
+      void form.handleSubmit(onSubmit, onSubmitInvalid)(e);
     },
-    [form, onSubmit]
+    [form, onSubmit, onSubmitInvalid]
   );
 
   const value = useMemo<CategoryFormContextValue>(

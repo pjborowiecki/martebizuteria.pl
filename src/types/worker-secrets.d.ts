@@ -14,5 +14,6 @@ declare namespace Cloudflare {
     readonly STRIPE_SECRET_KEY: string;
     readonly STRIPE_WEBHOOK_SECRET: string;
     readonly VITE_APP_URL: string;
+    readonly VITE_R2_URL: string;
   }
 }

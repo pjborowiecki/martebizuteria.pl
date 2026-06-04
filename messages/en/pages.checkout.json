@@ -132,6 +132,7 @@
     },
     "errors": {
       "insufficientInventory": "Some items in your cart are out of stock.",
+      "invalidPrice": "A product in your cart has an invalid price. Please remove it and try again.",
       "productNotFound": "A product in your cart is no longer available.",
       "variantNotFound": "A selected option is no longer available.",
       "paymentSessionStale": "Your previous payment attempt is still processing or has expired. We've refreshed the payment — please choose a method and try again.",

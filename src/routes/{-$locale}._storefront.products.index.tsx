@@ -2,21 +2,21 @@ import { type JSX, useMemo } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useFormatter, useTranslations } from "use-intl";
+import { useFormatter, useLocale, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
 import { getProductImageUrl, prefetchProductThumbnails } from "~/src/lib/_utils/image";
+import { centsToDisplayAmount } from "~/src/lib/utils";
 
 import { ProductCard } from "~/src/components/custom/product-card";
 
+import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils";
 import { productQueryOptions } from "~/src/modules/product/product.queries";
 import type { Product } from "~/src/modules/product/product.types";
+import { resolveProductDescription, resolveProductTitle } from "~/src/modules/product/product.utils";
 
-const CENTS_PER_UNIT = 100;
 const FIRST_VARIANT_INDEX = 0;
-
-const FALLBACK_PRICE = 0;
 
 export const Route = createFileRoute("/{-$locale}/_storefront/products/")({
   component: ProductsPage,
@@ -59,23 +59,35 @@ function ProductsPage(): JSX.Element {
 
 function ProductListItem({
   product
-}: Readonly<{ product: Product["select"] & { readonly variants?: readonly { readonly price: number }[] } }>): JSX.Element {
+}: Readonly<{
+  product: Pick<Product["select"], "descriptions" | "handle" | "thumbnail" | "titles"> & {
+    readonly variants?: readonly { readonly id: string; readonly price: number; readonly title: string }[];
+  };
+}>): JSX.Element {
+  const locale = useLocale();
   const params = useMemo(() => ({ handle: product.handle }), [product.handle]);
   const format = useFormatter();
 
-  const variantPrice = product.variants?.[FIRST_VARIANT_INDEX]?.price;
+  const variant = product.variants?.[FIRST_VARIANT_INDEX];
+  const variantPrice = variant?.price;
   const price =
-    variantPrice === undefined ? undefined : format.number(variantPrice / CENTS_PER_UNIT, { currency: "PLN", style: "currency" });
+    variantPrice === undefined ? undefined : format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" });
+  const variantTitle = variant?.title === DEFAULT_VARIANT_TITLE ? "" : (variant?.title ?? "");
+  const title = resolveProductTitle(product.titles, locale);
+  const description = resolveProductDescription(product.descriptions, locale);
 
   return (
     <ProductCard
       href="/products/$handle"
       params={params}
       image={getProductImageUrl(product.thumbnail)}
-      name={product.title}
-      detail={product.description ?? ""}
+      name={title}
+      detail={description}
       price={price}
-      rawPrice={variantPrice ?? FALLBACK_PRICE}
+      rawPrice={variantPrice}
+      slug={product.handle}
+      variantId={variant?.id}
+      variantTitle={variantTitle}
     />
   );
 }
