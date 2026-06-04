@@ -3,19 +3,23 @@ import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { getCartLineTotalCents } from "~/src/lib/utils";
+
 const MIN_QUANTITY = 1;
 const INITIAL_COUNT = 0;
-const FALLBACK_PRICE = 0;
-const CENTS_IN_ZLOTY = 100;
+const CART_PERSIST_VERSION = 2;
 
 export interface CartItem {
+  /** Stable line key; equals `variantId`. */
   readonly id: string;
+  readonly variantId: string;
   readonly slug: string;
   readonly title: string;
+  readonly variantTitle: string;
   readonly image: string;
-  readonly material: string;
-  readonly size: string;
+  /** Formatted unit price for display only. */
   readonly price: string;
+  /** Unit price in cents for display only (checkout reprices from DB). */
   readonly rawPrice: number;
   qty: number;
 }
@@ -33,35 +37,48 @@ export interface CartState extends CartActions {
   readonly items: CartItem[];
 }
 
+function isPersistedCartItem(value: unknown): value is CartItem {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const row = value as Partial<CartItem>;
+  return (
+    typeof row.id === "string" &&
+    typeof row.variantId === "string" &&
+    row.variantId.length > INITIAL_COUNT &&
+    typeof row.slug === "string" &&
+    typeof row.title === "string" &&
+    typeof row.variantTitle === "string" &&
+    typeof row.image === "string" &&
+    typeof row.price === "string" &&
+    typeof row.rawPrice === "number" &&
+    typeof row.qty === "number"
+  );
+}
+
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       addItem: (incoming) => {
         set((state) => {
-          const existing = state.items.find((i) => i.id === incoming.id);
+          const lineId = incoming.variantId;
+          const existing = state.items.find((i) => i.id === lineId);
           const qty = incoming.qty ?? MIN_QUANTITY;
 
           if (existing !== undefined) {
             return {
-              items: state.items.map((i) => (i.id === incoming.id ? { ...i, qty: i.qty + qty } : i))
+              items: state.items.map((i) => (i.id === lineId ? { ...i, qty: i.qty + qty } : i))
             };
           }
 
           return {
-            items: [...state.items, { ...incoming, qty }]
+            items: [...state.items, { ...incoming, id: lineId, qty }]
           };
         });
       },
 
-      cartTotal: () =>
-        get().items.reduce((total, item) => {
-          let p = item.rawPrice;
-          if (p === undefined) {
-            const parsed = Number.parseFloat((item.price ?? "0").replaceAll(/[^0-9,.]/gu, "").replaceAll(",", "."));
-            p = Number.isNaN(parsed) ? FALLBACK_PRICE : parsed * CENTS_IN_ZLOTY;
-          }
-          return total + p * item.qty;
-        }, INITIAL_COUNT),
+      cartTotal: () => get().items.reduce((total, item) => total + getCartLineTotalCents(item), INITIAL_COUNT),
 
       clearCart: () => {
         set({ items: [] });
@@ -84,7 +101,18 @@ export const useCartStore = create<CartState>()(
       }
     }),
     {
-      name: "marte-cart"
+      migrate: (persisted) => {
+        if (typeof persisted !== "object" || persisted === null) {
+          return { items: [] };
+        }
+
+        const state = persisted as { items?: unknown };
+        const items = Array.isArray(state.items) ? state.items.filter(isPersistedCartItem) : [];
+
+        return { items };
+      },
+      name: "marte-cart",
+      version: CART_PERSIST_VERSION
     }
   )
 );
@@ -98,22 +126,9 @@ export const useCartStore = create<CartState>()(
  * with a full cart would be wrongly treated as empty.
  */
 export function useCartHydrated(): boolean {
-  // MUST start `false` — never seed from `hasHydrated()`. `persist` rehydrates
-  // from localStorage synchronously at module load, so on the client
-  // `hasHydrated()` is already `true`. But the cart `items` are read through
-  // zustand's `useSyncExternalStore`, which returns the *server* snapshot
-  // (empty cart) on the first hydration render to match SSR. Seeding `true`
-  // here would make a consumer observe `hydrated === true` while `items` is
-  // still empty for one render — the empty-cart guard would then bounce a
-  // shopper with a full cart to /cart. Starting `false` keeps this render in
-  // lockstep with the server (skeleton) and the effect flips it once mounted,
-  // by which point the live store snapshot (with items) is in effect.
   const [hydrated, setHydrated] = useState<boolean>(false);
 
   useEffect(() => {
-    // Reflect a rehydration that already finished before this effect ran, then
-    // subscribe for the async-storage case. `?? true` so a missing middleware
-    // (defensive) never leaves a client consumer stuck on the skeleton.
     setHydrated(useCartStore.persist?.hasHydrated() ?? true);
     const unsubscribe = useCartStore.persist?.onFinishHydration(() => {
       setHydrated(true);

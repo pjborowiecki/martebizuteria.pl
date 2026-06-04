@@ -14,15 +14,15 @@ import { Image } from "~/src/components/custom/image";
 import { CatalogRowActions } from "~/src/components/custom/pages/admin/catalog/catalog-table/catalog-row-actions";
 
 import { type ProductRecord, STATUS_MAP } from "~/src/data/catalog-data";
+import { PRODUCT_LOW_STOCK_THRESHOLD } from "~/src/modules/product/product.constants";
 
 const OUT_OF_STOCK = 0;
-const LOW_STOCK_THRESHOLD = 7;
 
 function getStockColorClass(stock: number): string {
   if (stock === OUT_OF_STOCK) {
     return "text-red-500";
   }
-  if (stock <= LOW_STOCK_THRESHOLD) {
+  if (stock <= PRODUCT_LOW_STOCK_THRESHOLD) {
     return "text-amber-600";
   }
   return "text-foreground";

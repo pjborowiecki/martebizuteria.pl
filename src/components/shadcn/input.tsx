@@ -5,6 +5,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "~/src/lib/utils";
 
+import { sheetInputClassName, sheetInputGroupInputClassName } from "~/src/components/shadcn/sheet-control.styles";
+
 const inputVariants = cva(
   "w-full min-w-0 bg-transparent transition-[color,background-color,border-color] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive aria-invalid:ring-0",
   {
@@ -18,7 +20,9 @@ const inputVariants = cva(
         default:
           "min-h-11 rounded-none border-0 border-b border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:ring-0 disabled:bg-muted/60 dark:bg-input/30 dark:focus-visible:border-foreground dark:disabled:bg-input/80 dark:aria-invalid:border-destructive",
         floating:
-          "min-h-11 rounded-none border-0 border-b border-border bg-background px-3 pt-3.5 pb-1.5 text-sm placeholder:text-transparent focus-visible:border-foreground focus-visible:ring-0 disabled:bg-muted/60 aria-invalid:border-destructive dark:bg-input/30 dark:focus-visible:border-foreground dark:disabled:bg-input/80 dark:aria-invalid:border-destructive"
+          "min-h-11 rounded-none border-0 border-b border-border bg-background px-3 pt-3.5 pb-1.5 text-sm placeholder:text-transparent focus-visible:border-foreground focus-visible:ring-0 disabled:bg-muted/60 aria-invalid:border-destructive dark:bg-input/30 dark:focus-visible:border-foreground dark:disabled:bg-input/80 dark:aria-invalid:border-destructive",
+        sheet: sheetInputClassName,
+        "sheet-inset": sheetInputGroupInputClassName
       }
     }
   }
@@ -30,4 +34,4 @@ function Input({ className, type, variant = "default", ...props }: Readonly<Inpu
   return <InputPrimitive type={type} data-slot="input" className={cn(inputVariants({ variant }), className)} {...props} />;
 }
 
-export { Input, inputVariants };
+export { Input, inputVariants, type InputProps };

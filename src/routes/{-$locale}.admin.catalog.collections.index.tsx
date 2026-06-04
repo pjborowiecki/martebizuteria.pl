@@ -9,8 +9,8 @@ import {
   useCollectionsSheetState
 } from "~/src/components/custom/pages/admin/catalog/collections/hooks/use-collections-sheet";
 
-import { COLLECTION_QUERY_STALE_MS } from "~/src/modules/collection/collection.constants";
-import { collectionQueryOptions } from "~/src/modules/collection/collection.queries";
+import { COLLECTION_QUERY_STALE_MS } from "~/src/modules/product-collection/product-collection.constants";
+import { collectionQueryOptions } from "~/src/modules/product-collection/product-collection.queries";
 
 async function prefetchCollectionsQueries(context: { queryClient: QueryClient }): Promise<void> {
   await Promise.all([

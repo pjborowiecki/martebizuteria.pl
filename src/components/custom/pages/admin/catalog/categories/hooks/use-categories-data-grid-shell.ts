@@ -8,8 +8,8 @@ import { getDataGridColumnIds } from "~/src/components/custom/datagrid/lib/data-
 import { useCategoryColumns } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-columns";
 import { categoriesDataGrid } from "~/src/components/custom/pages/admin/catalog/categories/utils/categories-data-grid";
 
-import { CATEGORY_TABLE_COLUMN_PINNING } from "~/src/modules/category/category.constants";
-import type { Category } from "~/src/modules/category/category.types";
+import { CATEGORY_TABLE_COLUMN_PINNING } from "~/src/modules/product-category/product-category.constants";
+import type { Category } from "~/src/modules/product-category/product-category.types";
 
 const EMPTY_CATEGORIES: Category["adminListItem"][] = [];
 

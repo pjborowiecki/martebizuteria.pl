@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 
 import { collectionsDataGrid } from "~/src/components/custom/pages/admin/catalog/collections/utils/collections-data-grid";
 
-import { COLLECTION_STATUS } from "~/src/modules/collection/collection.constants";
+import { COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants";
 
 const ALL_VALUE = "all";
 

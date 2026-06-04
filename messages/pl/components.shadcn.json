@@ -24,6 +24,7 @@
     "morePages": "Kolejne strony"
   },
   "sheet": {
-    "close": "Zamknij"
+    "close": "Zamknij",
+    "resizePanel": "Zmień szerokość panelu"
   }
 }

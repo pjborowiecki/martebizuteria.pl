@@ -1,17 +1,24 @@
 import { type JSX, useMemo } from "react";
 
 import { createColumnHelper } from "@tanstack/react-table";
-import { useFormatter, useTranslations } from "use-intl";
-
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/components/shadcn/tooltip";
+import { useFormatter, useLocale, useTranslations } from "use-intl";
 
 import { selectionColumn } from "~/src/components/custom/datagrid/components/selection-column";
 import { fixedDataGridColumnWidth } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 import { Image } from "~/src/components/custom/image";
 import { CategoriesRowActions } from "~/src/components/custom/pages/admin/catalog/categories/components/categories-row-actions";
 import { CategoryReorderCell } from "~/src/components/custom/pages/admin/catalog/categories/components/category-reorder-cell";
-import { CatalogStatusBadge } from "~/src/components/custom/pages/admin/catalog/components/catalog-status-badge";
-import { CatalogTitleHandleCell } from "~/src/components/custom/pages/admin/catalog/components/catalog-title-handle-cell";
+import {
+  CATALOG_RECORD_ID_COLUMN_META,
+  catalogRecordIdColumnWidth
+} from "~/src/components/custom/pages/admin/catalog/lib/catalog-record-id-column";
+import { CatalogStatusBadge } from "~/src/components/custom/pages/admin/catalog/table/components/catalog-status-badge";
+import { CatalogTitleHandleCell } from "~/src/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell";
+import {
+  CATALOG_DATAGRID_EMPTY_TEXT_CLASS,
+  CATALOG_DATAGRID_MUTED_TEXT_CLASS,
+  CatalogTruncatedTextCell
+} from "~/src/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell";
 
 import {
   CATEGORY_STATUS,
@@ -19,8 +26,14 @@ import {
   CATEGORY_TABLE_A11Y_KEYS,
   CATEGORY_TABLE_COLUMN_ID,
   CATEGORY_TABLE_COLUMN_SIZE
-} from "~/src/modules/category/category.constants";
-import type { Category } from "~/src/modules/category/category.types";
+} from "~/src/modules/product-category/product-category.constants";
+import type { Category } from "~/src/modules/product-category/product-category.types";
+import {
+  resolveCategoryDescription,
+  resolveCategoryShortDescription,
+  resolveCategorySubtitle,
+  resolveCategoryTitle
+} from "~/src/modules/product-category/product-category.utils";
 
 const THUMBNAIL_SIZE = 36;
 
@@ -34,21 +47,6 @@ function CategoryImageCell({ image, title }: Readonly<{ image: string | null; ti
   );
 }
 
-function CategoryDescriptionCell({ description }: Readonly<{ description: string }>): JSX.Element {
-  const trigger = useMemo(() => <span className="block cursor-default truncate text-muted-foreground">{description}</span>, [description]);
-
-  if (description === "") {
-    return <span className="text-muted-foreground/40">—</span>;
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger render={trigger} />
-      <TooltipContent className="max-w-sm whitespace-normal">{description}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 /**
  * Builds the categories column set. Array order is the canonical default column order
  * for the datagrid (see {@link getDataGridColumnIds} in `use-categories-data-grid`).
@@ -57,6 +55,7 @@ export function useCategoryColumns() {
   const t = useTranslations("pages.admin.catalog.categories");
   const tAdmin = useTranslations("pages.admin");
   const format = useFormatter();
+  const locale = useLocale();
 
   return useMemo(
     () => [
@@ -78,27 +77,28 @@ export function useCategoryColumns() {
         ...fixedDataGridColumnWidth(CATEGORY_TABLE_COLUMN_SIZE.drag)
       }),
       columnHelper.display({
-        cell: ({ row }) => <CategoryImageCell image={row.original.image} title={row.original.title} />,
+        cell: ({ row }) => <CategoryImageCell image={row.original.image} title={resolveCategoryTitle(row.original.titles, locale)} />,
         enableSorting: false,
         header: t("columns.image"),
         id: CATEGORY_TABLE_COLUMN_ID.image,
         meta: { skeletonVariant: "thumbnail" },
         ...fixedDataGridColumnWidth(CATEGORY_TABLE_COLUMN_SIZE.image)
       }),
-      columnHelper.accessor("title", {
-        cell: ({ row }) => <CatalogTitleHandleCell handle={row.original.handle} title={row.original.title} />,
-        header: t("columns.title"),
+      columnHelper.accessor((row) => resolveCategoryTitle(row.titles, locale), {
+        cell: ({ row }) => (
+          <CatalogTitleHandleCell handle={row.original.handle} title={resolveCategoryTitle(row.original.titles, locale)} />
+        ),
+        header: t("columns.category"),
         id: CATEGORY_TABLE_COLUMN_ID.title,
         meta: { skeletonVariant: "title" },
         size: CATEGORY_TABLE_COLUMN_SIZE.title
       }),
       columnHelper.accessor((row) => row.id, {
-        cell: ({ row }) => <span className="block truncate font-mono text-xs text-muted-foreground">{row.original.id}</span>,
+        cell: ({ row }) => <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{row.original.id}</span>,
         header: t("columns.id"),
         id: CATEGORY_TABLE_COLUMN_ID.recordId,
-        meta: { cellClassName: "overflow-hidden", headClassName: "overflow-hidden", skeletonVariant: "text" },
-        minSize: CATEGORY_TABLE_COLUMN_SIZE.recordId,
-        size: CATEGORY_TABLE_COLUMN_SIZE.recordId
+        meta: CATALOG_RECORD_ID_COLUMN_META,
+        ...catalogRecordIdColumnWidth()
       }),
       columnHelper.accessor("status", {
         cell: ({ getValue }) => {
@@ -124,35 +124,35 @@ export function useCategoryColumns() {
         meta: { cellClassName: "text-right", headClassName: "text-right", skeletonVariant: "number" },
         size: CATEGORY_TABLE_COLUMN_SIZE.productCount
       }),
-      columnHelper.accessor("parentTitle", {
-        cell: ({ getValue }) => {
-          const parentTitle = getValue();
-          if (parentTitle === undefined || parentTitle === "") {
-            return <span className="text-muted-foreground/40">—</span>;
+      columnHelper.accessor((row) => (row.parentTitles === undefined ? "" : resolveCategoryTitle(row.parentTitles, locale)), {
+        cell: ({ row }) => {
+          const parentTitle = row.original.parentTitles === undefined ? "" : resolveCategoryTitle(row.original.parentTitles, locale);
+          if (parentTitle === "") {
+            return <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>—</span>;
           }
-          return <span className="truncate text-sm">{parentTitle}</span>;
+          return <span className={CATALOG_DATAGRID_MUTED_TEXT_CLASS}>{parentTitle}</span>;
         },
         header: t("columns.parent"),
         id: CATEGORY_TABLE_COLUMN_ID.parent,
         meta: { skeletonVariant: "text" },
         size: CATEGORY_TABLE_COLUMN_SIZE.parent
       }),
-      columnHelper.accessor("subtitle", {
-        cell: ({ getValue }) => <CategoryDescriptionCell description={getValue() ?? ""} />,
+      columnHelper.accessor((row) => resolveCategorySubtitle(row.subtitles, locale), {
+        cell: ({ row }) => <CatalogTruncatedTextCell text={resolveCategorySubtitle(row.original.subtitles, locale)} />,
         header: t("columns.subtitle"),
         id: CATEGORY_TABLE_COLUMN_ID.subtitle,
         meta: { skeletonVariant: "text" },
         size: CATEGORY_TABLE_COLUMN_SIZE.subtitle
       }),
-      columnHelper.accessor("shortDescription", {
-        cell: ({ getValue }) => <CategoryDescriptionCell description={getValue() ?? ""} />,
+      columnHelper.accessor((row) => resolveCategoryShortDescription(row.shortDescriptions, locale), {
+        cell: ({ row }) => <CatalogTruncatedTextCell text={resolveCategoryShortDescription(row.original.shortDescriptions, locale)} />,
         header: t("columns.shortDescription"),
         id: CATEGORY_TABLE_COLUMN_ID.shortDescription,
         meta: { skeletonVariant: "text" },
         size: CATEGORY_TABLE_COLUMN_SIZE.shortDescription
       }),
-      columnHelper.accessor("description", {
-        cell: ({ getValue }) => <CategoryDescriptionCell description={getValue() ?? ""} />,
+      columnHelper.accessor((row) => resolveCategoryDescription(row.descriptions, locale), {
+        cell: ({ row }) => <CatalogTruncatedTextCell text={resolveCategoryDescription(row.original.descriptions, locale)} />,
         header: t("columns.description"),
         id: CATEGORY_TABLE_COLUMN_ID.description,
         meta: { fillsRemainingWidth: true, skeletonVariant: "text" },
@@ -195,6 +195,6 @@ export function useCategoryColumns() {
         ...fixedDataGridColumnWidth(CATEGORY_TABLE_COLUMN_SIZE.actions)
       })
     ],
-    [format, t, tAdmin]
+    [format, locale, t, tAdmin]
   );
 }

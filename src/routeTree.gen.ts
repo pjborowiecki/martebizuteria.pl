@@ -54,8 +54,10 @@ import { Route as Char123LocaleChar125StorefrontCollectionsIndexRouteImport } fr
 import { Route as Char123LocaleChar125StorefrontCategoriesIndexRouteImport } from './routes/{-$locale}._storefront.categories.index'
 import { Route as Char123LocaleChar125AdminOrdersOrderIdRouteImport } from './routes/{-$locale}.admin.orders.$orderId'
 import { Route as Char123LocaleChar125AdminCustomersIdRouteImport } from './routes/{-$locale}.admin.customers.$id'
+import { Route as Char123LocaleChar125AdminCatalogProductsRouteImport } from './routes/{-$locale}.admin.catalog.products'
 import { Route as Char123LocaleChar125AdminCatalogCollectionsRouteImport } from './routes/{-$locale}.admin.catalog.collections'
 import { Route as Char123LocaleChar125AdminCatalogCategoriesRouteImport } from './routes/{-$locale}.admin.catalog.categories'
+import { Route as Char123LocaleChar125AdminCatalogAttributesRouteImport } from './routes/{-$locale}.admin.catalog.attributes'
 import { Route as Char123LocaleChar125AccountOrdersIdRouteImport } from './routes/{-$locale}.account.orders.$id'
 import { Route as Char123LocaleChar125StorefrontProductsHandleRouteImport } from './routes/{-$locale}._storefront.products.$handle'
 import { Route as Char123LocaleChar125StorefrontCollectionsHandleRouteImport } from './routes/{-$locale}._storefront.collections.$handle'
@@ -63,7 +65,7 @@ import { Route as Char123LocaleChar125StorefrontCategoriesHandleRouteImport } fr
 import { Route as Char123LocaleChar125AdminCatalogProductsIndexRouteImport } from './routes/{-$locale}.admin.catalog.products.index'
 import { Route as Char123LocaleChar125AdminCatalogCollectionsIndexRouteImport } from './routes/{-$locale}.admin.catalog.collections.index'
 import { Route as Char123LocaleChar125AdminCatalogCategoriesIndexRouteImport } from './routes/{-$locale}.admin.catalog.categories.index'
-import { Route as Char123LocaleChar125AdminCatalogProductsHandleRouteImport } from './routes/{-$locale}.admin.catalog.products.$handle'
+import { Route as Char123LocaleChar125AdminCatalogAttributesIndexRouteImport } from './routes/{-$locale}.admin.catalog.attributes.index'
 import { Route as Char123LocaleChar125AdminCatalogCollectionsHandleRouteImport } from './routes/{-$locale}.admin.catalog.collections.$handle'
 import { Route as Char123LocaleChar125AdminCatalogCategoriesHandleRouteImport } from './routes/{-$locale}.admin.catalog.categories.$handle'
 
@@ -332,6 +334,12 @@ const Char123LocaleChar125AdminCustomersIdRoute =
     path: '/customers/$id',
     getParentRoute: () => Char123LocaleChar125AdminRoute,
   } as any)
+const Char123LocaleChar125AdminCatalogProductsRoute =
+  Char123LocaleChar125AdminCatalogProductsRouteImport.update({
+    id: '/products',
+    path: '/products',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+  } as any)
 const Char123LocaleChar125AdminCatalogCollectionsRoute =
   Char123LocaleChar125AdminCatalogCollectionsRouteImport.update({
     id: '/collections',
@@ -342,6 +350,12 @@ const Char123LocaleChar125AdminCatalogCategoriesRoute =
   Char123LocaleChar125AdminCatalogCategoriesRouteImport.update({
     id: '/categories',
     path: '/categories',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+  } as any)
+const Char123LocaleChar125AdminCatalogAttributesRoute =
+  Char123LocaleChar125AdminCatalogAttributesRouteImport.update({
+    id: '/attributes',
+    path: '/attributes',
     getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
   } as any)
 const Char123LocaleChar125AccountOrdersIdRoute =
@@ -370,9 +384,9 @@ const Char123LocaleChar125StorefrontCategoriesHandleRoute =
   } as any)
 const Char123LocaleChar125AdminCatalogProductsIndexRoute =
   Char123LocaleChar125AdminCatalogProductsIndexRouteImport.update({
-    id: '/products/',
-    path: '/products/',
-    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogProductsRoute,
   } as any)
 const Char123LocaleChar125AdminCatalogCollectionsIndexRoute =
   Char123LocaleChar125AdminCatalogCollectionsIndexRouteImport.update({
@@ -386,11 +400,11 @@ const Char123LocaleChar125AdminCatalogCategoriesIndexRoute =
     path: '/',
     getParentRoute: () => Char123LocaleChar125AdminCatalogCategoriesRoute,
   } as any)
-const Char123LocaleChar125AdminCatalogProductsHandleRoute =
-  Char123LocaleChar125AdminCatalogProductsHandleRouteImport.update({
-    id: '/products/$handle',
-    path: '/products/$handle',
-    getParentRoute: () => Char123LocaleChar125AdminCatalogRoute,
+const Char123LocaleChar125AdminCatalogAttributesIndexRoute =
+  Char123LocaleChar125AdminCatalogAttributesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LocaleChar125AdminCatalogAttributesRoute,
   } as any)
 const Char123LocaleChar125AdminCatalogCollectionsHandleRoute =
   Char123LocaleChar125AdminCatalogCollectionsHandleRouteImport.update({
@@ -445,8 +459,10 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/collections/$handle': typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
   '/{-$locale}/products/$handle': typeof Char123LocaleChar125StorefrontProductsHandleRoute
   '/{-$locale}/account/orders/$id': typeof Char123LocaleChar125AccountOrdersIdRoute
+  '/{-$locale}/admin/catalog/attributes': typeof Char123LocaleChar125AdminCatalogAttributesRouteWithChildren
   '/{-$locale}/admin/catalog/categories': typeof Char123LocaleChar125AdminCatalogCategoriesRouteWithChildren
   '/{-$locale}/admin/catalog/collections': typeof Char123LocaleChar125AdminCatalogCollectionsRouteWithChildren
+  '/{-$locale}/admin/catalog/products': typeof Char123LocaleChar125AdminCatalogProductsRouteWithChildren
   '/{-$locale}/admin/customers/$id': typeof Char123LocaleChar125AdminCustomersIdRoute
   '/{-$locale}/admin/orders/$orderId': typeof Char123LocaleChar125AdminOrdersOrderIdRoute
   '/{-$locale}/categories/': typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
@@ -458,7 +474,7 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/admin/orders/': typeof Char123LocaleChar125AdminOrdersIndexRoute
   '/{-$locale}/admin/catalog/categories/$handle': typeof Char123LocaleChar125AdminCatalogCategoriesHandleRoute
   '/{-$locale}/admin/catalog/collections/$handle': typeof Char123LocaleChar125AdminCatalogCollectionsHandleRoute
-  '/{-$locale}/admin/catalog/products/$handle': typeof Char123LocaleChar125AdminCatalogProductsHandleRoute
+  '/{-$locale}/admin/catalog/attributes/': typeof Char123LocaleChar125AdminCatalogAttributesIndexRoute
   '/{-$locale}/admin/catalog/categories/': typeof Char123LocaleChar125AdminCatalogCategoriesIndexRoute
   '/{-$locale}/admin/catalog/collections/': typeof Char123LocaleChar125AdminCatalogCollectionsIndexRoute
   '/{-$locale}/admin/catalog/products/': typeof Char123LocaleChar125AdminCatalogProductsIndexRoute
@@ -509,7 +525,7 @@ export interface FileRoutesByTo {
   '/{-$locale}/admin/orders': typeof Char123LocaleChar125AdminOrdersIndexRoute
   '/{-$locale}/admin/catalog/categories/$handle': typeof Char123LocaleChar125AdminCatalogCategoriesHandleRoute
   '/{-$locale}/admin/catalog/collections/$handle': typeof Char123LocaleChar125AdminCatalogCollectionsHandleRoute
-  '/{-$locale}/admin/catalog/products/$handle': typeof Char123LocaleChar125AdminCatalogProductsHandleRoute
+  '/{-$locale}/admin/catalog/attributes': typeof Char123LocaleChar125AdminCatalogAttributesIndexRoute
   '/{-$locale}/admin/catalog/categories': typeof Char123LocaleChar125AdminCatalogCategoriesIndexRoute
   '/{-$locale}/admin/catalog/collections': typeof Char123LocaleChar125AdminCatalogCollectionsIndexRoute
   '/{-$locale}/admin/catalog/products': typeof Char123LocaleChar125AdminCatalogProductsIndexRoute
@@ -556,8 +572,10 @@ export interface FileRoutesById {
   '/{-$locale}/_storefront/collections/$handle': typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
   '/{-$locale}/_storefront/products/$handle': typeof Char123LocaleChar125StorefrontProductsHandleRoute
   '/{-$locale}/account/orders/$id': typeof Char123LocaleChar125AccountOrdersIdRoute
+  '/{-$locale}/admin/catalog/attributes': typeof Char123LocaleChar125AdminCatalogAttributesRouteWithChildren
   '/{-$locale}/admin/catalog/categories': typeof Char123LocaleChar125AdminCatalogCategoriesRouteWithChildren
   '/{-$locale}/admin/catalog/collections': typeof Char123LocaleChar125AdminCatalogCollectionsRouteWithChildren
+  '/{-$locale}/admin/catalog/products': typeof Char123LocaleChar125AdminCatalogProductsRouteWithChildren
   '/{-$locale}/admin/customers/$id': typeof Char123LocaleChar125AdminCustomersIdRoute
   '/{-$locale}/admin/orders/$orderId': typeof Char123LocaleChar125AdminOrdersOrderIdRoute
   '/{-$locale}/_storefront/categories/': typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
@@ -569,7 +587,7 @@ export interface FileRoutesById {
   '/{-$locale}/admin/orders/': typeof Char123LocaleChar125AdminOrdersIndexRoute
   '/{-$locale}/admin/catalog/categories/$handle': typeof Char123LocaleChar125AdminCatalogCategoriesHandleRoute
   '/{-$locale}/admin/catalog/collections/$handle': typeof Char123LocaleChar125AdminCatalogCollectionsHandleRoute
-  '/{-$locale}/admin/catalog/products/$handle': typeof Char123LocaleChar125AdminCatalogProductsHandleRoute
+  '/{-$locale}/admin/catalog/attributes/': typeof Char123LocaleChar125AdminCatalogAttributesIndexRoute
   '/{-$locale}/admin/catalog/categories/': typeof Char123LocaleChar125AdminCatalogCategoriesIndexRoute
   '/{-$locale}/admin/catalog/collections/': typeof Char123LocaleChar125AdminCatalogCollectionsIndexRoute
   '/{-$locale}/admin/catalog/products/': typeof Char123LocaleChar125AdminCatalogProductsIndexRoute
@@ -616,8 +634,10 @@ export interface FileRouteTypes {
     | '/{-$locale}/collections/$handle'
     | '/{-$locale}/products/$handle'
     | '/{-$locale}/account/orders/$id'
+    | '/{-$locale}/admin/catalog/attributes'
     | '/{-$locale}/admin/catalog/categories'
     | '/{-$locale}/admin/catalog/collections'
+    | '/{-$locale}/admin/catalog/products'
     | '/{-$locale}/admin/customers/$id'
     | '/{-$locale}/admin/orders/$orderId'
     | '/{-$locale}/categories/'
@@ -629,7 +649,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/admin/orders/'
     | '/{-$locale}/admin/catalog/categories/$handle'
     | '/{-$locale}/admin/catalog/collections/$handle'
-    | '/{-$locale}/admin/catalog/products/$handle'
+    | '/{-$locale}/admin/catalog/attributes/'
     | '/{-$locale}/admin/catalog/categories/'
     | '/{-$locale}/admin/catalog/collections/'
     | '/{-$locale}/admin/catalog/products/'
@@ -680,7 +700,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/admin/orders'
     | '/{-$locale}/admin/catalog/categories/$handle'
     | '/{-$locale}/admin/catalog/collections/$handle'
-    | '/{-$locale}/admin/catalog/products/$handle'
+    | '/{-$locale}/admin/catalog/attributes'
     | '/{-$locale}/admin/catalog/categories'
     | '/{-$locale}/admin/catalog/collections'
     | '/{-$locale}/admin/catalog/products'
@@ -726,8 +746,10 @@ export interface FileRouteTypes {
     | '/{-$locale}/_storefront/collections/$handle'
     | '/{-$locale}/_storefront/products/$handle'
     | '/{-$locale}/account/orders/$id'
+    | '/{-$locale}/admin/catalog/attributes'
     | '/{-$locale}/admin/catalog/categories'
     | '/{-$locale}/admin/catalog/collections'
+    | '/{-$locale}/admin/catalog/products'
     | '/{-$locale}/admin/customers/$id'
     | '/{-$locale}/admin/orders/$orderId'
     | '/{-$locale}/_storefront/categories/'
@@ -739,7 +761,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/admin/orders/'
     | '/{-$locale}/admin/catalog/categories/$handle'
     | '/{-$locale}/admin/catalog/collections/$handle'
-    | '/{-$locale}/admin/catalog/products/$handle'
+    | '/{-$locale}/admin/catalog/attributes/'
     | '/{-$locale}/admin/catalog/categories/'
     | '/{-$locale}/admin/catalog/collections/'
     | '/{-$locale}/admin/catalog/products/'
@@ -1069,6 +1091,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125AdminCustomersIdRouteImport
       parentRoute: typeof Char123LocaleChar125AdminRoute
     }
+    '/{-$locale}/admin/catalog/products': {
+      id: '/{-$locale}/admin/catalog/products'
+      path: '/products'
+      fullPath: '/{-$locale}/admin/catalog/products'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogProductsRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    }
     '/{-$locale}/admin/catalog/collections': {
       id: '/{-$locale}/admin/catalog/collections'
       path: '/collections'
@@ -1081,6 +1110,13 @@ declare module '@tanstack/react-router' {
       path: '/categories'
       fullPath: '/{-$locale}/admin/catalog/categories'
       preLoaderRoute: typeof Char123LocaleChar125AdminCatalogCategoriesRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    }
+    '/{-$locale}/admin/catalog/attributes': {
+      id: '/{-$locale}/admin/catalog/attributes'
+      path: '/attributes'
+      fullPath: '/{-$locale}/admin/catalog/attributes'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogAttributesRouteImport
       parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
     }
     '/{-$locale}/account/orders/$id': {
@@ -1113,10 +1149,10 @@ declare module '@tanstack/react-router' {
     }
     '/{-$locale}/admin/catalog/products/': {
       id: '/{-$locale}/admin/catalog/products/'
-      path: '/products'
+      path: '/'
       fullPath: '/{-$locale}/admin/catalog/products/'
       preLoaderRoute: typeof Char123LocaleChar125AdminCatalogProductsIndexRouteImport
-      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+      parentRoute: typeof Char123LocaleChar125AdminCatalogProductsRoute
     }
     '/{-$locale}/admin/catalog/collections/': {
       id: '/{-$locale}/admin/catalog/collections/'
@@ -1132,12 +1168,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125AdminCatalogCategoriesIndexRouteImport
       parentRoute: typeof Char123LocaleChar125AdminCatalogCategoriesRoute
     }
-    '/{-$locale}/admin/catalog/products/$handle': {
-      id: '/{-$locale}/admin/catalog/products/$handle'
-      path: '/products/$handle'
-      fullPath: '/{-$locale}/admin/catalog/products/$handle'
-      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogProductsHandleRouteImport
-      parentRoute: typeof Char123LocaleChar125AdminCatalogRoute
+    '/{-$locale}/admin/catalog/attributes/': {
+      id: '/{-$locale}/admin/catalog/attributes/'
+      path: '/'
+      fullPath: '/{-$locale}/admin/catalog/attributes/'
+      preLoaderRoute: typeof Char123LocaleChar125AdminCatalogAttributesIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125AdminCatalogAttributesRoute
     }
     '/{-$locale}/admin/catalog/collections/$handle': {
       id: '/{-$locale}/admin/catalog/collections/$handle'
@@ -1246,6 +1282,21 @@ const Char123LocaleChar125AccountRouteWithChildren =
     Char123LocaleChar125AccountRouteChildren,
   )
 
+interface Char123LocaleChar125AdminCatalogAttributesRouteChildren {
+  Char123LocaleChar125AdminCatalogAttributesIndexRoute: typeof Char123LocaleChar125AdminCatalogAttributesIndexRoute
+}
+
+const Char123LocaleChar125AdminCatalogAttributesRouteChildren: Char123LocaleChar125AdminCatalogAttributesRouteChildren =
+  {
+    Char123LocaleChar125AdminCatalogAttributesIndexRoute:
+      Char123LocaleChar125AdminCatalogAttributesIndexRoute,
+  }
+
+const Char123LocaleChar125AdminCatalogAttributesRouteWithChildren =
+  Char123LocaleChar125AdminCatalogAttributesRoute._addFileChildren(
+    Char123LocaleChar125AdminCatalogAttributesRouteChildren,
+  )
+
 interface Char123LocaleChar125AdminCatalogCategoriesRouteChildren {
   Char123LocaleChar125AdminCatalogCategoriesHandleRoute: typeof Char123LocaleChar125AdminCatalogCategoriesHandleRoute
   Char123LocaleChar125AdminCatalogCategoriesIndexRoute: typeof Char123LocaleChar125AdminCatalogCategoriesIndexRoute
@@ -1282,26 +1333,41 @@ const Char123LocaleChar125AdminCatalogCollectionsRouteWithChildren =
     Char123LocaleChar125AdminCatalogCollectionsRouteChildren,
   )
 
+interface Char123LocaleChar125AdminCatalogProductsRouteChildren {
+  Char123LocaleChar125AdminCatalogProductsIndexRoute: typeof Char123LocaleChar125AdminCatalogProductsIndexRoute
+}
+
+const Char123LocaleChar125AdminCatalogProductsRouteChildren: Char123LocaleChar125AdminCatalogProductsRouteChildren =
+  {
+    Char123LocaleChar125AdminCatalogProductsIndexRoute:
+      Char123LocaleChar125AdminCatalogProductsIndexRoute,
+  }
+
+const Char123LocaleChar125AdminCatalogProductsRouteWithChildren =
+  Char123LocaleChar125AdminCatalogProductsRoute._addFileChildren(
+    Char123LocaleChar125AdminCatalogProductsRouteChildren,
+  )
+
 interface Char123LocaleChar125AdminCatalogRouteChildren {
+  Char123LocaleChar125AdminCatalogAttributesRoute: typeof Char123LocaleChar125AdminCatalogAttributesRouteWithChildren
   Char123LocaleChar125AdminCatalogCategoriesRoute: typeof Char123LocaleChar125AdminCatalogCategoriesRouteWithChildren
   Char123LocaleChar125AdminCatalogCollectionsRoute: typeof Char123LocaleChar125AdminCatalogCollectionsRouteWithChildren
+  Char123LocaleChar125AdminCatalogProductsRoute: typeof Char123LocaleChar125AdminCatalogProductsRouteWithChildren
   Char123LocaleChar125AdminCatalogIndexRoute: typeof Char123LocaleChar125AdminCatalogIndexRoute
-  Char123LocaleChar125AdminCatalogProductsHandleRoute: typeof Char123LocaleChar125AdminCatalogProductsHandleRoute
-  Char123LocaleChar125AdminCatalogProductsIndexRoute: typeof Char123LocaleChar125AdminCatalogProductsIndexRoute
 }
 
 const Char123LocaleChar125AdminCatalogRouteChildren: Char123LocaleChar125AdminCatalogRouteChildren =
   {
+    Char123LocaleChar125AdminCatalogAttributesRoute:
+      Char123LocaleChar125AdminCatalogAttributesRouteWithChildren,
     Char123LocaleChar125AdminCatalogCategoriesRoute:
       Char123LocaleChar125AdminCatalogCategoriesRouteWithChildren,
     Char123LocaleChar125AdminCatalogCollectionsRoute:
       Char123LocaleChar125AdminCatalogCollectionsRouteWithChildren,
+    Char123LocaleChar125AdminCatalogProductsRoute:
+      Char123LocaleChar125AdminCatalogProductsRouteWithChildren,
     Char123LocaleChar125AdminCatalogIndexRoute:
       Char123LocaleChar125AdminCatalogIndexRoute,
-    Char123LocaleChar125AdminCatalogProductsHandleRoute:
-      Char123LocaleChar125AdminCatalogProductsHandleRoute,
-    Char123LocaleChar125AdminCatalogProductsIndexRoute:
-      Char123LocaleChar125AdminCatalogProductsIndexRoute,
   }
 
 const Char123LocaleChar125AdminCatalogRouteWithChildren =

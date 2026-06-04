@@ -1,20 +1,10 @@
 import { type JSX, type MouseEvent, useCallback, useMemo, useState } from "react";
 
 import { useParams, useRouter } from "@tanstack/react-router";
-import { Copy, Edit2, Link2, Loader2, MoreHorizontal, PackageSearch, Trash2 } from "lucide-react";
+import { Copy, Edit2, Link2, MoreHorizontal, PackageSearch, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "~/src/components/shadcn/alert-dialog";
 import { Button } from "~/src/components/shadcn/button";
 import {
   DropdownMenu,
@@ -27,8 +17,11 @@ import {
 import { suppressNextDataGridRowClick } from "~/src/components/custom/datagrid/lib/data-grid-row-click";
 import { useCollectionsSheet } from "~/src/components/custom/pages/admin/catalog/collections/hooks/use-collections-sheet";
 import { useDeleteCollections } from "~/src/components/custom/pages/admin/catalog/collections/hooks/use-delete-collections";
+import { CatalogDeleteConfirmDialog } from "~/src/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog";
+import { useCatalogRowActionMenu } from "~/src/components/custom/pages/admin/catalog/dialog/lib/use-catalog-row-action-menu";
 
-import type { Collection } from "~/src/modules/collection/collection.types";
+import type { Collection } from "~/src/modules/product-collection/product-collection.types";
+import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils";
 
 const ITEM_CLASS = "px-3 py-2.5 text-[13px] gap-3";
 
@@ -38,13 +31,18 @@ interface CollectionsRowActionsProps {
 
 export function CollectionsRowActions({ collection }: CollectionsRowActionsProps): JSX.Element {
   const t = useTranslations("pages.admin.catalog.collections.rowActions");
+  const adminLocale = useLocale();
   const router = useRouter();
   const { locale } = useParams({ strict: false });
   const { openEdit } = useCollectionsSheet();
   const deleteCollections = useDeleteCollections();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const { closeMenuAndRequestDeleteConfirm, handleConfirmOpenChange, handleMenuOpenChange, menuOpen } = useCatalogRowActionMenu(
+    confirmOpen,
+    setConfirmOpen
+  );
 
-  const { handle, id, title } = collection;
+  const { handle, id } = collection;
 
   const storefrontHref = useMemo(
     () => router.buildLocation({ params: { handle, locale }, to: "/{-$locale}/collections/$handle" }).href,
@@ -70,16 +68,16 @@ export function CollectionsRowActions({ collection }: CollectionsRowActionsProps
   }, [storefrontHref, t]);
 
   const handleDelete = useCallback(() => {
-    setConfirmOpen(true);
-  }, []);
+    closeMenuAndRequestDeleteConfirm();
+  }, [closeMenuAndRequestDeleteConfirm]);
 
   const handleConfirmDelete = useCallback(() => {
     deleteCollections.mutate([id], {
       onSuccess: () => {
-        setConfirmOpen(false);
+        handleConfirmOpenChange(false);
       }
     });
-  }, [deleteCollections, id]);
+  }, [deleteCollections, handleConfirmOpenChange, id]);
 
   const runMenuAction = useCallback(
     (action: () => void) => (event: MouseEvent) => {
@@ -90,12 +88,6 @@ export function CollectionsRowActions({ collection }: CollectionsRowActionsProps
     },
     []
   );
-
-  const handleMenuOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      suppressNextDataGridRowClick();
-    }
-  }, []);
 
   const stopRowClick = useCallback((event: MouseEvent) => {
     event.stopPropagation();
@@ -112,7 +104,7 @@ export function CollectionsRowActions({ collection }: CollectionsRowActionsProps
 
   return (
     <>
-      <DropdownMenu onOpenChange={handleMenuOpenChange}>
+      <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
         <DropdownMenuTrigger render={trigger} />
         <DropdownMenuContent align="end" className="min-w-52 p-1.5">
           <DropdownMenuItem className={ITEM_CLASS} onClick={runMenuAction(handleEdit)}>
@@ -140,26 +132,16 @@ export function CollectionsRowActions({ collection }: CollectionsRowActionsProps
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("deleteDescription", { title })}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteCollections.isPending}>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleteCollections.isPending}
-              className="gap-1.5"
-            >
-              {deleteCollections.isPending && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
-              {t("confirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CatalogDeleteConfirmDialog
+        cancelLabel={t("cancel")}
+        confirmLabel={t("confirm")}
+        description={t("deleteDescription", { title: resolveCollectionTitle(collection.titles, adminLocale) })}
+        isPending={deleteCollections.isPending}
+        onConfirm={handleConfirmDelete}
+        onOpenChange={handleConfirmOpenChange}
+        open={confirmOpen}
+        title={t("deleteTitle")}
+      />
     </>
   );
 }

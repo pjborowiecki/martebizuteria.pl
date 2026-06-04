@@ -13208,7 +13208,7 @@ declare namespace TailStream {
     }
     interface Onset {
         readonly type: "onset";
-        readonly attributes: Attribute[];
+        readonly attributes: ProductAttribute[];
         // id for the span being opened by this Onset event.
         readonly spanId: string;
         readonly dispatchNamespace?: string;
@@ -13270,13 +13270,13 @@ declare namespace TailStream {
         readonly type: "return";
         readonly info?: FetchResponseInfo;
     }
-    interface Attribute {
+    interface ProductAttribute {
         readonly name: string;
         readonly value: string | string[] | boolean | boolean[] | number | number[] | bigint | bigint[];
     }
     interface Attributes {
         readonly type: "attributes";
-        readonly info: Attribute[];
+        readonly info: ProductAttribute[];
     }
     type EventType = Onset | Outcome | SpanOpen | SpanClose | DiagnosticChannelEvent | Exception | Log | StreamDiagnostic | Return | Attributes;
     // Context in which this trace event lives.

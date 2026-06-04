@@ -8,15 +8,28 @@ const DATA_GRID_SKELETON_DEFAULT = <Skeleton className="h-4 w-full max-w-[80%]" 
 
 const DATA_GRID_SKELETON_BY_VARIANT = {
   badge: <Skeleton className="h-6 w-18 rounded-full" />,
-  checkbox: <Skeleton className="size-4 rounded-[4px]" />,
-  date: <Skeleton className="h-4 w-28" />,
-  icon: <Skeleton className="mx-auto size-8 rounded-md" />,
-  iconEnd: (
-    <div className="flex justify-end">
-      <Skeleton className="size-8 rounded-md" />
+  checkbox: (
+    <div className="flex w-full items-center justify-center">
+      <Skeleton className="size-4 rounded-lg" />
     </div>
   ),
-  number: <Skeleton className="ml-auto h-4 w-8" />,
+  date: <Skeleton className="h-4 w-28" />,
+  icon: (
+    <div className="flex w-full items-center justify-center">
+      <Skeleton className="size-8 rounded-lg" />
+    </div>
+  ),
+  iconEnd: (
+    <div className="flex w-full items-center justify-end">
+      <Skeleton className="size-8 rounded-lg" />
+    </div>
+  ),
+  number: (
+    <div className="flex w-full items-center justify-end">
+      <Skeleton className="h-4 w-8" />
+    </div>
+  ),
+  recordId: <Skeleton className="h-4 w-72 max-w-full" />,
   text: <Skeleton className="h-4 w-full max-w-[90%]" />,
   thumbnail: <Skeleton className="size-9 shrink-0 rounded-lg" />,
   title: (

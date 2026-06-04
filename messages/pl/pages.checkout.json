@@ -137,6 +137,7 @@
     },
     "errors": {
       "insufficientInventory": "Niektórych produktów z koszyka brakuje na stanie.",
+      "invalidPrice": "Jeden z produktów w koszyku ma nieprawidłową cenę. Usuń go i spróbuj ponownie.",
       "productNotFound": "Produkt z koszyka nie jest już dostępny.",
       "variantNotFound": "Wybrany wariant nie jest już dostępny.",
       "paymentSessionStale": "Twoja poprzednia próba płatności jest jeszcze przetwarzana lub wygasła. Odświeżyliśmy płatność — wybierz metodę i spróbuj ponownie.",

@@ -10,7 +10,7 @@ import { Button } from "~/src/components/shadcn/button";
 
 import { DataGridIconTooltip } from "~/src/components/custom/datagrid/components/data-grid-icon-tooltip";
 
-import { collectionQueryOptions } from "~/src/modules/collection/collection.queries";
+import { collectionQueryOptions } from "~/src/modules/product-collection/product-collection.queries";
 
 const NO_ACTIVE_FETCHES = 0;
 

@@ -1,4 +1,4 @@
-PRAGMA foreign_keys=OFF;--> statement-breakpoint
+PRAGMA foreign_keys=OFF;
 CREATE TABLE `__new_category` (
 	`description` text(1024),
 	`handle` text(255) NOT NULL,
@@ -14,11 +14,11 @@ CREATE TABLE `__new_category` (
 	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch() * 1000) NOT NULL
 );
---> statement-breakpoint
-INSERT INTO `__new_category`("description", "handle", "id", "image", "is_active", "metadata", "name", "parent_id", "position", "seo_description", "seo_title", "created_at", "updated_at") SELECT "description", "handle", "id", "image", "is_active", "metadata", "name", "parent_id", "position", "seo_description", "seo_title", "created_at", "updated_at" FROM `category`;--> statement-breakpoint
-DROP TABLE `category`;--> statement-breakpoint
-ALTER TABLE `__new_category` RENAME TO `category`;--> statement-breakpoint
-PRAGMA foreign_keys=ON;--> statement-breakpoint
-CREATE UNIQUE INDEX `category_handle_unique` ON `category` (`handle`);--> statement-breakpoint
-CREATE INDEX `category_handle_idx` ON `category` (`handle`);--> statement-breakpoint
+
+INSERT INTO `__new_category`("description", "handle", "id", "image", "is_active", "metadata", "name", "parent_id", "position", "seo_description", "seo_title", "created_at", "updated_at") SELECT "description", "handle", "id", "image", "is_active", "metadata", "name", "parent_id", "position", "seo_description", "seo_title", "created_at", "updated_at" FROM `category`;
+DROP TABLE `category`;
+ALTER TABLE `__new_category` RENAME TO `category`;
+PRAGMA foreign_keys=ON;
+CREATE UNIQUE INDEX `category_handle_unique` ON `category` (`handle`);
+CREATE INDEX `category_handle_idx` ON `category` (`handle`);
 CREATE INDEX `category_parentId_idx` ON `category` (`parent_id`);

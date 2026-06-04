@@ -5,6 +5,9 @@
     "selectAll": "Zaznacz wszystkie wiersze",
     "selectRow": "Zaznacz wiersz"
   },
+  "catalogForm": {
+    "requiredFieldHint": "Pole wymagane."
+  },
   "customerDetail": {
     "breadcrumb": {
       "dashboard": "Podsumowanie",
@@ -116,6 +119,7 @@
     "products": "Produkty",
     "categories": "Kategorie",
     "collections": "Kolekcje",
+    "attributes": "Atrybuty",
     "orders": "Zamówienia",
     "customers": "Klienci",
     "tools": "Narzędzia",

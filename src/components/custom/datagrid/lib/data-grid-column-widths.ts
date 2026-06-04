@@ -19,7 +19,7 @@ export function getDataGridColumnDefMinSize<TData extends RowData>(column: Colum
   return typeof minSize === "number" && Number.isFinite(minSize) ? minSize : undefined;
 }
 
-/** Pixel width for layout; utility columns always use locked def sizes, not TanStack `getSize()`. */
+/** Pixel width from column defs — never TanStack `getSize()` (it shifts unrelated columns during resize). */
 export function getDataGridColumnWidth<TData extends RowData>(column: Column<TData>): number {
   if (!column.getCanResize()) {
     const locked = getFixedDataGridColumnDefSize(column);
@@ -28,9 +28,9 @@ export function getDataGridColumnWidth<TData extends RowData>(column: Column<TDa
     }
   }
 
-  const size = column.getSize();
+  const designWidth = readColumnDesignWidth(column);
   const defMin = getDataGridColumnDefMinSize(column);
-  return defMin === undefined ? size : Math.max(size, defMin);
+  return defMin === undefined ? designWidth : Math.max(designWidth, defMin);
 }
 
 export function getDataGridLayoutColumnWidth<TData extends RowData>(column: Column<TData>, columnSizing: ColumnSizingState): number {
@@ -48,5 +48,6 @@ export function getDataGridLayoutColumnWidth<TData extends RowData>(column: Colu
     }
     return clamped;
   }
+
   return getDataGridColumnWidth(column);
 }

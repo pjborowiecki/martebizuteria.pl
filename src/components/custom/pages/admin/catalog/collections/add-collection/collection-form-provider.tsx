@@ -12,28 +12,31 @@ import {
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type Control, type UseFormSetError, type UseFormSetValue, useForm } from "react-hook-form";
+import { type Control, type FieldErrors, type UseFormSetError, type UseFormSetValue, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { adminListItemToFormValues } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form.utils";
+import { localesWithIncompleteCollectionFormValues } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-locale.utils";
+import {
+  adminListItemToFormValues,
+  createDefaultCollectionFormValues
+} from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form.utils";
+import {
+  formatCatalogLocaleList,
+  useCatalogFormLocaleControls
+} from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-locale-controls";
 
-import { COLLECTION_ERROR_CODES } from "~/src/modules/collection/collection.constants";
-import { collectionMutations } from "~/src/modules/collection/collection.mutations";
-import type { Collection } from "~/src/modules/collection/collection.types";
-import { collectionFormSchema } from "~/src/modules/collection/collection.zod";
+import { COLLECTION_ERROR_CODES } from "~/src/modules/product-collection/product-collection.constants";
+import { collectionMutations } from "~/src/modules/product-collection/product-collection.mutations";
+import type { Collection } from "~/src/modules/product-collection/product-collection.types";
+import { collectionFormSchema } from "~/src/modules/product-collection/product-collection.zod";
 
 export const COLLECTION_FORM_ID = "collection-form";
 
-const DEFAULT_VALUES: Collection["formValues"] = {
-  description: "",
-  handle: "",
-  image: "",
-  status: "draft",
-  title: ""
-};
+const DEFAULT_VALUES = createDefaultCollectionFormValues();
+const ZERO_LENGTH = 0;
 
 export type CollectionFormMode = "create" | "edit";
 
@@ -139,6 +142,9 @@ export function CollectionFormProvider({
   onSuccess,
   open
 }: Readonly<CollectionFormProviderProps>): JSX.Element {
+  const t = useTranslations("pages.admin.catalog.collections");
+  const tLocale = useTranslations("pages.admin.catalog.localePicker");
+  const { focusIncompleteLocales } = useCatalogFormLocaleControls();
   const collectionId = collection?.id;
 
   const initialValues = useMemo(
@@ -201,11 +207,33 @@ export function CollectionFormProvider({
     [mutate]
   );
 
+  const onSubmitInvalid = useCallback(
+    (_errors: FieldErrors<Collection["formValues"]>) => {
+      const values = form.getValues();
+      const incompleteLocales = localesWithIncompleteCollectionFormValues(values);
+
+      if (incompleteLocales.length > ZERO_LENGTH) {
+        focusIncompleteLocales(incompleteLocales);
+        toast.error(tLocale("incompleteToastTitle"), {
+          description: tLocale("incompleteToastDescription", {
+            locales: formatCatalogLocaleList(incompleteLocales, (locale) => tLocale(`localeNames.${locale}`))
+          })
+        });
+        return;
+      }
+
+      toast.error(t("form.validation.submitBlockedTitle"), {
+        description: t("form.validation.submitBlockedDescription")
+      });
+    },
+    [focusIncompleteLocales, form, t, tLocale]
+  );
+
   const handleSubmit = useCallback(
     (e?: BaseSyntheticEvent) => {
-      void form.handleSubmit(onSubmit)(e);
+      void form.handleSubmit(onSubmit, onSubmitInvalid)(e);
     },
-    [form, onSubmit]
+    [form, onSubmit, onSubmitInvalid]
   );
 
   const value = useMemo<CollectionFormContextValue>(

@@ -1,5 +1,5 @@
 {
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "scripts/theme-init-script.ts", "scripts/datagrid-init-script.ts"],
   "exclude": ["opensrc", "node_modules", "dist", ".wrangler", ".tanstack"],
   "compilerOptions": {
     "types": ["vite/client", "node"],

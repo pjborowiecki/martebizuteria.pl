@@ -1,12 +1,21 @@
 import { type JSX, useCallback, useMemo } from "react";
 
 import { FileSpreadsheet } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
+
+import { LOCALES } from "~/src/constants/_constants/locales";
 
 import { Button } from "~/src/components/shadcn/button";
 
 import { DataGridIconTooltip } from "~/src/components/custom/datagrid/components/data-grid-icon-tooltip";
 import { categoriesDataGrid } from "~/src/components/custom/pages/admin/catalog/categories/utils/categories-data-grid";
+
+import {
+  resolveCategoryDescription,
+  resolveCategoryShortDescription,
+  resolveCategorySubtitle,
+  resolveCategoryTitle
+} from "~/src/modules/product-category/product-category.utils";
 
 function escapeCsvField(value: string): string {
   return value.replaceAll('"', '""');
@@ -14,27 +23,31 @@ function escapeCsvField(value: string): string {
 
 export function CategoriesExportAction(): JSX.Element {
   const t = useTranslations("pages.admin.catalog.categories");
+  const locale = useLocale();
   const { table } = categoriesDataGrid.useDataGrid();
 
   const handleExport = useCallback(() => {
     const { rows } = table.getFilteredRowModel();
-    const headers = ["ID", "Title", "Handle", "Subtitle", "Short description", "Parent", "Status", "Products", "Description"];
+    const titleHeaders = LOCALES.map((code) => `Title ${code.toUpperCase()}`);
+    const headers = ["ID", ...titleHeaders, "Handle", "Subtitle", "Short description", "Parent", "Status", "Products", "Description"];
 
     const csvContent = [
       headers.join(","),
       ...rows.map((row) => {
-        const { description, handle, id, parentTitle, productCount, shortDescription, status, subtitle, title } = row.original;
+        const { descriptions, handle, id, parentTitles, productCount, shortDescriptions, status, subtitles, titles } = row.original;
+        const titleCells = LOCALES.map((code) => `"${escapeCsvField(titles[code])}"`);
+        const parentTitle = parentTitles === undefined ? "" : resolveCategoryTitle(parentTitles, locale);
 
         return [
           id,
-          `"${escapeCsvField(title)}"`,
+          ...titleCells,
           handle,
-          `"${escapeCsvField(subtitle ?? "")}"`,
-          `"${escapeCsvField(shortDescription ?? "")}"`,
-          `"${escapeCsvField(parentTitle ?? "")}"`,
+          `"${escapeCsvField(resolveCategorySubtitle(subtitles, locale))}"`,
+          `"${escapeCsvField(resolveCategoryShortDescription(shortDescriptions, locale))}"`,
+          `"${escapeCsvField(parentTitle)}"`,
           status,
           productCount,
-          `"${escapeCsvField(description ?? "")}"`
+          `"${escapeCsvField(resolveCategoryDescription(descriptions, locale))}"`
         ].join(",");
       })
     ].join("\n");
@@ -48,7 +61,7 @@ export function CategoriesExportAction(): JSX.Element {
     link.rel = "noopener";
     link.click();
     URL.revokeObjectURL(url);
-  }, [table]);
+  }, [locale, table]);
 
   const button = useMemo(
     () => (

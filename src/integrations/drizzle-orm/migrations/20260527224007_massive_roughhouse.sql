@@ -1,4 +1,4 @@
-PRAGMA foreign_keys=OFF;--> statement-breakpoint
+PRAGMA foreign_keys=OFF;
 CREATE TABLE `__new_order` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`currency_code` text(3) DEFAULT 'PLN' NOT NULL,
@@ -17,14 +17,14 @@ CREATE TABLE `__new_order` (
 	`user_id` text,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null
 );
---> statement-breakpoint
-INSERT INTO `__new_order`("created_at", "currency_code", "discount_total", "email", "fulfillment_status", "id", "metadata", "payment_status", "shipping_total", "status", "subtotal", "tax_total", "total", "updated_at", "user_id") SELECT "created_at", "currency_code", "discount_total", "email", "fulfillment_status", "id", "metadata", "payment_status", "shipping_total", "status", "subtotal", "tax_total", "total", "updated_at", "user_id" FROM `order`;--> statement-breakpoint
-DROP TABLE `order`;--> statement-breakpoint
-ALTER TABLE `__new_order` RENAME TO `order`;--> statement-breakpoint
-PRAGMA foreign_keys=ON;--> statement-breakpoint
-CREATE INDEX `order_userId_idx` ON `order` (`user_id`);--> statement-breakpoint
-CREATE INDEX `order_status_idx` ON `order` (`status`);--> statement-breakpoint
-CREATE INDEX `order_createdAt_idx` ON `order` (`created_at`);--> statement-breakpoint
+
+INSERT INTO `__new_order`("created_at", "currency_code", "discount_total", "email", "fulfillment_status", "id", "metadata", "payment_status", "shipping_total", "status", "subtotal", "tax_total", "total", "updated_at", "user_id") SELECT "created_at", "currency_code", "discount_total", "email", "fulfillment_status", "id", "metadata", "payment_status", "shipping_total", "status", "subtotal", "tax_total", "total", "updated_at", "user_id" FROM `order`;
+DROP TABLE `order`;
+ALTER TABLE `__new_order` RENAME TO `order`;
+PRAGMA foreign_keys=ON;
+CREATE INDEX `order_userId_idx` ON `order` (`user_id`);
+CREATE INDEX `order_status_idx` ON `order` (`status`);
+CREATE INDEX `order_createdAt_idx` ON `order` (`created_at`);
 CREATE TABLE `__new_order_item` (
 	`id` text PRIMARY KEY NOT NULL,
 	`metadata` text,
@@ -40,11 +40,11 @@ CREATE TABLE `__new_order_item` (
 	`variant_title` text(512),
 	FOREIGN KEY (`order_id`) REFERENCES `order`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-INSERT INTO `__new_order_item`("id", "metadata", "order_id", "product_id", "quantity", "subtotal", "thumbnail", "title", "total", "unit_price", "variant_id", "variant_title") SELECT "id", "metadata", "order_id", "product_id", "quantity", "subtotal", "thumbnail", "title", "total", "unit_price", "variant_id", "variant_title" FROM `order_item`;--> statement-breakpoint
-DROP TABLE `order_item`;--> statement-breakpoint
-ALTER TABLE `__new_order_item` RENAME TO `order_item`;--> statement-breakpoint
-CREATE INDEX `order_item_orderId_idx` ON `order_item` (`order_id`);--> statement-breakpoint
+
+INSERT INTO `__new_order_item`("id", "metadata", "order_id", "product_id", "quantity", "subtotal", "thumbnail", "title", "total", "unit_price", "variant_id", "variant_title") SELECT "id", "metadata", "order_id", "product_id", "quantity", "subtotal", "thumbnail", "title", "total", "unit_price", "variant_id", "variant_title" FROM `order_item`;
+DROP TABLE `order_item`;
+ALTER TABLE `__new_order_item` RENAME TO `order_item`;
+CREATE INDEX `order_item_orderId_idx` ON `order_item` (`order_id`);
 CREATE TABLE `__new_product_variant` (
 	`allow_backorder` integer DEFAULT false NOT NULL,
 	`barcode` text(255),
@@ -62,10 +62,10 @@ CREATE TABLE `__new_product_variant` (
 	`weight` real,
 	FOREIGN KEY (`product_id`) REFERENCES `product`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-INSERT INTO `__new_product_variant`("allow_backorder", "barcode", "compare_at_price", "created_at", "id", "inventory_quantity", "manage_inventory", "metadata", "price", "product_id", "sku", "title", "updated_at", "weight") SELECT "allow_backorder", "barcode", "compare_at_price", "created_at", "id", "inventory_quantity", "manage_inventory", "metadata", "price", "product_id", "sku", "title", "updated_at", "weight" FROM `product_variant`;--> statement-breakpoint
-DROP TABLE `product_variant`;--> statement-breakpoint
-ALTER TABLE `__new_product_variant` RENAME TO `product_variant`;--> statement-breakpoint
-CREATE UNIQUE INDEX `product_variant_sku_unique` ON `product_variant` (`sku`);--> statement-breakpoint
-CREATE INDEX `product_variant_productId_idx` ON `product_variant` (`product_id`);--> statement-breakpoint
+
+INSERT INTO `__new_product_variant`("allow_backorder", "barcode", "compare_at_price", "created_at", "id", "inventory_quantity", "manage_inventory", "metadata", "price", "product_id", "sku", "title", "updated_at", "weight") SELECT "allow_backorder", "barcode", "compare_at_price", "created_at", "id", "inventory_quantity", "manage_inventory", "metadata", "price", "product_id", "sku", "title", "updated_at", "weight" FROM `product_variant`;
+DROP TABLE `product_variant`;
+ALTER TABLE `__new_product_variant` RENAME TO `product_variant`;
+CREATE UNIQUE INDEX `product_variant_sku_unique` ON `product_variant` (`sku`);
+CREATE INDEX `product_variant_productId_idx` ON `product_variant` (`product_id`);
 CREATE INDEX `product_variant_sku_idx` ON `product_variant` (`sku`);

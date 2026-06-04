@@ -10,7 +10,7 @@ export function SettingsPage(): JSX.Element {
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   return (
-    <div className="flex-1 p-8">
+    <div className="min-h-0 flex-1 overflow-y-auto p-8">
       <div className="flex gap-8">
         <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab} />
 

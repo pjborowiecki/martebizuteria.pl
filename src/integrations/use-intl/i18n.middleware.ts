@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { extractLocaleFromPath, parseLocaleCookie, shouldIgnorePath } from "~/src/lib/utils";
+import { extractLocaleFromPath, parseLocaleCookie, shouldIgnorePath } from "~/src/lib/_utils/locale";
 
 const DEFAULT_LOCALE_PREFIX = `/${CONSTANTS.DEFAULT_LOCALE}`;
 const DEFAULT_LOCALE_PREFIX_WITH_SLASH = `${DEFAULT_LOCALE_PREFIX}/`;

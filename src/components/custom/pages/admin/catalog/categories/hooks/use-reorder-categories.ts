@@ -4,7 +4,7 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { categoryMutations } from "~/src/modules/category/category.mutations";
+import { categoryMutations } from "~/src/modules/product-category/product-category.mutations";
 
 /**
  * Persists a new category display order. The list keeps its own optimistic

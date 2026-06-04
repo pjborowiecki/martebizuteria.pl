@@ -26,7 +26,7 @@ export function OrdersPage(): JSX.Element {
   }, [tab, query]);
 
   return (
-    <div className="flex-1 space-y-5 p-8">
+    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-8">
       <OrdersStats />
 
       <Card className="border-border/40 bg-gradient-to-br from-pink-500/10 via-rose-500/5 to-transparent shadow-none">

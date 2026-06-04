@@ -1,7 +1,7 @@
 import { CheckCircle2, Layers, type LucideIcon, Package, PencilLine } from "lucide-react";
 
-import { COLLECTION_STATUS } from "~/src/modules/collection/collection.constants";
-import type { Collection } from "~/src/modules/collection/collection.types";
+import { COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants";
+import type { Collection } from "~/src/modules/product-collection/product-collection.types";
 
 export type CollectionStatKey = keyof Collection["stats"];
 

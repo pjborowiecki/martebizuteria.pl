@@ -2,14 +2,15 @@ import { type JSX, useMemo } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
-import { categoryQueryOptions } from "~/src/modules/category/category.queries";
-import type { Category } from "~/src/modules/category/category.types";
+import { categoryQueryOptions } from "~/src/modules/product-category/product-category.queries";
+import type { Category } from "~/src/modules/product-category/product-category.types";
+import { resolveCategoryDescription, resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils";
 
 export const Route = createFileRoute("/{-$locale}/_storefront/categories/")({
   component: CategoriesPage,
@@ -49,9 +50,12 @@ function CategoriesPage(): JSX.Element {
 function CategoryCard({
   category
 }: Readonly<{
-  category: Pick<Category["select"], "id" | "title" | "handle" | "description">;
+  category: Pick<Category["select"], "id" | "titles" | "handle" | "descriptions">;
 }>): JSX.Element {
+  const locale = useLocale();
   const params = useMemo(() => ({ handle: category.handle }), [category.handle]);
+  const title = resolveCategoryTitle(category.titles, locale);
+  const description = resolveCategoryDescription(category.descriptions, locale);
 
   return (
     <LocalizedLink
@@ -59,8 +63,8 @@ function CategoryCard({
       params={params}
       className="group block rounded-xl border bg-card p-6 text-card-foreground transition-all hover:shadow-md"
     >
-      <h2 className="text-xl font-semibold group-hover:underline">{category.title}</h2>
-      {category.description !== null && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{category.description}</p>}
+      <h2 className="text-xl font-semibold group-hover:underline">{title}</h2>
+      {description !== "" && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{description}</p>}
     </LocalizedLink>
   );
 }

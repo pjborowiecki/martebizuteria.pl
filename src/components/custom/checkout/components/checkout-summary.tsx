@@ -5,24 +5,15 @@ import { useWatch } from "react-hook-form";
 import { useFormatter, useTranslations } from "use-intl";
 
 import { getProductImageUrl } from "~/src/lib/_utils/image";
+import { centsToDisplayAmount, getCartLineUnitPriceCents } from "~/src/lib/utils";
 
 import { useCheckoutForm } from "~/src/components/custom/checkout/components/checkout-form-provider";
 import { Image } from "~/src/components/custom/image";
 
 import { deliveryMethodQueries } from "~/src/modules/delivery-method/delivery-method.queries";
-import { type CartItem, useCartStore } from "~/src/stores/cart.store";
+import { useCartStore } from "~/src/stores/cart.store";
 
-const CENTS_IN_ZLOTY = 100;
 const FALLBACK_PRICE = 0;
-
-const getItemPrice = (item: CartItem) => {
-  let p = item.rawPrice;
-  if (p === undefined) {
-    const parsed = Number.parseFloat((item.price ?? "0").replaceAll(/[^0-9,.]/gu, "").replaceAll(",", "."));
-    p = Number.isNaN(parsed) ? FALLBACK_PRICE : parsed * CENTS_IN_ZLOTY;
-  }
-  return p;
-};
 
 export function CheckoutSummary(): JSX.Element {
   const t = useTranslations("pages.checkout");
@@ -40,7 +31,7 @@ export function CheckoutSummary(): JSX.Element {
   const subtotalCents = cartTotal();
   const totalCents = subtotalCents + deliveryCostCents;
 
-  const money = (cents: number) => format.number(cents / CENTS_IN_ZLOTY, { currency: "PLN", style: "currency" });
+  const money = (cents: number) => format.number(centsToDisplayAmount(cents), { currency: "PLN", style: "currency" });
 
   const deliveryLabel = (() => {
     if (selectedDeliveryMethod === undefined) {
@@ -76,11 +67,9 @@ export function CheckoutSummary(): JSX.Element {
             </div>
             <div className="min-w-0 flex-1 space-y-1.5 pt-1">
               <h4 className="text-[11px] font-medium tracking-[0.18em] text-foreground uppercase">{item.title}</h4>
-              <p className="text-[11px] font-light text-muted-foreground/80 italic">
-                {item.material} {item.material !== "" && item.size !== "" ? "/" : ""} {item.size}
-              </p>
+              {item.variantTitle !== "" && <p className="text-[11px] font-light text-muted-foreground/80 italic">{item.variantTitle}</p>}
               <p className="pt-2 text-[13px] font-light tracking-wide text-foreground tabular-nums">
-                {item.qty} x {money(getItemPrice(item))}
+                {item.qty} x {money(getCartLineUnitPriceCents(item))}
               </p>
             </div>
           </div>

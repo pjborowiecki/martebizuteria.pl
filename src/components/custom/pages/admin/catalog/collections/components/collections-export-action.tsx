@@ -1,31 +1,45 @@
 import { type JSX, useCallback, useMemo } from "react";
 
 import { FileSpreadsheet } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
+
+import { LOCALES } from "~/src/constants/_constants/locales";
 
 import { Button } from "~/src/components/shadcn/button";
 
 import { DataGridIconTooltip } from "~/src/components/custom/datagrid/components/data-grid-icon-tooltip";
 import { collectionsDataGrid } from "~/src/components/custom/pages/admin/catalog/collections/utils/collections-data-grid";
 
+import { resolveCollectionDescription } from "~/src/modules/product-collection/product-collection.utils";
+
+function escapeCsvField(value: string): string {
+  return value.replaceAll('"', '""');
+}
+
 export function CollectionsExportAction(): JSX.Element {
   const t = useTranslations("pages.admin.catalog.collections");
+  const locale = useLocale();
   const { table } = collectionsDataGrid.useDataGrid();
 
   const handleExport = useCallback(() => {
     const { rows } = table.getFilteredRowModel();
-    const headers = ["ID", "Name", "Handle", "Status", "Products", "Description"];
+    const titleHeaders = LOCALES.map((code) => `Name ${code.toUpperCase()}`);
+    const headers = ["ID", ...titleHeaders, "Handle", "Status", "Products", "Description"];
 
     const csvContent = [
       headers.join(","),
       ...rows.map((row) => {
-        const { description, handle, id, productCount, status, title } = row.original;
+        const { descriptions, handle, id, productCount, status, titles } = row.original;
+        const titleCells = LOCALES.map((code) => `"${escapeCsvField(titles[code])}"`);
 
-        // Escape quotes by doubling them up
-        const escapedTitle = title.replaceAll('"', '""');
-        const escapedDescription = (description ?? "").replaceAll('"', '""');
-
-        return [id, `"${escapedTitle}"`, handle, status, productCount, `"${escapedDescription}"`].join(",");
+        return [
+          id,
+          ...titleCells,
+          handle,
+          status,
+          productCount,
+          `"${escapeCsvField(resolveCollectionDescription(descriptions, locale))}"`
+        ].join(",");
       })
     ].join("\n");
 
@@ -38,7 +52,7 @@ export function CollectionsExportAction(): JSX.Element {
     link.rel = "noopener";
     link.click();
     URL.revokeObjectURL(url);
-  }, [table]);
+  }, [locale, table]);
 
   const button = useMemo(
     () => (

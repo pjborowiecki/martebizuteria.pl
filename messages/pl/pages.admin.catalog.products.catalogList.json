@@ -1,0 +1,77 @@
+{
+  "title": "Produkty",
+  "description": "Zarządzaj produktami sklepu i ich wariantami.",
+  "actions": {
+    "addProduct": "Dodaj produkt",
+    "exportCsv": "Pobierz tabelę jako CSV",
+    "refresh": "Odśwież dane tabeli"
+  },
+  "columns": {
+    "actions": "Akcje wiersza",
+    "categories": "Kategorie",
+    "collections": "Kolekcje",
+    "attributes": "Atrybuty",
+    "createdAt": "Data utworzenia",
+    "editedAt": "Ostatnia edycja",
+    "id": "ID",
+    "image": "Zdjęcie",
+    "price": "Cena",
+    "product": "Produkt",
+    "status": "Status",
+    "stock": "Stan (szt.)",
+    "variants": "Warianty"
+  },
+  "filter": {
+    "status": "Filtruj według statusu",
+    "allStatuses": "Wszystkie statusy",
+    "category": "Filtruj według kategorii",
+    "allCategories": "Wszystkie kategorie",
+    "collection": "Filtruj według kolekcji",
+    "allCollections": "Wszystkie kolekcje"
+  },
+  "bulk": {
+    "selected": "Zaznaczono: {count}",
+    "delete": "Usuń ({count})",
+    "confirmTitle": "Usunąć produkty?",
+    "confirmDescription": "To trwale usunie {count} produkt(ów) wraz z wariantami. Tej operacji nie można cofnąć.",
+    "cancel": "Anuluj",
+    "confirm": "Usuń"
+  },
+  "statusActive": "Aktywny",
+  "statusDraft": "Wersja robocza",
+  "statusArchived": "Zarchiwizowany",
+  "stockOut": "Brak na stanie",
+  "stockLow": "Niski stan magazynowy",
+  "searchPlaceholder": "Szukaj produktów...",
+  "reorder": {
+    "handle": "Przeciągnij, aby zmienić kolejność, lub użyj strzałek"
+  },
+  "rowActions": {
+    "edit": "Edytuj produkt",
+    "viewStorefront": "Zobacz w sklepie",
+    "copyId": "Kopiuj ID",
+    "copyLink": "Kopiuj link",
+    "delete": "Usuń produkt",
+    "copyIdToast": "ID produktu skopiowane do schowka",
+    "copyLinkToast": "Link produktu skopiowany do schowka",
+    "deleteTitle": "Usunąć produkt?",
+    "deleteDescription": "To trwale usunie „{title}” wraz z wariantami. Tej operacji nie można cofnąć.",
+    "cancel": "Anuluj",
+    "confirm": "Usuń"
+  },
+  "toast": {
+    "deleteSuccessTitle": "Produkty usunięte",
+    "deleteSuccessDescription": "Usunięto {count} produkt(ów).",
+    "deleteErrorTitle": "Nie udało się usunąć",
+    "deleteErrorDescription": "Nie można było usunąć wybranych produktów. Spróbuj ponownie.",
+    "reorderErrorTitle": "Nie udało się zapisać kolejności",
+    "reorderErrorDescription": "Nie udało się zapisać nowej kolejności produktów. Spróbuj ponownie."
+  },
+  "stats": {
+    "total": { "label": "Wszystkie produkty" },
+    "active": { "label": "Aktywne produkty" },
+    "draft": { "label": "Wersje robocze" },
+    "lowStock": { "label": "Niski stan magazynowy" },
+    "shareCaption": "{percent}% wszystkich"
+  }
+}

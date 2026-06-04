@@ -14,6 +14,7 @@ import {
   Settings,
   ShoppingBag,
   ShoppingCart,
+  SlidersHorizontal,
   Tag,
   Users,
   LogOut
@@ -74,7 +75,8 @@ const SIMPLE_NAV_ITEMS = SIMPLE_NAV.filter((item) => item.href !== CONSTANTS.ROU
 const CATALOG_SUB: readonly NavItem[] = [
   { href: CONSTANTS.ROUTES.ADMIN_PRODUCTS, icon: ShoppingBag, labelKey: "nav.products" },
   { href: CONSTANTS.ROUTES.ADMIN_CATEGORIES, icon: FolderOpen, labelKey: "nav.categories" },
-  { href: CONSTANTS.ROUTES.ADMIN_COLLECTIONS, icon: Layers, labelKey: "nav.collections" }
+  { href: CONSTANTS.ROUTES.ADMIN_COLLECTIONS, icon: Layers, labelKey: "nav.collections" },
+  { href: CONSTANTS.ROUTES.ADMIN_ATTRIBUTES, icon: SlidersHorizontal, labelKey: "nav.attributes" }
 ];
 
 const TOOLS_NAV: readonly NavItem[] = [
@@ -156,7 +158,6 @@ function AdminSidebarHeaderBrand(): JSX.Element {
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold tracking-tight">{t("brand")}</p>
-          <p className="truncate text-[10px] leading-none text-sidebar-foreground/50">{t("subtitle")}</p>
         </div>
       </SidebarMenuButton>
     </SidebarMenuItem>

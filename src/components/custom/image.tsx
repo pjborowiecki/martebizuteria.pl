@@ -2,7 +2,7 @@ import { type JSX, useMemo } from "react";
 
 import { Image as UnpicImage } from "@unpic/react";
 
-import { IMAGE_CONSTANTS, getOptimizedImageUrl } from "~/src/lib/utils";
+import { IMAGE_CONSTANTS, getOptimizedImageUrl, resolveAssetURL } from "~/src/lib/utils";
 
 export interface CustomImageProps {
   readonly alt: string;
@@ -11,6 +11,7 @@ export interface CustomImageProps {
   readonly decoding?: "async" | "auto" | "sync";
   readonly height: number;
   readonly loading?: "eager" | "lazy";
+  readonly optimize?: boolean;
   readonly priority?: boolean;
   readonly quality?: number;
   readonly sizes?: string;
@@ -25,6 +26,7 @@ export function Image({
   decoding = "async",
   height,
   loading,
+  optimize = true,
   priority = false,
   quality,
   sizes,
@@ -32,6 +34,10 @@ export function Image({
   width
 }: Readonly<CustomImageProps>): JSX.Element {
   const optimizedSrc = useMemo<string>(() => {
+    if (!optimize) {
+      return resolveAssetURL(src);
+    }
+
     let targetQuality = IMAGE_CONSTANTS.DEFAULT_QUALITY;
     if (quality !== undefined) {
       targetQuality = quality;
@@ -45,7 +51,7 @@ export function Image({
       src,
       width
     });
-  }, [height, priority, quality, src, width]);
+  }, [height, optimize, priority, quality, src, width]);
 
   let finalBackground: string | undefined = undefined;
   if (typeof blurDataURL === "string") {

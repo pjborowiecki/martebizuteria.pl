@@ -4,8 +4,8 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { COLLECTION_ERROR_CODES } from "~/src/modules/collection/collection.constants";
-import { collectionMutations } from "~/src/modules/collection/collection.mutations";
+import { COLLECTION_ERROR_CODES } from "~/src/modules/product-collection/product-collection.constants";
+import { collectionMutations } from "~/src/modules/product-collection/product-collection.mutations";
 
 interface DeleteResult {
   readonly deleted: number;

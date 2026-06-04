@@ -10,6 +10,8 @@ import { TableBody, TableHeader, TableRow } from "~/src/components/shadcn/table"
 
 import { DataGridHeaderCell } from "~/src/components/custom/datagrid/components/data-grid-header-cell";
 import { DataGridLayoutProvider } from "~/src/components/custom/datagrid/components/data-grid-layout-context";
+import { DATA_GRID_EMPTY_PLACEHOLDER_ROW_COUNT } from "~/src/components/custom/datagrid/components/data-grid-row";
+import { DATA_GRID_BODY_SCROLL_CLASS } from "~/src/components/custom/datagrid/components/data-grid-shell";
 import { DataGridTableBody } from "~/src/components/custom/datagrid/components/data-grid-table-body";
 import { useDataGridLayoutColumns } from "~/src/components/custom/datagrid/hooks/use-data-grid-layout-columns";
 import { useDatagridContainerWidth } from "~/src/components/custom/datagrid/hooks/use-datagrid-table-layout";
@@ -24,13 +26,23 @@ import {
 import type { ColumnReorderApi, RowReorderApi } from "~/src/components/custom/datagrid/lib/data-grid.types";
 import { getDataGridLayoutHeaders, getDataGridRightPinnedScrollPaddingPx } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 
-const MAX_SKELETON_ROWS = 5;
 const UNMEASURED_CONTAINER_WIDTH = 0;
 const ZERO = 0;
+const NO_ROWS = 0;
+
+function getDataGridPlaceholderBodyState(rowCount: number): { isPlaceholderBody: boolean; skeletonRowCount: number } {
+  const isPlaceholderBody = rowCount === NO_ROWS;
+  return {
+    isPlaceholderBody,
+    skeletonRowCount: isPlaceholderBody ? DATA_GRID_EMPTY_PLACEHOLDER_ROW_COUNT : rowCount
+  };
+}
+
 interface DataGridTableProps<TData extends RowData> {
   readonly columnReorder: ColumnReorderApi;
   readonly isLoading: boolean;
   readonly onRowClick?: (row: TData) => void;
+  readonly onRowPointerEnter?: (row: TData) => void;
   readonly persistenceKey: string;
   readonly rowReorder: RowReorderApi | undefined;
   readonly table: Table<TData>;
@@ -40,6 +52,7 @@ export function DataGridTable<TData extends RowData>({
   columnReorder,
   isLoading,
   onRowClick,
+  onRowPointerEnter,
   persistenceKey,
   rowReorder,
   table
@@ -47,13 +60,12 @@ export function DataGridTable<TData extends RowData>({
   const t = useTranslations("common");
   const containerRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
-  const { columnSizing, pagination } = table.getState();
+  const { columnSizing } = table.getState();
   const layoutColumns = useDataGridLayoutColumns(table);
   const layoutHeaders = getDataGridLayoutHeaders(table);
-  const visibleColumnCount = layoutColumns.length;
 
   const tableMinWidth = useMemo(() => getDataGridTableMinWidth(layoutColumns, columnSizing), [columnSizing, layoutColumns]);
-  const layoutKey = tableMinWidth + visibleColumnCount;
+  const layoutKey = tableMinWidth + layoutColumns.length;
   const tableClientWidth = useDatagridContainerWidth(containerRef, layoutKey);
 
   const hasMeasuredContainer = tableClientWidth > UNMEASURED_CONTAINER_WIDTH;
@@ -88,11 +100,11 @@ export function DataGridTable<TData extends RowData>({
     [resolvedTableWidth, tableClientWidth, tableLayout]
   );
 
-  const skeletonRowCount = Math.min(pagination.pageSize, MAX_SKELETON_ROWS);
+  const { isPlaceholderBody, skeletonRowCount } = getDataGridPlaceholderBodyState(rows.length);
 
   return (
     <DataGridLayoutProvider value={layoutValue}>
-      <DataTableContainer ref={containerRef} style={containerStyle}>
+      <DataTableContainer ref={containerRef} className={DATA_GRID_BODY_SCROLL_CLASS} style={containerStyle}>
         <DataTable className="w-full" style={tableStyle}>
           <colgroup>
             {layoutColumns.map((column) => (
@@ -107,7 +119,7 @@ export function DataGridTable<TData extends RowData>({
               />
             ))}
           </colgroup>
-          <TableHeader className="bg-muted [&_tr]:border-border/60">
+          <TableHeader className="[&_tr]:border-border/60">
             <TableRow className={cn(DATA_GRID_HEADER_ROW_CLASS, String.raw`[&>th:last-child>button.group\/resize]:hidden`)}>
               {layoutHeaders.map((header) => (
                 <DataGridHeaderCell key={header.id} header={header} columnReorder={columnReorder} persistenceKey={persistenceKey} />
@@ -119,13 +131,15 @@ export function DataGridTable<TData extends RowData>({
               columns={layoutColumns}
               emptyMessage={t("noDataToDisplay")}
               isLoading={isLoading}
+              isPlaceholderBody={isPlaceholderBody}
               onRowClick={onRowClick}
+              onRowPointerEnter={onRowPointerEnter}
               persistenceKey={persistenceKey}
               rowReorder={rowReorder}
               rows={rows}
               skeletonRowCount={skeletonRowCount}
               table={table}
-              visibleColumnCount={visibleColumnCount}
+              visibleColumnCount={layoutColumns.length}
             />
           </TableBody>
         </DataTable>

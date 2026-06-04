@@ -1,13 +1,23 @@
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { transformUrl } from "unpic";
 
-import { getAssetURL } from "~/src/lib/_utils/url";
-import { getBaseURL } from "~/src/lib/utils";
+import { DEFAULT_LOCALE } from "~/src/constants/_constants/locales";
 
-import type { Product } from "~/src/modules/product/product.types";
+import { getAssetURL, getBaseURL, isAssetCdnUrl, resolveAssetURL } from "~/src/lib/_utils/url";
+
+import type { Product, ProductLocaleMap } from "~/src/modules/product/product.types";
+import { resolveProductTitle } from "~/src/modules/product/product.utils";
 
 const DEFAULT_EAGER_COUNT = 6;
 const MAX_CACHE_SIZE = 1000;
+
+function productImageAlt(product: Readonly<{ title?: string; titles?: ProductLocaleMap | null }>): string {
+  if (product.title !== undefined && product.title !== "") {
+    return product.title;
+  }
+
+  return resolveProductTitle(product.titles, DEFAULT_LOCALE);
+}
 
 export const IMAGE_CONSTANTS = {
   CDN_DOMAIN: "tanstack-faster.tancn.dev",
@@ -24,16 +34,20 @@ export const IMAGE_CONSTANTS = {
   ZERO: 0
 };
 
-try {
-  IMAGE_CONSTANTS.CDN_DOMAIN = new URL(getBaseURL()).hostname;
-} catch {
-  // Silent fallback
-}
+const resolveImageCdnDomain = createIsomorphicFn()
+  .server((): string => IMAGE_CONSTANTS.CDN_DOMAIN)
+  .client((): string => {
+    const viteDomain: unknown = import.meta.env.VITE_IMAGE_CDN_DOMAIN;
+    if (typeof viteDomain === "string" && viteDomain.length > IMAGE_CONSTANTS.ZERO) {
+      return viteDomain;
+    }
 
-const viteDomain: unknown = import.meta.env.VITE_IMAGE_CDN_DOMAIN;
-if (typeof viteDomain === "string" && viteDomain.length > IMAGE_CONSTANTS.ZERO) {
-  IMAGE_CONSTANTS.CDN_DOMAIN = viteDomain;
-}
+    try {
+      return new URL(getBaseURL()).hostname;
+    } catch {
+      return IMAGE_CONSTANTS.CDN_DOMAIN;
+    }
+  });
 
 // Placeholder asset that lives in the R2 bucket.
 export const PLACEHOLDER_IMAGE = getAssetURL("placeholder.svg");
@@ -104,11 +118,13 @@ export function getOptimizedImageUrl({
   src,
   width
 }: Readonly<{ height: number; quality: number | undefined; src: string; width: number }>): string {
+  const resolvedSrc = resolveAssetURL(src);
+
   try {
-    if (src.startsWith("http://") || src.startsWith("https://")) {
-      const url = new URL(src);
-      if (url.hostname === "images.unsplash.com" || url.hostname.endsWith(".unsplash.com") || url.hostname.endsWith(".r2.dev")) {
-        return src;
+    if (resolvedSrc.startsWith("http://") || resolvedSrc.startsWith("https://")) {
+      const url = new URL(resolvedSrc);
+      if (url.hostname === "images.unsplash.com" || url.hostname.endsWith(".unsplash.com") || isAssetCdnUrl(resolvedSrc)) {
+        return resolvedSrc;
       }
     }
 
@@ -122,7 +138,7 @@ export function getOptimizedImageUrl({
         height,
         provider: "cloudflare",
         quality: resolvedQuality,
-        url: src,
+        url: resolvedSrc,
         width
       },
       {
@@ -133,16 +149,16 @@ export function getOptimizedImageUrl({
       },
       {
         cloudflare: {
-          domain: IMAGE_CONSTANTS.CDN_DOMAIN
+          domain: resolveImageCdnDomain()
         }
       }
     );
     if (typeof optimized === "string") {
       return optimized;
     }
-    return src;
+    return resolvedSrc;
   } catch {
-    return src;
+    return resolvedSrc;
   }
 }
 
@@ -190,7 +206,7 @@ export const prefetchProductThumbnails = createIsomorphicFn().client(
         count += IMAGE_CONSTANTS.ONE;
 
         return {
-          alt: product.title,
+          alt: productImageAlt(product),
           loading,
           quality: IMAGE_CONSTANTS.LOW_QUALITY,
           src: getOptimizedImageUrl({
@@ -208,11 +224,14 @@ export const prefetchProductThumbnails = createIsomorphicFn().client(
 );
 
 export const prefetchSingleProductImage = createIsomorphicFn().client(
-  (product: Readonly<Product["select"]>, prefetchService: Readonly<ImagePrefetchService>) => {
+  (
+    product: Readonly<{ thumbnail: string | null; title?: string; titles?: ProductLocaleMap | null }>,
+    prefetchService: Readonly<ImagePrefetchService>
+  ) => {
     if (typeof product.thumbnail === "string") {
       const images: PrefetchImageConfig[] = [
         {
-          alt: product.title,
+          alt: productImageAlt(product),
           loading: "eager",
           quality: IMAGE_CONSTANTS.HIGH_QUALITY,
           src: getOptimizedImageUrl({

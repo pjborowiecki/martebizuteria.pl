@@ -9,7 +9,8 @@ import {
   FIRST_INDEX,
   MOVE_BACKWARD,
   MOVE_FORWARD,
-  NOT_FOUND_INDEX
+  NOT_FOUND_INDEX,
+  REMOVE_ONE
 } from "~/src/components/custom/admin/image-upload/constants";
 import { useImageUpload } from "~/src/components/custom/admin/image-upload/hooks/use-image-upload";
 import { reorder } from "~/src/components/custom/admin/image-upload/lib/gallery.utils";
@@ -27,10 +28,9 @@ export interface ImageGalleryUploadProps extends ImageUploadBaseProps {
 }
 
 /**
- * Multi-image uploader with a draggable, reorderable gallery. Supports adding
- * many files at once, choosing a main image, reordering via drag or keyboard,
- * and removal. `value` is the display order; `mainId` designates the main image
- * independently of order (maps cleanly to a `thumbnail` + `images[]` schema).
+ * Multi-image uploader with a draggable, reorderable gallery. The first image is
+ * always the main image (product thumbnail). Reordering or "set as main" moves
+ * the chosen image to the first slot.
  */
 export function ImageGalleryUpload({
   className,
@@ -48,6 +48,14 @@ export function ImageGalleryUpload({
 
   const isBusy = disabled || isUploading;
 
+  const applyOrder = useCallback(
+    (next: readonly GalleryImage[]) => {
+      onChange(next);
+      onMainChange(next.length === EMPTY_COUNT ? undefined : next[FIRST_INDEX].id);
+    },
+    [onChange, onMainChange]
+  );
+
   const handleFiles = useCallback(
     (files: readonly File[]) => {
       void (async () => {
@@ -57,24 +65,33 @@ export function ImageGalleryUpload({
         }
         const added: GalleryImage[] = urls.map((url) => ({ id: crypto.randomUUID(), url }));
         const next = [...value, ...added];
-        onChange(next);
-        if (mainId === undefined) {
-          onMainChange(next[FIRST_INDEX].id);
-        }
+        applyOrder(next);
       })();
     },
-    [uploadFiles, value, onChange, mainId, onMainChange]
+    [applyOrder, uploadFiles, value]
   );
 
   const handleRemove = useCallback(
     (id: string) => {
       const next = value.filter((image) => image.id !== id);
-      onChange(next);
-      if (mainId === id) {
-        onMainChange(next.length === EMPTY_COUNT ? undefined : next[FIRST_INDEX].id);
-      }
+      applyOrder(next);
     },
-    [value, onChange, mainId, onMainChange]
+    [applyOrder, value]
+  );
+
+  const handleSetMain = useCallback(
+    (id: string) => {
+      const index = value.findIndex((image) => image.id === id);
+      if (index === NOT_FOUND_INDEX || index === FIRST_INDEX) {
+        return;
+      }
+
+      const next = [...value];
+      const [moved] = next.splice(index, REMOVE_ONE);
+      next.unshift(moved);
+      applyOrder(next);
+    },
+    [applyOrder, value]
   );
 
   const moveByOffset = useCallback(
@@ -87,9 +104,9 @@ export function ImageGalleryUpload({
       if (target < FIRST_INDEX || target >= value.length) {
         return;
       }
-      onChange(reorder(value, id, value[target].id));
+      applyOrder(reorder(value, id, value[target].id));
     },
-    [value, onChange]
+    [applyOrder, value]
   );
 
   const handleDragStartItem = useCallback((id: string) => {
@@ -106,9 +123,9 @@ export function ImageGalleryUpload({
       if (draggingId === undefined || draggingId === overId) {
         return;
       }
-      onChange(reorder(value, draggingId, overId));
+      applyOrder(reorder(value, draggingId, overId));
     },
-    [draggingId, value, onChange]
+    [applyOrder, draggingId, value]
   );
 
   const handleKeyReorder = useCallback(
@@ -123,6 +140,16 @@ export function ImageGalleryUpload({
     },
     [moveByOffset]
   );
+
+  const isEmpty = value.length === EMPTY_COUNT;
+
+  if (isEmpty) {
+    return (
+      <div className={cn("w-full", className)}>
+        <GalleryAddTile disabled={isBusy} isUploading={isUploading} layout="dropzone" onFiles={handleFiles} />
+      </div>
+    );
+  }
 
   return (
     <div className={cn("w-full", className)}>
@@ -140,7 +167,7 @@ export function ImageGalleryUpload({
             onDragStartItem={handleDragStartItem}
             onKeyReorder={handleKeyReorder}
             onRemove={handleRemove}
-            onSetMain={onMainChange}
+            onSetMain={handleSetMain}
             total={value.length}
           />
         ))}

@@ -132,7 +132,7 @@ modules/<domain>/
 - `stripe/` — Checkout Sessions, server actions, webhook handlers, typed error codes
 - `better-auth/` — server/client auth, permissions, rate limits, email hooks
 - `resend/` — React Email templates (verify, reset password, change email, order confirmation)
-- `drizzle-orm/` — database client, schemas barrel, migrations
+- `drizzle-orm/` — database client, schemas barrel, migrations, `seeds/` SQL sources
 - `inpost/` — Paczkomaty locker search (public Points API)
 - `use-intl/` — message loading, locale middleware, query options
 
@@ -497,7 +497,6 @@ martebizuteria/
 ├── messages/                   # use-intl catalogs (en/, pl/ — one JSON module per namespace)
 ├── public/                     # static assets (favicon, icons, landing video)
 │   └── screenshots/            # README UI captures
-├── seeds/                      # SQL seed files (catalog, inventory, delivery, …)
 ├── scripts/                    # commit-msg hook, ad-hoc tooling
 ├── opensrc/                    # vendored upstream source (see opensrc/sources.json)
 ├── src/
@@ -596,7 +595,7 @@ martebizuteria/
 │   │   ├── stripe/             # Checkout Sessions, server actions, webhooks, errors
 │   │   ├── better-auth/        # server/client, permissions, schemas, utils
 │   │   ├── resend/             # config, email previews, React Email templates/
-│   │   ├── drizzle-orm/        # database client, schemas barrel, migrations/
+│   │   ├── drizzle-orm/        # database client, schemas barrel, migrations/, seeds/
 │   │   ├── inpost/             # Paczkomaty API client + Zod schemas
 │   │   └── use-intl/           # message queries, locale middleware
 │   │

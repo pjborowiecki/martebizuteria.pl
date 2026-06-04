@@ -120,23 +120,26 @@ function useCheckoutNavigation(form: UseFormReturn<CheckoutFormSchema>, hydrated
 
 function useCheckoutDraftPersistence(form: UseFormReturn<CheckoutFormSchema>): boolean {
   const [hydrated, setHydrated] = useState(false);
+  const { getValues, reset, watch } = form;
 
   useEffect(() => {
     const draft = loadCheckoutDraft();
     if (draft !== undefined) {
-      form.reset({ ...form.getValues(), ...draft }, { keepDefaultValues: true });
+      reset({ ...getValues(), ...draft }, { keepDefaultValues: true });
     }
 
     setHydrated(true);
 
-    const subscription = form.watch((values) => {
+    // Subscribe via `watch` callback (not render-time `watch()` / `useWatch`) so draft
+    // persistence does not re-render the whole checkout tree on every keystroke.
+    const subscription = watch((values) => {
       saveCheckoutDraft(values);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [form]);
+  }, [getValues, reset, watch]);
 
   return hydrated;
 }

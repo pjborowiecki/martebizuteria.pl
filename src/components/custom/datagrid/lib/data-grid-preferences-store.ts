@@ -2,6 +2,7 @@ import { syncDataGridColumnSizingCssVars } from "~/src/components/custom/datagri
 import {
   defaultPreferencesSnapshot,
   readDataGridPreferences,
+  sameDataGridPreferencesSnapshot,
   sanitizeColumnSizing,
   STORAGE_PREFIX,
   type DataGridPreferencesSnapshot
@@ -34,6 +35,10 @@ export function createDataGridPreferencesStore(config: DataGridPreferencesStoreC
   return {
     getSnapshot: () => snapshot,
     setSnapshot: (next: DataGridPreferencesSnapshot) => {
+      if (sameDataGridPreferencesSnapshot(snapshot, next)) {
+        return;
+      }
+
       snapshot = next;
       if (typeof document !== "undefined") {
         syncDataGridColumnSizingCssVars({

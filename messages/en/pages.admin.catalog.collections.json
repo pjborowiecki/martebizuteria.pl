@@ -59,6 +59,25 @@
     "create": "Create collection",
     "save": "Save changes",
     "sectionBasic": "Basic Details",
+    "localePicker": {
+      "filledCountHint": "name in each language"
+    },
+    "nameLocale": {
+      "pl": "Name (PL)",
+      "en": "Name (EN)"
+    },
+    "nameLocalePlaceholder": {
+      "pl": "e.g. Summer Collection",
+      "en": "e.g. Summer Collection"
+    },
+    "descriptionLocale": {
+      "pl": "Description (PL)",
+      "en": "Description (EN)"
+    },
+    "descriptionLocalePlaceholder": {
+      "pl": "Enter collection description...",
+      "en": "Enter collection description..."
+    },
     "name": "Name",
     "namePlaceholder": "e.g. Summer Collection",
     "slug": "URL Slug",
@@ -73,8 +92,16 @@
     "hints": {
       "id": "Permanent identifier for this collection. Used in the admin and APIs; it cannot be changed after creation.",
       "name": "Public name shown in the storefront and collection pages.",
+      "nameLocale": {
+        "pl": "Collection name shown in the storefront (Polish). Required.",
+        "en": "Collection name shown in the storefront (English). Required."
+      },
       "slug": "URL path segment for this collection. Filled from the name until you edit it manually. Use lowercase letters, numbers, and hyphens only.",
       "description": "Marketing copy shown on the collection page and in previews.",
+      "descriptionLocale": {
+        "pl": "Marketing copy on the collection page (Polish).",
+        "en": "Marketing copy on the collection page (English)."
+      },
       "status": "Draft collections are hidden from the storefront; active collections are visible to customers.",
       "coverImage": "Cover image used on the collection page and in listings."
     },
@@ -86,11 +113,14 @@
     "created": "Created",
     "updated": "Last updated",
     "validation": {
+      "LOCALE_TITLE_REQUIRED": "Fill in this field for the selected language.",
       "nameRequired": "Name is required",
       "nameTooLong": "Name is too long",
       "slugRequired": "URL slug is required",
       "slugInvalid": "Use lowercase letters, numbers and hyphens only",
-      "descriptionTooLong": "Description is too long"
+      "descriptionTooLong": "Description is too long",
+      "submitBlockedTitle": "Fix form errors",
+      "submitBlockedDescription": "Check highlighted fields and try again."
     }
   },
   "toast": {

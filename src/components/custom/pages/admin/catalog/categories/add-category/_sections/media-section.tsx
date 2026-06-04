@@ -9,7 +9,7 @@ import { Field } from "~/src/components/shadcn/field";
 import { ImageUpload } from "~/src/components/custom/admin/image-upload/components/image-upload";
 import { useCategoryForm } from "~/src/components/custom/pages/admin/catalog/categories/add-category/category-form-provider";
 import { CategoryFormSection } from "~/src/components/custom/pages/admin/catalog/categories/add-category/category-form-section";
-import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/components/catalog-form-field-label";
+import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-field-label";
 
 export function MediaSection(): JSX.Element {
   const t = useTranslations("pages.admin.catalog.categories");

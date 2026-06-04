@@ -14,8 +14,8 @@ CREATE TABLE `account` (
 	`user_id` text NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE INDEX `account_userId_idx` ON `account` (`user_id`);--> statement-breakpoint
+
+CREATE INDEX `account_userId_idx` ON `account` (`user_id`);
 CREATE TABLE `session` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`expires_at` text NOT NULL,
@@ -27,9 +27,9 @@ CREATE TABLE `session` (
 	`user_id` text NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE UNIQUE INDEX `session_token_unique` ON `session` (`token`);--> statement-breakpoint
-CREATE INDEX `session_userId_idx` ON `session` (`user_id`);--> statement-breakpoint
+
+CREATE UNIQUE INDEX `session_token_unique` ON `session` (`token`);
+CREATE INDEX `session_userId_idx` ON `session` (`user_id`);
 CREATE TABLE `user` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`email` text(320) NOT NULL,
@@ -39,8 +39,8 @@ CREATE TABLE `user` (
 	`name` text(256) NOT NULL,
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL
 );
---> statement-breakpoint
-CREATE UNIQUE INDEX `user_email_unique` ON `user` (`email`);--> statement-breakpoint
+
+CREATE UNIQUE INDEX `user_email_unique` ON `user` (`email`);
 CREATE TABLE `verification` (
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`expires_at` text NOT NULL,
@@ -49,5 +49,5 @@ CREATE TABLE `verification` (
 	`updated_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
 	`value` text(8192) NOT NULL
 );
---> statement-breakpoint
+
 CREATE INDEX `verification_identifier_idx` ON `verification` (`identifier`);

@@ -8,8 +8,8 @@ import { getDataGridColumnIds } from "~/src/components/custom/datagrid/lib/data-
 import { useCollectionColumns } from "~/src/components/custom/pages/admin/catalog/collections/components/collections-columns";
 import { collectionsDataGrid } from "~/src/components/custom/pages/admin/catalog/collections/utils/collections-data-grid";
 
-import { COLLECTION_TABLE_COLUMN_PINNING } from "~/src/modules/collection/collection.constants";
-import type { Collection } from "~/src/modules/collection/collection.types";
+import { COLLECTION_TABLE_COLUMN_PINNING } from "~/src/modules/product-collection/product-collection.constants";
+import type { Collection } from "~/src/modules/product-collection/product-collection.types";
 
 const EMPTY_COLLECTIONS: Collection["adminListItem"][] = [];
 

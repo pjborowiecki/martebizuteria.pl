@@ -1,28 +1,48 @@
-import type { ComponentProps, JSX } from "react";
+import { createContext, type ComponentProps, type JSX, useContext } from "react";
 
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "~/src/lib/utils";
 
 import { Button } from "~/src/components/shadcn/button";
-import { Input } from "~/src/components/shadcn/input";
+import { Input, type inputVariants } from "~/src/components/shadcn/input";
+import { sheetInputGroupClassName } from "~/src/components/shadcn/sheet-control.styles";
 import { Textarea } from "~/src/components/shadcn/textarea";
 
-function InputGroup({ className, ...props }: Readonly<ComponentProps<"div">>): JSX.Element {
+const inputGroupVariants = cva(
+  "group/input-group relative flex w-full min-w-0 transition-[color,background-color,border-color] outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-disabled:cursor-not-allowed has-disabled:opacity-60 has-[[data-slot][aria-invalid=true]]:border-destructive has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto dark:has-[[data-slot][aria-invalid=true]]:border-destructive has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
+  {
+    defaultVariants: {
+      variant: "default"
+    },
+    variants: {
+      variant: {
+        default:
+          "min-h-11 items-center rounded-none border-0 border-b border-border bg-background focus-within:border-foreground focus-within:ring-0 has-disabled:bg-muted/60 dark:bg-input/30 dark:has-disabled:bg-input/80",
+        sheet: sheetInputGroupClassName
+      }
+    }
+  }
+);
+
+type InputGroupVariant = NonNullable<VariantProps<typeof inputGroupVariants>["variant"]>;
+
+const InputGroupVariantContext = createContext<InputGroupVariant>("default");
+
+interface InputGroupProps extends ComponentProps<"div">, VariantProps<typeof inputGroupVariants> {}
+
+function InputGroup({ className, variant: variantProp = "default", ...props }: Readonly<InputGroupProps>): JSX.Element {
+  const variant: InputGroupVariant = variantProp ?? "default";
+
   return (
-    <div
-      className={cn(
-        "group/input-group relative flex min-h-11 w-full min-w-0 items-center rounded-none border-0 border-b border-border bg-background transition-[color,background-color,border-color] outline-none focus-within:border-foreground focus-within:ring-0 in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-disabled:cursor-not-allowed has-disabled:bg-muted/60 has-disabled:opacity-60 has-[[data-slot][aria-invalid=true]]:border-destructive has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto dark:bg-input/30 dark:has-disabled:bg-input/80 dark:has-[[data-slot][aria-invalid=true]]:border-destructive has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
-        className
-      )}
-      data-slot="input-group"
-      {...props}
-    />
+    <InputGroupVariantContext.Provider value={variant}>
+      <div className={cn(inputGroupVariants({ variant }), className)} data-slot="input-group" data-variant={variant} {...props} />
+    </InputGroupVariantContext.Provider>
   );
 }
 
 const inputGroupAddonVariants = cva(
-  "flex h-auto cursor-text items-center justify-center gap-2 py-2.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-lg [&>svg:not([class*='size-'])]:size-4",
+  "flex h-auto cursor-text items-center justify-center gap-2 py-2.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 group-data-[variant=sheet]/input-group:h-full group-data-[variant=sheet]/input-group:py-0 [&>kbd]:rounded-lg [&>svg:not([class*='size-'])]:size-4",
   {
     defaultVariants: {
       align: "inline-start"
@@ -87,14 +107,23 @@ function InputGroupText({ className, ...props }: Readonly<ComponentProps<"span">
   );
 }
 
-function InputGroupInput({ className, ...props }: Readonly<ComponentProps<"input">>): JSX.Element {
+interface InputGroupInputProps extends ComponentProps<"input"> {
+  readonly variant?: NonNullable<VariantProps<typeof inputVariants>["variant"]>;
+}
+
+function InputGroupInput({ className, variant, ...props }: Readonly<InputGroupInputProps>): JSX.Element {
+  const groupVariant = useContext(InputGroupVariantContext);
+  const resolvedVariant = variant ?? (groupVariant === "sheet" ? "sheet-inset" : "default");
+
   return (
     <Input
       className={cn(
-        "flex-1 rounded-none border-none bg-transparent shadow-none ring-0 focus-visible:border-none focus-visible:ring-0 disabled:bg-transparent aria-invalid:border-none aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
+        resolvedVariant === "default" &&
+          "flex-1 rounded-none border-none bg-transparent shadow-none ring-0 focus-visible:border-none focus-visible:ring-0 disabled:bg-transparent aria-invalid:border-none aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
         className
       )}
       data-slot="input-group-control"
+      variant={resolvedVariant}
       {...props}
     />
   );

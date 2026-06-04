@@ -3,7 +3,7 @@ import type { JSX, ReactNode } from "react";
 import { cn } from "~/src/lib/utils";
 
 export const INPUT_CLASSES =
-  "h-10 w-full rounded-md border-0 bg-secondary/40 px-3.5 text-sm ring-1 ring-border/50 transition-all placeholder:text-muted-foreground/40 hover:ring-border/80 focus:bg-background focus:ring-2 focus:ring-foreground/20 focus:outline-none";
+  "h-10 w-full rounded-lg border-0 bg-secondary/40 px-3.5 text-sm ring-1 ring-border/50 transition-all placeholder:text-muted-foreground/40 hover:ring-border/80 focus:bg-background focus:ring-2 focus:ring-foreground/20 focus:outline-none";
 
 export const SELECT_CLASSES = cn(INPUT_CLASSES, "cursor-pointer appearance-none");
 

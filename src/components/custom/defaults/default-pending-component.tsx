@@ -4,8 +4,7 @@ import { useRouterState } from "@tanstack/react-router";
 
 import { TranslationsProvider } from "~/src/providers/translations-provider";
 
-import { isAdminPathname } from "~/src/lib/admin-route";
-import { cn } from "~/src/lib/utils";
+import { cn, isAdminPathname } from "~/src/lib/utils";
 
 function PendingShell(): JSX.Element {
   const pathname = useRouterState({ select: (state) => state.location.pathname });

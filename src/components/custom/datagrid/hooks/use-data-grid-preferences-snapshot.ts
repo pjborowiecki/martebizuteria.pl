@@ -19,6 +19,7 @@ export interface UseDataGridPreferencesSnapshotOptions {
   readonly columnMinSizes: Readonly<Record<string, number>>;
   readonly columnPinning?: ColumnPinningState;
   readonly defaultColumnVisibility?: VisibilityState;
+  readonly forcedHiddenColumnIds?: readonly string[];
   readonly lockedColumnIds: readonly string[];
   readonly persistenceKey: string;
 }
@@ -35,6 +36,7 @@ export function useDataGridPreferencesSnapshot({
   columnMinSizes,
   columnPinning = {},
   defaultColumnVisibility = {},
+  forcedHiddenColumnIds = [],
   lockedColumnIds,
   persistenceKey
 }: UseDataGridPreferencesSnapshotOptions): DataGridPreferencesSnapshotApi {
@@ -64,6 +66,7 @@ export function useDataGridPreferencesSnapshot({
               columnMinSizes: columnMinSizesRef.current,
               columnPinning: stableColumnPinning,
               defaultColumnVisibility,
+              forcedHiddenColumnIds,
               lockedColumnIds,
               persistenceKey
             });
@@ -79,7 +82,15 @@ export function useDataGridPreferencesSnapshot({
     }
 
     return storeRef.current;
-  }, [canonicalOrder, defaultColumnVisibility, lockedColumnIds, persistenceKey, serverSnapshot, stableColumnPinning]);
+  }, [
+    canonicalOrder,
+    defaultColumnVisibility,
+    forcedHiddenColumnIds,
+    lockedColumnIds,
+    persistenceKey,
+    serverSnapshot,
+    stableColumnPinning
+  ]);
 
   const getServerSnapshot = useCallback(() => serverSnapshot, [serverSnapshot]);
 

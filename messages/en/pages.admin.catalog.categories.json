@@ -62,7 +62,42 @@
     "save": "Save changes",
     "sectionBasic": "Basic Details",
     "sectionParent": "Hierarchy",
-    "title": "Title",
+    "localePicker": {
+      "filledCountHint": "title in each language"
+    },
+    "titleLocale": {
+      "pl": "Title (PL)",
+      "en": "Title (EN)"
+    },
+    "titleLocalePlaceholder": {
+      "pl": "e.g. Necklaces",
+      "en": "e.g. Necklaces"
+    },
+    "subtitleLocale": {
+      "pl": "Subtitle (PL)",
+      "en": "Subtitle (EN)"
+    },
+    "subtitleLocalePlaceholder": {
+      "pl": "Supporting line under the category title...",
+      "en": "Supporting line under the category title..."
+    },
+    "shortDescriptionLocale": {
+      "pl": "Short description (PL)",
+      "en": "Short description (EN)"
+    },
+    "shortDescriptionLocalePlaceholder": {
+      "pl": "Brief summary for cards and listings...",
+      "en": "Brief summary for cards and listings..."
+    },
+    "descriptionLocale": {
+      "pl": "Description (PL)",
+      "en": "Description (EN)"
+    },
+    "descriptionLocalePlaceholder": {
+      "pl": "Enter the full category description...",
+      "en": "Enter the full category description..."
+    },
+    "title": "Category",
     "titlePlaceholder": "e.g. Necklaces",
     "slug": "URL Slug",
     "slugHint": "Generated from the title until you edit this field.",
@@ -82,22 +117,41 @@
     "hints": {
       "id": "Permanent identifier for this category. Used in the admin and APIs; it cannot be changed after creation.",
       "title": "Public name shown in the storefront navigation and category pages.",
+      "titleLocale": {
+        "pl": "Category name shown in the storefront (Polish). Required.",
+        "en": "Category name shown in the storefront (English). Required."
+      },
       "slug": "URL path segment for this category. Filled from the title until you edit it manually. Use lowercase letters, numbers, and hyphens only.",
       "subtitle": "Optional supporting line displayed under the category title.",
+      "subtitleLocale": {
+        "pl": "Optional supporting line under the category title (Polish).",
+        "en": "Optional supporting line under the category title (English)."
+      },
       "shortDescription": "Brief summary used in cards, listings, and previews.",
+      "shortDescriptionLocale": {
+        "pl": "Brief summary for cards and listings (Polish).",
+        "en": "Brief summary for cards and listings (English)."
+      },
       "description": "Full description shown on the category page.",
+      "descriptionLocale": {
+        "pl": "Full description on the category page (Polish).",
+        "en": "Full description on the category page (English)."
+      },
       "parentCategory": "Optional parent for nested categories. Leave empty for a top-level category.",
       "status": "Draft categories are hidden from the storefront; active categories are visible to customers.",
       "image": "Hero or thumbnail image for this category in the storefront and admin."
     },
     "validation": {
+      "LOCALE_TITLE_REQUIRED": "Fill in this field for the selected language.",
       "titleRequired": "Title is required",
       "titleTooLong": "Title is too long",
       "slugRequired": "URL slug is required",
       "slugInvalid": "Use lowercase letters, numbers and hyphens only",
       "descriptionTooLong": "Description is too long",
       "shortDescriptionTooLong": "Short description is too long",
-      "subtitleTooLong": "Subtitle is too long"
+      "subtitleTooLong": "Subtitle is too long",
+      "submitBlockedTitle": "Fix form errors",
+      "submitBlockedDescription": "Check highlighted fields and try again."
     }
   },
   "toast": {

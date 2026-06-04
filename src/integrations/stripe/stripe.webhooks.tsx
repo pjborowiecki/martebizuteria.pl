@@ -10,8 +10,8 @@ import { stripe } from "~/src/integrations/stripe/stripe.server";
 import { sendEmail } from "~/src/lib/_utils/email";
 import { isValidLocale } from "~/src/lib/_utils/locale";
 
-import { checkoutAccessors } from "~/src/modules/checkout/checkout.accessors";
-import { orderAccessors } from "~/src/modules/order/order.accessors";
+import { checkoutMutations } from "~/src/modules/checkout/checkout.mutations";
+import { orderMutations } from "~/src/modules/order/order.mutations";
 
 const NO_AMOUNT = 0;
 const SINGLE_RESULT = 1;
@@ -100,7 +100,7 @@ async function handleFulfillCheckoutSession(session: StripeType.Checkout.Session
 
   const lines = fulfillmentItemsSchema.parse(JSON.parse(parseMetadataItems(session)));
   const currency = (session.currency ?? CONSTANTS.STRIPE_CURRENCY).toUpperCase();
-  const orderId = await checkoutAccessors.fulfillCheckout({
+  const orderId = await checkoutMutations.fulfillCheckout({
     amount: session.amount_total ?? NO_AMOUNT,
     currency,
     lines,
@@ -119,7 +119,7 @@ async function handleFulfillCheckoutSession(session: StripeType.Checkout.Session
 
 async function handleReleaseCheckoutSession(session: StripeType.Checkout.Session): Promise<void> {
   const lines = releaseItemsSchema.parse(JSON.parse(parseMetadataItems(session)));
-  await checkoutAccessors.releaseCheckout({ lines, transactionId: session.id });
+  await checkoutMutations.releaseCheckout({ lines, transactionId: session.id });
   console.info(`Checkout released after failed/expired session ${session.id}.`);
 }
 
@@ -143,7 +143,7 @@ async function handleChargeRefunded(charge: StripeType.Charge): Promise<void> {
     return;
   }
 
-  await orderAccessors.refundOrder({
+  await orderMutations.refundOrder({
     fullyRefunded: charge.amount_refunded >= charge.amount,
     refundedAmount: charge.amount_refunded,
     restock: true,
@@ -159,7 +159,7 @@ async function handleChargeDisputeCreated(dispute: StripeType.Dispute): Promise<
     return;
   }
 
-  await orderAccessors.flagOrderDispute(transactionId, {
+  await orderMutations.flagOrderDispute(transactionId, {
     amount: dispute.amount,
     id: dispute.id,
     reason: dispute.reason,
@@ -178,7 +178,7 @@ async function handleChargeDisputeClosed(dispute: StripeType.Dispute): Promise<v
   // A lost dispute is a forced reversal of funds: record it as a refund, but do
   // NOT restock — the goods were almost certainly shipped and not returned.
   if (dispute.status === DISPUTE_LOST) {
-    await orderAccessors.refundOrder({
+    await orderMutations.refundOrder({
       fullyRefunded: true,
       refundedAmount: dispute.amount,
       restock: false,
@@ -188,7 +188,7 @@ async function handleChargeDisputeClosed(dispute: StripeType.Dispute): Promise<v
     return;
   }
 
-  await orderAccessors.clearOrderDispute(transactionId);
+  await orderMutations.clearOrderDispute(transactionId);
   console.info(`Dispute ${dispute.id} closed (${dispute.status}); dispute flag cleared.`);
 }
 

@@ -8,7 +8,8 @@ import { useStableColumnPinning } from "~/src/components/custom/datagrid/hooks/u
 import {
   clearDataGridPreferences,
   defaultPreferencesSnapshot,
-  hasDataGridPreferenceOverrides
+  hasDataGridPreferenceOverrides,
+  sanitizeColumnVisibility
 } from "~/src/components/custom/datagrid/lib/data-grid-preferences";
 import { clampDataGridColumnSizing, omitNonResizableColumnSizing } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 
@@ -17,6 +18,7 @@ export interface UseDataGridPreferencesOptions {
   readonly columnMinSizes: Readonly<Record<string, number>>;
   readonly columnPinning?: ColumnPinningState;
   readonly defaultColumnVisibility?: VisibilityState;
+  readonly forcedHiddenColumnIds?: readonly string[];
   readonly initialColumnOrder: readonly string[];
   readonly nonResizableColumnIds: readonly string[];
   readonly persistenceKey: string;
@@ -42,6 +44,7 @@ export function useDataGridPreferences({
   columnMinSizes,
   columnPinning = {},
   defaultColumnVisibility = {},
+  forcedHiddenColumnIds = [],
   initialColumnOrder,
   nonResizableColumnIds,
   persistenceKey
@@ -60,6 +63,7 @@ export function useDataGridPreferences({
     columnMinSizes,
     columnPinning: stableColumnPinning,
     defaultColumnVisibility,
+    forcedHiddenColumnIds,
     lockedColumnIds,
     persistenceKey
   });
@@ -109,10 +113,16 @@ export function useDataGridPreferences({
   const setColumnVisibility = useCallback(
     (updater: VisibilityState | ((current: VisibilityState) => VisibilityState)) => {
       const current = getStore().getSnapshot();
-      const nextVisibility = typeof updater === "function" ? updater(current.columnVisibility) : updater;
+      const rawVisibility = typeof updater === "function" ? updater(current.columnVisibility) : updater;
+      const nextVisibility = sanitizeColumnVisibility({
+        columnIds: canonicalOrder,
+        defaults: defaultColumnVisibility,
+        forcedHiddenColumnIds,
+        saved: rawVisibility
+      });
       getStore().setSnapshot({ ...current, columnVisibility: nextVisibility });
     },
-    [getStore]
+    [canonicalOrder, defaultColumnVisibility, forcedHiddenColumnIds, getStore]
   );
 
   const resetPreferences = useCallback(() => {

@@ -6,7 +6,7 @@ import { Image } from "~/src/components/custom/image";
 import { ProductBreadcrumb } from "~/src/components/custom/pages/product-page/product-breadcrumb";
 import { ProductHeroInfo } from "~/src/components/custom/pages/product-page/product-hero-info";
 
-import type { ProductData } from "~/src/data/product-data";
+import type { StorefrontProduct } from "~/src/modules/product/product.types";
 
 const INDEX_OFFSET = 1;
 const FIRST_INDEX = 0;
@@ -14,7 +14,7 @@ const PRODUCT_IMAGE_ASPECT_RATIO = 0.8;
 
 export interface ProductHeroSectionProps {
   readonly images: readonly string[];
-  readonly product: ProductData;
+  readonly product: StorefrontProduct;
 }
 
 export function ProductHeroSection({ images, product }: ProductHeroSectionProps): JSX.Element {

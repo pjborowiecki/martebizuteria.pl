@@ -1,54 +1,52 @@
 import { relations } from "drizzle-orm";
-import { index, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
-import { category } from "~/src/modules/category/category.schema";
-import { collection } from "~/src/modules/collection/collection.schema";
+import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema";
+import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema";
+import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema";
+import { productImage } from "~/src/modules/product-image/product-image.schema";
+import { productOption } from "~/src/modules/product-option/product-option.schema";
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
-import { DEFAULT_PRODUCT_STATUS, PRODUCT_STATUSES } from "~/src/modules/product/product.constants";
+import {
+  DEFAULT_PRODUCT_STATUS,
+  PRODUCT_COLUMN_LENGTH,
+  PRODUCT_DEFAULT_RANK,
+  PRODUCT_STATUSES
+} from "~/src/modules/product/product.constants";
+import type { ProductLocaleMap, ProductTagsLocaleMap } from "~/src/modules/product/product.types";
 
 export const product = sqliteTable(
   "product",
   {
-    categoryId: text("category_id").references(() => category.id, { onDelete: "set null" }),
-    collectionId: text("collection_id").references(() => collection.id, {
-      onDelete: "set null"
-    }),
-    description: text("description"),
-    handle: text("handle", { length: 255 }).notNull().unique(),
-    id: text("id").primaryKey(),
-    images: text("images", { mode: "json" }).$type<string[]>(),
-    metadata: text("metadata"),
-    seoDescription: text("seo_description"),
-    seoTitle: text("seo_title"),
+    descriptions: text("descriptions", { mode: "json" }).$type<ProductLocaleMap | null>(),
+    handle: text("handle", { length: PRODUCT_COLUMN_LENGTH.handle }).notNull().unique(),
+    id: text("id", { length: PRODUCT_COLUMN_LENGTH.id }).primaryKey(),
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, never> | null>(),
+    primaryCategoryId: text("primary_category_id", { length: PRODUCT_COLUMN_LENGTH.id }),
+    rank: integer("rank").notNull().default(PRODUCT_DEFAULT_RANK),
     status: text("status", { enum: PRODUCT_STATUSES }).default(DEFAULT_PRODUCT_STATUS).notNull(),
-    subtitle: text("subtitle", { length: 512 }),
-    tags: text("tags", { mode: "json" }).$type<string[]>(),
-    thumbnail: text("thumbnail", { length: 2048 }),
-    title: text("title", { length: 512 }).notNull(),
-    weight: real("weight"),
+    subtitles: text("subtitles", { mode: "json" }).$type<ProductLocaleMap | null>(),
+    tags: text("tags", { mode: "json" }).$type<ProductTagsLocaleMap | null>(),
+    thumbnail: text("thumbnail", { length: PRODUCT_COLUMN_LENGTH.thumbnail }),
+    titles: text("titles", { mode: "json" }).$type<ProductLocaleMap>().notNull(),
     ...timestamps()
   },
   (table) => [
+    index("product_primary_category_id_idx").on(table.primaryCategoryId),
+    index("product_rank_idx").on(table.rank),
     index("product_status_createdAt_idx").on(table.status, table.createdAt),
-    index("product_category_status_idx").on(table.categoryId, table.status),
-    index("product_collection_status_idx").on(table.collectionId, table.status)
+    index("product_status_rank_idx").on(table.status, table.rank),
+    index("product_status_updatedAt_idx").on(table.status, table.updatedAt)
   ]
 );
 
-export const productRelations = relations(product, ({ one, many }) => ({
-  category: one(category, {
-    fields: [product.categoryId],
-    references: [category.id]
-  }),
-  collection: one(collection, {
-    fields: [product.collectionId],
-    references: [collection.id]
-  }),
+export const productRelations = relations(product, ({ many }) => ({
+  attributes: many(attributeOnProduct),
+  categories: many(categoryOnProduct),
+  collections: many(collectionOnProduct),
+  images: many(productImage),
+  options: many(productOption),
   variants: many(productVariant)
-}));
-
-export const collectionRelations = relations(collection, ({ many }) => ({
-  products: many(product)
 }));

@@ -64,7 +64,7 @@ export function createDataGrid<TData extends RowData>({ persistenceKey }: Create
   }
 
   function Body(): JSX.Element {
-    const { columnReorder, isLoading, onRowClick, rowReorder, table } = useDataGrid();
+    const { columnReorder, isLoading, onRowClick, onRowPointerEnter, rowReorder, table } = useDataGrid();
     return (
       <DataGridTable
         table={table}
@@ -73,6 +73,7 @@ export function createDataGrid<TData extends RowData>({ persistenceKey }: Create
         isLoading={isLoading}
         persistenceKey={persistenceKey}
         onRowClick={onRowClick}
+        onRowPointerEnter={onRowPointerEnter}
       />
     );
   }

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { THEME_STORAGE_KEY } from "~/src/lib/theme-init-script";
+import { THEME_STORAGE_KEY } from "~/scripts/theme-init-script";
 
 /** Keeps the admin shell on a light canvas while the storefront may use dark mode. */
 export function useAdminLightTheme(): void {

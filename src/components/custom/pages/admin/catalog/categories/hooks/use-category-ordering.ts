@@ -5,7 +5,7 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import type { RowMoveDirection } from "~/src/components/custom/datagrid/lib/data-grid.types";
 import { moveItemBefore, sameOrder, swapItems } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 
-import type { Category } from "~/src/modules/category/category.types";
+import type { Category } from "~/src/modules/product-category/product-category.types";
 
 const ONE_STEP = 1;
 

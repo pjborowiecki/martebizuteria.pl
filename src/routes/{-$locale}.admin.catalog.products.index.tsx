@@ -1,61 +1,43 @@
-import { type JSX, useMemo } from "react";
+import { type JSX } from "react";
 
+import type { QueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Plus } from "lucide-react";
-import { useTranslations } from "use-intl";
 
-import { CONSTANTS } from "~/src/constants";
+import { ProductsTableContent } from "~/src/components/custom/pages/admin/catalog/products/components/products-table";
+import {
+  ProductsSheetProvider,
+  useProductsSheetState
+} from "~/src/components/custom/pages/admin/catalog/products/hooks/use-products-sheet";
 
-import { Button } from "~/src/components/shadcn/button";
+import { productAttributeQueryOptions } from "~/src/modules/product-attribute/product-attribute.queries";
+import { categoryQueryOptions } from "~/src/modules/product-category/product-category.queries";
+import { collectionQueryOptions } from "~/src/modules/product-collection/product-collection.queries";
+import { PRODUCT_QUERY_STALE_MS } from "~/src/modules/product/product.constants";
+import { productQueryOptions } from "~/src/modules/product/product.queries";
 
-import { LocalizedLink } from "~/src/components/custom/localized-link";
-import { AdminHeader } from "~/src/components/custom/pages/admin/admin-header";
-import { CatalogStats } from "~/src/components/custom/pages/admin/catalog/catalog-stats/catalog-stats";
-import { CatalogTable } from "~/src/components/custom/pages/admin/catalog/catalog-table/catalog-table";
-import { CatalogTabs } from "~/src/components/custom/pages/admin/catalog/catalog-tabs";
-
-import { PRODUCT_STATS, PRODUCTS } from "~/src/data/catalog-data";
+async function prefetchProductsQueries(context: { queryClient: QueryClient }): Promise<void> {
+  await Promise.all([
+    context.queryClient.ensureQueryData(productQueryOptions.adminProductsQueryOptions()),
+    context.queryClient.ensureQueryData(productQueryOptions.productStatsQueryOptions()),
+    context.queryClient.ensureQueryData(categoryQueryOptions.adminCategoriesQueryOptions()),
+    context.queryClient.ensureQueryData(collectionQueryOptions.adminCollectionsQueryOptions()),
+    context.queryClient.ensureQueryData(productAttributeQueryOptions.adminProductAttributesQueryOptions())
+  ]);
+}
 
 export const Route = createFileRoute("/{-$locale}/admin/catalog/products/")({
-  component: AdminCatalogIndexRoute
+  component: ProductsIndexRoute,
+  loader: ({ context }) => prefetchProductsQueries(context),
+  shouldReload: false,
+  staleTime: PRODUCT_QUERY_STALE_MS
 });
 
-function AdminCatalogIndexRoute(): JSX.Element {
-  const t = useTranslations("pages.admin.catalog");
-
-  const newParams = useMemo(() => ({ handle: "new" }), []);
-  const addProductLink = useMemo(() => <LocalizedLink to={CONSTANTS.ROUTES.ADMIN_PRODUCT} params={newParams} />, [newParams]);
-
-  const catalogActions = useMemo(
-    () => (
-      <>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 gap-2 border-sidebar-border bg-sidebar text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          <Download className="size-4" strokeWidth={1.5} />
-          {t("actions.export")}
-        </Button>
-        <Button size="sm" className="h-9 gap-2 bg-foreground text-sm text-background hover:bg-foreground/90" render={addProductLink}>
-          <Plus className="size-4" strokeWidth={1.5} />
-          {t("actions.addProduct")}
-        </Button>
-      </>
-    ),
-    [t, addProductLink]
-  );
-
-  const tabs = useMemo(() => <CatalogTabs active="products" />, []);
+function ProductsIndexRoute(): JSX.Element {
+  const sheetState = useProductsSheetState();
 
   return (
-    <>
-      <AdminHeader title={t("productsTitle")} description={t("productsDescription")} actions={catalogActions} tabs={tabs} />
-
-      <div className="flex-1 space-y-5 p-8">
-        <CatalogStats stats={PRODUCT_STATS} />
-        <CatalogTable products={PRODUCTS} />
-      </div>
-    </>
+    <ProductsSheetProvider value={sheetState}>
+      <ProductsTableContent />
+    </ProductsSheetProvider>
   );
 }

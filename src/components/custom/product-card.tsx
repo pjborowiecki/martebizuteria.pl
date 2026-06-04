@@ -8,11 +8,10 @@ import { cn } from "~/src/lib/utils";
 import { Image } from "~/src/components/custom/image";
 import { LocalizedLink, type LocalizedTo } from "~/src/components/custom/localized-link";
 
+import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils";
 import { useCartStore } from "~/src/stores/cart.store";
 
 const ADD_TO_CART_TIMEOUT_MS = 1800;
-const DEFAULT_SIZE = "One Size";
-const FALLBACK_PRICE = 0;
 
 export interface ProductCardProps {
   readonly badge?: string;
@@ -30,11 +29,12 @@ export interface ProductCardProps {
   readonly rawPrice?: number;
   readonly sizes?: string;
   readonly slug?: string;
+  readonly variantId?: string;
+  readonly variantTitle?: string;
   readonly wishlisted?: boolean;
 }
 
 function useProductCardLogic({
-  detail,
   href,
   image,
   initialWishlisted,
@@ -43,9 +43,10 @@ function useProductCardLogic({
   onWishlistToggle,
   price,
   rawPrice,
-  slug
+  slug,
+  variantId,
+  variantTitle
 }: {
-  detail: string;
   href: LocalizedTo;
   image: string;
   initialWishlisted: boolean;
@@ -55,6 +56,8 @@ function useProductCardLogic({
   price?: string;
   rawPrice?: number;
   slug?: string;
+  variantId?: string;
+  variantTitle?: string;
 }) {
   const [wishlisted, setWishlisted] = useState(initialWishlisted);
   const [justAdded, setJustAdded] = useState(false);
@@ -81,17 +84,21 @@ function useProductCardLogic({
     (e: MouseEvent) => {
       stop(e);
 
-      const itemSlug = slug ?? (typeof href === "string" ? (href.split("/").pop() ?? "unknown") : "unknown");
+      if (variantId === undefined || slug === undefined || rawPrice === undefined) {
+        return;
+      }
+
+      const resolvedVariantTitle = variantTitle ?? "";
 
       addItem({
-        id: `${itemSlug}-${DEFAULT_SIZE}-${detail}`,
+        id: variantId,
         image,
-        material: detail,
         price: price ?? "",
-        rawPrice: rawPrice ?? FALLBACK_PRICE,
-        size: DEFAULT_SIZE,
-        slug: itemSlug,
-        title: name
+        rawPrice,
+        slug,
+        title: name,
+        variantId,
+        variantTitle: resolvedVariantTitle === DEFAULT_VARIANT_TITLE ? "" : resolvedVariantTitle
       });
 
       setJustAdded(true);
@@ -107,7 +114,7 @@ function useProductCardLogic({
         setJustAdded(false);
       }, ADD_TO_CART_TIMEOUT_MS);
     },
-    [stop, addItem, slug, href, detail, image, price, rawPrice, name, onAddToCart]
+    [stop, addItem, slug, variantId, variantTitle, image, price, rawPrice, name, onAddToCart]
   );
 
   const handleShare = useCallback(
@@ -153,11 +160,12 @@ export function ProductCard({
   rawPrice,
   sizes = "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw",
   slug,
+  variantId,
+  variantTitle,
   wishlisted: initialWishlisted = false
 }: Readonly<ProductCardProps>): JSX.Element {
   const t = useTranslations("components.custom.productCard");
   const { handleAddToCart, handleShare, handleWishlist, justAdded, wishlisted } = useProductCardLogic({
-    detail,
     href,
     image,
     initialWishlisted,
@@ -166,7 +174,9 @@ export function ProductCard({
     onWishlistToggle,
     price,
     rawPrice,
-    slug
+    slug,
+    variantId,
+    variantTitle
   });
 
   return (

@@ -1,0 +1,77 @@
+{
+  "title": "Products",
+  "description": "Manage your store's individual products and their variants.",
+  "actions": {
+    "addProduct": "Add product",
+    "exportCsv": "Download table as CSV",
+    "refresh": "Reload table data"
+  },
+  "columns": {
+    "actions": "Row actions",
+    "categories": "Categories",
+    "collections": "Collections",
+    "attributes": "Attributes",
+    "createdAt": "Created at",
+    "editedAt": "Last edited",
+    "id": "ID",
+    "image": "Image",
+    "price": "Price",
+    "product": "Product",
+    "status": "Status",
+    "stock": "Stock",
+    "variants": "Variants"
+  },
+  "filter": {
+    "status": "Filter by status",
+    "allStatuses": "All statuses",
+    "category": "Filter by category",
+    "allCategories": "All categories",
+    "collection": "Filter by collection",
+    "allCollections": "All collections"
+  },
+  "bulk": {
+    "selected": "{count} selected",
+    "delete": "Delete ({count})",
+    "confirmTitle": "Delete products?",
+    "confirmDescription": "This will permanently delete {count} product(s) and their variants. This action cannot be undone.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  },
+  "statusActive": "Active",
+  "statusDraft": "Draft",
+  "statusArchived": "Archived",
+  "stockOut": "Out of stock",
+  "stockLow": "Low stock",
+  "searchPlaceholder": "Search products...",
+  "reorder": {
+    "handle": "Drag to reorder, or use arrow keys"
+  },
+  "rowActions": {
+    "edit": "Edit product",
+    "viewStorefront": "View on storefront",
+    "copyId": "Copy ID",
+    "copyLink": "Copy link",
+    "delete": "Delete product",
+    "copyIdToast": "Product ID copied to clipboard",
+    "copyLinkToast": "Product link copied to clipboard",
+    "deleteTitle": "Delete product?",
+    "deleteDescription": "This will permanently delete “{title}” and its variants. This action cannot be undone.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  },
+  "toast": {
+    "deleteSuccessTitle": "Products deleted",
+    "deleteSuccessDescription": "Deleted {count} product(s).",
+    "deleteErrorTitle": "Couldn't delete",
+    "deleteErrorDescription": "The selected products could not be deleted. Please try again.",
+    "reorderErrorTitle": "Couldn't save order",
+    "reorderErrorDescription": "The new product order could not be saved. Please try again."
+  },
+  "stats": {
+    "total": { "label": "Total products" },
+    "active": { "label": "Active products" },
+    "draft": { "label": "Drafts" },
+    "lowStock": { "label": "Low stock" },
+    "shareCaption": "{percent}% of total"
+  }
+}

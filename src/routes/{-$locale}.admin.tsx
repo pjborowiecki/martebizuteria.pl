@@ -4,6 +4,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { requireAdmin } from "~/src/integrations/better-auth/auth.guards";
 
+import { getAdminSidebarDefaultOpen } from "~/src/lib/sidebar-preference";
 import { cn } from "~/src/lib/utils";
 
 import { SidebarInset, SidebarProvider } from "~/src/components/shadcn/sidebar";
@@ -18,18 +19,20 @@ const ROUTE_STALE_MS = 60_000;
 export const Route = createFileRoute("/{-$locale}/admin")({
   beforeLoad: async () => ({ user: await requireAdmin() }),
   component: AdminLayoutRoute,
+  loader: () => ({ sidebarDefaultOpen: getAdminSidebarDefaultOpen() }),
   shouldReload: false,
   staleTime: ROUTE_STALE_MS
 });
 
 function AdminLayoutRoute(): JSX.Element {
+  const { sidebarDefaultOpen } = Route.useLoaderData();
   useAdminLightTheme();
 
   return (
-    <SidebarProvider className={cn("min-h-svh", ADMIN_LAYOUT_BG_CLASS)}>
+    <SidebarProvider defaultOpen={sidebarDefaultOpen} className={cn("min-h-svh", ADMIN_LAYOUT_BG_CLASS)}>
       <AdminSidebar />
       <SidebarInset className={cn("min-w-0", ADMIN_LAYOUT_BG_CLASS)}>
-        <div data-admin-main className="flex min-h-svh min-w-0 flex-col">
+        <div data-admin-main className="flex h-svh min-w-0 flex-col overflow-hidden">
           <Outlet />
         </div>
       </SidebarInset>

@@ -1,4 +1,4 @@
-ALTER TABLE `collection` ADD `description` text(500);--> statement-breakpoint
+ALTER TABLE `collection` ADD `description` text(500);
 UPDATE `collection`
 SET `description` = json_extract(`metadata`, '$.description')
 WHERE `metadata` IS NOT NULL

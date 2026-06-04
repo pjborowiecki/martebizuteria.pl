@@ -1,21 +1,23 @@
-/* Module-scoped guard for portaled menu click-through (not test setup). */
+/* Module-scoped guard for portaled menu/dialog click-through (not test setup). */
 /* eslint-disable vitest/require-hook -- intentional process-wide one-shot flag */
-let suppressNextRowClick = false;
+let suppressRowClickUntil = 0;
 /* eslint-enable vitest/require-hook */
 
-/** Call before a portaled menu action closes so the row `onClick` does not fire underneath. */
-export function suppressNextDataGridRowClick(): void {
-  suppressNextRowClick = true;
-  queueMicrotask(() => {
-    suppressNextRowClick = false;
-  });
+/** Default suppression after menu actions (covers same-tick dismiss). */
+const DEFAULT_ROW_CLICK_SUPPRESS_MS = 300;
+
+/** Longer suppression after alert-dialog dismiss (click-through can land on the next macrotask). */
+export const DIALOG_DISMISS_ROW_CLICK_SUPPRESS_MS = 500;
+
+/** Ignore row `onClick` until `durationMs` from now (extends an active window). */
+export function suppressNextDataGridRowClick(durationMs = DEFAULT_ROW_CLICK_SUPPRESS_MS): void {
+  suppressRowClickUntil = Math.max(suppressRowClickUntil, Date.now() + durationMs);
+}
+
+export function suppressDataGridRowClickAfterDialogDismiss(): void {
+  suppressNextDataGridRowClick(DIALOG_DISMISS_ROW_CLICK_SUPPRESS_MS);
 }
 
 export function consumeDataGridRowClickSuppression(): boolean {
-  if (!suppressNextRowClick) {
-    return false;
-  }
-
-  suppressNextRowClick = false;
-  return true;
+  return Date.now() < suppressRowClickUntil;
 }

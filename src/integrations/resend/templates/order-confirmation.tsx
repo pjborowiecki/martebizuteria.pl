@@ -4,7 +4,7 @@ import type { Locale } from "~/src/constants/types";
 
 import { getMessagesForLocale } from "~/src/integrations/use-intl/i18n.queries";
 
-import { formatPrice } from "~/src/lib/utils";
+import { formatPrice } from "~/src/lib/_utils/currency";
 
 const REFERENCE_START = 0;
 const REFERENCE_LENGTH = 8;

@@ -2,7 +2,7 @@
 export const DATA_GRID_HEADER_ROW_CLASS = "border-border/60 bg-muted hover:bg-muted";
 
 export const DATA_GRID_HEADER_CELL_CLASS =
-  "group/head relative h-11 border-b border-border/60 bg-muted text-xs font-medium tracking-wide text-muted-foreground normal-case transition-colors hover:bg-muted hover:text-foreground";
+  "group/head sticky top-0 z-10 h-11 border-b border-border/60 bg-muted text-xs font-medium tracking-wide text-muted-foreground normal-case transition-colors hover:bg-muted hover:text-foreground";
 
 /** Applied when this column is the active sort — darker than the default header band. */
 export const DATA_GRID_HEADER_CELL_SORTED_CLASS =

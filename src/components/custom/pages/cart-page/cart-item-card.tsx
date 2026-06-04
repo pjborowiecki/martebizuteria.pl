@@ -1,11 +1,12 @@
 import { type JSX, useCallback, useMemo } from "react";
 
 import { Minus, Plus, X } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { useFormatter, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
 import { getProductImageUrl } from "~/src/lib/_utils/image";
+import { centsToDisplayAmount, getCartLineUnitPriceCents } from "~/src/lib/utils";
 
 import { Button } from "~/src/components/shadcn/button";
 
@@ -22,7 +23,12 @@ export interface CartItemCardProps {
 
 export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element {
   const t = useTranslations("pages.cart");
+  const format = useFormatter();
   const { removeItem, updateQuantity } = useCartStore();
+  const unitPriceLabel = format.number(centsToDisplayAmount(getCartLineUnitPriceCents(item)), {
+    currency: "PLN",
+    style: "currency"
+  });
 
   const handleDecrease = useCallback(() => {
     updateQuantity(item.id, item.qty - QUANTITY_STEP);
@@ -65,8 +71,7 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
             >
               {item.title}
             </LocalizedLink>
-            <p className="mt-1 text-xs text-muted-foreground">{item.material}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{item.size}</p>
+            {item.variantTitle !== "" && <p className="mt-1 text-xs text-muted-foreground">{item.variantTitle}</p>}
           </div>
           <Button
             aria-label={t("removeItem")}
@@ -103,18 +108,7 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
             </Button>
           </div>
 
-          <p className="text-sm tracking-wide">
-            {(() => {
-              const CENTS_IN_ZLOTY = 100;
-              const FALLBACK_PRICE = 0;
-              return new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" }).format(
-                (item.rawPrice ??
-                  (isNaN(parseFloat((item.price ?? "0").replaceAll(/[^0-9,.]/gu, "").replaceAll(",", ".")))
-                    ? FALLBACK_PRICE
-                    : parseFloat((item.price ?? "0").replaceAll(/[^0-9,.]/gu, "").replaceAll(",", ".")) * CENTS_IN_ZLOTY)) / CENTS_IN_ZLOTY
-              );
-            })()}
-          </p>
+          <p className="text-sm tracking-wide tabular-nums">{unitPriceLabel}</p>
         </div>
       </div>
     </div>

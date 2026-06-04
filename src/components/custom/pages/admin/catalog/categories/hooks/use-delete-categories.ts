@@ -4,8 +4,8 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { CATEGORY_ERROR_CODES } from "~/src/modules/category/category.constants";
-import { categoryMutations } from "~/src/modules/category/category.mutations";
+import { CATEGORY_ERROR_CODES } from "~/src/modules/product-category/product-category.constants";
+import { categoryMutations } from "~/src/modules/product-category/product-category.mutations";
 
 interface DeleteResult {
   readonly deleted: number;

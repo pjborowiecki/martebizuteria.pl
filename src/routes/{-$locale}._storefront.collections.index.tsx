@@ -2,14 +2,15 @@ import { type JSX, useMemo } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
-import { collectionQueryOptions } from "~/src/modules/collection/collection.queries";
-import type { Collection } from "~/src/modules/collection/collection.types";
+import { collectionQueryOptions } from "~/src/modules/product-collection/product-collection.queries";
+import type { Collection } from "~/src/modules/product-collection/product-collection.types";
+import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils";
 
 export const Route = createFileRoute("/{-$locale}/_storefront/collections/")({
   component: CollectionsPage,
@@ -46,8 +47,10 @@ function CollectionsPage(): JSX.Element {
   );
 }
 
-function CollectionCard({ collection }: Readonly<{ collection: Pick<Collection["select"], "id" | "title" | "handle"> }>): JSX.Element {
+function CollectionCard({ collection }: Readonly<{ collection: Pick<Collection["select"], "id" | "titles" | "handle"> }>): JSX.Element {
+  const locale = useLocale();
   const params = useMemo(() => ({ handle: collection.handle }), [collection.handle]);
+  const title = resolveCollectionTitle(collection.titles, locale);
 
   return (
     <LocalizedLink
@@ -55,8 +58,8 @@ function CollectionCard({ collection }: Readonly<{ collection: Pick<Collection["
       params={params}
       className="group block rounded-xl border bg-card p-6 text-card-foreground transition-all hover:shadow-md"
     >
-      <h2 className="text-2xl font-semibold group-hover:underline">{collection.title}</h2>
-      <p className="mt-2 text-muted-foreground">Explore the {collection.title} collection</p>
+      <h2 className="text-2xl font-semibold group-hover:underline">{title}</h2>
+      <p className="mt-2 text-muted-foreground">Explore the {title} collection</p>
     </LocalizedLink>
   );
 }

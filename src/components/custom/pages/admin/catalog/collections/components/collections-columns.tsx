@@ -1,17 +1,20 @@
 import { type JSX, useMemo } from "react";
 
 import { createColumnHelper } from "@tanstack/react-table";
-import { useFormatter, useTranslations } from "use-intl";
-
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/components/shadcn/tooltip";
+import { useFormatter, useLocale, useTranslations } from "use-intl";
 
 import { selectionColumn } from "~/src/components/custom/datagrid/components/selection-column";
 import { fixedDataGridColumnWidth } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 import { Image } from "~/src/components/custom/image";
 import { CollectionReorderCell } from "~/src/components/custom/pages/admin/catalog/collections/components/collection-reorder-cell";
 import { CollectionsRowActions } from "~/src/components/custom/pages/admin/catalog/collections/components/collections-row-actions";
-import { CatalogStatusBadge } from "~/src/components/custom/pages/admin/catalog/components/catalog-status-badge";
-import { CatalogTitleHandleCell } from "~/src/components/custom/pages/admin/catalog/components/catalog-title-handle-cell";
+import {
+  CATALOG_RECORD_ID_COLUMN_META,
+  catalogRecordIdColumnWidth
+} from "~/src/components/custom/pages/admin/catalog/lib/catalog-record-id-column";
+import { CatalogStatusBadge } from "~/src/components/custom/pages/admin/catalog/table/components/catalog-status-badge";
+import { CatalogTitleHandleCell } from "~/src/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell";
+import { CatalogTruncatedTextCell } from "~/src/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell";
 
 import {
   COLLECTION_STATUS,
@@ -19,8 +22,9 @@ import {
   COLLECTION_TABLE_A11Y_KEYS,
   COLLECTION_TABLE_COLUMN_ID,
   COLLECTION_TABLE_COLUMN_SIZE
-} from "~/src/modules/collection/collection.constants";
-import type { Collection } from "~/src/modules/collection/collection.types";
+} from "~/src/modules/product-collection/product-collection.constants";
+import type { Collection } from "~/src/modules/product-collection/product-collection.types";
+import { resolveCollectionDescription, resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils";
 
 const THUMBNAIL_SIZE = 36;
 
@@ -34,21 +38,6 @@ function CollectionImageCell({ title, image }: Readonly<{ title: string; image: 
   );
 }
 
-function CollectionDescriptionCell({ description }: Readonly<{ description: string }>): JSX.Element {
-  const trigger = useMemo(() => <span className="block cursor-default truncate text-muted-foreground">{description}</span>, [description]);
-
-  if (description === "") {
-    return <span className="text-muted-foreground/40">—</span>;
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger render={trigger} />
-      <TooltipContent className="max-w-sm whitespace-normal">{description}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 /**
  * Builds the collections column set. Array order is the canonical default column order
  * for the datagrid (see {@link getDataGridColumnIds} in `use-collections-data-grid`).
@@ -57,6 +46,7 @@ export function useCollectionColumns() {
   const t = useTranslations("pages.admin.catalog.collections");
   const tAdmin = useTranslations("pages.admin");
   const format = useFormatter();
+  const locale = useLocale();
 
   return useMemo(
     () => [
@@ -78,27 +68,28 @@ export function useCollectionColumns() {
         ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.drag)
       }),
       columnHelper.display({
-        cell: ({ row }) => <CollectionImageCell title={row.original.title} image={row.original.image} />,
+        cell: ({ row }) => <CollectionImageCell title={resolveCollectionTitle(row.original.titles, locale)} image={row.original.image} />,
         enableSorting: false,
         header: t("columns.image"),
         id: COLLECTION_TABLE_COLUMN_ID.image,
         meta: { skeletonVariant: "thumbnail" },
         ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.image)
       }),
-      columnHelper.accessor("title", {
-        cell: ({ row }) => <CatalogTitleHandleCell handle={row.original.handle} title={row.original.title} />,
+      columnHelper.accessor((row) => resolveCollectionTitle(row.titles, locale), {
+        cell: ({ row }) => (
+          <CatalogTitleHandleCell handle={row.original.handle} title={resolveCollectionTitle(row.original.titles, locale)} />
+        ),
         header: t("columns.collection"),
         id: COLLECTION_TABLE_COLUMN_ID.title,
         meta: { skeletonVariant: "title" },
         size: COLLECTION_TABLE_COLUMN_SIZE.title
       }),
       columnHelper.accessor((row) => row.id, {
-        cell: ({ row }) => <span className="block truncate font-mono text-xs text-muted-foreground">{row.original.id}</span>,
+        cell: ({ row }) => <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{row.original.id}</span>,
         header: t("columns.id"),
         id: COLLECTION_TABLE_COLUMN_ID.recordId,
-        meta: { cellClassName: "overflow-hidden", headClassName: "overflow-hidden", skeletonVariant: "text" },
-        minSize: COLLECTION_TABLE_COLUMN_SIZE.recordId,
-        size: COLLECTION_TABLE_COLUMN_SIZE.recordId
+        meta: CATALOG_RECORD_ID_COLUMN_META,
+        ...catalogRecordIdColumnWidth()
       }),
       columnHelper.accessor("status", {
         cell: ({ getValue }) => {
@@ -124,8 +115,8 @@ export function useCollectionColumns() {
         meta: { cellClassName: "text-right", headClassName: "text-right", skeletonVariant: "number" },
         size: COLLECTION_TABLE_COLUMN_SIZE.productCount
       }),
-      columnHelper.accessor("description", {
-        cell: ({ getValue }) => <CollectionDescriptionCell description={getValue() ?? ""} />,
+      columnHelper.accessor((row) => resolveCollectionDescription(row.descriptions, locale), {
+        cell: ({ row }) => <CatalogTruncatedTextCell text={resolveCollectionDescription(row.original.descriptions, locale)} />,
         header: t("columns.description"),
         id: COLLECTION_TABLE_COLUMN_ID.description,
         meta: { fillsRemainingWidth: true, skeletonVariant: "text" },
@@ -168,6 +159,6 @@ export function useCollectionColumns() {
         ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.actions)
       })
     ],
-    [format, t, tAdmin]
+    [format, locale, t, tAdmin]
   );
 }
