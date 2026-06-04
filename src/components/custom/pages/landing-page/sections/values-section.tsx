@@ -13,7 +13,7 @@ import { Image } from "~/src/components/custom/image";
 const ASPECT_RATIO_PORTRAIT = 0.75;
 
 function ValuesImage(): JSX.Element {
-  const t = useTranslations("landingPage.valuesSection");
+  const t = useTranslations("pages.landing.valuesSection");
 
   return (
     <AspectRatio className="parallax-wrap overflow-hidden bg-secondary" ratio={ASPECT_RATIO_PORTRAIT}>
@@ -32,7 +32,7 @@ function ValuesImage(): JSX.Element {
 }
 
 export function ValuesSection(): JSX.Element {
-  const t = useTranslations("landingPage.valuesSection");
+  const t = useTranslations("pages.landing.valuesSection");
   const sectionRef = useRef<HTMLElement>(null);
 
   useGSAP(

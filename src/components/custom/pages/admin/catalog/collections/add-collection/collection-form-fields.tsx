@@ -27,7 +27,7 @@ type FieldName = FieldPath<Collection["formValues"]>;
 const COLLECTION_FORM_VALIDATION_KEY_SET = new Set<string>(Object.values(COLLECTION_FORM_VALIDATION_KEYS));
 
 function FieldErrorMessage({ fieldState }: Readonly<{ fieldState: ControllerFieldState }>): JSX.Element | undefined {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const rawMessage = fieldState.error?.message;
   if (rawMessage === undefined || rawMessage === "") {
     return undefined;

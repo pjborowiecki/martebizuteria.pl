@@ -5,52 +5,52 @@ const MIN_REQUIRED_LENGTH = 1;
 
 export function signInWithPasswordSchema(t: (key: string) => string) {
   return z.object({
-    email: z.email({ message: t("auth.validations.invalidEmail") }),
-    password: z.string().min(MIN_REQUIRED_LENGTH, { message: t("auth.validations.passwordRequired") })
+    email: z.email({ message: t("pages.auth.validations.invalidEmail") }),
+    password: z.string().min(MIN_REQUIRED_LENGTH, { message: t("pages.auth.validations.passwordRequired") })
   });
 }
 
 export function signUpWithPasswordSchema(t: (key: string) => string) {
   return z
     .object({
-      confirmPassword: z.string().min(MIN_REQUIRED_LENGTH, { message: t("auth.validations.confirmPasswordRequired") }),
-      email: z.email({ message: t("auth.validations.invalidEmail") }),
-      firstName: z.string().min(MIN_REQUIRED_LENGTH, { message: t("auth.validations.firstNameRequired") }),
-      lastName: z.string().min(MIN_REQUIRED_LENGTH, { message: t("auth.validations.lastNameRequired") }),
+      confirmPassword: z.string().min(MIN_REQUIRED_LENGTH, { message: t("pages.auth.validations.confirmPasswordRequired") }),
+      email: z.email({ message: t("pages.auth.validations.invalidEmail") }),
+      firstName: z.string().min(MIN_REQUIRED_LENGTH, { message: t("pages.auth.validations.firstNameRequired") }),
+      lastName: z.string().min(MIN_REQUIRED_LENGTH, { message: t("pages.auth.validations.lastNameRequired") }),
       password: z
         .string()
         .min(MIN_PASSWORD_LENGTH, {
-          message: t("auth.validations.atLeastMinCharactersLong")
+          message: t("pages.auth.validations.atLeastMinCharactersLong")
         })
-        .regex(/[A-Z]/u, { message: t("auth.validations.atLeastOneUppercase") })
-        .regex(/[^A-Za-z0-9]/u, { message: t("auth.validations.atLeastOneSpecialCharacter") })
+        .regex(/[A-Z]/u, { message: t("pages.auth.validations.atLeastOneUppercase") })
+        .regex(/[^A-Za-z0-9]/u, { message: t("pages.auth.validations.atLeastOneSpecialCharacter") })
     })
     .refine((data) => data.password === data.confirmPassword, {
-      message: t("auth.validations.passwordsMustMatch"),
+      message: t("pages.auth.validations.passwordsMustMatch"),
       path: ["confirmPassword"]
     });
 }
 
 export function forgotPasswordSchema(t: (key: string) => string) {
   return z.object({
-    email: z.email({ message: t("auth.validations.invalidEmail") })
+    email: z.email({ message: t("pages.auth.validations.invalidEmail") })
   });
 }
 
 export function resetPasswordSchema(t: (key: string) => string) {
   return z
     .object({
-      confirmPassword: z.string().min(MIN_REQUIRED_LENGTH, { message: t("auth.validations.confirmPasswordRequired") }),
+      confirmPassword: z.string().min(MIN_REQUIRED_LENGTH, { message: t("pages.auth.validations.confirmPasswordRequired") }),
       password: z
         .string()
         .min(MIN_PASSWORD_LENGTH, {
-          message: t("auth.validations.atLeastMinCharactersLong")
+          message: t("pages.auth.validations.atLeastMinCharactersLong")
         })
-        .regex(/[A-Z]/u, { message: t("auth.validations.atLeastOneUppercase") })
-        .regex(/[^A-Za-z0-9]/u, { message: t("auth.validations.atLeastOneSpecialCharacter") })
+        .regex(/[A-Z]/u, { message: t("pages.auth.validations.atLeastOneUppercase") })
+        .regex(/[^A-Za-z0-9]/u, { message: t("pages.auth.validations.atLeastOneSpecialCharacter") })
     })
     .refine((data) => data.password === data.confirmPassword, {
-      message: t("auth.validations.passwordsMustMatch"),
+      message: t("pages.auth.validations.passwordsMustMatch"),
       path: ["confirmPassword"]
     });
 }

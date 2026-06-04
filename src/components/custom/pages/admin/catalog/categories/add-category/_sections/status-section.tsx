@@ -13,7 +13,7 @@ import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catal
 import { CATEGORY_STATUSES, CATEGORY_STATUS_LABEL_KEYS } from "~/src/modules/category/category.constants";
 
 export function StatusSection(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { control, isPending } = useCategoryForm();
 
   const statusOptions = useMemo(
@@ -26,16 +26,10 @@ export function StatusSection(): JSX.Element {
   );
 
   return (
-    <CategoryFormSection icon={CircleDot} title={t("categories.form.displayOptions")}>
+    <CategoryFormSection icon={CircleDot} title={t("form.displayOptions")}>
       <Field className="gap-2">
-        <CatalogFormFieldLabel hint={t("categories.form.hints.status")} label={t("categories.form.status")} />
-        <CategorySelectField
-          control={control}
-          name="status"
-          ariaLabel={t("categories.form.status")}
-          options={statusOptions}
-          disabled={isPending}
-        />
+        <CatalogFormFieldLabel hint={t("form.hints.status")} label={t("form.status")} />
+        <CategorySelectField control={control} name="status" ariaLabel={t("form.status")} options={statusOptions} disabled={isPending} />
       </Field>
     </CategoryFormSection>
   );

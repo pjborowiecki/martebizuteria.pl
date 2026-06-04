@@ -13,7 +13,7 @@ export interface QuantityPickerProps {
 }
 
 export function QuantityPicker({ quantity, setQuantity }: QuantityPickerProps): JSX.Element {
-  const t = useTranslations("productPage.heroSection");
+  const t = useTranslations("pages.product.heroSection");
 
   const handleDecrease = useCallback(() => {
     setQuantity((q) => Math.max(MIN_QUANTITY, q - MIN_QUANTITY));

@@ -18,7 +18,7 @@ export const Route = createFileRoute("/{-$locale}/admin/content")({
 });
 
 function ContentPage(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const bcList = useMemo(
     () => [

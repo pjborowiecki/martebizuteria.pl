@@ -15,7 +15,7 @@ interface ProductEditorBasicProps {
 }
 
 export function ProductEditorBasic({ initialData }: ProductEditorBasicProps): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   return (
     <Card>

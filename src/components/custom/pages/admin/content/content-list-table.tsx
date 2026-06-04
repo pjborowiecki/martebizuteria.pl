@@ -60,7 +60,7 @@ export function ContentListTable(): JSX.Element {
 }
 
 function ContentTableHeader(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <TableHeader className="sticky top-0 z-10 bg-background/40 backdrop-blur-md">
@@ -90,7 +90,7 @@ function ContentTableHeader(): JSX.Element {
 }
 
 function ContentTablePagination(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="flex shrink-0 items-center justify-between border-t border-border/40 px-6 py-4">
@@ -108,7 +108,7 @@ function ContentTablePagination(): JSX.Element {
 }
 
 function ContentRow({ page }: { readonly page: (typeof PAGES)[number] }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const statusStyle = STATUS_STYLES[page.status];
   const statusLabel = {

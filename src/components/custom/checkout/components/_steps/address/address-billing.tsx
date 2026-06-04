@@ -5,7 +5,7 @@ import { useTranslations } from "use-intl";
 import { useCheckoutForm } from "~/src/components/custom/checkout/components/checkout-form-provider";
 
 export function BillingAddress(): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
 
   const { getValues } = useCheckoutForm();
   const values = getValues();

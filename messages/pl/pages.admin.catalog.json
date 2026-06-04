@@ -1,0 +1,58 @@
+{
+  "title": "Katalog",
+  "description": "Zarządzaj produktami, zapasami i kategoriami w swoim sklepie.",
+  "productsTitle": "Produkty",
+  "productsDescription": "Zarządzaj poszczególnymi produktami i ich wariantami.",
+  "actions": {
+    "addProduct": "Dodaj produkt",
+    "export": "Eksportuj"
+  },
+  "rowActions": {
+    "edit": "Edytuj produkt",
+    "viewStorefront": "Zobacz w sklepie",
+    "copyId": "Kopiuj ID: {id}",
+    "manageVariants": "Zarządzaj wariantami",
+    "copyLink": "Kopiuj link",
+    "delete": "Usuń produkt"
+  },
+  "columns": {
+    "category": "Kategoria",
+    "collection": "Kolekcja",
+    "price": "Cena",
+    "product": "Produkt",
+    "ref": "Nr",
+    "status": "Status",
+    "stock": "Zapasy"
+  },
+  "status": {
+    "active": "Aktywny",
+    "draft": "Szkic",
+    "low": "Niski stan"
+  },
+  "filter": "Filtruj",
+  "pagination": {
+    "next": "Następna",
+    "previous": "Poprzednia",
+    "showing": "Wyświetlanie 1-10 z 241 produktów"
+  },
+  "searchPlaceholder": "Szukaj w katalogu...",
+  "stats": {
+    "activeProducts": {
+      "label": "Aktywne produkty",
+      "value": "216"
+    },
+    "draftProducts": {
+      "label": "Szkice",
+      "value": "18"
+    },
+    "lowStock": {
+      "label": "Niski stan",
+      "value": "14"
+    },
+    "totalProducts": {
+      "label": "Wszystkie produkty",
+      "value": "248"
+    },
+    "vsPrevious": "vs poprzedni miesiąc"
+  }
+}

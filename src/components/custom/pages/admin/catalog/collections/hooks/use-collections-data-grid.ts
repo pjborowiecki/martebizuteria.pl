@@ -33,7 +33,7 @@ interface UseCollectionsDataGridOptions {
 }
 
 export function useCollectionsDataGrid({ onRowClick }: UseCollectionsDataGridOptions): DataGridContextValue<Collection["adminListItem"]> {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const { data: collections, isFetching } = useSuspenseQuery(collectionQueryOptions.adminCollectionsQueryOptions());
   const showSkeletonRows = isFetching;
 
@@ -91,7 +91,7 @@ export function useCollectionsDataGrid({ onRowClick }: UseCollectionsDataGridOpt
       persistenceKey: collectionsDataGrid.persistenceKey,
       resetPreferences,
       rowReorder,
-      searchPlaceholder: t("collections.searchPlaceholder"),
+      searchPlaceholder: t("searchPlaceholder"),
       table
     }),
     [columnReorder, hasPreferenceOverrides, onRowClick, resetPreferences, rowReorder, showSkeletonRows, t, table]

@@ -14,7 +14,7 @@ export interface CartSummaryProps {
 }
 
 export function CartSummary({ subtotal }: Readonly<CartSummaryProps>): JSX.Element {
-  const t = useTranslations("cartPage");
+  const t = useTranslations("pages.cart");
 
   return (
     <aside className="lg:sticky lg:top-28">

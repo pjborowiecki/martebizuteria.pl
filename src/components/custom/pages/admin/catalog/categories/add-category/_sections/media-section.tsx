@@ -12,7 +12,7 @@ import { CategoryFormSection } from "~/src/components/custom/pages/admin/catalog
 import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/components/catalog-form-field-label";
 
 export function MediaSection(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { control, isPending, setUploading } = useCategoryForm();
   const { field, fieldState } = useController({ control, name: "image" });
 
@@ -24,9 +24,9 @@ export function MediaSection(): JSX.Element {
   );
 
   return (
-    <CategoryFormSection icon={ImageIcon} title={t("categories.form.mediaTitle")}>
+    <CategoryFormSection icon={ImageIcon} title={t("form.mediaTitle")}>
       <Field className="gap-2" data-invalid={fieldState.invalid}>
-        <CatalogFormFieldLabel hint={t("categories.form.hints.image")} label={t("categories.form.image")} />
+        <CatalogFormFieldLabel hint={t("form.hints.image")} label={t("form.image")} />
         <ImageUpload
           value={field.value}
           onChange={handleChange}

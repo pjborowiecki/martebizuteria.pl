@@ -1,0 +1,15 @@
+{
+  "errorTitle": "Something went wrong",
+  "signInTitle": "Welcome back",
+  "signInDescription": "You're signed in to your M'Arte account.",
+  "signUpTitle": "Almost there",
+  "signUpDescription": "If this address wasn't already registered, we've sent it a confirmation link. Please check your inbox.",
+  "signOutTitle": "Signed out",
+  "signOutDescription": "You've been securely signed out. We look forward to welcoming you back.",
+  "forgotPasswordTitle": "Check your inbox",
+  "forgotPasswordDescription": "If an account exists for this address, a secure link to reset your password is on its way.",
+  "resetPasswordTitle": "Password updated",
+  "resetPasswordDescription": "Your new password is set. You can now sign in with it.",
+  "verifiedTitle": "Email confirmed",
+  "verifiedDescription": "Welcome to M'Arte — you're now signed in to your account."
+}

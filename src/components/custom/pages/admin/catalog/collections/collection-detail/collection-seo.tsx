@@ -29,7 +29,7 @@ export function CollectionSeo({
   onSlugChange,
   slug
 }: CollectionSeoProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
 
   const handleMetaTitleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +66,7 @@ export function CollectionSeo({
 
   const displayMetaDescription = useMemo(() => {
     if (metaDescription === "") {
-      return description === "" ? t("collections.form.metaDescriptionPlaceholder") : description;
+      return description === "" ? t("form.metaDescriptionPlaceholder") : description;
     }
     return metaDescription;
   }, [metaDescription, description, t]);
@@ -74,7 +74,7 @@ export function CollectionSeo({
   return (
     <Card className="mb-10">
       <CardHeader>
-        <CardTitle className="text-base font-semibold">{t("collections.form.sectionSeo")}</CardTitle>
+        <CardTitle className="text-base font-semibold">{t("form.sectionSeo")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="rounded-lg bg-secondary/30 p-4 ring-1 ring-border/30">
@@ -86,19 +86,14 @@ export function CollectionSeo({
         <div className="grid grid-cols-2 gap-5">
           <div className="space-y-2">
             <div className="flex h-5 items-center justify-between">
-              <Label>{t("collections.form.metaTitle")}</Label>
+              <Label>{t("form.metaTitle")}</Label>
               <span className="text-[12px] text-muted-foreground">{metaTitleCharCount}</span>
             </div>
-            <Input
-              type="text"
-              value={metaTitle}
-              onChange={handleMetaTitleChange}
-              placeholder={t("collections.form.metaTitlePlaceholder")}
-            />
+            <Input type="text" value={metaTitle} onChange={handleMetaTitleChange} placeholder={t("form.metaTitlePlaceholder")} />
           </div>
           <div className="space-y-2">
             <div className="flex h-5 items-center">
-              <Label>{t("collections.form.slug")}</Label>
+              <Label>{t("form.slug")}</Label>
             </div>
             <InputGroup>
               <InputGroupAddon className="text-sm font-normal text-muted-foreground">/collections/</InputGroupAddon>
@@ -107,14 +102,14 @@ export function CollectionSeo({
           </div>
           <div className="col-span-2 space-y-2">
             <div className="flex items-center justify-between">
-              <Label>{t("collections.form.metaDescription")}</Label>
+              <Label>{t("form.metaDescription")}</Label>
               <span className="text-[12px] text-muted-foreground">{metaDescCharCount}</span>
             </div>
             <Textarea
               rows={2}
               value={metaDescription}
               onChange={handleMetaDescriptionChange}
-              placeholder={t("collections.form.metaDescriptionPlaceholder")}
+              placeholder={t("form.metaDescriptionPlaceholder")}
             />
           </div>
         </div>

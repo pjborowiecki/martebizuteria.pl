@@ -27,7 +27,7 @@ export function UploadDropzone({
   onDrop,
   onPick
 }: UploadDropzoneProps): JSX.Element {
-  const t = useTranslations("admin.media");
+  const t = useTranslations("pages.admin.media");
 
   return (
     <div className="relative">

@@ -1,0 +1,58 @@
+{
+  "title": "Catalog",
+  "description": "Manage your store's products, inventory, and categories.",
+  "productsTitle": "Products",
+  "productsDescription": "Manage your store's individual products and their variants.",
+  "actions": {
+    "addProduct": "Add Product",
+    "export": "Export"
+  },
+  "rowActions": {
+    "edit": "Edit product",
+    "viewStorefront": "View on storefront",
+    "copyId": "Copy ID: {id}",
+    "manageVariants": "Manage variants",
+    "copyLink": "Copy link",
+    "delete": "Delete product"
+  },
+  "columns": {
+    "category": "Category",
+    "collection": "Collection",
+    "price": "Price",
+    "product": "Product",
+    "ref": "Ref",
+    "status": "Status",
+    "stock": "Stock"
+  },
+  "status": {
+    "active": "Active",
+    "draft": "Draft",
+    "low": "Low Stock"
+  },
+  "filter": "Filter",
+  "pagination": {
+    "next": "Next",
+    "previous": "Previous",
+    "showing": "Showing 1-10 of 241 products"
+  },
+  "searchPlaceholder": "Search catalog...",
+  "stats": {
+    "activeProducts": {
+      "label": "Active Products",
+      "value": "216"
+    },
+    "draftProducts": {
+      "label": "Drafts",
+      "value": "18"
+    },
+    "lowStock": {
+      "label": "Low Stock",
+      "value": "14"
+    },
+    "totalProducts": {
+      "label": "Total Products",
+      "value": "248"
+    },
+    "vsPrevious": "vs last month"
+  }
+}

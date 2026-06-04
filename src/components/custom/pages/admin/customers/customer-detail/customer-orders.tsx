@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { ORDERS, PAYMENT_STYLES, STATUS_STYLES } from "~/src/data/customer-detail-data";
 
 export function CustomerOrders(): JSX.Element {
-  const t = useTranslations("admin.customerDetail");
+  const t = useTranslations("pages.admin.customerDetail");
 
   return (
     <Card className="shadow-none">
@@ -58,7 +58,7 @@ export function CustomerOrders(): JSX.Element {
 }
 
 function CustomerOrderRow({ order }: { order: (typeof ORDERS)[number] }): JSX.Element {
-  const t = useTranslations("admin.customerDetail");
+  const t = useTranslations("pages.admin.customerDetail");
 
   return (
     <TableRow className="group cursor-pointer">

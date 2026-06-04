@@ -21,7 +21,7 @@ export interface CartItemCardProps {
 }
 
 export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element {
-  const t = useTranslations("cartPage");
+  const t = useTranslations("pages.cart");
   const { removeItem, updateQuantity } = useCartStore();
 
   const handleDecrease = useCallback(() => {

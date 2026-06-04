@@ -21,7 +21,7 @@ interface ArticleLinkProps {
 }
 
 function ArchiveArticleItem({ article }: Readonly<ArticleLinkProps>): JSX.Element {
-  const t = useTranslations("landingPage.archiveSection");
+  const t = useTranslations("pages.landing.archiveSection");
   return (
     <li>
       <LocalizedLink
@@ -36,7 +36,7 @@ function ArchiveArticleItem({ article }: Readonly<ArticleLinkProps>): JSX.Elemen
 }
 
 export function ArchiveSection(): JSX.Element {
-  const t = useTranslations("landingPage.archiveSection");
+  const t = useTranslations("pages.landing.archiveSection");
 
   return (
     <section className="mx-auto max-w-400 px-6 py-16 lg:px-12 lg:py-24">

@@ -145,7 +145,7 @@ function AdminSidebarHeader(): JSX.Element {
 }
 
 function AdminSidebarHeaderBrand(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const homeLink = useMemo(() => <LocalizedLink to={CONSTANTS.ROUTES.HOME} />, []);
 
   return (
@@ -172,7 +172,7 @@ function AdminSidebarContent({
   readonly isCatalogRoute: boolean;
   readonly handleCatalogClick: (e: MouseEvent<HTMLButtonElement>) => void;
 }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <SidebarContent>
@@ -212,7 +212,7 @@ function AdminSidebarMainGroup({
   readonly isCatalogRoute: boolean;
   readonly handleCatalogClick: (e: MouseEvent<HTMLButtonElement>) => void;
 }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const adminLink = useMemo(() => <LocalizedLink to={CONSTANTS.ROUTES.ADMIN_OVERVIEW} />, []);
   const catalogTriggerButton = useMemo(
     () => (
@@ -265,7 +265,7 @@ function AdminSidebarMainGroup({
 }
 
 function AdminSidebarFooter(_props: Record<string, never>): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const handleSignOut = useCallback(async () => {
     await signOut({
@@ -318,7 +318,7 @@ function AdminSidebarFooter(_props: Record<string, never>): JSX.Element {
 }
 
 function AdminSidebarSignOutItem({ onSignOutClick }: { readonly onSignOutClick: () => void }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   return (
     <DropdownMenuItem onClick={onSignOutClick} className="cursor-pointer">
       <LogOut className="mr-2 size-4" />
@@ -363,7 +363,7 @@ function AdminSidebarUser({ isDropdown = false }: { readonly isDropdown?: boolea
 }
 
 function AdminSidebarCatalogSubItem({ sub, pathname }: { readonly sub: NavItem; readonly pathname: string }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const subActive = matchRoute(pathname, sub.href);
   const link = useMemo(() => <LocalizedLink to={sub.href} />, [sub.href]);
 
@@ -388,7 +388,7 @@ function AdminSidebarCatalogSubMenu({ pathname }: { readonly pathname: string })
 }
 
 function AdminSidebarNavItem({ item, pathname }: { readonly item: NavItem; readonly pathname: string }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const active = matchRoute(pathname, item.href);
   const link = useMemo(() => <LocalizedLink to={item.href} />, [item.href]);
 

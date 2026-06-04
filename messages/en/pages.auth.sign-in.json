@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "title": "Sign In | M'Arte",
+    "description": "Sign in to your M'Arte account to track orders, manage your wishlist, and enjoy a personalised experience."
+  },
+  "title": "Welcome back",
+  "subtitle": "Sign in to your account to continue your journey.",
+  "forgotPassword": "Forgot password?",
+  "submit": "Sign in",
+  "submitting": "Signing in…",
+  "noAccount": "Don't have an account?",
+  "createAccount": "Create one"
+}

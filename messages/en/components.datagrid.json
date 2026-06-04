@@ -1,0 +1,18 @@
+{
+  "view": {
+    "label": "Show or hide columns",
+    "columns": "Column visibility",
+    "reset": "Reset table settings to defaults"
+  },
+  "sortBy": "Sort by {column}",
+  "resizeColumn": "Resize {column} column",
+  "pagination": {
+    "rowsPerPage": "Rows per page",
+    "page": "Page {page} of {total}",
+    "showing": "{from}–{to} of {count}",
+    "first": "First page",
+    "previous": "Previous page",
+    "next": "Next page",
+    "last": "Last page"
+  }
+}

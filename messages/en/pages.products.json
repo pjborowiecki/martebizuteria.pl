@@ -1,0 +1,68 @@
+{
+  "title": "All Products",
+  "description": "Browse our complete collection of exquisite jewelry.",
+  "noProductsFound": "No products found.",
+  "products": {
+    "item1": {
+      "name": "Aura Hoop I",
+      "category": "Earrings"
+    },
+    "item2": {
+      "name": "Lune Drop",
+      "category": "Earrings"
+    },
+    "item3": {
+      "name": "Contour Stud",
+      "category": "Earrings"
+    },
+    "item4": {
+      "name": "Arc Cuff",
+      "category": "Bracelet"
+    },
+    "item5": {
+      "name": "Pebble Thread",
+      "category": "Necklace"
+    },
+    "item6": {
+      "name": "Forma II",
+      "category": "Ring"
+    },
+    "item7": {
+      "name": "Silhouette Ring",
+      "category": "Ring"
+    },
+    "item8": {
+      "name": "Meridian Chain",
+      "category": "Necklace"
+    },
+    "item9": {
+      "name": "Eclipse Pendant",
+      "category": "Necklace"
+    },
+    "item10": {
+      "name": "Horizon Bangle",
+      "category": "Bracelet"
+    },
+    "item11": {
+      "name": "Veil Choker",
+      "category": "Choker"
+    },
+    "item12": {
+      "name": "Nova Ear Cuff",
+      "category": "Earrings"
+    }
+  },
+  "categories": {
+    "earrings": "Earrings",
+    "necklaces": "Necklaces",
+    "bracelets": "Bracelets",
+    "rings": "Rings",
+    "chokers": "Chokers",
+    "pendants": "Pendants"
+  },
+  "collections": {
+    "newArrivals": "New Arrivals",
+    "bestsellers": "Bestsellers",
+    "giftEdit": "Gift Edit"
+  }
+}

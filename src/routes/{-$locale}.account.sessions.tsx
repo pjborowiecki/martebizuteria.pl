@@ -115,7 +115,7 @@ export const Route = createFileRoute("/{-$locale}/account/sessions")({
 });
 
 function ActiveSessionCard({ session }: Readonly<{ session: Session }>): JSX.Element {
-  const t = useTranslations("account.sessions");
+  const t = useTranslations("pages.account.sessions");
   const DeviceIcon = DEVICE_ICONS[session.deviceType];
 
   return (
@@ -149,7 +149,7 @@ function ActiveSessionCard({ session }: Readonly<{ session: Session }>): JSX.Ele
 }
 
 function LoginHistoryItem({ entry }: Readonly<{ entry: (typeof LOGIN_HISTORY)[number] }>): JSX.Element {
-  const t = useTranslations("account.sessions");
+  const t = useTranslations("pages.account.sessions");
 
   return (
     <div className="flex items-center gap-5 py-4">
@@ -175,7 +175,7 @@ function LoginHistoryItem({ entry }: Readonly<{ entry: (typeof LOGIN_HISTORY)[nu
 }
 
 function SessionsPage(): JSX.Element {
-  const t = useTranslations("account.sessions");
+  const t = useTranslations("pages.account.sessions");
 
   return (
     <div>

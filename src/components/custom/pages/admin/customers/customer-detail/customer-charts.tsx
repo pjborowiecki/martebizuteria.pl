@@ -9,7 +9,7 @@ import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } f
 import { CATEGORY_BREAKDOWN, SPENDING_DATA } from "~/src/data/customer-detail-data";
 
 export function CustomerCharts(): JSX.Element {
-  const t = useTranslations("admin.customerDetail");
+  const t = useTranslations("pages.admin.customerDetail");
 
   const spendingConfig: ChartConfig = useMemo(
     () => ({

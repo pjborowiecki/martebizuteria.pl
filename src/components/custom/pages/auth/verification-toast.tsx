@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl";
 const VERIFIED_PARAM = "verified";
 
 export function VerificationToast(): JSX.Element | undefined {
-  const t = useTranslations("auth.toast");
+  const t = useTranslations("pages.auth.toast");
 
   useEffect(() => {
     const url = new URL(globalThis.location.href);

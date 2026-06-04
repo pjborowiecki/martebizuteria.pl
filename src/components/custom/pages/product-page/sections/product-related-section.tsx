@@ -24,7 +24,7 @@ export interface ProductRelatedSectionProps {
 }
 
 export function ProductRelatedSection({ products }: ProductRelatedSectionProps): JSX.Element {
-  const t = useTranslations("productPage.relatedSection");
+  const t = useTranslations("pages.product.relatedSection");
   const sectionRef = useRef<HTMLElement>(null);
 
   useProductAnimations({ dependencies: [products], rootRef: sectionRef });

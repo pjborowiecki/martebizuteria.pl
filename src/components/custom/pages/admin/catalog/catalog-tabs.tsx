@@ -14,7 +14,7 @@ interface CatalogTabsProps {
 }
 
 export function CatalogTabs({ active }: CatalogTabsProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div

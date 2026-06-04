@@ -62,7 +62,7 @@ interface UseCategoryMutationOptions {
 }
 
 function useCategoryMutation({ categoryId, mode, onCompleted, setError }: UseCategoryMutationOptions) {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const queryClient = useQueryClient();
 
   const invalidate = useCallback(async () => {
@@ -78,23 +78,23 @@ function useCategoryMutation({ categoryId, mode, onCompleted, setError }: UseCat
       const code = error instanceof Error ? error.message : "";
 
       if (code.includes(CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)) {
-        setError("handle", { message: t("categories.toast.duplicateHandle"), type: "manual" });
-        toast.error(t("categories.toast.errorTitle"), {
-          description: t("categories.toast.duplicateHandle")
+        setError("handle", { message: t("toast.duplicateHandle"), type: "manual" });
+        toast.error(t("toast.errorTitle"), {
+          description: t("toast.duplicateHandle")
         });
         return;
       }
 
       if (code.includes(CATEGORY_ERROR_CODES.INVALID_PARENT)) {
-        setError("parentId", { message: t("categories.toast.invalidParent"), type: "manual" });
-        toast.error(t("categories.toast.errorTitle"), {
-          description: t("categories.toast.invalidParent")
+        setError("parentId", { message: t("toast.invalidParent"), type: "manual" });
+        toast.error(t("toast.errorTitle"), {
+          description: t("toast.invalidParent")
         });
         return;
       }
 
-      toast.error(t("categories.toast.errorTitle"), {
-        description: t("categories.toast.errorDescription")
+      toast.error(t("toast.errorTitle"), {
+        description: t("toast.errorDescription")
       });
     },
     [setError, t]
@@ -105,8 +105,8 @@ function useCategoryMutation({ categoryId, mode, onCompleted, setError }: UseCat
     onError: handleError,
     onSuccess: async () => {
       await invalidate();
-      toast.success(t("categories.toast.createSuccessTitle"), {
-        description: t("categories.toast.createSuccessDescription")
+      toast.success(t("toast.createSuccessTitle"), {
+        description: t("toast.createSuccessDescription")
       });
       onCompleted();
     }
@@ -122,8 +122,8 @@ function useCategoryMutation({ categoryId, mode, onCompleted, setError }: UseCat
     onError: handleError,
     onSuccess: async () => {
       await invalidate();
-      toast.success(t("categories.toast.updateSuccessTitle"), {
-        description: t("categories.toast.updateSuccessDescription")
+      toast.success(t("toast.updateSuccessTitle"), {
+        description: t("toast.updateSuccessDescription")
       });
       onCompleted();
     }

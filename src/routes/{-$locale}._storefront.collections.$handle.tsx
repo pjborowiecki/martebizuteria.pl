@@ -42,7 +42,7 @@ export const Route = createFileRoute("/{-$locale}/_storefront/collections/$handl
 });
 
 function CollectionPage(): JSX.Element {
-  const t = useTranslations("collectionPage");
+  const t = useTranslations("pages.collection");
   const { handle } = Route.useParams();
   const { data: collection } = useSuspenseQuery(collectionQueryOptions.collectionQueryOptions(handle));
 

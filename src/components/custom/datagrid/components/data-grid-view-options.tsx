@@ -41,7 +41,7 @@ function ColumnToggleItem<TData extends RowData>({ column }: Readonly<{ column: 
 
 /** Column visibility menu — the toolbar's "View" control. */
 export function DataGridViewOptions<TData extends RowData>({ table }: DataGridViewOptionsProps<TData>): JSX.Element {
-  const t = useTranslations("dataGrid");
+  const t = useTranslations("components.datagrid");
   const hideableColumns = table.getAllColumns().filter((column) => column.getCanHide());
 
   const button = useMemo(

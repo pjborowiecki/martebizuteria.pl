@@ -3,7 +3,7 @@ import type { JSX } from "react";
 import { useTranslations } from "use-intl";
 
 export function BreakerSection(): JSX.Element {
-  const t = useTranslations("landingPage.breakerSection");
+  const t = useTranslations("pages.landing.breakerSection");
 
   return (
     <section className="mx-auto max-w-400 px-6 pb-16 lg:px-12 lg:pb-24">

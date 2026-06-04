@@ -46,7 +46,7 @@ function ColumnResizeHandle<TData extends RowData>({
   header,
   label
 }: Readonly<{ header: Header<TData, unknown>; label: string }>): JSX.Element {
-  const t = useTranslations("dataGrid");
+  const t = useTranslations("components.datagrid");
   const isResizing = header.column.getIsResizing();
   const handleResize = useMemo(() => createDataGridColumnResizeHandler(header), [header]);
 
@@ -79,7 +79,7 @@ export function DataGridHeaderCell<TData extends RowData>({
   header,
   persistenceKey
 }: DataGridHeaderCellProps<TData>): JSX.Element {
-  const t = useTranslations("dataGrid");
+  const t = useTranslations("components.datagrid");
   const { column } = header;
   const { table } = header.getContext();
   const { pinLayout, tableLayout, widthPx } = useDataGridColumnMetrics(column, table);

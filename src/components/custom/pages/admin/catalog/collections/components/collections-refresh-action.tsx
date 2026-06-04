@@ -15,7 +15,7 @@ import { collectionQueryOptions } from "~/src/modules/collection/collection.quer
 const NO_ACTIVE_FETCHES = 0;
 
 export function CollectionsRefreshAction(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const queryClient = useQueryClient();
   const collectionsFetching = useIsFetching({ queryKey: collectionQueryOptions.adminCollectionsQueryOptions().queryKey });
   const statsFetching = useIsFetching({ queryKey: collectionQueryOptions.collectionStatsQueryOptions().queryKey });
@@ -31,7 +31,7 @@ export function CollectionsRefreshAction(): JSX.Element {
       <Button
         variant="outline"
         size="icon-lg"
-        aria-label={t("collections.actions.refresh")}
+        aria-label={t("actions.refresh")}
         aria-busy={isRefreshing}
         disabled={isRefreshing}
         onClick={handleRefresh}
@@ -42,5 +42,5 @@ export function CollectionsRefreshAction(): JSX.Element {
     [handleRefresh, isRefreshing, t]
   );
 
-  return <DataGridIconTooltip label={t("collections.actions.refresh")} trigger={button} />;
+  return <DataGridIconTooltip label={t("actions.refresh")} trigger={button} />;
 }

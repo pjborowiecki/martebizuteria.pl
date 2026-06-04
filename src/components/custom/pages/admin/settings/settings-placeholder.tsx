@@ -11,7 +11,7 @@ interface SettingsPlaceholderProps {
 }
 
 export function SettingsPlaceholder({ activeTab }: SettingsPlaceholderProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const tabDef = SETTINGS_TAB_DEFINITIONS.find((tab) => tab.key === activeTab);
 

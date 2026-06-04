@@ -45,8 +45,8 @@ export const Route = createFileRoute("/{-$locale}/_storefront/cart")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.cartPage.description ?? "",
-      title: messages?.cartPage.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages.cart.description ?? "",
+      title: messages?.pages.cart.title ?? CONSTANTS.APP_NAME
     } satisfies CartPageMeta;
   }
 });
@@ -58,7 +58,7 @@ const INITIAL_COUNT = 0;
 const FULL_VIEWPORT_STYLE = { minHeight: "calc(100dvh - 5rem)" } as const;
 
 function CartPage(): JSX.Element {
-  const t = useTranslations("cartPage");
+  const t = useTranslations("pages.cart");
   const { items, cartTotal } = useCartStore();
 
   const itemCount = items.reduce((sum, item) => sum + item.qty, INITIAL_COUNT);
@@ -115,7 +115,7 @@ function CartPage(): JSX.Element {
 }
 
 function EmptyCart(): JSX.Element {
-  const t = useTranslations("cartPage");
+  const t = useTranslations("pages.cart");
 
   return (
     <main

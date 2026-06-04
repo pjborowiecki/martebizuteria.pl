@@ -30,7 +30,7 @@ const TIER_STYLES: Record<string, { variant: "default" | "secondary" | "outline"
 };
 
 export function CustomerListTable(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="flex min-h-0 flex-1 flex-col border-border/40 bg-linear-to-br from-pink-500/10 via-rose-500/5 to-transparent shadow-none">
@@ -68,7 +68,7 @@ export function CustomerListTable(): JSX.Element {
 }
 
 function CustomerTableHeader(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <TableHeader className="sticky top-0 z-10 bg-background/40 backdrop-blur-md">
@@ -101,7 +101,7 @@ function CustomerTableHeader(): JSX.Element {
 }
 
 function CustomerTablePagination(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="flex shrink-0 items-center justify-between border-t border-border/40 px-6 py-4">
@@ -119,7 +119,7 @@ function CustomerTablePagination(): JSX.Element {
 }
 
 function CustomerRow({ customer }: { readonly customer: (typeof CUSTOMERS)[number] }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const navigate = useNavigate();
 
   const tierStyle = TIER_STYLES[customer.tier] ?? { variant: "secondary" };

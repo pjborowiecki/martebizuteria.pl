@@ -22,7 +22,7 @@ import { categoriesDataGrid } from "~/src/components/custom/pages/admin/catalog/
 const { Body, Pagination, Provider, Toolbar } = categoriesDataGrid;
 
 function CategoriesTableToolbarActions(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { openCreate } = useCategoriesSheet();
 
   const addButton = useMemo(
@@ -33,7 +33,7 @@ function CategoriesTableToolbarActions(): JSX.Element {
         className="h-9 cursor-pointer bg-foreground px-4 text-[13px] text-background shadow-none transition-colors hover:bg-foreground/80"
         onClick={openCreate}
       >
-        {t("categories.actions.addCategory")}
+        {t("actions.addCategory")}
       </Button>
     ),
     [openCreate, t]

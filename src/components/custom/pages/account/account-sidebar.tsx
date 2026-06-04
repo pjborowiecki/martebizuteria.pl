@@ -34,7 +34,7 @@ const INACTIVE_PROPS = {
 const EXACT_MATCH = { exact: true } as const;
 
 export function AccountSidebar(): JSX.Element {
-  const t = useTranslations("account.sidebar");
+  const t = useTranslations("pages.account.sidebar");
 
   const handleSignOut = useCallback(async () => {
     await signOut({

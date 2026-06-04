@@ -20,7 +20,7 @@ interface SeverityPillProps {
 }
 
 export function SeverityPill({ onSeverityToggle, selectedSeverity, severity }: SeverityPillProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const handleClick = useCallback(() => {
     onSeverityToggle(severity);
   }, [onSeverityToggle, severity]);

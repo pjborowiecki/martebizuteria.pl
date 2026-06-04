@@ -1,0 +1,29 @@
+{
+  "breadcrumb": {
+    "navLabel": "Breadcrumb",
+    "more": "More"
+  },
+  "carousel": {
+    "nextSlide": "Next slide",
+    "previousSlide": "Previous slide",
+    "carouselLabel": "Carousel"
+  },
+  "dialog": {
+    "close": "Close"
+  },
+  "command": {
+    "title": "Command palette",
+    "description": "Search for a command to run..."
+  },
+  "pagination": {
+    "navLabel": "Pagination",
+    "previousPage": "Previous",
+    "nextPage": "Next",
+    "goToPreviousPage": "Go to previous page",
+    "goToNextPage": "Go to next page",
+    "morePages": "More pages"
+  },
+  "sheet": {
+    "close": "Close"
+  }
+}

@@ -13,7 +13,7 @@ interface SettingsTabButtonProps {
 }
 
 export function SettingsTabButton({ isActive, onSelect, tab }: SettingsTabButtonProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   const handleClick = useCallback(() => {
     onSelect(tab.key);
   }, [onSelect, tab.key]);

@@ -1,0 +1,15 @@
+{
+  "errorTitle": "Coś poszło nie tak",
+  "signInTitle": "Witaj ponownie",
+  "signInDescription": "Zalogowano do Twojego konta M'Arte.",
+  "signUpTitle": "Już prawie gotowe",
+  "signUpDescription": "Jeśli ten adres nie był jeszcze zarejestrowany, wysłaliśmy na niego link potwierdzający. Sprawdź swoją skrzynkę.",
+  "signOutTitle": "Wylogowano",
+  "signOutDescription": "Bezpiecznie wylogowano z konta. Z przyjemnością powitamy Cię ponownie.",
+  "forgotPasswordTitle": "Sprawdź skrzynkę",
+  "forgotPasswordDescription": "Jeśli konto dla tego adresu istnieje, bezpieczny link do zmiany hasła jest już w drodze.",
+  "resetPasswordTitle": "Hasło zaktualizowane",
+  "resetPasswordDescription": "Twoje nowe hasło zostało ustawione. Możesz się teraz zalogować.",
+  "verifiedTitle": "Adres e-mail potwierdzony",
+  "verifiedDescription": "Witaj w M'Arte — masz już dostęp do swojego konta."
+}

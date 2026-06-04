@@ -23,13 +23,13 @@ export function SignOutButton(): JSX.Element {
       await signOut({
         fetchOptions: {
           onError: (ctx) => {
-            toast.error(t("auth.toast.errorTitle"), {
+            toast.error(t("pages.auth.toast.errorTitle"), {
               description: getAuthErrorMessage(t, ctx.error)
             });
           },
           onSuccess: () => {
-            toast.success(t("auth.toast.signOutTitle"), {
-              description: t("auth.toast.signOutDescription")
+            toast.success(t("pages.auth.toast.signOutTitle"), {
+              description: t("pages.auth.toast.signOutDescription")
             });
             void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.HOME}` });
           }

@@ -9,7 +9,7 @@ interface SearchInputProps {
 }
 
 export function SearchInput({ onChange, value }: SearchInputProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {

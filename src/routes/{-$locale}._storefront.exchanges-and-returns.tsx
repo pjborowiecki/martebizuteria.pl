@@ -38,14 +38,14 @@ export const Route = createFileRoute("/{-$locale}/_storefront/exchanges-and-retu
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.exchangesAndReturnsPage.description ?? "",
-      title: messages?.exchangesAndReturnsPage.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages["exchanges-and-returns"].description ?? "",
+      title: messages?.pages["exchanges-and-returns"].title ?? CONSTANTS.APP_NAME
     } satisfies ExchangesPageMeta;
   }
 });
 
 function ExchangesAndReturnsPage(): JSX.Element {
-  const t = useTranslations("exchangesAndReturnsPage");
+  const t = useTranslations("pages.exchanges-and-returns");
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center space-y-6 p-4">

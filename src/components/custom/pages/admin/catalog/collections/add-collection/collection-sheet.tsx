@@ -24,10 +24,10 @@ interface CollectionSheetProps {
 }
 
 export function CollectionSheet({ collection, mode, onOpenChange, open }: CollectionSheetProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
 
-  const title = mode === "create" ? t("collections.form.titleAdd") : t("collections.form.titleEdit");
-  const description = mode === "create" ? t("collections.form.sheetDescription") : t("collections.form.sheetDescriptionEdit");
+  const title = mode === "create" ? t("form.titleAdd") : t("form.titleEdit");
+  const description = mode === "create" ? t("form.sheetDescription") : t("form.sheetDescriptionEdit");
 
   const handleDismiss = useCallback(() => {
     onOpenChange(false);

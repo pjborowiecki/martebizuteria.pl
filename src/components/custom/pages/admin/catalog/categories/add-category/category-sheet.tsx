@@ -25,10 +25,10 @@ interface CategorySheetProps {
 }
 
 export function CategorySheet({ category, mode, onOpenChange, open }: CategorySheetProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
 
-  const title = mode === "create" ? t("categories.form.titleAdd") : t("categories.form.titleEdit");
-  const description = mode === "create" ? t("categories.form.sheetDescription") : t("categories.form.sheetDescriptionEdit");
+  const title = mode === "create" ? t("form.titleAdd") : t("form.titleEdit");
+  const description = mode === "create" ? t("form.sheetDescription") : t("form.sheetDescriptionEdit");
 
   const handleDismiss = useCallback(() => {
     onOpenChange(false);

@@ -1,5 +1,5 @@
 // Checkout failure handling, mirroring `auth.errors.ts`: the server throws a
-// stable CODE, and the client maps it to a `checkoutPage.checkoutForm.errors.*`
+// stable CODE, and the client maps it to a `pages.checkout.checkoutForm.errors.*`
 // translation key. This keeps server actions locale-agnostic and lets the UI
 // own the wording in every language.
 

@@ -79,7 +79,7 @@ function PaymentFormField({
 }
 
 function PaymentForm({ onCancel }: Readonly<{ onCancel: () => void }>): JSX.Element {
-  const t = useTranslations("account.payment");
+  const t = useTranslations("pages.account.payment");
 
   return (
     <div className="border-b border-border py-6">
@@ -104,7 +104,7 @@ function PaymentForm({ onCancel }: Readonly<{ onCancel: () => void }>): JSX.Elem
 }
 
 function PaymentCard({ method }: Readonly<{ method: PaymentMethod }>): JSX.Element {
-  const t = useTranslations("account.payment");
+  const t = useTranslations("pages.account.payment");
 
   return (
     <div className="group flex items-center gap-5 py-5">
@@ -140,7 +140,7 @@ function PaymentCard({ method }: Readonly<{ method: PaymentMethod }>): JSX.Eleme
 }
 
 function PaymentPage(): JSX.Element {
-  const t = useTranslations("account.payment");
+  const t = useTranslations("pages.account.payment");
   const methods = INITIAL_METHODS;
   const [showForm, setShowForm] = useState(false);
 

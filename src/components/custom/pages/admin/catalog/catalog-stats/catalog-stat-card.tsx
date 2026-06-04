@@ -14,18 +14,18 @@ interface CatalogStatCardProps {
 }
 
 export function CatalogStatCard({ stat }: CatalogStatCardProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog");
 
   return (
     <Card className="overflow-hidden border-border/40 bg-gradient-to-br from-purple-500/10 via-fuchsia-500/5 to-transparent shadow-none">
       <CardContent className="relative p-5">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[13px] text-muted-foreground">{t(`catalog.stats.${stat.key}.label`)}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">{t(`catalog.stats.${stat.key}.value`)}</p>
+            <p className="text-[13px] text-muted-foreground">{t(`stats.${stat.key}.label`)}</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight">{t(`stats.${stat.key}.value`)}</p>
             <div className="mt-2 flex items-center gap-1.5">
               <StatTrend up={stat.up} trend={stat.trend} />
-              <span className="text-[11px] text-muted-foreground/50">{t("catalog.stats.vsPrevious")}</span>
+              <span className="text-[11px] text-muted-foreground/50">{t("stats.vsPrevious")}</span>
             </div>
           </div>
           <CatalogSparkline sparkData={stat.spark} statKey={stat.key} color={stat.color} />

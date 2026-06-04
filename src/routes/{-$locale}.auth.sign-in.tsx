@@ -42,14 +42,14 @@ export const Route = createFileRoute("/{-$locale}/auth/sign-in")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.auth.signInPage.meta.description ?? "",
-      title: messages?.auth.signInPage.meta.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages.auth["sign-in"].meta.description ?? "",
+      title: messages?.pages.auth["sign-in"].meta.title ?? CONSTANTS.APP_NAME
     } satisfies SignInPageMeta;
   }
 });
 
 function SignInPage(): JSX.Element {
-  const t = useTranslations("auth.signInPage");
+  const t = useTranslations("pages.auth.sign-in");
 
   return (
     <>

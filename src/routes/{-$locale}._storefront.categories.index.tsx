@@ -22,7 +22,7 @@ export const Route = createFileRoute("/{-$locale}/_storefront/categories/")({
 });
 
 function CategoriesPage(): JSX.Element {
-  const t = useTranslations("categoriesPage");
+  const t = useTranslations("pages.categories");
   const { data: categories } = useSuspenseQuery(categoryQueryOptions.categoriesQueryOptions());
 
   const [firstCategory] = categories;

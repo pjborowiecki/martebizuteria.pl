@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/src/components/shadc
 import { STORE_INFO_DEFAULTS } from "~/src/data/settings-data";
 
 export function StoreInfoCard(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">

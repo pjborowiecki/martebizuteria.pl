@@ -18,7 +18,7 @@ const sendVerificationEmail = async ({ user, url }: AuthEmailParams): Promise<vo
 
   const [, error] = await sendEmail({
     react: createElement(VerifyEmail, { locale, name: user.name, verificationUrl: url }),
-    subject: getMessagesForLocale(locale).auth.email.verifyEmail.subject,
+    subject: getMessagesForLocale(locale).pages.auth.email.verifyEmail.subject,
     to: user.email
   });
 
@@ -32,7 +32,7 @@ const sendResetPassword = async ({ user, url }: AuthEmailParams): Promise<void> 
 
   const [, error] = await sendEmail({
     react: createElement(ResetPassword, { locale, name: user.name, resetPasswordUrl: url }),
-    subject: getMessagesForLocale(locale).auth.email.resetPassword.subject,
+    subject: getMessagesForLocale(locale).pages.auth.email.resetPassword.subject,
     to: user.email
   });
 
@@ -46,7 +46,7 @@ const sendChangeEmailConfirmation = async ({ user, url }: AuthEmailParams): Prom
 
   const [, error] = await sendEmail({
     react: createElement(ChangeEmail, { locale, name: user.name, verificationUrl: url }),
-    subject: getMessagesForLocale(locale).auth.email.changeEmail.subject,
+    subject: getMessagesForLocale(locale).pages.auth.email.changeEmail.subject,
     to: user.email
   });
 

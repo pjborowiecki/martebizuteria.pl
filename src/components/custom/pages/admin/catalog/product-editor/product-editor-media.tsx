@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/components/shadcn/card";
 
 export function ProductEditorMedia(): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   return (
     <Card>
@@ -23,7 +23,7 @@ export function ProductEditorMedia(): JSX.Element {
 }
 
 function UploadButton(): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   return (
     <button

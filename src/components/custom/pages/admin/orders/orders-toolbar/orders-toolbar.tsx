@@ -15,7 +15,7 @@ interface OrdersToolbarProps {
 }
 
 export function OrdersToolbar({ activeTab, onQueryChange, onTabChange, query }: OrdersToolbarProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const handleSearchChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {

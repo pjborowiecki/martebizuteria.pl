@@ -69,7 +69,7 @@ function InpostMapContent(): JSX.Element {
 
 export function InpostSelector(): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
   const { control } = useCheckoutForm();
   const lockerCity = useWatch({ control, name: "lockerCity" });
 

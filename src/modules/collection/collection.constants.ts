@@ -32,16 +32,16 @@ export const COLLECTION_ERROR_CODES = {
 } as const;
 
 export const COLLECTION_FORM_VALIDATION_KEYS = {
-  descriptionTooLong: "collections.form.validation.descriptionTooLong",
-  nameRequired: "collections.form.validation.nameRequired",
-  nameTooLong: "collections.form.validation.nameTooLong",
-  slugInvalid: "collections.form.validation.slugInvalid",
-  slugRequired: "collections.form.validation.slugRequired"
+  descriptionTooLong: "form.validation.descriptionTooLong",
+  nameRequired: "form.validation.nameRequired",
+  nameTooLong: "form.validation.nameTooLong",
+  slugInvalid: "form.validation.slugInvalid",
+  slugRequired: "form.validation.slugRequired"
 } as const;
 
 export const COLLECTION_STATUS_LABEL_KEYS: Record<CollectionStatus, string> = {
-  active: "collections.statusActive",
-  draft: "collections.statusDraft"
+  active: "statusActive",
+  draft: "statusDraft"
 };
 
 export const COLLECTION_TABLE_A11Y_KEYS = {

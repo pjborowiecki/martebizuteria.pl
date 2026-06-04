@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { CATEGORIES, COLLECTIONS, MATERIALS } from "~/src/data/catalog-data";
 
 export function ProductEditorOrganization(): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   return (
     <Card className="h-full">

@@ -10,7 +10,7 @@ interface OrdersFooterProps {
 }
 
 export function OrdersFooter({ filteredCount, totalCount }: OrdersFooterProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="flex shrink-0 items-center justify-between border-t border-border/40 px-6 py-3">

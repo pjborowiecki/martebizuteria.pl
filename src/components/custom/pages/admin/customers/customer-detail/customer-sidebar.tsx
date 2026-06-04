@@ -23,7 +23,7 @@ export function CustomerSidebar(): JSX.Element {
 }
 
 function CustomerProfileCard(): JSX.Element {
-  const t = useTranslations("admin.customerDetail");
+  const t = useTranslations("pages.admin.customerDetail");
 
   return (
     <Card className="shadow-none">
@@ -92,7 +92,7 @@ function CustomerProfileCard(): JSX.Element {
 }
 
 function CustomerTagsCard(): JSX.Element {
-  const t = useTranslations("admin.customerDetail");
+  const t = useTranslations("pages.admin.customerDetail");
 
   return (
     <Card className="shadow-none">
@@ -116,7 +116,7 @@ function CustomerTagsCard(): JSX.Element {
 }
 
 function CustomerNotesCard(): JSX.Element {
-  const t = useTranslations("admin.customerDetail");
+  const t = useTranslations("pages.admin.customerDetail");
 
   return (
     <Card className="shadow-none">
@@ -134,7 +134,7 @@ function CustomerNotesCard(): JSX.Element {
 }
 
 function CustomerTimelineCard(): JSX.Element {
-  const t = useTranslations("admin.customerDetail");
+  const t = useTranslations("pages.admin.customerDetail");
 
   return (
     <Card className="shadow-none">

@@ -22,7 +22,7 @@ interface BasicDetailsSectionProps {
 }
 
 export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionProps>): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const { collectionId, control, isPending, mode, setValue } = useCollectionForm();
   const displayId = recordId ?? (mode === "edit" ? collectionId : undefined);
 
@@ -43,16 +43,16 @@ export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionPr
   }, []);
 
   return (
-    <CollectionFormSection icon={Info} title={t("collections.form.sectionBasic")}>
+    <CollectionFormSection icon={Info} title={t("form.sectionBasic")}>
       {displayId !== undefined && displayId !== "" && (
-        <CatalogFormReadOnlyField label={t("collections.form.id")} hint={t("collections.form.hints.id")} value={displayId} />
+        <CatalogFormReadOnlyField label={t("form.id")} hint={t("form.hints.id")} value={displayId} />
       )}
       <CollectionTextField
         control={control}
         name="title"
-        label={t("collections.form.name")}
-        labelHint={t("collections.form.hints.name")}
-        placeholder={t("collections.form.namePlaceholder")}
+        label={t("form.name")}
+        labelHint={t("form.hints.name")}
+        placeholder={t("form.namePlaceholder")}
         counterMax={COLLECTION_COLUMN_LENGTH.title}
         disabled={isPending}
         onValueChange={handleTitleChange}
@@ -60,8 +60,8 @@ export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionPr
       <CollectionSlugField
         control={control}
         name="handle"
-        label={t("collections.form.slug")}
-        labelHint={t("collections.form.hints.slug")}
+        label={t("form.slug")}
+        labelHint={t("form.hints.slug")}
         counterMax={COLLECTION_COLUMN_LENGTH.handle}
         normalize={slugify}
         onManualEdit={lockHandle}
@@ -70,9 +70,9 @@ export function BasicDetailsSection({ recordId }: Readonly<BasicDetailsSectionPr
       <CollectionTextareaField
         control={control}
         name="description"
-        label={t("collections.form.description")}
-        labelHint={t("collections.form.hints.description")}
-        placeholder={t("collections.form.descriptionPlaceholder")}
+        label={t("form.description")}
+        labelHint={t("form.hints.description")}
+        placeholder={t("form.descriptionPlaceholder")}
         counterMax={COLLECTION_COLUMN_LENGTH.description}
         className={CATALOG_FORM_DESCRIPTION_TEXTAREA_CLASS}
         rows={6}

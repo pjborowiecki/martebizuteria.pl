@@ -33,7 +33,7 @@ export const Route = createFileRoute("/{-$locale}/_storefront/products/")({
 });
 
 function ProductsPage(): JSX.Element {
-  const t = useTranslations("productsPage");
+  const t = useTranslations("pages.products");
   const { data: products } = useSuspenseQuery(productQueryOptions.productsQueryOptions());
 
   const [firstProduct] = products;

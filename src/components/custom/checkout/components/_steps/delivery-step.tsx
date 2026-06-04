@@ -103,7 +103,7 @@ function OptionCardSkeleton(): JSX.Element {
 }
 
 export function DeliveryStep(): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
   const format = useFormatter();
   const { control, isPending, onNext, setValue } = useCheckoutForm();
 

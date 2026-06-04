@@ -13,7 +13,7 @@ const EMPTY_VALUE = "—";
 const ACTION_DOT_REGEX = /\./gu;
 
 export function AuditEventRow({ event }: { readonly event: AuditEvent }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const badgeColor = SEVERITY_BADGE_COLORS[event.severity];
   const roleColor = ACTOR_ROLE_COLORS[event.actor.role];

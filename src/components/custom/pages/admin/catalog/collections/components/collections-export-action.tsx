@@ -9,7 +9,7 @@ import { DataGridIconTooltip } from "~/src/components/custom/datagrid/components
 import { collectionsDataGrid } from "~/src/components/custom/pages/admin/catalog/collections/utils/collections-data-grid";
 
 export function CollectionsExportAction(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const { table } = collectionsDataGrid.useDataGrid();
 
   const handleExport = useCallback(() => {
@@ -42,12 +42,12 @@ export function CollectionsExportAction(): JSX.Element {
 
   const button = useMemo(
     () => (
-      <Button variant="outline" size="icon-lg" aria-label={t("collections.actions.exportCsv")} onClick={handleExport}>
+      <Button variant="outline" size="icon-lg" aria-label={t("actions.exportCsv")} onClick={handleExport}>
         <FileSpreadsheet className="size-4" strokeWidth={1.5} />
       </Button>
     ),
     [handleExport, t]
   );
 
-  return <DataGridIconTooltip label={t("collections.actions.exportCsv")} trigger={button} />;
+  return <DataGridIconTooltip label={t("actions.exportCsv")} trigger={button} />;
 }

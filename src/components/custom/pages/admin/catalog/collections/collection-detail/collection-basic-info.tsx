@@ -27,7 +27,7 @@ export function CollectionBasicInfo({
   onSlugChange,
   slug
 }: CollectionBasicInfoProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
 
   const handleNameChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -55,16 +55,16 @@ export function CollectionBasicInfo({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base font-semibold">{t("collections.form.sectionBasic")}</CardTitle>
+        <CardTitle className="text-base font-semibold">{t("form.sectionBasic")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-2 gap-5">
           <div className="space-y-2">
-            <Label>{t("collections.form.name")}</Label>
-            <Input type="text" value={name} onChange={handleNameChange} placeholder={t("collections.form.namePlaceholder")} />
+            <Label>{t("form.name")}</Label>
+            <Input type="text" value={name} onChange={handleNameChange} placeholder={t("form.namePlaceholder")} />
           </div>
           <div className="space-y-2">
-            <Label>{t("collections.form.slug")}</Label>
+            <Label>{t("form.slug")}</Label>
             <InputGroup>
               <InputGroupAddon className="text-sm font-normal text-muted-foreground">/collections/</InputGroupAddon>
               <InputGroupInput type="text" value={slug} onChange={handleSlugChange} placeholder="collection-name" />
@@ -74,14 +74,14 @@ export function CollectionBasicInfo({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>{t("collections.form.description")}</Label>
+            <Label>{t("form.description")}</Label>
             <span className="text-[12px] text-muted-foreground">{charCount}</span>
           </div>
           <Textarea
             rows={4}
             value={description}
             onChange={handleDescriptionChange}
-            placeholder={t("collections.form.descriptionPlaceholder")}
+            placeholder={t("form.descriptionPlaceholder")}
             className="min-h-11 resize-none bg-background py-3 text-sm"
           />
         </div>

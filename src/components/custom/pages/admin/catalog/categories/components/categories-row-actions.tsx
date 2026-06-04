@@ -37,7 +37,7 @@ interface CategoriesRowActionsProps {
 }
 
 export function CategoriesRowActions({ category }: CategoriesRowActionsProps): JSX.Element {
-  const t = useTranslations("admin.categories.rowActions");
+  const t = useTranslations("pages.admin.catalog.categories.rowActions");
   const router = useRouter();
   const { locale } = useParams({ strict: false });
   const { openEdit } = useCategoriesSheet();

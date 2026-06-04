@@ -9,7 +9,7 @@ import { PreferenceToggle } from "~/src/components/custom/pages/admin/settings/s
 import { TOGGLE_SETTING_KEYS } from "~/src/data/settings-data";
 
 export function PreferencesCard(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">

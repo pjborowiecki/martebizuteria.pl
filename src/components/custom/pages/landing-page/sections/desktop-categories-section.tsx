@@ -20,7 +20,7 @@ const ASPECT_RATIO_PORTRAIT = 0.8;
 const FIRST_INDEX = 0;
 
 export function DesktopCategoriesSection(): JSX.Element {
-  const t = useTranslations("landingPage.categoriesSection");
+  const t = useTranslations("pages.landing.categoriesSection");
   const sectionRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 

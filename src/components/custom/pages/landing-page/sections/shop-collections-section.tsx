@@ -20,7 +20,7 @@ interface CollectionCardProps {
 }
 
 function CollectionCard({ collection }: Readonly<CollectionCardProps>): JSX.Element {
-  const t = useTranslations("landingPage.shopCollectionsSection");
+  const t = useTranslations("pages.landing.shopCollectionsSection");
   const params = useMemo(() => ({ handle: collection.slug }), [collection.slug]);
 
   return (
@@ -48,7 +48,7 @@ function CollectionCard({ collection }: Readonly<CollectionCardProps>): JSX.Elem
 }
 
 export function ShopCollectionsSection(): JSX.Element {
-  const t = useTranslations("landingPage.shopCollectionsSection");
+  const t = useTranslations("pages.landing.shopCollectionsSection");
 
   return (
     <section className="mx-auto max-w-400 space-y-10 px-6 pb-20 lg:px-12 lg:pb-28">

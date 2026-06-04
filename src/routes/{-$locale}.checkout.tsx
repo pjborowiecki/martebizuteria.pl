@@ -62,10 +62,10 @@ export const Route = createFileRoute("/{-$locale}/checkout")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.checkoutPage?.metadata?.description ?? "",
+      description: messages?.pages.checkout?.metadata?.description ?? "",
       title:
-        messages?.checkoutPage?.title !== undefined && messages.checkoutPage.title !== ""
-          ? `${CONSTANTS.APP_NAME} | ${messages.checkoutPage.title}`
+        messages?.pages.checkout?.title !== undefined && messages.pages.checkout.title !== ""
+          ? `${CONSTANTS.APP_NAME} | ${messages.pages.checkout.title}`
           : CONSTANTS.APP_NAME
     } satisfies CheckoutPageMeta;
   },

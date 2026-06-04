@@ -1,0 +1,135 @@
+{
+  "defaultErrorComponent": {
+    "heading": "Something went wrong",
+    "message": "Please refresh the page and try again."
+  },
+  "defaultNotFoundComponent": {
+    "heading": "Page not found",
+    "message": "The page you are looking for does not exist."
+  },
+  "defaultPendingComponent": {
+    "loading": "Loading…"
+  },
+  "footer": {
+    "brand": "M'Arte",
+    "description": "Handcrafted jewelry made of natural stones and 925 sterling silver. Each piece is a unique work of art.",
+    "info": "Information",
+    "about": "Who we are",
+    "contact": "Contact details",
+    "account": "Customer panel",
+    "legal": "Legal",
+    "terms": "Store regulations",
+    "privacy": "Privacy policy",
+    "returns": "Exchanges and returns",
+    "tips": "Tips",
+    "care": "How to care for jewelry",
+    "copyright": "© 2026 M'Arte. All rights reserved.",
+    "facebook": "Facebook",
+    "instagram": "Instagram",
+    "twitter": "Twitter"
+  },
+  "navigation": {
+    "brand": "M'ARTE",
+    "openMenu": "Open menu",
+    "menuTrigger": "Menu",
+    "closeMenu": "Close",
+    "search": "Search",
+    "searchOverlay": {
+      "placeholder": "Search M'ARTE…",
+      "close": "Close",
+      "noResults": "No results found",
+      "noResultsHint": "Try a different term or explore our collections.",
+      "sectionProducts": "Products",
+      "sectionCategories": "Categories",
+      "sectionCollections": "Collections",
+      "sectionPages": "Pages",
+      "viewAll": "View all results",
+      "trending": "Popular searches",
+      "trendingItems": {
+        "earrings": "Earrings",
+        "silver": "Silver 925",
+        "newArrivals": "New arrivals",
+        "rings": "Rings",
+        "giftEdit": "Gift edit"
+      },
+      "pages": {
+        "brand": "The Maison",
+        "allProducts": "All Products"
+      }
+    },
+    "productCard": {
+      "addToWishlist": "Add to wishlist",
+      "removeFromWishlist": "Remove from wishlist",
+      "share": "Share",
+      "addToCart": "Add to cart",
+      "added": "Added"
+    },
+    "account": "Account",
+    "cart": "Cart",
+    "desktopNavLabel": "Primary",
+    "overlayNavLabel": "Site navigation",
+    "desktop": {
+      "newArrivals": "New arrivals",
+      "silver925": "Silver 925",
+      "brand": "Brand"
+    },
+    "menu": {
+      "primary": {
+        "newArrivals": "New arrivals",
+        "silver": "Silver",
+        "silverItalic": "925",
+        "collections": "Collections",
+        "brand": "Brand"
+      },
+      "secondary": {
+        "client": "Client",
+        "help": "Help"
+      },
+      "links": {
+        "login": "Login",
+        "myAccount": "My account",
+        "cart": "Cart",
+        "cartCount": "({count})",
+        "contact": "Contact",
+        "shipping": "Shipping & returns",
+        "faq": "FAQ"
+      },
+      "footer": {
+        "tagline": "M'ARTE © 2026",
+        "instagram": "Instagram",
+        "pinterest": "Pinterest"
+      },
+      "imageAlt": "Editorial jewelry"
+    }
+  },
+  "productCard": {
+    "addToCart": "Add to Cart",
+    "added": "Added",
+    "addToWishlist": "Add to Wishlist",
+    "removeFromWishlist": "Remove from Wishlist",
+    "share": "Share",
+    "quickView": "Quick View"
+  },
+  "authLayout": {
+    "imageAlt": "Editorial jewelry composition on textured stone",
+    "imageQuote": "Adornments as unique as the moments they celebrate.",
+    "imageAttribution": "M'ARTE Atelier — Warsaw"
+  },
+  "authHeader": {
+    "brand": "M'ARTE"
+  },
+  "authForm": {
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email address",
+    "password": "Password",
+    "confirmPassword": "Confirm password"
+  },
+  "authDivider": {
+    "or": "or"
+  },
+  "socialProviders": {
+    "google": "Continue with Google",
+    "facebook": "Continue with Facebook"
+  }
+}

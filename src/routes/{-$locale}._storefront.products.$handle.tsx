@@ -51,7 +51,7 @@ function ProductPage(): JSX.Element {
 
   const { data: product } = useSuspenseQuery(productQueryOptions.productQueryOptions(handle));
 
-  const t = useTranslations("productPage");
+  const t = useTranslations("pages.product");
   const rootRef = useRef<HTMLDivElement>(null);
 
   useProductAnimations({ rootRef });

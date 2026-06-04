@@ -4,22 +4,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
 
-import type en from "~/messages/en.json";
+import { getMessagesBundle } from "~/src/integrations/use-intl/i18n.bundles";
+import type { Messages } from "~/src/integrations/use-intl/i18n.types";
 
-export type Messages = typeof en;
-
-const messageFiles = import.meta.glob<{ readonly default: Messages }>("../../../messages/*.json", {
-  eager: true
-});
+export type { Messages };
 
 export function getMessagesForLocale(locale: Locale): Messages {
-  const file = messageFiles[`../../../messages/${locale}.json`];
-
-  if (file === undefined) {
-    throw new Error(`[i18n] Critical: Missing translation file for locale '${locale}'`);
-  }
-
-  return file.default;
+  return getMessagesBundle(locale);
 }
 
 export const fetchMessages = createServerFn({ method: "GET" })

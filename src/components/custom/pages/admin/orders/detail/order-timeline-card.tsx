@@ -9,7 +9,7 @@ import { OrderTimelineEvent } from "~/src/components/custom/pages/admin/orders/d
 import { DEMO_TIMELINE, TIMELINE_KEY_SLICE_LENGTH, TIMELINE_KEY_SLICE_START } from "~/src/data/order-detail-data";
 
 export function OrderTimelineCard(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">

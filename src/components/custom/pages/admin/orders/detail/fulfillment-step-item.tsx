@@ -13,7 +13,7 @@ interface FulfillmentStepItemProps {
 }
 
 export function FulfillmentStepItem({ index, step }: FulfillmentStepItemProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="flex flex-1 flex-col items-center text-center">

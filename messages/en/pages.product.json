@@ -1,0 +1,66 @@
+{
+  "loadingRelated": "Loading related products...",
+  "metaTitle": "{title} | M'Arte",
+  "addToCart": "Add to cart",
+  "unavailable": "Unavailable",
+  "outOfStock": "Out of stock",
+  "notFound": "Product not found",
+  "priceRange": "{min} - {max}",
+  "heroSection": {
+    "breadcrumbHome": "Home",
+    "breadcrumbProducts": "Products",
+    "collection": "Collection",
+    "subtitle": "Exquisite craftsmanship",
+    "price": "From PLN 310",
+    "material": "925 Sterling Silver / 18k Gold Plated",
+    "sku": "SKU: MRT-0001",
+    "quantity": "Quantity",
+    "decreaseQuantity": "Decrease quantity",
+    "increaseQuantity": "Increase quantity",
+    "addToCart": "Add to cart",
+    "addedToCart": "Added to Cart",
+    "size": "One Size",
+    "details": {
+      "description": {
+        "title": "Description",
+        "text": "Every piece is carefully handcrafted in our atelier."
+      },
+      "materials": {
+        "title": "Materials",
+        "text": "Made with the highest quality sustainable metals."
+      },
+      "dimensions": {
+        "title": "Dimensions",
+        "text": "One size fits most. Adjustable chain 40-45cm."
+      },
+      "care": {
+        "title": "Care instructions",
+        "text": "Store in a dry place. Avoid direct contact with perfume."
+      },
+      "shipping": {
+        "title": "Shipping & Returns",
+        "text": "Complimentary shipping on orders over 500 PLN. 30-day returns."
+      }
+    }
+  },
+  "relatedSection": {
+    "title": "Complete the Look",
+    "related": {
+      "arcCuff": {
+        "detail": "Silver with moonstone",
+        "name": "Arc Cuff",
+        "price": "PLN 520"
+      },
+      "silhouetteRing": {
+        "detail": "Sterling silver 925",
+        "name": "Silhouette Ring",
+        "price": "PLN 310"
+      },
+      "formaII": {
+        "detail": "Gold-plated silver",
+        "name": "Forma II",
+        "price": "PLN 480"
+      }
+    }
+  }
+}

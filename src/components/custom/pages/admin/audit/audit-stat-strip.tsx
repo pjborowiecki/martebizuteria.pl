@@ -14,7 +14,7 @@ interface AuditStatStripProps {
 }
 
 export function AuditStatStrip({ onSeverityToggle, selectedSeverity }: AuditStatStripProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const total = AUDIT_EVENTS.length;
   const todayCount = AUDIT_EVENTS.filter((e) => e.timestamp.includes(TODAY_MARKER)).length;

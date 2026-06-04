@@ -18,7 +18,7 @@ const TABLE_PAGE_INDEX_START = 0;
 
 /** Lives inside `collectionsDataGrid.Provider` so cards can sync the status filter. */
 export function CollectionsStats(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
   const { data: resolvedStats, isFetching } = useSuspenseQuery(collectionQueryOptions.collectionStatsQueryOptions());
   const valuesPending = isFetching;
 

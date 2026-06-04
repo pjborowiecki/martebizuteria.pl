@@ -1,0 +1,18 @@
+{
+  "view": {
+    "label": "Pokaż lub ukryj kolumny",
+    "columns": "Widoczność kolumn",
+    "reset": "Przywróć domyślne ustawienia tabeli"
+  },
+  "sortBy": "Sortuj wg {column}",
+  "resizeColumn": "Zmień szerokość kolumny {column}",
+  "pagination": {
+    "rowsPerPage": "Wierszy na stronę",
+    "page": "Strona {page} z {total}",
+    "showing": "{from}–{to} z {count}",
+    "first": "Pierwsza strona",
+    "previous": "Poprzednia strona",
+    "next": "Następna strona",
+    "last": "Ostatnia strona"
+  }
+}

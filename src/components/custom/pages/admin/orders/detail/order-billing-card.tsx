@@ -8,7 +8,7 @@ import { Card, CardContent } from "~/src/components/shadcn/card";
 import { DEMO_BILLING } from "~/src/data/order-detail-data";
 
 export function OrderBillingCard(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">

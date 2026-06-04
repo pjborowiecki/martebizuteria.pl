@@ -40,14 +40,14 @@ export const Route = createFileRoute("/{-$locale}/auth/forgot-password")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.auth.forgotPasswordPage.meta.description ?? "",
-      title: messages?.auth.forgotPasswordPage.meta.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages.auth["forgot-password"].meta.description ?? "",
+      title: messages?.pages.auth["forgot-password"].meta.title ?? CONSTANTS.APP_NAME
     } satisfies ForgotPasswordPageMeta;
   }
 });
 
 function ForgotPasswordPage(): JSX.Element {
-  const t = useTranslations("auth.forgotPasswordPage");
+  const t = useTranslations("pages.auth.forgot-password");
 
   return (
     <>

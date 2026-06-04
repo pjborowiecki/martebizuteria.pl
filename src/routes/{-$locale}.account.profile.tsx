@@ -103,7 +103,7 @@ function PersonalInfoField({
 }
 
 function PersonalInfoSection(): JSX.Element {
-  const t = useTranslations("account.profile");
+  const t = useTranslations("pages.account.profile");
   const [editing, setEditing] = useState<FieldKey | undefined>();
   const [values, setValues] = useState(PROFILE);
   const snapshotRef = useRef<typeof PROFILE>(PROFILE);
@@ -179,7 +179,7 @@ const TIMEZONE_OPTIONS: readonly string[] =
   typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : CONSTANTS.TIME_ZONES;
 
 function TimezoneField(): JSX.Element {
-  const t = useTranslations("account.profile");
+  const t = useTranslations("pages.account.profile");
   const current = useTimeZone();
 
   const mutation = useMutation({
@@ -228,7 +228,7 @@ function TimezoneField(): JSX.Element {
 }
 
 function PreferencesSection(): JSX.Element {
-  const t = useTranslations("account.profile");
+  const t = useTranslations("pages.account.profile");
   const [values, setValues] = useState(PROFILE);
 
   const handleLanguageChange = useCallback((val: string | null) => {
@@ -300,7 +300,7 @@ function PreferencesSection(): JSX.Element {
 }
 
 function SecuritySection(): JSX.Element {
-  const t = useTranslations("account.profile");
+  const t = useTranslations("pages.account.profile");
 
   return (
     <section>
@@ -340,7 +340,7 @@ function CloseAccountDialog({
   onCloseAccount: () => void;
   setCloseConfirmation: (val: string) => void;
 }>): JSX.Element {
-  const t = useTranslations("account.profile");
+  const t = useTranslations("pages.account.profile");
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -396,7 +396,7 @@ function CloseAccountDialog({
 }
 
 function CloseAccountSection(): JSX.Element {
-  const t = useTranslations("account.profile");
+  const t = useTranslations("pages.account.profile");
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [closeConfirmation, setCloseConfirmation] = useState("");
 
@@ -452,7 +452,7 @@ function CloseAccountSection(): JSX.Element {
 }
 
 function ProfilePage(): JSX.Element {
-  const t = useTranslations("account.profile");
+  const t = useTranslations("pages.account.profile");
 
   return (
     <div>

@@ -60,14 +60,14 @@ export const Route = createFileRoute("/{-$locale}/auth/sign-up")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.auth.signUpPage.meta.description ?? "",
-      title: messages?.auth.signUpPage.meta.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages.auth["sign-up"].meta.description ?? "",
+      title: messages?.pages.auth["sign-up"].meta.title ?? CONSTANTS.APP_NAME
     } satisfies SignUpPageMeta;
   }
 });
 
 function SignUpPage(): JSX.Element {
-  const t = useTranslations("auth.signUpPage");
+  const t = useTranslations("pages.auth.sign-up");
 
   return (
     <>

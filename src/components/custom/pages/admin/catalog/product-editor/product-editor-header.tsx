@@ -23,16 +23,17 @@ const STATUS_STYLE_MAP = {
 } as const;
 
 export function ProductEditorHeader({ isNew = false, handle, status }: Readonly<ProductEditorHeaderProps>): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
+  const tp = useTranslations("pages.admin.catalog.products");
 
   const statusLabel = {
-    active: t("newProduct.status.active"),
-    archived: t("newProduct.status.archived"),
-    draft: t("newProduct.status.draft")
+    active: tp("status.active"),
+    archived: tp("status.archived"),
+    draft: tp("status.draft")
   }[status];
 
-  const titleText = isNew ? t("newProduct.title") : (handle ?? t("newProduct.editTitle"));
-  const actionLabel = isNew ? t("newProduct.actions.publish") : t("newProduct.actions.saveChanges");
+  const titleText = isNew ? tp("title") : (handle ?? tp("editTitle"));
+  const actionLabel = isNew ? tp("actions.publish") : tp("actions.saveChanges");
 
   const breadcrumbs = useMemo(
     () => [
@@ -67,7 +68,7 @@ export function ProductEditorHeader({ isNew = false, handle, status }: Readonly<
           size="sm"
           className="h-8 gap-1.5 px-3 text-[13px] text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
-          {t("newProduct.actions.discard")}
+          {tp("actions.discard")}
         </Button>
         <Button
           variant="outline"
@@ -75,7 +76,7 @@ export function ProductEditorHeader({ isNew = false, handle, status }: Readonly<
           className="h-8 gap-1.5 border-sidebar-border bg-sidebar px-3 text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <Eye className="size-3.5" strokeWidth={1.5} />
-          {t("newProduct.actions.saveDraft")}
+          {tp("actions.saveDraft")}
         </Button>
         <Button size="sm" className="h-8 gap-1.5 bg-foreground px-4 text-[13px] text-background hover:bg-foreground/90">
           <Check className="size-3.5" strokeWidth={2} />
@@ -83,7 +84,7 @@ export function ProductEditorHeader({ isNew = false, handle, status }: Readonly<
         </Button>
       </>
     ),
-    [actionLabel, t]
+    [actionLabel, tp]
   );
 
   return (

@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl";
 import { Input } from "~/src/components/shadcn/input";
 
 export function NewsletterSection(): JSX.Element {
-  const t = useTranslations("landingPage.newsletterSection");
+  const t = useTranslations("pages.landing.newsletterSection");
 
   return (
     <section className="bg-secondary/40 py-20 lg:py-28">

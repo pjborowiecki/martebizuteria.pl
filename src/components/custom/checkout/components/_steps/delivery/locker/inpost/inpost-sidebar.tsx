@@ -41,7 +41,7 @@ function hasNoResults(points: readonly InpostPointParsed[] | undefined): boolean
 }
 
 export function InpostSidebar(): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
   const { cityInput, isLoading, points, setCityInput } = useInpost();
 
   const handleChange = useCallback(

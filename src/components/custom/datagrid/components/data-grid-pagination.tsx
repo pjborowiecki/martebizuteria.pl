@@ -22,7 +22,7 @@ interface DataGridPaginationProps<TData extends RowData> {
 
 /** Bottom bar: rows-per-page selector, current range, and page navigation. */
 export function DataGridPagination<TData extends RowData>({ table }: DataGridPaginationProps<TData>): JSX.Element {
-  const t = useTranslations("dataGrid");
+  const t = useTranslations("components.datagrid");
   const { pageIndex, pageSize } = table.getState().pagination;
   const totalRows = table.getFilteredRowModel().rows.length;
   const pageCount = Math.max(table.getPageCount(), PAGE_OFFSET);

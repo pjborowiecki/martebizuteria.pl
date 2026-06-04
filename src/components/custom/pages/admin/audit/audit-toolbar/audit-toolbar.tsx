@@ -33,7 +33,7 @@ export function AuditToolbar({
   query,
   severity
 }: AuditToolbarProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="shrink-0 border-b border-border/40 bg-background">

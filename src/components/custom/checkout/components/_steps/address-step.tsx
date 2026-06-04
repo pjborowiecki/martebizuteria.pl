@@ -25,7 +25,7 @@ type AddressPrefix = "billing" | "shipping";
 type SelectAddress = (addr: Address["select"], prefix: AddressPrefix) => void;
 
 export function AddressStep(): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
 
   const { control, isPending, onNext, setValue } = useCheckoutForm();
 
@@ -163,7 +163,7 @@ function SavedAddresses({
   onSelect: SelectAddress;
   prefix: AddressPrefix;
 }>): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
   const hasAddresses = addresses.length > EMPTY_ADDRESSES_COUNT;
 
   return (

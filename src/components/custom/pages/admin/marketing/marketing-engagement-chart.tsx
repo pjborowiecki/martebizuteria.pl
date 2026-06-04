@@ -9,7 +9,7 @@ import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } f
 import { ENGAGEMENT_DATA } from "~/src/data/marketing-data";
 
 export function MarketingEngagementChart(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const chartConfig: ChartConfig = useMemo(
     () => ({

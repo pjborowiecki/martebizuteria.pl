@@ -16,12 +16,12 @@ import { categoryQueryOptions } from "~/src/modules/category/category.queries";
 const NO_PARENT_VALUE = "";
 
 export function ParentCategorySection(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { categoryId, control, isPending } = useCategoryForm();
   const { data: categories } = useSuspenseQuery(categoryQueryOptions.adminCategoriesQueryOptions());
 
   const parentOptions = useMemo(() => {
-    const options = [{ label: t("categories.form.noParent"), value: NO_PARENT_VALUE }];
+    const options = [{ label: t("form.noParent"), value: NO_PARENT_VALUE }];
     for (const item of categories.filter((row) => row.id !== categoryId)) {
       options.push({ label: item.title, value: item.id });
     }
@@ -29,13 +29,13 @@ export function ParentCategorySection(): JSX.Element {
   }, [categories, categoryId, t]);
 
   return (
-    <CategoryFormSection icon={FolderTree} title={t("categories.form.sectionParent")}>
+    <CategoryFormSection icon={FolderTree} title={t("form.sectionParent")}>
       <Field className="gap-2">
-        <CatalogFormFieldLabel hint={t("categories.form.hints.parentCategory")} label={t("categories.form.parentCategory")} />
+        <CatalogFormFieldLabel hint={t("form.hints.parentCategory")} label={t("form.parentCategory")} />
         <CategorySelectField
           control={control}
           name="parentId"
-          ariaLabel={t("categories.form.parentCategory")}
+          ariaLabel={t("form.parentCategory")}
           options={parentOptions}
           disabled={isPending}
         />

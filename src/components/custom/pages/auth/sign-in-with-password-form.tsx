@@ -38,13 +38,13 @@ export function SignInWithPasswordForm(): JSX.Element {
         email: data.email,
         fetchOptions: {
           onError: (ctx) => {
-            toast.error(t("auth.toast.errorTitle"), {
+            toast.error(t("pages.auth.toast.errorTitle"), {
               description: getAuthErrorMessage(t, ctx.error)
             });
           },
           onSuccess: async () => {
-            toast.success(t("auth.toast.signInTitle"), {
-              description: t("auth.toast.signInDescription")
+            toast.success(t("pages.auth.toast.signInTitle"), {
+              description: t("pages.auth.toast.signInDescription")
             });
             const session = await sessionQueries.getSessionFn();
             const to = hasAdminAccess(session?.user.role)
@@ -97,14 +97,14 @@ export function SignInWithPasswordForm(): JSX.Element {
             to={CONSTANTS.ROUTES.AUTH_FORGOT_PASSWORD}
             className="text-xs text-muted-foreground/70 underline underline-offset-4 transition-colors hover:text-foreground"
           >
-            {t("auth.signInPage.forgotPassword")}
+            {t("pages.auth.sign-in.forgotPassword")}
           </LocalizedLink>
         </div>
       </div>
 
       <Button size="xl" type="submit" className="w-full gap-3.5 tracking-wide" disabled={isSubmitting}>
         {isSubmitting && <Loader2 aria-hidden className="size-4 animate-spin" />}
-        {isSubmitting ? t("auth.signInPage.submitting") : t("auth.signInPage.submit")}
+        {isSubmitting ? t("pages.auth.sign-in.submitting") : t("pages.auth.sign-in.submit")}
         {!isSubmitting && <ArrowRight className="size-4" />}
       </Button>
     </form>

@@ -14,7 +14,7 @@ import { LocalizedLink } from "~/src/components/custom/localized-link";
 const EYEBROW_CLASS = "flex min-h-6 items-center text-xs font-medium tracking-[0.28em] text-muted-foreground uppercase";
 
 export function CheckoutForm(): JSX.Element {
-  const t = useTranslations("checkoutPage");
+  const t = useTranslations("pages.checkout");
 
   return (
     <CheckoutFormProvider>

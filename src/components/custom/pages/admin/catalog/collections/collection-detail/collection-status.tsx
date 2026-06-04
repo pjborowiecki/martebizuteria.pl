@@ -14,7 +14,7 @@ export interface CollectionStatusCardProps {
 }
 
 export function CollectionStatusCard({ onStatusChange, status }: Readonly<CollectionStatusCardProps>): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.collections");
 
   const handleStatusChange = useCallback(
     (val: CollectionStatus | null) => {
@@ -30,11 +30,11 @@ export function CollectionStatusCard({ onStatusChange, status }: Readonly<Collec
       <CardContent className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <Package className="size-4 text-muted-foreground/60" strokeWidth={1.5} />
-          <span className="text-[14px] font-medium">{t("collections.form.status")}</span>
+          <span className="text-[14px] font-medium">{t("form.status")}</span>
         </div>
         <Select value={status} onValueChange={handleStatusChange}>
           <SelectTrigger
-            aria-label={t("collections.form.status")}
+            aria-label={t("form.status")}
             className="min-h-11 w-full min-w-0 rounded-none border-0 border-b border-border bg-background px-3 py-2.5 text-sm shadow-none ring-0 transition-[color,background-color,border-color] outline-none focus-visible:border-foreground focus-visible:ring-0 data-[state=open]:border-foreground [&>svg]:opacity-50"
           >
             <SelectValue />

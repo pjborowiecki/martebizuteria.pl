@@ -494,7 +494,7 @@ TanStack Router uses a **flat** `src/routes/` directory — no nested route fold
 ```
 martebizuteria/
 ├── .github/workflows/          # preview + production deploy pipelines
-├── messages/                   # use-intl catalogs (pl.json, en.json)
+├── messages/                   # use-intl catalogs (en/, pl/ — one JSON module per namespace)
 ├── public/                     # static assets (favicon, icons, landing video)
 │   └── screenshots/            # README UI captures
 ├── seeds/                      # SQL seed files (catalog, inventory, delivery, …)

@@ -65,7 +65,7 @@ const REVENUE_CHART_DEFS = (
 );
 
 export function DashboardCharts(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <div className="grid gap-5 xl:grid-cols-4">
@@ -132,7 +132,7 @@ export function DashboardCharts(): JSX.Element {
 }
 
 function WeeklyOrdersChart(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
   return (
     <Card className="border-border/40 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent shadow-none">
       <CardHeader className="pb-2">

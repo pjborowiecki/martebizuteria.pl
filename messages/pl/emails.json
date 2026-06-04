@@ -1,0 +1,17 @@
+{
+  "test": {
+    "preview": "Podgląd testowego e-maila",
+    "title": "Witaj od M'Arte",
+    "body": "To jest testowy e-mail."
+  },
+  "orderConfirmation": {
+    "subject": "Potwierdzenie zamówienia - M'ARTE",
+    "preview": "Twoje zamówienie M'ARTE zostało potwierdzone",
+    "greeting": "Dziękujemy za zamówienie!",
+    "message": "Otrzymaliśmy Twoją płatność, a Twoje zamówienie jest już przygotowywane. Oto podsumowanie zakupu:",
+    "orderLabel": "Numer zamówienia",
+    "totalLabel": "Razem",
+    "footer": "Wyślemy kolejną wiadomość, gdy tylko Twoje zamówienie zostanie zrealizowane.",
+    "thanks": "M'ARTE"
+  }
+}

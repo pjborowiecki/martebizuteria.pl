@@ -23,7 +23,7 @@ export interface UseImageUploadResult {
  * state, and error toasts — so the components only deal with presentation.
  */
 export function useImageUpload(folder: MediaFolder, onUploadingChange?: (uploading: boolean) => void): UseImageUploadResult {
-  const t = useTranslations("admin.media");
+  const t = useTranslations("pages.admin.media");
   const [pendingCount, setPendingCount] = useState(EMPTY_COUNT);
   const isUploading = pendingCount > EMPTY_COUNT;
 

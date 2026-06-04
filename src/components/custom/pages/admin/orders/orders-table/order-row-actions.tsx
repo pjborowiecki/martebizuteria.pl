@@ -19,7 +19,7 @@ interface OrderRowActionsProps {
 }
 
 export function OrderRowActions({ children, orderId }: OrderRowActionsProps): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <DropdownMenu>

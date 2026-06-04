@@ -37,14 +37,14 @@ export function ForgotPasswordForm(): JSX.Element {
         email: data.email,
         fetchOptions: {
           onError: (ctx: ErrorContext) => {
-            toast.error(t("auth.toast.errorTitle"), {
+            toast.error(t("pages.auth.toast.errorTitle"), {
               description: getAuthErrorMessage(t, ctx.error)
             });
           },
           onSuccess: () => {
             setHasSubmitted(true);
-            toast.success(t("auth.toast.forgotPasswordTitle"), {
-              description: t("auth.toast.forgotPasswordDescription")
+            toast.success(t("pages.auth.toast.forgotPasswordTitle"), {
+              description: t("pages.auth.toast.forgotPasswordDescription")
             });
           }
         },
@@ -67,7 +67,7 @@ export function ForgotPasswordForm(): JSX.Element {
   if (hasSubmitted) {
     return (
       <div className="space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">{t("auth.forgotPasswordPage.checkEmail")}</p>
+        <p className="text-sm text-muted-foreground">{t("pages.auth.forgot-password.checkEmail")}</p>
       </div>
     );
   }
@@ -87,7 +87,7 @@ export function ForgotPasswordForm(): JSX.Element {
 
       <Button size="xl" type="submit" className="w-full gap-2.5 tracking-wide" disabled={isSubmitting}>
         {isSubmitting && <Loader2 aria-hidden className="size-4 animate-spin" />}
-        {isSubmitting ? t("auth.forgotPasswordPage.submitting") : t("auth.forgotPasswordPage.submit")}
+        {isSubmitting ? t("pages.auth.forgot-password.submitting") : t("pages.auth.forgot-password.submit")}
         {!isSubmitting && <ArrowRight className="size-4" />}
       </Button>
     </form>

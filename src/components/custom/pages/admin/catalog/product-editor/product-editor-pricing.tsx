@@ -15,7 +15,7 @@ interface ProductEditorPricingProps {
 }
 
 export function ProductEditorPricing({ initialData }: Readonly<ProductEditorPricingProps>): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   return (
     <Card className="h-full">

@@ -33,13 +33,13 @@ export function OAuthButton({ Icon, label, provider }: Readonly<OAuthButtonProps
         callbackURL: buildLocalizedUrl("", CONSTANTS.ROUTES.ACCOUNT_OVERVIEW, locale),
         fetchOptions: {
           onError: (ctx) => {
-            toast.error(t("auth.toast.errorTitle"), {
+            toast.error(t("pages.auth.toast.errorTitle"), {
               description: getAuthErrorMessage(t, ctx.error)
             });
           },
           onSuccess: () => {
-            toast.success(t("auth.toast.signInTitle"), {
-              description: t("auth.toast.signInDescription")
+            toast.success(t("pages.auth.toast.signInTitle"), {
+              description: t("pages.auth.toast.signInDescription")
             });
           }
         },
@@ -56,7 +56,7 @@ export function OAuthButton({ Icon, label, provider }: Readonly<OAuthButtonProps
       disabled={isPending}
       onClick={handleOAuth}
       id={`oauth-button-${provider}`}
-      aria-label={t(`auth.oAuth.${provider}`)}
+      aria-label={t(`pages.auth.oauth.${provider}`)}
       className="w-full gap-3 border-border/50 bg-muted text-sm hover:border-border hover:bg-background md:text-sm dark:bg-input/50 dark:hover:bg-input/30"
     >
       {isPending ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}

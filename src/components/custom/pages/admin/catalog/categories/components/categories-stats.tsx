@@ -18,7 +18,7 @@ const TABLE_PAGE_INDEX_START = 0;
 
 /** Lives inside `categoriesDataGrid.Provider` so cards can sync the status filter. */
 export function CategoriesStats(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const { data: resolvedStats, isFetching } = useSuspenseQuery(categoryQueryOptions.categoryStatsQueryOptions());
   const valuesPending = isFetching;
 

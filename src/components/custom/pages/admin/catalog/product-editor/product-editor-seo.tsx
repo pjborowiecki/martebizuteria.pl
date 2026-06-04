@@ -9,7 +9,7 @@ import { Label } from "~/src/components/shadcn/label";
 import { Textarea } from "~/src/components/shadcn/textarea";
 
 export function ProductEditorSeo(): JSX.Element {
-  const t = useTranslations("admin.newProduct");
+  const t = useTranslations("pages.admin.catalog.products");
 
   return (
     <Card className="mb-10">

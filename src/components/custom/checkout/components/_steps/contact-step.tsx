@@ -13,7 +13,7 @@ import { useCheckoutForm } from "~/src/components/custom/checkout/components/che
 import { CHECKOUT_STEP_ID } from "~/src/components/custom/checkout/lib/checkout-steps";
 
 export function ContactStep(): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
 
   const { control, getValues, isPending, onNext, setValue } = useCheckoutForm();
   const { data: session } = useSession();

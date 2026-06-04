@@ -11,7 +11,7 @@ import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { useCartStore } from "~/src/stores/cart.store";
 
 export function CheckoutSuccess(): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutSuccess");
+  const t = useTranslations("pages.checkout.checkoutSuccess");
   const clearCart = useCartStore((state) => state.clearCart);
 
   useEffect(() => {

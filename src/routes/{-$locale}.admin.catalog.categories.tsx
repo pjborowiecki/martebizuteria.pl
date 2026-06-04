@@ -13,12 +13,12 @@ export const Route = createFileRoute("/{-$locale}/admin/catalog/categories")({
 });
 
 function CategoriesSectionLayoutRoute(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin.catalog.categories");
   const tabs = useMemo(() => <CatalogTabs active="categories" />, []);
 
   return (
     <>
-      <AdminHeader title={t("categories.title")} description={t("categories.description")} tabs={tabs} />
+      <AdminHeader title={t("title")} description={t("description")} tabs={tabs} />
 
       <div className={ADMIN_PAGE_BODY_CLASS}>
         <Outlet />

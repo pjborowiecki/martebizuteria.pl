@@ -5,7 +5,7 @@ import { useTranslations } from "use-intl";
 import { Separator } from "~/src/components/shadcn/separator";
 
 export function ManifestoSection(): JSX.Element {
-  const t = useTranslations("landingPage.manifestoSection");
+  const t = useTranslations("pages.landing.manifestoSection");
 
   return (
     <section className="bg-secondary/40 py-24 lg:py-36">

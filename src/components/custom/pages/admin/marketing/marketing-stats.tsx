@@ -19,7 +19,7 @@ export function MarketingStats(): JSX.Element {
 }
 
 function MarketingStatCard({ stat }: { stat: (typeof MARKETING_STATS)[number] }): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   return (
     <Card className="overflow-hidden shadow-none">

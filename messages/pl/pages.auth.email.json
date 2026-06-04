@@ -1,0 +1,31 @@
+{
+  "resetPassword": {
+    "subject": "Zresetuj swoje hasło - M'ARTE",
+    "greeting": "Cześć {name},",
+    "message": "Ktoś niedawno poprosił o zmianę hasła do Twojego konta M'ARTE. Jeśli to byłeś Ty, możesz ustawić nowe hasło tutaj:",
+    "cta": "Zresetuj hasło",
+    "ignore": "Jeśli nie chcesz zmieniać hasła lub o to nie prosiłeś, po prostu zignoruj i usuń tę wiadomość.",
+    "security": "Aby zapewnić bezpieczeństwo swojego konta, nie przekazuj tego e-maila nikomu."
+  },
+  "verifyEmail": {
+    "subject": "Witaj w M'Arte — potwierdź swój adres e-mail",
+    "preview": "Ostatni krok, aby aktywować Twoje konto M'Arte.",
+    "heading": "Witaj w M'Arte",
+    "greeting": "Witaj {name},",
+    "message": "Dziękujemy za dołączenie do M'Arte. Każdą biżuterię tworzymy ręcznie w naszej warszawskiej pracowni i z przyjemnością witamy Cię w gronie naszych klientów. Aby dokończyć rejestrację i zabezpieczyć konto, potwierdź poniżej swój adres e-mail.",
+    "cta": "Potwierdź adres e-mail",
+    "expiry": "Ze względów bezpieczeństwa ten link wygaśnie po 60 minutach.",
+    "ignore": "Jeśli ta wiadomość trafiła do Ciebie przez pomyłkę, po prostu ją zignoruj — żadne konto nie zostanie utworzone.",
+    "signoff": "Z pozdrowieniami,",
+    "sender": "Pracownia M'Arte",
+    "tagline": "Biżuteria tworzona ręcznie",
+    "footer": "Pracownia M'Arte · Warszawa, Polska"
+  },
+  "changeEmail": {
+    "subject": "Zweryfikuj swój nowy adres e-mail - M'ARTE",
+    "greeting": "Cześć {name},",
+    "message": "Niedawno poprosiłeś o zmianę adresu e-mail przypisanego do Twojego konta M'ARTE. Proszę zweryfikować nowy adres e-mail, aby zakończyć proces.",
+    "cta": "Zweryfikuj nowy e-mail",
+    "ignore": "Jeśli to nie Ty prosiłeś o zmianę, zignoruj tę wiadomość, a Twoje konto pozostanie bezpieczne."
+  }
+}

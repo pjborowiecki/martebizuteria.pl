@@ -10,7 +10,7 @@ import { ProductCard } from "~/src/components/custom/product-card";
 import { LANDING_PRODUCTS } from "~/src/data/landing-data";
 
 export function NewArrivalsSection(): JSX.Element {
-  const t = useTranslations("landingPage.newArrivalsSection");
+  const t = useTranslations("pages.landing.newArrivalsSection");
 
   return (
     <section id="nowosci" className="mx-auto max-w-400 space-y-10 px-6 pt-20 pb-20 lg:px-12 lg:pt-28 lg:pb-28">

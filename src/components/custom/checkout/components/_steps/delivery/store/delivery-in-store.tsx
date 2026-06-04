@@ -3,7 +3,7 @@ import type { JSX } from "react";
 import { useTranslations } from "use-intl";
 
 export function DeliveryInStore(): JSX.Element {
-  const t = useTranslations("checkoutPage.checkoutForm");
+  const t = useTranslations("pages.checkout.checkoutForm");
 
   return (
     <div className="flex flex-col gap-4 rounded-none border border-border/50 bg-background p-5">

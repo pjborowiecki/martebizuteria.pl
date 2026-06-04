@@ -14,7 +14,7 @@ import { LocalizedLink } from "~/src/components/custom/localized-link";
 const ASPECT_RATIO_WIDE = 1.454_545;
 
 export function MaisonHeritageSection(): JSX.Element {
-  const t = useTranslations("landingPage.maisonHeritageSection");
+  const t = useTranslations("pages.landing.maisonHeritageSection");
 
   return (
     <section id="marka" className="mx-auto max-w-400 px-6 py-16 lg:px-12 lg:py-24">

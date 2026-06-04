@@ -19,7 +19,7 @@ export const Route = createFileRoute("/{-$locale}/admin/marketing")({
 });
 
 function MarketingPage(): JSX.Element {
-  const t = useTranslations("admin");
+  const t = useTranslations("pages.admin");
 
   const bcList = useMemo(
     () => [{ href: CONSTANTS.ROUTES.ADMIN, label: t("nav.dashboard") } satisfies { href: LocalizedTo; label: string }],

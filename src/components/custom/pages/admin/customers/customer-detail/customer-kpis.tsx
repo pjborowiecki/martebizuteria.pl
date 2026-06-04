@@ -8,7 +8,7 @@ import { Card, CardContent } from "~/src/components/shadcn/card";
 import { CUSTOMER } from "~/src/data/customer-detail-data";
 
 export function CustomerKpis(): JSX.Element {
-  const t = useTranslations("admin.customerDetail");
+  const t = useTranslations("pages.admin.customerDetail");
 
   const kpis = [
     { color: "text-foreground", icon: CreditCard, label: t("kpi.totalSpent"), value: CUSTOMER.spent },

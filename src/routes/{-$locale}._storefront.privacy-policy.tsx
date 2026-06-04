@@ -38,14 +38,14 @@ export const Route = createFileRoute("/{-$locale}/_storefront/privacy-policy")({
     const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
 
     return {
-      description: messages?.privacyPolicyPage.description ?? "",
-      title: messages?.privacyPolicyPage.title ?? CONSTANTS.APP_NAME
+      description: messages?.pages.privacyPolicy.description ?? "",
+      title: messages?.pages.privacyPolicy.title ?? CONSTANTS.APP_NAME
     } satisfies PrivacyPolicyPageMeta;
   }
 });
 
 function PrivacyPolicyPage(): JSX.Element {
-  const t = useTranslations("privacyPolicyPage");
+  const t = useTranslations("pages.privacyPolicy");
 
   return (
     <main className="flex min-h-[60vh] flex-col items-center justify-center space-y-6 p-4">
