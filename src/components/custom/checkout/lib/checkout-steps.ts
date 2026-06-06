@@ -1,5 +1,3 @@
-import type { ComponentType } from "react";
-
 import { type CheckoutFormSchema, checkoutSchema } from "~/src/modules/checkout/checkout.zod";
 
 const STEP_NOT_FOUND = -1;
@@ -15,42 +13,19 @@ export const CHECKOUT_STEP_ID = {
 
 export type CheckoutStepId = (typeof CHECKOUT_STEP_ID)[keyof typeof CHECKOUT_STEP_ID];
 
-export interface CheckoutStepConfig {
-  readonly component: () => Promise<{ default: ComponentType }>;
+export interface CheckoutStepDefinition {
   readonly fields: readonly (keyof CheckoutFormSchema)[];
   readonly id: CheckoutStepId;
   readonly titleKey: string;
 }
 
-async function loadContactStep(): Promise<{ default: ComponentType }> {
-  const m = await import("~/src/components/custom/checkout/components/_steps/contact-step");
-  return { default: m.ContactStep };
-}
-
-async function loadAddressStep(): Promise<{ default: ComponentType }> {
-  const m = await import("~/src/components/custom/checkout/components/_steps/address-step");
-  return { default: m.AddressStep };
-}
-
-async function loadDeliveryStep(): Promise<{ default: ComponentType }> {
-  const m = await import("~/src/components/custom/checkout/components/_steps/delivery-step");
-  return { default: m.DeliveryStep };
-}
-
-async function loadPaymentStep(): Promise<{ default: ComponentType }> {
-  const m = await import("~/src/components/custom/checkout/components/_steps/payment-step");
-  return { default: m.PaymentStep };
-}
-
-export const CHECKOUT_STEPS: readonly CheckoutStepConfig[] = [
+export const CHECKOUT_STEP_DEFINITIONS: readonly CheckoutStepDefinition[] = [
   {
-    component: loadContactStep,
     fields: ["email", "phone"],
     id: CHECKOUT_STEP_ID.CONTACT,
     titleKey: "steps.contact"
   },
   {
-    component: loadAddressStep,
     fields: [
       "firstName",
       "lastName",
@@ -70,13 +45,11 @@ export const CHECKOUT_STEPS: readonly CheckoutStepConfig[] = [
     titleKey: "steps.billing"
   },
   {
-    component: loadDeliveryStep,
     fields: ["deliveryMethod", "lockerId"],
     id: CHECKOUT_STEP_ID.DELIVERY,
     titleKey: "steps.delivery"
   },
   {
-    component: loadPaymentStep,
     fields: [],
     id: CHECKOUT_STEP_ID.PAYMENT,
     titleKey: "steps.payment"
@@ -98,13 +71,13 @@ export const CHECKOUT_STEPS: readonly CheckoutStepConfig[] = [
 export function getFurthestReachableStepIndex(values: CheckoutFormSchema): number {
   const result = checkoutSchema.safeParse(values);
   if (result.success) {
-    return CHECKOUT_STEPS.length - LAST_STEP_OFFSET;
+    return CHECKOUT_STEP_DEFINITIONS.length - LAST_STEP_OFFSET;
   }
 
   const invalidFields = new Set(
     result.error.issues.map((issue) => issue.path[FIRST_PATH_SEGMENT]).filter((path): path is string => typeof path === "string")
   );
 
-  const firstIncompleteIndex = CHECKOUT_STEPS.findIndex((step) => step.fields.some((field) => invalidFields.has(field)));
-  return firstIncompleteIndex === STEP_NOT_FOUND ? CHECKOUT_STEPS.length - LAST_STEP_OFFSET : firstIncompleteIndex;
+  const firstIncompleteIndex = CHECKOUT_STEP_DEFINITIONS.findIndex((step) => step.fields.some((field) => invalidFields.has(field)));
+  return firstIncompleteIndex === STEP_NOT_FOUND ? CHECKOUT_STEP_DEFINITIONS.length - LAST_STEP_OFFSET : firstIncompleteIndex;
 }

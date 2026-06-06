@@ -1,3 +1,6 @@
+// Audit
+export { auditLog } from "~/src/modules/audit-log/audit-log.schema";
+
 // Auth modules
 export { account, accountRelations } from "~/src/modules/account/account.schema";
 export { session, sessionRelations } from "~/src/modules/session/session.schema";

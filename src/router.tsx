@@ -6,6 +6,7 @@ import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
 import { ImagePrefetchService } from "~/src/lib/_utils/image";
+import { setupQueryClientInvalidationBroadcast } from "~/src/lib/_utils/query-client-sync";
 import { deLocalizeUrl, localizeUrl } from "~/src/lib/utils";
 
 import { DefaultErrorComponent } from "./components/custom/defaults/default-error-component";
@@ -30,6 +31,10 @@ function getContext() {
   });
 
   const imagePrefetchService = new ImagePrefetchService();
+
+  if (!import.meta.env.SSR) {
+    setupQueryClientInvalidationBroadcast(queryClient);
+  }
 
   return { imagePrefetchService, queryClient };
 }

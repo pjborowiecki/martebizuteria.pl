@@ -1,15 +1,36 @@
+import type { ReactElement } from "react";
+
 import type StripeType from "stripe";
 import { z } from "zod";
 
 import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
 
+import {
+  buildOrderAccountCta,
+  buildOrderConfirmationDetails,
+  buildOrderConfirmationItems,
+  resolveStripePaymentMethodLabel
+} from "~/src/integrations/resend/order-confirmation.utils";
 import { getOrderConfirmationSubject, OrderConfirmation } from "~/src/integrations/resend/templates/order-confirmation";
 import { stripe } from "~/src/integrations/stripe/stripe.server";
 
+import { formatMinorUnitsAsDecimal } from "~/src/lib/_utils/currency";
 import { sendEmail } from "~/src/lib/_utils/email";
 import { isValidLocale } from "~/src/lib/_utils/locale";
+import { scheduleAdminOrdersInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server";
 
+import {
+  recordEmailFailedAudit,
+  recordEmailSentAudit,
+  recordOrderDisputeClosedAudit,
+  recordOrderDisputeOpenedAudit,
+  recordOrderPaymentCapturedAudit,
+  recordOrderPaymentFailedAudit,
+  recordOrderPlacedAudit,
+  recordOrderReleasedAudit
+} from "~/src/modules/audit-log/audit-log.events.server";
+import { checkoutAccessors } from "~/src/modules/checkout/checkout.accessors";
 import { checkoutMutations } from "~/src/modules/checkout/checkout.mutations";
 import { orderMutations } from "~/src/modules/order/order.mutations";
 
@@ -46,7 +67,16 @@ async function resolveTransactionId(paymentIntent: string | { id: string } | nul
 
 const FULFILLABLE_PAYMENT_STATUSES = new Set<StripeType.Checkout.Session["payment_status"]>(["no_payment_required", "paid"]);
 
-const fulfillmentItemsSchema = z.array(z.object({ price: z.number(), qty: z.number(), title: z.string(), variantId: z.string() }));
+const fulfillmentItemsSchema = z.array(
+  z.object({
+    handle: z.string().optional(),
+    imageUrl: z.string().optional(),
+    price: z.number(),
+    qty: z.number(),
+    title: z.string(),
+    variantId: z.string()
+  })
+);
 const releaseItemsSchema = z.array(z.object({ qty: z.number(), variantId: z.string() }).loose());
 
 type FulfillmentLines = z.infer<typeof fulfillmentItemsSchema>;
@@ -60,36 +90,111 @@ function resolveLocale(session: StripeType.Checkout.Session): Locale {
   return typeof raw === "string" && isValidLocale(raw) ? raw : CONSTANTS.DEFAULT_LOCALE;
 }
 
+interface OrderConfirmationEmailPayload {
+  readonly email: string;
+  readonly locale: Locale;
+  readonly react: ReactElement;
+  readonly subject: string;
+}
+
+function recordOrderConfirmationEmailOutcome(
+  orderId: string,
+  email: string,
+  outcome: Readonly<{ error?: unknown; rejectedMessage?: string }>
+): void {
+  const detailPrefix = `Order confirmation → ${email}`;
+
+  if (outcome.error !== undefined) {
+    console.error(`Order confirmation email failed for ${orderId}:`, outcome.error);
+    recordEmailFailedAudit(orderId, { detail: detailPrefix, resourceId: orderId });
+    return;
+  }
+
+  if (outcome.rejectedMessage !== undefined) {
+    console.error(`Order confirmation email rejected for ${orderId}: ${outcome.rejectedMessage}`);
+    recordEmailFailedAudit(orderId, { detail: `${detailPrefix} — ${outcome.rejectedMessage}`, resourceId: orderId });
+    return;
+  }
+
+  recordEmailSentAudit(orderId, { detail: detailPrefix, resourceId: orderId });
+}
+
+async function buildOrderConfirmationEmailPayload(
+  session: StripeType.Checkout.Session,
+  order: Readonly<{ currency: string; lines: FulfillmentLines; orderId: string }>
+): Promise<OrderConfirmationEmailPayload | undefined> {
+  const email = session.customer_email ?? session.customer_details?.email;
+  if (email === null || email === undefined || email === "") {
+    return undefined;
+  }
+
+  const locale = resolveLocale(session);
+  const checkoutId = session.metadata?.checkoutId;
+  const checkoutContext =
+    typeof checkoutId === "string" && checkoutId !== "" ? await checkoutAccessors.getCheckoutEmailContext(checkoutId) : undefined;
+  const paymentMethod = await resolveStripePaymentMethodLabel(session, locale);
+  const details = buildOrderConfirmationDetails(
+    checkoutContext === undefined
+      ? undefined
+      : {
+          billingAddress: checkoutContext.billingAddress,
+          billingAddressId: checkoutContext.billingAddressId,
+          customerNote: checkoutContext.customerNote,
+          deliveryMethod: checkoutContext.deliveryMethod,
+          lockerId: checkoutContext.lockerId,
+          shippingAddress: checkoutContext.shippingAddress,
+          shippingAddressId: checkoutContext.shippingAddressId
+        },
+    locale,
+    paymentMethod
+  );
+  const itemsSubtotal = order.lines.reduce((sum, line) => sum + line.price * line.qty, NO_AMOUNT);
+  const shippingTotal = Math.max((session.amount_total ?? NO_AMOUNT) - itemsSubtotal, NO_AMOUNT);
+  const emailItems = buildOrderConfirmationItems(order.lines, locale);
+  const rawUserId = session.metadata?.userId;
+  const isGuest = rawUserId === undefined || rawUserId === "";
+  const accountCta = buildOrderAccountCta(locale, order.orderId, isGuest);
+
+  return {
+    email,
+    locale,
+    react: (
+      <OrderConfirmation
+        accountCta={accountCta}
+        currency={order.currency}
+        details={details}
+        items={emailItems}
+        locale={locale}
+        orderId={order.orderId}
+        shippingTotal={shippingTotal}
+        subtotal={itemsSubtotal}
+        total={session.amount_total ?? NO_AMOUNT}
+      />
+    ),
+    subject: getOrderConfirmationSubject(locale)
+  };
+}
+
 /** Emails the buyer their order confirmation. Best-effort: a failed send is logged, never thrown. */
 async function notifyOrderConfirmed(
   session: StripeType.Checkout.Session,
   order: Readonly<{ currency: string; lines: FulfillmentLines; orderId: string }>
 ): Promise<void> {
-  const email = session.customer_email ?? session.customer_details?.email;
-  if (email === null || email === undefined || email === "") {
+  const payload = await buildOrderConfirmationEmailPayload(session, order);
+  if (payload === undefined) {
     return;
   }
 
-  const locale = resolveLocale(session);
   const [response, error] = await sendEmail({
-    react: (
-      <OrderConfirmation
-        currency={order.currency}
-        items={order.lines}
-        locale={locale}
-        orderId={order.orderId}
-        total={session.amount_total ?? NO_AMOUNT}
-      />
-    ),
-    subject: getOrderConfirmationSubject(locale),
-    to: email
+    react: payload.react,
+    subject: payload.subject,
+    to: payload.email
   });
 
-  if (error !== undefined) {
-    console.error(`Order confirmation email failed for ${order.orderId}:`, error);
-  } else if (response !== undefined && response.error !== null) {
-    console.error(`Order confirmation email rejected for ${order.orderId}: ${response.error.message}`);
-  }
+  recordOrderConfirmationEmailOutcome(order.orderId, payload.email, {
+    error,
+    rejectedMessage: response?.error?.message ?? undefined
+  });
 }
 
 async function handleFulfillCheckoutSession(session: StripeType.Checkout.Session): Promise<void> {
@@ -114,12 +219,25 @@ async function handleFulfillCheckoutSession(session: StripeType.Checkout.Session
   }
   console.info(`Checkout converted to Order ${orderId} from session ${session.id}.`);
 
+  const locale = resolveLocale(session);
+
+  recordOrderPlacedAudit(orderId, {
+    detail: session.customer_email ?? session.customer_details?.email ?? undefined,
+    resourceId: orderId
+  });
+  recordOrderPaymentCapturedAudit(orderId, {
+    detail: `${formatMinorUnitsAsDecimal(session.amount_total ?? NO_AMOUNT, { currencyCode: currency, locale, useGrouping: false })} ${currency.toUpperCase()}`,
+    resourceId: orderId
+  });
+  scheduleAdminOrdersInvalidation();
+
   await notifyOrderConfirmed(session, { currency, lines, orderId });
 }
 
 async function handleReleaseCheckoutSession(session: StripeType.Checkout.Session): Promise<void> {
   const lines = releaseItemsSchema.parse(JSON.parse(parseMetadataItems(session)));
   await checkoutMutations.releaseCheckout({ lines, transactionId: session.id });
+  recordOrderReleasedAudit(session.id, { resourceId: session.id });
   console.info(`Checkout released after failed/expired session ${session.id}.`);
 }
 
@@ -132,6 +250,7 @@ async function handleReleaseCheckoutSession(session: StripeType.Checkout.Session
  */
 function handlePaymentIntentFailed(paymentIntent: StripeType.PaymentIntent): Promise<void> {
   const reason = paymentIntent.last_payment_error?.message ?? "unknown";
+  recordOrderPaymentFailedAudit(paymentIntent.id, { detail: reason, resourceId: paymentIntent.id });
   console.warn(`Payment failed for intent ${paymentIntent.id} (checkout ${paymentIntent.metadata.checkoutId ?? "?"}): ${reason}`);
   return Promise.resolve();
 }
@@ -149,6 +268,7 @@ async function handleChargeRefunded(charge: StripeType.Charge): Promise<void> {
     restock: true,
     transactionId
   });
+  scheduleAdminOrdersInvalidation();
   console.info(`Recorded refund of ${charge.amount_refunded} for charge ${charge.id}.`);
 }
 
@@ -165,6 +285,11 @@ async function handleChargeDisputeCreated(dispute: StripeType.Dispute): Promise<
     reason: dispute.reason,
     status: dispute.status
   });
+  recordOrderDisputeOpenedAudit(transactionId, {
+    detail: `${dispute.reason} — ${dispute.status}`,
+    resourceId: transactionId
+  });
+  scheduleAdminOrdersInvalidation();
   console.warn(`Dispute ${dispute.id} (${dispute.reason}) opened; order frozen pending resolution.`);
 }
 
@@ -184,11 +309,14 @@ async function handleChargeDisputeClosed(dispute: StripeType.Dispute): Promise<v
       restock: false,
       transactionId
     });
+    scheduleAdminOrdersInvalidation();
     console.warn(`Dispute ${dispute.id} lost; order marked refunded — review inventory manually.`);
     return;
   }
 
   await orderMutations.clearOrderDispute(transactionId);
+  recordOrderDisputeClosedAudit(transactionId, { detail: dispute.status, resourceId: transactionId });
+  scheduleAdminOrdersInvalidation();
   console.info(`Dispute ${dispute.id} closed (${dispute.status}); dispute flag cleared.`);
 }
 

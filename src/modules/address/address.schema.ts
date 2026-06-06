@@ -22,7 +22,7 @@ export const address = sqliteTable(
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
     ...timestamps()
   },
-  (table) => [index("address_userId_idx").on(table.userId)]
+  (table) => [index("address_userId_idx").on(table.userId), index("address_userId_isDefault_idx").on(table.userId, table.isDefault)]
 );
 
 export const addressRelations = relations(address, ({ one }) => ({

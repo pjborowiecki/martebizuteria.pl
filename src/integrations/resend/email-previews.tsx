@@ -4,6 +4,7 @@ import { render } from "react-email";
 
 import type { Locale } from "~/src/constants/types";
 
+import { AccountDeleted } from "~/src/integrations/resend/templates/account-deleted";
 import { ChangeEmail } from "~/src/integrations/resend/templates/change-email";
 import { OrderConfirmation } from "~/src/integrations/resend/templates/order-confirmation";
 import { ResetPassword } from "~/src/integrations/resend/templates/reset-password";
@@ -26,6 +27,10 @@ interface EmailPreview {
  * stays a thin transport and the registry can be reused (tests, snapshots).
  */
 export const EMAIL_PREVIEWS = {
+  "account-deleted": {
+    element: (locale) => <AccountDeleted {...AccountDeleted.PreviewProps} locale={locale} />,
+    label: "Account deleted"
+  },
   "change-email": {
     element: (locale) => <ChangeEmail {...ChangeEmail.PreviewProps} locale={locale} />,
     label: "Change email"

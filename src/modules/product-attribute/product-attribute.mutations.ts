@@ -3,7 +3,14 @@ import { v7 as uuidv7 } from "uuid";
 
 import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions";
 
+import { scheduleProductAttributeCatalogInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server";
+
 import { attributeOnProductAccessors } from "~/src/modules/attribute-on-product/attribute-on-product.accessors";
+import {
+  recordCatalogAttributeCreatedAudit,
+  recordCatalogAttributeDeletedAudit,
+  recordCatalogAttributeUpdatedAudit
+} from "~/src/modules/audit-log/audit-log.events.server";
 import { productAttributeAccessors } from "~/src/modules/product-attribute/product-attribute.accessors";
 import {
   PRODUCT_ATTRIBUTE_ERROR_CODES,
@@ -44,6 +51,9 @@ const createProductAttributeFn = createServerFn({ method: "POST" })
       unit: data.unit === "" ? undefined : data.unit
     });
 
+    scheduleProductAttributeCatalogInvalidation();
+    recordCatalogAttributeCreatedAudit(data.handle);
+
     return { handle: data.handle, id };
   });
 
@@ -65,6 +75,9 @@ const updateProductAttributeFn = createServerFn({ method: "POST" })
       unit: data.unit === "" ? undefined : data.unit
     });
 
+    scheduleProductAttributeCatalogInvalidation();
+    recordCatalogAttributeUpdatedAudit(data.handle);
+
     return { handle: data.handle, id: data.id };
   });
 
@@ -80,6 +93,9 @@ const deleteProductAttributesFn = createServerFn({ method: "POST" })
 
     await productAttributeAccessors.deleteProductAttributes(ids);
 
+    scheduleProductAttributeCatalogInvalidation();
+    recordCatalogAttributeDeletedAudit(ids.join(", "));
+
     return { deleted: ids.length, ok: true };
   });
 
@@ -90,6 +106,8 @@ const reorderProductAttributesFn = createServerFn({ method: "POST" })
 
     const updates = orderedIds.map((id, rank) => ({ id, rank }));
     await productAttributeAccessors.setProductAttributeRanks(updates);
+
+    scheduleProductAttributeCatalogInvalidation();
 
     return { ok: true };
   });

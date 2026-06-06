@@ -3,6 +3,7 @@ import { type JSX, useCallback, useEffect, useMemo, useState } from "react";
 import { useFormatter, useLocale, useTranslations } from "use-intl";
 
 import { getProductImageUrl } from "~/src/lib/_utils/image";
+import { trackCartItemAdded } from "~/src/lib/customer-activity/customer-activity.tracking";
 import { centsToDisplayAmount } from "~/src/lib/utils";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/src/components/shadcn/accordion";
@@ -86,14 +87,23 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
 
     const variantTitle = selectedVariant.title === DEFAULT_VARIANT_TITLE ? "" : selectedVariant.title;
 
+    const addQuantity = Math.max(MIN_QUANTITY, quantity);
+
     addItem({
       id: selectedVariant.id,
       image: getProductImageUrl(product.thumbnail),
       price,
-      qty: Math.max(MIN_QUANTITY, quantity),
+      qty: addQuantity,
       rawPrice: variantPrice,
       slug: product.handle,
       title: product.title,
+      variantId: selectedVariant.id,
+      variantTitle
+    });
+
+    trackCartItemAdded({
+      productTitle: product.title,
+      quantity: addQuantity,
       variantId: selectedVariant.id,
       variantTitle
     });

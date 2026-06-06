@@ -1,30 +1,36 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { PaginationState, Table } from "@tanstack/react-table";
+import type { ColumnFiltersState, PaginationState, SortingState, Table } from "@tanstack/react-table";
 import { useTranslations } from "use-intl";
 
 import { useDataGridInstance } from "~/src/components/custom/datagrid/hooks/use-data-grid-instance";
-import { createCatalogTableGlobalFilterFn } from "~/src/components/custom/datagrid/lib/catalog-table-global-filter";
-import type { DataGridContextValue, RowReorderApi } from "~/src/components/custom/datagrid/lib/data-grid.types";
+import type { DataGridContextValue } from "~/src/components/custom/datagrid/lib/data-grid.types";
 import { getDataGridColumnIds } from "~/src/components/custom/datagrid/lib/data-grid.utils";
-import { getProductAdminSearchParts } from "~/src/components/custom/pages/admin/catalog/lib/catalog-admin-table-search";
 import { useProductColumns } from "~/src/components/custom/pages/admin/catalog/products/components/products-columns";
 import { useProductsListData } from "~/src/components/custom/pages/admin/catalog/products/hooks/use-products-list-data";
+import { useProductsRowReorder } from "~/src/components/custom/pages/admin/catalog/products/hooks/use-products-row-reorder";
+import { useProductsServerListSync } from "~/src/components/custom/pages/admin/catalog/products/hooks/use-products-server-list-sync";
 import { productsDataGrid } from "~/src/components/custom/pages/admin/catalog/products/utils/products-data-grid";
 
+import { useAdminDebouncedTableSearch } from "~/src/hooks/use-admin-debounced-table-search";
+import {
+  hasAdminProductsListColumnFilters,
+  parseAdminProductsListColumnFilters,
+  type AdminProductsListColumnFilters
+} from "~/src/modules/product/product.admin-list-filters";
+import { parseAdminProductsListSort, type AdminProductsListSort } from "~/src/modules/product/product.admin-list-sort";
 import {
   ADMIN_PRODUCTS_PAGE_SIZE,
-  PRODUCT_STATUS_LABEL_KEYS,
   PRODUCT_TABLE_COLUMN_ID,
   PRODUCT_TABLE_COLUMN_PINNING,
   PRODUCT_TABLE_DEFAULT_COLUMN_VISIBILITY,
   type ProductInventoryLevel,
   type ProductStatus
 } from "~/src/modules/product/product.constants";
+import type { AdminProductsExportInput } from "~/src/modules/product/product.queries";
 import type { Product } from "~/src/modules/product/product.types";
 
 const TABLE_PAGE_INDEX_START = 0;
-const NONE = 0;
 
 export interface ProductsListFilters {
   readonly categoryId?: string;
@@ -92,22 +98,54 @@ export function hasProductsListFilters(filters: ProductsListFilters): boolean {
   );
 }
 
-function useUnfilteredProductsPageSize(table: Table<Product["adminListItem"]>, hasListFilters: boolean, rowCount: number): void {
+export function hasProductsServerListQuery(
+  filters: ProductsListFilters,
+  search: string,
+  columnFilters: AdminProductsListColumnFilters
+): boolean {
+  return hasProductsListFilters(filters) || search !== "" || hasAdminProductsListColumnFilters(columnFilters);
+}
+
+function buildProductsExportListInput({
+  columnFilters,
+  filters,
+  listSort,
+  serverSearch
+}: {
+  readonly columnFilters: AdminProductsListColumnFilters;
+  readonly filters: ProductsListFilters;
+  readonly listSort: AdminProductsListSort | undefined;
+  readonly serverSearch: string;
+}): AdminProductsExportInput {
+  return {
+    categoryId: filters.categoryId,
+    collectionId: filters.collectionId,
+    createdAt: columnFilters.createdAt,
+    inventoryLevel: filters.inventoryLevel,
+    minPrice: columnFilters.minPrice,
+    search: serverSearch === "" ? undefined : serverSearch,
+    sort: listSort,
+    status: filters.status,
+    totalStock: columnFilters.totalStock
+  };
+}
+
+function useUnfilteredProductsPageSize(table: Table<Product["adminListItem"]>, hasServerListQuery: boolean, rowCount: number): void {
   const tableRef = useRef(table);
   tableRef.current = table;
 
   useEffect(() => {
-    const nextPageSize = hasListFilters ? ADMIN_PRODUCTS_PAGE_SIZE : Math.max(rowCount, ADMIN_PRODUCTS_PAGE_SIZE);
+    const nextPageSize = hasServerListQuery ? ADMIN_PRODUCTS_PAGE_SIZE : Math.max(rowCount, ADMIN_PRODUCTS_PAGE_SIZE);
     const { pageIndex, pageSize } = tableRef.current.getState().pagination;
 
     if (pageSize !== nextPageSize) {
       tableRef.current.setPageSize(nextPageSize);
     }
 
-    if (!hasListFilters && pageIndex !== TABLE_PAGE_INDEX_START) {
+    if (!hasServerListQuery && pageIndex !== TABLE_PAGE_INDEX_START) {
       tableRef.current.setPageIndex(TABLE_PAGE_INDEX_START);
     }
-  }, [hasListFilters, rowCount]);
+  }, [hasServerListQuery, rowCount]);
 }
 
 export interface ProductsDataGridValue extends DataGridContextValue<Product["adminListItem"]> {
@@ -116,6 +154,8 @@ export interface ProductsDataGridValue extends DataGridContextValue<Product["adm
   readonly activeInventoryFilter: ProductInventoryLevel | undefined;
   readonly activeStatusFilter: ProductStatus | undefined;
   readonly applyProductsFilter: (patch?: ProductsListFilterPatch) => void;
+  readonly exportListInput: AdminProductsExportInput;
+  readonly hasServerListQuery: boolean;
 }
 
 interface UseProductsDataGridOptions {
@@ -130,19 +170,28 @@ export function useProductsDataGrid({ onRowClick, onRowPointerEnter }: UseProduc
     pageSize: ADMIN_PRODUCTS_PAGE_SIZE
   });
   const [filters, setFilters] = useState<ProductsListFilters>({});
-  const hasListFilters = hasProductsListFilters(filters);
-  const { ordering, pageCount, rowCount, showSkeletonRows, tableData } = useProductsListData({ filters, hasListFilters, pagination });
+  const [serverSearch, setServerSearch] = useState("");
+  const [serverSorting, setServerSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const serverListState = useMemo(
+    () => ({
+      listColumnFilters: parseAdminProductsListColumnFilters(columnFilters),
+      listSort: parseAdminProductsListSort(serverSorting)
+    }),
+    [columnFilters, serverSorting]
+  );
+  const hasServerListQuery = hasProductsServerListQuery(filters, serverSearch, serverListState.listColumnFilters);
+  const { ordering, pageCount, rowCount, showSkeletonRows, tableData } = useProductsListData({
+    columnFilters: serverListState.listColumnFilters,
+    filters,
+    hasServerListQuery,
+    pagination,
+    search: serverSearch === "" ? undefined : serverSearch,
+    sort: serverListState.listSort
+  });
 
   const columns = useProductColumns();
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns]);
-  const globalFilterFn = useMemo(
-    () =>
-      createCatalogTableGlobalFilterFn<Product["adminListItem"]>((row) => {
-        const statusLabel = t(PRODUCT_STATUS_LABEL_KEYS[row.status]);
-        return getProductAdminSearchParts(row, statusLabel);
-      }),
-    [t]
-  );
 
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
     columns,
@@ -150,33 +199,37 @@ export function useProductsDataGrid({ onRowClick, onRowPointerEnter }: UseProduc
     defaultColumnVisibility: PRODUCT_TABLE_DEFAULT_COLUMN_VISIBILITY,
     defaultPageSize: ADMIN_PRODUCTS_PAGE_SIZE,
     getRowId: (row) => row.id,
-    globalFilterFn,
     initialColumnOrder,
     initialColumnPinning: PRODUCT_TABLE_COLUMN_PINNING,
-    manualPagination: hasListFilters,
-    onPaginationChange: hasListFilters ? setPagination : undefined,
-    pageCount: hasListFilters ? pageCount : undefined,
-    pagination: hasListFilters ? pagination : undefined,
+    manualFiltering: hasServerListQuery,
+    manualPagination: hasServerListQuery,
+    manualSorting: hasServerListQuery,
+    onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: hasServerListQuery ? setPagination : undefined,
+    onSortingChange: hasServerListQuery ? setServerSorting : undefined,
+    pageCount: hasServerListQuery ? pageCount : undefined,
+    pagination: hasServerListQuery ? pagination : undefined,
     persistenceKey: productsDataGrid.persistenceKey,
-    rowCount: hasListFilters ? rowCount : undefined
+    rowCount: hasServerListQuery ? rowCount : undefined,
+    sorting: hasServerListQuery ? serverSorting : undefined
   });
 
-  const { columnFilters, sorting } = table.getState();
-  const search = String(table.getState().globalFilter ?? "").trim();
-  const naturalOrder = !hasListFilters && sorting.length === NONE && columnFilters.length === NONE && search === "";
-  const rowReorder = useMemo<RowReorderApi>(
-    () => ({
-      draggingId: ordering.draggingId,
-      enabled: naturalOrder,
-      onRowDragEnter: ordering.handleDragEnter,
-      onRowDragStart: ordering.handleDragStart,
-      onRowDrop: ordering.handleDrop,
-      onRowMove: ordering.handleMove
-    }),
-    [naturalOrder, ordering]
-  );
+  const { debouncedSearch } = useAdminDebouncedTableSearch(table);
 
-  useUnfilteredProductsPageSize(table, hasListFilters, tableData.length);
+  useProductsServerListSync({
+    columnFilters,
+    debouncedSearch,
+    hasServerListQuery,
+    serverSorting,
+    setPagination,
+    setServerSearch,
+    setServerSorting
+  });
+
+  const { sorting } = table.getState();
+  const rowReorder = useProductsRowReorder({ columnFilters, hasServerListQuery, ordering, sorting });
+
+  useUnfilteredProductsPageSize(table, hasServerListQuery, tableData.length);
 
   const statusColumn = table.getColumn(PRODUCT_TABLE_COLUMN_ID.status);
   const applyProductsFilter = useCallback(
@@ -198,7 +251,14 @@ export function useProductsDataGrid({ onRowClick, onRowPointerEnter }: UseProduc
       activeStatusFilter: filters.status,
       applyProductsFilter,
       columnReorder,
+      exportListInput: buildProductsExportListInput({
+        columnFilters: serverListState.listColumnFilters,
+        filters,
+        listSort: serverListState.listSort,
+        serverSearch
+      }),
       hasPreferenceOverrides,
+      hasServerListQuery,
       isLoading: showSkeletonRows,
       onRowClick,
       onRowPointerEnter,
@@ -211,15 +271,15 @@ export function useProductsDataGrid({ onRowClick, onRowPointerEnter }: UseProduc
     [
       applyProductsFilter,
       columnReorder,
-      filters.categoryId,
-      filters.collectionId,
-      filters.inventoryLevel,
-      filters.status,
+      filters,
       hasPreferenceOverrides,
+      hasServerListQuery,
+      serverListState,
       onRowClick,
       onRowPointerEnter,
       resetPreferences,
       rowReorder,
+      serverSearch,
       showSkeletonRows,
       t,
       table

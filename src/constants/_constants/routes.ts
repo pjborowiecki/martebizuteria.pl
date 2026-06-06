@@ -32,6 +32,10 @@ export const ROUTES = {
     SIGN_IN_EMAIL: "/sign-in/email",
     SIGN_UP_EMAIL: "/sign-up/email"
   },
+  API_REALTIME: {
+    ADMIN_WS: "/api/realtime/admin/ws",
+    STOREFRONT_WS: "/api/realtime/storefront/ws"
+  },
   AUTH_EMAIL_VERIFICATION: "/auth/email-verification",
   AUTH_FORGOT_PASSWORD: "/auth/forgot-password",
   AUTH_RESET_PASSWORD: "/auth/reset-password",

@@ -316,6 +316,34 @@
       "when": 1780735705960,
       "tag": "20260606084825_fuzzy_miek",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "6",
+      "when": 1781025600000,
+      "tag": "20260609120000_query_efficiency_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1781112000000,
+      "tag": "20260610120000_audit_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1781198400000,
+      "tag": "20260611120000_audit_log_resource_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "6",
+      "when": 1781205600000,
+      "tag": "20260611140000_product_variant_drop_weight",
+      "breakpoints": true
     }
   ]
 }

@@ -14,7 +14,7 @@
       "customers": "Customers"
     },
     "actions": {
-      "sendEmail": "Send Email",
+      "edit": "Edit customer",
       "createOrder": "Create Order"
     },
     "kpi": {
@@ -25,10 +25,12 @@
     },
     "spending": {
       "title": "Spending Activity",
-      "subtitle": "Monthly spending over the last 12 months"
+      "subtitle": "Monthly spending over the last 12 months",
+      "empty": "No completed orders in the last 12 months."
     },
     "categoryBreakdown": {
-      "title": "Category Breakdown"
+      "title": "Category Breakdown",
+      "empty": "No category spending data yet."
     },
     "orders": {
       "title": "Order History",
@@ -41,75 +43,115 @@
         "status": "Status",
         "payment": "Payment"
       },
+      "empty": "No orders yet.",
       "status": {
         "delivered": "Delivered",
         "shipped": "Shipped",
         "returned": "Returned",
-        "processing": "Processing"
+        "pending": "Pending",
+        "unfulfilled": "Unfulfilled"
       },
       "payment": {
         "paid": "Paid",
         "refunded": "Refunded",
-        "pending": "Pending"
+        "authorized": "Authorized"
       }
     },
     "profile": {
-      "memberSince": "Member since {date}",
+      "accountCreated": "Account created: {date}",
       "lastActive": "Last active {time}",
+      "returningBadge": "Returning",
       "preferences": "Preferences",
       "preferredCategory": "Preferred Category",
       "preferredCollection": "Preferred Collection"
     },
     "tags": {
-      "title": "Tags"
+      "title": "Tags",
+      "sidebarHint": "System tags are automatic. Add or remove your own labels via Edit customer.",
+      "system": "System",
+      "custom": "Custom",
+      "empty": "No tags for this customer.",
+      "values": {
+        "admin": "Admin",
+        "banned": "Banned",
+        "customer": "Customer",
+        "returning": "Returning",
+        "verified": "Verified"
+      }
     },
     "notes": {
       "title": "Internal Notes",
-      "edit": "Edit Notes"
+      "empty": "No internal notes."
     },
     "timeline": {
-      "title": "Activity Timeline"
-    }
-  },
-  "customers": {
-    "title": "Customers",
-    "description": "Manage your customer list, view purchase history, and export data.",
-    "searchPlaceholder": "Search customers...",
-    "actions": {
-      "export": "Export Data",
-      "sendEmail": "Send Email"
+      "title": "Activity Timeline",
+      "empty": "No activity yet.",
+      "accountCreated": "Account created",
+      "orderPlaced": "Placed order {id} — {total}",
+      "signedIn": "Signed in",
+      "signedOut": "Signed out",
+      "cartItemAdded": "Added {product} to cart (×{quantity})",
+      "cartAbandoned": "Left with {count} items in cart",
+      "pageViewed": "Viewed {path}"
     },
-    "columns": {
-      "customer": "Customer",
-      "location": "Location",
-      "orders": "Orders",
-      "spent": "Total Spent",
-      "lastOrder": "Last Order",
-      "tier": "Tier"
-    },
-    "pagination": {
-      "showing": "Showing 1-19 of 2,847 customers",
-      "previous": "Previous",
-      "next": "Next"
-    },
-    "stats": {
-      "totalCustomers": {
-        "label": "Total Customers",
-        "value": "2,847"
+    "form": {
+      "title": "Edit customer",
+      "description": "Update contact details, default address, internal notes, and custom tags.",
+      "cancel": "Cancel",
+      "save": "Save changes",
+      "sections": {
+        "contact": "Contact details",
+        "address": "Default address",
+        "addressDescription": "Used on the customer profile and as the default shipping address when available.",
+        "notes": "Internal notes",
+        "tags": "Custom tags",
+        "tagsDescription": "System tags such as Verified or Returning are assigned automatically."
       },
-      "vipCustomers": {
-        "label": "VIP Customers",
-        "value": "124"
+      "id": "Customer ID",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "phonePlaceholder": "+48 123 456 789",
+      "address1": "Address line 1",
+      "address1Placeholder": "Street and number",
+      "address2": "Address line 2",
+      "address2Placeholder": "Apartment, suite, etc.",
+      "city": "City",
+      "cityPlaceholder": "City",
+      "province": "State / province",
+      "provincePlaceholder": "State or province",
+      "postalCode": "Postal code",
+      "postalCodePlaceholder": "00-000",
+      "countryCode": "Country",
+      "countryCodePlaceholder": "PL",
+      "notes": "Internal notes",
+      "notesPlaceholder": "Notes visible only to admins",
+      "customTags": "Custom tags",
+      "systemTags": "System tags",
+      "addTag": "Add tag",
+      "customTagsPlaceholder": "Add a tag…",
+      "hints": {
+        "systemTags": "Assigned automatically from account status (e.g. verified email, repeat orders). These cannot be edited.",
+        "id": "Permanent identifier for this customer. Used in the admin and APIs; it cannot be changed.",
+        "name": "Display name from the customer account. Managed by the customer during registration or profile updates.",
+        "email": "Primary email address linked to the account. Cannot be edited here.",
+        "phone": "Optional contact phone number shown in the admin customer profile.",
+        "address1": "Street name and building number for the default address.",
+        "address2": "Optional apartment, suite, or additional address line.",
+        "city": "City or locality for the default address.",
+        "province": "Optional state, province, or region.",
+        "postalCode": "Postal or ZIP code for the default address.",
+        "countryCode": "Two-letter ISO country code, for example PL or DE.",
+        "notes": "Private notes for your team. Never shown to the customer on the storefront.",
+        "customTags": "Add your own labels to segment or flag customers. Type a tag and click Add tag or press Enter."
       },
-      "averageLTV": {
-        "label": "Average LTV",
-        "value": "$4,280"
-      },
-      "returningRate": {
-        "label": "Returning Rate",
-        "value": "68%"
-      },
-      "vsPrevious": "vs last month"
+      "removeTag": "Remove tag {tag}",
+      "toast": {
+        "errorTitle": "Could not save customer",
+        "errorDescription": "Please check the form and try again.",
+        "successTitle": "Customer updated",
+        "successDescription": "Changes were saved successfully."
+      }
     }
   },
   "nav": {
@@ -274,6 +316,19 @@
       "product_updated": "Product updated",
       "product_created": "Product created",
       "product_deleted": "Product deleted",
+      "category_created": "Category created",
+      "category_updated": "Category updated",
+      "category_deleted": "Category deleted",
+      "collection_created": "Collection created",
+      "collection_updated": "Collection updated",
+      "collection_deleted": "Collection deleted",
+      "attribute_created": "Attribute created",
+      "attribute_updated": "Attribute updated",
+      "attribute_deleted": "Attribute deleted",
+      "order_released": "Checkout released",
+      "order_dispute_opened": "Dispute opened",
+      "order_dispute_closed": "Dispute closed",
+      "order_payment_failed": "Payment failed",
       "customer_tier_upgrade": "Tier upgrade",
       "customer_registered": "Customer registered",
       "auth_login": "Login",
@@ -385,7 +440,9 @@
       "delivered": "Delivered",
       "returned": "Returned"
     },
+    "empty": "No orders match your search.",
     "pagination": {
+      "page": "Page {page} of {total}",
       "showing": "Showing {count} of {total} orders",
       "previous": "Previous",
       "next": "Next"

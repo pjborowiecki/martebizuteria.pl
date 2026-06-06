@@ -1,0 +1,115 @@
+{
+  "title": "Customers",
+  "description": "Manage your customer list, view purchase history, and export data.",
+  "searchPlaceholder": "Search customers...",
+  "filter": {
+    "allBanned": "Ban status: all",
+    "allEmailVerified": "Email verification: all",
+    "allRoles": "All roles",
+    "banned": "Filter by ban status",
+    "bannedNo": "Not banned",
+    "bannedYes": "Banned accounts",
+    "emailVerified": "Filter by email verification",
+    "emailVerifiedNo": "Email not verified",
+    "emailVerifiedYes": "Email verified",
+    "averageOrderValue": "Filter by average order value",
+    "createdAt": "Filter by account created date",
+    "date": {
+      "apply": "Apply",
+      "clear": "Clear",
+      "clearDate": "Clear date",
+      "date": "Date",
+      "endDate": "To",
+      "operator": "Condition",
+      "operatorAfter": "After",
+      "operatorBefore": "Before",
+      "operatorBetween": "Date range",
+      "operatorOn": "On",
+      "placeholder": "Select date",
+      "startDate": "From",
+      "today": "Today"
+    },
+    "lastOrderAt": "Filter by last order date",
+    "numeric": {
+      "amount": "Amount",
+      "apply": "Apply",
+      "clear": "Clear",
+      "endAmount": "To",
+      "operator": "Condition",
+      "operatorBetween": "Between",
+      "operatorEq": "Exactly",
+      "operatorGt": "More than",
+      "operatorGte": "At least",
+      "operatorLt": "Less than",
+      "operatorLte": "At most",
+      "startAmount": "From"
+    },
+    "role": "Filter by role",
+    "totalSpent": "Filter by total spent"
+  },
+  "actions": {
+    "exportCsv": "Download table as CSV",
+    "refresh": "Reload table data",
+    "sendEmail": "Send Email"
+  },
+  "columns": {
+    "averageOrderValue": "Average order value",
+    "banned": "Banned",
+    "customer": "Customer",
+    "createdAt": "Account created",
+    "emailVerified": "Email verified",
+    "id": "ID",
+    "lastOrder": "Last Order",
+    "location": "Location",
+    "orders": "Orders",
+    "phone": "Phone",
+    "role": "Role",
+    "spent": "Total Spent",
+    "stripeCustomerId": "Stripe customer ID"
+  },
+  "booleanNo": "No",
+  "booleanYes": "Yes",
+  "roleAdmin": "Admin",
+  "roleCustomer": "Customer",
+  "rowActions": {
+    "cancel": "Cancel",
+    "confirm": "Delete account",
+    "copyEmail": "Copy email",
+    "copyEmailToast": "Email copied to clipboard",
+    "copyId": "Copy ID",
+    "copyIdToast": "Customer ID copied to clipboard",
+    "copyStripeCustomerId": "Copy Stripe customer ID",
+    "copyStripeCustomerIdMissingToast": "This customer has no Stripe customer ID",
+    "copyStripeCustomerIdToast": "Stripe customer ID copied to clipboard",
+    "delete": "Delete account",
+    "deleteDescription": "This action cannot be undone. {name} ({email}) will be permanently deleted under GDPR, and we will send an account-deletion confirmation email to the customer.",
+    "deleteTitle": "Delete customer account?",
+    "toast": {
+      "cannotDeleteAdminDescription": "Admin accounts cannot be deleted from here.",
+      "cannotDeleteSelfDescription": "You cannot delete your own account from this view.",
+      "deleteErrorDescription": "The customer account could not be deleted. Please try again.",
+      "deleteErrorTitle": "Delete failed",
+      "deleteNotFoundDescription": "This customer was not found. Refresh the table and try again.",
+      "deleteSuccessDescription": "The account was deleted and a confirmation email was sent.",
+      "deleteSuccessTitle": "Account deleted"
+    },
+    "viewDetails": "View {name}"
+  },
+  "stats": {
+    "averageLtv": {
+      "caption": "Customers with at least one order",
+      "label": "Average spend per customer"
+    },
+    "averageProductsPerOrder": {
+      "caption": "Mean units per order across all orders",
+      "label": "Average units per order"
+    },
+    "returningRate": {
+      "caption": "Share of customers with 2+ orders",
+      "label": "Returning customers"
+    },
+    "total": {
+      "label": "Total Customers"
+    }
+  }
+}

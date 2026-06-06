@@ -4,12 +4,12 @@ import { useTranslations } from "use-intl";
 
 import { cn } from "~/src/lib/utils";
 
-import type { OrderTab } from "~/src/data/orders-data";
+import type { AdminOrderTab } from "~/src/modules/order/order.constants";
 
 interface OrdersTabButtonProps {
   readonly isActive: boolean;
-  readonly onSelect: (tab: OrderTab) => void;
-  readonly tab: OrderTab;
+  readonly onSelect: (tab: AdminOrderTab) => void;
+  readonly tab: AdminOrderTab;
 }
 
 export function OrdersTabButton({ isActive, onSelect, tab }: OrdersTabButtonProps): JSX.Element {

@@ -5,10 +5,17 @@ import type { z } from "zod/v4";
 import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions";
 
 import { tryCatch } from "~/src/lib/_utils/try-catch";
+import { scheduleProductCatalogInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server";
 
 import { replaceAttributesForProduct } from "~/src/modules/attribute-on-product/attribute-on-product.utils";
+import {
+  recordCatalogProductCreatedAudit,
+  recordCatalogProductDeletedAudit,
+  recordCatalogProductUpdatedAudit
+} from "~/src/modules/audit-log/audit-log.events.server";
 import { normalizeProductAttributeLocaleMapForSave } from "~/src/modules/product-attribute/product-attribute.utils";
 import { replaceProductImages } from "~/src/modules/product-image/product-image.utils";
+import { buildProductAuditChange, extractProductAuditSnapshot } from "~/src/modules/product/product-audit.utils";
 import { productAccessors } from "~/src/modules/product/product.accessors";
 import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants";
 import { rethrowProductMutationError } from "~/src/modules/product/product.mutation-errors";
@@ -141,6 +148,9 @@ const createProductFn = createServerFn({ method: "POST" })
       rethrowProductMutationError(error);
     }
 
+    scheduleProductCatalogInvalidation();
+    recordCatalogProductCreatedAudit(data.handle, { resourceId: id });
+
     return { handle: data.handle, id };
   });
 
@@ -149,7 +159,10 @@ const createProductCompleteFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await assertAdmin();
 
-    return createProductRecord(data);
+    const result = await createProductRecord(data);
+    scheduleProductCatalogInvalidation();
+    recordCatalogProductCreatedAudit(result.handle, { resourceId: result.id });
+    return result;
   });
 
 const updateProductFn = createServerFn({ method: "POST" })
@@ -164,10 +177,24 @@ const updateProductFn = createServerFn({ method: "POST" })
       throw new Error(PRODUCT_ERROR_CODES.DUPLICATE_HANDLE);
     }
 
+    const beforeProduct = await productAccessors.getAdminProductDetailByIdQuery.execute({ id });
+    const beforeSnapshot = beforeProduct === undefined ? undefined : extractProductAuditSnapshot(beforeProduct);
+
     const [, error] = await tryCatch(updateProductWithCatalog(id, catalogInput));
     if (error !== undefined) {
       rethrowProductMutationError(error);
     }
+
+    const afterProduct = await productAccessors.getAdminProductDetailByIdQuery.execute({ id });
+    const auditChange =
+      afterProduct === undefined ? {} : buildProductAuditChange(beforeSnapshot, extractProductAuditSnapshot(afterProduct));
+
+    scheduleProductCatalogInvalidation();
+    recordCatalogProductUpdatedAudit(catalogInput.handle, {
+      detail: auditChange.detail,
+      metadata: auditChange.metadata,
+      resourceId: id
+    });
 
     return { handle: catalogInput.handle, id };
   });
@@ -179,6 +206,9 @@ const deleteProductsFn = createServerFn({ method: "POST" })
 
     await productAccessors.deleteProducts(ids);
 
+    scheduleProductCatalogInvalidation();
+    recordCatalogProductDeletedAudit(ids.join(", "));
+
     return { deleted: ids.length, ok: true };
   });
 
@@ -189,6 +219,8 @@ const reorderProductsFn = createServerFn({ method: "POST" })
 
     const updates = orderedIds.map((id, index) => ({ id, rank: index }));
     await productAccessors.setProductRanks(updates);
+
+    scheduleProductCatalogInvalidation();
 
     return { ok: true };
   });

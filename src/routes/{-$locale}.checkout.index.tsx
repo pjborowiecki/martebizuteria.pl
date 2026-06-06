@@ -1,9 +1,9 @@
 import { type JSX, Suspense, useEffect, useMemo } from "react";
 
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { ClientOnly, createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 
-import { CheckoutForm } from "~/src/components/custom/checkout/components/checkout-form";
 import { CheckoutFormSkeleton } from "~/src/components/custom/checkout/components/checkout-form-skeleton";
+import { CheckoutForm } from "~/src/components/custom/checkout/components/checkout-form.client";
 import { CheckoutSuccess } from "~/src/components/custom/checkout/components/checkout-success";
 
 import { useCartHydrated, useCartStore } from "~/src/stores/cart.store";
@@ -47,8 +47,10 @@ function CheckoutGuard(): JSX.Element {
   }
 
   return (
-    <Suspense fallback={fallback}>
-      <CheckoutForm />
-    </Suspense>
+    <ClientOnly fallback={fallback}>
+      <Suspense fallback={fallback}>
+        <CheckoutForm />
+      </Suspense>
+    </ClientOnly>
   );
 }

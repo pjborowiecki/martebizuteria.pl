@@ -53,8 +53,8 @@
     "test:coverage": "vp test run --coverage",
     "postinstall": "bun run cf-typegen",
     "cf-typegen": "wrangler types src/types/worker-configuration.d.ts",
-    "deploy:production": "CLOUDFLARE_ENV=production vp build && wrangler deploy --config dist/server/wrangler.json",
-    "deploy:preview": "CLOUDFLARE_ENV=preview vp build && wrangler deploy --config dist/server/wrangler.json"
+    "deploy:production": "CLOUDFLARE_ENV=production vp build && env -u CLOUDFLARE_ENV wrangler deploy --config dist/server/wrangler.json",
+    "deploy:preview": "CLOUDFLARE_ENV=preview vp build && env -u CLOUDFLARE_ENV wrangler deploy --config dist/server/wrangler.json"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

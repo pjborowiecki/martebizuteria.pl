@@ -13,6 +13,7 @@ import type pagesAdminCatalog from "~/messages/en/pages.admin.catalog.json";
 import type pagesAdminCatalogLocalePicker from "~/messages/en/pages.admin.catalog.localePicker.json";
 import type pagesAdminCatalogProductsCatalogList from "~/messages/en/pages.admin.catalog.products.catalogList.json";
 import type pagesAdminCatalogProducts from "~/messages/en/pages.admin.catalog.products.json";
+import type pagesAdminCustomers from "~/messages/en/pages.admin.customers.json";
 import type pagesAdmin from "~/messages/en/pages.admin.json";
 import type pagesAuthEmail from "~/messages/en/pages.auth.email.json";
 import type pagesAuthErrors from "~/messages/en/pages.auth.errors.json";
@@ -59,6 +60,7 @@ export interface Messages {
         readonly attributes: typeof pagesAdminCatalogAttributes;
         readonly localePicker: typeof pagesAdminCatalogLocalePicker;
       };
+      readonly customers: typeof pagesAdminCustomers;
     };
     readonly auth: {
       readonly email: typeof pagesAuthEmail;

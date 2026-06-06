@@ -8,7 +8,7 @@ import { useTranslations } from "use-intl";
 import { CONSTANTS } from "~/src/constants";
 
 import { signOut } from "~/src/integrations/better-auth/auth._client";
-import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.utils";
+import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.errors";
 
 import { Button } from "~/src/components/shadcn/button";
 

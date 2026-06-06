@@ -10,9 +10,9 @@ import { useTranslations } from "use-intl";
 import { CONSTANTS } from "~/src/constants";
 
 import { signIn } from "~/src/integrations/better-auth/auth._client";
+import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.errors";
 import { hasAdminAccess } from "~/src/integrations/better-auth/auth.permissions";
 import { type SignInFormValues, signInWithPasswordSchema } from "~/src/integrations/better-auth/auth.schemas";
-import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.utils";
 
 import { Button } from "~/src/components/shadcn/button";
 

@@ -13,13 +13,14 @@ import { TableCell, TableRow } from "~/src/components/shadcn/table";
 import { OrderCustomerCell } from "~/src/components/custom/pages/admin/orders/orders-table/order-customer-cell";
 import { OrderRowActions } from "~/src/components/custom/pages/admin/orders/orders-table/order-row-actions";
 
-import { type OrderRecord, type PaymentStyle, FULFILLMENT_DOT_COLORS, PAYMENT_BADGE_STYLES } from "~/src/data/orders-data";
+import { FULFILLMENT_DOT_COLORS, PAYMENT_BADGE_STYLES, type AdminOrderPaymentStyle } from "~/src/modules/order/order.constants";
+import type { Order } from "~/src/modules/order/order.types";
 
-const DEFAULT_PAY_STYLE: PaymentStyle = { variant: "secondary" };
+const DEFAULT_PAY_STYLE: AdminOrderPaymentStyle = { variant: "secondary" };
 const DEFAULT_DOT_COLOR = "bg-muted-foreground/30";
 
 interface OrderRowProps {
-  readonly order: OrderRecord;
+  readonly order: Order["adminListItem"];
 }
 
 export function OrderRow({ order }: OrderRowProps): JSX.Element {

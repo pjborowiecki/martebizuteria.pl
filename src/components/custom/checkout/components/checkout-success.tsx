@@ -5,6 +5,8 @@ import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
+import { resetCartAbandonedTracking } from "~/src/lib/customer-activity/customer-activity.tracking";
+
 import { clearCheckoutDraft } from "~/src/components/custom/checkout/lib/checkout-draft";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
@@ -17,6 +19,7 @@ export function CheckoutSuccess(): JSX.Element {
   useEffect(() => {
     clearCart();
     clearCheckoutDraft();
+    resetCartAbandonedTracking();
   }, [clearCart]);
 
   return (

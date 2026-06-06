@@ -17,6 +17,7 @@ import enPagesAdminCatalog from "~/messages/en/pages.admin.catalog.json";
 import enPagesAdminCatalogLocalePicker from "~/messages/en/pages.admin.catalog.localePicker.json";
 import enPagesAdminCatalogProductsCatalogList from "~/messages/en/pages.admin.catalog.products.catalogList.json";
 import enPagesAdminCatalogProducts from "~/messages/en/pages.admin.catalog.products.json";
+import enPagesAdminCustomers from "~/messages/en/pages.admin.customers.json";
 import enPagesAdmin from "~/messages/en/pages.admin.json";
 import enPagesAuthEmail from "~/messages/en/pages.auth.email.json";
 import enPagesAuthErrors from "~/messages/en/pages.auth.errors.json";
@@ -56,6 +57,7 @@ import plPagesAdminCatalog from "~/messages/pl/pages.admin.catalog.json";
 import plPagesAdminCatalogLocalePicker from "~/messages/pl/pages.admin.catalog.localePicker.json";
 import plPagesAdminCatalogProductsCatalogList from "~/messages/pl/pages.admin.catalog.products.catalogList.json";
 import plPagesAdminCatalogProducts from "~/messages/pl/pages.admin.catalog.products.json";
+import plPagesAdminCustomers from "~/messages/pl/pages.admin.customers.json";
 import plPagesAdmin from "~/messages/pl/pages.admin.json";
 import plPagesAuthEmail from "~/messages/pl/pages.auth.email.json";
 import plPagesAuthErrors from "~/messages/pl/pages.auth.errors.json";
@@ -101,7 +103,8 @@ const EN_MESSAGES = {
         collections: enPagesAdminCatalogCollections,
         localePicker: enPagesAdminCatalogLocalePicker,
         products: { ...enPagesAdminCatalogProducts, catalogList: enPagesAdminCatalogProductsCatalogList }
-      }
+      },
+      customers: enPagesAdminCustomers
     },
     auth: {
       email: enPagesAuthEmail,
@@ -151,7 +154,8 @@ const PL_MESSAGES = {
         collections: plPagesAdminCatalogCollections,
         localePicker: plPagesAdminCatalogLocalePicker,
         products: { ...plPagesAdminCatalogProducts, catalogList: plPagesAdminCatalogProductsCatalogList }
-      }
+      },
+      customers: plPagesAdminCustomers
     },
     auth: {
       email: plPagesAuthEmail,

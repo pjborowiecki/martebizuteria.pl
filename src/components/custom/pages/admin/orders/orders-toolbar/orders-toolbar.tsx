@@ -5,12 +5,12 @@ import { useTranslations } from "use-intl";
 
 import { OrdersTabButton } from "~/src/components/custom/pages/admin/orders/orders-toolbar/orders-tab-button";
 
-import { type OrderTab, ORDER_TABS } from "~/src/data/orders-data";
+import { ORDER_TABS, type AdminOrderTab } from "~/src/modules/order/order.constants";
 
 interface OrdersToolbarProps {
-  readonly activeTab: OrderTab;
+  readonly activeTab: AdminOrderTab;
   readonly onQueryChange: (query: string) => void;
-  readonly onTabChange: (tab: OrderTab) => void;
+  readonly onTabChange: (tab: AdminOrderTab) => void;
   readonly query: string;
 }
 

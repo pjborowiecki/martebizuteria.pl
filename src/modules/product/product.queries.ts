@@ -4,9 +4,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { CONSTANTS } from "~/src/constants";
 import { DEFAULT_LOCALE } from "~/src/constants/_constants/locales";
 
+import type { DateColumnFilterValue, NumericColumnFilterValue } from "~/src/lib/_utils/admin-column-filters";
+import { normalizeAdminSearchTerm } from "~/src/lib/_utils/admin-search.server";
 import { buildListPaginationResult, LIST_PAGE_FIRST, listPaginationParamsFromPage } from "~/src/lib/_utils/list-pagination";
 
-import { productAccessors, type AdminProductsListParams } from "~/src/modules/product/product.accessors";
+import {
+  productAccessors,
+  type AdminProductsExportListParams,
+  type AdminProductsListParams
+} from "~/src/modules/product/product.accessors";
+import type { AdminProductsListSort } from "~/src/modules/product/product.admin-list-sort";
 import {
   ADMIN_PRODUCTS_PAGE_SIZE,
   PRODUCT_QUERY_STALE_MS,
@@ -16,7 +23,6 @@ import {
 import type { Product } from "~/src/modules/product/product.types";
 import {
   buildVariantStatsByProductId,
-  countLowStockPublishedProducts,
   mapPublishedProductForStorefront,
   toAdminProductListItem,
   type AdminProductDetail
@@ -27,10 +33,27 @@ const ZERO_COUNT = 0;
 export interface AdminProductsPageInput {
   readonly categoryId?: string;
   readonly collectionId?: string;
+  readonly createdAt?: DateColumnFilterValue;
   readonly inventoryLevel?: ProductInventoryLevel;
+  readonly minPrice?: NumericColumnFilterValue;
   readonly page?: number;
   readonly pageSize?: number;
+  readonly search?: string;
+  readonly sort?: AdminProductsListSort;
   readonly status?: ProductStatus;
+  readonly totalStock?: NumericColumnFilterValue;
+}
+
+export interface AdminProductsExportInput {
+  readonly categoryId?: string;
+  readonly collectionId?: string;
+  readonly createdAt?: DateColumnFilterValue;
+  readonly inventoryLevel?: ProductInventoryLevel;
+  readonly minPrice?: NumericColumnFilterValue;
+  readonly search?: string;
+  readonly sort?: AdminProductsListSort;
+  readonly status?: ProductStatus;
+  readonly totalStock?: NumericColumnFilterValue;
 }
 
 interface RelatedProductsInput {
@@ -46,7 +69,7 @@ interface ProductByHandleInput {
 
 async function getAdminProductListItems(): Promise<Product["adminListItem"][]> {
   const [products, variantStats] = await Promise.all([
-    productAccessors.getAdminProductsQuery.execute(),
+    productAccessors.getAdminProductsCatalogList(),
     productAccessors.getProductVariantStatsQuery.execute()
   ]);
 
@@ -74,15 +97,8 @@ async function getAdminProductByHandle(handle: string): Promise<AdminProductDeta
 }
 
 async function getLowStockPublishedProductCount(): Promise<number> {
-  const [publishedRows, variantStats] = await Promise.all([
-    productAccessors.getPublishedProductIdsQuery.execute(),
-    productAccessors.getProductVariantStatsQuery.execute()
-  ]);
-
-  return countLowStockPublishedProducts(
-    publishedRows.map((row) => row.id),
-    variantStats
-  );
+  const [row] = await productAccessors.getLowStockPublishedProductCountQuery.execute();
+  return row?.count ?? ZERO_COUNT;
 }
 
 function getPublishedProducts() {
@@ -122,16 +138,46 @@ function getRelatedProducts({ categoryId, excludeProductId }: RelatedProductsInp
   return productAccessors.getPublishedRelatedProducts(categoryId, excludeProductId);
 }
 
+function buildAdminProductsFilterParams(
+  input: AdminProductsPageInput | AdminProductsExportInput
+): Pick<
+  AdminProductsExportListParams,
+  "categoryId" | "collectionId" | "createdAt" | "inventoryLevel" | "minPrice" | "search" | "sort" | "status" | "totalStock"
+> {
+  return {
+    categoryId: input.categoryId,
+    collectionId: input.collectionId,
+    createdAt: input.createdAt,
+    inventoryLevel: input.inventoryLevel,
+    minPrice: input.minPrice,
+    search: normalizeAdminSearchTerm(input.search),
+    sort: input.sort,
+    status: input.status,
+    totalStock: input.totalStock
+  };
+}
+
 function buildAdminProductsListParams(input: AdminProductsPageInput): AdminProductsListParams {
   const pageSize = input.pageSize ?? ADMIN_PRODUCTS_PAGE_SIZE;
 
   return {
     ...listPaginationParamsFromPage(input.page ?? LIST_PAGE_FIRST, pageSize),
-    categoryId: input.categoryId,
-    collectionId: input.collectionId,
-    inventoryLevel: input.inventoryLevel,
-    status: input.status
+    ...buildAdminProductsFilterParams(input)
   };
+}
+
+function buildAdminProductsExportParams(input: AdminProductsExportInput): AdminProductsExportListParams {
+  return buildAdminProductsFilterParams(input);
+}
+
+async function getAdminProductsExport(input: AdminProductsExportInput): Promise<Product["adminListItem"][]> {
+  const [rows, variantStats] = await Promise.all([
+    productAccessors.getAdminProductsFilteredList(buildAdminProductsExportParams(input)),
+    productAccessors.getProductVariantStatsQuery.execute()
+  ]);
+
+  const statsByProductId = buildVariantStatsByProductId(variantStats);
+  return rows.map((row) => toAdminProductListItem(row, statsByProductId));
 }
 
 const fetchProductsFn = createServerFn({ method: "GET" }).handler(() => getPublishedProducts());
@@ -141,6 +187,10 @@ const fetchAdminProductsFn = createServerFn({ method: "GET" }).handler(() => get
 const fetchAdminProductsPageFn = createServerFn({ method: "GET" })
   .inputValidator((input: AdminProductsPageInput) => input)
   .handler(({ data }) => getAdminProductListPage(buildAdminProductsListParams(data)));
+
+const fetchAdminProductsExportFn = createServerFn({ method: "GET" })
+  .inputValidator((input: AdminProductsExportInput) => input)
+  .handler(({ data }) => getAdminProductsExport(data));
 
 const fetchProductStatsFn = createServerFn({ method: "GET" }).handler(() => getProductStats());
 
@@ -158,6 +208,7 @@ const fetchRelatedProductsFn = createServerFn({ method: "GET" })
 
 export const productQueries = {
   fetchAdminProductByHandleFn,
+  fetchAdminProductsExportFn,
   fetchAdminProductsFn,
   fetchAdminProductsPageFn,
   fetchProductByHandleFn,

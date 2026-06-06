@@ -80,7 +80,7 @@ export interface ProductOrganizationReplacePayload {
   readonly collectionRows: (typeof collectionOnProduct.$inferInsert)[];
 }
 
-export type AdminProductListRow = Awaited<ReturnType<(typeof productAccessors.getAdminProductsQuery)["execute"]>>[number];
+export type AdminProductListRow = Awaited<ReturnType<typeof productAccessors.getAdminProductsCatalogList>>[number];
 
 export type AdminProductDetail = NonNullable<Awaited<ReturnType<(typeof productAccessors.getProductByHandleQuery)["execute"]>>>;
 
@@ -218,15 +218,6 @@ export function toAdminProductListItem(
     totalStock,
     variantCount
   };
-}
-
-export function countLowStockPublishedProducts(publishedProductIds: readonly string[], stats: readonly ProductVariantStatsRow[]): number {
-  const stockByProductId = new Map(stats.map((entry) => [entry.productId, entry.totalStock]));
-
-  return publishedProductIds.filter((id) => {
-    const stock = stockByProductId.get(id) ?? ZERO_COUNT;
-    return stock > ZERO_COUNT && stock <= PRODUCT_LOW_STOCK_THRESHOLD;
-  }).length;
 }
 
 export function toProductDbStatus(status: ProductAdminStatus): ProductStatus {

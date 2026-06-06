@@ -1,0 +1,115 @@
+{
+  "title": "Klienci",
+  "description": "Zarządzaj listą klientów, przeglądaj historię zakupów i eksportuj dane.",
+  "searchPlaceholder": "Szukaj klientów...",
+  "filter": {
+    "allBanned": "Status blokady: wszystkie",
+    "allEmailVerified": "Weryfikacja e-mail: wszystkie",
+    "allRoles": "Wszystkie role",
+    "banned": "Filtruj według statusu blokady",
+    "bannedNo": "Niezablokowani",
+    "bannedYes": "Zablokowani",
+    "emailVerified": "Filtruj według weryfikacji e-mail",
+    "emailVerifiedNo": "E-mail niezweryfikowany",
+    "emailVerifiedYes": "E-mail zweryfikowany",
+    "averageOrderValue": "Filtruj średnią wartość zamówienia",
+    "createdAt": "Filtruj datę założenia konta",
+    "date": {
+      "apply": "Zastosuj",
+      "clear": "Wyczyść",
+      "clearDate": "Wyczyść datę",
+      "date": "Data",
+      "endDate": "Do",
+      "operator": "Warunek",
+      "operatorAfter": "Po",
+      "operatorBefore": "Przed",
+      "operatorBetween": "Zakres dat",
+      "operatorOn": "W dniu",
+      "placeholder": "Wybierz datę",
+      "startDate": "Od",
+      "today": "Dziś"
+    },
+    "lastOrderAt": "Filtruj datę ostatniego zamówienia",
+    "numeric": {
+      "amount": "Kwota",
+      "apply": "Zastosuj",
+      "clear": "Wyczyść",
+      "endAmount": "Do",
+      "operator": "Warunek",
+      "operatorBetween": "Pomiędzy",
+      "operatorEq": "Dokładnie",
+      "operatorGt": "Więcej niż",
+      "operatorGte": "Co najmniej",
+      "operatorLt": "Mniej niż",
+      "operatorLte": "Co najwyżej",
+      "startAmount": "Od"
+    },
+    "role": "Filtruj według roli",
+    "totalSpent": "Filtruj wydane łącznie"
+  },
+  "actions": {
+    "exportCsv": "Pobierz tabelę jako CSV",
+    "refresh": "Odśwież dane tabeli",
+    "sendEmail": "Wyślij e-mail"
+  },
+  "columns": {
+    "averageOrderValue": "Średnia wartość zamówienia",
+    "banned": "Zablokowany",
+    "customer": "Klient",
+    "createdAt": "Data założenia konta",
+    "emailVerified": "E-mail zweryfikowany",
+    "id": "ID",
+    "lastOrder": "Ostatnie zamówienie",
+    "location": "Lokalizacja",
+    "orders": "Zamówienia",
+    "phone": "Telefon",
+    "role": "Rola",
+    "spent": "Wydano łącznie",
+    "stripeCustomerId": "ID klienta Stripe"
+  },
+  "booleanNo": "Nie",
+  "booleanYes": "Tak",
+  "roleAdmin": "Administrator",
+  "roleCustomer": "Klient",
+  "rowActions": {
+    "cancel": "Anuluj",
+    "confirm": "Usuń konto",
+    "copyEmail": "Kopiuj e-mail",
+    "copyEmailToast": "E-mail skopiowany do schowka",
+    "copyId": "Kopiuj ID",
+    "copyIdToast": "ID klienta skopiowane do schowka",
+    "copyStripeCustomerId": "Kopiuj ID klienta Stripe",
+    "copyStripeCustomerIdMissingToast": "Ten klient nie ma ID klienta Stripe",
+    "copyStripeCustomerIdToast": "ID klienta Stripe skopiowane do schowka",
+    "delete": "Usuń konto",
+    "deleteDescription": "To działanie jest nieodwracalne. Konto {name} ({email}) zostanie trwale usunięte zgodnie z RODO, a na adres e-mail klienta wyślemy potwierdzenie usunięcia konta.",
+    "deleteTitle": "Usunąć konto klienta?",
+    "toast": {
+      "cannotDeleteAdminDescription": "Nie można usunąć konta administratora.",
+      "cannotDeleteSelfDescription": "Nie możesz usunąć własnego konta z tego widoku.",
+      "deleteErrorDescription": "Nie udało się usunąć konta klienta. Spróbuj ponownie.",
+      "deleteErrorTitle": "Usuwanie nie powiodło się",
+      "deleteNotFoundDescription": "Nie znaleziono tego klienta. Odśwież tabelę i spróbuj ponownie.",
+      "deleteSuccessDescription": "Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.",
+      "deleteSuccessTitle": "Konto usunięte"
+    },
+    "viewDetails": "Zobacz {name}"
+  },
+  "stats": {
+    "averageLtv": {
+      "caption": "Klienci z co najmniej jednym zamówieniem",
+      "label": "Średnie wydatki na klienta"
+    },
+    "averageProductsPerOrder": {
+      "caption": "Średnia z liczby sztuk w każdym zamówieniu",
+      "label": "Średnia liczba sztuk na zamówienie"
+    },
+    "returningRate": {
+      "caption": "Udział klientów z co najmniej 2 zamówieniami",
+      "label": "Powracający"
+    },
+    "total": {
+      "label": "Wszyscy klienci"
+    }
+  }
+}

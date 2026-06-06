@@ -1,28 +1,20 @@
 import { type JSX, type SyntheticEvent, useCallback } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
-import { CONSTANTS } from "~/src/constants";
-
-import { signUp } from "~/src/integrations/better-auth/auth._client";
 import { type SignUpFormValues, signUpWithPasswordSchema } from "~/src/integrations/better-auth/auth.schemas";
-import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.utils";
-
-import { buildLocalizedUrl } from "~/src/lib/utils";
 
 import { Button } from "~/src/components/shadcn/button";
 
 import { AuthPasswordField, AuthTextField } from "~/src/components/custom/pages/auth/auth-fields";
+import { useSignUpWithPassword } from "~/src/components/custom/pages/auth/hooks/use-sign-up-with-password";
 
 export function SignUpWithPasswordForm(): JSX.Element {
-  const navigate = useNavigate();
   const t = useTranslations();
-  const locale = useLocale();
+  const signUpMutation = useSignUpWithPassword();
 
   const formSchema = signUpWithPasswordSchema(t);
   const form = useForm<SignUpFormValues>({
@@ -32,28 +24,10 @@ export function SignUpWithPasswordForm(): JSX.Element {
   });
 
   const onSubmit = useCallback(
-    async (data: SignUpFormValues) => {
-      await signUp.email({
-        callbackURL: `${buildLocalizedUrl("", "/", locale)}?verified=true`,
-        email: data.email,
-        fetchOptions: {
-          onError: (ctx) => {
-            toast.error(t("pages.auth.toast.errorTitle"), {
-              description: getAuthErrorMessage(t, ctx.error)
-            });
-          },
-          onSuccess: () => {
-            toast.success(t("pages.auth.toast.signUpTitle"), {
-              description: t("pages.auth.toast.signUpDescription")
-            });
-            void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.AUTH_SIGN_IN}` });
-          }
-        },
-        name: `${data.firstName} ${data.lastName}`.trim(),
-        password: data.password
-      });
+    (data: SignUpFormValues) => {
+      signUpMutation.mutate(data);
     },
-    [locale, navigate, t]
+    [signUpMutation]
   );
 
   const handleFormSubmit = useCallback(
@@ -64,7 +38,7 @@ export function SignUpWithPasswordForm(): JSX.Element {
     [form, onSubmit]
   );
 
-  const { isSubmitting } = form.formState;
+  const isSubmitting = signUpMutation.isPending;
 
   return (
     <form id="sign-up-form" onSubmit={handleFormSubmit} className="space-y-5">

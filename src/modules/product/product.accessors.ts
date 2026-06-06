@@ -3,8 +3,12 @@ import { and, asc, desc, eq, inArray, max, ne, or, sql, type SQL } from "drizzle
 import { runDrizzleBatch, type DrizzleBatchStatement } from "~/src/integrations/drizzle-orm/drizzle.batch";
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 
+import type { DateColumnFilterValue, NumericColumnFilterValue } from "~/src/lib/_utils/admin-column-filters";
+import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/lib/_utils/admin-column-filters.server";
+import { buildAdminLikePattern, buildAdminSearchOrCondition, normalizeAdminSearchTerm } from "~/src/lib/_utils/admin-search.server";
 import type { ListPaginationParams } from "~/src/lib/_utils/list-pagination";
 
+import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema";
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema";
 import { resolvePrimaryCategoryId } from "~/src/modules/category-on-product/category-on-product.utils";
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema";
@@ -12,11 +16,13 @@ import { inventory } from "~/src/modules/inventory/inventory.schema";
 import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema";
 import { productOption } from "~/src/modules/product-option/product-option.schema";
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
+import { adminProductsListSortRequiresVariantStats, type AdminProductsListSort } from "~/src/modules/product/product.admin-list-sort";
 import {
   PRODUCT_INVENTORY_LEVEL,
   PRODUCT_LOW_STOCK_THRESHOLD,
   PRODUCT_STATUS,
   PRODUCT_STOREFRONT_LIST_LIMIT,
+  PRODUCT_TABLE_COLUMN_ID,
   type ProductInventoryLevel,
   type ProductStatus
 } from "~/src/modules/product/product.constants";
@@ -26,6 +32,13 @@ import type { ProductCatalogReplacePayload, ProductOrganizationReplacePayload } 
 
 const EMPTY_LENGTH = 0;
 const RELATED_PRODUCTS_LIMIT = 3;
+
+const storefrontListVariantColumns = {
+  id: true,
+  price: true,
+  productId: true,
+  title: true
+} as const;
 
 function requireSql(expression: SQL | undefined): SQL {
   if (expression === undefined) {
@@ -43,24 +56,75 @@ function sortProductsByIdOrder<T extends { id: string }>(items: readonly T[], or
 export interface AdminProductsListParams extends ListPaginationParams {
   readonly categoryId?: string;
   readonly collectionId?: string;
+  readonly createdAt?: DateColumnFilterValue;
   readonly inventoryLevel?: ProductInventoryLevel;
+  readonly minPrice?: NumericColumnFilterValue;
+  readonly search?: string;
+  readonly sort?: AdminProductsListSort;
   readonly status?: ProductStatus;
+  readonly totalStock?: NumericColumnFilterValue;
 }
 
-/** Admin catalog list: manual rank, category/collection titles for display. */
-const getAdminProductsQuery = db.query.product
-  .findMany({
-    orderBy: (products, { asc: ascOrder, desc: descOrder }) => [ascOrder(products.rank), descOrder(products.createdAt)],
-    with: {
-      attributes: {
-        orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)],
-        with: { productAttribute: { columns: { titles: true } } }
-      },
-      categories: { with: { productCategory: { columns: { titles: true } } } },
-      collections: { with: { productCollection: { columns: { titles: true } } } }
+export type AdminProductsExportListParams = Omit<AdminProductsListParams, "limit" | "offset">;
+
+function groupRowsByProductId<TRow extends { productId: string }>(rows: readonly TRow[]): Map<string, TRow[]> {
+  const grouped = new Map<string, TRow[]>();
+
+  for (const row of rows) {
+    const existing = grouped.get(row.productId);
+    if (existing === undefined) {
+      grouped.set(row.productId, [row]);
+    } else {
+      existing.push(row);
     }
-  })
-  .prepare();
+  }
+
+  return grouped;
+}
+
+/** Admin reorder list: one product query plus batched junction loads (no nested relational fan-out). */
+async function getAdminProductsCatalogList() {
+  const products = await db.select().from(product).orderBy(asc(product.rank), desc(product.createdAt));
+
+  if (products.length === EMPTY_LENGTH) {
+    return [];
+  }
+
+  const productIds = products.map((row) => row.id);
+
+  const [attributeRows, categoryRows, collectionRows] = await Promise.all([
+    db.query.attributeOnProduct.findMany({
+      orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)],
+      where: inArray(attributeOnProduct.productId, productIds),
+      with: { productAttribute: { columns: { titles: true } } }
+    }),
+    db.query.categoryOnProduct.findMany({
+      where: inArray(categoryOnProduct.productId, productIds),
+      with: { productCategory: { columns: { titles: true } } }
+    }),
+    db.query.collectionOnProduct.findMany({
+      where: inArray(collectionOnProduct.productId, productIds),
+      with: { productCollection: { columns: { titles: true } } }
+    })
+  ]);
+
+  const attributesByProductId = groupRowsByProductId(attributeRows);
+  const categoriesByProductId = groupRowsByProductId(categoryRows);
+  const collectionsByProductId = groupRowsByProductId(collectionRows);
+
+  const catalogList = [];
+
+  for (const row of products) {
+    catalogList.push({
+      ...row,
+      attributes: attributesByProductId.get(row.id) ?? [],
+      categories: categoriesByProductId.get(row.id) ?? [],
+      collections: collectionsByProductId.get(row.id) ?? []
+    });
+  }
+
+  return catalogList;
+}
 
 const getProductVariantStatsQuery = db
   .select({
@@ -84,12 +148,6 @@ const getProductStatusCountsQuery = db
   .from(product)
   .prepare();
 
-const getPublishedProductIdsQuery = db
-  .select({ id: product.id })
-  .from(product)
-  .where(eq(product.status, PRODUCT_STATUS.PUBLISHED))
-  .prepare();
-
 // NOTE: intentionally NOT a prepared statement — variable-length `IN` on D1/SQLite.
 const getProductsWithInventoryByHandles = (handles: readonly string[]) =>
   db.query.product.findMany({
@@ -102,7 +160,7 @@ const getPublishedProductsQuery = db.query.product
     limit: PRODUCT_STOREFRONT_LIST_LIMIT,
     orderBy: (products, { asc: ascOrder, desc: descOrder }) => [ascOrder(products.rank), descOrder(products.createdAt)],
     where: eq(product.status, PRODUCT_STATUS.PUBLISHED),
-    with: { variants: true }
+    with: { variants: { columns: storefrontListVariantColumns } }
   })
   .prepare();
 
@@ -115,6 +173,37 @@ const getMaxRankQuery = db
 const getProductByHandleQuery = db.query.product
   .findFirst({
     where: eq(product.handle, sql.placeholder("handle")),
+    with: {
+      attributes: {
+        orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)]
+      },
+      categories: { with: { productCategory: true } },
+      collections: { with: { productCollection: true } },
+      images: {
+        orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)]
+      },
+      options: {
+        with: {
+          optionOnVariants: true
+        }
+      },
+      variants: {
+        with: {
+          inventory: true,
+          optionOnVariants: {
+            with: {
+              option: true
+            }
+          }
+        }
+      }
+    }
+  })
+  .prepare();
+
+const getAdminProductDetailByIdQuery = db.query.product
+  .findFirst({
+    where: eq(product.id, sql.placeholder("id")),
     with: {
       attributes: {
         orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)]
@@ -171,8 +260,93 @@ function totalStockSubquery() {
   )`;
 }
 
-function buildInventoryLevelCondition(level: ProductInventoryLevel): SQL {
-  const stock = totalStockSubquery();
+const getLowStockPublishedProductCountQuery = db
+  .select({ count: sql<number>`count(*)` })
+  .from(product)
+  .where(and(eq(product.status, PRODUCT_STATUS.PUBLISHED), sql`${totalStockSubquery()} between 1 and ${PRODUCT_LOW_STOCK_THRESHOLD}`))
+  .prepare();
+
+function productVariantStatsSubquery() {
+  return db
+    .select({
+      minPrice: sql<number | null>`min(${productVariant.price})`.as("min_price"),
+      productId: productVariant.productId,
+      totalStock: sql<number>`coalesce(sum(${inventory.quantityAvailable}), 0)`.as("total_stock"),
+      variantCount: sql<number>`count(${productVariant.id})`.as("variant_count")
+    })
+    .from(productVariant)
+    .leftJoin(inventory, eq(inventory.variantId, productVariant.id))
+    .groupBy(productVariant.productId)
+    .as("product_variant_stats");
+}
+
+function adminProductsListNeedsVariantStatsJoin(params: Pick<AdminProductsListParams, "inventoryLevel" | "sort">): boolean {
+  return params.inventoryLevel !== undefined || adminProductsListSortRequiresVariantStats(params.sort);
+}
+
+function buildAdminProductsOrderClauses(
+  sort: AdminProductsListSort | undefined,
+  variantStats: ReturnType<typeof productVariantStatsSubquery> | undefined
+) {
+  if (sort === undefined) {
+    return [desc(product.updatedAt)];
+  }
+
+  const direction = sort.desc ? desc : asc;
+
+  switch (sort.columnId) {
+    case PRODUCT_TABLE_COLUMN_ID.title: {
+      return [direction(product.handle)];
+    }
+    case PRODUCT_TABLE_COLUMN_ID.recordId: {
+      return [direction(product.id)];
+    }
+    case PRODUCT_TABLE_COLUMN_ID.status: {
+      return [direction(product.status)];
+    }
+    case PRODUCT_TABLE_COLUMN_ID.minPrice: {
+      return [direction(sql`coalesce(${variantStats!.minPrice}, 0)`)];
+    }
+    case PRODUCT_TABLE_COLUMN_ID.stock: {
+      return [direction(sql`coalesce(${variantStats!.totalStock}, 0)`)];
+    }
+    case PRODUCT_TABLE_COLUMN_ID.variantCount: {
+      return [direction(sql`coalesce(${variantStats!.variantCount}, 0)`)];
+    }
+    case PRODUCT_TABLE_COLUMN_ID.createdAt: {
+      return [direction(product.createdAt)];
+    }
+    case PRODUCT_TABLE_COLUMN_ID.editedAt: {
+      return [direction(product.updatedAt)];
+    }
+    default: {
+      return [desc(product.updatedAt)];
+    }
+  }
+}
+
+async function loadAdminProductRowsByIds(ids: readonly string[]) {
+  if (ids.length === EMPTY_LENGTH) {
+    return [];
+  }
+
+  const rows = await db.query.product.findMany({
+    where: inArray(product.id, ids),
+    with: {
+      attributes: {
+        orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)],
+        with: { productAttribute: { columns: { titles: true } } }
+      },
+      categories: { with: { productCategory: { columns: { titles: true } } } },
+      collections: { with: { productCollection: { columns: { titles: true } } } }
+    }
+  });
+
+  return sortProductsByIdOrder(rows, ids);
+}
+
+function buildInventoryLevelStockCondition(level: ProductInventoryLevel, totalStock: SQL<number>): SQL {
+  const stock = totalStock;
 
   if (level === PRODUCT_INVENTORY_LEVEL.OUT) {
     return requireSql(and(eq(product.status, PRODUCT_STATUS.PUBLISHED), sql`${stock} <= 0`));
@@ -187,15 +361,58 @@ function buildInventoryLevelCondition(level: ProductInventoryLevel): SQL {
   return requireSql(or(ne(product.status, PRODUCT_STATUS.PUBLISHED), sql`${stock} > ${PRODUCT_LOW_STOCK_THRESHOLD}`));
 }
 
-function buildAdminProductsWhere(params: AdminProductsListParams): SQL | undefined {
+function buildAdminProductSearchCondition(search: string | undefined): SQL | undefined {
+  const normalized = normalizeAdminSearchTerm(search);
+  if (normalized === undefined) {
+    return undefined;
+  }
+
+  const pattern = buildAdminLikePattern(normalized);
+  const textMatch = buildAdminSearchOrCondition(normalized, [
+    product.handle,
+    product.id,
+    product.titles,
+    product.subtitles,
+    product.descriptions
+  ]);
+  const skuMatch = inArray(
+    product.id,
+    db
+      .select({ id: productVariant.productId })
+      .from(productVariant)
+      .where(sql`${productVariant.sku} like ${pattern}`)
+  );
+
+  if (textMatch === undefined) {
+    return skuMatch;
+  }
+
+  return or(textMatch, skuMatch);
+}
+
+type AdminProductsFilterParams = Pick<
+  AdminProductsListParams,
+  "categoryId" | "collectionId" | "createdAt" | "inventoryLevel" | "search" | "status"
+>;
+
+function buildAdminProductsWhere(params: AdminProductsFilterParams, options?: { readonly skipInventory?: boolean }): SQL | undefined {
   const conditions: SQL[] = [];
+
+  const searchCondition = buildAdminProductSearchCondition(params.search);
+  if (searchCondition !== undefined) {
+    conditions.push(searchCondition);
+  }
 
   if (params.status !== undefined) {
     conditions.push(eq(product.status, params.status));
   }
 
-  if (params.inventoryLevel !== undefined) {
-    conditions.push(buildInventoryLevelCondition(params.inventoryLevel));
+  if (params.createdAt !== undefined) {
+    conditions.push(buildAdminDateFilterSql(sql`${product.createdAt}`, params.createdAt));
+  }
+
+  if (params.inventoryLevel !== undefined && options?.skipInventory !== true) {
+    conditions.push(buildInventoryLevelStockCondition(params.inventoryLevel, sql<number>`(${totalStockSubquery()})`));
   }
 
   if (params.categoryId !== undefined) {
@@ -226,41 +443,75 @@ function buildAdminProductsWhere(params: AdminProductsListParams): SQL | undefin
   return and(...conditions);
 }
 
-async function getAdminProductsPage(params: AdminProductsListParams) {
-  const whereClause = buildAdminProductsWhere(params);
+function selectAdminProductIds(options: {
+  readonly combinedWhere: SQL | undefined;
+  readonly needsVariantStatsJoin: boolean;
+  readonly orderClauses: ReturnType<typeof buildAdminProductsOrderClauses>;
+  readonly slice?: Pick<ListPaginationParams, "limit" | "offset">;
+  readonly variantStats: ReturnType<typeof productVariantStatsSubquery>;
+}) {
+  const base = options.needsVariantStatsJoin
+    ? db.select({ id: product.id }).from(product).leftJoin(options.variantStats, eq(options.variantStats.productId, product.id))
+    : db.select({ id: product.id }).from(product);
 
-  const [countRow] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(product)
-    .where(whereClause);
+  const ordered = base.where(options.combinedWhere).orderBy(...options.orderClauses);
 
-  const idRows = await db
-    .select({ id: product.id })
-    .from(product)
-    .where(whereClause)
-    .orderBy(desc(product.updatedAt))
-    .limit(params.limit)
-    .offset(params.offset);
-
-  const ids = idRows.map((row) => row.id);
-  if (ids.length === EMPTY_LENGTH) {
-    return { rows: [], total: countRow?.count ?? EMPTY_LENGTH };
+  if (options.slice?.limit === undefined) {
+    return ordered;
   }
 
-  const rows = await db.query.product.findMany({
-    orderBy: (products, { desc: descOrder }) => [descOrder(products.updatedAt)],
-    where: inArray(product.id, ids),
-    with: {
-      attributes: {
-        orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)],
-        with: { productAttribute: { columns: { titles: true } } }
-      },
-      categories: { with: { productCategory: { columns: { titles: true } } } },
-      collections: { with: { productCollection: { columns: { titles: true } } } }
-    }
-  });
+  return ordered.limit(options.slice.limit).offset(options.slice.offset ?? EMPTY_LENGTH);
+}
+
+async function queryAdminProducts(
+  params: AdminProductsExportListParams,
+  slice?: Pick<ListPaginationParams, "limit" | "offset">
+): Promise<{ readonly rows: Awaited<ReturnType<typeof loadAdminProductRowsByIds>>; readonly total: number }> {
+  const variantStats = productVariantStatsSubquery();
+  const needsVariantStatsJoin =
+    adminProductsListNeedsVariantStatsJoin(params) || params.minPrice !== undefined || params.totalStock !== undefined;
+  const whereClause = buildAdminProductsWhere(params, { skipInventory: needsVariantStatsJoin });
+
+  let combinedWhere = whereClause;
+  if (needsVariantStatsJoin) {
+    const joinedStock = sql<number>`coalesce(${variantStats.totalStock}, 0)`;
+    const stockCondition =
+      params.inventoryLevel === undefined ? undefined : buildInventoryLevelStockCondition(params.inventoryLevel, joinedStock);
+    const minPriceCondition =
+      params.minPrice === undefined ? undefined : buildAdminNumericFilterSql(sql`coalesce(${variantStats.minPrice}, 0)`, params.minPrice);
+    const totalStockCondition = params.totalStock === undefined ? undefined : buildAdminNumericFilterSql(joinedStock, params.totalStock);
+    const joinConditions = [whereClause, stockCondition, minPriceCondition, totalStockCondition].filter(
+      (condition): condition is SQL => condition !== undefined
+    );
+    combinedWhere = joinConditions.length === EMPTY_LENGTH ? undefined : and(...joinConditions);
+  }
+
+  const orderClauses = buildAdminProductsOrderClauses(params.sort, needsVariantStatsJoin ? variantStats : undefined);
+
+  const countQuery = needsVariantStatsJoin
+    ? db
+        .select({ count: sql<number>`count(*)` })
+        .from(product)
+        .leftJoin(variantStats, eq(variantStats.productId, product.id))
+    : db.select({ count: sql<number>`count(*)` }).from(product);
+
+  const [[countRow], idRows] = await Promise.all([
+    countQuery.where(combinedWhere),
+    selectAdminProductIds({ combinedWhere, needsVariantStatsJoin, orderClauses, slice, variantStats })
+  ]);
+  const ids = idRows.map((row) => row.id);
+  const rows = await loadAdminProductRowsByIds(ids);
 
   return { rows, total: countRow?.count ?? EMPTY_LENGTH };
+}
+
+function getAdminProductsPage(params: AdminProductsListParams) {
+  return queryAdminProducts(params, { limit: params.limit, offset: params.offset });
+}
+
+async function getAdminProductsFilteredList(params: AdminProductsExportListParams) {
+  const { rows } = await queryAdminProducts(params);
+  return rows;
 }
 
 type PublishedProductListRow = Awaited<ReturnType<(typeof getPublishedProductsQuery)["execute"]>>[number];
@@ -284,7 +535,7 @@ async function getPublishedProductsByCategoryIds(categoryIds: readonly string[],
     .innerJoin(categoryOnProduct, eq(categoryOnProduct.productId, product.id))
     .where(whereClause)
     .groupBy(product.id)
-    .orderBy(desc(product.createdAt))
+    .orderBy(asc(product.rank), desc(product.createdAt))
     .limit(params.limit)
     .offset(params.offset);
 
@@ -295,9 +546,8 @@ async function getPublishedProductsByCategoryIds(categoryIds: readonly string[],
 
   const items = sortProductsByIdOrder(
     await db.query.product.findMany({
-      orderBy: (products, { desc: descOrder }) => [descOrder(products.createdAt)],
       where: inArray(product.id, productIds),
-      with: { variants: true }
+      with: { variants: { columns: storefrontListVariantColumns } }
     }),
     productIds
   );
@@ -335,7 +585,7 @@ async function getPublishedProductsByCollectionId(collectionId: string, params: 
   const items = sortProductsByIdOrder(
     await db.query.product.findMany({
       where: inArray(product.id, productIds),
-      with: { variants: true }
+      with: { variants: { columns: storefrontListVariantColumns } }
     }),
     productIds
   );
@@ -346,7 +596,7 @@ async function getPublishedProductsByCollectionId(collectionId: string, params: 
 function getPublishedRelatedProducts(categoryId: string, excludeProductId: string) {
   return db.query.product.findMany({
     limit: RELATED_PRODUCTS_LIMIT,
-    orderBy: (products, { desc: descOrder }) => [descOrder(products.createdAt)],
+    orderBy: (products, { asc: ascOrder, desc: descOrder }) => [ascOrder(products.rank), descOrder(products.createdAt)],
     where: and(
       eq(product.status, PRODUCT_STATUS.PUBLISHED),
       ne(product.id, excludeProductId),
@@ -355,7 +605,7 @@ function getPublishedRelatedProducts(categoryId: string, excludeProductId: strin
         db.select({ id: categoryOnProduct.productId }).from(categoryOnProduct).where(eq(categoryOnProduct.categoryId, categoryId))
       )
     ),
-    with: { variants: true }
+    with: { variants: { columns: storefrontListVariantColumns } }
   });
 }
 
@@ -446,15 +696,17 @@ async function replaceProductOrganization(productId: string, payload: ProductOrg
 
 export const productAccessors = {
   deleteProducts,
+  getAdminProductDetailByIdQuery,
+  getAdminProductsCatalogList,
+  getAdminProductsFilteredList,
   getAdminProductsPage,
-  getAdminProductsQuery,
+  getLowStockPublishedProductCountQuery,
   getMaxRankQuery,
   getProductByHandleQuery,
   getProductStatusCountsQuery,
   getProductVariantStatsQuery,
   getProductsWithInventoryByHandles,
   getPublishedProductByHandleQuery,
-  getPublishedProductIdsQuery,
   getPublishedProductsByCategoryIds,
   getPublishedProductsByCollectionId,
   getPublishedProductsQuery,

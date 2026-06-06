@@ -4,6 +4,10 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { requireAdmin } from "~/src/integrations/better-auth/auth.guards";
 
+import {
+  ADMIN_REALTIME_QUERY_PREFIXES,
+  REALTIME_INVALIDATION_HUB
+} from "~/src/lib/realtime-invalidation/realtime-invalidation.subscriptions";
 import { getAdminSidebarDefaultOpen } from "~/src/lib/sidebar-preference";
 import { cn } from "~/src/lib/utils";
 
@@ -13,6 +17,7 @@ import { ADMIN_LAYOUT_BG_CLASS } from "~/src/components/custom/pages/admin/admin
 import { AdminSidebar } from "~/src/components/custom/pages/admin/admin-sidebar";
 
 import { useAdminLightTheme } from "~/src/hooks/use-admin-light-theme";
+import { useRealtimeQuerySync } from "~/src/hooks/use-realtime-query-sync";
 
 const ROUTE_STALE_MS = 60_000;
 
@@ -27,6 +32,7 @@ export const Route = createFileRoute("/{-$locale}/admin")({
 function AdminLayoutRoute(): JSX.Element {
   const { sidebarDefaultOpen } = Route.useLoaderData();
   useAdminLightTheme();
+  useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES });
 
   return (
     <SidebarProvider defaultOpen={sidebarDefaultOpen} className={cn("min-h-svh", ADMIN_LAYOUT_BG_CLASS)}>
