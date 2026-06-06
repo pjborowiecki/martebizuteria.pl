@@ -9,8 +9,8 @@ import { cn } from "~/src/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/components/shadcn/card";
 import { Field } from "~/src/components/shadcn/field";
 
-import { ImageGalleryUpload } from "~/src/components/custom/admin/image-upload/components/image-gallery-upload";
-import type { GalleryImage } from "~/src/components/custom/admin/image-upload/lib/image-upload.types";
+import { ImageGalleryUpload } from "~/src/components/custom/image-upload/components/image-gallery-upload";
+import type { GalleryImage } from "~/src/components/custom/image-upload/lib/image-upload.types";
 import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-field-label";
 import { useProductForm } from "~/src/components/custom/pages/admin/catalog/product-editor/product-form-provider";
 import type { ProductFormValues } from "~/src/components/custom/pages/admin/catalog/product-editor/product-form.utils";

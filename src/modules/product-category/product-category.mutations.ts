@@ -3,6 +3,13 @@ import { v7 as uuidv7 } from "uuid";
 
 import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions";
 
+import { scheduleCategoryCatalogInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server";
+
+import {
+  recordCatalogCategoryCreatedAudit,
+  recordCatalogCategoryDeletedAudit,
+  recordCatalogCategoryUpdatedAudit
+} from "~/src/modules/audit-log/audit-log.events.server";
 import { categoryOnProductAccessors } from "~/src/modules/category-on-product/category-on-product.accessors";
 import { normalizeProductAttributeLocaleMapForSave } from "~/src/modules/product-attribute/product-attribute.utils";
 import { categoryAccessors } from "~/src/modules/product-category/product-category.accessors";
@@ -42,6 +49,9 @@ const createCategoryFn = createServerFn({ method: "POST" })
     const id = uuidv7();
     await categoryAccessors.insertCategory(toCategoryRow(data, id, nextRank));
 
+    scheduleCategoryCatalogInvalidation();
+    recordCatalogCategoryCreatedAudit(data.handle);
+
     return { handle: data.handle, id };
   });
 
@@ -54,6 +64,8 @@ const reorderCategoriesFn = createServerFn({ method: "POST" })
     const categoriesById = new Map(categories.map((row) => [row.id, row]));
     const updates = buildCategoryRankUpdates(orderedIds, categoriesById);
     await categoryAccessors.setCategoryRanks(updates);
+
+    scheduleCategoryCatalogInvalidation();
 
     return { ok: true };
   });
@@ -74,6 +86,9 @@ const deleteCategoriesFn = createServerFn({ method: "POST" })
     }
 
     await categoryAccessors.deleteCategories(ids);
+
+    scheduleCategoryCatalogInvalidation();
+    recordCatalogCategoryDeletedAudit(ids.join(", "));
 
     return { deleted: ids.length, ok: true };
   });
@@ -120,6 +135,9 @@ const updateCategoryFn = createServerFn({ method: "POST" })
       subtitles: normalizeOptionalCategoryLocaleMapForSave(subtitles),
       titles: normalizeProductAttributeLocaleMapForSave(titles)
     });
+
+    scheduleCategoryCatalogInvalidation();
+    recordCatalogCategoryUpdatedAudit(handle);
 
     return { handle, id };
   });

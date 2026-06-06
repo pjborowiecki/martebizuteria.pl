@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl";
 
 import { Field } from "~/src/components/shadcn/field";
 
-import { ImageUpload } from "~/src/components/custom/admin/image-upload/components/image-upload";
+import { ImageUpload } from "~/src/components/custom/image-upload/components/image-upload";
 import { useCollectionForm } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-provider";
 import { CollectionFormSection } from "~/src/components/custom/pages/admin/catalog/collections/add-collection/collection-form-section";
 import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-field-label";

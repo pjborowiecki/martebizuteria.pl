@@ -61,10 +61,11 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       addItem: (incoming) => {
+        const lineId = incoming.variantId;
+        const qty = incoming.qty ?? MIN_QUANTITY;
+
         set((state) => {
-          const lineId = incoming.variantId;
           const existing = state.items.find((i) => i.id === lineId);
-          const qty = incoming.qty ?? MIN_QUANTITY;
 
           if (existing !== undefined) {
             return {

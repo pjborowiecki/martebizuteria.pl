@@ -1,19 +1,11 @@
 import { eq, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
-import { z } from "zod";
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 
 import { inventory } from "~/src/modules/inventory/inventory.schema";
 import { order } from "~/src/modules/order/order.schema";
 import { payment } from "~/src/modules/payment/payment.schema";
-
-export interface DisputeMetadata {
-  amount: number;
-  id: string;
-  reason: string;
-  status: string;
-}
 
 export interface SettledOrder {
   checkoutId: string;
@@ -27,19 +19,6 @@ export interface RefundOrderInput {
   refundedAmount: number;
   restock: boolean;
   transactionId: string;
-}
-
-const metadataSchema = z.record(z.string(), z.unknown());
-
-export function parseOrderMetadata(raw: string | null | undefined): Record<string, unknown> {
-  if (raw === null || raw === undefined || raw === "") {
-    return {};
-  }
-  try {
-    return metadataSchema.parse(JSON.parse(raw));
-  } catch {
-    return {};
-  }
 }
 
 export function resolveSettledOrder(
@@ -80,14 +59,4 @@ export function prepareRefundBatch(
         .where(eq(inventory.variantId, line.variantId))
     )
   ];
-}
-
-export function mergeDisputeMetadata(currentMetadata: string | null | undefined, dispute: DisputeMetadata): string {
-  const metadata = { ...parseOrderMetadata(currentMetadata), dispute };
-  return JSON.stringify(metadata);
-}
-
-export function clearDisputeMetadata(currentMetadata: string | null | undefined): string {
-  const { dispute: _removed, ...rest } = parseOrderMetadata(currentMetadata);
-  return JSON.stringify(rest);
 }

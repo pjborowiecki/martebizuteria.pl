@@ -8,10 +8,13 @@ import { ProductSheet } from "~/src/components/custom/pages/admin/catalog/produc
 import { ProductsBulkActions } from "~/src/components/custom/pages/admin/catalog/products/components/products-bulk-actions";
 import { ProductsCategoryFilter } from "~/src/components/custom/pages/admin/catalog/products/components/products-category-filter";
 import { ProductsCollectionFilter } from "~/src/components/custom/pages/admin/catalog/products/components/products-collection-filter";
+import { ProductsCreatedAtColumnFilter } from "~/src/components/custom/pages/admin/catalog/products/components/products-created-at-column-filter";
 import { ProductsExportAction } from "~/src/components/custom/pages/admin/catalog/products/components/products-export-action";
+import { ProductsPriceColumnFilter } from "~/src/components/custom/pages/admin/catalog/products/components/products-price-column-filter";
 import { ProductsRefreshAction } from "~/src/components/custom/pages/admin/catalog/products/components/products-refresh-action";
 import { ProductsStats } from "~/src/components/custom/pages/admin/catalog/products/components/products-stats";
 import { ProductsStatusFilter } from "~/src/components/custom/pages/admin/catalog/products/components/products-status-filter";
+import { ProductsStockColumnFilter } from "~/src/components/custom/pages/admin/catalog/products/components/products-stock-column-filter";
 import { useProductsDataGrid } from "~/src/components/custom/pages/admin/catalog/products/hooks/use-products-data-grid";
 import {
   ProductsSheetProvider,
@@ -47,6 +50,19 @@ export function ProductsTableContent(): JSX.Element {
   );
 
   const toolbarActions = useMemo(() => <ProductsTableToolbarActions />, []);
+  const toolbarFilters = useMemo(
+    () => (
+      <>
+        <ProductsCategoryFilter />
+        <ProductsCollectionFilter />
+        <ProductsStatusFilter />
+        <ProductsPriceColumnFilter />
+        <ProductsStockColumnFilter />
+        <ProductsCreatedAtColumnFilter />
+      </>
+    ),
+    []
+  );
   const sheetMode = sheet.mode === "closed" ? "create" : sheet.mode;
 
   return (
@@ -55,12 +71,9 @@ export function ProductsTableContent(): JSX.Element {
         <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>
           <ProductsStats />
           <DataGridShell>
-            <Toolbar actions={toolbarActions}>
+            <Toolbar actions={toolbarActions} filters={toolbarFilters}>
               <ProductsRefreshAction />
               <ProductsExportAction />
-              <ProductsCategoryFilter />
-              <ProductsCollectionFilter />
-              <ProductsStatusFilter />
             </Toolbar>
             <Body />
             <Pagination />

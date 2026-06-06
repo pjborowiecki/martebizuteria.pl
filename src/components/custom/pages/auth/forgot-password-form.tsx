@@ -10,8 +10,8 @@ import { useLocale, useTranslations } from "use-intl";
 import { CONSTANTS } from "~/src/constants";
 
 import { authClient } from "~/src/integrations/better-auth/auth._client";
+import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.errors";
 import { type ForgotPasswordFormValues, forgotPasswordSchema } from "~/src/integrations/better-auth/auth.schemas";
-import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.utils";
 
 import { buildLocalizedUrl } from "~/src/lib/utils";
 

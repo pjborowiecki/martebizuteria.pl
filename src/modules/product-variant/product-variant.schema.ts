@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
@@ -26,7 +26,6 @@ export const productVariant = sqliteTable(
       .references(() => product.id, { onDelete: "cascade" }),
     sku: text("sku", { length: PRODUCT_VARIANT_COLUMN_LENGTH.sku }).unique(),
     title: text("title", { length: PRODUCT_VARIANT_COLUMN_LENGTH.title }).notNull(),
-    weight: real("weight"),
     ...timestamps()
   },
   (table) => [index("product_variant_productId_idx").on(table.productId), index("product_variant_sku_idx").on(table.sku)]

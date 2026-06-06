@@ -5,13 +5,51 @@
     "body": "This is a test email."
   },
   "orderConfirmation": {
-    "subject": "Order confirmation - M'ARTE",
-    "preview": "Your M'ARTE order is confirmed",
-    "greeting": "Thank you for your order!",
-    "message": "We've received your payment and your order is now being prepared. Here's a summary of your purchase:",
+    "subject": "Order confirmation — M'Arte",
+    "preview": "Your order has been received — thank you for your trust.",
+    "heading": "Thank you for your order",
+    "message": "We are delighted to confirm your order. Every M'Arte piece is crafted by hand — our workshop will begin preparations shortly.",
+    "messageSecondary": "Below is a summary of your purchase.",
     "orderLabel": "Order reference",
+    "itemsLabel": "Items ordered",
+    "subtotalLabel": "Subtotal",
+    "shippingLabel": "Shipping",
     "totalLabel": "Total",
-    "footer": "We'll email you again as soon as your order is fulfilled.",
-    "thanks": "M'ARTE"
+    "viewProductLink": "View in store",
+    "accountCtaNote": "Create an account to track your order status and view your purchase history.",
+    "createAccountCta": "Create account and track your order",
+    "viewOrderCta": "View your order",
+    "paymentMethodLabel": "Payment method",
+    "deliveryMethodLabel": "Delivery method",
+    "shippingAddressLabel": "Shipping address",
+    "billingAddressLabel": "Billing address",
+    "fulfillmentTimeLabel": "Fulfillment time",
+    "estimatedDeliveryLabel": "Estimated delivery",
+    "unavailable": "Unavailable",
+    "billingSameAsShipping": "Same as shipping address",
+    "paymentMethodUnknown": "Online payment",
+    "paymentMethods": {
+      "card": "Credit or debit card",
+      "blik": "BLIK",
+      "p24": "Przelewy24"
+    },
+    "deliveryTiming": {
+      "courier": {
+        "fulfillmentTime": "1–3 business days",
+        "estimatedDelivery": "2–4 business days after dispatch"
+      },
+      "locker": {
+        "fulfillmentTime": "1–3 business days",
+        "estimatedDelivery": "2–3 business days after dispatch"
+      },
+      "in_store": {
+        "fulfillmentTime": "1–2 business days",
+        "estimatedDelivery": "Pickup at the atelier once notified"
+      }
+    },
+    "closingNote": "We will email you again as soon as your order has been fulfilled. If you have any questions about your order, simply reply to this email — we are happy to help.",
+    "signoff": "With warm regards,",
+    "sender": "The M'Arte Atelier",
+    "tagline": "Handcrafted Jewelry"
   }
 }

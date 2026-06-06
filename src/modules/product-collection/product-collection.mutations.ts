@@ -3,6 +3,13 @@ import { v7 as uuidv7 } from "uuid";
 
 import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions";
 
+import { scheduleCollectionCatalogInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server";
+
+import {
+  recordCatalogCollectionCreatedAudit,
+  recordCatalogCollectionDeletedAudit,
+  recordCatalogCollectionUpdatedAudit
+} from "~/src/modules/audit-log/audit-log.events.server";
 import { collectionOnProductAccessors } from "~/src/modules/collection-on-product/collection-on-product.accessors";
 import { normalizeProductAttributeLocaleMapForSave } from "~/src/modules/product-attribute/product-attribute.utils";
 import { collectionAccessors } from "~/src/modules/product-collection/product-collection.accessors";
@@ -32,6 +39,9 @@ const createCollectionFn = createServerFn({ method: "POST" })
     const id = uuidv7();
     await collectionAccessors.insertCollection(toCollectionRow(data, id, nextRank));
 
+    scheduleCollectionCatalogInvalidation();
+    recordCatalogCollectionCreatedAudit(data.handle);
+
     return { handle: data.handle, id };
   });
 
@@ -42,6 +52,8 @@ const reorderCollectionsFn = createServerFn({ method: "POST" })
 
     const updates = orderedIds.map((id, index) => ({ id, rank: index }));
     await collectionAccessors.setCollectionRanks(updates);
+
+    scheduleCollectionCatalogInvalidation();
 
     return { ok: true };
   });
@@ -57,6 +69,9 @@ const deleteCollectionsFn = createServerFn({ method: "POST" })
     }
 
     await collectionAccessors.deleteCollections(ids);
+
+    scheduleCollectionCatalogInvalidation();
+    recordCatalogCollectionDeletedAudit(ids.join(", "));
 
     return { deleted: ids.length, ok: true };
   });
@@ -82,6 +97,9 @@ const updateCollectionFn = createServerFn({ method: "POST" })
       status,
       titles: normalizeProductAttributeLocaleMapForSave(titles)
     });
+
+    scheduleCollectionCatalogInvalidation();
+    recordCatalogCollectionUpdatedAudit(handle);
 
     return { handle, id };
   });

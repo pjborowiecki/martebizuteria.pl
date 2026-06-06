@@ -25,7 +25,7 @@ interface DataGridPaginationProps<TData extends RowData> {
 export function DataGridPagination<TData extends RowData>({ table }: DataGridPaginationProps<TData>): JSX.Element {
   const t = useTranslations("components.datagrid");
   const { pageIndex, pageSize } = table.getState().pagination;
-  const totalRows = table.getFilteredRowModel().rows.length;
+  const totalRows = table.options.manualPagination === true ? (table.options.rowCount ?? NO_ROWS) : table.getFilteredRowModel().rows.length;
   const pageCount = Math.max(table.getPageCount(), PAGE_OFFSET);
   const from = totalRows === NO_ROWS ? NO_ROWS : pageIndex * pageSize + PAGE_OFFSET;
   const to = Math.min((pageIndex + PAGE_OFFSET) * pageSize, totalRows);

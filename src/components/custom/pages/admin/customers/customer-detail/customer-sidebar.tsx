@@ -1,45 +1,137 @@
 import { type JSX } from "react";
 
-import { Clock, Mail, MapPin, Phone, Plus, Tag, Package } from "lucide-react";
+import { Clock, Eye, LogIn, LogOut, Mail, MapPin, Package, Phone, ShoppingBag, ShoppingCart, Tag, UserRound } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { Avatar, AvatarFallback } from "~/src/components/shadcn/avatar";
 import { Badge } from "~/src/components/shadcn/badge";
-import { Button } from "~/src/components/shadcn/button";
 import { Card, CardContent } from "~/src/components/shadcn/card";
 import { Separator } from "~/src/components/shadcn/separator";
 
-import { CUSTOMER, TIMELINE, TIMELINE_ICONS } from "~/src/data/customer-detail-data";
+import type { User } from "~/src/modules/user/user.types";
 
-export function CustomerSidebar(): JSX.Element {
+const EMPTY_LENGTH = 0;
+const DEFAULT_CART_QUANTITY = 1;
+
+function resolveTimelineIcon(kind: User["adminCustomerDetail"]["timeline"][number]["kind"]) {
+  if (kind === "order_placed") {
+    return ShoppingBag;
+  }
+
+  if (kind === "account_created") {
+    return UserRound;
+  }
+
+  if (kind === "signed_in") {
+    return LogIn;
+  }
+
+  if (kind === "signed_out") {
+    return LogOut;
+  }
+
+  if (kind === "cart_item_added") {
+    return ShoppingCart;
+  }
+
+  if (kind === "cart_abandoned") {
+    return ShoppingBag;
+  }
+
+  if (kind === "page_viewed") {
+    return Eye;
+  }
+
+  return Clock;
+}
+
+function resolveTimelineDescription(
+  event: User["adminCustomerDetail"]["timeline"][number],
+  t: ReturnType<typeof useTranslations<"pages.admin.customerDetail">>
+): string {
+  if (event.kind === "order_placed") {
+    return t("timeline.orderPlaced", { id: event.orderId, total: event.total });
+  }
+
+  if (event.kind === "signed_in") {
+    return t("timeline.signedIn");
+  }
+
+  if (event.kind === "signed_out") {
+    return t("timeline.signedOut");
+  }
+
+  if (event.kind === "cart_item_added") {
+    return t("timeline.cartItemAdded", { product: event.productTitle, quantity: event.quantity ?? DEFAULT_CART_QUANTITY });
+  }
+
+  if (event.kind === "cart_abandoned") {
+    return t("timeline.cartAbandoned", { count: event.itemCount });
+  }
+
+  if (event.kind === "page_viewed") {
+    return t("timeline.pageViewed", { path: event.path });
+  }
+
+  return t("timeline.accountCreated");
+}
+
+function resolveTimelineEventKey(event: User["adminCustomerDetail"]["timeline"][number]): string {
+  if (event.kind === "order_placed") {
+    return `${event.date}-${event.kind}-${event.orderId}`;
+  }
+
+  if (event.kind === "cart_item_added") {
+    return `${event.date}-${event.kind}-${event.productTitle}-${event.quantity ?? DEFAULT_CART_QUANTITY}`;
+  }
+
+  if (event.kind === "cart_abandoned") {
+    return `${event.date}-${event.kind}-${event.itemCount}`;
+  }
+
+  if (event.kind === "page_viewed") {
+    return `${event.date}-${event.kind}-${event.path}`;
+  }
+
+  return `${event.date}-${event.kind}`;
+}
+
+interface CustomerSidebarProps {
+  readonly customer: User["adminCustomerDetail"];
+}
+
+export function CustomerSidebar({ customer }: CustomerSidebarProps): JSX.Element {
   return (
     <div className="space-y-6">
-      <CustomerProfileCard />
-      <CustomerTagsCard />
-      <CustomerNotesCard />
-      <CustomerTimelineCard />
+      <CustomerProfileCard customer={customer} />
+      <CustomerTagsCard customer={customer} />
+      <CustomerNotesCard customer={customer} />
+      <CustomerTimelineCard customer={customer} />
     </div>
   );
 }
 
-function CustomerProfileCard(): JSX.Element {
+function CustomerProfileCard({ customer }: { customer: User["adminCustomerDetail"] }): JSX.Element {
   const t = useTranslations("pages.admin.customerDetail");
+  const tCustomers = useTranslations("pages.admin.customers");
 
   return (
     <Card className="shadow-none">
       <CardContent className="p-6">
         <div className="flex flex-col items-center text-center">
           <Avatar size="lg" className="h-16 w-16 rounded-lg after:rounded-lg">
-            <AvatarFallback className="rounded-lg bg-foreground text-lg font-semibold text-background">{CUSTOMER.initials}</AvatarFallback>
+            <AvatarFallback className="rounded-lg bg-foreground text-lg font-semibold text-background">{customer.initials}</AvatarFallback>
           </Avatar>
-          <h2 className="mt-3 text-base font-semibold tracking-tight">{CUSTOMER.name}</h2>
-          <p className="mt-0.5 font-mono text-sm text-muted-foreground">{CUSTOMER.id}</p>
+          <h2 className="mt-3 text-base font-semibold tracking-tight">{customer.name}</h2>
+          <p className="mt-0.5 max-w-full truncate font-mono text-[11px] text-muted-foreground" title={customer.id}>
+            {customer.id}
+          </p>
           <div className="mt-3 flex gap-2">
             <Badge variant="default" className="bg-foreground text-[11px] text-background hover:bg-foreground">
-              {CUSTOMER.tier}
+              {customer.roleBadgeKey === "returning" ? t("profile.returningBadge") : tCustomers(customer.roleBadgeKey)}
             </Badge>
-            <Badge variant="outline" className="text-[11px]">
-              {t("profile.memberSince", { date: CUSTOMER.joinDate })}
+            <Badge variant="outline" className="border-border bg-white text-[11px] text-foreground hover:bg-white">
+              {t("profile.accountCreated", { date: customer.joinDate })}
             </Badge>
           </div>
         </div>
@@ -49,19 +141,21 @@ function CustomerProfileCard(): JSX.Element {
         <div className="space-y-3.5">
           <div className="flex items-center gap-3 text-sm">
             <Mail className="size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />
-            <span className="truncate text-muted-foreground">{CUSTOMER.email}</span>
+            <span className="truncate text-muted-foreground">{customer.email}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <Phone className="size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />
-            <span className="text-muted-foreground">{CUSTOMER.phone}</span>
+            <span className="text-muted-foreground">{customer.phone?.trim() === "" || customer.phone === null ? "—" : customer.phone}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <MapPin className="size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />
-            <span className="text-muted-foreground">{CUSTOMER.address}</span>
+            <span className="text-muted-foreground">{customer.address ?? "—"}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <Clock className="size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />
-            <span className="text-muted-foreground">{t("profile.lastActive", { time: CUSTOMER.lastActive })}</span>
+            <span className="text-muted-foreground">
+              {customer.lastActive === undefined ? "—" : t("profile.lastActive", { time: customer.lastActive })}
+            </span>
           </div>
         </div>
 
@@ -74,7 +168,7 @@ function CustomerProfileCard(): JSX.Element {
             <span className="text-muted-foreground">
               {t("profile.preferredCategory")}
               {": "}
-              <span className="text-foreground">{CUSTOMER.preferredCategory}</span>
+              <span className="text-foreground">{customer.preferredCategory ?? "—"}</span>
             </span>
           </div>
           <div className="flex items-center gap-3 text-sm">
@@ -82,7 +176,7 @@ function CustomerProfileCard(): JSX.Element {
             <span className="text-muted-foreground">
               {t("profile.preferredCollection")}
               {": "}
-              <span className="text-foreground">{CUSTOMER.preferredCollection}</span>
+              <span className="text-foreground">{customer.preferredCollection ?? "—"}</span>
             </span>
           </div>
         </div>
@@ -91,76 +185,96 @@ function CustomerProfileCard(): JSX.Element {
   );
 }
 
-function CustomerTagsCard(): JSX.Element {
+function CustomerTagsCard({ customer }: { customer: User["adminCustomerDetail"] }): JSX.Element {
   const t = useTranslations("pages.admin.customerDetail");
 
   return (
     <Card className="shadow-none">
       <CardContent className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-medium">{t("tags.title")}</p>
-          <Button variant="ghost" size="icon" className="size-7 text-muted-foreground">
-            <Plus className="size-3.5" strokeWidth={2} />
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {CUSTOMER.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[11px]">
-              {tag}
-            </Badge>
-          ))}
-        </div>
+        <p className="mb-1 text-sm font-medium">{t("tags.title")}</p>
+        <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">{t("tags.sidebarHint")}</p>
+        {customer.tags.length === EMPTY_LENGTH && customer.customTags.length === EMPTY_LENGTH ? (
+          <p className="text-sm text-muted-foreground">{t("tags.empty")}</p>
+        ) : (
+          <div className="space-y-3">
+            {customer.tags.length > EMPTY_LENGTH && (
+              <div>
+                <p className="mb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground/70 uppercase">{t("tags.system")}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {customer.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-[11px]">
+                      {t(`tags.values.${tag}`)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {customer.customTags.length > EMPTY_LENGTH && (
+              <div>
+                <p className="mb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground/70 uppercase">{t("tags.custom")}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {customer.customTags.map((tag) => (
+                    <Badge key={`custom-${tag}`} variant="secondary" className="text-[11px]">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function CustomerNotesCard(): JSX.Element {
+function CustomerNotesCard({ customer }: { customer: User["adminCustomerDetail"] }): JSX.Element {
   const t = useTranslations("pages.admin.customerDetail");
 
   return (
     <Card className="shadow-none">
       <CardContent className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-medium">{t("notes.title")}</p>
-          <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
-            {t("notes.edit")}
-          </Button>
-        </div>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">{CUSTOMER.notes}</p>
+        <p className="mb-3 text-sm font-medium">{t("notes.title")}</p>
+        <p className="text-[13px] leading-relaxed text-muted-foreground">{customer.notes ?? t("notes.empty")}</p>
       </CardContent>
     </Card>
   );
 }
 
-function CustomerTimelineCard(): JSX.Element {
+function CustomerTimelineCard({ customer }: { customer: User["adminCustomerDetail"] }): JSX.Element {
   const t = useTranslations("pages.admin.customerDetail");
 
   return (
     <Card className="shadow-none">
       <CardContent className="p-5">
         <p className="mb-4 text-sm font-medium">{t("timeline.title")}</p>
-        <div className="space-y-0">
-          {TIMELINE.map((event, i) => {
-            const Icon = TIMELINE_ICONS[event.type] ?? Clock;
-            const eventKey = `${event.date}-${event.type}`;
-            const LAST_INDEX_OFFSET = 1;
-            return (
-              <div key={eventKey} className="relative flex gap-3 pb-5 last:pb-0">
-                {i < TIMELINE.length - LAST_INDEX_OFFSET && (
-                  <div className="absolute top-6 left-[11px] h-[calc(100%-16px)] w-px bg-border/50" />
-                )}
-                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary">
-                  <Icon className="size-3 text-muted-foreground" strokeWidth={1.5} />
+        {customer.timeline.length === EMPTY_LENGTH ? (
+          <p className="text-sm text-muted-foreground">{t("timeline.empty")}</p>
+        ) : (
+          <div className="space-y-0">
+            {customer.timeline.map((event, index) => {
+              const Icon = resolveTimelineIcon(event.kind);
+              const eventKey = resolveTimelineEventKey(event);
+              const LAST_INDEX_OFFSET = 1;
+              const description = resolveTimelineDescription(event, t);
+
+              return (
+                <div key={eventKey} className="relative flex gap-3 pb-5 last:pb-0">
+                  {index < customer.timeline.length - LAST_INDEX_OFFSET && (
+                    <div className="absolute top-6 left-[11px] h-[calc(100%-16px)] w-px bg-border/50" />
+                  )}
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary">
+                    <Icon className="size-3 text-muted-foreground" strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 pt-0.5">
+                    <p className="text-[13px] leading-snug">{description}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground/50">{event.date}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 pt-0.5">
-                  <p className="text-[13px] leading-snug">{event.description}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground/50">{event.date}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

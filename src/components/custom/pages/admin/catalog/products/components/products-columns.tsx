@@ -3,6 +3,7 @@ import { type JSX, useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useFormatter, useLocale, useTranslations } from "use-intl";
 
+import { matchesDateColumnFilter } from "~/src/lib/_utils/admin-date-filter";
 import { formatPrice } from "~/src/lib/_utils/currency";
 import { cn } from "~/src/lib/utils";
 
@@ -15,6 +16,7 @@ import {
 } from "~/src/components/custom/pages/admin/catalog/lib/catalog-record-id-column";
 import { createProductReorderColumn } from "~/src/components/custom/pages/admin/catalog/products/components/product-reorder-column";
 import { ProductsRowActions } from "~/src/components/custom/pages/admin/catalog/products/components/products-row-actions";
+import { matchesNumericColumnFilter } from "~/src/components/custom/pages/admin/catalog/products/lib/products-numeric-filter";
 import { CatalogTitleHandleCell } from "~/src/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell";
 import {
   CATALOG_DATAGRID_EMPTY_TEXT_CLASS,
@@ -125,6 +127,7 @@ export function useProductColumns() {
           }
           return <span className="block font-mono text-sm font-medium tabular-nums">{formatPrice(price, "PLN", locale)}</span>;
         },
+        filterFn: matchesNumericColumnFilter,
         header: t("columns.price"),
         id: PRODUCT_TABLE_COLUMN_ID.minPrice,
         meta: { skeletonVariant: "number" },
@@ -132,6 +135,7 @@ export function useProductColumns() {
       }),
       columnHelper.accessor("totalStock", {
         cell: ({ row }) => <ProductStockCell inventoryLevel={row.original.inventoryLevel} totalStock={row.original.totalStock} />,
+        filterFn: matchesNumericColumnFilter,
         header: t("columns.stock"),
         id: PRODUCT_TABLE_COLUMN_ID.stock,
         meta: { skeletonVariant: "number" },
@@ -178,6 +182,7 @@ export function useProductColumns() {
         cell: ({ getValue }) => (
           <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
         ),
+        filterFn: matchesDateColumnFilter,
         header: t("columns.createdAt"),
         id: PRODUCT_TABLE_COLUMN_ID.createdAt,
         maxSize: 320,

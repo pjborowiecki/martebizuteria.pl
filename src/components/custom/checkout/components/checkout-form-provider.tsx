@@ -25,7 +25,11 @@ import {
 import type { CheckoutSession } from "~/src/integrations/stripe/stripe.checkout";
 
 import { loadCheckoutDraft, saveCheckoutDraft } from "~/src/components/custom/checkout/lib/checkout-draft";
-import { CHECKOUT_STEPS, type CheckoutStepId, getFurthestReachableStepIndex } from "~/src/components/custom/checkout/lib/checkout-steps";
+import {
+  CHECKOUT_STEP_DEFINITIONS,
+  type CheckoutStepId,
+  getFurthestReachableStepIndex
+} from "~/src/components/custom/checkout/lib/checkout-steps";
 
 import { type CheckoutFormSchema, checkoutSchema } from "~/src/modules/checkout/checkout.zod";
 
@@ -51,7 +55,7 @@ const LAST_STEP_OFFSET = 1;
 const NEXT_STEP = 1;
 // The `?step=` URL param is 1-based (human-friendly); internal indices are 0-based.
 const STEP_PARAM_BASE = 1;
-const LAST_STEP_INDEX = CHECKOUT_STEPS.length - LAST_STEP_OFFSET;
+const LAST_STEP_INDEX = CHECKOUT_STEP_DEFINITIONS.length - LAST_STEP_OFFSET;
 
 const stepParamToIndex = (param: number): number => param - STEP_PARAM_BASE;
 const stepIndexToParam = (index: number): number => index + STEP_PARAM_BASE;
@@ -74,12 +78,12 @@ function useCheckoutNavigation(form: UseFormReturn<CheckoutFormSchema>, hydrated
         e.preventDefault();
       }
 
-      const currentStepIndex = CHECKOUT_STEPS.findIndex((s) => s.id === stepId);
+      const currentStepIndex = CHECKOUT_STEP_DEFINITIONS.findIndex((s) => s.id === stepId);
       if (currentStepIndex === STEP_NOT_FOUND) {
         return;
       }
 
-      const config = CHECKOUT_STEPS[currentStepIndex];
+      const config = CHECKOUT_STEP_DEFINITIONS[currentStepIndex];
       if (config === undefined) {
         return;
       }
@@ -100,7 +104,7 @@ function useCheckoutNavigation(form: UseFormReturn<CheckoutFormSchema>, hydrated
 
   const onEdit = useCallback(
     (stepId: CheckoutStepId) => {
-      const targetStepIndex = CHECKOUT_STEPS.findIndex((s) => s.id === stepId);
+      const targetStepIndex = CHECKOUT_STEP_DEFINITIONS.findIndex((s) => s.id === stepId);
       if (targetStepIndex === STEP_NOT_FOUND) {
         return;
       }

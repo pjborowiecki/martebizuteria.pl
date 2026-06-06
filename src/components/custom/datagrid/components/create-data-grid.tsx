@@ -21,8 +21,8 @@ export interface DataGrid<TData extends RowData> {
   readonly Pagination: () => JSX.Element;
   /** Supplies the grid context; wrap the toolbar/body/pagination in it. */
   readonly Provider: (props: Readonly<{ children: ReactNode; value: DataGridContextValue<TData> }>) => JSX.Element;
-  /** Top toolbar; pass page-specific filters/bulk actions as children and a primary action via `actions`. */
-  readonly Toolbar: (props: Readonly<{ actions?: ReactNode; children?: ReactNode }>) => JSX.Element;
+  /** Top toolbar; pass utilities as `children`, column filters on `filters`, and primary actions via `actions`. */
+  readonly Toolbar: (props: Readonly<{ actions?: ReactNode; children?: ReactNode; filters?: ReactNode }>) => JSX.Element;
   /** Typed hook for page-level pieces (filters, bulk actions) to read the grid. */
   readonly useDataGrid: () => DataGridContextValue<TData>;
 }
@@ -48,7 +48,11 @@ export function createDataGrid<TData extends RowData>({ persistenceKey }: Create
     return <ContextProvider value={value}>{children}</ContextProvider>;
   }
 
-  function Toolbar({ actions, children }: Readonly<{ actions?: ReactNode; children?: ReactNode }>): JSX.Element {
+  function Toolbar({
+    actions,
+    children,
+    filters
+  }: Readonly<{ actions?: ReactNode; children?: ReactNode; filters?: ReactNode }>): JSX.Element {
     const { hasPreferenceOverrides, resetPreferences, searchPlaceholder, table } = useDataGrid();
     return (
       <DataGridToolbar
@@ -57,6 +61,7 @@ export function createDataGrid<TData extends RowData>({ persistenceKey }: Create
         hasPreferenceOverrides={hasPreferenceOverrides}
         onResetPreferences={resetPreferences}
         actions={actions}
+        filters={filters}
       >
         {children}
       </DataGridToolbar>

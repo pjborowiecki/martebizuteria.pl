@@ -14,7 +14,7 @@
       "customers": "Klienci"
     },
     "actions": {
-      "sendEmail": "Wyślij e-mail",
+      "edit": "Edytuj klienta",
       "createOrder": "Utwórz zamówienie"
     },
     "kpi": {
@@ -25,10 +25,12 @@
     },
     "spending": {
       "title": "Aktywność zakupowa",
-      "subtitle": "Miesięczne wydatki z ostatnich 12 miesięcy"
+      "subtitle": "Miesięczne wydatki z ostatnich 12 miesięcy",
+      "empty": "Brak zrealizowanych zamówień w ostatnich 12 miesiącach."
     },
     "categoryBreakdown": {
-      "title": "Podział na kategorie"
+      "title": "Podział na kategorie",
+      "empty": "Brak danych o wydatkach w kategoriach."
     },
     "orders": {
       "title": "Historia zamówień",
@@ -41,75 +43,115 @@
         "status": "Status",
         "payment": "Płatność"
       },
+      "empty": "Brak zamówień.",
       "status": {
         "delivered": "Dostarczone",
         "shipped": "Wysłane",
         "returned": "Zwrócone",
-        "processing": "W trakcie"
+        "pending": "Oczekujące",
+        "unfulfilled": "Niezrealizowane"
       },
       "payment": {
         "paid": "Opłacone",
         "refunded": "Zwrócone",
-        "pending": "Oczekujące"
+        "authorized": "Autoryzowane"
       }
     },
     "profile": {
-      "memberSince": "Członek od {date}",
+      "accountCreated": "Data utworzenia konta: {date}",
       "lastActive": "Ostatnia aktywność {time}",
+      "returningBadge": "Powracający",
       "preferences": "Preferencje",
       "preferredCategory": "Preferowana kategoria",
       "preferredCollection": "Preferowana kolekcja"
     },
     "tags": {
-      "title": "Tagi"
+      "title": "Tagi",
+      "sidebarHint": "Tagi systemowe są automatyczne. Własne etykiety dodasz lub usuniesz w Edytuj klienta.",
+      "system": "Systemowe",
+      "custom": "Własne",
+      "empty": "Brak tagów dla tego klienta.",
+      "values": {
+        "admin": "Administrator",
+        "banned": "Zablokowany",
+        "customer": "Klient",
+        "returning": "Powracający",
+        "verified": "Zweryfikowany"
+      }
     },
     "notes": {
       "title": "Wewnętrzne notatki",
-      "edit": "Edytuj notatki"
+      "empty": "Brak wewnętrznych notatek."
     },
     "timeline": {
-      "title": "Oś czasu aktywności"
-    }
-  },
-  "customers": {
-    "title": "Klienci",
-    "description": "Zarządzaj listą klientów, przeglądaj historię zakupów i eksportuj dane.",
-    "searchPlaceholder": "Szukaj klientów...",
-    "actions": {
-      "export": "Eksportuj dane",
-      "sendEmail": "Wyślij e-mail"
+      "title": "Oś czasu aktywności",
+      "empty": "Brak aktywności.",
+      "accountCreated": "Utworzono konto",
+      "orderPlaced": "Złożono zamówienie {id} — {total}",
+      "signedIn": "Zalogowano się",
+      "signedOut": "Wylogowano się",
+      "cartItemAdded": "Dodano {product} do koszyka (×{quantity})",
+      "cartAbandoned": "Opuścił sklep z {count} produktami w koszyku",
+      "pageViewed": "Odwiedził {path}"
     },
-    "columns": {
-      "customer": "Klient",
-      "location": "Lokalizacja",
-      "orders": "Zamówienia",
-      "spent": "Wydano łącznie",
-      "lastOrder": "Ostatnie zamówienie",
-      "tier": "Poziom"
-    },
-    "pagination": {
-      "showing": "Wyświetlanie 1-19 z 2 847 klientów",
-      "previous": "Poprzednia",
-      "next": "Następna"
-    },
-    "stats": {
-      "totalCustomers": {
-        "label": "Wszyscy klienci",
-        "value": "2 847"
+    "form": {
+      "title": "Edytuj klienta",
+      "description": "Zaktualizuj dane kontaktowe, domyślny adres, wewnętrzne notatki i własne tagi.",
+      "cancel": "Anuluj",
+      "save": "Zapisz zmiany",
+      "sections": {
+        "contact": "Dane kontaktowe",
+        "address": "Domyślny adres",
+        "addressDescription": "Wyświetlany w profilu klienta i używany jako domyślny adres dostawy, gdy jest dostępny.",
+        "notes": "Wewnętrzne notatki",
+        "tags": "Własne tagi",
+        "tagsDescription": "Tagi systemowe, np. Zweryfikowany lub Powracający, są przypisywane automatycznie."
       },
-      "vipCustomers": {
-        "label": "Klienci VIP",
-        "value": "124"
+      "id": "ID klienta",
+      "name": "Imię i nazwisko",
+      "email": "E-mail",
+      "phone": "Telefon",
+      "phonePlaceholder": "+48 123 456 789",
+      "address1": "Adres (linia 1)",
+      "address1Placeholder": "Ulica i numer",
+      "address2": "Adres (linia 2)",
+      "address2Placeholder": "Mieszkanie, lokal itd.",
+      "city": "Miasto",
+      "cityPlaceholder": "Miasto",
+      "province": "Województwo / region",
+      "provincePlaceholder": "Województwo lub region",
+      "postalCode": "Kod pocztowy",
+      "postalCodePlaceholder": "00-000",
+      "countryCode": "Kraj",
+      "countryCodePlaceholder": "PL",
+      "notes": "Wewnętrzne notatki",
+      "notesPlaceholder": "Notatki widoczne tylko dla administratorów",
+      "customTags": "Własne tagi",
+      "systemTags": "Tagi systemowe",
+      "addTag": "Dodaj tag",
+      "customTagsPlaceholder": "Dodaj tag…",
+      "hints": {
+        "systemTags": "Przypisywane automatycznie na podstawie statusu konta (np. zweryfikowany e-mail, powtarzalne zamówienia). Nie można ich edytować.",
+        "id": "Stały identyfikator klienta. Używany w panelu i API; nie można go zmienić.",
+        "name": "Nazwa wyświetlana z konta klienta. Zarządzana przez klienta przy rejestracji lub w profilu.",
+        "email": "Główny adres e-mail powiązany z kontem. Nie można go edytować tutaj.",
+        "phone": "Opcjonalny numer telefonu widoczny w profilu klienta w panelu.",
+        "address1": "Ulica i numer budynku dla domyślnego adresu.",
+        "address2": "Opcjonalne mieszkanie, lokal lub dodatkowa linia adresu.",
+        "city": "Miasto lub miejscowość dla domyślnego adresu.",
+        "province": "Opcjonalne województwo, region lub stan.",
+        "postalCode": "Kod pocztowy dla domyślnego adresu.",
+        "countryCode": "Dwuliterowy kod kraju ISO, np. PL lub DE.",
+        "notes": "Prywatne notatki dla zespołu. Nigdy nie są widoczne dla klienta w sklepie.",
+        "customTags": "Dodaj własne etykiety do segmentacji klientów. Wpisz tag i kliknij Dodaj tag lub naciśnij Enter."
       },
-      "averageLTV": {
-        "label": "Średnie LTV",
-        "value": "$4 280"
-      },
-      "returningRate": {
-        "label": "Powracający",
-        "value": "68%"
-      },
-      "vsPrevious": "vs poprzedni miesiąc"
+      "removeTag": "Usuń tag {tag}",
+      "toast": {
+        "errorTitle": "Nie udało się zapisać klienta",
+        "errorDescription": "Sprawdź formularz i spróbuj ponownie.",
+        "successTitle": "Klient zaktualizowany",
+        "successDescription": "Zmiany zostały zapisane."
+      }
     }
   },
   "nav": {
@@ -274,6 +316,19 @@
       "product_updated": "Produkt zaktualizowany",
       "product_created": "Produkt utworzony",
       "product_deleted": "Produkt usunięty",
+      "category_created": "Kategoria utworzona",
+      "category_updated": "Kategoria zaktualizowana",
+      "category_deleted": "Kategoria usunięta",
+      "collection_created": "Kolekcja utworzona",
+      "collection_updated": "Kolekcja zaktualizowana",
+      "collection_deleted": "Kolekcja usunięta",
+      "attribute_created": "Atrybut utworzony",
+      "attribute_updated": "Atrybut zaktualizowany",
+      "attribute_deleted": "Atrybut usunięty",
+      "order_released": "Koszyk zwolniony",
+      "order_dispute_opened": "Spór otwarty",
+      "order_dispute_closed": "Spór zamknięty",
+      "order_payment_failed": "Płatność nieudana",
       "customer_tier_upgrade": "Awans poziomu",
       "customer_registered": "Klient zarejestrowany",
       "auth_login": "Logowanie",
@@ -385,7 +440,9 @@
       "delivered": "Dostarczone",
       "returned": "Zwrócone"
     },
+    "empty": "Brak zamówień pasujących do wyszukiwania.",
     "pagination": {
+      "page": "Strona {page} z {total}",
       "showing": "Wyświetlanie {count} z {total} zamówień",
       "previous": "Poprzednia",
       "next": "Następna"

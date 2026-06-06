@@ -52,11 +52,16 @@ export interface UseDataGridInstanceOptions<TData extends RowData> {
   readonly persistenceKey: string;
   /** Overrides default `includesString` (e.g. catalog tables that search handle + status labels). */
   readonly globalFilterFn?: FilterFn<TData>;
+  readonly manualFiltering?: boolean;
   readonly manualPagination?: boolean;
+  readonly manualSorting?: boolean;
+  readonly onColumnFiltersChange?: (filters: ColumnFiltersState) => void;
   readonly onPaginationChange?: (updater: PaginationState | ((previous: PaginationState) => PaginationState)) => void;
+  readonly onSortingChange?: (sorting: SortingState) => void;
   readonly pageCount?: number;
   readonly pagination?: PaginationState;
   readonly rowCount?: number;
+  readonly sorting?: SortingState;
 }
 
 export interface DataGridInstance<TData extends RowData> {
@@ -83,13 +88,20 @@ export function useDataGridInstance<TData extends RowData>({
   forcedHiddenColumnIds,
   persistenceKey,
   globalFilterFn,
+  manualFiltering = false,
   manualPagination = false,
+  manualSorting = false,
+  onColumnFiltersChange,
   onPaginationChange,
+  onSortingChange,
   pageCount,
   pagination: controlledPagination,
-  rowCount
+  rowCount,
+  sorting: controlledSorting
 }: UseDataGridInstanceOptions<TData>): DataGridInstance<TData> {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [internalSorting, setInternalSorting] = useState<SortingState>([]);
+  const sorting = controlledSorting ?? internalSorting;
+  const setSorting = onSortingChange ?? setInternalSorting;
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>(() => ({
     left: initialColumnPinning?.left === undefined ? undefined : [...initialColumnPinning.left],
     right: initialColumnPinning?.right === undefined ? undefined : [...initialColumnPinning.right]
@@ -134,13 +146,21 @@ export function useDataGridInstance<TData extends RowData>({
     enablePinning: true,
     enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    ...(manualFiltering ? {} : { getFilteredRowModel: getFilteredRowModel() }),
     ...(manualPagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
+    ...(manualSorting ? {} : { getSortedRowModel: getSortedRowModel() }),
     getRowId,
-    getSortedRowModel: getSortedRowModel(),
     globalFilterFn: globalFilterFn ?? "includesString",
+    manualFiltering,
     manualPagination,
-    onColumnFiltersChange: setColumnFilters,
+    manualSorting,
+    onColumnFiltersChange: (updater) => {
+      setColumnFilters((previous) => {
+        const next = typeof updater === "function" ? updater(previous) : updater;
+        onColumnFiltersChange?.(next);
+        return next;
+      });
+    },
     onColumnOrderChange: preferences.setColumnOrder,
     onColumnPinningChange: setColumnPinning,
     onColumnSizingChange: preferences.setColumnSizing,
@@ -149,7 +169,9 @@ export function useDataGridInstance<TData extends RowData>({
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
     onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
+    onSortingChange: (updater) => {
+      setSorting(typeof updater === "function" ? updater(sorting) : updater);
+    },
     pageCount,
     rowCount,
     state: {

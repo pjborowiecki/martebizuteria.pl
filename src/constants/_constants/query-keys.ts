@@ -65,6 +65,13 @@ const ADDRESS_QUERY_KEYS = {
   ALL: ["userAddresses"] as const
 } as const;
 
+const AUDIT_LOG_QUERY_KEYS = {
+  ADMIN: {
+    PAGE: [...QUERY_KEY_ROOTS.ADMIN, "audit-log", "page"] as const,
+    STATS: [...QUERY_KEY_ROOTS.ADMIN, "audit-log", "stats"] as const
+  }
+} as const;
+
 const DELIVERY_METHOD_QUERY_KEYS = {
   ALL: ["deliveryMethods"] as const
 } as const;
@@ -73,16 +80,35 @@ const INPOST_QUERY_KEYS = {
   BY_CITY: ["inpost-points", "city"] as const
 } as const;
 
+/** Invalidate `CUSTOMERS` to refresh every admin customer list query; stats share the same prefix family. */
+const ORDER_QUERY_KEYS = {
+  ADMIN: {
+    PAGE: [...QUERY_KEY_ROOTS.ADMIN, "orders", "page"] as const
+  }
+} as const;
+
+const USER_QUERY_KEYS = {
+  ADMIN: {
+    CUSTOMERS: [...QUERY_KEY_ROOTS.ADMIN, "users", "customers"] as const,
+    CUSTOMERS_PAGE: [...QUERY_KEY_ROOTS.ADMIN, "users", "customers", "page"] as const,
+    CUSTOMER_BY_ID: [...QUERY_KEY_ROOTS.ADMIN, "users", "customers", "detail"] as const,
+    CUSTOMER_STATS: [...QUERY_KEY_ROOTS.ADMIN, "users", "customers", "stats"] as const
+  }
+} as const;
+
 export const QUERY_KEYS = {
   ADDRESS: ADDRESS_QUERY_KEYS,
   ATTRIBUTE_ON_PRODUCT: ATTRIBUTE_ON_PRODUCT_QUERY_KEYS,
+  AUDIT_LOG: AUDIT_LOG_QUERY_KEYS,
   CATEGORY: CATEGORY_QUERY_KEYS,
   COLLECTION: COLLECTION_QUERY_KEYS,
   DELIVERY_METHOD: DELIVERY_METHOD_QUERY_KEYS,
   INPOST: INPOST_QUERY_KEYS,
   MESSAGES: MESSAGES_QUERY_KEYS,
+  ORDER: ORDER_QUERY_KEYS,
   PRODUCT: PRODUCT_QUERY_KEYS,
   PRODUCT_ATTRIBUTE: PRODUCT_ATTRIBUTE_QUERY_KEYS,
   PRODUCT_IMAGE: PRODUCT_IMAGE_QUERY_KEYS,
-  ROOTS: QUERY_KEY_ROOTS
+  ROOTS: QUERY_KEY_ROOTS,
+  USER: USER_QUERY_KEYS
 } as const;

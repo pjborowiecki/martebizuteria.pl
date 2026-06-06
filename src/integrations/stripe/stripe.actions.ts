@@ -10,7 +10,7 @@ import { stripe } from "~/src/integrations/stripe/stripe.server";
 
 import { isSellPriceCentsValid } from "~/src/lib/_utils/currency";
 import { getCurrentLocale } from "~/src/lib/_utils/locale";
-import { getBaseURL } from "~/src/lib/_utils/url";
+import { getBaseURL, resolveAssetURL } from "~/src/lib/_utils/url";
 
 import { checkoutMutations } from "~/src/modules/checkout/checkout.mutations";
 import { checkoutSchema } from "~/src/modules/checkout/checkout.zod";
@@ -65,6 +65,8 @@ const updateCheckoutSessionInputSchema = z.object({
 type CartItem = z.infer<typeof cartItemSchema>;
 
 interface OrderLine {
+  handle: string;
+  imageUrl: string;
   priceCents: number;
   qty: number;
   title: string;
@@ -104,7 +106,14 @@ async function resolveOrderLines(items: CartItem[]): Promise<OrderLine[]> {
   return items.map((item) => {
     const { variant } = resolveVariant(products, item);
     const lineTitle = item.variantTitle === "" ? item.title : `${item.title} — ${item.variantTitle}`;
-    return { priceCents: variant.price, qty: item.qty, title: lineTitle, variantId: variant.id };
+    return {
+      handle: item.slug,
+      imageUrl: resolveAssetURL(item.image),
+      priceCents: variant.price,
+      qty: item.qty,
+      title: lineTitle,
+      variantId: variant.id
+    };
   });
 }
 
@@ -152,6 +161,8 @@ function toLineItems(lines: OrderLine[], shippingCost: number): SessionLineItem[
 function toMetaItems(lines: OrderLine[]): string {
   return JSON.stringify(
     lines.map((line) => ({
+      handle: line.handle,
+      imageUrl: line.imageUrl,
       price: line.priceCents,
       qty: line.qty,
       title: line.title,
@@ -221,6 +232,8 @@ const createCheckoutSessionFn = createServerFn({ method: "POST" })
 
     const validatedItems = await validateAndCalculateItems(data.items);
     const lines: OrderLine[] = validatedItems.map((item) => ({
+      handle: item.slug,
+      imageUrl: resolveAssetURL(item.image),
       priceCents: item.priceCents,
       qty: item.qty,
       title: item.lineTitle,
@@ -263,6 +276,8 @@ const updateCheckoutSessionFn = createServerFn({ method: "POST" })
 
     const lines = await resolveOrderLines(data.items);
     const shippingCost = await resolveShippingCost(data.checkoutValues.deliveryMethod);
+
+    await checkoutMutations.updateCheckoutDelivery(context.checkoutId, data.checkoutValues);
 
     const result = await createStripeSession({
       checkoutId: context.checkoutId,

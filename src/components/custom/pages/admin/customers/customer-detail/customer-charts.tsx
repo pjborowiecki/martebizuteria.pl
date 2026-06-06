@@ -1,42 +1,66 @@
 import { type JSX, useCallback, useMemo } from "react";
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { useTranslations } from "use-intl";
+import { useFormatter, useTranslations } from "use-intl";
 
 import { Card, CardContent } from "~/src/components/shadcn/card";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/components/shadcn/chart";
 
-import { CATEGORY_BREAKDOWN, SPENDING_DATA } from "~/src/data/customer-detail-data";
+import { DEFAULT_ADMIN_CUSTOMER_CURRENCY } from "~/src/modules/user/user.constants";
+import type { User } from "~/src/modules/user/user.types";
 
-export function CustomerCharts(): JSX.Element {
+const EMPTY_LENGTH = 0;
+const MINOR_UNITS_PER_MAJOR = 100;
+const THOUSAND_DIVISOR = 1000;
+const TICK_DECIMALS = 0;
+const THOUSAND_SUFFIX = "k";
+
+interface CustomerChartsProps {
+  readonly customer: User["adminCustomerDetail"];
+}
+
+export function CustomerCharts({ customer }: CustomerChartsProps): JSX.Element {
   const t = useTranslations("pages.admin.customerDetail");
+  const format = useFormatter();
 
   const spendingConfig: ChartConfig = useMemo(
     () => ({
-      amount: { color: "hsl(var(--foreground))", label: "Spending" }
+      amount: { color: "hsl(var(--foreground))", label: t("spending.title") }
     }),
-    []
+    [t]
   );
 
   const categoryConfig: ChartConfig = useMemo(
     () => ({
-      amount: { color: "hsl(var(--foreground))", label: "Revenue" }
+      amount: { color: "hsl(var(--foreground))", label: t("categoryBreakdown.title") }
     }),
-    []
+    [t]
   );
 
   const tickConfig = useMemo(() => ({ fill: "hsl(var(--muted-foreground) / 0.5)", fontSize: 11 }), []);
   const categoryTickConfig = useMemo(() => ({ fill: "hsl(var(--muted-foreground))", fontSize: 12 }), []);
   const chartMargin = useMemo(() => ({ bottom: 0, left: -20, right: 4, top: 4 }), []);
   const barChartMargin = useMemo(() => ({ bottom: 0, left: 0, right: 4, top: 0 }), []);
-  const TICK_DIVISOR = 1000;
-  const TICK_DECIMALS = 0;
-  const tickFormatter = useCallback((v: number) => `$${(v / TICK_DIVISOR).toFixed(TICK_DECIMALS)}k`, []);
+  const tickFormatter = useCallback(
+    (value: number) => {
+      const formatted = format.number(value / MINOR_UNITS_PER_MAJOR / THOUSAND_DIVISOR, {
+        currency: DEFAULT_ADMIN_CUSTOMER_CURRENCY,
+        maximumFractionDigits: TICK_DECIMALS,
+        minimumFractionDigits: TICK_DECIMALS,
+        style: "currency"
+      });
 
+      return `${formatted}${THOUSAND_SUFFIX}`;
+    },
+    [format]
+  );
   const RADIUS_RIGHT = 4;
   const RADIUS_OTHER = 0;
   const barRadius = useMemo<[number, number, number, number]>(() => [RADIUS_OTHER, RADIUS_RIGHT, RADIUS_RIGHT, RADIUS_OTHER], []);
   const tooltipContent = useMemo(() => <ChartTooltipContent />, []);
+
+  const hasSpendingData = customer.monthlySpending.some((entry) => entry.amount > EMPTY_LENGTH);
+  const hasCategoryData = customer.categoryBreakdown.length > EMPTY_LENGTH;
 
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_280px]">
@@ -48,23 +72,38 @@ export function CustomerCharts(): JSX.Element {
               <p className="text-[12px] text-muted-foreground">{t("spending.subtitle")}</p>
             </div>
           </div>
-          <ChartContainer config={spendingConfig} className="h-[220px] w-full">
-            <SpendingChart margin={chartMargin} tickConfig={tickConfig} tickFormatter={tickFormatter} tooltipContent={tooltipContent} />
-          </ChartContainer>
+          {hasSpendingData ? (
+            <ChartContainer config={spendingConfig} className="h-[220px] w-full">
+              <SpendingChart
+                data={customer.monthlySpending}
+                margin={chartMargin}
+                tickConfig={tickConfig}
+                tickFormatter={tickFormatter}
+                tooltipContent={tooltipContent}
+              />
+            </ChartContainer>
+          ) : (
+            <p className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">{t("spending.empty")}</p>
+          )}
         </CardContent>
       </Card>
 
       <Card className="shadow-none">
         <CardContent className="p-5">
           <p className="mb-4 text-sm font-medium">{t("categoryBreakdown.title")}</p>
-          <ChartContainer config={categoryConfig} className="h-[220px] w-full">
-            <CategoryBreakdownChart
-              margin={barChartMargin}
-              tickConfig={categoryTickConfig}
-              barRadius={barRadius}
-              tooltipContent={tooltipContent}
-            />
-          </ChartContainer>
+          {hasCategoryData ? (
+            <ChartContainer config={categoryConfig} className="h-[220px] w-full">
+              <CategoryBreakdownChart
+                data={customer.categoryBreakdown}
+                margin={barChartMargin}
+                tickConfig={categoryTickConfig}
+                barRadius={barRadius}
+                tooltipContent={tooltipContent}
+              />
+            </ChartContainer>
+          ) : (
+            <p className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">{t("categoryBreakdown.empty")}</p>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -72,18 +111,20 @@ export function CustomerCharts(): JSX.Element {
 }
 
 function SpendingChart({
+  data,
   margin,
   tickConfig,
   tickFormatter,
   tooltipContent
 }: Readonly<{
+  data: User["adminCustomerDetail"]["monthlySpending"];
   margin: object;
   tickConfig: object;
-  tickFormatter: (v: number) => string;
+  tickFormatter: (value: number) => string;
   tooltipContent: JSX.Element;
 }>): JSX.Element {
   return (
-    <AreaChart data={SPENDING_DATA} margin={margin}>
+    <AreaChart data={data} margin={margin}>
       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.4)" />
       <XAxis dataKey="month" tickLine={false} axisLine={false} tick={tickConfig} />
       <YAxis tickLine={false} axisLine={false} tick={tickConfig} tickFormatter={tickFormatter} />
@@ -95,18 +136,20 @@ function SpendingChart({
 }
 
 function CategoryBreakdownChart({
+  data,
   margin,
   tickConfig,
   barRadius,
   tooltipContent
 }: Readonly<{
+  data: User["adminCustomerDetail"]["categoryBreakdown"];
   margin: object;
   tickConfig: object;
   barRadius: [number, number, number, number];
   tooltipContent: JSX.Element;
 }>): JSX.Element {
   return (
-    <BarChart data={CATEGORY_BREAKDOWN} layout="vertical" margin={margin}>
+    <BarChart data={data} layout="vertical" margin={margin}>
       <XAxis type="number" hide />
       <YAxis dataKey="category" type="category" tickLine={false} axisLine={false} tick={tickConfig} width={80} />
       <ChartTooltip content={tooltipContent} />

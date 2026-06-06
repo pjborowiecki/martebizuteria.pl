@@ -51,6 +51,7 @@ export const order = sqliteTable(
   },
   (table) => [
     index("order_userId_idx").on(table.userId),
+    index("order_userId_status_idx").on(table.userId, table.status),
     index("order_status_idx").on(table.status),
     index("order_createdAt_idx").on(table.createdAt)
   ]

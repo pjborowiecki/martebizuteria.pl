@@ -4,6 +4,8 @@ import { Body, Container, Head, Hr, Html, Preview, Section, Tailwind, Text } fro
 
 import type { Locale } from "~/src/constants/types";
 
+import { EMAIL_BODY_STYLE, EMAIL_CONTAINER_STYLE } from "~/src/integrations/resend/templates/email-styles";
+
 const SERIF_STACK = ["Georgia", "Cambria", "Times New Roman", "Times", "serif"];
 const SANS_STACK = ["Helvetica Neue", "Helvetica", "Arial", "sans-serif"];
 
@@ -11,11 +13,13 @@ export const EMAIL_TAILWIND_CONFIG = {
   theme: {
     extend: {
       colors: {
-        cream: "#f6f4f0",
+        cream: "#f3f0ea",
+        gold: "#b39b6d",
         ink: "#16140f",
-        line: "#e7e3dc",
-        muted: "#8a857c",
-        paper: "#ffffff"
+        line: "#e2ddd4",
+        muted: "#7a746a",
+        paper: "#ffffff",
+        wash: "#faf8f5"
       },
       fontFamily: {
         sans: SANS_STACK,
@@ -27,37 +31,36 @@ export const EMAIL_TAILWIND_CONFIG = {
 
 interface EmailLayoutProps {
   readonly children: ReactNode;
-  readonly footer: string;
   readonly locale: Locale;
   readonly preview: string;
   readonly tagline: string;
 }
 
-export function EmailLayout({ children, footer, locale, preview, tagline }: Readonly<EmailLayoutProps>): JSX.Element {
+export function EmailLayout({ children, locale, preview, tagline }: Readonly<EmailLayoutProps>): JSX.Element {
   return (
     <Html lang={locale}>
       <Head>
-        <meta content="light" name="color-scheme" />
-        <meta content="light" name="supported-color-schemes" />
+        <meta content="light only" name="color-scheme" />
+        <meta content="light only" name="supported-color-schemes" />
       </Head>
       <Tailwind config={EMAIL_TAILWIND_CONFIG}>
         <Preview>{preview}</Preview>
-        <Body className="bg-cream m-0 px-[16px] py-[40px] font-sans">
-          <Container className="bg-paper mx-auto max-w-[540px] px-[48px] py-[44px]">
+        <Body className="m-0 font-sans" lang={locale} style={EMAIL_BODY_STYLE}>
+          <Container className="box-border" lang={locale} style={EMAIL_CONTAINER_STYLE}>
             <Section className="text-center">
-              <Text className="text-ink m-0 font-serif text-[24px] leading-[28px] tracking-[0.44em]">M&apos;ARTE</Text>
-              <Text className="m-0 mt-[10px] text-[10px] leading-[14px] tracking-[0.34em] text-muted uppercase">{tagline}</Text>
+              <Text className="text-ink m-0 font-serif text-[26px] leading-[30px] tracking-[0.42em]">M&apos;ARTE</Text>
+              <Hr className="border-gold mx-auto my-[14px] w-[48px] border-t border-solid" />
+              <Text className="m-0 text-[10px] leading-[14px] tracking-[0.34em] text-muted uppercase">{tagline}</Text>
             </Section>
 
-            <Hr className="border-line my-[32px]" />
+            <Hr className="border-line my-[36px]" />
 
             {children}
 
-            <Hr className="border-line mt-[40px] mb-[24px]" />
+            <Hr className="border-line mt-[44px] mb-[28px]" />
 
             <Section className="text-center">
               <Text className="text-ink m-0 font-serif text-[13px] leading-[16px] tracking-[0.38em]">M&apos;ARTE</Text>
-              <Text className="m-0 mt-[8px] text-[11px] leading-[18px] tracking-[0.04em] text-muted">{footer}</Text>
             </Section>
           </Container>
         </Body>

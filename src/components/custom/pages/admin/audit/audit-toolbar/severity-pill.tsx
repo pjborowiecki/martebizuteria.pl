@@ -4,9 +4,9 @@ import { useTranslations } from "use-intl";
 
 import { cn } from "~/src/lib/utils";
 
-import { type SeverityLevel, SEVERITY_DOT_COLORS } from "~/src/data/audit-data";
+import { SEVERITY_DOT_COLORS, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants";
 
-const SEVERITY_ACTIVE_STYLES: Record<SeverityLevel, string> = {
+const SEVERITY_ACTIVE_STYLES: Record<AuditLogSeverity, string> = {
   error: "bg-red-500/10 text-red-500 font-medium",
   info: "bg-blue-500/10 text-blue-600 font-medium",
   success: "bg-emerald-500/10 text-emerald-600 font-medium",
@@ -14,22 +14,22 @@ const SEVERITY_ACTIVE_STYLES: Record<SeverityLevel, string> = {
 };
 
 interface SeverityPillProps {
-  readonly onSeverityToggle: (sev: string) => void;
-  readonly selectedSeverity: string | undefined;
-  readonly severity: SeverityLevel;
+  readonly isActive: boolean;
+  readonly onToggle: (severity: AuditLogSeverity) => void;
+  readonly severity: AuditLogSeverity;
 }
 
-export function SeverityPill({ onSeverityToggle, selectedSeverity, severity }: SeverityPillProps): JSX.Element {
+export function SeverityPill({ isActive, onToggle, severity }: SeverityPillProps): JSX.Element {
   const t = useTranslations("pages.admin");
   const handleClick = useCallback(() => {
-    onSeverityToggle(severity);
-  }, [onSeverityToggle, severity]);
+    onToggle(severity);
+  }, [onToggle, severity]);
 
   return (
     <button
       className={cn(
         "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
-        selectedSeverity === severity ? SEVERITY_ACTIVE_STYLES[severity] : "text-muted-foreground/60 hover:text-muted-foreground"
+        isActive ? SEVERITY_ACTIVE_STYLES[severity] : "text-muted-foreground/60 hover:text-muted-foreground"
       )}
       onClick={handleClick}
       type="button"

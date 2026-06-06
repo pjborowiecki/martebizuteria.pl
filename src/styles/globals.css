@@ -186,6 +186,41 @@
     color-scheme: light;
   }
 
+  /**
+   * Neutralize browser autofill tint (Chrome/Safari light-blue) on design-system inputs.
+   * Inset box-shadow matches field background; long transition prevents the UA color from returning.
+   */
+  input[data-slot="input"]:-webkit-autofill,
+  input[data-slot="input"]:-webkit-autofill:hover,
+  input[data-slot="input"]:-webkit-autofill:focus,
+  input[data-slot="input"]:-webkit-autofill:active,
+  input[data-slot="input-group-control"]:-webkit-autofill,
+  input[data-slot="input-group-control"]:-webkit-autofill:hover,
+  input[data-slot="input-group-control"]:-webkit-autofill:focus,
+  input[data-slot="input-group-control"]:-webkit-autofill:active,
+  input[data-slot="input"]:autofill,
+  input[data-slot="input-group-control"]:autofill {
+    -webkit-text-fill-color: var(--foreground) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--background) inset !important;
+    box-shadow: 0 0 0 1000px var(--background) inset !important;
+    caret-color: var(--foreground);
+    transition: background-color 99999s ease-in-out 0s;
+  }
+
+  .dark input[data-slot="input"]:-webkit-autofill,
+  .dark input[data-slot="input"]:-webkit-autofill:hover,
+  .dark input[data-slot="input"]:-webkit-autofill:focus,
+  .dark input[data-slot="input"]:-webkit-autofill:active,
+  .dark input[data-slot="input-group-control"]:-webkit-autofill,
+  .dark input[data-slot="input-group-control"]:-webkit-autofill:hover,
+  .dark input[data-slot="input-group-control"]:-webkit-autofill:focus,
+  .dark input[data-slot="input-group-control"]:-webkit-autofill:active,
+  .dark input[data-slot="input"]:autofill,
+  .dark input[data-slot="input-group-control"]:autofill {
+    -webkit-box-shadow: 0 0 0 1000px color-mix(in oklab, var(--input) 30%, var(--background)) inset !important;
+    box-shadow: 0 0 0 1000px color-mix(in oklab, var(--input) 30%, var(--background)) inset !important;
+  }
+
   [data-admin-main] {
     --radius-sm: max(0px, calc(var(--radius) - 2px));
     --radius-md: var(--radius);
@@ -237,6 +272,33 @@
 
   [data-admin-main] [data-slot="data-table-container"]::-webkit-scrollbar-thumb:hover {
     background-color: color-mix(in oklab, var(--muted-foreground) 52%, var(--border));
+  }
+
+  /** Admin toasts — match dark sidebar chrome with light, readable copy. */
+  html[data-admin-shell] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+    background: var(--sidebar);
+    border-color: var(--sidebar-border);
+    color: var(--sidebar-foreground);
+  }
+
+  html[data-admin-shell] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-description] {
+    color: color-mix(in oklab, var(--sidebar-foreground) 72%, transparent);
+  }
+
+  html[data-admin-shell] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button] {
+    background: var(--sidebar);
+    border-color: var(--sidebar-border);
+    color: var(--sidebar-foreground);
+  }
+
+  html[data-admin-shell] [data-sonner-toaster] [data-sonner-toast][data-styled="true"]:hover [data-close-button]:hover {
+    background: var(--sidebar-accent);
+    border-color: var(--sidebar-border);
+  }
+
+  html[data-admin-shell] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-cancel] {
+    background: var(--sidebar-accent);
+    color: var(--sidebar-foreground);
   }
 
   /** Catalog create/edit sheets (portaled); match admin control radius. */

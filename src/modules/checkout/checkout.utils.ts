@@ -19,6 +19,8 @@ export interface PendingCheckout {
 }
 
 export interface FulfillmentLine {
+  handle?: string;
+  imageUrl?: string;
   price: number;
   qty: number;
   title: string;
@@ -70,8 +72,11 @@ export function prepareCreateCheckoutBatch(
 
   const checkoutInsert = db.insert(checkout).values({
     billingAddressId,
+    customerNote: checkoutValues.deliveryNotes,
+    deliveryMethodId: checkoutValues.deliveryMethod,
     email: userEmail,
     id: checkoutId,
+    lockerId: checkoutValues.lockerId,
     shippingAddressId,
     status: "pending",
     userId
@@ -116,11 +121,29 @@ export function resolvePendingCheckout(
   return { checkoutId: paymentRow.checkoutId, email: checkoutRow.email, paymentId: paymentRow.id, userId: checkoutRow.userId };
 }
 
+export function prepareUpdateCheckoutDeliveryBatch(checkoutId: string, checkoutValues: CheckoutFormSchema): BatchItem<"sqlite"> {
+  return db
+    .update(checkout)
+    .set({
+      customerNote: checkoutValues.deliveryNotes,
+      deliveryMethodId: checkoutValues.deliveryMethod,
+      lockerId: checkoutValues.lockerId
+    })
+    .where(eq(checkout.id, checkoutId));
+}
+
 export function prepareFulfillCheckoutBatch(
   context: PendingCheckout,
-  { amount, currency, lines, transactionId }: FulfillCheckoutInput
+  { amount, currency, lines, transactionId }: FulfillCheckoutInput,
+  checkoutSnapshot?: {
+    readonly customerNote?: string | null;
+    readonly deliveryMethodId?: string | null;
+    readonly lockerId?: string | null;
+  }
 ): { orderId: string; statements: BatchItem<"sqlite">[] } {
   const orderId = crypto.randomUUID();
+  const itemsSubtotal = lines.reduce((sum, line) => sum + line.price * line.qty, EMPTY_ITEMS);
+  const shippingTotal = Math.max(amount - itemsSubtotal, EMPTY_ITEMS);
 
   const tail =
     lines.length > EMPTY_ITEMS
@@ -153,11 +176,15 @@ export function prepareFulfillCheckoutBatch(
       db.insert(order).values({
         checkoutId: context.checkoutId,
         currencyCode: currency,
+        customerNote: checkoutSnapshot?.customerNote,
+        deliveryMethodId: checkoutSnapshot?.deliveryMethodId,
         email: context.email,
         id: orderId,
+        lockerId: checkoutSnapshot?.lockerId,
         paymentId: context.paymentId,
+        shippingTotal,
         status: "processing",
-        subtotal: amount,
+        subtotal: itemsSubtotal,
         total: amount,
         userId: context.userId
       }),

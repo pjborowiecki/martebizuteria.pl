@@ -1,17 +1,11 @@
-import { type ComponentType, type JSX, type SVGProps, useCallback, useTransition } from "react";
+import { type ComponentType, type JSX, type SVGProps, useCallback } from "react";
 
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { useLocale, useTranslations } from "use-intl";
-
-import { CONSTANTS } from "~/src/constants";
-
-import { authClient } from "~/src/integrations/better-auth/auth._client";
-import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.utils";
-
-import { buildLocalizedUrl } from "~/src/lib/utils";
+import { useTranslations } from "use-intl";
 
 import { Button } from "~/src/components/shadcn/button";
+
+import { useOAuthSignIn } from "~/src/components/custom/pages/auth/hooks/use-oauth-sign-in";
 
 type Provider = "google" | "github";
 
@@ -22,31 +16,12 @@ interface OAuthButtonProps {
 }
 
 export function OAuthButton({ Icon, label, provider }: Readonly<OAuthButtonProps>): JSX.Element {
-  const [isPending, startTransition] = useTransition();
-
   const t = useTranslations();
-  const locale = useLocale();
+  const { isPending, mutate } = useOAuthSignIn();
 
   const handleOAuth = useCallback(() => {
-    startTransition(async () => {
-      await authClient.signIn.social({
-        callbackURL: buildLocalizedUrl("", CONSTANTS.ROUTES.ACCOUNT_OVERVIEW, locale),
-        fetchOptions: {
-          onError: (ctx) => {
-            toast.error(t("pages.auth.toast.errorTitle"), {
-              description: getAuthErrorMessage(t, ctx.error)
-            });
-          },
-          onSuccess: () => {
-            toast.success(t("pages.auth.toast.signInTitle"), {
-              description: t("pages.auth.toast.signInDescription")
-            });
-          }
-        },
-        provider
-      });
-    });
-  }, [locale, provider, t]);
+    mutate(provider);
+  }, [mutate, provider]);
 
   return (
     <Button

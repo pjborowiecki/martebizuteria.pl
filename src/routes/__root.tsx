@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 
 import type { QueryClient } from "@tanstack/react-query";
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import { HeadContent, Outlet, Scripts, createRootRouteWithContext, useRouterState } from "@tanstack/react-router";
 
 import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
@@ -102,6 +102,8 @@ const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
   const { internalPathname, locale } = Route.useLoaderData();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isAdmin = isAdminPathname(pathname);
 
   return (
     <TranslationsProvider locale={locale}>
@@ -110,7 +112,7 @@ function RootComponent() {
           <RootDocument internalPathname={internalPathname} locale={locale}>
             <Outlet />
             <VerificationToast />
-            <Toaster />
+            <Toaster variant={isAdmin ? "admin" : "default"} />
             <Scripts />
           </RootDocument>
         </TooltipProvider>

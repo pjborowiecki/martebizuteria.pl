@@ -1,20 +1,46 @@
 import { type JSX } from "react";
 
 import { ArrowUpRight, CreditCard, ShoppingBag, TrendingUp } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { Card, CardContent } from "~/src/components/shadcn/card";
 
-import { CUSTOMER } from "~/src/data/customer-detail-data";
+import type { User } from "~/src/modules/user/user.types";
+import { formatAdminCustomerDetailKpiPrice } from "~/src/modules/user/user.utils";
 
-export function CustomerKpis(): JSX.Element {
+interface CustomerKpisProps {
+  readonly customer: User["adminCustomerDetail"];
+}
+
+export function CustomerKpis({ customer }: CustomerKpisProps): JSX.Element {
   const t = useTranslations("pages.admin.customerDetail");
+  const locale = useLocale();
 
   const kpis = [
-    { color: "text-foreground", icon: CreditCard, label: t("kpi.totalSpent"), value: CUSTOMER.spent },
-    { color: "text-foreground", icon: ShoppingBag, label: t("kpi.orders"), value: String(CUSTOMER.orders) },
-    { color: "text-foreground", icon: TrendingUp, label: t("kpi.avgOrder"), value: CUSTOMER.avgOrder },
-    { color: "text-emerald-600", icon: ArrowUpRight, label: t("kpi.returnRate"), value: CUSTOMER.returningRate }
+    {
+      color: "text-foreground",
+      icon: CreditCard,
+      label: t("kpi.totalSpent"),
+      value: formatAdminCustomerDetailKpiPrice(customer.totalSpent, locale)
+    },
+    {
+      color: "text-foreground",
+      icon: ShoppingBag,
+      label: t("kpi.orders"),
+      value: String(customer.orderCount)
+    },
+    {
+      color: "text-foreground",
+      icon: TrendingUp,
+      label: t("kpi.avgOrder"),
+      value: formatAdminCustomerDetailKpiPrice(customer.averageOrderValue, locale)
+    },
+    {
+      color: customer.isReturning ? "text-emerald-600" : "text-foreground",
+      icon: ArrowUpRight,
+      label: t("kpi.returnRate"),
+      value: `${customer.returningRate}%`
+    }
   ];
 
   return (

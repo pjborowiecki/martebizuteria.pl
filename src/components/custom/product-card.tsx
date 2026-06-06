@@ -3,6 +3,7 @@ import { type JSX, type MouseEvent, useCallback, useRef, useState } from "react"
 import { Heart, Share2, ShoppingBag } from "lucide-react";
 import { useTranslations } from "use-intl";
 
+import { trackCartItemAdded } from "~/src/lib/customer-activity/customer-activity.tracking";
 import { cn } from "~/src/lib/utils";
 
 import { Image } from "~/src/components/custom/image";
@@ -12,6 +13,7 @@ import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-var
 import { useCartStore } from "~/src/stores/cart.store";
 
 const ADD_TO_CART_TIMEOUT_MS = 1800;
+const DEFAULT_ADD_QUANTITY = 1;
 
 export interface ProductCardProps {
   readonly badge?: string;
@@ -90,6 +92,8 @@ function useProductCardLogic({
 
       const resolvedVariantTitle = variantTitle ?? "";
 
+      const normalizedVariantTitle = resolvedVariantTitle === DEFAULT_VARIANT_TITLE ? "" : resolvedVariantTitle;
+
       addItem({
         id: variantId,
         image,
@@ -98,7 +102,14 @@ function useProductCardLogic({
         slug,
         title: name,
         variantId,
-        variantTitle: resolvedVariantTitle === DEFAULT_VARIANT_TITLE ? "" : resolvedVariantTitle
+        variantTitle: normalizedVariantTitle
+      });
+
+      trackCartItemAdded({
+        productTitle: name,
+        quantity: DEFAULT_ADD_QUANTITY,
+        variantId,
+        variantTitle: normalizedVariantTitle
       });
 
       setJustAdded(true);

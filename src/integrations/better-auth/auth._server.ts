@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, anonymous, multiSession, twoFactor } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { env } from "cloudflare:workers";
+import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 
 import { CONSTANTS } from "~/src/constants";
@@ -12,6 +13,16 @@ import { scheduleBackgroundWork } from "~/src/integrations/better-auth/auth.back
 import { ac, ROLES_CONFIG } from "~/src/integrations/better-auth/auth.permissions";
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas";
+
+import { scheduleAdminCustomersInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server";
+
+import {
+  recordAuthLoginAudit,
+  recordAuthLogoutAudit,
+  recordCustomerRegisteredAudit,
+  resolveAuthAuditActor
+} from "~/src/modules/audit-log/audit-log.events.server";
+import { user as userTable } from "~/src/modules/user/user.schema";
 
 const MAX_FORGET_PASSWORD_ATTEMPTS = 3;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -45,6 +56,63 @@ export const auth = betterAuth({
   appName: CONSTANTS.APP_NAME,
   baseURL: env.VITE_APP_URL,
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
+  databaseHooks: {
+    session: {
+      create: {
+        after: async (createdSession) => {
+          const sessionUser = await db.query.user.findFirst({
+            where: eq(userTable.id, createdSession.userId)
+          });
+          if (sessionUser === undefined) {
+            return;
+          }
+
+          recordAuthLoginAudit(resolveAuthAuditActor(sessionUser), {
+            ip: createdSession.ipAddress ?? undefined,
+            resourceId: sessionUser.id
+          });
+          await Promise.resolve();
+        }
+      },
+      delete: {
+        after: async (deletedSession) => {
+          const sessionUser = await db.query.user.findFirst({
+            where: eq(userTable.id, deletedSession.userId)
+          });
+          if (sessionUser === undefined) {
+            return;
+          }
+
+          recordAuthLogoutAudit(resolveAuthAuditActor(sessionUser), {
+            ip: deletedSession.ipAddress ?? undefined,
+            resourceId: sessionUser.id
+          });
+          await Promise.resolve();
+        }
+      }
+    },
+    user: {
+      create: {
+        after: async (user) => {
+          scheduleAdminCustomersInvalidation();
+          recordCustomerRegisteredAudit(user.email, { detail: user.name, resourceId: user.id });
+          await Promise.resolve();
+        }
+      },
+      delete: {
+        after: async () => {
+          scheduleAdminCustomersInvalidation();
+          await Promise.resolve();
+        }
+      },
+      update: {
+        after: async () => {
+          scheduleAdminCustomersInvalidation();
+          await Promise.resolve();
+        }
+      }
+    }
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

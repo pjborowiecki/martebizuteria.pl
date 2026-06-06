@@ -35,17 +35,18 @@ export function useCatalogRowActionMenu(confirmOpen: boolean, setConfirmOpen: (o
 
   const handleConfirmOpenChange = useCallback(
     (open: boolean) => {
+      suppressDataGridRowClickAfterCatalogDialogDismiss();
       setConfirmOpen(open);
 
       if (!open) {
         setMenuOpen(false);
-        suppressDataGridRowClickAfterCatalogDialogDismiss();
       }
     },
     [setConfirmOpen]
   );
 
   const closeMenuAndRequestDeleteConfirm = useCallback(() => {
+    suppressDataGridRowClickAfterCatalogDialogDismiss();
     setMenuOpen(false);
     requestCatalogConfirmDialog(setConfirmOpen);
   }, [setConfirmOpen]);

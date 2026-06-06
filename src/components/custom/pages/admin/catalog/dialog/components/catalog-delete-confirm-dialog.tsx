@@ -42,10 +42,7 @@ export function CatalogDeleteConfirmDialog({
         return;
       }
 
-      if (!nextOpen) {
-        suppressDataGridRowClickAfterDialogDismiss();
-      }
-
+      suppressDataGridRowClickAfterDialogDismiss();
       onOpenChange(nextOpen);
     },
     [isPending, onOpenChange]
@@ -57,9 +54,15 @@ export function CatalogDeleteConfirmDialog({
     suppressDataGridRowClickAfterDialogDismiss();
   }, []);
 
-  const handleConfirm = useCallback(() => {
-    onConfirm();
-  }, [onConfirm]);
+  const handleConfirm = useCallback(
+    (event: MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      suppressDataGridRowClickAfterDialogDismiss();
+      onConfirm();
+    },
+    [onConfirm]
+  );
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
@@ -72,7 +75,14 @@ export function CatalogDeleteConfirmDialog({
           <AlertDialogCancel disabled={isPending} onClick={handleDismissInteraction} onPointerDown={handleDismissInteraction}>
             {cancelLabel}
           </AlertDialogCancel>
-          <AlertDialogAction variant="destructive" type="button" onClick={handleConfirm} disabled={isPending} className="gap-1.5">
+          <AlertDialogAction
+            variant="destructive"
+            type="button"
+            onClick={handleConfirm}
+            onPointerDown={handleDismissInteraction}
+            disabled={isPending}
+            className="gap-1.5"
+          >
             {isPending && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
             {confirmLabel}
           </AlertDialogAction>

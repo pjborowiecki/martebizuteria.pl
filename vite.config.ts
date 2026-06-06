@@ -1,4 +1,33 @@
+import type { ConfigEnv, Plugin, UserConfig } from "vite";
 import { defineConfig, lazyPlugins } from "vite-plus";
+
+/** @cloudflare/vite-plugin hard-fails under Vitest (`resolve.external` conflict). */
+function withoutVitest(plugin: Plugin): Plugin {
+  const originalApply = plugin.apply;
+
+  return {
+    ...plugin,
+    apply(config: UserConfig, env: ConfigEnv): boolean {
+      if (env.mode === "test") {
+        return false;
+      }
+
+      if (typeof originalApply === "function") {
+        return originalApply(config, env);
+      }
+
+      if (originalApply === "build") {
+        return env.command === "build";
+      }
+
+      if (originalApply === "serve") {
+        return env.command === "serve";
+      }
+
+      return originalApply !== false;
+    }
+  };
+}
 
 const ignorePatterns = [
   "node_modules",
@@ -178,23 +207,17 @@ export default defineConfig({
     }
   },
   plugins: lazyPlugins(async () => {
+    const { cloudflare } = await import("@cloudflare/vite-plugin");
     const { tanstackStart } = await import("@tanstack/react-start/plugin/vite");
     const { default: tailwindcss } = await import("@tailwindcss/vite");
     const { default: react } = await import("@vitejs/plugin-react");
 
-    const startOpts = {
-      importProtection: {
-        enabled: false
-      }
-    };
+    const cloudflarePlugins = cloudflare({ viteEnvironment: { name: "ssr" } });
+    const workerPlugins = (Array.isArray(cloudflarePlugins) ? cloudflarePlugins : [cloudflarePlugins]).map((plugin) =>
+      withoutVitest(plugin)
+    );
 
-    if (process.env.VITEST !== undefined) {
-      return [tailwindcss(), tanstackStart(startOpts), react()];
-    }
-
-    const { cloudflare } = await import("@cloudflare/vite-plugin");
-
-    return [cloudflare({ viteEnvironment: { name: "ssr" } }), tailwindcss(), tanstackStart(startOpts), react()];
+    return [...workerPlugins, tailwindcss(), tanstackStart(), react()];
   }),
 
   resolve: { tsconfigPaths: true },

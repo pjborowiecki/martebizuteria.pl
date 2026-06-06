@@ -27,7 +27,44 @@
     "category": "Filtruj według kategorii",
     "allCategories": "Wszystkie kategorie",
     "collection": "Filtruj według kolekcji",
-    "allCollections": "Wszystkie kolekcje"
+    "allCollections": "Wszystkie kolekcje",
+    "createdAt": "Filtruj datę utworzenia",
+    "minPrice": "Filtruj według ceny",
+    "stock": "Filtruj według stanu",
+    "date": {
+      "apply": "Zastosuj",
+      "clear": "Wyczyść",
+      "clearDate": "Wyczyść datę",
+      "date": "Data",
+      "endDate": "Do",
+      "operator": "Warunek",
+      "operatorAfter": "Po",
+      "operatorBefore": "Przed",
+      "operatorBetween": "Zakres dat",
+      "operatorOn": "W dniu",
+      "placeholder": "Wybierz datę",
+      "startDate": "Od",
+      "today": "Dziś"
+    },
+    "integer": {
+      "amount": "Ilość",
+      "endAmount": "Do",
+      "startAmount": "Od"
+    },
+    "numeric": {
+      "amount": "Kwota",
+      "apply": "Zastosuj",
+      "clear": "Wyczyść",
+      "endAmount": "Do",
+      "operator": "Warunek",
+      "operatorBetween": "Pomiędzy",
+      "operatorEq": "Dokładnie",
+      "operatorGt": "Więcej niż",
+      "operatorGte": "Co najmniej",
+      "operatorLt": "Mniej niż",
+      "operatorLte": "Co najwyżej",
+      "startAmount": "Od"
+    }
   },
   "bulk": {
     "selected": "Zaznaczono: {count}",

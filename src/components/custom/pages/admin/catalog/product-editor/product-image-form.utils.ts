@@ -1,4 +1,4 @@
-import type { GalleryImage } from "~/src/components/custom/admin/image-upload/lib/image-upload.types";
+import type { GalleryImage } from "~/src/components/custom/image-upload/lib/image-upload.types";
 
 const EMPTY_LENGTH = 0;
 const FIRST_INDEX = 0;

@@ -23,8 +23,26 @@ function getCheckoutById(checkoutId: string) {
   });
 }
 
+function getCheckoutEmailContext(checkoutId: string) {
+  return db.query.checkout.findFirst({
+    columns: {
+      billingAddressId: true,
+      customerNote: true,
+      lockerId: true,
+      shippingAddressId: true
+    },
+    where: eq(checkout.id, checkoutId),
+    with: {
+      billingAddress: true,
+      deliveryMethod: true,
+      shippingAddress: true
+    }
+  });
+}
+
 export const checkoutAccessors = {
   getCheckoutById,
+  getCheckoutEmailContext,
   getPaymentByTransactionId,
   runBatch
 };

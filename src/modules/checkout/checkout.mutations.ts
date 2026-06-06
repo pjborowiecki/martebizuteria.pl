@@ -3,6 +3,7 @@ import {
   prepareCreateCheckoutBatch,
   prepareFulfillCheckoutBatch,
   prepareReleaseCheckoutBatch,
+  prepareUpdateCheckoutDeliveryBatch,
   resolvePendingCheckout,
   type FulfillCheckoutInput,
   type ReleaseCheckoutInput
@@ -22,13 +23,22 @@ async function createCheckoutAndAddress(checkoutValues: CheckoutFormSchema, user
   return checkoutId;
 }
 
+async function updateCheckoutDelivery(checkoutId: string, checkoutValues: CheckoutFormSchema): Promise<void> {
+  await checkoutAccessors.runBatch([prepareUpdateCheckoutDeliveryBatch(checkoutId, checkoutValues)]);
+}
+
 async function fulfillCheckout(input: FulfillCheckoutInput): Promise<string | undefined> {
   const context = await findPendingCheckoutByTransaction(input.transactionId);
   if (context === undefined) {
     return undefined;
   }
 
-  const { orderId, statements } = prepareFulfillCheckoutBatch(context, input);
+  const checkoutRow = await checkoutAccessors.getCheckoutById(context.checkoutId);
+  const { orderId, statements } = prepareFulfillCheckoutBatch(context, input, {
+    customerNote: checkoutRow?.customerNote,
+    deliveryMethodId: checkoutRow?.deliveryMethodId,
+    lockerId: checkoutRow?.lockerId
+  });
   await checkoutAccessors.runBatch(statements);
   return orderId;
 }
@@ -45,5 +55,6 @@ async function releaseCheckout(input: ReleaseCheckoutInput): Promise<void> {
 export const checkoutMutations = {
   createCheckoutAndAddress,
   fulfillCheckout,
-  releaseCheckout
+  releaseCheckout,
+  updateCheckoutDelivery
 };

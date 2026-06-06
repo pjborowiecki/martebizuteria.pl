@@ -47,6 +47,22 @@
       "remote": true
     }
   ],
+  "durable_objects": {
+    "bindings": [{ "name": "REALTIME_INVALIDATION_HUB", "class_name": "RealtimeInvalidationHub" }]
+  },
+  // Local dev (`CLOUDFLARE_ENV=preview`) uses env.preview below. Root bindings mirror preview.
+  "queues": {
+    "producers": [{ "binding": "AUDIT_LOG_QUEUE", "queue": "martebizuteria-audit-log-preview" }],
+    "consumers": [
+      {
+        "queue": "martebizuteria-audit-log-preview",
+        "max_batch_size": 50,
+        "max_batch_timeout": 5,
+        "max_retries": 3
+      }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeInvalidationHub"] }],
   "env": {
     "preview": {
       "name": "martebizuteria-preview",
@@ -76,7 +92,21 @@
           "id": "d6727c712d3443cc9e79be1bf42a6f0c",
           "remote": true
         }
-      ]
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "REALTIME_INVALIDATION_HUB", "class_name": "RealtimeInvalidationHub" }]
+      },
+      "queues": {
+        "producers": [{ "binding": "AUDIT_LOG_QUEUE", "queue": "martebizuteria-audit-log-preview" }],
+        "consumers": [
+          {
+            "queue": "martebizuteria-audit-log-preview",
+            "max_batch_size": 50,
+            "max_batch_timeout": 5,
+            "max_retries": 3
+          }
+        ]
+      }
     },
     "production": {
       "name": "martebizuteria",
@@ -106,7 +136,21 @@
           "id": "4126270a35e74667baf2966b87d15aaa",
           "remote": true
         }
-      ]
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "REALTIME_INVALIDATION_HUB", "class_name": "RealtimeInvalidationHub" }]
+      },
+      "queues": {
+        "producers": [{ "binding": "AUDIT_LOG_QUEUE", "queue": "martebizuteria-audit-log" }],
+        "consumers": [
+          {
+            "queue": "martebizuteria-audit-log",
+            "max_batch_size": 50,
+            "max_batch_timeout": 5,
+            "max_retries": 3
+          }
+        ]
+      }
     }
   }
 }
