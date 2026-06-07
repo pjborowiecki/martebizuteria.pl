@@ -285,6 +285,33 @@ export function recordOrderPaymentCapturedAudit(orderId: string, options?: Audit
   });
 }
 
+export function recordOrderFulfillmentStartedAudit(orderId: string, options?: AuditEventOptions): void {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,
+    category: "orders",
+    severity: "info",
+    ...withResourceId(orderId, options)
+  });
+}
+
+export function recordOrderShippedAudit(orderId: string, options?: AuditEventOptions): void {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.ORDER_SHIPPED,
+    category: "orders",
+    severity: "success",
+    ...withResourceId(orderId, options)
+  });
+}
+
+export function recordOrderCancelledAudit(orderId: string, options?: AuditEventOptions): void {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.ORDER_CANCELLED,
+    category: "orders",
+    severity: "warning",
+    ...withResourceId(orderId, options)
+  });
+}
+
 export function recordOrderRefundAudit(orderId: string, options?: AuditEventOptions): void {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED,

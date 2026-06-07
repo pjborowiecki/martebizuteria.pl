@@ -2,6 +2,7 @@ import type { z } from "zod/v4";
 
 import type { Locale } from "~/src/constants/types";
 
+import type { inventory } from "~/src/modules/inventory/inventory.schema";
 import type { ProductAttributeType } from "~/src/modules/product-attribute/product-attribute.constants";
 import type { ProductAttributeAllowedValue, ProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.types";
 import type { productCategory } from "~/src/modules/product-category/product-category.schema";
@@ -37,7 +38,9 @@ export type StorefrontProduct = Omit<Product["select"], "descriptions" | "subtit
   readonly subtitle: string;
   readonly tags?: string[];
   readonly title: string;
-  readonly variants: readonly (typeof productVariant.$inferSelect)[];
+  readonly variants: readonly (typeof productVariant.$inferSelect & {
+    readonly inventory?: typeof inventory.$inferSelect | null;
+  })[];
 };
 
 export interface Product {

@@ -15,6 +15,11 @@ export interface ReleaseInventoryItem {
   qty: number;
 }
 
+export interface ReserveInventoryVariantLine {
+  qty: number;
+  variantId: string;
+}
+
 /**
  * Reserves stock for every line item using optimistic concurrency (a version
  * guard). D1 has no interactive transactions, so reservations can't be wrapped
@@ -41,4 +46,25 @@ export async function reserveInventoryForItems(items: ReserveInventoryItem[]): P
     const firstFailure = failures[FIRST_INDEX];
     throw new Error(`Inventory reservation failed for ${firstFailure?.item.title ?? "item"}. Stock changed or unavailable.`);
   }
+}
+
+/** Re-reserves stock by variant id (e.g. rolling back a failed checkout session update). */
+export async function reserveInventoryByVariantLines(lines: ReserveInventoryVariantLine[]): Promise<void> {
+  const inventories = await Promise.all(lines.map((line) => inventoryAccessors.getInventoryByVariantId(line.variantId)));
+
+  const items = lines.map((line, index) => {
+    const inv = inventories[index];
+    if (inv === undefined) {
+      throw new Error(`Inventory not found for variant ${line.variantId}.`);
+    }
+
+    return {
+      currentVersion: inv.version,
+      inventoryId: inv.id,
+      qty: line.qty,
+      title: line.variantId
+    };
+  });
+
+  await reserveInventoryForItems(items);
 }

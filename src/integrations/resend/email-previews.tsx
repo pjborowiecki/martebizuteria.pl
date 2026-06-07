@@ -7,6 +7,7 @@ import type { Locale } from "~/src/constants/types";
 import { AccountDeleted } from "~/src/integrations/resend/templates/account-deleted";
 import { ChangeEmail } from "~/src/integrations/resend/templates/change-email";
 import { OrderConfirmation } from "~/src/integrations/resend/templates/order-confirmation";
+import { OrderShipped } from "~/src/integrations/resend/templates/order-shipped";
 import { ResetPassword } from "~/src/integrations/resend/templates/reset-password";
 import { VerifyEmail } from "~/src/integrations/resend/templates/verify-email";
 
@@ -38,6 +39,10 @@ export const EMAIL_PREVIEWS = {
   "order-confirmation": {
     element: (locale) => <OrderConfirmation {...OrderConfirmation.PreviewProps} locale={locale} />,
     label: "Order confirmation"
+  },
+  "order-shipped": {
+    element: (locale) => <OrderShipped {...OrderShipped.PreviewProps} locale={locale} />,
+    label: "Order shipped"
   },
   "reset-password": {
     element: (locale) => <ResetPassword {...ResetPassword.PreviewProps} locale={locale} />,

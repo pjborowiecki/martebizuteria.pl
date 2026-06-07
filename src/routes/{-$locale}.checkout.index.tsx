@@ -6,6 +6,7 @@ import { CheckoutFormSkeleton } from "~/src/components/custom/checkout/component
 import { CheckoutForm } from "~/src/components/custom/checkout/components/checkout-form.client";
 import { CheckoutSuccess } from "~/src/components/custom/checkout/components/checkout-success";
 
+import { useCartAvailability } from "~/src/hooks/use-cart-availability";
 import { useCartHydrated, useCartStore } from "~/src/stores/cart.store";
 
 const EMPTY_COUNT = 0;
@@ -32,17 +33,19 @@ function CheckoutGuard(): JSX.Element {
   const navigate = useNavigate();
   const hydrated = useCartHydrated();
   const itemCount = useCartStore((state) => state.items.reduce((sum, item) => sum + item.qty, EMPTY_COUNT));
+  const { hasUnavailableItems, isChecking } = useCartAvailability();
   const fallback = useMemo(() => <CheckoutFormSkeleton />, []);
 
   const isEmpty = hydrated && itemCount === EMPTY_COUNT;
+  const hasStockIssues = hydrated && !isChecking && hasUnavailableItems;
 
   useEffect(() => {
-    if (isEmpty) {
+    if (isEmpty || hasStockIssues) {
       void navigate({ params: (prev) => prev, replace: true, to: "/{-$locale}/cart" });
     }
-  }, [isEmpty, navigate]);
+  }, [hasStockIssues, isEmpty, navigate]);
 
-  if (!hydrated || itemCount === EMPTY_COUNT) {
+  if (!hydrated || itemCount === EMPTY_COUNT || isChecking || hasUnavailableItems) {
     return fallback;
   }
 

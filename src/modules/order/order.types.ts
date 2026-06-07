@@ -1,17 +1,28 @@
 import type { order } from "~/src/modules/order/order.schema";
 
-/** Admin orders table row (matches legacy `OrderRecord` UI shape). */
+/** Admin orders table row. */
 export interface AdminOrderListItem {
-  readonly customer: string;
-  readonly customerId: string;
-  readonly date: string;
+  readonly createdAt: Date;
+  readonly currencyCode: string;
+  readonly customerName: string;
   readonly email: string;
-  readonly fulfillment: string;
+  readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"];
+  readonly fulfillmentUiKey: string;
   readonly id: string;
   readonly initials: string;
-  readonly items: number;
-  readonly payment: string;
-  readonly total: string;
+  readonly itemCount: number;
+  readonly paymentUiKey: string;
+  readonly status: Order["select"]["status"];
+  readonly totalMinorUnits: number;
+  readonly userId: string | null;
+}
+
+export interface AdminOrderStats {
+  readonly avgValueMinorUnits: number;
+  readonly currencyCode: string;
+  readonly pending: number;
+  readonly revenueMinorUnits: number;
+  readonly totalOrders: number;
 }
 
 export interface Order {

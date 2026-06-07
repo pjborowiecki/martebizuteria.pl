@@ -13,9 +13,11 @@ import { Button } from "~/src/components/shadcn/button";
 import { Image } from "~/src/components/custom/image";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
+import { useCartAvailability } from "~/src/hooks/use-cart-availability";
 import { type CartItem, useCartStore } from "~/src/stores/cart.store";
 
 const QUANTITY_STEP = 1;
+const ZERO_AVAILABLE = 0;
 
 export interface CartItemCardProps {
   readonly item: CartItem;
@@ -25,6 +27,10 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
   const t = useTranslations("pages.cart");
   const format = useFormatter();
   const { removeItem, updateQuantity } = useCartStore();
+  const { issuesByVariantId } = useCartAvailability();
+  const availabilityIssue = issuesByVariantId.get(item.variantId);
+  const isUnavailable = availabilityIssue !== undefined && availabilityIssue.available < item.qty;
+  const canIncrease = availabilityIssue === undefined || item.qty < availabilityIssue.available;
   const unitPriceLabel = format.number(centsToDisplayAmount(getCartLineUnitPriceCents(item)), {
     currency: "PLN",
     style: "currency"
@@ -72,6 +78,13 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
               {item.title}
             </LocalizedLink>
             {item.variantTitle !== "" && <p className="mt-1 text-xs text-muted-foreground">{item.variantTitle}</p>}
+            {isUnavailable && (
+              <p className="mt-2 text-xs text-destructive">
+                {availabilityIssue.available <= ZERO_AVAILABLE
+                  ? t("availability.itemUnavailable")
+                  : t("availability.itemLimited", { available: availabilityIssue.available })}
+              </p>
+            )}
           </div>
           <Button
             aria-label={t("removeItem")}
@@ -100,6 +113,7 @@ export function CartItemCard({ item }: Readonly<CartItemCardProps>): JSX.Element
             <Button
               aria-label={t("increaseQty")}
               className="size-9 rounded-none text-muted-foreground hover:bg-secondary hover:text-foreground"
+              disabled={!canIncrease}
               onClick={handleIncrease}
               type="button"
               variant="ghost"

@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 
@@ -9,6 +9,11 @@ const EMPTY_COUNT = 0;
 interface ReleaseInventoryItem {
   inventoryId: string;
   qty: number;
+}
+
+interface ReleaseInventoryVariantLine {
+  qty: number;
+  variantId: string;
 }
 
 interface ReserveInventoryInput {
@@ -61,7 +66,48 @@ async function releaseInventoryForItems(items: ReleaseInventoryItem[]): Promise<
   await Promise.all(items.map((item) => releaseInventoryStmt.execute({ inventoryId: item.inventoryId, qty: item.qty })));
 }
 
+const releaseInventoryByVariantStmt = db
+  .update(inventory)
+  .set({
+    quantityAvailable: sql`${inventory.quantityAvailable} + ${sql.placeholder("qty")}`,
+    quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${sql.placeholder("qty")})`,
+    version: sql`${inventory.version} + 1`
+  })
+  .where(eq(inventory.variantId, sql.placeholder("variantId")))
+  .prepare();
+
+async function releaseInventoryByVariantLines(lines: ReleaseInventoryVariantLine[]): Promise<void> {
+  if (lines.length === EMPTY_COUNT) {
+    return;
+  }
+
+  await Promise.all(lines.map((line) => releaseInventoryByVariantStmt.execute({ qty: line.qty, variantId: line.variantId })));
+}
+
+function getInventoryByVariantId(variantId: string) {
+  return db.query.inventory.findFirst({ where: eq(inventory.variantId, variantId) });
+}
+
+async function getAvailabilityByVariantIds(variantIds: readonly string[]): Promise<Map<string, number>> {
+  if (variantIds.length === EMPTY_COUNT) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select({
+      quantityAvailable: inventory.quantityAvailable,
+      variantId: inventory.variantId
+    })
+    .from(inventory)
+    .where(inArray(inventory.variantId, [...variantIds]));
+
+  return new Map(rows.map((row) => [row.variantId, row.quantityAvailable]));
+}
+
 export const inventoryAccessors = {
+  getAvailabilityByVariantIds,
+  getInventoryByVariantId,
+  releaseInventoryByVariantLines,
   releaseInventoryForItems,
   reserveInventory
 };

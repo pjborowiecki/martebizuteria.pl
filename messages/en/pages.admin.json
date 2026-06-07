@@ -373,6 +373,7 @@
       "email_sent": "Email sent",
       "email_failed": "Email failed",
       "email_deferred": "Email deferred",
+      "order_cancelled": "Order cancelled",
       "order_shipped": "Order shipped",
       "order_placed": "Order placed",
       "order_payment_captured": "Payment captured",
@@ -460,43 +461,67 @@
     "description": "Manage and track customer orders.",
     "actions": {
       "export": "Export",
-      "newOrder": "New Order"
+      "newOrder": "New Order",
+      "refresh": "Refresh orders"
     },
     "stats": {
       "totalOrders": {
-        "label": "Total Orders",
-        "value": "1,284"
+        "label": "Total Orders"
       },
       "pending": {
-        "label": "Pending",
-        "value": "23"
+        "label": "Pending"
       },
-      "revenue": {
-        "label": "Revenue",
-        "value": "$142,850"
+      "revenueMinorUnits": {
+        "label": "Revenue"
       },
-      "avgValue": {
-        "label": "Avg. Value",
-        "value": "$2,845"
-      },
-      "vsPrevious": "vs. previous period"
+      "avgValueMinorUnits": {
+        "label": "Avg. Value"
+      }
     },
-    "tabs": {
-      "all": "All",
-      "pending": "Pending",
-      "unfulfilled": "Unfulfilled",
-      "shipped": "Shipped",
-      "delivered": "Delivered"
+    "filter": {
+      "allPayments": "All payments",
+      "allFulfillment": "All fulfillment",
+      "allStatuses": "All statuses",
+      "payment": "Filter by payment",
+      "fulfillment": "Filter by fulfillment",
+      "status": "Filter by status",
+      "total": "Filter by total",
+      "createdAt": "Filter by date",
+      "date": {
+        "apply": "Apply",
+        "clear": "Clear",
+        "clearDate": "Clear date",
+        "date": "Date",
+        "endDate": "To",
+        "operator": "Condition",
+        "operatorAfter": "After",
+        "operatorBefore": "Before",
+        "operatorBetween": "Date range",
+        "operatorOn": "On",
+        "placeholder": "Pick a date",
+        "startDate": "From",
+        "today": "Today"
+      }
     },
     "searchPlaceholder": "Search orders…",
     "columns": {
       "order": "Order",
       "customer": "Customer",
+      "email": "Email",
       "date": "Date",
       "items": "Items",
       "total": "Total",
       "payment": "Payment",
-      "fulfillment": "Fulfillment"
+      "fulfillment": "Fulfillment",
+      "status": "Status",
+      "actions": "Row actions"
+    },
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
     },
     "payment": {
       "paid": "Paid",
@@ -520,11 +545,29 @@
     "rowActions": {
       "viewOrder": "View order",
       "copyId": "Copy #{id}",
+      "copySuccess": "Order ID copied",
+      "copyError": "Could not copy order ID",
       "fulfill": "Fulfill order",
       "markShipped": "Mark as shipped",
       "printInvoice": "Print invoice",
       "refund": "Refund",
-      "cancel": "Cancel order"
+      "cancel": "Cancel order",
+      "cancelDialog": {
+        "title": "Cancel order?",
+        "description": "Order #{id} will be cancelled. This action cannot be undone.",
+        "cancel": "Keep order",
+        "confirm": "Cancel order"
+      },
+      "toast": {
+        "successTitle": "Order updated",
+        "fulfillSuccessDescription": "Fulfillment started for this order.",
+        "shipSuccessDescription": "Order marked as shipped.",
+        "cancelSuccessDescription": "Order cancelled.",
+        "errorTitle": "Could not update order",
+        "errorDescription": "Please try again in a moment.",
+        "notFoundDescription": "This order no longer exists.",
+        "invalidStateDescription": "This action is not available for the order's current state."
+      }
     }
   },
   "orderDetail": {

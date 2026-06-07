@@ -15,7 +15,11 @@ import {
 } from "~/src/components/custom/pages/admin/admin-layout.styles";
 import type { CustomerStatCardConfig, CustomerStatKey } from "~/src/components/custom/pages/admin/customers/customers-stats.config";
 
-import { DEFAULT_ADMIN_CUSTOMER_CURRENCY, type AdminCustomerStatFilter } from "~/src/modules/user/user.constants";
+import {
+  ADMIN_CUSTOMER_STAT_FILTER,
+  DEFAULT_ADMIN_CUSTOMER_CURRENCY,
+  type AdminCustomerStatFilter
+} from "~/src/modules/user/user.constants";
 
 const STAT_LABEL_CLASS = "text-[13px] leading-5 text-muted-foreground";
 const STAT_VALUE_CLASS = "text-3xl leading-9 font-semibold tracking-tight tabular-nums";
@@ -56,16 +60,32 @@ export function CustomerStatCard({
 }: Readonly<CustomerStatCardProps>): JSX.Element {
   const t = useTranslations("pages.admin.customers");
   const { filter, gradient, icon: Icon, key } = config;
-  const isFilterable = onFilter !== undefined && filter !== undefined;
-  const isActive = filter !== undefined && activeFilter === filter;
+  const isTotalCard = key === "total";
+  const isFilterable = onFilter !== undefined && (isTotalCard || filter !== undefined);
+
+  let isActive = false;
+  if (isTotalCard) {
+    isActive = activeFilter === undefined || activeFilter === ADMIN_CUSTOMER_STAT_FILTER.TOTAL;
+  } else if (filter !== undefined) {
+    isActive = activeFilter === filter;
+  }
 
   const handleFilterClick = useCallback(() => {
-    if (onFilter === undefined || valuesPending || filter === undefined) {
+    if (onFilter === undefined || valuesPending) {
+      return;
+    }
+
+    if (isTotalCard) {
+      onFilter();
+      return;
+    }
+
+    if (filter === undefined) {
       return;
     }
 
     onFilter(isActive ? undefined : filter);
-  }, [filter, isActive, onFilter, valuesPending]);
+  }, [filter, isActive, isTotalCard, onFilter, valuesPending]);
 
   const cardClassName = cn(
     "h-full gap-0 py-0",

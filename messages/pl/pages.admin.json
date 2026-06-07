@@ -373,6 +373,7 @@
       "email_sent": "E-mail wysłany",
       "email_failed": "E-mail nieudany",
       "email_deferred": "E-mail odroczony",
+      "order_cancelled": "Zamówienie anulowane",
       "order_shipped": "Zamówienie wysłane",
       "order_placed": "Zamówienie złożone",
       "order_payment_captured": "Płatność pobrana",
@@ -460,43 +461,67 @@
     "description": "Zarządzaj i śledź zamówienia klientów.",
     "actions": {
       "export": "Eksportuj",
-      "newOrder": "Nowe zamówienie"
+      "newOrder": "Nowe zamówienie",
+      "refresh": "Odśwież zamówienia"
     },
     "stats": {
       "totalOrders": {
-        "label": "Zamówienia ogółem",
-        "value": "1 284"
+        "label": "Zamówienia ogółem"
       },
       "pending": {
-        "label": "Oczekujące",
-        "value": "23"
+        "label": "Oczekujące"
       },
-      "revenue": {
-        "label": "Przychód",
-        "value": "142 850 $"
+      "revenueMinorUnits": {
+        "label": "Przychód"
       },
-      "avgValue": {
-        "label": "Średnia wartość",
-        "value": "2 845 $"
-      },
-      "vsPrevious": "vs. poprzedni okres"
+      "avgValueMinorUnits": {
+        "label": "Średnia wartość"
+      }
     },
-    "tabs": {
-      "all": "Wszystkie",
-      "pending": "Oczekujące",
-      "unfulfilled": "Niezrealizowane",
-      "shipped": "Wysłane",
-      "delivered": "Dostarczone"
+    "filter": {
+      "allPayments": "Wszystkie płatności",
+      "allFulfillment": "Wszystkie realizacje",
+      "allStatuses": "Wszystkie statusy",
+      "payment": "Filtruj wg płatności",
+      "fulfillment": "Filtruj wg realizacji",
+      "status": "Filtruj wg statusu",
+      "total": "Filtruj wg sumy",
+      "createdAt": "Filtruj wg daty",
+      "date": {
+        "apply": "Zastosuj",
+        "clear": "Wyczyść",
+        "clearDate": "Wyczyść datę",
+        "date": "Data",
+        "endDate": "Do",
+        "operator": "Warunek",
+        "operatorAfter": "Po",
+        "operatorBefore": "Przed",
+        "operatorBetween": "Zakres dat",
+        "operatorOn": "Dokładnie",
+        "placeholder": "Wybierz datę",
+        "startDate": "Od",
+        "today": "Dziś"
+      }
     },
     "searchPlaceholder": "Szukaj zamówień…",
     "columns": {
       "order": "Zamówienie",
       "customer": "Klient",
+      "email": "E-mail",
       "date": "Data",
       "items": "Produkty",
       "total": "Suma",
       "payment": "Płatność",
-      "fulfillment": "Realizacja"
+      "fulfillment": "Realizacja",
+      "status": "Status",
+      "actions": "Akcje wiersza"
+    },
+    "status": {
+      "pending": "Oczekujące",
+      "processing": "W realizacji",
+      "completed": "Zrealizowane",
+      "cancelled": "Anulowane",
+      "refunded": "Zwrócone"
     },
     "payment": {
       "paid": "Opłacone",
@@ -520,11 +545,29 @@
     "rowActions": {
       "viewOrder": "Zobacz zamówienie",
       "copyId": "Kopiuj #{id}",
+      "copySuccess": "Skopiowano ID zamówienia",
+      "copyError": "Nie udało się skopiować ID zamówienia",
       "fulfill": "Realizuj zamówienie",
       "markShipped": "Oznacz jako wysłane",
       "printInvoice": "Drukuj fakturę",
       "refund": "Zwrot",
-      "cancel": "Anuluj zamówienie"
+      "cancel": "Anuluj zamówienie",
+      "cancelDialog": {
+        "title": "Anulować zamówienie?",
+        "description": "Zamówienie #{id} zostanie anulowane. Tej operacji nie można cofnąć.",
+        "cancel": "Zostaw zamówienie",
+        "confirm": "Anuluj zamówienie"
+      },
+      "toast": {
+        "successTitle": "Zaktualizowano zamówienie",
+        "fulfillSuccessDescription": "Rozpoczęto realizację zamówienia.",
+        "shipSuccessDescription": "Zamówienie oznaczono jako wysłane.",
+        "cancelSuccessDescription": "Zamówienie anulowane.",
+        "errorTitle": "Nie udało się zaktualizować zamówienia",
+        "errorDescription": "Spróbuj ponownie za chwilę.",
+        "notFoundDescription": "To zamówienie już nie istnieje.",
+        "invalidStateDescription": "Ta akcja nie jest dostępna w bieżącym stanie zamówienia."
+      }
     }
   },
   "orderDetail": {

@@ -8,11 +8,12 @@ import { Button } from "~/src/components/shadcn/button";
 const MIN_QUANTITY = 1;
 
 export interface QuantityPickerProps {
+  readonly maxQuantity?: number;
   readonly quantity: number;
   readonly setQuantity: (quantity: number | ((prev: number) => number)) => void;
 }
 
-export function QuantityPicker({ quantity, setQuantity }: QuantityPickerProps): JSX.Element {
+export function QuantityPicker({ maxQuantity, quantity, setQuantity }: QuantityPickerProps): JSX.Element {
   const t = useTranslations("pages.product.heroSection");
 
   const handleDecrease = useCallback(() => {
@@ -20,8 +21,15 @@ export function QuantityPicker({ quantity, setQuantity }: QuantityPickerProps): 
   }, [setQuantity]);
 
   const handleIncrease = useCallback(() => {
-    setQuantity((q) => q + MIN_QUANTITY);
-  }, [setQuantity]);
+    setQuantity((q) => {
+      const next = q + MIN_QUANTITY;
+      if (maxQuantity === undefined) {
+        return next;
+      }
+
+      return Math.min(next, maxQuantity);
+    });
+  }, [maxQuantity, setQuantity]);
 
   return (
     <div className="flex items-center gap-4">
@@ -40,6 +48,7 @@ export function QuantityPicker({ quantity, setQuantity }: QuantityPickerProps): 
         <Button
           aria-label={t("increaseQuantity")}
           className="size-14 rounded-none hover:bg-secondary"
+          disabled={maxQuantity !== undefined && quantity >= maxQuantity}
           onClick={handleIncrease}
           type="button"
           variant="ghost"

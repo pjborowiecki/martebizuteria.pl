@@ -43,7 +43,7 @@ export function EmailBodyText({ children, className = "" }: Readonly<EmailBodyTe
 }
 
 export const EMAIL_CTA_BUTTON_CLASS =
-  "bg-ink rounded-none px-[44px] py-[17px] text-center text-[11px] leading-[11px] font-semibold tracking-[0.2em] text-white uppercase no-underline box-border";
+  "bg-ink rounded-none px-[32px] py-[15px] text-center text-[11px] leading-[11px] font-semibold tracking-[0.2em] text-white uppercase no-underline box-border";
 
 export const EMAIL_CTA_SECTION_CLASS = "mb-[28px] text-center";
 

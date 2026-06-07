@@ -18,7 +18,10 @@ import { stripe } from "~/src/integrations/stripe/stripe.server";
 import { formatMinorUnitsAsDecimal } from "~/src/lib/_utils/currency";
 import { sendEmail } from "~/src/lib/_utils/email";
 import { isValidLocale } from "~/src/lib/_utils/locale";
-import { scheduleAdminOrdersInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server";
+import {
+  scheduleAdminOrdersInvalidation,
+  scheduleProductCatalogInvalidation
+} from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server";
 
 import {
   recordEmailFailedAudit,
@@ -30,6 +33,11 @@ import {
   recordOrderPlacedAudit,
   recordOrderReleasedAudit
 } from "~/src/modules/audit-log/audit-log.events.server";
+import {
+  checkoutFulfillmentLinesSchema,
+  checkoutReleaseLinesSchema,
+  type CheckoutFulfillmentLine
+} from "~/src/modules/checkout/checkout-metadata.zod";
 import { checkoutAccessors } from "~/src/modules/checkout/checkout.accessors";
 import { checkoutMutations } from "~/src/modules/checkout/checkout.mutations";
 import { orderMutations } from "~/src/modules/order/order.mutations";
@@ -66,20 +74,6 @@ async function resolveTransactionId(paymentIntent: string | { id: string } | nul
 }
 
 const FULFILLABLE_PAYMENT_STATUSES = new Set<StripeType.Checkout.Session["payment_status"]>(["no_payment_required", "paid"]);
-
-const fulfillmentItemsSchema = z.array(
-  z.object({
-    handle: z.string().optional(),
-    imageUrl: z.string().optional(),
-    price: z.number(),
-    qty: z.number(),
-    title: z.string(),
-    variantId: z.string()
-  })
-);
-const releaseItemsSchema = z.array(z.object({ qty: z.number(), variantId: z.string() }).loose());
-
-type FulfillmentLines = z.infer<typeof fulfillmentItemsSchema>;
 
 function parseMetadataItems(session: StripeType.Checkout.Session): string {
   return session.metadata?.items ?? "[]";
@@ -121,7 +115,7 @@ function recordOrderConfirmationEmailOutcome(
 
 async function buildOrderConfirmationEmailPayload(
   session: StripeType.Checkout.Session,
-  order: Readonly<{ currency: string; lines: FulfillmentLines; orderId: string }>
+  order: Readonly<{ currency: string; lines: CheckoutFulfillmentLine[]; orderId: string }>
 ): Promise<OrderConfirmationEmailPayload | undefined> {
   const email = session.customer_email ?? session.customer_details?.email;
   if (email === null || email === undefined || email === "") {
@@ -178,7 +172,7 @@ async function buildOrderConfirmationEmailPayload(
 /** Emails the buyer their order confirmation. Best-effort: a failed send is logged, never thrown. */
 async function notifyOrderConfirmed(
   session: StripeType.Checkout.Session,
-  order: Readonly<{ currency: string; lines: FulfillmentLines; orderId: string }>
+  order: Readonly<{ currency: string; lines: CheckoutFulfillmentLine[]; orderId: string }>
 ): Promise<void> {
   const payload = await buildOrderConfirmationEmailPayload(session, order);
   if (payload === undefined) {
@@ -203,12 +197,14 @@ async function handleFulfillCheckoutSession(session: StripeType.Checkout.Session
     return;
   }
 
-  const lines = fulfillmentItemsSchema.parse(JSON.parse(parseMetadataItems(session)));
+  const lines = checkoutFulfillmentLinesSchema.parse(JSON.parse(parseMetadataItems(session)));
   const currency = (session.currency ?? CONSTANTS.STRIPE_CURRENCY).toUpperCase();
+  const locale = resolveLocale(session);
   const orderId = await checkoutMutations.fulfillCheckout({
     amount: session.amount_total ?? NO_AMOUNT,
     currency,
     lines,
+    locale,
     transactionId: session.id
   });
 
@@ -219,8 +215,6 @@ async function handleFulfillCheckoutSession(session: StripeType.Checkout.Session
   }
   console.info(`Checkout converted to Order ${orderId} from session ${session.id}.`);
 
-  const locale = resolveLocale(session);
-
   recordOrderPlacedAudit(orderId, {
     detail: session.customer_email ?? session.customer_details?.email ?? undefined,
     resourceId: orderId
@@ -230,14 +224,16 @@ async function handleFulfillCheckoutSession(session: StripeType.Checkout.Session
     resourceId: orderId
   });
   scheduleAdminOrdersInvalidation();
+  scheduleProductCatalogInvalidation();
 
   await notifyOrderConfirmed(session, { currency, lines, orderId });
 }
 
 async function handleReleaseCheckoutSession(session: StripeType.Checkout.Session): Promise<void> {
-  const lines = releaseItemsSchema.parse(JSON.parse(parseMetadataItems(session)));
+  const lines = checkoutReleaseLinesSchema.parse(JSON.parse(parseMetadataItems(session)));
   await checkoutMutations.releaseCheckout({ lines, transactionId: session.id });
   recordOrderReleasedAudit(session.id, { resourceId: session.id });
+  scheduleProductCatalogInvalidation();
   console.info(`Checkout released after failed/expired session ${session.id}.`);
 }
 
@@ -269,6 +265,7 @@ async function handleChargeRefunded(charge: StripeType.Charge): Promise<void> {
     transactionId
   });
   scheduleAdminOrdersInvalidation();
+  scheduleProductCatalogInvalidation();
   console.info(`Recorded refund of ${charge.amount_refunded} for charge ${charge.id}.`);
 }
 

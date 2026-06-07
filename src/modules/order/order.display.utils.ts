@@ -1,15 +1,16 @@
 import { z } from "zod";
 
+import { CONSTANTS } from "~/src/constants";
 import { DEFAULT_LOCALE } from "~/src/constants/_constants/locales";
+import type { Locale } from "~/src/constants/types";
 
-import { formatPrice } from "~/src/lib/_utils/currency";
+import { isValidLocale } from "~/src/lib/_utils/locale";
 
 import { ADMIN_ORDER_FULFILLMENT_UI_KEY, ADMIN_ORDER_PAYMENT_UI_KEY } from "~/src/modules/order/order.constants";
 import type { Order } from "~/src/modules/order/order.types";
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils";
 
 const ZERO_ITEMS = 0;
-const GUEST_CUSTOMER_ID = "";
 
 export interface DisputeMetadata {
   amount: number;
@@ -30,6 +31,11 @@ export function parseOrderMetadata(raw: string | null | undefined): Record<strin
   } catch {
     return {};
   }
+}
+
+export function resolveOrderLocale(metadata: string | null | undefined): Locale {
+  const rawLocale = parseOrderMetadata(metadata).locale;
+  return typeof rawLocale === "string" && isValidLocale(rawLocale) ? rawLocale : CONSTANTS.DEFAULT_LOCALE;
 }
 
 export function mergeDisputeMetadata(currentMetadata: string | null | undefined, dispute: DisputeMetadata): string {
@@ -77,9 +83,9 @@ export function resolveAdminOrderFulfillmentUiKey(
   return ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED;
 }
 
-export function formatAdminOrderDate(createdAt: Date | string): string {
+export function formatAdminOrderDate(createdAt: Date | string, locale: string = DEFAULT_LOCALE): string {
   const date = createdAt instanceof Date ? createdAt : new Date(createdAt);
-  return date.toLocaleDateString(DEFAULT_LOCALE, { day: "numeric", month: "short", year: "numeric" });
+  return date.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
 }
 
 interface AdminOrderListSourceRow {
@@ -98,18 +104,20 @@ interface AdminOrderListSourceRow {
 
 export function toAdminOrderListItem(row: AdminOrderListSourceRow): Order["adminListItem"] {
   const customerName = row.customerName ?? row.email;
-  const customerId = row.userId ?? GUEST_CUSTOMER_ID;
 
   return {
-    customer: customerName,
-    customerId,
-    date: formatAdminOrderDate(row.createdAt),
+    createdAt: row.createdAt,
+    currencyCode: row.currencyCode,
+    customerName,
     email: row.email,
-    fulfillment: resolveAdminOrderFulfillmentUiKey(row.status, row.fulfillmentStatus),
+    fulfillmentStatus: row.fulfillmentStatus,
+    fulfillmentUiKey: resolveAdminOrderFulfillmentUiKey(row.status, row.fulfillmentStatus),
     id: row.id,
     initials: resolveAdminCustomerInitials(customerName),
-    items: row.itemCount ?? ZERO_ITEMS,
-    payment: resolveAdminOrderPaymentUiKey(row.paymentStatus),
-    total: formatPrice(row.total, row.currencyCode, DEFAULT_LOCALE)
+    itemCount: row.itemCount ?? ZERO_ITEMS,
+    paymentUiKey: resolveAdminOrderPaymentUiKey(row.paymentStatus),
+    status: row.status,
+    totalMinorUnits: row.total,
+    userId: row.userId
   };
 }
