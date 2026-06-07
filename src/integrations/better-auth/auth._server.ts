@@ -18,7 +18,6 @@ import { scheduleAdminCustomersInvalidation } from "~/src/lib/realtime-invalidat
 
 import {
   recordAuthLoginAudit,
-  recordAuthLogoutAudit,
   recordCustomerRegisteredAudit,
   resolveAuthAuditActor
 } from "~/src/modules/audit-log/audit-log.events.server";
@@ -69,22 +68,6 @@ export const auth = betterAuth({
 
           recordAuthLoginAudit(resolveAuthAuditActor(sessionUser), {
             ip: createdSession.ipAddress ?? undefined,
-            resourceId: sessionUser.id
-          });
-          await Promise.resolve();
-        }
-      },
-      delete: {
-        after: async (deletedSession) => {
-          const sessionUser = await db.query.user.findFirst({
-            where: eq(userTable.id, deletedSession.userId)
-          });
-          if (sessionUser === undefined) {
-            return;
-          }
-
-          recordAuthLogoutAudit(resolveAuthAuditActor(sessionUser), {
-            ip: deletedSession.ipAddress ?? undefined,
             resourceId: sessionUser.id
           });
           await Promise.resolve();

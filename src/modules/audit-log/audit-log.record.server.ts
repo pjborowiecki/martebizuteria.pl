@@ -13,6 +13,7 @@ import { serializeAuditMetadata } from "~/src/modules/audit-log/audit-log.utils"
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils";
 
 export interface AuditLogActorInput {
+  readonly email?: string;
   readonly id?: string;
   readonly name: string;
   readonly role: AuditLogActorRole;
@@ -67,6 +68,7 @@ export async function resolveRequestAuditActor(): Promise<AuditLogActorInput | u
   }
 
   return {
+    email: user.email,
     id: user.id,
     name: user.name,
     role

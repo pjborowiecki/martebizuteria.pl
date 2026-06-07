@@ -11,7 +11,7 @@ import { CONSTANTS } from "~/src/constants";
 
 import { signIn } from "~/src/integrations/better-auth/auth._client";
 import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.errors";
-import { hasAdminAccess } from "~/src/integrations/better-auth/auth.permissions";
+import { postAuthRouteFor } from "~/src/integrations/better-auth/auth.guards";
 import { type SignInFormValues, signInWithPasswordSchema } from "~/src/integrations/better-auth/auth.schemas";
 
 import { Button } from "~/src/components/shadcn/button";
@@ -47,10 +47,9 @@ export function SignInWithPasswordForm(): JSX.Element {
               description: t("pages.auth.toast.signInDescription")
             });
             const session = await sessionQueries.getSessionFn();
-            const to = hasAdminAccess(session?.user.role)
-              ? `/{-$locale}${CONSTANTS.ROUTES.ADMIN_OVERVIEW}`
-              : `/{-$locale}${CONSTANTS.ROUTES.ACCOUNT_OVERVIEW}`;
-            void navigate({ to });
+            if (session?.user) {
+              void navigate({ to: postAuthRouteFor(session.user) });
+            }
           }
         },
         password: data.password

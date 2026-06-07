@@ -190,7 +190,8 @@
   "user": {
     "name": "Jane Doe",
     "role": "Administrator",
-    "initials": "JD"
+    "initials": "JD",
+    "signOut": "Wyloguj się"
   },
   "dashboard": {
     "title": "Podsumowanie",
@@ -266,7 +267,8 @@
       "totalEvents": "Wszystkie zdarzenia",
       "today": "Dzisiaj",
       "warnings": "Ostrzeżenia",
-      "errors": "Błędy"
+      "errors": "Błędy",
+      "shareCaption": "{percent}% wszystkich"
     },
     "categories": {
       "all": "Wszystko",
@@ -296,12 +298,61 @@
     "columns": {
       "status": "Status",
       "event": "Zdarzenie",
-      "target": "Cel",
+      "target": "Podmiot",
       "detail": "Szczegóły",
       "category": "Kategoria",
       "actor": "Użytkownik",
       "timestamp": "Data i czas",
-      "ip": "IP"
+      "ip": "IP",
+      "actions": "Akcje wiersza"
+    },
+    "rowActions": {
+      "delete": "Usuń wpis",
+      "deleteTitle": "Usunąć wpis dziennika?",
+      "deleteDescription": "Spowoduje to trwałe usunięcie zdarzenia „{event}”. Tej operacji nie można cofnąć.",
+      "cancel": "Anuluj",
+      "confirm": "Usuń"
+    },
+    "filter": {
+      "category": "Filtruj wg kategorii",
+      "severity": "Filtruj wg statusu",
+      "dateRange": "Filtruj wg okresu",
+      "allCategories": "Wszystkie kategorie",
+      "allSeverities": "Wszystkie statusy",
+      "date": {
+        "apply": "Zastosuj",
+        "clear": "Wyczyść",
+        "clearDate": "Wyczyść datę",
+        "date": "Data",
+        "endDate": "Do",
+        "operator": "Warunek",
+        "operatorAfter": "Po",
+        "operatorBefore": "Przed",
+        "operatorBetween": "Zakres dat",
+        "operatorOn": "Dokładnie",
+        "placeholder": "Wybierz datę",
+        "startDate": "Od",
+        "startTime": "Od (godzina)",
+        "endTime": "Do (godzina)",
+        "time": "Godzina",
+        "timePlaceholder": "Wybierz godzinę",
+        "today": "Dziś"
+      }
+    },
+    "toolbar": {
+      "refresh": "Odśwież dane tabeli"
+    },
+    "bulk": {
+      "selected": "Zaznaczono: {count}",
+      "delete": "Usuń ({count})",
+      "confirmTitle": "Usunąć wpisy dziennika?",
+      "confirmDescription": "Spowoduje to trwałe usunięcie {count} wpisów z dziennika zdarzeń. Tej operacji nie można cofnąć.",
+      "cancel": "Anuluj",
+      "confirm": "Usuń",
+      "deleteSuccessTitle": "Wpisy usunięte",
+      "deleteSuccessDescription": "Usunięto {count} wpisów z dziennika zdarzeń.",
+      "deleteErrorTitle": "Nie udało się usunąć wpisów",
+      "deleteErrorDescription": "Spróbuj ponownie za chwilę."
     },
     "actions": {
       "email_sent": "E-mail wysłany",
@@ -332,7 +383,11 @@
       "customer_tier_upgrade": "Awans poziomu",
       "customer_registered": "Klient zarejestrowany",
       "auth_login": "Logowanie",
-      "auth_login_failed": "Logowanie nieudane"
+      "auth_login_failed": "Logowanie nieudane",
+      "auth_logout": "Wylogowanie",
+      "customer_cart_abandoned": "Porzucony koszyk",
+      "customer_cart_item_added": "Dodano do koszyka",
+      "customer_page_viewed": "Odwiedzona strona"
     },
     "searchPlaceholder": "Szukaj zdarzeń…",
     "clearFilter": "Wyczyść",

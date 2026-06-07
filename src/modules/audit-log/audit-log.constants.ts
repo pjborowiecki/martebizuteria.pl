@@ -7,7 +7,7 @@ const AUDIT_LOG_RANGE_DAYS_30 = 30;
 
 const MILLISECONDS_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND;
 
-export const ADMIN_AUDIT_LOG_PAGE_SIZE = 25;
+export const ADMIN_AUDIT_LOG_PAGE_SIZE = 100;
 
 export const AUDIT_LOG_QUERY_STALE_MS = 30_000;
 
@@ -104,6 +104,7 @@ export const ACTOR_ROLE_COLORS: Record<AuditLogActorRole, string> = {
 
 export const AUDIT_LOG_TABLE_COLUMN_ID = {
   action: "action",
+  actions: "actions",
   actor: "actor",
   category: "category",
   detail: "detail",
@@ -112,5 +113,24 @@ export const AUDIT_LOG_TABLE_COLUMN_ID = {
   target: "target",
   timestamp: "timestamp"
 } as const;
+
+export const AUDIT_LOG_TABLE_COLUMN_SIZE = {
+  action: 180,
+  actions: 48,
+  actor: 150,
+  category: 110,
+  detail: 280,
+  ip: 110,
+  severity: 90,
+  target: 520,
+  targetMin: 200,
+  timestamp: 170,
+  timestampMax: 320
+} as const;
+
+export const AUDIT_LOG_TABLE_COLUMN_PINNING = {
+  left: ["select", AUDIT_LOG_TABLE_COLUMN_ID.severity, AUDIT_LOG_TABLE_COLUMN_ID.action],
+  right: [AUDIT_LOG_TABLE_COLUMN_ID.actions]
+};
 
 export const AUDIT_LOG_TABLE_DEFAULT_COLUMN_VISIBILITY = {} as const;

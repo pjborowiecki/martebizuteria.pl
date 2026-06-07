@@ -30,6 +30,7 @@ export const ROUTES = {
     REQUEST_PASSWORD_RESET: "/request-password-reset",
     RESET_PASSWORD: "/reset-password",
     SIGN_IN_EMAIL: "/sign-in/email",
+    SIGN_OUT: "/sign-out",
     SIGN_UP_EMAIL: "/sign-up/email"
   },
   API_REALTIME: {

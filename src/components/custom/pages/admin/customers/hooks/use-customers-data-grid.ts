@@ -99,14 +99,14 @@ export function useCustomersDataGrid({ onRowClick }: UseCustomersDataGridOptions
 
   const {
     data = EMPTY_CUSTOMERS_PAGE,
-    isPending,
-    isPlaceholderData
+    isFetching,
+    isPending
   } = useQuery({
     ...pageQueryOptions,
     placeholderData: keepPreviousData
   });
 
-  const showSkeletonRows = isPending && !isPlaceholderData;
+  const showSkeletonRows = isFetching || isPending;
   const columns = useCustomerColumns();
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns]);
   const pageCount = Math.ceil(data.total / pagination.pageSize);

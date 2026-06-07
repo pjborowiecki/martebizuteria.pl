@@ -15,6 +15,7 @@ export interface AdminAuditListItem {
   readonly detail: string | undefined;
   readonly id: string;
   readonly ip: string | undefined;
+  readonly resourceId: string | undefined;
   readonly severity: (typeof auditLog.$inferSelect)["severity"];
   readonly target: string;
   readonly timestamp: string;

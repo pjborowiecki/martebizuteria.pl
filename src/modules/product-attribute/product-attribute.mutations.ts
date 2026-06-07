@@ -9,8 +9,10 @@ import { attributeOnProductAccessors } from "~/src/modules/attribute-on-product/
 import {
   recordCatalogAttributeCreatedAudit,
   recordCatalogAttributeDeletedAudit,
-  recordCatalogAttributeUpdatedAudit
+  recordCatalogAttributeUpdatedAudit,
+  resolveAuthAuditActor
 } from "~/src/modules/audit-log/audit-log.events.server";
+import { resolveRequestAuditIp } from "~/src/modules/audit-log/audit-log.record.server";
 import { productAttributeAccessors } from "~/src/modules/product-attribute/product-attribute.accessors";
 import {
   PRODUCT_ATTRIBUTE_ERROR_CODES,
@@ -52,7 +54,7 @@ const createProductAttributeFn = createServerFn({ method: "POST" })
     });
 
     scheduleProductAttributeCatalogInvalidation();
-    recordCatalogAttributeCreatedAudit(data.handle);
+    recordCatalogAttributeCreatedAudit(data.handle, { resourceId: id });
 
     return { handle: data.handle, id };
   });
@@ -76,7 +78,7 @@ const updateProductAttributeFn = createServerFn({ method: "POST" })
     });
 
     scheduleProductAttributeCatalogInvalidation();
-    recordCatalogAttributeUpdatedAudit(data.handle);
+    recordCatalogAttributeUpdatedAudit(data.handle, { resourceId: data.id });
 
     return { handle: data.handle, id: data.id };
   });
@@ -84,17 +86,28 @@ const updateProductAttributeFn = createServerFn({ method: "POST" })
 const deleteProductAttributesFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => productAttributeZodSchemas.deleteInput.parse(data))
   .handler(async ({ data: ids }) => {
-    await assertAdmin();
+    const adminUser = await assertAdmin();
+    const auditActor = resolveAuthAuditActor(adminUser);
+    const auditIp = resolveRequestAuditIp();
 
     const usageCount = await attributeOnProductAccessors.countForAttributeIds(ids);
     if (usageCount > ZERO_COUNT) {
       throw new Error(PRODUCT_ATTRIBUTE_ERROR_CODES.IN_USE);
     }
 
+    const attributes = await productAttributeAccessors.getProductAttributesByIds(ids);
+
     await productAttributeAccessors.deleteProductAttributes(ids);
 
     scheduleProductAttributeCatalogInvalidation();
-    recordCatalogAttributeDeletedAudit(ids.join(", "));
+    for (const attribute of attributes) {
+      recordCatalogAttributeDeletedAudit(attribute.handle, {
+        actor: auditActor,
+        ip: auditIp,
+        metadata: { handle: attribute.handle },
+        resourceId: attribute.id
+      });
+    }
 
     return { deleted: ids.length, ok: true };
   });

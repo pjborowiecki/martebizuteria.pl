@@ -190,7 +190,8 @@
   "user": {
     "name": "Jane Doe",
     "role": "Administrator",
-    "initials": "JD"
+    "initials": "JD",
+    "signOut": "Sign out"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -266,7 +267,8 @@
       "totalEvents": "Total events",
       "today": "Today",
       "warnings": "Warnings",
-      "errors": "Errors"
+      "errors": "Errors",
+      "shareCaption": "{percent}% of total"
     },
     "categories": {
       "all": "All",
@@ -296,12 +298,61 @@
     "columns": {
       "status": "Status",
       "event": "Event",
-      "target": "Target",
+      "target": "Subject",
       "detail": "Detail",
       "category": "Category",
       "actor": "Actor",
       "timestamp": "Timestamp",
-      "ip": "IP"
+      "ip": "IP",
+      "actions": "Row actions"
+    },
+    "rowActions": {
+      "delete": "Delete entry",
+      "deleteTitle": "Delete audit log entry?",
+      "deleteDescription": "This will permanently delete the “{event}” event. This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "filter": {
+      "category": "Filter by category",
+      "severity": "Filter by status",
+      "dateRange": "Filter by date range",
+      "allCategories": "All categories",
+      "allSeverities": "All statuses",
+      "date": {
+        "apply": "Apply",
+        "clear": "Clear",
+        "clearDate": "Clear date",
+        "date": "Date",
+        "endDate": "To",
+        "operator": "Condition",
+        "operatorAfter": "After",
+        "operatorBefore": "Before",
+        "operatorBetween": "Date range",
+        "operatorOn": "At",
+        "placeholder": "Select date",
+        "startDate": "From",
+        "startTime": "From (time)",
+        "endTime": "To (time)",
+        "time": "Time",
+        "timePlaceholder": "Select time",
+        "today": "Today"
+      }
+    },
+    "toolbar": {
+      "refresh": "Refresh table data"
+    },
+    "bulk": {
+      "selected": "Selected: {count}",
+      "delete": "Delete ({count})",
+      "confirmTitle": "Delete audit log entries?",
+      "confirmDescription": "This will permanently delete {count} audit log entries. This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "deleteSuccessTitle": "Entries deleted",
+      "deleteSuccessDescription": "Deleted {count} audit log entries.",
+      "deleteErrorTitle": "Could not delete entries",
+      "deleteErrorDescription": "Please try again in a moment."
     },
     "actions": {
       "email_sent": "Email sent",
@@ -332,7 +383,11 @@
       "customer_tier_upgrade": "Tier upgrade",
       "customer_registered": "Customer registered",
       "auth_login": "Login",
-      "auth_login_failed": "Login failed"
+      "auth_login_failed": "Login failed",
+      "auth_logout": "Logout",
+      "customer_cart_abandoned": "Cart abandoned",
+      "customer_cart_item_added": "Added to cart",
+      "customer_page_viewed": "Page viewed"
     },
     "searchPlaceholder": "Search events…",
     "clearFilter": "Clear",

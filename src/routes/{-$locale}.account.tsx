@@ -5,7 +5,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
 
-import { requireUser } from "~/src/integrations/better-auth/auth.guards";
+import { requireCustomer } from "~/src/integrations/better-auth/auth.guards";
 import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
 
 import { isValidLocale } from "~/src/lib/utils";
@@ -19,7 +19,7 @@ interface AccountPageMeta {
 }
 
 export const Route = createFileRoute("/{-$locale}/account")({
-  beforeLoad: async () => ({ user: await requireUser() }),
+  beforeLoad: async () => ({ user: await requireCustomer() }),
   component: AccountLayout,
   head: ({ loaderData }: Readonly<{ loaderData?: Readonly<AccountPageMeta> }>) => ({
     meta: [
