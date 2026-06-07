@@ -47,7 +47,22 @@
         "estimatedDelivery": "Odbiór w pracowni po powiadomieniu"
       }
     },
-    "closingNote": "Wyślemy kolejną wiadomość, gdy tylko Twoje zamówienie zostanie zrealizowane. Jeśli masz pytania dotyczące zamówienia, odpowiedz na tę wiadomość — chętnie pomożemy.",
+    "closingNote": "Wyślemy kolejną wiadomość, gdy tylko Twoje zamówienie zostanie wysłane. Jeśli masz pytania dotyczące zamówienia, odpowiedz na tę wiadomość — chętnie pomożemy.",
+    "signoff": "Z serdecznymi pozdrowieniami,",
+    "sender": "Pracownia M'Arte",
+    "tagline": "Ręcznie tworzona biżuteria"
+  },
+  "orderShipped": {
+    "subject": "Twoje zamówienie zostało wysłane — M'Arte",
+    "preview": "Twoja paczka jest w drodze — dziękujemy za cierpliwość.",
+    "heading": "Zamówienie wysłane",
+    "message": "Z radością informujemy, że Twoje zamówienie opuściło naszą pracownię i jest już w drodze do Ciebie.",
+    "messageSecondary": "Poniżej znajdziesz najważniejsze informacje o dostawie.",
+    "orderLabel": "Numer zamówienia",
+    "deliveryMethodLabel": "Sposób dostawy",
+    "shippingAddressLabel": "Adres dostawy",
+    "estimatedDeliveryLabel": "Szacowany czas dostawy",
+    "closingNote": "Jeśli masz pytania dotyczące przesyłki, odpowiedz na tę wiadomość — chętnie pomożemy.",
     "signoff": "Z serdecznymi pozdrowieniami,",
     "sender": "Pracownia M'Arte",
     "tagline": "Ręcznie tworzona biżuteria"

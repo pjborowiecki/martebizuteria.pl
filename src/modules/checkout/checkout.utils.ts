@@ -36,6 +36,7 @@ export interface FulfillCheckoutInput {
   amount: number;
   currency: string;
   lines: FulfillmentLine[];
+  locale?: string;
   transactionId: string;
 }
 
@@ -134,7 +135,7 @@ export function prepareUpdateCheckoutDeliveryBatch(checkoutId: string, checkoutV
 
 export function prepareFulfillCheckoutBatch(
   context: PendingCheckout,
-  { amount, currency, lines, transactionId }: FulfillCheckoutInput,
+  { amount, currency, lines, locale, transactionId }: FulfillCheckoutInput,
   checkoutSnapshot?: {
     readonly customerNote?: string | null;
     readonly deliveryMethodId?: string | null;
@@ -181,6 +182,7 @@ export function prepareFulfillCheckoutBatch(
         email: context.email,
         id: orderId,
         lockerId: checkoutSnapshot?.lockerId,
+        metadata: locale === undefined || locale === "" ? undefined : JSON.stringify({ locale }),
         paymentId: context.paymentId,
         shippingTotal,
         status: "processing",

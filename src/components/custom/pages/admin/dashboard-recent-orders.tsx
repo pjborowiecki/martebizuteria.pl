@@ -1,9 +1,11 @@
 import type { JSX } from "react";
 
 import { ArrowRight } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
+
+import { formatPrice } from "~/src/lib/_utils/currency";
 
 import { Avatar, AvatarFallback } from "~/src/components/shadcn/avatar";
 import { Badge } from "~/src/components/shadcn/badge";
@@ -13,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { useAdminDashboardSnapshot } from "~/src/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot";
 
+import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils";
 import type { Order } from "~/src/modules/order/order.types";
 
 const EMPTY_ORDERS_LENGTH = 0;
@@ -72,6 +75,7 @@ export function DashboardRecentOrders(): JSX.Element {
 
 function RecentOrderRow({ order }: { readonly order: Order["adminListItem"] }): JSX.Element {
   const t = useTranslations("pages.admin");
+  const locale = useLocale();
 
   return (
     <TableRow className="hover:bg-transparent">
@@ -81,23 +85,25 @@ function RecentOrderRow({ order }: { readonly order: Order["adminListItem"] }): 
           <Avatar size="sm" className="rounded-md after:rounded-md">
             <AvatarFallback className="rounded-md bg-secondary text-[10px] font-medium">{order.initials}</AvatarFallback>
           </Avatar>
-          <span className="text-sm">{order.customer}</span>
+          <span className="text-sm">{order.customerName}</span>
         </div>
       </TableCell>
-      <TableCell className="text-sm text-muted-foreground">{order.date}</TableCell>
-      <TableCell className="text-right font-mono text-sm font-medium">{order.total}</TableCell>
+      <TableCell className="text-sm text-muted-foreground">{formatAdminOrderDate(order.createdAt, locale)}</TableCell>
+      <TableCell className="text-right font-mono text-sm font-medium">
+        {formatPrice(order.totalMinorUnits, order.currencyCode, locale)}
+      </TableCell>
       <TableCell>
         <Badge
-          variant={order.payment === "paid" ? "default" : "outline"}
-          className={order.payment === "paid" ? "bg-emerald-600 text-[11px]" : "text-[11px]"}
+          variant={order.paymentUiKey === "paid" ? "default" : "outline"}
+          className={order.paymentUiKey === "paid" ? "bg-emerald-600 text-[11px]" : "text-[11px]"}
         >
-          {t(`dashboard.recentOrders.status.${order.payment}`)}
+          {t(`dashboard.recentOrders.status.${order.paymentUiKey}`)}
         </Badge>
       </TableCell>
       <TableCell className="pr-6">
         <span className="flex items-center gap-2">
-          <span className={`size-2 rounded-full ${FULFILLMENT_COLORS[order.fulfillment] ?? "bg-muted-foreground/30"}`} />
-          <span className="text-sm text-muted-foreground capitalize">{t(`dashboard.recentOrders.status.${order.fulfillment}`)}</span>
+          <span className={`size-2 rounded-full ${FULFILLMENT_COLORS[order.fulfillmentUiKey] ?? "bg-muted-foreground/30"}`} />
+          <span className="text-sm text-muted-foreground capitalize">{t(`dashboard.recentOrders.status.${order.fulfillmentUiKey}`)}</span>
         </span>
       </TableCell>
     </TableRow>

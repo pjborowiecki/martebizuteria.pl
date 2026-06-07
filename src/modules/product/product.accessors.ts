@@ -31,6 +31,7 @@ import type { Product } from "~/src/modules/product/product.types";
 import type { ProductCatalogReplacePayload, ProductOrganizationReplacePayload } from "~/src/modules/product/product.utils";
 
 const EMPTY_LENGTH = 0;
+const ZERO_AVAILABLE_STOCK = 0;
 const RELATED_PRODUCTS_LIMIT = 3;
 
 const storefrontListVariantColumns = {
@@ -46,6 +47,20 @@ function requireSql(expression: SQL | undefined): SQL {
   }
 
   return expression;
+}
+
+function publishedProductHasAvailableStockCondition(): SQL {
+  return sql`(${totalStockSubquery()}) > ${ZERO_AVAILABLE_STOCK}`;
+}
+
+function publishedInStockWhere(...extraConditions: (SQL | undefined)[]): SQL {
+  const conditions = [
+    eq(product.status, PRODUCT_STATUS.PUBLISHED),
+    publishedProductHasAvailableStockCondition(),
+    ...extraConditions
+  ].filter((condition): condition is SQL => condition !== undefined);
+
+  return and(...conditions)!;
 }
 
 function sortProductsByIdOrder<T extends { id: string }>(items: readonly T[], orderedIds: readonly string[]): T[] {
@@ -155,14 +170,14 @@ const getProductsWithInventoryByHandles = (handles: readonly string[]) =>
     with: { variants: { with: { inventory: true } } }
   });
 
-const getPublishedProductsQuery = db.query.product
-  .findMany({
+function getPublishedProductsInStock() {
+  return db.query.product.findMany({
     limit: PRODUCT_STOREFRONT_LIST_LIMIT,
     orderBy: (products, { asc: ascOrder, desc: descOrder }) => [ascOrder(products.rank), descOrder(products.createdAt)],
-    where: eq(product.status, PRODUCT_STATUS.PUBLISHED),
+    where: publishedInStockWhere(),
     with: { variants: { columns: storefrontListVariantColumns } }
-  })
-  .prepare();
+  });
+}
 
 const getMaxRankQuery = db
   .select({ value: max(product.rank) })
@@ -246,7 +261,11 @@ const getPublishedProductByHandleQuery = db.query.product
       images: {
         orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)]
       },
-      variants: true
+      variants: {
+        with: {
+          inventory: true
+        }
+      }
     }
   })
   .prepare();
@@ -514,14 +533,14 @@ async function getAdminProductsFilteredList(params: AdminProductsExportListParam
   return rows;
 }
 
-type PublishedProductListRow = Awaited<ReturnType<(typeof getPublishedProductsQuery)["execute"]>>[number];
+type PublishedProductListRow = Awaited<ReturnType<typeof getPublishedProductsInStock>>[number];
 
 async function getPublishedProductsByCategoryIds(categoryIds: readonly string[], params: ListPaginationParams) {
   if (categoryIds.length === EMPTY_LENGTH) {
     return { items: [] as PublishedProductListRow[], total: EMPTY_LENGTH };
   }
 
-  const whereClause = and(eq(product.status, PRODUCT_STATUS.PUBLISHED), inArray(categoryOnProduct.categoryId, [...categoryIds]));
+  const whereClause = publishedInStockWhere(inArray(categoryOnProduct.categoryId, [...categoryIds]));
 
   const [countRow] = await db
     .select({ count: sql<number>`count(distinct ${product.id})` })
@@ -556,7 +575,7 @@ async function getPublishedProductsByCategoryIds(categoryIds: readonly string[],
 }
 
 async function getPublishedProductsByCollectionId(collectionId: string, params: ListPaginationParams) {
-  const whereClause = and(eq(product.status, PRODUCT_STATUS.PUBLISHED), eq(collectionOnProduct.collectionId, collectionId));
+  const whereClause = publishedInStockWhere(eq(collectionOnProduct.collectionId, collectionId));
 
   const [countRow] = await db
     .select({ count: sql<number>`count(distinct ${product.id})` })
@@ -597,8 +616,7 @@ function getPublishedRelatedProducts(categoryId: string, excludeProductId: strin
   return db.query.product.findMany({
     limit: RELATED_PRODUCTS_LIMIT,
     orderBy: (products, { asc: ascOrder, desc: descOrder }) => [ascOrder(products.rank), descOrder(products.createdAt)],
-    where: and(
-      eq(product.status, PRODUCT_STATUS.PUBLISHED),
+    where: publishedInStockWhere(
       ne(product.id, excludeProductId),
       inArray(
         product.id,
@@ -709,7 +727,7 @@ export const productAccessors = {
   getPublishedProductByHandleQuery,
   getPublishedProductsByCategoryIds,
   getPublishedProductsByCollectionId,
-  getPublishedProductsQuery,
+  getPublishedProductsInStock,
   getPublishedRelatedProducts,
   insertProduct,
   replaceProductCatalog,

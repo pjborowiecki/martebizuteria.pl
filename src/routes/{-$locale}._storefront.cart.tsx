@@ -17,6 +17,7 @@ import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { CartItemCard } from "~/src/components/custom/pages/cart-page/cart-item-card";
 import { CartSummary } from "~/src/components/custom/pages/cart-page/cart-summary";
 
+import { useCartAvailability } from "~/src/hooks/use-cart-availability";
 import { useCartStore } from "~/src/stores/cart.store";
 
 interface CartPageMeta {
@@ -60,6 +61,8 @@ const FULL_VIEWPORT_STYLE = { minHeight: "calc(100dvh - 5rem)" } as const;
 function CartPage(): JSX.Element {
   const t = useTranslations("pages.cart");
   const { items, cartTotal } = useCartStore();
+  const { hasUnavailableItems, isChecking } = useCartAvailability();
+  const checkoutDisabled = hasUnavailableItems || isChecking;
 
   const itemCount = items.reduce((sum, item) => sum + item.qty, INITIAL_COUNT);
   const tParams = useMemo(() => ({ count: itemCount }), [itemCount]);
@@ -108,7 +111,7 @@ function CartPage(): JSX.Element {
           </LocalizedLink>
         </div>
 
-        <CartSummary subtotal={subtotal} />
+        <CartSummary checkoutDisabled={checkoutDisabled} subtotal={subtotal} />
       </div>
     </main>
   );

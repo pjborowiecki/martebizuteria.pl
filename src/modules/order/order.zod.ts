@@ -8,6 +8,9 @@ const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSch
 });
 
 export const orderZodSchemas = {
+  adminOrderIdInput: z.object({
+    orderId: z.uuid()
+  }),
   insert: createInsertSchema(order),
   select: createSelectSchema(order),
   update: createUpdateSchema(order)

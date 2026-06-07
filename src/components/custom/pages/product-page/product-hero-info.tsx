@@ -13,6 +13,7 @@ import { Separator } from "~/src/components/shadcn/separator";
 import { QuantityPicker } from "~/src/components/custom/pages/product-page/quantity-picker";
 
 import { PRODUCT_DETAIL_KEYS } from "~/src/data/product-data";
+import { getVariantQuantityAvailable, isVariantPurchasable } from "~/src/modules/inventory/inventory.availability.utils";
 import {
   formatProductAttributeValueForDisplay,
   resolveProductAttributeTitle
@@ -39,6 +40,7 @@ interface DetailSection {
 
 export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element {
   const t = useTranslations("pages.product.heroSection");
+  const tProduct = useTranslations("pages.product");
   const format = useFormatter();
   const locale = useLocale();
   const [quantity, setQuantity] = useState(MIN_QUANTITY);
@@ -47,8 +49,17 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
 
   const selectedVariant = product.variants?.[FIRST_VARIANT_INDEX];
   const variantPrice = selectedVariant?.price;
+  const availableQuantity = getVariantQuantityAvailable(selectedVariant);
+  const isOutOfStock = availableQuantity < MIN_QUANTITY;
+  const canPurchase = isVariantPurchasable(selectedVariant, quantity);
   const price =
     variantPrice === undefined ? t("price") : format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" });
+
+  useEffect(() => {
+    if (quantity > availableQuantity && availableQuantity >= MIN_QUANTITY) {
+      setQuantity(availableQuantity);
+    }
+  }, [availableQuantity, quantity]);
 
   const detailSections = useMemo((): DetailSection[] => {
     const specByHandle = new Map(product.specifications.map((spec) => [spec.handle, spec]));
@@ -81,7 +92,7 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
   }, [locale, product.description, product.specifications, t]);
 
   const handleAddToCart = useCallback(() => {
-    if (selectedVariant === undefined || variantPrice === undefined) {
+    if (selectedVariant === undefined || variantPrice === undefined || !isVariantPurchasable(selectedVariant, quantity)) {
       return;
     }
 
@@ -145,17 +156,22 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
 
       <Separator className="bg-border" />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <QuantityPicker quantity={quantity} setQuantity={setQuantity} />
+      {isOutOfStock ? (
+        <p className="text-sm tracking-wide text-destructive">{tProduct("outOfStock")}</p>
+      ) : (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <QuantityPicker maxQuantity={availableQuantity} quantity={quantity} setQuantity={setQuantity} />
 
-        <Button
-          className="h-14 flex-1 bg-foreground px-8 text-[12px] tracking-[0.24em] text-background uppercase hover:bg-foreground/90"
-          onClick={handleAddToCart}
-          type="button"
-        >
-          {isAdded ? t("addedToCart", { fallback: "Dodano" }) : t("addToCart")}
-        </Button>
-      </div>
+          <Button
+            className="h-14 flex-1 bg-foreground px-8 text-[12px] tracking-[0.24em] text-background uppercase hover:bg-foreground/90"
+            disabled={!canPurchase}
+            onClick={handleAddToCart}
+            type="button"
+          >
+            {isAdded ? t("addedToCart", { fallback: "Dodano" }) : t("addToCart")}
+          </Button>
+        </div>
+      )}
 
       <Separator className="bg-border" />
 

@@ -87,9 +87,15 @@ const ADMIN_DASHBOARD_QUERY_KEYS = {
 } as const;
 
 /** Invalidate `CUSTOMERS` to refresh every admin customer list query; stats share the same prefix family. */
+const CART_QUERY_KEYS = {
+  AVAILABILITY: ["cart", "availability"] as const
+} as const;
+
 const ORDER_QUERY_KEYS = {
   ADMIN: {
-    PAGE: [...QUERY_KEY_ROOTS.ADMIN, "orders", "page"] as const
+    ORDERS: [...QUERY_KEY_ROOTS.ADMIN, "orders"] as const,
+    PAGE: [...QUERY_KEY_ROOTS.ADMIN, "orders", "page"] as const,
+    STATS: [...QUERY_KEY_ROOTS.ADMIN, "orders", "stats"] as const
   }
 } as const;
 
@@ -107,6 +113,7 @@ export const QUERY_KEYS = {
   ADMIN_DASHBOARD: ADMIN_DASHBOARD_QUERY_KEYS,
   ATTRIBUTE_ON_PRODUCT: ATTRIBUTE_ON_PRODUCT_QUERY_KEYS,
   AUDIT_LOG: AUDIT_LOG_QUERY_KEYS,
+  CART: CART_QUERY_KEYS,
   CATEGORY: CATEGORY_QUERY_KEYS,
   COLLECTION: COLLECTION_QUERY_KEYS,
   DELIVERY_METHOD: DELIVERY_METHOD_QUERY_KEYS,

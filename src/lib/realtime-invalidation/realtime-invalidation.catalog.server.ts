@@ -5,7 +5,12 @@ import { scheduleRealtimeInvalidation } from "~/src/lib/realtime-invalidation/re
 export function scheduleProductCatalogInvalidation(): void {
   scheduleRealtimeInvalidation({
     admin: [CONSTANTS.QUERY_KEYS.PRODUCT.ADMIN.ALL, CONSTANTS.QUERY_KEYS.PRODUCT.ADMIN.STATS],
-    storefront: [CONSTANTS.QUERY_KEYS.PRODUCT.ALL, CONSTANTS.QUERY_KEYS.PRODUCT.BY_HANDLE]
+    storefront: [
+      CONSTANTS.QUERY_KEYS.PRODUCT.ALL,
+      CONSTANTS.QUERY_KEYS.PRODUCT.BY_HANDLE,
+      CONSTANTS.QUERY_KEYS.PRODUCT.RELATED_BY_CATEGORY,
+      CONSTANTS.QUERY_KEYS.CART.AVAILABILITY
+    ]
   });
 }
 
@@ -37,6 +42,6 @@ export function scheduleAdminCustomersInvalidation(): void {
 
 export function scheduleAdminOrdersInvalidation(): void {
   scheduleRealtimeInvalidation({
-    admin: [CONSTANTS.QUERY_KEYS.ORDER.ADMIN.PAGE]
+    admin: [CONSTANTS.QUERY_KEYS.ORDER.ADMIN.ORDERS]
   });
 }

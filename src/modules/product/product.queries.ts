@@ -8,6 +8,7 @@ import type { DateColumnFilterValue, NumericColumnFilterValue } from "~/src/lib/
 import { normalizeAdminSearchTerm } from "~/src/lib/_utils/admin-search.server";
 import { buildListPaginationResult, LIST_PAGE_FIRST, listPaginationParamsFromPage } from "~/src/lib/_utils/list-pagination";
 
+import { isProductInStock } from "~/src/modules/inventory/inventory.availability.utils";
 import {
   productAccessors,
   type AdminProductsExportListParams,
@@ -102,7 +103,7 @@ async function getLowStockPublishedProductCount(): Promise<number> {
 }
 
 function getPublishedProducts() {
-  return productAccessors.getPublishedProductsQuery.execute();
+  return productAccessors.getPublishedProductsInStock();
 }
 
 async function getProductStats(): Promise<Product["stats"]> {
@@ -123,7 +124,7 @@ async function getProductStats(): Promise<Product["stats"]> {
 async function getPublishedProductByHandle(handle: string, locale: string = DEFAULT_LOCALE) {
   const prod = await productAccessors.getPublishedProductByHandleQuery.execute({ handle });
 
-  if (prod === undefined) {
+  if (prod === undefined || !isProductInStock(prod.variants)) {
     return false;
   }
 

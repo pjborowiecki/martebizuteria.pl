@@ -10,10 +10,11 @@ import { Separator } from "~/src/components/shadcn/separator";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
 export interface CartSummaryProps {
+  readonly checkoutDisabled?: boolean;
   readonly subtotal: string;
 }
 
-export function CartSummary({ subtotal }: Readonly<CartSummaryProps>): JSX.Element {
+export function CartSummary({ checkoutDisabled = false, subtotal }: Readonly<CartSummaryProps>): JSX.Element {
   const t = useTranslations("pages.cart");
 
   return (
@@ -40,12 +41,21 @@ export function CartSummary({ subtotal }: Readonly<CartSummaryProps>): JSX.Eleme
           <span className="font-medium">{subtotal}</span>
         </div>
 
-        <LocalizedLink
-          to={CONSTANTS.ROUTES.CHECKOUT}
-          className="flex h-13 w-full items-center justify-center bg-primary text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          {t("summary.checkout")}
-        </LocalizedLink>
+        {checkoutDisabled ? (
+          <span
+            aria-disabled="true"
+            className="flex h-13 w-full cursor-not-allowed items-center justify-center bg-primary/50 text-sm font-medium tracking-wide text-primary-foreground/80"
+          >
+            {t("summary.checkout")}
+          </span>
+        ) : (
+          <LocalizedLink
+            to={CONSTANTS.ROUTES.CHECKOUT}
+            className="flex h-13 w-full items-center justify-center bg-primary text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            {t("summary.checkout")}
+          </LocalizedLink>
+        )}
 
         <p className="text-center text-[11px] leading-relaxed text-muted-foreground/50">{t("summary.note")}</p>
       </div>

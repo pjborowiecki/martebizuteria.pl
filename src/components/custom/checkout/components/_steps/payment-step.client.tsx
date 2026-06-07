@@ -13,7 +13,12 @@ import { useLocale, useTranslations } from "use-intl";
 import { CONSTANTS } from "~/src/constants";
 
 import { getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance";
-import { confirmCheckoutSession, ensureCheckoutSession, resetCheckoutSession } from "~/src/integrations/stripe/stripe.checkout";
+import {
+  buildCheckoutLinesFingerprint,
+  confirmCheckoutSession,
+  ensureCheckoutSession,
+  resetCheckoutSession
+} from "~/src/integrations/stripe/stripe.checkout";
 import { getStripe } from "~/src/integrations/stripe/stripe.client";
 import { getCheckoutErrorKey } from "~/src/integrations/stripe/stripe.errors";
 
@@ -26,6 +31,7 @@ import { useCheckoutForm } from "~/src/components/custom/checkout/components/che
 import { CHECKOUT_STEP_ID } from "~/src/components/custom/checkout/lib/checkout-steps";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
+import { useCartAvailability } from "~/src/hooks/use-cart-availability";
 import type { CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod";
 import { deliveryMethodQueries } from "~/src/modules/delivery-method/delivery-method.queries";
 import { useCartStore } from "~/src/stores/cart.store";
@@ -107,7 +113,11 @@ function PaymentError({ onRetry }: Readonly<{ onRetry: () => void }>): JSX.Eleme
   );
 }
 
-function PaymentForm({ onReset, onRetry }: Readonly<{ onReset: () => Promise<void>; onRetry: () => void }>): JSX.Element {
+function PaymentForm({
+  checkoutBlocked,
+  onReset,
+  onRetry
+}: Readonly<{ checkoutBlocked: boolean; onReset: () => Promise<void>; onRetry: () => void }>): JSX.Element {
   const t = useTranslations("pages.checkout.checkoutForm");
   const navigate = useNavigate();
 
@@ -185,7 +195,7 @@ function PaymentForm({ onReset, onRetry }: Readonly<{ onReset: () => Promise<voi
         <Button
           size="lg"
           type="submit"
-          disabled={!isReady || isProcessing || checkout === undefined}
+          disabled={checkoutBlocked || !isReady || isProcessing || checkout === undefined}
           className="group min-h-13 w-full cursor-pointer rounded-none text-sm tracking-[0.2em] uppercase disabled:pointer-events-auto disabled:cursor-not-allowed"
         >
           {isProcessing ? t("processingPayment") : t("placeOrder")}
@@ -224,6 +234,7 @@ function useCheckoutSessionLoader(): CheckoutSessionLoader {
 
   const deliveryCost = deliveryMethods?.find((m) => m.id === deliveryMethodId)?.price ?? NO_COST;
   const amountCents = cartTotal() + deliveryCost;
+  const linesFingerprint = buildCheckoutLinesFingerprint(items);
   const inFlightRef = useRef(false);
 
   const retry = useCallback(() => {
@@ -265,7 +276,11 @@ function useCheckoutSessionLoader(): CheckoutSessionLoader {
       return;
     }
 
-    if (amountCents <= NO_COST || inFlightRef.current || checkoutSession?.amount === amountCents) {
+    if (
+      amountCents <= NO_COST ||
+      inFlightRef.current ||
+      (checkoutSession?.amount === amountCents && checkoutSession.linesFingerprint === linesFingerprint)
+    ) {
       return;
     }
 
@@ -289,7 +304,7 @@ function useCheckoutSessionLoader(): CheckoutSessionLoader {
     };
 
     void run();
-  }, [amountCents, isLoading, checkoutSession, items, getValues, onEdit, setCheckoutSession, t, retryToken]);
+  }, [amountCents, isLoading, checkoutSession, getValues, items, linesFingerprint, onEdit, setCheckoutSession, t, retryToken]);
 
   const options = useMemo<StripeCheckoutElementsSdkOptions | undefined>(() => {
     if (checkoutSession === undefined) {
@@ -310,6 +325,8 @@ function useCheckoutSessionLoader(): CheckoutSessionLoader {
 export function PaymentStep(): JSX.Element {
   const locale = useLocale();
   const t = useTranslations("pages.checkout.checkoutForm");
+  const { hasUnavailableItems, isChecking } = useCartAvailability();
+  const checkoutBlocked = hasUnavailableItems || isChecking;
 
   const stripePromise = useMemo(() => getStripe(locale), [locale]);
   const { isLoading, loadError, options, resetSession, retry, sessionId } = useCheckoutSessionLoader();
@@ -329,7 +346,7 @@ export function PaymentStep(): JSX.Element {
         {/* Keyed on the client secret so rebuilding the session (after an
             abandoned async attempt) cleanly remounts the Stripe provider. */}
         <CheckoutElementsProvider key={sessionId} stripe={stripePromise} options={options}>
-          <PaymentForm onReset={resetSession} onRetry={retry} />
+          <PaymentForm checkoutBlocked={checkoutBlocked} onReset={resetSession} onRetry={retry} />
         </CheckoutElementsProvider>
       </div>
     </div>

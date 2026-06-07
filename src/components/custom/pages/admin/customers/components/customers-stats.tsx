@@ -17,8 +17,8 @@ import { userQueryOptions } from "~/src/modules/user/user.queries";
 export function CustomersStats(): JSX.Element {
   const t = useTranslations("pages.admin.customers");
   const locale = useLocale();
-  const { data: resolvedStats, isFetching } = useSuspenseQuery(userQueryOptions.adminCustomerStatsQueryOptions());
-  const valuesPending = isFetching;
+  const { data: resolvedStats, isFetching, isStale } = useSuspenseQuery(userQueryOptions.adminCustomerStatsQueryOptions());
+  const valuesPending = isFetching && isStale;
   const { activeStatFilter, applyCustomerStatFilter } = useCustomersDataGridContext();
 
   return (
@@ -34,7 +34,7 @@ export function CustomersStats(): JSX.Element {
             caption={caption}
             config={config}
             displayValue={value === undefined ? undefined : formatCustomerStatDisplayValue(config.key, value, locale)}
-            onFilter={config.filter === undefined ? undefined : applyCustomerStatFilter}
+            onFilter={applyCustomerStatFilter}
             valuesPending={valuesPending}
           />
         );

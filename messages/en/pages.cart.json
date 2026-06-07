@@ -10,6 +10,11 @@
   "removeItem": "Remove item",
   "decreaseQty": "Decrease quantity",
   "increaseQty": "Increase quantity",
+  "availability": {
+    "banner": "Some items in your cart are no longer available. Update your cart before checkout.",
+    "itemUnavailable": "No longer available",
+    "itemLimited": "Only {available} left in stock"
+  },
   "summary": {
     "title": "Order summary",
     "subtotal": "Subtotal",

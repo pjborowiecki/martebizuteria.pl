@@ -9,7 +9,15 @@ import type { CartItem } from "~/src/stores/cart.store";
 export interface CheckoutSession {
   amount: number;
   clientSecret: string;
+  linesFingerprint: string;
   sessionId: string;
+}
+
+export function buildCheckoutLinesFingerprint(items: readonly { qty: number; variantId: string }[]): string {
+  return items
+    .map((item) => `${item.variantId}:${item.qty}`)
+    .toSorted((left, right) => left.localeCompare(right))
+    .join("|");
 }
 
 export function buildCheckoutContact(values: CheckoutFormSchema): StripeCheckoutContact {
@@ -35,18 +43,20 @@ interface EnsureSessionArgs {
 }
 
 export async function ensureCheckoutSession({ amount, existing, items, values }: EnsureSessionArgs): Promise<CheckoutSession> {
+  const linesFingerprint = buildCheckoutLinesFingerprint(items);
+
   if (existing === undefined) {
     const created = await stripeActions.createCheckoutSessionFn({
       data: { checkoutValues: values, items }
     });
-    return { amount, clientSecret: created.clientSecret, sessionId: created.sessionId };
+    return { amount, clientSecret: created.clientSecret, linesFingerprint, sessionId: created.sessionId };
   }
 
-  if (existing.amount !== amount) {
+  if (existing.amount !== amount || existing.linesFingerprint !== linesFingerprint) {
     const updated = await stripeActions.updateCheckoutSessionFn({
       data: { checkoutValues: values, items, sessionId: existing.sessionId }
     });
-    return { amount, clientSecret: updated.clientSecret, sessionId: updated.sessionId };
+    return { amount, clientSecret: updated.clientSecret, linesFingerprint, sessionId: updated.sessionId };
   }
 
   return existing;
@@ -71,7 +81,8 @@ export async function resetCheckoutSession({ amount, items, session, values }: R
   const updated = await stripeActions.updateCheckoutSessionFn({
     data: { checkoutValues: values, items, sessionId: session.sessionId }
   });
-  return { amount, clientSecret: updated.clientSecret, sessionId: updated.sessionId };
+  const linesFingerprint = buildCheckoutLinesFingerprint(items);
+  return { amount, clientSecret: updated.clientSecret, linesFingerprint, sessionId: updated.sessionId };
 }
 
 // Custom Checkout narrows confirm errors to a real decline (`paymentFailed`,
