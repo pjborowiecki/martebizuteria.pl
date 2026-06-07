@@ -2,7 +2,7 @@ import { CONSTANTS } from "~/src/constants";
 
 import { auth } from "~/src/integrations/better-auth/auth._server";
 
-import { recordAuthLoginFailedAudit } from "~/src/modules/audit-log/audit-log.events.server";
+import { recordAuthLoginFailedAudit, recordAuthLogoutAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server";
 
 const AUTH_API_PREFIX = "/api/auth";
 
@@ -13,6 +13,10 @@ function resolveAuthPathname(request: Request): string {
 
 function isEmailSignInAttempt(authPath: string, method: string): boolean {
   return method === "POST" && authPath === CONSTANTS.ROUTES.API_AUTH.SIGN_IN_EMAIL;
+}
+
+function isSignOutAttempt(authPath: string, method: string): boolean {
+  return method === "POST" && authPath === CONSTANTS.ROUTES.API_AUTH.SIGN_OUT;
 }
 
 function resolveRequestIp(headers: Headers): string | undefined {
@@ -48,8 +52,10 @@ async function parseSignInEmail(request: Request): Promise<string | undefined> {
 export async function handleAuthRequestWithAudit(request: Request): Promise<Response> {
   const authPath = resolveAuthPathname(request);
   const shouldAuditFailedLogin = isEmailSignInAttempt(authPath, request.method);
+  const shouldAuditLogout = isSignOutAttempt(authPath, request.method);
   const signInEmail = shouldAuditFailedLogin ? await parseSignInEmail(request) : undefined;
-  const ip = shouldAuditFailedLogin ? resolveRequestIp(request.headers) : undefined;
+  const ip = shouldAuditFailedLogin || shouldAuditLogout ? resolveRequestIp(request.headers) : undefined;
+  const sessionBeforeSignOut = shouldAuditLogout ? await auth.api.getSession({ headers: request.headers }) : undefined;
 
   const response = await auth.handler(request);
 
@@ -58,6 +64,13 @@ export async function handleAuthRequestWithAudit(request: Request): Promise<Resp
       detail: signInEmail,
       ip,
       metadata: { email: signInEmail }
+    });
+  }
+
+  if (shouldAuditLogout && response.ok && sessionBeforeSignOut?.user !== undefined) {
+    recordAuthLogoutAudit(resolveAuthAuditActor(sessionBeforeSignOut.user), {
+      ip,
+      resourceId: sessionBeforeSignOut.user.id
     });
   }
 

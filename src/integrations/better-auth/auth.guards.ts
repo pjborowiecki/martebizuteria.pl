@@ -20,7 +20,7 @@ function redirectTo(to: GuardRoute): never {
   throw new Error(`Expected redirect to ${to}`);
 }
 
-function homeRouteFor(user: SessionUser): GuardRoute {
+export function postAuthRouteFor(user: SessionUser): GuardRoute {
   return hasAdminAccess(user.role) ? ADMIN_ROUTE : ACCOUNT_ROUTE;
 }
 
@@ -34,10 +34,15 @@ export async function requireAdmin(): Promise<SessionUser> {
   return hasAdminAccess(user.role) ? user : redirectTo(ACCOUNT_ROUTE);
 }
 
+export async function requireCustomer(): Promise<SessionUser> {
+  const user = await requireUser();
+  return hasAdminAccess(user.role) ? redirectTo(ADMIN_ROUTE) : user;
+}
+
 export async function redirectAuthenticated(): Promise<void> {
   const session = await sessionQueries.getSessionFn();
 
   if (session?.user) {
-    redirectTo(homeRouteFor(session.user));
+    redirectTo(postAuthRouteFor(session.user));
   }
 }

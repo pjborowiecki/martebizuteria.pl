@@ -9,7 +9,9 @@ import {
 } from "~/src/modules/audit-log/audit-log.record.server";
 
 export interface AuditEventOptions {
+  readonly actor?: AuditLogActorInput;
   readonly detail?: string;
+  readonly ip?: string;
   readonly metadata?: Record<string, unknown>;
   readonly resourceId?: string;
 }
@@ -23,6 +25,30 @@ function withResourceId(
     metadata: options?.metadata,
     resourceId: options?.resourceId ?? target,
     target
+  };
+}
+
+function resolveActorAuditTarget(
+  actor: AuditLogActorInput,
+  options?: AuditEventOptions & { readonly ip?: string }
+): { detail?: string; metadata?: Record<string, unknown>; resourceId?: string; target: string } {
+  const resourceId = options?.resourceId ?? actor.id;
+  const email = actor.email?.trim();
+
+  if (email !== undefined && email !== "") {
+    return {
+      detail: options?.detail ?? actor.name,
+      metadata: { ...options?.metadata, email },
+      resourceId,
+      target: email
+    };
+  }
+
+  return {
+    detail: options?.detail,
+    metadata: options?.metadata,
+    resourceId,
+    target: actor.name
   };
 }
 
@@ -126,11 +152,28 @@ export function recordCatalogAttributeUpdatedAudit(target: string, options?: Aud
 }
 
 export function recordCatalogAttributeDeletedAudit(target: string, options?: AuditEventOptions): void {
+  const payload = withResourceId(target, options);
+
+  if (options?.actor !== undefined) {
+    scheduleAuditLog({
+      action: AUDIT_LOG_ACTION.ATTRIBUTE_DELETED,
+      actor: options.actor,
+      category: "catalog",
+      detail: payload.detail,
+      ip: options.ip,
+      metadata: payload.metadata,
+      resourceId: payload.resourceId,
+      severity: "warning",
+      target: payload.target
+    });
+    return;
+  }
+
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.ATTRIBUTE_DELETED,
     category: "catalog",
     severity: "warning",
-    ...withResourceId(target, options)
+    ...payload
   });
 }
 
@@ -139,21 +182,23 @@ export function recordCustomerRegisteredAudit(target: string, options?: AuditEve
     action: AUDIT_LOG_ACTION.CUSTOMER_REGISTERED,
     category: "customers",
     severity: "success",
-    ...withResourceId(target, options)
+    ...withResourceId(target, {
+      ...options,
+      metadata: { ...options?.metadata, email: target }
+    })
   });
 }
 
 export function recordAuthLoginAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
+  const targetFields = resolveActorAuditTarget(actor, options);
+
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.AUTH_LOGIN,
     actor,
     category: "auth",
-    detail: options?.detail,
     ip: options?.ip,
-    metadata: options?.metadata,
-    resourceId: options?.resourceId ?? actor.id,
     severity: "info",
-    target: actor.name
+    ...targetFields
   });
 }
 
@@ -171,58 +216,54 @@ export function recordAuthLoginFailedAudit(target: string, options?: AuditEventO
 }
 
 export function recordAuthLogoutAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
+  const targetFields = resolveActorAuditTarget(actor, options);
+
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.AUTH_LOGOUT,
     actor,
     category: "auth",
-    detail: options?.detail,
     ip: options?.ip,
-    metadata: options?.metadata,
-    resourceId: options?.resourceId ?? actor.id,
     severity: "info",
-    target: actor.name
+    ...targetFields
   });
 }
 
 export function recordCustomerCartItemAddedAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
+  const targetFields = resolveActorAuditTarget(actor, options);
+
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.CUSTOMER_CART_ITEM_ADDED,
     actor,
     category: "customers",
-    detail: options?.detail,
     ip: options?.ip,
-    metadata: options?.metadata,
-    resourceId: options?.resourceId ?? actor.id,
     severity: "info",
-    target: actor.name
+    ...targetFields
   });
 }
 
 export function recordCustomerCartAbandonedAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
+  const targetFields = resolveActorAuditTarget(actor, options);
+
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED,
     actor,
     category: "customers",
-    detail: options?.detail,
     ip: options?.ip,
-    metadata: options?.metadata,
-    resourceId: options?.resourceId ?? actor.id,
     severity: "warning",
-    target: actor.name
+    ...targetFields
   });
 }
 
 export function recordCustomerPageViewedAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
+  const targetFields = resolveActorAuditTarget(actor, options);
+
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.CUSTOMER_PAGE_VIEWED,
     actor,
     category: "customers",
-    detail: options?.detail,
     ip: options?.ip,
-    metadata: options?.metadata,
-    resourceId: options?.resourceId ?? actor.id,
     severity: "info",
-    target: actor.name
+    ...targetFields
   });
 }
 
@@ -307,7 +348,9 @@ export function recordEmailFailedAudit(target: string, options?: AuditEventOptio
   });
 }
 
-export function resolveAuthAuditActor(user: Readonly<{ id: string; name: string; role?: string | null }>): AuditLogActorInput {
+export function resolveAuthAuditActor(
+  user: Readonly<{ email: string; id: string; name: string; role?: string | null }>
+): AuditLogActorInput {
   let actorRole: AuditLogActorInput["role"] = "unknown";
 
   if (user.role === ROLES.ADMIN) {
@@ -317,6 +360,7 @@ export function resolveAuthAuditActor(user: Readonly<{ id: string; name: string;
   }
 
   return {
+    email: user.email,
     id: user.id,
     name: user.name,
     role: actorRole

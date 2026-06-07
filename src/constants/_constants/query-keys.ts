@@ -67,6 +67,7 @@ const ADDRESS_QUERY_KEYS = {
 
 const AUDIT_LOG_QUERY_KEYS = {
   ADMIN: {
+    ALL: [...QUERY_KEY_ROOTS.ADMIN, "audit-log"] as const,
     PAGE: [...QUERY_KEY_ROOTS.ADMIN, "audit-log", "page"] as const,
     STATS: [...QUERY_KEY_ROOTS.ADMIN, "audit-log", "stats"] as const
   }

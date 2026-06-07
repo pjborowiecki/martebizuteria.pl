@@ -42,6 +42,17 @@ async function setProductAttributeRanks(updates: { id: string; rank: number }[])
   await Promise.all(updates.map((entry) => db.update(productAttribute).set({ rank: entry.rank }).where(eq(productAttribute.id, entry.id))));
 }
 
+function getProductAttributesByIds(ids: readonly string[]): Promise<readonly { handle: string; id: string }[]> {
+  if (ids.length === EMPTY_LENGTH) {
+    return Promise.resolve([]);
+  }
+
+  return db
+    .select({ handle: productAttribute.handle, id: productAttribute.id })
+    .from(productAttribute)
+    .where(inArray(productAttribute.id, [...ids]));
+}
+
 async function deleteProductAttributes(ids: readonly string[]): Promise<void> {
   if (ids.length === EMPTY_LENGTH) {
     return;
@@ -55,6 +66,7 @@ export const productAttributeAccessors = {
   getAdminProductAttributesQuery,
   getNextProductAttributeRank,
   getProductAttributeByHandleQuery,
+  getProductAttributesByIds,
   insertProductAttribute,
   setProductAttributeRanks,
   updateProductAttribute

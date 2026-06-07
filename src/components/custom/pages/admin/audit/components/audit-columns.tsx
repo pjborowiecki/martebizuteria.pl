@@ -7,5 +7,15 @@ import { buildAuditColumns } from "~/src/components/custom/pages/admin/audit/lib
 export function useAuditColumns() {
   const t = useTranslations("pages.admin");
 
-  return useMemo(() => buildAuditColumns({ t }), [t]);
+  return useMemo(
+    () =>
+      buildAuditColumns({
+        selectionLabels: {
+          all: t("a11y.selectAll"),
+          row: t("a11y.selectRow")
+        },
+        t
+      }),
+    [t]
+  );
 }

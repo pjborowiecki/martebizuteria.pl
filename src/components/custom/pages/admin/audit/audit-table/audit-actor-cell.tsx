@@ -10,7 +10,7 @@ interface AuditActorCellProps {
 
 export function AuditActorCell({ initials, name, roleColor }: AuditActorCellProps): JSX.Element {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex h-9 min-w-0 items-center gap-1.5">
       <Avatar className="size-4 rounded after:rounded">
         <AvatarFallback className={`rounded text-[6px] font-medium ${roleColor}`}>{initials}</AvatarFallback>
       </Avatar>
