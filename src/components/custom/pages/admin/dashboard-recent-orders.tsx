@@ -11,64 +11,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/src/components/shadc
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/src/components/shadcn/table";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { useAdminDashboardSnapshot } from "~/src/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot";
 
-const RECENT_ORDERS = [
-  {
-    customer: "Eleanor H. Sterling",
-    date: "Oct 24, 2023",
-    fulfillment: "unfulfilled",
-    id: "MR-9241",
-    initials: "EH",
-    payment: "paid",
-    total: "$4,250.00"
-  },
-  {
-    customer: "Adrian Wentworth",
-    date: "Oct 23, 2023",
-    fulfillment: "shipped",
-    id: "MR-9238",
-    initials: "AW",
-    payment: "paid",
-    total: "$12,800.00"
-  },
-  {
-    customer: "Lydia Chen",
-    date: "Oct 21, 2023",
-    fulfillment: "pending",
-    id: "MR-9235",
-    initials: "LC",
-    payment: "authorized",
-    total: "$1,150.00"
-  },
-  {
-    customer: "Julian Morel",
-    date: "Oct 19, 2023",
-    fulfillment: "delivered",
-    id: "MR-9230",
-    initials: "JM",
-    payment: "paid",
-    total: "$7,400.00"
-  },
-  {
-    customer: "Sofia Nakamura",
-    date: "Oct 18, 2023",
-    fulfillment: "shipped",
-    id: "MR-9228",
-    initials: "SN",
-    payment: "paid",
-    total: "$3,600.00"
-  }
-] as const;
+import type { Order } from "~/src/modules/order/order.types";
+
+const EMPTY_ORDERS_LENGTH = 0;
 
 const FULFILLMENT_COLORS: Record<string, string> = {
   delivered: "bg-emerald-500",
   pending: "bg-amber-500",
+  returned: "bg-red-500",
   shipped: "bg-blue-500",
   unfulfilled: "bg-muted-foreground/30"
 };
 
 export function DashboardRecentOrders(): JSX.Element {
   const t = useTranslations("pages.admin");
+  const { data: snapshot } = useAdminDashboardSnapshot();
 
   return (
     <Card className="border-border/40 bg-gradient-to-br from-cyan-500/10 via-sky-500/5 to-transparent shadow-none xl:col-span-3">
@@ -85,29 +44,33 @@ export function DashboardRecentOrders(): JSX.Element {
         </div>
       </CardHeader>
       <CardContent className="px-0 pt-4">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="pl-6 text-xs font-medium">{t("dashboard.recentOrders.columns.order")}</TableHead>
-              <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.customer")}</TableHead>
-              <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.date")}</TableHead>
-              <TableHead className="text-right text-xs font-medium">{t("dashboard.recentOrders.columns.total")}</TableHead>
-              <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.payment")}</TableHead>
-              <TableHead className="pr-6 text-xs font-medium">{t("dashboard.recentOrders.columns.fulfillment")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {RECENT_ORDERS.map((order) => (
-              <RecentOrderRow key={order.id} order={order} />
-            ))}
-          </TableBody>
-        </Table>
+        {snapshot.recentOrders.length === EMPTY_ORDERS_LENGTH ? (
+          <p className="px-6 pb-6 text-sm text-muted-foreground">{t("dashboard.recentOrders.empty")}</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-6 text-xs font-medium">{t("dashboard.recentOrders.columns.order")}</TableHead>
+                <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.customer")}</TableHead>
+                <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.date")}</TableHead>
+                <TableHead className="text-right text-xs font-medium">{t("dashboard.recentOrders.columns.total")}</TableHead>
+                <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.payment")}</TableHead>
+                <TableHead className="pr-6 text-xs font-medium">{t("dashboard.recentOrders.columns.fulfillment")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {snapshot.recentOrders.map((order) => (
+                <RecentOrderRow key={order.id} order={order} />
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function RecentOrderRow({ order }: { readonly order: (typeof RECENT_ORDERS)[number] }): JSX.Element {
+function RecentOrderRow({ order }: { readonly order: Order["adminListItem"] }): JSX.Element {
   const t = useTranslations("pages.admin");
 
   return (

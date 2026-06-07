@@ -81,6 +81,11 @@ const INPOST_QUERY_KEYS = {
   BY_CITY: ["inpost-points", "city"] as const
 } as const;
 
+const ADMIN_DASHBOARD_QUERY_KEYS = {
+  CHART_RANGE: [...QUERY_KEY_ROOTS.ADMIN, "dashboard", "chart-range"] as const,
+  SNAPSHOT: [...QUERY_KEY_ROOTS.ADMIN, "dashboard", "snapshot"] as const
+} as const;
+
 /** Invalidate `CUSTOMERS` to refresh every admin customer list query; stats share the same prefix family. */
 const ORDER_QUERY_KEYS = {
   ADMIN: {
@@ -99,6 +104,7 @@ const USER_QUERY_KEYS = {
 
 export const QUERY_KEYS = {
   ADDRESS: ADDRESS_QUERY_KEYS,
+  ADMIN_DASHBOARD: ADMIN_DASHBOARD_QUERY_KEYS,
   ATTRIBUTE_ON_PRODUCT: ATTRIBUTE_ON_PRODUCT_QUERY_KEYS,
   AUDIT_LOG: AUDIT_LOG_QUERY_KEYS,
   CATEGORY: CATEGORY_QUERY_KEYS,
