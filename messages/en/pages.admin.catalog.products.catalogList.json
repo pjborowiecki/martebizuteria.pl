@@ -18,8 +18,15 @@
     "price": "Price",
     "product": "Product",
     "status": "Status",
+    "sku": "SKU",
     "stock": "Stock",
+    "variantCount": "Variant count",
     "variants": "Variants"
+  },
+  "variantKind": {
+    "single": "Single variant",
+    "multi": "Multiple variants",
+    "multiCount": "{count} variants"
   },
   "filter": {
     "status": "Filter by status",
@@ -31,6 +38,8 @@
     "createdAt": "Filter by created date",
     "minPrice": "Filter by price",
     "stock": "Filter by stock",
+    "variantKind": "Filter by variants",
+    "allVariantKinds": "All variant types",
     "date": {
       "apply": "Apply",
       "clear": "Clear",
@@ -79,7 +88,7 @@
   "statusArchived": "Archived",
   "stockOut": "Out of stock",
   "stockLow": "Low stock",
-  "searchPlaceholder": "Search products...",
+  "searchPlaceholder": "Search products, SKU, or ID...",
   "reorder": {
     "handle": "Drag to reorder, or use arrow keys"
   },

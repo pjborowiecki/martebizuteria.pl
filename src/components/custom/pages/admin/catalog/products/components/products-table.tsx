@@ -15,6 +15,7 @@ import { ProductsRefreshAction } from "~/src/components/custom/pages/admin/catal
 import { ProductsStats } from "~/src/components/custom/pages/admin/catalog/products/components/products-stats";
 import { ProductsStatusFilter } from "~/src/components/custom/pages/admin/catalog/products/components/products-status-filter";
 import { ProductsStockColumnFilter } from "~/src/components/custom/pages/admin/catalog/products/components/products-stock-column-filter";
+import { ProductsVariantKindFilter } from "~/src/components/custom/pages/admin/catalog/products/components/products-variant-kind-filter";
 import { useProductsDataGrid } from "~/src/components/custom/pages/admin/catalog/products/hooks/use-products-data-grid";
 import {
   ProductsSheetProvider,
@@ -56,6 +57,7 @@ export function ProductsTableContent(): JSX.Element {
         <ProductsCategoryFilter />
         <ProductsCollectionFilter />
         <ProductsStatusFilter />
+        <ProductsVariantKindFilter />
         <ProductsPriceColumnFilter />
         <ProductsStockColumnFilter />
         <ProductsCreatedAtColumnFilter />

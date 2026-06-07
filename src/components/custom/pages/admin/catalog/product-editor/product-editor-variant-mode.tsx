@@ -12,10 +12,15 @@ import {
   CATALOG_SHEET_CARD_CONTENT_CLASS,
   CATALOG_SHEET_FIELD_CLASS
 } from "~/src/components/custom/pages/admin/catalog/form/lib/catalog-form.styles";
-import type { ProductFormValues } from "~/src/components/custom/pages/admin/catalog/product-editor/product-form.utils";
+import {
+  regenerateVariantRows,
+  type ProductFormValues
+} from "~/src/components/custom/pages/admin/catalog/product-editor/product-form.utils";
+import { createImplicitVariantOptionSetup } from "~/src/components/custom/pages/admin/catalog/product-editor/product-variant-form.utils";
 
 const PRODUCT_TYPE_SIMPLE = "simple";
 const PRODUCT_TYPE_VARIANTS = "variants";
+const ZERO_QUANTITY = 0;
 
 type ProductTypeValue = typeof PRODUCT_TYPE_SIMPLE | typeof PRODUCT_TYPE_VARIANTS;
 
@@ -61,20 +66,28 @@ export function ProductEditorVariantMode(): JSX.Element {
       }
 
       const simple = getValues("simpleVariant");
-      if (simple !== undefined) {
-        setValue("options", [{ title: "", values: [""] }]);
-        setValue("variants", [
-          {
-            compareAtPrice: simple.compareAtPrice,
-            manageInventory: true,
-            optionValues: {},
-            price: simple.price,
-            quantity: simple.quantity,
-            sku: simple.sku,
-            title: ""
-          }
-        ]);
-      }
+      const optionSetup = createImplicitVariantOptionSetup();
+      setValue("options", [optionSetup], { shouldDirty: true });
+      setValue(
+        "variants",
+        regenerateVariantRows(
+          [optionSetup],
+          [
+            {
+              attributeValues: [],
+              compareAtPrice: simple?.compareAtPrice ?? "",
+              images: [],
+              manageInventory: true,
+              optionValues: {},
+              price: simple?.price ?? "",
+              quantity: simple?.quantity ?? ZERO_QUANTITY,
+              sku: simple?.sku ?? "",
+              title: ""
+            }
+          ]
+        ),
+        { shouldDirty: true }
+      );
     },
     [getValues, hasVariants, setValue]
   );

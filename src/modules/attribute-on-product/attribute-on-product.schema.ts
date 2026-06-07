@@ -8,6 +8,7 @@ import {
   ATTRIBUTE_ON_PRODUCT_DEFAULT_RANK
 } from "~/src/modules/attribute-on-product/attribute-on-product.constants";
 import { productAttribute } from "~/src/modules/product-attribute/product-attribute.schema";
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
 import { product } from "~/src/modules/product/product.schema";
 
 export const attributeOnProduct = sqliteTable(
@@ -24,11 +25,15 @@ export const attributeOnProduct = sqliteTable(
       .references(() => product.id, { onDelete: "cascade" }),
     rank: integer("rank").notNull().default(ATTRIBUTE_ON_PRODUCT_DEFAULT_RANK),
     value: text("value", { length: ATTRIBUTE_ON_PRODUCT_COLUMN_LENGTH.value }).notNull(),
+    variantId: text("variant_id", { length: ATTRIBUTE_ON_PRODUCT_COLUMN_LENGTH.variantId }).references(() => productVariant.id, {
+      onDelete: "cascade"
+    }),
     ...timestamps()
   },
   (table) => [
     index("attribute_on_product_productId_idx").on(table.productId),
-    uniqueIndex("attribute_on_product_product_attribute_uidx").on(table.productId, table.attributeId)
+    index("attribute_on_product_variantId_idx").on(table.variantId),
+    uniqueIndex("attribute_on_product_scope_attribute_uidx").on(table.productId, table.attributeId, table.variantId)
   ]
 );
 
@@ -40,5 +45,9 @@ export const attributeOnProductRelations = relations(attributeOnProduct, ({ one 
   productAttribute: one(productAttribute, {
     fields: [attributeOnProduct.attributeId],
     references: [productAttribute.id]
+  }),
+  variant: one(productVariant, {
+    fields: [attributeOnProduct.variantId],
+    references: [productVariant.id]
   })
 }));

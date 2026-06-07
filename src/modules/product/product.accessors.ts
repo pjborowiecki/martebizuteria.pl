@@ -1,11 +1,10 @@
-import { and, asc, desc, eq, inArray, max, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, max, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
 
 import { runDrizzleBatch, type DrizzleBatchStatement } from "~/src/integrations/drizzle-orm/drizzle.batch";
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 
 import type { DateColumnFilterValue, NumericColumnFilterValue } from "~/src/lib/_utils/admin-column-filters";
 import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/lib/_utils/admin-column-filters.server";
-import { buildAdminLikePattern, buildAdminSearchOrCondition, normalizeAdminSearchTerm } from "~/src/lib/_utils/admin-search.server";
 import type { ListPaginationParams } from "~/src/lib/_utils/list-pagination";
 
 import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema";
@@ -14,9 +13,12 @@ import { resolvePrimaryCategoryId } from "~/src/modules/category-on-product/cate
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema";
 import { inventory } from "~/src/modules/inventory/inventory.schema";
 import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema";
+import { productOptionValue } from "~/src/modules/product-option-value/product-option-value.schema";
 import { productOption } from "~/src/modules/product-option/product-option.schema";
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
+import { buildAdminProductSearchCondition } from "~/src/modules/product/product.admin-list-search.server";
 import { adminProductsListSortRequiresVariantStats, type AdminProductsListSort } from "~/src/modules/product/product.admin-list-sort";
+import { buildAdminVariantKindFilterSql } from "~/src/modules/product/product.admin-list-variant-filters.server";
 import {
   PRODUCT_INVENTORY_LEVEL,
   PRODUCT_LOW_STOCK_THRESHOLD,
@@ -24,7 +26,8 @@ import {
   PRODUCT_STOREFRONT_LIST_LIMIT,
   PRODUCT_TABLE_COLUMN_ID,
   type ProductInventoryLevel,
-  type ProductStatus
+  type ProductStatus,
+  type ProductVariantKind
 } from "~/src/modules/product/product.constants";
 import { product } from "~/src/modules/product/product.schema";
 import type { Product } from "~/src/modules/product/product.types";
@@ -78,6 +81,7 @@ export interface AdminProductsListParams extends ListPaginationParams {
   readonly sort?: AdminProductsListSort;
   readonly status?: ProductStatus;
   readonly totalStock?: NumericColumnFilterValue;
+  readonly variantKind?: ProductVariantKind;
 }
 
 export type AdminProductsExportListParams = Omit<AdminProductsListParams, "limit" | "offset">;
@@ -153,6 +157,14 @@ const getProductVariantStatsQuery = db
   .groupBy(productVariant.productId)
   .prepare();
 
+const getProductVariantSkuRowsQuery = db
+  .select({
+    productId: productVariant.productId,
+    sku: productVariant.sku
+  })
+  .from(productVariant)
+  .prepare();
+
 const getProductStatusCountsQuery = db
   .select({
     active: sql<number>`sum(case when ${product.status} = ${PRODUCT_STATUS.PUBLISHED} then 1 else 0 end)`,
@@ -198,16 +210,26 @@ const getProductByHandleQuery = db.query.product
         orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)]
       },
       options: {
+        orderBy: (options, { asc: ascOrder }) => [ascOrder(options.createdAt)],
         with: {
-          optionOnVariants: true
+          values: {
+            orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)]
+          }
         }
       },
       variants: {
         with: {
+          attributes: {
+            orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)]
+          },
+          images: {
+            orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)]
+          },
           inventory: true,
           optionOnVariants: {
             with: {
-              option: true
+              option: true,
+              value: true
             }
           }
         }
@@ -229,16 +251,27 @@ const getAdminProductDetailByIdQuery = db.query.product
         orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)]
       },
       options: {
+        orderBy: (options, { asc: ascOrder }) => [ascOrder(options.createdAt)],
         with: {
-          optionOnVariants: true
+          values: {
+            orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)]
+          }
         }
       },
       variants: {
         with: {
+          attributes: {
+            orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)],
+            with: { productAttribute: true }
+          },
+          images: {
+            orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)]
+          },
           inventory: true,
           optionOnVariants: {
             with: {
-              option: true
+              option: true,
+              value: true
             }
           }
         }
@@ -261,9 +294,30 @@ const getPublishedProductByHandleQuery = db.query.product
       images: {
         orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)]
       },
+      options: {
+        orderBy: (options, { asc: ascOrder }) => [ascOrder(options.createdAt)],
+        with: {
+          values: {
+            orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)]
+          }
+        }
+      },
       variants: {
         with: {
-          inventory: true
+          attributes: {
+            orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank)],
+            with: { productAttribute: true }
+          },
+          images: {
+            orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)]
+          },
+          inventory: true,
+          optionOnVariants: {
+            with: {
+              option: true,
+              value: true
+            }
+          }
         }
       }
     }
@@ -299,8 +353,8 @@ function productVariantStatsSubquery() {
     .as("product_variant_stats");
 }
 
-function adminProductsListNeedsVariantStatsJoin(params: Pick<AdminProductsListParams, "inventoryLevel" | "sort">): boolean {
-  return params.inventoryLevel !== undefined || adminProductsListSortRequiresVariantStats(params.sort);
+function adminProductsListNeedsVariantStatsJoin(params: Pick<AdminProductsListParams, "inventoryLevel" | "sort" | "variantKind">): boolean {
+  return params.inventoryLevel !== undefined || params.variantKind !== undefined || adminProductsListSortRequiresVariantStats(params.sort);
 }
 
 function buildAdminProductsOrderClauses(
@@ -329,7 +383,7 @@ function buildAdminProductsOrderClauses(
     case PRODUCT_TABLE_COLUMN_ID.stock: {
       return [direction(sql`coalesce(${variantStats!.totalStock}, 0)`)];
     }
-    case PRODUCT_TABLE_COLUMN_ID.variantCount: {
+    case PRODUCT_TABLE_COLUMN_ID.variantKind: {
       return [direction(sql`coalesce(${variantStats!.variantCount}, 0)`)];
     }
     case PRODUCT_TABLE_COLUMN_ID.createdAt: {
@@ -378,35 +432,6 @@ function buildInventoryLevelStockCondition(level: ProductInventoryLevel, totalSt
   }
 
   return requireSql(or(ne(product.status, PRODUCT_STATUS.PUBLISHED), sql`${stock} > ${PRODUCT_LOW_STOCK_THRESHOLD}`));
-}
-
-function buildAdminProductSearchCondition(search: string | undefined): SQL | undefined {
-  const normalized = normalizeAdminSearchTerm(search);
-  if (normalized === undefined) {
-    return undefined;
-  }
-
-  const pattern = buildAdminLikePattern(normalized);
-  const textMatch = buildAdminSearchOrCondition(normalized, [
-    product.handle,
-    product.id,
-    product.titles,
-    product.subtitles,
-    product.descriptions
-  ]);
-  const skuMatch = inArray(
-    product.id,
-    db
-      .select({ id: productVariant.productId })
-      .from(productVariant)
-      .where(sql`${productVariant.sku} like ${pattern}`)
-  );
-
-  if (textMatch === undefined) {
-    return skuMatch;
-  }
-
-  return or(textMatch, skuMatch);
 }
 
 type AdminProductsFilterParams = Pick<
@@ -499,7 +524,8 @@ async function queryAdminProducts(
     const minPriceCondition =
       params.minPrice === undefined ? undefined : buildAdminNumericFilterSql(sql`coalesce(${variantStats.minPrice}, 0)`, params.minPrice);
     const totalStockCondition = params.totalStock === undefined ? undefined : buildAdminNumericFilterSql(joinedStock, params.totalStock);
-    const joinConditions = [whereClause, stockCondition, minPriceCondition, totalStockCondition].filter(
+    const variantKindCondition = buildAdminVariantKindFilterSql(params.variantKind, sql`coalesce(${variantStats.variantCount}, 0)`);
+    const joinConditions = [whereClause, stockCondition, minPriceCondition, totalStockCondition, variantKindCondition].filter(
       (condition): condition is SQL => condition !== undefined
     );
     combinedWhere = joinConditions.length === EMPTY_LENGTH ? undefined : and(...joinConditions);
@@ -655,8 +681,36 @@ async function updateProductRow(id: string, patch: Partial<Product["insert"]>): 
   await db.update(product).set(patch).where(eq(product.id, id));
 }
 
+async function findTakenSkus(skus: readonly string[], excludeProductId?: string): Promise<string[]> {
+  const normalizedSkus = [...new Set(skus.map((sku) => sku.trim()).filter((sku) => sku !== ""))];
+  if (normalizedSkus.length === EMPTY_LENGTH) {
+    return [];
+  }
+
+  let excludeVariantIds: string[] = [];
+  if (excludeProductId !== undefined) {
+    const variantIdRows = await db
+      .select({ id: productVariant.id })
+      .from(productVariant)
+      .where(eq(productVariant.productId, excludeProductId));
+    excludeVariantIds = variantIdRows.map((row) => row.id);
+  }
+
+  const whereConditions: SQL[] = [inArray(productVariant.sku, normalizedSkus)];
+  if (excludeVariantIds.length > EMPTY_LENGTH) {
+    whereConditions.push(notInArray(productVariant.id, excludeVariantIds));
+  }
+
+  const rows = await db
+    .select({ sku: productVariant.sku })
+    .from(productVariant)
+    .where(and(...whereConditions));
+
+  return rows.map((row) => row.sku).filter((sku): sku is string => sku !== null && sku !== "");
+}
+
 async function replaceProductCatalog(productId: string, payload: ProductCatalogReplacePayload): Promise<void> {
-  const { inventoryRows, optionOnVariantRows, optionRows, variantRows } = payload;
+  const { inventoryRows, optionOnVariantRows, optionRows, optionValueRows, variantRows } = payload;
 
   // D1 has no interactive transactions (`BEGIN` fails); batch keeps writes atomic.
   const statements: DrizzleBatchStatement[] = [
@@ -666,6 +720,10 @@ async function replaceProductCatalog(productId: string, payload: ProductCatalogR
 
   if (optionRows.length > EMPTY_LENGTH) {
     statements.push(db.insert(productOption).values(optionRows));
+  }
+
+  if (optionValueRows.length > EMPTY_LENGTH) {
+    statements.push(db.insert(productOptionValue).values(optionValueRows));
   }
 
   if (variantRows.length > EMPTY_LENGTH) {
@@ -705,7 +763,7 @@ async function replaceProductOrganization(productId: string, payload: ProductOrg
   statements.push(
     db
       .update(product)
-      .set({ primaryCategoryId: primaryCategoryId ?? undefined })
+      .set({ primaryCategoryId: primaryCategoryId ?? sql`null` })
       .where(eq(product.id, productId))
   );
 
@@ -714,6 +772,7 @@ async function replaceProductOrganization(productId: string, payload: ProductOrg
 
 export const productAccessors = {
   deleteProducts,
+  findTakenSkus,
   getAdminProductDetailByIdQuery,
   getAdminProductsCatalogList,
   getAdminProductsFilteredList,
@@ -722,6 +781,7 @@ export const productAccessors = {
   getMaxRankQuery,
   getProductByHandleQuery,
   getProductStatusCountsQuery,
+  getProductVariantSkuRowsQuery,
   getProductVariantStatsQuery,
   getProductsWithInventoryByHandles,
   getPublishedProductByHandleQuery,

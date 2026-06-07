@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 
 import { useFormContext, useWatch } from "react-hook-form";
 import { useTranslations } from "use-intl";
@@ -13,6 +13,8 @@ import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catal
 import { CatalogIntegerInput } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-integer-input";
 import { CatalogMoneyInput } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-money-input";
 import type { ProductFormValues } from "~/src/components/custom/pages/admin/catalog/product-editor/product-form.utils";
+
+import { resolveProductOptionTitle, resolveProductOptionValueLabel } from "~/src/modules/product-option-value/product-option-value.utils";
 
 const EMPTY_LENGTH = 0;
 const OFFSET_LAST = 1;
@@ -69,6 +71,26 @@ function VariantRow({ index, isLast }: Readonly<{ index: number; isLast: boolean
   const t = useTranslations("pages.admin.catalog.products.variants");
   const { control, setValue } = useFormContext<ProductFormValues>();
   const variant = useWatch({ control, name: `variants.${index}` });
+  const options = useWatch({ control, defaultValue: [], name: "options" });
+
+  const optionLabelsById = useMemo(() => {
+    const valueLabelById = new Map<string, string>();
+    const optionTitleById = new Map<string, string>();
+
+    for (const option of options) {
+      if (option.id !== undefined) {
+        optionTitleById.set(option.id, resolveProductOptionTitle(option.titles, "pl"));
+      }
+
+      for (const value of option.values) {
+        if (value.id !== undefined) {
+          valueLabelById.set(value.id, resolveProductOptionValueLabel(value.labels, "pl"));
+        }
+      }
+    }
+
+    return { optionTitleById, valueLabelById };
+  }, [options]);
 
   const updateField = useCallback(
     (field: "sku" | "price", value: string) => {
@@ -106,9 +128,9 @@ function VariantRow({ index, isLast }: Readonly<{ index: number; isLast: boolean
         <p className="truncate text-sm font-medium">{variant?.title}</p>
         {optionEntries.length > EMPTY_LENGTH && (
           <div className="flex flex-wrap gap-1">
-            {optionEntries.map(([optionTitle, value]) => (
-              <Badge key={`${optionTitle}-${value}`} className="text-[10px] font-normal" variant="outline">
-                {optionTitle}: {value}
+            {optionEntries.map(([optionId, valueId]) => (
+              <Badge key={`${optionId}-${valueId}`} className="text-[10px] font-normal" variant="outline">
+                {optionLabelsById.optionTitleById.get(optionId) ?? optionId}: {optionLabelsById.valueLabelById.get(valueId) ?? valueId}
               </Badge>
             ))}
           </div>

@@ -31,7 +31,7 @@ function categoryLocaleMapRequiredSchema(maxLength: number) {
       if (map[locale].trim() === "") {
         context.addIssue({
           code: "custom",
-          message: "LOCALE_TITLE_REQUIRED",
+          message: CATEGORY_FORM_VALIDATION_KEYS.localeTitleRequired,
           path: [locale]
         });
       }

@@ -18,8 +18,15 @@
     "price": "Cena",
     "product": "Produkt",
     "status": "Status",
+    "sku": "SKU",
     "stock": "Stan (szt.)",
+    "variantCount": "Liczba wariantów",
     "variants": "Warianty"
+  },
+  "variantKind": {
+    "single": "Jeden wariant",
+    "multi": "Wiele wariantów",
+    "multiCount": "{count} warianty"
   },
   "filter": {
     "status": "Filtruj według statusu",
@@ -31,6 +38,8 @@
     "createdAt": "Filtruj datę utworzenia",
     "minPrice": "Filtruj według ceny",
     "stock": "Filtruj według stanu",
+    "variantKind": "Filtruj według wariantów",
+    "allVariantKinds": "Wszystkie typy wariantów",
     "date": {
       "apply": "Zastosuj",
       "clear": "Wyczyść",
@@ -79,7 +88,7 @@
   "statusArchived": "Zarchiwizowany",
   "stockOut": "Brak na stanie",
   "stockLow": "Niski stan magazynowy",
-  "searchPlaceholder": "Szukaj produktów...",
+  "searchPlaceholder": "Szukaj produktów, SKU lub ID...",
   "reorder": {
     "handle": "Przeciągnij, aby zmienić kolejność, lub użyj strzałek"
   },

@@ -344,6 +344,13 @@
       "when": 1781205600000,
       "tag": "20260611140000_product_variant_drop_weight",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1781292000000,
+      "tag": "20260612120000_product_variants_enhanced",
+      "breakpoints": true
     }
   ]
 }

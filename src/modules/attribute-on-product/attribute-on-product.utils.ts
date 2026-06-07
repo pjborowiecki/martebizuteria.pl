@@ -12,11 +12,15 @@ const EMPTY_LENGTH = 0;
 
 type AttributeOnProductRow = z.infer<(typeof attributeOnProductZodSchemas)["row"]>;
 
-export function normalizeAttributeOnProductRows(
-  productId: string,
-  rows: AttributeOnProductRow[],
-  productAttributes: readonly ProductAttribute["select"][]
-): (typeof attributeOnProduct.$inferInsert)[] {
+interface NormalizeAttributeOnProductRowsInput {
+  readonly productAttributes: readonly ProductAttribute["select"][];
+  readonly productId: string;
+  readonly rows: AttributeOnProductRow[];
+  readonly variantId?: string;
+}
+
+export function normalizeAttributeOnProductRows(input: NormalizeAttributeOnProductRowsInput): (typeof attributeOnProduct.$inferInsert)[] {
+  const { productAttributes, productId, rows, variantId } = input;
   const productAttributeById = new Map(productAttributes.map((entry) => [entry.id, entry]));
 
   return rows.map((row, index) => {
@@ -27,7 +31,8 @@ export function normalizeAttributeOnProductRows(
       id: row.id ?? uuidv7(),
       productId,
       rank: row.rank ?? index,
-      value: parseProductAttributeValueForType(type, row.value, definition?.allowedValues)
+      value: parseProductAttributeValueForType(type, row.value, definition?.allowedValues),
+      variantId
     };
   });
 }
@@ -40,8 +45,47 @@ export async function replaceAttributesForProduct(productId: string, rows: reado
           .execute()
           .then((all) => all.filter((entry) => rows.some((row) => row.attributeId === entry.id)));
 
-  const normalized = normalizeAttributeOnProductRows(productId, [...rows], productAttributes);
+  const normalized = normalizeAttributeOnProductRows({ productAttributes, productId, rows: [...rows] });
 
   await attributeOnProductAccessors.deleteByProductId(productId);
   await attributeOnProductAccessors.insertRows(normalized);
+}
+
+interface VariantAttributeReplaceGroup {
+  readonly rows: readonly AttributeOnProductRow[];
+  readonly variantId: string;
+}
+
+export async function replaceAllAttributesForProduct(
+  productId: string,
+  productLevelRows: readonly AttributeOnProductRow[],
+  variantGroups: readonly VariantAttributeReplaceGroup[]
+): Promise<void> {
+  const variantRows = variantGroups.flatMap((group) => group.rows);
+  const allRows = [...productLevelRows, ...variantRows];
+
+  const productAttributes =
+    allRows.length === EMPTY_LENGTH
+      ? []
+      : await productAttributeAccessors.getAdminProductAttributesQuery
+          .execute()
+          .then((all) => all.filter((entry) => allRows.some((row) => row.attributeId === entry.id)));
+
+  const normalized = [
+    ...normalizeAttributeOnProductRows({ productAttributes, productId, rows: [...productLevelRows] }),
+    ...variantGroups.flatMap((group) =>
+      normalizeAttributeOnProductRows({
+        productAttributes,
+        productId,
+        rows: [...group.rows],
+        variantId: group.variantId
+      })
+    )
+  ];
+
+  await attributeOnProductAccessors.deleteByProductId(productId);
+
+  if (normalized.length > EMPTY_LENGTH) {
+    await attributeOnProductAccessors.insertRows(normalized);
+  }
 }

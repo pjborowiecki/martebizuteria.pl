@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 
 import { useFormContext } from "react-hook-form";
 import { useTranslations } from "use-intl";
@@ -6,8 +6,7 @@ import { useTranslations } from "use-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/components/shadcn/card";
 import { Field, FieldError } from "~/src/components/shadcn/field";
 
-import { ProductEditorOptions } from "~/src/components/custom/pages/admin/catalog/product-editor/product-editor-options";
-import { ProductEditorVariants } from "~/src/components/custom/pages/admin/catalog/product-editor/product-editor-variants";
+import { ProductEditorVariantList } from "~/src/components/custom/pages/admin/catalog/product-editor/product-editor-variant-list";
 import type { ProductFormValues } from "~/src/components/custom/pages/admin/catalog/product-editor/product-form.utils";
 
 import { PRODUCT_FORM_VALIDATION_KEYS } from "~/src/modules/product/product.constants";
@@ -20,18 +19,6 @@ function resolveFormErrorMessage(t: (key: string) => string, message: string | u
   }
 
   return PRODUCT_FORM_VALIDATION_KEY_SET.has(message) ? t(message) : message;
-}
-
-function VariantsSubsection({ children, hint, title }: Readonly<{ children: ReactNode; hint: string; title: string }>): JSX.Element {
-  return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <p className="text-sm text-muted-foreground">{hint}</p>
-      </div>
-      {children}
-    </div>
-  );
 }
 
 export function ProductEditorVariantsSection(): JSX.Element {
@@ -50,7 +37,7 @@ export function ProductEditorVariantsSection(): JSX.Element {
         <CardTitle className="text-base font-semibold">{t("title")}</CardTitle>
         <p className="text-sm text-muted-foreground">{t("sectionHint")}</p>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="space-y-4">
         {(optionsMessage !== undefined || variantsMessage !== undefined) && (
           <div className="space-y-2">
             {optionsMessage !== undefined && (
@@ -65,13 +52,7 @@ export function ProductEditorVariantsSection(): JSX.Element {
             )}
           </div>
         )}
-        <VariantsSubsection hint={t("optionsDefinitionsHint")} title={t("optionsDefinitions")}>
-          <ProductEditorOptions embedded />
-        </VariantsSubsection>
-        <div className="border-t border-border/30" />
-        <VariantsSubsection hint={t("rowsSectionHint")} title={t("rowsTitle")}>
-          <ProductEditorVariants embedded />
-        </VariantsSubsection>
+        <ProductEditorVariantList />
       </CardContent>
     </Card>
   );

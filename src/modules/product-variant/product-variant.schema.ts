@@ -3,8 +3,10 @@ import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
+import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema";
 import { inventory } from "~/src/modules/inventory/inventory.schema";
 import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema";
+import { productImage } from "~/src/modules/product-image/product-image.schema";
 import {
   PRODUCT_VARIANT_COLUMN_LENGTH,
   PRODUCT_VARIANT_DEFAULT_MANAGE_INVENTORY,
@@ -32,6 +34,8 @@ export const productVariant = sqliteTable(
 );
 
 export const productVariantRelations = relations(productVariant, ({ one, many }) => ({
+  attributes: many(attributeOnProduct),
+  images: many(productImage),
   inventory: one(inventory, {
     fields: [productVariant.id],
     references: [inventory.variantId]

@@ -23,6 +23,7 @@ function buildProductsCsvRows(
     readonly id: string;
     readonly minPrice?: number;
     readonly status: string;
+    readonly skuSummary?: string;
     readonly titles: unknown;
     readonly totalStock: number;
     readonly variantCount: number;
@@ -30,13 +31,14 @@ function buildProductsCsvRows(
   locale: string
 ): string[] {
   return rows.map((row) => {
-    const { categoryTitles, collectionTitles, handle, id, minPrice, status, titles, totalStock, variantCount } = row;
+    const { categoryTitles, collectionTitles, handle, id, minPrice, skuSummary, status, titles, totalStock, variantCount } = row;
     const title = resolveProductTitle(titles, locale);
 
     return [
       id,
       `"${escapeCsvField(title)}"`,
       handle,
+      `"${escapeCsvField(skuSummary ?? "")}"`,
       status,
       `"${escapeCsvField(categoryTitles ?? "")}"`,
       `"${escapeCsvField(collectionTitles ?? "")}"`,
@@ -58,7 +60,7 @@ export function ProductsExportAction(): JSX.Element {
       setIsExporting(true);
 
       try {
-        const headers = ["ID", "Title", "Handle", "Status", "Categories", "Collections", "Min price", "Stock", "Variants"];
+        const headers = ["ID", "Title", "Handle", "SKU", "Status", "Categories", "Collections", "Min price", "Stock", "Variants"];
         const rows = hasServerListQuery
           ? await productQueries.fetchAdminProductsExportFn({ data: exportListInput })
           : table.getFilteredRowModel().rows.map((row) => row.original);

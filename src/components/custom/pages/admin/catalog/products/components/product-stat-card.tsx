@@ -46,6 +46,7 @@ interface ProductStatCardProps {
   readonly activeCollectionFilter?: string;
   readonly activeInventoryFilter?: string;
   readonly activeStatusFilter?: string;
+  readonly activeVariantKindFilter?: string;
   readonly caption?: string;
   readonly config: ProductStatCardConfig;
   readonly displayValue?: string;
@@ -58,6 +59,7 @@ export function ProductStatCard({
   activeCollectionFilter,
   activeInventoryFilter,
   activeStatusFilter,
+  activeVariantKindFilter,
   caption,
   config,
   displayValue,
@@ -74,7 +76,8 @@ export function ProductStatCard({
       activeStatusFilter === undefined &&
       activeInventoryFilter === undefined &&
       activeCategoryFilter === undefined &&
-      activeCollectionFilter === undefined;
+      activeCollectionFilter === undefined &&
+      activeVariantKindFilter === undefined;
   } else if (filterInventoryLevel !== undefined) {
     isActive = activeInventoryFilter === filterInventoryLevel;
   } else if (filterStatus !== undefined) {

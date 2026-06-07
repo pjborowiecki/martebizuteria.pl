@@ -31,4 +31,5 @@ export { courier, courierRelations } from "~/src/modules/courier/courier.schema"
 export { deliveryMethod, deliveryMethodRelations } from "~/src/modules/delivery-method/delivery-method.schema";
 export { discount, discountRelations } from "~/src/modules/discount/discount.schema";
 export { productOption, productOptionRelations } from "~/src/modules/product-option/product-option.schema";
+export { productOptionValue, productOptionValueRelations } from "~/src/modules/product-option-value/product-option-value.schema";
 export { optionOnVariant, optionOnVariantRelations } from "~/src/modules/option-on-variant/option-on-variant.schema";

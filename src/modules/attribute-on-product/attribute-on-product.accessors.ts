@@ -1,4 +1,4 @@
-import { count, eq, inArray, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 
@@ -41,6 +41,14 @@ async function deleteByProductId(productId: string): Promise<void> {
   await db.delete(attributeOnProduct).where(eq(attributeOnProduct.productId, productId));
 }
 
+async function deleteProductLevelByProductId(productId: string): Promise<void> {
+  await db.delete(attributeOnProduct).where(and(eq(attributeOnProduct.productId, productId), isNull(attributeOnProduct.variantId)));
+}
+
+async function deleteByVariantId(variantId: string): Promise<void> {
+  await db.delete(attributeOnProduct).where(eq(attributeOnProduct.variantId, variantId));
+}
+
 async function insertRows(rows: (typeof attributeOnProduct.$inferInsert)[]): Promise<void> {
   if (rows.length === EMPTY_LENGTH) {
     return;
@@ -52,6 +60,8 @@ async function insertRows(rows: (typeof attributeOnProduct.$inferInsert)[]): Pro
 export const attributeOnProductAccessors = {
   countForAttributeIds,
   deleteByProductId,
+  deleteByVariantId,
+  deleteProductLevelByProductId,
   getByProductIdQuery,
   getProductCountsByAttributeId,
   insertRows

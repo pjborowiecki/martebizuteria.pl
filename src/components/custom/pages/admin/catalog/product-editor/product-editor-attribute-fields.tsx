@@ -16,6 +16,7 @@ import {
   catalogFieldStringValue,
   catalogSelectControlValue
 } from "~/src/components/custom/pages/admin/catalog/form/lib/catalog-form.utils";
+import type { ProductAttributeFieldArrayName } from "~/src/components/custom/pages/admin/catalog/product-editor/product-editor-attribute-list-panel";
 import { ProductEditorAttributeValueInput } from "~/src/components/custom/pages/admin/catalog/product-editor/product-editor-attribute-value-input";
 import { toProductEditorAttributeDefinition } from "~/src/components/custom/pages/admin/catalog/product-editor/product-editor-attribute-value.utils";
 import type { ProductFormValues } from "~/src/components/custom/pages/admin/catalog/product-editor/product-form.utils";
@@ -25,6 +26,7 @@ import type { ProductAttribute } from "~/src/modules/product-attribute/product-a
 interface ProductEditorAttributeFieldsProps {
   readonly attributeOptions: readonly { label: string; value: string }[];
   readonly attributesById: ReadonlyMap<string, ProductAttribute["select"]>;
+  readonly baseName: ProductAttributeFieldArrayName;
   readonly index: number;
   readonly onRemove: UseFieldArrayRemove;
 }
@@ -32,6 +34,7 @@ interface ProductEditorAttributeFieldsProps {
 export function ProductEditorAttributeFields({
   attributeOptions,
   attributesById,
+  baseName,
   index,
   onRemove
 }: ProductEditorAttributeFieldsProps): JSX.Element {
@@ -39,16 +42,15 @@ export function ProductEditorAttributeFields({
   const tForm = useTranslations("pages.admin.catalog.products.form.hints");
   const { control } = useFormContext<ProductFormValues>();
 
-  const { field: attributeIdField } = useController({ control, name: `attributeValues.${index}.attributeId` });
-  const { field: valueField } = useController({ control, name: `attributeValues.${index}.value` });
+  const { field: attributeIdField } = useController({ control, name: `${baseName}.${index}.attributeId` });
+  const { field: valueField } = useController({ control, name: `${baseName}.${index}.value` });
 
   const selectValue = catalogSelectControlValue(catalogFieldStringValue(attributeIdField.value));
   const attributeValue = catalogFieldStringValue(valueField.value);
 
-  const definition = useMemo(
-    () => toProductEditorAttributeDefinition(attributesById.get(attributeIdField.value)),
-    [attributeIdField.value, attributesById]
-  );
+  const attributeId = catalogFieldStringValue(attributeIdField.value);
+
+  const definition = useMemo(() => toProductEditorAttributeDefinition(attributesById.get(attributeId)), [attributeId, attributesById]);
 
   const handleAttributeChange = useCallback(
     (value: string | null) => {

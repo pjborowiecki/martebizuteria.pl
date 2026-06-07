@@ -1,6 +1,5 @@
 import type { Column, ColumnDef, ColumnSizingState, Header, RowData, Table } from "@tanstack/react-table";
 
-import { getDataGridColumnWidth } from "~/src/components/custom/datagrid/lib/data-grid-column-widths";
 import { getDataGridColumnLayoutWidth, type DataGridTableLayout } from "~/src/components/custom/datagrid/lib/data-grid-table-layout";
 
 const NOT_FOUND_INDEX = -1;
@@ -253,9 +252,11 @@ export function sameOrder(a: readonly string[], b: readonly string[]): boolean {
 
 export interface DataGridPinOffsetInput<TData extends RowData> {
   readonly column: Column<TData>;
+  readonly columnSizing: ColumnSizingState;
   readonly isPinned: false | "left" | "right";
-  readonly layout?: DataGridPinLayout;
+  readonly pinLayout?: DataGridPinLayout;
   readonly table: Table<TData>;
+  readonly tableLayout?: DataGridTableLayout;
 }
 
 export interface DataGridPinLayout {
@@ -276,7 +277,16 @@ export function getDataGridRightPinnedScrollPaddingPx<TData extends RowData>(
   }, ZERO);
 }
 
-function getDataGridRightPinOffset<TData extends RowData>(table: Table<TData>, column: Column<TData>, layout?: DataGridPinLayout): number {
+interface DataGridRightPinOffsetInput<TData extends RowData> {
+  readonly column: Column<TData>;
+  readonly columnSizing: ColumnSizingState;
+  readonly pinLayout: DataGridPinLayout | undefined;
+  readonly table: Table<TData>;
+  readonly tableLayout: DataGridTableLayout | undefined;
+}
+
+function getDataGridRightPinOffset<TData extends RowData>(input: DataGridRightPinOffsetInput<TData>): number {
+  const { column, columnSizing, pinLayout, table, tableLayout } = input;
   const columns = getDataGridLayoutColumns(table);
   const REVERSE_STEP = 1;
   let offset = ZERO;
@@ -287,19 +297,19 @@ function getDataGridRightPinOffset<TData extends RowData>(table: Table<TData>, c
       break;
     }
     if (col.getIsPinned() === "right") {
-      offset += getDataGridColumnWidth(col);
+      offset += getDataGridColumnLayoutWidth(col, columnSizing, tableLayout);
     }
   }
 
-  if (layout !== undefined) {
-    offset += Math.max(ZERO, layout.tableClientWidth - layout.tableWidth);
+  if (pinLayout !== undefined) {
+    offset += Math.max(ZERO, pinLayout.tableClientWidth - pinLayout.tableWidth);
   }
 
   return offset;
 }
 
 export function getDataGridPinOffset<TData extends RowData>(input: DataGridPinOffsetInput<TData>): number | undefined {
-  const { column, isPinned, layout, table } = input;
+  const { column, columnSizing, isPinned, pinLayout, table, tableLayout } = input;
   if (isPinned === false) {
     return undefined;
   }
@@ -313,11 +323,11 @@ export function getDataGridPinOffset<TData extends RowData>(input: DataGridPinOf
         break;
       }
       if (col.getIsPinned() === "left") {
-        offset += getDataGridColumnWidth(col);
+        offset += getDataGridColumnLayoutWidth(col, columnSizing, tableLayout);
       }
     }
     return offset;
   }
 
-  return getDataGridRightPinOffset(table, column, layout);
+  return getDataGridRightPinOffset({ column, columnSizing, pinLayout, table, tableLayout });
 }
