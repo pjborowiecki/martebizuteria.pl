@@ -221,3 +221,12 @@ export function getDataGridTableMinWidth<TData extends RowData>(
     return sum + getDataGridLayoutColumnWidth(column, columnSizing);
   }, ZERO);
 }
+
+/** Sum of resolved layout column widths — must match `<colgroup>` to avoid phantom horizontal scroll. */
+export function sumDataGridLayoutColumnWidths<TData extends RowData>(
+  columns: readonly Column<TData>[],
+  columnSizing: ColumnSizingState,
+  layout: DataGridTableLayout | undefined
+): number {
+  return columns.reduce((sum, column) => sum + getDataGridColumnLayoutWidth(column, columnSizing, layout), ZERO);
+}

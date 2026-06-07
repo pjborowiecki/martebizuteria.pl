@@ -40,9 +40,11 @@ function ProductSheetFormSections({ hasVariants }: Readonly<{ hasVariants: boole
         <ProductEditorTags fillHeight />
       </div>
 
-      <Suspense fallback={attributesFallback}>
-        <ProductEditorAttributes />
-      </Suspense>
+      {!hasVariants && (
+        <Suspense fallback={attributesFallback}>
+          <ProductEditorAttributes />
+        </Suspense>
+      )}
     </div>
   );
 }

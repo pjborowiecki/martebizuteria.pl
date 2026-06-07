@@ -9,6 +9,7 @@ import { isCompareAtValid, isSellPriceCentsValid, parseMoneyInputToMinorUnits } 
 import { attributeOnProductZodSchemas } from "~/src/modules/attribute-on-product/attribute-on-product.zod";
 import { PRODUCT_IMAGE_COLUMN_LENGTH } from "~/src/modules/product-image/product-image.constants";
 import { MAX_PRODUCT_OPTIONS } from "~/src/modules/product-variant/product-variant.utils";
+import { collectProductFormSkuEntries, formPathToZodPath } from "~/src/modules/product/product-sku.validation.utils";
 import {
   PRODUCT_ADMIN_STATUS,
   PRODUCT_COLUMN_LENGTH,
@@ -38,7 +39,7 @@ function productLocaleMapRequiredSchema(maxLength: number) {
       if (map[locale].trim() === "") {
         context.addIssue({
           code: "custom",
-          message: "LOCALE_TITLE_REQUIRED",
+          message: PRODUCT_FORM_VALIDATION_KEYS.localeTitleRequired,
           path: [locale]
         });
       }
@@ -78,15 +79,36 @@ const simpleVariantInputSchema = z.object({
   sku: z.string().trim().max(PRODUCT_COLUMN_LENGTH.sku)
 });
 
+const productOptionValueInputSchema = z.object({
+  id: z.string().optional(),
+  labels: productLocaleMapRequiredSchema(PRODUCT_COLUMN_LENGTH.optionValue)
+});
+
 const productOptionInputSchema = z.object({
   id: z.string().optional(),
-  title: z.string().trim().min(PRODUCT_MIN_LENGTH),
-  values: z.array(z.string().trim().min(PRODUCT_MIN_LENGTH)).min(PRODUCT_MIN_LENGTH)
+  titles: productLocaleMapRequiredSchema(PRODUCT_COLUMN_LENGTH.optionTitle),
+  values: z.array(productOptionValueInputSchema).min(PRODUCT_MIN_LENGTH)
+});
+
+const productImageFormRowSchema = z.object({
+  alt: z.string().trim(),
+  id: z.string().trim().min(PRODUCT_MIN_LENGTH),
+  url: z.string().trim().min(PRODUCT_MIN_LENGTH)
+});
+
+const variantAttributeValueFormRowSchema = z.object({
+  attributeId: z.string().trim(),
+  id: z.string().optional(),
+  rank: z.number().int().min(MIN_INVENTORY_QUANTITY).optional(),
+  value: z.string().trim()
 });
 
 const variantRowInputSchema = z.object({
+  attributeValues: z.array(variantAttributeValueFormRowSchema).optional(),
   compareAtPrice: plnMoneyInputSchema,
   id: z.string().optional(),
+  images: z.array(productImageFormRowSchema).optional(),
+  mainImageId: z.string().optional(),
   manageInventory: z.boolean(),
   optionValues: z.record(z.string(), z.string()),
   price: plnMoneyInputSchema,
@@ -207,17 +229,12 @@ function refineActiveProductPricing(data: z.infer<typeof catalogUpsertBaseSchema
   });
 }
 
-const productImageFormRowSchema = z.object({
-  alt: z.string().trim(),
-  id: z.string().trim().min(PRODUCT_MIN_LENGTH),
-  url: z.string().trim().min(PRODUCT_MIN_LENGTH)
-});
-
 const productImageReplaceRowSchema = z.object({
   alt: z.string().trim().optional(),
   id: z.string().trim().min(PRODUCT_MIN_LENGTH).optional(),
   rank: z.number().int().min(MIN_INVENTORY_QUANTITY),
-  url: z.string().trim().min(PRODUCT_MIN_LENGTH).max(PRODUCT_IMAGE_COLUMN_LENGTH.url)
+  url: z.string().trim().min(PRODUCT_MIN_LENGTH).max(PRODUCT_IMAGE_COLUMN_LENGTH.url),
+  variantId: z.string().optional()
 });
 
 const productAttributeValueFormRowSchema = z.object({
@@ -232,6 +249,31 @@ const productMediaFormFields = {
   images: z.array(productImageFormRowSchema),
   mainImageId: z.string().optional()
 } as const;
+
+function refineDuplicateSkusInForm(data: ProductFormValues, ctx: z.RefinementCtx): void {
+  const entries = collectProductFormSkuEntries(data);
+  const entriesBySku = new Map<string, (typeof entries)[number][]>();
+
+  for (const entry of entries) {
+    const group = entriesBySku.get(entry.sku) ?? [];
+    group.push(entry);
+    entriesBySku.set(entry.sku, group);
+  }
+
+  const MIN_DUPLICATE_SKU_GROUP_SIZE = 2;
+
+  for (const group of entriesBySku.values()) {
+    if (group.length >= MIN_DUPLICATE_SKU_GROUP_SIZE) {
+      for (const entry of group) {
+        ctx.addIssue({
+          code: "custom",
+          message: PRODUCT_FORM_VALIDATION_KEYS.duplicateSku,
+          path: formPathToZodPath(entry.formPath)
+        });
+      }
+    }
+  }
+}
 
 function refineDuplicateProductAttributes(data: ProductFormValues, ctx: z.RefinementCtx): void {
   const seenAttributeIds = new Set<string>();
@@ -321,6 +363,7 @@ const productFormSchemaDefinition = z
     ...productMediaFormFields
   })
   .superRefine((data, ctx) => {
+    refineDuplicateSkusInForm(data, ctx);
     refineDuplicateProductAttributes(data, ctx);
     refineCatalogUpsert(data, ctx);
   });
@@ -343,7 +386,13 @@ function withInventoryAlwaysTracked(input: CatalogUpsertInput): CatalogUpsertInp
 
 export function parseCatalogUpsertInput(values: ProductFormValues): CatalogUpsertInput {
   const { attributeValues: _attributeValues, images: _images, mainImageId: _mainImageId, ...catalog } = values;
-  return withInventoryAlwaysTracked(catalogUpsertInputSchema.parse(catalog));
+  const parsed = catalogUpsertInputSchema.parse({
+    ...catalog,
+    variants: catalog.variants.map(
+      ({ attributeValues: _variantAttributes, images: _variantImages, mainImageId: _variantMainImageId, ...variant }) => variant
+    )
+  });
+  return withInventoryAlwaysTracked(parsed);
 }
 
 export const productZodSchemas = {
@@ -354,6 +403,7 @@ export const productZodSchemas = {
     collectionTitles: z.string().optional(),
     inventoryLevel: z.enum([PRODUCT_INVENTORY_LEVEL.OUT, PRODUCT_INVENTORY_LEVEL.LOW, PRODUCT_INVENTORY_LEVEL.OK]),
     minPrice: z.number().optional(),
+    skuSummary: z.string().optional(),
     totalStock: z.number(),
     variantCount: z.number()
   }),
@@ -376,5 +426,16 @@ export const productZodSchemas = {
   }),
   update: catalogUpsertInputSchema.extend({
     id: productIdSchema
+  }),
+  updateCompleteInput: catalogUpsertInputSchema.extend({
+    attributeValues: z.array(attributeOnProductZodSchemas.row),
+    id: productIdSchema,
+    images: z.array(productImageReplaceRowSchema),
+    variantAttributeValues: z.array(
+      z.object({
+        values: z.array(attributeOnProductZodSchemas.row),
+        variantId: z.string().trim().min(PRODUCT_MIN_LENGTH).max(PRODUCT_COLUMN_LENGTH.id)
+      })
+    )
   })
 };

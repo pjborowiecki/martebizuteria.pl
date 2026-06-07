@@ -13,7 +13,7 @@ const SERVER_SORTABLE_COLUMN_IDS = new Set<string>([
   PRODUCT_TABLE_COLUMN_ID.status,
   PRODUCT_TABLE_COLUMN_ID.minPrice,
   PRODUCT_TABLE_COLUMN_ID.stock,
-  PRODUCT_TABLE_COLUMN_ID.variantCount,
+  PRODUCT_TABLE_COLUMN_ID.variantKind,
   PRODUCT_TABLE_COLUMN_ID.createdAt,
   PRODUCT_TABLE_COLUMN_ID.editedAt
 ]);
@@ -35,6 +35,6 @@ export function adminProductsListSortRequiresVariantStats(sort: AdminProductsLis
   return (
     sort.columnId === PRODUCT_TABLE_COLUMN_ID.minPrice ||
     sort.columnId === PRODUCT_TABLE_COLUMN_ID.stock ||
-    sort.columnId === PRODUCT_TABLE_COLUMN_ID.variantCount
+    sort.columnId === PRODUCT_TABLE_COLUMN_ID.variantKind
   );
 }

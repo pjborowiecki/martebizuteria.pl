@@ -1,4 +1,4 @@
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database";
 
@@ -25,8 +25,16 @@ async function getFirstImageUrl(productId: string): Promise<string | undefined> 
   return first?.url;
 }
 
+function thumbnailUpdateValue(url: string | undefined): string | SQL {
+  // Drizzle drops `undefined` from `.set()` and throws "No values to set".
+  return url ?? sql`null`;
+}
+
 async function updateProductThumbnail(productId: string, url: string | undefined): Promise<void> {
-  await db.update(product).set({ thumbnail: url }).where(eq(product.id, productId));
+  await db
+    .update(product)
+    .set({ thumbnail: thumbnailUpdateValue(url) })
+    .where(eq(product.id, productId));
 }
 
 async function updateRank(id: string, rank: number): Promise<void> {

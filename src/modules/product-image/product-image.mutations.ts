@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions";
 
 import { productImageAccessors } from "~/src/modules/product-image/product-image.accessors";
-import { replaceProductImages, syncThumbnailsForProductIds } from "~/src/modules/product-image/product-image.utils";
+import { replaceProductImages, syncThumbnailsForProductIds } from "~/src/modules/product-image/product-image.persist.utils";
 import { productImageZodSchemas } from "~/src/modules/product-image/product-image.zod";
 
 const EMPTY_LENGTH = 0;

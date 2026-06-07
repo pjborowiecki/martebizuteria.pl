@@ -25,6 +25,24 @@ export interface ProductSpecification {
   readonly value: string;
 }
 
+export interface StorefrontProductOptionValue {
+  readonly id: string;
+  readonly label: string;
+}
+
+export interface StorefrontProductOption {
+  readonly id: string;
+  readonly title: string;
+  readonly values: readonly StorefrontProductOptionValue[];
+}
+
+export type StorefrontProductVariant = typeof productVariant.$inferSelect & {
+  readonly imageUrls: readonly string[];
+  readonly inventory?: typeof inventory.$inferSelect | null;
+  readonly optionValueIds: Readonly<Record<string, string>>;
+  readonly specifications: readonly ProductSpecification[];
+};
+
 export type StorefrontProduct = Omit<Product["select"], "descriptions" | "subtitles" | "tags" | "titles"> & {
   readonly categories: readonly (typeof productCategory.$inferSelect)[];
   readonly category?: typeof productCategory.$inferSelect;
@@ -33,14 +51,16 @@ export type StorefrontProduct = Omit<Product["select"], "descriptions" | "subtit
   readonly collectionId?: string;
   readonly collections: readonly (typeof productCollection.$inferSelect)[];
   readonly description: string;
+  readonly hasVariants: boolean;
   readonly imageUrls: readonly string[];
+  readonly options: readonly StorefrontProductOption[];
+  readonly sharedImageUrls: readonly string[];
+  readonly sharedSpecifications: readonly ProductSpecification[];
   readonly specifications: readonly ProductSpecification[];
   readonly subtitle: string;
   readonly tags?: string[];
   readonly title: string;
-  readonly variants: readonly (typeof productVariant.$inferSelect & {
-    readonly inventory?: typeof inventory.$inferSelect | null;
-  })[];
+  readonly variants: readonly StorefrontProductVariant[];
 };
 
 export interface Product {

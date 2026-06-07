@@ -48,6 +48,16 @@ export const PRODUCT_INVENTORY_LEVEL = {
 
 export type ProductInventoryLevel = (typeof PRODUCT_INVENTORY_LEVEL)[keyof typeof PRODUCT_INVENTORY_LEVEL];
 
+/** Admin list: one sellable variant vs multiple variant rows. */
+export const PRODUCT_VARIANT_KIND = {
+  MULTI: "multi",
+  SINGLE: "single"
+} as const;
+
+export type ProductVariantKind = (typeof PRODUCT_VARIANT_KIND)[keyof typeof PRODUCT_VARIANT_KIND];
+
+export const PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD = 1;
+
 export const PRODUCT_ERROR_CODES = {
   DUPLICATE_HANDLE: "DUPLICATE_HANDLE",
   DUPLICATE_SKU: "DUPLICATE_SKU",
@@ -59,6 +69,7 @@ export const PRODUCT_FORM_VALIDATION_KEYS = {
   compareAtInvalid: "form.validation.compareAtInvalid",
   descriptionTooLong: "form.validation.descriptionTooLong",
   duplicateAttribute: "form.validation.duplicateAttribute",
+  duplicateSku: "form.validation.duplicateSku",
   localeTitleRequired: "form.validation.LOCALE_TITLE_REQUIRED",
   optionsRequired: "form.validation.optionsRequired",
   priceInvalid: "form.validation.priceInvalid",
@@ -106,16 +117,17 @@ export const PRODUCT_TABLE_COLUMN_ID = {
   minPrice: "minPrice",
   recordId: "recordId",
   select: "select",
+  sku: "sku",
   status: "status",
   stock: "stock",
   title: "title",
-  variantCount: "variantCount"
+  variantCount: "variantCount",
+  variantKind: "variantKind"
 } as const;
 
 export const PRODUCT_TABLE_DEFAULT_COLUMN_VISIBILITY = {
   [PRODUCT_TABLE_COLUMN_ID.editedAt]: false,
-  [PRODUCT_TABLE_COLUMN_ID.recordId]: false,
-  [PRODUCT_TABLE_COLUMN_ID.variantCount]: false
+  [PRODUCT_TABLE_COLUMN_ID.recordId]: false
 } as const;
 
 export const PRODUCT_TABLE_COLUMN_SIZE = {
@@ -130,10 +142,12 @@ export const PRODUCT_TABLE_COLUMN_SIZE = {
   image: 72,
   minPrice: 120,
   recordId: 320,
+  sku: 148,
   status: 140,
   stock: 132,
   title: 220,
-  variantCount: 100
+  variantCount: 100,
+  variantKind: 132
 } as const;
 
 export const PRODUCT_TABLE_COLUMN_PINNING = {

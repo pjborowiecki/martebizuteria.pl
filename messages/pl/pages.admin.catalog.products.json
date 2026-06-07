@@ -63,7 +63,7 @@
       "attributeProperty": "Atrybut z katalogu (np. waga, kolor). Jeśli go nie ma, utwórz go w zakładce Atrybuty.",
       "attributeValue": "Wartość tej właściwości tylko dla tego produktu (np. 14 g lub srebro).",
       "optionName": "Nazwa osi wariantów widoczna w sklepie (np. Rozmiar, Metal).",
-      "optionValues": "Wartości tej opcji (np. S, M, L). Wpisz wartość i naciśnij Enter lub przecinek.",
+      "optionValues": "Jedna wartość na wiersz (np. Srebrny). Wiersze wariantów pojawią się od razu po wpisaniu wartości po polsku. Przełącz język u góry, aby dodać tłumaczenie ({locale}).",
       "variantSku": "Opcjonalny kod magazynowy dla tej kombinacji opcji.",
       "variantPrice": "Cena sprzedaży w PLN dla tej kombinacji (minimum 2,00 PLN przy publikacji).",
       "variantStock": "Liczba sztuk dostępnych do sprzedaży dla tego wariantu."
@@ -84,7 +84,8 @@
       "LOCALE_TITLE_REQUIRED": "Uzupełnij to pole w tym języku.",
       "submitBlockedTitle": "Popraw błędy w formularzu",
       "submitBlockedDescription": "Sprawdź podświetlone pola i spróbuj ponownie.",
-      "duplicateAttribute": "Ten atrybut jest już przypisany do produktu — każdy atrybut może wystąpić tylko raz."
+      "duplicateAttribute": "Ten atrybut jest już przypisany do produktu — każdy atrybut może wystąpić tylko raz.",
+      "duplicateSku": "Ten kod SKU jest już używany przez inny wariant."
     }
   },
   "toast": {
@@ -127,11 +128,15 @@
     "formats": "Obsługuje JPG, PNG, WEBP. Max 5MB.",
     "galleryLabel": "Galeria produktu",
     "hint": "Pierwsze zdjęcie (oznaczone jako główne) staje się miniaturą w katalogu. Przeciągnij, aby zmienić kolejność.",
+    "galleryLabelShared": "Wspólne zdjęcia (opcjonalnie)",
+    "hintSharedVariants": "Zdjęcia widoczne dla wszystkich wariantów, gdy dany wariant nie ma własnej galerii. Aby każdy wariant miał inne zdjęcia, dodaj je w sekcji Warianty.",
     "title": "Media"
   },
   "attributes": {
     "title": "Atrybuty",
     "hint": "Wybierz atrybuty z katalogu (np. waga, kolor) i ustaw wartości tylko dla tego produktu.",
+    "hintSharedVariants": "Atrybuty wspólne dla całego produktu (np. materiał). Wartości różne per wariant — np. waga — ustaw w sekcji Warianty przy każdym wierszu.",
+    "emptyVariant": "Brak atrybutów tylko dla tego wariantu. Wybierz atrybut i wartość powyżej, potem kliknij „Dodaj atrybut”.",
     "add": "Dodaj atrybut",
     "empty": "Nie przypisano jeszcze żadnych wartości. Wybierz atrybut i wartość powyżej, potem kliknij „Dodaj atrybut”.",
     "emptyNoCatalogAttributes": "W katalogu nie ma jeszcze żadnych atrybutów. Utwórz je w zakładce Atrybuty, a następnie wróć tutaj i przypisz do produktu.",
@@ -187,9 +192,18 @@
     "addOption": "Dodaj opcję",
     "empty": "Dodaj opcję, np. Rozmiar lub Metal, aby utworzyć warianty.",
     "optionName": "Nazwa opcji",
-    "optionNamePlaceholder": "np. Rozmiar",
+    "optionNamePlaceholder": "np. Wykończenie",
     "optionValues": "Wartości",
-    "optionValuesPlaceholder": "Wpisz wartość i naciśnij Enter",
+    "optionValueLabel": {
+      "en": "Wartość (angielski)",
+      "pl": "Wartość (PL)"
+    },
+    "optionValuePlaceholder": {
+      "en": "np. Silver",
+      "pl": "np. Srebrny"
+    },
+    "addValue": "Dodaj wartość",
+    "removeValue": "Usuń wartość",
     "removeOption": "Usuń opcję"
   },
   "shipping": {
@@ -224,20 +238,27 @@
   "title": "Dodaj Nowy Produkt",
   "editTitle": "Edytuj Produkt",
   "variants": {
-    "sectionHint": "Zdefiniuj osie opcji (np. rozmiar, metal) — wiersze wariantów aktualizują się automatycznie. Ustaw cenę i stan dla każdej kombinacji. To nie to samo co atrybuty produktu poniżej.",
-    "optionsDefinitions": "Osie opcji",
-    "optionsDefinitionsHint": "Każda opcja to jedna oś (np. Rozmiar). Wartości to wybory w tej osi (np. S, M, L).",
-    "rowsTitle": "Wiersze wariantów",
-    "rowsSectionHint": "Jedna linia na każdą kombinację. Ustaw SKU, cenę i stan magazynowy.",
+    "sectionHint": "Każdy wiersz to jeden wariant (np. Srebrny, Pozłacany). Ustaw nazwę, cenę, stan i zdjęcia. Przełącz PL/EN u góry, aby przetłumaczyć nazwy.",
+    "listHint": "Nazwa wariantu w języku {locale}. Przełącz PL/EN u góry formularza, aby dodać tłumaczenie.",
+    "addVariant": "Dodaj wariant",
+    "removeVariant": "Usuń wariant",
+    "unnamedVariant": "ten wariant",
+    "nameLabel": {
+      "en": "Nazwa wariantu (EN)",
+      "pl": "Nazwa wariantu (PL)"
+    },
+    "namePlaceholder": {
+      "en": "np. Gold plated",
+      "pl": "np. Srebrny"
+    },
+    "imagesLabel": "Zdjęcia: {name}",
+    "imagesHint": "Galeria tylko dla tego wariantu. Gdy pusta, sklep pokazuje wspólne zdjęcia z sekcji Media.",
+    "variantRowTitle": "Wariant: {name}",
+    "attributesTitle": "Atrybuty wariantu",
+    "attributesHint": "Wartości tylko dla tego wariantu (np. waga Srebrny vs Pozłacany). Atrybuty wspólne ustaw w sekcji Atrybuty poniżej.",
     "sku": "SKU",
     "stockQuantity": "Stan magazynowy (szt.)",
-    "generateHint": "Dodaj osie opcji i wartości powyżej — wiersze pojawią się tutaj automatycznie.",
-    "name": "Wariant",
-    "namePlaceholder": "np. Rozmiar",
-    "optionValue": "Wartość opcji",
     "price": "Cena",
-    "stock": "Zapas",
-    "title": "Warianty",
-    "valuePlaceholder": "np. Mały"
+    "title": "Warianty"
   }
 }

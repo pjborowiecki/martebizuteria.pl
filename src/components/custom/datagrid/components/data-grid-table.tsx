@@ -21,7 +21,8 @@ import {
   getDataGridColumnLayoutWidth,
   getDataGridContentWidth,
   getDataGridTableMinWidth,
-  resolveDataGridTableLayout
+  resolveDataGridTableLayout,
+  sumDataGridLayoutColumnWidths
 } from "~/src/components/custom/datagrid/lib/data-grid-table-layout";
 import type { ColumnReorderApi, RowReorderApi } from "~/src/components/custom/datagrid/lib/data-grid.types";
 import { getDataGridLayoutHeaders, getDataGridRightPinnedScrollPaddingPx } from "~/src/components/custom/datagrid/lib/data-grid.utils";
@@ -80,11 +81,24 @@ export function DataGridTable<TData extends RowData>({
     [columnSizing, layoutColumns, tableClientWidth]
   );
 
-  const tableStyle = useMemo(
-    () => dataTableContentStyle({ containerWidthPx: tableClientWidth, layoutWidthPx: tableWidth, minWidthPx: tableMinWidth }),
-    [tableClientWidth, tableMinWidth, tableWidth]
+  const layoutColumnWidthsSum = useMemo(
+    () => (tableLayout === undefined ? undefined : sumDataGridLayoutColumnWidths(layoutColumns, columnSizing, tableLayout)),
+    [columnSizing, layoutColumns, tableLayout]
   );
-  const resolvedTableWidth = Math.max(tableMinWidth, tableWidth);
+
+  const resolvedTableWidth = useMemo(() => {
+    if (layoutColumnWidthsSum !== undefined) {
+      const measuredFloor = hasMeasuredContainer ? tableClientWidth : ZERO;
+      return Math.max(tableMinWidth, layoutColumnWidthsSum, measuredFloor);
+    }
+
+    return Math.max(tableMinWidth, tableWidth);
+  }, [hasMeasuredContainer, layoutColumnWidthsSum, tableClientWidth, tableMinWidth, tableWidth]);
+
+  const tableStyle = useMemo(
+    () => dataTableContentStyle({ containerWidthPx: tableClientWidth, layoutWidthPx: resolvedTableWidth, minWidthPx: tableMinWidth }),
+    [resolvedTableWidth, tableClientWidth, tableMinWidth]
+  );
   const rightPinnedScrollPaddingPx = useMemo(
     () => getDataGridRightPinnedScrollPaddingPx(layoutColumns, columnSizing, tableLayout),
     [columnSizing, layoutColumns, tableLayout]

@@ -19,8 +19,14 @@ export function ProductsStats(): JSX.Element {
   // Keep card dimensions stable on refresh: only skeleton when there is no cached stats yet.
   const valuesPending = isFetching && isStale;
 
-  const { activeCategoryFilter, activeCollectionFilter, activeInventoryFilter, activeStatusFilter, applyProductsFilter } =
-    useProductsDataGridContext();
+  const {
+    activeCategoryFilter,
+    activeCollectionFilter,
+    activeInventoryFilter,
+    activeStatusFilter,
+    activeVariantKindFilter,
+    applyProductsFilter
+  } = useProductsDataGridContext();
 
   return (
     <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -35,6 +41,7 @@ export function ProductsStats(): JSX.Element {
             activeCollectionFilter={activeCollectionFilter}
             activeInventoryFilter={activeInventoryFilter}
             activeStatusFilter={activeStatusFilter}
+            activeVariantKindFilter={activeVariantKindFilter}
             caption={caption}
             config={config}
             displayValue={formatProductStatDisplayValue(config.key, value)}

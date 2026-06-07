@@ -7,6 +7,8 @@ import { matchesDateColumnFilter } from "~/src/lib/_utils/admin-date-filter";
 import { formatPrice } from "~/src/lib/_utils/currency";
 import { cn } from "~/src/lib/utils";
 
+import { Badge } from "~/src/components/shadcn/badge";
+
 import { selectionColumn } from "~/src/components/custom/datagrid/components/selection-column";
 import { fixedDataGridColumnWidth } from "~/src/components/custom/datagrid/lib/data-grid.utils";
 import { Image } from "~/src/components/custom/image";
@@ -30,10 +32,11 @@ import {
   PRODUCT_STATUS_LABEL_KEYS,
   PRODUCT_TABLE_A11Y_KEYS,
   PRODUCT_TABLE_COLUMN_ID,
-  PRODUCT_TABLE_COLUMN_SIZE
+  PRODUCT_TABLE_COLUMN_SIZE,
+  PRODUCT_VARIANT_KIND
 } from "~/src/modules/product/product.constants";
 import type { Product } from "~/src/modules/product/product.types";
-import { resolveProductTitle } from "~/src/modules/product/product.utils";
+import { resolveProductTitle, resolveProductVariantKind } from "~/src/modules/product/product.utils";
 
 const THUMBNAIL_SIZE = 36;
 
@@ -75,6 +78,185 @@ function statusLabelKey(
   return PRODUCT_STATUS_LABEL_KEYS[status];
 }
 
+function ProductVariantKindCell({ variantCount }: Readonly<{ variantCount: Product["adminListItem"]["variantCount"] }>): JSX.Element {
+  const t = useTranslations("pages.admin.catalog.products.catalogList");
+  const kind = resolveProductVariantKind(variantCount);
+
+  if (kind === PRODUCT_VARIANT_KIND.SINGLE) {
+    return (
+      <Badge className="font-normal" variant="secondary">
+        {t("variantKind.single")}
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge className="font-normal" variant="outline">
+      {t("variantKind.multiCount", { count: variantCount })}
+    </Badge>
+  );
+}
+
+interface ProductColumnBuildContext {
+  readonly format: ReturnType<typeof useFormatter>;
+  readonly locale: string;
+  readonly t: ReturnType<typeof useTranslations<"pages.admin.catalog.products.catalogList">>;
+  readonly tAdmin: ReturnType<typeof useTranslations<"pages.admin">>;
+}
+
+function buildProductTimestampColumns({ format, t }: ProductColumnBuildContext) {
+  return [
+    columnHelper.accessor("createdAt", {
+      cell: ({ getValue }) => (
+        <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
+      ),
+      filterFn: matchesDateColumnFilter,
+      header: t("columns.createdAt"),
+      id: PRODUCT_TABLE_COLUMN_ID.createdAt,
+      maxSize: 320,
+      meta: { skeletonVariant: "date" },
+      minSize: PRODUCT_TABLE_COLUMN_SIZE.createdAt,
+      size: PRODUCT_TABLE_COLUMN_SIZE.createdAt
+    }),
+    columnHelper.accessor("updatedAt", {
+      cell: ({ getValue }) => (
+        <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
+      ),
+      header: t("columns.editedAt"),
+      id: PRODUCT_TABLE_COLUMN_ID.editedAt,
+      maxSize: 320,
+      meta: { skeletonVariant: "date" },
+      minSize: PRODUCT_TABLE_COLUMN_SIZE.editedAt,
+      size: PRODUCT_TABLE_COLUMN_SIZE.editedAt
+    })
+  ] as const;
+}
+
+function buildProductDataGridColumns(context: ProductColumnBuildContext) {
+  const { locale, t, tAdmin } = context;
+
+  return [
+    selectionColumn(columnHelper, {
+      all: tAdmin(PRODUCT_TABLE_A11Y_KEYS.selectAll),
+      row: tAdmin(PRODUCT_TABLE_A11Y_KEYS.selectRow)
+    }),
+    createProductReorderColumn(columnHelper),
+    columnHelper.display({
+      cell: ({ row }) => <ProductImageCell thumbnail={row.original.thumbnail} title={resolveProductTitle(row.original.titles, locale)} />,
+      enableSorting: false,
+      header: t("columns.image"),
+      id: PRODUCT_TABLE_COLUMN_ID.image,
+      meta: { skeletonVariant: "thumbnail" },
+      ...fixedDataGridColumnWidth(PRODUCT_TABLE_COLUMN_SIZE.image)
+    }),
+    columnHelper.accessor((row) => resolveProductTitle(row.titles, locale), {
+      cell: ({ row }) => <CatalogTitleHandleCell handle={row.original.handle} title={resolveProductTitle(row.original.titles, locale)} />,
+      header: t("columns.product"),
+      id: PRODUCT_TABLE_COLUMN_ID.title,
+      meta: { skeletonVariant: "title" },
+      size: PRODUCT_TABLE_COLUMN_SIZE.title
+    }),
+    columnHelper.accessor((row) => row.id, {
+      cell: ({ row }) => <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{row.original.id}</span>,
+      header: t("columns.id"),
+      id: PRODUCT_TABLE_COLUMN_ID.recordId,
+      meta: CATALOG_RECORD_ID_COLUMN_META,
+      ...catalogRecordIdColumnWidth()
+    }),
+    columnHelper.accessor("status", {
+      cell: ({ getValue }) => <ProductStatusBadge status={getValue()} label={t(statusLabelKey(getValue()))} />,
+      filterFn: "equalsString",
+      header: t("columns.status"),
+      id: PRODUCT_TABLE_COLUMN_ID.status,
+      meta: { skeletonVariant: "badge" },
+      size: PRODUCT_TABLE_COLUMN_SIZE.status
+    }),
+    columnHelper.accessor("skuSummary", {
+      cell: ({ getValue }) => <CatalogTruncatedTextCell className="font-mono text-xs" text={getValue()?.trim() ?? ""} />,
+      header: t("columns.sku"),
+      id: PRODUCT_TABLE_COLUMN_ID.sku,
+      meta: { skeletonVariant: "text" },
+      minSize: PRODUCT_TABLE_COLUMN_SIZE.sku,
+      size: PRODUCT_TABLE_COLUMN_SIZE.sku
+    }),
+    columnHelper.accessor((row) => resolveProductVariantKind(row.variantCount), {
+      cell: ({ row }) => <ProductVariantKindCell variantCount={row.original.variantCount} />,
+      filterFn: "equalsString",
+      header: t("columns.variants"),
+      id: PRODUCT_TABLE_COLUMN_ID.variantKind,
+      meta: { skeletonVariant: "badge" },
+      minSize: PRODUCT_TABLE_COLUMN_SIZE.variantKind,
+      size: PRODUCT_TABLE_COLUMN_SIZE.variantKind
+    }),
+    columnHelper.accessor("minPrice", {
+      cell: ({ getValue }) => {
+        const price = getValue();
+        if (price === undefined) {
+          return <span className="text-muted-foreground/40">—</span>;
+        }
+        return <span className="block font-mono text-sm font-medium tabular-nums">{formatPrice(price, "PLN", locale)}</span>;
+      },
+      filterFn: matchesNumericColumnFilter,
+      header: t("columns.price"),
+      id: PRODUCT_TABLE_COLUMN_ID.minPrice,
+      meta: { skeletonVariant: "number" },
+      size: PRODUCT_TABLE_COLUMN_SIZE.minPrice
+    }),
+    columnHelper.accessor("totalStock", {
+      cell: ({ row }) => <ProductStockCell inventoryLevel={row.original.inventoryLevel} totalStock={row.original.totalStock} />,
+      filterFn: matchesNumericColumnFilter,
+      header: t("columns.stock"),
+      id: PRODUCT_TABLE_COLUMN_ID.stock,
+      meta: { skeletonVariant: "number" },
+      minSize: 128,
+      size: PRODUCT_TABLE_COLUMN_SIZE.stock
+    }),
+    columnHelper.accessor("categoryTitle", {
+      cell: ({ getValue }) => {
+        const value = getValue();
+        if (value === undefined || value === "") {
+          return <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>—</span>;
+        }
+        return <span className={CATALOG_DATAGRID_MUTED_TEXT_CLASS}>{value}</span>;
+      },
+      header: t("columns.categories"),
+      id: PRODUCT_TABLE_COLUMN_ID.category,
+      meta: { skeletonVariant: "text" },
+      size: PRODUCT_TABLE_COLUMN_SIZE.category
+    }),
+    columnHelper.accessor("collectionTitles", {
+      cell: ({ getValue }) => <CatalogTruncatedTextCell text={getValue() ?? ""} />,
+      header: t("columns.collections"),
+      id: PRODUCT_TABLE_COLUMN_ID.collection,
+      meta: { skeletonVariant: "text" },
+      size: PRODUCT_TABLE_COLUMN_SIZE.collection
+    }),
+    columnHelper.accessor("attributeTitles", {
+      cell: ({ getValue }) => <CatalogTruncatedTextCell text={getValue() ?? ""} />,
+      header: t("columns.attributes"),
+      id: PRODUCT_TABLE_COLUMN_ID.attributes,
+      meta: { fillsRemainingWidth: true, skeletonVariant: "text" },
+      minSize: 200,
+      size: PRODUCT_TABLE_COLUMN_SIZE.attributes
+    }),
+    ...buildProductTimestampColumns(context),
+    columnHelper.display({
+      cell: ({ row }) => <ProductsRowActions product={row.original} />,
+      enableHiding: false,
+      enableSorting: false,
+      header: () => <span className="sr-only">{t("columns.actions")}</span>,
+      id: PRODUCT_TABLE_COLUMN_ID.actions,
+      meta: {
+        cellClassName: "pr-4 text-right",
+        headClassName: "pr-4",
+        preventRowClick: true,
+        skeletonVariant: "iconEnd"
+      },
+      ...fixedDataGridColumnWidth(PRODUCT_TABLE_COLUMN_SIZE.actions)
+    })
+  ];
+}
+
 /** Builds the products column set (canonical default order for the datagrid). */
 export function useProductColumns() {
   const t = useTranslations("pages.admin.catalog.products.catalogList");
@@ -82,140 +264,5 @@ export function useProductColumns() {
   const format = useFormatter();
   const locale = useLocale();
 
-  return useMemo(
-    () => [
-      selectionColumn(columnHelper, {
-        all: tAdmin(PRODUCT_TABLE_A11Y_KEYS.selectAll),
-        row: tAdmin(PRODUCT_TABLE_A11Y_KEYS.selectRow)
-      }),
-      createProductReorderColumn(columnHelper),
-      columnHelper.display({
-        cell: ({ row }) => <ProductImageCell thumbnail={row.original.thumbnail} title={resolveProductTitle(row.original.titles, locale)} />,
-        enableSorting: false,
-        header: t("columns.image"),
-        id: PRODUCT_TABLE_COLUMN_ID.image,
-        meta: { skeletonVariant: "thumbnail" },
-        ...fixedDataGridColumnWidth(PRODUCT_TABLE_COLUMN_SIZE.image)
-      }),
-      columnHelper.accessor((row) => resolveProductTitle(row.titles, locale), {
-        cell: ({ row }) => <CatalogTitleHandleCell handle={row.original.handle} title={resolveProductTitle(row.original.titles, locale)} />,
-        header: t("columns.product"),
-        id: PRODUCT_TABLE_COLUMN_ID.title,
-        meta: { skeletonVariant: "title" },
-        size: PRODUCT_TABLE_COLUMN_SIZE.title
-      }),
-      columnHelper.accessor((row) => row.id, {
-        cell: ({ row }) => <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{row.original.id}</span>,
-        header: t("columns.id"),
-        id: PRODUCT_TABLE_COLUMN_ID.recordId,
-        meta: CATALOG_RECORD_ID_COLUMN_META,
-        ...catalogRecordIdColumnWidth()
-      }),
-      columnHelper.accessor("status", {
-        cell: ({ getValue }) => <ProductStatusBadge status={getValue()} label={t(statusLabelKey(getValue()))} />,
-        filterFn: "equalsString",
-        header: t("columns.status"),
-        id: PRODUCT_TABLE_COLUMN_ID.status,
-        meta: { skeletonVariant: "badge" },
-        size: PRODUCT_TABLE_COLUMN_SIZE.status
-      }),
-      columnHelper.accessor("minPrice", {
-        cell: ({ getValue }) => {
-          const price = getValue();
-          if (price === undefined) {
-            return <span className="text-muted-foreground/40">—</span>;
-          }
-          return <span className="block font-mono text-sm font-medium tabular-nums">{formatPrice(price, "PLN", locale)}</span>;
-        },
-        filterFn: matchesNumericColumnFilter,
-        header: t("columns.price"),
-        id: PRODUCT_TABLE_COLUMN_ID.minPrice,
-        meta: { skeletonVariant: "number" },
-        size: PRODUCT_TABLE_COLUMN_SIZE.minPrice
-      }),
-      columnHelper.accessor("totalStock", {
-        cell: ({ row }) => <ProductStockCell inventoryLevel={row.original.inventoryLevel} totalStock={row.original.totalStock} />,
-        filterFn: matchesNumericColumnFilter,
-        header: t("columns.stock"),
-        id: PRODUCT_TABLE_COLUMN_ID.stock,
-        meta: { skeletonVariant: "number" },
-        minSize: 128,
-        size: PRODUCT_TABLE_COLUMN_SIZE.stock
-      }),
-      columnHelper.accessor("categoryTitle", {
-        cell: ({ getValue }) => {
-          const value = getValue();
-          if (value === undefined || value === "") {
-            return <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>—</span>;
-          }
-          return <span className={CATALOG_DATAGRID_MUTED_TEXT_CLASS}>{value}</span>;
-        },
-        header: t("columns.categories"),
-        id: PRODUCT_TABLE_COLUMN_ID.category,
-        meta: { skeletonVariant: "text" },
-        size: PRODUCT_TABLE_COLUMN_SIZE.category
-      }),
-      columnHelper.accessor("collectionTitles", {
-        cell: ({ getValue }) => <CatalogTruncatedTextCell text={getValue() ?? ""} />,
-        header: t("columns.collections"),
-        id: PRODUCT_TABLE_COLUMN_ID.collection,
-        meta: { skeletonVariant: "text" },
-        size: PRODUCT_TABLE_COLUMN_SIZE.collection
-      }),
-      columnHelper.accessor("attributeTitles", {
-        cell: ({ getValue }) => <CatalogTruncatedTextCell text={getValue() ?? ""} />,
-        header: t("columns.attributes"),
-        id: PRODUCT_TABLE_COLUMN_ID.attributes,
-        meta: { fillsRemainingWidth: true, skeletonVariant: "text" },
-        minSize: 200,
-        size: PRODUCT_TABLE_COLUMN_SIZE.attributes
-      }),
-      columnHelper.accessor("variantCount", {
-        cell: ({ getValue }) => <span className="font-mono text-sm tabular-nums">{getValue()}</span>,
-        header: t("columns.variants"),
-        id: PRODUCT_TABLE_COLUMN_ID.variantCount,
-        meta: { cellClassName: "text-right", headClassName: "text-right", skeletonVariant: "number" },
-        minSize: 96,
-        size: PRODUCT_TABLE_COLUMN_SIZE.variantCount
-      }),
-      columnHelper.accessor("createdAt", {
-        cell: ({ getValue }) => (
-          <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
-        ),
-        filterFn: matchesDateColumnFilter,
-        header: t("columns.createdAt"),
-        id: PRODUCT_TABLE_COLUMN_ID.createdAt,
-        maxSize: 320,
-        meta: { skeletonVariant: "date" },
-        minSize: PRODUCT_TABLE_COLUMN_SIZE.createdAt,
-        size: PRODUCT_TABLE_COLUMN_SIZE.createdAt
-      }),
-      columnHelper.accessor("updatedAt", {
-        cell: ({ getValue }) => (
-          <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>
-        ),
-        header: t("columns.editedAt"),
-        id: PRODUCT_TABLE_COLUMN_ID.editedAt,
-        maxSize: 320,
-        meta: { skeletonVariant: "date" },
-        minSize: PRODUCT_TABLE_COLUMN_SIZE.editedAt,
-        size: PRODUCT_TABLE_COLUMN_SIZE.editedAt
-      }),
-      columnHelper.display({
-        cell: ({ row }) => <ProductsRowActions product={row.original} />,
-        enableHiding: false,
-        enableSorting: false,
-        header: () => <span className="sr-only">{t("columns.actions")}</span>,
-        id: PRODUCT_TABLE_COLUMN_ID.actions,
-        meta: {
-          cellClassName: "pr-4 text-right",
-          headClassName: "pr-4",
-          preventRowClick: true,
-          skeletonVariant: "iconEnd"
-        },
-        ...fixedDataGridColumnWidth(PRODUCT_TABLE_COLUMN_SIZE.actions)
-      })
-    ],
-    [format, locale, t, tAdmin]
-  );
+  return useMemo(() => buildProductDataGridColumns({ format, locale, t, tAdmin }), [format, locale, t, tAdmin]);
 }

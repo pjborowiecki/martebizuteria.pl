@@ -20,6 +20,7 @@
     "addToCart": "Add to cart",
     "addedToCart": "Added to Cart",
     "size": "One Size",
+    "variantHint": "Gallery, specifications, and price update when you change the finish.",
     "details": {
       "description": {
         "title": "Description",

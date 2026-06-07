@@ -20,6 +20,8 @@ import { useTranslations } from "use-intl";
 import { CONSTANTS } from "~/src/constants";
 import type { Locale } from "~/src/constants/types";
 
+import { tryCatch } from "~/src/lib/_utils/try-catch";
+
 import {
   formatCatalogLocaleList,
   useCatalogFormLocaleControls
@@ -32,10 +34,15 @@ import {
   type AdminProductDetail,
   type ProductFormValues
 } from "~/src/components/custom/pages/admin/catalog/product-editor/product-form.utils";
-import { galleryImagesToReplacePayload } from "~/src/components/custom/pages/admin/catalog/product-editor/product-image-form.utils";
 
 import { attributeOnProductMutations } from "~/src/modules/attribute-on-product/attribute-on-product.mutations";
-import { productImageMutations } from "~/src/modules/product-image/product-image.mutations";
+import {
+  buildAllProductImageRows,
+  buildProductLevelAttributeRows,
+  buildVariantAttributeGroups
+} from "~/src/modules/product/product-admin-persist.utils";
+import { collectProductFormSkuEntries } from "~/src/modules/product/product-sku.validation.utils";
+import { PRODUCT_ERROR_CODES, PRODUCT_FORM_VALIDATION_KEYS } from "~/src/modules/product/product.constants";
 import {
   isDatabaseSchemaOutdatedMutationError,
   isDuplicateAttributeOnProductMutationError,
@@ -47,6 +54,18 @@ import { productMutations } from "~/src/modules/product/product.mutations";
 import { parseCatalogUpsertInput, productFormSchema } from "~/src/modules/product/product.zod";
 
 const ZERO_LENGTH = 0;
+
+function isBenignQueryCancellationError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return error.name === "AbortError" || error.message === "CancelledError" || error.message.includes("Cancelled");
+}
 
 export const PRODUCT_FORM_ID = "product-form";
 
@@ -96,17 +115,35 @@ function resolveProductMutationErrorDescription(error: unknown, t: (key: string)
   return t("toast.errorDescription");
 }
 
+function applyTakenSkuFieldErrors(
+  entries: ReturnType<typeof collectProductFormSkuEntries>,
+  takenSkus: readonly string[],
+  setError: UseFormSetError<ProductFormValues>
+): void {
+  const takenSkuSet = new Set(takenSkus);
+
+  for (const entry of entries) {
+    if (takenSkuSet.has(entry.sku)) {
+      setError(entry.formPath, {
+        message: PRODUCT_FORM_VALIDATION_KEYS.duplicateSku,
+        type: "manual"
+      });
+    }
+  }
+}
+
 function useProductMutation({ mode, onCompleted, productId, setError }: UseProductMutationOptions) {
   const t = useTranslations("pages.admin.catalog.products");
   const queryClient = useQueryClient();
 
   const invalidate = useCallback(
     async (handle: string, savedProductId: string) => {
+      const adminProductByHandleKey = [...CONSTANTS.QUERY_KEYS.PRODUCT.ADMIN.BY_HANDLE, handle] as const;
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.PRODUCT.ADMIN.ALL }),
-        queryClient.invalidateQueries({
-          queryKey: [...CONSTANTS.QUERY_KEYS.PRODUCT.ADMIN.BY_HANDLE, handle] as const
-        }),
+        queryClient.invalidateQueries({ queryKey: adminProductByHandleKey }),
+        queryClient.invalidateQueries({ queryKey: [...CONSTANTS.QUERY_KEYS.PRODUCT.ADMIN.PAGE] }),
         queryClient.invalidateQueries({
           queryKey: [...CONSTANTS.QUERY_KEYS.PRODUCT_IMAGE.BY_PRODUCT_ID, savedProductId] as const
         }),
@@ -119,72 +156,76 @@ function useProductMutation({ mode, onCompleted, productId, setError }: UseProdu
   );
 
   const persistAttributeValues = useCallback(async (savedProductId: string, values: ProductFormValues) => {
-    const rows = values.attributeValues
-      .filter((row) => row.attributeId.trim() !== "" && row.value.trim() !== "")
-      .map((row, index) => ({
-        attributeId: row.attributeId,
-        id: row.id,
-        rank: index,
-        value: row.value.trim()
-      }));
-
-    await attributeOnProductMutations.setForProductFn({
-      data: { productId: savedProductId, values: rows }
-    });
-  }, []);
-
-  const persistImages = useCallback(async (savedProductId: string, values: ProductFormValues) => {
-    await productImageMutations.replaceProductImagesFn({
+    await attributeOnProductMutations.setAllForProductFn({
       data: {
-        images: galleryImagesToReplacePayload(values.images, values.mainImageId),
-        productId: savedProductId
+        productId: savedProductId,
+        productValues: buildProductLevelAttributeRows(values),
+        variantValues: buildVariantAttributeGroups(values)
       }
     });
   }, []);
 
   const saveProduct = useCallback(
-    async (values: ProductFormValues) => {
+    async (values: ProductFormValues): Promise<{ handle: string; id: string }> => {
+      const skuEntries = collectProductFormSkuEntries(values);
+      if (skuEntries.length > ZERO_LENGTH) {
+        const { takenSkus } = await productMutations.validateProductSkusFn({
+          data: {
+            productId: mode === "edit" ? productId : undefined,
+            skus: skuEntries.map((entry) => entry.sku)
+          }
+        });
+
+        if (takenSkus.length > ZERO_LENGTH) {
+          applyTakenSkuFieldErrors(skuEntries, takenSkus, setError);
+          throw new Error(PRODUCT_ERROR_CODES.DUPLICATE_SKU);
+        }
+      }
+
       const catalogPayload = parseCatalogUpsertInput(values);
 
       if (mode === "create") {
         const result = await productMutations.createProductCompleteFn({
           data: {
             ...catalogPayload,
-            attributeValues: values.attributeValues
-              .filter((row) => row.attributeId.trim() !== "" && row.value.trim() !== "")
-              .map((row, index) => ({
-                attributeId: row.attributeId,
-                id: row.id,
-                rank: index,
-                value: row.value.trim()
-              })),
-            images: galleryImagesToReplacePayload(values.images, values.mainImageId)
+            attributeValues: buildProductLevelAttributeRows(values),
+            images: buildAllProductImageRows(values)
           }
         });
 
-        await invalidate(result.handle, result.id);
-        return;
+        await persistAttributeValues(result.id, values);
+        return result;
       }
 
       if (productId === undefined) {
         throw new Error("Product id is required for update");
       }
 
-      const result = await productMutations.updateProductFn({
-        data: toCatalogUpsertPayload(catalogPayload, productId)
+      return productMutations.updateProductCompleteFn({
+        data: {
+          ...toCatalogUpsertPayload(catalogPayload, productId),
+          attributeValues: buildProductLevelAttributeRows(values),
+          images: buildAllProductImageRows(values),
+          variantAttributeValues: buildVariantAttributeGroups(values)
+        }
       });
-      await Promise.all([persistImages(result.id, values), persistAttributeValues(result.id, values)]);
-      await invalidate(result.handle, result.id);
     },
-    [invalidate, mode, persistAttributeValues, persistImages, productId]
+    [mode, persistAttributeValues, productId, setError]
   );
 
   const handleError = useCallback(
     (error: unknown) => {
+      if (isBenignQueryCancellationError(error)) {
+        return;
+      }
+
       if (isDuplicateHandleMutationError(error)) {
         setError("handle", { message: t("toast.duplicateHandle"), type: "manual" });
       } else if (isDuplicateSkuMutationError(error)) {
-        setError("simpleVariant.sku", { message: t("toast.duplicateSku"), type: "manual" });
+        toast.error(t("toast.errorTitle"), {
+          description: t("toast.duplicateSku")
+        });
+        return;
       }
 
       toast.error(t("toast.errorTitle"), {
@@ -197,7 +238,13 @@ function useProductMutation({ mode, onCompleted, productId, setError }: UseProdu
   const mutation = useMutation({
     mutationFn: saveProduct,
     onError: handleError,
-    onSuccess: () => {
+    onSuccess: async (result) => {
+      const [, invalidateError] = await tryCatch(invalidate(result.handle, result.id));
+      if (invalidateError !== undefined && !isBenignQueryCancellationError(invalidateError)) {
+        handleError(invalidateError);
+        return;
+      }
+
       toast.success(mode === "create" ? t("toast.createSuccessTitle") : t("toast.updateSuccessTitle"), {
         description: mode === "create" ? t("toast.createSuccessDescription") : t("toast.updateSuccessDescription")
       });

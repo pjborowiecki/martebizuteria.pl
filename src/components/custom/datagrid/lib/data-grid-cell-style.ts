@@ -16,7 +16,8 @@ export function buildDataGridCellStyle<TData extends RowData>(input: {
   readonly widthPx: number;
 }): CSSProperties {
   const { column, isPinned, layout, persistenceKey, pinLayout, table, widthPx } = input;
-  const pinOffset = getDataGridPinOffset({ column, isPinned, layout: pinLayout, table });
+  const { columnSizing } = table.getState();
+  const pinOffset = getDataGridPinOffset({ column, columnSizing, isPinned, pinLayout, table, tableLayout: layout });
   const style: CSSProperties = buildDataGridColumnWidthStyle({ column, layout, persistenceKey, widthPx });
 
   if (isPinned === "left" && pinOffset !== undefined) {

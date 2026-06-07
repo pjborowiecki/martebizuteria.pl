@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useEffect, useMemo, useState } from "react";
+import { type JSX, useCallback, useEffect, useState } from "react";
 
 import { useFormatter, useLocale, useTranslations } from "use-intl";
 
@@ -6,39 +6,31 @@ import { getProductImageUrl } from "~/src/lib/_utils/image";
 import { trackCartItemAdded } from "~/src/lib/customer-activity/customer-activity.tracking";
 import { centsToDisplayAmount } from "~/src/lib/utils";
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/src/components/shadcn/accordion";
 import { Button } from "~/src/components/shadcn/button";
 import { Separator } from "~/src/components/shadcn/separator";
 
+import { ProductHeroDetails } from "~/src/components/custom/pages/product-page/product-hero-details";
+import { ProductVariantPicker } from "~/src/components/custom/pages/product-page/product-variant-picker";
 import { QuantityPicker } from "~/src/components/custom/pages/product-page/quantity-picker";
 
-import { PRODUCT_DETAIL_KEYS } from "~/src/data/product-data";
 import { getVariantQuantityAvailable, isVariantPurchasable } from "~/src/modules/inventory/inventory.availability.utils";
-import {
-  formatProductAttributeValueForDisplay,
-  resolveProductAttributeTitle
-} from "~/src/modules/product-attribute/product-attribute.utils";
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils";
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils";
-import type { StorefrontProduct } from "~/src/modules/product/product.types";
+import type { StorefrontProduct, StorefrontProductVariant } from "~/src/modules/product/product.types";
 import { useCartStore } from "~/src/stores/cart.store";
 
 const MIN_QUANTITY = 1;
 const RESET_ADDED_TIMEOUT = 2000;
-const DEFAULT_ACCORDION_VALUE = ["description"];
 const FIRST_VARIANT_INDEX = 0;
 
 export interface ProductHeroInfoProps {
+  readonly onSelectOptionValue: (optionId: string, valueId: string) => void;
   readonly product: StorefrontProduct;
+  readonly selectedValueIds: Readonly<Record<string, string>>;
+  readonly selectedVariant: StorefrontProductVariant | undefined;
 }
 
-interface DetailSection {
-  readonly body: string;
-  readonly key: string;
-  readonly title: string;
-}
-
-export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element {
+export function ProductHeroInfo({ onSelectOptionValue, product, selectedValueIds, selectedVariant }: ProductHeroInfoProps): JSX.Element {
   const t = useTranslations("pages.product.heroSection");
   const tProduct = useTranslations("pages.product");
   const format = useFormatter();
@@ -47,7 +39,6 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
   const [isAdded, setIsAdded] = useState(false);
   const { addItem } = useCartStore();
 
-  const selectedVariant = product.variants?.[FIRST_VARIANT_INDEX];
   const variantPrice = selectedVariant?.price;
   const availableQuantity = getVariantQuantityAvailable(selectedVariant);
   const isOutOfStock = availableQuantity < MIN_QUANTITY;
@@ -55,41 +46,19 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
   const price =
     variantPrice === undefined ? t("price") : format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" });
 
+  const heroImage = selectedVariant?.imageUrls[FIRST_VARIANT_INDEX] ?? product.sharedImageUrls[FIRST_VARIANT_INDEX] ?? product.thumbnail;
+
   useEffect(() => {
     if (quantity > availableQuantity && availableQuantity >= MIN_QUANTITY) {
       setQuantity(availableQuantity);
     }
   }, [availableQuantity, quantity]);
 
-  const detailSections = useMemo((): DetailSection[] => {
-    const specByHandle = new Map(product.specifications.map((spec) => [spec.handle, spec]));
+  useEffect(() => {
+    setQuantity(MIN_QUANTITY);
+  }, [selectedVariant?.id]);
 
-    const sections: DetailSection[] = [];
-
-    for (const key of PRODUCT_DETAIL_KEYS) {
-      if (key === "description") {
-        const body = product.description !== null && product.description !== "" ? product.description : t("details.description.text");
-        sections.push({ body, key, title: t("details.description.title") });
-      } else {
-        const spec = specByHandle.get(key);
-        if (spec !== undefined && spec.value.trim() !== "") {
-          sections.push({
-            body: formatProductAttributeValueForDisplay(spec.type, spec.value, {
-              allowedValues: spec.allowedValues,
-              locale,
-              unit: spec.unit
-            }),
-            key,
-            title: resolveProductAttributeTitle(spec.titles, locale)
-          });
-        } else {
-          sections.push({ body: t(`details.${key}.text`), key, title: t(`details.${key}.title`) });
-        }
-      }
-    }
-
-    return sections;
-  }, [locale, product.description, product.specifications, t]);
+  const specifications = selectedVariant?.specifications ?? product.sharedSpecifications;
 
   const handleAddToCart = useCallback(() => {
     if (selectedVariant === undefined || variantPrice === undefined || !isVariantPurchasable(selectedVariant, quantity)) {
@@ -102,7 +71,7 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
 
     addItem({
       id: selectedVariant.id,
-      image: getProductImageUrl(product.thumbnail),
+      image: getProductImageUrl(heroImage),
       price,
       qty: addQuantity,
       rawPrice: variantPrice,
@@ -120,7 +89,7 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
     });
 
     setIsAdded(true);
-  }, [addItem, price, product, quantity, selectedVariant, variantPrice]);
+  }, [addItem, heroImage, price, product, quantity, selectedVariant, variantPrice]);
 
   useEffect(() => {
     if (!isAdded) {
@@ -152,6 +121,8 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
 
       <p className="text-lg tracking-[0.06em]">{price}</p>
 
+      <ProductVariantPicker onSelectOptionValue={onSelectOptionValue} product={product} selectedValueIds={selectedValueIds} />
+
       <p className="text-xs tracking-wide text-muted-foreground">{t("material")}</p>
 
       <Separator className="bg-border" />
@@ -175,16 +146,7 @@ export function ProductHeroInfo({ product }: ProductHeroInfoProps): JSX.Element 
 
       <Separator className="bg-border" />
 
-      <Accordion className="w-full" defaultValue={DEFAULT_ACCORDION_VALUE}>
-        {detailSections.map((section) => (
-          <AccordionItem key={section.key} value={section.key}>
-            <AccordionTrigger className="py-5 text-[12px] tracking-[0.2em] uppercase hover:text-foreground/70 hover:no-underline">
-              {section.title}
-            </AccordionTrigger>
-            <AccordionContent className="pb-6 text-sm/relaxed text-muted-foreground">{section.body}</AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
+      <ProductHeroDetails description={product.description} specifications={specifications} />
     </aside>
   );
 }

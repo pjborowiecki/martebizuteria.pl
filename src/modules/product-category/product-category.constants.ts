@@ -40,6 +40,7 @@ export const CATEGORY_ERROR_CODES = {
 
 export const CATEGORY_FORM_VALIDATION_KEYS = {
   descriptionTooLong: "form.validation.descriptionTooLong",
+  localeTitleRequired: "form.validation.LOCALE_TITLE_REQUIRED",
   shortDescriptionTooLong: "form.validation.shortDescriptionTooLong",
   slugInvalid: "form.validation.slugInvalid",
   slugRequired: "form.validation.slugRequired",

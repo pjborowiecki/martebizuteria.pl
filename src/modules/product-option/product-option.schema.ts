@@ -1,11 +1,13 @@
 import { relations } from "drizzle-orm";
-import { index, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
 
 import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema";
+import { productOptionValue } from "~/src/modules/product-option-value/product-option-value.schema";
 import { PRODUCT_OPTION_COLUMN_LENGTH } from "~/src/modules/product-option/product-option.constants";
 import { product } from "~/src/modules/product/product.schema";
+import type { ProductLocaleMap } from "~/src/modules/product/product.types";
 
 export const productOption = sqliteTable(
   "product_option",
@@ -16,13 +18,10 @@ export const productOption = sqliteTable(
     productId: text("product_id", { length: PRODUCT_OPTION_COLUMN_LENGTH.productId })
       .notNull()
       .references(() => product.id, { onDelete: "cascade" }),
-    title: text("title", { length: PRODUCT_OPTION_COLUMN_LENGTH.title }).notNull(),
+    titles: text("titles", { mode: "json" }).$type<ProductLocaleMap>().notNull(),
     ...timestamps()
   },
-  (table) => [
-    index("product_option_productId_idx").on(table.productId),
-    uniqueIndex("product_option_product_title_unique").on(table.productId, table.title)
-  ]
+  (table) => [index("product_option_productId_idx").on(table.productId)]
 );
 
 export const productOptionRelations = relations(productOption, ({ one, many }) => ({
@@ -30,5 +29,6 @@ export const productOptionRelations = relations(productOption, ({ one, many }) =
   product: one(product, {
     fields: [productOption.productId],
     references: [product.id]
-  })
+  }),
+  values: many(productOptionValue)
 }));

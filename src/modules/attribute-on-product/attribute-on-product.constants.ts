@@ -7,7 +7,8 @@ export const ATTRIBUTE_ON_PRODUCT_COLUMN_LENGTH = {
   attributeId: PRODUCT_ATTRIBUTE_COLUMN_LENGTH.id,
   id: UUID_STRING_LENGTH,
   productId: PRODUCT_COLUMN_LENGTH.id,
-  value: 4096
+  value: 4096,
+  variantId: UUID_STRING_LENGTH
 } as const;
 
 export const ATTRIBUTE_ON_PRODUCT_DEFAULT_RANK = 0;

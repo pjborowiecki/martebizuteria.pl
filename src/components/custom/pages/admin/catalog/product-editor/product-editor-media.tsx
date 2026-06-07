@@ -1,7 +1,7 @@
 import { type JSX, useCallback } from "react";
 
 import { ImageIcon } from "lucide-react";
-import { useController, useFormContext } from "react-hook-form";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 import { useTranslations } from "use-intl";
 
 import { cn } from "~/src/lib/utils";
@@ -23,6 +23,7 @@ interface ProductEditorMediaProps {
 export function ProductEditorMedia({ fillHeight = false }: Readonly<ProductEditorMediaProps>): JSX.Element {
   const t = useTranslations("pages.admin.catalog.products");
   const { control } = useFormContext<ProductFormValues>();
+  const hasVariants = useWatch({ control, name: "hasVariants" });
   const { isPending, setUploading } = useProductForm();
 
   const imagesField = useController({ control, name: "images" });
@@ -66,7 +67,10 @@ export function ProductEditorMedia({ fillHeight = false }: Readonly<ProductEdito
       </CardHeader>
       <CardContent>
         <Field className="gap-2">
-          <CatalogFormFieldLabel hint={t("media.hint")} label={t("media.galleryLabel")} />
+          <CatalogFormFieldLabel
+            hint={hasVariants ? t("media.hintSharedVariants") : t("media.hint")}
+            label={hasVariants ? t("media.galleryLabelShared") : t("media.galleryLabel")}
+          />
           <ImageGalleryUpload
             className="w-full max-w-none"
             disabled={isPending}

@@ -19,10 +19,12 @@ import {
   ADMIN_PRODUCTS_PAGE_SIZE,
   PRODUCT_QUERY_STALE_MS,
   type ProductInventoryLevel,
-  type ProductStatus
+  type ProductStatus,
+  type ProductVariantKind
 } from "~/src/modules/product/product.constants";
 import type { Product } from "~/src/modules/product/product.types";
 import {
+  buildSkuSummaryByProductId,
   buildVariantStatsByProductId,
   mapPublishedProductForStorefront,
   toAdminProductListItem,
@@ -43,6 +45,7 @@ export interface AdminProductsPageInput {
   readonly sort?: AdminProductsListSort;
   readonly status?: ProductStatus;
   readonly totalStock?: NumericColumnFilterValue;
+  readonly variantKind?: ProductVariantKind;
 }
 
 export interface AdminProductsExportInput {
@@ -55,6 +58,19 @@ export interface AdminProductsExportInput {
   readonly sort?: AdminProductsListSort;
   readonly status?: ProductStatus;
   readonly totalStock?: NumericColumnFilterValue;
+  readonly variantKind?: ProductVariantKind;
+}
+
+async function loadAdminListAggregates() {
+  const [variantStats, skuRows] = await Promise.all([
+    productAccessors.getProductVariantStatsQuery.execute(),
+    productAccessors.getProductVariantSkuRowsQuery.execute()
+  ]);
+
+  return {
+    skuSummaryByProductId: buildSkuSummaryByProductId(skuRows),
+    statsByProductId: buildVariantStatsByProductId(variantStats)
+  };
 }
 
 interface RelatedProductsInput {
@@ -69,25 +85,17 @@ interface ProductByHandleInput {
 }
 
 async function getAdminProductListItems(): Promise<Product["adminListItem"][]> {
-  const [products, variantStats] = await Promise.all([
-    productAccessors.getAdminProductsCatalogList(),
-    productAccessors.getProductVariantStatsQuery.execute()
-  ]);
+  const [products, aggregates] = await Promise.all([productAccessors.getAdminProductsCatalogList(), loadAdminListAggregates()]);
 
-  const statsByProductId = buildVariantStatsByProductId(variantStats);
-  return products.map((row) => toAdminProductListItem(row, statsByProductId));
+  return products.map((row) => toAdminProductListItem(row, aggregates.statsByProductId, aggregates.skuSummaryByProductId));
 }
 
 async function getAdminProductListPage(
   params: AdminProductsListParams
 ): Promise<ReturnType<typeof buildListPaginationResult<Product["adminListItem"]>>> {
-  const [{ rows, total }, variantStats] = await Promise.all([
-    productAccessors.getAdminProductsPage(params),
-    productAccessors.getProductVariantStatsQuery.execute()
-  ]);
+  const [{ rows, total }, aggregates] = await Promise.all([productAccessors.getAdminProductsPage(params), loadAdminListAggregates()]);
 
-  const statsByProductId = buildVariantStatsByProductId(variantStats);
-  const items = rows.map((row) => toAdminProductListItem(row, statsByProductId));
+  const items = rows.map((row) => toAdminProductListItem(row, aggregates.statsByProductId, aggregates.skuSummaryByProductId));
 
   return buildListPaginationResult(items, total, params);
 }
@@ -143,7 +151,7 @@ function buildAdminProductsFilterParams(
   input: AdminProductsPageInput | AdminProductsExportInput
 ): Pick<
   AdminProductsExportListParams,
-  "categoryId" | "collectionId" | "createdAt" | "inventoryLevel" | "minPrice" | "search" | "sort" | "status" | "totalStock"
+  "categoryId" | "collectionId" | "createdAt" | "inventoryLevel" | "minPrice" | "search" | "sort" | "status" | "totalStock" | "variantKind"
 > {
   return {
     categoryId: input.categoryId,
@@ -154,7 +162,8 @@ function buildAdminProductsFilterParams(
     search: normalizeAdminSearchTerm(input.search),
     sort: input.sort,
     status: input.status,
-    totalStock: input.totalStock
+    totalStock: input.totalStock,
+    variantKind: input.variantKind
   };
 }
 
@@ -172,13 +181,12 @@ function buildAdminProductsExportParams(input: AdminProductsExportInput): AdminP
 }
 
 async function getAdminProductsExport(input: AdminProductsExportInput): Promise<Product["adminListItem"][]> {
-  const [rows, variantStats] = await Promise.all([
+  const [rows, aggregates] = await Promise.all([
     productAccessors.getAdminProductsFilteredList(buildAdminProductsExportParams(input)),
-    productAccessors.getProductVariantStatsQuery.execute()
+    loadAdminListAggregates()
   ]);
 
-  const statsByProductId = buildVariantStatsByProductId(variantStats);
-  return rows.map((row) => toAdminProductListItem(row, statsByProductId));
+  return rows.map((row) => toAdminProductListItem(row, aggregates.statsByProductId, aggregates.skuSummaryByProductId));
 }
 
 const fetchProductsFn = createServerFn({ method: "GET" }).handler(() => getPublishedProducts());
@@ -224,7 +232,7 @@ export const productQueryOptions = {
       enabled: handle !== "" && handle !== "new",
       queryFn: () => fetchAdminProductByHandleFn({ data: handle }),
       queryKey: [...CONSTANTS.QUERY_KEYS.PRODUCT.ADMIN.BY_HANDLE, handle] as const,
-      refetchOnMount: false,
+      refetchOnMount: true,
       refetchOnWindowFocus: false,
       staleTime: PRODUCT_QUERY_STALE_MS
     }),

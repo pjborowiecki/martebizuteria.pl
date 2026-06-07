@@ -1,23 +1,24 @@
 import { createServerFn } from "@tanstack/react-start";
 import { v7 as uuidv7 } from "uuid";
-import type { z } from "zod/v4";
+import { z } from "zod/v4";
 
 import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions";
 
 import { tryCatch } from "~/src/lib/_utils/try-catch";
 import { scheduleProductCatalogInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server";
 
-import { replaceAttributesForProduct } from "~/src/modules/attribute-on-product/attribute-on-product.utils";
+import { replaceAllAttributesForProduct, replaceAttributesForProduct } from "~/src/modules/attribute-on-product/attribute-on-product.utils";
 import {
   recordCatalogProductCreatedAudit,
   recordCatalogProductDeletedAudit,
   recordCatalogProductUpdatedAudit
 } from "~/src/modules/audit-log/audit-log.events.server";
 import { normalizeProductAttributeLocaleMapForSave } from "~/src/modules/product-attribute/product-attribute.utils";
-import { replaceProductImages } from "~/src/modules/product-image/product-image.utils";
+import { replaceProductImages } from "~/src/modules/product-image/product-image.persist.utils";
 import { buildProductAuditChange, extractProductAuditSnapshot } from "~/src/modules/product/product-audit.utils";
+import { collectSkusFromCatalogInput } from "~/src/modules/product/product-sku.validation.utils";
 import { productAccessors } from "~/src/modules/product/product.accessors";
-import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants";
+import { PRODUCT_ERROR_CODES, PRODUCT_MIN_LENGTH } from "~/src/modules/product/product.constants";
 import { rethrowProductMutationError } from "~/src/modules/product/product.mutation-errors";
 import type { Product } from "~/src/modules/product/product.types";
 import {
@@ -44,6 +45,16 @@ function toProductRow(data: z.infer<(typeof productZodSchemas)["catalogUpsertInp
     tags: normalizeProductTagsLocaleMapForSave(data.tags),
     titles: normalizeProductAttributeLocaleMapForSave(data.titles)
   };
+}
+
+async function assertCatalogSkusAvailable(
+  catalogInput: z.infer<(typeof productZodSchemas)["catalogUpsertInput"]>,
+  productId?: string
+): Promise<void> {
+  const takenSkus = await productAccessors.findTakenSkus(collectSkusFromCatalogInput(catalogInput), productId);
+  if (takenSkus.length > ZERO_VARIANTS) {
+    throw new Error(PRODUCT_ERROR_CODES.DUPLICATE_SKU);
+  }
 }
 
 /** Deletes failed create leftovers (product row without variants) so the same slug can be retried. */
@@ -76,6 +87,7 @@ async function insertProductWithCatalog(data: z.infer<(typeof productZodSchemas)
 
   try {
     await productAccessors.insertProduct(toProductRow(data, id, nextRank));
+    await assertCatalogSkusAvailable(data, id);
     await persistProductCatalog(id, data);
   } catch (error) {
     await tryCatch(productAccessors.deleteProducts([id]));
@@ -104,6 +116,41 @@ async function updateProductWithCatalog(
     titles: normalizeProductAttributeLocaleMapForSave(catalogInput.titles)
   });
   await persistProductCatalog(id, catalogInput);
+}
+
+async function updateProductRecord(
+  data: z.infer<(typeof productZodSchemas)["updateCompleteInput"]>
+): Promise<{ handle: string; id: string }> {
+  const { attributeValues, id, images, variantAttributeValues, ...catalogInput } = data;
+
+  const existing = await productAccessors.getProductByHandleQuery.execute({ handle: catalogInput.handle });
+  if (existing !== undefined && existing.id !== id) {
+    throw new Error(PRODUCT_ERROR_CODES.DUPLICATE_HANDLE);
+  }
+
+  const beforeProduct = await productAccessors.getAdminProductDetailByIdQuery.execute({ id });
+  const beforeSnapshot = beforeProduct === undefined ? undefined : extractProductAuditSnapshot(beforeProduct);
+
+  await assertCatalogSkusAvailable(catalogInput, id);
+  await updateProductWithCatalog(id, catalogInput);
+  await replaceProductImages(id, images);
+  await replaceAllAttributesForProduct(
+    id,
+    attributeValues,
+    variantAttributeValues.map((group) => ({ rows: group.values, variantId: group.variantId }))
+  );
+
+  const afterProduct = await productAccessors.getAdminProductDetailByIdQuery.execute({ id });
+  const auditChange = afterProduct === undefined ? {} : buildProductAuditChange(beforeSnapshot, extractProductAuditSnapshot(afterProduct));
+
+  scheduleProductCatalogInvalidation();
+  recordCatalogProductUpdatedAudit(catalogInput.handle, {
+    detail: auditChange.detail,
+    metadata: auditChange.metadata,
+    resourceId: id
+  });
+
+  return { handle: catalogInput.handle, id };
 }
 
 async function createProductAttempt(
@@ -199,6 +246,19 @@ const updateProductFn = createServerFn({ method: "POST" })
     return { handle: catalogInput.handle, id };
   });
 
+const updateProductCompleteFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => productZodSchemas.updateCompleteInput.parse(data))
+  .handler(async ({ data }) => {
+    await assertAdmin();
+
+    const [result, error] = await tryCatch(updateProductRecord(data));
+    if (error !== undefined) {
+      rethrowProductMutationError(error);
+    }
+
+    return result!;
+  });
+
 const deleteProductsFn = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => productZodSchemas.deleteInput.parse(data))
   .handler(async ({ data: ids }) => {
@@ -210,6 +270,22 @@ const deleteProductsFn = createServerFn({ method: "POST" })
     recordCatalogProductDeletedAudit(ids.join(", "));
 
     return { deleted: ids.length, ok: true };
+  });
+
+const validateProductSkusFn = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        productId: z.string().trim().min(PRODUCT_MIN_LENGTH).optional(),
+        skus: z.array(z.string().trim())
+      })
+      .parse(data)
+  )
+  .handler(async ({ data }) => {
+    await assertAdmin();
+
+    const takenSkus = await productAccessors.findTakenSkus(data.skus, data.productId);
+    return { takenSkus };
   });
 
 const reorderProductsFn = createServerFn({ method: "POST" })
@@ -230,5 +306,7 @@ export const productMutations = {
   createProductFn,
   deleteProductsFn,
   reorderProductsFn,
-  updateProductFn
+  updateProductCompleteFn,
+  updateProductFn,
+  validateProductSkusFn
 };

@@ -18,6 +18,16 @@ const attributeOnProductRowSchema = z.object({
 
 export const attributeOnProductZodSchemas = {
   row: attributeOnProductRowSchema,
+  setAllForProductInput: z.object({
+    productId: z.string().trim().min(MIN_LENGTH).max(PRODUCT_COLUMN_LENGTH.id),
+    productValues: z.array(attributeOnProductRowSchema),
+    variantValues: z.array(
+      z.object({
+        values: z.array(attributeOnProductRowSchema),
+        variantId: z.string().trim().min(MIN_LENGTH).max(PRODUCT_COLUMN_LENGTH.id)
+      })
+    )
+  }),
   setForProductInput: z.object({
     productId: z.string().trim().min(MIN_LENGTH).max(PRODUCT_COLUMN_LENGTH.id),
     values: z.array(attributeOnProductRowSchema)

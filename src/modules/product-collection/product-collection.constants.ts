@@ -35,6 +35,7 @@ export const COLLECTION_ERROR_CODES = {
 
 export const COLLECTION_FORM_VALIDATION_KEYS = {
   descriptionTooLong: "form.validation.descriptionTooLong",
+  localeTitleRequired: "form.validation.LOCALE_TITLE_REQUIRED",
   nameRequired: "form.validation.nameRequired",
   nameTooLong: "form.validation.nameTooLong",
   slugInvalid: "form.validation.slugInvalid",

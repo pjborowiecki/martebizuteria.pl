@@ -8,10 +8,11 @@ const MIN_RANK = 0;
 const productImageIdSchema = z.string().trim().min(MIN_LENGTH).max(PRODUCT_IMAGE_COLUMN_LENGTH.id);
 
 const productImageRowSchema = z.object({
-  alt: z.string().trim().max(PRODUCT_IMAGE_COLUMN_LENGTH.alt).default(""),
+  alt: z.string().trim().max(PRODUCT_IMAGE_COLUMN_LENGTH.alt).optional(),
   id: productImageIdSchema.optional(),
   rank: z.number().int().min(MIN_RANK),
-  url: z.string().trim().min(MIN_LENGTH).max(PRODUCT_IMAGE_COLUMN_LENGTH.url)
+  url: z.string().trim().min(MIN_LENGTH).max(PRODUCT_IMAGE_COLUMN_LENGTH.url),
+  variantId: z.string().trim().min(MIN_LENGTH).max(PRODUCT_IMAGE_COLUMN_LENGTH.variantId).optional()
 });
 
 export const productImageZodSchemas = {

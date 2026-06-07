@@ -10,6 +10,7 @@ import { Field } from "~/src/components/shadcn/field";
 import { Input } from "~/src/components/shadcn/input";
 
 import { CatalogFormFieldLabel } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-form-field-label";
+import { useCatalogActiveLocale } from "~/src/components/custom/pages/admin/catalog/form/components/catalog-locale-picker";
 import {
   CatalogSheetActionColumn,
   CatalogSheetControlsActionRow
@@ -20,14 +21,13 @@ import {
 } from "~/src/components/custom/pages/admin/catalog/form/lib/catalog-form.styles";
 import { ProductEditorOptionValuesField } from "~/src/components/custom/pages/admin/catalog/product-editor/product-editor-option-values-field";
 import type { ProductFormValues } from "~/src/components/custom/pages/admin/catalog/product-editor/product-form.utils";
-import { useSyncProductVariantsFromOptions } from "~/src/components/custom/pages/admin/catalog/product-editor/use-sync-product-variants-from-options";
 
+import { createEmptyProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.utils";
 import { MAX_PRODUCT_OPTIONS } from "~/src/modules/product-variant/product-variant.utils";
 import { PRODUCT_COLUMN_LENGTH } from "~/src/modules/product/product.constants";
 
 const EMPTY_LENGTH = 0;
 const MIN_OPTIONS = 1;
-const EMPTY_OPTION_VALUES: string[] = [];
 
 interface ProductEditorOptionsProps {
   readonly embedded?: boolean;
@@ -38,15 +38,23 @@ export function ProductEditorOptions({ embedded = false }: Readonly<ProductEdito
   const { control, getValues, setValue } = useFormContext<ProductFormValues>();
   const options = useWatch({ control, defaultValue: [], name: "options" });
 
-  useSyncProductVariantsFromOptions();
-
   const handleAddOption = useCallback(() => {
     const current = getValues("options");
     if (current.length >= MAX_PRODUCT_OPTIONS) {
       return;
     }
 
-    setValue("options", [...current, { title: "", values: [""] }], { shouldDirty: true });
+    setValue(
+      "options",
+      [
+        ...current,
+        {
+          titles: createEmptyProductAttributeLocaleMap(),
+          values: [{ labels: createEmptyProductAttributeLocaleMap() }]
+        }
+      ],
+      { shouldDirty: true }
+    );
   }, [getValues, setValue]);
 
   const handleRemoveOption = useCallback(
@@ -117,20 +125,27 @@ function OptionEditor({
 }>): JSX.Element {
   const t = useTranslations("pages.admin.catalog.products.options");
   const tProducts = useTranslations("pages.admin.catalog.products");
+  const activeLocale = useCatalogActiveLocale();
   const { control, setValue } = useFormContext<ProductFormValues>();
   const option = useWatch({ control, name: `options.${optionIndex}` });
-  const optionValues = useMemo(() => option?.values ?? EMPTY_OPTION_VALUES, [option?.values]);
-  const optionTitleValue = option?.title ?? "";
+  const optionTitleValue = option?.titles?.[activeLocale] ?? "";
 
   const handleTitleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setValue(`options.${optionIndex}.title`, event.target.value, { shouldDirty: true });
+    (value: string) => {
+      setValue(`options.${optionIndex}.titles.${activeLocale}`, value, { shouldDirty: true });
     },
-    [optionIndex, setValue]
+    [activeLocale, optionIndex, setValue]
+  );
+
+  const handleTitleInputChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      handleTitleChange(event.target.value);
+    },
+    [handleTitleChange]
   );
 
   const handleValuesChange = useCallback(
-    (values: string[]) => {
+    (values: ProductFormValues["options"][number]["values"]) => {
       setValue(`options.${optionIndex}.values`, values, { shouldDirty: true });
     },
     [optionIndex, setValue]
@@ -140,10 +155,12 @@ function OptionEditor({
     onRemove(optionIndex);
   }, [onRemove, optionIndex]);
 
+  const optionValues = useMemo(() => option?.values ?? [], [option?.values]);
+
   return (
     <div className="rounded-lg border border-border/50 p-4">
       <CatalogSheetControlsActionRow>
-        <div className="grid min-w-0 flex-1 gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 flex-1 gap-4">
           <Field className={CATALOG_SHEET_FIELD_CLASS}>
             <CatalogFormFieldLabel
               counter={`${optionTitleValue.length}/${PRODUCT_COLUMN_LENGTH.optionTitle}`}
@@ -151,11 +168,11 @@ function OptionEditor({
               label={t("optionName")}
             />
             <Input
-              variant="sheet"
               maxLength={PRODUCT_COLUMN_LENGTH.optionTitle}
-              onChange={handleTitleChange}
+              onChange={handleTitleInputChange}
               placeholder={t("optionNamePlaceholder")}
               value={optionTitleValue}
+              variant="sheet"
             />
           </Field>
           <ProductEditorOptionValuesField onValuesChange={handleValuesChange} values={optionValues} />

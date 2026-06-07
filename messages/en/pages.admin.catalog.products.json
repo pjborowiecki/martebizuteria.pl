@@ -63,7 +63,7 @@
       "attributeProperty": "Attribute from your catalog (e.g. weight, colour). Create it under Attributes if it is missing.",
       "attributeValue": "Value of that property for this product only (e.g. 14 g or silver).",
       "optionName": "Variant axis name shown in the storefront (e.g. Size, Metal).",
-      "optionValues": "Choices for this axis (e.g. S, M, L). Type a value and press Enter or comma.",
+      "optionValues": "One value per row (e.g. Srebrny). Variant rows appear as soon as you enter the Polish label. Switch the locale at the top to add the {locale} translation.",
       "variantSku": "Optional stock-keeping unit for this option combination.",
       "variantPrice": "Sell price in PLN for this combination (minimum 2.00 PLN when published).",
       "variantStock": "Units available to sell for this variant row."
@@ -84,7 +84,8 @@
       "LOCALE_TITLE_REQUIRED": "Fill in this field for the selected language.",
       "submitBlockedTitle": "Fix form errors",
       "submitBlockedDescription": "Check highlighted fields and try again.",
-      "duplicateAttribute": "This attribute is already assigned to the product — each attribute can only appear once."
+      "duplicateAttribute": "This attribute is already assigned to the product — each attribute can only appear once.",
+      "duplicateSku": "This SKU is already used by another variant."
     }
   },
   "toast": {
@@ -127,11 +128,15 @@
     "formats": "Supports JPG, PNG, WEBP. Max 5MB.",
     "galleryLabel": "Product gallery",
     "hint": "First image (or “main”) becomes the catalog thumbnail. Drag to reorder.",
+    "galleryLabelShared": "Shared photos (optional)",
+    "hintSharedVariants": "Shown for every variant that has no gallery of its own. To use different photos per variant, upload them in the Variants section.",
     "title": "Media"
   },
   "attributes": {
     "title": "Attributes",
     "hint": "Pick attributes from your catalog (e.g. weight, colour) and set values for this product only.",
+    "hintSharedVariants": "Shared attributes for the whole product (e.g. material). Per-variant values — e.g. weight — belong in the Variants section on each row.",
+    "emptyVariant": "No attributes for this variant yet. Pick an attribute and value above, then click Add attribute.",
     "add": "Add attribute",
     "empty": "No values assigned yet. Pick an attribute and value above, then click Add attribute.",
     "emptyNoCatalogAttributes": "There are no attributes in your catalog yet. Create them under Attributes, then return here to assign them to this product.",
@@ -187,9 +192,18 @@
     "addOption": "Add option",
     "empty": "Add an option such as Size or Metal to build variants.",
     "optionName": "Option name",
-    "optionNamePlaceholder": "e.g. Size",
+    "optionNamePlaceholder": "e.g. Finish",
     "optionValues": "Values",
-    "optionValuesPlaceholder": "Type a value and press Enter",
+    "optionValueLabel": {
+      "en": "Value (English)",
+      "pl": "Value (PL)"
+    },
+    "optionValuePlaceholder": {
+      "en": "e.g. Gold plated",
+      "pl": "e.g. Srebrny"
+    },
+    "addValue": "Add value",
+    "removeValue": "Remove value",
     "removeOption": "Remove option"
   },
   "shipping": {
@@ -224,19 +238,27 @@
   "title": "Add New Product",
   "editTitle": "Edit Product",
   "variants": {
-    "sectionHint": "Define option axes (e.g. Size, Metal) — variant rows update automatically. Set price and stock per combination. This is separate from product attributes below.",
-    "optionsDefinitions": "Option axes",
-    "optionsDefinitionsHint": "Each option is one axis (e.g. Size). Values are the choices on that axis (e.g. S, M, L).",
-    "rowsTitle": "Variant rows",
-    "rowsSectionHint": "One row per combination. Set SKU, price, and stock.",
+    "sectionHint": "Each row is one variant (e.g. Silver, Gold plated). Set name, price, stock, and photos. Use the PL/EN picker at the top to translate names.",
+    "listHint": "Variant name in {locale}. Switch PL/EN at the top of the form to add the translation.",
+    "addVariant": "Add variant",
+    "removeVariant": "Remove variant",
+    "unnamedVariant": "this variant",
+    "nameLabel": {
+      "en": "Variant name (EN)",
+      "pl": "Variant name (PL)"
+    },
+    "namePlaceholder": {
+      "en": "e.g. Gold plated",
+      "pl": "e.g. Silver"
+    },
+    "imagesLabel": "Photos: {name}",
+    "imagesHint": "Gallery for this variant only. If empty, the storefront uses shared photos from Media.",
+    "variantRowTitle": "Variant: {name}",
+    "attributesTitle": "Variant attributes",
+    "attributesHint": "Values for this variant only (e.g. weight for Silver vs Gold plated). Shared attributes go in the Attributes section below.",
     "sku": "SKU",
-    "generateHint": "Add option axes and values above — rows will appear here automatically.",
-    "name": "Variant",
-    "namePlaceholder": "e.g. Size",
-    "optionValue": "Option Value",
     "price": "Price",
     "stockQuantity": "Stock quantity (units)",
-    "title": "Variants",
-    "valuePlaceholder": "e.g. Small"
+    "title": "Variants"
   }
 }

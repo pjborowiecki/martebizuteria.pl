@@ -85,7 +85,7 @@ function ProductPage(): JSX.Element {
 
   return (
     <main className="bg-background text-foreground" ref={rootRef}>
-      <ProductHeroSection images={images} product={product} />
+      <ProductHeroSection product={product} />
       <ProductParallaxSection imageSrc={images[PARALLAX_IMAGE_INDEX] ?? images[FIRST_IMAGE_INDEX] ?? ""} productTitle={product.title} />
 
       {deferredRelated !== undefined && (
