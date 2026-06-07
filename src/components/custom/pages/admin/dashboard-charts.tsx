@@ -1,59 +1,35 @@
-import type { JSX } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 
-import { ArrowUpRight } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { useTranslations } from "use-intl";
+import { useFormatter, useLocale, useTranslations } from "use-intl";
 
-import { Button } from "~/src/components/shadcn/button";
+import { CONSTANTS } from "~/src/constants";
+
+import { formatPrice, minorUnitsPerMajor } from "~/src/lib/_utils/currency";
+import { parseIsoDateToLocalDate } from "~/src/lib/_utils/iso-date";
+
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/components/shadcn/card";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/components/shadcn/chart";
 
-const REVENUE_DATA = [
-  { month: "Jan", orders: 64, revenue: 18_600 },
-  { month: "Feb", orders: 78, revenue: 22_400 },
-  { month: "Mar", orders: 71, revenue: 19_800 },
-  { month: "Apr", orders: 96, revenue: 28_200 },
-  { month: "May", orders: 108, revenue: 32_100 },
-  { month: "Jun", orders: 94, revenue: 27_800 },
-  { month: "Jul", orders: 118, revenue: 34_500 },
-  { month: "Aug", orders: 106, revenue: 31_200 },
-  { month: "Sep", orders: 132, revenue: 38_400 },
-  { month: "Oct", orders: 142, revenue: 42_900 }
-];
+import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { DashboardChartRangeControls } from "~/src/components/custom/pages/admin/dashboard/components/dashboard-chart-range-controls";
+import { DashboardTrendBadge } from "~/src/components/custom/pages/admin/dashboard/dashboard-trend-badge";
+import { useAdminDashboardSnapshot } from "~/src/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot";
+import { useDashboardChartRange } from "~/src/components/custom/pages/admin/dashboard/hooks/use-dashboard-chart-range";
 
-const WEEKLY_DATA = [
-  { day: "Mon", orders: 28 },
-  { day: "Tue", orders: 42 },
-  { day: "Wed", orders: 38 },
-  { day: "Thu", orders: 56 },
-  { day: "Fri", orders: 44 },
-  { day: "Sat", orders: 68 },
-  { day: "Sun", orders: 52 }
-];
-
-const revenueChartConfig: ChartConfig = {
-  revenue: { color: "oklch(0.205 0 0)", label: "Revenue" }
-};
-
-const ordersChartConfig: ChartConfig = {
-  orders: { color: "oklch(0.205 0 0)", label: "Orders" }
-};
+import { ADMIN_DASHBOARD_CHART_DAYS_7, ADMIN_DASHBOARD_CHART_DAYS_30 } from "~/src/modules/admin-dashboard/admin-dashboard.constants";
 
 const REVENUE_CHART_MARGIN = { bottom: 0, left: -12, right: 8, top: 8 };
 const ORDERS_CHART_MARGIN = { bottom: 0, left: -24, right: 0, top: 4 };
 const TICK_FONT_12 = { fontSize: 12 };
 const TICK_FONT_11 = { fontSize: 11 };
 const CHART_TOOLTIP_CURSOR = { stroke: "var(--color-border)", strokeDasharray: "4 4" };
-const CHART_TOOLTIP_CONTENT = <ChartTooltipContent />;
-const CHART_TOOLTIP_CONTENT_HIDE_LABEL = <ChartTooltipContent hideLabel />;
 
 const BAR_RADIUS_TOP = 4;
 const BAR_RADIUS_BOTTOM = 0;
 const BAR_RADIUS: [number, number, number, number] = [BAR_RADIUS_TOP, BAR_RADIUS_TOP, BAR_RADIUS_BOTTOM, BAR_RADIUS_BOTTOM];
 
-const REVENUE_DIVISOR = 1000;
-const REVENUE_DECIMALS = 0;
-const FORMAT_Y_AXIS_TICK = (v: number) => `$${(v / REVENUE_DIVISOR).toFixed(REVENUE_DECIMALS)}k`;
+const REVENUE_AXIS_MAX_FRACTION_DIGITS = 0;
 
 const REVENUE_CHART_DEFS = (
   <defs>
@@ -66,34 +42,88 @@ const REVENUE_CHART_DEFS = (
 
 export function DashboardCharts(): JSX.Element {
   const t = useTranslations("pages.admin");
+  const format = useFormatter();
+  const locale = useLocale();
+  const { data: snapshot } = useAdminDashboardSnapshot();
+  const { applyCustomRange, chartData, chartRange, clearCustomRange, customRange, isCustomLoading, selectPresetRange } =
+    useDashboardChartRange();
+  const revenueChartConfig: ChartConfig = useMemo(
+    () => ({
+      revenue: { color: "oklch(0.205 0 0)", label: t("dashboard.chart.revenueLabel") }
+    }),
+    [t]
+  );
+  const chartTooltipContent = useMemo(() => <ChartTooltipContent />, []);
+
+  const formatIsoDateLabel = useCallback(
+    (isoDate: string) => format.dateTime(parseIsoDateToLocalDate(isoDate), { dateStyle: "medium" }),
+    [format]
+  );
+
+  const chartDescription = useMemo(() => {
+    switch (chartRange) {
+      case "7d": {
+        return t("dashboard.chart.description7d", { days: ADMIN_DASHBOARD_CHART_DAYS_7 });
+      }
+      case "30d": {
+        return t("dashboard.chart.description30d", { days: ADMIN_DASHBOARD_CHART_DAYS_30 });
+      }
+      case "1y": {
+        return t("dashboard.chart.description1y");
+      }
+      case "custom": {
+        if (customRange === undefined) {
+          return t("dashboard.chart.descriptionCustomIdle");
+        }
+
+        return t("dashboard.chart.descriptionCustom", {
+          endDate: formatIsoDateLabel(customRange.endDate),
+          startDate: formatIsoDateLabel(customRange.startDate)
+        });
+      }
+    }
+  }, [chartRange, customRange, formatIsoDateLabel, t]);
+
+  const formatYAxisTick = useCallback(
+    (value: number) =>
+      format.number(value / minorUnitsPerMajor(snapshot.currencyCode), {
+        maximumFractionDigits: REVENUE_AXIS_MAX_FRACTION_DIGITS,
+        notation: "compact"
+      }),
+    [format, snapshot.currencyCode]
+  );
+
+  const chartDataPoints = useMemo(() => [...chartData], [chartData]);
 
   return (
     <div className="grid gap-5 xl:grid-cols-4">
       <Card className="border-border/40 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent shadow-none xl:col-span-3">
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-base font-semibold">{t("dashboard.chart.title")}</CardTitle>
-              <p className="mt-0.5 text-sm text-muted-foreground">{t("dashboard.chart.description")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{chartDescription}</p>
             </div>
-            <div className="flex rounded-lg border border-border/50 p-0.5">
-              <Button variant="ghost" size="sm" className="h-7 px-3 text-xs text-muted-foreground">
-                {t("dashboard.chart.last7")}
-              </Button>
-              <Button variant="secondary" size="sm" className="h-7 px-3 text-xs">
-                {t("dashboard.chart.last30")}
-              </Button>
-            </div>
+            <DashboardChartRangeControls
+              chartRange={chartRange}
+              customRange={customRange}
+              onApplyCustomRange={applyCustomRange}
+              onClearCustomRange={clearCustomRange}
+              onSelectRange={selectPresetRange}
+            />
           </div>
         </CardHeader>
         <CardContent className="pt-2">
-          <ChartContainer config={revenueChartConfig} className="aspect-auto h-[280px] w-full">
-            <AreaChart data={REVENUE_DATA} margin={REVENUE_CHART_MARGIN}>
+          <ChartContainer
+            config={revenueChartConfig}
+            className={`aspect-auto h-[280px] w-full transition-opacity ${isCustomLoading ? "opacity-60" : "opacity-100"}`}
+          >
+            <AreaChart data={chartDataPoints} margin={REVENUE_CHART_MARGIN}>
               {REVENUE_CHART_DEFS}
               <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--color-border)" strokeOpacity={0.5} />
-              <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={12} tick={TICK_FONT_12} />
-              <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_12} tickFormatter={FORMAT_Y_AXIS_TICK} />
-              <ChartTooltip cursor={CHART_TOOLTIP_CURSOR} content={CHART_TOOLTIP_CONTENT} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={12} tick={TICK_FONT_12} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_12} tickFormatter={formatYAxisTick} />
+              <ChartTooltip cursor={CHART_TOOLTIP_CURSOR} content={chartTooltipContent} />
               <Area dataKey="revenue" type="monotone" fill="url(#fillRevenue)" stroke="var(--color-revenue)" strokeWidth={2} dot={false} />
             </AreaChart>
           </ChartContainer>
@@ -104,11 +134,10 @@ export function DashboardCharts(): JSX.Element {
         <Card className="border-border/40 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent shadow-none">
           <CardContent className="p-5">
             <p className="text-sm text-muted-foreground">{t("dashboard.avgOrder.label")}</p>
-            <p className="mt-1 text-3xl font-semibold tracking-tight">{t("dashboard.avgOrder.value")}</p>
-            <span className="mt-1.5 inline-flex items-center gap-0.5 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
-              <ArrowUpRight className="size-3" strokeWidth={2} />
-              {t("dashboard.avgOrder.trend")}
-            </span>
+            <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
+              {formatPrice(snapshot.averageOrderValue.current, snapshot.currencyCode, locale)}
+            </p>
+            <DashboardTrendBadge className="mt-1.5" trendPercent={snapshot.averageOrderValue.trendPercent} />
           </CardContent>
         </Card>
 
@@ -117,13 +146,15 @@ export function DashboardCharts(): JSX.Element {
         <Card className="bg-foreground text-background shadow-none">
           <CardContent className="p-5">
             <p className="text-xs text-background/50">{t("dashboard.totalSales.label")}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">{t("dashboard.totalSales.value")}</p>
-            <button
-              type="button"
-              className="mt-3 text-xs text-background/60 underline underline-offset-2 transition-colors hover:text-background/80"
+            <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+              {formatPrice(snapshot.yearToDateRevenueMinorUnits, snapshot.currencyCode, locale)}
+            </p>
+            <LocalizedLink
+              to={CONSTANTS.ROUTES.ADMIN_ORDERS}
+              className="mt-3 inline-block text-xs text-background/60 underline underline-offset-2 transition-colors hover:text-background/80"
             >
               {t("dashboard.totalSales.period")}
-            </button>
+            </LocalizedLink>
           </CardContent>
         </Card>
       </div>
@@ -133,17 +164,27 @@ export function DashboardCharts(): JSX.Element {
 
 function WeeklyOrdersChart(): JSX.Element {
   const t = useTranslations("pages.admin");
+  const { data: snapshot } = useAdminDashboardSnapshot();
+  const ordersChartConfig: ChartConfig = useMemo(
+    () => ({
+      orders: { color: "oklch(0.205 0 0)", label: t("dashboard.weeklyOrders.seriesLabel") }
+    }),
+    [t]
+  );
+  const chartTooltipContent = useMemo(() => <ChartTooltipContent hideLabel />, []);
+  const weeklyOrdersData = useMemo(() => [...snapshot.weeklyOrders], [snapshot.weeklyOrders]);
+
   return (
     <Card className="border-border/40 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent shadow-none">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.chart.title")}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.weeklyOrders.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={ordersChartConfig} className="aspect-auto h-[148px] w-full">
-          <BarChart data={WEEKLY_DATA} margin={ORDERS_CHART_MARGIN}>
-            <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_11} />
+          <BarChart data={weeklyOrdersData} margin={ORDERS_CHART_MARGIN}>
+            <XAxis dataKey="dayLabel" tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_11} />
             <YAxis tickLine={false} axisLine={false} tick={false} />
-            <ChartTooltip cursor={false} content={CHART_TOOLTIP_CONTENT_HIDE_LABEL} />
+            <ChartTooltip cursor={false} content={chartTooltipContent} />
             <Bar dataKey="orders" fill="var(--color-orders)" radius={BAR_RADIUS} barSize={32} />
           </BarChart>
         </ChartContainer>
