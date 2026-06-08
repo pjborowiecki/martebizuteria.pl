@@ -2,7 +2,10 @@ import type { JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
+import { CONSTANTS } from "~/src/constants";
+
 import { NavLink } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/nav-link";
+import { NEW_ARRIVALS_COLLECTION_PATH, SILVER_925_COLLECTION_PATH } from "~/src/components/custom/pages/landing-page/navigation/constants";
 
 interface NavConfig {
   hash: string;
@@ -11,9 +14,9 @@ interface NavConfig {
 }
 
 const DESKTOP_LINKS: readonly NavConfig[] = [
-  { active: false, hash: "#nowosci", labelKey: "desktop.newArrivals" },
-  { active: true, hash: "#srebro", labelKey: "desktop.silver925" },
-  { active: false, hash: "#marka", labelKey: "desktop.brand" }
+  { active: false, hash: NEW_ARRIVALS_COLLECTION_PATH, labelKey: "desktop.newArrivals" },
+  { active: false, hash: SILVER_925_COLLECTION_PATH, labelKey: "desktop.silver925" },
+  { active: false, hash: CONSTANTS.ROUTES.ABOUT, labelKey: "desktop.brand" }
 ];
 
 export function DesktopNav(): JSX.Element {

@@ -1,6 +1,6 @@
-import { type ChangeEvent, type Dispatch, type JSX, type SetStateAction, useCallback, useRef, useState } from "react";
+import { type ChangeEvent, type JSX, useCallback, useRef, useState } from "react";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
@@ -18,83 +18,213 @@ import { Input } from "~/src/components/shadcn/input";
 import { Label } from "~/src/components/shadcn/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/components/shadcn/select";
 import { Separator } from "~/src/components/shadcn/separator";
-import { Switch } from "~/src/components/shadcn/switch";
 
-const PROFILE = {
-  birthDate: "March 15, 1992",
-  currency: "EUR",
-  email: "maria.kowalska@email.com",
-  firstName: "Maria",
-  language: "English",
-  lastName: "Kowalska",
-  newsletter: true,
-  phone: "+48 512 345 678"
-};
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants";
+import { customerAccountMutations } from "~/src/modules/customer-account/customer-account.mutations";
+import { customerAccountQueryOptions } from "~/src/modules/customer-account/customer-account.queries";
+import type { CustomerAccountProfile } from "~/src/modules/customer-account/customer-account.types";
 
-type FieldKey = "firstName" | "lastName" | "email" | "phone" | "birthDate";
+type EditableField = "name" | "phone";
 
 export const Route = createFileRoute("/{-$locale}/account/profile")({
-  component: ProfilePage
+  component: ProfilePage,
+  loader: ({ context }) => context.queryClient.ensureQueryData(customerAccountQueryOptions.profileQueryOptions()),
+  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS
 });
 
-function PersonalInfoField({
-  editing,
-  field,
-  onCancel,
-  onSave,
-  setEditing,
-  setValues,
-  values
-}: Readonly<{
-  editing: FieldKey | undefined;
-  field: { key: FieldKey; label: string; type: string };
-  onCancel: (key: FieldKey) => void;
-  onSave: () => void;
-  setEditing: (key: FieldKey | undefined) => void;
-  setValues: Dispatch<SetStateAction<typeof PROFILE>>;
-  values: typeof PROFILE;
-}>): JSX.Element {
-  const isEditing = editing === field.key;
+const PREF_SELECT_TRIGGER_CLASS =
+  "mt-1.5 flex h-auto w-full items-center justify-between rounded-none border-0 border-b border-border bg-transparent p-0 pb-2 text-[14px] shadow-none transition-colors outline-none hover:bg-transparent focus:border-foreground focus:ring-0 focus-visible:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-foreground";
 
-  const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      setValues((v) => ({ ...v, [field.key]: e.target.value }));
+const TIMEZONE_OPTIONS: readonly string[] =
+  typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : CONSTANTS.TIME_ZONES;
+
+function ProfilePage(): JSX.Element {
+  const t = useTranslations("pages.account.profile");
+  const { data: profile } = useSuspenseQuery(customerAccountQueryOptions.profileQueryOptions());
+
+  return (
+    <div>
+      <div className="mb-10 space-y-3">
+        <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{t("eyebrow")}</p>
+        <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("title")}</h1>
+      </div>
+
+      <PersonalInfoSection profile={profile} />
+      <Separator className="my-10" />
+
+      <PreferencesSection />
+      <Separator className="my-10" />
+
+      <SecuritySection />
+      <Separator className="my-10" />
+
+      <CloseAccountSection />
+    </div>
+  );
+}
+
+function PersonalInfoSection({ profile }: Readonly<{ profile: CustomerAccountProfile | undefined }>): JSX.Element {
+  const t = useTranslations("pages.account.profile");
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<EditableField | undefined>();
+  const [name, setName] = useState(profile?.name ?? "");
+  const [phone, setPhone] = useState(profile?.phone ?? "");
+  const snapshotRef = useRef({ name, phone });
+
+  const updatePhoneMutation = useMutation({
+    mutationFn: (nextPhone: string) => customerAccountMutations.updateCustomerPhoneFn({ data: { phone: nextPhone } }),
+    onError: () => {
+      toast.error(t("saveError"));
     },
-    [field.key, setValues]
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.CUSTOMER_ACCOUNT.PROFILE });
+      toast.success(t("saved"));
+    }
+  });
+
+  const handleStartEdit = useCallback(
+    (field: EditableField) => {
+      snapshotRef.current = { name, phone };
+      setEditing(field);
+    },
+    [name, phone]
   );
 
-  const handleEdit = useCallback(() => {
-    setEditing(field.key);
-  }, [field.key, setEditing]);
+  const handleCancel = useCallback((field: EditableField) => {
+    if (field === "name") {
+      setName(snapshotRef.current.name);
+    } else {
+      setPhone(snapshotRef.current.phone);
+    }
+    setEditing(undefined);
+  }, []);
 
-  const handleCancel = useCallback(() => {
-    onCancel(field.key);
-  }, [field.key, onCancel]);
+  const handleSave = useCallback(
+    async (field: EditableField) => {
+      if (field === "name") {
+        const { error } = await authClient.updateUser({ name });
+        if (error) {
+          toast.error(t("saveError"));
+          return;
+        }
+        toast.success(t("saved"));
+      } else {
+        await updatePhoneMutation.mutateAsync(phone);
+      }
+      setEditing(undefined);
+    },
+    [name, phone, t, updatePhoneMutation]
+  );
+
+  const handleCancelName = useCallback(() => {
+    handleCancel("name");
+  }, [handleCancel]);
+
+  const handleCancelPhone = useCallback(() => {
+    handleCancel("phone");
+  }, [handleCancel]);
+
+  const handleEditName = useCallback(() => {
+    handleStartEdit("name");
+  }, [handleStartEdit]);
+
+  const handleEditPhone = useCallback(() => {
+    handleStartEdit("phone");
+  }, [handleStartEdit]);
+
+  const handleSaveName = useCallback(() => {
+    void handleSave("name");
+  }, [handleSave]);
+
+  const handleSavePhone = useCallback(() => {
+    void handleSave("phone");
+  }, [handleSave]);
+
+  if (profile === undefined) {
+    return <p className="text-sm text-muted-foreground">{t("saveError")}</p>;
+  }
+
+  return (
+    <section>
+      <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("personalInfo")}</h2>
+      <Separator className="mt-3 mb-0" />
+      <div className="divide-y divide-border">
+        <ProfileField
+          editing={editing === "name"}
+          label={t("name")}
+          onCancel={handleCancelName}
+          onEdit={handleEditName}
+          onSave={handleSaveName}
+          onChange={setName}
+          type="text"
+          value={name}
+        />
+        <ReadOnlyField label={t("email")} value={profile.email} />
+        <ProfileField
+          editing={editing === "phone"}
+          label={t("phone")}
+          onCancel={handleCancelPhone}
+          onEdit={handleEditPhone}
+          onSave={handleSavePhone}
+          onChange={setPhone}
+          type="tel"
+          value={phone}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ProfileField({
+  editing,
+  label,
+  onCancel,
+  onChange,
+  onEdit,
+  onSave,
+  type,
+  value
+}: Readonly<{
+  editing: boolean;
+  label: string;
+  onCancel: () => void;
+  onChange: (value: string) => void;
+  onEdit: () => void;
+  onSave: () => void;
+  type: string;
+  value: string;
+}>): JSX.Element {
+  const handleChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      onChange(e.target.value);
+    },
+    [onChange]
+  );
 
   return (
     <div className="flex items-center gap-4 py-4">
       <div className="min-w-0 flex-1">
-        <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{field.label}</Label>
+        <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{label}</Label>
         <Input
           variant="account-inline"
-          type={field.type}
-          value={values[field.key]}
-          readOnly={!isEditing}
+          type={type}
+          value={value}
+          readOnly={!editing}
           onChange={handleChange}
-          className={cn("mt-1 block", isEditing ? "cursor-text text-foreground" : "pointer-events-none cursor-default text-foreground")}
+          className={cn("mt-1 block", editing ? "cursor-text text-foreground" : "pointer-events-none cursor-default text-foreground")}
         />
       </div>
-      {isEditing ? (
+      {editing ? (
         <div className="flex shrink-0 gap-1">
           <Button variant="ghost" size="icon-xs" onClick={onSave} className="text-foreground hover:text-foreground">
             <Save className="size-3.5" strokeWidth={1.5} />
           </Button>
-          <Button variant="ghost" size="icon-xs" onClick={handleCancel} className="text-muted-foreground hover:text-destructive">
+          <Button variant="ghost" size="icon-xs" onClick={onCancel} className="text-muted-foreground hover:text-destructive">
             <X className="size-3.5" strokeWidth={1.5} />
           </Button>
         </div>
       ) : (
-        <Button variant="ghost" size="icon-xs" onClick={handleEdit}>
+        <Button variant="ghost" size="icon-xs" onClick={onEdit}>
           <Pencil className="size-3.5" strokeWidth={1.5} />
         </Button>
       )}
@@ -102,81 +232,22 @@ function PersonalInfoField({
   );
 }
 
-function PersonalInfoSection(): JSX.Element {
-  const t = useTranslations("pages.account.profile");
-  const [editing, setEditing] = useState<FieldKey | undefined>();
-  const [values, setValues] = useState(PROFILE);
-  const snapshotRef = useRef<typeof PROFILE>(PROFILE);
-
-  const handleSetEditing = useCallback(
-    (key: FieldKey | undefined) => {
-      if (key !== undefined) {
-        snapshotRef.current = { ...values };
-      }
-      setEditing(key);
-    },
-    [values]
-  );
-
-  const handleSave = useCallback(() => {
-    setEditing(undefined);
-  }, []);
-
-  const handleCancel = useCallback((key: FieldKey) => {
-    setValues((v) => ({ ...v, [key]: snapshotRef.current[key] }));
-    setEditing(undefined);
-  }, []);
-
-  const fields: { key: FieldKey; label: string; type: string }[] = [
-    { key: "firstName", label: t("firstName"), type: "text" },
-    { key: "lastName", label: t("lastName"), type: "text" },
-    { key: "email", label: t("email"), type: "email" },
-    { key: "phone", label: t("phone"), type: "tel" },
-    { key: "birthDate", label: t("birthDate"), type: "text" }
-  ];
-
+function ReadOnlyField({ label, value }: Readonly<{ label: string; value: string }>): JSX.Element {
   return (
-    <section>
-      <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("personalInfo")}</h2>
-      <Separator className="mt-3 mb-0" />
-
-      <div className="divide-y divide-border">
-        {fields.map((field) => (
-          <PersonalInfoField
-            key={field.key}
-            field={field}
-            editing={editing}
-            setEditing={handleSetEditing}
-            values={values}
-            setValues={setValues}
-            onSave={handleSave}
-            onCancel={handleCancel}
-          />
-        ))}
+    <div className="flex items-center gap-4 py-4">
+      <div className="min-w-0 flex-1">
+        <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{label}</Label>
+        <Input
+          variant="account-inline"
+          type="email"
+          value={value}
+          readOnly
+          className="pointer-events-none mt-1 block cursor-default text-foreground"
+        />
       </div>
-    </section>
+    </div>
   );
 }
-
-const LANGUAGE_OPTIONS = [
-  { label: "Polski", value: "pl" },
-  { label: "English", value: "en" },
-  { label: "Deutsch", value: "de" },
-  { label: "Français", value: "fr" }
-] as const;
-
-const CURRENCY_OPTIONS = [
-  { label: "EUR (€)", value: "EUR" },
-  { label: "PLN (zł)", value: "PLN" },
-  { label: "USD ($)", value: "USD" },
-  { label: "GBP (£)", value: "GBP" }
-] as const;
-
-const PREF_SELECT_TRIGGER_CLASS =
-  "mt-1.5 flex h-auto w-full items-center justify-between rounded-none border-0 border-b border-border bg-transparent p-0 pb-2 text-[14px] shadow-none transition-colors outline-none hover:bg-transparent focus:border-foreground focus:ring-0 focus-visible:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-foreground";
-
-const TIMEZONE_OPTIONS: readonly string[] =
-  typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : CONSTANTS.TIME_ZONES;
 
 function TimezoneField(): JSX.Element {
   const t = useTranslations("pages.account.profile");
@@ -197,15 +268,13 @@ function TimezoneField(): JSX.Element {
     }
   });
 
-  const { mutate } = mutation;
-
   const handleChange = useCallback(
     (val: string | null) => {
       if (val !== null && val !== current) {
-        mutate(val);
+        mutation.mutate(val);
       }
     },
-    [current, mutate]
+    [current, mutation]
   );
 
   return (
@@ -229,71 +298,13 @@ function TimezoneField(): JSX.Element {
 
 function PreferencesSection(): JSX.Element {
   const t = useTranslations("pages.account.profile");
-  const [values, setValues] = useState(PROFILE);
-
-  const handleLanguageChange = useCallback((val: string | null) => {
-    if (val !== null) {
-      setValues((v) => ({ ...v, language: val }));
-    }
-  }, []);
-
-  const handleCurrencyChange = useCallback((val: string | null) => {
-    if (val !== null) {
-      setValues((v) => ({ ...v, currency: val }));
-    }
-  }, []);
-
-  const toggleNewsletter = useCallback(() => {
-    setValues((v) => ({ ...v, newsletter: !v.newsletter }));
-  }, []);
 
   return (
     <section>
       <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("preferences")}</h2>
       <Separator className="mt-3 mb-0" />
-
       <div className="divide-y divide-border">
-        <div className="py-4">
-          <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{t("language")}</Label>
-          <Select value={values.language} onValueChange={handleLanguageChange}>
-            <SelectTrigger className={PREF_SELECT_TRIGGER_CLASS}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="py-4">
-          <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{t("currency")}</Label>
-          <Select value={values.currency} onValueChange={handleCurrencyChange}>
-            <SelectTrigger className={PREF_SELECT_TRIGGER_CLASS}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CURRENCY_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         <TimezoneField />
-
-        <div className="flex items-center justify-between py-4">
-          <div>
-            <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{t("newsletter")}</Label>
-            <p className="mt-1 text-[14px]">{values.newsletter ? t("subscribed") : t("notSubscribed")}</p>
-          </div>
-          <Switch checked={values.newsletter} onCheckedChange={toggleNewsletter} />
-        </div>
       </div>
     </section>
   );
@@ -306,7 +317,6 @@ function SecuritySection(): JSX.Element {
     <section>
       <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("security")}</h2>
       <Separator className="mt-3 mb-0" />
-
       <div className="divide-y divide-border">
         <div className="flex items-center justify-between py-4">
           <div>
@@ -399,8 +409,16 @@ function CloseAccountSection(): JSX.Element {
   const t = useTranslations("pages.account.profile");
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [closeConfirmation, setCloseConfirmation] = useState("");
-
   const canConfirmClose = closeConfirmation.toLowerCase() === "delete";
+
+  const handleOpenDialog = useCallback(() => {
+    setShowCloseDialog(true);
+  }, []);
+
+  const handleCancelDialog = useCallback(() => {
+    setShowCloseDialog(false);
+    setCloseConfirmation("");
+  }, []);
 
   const handleCloseAccount = useCallback(() => {
     if (canConfirmClose) {
@@ -409,68 +427,33 @@ function CloseAccountSection(): JSX.Element {
     }
   }, [canConfirmClose]);
 
-  const handleCancel = useCallback(() => {
-    setShowCloseDialog(false);
-    setCloseConfirmation("");
-  }, []);
-
-  const handleShowDialog = useCallback(() => {
-    setShowCloseDialog(true);
-  }, []);
-
   return (
     <>
       <section>
         <h2 className="text-[11px] tracking-[0.2em] text-destructive/70 uppercase">{t("closeAccount")}</h2>
         <Separator className="mt-3 mb-0" />
-
         <div className="py-5">
           <div className="flex items-start gap-4">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive/60" strokeWidth={1.5} />
             <div className="min-w-0 flex-1">
               <p className="text-[14px]">{t("closeAccountTitle")}</p>
               <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted-foreground">{t("closeAccountDesc")}</p>
-              <Button variant="account-destructive" size="account-sm" className="mt-4" onClick={handleShowDialog}>
+              <Button variant="account-destructive" size="account-sm" className="mt-4" onClick={handleOpenDialog}>
                 {t("closeAccountAction")}
               </Button>
             </div>
           </div>
         </div>
       </section>
-
       {showCloseDialog ? (
         <CloseAccountDialog
           canConfirmClose={canConfirmClose}
           closeConfirmation={closeConfirmation}
-          onCancel={handleCancel}
+          onCancel={handleCancelDialog}
           onCloseAccount={handleCloseAccount}
           setCloseConfirmation={setCloseConfirmation}
         />
       ) : undefined}
     </>
-  );
-}
-
-function ProfilePage(): JSX.Element {
-  const t = useTranslations("pages.account.profile");
-
-  return (
-    <div>
-      <div className="mb-10 space-y-3">
-        <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{t("eyebrow")}</p>
-        <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("title")}</h1>
-      </div>
-
-      <PersonalInfoSection />
-      <Separator className="my-10" />
-
-      <PreferencesSection />
-      <Separator className="my-10" />
-
-      <SecuritySection />
-      <Separator className="my-10" />
-
-      <CloseAccountSection />
-    </div>
   );
 }

@@ -30,8 +30,6 @@ export const PRODUCT_RELATED_MOCK = [
   }
 ] as const;
 
-export const PRODUCT_DETAIL_KEYS = ["description", "materials", "dimensions", "care", "shipping"] as const;
-
 export interface ProductData {
   readonly collection?: { readonly title: string } | null;
   readonly description: string | null;

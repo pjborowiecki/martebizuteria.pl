@@ -9,6 +9,7 @@ import { cn } from "~/src/lib/utils";
 import { Image } from "~/src/components/custom/image";
 import { LocalizedLink, type LocalizedTo } from "~/src/components/custom/localized-link";
 
+import { useProductCardImageHover } from "~/src/hooks/use-product-card-image-hover";
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils";
 import { useCartStore } from "~/src/stores/cart.store";
 
@@ -27,6 +28,7 @@ export interface ProductCardProps {
   readonly onAddToCart?: () => void;
   readonly onWishlistToggle?: () => void;
   readonly parallax?: boolean;
+  readonly priority?: boolean;
   readonly price?: string;
   readonly rawPrice?: number;
   readonly sizes?: string;
@@ -167,6 +169,7 @@ export function ProductCard({
   onAddToCart,
   onWishlistToggle,
   parallax = false,
+  priority = false,
   price,
   rawPrice,
   sizes = "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw",
@@ -176,6 +179,8 @@ export function ProductCard({
   wishlisted: initialWishlisted = false
 }: Readonly<ProductCardProps>): JSX.Element {
   const t = useTranslations("components.custom.productCard");
+  const imageHoverRef = useRef<HTMLDivElement>(null);
+  const { handleMouseEnter, handleMouseLeave } = useProductCardImageHover(imageHoverRef);
   const { handleAddToCart, handleShare, handleWishlist, justAdded, wishlisted } = useProductCardLogic({
     href,
     image,
@@ -193,17 +198,16 @@ export function ProductCard({
   return (
     <LocalizedLink className={cn("group/card block", className)} to={href} params={params}>
       {/* ── Image container ── */}
-      <div className={cn("relative aspect-4/5 overflow-hidden bg-secondary", parallax && "parallax-wrap")}>
-        {/* Image layer */}
+      <div
+        className={cn("relative aspect-4/5 overflow-hidden bg-secondary", parallax && "parallax-wrap")}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {/* Image layer — scale animates on an inner wrapper so scroll parallax stays smooth */}
         <div className={cn(parallax ? "parallax-img absolute inset-x-0 inset-y-[-8%]" : "absolute inset-0")}>
-          <Image
-            src={image}
-            alt={name}
-            width={600}
-            height={750}
-            sizes={sizes}
-            className="object-cover transition-[transform,filter] duration-700 ease-out group-hover/card:scale-[1.03]"
-          />
+          <div ref={imageHoverRef} className="size-full will-change-transform">
+            <Image src={image} alt={name} width={600} height={750} sizes={sizes} priority={priority} className="size-full object-cover" />
+          </div>
         </div>
 
         {/* Badge */}
@@ -221,8 +225,7 @@ export function ProductCard({
             aria-label={wishlisted ? t("removeFromWishlist") : t("addToWishlist")}
             className={cn(
               "flex size-11 cursor-pointer items-center justify-center transition-all duration-300",
-              wishlisted ? "opacity-100" : "opacity-0 group-hover/card:opacity-100",
-              wishlisted && "opacity-100"
+              wishlisted ? "opacity-100" : "opacity-0 group-hover/card:opacity-100 max-lg:opacity-100"
             )}
           >
             <Heart
@@ -234,14 +237,14 @@ export function ProductCard({
             type="button"
             onClick={handleShare}
             aria-label={t("share")}
-            className="flex size-11 cursor-pointer items-center justify-center opacity-0 transition-all duration-300 group-hover/card:opacity-100"
+            className="flex size-11 cursor-pointer items-center justify-center transition-all duration-300 max-lg:opacity-100 lg:opacity-0 lg:group-hover/card:opacity-100"
           >
             <Share2 className="size-[18px] text-white" strokeWidth={1.3} />
           </button>
         </div>
 
         {/* ── Bottom overlay: Add to Cart ── */}
-        <div className="absolute inset-x-0 bottom-0 z-10 translate-y-full px-4 pb-4 transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] group-hover/card:translate-y-0">
+        <div className="absolute inset-x-0 bottom-0 z-10 translate-y-0 px-4 pb-4 transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] max-lg:translate-y-0 lg:translate-y-full lg:group-hover/card:translate-y-0">
           <button
             type="button"
             onClick={handleAddToCart}

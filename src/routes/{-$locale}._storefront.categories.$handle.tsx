@@ -1,43 +1,33 @@
-import { type JSX, useMemo } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useFormatter, useLocale, useTranslations } from "use-intl";
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 import { DEFAULT_LOCALE } from "~/src/constants/_constants/locales";
 
-import { getProductImageUrl, prefetchProductThumbnails } from "~/src/lib/_utils/image";
-import {
-  isFirstListPage,
-  isValidLocale,
-  LIST_PAGE_FIRST,
-  listPageSearch,
-  listPageSearchSchema,
-  nextListPage,
-  previousListPage,
-  type ListPageSearch
-} from "~/src/lib/utils";
+import { catalogDebugLog } from "~/src/lib/dev/catalog-debug-log";
+import { isValidLocale } from "~/src/lib/utils";
 
-import { Image } from "~/src/components/custom/image";
-import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { prefetchProductsCatalogPage, ProductsCatalogPage } from "~/src/components/custom/pages/products-catalog/products-catalog-page";
 
-import { categoryQueryOptions } from "~/src/modules/product-category/product-category.queries";
+import { categoryQueries } from "~/src/modules/product-category/product-category.queries";
 import { resolveCategoryDescription, resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils";
-import type { Product } from "~/src/modules/product/product.types";
-import { resolveProductDescription, resolveProductTitle } from "~/src/modules/product/product.utils";
+import {
+  applyStorefrontProductsSearchPatch,
+  normalizeStorefrontProductsSearch,
+  storefrontScopedCategoryCatalogSearchSchema,
+  type StorefrontScopedCategoryCatalogSearch
+} from "~/src/modules/product/product.storefront-catalog";
 
-const CENTS_PER_UNIT = 100;
-const FIRST_VARIANT_INDEX = 0;
-
-interface PageMeta {
-  readonly description?: string | null;
+interface CategoryPageMeta {
+  readonly description?: string;
   readonly title: string;
 }
 
 export const Route = createFileRoute("/{-$locale}/_storefront/categories/$handle")({
   component: CategoryPage,
-  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<PageMeta> }>) => ({
+  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<CategoryPageMeta> }>) => ({
     meta: [
       { title: `${loaderData?.title ?? "Category"} | ${CONSTANTS.APP_NAME}` },
       {
@@ -47,132 +37,77 @@ export const Route = createFileRoute("/{-$locale}/_storefront/categories/$handle
     ]
   }),
   loader: async ({ context, deps, params }) => {
+    const startedAt = performance.now();
     const locale = params.locale !== undefined && isValidLocale(params.locale) ? params.locale : DEFAULT_LOCALE;
-    const data = await context.queryClient.ensureQueryData(categoryQueryOptions.categoryQueryOptions(params.handle, deps.page));
+    catalogDebugLog("category.loader.start", { handle: params.handle, search: deps });
 
-    if (data === false) {
+    const category = await categoryQueries.fetchStorefrontCategoryMetaFn({ data: params.handle });
+
+    if (category === undefined) {
+      catalogDebugLog("category.loader.notFound", { handle: params.handle });
       notFound({ throw: true });
-      return { description: "", title: "" };
+      return { description: undefined, title: "" };
     }
 
-    prefetchProductThumbnails(data.products.items, context.imagePrefetchService);
-    const description = resolveCategoryDescription(data.descriptions, locale);
+    await prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, {
+      loadCollections: true,
+      scope: { categoryHandle: params.handle },
+      search: deps
+    });
+
+    catalogDebugLog("category.loader.done", {
+      handle: params.handle,
+      ms: Math.round(performance.now() - startedAt)
+    });
+
+    const description = resolveCategoryDescription(category.descriptions, locale);
+
     return {
       description: description === "" ? undefined : description,
-      title: resolveCategoryTitle(data.titles, locale)
+      title: resolveCategoryTitle(category.titles, locale)
     };
   },
-  loaderDeps: ({ search }: { search: ListPageSearch }) => ({ page: search.page }),
-  validateSearch: listPageSearchSchema
+  loaderDeps: ({ search }: { search: StorefrontScopedCategoryCatalogSearch }) => normalizeStorefrontProductsSearch(search),
+  validateSearch: storefrontScopedCategoryCatalogSearchSchema
 });
 
 function CategoryPage(): JSX.Element {
   const t = useTranslations("pages.category");
-  const locale = useLocale();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { handle } = Route.useParams();
-  const { page } = Route.useSearch();
-  const { data: category } = useSuspenseQuery(categoryQueryOptions.categoryQueryOptions(handle, page));
+  const loaderData = Route.useLoaderData();
 
-  if (category === false) {
-    return <div>{t("notFound")}</div>;
-  }
+  const header = useMemo(
+    () => ({
+      description: loaderData.description,
+      eyebrow: t("eyebrow"),
+      title: loaderData.title
+    }),
+    [loaderData.description, loaderData.title, t]
+  );
 
-  const title = resolveCategoryTitle(category.titles, locale);
-  const description = resolveCategoryDescription(category.descriptions, locale);
-  const [firstProduct] = category.products.items;
-  const nextPage = nextListPage(page);
-  const previousPage = previousListPage(page);
+  const scope = useMemo(() => ({ categoryHandle: handle }), [handle]);
+
+  const handleSearchChange = useCallback(
+    (patch: Partial<StorefrontScopedCategoryCatalogSearch>, options?: { readonly clearAll?: boolean }) => {
+      void navigate({
+        replace: true,
+        search: (current) => applyStorefrontProductsSearchPatch(current, patch, options)
+      });
+    },
+    [navigate]
+  );
 
   return (
-    <main className="container mx-auto px-4 py-12">
-      <div className="mb-12 max-w-2xl">
-        <h1 className="mb-4 text-4xl font-bold tracking-tight">{title}</h1>
-        {description !== "" && <p className="text-lg text-muted-foreground">{description}</p>}
-      </div>
-
-      {firstProduct === undefined && <p>{t("noProductsFound")}</p>}
-      {firstProduct !== undefined && (
-        <>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {category.products.items.map((productItem) => (
-              <ProductCard key={productItem.id} product={productItem} />
-            ))}
-          </div>
-          <CatalogPagination currentPage={page} hasMore={category.products.hasMore} nextPage={nextPage} previousPage={previousPage} />
-        </>
-      )}
-    </main>
+    <ProductsCatalogPage
+      header={header}
+      i18nNamespace="pages.category"
+      onSearchChange={handleSearchChange}
+      scope={scope}
+      search={search}
+      showCategoryFilter={false}
+      showCollectionFilter
+    />
   );
-}
-
-function CatalogPagination({
-  currentPage,
-  hasMore,
-  nextPage,
-  previousPage
-}: Readonly<{
-  currentPage: number;
-  hasMore: boolean;
-  nextPage: number;
-  previousPage: number;
-}>): JSX.Element | undefined {
-  const previousSearch = useMemo(() => listPageSearch(previousPage), [previousPage]);
-  const nextSearch = useMemo(() => listPageSearch(nextPage), [nextPage]);
-
-  if (isFirstListPage(currentPage) && !hasMore) {
-    return undefined;
-  }
-
-  return (
-    <nav className="mt-10 flex items-center justify-center gap-4" aria-label="Pagination">
-      {currentPage > LIST_PAGE_FIRST && (
-        <Link from={Route.fullPath} search={previousSearch} className="text-sm font-medium hover:underline">
-          Previous
-        </Link>
-      )}
-      <span className="text-sm text-muted-foreground">Page {currentPage}</span>
-      {hasMore && (
-        <Link from={Route.fullPath} search={nextSearch} className="text-sm font-medium hover:underline">
-          Next
-        </Link>
-      )}
-    </nav>
-  );
-}
-
-function ProductCard({
-  product
-}: Readonly<{
-  product: Pick<Product["select"], "descriptions" | "handle" | "id" | "thumbnail" | "titles"> & {
-    readonly variants?: readonly { readonly price: number }[];
-  };
-}>): JSX.Element {
-  const locale = useLocale();
-  const params = useMemo(() => ({ handle: product.handle }), [product.handle]);
-  const format = useFormatter();
-  const title = resolveProductTitle(product.titles, locale);
-  const description = resolveProductDescription(product.descriptions, locale);
-
-  const variantPrice = product.variants?.[FIRST_VARIANT_INDEX]?.price;
-  const price =
-    variantPrice === undefined ? undefined : format.number(variantPrice / CENTS_PER_UNIT, { currency: "PLN", style: "currency" });
-
-  return (
-    <LocalizedLink
-      to={CONSTANTS.ROUTES.PRODUCT}
-      params={params}
-      className="group block rounded-lg border p-4 transition-shadow hover:shadow-lg"
-    >
-      <div className="mb-4 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-muted">
-        <ProductImage thumbnail={product.thumbnail} title={title} />
-      </div>
-      <h2 className="font-semibold group-hover:underline">{title}</h2>
-      {description !== "" && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{description}</p>}
-      {price !== undefined && <p className="mt-2 text-sm font-medium">{price}</p>}
-    </LocalizedLink>
-  );
-}
-
-function ProductImage({ thumbnail, title }: Readonly<{ thumbnail: string | null; title: string }>): JSX.Element {
-  return <Image src={getProductImageUrl(thumbnail)} alt={title} className="h-full w-full object-cover" width={256} height={256} />;
 }

@@ -10,10 +10,7 @@
     "breadcrumbHome": "Home",
     "breadcrumbProducts": "Products",
     "collection": "Collection",
-    "subtitle": "Exquisite craftsmanship",
-    "price": "From PLN 310",
-    "material": "925 Sterling Silver / 18k Gold Plated",
-    "sku": "SKU: MRT-0001",
+    "sku": "SKU: {sku}",
     "quantity": "Quantity",
     "decreaseQuantity": "Decrease quantity",
     "increaseQuantity": "Increase quantity",
@@ -23,24 +20,30 @@
     "variantHint": "Gallery, specifications, and price update when you change the finish.",
     "details": {
       "description": {
-        "title": "Description",
-        "text": "Every piece is carefully handcrafted in our atelier."
+        "title": "Description"
       },
-      "materials": {
-        "title": "Materials",
-        "text": "Made with the highest quality sustainable metals."
+      "specifications": {
+        "title": "Details"
       },
-      "dimensions": {
-        "title": "Dimensions",
-        "text": "One size fits most. Adjustable chain 40-45cm."
-      },
-      "care": {
-        "title": "Care instructions",
-        "text": "Store in a dry place. Avoid direct contact with perfume."
-      },
-      "shipping": {
-        "title": "Shipping & Returns",
-        "text": "Complimentary shipping on orders over 500 PLN. 30-day returns."
+      "additionalInfo": {
+        "title": "Additional information",
+        "fastFulfillment": {
+          "title": "Fast fulfillment",
+          "text": "Order fulfillment time is up to {fulfillmentTime}.",
+          "fallbackTime": "10 business days"
+        },
+        "elegantBox": {
+          "title": "Elegant gift box",
+          "text": "Our pieces arrive in an elegant box, making them perfect for gifting."
+        },
+        "uniqueLook": {
+          "title": "One-of-a-kind character",
+          "text": "Each piece is handcrafted in our jewelry workshop with attention to every detail. Stones are natural, so they may vary slightly in colour or structure, making your piece even more unique."
+        },
+        "flexibleOffer": {
+          "title": "Flexible service",
+          "text": "Need a different size? Would you like to refresh your jewelry with re-plating? Write to us at <email>kontakt@martebizuteria.pl</email>"
+        }
       }
     }
   },

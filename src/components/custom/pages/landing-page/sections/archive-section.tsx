@@ -1,7 +1,9 @@
-import type { JSX } from "react";
+import { useMemo, type JSX } from "react";
 
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "use-intl";
+
+import { CONSTANTS } from "~/src/constants";
 
 import { getAssetURL } from "~/src/lib/utils";
 
@@ -10,7 +12,7 @@ import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
 import { Image } from "~/src/components/custom/image";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
-import { LANDING_ARCHIVE_ARTICLES } from "~/src/data/landing-data";
+import { LANDING_ARCHIVE_ARTICLES } from "~/src/data/blog-posts";
 
 const ASPECT_RATIO_PORTRAIT = 0.8;
 
@@ -22,11 +24,14 @@ interface ArticleLinkProps {
 
 function ArchiveArticleItem({ article }: Readonly<ArticleLinkProps>): JSX.Element {
   const t = useTranslations("pages.landing.archiveSection");
+  const params = useMemo(() => ({ slug: article.slug }), [article.slug]);
+
   return (
     <li>
       <LocalizedLink
         className="group flex items-center justify-between py-5 text-lg transition-colors hover:text-muted-foreground"
-        to={article.href}
+        params={params}
+        to={CONSTANTS.ROUTES.BLOG_POST}
       >
         <span>{t(article.titleKey)}</span>
         <ArrowRight className="transition-transform duration-500 group-hover:translate-x-1" />

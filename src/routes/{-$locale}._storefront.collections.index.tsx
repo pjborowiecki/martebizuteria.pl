@@ -1,16 +1,14 @@
-import { type JSX, useMemo } from "react";
+import { type JSX } from "react";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useLocale, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
-import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { CollectionCard } from "~/src/components/custom/pages/collections/collection-card";
 
 import { collectionQueryOptions } from "~/src/modules/product-collection/product-collection.queries";
-import type { Collection } from "~/src/modules/product-collection/product-collection.types";
-import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils";
 
 export const Route = createFileRoute("/{-$locale}/_storefront/collections/")({
   component: CollectionsPage,
@@ -29,37 +27,21 @@ function CollectionsPage(): JSX.Element {
   const [firstCollection] = collections;
 
   return (
-    <main className="container mx-auto px-4 py-12">
-      <div className="mb-12">
-        <h1 className="mb-4 text-4xl font-bold tracking-tight">{t("title")}</h1>
-        <p className="mb-8 text-muted-foreground">{t("description")}</p>
+    <main className="mx-auto max-w-400 px-6 pt-8 pb-24 lg:px-12 lg:pt-10 lg:pb-32">
+      <header className="mb-8 space-y-3 lg:mb-10">
+        <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
+        <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl lg:text-6xl">{t("title")}</h1>
+        <p className="max-w-xl text-sm/relaxed text-muted-foreground">{t("description")}</p>
+      </header>
 
-        {firstCollection === undefined && <p>{t("noCollectionsFound")}</p>}
-        {firstCollection !== undefined && (
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {collections.map((collection) => (
-              <CollectionCard key={collection.id} collection={collection} />
-            ))}
-          </div>
-        )}
-      </div>
+      {firstCollection === undefined && <p className="text-sm text-muted-foreground">{t("noCollectionsFound")}</p>}
+      {firstCollection !== undefined && (
+        <div className="grid gap-6 md:grid-cols-3">
+          {collections.map((collection) => (
+            <CollectionCard key={collection.id} collection={collection} />
+          ))}
+        </div>
+      )}
     </main>
-  );
-}
-
-function CollectionCard({ collection }: Readonly<{ collection: Pick<Collection["select"], "id" | "titles" | "handle"> }>): JSX.Element {
-  const locale = useLocale();
-  const params = useMemo(() => ({ handle: collection.handle }), [collection.handle]);
-  const title = resolveCollectionTitle(collection.titles, locale);
-
-  return (
-    <LocalizedLink
-      to={CONSTANTS.ROUTES.COLLECTION}
-      params={params}
-      className="group block rounded-xl border bg-card p-6 text-card-foreground transition-all hover:shadow-md"
-    >
-      <h2 className="text-2xl font-semibold group-hover:underline">{title}</h2>
-      <p className="mt-2 text-muted-foreground">Explore the {title} collection</p>
-    </LocalizedLink>
   );
 }

@@ -51,6 +51,7 @@
         "zustand": "^5.0.14",
       },
       "devDependencies": {
+        "@capsizecss/metrics": "^4.0.0",
         "@cloudflare/vite-plugin": "^1.39.0",
         "@tailwindcss/typography": "^0.5.19",
         "@tanstack/react-query-devtools": "^5.100.14",
@@ -154,6 +155,8 @@
     "@better-auth/utils": ["@better-auth/utils@0.4.1", "", { "dependencies": { "@noble/hashes": "^2.0.1" } }, "sha512-SZBPRPF3z0nBvE5ygOkxae35wnnXPRShmqFo78S+qslLeFoPu/pMgnXAuNKFMMybac3tiLaVg1e3MQW5MC+1iA=="],
 
     "@better-fetch/fetch": ["@better-fetch/fetch@1.1.21", "", {}, "sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A=="],
+
+    "@capsizecss/metrics": ["@capsizecss/metrics@4.0.0", "", {}, "sha512-GlazGWqxc+7ZJX0jGFTdolzKqP6X3dWXyjFmMzqTslsdqHCctkKV5eHxyMD9njrWqjQOYEeTFlE1lq8+1DClug=="],
 
     "@cloudflare/kv-asset-handler": ["@cloudflare/kv-asset-handler@0.5.0", "", {}, "sha512-jxQYkj8dSIzc0cD6cMMNdOc1UVjqSqu8BZdor5s8cGjW2I8BjODt/kWPVdY+u9zj3ms75Q5qaZgnxUad83+eAg=="],
 

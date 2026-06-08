@@ -34,6 +34,16 @@ export const DEFAULT_PRODUCT_STATUS: ProductStatus = PRODUCT_STATUS.DRAFT;
 /** Default page size for storefront product listings on category/collection pages. */
 export const PRODUCT_STOREFRONT_LIST_LIMIT = 20;
 
+/** Products catalog (/products): items per infinite-scroll page (3-column grid). */
+export const PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE = 12;
+
+/** Max products returned when catalog filters are active (no infinite scroll). */
+export const PRODUCT_STOREFRONT_FILTERED_MAX = 100;
+
+export const LANDING_NEW_ARRIVALS_COLLECTION_HANDLE = "nowosci";
+
+export const LANDING_NEW_ARRIVALS_PRODUCT_LIMIT = 9;
+
 /** Default page size for the admin products data grid (server-side pagination). */
 export const ADMIN_PRODUCTS_PAGE_SIZE = 25;
 

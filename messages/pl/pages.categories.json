@@ -1,5 +1,9 @@
 {
+  "eyebrow": "Przeglądaj według typu",
   "title": "Kategorie",
-  "description": "Przeglądaj według kategorii.",
-  "noCategoriesFound": "Nie znaleziono kategorii."
+  "description": "Odkryj pełną ofertę ręcznie tworzonej biżuterii — od rzeźbiarskich kolczyków po wyraziste chokery, każdy element powstaje w naszym atelier.",
+  "metaTitle": "Kategorie | M'Arte",
+  "metaDescription": "Poznaj kategorie biżuterii M'Arte — naszyjniki, kolczyki, chokery, bransoletki i kamienie urodzinowe ze srebra 925 i naturalnych minerałów.",
+  "noCategoriesFound": "Nie znaleziono kategorii.",
+  "productCount": "{count, plural, one {# produkt} few {# produkty} many {# produktów} other {# produktu}}"
 }

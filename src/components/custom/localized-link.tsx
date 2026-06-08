@@ -13,6 +13,7 @@ type BaseLinkProps = LinkComponentProps;
 export type LocalizedLinkProps = Omit<BaseLinkProps, "to" | "params"> & {
   readonly to: LocalizedTo;
   readonly params?: Readonly<Record<string, string | number | undefined>>;
+  readonly search?: BaseLinkProps["search"];
 };
 
 function buildLocalizedPath(to: LocalizedTo): LocalizedFullPaths {
@@ -23,19 +24,19 @@ function buildLocalizedPath(to: LocalizedTo): LocalizedFullPaths {
   return `/{-$locale}${to}`;
 }
 
-export function LocalizedLink({ to, params, children, preload = "intent", ...rest }: LocalizedLinkProps) {
+export function LocalizedLink({ to, params, search, children, preload = "intent", ...rest }: LocalizedLinkProps) {
   const localizedTo = buildLocalizedPath(to);
 
   if (params !== undefined) {
     return (
-      <Link to={localizedTo} params={params} preload={preload} {...rest}>
+      <Link to={localizedTo} params={params} search={search} preload={preload} {...rest}>
         {children}
       </Link>
     );
   }
 
   return (
-    <Link to={localizedTo} preload={preload} {...rest}>
+    <Link to={localizedTo} search={search} preload={preload} {...rest}>
       {children}
     </Link>
   );

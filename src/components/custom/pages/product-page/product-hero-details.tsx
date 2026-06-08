@@ -1,10 +1,9 @@
-import { type JSX, useMemo } from "react";
+import { type JSX, type ReactNode, useMemo } from "react";
 
 import { useLocale, useTranslations } from "use-intl";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/src/components/shadcn/accordion";
 
-import { PRODUCT_DETAIL_KEYS } from "~/src/data/product-data";
 import {
   formatProductAttributeValueForDisplay,
   resolveProductAttributeTitle
@@ -12,11 +11,22 @@ import {
 import type { ProductSpecification } from "~/src/modules/product/product.types";
 
 const DEFAULT_ACCORDION_VALUE = ["description"];
+const FULFILLMENT_TIME_ATTRIBUTE_HANDLE = "czas-realizacji";
+const EMPTY_SPECIFICATIONS_COUNT = 0;
 
-interface DetailSection {
-  readonly body: string;
-  readonly key: string;
-  readonly title: string;
+function AdditionalInfoEmailLink({ children }: Readonly<{ children: ReactNode }>): JSX.Element {
+  return (
+    <a
+      className="text-foreground underline underline-offset-4 transition-colors hover:text-foreground/70"
+      href="mailto:kontakt@martebizuteria.pl"
+    >
+      {children}
+    </a>
+  );
+}
+
+function renderAdditionalInfoEmail(chunks: ReactNode): JSX.Element {
+  return <AdditionalInfoEmailLink>{chunks}</AdditionalInfoEmailLink>;
 }
 
 export interface ProductHeroDetailsProps {
@@ -24,47 +34,135 @@ export interface ProductHeroDetailsProps {
   readonly specifications: readonly ProductSpecification[];
 }
 
-export function ProductHeroDetails({ description, specifications }: ProductHeroDetailsProps): JSX.Element {
-  const t = useTranslations("pages.product.heroSection");
+function formatSpecificationValue(spec: ProductSpecification, locale: string): string {
+  return formatProductAttributeValueForDisplay(spec.type, spec.value, {
+    allowedValues: spec.allowedValues,
+    locale,
+    unit: spec.unit
+  });
+}
+
+function ProductSpecificationsList({ specifications }: Readonly<{ specifications: readonly ProductSpecification[] }>): JSX.Element {
   const locale = useLocale();
 
-  const detailSections = useMemo((): DetailSection[] => {
-    const specByHandle = new Map(specifications.map((spec) => [spec.handle, spec]));
-    const sections: DetailSection[] = [];
+  return (
+    <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+      {specifications.map((spec) => (
+        <div key={spec.handle} className="space-y-1">
+          <dt className="text-sm font-medium text-foreground">{resolveProductAttributeTitle(spec.titles, locale)}</dt>
+          <dd className="text-sm text-muted-foreground">{formatSpecificationValue(spec, locale)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
-    for (const key of PRODUCT_DETAIL_KEYS) {
-      if (key === "description") {
-        const body = description === "" ? t("details.description.text") : description;
-        sections.push({ body, key, title: t("details.description.title") });
-      } else {
-        const spec = specByHandle.get(key);
-        if (spec !== undefined && spec.value.trim() !== "") {
-          sections.push({
-            body: formatProductAttributeValueForDisplay(spec.type, spec.value, {
-              allowedValues: spec.allowedValues,
-              locale,
-              unit: spec.unit
-            }),
-            key,
-            title: resolveProductAttributeTitle(spec.titles, locale)
-          });
-        } else {
-          sections.push({ body: t(`details.${key}.text`), key, title: t(`details.${key}.title`) });
+function ProductAdditionalInfo({ fulfillmentTime }: Readonly<{ fulfillmentTime?: string }>): JSX.Element {
+  const t = useTranslations("pages.product.heroSection.details.additionalInfo");
+
+  const sections = useMemo(
+    () =>
+      [
+        {
+          body: t("fastFulfillment.text", { fulfillmentTime: fulfillmentTime ?? t("fastFulfillment.fallbackTime") }),
+          key: "fastFulfillment",
+          title: t("fastFulfillment.title")
+        },
+        {
+          body: t("elegantBox.text"),
+          key: "elegantBox",
+          title: t("elegantBox.title")
+        },
+        {
+          body: t("uniqueLook.text"),
+          key: "uniqueLook",
+          title: t("uniqueLook.title")
+        },
+        {
+          body: t.rich("flexibleOffer.text", {
+            email: renderAdditionalInfoEmail
+          }),
+          key: "flexibleOffer",
+          title: t("flexibleOffer.title")
         }
-      }
-    }
-
-    return sections;
-  }, [description, locale, specifications, t]);
+      ] as const,
+    [fulfillmentTime, t]
+  );
 
   return (
-    <Accordion className="w-full" defaultValue={DEFAULT_ACCORDION_VALUE}>
-      {detailSections.map((section) => (
+    <div className="divide-y divide-border/60">
+      {sections.map((section) => (
+        <div key={section.key} className="space-y-1.5 py-5 first:pt-0 last:pb-0">
+          <h4 className="text-sm font-medium text-foreground">{section.title}</h4>
+          <p className="text-sm/relaxed text-muted-foreground">{section.body}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ProductHeroDetails({ description, specifications }: ProductHeroDetailsProps): JSX.Element {
+  const t = useTranslations("pages.product.heroSection.details");
+  const locale = useLocale();
+
+  const detailSpecifications = useMemo(
+    () =>
+      specifications
+        .filter((spec) => spec.handle !== FULFILLMENT_TIME_ATTRIBUTE_HANDLE && spec.value.trim() !== "")
+        .toSorted((left, right) => left.rank - right.rank),
+    [specifications]
+  );
+
+  const fulfillmentTime = useMemo(() => {
+    const fulfillmentSpec = specifications.find((spec) => spec.handle === FULFILLMENT_TIME_ATTRIBUTE_HANDLE);
+    if (fulfillmentSpec === undefined || fulfillmentSpec.value.trim() === "") {
+      return;
+    }
+
+    return formatSpecificationValue(fulfillmentSpec, locale);
+  }, [locale, specifications]);
+
+  const accordionItems = useMemo(() => {
+    const items: { content: JSX.Element; key: string; title: string }[] = [];
+
+    if (description.trim() !== "") {
+      items.push({
+        content: <p className="text-sm/relaxed whitespace-pre-wrap text-muted-foreground">{description}</p>,
+        key: "description",
+        title: t("description.title")
+      });
+    }
+
+    if (detailSpecifications.length > EMPTY_SPECIFICATIONS_COUNT) {
+      items.push({
+        content: <ProductSpecificationsList specifications={detailSpecifications} />,
+        key: "specifications",
+        title: t("specifications.title")
+      });
+    }
+
+    items.push({
+      content: <ProductAdditionalInfo fulfillmentTime={fulfillmentTime} />,
+      key: "additionalInfo",
+      title: t("additionalInfo.title")
+    });
+
+    return items;
+  }, [description, detailSpecifications, fulfillmentTime, t]);
+
+  const defaultValue = useMemo(() => {
+    const [firstItem] = accordionItems;
+    return firstItem === undefined ? DEFAULT_ACCORDION_VALUE : [firstItem.key];
+  }, [accordionItems]);
+
+  return (
+    <Accordion className="w-full" defaultValue={defaultValue}>
+      {accordionItems.map((section) => (
         <AccordionItem key={section.key} value={section.key}>
-          <AccordionTrigger className="py-5 text-[12px] tracking-[0.2em] uppercase hover:text-foreground/70 hover:no-underline">
+          <AccordionTrigger className="py-5 pl-2 text-[12px] tracking-[0.2em] uppercase hover:text-foreground/70 hover:no-underline sm:pl-3">
             {section.title}
           </AccordionTrigger>
-          <AccordionContent className="pb-6 text-sm/relaxed text-muted-foreground">{section.body}</AccordionContent>
+          <AccordionContent className="pb-6 pl-2 sm:pl-3">{section.content}</AccordionContent>
         </AccordionItem>
       ))}
     </Accordion>

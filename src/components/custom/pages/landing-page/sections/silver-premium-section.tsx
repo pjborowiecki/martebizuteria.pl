@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { useMemo, type JSX } from "react";
 
 import { useTranslations } from "use-intl";
 
@@ -10,11 +10,13 @@ import { AspectRatio } from "~/src/components/shadcn/aspect-ratio";
 
 import { Image } from "~/src/components/custom/image";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { SILVER_925_COLLECTION_HANDLE } from "~/src/components/custom/pages/landing-page/navigation/constants";
 
 const ASPECT_RATIO_TALL = 0.9;
 
 export function SilverPremiumSection(): JSX.Element {
   const t = useTranslations("pages.landing.silverPremiumSection");
+  const silverCollectionParams = useMemo(() => ({ handle: SILVER_925_COLLECTION_HANDLE }), []);
 
   return (
     <section id="srebro" className="bg-primary text-primary-foreground">
@@ -30,20 +32,21 @@ export function SilverPremiumSection(): JSX.Element {
 
           <div className="flex items-center gap-4">
             <LocalizedLink
-              to={CONSTANTS.ROUTES.COLLECTIONS}
+              params={silverCollectionParams}
+              to={CONSTANTS.ROUTES.COLLECTION}
               className="inline-flex h-12 items-center justify-center bg-primary-foreground px-8 text-[11px] tracking-[0.2em] text-primary uppercase transition-colors hover:bg-primary-foreground/90"
             >
               {t("ctaPrimary")}
             </LocalizedLink>
             <LocalizedLink
-              to={CONSTANTS.ROUTES.CATEGORIES}
+              to={CONSTANTS.ROUTES.PRODUCTS}
               className="inline-flex h-12 items-center justify-center border border-primary-foreground/25 px-8 text-[11px] tracking-[0.2em] text-primary-foreground uppercase transition-colors hover:border-primary-foreground/60 hover:bg-primary-foreground/5"
             >
               {t("ctaSecondary")}
             </LocalizedLink>
           </div>
 
-          <div className="grid grid-cols-3 gap-8 border-t border-primary-foreground/10 pt-8 lg:gap-12 lg:pt-10">
+          <div className="grid grid-cols-1 gap-6 border-t border-primary-foreground/10 pt-8 sm:grid-cols-3 sm:gap-8 lg:gap-12 lg:pt-10">
             <div>
               <p className="font-serif text-4xl leading-none tracking-tight lg:text-5xl">{t("stats.purity.value")}</p>
               <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/35 uppercase">{t("stats.purity.label")}</p>

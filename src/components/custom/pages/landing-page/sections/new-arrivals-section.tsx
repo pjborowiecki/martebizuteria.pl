@@ -1,13 +1,16 @@
-import type { JSX } from "react";
+import { type JSX, Suspense } from "react";
 
 import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
-import { ProductCard } from "~/src/components/custom/product-card";
+import {
+  NewArrivalsProductGrid,
+  NewArrivalsProductGridSkeleton
+} from "~/src/components/custom/pages/landing-page/sections/new-arrivals-product-grid";
 
-import { LANDING_PRODUCTS } from "~/src/data/landing-data";
+const NEW_ARRIVALS_GRID_SUSPENSE_FALLBACK = <NewArrivalsProductGridSkeleton />;
 
 export function NewArrivalsSection(): JSX.Element {
   const t = useTranslations("pages.landing.newArrivalsSection");
@@ -28,21 +31,9 @@ export function NewArrivalsSection(): JSX.Element {
         </LocalizedLink>
       </div>
 
-      <div className="grid gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
-        {LANDING_PRODUCTS.map((item) => (
-          <ProductCard
-            key={item.nameKey}
-            href="/products"
-            image={item.image}
-            name={t(item.nameKey)}
-            detail={t(item.detailsKey)}
-            price={t(item.priceKey)}
-            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 30vw"
-            parallax
-            className="reveal"
-          />
-        ))}
-      </div>
+      <Suspense fallback={NEW_ARRIVALS_GRID_SUSPENSE_FALLBACK}>
+        <NewArrivalsProductGrid />
+      </Suspense>
     </section>
   );
 }

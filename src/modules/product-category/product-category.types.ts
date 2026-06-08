@@ -8,6 +8,7 @@ export type CategoryLocaleMap = ProductAttributeLocaleMap;
 
 export interface Category {
   adminListItem: z.infer<(typeof categoryZodSchemas)["adminListItem"]>;
+  storefrontListItem: Category["select"] & { productCount: number };
   createInput: z.infer<(typeof categoryZodSchemas)["createInput"]>;
   deleteInput: z.infer<(typeof categoryZodSchemas)["deleteInput"]>;
   formValues: z.infer<ReturnType<typeof categoryFormSchema>>;

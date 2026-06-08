@@ -1,8 +1,10 @@
-import type { JSX } from "react";
+import { type JSX, useCallback } from "react";
 
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Globe, LogOut, Monitor, Smartphone, Tablet } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { toast } from "sonner";
+import { useFormatter, useLocale, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
 
@@ -11,171 +13,55 @@ import { Separator } from "~/src/components/shadcn/separator";
 
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
-interface Session {
-  id: string;
-  device: string;
-  deviceType: "desktop" | "mobile" | "tablet";
-  browser: string;
-  location: string;
-  ip: string;
-  lastActive: string;
-  isCurrent: boolean;
-}
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants";
+import { customerAccountMutations } from "~/src/modules/customer-account/customer-account.mutations";
+import { customerAccountQueryOptions } from "~/src/modules/customer-account/customer-account.queries";
+import type { CustomerAccountLoginHistoryItem, CustomerAccountSession } from "~/src/modules/customer-account/customer-account.types";
+import { formatCustomerAccountRelativeTime } from "~/src/modules/customer-account/customer-account.utils";
 
-const SESSIONS: Session[] = [
-  {
-    browser: "Chrome 120",
-    device: "MacBook Pro",
-    deviceType: "desktop",
-    id: "s1",
-    ip: "185.238.xxx.xxx",
-    isCurrent: true,
-    lastActive: "Active now",
-    location: "Warsaw, Poland"
-  },
-  {
-    browser: "Safari 17",
-    device: "iPhone 15 Pro",
-    deviceType: "mobile",
-    id: "s2",
-    ip: "185.238.xxx.xxx",
-    isCurrent: false,
-    lastActive: "2 hours ago",
-    location: "Warsaw, Poland"
-  },
-  {
-    browser: "Safari 17",
-    device: "iPad Air",
-    deviceType: "tablet",
-    id: "s3",
-    ip: "185.238.xxx.xxx",
-    isCurrent: false,
-    lastActive: "3 days ago",
-    location: "Warsaw, Poland"
-  },
-  {
-    browser: "Firefox 121",
-    device: "Windows PC",
-    deviceType: "desktop",
-    id: "s4",
-    ip: "151.47.xxx.xxx",
-    isCurrent: false,
-    lastActive: "Dec 15, 2024",
-    location: "Milan, Italy"
-  }
-];
-
-const LOGIN_HISTORY = [
-  {
-    date: "Dec 18, 2024 — 14:32",
-    device: "MacBook Pro · Chrome",
-    location: "Warsaw, Poland",
-    status: "success" as const
-  },
-  {
-    date: "Dec 18, 2024 — 09:15",
-    device: "iPhone 15 Pro · Safari",
-    location: "Warsaw, Poland",
-    status: "success" as const
-  },
-  {
-    date: "Dec 17, 2024 — 22:48",
-    device: "Unknown · Chrome",
-    location: "Moscow, Russia",
-    status: "blocked" as const
-  },
-  {
-    date: "Dec 15, 2024 — 11:30",
-    device: "Windows PC · Firefox",
-    location: "Milan, Italy",
-    status: "success" as const
-  },
-  {
-    date: "Dec 14, 2024 — 16:05",
-    device: "MacBook Pro · Chrome",
-    location: "Warsaw, Poland",
-    status: "success" as const
-  },
-  {
-    date: "Dec 12, 2024 — 08:20",
-    device: "iPad Air · Safari",
-    location: "Warsaw, Poland",
-    status: "success" as const
-  }
-];
+export const Route = createFileRoute("/{-$locale}/account/sessions")({
+  component: SessionsPage,
+  loader: ({ context }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(customerAccountQueryOptions.sessionsQueryOptions()),
+      context.queryClient.ensureQueryData(customerAccountQueryOptions.loginHistoryQueryOptions())
+    ]),
+  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS
+});
 
 const DEVICE_ICONS = {
   desktop: Monitor,
   mobile: Smartphone,
-  tablet: Tablet
+  tablet: Tablet,
+  unknown: Monitor
 };
 
-export const Route = createFileRoute("/{-$locale}/account/sessions")({
-  component: SessionsPage
-});
-
-function ActiveSessionCard({ session }: Readonly<{ session: Session }>): JSX.Element {
-  const t = useTranslations("pages.account.sessions");
-  const DeviceIcon = DEVICE_ICONS[session.deviceType];
-
-  return (
-    <div className="group flex items-center gap-5 py-5">
-      <div className="flex size-10 shrink-0 items-center justify-center bg-muted/50">
-        <DeviceIcon className="size-4 text-muted-foreground" strokeWidth={1.2} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="text-[13px] tracking-[0.02em]">{session.device}</p>
-          {session.isCurrent ? (
-            <span className="inline-flex items-center gap-1 text-[10px] tracking-[0.12em] uppercase">
-              <span className="size-1.5 rounded-full bg-green-500" />
-              {t("current")}
-            </span>
-          ) : undefined}
-        </div>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
-          {session.browser} {"· "}
-          {session.location}
-        </p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground/60">{session.lastActive}</p>
-      </div>
-      {session.isCurrent ? undefined : (
-        <Button variant="ghost" size="icon-xs" className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
-          <LogOut className="size-4 text-muted-foreground transition-colors hover:text-destructive" strokeWidth={1.5} />
-        </Button>
-      )}
-    </div>
-  );
-}
-
-function LoginHistoryItem({ entry }: Readonly<{ entry: (typeof LOGIN_HISTORY)[number] }>): JSX.Element {
-  const t = useTranslations("pages.account.sessions");
-
-  return (
-    <div className="flex items-center gap-5 py-4">
-      <div className="flex size-8 shrink-0 items-center justify-center">
-        <Globe className="size-3.5 text-muted-foreground/40" strokeWidth={1.2} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px]">{entry.device}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{entry.location}</p>
-      </div>
-      <div className="text-right">
-        <p className="text-[11px] text-muted-foreground tabular-nums">{entry.date}</p>
-        <p
-          className={`mt-0.5 text-[10px] tracking-widest uppercase ${
-            entry.status === "blocked" ? "text-destructive" : "text-muted-foreground/50"
-          }`}
-        >
-          {t(`loginStatus.${entry.status}`)}
-        </p>
-      </div>
-    </div>
-  );
-}
+const EMPTY_LENGTH = 0;
+const ACTIVE_NOW_MINUTES = 5;
+const MILLISECONDS_PER_MINUTE = 60_000;
 
 function SessionsPage(): JSX.Element {
   const t = useTranslations("pages.account.sessions");
+  const queryClient = useQueryClient();
+  const { data: sessions } = useSuspenseQuery(customerAccountQueryOptions.sessionsQueryOptions());
+  const { data: loginHistory } = useSuspenseQuery(customerAccountQueryOptions.loginHistoryQueryOptions());
+
+  const revokeAllMutation = useMutation({
+    mutationFn: () => customerAccountMutations.revokeOtherCustomerSessionsFn(),
+    onError: () => {
+      toast.error(t("revokeError"));
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.CUSTOMER_ACCOUNT.SESSIONS });
+      toast.success(t("revokeAllSuccess"));
+    }
+  });
+
+  const otherSessions = sessions.filter((session) => !session.isCurrent);
+
+  const handleRevokeAll = useCallback(() => {
+    revokeAllMutation.mutate();
+  }, [revokeAllMutation]);
 
   return (
     <div>
@@ -187,17 +73,25 @@ function SessionsPage(): JSX.Element {
       <section>
         <div className="flex items-baseline justify-between">
           <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("activeSessions")}</h2>
-          <Button variant="account-ghost" className="text-destructive/70 hover:text-destructive">
+          <Button
+            variant="account-ghost"
+            className="text-destructive/70 hover:text-destructive"
+            disabled={otherSessions.length === EMPTY_LENGTH || revokeAllMutation.isPending}
+            onClick={handleRevokeAll}
+          >
             {t("revokeAll")}
           </Button>
         </div>
         <Separator className="mt-3 mb-0" />
-
-        <div className="divide-y divide-border">
-          {SESSIONS.map((session) => (
-            <ActiveSessionCard key={session.id} session={session} />
-          ))}
-        </div>
+        {sessions.length === EMPTY_LENGTH ? (
+          <p className="py-6 text-[13px] text-muted-foreground">{t("emptySessions")}</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {sessions.map((session) => (
+              <ActiveSessionCard key={session.id} session={session} />
+            ))}
+          </div>
+        )}
       </section>
 
       <Separator className="my-10" />
@@ -205,12 +99,15 @@ function SessionsPage(): JSX.Element {
       <section>
         <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("loginHistory")}</h2>
         <Separator className="mt-3 mb-0" />
-
-        <div className="divide-y divide-border">
-          {LOGIN_HISTORY.map((entry) => (
-            <LoginHistoryItem key={`${entry.date}-${entry.status}`} entry={entry} />
-          ))}
-        </div>
+        {loginHistory.length === EMPTY_LENGTH ? (
+          <p className="py-6 text-[13px] text-muted-foreground">{t("noLoginHistory")}</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {loginHistory.map((entry) => (
+              <LoginHistoryItem key={`${entry.createdAt.toISOString()}-${entry.status}`} entry={entry} />
+            ))}
+          </div>
+        )}
       </section>
 
       <Separator className="my-10" />
@@ -236,7 +133,7 @@ function SessionsPage(): JSX.Element {
             <p className="text-[14px]">{t("closeAccountTitle")}</p>
             <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted-foreground">{t("closeAccountDesc")}</p>
             <LocalizedLink
-              to={CONSTANTS.ROUTES.ACCOUNT_OVERVIEW}
+              to={CONSTANTS.ROUTES.ACCOUNT_PROFILE}
               className="mt-4 inline-flex h-9 items-center justify-center border border-destructive/30 px-6 text-[11px] tracking-[0.15em] text-destructive uppercase transition-colors hover:border-destructive hover:bg-destructive/5"
             >
               {t("closeAccountAction")}
@@ -244,6 +141,105 @@ function SessionsPage(): JSX.Element {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function formatSessionLastActive(
+  session: CustomerAccountSession,
+  locale: string,
+  t: ReturnType<typeof useTranslations<"pages.account.sessions">>
+): string {
+  const diffMinutes = Math.floor((Date.now() - session.lastActiveAt.getTime()) / MILLISECONDS_PER_MINUTE);
+
+  if (diffMinutes < ACTIVE_NOW_MINUTES) {
+    return t("activeNow");
+  }
+
+  return formatCustomerAccountRelativeTime(session.lastActiveAt, locale);
+}
+
+function ActiveSessionCard({ session }: Readonly<{ session: CustomerAccountSession }>): JSX.Element {
+  const t = useTranslations("pages.account.sessions");
+  const locale = useLocale();
+  const queryClient = useQueryClient();
+  const DeviceIcon = DEVICE_ICONS[session.deviceType];
+
+  const revokeMutation = useMutation({
+    mutationFn: () => customerAccountMutations.revokeCustomerSessionFn({ data: { sessionId: session.id } }),
+    onError: () => {
+      toast.error(t("revokeError"));
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.CUSTOMER_ACCOUNT.SESSIONS });
+      toast.success(t("revokeSuccess"));
+    }
+  });
+
+  const handleRevoke = useCallback(() => {
+    revokeMutation.mutate();
+  }, [revokeMutation]);
+
+  return (
+    <div className="group flex items-center gap-5 py-5">
+      <div className="flex size-10 shrink-0 items-center justify-center bg-muted/50">
+        <DeviceIcon className="size-4 text-muted-foreground" strokeWidth={1.2} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="text-[13px] tracking-[0.02em]">{session.device}</p>
+          {session.isCurrent ? (
+            <span className="inline-flex items-center gap-1 text-[10px] tracking-[0.12em] uppercase">
+              <span className="size-1.5 rounded-full bg-green-500" />
+              {t("current")}
+            </span>
+          ) : undefined}
+        </div>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
+          {session.browser}
+          {session.ipAddress === undefined ? "" : ` · ${session.ipAddress}`}
+        </p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground/60">{formatSessionLastActive(session, locale, t)}</p>
+      </div>
+      {session.isCurrent ? undefined : (
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+          onClick={handleRevoke}
+          disabled={revokeMutation.isPending}
+        >
+          <LogOut className="size-4 text-muted-foreground transition-colors hover:text-destructive" strokeWidth={1.5} />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function LoginHistoryItem({ entry }: Readonly<{ entry: CustomerAccountLoginHistoryItem }>): JSX.Element {
+  const t = useTranslations("pages.account.sessions");
+  const format = useFormatter();
+
+  return (
+    <div className="flex items-center gap-5 py-4">
+      <div className="flex size-8 shrink-0 items-center justify-center">
+        <Globe className="size-3.5 text-muted-foreground/40" strokeWidth={1.2} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px]">{entry.detail ?? t(`loginStatus.${entry.status}`)}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[11px] text-muted-foreground tabular-nums">
+          {format.dateTime(entry.createdAt, { dateStyle: "medium", timeStyle: "short" })}
+        </p>
+        <p
+          className={`mt-0.5 text-[10px] tracking-widest uppercase ${
+            entry.status === "blocked" ? "text-destructive" : "text-muted-foreground/50"
+          }`}
+        >
+          {t(`loginStatus.${entry.status}`)}
+        </p>
+      </div>
     </div>
   );
 }

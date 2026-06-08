@@ -10,10 +10,7 @@
     "breadcrumbHome": "Strona główna",
     "breadcrumbProducts": "Produkty",
     "collection": "Kolekcja",
-    "subtitle": "Wyjątkowe rzemiosło",
-    "price": "Od 310 PLN",
-    "material": "Srebro 925 / Pozłacane 18k złotem",
-    "sku": "SKU: MRT-0001",
+    "sku": "SKU: {sku}",
     "quantity": "Ilość",
     "decreaseQuantity": "Zmniejsz ilość",
     "increaseQuantity": "Zwiększ ilość",
@@ -23,24 +20,30 @@
     "variantHint": "Galeria, parametry i cena zmieniają się po wyborze wykończenia.",
     "details": {
       "description": {
-        "title": "Opis",
-        "text": "Każdy element jest starannie wykonywany ręcznie w naszej pracowni."
+        "title": "Opis"
       },
-      "materials": {
-        "title": "Materiały",
-        "text": "Wykonane z najwyższej jakości, zrównoważonych metali."
+      "specifications": {
+        "title": "Szczegóły"
       },
-      "dimensions": {
-        "title": "Wymiary",
-        "text": "Rozmiar uniwersalny. Regulowany łańcuszek 40-45cm."
-      },
-      "care": {
-        "title": "Pielęgnacja",
-        "text": "Przechowuj w suchym miejscu. Unikaj bezpośredniego kontaktu z perfumami."
-      },
-      "shipping": {
-        "title": "Dostawa i zwroty",
-        "text": "Darmowa dostawa dla zamówień powyżej 500 PLN. 30 dni na zwrot."
+      "additionalInfo": {
+        "title": "Dodatkowe informacje",
+        "fastFulfillment": {
+          "title": "Szybka realizacja",
+          "text": "Czas realizacji zamówienia wynosi do {fulfillmentTime}.",
+          "fallbackTime": "10 dni roboczych"
+        },
+        "elegantBox": {
+          "title": "Eleganckie pudełeczko",
+          "text": "Nasze produkty zapakowane są w eleganckie pudełeczko, dzięki czemu idealnie nadają się na prezent."
+        },
+        "uniqueLook": {
+          "title": "Unikatowy wygląd",
+          "text": "Biżuteria wykonywana jest ręcznie w pracowni jubilerskiej z dbałością o każdy szczegół. Kamienie są naturalne, dlatego mogą się nieznacznie różnić barwą lub strukturą, co czyni nasz produkt jeszcze bardziej unikatowym."
+        },
+        "flexibleOffer": {
+          "title": "Elastyczna oferta",
+          "text": "Potrzebujesz inny rozmiar? Chciałbyś odnowić swoją biżuterię i wykonać ponowne złocenie? Napisz do nas na <email>kontakt@martebizuteria.pl</email>"
+        }
       }
     }
   },

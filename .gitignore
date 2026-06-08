@@ -31,4 +31,6 @@ dist-ssr
 opensrc/
 graphify-out/
 
+backups/
+
 NOTES.md

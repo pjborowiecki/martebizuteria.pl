@@ -12,13 +12,14 @@ export function FullscreenMenu(): JSX.Element {
   const { containerRef, panelRef, mounted, handleClose, handleMouseMove } = useNavigation();
 
   const overlayStyle = useMemo<CSSProperties>(() => ({ pointerEvents: mounted ? "auto" : "none" }), [mounted]);
-  const hiddenMenuStyle = useMemo(
+  const hiddenMenuStyle = useMemo<CSSProperties>(
     () => ({
       display: "flex",
       opacity: 0,
-      visibility: "hidden" as const
+      pointerEvents: mounted ? "auto" : "none",
+      visibility: "hidden"
     }),
-    []
+    [mounted]
   );
 
   return (

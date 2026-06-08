@@ -1,11 +1,19 @@
 import { type ChangeEvent, type KeyboardEvent, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useTranslations } from "use-intl";
+import { useQuery } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "use-intl";
 import { useShallow } from "zustand/react/shallow";
+
+import { CONSTANTS } from "~/src/constants";
 
 import { gsap, useGSAP } from "~/src/lib/gsap";
 
 import { useNavigationStore } from "~/src/components/custom/pages/landing-page/navigation/store/navigation-store";
+
+import { useDebounce } from "~/src/hooks/use-debounce";
+import { STOREFRONT_SEARCH_DEBOUNCE_MS, STOREFRONT_SEARCH_MIN_LENGTH } from "~/src/modules/storefront-search/storefront-search.constants";
+import { storefrontSearchQueryOptions } from "~/src/modules/storefront-search/storefront-search.queries";
+import type { StorefrontSearchResultItem } from "~/src/modules/storefront-search/storefront-search.types";
 
 const ZERO_RESULTS = 0;
 const FOCUS_TIMEOUT_MS = 300;
@@ -18,150 +26,75 @@ export interface SearchResult {
   type: "category" | "collection" | "page" | "product";
 }
 
-const PRODUCT_IMAGES = [
-  "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1601821765780-754fa98637c1?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1588444837495-c6cfeb53ae8d?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=400&q=80",
-  "https://images.unsplash.com/photo-1603561596112-db8bc2aa93e2?auto=format&fit=crop&w=400&q=80"
-];
-
-const CATEGORY_IMAGES: Record<string, string> = {
-  bracelets: "https://images.unsplash.com/photo-1573408301185-9146fe634ad0?auto=format&fit=crop&w=400&q=80",
-  chokers: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=400&q=80",
-  earrings: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=400&q=80",
-  necklaces: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80",
-  pendants: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=400&q=80",
-  rings: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=400&q=80"
-};
-
-const COLLECTION_IMAGES: Record<string, string> = {
-  bestsellers: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=400&q=80",
-  giftEdit: "https://images.unsplash.com/photo-1601821765780-754fa98637c1?auto=format&fit=crop&w=400&q=80",
-  newArrivals: "https://images.unsplash.com/photo-1635767798638-3e25273a8236?auto=format&fit=crop&w=400&q=80"
-};
-
-export const TRENDING_KEYS = ["earrings", "silver", "newArrivals", "rings", "giftEdit"] as const;
-
-const TOTAL_ITEMS = 12;
-const INDEX_OFFSET = 1;
-const ITEM_KEYS = Array.from({ length: TOTAL_ITEMS }, (_, i) => `item${i + INDEX_OFFSET}`);
-const CATEGORY_KEYS = ["earrings", "necklaces", "bracelets", "rings", "chokers", "pendants"] as const;
-const COLLECTION_KEYS = ["newArrivals", "bestsellers", "giftEdit"] as const;
-
-const PRODUCT_SLUG_MAP: Record<string, string> = {
-  item1: "aura-hoop-i",
-  item10: "horizon-bangle",
-  item11: "veil-choker",
-  item12: "nova-ear-cuff",
-  item2: "lune-drop",
-  item3: "contour-stud",
-  item4: "arc-cuff",
-  item5: "pebble-thread",
-  item6: "forma-ii",
-  item7: "silhouette-ring",
-  item8: "meridian-chain",
-  item9: "eclipse-pendant"
-};
-
-const CATEGORY_SLUG_MAP: Record<string, string> = {
-  bracelets: "bransoletki",
-  chokers: "kolczyki",
-  earrings: "kolczyki",
-  necklaces: "naszyjniki",
-  pendants: "naszyjniki",
-  rings: "pierscionki"
-};
-
-const COLLECTION_SLUG_MAP: Record<string, string> = {
-  bestsellers: "bestsellery",
-  giftEdit: "prezenty",
-  newArrivals: "nowosci"
-};
-
-const PAGES = [
-  { href: "#marka", nameKey: "brand" },
-  { href: "/products", nameKey: "allProducts" }
+const STATIC_PAGES = [
+  { href: CONSTANTS.ROUTES.ABOUT, nameKey: "brand" },
+  { href: CONSTANTS.ROUTES.PRODUCTS, nameKey: "allProducts" }
 ] as const;
 
-function useAllItems(tp: (key: string) => string, t: (key: string) => string) {
-  return useMemo<SearchResult[]>(() => {
-    const products: SearchResult[] = ITEM_KEYS.map((key, i) => ({
-      detail: tp(`products.${key}.category`),
-      href: `/products/${PRODUCT_SLUG_MAP[key] ?? key}`,
-      image: PRODUCT_IMAGES[i],
-      name: tp(`products.${key}.name`),
-      type: "product"
-    }));
-
-    const categories: SearchResult[] = CATEGORY_KEYS.map((key) => ({
-      href: `/categories/${CATEGORY_SLUG_MAP[key] ?? key}`,
-      image: CATEGORY_IMAGES[key],
-      name: tp(`categories.${key}`),
-      type: "category"
-    }));
-
-    const collections: SearchResult[] = COLLECTION_KEYS.map((key) => ({
-      href: `/collections/${COLLECTION_SLUG_MAP[key] ?? key}`,
-      image: COLLECTION_IMAGES[key],
-      name: tp(`collections.${key}`),
-      type: "collection"
-    }));
-
-    const pages: SearchResult[] = PAGES.map((p) => ({
-      href: p.href,
-      name: t(`searchOverlay.pages.${p.nameKey}`),
-      type: "page"
-    }));
-
-    return [...products, ...categories, ...collections, ...pages];
-  }, [tp, t]);
-}
-
 function normalize(str: string): string {
-  return str.toLowerCase().replaceAll(/[^a-z0-9\s]/gu, "");
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replaceAll(/[\u0300-\u036F]/gu, "")
+    .replaceAll(/[^a-z0-9\s]/gu, "");
 }
 
-export function useSearchOverlayLogic(overlayRef: RefObject<HTMLDialogElement | null>, inputRef: RefObject<HTMLInputElement | null>) {
-  const t = useTranslations("components.custom.navigation");
-  const tp = useTranslations("pages.products");
+function toSearchHref(item: StorefrontSearchResultItem): string {
+  switch (item.type) {
+    case "category": {
+      return `/categories/${item.handle}`;
+    }
+    case "collection": {
+      return `/collections/${item.handle}`;
+    }
+    case "page": {
+      return CONSTANTS.ROUTES.PRODUCTS;
+    }
+    case "product": {
+      return `/products/${item.handle}`;
+    }
+  }
+}
 
-  const { searchOpen, setSearchOpen } = useNavigationStore(
-    useShallow((s) => ({ searchOpen: s.searchOpen, setSearchOpen: s.setSearchOpen }))
-  );
+function mapServerItem(item: StorefrontSearchResultItem): SearchResult {
+  return {
+    detail: item.detail,
+    href: toSearchHref(item),
+    image: item.image,
+    name: item.name,
+    type: item.type
+  };
+}
 
-  const [query, setQuery] = useState("");
-  const timelineRef = useRef<gsap.core.Timeline | null>(null);
+function filterStaticPages(query: string, t: (key: string) => string): SearchResult[] {
+  const normalizedQuery = normalize(query);
+  if (normalizedQuery === "") {
+    return [];
+  }
 
-  const allItems = useAllItems(tp, t);
-
-  const filtered = useMemo<SearchResult[]>(() => {
-    if (!query.trim()) {
+  return STATIC_PAGES.flatMap((page) => {
+    const name = t(`searchOverlay.pages.${page.nameKey}`);
+    const haystack = normalize(name);
+    if (!haystack.includes(normalizedQuery)) {
       return [];
     }
-    const q = normalize(query);
-    return allItems.filter((item) => {
-      const haystack = normalize(`${item.name} ${item.detail ?? ""} ${item.type}`);
-      return haystack.includes(q);
-    });
-  }, [query, allItems]);
 
-  const grouped = useMemo(() => {
-    const groups: Record<string, SearchResult[]> = {};
-    for (const item of filtered) {
-      const key = item.type;
-      groups[key] ??= [];
-      groups[key]?.push(item);
-    }
-    return groups;
-  }, [filtered]);
+    return [
+      {
+        href: page.href,
+        name,
+        type: "page"
+      } satisfies SearchResult
+    ];
+  });
+}
+
+function useSearchOverlayAnimation(
+  overlayRef: RefObject<HTMLDialogElement | null>,
+  inputRef: RefObject<HTMLInputElement | null>,
+  searchOpen: boolean
+) {
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
   useGSAP(
     () => {
@@ -199,32 +132,84 @@ export function useSearchOverlayLogic(overlayRef: RefObject<HTMLDialogElement | 
       tl.reverse();
     }
   }, [searchOpen, inputRef]);
+}
 
+function useSearchOverlayKeyboard(searchOpen: boolean, onClose: () => void, onToggle: () => void) {
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape" && searchOpen) {
-        setSearchOpen(false);
-        setQuery("");
+        onClose();
         return;
       }
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setSearchOpen(!searchOpen);
-        if (searchOpen) {
-          setQuery("");
-        }
+        onToggle();
       }
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
     };
-  }, [searchOpen, setSearchOpen]);
+  }, [onClose, onToggle, searchOpen]);
+}
+
+export function useSearchOverlayLogic(overlayRef: RefObject<HTMLDialogElement | null>, inputRef: RefObject<HTMLInputElement | null>) {
+  const t = useTranslations("components.custom.navigation");
+  const locale = useLocale();
+
+  const { searchOpen, setSearchOpen } = useNavigationStore(
+    useShallow((s) => ({ searchOpen: s.searchOpen, setSearchOpen: s.setSearchOpen }))
+  );
+
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query.trim(), STOREFRONT_SEARCH_DEBOUNCE_MS);
+  const searchEnabled = debouncedQuery.length >= STOREFRONT_SEARCH_MIN_LENGTH;
+
+  const { data: searchResults, isFetching: isSearchFetching } = useQuery({
+    ...storefrontSearchQueryOptions.resultsQueryOptions(debouncedQuery, locale),
+    enabled: searchEnabled
+  });
+
+  const { data: trendingItems = [] } = useQuery(storefrontSearchQueryOptions.trendingQueryOptions(locale));
+
+  const filtered = useMemo<SearchResult[]>(() => {
+    if (!searchEnabled) {
+      return [];
+    }
+
+    const serverItems = [
+      ...(searchResults?.products ?? []),
+      ...(searchResults?.categories ?? []),
+      ...(searchResults?.collections ?? [])
+    ].map((item) => mapServerItem(item));
+
+    return [...serverItems, ...filterStaticPages(debouncedQuery, t)];
+  }, [debouncedQuery, searchEnabled, searchResults, t]);
+
+  const grouped = useMemo(() => {
+    const groups: Record<string, SearchResult[]> = {};
+    for (const item of filtered) {
+      const key = item.type;
+      groups[key] ??= [];
+      groups[key]?.push(item);
+    }
+    return groups;
+  }, [filtered]);
 
   const handleClose = useCallback(() => {
     setSearchOpen(false);
     setQuery("");
   }, [setSearchOpen]);
+
+  const handleToggle = useCallback(() => {
+    setSearchOpen(!searchOpen);
+    if (searchOpen) {
+      setQuery("");
+    }
+  }, [searchOpen, setSearchOpen]);
+
+  useSearchOverlayAnimation(overlayRef, inputRef, searchOpen);
+  useSearchOverlayKeyboard(searchOpen, handleClose, handleToggle);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
@@ -235,35 +220,29 @@ export function useSearchOverlayLogic(overlayRef: RefObject<HTMLDialogElement | 
     [handleClose]
   );
 
+  const hasQuery = query.trim().length > ZERO_RESULTS;
   const hasResults = filtered.length > ZERO_RESULTS;
-  const showTrending = query.trim() === "";
-
-  const handleQueryChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
-  }, []);
-
-  const handleClearQuery = useCallback(() => {
-    setQuery("");
-  }, []);
-
-  const handleTrendingClick = useCallback(
-    (key: string) => {
-      setQuery(t(`searchOverlay.trendingItems.${key}`));
-    },
-    [setQuery, t]
-  );
+  const showTrending = !hasQuery;
+  const isSearching = hasQuery && (query.trim() !== debouncedQuery || (searchEnabled && isSearchFetching));
 
   return {
+    debouncedQuery,
     filtered,
     grouped,
-    handleClearQuery,
+    handleClearQuery: () => {
+      setQuery("");
+    },
     handleClose,
     handleKeyDown,
-    handleQueryChange,
-    handleTrendingClick,
+    handleQueryChange: (e: ChangeEvent<HTMLInputElement>) => {
+      setQuery(e.target.value);
+    },
+    hasQuery,
     hasResults,
+    isSearching,
     query,
     searchOpen,
-    showTrending
+    showTrending,
+    trendingItems
   };
 }

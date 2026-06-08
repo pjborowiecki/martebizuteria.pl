@@ -67,8 +67,8 @@ export function VideoExperienceSection(): JSX.Element {
             {t("eyebrow")}
           </p>
           <h2 className="reveal font-serif leading-[0.92] text-white [text-shadow:0_4px_48px_rgba(0,0,0,0.55)]">
-            <span className="block text-6xl md:text-8xl lg:text-8xl xl:text-9xl">{t("titleLine1")}</span>
-            <span className="mt-2 block pl-4 text-6xl italic md:mt-3 md:pl-6 md:text-8xl lg:mt-4 lg:pl-10 lg:text-8xl xl:pl-12 xl:text-9xl">
+            <span className="block text-4xl sm:text-6xl md:text-8xl lg:text-8xl xl:text-9xl">{t("titleLine1")}</span>
+            <span className="mt-2 block pl-2 text-4xl italic sm:pl-4 sm:text-6xl md:mt-3 md:pl-6 md:text-8xl lg:mt-4 lg:pl-10 lg:text-8xl xl:pl-12 xl:text-9xl">
               {t("titleLine2")}
             </span>
           </h2>
@@ -79,14 +79,14 @@ export function VideoExperienceSection(): JSX.Element {
 
         <div className="reveal flex shrink-0 flex-wrap items-center justify-end gap-3 self-end pb-[env(safe-area-inset-bottom)] sm:gap-4 lg:self-auto lg:pb-0">
           <LocalizedLink
-            to={CONSTANTS.ROUTES.ACCOUNT}
-            className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-none bg-white px-8 text-sm font-medium tracking-wide text-black transition-colors hover:bg-white/90"
+            to={CONSTANTS.ROUTES.COLLECTIONS}
+            className="inline-flex h-12 min-w-0 flex-1 items-center justify-center rounded-none bg-white px-6 text-sm font-medium tracking-wide text-black transition-colors hover:bg-white/90 sm:min-w-[11rem] sm:flex-none sm:px-8"
           >
             {t("ctaPrimary")}
           </LocalizedLink>
           <LocalizedLink
-            to={CONSTANTS.ROUTES.COLLECTIONS}
-            className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-none border border-white/50 bg-white/5 px-8 text-sm font-medium tracking-wide text-white backdrop-blur-sm transition-colors hover:border-white/70 hover:bg-white/15"
+            to={CONSTANTS.ROUTES.PRODUCTS}
+            className="inline-flex h-12 min-w-0 flex-1 items-center justify-center rounded-none border border-white/50 bg-white/5 px-6 text-sm font-medium tracking-wide text-white backdrop-blur-sm transition-colors hover:border-white/70 hover:bg-white/15 sm:min-w-[11rem] sm:flex-none sm:px-8"
           >
             {t("ctaSecondary")}
           </LocalizedLink>

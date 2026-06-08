@@ -1,4 +1,4 @@
-import { useCallback, type JSX } from "react";
+import { useCallback, type JSX, type ChangeEvent, type SyntheticEvent } from "react";
 
 import { MapPin } from "lucide-react";
 import { useTranslations } from "use-intl";
@@ -11,7 +11,7 @@ import { Input } from "~/src/components/shadcn/input";
 import { useInpost } from "~/src/components/custom/checkout/components/_steps/delivery/locker/inpost/inpost-provider";
 import { InpostSidebarItem } from "~/src/components/custom/checkout/components/_steps/delivery/locker/inpost/inpost-sidebar-item";
 
-const stopPropagation = (e: React.SyntheticEvent) => {
+const stopPropagation = (e: SyntheticEvent) => {
   e.stopPropagation();
 };
 
@@ -45,7 +45,7 @@ export function InpostSidebar(): JSX.Element {
   const { cityInput, isLoading, points, setCityInput } = useInpost();
 
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       setCityInput(e.target.value);
     },
     [setCityInput]

@@ -33,44 +33,13 @@
     "eyebrow": "Premiery M'ARTE",
     "title": "Nowe wzory do odkrycia",
     "description": "Wyselekcjonowane, autorskie formy i szlachetny blask. Nowe projekty stworzone z myślą o Twoich codziennych rytuałach i ponadczasowej elegancji.",
-    "cta": "Zobacz wszystkie produkty",
-    "items": {
-      "lapis": {
-        "name": "Naszyjnik Lapis Lazuli",
-        "details": "Pozłacane srebro / lapis lazuli",
-        "price": "379 PLN"
-      },
-      "onyks": {
-        "name": "Naszyjnik Onyks",
-        "details": "Srebro 925 / lustrzane wykończenie",
-        "price": "379 PLN"
-      },
-      "vintageOnyksSilver": {
-        "name": "Kolczyki Vintage Onyks srebro",
-        "details": "Srebro 925 / kobaltowe kamienie",
-        "price": "450 PLN"
-      },
-      "vintageOnyksGolden": {
-        "name": "Kolczyki Vintage Onyks pozłacane",
-        "details": "Pozłacane srebro / ciepłe złoto",
-        "price": "450 PLN"
-      },
-      "ginkgo": {
-        "name": "Naszyjnik Ginkgo",
-        "details": "Pozłacane srebro / listek miłorzębu",
-        "price": "239 PLN"
-      },
-      "oliwin": {
-        "name": "Choker Oliwin",
-        "details": "Srebro 925 / oliwin",
-        "price": "189 PLN"
-      }
-    }
+    "cta": "Zobacz wszystkie produkty"
   },
   "categoriesSection": {
     "eyebrow": "Kategorie",
     "title": "Przestrzeń wyboru",
     "description": "Nasza biżuteria przybiera różne kształty, ale trzyma się jednej zasady: bezkompromisowej jakości. Przejdź przez kategorie i znajdź formę, której brakuje w Twojej przestrzeni.",
+    "discoverCategory": "Odkryj {category}",
     "panels": {
       "necklaces": {
         "tag": "Naszyjniki",
@@ -186,32 +155,7 @@
     "title": "Kategorie",
     "description": "Odkryj pełen asortyment ręcznie tworzonej biżuterii — od rzeźbiarskich kolczyków po wyraziste pierścionki.",
     "cta": "Zobacz wszystkie kategorie",
-    "items": {
-      "earrings": {
-        "name": "Kolczyki",
-        "count": "24 sztuki"
-      },
-      "necklaces": {
-        "name": "Naszyjniki",
-        "count": "18 sztuk"
-      },
-      "bracelets": {
-        "name": "Bransoletki",
-        "count": "15 sztuk"
-      },
-      "rings": {
-        "name": "Pierścionki",
-        "count": "21 sztuk"
-      },
-      "chokers": {
-        "name": "Chokery",
-        "count": "9 sztuk"
-      },
-      "birthdayBracelets": {
-        "name": "Bransoletki urodzinowe",
-        "count": "12 sztuk"
-      }
-    }
+    "productCount": "{count, plural, one {# sztuka} few {# sztuki} many {# sztuk} other {# sztuk}}"
   },
   "shopCollectionsSection": {
     "eyebrow": "Kuratorskie edycje",

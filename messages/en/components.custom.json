@@ -45,13 +45,7 @@
       "sectionPages": "Pages",
       "viewAll": "View all results",
       "trending": "Popular searches",
-      "trendingItems": {
-        "earrings": "Earrings",
-        "silver": "Silver 925",
-        "newArrivals": "New arrivals",
-        "rings": "Rings",
-        "giftEdit": "Gift edit"
-      },
+      "searching": "Searching…",
       "pages": {
         "brand": "The Maison",
         "allProducts": "All Products"
@@ -79,6 +73,7 @@
         "silver": "Silver",
         "silverItalic": "925",
         "collections": "Collections",
+        "products": "Products",
         "brand": "Brand"
       },
       "secondary": {
@@ -97,7 +92,7 @@
       "footer": {
         "tagline": "M'ARTE © 2026",
         "instagram": "Instagram",
-        "pinterest": "Pinterest"
+        "facebook": "Facebook"
       },
       "imageAlt": "Editorial jewelry"
     }

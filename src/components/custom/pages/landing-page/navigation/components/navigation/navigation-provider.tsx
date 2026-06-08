@@ -2,41 +2,26 @@ import { createContext, type MouseEvent, type ReactNode, type RefObject, useCall
 
 import { useRouter } from "@tanstack/react-router";
 
+import { scrollToSectionById } from "~/src/lib/lenis/scroll-to-section";
+
+import { resolveMenuPathNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-path";
+
 import * as CONSTANTS from "./navigation-constants";
 import { type HoverHandlers, type HoverOptions, useNavigationLogic } from "~/src/hooks/use-navigation-logic";
-import type { FileRouteTypes } from "~/src/routeTree.gen";
-
-type RouterTo = FileRouteTypes["to"];
-
-function isRouterTo(_path: string): _path is RouterTo {
-  return true;
-}
-
-function menuPathToRouterTo(path: string): RouterTo {
-  if (path === "/") {
-    return "/{-$locale}";
-  }
-  const toPath = `/{-$locale}${path}`;
-  return isRouterTo(toPath) ? toPath : "/{-$locale}";
-}
 
 function scrollToSection(id: string, navigate: ReturnType<typeof useRouter>["navigate"]) {
-  const el = document.querySelector(`#${CSS.escape(id)}`);
-  if (!el) {
-    void navigate({ hash: id, to: "/{-$locale}" });
+  if (scrollToSectionById(id, CONSTANTS.HEADER_OFFSET_PX) !== undefined) {
     return;
   }
-  gsap.to(globalThis, {
-    duration: 0.9,
-    ease: "power3.inOut",
-    scrollTo: { autoKill: true, offsetY: CONSTANTS.HEADER_OFFSET_PX, y: el }
-  });
+
+  void navigate({ hash: id, to: "/{-$locale}" });
 }
 
 export interface NavigationContextValue {
   containerRef: RefObject<HTMLDivElement | null>;
   panelRef: RefObject<HTMLDialogElement | null>;
   mounted: boolean;
+  dismissMenuForRouteNavigation: () => void;
   handleClose: () => void;
   handleHover: (index: number) => void;
   handleMouseMove: (e: MouseEvent) => void;
@@ -56,8 +41,17 @@ export function NavigationProvider({ children }: Readonly<{ children: ReactNode 
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDialogElement>(null);
 
-  const { getHoverProps, handleHover, handleMouseMove, menuOpen, mounted, scrolled, setMenuOpen, setPendingHashGlobal } =
-    useNavigationLogic(containerRef, panelRef, routerRef.current.navigate);
+  const {
+    dismissMenuForRouteNavigation,
+    getHoverProps,
+    handleHover,
+    handleMouseMove,
+    menuOpen,
+    mounted,
+    scrolled,
+    setMenuOpen,
+    setPendingHashGlobal
+  } = useNavigationLogic(containerRef, panelRef, routerRef.current.navigate);
 
   const handleClose = useCallback(() => {
     setMenuOpen(false);
@@ -66,10 +60,9 @@ export function NavigationProvider({ children }: Readonly<{ children: ReactNode 
   const handleNavigateToHash = useCallback(
     (hash: string) => {
       if (hash.startsWith("/")) {
-        if (menuOpen) {
-          setMenuOpen(false);
-        }
-        void router.navigate({ to: menuPathToRouterTo(hash) });
+        dismissMenuForRouteNavigation();
+        const target = resolveMenuPathNavigation(hash);
+        void router.navigate(target.params === undefined ? { to: target.to } : { params: target.params, to: target.to });
         return;
       }
       const id = hash.replace(/^#/u, "");
@@ -80,12 +73,13 @@ export function NavigationProvider({ children }: Readonly<{ children: ReactNode 
         scrollToSection(id, router.navigate);
       }
     },
-    [menuOpen, router, setPendingHashGlobal, setMenuOpen]
+    [dismissMenuForRouteNavigation, menuOpen, router, setPendingHashGlobal, setMenuOpen]
   );
 
   const value = useMemo(
     (): NavigationContextValue => ({
       containerRef,
+      dismissMenuForRouteNavigation,
       getHoverProps,
       handleClose,
       handleHover,
@@ -97,7 +91,18 @@ export function NavigationProvider({ children }: Readonly<{ children: ReactNode 
       scrolled,
       setMenuOpen
     }),
-    [handleClose, handleHover, handleMouseMove, mounted, menuOpen, handleNavigateToHash, scrolled, setMenuOpen, getHoverProps]
+    [
+      dismissMenuForRouteNavigation,
+      handleClose,
+      handleHover,
+      handleMouseMove,
+      mounted,
+      menuOpen,
+      handleNavigateToHash,
+      scrolled,
+      setMenuOpen,
+      getHoverProps
+    ]
   );
 
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;

@@ -25,7 +25,7 @@ export function MaisonHeritageSection(): JSX.Element {
           <p className="max-w-xl text-sm/relaxed text-muted-foreground">{t("description")}</p>
           <LocalizedLink
             className="inline-flex h-13 items-center justify-center rounded-none bg-primary px-10 text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
-            to={CONSTANTS.ROUTES.COLLECTIONS}
+            to={CONSTANTS.ROUTES.ABOUT}
           >
             {t("cta")}
           </LocalizedLink>

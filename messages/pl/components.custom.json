@@ -45,13 +45,7 @@
       "sectionPages": "Strony",
       "viewAll": "Zobacz wszystkie wyniki",
       "trending": "Popularne wyszukiwania",
-      "trendingItems": {
-        "earrings": "Kolczyki",
-        "silver": "Srebro 925",
-        "newArrivals": "Nowości",
-        "rings": "Pierścionki",
-        "giftEdit": "Prezenty"
-      },
+      "searching": "Wyszukiwanie…",
       "pages": {
         "brand": "Marka",
         "allProducts": "Wszystkie produkty"
@@ -79,6 +73,7 @@
         "silver": "Srebro",
         "silverItalic": "925",
         "collections": "Kolekcje",
+        "products": "Produkty",
         "brand": "Marka"
       },
       "secondary": {
@@ -97,7 +92,7 @@
       "footer": {
         "tagline": "M'ARTE © 2026",
         "instagram": "Instagram",
-        "pinterest": "Pinterest"
+        "facebook": "Facebook"
       },
       "imageAlt": "Biżuteria — zdjęcie edytorialne"
     }

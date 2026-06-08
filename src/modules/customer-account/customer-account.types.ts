@@ -1,0 +1,107 @@
+import type { Address } from "~/src/modules/address/address.types";
+import type { CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants";
+import type { Order } from "~/src/modules/order/order.types";
+
+export interface CustomerAccountOrderItem {
+  readonly image?: string;
+  readonly name: string;
+  readonly priceMinorUnits: number;
+  readonly qty: number;
+  readonly variantTitle?: string;
+}
+
+export interface CustomerAccountOrderSummary {
+  readonly createdAt: Date;
+  readonly currencyCode: string;
+  readonly filterStatus: CustomerAccountOrderFilter;
+  readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"];
+  readonly id: string;
+  readonly items: readonly CustomerAccountOrderItem[];
+  readonly status: Order["select"]["status"];
+  readonly totalMinorUnits: number;
+}
+
+export interface CustomerAccountOrderAddress {
+  readonly city: string;
+  readonly countryCode: string;
+  readonly line1: string;
+  readonly line2?: string;
+  readonly name: string;
+  readonly phone?: string;
+  readonly postalCode?: string;
+  readonly province?: string;
+}
+
+export interface CustomerAccountOrderTimelineEntry {
+  readonly date: Date;
+  readonly event: "cancelled" | "confirmed" | "delivered" | "placed" | "shipped";
+}
+
+export interface CustomerAccountOrderDetail extends CustomerAccountOrderSummary {
+  readonly billingAddress?: CustomerAccountOrderAddress;
+  readonly deliveredAt?: Date;
+  readonly paymentProvider?: string;
+  readonly shippedAt?: Date;
+  readonly shippingAddress?: CustomerAccountOrderAddress;
+  readonly shippingMinorUnits: number;
+  readonly subtotalMinorUnits: number;
+  readonly taxMinorUnits: number;
+  readonly timeline: readonly CustomerAccountOrderTimelineEntry[];
+  readonly trackingNumber?: string;
+  readonly trackingUrl?: string;
+}
+
+export interface CustomerAccountOverviewStats {
+  readonly memberSinceYear: string;
+  readonly totalOrders: number;
+  readonly totalSpentMinorUnits: number;
+  readonly wishlistCount: number;
+}
+
+export interface CustomerAccountActivityItem {
+  readonly actionKey: string;
+  readonly createdAt: Date;
+  readonly params: Record<string, string>;
+}
+
+export interface CustomerAccountRecommendation {
+  readonly handle: string;
+  readonly image?: string;
+  readonly name: string;
+  readonly priceMinorUnits?: number;
+  readonly productId: string;
+}
+
+export interface CustomerAccountOverview {
+  readonly activity: readonly CustomerAccountActivityItem[];
+  readonly recentOrders: readonly CustomerAccountOrderSummary[];
+  readonly recommendations: readonly CustomerAccountRecommendation[];
+  readonly stats: CustomerAccountOverviewStats;
+}
+
+export interface CustomerAccountProfile {
+  readonly createdAt: Date;
+  readonly email: string;
+  readonly name: string;
+  readonly phone?: string;
+  readonly timezone?: string;
+}
+
+export interface CustomerAccountSession {
+  readonly browser: string;
+  readonly createdAt: Date;
+  readonly device: string;
+  readonly deviceType: "desktop" | "mobile" | "tablet" | "unknown";
+  readonly id: string;
+  readonly ipAddress?: string;
+  readonly isCurrent: boolean;
+  readonly lastActiveAt: Date;
+}
+
+export interface CustomerAccountLoginHistoryItem {
+  readonly createdAt: Date;
+  readonly detail?: string;
+  readonly status: "blocked" | "success";
+}
+
+export type CustomerAccountAddress = Address["select"];

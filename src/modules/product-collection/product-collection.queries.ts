@@ -41,6 +41,10 @@ interface CollectionByHandleInput {
   readonly page?: number;
 }
 
+const fetchStorefrontCollectionMetaFn = createServerFn({ method: "GET" })
+  .inputValidator((handle: string) => handle)
+  .handler(({ data: handle }) => collectionAccessors.getStorefrontCollectionByHandleQuery.execute({ handle }));
+
 const fetchCollectionByHandleFn = createServerFn({ method: "GET" })
   .inputValidator((input: CollectionByHandleInput) => input)
   .handler(async ({ data: { handle, page = LIST_PAGE_FIRST } }) => {
@@ -60,7 +64,8 @@ export const collectionQueries = {
   fetchAdminCollectionsFn,
   fetchCollectionByHandleFn,
   fetchCollectionStatsFn,
-  fetchCollectionsFn
+  fetchCollectionsFn,
+  fetchStorefrontCollectionMetaFn
 };
 
 export const collectionQueryOptions = {

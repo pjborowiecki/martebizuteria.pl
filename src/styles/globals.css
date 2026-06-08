@@ -125,8 +125,8 @@
 }
 
 @theme inline {
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Cormorant Garamond", ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: "Manrope", "Manrope Fallback", system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", "Cormorant Garamond Fallback", "Times New Roman", serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -178,6 +178,7 @@
   }
   body {
     @apply bg-background font-sans text-foreground antialiased;
+    font-synthesis: none;
   }
 
   html[data-admin-shell],
@@ -307,6 +308,27 @@
   [data-slot="sheet-content"] [data-slot="input-group"],
   [data-slot="sheet-content"] [data-slot="textarea"] {
     border-radius: var(--radius);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-landing-page] .reveal {
+    opacity: 0;
+    transform: translateY(1.75rem);
+    will-change: opacity, transform;
+  }
+
+  [data-landing-page] .line-reveal {
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-landing-page] .reveal,
+  [data-landing-page] .line-reveal {
+    opacity: 1;
+    transform: none;
   }
 }
 

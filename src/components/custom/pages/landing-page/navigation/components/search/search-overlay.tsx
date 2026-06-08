@@ -1,6 +1,6 @@
 import { type JSX, type ReactNode, useCallback, useMemo, useRef } from "react";
 
-import { ArrowRight, Search, X } from "lucide-react";
+import { ArrowRight, Loader2, Search, X } from "lucide-react";
 import { useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
@@ -13,24 +13,29 @@ import { Image } from "~/src/components/custom/image";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
 
-import { TRENDING_KEYS, type SearchResult, useSearchOverlayLogic } from "~/src/hooks/use-search-overlay-logic";
+import { type SearchResult, useSearchOverlayLogic } from "~/src/hooks/use-search-overlay-logic";
+import type { StorefrontSearchTrendingItem } from "~/src/modules/storefront-search/storefront-search.types";
 
 const rowClassName =
-  "group flex items-center gap-4 border-b border-border/40 py-3.5 transition-colors last:borde r-b-0 hover:bg-secondary/30 lg:gap-5 lg:py-4";
+  "group flex items-center gap-4 border-b border-border/40 py-3.5 transition-colors last:border-b-0 hover:bg-secondary/30 lg:gap-5 lg:py-4";
 
-function TrendingTag({ tagKey, onClick }: Readonly<{ tagKey: string; onClick: (key: string) => void }>) {
-  const t = useTranslations("components.custom.navigation");
-  const handleClick = useCallback(() => {
-    onClick(tagKey);
-  }, [onClick, tagKey]);
+const trendingChipClassName =
+  "rounded-full border border-border/80 px-5 py-2.5 text-[11px] tracking-[0.12em] text-muted-foreground transition-all hover:border-foreground hover:text-foreground";
+
+function TrendingQuickLink({
+  item,
+  onNavigate
+}: Readonly<{
+  item: StorefrontSearchTrendingItem;
+  onNavigate: () => void;
+}>): JSX.Element {
+  const params = useMemo(() => ({ handle: item.handle }), [item.handle]);
+  const route = item.type === "category" ? CONSTANTS.ROUTES.CATEGORY : CONSTANTS.ROUTES.COLLECTION;
+
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className="rounded-full border border-border/80 px-5 py-2.5 text-[11px] tracking-[0.18em] text-muted-foreground uppercase transition-all hover:border-foreground hover:text-foreground"
-    >
-      {t(`searchOverlay.trendingItems.${tagKey}`)}
-    </button>
+    <LocalizedLink className={trendingChipClassName} params={params} to={route} onClick={onNavigate}>
+      {item.label}
+    </LocalizedLink>
   );
 }
 
@@ -43,16 +48,17 @@ function SearchResultLink({
   onNavigate: () => void;
   children: ReactNode;
 }>): JSX.Element {
-  const { handleNavigateToHash } = useNavigation();
+  const { dismissMenuForRouteNavigation, handleNavigateToHash } = useNavigation();
 
   const handleHashClick = useCallback(() => {
     onNavigate();
     handleNavigateToHash(href);
-  }, [onNavigate, handleNavigateToHash, href]);
+  }, [href, handleNavigateToHash, onNavigate]);
 
   const handlePathClick = useCallback(() => {
+    dismissMenuForRouteNavigation();
     onNavigate();
-  }, [onNavigate]);
+  }, [dismissMenuForRouteNavigation, onNavigate]);
 
   if (href.startsWith("#")) {
     return (
@@ -115,6 +121,14 @@ function SearchResultLinkTarget({
   if (collectionMatch) {
     return (
       <LocalizedLink className={rowClassName} params={paramsCollection} to={CONSTANTS.ROUTES.COLLECTION} onClick={onPathClick}>
+        {children}
+      </LocalizedLink>
+    );
+  }
+
+  if (href === CONSTANTS.ROUTES.ABOUT) {
+    return (
+      <LocalizedLink className={rowClassName} to={CONSTANTS.ROUTES.ABOUT} onClick={onPathClick}>
         {children}
       </LocalizedLink>
     );
@@ -200,12 +214,15 @@ function SearchResultGroup({
   );
 }
 
-function ViewAllLink({ onClick }: Readonly<{ onClick: () => void }>): JSX.Element {
+function ViewAllLink({ onClick, query }: Readonly<{ onClick: () => void; query: string }>): JSX.Element {
   const t = useTranslations("components.custom.navigation");
+  const search = useMemo(() => ({ q: query }), [query]);
+
   return (
     <div className="pt-2 text-center">
       <LocalizedLink
         to={CONSTANTS.ROUTES.PRODUCTS}
+        search={search}
         onClick={onClick}
         className="inline-flex items-center gap-2 text-[11px] tracking-[0.2em] text-muted-foreground uppercase transition-colors hover:text-foreground"
       >
@@ -223,17 +240,20 @@ export function SearchOverlay(): JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const {
+    debouncedQuery,
     filtered,
     grouped,
     handleClearQuery,
     handleClose,
     handleKeyDown,
     handleQueryChange,
-    handleTrendingClick,
+    hasQuery,
     hasResults,
+    isSearching,
     query,
     searchOpen,
-    showTrending
+    showTrending,
+    trendingItems
   } = useSearchOverlayLogic(overlayRef, inputRef);
 
   const styleMemo = useMemo(() => ({ clipPath: "inset(0 0 100% 0)" }), []);
@@ -246,7 +266,6 @@ export function SearchOverlay(): JSX.Element {
       aria-modal={searchOpen}
       aria-label={t("search")}
     >
-      {/* Top bar */}
       <div className="mx-auto flex w-full max-w-400 items-center justify-between px-6 py-5 lg:px-12">
         <p className="font-serif text-sm tracking-wide">{t("brand")}</p>
         <button
@@ -261,7 +280,6 @@ export function SearchOverlay(): JSX.Element {
 
       <Separator className="bg-border/50" />
 
-      {/* Search input */}
       <div className="search-bar mx-auto w-full max-w-400 px-6 pt-10 pb-8 lg:px-12 lg:pt-16 lg:pb-10">
         <div className="relative">
           <Search
@@ -270,17 +288,23 @@ export function SearchOverlay(): JSX.Element {
           />
           <input
             ref={inputRef}
-            type="text"
+            type="search"
             aria-label={t("searchOverlay.placeholder")}
             value={query}
             onChange={handleQueryChange}
             onKeyDown={handleKeyDown}
             placeholder={t("searchOverlay.placeholder")}
-            className="w-full border-b border-transparent bg-transparent py-3 pr-4 pl-9 font-serif text-3xl text-foreground placeholder:text-muted-foreground/40 focus:border-foreground/20 focus:outline-none lg:pl-11 lg:text-5xl"
+            className="w-full border-b border-transparent bg-transparent py-3 pr-10 pl-9 font-serif text-3xl text-foreground placeholder:text-muted-foreground/40 focus:border-foreground/20 focus:outline-none lg:pl-11 lg:text-5xl"
             autoComplete="off"
             spellCheck={false}
           />
-          {query && (
+          {isSearching && (
+            <Loader2
+              className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
+              strokeWidth={1.5}
+            />
+          )}
+          {query && !isSearching && (
             <button
               type="button"
               onClick={handleClearQuery}
@@ -292,31 +316,34 @@ export function SearchOverlay(): JSX.Element {
         </div>
       </div>
 
-      {/* Content area */}
       <div className="search-content flex-1 overflow-y-auto">
         <div className="mx-auto max-w-400 px-6 pb-20 lg:px-12">
-          {/* Trending / empty state */}
           {showTrending && (
             <div className="space-y-6">
               <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("searchOverlay.trending")}</p>
               <div className="flex flex-wrap gap-3">
-                {TRENDING_KEYS.map((key) => (
-                  <TrendingTag key={key} tagKey={key} onClick={handleTrendingClick} />
+                {trendingItems.map((item) => (
+                  <TrendingQuickLink key={`${item.type}-${item.handle}`} item={item} onNavigate={handleClose} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* No results */}
-          {!showTrending && !hasResults && (
+          {hasQuery && isSearching && (
+            <div className="flex items-center justify-center gap-3 py-12 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" strokeWidth={1.5} />
+              <span>{t("searchOverlay.searching")}</span>
+            </div>
+          )}
+
+          {hasQuery && !isSearching && !hasResults && (
             <div className="py-12 text-center">
               <p className="font-serif text-xl">{t("searchOverlay.noResults")}</p>
               <p className="mt-2 text-sm text-muted-foreground">{t("searchOverlay.noResultsHint")}</p>
             </div>
           )}
 
-          {/* Grouped results */}
-          {hasResults && (
+          {hasResults && !isSearching && (
             <div className="space-y-10">
               {(["product", "category", "collection", "page"] as const)
                 .filter((type) => {
@@ -328,7 +355,7 @@ export function SearchOverlay(): JSX.Element {
                   return <SearchResultGroup key={type} type={type} items={items} onNavigate={handleClose} />;
                 })}
 
-              {filtered.length > MAX_RESULTS_PER_GROUP && <ViewAllLink onClick={handleClose} />}
+              {filtered.length > MAX_RESULTS_PER_GROUP && debouncedQuery && <ViewAllLink onClick={handleClose} query={debouncedQuery} />}
             </div>
           )}
         </div>
