@@ -1,5 +1,9 @@
 {
+  "eyebrow": "Browse by type",
   "title": "Categories",
-  "description": "Browse by category.",
-  "noCategoriesFound": "No categories found."
+  "description": "Discover the full range of handcrafted jewelry — from sculptural earrings to statement chokers, each piece shaped in our atelier.",
+  "metaTitle": "Categories | M'Arte",
+  "metaDescription": "Explore M'Arte jewelry categories — necklaces, earrings, chokers, bracelets, and birthstone pieces in 925 silver and natural stones.",
+  "noCategoriesFound": "No categories found.",
+  "productCount": "{count, plural, one {# piece} other {# pieces}}"
 }

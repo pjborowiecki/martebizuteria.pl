@@ -52,24 +52,6 @@ const InstagramIcon = (props: SVGProps<SVGSVGElement> & { title: string }) => (
   </svg>
 );
 
-const TwitterIcon = (props: SVGProps<SVGSVGElement> & { title: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <title>{props.title}</title>
-    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-  </svg>
-);
-
 export function Footer(): JSX.Element {
   const t = useTranslations("components.custom.footer");
 
@@ -94,8 +76,8 @@ export function Footer(): JSX.Element {
           <div className="flex flex-col space-y-4">
             <h3 className="mb-2 text-xs font-medium tracking-widest text-primary-foreground/50 uppercase">{t("legal")}</h3>
             <ul className="space-y-3 text-sm">
-              <FooterLink to={CONSTANTS.ROUTES.FAQ}>{t("terms")}</FooterLink>
-              <FooterLink to={CONSTANTS.ROUTES.FAQ}>{t("privacy")}</FooterLink>
+              <FooterLink to={CONSTANTS.ROUTES.TERMS_OF_SERVICE}>{t("terms")}</FooterLink>
+              <FooterLink to={CONSTANTS.ROUTES.PRIVACY_POLICY}>{t("privacy")}</FooterLink>
               <FooterLink to={CONSTANTS.ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
             </ul>
           </div>
@@ -112,27 +94,24 @@ export function Footer(): JSX.Element {
           <p className="text-xs text-primary-foreground/50">{t("copyright")}</p>
 
           <div className="flex items-center space-x-6">
-            <LocalizedLink
-              to={CONSTANTS.ROUTES.HOME}
+            <a
+              href={CONSTANTS.SOCIALS.INSTAGRAM}
+              rel="noopener noreferrer"
+              target="_blank"
               className="text-primary-foreground/50 transition-colors hover:text-primary-foreground"
               aria-label={t("instagram")}
             >
               <InstagramIcon title={t("instagram")} className="h-5 w-5" />
-            </LocalizedLink>
-            <LocalizedLink
-              to={CONSTANTS.ROUTES.HOME}
-              className="text-primary-foreground/50 transition-colors hover:text-primary-foreground"
-              aria-label={t("twitter")}
-            >
-              <TwitterIcon title={t("twitter")} className="h-5 w-5" />
-            </LocalizedLink>
-            <LocalizedLink
-              to={CONSTANTS.ROUTES.HOME}
+            </a>
+            <a
+              href={CONSTANTS.SOCIALS.FACEBOOK}
+              rel="noopener noreferrer"
+              target="_blank"
               className="text-primary-foreground/50 transition-colors hover:text-primary-foreground"
               aria-label={t("facebook")}
             >
               <FacebookIcon title={t("facebook")} className="h-5 w-5" />
-            </LocalizedLink>
+            </a>
           </div>
         </div>
       </div>

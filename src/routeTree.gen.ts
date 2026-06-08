@@ -52,6 +52,7 @@ import { Route as Char123LocaleChar125AccountOrdersIndexRouteImport } from './ro
 import { Route as Char123LocaleChar125StorefrontProductsIndexRouteImport } from './routes/{-$locale}._storefront.products.index'
 import { Route as Char123LocaleChar125StorefrontCollectionsIndexRouteImport } from './routes/{-$locale}._storefront.collections.index'
 import { Route as Char123LocaleChar125StorefrontCategoriesIndexRouteImport } from './routes/{-$locale}._storefront.categories.index'
+import { Route as Char123LocaleChar125StorefrontBlogIndexRouteImport } from './routes/{-$locale}._storefront.blog.index'
 import { Route as Char123LocaleChar125AdminOrdersOrderIdRouteImport } from './routes/{-$locale}.admin.orders.$orderId'
 import { Route as Char123LocaleChar125AdminCustomersIdRouteImport } from './routes/{-$locale}.admin.customers.$id'
 import { Route as Char123LocaleChar125AdminCatalogProductsRouteImport } from './routes/{-$locale}.admin.catalog.products'
@@ -62,6 +63,7 @@ import { Route as Char123LocaleChar125AccountOrdersIdRouteImport } from './route
 import { Route as Char123LocaleChar125StorefrontProductsHandleRouteImport } from './routes/{-$locale}._storefront.products.$handle'
 import { Route as Char123LocaleChar125StorefrontCollectionsHandleRouteImport } from './routes/{-$locale}._storefront.collections.$handle'
 import { Route as Char123LocaleChar125StorefrontCategoriesHandleRouteImport } from './routes/{-$locale}._storefront.categories.$handle'
+import { Route as Char123LocaleChar125StorefrontBlogSlugRouteImport } from './routes/{-$locale}._storefront.blog.$slug'
 import { Route as Char123LocaleChar125AdminCatalogProductsIndexRouteImport } from './routes/{-$locale}.admin.catalog.products.index'
 import { Route as Char123LocaleChar125AdminCatalogCollectionsIndexRouteImport } from './routes/{-$locale}.admin.catalog.collections.index'
 import { Route as Char123LocaleChar125AdminCatalogCategoriesIndexRouteImport } from './routes/{-$locale}.admin.catalog.categories.index'
@@ -322,6 +324,12 @@ const Char123LocaleChar125StorefrontCategoriesIndexRoute =
     path: '/categories/',
     getParentRoute: () => Char123LocaleChar125StorefrontRoute,
   } as any)
+const Char123LocaleChar125StorefrontBlogIndexRoute =
+  Char123LocaleChar125StorefrontBlogIndexRouteImport.update({
+    id: '/blog/',
+    path: '/blog/',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
 const Char123LocaleChar125AdminOrdersOrderIdRoute =
   Char123LocaleChar125AdminOrdersOrderIdRouteImport.update({
     id: '/orders/$orderId',
@@ -380,6 +388,12 @@ const Char123LocaleChar125StorefrontCategoriesHandleRoute =
   Char123LocaleChar125StorefrontCategoriesHandleRouteImport.update({
     id: '/categories/$handle',
     path: '/categories/$handle',
+    getParentRoute: () => Char123LocaleChar125StorefrontRoute,
+  } as any)
+const Char123LocaleChar125StorefrontBlogSlugRoute =
+  Char123LocaleChar125StorefrontBlogSlugRouteImport.update({
+    id: '/blog/$slug',
+    path: '/blog/$slug',
     getParentRoute: () => Char123LocaleChar125StorefrontRoute,
   } as any)
 const Char123LocaleChar125AdminCatalogProductsIndexRoute =
@@ -455,6 +469,7 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/account/': typeof Char123LocaleChar125AccountIndexRoute
   '/{-$locale}/admin/': typeof Char123LocaleChar125AdminIndexRoute
   '/{-$locale}/checkout/': typeof Char123LocaleChar125CheckoutIndexRoute
+  '/{-$locale}/blog/$slug': typeof Char123LocaleChar125StorefrontBlogSlugRoute
   '/{-$locale}/categories/$handle': typeof Char123LocaleChar125StorefrontCategoriesHandleRoute
   '/{-$locale}/collections/$handle': typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
   '/{-$locale}/products/$handle': typeof Char123LocaleChar125StorefrontProductsHandleRoute
@@ -465,6 +480,7 @@ export interface FileRoutesByFullPath {
   '/{-$locale}/admin/catalog/products': typeof Char123LocaleChar125AdminCatalogProductsRouteWithChildren
   '/{-$locale}/admin/customers/$id': typeof Char123LocaleChar125AdminCustomersIdRoute
   '/{-$locale}/admin/orders/$orderId': typeof Char123LocaleChar125AdminOrdersOrderIdRoute
+  '/{-$locale}/blog/': typeof Char123LocaleChar125StorefrontBlogIndexRoute
   '/{-$locale}/categories/': typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
   '/{-$locale}/collections/': typeof Char123LocaleChar125StorefrontCollectionsIndexRoute
   '/{-$locale}/products/': typeof Char123LocaleChar125StorefrontProductsIndexRoute
@@ -510,12 +526,14 @@ export interface FileRoutesByTo {
   '/{-$locale}/account': typeof Char123LocaleChar125AccountIndexRoute
   '/{-$locale}/admin': typeof Char123LocaleChar125AdminIndexRoute
   '/{-$locale}/checkout': typeof Char123LocaleChar125CheckoutIndexRoute
+  '/{-$locale}/blog/$slug': typeof Char123LocaleChar125StorefrontBlogSlugRoute
   '/{-$locale}/categories/$handle': typeof Char123LocaleChar125StorefrontCategoriesHandleRoute
   '/{-$locale}/collections/$handle': typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
   '/{-$locale}/products/$handle': typeof Char123LocaleChar125StorefrontProductsHandleRoute
   '/{-$locale}/account/orders/$id': typeof Char123LocaleChar125AccountOrdersIdRoute
   '/{-$locale}/admin/customers/$id': typeof Char123LocaleChar125AdminCustomersIdRoute
   '/{-$locale}/admin/orders/$orderId': typeof Char123LocaleChar125AdminOrdersOrderIdRoute
+  '/{-$locale}/blog': typeof Char123LocaleChar125StorefrontBlogIndexRoute
   '/{-$locale}/categories': typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
   '/{-$locale}/collections': typeof Char123LocaleChar125StorefrontCollectionsIndexRoute
   '/{-$locale}/products': typeof Char123LocaleChar125StorefrontProductsIndexRoute
@@ -568,6 +586,7 @@ export interface FileRoutesById {
   '/{-$locale}/account/': typeof Char123LocaleChar125AccountIndexRoute
   '/{-$locale}/admin/': typeof Char123LocaleChar125AdminIndexRoute
   '/{-$locale}/checkout/': typeof Char123LocaleChar125CheckoutIndexRoute
+  '/{-$locale}/_storefront/blog/$slug': typeof Char123LocaleChar125StorefrontBlogSlugRoute
   '/{-$locale}/_storefront/categories/$handle': typeof Char123LocaleChar125StorefrontCategoriesHandleRoute
   '/{-$locale}/_storefront/collections/$handle': typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
   '/{-$locale}/_storefront/products/$handle': typeof Char123LocaleChar125StorefrontProductsHandleRoute
@@ -578,6 +597,7 @@ export interface FileRoutesById {
   '/{-$locale}/admin/catalog/products': typeof Char123LocaleChar125AdminCatalogProductsRouteWithChildren
   '/{-$locale}/admin/customers/$id': typeof Char123LocaleChar125AdminCustomersIdRoute
   '/{-$locale}/admin/orders/$orderId': typeof Char123LocaleChar125AdminOrdersOrderIdRoute
+  '/{-$locale}/_storefront/blog/': typeof Char123LocaleChar125StorefrontBlogIndexRoute
   '/{-$locale}/_storefront/categories/': typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
   '/{-$locale}/_storefront/collections/': typeof Char123LocaleChar125StorefrontCollectionsIndexRoute
   '/{-$locale}/_storefront/products/': typeof Char123LocaleChar125StorefrontProductsIndexRoute
@@ -630,6 +650,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/account/'
     | '/{-$locale}/admin/'
     | '/{-$locale}/checkout/'
+    | '/{-$locale}/blog/$slug'
     | '/{-$locale}/categories/$handle'
     | '/{-$locale}/collections/$handle'
     | '/{-$locale}/products/$handle'
@@ -640,6 +661,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/admin/catalog/products'
     | '/{-$locale}/admin/customers/$id'
     | '/{-$locale}/admin/orders/$orderId'
+    | '/{-$locale}/blog/'
     | '/{-$locale}/categories/'
     | '/{-$locale}/collections/'
     | '/{-$locale}/products/'
@@ -685,12 +707,14 @@ export interface FileRouteTypes {
     | '/{-$locale}/account'
     | '/{-$locale}/admin'
     | '/{-$locale}/checkout'
+    | '/{-$locale}/blog/$slug'
     | '/{-$locale}/categories/$handle'
     | '/{-$locale}/collections/$handle'
     | '/{-$locale}/products/$handle'
     | '/{-$locale}/account/orders/$id'
     | '/{-$locale}/admin/customers/$id'
     | '/{-$locale}/admin/orders/$orderId'
+    | '/{-$locale}/blog'
     | '/{-$locale}/categories'
     | '/{-$locale}/collections'
     | '/{-$locale}/products'
@@ -742,6 +766,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/account/'
     | '/{-$locale}/admin/'
     | '/{-$locale}/checkout/'
+    | '/{-$locale}/_storefront/blog/$slug'
     | '/{-$locale}/_storefront/categories/$handle'
     | '/{-$locale}/_storefront/collections/$handle'
     | '/{-$locale}/_storefront/products/$handle'
@@ -752,6 +777,7 @@ export interface FileRouteTypes {
     | '/{-$locale}/admin/catalog/products'
     | '/{-$locale}/admin/customers/$id'
     | '/{-$locale}/admin/orders/$orderId'
+    | '/{-$locale}/_storefront/blog/'
     | '/{-$locale}/_storefront/categories/'
     | '/{-$locale}/_storefront/collections/'
     | '/{-$locale}/_storefront/products/'
@@ -1077,6 +1103,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125StorefrontCategoriesIndexRouteImport
       parentRoute: typeof Char123LocaleChar125StorefrontRoute
     }
+    '/{-$locale}/_storefront/blog/': {
+      id: '/{-$locale}/_storefront/blog/'
+      path: '/blog'
+      fullPath: '/{-$locale}/blog/'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontBlogIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
     '/{-$locale}/admin/orders/$orderId': {
       id: '/{-$locale}/admin/orders/$orderId'
       path: '/orders/$orderId'
@@ -1147,6 +1180,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LocaleChar125StorefrontCategoriesHandleRouteImport
       parentRoute: typeof Char123LocaleChar125StorefrontRoute
     }
+    '/{-$locale}/_storefront/blog/$slug': {
+      id: '/{-$locale}/_storefront/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/{-$locale}/blog/$slug'
+      preLoaderRoute: typeof Char123LocaleChar125StorefrontBlogSlugRouteImport
+      parentRoute: typeof Char123LocaleChar125StorefrontRoute
+    }
     '/{-$locale}/admin/catalog/products/': {
       id: '/{-$locale}/admin/catalog/products/'
       path: '/'
@@ -1200,9 +1240,11 @@ interface Char123LocaleChar125StorefrontRouteChildren {
   Char123LocaleChar125StorefrontPrivacyPolicyRoute: typeof Char123LocaleChar125StorefrontPrivacyPolicyRoute
   Char123LocaleChar125StorefrontTermsOfServiceRoute: typeof Char123LocaleChar125StorefrontTermsOfServiceRoute
   Char123LocaleChar125StorefrontIndexRoute: typeof Char123LocaleChar125StorefrontIndexRoute
+  Char123LocaleChar125StorefrontBlogSlugRoute: typeof Char123LocaleChar125StorefrontBlogSlugRoute
   Char123LocaleChar125StorefrontCategoriesHandleRoute: typeof Char123LocaleChar125StorefrontCategoriesHandleRoute
   Char123LocaleChar125StorefrontCollectionsHandleRoute: typeof Char123LocaleChar125StorefrontCollectionsHandleRoute
   Char123LocaleChar125StorefrontProductsHandleRoute: typeof Char123LocaleChar125StorefrontProductsHandleRoute
+  Char123LocaleChar125StorefrontBlogIndexRoute: typeof Char123LocaleChar125StorefrontBlogIndexRoute
   Char123LocaleChar125StorefrontCategoriesIndexRoute: typeof Char123LocaleChar125StorefrontCategoriesIndexRoute
   Char123LocaleChar125StorefrontCollectionsIndexRoute: typeof Char123LocaleChar125StorefrontCollectionsIndexRoute
   Char123LocaleChar125StorefrontProductsIndexRoute: typeof Char123LocaleChar125StorefrontProductsIndexRoute
@@ -1224,12 +1266,16 @@ const Char123LocaleChar125StorefrontRouteChildren: Char123LocaleChar125Storefron
       Char123LocaleChar125StorefrontTermsOfServiceRoute,
     Char123LocaleChar125StorefrontIndexRoute:
       Char123LocaleChar125StorefrontIndexRoute,
+    Char123LocaleChar125StorefrontBlogSlugRoute:
+      Char123LocaleChar125StorefrontBlogSlugRoute,
     Char123LocaleChar125StorefrontCategoriesHandleRoute:
       Char123LocaleChar125StorefrontCategoriesHandleRoute,
     Char123LocaleChar125StorefrontCollectionsHandleRoute:
       Char123LocaleChar125StorefrontCollectionsHandleRoute,
     Char123LocaleChar125StorefrontProductsHandleRoute:
       Char123LocaleChar125StorefrontProductsHandleRoute,
+    Char123LocaleChar125StorefrontBlogIndexRoute:
+      Char123LocaleChar125StorefrontBlogIndexRoute,
     Char123LocaleChar125StorefrontCategoriesIndexRoute:
       Char123LocaleChar125StorefrontCategoriesIndexRoute,
     Char123LocaleChar125StorefrontCollectionsIndexRoute:

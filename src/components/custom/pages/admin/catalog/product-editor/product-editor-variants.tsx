@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useMemo } from "react";
+import { type JSX, useCallback, useMemo, type ChangeEvent } from "react";
 
 import { useFormContext, useWatch } from "react-hook-form";
 import { useTranslations } from "use-intl";
@@ -100,7 +100,7 @@ function VariantRow({ index, isLast }: Readonly<{ index: number; isLast: boolean
   );
 
   const handleSkuChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       updateField("sku", event.target.value);
     },
     [updateField]

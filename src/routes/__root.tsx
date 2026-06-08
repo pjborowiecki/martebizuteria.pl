@@ -21,6 +21,7 @@ import { isAdminPathname, buildLocalizedUrl, extractLocaleFromPath, getBaseURL }
 import { Toaster } from "~/src/components/shadcn/sonner";
 
 import { VerificationToast } from "~/src/components/custom/pages/auth/verification-toast";
+import { StorefrontCriticalFontsHead } from "~/src/components/custom/storefront-critical-fonts-head";
 
 import { DATAGRID_PREFS_INIT_SCRIPT } from "~/scripts/datagrid-init-script";
 import { adminShellCriticalStyle, THEME_INIT_SCRIPT } from "~/scripts/theme-init-script";
@@ -55,20 +56,6 @@ const Route = createRootRouteWithContext<RouterContext>()({
 
     return {
       links: [
-        {
-          as: "font",
-          crossOrigin: "anonymous",
-          href: "/fonts/manrope-latin-wght-normal.woff2",
-          rel: "preload",
-          type: "font/woff2"
-        },
-        {
-          as: "font",
-          crossOrigin: "anonymous",
-          href: "/fonts/cormorant-garamond-latin-400-normal.woff2",
-          rel: "preload",
-          type: "font/woff2"
-        },
         { href: canonicalUrl, rel: "canonical" },
         ...CONSTANTS.LOCALES.map((loc) => ({
           href: buildLocalizedUrl(appUrl, path, loc),
@@ -130,6 +117,7 @@ function RootDocument({ children, internalPathname, locale }: Readonly<{ childre
         <script dangerouslySetInnerHTML={THEME_INIT_SCRIPT_HTML} />
         <script dangerouslySetInnerHTML={SIDEBAR_INIT_SCRIPT_HTML} />
         <script dangerouslySetInnerHTML={DATAGRID_PREFS_INIT_SCRIPT_HTML} />
+        {!isAdmin && <StorefrontCriticalFontsHead locale={locale} />}
         <HeadContent />
       </head>
       <body>{children}</body>

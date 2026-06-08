@@ -18,8 +18,8 @@ export function MenuFooter(): JSX.Element {
         <a className={linkStyles} href={CONSTANTS.SOCIALS.INSTAGRAM} rel="noopener noreferrer" target="_blank">
           {t("menu.footer.instagram")}
         </a>
-        <a className={cn(linkStyles, "hidden sm:block")} href={CONSTANTS.SOCIALS.PINTEREST} rel="noopener noreferrer" target="_blank">
-          {t("menu.footer.pinterest")}
+        <a className={cn(linkStyles, "hidden sm:block")} href={CONSTANTS.SOCIALS.FACEBOOK} rel="noopener noreferrer" target="_blank">
+          {t("menu.footer.facebook")}
         </a>
       </div>
     </div>

@@ -33,44 +33,13 @@
     "eyebrow": "M'ARTE premieres",
     "title": "New designs to discover",
     "description": "Curated, original forms and noble glow. New designs created for your daily rituals and timeless elegance.",
-    "cta": "View all products",
-    "items": {
-      "lapis": {
-        "name": "Lapis Lazuli Necklace",
-        "details": "Gold-plated silver / lapis lazuli",
-        "price": "379 PLN"
-      },
-      "onyks": {
-        "name": "Onyx Necklace",
-        "details": "925 silver / mirror finish",
-        "price": "379 PLN"
-      },
-      "vintageOnyksSilver": {
-        "name": "Vintage Onyx Earrings Silver",
-        "details": "925 silver / cobalt stones",
-        "price": "450 PLN"
-      },
-      "vintageOnyksGolden": {
-        "name": "Vintage Onyx Earrings Gold-plated",
-        "details": "Gold-plated silver / warm gold",
-        "price": "450 PLN"
-      },
-      "ginkgo": {
-        "name": "Ginkgo Necklace",
-        "details": "Gold-plated silver / ginkgo leaf",
-        "price": "239 PLN"
-      },
-      "oliwin": {
-        "name": "Olivine Choker",
-        "details": "925 silver / olivine",
-        "price": "189 PLN"
-      }
-    }
+    "cta": "View all products"
   },
   "categoriesSection": {
     "eyebrow": "Categories",
     "title": "Space of choice",
     "description": "Our jewelry takes various shapes, but adheres to one principle: uncompromising quality. Browse the categories and find the form missing in your space.",
+    "discoverCategory": "Discover {category}",
     "panels": {
       "necklaces": {
         "tag": "Necklaces",
@@ -186,32 +155,7 @@
     "title": "Categories",
     "description": "Discover the full range of handcrafted jewelry — from sculptural earrings to statement rings.",
     "cta": "View all categories",
-    "items": {
-      "earrings": {
-        "name": "Earrings",
-        "count": "24 pieces"
-      },
-      "necklaces": {
-        "name": "Necklaces",
-        "count": "18 pieces"
-      },
-      "bracelets": {
-        "name": "Bracelets",
-        "count": "15 pieces"
-      },
-      "rings": {
-        "name": "Rings",
-        "count": "21 pieces"
-      },
-      "chokers": {
-        "name": "Chokers",
-        "count": "9 pieces"
-      },
-      "birthdayBracelets": {
-        "name": "Birthday Bracelets",
-        "count": "12 pieces"
-      }
-    }
+    "productCount": "{count, plural, one {# piece} other {# pieces}}"
   },
   "shopCollectionsSection": {
     "eyebrow": "Curated editions",

@@ -11,7 +11,7 @@ import { LocalizedLink } from "~/src/components/custom/localized-link";
 import { useNavigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider";
 
 export function MenuHeader(): JSX.Element {
-  const { handleClose } = useNavigation();
+  const { dismissMenuForRouteNavigation, handleClose } = useNavigation();
   const t = useTranslations("components.custom.navigation");
 
   return (
@@ -19,7 +19,7 @@ export function MenuHeader(): JSX.Element {
       <LocalizedLink
         to={CONSTANTS.ROUTES.HOME}
         className="font-serif text-3xl tracking-tight text-primary-foreground uppercase md:text-4xl"
-        onClick={handleClose}
+        onClick={dismissMenuForRouteNavigation}
       >
         {t("brand")}
       </LocalizedLink>

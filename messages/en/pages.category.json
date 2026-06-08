@@ -1,5 +1,7 @@
 {
   "metaTitle": "{title} | M'Arte",
+  "eyebrow": "Category",
   "noProductsFound": "No products found in this category.",
-  "notFound": "Category not found"
+  "notFound": "Category not found",
+  "resultsCount": "{count, plural, =0 {No products} one {# product} other {# products}}"
 }

@@ -52,12 +52,8 @@ const resolveImageCdnDomain = createIsomorphicFn()
 // Placeholder asset that lives in the R2 bucket.
 export const PLACEHOLDER_IMAGE = getAssetURL("placeholder.svg");
 
-// TEMPORARY: dynamic product/category/collection media has not been uploaded to
-// R2 yet, so the thumbnails stored in the DB resolve to 404s. Until real assets
-// exist, every DB-sourced image renders the bucket's placeholder. Once media is
-// live, change the body to `src !== undefined && src !== null && src !== "" ? src : PLACEHOLDER_IMAGE`.
-export function getProductImageUrl(_src?: string | null): string {
-  return PLACEHOLDER_IMAGE;
+export function getProductImageUrl(src?: string | null): string {
+  return src !== undefined && src !== null && src !== "" ? src : PLACEHOLDER_IMAGE;
 }
 
 export interface PrefetchImageConfig {
@@ -197,13 +193,15 @@ export const prefetchProductThumbnails = createIsomorphicFn().client(
   (products: readonly Readonly<Product["select"]>[], prefetchService: Readonly<ImagePrefetchService>) => {
     let count = IMAGE_CONSTANTS.ZERO;
     const images: PrefetchImageConfig[] = products
-      .filter((product) => typeof product.thumbnail === "string")
+      .filter((product) => getProductImageUrl(product.thumbnail) !== PLACEHOLDER_IMAGE)
       .map((product) => {
         let loading: "eager" | "lazy" = "lazy";
         if (count < DEFAULT_EAGER_COUNT) {
           loading = "eager";
         }
         count += IMAGE_CONSTANTS.ONE;
+
+        const thumbnail = getProductImageUrl(product.thumbnail);
 
         return {
           alt: productImageAlt(product),
@@ -212,7 +210,7 @@ export const prefetchProductThumbnails = createIsomorphicFn().client(
           src: getOptimizedImageUrl({
             height: IMAGE_CONSTANTS.THUMBNAIL_HEIGHT,
             quality: IMAGE_CONSTANTS.LOW_QUALITY,
-            src: String(product.thumbnail),
+            src: thumbnail,
             width: IMAGE_CONSTANTS.THUMBNAIL_WIDTH
           }),
           width: IMAGE_CONSTANTS.THUMBNAIL_WIDTH
@@ -228,7 +226,8 @@ export const prefetchSingleProductImage = createIsomorphicFn().client(
     product: Readonly<{ thumbnail: string | null; title?: string; titles?: ProductLocaleMap | null }>,
     prefetchService: Readonly<ImagePrefetchService>
   ) => {
-    if (typeof product.thumbnail === "string") {
+    const thumbnail = getProductImageUrl(product.thumbnail);
+    if (thumbnail !== PLACEHOLDER_IMAGE) {
       const images: PrefetchImageConfig[] = [
         {
           alt: productImageAlt(product),
@@ -237,7 +236,7 @@ export const prefetchSingleProductImage = createIsomorphicFn().client(
           src: getOptimizedImageUrl({
             height: IMAGE_CONSTANTS.LARGE_HEIGHT,
             quality: IMAGE_CONSTANTS.HIGH_QUALITY,
-            src: product.thumbnail,
+            src: thumbnail,
             width: IMAGE_CONSTANTS.LARGE_WIDTH
           }),
           width: IMAGE_CONSTANTS.LARGE_WIDTH

@@ -34,16 +34,16 @@ export function HeroSection(): JSX.Element {
       <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
         <div className="flex flex-col justify-end gap-8">
           <div className="space-y-8">
-            <Badge className="reveal rounded-none px-0 font-medium tracking-[0.28em] uppercase" variant="outline">
+            <Badge className="rounded-none px-0 font-medium tracking-[0.28em] uppercase" variant="outline">
               {t("eyebrow")}
             </Badge>
 
-            <div className="reveal space-y-5">
+            <div className="space-y-5">
               <HeroTitle />
               <p className="max-w-lg text-sm/relaxed font-light text-muted-foreground md:text-base/relaxed">{t("description")}</p>
             </div>
 
-            <div className="reveal flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <LocalizedLink
                 to={CONSTANTS.ROUTES.PRODUCTS}
                 className="inline-flex h-13 items-center justify-center rounded-none bg-primary px-10 text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
@@ -51,21 +51,21 @@ export function HeroSection(): JSX.Element {
                 {t("ctaPrimary")}
               </LocalizedLink>
               <LocalizedLink
-                to={CONSTANTS.ROUTES.COLLECTIONS}
+                to={CONSTANTS.ROUTES.ABOUT}
                 className="inline-flex h-13 items-center justify-center border border-foreground/20 px-8 text-[11px] tracking-[0.2em] uppercase transition-colors hover:border-foreground/50"
               >
                 {t("ctaSecondary")}
               </LocalizedLink>
             </div>
 
-            <div className="reveal pt-3">
-              <Separator className="line-reveal max-w-52 bg-foreground/35" />
+            <div className="pt-3">
+              <Separator className="max-w-52 bg-foreground/35" />
               <p className="pt-3 text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{t("scrollHint")}</p>
             </div>
           </div>
         </div>
 
-        <AspectRatio className="parallax-wrap reveal overflow-hidden bg-card" ratio={ASPECT_RATIO_TALL}>
+        <AspectRatio className="parallax-wrap overflow-hidden bg-card" ratio={ASPECT_RATIO_TALL}>
           <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
             <Image
               alt={t("imageAlt")}

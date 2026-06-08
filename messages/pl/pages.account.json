@@ -23,10 +23,17 @@
     "activityItems": {
       "orderDelivered": "Zamówienie {id} zostało dostarczone",
       "orderShipped": "Zamówienie {id} zostało wysłane",
-      "wishlistAdded": "Dodano {item} do listy życzeń",
-      "addressUpdated": "Zaktualizowano adres dostawy",
-      "reviewPosted": "Wystawiono opinię o {item}"
+      "orderPlaced": "Złożono zamówienie {id}",
+      "cartItemAdded": "Dodano {item} do koszyka",
+      "loginSuccess": "Pomyślne logowanie",
+      "loginFailed": "Nieudana próba logowania",
+      "logout": "Wylogowano"
     },
+    "recentOrders": "Ostatnie zamówienia",
+    "viewAllOrders": "Zobacz wszystkie",
+    "noActivity": "Brak ostatniej aktywności.",
+    "noRecommendations": "Brak rekomendacji w tej chwili.",
+    "noRecentOrders": "Nie złożyłeś jeszcze żadnych zamówień.",
     "recommendations": "Polecane dla Ciebie",
     "recommendationsDesc": "Na podstawie Twoich ostatnich zamówień",
     "viewProduct": "Zobacz",
@@ -77,6 +84,8 @@
     "downloadInvoice": "Pobierz fakturę",
     "needHelp": "Potrzebujesz pomocy?",
     "deliveredOn": "Dostarczono {date}",
+    "notFound": "Nie znaleziono zamówienia.",
+    "trackingUnavailable": "Śledzenie nie jest jeszcze dostępne.",
     "status": {
       "delivered": "Dostarczono",
       "shipped": "Wysłano",
@@ -100,6 +109,7 @@
     "saved": "Zapisane adresy",
     "addNew": "Dodaj nowy",
     "default": "Domyślny",
+    "makeDefault": "Ustaw jako domyślny",
     "labels": {
       "home": "Dom",
       "work": "Praca",
@@ -116,10 +126,10 @@
       "save": "Zapisz adres",
       "cancel": "Anuluj"
     },
-    "filter": {
-      "shipping": "Dostawy",
-      "billing": "Rozliczeniowe"
-    }
+    "empty": "Brak zapisanych adresów.",
+    "saveError": "Nie udało się zapisać adresu.",
+    "deleteError": "Nie udało się usunąć adresu.",
+    "saved": "Zapisano adres."
   },
   "payment": {
     "eyebrow": "Portfel",
@@ -131,6 +141,7 @@
     "expires": "Wygasa",
     "makeDefault": "Ustaw jako domyślną",
     "securityNote": "Bezpieczeństwo",
+    "empty": "Brak zapisanych metod płatności. Karty są wprowadzane bezpiecznie przy realizacji zamówienia.",
     "securityDesc": "Twoje dane płatnicze są bezpiecznie zaszyfrowane. Nie przechowujemy pełnych numerów kart kredytowych na naszych serwerach.",
     "form": {
       "cardNumber": "Numer karty",
@@ -161,6 +172,12 @@
       "success": "Sukces",
       "blocked": "Zablokowano"
     },
+    "emptySessions": "Brak innych aktywnych sesji.",
+    "revokeSuccess": "Sesja została unieważniona.",
+    "revokeError": "Nie udało się unieważnić sesji.",
+    "revokeAllSuccess": "Wylogowano pozostałe sesje.",
+    "activeNow": "Aktywna teraz",
+    "noLoginHistory": "Brak historii logowania.",
     "securityTips": "Zalecenia dotyczące bezpieczeństwa",
     "tip1": "Używaj silnego, unikalnego hasła dla każdego ze swoich kont.",
     "tip2": "Włącz uwierzytelnianie dwuskładnikowe (2FA) jeśli to możliwe.",
@@ -178,7 +195,9 @@
     "lastName": "Nazwisko",
     "email": "Adres e-mail",
     "phone": "Numer telefonu",
-    "birthDate": "Data urodzenia",
+    "name": "Imię i nazwisko",
+    "saved": "Zaktualizowano profil.",
+    "saveError": "Nie udało się zaktualizować profilu.",
     "preferences": "Preferencje",
     "language": "Język",
     "currency": "Waluta",

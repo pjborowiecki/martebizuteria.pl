@@ -1,10 +1,13 @@
 import { type JSX, useCallback, useMemo, useState } from "react";
 
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { useFormatter, useTranslations } from "use-intl";
 
 import { CONSTANTS } from "~/src/constants";
+
+import { centsToDisplayAmount } from "~/src/lib/utils";
 
 import { Button } from "~/src/components/shadcn/button";
 import { Separator } from "~/src/components/shadcn/separator";
@@ -12,25 +15,39 @@ import { Separator } from "~/src/components/shadcn/separator";
 import { Image } from "~/src/components/custom/image";
 import { LocalizedLink } from "~/src/components/custom/localized-link";
 
-import { ORDERS } from "~/src/data/account-orders-data";
+import {
+  CUSTOMER_ACCOUNT_ORDER_FILTERS,
+  CUSTOMER_ACCOUNT_QUERY_STALE_MS,
+  type CustomerAccountOrderFilter
+} from "~/src/modules/customer-account/customer-account.constants";
+import { customerAccountQueryOptions } from "~/src/modules/customer-account/customer-account.queries";
+import type { CustomerAccountOrderItem, CustomerAccountOrderSummary } from "~/src/modules/customer-account/customer-account.types";
+import { formatCustomerOrderDisplayId, matchesCustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.utils";
 
 export const Route = createFileRoute("/{-$locale}/account/orders/")({
-  component: OrdersPage
+  component: OrdersPage,
+  loader: ({ context }) => context.queryClient.ensureQueryData(customerAccountQueryOptions.ordersQueryOptions()),
+  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS
 });
-
-const FILTER_OPTIONS = ["all", "delivered", "shipped", "processing", "cancelled"] as const;
-type FilterOption = (typeof FILTER_OPTIONS)[number];
 
 const ZERO_ORDERS = 0;
 const START_INDEX = 0;
 const MAX_VISIBLE_IMAGES = 3;
 const OVERLAP_STYLE = { marginLeft: "-0.5rem" };
+const PLACEHOLDER_IMAGE = "/placeholder-product.svg";
 
 function OrdersPage(): JSX.Element {
   const t = useTranslations("pages.account.orders");
-  const [filter, setFilter] = useState<FilterOption>("all");
+  const [filter, setFilter] = useState<CustomerAccountOrderFilter>("all");
+  const { data: orders } = useSuspenseQuery(customerAccountQueryOptions.ordersQueryOptions());
 
-  const filteredOrders = useMemo(() => (filter === "all" ? ORDERS : ORDERS.filter((o) => o.status === filter)), [filter]);
+  const filteredOrders = useMemo(
+    () =>
+      filter === "all"
+        ? orders
+        : orders.filter((order) => matchesCustomerAccountOrderFilter(filter, order.status, order.fulfillmentStatus)),
+    [filter, orders]
+  );
 
   return (
     <div>
@@ -41,7 +58,7 @@ function OrdersPage(): JSX.Element {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {FILTER_OPTIONS.map((opt) => (
+          {CUSTOMER_ACCOUNT_ORDER_FILTERS.map((opt) => (
             <FilterButton key={opt} opt={opt} currentFilter={filter} setFilter={setFilter} />
           ))}
         </div>
@@ -70,9 +87,9 @@ function FilterButton({
   opt,
   setFilter
 }: Readonly<{
-  currentFilter: FilterOption;
-  opt: FilterOption;
-  setFilter: (f: FilterOption) => void;
+  currentFilter: CustomerAccountOrderFilter;
+  opt: CustomerAccountOrderFilter;
+  setFilter: (f: CustomerAccountOrderFilter) => void;
 }>): JSX.Element {
   const t = useTranslations("pages.account.orders");
   const isActive = currentFilter === opt;
@@ -91,11 +108,7 @@ function FilterButton({
   );
 }
 
-interface OrderRowProps {
-  readonly order: (typeof ORDERS)[number];
-}
-
-function OrderRow({ order }: OrderRowProps): JSX.Element {
+function OrderRow({ order }: Readonly<{ order: CustomerAccountOrderSummary }>): JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = useCallback(() => {
     setExpanded((e) => !e);
@@ -119,10 +132,17 @@ function OrderRowHeader({
   toggleExpanded
 }: Readonly<{
   expanded: boolean;
-  order: (typeof ORDERS)[number];
+  order: CustomerAccountOrderSummary;
   toggleExpanded: () => void;
 }>): JSX.Element {
   const t = useTranslations("pages.account.orders");
+  const format = useFormatter();
+  const displayId = formatCustomerOrderDisplayId(order.id);
+  const totalLabel = format.number(centsToDisplayAmount(order.totalMinorUnits), {
+    currency: order.currencyCode,
+    style: "currency"
+  });
+  const dateLabel = format.dateTime(order.createdAt, { dateStyle: "medium" });
 
   return (
     <button
@@ -133,23 +153,29 @@ function OrderRowHeader({
       <div className="flex items-center gap-3">
         {order.items.slice(START_INDEX, MAX_VISIBLE_IMAGES).map((item, i) => (
           <div
-            key={item.name}
+            key={`${item.name}-${String(i)}`}
             className="relative size-14 shrink-0 overflow-hidden bg-muted"
             style={i > START_INDEX ? OVERLAP_STYLE : undefined}
           >
-            <Image src={item.image} alt={item.name} width={56} height={56} className="absolute inset-0 size-full object-cover" />
+            <Image
+              src={item.image ?? PLACEHOLDER_IMAGE}
+              alt={item.name}
+              width={56}
+              height={56}
+              className="absolute inset-0 size-full object-cover"
+            />
           </div>
         ))}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] tracking-[0.02em]">{order.id}</p>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">{order.date}</p>
+        <p className="text-[13px] tracking-[0.02em]">{displayId}</p>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">{dateLabel}</p>
       </div>
 
       <div className="hidden text-right sm:block">
-        <p className="text-[13px] tracking-[0.02em] tabular-nums">{order.total}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground capitalize">{t(`status.${order.status}`)}</p>
+        <p className="text-[13px] tracking-[0.02em] tabular-nums">{totalLabel}</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground capitalize">{t(`status.${order.filterStatus}`)}</p>
       </div>
 
       <ChevronDown
@@ -160,16 +186,15 @@ function OrderRowHeader({
   );
 }
 
-function OrderRowDetails({ order }: OrderRowProps): JSX.Element {
+function OrderRowDetails({ order }: Readonly<{ order: CustomerAccountOrderSummary }>): JSX.Element {
   const t = useTranslations("pages.account.orders");
-
   const orderParams = useMemo(() => ({ id: order.id }), [order.id]);
 
   return (
     <div className="pb-6 pl-0 sm:pl-19">
       <div className="divide-y divide-border/50">
         {order.items.map((item) => (
-          <OrderRowItem key={item.name} item={item} />
+          <OrderRowItem key={`${item.name}-${String(item.qty)}`} item={item} currencyCode={order.currencyCode} />
         ))}
       </div>
 
@@ -181,30 +206,32 @@ function OrderRowDetails({ order }: OrderRowProps): JSX.Element {
         >
           {t("viewDetails")}
         </LocalizedLink>
-        <span className="text-muted-foreground/30">·</span>
-        <Button variant="account-ghost">{t("trackOrder")}</Button>
-        {order.status === "delivered" ? (
-          <>
-            <span className="text-muted-foreground/30">·</span>
-            <Button variant="account-ghost">{t("returnItems")}</Button>
-          </>
-        ) : undefined}
       </div>
     </div>
   );
 }
 
 function OrderRowItem({
+  currencyCode,
   item
 }: Readonly<{
-  item: (typeof ORDERS)[number]["items"][number];
+  currencyCode: string;
+  item: CustomerAccountOrderItem;
 }>): JSX.Element {
   const t = useTranslations("pages.account.orders");
+  const format = useFormatter();
+  const priceLabel = format.number(centsToDisplayAmount(item.priceMinorUnits), { currency: currencyCode, style: "currency" });
 
   return (
     <div className="flex items-center gap-4 py-3">
       <div className="relative size-12 shrink-0 overflow-hidden bg-muted">
-        <Image src={item.image} alt={item.name} width={48} height={48} className="absolute inset-0 size-full object-cover" />
+        <Image
+          src={item.image ?? PLACEHOLDER_IMAGE}
+          alt={item.name}
+          width={48}
+          height={48}
+          className="absolute inset-0 size-full object-cover"
+        />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[13px]">{item.name}</p>
@@ -214,7 +241,7 @@ function OrderRowItem({
           {item.qty}
         </p>
       </div>
-      <p className="text-[13px] tabular-nums">{item.price}</p>
+      <p className="text-[13px] tabular-nums">{priceLabel}</p>
     </div>
   );
 }

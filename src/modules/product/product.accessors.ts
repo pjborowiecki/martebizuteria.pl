@@ -30,6 +30,7 @@ import {
   type ProductVariantKind
 } from "~/src/modules/product/product.constants";
 import { product } from "~/src/modules/product/product.schema";
+import { storefrontCatalogProductAccessors } from "~/src/modules/product/product.storefront-catalog.accessors";
 import type { Product } from "~/src/modules/product/product.types";
 import type { ProductCatalogReplacePayload, ProductOrganizationReplacePayload } from "~/src/modules/product/product.utils";
 
@@ -325,11 +326,13 @@ const getPublishedProductByHandleQuery = db.query.product
   .prepare();
 
 function totalStockSubquery() {
+  // Raw table/column names — Drizzle column refs inside this correlated subquery
+  // resolve against the outer `product` alias and produce invalid SQL.
   return sql<number>`(
-    select coalesce(sum(${inventory.quantityAvailable}), 0)
-    from ${productVariant}
-    left join ${inventory} on ${eq(inventory.variantId, productVariant.id)}
-    where ${eq(productVariant.productId, product.id)}
+    select coalesce(sum("inventory"."quantity_available"), 0)
+    from "product_variant"
+    left join "inventory" on "inventory"."variant_id" = "product_variant"."id"
+    where "product_variant"."product_id" = ${product.id}
   )`;
 }
 
@@ -610,15 +613,12 @@ async function getPublishedProductsByCollectionId(collectionId: string, params: 
     .where(whereClause);
 
   const productIdRows = await db
-    .select({
-      productId: product.id,
-      sortRank: sql<number>`min(${collectionOnProduct.rank})`.as("sort_rank")
-    })
+    .select({ productId: product.id })
     .from(product)
     .innerJoin(collectionOnProduct, eq(collectionOnProduct.productId, product.id))
     .where(whereClause)
     .groupBy(product.id)
-    .orderBy(asc(sql`sort_rank`), desc(product.createdAt))
+    .orderBy(asc(product.rank), desc(product.createdAt))
     .limit(params.limit)
     .offset(params.offset);
 
@@ -637,6 +637,8 @@ async function getPublishedProductsByCollectionId(collectionId: string, params: 
 
   return { items, total: countRow?.count ?? EMPTY_LENGTH };
 }
+
+const { getStorefrontPublishedProductsPage } = storefrontCatalogProductAccessors;
 
 function getPublishedRelatedProducts(categoryId: string, excludeProductId: string) {
   return db.query.product.findMany({
@@ -789,6 +791,7 @@ export const productAccessors = {
   getPublishedProductsByCollectionId,
   getPublishedProductsInStock,
   getPublishedRelatedProducts,
+  getStorefrontPublishedProductsPage,
   insertProduct,
   replaceProductCatalog,
   replaceProductOrganization,

@@ -7,6 +7,7 @@ import type { Locale } from "~/src/constants/types";
 
 import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
 
+import { prefetchProductThumbnails } from "~/src/lib/_utils/image";
 import { isValidLocale } from "~/src/lib/utils";
 
 import { ArchiveSection } from "~/src/components/custom/pages/landing-page/sections/archive-section";
@@ -26,6 +27,8 @@ import { ValuesSection } from "~/src/components/custom/pages/landing-page/sectio
 import { VideoExperienceSection } from "~/src/components/custom/pages/landing-page/sections/video-experience-section";
 
 import { useLandingAnimations } from "~/src/hooks/use-landing-animations";
+import { categoryQueryOptions } from "~/src/modules/product-category/product-category.queries";
+import { productQueryOptions } from "~/src/modules/product/product.queries";
 
 interface HomePageMeta {
   readonly description: string;
@@ -49,7 +52,7 @@ export const Route = createFileRoute("/{-$locale}/_storefront/")({
       { content: loaderData?.description ?? "", property: "og:description" }
     ]
   }),
-  loader: ({ context, params }) => {
+  loader: async ({ context, params }) => {
     const { locale: rawLocale } = params;
     let locale: Locale = CONSTANTS.DEFAULT_LOCALE;
 
@@ -57,7 +60,13 @@ export const Route = createFileRoute("/{-$locale}/_storefront/")({
       locale = rawLocale;
     }
 
-    const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
+    const [messages, newArrivals] = await Promise.all([
+      Promise.resolve(context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey)),
+      context.queryClient.ensureQueryData(productQueryOptions.landingNewArrivalsQueryOptions()),
+      context.queryClient.ensureQueryData(categoryQueryOptions.categoriesQueryOptions())
+    ]);
+
+    prefetchProductThumbnails(newArrivals, context.imagePrefetchService);
 
     return getLandingMeta(messages);
   }
@@ -71,7 +80,7 @@ function HomePage(): JSX.Element {
   });
 
   return (
-    <main ref={rootRef} className="bg-background text-foreground">
+    <main ref={rootRef} className="bg-background text-foreground" data-landing-page>
       <HeroSection />
       <VideoExperienceSection />
       <ValuesSection />

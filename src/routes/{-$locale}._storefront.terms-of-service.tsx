@@ -56,7 +56,7 @@ function TermsOfServicePage(): JSX.Element {
       </div>
 
       <LocalizedLink to={CONSTANTS.ROUTES.HOME} className="text-primary underline-offset-4 hover:underline">
-        {t("title")}
+        {t("goHome")}
       </LocalizedLink>
     </main>
   );

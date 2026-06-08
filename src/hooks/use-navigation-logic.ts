@@ -1,8 +1,10 @@
-import { type MouseEvent, type RefObject, useCallback, useRef, useState } from "react";
+import { type MouseEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 
+import { useRouterState } from "@tanstack/react-router";
 import { useShallow } from "zustand/react/shallow";
 
 import { ScrollTrigger, gsap, useGSAP } from "~/src/lib/gsap";
+import { scrollToSectionById } from "~/src/lib/lenis/scroll-to-section";
 
 import * as CONSTANTS from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation-constants";
 import { useNavigationStore } from "~/src/components/custom/pages/landing-page/navigation/store/navigation-store";
@@ -234,17 +236,53 @@ function createMenuTimeline({
   return tl;
 }
 
+function clearNavigationMenuScrollLock(): void {
+  gsap.set("html", { clearProps: "overflow" });
+  gsap.set("body", { clearProps: "overflow,paddingRight" });
+}
+
+function forceDismissNavigationMenu({
+  containerRef,
+  panelRef,
+  setMounted,
+  tlRef
+}: Readonly<{
+  containerRef: RefObject<HTMLDivElement | null>;
+  panelRef: RefObject<HTMLDialogElement | null>;
+  setMounted: (val: boolean) => void;
+  tlRef: RefObject<gsap.core.Timeline | undefined>;
+}>): void {
+  const panel = panelRef.current;
+  const backdrop = containerRef.current?.querySelector("[data-menu-backdrop]");
+
+  setMounted(false);
+  clearNavigationMenuScrollLock();
+
+  const tl = tlRef.current;
+  if (tl !== undefined) {
+    tl.pause();
+    tl.progress(CONSTANTS.POS_IMMEDIATE);
+  }
+
+  if (panel !== null && panel !== undefined) {
+    gsap.set(panel, {
+      autoAlpha: CONSTANTS.AUTO_ALPHA_HIDDEN,
+      clipPath: CONSTANTS.CLIP_CLOSED,
+      visibility: "hidden"
+    });
+  }
+
+  if (backdrop instanceof HTMLElement) {
+    gsap.set(backdrop, { autoAlpha: CONSTANTS.AUTO_ALPHA_HIDDEN });
+  }
+}
+
 function scrollToSection(id: string, navigate: (opts: { hash?: string; to?: string }) => void | Promise<void>) {
-  const el = document.querySelector(`#${CSS.escape(id)}`);
-  if (!el) {
-    void navigate({ hash: id, to: "/{-$locale}" });
+  if (scrollToSectionById(id, CONSTANTS.HEADER_OFFSET_PX) !== undefined) {
     return;
   }
-  gsap.to(globalThis, {
-    duration: 0.9,
-    ease: "power3.inOut",
-    scrollTo: { autoKill: true, offsetY: CONSTANTS.HEADER_OFFSET_PX, y: el }
-  });
+
+  void navigate({ hash: id, to: "/{-$locale}" });
 }
 
 function useNavigationStateEffects({
@@ -405,6 +443,10 @@ function useNavigationEffects({
     { scope: containerRef }
   );
 
+  const forceDismissMenu = useCallback(() => {
+    forceDismissNavigationMenu({ containerRef, panelRef, setMounted, tlRef });
+  }, [containerRef, panelRef, setMounted]);
+
   useGSAP(
     function syncTimelineToMenuOpen() {
       const tl = tlRef.current;
@@ -415,14 +457,14 @@ function useNavigationEffects({
         setMounted(true);
         const NORMAL_TIME_SCALE = 1;
         tl.timeScale(NORMAL_TIME_SCALE).play();
-      } else if (tl.progress() > CONSTANTS.POS_IMMEDIATE) {
+      } else if (tl.progress() > CONSTANTS.POS_IMMEDIATE && !tl.paused()) {
         tl.timeScale(CONSTANTS.REVERSE_TIMESCALE).reverse();
       }
     },
     { dependencies: [menuOpen] }
   );
 
-  return { contextSafe };
+  return { contextSafe, forceDismissMenu };
 }
 
 export function useNavigationLogic(
@@ -456,7 +498,7 @@ export function useNavigationLogic(
 
   useNavigationStateEffects({ menuOpen, setMenuOpen, setScrolled });
 
-  const { contextSafe } = useNavigationEffects({
+  const { contextSafe, forceDismissMenu } = useNavigationEffects({
     containerRef,
     isDesktop,
     isReducedMotion,
@@ -468,6 +510,27 @@ export function useNavigationLogic(
     setMounted
   });
 
+  const dismissMenuForRouteNavigation = useCallback(() => {
+    setMenuOpen(false);
+    setPendingHashGlobal(undefined);
+    forceDismissMenu();
+  }, [forceDismissMenu, setMenuOpen, setPendingHashGlobal]);
+
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const previousPathnameRef = useRef(pathname);
+
+  useEffect(
+    function dismissMenuOverlayOnRouteChange() {
+      if (previousPathnameRef.current === pathname) {
+        return;
+      }
+
+      previousPathnameRef.current = pathname;
+      dismissMenuForRouteNavigation();
+    },
+    [dismissMenuForRouteNavigation, pathname]
+  );
+
   const { getHoverProps, handleHover, handleMouseMove } = useNavigationHoverLogic({
     activeImageIndex,
     contextSafe,
@@ -478,6 +541,7 @@ export function useNavigationLogic(
   });
 
   return {
+    dismissMenuForRouteNavigation,
     getHoverProps,
     handleHover,
     handleMouseMove,

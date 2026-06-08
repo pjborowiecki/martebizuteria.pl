@@ -23,10 +23,17 @@
     "activityItems": {
       "orderDelivered": "Order {id} has been delivered",
       "orderShipped": "Order {id} has been shipped",
-      "wishlistAdded": "Added {item} to wishlist",
-      "addressUpdated": "Updated shipping address",
-      "reviewPosted": "Posted a review for {item}"
+      "orderPlaced": "Placed order {id}",
+      "cartItemAdded": "Added {item} to cart",
+      "loginSuccess": "Signed in successfully",
+      "loginFailed": "Failed sign-in attempt",
+      "logout": "Signed out"
     },
+    "recentOrders": "Recent Orders",
+    "viewAllOrders": "View all orders",
+    "noActivity": "No recent activity yet.",
+    "noRecommendations": "No recommendations available right now.",
+    "noRecentOrders": "You have not placed any orders yet.",
     "recommendations": "Recommended for You",
     "recommendationsDesc": "Based on your recent orders",
     "viewProduct": "View",
@@ -77,6 +84,8 @@
     "downloadInvoice": "Download Invoice",
     "needHelp": "Need Help?",
     "deliveredOn": "Delivered on {date}",
+    "notFound": "Order not found.",
+    "trackingUnavailable": "Tracking not available yet.",
     "status": {
       "delivered": "Delivered",
       "shipped": "Shipped",
@@ -100,6 +109,7 @@
     "saved": "Saved Addresses",
     "addNew": "Add New",
     "default": "Default",
+    "makeDefault": "Make default",
     "labels": {
       "home": "Home",
       "work": "Work",
@@ -116,10 +126,10 @@
       "save": "Save Address",
       "cancel": "Cancel"
     },
-    "filter": {
-      "shipping": "Shipping",
-      "billing": "Billing"
-    }
+    "empty": "No saved addresses yet.",
+    "saveError": "Could not save address.",
+    "deleteError": "Could not delete address.",
+    "saved": "Address saved."
   },
   "payment": {
     "eyebrow": "Wallet",
@@ -131,6 +141,7 @@
     "expires": "Expires",
     "makeDefault": "Make Default",
     "securityNote": "Security",
+    "empty": "No saved payment methods. Cards are entered securely at checkout.",
     "securityDesc": "Your payment information is securely encrypted. We do not store full credit card numbers on our servers.",
     "form": {
       "cardNumber": "Card Number",
@@ -161,6 +172,12 @@
       "success": "Success",
       "blocked": "Blocked"
     },
+    "emptySessions": "No other active sessions.",
+    "revokeSuccess": "Session revoked.",
+    "revokeError": "Could not revoke session.",
+    "revokeAllSuccess": "Other sessions signed out.",
+    "activeNow": "Active now",
+    "noLoginHistory": "No login history yet.",
     "securityTips": "Security Recommendations",
     "tip1": "Use a strong, unique password for each of your accounts.",
     "tip2": "Enable two-factor authentication (2FA) if available.",
@@ -178,7 +195,9 @@
     "lastName": "Last Name",
     "email": "Email Address",
     "phone": "Phone Number",
-    "birthDate": "Date of Birth",
+    "name": "Full name",
+    "saved": "Profile updated.",
+    "saveError": "Could not update profile.",
     "preferences": "Preferences",
     "language": "Language",
     "currency": "Currency",

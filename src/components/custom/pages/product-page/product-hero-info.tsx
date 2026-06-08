@@ -1,27 +1,24 @@
-import { type JSX, useCallback, useEffect, useState } from "react";
+import { type JSX, useEffect, useRef, useState } from "react";
 
 import { useFormatter, useLocale, useTranslations } from "use-intl";
 
-import { getProductImageUrl } from "~/src/lib/_utils/image";
-import { trackCartItemAdded } from "~/src/lib/customer-activity/customer-activity.tracking";
 import { centsToDisplayAmount } from "~/src/lib/utils";
 
 import { Button } from "~/src/components/shadcn/button";
 import { Separator } from "~/src/components/shadcn/separator";
 
+import { resolveProductHeroDetailLine } from "~/src/components/custom/pages/product-page/product-hero-detail-line";
 import { ProductHeroDetails } from "~/src/components/custom/pages/product-page/product-hero-details";
+import { ProductMobileBuyBar } from "~/src/components/custom/pages/product-page/product-mobile-buy-bar";
 import { ProductVariantPicker } from "~/src/components/custom/pages/product-page/product-variant-picker";
 import { QuantityPicker } from "~/src/components/custom/pages/product-page/quantity-picker";
+import { useProductHeroCart } from "~/src/components/custom/pages/product-page/use-product-hero-cart";
 
-import { getVariantQuantityAvailable, isVariantPurchasable } from "~/src/modules/inventory/inventory.availability.utils";
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils";
-import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils";
 import type { StorefrontProduct, StorefrontProductVariant } from "~/src/modules/product/product.types";
-import { useCartStore } from "~/src/stores/cart.store";
 
-const MIN_QUANTITY = 1;
-const RESET_ADDED_TIMEOUT = 2000;
 const FIRST_VARIANT_INDEX = 0;
+const EMPTY_SKU = "";
 
 export interface ProductHeroInfoProps {
   readonly onSelectOptionValue: (optionId: string, valueId: string) => void;
@@ -35,75 +32,71 @@ export function ProductHeroInfo({ onSelectOptionValue, product, selectedValueIds
   const tProduct = useTranslations("pages.product");
   const format = useFormatter();
   const locale = useLocale();
-  const [quantity, setQuantity] = useState(MIN_QUANTITY);
-  const [isAdded, setIsAdded] = useState(false);
-  const { addItem } = useCartStore();
 
   const variantPrice = selectedVariant?.price;
-  const availableQuantity = getVariantQuantityAvailable(selectedVariant);
-  const isOutOfStock = availableQuantity < MIN_QUANTITY;
-  const canPurchase = isVariantPurchasable(selectedVariant, quantity);
-  const price =
-    variantPrice === undefined ? t("price") : format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" });
-
   const heroImage = selectedVariant?.imageUrls[FIRST_VARIANT_INDEX] ?? product.sharedImageUrls[FIRST_VARIANT_INDEX] ?? product.thumbnail;
+  const price =
+    variantPrice === undefined ? "—" : format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" });
 
-  useEffect(() => {
-    if (quantity > availableQuantity && availableQuantity >= MIN_QUANTITY) {
-      setQuantity(availableQuantity);
-    }
-  }, [availableQuantity, quantity]);
-
-  useEffect(() => {
-    setQuantity(MIN_QUANTITY);
-  }, [selectedVariant?.id]);
+  const { availableQuantity, canPurchase, handleAddToCart, isAdded, isOutOfStock, quantity, setQuantity } = useProductHeroCart({
+    heroImage,
+    price,
+    product,
+    selectedVariant,
+    variantPrice
+  });
 
   const specifications = selectedVariant?.specifications ?? product.sharedSpecifications;
+  const selectedSku = selectedVariant?.sku?.trim() ?? EMPTY_SKU;
+  const productDetailLine = resolveProductHeroDetailLine(product.subtitle, specifications, locale);
+  const purchaseRowRef = useRef<HTMLDivElement>(null);
+  const [showMobileBuyBar, setShowMobileBuyBar] = useState(false);
 
-  const handleAddToCart = useCallback(() => {
-    if (selectedVariant === undefined || variantPrice === undefined || !isVariantPurchasable(selectedVariant, quantity)) {
-      return;
-    }
+  useEffect(
+    function observePurchaseRowVisibility() {
+      const purchaseRow = purchaseRowRef.current;
 
-    const variantTitle = selectedVariant.title === DEFAULT_VARIANT_TITLE ? "" : selectedVariant.title;
+      if (purchaseRow === null) {
+        return;
+      }
 
-    const addQuantity = Math.max(MIN_QUANTITY, quantity);
+      const mobileQuery = globalThis.matchMedia("(max-width: 1023px)");
 
-    addItem({
-      id: selectedVariant.id,
-      image: getProductImageUrl(heroImage),
-      price,
-      qty: addQuantity,
-      rawPrice: variantPrice,
-      slug: product.handle,
-      title: product.title,
-      variantId: selectedVariant.id,
-      variantTitle
-    });
+      const updateVisibility = (entries: readonly IntersectionObserverEntry[]): void => {
+        if (!mobileQuery.matches) {
+          setShowMobileBuyBar(false);
+          return;
+        }
 
-    trackCartItemAdded({
-      productTitle: product.title,
-      quantity: addQuantity,
-      variantId: selectedVariant.id,
-      variantTitle
-    });
+        const [entry] = entries;
+        if (entry === undefined) {
+          return;
+        }
 
-    setIsAdded(true);
-  }, [addItem, heroImage, price, product, quantity, selectedVariant, variantPrice]);
+        setShowMobileBuyBar(!entry.isIntersecting);
+      };
 
-  useEffect(() => {
-    if (!isAdded) {
-      return;
-    }
+      const observer = new IntersectionObserver(updateVisibility, {
+        rootMargin: "0px 0px -12px 0px",
+        threshold: 0
+      });
 
-    const timer = setTimeout(() => {
-      setIsAdded(false);
-    }, RESET_ADDED_TIMEOUT);
+      const handleViewportChange = (): void => {
+        if (!mobileQuery.matches) {
+          setShowMobileBuyBar(false);
+        }
+      };
 
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [isAdded]);
+      observer.observe(purchaseRow);
+      mobileQuery.addEventListener("change", handleViewportChange);
+
+      return function disconnectPurchaseRowObserver() {
+        observer.disconnect();
+        mobileQuery.removeEventListener("change", handleViewportChange);
+      };
+    },
+    [isOutOfStock]
+  );
 
   return (
     <aside className="reveal space-y-6 lg:sticky lg:top-24 lg:self-start">
@@ -114,7 +107,9 @@ export function ProductHeroInfo({ onSelectOptionValue, product, selectedValueIds
             : resolveCollectionTitle(product.collection.titles, locale) || t("collection")}
         </p>
         <h1 className="font-serif text-4xl leading-tight md:text-5xl">{product.title}</h1>
-        <p className="text-[10px] tracking-wider text-muted-foreground/60">{t("sku")}</p>
+        {selectedSku !== EMPTY_SKU && (
+          <p className="text-[10px] tracking-wider text-muted-foreground/60">{t("sku", { sku: selectedSku })}</p>
+        )}
       </header>
 
       <Separator className="bg-border" />
@@ -123,14 +118,14 @@ export function ProductHeroInfo({ onSelectOptionValue, product, selectedValueIds
 
       <ProductVariantPicker onSelectOptionValue={onSelectOptionValue} product={product} selectedValueIds={selectedValueIds} />
 
-      <p className="text-xs tracking-wide text-muted-foreground">{t("material")}</p>
+      {productDetailLine !== undefined && <p className="text-xs tracking-wide text-muted-foreground">{productDetailLine}</p>}
 
       <Separator className="bg-border" />
 
       {isOutOfStock ? (
         <p className="text-sm tracking-wide text-destructive">{tProduct("outOfStock")}</p>
       ) : (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div ref={purchaseRowRef} className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <QuantityPicker maxQuantity={availableQuantity} quantity={quantity} setQuantity={setQuantity} />
 
           <Button
@@ -147,6 +142,10 @@ export function ProductHeroInfo({ onSelectOptionValue, product, selectedValueIds
       <Separator className="bg-border" />
 
       <ProductHeroDetails description={product.description} specifications={specifications} />
+
+      {showMobileBuyBar && !isOutOfStock && (
+        <ProductMobileBuyBar canPurchase={canPurchase} isAdded={isAdded} onAddToCart={handleAddToCart} price={price} />
+      )}
     </aside>
   );
 }

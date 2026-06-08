@@ -1,0 +1,26 @@
+{
+  "index": {
+    "title": "M'Arte Guide",
+    "description": "Tips, inspiration, and jewelry know-how — from care rituals to layered styling.",
+    "readArticle": "Read article"
+  },
+  "post": {
+    "placeholder": "This article is being prepared. The full story will be published soon.",
+    "backToGuide": "Back to guide",
+    "goHome": "Home"
+  },
+  "posts": {
+    "rytual-pielegnacji-bizuterii": {
+      "title": "Care ritual: how to properly care for your daily jewelry",
+      "description": "Practical tips for everyday care of silver and natural-stone jewelry."
+    },
+    "sztuka-proporcji-warstwowe-kompozycje": {
+      "title": "The art of proportion: how to build layered compositions",
+      "description": "How to combine necklaces, earrings, and rings into a cohesive, elegant look."
+    },
+    "przewodnik-po-mineralach": {
+      "title": "Mineral guide: meaning and choosing natural stones",
+      "description": "A short guide to the minerals most often featured in M'Arte collections."
+    }
+  }
+}

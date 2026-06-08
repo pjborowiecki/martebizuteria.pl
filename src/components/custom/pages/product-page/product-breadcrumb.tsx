@@ -27,7 +27,7 @@ export function ProductBreadcrumb({ productTitle }: ProductBreadcrumbProps): JSX
 
   return (
     <Breadcrumb className="reveal mx-auto max-w-400 px-6 pt-8 lg:px-12 lg:pt-10">
-      <BreadcrumbList className="gap-2 text-[10px] tracking-[0.2em] uppercase sm:gap-2">
+      <BreadcrumbList className="flex-nowrap gap-2 overflow-hidden text-[10px] tracking-[0.2em] uppercase sm:gap-2">
         <BreadcrumbItem>
           <BreadcrumbLink render={HOME_LINK}>{t("breadcrumbHome")}</BreadcrumbLink>
         </BreadcrumbItem>
@@ -40,8 +40,8 @@ export function ProductBreadcrumb({ productTitle }: ProductBreadcrumbProps): JSX
         <BreadcrumbSeparator>
           <span>/</span>
         </BreadcrumbSeparator>
-        <BreadcrumbItem>
-          <BreadcrumbPage>{productTitle}</BreadcrumbPage>
+        <BreadcrumbItem className="min-w-0">
+          <BreadcrumbPage className="truncate">{productTitle}</BreadcrumbPage>
         </BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>

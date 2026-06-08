@@ -1,14 +1,25 @@
-import { queryOptions, type QueryClient } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions, type InfiniteData, type QueryClient } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod/v4";
 
 import { CONSTANTS } from "~/src/constants";
 import { DEFAULT_LOCALE } from "~/src/constants/_constants/locales";
 
 import type { DateColumnFilterValue, NumericColumnFilterValue } from "~/src/lib/_utils/admin-column-filters";
 import { normalizeAdminSearchTerm } from "~/src/lib/_utils/admin-search.server";
-import { buildListPaginationResult, LIST_PAGE_FIRST, listPaginationParamsFromPage } from "~/src/lib/_utils/list-pagination";
+import {
+  buildListPaginationResult,
+  LIST_PAGE_FIRST,
+  LIST_PAGE_STEP,
+  listPaginationParamsFromPage,
+  type ListPaginationResult
+} from "~/src/lib/_utils/list-pagination";
+import { catalogDebugLog } from "~/src/lib/dev/catalog-debug-log";
 
 import { isProductInStock } from "~/src/modules/inventory/inventory.availability.utils";
+import { categoryAccessors } from "~/src/modules/product-category/product-category.accessors";
+import { collectDescendantCategoryIds } from "~/src/modules/product-category/product-category.utils";
+import { collectionAccessors } from "~/src/modules/product-collection/product-collection.accessors";
 import {
   productAccessors,
   type AdminProductsExportListParams,
@@ -17,11 +28,25 @@ import {
 import type { AdminProductsListSort } from "~/src/modules/product/product.admin-list-sort";
 import {
   ADMIN_PRODUCTS_PAGE_SIZE,
+  LANDING_NEW_ARRIVALS_COLLECTION_HANDLE,
+  LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
   PRODUCT_QUERY_STALE_MS,
+  PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE,
+  PRODUCT_STOREFRONT_FILTERED_MAX,
   type ProductInventoryLevel,
   type ProductStatus,
   type ProductVariantKind
 } from "~/src/modules/product/product.constants";
+import {
+  buildEffectiveStorefrontProductsSearch,
+  hasActiveStorefrontProductFilters,
+  normalizeStorefrontProductsSearch,
+  storefrontCatalogFilterOptions,
+  storefrontProductsSearchSchema,
+  type StorefrontCatalogScope,
+  type StorefrontProductsPageInput,
+  type StorefrontProductsSearch
+} from "~/src/modules/product/product.storefront-catalog";
 import type { Product } from "~/src/modules/product/product.types";
 import {
   buildSkuSummaryByProductId,
@@ -32,6 +57,11 @@ import {
 } from "~/src/modules/product/product.utils";
 
 const ZERO_COUNT = 0;
+const CENTS_PER_PLN = 100;
+
+const storefrontProductsPageInputSchema = storefrontProductsSearchSchema.extend({
+  page: z.coerce.number().int().min(LIST_PAGE_FIRST).optional()
+});
 
 export interface AdminProductsPageInput {
   readonly categoryId?: string;
@@ -114,6 +144,23 @@ function getPublishedProducts() {
   return productAccessors.getPublishedProductsInStock();
 }
 
+async function getLandingNewArrivalsProducts(): Promise<Awaited<ReturnType<typeof getPublishedProducts>>> {
+  const collection = await collectionAccessors.getStorefrontCollectionByHandleQuery.execute({
+    handle: LANDING_NEW_ARRIVALS_COLLECTION_HANDLE
+  });
+
+  if (collection === undefined) {
+    return [];
+  }
+
+  const { items } = await productAccessors.getPublishedProductsByCollectionId(collection.id, {
+    limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
+    offset: ZERO_COUNT
+  });
+
+  return items;
+}
+
 async function getProductStats(): Promise<Product["stats"]> {
   const [[counts], lowStock] = await Promise.all([
     productAccessors.getProductStatusCountsQuery.execute(),
@@ -189,7 +236,91 @@ async function getAdminProductsExport(input: AdminProductsExportInput): Promise<
   return rows.map((row) => toAdminProductListItem(row, aggregates.statsByProductId, aggregates.skuSummaryByProductId));
 }
 
+async function resolveStorefrontCategoryIdsForSearch(categoryHandle: string | undefined): Promise<string[] | undefined> {
+  if (categoryHandle === undefined) {
+    return;
+  }
+
+  const category = await categoryAccessors.getStorefrontCategoryByHandleQuery.execute({ handle: categoryHandle });
+  if (category === undefined) {
+    return [];
+  }
+
+  const hierarchy = await categoryAccessors.getCategoryHierarchyQuery.execute();
+  return collectDescendantCategoryIds(category.id, hierarchy);
+}
+
+async function resolveStorefrontCollectionIdForSearch(collectionHandle: string | undefined): Promise<string | undefined> {
+  if (collectionHandle === undefined) {
+    return;
+  }
+
+  const collection = await collectionAccessors.getStorefrontCollectionByHandleQuery.execute({ handle: collectionHandle });
+  return collection?.id;
+}
+
+async function resolveStorefrontCatalogFilters(search: StorefrontProductsSearch) {
+  const categoryIds = await resolveStorefrontCategoryIdsForSearch(search.category);
+  const collectionId = await resolveStorefrontCollectionIdForSearch(search.collection);
+
+  return {
+    categoryIds,
+    collectionId,
+    maxPriceCents: search.maxPrice === undefined ? undefined : Math.round(search.maxPrice * CENTS_PER_PLN),
+    minPriceCents: search.minPrice === undefined ? undefined : Math.round(search.minPrice * CENTS_PER_PLN),
+    searchTerm: search.q,
+    sort: search.sort
+  };
+}
+
+async function getStorefrontProductsPage(input: StorefrontProductsPageInput) {
+  const startedAt = performance.now();
+  const search = normalizeStorefrontProductsSearch(storefrontProductsPageInputSchema.parse(input));
+  const page = input.page ?? LIST_PAGE_FIRST;
+  const filtered = hasActiveStorefrontProductFilters(search);
+  const pageSize = filtered ? PRODUCT_STOREFRONT_FILTERED_MAX : PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE;
+  const listParams = listPaginationParamsFromPage(page, pageSize);
+  const filters = await resolveStorefrontCatalogFilters(search);
+
+  catalogDebugLog("storefrontProductsPage.start", { filters, page, search });
+
+  if (filters.categoryIds?.length === ZERO_COUNT) {
+    catalogDebugLog("storefrontProductsPage.emptyCategory", { search });
+    return buildListPaginationResult([], ZERO_COUNT, listParams);
+  }
+
+  const { items, total } = await productAccessors.getStorefrontPublishedProductsPage({
+    ...listParams,
+    categoryIds: filters.categoryIds,
+    collectionId: filters.collectionId,
+    maxPriceCents: filters.maxPriceCents,
+    minPriceCents: filters.minPriceCents,
+    searchTerm: filters.searchTerm,
+    sort: filters.sort
+  });
+
+  catalogDebugLog("storefrontProductsPage.done", {
+    collectionId: filters.collectionId,
+    itemCount: items.length,
+    ms: Math.round(performance.now() - startedAt),
+    page,
+    total
+  });
+
+  return buildListPaginationResult(items, total, listParams);
+}
+
+type StorefrontProductsPage = ListPaginationResult<
+  Awaited<ReturnType<typeof productAccessors.getStorefrontPublishedProductsPage>>["items"][number]
+>;
+
 const fetchProductsFn = createServerFn({ method: "GET" }).handler(() => getPublishedProducts());
+
+const fetchStorefrontProductsPageFn = createServerFn({ method: "GET" })
+  .inputValidator((input: StorefrontProductsPageInput) => storefrontProductsPageInputSchema.parse(input))
+  .handler(({ data }) => getStorefrontProductsPage(data));
+
+const fetchLandingNewArrivalsProductsFn = createServerFn({ method: "GET" }).handler(() => getLandingNewArrivalsProducts());
 
 const fetchAdminProductsFn = createServerFn({ method: "GET" }).handler(() => getAdminProductListItems());
 
@@ -220,10 +351,12 @@ export const productQueries = {
   fetchAdminProductsExportFn,
   fetchAdminProductsFn,
   fetchAdminProductsPageFn,
+  fetchLandingNewArrivalsProductsFn,
   fetchProductByHandleFn,
   fetchProductStatsFn,
   fetchProductsFn,
-  fetchRelatedProductsFn
+  fetchRelatedProductsFn,
+  fetchStorefrontProductsPageFn
 };
 
 export const productQueryOptions = {
@@ -252,6 +385,12 @@ export const productQueryOptions = {
       refetchOnWindowFocus: false,
       staleTime: PRODUCT_QUERY_STALE_MS
     }),
+  landingNewArrivalsQueryOptions: () =>
+    queryOptions({
+      queryFn: () => fetchLandingNewArrivalsProductsFn(),
+      queryKey: CONSTANTS.QUERY_KEYS.PRODUCT.LANDING_NEW_ARRIVALS,
+      staleTime: PRODUCT_QUERY_STALE_MS
+    }),
   productQueryOptions: (handle: string, locale: string = DEFAULT_LOCALE) =>
     queryOptions({
       queryFn: () => fetchProductByHandleFn({ data: { handle, locale } }),
@@ -274,7 +413,36 @@ export const productQueryOptions = {
     queryOptions({
       queryFn: () => fetchRelatedProductsFn({ data: { categoryId, excludeProductId, locale } }),
       queryKey: [...CONSTANTS.QUERY_KEYS.PRODUCT.RELATED_BY_CATEGORY, categoryId, excludeProductId, locale] as const
-    })
+    }),
+  storefrontProductsInfiniteQueryOptions: (search: StorefrontProductsSearch, scope?: StorefrontCatalogScope) => {
+    const normalized = normalizeStorefrontProductsSearch(search);
+    const effective = buildEffectiveStorefrontProductsSearch(normalized, scope);
+    const filtered = hasActiveStorefrontProductFilters(effective, storefrontCatalogFilterOptions(scope));
+
+    return infiniteQueryOptions<
+      StorefrontProductsPage,
+      Error,
+      InfiniteData<StorefrontProductsPage, number>,
+      readonly [...typeof CONSTANTS.QUERY_KEYS.PRODUCT.STOREFRONT_PAGE, StorefrontProductsSearch],
+      number
+    >({
+      getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+        if (filtered) {
+          return;
+        }
+
+        if (!lastPage.hasMore) {
+          return;
+        }
+
+        return lastPageParam + LIST_PAGE_STEP;
+      },
+      initialPageParam: LIST_PAGE_FIRST,
+      queryFn: ({ pageParam }) => fetchStorefrontProductsPageFn({ data: { ...effective, page: pageParam } }),
+      queryKey: [...CONSTANTS.QUERY_KEYS.PRODUCT.STOREFRONT_PAGE, effective] as const,
+      staleTime: PRODUCT_QUERY_STALE_MS
+    });
+  }
 };
 
 export async function prefetchAdminProductByHandle(queryClient: QueryClient, handle: string): Promise<void> {

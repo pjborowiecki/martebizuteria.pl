@@ -42,6 +42,8 @@ export const ROUTES = {
   AUTH_RESET_PASSWORD: "/auth/reset-password",
   AUTH_SIGN_IN: "/auth/sign-in",
   AUTH_SIGN_UP: "/auth/sign-up",
+  BLOG: "/blog",
+  BLOG_POST: "/blog/$slug",
   CART: "/cart",
   CATEGORIES: "/categories",
   CATEGORY: "/categories/$handle",

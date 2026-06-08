@@ -24,6 +24,7 @@ import type pagesAuthSignIn from "~/messages/en/pages.auth.sign-in.json";
 import type pagesAuthSignUp from "~/messages/en/pages.auth.sign-up.json";
 import type pagesAuthToast from "~/messages/en/pages.auth.toast.json";
 import type pagesAuthValidations from "~/messages/en/pages.auth.validations.json";
+import type pagesBlog from "~/messages/en/pages.blog.json";
 import type pagesCart from "~/messages/en/pages.cart.json";
 import type pagesCategories from "~/messages/en/pages.categories.json";
 import type pagesCategory from "~/messages/en/pages.category.json";
@@ -73,6 +74,7 @@ export interface Messages {
       readonly toast: typeof pagesAuthToast;
       readonly validations: typeof pagesAuthValidations;
     };
+    readonly blog: typeof pagesBlog;
     readonly cart: typeof pagesCart;
     readonly categories: typeof pagesCategories;
     readonly category: typeof pagesCategory;

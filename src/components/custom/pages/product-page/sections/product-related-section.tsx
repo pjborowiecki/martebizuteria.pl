@@ -1,70 +1,83 @@
-import { type JSX, useRef } from "react";
+import { type JSX, useMemo, useRef } from "react";
 
-import { useFormatter, useTranslations } from "use-intl";
+import { useFormatter, useLocale, useTranslations } from "use-intl";
+
+import { centsToDisplayAmount } from "~/src/lib/utils";
 
 import { Separator } from "~/src/components/shadcn/separator";
 
 import { ProductCard } from "~/src/components/custom/product-card";
 
 import { useProductAnimations } from "~/src/hooks/use-product-animations";
+import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils";
 
-const CENTS_PER_UNIT = 100;
+const EMPTY_PRODUCT_COUNT = 0;
 
 export interface RelatedProductItem {
-  readonly detailKey: string;
+  readonly handle: string;
+  readonly id: string;
   readonly image: string;
-  readonly nameKey: string;
-  readonly params: { readonly handle: string };
-  readonly price?: number;
-  readonly priceKey?: string;
+  readonly name: string;
+  readonly subtitle: string;
+  readonly variantId?: string;
+  readonly variantPrice?: number;
+  readonly variantTitle?: string;
 }
 
 export interface ProductRelatedSectionProps {
   readonly products: readonly RelatedProductItem[];
 }
 
-export function ProductRelatedSection({ products }: ProductRelatedSectionProps): JSX.Element {
-  const t = useTranslations("pages.product.relatedSection");
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useProductAnimations({ dependencies: [products], rootRef: sectionRef });
-
+function RelatedProductCard({ className, product }: Readonly<{ className?: string; product: RelatedProductItem }>): JSX.Element {
   const format = useFormatter();
+  const params = useMemo(() => ({ handle: product.handle }), [product.handle]);
+
+  const { variantPrice, variantTitle: resolvedVariantTitle } = product;
+  const price =
+    variantPrice === undefined ? undefined : format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" });
+  const variantTitle = resolvedVariantTitle === DEFAULT_VARIANT_TITLE ? "" : (resolvedVariantTitle ?? "");
 
   return (
-    <section className="mx-auto max-w-400 px-6 pt-20 pb-20 lg:px-12 lg:pt-28 lg:pb-28" ref={sectionRef}>
+    <ProductCard
+      className={className}
+      detail={product.subtitle}
+      href="/products/$handle"
+      image={product.image}
+      name={product.name}
+      params={params}
+      parallax
+      price={price}
+      rawPrice={variantPrice}
+      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+      slug={product.handle}
+      variantId={product.variantId}
+      variantTitle={variantTitle}
+    />
+  );
+}
+
+export function ProductRelatedSection({ products }: ProductRelatedSectionProps): JSX.Element | undefined {
+  const t = useTranslations("pages.product.relatedSection");
+  const locale = useLocale();
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useProductAnimations({ dependencies: [locale, products], rootRef: sectionRef });
+
+  if (products.length === EMPTY_PRODUCT_COUNT) {
+    return undefined;
+  }
+
+  return (
+    <section className="mx-auto max-w-400 px-6 pb-20 lg:px-12 lg:pb-28" ref={sectionRef}>
       <div className="reveal mb-10 space-y-3">
         <Separator className="max-w-16 bg-foreground/30" />
         <h2 className="font-serif text-3xl leading-tight md:text-4xl">{t("title")}</h2>
       </div>
 
-      <div className="grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((item) => {
-          const detail = item.detailKey.includes("related.") ? t(item.detailKey) : item.detailKey;
-          const name = item.nameKey.includes("related.") ? t(item.nameKey) : item.nameKey;
-
-          const price = (() => {
-            if (item.price === undefined) {
-              return item.priceKey === undefined ? undefined : t(item.priceKey);
-            }
-            return format.number(item.price / CENTS_PER_UNIT, { currency: "PLN", style: "currency" });
-          })();
-
-          return (
-            <ProductCard
-              className="reveal"
-              detail={detail}
-              href="/products/$handle"
-              image={item.image}
-              key={item.nameKey}
-              name={name}
-              parallax
-              params={item.params}
-              price={price}
-              sizes="(max-width: 640px) 100vw, 33vw"
-            />
-          );
-        })}
+      <div className="grid gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+        {products.map((product) => (
+          <RelatedProductCard key={product.id} className="reveal" product={product} />
+        ))}
       </div>
     </section>
   );

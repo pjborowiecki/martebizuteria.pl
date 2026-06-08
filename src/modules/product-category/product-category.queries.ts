@@ -8,6 +8,7 @@ import { buildListPaginationResult, LIST_PAGE_FIRST, listPaginationParamsFromPag
 import { categoryOnProductAccessors } from "~/src/modules/category-on-product/category-on-product.accessors";
 import { categoryAccessors } from "~/src/modules/product-category/product-category.accessors";
 import { CATEGORY_QUERY_STALE_MS } from "~/src/modules/product-category/product-category.constants";
+import type { Category } from "~/src/modules/product-category/product-category.types";
 import {
   collectDescendantCategoryIds,
   coerceCategoryLocaleMap,
@@ -18,11 +19,26 @@ import {
 import { productAccessors } from "~/src/modules/product/product.accessors";
 import { PRODUCT_STOREFRONT_LIST_LIMIT } from "~/src/modules/product/product.constants";
 
+const CATEGORY_PRODUCT_COUNT_LIST_LIMIT = 1;
 const ZERO_COUNT = 0;
 
 async function getStorefrontRootCategories() {
-  const roots = await categoryAccessors.getStorefrontRootCategoriesQuery.execute();
-  return roots.map((root) => withActiveSortedChildren(root));
+  const [roots, hierarchy] = await Promise.all([
+    categoryAccessors.getStorefrontRootCategoriesQuery.execute(),
+    categoryAccessors.getCategoryHierarchyQuery.execute()
+  ]);
+
+  const rootsWithChildren = roots.map((root) => withActiveSortedChildren(root));
+  const countListParams = listPaginationParamsFromPage(LIST_PAGE_FIRST, CATEGORY_PRODUCT_COUNT_LIST_LIMIT);
+
+  return Promise.all(
+    rootsWithChildren.map(async (root) => {
+      const categoryIds = collectDescendantCategoryIds(root.id, hierarchy);
+      const { total } = await productAccessors.getPublishedProductsByCategoryIds(categoryIds, countListParams);
+
+      return Object.assign(root, { productCount: total }) as Category["storefrontListItem"];
+    })
+  );
 }
 
 const fetchCategoriesFn = createServerFn({ method: "GET" }).handler(() => getStorefrontRootCategories());
@@ -53,6 +69,10 @@ interface CategoryByHandleInput {
   readonly page?: number;
 }
 
+const fetchStorefrontCategoryMetaFn = createServerFn({ method: "GET" })
+  .inputValidator((handle: string) => handle)
+  .handler(({ data: handle }) => categoryAccessors.getStorefrontCategoryByHandleQuery.execute({ handle }));
+
 const fetchCategoryByHandleFn = createServerFn({ method: "GET" })
   .inputValidator((input: CategoryByHandleInput) => input)
   .handler(async ({ data: { handle, page = LIST_PAGE_FIRST } }) => {
@@ -75,7 +95,8 @@ export const categoryQueries = {
   fetchAdminCategoriesFn,
   fetchCategoriesFn,
   fetchCategoryByHandleFn,
-  fetchCategoryStatsFn
+  fetchCategoryStatsFn,
+  fetchStorefrontCategoryMetaFn
 };
 
 export const categoryQueryOptions = {

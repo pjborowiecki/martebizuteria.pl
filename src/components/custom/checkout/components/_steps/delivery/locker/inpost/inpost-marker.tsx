@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type JSX } from "react";
+import { useCallback, useMemo, type JSX, type MouseEvent } from "react";
 
 import { Package } from "lucide-react";
 import { useWatch } from "react-hook-form";
@@ -26,7 +26,7 @@ export function InpostMarker({ point }: InpostMarkerProps): JSX.Element {
   const isSelected = selectedPointId === point.name;
 
   const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
+    (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
       setValue("lockerId", point.name);
     },

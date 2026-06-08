@@ -1,0 +1,26 @@
+{
+  "index": {
+    "title": "Przewodnik M'ARTE",
+    "description": "Porady, inspiracje i wiedza o biżuterii — od pielęgnacji po kompozycję warstwową.",
+    "readArticle": "Czytaj artykuł"
+  },
+  "post": {
+    "placeholder": "Ten artykuł jest w przygotowaniu. Wkrótce opublikujemy pełną treść.",
+    "backToGuide": "Wróć do przewodnika",
+    "goHome": "Strona główna"
+  },
+  "posts": {
+    "rytual-pielegnacji-bizuterii": {
+      "title": "Rytuał pielęgnacji: jak prawidłowo dbać o biżuterię na co dzień",
+      "description": "Praktyczne wskazówki dotyczące codziennej pielęgnacji biżuterii ze srebra i kamieni naturalnych."
+    },
+    "sztuka-proporcji-warstwowe-kompozycje": {
+      "title": "Sztuka proporcji: jak budować warstwowe kompozycje",
+      "description": "Jak łączyć naszyjniki, kolczyki i pierścionki w spójną, elegancką całość."
+    },
+    "przewodnik-po-mineralach": {
+      "title": "Przewodnik po minerałach: znaczenie i wybór kamieni naturalnych",
+      "description": "Krótki przewodnik po minerałach, które najczęściej pojawiają się w kolekcjach M'ARTE."
+    }
+  }
+}

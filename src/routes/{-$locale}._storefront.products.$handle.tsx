@@ -11,18 +11,13 @@ import { getProductImageUrl, prefetchSingleProductImage } from "~/src/lib/_utils
 import { isValidLocale } from "~/src/lib/utils";
 
 import { ProductHeroSection } from "~/src/components/custom/pages/product-page/sections/product-hero-section";
-import { ProductParallaxSection } from "~/src/components/custom/pages/product-page/sections/product-parallax-section";
 import { ProductRelatedSection } from "~/src/components/custom/pages/product-page/sections/product-related-section";
 
-import { PRODUCT_GALLERY_MOCK } from "~/src/data/product-data";
 import { useProductAnimations } from "~/src/hooks/use-product-animations";
 import { productQueryOptions } from "~/src/modules/product/product.queries";
 import type { Product } from "~/src/modules/product/product.types";
-import { resolveProductDescription, resolveProductTitle } from "~/src/modules/product/product.utils";
+import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils";
 
-const FIRST_IMAGE_INDEX = 0;
-const PARALLAX_IMAGE_INDEX = 2;
-const EMPTY_LENGTH = 0;
 const FIRST_VARIANT_INDEX = 0;
 
 export const Route = createFileRoute("/{-$locale}/_storefront/products/$handle")({
@@ -61,18 +56,7 @@ function ProductPage(): JSX.Element {
   const t = useTranslations("pages.product");
   const rootRef = useRef<HTMLDivElement>(null);
 
-  useProductAnimations({ rootRef });
-
-  const images = useMemo(() => {
-    if (product === false) {
-      return PRODUCT_GALLERY_MOCK;
-    }
-    const productImages = product.imageUrls ?? [];
-    if (productImages.length === EMPTY_LENGTH) {
-      return [getProductImageUrl(product.thumbnail)];
-    }
-    return productImages.map((src) => getProductImageUrl(src));
-  }, [product]);
+  useProductAnimations({ dependencies: [handle], rootRef });
 
   const fallback = useMemo(
     () => <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">{t("loadingRelated")}</div>,
@@ -86,7 +70,6 @@ function ProductPage(): JSX.Element {
   return (
     <main className="bg-background text-foreground" ref={rootRef}>
       <ProductHeroSection product={product} />
-      <ProductParallaxSection imageSrc={images[PARALLAX_IMAGE_INDEX] ?? images[FIRST_IMAGE_INDEX] ?? ""} productTitle={product.title} />
 
       {deferredRelated !== undefined && (
         <Suspense fallback={fallback}>
@@ -97,8 +80,8 @@ function ProductPage(): JSX.Element {
   );
 }
 
-type RelatedProduct = Pick<Product["select"], "descriptions" | "handle" | "thumbnail" | "titles"> & {
-  readonly variants?: readonly { readonly price: number }[];
+type RelatedProduct = Pick<Product["select"], "handle" | "id" | "subtitles" | "thumbnail" | "titles"> & {
+  readonly variants?: readonly { readonly id: string; readonly price: number; readonly title: string }[];
 };
 
 function MappedRelatedProducts({ relatedProducts }: Readonly<{ relatedProducts: readonly RelatedProduct[] }>): JSX.Element {
@@ -106,13 +89,20 @@ function MappedRelatedProducts({ relatedProducts }: Readonly<{ relatedProducts: 
   const resolvedLocale = locale !== undefined && isValidLocale(locale) ? locale : DEFAULT_LOCALE;
   const mappedProducts = useMemo(
     () =>
-      relatedProducts.map((p) => ({
-        detailKey: resolveProductDescription(p.descriptions, resolvedLocale) || "",
-        image: getProductImageUrl(p.thumbnail),
-        nameKey: resolveProductTitle(p.titles, resolvedLocale),
-        params: { handle: p.handle },
-        price: p.variants?.[FIRST_VARIANT_INDEX]?.price
-      })),
+      relatedProducts.map((product) => {
+        const variant = product.variants?.[FIRST_VARIANT_INDEX];
+
+        return {
+          handle: product.handle,
+          id: product.id,
+          image: getProductImageUrl(product.thumbnail),
+          name: resolveProductTitle(product.titles, resolvedLocale),
+          subtitle: resolveProductSubtitle(product.subtitles, resolvedLocale),
+          variantId: variant?.id,
+          variantPrice: variant?.price,
+          variantTitle: variant?.title
+        };
+      }),
     [relatedProducts, resolvedLocale]
   );
   return <ProductRelatedSection products={mappedProducts} />;

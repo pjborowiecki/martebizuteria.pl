@@ -28,6 +28,7 @@ import enPagesAuthSignIn from "~/messages/en/pages.auth.sign-in.json";
 import enPagesAuthSignUp from "~/messages/en/pages.auth.sign-up.json";
 import enPagesAuthToast from "~/messages/en/pages.auth.toast.json";
 import enPagesAuthValidations from "~/messages/en/pages.auth.validations.json";
+import enPagesBlog from "~/messages/en/pages.blog.json";
 import enPagesCart from "~/messages/en/pages.cart.json";
 import enPagesCategories from "~/messages/en/pages.categories.json";
 import enPagesCategory from "~/messages/en/pages.category.json";
@@ -68,6 +69,7 @@ import plPagesAuthSignIn from "~/messages/pl/pages.auth.sign-in.json";
 import plPagesAuthSignUp from "~/messages/pl/pages.auth.sign-up.json";
 import plPagesAuthToast from "~/messages/pl/pages.auth.toast.json";
 import plPagesAuthValidations from "~/messages/pl/pages.auth.validations.json";
+import plPagesBlog from "~/messages/pl/pages.blog.json";
 import plPagesCart from "~/messages/pl/pages.cart.json";
 import plPagesCategories from "~/messages/pl/pages.categories.json";
 import plPagesCategory from "~/messages/pl/pages.category.json";
@@ -117,6 +119,7 @@ const EN_MESSAGES = {
       toast: enPagesAuthToast,
       validations: enPagesAuthValidations
     },
+    blog: enPagesBlog,
     cart: enPagesCart,
     categories: enPagesCategories,
     category: enPagesCategory,
@@ -168,6 +171,7 @@ const PL_MESSAGES = {
       toast: plPagesAuthToast,
       validations: plPagesAuthValidations
     },
+    blog: plPagesBlog,
     cart: plPagesCart,
     categories: plPagesCategories,
     category: plPagesCategory,

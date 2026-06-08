@@ -39,7 +39,9 @@ const PRODUCT_QUERY_KEYS = {
   },
   ALL: ["products"] as const,
   BY_HANDLE: ["product"] as const,
-  RELATED_BY_CATEGORY: ["related-products"] as const
+  LANDING_NEW_ARRIVALS: ["products", "landing-new-arrivals"] as const,
+  RELATED_BY_CATEGORY: ["related-products"] as const,
+  STOREFRONT_PAGE: ["products", "storefront-page"] as const
 } as const;
 
 const PRODUCT_ATTRIBUTE_QUERY_KEYS = {
@@ -91,6 +93,11 @@ const CART_QUERY_KEYS = {
   AVAILABILITY: ["cart", "availability"] as const
 } as const;
 
+const STOREFRONT_SEARCH_QUERY_KEYS = {
+  RESULTS: ["storefront-search"] as const,
+  TRENDING: ["storefront-search", "trending"] as const
+} as const;
+
 const ORDER_QUERY_KEYS = {
   ADMIN: {
     ORDERS: [...QUERY_KEY_ROOTS.ADMIN, "orders"] as const,
@@ -108,6 +115,15 @@ const USER_QUERY_KEYS = {
   }
 } as const;
 
+const CUSTOMER_ACCOUNT_QUERY_KEYS = {
+  LOGIN_HISTORY: ["customer-account", "login-history"] as const,
+  ORDERS: ["customer-account", "orders"] as const,
+  ORDER_BY_ID: ["customer-account", "order"] as const,
+  OVERVIEW: ["customer-account", "overview"] as const,
+  PROFILE: ["customer-account", "profile"] as const,
+  SESSIONS: ["customer-account", "sessions"] as const
+} as const;
+
 export const QUERY_KEYS = {
   ADDRESS: ADDRESS_QUERY_KEYS,
   ADMIN_DASHBOARD: ADMIN_DASHBOARD_QUERY_KEYS,
@@ -116,6 +132,7 @@ export const QUERY_KEYS = {
   CART: CART_QUERY_KEYS,
   CATEGORY: CATEGORY_QUERY_KEYS,
   COLLECTION: COLLECTION_QUERY_KEYS,
+  CUSTOMER_ACCOUNT: CUSTOMER_ACCOUNT_QUERY_KEYS,
   DELIVERY_METHOD: DELIVERY_METHOD_QUERY_KEYS,
   INPOST: INPOST_QUERY_KEYS,
   MESSAGES: MESSAGES_QUERY_KEYS,
@@ -124,5 +141,6 @@ export const QUERY_KEYS = {
   PRODUCT_ATTRIBUTE: PRODUCT_ATTRIBUTE_QUERY_KEYS,
   PRODUCT_IMAGE: PRODUCT_IMAGE_QUERY_KEYS,
   ROOTS: QUERY_KEY_ROOTS,
+  STOREFRONT_SEARCH: STOREFRONT_SEARCH_QUERY_KEYS,
   USER: USER_QUERY_KEYS
 } as const;

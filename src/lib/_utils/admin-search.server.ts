@@ -26,7 +26,7 @@ export function buildAdminLikePattern(term: string): string {
 }
 
 function buildColumnLikeCondition(column: AdminSearchColumn, pattern: string): SQL {
-  return sql`${column} like ${pattern}`;
+  return sql`lower(cast(${column} as text)) like ${pattern}`;
 }
 
 /** Case-insensitive substring match across one or more text columns (OR). */
@@ -36,7 +36,7 @@ export function buildAdminSearchOrCondition(search: string | undefined, columns:
     return undefined;
   }
 
-  const pattern = buildAdminLikePattern(normalized);
+  const pattern = buildAdminLikePattern(normalized.toLowerCase());
   const conditions = columns.map((column) => buildColumnLikeCondition(column, pattern));
 
   if (conditions.length === SINGLE_CONDITION) {
