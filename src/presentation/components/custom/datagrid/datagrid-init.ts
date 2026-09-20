@@ -1,0 +1,7 @@
+import { STORAGE_PREFIX } from "~/src/presentation/components/custom/datagrid/lib/data-grid-preferences"
+
+/**
+ * Runs in `<head>` before the table paints so saved column widths apply on the first
+ * frame (SSR markup uses `var(--marte-dg-…)` with these values already set).
+ */
+export const DATAGRID_PREFS_INIT_SCRIPT = `(function(){try{var p=${JSON.stringify(STORAGE_PREFIX)};var fixed=new Set(["select","drag","image","actions"]);var r=document.documentElement;for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(!k||k.indexOf(p)!==0)continue;var slug=k.slice(p.length).replace(/\\./g,"-").replace(/:/g,"-");var raw=localStorage.getItem(k);if(!raw)continue;var d=JSON.parse(raw);var s=d&&d.columnSizing;if(!s)continue;for(var c in s){if(fixed.has(c))continue;if(Object.prototype.hasOwnProperty.call(s,c)&&typeof s[c]==="number"&&s[c]>0){r.style.setProperty("--marte-dg-"+slug+"-"+c,s[c]+"px")}}}}catch(e){}})();`

@@ -1,21 +1,21 @@
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema";
-import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema";
-import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema";
-import { productImage } from "~/src/modules/product-image/product-image.schema";
-import { productOption } from "~/src/modules/product-option/product-option.schema";
-import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
+import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema"
+import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
+import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
+import { productImage } from "~/src/modules/product-image/product-image.schema"
+import { productOption } from "~/src/modules/product-option/product-option.schema"
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 import {
   DEFAULT_PRODUCT_STATUS,
   PRODUCT_COLUMN_LENGTH,
   PRODUCT_DEFAULT_RANK,
-  PRODUCT_STATUSES
-} from "~/src/modules/product/product.constants";
-import type { ProductLocaleMap, ProductTagsLocaleMap } from "~/src/modules/product/product.types";
+  PRODUCT_STATUSES,
+} from "~/src/modules/product/product.constants"
+import { type ProductLocaleMap, type ProductTagsLocaleMap } from "~/src/modules/product/product.types"
 
 export const product = sqliteTable(
   "product",
@@ -31,16 +31,16 @@ export const product = sqliteTable(
     tags: text("tags", { mode: "json" }).$type<ProductTagsLocaleMap | null>(),
     thumbnail: text("thumbnail", { length: PRODUCT_COLUMN_LENGTH.thumbnail }),
     titles: text("titles", { mode: "json" }).$type<ProductLocaleMap>().notNull(),
-    ...timestamps()
+    ...timestamps(),
   },
   (table) => [
     index("product_primary_category_id_idx").on(table.primaryCategoryId),
     index("product_rank_idx").on(table.rank),
     index("product_status_createdAt_idx").on(table.status, table.createdAt),
     index("product_status_rank_idx").on(table.status, table.rank),
-    index("product_status_updatedAt_idx").on(table.status, table.updatedAt)
-  ]
-);
+    index("product_status_updatedAt_idx").on(table.status, table.updatedAt),
+  ],
+)
 
 export const productRelations = relations(product, ({ many }) => ({
   attributes: many(attributeOnProduct),
@@ -48,5 +48,5 @@ export const productRelations = relations(product, ({ many }) => ({
   collections: many(collectionOnProduct),
   images: many(productImage),
   options: many(productOption),
-  variants: many(productVariant)
-}));
+  variants: many(productVariant),
+}))

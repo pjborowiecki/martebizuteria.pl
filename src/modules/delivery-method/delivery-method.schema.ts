@@ -1,11 +1,11 @@
-import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { checkout } from "~/src/modules/checkout/checkout.schema";
-import { courier } from "~/src/modules/courier/courier.schema";
-import { order } from "~/src/modules/order/order.schema";
+import { checkout } from "~/src/modules/checkout/checkout.schema"
+import { courier } from "~/src/modules/courier/courier.schema"
+import { order } from "~/src/modules/order/order.schema"
 
 export const deliveryMethod = sqliteTable("delivery_method", {
   apiServiceCode: text("api_service_code").notNull(),
@@ -20,14 +20,14 @@ export const deliveryMethod = sqliteTable("delivery_method", {
   name: text("name").notNull(),
   price: integer("price").notNull(),
   type: text("type", { enum: ["locker", "courier", "in_store"] }).notNull(),
-  ...timestamps()
-});
+  ...timestamps(),
+})
 
 export const deliveryMethodRelations = relations(deliveryMethod, ({ one, many }) => ({
   checkouts: many(checkout),
   courier: one(courier, {
     fields: [deliveryMethod.courierId],
-    references: [courier.id]
+    references: [courier.id],
   }),
-  orders: many(order)
-}));
+  orders: many(order),
+}))

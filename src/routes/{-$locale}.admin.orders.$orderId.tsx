@@ -1,36 +1,35 @@
-import { type JSX, useMemo } from "react";
+import { type JSX, useMemo } from "react"
 
-import { createFileRoute } from "@tanstack/react-router";
-import { Package, Printer, RefreshCw } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { createFileRoute } from "@tanstack/react-router"
+import { Package, Printer, RefreshCw } from "lucide-react"
+import { useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
+import { Button } from "~/src/presentation/components/shadcn/button"
 
-import { Button } from "~/src/components/shadcn/button";
+import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
+import { OrderDetailPage } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail-page"
 
-import { AdminHeader } from "~/src/components/custom/pages/admin/admin-header";
-import { OrderDetailPage } from "~/src/components/custom/pages/admin/orders/detail/order-detail-page";
-
-export const Route = createFileRoute("/{-$locale}/admin/orders/$orderId")({
-  component: AdminOrderDetailRoute
-});
-
-function AdminOrderDetailRoute(): JSX.Element {
-  const { orderId } = Route.useParams();
-  const t = useTranslations("pages.admin");
-
+import { ROUTES } from "~/src/routes"
+const AdminOrderDetailRoute = (): JSX.Element => {
+  const { orderId } = Route.useParams()
+  const t = useTranslations("pages.admin")
   const breadcrumbs = useMemo(
     () => [
-      { href: CONSTANTS.ROUTES.ADMIN, label: t("nav.dashboard") },
-      { href: CONSTANTS.ROUTES.ADMIN_ORDERS, label: t("nav.orders") }
+      {
+        href: ROUTES.ADMIN,
+        label: t("nav.dashboard"),
+      },
+      {
+        href: ROUTES.ADMIN_ORDERS,
+        label: t("nav.orders"),
+      },
     ],
-    [t]
-  );
-
+    [t],
+  )
   return (
     <>
       <AdminHeader
-        backHref={CONSTANTS.ROUTES.ADMIN_ORDERS}
+        backHref={ROUTES.ADMIN_ORDERS}
         breadcrumbs={breadcrumbs}
         actions={
           <>
@@ -60,5 +59,8 @@ function AdminOrderDetailRoute(): JSX.Element {
       />
       <OrderDetailPage />
     </>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/admin/orders/$orderId")({
+  component: AdminOrderDetailRoute,
+})

@@ -1,30 +1,32 @@
-import { type JSX, useMemo } from "react";
+import { type JSX, useMemo } from "react"
 
-import { createFileRoute } from "@tanstack/react-router";
-import { Download, Plus } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { createFileRoute } from "@tanstack/react-router"
+import { Download, Plus } from "lucide-react"
+import { useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
+import { Button } from "~/src/presentation/components/shadcn/button"
 
-import { Button } from "~/src/components/shadcn/button";
+import { type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
+import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
+import { MarketingCampaignsTable } from "~/src/presentation/components/custom/pages/admin/marketing/marketing-campaigns-table"
+import { MarketingEngagementChart } from "~/src/presentation/components/custom/pages/admin/marketing/marketing-engagement-chart"
+import { MarketingStats } from "~/src/presentation/components/custom/pages/admin/marketing/marketing-stats"
 
-import { type LocalizedTo } from "~/src/components/custom/localized-link";
-import { AdminHeader } from "~/src/components/custom/pages/admin/admin-header";
-import { MarketingCampaignsTable } from "~/src/components/custom/pages/admin/marketing/marketing-campaigns-table";
-import { MarketingEngagementChart } from "~/src/components/custom/pages/admin/marketing/marketing-engagement-chart";
-import { MarketingStats } from "~/src/components/custom/pages/admin/marketing/marketing-stats";
-
-export const Route = createFileRoute("/{-$locale}/admin/marketing")({
-  component: MarketingPage
-});
-
-function MarketingPage(): JSX.Element {
-  const t = useTranslations("pages.admin");
-
+import { ROUTES } from "~/src/routes"
+const MarketingPage = (): JSX.Element => {
+  const t = useTranslations("pages.admin")
   const bcList = useMemo(
-    () => [{ href: CONSTANTS.ROUTES.ADMIN, label: t("nav.dashboard") } satisfies { href: LocalizedTo; label: string }],
-    [t]
-  );
+    () => [
+      {
+        href: ROUTES.ADMIN,
+        label: t("nav.dashboard"),
+      } satisfies {
+        href: LocalizedTo
+        label: string
+      },
+    ],
+    [t],
+  )
   const actionButtons = useMemo(
     () => (
       <>
@@ -42,9 +44,8 @@ function MarketingPage(): JSX.Element {
         </Button>
       </>
     ),
-    [t]
-  );
-
+    [t],
+  )
   return (
     <>
       <AdminHeader title={t("marketing.title")} description={t("marketing.description")} breadcrumbs={bcList} actions={actionButtons} />
@@ -55,5 +56,8 @@ function MarketingPage(): JSX.Element {
         <MarketingCampaignsTable />
       </div>
     </>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/admin/marketing")({
+  component: MarketingPage,
+})

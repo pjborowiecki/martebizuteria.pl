@@ -1,0 +1,11 @@
+{
+  "error": {
+    "heading": "Coś poszło nie tak",
+    "message": "Odśwież stronę i spróbuj ponownie."
+  },
+  "loading": "Ładowanie…",
+  "notFound": {
+    "heading": "Nie znaleziono strony",
+    "message": "Strona, której szukasz, nie istnieje."
+  }
+}

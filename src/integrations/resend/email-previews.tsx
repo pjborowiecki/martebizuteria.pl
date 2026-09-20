@@ -1,68 +1,60 @@
-import type { ReactElement } from "react";
+import { type ReactElement } from "react"
 
-import { render } from "react-email";
+import { render } from "react-email"
 
-import type { Locale } from "~/src/constants/types";
+import { type Locale } from "~/src/integrations/use-intl/i18n.types"
 
-import { AccountDeleted } from "~/src/integrations/resend/templates/account-deleted";
-import { ChangeEmail } from "~/src/integrations/resend/templates/change-email";
-import { OrderConfirmation } from "~/src/integrations/resend/templates/order-confirmation";
-import { OrderShipped } from "~/src/integrations/resend/templates/order-shipped";
-import { ResetPassword } from "~/src/integrations/resend/templates/reset-password";
-import { VerifyEmail } from "~/src/integrations/resend/templates/verify-email";
+import { AccountDeleted } from "~/src/presentation/emails/account-deleted"
+import { ChangeEmail } from "~/src/presentation/emails/change-email"
+import { OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
+import { OrderShipped } from "~/src/presentation/emails/order-shipped"
+import { ResetPassword } from "~/src/presentation/emails/reset-password"
+import { VerifyEmail } from "~/src/presentation/emails/verify-email"
 
-/**
- * A previewable email: a human label and a factory that builds the template
- * element from its own `PreviewProps`, with the locale overridable so the same
- * sample can be inspected in every language.
- */
+export const isEmailPreviewSlug = (value: string): value is EmailPreviewSlug => SLUGS.includes(value)
+
+export const renderEmailPreview = (slug: EmailPreviewSlug, locale: Locale, plainText: boolean): Promise<string> =>
+  render(
+    EMAIL_PREVIEWS[slug].element(locale),
+    plainText
+      ? {
+          plainText: true,
+        }
+      : {
+          plainText: false,
+        },
+  )
+
 interface EmailPreview {
-  readonly element: (locale: Locale) => ReactElement;
-  readonly label: string;
+  readonly element: (locale: Locale) => ReactElement
+  readonly label: string
 }
 
-/**
- * Registry of every transactional email, rendered with its built-in sample
- * props. Add a template here and it shows up in the `/dev/emails` previewer
- * automatically. Kept beside the templates (not in the route) so the route
- * stays a thin transport and the registry can be reused (tests, snapshots).
- */
 export const EMAIL_PREVIEWS = {
   "account-deleted": {
     element: (locale) => <AccountDeleted {...AccountDeleted.PreviewProps} locale={locale} />,
-    label: "Account deleted"
+    label: "Account deleted",
   },
   "change-email": {
     element: (locale) => <ChangeEmail {...ChangeEmail.PreviewProps} locale={locale} />,
-    label: "Change email"
+    label: "Change email",
   },
   "order-confirmation": {
     element: (locale) => <OrderConfirmation {...OrderConfirmation.PreviewProps} locale={locale} />,
-    label: "Order confirmation"
+    label: "Order confirmation",
   },
   "order-shipped": {
     element: (locale) => <OrderShipped {...OrderShipped.PreviewProps} locale={locale} />,
-    label: "Order shipped"
+    label: "Order shipped",
   },
   "reset-password": {
     element: (locale) => <ResetPassword {...ResetPassword.PreviewProps} locale={locale} />,
-    label: "Reset password"
+    label: "Reset password",
   },
   "verify-email": {
     element: (locale) => <VerifyEmail {...VerifyEmail.PreviewProps} locale={locale} />,
-    label: "Verify email"
-  }
-} satisfies Record<string, EmailPreview>;
-
-export type EmailPreviewSlug = keyof typeof EMAIL_PREVIEWS;
-
-const SLUGS: string[] = Object.keys(EMAIL_PREVIEWS);
-
-export function isEmailPreviewSlug(value: string): value is EmailPreviewSlug {
-  return SLUGS.includes(value);
-}
-
-/** Renders a registered preview to HTML (or plain text) for the given locale. */
-export function renderEmailPreview(slug: EmailPreviewSlug, locale: Locale, plainText: boolean): Promise<string> {
-  return render(EMAIL_PREVIEWS[slug].element(locale), { plainText });
-}
+    label: "Verify email",
+  },
+} satisfies Record<string, EmailPreview>
+export type EmailPreviewSlug = keyof typeof EMAIL_PREVIEWS
+const SLUGS: string[] = Object.keys(EMAIL_PREVIEWS)

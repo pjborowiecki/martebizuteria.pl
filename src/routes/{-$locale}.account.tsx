@@ -1,78 +1,41 @@
-import { type JSX, Suspense, useMemo } from "react";
+import { type JSX, Suspense, useMemo } from "react"
 
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { Outlet, createFileRoute } from "@tanstack/react-router"
 
-import { CONSTANTS } from "~/src/constants";
-import type { Locale } from "~/src/constants/types";
+import { requireCustomer } from "~/src/integrations/better-auth/auth.guards"
+import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
-import { requireCustomer } from "~/src/integrations/better-auth/auth.guards";
-import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
+import { APP_NAME } from "~/src/presentation/branding/app"
 
-import { isValidLocale } from "~/src/lib/utils";
-
-import { AccountSidebar } from "~/src/components/custom/pages/account/account-sidebar";
-import { Navigation } from "~/src/components/custom/pages/landing-page/navigation/components/navigation/navigation";
-
-interface AccountPageMeta {
-  readonly description: string;
-  readonly title: string;
-}
-
-export const Route = createFileRoute("/{-$locale}/account")({
-  beforeLoad: async () => ({ user: await requireCustomer() }),
-  component: AccountLayout,
-  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<AccountPageMeta> }>) => ({
-    meta: [
-      { title: loaderData?.title ?? CONSTANTS.APP_NAME },
-      { content: loaderData?.description ?? "", name: "description" },
-      { content: loaderData?.title ?? CONSTANTS.APP_NAME, property: "og:title" },
-      { content: loaderData?.description ?? "", property: "og:description" }
-    ]
-  }),
-  loader: ({ context, params }) => {
-    const { locale: rawLocale } = params;
-    let locale: Locale = CONSTANTS.DEFAULT_LOCALE;
-
-    if (typeof rawLocale === "string" && isValidLocale(rawLocale)) {
-      locale = rawLocale;
-    }
-
-    const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
-
-    return {
-      description: messages?.pages.account.meta.description ?? "",
-      title: messages?.pages.account.meta.title ?? CONSTANTS.APP_NAME
-    } satisfies AccountPageMeta;
-  }
-});
-
-function AccountSidebarFallback(): JSX.Element {
-  return (
-    <aside className="hidden lg:sticky lg:top-28 lg:block lg:w-[220px] lg:shrink-0 lg:self-start" aria-hidden>
-      <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-      <div className="mt-6 space-y-2">
-        {Array.from({ length: 7 }, (_, i) => (
-          <div key={`sk-${String(i)}`} className="h-9 animate-pulse rounded-md bg-muted/35" />
-        ))}
-      </div>
-    </aside>
-  );
-}
-
-function AccountMainFallback(): JSX.Element {
-  return (
-    <div className="min-h-[50vh] min-w-0 animate-pulse space-y-6" aria-hidden>
-      <div className="h-3 w-36 rounded bg-muted" />
-      <div className="h-10 max-w-sm rounded bg-muted/80" />
-      <div className="h-24 rounded-lg bg-muted/40" />
+import { AccountSidebar } from "~/src/presentation/components/custom/pages/account/account-sidebar"
+import { Navigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation"
+const AccountSidebarFallback = (): JSX.Element => (
+  <aside className="hidden lg:sticky lg:top-28 lg:block lg:w-[220px] lg:shrink-0 lg:self-start" aria-hidden>
+    <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+    <div className="mt-6 space-y-2">
+      {Array.from(
+        {
+          length: 7,
+        },
+        (_, index) => (
+          <div key={`sk-${String(index)}`} className="h-9 animate-pulse rounded-md bg-muted/35" />
+        ),
+      )}
     </div>
-  );
-}
+  </aside>
+)
 
-function AccountLayout(): JSX.Element {
-  const sidebarFallback = useMemo(() => <AccountSidebarFallback />, []);
-  const mainFallback = useMemo(() => <AccountMainFallback />, []);
+const AccountMainFallback = (): JSX.Element => (
+  <div className="min-h-[50vh] min-w-0 animate-pulse space-y-6" aria-hidden>
+    <div className="h-3 w-36 rounded bg-muted" />
+    <div className="h-10 max-w-sm rounded bg-muted/80" />
+    <div className="h-24 rounded-lg bg-muted/40" />
+  </div>
+)
 
+const AccountLayout = (): JSX.Element => {
+  const sidebarFallback = useMemo(() => <AccountSidebarFallback />, [])
+  const mainFallback = useMemo(() => <AccountMainFallback />, [])
   return (
     <>
       <Navigation />
@@ -89,5 +52,49 @@ function AccountLayout(): JSX.Element {
         </div>
       </main>
     </>
-  );
+  )
 }
+interface AccountPageMeta {
+  readonly description: string
+  readonly title: string
+}
+export const Route = createFileRoute("/{-$locale}/account")({
+  beforeLoad: async () => ({
+    user: await requireCustomer(),
+  }),
+  component: AccountLayout,
+  head: ({
+    loaderData,
+  }: Readonly<{
+    loaderData?: Readonly<AccountPageMeta> | undefined
+  }>) => ({
+    meta: [
+      {
+        title: loaderData?.title ?? APP_NAME,
+      },
+      {
+        content: loaderData?.description ?? "",
+        name: "description",
+      },
+      {
+        content: loaderData?.title ?? APP_NAME,
+        property: "og:title",
+      },
+      {
+        content: loaderData?.description ?? "",
+        property: "og:description",
+      },
+    ],
+  }),
+  loader: async ({ context }) => {
+    const { locale } = context
+    const messages = await context.queryClient.query(messagesQueryOptions(locale, "pages.account.meta"))
+    return {
+      description: messages.description,
+      title: messages.title,
+    } satisfies AccountPageMeta
+  },
+  staticData: {
+    namespaces: ["pages.account", "pages.account.meta", "pages.auth.errors", "pages.auth.validations"],
+  },
+})

@@ -1,47 +1,29 @@
-import { type ChangeEvent, type JSX, useCallback, useRef, useState } from "react";
+import { type ChangeEvent, type JSX, useCallback, useRef, useState } from "react"
 
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Pencil, Save, X } from "lucide-react";
-import { toast } from "sonner";
-import { useTranslations } from "use-intl";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+import { cn } from "cn"
+import { AlertTriangle, Pencil, Save, X } from "lucide-react"
+import { toast } from "sonner"
+import { useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
+import { authClient } from "~/src/integrations/better-auth/auth-client"
+import { useTimeZone } from "~/src/integrations/use-intl/i18n.timezone"
+import { TIME_ZONES } from "~/src/integrations/use-intl/i18n.timezones"
 
-import { authClient } from "~/src/integrations/better-auth/auth._client";
-import { useTimeZone } from "~/src/integrations/use-intl/i18n.timezone";
+import { CUSTOMER_ACCOUNT_QUERY_KEYS, CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountProfile } from "~/src/modules/customer-account/customer-account.types"
+import { profileQueryOptions } from "~/src/modules/customer-account/use-cases/get-customer-profile"
+import { updateCustomerPhoneFn } from "~/src/modules/customer-account/use-cases/update-customer-phone"
 
-import { cn } from "~/src/lib/utils";
-
-import { Button } from "~/src/components/shadcn/button";
-import { Input } from "~/src/components/shadcn/input";
-import { Label } from "~/src/components/shadcn/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/components/shadcn/select";
-import { Separator } from "~/src/components/shadcn/separator";
-
-import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants";
-import { customerAccountMutations } from "~/src/modules/customer-account/customer-account.mutations";
-import { customerAccountQueryOptions } from "~/src/modules/customer-account/customer-account.queries";
-import type { CustomerAccountProfile } from "~/src/modules/customer-account/customer-account.types";
-
-type EditableField = "name" | "phone";
-
-export const Route = createFileRoute("/{-$locale}/account/profile")({
-  component: ProfilePage,
-  loader: ({ context }) => context.queryClient.ensureQueryData(customerAccountQueryOptions.profileQueryOptions()),
-  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS
-});
-
-const PREF_SELECT_TRIGGER_CLASS =
-  "mt-1.5 flex h-auto w-full items-center justify-between rounded-none border-0 border-b border-border bg-transparent p-0 pb-2 text-[14px] shadow-none transition-colors outline-none hover:bg-transparent focus:border-foreground focus:ring-0 focus-visible:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-foreground";
-
-const TIMEZONE_OPTIONS: readonly string[] =
-  typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : CONSTANTS.TIME_ZONES;
-
-function ProfilePage(): JSX.Element {
-  const t = useTranslations("pages.account.profile");
-  const { data: profile } = useSuspenseQuery(customerAccountQueryOptions.profileQueryOptions());
-
+import { Button } from "~/src/presentation/components/shadcn/button"
+import { Input } from "~/src/presentation/components/shadcn/input"
+import { Label } from "~/src/presentation/components/shadcn/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
+import { Separator } from "~/src/presentation/components/shadcn/separator"
+const ProfilePage = (): JSX.Element => {
+  const t = useTranslations("pages.account.profile")
+  const { data: profile } = useSuspenseQuery(profileQueryOptions())
   return (
     <div>
       <div className="mb-10 space-y-3">
@@ -60,90 +42,96 @@ function ProfilePage(): JSX.Element {
 
       <CloseAccountSection />
     </div>
-  );
+  )
 }
-
-function PersonalInfoSection({ profile }: Readonly<{ profile: CustomerAccountProfile | undefined }>): JSX.Element {
-  const t = useTranslations("pages.account.profile");
-  const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<EditableField | undefined>();
-  const [name, setName] = useState(profile?.name ?? "");
-  const [phone, setPhone] = useState(profile?.phone ?? "");
-  const snapshotRef = useRef({ name, phone });
-
+const PersonalInfoSection = ({
+  profile,
+}: Readonly<{
+  profile: CustomerAccountProfile | undefined
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.profile")
+  const queryClient = useQueryClient()
+  const [editing, setEditing] = useState<EditableField | undefined>()
+  const [name, setName] = useState(profile?.name ?? "")
+  const [phone, setPhone] = useState(profile?.phone ?? "")
+  const snapshotRef = useRef({
+    name,
+    phone,
+  })
   const updatePhoneMutation = useMutation({
-    mutationFn: (nextPhone: string) => customerAccountMutations.updateCustomerPhoneFn({ data: { phone: nextPhone } }),
+    mutationFn: (nextPhone: string) =>
+      updateCustomerPhoneFn({
+        data: {
+          phone: nextPhone,
+        },
+      }),
     onError: () => {
-      toast.error(t("saveError"));
+      toast.error(t("saveError"))
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.CUSTOMER_ACCOUNT.PROFILE });
-      toast.success(t("saved"));
-    }
-  });
-
+      await queryClient.invalidateQueries({
+        queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE,
+      })
+      toast.success(t("saved"))
+    },
+  })
   const handleStartEdit = useCallback(
     (field: EditableField) => {
-      snapshotRef.current = { name, phone };
-      setEditing(field);
+      snapshotRef.current = {
+        name,
+        phone,
+      }
+      setEditing(field)
     },
-    [name, phone]
-  );
-
+    [name, phone],
+  )
   const handleCancel = useCallback((field: EditableField) => {
     if (field === "name") {
-      setName(snapshotRef.current.name);
+      setName(snapshotRef.current.name)
     } else {
-      setPhone(snapshotRef.current.phone);
+      setPhone(snapshotRef.current.phone)
     }
-    setEditing(undefined);
-  }, []);
-
+    setEditing(undefined)
+  }, [])
   const handleSave = useCallback(
     async (field: EditableField) => {
       if (field === "name") {
-        const { error } = await authClient.updateUser({ name });
+        const { error } = await authClient.updateUser({
+          name,
+        })
         if (error) {
-          toast.error(t("saveError"));
-          return;
+          toast.error(t("saveError"))
+          return
         }
-        toast.success(t("saved"));
+        toast.success(t("saved"))
       } else {
-        await updatePhoneMutation.mutateAsync(phone);
+        await updatePhoneMutation.mutateAsync(phone)
       }
-      setEditing(undefined);
+      setEditing(undefined)
     },
-    [name, phone, t, updatePhoneMutation]
-  );
-
+    [name, phone, t, updatePhoneMutation],
+  )
   const handleCancelName = useCallback(() => {
-    handleCancel("name");
-  }, [handleCancel]);
-
+    handleCancel("name")
+  }, [handleCancel])
   const handleCancelPhone = useCallback(() => {
-    handleCancel("phone");
-  }, [handleCancel]);
-
+    handleCancel("phone")
+  }, [handleCancel])
   const handleEditName = useCallback(() => {
-    handleStartEdit("name");
-  }, [handleStartEdit]);
-
+    handleStartEdit("name")
+  }, [handleStartEdit])
   const handleEditPhone = useCallback(() => {
-    handleStartEdit("phone");
-  }, [handleStartEdit]);
-
+    handleStartEdit("phone")
+  }, [handleStartEdit])
   const handleSaveName = useCallback(() => {
-    void handleSave("name");
-  }, [handleSave]);
-
+    void handleSave("name")
+  }, [handleSave])
   const handleSavePhone = useCallback(() => {
-    void handleSave("phone");
-  }, [handleSave]);
-
+    void handleSave("phone")
+  }, [handleSave])
   if (profile === undefined) {
-    return <p className="text-sm text-muted-foreground">{t("saveError")}</p>;
+    return <p className="text-sm text-muted-foreground">{t("saveError")}</p>
   }
-
   return (
     <section>
       <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("personalInfo")}</h2>
@@ -172,10 +160,9 @@ function PersonalInfoSection({ profile }: Readonly<{ profile: CustomerAccountPro
         />
       </div>
     </section>
-  );
+  )
 }
-
-function ProfileField({
+const ProfileField = ({
   editing,
   label,
   onCancel,
@@ -183,24 +170,23 @@ function ProfileField({
   onEdit,
   onSave,
   type,
-  value
+  value,
 }: Readonly<{
-  editing: boolean;
-  label: string;
-  onCancel: () => void;
-  onChange: (value: string) => void;
-  onEdit: () => void;
-  onSave: () => void;
-  type: string;
-  value: string;
-}>): JSX.Element {
+  editing: boolean
+  label: string
+  onCancel: () => void
+  onChange: (value: string) => void
+  onEdit: () => void
+  onSave: () => void
+  type: string
+  value: string
+}>): JSX.Element => {
   const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      onChange(e.target.value);
+    (event: ChangeEvent<HTMLInputElement>) => {
+      onChange(event.target.value)
     },
-    [onChange]
-  );
-
+    [onChange],
+  )
   return (
     <div className="flex items-center gap-4 py-4">
       <div className="min-w-0 flex-1">
@@ -229,54 +215,56 @@ function ProfileField({
         </Button>
       )}
     </div>
-  );
+  )
 }
-
-function ReadOnlyField({ label, value }: Readonly<{ label: string; value: string }>): JSX.Element {
-  return (
-    <div className="flex items-center gap-4 py-4">
-      <div className="min-w-0 flex-1">
-        <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{label}</Label>
-        <Input
-          variant="account-inline"
-          type="email"
-          value={value}
-          readOnly
-          className="pointer-events-none mt-1 block cursor-default text-foreground"
-        />
-      </div>
+const ReadOnlyField = ({
+  label,
+  value,
+}: Readonly<{
+  label: string
+  value: string
+}>): JSX.Element => (
+  <div className="flex items-center gap-4 py-4">
+    <div className="min-w-0 flex-1">
+      <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{label}</Label>
+      <Input
+        variant="account-inline"
+        type="email"
+        value={value}
+        readOnly
+        className="pointer-events-none mt-1 block cursor-default text-foreground"
+      />
     </div>
-  );
-}
+  </div>
+)
 
-function TimezoneField(): JSX.Element {
-  const t = useTranslations("pages.account.profile");
-  const current = useTimeZone();
-
+const TimezoneField = (): JSX.Element => {
+  const t = useTranslations("pages.account.profile")
+  const current = useTimeZone()
   const mutation = useMutation({
     mutationFn: async (timezone: string) => {
-      const { error } = await authClient.updateUser({ timezone });
+      const { error } = await authClient.updateUser({
+        timezone,
+      })
       if (error) {
-        throw new Error(error.message ?? "Failed to update timezone");
+        throw new Error(error.message ?? "Failed to update timezone")
       }
     },
     onError: () => {
-      toast.error(t("timezoneError"));
+      toast.error(t("timezoneError"))
     },
     onSuccess: () => {
-      toast.success(t("timezoneSaved"));
-    }
-  });
-
+      toast.success(t("timezoneSaved"))
+    },
+  })
   const handleChange = useCallback(
     (val: string | null) => {
       if (val !== null && val !== current) {
-        mutation.mutate(val);
+        mutation.mutate(val)
       }
     },
-    [current, mutation]
-  );
-
+    [current, mutation],
+  )
   return (
     <div className="py-4">
       <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{t("timezone")}</Label>
@@ -293,12 +281,10 @@ function TimezoneField(): JSX.Element {
         </SelectContent>
       </Select>
     </div>
-  );
+  )
 }
-
-function PreferencesSection(): JSX.Element {
-  const t = useTranslations("pages.account.profile");
-
+const PreferencesSection = (): JSX.Element => {
+  const t = useTranslations("pages.account.profile")
   return (
     <section>
       <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("preferences")}</h2>
@@ -307,12 +293,10 @@ function PreferencesSection(): JSX.Element {
         <TimezoneField />
       </div>
     </section>
-  );
+  )
 }
-
-function SecuritySection(): JSX.Element {
-  const t = useTranslations("pages.account.profile");
-
+const SecuritySection = (): JSX.Element => {
+  const t = useTranslations("pages.account.profile")
   return (
     <section>
       <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("security")}</h2>
@@ -334,31 +318,28 @@ function SecuritySection(): JSX.Element {
         </div>
       </div>
     </section>
-  );
+  )
 }
-
-function CloseAccountDialog({
+const CloseAccountDialog = ({
   canConfirmClose,
   closeConfirmation,
   onCancel,
   onCloseAccount,
-  setCloseConfirmation
+  setCloseConfirmation,
 }: Readonly<{
-  canConfirmClose: boolean;
-  closeConfirmation: string;
-  onCancel: () => void;
-  onCloseAccount: () => void;
-  setCloseConfirmation: (val: string) => void;
-}>): JSX.Element {
-  const t = useTranslations("pages.account.profile");
-
+  canConfirmClose: boolean
+  closeConfirmation: string
+  onCancel: () => void
+  onCloseAccount: () => void
+  setCloseConfirmation: (val: string) => void
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.profile")
   const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      setCloseConfirmation(e.target.value);
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setCloseConfirmation(event.target.value)
     },
-    [setCloseConfirmation]
-  );
-
+    [setCloseConfirmation],
+  )
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <button type="button" aria-label="Close" className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={onCancel} />
@@ -402,31 +383,26 @@ function CloseAccountDialog({
         </div>
       </div>
     </div>
-  );
+  )
 }
-
-function CloseAccountSection(): JSX.Element {
-  const t = useTranslations("pages.account.profile");
-  const [showCloseDialog, setShowCloseDialog] = useState(false);
-  const [closeConfirmation, setCloseConfirmation] = useState("");
-  const canConfirmClose = closeConfirmation.toLowerCase() === "delete";
-
+const CloseAccountSection = (): JSX.Element => {
+  const t = useTranslations("pages.account.profile")
+  const [showCloseDialog, setShowCloseDialog] = useState(false)
+  const [closeConfirmation, setCloseConfirmation] = useState("")
+  const canConfirmClose = closeConfirmation.toLowerCase() === "delete"
   const handleOpenDialog = useCallback(() => {
-    setShowCloseDialog(true);
-  }, []);
-
+    setShowCloseDialog(true)
+  }, [])
   const handleCancelDialog = useCallback(() => {
-    setShowCloseDialog(false);
-    setCloseConfirmation("");
-  }, []);
-
+    setShowCloseDialog(false)
+    setCloseConfirmation("")
+  }, [])
   const handleCloseAccount = useCallback(() => {
     if (canConfirmClose) {
-      setShowCloseDialog(false);
-      setCloseConfirmation("");
+      setShowCloseDialog(false)
+      setCloseConfirmation("")
     }
-  }, [canConfirmClose]);
-
+  }, [canConfirmClose])
   return (
     <>
       <section>
@@ -455,5 +431,18 @@ function CloseAccountSection(): JSX.Element {
         />
       ) : undefined}
     </>
-  );
+  )
 }
+type EditableField = "name" | "phone"
+export const Route = createFileRoute("/{-$locale}/account/profile")({
+  component: ProfilePage,
+  loader: ({ context }) =>
+    context.queryClient.query({
+      ...profileQueryOptions(),
+      staleTime: "static",
+    }),
+  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
+})
+const PREF_SELECT_TRIGGER_CLASS =
+  "mt-1.5 flex h-auto w-full items-center justify-between rounded-none border-0 border-b border-border bg-transparent p-0 pb-2 text-[14px] shadow-none transition-colors outline-none hover:bg-transparent focus:border-foreground focus:ring-0 focus-visible:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-foreground"
+const TIMEZONE_OPTIONS: readonly string[] = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : TIME_ZONES

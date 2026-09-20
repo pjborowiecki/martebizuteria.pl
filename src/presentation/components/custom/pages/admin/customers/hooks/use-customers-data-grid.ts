@@ -1,0 +1,190 @@
+import { useCallback, useEffect, useMemo, useState } from "react"
+
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { type ColumnFiltersState, type PaginationState } from "@tanstack/react-table"
+import { useTranslations } from "use-intl"
+
+import { adminCustomersPageQueryOptions } from "~/src/modules/user/use-cases/get-admin-customers-page"
+import { parseAdminCustomersListFilters } from "~/src/modules/user/user.admin-list-filters"
+import { type AdminCustomersExportInput, type AdminCustomersPageInput } from "~/src/modules/user/user.admin-list.types"
+import {
+  ADMIN_CUSTOMER_PAGE_SIZE,
+  ADMIN_CUSTOMER_TABLE_COLUMN_PINNING,
+  ADMIN_CUSTOMER_TABLE_DEFAULT_COLUMN_VISIBILITY,
+  type AdminCustomerStatFilter,
+} from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
+
+import { LIST_PAGE_STEP } from "~/src/lib/list-pagination"
+
+import { useAdminDebouncedTableSearch } from "~/src/presentation/components/custom/datagrid/hooks/use-admin-debounced-table-search"
+import { useDataGridInstance } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-instance"
+import { type DataGridContextValue } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
+import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
+import { useCustomerColumns } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-columns"
+import { customersDataGrid } from "~/src/presentation/components/custom/pages/admin/customers/utils/customers-data-grid"
+const buildAdminCustomersPageInput = ({
+  listFilters,
+  pageIndex,
+  pageSize,
+  search,
+  statFilter,
+}: {
+  readonly listFilters: ReturnType<typeof parseAdminCustomersListFilters>
+  readonly pageIndex: number
+  readonly pageSize: number
+  readonly search: string
+  readonly statFilter: AdminCustomerStatFilter | undefined
+}): AdminCustomersPageInput => ({
+  averageOrderValue: listFilters.averageOrderValue,
+  banned: listFilters.banned,
+  createdAt: listFilters.createdAt,
+  emailVerified: listFilters.emailVerified,
+  lastOrderAt: listFilters.lastOrderAt,
+  page: pageIndex + LIST_PAGE_STEP,
+  pageSize,
+  role: listFilters.role,
+  search: search === "" ? undefined : search,
+  statFilter,
+  totalSpent: listFilters.totalSpent,
+})
+export const useCustomersDataGrid = ({ onRowClick }: UseCustomersDataGridOptions): CustomersDataGridValue => {
+  const t = useTranslations("pages.admin.customers")
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: ADMIN_CUSTOMER_PAGE_SIZE,
+  })
+  const [statFilter, setStatFilter] = useState<AdminCustomerStatFilter | undefined>()
+  const [serverSearch, setServerSearch] = useState("")
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const listFilters = useMemo(() => parseAdminCustomersListFilters(columnFilters), [columnFilters])
+  const pageInput = useMemo(
+    () =>
+      buildAdminCustomersPageInput({
+        listFilters,
+        pageIndex: pagination.pageIndex,
+        pageSize: pagination.pageSize,
+        search: serverSearch,
+        statFilter,
+      }),
+    [listFilters, pagination.pageIndex, pagination.pageSize, serverSearch, statFilter],
+  )
+  const pageQueryOptions = adminCustomersPageQueryOptions(pageInput)
+  const {
+    data = EMPTY_CUSTOMERS_PAGE,
+    isFetching,
+    isPending,
+  } = useQuery({
+    ...pageQueryOptions,
+    placeholderData: keepPreviousData,
+  })
+  const showSkeletonRows = isFetching || isPending
+  const columns = useCustomerColumns()
+  const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns])
+  const pageCount = Math.ceil(data.total / pagination.pageSize)
+  const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
+    columns,
+    data: [...data.items],
+    defaultColumnVisibility: ADMIN_CUSTOMER_TABLE_DEFAULT_COLUMN_VISIBILITY,
+    defaultPageSize: ADMIN_CUSTOMER_PAGE_SIZE,
+    getRowId: (row) => row.id,
+    initialColumnOrder,
+    initialColumnPinning: ADMIN_CUSTOMER_TABLE_COLUMN_PINNING,
+    manualFiltering: true,
+    manualPagination: true,
+    onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: setPagination,
+    pageCount,
+    pagination,
+    persistenceKey: customersDataGrid.persistenceKey,
+    rowCount: data.total,
+  })
+  const { debouncedSearch } = useAdminDebouncedTableSearch(table)
+  useEffect(() => {
+    setServerSearch(debouncedSearch)
+    setPagination((previous) => ({
+      ...previous,
+      pageIndex: 0,
+    }))
+  }, [debouncedSearch])
+  useEffect(() => {
+    setPagination((previous) => ({
+      ...previous,
+      pageIndex: 0,
+    }))
+  }, [columnFilters])
+  const applyCustomerStatFilter = useCallback((filter?: AdminCustomerStatFilter) => {
+    setStatFilter(filter)
+    setPagination((previous) => ({
+      ...previous,
+      pageIndex: 0,
+    }))
+  }, [])
+  const exportListInput = useMemo(
+    (): AdminCustomersExportInput => ({
+      averageOrderValue: listFilters.averageOrderValue,
+      banned: listFilters.banned,
+      createdAt: listFilters.createdAt,
+      emailVerified: listFilters.emailVerified,
+      lastOrderAt: listFilters.lastOrderAt,
+      role: listFilters.role,
+      search: serverSearch === "" ? undefined : serverSearch,
+      statFilter,
+      totalSpent: listFilters.totalSpent,
+    }),
+    [listFilters, serverSearch, statFilter],
+  )
+  return useMemo(
+    () => ({
+      activeStatFilter: statFilter,
+      applyCustomerStatFilter,
+      columnReorder,
+      exportListInput,
+      hasPreferenceOverrides,
+      isLoading: showSkeletonRows,
+      onRowClick,
+      persistenceKey: customersDataGrid.persistenceKey,
+      resetPreferences,
+      rowReorder: undefined,
+      searchPlaceholder: t("searchPlaceholder"),
+      table,
+    }),
+    [
+      applyCustomerStatFilter,
+      columnReorder,
+      exportListInput,
+      hasPreferenceOverrides,
+      onRowClick,
+      resetPreferences,
+      showSkeletonRows,
+      statFilter,
+      t,
+      table,
+    ],
+  )
+}
+const isCustomersDataGridValue = (value: DataGridContextValue<User["adminCustomerListItem"]>): value is CustomersDataGridValue =>
+  "applyCustomerStatFilter" in value && typeof value.applyCustomerStatFilter === "function"
+
+export const useCustomersDataGridContext = (): CustomersDataGridValue => {
+  const value = customersDataGrid.useDataGrid()
+  if (!isCustomersDataGridValue(value)) {
+    throw new Error("useCustomersDataGridContext must be used within the customers table Provider.")
+  }
+  return value
+}
+const EMPTY_CUSTOMERS_PAGE = {
+  hasMore: false,
+  items: [] as User["adminCustomerListItem"][],
+  limit: ADMIN_CUSTOMER_PAGE_SIZE,
+  offset: 0,
+  total: 0,
+} as const
+export interface CustomersDataGridValue extends DataGridContextValue<User["adminCustomerListItem"]> {
+  readonly activeStatFilter: AdminCustomerStatFilter | undefined
+  readonly applyCustomerStatFilter: (filter?: AdminCustomerStatFilter) => void
+  readonly exportListInput: AdminCustomersExportInput
+}
+interface UseCustomersDataGridOptions {
+  readonly onRowClick?: ((customer: User["adminCustomerListItem"]) => void) | undefined
+}

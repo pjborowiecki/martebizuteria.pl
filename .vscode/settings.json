@@ -1,0 +1,41 @@
+{
+  "vitest.rootConfig": "vite.config.ts",
+  "vitest.configSearchPatternExclude": "{**/node_modules/**,**/opensrc/**,**/vendor/**,**/.*/**,**/*.d.ts}",
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "oxc.fmt.configPath": "./vite.config.ts",
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "explicit"
+  },
+  "i18n-ally.localesPaths": [
+    "./messages"
+  ],
+  "i18n-ally.sourceLanguage": "pl",
+  "i18n-ally.displayLanguage": "pl",
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.enabledFrameworks": [
+    "next-intl"
+  ],
+  "i18n-ally.extract.autoDetect": true,
+  "i18n-ally.review.enabled": true,
+  "i18n-ally.usage.scanningIgnore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.tanstack/**",
+    "**/.wrangler/**"
+  ],
+  "npm.scriptRunner": "bun",
+  "oxc.path.oxfmt": "./node_modules/vite-plus/bin/oxfmt",
+  "oxc.path.oxlint": "./node_modules/vite-plus/bin/oxlint",
+  "oxc.typeAware": true,
+  "i18n-ally.dirStructure": "dir",
+  "i18n-ally.namespace": true,
+  "i18n-ally.pathMatcher": "{locale}/{namespace}.json",
+  "tailwindCSS.classAttributes": [
+    "class",
+    "className",
+    "classList"
+  ],
+  "tailwindCSS.experimental.configFile": "src/presentation/styles/globals.css"
+}

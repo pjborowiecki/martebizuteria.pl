@@ -1,60 +1,45 @@
-import { v7 as uuidv7 } from "uuid";
+import { v7 as uuidv7 } from "uuid"
 
-import type { productImage } from "~/src/modules/product-image/product-image.schema";
+import { type productImage } from "~/src/modules/product-image/product-image.schema"
 
-const EMPTY_LENGTH = 0;
+/** SQL NULL and an omitted variant id both identify product-level images. */
+export const isProductLevelImage = (variantId: string | null | undefined): boolean => variantId === undefined || variantId === null
 
-/** Product-level gallery row (not tied to a variant). Drizzle may surface SQL NULL as `null` or `undefined`. */
-export function isProductLevelImage(variantId: string | null | undefined): boolean {
-  return variantId === undefined || variantId === null;
-}
-
-export interface ProductImageFormRow {
-  readonly alt: string;
-  readonly id: string;
-  readonly url: string;
-}
-
-export interface ProductImageInput {
-  alt?: string;
-  id?: string;
-  rank: number;
-  url: string;
-  variantId?: string;
-}
-
-const FIRST_INDEX = 0;
-const NOT_FOUND_INDEX = -1;
-
-export function galleryImagesToReplacePayload(
+export const galleryImagesToReplacePayload = (
   images: readonly ProductImageFormRow[],
   mainImageId: string | undefined,
-  variantId?: string
-): ProductImageInput[] {
-  if (images.length === EMPTY_LENGTH) {
-    return [];
-  }
-
-  const mainIndex = mainImageId === undefined ? FIRST_INDEX : images.findIndex((image) => image.id === mainImageId);
-  const safeMain = mainIndex === NOT_FOUND_INDEX ? FIRST_INDEX : mainIndex;
-  const ordered = safeMain === FIRST_INDEX ? [...images] : [images[safeMain], ...images.filter((_, index) => index !== safeMain)];
-
+  variantId?: string,
+): ProductImageInput[] => {
+  const mainIndex = images.findIndex((image) => image.id === mainImageId)
+  const mainImage = images[mainIndex]
+  const ordered = mainImage === undefined ? images : [mainImage, ...images.filter((_, index) => index !== mainIndex)]
   return ordered.map((image, rank) => ({
     alt: image.alt === "" ? undefined : image.alt,
     id: image.id,
     rank,
     url: image.url,
-    variantId
-  }));
+    variantId,
+  }))
 }
-
-export function buildProductImageRows(productId: string, images: readonly ProductImageInput[]): (typeof productImage.$inferInsert)[] {
-  return images.map((image) => ({
+export const buildProductImageRows = (productId: string, images: readonly ProductImageInput[]): (typeof productImage.$inferInsert)[] =>
+  images.map((image) => ({
     alt: image.alt === "" ? undefined : image.alt,
     id: image.id ?? uuidv7(),
     productId,
     rank: image.rank,
     url: image.url,
-    variantId: image.variantId
-  }));
+    variantId: image.variantId,
+  }))
+
+export interface ProductImageFormRow {
+  readonly alt: string
+  readonly id: string
+  readonly url: string
+}
+export interface ProductImageInput {
+  alt?: string | undefined
+  id?: string | undefined
+  rank: number
+  url: string
+  variantId?: string | undefined
 }

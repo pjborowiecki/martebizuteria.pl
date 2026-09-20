@@ -1,25 +1,34 @@
 {
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "scripts/theme-init-script.ts", "scripts/datagrid-init-script.ts"],
-  "exclude": ["opensrc", "node_modules", "dist", ".wrangler", ".tanstack"],
   "compilerOptions": {
-    "types": ["vite/client", "node"],
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "target": "es2023",
+    "allowImportingTsExtensions": true,
+    "allowJs": false,
+    "erasableSyntaxOnly": true,
+    "esModuleInterop": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+    "incremental": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "esnext",
     "moduleDetection": "force",
     "moduleResolution": "bundler",
-    "jsx": "react-jsx",
     "noEmit": true,
-    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "strictNullChecks": true,
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": false,
-    "noFallthroughCasesInSwitch": true,
-    "allowImportingTsExtensions": true,
     "paths": {
       "~/*": ["./*"]
-    }
-  }
+    },
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2024",
+    "types": ["vite/client", "node"]
+  },
+  "exclude": ["opensrc", "node_modules", "dist", ".wrangler", ".tanstack"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts", "vite.config.ts", "scripts/**/*.ts"]
 }

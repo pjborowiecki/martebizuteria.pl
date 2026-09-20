@@ -1,83 +1,44 @@
-import { type JSX, Fragment, useMemo } from "react";
+import { Fragment, type JSX, useMemo } from "react"
 
-import { createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, ShoppingBag } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { createFileRoute } from "@tanstack/react-router"
+import { ArrowRight, ShoppingBag } from "lucide-react"
+import { useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
-import type { Locale } from "~/src/constants/types";
+import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
-import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
+import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
-import { isValidLocale } from "~/src/lib/utils";
+import { APP_NAME } from "~/src/presentation/branding/app"
 
-import { Separator } from "~/src/components/shadcn/separator";
+import { Separator } from "~/src/presentation/components/shadcn/separator"
 
-import { LocalizedLink } from "~/src/components/custom/localized-link";
-import { CartItemCard } from "~/src/components/custom/pages/cart-page/cart-item-card";
-import { CartSummary } from "~/src/components/custom/pages/cart-page/cart-summary";
+import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
+import { CartItemCard } from "~/src/presentation/components/custom/pages/cart-page/cart-item-card"
+import { CartSummary } from "~/src/presentation/components/custom/pages/cart-page/cart-summary"
 
-import { useCartAvailability } from "~/src/hooks/use-cart-availability";
-import { useCartStore } from "~/src/stores/cart.store";
-
-interface CartPageMeta {
-  readonly description: string;
-  readonly title: string;
-}
-
-export const Route = createFileRoute("/{-$locale}/_storefront/cart")({
-  component: CartPage,
-  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<CartPageMeta> }>) => ({
-    meta: [
-      { title: loaderData?.title ?? CONSTANTS.APP_NAME },
-      { content: loaderData?.description ?? "", name: "description" },
-      { content: loaderData?.title ?? CONSTANTS.APP_NAME, property: "og:title" },
-      { content: loaderData?.description ?? "", property: "og:description" }
-    ]
-  }),
-  loader: ({ context, params }) => {
-    const { locale: rawLocale } = params;
-    let locale: Locale = CONSTANTS.DEFAULT_LOCALE;
-
-    if (typeof rawLocale === "string" && isValidLocale(rawLocale)) {
-      locale = rawLocale;
-    }
-
-    const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
-
-    return {
-      description: messages?.pages.cart.description ?? "",
-      title: messages?.pages.cart.title ?? CONSTANTS.APP_NAME
-    } satisfies CartPageMeta;
-  }
-});
-
-const INITIAL_COUNT = 0;
-
-// Matches the sticky navbar height (`h-20`). Subtracting it lets the cart fill
-// the first viewport exactly, so the footer only appears on scroll.
-const FULL_VIEWPORT_STYLE = { minHeight: "calc(100dvh - 5rem)" } as const;
-
-function CartPage(): JSX.Element {
-  const t = useTranslations("pages.cart");
-  const { items, cartTotal } = useCartStore();
-  const { hasUnavailableItems, isChecking } = useCartAvailability();
-  const checkoutDisabled = hasUnavailableItems || isChecking;
-
-  const itemCount = items.reduce((sum, item) => sum + item.qty, INITIAL_COUNT);
-  const tParams = useMemo(() => ({ count: itemCount }), [itemCount]);
-
-  const CENTS_IN_ZLOTY = 100;
-  const total = cartTotal() / CENTS_IN_ZLOTY;
+import { ROUTES } from "~/src/routes"
+import { useCartStore } from "~/src/stores/cart.store"
+const CartPage = (): JSX.Element => {
+  const t = useTranslations("pages.cart")
+  const { items, cartTotal } = useCartStore()
+  const { hasUnavailableItems, isChecking } = useCartAvailability()
+  const checkoutDisabled = hasUnavailableItems || isChecking
+  const itemCount = items.reduce((sum, item) => sum + item.qty, 0)
+  const tParams = useMemo(
+    () => ({
+      count: itemCount,
+    }),
+    [itemCount],
+  )
+  const CENTS_IN_ZLOTY = 100
+  const total = cartTotal() / CENTS_IN_ZLOTY
   const subtotal = new Intl.NumberFormat("pl-PL", {
     currency: "PLN",
-    style: "currency"
-  }).format(total);
-
-  if (items.length <= INITIAL_COUNT) {
-    return <EmptyCart />;
+    style: "currency",
+  }).format(total)
+  if (items.length <= 0) {
+    return <EmptyCart />
   }
-
   return (
     <main className="mx-auto w-full max-w-400 px-6 py-12 lg:px-12 lg:py-20" style={FULL_VIEWPORT_STYLE}>
       <div className="mb-10 flex items-baseline justify-between lg:mb-14">
@@ -87,7 +48,7 @@ function CartPage(): JSX.Element {
         </div>
         <LocalizedLink
           className="hidden text-sm text-foreground/50 underline underline-offset-4 transition-colors hover:text-foreground sm:inline"
-          to={CONSTANTS.ROUTES.PRODUCTS}
+          to={ROUTES.PRODUCTS}
         >
           {t("continueShopping")}
         </LocalizedLink>
@@ -105,7 +66,7 @@ function CartPage(): JSX.Element {
 
           <LocalizedLink
             className="mt-6 inline-flex text-sm text-foreground/50 underline underline-offset-4 transition-colors hover:text-foreground sm:hidden"
-            to={CONSTANTS.ROUTES.PRODUCTS}
+            to={ROUTES.PRODUCTS}
           >
             {t("continueShopping")}
           </LocalizedLink>
@@ -114,12 +75,10 @@ function CartPage(): JSX.Element {
         <CartSummary checkoutDisabled={checkoutDisabled} subtotal={subtotal} />
       </div>
     </main>
-  );
+  )
 }
-
-function EmptyCart(): JSX.Element {
-  const t = useTranslations("pages.cart");
-
+const EmptyCart = (): JSX.Element => {
+  const t = useTranslations("pages.cart")
   return (
     <main
       className="mx-auto flex w-full max-w-400 flex-col items-center justify-center px-6 py-16 text-center lg:px-12"
@@ -132,12 +91,59 @@ function EmptyCart(): JSX.Element {
       <h1 className="mb-9 font-serif text-3xl tracking-tight text-foreground md:text-4xl">{t("emptyTitle")}</h1>
 
       <LocalizedLink
-        to={CONSTANTS.ROUTES.PRODUCTS}
+        to={ROUTES.PRODUCTS}
         className="group inline-flex min-h-12 items-center gap-2 border border-foreground/25 px-10 text-xs font-medium tracking-[0.2em] text-foreground uppercase transition-colors hover:border-foreground/60"
       >
         {t("exploreCta")}
         <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" strokeWidth={1.25} />
       </LocalizedLink>
     </main>
-  );
+  )
 }
+interface CartPageMeta {
+  readonly description: string
+  readonly title: string
+}
+export const Route = createFileRoute("/{-$locale}/_storefront/cart")({
+  component: CartPage,
+  head: ({
+    loaderData,
+  }: Readonly<{
+    loaderData?: Readonly<CartPageMeta> | undefined
+  }>) => ({
+    meta: [
+      {
+        title: loaderData?.title ?? APP_NAME,
+      },
+      {
+        content: loaderData?.description ?? "",
+        name: "description",
+      },
+      {
+        content: loaderData?.title ?? APP_NAME,
+        property: "og:title",
+      },
+      {
+        content: loaderData?.description ?? "",
+        property: "og:description",
+      },
+    ],
+  }),
+  loader: async ({ context }) => {
+    const { locale } = context
+    const messages = await context.queryClient.query(messagesQueryOptions(locale, "pages.cart"))
+    return {
+      description: messages.description,
+      title: messages.title,
+    } satisfies CartPageMeta
+  },
+  staticData: {
+    namespaces: ["pages.cart"],
+  },
+})
+
+// Matches the sticky navbar height (`h-20`).
+// Subtracting it lets the cart fill the first viewport exactly, so the footer only appears on scroll.
+const FULL_VIEWPORT_STYLE = {
+  minHeight: "calc(100dvh - 5rem)",
+} as const

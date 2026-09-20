@@ -1,5 +1,9 @@
-import { z } from "zod/v4";
-
+import { z } from "zod/v4"
+export const getAuthErrorMessage = (t: (key: string) => string, error: unknown): string => {
+  const { data } = authErrorSchema.safeParse(error)
+  const key = AUTH_ERRORS[data?.code ?? ""] ?? AUTH_ERRORS["UNKNOWN_ERROR"]
+  return t(`pages.auth.errors.${key}`)
+}
 export const AUTH_ERRORS: Record<string, string> = {
   ACCOUNT_NOT_FOUND: "accountNotFound",
   BANNED_USER: "bannedUser",
@@ -27,13 +31,8 @@ export const AUTH_ERRORS: Record<string, string> = {
   TOO_MANY_REQUESTS: "tooManyRequests",
   UNKNOWN_ERROR: "unknownError",
   USER_ALREADY_EXISTS: "userAlreadyExists",
-  USER_NOT_FOUND: "userNotFound"
-};
-
-const authErrorSchema = z.object({ code: z.string() });
-
-export function getAuthErrorMessage(t: (key: string) => string, error: unknown): string {
-  const { data } = authErrorSchema.safeParse(error);
-  const key = AUTH_ERRORS[data?.code ?? ""] ?? AUTH_ERRORS.UNKNOWN_ERROR;
-  return t(`pages.auth.errors.${key}`);
+  USER_NOT_FOUND: "userNotFound",
 }
+const authErrorSchema = z.object({
+  code: z.string(),
+})

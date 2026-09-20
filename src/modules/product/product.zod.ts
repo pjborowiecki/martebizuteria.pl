@@ -1,107 +1,104 @@
-import { createSchemaFactory } from "drizzle-zod";
-import { z } from "zod/v4";
+import { createSchemaFactory } from "drizzle-zod"
+import { z } from "zod/v4"
 
-import { STORE_CURRENCY_CODE } from "~/src/constants/_constants/currency";
-import { LOCALES } from "~/src/constants/_constants/locales";
+import { LOCALES } from "~/src/integrations/use-intl/i18n.config"
 
-import { isCompareAtValid, isSellPriceCentsValid, parseMoneyInputToMinorUnits } from "~/src/lib/_utils/currency";
-
-import { attributeOnProductZodSchemas } from "~/src/modules/attribute-on-product/attribute-on-product.zod";
-import { PRODUCT_IMAGE_COLUMN_LENGTH } from "~/src/modules/product-image/product-image.constants";
-import { MAX_PRODUCT_OPTIONS } from "~/src/modules/product-variant/product-variant.utils";
-import { collectProductFormSkuEntries, formPathToZodPath } from "~/src/modules/product/product-sku.validation.utils";
+import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
+import { attributeOnProductZodSchemas } from "~/src/modules/attribute-on-product/attribute-on-product.zod"
+import { PRODUCT_IMAGE_COLUMN_LENGTH } from "~/src/modules/product-image/product-image.constants"
+import { MAX_PRODUCT_OPTIONS } from "~/src/modules/product-variant/product-variant.utils"
+import { collectProductFormSkuEntries, formPathToZodPath } from "~/src/modules/product/product-sku.validation.utils"
 import {
   PRODUCT_ADMIN_STATUS,
   PRODUCT_COLUMN_LENGTH,
   PRODUCT_FORM_VALIDATION_KEYS,
   PRODUCT_HANDLE_PATTERN,
   PRODUCT_INVENTORY_LEVEL,
-  PRODUCT_MIN_LENGTH
-} from "~/src/modules/product/product.constants";
-import { product } from "~/src/modules/product/product.schema";
+  PRODUCT_MIN_LENGTH,
+} from "~/src/modules/product/product.constants"
+import { product } from "~/src/modules/product/product.schema"
+
+import { isCompareAtValid, isSellPriceCentsValid, parseMoneyInputToMinorUnits } from "~/src/lib/currency"
 
 const { createSelectSchema } = createSchemaFactory({
-  zodInstance: z
-});
+  zodInstance: z,
+})
 
-const productSelectSchema = createSelectSchema(product);
+const productSelectSchema = createSelectSchema(product)
 
-const productIdSchema = z.string().trim().min(PRODUCT_MIN_LENGTH);
-const MIN_INVENTORY_QUANTITY = 0;
+const productIdSchema = z.string().trim().min(PRODUCT_MIN_LENGTH)
 
-function productLocaleMapSchema(maxLength: number) {
-  return z.object(Object.fromEntries(LOCALES.map((locale) => [locale, z.string().trim().max(maxLength)])));
-}
+const productLocaleMapSchema = (maxLength: number, tooLongMessage?: string) =>
+  z.object(Object.fromEntries(LOCALES.map((locale) => [locale, z.string().trim().max(maxLength, tooLongMessage)])))
 
-function productLocaleMapRequiredSchema(maxLength: number) {
-  return productLocaleMapSchema(maxLength).superRefine((map, context) => {
+const productLocaleMapRequiredSchema = (maxLength: number) =>
+  productLocaleMapSchema(maxLength).superRefine((map, context) => {
     for (const locale of LOCALES) {
       if (map[locale].trim() === "") {
         context.addIssue({
           code: "custom",
           message: PRODUCT_FORM_VALIDATION_KEYS.localeTitleRequired,
-          path: [locale]
-        });
+          path: [locale],
+        })
       }
     }
-  });
-}
+  })
 
-function productTagsLocaleMapSchema() {
-  return z.object(Object.fromEntries(LOCALES.map((locale) => [locale, z.array(z.string().trim().min(PRODUCT_MIN_LENGTH))])));
-}
+const productTagsLocaleMapSchema = () =>
+  z.object(Object.fromEntries(LOCALES.map((locale) => [locale, z.array(z.string().trim().min(PRODUCT_MIN_LENGTH))])))
 
-const productTitlesSchema = productLocaleMapRequiredSchema(PRODUCT_COLUMN_LENGTH.title);
-const productSubtitlesSchema = productLocaleMapSchema(PRODUCT_COLUMN_LENGTH.subtitle);
-const productDescriptionsSchema = productLocaleMapSchema(PRODUCT_COLUMN_LENGTH.description);
+const productTitlesSchema = productLocaleMapRequiredSchema(PRODUCT_COLUMN_LENGTH.title)
+
+const productSubtitlesSchema = productLocaleMapSchema(PRODUCT_COLUMN_LENGTH.subtitle)
+
+const productDescriptionsSchema = productLocaleMapSchema(PRODUCT_COLUMN_LENGTH.description)
 
 const plnMoneyInputSchema = z
   .string()
   .trim()
   .superRefine((value, ctx) => {
     if (value === "") {
-      return;
+      return
     }
-
     if (parseMoneyInputToMinorUnits(value, STORE_CURRENCY_CODE) === undefined) {
       ctx.addIssue({
         code: "custom",
-        message: PRODUCT_FORM_VALIDATION_KEYS.priceInvalid
-      });
+        message: PRODUCT_FORM_VALIDATION_KEYS.priceInvalid,
+      })
     }
-  });
+  })
 
 const simpleVariantInputSchema = z.object({
   compareAtPrice: plnMoneyInputSchema,
   manageInventory: z.boolean(),
   price: plnMoneyInputSchema,
-  quantity: z.number().int().min(MIN_INVENTORY_QUANTITY),
-  sku: z.string().trim().max(PRODUCT_COLUMN_LENGTH.sku)
-});
+  quantity: z.number().int().min(0),
+  sku: z.string().trim().max(PRODUCT_COLUMN_LENGTH.sku),
+})
 
 const productOptionValueInputSchema = z.object({
   id: z.string().optional(),
-  labels: productLocaleMapRequiredSchema(PRODUCT_COLUMN_LENGTH.optionValue)
-});
+  labels: productLocaleMapRequiredSchema(PRODUCT_COLUMN_LENGTH.optionValue),
+})
 
 const productOptionInputSchema = z.object({
   id: z.string().optional(),
   titles: productLocaleMapRequiredSchema(PRODUCT_COLUMN_LENGTH.optionTitle),
-  values: z.array(productOptionValueInputSchema).min(PRODUCT_MIN_LENGTH)
-});
+  values: z.array(productOptionValueInputSchema).min(PRODUCT_MIN_LENGTH),
+})
 
 const productImageFormRowSchema = z.object({
   alt: z.string().trim(),
   id: z.string().trim().min(PRODUCT_MIN_LENGTH),
-  url: z.string().trim().min(PRODUCT_MIN_LENGTH)
-});
+  url: z.string().trim().min(PRODUCT_MIN_LENGTH),
+})
 
 const variantAttributeValueFormRowSchema = z.object({
   attributeId: z.string().trim(),
   id: z.string().optional(),
-  rank: z.number().int().min(MIN_INVENTORY_QUANTITY).optional(),
-  value: z.string().trim()
-});
+  rank: z.number().int().min(0).optional(),
+  value: z.string().trim(),
+})
 
 const variantRowInputSchema = z.object({
   attributeValues: z.array(variantAttributeValueFormRowSchema).optional(),
@@ -112,13 +109,10 @@ const variantRowInputSchema = z.object({
   manageInventory: z.boolean(),
   optionValues: z.record(z.string(), z.string()),
   price: plnMoneyInputSchema,
-  quantity: z.number().int().min(MIN_INVENTORY_QUANTITY),
+  quantity: z.number().int().min(0),
   sku: z.string().trim().max(PRODUCT_COLUMN_LENGTH.sku),
-  title: z.string().trim().optional()
-});
-
-const EMPTY_OPTIONS_LENGTH = 0;
-const EMPTY_VARIANT_ROWS_LENGTH = 0;
+  title: z.string().trim().optional(),
+})
 
 const catalogUpsertBaseSchema = z.object({
   additionalCategoryIds: z.array(z.uuid()),
@@ -127,9 +121,15 @@ const catalogUpsertBaseSchema = z.object({
   handle: z
     .string()
     .trim()
-    .min(PRODUCT_MIN_LENGTH, { message: PRODUCT_FORM_VALIDATION_KEYS.slugRequired })
-    .max(PRODUCT_COLUMN_LENGTH.handle, { message: PRODUCT_FORM_VALIDATION_KEYS.slugTooLong })
-    .regex(PRODUCT_HANDLE_PATTERN, { message: PRODUCT_FORM_VALIDATION_KEYS.slugInvalid }),
+    .min(PRODUCT_MIN_LENGTH, {
+      message: PRODUCT_FORM_VALIDATION_KEYS.slugRequired,
+    })
+    .max(PRODUCT_COLUMN_LENGTH.handle, {
+      message: PRODUCT_FORM_VALIDATION_KEYS.slugTooLong,
+    })
+    .regex(PRODUCT_HANDLE_PATTERN, {
+      message: PRODUCT_FORM_VALIDATION_KEYS.slugInvalid,
+    }),
   hasVariants: z.boolean(),
   options: z.array(productOptionInputSchema).max(MAX_PRODUCT_OPTIONS),
   primaryCategoryId: z.union([z.literal(""), z.uuid()]),
@@ -138,261 +138,235 @@ const catalogUpsertBaseSchema = z.object({
   subtitles: productSubtitlesSchema,
   tags: productTagsLocaleMapSchema(),
   titles: productTitlesSchema,
-  variants: z.array(variantRowInputSchema)
-});
+  variants: z.array(variantRowInputSchema),
+})
 
-function refineOrganizationRelations(data: z.infer<typeof catalogUpsertBaseSchema>, ctx: z.RefinementCtx): void {
+const refineOrganizationRelations = (data: z.infer<typeof catalogUpsertBaseSchema>, ctx: z.RefinementCtx): void => {
   if (data.primaryCategoryId === "") {
     ctx.addIssue({
       code: "custom",
       message: PRODUCT_FORM_VALIDATION_KEYS.primaryCategoryRequired,
-      path: ["primaryCategoryId"]
-    });
+      path: ["primaryCategoryId"],
+    })
   }
 }
 
-function refineSimpleProductPrice(data: z.infer<typeof catalogUpsertBaseSchema>, ctx: z.RefinementCtx): void {
+const refineSimpleProductPrice = (data: z.infer<typeof catalogUpsertBaseSchema>, ctx: z.RefinementCtx): void => {
   if (data.hasVariants) {
-    return;
+    return
   }
-
-  const simple = data.simpleVariant;
+  const simple = data.simpleVariant
   if (simple === undefined) {
-    return;
+    return
   }
-
-  const priceCents = parseMoneyInputToMinorUnits(simple.price, STORE_CURRENCY_CODE);
+  const priceCents = parseMoneyInputToMinorUnits(simple.price, STORE_CURRENCY_CODE)
   if (priceCents === undefined) {
     ctx.addIssue({
       code: "custom",
       message: PRODUCT_FORM_VALIDATION_KEYS.priceInvalid,
-      path: ["simpleVariant", "price"]
-    });
-    return;
+      path: ["simpleVariant", "price"],
+    })
+    return
   }
-
   if (!isSellPriceCentsValid(priceCents)) {
     ctx.addIssue({
       code: "custom",
       message: PRODUCT_FORM_VALIDATION_KEYS.priceRequired,
-      path: ["simpleVariant", "price"]
-    });
+      path: ["simpleVariant", "price"],
+    })
   }
 }
 
-function refineActiveProductPricing(data: z.infer<typeof catalogUpsertBaseSchema>, ctx: z.RefinementCtx): void {
+const refineActiveProductPricing = (data: z.infer<typeof catalogUpsertBaseSchema>, ctx: z.RefinementCtx): void => {
   if (data.status !== PRODUCT_ADMIN_STATUS.ACTIVE) {
-    return;
+    return
   }
-
   if (!data.hasVariants) {
-    const simple = data.simpleVariant;
+    const simple = data.simpleVariant
     if (simple === undefined) {
-      return;
+      return
     }
-
-    const priceCents = parseMoneyInputToMinorUnits(simple.price, STORE_CURRENCY_CODE);
+    const priceCents = parseMoneyInputToMinorUnits(simple.price, STORE_CURRENCY_CODE)
     if (priceCents === undefined || !isCompareAtValid(priceCents, simple.compareAtPrice)) {
       ctx.addIssue({
         code: "custom",
         message: PRODUCT_FORM_VALIDATION_KEYS.compareAtInvalid,
-        path: ["simpleVariant", "compareAtPrice"]
-      });
+        path: ["simpleVariant", "compareAtPrice"],
+      })
     }
-
-    return;
+    return
   }
-
   data.variants.forEach((variant, index) => {
-    const priceCents = parseMoneyInputToMinorUnits(variant.price, STORE_CURRENCY_CODE);
+    const priceCents = parseMoneyInputToMinorUnits(variant.price, STORE_CURRENCY_CODE)
     if (priceCents === undefined) {
       ctx.addIssue({
         code: "custom",
         message: PRODUCT_FORM_VALIDATION_KEYS.priceInvalid,
-        path: ["variants", index, "price"]
-      });
+        path: ["variants", index, "price"],
+      })
     } else if (!isSellPriceCentsValid(priceCents)) {
       ctx.addIssue({
         code: "custom",
         message: PRODUCT_FORM_VALIDATION_KEYS.activePriceRequired,
-        path: ["variants", index, "price"]
-      });
+        path: ["variants", index, "price"],
+      })
     }
-
     if (priceCents === undefined || !isCompareAtValid(priceCents, variant.compareAtPrice)) {
       ctx.addIssue({
         code: "custom",
         message: PRODUCT_FORM_VALIDATION_KEYS.compareAtInvalid,
-        path: ["variants", index, "compareAtPrice"]
-      });
+        path: ["variants", index, "compareAtPrice"],
+      })
     }
-  });
+  })
 }
 
 const productImageReplaceRowSchema = z.object({
   alt: z.string().trim().optional(),
   id: z.string().trim().min(PRODUCT_MIN_LENGTH).optional(),
-  rank: z.number().int().min(MIN_INVENTORY_QUANTITY),
+  rank: z.number().int().min(0),
   url: z.string().trim().min(PRODUCT_MIN_LENGTH).max(PRODUCT_IMAGE_COLUMN_LENGTH.url),
-  variantId: z.string().optional()
-});
+  variantId: z.string().optional(),
+})
 
 const productAttributeValueFormRowSchema = z.object({
   attributeId: z.string().trim(),
   id: z.string().optional(),
-  rank: z.number().int().min(MIN_INVENTORY_QUANTITY).optional(),
-  value: z.string().trim()
-});
+  rank: z.number().int().min(0).optional(),
+  value: z.string().trim(),
+})
 
 const productMediaFormFields = {
   attributeValues: z.array(productAttributeValueFormRowSchema),
   images: z.array(productImageFormRowSchema),
-  mainImageId: z.string().optional()
-} as const;
+  mainImageId: z.string().optional(),
+} as const
 
-function refineDuplicateSkusInForm(data: ProductFormValues, ctx: z.RefinementCtx): void {
-  const entries = collectProductFormSkuEntries(data);
-  const entriesBySku = new Map<string, (typeof entries)[number][]>();
-
+const refineDuplicateSkusInForm = (data: ProductFormValues, ctx: z.RefinementCtx): void => {
+  const entries = collectProductFormSkuEntries(data)
+  const entriesBySku = new Map<string, (typeof entries)[number][]>()
   for (const entry of entries) {
-    const group = entriesBySku.get(entry.sku) ?? [];
-    group.push(entry);
-    entriesBySku.set(entry.sku, group);
+    const group = entriesBySku.get(entry.sku) ?? []
+    group.push(entry)
+    entriesBySku.set(entry.sku, group)
   }
-
-  const MIN_DUPLICATE_SKU_GROUP_SIZE = 2;
-
+  const MIN_DUPLICATE_SKU_GROUP_SIZE = 2
   for (const group of entriesBySku.values()) {
     if (group.length >= MIN_DUPLICATE_SKU_GROUP_SIZE) {
       for (const entry of group) {
         ctx.addIssue({
           code: "custom",
           message: PRODUCT_FORM_VALIDATION_KEYS.duplicateSku,
-          path: formPathToZodPath(entry.formPath)
-        });
+          path: formPathToZodPath(entry.formPath),
+        })
       }
     }
   }
 }
 
-function refineDuplicateProductAttributes(data: ProductFormValues, ctx: z.RefinementCtx): void {
-  const seenAttributeIds = new Set<string>();
-
+const refineDuplicateProductAttributes = (data: ProductFormValues, ctx: z.RefinementCtx): void => {
+  const seenAttributeIds = new Set<string>()
   data.attributeValues.forEach((row, index) => {
-    const attributeId = row.attributeId.trim();
+    const attributeId = row.attributeId.trim()
     if (attributeId === "") {
-      return;
+      return
     }
-
     if (seenAttributeIds.has(attributeId)) {
       ctx.addIssue({
         code: "custom",
         message: PRODUCT_FORM_VALIDATION_KEYS.duplicateAttribute,
-        path: ["attributeValues", index, "attributeId"]
-      });
-      return;
+        path: ["attributeValues", index, "attributeId"],
+      })
+      return
     }
-
-    seenAttributeIds.add(attributeId);
-  });
+    seenAttributeIds.add(attributeId)
+  })
 }
 
-function refineCatalogUpsert(data: z.infer<typeof catalogUpsertBaseSchema>, ctx: z.RefinementCtx): void {
-  refineOrganizationRelations(data, ctx);
-
+const refineCatalogUpsert = (data: z.infer<typeof catalogUpsertBaseSchema>, ctx: z.RefinementCtx): void => {
+  refineOrganizationRelations(data, ctx)
   if (!data.hasVariants) {
     if (data.simpleVariant === undefined) {
       ctx.addIssue({
         code: "custom",
         message: PRODUCT_FORM_VALIDATION_KEYS.simpleVariantRequired,
-        path: ["simpleVariant"]
-      });
+        path: ["simpleVariant"],
+      })
     }
-
-    refineSimpleProductPrice(data, ctx);
-    refineActiveProductPricing(data, ctx);
-    return;
+    refineSimpleProductPrice(data, ctx)
+    refineActiveProductPricing(data, ctx)
+    return
   }
-
-  if (data.options.length === EMPTY_OPTIONS_LENGTH) {
+  if (data.options.length === 0) {
     ctx.addIssue({
       code: "custom",
       message: PRODUCT_FORM_VALIDATION_KEYS.optionsRequired,
-      path: ["options"]
-    });
+      path: ["options"],
+    })
   }
-
-  if (data.variants.length === EMPTY_VARIANT_ROWS_LENGTH) {
+  if (data.variants.length === 0) {
     ctx.addIssue({
       code: "custom",
       message: PRODUCT_FORM_VALIDATION_KEYS.variantsRequired,
-      path: ["variants"]
-    });
+      path: ["variants"],
+    })
   }
-
-  refineActiveProductPricing(data, ctx);
+  refineActiveProductPricing(data, ctx)
 }
 
-const catalogUpsertInputSchema = catalogUpsertBaseSchema.superRefine(refineCatalogUpsert);
+const catalogUpsertInputSchema = catalogUpsertBaseSchema.superRefine(refineCatalogUpsert)
+
+const variantAttributeValuesRowSchema = z.object({
+  values: z.array(attributeOnProductZodSchemas.row),
+  variantId: z.string().trim().min(PRODUCT_MIN_LENGTH).max(PRODUCT_COLUMN_LENGTH.id),
+})
 
 const productFormSchemaDefinition = z
   .object({
     ...catalogUpsertBaseSchema.shape,
-    descriptions: z.object(
-      Object.fromEntries(
-        LOCALES.map((locale) => [
-          locale,
-          z.string().trim().max(PRODUCT_COLUMN_LENGTH.description, {
-            message: PRODUCT_FORM_VALIDATION_KEYS.descriptionTooLong
-          })
-        ])
-      )
-    ),
-    subtitles: z.object(
-      Object.fromEntries(
-        LOCALES.map((locale) => [
-          locale,
-          z.string().trim().max(PRODUCT_COLUMN_LENGTH.subtitle, {
-            message: PRODUCT_FORM_VALIDATION_KEYS.subtitleTooLong
-          })
-        ])
-      )
-    ),
+    descriptions: productLocaleMapSchema(PRODUCT_COLUMN_LENGTH.description, PRODUCT_FORM_VALIDATION_KEYS.descriptionTooLong),
+    subtitles: productLocaleMapSchema(PRODUCT_COLUMN_LENGTH.subtitle, PRODUCT_FORM_VALIDATION_KEYS.subtitleTooLong),
     tags: productTagsLocaleMapSchema(),
     titles: productTitlesSchema,
-    ...productMediaFormFields
+    ...productMediaFormFields,
   })
   .superRefine((data, ctx) => {
-    refineDuplicateSkusInForm(data, ctx);
-    refineDuplicateProductAttributes(data, ctx);
-    refineCatalogUpsert(data, ctx);
-  });
+    refineDuplicateSkusInForm(data, ctx)
+    refineDuplicateProductAttributes(data, ctx)
+    refineCatalogUpsert(data, ctx)
+  })
 
-export type ProductFormValues = z.output<typeof productFormSchemaDefinition>;
-export type CatalogUpsertInput = z.infer<typeof catalogUpsertInputSchema>;
+export type ProductFormValues = z.output<typeof productFormSchemaDefinition>
 
-export function productFormSchema() {
-  return productFormSchemaDefinition;
-}
+export type CatalogUpsertInput = z.infer<typeof catalogUpsertInputSchema>
+
+export const productFormSchema = () => productFormSchemaDefinition
 
 /** Inventory is always tracked for catalog products — not exposed in admin UI. */
-function withInventoryAlwaysTracked(input: CatalogUpsertInput): CatalogUpsertInput {
-  return {
-    ...input,
-    simpleVariant: input.simpleVariant === undefined ? undefined : { ...input.simpleVariant, manageInventory: true },
-    variants: input.variants.map((row) => ({ ...row, manageInventory: true }))
-  };
-}
+const withInventoryAlwaysTracked = (input: CatalogUpsertInput): CatalogUpsertInput => ({
+  ...input,
+  simpleVariant:
+    input.simpleVariant === undefined
+      ? undefined
+      : {
+          ...input.simpleVariant,
+          manageInventory: true,
+        },
+  variants: input.variants.map((row) => ({
+    ...row,
+    manageInventory: true,
+  })),
+})
 
-export function parseCatalogUpsertInput(values: ProductFormValues): CatalogUpsertInput {
-  const { attributeValues: _attributeValues, images: _images, mainImageId: _mainImageId, ...catalog } = values;
+export const parseCatalogUpsertInput = (values: ProductFormValues): CatalogUpsertInput => {
+  const { attributeValues: _attributeValues, images: _images, mainImageId: _mainImageId, ...catalog } = values
   const parsed = catalogUpsertInputSchema.parse({
     ...catalog,
     variants: catalog.variants.map(
-      ({ attributeValues: _variantAttributes, images: _variantImages, mainImageId: _variantMainImageId, ...variant }) => variant
-    )
-  });
-  return withInventoryAlwaysTracked(parsed);
+      ({ attributeValues: _variantAttributes, images: _variantImages, mainImageId: _variantMainImageId, ...variant }) => variant,
+    ),
+  })
+  return withInventoryAlwaysTracked(parsed)
 }
 
 export const productZodSchemas = {
@@ -405,12 +379,12 @@ export const productZodSchemas = {
     minPrice: z.number().optional(),
     skuSummary: z.string().optional(),
     totalStock: z.number(),
-    variantCount: z.number()
+    variantCount: z.number(),
   }),
   catalogUpsertInput: catalogUpsertInputSchema,
   createCompleteInput: catalogUpsertInputSchema.extend({
     attributeValues: z.array(attributeOnProductZodSchemas.row),
-    images: z.array(productImageReplaceRowSchema)
+    images: z.array(productImageReplaceRowSchema),
   }),
   createInput: catalogUpsertInputSchema,
   deleteInput: z.array(productIdSchema).min(PRODUCT_MIN_LENGTH),
@@ -422,20 +396,15 @@ export const productZodSchemas = {
     archived: z.number(),
     draft: z.number(),
     lowStock: z.number(),
-    total: z.number()
+    total: z.number(),
   }),
   update: catalogUpsertInputSchema.extend({
-    id: productIdSchema
+    id: productIdSchema,
   }),
   updateCompleteInput: catalogUpsertInputSchema.extend({
     attributeValues: z.array(attributeOnProductZodSchemas.row),
     id: productIdSchema,
     images: z.array(productImageReplaceRowSchema),
-    variantAttributeValues: z.array(
-      z.object({
-        values: z.array(attributeOnProductZodSchemas.row),
-        variantId: z.string().trim().min(PRODUCT_MIN_LENGTH).max(PRODUCT_COLUMN_LENGTH.id)
-      })
-    )
-  })
-};
+    variantAttributeValues: z.array(variantAttributeValuesRowSchema),
+  }),
+}

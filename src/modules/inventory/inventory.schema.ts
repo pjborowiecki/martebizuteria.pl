@@ -1,14 +1,10 @@
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import {
-  INVENTORY_COLUMN_LENGTH,
-  INVENTORY_DEFAULT_QUANTITY,
-  INVENTORY_DEFAULT_VERSION
-} from "~/src/modules/inventory/inventory.constants";
-import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
+import { INVENTORY_COLUMN_LENGTH, INVENTORY_DEFAULT_QUANTITY, INVENTORY_DEFAULT_VERSION } from "~/src/modules/inventory/inventory.constants"
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 
 export const inventory = sqliteTable(
   "inventory",
@@ -22,14 +18,14 @@ export const inventory = sqliteTable(
       .references(() => productVariant.id, { onDelete: "cascade" })
       .notNull(),
     version: integer("version").default(INVENTORY_DEFAULT_VERSION).notNull(),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("inventory_variantId_idx").on(table.variantId), uniqueIndex("inventory_variantId_unique").on(table.variantId)]
-);
+  (table) => [index("inventory_variantId_idx").on(table.variantId), uniqueIndex("inventory_variantId_unique").on(table.variantId)],
+)
 
 export const inventoryRelations = relations(inventory, ({ one }) => ({
   variant: one(productVariant, {
     fields: [inventory.variantId],
-    references: [productVariant.id]
-  })
-}));
+    references: [productVariant.id],
+  }),
+}))

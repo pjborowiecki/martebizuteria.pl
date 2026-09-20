@@ -1,28 +1,20 @@
-import type { inventory } from "~/src/modules/inventory/inventory.schema";
-import type { productVariant } from "~/src/modules/product-variant/product-variant.schema";
-
-const ZERO_AVAILABLE = 0;
+import { type inventory } from "~/src/modules/inventory/inventory.schema"
+import { type productVariant } from "~/src/modules/product-variant/product-variant.schema"
 
 export type VariantWithInventory = typeof productVariant.$inferSelect & {
-  readonly inventory?: typeof inventory.$inferSelect | null;
-};
-
-export function getVariantQuantityAvailable(variant: VariantWithInventory | undefined): number {
-  return variant?.inventory?.quantityAvailable ?? ZERO_AVAILABLE;
+  readonly inventory?: typeof inventory.$inferSelect | null
 }
 
-export function isVariantPurchasable(variant: VariantWithInventory | undefined, quantity: number): boolean {
-  if (quantity <= ZERO_AVAILABLE) {
-    return false;
+export const getVariantQuantityAvailable = (variant: VariantWithInventory | undefined): number => variant?.inventory?.quantityAvailable ?? 0
+
+export const isVariantPurchasable = (variant: VariantWithInventory | undefined, quantity: number): boolean => {
+  if (quantity <= 0) {
+    return false
   }
-
-  return getVariantQuantityAvailable(variant) >= quantity;
+  return getVariantQuantityAvailable(variant) >= quantity
 }
 
-export function resolveProductTotalAvailableStock(variants: readonly VariantWithInventory[]): number {
-  return variants.reduce((sum, variant) => sum + getVariantQuantityAvailable(variant), ZERO_AVAILABLE);
-}
+export const resolveProductTotalAvailableStock = (variants: readonly VariantWithInventory[]): number =>
+  variants.reduce((sum, variant) => sum + getVariantQuantityAvailable(variant), 0)
 
-export function isProductInStock(variants: readonly VariantWithInventory[]): boolean {
-  return resolveProductTotalAvailableStock(variants) > ZERO_AVAILABLE;
-}
+export const isProductInStock = (variants: readonly VariantWithInventory[]): boolean => resolveProductTotalAvailableStock(variants) > 0

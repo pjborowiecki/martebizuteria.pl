@@ -1,37 +1,15 @@
-import type { ConfigEnv, Plugin, UserConfig } from "vite";
-import { defineConfig, lazyPlugins } from "vite-plus";
-
-/** @cloudflare/vite-plugin hard-fails under Vitest (`resolve.external` conflict). */
-function withoutVitest(plugin: Plugin): Plugin {
-  const originalApply = plugin.apply;
-
-  return {
-    ...plugin,
-    apply(config: UserConfig, env: ConfigEnv): boolean {
-      if (env.mode === "test") {
-        return false;
-      }
-
-      if (typeof originalApply === "function") {
-        return originalApply(config, env);
-      }
-
-      if (originalApply === "build") {
-        return env.command === "build";
-      }
-
-      if (originalApply === "serve") {
-        return env.command === "serve";
-      }
-
-      return originalApply !== false;
-    }
-  };
-}
+import { defineConfig, lazyPlugins, loadEnv } from "vite-plus"
 
 const ignorePatterns = [
   "node_modules",
   "dist",
+  "coverage",
+  "blob-report",
+  "dist-ssr",
+  "e2e",
+  "playwright/.cache",
+  "playwright-report",
+  "test-results",
   "opensrc",
   "scripts",
   ".tanstack",
@@ -39,11 +17,14 @@ const ignorePatterns = [
   ".vite-hooks",
   ".vscode",
   ".agents",
+  ".claude",
+  ".codex",
   "bun.lock",
   "**/*.d.ts",
   "**/*.tsbuildinfo",
-  "src/routeTree.gen.ts"
-];
+  "src/routeTree.gen.ts",
+  "src/integrations/**/migrations/**",
+]
 
 export default defineConfig({
   build: { target: "esnext" },
@@ -54,180 +35,232 @@ export default defineConfig({
     ignorePatterns,
     jsxSingleQuote: false,
     printWidth: 140,
-    semi: true,
+    semi: false,
     singleQuote: false,
     sortImports: {
       customGroups: [
+        { elementNamePattern: ["@tanstack/react-start/server-only"], groupName: "server-only" },
+        { elementNamePattern: ["cloudflare:workers"], groupName: "cloudflare" },
+        { elementNamePattern: ["~/src/modules/**"], groupName: "modules" },
+        { elementNamePattern: ["~/src/hooks/**"], groupName: "hooks" },
+        { elementNamePattern: ["~/src/platform/**"], groupName: "platform" },
+        { elementNamePattern: ["~/src/routes/**"], groupName: "routes" },
+        { elementNamePattern: ["~/src/types/**"], groupName: "types" },
+        { elementNamePattern: ["~/src/presentation/branding/**"], groupName: "branding" },
         {
-          elementNamePattern: ["react", "react/**", "next", "next/**"],
-          groupName: "react-and-next"
+          elementNamePattern: ["react", "react/**", "react-dom", "react-dom/**"],
+          groupName: "react",
         },
         {
-          elementNamePattern: ["~/src/constants", "~/src/constants/**"],
-          groupName: "constants"
+          elementNamePattern: ["~/src/data/**", "~/src/presentation/theme/**"],
+          groupName: "constants",
         },
         {
           elementNamePattern: ["~/src/providers/**"],
-          groupName: "providers"
+          groupName: "providers",
         },
         {
           elementNamePattern: ["~/src/integrations/**"],
-          groupName: "integrations"
+          groupName: "integrations",
         },
         {
           elementNamePattern: ["~/src/lib/**"],
-          groupName: "lib"
+          groupName: "lib",
         },
         {
-          elementNamePattern: ["~/src/components/shadcn/**"],
-          groupName: "components-shadcn"
+          elementNamePattern: ["~/src/presentation/components/shadcn/**"],
+          groupName: "components-shadcn",
         },
         {
-          elementNamePattern: ["~/src/components/custom/**"],
-          groupName: "components-custom"
+          elementNamePattern: ["~/src/presentation/components/custom/**"],
+          groupName: "components-custom",
         },
         {
-          elementNamePattern: ["~/src/components/**"],
-          groupName: "components-other"
+          elementNamePattern: ["~/src/presentation/components/**"],
+          groupName: "components-other",
         },
         {
-          elementNamePattern: ["~/src/styles/**"],
-          groupName: "styles"
-        }
+          elementNamePattern: ["~/src/presentation/styles/**"],
+          groupName: "styles",
+        },
       ],
       groups: [
-        "react-and-next",
+        "server-only",
+        "cloudflare",
+        "react",
         ["builtin", "external"],
-        "constants",
+        "platform",
         "providers",
         "integrations",
+        "modules",
+        "routes",
+        "hooks",
+        "constants",
+        "types",
         "lib",
+        "branding",
         "components-shadcn",
         "components-custom",
         "components-other",
         "styles",
         ["internal", "parent", "sibling", "index"],
-        "unknown"
+        "unknown",
       ],
       ignoreCase: true,
-      newlinesBetween: true
+      newlinesBetween: true,
+      sortSideEffects: true,
     },
     sortTailwindcss: {
       attributes: ["className", "classList"],
-      functions: ["cn", "cva"],
-      stylesheet: "./src/styles/globals.css"
+      functions: ["cn", "cva", "tw"],
+      stylesheet: "./src/presentation/styles/globals.css",
     },
     tabWidth: 2,
-    trailingComma: "none",
-    useTabs: false
+    trailingComma: "all",
+    useTabs: false,
   },
   lint: {
     categories: {
       correctness: "error",
+      nursery: "error",
       pedantic: "error",
       perf: "error",
       style: "error",
-      suspicious: "error"
+      suspicious: "error",
     },
+    env: { browser: true, es2024: true, node: true, worker: true },
+    globals: { HTMLRewriter: "readonly", WebSocketPair: "readonly", caches: "readonly" },
     ignorePatterns,
     options: {
       denyWarnings: true,
       reportUnusedDisableDirectives: "error",
       typeAware: true,
-      typeCheck: true
+      typeCheck: true,
     },
     overrides: [
       {
-        // Server-only Cloudflare Workers runtime module: AsyncLocalStorage is the
-        // only way to thread the ExecutionContext's waitUntil through Better Auth.
-        files: ["src/integrations/better-auth/auth.background.ts"],
+        files: ["src/**/*.test.{ts,tsx}", "src/**/__test__/**", "src/platform/testing/**"],
         rules: {
-          "import/no-nodejs-modules": "off"
-        }
-      },
-      {
-        files: ["src/components/shadcn/label.tsx"],
-        rules: {
-          "jsx-a11y/label-has-associated-control": "off"
-        }
-      },
-      {
-        files: ["src/components/shadcn/pagination.tsx"],
-        rules: {
-          // The <a> is a Base UI render slot — children are injected by the parent component
-          "jsx-a11y/anchor-has-content": "off"
-        }
-      },
-      {
-        files: ["src/components/custom/landing/**/*.{ts,tsx}"],
-        rules: {
-          "jest/require-hook": "off",
-          "max-lines": "off",
-          "max-lines-per-function": "off",
-          "max-statements": "off",
+          "no-await-in-loop": "off",
           "no-magic-numbers": "off",
-          "react-perf/jsx-no-new-object-as-prop": "off",
-          "react/jsx-max-depth": "off",
-          "sort-keys": "off"
-        }
+          "unicorn/no-null": "off",
+        },
       },
       {
-        files: ["src/components/custom/pages/auth/**/*.{ts,tsx}"],
+        files: ["src/presentation/**", "src/hooks/**"],
+        rules: { "typescript/consistent-return": "off" },
+      },
+      {
+        files: ["src/platform/testing/mocks/**"],
+        rules: { "require-await": "off", "typescript/require-await": "off" },
+      },
+      {
+        files: ["src/routes/**"],
+        rules: { "sort-keys": "off" },
+      },
+      {
+        files: ["vite.config.ts"],
         rules: {
-          "max-lines-per-function": "off",
-          "react-perf/jsx-no-new-function-as-prop": "off",
-          "react/jsx-max-depth": "off"
-        }
-      }
+          "max-lines": "off",
+        },
+      },
     ],
-    plugins: ["typescript", "react", "react-perf", "jsx-a11y", "unicorn", "import", "promise", "vitest", "oxc", "eslint"],
     rules: {
-      "capitalized-comments": "off",
-      "consistent-return": "off",
-      "func-style": "off",
-      "id-length": "off",
-      "import/consistent-type-specifier-style": "off",
-      "import/exports-last": "off",
-      "import/group-exports": "off",
-      "import/max-dependencies": "off",
-      "import/no-named-export": "off",
-      "import/no-namespace": "off",
-      "import/no-unassigned-import": "off",
-      "import/prefer-default-export": "off",
+      "id-length": ["error", { exceptions: ["_", "m", "t"], properties: "never" }],
       "max-lines": ["error", { max: 800 }],
       "max-lines-per-function": ["error", { max: 150 }],
       "max-statements": ["error", { max: 20 }],
+      "new-cap": ["error", { properties: false }],
+      "no-magic-numbers": ["error", { ignore: [-1, 0, 1], ignoreArrayIndexes: true, ignoreDefaultValues: true, ignoreTypeIndexes: true }],
       "no-ternary": "off",
-      "prefer-arrow-callback": "off",
-      "react/jsx-max-depth": ["error", { max: 5 }],
-      "react/jsx-props-no-spreading": "off",
-      "react/react-in-jsx-scope": "off",
-      "sort-imports": "off",
-      "typescript/prefer-readonly-parameter-types": "off"
-    }
+      "no-underscore-dangle": ["error", { allow: ["_splat", "__executeServer"] }],
+      "one-var": ["error", "never"],
+      "sort-imports": ["error", { ignoreDeclarationSort: true }],
+      "typescript/only-throw-error": [
+        "error",
+        {
+          allow: [
+            { from: "package", name: "NotFoundError", package: "@tanstack/router-core" },
+            { from: "package", name: "Redirect", package: "@tanstack/router-core" },
+          ],
+        },
+      ],
+      "typescript/prefer-readonly-parameter-types": "off",
+      "unicorn/no-useless-undefined": ["error", { checkArguments: false }],
+    },
   },
-  plugins: lazyPlugins(async () => {
-    const { cloudflare } = await import("@cloudflare/vite-plugin");
-    const { tanstackStart } = await import("@tanstack/react-start/plugin/vite");
-    const { default: tailwindcss } = await import("@tailwindcss/vite");
-    const { default: react } = await import("@vitejs/plugin-react");
+  plugins:
+    lazyPlugins(async () => {
+      const { default: react } = await import("@vitejs/plugin-react")
 
-    const cloudflarePlugins = cloudflare({ viteEnvironment: { name: "ssr" } });
-    const workerPlugins = (Array.isArray(cloudflarePlugins) ? cloudflarePlugins : [cloudflarePlugins]).map((plugin) =>
-      withoutVitest(plugin)
-    );
+      if (process.env["VITEST"] === "true") {
+        return [...react()]
+      }
 
-    return [...workerPlugins, tailwindcss(), tanstackStart(), react()];
-  }),
+      const { cloudflare } = await import("@cloudflare/vite-plugin")
+      const { tanstackStart } = await import("@tanstack/react-start/plugin/vite")
+      const { default: tailwindcss } = await import("@tailwindcss/vite")
+
+      return [
+        ...cloudflare({
+          inspectorPort: false,
+          remoteBindings: process.env["CLOUDFLARE_ENV"] === "development",
+          viteEnvironment: { name: "ssr" },
+        }),
+        ...tailwindcss(),
+        ...tanstackStart({
+          router: {
+            codeSplittingOptions: {
+              defaultBehavior: [["component"], ["loader"], ["errorComponent"], ["notFoundComponent"]],
+            },
+            routeFileIgnorePattern: "__test__",
+          },
+        }),
+        ...react(),
+      ]
+    }) ?? [],
 
   resolve: { tsconfigPaths: true },
-  server: { port: 3000 },
+  server: { port: 3000, strictPort: true, watch: { ignored: ["**/coverage/**"] } },
   staged: { "*": "vp check --fix" },
   test: {
-    exclude: ["node_modules/**", "opensrc/**", "dist/**", "scripts/**"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
-    isolate: false,
-    passWithNoTests: true,
-    pool: "threads"
-  }
-});
+    coverage: {
+      clean: true,
+      exclude: [
+        "**/*.{test,spec}.{ts,tsx}",
+        "**/__test__/**",
+        "**/*.d.ts",
+        "src/routeTree.gen.ts",
+        "src/presentation/components/shadcn/**",
+        "src/platform/testing/**",
+      ],
+      include: ["src/**/*.{ts,tsx}"],
+      provider: "v8",
+      reporter: ["text", "html", "json-summary"],
+      reportsDirectory: "./coverage",
+    },
+    env: loadEnv("test", import.meta.dirname, ""),
+    environment: "node",
+    exclude: ["node_modules/**", "opensrc/**", "dist/**", "scripts/**", "e2e/**", "src/integrations/drizzle-orm/migrations/**"],
+    isolate: true,
+    passWithNoTests: false,
+    pool: "threads",
+    projects: [
+      {
+        extends: true,
+        test: {
+          exclude: ["src/**/*.integration.test.{ts,tsx}"],
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          name: "node",
+        },
+      },
+      {
+        extends: true,
+        test: {
+          include: ["src/**/*.integration.test.{ts,tsx}"],
+          name: "integration",
+        },
+      },
+    ],
+  },
+})

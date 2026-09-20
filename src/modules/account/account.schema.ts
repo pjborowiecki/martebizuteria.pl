@@ -1,9 +1,9 @@
-import { relations } from "drizzle-orm";
-import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { user } from "~/src/modules/user/user.schema";
+import { user } from "~/src/modules/user/user.schema"
 
 export const account = sqliteTable(
   "account",
@@ -21,14 +21,14 @@ export const account = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("account_userId_idx").on(table.userId)]
-);
+  (table) => [index("account_userId_idx").on(table.userId)],
+)
 
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
-    references: [user.id]
-  })
-}));
+    references: [user.id],
+  }),
+}))

@@ -1,45 +1,36 @@
-import type { Locale } from "~/src/constants/types";
-
 import {
-  buildOrderAccountCta,
   type CheckoutEmailContext,
   type OrderAccountCta,
-  formatEmailAddress
-} from "~/src/integrations/resend/order-confirmation.utils";
-import type { OrderShippedDetails } from "~/src/integrations/resend/templates/order-shipped";
-import { getMessagesForLocale } from "~/src/integrations/use-intl/i18n.queries";
+  buildOrderAccountCta,
+  formatEmailAddress,
+} from "~/src/integrations/resend/order-confirmation.utils"
+import { getEmailMessages } from "~/src/integrations/use-intl/i18n.emails"
+import { type Locale } from "~/src/integrations/use-intl/i18n.types"
 
-function resolveDeliveryMethodLabel(context: CheckoutEmailContext | undefined, locale: Locale): string {
-  const { unavailable } = getMessagesForLocale(locale).emails.orderConfirmation;
-  const method = context?.deliveryMethod;
-
+import { type OrderShippedDetails } from "~/src/presentation/emails/order-shipped"
+const resolveDeliveryMethodLabel = (context: CheckoutEmailContext | undefined, locale: Locale): string => {
+  const { unavailable } = getEmailMessages(locale).emails.orderConfirmation
+  const method = context?.deliveryMethod
   if (method === null || method === undefined) {
-    return unavailable;
+    return unavailable
   }
-
-  const lockerId = context?.lockerId?.trim();
+  const lockerId = context?.lockerId?.trim()
   if (method.type === "locker" && lockerId !== undefined && lockerId !== "") {
-    return `${method.name} · ${lockerId}`;
+    return `${method.name} · ${lockerId}`
   }
-
-  return method.name;
+  return method.name
 }
+const resolveEstimatedDelivery = (deliveryType: "courier" | "in_store" | "locker", locale: Locale): string =>
+  getEmailMessages(locale).emails.orderConfirmation.deliveryTiming[deliveryType].estimatedDelivery
 
-function resolveEstimatedDelivery(deliveryType: "courier" | "in_store" | "locker", locale: Locale): string {
-  return getMessagesForLocale(locale).emails.orderConfirmation.deliveryTiming[deliveryType].estimatedDelivery;
-}
-
-export function buildOrderShippedDetails(context: CheckoutEmailContext | undefined, locale: Locale): OrderShippedDetails {
-  const t = getMessagesForLocale(locale).emails.orderConfirmation;
-  const deliveryType = context?.deliveryMethod?.type ?? "courier";
-
+export const buildOrderShippedDetails = (context: CheckoutEmailContext | undefined, locale: Locale): OrderShippedDetails => {
+  const t = getEmailMessages(locale).emails.orderConfirmation
+  const deliveryType = context?.deliveryMethod?.type ?? "courier"
   return {
     deliveryMethod: resolveDeliveryMethodLabel(context, locale),
     estimatedDelivery: resolveEstimatedDelivery(deliveryType, locale),
-    shippingAddress: formatEmailAddress(context?.shippingAddress) ?? t.unavailable
-  };
+    shippingAddress: formatEmailAddress(context?.shippingAddress) ?? t.unavailable,
+  }
 }
-
-export function buildOrderShippedAccountCta(locale: Locale, orderId: string, userId: string | null | undefined): OrderAccountCta {
-  return buildOrderAccountCta(locale, orderId, userId === null || userId === undefined || userId === "");
-}
+export const buildOrderShippedAccountCta = (locale: Locale, orderId: string, userId: string | null | undefined): OrderAccountCta =>
+  buildOrderAccountCta(locale, orderId, userId === null || userId === undefined || userId === "")

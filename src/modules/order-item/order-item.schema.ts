@@ -1,10 +1,10 @@
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { order } from "~/src/modules/order/order.schema";
-import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
+import { order } from "~/src/modules/order/order.schema"
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 
 export const orderItem = sqliteTable(
   "order_item",
@@ -25,18 +25,18 @@ export const orderItem = sqliteTable(
     unitPrice: integer("unit_price").notNull(),
     variantId: text("variant_id").references(() => productVariant.id, { onDelete: "set null" }),
     variantTitle: text("variant_title", { length: 512 }),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("order_item_orderId_idx").on(table.orderId)]
-);
+  (table) => [index("order_item_orderId_idx").on(table.orderId)],
+)
 
 export const orderItemRelations = relations(orderItem, ({ one }) => ({
   order: one(order, {
     fields: [orderItem.orderId],
-    references: [order.id]
+    references: [order.id],
   }),
   variant: one(productVariant, {
     fields: [orderItem.variantId],
-    references: [productVariant.id]
-  })
-}));
+    references: [productVariant.id],
+  }),
+}))

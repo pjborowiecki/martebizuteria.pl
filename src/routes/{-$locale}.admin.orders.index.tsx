@@ -1,38 +1,33 @@
-import type { JSX } from "react";
+import { type JSX } from "react"
 
-import type { QueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { type QueryClient } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+import { useTranslations } from "use-intl"
 
-import { AdminHeader } from "~/src/components/custom/pages/admin/admin-header";
-import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/components/custom/pages/admin/admin-layout.styles";
-import { OrdersTableContent } from "~/src/components/custom/pages/admin/orders/components/orders-table";
+import { ADMIN_ORDERS_PAGE_SIZE, ORDER_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
+import { adminOrderStatsQueryOptions } from "~/src/modules/order/use-cases/get-admin-order-stats"
+import { adminOrdersPageQueryOptions } from "~/src/modules/order/use-cases/get-admin-orders-page"
 
-import { ADMIN_ORDERS_PAGE_SIZE, ORDER_QUERY_STALE_MS } from "~/src/modules/order/order.constants";
-import { orderQueryOptions } from "~/src/modules/order/order.queries";
-
-async function prefetchOrdersQueries(context: { queryClient: QueryClient }): Promise<void> {
+import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
+import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { OrdersTableContent } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-table"
+const prefetchOrdersQueries = async (context: { queryClient: QueryClient }): Promise<void> => {
   await Promise.all([
-    context.queryClient.ensureQueryData(
-      orderQueryOptions.adminOrdersPageQueryOptions({
+    context.queryClient.query({
+      ...adminOrdersPageQueryOptions({
         page: 1,
-        pageSize: ADMIN_ORDERS_PAGE_SIZE
-      })
-    ),
-    context.queryClient.ensureQueryData(orderQueryOptions.adminOrderStatsQueryOptions())
-  ]);
+        pageSize: ADMIN_ORDERS_PAGE_SIZE,
+      }),
+      staleTime: "static",
+    }),
+    context.queryClient.query({
+      ...adminOrderStatsQueryOptions(),
+      staleTime: "static",
+    }),
+  ])
 }
-
-export const Route = createFileRoute("/{-$locale}/admin/orders/")({
-  component: AdminOrdersRoute,
-  loader: ({ context }) => prefetchOrdersQueries(context),
-  shouldReload: false,
-  staleTime: ORDER_QUERY_STALE_MS
-});
-
-function AdminOrdersRoute(): JSX.Element {
-  const t = useTranslations("pages.admin.orders");
-
+const AdminOrdersRoute = (): JSX.Element => {
+  const t = useTranslations("pages.admin.orders")
   return (
     <>
       <AdminHeader description={t("description")} title={t("title")} />
@@ -40,5 +35,14 @@ function AdminOrdersRoute(): JSX.Element {
         <OrdersTableContent />
       </div>
     </>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/admin/orders/")({
+  component: AdminOrdersRoute,
+  loader: ({ context }) => prefetchOrdersQueries(context),
+  shouldReload: false,
+  staleTime: ORDER_QUERY_STALE_MS,
+  staticData: {
+    namespaces: ["pages.admin.customers"],
+  },
+})

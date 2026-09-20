@@ -1,31 +1,20 @@
-import { type JSX } from "react";
+import { type JSX } from "react"
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+import { useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
+import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
-import { CollectionCard } from "~/src/components/custom/pages/collections/collection-card";
+import { collectionsQueryOptions } from "~/src/modules/product-collection/use-cases/get-collections"
 
-import { collectionQueryOptions } from "~/src/modules/product-collection/product-collection.queries";
+import { APP_NAME } from "~/src/presentation/branding/app"
 
-export const Route = createFileRoute("/{-$locale}/_storefront/collections/")({
-  component: CollectionsPage,
-  head: () => ({
-    meta: [{ title: `Collections | ${CONSTANTS.APP_NAME}` }, { content: "Discover our curated collections.", name: "description" }]
-  }),
-  loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(collectionQueryOptions.collectionsQueryOptions());
-  }
-});
-
-function CollectionsPage(): JSX.Element {
-  const t = useTranslations("pages.collections");
-  const { data: collections } = useSuspenseQuery(collectionQueryOptions.collectionsQueryOptions());
-
-  const [firstCollection] = collections;
-
+import { CollectionCard } from "~/src/presentation/components/custom/pages/collections/collection-card"
+const CollectionsPage = (): JSX.Element => {
+  const t = useTranslations("pages.collections")
+  const { data: collections } = useSuspenseQuery(collectionsQueryOptions())
+  const [firstCollection] = collections
   return (
     <main className="mx-auto max-w-400 px-6 pt-8 pb-24 lg:px-12 lg:pt-10 lg:pb-32">
       <header className="mb-8 space-y-3 lg:mb-10">
@@ -43,5 +32,44 @@ function CollectionsPage(): JSX.Element {
         </div>
       )}
     </main>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/_storefront/collections/")({
+  component: CollectionsPage,
+  head: ({
+    loaderData,
+  }: Readonly<{
+    loaderData?:
+      | {
+          readonly description: string
+          readonly title: string
+        }
+      | undefined
+  }>) => ({
+    meta: [
+      {
+        title: loaderData === undefined ? APP_NAME : `${loaderData.title} | ${APP_NAME}`,
+      },
+      {
+        content: loaderData?.description ?? "",
+        name: "description",
+      },
+    ],
+  }),
+  loader: async ({ context }) => {
+    const [messages] = await Promise.all([
+      context.queryClient.query(messagesQueryOptions(context.locale, "pages.collections")),
+      context.queryClient.query({
+        ...collectionsQueryOptions(),
+        staleTime: "static",
+      }),
+    ])
+    return {
+      description: messages.description,
+      title: messages.title,
+    }
+  },
+  staticData: {
+    namespaces: ["pages.collections"],
+  },
+})

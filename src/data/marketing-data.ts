@@ -1,5 +1,5 @@
 interface SparkPoint {
-  v: number;
+  v: number
 }
 
 export const ENGAGEMENT_DATA = [
@@ -10,8 +10,8 @@ export const ENGAGEMENT_DATA = [
   { clickRate: 16, month: "May", openRate: 48 },
   { clickRate: 22, month: "Jun", openRate: 56 },
   { clickRate: 20, month: "Jul", openRate: 54 },
-  { clickRate: 24, month: "Aug", openRate: 62 }
-] as const;
+  { clickRate: 24, month: "Aug", openRate: 62 },
+] as const
 
 export const CAMPAIGNS = [
   {
@@ -22,7 +22,7 @@ export const CAMPAIGNS = [
     revenue: "$48,200",
     sent: "12,400",
     status: "active",
-    type: "Email"
+    type: "Email",
   },
   {
     date: "Oct 15, 2023",
@@ -32,7 +32,7 @@ export const CAMPAIGNS = [
     revenue: "$24,600",
     sent: "2,800",
     status: "completed",
-    type: "Email"
+    type: "Email",
   },
   {
     date: "Oct 10, 2023",
@@ -42,7 +42,7 @@ export const CAMPAIGNS = [
     revenue: "$12,400",
     sent: "—",
     status: "active",
-    type: "Social"
+    type: "Social",
   },
   {
     date: "Oct 25, 2023",
@@ -52,7 +52,7 @@ export const CAMPAIGNS = [
     revenue: "—",
     sent: "—",
     status: "draft",
-    type: "Email"
+    type: "Email",
   },
   {
     date: "Oct 5, 2023",
@@ -62,7 +62,7 @@ export const CAMPAIGNS = [
     revenue: "$36,800",
     sent: "18,200",
     status: "completed",
-    type: "Email"
+    type: "Email",
   },
   {
     date: "Oct 1, 2023",
@@ -72,11 +72,11 @@ export const CAMPAIGNS = [
     revenue: "$8,400",
     sent: "4,200",
     status: "active",
-    type: "SMS"
-  }
-] as const;
+    type: "SMS",
+  },
+] as const
 
-export type Campaign = (typeof CAMPAIGNS)[number];
+export type Campaign = (typeof CAMPAIGNS)[number]
 
 export const MARKETING_STATS = [
   {
@@ -84,35 +84,35 @@ export const MARKETING_STATS = [
     key: "totalCampaigns",
     spark: [{ v: 40 }, { v: 42 }, { v: 41 }, { v: 44 }, { v: 45 }, { v: 48 }, { v: 49 }, { v: 52 }],
     trend: "+8.3%",
-    up: true
+    up: true,
   },
   {
     color: "hsl(38 92% 50%)",
     key: "activeCampaigns",
     spark: [{ v: 4 }, { v: 5 }, { v: 4 }, { v: 6 }, { v: 7 }, { v: 8 }, { v: 7 }, { v: 9 }],
     trend: "+12.5%",
-    up: true
+    up: true,
   },
   {
     color: "hsl(142 71% 45%)",
     key: "totalReach",
     spark: [{ v: 120_000 }, { v: 125_000 }, { v: 132_000 }, { v: 135_000 }, { v: 142_000 }, { v: 148_000 }, { v: 152_000 }, { v: 158_000 }],
     trend: "+5.2%",
-    up: true
+    up: true,
   },
   {
     color: "hsl(221 83% 53%)",
     key: "totalRevenue",
     spark: [{ v: 84_000 }, { v: 88_000 }, { v: 86_000 }, { v: 92_000 }, { v: 95_000 }, { v: 102_000 }, { v: 108_000 }, { v: 112_000 }],
     trend: "+15.4%",
-    up: true
-  }
+    up: true,
+  },
 ] satisfies readonly {
-  readonly color: string;
-  readonly key: string;
-  readonly spark: SparkPoint[];
-  readonly trend: string;
-  readonly up: boolean;
-}[];
+  readonly color: string
+  readonly key: string
+  readonly spark: SparkPoint[]
+  readonly trend: string
+  readonly up: boolean
+}[]
 
-export type MarketingStat = (typeof MARKETING_STATS)[number];
+export type MarketingStat = (typeof MARKETING_STATS)[number]

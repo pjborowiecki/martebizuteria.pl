@@ -1,0 +1,34 @@
+@media (prefers-reduced-motion: no-preference) {
+  [data-landing-page] .reveal {
+    opacity: 0;
+    transform: translateY(1.75rem);
+    will-change: opacity, transform;
+  }
+
+  [data-landing-page] .line-reveal {
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-landing-page] .reveal,
+  [data-landing-page] .line-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (pointer: fine) {
+  [data-custom-cursor],
+  [data-custom-cursor] a,
+  [data-custom-cursor] button,
+  [data-custom-cursor] input,
+  [data-custom-cursor] select,
+  [data-custom-cursor] textarea,
+  [data-custom-cursor] [role="button"],
+  [data-custom-cursor] .hover-target,
+  [data-custom-cursor] summary {
+    cursor: none !important;
+  }
+}

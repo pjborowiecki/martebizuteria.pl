@@ -1,10 +1,10 @@
 export interface CategoryItem {
-  readonly description: string;
-  readonly id: number;
-  readonly name: string;
-  readonly products: number;
-  readonly slug: string;
-  readonly status: "active" | "draft";
+  readonly description: string
+  readonly id: number
+  readonly name: string
+  readonly products: number
+  readonly slug: string
+  readonly status: "active" | "draft"
 }
 
 export const CATEGORIES: readonly CategoryItem[] = [
@@ -14,7 +14,7 @@ export const CATEGORIES: readonly CategoryItem[] = [
     name: "Earrings",
     products: 34,
     slug: "earrings",
-    status: "active"
+    status: "active",
   },
   {
     description: "Chains, pendants, and layering pieces crafted in precious metals",
@@ -22,7 +22,7 @@ export const CATEGORIES: readonly CategoryItem[] = [
     name: "Necklaces",
     products: 28,
     slug: "necklaces",
-    status: "active"
+    status: "active",
   },
   {
     description: "Bands, signet rings, and statement pieces for every occasion",
@@ -30,7 +30,7 @@ export const CATEGORIES: readonly CategoryItem[] = [
     name: "Rings",
     products: 22,
     slug: "rings",
-    status: "active"
+    status: "active",
   },
   {
     description: "Cuffs, bangles, and delicate chain bracelets",
@@ -38,7 +38,7 @@ export const CATEGORIES: readonly CategoryItem[] = [
     name: "Bracelets",
     products: 16,
     slug: "bracelets",
-    status: "active"
+    status: "active",
   },
   {
     description: "Decorative pins and brooches with artisan detail",
@@ -46,7 +46,7 @@ export const CATEGORIES: readonly CategoryItem[] = [
     name: "Brooches",
     products: 8,
     slug: "brooches",
-    status: "draft"
+    status: "draft",
   },
   {
     description: "Fine chain anklets for summer styling",
@@ -54,9 +54,9 @@ export const CATEGORIES: readonly CategoryItem[] = [
     name: "Anklets",
     products: 0,
     slug: "anklets",
-    status: "draft"
-  }
-];
+    status: "draft",
+  },
+]
 
 export const CATEGORY_STATS = [
   {
@@ -64,46 +64,46 @@ export const CATEGORY_STATS = [
     key: "total",
     spark: [{ v: 4 }, { v: 4 }, { v: 5 }, { v: 5 }, { v: 5 }, { v: 6 }, { v: 6 }, { v: 6 }],
     trend: "+1",
-    up: true
+    up: true,
   },
   {
     color: "hsl(142 71% 45%)",
     key: "active",
     spark: [{ v: 3 }, { v: 3 }, { v: 3 }, { v: 3 }, { v: 4 }, { v: 4 }, { v: 4 }, { v: 4 }],
     trend: "+1",
-    up: true
+    up: true,
   },
   {
     color: "hsl(var(--muted-foreground))",
     key: "draft",
     spark: [{ v: 1 }, { v: 1 }, { v: 2 }, { v: 2 }, { v: 1 }, { v: 2 }, { v: 2 }, { v: 2 }],
     trend: "0",
-    up: true
+    up: true,
   },
   {
     color: "hsl(221 83% 53%)",
     key: "avgProducts",
     spark: [{ v: 35 }, { v: 36 }, { v: 37 }, { v: 38 }, { v: 39 }, { v: 40 }, { v: 40 }, { v: 41 }],
     trend: "+3.2%",
-    up: true
-  }
-] as const;
+    up: true,
+  },
+] as const
 
 export const MOCK_CATEGORIES: Record<
   string,
   {
-    readonly name: string;
-    readonly slug: string;
-    readonly description: string;
-    readonly status: "active" | "draft";
-    readonly products: number;
-    readonly created: string;
-    readonly updated: string;
-    readonly metaTitle: string;
-    readonly metaDescription: string;
-    readonly featured: boolean;
-    readonly parent: string;
-    readonly image: string;
+    readonly name: string
+    readonly slug: string
+    readonly description: string
+    readonly status: "active" | "draft"
+    readonly products: number
+    readonly created: string
+    readonly updated: string
+    readonly metaTitle: string
+    readonly metaDescription: string
+    readonly featured: boolean
+    readonly parent: string
+    readonly image: string
   }
 > = {
   "1": {
@@ -119,7 +119,7 @@ export const MOCK_CATEGORIES: Record<
     products: 34,
     slug: "earrings",
     status: "active",
-    updated: "Oct 24, 2023"
+    updated: "Oct 24, 2023",
   },
   "2": {
     created: "Aug 12, 2022",
@@ -134,7 +134,7 @@ export const MOCK_CATEGORIES: Record<
     products: 28,
     slug: "necklaces",
     status: "active",
-    updated: "Oct 20, 2023"
+    updated: "Oct 20, 2023",
   },
   "3": {
     created: "Aug 12, 2022",
@@ -148,7 +148,7 @@ export const MOCK_CATEGORIES: Record<
     products: 22,
     slug: "rings",
     status: "active",
-    updated: "Oct 18, 2023"
+    updated: "Oct 18, 2023",
   },
   "4": {
     created: "Sep 5, 2022",
@@ -162,7 +162,7 @@ export const MOCK_CATEGORIES: Record<
     products: 16,
     slug: "bracelets",
     status: "active",
-    updated: "Oct 15, 2023"
+    updated: "Oct 15, 2023",
   },
   "5": {
     created: "Jan 10, 2023",
@@ -176,7 +176,7 @@ export const MOCK_CATEGORIES: Record<
     products: 8,
     slug: "brooches",
     status: "draft",
-    updated: "Oct 10, 2023"
+    updated: "Oct 10, 2023",
   },
   "6": {
     created: "Oct 1, 2023",
@@ -190,10 +190,10 @@ export const MOCK_CATEGORIES: Record<
     products: 0,
     slug: "anklets",
     status: "draft",
-    updated: "Oct 1, 2023"
-  }
-};
+    updated: "Oct 1, 2023",
+  },
+}
 
-export const PARENT_CATEGORIES = ["Jewellery", "Accessories", "Gifts"] as const;
+export const PARENT_CATEGORIES = ["Jewellery", "Accessories", "Gifts"] as const
 
-export const PREBUILT_CATEGORY_ROUTE_IDS: readonly string[] = ["new", "1", "2", "3", "4", "5", "6"];
+export const PREBUILT_CATEGORY_ROUTE_IDS: readonly string[] = ["new", "1", "2", "3", "4", "5", "6"]

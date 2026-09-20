@@ -1,28 +1,18 @@
-import { createAccessControl } from "better-auth/plugins/access";
-import { defaultStatements } from "better-auth/plugins/admin/access";
+import { createAccessControl } from "better-auth/plugins/access"
+import { defaultStatements } from "better-auth/plugins/admin/access"
 
-import { CONSTANTS } from "~/src/constants";
-import type { Role } from "~/src/constants/types";
+import { ACTIONS, ADMIN_PANEL_ROLES, RESOURCES, ROLES } from "~/src/integrations/better-auth/auth.constants"
+import { type Role } from "~/src/integrations/better-auth/auth.types"
+export const hasAdminAccess = (role: string | null | undefined): role is Role =>
+  typeof role === "string" && (ADMIN_PANEL_ROLES as readonly string[]).includes(role)
 
 export const PERMISSIONS_STATEMENTS = {
   ...defaultStatements,
-  [CONSTANTS.RESOURCES.ORDER]: [CONSTANTS.ACTIONS.READ, CONSTANTS.ACTIONS.UPDATE, CONSTANTS.ACTIONS.REFUND],
-  [CONSTANTS.RESOURCES.PRODUCT]: [
-    CONSTANTS.ACTIONS.CREATE,
-    CONSTANTS.ACTIONS.READ,
-    CONSTANTS.ACTIONS.UPDATE,
-    CONSTANTS.ACTIONS.DELETE,
-    CONSTANTS.ACTIONS.PUBLISH
-  ],
-  [CONSTANTS.RESOURCES.SETTINGS]: [CONSTANTS.ACTIONS.MANAGE]
-} as const;
-
-export const ac = createAccessControl(PERMISSIONS_STATEMENTS);
-
-export function hasAdminAccess(role: string | null | undefined): role is Role {
-  return typeof role === "string" && (CONSTANTS.ADMIN_PANEL_ROLES as readonly string[]).includes(role);
-}
-
+  [RESOURCES.ORDER]: [ACTIONS.READ, ACTIONS.UPDATE, ACTIONS.REFUND],
+  [RESOURCES.PRODUCT]: [ACTIONS.CREATE, ACTIONS.READ, ACTIONS.UPDATE, ACTIONS.DELETE, ACTIONS.PUBLISH],
+  [RESOURCES.SETTINGS]: [ACTIONS.MANAGE],
+} as const
+export const ac = createAccessControl(PERMISSIONS_STATEMENTS)
 const ALL_USER_PERMISSIONS = [
   "create",
   "list",
@@ -33,30 +23,22 @@ const ALL_USER_PERMISSIONS = [
   "delete",
   "set-password",
   "get",
-  "update"
-] as const;
-
-const ALL_SESSION_PERMISSIONS = ["list", "revoke", "delete"] as const;
-
+  "update",
+] as const
+const ALL_SESSION_PERMISSIONS = ["list", "revoke", "delete"] as const
 export const ROLES_CONFIG = {
-  [CONSTANTS.ROLES.ADMIN]: ac.newRole({
-    [CONSTANTS.RESOURCES.ORDER]: [CONSTANTS.ACTIONS.READ, CONSTANTS.ACTIONS.UPDATE, CONSTANTS.ACTIONS.REFUND],
-    [CONSTANTS.RESOURCES.PRODUCT]: [
-      CONSTANTS.ACTIONS.CREATE,
-      CONSTANTS.ACTIONS.READ,
-      CONSTANTS.ACTIONS.UPDATE,
-      CONSTANTS.ACTIONS.DELETE,
-      CONSTANTS.ACTIONS.PUBLISH
-    ],
-    [CONSTANTS.RESOURCES.SETTINGS]: [CONSTANTS.ACTIONS.MANAGE],
+  [ROLES.ADMIN]: ac.newRole({
+    [RESOURCES.ORDER]: [ACTIONS.READ, ACTIONS.UPDATE, ACTIONS.REFUND],
+    [RESOURCES.PRODUCT]: [ACTIONS.CREATE, ACTIONS.READ, ACTIONS.UPDATE, ACTIONS.DELETE, ACTIONS.PUBLISH],
+    [RESOURCES.SETTINGS]: [ACTIONS.MANAGE],
     session: [...ALL_SESSION_PERMISSIONS],
-    user: [...ALL_USER_PERMISSIONS]
+    user: [...ALL_USER_PERMISSIONS],
   }),
-  [CONSTANTS.ROLES.CUSTOMER]: ac.newRole({
-    [CONSTANTS.RESOURCES.ORDER]: [],
-    [CONSTANTS.RESOURCES.PRODUCT]: [],
-    [CONSTANTS.RESOURCES.SETTINGS]: [],
+  [ROLES.CUSTOMER]: ac.newRole({
+    [RESOURCES.ORDER]: [],
+    [RESOURCES.PRODUCT]: [],
+    [RESOURCES.SETTINGS]: [],
     session: [],
-    user: []
-  })
-} as const;
+    user: [],
+  }),
+} as const

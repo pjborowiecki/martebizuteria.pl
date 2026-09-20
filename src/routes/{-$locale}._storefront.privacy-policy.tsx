@@ -1,52 +1,17 @@
-import type { JSX } from "react";
+import { type JSX } from "react"
 
-import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { createFileRoute } from "@tanstack/react-router"
+import { useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
-import type { Locale } from "~/src/constants/types";
+import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
-import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
+import { APP_NAME } from "~/src/presentation/branding/app"
 
-import { isValidLocale } from "~/src/lib/utils";
+import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
-import { LocalizedLink } from "~/src/components/custom/localized-link";
-
-interface PrivacyPolicyPageMeta {
-  readonly description: string;
-  readonly title: string;
-}
-
-export const Route = createFileRoute("/{-$locale}/_storefront/privacy-policy")({
-  component: PrivacyPolicyPage,
-  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<PrivacyPolicyPageMeta> }>) => ({
-    meta: [
-      { title: loaderData?.title ?? CONSTANTS.APP_NAME },
-      { content: loaderData?.description ?? "", name: "description" },
-      { content: loaderData?.title ?? CONSTANTS.APP_NAME, property: "og:title" },
-      { content: loaderData?.description ?? "", property: "og:description" }
-    ]
-  }),
-  loader: ({ context, params }) => {
-    const { locale: rawLocale } = params;
-    let locale: Locale = CONSTANTS.DEFAULT_LOCALE;
-
-    if (typeof rawLocale === "string" && isValidLocale(rawLocale)) {
-      locale = rawLocale;
-    }
-
-    const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
-
-    return {
-      description: messages?.pages.privacyPolicy.description ?? "",
-      title: messages?.pages.privacyPolicy.title ?? CONSTANTS.APP_NAME
-    } satisfies PrivacyPolicyPageMeta;
-  }
-});
-
-function PrivacyPolicyPage(): JSX.Element {
-  const t = useTranslations("pages.privacyPolicy");
-
+import { ROUTES } from "~/src/routes"
+const PrivacyPolicyPage = (): JSX.Element => {
+  const t = useTranslations("pages.privacyPolicy")
   return (
     <main className="flex min-h-[60vh] flex-col items-center justify-center space-y-6 p-4">
       <h1 className="text-4xl font-bold tracking-tight">{t("title")}</h1>
@@ -55,9 +20,50 @@ function PrivacyPolicyPage(): JSX.Element {
         <p>{t("description")}</p>
       </div>
 
-      <LocalizedLink to={CONSTANTS.ROUTES.HOME} className="text-primary underline-offset-4 hover:underline">
+      <LocalizedLink to={ROUTES.HOME} className="text-primary underline-offset-4 hover:underline">
         {t("goHome")}
       </LocalizedLink>
     </main>
-  );
+  )
 }
+interface PrivacyPolicyPageMeta {
+  readonly description: string
+  readonly title: string
+}
+export const Route = createFileRoute("/{-$locale}/_storefront/privacy-policy")({
+  component: PrivacyPolicyPage,
+  head: ({
+    loaderData,
+  }: Readonly<{
+    loaderData?: Readonly<PrivacyPolicyPageMeta> | undefined
+  }>) => ({
+    meta: [
+      {
+        title: loaderData?.title ?? APP_NAME,
+      },
+      {
+        content: loaderData?.description ?? "",
+        name: "description",
+      },
+      {
+        content: loaderData?.title ?? APP_NAME,
+        property: "og:title",
+      },
+      {
+        content: loaderData?.description ?? "",
+        property: "og:description",
+      },
+    ],
+  }),
+  loader: async ({ context }) => {
+    const { locale } = context
+    const messages = await context.queryClient.query(messagesQueryOptions(locale, "pages.privacyPolicy"))
+    return {
+      description: messages.description,
+      title: messages.title,
+    } satisfies PrivacyPolicyPageMeta
+  },
+  staticData: {
+    namespaces: ["pages.privacyPolicy"],
+  },
+})

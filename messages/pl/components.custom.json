@@ -1,15 +1,4 @@
 {
-  "defaultErrorComponent": {
-    "heading": "Coś poszło nie tak",
-    "message": "Odśwież stronę i spróbuj ponownie."
-  },
-  "defaultNotFoundComponent": {
-    "heading": "Nie znaleziono strony",
-    "message": "Strona, której szukasz, nie istnieje."
-  },
-  "defaultPendingComponent": {
-    "loading": "Ładowanie…"
-  },
   "footer": {
     "brand": "M'Arte",
     "description": "Ręcznie tworzona biżuteria z naturalnych kamieni i srebra próby 925. Każdy element to unikatowe dzieło sztuki.",

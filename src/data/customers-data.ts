@@ -1,5 +1,5 @@
 interface SparkPoint {
-  v: number;
+  v: number
 }
 
 export const CUSTOMERS = [
@@ -13,7 +13,7 @@ export const CUSTOMERS = [
     number: "CUST-9241",
     orders: 12,
     spent: "$34,200",
-    tier: "VIP"
+    tier: "VIP",
   },
   {
     email: "adrian@outlook.com",
@@ -25,7 +25,7 @@ export const CUSTOMERS = [
     number: "CUST-8874",
     orders: 8,
     spent: "$22,400",
-    tier: "VIP"
+    tier: "VIP",
   },
   {
     email: "l.chen@gmail.com",
@@ -37,7 +37,7 @@ export const CUSTOMERS = [
     number: "CUST-8510",
     orders: 5,
     spent: "$8,900",
-    tier: "Gold"
+    tier: "Gold",
   },
   {
     email: "julian.m@marte.co",
@@ -49,7 +49,7 @@ export const CUSTOMERS = [
     number: "CUST-8102",
     orders: 15,
     spent: "$48,200",
-    tier: "VIP"
+    tier: "VIP",
   },
   {
     email: "sofia.n@mail.jp",
@@ -61,7 +61,7 @@ export const CUSTOMERS = [
     number: "CUST-7645",
     orders: 3,
     spent: "$4,200",
-    tier: "Standard"
+    tier: "Standard",
   },
   {
     email: "m.vdberg@proton.me",
@@ -73,7 +73,7 @@ export const CUSTOMERS = [
     number: "CUST-7201",
     orders: 6,
     spent: "$11,340",
-    tier: "Gold"
+    tier: "Gold",
   },
   {
     email: "c.dubois@icloud.com",
@@ -85,7 +85,7 @@ export const CUSTOMERS = [
     number: "CUST-6820",
     orders: 22,
     spent: "$76,800",
-    tier: "VIP"
+    tier: "VIP",
   },
   {
     email: "tomas.r@gmail.com",
@@ -97,7 +97,7 @@ export const CUSTOMERS = [
     number: "CUST-6400",
     orders: 2,
     spent: "$1,260",
-    tier: "Standard"
+    tier: "Standard",
   },
   {
     email: "i.fontaine@yahoo.fr",
@@ -109,7 +109,7 @@ export const CUSTOMERS = [
     number: "CUST-6180",
     orders: 9,
     spent: "$18,400",
-    tier: "Gold"
+    tier: "Gold",
   },
   {
     email: "h.lindstrom@gmail.com",
@@ -121,7 +121,7 @@ export const CUSTOMERS = [
     number: "CUST-5945",
     orders: 4,
     spent: "$6,800",
-    tier: "Standard"
+    tier: "Standard",
   },
   {
     email: "amelie.r@proton.me",
@@ -133,7 +133,7 @@ export const CUSTOMERS = [
     number: "CUST-5720",
     orders: 18,
     spent: "$62,100",
-    tier: "VIP"
+    tier: "VIP",
   },
   {
     email: "n.petrov@mail.ru",
@@ -145,7 +145,7 @@ export const CUSTOMERS = [
     number: "CUST-5510",
     orders: 7,
     spent: "$14,800",
-    tier: "Gold"
+    tier: "Gold",
   },
   {
     email: "v.harding@icloud.com",
@@ -157,7 +157,7 @@ export const CUSTOMERS = [
     number: "CUST-5280",
     orders: 11,
     spent: "$28,900",
-    tier: "VIP"
+    tier: "VIP",
   },
   {
     email: "marco.dl@gmail.com",
@@ -169,7 +169,7 @@ export const CUSTOMERS = [
     number: "CUST-5040",
     orders: 3,
     spent: "$5,400",
-    tier: "Standard"
+    tier: "Standard",
   },
   {
     email: "y.tanaka@outlook.jp",
@@ -181,7 +181,7 @@ export const CUSTOMERS = [
     number: "CUST-4815",
     orders: 6,
     spent: "$10,200",
-    tier: "Gold"
+    tier: "Gold",
   },
   {
     email: "c.beaumont@gmail.com",
@@ -193,7 +193,7 @@ export const CUSTOMERS = [
     number: "CUST-4590",
     orders: 14,
     spent: "$41,600",
-    tier: "VIP"
+    tier: "VIP",
   },
   {
     email: "a.cross@proton.me",
@@ -205,7 +205,7 @@ export const CUSTOMERS = [
     number: "CUST-4360",
     orders: 5,
     spent: "$9,700",
-    tier: "Gold"
+    tier: "Gold",
   },
   {
     email: "e.vasquez@gmail.com",
@@ -217,7 +217,7 @@ export const CUSTOMERS = [
     number: "CUST-4120",
     orders: 2,
     spent: "$3,200",
-    tier: "Standard"
+    tier: "Standard",
   },
   {
     email: "s.kraft@mail.de",
@@ -229,11 +229,11 @@ export const CUSTOMERS = [
     number: "CUST-3880",
     orders: 8,
     spent: "$19,500",
-    tier: "Gold"
-  }
-] as const;
+    tier: "Gold",
+  },
+] as const
 
-export type Customer = (typeof CUSTOMERS)[number];
+export type Customer = (typeof CUSTOMERS)[number]
 
 export const CUSTOMER_STATS = [
   {
@@ -241,35 +241,35 @@ export const CUSTOMER_STATS = [
     key: "totalCustomers",
     spark: [{ v: 2400 }, { v: 2480 }, { v: 2560 }, { v: 2620 }, { v: 2680 }, { v: 2740 }, { v: 2790 }, { v: 2847 }],
     trend: "+4.1%",
-    up: true
+    up: true,
   },
   {
     color: "hsl(38 92% 50%)",
     key: "vipCustomers",
     spark: [{ v: 94 }, { v: 98 }, { v: 102 }, { v: 106 }, { v: 110 }, { v: 115 }, { v: 120 }, { v: 124 }],
     trend: "+9.7%",
-    up: true
+    up: true,
   },
   {
     color: "hsl(142 71% 45%)",
     key: "averageLTV",
     spark: [{ v: 3600 }, { v: 3720 }, { v: 3840 }, { v: 3920 }, { v: 4020 }, { v: 4100 }, { v: 4200 }, { v: 4280 }],
     trend: "+6.3%",
-    up: true
+    up: true,
   },
   {
     color: "hsl(221 83% 53%)",
     key: "returningRate",
     spark: [{ v: 58 }, { v: 60 }, { v: 62 }, { v: 63 }, { v: 64 }, { v: 66 }, { v: 67 }, { v: 68 }],
     trend: "+2.4%",
-    up: true
-  }
+    up: true,
+  },
 ] satisfies readonly {
-  readonly color: string;
-  readonly key: string;
-  readonly spark: SparkPoint[];
-  readonly trend: string;
-  readonly up: boolean;
-}[];
+  readonly color: string
+  readonly key: string
+  readonly spark: SparkPoint[]
+  readonly trend: string
+  readonly up: boolean
+}[]
 
-export type CustomerStat = (typeof CUSTOMER_STATS)[number];
+export type CustomerStat = (typeof CUSTOMER_STATS)[number]

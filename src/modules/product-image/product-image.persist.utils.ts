@@ -1,29 +1,26 @@
-import { productImageAccessors } from "~/src/modules/product-image/product-image.accessors";
-import { buildProductImageRows, type ProductImageInput } from "~/src/modules/product-image/product-image.utils";
+import { eq } from "drizzle-orm"
 
-const EMPTY_LENGTH = 0;
+import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-export async function syncProductThumbnail(productId: string): Promise<void> {
-  const url = await productImageAccessors.getFirstImageUrl(productId);
-  await productImageAccessors.updateProductThumbnail(productId, url);
+import { productImage } from "~/src/modules/product-image/product-image.schema"
+import { getFirstImageUrl, insertRows, updateProductThumbnail } from "~/src/modules/product-image/product-image.server"
+import { type ProductImageInput, buildProductImageRows } from "~/src/modules/product-image/product-image.utils"
+export const syncProductThumbnail = async (productId: string): Promise<void> => {
+  const url = await getFirstImageUrl(productId)
+  await updateProductThumbnail(productId, url)
 }
-
-export async function syncThumbnailsForProductIds(productIds: readonly string[]): Promise<void> {
-  if (productIds.length === EMPTY_LENGTH) {
-    return;
+export const syncThumbnailsForProductIds = async (productIds: readonly string[]): Promise<void> => {
+  if (productIds.length === 0) {
+    return
   }
-
-  await Promise.all(productIds.map((productId) => syncProductThumbnail(productId)));
+  await Promise.all(productIds.map((productId) => syncProductThumbnail(productId)))
 }
-
-export async function replaceProductImages(productId: string, images: readonly ProductImageInput[]): Promise<void> {
-  await productImageAccessors.deleteByProductId(productId);
-
-  if (images.length === EMPTY_LENGTH) {
-    await syncProductThumbnail(productId);
-    return;
+export const replaceProductImages = async (productId: string, images: readonly ProductImageInput[]): Promise<void> => {
+  await db.delete(productImage).where(eq(productImage.productId, productId))
+  if (images.length === 0) {
+    await syncProductThumbnail(productId)
+    return
   }
-
-  await productImageAccessors.insertRows(buildProductImageRows(productId, images));
-  await syncProductThumbnail(productId);
+  await insertRows(buildProductImageRows(productId, images))
+  await syncProductThumbnail(productId)
 }

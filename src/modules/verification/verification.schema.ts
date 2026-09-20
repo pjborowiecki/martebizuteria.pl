@@ -1,6 +1,6 @@
-import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 export const verification = sqliteTable(
   "verification",
@@ -9,7 +9,7 @@ export const verification = sqliteTable(
     id: text("id").primaryKey(),
     identifier: text("identifier", { length: 512 }).notNull(),
     value: text("value", { length: 8192 }).notNull(),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)]
-);
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
+)

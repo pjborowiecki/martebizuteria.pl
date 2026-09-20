@@ -351,6 +351,13 @@
       "when": 1781292000000,
       "tag": "20260612120000_product_variants_enhanced",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "6",
+      "when": 1789939455992,
+      "tag": "20260920212415_auth_database_storage",
+      "breakpoints": true
     }
   ]
 }

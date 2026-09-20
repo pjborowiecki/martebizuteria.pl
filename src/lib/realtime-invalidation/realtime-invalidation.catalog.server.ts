@@ -1,53 +1,49 @@
-import { CONSTANTS } from "~/src/constants";
+import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
+import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
+import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
+import { COLLECTION_QUERY_KEYS } from "~/src/modules/product-collection/product-collection.constants"
+import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
-import { scheduleRealtimeInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.publish.server";
-
-export function scheduleProductCatalogInvalidation(): void {
+import { scheduleRealtimeInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.publish.server"
+export const scheduleProductCatalogInvalidation = (): void => {
   scheduleRealtimeInvalidation({
-    admin: [CONSTANTS.QUERY_KEYS.PRODUCT.ADMIN.ALL, CONSTANTS.QUERY_KEYS.PRODUCT.ADMIN.STATS],
+    admin: [PRODUCT_QUERY_KEYS.ADMIN.ALL, PRODUCT_QUERY_KEYS.ADMIN.STATS],
     storefront: [
-      CONSTANTS.QUERY_KEYS.PRODUCT.ALL,
-      CONSTANTS.QUERY_KEYS.PRODUCT.BY_HANDLE,
-      CONSTANTS.QUERY_KEYS.PRODUCT.LANDING_NEW_ARRIVALS,
-      CONSTANTS.QUERY_KEYS.PRODUCT.RELATED_BY_CATEGORY,
-      CONSTANTS.QUERY_KEYS.PRODUCT.STOREFRONT_PAGE,
-      CONSTANTS.QUERY_KEYS.CART.AVAILABILITY
-    ]
-  });
+      PRODUCT_QUERY_KEYS.ALL,
+      PRODUCT_QUERY_KEYS.BY_HANDLE,
+      PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS,
+      PRODUCT_QUERY_KEYS.RELATED_BY_CATEGORY,
+      PRODUCT_QUERY_KEYS.STOREFRONT_PAGE,
+      CART_QUERY_KEYS.AVAILABILITY,
+    ],
+  })
 }
-
-export function scheduleCategoryCatalogInvalidation(): void {
+export const scheduleCategoryCatalogInvalidation = (): void => {
   scheduleRealtimeInvalidation({
-    admin: [CONSTANTS.QUERY_KEYS.CATEGORY.ADMIN.ALL, CONSTANTS.QUERY_KEYS.CATEGORY.ADMIN.STATS],
-    storefront: [CONSTANTS.QUERY_KEYS.CATEGORY.ALL, CONSTANTS.QUERY_KEYS.CATEGORY.BY_HANDLE]
-  });
+    admin: [CATEGORY_QUERY_KEYS.ADMIN.ALL, CATEGORY_QUERY_KEYS.ADMIN.STATS],
+    storefront: [CATEGORY_QUERY_KEYS.ALL, CATEGORY_QUERY_KEYS.BY_HANDLE],
+  })
 }
-
-export function scheduleCollectionCatalogInvalidation(): void {
+export const scheduleCollectionCatalogInvalidation = (): void => {
   scheduleRealtimeInvalidation({
-    admin: [CONSTANTS.QUERY_KEYS.COLLECTION.ADMIN.ALL, CONSTANTS.QUERY_KEYS.COLLECTION.ADMIN.STATS],
-    storefront: [
-      CONSTANTS.QUERY_KEYS.COLLECTION.ALL,
-      CONSTANTS.QUERY_KEYS.COLLECTION.BY_HANDLE,
-      CONSTANTS.QUERY_KEYS.PRODUCT.LANDING_NEW_ARRIVALS
-    ]
-  });
+    admin: [COLLECTION_QUERY_KEYS.ADMIN.ALL, COLLECTION_QUERY_KEYS.ADMIN.STATS],
+    storefront: [COLLECTION_QUERY_KEYS.ALL, COLLECTION_QUERY_KEYS.BY_HANDLE, PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS],
+  })
 }
-
-export function scheduleProductAttributeCatalogInvalidation(): void {
+export const scheduleProductAttributeCatalogInvalidation = (): void => {
   scheduleRealtimeInvalidation({
-    admin: [CONSTANTS.QUERY_KEYS.PRODUCT_ATTRIBUTE.ADMIN.ALL, CONSTANTS.QUERY_KEYS.PRODUCT_ATTRIBUTE.ADMIN.STATS]
-  });
+    admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL, PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.STATS],
+  })
 }
-
-export function scheduleAdminCustomersInvalidation(): void {
+export const scheduleAdminCustomersInvalidation = (): void => {
   scheduleRealtimeInvalidation({
-    admin: [CONSTANTS.QUERY_KEYS.USER.ADMIN.CUSTOMERS, CONSTANTS.QUERY_KEYS.USER.ADMIN.CUSTOMERS_PAGE]
-  });
+    admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE],
+  })
 }
-
-export function scheduleAdminOrdersInvalidation(): void {
+export const scheduleAdminOrdersInvalidation = (): void => {
   scheduleRealtimeInvalidation({
-    admin: [CONSTANTS.QUERY_KEYS.ORDER.ADMIN.ORDERS]
-  });
+    admin: [ORDER_QUERY_KEYS.ADMIN.ORDERS],
+  })
 }

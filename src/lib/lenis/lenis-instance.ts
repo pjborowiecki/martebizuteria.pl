@@ -1,23 +1,24 @@
-import type Lenis from "lenis";
-
-const lenisStore: { instance: Lenis | undefined } = { instance: undefined };
-
-export function setLenisInstance(instance: Lenis | undefined): void {
-  lenisStore.instance = instance;
+import type Lenis from "lenis"
+export const setLenisInstance = (instance: Lenis | undefined): void => {
+  lenisStore.instance = instance
 }
-
-export function getLenisInstance(): Lenis | undefined {
-  return lenisStore.instance;
-}
+export const getLenisInstance = (): Lenis | undefined => lenisStore.instance
 
 /** Align Lenis virtual scroll with the native position TanStack Router just applied. */
-export function syncLenisToWindowScroll(): void {
-  const lenis = lenisStore.instance;
+export const syncLenisToWindowScroll = (): void => {
+  const lenis = lenisStore.instance
   if (lenis === undefined) {
-    return;
+    return
   }
-
-  const targetY = window.scrollY;
-  lenis.scrollTo(targetY, { force: true, immediate: true });
-  lenis.resize();
+  const targetY = window.scrollY
+  lenis.scrollTo(targetY, {
+    force: true,
+    immediate: true,
+  })
+  lenis.resize()
+}
+const lenisStore: {
+  instance: Lenis | undefined
+} = {
+  instance: undefined,
 }

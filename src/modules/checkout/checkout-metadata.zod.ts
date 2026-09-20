@@ -1,4 +1,10 @@
-import { z } from "zod";
+import { z } from "zod"
+
+export const parseCheckoutSessionMetadataItems = (itemsJson: string): CheckoutFulfillmentLine[] =>
+  checkoutFulfillmentLinesSchema.parse(JSON.parse(itemsJson))
+
+export const parseCheckoutSessionReleaseLines = (itemsJson: string): CheckoutReleaseLine[] =>
+  checkoutReleaseLinesSchema.parse(JSON.parse(itemsJson))
 
 /** Line items stored in Stripe Checkout Session metadata (`metadata.items`). */
 export const checkoutFulfillmentLinesSchema = z.array(
@@ -8,20 +14,17 @@ export const checkoutFulfillmentLinesSchema = z.array(
     price: z.number(),
     qty: z.number(),
     title: z.string(),
-    variantId: z.string()
-  })
-);
+    variantId: z.string(),
+  }),
+)
 
-/** Variant/qty pairs used when releasing reserved inventory. */
-export const checkoutReleaseLinesSchema = z.array(z.object({ qty: z.number(), variantId: z.string() }).loose());
-
-export type CheckoutFulfillmentLine = z.infer<typeof checkoutFulfillmentLinesSchema>[number];
-export type CheckoutReleaseLine = z.infer<typeof checkoutReleaseLinesSchema>[number];
-
-export function parseCheckoutSessionMetadataItems(itemsJson: string): CheckoutFulfillmentLine[] {
-  return checkoutFulfillmentLinesSchema.parse(JSON.parse(itemsJson));
-}
-
-export function parseCheckoutSessionReleaseLines(itemsJson: string): CheckoutReleaseLine[] {
-  return checkoutReleaseLinesSchema.parse(JSON.parse(itemsJson));
-}
+export const checkoutReleaseLinesSchema = z.array(
+  z
+    .object({
+      qty: z.number(),
+      variantId: z.string(),
+    })
+    .loose(),
+)
+export type CheckoutFulfillmentLine = z.infer<typeof checkoutFulfillmentLinesSchema>[number]
+export type CheckoutReleaseLine = z.infer<typeof checkoutReleaseLinesSchema>[number]

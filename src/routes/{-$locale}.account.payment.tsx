@@ -1,20 +1,12 @@
-import type { JSX } from "react";
+import { type JSX } from "react"
 
-import { createFileRoute } from "@tanstack/react-router";
-import { CreditCard } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { createFileRoute } from "@tanstack/react-router"
+import { CreditCard } from "lucide-react"
+import { useTranslations } from "use-intl"
 
-import { Separator } from "~/src/components/shadcn/separator";
-
-export const Route = createFileRoute("/{-$locale}/account/payment")({
-  component: PaymentPage
-});
-
-const ZERO_METHODS = 0;
-
-function PaymentPage(): JSX.Element {
-  const t = useTranslations("pages.account.payment");
-
+import { Separator } from "~/src/presentation/components/shadcn/separator"
+const PaymentPage = (): JSX.Element => {
+  const t = useTranslations("pages.account.payment")
   return (
     <div>
       <div className="mb-10 space-y-3">
@@ -24,7 +16,7 @@ function PaymentPage(): JSX.Element {
 
       <div className="flex items-baseline justify-between">
         <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
-          {t("saved")} ({ZERO_METHODS})
+          {t("saved")} ({0})
         </h2>
       </div>
       <Separator className="mt-3 mb-0" />
@@ -41,5 +33,8 @@ function PaymentPage(): JSX.Element {
         <p className="max-w-md text-[12px] leading-relaxed text-muted-foreground/70">{t("securityDesc")}</p>
       </div>
     </div>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/account/payment")({
+  component: PaymentPage,
+})

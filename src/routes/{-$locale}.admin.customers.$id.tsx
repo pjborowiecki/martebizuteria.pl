@@ -1,62 +1,54 @@
-import { type JSX, useCallback, useMemo, useState } from "react";
+import { type JSX, useCallback, useMemo, useState } from "react"
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, notFound } from "@tanstack/react-router";
-import { Pencil } from "lucide-react";
-import { useLocale, useTranslations } from "use-intl";
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { createFileRoute, notFound } from "@tanstack/react-router"
+import { Pencil } from "lucide-react"
+import { useLocale, useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
-import { DEFAULT_LOCALE } from "~/src/constants/_constants/locales";
+import { adminCustomerByIdQueryOptions } from "~/src/modules/user/use-cases/get-admin-customer"
+import { ADMIN_CUSTOMER_QUERY_STALE_MS } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
 
-import { Button } from "~/src/components/shadcn/button";
+import { Button } from "~/src/presentation/components/shadcn/button"
 
-import { type LocalizedTo } from "~/src/components/custom/localized-link";
-import { AdminHeader } from "~/src/components/custom/pages/admin/admin-header";
-import { CustomerCharts } from "~/src/components/custom/pages/admin/customers/customer-detail/customer-charts";
-import { CustomerKpis } from "~/src/components/custom/pages/admin/customers/customer-detail/customer-kpis";
-import { CustomerOrders } from "~/src/components/custom/pages/admin/customers/customer-detail/customer-orders";
-import { CustomerSidebar } from "~/src/components/custom/pages/admin/customers/customer-detail/customer-sidebar";
-import { CustomerSheet } from "~/src/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-sheet";
+import { type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
+import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
+import { CustomerCharts } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-charts"
+import { CustomerKpis } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-kpis"
+import { CustomerOrders } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-orders"
+import { CustomerSidebar } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-sidebar"
+import { CustomerSheet } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-sheet"
 
-import { ADMIN_CUSTOMER_QUERY_STALE_MS } from "~/src/modules/user/user.constants";
-import { userQueryOptions } from "~/src/modules/user/user.queries";
-import type { User } from "~/src/modules/user/user.types";
-
-export const Route = createFileRoute("/{-$locale}/admin/customers/$id")({
-  component: AdminCustomerDetailRoute,
-  loader: async ({ context, params }) => {
-    const locale = params.locale ?? DEFAULT_LOCALE;
-    const customer = await context.queryClient.ensureQueryData(userQueryOptions.adminCustomerByIdQueryOptions(params.id, locale));
-
-    if (customer === undefined) {
-      notFound({ throw: true });
-    }
-  },
-  shouldReload: false,
-  staleTime: ADMIN_CUSTOMER_QUERY_STALE_MS
-});
-
-function AdminCustomerDetailRoute(): JSX.Element {
-  const t = useTranslations("pages.admin.customerDetail");
-  const locale = useLocale();
-  const { id } = Route.useParams();
-  const { data } = useSuspenseQuery(userQueryOptions.adminCustomerByIdQueryOptions(id, locale));
-  const customer = ensureAdminCustomerDetail(data);
-
+import { ROUTES } from "~/src/routes"
+const AdminCustomerDetailRoute = (): JSX.Element => {
+  const t = useTranslations("pages.admin.customerDetail")
+  const locale = useLocale()
+  const { id } = Route.useParams()
+  const { data } = useSuspenseQuery(adminCustomerByIdQueryOptions(id, locale))
+  const customer = ensureAdminCustomerDetail(data)
   const breadcrumbs = useMemo(
     () => [
-      { href: CONSTANTS.ROUTES.ADMIN, label: t("breadcrumb.dashboard") } satisfies { href: LocalizedTo; label: string },
-      { href: CONSTANTS.ROUTES.ADMIN_CUSTOMERS, label: t("breadcrumb.customers") } satisfies { href: LocalizedTo; label: string }
+      {
+        href: ROUTES.ADMIN,
+        label: t("breadcrumb.dashboard"),
+      } satisfies {
+        href: LocalizedTo
+        label: string
+      },
+      {
+        href: ROUTES.ADMIN_CUSTOMERS,
+        label: t("breadcrumb.customers"),
+      } satisfies {
+        href: LocalizedTo
+        label: string
+      },
     ],
-    [t]
-  );
-
-  const [sheetOpen, setSheetOpen] = useState(false);
-
+    [t],
+  )
+  const [sheetOpen, setSheetOpen] = useState(false)
   const handleEditClick = useCallback(() => {
-    setSheetOpen(true);
-  }, []);
-
+    setSheetOpen(true)
+  }, [])
   const headerActions = useMemo(
     () => (
       <Button
@@ -70,12 +62,11 @@ function AdminCustomerDetailRoute(): JSX.Element {
         {t("actions.edit")}
       </Button>
     ),
-    [handleEditClick, t]
-  );
-
+    [handleEditClick, t],
+  )
   return (
     <>
-      <AdminHeader backHref={CONSTANTS.ROUTES.ADMIN_CUSTOMERS} title={customer.name} breadcrumbs={breadcrumbs} actions={headerActions} />
+      <AdminHeader backHref={ROUTES.ADMIN_CUSTOMERS} title={customer.name} breadcrumbs={breadcrumbs} actions={headerActions} />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-8">
         <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
@@ -91,14 +82,34 @@ function AdminCustomerDetailRoute(): JSX.Element {
 
       {sheetOpen && <CustomerSheet customer={customer} open onOpenChange={setSheetOpen} />}
     </>
-  );
+  )
 }
-
-function ensureAdminCustomerDetail(customer: User["adminCustomerDetail"] | undefined): User["adminCustomerDetail"] {
+const ensureAdminCustomerDetail = (customer: User["adminCustomerDetail"] | undefined): User["adminCustomerDetail"] => {
   if (customer === undefined) {
-    notFound({ throw: true });
-    throw new Error("Customer not found");
+    notFound({
+      throw: true,
+    })
+    throw new Error("Customer not found")
   }
-
-  return customer;
+  return customer
 }
+export const Route = createFileRoute("/{-$locale}/admin/customers/$id")({
+  component: AdminCustomerDetailRoute,
+  loader: async ({ context, params }) => {
+    const { locale } = context
+    const customer = await context.queryClient.query({
+      ...adminCustomerByIdQueryOptions(params.id, locale),
+      staleTime: "static",
+    })
+    if (customer === undefined) {
+      notFound({
+        throw: true,
+      })
+    }
+  },
+  shouldReload: false,
+  staleTime: ADMIN_CUSTOMER_QUERY_STALE_MS,
+  staticData: {
+    namespaces: ["pages.admin.customers"],
+  },
+})

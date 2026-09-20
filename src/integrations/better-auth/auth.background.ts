@@ -1,30 +1,22 @@
-import { AsyncLocalStorage } from "node:async_hooks";
-
-interface ExecutionContextLike {
-  readonly waitUntil: (promise: Promise<unknown>) => void;
-}
-
-export const executionContextStorage = new AsyncLocalStorage<ExecutionContextLike>();
-
-async function runSafely(task: Promise<unknown> | PromiseLike<unknown>): Promise<void> {
+import { AsyncLocalStorage } from "node:async_hooks"
+const runSafely = async (task: Promise<unknown> | PromiseLike<unknown>): Promise<void> => {
   try {
-    await task;
+    await task
   } catch (error) {
-    console.error("[Background Work Failed]:", error);
+    console.error("[Background Work Failed]:", error)
   }
 }
+export const scheduleBackgroundWork = (task: Promise<unknown> | PromiseLike<unknown>): void => {
+  const store = executionContextStorage.getStore()
 
-export function scheduleBackgroundWork(task: Promise<unknown> | PromiseLike<unknown>): void {
-  const store = executionContextStorage.getStore();
-
-  // When the execution context is available, defer the work via `waitUntil` so
-  // it survives past the response without blocking it. When it is missing, we
-  // must NOT drop the task on the floor (the old `?.waitUntil` did) — run it
-  // immediately so the promise is still kept alive and any error surfaces.
+  // Without an execution context, still observe task failures.
   if (store === undefined) {
-    void runSafely(task);
-    return;
+    void runSafely(task)
+    return
   }
-
-  store.waitUntil(runSafely(task));
+  store.waitUntil(runSafely(task))
 }
+interface ExecutionContextLike {
+  readonly waitUntil: (promise: Promise<unknown>) => void
+}
+export const executionContextStorage = new AsyncLocalStorage<ExecutionContextLike>()

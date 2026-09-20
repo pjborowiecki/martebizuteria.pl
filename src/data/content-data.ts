@@ -1,16 +1,16 @@
-import { FileText, Image as ImageIcon, Type, type LucideIcon } from "lucide-react";
+import { FileText, Image as ImageIcon, type LucideIcon, Type } from "lucide-react"
 
 export interface ContentType {
-  key: "pages" | "banners" | "articles";
-  icon: LucideIcon;
-  count: number;
+  key: "pages" | "banners" | "articles"
+  icon: LucideIcon
+  count: number
 }
 
 export const CONTENT_TYPES: ContentType[] = [
   { count: 8, icon: FileText, key: "pages" },
   { count: 4, icon: ImageIcon, key: "banners" },
-  { count: 12, icon: Type, key: "articles" }
-];
+  { count: 12, icon: Type, key: "articles" },
+]
 
 export const PAGES = [
   { id: "page-001", lastEdited: "Oct 24, 2023", path: "/", sections: 9, status: "published", title: "Homepage" },
@@ -23,11 +23,11 @@ export const PAGES = [
     path: "/collections/celestial",
     sections: 4,
     status: "published",
-    title: "Celestial Collection"
+    title: "Celestial Collection",
   },
   { id: "page-006", lastEdited: "Oct 25, 2023", path: "/lookbook/holiday-2023", sections: 6, status: "draft", title: "Holiday Lookbook" },
   { id: "page-007", lastEdited: "Sep 12, 2023", path: "/about", sections: 3, status: "published", title: "About" },
-  { id: "page-008", lastEdited: "Sep 10, 2023", path: "/contact", sections: 2, status: "published", title: "Contact" }
-] as const;
+  { id: "page-008", lastEdited: "Sep 10, 2023", path: "/contact", sections: 2, status: "published", title: "Contact" },
+] as const
 
-export type Page = (typeof PAGES)[number];
+export type Page = (typeof PAGES)[number]

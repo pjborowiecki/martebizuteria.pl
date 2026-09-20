@@ -1,23 +1,20 @@
-import { inventoryAccessors } from "~/src/modules/inventory/inventory.accessors";
-
-const EMPTY_COUNT = 0;
-const FIRST_INDEX = 0;
+import { getInventoryByVariantId, releaseInventoryForItems, reserveInventory } from "~/src/modules/inventory/inventory.accessors"
 
 export interface ReserveInventoryItem {
-  currentVersion: number;
-  inventoryId: string;
-  qty: number;
-  title: string;
+  currentVersion: number
+  inventoryId: string
+  qty: number
+  title: string
 }
 
 export interface ReleaseInventoryItem {
-  inventoryId: string;
-  qty: number;
+  inventoryId: string
+  qty: number
 }
 
 export interface ReserveInventoryVariantLine {
-  qty: number;
-  variantId: string;
+  qty: number
+  variantId: string
 }
 
 /**
@@ -27,44 +24,41 @@ export interface ReserveInventoryVariantLine {
  * the already-reserved items are released before throwing, leaving inventory
  * unchanged on failure.
  */
-export async function reserveInventoryForItems(items: ReserveInventoryItem[]): Promise<void> {
+export const reserveInventoryForItems = async (items: ReserveInventoryItem[]): Promise<void> => {
   const outcomes = await Promise.all(
     items.map(async (item) => {
-      const reserved = await inventoryAccessors.reserveInventory(item);
-      return { item, reserved };
+      const reserved = await reserveInventory(item)
+      return {
+        item,
+        reserved,
+      }
+    }),
+  )
+  const failures = outcomes.filter((outcome) => !outcome.reserved)
+  if (failures.length > 0) {
+    const reserved = outcomes.filter((outcome) => outcome.reserved).map((outcome) => outcome.item)
+    await releaseInventoryForItems(reserved).catch((error: unknown) => {
+      console.error("Failed to roll back partial inventory reservation:", error)
     })
-  );
-
-  const failures = outcomes.filter((outcome) => !outcome.reserved);
-
-  if (failures.length > EMPTY_COUNT) {
-    const reserved = outcomes.filter((outcome) => outcome.reserved).map((outcome) => outcome.item);
-    await inventoryAccessors.releaseInventoryForItems(reserved).catch((error: unknown) => {
-      console.error("Failed to roll back partial inventory reservation:", error);
-    });
-
-    const firstFailure = failures[FIRST_INDEX];
-    throw new Error(`Inventory reservation failed for ${firstFailure?.item.title ?? "item"}. Stock changed or unavailable.`);
+    const [firstFailure] = failures
+    throw new Error(`Inventory reservation failed for ${firstFailure?.item.title ?? "item"}. Stock changed or unavailable.`)
   }
 }
 
 /** Re-reserves stock by variant id (e.g. rolling back a failed checkout session update). */
-export async function reserveInventoryByVariantLines(lines: ReserveInventoryVariantLine[]): Promise<void> {
-  const inventories = await Promise.all(lines.map((line) => inventoryAccessors.getInventoryByVariantId(line.variantId)));
-
+export const reserveInventoryByVariantLines = async (lines: ReserveInventoryVariantLine[]): Promise<void> => {
+  const inventories = await Promise.all(lines.map((line) => getInventoryByVariantId(line.variantId)))
   const items = lines.map((line, index) => {
-    const inv = inventories[index];
+    const inv = inventories[index]
     if (inv === undefined) {
-      throw new Error(`Inventory not found for variant ${line.variantId}.`);
+      throw new Error(`Inventory not found for variant ${line.variantId}.`)
     }
-
     return {
       currentVersion: inv.version,
       inventoryId: inv.id,
       qty: line.qty,
-      title: line.variantId
-    };
-  });
-
-  await reserveInventoryForItems(items);
+      title: line.variantId,
+    }
+  })
+  await reserveInventoryForItems(items)
 }

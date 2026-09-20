@@ -1,35 +1,15 @@
-import type { JSX } from "react";
+import { type JSX } from "react"
 
-import type { QueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { createFileRoute } from "@tanstack/react-router"
+import { useTranslations } from "use-intl"
 
-import { DEFAULT_LOCALE } from "~/src/constants/_constants/locales";
+import { ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import { adminDashboardSnapshotQueryOptions } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-snapshot"
 
-import { AdminHeader } from "~/src/components/custom/pages/admin/admin-header";
-import { DashboardOverviewContent } from "~/src/components/custom/pages/admin/dashboard-overview-content";
-
-import { ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants";
-import { adminDashboardQueryOptions } from "~/src/modules/admin-dashboard/admin-dashboard.queries";
-
-async function prefetchAdminDashboardSnapshot(context: { locale: string; queryClient: QueryClient }): Promise<void> {
-  await context.queryClient.ensureQueryData(adminDashboardQueryOptions.adminDashboardSnapshotQueryOptions({ locale: context.locale }));
-}
-
-export const Route = createFileRoute("/{-$locale}/admin/overview")({
-  component: AdminOverviewPage,
-  loader: ({ context, params }) =>
-    prefetchAdminDashboardSnapshot({
-      locale: params.locale ?? DEFAULT_LOCALE,
-      queryClient: context.queryClient
-    }),
-  shouldReload: false,
-  staleTime: ADMIN_DASHBOARD_QUERY_STALE_MS
-});
-
-function AdminOverviewPage(): JSX.Element {
-  const t = useTranslations("pages.admin");
-
+import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
+import { DashboardOverviewContent } from "~/src/presentation/components/custom/pages/admin/dashboard-overview-content"
+const AdminOverviewPage = (): JSX.Element => {
+  const t = useTranslations("pages.admin")
   return (
     <>
       <AdminHeader title={t("dashboard.title")} description={t("dashboard.description")} />
@@ -38,5 +18,17 @@ function AdminOverviewPage(): JSX.Element {
         <DashboardOverviewContent />
       </div>
     </>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/admin/overview")({
+  component: AdminOverviewPage,
+  loader: ({ context }) =>
+    context.queryClient.query({
+      ...adminDashboardSnapshotQueryOptions({
+        locale: context.locale,
+      }),
+      staleTime: "static",
+    }),
+  shouldReload: false,
+  staleTime: ADMIN_DASHBOARD_QUERY_STALE_MS,
+})

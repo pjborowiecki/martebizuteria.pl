@@ -1,158 +1,156 @@
-import { ROLES } from "~/src/constants/_constants/permissions";
+import { ROLES } from "~/src/integrations/better-auth/auth.constants"
 
-import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants";
+import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
+  type AuditLogActorInput,
   scheduleAuditLog,
   scheduleAuditLogFromRequest,
   scheduleSystemAuditLog,
-  type AuditLogActorInput
-} from "~/src/modules/audit-log/audit-log.record.server";
+} from "~/src/modules/audit-log/audit-log.record.server"
 
 export interface AuditEventOptions {
-  readonly actor?: AuditLogActorInput;
-  readonly detail?: string;
-  readonly ip?: string;
-  readonly metadata?: Record<string, unknown>;
-  readonly resourceId?: string;
+  readonly actor?: AuditLogActorInput | undefined
+  readonly detail?: string | undefined
+  readonly ip?: string | undefined
+  readonly metadata?: Record<string, unknown> | undefined
+  readonly resourceId?: string | undefined
 }
 
-function withResourceId(
+const withResourceId = (
   target: string,
-  options?: AuditEventOptions
-): { target: string; detail?: string; metadata?: Record<string, unknown>; resourceId?: string } {
-  return {
-    detail: options?.detail,
-    metadata: options?.metadata,
-    resourceId: options?.resourceId ?? target,
-    target
-  };
-}
+  options?: AuditEventOptions,
+): { target: string; detail?: string | undefined; metadata?: Record<string, unknown> | undefined; resourceId?: string | undefined } => ({
+  detail: options?.detail,
+  metadata: options?.metadata,
+  resourceId: options?.resourceId ?? target,
+  target,
+})
 
-function resolveActorAuditTarget(
+const resolveActorAuditTarget = (
   actor: AuditLogActorInput,
-  options?: AuditEventOptions & { readonly ip?: string }
-): { detail?: string; metadata?: Record<string, unknown>; resourceId?: string; target: string } {
-  const resourceId = options?.resourceId ?? actor.id;
-  const email = actor.email?.trim();
+  options?: AuditEventOptions,
+): { detail?: string | undefined; metadata?: Record<string, unknown> | undefined; resourceId?: string | undefined; target: string } => {
+  const resourceId = options?.resourceId ?? actor.id
+  const email = actor.email?.trim()
 
   if (email !== undefined && email !== "") {
     return {
       detail: options?.detail ?? actor.name,
       metadata: { ...options?.metadata, email },
       resourceId,
-      target: email
-    };
+      target: email,
+    }
   }
 
   return {
     detail: options?.detail,
     metadata: options?.metadata,
     resourceId,
-    target: actor.name
-  };
+    target: actor.name,
+  }
 }
 
-export function recordCatalogProductCreatedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogProductCreatedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.PRODUCT_CREATED,
     category: "catalog",
     severity: "info",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogProductUpdatedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogProductUpdatedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.PRODUCT_UPDATED,
     category: "catalog",
     severity: "info",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogProductDeletedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogProductDeletedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.PRODUCT_DELETED,
     category: "catalog",
     severity: "warning",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogCategoryCreatedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogCategoryCreatedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.CATEGORY_CREATED,
     category: "catalog",
     severity: "info",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogCategoryUpdatedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogCategoryUpdatedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.CATEGORY_UPDATED,
     category: "catalog",
     severity: "info",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogCategoryDeletedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogCategoryDeletedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.CATEGORY_DELETED,
     category: "catalog",
     severity: "warning",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogCollectionCreatedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogCollectionCreatedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.COLLECTION_CREATED,
     category: "catalog",
     severity: "info",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogCollectionUpdatedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogCollectionUpdatedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.COLLECTION_UPDATED,
     category: "catalog",
     severity: "info",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogCollectionDeletedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogCollectionDeletedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.COLLECTION_DELETED,
     category: "catalog",
     severity: "warning",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogAttributeCreatedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogAttributeCreatedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.ATTRIBUTE_CREATED,
     category: "catalog",
     severity: "info",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogAttributeUpdatedAudit(target: string, options?: AuditEventOptions): void {
+export const recordCatalogAttributeUpdatedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.ATTRIBUTE_UPDATED,
     category: "catalog",
     severity: "info",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordCatalogAttributeDeletedAudit(target: string, options?: AuditEventOptions): void {
-  const payload = withResourceId(target, options);
+export const recordCatalogAttributeDeletedAudit = (target: string, options?: AuditEventOptions): void => {
+  const payload = withResourceId(target, options)
 
   if (options?.actor !== undefined) {
     scheduleAuditLog({
@@ -164,33 +162,33 @@ export function recordCatalogAttributeDeletedAudit(target: string, options?: Aud
       metadata: payload.metadata,
       resourceId: payload.resourceId,
       severity: "warning",
-      target: payload.target
-    });
-    return;
+      target: payload.target,
+    })
+    return
   }
 
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.ATTRIBUTE_DELETED,
     category: "catalog",
     severity: "warning",
-    ...payload
-  });
+    ...payload,
+  })
 }
 
-export function recordCustomerRegisteredAudit(target: string, options?: AuditEventOptions): void {
+export const recordCustomerRegisteredAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.CUSTOMER_REGISTERED,
     category: "customers",
     severity: "success",
     ...withResourceId(target, {
       ...options,
-      metadata: { ...options?.metadata, email: target }
-    })
-  });
+      metadata: { ...options?.metadata, email: target },
+    }),
+  })
 }
 
-export function recordAuthLoginAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
-  const targetFields = resolveActorAuditTarget(actor, options);
+export const recordAuthLoginAudit = (actor: AuditLogActorInput, options?: AuditEventOptions): void => {
+  const targetFields = resolveActorAuditTarget(actor, options)
 
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.AUTH_LOGIN,
@@ -198,11 +196,11 @@ export function recordAuthLoginAudit(actor: AuditLogActorInput, options?: AuditE
     category: "auth",
     ip: options?.ip,
     severity: "info",
-    ...targetFields
-  });
+    ...targetFields,
+  })
 }
 
-export function recordAuthLoginFailedAudit(target: string, options?: AuditEventOptions & { readonly ip?: string }): void {
+export const recordAuthLoginFailedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED,
     category: "auth",
@@ -211,12 +209,12 @@ export function recordAuthLoginFailedAudit(target: string, options?: AuditEventO
     metadata: options?.metadata,
     resourceId: options?.resourceId,
     severity: "warning",
-    target
-  });
+    target,
+  })
 }
 
-export function recordAuthLogoutAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
-  const targetFields = resolveActorAuditTarget(actor, options);
+export const recordAuthLogoutAudit = (actor: AuditLogActorInput, options?: AuditEventOptions): void => {
+  const targetFields = resolveActorAuditTarget(actor, options)
 
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.AUTH_LOGOUT,
@@ -224,12 +222,12 @@ export function recordAuthLogoutAudit(actor: AuditLogActorInput, options?: Audit
     category: "auth",
     ip: options?.ip,
     severity: "info",
-    ...targetFields
-  });
+    ...targetFields,
+  })
 }
 
-export function recordCustomerCartItemAddedAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
-  const targetFields = resolveActorAuditTarget(actor, options);
+export const recordCustomerCartItemAddedAudit = (actor: AuditLogActorInput, options?: AuditEventOptions): void => {
+  const targetFields = resolveActorAuditTarget(actor, options)
 
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.CUSTOMER_CART_ITEM_ADDED,
@@ -237,12 +235,12 @@ export function recordCustomerCartItemAddedAudit(actor: AuditLogActorInput, opti
     category: "customers",
     ip: options?.ip,
     severity: "info",
-    ...targetFields
-  });
+    ...targetFields,
+  })
 }
 
-export function recordCustomerCartAbandonedAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
-  const targetFields = resolveActorAuditTarget(actor, options);
+export const recordCustomerCartAbandonedAudit = (actor: AuditLogActorInput, options?: AuditEventOptions): void => {
+  const targetFields = resolveActorAuditTarget(actor, options)
 
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED,
@@ -250,12 +248,12 @@ export function recordCustomerCartAbandonedAudit(actor: AuditLogActorInput, opti
     category: "customers",
     ip: options?.ip,
     severity: "warning",
-    ...targetFields
-  });
+    ...targetFields,
+  })
 }
 
-export function recordCustomerPageViewedAudit(actor: AuditLogActorInput, options?: AuditEventOptions & { readonly ip?: string }): void {
-  const targetFields = resolveActorAuditTarget(actor, options);
+export const recordCustomerPageViewedAudit = (actor: AuditLogActorInput, options?: AuditEventOptions): void => {
+  const targetFields = resolveActorAuditTarget(actor, options)
 
   scheduleAuditLog({
     action: AUDIT_LOG_ACTION.CUSTOMER_PAGE_VIEWED,
@@ -263,133 +261,133 @@ export function recordCustomerPageViewedAudit(actor: AuditLogActorInput, options
     category: "customers",
     ip: options?.ip,
     severity: "info",
-    ...targetFields
-  });
+    ...targetFields,
+  })
 }
 
-export function recordOrderPlacedAudit(orderId: string, options?: AuditEventOptions): void {
+export const recordOrderPlacedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_PLACED,
     category: "orders",
     severity: "success",
-    ...withResourceId(orderId, options)
-  });
+    ...withResourceId(orderId, options),
+  })
 }
 
-export function recordOrderPaymentCapturedAudit(orderId: string, options?: AuditEventOptions): void {
+export const recordOrderPaymentCapturedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED,
     category: "orders",
     severity: "success",
-    ...withResourceId(orderId, options)
-  });
+    ...withResourceId(orderId, options),
+  })
 }
 
-export function recordOrderFulfillmentStartedAudit(orderId: string, options?: AuditEventOptions): void {
+export const recordOrderFulfillmentStartedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,
     category: "orders",
     severity: "info",
-    ...withResourceId(orderId, options)
-  });
+    ...withResourceId(orderId, options),
+  })
 }
 
-export function recordOrderShippedAudit(orderId: string, options?: AuditEventOptions): void {
+export const recordOrderShippedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_SHIPPED,
     category: "orders",
     severity: "success",
-    ...withResourceId(orderId, options)
-  });
+    ...withResourceId(orderId, options),
+  })
 }
 
-export function recordOrderCancelledAudit(orderId: string, options?: AuditEventOptions): void {
+export const recordOrderCancelledAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_CANCELLED,
     category: "orders",
     severity: "warning",
-    ...withResourceId(orderId, options)
-  });
+    ...withResourceId(orderId, options),
+  })
 }
 
-export function recordOrderRefundAudit(orderId: string, options?: AuditEventOptions): void {
+export const recordOrderRefundAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED,
     category: "orders",
     severity: "warning",
-    ...withResourceId(orderId, options)
-  });
+    ...withResourceId(orderId, options),
+  })
 }
 
-export function recordOrderReleasedAudit(sessionId: string, options?: AuditEventOptions): void {
+export const recordOrderReleasedAudit = (sessionId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_RELEASED,
     category: "orders",
     severity: "info",
-    ...withResourceId(sessionId, options)
-  });
+    ...withResourceId(sessionId, options),
+  })
 }
 
-export function recordOrderPaymentFailedAudit(paymentIntentId: string, options?: AuditEventOptions): void {
+export const recordOrderPaymentFailedAudit = (paymentIntentId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_PAYMENT_FAILED,
     category: "orders",
     severity: "error",
-    ...withResourceId(paymentIntentId, options)
-  });
+    ...withResourceId(paymentIntentId, options),
+  })
 }
 
-export function recordOrderDisputeOpenedAudit(orderId: string, options?: AuditEventOptions): void {
+export const recordOrderDisputeOpenedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED,
     category: "orders",
     severity: "warning",
-    ...withResourceId(orderId, options)
-  });
+    ...withResourceId(orderId, options),
+  })
 }
 
-export function recordOrderDisputeClosedAudit(orderId: string, options?: AuditEventOptions): void {
+export const recordOrderDisputeClosedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED,
     category: "orders",
     severity: "info",
-    ...withResourceId(orderId, options)
-  });
+    ...withResourceId(orderId, options),
+  })
 }
 
-export function recordEmailSentAudit(target: string, options?: AuditEventOptions): void {
+export const recordEmailSentAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.EMAIL_SENT,
     category: "email",
     severity: "success",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function recordEmailFailedAudit(target: string, options?: AuditEventOptions): void {
+export const recordEmailFailedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.EMAIL_FAILED,
     category: "email",
     severity: "error",
-    ...withResourceId(target, options)
-  });
+    ...withResourceId(target, options),
+  })
 }
 
-export function resolveAuthAuditActor(
-  user: Readonly<{ email: string; id: string; name: string; role?: string | null }>
-): AuditLogActorInput {
-  let actorRole: AuditLogActorInput["role"] = "unknown";
+export const resolveAuthAuditActor = (
+  user: Readonly<{ email: string; id: string; name: string; role?: string | null | undefined }>,
+): AuditLogActorInput => {
+  let actorRole: AuditLogActorInput["role"] = "unknown"
 
   if (user.role === ROLES.ADMIN) {
-    actorRole = "admin";
+    actorRole = "admin"
   } else if (user.role === ROLES.CUSTOMER) {
-    actorRole = "customer";
+    actorRole = "customer"
   }
 
   return {
     email: user.email,
     id: user.id,
     name: user.name,
-    role: actorRole
-  };
+    role: actorRole,
+  }
 }

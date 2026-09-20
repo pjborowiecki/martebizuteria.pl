@@ -1,54 +1,39 @@
-import { type JSX, useCallback, useMemo, useState } from "react";
+import { type JSX, useCallback, useMemo, useState } from "react"
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
-import { useFormatter, useTranslations } from "use-intl";
-
-import { CONSTANTS } from "~/src/constants";
-
-import { centsToDisplayAmount } from "~/src/lib/utils";
-
-import { Button } from "~/src/components/shadcn/button";
-import { Separator } from "~/src/components/shadcn/separator";
-
-import { Image } from "~/src/components/custom/image";
-import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+import { ChevronDown } from "lucide-react"
+import { useFormatter, useTranslations } from "use-intl"
 
 import {
   CUSTOMER_ACCOUNT_ORDER_FILTERS,
   CUSTOMER_ACCOUNT_QUERY_STALE_MS,
-  type CustomerAccountOrderFilter
-} from "~/src/modules/customer-account/customer-account.constants";
-import { customerAccountQueryOptions } from "~/src/modules/customer-account/customer-account.queries";
-import type { CustomerAccountOrderItem, CustomerAccountOrderSummary } from "~/src/modules/customer-account/customer-account.types";
-import { formatCustomerOrderDisplayId, matchesCustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.utils";
+  type CustomerAccountOrderFilter,
+} from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountOrderItem, type CustomerAccountOrderSummary } from "~/src/modules/customer-account/customer-account.types"
+import { formatCustomerOrderDisplayId, matchesCustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.utils"
+import { ordersQueryOptions } from "~/src/modules/customer-account/use-cases/list-customer-orders"
 
-export const Route = createFileRoute("/{-$locale}/account/orders/")({
-  component: OrdersPage,
-  loader: ({ context }) => context.queryClient.ensureQueryData(customerAccountQueryOptions.ordersQueryOptions()),
-  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS
-});
+import { centsToDisplayAmount } from "~/src/lib/currency"
 
-const ZERO_ORDERS = 0;
-const START_INDEX = 0;
-const MAX_VISIBLE_IMAGES = 3;
-const OVERLAP_STYLE = { marginLeft: "-0.5rem" };
-const PLACEHOLDER_IMAGE = "/placeholder-product.svg";
+import { Button } from "~/src/presentation/components/shadcn/button"
+import { Separator } from "~/src/presentation/components/shadcn/separator"
 
-function OrdersPage(): JSX.Element {
-  const t = useTranslations("pages.account.orders");
-  const [filter, setFilter] = useState<CustomerAccountOrderFilter>("all");
-  const { data: orders } = useSuspenseQuery(customerAccountQueryOptions.ordersQueryOptions());
+import { Image } from "~/src/presentation/components/custom/image"
+import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
+import { ROUTES } from "~/src/routes"
+const OrdersPage = (): JSX.Element => {
+  const t = useTranslations("pages.account.orders")
+  const [filter, setFilter] = useState<CustomerAccountOrderFilter>("all")
+  const { data: orders } = useSuspenseQuery(ordersQueryOptions())
   const filteredOrders = useMemo(
     () =>
       filter === "all"
         ? orders
         : orders.filter((order) => matchesCustomerAccountOrderFilter(filter, order.status, order.fulfillmentStatus)),
-    [filter, orders]
-  );
-
+    [filter, orders],
+  )
   return (
     <div>
       <div className="sticky top-20 z-10 -mx-6 bg-background px-6 pt-6 sm:-mx-12 sm:px-12 lg:mx-0 lg:px-0 lg:pt-0">
@@ -66,7 +51,7 @@ function OrdersPage(): JSX.Element {
       </div>
 
       <div className="pt-4">
-        {filteredOrders.length === ZERO_ORDERS ? (
+        {filteredOrders.length === 0 ? (
           <div className="py-20 text-center">
             <p className="text-sm text-muted-foreground">{t("empty")}</p>
           </div>
@@ -79,24 +64,22 @@ function OrdersPage(): JSX.Element {
         )}
       </div>
     </div>
-  );
+  )
 }
-
-function FilterButton({
+const FilterButton = ({
   currentFilter,
   opt,
-  setFilter
+  setFilter,
 }: Readonly<{
-  currentFilter: CustomerAccountOrderFilter;
-  opt: CustomerAccountOrderFilter;
-  setFilter: (f: CustomerAccountOrderFilter) => void;
-}>): JSX.Element {
-  const t = useTranslations("pages.account.orders");
-  const isActive = currentFilter === opt;
+  currentFilter: CustomerAccountOrderFilter
+  opt: CustomerAccountOrderFilter
+  setFilter: (nextFilter: CustomerAccountOrderFilter) => void
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.orders")
+  const isActive = currentFilter === opt
   const onClick = useCallback(() => {
-    setFilter(opt);
-  }, [opt, setFilter]);
-
+    setFilter(opt)
+  }, [opt, setFilter])
   return (
     <Button
       variant="account-ghost"
@@ -105,15 +88,17 @@ function FilterButton({
     >
       {t(`filter.${opt}`)}
     </Button>
-  );
+  )
 }
-
-function OrderRow({ order }: Readonly<{ order: CustomerAccountOrderSummary }>): JSX.Element {
-  const [expanded, setExpanded] = useState(false);
+const OrderRow = ({
+  order,
+}: Readonly<{
+  order: CustomerAccountOrderSummary
+}>): JSX.Element => {
+  const [expanded, setExpanded] = useState(false)
   const toggleExpanded = useCallback(() => {
-    setExpanded((e) => !e);
-  }, []);
-
+    setExpanded((prev) => !prev)
+  }, [])
   return (
     <div>
       <OrderRowHeader order={order} expanded={expanded} toggleExpanded={toggleExpanded} />
@@ -123,27 +108,27 @@ function OrderRow({ order }: Readonly<{ order: CustomerAccountOrderSummary }>): 
         </div>
       </div>
     </div>
-  );
+  )
 }
-
-function OrderRowHeader({
+const OrderRowHeader = ({
   expanded,
   order,
-  toggleExpanded
+  toggleExpanded,
 }: Readonly<{
-  expanded: boolean;
-  order: CustomerAccountOrderSummary;
-  toggleExpanded: () => void;
-}>): JSX.Element {
-  const t = useTranslations("pages.account.orders");
-  const format = useFormatter();
-  const displayId = formatCustomerOrderDisplayId(order.id);
+  expanded: boolean
+  order: CustomerAccountOrderSummary
+  toggleExpanded: () => void
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.orders")
+  const format = useFormatter()
+  const displayId = formatCustomerOrderDisplayId(order.id)
   const totalLabel = format.number(centsToDisplayAmount(order.totalMinorUnits), {
     currency: order.currencyCode,
-    style: "currency"
-  });
-  const dateLabel = format.dateTime(order.createdAt, { dateStyle: "medium" });
-
+    style: "currency",
+  })
+  const dateLabel = format.dateTime(order.createdAt, {
+    dateStyle: "medium",
+  })
   return (
     <button
       type="button"
@@ -151,11 +136,11 @@ function OrderRowHeader({
       className="group flex w-full cursor-pointer items-center gap-5 py-5 text-left transition-colors"
     >
       <div className="flex items-center gap-3">
-        {order.items.slice(START_INDEX, MAX_VISIBLE_IMAGES).map((item, i) => (
+        {order.items.slice(0, MAX_VISIBLE_IMAGES).map((item, index) => (
           <div
-            key={`${item.name}-${String(i)}`}
+            key={`${item.name}-${String(index)}`}
             className="relative size-14 shrink-0 overflow-hidden bg-muted"
-            style={i > START_INDEX ? OVERLAP_STYLE : undefined}
+            style={index > 0 ? OVERLAP_STYLE : undefined}
           >
             <Image
               src={item.image ?? PLACEHOLDER_IMAGE}
@@ -183,13 +168,20 @@ function OrderRowHeader({
         strokeWidth={1.5}
       />
     </button>
-  );
+  )
 }
-
-function OrderRowDetails({ order }: Readonly<{ order: CustomerAccountOrderSummary }>): JSX.Element {
-  const t = useTranslations("pages.account.orders");
-  const orderParams = useMemo(() => ({ id: order.id }), [order.id]);
-
+const OrderRowDetails = ({
+  order,
+}: Readonly<{
+  order: CustomerAccountOrderSummary
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.orders")
+  const orderParams = useMemo(
+    () => ({
+      id: order.id,
+    }),
+    [order.id],
+  )
   return (
     <div className="pb-6 pl-0 sm:pl-19">
       <div className="divide-y divide-border/50">
@@ -200,7 +192,7 @@ function OrderRowDetails({ order }: Readonly<{ order: CustomerAccountOrderSummar
 
       <div className="mt-4 flex items-center gap-3">
         <LocalizedLink
-          to={CONSTANTS.ROUTES.ACCOUNT_ORDER}
+          to={ROUTES.ACCOUNT_ORDER}
           params={orderParams}
           className="text-[11px] tracking-[0.15em] text-foreground uppercase transition-colors hover:text-muted-foreground"
         >
@@ -208,20 +200,21 @@ function OrderRowDetails({ order }: Readonly<{ order: CustomerAccountOrderSummar
         </LocalizedLink>
       </div>
     </div>
-  );
+  )
 }
-
-function OrderRowItem({
+const OrderRowItem = ({
   currencyCode,
-  item
+  item,
 }: Readonly<{
-  currencyCode: string;
-  item: CustomerAccountOrderItem;
-}>): JSX.Element {
-  const t = useTranslations("pages.account.orders");
-  const format = useFormatter();
-  const priceLabel = format.number(centsToDisplayAmount(item.priceMinorUnits), { currency: currencyCode, style: "currency" });
-
+  currencyCode: string
+  item: CustomerAccountOrderItem
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.orders")
+  const format = useFormatter()
+  const priceLabel = format.number(centsToDisplayAmount(item.priceMinorUnits), {
+    currency: currencyCode,
+    style: "currency",
+  })
   return (
     <div className="flex items-center gap-4 py-3">
       <div className="relative size-12 shrink-0 overflow-hidden bg-muted">
@@ -243,5 +236,19 @@ function OrderRowItem({
       </div>
       <p className="text-[13px] tabular-nums">{priceLabel}</p>
     </div>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/account/orders/")({
+  component: OrdersPage,
+  loader: ({ context }) =>
+    context.queryClient.query({
+      ...ordersQueryOptions(),
+      staleTime: "static",
+    }),
+  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
+})
+const MAX_VISIBLE_IMAGES = 3
+const OVERLAP_STYLE = {
+  marginLeft: "-0.5rem",
+}
+const PLACEHOLDER_IMAGE = "/placeholder-product.svg"

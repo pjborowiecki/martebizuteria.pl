@@ -1,9 +1,9 @@
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { user } from "~/src/modules/user/user.schema";
+import { user } from "~/src/modules/user/user.schema"
 
 export const address = sqliteTable(
   "address",
@@ -20,14 +20,14 @@ export const address = sqliteTable(
     postalCode: text("postal_code", { length: 32 }),
     province: text("province", { length: 256 }),
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("address_userId_idx").on(table.userId), index("address_userId_isDefault_idx").on(table.userId, table.isDefault)]
-);
+  (table) => [index("address_userId_idx").on(table.userId), index("address_userId_isDefault_idx").on(table.userId, table.isDefault)],
+)
 
 export const addressRelations = relations(address, ({ one }) => ({
   user: one(user, {
     fields: [address.userId],
-    references: [user.id]
-  })
-}));
+    references: [user.id],
+  }),
+}))

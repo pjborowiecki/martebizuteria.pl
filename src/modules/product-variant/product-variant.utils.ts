@@ -1,221 +1,218 @@
-import { DEFAULT_LOCALE, LOCALES } from "~/src/constants/_constants/locales";
+import { DEFAULT_LOCALE, LOCALES } from "~/src/integrations/use-intl/i18n.config"
 
-import { resolveProductOptionValueLabel } from "~/src/modules/product-option-value/product-option-value.utils";
-import type { ProductLocaleMap } from "~/src/modules/product/product.types";
+import { PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD } from "~/src/modules/product/product.constants"
+import { type ProductLocaleMap } from "~/src/modules/product/product.types"
+import { resolveProductTitle } from "~/src/modules/product/product.utils"
 
-export const DEFAULT_VARIANT_TITLE = "Default";
-export const VARIANT_TITLE_SEPARATOR = " / ";
-export const MAX_PRODUCT_OPTIONS = 3;
-const MULTI_VARIANT_THRESHOLD = 1;
+export const DEFAULT_VARIANT_TITLE = "Default"
 
-const EMPTY_LENGTH = 0;
+export const VARIANT_TITLE_SEPARATOR = " / "
+
+export const MAX_PRODUCT_OPTIONS = 3
 
 export interface ProductOptionValueDraft {
-  readonly id?: string;
-  readonly labels: ProductLocaleMap;
+  readonly id?: string | undefined
+  readonly labels: ProductLocaleMap
 }
 
 export interface ProductOptionDraft {
-  readonly id?: string;
-  readonly titles: ProductLocaleMap;
-  readonly values: readonly ProductOptionValueDraft[];
+  readonly id?: string | undefined
+  readonly titles: ProductLocaleMap
+  readonly values: readonly ProductOptionValueDraft[]
 }
 
 export interface VariantCombination {
-  readonly optionValues: Readonly<Record<string, string>>;
-  readonly title: string;
+  readonly optionValues: Readonly<Record<string, string>>
+  readonly title: string
 }
 
-export function buildVariantTitle(optionValues: Readonly<Record<string, string>>): string {
+export const buildVariantTitle = (optionValues: Readonly<Record<string, string>>): string => {
   const parts = Object.values(optionValues)
     .map((valueId) => valueId.trim())
-    .filter((valueId) => valueId !== "");
-  if (parts.length === EMPTY_LENGTH) {
-    return DEFAULT_VARIANT_TITLE;
+    .filter((valueId) => valueId !== "")
+  if (parts.length === 0) {
+    return DEFAULT_VARIANT_TITLE
   }
-
-  return parts.join(VARIANT_TITLE_SEPARATOR);
+  return parts.join(VARIANT_TITLE_SEPARATOR)
 }
 
-export function buildVariantDisplayTitle(
+export const buildVariantDisplayTitle = (
   optionValues: Readonly<Record<string, string>>,
   options: readonly ProductOptionDraft[],
-  locale: string
-): string {
-  const valueLabelById = new Map<string, string>();
+  locale: string,
+): string => {
+  const valueLabelById = new Map<string, string>()
   for (const option of options) {
     for (const value of option.values) {
       if (value.id !== undefined) {
-        valueLabelById.set(value.id, resolveProductOptionValueLabel(value.labels, locale));
+        valueLabelById.set(value.id, resolveProductTitle(value.labels, locale))
       }
     }
   }
-
   const parts = Object.entries(optionValues)
     .map(([, valueId]) => valueLabelById.get(valueId) ?? valueId)
-    .filter((label) => label.trim() !== "");
-
-  if (parts.length === EMPTY_LENGTH) {
-    return DEFAULT_VARIANT_TITLE;
+    .filter((label) => label.trim() !== "")
+  if (parts.length === 0) {
+    return DEFAULT_VARIANT_TITLE
   }
-
-  return parts.join(VARIANT_TITLE_SEPARATOR);
+  return parts.join(VARIANT_TITLE_SEPARATOR)
 }
 
-export function buildVariantCombinationKey(optionValues: Readonly<Record<string, string>>): string {
-  return Object.entries(optionValues)
+export const buildVariantCombinationKey = (optionValues: Readonly<Record<string, string>>): string =>
+  Object.entries(optionValues)
     .toSorted(([left], [right]) => left.localeCompare(right))
     .map(([optionId, valueId]) => `${optionId}=${valueId}`)
-    .join("|");
-}
+    .join("|")
 
-function hasCompleteOptionTitles(titles: ProductLocaleMap): boolean {
-  return LOCALES.every((locale) => titles[locale].trim() !== "");
-}
+const hasCompleteOptionTitles = (titles: ProductLocaleMap): boolean => LOCALES.every((locale) => titles[locale].trim() !== "")
 
-function normalizeOptionValueDraftsForForm(values: readonly ProductOptionValueDraft[]): ProductOptionValueDraft[] {
-  return values.map((value) => ({
+const normalizeOptionValueDraftsForForm = (values: readonly ProductOptionValueDraft[]): ProductOptionValueDraft[] =>
+  values.map((value) => ({
     id: value.id,
-    labels: Object.fromEntries(LOCALES.map((locale) => [locale, value.labels[locale].trim()])) as ProductLocaleMap
-  }));
-}
+    labels: Object.fromEntries(LOCALES.map((locale) => [locale, value.labels[locale].trim()])) as ProductLocaleMap,
+  }))
 
-function normalizeOptionValueDrafts(values: readonly ProductOptionValueDraft[]): ProductOptionValueDraft[] {
-  const seen = new Set<string>();
-
+const normalizeOptionValueDrafts = (values: readonly ProductOptionValueDraft[]): ProductOptionValueDraft[] => {
+  const seen = new Set<string>()
   return values
     .map((value) => ({
       id: value.id,
-      labels: Object.fromEntries(LOCALES.map((locale) => [locale, value.labels[locale].trim()])) as ProductLocaleMap
+      labels: Object.fromEntries(LOCALES.map((locale) => [locale, value.labels[locale].trim()])) as ProductLocaleMap,
     }))
     .filter((value) => {
       if (!LOCALES.every((locale) => value.labels[locale] !== "")) {
-        return false;
+        return false
       }
-
-      const key = LOCALES.map((locale) => value.labels[locale]).join("|");
+      const key = LOCALES.map((locale) => value.labels[locale]).join("|")
       if (seen.has(key)) {
-        return false;
+        return false
       }
-
-      seen.add(key);
-      return true;
-    });
+      seen.add(key)
+      return true
+    })
 }
 
-function resolveCombinationValueKey(value: ProductOptionValueDraft, index: number): string {
+const resolveCombinationValueKey = (value: ProductOptionValueDraft, index: number): string => {
   if (value.id !== undefined && value.id !== "") {
-    return value.id;
+    return value.id
   }
-
   if (value.labels[DEFAULT_LOCALE] !== "") {
-    return value.labels[DEFAULT_LOCALE];
+    return value.labels[DEFAULT_LOCALE]
   }
-
-  return `__draft_${index}`;
+  return `__draft_${index}`
 }
 
-function buildVariantCombinationsFromNormalizedOptions(
+const buildVariantCombinationsFromNormalizedOptions = (
   normalized: readonly {
-    readonly id?: string;
-    readonly titles: ProductLocaleMap;
-    readonly values: readonly ProductOptionValueDraft[];
+    readonly id?: string | undefined
+    readonly titles: ProductLocaleMap
+    readonly values: readonly ProductOptionValueDraft[]
   }[],
-  useDraftKeys: boolean
-): VariantCombination[] {
-  if (normalized.length === EMPTY_LENGTH) {
-    return [{ optionValues: {}, title: DEFAULT_VARIANT_TITLE }];
+  useDraftKeys: boolean,
+): VariantCombination[] => {
+  if (normalized.length === 0) {
+    return [
+      {
+        optionValues: {},
+        title: DEFAULT_VARIANT_TITLE,
+      },
+    ]
   }
-
   return normalized.reduce<VariantCombination[]>((combinations, option) => {
-    const optionId = option.id ?? option.titles[DEFAULT_LOCALE];
-
-    if (combinations.length === EMPTY_LENGTH) {
+    const optionId = option.id ?? option.titles[DEFAULT_LOCALE]
+    if (combinations.length === 0) {
       return option.values.map((value, index) => {
-        const valueKey = useDraftKeys ? resolveCombinationValueKey(value, index) : (value.id ?? value.labels[DEFAULT_LOCALE]);
+        const valueKey = useDraftKeys ? resolveCombinationValueKey(value, index) : (value.id ?? value.labels[DEFAULT_LOCALE])
         return {
-          optionValues: { [optionId]: valueKey },
-          title: value.labels[DEFAULT_LOCALE]
-        };
-      });
+          optionValues: {
+            [optionId]: valueKey,
+          },
+          title: value.labels[DEFAULT_LOCALE],
+        }
+      })
     }
-
-    const next: VariantCombination[] = [];
+    const next: VariantCombination[] = []
     for (const combination of combinations) {
       for (const [index, value] of option.values.entries()) {
-        const valueKey = useDraftKeys ? resolveCombinationValueKey(value, index) : (value.id ?? value.labels[DEFAULT_LOCALE]);
-        const optionValues = { ...combination.optionValues, [optionId]: valueKey };
+        const valueKey = useDraftKeys ? resolveCombinationValueKey(value, index) : (value.id ?? value.labels[DEFAULT_LOCALE])
+        const optionValues = {
+          ...combination.optionValues,
+          [optionId]: valueKey,
+        }
         next.push({
           optionValues,
-          title: buildVariantTitle(optionValues)
-        });
+          title: buildVariantTitle(optionValues),
+        })
       }
     }
-
-    return next;
-  }, []);
+    return next
+  }, [])
 }
 
 /** Lenient draft normalization for the admin form — one row per named variant. */
-export function buildVariantCombinationsFromFormDrafts(options: readonly ProductOptionDraft[]): VariantCombination[] {
+export const buildVariantCombinationsFromFormDrafts = (options: readonly ProductOptionDraft[]): VariantCombination[] => {
   const normalized = options
     .map((option) => ({
       id: option.id,
       titles: option.titles,
-      values: normalizeOptionValueDraftsForForm(option.values)
+      values: normalizeOptionValueDraftsForForm(option.values),
     }))
-    .filter((option) => option.values.length > EMPTY_LENGTH);
-
-  return buildVariantCombinationsFromNormalizedOptions(normalized, true);
+    .filter((option) => option.values.length > 0)
+  return buildVariantCombinationsFromNormalizedOptions(normalized, true)
 }
 
-export function buildVariantCombinations(options: readonly ProductOptionDraft[]): VariantCombination[] {
+export const buildVariantCombinations = (options: readonly ProductOptionDraft[]): VariantCombination[] => {
   const normalized = options
     .map((option) => ({
       id: option.id,
       titles: option.titles,
-      values: normalizeOptionValueDrafts(option.values)
+      values: normalizeOptionValueDrafts(option.values),
     }))
-    .filter((option) => hasCompleteOptionTitles(option.titles) && option.values.length > EMPTY_LENGTH);
-
-  return buildVariantCombinationsFromNormalizedOptions(normalized, false);
+    .filter((option) => hasCompleteOptionTitles(option.titles) && option.values.length > 0)
+  return buildVariantCombinationsFromNormalizedOptions(normalized, false)
 }
 
-export function inferHasVariants(
-  options: readonly { readonly values?: readonly unknown[]; readonly optionOnVariants?: readonly { readonly valueId: string }[] }[],
-  variantCount: number
-): boolean {
-  if (variantCount > MULTI_VARIANT_THRESHOLD) {
-    return true;
+export const inferHasVariants = (
+  options: readonly {
+    readonly values?: readonly unknown[]
+    readonly optionOnVariants?: readonly {
+      readonly valueId: string
+    }[]
+  }[],
+  variantCount: number,
+): boolean => {
+  if (variantCount > PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD) {
+    return true
   }
-
   return options.some((option) => {
     if (option.values !== undefined) {
-      return option.values.length > MULTI_VARIANT_THRESHOLD;
+      return option.values.length > PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD
     }
-
-    const uniqueValues = new Set(option.optionOnVariants?.map((row) => row.valueId));
-    return uniqueValues.size > MULTI_VARIANT_THRESHOLD;
-  });
+    const uniqueValues = new Set(option.optionOnVariants?.map((row) => row.valueId))
+    return uniqueValues.size > PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD
+  })
 }
 
-export function normalizeOptionDrafts(options: readonly ProductOptionDraft[]): ProductOptionDraft[] {
-  return options
+export const normalizeOptionDrafts = (options: readonly ProductOptionDraft[]): ProductOptionDraft[] =>
+  options
     .map((option) => ({
       id: option.id,
       titles: Object.fromEntries(LOCALES.map((locale) => [locale, option.titles[locale].trim()])) as ProductLocaleMap,
-      values: normalizeOptionValueDrafts(option.values)
+      values: normalizeOptionValueDrafts(option.values),
     }))
-    .filter((option) => hasCompleteOptionTitles(option.titles) && option.values.length > EMPTY_LENGTH)
-    .slice(EMPTY_LENGTH, MAX_PRODUCT_OPTIONS);
-}
+    .filter((option) => hasCompleteOptionTitles(option.titles) && option.values.length > 0)
+    .slice(0, MAX_PRODUCT_OPTIONS)
 
-export function resolveVariantOptionValueIds(variant: {
+export const resolveVariantOptionValueIds = (variant: {
   readonly optionOnVariants?: readonly {
-    readonly option: { readonly id: string };
-    readonly value: { readonly id: string };
-  }[];
-}): Record<string, string> {
-  const rows = variant.optionOnVariants ?? [];
-  return Object.fromEntries(rows.map((row) => [row.option.id, row.value.id]));
+    readonly option: {
+      readonly id: string
+    }
+    readonly value: {
+      readonly id: string
+    }
+  }[]
+}): Record<string, string> => {
+  const rows = variant.optionOnVariants ?? []
+  return Object.fromEntries(rows.map((row) => [row.option.id, row.value.id]))
 }

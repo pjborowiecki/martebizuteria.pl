@@ -1,0 +1,11 @@
+{
+  "error": {
+    "heading": "Something went wrong",
+    "message": "Please refresh the page and try again."
+  },
+  "loading": "Loading…",
+  "notFound": {
+    "heading": "Page not found",
+    "message": "The page you are looking for does not exist."
+  }
+}

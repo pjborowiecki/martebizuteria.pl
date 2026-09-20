@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod"
 
 export const inpostAddressDetailsSchema = z.object({
   building_number: z.string().nullable(),
@@ -6,13 +6,13 @@ export const inpostAddressDetailsSchema = z.object({
   flat_number: z.string().nullable().optional(),
   post_code: z.string(),
   province: z.string(),
-  street: z.string()
-});
+  street: z.string(),
+})
 
 export const inpostLocationSchema = z.object({
   latitude: z.number(),
-  longitude: z.number()
-});
+  longitude: z.number(),
+})
 
 export const inpostPointSchema = z.object({
   address_details: inpostAddressDetailsSchema,
@@ -26,12 +26,12 @@ export const inpostPointSchema = z.object({
   name: z.string(),
   opening_hours: z.string().optional(),
   payment_available: z.boolean().optional(),
-  status: z.string().optional()
-});
+  status: z.string().optional(),
+})
 
 export const inpostApiResponseSchema = z.object({
   count: z.number(),
-  items: z.array(inpostPointSchema)
-});
+  items: z.array(inpostPointSchema),
+})
 
-export type InpostPointParsed = z.infer<typeof inpostPointSchema>;
+export type InpostPointParsed = z.infer<typeof inpostPointSchema>
