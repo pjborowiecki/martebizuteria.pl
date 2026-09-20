@@ -1,4 +1,6 @@
-import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
+
+import { QUERY_KEY_ROOTS } from "~/src/modules/_core/constants/query-keys"
 
 export const PRODUCT_COLUMN_LENGTH = {
   description: 1024,
@@ -10,69 +12,69 @@ export const PRODUCT_COLUMN_LENGTH = {
   subtitle: 512,
   tag: 128,
   thumbnail: 2048,
-  title: 512
-} as const;
+  title: 512,
+} as const
 
-export const PRODUCT_MIN_LENGTH = 1;
+export const PRODUCT_MIN_LENGTH = 1
 
-export const PRODUCT_DEFAULT_RANK = 0;
+export const PRODUCT_DEFAULT_RANK = 0
 
-export const PRODUCT_HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+export const PRODUCT_HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 
 export const PRODUCT_STATUS = {
   ARCHIVED: "archived",
   DRAFT: "draft",
-  PUBLISHED: "published"
-} as const;
+  PUBLISHED: "published",
+} as const
 
-export const PRODUCT_STATUSES = [PRODUCT_STATUS.DRAFT, PRODUCT_STATUS.PUBLISHED, PRODUCT_STATUS.ARCHIVED] as const;
+export const PRODUCT_STATUSES = [PRODUCT_STATUS.DRAFT, PRODUCT_STATUS.PUBLISHED, PRODUCT_STATUS.ARCHIVED] as const
 
-export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+export type ProductStatus = (typeof PRODUCT_STATUSES)[number]
 
-export const DEFAULT_PRODUCT_STATUS: ProductStatus = PRODUCT_STATUS.DRAFT;
+export const DEFAULT_PRODUCT_STATUS: ProductStatus = PRODUCT_STATUS.DRAFT
 
 /** Default page size for storefront product listings on category/collection pages. */
-export const PRODUCT_STOREFRONT_LIST_LIMIT = 20;
+export const PRODUCT_STOREFRONT_LIST_LIMIT = 20
 
 /** Products catalog (/products): items per infinite-scroll page (3-column grid). */
-export const PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE = 12;
+export const PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE = 12
 
 /** Max products returned when catalog filters are active (no infinite scroll). */
-export const PRODUCT_STOREFRONT_FILTERED_MAX = 100;
+export const PRODUCT_STOREFRONT_FILTERED_MAX = 100
 
-export const LANDING_NEW_ARRIVALS_COLLECTION_HANDLE = "nowosci";
+export const LANDING_NEW_ARRIVALS_COLLECTION_HANDLE = "nowosci"
 
-export const LANDING_NEW_ARRIVALS_PRODUCT_LIMIT = 9;
+export const LANDING_NEW_ARRIVALS_PRODUCT_LIMIT = 9
 
 /** Default page size for the admin products data grid (server-side pagination). */
-export const ADMIN_PRODUCTS_PAGE_SIZE = 25;
+export const ADMIN_PRODUCTS_PAGE_SIZE = 25
 
 /** Published products with total stock in (0, threshold] count as low stock. */
-export const PRODUCT_LOW_STOCK_THRESHOLD = 10;
+export const PRODUCT_LOW_STOCK_THRESHOLD = 10
 
 export const PRODUCT_INVENTORY_LEVEL = {
   LOW: "low",
   OK: "ok",
-  OUT: "out"
-} as const;
+  OUT: "out",
+} as const
 
-export type ProductInventoryLevel = (typeof PRODUCT_INVENTORY_LEVEL)[keyof typeof PRODUCT_INVENTORY_LEVEL];
+export type ProductInventoryLevel = (typeof PRODUCT_INVENTORY_LEVEL)[keyof typeof PRODUCT_INVENTORY_LEVEL]
 
 /** Admin list: one sellable variant vs multiple variant rows. */
 export const PRODUCT_VARIANT_KIND = {
   MULTI: "multi",
-  SINGLE: "single"
-} as const;
+  SINGLE: "single",
+} as const
 
-export type ProductVariantKind = (typeof PRODUCT_VARIANT_KIND)[keyof typeof PRODUCT_VARIANT_KIND];
+export type ProductVariantKind = (typeof PRODUCT_VARIANT_KIND)[keyof typeof PRODUCT_VARIANT_KIND]
 
-export const PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD = 1;
+export const PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD = 1
 
 export const PRODUCT_ERROR_CODES = {
   DUPLICATE_HANDLE: "DUPLICATE_HANDLE",
   DUPLICATE_SKU: "DUPLICATE_SKU",
-  UNAUTHORIZED: "UNAUTHORIZED"
-} as const;
+  UNAUTHORIZED: "UNAUTHORIZED",
+} as const
 
 export const PRODUCT_FORM_VALIDATION_KEYS = {
   activePriceRequired: "form.validation.activePriceRequired",
@@ -92,27 +94,27 @@ export const PRODUCT_FORM_VALIDATION_KEYS = {
   subtitleTooLong: "form.validation.subtitleTooLong",
   titleRequired: "form.validation.titleRequired",
   titleTooLong: "form.validation.titleTooLong",
-  variantsRequired: "form.validation.variantsRequired"
-} as const;
+  variantsRequired: "form.validation.variantsRequired",
+} as const
 
 export const PRODUCT_ADMIN_STATUS = {
   ACTIVE: "active",
   ARCHIVED: "archived",
-  DRAFT: "draft"
-} as const;
+  DRAFT: "draft",
+} as const
 
-export type ProductAdminStatus = (typeof PRODUCT_ADMIN_STATUS)[keyof typeof PRODUCT_ADMIN_STATUS];
+export type ProductAdminStatus = (typeof PRODUCT_ADMIN_STATUS)[keyof typeof PRODUCT_ADMIN_STATUS]
 
 export const PRODUCT_STATUS_LABEL_KEYS: Record<ProductStatus, string> = {
   archived: "statusArchived",
   draft: "statusDraft",
-  published: "statusActive"
-};
+  published: "statusActive",
+}
 
 export const PRODUCT_TABLE_A11Y_KEYS = {
   selectAll: "a11y.selectAll",
-  selectRow: "a11y.selectRow"
-} as const;
+  selectRow: "a11y.selectRow",
+} as const
 
 export const PRODUCT_TABLE_COLUMN_ID = {
   actions: "actions",
@@ -132,13 +134,13 @@ export const PRODUCT_TABLE_COLUMN_ID = {
   stock: "stock",
   title: "title",
   variantCount: "variantCount",
-  variantKind: "variantKind"
-} as const;
+  variantKind: "variantKind",
+} as const
 
 export const PRODUCT_TABLE_DEFAULT_COLUMN_VISIBILITY = {
   [PRODUCT_TABLE_COLUMN_ID.editedAt]: false,
-  [PRODUCT_TABLE_COLUMN_ID.recordId]: false
-} as const;
+  [PRODUCT_TABLE_COLUMN_ID.recordId]: false,
+} as const
 
 export const PRODUCT_TABLE_COLUMN_SIZE = {
   actions: 48,
@@ -157,12 +159,26 @@ export const PRODUCT_TABLE_COLUMN_SIZE = {
   stock: 132,
   title: 220,
   variantCount: 100,
-  variantKind: 132
-} as const;
+  variantKind: 132,
+} as const
 
 export const PRODUCT_TABLE_COLUMN_PINNING = {
-  left: [PRODUCT_TABLE_COLUMN_ID.select, PRODUCT_TABLE_COLUMN_ID.drag, PRODUCT_TABLE_COLUMN_ID.image, PRODUCT_TABLE_COLUMN_ID.title],
-  right: [PRODUCT_TABLE_COLUMN_ID.actions]
-};
+  end: [PRODUCT_TABLE_COLUMN_ID.actions],
+  start: [PRODUCT_TABLE_COLUMN_ID.select, PRODUCT_TABLE_COLUMN_ID.drag, PRODUCT_TABLE_COLUMN_ID.image, PRODUCT_TABLE_COLUMN_ID.title],
+}
 
-export const PRODUCT_QUERY_STALE_MS = 60_000;
+export const PRODUCT_QUERY_STALE_MS = 60_000
+
+export const PRODUCT_QUERY_KEYS = {
+  ADMIN: {
+    ALL: [...QUERY_KEY_ROOTS.ADMIN, "products"] as const,
+    BY_HANDLE: [...QUERY_KEY_ROOTS.ADMIN, "products", "by-handle"] as const,
+    PAGE: [...QUERY_KEY_ROOTS.ADMIN, "products", "page"] as const,
+    STATS: [...QUERY_KEY_ROOTS.ADMIN, "products", "stats"] as const,
+  },
+  ALL: ["products"] as const,
+  BY_HANDLE: ["product"] as const,
+  LANDING_NEW_ARRIVALS: ["products", "landing-new-arrivals"] as const,
+  RELATED_BY_CATEGORY: ["related-products"] as const,
+  STOREFRONT_PAGE: ["products", "storefront-page"] as const,
+} as const

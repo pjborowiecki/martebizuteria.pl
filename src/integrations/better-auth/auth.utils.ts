@@ -1,78 +1,65 @@
-import { CONSTANTS } from "~/src/constants";
+import { auth } from "~/src/integrations/better-auth/auth.server"
+import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
-import { auth } from "~/src/integrations/better-auth/auth._server";
+import { recordAuthLoginFailedAudit, recordAuthLogoutAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
 
-import { recordAuthLoginFailedAudit, recordAuthLogoutAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server";
-
-const AUTH_API_PREFIX = "/api/auth";
-
-function resolveAuthPathname(request: Request): string {
-  const { pathname } = new URL(request.url);
-  return pathname.startsWith(AUTH_API_PREFIX) ? pathname.slice(AUTH_API_PREFIX.length) : pathname;
+import { ROUTES } from "~/src/routes"
+const resolveAuthPathname = (request: Request): string => {
+  const { pathname } = new URL(request.url)
+  return pathname.startsWith(AUTH_API_PREFIX) ? pathname.slice(AUTH_API_PREFIX.length) : pathname
 }
+const isEmailSignInAttempt = (authPath: string, method: string): boolean => method === "POST" && authPath === ROUTES.API_AUTH.SIGN_IN_EMAIL
 
-function isEmailSignInAttempt(authPath: string, method: string): boolean {
-  return method === "POST" && authPath === CONSTANTS.ROUTES.API_AUTH.SIGN_IN_EMAIL;
-}
+const isSignOutAttempt = (authPath: string, method: string): boolean => method === "POST" && authPath === ROUTES.API_AUTH.SIGN_OUT
 
-function isSignOutAttempt(authPath: string, method: string): boolean {
-  return method === "POST" && authPath === CONSTANTS.ROUTES.API_AUTH.SIGN_OUT;
-}
-
-function resolveRequestIp(headers: Headers): string | undefined {
-  const connectingIp = headers.get("cf-connecting-ip");
+const resolveRequestIp = (headers: Headers): string | undefined => {
+  const connectingIp = headers.get("cf-connecting-ip")
   if (connectingIp !== null && connectingIp !== "") {
-    return connectingIp;
+    return connectingIp
   }
-
-  const forwarded = headers.get("x-forwarded-for");
+  const forwarded = headers.get("x-forwarded-for")
   if (forwarded === null || forwarded === "") {
-    return undefined;
+    return undefined
   }
-
-  const [first] = forwarded.split(",");
-  const trimmed = first?.trim();
-  return trimmed === "" ? undefined : trimmed;
+  const [first] = forwarded.split(",")
+  const trimmed = first?.trim()
+  return trimmed === "" ? undefined : trimmed
 }
-
-async function parseSignInEmail(request: Request): Promise<string | undefined> {
+const parseSignInEmail = async (request: Request): Promise<string | undefined> => {
   try {
-    const body: unknown = await request.clone().json();
+    const body: unknown = await request.clone().json()
     if (typeof body !== "object" || body === null || !("email" in body)) {
-      return undefined;
+      return undefined
     }
-
-    const { email } = body;
-    return typeof email === "string" && email !== "" ? email : undefined;
+    const { email } = body
+    return typeof email === "string" && email !== "" ? email : undefined
   } catch {
-    return undefined;
+    return undefined
   }
 }
-
-export async function handleAuthRequestWithAudit(request: Request): Promise<Response> {
-  const authPath = resolveAuthPathname(request);
-  const shouldAuditFailedLogin = isEmailSignInAttempt(authPath, request.method);
-  const shouldAuditLogout = isSignOutAttempt(authPath, request.method);
-  const signInEmail = shouldAuditFailedLogin ? await parseSignInEmail(request) : undefined;
-  const ip = shouldAuditFailedLogin || shouldAuditLogout ? resolveRequestIp(request.headers) : undefined;
-  const sessionBeforeSignOut = shouldAuditLogout ? await auth.api.getSession({ headers: request.headers }) : undefined;
-
-  const response = await auth.handler(request);
-
+export const handleAuthRequestWithAudit = async (request: Request): Promise<Response> => {
+  const authPath = resolveAuthPathname(request)
+  const shouldAuditFailedLogin = isEmailSignInAttempt(authPath, request.method)
+  const shouldAuditLogout = isSignOutAttempt(authPath, request.method)
+  const signInEmail = shouldAuditFailedLogin ? await parseSignInEmail(request) : undefined
+  const ip = shouldAuditFailedLogin || shouldAuditLogout ? resolveRequestIp(request.headers) : undefined
+  const sessionBeforeSignOut = shouldAuditLogout ? await getRequestSession(request) : undefined
+  const response = await auth.handler(request)
   if (shouldAuditFailedLogin && !response.ok && signInEmail !== undefined) {
     recordAuthLoginFailedAudit(signInEmail, {
       detail: signInEmail,
       ip,
-      metadata: { email: signInEmail }
-    });
+      metadata: {
+        email: signInEmail,
+      },
+    })
   }
-
   if (shouldAuditLogout && response.ok && sessionBeforeSignOut?.user !== undefined) {
     recordAuthLogoutAudit(resolveAuthAuditActor(sessionBeforeSignOut.user), {
       ip,
-      resourceId: sessionBeforeSignOut.user.id
-    });
+      resourceId: sessionBeforeSignOut.user.id,
+    })
   }
-
-  return response;
+  return response
 }
+const AUTH_API_PREFIX = "/api/auth"

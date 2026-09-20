@@ -1,52 +1,35 @@
-import { type JSX, useCallback } from "react";
+import { type JSX, useCallback } from "react"
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Copy, Truck } from "lucide-react";
-import { toast } from "sonner";
-import { useFormatter, useTranslations } from "use-intl";
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
+import { ArrowLeft, Copy, Truck } from "lucide-react"
+import { toast } from "sonner"
+import { useFormatter, useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountOrderDetail, type CustomerAccountOrderItem } from "~/src/modules/customer-account/customer-account.types"
+import { formatCustomerOrderDisplayId } from "~/src/modules/customer-account/customer-account.utils"
+import { orderByIdQueryOptions } from "~/src/modules/customer-account/use-cases/get-customer-order"
 
-import { centsToDisplayAmount } from "~/src/lib/utils";
+import { centsToDisplayAmount } from "~/src/lib/currency"
 
-import { Button } from "~/src/components/shadcn/button";
-import { Separator } from "~/src/components/shadcn/separator";
+import { Button } from "~/src/presentation/components/shadcn/button"
+import { Separator } from "~/src/presentation/components/shadcn/separator"
 
-import { Image } from "~/src/components/custom/image";
+import { Image } from "~/src/presentation/components/custom/image"
 
-import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants";
-import { customerAccountQueryOptions } from "~/src/modules/customer-account/customer-account.queries";
-import type { CustomerAccountOrderDetail, CustomerAccountOrderItem } from "~/src/modules/customer-account/customer-account.types";
-import { formatCustomerOrderDisplayId } from "~/src/modules/customer-account/customer-account.utils";
-
-export const Route = createFileRoute("/{-$locale}/account/orders/$id")({
-  component: OrderDetailPage,
-  loader: async ({ context, params }) => {
-    const order = await context.queryClient.ensureQueryData(customerAccountQueryOptions.orderByIdQueryOptions(params.id));
-    if (order === undefined) {
-      notFound({ throw: true });
-    }
-  },
-  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS
-});
-
-const PLACEHOLDER_IMAGE = "/placeholder-product.svg";
-const FIRST_INDEX = 0;
-const LAST_OFFSET = 1;
-const ZERO_SHIPPING = 0;
-
-function OrderDetailPage(): JSX.Element {
-  const t = useTranslations("pages.account.orderDetail");
-  const format = useFormatter();
-  const { id } = Route.useParams();
-  const navigate = useNavigate();
-  const { data: order } = useSuspenseQuery(customerAccountQueryOptions.orderByIdQueryOptions(id));
-
+import { ROUTES } from "~/src/routes"
+const OrderDetailPage = (): JSX.Element => {
+  const t = useTranslations("pages.account.orderDetail")
+  const format = useFormatter()
+  const { id } = Route.useParams()
+  const navigate = useNavigate()
+  const { data: order } = useSuspenseQuery(orderByIdQueryOptions(id))
   const handleBack = useCallback(() => {
-    void navigate({ to: `/{-$locale}${CONSTANTS.ROUTES.ACCOUNT_ORDERS}` });
-  }, [navigate]);
-
+    void navigate({
+      to: `/{-$locale}${ROUTES.ACCOUNT_ORDERS}`,
+    })
+  }, [navigate])
   if (order === undefined) {
     return (
       <div className="py-20 text-center">
@@ -55,12 +38,14 @@ function OrderDetailPage(): JSX.Element {
           {t("backToOrders")}
         </Button>
       </div>
-    );
+    )
   }
-
-  const displayId = formatCustomerOrderDisplayId(order.id);
-  const formatMoney = (amount: number) => format.number(centsToDisplayAmount(amount), { currency: order.currencyCode, style: "currency" });
-
+  const displayId = formatCustomerOrderDisplayId(order.id)
+  const formatMoney = (amount: number) =>
+    format.number(centsToDisplayAmount(amount), {
+      currency: order.currencyCode,
+      style: "currency",
+    })
   return (
     <div>
       <Button variant="account-ghost" onClick={handleBack} className="mb-8 flex items-center gap-2">
@@ -72,7 +57,11 @@ function OrderDetailPage(): JSX.Element {
         <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{t("eyebrow")}</p>
         <h1 className="font-serif text-3xl leading-[0.94] tracking-tight lg:text-4xl">{displayId}</h1>
         <div className="flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
-          <span>{format.dateTime(order.createdAt, { dateStyle: "medium" })}</span>
+          <span>
+            {format.dateTime(order.createdAt, {
+              dateStyle: "medium",
+            })}
+          </span>
           <span className="text-border">·</span>
           <span className="capitalize">{t(`status.${order.filterStatus}`)}</span>
         </div>
@@ -85,7 +74,13 @@ function OrderDetailPage(): JSX.Element {
             {order.deliveredAt === undefined ? (
               <p className="text-[13px]">{t("trackingUnavailable")}</p>
             ) : (
-              <p className="text-[13px]">{t("deliveredOn", { date: format.dateTime(order.deliveredAt, { dateStyle: "medium" }) })}</p>
+              <p className="text-[13px]">
+                {t("deliveredOn", {
+                  date: format.dateTime(order.deliveredAt, {
+                    dateStyle: "medium",
+                  }),
+                })}
+              </p>
             )}
             {order.trackingNumber === undefined ? undefined : (
               <TrackingNumberRow trackingNumber={order.trackingNumber} trackingUrl={order.trackingUrl} />
@@ -111,9 +106,7 @@ function OrderDetailPage(): JSX.Element {
         </div>
         <div className="flex justify-between text-[13px]">
           <span className="text-muted-foreground">{t("shipping")}</span>
-          <span className="tabular-nums">
-            {order.shippingMinorUnits === ZERO_SHIPPING ? t("free") : formatMoney(order.shippingMinorUnits)}
-          </span>
+          <span className="tabular-nums">{order.shippingMinorUnits === 0 ? t("free") : formatMoney(order.shippingMinorUnits)}</span>
         </div>
         <div className="flex justify-between text-[13px]">
           <span className="text-muted-foreground">{t("tax")}</span>
@@ -134,27 +127,25 @@ function OrderDetailPage(): JSX.Element {
         <TimelineBlock order={order} />
       </div>
     </div>
-  );
+  )
 }
-
-function TrackingNumberRow({
+const TrackingNumberRow = ({
   trackingNumber,
-  trackingUrl
+  trackingUrl,
 }: Readonly<{
-  trackingNumber: string;
-  trackingUrl?: string;
-}>): JSX.Element {
+  trackingNumber: string
+  trackingUrl?: string | undefined
+}>): JSX.Element => {
   const handleCopy = useCallback(() => {
     void (async () => {
       try {
-        await navigator.clipboard.writeText(trackingNumber);
-        toast.success(trackingNumber);
+        await navigator.clipboard.writeText(trackingNumber)
+        toast.success(trackingNumber)
       } catch {
-        toast.error(trackingNumber);
+        toast.error(trackingNumber)
       }
-    })();
-  }, [trackingNumber]);
-
+    })()
+  }, [trackingNumber])
   return (
     <div className="mt-0.5 flex items-center gap-2">
       {trackingUrl === undefined ? (
@@ -173,20 +164,21 @@ function TrackingNumberRow({
         <Copy className="size-3" strokeWidth={1.5} />
       </Button>
     </div>
-  );
+  )
 }
-
-function OrderItem({
+const OrderItem = ({
   currencyCode,
-  item
+  item,
 }: Readonly<{
-  currencyCode: string;
-  item: CustomerAccountOrderItem;
-}>): JSX.Element {
-  const t = useTranslations("pages.account.orderDetail");
-  const format = useFormatter();
-  const priceLabel = format.number(centsToDisplayAmount(item.priceMinorUnits), { currency: currencyCode, style: "currency" });
-
+  currencyCode: string
+  item: CustomerAccountOrderItem
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.orderDetail")
+  const format = useFormatter()
+  const priceLabel = format.number(centsToDisplayAmount(item.priceMinorUnits), {
+    currency: currencyCode,
+    style: "currency",
+  })
   return (
     <div className="flex items-center gap-5 py-5">
       <div className="relative size-20 shrink-0 overflow-hidden bg-muted">
@@ -209,13 +201,15 @@ function OrderItem({
       </div>
       <p className="text-[14px] tabular-nums">{priceLabel}</p>
     </div>
-  );
+  )
 }
-
-function ShippingAddressBlock({ order }: Readonly<{ order: CustomerAccountOrderDetail }>): JSX.Element {
-  const t = useTranslations("pages.account.orderDetail");
-  const address = order.shippingAddress;
-
+const ShippingAddressBlock = ({
+  order,
+}: Readonly<{
+  order: CustomerAccountOrderDetail
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.orderDetail")
+  const address = order.shippingAddress
   return (
     <div>
       <h3 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("shippingAddress")}</h3>
@@ -234,13 +228,15 @@ function ShippingAddressBlock({ order }: Readonly<{ order: CustomerAccountOrderD
         </div>
       )}
     </div>
-  );
+  )
 }
-
-function PaymentInfoBlock({ order }: Readonly<{ order: CustomerAccountOrderDetail }>): JSX.Element {
-  const t = useTranslations("pages.account.orderDetail");
-  const billing = order.billingAddress;
-
+const PaymentInfoBlock = ({
+  order,
+}: Readonly<{
+  order: CustomerAccountOrderDetail
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.orderDetail")
+  const billing = order.billingAddress
   return (
     <div>
       <h3 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("paymentInfo")}</h3>
@@ -257,31 +253,53 @@ function PaymentInfoBlock({ order }: Readonly<{ order: CustomerAccountOrderDetai
         )}
       </div>
     </div>
-  );
+  )
 }
-
-function TimelineBlock({ order }: Readonly<{ order: CustomerAccountOrderDetail }>): JSX.Element {
-  const t = useTranslations("pages.account.orderDetail");
-  const format = useFormatter();
-
+const TimelineBlock = ({
+  order,
+}: Readonly<{
+  order: CustomerAccountOrderDetail
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.orderDetail")
+  const format = useFormatter()
   return (
     <div>
       <h3 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("timeline")}</h3>
       <Separator className="mt-3 mb-4" />
       <div className="space-y-3">
-        {order.timeline.map((entry, i) => (
+        {order.timeline.map((entry, index) => (
           <div key={`${entry.event}-${entry.date.toISOString()}`} className="flex items-start gap-3">
             <div className="flex flex-col items-center">
-              <div className={`mt-1 size-1.5 rounded-full ${i === FIRST_INDEX ? "bg-foreground" : "bg-muted-foreground/30"}`} />
-              {i < order.timeline.length - LAST_OFFSET ? <div className="mt-1 h-4 w-px bg-border" /> : undefined}
+              <div className={`mt-1 size-1.5 rounded-full ${index === 0 ? "bg-foreground" : "bg-muted-foreground/30"}`} />
+              {index < order.timeline.length - 1 ? <div className="mt-1 h-4 w-px bg-border" /> : undefined}
             </div>
             <div className="min-w-0">
               <p className="text-[12px]">{t(`events.${entry.event}`)}</p>
-              <p className="text-[11px] text-muted-foreground tabular-nums">{format.dateTime(entry.date, { dateStyle: "medium" })}</p>
+              <p className="text-[11px] text-muted-foreground tabular-nums">
+                {format.dateTime(entry.date, {
+                  dateStyle: "medium",
+                })}
+              </p>
             </div>
           </div>
         ))}
       </div>
     </div>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/account/orders/$id")({
+  component: OrderDetailPage,
+  loader: async ({ context, params }) => {
+    const order = await context.queryClient.query({
+      ...orderByIdQueryOptions(params.id),
+      staleTime: "static",
+    })
+    if (order === undefined) {
+      notFound({
+        throw: true,
+      })
+    }
+  },
+  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
+})
+const PLACEHOLDER_IMAGE = "/placeholder-product.svg"

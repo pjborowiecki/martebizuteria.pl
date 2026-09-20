@@ -1,35 +1,31 @@
-import { type JSX, useMemo } from "react";
+import { type JSX, useMemo } from "react"
 
-import { createFileRoute } from "@tanstack/react-router";
-import { Download, Plus } from "lucide-react";
-import { useTranslations } from "use-intl";
+import { createFileRoute } from "@tanstack/react-router"
+import { Download, Plus } from "lucide-react"
+import { useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
+import { Button } from "~/src/presentation/components/shadcn/button"
 
-import { Button } from "~/src/components/shadcn/button";
+import { type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
+import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
+import { ContentListTable } from "~/src/presentation/components/custom/pages/admin/content/content-list-table"
+import { ContentTypeCards } from "~/src/presentation/components/custom/pages/admin/content/content-type-cards"
 
-import { type LocalizedTo } from "~/src/components/custom/localized-link";
-import { AdminHeader } from "~/src/components/custom/pages/admin/admin-header";
-import { ContentListTable } from "~/src/components/custom/pages/admin/content/content-list-table";
-import { ContentTypeCards } from "~/src/components/custom/pages/admin/content/content-type-cards";
-
-export const Route = createFileRoute("/{-$locale}/admin/content")({
-  component: ContentPage
-});
-
-function ContentPage(): JSX.Element {
-  const t = useTranslations("pages.admin");
-
+import { ROUTES } from "~/src/routes"
+const ContentPage = (): JSX.Element => {
+  const t = useTranslations("pages.admin")
   const bcList = useMemo(
     () => [
-      { href: CONSTANTS.ROUTES.ADMIN, label: t("nav.dashboard") } satisfies {
-        href: LocalizedTo;
-        label: string;
-      }
+      {
+        href: ROUTES.ADMIN,
+        label: t("nav.dashboard"),
+      } satisfies {
+        href: LocalizedTo
+        label: string
+      },
     ],
-    [t]
-  );
-
+    [t],
+  )
   const actionButtons = useMemo(
     () => (
       <>
@@ -47,9 +43,8 @@ function ContentPage(): JSX.Element {
         </Button>
       </>
     ),
-    [t]
-  );
-
+    [t],
+  )
   return (
     <div className="flex h-[calc(100vh-64px)] flex-col">
       <AdminHeader title={t("content.title")} description={t("content.description")} breadcrumbs={bcList} actions={actionButtons} />
@@ -59,5 +54,8 @@ function ContentPage(): JSX.Element {
         <ContentListTable />
       </div>
     </div>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/admin/content")({
+  component: ContentPage,
+})

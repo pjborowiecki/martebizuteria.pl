@@ -1,112 +1,76 @@
-import handler from "@tanstack/react-start/server-entry";
+import handler from "@tanstack/react-start/server-entry"
 
-import { CONSTANTS } from "~/src/constants";
+import { executionContextStorage } from "~/src/integrations/better-auth/auth.background"
+import { handleRealtimeInvalidationWebSocket } from "~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server"
+import { createCookieHeader, handleLocaleMiddleware } from "~/src/integrations/use-intl/i18n.middleware"
 
-import { executionContextStorage } from "~/src/integrations/better-auth/auth.background";
-import { handleRealtimeInvalidationWebSocket } from "~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server";
-import { createCookieHeader, handleLocaleMiddleware } from "~/src/integrations/use-intl/i18n.middleware";
+import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modules/audit-log/audit-log.queue.server"
 
-import { generateSitemapXml } from "~/src/lib/_utils/sitemap";
-import { REALTIME_INVALIDATION_HUB } from "~/src/lib/realtime-invalidation/realtime-invalidation.subscriptions";
+import { REALTIME_INVALIDATION_HUB } from "~/src/lib/realtime-invalidation/realtime-invalidation.subscriptions"
+import { generateSitemapXml } from "~/src/lib/sitemap"
 
-import { processAuditLogQueueBatch, type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.queue.server";
-
-export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub";
-
-export interface RequestContext {
-  env: Env;
-  passThroughOnException: () => void;
-  waitUntil: (promise: Readonly<Promise<unknown>>) => void;
-}
-
-declare module "@tanstack/react-start" {
-  interface Register {
-    server: { requestContext: RequestContext };
-  }
-}
-
-function sitemapResponse(origin: string): Response {
-  return new Response(generateSitemapXml(origin), {
+import { ROUTES } from "~/src/routes"
+const sitemapResponse = (origin: string): Response =>
+  new Response(generateSitemapXml(origin), {
     headers: {
       "Cache-Control": "public, max-age=86400",
-      "Content-Type": "application/xml; charset=utf-8"
+      "Content-Type": "application/xml; charset=utf-8",
+    },
+  })
+
+export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub"
+export interface RequestContext {
+  env: Env
+  passThroughOnException: () => void
+  waitUntil: (promise: Readonly<Promise<unknown>>) => void
+}
+declare module "@tanstack/react-start" {
+  interface Register {
+    server: {
+      requestContext: RequestContext
     }
-  });
-}
-
-interface ReadonlyCookieResponseOptions {
-  readonly body: BodyInit | null;
-  readonly status: number;
-  readonly statusText: string;
-  readonly headers: readonly (readonly [string, string])[];
-}
-
-function withCookieHeader(options: ReadonlyCookieResponseOptions, setCookie: Readonly<{ name: string; value: string }>): Response {
-  const cookieValue = createCookieHeader(setCookie.name, setCookie.value);
-  const newHeaders = new Headers();
-  for (const [key, value] of options.headers) {
-    newHeaders.set(key, value);
   }
-  newHeaders.append("Set-Cookie", cookieValue);
-  return new Response(options.body, {
-    headers: newHeaders,
-    status: options.status,
-    statusText: options.statusText
-  });
 }
-
 const server: ExportedHandler<Env, AuditLogQueueMessage> = {
   async fetch(request, env, ctx) {
-    const { origin, pathname } = new URL(request.url);
-
+    const { origin, pathname } = new URL(request.url)
     if (pathname === "/sitemap.xml") {
-      return sitemapResponse(origin);
+      return sitemapResponse(origin)
     }
-
-    if (pathname === CONSTANTS.ROUTES.API_REALTIME.ADMIN_WS) {
-      return handleRealtimeInvalidationWebSocket(request, env, REALTIME_INVALIDATION_HUB.ADMIN);
+    if (pathname === ROUTES.API_REALTIME.ADMIN_WS) {
+      return handleRealtimeInvalidationWebSocket(request, env, REALTIME_INVALIDATION_HUB.ADMIN)
     }
-
-    if (pathname === CONSTANTS.ROUTES.API_REALTIME.STOREFRONT_WS) {
-      return handleRealtimeInvalidationWebSocket(request, env, REALTIME_INVALIDATION_HUB.STOREFRONT);
+    if (pathname === ROUTES.API_REALTIME.STOREFRONT_WS) {
+      return handleRealtimeInvalidationWebSocket(request, env, REALTIME_INVALIDATION_HUB.STOREFRONT)
     }
-
-    const { redirect, setCookie } = handleLocaleMiddleware(request);
-
+    const { redirect, setCookie } = handleLocaleMiddleware(request)
     if (redirect) {
-      return redirect;
+      return redirect
     }
-
-    const waitUntil = ctx.waitUntil.bind(ctx);
-
-    const response = await executionContextStorage.run({ waitUntil }, () =>
-      handler.fetch(request, {
-        context: {
-          env,
-          passThroughOnException: ctx.passThroughOnException.bind(ctx),
-          waitUntil
-        }
-      })
-    );
-
-    if (!setCookie) {
-      return response;
-    }
-
-    return withCookieHeader(
+    const waitUntil = ctx.waitUntil.bind(ctx)
+    const response = await executionContextStorage.run(
       {
-        body: response.body,
-        headers: [...response.headers],
-        status: response.status,
-        statusText: response.statusText
+        waitUntil,
       },
-      setCookie
-    );
+      () =>
+        handler.fetch(request, {
+          context: {
+            env,
+            passThroughOnException: ctx.passThroughOnException.bind(ctx),
+            waitUntil,
+          },
+          responseLinkHeader: true,
+        }),
+    )
+    if (!setCookie) {
+      return response
+    }
+    const newResponse = new Response(response.body, response)
+    newResponse.headers.append("Set-Cookie", createCookieHeader(setCookie.name, setCookie.value))
+    return newResponse
   },
-
   async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
-    await processAuditLogQueueBatch(batch);
-  }
-};
-
-export default server;
+    await processAuditLogQueueBatch(batch)
+  },
+}
+export default server

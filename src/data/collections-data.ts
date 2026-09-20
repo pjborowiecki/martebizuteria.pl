@@ -1,11 +1,11 @@
 export interface CollectionItem {
-  readonly id: number;
-  readonly name: string;
-  readonly slug: string;
-  readonly products: number;
-  readonly description: string;
-  readonly status: "active" | "draft";
-  readonly image: string;
+  readonly id: number
+  readonly name: string
+  readonly slug: string
+  readonly products: number
+  readonly description: string
+  readonly status: "active" | "draft"
+  readonly image: string
 }
 
 export const COLLECTIONS: readonly CollectionItem[] = [
@@ -16,7 +16,7 @@ export const COLLECTIONS: readonly CollectionItem[] = [
     name: "Nova",
     products: 18,
     slug: "nova",
-    status: "active"
+    status: "active",
   },
   {
     description: "Inspired by the night sky — stars, moons, and cosmic motifs",
@@ -25,7 +25,7 @@ export const COLLECTIONS: readonly CollectionItem[] = [
     name: "Celestial",
     products: 24,
     slug: "celestial",
-    status: "active"
+    status: "active",
   },
   {
     description: "Signature bold statements and heritage silhouettes",
@@ -34,7 +34,7 @@ export const COLLECTIONS: readonly CollectionItem[] = [
     name: "Iconic",
     products: 12,
     slug: "iconic",
-    status: "active"
+    status: "active",
   },
   {
     description: "Timeless elegance for engagement, wedding, and ceremony",
@@ -43,7 +43,7 @@ export const COLLECTIONS: readonly CollectionItem[] = [
     name: "Bridal",
     products: 15,
     slug: "bridal",
-    status: "active"
+    status: "active",
   },
   {
     description: "Artisan-crafted pieces drawing from traditional techniques",
@@ -52,24 +52,24 @@ export const COLLECTIONS: readonly CollectionItem[] = [
     name: "Heritage",
     products: 6,
     slug: "heritage",
-    status: "draft"
-  }
-];
+    status: "draft",
+  },
+]
 
 export const MOCK_COLLECTIONS: Record<
   string,
   {
-    readonly name: string;
-    readonly slug: string;
-    readonly description: string;
-    readonly status: "active" | "draft";
-    readonly products: number;
-    readonly created: string;
-    readonly updated: string;
-    readonly image: string;
-    readonly metaTitle: string;
-    readonly metaDescription: string;
-    readonly featured: boolean;
+    readonly name: string
+    readonly slug: string
+    readonly description: string
+    readonly status: "active" | "draft"
+    readonly products: number
+    readonly created: string
+    readonly updated: string
+    readonly image: string
+    readonly metaTitle: string
+    readonly metaDescription: string
+    readonly featured: boolean
   }
 > = {
   "1": {
@@ -84,7 +84,7 @@ export const MOCK_COLLECTIONS: Record<
     products: 18,
     slug: "nova",
     status: "active",
-    updated: "Oct 24, 2023"
+    updated: "Oct 24, 2023",
   },
   "2": {
     created: "Aug 12, 2022",
@@ -98,7 +98,7 @@ export const MOCK_COLLECTIONS: Record<
     products: 24,
     slug: "celestial",
     status: "active",
-    updated: "Oct 22, 2023"
+    updated: "Oct 22, 2023",
   },
   "3": {
     created: "Sep 1, 2022",
@@ -112,7 +112,7 @@ export const MOCK_COLLECTIONS: Record<
     products: 12,
     slug: "iconic",
     status: "active",
-    updated: "Oct 18, 2023"
+    updated: "Oct 18, 2023",
   },
   "4": {
     created: "Sep 15, 2022",
@@ -125,7 +125,7 @@ export const MOCK_COLLECTIONS: Record<
     products: 15,
     slug: "bridal",
     status: "active",
-    updated: "Oct 15, 2023"
+    updated: "Oct 15, 2023",
   },
   "5": {
     created: "Mar 5, 2023",
@@ -138,8 +138,8 @@ export const MOCK_COLLECTIONS: Record<
     products: 6,
     slug: "heritage",
     status: "draft",
-    updated: "Oct 10, 2023"
-  }
-};
+    updated: "Oct 10, 2023",
+  },
+}
 
-export const PREBUILT_COLLECTION_ROUTE_IDS: readonly string[] = ["new", "1", "2", "3", "4", "5"];
+export const PREBUILT_COLLECTION_ROUTE_IDS: readonly string[] = ["new", "1", "2", "3", "4", "5"]

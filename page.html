@@ -613,22 +613,22 @@
     <!--/$--><!--/$--><!--/$-->
     <section aria-label="Notifications alt+T" tabindex="-1" aria-live="polite" aria-relevant="additions text" aria-atomic="false"></section>
     <script class="$tsr" id="$tsr-stream-barrier">
-      (self.$R = self.$R || {})["tsr"] = [];
+      ;(self.$R = self.$R || {})["tsr"] = []
       self.$_TSR = {
         h() {
-          ((this.hydrated = !0), this.c());
+          ;((this.hydrated = !0), this.c())
         },
         e() {
-          ((this.streamEnded = !0), this.c());
+          ;((this.streamEnded = !0), this.c())
         },
         c() {
-          this.hydrated && this.streamEnded && (delete self.$_TSR, delete self.$R.tsr);
+          this.hydrated && this.streamEnded && (delete self.$_TSR, delete self.$R.tsr)
         },
         p(e) {
-          this.initialized ? e() : this.buffer.push(e);
+          this.initialized ? e() : this.buffer.push(e)
         },
-        buffer: []
-      };
+        buffer: [],
+      }
       $_TSR.router = (($R) =>
         ($R[0] = {
           manifest: ($R[1] = {
@@ -640,18 +640,18 @@
                     attrs: ($R[6] = {
                       rel: "stylesheet",
                       href: "/@tanstack-start/styles.css?routes=__root__%2C%2F%7B-%24locale%7D%2C%2F%7B-%24locale%7D%2F_storefront%2C%2F%7B-%24locale%7D%2F_storefront%2Fcollections%2F%24handle",
-                      "data-tanstack-router-dev-styles": "true"
-                    })
+                      "data-tanstack-router-dev-styles": "true",
+                    }),
                   }),
                   ($R[7] = {
                     tag: "script",
                     attrs: ($R[8] = { type: "module", async: !0 }),
                     children:
-                      'import { injectIntoGlobalHook } from "/@react-refresh";\ninjectIntoGlobalHook(window);\nwindow.$RefreshReg$ = () => {};\nwindow.$RefreshSig$ = () => (type) => type;;;import("/@id/virtual:tanstack-start-client-entry")'
-                  })
-                ])
-              })
-            })
+                      'import { injectIntoGlobalHook } from "/@react-refresh";\ninjectIntoGlobalHook(window);\nwindow.$RefreshReg$ = () => {};\nwindow.$RefreshSig$ = () => (type) => type;;;import("/@id/virtual:tanstack-start-client-entry")',
+                  }),
+                ]),
+              }),
+            }),
           }),
           matches: ($R[9] = [
             ($R[10] = {
@@ -659,7 +659,7 @@
               u: 1780002392003,
               s: "success",
               l: ($R[11] = { internalPathname: "/collections/winter-collection", locale: "pl" }),
-              ssr: !0
+              ssr: !0,
             }),
             ($R[12] = { i: " {-$locale} ", u: 1780002391998, s: "success", ssr: !0 }),
             ($R[13] = { i: " {-$locale} _storefront ", u: 1780002391998, s: "success", ssr: !0 }),
@@ -668,8 +668,8 @@
               u: 1780002391997,
               s: "error",
               e: ($R[15] = new Error("Unexpected token 'a', \"tags\" is not valid JSON")),
-              ssr: !0
-            })
+              ssr: !0,
+            }),
           ]),
           lastMatchId: " {-$locale} _storefront collections $handle collections winter-collection",
           dehydratedData: ($R[16] = {
@@ -679,85 +679,85 @@
                   stream.on({
                     next: (value) => {
                       try {
-                        controller.enqueue(value);
+                        controller.enqueue(value)
                       } catch (_error) {}
                     },
                     throw: (value) => {
-                      controller.error(value);
+                      controller.error(value)
                     },
                     return: () => {
                       try {
-                        controller.close();
+                        controller.close()
                       } catch (_error) {}
-                    }
-                  });
-                }
+                    },
+                  })
+                },
               }))(
               ($R[19] = ($R[20] = () => {
-                const buffer = [];
-                const listeners = [];
-                let alive = true;
-                let success = false;
-                let count = 0;
+                const buffer = []
+                const listeners = []
+                let alive = true
+                let success = false
+                let count = 0
                 const flush = (value, mode, x) => {
                   for (x = 0; x < count; x++) {
                     if (listeners[x]) {
-                      listeners[x][mode](value);
+                      listeners[x][mode](value)
                     }
                   }
-                };
+                }
                 const up = (listener, x, z, current) => {
                   for (x = 0, z = buffer.length; x < z; x++) {
-                    current = buffer[x];
+                    current = buffer[x]
                     if (!alive && x === z - 1) {
-                      listener[success ? "return" : "throw"](current);
+                      listener[success ? "return" : "throw"](current)
                     } else {
-                      listener.next(current);
+                      listener.next(current)
                     }
                   }
-                };
+                }
                 const on = (listener, temp) => {
                   if (alive) {
-                    temp = count++;
-                    listeners[temp] = listener;
+                    temp = count++
+                    listeners[temp] = listener
                   }
-                  up(listener);
+                  up(listener)
                   return () => {
                     if (alive) {
-                      listeners[temp] = listeners[count];
-                      listeners[count--] = void 0;
+                      listeners[temp] = listeners[count]
+                      listeners[count--] = void 0
                     }
-                  };
-                };
+                  }
+                }
                 return {
                   __SEROVAL_STREAM__: true,
                   on: (listener) => on(listener),
                   next: (value) => {
                     if (alive) {
-                      buffer.push(value);
-                      flush(value, "next");
+                      buffer.push(value)
+                      flush(value, "next")
                     }
                   },
                   throw: (value) => {
                     if (alive) {
-                      buffer.push(value);
-                      flush(value, "throw");
-                      alive = false;
-                      success = false;
-                      listeners.length = 0;
+                      buffer.push(value)
+                      flush(value, "throw")
+                      alive = false
+                      success = false
+                      listeners.length = 0
                     }
                   },
                   return: (value) => {
                     if (alive) {
-                      buffer.push(value);
-                      flush(value, "return");
-                      alive = false;
-                      success = true;
-                      listeners.length = 0;
+                      buffer.push(value)
+                      flush(value, "return")
+                      alive = false
+                      success = true
+                      listeners.length = 0
                     }
-                  }
-                };
-              })())
+                  },
+                }
+              })()),
             )),
             dehydratedQueryClient: ($R[21] = {
               mutations: ($R[22] = []),
@@ -779,18 +779,18 @@
                             nextPage: "Dalej",
                             goToPreviousPage: "Przejdź do poprzedniej strony",
                             goToNextPage: "Przejdź do następnej strony",
-                            morePages: "Kolejne strony"
+                            morePages: "Kolejne strony",
                           }),
-                          sheet: ($R[35] = { close: "Zamknij" })
+                          sheet: ($R[35] = { close: "Zamknij" }),
                         }),
                         custom: ($R[36] = {
                           defaultErrorComponent: ($R[37] = {
                             heading: "Coś poszło nie tak",
-                            message: "Odśwież stronę i spróbuj ponownie."
+                            message: "Odśwież stronę i spróbuj ponownie.",
                           }),
                           defaultNotFoundComponent: ($R[38] = {
                             heading: "Nie znaleziono strony",
-                            message: "Strona, której szukasz, nie istnieje."
+                            message: "Strona, której szukasz, nie istnieje.",
                           }),
                           defaultPendingComponent: ($R[39] = { loading: "Ładowanie…" }),
                           footer: ($R[40] = {
@@ -810,7 +810,7 @@
                             copyright: "© 2026 M'Arte. Wszelkie prawa zastrzeżone.",
                             facebook: "Facebook",
                             instagram: "Instagram",
-                            twitter: "Twitter"
+                            twitter: "Twitter",
                           }),
                           navigation: ($R[41] = {
                             brand: "M'ARTE",
@@ -834,16 +834,16 @@
                                 silver: "Srebro 925",
                                 newArrivals: "Nowości",
                                 rings: "Pierścionki",
-                                giftEdit: "Prezenty"
+                                giftEdit: "Prezenty",
                               }),
-                              pages: ($R[44] = { brand: "Marka", allProducts: "Wszystkie produkty" })
+                              pages: ($R[44] = { brand: "Marka", allProducts: "Wszystkie produkty" }),
                             }),
                             productCard: ($R[45] = {
                               addToWishlist: "Dodaj do listy życzeń",
                               removeFromWishlist: "Usuń z listy życzeń",
                               share: "Udostępnij",
                               addToCart: "Dodaj do koszyka",
-                              added: "Dodano"
+                              added: "Dodano",
                             }),
                             account: "Konto",
                             cart: "Koszyk",
@@ -856,7 +856,7 @@
                                 silver: "Srebro",
                                 silverItalic: "925",
                                 collections: "Kolekcje",
-                                brand: "Marka"
+                                brand: "Marka",
                               }),
                               secondary: ($R[49] = { client: "Klient", help: "Pomoc" }),
                               links: ($R[50] = {
@@ -866,11 +866,11 @@
                                 cartCount: "({count})",
                                 contact: "Kontakt",
                                 shipping: "Dostawa i zwroty",
-                                faq: "FAQ"
+                                faq: "FAQ",
                               }),
                               footer: ($R[51] = { tagline: "M'ARTE © 2026", instagram: "Instagram", pinterest: "Pinterest" }),
-                              imageAlt: "Biżuteria — zdjęcie edytorialne"
-                            })
+                              imageAlt: "Biżuteria — zdjęcie edytorialne",
+                            }),
                           }),
                           productCard: ($R[52] = {
                             addToCart: "Dodaj do Koszyka",
@@ -878,29 +878,29 @@
                             addToWishlist: "Dodaj do Ulubionych",
                             removeFromWishlist: "Usuń z Ulubionych",
                             share: "Udostępnij",
-                            quickView: "Szybki Podgląd"
+                            quickView: "Szybki Podgląd",
                           }),
                           authLayout: ($R[53] = {
                             imageAlt: "Edytorialna kompozycja biżuterii na kamiennej fakturze",
                             imageQuote: "Biżuteria tak wyjątkowa, jak chwile, które celebrujesz.",
-                            imageAttribution: "M'ARTE"
+                            imageAttribution: "M'ARTE",
                           }),
                           authHeader: ($R[54] = { brand: "M'ARTE" }),
                           authForm: ($R[55] = { firstName: "Imię", lastName: "Nazwisko", email: "Adres e-mail", password: "Hasło" }),
                           authDivider: ($R[56] = { or: "lub" }),
-                          socialProviders: ($R[57] = { google: "Kontynuuj z Google", facebook: "Kontynuuj z Facebook" })
-                        })
+                          socialProviders: ($R[57] = { google: "Kontynuuj z Google", facebook: "Kontynuuj z Facebook" }),
+                        }),
                       }),
                       homePage: ($R[58] = {
                         aboutLink: "Dowiedz się więcej o M'Arte",
                         description: "Produkcyjna platforma e-commerce natywna dla Cloudflare.",
-                        title: "Witaj w M'Arte"
+                        title: "Witaj w M'Arte",
                       }),
                       landingPage: ($R[59] = {
                         meta: ($R[60] = {
                           description:
                             "Ręcznie wykonywana biżuteria srebrna i damska od M'Arte — polska pracownia, czyste formy i srebro próby 925.",
-                          title: "M'Arte | Biżuteria artystyczna"
+                          title: "M'Arte | Biżuteria artystyczna",
                         }),
                         heroSection: ($R[61] = {
                           eyebrow: "Codzienna elegancja",
@@ -911,7 +911,7 @@
                           ctaPrimary: "Znajdź coś dla siebie",
                           ctaSecondary: "Poznaj nas bliżej",
                           scrollHint: "Przewiń by odkryć świat M'ARTE",
-                          imageAlt: "Edytorialowa kompozycja biżuterii na kamieniu"
+                          imageAlt: "Edytorialowa kompozycja biżuterii na kamieniu",
                         }),
                         valuesSection: ($R[62] = {
                           eyebrow: "Standard M'ARTE",
@@ -919,18 +919,18 @@
                           craft: ($R[63] = {
                             title: "Ręczna precyzja",
                             description:
-                              "Otrzymujesz detal dopracowany przez rzemieślników. Subtelne różnice w fakturze to dowód, że nosisz prawdziwy unikat, a nie masowy odlew."
+                              "Otrzymujesz detal dopracowany przez rzemieślników. Subtelne różnice w fakturze to dowód, że nosisz prawdziwy unikat, a nie masowy odlew.",
                           }),
                           material: ($R[64] = {
                             title: "Szlachetne materiały",
                             description:
-                              "Srebro próby 925 i wyselekcjonowane minerały. Tworzymy z kruszców, które pięknie współpracują ze światłem i dają poczucie luksusu na skórze."
+                              "Srebro próby 925 i wyselekcjonowane minerały. Tworzymy z kruszców, które pięknie współpracują ze światłem i dają poczucie luksusu na skórze.",
                           }),
                           service: ($R[65] = {
                             title: "Detale, które cieszą",
                             description:
-                              "Od momentu wyboru po otwarcia pudełka. Zapewniamy płynny proces zakupowy i eleganckie pakowanie, które zamienia zakupy w nagrodę dla samej siebie."
-                          })
+                              "Od momentu wyboru po otwarcia pudełka. Zapewniamy płynny proces zakupowy i eleganckie pakowanie, które zamienia zakupy w nagrodę dla samej siebie.",
+                          }),
                         }),
                         newArrivalsSection: ($R[66] = {
                           eyebrow: "Premiery M'ARTE",
@@ -942,26 +942,26 @@
                             lapis: ($R[68] = {
                               name: "Naszyjnik Lapis Lazuli",
                               details: "Pozłacane srebro / lapis lazuli",
-                              price: "379 PLN"
+                              price: "379 PLN",
                             }),
                             onyks: ($R[69] = { name: "Naszyjnik Onyks", details: "Srebro 925 / lustrzane wykończenie", price: "379 PLN" }),
                             vintageOnyksSilver: ($R[70] = {
                               name: "Kolczyki Vintage Onyks srebro",
                               details: "Srebro 925 / kobaltowe kamienie",
-                              price: "450 PLN"
+                              price: "450 PLN",
                             }),
                             vintageOnyksGolden: ($R[71] = {
                               name: "Kolczyki Vintage Onyks pozłacane",
                               details: "Pozłacane srebro / ciepłe złoto",
-                              price: "450 PLN"
+                              price: "450 PLN",
                             }),
                             ginkgo: ($R[72] = {
                               name: "Naszyjnik Ginkgo",
                               details: "Pozłacane srebro / listek miłorzębu",
-                              price: "239 PLN"
+                              price: "239 PLN",
                             }),
-                            oliwin: ($R[73] = { name: "Choker Oliwin", details: "Srebro 925 / oliwin", price: "189 PLN" })
-                          })
+                            oliwin: ($R[73] = { name: "Choker Oliwin", details: "Srebro 925 / oliwin", price: "189 PLN" }),
+                          }),
                         }),
                         categoriesSection: ($R[74] = {
                           eyebrow: "Kategorie",
@@ -974,37 +974,37 @@
                               title: "Wyrafinowana prostota",
                               subtitle:
                                 "Kruszące linię obojczyka formy i czyste proporcje. Stworzone, by stanowić intymny akcent noszony blisko serca.",
-                              buttonText: "Odkryj naszyjniki"
+                              buttonText: "Odkryj naszyjniki",
                             }),
                             earrings: ($R[77] = {
                               tag: "Kolczyki",
                               title: "Precyzyjne akcenty",
                               subtitle:
                                 "Od minimalistycznych sztyftów po mocniejsze formy. Zaprojektowane, by ramować twarz i stanowić wyrazisty punkt Twojego wizerunku.",
-                              buttonText: "Poznaj kolczyki"
+                              buttonText: "Poznaj kolczyki",
                             }),
                             chokers: ($R[78] = {
                               tag: "Chokery",
                               title: "Mocne linie",
                               subtitle:
                                 "Solidne sploty i minerały ułożone blisko ciała. Strukturalny detal, który łapie światło i bez wysiłku definiuje całą stylizację.",
-                              buttonText: "Poznaj chokery"
+                              buttonText: "Poznaj chokery",
                             }),
                             bracelets: ($R[79] = {
                               tag: "Bransoletki",
                               title: "Płynne struktury",
                               subtitle:
                                 "Szlifowany metal, który miękko układa się na nadgarstku. Stworzone do noszenia solo lub budowania mocnych, warstwowych kompozycji.",
-                              buttonText: "Poznaj bransoletki"
+                              buttonText: "Poznaj bransoletki",
                             }),
                             birthdayBracelets: ($R[80] = {
                               tag: "Edycja Urodzinowa",
                               title: "Osobisty talizman",
                               subtitle:
                                 "Naturalne kamienie przypisane miesiącom narodzin. Przemyślany akcent ujęty w naszą surową estetykę, który zostaje z Tobą na lata.",
-                              buttonText: "Odkryj swój kamień"
-                            })
-                          })
+                              buttonText: "Odkryj swój kamień",
+                            }),
+                          }),
                         }),
                         videoExperienceSection: ($R[81] = {
                           eyebrow: "Ręczne wykonanie",
@@ -1013,7 +1013,7 @@
                           description:
                             "Niektóre historie zasługują na własny kształt. Od pierwszej inspiracji po ręczne wykończenie – tworzymy biżuterię, która istnieje tylko w jednym egzemplarzu. Twoim.",
                           ctaPrimary: "Zobacz kolekcje",
-                          ctaSecondary: "Poznaj wszystkie produkty"
+                          ctaSecondary: "Poznaj wszystkie produkty",
                         }),
                         archiveSection: ($R[82] = {
                           eyebrow: "Przewodnik M'ARTE",
@@ -1022,8 +1022,8 @@
                           articles: ($R[83] = {
                             golden: "Rytuał pielęgnacji: jak prawidłowo dbać o biżuterię na co dzień",
                             sustainability: "Sztuka proporcji: jak budować warstwowe kompozycje",
-                            engraving: "Przewodnik po minerałach: znaczenie i wybór kamieni naturalnych"
-                          })
+                            engraving: "Przewodnik po minerałach: znaczenie i wybór kamieni naturalnych",
+                          }),
                         }),
                         breakerSection: ($R[84] = { text: "Cichy luksus, zbudowany na intencji." }),
                         manifestoSection: ($R[85] = {
@@ -1036,7 +1036,7 @@
                             "Srebro to nasze płótno, naturalne kamienie to nasza interpunkcja. Tworzymy dla tych, którzy wiedzą, że prawdziwa elegancja nigdy nie jest głośna. Przemawia detalem i bezkompromisową jakością.",
                           paragraph3:
                             "To nie jest szybka moda przetłumaczona na metal. To biżuteria jako architektura — przemyślana, trwała forma, która staje się solidną bazą Twojego wizerunku.",
-                          closing: "Witaj w świecie M'ARTE."
+                          closing: "Witaj w świecie M'ARTE.",
                         }),
                         philosophySection: ($R[86] = {
                           eyebrow: "Trwałe wartości",
@@ -1045,7 +1045,7 @@
                             "Wierzymy w przedmioty, które przeżywają swój sezon. Każda forma M'ARTE rodzi się z umiaru — mniej kolekcji, głębsza intencja — bo trwałość jest ostatecznym luksusem.",
                           paragraph2:
                             "Nasze studio nie pracuje w rytmie handlu, a rzemiosła, nie handlu. Od pierwszego wycinania w wosku po finalny połysk — każdy gest jest celowy, każda powierzchnia przemyślana.",
-                          signature: "— M'ARTE Atelier, Warszawa"
+                          signature: "— M'ARTE Atelier, Warszawa",
                         }),
                         silverPremiumSection: ($R[87] = {
                           eyebrow: "Kolekcja Premium",
@@ -1059,8 +1059,8 @@
                           stats: ($R[88] = {
                             purity: ($R[89] = { value: "925", label: "Próba srebra" }),
                             handmade: ($R[90] = { value: "100%", label: "Ręcznie robione" }),
-                            warranty: ($R[91] = { value: "2 lata", label: "Gwarancja" })
-                          })
+                            warranty: ($R[91] = { value: "2 lata", label: "Gwarancja" }),
+                          }),
                         }),
                         maisonHeritageSection: ($R[92] = {
                           eyebrow: "O marce",
@@ -1069,7 +1069,7 @@
                             "Powstaliśmy, by połączyć klasyczne techniki jubilerskie z nowoczesną, surową formą. Każdy z naszych projektów to wynik precyzyjnej pracy i bezkompromisowego podejścia do minimalizmu.",
                           cta: "Poznaj naszą historię",
                           mainImageAlt: "Ręczne tworzenie biżuterii",
-                          overlayImageAlt: "Zbliżenie na pierścionek solitaire"
+                          overlayImageAlt: "Zbliżenie na pierścionek solitaire",
                         }),
                         newsletterSection: ($R[93] = {
                           eyebrow: "Newsletter",
@@ -1078,7 +1078,7 @@
                             "Bądź na bieżąco z nowymi produktami i odbieraj prywatne kody zniżkowe dostępne tylko dla subskrybentów.",
                           placeholder: "Adres e-mail",
                           cta: "Dołącz do nas",
-                          note: "Zapisując się wyrażasz zgodę na przetwarzanie danych w celach marketingowych, zgodnie z Regulaminem i Polityką Prywatności."
+                          note: "Zapisując się wyrażasz zgodę na przetwarzanie danych w celach marketingowych, zgodnie z Regulaminem i Polityką Prywatności.",
                         }),
                         shopCategoriesSection: ($R[94] = {
                           eyebrow: "Przeglądaj według typu",
@@ -1092,8 +1092,8 @@
                             bracelets: ($R[98] = { name: "Bransoletki", count: "15 sztuk" }),
                             rings: ($R[99] = { name: "Pierścionki", count: "21 sztuk" }),
                             chokers: ($R[100] = { name: "Chokery", count: "9 sztuk" }),
-                            birthdayBracelets: ($R[101] = { name: "Bransoletki urodzinowe", count: "12 sztuk" })
-                          })
+                            birthdayBracelets: ($R[101] = { name: "Bransoletki urodzinowe", count: "12 sztuk" }),
+                          }),
                         }),
                         shopCollectionsSection: ($R[102] = {
                           eyebrow: "Kuratorskie edycje",
@@ -1103,26 +1103,29 @@
                           items: ($R[103] = {
                             newArrivals: ($R[104] = {
                               name: "Nowości",
-                              description: "Najnowsze dodatki do naszego atelier — świeże formy i sezonowe kamienie."
+                              description: "Najnowsze dodatki do naszego atelier — świeże formy i sezonowe kamienie.",
                             }),
                             silver: ($R[105] = {
                               name: "Srebro 925",
-                              description: "Ponadczasowa biżuteria wykonana z najwyższej próby srebra 925."
+                              description: "Ponadczasowa biżuteria wykonana z najwyższej próby srebra 925.",
                             }),
-                            gold: ($R[106] = { name: "Złoto 585", description: "Kolekcja złotej biżuterii próby 585, stworzona by trwać." })
-                          })
-                        })
+                            gold: ($R[106] = {
+                              name: "Złoto 585",
+                              description: "Kolekcja złotej biżuterii próby 585, stworzona by trwać.",
+                            }),
+                          }),
+                        }),
                       }),
                       aboutPage: ($R[107] = {
                         about: "O M'Arte",
                         description:
                           "To produkcyjna, wysoko wydajna i skalowalna aplikacja e-commerce zbudowana zgodnie z zasadami Domain-Driven Design.",
-                        goHome: "Przejdź do strony głównej"
+                        goHome: "Przejdź do strony głównej",
                       }),
                       accountPage: ($R[108] = {
                         title: "Konto",
                         description: "Logowanie i historia zamówień pojawią się tutaj.",
-                        goHome: "Przejdź do strony głównej"
+                        goHome: "Przejdź do strony głównej",
                       }),
                       cartPage: ($R[109] = {
                         title: "Koszyk",
@@ -1145,7 +1148,7 @@
                           shippingValue: "Obliczana przy kasie",
                           total: "Suma",
                           checkout: "Przejdź do kasy",
-                          note: "Koszty dostawy wyliczane są na etapie kasy."
+                          note: "Koszty dostawy wyliczane są na etapie kasy.",
                         }),
                         trust: ($R[111] = { freeShipping: "Darmowa dostawa", freeReturns: "Darmowy zwrot 30 dni" }),
                         items: ($R[112] = {
@@ -1153,21 +1156,21 @@
                             name: "Aura Hoop I",
                             material: "Srebro 925 / lustrzane",
                             size: "Rozmiar uniwersalny",
-                            price: "340 PLN"
+                            price: "340 PLN",
                           }),
                           item2: ($R[114] = {
                             name: "Lune Drop",
                             material: "Pozłacane srebro",
                             size: "Rozmiar uniwersalny",
-                            price: "420 PLN"
+                            price: "420 PLN",
                           }),
                           item3: ($R[115] = {
                             name: "Contour Stud",
                             material: "Srebro 925 / surowe",
                             size: "Rozmiar uniwersalny",
-                            price: "280 PLN"
-                          })
-                        })
+                            price: "280 PLN",
+                          }),
+                        }),
                       }),
                       checkoutPage: ($R[116] = {
                         title: "Kasa",
@@ -1178,20 +1181,20 @@
                           subtotal: "Suma częściowa",
                           delivery: "Dostawa",
                           deliveryCalculated: "Wyliczone w następnym kroku",
-                          total: "Razem"
+                          total: "Razem",
                         }),
                         checkoutSuccess: ($R[119] = {
                           title: "Zamówienie potwierdzone",
                           description:
                             "Dziękujemy za zakupy! Otrzymaliśmy Twoje zamówienie i przystąpiliśmy do jego realizacji. Wkrótce otrzymasz potwierdzenie na e-mail.",
-                          continueShopping: "Kontynuuj zakupy"
+                          continueShopping: "Kontynuuj zakupy",
                         }),
                         checkoutForm: ($R[120] = {
                           steps: ($R[121] = {
                             billing: "Adres dostawy",
                             delivery: "Metoda dostawy",
                             payment: "Płatność",
-                            overview: "Podsumowanie i złożenie zamówienia"
+                            overview: "Podsumowanie i złożenie zamówienia",
                           }),
                           paymentCard: "Karta",
                           paymentBlik: "BLIK",
@@ -1231,7 +1234,7 @@
                               "Standardowa dostawa zajmuje zazwyczaj 1-3 dni robocze. Otrzymasz link do śledzenia przesyłki, gdy zamówienie zostanie wysłane.",
                             inStoreText: "Odbierz zamówienie w jednym z naszych butików. Zostaniesz powiadomiony, gdy będzie gotowe.",
                             lockerText: "Odbierz wygodnie w wybranym Paczkomacie InPost o dowolnej porze.",
-                            lockerTitle: "Paczkomaty InPost"
+                            lockerTitle: "Paczkomaty InPost",
                           }),
                           paymentMethods: ($R[124] = { card: "Karta kredytowa", blik: "BLIK", bank_transfer: "Przelew bankowy" }),
                           paymentSubsteps: ($R[125] = {
@@ -1241,7 +1244,7 @@
                             bankTransferText:
                               'Po kliknięciu "Złóż zamówienie", zostaniesz bezpiecznie przekierowany do Przelewy24, aby wybrać swój bank i dokończyć płatność.',
                             securelyProcessed: "Bezpiecznie przetwarzane przez Stripe",
-                            p24Title: "Przelewy24 (P24)"
+                            p24Title: "Przelewy24 (P24)",
                           }),
                           saveCard: "Zapisz tę kartę na przyszłe zakupy",
                           shippingTo: "Adres dostawy",
@@ -1272,19 +1275,19 @@
                             postCodeRequired: "Kod pocztowy jest wymagany",
                             countryRequired: "Kraj jest wymagany",
                             deliveryRequired: "Wybierz metodę dostawy",
-                            paymentRequired: "Wybierz metodę płatności"
-                          })
-                        })
+                            paymentRequired: "Wybierz metodę płatności",
+                          }),
+                        }),
                       }),
                       faqPage: ($R[127] = {
                         title: "FAQ",
                         description: "Najczęściej zadawane pytania pojawią się tutaj.",
-                        goHome: "Przejdź do strony głównej"
+                        goHome: "Przejdź do strony głównej",
                       }),
                       exchangesAndReturnsPage: ($R[128] = {
                         title: "Zwroty i wymiana",
                         description: "Szczegóły wysyłki, wymiany i zwrotów pojawią się tutaj.",
-                        goHome: "Przejdź do strony głównej"
+                        goHome: "Przejdź do strony głównej",
                       }),
                       productsPage: ($R[129] = {
                         title: "Wszystkie produkty",
@@ -1302,7 +1305,7 @@
                           item9: ($R[139] = { name: "Eclipse Pendant", category: "Naszyjnik" }),
                           item10: ($R[140] = { name: "Horizon Bangle", category: "Bransoletka" }),
                           item11: ($R[141] = { name: "Veil Choker", category: "Choker" }),
-                          item12: ($R[142] = { name: "Nova Ear Cuff", category: "Kolczyki" })
+                          item12: ($R[142] = { name: "Nova Ear Cuff", category: "Kolczyki" }),
                         }),
                         categories: ($R[143] = {
                           earrings: "Kolczyki",
@@ -1310,9 +1313,9 @@
                           bracelets: "Bransoletki",
                           rings: "Pierścionki",
                           chokers: "Chokery",
-                          pendants: "Wisiorki"
+                          pendants: "Wisiorki",
                         }),
-                        collections: ($R[144] = { newArrivals: "Nowości", bestsellers: "Bestsellery", giftEdit: "Prezenty" })
+                        collections: ($R[144] = { newArrivals: "Nowości", bestsellers: "Bestsellery", giftEdit: "Prezenty" }),
                       }),
                       productPage: ($R[145] = {
                         loadingRelated: "Wczytywanie powiązanych produktów...",
@@ -1339,55 +1342,55 @@
                           details: ($R[147] = {
                             description: ($R[148] = {
                               title: "Opis",
-                              text: "Każdy element jest starannie wykonywany ręcznie w naszej pracowni."
+                              text: "Każdy element jest starannie wykonywany ręcznie w naszej pracowni.",
                             }),
                             materials: ($R[149] = { title: "Materiały", text: "Wykonane z najwyższej jakości, zrównoważonych metali." }),
                             dimensions: ($R[150] = { title: "Wymiary", text: "Rozmiar uniwersalny. Regulowany łańcuszek 40-45cm." }),
                             care: ($R[151] = {
                               title: "Pielęgnacja",
-                              text: "Przechowuj w suchym miejscu. Unikaj bezpośredniego kontaktu z perfumami."
+                              text: "Przechowuj w suchym miejscu. Unikaj bezpośredniego kontaktu z perfumami.",
                             }),
                             shipping: ($R[152] = {
                               title: "Dostawa i zwroty",
-                              text: "Darmowa dostawa dla zamówień powyżej 500 PLN. 30 dni na zwrot."
-                            })
-                          })
+                              text: "Darmowa dostawa dla zamówień powyżej 500 PLN. 30 dni na zwrot.",
+                            }),
+                          }),
                         }),
                         relatedSection: ($R[153] = {
                           title: "Uzupełnij wygląd",
                           related: ($R[154] = {
                             arcCuff: ($R[155] = { detail: "Srebro z kamieniem księżycowym", name: "Arc Cuff", price: "520 PLN" }),
                             silhouetteRing: ($R[156] = { detail: "Srebro próby 925", name: "Silhouette Ring", price: "310 PLN" }),
-                            formaII: ($R[157] = { detail: "Srebro pozłacane", name: "Forma II", price: "480 PLN" })
-                          })
-                        })
+                            formaII: ($R[157] = { detail: "Srebro pozłacane", name: "Forma II", price: "480 PLN" }),
+                          }),
+                        }),
                       }),
                       collectionsPage: ($R[158] = {
                         title: "Kolekcje",
                         description: "Odkryj nasze wyselekcjonowane kolekcje.",
-                        noCollectionsFound: "Nie znaleziono kolekcji."
+                        noCollectionsFound: "Nie znaleziono kolekcji.",
                       }),
                       collectionPage: ($R[159] = {
                         metaTitle: "{title} | M'Arte",
                         noProductsFound: "Nie znaleziono produktów w tej kolekcji.",
-                        notFound: "Nie znaleziono kolekcji"
+                        notFound: "Nie znaleziono kolekcji",
                       }),
                       categoriesPage: ($R[160] = {
                         title: "Kategorie",
                         description: "Przeglądaj według kategorii.",
-                        noCategoriesFound: "Nie znaleziono kategorii."
+                        noCategoriesFound: "Nie znaleziono kategorii.",
                       }),
                       categoryPage: ($R[161] = {
                         metaTitle: "{title} | M'Arte",
                         noProductsFound: "Nie znaleziono produktów w tej kategorii.",
-                        notFound: "Nie znaleziono kategorii"
+                        notFound: "Nie znaleziono kategorii",
                       }),
                       auth: ($R[162] = {
                         signInPage: ($R[163] = {
                           meta: ($R[164] = {
                             title: "Logowanie | M'Arte",
                             description:
-                              "Zaloguj się do konta M'Arte, aby śledzić zamówienia, zarządzać listą życzeń i cieszyć się spersonalizowanym doświadczeniem."
+                              "Zaloguj się do konta M'Arte, aby śledzić zamówienia, zarządzać listą życzeń i cieszyć się spersonalizowanym doświadczeniem.",
                           }),
                           title: "Witaj ponownie",
                           subtitle: "Zaloguj się do swojego konta, aby kontynuować.",
@@ -1396,12 +1399,12 @@
                           submitting: "Logowanie…",
                           success: "Witaj ponownie!",
                           noAccount: "Nie masz konta?",
-                          createAccount: "Utwórz konto"
+                          createAccount: "Utwórz konto",
                         }),
                         signUpPage: ($R[165] = {
                           meta: ($R[166] = {
                             title: "Utwórz konto | M'Arte",
-                            description: "Dołącz do M'ARTE, aby odkrywać ręcznie tworzoną biżuterię i ekskluzywne kolekcje."
+                            description: "Dołącz do M'ARTE, aby odkrywać ręcznie tworzoną biżuterię i ekskluzywne kolekcje.",
                           }),
                           title: "Utwórz konto",
                           subtitle: "Dołącz do M'ARTE, aby odkrywać ręcznie tworzoną biżuterię i ekskluzywne kolekcje.",
@@ -1410,7 +1413,7 @@
                           submitting: "Tworzenie konta…",
                           success: "Konto utworzone pomyślnie!",
                           hasAccount: "Masz już konto?",
-                          signInInstead: "Zaloguj się"
+                          signInInstead: "Zaloguj się",
                         }),
                         forgotPasswordPage: ($R[167] = {
                           meta: ($R[168] = { title: "Odzyskaj hasło | M'ARTE", description: "Zresetuj hasło do swojego konta M'ARTE." }),
@@ -1420,7 +1423,7 @@
                           submitting: "Wysyłanie...",
                           success: "Sprawdź skrzynkę e-mail, aby odebrać link resetujący.",
                           checkEmail: "Wysłaliśmy link resetujący hasło na Twój adres e-mail. Prosimy o sprawdzenie skrzynki.",
-                          backToSignIn: "Wróć do logowania"
+                          backToSignIn: "Wróć do logowania",
                         }),
                         resetPasswordPage: ($R[169] = {
                           meta: ($R[170] = { title: "Nowe Hasło | M'ARTE", description: "Ustaw nowe hasło dla swojego konta M'ARTE." }),
@@ -1429,7 +1432,7 @@
                           submit: "Zresetuj hasło",
                           submitting: "Resetowanie...",
                           success: "Twoje hasło zostało pomyślnie zresetowane.",
-                          invalidToken: "Nieprawidłowy lub wygasły link resetujący. Prosimy o wygenerowanie nowego."
+                          invalidToken: "Nieprawidłowy lub wygasły link resetujący. Prosimy o wygenerowanie nowego.",
                         }),
                         errors: ($R[171] = {
                           accountNotFound: "Nie znaleziono konta.",
@@ -1458,7 +1461,7 @@
                           tooManyRequests: "Zbyt wiele żądań. Zwolnij.",
                           unknownError: "Coś poszło nie tak. Spróbuj ponownie.",
                           userAlreadyExists: "Konto z tym adresem e-mail już istnieje.",
-                          userNotFound: "Nie znaleziono konta z tym adresem e-mail."
+                          userNotFound: "Nie znaleziono konta z tym adresem e-mail.",
                         }),
                         email: ($R[172] = {
                           resetPassword: ($R[173] = {
@@ -1468,14 +1471,14 @@
                               "Ktoś niedawno poprosił o zmianę hasła do Twojego konta M'ARTE. Jeśli to byłeś Ty, możesz ustawić nowe hasło tutaj:",
                             cta: "Zresetuj hasło",
                             ignore: "Jeśli nie chcesz zmieniać hasła lub o to nie prosiłeś, po prostu zignoruj i usuń tę wiadomość.",
-                            security: "Aby zapewnić bezpieczeństwo swojego konta, nie przekazuj tego e-maila nikomu."
+                            security: "Aby zapewnić bezpieczeństwo swojego konta, nie przekazuj tego e-maila nikomu.",
                           }),
                           verifyEmail: ($R[174] = {
                             subject: "Zweryfikuj swój adres e-mail - M'ARTE",
                             greeting: "Cześć {name},",
                             message: "Proszę zweryfikować swój adres e-mail, aby dokończyć rejestrację konta M'ARTE.",
                             cta: "Zweryfikuj e-mail",
-                            ignore: "Jeśli nie zakładałeś konta, po prostu zignoruj i usuń tę wiadomość."
+                            ignore: "Jeśli nie zakładałeś konta, po prostu zignoruj i usuń tę wiadomość.",
                           }),
                           changeEmail: ($R[175] = {
                             subject: "Zweryfikuj swój nowy adres e-mail - M'ARTE",
@@ -1483,8 +1486,8 @@
                             message:
                               "Niedawno poprosiłeś o zmianę adresu e-mail przypisanego do Twojego konta M'ARTE. Proszę zweryfikować nowy adres e-mail, aby zakończyć proces.",
                             cta: "Zweryfikuj nowy e-mail",
-                            ignore: "Jeśli to nie Ty prosiłeś o zmianę, zignoruj tę wiadomość, a Twoje konto pozostanie bezpieczne."
-                          })
+                            ignore: "Jeśli to nie Ty prosiłeś o zmianę, zignoruj tę wiadomość, a Twoje konto pozostanie bezpieczne.",
+                          }),
                         }),
                         validations: ($R[176] = {
                           invalidEmail: "Podaj prawidłowy adres e-mail.",
@@ -1495,17 +1498,17 @@
                           atLeastMinCharactersLong: "Co najmniej 8 znaków",
                           atLeastOneUppercase: "Co najmniej jedna wielka litera",
                           atLeastOneSpecialCharacter: "Co najmniej jeden znak specjalny",
-                          passwordsMustMatch: "Hasła muszą się zgadzać."
+                          passwordsMustMatch: "Hasła muszą się zgadzać.",
                         }),
                         oAuth: ($R[177] = { google: "Kontynuuj z Google", github: "Kontynuuj z GitHub", success: "Zalogowano pomyślnie!" }),
-                        signOut: ($R[178] = { success: "Wylogowano pomyślnie!" })
+                        signOut: ($R[178] = { success: "Wylogowano pomyślnie!" }),
                       }),
                       emails: ($R[179] = {
                         test: ($R[180] = {
                           preview: "Podgląd testowego e-maila",
                           title: "Witaj od M'Arte",
-                          body: "To jest testowy e-mail."
-                        })
+                          body: "To jest testowy e-mail.",
+                        }),
                       }),
                       admin: ($R[181] = {
                         brand: "M'ARTE",
@@ -1517,7 +1520,7 @@
                             totalSpent: "Całkowite wydatki",
                             orders: "Zamówienia",
                             avgOrder: "Średnie zamówienie",
-                            returnRate: "Wskaźnik powrotów"
+                            returnRate: "Wskaźnik powrotów",
                           }),
                           spending: ($R[186] = { title: "Aktywność zakupowa", subtitle: "Miesięczne wydatki z ostatnich 12 miesięcy" }),
                           categoryBreakdown: ($R[187] = { title: "Podział na kategorie" }),
@@ -1530,26 +1533,26 @@
                               items: "Przedmioty",
                               total: "Suma",
                               status: "Status",
-                              payment: "Płatność"
+                              payment: "Płatność",
                             }),
                             status: ($R[190] = {
                               delivered: "Dostarczone",
                               shipped: "Wysłane",
                               returned: "Zwrócone",
-                              processing: "W trakcie"
+                              processing: "W trakcie",
                             }),
-                            payment: ($R[191] = { paid: "Opłacone", refunded: "Zwrócone", pending: "Oczekujące" })
+                            payment: ($R[191] = { paid: "Opłacone", refunded: "Zwrócone", pending: "Oczekujące" }),
                           }),
                           profile: ($R[192] = {
                             memberSince: "Członek od {date}",
                             lastActive: "Ostatnia aktywność {time}",
                             preferences: "Preferencje",
                             preferredCategory: "Preferowana kategoria",
-                            preferredCollection: "Preferowana kolekcja"
+                            preferredCollection: "Preferowana kolekcja",
                           }),
                           tags: ($R[193] = { title: "Tagi" }),
                           notes: ($R[194] = { title: "Wewnętrzne notatki", edit: "Edytuj notatki" }),
-                          timeline: ($R[195] = { title: "Oś czasu aktywności" })
+                          timeline: ($R[195] = { title: "Oś czasu aktywności" }),
                         }),
                         customers: ($R[196] = {
                           title: "Klienci",
@@ -1562,20 +1565,20 @@
                             orders: "Zamówienia",
                             spent: "Wydano łącznie",
                             lastOrder: "Ostatnie zamówienie",
-                            tier: "Poziom"
+                            tier: "Poziom",
                           }),
                           pagination: ($R[199] = {
                             showing: "Wyświetlanie 1-19 z 2 847 klientów",
                             previous: "Poprzednia",
-                            next: "Następna"
+                            next: "Następna",
                           }),
                           stats: ($R[200] = {
                             totalCustomers: ($R[201] = { label: "Wszyscy klienci", value: "2 847" }),
                             vipCustomers: ($R[202] = { label: "Klienci VIP", value: "124" }),
                             averageLTV: ($R[203] = { label: "Średnie LTV", value: "$4 280" }),
                             returningRate: ($R[204] = { label: "Powracający", value: "68%" }),
-                            vsPrevious: "vs poprzedni miesiąc"
-                          })
+                            vsPrevious: "vs poprzedni miesiąc",
+                          }),
                         }),
                         nav: ($R[205] = {
                           main: "Menu główne",
@@ -1591,7 +1594,7 @@
                           coupons: "Kupony",
                           content: "Treść",
                           audit: "Dziennik zdarzeń",
-                          settings: "Ustawienia"
+                          settings: "Ustawienia",
                         }),
                         catalog: ($R[206] = {
                           title: "Katalog",
@@ -1605,7 +1608,7 @@
                             copyId: "Kopiuj ID: {id}",
                             manageVariants: "Zarządzaj wariantami",
                             copyLink: "Kopiuj link",
-                            delete: "Usuń produkt"
+                            delete: "Usuń produkt",
                           }),
                           columns: ($R[209] = {
                             category: "Kategoria",
@@ -1614,14 +1617,14 @@
                             product: "Produkt",
                             ref: "Nr",
                             status: "Status",
-                            stock: "Zapasy"
+                            stock: "Zapasy",
                           }),
                           status: ($R[210] = { active: "Aktywny", draft: "Szkic", low: "Niski stan" }),
                           filter: "Filtruj",
                           pagination: ($R[211] = {
                             next: "Następna",
                             previous: "Poprzednia",
-                            showing: "Wyświetlanie 1-10 z 241 produktów"
+                            showing: "Wyświetlanie 1-10 z 241 produktów",
                           }),
                           searchPlaceholder: "Szukaj w katalogu...",
                           stats: ($R[212] = {
@@ -1629,8 +1632,8 @@
                             draftProducts: ($R[214] = { label: "Szkice", value: "18" }),
                             lowStock: ($R[215] = { label: "Niski stan", value: "14" }),
                             totalProducts: ($R[216] = { label: "Wszystkie produkty", value: "248" }),
-                            vsPrevious: "vs poprzedni miesiąc"
-                          })
+                            vsPrevious: "vs poprzedni miesiąc",
+                          }),
                         }),
                         categories: ($R[217] = {
                           title: "Kategorie",
@@ -1671,21 +1674,21 @@
                             summary: "Podsumowanie",
                             titleAdd: "Dodaj nową kategorię",
                             updated: "Ostatnia aktualizacja",
-                            uploadImage: "Prześlij zdjęcie"
+                            uploadImage: "Prześlij zdjęcie",
                           }),
                           rowActions: ($R[220] = {
                             edit: "Edytuj kategorię",
                             viewProducts: "Zobacz produkty",
                             copyId: "Kopiuj ID: {id}",
                             copyLink: "Kopiuj link",
-                            delete: "Usuń kategorię"
+                            delete: "Usuń kategorię",
                           }),
                           columns: ($R[221] = {
                             description: "Opis",
                             name: "Kategoria",
                             products: "Produkty",
                             slug: "Slug",
-                            status: "Status"
+                            status: "Status",
                           }),
                           statusActive: "Aktywny",
                           statusDraft: "Szkic",
@@ -1695,8 +1698,8 @@
                             avgProducts: ($R[224] = { label: "Śr. produktów/kategorię", value: "14.2" }),
                             draft: ($R[225] = { label: "Szkice", value: "18" }),
                             total: ($R[226] = { label: "Wszystkie kategorie", value: "248" }),
-                            vsPrevious: "vs poprzedni miesiąc"
-                          })
+                            vsPrevious: "vs poprzedni miesiąc",
+                          }),
                         }),
                         collections: ($R[227] = {
                           title: "Kolekcje",
@@ -1707,7 +1710,7 @@
                             collection: "Kolekcja",
                             products: "Produkty",
                             slug: "Slug",
-                            status: "Status"
+                            status: "Status",
                           }),
                           statusActive: "Aktywny",
                           statusDraft: "Szkic",
@@ -1745,22 +1748,22 @@
                             products: "Produkty",
                             id: "ID",
                             created: "Utworzono",
-                            updated: "Ostatnia aktualizacja"
+                            updated: "Ostatnia aktualizacja",
                           }),
                           stats: ($R[231] = {
                             active: ($R[232] = { label: "Aktywne Kolekcje", value: "24" }),
                             avgProducts: ($R[233] = { label: "Średnio Produktów/Kolekcję", value: "12.5" }),
                             draft: ($R[234] = { label: "Szkice", value: "4" }),
                             total: ($R[235] = { label: "Wszystkie Kolekcje", value: "28" }),
-                            vsPrevious: "vs poprzedni miesiąc"
-                          })
+                            vsPrevious: "vs poprzedni miesiąc",
+                          }),
                         }),
                         newProduct: ($R[236] = {
                           actions: ($R[237] = {
                             discard: "Odrzuć",
                             publish: "Opublikuj",
                             saveChanges: "Zapisz zmiany",
-                            saveDraft: "Zapisz szkic"
+                            saveDraft: "Zapisz szkic",
                           }),
                           basic: ($R[238] = {
                             description: "Opis",
@@ -1770,33 +1773,33 @@
                             namePlaceholder: "np. Minimalistyczne złote kolczyki",
                             ref: "Referencja / SKU",
                             selectMaterial: "Wybierz materiał...",
-                            title: "Podstawowe szczegóły"
+                            title: "Podstawowe szczegóły",
                           }),
                           breadcrumb: ($R[239] = { catalog: "Katalog", dashboard: "Panel" }),
                           inventory: ($R[240] = {
                             quantity: "Ilość",
                             sellWhenOOS: "Kontynuuj sprzedaż gdy brak w magazynie",
                             title: "Zapasy",
-                            trackInventory: "Śledź ilość"
+                            trackInventory: "Śledź ilość",
                           }),
                           media: ($R[241] = {
                             dragDrop: "Przeciągnij i upuść zdjęcia tutaj",
                             formats: "Obsługuje JPG, PNG, WEBP. Max 5MB.",
-                            title: "Media"
+                            title: "Media",
                           }),
                           organization: ($R[242] = {
                             title: "Organizacja",
                             category: "Kategoria",
                             collection: "Kolekcja",
                             selectCategory: "Wybierz kategorię...",
-                            selectCollection: "Wybierz kolekcję..."
+                            selectCollection: "Wybierz kolekcję...",
                           }),
                           pricing: ($R[243] = {
                             compareAt: "Cena przed obniżką",
                             cost: "Koszt za sztukę",
                             hint: "Klienci tego nie zobaczą.",
                             price: "Cena",
-                            title: "Ceny i Zapasy"
+                            title: "Ceny i Zapasy",
                           }),
                           seo: ($R[244] = {
                             metaDescription: "Opis Meta",
@@ -1804,7 +1807,7 @@
                             metaTitle: "Tytuł Meta",
                             metaTitlePlaceholder: "np. Nazwa Produktu - Nazwa Sklepu",
                             slug: "Slug URL",
-                            title: "Optymalizacja wyszukiwarek"
+                            title: "Optymalizacja wyszukiwarek",
                           }),
                           shipping: ($R[245] = {
                             fulfillmentTime: "Czas realizacji",
@@ -1815,7 +1818,7 @@
                             unit: "Jednostka",
                             days: "Dni",
                             weeks: "Tygodnie",
-                            months: "Miesiące"
+                            months: "Miesiące",
                           }),
                           status: ($R[246] = {
                             active: "Aktywny",
@@ -1823,7 +1826,7 @@
                             draft: "Szkic",
                             featured: "Polecany Produkt",
                             title: "Status Produktu",
-                            low: "Niski stan"
+                            low: "Niski stan",
                           }),
                           tags: ($R[247] = { placeholder: "Dodaj tag...", title: "Tagi" }),
                           title: "Dodaj Nowy Produkt",
@@ -1837,8 +1840,8 @@
                             price: "Cena",
                             stock: "Zapas",
                             title: "Warianty",
-                            valuePlaceholder: "np. Mały"
-                          })
+                            valuePlaceholder: "np. Mały",
+                          }),
                         }),
                         user: ($R[249] = { name: "Jane Doe", role: "Administrator", initials: "JD" }),
                         dashboard: ($R[250] = {
@@ -1849,19 +1852,19 @@
                             revenue: ($R[252] = { label: "Całkowity przychód", value: "142 300 zł" }),
                             orders: ($R[253] = { label: "Całkowita liczba zamówień", value: "1 429" }),
                             customers: ($R[254] = { label: "Nowi klienci", value: "342" }),
-                            views: ($R[255] = { label: "Wyświetlenia", value: "84 200" })
+                            views: ($R[255] = { label: "Wyświetlenia", value: "84 200" }),
                           }),
                           chart: ($R[256] = {
                             title: "Przegląd przychodów",
                             description: "Całkowity przychód z ostatnich 10 miesięcy",
                             last7: "Ostatnie 7 dni",
-                            last30: "Ostatnie 30 dni"
+                            last30: "Ostatnie 30 dni",
                           }),
                           avgOrder: ($R[257] = { label: "Średnia wartość zamówienia", value: "248,50 zł", trend: "+4,2%" }),
                           totalSales: ($R[258] = {
                             label: "Całkowita sprzedaż (od początku roku)",
                             value: "842 500,00 zł",
-                            period: "Zobacz raport roczny"
+                            period: "Zobacz raport roczny",
                           }),
                           recentOrders: ($R[259] = {
                             title: "Ostatnie zamówienia",
@@ -1872,7 +1875,7 @@
                               date: "Data",
                               total: "Razem",
                               payment: "Płatność",
-                              fulfillment: "Realizacja"
+                              fulfillment: "Realizacja",
                             }),
                             status: ($R[261] = {
                               unfulfilled: "Nie zrealizowano",
@@ -1881,10 +1884,10 @@
                               pending: "Oczekujące",
                               paid: "Opłacone",
                               refunded: "Zwrócone",
-                              authorized: "Zautoryzowane"
-                            })
+                              authorized: "Zautoryzowane",
+                            }),
                           }),
-                          topProducts: ($R[262] = { title: "Najlepiej sprzedające się produkty", sold: "sztuk" })
+                          topProducts: ($R[262] = { title: "Najlepiej sprzedające się produkty", sold: "sztuk" }),
                         }),
                         audit: ($R[263] = {
                           title: "Dziennik audytu",
@@ -1894,7 +1897,7 @@
                             totalEvents: "Wszystkie zdarzenia",
                             today: "Dzisiaj",
                             warnings: "Ostrzeżenia",
-                            errors: "Błędy"
+                            errors: "Błędy",
                           }),
                           categories: ($R[266] = {
                             all: "Wszystko",
@@ -1903,7 +1906,7 @@
                             customers: "Klienci",
                             catalog: "Katalog",
                             settings: "Ustawienia",
-                            auth: "Autoryzacja"
+                            auth: "Autoryzacja",
                           }),
                           severity: ($R[267] = { info: "Informacja", success: "Sukces", warning: "Ostrzeżenie", error: "Błąd" }),
                           dateRange: ($R[268] = {
@@ -1914,7 +1917,7 @@
                             custom: "Własny",
                             from: "Od",
                             to: "Do",
-                            apply: "Zastosuj"
+                            apply: "Zastosuj",
                           }),
                           columns: ($R[269] = {
                             status: "Status",
@@ -1924,7 +1927,7 @@
                             category: "Kategoria",
                             actor: "Użytkownik",
                             timestamp: "Data i czas",
-                            ip: "IP"
+                            ip: "IP",
                           }),
                           actions: ($R[270] = {
                             email_sent: "E-mail wysłany",
@@ -1942,7 +1945,7 @@
                             customer_tier_upgrade: "Awans poziomu",
                             customer_registered: "Klient zarejestrowany",
                             auth_login: "Logowanie",
-                            auth_login_failed: "Logowanie nieudane"
+                            auth_login_failed: "Logowanie nieudane",
                           }),
                           searchPlaceholder: "Szukaj zdarzeń…",
                           clearFilter: "Wyczyść",
@@ -1950,8 +1953,8 @@
                           pagination: ($R[271] = {
                             showing: "Wyświetlanie {count} z {total} zdarzeń",
                             previous: "Poprzednia",
-                            next: "Następna"
-                          })
+                            next: "Następna",
+                          }),
                         }),
                         settings: ($R[272] = {
                           title: "Ustawienia",
@@ -1962,7 +1965,7 @@
                             shipping: "Wysyłka",
                             appearance: "Wygląd",
                             security: "Bezpieczeństwo",
-                            localization: "Lokalizacja"
+                            localization: "Lokalizacja",
                           }),
                           general: ($R[274] = {
                             storeInfo: ($R[275] = {
@@ -1970,31 +1973,31 @@
                               description: "Podstawowe dane o Twoim sklepie.",
                               name: "Nazwa sklepu",
                               email: "E-mail kontaktowy",
-                              desc: "Opis"
+                              desc: "Opis",
                             }),
                             preferences: ($R[276] = {
                               title: "Preferencje",
                               description: "Konfiguruj działanie sklepu.",
                               maintenance: ($R[277] = {
                                 label: "Tryb konserwacji",
-                                description: "Tymczasowo wyłącz witrynę sklepu dla odwiedzających."
+                                description: "Tymczasowo wyłącz witrynę sklepu dla odwiedzających.",
                               }),
                               inventoryTracking: ($R[278] = {
                                 label: "Śledzenie zapasów",
-                                description: "Automatycznie śledź poziom zapasów dla wszystkich produktów."
+                                description: "Automatycznie śledź poziom zapasów dla wszystkich produktów.",
                               }),
                               autoFulfillment: ($R[279] = {
                                 label: "Automatyczna realizacja",
-                                description: "Automatycznie realizuj zamówienia po pobraniu płatności."
+                                description: "Automatycznie realizuj zamówienia po pobraniu płatności.",
                               }),
                               orderConfirmation: ($R[280] = {
                                 label: "E-maile potwierdzenia zamówienia",
-                                description: "Wyślij e-mail z potwierdzeniem po złożeniu zamówienia."
-                              })
+                                description: "Wyślij e-mail z potwierdzeniem po złożeniu zamówienia.",
+                              }),
                             }),
-                            save: "Zapisz zmiany"
+                            save: "Zapisz zmiany",
                           }),
-                          comingSoon: "Ta sekcja będzie dostępna wkrótce."
+                          comingSoon: "Ta sekcja będzie dostępna wkrótce.",
                         }),
                         orders: ($R[281] = {
                           title: "Zamówienia",
@@ -2005,14 +2008,14 @@
                             pending: ($R[285] = { label: "Oczekujące", value: "23" }),
                             revenue: ($R[286] = { label: "Przychód", value: "142 850 $" }),
                             avgValue: ($R[287] = { label: "Średnia wartość", value: "2 845 $" }),
-                            vsPrevious: "vs. poprzedni okres"
+                            vsPrevious: "vs. poprzedni okres",
                           }),
                           tabs: ($R[288] = {
                             all: "Wszystkie",
                             pending: "Oczekujące",
                             unfulfilled: "Niezrealizowane",
                             shipped: "Wysłane",
-                            delivered: "Dostarczone"
+                            delivered: "Dostarczone",
                           }),
                           searchPlaceholder: "Szukaj zamówień…",
                           columns: ($R[289] = {
@@ -2022,7 +2025,7 @@
                             items: "Produkty",
                             total: "Suma",
                             payment: "Płatność",
-                            fulfillment: "Realizacja"
+                            fulfillment: "Realizacja",
                           }),
                           payment: ($R[290] = { paid: "Opłacone", authorized: "Autoryzowane", refunded: "Zwrócone" }),
                           fulfillment: ($R[291] = {
@@ -2030,12 +2033,12 @@
                             pending: "Oczekujące",
                             shipped: "Wysłane",
                             delivered: "Dostarczone",
-                            returned: "Zwrócone"
+                            returned: "Zwrócone",
                           }),
                           pagination: ($R[292] = {
                             showing: "Wyświetlanie {count} z {total} zamówień",
                             previous: "Poprzednia",
-                            next: "Następna"
+                            next: "Następna",
                           }),
                           rowActions: ($R[293] = {
                             viewOrder: "Zobacz zamówienie",
@@ -2044,8 +2047,8 @@
                             markShipped: "Oznacz jako wysłane",
                             printInvoice: "Drukuj fakturę",
                             refund: "Zwrot",
-                            cancel: "Anuluj zamówienie"
-                          })
+                            cancel: "Anuluj zamówienie",
+                          }),
                         }),
                         orderDetail: ($R[294] = {
                           actions: ($R[295] = { print: "Drukuj", refund: "Zwrot", fulfill: "Realizuj" }),
@@ -2056,13 +2059,13 @@
                             pending: "Oczekujące",
                             unfulfilled: "Niezrealizowane",
                             returned: "Zwrócone",
-                            cancelled: "Anulowane"
+                            cancelled: "Anulowane",
                           }),
                           payment: ($R[298] = {
                             paid: "Opłacone",
                             authorized: "Autoryzowane",
                             refunded: "Zwrócone",
-                            pending: "Oczekujące"
+                            pending: "Oczekujące",
                           }),
                           fulfillment: ($R[299] = {
                             title: "Realizacja",
@@ -2071,12 +2074,12 @@
                               processing: "Przetwarzanie",
                               shipped: "Wysłane",
                               outForDelivery: "W drodze",
-                              delivered: "Dostarczone"
-                            })
+                              delivered: "Dostarczone",
+                            }),
                           }),
                           items: ($R[301] = {
                             title: "Produkty",
-                            columns: ($R[302] = { product: "Produkt", sku: "SKU", qty: "Ilość", price: "Cena", total: "Suma" })
+                            columns: ($R[302] = { product: "Produkt", sku: "SKU", qty: "Ilość", price: "Cena", total: "Suma" }),
                           }),
                           summary: ($R[303] = { subtotal: "Suma częściowa", shipping: "Wysyłka", tax: "Podatek", total: "Suma" }),
                           timeline: ($R[304] = {
@@ -2085,15 +2088,15 @@
                               delivered: "Dostarczono",
                               failed: "Niepowodzenie",
                               bounced: "Odrzucono",
-                              deferred: "Opóźniono"
-                            })
+                              deferred: "Opóźniono",
+                            }),
                           }),
                           customer: ($R[306] = { title: "Klient", ordersCount: "{count} zamówień", viewProfile: "Zobacz profil" }),
                           shipping: ($R[307] = { title: "Adres wysyłki", estimatedDelivery: "Planowana dostawa" }),
                           billing: ($R[308] = { title: "Adres rozliczeniowy", sameAsShipping: "Taki sam jak wysyłki" }),
                           paymentDetails: ($R[309] = { title: "Płatność" }),
                           tags: ($R[310] = { title: "Tagi" }),
-                          notes: ($R[311] = { title: "Notatki wewnętrzne", edit: "Edytuj" })
+                          notes: ($R[311] = { title: "Notatki wewnętrzne", edit: "Edytuj" }),
                         }),
                         marketing: ($R[312] = {
                           title: "Kampanie marketingowe",
@@ -2103,11 +2106,11 @@
                             totalCampaigns: ($R[315] = { label: "Wszystkie kampanie", value: "12" }),
                             activeCampaigns: ($R[316] = { label: "Aktywne kampanie", value: "3" }),
                             totalReach: ($R[317] = { label: "Całkowity zasięg", value: "19.4K" }),
-                            totalRevenue: ($R[318] = { label: "Całkowity przychód", value: "85 200 PLN" })
+                            totalRevenue: ($R[318] = { label: "Całkowity przychód", value: "85 200 PLN" }),
                           }),
                           chart: ($R[319] = {
                             title: "Zaangażowanie kampanii",
-                            description: "Pokazuje średni współczynnik otwarć i kliknięć z ostatnich miesięcy"
+                            description: "Pokazuje średni współczynnik otwarć i kliknięć z ostatnich miesięcy",
                           }),
                           campaigns: ($R[320] = {
                             title: "Przegląd kampanii",
@@ -2117,10 +2120,10 @@
                               status: "Status",
                               sent: "Zasięg",
                               openRate: "Wskaźnik otwarć",
-                              revenue: "Przychód"
-                            })
+                              revenue: "Przychód",
+                            }),
                           }),
-                          status: ($R[322] = { active: "Aktywna", completed: "Zakończona", draft: "Szkic" })
+                          status: ($R[322] = { active: "Aktywna", completed: "Zakończona", draft: "Szkic" }),
                         }),
                         coupons: ($R[323] = {
                           title: "Kupony rabatowe",
@@ -2130,7 +2133,7 @@
                             activeCoupons: ($R[326] = { label: "Aktywne kupony", value: "18" }),
                             totalRedemptions: ($R[327] = { label: "Liczba użyć", value: "1 492" }),
                             revenueSaved: ($R[328] = { label: "Zaoszczędzone", value: "12 450 PLN" }),
-                            avgDiscount: ($R[329] = { label: "Średni rabat", value: "18%" })
+                            avgDiscount: ($R[329] = { label: "Średni rabat", value: "18%" }),
                           }),
                           columns: ($R[330] = {
                             code: "Kod",
@@ -2140,9 +2143,9 @@
                             usage: "Użycia",
                             status: "Status",
                             expires: "Wygasa",
-                            actions: "Akcje"
+                            actions: "Akcje",
                           }),
-                          status: ($R[331] = { active: "Aktywny", scheduled: "Zaplanowany", expired: "Wygasły" })
+                          status: ($R[331] = { active: "Aktywny", scheduled: "Zaplanowany", expired: "Wygasły" }),
                         }),
                         content: ($R[332] = {
                           title: "Zarządzanie treścią",
@@ -2151,7 +2154,7 @@
                           types: ($R[334] = {
                             pages: ($R[335] = { title: "Strony", description: "Strony statyczne" }),
                             banners: ($R[336] = { title: "Banery", description: "Banery promocyjne" }),
-                            articles: ($R[337] = { title: "Artykuły", description: "Wpisy na blogu i artykuły" })
+                            articles: ($R[337] = { title: "Artykuły", description: "Wpisy na blogu i artykuły" }),
                           }),
                           pagesTable: ($R[338] = {
                             title: "Wszystkie strony",
@@ -2161,11 +2164,11 @@
                               sections: "Sekcje",
                               lastEdited: "Ostatnia edycja",
                               status: "Status",
-                              actions: "Akcje"
-                            })
+                              actions: "Akcje",
+                            }),
                           }),
-                          status: ($R[340] = { published: "Opublikowana", draft: "Szkic" })
-                        })
+                          status: ($R[340] = { published: "Opublikowana", draft: "Szkic" }),
+                        }),
                       }),
                       account: ($R[341] = {
                         sidebar: ($R[342] = {
@@ -2177,7 +2180,7 @@
                           sessions: "Sesje",
                           signOut: "Wyloguj się",
                           title: "Moje Konto",
-                          profile: "Profil"
+                          profile: "Profil",
                         }),
                         overview: ($R[343] = {
                           greeting: "Witaj ponownie",
@@ -2186,7 +2189,7 @@
                             totalSpent: "Łączne wydatki",
                             totalOrders: "Zamówienia",
                             wishlistItems: "Lista życzeń",
-                            memberSince: "Z nami od"
+                            memberSince: "Z nami od",
                           }),
                           activity: "Ostatnia aktywność",
                           activityItems: ($R[345] = {
@@ -2194,7 +2197,7 @@
                             orderShipped: "Zamówienie {id} zostało wysłane",
                             wishlistAdded: "Dodano {item} do listy życzeń",
                             addressUpdated: "Zaktualizowano adres dostawy",
-                            reviewPosted: "Wystawiono opinię o {item}"
+                            reviewPosted: "Wystawiono opinię o {item}",
                           }),
                           recommendations: "Polecane dla Ciebie",
                           recommendationsDesc: "Na podstawie Twoich ostatnich zamówień",
@@ -2204,7 +2207,7 @@
                           loyaltyPoints: "{points} punktów",
                           loyaltyNext: "Jeszcze {points} pkt do poziomu {tier}",
                           tierGold: "Złoty",
-                          tierPlatinum: "Platynowy"
+                          tierPlatinum: "Platynowy",
                         }),
                         orders: ($R[346] = {
                           eyebrow: "Twoja kolekcja",
@@ -2219,15 +2222,15 @@
                             delivered: "Dostarczono",
                             shipped: "Wysłano",
                             processing: "W realizacji",
-                            cancelled: "Anulowano"
+                            cancelled: "Anulowano",
                           }),
                           status: ($R[348] = {
                             delivered: "Dostarczono",
                             shipped: "Wysłano",
                             processing: "W realizacji",
                             cancelled: "Anulowano",
-                            pending: "Oczekuje"
-                          })
+                            pending: "Oczekuje",
+                          }),
                         }),
                         orderDetail: ($R[349] = {
                           backToOrders: "Wróć do zamówień",
@@ -2251,7 +2254,7 @@
                             shipped: "Wysłano",
                             processing: "W realizacji",
                             cancelled: "Anulowano",
-                            pending: "Oczekuje"
+                            pending: "Oczekuje",
                           }),
                           events: ($R[351] = {
                             delivered: "Dostarczono",
@@ -2259,8 +2262,8 @@
                             inTransit: "W transporcie",
                             shipped: "Wysłano",
                             confirmed: "Zamówienie potwierdzone",
-                            placed: "Zamówienie złożone"
-                          })
+                            placed: "Zamówienie złożone",
+                          }),
                         }),
                         addresses: ($R[352] = {
                           eyebrow: "Książka adresowa",
@@ -2279,9 +2282,9 @@
                             country: "Kraj",
                             label: "Zapisz jako",
                             save: "Zapisz adres",
-                            cancel: "Anuluj"
+                            cancel: "Anuluj",
                           }),
-                          filter: ($R[355] = { shipping: "Dostawy", billing: "Rozliczeniowe" })
+                          filter: ($R[355] = { shipping: "Dostawy", billing: "Rozliczeniowe" }),
                         }),
                         payment: ($R[356] = {
                           eyebrow: "Portfel",
@@ -2301,8 +2304,8 @@
                             expiry: "Ważność",
                             cvv: "CVV",
                             save: "Zapisz kartę",
-                            cancel: "Anuluj"
-                          })
+                            cancel: "Anuluj",
+                          }),
                         }),
                         wishlist: ($R[358] = {
                           eyebrow: "Ulubione",
@@ -2310,7 +2313,7 @@
                           subtitle: "Masz {count} zapisanych produktów na swojej liście życzeń.",
                           empty: "Twoja lista życzeń jest pusta",
                           browseProducts: "Przeglądaj produkty",
-                          outOfStock: "Brak w magazynie"
+                          outOfStock: "Brak w magazynie",
                         }),
                         sessions: ($R[359] = {
                           eyebrow: "Bezpieczeństwo",
@@ -2328,7 +2331,7 @@
                           closeAccount: "Usunięcie konta",
                           closeAccountTitle: "Trwale usuń konto",
                           closeAccountDesc: "Po usunięciu konta wszystkie twoje dane zostaną bezpowrotnie skasowane.",
-                          closeAccountAction: "Usuń konto"
+                          closeAccountAction: "Usuń konto",
                         }),
                         profile: ($R[361] = {
                           eyebrow: "Ustawienia Konta",
@@ -2362,17 +2365,17 @@
                           closeDialogPoint2: "Wszystkie zapisane adresy i metody płatności zostaną skasowane.",
                           closeDialogPoint3: "Nie będziesz mieć dostępu do swoich ulubionych produktów.",
                           closeDialogConfirm: "Wpisz DELETE aby potwierdzić",
-                          closeDialogCancel: "Anuluj"
-                        })
+                          closeDialogCancel: "Anuluj",
+                        }),
                       }),
                       privacyPolicyPage: ($R[362] = {
                         title: "Polityka Prywatności",
-                        description: "Przeczytaj naszą politykę prywatności, aby zrozumieć, jak chronimy Twoje dane."
+                        description: "Przeczytaj naszą politykę prywatności, aby zrozumieć, jak chronimy Twoje dane.",
                       }),
                       termsOfServicePage: ($R[363] = {
                         title: "Regulamin",
-                        description: "Przeczytaj regulamin przed skorzystaniem z naszej strony."
-                      })
+                        description: "Przeczytaj regulamin przed skorzystaniem z naszej strony.",
+                      }),
                     }),
                     dataUpdateCount: 1,
                     dataUpdatedAt: 1780002392003,
@@ -2384,10 +2387,10 @@
                     fetchMeta: null,
                     isInvalidated: !1,
                     status: "success",
-                    fetchStatus: "idle"
+                    fetchStatus: "idle",
                   }),
                   queryKey: ($R[364] = ["messages", "pl"]),
-                  queryHash: '["messages","pl"]'
+                  queryHash: '["messages","pl"]',
                 }),
                 ($R[365] = {
                   dehydratedAt: 1780002392186,
@@ -2403,29 +2406,29 @@
                     fetchMeta: null,
                     isInvalidated: !0,
                     status: "error",
-                    fetchStatus: "idle"
+                    fetchStatus: "idle",
                   }),
                   queryKey: ($R[367] = ["collection", "winter-collection"]),
-                  queryHash: '["collection","winter-collection"]'
-                })
-              ])
-            })
-          })
-        }))($R["tsr"]);
-      document.currentScript.remove();
+                  queryHash: '["collection","winter-collection"]',
+                }),
+              ]),
+            }),
+          }),
+        }))($R["tsr"])
+      document.currentScript.remove()
     </script>
     <script type="module" async="">
-      import { injectIntoGlobalHook } from "/@react-refresh";
-      injectIntoGlobalHook(window);
-      window.$RefreshReg$ = () => {};
-      window.$RefreshSig$ = () => (type) => type;
-      import("/@id/virtual:tanstack-start-client-entry");
+      import { injectIntoGlobalHook } from "/@react-refresh"
+      injectIntoGlobalHook(window)
+      window.$RefreshReg$ = () => {}
+      window.$RefreshSig$ = () => (type) => type
+      import("/@id/virtual:tanstack-start-client-entry")
     </script>
     <div dir="ltr" class="tsqd-parent-container"></div>
     <script>
-      (($R) => $R[19].return(void 0))($R["tsr"]);
-      $_TSR.e();
-      document.currentScript.remove();
+      ;(($R) => $R[19].return(void 0))($R["tsr"])
+      $_TSR.e()
+      document.currentScript.remove()
     </script>
   </body>
 </html>

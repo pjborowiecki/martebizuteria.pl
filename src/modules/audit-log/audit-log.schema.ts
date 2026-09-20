@@ -1,8 +1,8 @@
-import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestampNow } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestampNow } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { AUDIT_LOG_ACTOR_ROLES, AUDIT_LOG_CATEGORIES, AUDIT_LOG_SEVERITIES } from "~/src/modules/audit-log/audit-log.constants";
+import { AUDIT_LOG_ACTOR_ROLES, AUDIT_LOG_CATEGORIES, AUDIT_LOG_SEVERITIES } from "~/src/modules/audit-log/audit-log.constants"
 
 export const auditLog = sqliteTable(
   "audit_log",
@@ -19,13 +19,13 @@ export const auditLog = sqliteTable(
     metadata: text("metadata"),
     resourceId: text("resource_id"),
     severity: text("severity", { enum: AUDIT_LOG_SEVERITIES }).notNull(),
-    target: text("target").notNull()
+    target: text("target").notNull(),
   },
   (table) => [
     index("audit_log_createdAt_idx").on(table.createdAt),
     index("audit_log_category_idx").on(table.category),
     index("audit_log_severity_idx").on(table.severity),
     index("audit_log_action_idx").on(table.action),
-    index("audit_log_resource_idx").on(table.category, table.resourceId)
-  ]
-);
+    index("audit_log_resource_idx").on(table.category, table.resourceId),
+  ],
+)

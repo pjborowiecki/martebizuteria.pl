@@ -1,15 +1,4 @@
 {
-  "defaultErrorComponent": {
-    "heading": "Something went wrong",
-    "message": "Please refresh the page and try again."
-  },
-  "defaultNotFoundComponent": {
-    "heading": "Page not found",
-    "message": "The page you are looking for does not exist."
-  },
-  "defaultPendingComponent": {
-    "loading": "Loading…"
-  },
   "footer": {
     "brand": "M'Arte",
     "description": "Handcrafted jewelry made of natural stones and 925 sterling silver. Each piece is a unique work of art.",

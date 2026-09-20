@@ -1,15 +1,15 @@
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema";
+import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema"
 import {
   PRODUCT_ATTRIBUTE_COLUMN_LENGTH,
   PRODUCT_ATTRIBUTE_DEFAULT_RANK,
-  PRODUCT_ATTRIBUTE_TYPES
-} from "~/src/modules/product-attribute/product-attribute.constants";
-import type { ProductAttributeAllowedValue, ProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.types";
+  PRODUCT_ATTRIBUTE_TYPES,
+} from "~/src/modules/product-attribute/product-attribute.constants"
+import { type ProductAttributeAllowedValue, type ProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.types"
 
 export const productAttribute = sqliteTable(
   "product_attribute",
@@ -21,11 +21,11 @@ export const productAttribute = sqliteTable(
     titles: text("titles", { mode: "json" }).$type<ProductAttributeLocaleMap>().notNull(),
     type: text("type", { enum: PRODUCT_ATTRIBUTE_TYPES }).notNull(),
     unit: text("unit", { length: PRODUCT_ATTRIBUTE_COLUMN_LENGTH.unit }),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("product_attribute_rank_idx").on(table.rank)]
-);
+  (table) => [index("product_attribute_rank_idx").on(table.rank)],
+)
 
 export const productAttributeRelations = relations(productAttribute, ({ many }) => ({
-  attributeOnProducts: many(attributeOnProduct)
-}));
+  attributeOnProducts: many(attributeOnProduct),
+}))

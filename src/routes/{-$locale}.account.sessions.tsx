@@ -1,68 +1,46 @@
-import { type JSX, useCallback } from "react";
+import { type JSX, useCallback } from "react"
 
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Globe, LogOut, Monitor, Smartphone, Tablet } from "lucide-react";
-import { toast } from "sonner";
-import { useFormatter, useLocale, useTranslations } from "use-intl";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+import { AlertTriangle, Globe, LogOut, Monitor, Smartphone, Tablet } from "lucide-react"
+import { toast } from "sonner"
+import { useFormatter, useLocale, useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
+import { CUSTOMER_ACCOUNT_QUERY_KEYS, CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountLoginHistoryItem, type CustomerAccountSession } from "~/src/modules/customer-account/customer-account.types"
+import { formatCustomerAccountRelativeTime } from "~/src/modules/customer-account/customer-account.utils"
+import { loginHistoryQueryOptions } from "~/src/modules/customer-account/use-cases/list-customer-login-history"
+import { sessionsQueryOptions } from "~/src/modules/customer-account/use-cases/list-customer-sessions"
+import { revokeCustomerSessionFn } from "~/src/modules/customer-account/use-cases/revoke-customer-session"
+import { revokeOtherCustomerSessionsFn } from "~/src/modules/customer-account/use-cases/revoke-other-customer-sessions"
 
-import { Button } from "~/src/components/shadcn/button";
-import { Separator } from "~/src/components/shadcn/separator";
+import { Button } from "~/src/presentation/components/shadcn/button"
+import { Separator } from "~/src/presentation/components/shadcn/separator"
 
-import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
-import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants";
-import { customerAccountMutations } from "~/src/modules/customer-account/customer-account.mutations";
-import { customerAccountQueryOptions } from "~/src/modules/customer-account/customer-account.queries";
-import type { CustomerAccountLoginHistoryItem, CustomerAccountSession } from "~/src/modules/customer-account/customer-account.types";
-import { formatCustomerAccountRelativeTime } from "~/src/modules/customer-account/customer-account.utils";
-
-export const Route = createFileRoute("/{-$locale}/account/sessions")({
-  component: SessionsPage,
-  loader: ({ context }) =>
-    Promise.all([
-      context.queryClient.ensureQueryData(customerAccountQueryOptions.sessionsQueryOptions()),
-      context.queryClient.ensureQueryData(customerAccountQueryOptions.loginHistoryQueryOptions())
-    ]),
-  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS
-});
-
-const DEVICE_ICONS = {
-  desktop: Monitor,
-  mobile: Smartphone,
-  tablet: Tablet,
-  unknown: Monitor
-};
-
-const EMPTY_LENGTH = 0;
-const ACTIVE_NOW_MINUTES = 5;
-const MILLISECONDS_PER_MINUTE = 60_000;
-
-function SessionsPage(): JSX.Element {
-  const t = useTranslations("pages.account.sessions");
-  const queryClient = useQueryClient();
-  const { data: sessions } = useSuspenseQuery(customerAccountQueryOptions.sessionsQueryOptions());
-  const { data: loginHistory } = useSuspenseQuery(customerAccountQueryOptions.loginHistoryQueryOptions());
-
+import { ROUTES } from "~/src/routes"
+const SessionsPage = (): JSX.Element => {
+  const t = useTranslations("pages.account.sessions")
+  const queryClient = useQueryClient()
+  const { data: sessions } = useSuspenseQuery(sessionsQueryOptions())
+  const { data: loginHistory } = useSuspenseQuery(loginHistoryQueryOptions())
   const revokeAllMutation = useMutation({
-    mutationFn: () => customerAccountMutations.revokeOtherCustomerSessionsFn(),
+    mutationFn: () => revokeOtherCustomerSessionsFn(),
     onError: () => {
-      toast.error(t("revokeError"));
+      toast.error(t("revokeError"))
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.CUSTOMER_ACCOUNT.SESSIONS });
-      toast.success(t("revokeAllSuccess"));
-    }
-  });
-
-  const otherSessions = sessions.filter((session) => !session.isCurrent);
-
+      await queryClient.invalidateQueries({
+        queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS,
+      })
+      toast.success(t("revokeAllSuccess"))
+    },
+  })
+  const otherSessions = sessions.filter((session) => !session.isCurrent)
   const handleRevokeAll = useCallback(() => {
-    revokeAllMutation.mutate();
-  }, [revokeAllMutation]);
-
+    revokeAllMutation.mutate()
+  }, [revokeAllMutation])
   return (
     <div>
       <div className="mb-10 space-y-3">
@@ -76,14 +54,14 @@ function SessionsPage(): JSX.Element {
           <Button
             variant="account-ghost"
             className="text-destructive/70 hover:text-destructive"
-            disabled={otherSessions.length === EMPTY_LENGTH || revokeAllMutation.isPending}
+            disabled={otherSessions.length === 0 || revokeAllMutation.isPending}
             onClick={handleRevokeAll}
           >
             {t("revokeAll")}
           </Button>
         </div>
         <Separator className="mt-3 mb-0" />
-        {sessions.length === EMPTY_LENGTH ? (
+        {sessions.length === 0 ? (
           <p className="py-6 text-[13px] text-muted-foreground">{t("emptySessions")}</p>
         ) : (
           <div className="divide-y divide-border">
@@ -99,7 +77,7 @@ function SessionsPage(): JSX.Element {
       <section>
         <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("loginHistory")}</h2>
         <Separator className="mt-3 mb-0" />
-        {loginHistory.length === EMPTY_LENGTH ? (
+        {loginHistory.length === 0 ? (
           <p className="py-6 text-[13px] text-muted-foreground">{t("noLoginHistory")}</p>
         ) : (
           <div className="divide-y divide-border">
@@ -133,7 +111,7 @@ function SessionsPage(): JSX.Element {
             <p className="text-[14px]">{t("closeAccountTitle")}</p>
             <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted-foreground">{t("closeAccountDesc")}</p>
             <LocalizedLink
-              to={CONSTANTS.ROUTES.ACCOUNT_PROFILE}
+              to={ROUTES.ACCOUNT_PROFILE}
               className="mt-4 inline-flex h-9 items-center justify-center border border-destructive/30 px-6 text-[11px] tracking-[0.15em] text-destructive uppercase transition-colors hover:border-destructive hover:bg-destructive/5"
             >
               {t("closeAccountAction")}
@@ -142,44 +120,48 @@ function SessionsPage(): JSX.Element {
         </div>
       </section>
     </div>
-  );
+  )
 }
-
-function formatSessionLastActive(
+const formatSessionLastActive = (
   session: CustomerAccountSession,
   locale: string,
-  t: ReturnType<typeof useTranslations<"pages.account.sessions">>
-): string {
-  const diffMinutes = Math.floor((Date.now() - session.lastActiveAt.getTime()) / MILLISECONDS_PER_MINUTE);
-
+  t: ReturnType<typeof useTranslations<"pages.account.sessions">>,
+): string => {
+  const diffMinutes = Math.floor((Date.now() - session.lastActiveAt.getTime()) / MILLISECONDS_PER_MINUTE)
   if (diffMinutes < ACTIVE_NOW_MINUTES) {
-    return t("activeNow");
+    return t("activeNow")
   }
-
-  return formatCustomerAccountRelativeTime(session.lastActiveAt, locale);
+  return formatCustomerAccountRelativeTime(session.lastActiveAt, locale)
 }
-
-function ActiveSessionCard({ session }: Readonly<{ session: CustomerAccountSession }>): JSX.Element {
-  const t = useTranslations("pages.account.sessions");
-  const locale = useLocale();
-  const queryClient = useQueryClient();
-  const DeviceIcon = DEVICE_ICONS[session.deviceType];
-
+const ActiveSessionCard = ({
+  session,
+}: Readonly<{
+  session: CustomerAccountSession
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.sessions")
+  const locale = useLocale()
+  const queryClient = useQueryClient()
+  const DeviceIcon = DEVICE_ICONS[session.deviceType]
   const revokeMutation = useMutation({
-    mutationFn: () => customerAccountMutations.revokeCustomerSessionFn({ data: { sessionId: session.id } }),
+    mutationFn: () =>
+      revokeCustomerSessionFn({
+        data: {
+          sessionId: session.id,
+        },
+      }),
     onError: () => {
-      toast.error(t("revokeError"));
+      toast.error(t("revokeError"))
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CONSTANTS.QUERY_KEYS.CUSTOMER_ACCOUNT.SESSIONS });
-      toast.success(t("revokeSuccess"));
-    }
-  });
-
+      await queryClient.invalidateQueries({
+        queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS,
+      })
+      toast.success(t("revokeSuccess"))
+    },
+  })
   const handleRevoke = useCallback(() => {
-    revokeMutation.mutate();
-  }, [revokeMutation]);
-
+    revokeMutation.mutate()
+  }, [revokeMutation])
   return (
     <div className="group flex items-center gap-5 py-5">
       <div className="flex size-10 shrink-0 items-center justify-center bg-muted/50">
@@ -213,13 +195,15 @@ function ActiveSessionCard({ session }: Readonly<{ session: CustomerAccountSessi
         </Button>
       )}
     </div>
-  );
+  )
 }
-
-function LoginHistoryItem({ entry }: Readonly<{ entry: CustomerAccountLoginHistoryItem }>): JSX.Element {
-  const t = useTranslations("pages.account.sessions");
-  const format = useFormatter();
-
+const LoginHistoryItem = ({
+  entry,
+}: Readonly<{
+  entry: CustomerAccountLoginHistoryItem
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.sessions")
+  const format = useFormatter()
   return (
     <div className="flex items-center gap-5 py-4">
       <div className="flex size-8 shrink-0 items-center justify-center">
@@ -230,16 +214,40 @@ function LoginHistoryItem({ entry }: Readonly<{ entry: CustomerAccountLoginHisto
       </div>
       <div className="text-right">
         <p className="text-[11px] text-muted-foreground tabular-nums">
-          {format.dateTime(entry.createdAt, { dateStyle: "medium", timeStyle: "short" })}
+          {format.dateTime(entry.createdAt, {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
         </p>
         <p
-          className={`mt-0.5 text-[10px] tracking-widest uppercase ${
-            entry.status === "blocked" ? "text-destructive" : "text-muted-foreground/50"
-          }`}
+          className={`mt-0.5 text-[10px] tracking-widest uppercase ${entry.status === "blocked" ? "text-destructive" : "text-muted-foreground/50"}`}
         >
           {t(`loginStatus.${entry.status}`)}
         </p>
       </div>
     </div>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/account/sessions")({
+  component: SessionsPage,
+  loader: ({ context }) =>
+    Promise.all([
+      context.queryClient.query({
+        ...sessionsQueryOptions(),
+        staleTime: "static",
+      }),
+      context.queryClient.query({
+        ...loginHistoryQueryOptions(),
+        staleTime: "static",
+      }),
+    ]),
+  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
+})
+const DEVICE_ICONS = {
+  desktop: Monitor,
+  mobile: Smartphone,
+  tablet: Tablet,
+  unknown: Monitor,
+}
+const ACTIVE_NOW_MINUTES = 5
+const MILLISECONDS_PER_MINUTE = 60_000

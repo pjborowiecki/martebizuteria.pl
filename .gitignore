@@ -10,16 +10,26 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-.env
-.env.local
-.env.production
-.dev.vars
+.env*
+!.env.example
+!.env.test
+.dev.vars*
 
 .tanstack
 .wrangler
+.output
+.bun-cache
+*.tsbuildinfo
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+src/types/worker-configuration.d.ts
 
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
 .DS_Store
 *.suo
@@ -31,6 +41,10 @@ dist-ssr
 opensrc/
 graphify-out/
 
-backups/
-
 NOTES.md
+
+# Skills are restored from skills-lock.json with bun run skills:sync.
+.agents/
+.claude/
+.codex/
+.cursor/

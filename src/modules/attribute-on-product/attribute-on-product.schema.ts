@@ -1,15 +1,15 @@
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import {
   ATTRIBUTE_ON_PRODUCT_COLUMN_LENGTH,
-  ATTRIBUTE_ON_PRODUCT_DEFAULT_RANK
-} from "~/src/modules/attribute-on-product/attribute-on-product.constants";
-import { productAttribute } from "~/src/modules/product-attribute/product-attribute.schema";
-import { productVariant } from "~/src/modules/product-variant/product-variant.schema";
-import { product } from "~/src/modules/product/product.schema";
+  ATTRIBUTE_ON_PRODUCT_DEFAULT_RANK,
+} from "~/src/modules/attribute-on-product/attribute-on-product.constants"
+import { productAttribute } from "~/src/modules/product-attribute/product-attribute.schema"
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
+import { product } from "~/src/modules/product/product.schema"
 
 export const attributeOnProduct = sqliteTable(
   "attribute_on_product",
@@ -26,28 +26,28 @@ export const attributeOnProduct = sqliteTable(
     rank: integer("rank").notNull().default(ATTRIBUTE_ON_PRODUCT_DEFAULT_RANK),
     value: text("value", { length: ATTRIBUTE_ON_PRODUCT_COLUMN_LENGTH.value }).notNull(),
     variantId: text("variant_id", { length: ATTRIBUTE_ON_PRODUCT_COLUMN_LENGTH.variantId }).references(() => productVariant.id, {
-      onDelete: "cascade"
+      onDelete: "cascade",
     }),
-    ...timestamps()
+    ...timestamps(),
   },
   (table) => [
     index("attribute_on_product_productId_idx").on(table.productId),
     index("attribute_on_product_variantId_idx").on(table.variantId),
-    uniqueIndex("attribute_on_product_scope_attribute_uidx").on(table.productId, table.attributeId, table.variantId)
-  ]
-);
+    uniqueIndex("attribute_on_product_scope_attribute_uidx").on(table.productId, table.attributeId, table.variantId),
+  ],
+)
 
 export const attributeOnProductRelations = relations(attributeOnProduct, ({ one }) => ({
   product: one(product, {
     fields: [attributeOnProduct.productId],
-    references: [product.id]
+    references: [product.id],
   }),
   productAttribute: one(productAttribute, {
     fields: [attributeOnProduct.attributeId],
-    references: [productAttribute.id]
+    references: [productAttribute.id],
   }),
   variant: one(productVariant, {
     fields: [attributeOnProduct.variantId],
-    references: [productVariant.id]
-  })
-}));
+    references: [productVariant.id],
+  }),
+}))

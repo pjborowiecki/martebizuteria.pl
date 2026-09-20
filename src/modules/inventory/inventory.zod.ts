@@ -1,14 +1,14 @@
-import { createSchemaFactory } from "drizzle-zod";
-import { z } from "zod/v4";
+import { createSchemaFactory } from "drizzle-zod"
+import { z } from "zod/v4"
 
-import { inventory } from "~/src/modules/inventory/inventory.schema";
+import { inventory } from "~/src/modules/inventory/inventory.schema"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: z
-});
+  zodInstance: z,
+})
 
 export const inventoryZodSchemas = {
   insert: createInsertSchema(inventory),
   select: createSelectSchema(inventory),
-  update: createUpdateSchema(inventory)
-};
+  update: createUpdateSchema(inventory),
+}

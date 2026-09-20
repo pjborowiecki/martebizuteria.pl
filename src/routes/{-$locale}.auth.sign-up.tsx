@@ -1,74 +1,33 @@
-import { type JSX, type ReactNode } from "react";
+import { type JSX, type ReactNode } from "react"
 
-import { createFileRoute } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { createFileRoute } from "@tanstack/react-router"
+import { useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
-import type { Locale } from "~/src/constants/types";
+import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
-import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
+import { APP_NAME } from "~/src/presentation/branding/app"
 
-import { isValidLocale } from "~/src/lib/utils";
+import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
+import { AuthDivider } from "~/src/presentation/components/custom/pages/auth/auth-divider"
+import { AuthHeader } from "~/src/presentation/components/custom/pages/auth/auth-header"
+import { SignUpWithPasswordForm } from "~/src/presentation/components/custom/pages/auth/sign-up-with-password-form"
+import { SocialProviders } from "~/src/presentation/components/custom/pages/auth/social-providers"
 
-import { LocalizedLink } from "~/src/components/custom/localized-link";
-import { AuthDivider } from "~/src/components/custom/pages/auth/auth-divider";
-import { AuthHeader } from "~/src/components/custom/pages/auth/auth-header";
-import { SignUpWithPasswordForm } from "~/src/components/custom/pages/auth/sign-up-with-password-form";
-import { SocialProviders } from "~/src/components/custom/pages/auth/social-providers";
+import { ROUTES } from "~/src/routes"
+const renderTermsChunk = (chunks: ReactNode): JSX.Element => (
+  <LocalizedLink to={ROUTES.TERMS_OF_SERVICE} className={LEGAL_LINK_CLASS}>
+    {chunks}
+  </LocalizedLink>
+)
 
-interface SignUpPageMeta {
-  readonly description: string;
-  readonly title: string;
-}
+const renderPrivacyChunk = (chunks: ReactNode): JSX.Element => (
+  <LocalizedLink to={ROUTES.PRIVACY_POLICY} className={LEGAL_LINK_CLASS}>
+    {chunks}
+  </LocalizedLink>
+)
 
-const LEGAL_LINK_CLASS = "text-foreground underline underline-offset-4 transition-colors hover:text-foreground/60";
-
-function renderTermsChunk(chunks: ReactNode): JSX.Element {
-  return (
-    <LocalizedLink to={CONSTANTS.ROUTES.TERMS_OF_SERVICE} className={LEGAL_LINK_CLASS}>
-      {chunks}
-    </LocalizedLink>
-  );
-}
-
-function renderPrivacyChunk(chunks: ReactNode): JSX.Element {
-  return (
-    <LocalizedLink to={CONSTANTS.ROUTES.PRIVACY_POLICY} className={LEGAL_LINK_CLASS}>
-      {chunks}
-    </LocalizedLink>
-  );
-}
-
-export const Route = createFileRoute("/{-$locale}/auth/sign-up")({
-  component: SignUpPage,
-  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<SignUpPageMeta> }>) => ({
-    meta: [
-      { title: loaderData?.title ?? CONSTANTS.APP_NAME },
-      { content: loaderData?.description ?? "", name: "description" },
-      { content: loaderData?.title ?? CONSTANTS.APP_NAME, property: "og:title" },
-      { content: loaderData?.description ?? "", property: "og:description" }
-    ]
-  }),
-  loader: ({ context, params }) => {
-    const { locale: rawLocale } = params;
-    let locale: Locale = CONSTANTS.DEFAULT_LOCALE;
-
-    if (typeof rawLocale === "string" && isValidLocale(rawLocale)) {
-      locale = rawLocale;
-    }
-
-    const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
-
-    return {
-      description: messages?.pages.auth["sign-up"].meta.description ?? "",
-      title: messages?.pages.auth["sign-up"].meta.title ?? CONSTANTS.APP_NAME
-    } satisfies SignUpPageMeta;
-  }
-});
-
-function SignUpPage(): JSX.Element {
-  const t = useTranslations("pages.auth.sign-up");
-
+const SignUpPage = (): JSX.Element => {
+  const t = useTranslations("pages.auth.sign-up")
   return (
     <>
       <AuthHeader title={t("title")} subtitle={t("subtitle")} />
@@ -82,17 +41,59 @@ function SignUpPage(): JSX.Element {
           <p>
             {t.rich("terms", {
               privacy: renderPrivacyChunk,
-              terms: renderTermsChunk
+              terms: renderTermsChunk,
             })}
           </p>
           <p>
             {t("hasAccount")}{" "}
-            <LocalizedLink to={CONSTANTS.ROUTES.AUTH_SIGN_IN} className={LEGAL_LINK_CLASS}>
+            <LocalizedLink to={ROUTES.AUTH_SIGN_IN} className={LEGAL_LINK_CLASS}>
               {t("signInInstead")}
             </LocalizedLink>
           </p>
         </div>
       </div>
     </>
-  );
+  )
 }
+interface SignUpPageMeta {
+  readonly description: string
+  readonly title: string
+}
+const LEGAL_LINK_CLASS = "text-foreground underline underline-offset-4 transition-colors hover:text-foreground/60"
+export const Route = createFileRoute("/{-$locale}/auth/sign-up")({
+  component: SignUpPage,
+  head: ({
+    loaderData,
+  }: Readonly<{
+    loaderData?: Readonly<SignUpPageMeta> | undefined
+  }>) => ({
+    meta: [
+      {
+        title: loaderData?.title ?? APP_NAME,
+      },
+      {
+        content: loaderData?.description ?? "",
+        name: "description",
+      },
+      {
+        content: loaderData?.title ?? APP_NAME,
+        property: "og:title",
+      },
+      {
+        content: loaderData?.description ?? "",
+        property: "og:description",
+      },
+    ],
+  }),
+  loader: async ({ context }) => {
+    const { locale } = context
+    const messages = await context.queryClient.query(messagesQueryOptions(locale, "pages.auth.sign-up"))
+    return {
+      description: messages.meta.description,
+      title: messages.meta.title,
+    } satisfies SignUpPageMeta
+  },
+  staticData: {
+    namespaces: ["pages.auth.sign-up"],
+  },
+})

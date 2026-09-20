@@ -1,12 +1,12 @@
 export interface ProductRecord {
-  readonly id: string;
-  readonly name: string;
-  readonly category: string;
-  readonly collection: string;
-  readonly price: string;
-  readonly stock: number;
-  readonly status: "active" | "low" | "draft";
-  readonly image: string;
+  readonly id: string
+  readonly name: string
+  readonly category: string
+  readonly collection: string
+  readonly price: string
+  readonly stock: number
+  readonly status: "active" | "low" | "draft"
+  readonly image: string
 }
 
 export const PRODUCTS: readonly ProductRecord[] = [
@@ -18,7 +18,7 @@ export const PRODUCTS: readonly ProductRecord[] = [
     name: "Aura Hoop I",
     price: "$340",
     status: "active",
-    stock: 24
+    stock: 24,
   },
   {
     category: "Earrings",
@@ -28,7 +28,7 @@ export const PRODUCTS: readonly ProductRecord[] = [
     name: "Lune Drop",
     price: "$420",
     status: "active",
-    stock: 18
+    stock: 18,
   },
   {
     category: "Bracelets",
@@ -38,7 +38,7 @@ export const PRODUCTS: readonly ProductRecord[] = [
     name: "Arc Cuff",
     price: "$520",
     status: "low",
-    stock: 7
+    stock: 7,
   },
   {
     category: "Rings",
@@ -48,7 +48,7 @@ export const PRODUCTS: readonly ProductRecord[] = [
     name: "Forma II Ring",
     price: "$480",
     status: "active",
-    stock: 31
+    stock: 31,
   },
   {
     category: "Necklaces",
@@ -58,7 +58,7 @@ export const PRODUCTS: readonly ProductRecord[] = [
     name: "Seda Chain",
     price: "$680",
     status: "active",
-    stock: 12
+    stock: 12,
   },
   {
     category: "Necklaces",
@@ -68,7 +68,7 @@ export const PRODUCTS: readonly ProductRecord[] = [
     name: "Vela Pendant",
     price: "$890",
     status: "draft",
-    stock: 0
+    stock: 0,
   },
   {
     category: "Rings",
@@ -78,7 +78,7 @@ export const PRODUCTS: readonly ProductRecord[] = [
     name: "Orion Band",
     price: "$360",
     status: "active",
-    stock: 15
+    stock: 15,
   },
   {
     category: "Earrings",
@@ -88,20 +88,20 @@ export const PRODUCTS: readonly ProductRecord[] = [
     name: "Eclipse Ear Cuff",
     price: "$280",
     status: "low",
-    stock: 4
-  }
-];
+    stock: 4,
+  },
+]
 
 export interface SparkPoint {
-  readonly v: number;
+  readonly v: number
 }
 
 export interface ProductStatRecord {
-  readonly key: string;
-  readonly trend: string;
-  readonly up: boolean;
-  readonly color: string;
-  readonly spark: readonly SparkPoint[];
+  readonly key: string
+  readonly trend: string
+  readonly up: boolean
+  readonly color: string
+  readonly spark: readonly SparkPoint[]
 }
 
 export const PRODUCT_STATS: readonly ProductStatRecord[] = [
@@ -110,49 +110,49 @@ export const PRODUCT_STATS: readonly ProductStatRecord[] = [
     key: "totalProducts",
     spark: [{ v: 210 }, { v: 218 }, { v: 225 }, { v: 222 }, { v: 230 }, { v: 238 }, { v: 241 }, { v: 248 }],
     trend: "+6.2%",
-    up: true
+    up: true,
   },
   {
     color: "hsl(142 71% 45%)",
     key: "activeProducts",
     spark: [{ v: 186 }, { v: 192 }, { v: 198 }, { v: 195 }, { v: 202 }, { v: 208 }, { v: 212 }, { v: 216 }],
     trend: "+8.0%",
-    up: true
+    up: true,
   },
   {
     color: "hsl(0 84% 60%)",
     key: "lowStock",
     spark: [{ v: 8 }, { v: 9 }, { v: 7 }, { v: 10 }, { v: 11 }, { v: 12 }, { v: 13 }, { v: 14 }],
     trend: "+16.7%",
-    up: false
+    up: false,
   },
   {
     color: "hsl(var(--muted-foreground))",
     key: "draftProducts",
     spark: [{ v: 24 }, { v: 22 }, { v: 21 }, { v: 20 }, { v: 22 }, { v: 19 }, { v: 18 }, { v: 18 }],
     trend: "-10.0%",
-    up: true
-  }
-];
+    up: true,
+  },
+]
 
 export interface StatusInfo {
-  readonly variant: "default" | "secondary" | "outline" | "destructive";
-  readonly label: string;
+  readonly variant: "default" | "secondary" | "outline" | "destructive"
+  readonly label: string
 }
 
 export const STATUS_MAP: Record<string, StatusInfo> = {
   active: { label: "Active", variant: "default" },
   draft: { label: "Draft", variant: "secondary" },
-  low: { label: "Low Stock", variant: "outline" }
-};
+  low: { label: "Low Stock", variant: "outline" },
+}
 
-export const CATEGORIES: readonly string[] = ["Earrings", "Necklaces", "Rings", "Bracelets", "Brooches"];
-export const COLLECTIONS: readonly string[] = ["Nova", "Celestial", "Iconic", "Bridal", "Heritage"];
-export const MATERIALS: readonly string[] = ["18K Gold", "Sterling Silver", "Platinum", "Rose Gold", "White Gold"];
+export const CATEGORIES: readonly string[] = ["Earrings", "Necklaces", "Rings", "Bracelets", "Brooches"]
+export const COLLECTIONS: readonly string[] = ["Nova", "Celestial", "Iconic", "Bridal", "Heritage"]
+export const MATERIALS: readonly string[] = ["18K Gold", "Sterling Silver", "Platinum", "Rose Gold", "White Gold"]
 
 export interface ProductVariant {
-  readonly id: number;
-  readonly name: string;
-  readonly price: string;
-  readonly stock: string;
+  readonly id: number
+  readonly name: string
+  readonly price: string
+  readonly stock: string
 }

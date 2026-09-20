@@ -1,18 +1,18 @@
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema";
-import { inventory } from "~/src/modules/inventory/inventory.schema";
-import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema";
-import { productImage } from "~/src/modules/product-image/product-image.schema";
+import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema"
+import { inventory } from "~/src/modules/inventory/inventory.schema"
+import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema"
+import { productImage } from "~/src/modules/product-image/product-image.schema"
 import {
   PRODUCT_VARIANT_COLUMN_LENGTH,
   PRODUCT_VARIANT_DEFAULT_MANAGE_INVENTORY,
-  PRODUCT_VARIANT_DEFAULT_PRICE_MINOR
-} from "~/src/modules/product-variant/product-variant.constants";
-import { product } from "~/src/modules/product/product.schema";
+  PRODUCT_VARIANT_DEFAULT_PRICE_MINOR,
+} from "~/src/modules/product-variant/product-variant.constants"
+import { product } from "~/src/modules/product/product.schema"
 
 export const productVariant = sqliteTable(
   "product_variant",
@@ -28,21 +28,21 @@ export const productVariant = sqliteTable(
       .references(() => product.id, { onDelete: "cascade" }),
     sku: text("sku", { length: PRODUCT_VARIANT_COLUMN_LENGTH.sku }).unique(),
     title: text("title", { length: PRODUCT_VARIANT_COLUMN_LENGTH.title }).notNull(),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("product_variant_productId_idx").on(table.productId), index("product_variant_sku_idx").on(table.sku)]
-);
+  (table) => [index("product_variant_productId_idx").on(table.productId), index("product_variant_sku_idx").on(table.sku)],
+)
 
 export const productVariantRelations = relations(productVariant, ({ one, many }) => ({
   attributes: many(attributeOnProduct),
   images: many(productImage),
   inventory: one(inventory, {
     fields: [productVariant.id],
-    references: [inventory.variantId]
+    references: [inventory.variantId],
   }),
   optionOnVariants: many(optionOnVariant),
   product: one(product, {
     fields: [productVariant.productId],
-    references: [product.id]
-  })
-}));
+    references: [product.id],
+  }),
+}))

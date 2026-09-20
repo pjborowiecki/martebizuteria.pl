@@ -1,68 +1,24 @@
-import type { JSX } from "react";
+import { type JSX } from "react"
 
-import { createFileRoute, notFound } from "@tanstack/react-router";
-import { useTranslations } from "use-intl";
+import { createFileRoute, notFound } from "@tanstack/react-router"
+import { useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
-import type { Locale } from "~/src/constants/types";
+import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
-import { type Messages, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
+import { type BlogPostSlug, isBlogPostSlug } from "~/src/data/blog-posts"
 
-import { isValidLocale } from "~/src/lib/utils";
+import { APP_NAME } from "~/src/presentation/branding/app"
 
-import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
-import { type BlogPostSlug, isBlogPostSlug } from "~/src/data/blog-posts";
-
-interface BlogPostPageMeta {
-  readonly description: string;
-  readonly title: string;
-}
-
-export const Route = createFileRoute("/{-$locale}/_storefront/blog/$slug")({
-  component: BlogPostPage,
-  head: ({ loaderData }: Readonly<{ loaderData?: Readonly<BlogPostPageMeta> }>) => ({
-    meta: [
-      { title: loaderData?.title ?? CONSTANTS.APP_NAME },
-      { content: loaderData?.description ?? "", name: "description" },
-      { content: loaderData?.title ?? CONSTANTS.APP_NAME, property: "og:title" },
-      { content: loaderData?.description ?? "", property: "og:description" }
-    ]
-  }),
-  loader: ({ context, params }) => {
-    const { slug: rawSlug, locale: rawLocale } = params;
-
-    if (!isBlogPostSlug(rawSlug)) {
-      notFound({ throw: true });
-      return { description: "", title: CONSTANTS.APP_NAME } satisfies BlogPostPageMeta;
-    }
-
-    const slug: BlogPostSlug = rawSlug;
-    let locale: Locale = CONSTANTS.DEFAULT_LOCALE;
-
-    if (typeof rawLocale === "string" && isValidLocale(rawLocale)) {
-      locale = rawLocale;
-    }
-
-    const messages = context.queryClient.getQueryData<Messages>(messagesQueryOptions(locale).queryKey);
-    const post = messages?.pages.blog.posts[slug];
-
-    return {
-      description: post?.description ?? "",
-      title: post?.title ?? CONSTANTS.APP_NAME
-    } satisfies BlogPostPageMeta;
-  }
-});
-
-function BlogPostPage(): JSX.Element {
-  const { slug } = Route.useParams();
-  const t = useTranslations("pages.blog.post");
-  const tPosts = useTranslations("pages.blog.posts");
-
+import { ROUTES } from "~/src/routes"
+const BlogPostPage = (): JSX.Element => {
+  const { slug } = Route.useParams()
+  const t = useTranslations("pages.blog.post")
+  const tPosts = useTranslations("pages.blog.posts")
   if (!isBlogPostSlug(slug)) {
-    return <main />;
+    return <main />
   }
-
   return (
     <main className="container mx-auto max-w-3xl px-4 py-16 md:py-24">
       <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">M&apos;ARTE</p>
@@ -73,16 +29,68 @@ function BlogPostPage(): JSX.Element {
       </p>
 
       <div className="mt-12 flex flex-wrap items-center gap-6 text-sm">
-        <LocalizedLink className="underline-offset-4 hover:underline" to={CONSTANTS.ROUTES.BLOG}>
+        <LocalizedLink className="underline-offset-4 hover:underline" to={ROUTES.BLOG}>
           {t("backToGuide")}
         </LocalizedLink>
-        <LocalizedLink
-          className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          to={CONSTANTS.ROUTES.HOME}
-        >
+        <LocalizedLink className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline" to={ROUTES.HOME}>
           {t("goHome")}
         </LocalizedLink>
       </div>
     </main>
-  );
+  )
 }
+interface BlogPostPageMeta {
+  readonly description: string
+  readonly title: string
+}
+export const Route = createFileRoute("/{-$locale}/_storefront/blog/$slug")({
+  component: BlogPostPage,
+  head: ({
+    loaderData,
+  }: Readonly<{
+    loaderData?: Readonly<BlogPostPageMeta> | undefined
+  }>) => ({
+    meta: [
+      {
+        title: loaderData?.title ?? APP_NAME,
+      },
+      {
+        content: loaderData?.description ?? "",
+        name: "description",
+      },
+      {
+        content: loaderData?.title ?? APP_NAME,
+        property: "og:title",
+      },
+      {
+        content: loaderData?.description ?? "",
+        property: "og:description",
+      },
+    ],
+  }),
+  loader: async ({ context, params }) => {
+    const { slug: rawSlug } = params
+    if (!isBlogPostSlug(rawSlug)) {
+      notFound({
+        throw: true,
+      })
+      return {
+        description: "",
+        title: APP_NAME,
+      } satisfies BlogPostPageMeta
+    }
+    const slug: BlogPostSlug = rawSlug
+    const { locale } = context
+    const messages = await context.queryClient.query(messagesQueryOptions(locale, "pages.blog"))
+    // Namespaces are typed from the English files, so another locale may not carry every post yet.
+    const posts: Partial<typeof messages.posts> = messages.posts
+    const post = posts[slug]
+    return {
+      description: post?.description ?? "",
+      title: post?.title ?? APP_NAME,
+    } satisfies BlogPostPageMeta
+  },
+  staticData: {
+    namespaces: ["pages.blog"],
+  },
+})

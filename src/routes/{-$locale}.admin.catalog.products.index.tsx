@@ -1,43 +1,55 @@
-import { type JSX } from "react";
+import { type JSX } from "react"
 
-import type { QueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { type QueryClient } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
 
-import { ProductsTableContent } from "~/src/components/custom/pages/admin/catalog/products/components/products-table";
+import { adminProductAttributesQueryOptions } from "~/src/modules/product-attribute/use-cases/get-admin-product-attributes"
+import { adminCategoriesQueryOptions } from "~/src/modules/product-category/use-cases/get-admin-categories"
+import { adminCollectionsQueryOptions } from "~/src/modules/product-collection/use-cases/get-admin-collections"
+import { PRODUCT_QUERY_STALE_MS } from "~/src/modules/product/product.constants"
+import { adminProductsQueryOptions } from "~/src/modules/product/use-cases/get-admin-products"
+import { productStatsQueryOptions } from "~/src/modules/product/use-cases/get-product-stats"
+
+import { ProductsTableContent } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-table"
 import {
   ProductsSheetProvider,
-  useProductsSheetState
-} from "~/src/components/custom/pages/admin/catalog/products/hooks/use-products-sheet";
-
-import { productAttributeQueryOptions } from "~/src/modules/product-attribute/product-attribute.queries";
-import { categoryQueryOptions } from "~/src/modules/product-category/product-category.queries";
-import { collectionQueryOptions } from "~/src/modules/product-collection/product-collection.queries";
-import { PRODUCT_QUERY_STALE_MS } from "~/src/modules/product/product.constants";
-import { productQueryOptions } from "~/src/modules/product/product.queries";
-
-async function prefetchProductsQueries(context: { queryClient: QueryClient }): Promise<void> {
+  useProductsSheetState,
+} from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-sheet"
+const prefetchProductsQueries = async (context: { queryClient: QueryClient }): Promise<void> => {
   await Promise.all([
-    context.queryClient.ensureQueryData(productQueryOptions.adminProductsQueryOptions()),
-    context.queryClient.ensureQueryData(productQueryOptions.productStatsQueryOptions()),
-    context.queryClient.ensureQueryData(categoryQueryOptions.adminCategoriesQueryOptions()),
-    context.queryClient.ensureQueryData(collectionQueryOptions.adminCollectionsQueryOptions()),
-    context.queryClient.ensureQueryData(productAttributeQueryOptions.adminProductAttributesQueryOptions())
-  ]);
+    context.queryClient.query({
+      ...adminProductsQueryOptions(),
+      staleTime: "static",
+    }),
+    context.queryClient.query({
+      ...productStatsQueryOptions(),
+      staleTime: "static",
+    }),
+    context.queryClient.query({
+      ...adminCategoriesQueryOptions(),
+      staleTime: "static",
+    }),
+    context.queryClient.query({
+      ...adminCollectionsQueryOptions(),
+      staleTime: "static",
+    }),
+    context.queryClient.query({
+      ...adminProductAttributesQueryOptions(),
+      staleTime: "static",
+    }),
+  ])
 }
-
-export const Route = createFileRoute("/{-$locale}/admin/catalog/products/")({
-  component: ProductsIndexRoute,
-  loader: ({ context }) => prefetchProductsQueries(context),
-  shouldReload: false,
-  staleTime: PRODUCT_QUERY_STALE_MS
-});
-
-function ProductsIndexRoute(): JSX.Element {
-  const sheetState = useProductsSheetState();
-
+const ProductsIndexRoute = (): JSX.Element => {
+  const sheetState = useProductsSheetState()
   return (
     <ProductsSheetProvider value={sheetState}>
       <ProductsTableContent />
     </ProductsSheetProvider>
-  );
+  )
 }
+export const Route = createFileRoute("/{-$locale}/admin/catalog/products/")({
+  component: ProductsIndexRoute,
+  loader: ({ context }) => prefetchProductsQueries(context),
+  shouldReload: false,
+  staleTime: PRODUCT_QUERY_STALE_MS,
+})

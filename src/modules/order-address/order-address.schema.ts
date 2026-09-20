@@ -1,9 +1,9 @@
-import { relations } from "drizzle-orm";
-import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { order } from "~/src/modules/order/order.schema";
+import { order } from "~/src/modules/order/order.schema"
 
 export const orderAddress = sqliteTable(
   "order_address",
@@ -24,14 +24,14 @@ export const orderAddress = sqliteTable(
     postalCode: text("postal_code", { length: 32 }),
     province: text("province", { length: 256 }),
     type: text("type", { enum: ["shipping", "billing"] }).notNull(),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("order_address_orderId_idx").on(table.orderId), index("order_address_type_idx").on(table.type)]
-);
+  (table) => [index("order_address_orderId_idx").on(table.orderId), index("order_address_type_idx").on(table.type)],
+)
 
 export const orderAddressRelations = relations(orderAddress, ({ one }) => ({
   order: one(order, {
     fields: [orderAddress.orderId],
-    references: [order.id]
-  })
-}));
+    references: [order.id],
+  }),
+}))

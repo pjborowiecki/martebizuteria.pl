@@ -1,0 +1,2 @@
+# Let Vite and Wrangler choose the requested mode. Drizzle scripts opt in with --env-file.
+env = false

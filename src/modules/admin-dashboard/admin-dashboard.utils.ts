@@ -1,248 +1,209 @@
-import { DEFAULT_LOCALE } from "~/src/constants/_constants/locales";
-
-import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/lib/_utils/iso-date";
+import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
 
 import {
   ADMIN_DASHBOARD_CHART_DAYS_7,
   ADMIN_DASHBOARD_CHART_MONTHS_1Y,
   ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS,
   ADMIN_DASHBOARD_MS_PER_DAY,
-  ADMIN_DASHBOARD_TREND_PERCENT_SCALE
-} from "~/src/modules/admin-dashboard/admin-dashboard.constants";
-import type {
-  AdminDashboardChartPoint,
-  AdminDashboardKpiStat,
-  AdminDashboardWeeklyOrderPoint
-} from "~/src/modules/admin-dashboard/admin-dashboard.types";
+  ADMIN_DASHBOARD_TREND_PERCENT_SCALE,
+} from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import {
+  type AdminDashboardChartPoint,
+  type AdminDashboardKpiStat,
+  type AdminDashboardWeeklyOrderPoint,
+} from "~/src/modules/admin-dashboard/admin-dashboard.types"
 
-const ZERO_COUNT = 0;
-const SINGLE_PRIOR_VALUE = 100;
-const DAY_OFFSET = 1;
-
-export interface AdminDashboardComparisonPeriod {
-  readonly currentStart: Date;
-  readonly previousEnd: Date;
-  readonly previousStart: Date;
-}
-
-export function resolveAdminDashboardComparisonPeriod(
+import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/lib/iso-date"
+export const resolveAdminDashboardComparisonPeriod = (
   referenceDate: Date = new Date(),
-  periodDays: number = ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS
-): AdminDashboardComparisonPeriod {
-  const currentStart = new Date(referenceDate.getTime() - periodDays * ADMIN_DASHBOARD_MS_PER_DAY);
-  const comparisonPeriodMultiplier = 2;
-  const previousStart = new Date(referenceDate.getTime() - periodDays * comparisonPeriodMultiplier * ADMIN_DASHBOARD_MS_PER_DAY);
-
+  periodDays: number = ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS,
+): AdminDashboardComparisonPeriod => {
+  const currentStart = new Date(referenceDate.getTime() - periodDays * ADMIN_DASHBOARD_MS_PER_DAY)
+  const comparisonPeriodMultiplier = 2
+  const previousStart = new Date(referenceDate.getTime() - periodDays * comparisonPeriodMultiplier * ADMIN_DASHBOARD_MS_PER_DAY)
   return {
     currentStart,
     previousEnd: currentStart,
-    previousStart
-  };
-}
-
-export function resolveAdminDashboardChartStart(referenceDate: Date, days: number): Date {
-  return new Date(referenceDate.getTime() - (days - DAY_OFFSET) * ADMIN_DASHBOARD_MS_PER_DAY);
-}
-
-export function resolveAdminDashboardMonthlyChartStart(
-  referenceDate: Date = new Date(),
-  months: number = ADMIN_DASHBOARD_CHART_MONTHS_1Y
-): Date {
-  return new Date(referenceDate.getFullYear(), referenceDate.getMonth() - (months - MONTH_OFFSET), DAY_OFFSET);
-}
-
-const START_OF_YEAR_MONTH_INDEX = 0;
-const START_OF_YEAR_DAY = 1;
-
-export function resolveAdminDashboardYearStart(referenceDate: Date = new Date()): Date {
-  return new Date(referenceDate.getFullYear(), START_OF_YEAR_MONTH_INDEX, START_OF_YEAR_DAY);
-}
-
-export function computeAdminDashboardTrendPercent(current: number, previous: number): number {
-  if (previous <= ZERO_COUNT) {
-    return current > ZERO_COUNT ? SINGLE_PRIOR_VALUE : ZERO_COUNT;
+    previousStart,
   }
-
-  return Math.round(((current - previous) / previous) * ADMIN_DASHBOARD_TREND_PERCENT_SCALE);
 }
+export const resolveAdminDashboardChartStart = (referenceDate: Date, days: number): Date =>
+  new Date(referenceDate.getTime() - (days - 1) * ADMIN_DASHBOARD_MS_PER_DAY)
 
-export function buildAdminDashboardKpiStat(current: number, previous: number): AdminDashboardKpiStat {
-  return {
-    current,
-    previous,
-    trendPercent: computeAdminDashboardTrendPercent(current, previous)
-  };
+export const resolveAdminDashboardMonthlyChartStart = (
+  referenceDate: Date = new Date(),
+  months: number = ADMIN_DASHBOARD_CHART_MONTHS_1Y,
+): Date => new Date(referenceDate.getFullYear(), referenceDate.getMonth() - (months - 1), 1)
+
+export const resolveAdminDashboardYearStart = (referenceDate: Date = new Date()): Date => new Date(referenceDate.getFullYear(), 0, 1)
+
+export const computeAdminDashboardTrendPercent = (current: number, previous: number): number => {
+  if (previous <= 0) {
+    return current > 0 ? SINGLE_PRIOR_VALUE : 0
+  }
+  return Math.round(((current - previous) / previous) * ADMIN_DASHBOARD_TREND_PERCENT_SCALE)
 }
-
-interface DailyAggregateRow {
-  readonly dateKey: string;
-  readonly orders: number;
-  readonly revenue: number;
+export const buildAdminDashboardKpiStat = (current: number, previous: number): AdminDashboardKpiStat => ({
+  current,
+  previous,
+  trendPercent: computeAdminDashboardTrendPercent(current, previous),
+})
+const formatChartDayLabel = (dateKey: string, locale: string): string => {
+  const [yearPart, monthPart, dayPart] = dateKey.split("-")
+  const year = Number(yearPart)
+  const month = Number(monthPart)
+  const day = Number(dayPart)
+  const date = new Date(year, month - 1, day)
+  return date.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+  })
 }
-
-interface MonthlyAggregateRow {
-  readonly monthKey: string;
-  readonly orders: number;
-  readonly revenue: number;
+const formatWeekdayLabel = (dateKey: string, locale: string): string => {
+  const [yearPart, monthPart, dayPart] = dateKey.split("-")
+  const year = Number(yearPart)
+  const month = Number(monthPart)
+  const day = Number(dayPart)
+  const date = new Date(year, month - 1, day)
+  return date.toLocaleDateString(locale, {
+    weekday: "short",
+  })
 }
-
-const MONTH_OFFSET = 1;
-const ISO_MONTH_PAD_WIDTH = 2;
-
-function formatChartDayLabel(dateKey: string, locale: string): string {
-  const [yearPart, monthPart, dayPart] = dateKey.split("-");
-  const year = Number(yearPart);
-  const month = Number(monthPart);
-  const day = Number(dayPart);
-  const date = new Date(year, month - DAY_OFFSET, day);
-
-  return date.toLocaleDateString(locale, { day: "numeric", month: "short" });
-}
-
-function formatWeekdayLabel(dateKey: string, locale: string): string {
-  const [yearPart, monthPart, dayPart] = dateKey.split("-");
-  const year = Number(yearPart);
-  const month = Number(monthPart);
-  const day = Number(dayPart);
-  const date = new Date(year, month - DAY_OFFSET, day);
-
-  return date.toLocaleDateString(locale, { weekday: "short" });
-}
-
-export function buildAdminDashboardDailyChartPoints({
+export const buildAdminDashboardDailyChartPoints = ({
   days,
   locale = DEFAULT_LOCALE,
   referenceDate = new Date(),
-  rows
+  rows,
 }: Readonly<{
-  days: number;
-  locale?: string;
-  referenceDate?: Date;
-  rows: readonly DailyAggregateRow[];
-}>): AdminDashboardChartPoint[] {
-  const rowByDateKey = new Map(rows.map((row) => [row.dateKey, row]));
-  const points: AdminDashboardChartPoint[] = [];
-
-  for (let dayIndex = days - DAY_OFFSET; dayIndex >= ZERO_COUNT; dayIndex -= DAY_OFFSET) {
-    const date = new Date(referenceDate.getTime() - dayIndex * ADMIN_DASHBOARD_MS_PER_DAY);
-    const dateKey = formatDateToIsoDateLocal(date);
-    const aggregate = rowByDateKey.get(dateKey);
-
+  days: number
+  locale?: string
+  referenceDate?: Date
+  rows: readonly DailyAggregateRow[]
+}>): AdminDashboardChartPoint[] => {
+  const rowByDateKey = new Map(rows.map((row) => [row.dateKey, row]))
+  const points: AdminDashboardChartPoint[] = []
+  for (let dayIndex = days - 1; dayIndex >= 0; dayIndex -= 1) {
+    const date = new Date(referenceDate.getTime() - dayIndex * ADMIN_DASHBOARD_MS_PER_DAY)
+    const dateKey = formatDateToIsoDateLocal(date)
+    const aggregate = rowByDateKey.get(dateKey)
     points.push({
       dateKey,
       label: formatChartDayLabel(dateKey, locale),
-      orders: aggregate?.orders ?? ZERO_COUNT,
-      revenue: aggregate?.revenue ?? ZERO_COUNT
-    });
+      orders: aggregate?.orders ?? 0,
+      revenue: aggregate?.revenue ?? 0,
+    })
   }
-
-  return points;
+  return points
 }
-
-function formatChartMonthLabel(monthKey: string, locale: string): string {
-  const [yearPart, monthPart] = monthKey.split("-");
-  const year = Number(yearPart);
-  const month = Number(monthPart);
-  const date = new Date(year, month - MONTH_OFFSET, DAY_OFFSET);
-
-  return date.toLocaleDateString(locale, { month: "short", year: "numeric" });
+const formatChartMonthLabel = (monthKey: string, locale: string): string => {
+  const [yearPart, monthPart] = monthKey.split("-")
+  const year = Number(yearPart)
+  const month = Number(monthPart)
+  const date = new Date(year, month - 1, 1)
+  return date.toLocaleDateString(locale, {
+    month: "short",
+    year: "numeric",
+  })
 }
-
-function resolveMonthKey(referenceDate: Date, monthsAgo: number): string {
-  const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - monthsAgo, DAY_OFFSET);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + MONTH_OFFSET).padStart(ISO_MONTH_PAD_WIDTH, "0");
-
-  return `${year}-${month}`;
+const resolveMonthKey = (referenceDate: Date, monthsAgo: number): string => {
+  const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - monthsAgo, 1)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(ISO_MONTH_PAD_WIDTH, "0")
+  return `${year}-${month}`
 }
-
-export function buildAdminDashboardMonthlyChartPoints({
+export const buildAdminDashboardMonthlyChartPoints = ({
   locale = DEFAULT_LOCALE,
   months = ADMIN_DASHBOARD_CHART_MONTHS_1Y,
   referenceDate = new Date(),
-  rows
+  rows,
 }: Readonly<{
-  locale?: string;
-  months?: number;
-  referenceDate?: Date;
-  rows: readonly MonthlyAggregateRow[];
-}>): AdminDashboardChartPoint[] {
-  const rowByMonthKey = new Map(rows.map((row) => [row.monthKey, row]));
-  const points: AdminDashboardChartPoint[] = [];
-
-  for (let monthIndex = months - DAY_OFFSET; monthIndex >= ZERO_COUNT; monthIndex -= DAY_OFFSET) {
-    const monthKey = resolveMonthKey(referenceDate, monthIndex);
-    const aggregate = rowByMonthKey.get(monthKey);
-
+  locale?: string
+  months?: number
+  referenceDate?: Date
+  rows: readonly MonthlyAggregateRow[]
+}>): AdminDashboardChartPoint[] => {
+  const rowByMonthKey = new Map(rows.map((row) => [row.monthKey, row]))
+  const points: AdminDashboardChartPoint[] = []
+  for (let monthIndex = months - 1; monthIndex >= 0; monthIndex -= 1) {
+    const monthKey = resolveMonthKey(referenceDate, monthIndex)
+    const aggregate = rowByMonthKey.get(monthKey)
     points.push({
       dateKey: monthKey,
       label: formatChartMonthLabel(monthKey, locale),
-      orders: aggregate?.orders ?? ZERO_COUNT,
-      revenue: aggregate?.revenue ?? ZERO_COUNT
-    });
+      orders: aggregate?.orders ?? 0,
+      revenue: aggregate?.revenue ?? 0,
+    })
   }
-
-  return points;
+  return points
 }
-
-export function isAdminDashboardCustomChartRangeValid(startDate: string, endDate: string): boolean {
+export const isAdminDashboardCustomChartRangeValid = (startDate: string, endDate: string): boolean => {
   if (!isIsoDateString(startDate) || !isIsoDateString(endDate)) {
-    return false;
+    return false
   }
-
-  return parseIsoDateToStartMs(startDate) <= parseIsoDateToEndMs(endDate);
+  return parseIsoDateToStartMs(startDate) <= parseIsoDateToEndMs(endDate)
 }
-
-export function buildAdminDashboardDailyChartPointsForIsoDateRange({
+export const buildAdminDashboardDailyChartPointsForIsoDateRange = ({
   endDate,
   locale = DEFAULT_LOCALE,
   rows,
-  startDate
+  startDate,
 }: Readonly<{
-  endDate: string;
-  locale?: string;
-  rows: readonly DailyAggregateRow[];
-  startDate: string;
-}>): AdminDashboardChartPoint[] {
-  const rowByDateKey = new Map(rows.map((row) => [row.dateKey, row]));
-  const points: AdminDashboardChartPoint[] = [];
-  const startMs = parseIsoDateToStartMs(startDate);
-  const endMs = parseIsoDateToStartMs(endDate);
-
+  endDate: string
+  locale?: string
+  rows: readonly DailyAggregateRow[]
+  startDate: string
+}>): AdminDashboardChartPoint[] => {
+  const rowByDateKey = new Map(rows.map((row) => [row.dateKey, row]))
+  const points: AdminDashboardChartPoint[] = []
+  const startMs = parseIsoDateToStartMs(startDate)
+  const endMs = parseIsoDateToStartMs(endDate)
   for (let cursorMs = startMs; cursorMs <= endMs; cursorMs += ADMIN_DASHBOARD_MS_PER_DAY) {
-    const dateKey = formatDateToIsoDateLocal(new Date(cursorMs));
-    const aggregate = rowByDateKey.get(dateKey);
-
+    const dateKey = formatDateToIsoDateLocal(new Date(cursorMs))
+    const aggregate = rowByDateKey.get(dateKey)
     points.push({
       dateKey,
       label: formatChartDayLabel(dateKey, locale),
-      orders: aggregate?.orders ?? ZERO_COUNT,
-      revenue: aggregate?.revenue ?? ZERO_COUNT
-    });
+      orders: aggregate?.orders ?? 0,
+      revenue: aggregate?.revenue ?? 0,
+    })
   }
-
-  return points;
+  return points
 }
-
-export function buildAdminDashboardWeeklyOrderPoints({
+export const buildAdminDashboardWeeklyOrderPoints = ({
   locale = DEFAULT_LOCALE,
   referenceDate = new Date(),
-  rows
+  rows,
 }: Readonly<{
-  locale?: string;
-  referenceDate?: Date;
-  rows: readonly DailyAggregateRow[];
-}>): AdminDashboardWeeklyOrderPoint[] {
+  locale?: string
+  referenceDate?: Date
+  rows: readonly DailyAggregateRow[]
+}>): AdminDashboardWeeklyOrderPoint[] => {
   const dailyPoints = buildAdminDashboardDailyChartPoints({
     days: ADMIN_DASHBOARD_CHART_DAYS_7,
     locale,
     referenceDate,
-    rows
-  });
-
+    rows,
+  })
   return dailyPoints.map((point) => ({
     dateKey: point.dateKey,
     dayLabel: formatWeekdayLabel(point.dateKey, locale),
-    orders: point.orders
-  }));
+    orders: point.orders,
+  }))
 }
+const SINGLE_PRIOR_VALUE = 100
+export interface AdminDashboardComparisonPeriod {
+  readonly currentStart: Date
+  readonly previousEnd: Date
+  readonly previousStart: Date
+}
+interface DailyAggregateRow {
+  readonly dateKey: string
+  readonly orders: number
+  readonly revenue: number
+}
+interface MonthlyAggregateRow {
+  readonly monthKey: string
+  readonly orders: number
+  readonly revenue: number
+}
+const ISO_MONTH_PAD_WIDTH = 2

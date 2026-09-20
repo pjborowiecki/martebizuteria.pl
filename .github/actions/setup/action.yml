@@ -1,0 +1,32 @@
+name: Setup toolchain
+description: Install Bun, Vite+, dependencies, and generated Worker types.
+
+inputs:
+  test-environment:
+    description: Configure public dummy values for CI checks and builds.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: "1.4.0"
+    - uses: voidzero-dev/setup-vp@v1.20.0
+      with:
+        node-version: "24"
+        cache: true
+        run-install: false
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --ignore-scripts
+    - name: Configure test environment
+      if: inputs.test-environment == 'true'
+      shell: bash
+      run: |
+        cp .env.test .env.development
+        cp .env.test .env.preview
+    - name: Generate binding types
+      shell: bash
+      run: bun run typegen

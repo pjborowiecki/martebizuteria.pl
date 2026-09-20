@@ -1,27 +1,14 @@
-import { getRequestHeaders } from "@tanstack/react-start/server";
-
-import { auth } from "~/src/integrations/better-auth/auth._server";
-import { hasAdminAccess } from "~/src/integrations/better-auth/auth.permissions";
-
-export const AUTH_ERROR_CODES = {
-  UNAUTHORIZED: "UNAUTHORIZED"
-} as const;
-
-type AdminSessionUser = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>["user"];
-
-/**
- * Server-side admin guard for server functions. Reads the request session and
- * throws `UNAUTHORIZED` unless the caller is an authenticated admin. Keep this
- * the single source of truth so every mutation guards access the same way.
- */
-export async function assertAdmin(): Promise<AdminSessionUser> {
-  const headers = getRequestHeaders();
-  const session = await auth.api.getSession({ headers });
-  const user = session?.user;
-
-  if (!hasAdminAccess(user?.role) || user === undefined) {
-    throw new Error(AUTH_ERROR_CODES.UNAUTHORIZED);
+import { hasAdminAccess } from "~/src/integrations/better-auth/auth.permissions"
+import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+export const assertAdmin = async (): Promise<AdminSessionUser> => {
+  const session = await getRequestSession()
+  const user = session?.user
+  if (!hasAdminAccess(user?.role)) {
+    throw new Error(AUTH_ERROR_CODES.UNAUTHORIZED)
   }
-
-  return user;
+  return user
 }
+export const AUTH_ERROR_CODES = {
+  UNAUTHORIZED: "UNAUTHORIZED",
+} as const
+type AdminSessionUser = NonNullable<Awaited<ReturnType<typeof getRequestSession>>>["user"]

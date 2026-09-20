@@ -1,64 +1,55 @@
-import { type JSX, useMemo } from "react";
+import { type JSX, useMemo } from "react"
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, Heart, Package, Sparkles } from "lucide-react";
-import { useFormatter, useLocale, useTranslations } from "use-intl";
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+import { ArrowRight, Heart, Package, Sparkles } from "lucide-react"
+import { useFormatter, useLocale, useTranslations } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
+import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountActivityItem, type CustomerAccountOrderSummary } from "~/src/modules/customer-account/customer-account.types"
+import { formatCustomerAccountRelativeTime, formatCustomerOrderDisplayId } from "~/src/modules/customer-account/customer-account.utils"
+import { overviewQueryOptions } from "~/src/modules/customer-account/use-cases/get-customer-overview"
 
-import { centsToDisplayAmount } from "~/src/lib/utils";
+import { Route as AccountRoute } from "~/src/routes/{-$locale}.account"
 
-import { Separator } from "~/src/components/shadcn/separator";
+import { centsToDisplayAmount } from "~/src/lib/currency"
 
-import { Image } from "~/src/components/custom/image";
-import { LocalizedLink } from "~/src/components/custom/localized-link";
+import { Separator } from "~/src/presentation/components/shadcn/separator"
 
-import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants";
-import { customerAccountQueryOptions } from "~/src/modules/customer-account/customer-account.queries";
-import type { CustomerAccountActivityItem, CustomerAccountOrderSummary } from "~/src/modules/customer-account/customer-account.types";
-import { formatCustomerAccountRelativeTime, formatCustomerOrderDisplayId } from "~/src/modules/customer-account/customer-account.utils";
-import { Route as AccountRoute } from "~/src/routes/{-$locale}.account";
+import { Image } from "~/src/presentation/components/custom/image"
+import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
-export const Route = createFileRoute("/{-$locale}/account/overview")({
-  component: AccountOverviewPage,
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(customerAccountQueryOptions.overviewQueryOptions(params.locale)),
-  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS
-});
-
-const ACTIVITY_ICONS: Record<string, typeof Package> = {
-  cartItemAdded: Heart,
-  loginFailed: Sparkles,
-  loginSuccess: Sparkles,
-  logout: Sparkles,
-  orderDelivered: Package,
-  orderPlaced: Package,
-  orderShipped: Package
-};
-
-const ZERO_COUNT = 0;
-const FIRST_NAME_INDEX = 0;
-
-function StatsGrid({
+import { ROUTES } from "~/src/routes"
+const StatsGrid = ({
   memberSinceYear,
   totalOrders,
   totalSpentLabel,
-  wishlistCount
+  wishlistCount,
 }: Readonly<{
-  memberSinceYear: string;
-  totalOrders: number;
-  totalSpentLabel: string;
-  wishlistCount: number;
-}>): JSX.Element {
-  const t = useTranslations("pages.account.overview");
-
+  memberSinceYear: string
+  totalOrders: number
+  totalSpentLabel: string
+  wishlistCount: number
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.overview")
   const stats = [
-    { key: "totalSpent" as const, value: totalSpentLabel },
-    { key: "totalOrders" as const, value: String(totalOrders) },
-    { key: "wishlistItems" as const, value: String(wishlistCount) },
-    { key: "memberSince" as const, value: memberSinceYear }
-  ];
-
+    {
+      key: "totalSpent" as const,
+      value: totalSpentLabel,
+    },
+    {
+      key: "totalOrders" as const,
+      value: String(totalOrders),
+    },
+    {
+      key: "wishlistItems" as const,
+      value: String(wishlistCount),
+    },
+    {
+      key: "memberSince" as const,
+      value: memberSinceYear,
+    },
+  ]
   return (
     <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-4">
       {stats.map((stat) => (
@@ -68,23 +59,25 @@ function StatsGrid({
         </div>
       ))}
     </div>
-  );
+  )
 }
-
-function ActivityFeed({ activity }: Readonly<{ activity: readonly CustomerAccountActivityItem[] }>): JSX.Element {
-  const t = useTranslations("pages.account.overview");
-  const locale = useLocale();
-
+const ActivityFeed = ({
+  activity,
+}: Readonly<{
+  activity: readonly CustomerAccountActivityItem[]
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.overview")
+  const locale = useLocale()
   return (
     <section>
       <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("activity")}</h2>
       <Separator className="mt-3 mb-0" />
-      {activity.length === ZERO_COUNT ? (
+      {activity.length === 0 ? (
         <p className="py-6 text-[13px] text-muted-foreground">{t("noActivity")}</p>
       ) : (
         <div className="divide-y divide-border">
           {activity.map((item) => {
-            const Icon = ACTIVITY_ICONS[item.actionKey] ?? Package;
+            const Icon = ACTIVITY_ICONS[item.actionKey] ?? Package
             return (
               <div key={`${item.actionKey}-${item.createdAt.toISOString()}`} className="flex items-center gap-4 py-3.5">
                 <div className="flex size-8 shrink-0 items-center justify-center">
@@ -95,24 +88,26 @@ function ActivityFeed({ activity }: Readonly<{ activity: readonly CustomerAccoun
                   {formatCustomerAccountRelativeTime(item.createdAt, locale)}
                 </span>
               </div>
-            );
+            )
           })}
         </div>
       )}
     </section>
-  );
+  )
 }
-
-function RecentOrders({ orders }: Readonly<{ orders: readonly CustomerAccountOrderSummary[] }>): JSX.Element {
-  const t = useTranslations("pages.account.overview");
-  const format = useFormatter();
-
+const RecentOrders = ({
+  orders,
+}: Readonly<{
+  orders: readonly CustomerAccountOrderSummary[]
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.overview")
+  const format = useFormatter()
   return (
     <section>
       <div className="flex items-baseline justify-between">
         <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("recentOrders")}</h2>
         <LocalizedLink
-          to={CONSTANTS.ROUTES.ACCOUNT_ORDERS}
+          to={ROUTES.ACCOUNT_ORDERS}
           className="flex items-center gap-1.5 text-[11px] tracking-[0.15em] text-muted-foreground uppercase transition-colors hover:text-foreground"
         >
           {t("viewAllOrders")}
@@ -120,17 +115,16 @@ function RecentOrders({ orders }: Readonly<{ orders: readonly CustomerAccountOrd
         </LocalizedLink>
       </div>
       <Separator className="mt-3 mb-0" />
-      {orders.length === ZERO_COUNT ? (
+      {orders.length === 0 ? (
         <p className="py-6 text-[13px] text-muted-foreground">{t("noRecentOrders")}</p>
       ) : (
         <div className="divide-y divide-border">
           {orders.map((order) => {
-            const displayId = formatCustomerOrderDisplayId(order.id);
+            const displayId = formatCustomerOrderDisplayId(order.id)
             const totalLabel = format.number(centsToDisplayAmount(order.totalMinorUnits), {
               currency: order.currencyCode,
-              style: "currency"
-            });
-
+              style: "currency",
+            })
             return (
               <RecentOrderLink
                 key={order.id}
@@ -140,64 +134,74 @@ function RecentOrders({ orders }: Readonly<{ orders: readonly CustomerAccountOrd
                 orderId={order.id}
                 totalLabel={totalLabel}
               />
-            );
+            )
           })}
         </div>
       )}
     </section>
-  );
+  )
 }
-
-function RecentOrderLink({
+const RecentOrderLink = ({
   createdAt,
   displayId,
   filterStatus,
   orderId,
-  totalLabel
+  totalLabel,
 }: Readonly<{
-  createdAt: Date;
-  displayId: string;
-  filterStatus: CustomerAccountOrderSummary["filterStatus"];
-  orderId: string;
-  totalLabel: string;
-}>): JSX.Element {
-  const tOrders = useTranslations("pages.account.orders");
-  const format = useFormatter();
-  const orderParams = useMemo(() => ({ id: orderId }), [orderId]);
-
+  createdAt: Date
+  displayId: string
+  filterStatus: CustomerAccountOrderSummary["filterStatus"]
+  orderId: string
+  totalLabel: string
+}>): JSX.Element => {
+  const tOrders = useTranslations("pages.account.orders")
+  const format = useFormatter()
+  const orderParams = useMemo(
+    () => ({
+      id: orderId,
+    }),
+    [orderId],
+  )
   return (
     <LocalizedLink
-      to={CONSTANTS.ROUTES.ACCOUNT_ORDER}
+      to={ROUTES.ACCOUNT_ORDER}
       params={orderParams}
       className="flex items-center justify-between gap-4 py-4 transition-colors hover:text-muted-foreground"
     >
       <div>
         <p className="text-[13px] tracking-[0.02em]">{displayId}</p>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">{format.dateTime(createdAt, { dateStyle: "medium" })}</p>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">
+          {format.dateTime(createdAt, {
+            dateStyle: "medium",
+          })}
+        </p>
       </div>
       <div className="text-right">
         <p className="text-[13px] tabular-nums">{totalLabel}</p>
         <p className="mt-0.5 text-[11px] text-muted-foreground capitalize">{tOrders(`status.${filterStatus}`)}</p>
       </div>
     </LocalizedLink>
-  );
+  )
 }
-
-function RecommendationCard({
+const RecommendationCard = ({
   handle,
   image,
   name,
-  priceLabel
+  priceLabel,
 }: Readonly<{
-  handle: string;
-  image?: string;
-  name: string;
-  priceLabel?: string;
-}>): JSX.Element {
-  const productParams = useMemo(() => ({ handle }), [handle]);
-
+  handle: string
+  image?: string | undefined
+  name: string
+  priceLabel?: string | undefined
+}>): JSX.Element => {
+  const productParams = useMemo(
+    () => ({
+      handle,
+    }),
+    [handle],
+  )
   return (
-    <LocalizedLink to={CONSTANTS.ROUTES.PRODUCT} params={productParams} className="group block">
+    <LocalizedLink to={ROUTES.PRODUCT} params={productParams} className="group block">
       <div className="relative aspect-[3/4] overflow-hidden bg-muted">
         {image === undefined ? undefined : (
           <Image
@@ -214,22 +218,20 @@ function RecommendationCard({
         {priceLabel === undefined ? undefined : <p className="mt-0.5 text-[12px] text-muted-foreground tabular-nums">{priceLabel}</p>}
       </div>
     </LocalizedLink>
-  );
+  )
 }
-
-function Recommendations({
-  recommendations
+const Recommendations = ({
+  recommendations,
 }: Readonly<{
   recommendations: readonly {
-    handle: string;
-    image?: string;
-    name: string;
-    priceMinorUnits?: number;
-  }[];
-}>): JSX.Element {
-  const t = useTranslations("pages.account.overview");
-  const format = useFormatter();
-
+    handle: string
+    image?: string | undefined
+    name: string
+    priceMinorUnits?: number | undefined
+  }[]
+}>): JSX.Element => {
+  const t = useTranslations("pages.account.overview")
+  const format = useFormatter()
   return (
     <section>
       <div className="flex items-baseline justify-between">
@@ -238,7 +240,7 @@ function Recommendations({
           <p className="mt-1 text-[12px] text-muted-foreground/60">{t("recommendationsDesc")}</p>
         </div>
         <LocalizedLink
-          to={CONSTANTS.ROUTES.PRODUCTS}
+          to={ROUTES.PRODUCTS}
           className="flex items-center gap-1.5 text-[11px] tracking-[0.15em] text-muted-foreground uppercase transition-colors hover:text-foreground"
         >
           {t("viewProduct")}
@@ -246,7 +248,7 @@ function Recommendations({
         </LocalizedLink>
       </div>
       <Separator className="mt-3 mb-6" />
-      {recommendations.length === ZERO_COUNT ? (
+      {recommendations.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">{t("noRecommendations")}</p>
       ) : (
         <div className="grid gap-5 sm:grid-cols-3">
@@ -259,40 +261,49 @@ function Recommendations({
               priceLabel={
                 item.priceMinorUnits === undefined
                   ? undefined
-                  : format.number(centsToDisplayAmount(item.priceMinorUnits), { currency: "PLN", style: "currency" })
+                  : format.number(centsToDisplayAmount(item.priceMinorUnits), {
+                      currency: "PLN",
+                      style: "currency",
+                    })
               }
             />
           ))}
         </div>
       )}
     </section>
-  );
+  )
 }
-
-function AccountOverviewPage(): JSX.Element {
-  const t = useTranslations("pages.account.overview");
-  const locale = useLocale();
-  const format = useFormatter();
-  const { user } = AccountRoute.useRouteContext();
-  const { data: overviewData } = useSuspenseQuery(customerAccountQueryOptions.overviewQueryOptions(locale));
+const AccountOverviewPage = (): JSX.Element => {
+  const t = useTranslations("pages.account.overview")
+  const locale = useLocale()
+  const format = useFormatter()
+  const { user } = AccountRoute.useRouteContext()
+  const { data: overviewData } = useSuspenseQuery(overviewQueryOptions(locale))
   const overview = overviewData ?? {
     activity: [],
     recentOrders: [],
     recommendations: [],
-    stats: { memberSinceYear: String(new Date().getFullYear()), totalOrders: 0, totalSpentMinorUnits: 0, wishlistCount: 0 }
-  };
-
-  const firstName = user.name.split(" ")[FIRST_NAME_INDEX] ?? user.name;
+    stats: {
+      memberSinceYear: String(new Date().getFullYear()),
+      totalOrders: 0,
+      totalSpentMinorUnits: 0,
+      wishlistCount: 0,
+    },
+  }
+  const firstName = user.name.split(" ")[0] ?? user.name
   const totalSpentLabel = format.number(centsToDisplayAmount(overview.stats.totalSpentMinorUnits), {
     currency: "PLN",
-    style: "currency"
-  });
-
+    style: "currency",
+  })
   return (
     <div>
       <div className="mb-10 space-y-3">
         <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{t("greeting")}</p>
-        <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("title", { name: firstName })}</h1>
+        <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">
+          {t("title", {
+            name: firstName,
+          })}
+        </h1>
       </div>
 
       <StatsGrid
@@ -313,5 +324,23 @@ function AccountOverviewPage(): JSX.Element {
 
       <Recommendations recommendations={overview.recommendations} />
     </div>
-  );
+  )
+}
+export const Route = createFileRoute("/{-$locale}/account/overview")({
+  component: AccountOverviewPage,
+  loader: ({ context }) =>
+    context.queryClient.query({
+      ...overviewQueryOptions(context.locale),
+      staleTime: "static",
+    }),
+  staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
+})
+const ACTIVITY_ICONS: Record<string, typeof Package> = {
+  cartItemAdded: Heart,
+  loginFailed: Sparkles,
+  loginSuccess: Sparkles,
+  logout: Sparkles,
+  orderDelivered: Package,
+  orderPlaced: Package,
+  orderShipped: Package,
 }

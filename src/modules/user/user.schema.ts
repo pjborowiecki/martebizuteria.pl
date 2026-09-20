@@ -1,12 +1,11 @@
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { DEFAULT_ROLE, ROLES } from "~/src/constants/_constants/permissions";
+import { DEFAULT_ROLE, ROLES } from "~/src/integrations/better-auth/auth.constants"
+import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
-
-import { account } from "~/src/modules/account/account.schema";
-import { session } from "~/src/modules/session/session.schema";
+import { account } from "~/src/modules/account/account.schema"
+import { session } from "~/src/modules/session/session.schema"
 
 export const user = sqliteTable(
   "user",
@@ -28,11 +27,11 @@ export const user = sqliteTable(
     stripeCustomerId: text("stripe_customer_id"),
     timezone: text("timezone", { length: 64 }),
     twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).default(false),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("user_createdAt_idx").on(table.createdAt)]
-);
+  (table) => [index("user_createdAt_idx").on(table.createdAt)],
+)
 export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
-  sessions: many(session)
-}));
+  sessions: many(session),
+}))

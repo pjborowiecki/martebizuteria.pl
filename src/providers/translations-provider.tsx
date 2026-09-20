@@ -1,35 +1,43 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react"
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useRouterState } from "@tanstack/react-router";
-import { IntlProvider } from "use-intl";
+import { useSuspenseQueries } from "@tanstack/react-query"
+import { useMatches, useRouterState } from "@tanstack/react-router"
+import { type AbstractIntlMessages, IntlProvider } from "use-intl"
 
-import { CONSTANTS } from "~/src/constants";
-import type { Locale } from "~/src/constants/types";
-
-import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.queries";
-import { useTimeZone } from "~/src/integrations/use-intl/i18n.timezone";
-
-interface TranslationsProviderProps {
-  children: ReactNode;
-  locale?: Locale;
-}
-
-export function TranslationsProvider({ children, locale: propLocale }: Readonly<TranslationsProviderProps>) {
-  const routerState = useRouterState();
-
-  const pathLocale = CONSTANTS.LOCALES.find(
-    (loc) => routerState.location.pathname.startsWith(`/${loc}/`) || routerState.location.pathname === `/${loc}`
-  );
-
-  const locale = propLocale ?? pathLocale ?? CONSTANTS.DEFAULT_LOCALE;
-
-  const { data: messages } = useSuspenseQuery(messagesQueryOptions(locale));
-  const timeZone = useTimeZone();
-
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME } from "~/src/integrations/use-intl/i18n.config"
+import { type NamespaceEntry, buildMessageTree, getRouteNamespaces, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
+import { useTimeZone } from "~/src/integrations/use-intl/i18n.timezone"
+import { type Locale } from "~/src/integrations/use-intl/i18n.types"
+import { extractLocaleFromPath } from "~/src/integrations/use-intl/i18n.utils"
+export const TranslationsProvider = ({
+  children,
+  locale: propLocale,
+}: Readonly<{
+  children: ReactNode
+  locale?: Locale
+}>) => {
+  const locale = useRouterState({
+    select: (state) =>
+      propLocale ?? extractLocaleFromPath(new URL(state.location.publicHref, "http://localhost").pathname) ?? DEFAULT_LOCALE,
+  })
+  useEffect(() => {
+    document.cookie = `${LOCALE_COOKIE_NAME}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax${globalThis.location.protocol === "https:" ? "; Secure" : ""}`
+  }, [locale])
+  const namespaces = useMatches({
+    select: getRouteNamespaces,
+  })
+  const messages = useSuspenseQueries({
+    combine: (results) => buildMessageTree(results.map((result) => result.data)),
+    queries: namespaces.map((namespace) =>
+      Object.assign(messagesQueryOptions(locale, namespace), {
+        select: (data: AbstractIntlMessages): NamespaceEntry => [namespace, data],
+      }),
+    ),
+  })
+  const timeZone = useTimeZone()
   return (
     <IntlProvider locale={locale} messages={messages} timeZone={timeZone}>
       {children}
     </IntlProvider>
-  );
+  )
 }

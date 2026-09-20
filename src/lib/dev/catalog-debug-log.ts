@@ -1,12 +1,10 @@
-export function catalogDebugLog(label: string, data?: unknown): void {
+export const catalogDebugLog = (label: string, data?: unknown): void => {
   if (!import.meta.env.DEV) {
-    return;
+    return
   }
-
   if (data === undefined) {
-    console.info(`[catalog] ${label}`);
-    return;
+    console.info(`[catalog] ${label}`)
+    return
   }
-
-  console.info(`[catalog] ${label}`, data);
+  console.info(`[catalog] ${label}`, data)
 }

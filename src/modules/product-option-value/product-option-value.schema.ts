@@ -1,15 +1,15 @@
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema";
+import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema"
 import {
   PRODUCT_OPTION_VALUE_COLUMN_LENGTH,
-  PRODUCT_OPTION_VALUE_DEFAULT_RANK
-} from "~/src/modules/product-option-value/product-option-value.constants";
-import { productOption } from "~/src/modules/product-option/product-option.schema";
-import type { ProductLocaleMap } from "~/src/modules/product/product.types";
+  PRODUCT_OPTION_VALUE_DEFAULT_RANK,
+} from "~/src/modules/product-option-value/product-option-value.constants"
+import { productOption } from "~/src/modules/product-option/product-option.schema"
+import { type ProductLocaleMap } from "~/src/modules/product/product.types"
 
 export const productOptionValue = sqliteTable(
   "product_option_value",
@@ -22,15 +22,15 @@ export const productOptionValue = sqliteTable(
       .notNull()
       .references(() => productOption.id, { onDelete: "cascade" }),
     rank: integer("rank").notNull().default(PRODUCT_OPTION_VALUE_DEFAULT_RANK),
-    ...timestamps()
+    ...timestamps(),
   },
-  (table) => [index("product_option_value_optionId_idx").on(table.optionId)]
-);
+  (table) => [index("product_option_value_optionId_idx").on(table.optionId)],
+)
 
 export const productOptionValueRelations = relations(productOptionValue, ({ one, many }) => ({
   option: one(productOption, {
     fields: [productOptionValue.optionId],
-    references: [productOption.id]
+    references: [productOption.id],
   }),
-  optionOnVariants: many(optionOnVariant)
-}));
+  optionOnVariants: many(optionOnVariant),
+}))

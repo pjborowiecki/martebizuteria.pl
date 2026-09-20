@@ -1,6 +1,8 @@
-import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils";
+import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants";
+import { QUERY_KEY_ROOTS } from "~/src/modules/_core/constants/query-keys"
+
+import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants"
 
 export const CATEGORY_COLUMN_LENGTH = {
   description: 1024,
@@ -10,33 +12,33 @@ export const CATEGORY_COLUMN_LENGTH = {
   parentId: UUID_STRING_LENGTH,
   shortDescription: 500,
   subtitle: 512,
-  title: 255
-} as const;
+  title: 255,
+} as const
 
-export const CATEGORY_MIN_LENGTH = 1;
+export const CATEGORY_MIN_LENGTH = 1
 
-export const CATEGORY_DEFAULT_RANK = 0;
+export const CATEGORY_DEFAULT_RANK = 0
 
-export const CATEGORY_HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+export const CATEGORY_HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 
 export const CATEGORY_STATUS = {
   ACTIVE: "active",
-  DRAFT: "draft"
-} as const;
+  DRAFT: "draft",
+} as const
 
-export const CATEGORY_STATUSES = [CATEGORY_STATUS.DRAFT, CATEGORY_STATUS.ACTIVE] as const;
+export const CATEGORY_STATUSES = [CATEGORY_STATUS.DRAFT, CATEGORY_STATUS.ACTIVE] as const
 
-export type CategoryStatus = (typeof CATEGORY_STATUSES)[number];
+export type CategoryStatus = (typeof CATEGORY_STATUSES)[number]
 
-export const DEFAULT_CATEGORY_STATUS: CategoryStatus = CATEGORY_STATUS.DRAFT;
+export const DEFAULT_CATEGORY_STATUS: CategoryStatus = CATEGORY_STATUS.DRAFT
 
 export const CATEGORY_ERROR_CODES = {
   DUPLICATE_HANDLE: "DUPLICATE_HANDLE",
   HAS_CHILDREN: "HAS_CHILDREN",
   HAS_PRODUCTS: "HAS_PRODUCTS",
   INVALID_PARENT: "INVALID_PARENT",
-  UNAUTHORIZED: "UNAUTHORIZED"
-} as const;
+  UNAUTHORIZED: "UNAUTHORIZED",
+} as const
 
 export const CATEGORY_FORM_VALIDATION_KEYS = {
   descriptionTooLong: "form.validation.descriptionTooLong",
@@ -46,18 +48,18 @@ export const CATEGORY_FORM_VALIDATION_KEYS = {
   slugRequired: "form.validation.slugRequired",
   subtitleTooLong: "form.validation.subtitleTooLong",
   titleRequired: "form.validation.titleRequired",
-  titleTooLong: "form.validation.titleTooLong"
-} as const;
+  titleTooLong: "form.validation.titleTooLong",
+} as const
 
 export const CATEGORY_STATUS_LABEL_KEYS: Record<CategoryStatus, string> = {
   active: "statusActive",
-  draft: "statusDraft"
-};
+  draft: "statusDraft",
+}
 
 export const CATEGORY_TABLE_A11Y_KEYS = {
   selectAll: "a11y.selectAll",
-  selectRow: "a11y.selectRow"
-} as const;
+  selectRow: "a11y.selectRow",
+} as const
 
 export const CATEGORY_TABLE_COLUMN_ID = {
   actions: "actions",
@@ -74,13 +76,13 @@ export const CATEGORY_TABLE_COLUMN_ID = {
   shortDescription: "shortDescription",
   status: "status",
   subtitle: "subtitle",
-  title: "title"
-} as const;
+  title: "title",
+} as const
 
 export const CATEGORY_TABLE_DEFAULT_COLUMN_VISIBILITY = {
   [CATEGORY_TABLE_COLUMN_ID.editedAt]: false,
-  [CATEGORY_TABLE_COLUMN_ID.recordId]: false
-} as const;
+  [CATEGORY_TABLE_COLUMN_ID.recordId]: false,
+} as const
 
 export const CATEGORY_TABLE_COLUMN_SIZE = {
   actions: 48,
@@ -96,12 +98,21 @@ export const CATEGORY_TABLE_COLUMN_SIZE = {
   shortDescription: 220,
   status: 120,
   subtitle: 200,
-  title: 200
-} as const;
+  title: 200,
+} as const
 
 export const CATEGORY_TABLE_COLUMN_PINNING = {
-  left: [CATEGORY_TABLE_COLUMN_ID.select, CATEGORY_TABLE_COLUMN_ID.drag, CATEGORY_TABLE_COLUMN_ID.image, CATEGORY_TABLE_COLUMN_ID.title],
-  right: [CATEGORY_TABLE_COLUMN_ID.actions]
-};
+  end: [CATEGORY_TABLE_COLUMN_ID.actions],
+  start: [CATEGORY_TABLE_COLUMN_ID.select, CATEGORY_TABLE_COLUMN_ID.drag, CATEGORY_TABLE_COLUMN_ID.image, CATEGORY_TABLE_COLUMN_ID.title],
+}
 
-export const CATEGORY_QUERY_STALE_MS = 60_000;
+export const CATEGORY_QUERY_STALE_MS = 60_000
+
+export const CATEGORY_QUERY_KEYS = {
+  ADMIN: {
+    ALL: [...QUERY_KEY_ROOTS.ADMIN, "categories"] as const,
+    STATS: [...QUERY_KEY_ROOTS.ADMIN, "categories", "stats"] as const,
+  },
+  ALL: ["categories"] as const,
+  BY_HANDLE: ["category"] as const,
+} as const
