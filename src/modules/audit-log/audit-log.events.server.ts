@@ -176,6 +176,42 @@ export const recordCatalogAttributeDeletedAudit = (target: string, options?: Aud
   })
 }
 
+export const recordDiscountCreatedAudit = (code: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.DISCOUNT_CREATED,
+    category: "settings",
+    severity: "info",
+    ...withResourceId(code, options),
+  })
+}
+
+export const recordDiscountUpdatedAudit = (code: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.DISCOUNT_UPDATED,
+    category: "settings",
+    severity: "info",
+    ...withResourceId(code, options),
+  })
+}
+
+export const recordDiscountDeletedAudit = (code: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.DISCOUNT_DELETED,
+    category: "settings",
+    severity: "warning",
+    ...withResourceId(code, options),
+  })
+}
+
+export const recordDiscountRedeemedAudit = (orderId: string, options?: AuditEventOptions): void => {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.DISCOUNT_REDEEMED,
+    category: "orders",
+    severity: "info",
+    ...withResourceId(orderId, options),
+  })
+}
+
 export const recordCustomerRegisteredAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.CUSTOMER_REGISTERED,

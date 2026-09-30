@@ -95,7 +95,7 @@ afterAll(() => {
 
 describe("createCheckout", () => {
   it("opens a pending checkout and hands back its id", async () => {
-    const checkoutId = await createCheckout(shippingForm, USER_ID, "account@example.com")
+    const checkoutId = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
 
     expect(readCheckout(checkoutId)).toMatchObject({
       customer_note: "Leave with the concierge",
@@ -107,7 +107,7 @@ describe("createCheckout", () => {
   })
 
   it("stores the shipping address and bills it to the same place when the shopper asked for that", async () => {
-    const checkoutId = await createCheckout(shippingForm, USER_ID, "account@example.com")
+    const checkoutId = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
     const row = readCheckout(checkoutId)
 
     expect(countAddresses()).toBe(1)
@@ -121,7 +121,7 @@ describe("createCheckout", () => {
   })
 
   it("stores a second address when the shopper typed a separate billing address", async () => {
-    const checkoutId = await createCheckout(separateBillingForm, USER_ID, "account@example.com")
+    const checkoutId = await createCheckout({ checkoutValues: separateBillingForm, userEmail: "account@example.com", userId: USER_ID })
     const row = readCheckout(checkoutId)
 
     expect(countAddresses()).toBe(2)
@@ -130,14 +130,14 @@ describe("createCheckout", () => {
   })
 
   it("keeps a guest checkout unattached to any account", async () => {
-    const checkoutId = await createCheckout(shippingForm, undefined, "guest@example.com")
+    const checkoutId = await createCheckout({ checkoutValues: shippingForm, userEmail: "guest@example.com", userId: undefined })
 
     expect(readCheckout(checkoutId).user_id).toBeNull()
   })
 
   it("gives every checkout its own id", async () => {
-    const first = await createCheckout(shippingForm, USER_ID, "account@example.com")
-    const second = await createCheckout(shippingForm, USER_ID, "account@example.com")
+    const first = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
+    const second = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
 
     expect(second).not.toBe(first)
   })

@@ -1,8 +1,12 @@
 import type * as TanStackRouter from "@tanstack/react-router"
-import { cleanup, screen } from "@testing-library/react"
+import { cleanup, fireEvent, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+
+const { validateDiscountCode } = vi.hoisted(() => ({
+  validateDiscountCode: vi.fn<(input: { code: string }) => Promise<{ applied?: object; rejection?: string }>>(),
+}))
 
 const deliveryMethods: { id: string; name: string; price: number }[] = [
   { id: "courier", name: "DPD courier", price: 1900 },
@@ -18,6 +22,9 @@ vi.mock("~/src/lib/url", () => ({
   getBaseURL: () => "https://marte.test",
   isAssetCdnUrl: () => true,
   resolveAssetURL: (src: string) => src,
+}))
+vi.mock("~/src/modules/discount/use-cases/validate-discount-code", () => ({
+  validateDiscountCodeMutation: { mutationFn: validateDiscountCode, mutationKey: ["discount", "validate"] },
 }))
 vi.mock("@tanstack/react-router", async () => {
   const actual = await vi.importActual<typeof TanStackRouter>("@tanstack/react-router")
@@ -186,5 +193,54 @@ describe("CheckoutSummary delivery cost", () => {
     await screen.findByText("Free")
 
     expect(screen.getAllByText("PLN 249.00")).toHaveLength(2)
+  })
+})
+
+describe("CheckoutSummary discount code", () => {
+  it("offers a code field alongside the totals", () => {
+    renderSummary()
+
+    expect(screen.getByLabelText("Discount code")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Apply" })).toBeInTheDocument()
+  })
+
+  it("states the VAT contained in the total", () => {
+    renderSummary()
+
+    expect(screen.getByText(/Includes VAT \(23%\)/u)).toBeInTheDocument()
+  })
+
+  it("takes an accepted code off the total and shows what it saved", async () => {
+    validateDiscountCode.mockResolvedValue({ applied: { amountMinorUnits: 5000, code: "SPRING", discountId: "d-1", type: "fixed_amount" } })
+    renderSummary()
+
+    fireEvent.change(screen.getByLabelText("Discount code"), { target: { value: "spring" } })
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }))
+
+    expect(await screen.findByText("SPRING")).toBeInTheDocument()
+    expect(screen.getByText("Discount")).toBeInTheDocument()
+  })
+
+  it("explains a rejected code without applying anything", async () => {
+    validateDiscountCode.mockResolvedValue({ rejection: "expired" })
+    renderSummary()
+
+    fireEvent.change(screen.getByLabelText("Discount code"), { target: { value: "OLD" } })
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }))
+
+    expect(await screen.findByText("That code has expired.")).toBeInTheDocument()
+    expect(screen.queryByText("Discount")).not.toBeInTheDocument()
+  })
+
+  it("lets the shopper take an applied code back off", async () => {
+    validateDiscountCode.mockResolvedValue({ applied: { amountMinorUnits: 5000, code: "SPRING", discountId: "d-1", type: "fixed_amount" } })
+    renderSummary()
+
+    fireEvent.change(screen.getByLabelText("Discount code"), { target: { value: "SPRING" } })
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }))
+    fireEvent.click(await screen.findByRole("button", { name: "Remove discount code" }))
+
+    expect(screen.getByLabelText("Discount code")).toBeInTheDocument()
+    expect(screen.queryByText("Discount")).not.toBeInTheDocument()
   })
 })
