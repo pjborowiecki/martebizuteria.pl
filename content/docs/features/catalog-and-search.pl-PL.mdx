@@ -1,0 +1,148 @@
+---
+title: "Katalog i wyszukiwanie"
+description: "Strony /products, /categories i /collections, stan filtrów trzymany w adresie URL, zapytanie SQL za listingiem oraz nakładka wyszukiwania."
+---
+
+Cztery trasy witryny współdzielą jeden komponent katalogu. `/products` to listing bez zawężenia; `/categories/$handle` i `/collections/$handle` to ten sam listing z ustalonym zakresem; `/categories` i `/collections` to siatki indeksowe.
+
+## Trasy
+
+| Trasa                  | Plik                                             | Co renderuje                                             |
+| ---------------------- | ------------------------------------------------ | -------------------------------------------------------- |
+| `/products`            | `src/routes/_storefront.products.index.tsx`      | `ProductsCatalogPage` bez zakresu                        |
+| `/categories`          | `src/routes/_storefront.categories.index.tsx`    | `CategoriesIndexGrid`                                    |
+| `/categories/$handle`  | `src/routes/_storefront.categories.$handle.tsx`  | `ProductsCatalogPage` zawężony do `{ categoryHandle }`   |
+| `/collections`         | `src/routes/_storefront.collections.index.tsx`   | siatka indeksowa kolekcji                                |
+| `/collections/$handle` | `src/routes/_storefront.collections.$handle.tsx` | `ProductsCatalogPage` zawężony do `{ collectionHandle }` |
+
+Same ścieżki pochodzą ze stałych `ROUTES.PRODUCTS`, `ROUTES.CATEGORIES`, `ROUTES.CATEGORY`, `ROUTES.COLLECTIONS` i `ROUTES.COLLECTION` w `src/routes.ts`.
+
+## Stan filtrów żyje w adresie URL
+
+`src/modules/product/product.storefront-catalog.ts` jest właścicielem kontraktu parametrów wyszukiwania. To jedyne miejsce, które trzeba zmienić przy dodaniu filtra.
+
+```ts
+export const storefrontProductsSearchSchema = z.object({
+  category: z.string().trim().nonempty().optional(),
+  collection: z.string().trim().nonempty().optional(),
+  maxPrice: z.coerce.number().nonnegative().optional(),
+  minPrice: z.coerce.number().nonnegative().optional(),
+  q: z.string().trim().nonempty().optional(),
+  sort: z.enum(STOREFRONT_PRODUCTS_SORTS).optional(),
+})
+```
+
+Strony zawężone używają schematów pochodnych, które usuwają parametr ustalony już przez trasę: `storefrontScopedCategoryCatalogSearchSchema` pomija `category`, a `storefrontScopedCollectionCatalogSearchSchema` pomija `collection`.
+
+Cztery wartości sortowania to `rank` (domyślna), `newest`, `price_asc` i `price_desc`.
+
+Obok schematu moduł eksportuje pomocniki używane przez strony:
+
+| Pomocnik                                 | Do czego służy                                                              |
+| ---------------------------------------- | --------------------------------------------------------------------------- |
+| `normalizeStorefrontProductsSearch`      | usuwa klucze `undefined`, żeby klucz zapytania był stabilny                 |
+| `buildEffectiveStorefrontProductsSearch` | scala zakres trasy z parametrami wyszukiwania                               |
+| `applyStorefrontProductsSearchPatch`     | nakłada jedną zmianę filtra albo czyści wszystko przez `{ clearAll: true }` |
+| `countActiveStorefrontProductFilters`    | zasila licznik filtrów; `sort: "rank"` się nie liczy                        |
+| `storefrontCatalogFilterOptions`         | każe licznikowi pominąć parametr ustalony przez zakres                      |
+
+Każda trasa przekazuje funkcję `handleSearchChange`, która nawiguje z `replace: true`, więc filtrowanie nie zapycha historii przeglądarki.
+
+## Zapytanie listingu
+
+`getStorefrontProductsPage` (`src/modules/product/use-cases/get-storefront-products-page.ts`) to publiczna funkcja serwerowa `GET` z middleware `withRequest`. Udostępniana jest jako zapytanie **nieskończone** przez `getStorefrontProductsPageQuery(search, scope)`.
+
+Rozmiar strony zależy od tego, czy jakikolwiek filtr jest aktywny; stałe leżą w `product.constants.ts`:
+
+| Sytuacja      | Rozmiar strony                              | Stronicowanie                                          |
+| ------------- | ------------------------------------------- | ------------------------------------------------------ |
+| bez filtrów   | `PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE` (12) | `getNextPageParam` idzie dalej, więc siatka doładowuje |
+| dowolny filtr | `PRODUCT_STOREFRONT_FILTERED_MAX` (100)     | `getNextPageParam` zwraca `undefined` — jedna strona   |
+
+Przed odpytaniem tabeli produktów handler rozwiązuje handle zakresu na identyfikatory:
+
+- `resolveStorefrontCategoryIdsForSearch` wczytuje kategorię po handle, a potem `collectDescendantCategoryIds(category.id, hierarchy)` z `product-category.utils.ts` — **filtr kategorii obejmuje więc całe jej poddrzewo**. Nieznany handle daje `[]`, a handler od razu zwraca pusty wynik.
+- `resolveStorefrontCollectionIdForSearch` rozwiązuje handle kolekcji na jeden identyfikator.
+- `minPrice` i `maxPrice` przychodzą w złotych i są mnożone przez 100 na jednostki podrzędne.
+
+`catalogDebugLog` (`src/lib/catalog-debug-log.ts`) śledzi zdarzenia `storefrontProductsPage.start`, `.emptyCategory` i `.done` wraz z czasem w milisekundach.
+
+## Zapytanie SQL
+
+Instrukcję buduje `src/modules/product/product.storefront-catalog.accessors.ts`. Dwie rzeczy warto znać.
+
+**Listowane są wyłącznie produkty opublikowane i dostępne.** `publishedInStockWhere` w `src/modules/product/product.stock.server.ts` to wspólna bramka:
+
+```ts
+export const publishedInStockWhere = (...extraConditions: (SQL | undefined)[]): SQL => {
+  const conditions = [eq(product.status, PRODUCT_STATUS.PUBLISHED), sql`(${totalStockSubquery()}) > ${0}`, ...extraConditions].filter(
+    (condition): condition is SQL => condition !== undefined,
+  )
+
+  return and(...conditions)!
+}
+```
+
+`totalStockSubquery()` sumuje `inventory.quantity_available` po wariantach produktu. Opublikowany produkt, którego wszystkie warianty mają zero, znika z `/products`, ze stron kategorii i kolekcji, z wyszukiwania oraz z karty produktu.
+
+**Złączenie ze statystykami wariantów jest warunkowe.** `productVariantStatsSubquery()` grupuje `product_variant` złączone z `inventory` po `product_id` i udostępnia `min_price`, `total_stock` oraz `variant_count`. Jest dołączane tylko wtedy, gdy w grze jest filtr ceny albo sortowanie po cenie (`storefrontProductsNeedsVariantStatsJoin`), a porządkowanie po cenie używa `coalesce(min_price, 0)`. Domyślna kolejność to `rank` rosnąco, a potem `createdAt` malejąco.
+
+Filtry zakresu to `inArray(product.id, <podzapytanie>)` na tabelach `category_on_product` i `collection_on_product`.
+
+## Fraza wyszukiwania produktu
+
+Parametr `q` korzysta z tego samego warunku, co wyszukiwanie w panelu: `buildAdminProductSearchCondition` w `src/modules/product/product.admin-list-search.server.ts`. Dopasowuje `LIKE` bez uwzględniania wielkości liter do `product.handle`, `product.id` oraz kolumn JSON `titles`, `subtitles` i `descriptions`, **albo** do dowolnego wariantu, którego `sku` pasuje. Ponieważ mapy lokalizacji są przechowywane jako tekst JSON, `LIKE` dopasowuje wszystkie języki jednocześnie.
+
+Wzorzec jest escape'owany przez `buildAdminLikePattern` w `src/modules/_core/utils/search-conditions.server.ts`, który zabezpiecza `\`, `%` i `_` oraz generuje `... like ? escape '\'`.
+
+## Komponenty
+
+`src/presentation/components/custom/pages/products-catalog/`:
+
+| Plik                                  | Rola                                                                          |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| `products-catalog-page.tsx`           | składa nagłówek, filtry i siatkę; czyta zapytanie nieskończone                |
+| `products-catalog-filters.tsx`        | panel boczny na desktopie: sortowanie, drzewo kategorii, lista kolekcji, cena |
+| `products-catalog-mobile-filters.tsx` | te same filtry w arkuszu bocznym                                              |
+| `products-catalog-price-filter.tsx`   | pola ceny minimalnej i maksymalnej                                            |
+| `products-catalog-grid.tsx`           | siatka produktów i doładowywanie kolejnych stron                              |
+| `products-catalog.loader.ts`          | `prefetchProductsCatalogPage`, wywoływany z każdego loadera trasy             |
+| `products-catalog.utils.ts`           | `flattenStorefrontCategoryFilters`, `mapStorefrontCollectionFilters`          |
+
+`useCatalogFilterSources` ukrywa filtr kategorii na stronie kategorii i filtr kolekcji na stronie kolekcji, całkowicie pomijając odpowiednie zapytanie — strona zawężona wykonuje więc o jedno zapytanie mniej.
+
+`prefetchProductsCatalogPage` uruchamia równolegle zapytanie nieskończone i dwa zapytania źródeł filtrów, a następnie wywołuje `prefetchProductThumbnails` na elementach pierwszej strony.
+
+## Nakładka wyszukiwania
+
+Wyszukiwanie w nagłówku to oddzielna funkcja oparta na `src/modules/storefront-search`.
+
+`searchStorefront` (`use-cases/search-storefront.ts`) jest publiczne, przyjmuje `{ locale, query }` i rozchodzi się na trzy akcesory w `storefront-search.server.ts`:
+
+| Akcesor                       | Tabela               | Dopasowywane kolumny                                                        |
+| ----------------------------- | -------------------- | --------------------------------------------------------------------------- |
+| `searchStorefrontProducts`    | `product`            | przez `buildAdminProductSearchCondition`, za bramką `publishedInStockWhere` |
+| `searchStorefrontCategories`  | `product_category`   | `handle`, `titles`, `subtitles`, `shortDescriptions`, status aktywny        |
+| `searchStorefrontCollections` | `product_collection` | `handle`, `titles`, `descriptions`, status aktywny                          |
+
+Stałe w `storefront-search.constants.ts`:
+
+- `STOREFRONT_SEARCH_MIN_LENGTH = 2` — zapytanie jest `enabled` dopiero od dwóch znaków
+- `STOREFRONT_SEARCH_DEBOUNCE_MS = 300`
+- `STOREFRONT_SEARCH_LIMIT_PER_GROUP = 6`
+- `STOREFRONT_SEARCH_TRENDING_LIMIT = 5`
+
+`getTrendingSearches` wypełnia stan pusty: bierze najwyżej uszeregowane aktywne kategorie i kolekcje po `rank`, potem `createdAt`, po `Math.ceil(5 / 2) = 3` z każdego źródła, i obcina połączoną listę do pięciu pozycji.
+
+Interfejs to `search-overlay.tsx` w `.../landing-page/navigation/components/search/`, a jego logika w `.../navigation/hooks/use-search-overlay-logic.ts`. Ten hook dopasowuje też do frazy trzy zapisane na stałe strony statyczne z `src/data/static-pages.ts` (`/`, `/about`, `/blog`), używając funkcji `normalize` usuwającej znaki diakrytyczne, więc „o nas” dopasowuje się niezależnie od ogonków. Stan otwarcia trzyma store zustand w `.../navigation/store/navigation-store.ts`; nakładka jest animowana GSAP-em.
+
+## Odświeżanie w czasie rzeczywistym
+
+`STOREFRONT_REALTIME_QUERY_PREFIXES` w `src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts` zawiera `PRODUCT_QUERY_KEYS.STOREFRONT_PAGE`, `CATEGORY_QUERY_KEYS.ALL`, `CATEGORY_QUERY_KEYS.BY_HANDLE`, `COLLECTION_QUERY_KEYS.ALL` i `COLLECTION_QUERY_KEYS.BY_HANDLE`. Mutacje katalogu w panelu wywołują `scheduleProductCatalogInvalidation()`, `scheduleCategoryCatalogInvalidation()` albo `scheduleCollectionCatalogInvalidation()`, więc otwarta strona katalogu odświeża dane bez przeładowania.
+
+## Powiązane strony
+
+- [Karta produktu](/docs/features/product-page)
+- [Stany magazynowe](/docs/features/inventory) — dlaczego stan decyduje o widoczności
+- [Panel katalogu](/docs/features/admin-catalog)
+- [Integracje: unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation)

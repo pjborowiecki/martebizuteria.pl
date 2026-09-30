@@ -1,0 +1,96 @@
+---
+title: "Platform layer"
+description: "The Cloudflare runtime: the Worker entry, its bindings, the three environments, the generated types and the shared test wiring."
+---
+
+## Worker entry and bindings
+
+`wrangler.jsonc` sets `./src/server.ts` as `main`, with `compatibility_date` `2026-04-18`, the `nodejs_compat` flag, `placement.mode: "smart"` and observability enabled. Every environment receives the same six bindings:
+
+| Binding                     | Type           | Used for                                                                |
+| --------------------------- | -------------- | ----------------------------------------------------------------------- |
+| `DB`                        | D1 database    | All 31 tables, including sessions, verification and rate-limit counters |
+| `IMAGES`                    | R2 bucket      | Product images uploaded through `src/integrations/cloudflare-r2`        |
+| `CACHE`                     | KV namespace   | Declared but not read by any code today                                 |
+| `ASSETS`                    | Static assets  | Everything in `public/`, including the self-hosted fonts                |
+| `REALTIME_INVALIDATION_HUB` | Durable Object | The `RealtimeInvalidationHub` class, one instance per audience name     |
+| `AUDIT_LOG_QUEUE`           | Queue          | Audit events, produced by the app and consumed by the same Worker       |
+
+The Durable Object is declared as a SQLite class in the `migrations` block (`tag: "v1"`, `new_sqlite_classes: ["RealtimeInvalidationHub"]`) even though the hub keeps no durable state. The queue is configured with `max_batch_size: 50`, `max_batch_timeout: 5` and `max_retries: 3`, and both producer and consumer point at the same queue, so `src/server.ts` exports both a `fetch` and a `queue` handler.
+
+`nodejs_compat` is what makes `node:async_hooks` available, which `src/lib/background.ts` needs for its `AsyncLocalStorage`.
+
+## Environments
+
+`wrangler.jsonc` defines three environments and `CLOUDFLARE_ENV` selects one for `vp dev` and `vp build`.
+
+| Environment   | Worker name                  | D1 database              | Queue                              | Used by                                            |
+| ------------- | ---------------------------- | ------------------------ | ---------------------------------- | -------------------------------------------------- |
+| `development` | `martebizuteria-development` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run dev`                                      |
+| `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run build:preview`, `deploy:preview`, `start` |
+| `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria-audit-log`         | `bun run build:production`, `deploy:production`    |
+
+Every binding is marked `"remote": true`, so `bun run dev` talks to the real development D1, R2 and KV rather than local emulation. The Vite Cloudflare plugin only enables remote bindings when `CLOUDFLARE_ENV` is `development`. Migrations therefore have to be applied before the first run:
+
+```sh
+bun run db:migrate:development
+```
+
+`development` and `preview` share one D1 database, so a schema change applied for local work is already applied for preview.
+
+## Secrets and environment files
+
+Each environment lists its required secrets under `secrets.required`: `AUTH_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `VITE_R2_URL`. `APP_ENV` is a plain var, not a secret.
+
+Values come from `.env.development`, `.env.preview` and `.env.production`, which are gitignored; `.env.test` holds committed dummy values and `.env.example` is the template. Bun's automatic env loading is disabled in `bunfig.toml`, so the environment is always chosen explicitly — either by `--mode` or by `bun --env-file=`.
+
+`VITE_`-prefixed values are browser-visible. `VITE_STRIPE_PUBLISHABLE_KEY` is declared in `src/types/vite-env.d.ts` and read through `import.meta.env`; `VITE_R2_URL` is read on the server from `env` and in the browser from `import.meta.env`, which is why `src/lib/url.ts` wraps it in `createIsomorphicFn`.
+
+Cloudflare management credentials (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, `CLOUDFLARE_ACCESS_TOKEN`) are read only by `drizzle.config.ts` for Drizzle Kit. `scripts/prepare-deploy-secrets.ts` uploads only the declared application secrets, keeping the management credentials out of the Worker.
+
+## Types
+
+| File                                  | Source                                                                           |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| `src/types/worker-configuration.d.ts` | Generated by `bun run cf-typegen` from the `development` environment; gitignored |
+| `src/types/router.d.ts`               | Declares the `staticData.namespaces` route option                                |
+| `src/types/vite-env.d.ts`             | Declares the `VITE_`-prefixed browser variables                                  |
+| `src/types/globals.d.ts`              | Narrows `Object.fromEntries` so it keeps key types                               |
+
+`bun run typegen` runs `cf-typegen` and `content` together and is wired to `postinstall`, so a fresh clone gets both the binding types and the Fumadocs collections before the first type check.
+
+## Deploy gates
+
+Both deploy scripts fail rather than warn:
+
+```sh
+bun run deploy:preview      # verify-bindings → build:preview → prepare-deploy-secrets → wrangler deploy
+bun run deploy:production   # the same, against the production environment
+```
+
+- `scripts/verify-bindings.ts` reads the config through Wrangler's own `unstable_readConfig` and throws unless the D1 and KV ids are real rather than placeholders, the R2 bucket is named, the audit queue has both a producer and a matching consumer, and the Durable Object binding points at `RealtimeInvalidationHub`.
+- `scripts/verify-build.ts` rejects a client bundle that still carries an unbundled `cloudflare:workers` or `node:*` import.
+- `scripts/prepare-deploy-secrets.ts` writes `.wrangler/secrets.<env>.json` from the matching `.env` file, and the deploy passes it with `--secrets-file`.
+
+The deploy runs against `dist/server/wrangler.json` — the config the Cloudflare Vite plugin emits — with `CLOUDFLARE_ENV` unset, so the environment baked into the build is the one that ships.
+
+## Shared test wiring
+
+`src/platform/testing` holds only what cannot belong to one feature:
+
+| Path                                                         | Contents                                                                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `setup.ts`                                                   | jest-dom matchers, `IntersectionObserver`/`ResizeObserver`/`matchMedia` stubs, and the `createServerFn` replacement |
+| `lib/server-function.ts`                                     | `withTestRpc`, which runs a server function in-process through its real middleware and validator                    |
+| `lib/render.tsx`                                             | `renderWithProviders`, `TestProviders`, `createTestRouter`                                                          |
+| `lib/messages.ts`                                            | `TEST_LOCALE` and `TEST_MESSAGES` for the `IntlProvider` in tests                                                   |
+| `mocks/d1.ts`                                                | `createTestD1Database`, a D1-shaped transport over `node:sqlite`                                                    |
+| `mocks/intersection-observer.ts`, `mocks/resize-observer.ts` | Browser API stubs                                                                                                   |
+
+`setup.ts` is registered only for the `component` project in `vite.config.ts`; node and integration tests import what they need directly. See [Testing architecture](/docs/architecture/testing-architecture).
+
+## Related pages
+
+- [Dependency rules](/docs/architecture/dependency-rules)
+- [Testing architecture](/docs/architecture/testing-architecture)
+- [Request lifecycle](/docs/architecture/request-lifecycle)

@@ -1,0 +1,129 @@
+---
+title: "Troubleshooting"
+description: "Concrete failures in dev, check, test, the database scripts and the deploy pipeline, and what fixes each one."
+---
+
+Each entry names the symptom as you will actually see it, then the fix. Where a message is quoted, it is the string the code throws.
+
+## Development server
+
+**The dev server will not start.** `vite.config.ts` sets `server: { port: 3000, strictPort: true }`, so Vite refuses to fall back to another port. Something else is on 3000 — stop it. The port matters beyond convenience: `appHostsForMode` in `src/modules/_core/constants/api.ts` only allows `localhost:3000` and `127.0.0.1:3000` for local modes, and Better Auth is built with that allowlist, so authentication breaks on any other port.
+
+**`bun run dev` cannot reach the database, R2 or KV.** The `development` Wrangler environment uses **remote** bindings (`remote: true` on every resource, and `remoteBindings` is enabled for that mode in `vite.config.ts`). You need to be authenticated against the Cloudflare account:
+
+```sh
+vp exec wrangler login
+```
+
+There is no fully local option wired up for `dev` — the local D1 file only gets migrations through `bun run db:migrate:local`, which targets the `development` environment with `--local`.
+
+**`Cannot find module 'collections/server'` or `'collections/browser'`.** `.source/` has not been generated. `tsconfig.json` maps `collections/*` to `./.source/*`, and Fumadocs writes that directory:
+
+```sh
+bun run content
+```
+
+`bun run dev`, `bun run build:*` and `bun run typegen` all run it for you, so this usually means a `bun run clean` without a follow-up.
+
+## Database
+
+**`no such table` at runtime.** Migrations have not been applied to the database the current environment points at. `development` and `preview` share `martebizuteria-preview`:
+
+```sh
+bun run db:migrate:development   # remote preview database
+bun run db:migrate:local         # the local .wrangler copy
+bun run db:migrate:production    # production
+```
+
+`bun run db:migrations:development` lists what has and has not been applied.
+
+**A schema change is not reflected anywhere.** Editing a `*.schema.ts` file changes types, not the database. Generate a migration and apply it:
+
+```sh
+bun run db:generate
+bun run db:migrate:development
+```
+
+`db:push:*` exists for the same schema but pushes without a migration file; prefer `db:generate` so the change is recorded in `src/integrations/drizzle-orm/migrations/`.
+
+**Drizzle Kit cannot connect.** `src/integrations/drizzle-orm/drizzle.config.ts` uses the D1 HTTP driver and reads `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` and `CLOUDFLARE_ACCESS_TOKEN` from `process.env`. Because `bunfig.toml` disables automatic env loading, those come only from the `--env-file=.env.<environment>` that each `db:studio:*`, `db:push:*` and `db:introspect:*` script passes. An empty value falls back to `""` and the request fails; fill the file in.
+
+**Never run the seed scripts against a live database.** `db:seed:preview` and `db:seed:production` execute the SQL files in `src/integrations/drizzle-orm/seeds/` against the remote database with `wrangler d1 execute --remote`. Those files are stale relative to the real catalog, so running them overwrites real data. They are only appropriate against a database you have deliberately emptied.
+
+**Migration count does not match Drizzle's journal.** `wrangler d1 migrations apply` walks the `.sql` files in `src/integrations/drizzle-orm/migrations` in filename order; Drizzle Kit's `meta/_journal.json` tracks only the ones it generated itself. The directory is authoritative for what is applied.
+
+## Tests
+
+**An integration test fails with `no such table` or `no such column`.** Integration suites do not replay the migration directory. Each one creates the tables it needs by hand with `sqlite.exec` against an in-memory `node:sqlite` database — see the `create table` block in `src/modules/checkout/__test__/checkout-idempotency.integration.test.ts`. After a schema change, update the DDL in the affected test.
+
+**A component test fails on `IntersectionObserver`, `ResizeObserver` or `matchMedia`.** Those are stubbed in `src/platform/testing/setup.ts`, which only the `component` project loads. A test that needs them must be named `*.component.test.tsx`, or it will land in the `node` project instead.
+
+**A server function returns something unexpected in a test.** `src/platform/testing/setup.ts` proxies `createServerFn` through `withTestRpc` and stubs `getRequest` to return `new Request("http://127.0.0.1:3000/")`. Tests that depend on headers, cookies or a session must override `getRequest` themselves.
+
+**`test:coverage` fails on thresholds.** `vite.config.ts` pins them just below the current numbers — branches 69, functions 68, lines 71, statements 72 — so they act as a ratchet: a regression fails, and the numbers are raised deliberately as coverage grows. Read `coverage/index.html` to find what dropped. `autoUpdate` is `false`, so the values never move on their own.
+
+**`passWithNoTests` fails the run.** It is set to `false`, so a project matching no files is an error. Check the file name suffix against the project globs.
+
+## Checks and types
+
+**`bun run check` reports a warning and exits non-zero.** `denyWarnings: true`. There is no warning level in this repository; fix it or it does not merge.
+
+**`Unused eslint-disable directive`-style failure.** `reportUnusedDisableDirectives: "error"`. A suppression that no longer suppresses anything must be deleted.
+
+**`max-lines`, `max-lines-per-function` or `max-statements` fails.** The limits are 800 lines per file, 150 lines per function and 20 statements per function. Split the file or extract a function; do not add an override. The narrow overrides that exist are listed in [Conventions](/docs/reference/conventions).
+
+**Worker types are missing a binding or a secret.** `src/types/worker-configuration.d.ts` is generated and gitignored. After editing `wrangler.jsonc`:
+
+```sh
+bun run typegen
+```
+
+which runs `cf-typegen` (`wrangler types --env development`) and then `content`.
+
+**`noUncheckedIndexedAccess` or `exactOptionalPropertyTypes` complains about code that looks fine.** Both are on. An array access is `T | undefined`, and `{ key: undefined }` is not the same as omitting the key — which is why the codebase builds optional payloads with conditional assignment rather than spreading `undefined`, as in `address.accessors.ts`.
+
+## Translations
+
+**`Missing translation namespace: messages/pl-PL/pages.x.json`.** Thrown by `loadNamespace` in `src/integrations/use-intl/i18n.messages.ts`. A route declared the namespace in `staticData.namespaces` but the file does not exist for that locale. Create it in **both** `messages/en-US/` and `messages/pl-PL/`.
+
+**A key renders as its own path.** The key is missing in the active locale, or the component is reading outside the scope of its `useTranslations` call. `src/integrations/use-intl/__test__/i18n.messages.test.ts` asserts that Polish contains every English key, so run the test suite to find the gap.
+
+**Text appears in the wrong language on an API-like path.** `shouldIgnorePath` exempts `/api`, `/rpc`, `/_serverFn` and `/assets` from locale resolution, and `getCurrentLocale` falls back to the `marte_locale` cookie for those paths. Anything deriving a locale from the router's location will see the de-localized path and therefore the default locale — use `getCurrentLocale()` instead.
+
+## Documentation
+
+**A docs page returns 404.** Three things must all be true: the file is named `<slug>.<locale>.mdx` under `content/docs/`, the slug appears in the `pages` array of that folder's `meta.<locale>.json`, and `.source/` has been regenerated with `bun run content`. `docs.$.tsx` throws `notFound()` when `docsSource.getPage` finds nothing.
+
+**A page exists but does not appear in the sidebar.** `buildDocsNavigation` in `src/integrations/fumadocs/fumadocs.docs.ts` only turns **top-level folders** of `content/docs` into sections, and within a folder only its `index` page and its direct page children. A page nested two folders deep will resolve by URL but will not be listed.
+
+**A page renders but its heading is duplicated.** `src/presentation/components/custom/docs-content.tsx` renders `frontmatter.title` as the `h1` above the MDX body. Do not add your own `#` heading at the top of a page.
+
+**A capitalised JSX tag in MDX breaks the page.** The docs renderer maps plain HTML elements only — `src/presentation/components/custom/docs-mdx.tsx` extends `mdxComponents` with `a`, `h1`–`h4`, `p`, `ul`, `ol`, `li`, `strong`, `blockquote`, `code`, `pre`, `table`, `th`, `td` and `hr`. There is no component registry, so `<Callout>` or `<Tabs>` has nothing to resolve to. Use Markdown.
+
+## Authentication and payments
+
+**Sign-in fails locally.** Check `AUTH_SECRET` and the OAuth credentials in `.env.development`, and that the provider's callback URL points at `/api/auth/callback/<provider>` on a host Better Auth accepts — locally only `localhost:3000` and `127.0.0.1:3000`.
+
+**`TOO_MANY_REQUESTS` while testing by hand.** Two limiters are in play. Better Auth allows 5 sign-ins, 3 sign-ups, 3 password-reset requests and 5 password resets per 60 seconds, plus a global 100 per 60 seconds. The application middleware allows 3 calls per 60 seconds to `create-user-address`, `update-customer-phone` and `revoke-other-customer-sessions`, and 10 to the checkout actions. Counters live in the `rate_limit` table, keyed by `cf-connecting-ip`; there is no sweeper, so old rows simply age out of the window.
+
+**Stripe webhooks are rejected.** `src/routes/api/webhooks.stripe.ts` answers `400 Missing signature or webhook secret` when the `stripe-signature` header is absent or `STRIPE_WEBHOOK_SECRET` is empty, and `400 Webhook Error: Invalid Signature` when `constructEventAsync` rejects the payload. Locally, run `bun run stripe:listen` and paste the signing secret it prints into `.env.development`. An event type with no entry in `webhookHandlers` is logged and acknowledged with `{ received: true }` rather than failing.
+
+**An order is paid but nothing happened.** Fulfilment is driven entirely by the webhook path: `fulfill-checkout.server.ts` for `checkout.session.completed` and `release-checkout.server.ts` for `checkout.session.expired`. If the forwarder was not running, the checkout row stays `pending` and no order exists. `fulfillCheckout` also returns early when `findPendingCheckoutByTransaction` finds nothing, which is what makes Stripe's sequential retries idempotent.
+
+## Build and deploy
+
+**`Missing database, cache, images, audit, or realtime binding for preview`.** From `scripts/verify-bindings.ts`. The target environment in `wrangler.jsonc` is missing a binding or still carries a placeholder id (the check rejects ids made only of `0` and `-`). Create the resource in Cloudflare and paste the real id.
+
+**`Missing STRIPE_SECRET_KEY in .env.preview or the process environment`.** From `scripts/prepare-deploy-secrets.ts`. Every name under `secrets.required` for that environment must have a non-blank value in the matching `.env` file or in the process environment.
+
+**`Server-only import in client asset: <file>.js`.** From `scripts/verify-build.ts`. A client bundle ended up importing `cloudflare:workers` or a `node:*` module, which means a server-only module was reached from a component. Trace the import chain from the named asset; the usual cause is importing from a `*.server.ts` file or from `drizzle.database.ts` in a component instead of going through a use case.
+
+**`Worker build does not target preview`** or **`Worker deployment points outside the current server build`.** Also from `verify-build.ts`. The build output in `dist/` does not match the environment being deployed, usually because `CLOUDFLARE_ENV` leaked in from the shell or a stale `dist/` was reused. `build:preview` and `build:production` both start with `rm -rf dist`; run the matching script rather than `wrangler deploy` by hand.
+
+**`Missing client JavaScript` / `Missing client CSS`.** `dist/client/assets` has no `.js` or `.css` file. The client build failed earlier in the pipeline — scroll back through the build output.
+
+## Related pages
+
+- [Frequently asked questions](/docs/reference/faq)
+- [Environment and bindings](/docs/reference/environment)
+- [Testing](/docs/tooling/testing)

@@ -1,0 +1,61 @@
+---
+title: "Glossary"
+description: "The vocabulary used across the M'Arte documentation and codebase, with the file that defines each term."
+---
+
+Terms are listed alphabetically. Where a term corresponds to a concrete export, the defining file is named.
+
+## Application vocabulary
+
+- **Accessor** — a plain data-access function in `<module>/<module>.accessors.ts`. It takes arguments, talks to `db`, and has no notion of who is asking. Authorization lives one layer up, in the use case.
+- **AppError** — the single error class server code throws, from `src/modules/_core/constants/errors.ts`. It carries one of eight `ERROR_CODES` and an optional module-specific reason string.
+- **Audit event** — a row in the `audit_log` table, enqueued rather than written inline. Categories are `orders`, `email`, `customers`, `catalog`, `settings` and `auth`; severities are `info`, `success`, `warning`, `error`; actor roles are `admin`, `customer`, `system`, `unknown`. Defined in `src/modules/audit-log/audit-log.constants.ts`.
+- **Binding** — a Cloudflare resource the Worker receives from `env`: `DB` (D1), `CACHE` (KV), `IMAGES` (R2), `AUDIT_LOG_QUEUE` (Queue producer), `REALTIME_INVALIDATION_HUB` (Durable Object) and `ASSETS` (static assets).
+- **Checkout** — a row in the `checkout` table representing one payment attempt, created before Stripe is contacted and resolved by a webhook. Distinct from the **cart**, which is a Zustand store in `src/modules/cart/cart.store.ts` plus the `cart` and `cart_item` tables.
+- **Collection** — a curated group of products (`product_collection`, joined through `collection_on_product`). Distinct from a **category** (`product_category`), which is hierarchical and has a `parentId`.
+- **Compensation** — releasing inventory that was already reserved when a later line in the same cart fails its reservation guard. Best-effort: its own failure is caught and logged.
+- **Drizzle batch** — a list of statements run atomically on D1 through `runDrizzleBatch` in `src/integrations/drizzle-orm/drizzle.batch.ts`. D1 has no interactive transactions, so a batch is the only atomicity primitive available.
+- **Guard** — a function used in a route's `beforeLoad` to redirect before the route loads: `requireUser`, `requireAdmin`, `requireCustomer`, `redirectAuthenticated`, all in `src/integrations/better-auth/auth.routes.ts`. Guards are navigation UX, not authorization.
+- **Handle** — the URL-safe slug of a product, category or collection. Unique, lower-case, hyphen-separated, validated against a pattern such as `CATEGORY_HANDLE_PATTERN`. Used in place of an id in storefront and admin URLs.
+- **Integration** — a folder in `src/integrations` that wraps one third party: `better-auth`, `cloudflare-r2`, `drizzle-orm`, `fumadocs`, `gsap`, `inpost`, `lenis`, `react-day-picker`, `realtime-invalidation`, `resend`, `stripe`, `tanstack-query`, `use-intl`.
+- **Layout route** — a route that renders an `Outlet` for its children and usually declares shared `staticData.namespaces`: `_storefront.tsx`, `account.tsx`, `admin.tsx`, `auth.tsx`, `checkout.tsx`, `docs.tsx`.
+- **Locale prefix** — the `/<locale>` segment used for every locale except the default. `pl-PL` is the default and collapses to no prefix; `en-US` is served under `/en-US`. Handled by `localizePathname` and `deLocalizePathname` in `src/integrations/use-intl/i18n.paths.ts`.
+- **Middleware** — a function that runs before a server function's handler: `withRequest` (error normalisation), `authorized` (session and permission), `withRateLimit` (per-IP budget). All three are in `src/integrations/better-auth/auth.middleware.ts`.
+- **Module** — a folder in `src/modules`. Thirty-one own one database table each; five own no table and group operations instead.
+- **Mutation key** — the tuple in a module's `<ENTITY>_MUTATION_KEYS` used to identify a mutation for cache and pending-state purposes, for example `CATEGORY_MUTATION_KEYS.REORDER`.
+- **Namespace** — one translation file, named after itself: `pages.admin.catalog.products` is `messages/<locale>/pages.admin.catalog.products.json`. Routes declare the namespaces they need in `staticData.namespaces`.
+- **Optimistic concurrency** — the inventory reservation strategy. The reserve `UPDATE` is guarded on both the row `version` read during validation and `quantityAvailable >= quantity`, and success is signalled by the length of `.returning()`. There is no locking.
+- **Pathless layout** — a layout route whose file name begins with `_`, so it wraps its children without contributing a URL segment. `_storefront.tsx` is the only one.
+- **Query key** — the tuple identifying a cached query, always taken from a module's `<ENTITY>_QUERY_KEYS`, for example `CATEGORY_QUERY_KEYS.ADMIN.ALL` is `["admin", "categories"]`. Keys are never written inline.
+- **Query options** — the `queryOptions` object exported next to a read use case. Loaders, components and invalidation all import the same object, so they cannot drift apart.
+- **Realtime hub** — one named instance of the `RealtimeInvalidationHub` Durable Object. There are two audiences, `admin` and `storefront`, declared in `REALTIME_INVALIDATION_HUB`. The admin hub subscribes to 12 query-key prefixes and the storefront hub to 10.
+- **Root namespaces** — the six translation namespaces preloaded for every route: `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors`, `pages.auth.toast`. Derived by `ROOT_NAMESPACES` in `src/integrations/use-intl/i18n.messages.ts`.
+- **Server function** — a typed RPC operation created with `createServerFn` that always runs on the server and is reachable over HTTP. 75 of them exist under `src/modules/*/use-cases/`.
+- **Statement** — one resource-plus-actions entry in the access-control matrix, for example `product: ["create", "read", "update", "delete", "publish"]`. Defined in `PERMISSIONS_STATEMENTS`.
+- **Use case** — one operation in `<module>/use-cases/<verb>-<noun>.ts`. Exports the server function and the query or mutation options that go with it.
+- **Variant** — a purchasable configuration of a product (`product_variant`), described by option values through `option_on_variant` and stocked through a one-to-one `inventory` row.
+- **Wrangler environment** — one of `development`, `preview` or `production` in `wrangler.jsonc`, each with its own bindings, `APP_ENV` and `secrets.required` list.
+
+## Infrastructure vocabulary
+
+- **`background`** — `src/lib/background.ts`. `executionContextStorage` is an `AsyncLocalStorage` carrying the Worker's `waitUntil`; `scheduleBackgroundWork(task)` pulls it out at any depth so a promise survives the response. With no store it degrades to a caught fire-and-forget.
+- **Cloudflare Queue** — the audit-log transport. Events are enqueued through `AUDIT_LOG_QUEUE` and consumed by the `queue` export in `src/server.ts`, in batches of up to 50 with a 5-second timeout and 3 retries.
+- **D1** — Cloudflare's SQLite database, bound as `DB`. No interactive transactions; `db.batch()` is the atomicity primitive.
+- **Durable Object** — `RealtimeInvalidationHub` in `src/durable-objects/realtime-invalidation-hub.ts`, created by the `v1` migration tag. It fans out invalidation messages to connected WebSockets and holds no durable state.
+- **KV** — the `CACHE` namespace. Declared in every environment.
+- **R2** — the `IMAGES` bucket, holding product media. Public reads go through the base URL in `VITE_R2_URL`.
+- **Vite+** — the unified toolchain, invoked as `vp`. It provides `vp dev`, `vp build`, `vp check`, `vp fmt`, `vp lint`, `vp test` and `vp staged`, all configured in `vite.config.ts`.
+
+## Tooling vocabulary
+
+- **`.source/`** — the directory Fumadocs MDX generates from `src/integrations/fumadocs/fumadocs.config.ts`. It is aliased as `collections/*` in `tsconfig.json` and regenerated by `bun run content`.
+- **Component test** — a `*.component.test.tsx` file, run by the Vitest `component` project in `jsdom` with `src/platform/testing/setup.ts`.
+- **Integration test** — a `*.integration.test.ts` file, run by the Vitest `integration` project against an in-memory `node:sqlite` database behind the D1-shaped transport in `src/platform/testing/mocks/d1.ts`.
+- **Unit test** — any other `*.test.ts` or `*.test.tsx` file, run by the Vitest `node` project.
+- **`vp check`** — format, lint and type check in one command. The gate CI runs, and the gate the pre-commit hook runs over staged files.
+
+## Related pages
+
+- [Architecture](/docs/architecture)
+- [Conventions](/docs/reference/conventions)
+- [Module catalog](/docs/reference/modules)

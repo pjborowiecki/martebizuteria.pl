@@ -1,0 +1,292 @@
+---
+title: "Internationalization"
+description: "Two locales, Polish default with no prefix, URL rewriting in the router, per-route message namespaces and JSON locale maps in the database."
+---
+
+## Configuration
+
+Everything starts from `src/integrations/use-intl/i18n.config.ts`:
+
+```ts
+const COOKIE_NAME = "marte_locale"
+
+const SUPPORTED_LOCALES = ["pl-PL", "en-US"] as const
+
+const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
+
+const DEFAULT_TIMEZONE = "Europe/Warsaw"
+
+const TIME_ZONES = ["UTC", "America/New_York", "Europe/Warsaw"] as const
+```
+
+Polish is the default and English the secondary locale. `SupportedLocale` is derived from the tuple, so adding a locale to that array is what makes the type system demand the rest of the work.
+
+## URLs
+
+The default locale has **no prefix**. `/products` is Polish, `/en-US/products` is English. `i18n.paths.ts` owns the rules:
+
+| Function                | Behaviour                                                                              |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| `isSupportedLocale`     | Set membership                                                                         |
+| `shouldIgnorePath`      | True for `/api`, `/rpc`, `/_serverFn` and `/assets`                                    |
+| `extractLocaleFromPath` | Returns the prefix **only when it is not the default** — `/pl-PL/x` yields `undefined` |
+| `deLocalizePathname`    | Strips any supported prefix                                                            |
+| `localizePathname`      | Adds the prefix, except for the default locale                                         |
+| `canonicalizePathname`  | Expands a language alias (`/pl` → `/`, `/en` → `/en-US`)                               |
+| `localeLinks`           | The canonical, per-locale `alternate` and `x-default` link tags                        |
+
+`LANGUAGE_ALIASES` is built from the locale list by taking the part before the hyphen, so `pl` and `en` are recognised without a second constant.
+
+The routes in `src/routes` contain **no locale segment**. The translation happens in the router:
+
+```ts
+rewrite: {
+  input: ({ url }) => deLocalizeUrl(url),
+  output: ({ url }) => localizeUrl(url),
+},
+```
+
+That is in `src/router.tsx`. `input` strips the prefix before matching, `output` adds it back when the router builds a URL — which is why `<LocalizedLink to={ROUTES.PRODUCTS} />` produces `/en-US/products` for an English reader with no work at the call site.
+
+`LocalizedLink` (`src/presentation/components/custom/localized-link.tsx`) is a thin wrapper that defaults `params` to `true`, so a link keeps the current route's params unless it overrides them. Its `LocalizedTo` type is `FileRouteTypes["to"]` from the generated route tree, so only real routes type-check.
+
+## The request middleware
+
+`src/server.ts` calls `resolveLocale(request)` (`i18n.middleware.ts`) before handing off to TanStack Start. It does two things, and only for document requests:
+
+```ts
+const canonical = canonicalizePathname(pathname)
+
+if (canonical !== pathname) {
+  url.pathname = canonical
+
+  return { redirect: Response.redirect(url.href, HTTP_MOVED_PERMANENTLY) }
+}
+
+const urlLocale = extractLocaleFromPath(pathname) ?? I18N.DEFAULT_LOCALE
+const cookieLocale = parseLocaleCookie(request.headers.get("cookie")) ?? I18N.DEFAULT_LOCALE
+
+if (urlLocale === cookieLocale) {
+  return {}
+}
+
+return { setCookie: { name: I18N.COOKIE_NAME, value: urlLocale } }
+```
+
+So `/pl-PL/products` **301s** to `/products`, and the `marte_locale` cookie follows the URL rather than the other way round. `isDocumentRequest` checks `sec-fetch-dest` and falls back to the `Accept` header, so API calls and asset requests are untouched.
+
+**The URL is the source of truth, not the cookie.** There is no accept-language negotiation and no automatic redirect based on the visitor's browser.
+
+## Resolving the current locale
+
+`getCurrentLocale()` in `i18n.utils.ts` is a `createIsomorphicFn` with a server and a client branch:
+
+```ts
+export const getCurrentLocale = createIsomorphicFn()
+  .server((): SupportedLocale => {
+    const request = getRequest()
+    const { pathname } = new URL(request.url)
+
+    if (shouldIgnorePath(pathname)) {
+      return parseLocaleCookie(request.headers.get("cookie")) ?? I18N.DEFAULT_LOCALE
+    }
+
+    return extractLocaleFromPath(pathname) ?? I18N.DEFAULT_LOCALE
+  })
+  .client(...)
+```
+
+The cookie is the fallback for exactly the paths the middleware ignores — an API route or a server function has no locale in its URL, so a Stripe-facing handler or an email sender reads the cookie instead. `getCurrentPathname()` is the matching helper for the de-localised path.
+
+## Message catalogues
+
+`messages/{locale}/{namespace}.json`, 48 files per locale and the two directories are identical in filenames. The namespace is the filename: `pages.landing.json` is the namespace `pages.landing`, and `buildMessageTree` splits it on dots to nest it, so `useTranslations("pages.landing.heroSection")` works.
+
+`src/integrations/use-intl/i18n.messages.ts` loads them with a Vite glob:
+
+```ts
+const messageModules = import.meta.glob<AbstractIntlMessages>("../../../messages/*/*.json", { import: "default" })
+```
+
+so every catalogue is a separate chunk and only the ones a page needs are fetched.
+
+Six namespaces are always loaded, declared by a second, explicit glob:
+
+```ts
+const rootMessagePaths = Object.keys(
+  import.meta.glob([
+    "../../../messages/*/common.json",
+    "../../../messages/*/components.custom.json",
+    "../../../messages/*/components.shadcn.json",
+    "../../../messages/*/errors.json",
+    "../../../messages/*/pages.auth.errors.json",
+    "../../../messages/*/pages.auth.toast.json",
+  ]),
+)
+
+export const ROOT_NAMESPACES = [...new Set(rootMessagePaths.map((path) => toNamespace(path)))]
+```
+
+`loadNamespace` throws a clear error for a missing file rather than rendering raw keys:
+
+```ts
+throw new Error(`Missing translation namespace: messages/${locale}/${namespace}.json`)
+```
+
+## Per-route namespaces
+
+A route declares what it needs in `staticData`:
+
+```ts
+staticData: {
+  namespaces: ["pages.landing", "pages.categories"],
+},
+```
+
+`getRouteNamespaces(matches)` unions `ROOT_NAMESPACES` with the `namespaces` of every matched route, so a nested route inherits its layout's declarations. The root route's `beforeLoad` then preloads them all before rendering:
+
+```ts
+beforeLoad: async ({ context, location, matches }): Promise<RootRouteContext> => {
+  const locale = getCurrentLocale()
+  await preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient: context.queryClient })
+
+  return { internalPathname: location.pathname, locale }
+},
+```
+
+`messagesQueryOptions` uses `staleTime: Infinity` and `gcTime: Infinity` — a catalogue never changes within a session, so it is fetched once.
+
+`TranslationsProvider` (`src/providers/translations-provider.tsx`) then reads the same queries with `useSuspenseQueries`, combines them with `buildMessageTree` and renders `use-intl`'s provider:
+
+```tsx
+<IntlProvider locale={locale} messages={messages} timeZone={I18N.DEFAULT_TIMEZONE}>
+  {children}
+</IntlProvider>
+```
+
+It also writes the locale cookie in an effect, so a client-side navigation into `/en-US` updates the cookie without a request.
+
+`timeZone` is fixed to `Europe/Warsaw` for everyone. `user.timezone` exists as a column and `I18N.TIME_ZONES` lists three zones, but nothing feeds either into the provider.
+
+**Forgetting a namespace is a runtime error**, not a silent fallback: `useTranslations` on a missing namespace throws. Adding a page means adding its namespace to the route's `staticData`.
+
+## Outside React
+
+Emails and webhooks have no provider, so they use the non-React path:
+
+```ts
+const messages = await loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE })
+const subject = createTranslator({ locale, messages })("subject")
+```
+
+`createTranslator` is `use-intl`'s standalone translator. See [Transactional email](/docs/features/email) for how the locale is recovered from Stripe metadata or from `order.metadata` when there is no request.
+
+## Typed message files
+
+A route imports its catalogue as a **type only** and uses it to type the query:
+
+```ts
+import type landingMessages from "~/messages/en-US/pages.landing.json"
+
+const messages = await context.queryClient.query(messagesQueryOptions<typeof landingMessages>({ locale, namespace: "pages.landing" }))
+```
+
+The `en-US` file is always the one imported for typing, which makes it the de facto structural reference: a key present in Polish but missing in English is not visible to the type system.
+
+## Locale maps in the database
+
+Catalog content is not in the message catalogues — it is per-row. The convention is a JSON column holding one string per locale:
+
+```ts
+titles: text("titles", { mode: "json" }).$type<Product["localeMap"]>().notNull(),
+subtitles: text("subtitles", { mode: "json" }).$type<Product["localeMap"] | null>(),
+descriptions: text("descriptions", { mode: "json" }).$type<Product["localeMap"] | null>(),
+tags: text("tags", { mode: "json" }).$type<Product["tagsLocaleMap"] | null>(),
+```
+
+The same shape appears on `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`) and `product_attribute` (`titles`, and the labels inside `allowed_values`).
+
+Reading falls back three times. `resolveLocalizedString` in `src/modules/product-attribute/product-attribute.utils.ts` is the shared implementation:
+
+```ts
+export const resolveLocalizedString = (map: ProductAttribute["localeMap"], locale: string): string => {
+  const normalized = isProductAttributeLocaleCode(locale) ? locale : I18N.DEFAULT_LOCALE
+  const primary = map[normalized].trim()
+  if (primary !== "") {
+    return primary
+  }
+
+  const fallback = map[I18N.DEFAULT_LOCALE].trim()
+  if (fallback !== "") {
+    return fallback
+  }
+
+  for (const code of I18N.SUPPORTED_LOCALES) {
+    const candidate = map[code].trim()
+    if (candidate !== "") {
+      return candidate
+    }
+  }
+
+  return ""
+}
+```
+
+Requested locale, then Polish, then any locale with content, then the empty string. Each module wraps it with a named accessor — `resolveProductTitle`, `resolveProductSubtitle`, `resolveProductDescription`, `resolveCategoryTitle`, `resolveCollectionTitle` — and `coerceProductLocaleMap` fills missing keys so a partially written row cannot throw.
+
+Writing goes the other way: `normalizeProductAttributeLocaleMapForSave` fills every locale, and `normalizeOptionalProductLocaleMapForSave` returns `undefined` when every locale is empty so the column is left null rather than holding `{"pl-PL":"","en-US":""}`.
+
+Because the maps are stored as JSON text, a `LIKE` search against `titles` searches **all** locales at once — see [Catalog and search](/docs/features/catalog-and-search).
+
+The admin editors expose this per-locale. `catalog/form/components/catalog-locale-picker.tsx` iterates `I18N.SUPPORTED_LOCALES`, shows a filled/empty count per locale, and `product-form-locale-layout.tsx` renders the field set for the selected one. The attribute CSV export writes one `Title <LOCALE>` column per locale.
+
+## SEO
+
+The root route's `head` emits:
+
+- `<html lang={locale}>`
+- `localeLinks({ origin, pathname })` — a canonical plus one `alternate` per locale plus `x-default`
+- `og:locale` for the current locale and `og:locale:alternate` for each other one
+- `robots` indexing only when `import.meta.env.MODE === "production"` and the path passes `isNoIndexPathname`
+
+`generateSitemapXml` and `generateRobotsTxt` in `src/lib/seo.ts` are served directly from `src/server.ts` at `/sitemap.xml` and `/robots.txt`, ahead of the router, with a one-day cache.
+
+## Formatting
+
+Money and dates use `use-intl`'s `useFormatter` in most components:
+
+```ts
+format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" })
+```
+
+`src/modules/_core/utils/currency.ts` holds the minor-unit arithmetic — `centsToDisplayAmount`, `parseMoneyInputToMinorUnits`, `formatPrice`, `formatMinorUnitsAsDecimal`, `minorUnitsPerMajor` — while `_core/constants/currency.ts` holds the full ISO 4217 exponent table and `getCurrencyExponent`.
+
+Two places bypass the formatter and hard-code Polish:
+
+- `src/routes/_storefront.cart.tsx` builds its totals with `new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" })`
+- `formatAdminOrderDate` in `order.display.utils.ts` defaults its `locale` argument to `I18N.DEFAULT_LOCALE`
+
+The Stripe Elements form is localised separately, by mapping the app locale to a Stripe locale in `stripe.client.ts` (`pl-PL → pl`, `en-US → en`).
+
+## What is missing
+
+- **No locale switcher in the UI.** Nothing in the navigation, the footer or the account area changes language; a visitor has to edit the URL. The mechanism is complete — the control is not.
+- No per-user locale preference. `user.timezone` is stored and surfaced on `/account/profile`, but neither it nor a language preference affects rendering.
+- No message-catalogue parity check. The two directories currently hold the same 48 filenames, but nothing in `bun run check` verifies that the keys inside them match.
+
+## Adding a locale
+
+1. Add the code to `SUPPORTED_LOCALES` in `i18n.config.ts`.
+2. Create `messages/<locale>/` with all 48 files. `loadNamespace` throws on a missing one, so this is not optional.
+3. Add the locale to every `*.<locale>.mdx` set in `content/legal` and `content/docs`, and to each `meta.<locale>.json`.
+4. Backfill the JSON locale maps in D1; `coerceProductLocaleMap` keeps existing rows readable in the meantime, and `resolveLocalizedString` falls back to Polish.
+5. Add a Stripe Elements locale in `STRIPE_LOCALES` (`stripe.client.ts`) — it is `satisfies Record<SupportedLocale, StripeElementLocale>`, so the type checker will point at it.
+6. Check `POSTAL_CODE_PATTERNS` and the `libphonenumber-js` country in `checkout.zod.ts` if the new locale implies a new shipping country.
+
+## Related pages
+
+- [Legal pages](/docs/features/legal-pages)
+- [Transactional email](/docs/features/email)
+- [Admin catalog](/docs/features/admin-catalog)
+- [Catalog and search](/docs/features/catalog-and-search)
+- [Integrations: use-intl](/docs/integrations/use-intl)

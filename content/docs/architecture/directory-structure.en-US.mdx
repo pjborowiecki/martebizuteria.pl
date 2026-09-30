@@ -1,0 +1,89 @@
+---
+title: "Directory structure"
+description: "Every top-level folder in the M'Arte repository and the rules for what goes where."
+---
+
+```text
+content/
+├── docs/                              <page>.<locale>.mdx and meta.<locale>.json
+└── legal/                             Legal documents, validated by fumadocs.schema.ts
+messages/<locale>/<namespace>.json     One file per translation namespace
+public/                                Fonts, images and other static assets
+scripts/                               verify-bindings, verify-build, prepare-deploy-secrets,
+                                       commit-msg, sync-skills
+src/
+├── routes/                            Locale-free flat file routes
+│   ├── __root.tsx                     Shell document, head tags, root beforeLoad
+│   ├── _storefront.*.tsx              Public storefront pages under the _storefront layout
+│   ├── account.*.tsx                  Customer account area
+│   ├── admin.*.tsx                    Admin console
+│   ├── auth.*.tsx                     Sign-in, sign-up, forgot and reset password
+│   ├── checkout.*.tsx                 Checkout layout and step page
+│   ├── docs.tsx, docs.index.tsx,
+│   │   docs.$.tsx                     This documentation site
+│   ├── dev.emails.tsx                 Email template preview
+│   └── api/                           auth.$.ts and webhooks.stripe.ts
+├── routes.ts                          ROUTES: every path as a constant
+├── router.tsx                         getRouter, QueryClient defaults, rewrite
+├── server.ts                          Worker fetch and queue handlers
+├── modules/
+│   ├── _core/
+│   │   ├── constants/                 api, currency, errors, placeholder, country, timezone
+│   │   └── utils/                     pagination, zod-fields, csv, currency, datetime,
+│   │                                  iso-date, iso-datetime, json, column-filters,
+│   │                                  search-conditions
+│   └── <feature>/
+│       ├── <feature>.schema.ts        Drizzle table and relations
+│       ├── <feature>.zod.ts           Input schemas shared by forms and server functions
+│       ├── <feature>.constants.ts     Query keys, mutation keys, enums, page sizes
+│       ├── <feature>.types.ts         Derived row and input types
+│       ├── <feature>.utils.ts         Pure helpers
+│       ├── <feature>.accessors.ts     Data access with no authorization
+│       ├── <feature>.*.server.ts      Server-only helpers that are not use cases
+│       └── use-cases/<verb-noun>.ts   createServerFn plus its query or mutation options
+├── integrations/<vendor>/             <prefix>.<concern>.ts
+├── presentation/
+│   ├── components/
+│   │   ├── shadcn/                    57 generated primitives
+│   │   └── custom/
+│   │       ├── product-card.tsx       Shared components, flat
+│   │       ├── datagrid/              The admin data grid
+│   │       ├── image-upload/          R2 upload widget
+│   │       ├── checkout/              Checkout steps and delivery pickers
+│   │       ├── defaults/              Router error, pending and not-found components
+│   │       └── pages/<area>/          Components for one page or area
+│   ├── emails/                        React Email templates and shared styles
+│   ├── styles/                        globals.css, storefront.css, admin.css,
+│   │                                  fonts.css, critical-fonts.css
+│   ├── theme/                         theme-init, sidebar-preference, use-admin-light-theme
+│   ├── branding/                      app.ts, business.ts, socials.ts
+│   └── document-assets.ts             Locale-specific critical font preloads
+├── providers/                         translations-provider, themes-provider
+├── data/                              Static data and admin fixtures
+├── lib/                               background, cookie, image, rate-limit, request,
+│                                      seo, url, catalog-debug-log
+├── hooks/                             Shared React hooks
+├── durable-objects/                   realtime-invalidation-hub.ts
+├── platform/testing/                  setup.ts, lib/, mocks/
+└── types/                             globals, router, vite-env, worker-configuration
+```
+
+## Placement rules
+
+- **Files and folders use kebab-case.** Tests live in a sibling `__test__` folder and are named `*.test.ts`, `*.integration.test.ts` or `*.component.test.tsx`.
+- **Routes only compose.** A route file defines the page or layout component, its `staticData.namespaces`, its `beforeLoad` guard, its `loader` and its `head`. Widgets, dialogs, forms and column definitions live in `src/presentation/components/custom`.
+- **A module is a feature, not strictly a table.** Most of the 36 modules own one Drizzle table, but `admin-dashboard`, `customer-account`, `customer-activity` and `storefront-search` own read models that span several tables and have no schema file of their own.
+- **`_core` is the shared kernel.** `AppError` and `ERROR_CODES`, the pagination helpers, the reusable Zod fields, the currency formatters and the column-filter builders live there. `_core/constants/country.ts` and `_core/constants/timezone.ts` are ISO reference tables kept deliberately for planned work — they have no importers and must not be deleted as dead code.
+- **`src/data` holds data, not logic.** `landing.ts`, `blog-posts.ts` and `static-pages.ts` feed real pages; `coupons.ts`, `marketing.ts`, `order-detail.ts`, `content.ts` and `settings.ts` are fixtures behind the admin pages that are still scaffolding.
+- **`src/lib` holds small request-scoped helpers**, not features: `background.ts` (the `waitUntil` store), `cookie.ts`, `image.ts`, `rate-limit.ts`, `request.ts`, `seo.ts` and `url.ts`.
+- **Generated files are never edited by hand.** The router plugin writes `src/routeTree.gen.ts`, `bun run cf-typegen` writes `src/types/worker-configuration.d.ts` (gitignored), and `bun run content` writes `.source/`, which `tsconfig.json` maps to the `collections/*` import prefix.
+
+## Content and messages live outside `src`
+
+`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. `content/legal` holds the legal documents that `src/integrations/fumadocs/fumadocs.source.ts` loads. `messages/{en-US,pl-PL}` holds 48 namespace files each.
+
+## Related pages
+
+- [Layering](/docs/architecture/layering)
+- [Dependency rules](/docs/architecture/dependency-rules)
+- [Modules and use cases](/docs/architecture/modules-and-use-cases)

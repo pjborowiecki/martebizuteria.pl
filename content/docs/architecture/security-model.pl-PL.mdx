@@ -1,0 +1,154 @@
+---
+title: "Model bezpieczeństwa"
+description: "Jak wymuszany jest dostęp na trasach, funkcjach serwerowych i WebSocketach oraz jak chronione są sesje, limity żądań i błędy."
+---
+
+## Dwie warstwy, ale tylko jedna jest granicą
+
+**Guardy tras** w `src/integrations/better-auth/auth.routes.ts` działają w `beforeLoad` i przekierowują:
+
+| Guard                     | Używany przez                  | Zachowanie                                                           |
+| ------------------------- | ------------------------------ | -------------------------------------------------------------------- |
+| `requireUser()`           | Podstawa dla dwóch pozostałych | Bez sesji przekierowuje na `/auth/sign-in`                           |
+| `requireAdmin()`          | `admin.tsx`                    | Wymaga dodatkowo `hasAdminAccess(role)`, inaczej `/account/overview` |
+| `requireCustomer()`       | `account.tsx`                  | Administratora wysyła zamiast tego na `/admin`                       |
+| `redirectAuthenticated()` | Strony uwierzytelniania        | Zalogowanego wysyła na `postAuthRouteFor(user)`                      |
+
+Guardy decydują o tym, co użytkownik _widzi_. Działają również w przeglądarce, więc są elementem UX nawigacji, a nie zabezpieczeniem.
+
+**Middleware funkcji serwerowych** w `auth.middleware.ts` jest prawdziwą granicą, bo funkcja serwerowa to publiczny endpoint HTTP osiągalny niezależnie od tego, czy jej strona została kiedykolwiek załadowana:
+
+```ts
+export const authorized = (permission?: Permission) =>
+  createMiddleware({ type: "function" })
+    .middleware([withRequest])
+    .server(async ({ next }) => {
+      const session = await getRequestSession()
+      if (session === null) {
+        throw new AppError(ERROR_CODES.UNAUTHORIZED)
+      }
+
+      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+        throw new AppError(ERROR_CODES.FORBIDDEN)
+      }
+
+      return next({ context: { auth: session } })
+    })
+```
+
+W `src/modules` i `src/integrations` `authorized()` występuje 62 razy: 14 razy bez argumentu (wystarcza sesja), a pozostałe z uprawnieniem — `product: ["read"]` ×14, `product: ["update"]` ×9, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×5, `order: ["read"]` ×3, `order: ["update"]` ×3 oraz statementy administracyjne Better Auth `user: ["list" | "get" | "update" | "delete"]`.
+
+## Role i uprawnienia
+
+`auth.access.ts` buduje kontrolę dostępu na `createAccessControl` z Better Auth:
+
+- **Role**: `admin` i `customer`; `DEFAULT_ROLE` to `customer`, a `ADMIN_PANEL_ROLES` to `["admin"]`.
+- **Zasoby i akcje**: `order: [read, update, refund]`, `product: [create, read, update, delete, publish]`, `settings: [manage]`, plus własne `defaultStatements` Better Auth dla `user` i `session`.
+- **`ROLES_CONFIG`** przyznaje roli admin wszystkie statementy oraz `adminAc.statements`; rola customer nie otrzymuje żadnego.
+- **`hasAdminAccess(role)`** to zgrubne sprawdzenie używane przez guardy tras i handshake WebSocketu; `hasPermission({ permission, role })` to sprawdzenie drobnoziarniste używane przez `authorized()`.
+
+Ponieważ rola customer nie ma żadnych statementów, macierz zasobów zachowuje się dziś jak binarne sprawdzenie „czy admin”. Warto o tym pamiętać przed dodaniem trzeciej roli: macierz już istnieje, ale nic jeszcze nie korzysta z niej częściowo.
+
+## Własność jest wkompilowana w SQL
+
+Odczyty i zapisy po stronie klienta nigdy nie ufają identyfikatorowi z wejścia. Filtrują po `context.auth.user.id` wewnątrz zapytania:
+
+```ts
+where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
+```
+
+Ten sam wzorzec występuje w `list-customer-orders.ts`, `list-customer-sessions.ts`, `list-customer-login-history.ts`, `get-customer-overview.ts`, `revoke-customer-session.ts`, `revoke-other-customer-sessions.ts`, `update-customer-phone.ts` i we wszystkich pięciu przypadkach użycia adresów. Obcy identyfikator nie zwraca żadnego wiersza, więc nie ma czego filtrować później ani czego wyciekać.
+
+`revoke-customer-session.ts` odmawia dodatkowo unieważnienia własnej sesji wywołującego, a `delete-customer.ts` odmawia usunięcia działającego administratora.
+
+## Sesje
+
+- Better Auth przechowuje sesje w D1 przez `drizzleAdapter(db, { provider: "sqlite", schema })`, z `storeSessionInDatabase: true` i **bez `secondaryStorage`** — KV zostało odrzucone dla sesji, tokenów weryfikacyjnych i liczników limitów, bo jest spójne ostatecznie i nie umie atomowo skonsumować-i-zwiększyć wartości.
+- `useSecureCookies` jest włączone poza `development` i `test` (`isLocalMode(import.meta.env.MODE)`).
+- Dozwolone hosty są ustalone dla każdego trybu builda przez `appHostsForMode` w `_core/constants/api.ts`: `martebizuteria.pl` na produkcji, `preview.martebizuteria.pl` na preview, `localhost:3000` i `127.0.0.1:3000` lokalnie, plus odpowiadające im hosty `workers.dev`.
+- `getRequestSession` omija cache cookie (`disableCookieCache: true`) i memoizuje wynik w `WeakMap` kluczowanej obiektem `Request`.
+- `getCurrentSession` — funkcja serwerowa wołana przez przeglądarkę — rzutuje sesję przed zwróceniem, usuwając `session.token`:
+
+  ```ts
+  const toClientSession = ({ session: { token: _token, ...session }, user }: RequestSession) => ({ session, user })
+  ```
+
+- `tanstackStartCookies()` jest ostatnim pluginem na liście, więc cookies ustawione w trakcie funkcji serwerowej trafiają do odpowiedzi.
+- `multiSession({ maximumSessions: 5 })` ogranicza liczbę równoległych sesji; `verification: { storeIdentifier: "hashed" }` oznacza, że identyfikatory weryfikacyjne są hashowane; `account.encryptOAuthTokens` szyfruje tokeny OAuth.
+- Weryfikacja e-maila jest wymagana przed logowaniem (`requireEmailVerification: true`, `sendOnSignUp: true`, `autoSignInAfterVerification: true`), a `resolveEmailVerificationCallbackUrl` przepisuje callback prowadzący na stronę główną sklepu na `/account/overview?verified=true`, żeby zweryfikowany użytkownik trafił w sensowne miejsce.
+
+## Limity żądań
+
+Dwa limitery dzielą tabelę `rate_limit`.
+
+**Własny limiter Better Auth**, skonfigurowany w `auth.server.ts` z `storage: "database"`, domyślnym limitem 100 żądań na okno 60 s i regułami szczegółowymi:
+
+| Trasa                     | Maksymalnie na minutę |
+| ------------------------- | --------------------- |
+| `/sign-in/email`          | 5                     |
+| `/sign-up/email`          | 3                     |
+| `/request-password-reset` | 3                     |
+| `/reset-password`         | 5                     |
+
+**Limiter aplikacji**, `withRateLimit(kind, limit)` nad `withinRateLimit` z `src/lib/rate-limit.ts`. `RATE_LIMITS` definiuje `SENSITIVE` (3/60 s), `TOKEN` (5/60 s) i `CHECKOUT` (10/60 s), a licznik to jeden atomowy upsert w D1:
+
+```ts
+.onConflictDoUpdate({
+  set: {
+    count: sql`case when ${rateLimit.lastRequest} <= ${windowStart} then 1 else ${rateLimit.count} + 1 end`,
+    lastRequest: sql`case when ${rateLimit.lastRequest} <= ${windowStart} then ${now} else ${rateLimit.lastRequest} end`,
+  },
+  setWhere: sql`${rateLimit.lastRequest} <= ${windowStart} or ${rateLimit.count} < ${limit}`,
+  target: rateLimit.key,
+})
+```
+
+Kluczem jest `${kind}:${clientAddress(headers)}`, a `clientAddress` czyta **wyłącznie** `cf-connecting-ip`, którego klient nie może podrobić. Jeśli magazyn licznika zawiedzie, żądanie jest odrzucane, a nie dopuszczane. Obecnie stosowane do `checkout-create`, `checkout-update`, `create-user-address`, `update-customer-phone` i `revoke-other-customer-sessions`. Limity są per IP; nie ma blokady per konto.
+
+Zwróć uwagę, że `resolveRequestIp` w `src/lib/request.ts` — używane wyłącznie dla _dziennika audytu_ — sięga w drugiej kolejności do `x-forwarded-for`, który klient może podrobić. Limitowania żądań to nie dotyczy, bo nie korzysta z tego helpera.
+
+## Autoryzacja WebSocketu
+
+`fetch` Durable Objectu nie ma własnego kontekstu cookie ani sesji, dlatego hub administracyjny jest sprawdzany rolą w Workerze **przed** zaadresowaniem obiektu:
+
+```ts
+if (hubName === REALTIME_INVALIDATION_HUB.ADMIN) {
+  const unauthorized = await assertAdminWebSocket(request)
+  if (unauthorized !== undefined) {
+    return unauthorized
+  }
+}
+
+const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
+
+return hub.fetch(request)
+```
+
+Sprawdzanie po `getByName()` pozwoliłoby już nieuwierzytelnionemu klientowi otworzyć obiekt. Hub sklepu jest publiczny — rozgłasza wyłącznie klucze zapytań katalogu, nigdy dane.
+
+## Webhooki
+
+`POST /api/webhooks/stripe` wymaga nagłówka `stripe-signature` i weryfikuje go sekretem `env.STRIPE_WEBHOOK_SECRET` przez `stripe.webhooks.constructEventAsync`, zanim uruchomi jakikolwiek handler. Ciała, którego nie da się zweryfikować, kończą się kodem `400` i niczego nie dotykają.
+
+## Błędy
+
+`withRequest` instaluje jeden normalizator dla każdej funkcji serwerowej:
+
+| Rzucone                | Dociera do klienta jako                           |
+| ---------------------- | ------------------------------------------------- |
+| `AppError`             | Własny kod                                        |
+| `APIError` Better Auth | `AUTH_API_ERROR` plus klucz tłumaczenia           |
+| `ZodError`             | `VALIDATION`                                      |
+| Cokolwiek innego       | `INTERNAL_ERROR`, oryginał zalogowany na serwerze |
+
+`ERROR_CODES` w `src/modules/_core/constants/errors.ts` zawiera osiem kodów, a `useActionError()` mapuje kod na `errors.action.<CODE>`. Wewnętrzne wiadomości, ślady stosu i SQL nigdy nie docierają do przeglądarki.
+
+## Indeksowanie i ekspozycja
+
+`isNoIndexPathname` w `src/lib/seo.ts` oznacza `/account`, `/admin` i `/checkout` (wraz z poddrzewami) jako `noindex, nofollow`, a `__root.tsx` emituje dodatkowo meta noindex na każdym buildzie nieprodukcyjnym. `generateRobotsTxt` zwraca całkowite `Disallow: /`, o ile `APP_ENV` nie jest równe `production`, a na produkcji blokuje `/api/`, `/admin`, `/account` i `/checkout`.
+
+## Powiązane strony
+
+- [Warstwy](/docs/architecture/layering)
+- [Moduły i przypadki użycia](/docs/architecture/modules-and-use-cases)
+- [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation)

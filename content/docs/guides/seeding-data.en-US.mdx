@@ -1,0 +1,122 @@
+---
+title: "Seeding data"
+description: "What the eleven seed files contain, the order they must run in, and why you must not run them against the live database today."
+---
+
+## Read this first
+
+**Do not run `bun run db:seed`, `bun run db:seed:preview` or `bun run db:seed:production`.**
+
+The seed files in `src/integrations/drizzle-orm/seeds/` were written against an earlier state of the catalog. The live preview and production databases have since been edited through the admin console. Each seed file opens with a `DELETE` statement scoped by handle or SKU, so running one now would remove real catalog rows and replace them with the stale fixtures checked into the repository.
+
+They stay in the repository for two good reasons: they document the reference catalog shape, and they are the starting point for a brand-new database. They are not a "reset to a known state" button for an environment that has real data in it. Remember also that `development` and `preview` point at the **same** D1 database (`martebizuteria-preview`), so there is no safe environment to practise on.
+
+## The files
+
+Eleven SQL files, listed here in the order `db:seed:preview` runs them — which is dependency order, not alphabetical:
+
+| Order | File                        | Tables                       | Depends on                                |
+| ----- | --------------------------- | ---------------------------- | ----------------------------------------- |
+| 1     | `delivery-methods.sql`      | `courier`, `delivery_method` | —                                         |
+| 2     | `product-categories.sql`    | `product_category`           | —                                         |
+| 3     | `product-collections.sql`   | `product_collection`         | —                                         |
+| 4     | `product-attributes.sql`    | `product_attribute`          | —                                         |
+| 5     | `products.sql`              | `product`                    | `product-categories.sql`                  |
+| 6     | `product-variants.sql`      | `product_variant`            | `products.sql`                            |
+| 7     | `inventory.sql`             | `inventory`                  | `product-variants.sql`                    |
+| 8     | `product-images.sql`        | `product_image`              | `products.sql`                            |
+| 9     | `category-on-product.sql`   | `category_on_product`        | `products.sql`, `product-categories.sql`  |
+| 10    | `collection-on-product.sql` | `collection_on_product`      | `products.sql`, `product-collections.sql` |
+| 11    | `attribute-on-product.sql`  | `attribute_on_product`       | `products.sql`, `product-attributes.sql`  |
+
+Each dependent file states its prerequisites in a leading comment, for example `-- Depends on product-variants.sql.` in `inventory.sql`.
+
+## The conventions they follow
+
+Read one before writing one. `delivery-methods.sql` is the simplest, and it uses `INSERT OR IGNORE`, so re-running it is harmless:
+
+```sql
+INSERT OR IGNORE INTO courier (id, internal_code, is_active, logo, name, created_at, updated_at) VALUES
+('019f4a10-0000-7000-8000-000000000001', 'inpost', 1, NULL, 'InPost', unixepoch() * 1000, unixepoch() * 1000),
+('019f4a10-0000-7000-8000-000000000002', 'marte-atelier', 1, NULL, 'M''ARTE Atelier', unixepoch() * 1000, unixepoch() * 1000);
+```
+
+It seeds three delivery methods against two couriers: `inpost_locker_standard` (Paczkomat InPost, `type: "locker"`, 1499), `inpost_courier_standard` (Kurier InPost, `type: "courier"`, 1999) and `marte_atelier_pickup` (Odbiór w atelier, `type: "in_store"`, 0).
+
+The catalog files are destructive by design. `products.sql` opens with:
+
+```sql
+-- Depends on product-categories.sql (primary_category_id).
+
+DELETE FROM product
+WHERE handle IN ('lapis-lazuli-necklace', 'onyx-necklace')
+  AND id NOT IN (
+    '019e99d8-9f56-777d-8f3c-95c393be568b',
+    '019e99f2-dfa2-7798-b04f-cebfdbbdb427'
+  );
+```
+
+The pattern is "delete any row with one of my handles that is not one of my rows, then insert my rows" — idempotent as long as the file's own ids never change, and destructive as soon as the live catalog has other rows sharing a handle.
+
+Other conventions worth matching:
+
+- **Fixed UUIDv7 ids, written out in full.** A seed row's id is part of the file's contract, because dependent files reference it. `019f4a10-0001-7000-8000-000000000001` style ids are hand-composed rather than generated, so they read as obviously synthetic.
+- **Timestamps as `unixepoch() * 1000`**, matching the `timestamp_ms` mode the schema uses.
+- **Booleans as `1` and `0`.**
+- **Translated columns as `json_object`:**
+
+```sql
+json_object('pl-PL', 'Naszyjnik Lapis Lazuli', 'en-US', 'Lapis Lazuli Necklace')
+```
+
+Both locale keys are always present, with full BCP 47 tags.
+
+- **Prices as integer minor units.** `1499` is 14,99 zł.
+- **Doubled single quotes for apostrophes**, since `M'ARTE` has to be written `M''ARTE` in SQL.
+- **Image URLs pointing at the public R2 bucket**, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp` — the same content-addressed keys `uploadImageFn` produces in `src/integrations/cloudflare-r2/media.mutations.ts`.
+
+## What the seed catalog contains
+
+Enough to exercise every storefront and admin surface, not a realistic inventory: seven Polish product categories (naszyjniki, kolczyki, chokery, bransoletki, bransoletki urodzeniowe, pierścionki, biżuteria z odciskami), a set of collections and product attributes, two products (`lapis-lazuli-necklace` and `onyx-necklace`) with two variants (`MRT-0001`, `MRT-0002`), their inventory rows, their images, and the join rows that place them in categories, collections and attribute sets.
+
+Both products carry full Polish and English titles and long descriptions, which is what makes them useful for checking the locale switch on the product page.
+
+## Seeding a new database
+
+For a genuinely empty D1 database — a new environment, or a fresh local one — the sequence is:
+
+```sh
+bun run db:migrate:local      # or the environment's own migrate script
+```
+
+then run the eleven files in the table order above with `wrangler d1 execute`. The scripts in `package.json` chain exactly that with `&&`, so you can copy the command and change the `--env` flag, but check twice which database you are pointing at first. Prefer `--local` unless you are certain.
+
+## Changing a seed file
+
+If you do change one, keep it consistent with the live schema:
+
+- Column lists must match the current table exactly. `product-categories.sql`, `product-collections.sql`, `product-attributes.sql`, `products.sql` and `delivery-methods.sql` were last touched well after the others, so the older files are the more likely to have drifted.
+- Keep the ids stable, or update every file that references them.
+- Keep both locale keys in every `json_object`.
+- Seed files are excluded from lint and from the test suite, so nothing verifies them automatically. The only real check is applying them to an empty database and loading the storefront.
+
+## Adding test fixtures instead
+
+For a test you almost never want a seed file. The integration tests build their own schema in memory:
+
+```ts
+const sqlite = new DatabaseSync(":memory:")
+const database = drizzle(createTestD1Database(sqlite))
+
+beforeAll(() => {
+  sqlite.exec("create table search_entry (id integer primary key, label text not null, reference integer not null)")
+})
+```
+
+`createTestD1Database` in `src/platform/testing/mocks/d1.ts` adapts Node's built-in `node:sqlite` to the `D1Database` interface, including `batch()` with a real transaction. `src/modules/_core/utils/__test__/search-conditions.integration.test.ts` is the model. See [Writing tests](/docs/guides/writing-tests).
+
+## Related guides
+
+- [Database migrations](/docs/guides/database-migrations)
+- [Writing tests](/docs/guides/writing-tests)
+- [Local debugging](/docs/guides/local-debugging)

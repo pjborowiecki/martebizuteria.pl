@@ -1,0 +1,189 @@
+---
+title: "Strony prawne"
+description: "Dwa dokumenty o RODO i prawach konsumenta napisane w MDX i serwowane przez Fumadocs oraz trzy strony witryny, które wciąż są tylko komunikatami."
+---
+
+M'Arte ma dwa prawdziwe dokumenty prawne. To pliki MDX w katalogu `content/legal`, kompilowane przez Fumadocs i renderowane przez trasę, która jest niemal w całości loaderem.
+
+## Dokumenty
+
+```
+content/legal/
+├── exchanges-and-returns.en-US.mdx
+├── exchanges-and-returns.pl-PL.mdx
+├── meta.en-US.json
+├── meta.pl-PL.json
+├── privacy-policy.en-US.mdx
+└── privacy-policy.pl-PL.mdx
+```
+
+Po jednym pliku na język, nazwanym `<slug>.<locale>.mdx`, oraz `meta.<locale>.json` wymieniający slugi w kolejności:
+
+```json
+{
+  "pages": ["privacy-policy", "exchanges-and-returns"],
+  "title": "Informacje prawne"
+}
+```
+
+Ich frontmatter zawiera trzecie pole, którego nie ma dokumentacja:
+
+```mdx
+---
+title: "Wymiana i zwroty"
+description: "14-dniowe prawo odstąpienia od umowy, zwrot zamówienia M'Arte i zgłoszenie reklamacji."
+updated: 2026-09-29
+---
+```
+
+`updated` jest wymagane i walidowane jako data ISO:
+
+```ts
+export const legalSchema = pageSchema.extend({
+  updated: zod.iso.date(),
+})
+```
+
+Ten schemat leży w `src/integrations/fumadocs/fumadocs.schema.ts` i jest podłączony w `fumadocs.config.ts`:
+
+```ts
+export const legal = defineDocs({
+  dir: "./content/legal",
+  docs: { schema: legalSchema },
+})
+```
+
+**Edycja dokumentu prawnego to edycja pliku MDX.** Nie ma edytora w panelu, nie ma wiersza w bazie i nie ma procesu publikacji. Zmiana to commit i wdrożenie, a `updated` trzeba podbić ręcznie — nic nie robi tego automatycznie.
+
+Wersje polskie są wiążące; cytują wprost polskie przepisy (14-dniowe prawo odstąpienia, art. 556(4) Kodeksu cywilnego, artykuł RODO dla każdego celu przetwarzania) i wskazują administratora danych. Wersje angielskie utrzymuj jako tłumaczenia, a nie jako odrębne teksty.
+
+## Źródło Fumadocs
+
+`src/integrations/fumadocs/fumadocs.source.ts` buduje loader:
+
+```ts
+export const legalSource = loader({
+  baseUrl: "/",
+  i18n,
+  source: legal.toFumadocsSource(),
+})
+```
+
+`baseUrl: "/"` sprawia, że strony żyją pod `/privacy-policy`, a nie pod prefiksem `/legal`. Wspólny obiekt `i18n` (`fumadocs.i18n.ts`) ustawia `defaultLanguage` i `fallbackLanguage` na `pl-PL`, `hideLocale: "always"` oraz `parser: "dot"` — to właśnie parser kropkowy pozwala używać `<slug>.<locale>.mdx` jako konwencji nazw.
+
+## Wczytanie dokumentu
+
+`fumadocs.legal.ts` zawiera mapę slugów i loader:
+
+```ts
+export const LEGAL_DOCUMENT_SLUGS = {
+  exchangesAndReturns: "exchanges-and-returns",
+  privacyPolicy: "privacy-policy",
+} as const
+```
+
+`getLegalPage` to funkcja serwerowa `GET` walidowana przez `zod.object({ locale: localeField, slug: handleField })` z `src/modules/_core/utils/zod-fields.ts`. Rzuca `notFound()`, gdy strona nie istnieje, a w przeciwnym razie zwraca `{ description, path, title, updated }`.
+
+`loadLegalPage(slug)` uruchamia funkcję serwerową i równolegle wstępnie wczytuje skompilowany komponent:
+
+```ts
+export const loadLegalPage = async (slug: LegalDocumentSlug) => {
+  const [{ legalContent }, page] = await Promise.all([
+    import("~/src/presentation/components/custom/legal-content"),
+    getLegalPage({ data: { locale: getCurrentLocale(), slug } }),
+  ])
+  await legalContent.preload(page.path)
+
+  return page
+}
+```
+
+## Trasy
+
+Obie trasy mają czterowierszowy komponent:
+
+```tsx
+const PrivacyPolicyPage = (): ReactNode => legalContent.useContent(Route.useLoaderData().path)
+
+export const Route = createFileRoute("/_storefront/privacy-policy")({
+  component: PrivacyPolicyPage,
+  head: pageHead,
+  loader: async () => {
+    const page = await loadLegalPage(LEGAL_DOCUMENT_SLUGS.privacyPolicy)
+
+    return { description: page.description, path: page.path, title: page.title } satisfies PageMeta & { path: string }
+  },
+  wrapInSuspense: false,
+})
+```
+
+`src/routes/_storefront.exchanges-and-returns.tsx` jest identyczna z drugim slugiem. Obie ustawiają `wrapInSuspense: false`, bo treść jest już wczytana w loaderze — nie ma na co czekać.
+
+Dodanie trzeciego dokumentu oznacza: dwa pliki MDX, oba pliki `meta.<locale>.json`, slug w `LEGAL_DOCUMENT_SLUGS`, wpis w `ROUTES` i plik trasy skopiowany z jednej z tych dwóch.
+
+## Renderowanie
+
+`src/presentation/components/custom/legal-content.tsx` to loader kliencki:
+
+```tsx
+export const legalContent = browserCollections.legal.createClientLoader({
+  component: ({ default: Mdx, frontmatter }) => (
+    <article className="container mx-auto max-w-3xl px-4 py-16 md:py-24">
+      <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl">{frontmatter.title}</h1>
+      <Mdx components={mdxComponents} />
+    </article>
+  ),
+  id: "legal",
+})
+```
+
+`<h1>` pochodzi z frontmattera, więc plik MDX dokumentu prawnego **nie może** zaczynać się własnym nagłówkiem `#` — sekcje najwyższego poziomu to `##`.
+
+`mdxComponents` (`src/presentation/components/custom/mdx.tsx`) mapuje świadomie niewielki zbiór elementów: `a`, `h1`, `h2`, `h3`, `p`, `ul`, `ol`, `li`, `strong`. Wszystko inne trafia na nieostylowany domyślny element. Dokumentacja rozszerza tę mapę w `docs-mdx.tsx` o `pre`, `code`, `table`, `th`, `td`, `blockquote`, `hr` i `h4` — **tabela, blok kodu albo cytat wyrenderują się więc bez stylów w dokumencie prawnym, a poprawnie w dokumentacji.** Żadna z map nie dostarcza komponentów Fumadocs UI, takich jak `Callout` czy `Tabs`; użycie ich w MDX zakończyłoby się błędem renderowania.
+
+`MdxLink` automatycznie lokalizuje wewnętrzne adresy:
+
+```tsx
+const isLocalizablePath = (href: string | undefined): href is string =>
+  href !== undefined && href.startsWith("/") && !ASSET_PATH_PATTERN.test(href)
+```
+
+Wpisz więc `/exchanges-and-returns` w dokumencie prawnym, a prefiks języka czytelnika zostanie dodany za Ciebie. Ścieżka kończąca się rozszerzeniem pliku zostaje nietknięta.
+
+Obie trasy leżą pod `_storefront`, więc mają nawigację, banner dostępności koszyka i stopkę.
+
+## Strony oparte tylko na komunikatach
+
+Trzy inne strony z kolumny informacyjnej w stopce nie są plikami MDX i nie mają rozbudowanej treści:
+
+| Trasa               | Plik                               | Co renderuje                                                              |
+| ------------------- | ---------------------------------- | ------------------------------------------------------------------------- |
+| `/terms-of-service` | `_storefront.terms-of-service.tsx` | `t("title")`, jeden akapit `t("description")`, odnośnik do strony głównej |
+| `/faq`              | `_storefront.faq.tsx`              | ten sam trzyelementowy układ                                              |
+| `/about`            | `_storefront.about.tsx`            | nadtytuł, tytuł, lead i cztery akapity z `pages.about`                    |
+
+`/about` to gotowa treść — po prostu napisana w `messages/{locale}/pages.about.json`, a nie w MDX. `/terms-of-service` i `/faq` są placeholderami: ich treść to wprost mówi, a obie renderują wyśrodkowany odnośnik do strony głównej.
+
+Jeśli regulamin ma stać się prawdziwym dokumentem, najtańszą drogą jest przeniesienie go do `content/legal` obok dwóch pozostałych, a nie rozbudowa katalogu komunikatów: dodaj pliki MDX, slug, wpisy w plikach meta i zastąp ciało trasy przez `legalContent.useContent(...)`.
+
+## Dwa osierocone pliki komunikatów
+
+`messages/en-US/pages.privacyPolicy.json`, `messages/pl-PL/pages.privacyPolicy.json`, `messages/en-US/pages.exchanges-and-returns.json` i `messages/pl-PL/pages.exchanges-and-returns.json` istnieją, ale nic nie odwołuje się do tych przestrzeni nazw — obie strony biorą tytuł i opis z frontmattera MDX. To pozostałość po czasach przed przeniesieniem dokumentów do MDX.
+
+## Odnośniki w stopce
+
+`src/presentation/components/custom/pages/landing-page/footer/footer.tsx` to miejsce, w którym te strony są linkowane:
+
+```tsx
+<FooterLink to={ROUTES.TERMS_OF_SERVICE}>{t("terms")}</FooterLink>
+<FooterLink to={ROUTES.PRIVACY_POLICY}>{t("privacy")}</FooterLink>
+<FooterLink to={ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
+```
+
+Krok płatności w kasie również linkuje regulamin i politykę prywatności przez `t.rich("termsAgreement", { privacy, terms })` — zobacz [Kasa](/docs/features/checkout).
+
+## Powiązane strony
+
+- [Internacjonalizacja](/docs/features/internationalization)
+- [Kasa](/docs/features/checkout)
+- [Integracje: Fumadocs](/docs/integrations/fumadocs)

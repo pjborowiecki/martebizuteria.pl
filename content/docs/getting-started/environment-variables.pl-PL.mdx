@@ -1,0 +1,147 @@
+---
+title: "Zmienne środowiskowe"
+description: "Pliki .env, wartości docierające do przeglądarki i te wysyłane jako sekrety Workera."
+---
+
+## Pliki środowiskowe
+
+| Plik               | Wersjonowany w Git | Wczytywany przez                                                                          |
+| ------------------ | ------------------ | ----------------------------------------------------------------------------------------- |
+| `.env.example`     | Tak                | Nic — to szablon do skopiowania                                                           |
+| `.env.development` | Nie                | `bun run dev` (tryb Vite `development`, `CLOUDFLARE_ENV=development`)                     |
+| `.env.preview`     | Nie                | `bun run build:preview`, `bun run start` oraz `scripts/prepare-deploy-secrets.ts preview` |
+| `.env.production`  | Nie                | `bun run build:production` oraz `scripts/prepare-deploy-secrets.ts production`            |
+| `.env.test`        | Tak                | `vite.config.ts` przez `loadEnv("test", …)` dla projektów Vitest oraz buildy w CI         |
+
+`.gitignore` realizuje dokładnie ten podział:
+
+```text
+.env*
+!.env.example
+!.env.test
+```
+
+Automatyczne wczytywanie zmiennych przez Buna jest wyłączone, więc nic nie jest nigdy pobierane w sposób niejawny:
+
+```toml
+# bunfig.toml
+# Let Vite and Wrangler choose the requested mode. Drizzle scripts opt in with --env-file.
+env = false
+```
+
+Dlatego każdy skrypt bazodanowy jawnie wskazuje swój plik — `bun --env-file=.env.development run drizzle-kit push …`. Vite sam wczytuje `.env.<mode>`, a Wrangler wczytuje plik odpowiadający zmiennej `CLOUDFLARE_ENV`, aby udostępnić lokalne sekrety Workera.
+
+Zacznij od skopiowania szablonu i wygenerowania sekretu podpisu:
+
+```sh
+cp .env.example .env.development
+openssl rand -base64 48
+```
+
+Użyj innej wartości `AUTH_SECRET` dla każdego środowiska. To sekret Better Auth do podpisywania i szyfrowania (`secret: env.AUTH_SECRET` w `src/integrations/better-auth/auth.server.ts`), więc jego rotacja unieważnia wszystkie sesje.
+
+## Trzy rodzaje wartości
+
+Ten podział jest tu ważniejszy niż sama lista nazw.
+
+**1. Wejścia buildu widoczne w przeglądarce (prefiks `VITE_`).** Vite wstawia je do bundle'a klienckiego na etapie budowania. Nigdy nie umieszczaj sekretu pod nazwą z prefiksem `VITE_`.
+
+| Zmienna                       | Odczytywana w                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts` — `import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY` |
+| `VITE_R2_URL`                 | `src/lib/url.ts` — gałąź klienta w `getAssetCdnBase()`                                     |
+
+**2. Sekrety Workera.** Deklarowane osobno dla każdego środowiska w sekcji `secrets.required` w `wrangler.jsonc` i odczytywane na serwerze przez `import { env } from "cloudflare:workers"`. Wszystkie trzy środowiska deklarują te same dziesięć:
+
+| Sekret                      | Odczytywany w                                                         |
+| --------------------------- | --------------------------------------------------------------------- |
+| `AUTH_SECRET`               | `src/integrations/better-auth/auth.server.ts`                         |
+| `AUTH_GOOGLE_CLIENT_ID`     | `socialProviders.google` w `auth.server.ts`                           |
+| `AUTH_GOOGLE_CLIENT_SECRET` | `socialProviders.google` w `auth.server.ts`                           |
+| `AUTH_GITHUB_CLIENT_ID`     | `socialProviders.github` w `auth.server.ts`                           |
+| `AUTH_GITHUB_CLIENT_SECRET` | `socialProviders.github` w `auth.server.ts`                           |
+| `RESEND_API_KEY`            | `src/integrations/resend/resend.config.ts`                            |
+| `RESEND_EMAIL_FROM`         | `src/integrations/resend/resend.send.ts`, opakowany jako `M'Arte <…>` |
+| `STRIPE_SECRET_KEY`         | `src/integrations/stripe/stripe.server.ts`                            |
+| `STRIPE_WEBHOOK_SECRET`     | `src/routes/api/webhooks.stripe.ts`, do weryfikacji podpisu           |
+| `VITE_R2_URL`               | `src/lib/url.ts` — gałąź serwera w `getAssetCdnBase()`                |
+
+`VITE_R2_URL` celowo występuje na obu listach. To nie sekret, a publiczny adres bazowy R2 — potrzebują go zarówno render SSR, jak i przeglądarka, więc jest wysyłany jako binding Workera _i_ wstawiany do bundle'a klienckiego.
+
+**3. Dane uwierzytelniające lokalnych narzędzi.** Te nigdy nie są wysyłane. `scripts/prepare-deploy-secrets.ts` kopiuje wyłącznie nazwy z `secrets.required`, a jego komentarz wyjaśnia dlaczego:
+
+```ts
+// Only declared Worker bindings are uploaded; Cloudflare management tokens stay local.
+```
+
+| Zmienna                   | Używana przez                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| `CLOUDFLARE_ACCOUNT_ID`   | `src/integrations/drizzle-orm/drizzle.config.ts`, sterownik HTTP D1                  |
+| `CLOUDFLARE_DATABASE_ID`  | To samo — wskazuje bazę, na której działają `db:push`, `db:studio` i `db:introspect` |
+| `CLOUDFLARE_ACCESS_TOKEN` | To samo, jako token API                                                              |
+
+Wszystkie trzy są odczytywane przez `process.env` w konfiguracji Drizzle i domyślnie przyjmują `""`, więc brakująca wartość objawia się błędem uwierzytelnienia z API HTTP D1, a nie czytelnym komunikatem.
+
+## Zwykłe zmienne, nie sekrety
+
+`wrangler.jsonc` ustawia też jedną zwykłą zmienną na środowisko:
+
+```jsonc
+"vars": {
+  "APP_ENV": "preview",
+},
+```
+
+`APP_ENV` jest odczytywany w `src/server.ts`, aby zdecydować o treści `robots.txt`, a `scripts/verify-build.ts` sprawdza, czy zbudowany Worker ma `APP_ENV` zgodny z żądanym środowiskiem. To właśnie ten warunek nie pozwala wdrożyć buildu preview na produkcję.
+
+## Wartości, które żyją w kodzie, a nie w środowisku
+
+Kilka ustawień, których ludzie szukają w `.env`, jest stałymi:
+
+| Co                                                                              | Gdzie                                                  |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, obrazek OG, kolor motywu, zapasowy URL R2  | `src/presentation/branding/app.ts`                     |
+| Nazwa firmy, NIP, REGON, adres, telefon, godziny otwarcia                       | `src/presentation/branding/business.ts`                |
+| Linki do Facebooka i Instagrama                                                 | `src/presentation/branding/socials.ts`                 |
+| Hosty akceptowane przez Better Auth w każdym trybie                             | `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts` |
+| Obsługiwane lokalizacje, lokalizacja domyślna, nazwa ciasteczka, strefy czasowe | `src/integrations/use-intl/i18n.config.ts`             |
+| Identyfikatory D1, R2, KV i kolejki, nazwy Workerów                             | `wrangler.jsonc`                                       |
+
+O `appHostsForMode` trzeba pamiętać przy każdej zmianie domeny:
+
+```ts
+const HOSTS_BY_MODE: Readonly<Record<string, readonly string[]>> = {
+  preview: [`preview.${APP_DOMAIN}`, "martebizuteria-preview.pjborowiecki.workers.dev"],
+  production: [APP_DOMAIN, "martebizuteria.pjborowiecki.workers.dev"],
+}
+
+const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]
+```
+
+Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. Host, którego nie ma na tej liście, będzie miał odrzucane żądania uwierzytelniania — wygląda to jak ciche niedziałanie logowania na nowej domenie.
+
+## Adresy zwrotne do zarejestrowania
+
+| Dostawca | URL                                       | Weryfikowany przez             |
+| -------- | ----------------------------------------- | ------------------------------ |
+| Google   | `https://<host>/api/auth/callback/google` | Identyfikator i sekret klienta |
+| GitHub   | `https://<host>/api/auth/callback/github` | Identyfikator i sekret klienta |
+| Stripe   | `https://<host>/api/webhooks/stripe`      | `STRIPE_WEBHOOK_SECRET`        |
+
+Handler uwierzytelniania to `src/routes/api/auth.$.ts`, zamontowany pod `/api/auth/$`; handler Stripe to `src/routes/api/webhooks.stripe.ts` i przyjmuje wyłącznie `POST`.
+
+## Zadeklarowane, ale niepodłączone
+
+Trzy nazwy istnieją w repozytorium bez kodu, który je odczytuje. Wymieniamy je tutaj, żebyś nie tracił czasu na szukanie:
+
+| Nazwa                   | Gdzie występuje                                                                  | Stan                                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SENTRY_AUTH_TOKEN`     | `.env.example` i lokalne pliki `.env`                                            | Nic w `src/` nie odwołuje się do Sentry. Raportowanie błędów nie jest zaimplementowane                                                                                      |
+| `VITE_APP_URL`          | Sekcja `env:` w `.github/workflows/deploy-preview.yml` i `deploy-production.yml` | Brak w `.env.example`, nie jest zadeklarowanym sekretem i nie jest odczytywany nigdzie w `src/`. Kanoniczny adres pochodzi z `APP_URL` w `src/presentation/branding/app.ts` |
+| `VITE_IMAGE_CDN_DOMAIN` | Odczytywany w `src/lib/image.ts` przez `resolveImageCdnDomain()`                 | Brak w `.env.example`. Gdy nie jest ustawiony, używana jest nazwa hosta z `APP_URL` — i tak jest w normalnej sytuacji                                                       |
+
+## Powiązane
+
+- [Wdrożenie podglądu](/docs/getting-started/deploy-preview) — jak te wartości trafiają do Cloudflare
+- [Narzędzia](/docs/tooling) — środowiska, bindingi i Wrangler szczegółowo
+- [Informacje referencyjne](/docs/reference) — pełna tabela zmiennych

@@ -1,0 +1,195 @@
+---
+title: "GSAP and Lenis"
+description: "Storefront motion: plugin registration, the smooth-scroll singleton, and router coordination."
+---
+
+The storefront is animated; the admin console is not. Two small adapters make that possible without letting animation libraries leak everywhere: `src/integrations/gsap/` registers GSAP's plugins and global defaults exactly once, and `src/integrations/lenis/` holds the single Lenis instance plus the programmatic-scroll helpers. Everything else — the actual timelines — lives in `src/hooks/` and `src/presentation/`.
+
+## GSAP configuration
+
+`gsap.config.ts` is 17 lines and is the only place plugins are registered:
+
+```ts
+if (typeof document !== "undefined") {
+  gsap.registerPlugin(useGSAP, ScrollToPlugin, ScrollTrigger)
+  gsap.defaults({ duration: 0.8, ease: "power3.out" })
+}
+
+export { gsap } from "gsap"
+
+export { useGSAP } from "@gsap/react"
+
+export { ScrollTrigger } from "gsap/ScrollTrigger"
+
+export { ScrollToPlugin } from "gsap/ScrollToPlugin"
+```
+
+The `typeof document !== "undefined"` guard matters: this module is imported by components that server-render, and `ScrollTrigger` touches the DOM at registration time. The re-exports are the point of the file — **import `gsap`, `useGSAP`, `ScrollTrigger` and `ScrollToPlugin` from here, never from `gsap` directly**, because only this path guarantees registration has happened and the defaults are applied.
+
+Those defaults mean a tween with no `duration` or `ease` gets 0.8 s and `power3.out`. That is the storefront's motion signature; overriding it per tween is normal, but if a whole family of animations needs different timing, change it here rather than repeating the values.
+
+Only three plugins are registered. `ScrollSmoother`, `SplitText`, `Flip` and the rest of the Club GreenSock plugins are not dependencies of this project.
+
+## The Lenis singleton
+
+`lenis.instance.ts` is a module-level store, not a React context, because the router-level hooks and plain helper functions both need to reach it from outside the tree:
+
+```ts
+export const setLenisInstance = (instance: Lenis | undefined): void => {
+  lenisStore.instance = instance
+}
+
+export const getLenisInstance = (): Lenis | undefined => lenisStore.instance
+
+export const syncLenisToWindowScroll = (): void => {
+  const lenis = lenisStore.instance
+  if (lenis === undefined) {
+    return
+  }
+
+  const targetY = window.scrollY
+  lenis.scrollTo(targetY, { force: true, immediate: true })
+  lenis.resize()
+}
+```
+
+`syncLenisToWindowScroll` exists because Lenis keeps its own scroll position. After the router replaces the page, the native `window.scrollY` and Lenis's internal value disagree, and the next wheel event jumps. Forcing Lenis to the real position and re-measuring fixes it.
+
+Every consumer handles `undefined`, because the instance only exists while `SmoothScroll` is mounted — which is to say, never on an admin page and never during SSR.
+
+## Programmatic scrolling
+
+`lenis.scroll.ts` provides the anchor-scroll behaviour with a working fallback:
+
+```ts
+export const scrollToSectionElement = (element: HTMLElement, headerOffsetPx: number): void => {
+  const lenis = getLenisInstance()
+  const prefersReducedMotion = globalThis.matchMedia(REDUCED_MOTION_MEDIA_QUERY).matches
+  if (lenis !== undefined) {
+    lenis.scrollTo(element, {
+      duration: prefersReducedMotion ? 0 : DEFAULT_SECTION_SCROLL_DURATION_S,
+      immediate: prefersReducedMotion,
+      offset: -headerOffsetPx,
+    })
+
+    return
+  }
+
+  const top = element.getBoundingClientRect().top + window.scrollY - headerOffsetPx
+  window.scrollTo({ behavior: prefersReducedMotion ? "instant" : "smooth", top })
+}
+```
+
+`scrollToSectionById(id, headerOffsetPx)` looks the element up with `CSS.escape` and returns it, or `undefined` when there is no such element — which is how the navigation decides whether it handled the click or should let the router navigate instead. `navigation-provider.tsx` and `use-navigation-logic.ts` both use exactly that:
+
+```ts
+if (scrollToSectionById(id, CONSTANTS.HEADER_OFFSET_PX) !== undefined) {
+  /* handled in-page */
+}
+```
+
+Both paths respect `prefers-reduced-motion: reduce`, either by zeroing the Lenis duration or by using `behavior: "instant"`.
+
+## Where the instance is created
+
+`src/presentation/components/custom/smooth-scroll.tsx` is the only place `new Lenis(...)` appears:
+
+```tsx
+const lenis = new Lenis({
+  autoRaf: false,
+  lerp: 0.09,
+  touchMultiplier: 2,
+  wheelMultiplier: 1,
+})
+lenisRef.current = lenis
+setLenisInstance(lenis)
+const clearScrollTriggerProxy = setupLenisScrollTriggerProxy(lenis)
+const raf = (time: number) => {
+  lenis.raf(time * MS_PER_S)
+}
+gsap.ticker.add(raf)
+gsap.ticker.lagSmoothing(ZERO_LAG)
+```
+
+Three decisions are load-bearing:
+
+- **`autoRaf: false` plus `gsap.ticker.add(raf)`.** Lenis does not run its own animation frame loop; GSAP's ticker drives it. One loop means scroll position and tweens are always computed in the same frame, so pinned `ScrollTrigger` sections do not jitter. The ticker gives seconds and Lenis wants milliseconds, hence `time * 1000`.
+- **`gsap.ticker.lagSmoothing(0)`.** Lag smoothing would let GSAP skip time after a slow frame, which desynchronizes it from Lenis.
+- **`setupLenisScrollTriggerProxy(lenis)`** registers `ScrollTrigger.scrollerProxy(document.documentElement, …)` so `ScrollTrigger` asks Lenis for the scroll position instead of reading the DOM, with `pinType: "transform"`. It also calls `ScrollTrigger.update()` on every Lenis scroll event and `lenis.resize()` on every `ScrollTrigger` refresh. The returned function removes the listener and clears the proxy.
+
+`lerp: 0.09` is the smoothing factor — lower is slower and softer. Cleanup removes the ticker callback, clears the proxy, destroys Lenis and calls `setLenisInstance(undefined)`.
+
+### Which pages get it
+
+`src/routes/__root.tsx` decides:
+
+```tsx
+{
+  isAdmin ? (
+    <Outlet />
+  ) : (
+    <SmoothScroll>
+      <Outlet />
+    </SmoothScroll>
+  )
+}
+```
+
+`isAdminPathname(internalPathname)` is the test. Admin pages use native scrolling, which is the right call for data grids and long forms.
+
+## Coordinating with the router
+
+`src/hooks/use-lenis-router-scroll-sync.ts` is called from inside `SmoothScroll` and subscribes to two router events.
+
+On **`onBeforeLoad`**, when the pathname is actually changing, it pins Lenis to its current position and stops it:
+
+```ts
+lenis.scrollTo(lenis.scroll, { force: true, immediate: true })
+lenis.stop()
+```
+
+Without this, Lenis keeps interpolating towards a target that belongs to the outgoing page.
+
+On **`onRendered`** it restarts Lenis, syncs it to the real scroll position, and then in a `requestAnimationFrame` — after the browser has laid the new page out — kills detached triggers and refreshes:
+
+```ts
+requestAnimationFrame(() => {
+  cleanupDetachedScrollTriggers()
+  syncLenisToWindowScroll()
+  ScrollTrigger.refresh()
+})
+```
+
+`cleanupDetachedScrollTriggers` walks `ScrollTrigger.getAll()` and kills any trigger whose element is no longer in `document`. This is the fix for the classic client-side-routing leak: a `ScrollTrigger` created by a page that has unmounted keeps its element alive and keeps being measured on refresh. Both handlers also emit `catalogDebugLog("lenis.beforeLoad", …)` / `("lenis.rendered", …)` from `src/lib/catalog-debug-log.ts`, which is useful when scroll position misbehaves after a navigation.
+
+## Who animates what
+
+| File                                                                                                                        | What it does                                                                                                                                                    |
+| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/hooks/use-landing-animations.ts`                                                                                       | The `.reveal` scroll-in system: `gsap.set` to hidden, `ScrollTrigger.batch` with `once: true`, plus an immediate animation for anything already in view on load |
+| `src/hooks/use-product-card-image-hover.ts`                                                                                 | The product-card image zoom, built with `gsap.matchMedia()` and `contextSafe`                                                                                   |
+| `src/presentation/components/custom/pages/product-page/hooks/use-product-animations.ts`                                     | The product page's entrance and gallery motion                                                                                                                  |
+| `.../landing-page/sections/landing-category-horizontal-scroll.ts`                                                           | The pinned horizontal category scroll                                                                                                                           |
+| `.../landing-page/sections/desktop-categories-section.tsx`, `values-section.tsx`, `video-experience-section.tsx`            | Section-level timelines                                                                                                                                         |
+| `.../landing-page/navigation/navigation-provider.tsx`, `hooks/use-navigation-logic.ts`, `hooks/use-search-overlay-logic.ts` | Menu, anchor scrolling and the search overlay                                                                                                                   |
+
+Note the pattern in `use-product-card-image-hover.ts`: reduced motion is handled with `gsap.matchMedia()` registering both a `(prefers-reduced-motion: no-preference)` and a `(prefers-reduced-motion: reduce)` branch, so the preference is respected _and_ re-evaluated if the user changes it mid-session. Prefer this over reading `matchMedia` once.
+
+Always use `useGSAP` rather than `useEffect` for a timeline. It scopes the animations to the component and reverts them on unmount, which is what keeps `cleanupDetachedScrollTriggers` from having much to do.
+
+## Pitfalls
+
+- A `ScrollTrigger` created outside `useGSAP` will survive its component. Either use `useGSAP`, or kill it yourself.
+- After changing layout height programmatically (opening an accordion, loading more products), call `ScrollTrigger.refresh()`; the proxy will make Lenis re-measure.
+- On an admin page `getLenisInstance()` returns `undefined`. Code that must work in both shells has to handle that — `scrollToSectionElement` is the model.
+- Do not add a second `requestAnimationFrame` loop for Lenis. There is one, and it belongs to `gsap.ticker`.
+
+## Tests
+
+`src/integrations/gsap/__test__/gsap.config.component.test.ts` checks that the plugins are registered and the defaults applied; `src/integrations/lenis/__test__/lenis.instance.component.test.ts` and `lenis.scroll.component.test.ts` cover the singleton's lifecycle and the reduced-motion and fallback branches. All three are `*.component.test.ts`, so they run in the jsdom project where `document` exists.
+
+## Related pages
+
+- [Design tokens and styles](/docs/ui/theme)
+- [Landing page](/docs/features/landing-page)
+- [TanStack Start](/docs/integrations/tanstack-start)

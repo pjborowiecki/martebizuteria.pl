@@ -1,0 +1,86 @@
+---
+title: "Cykl życia żądania"
+description: "Kroki, przez które przechodzi żądanie strony, wywołanie funkcji serwerowej i webhook — od Workera do wyrenderowanego wyniku."
+---
+
+## Żądanie strony
+
+1. **Cztery skróty.** `src/server.ts` najpierw sprawdza ścieżkę. `/sitemap.xml` i `/robots.txt` są generowane z `src/lib/seo.ts`. `ROUTES.API_REALTIME.ADMIN_WS` i `ROUTES.API_REALTIME.STOREFRONT_WS` trafiają do `handleRealtimeInvalidationWebSocket`. Żaden z nich nie ładuje Reacta.
+2. **Kanonizacja locale.** `resolveLocale` uruchamia się dla żądań dokumentu `GET` i `HEAD` — rozpoznawanych po `sec-fetch-dest`, z nagłówkiem `Accept` jako wartością zapasową — poza `/api`, `/rpc`, `/_serverFn` i `/assets`. Prefiks samego języka lub zbędny prefiks domyślnego locale jest przekierowywany kodem `301` do formy kanonicznej: `/pl/products` i `/pl-PL/products` stają się `/products`. Gdy locale z URL-a różni się od cookie `marte_locale`, zamiast przekierowania kolejkowane jest ustawienie cookie w odpowiedzi.
+3. **Przechwycenie kontekstu wykonania.** Handler Start jest wywoływany wewnątrz `executionContextStorage.run({ waitUntil }, …)` i otrzymuje `{ env, passThroughOnException, waitUntil }` jako kontekst żądania oraz `responseLinkHeader: true`.
+4. **Routing.** `getRouter` tworzy nowy router i nowy `QueryClient`. `rewrite.input` routera usuwa prefiks locale przed dopasowaniem, więc `/en-US/products` pasuje do trasy `/_storefront/products`, a `rewrite.output` przywraca prefiks przy generowaniu linków.
+5. **Root `beforeLoad`.** `__root.tsx` ustala locale przez `getCurrentLocale()`, zbiera przestrzenie nazw każdej dopasowanej trasy przez `getRouteNamespaces(matches)` i wstępnie ładuje je do `QueryClient` tego żądania. Zwraca `{ internalPathname, locale }` jako kontekst trasy root.
+6. **Guardy.** Następnie uruchamiają się funkcje `beforeLoad` layoutów: `requireAdmin()` na `/admin`, `requireCustomer()` na `/account`. Ładują sesję i rzucają `redirect`, gdy dostęp nie jest dozwolony.
+7. **Loadery** działają równolegle. Typowy loader rozwiązuje razem przestrzeń nazw metadanych strony i zapytania o dane, oznaczając zapytanie danymi jako `staleTime: "static"`, żeby nie było odświeżane w tym samym renderze:
+
+   ```ts
+   const [data, messages] = await Promise.all([
+     context.queryClient.query({ ...getProductQuery(params.handle, locale), staleTime: "static" }),
+     context.queryClient.query(messagesQueryOptions<typeof productMessages>({ locale, namespace: "pages.product" })),
+   ])
+   ```
+
+   Loadery zwracają `{ title, description }` — z `satisfies PageMeta` — które `pageHead` z `src/lib/seo.ts` zamienia w `<title>`, opis i tagi Open Graph strony. Dane wtórne można odłożyć przez `defer()` i poczekać na nie w komponencie przez `<Await>`, jak robi to strona produktu dla produktów powiązanych.
+
+8. **Renderowanie.** `RootDocument` renderuje `<html lang={locale}>`, wstawia skrypty inicjujące motyw, panel boczny i siatkę danych, dodaje krytyczne fonty sklepu na trasach nieadministracyjnych, a potem `<HeadContent />`. Body jest owinięte w `TranslationsProvider` i `ThemesProvider`. `setupRouterSsrQueryIntegration` serializuje serwerowy cache zapytań do HTML-a.
+9. **Nagłówki odpowiedzi.** `responseLinkHeader: true` sprawia, że handler Start emituje nagłówek `Link` z preloadami zasobów, o których wie. Jeśli `resolveLocale` poprosił o cookie, `src/server.ts` klonuje odpowiedź i dopisuje `Set-Cookie`.
+10. **Hydratacja.** Przeglądarka hydratuje z serializowanego cache'u. `TranslationsProvider` zapisuje cookie locale również po stronie klienta, więc locale osiągnięte nawigacją kliencką pozostaje utrwalone. Kolejne nawigacje uruchamiają guardy i loadery w przeglądarce i pobierają dane przez funkcje serwerowe.
+
+```text
+GET /en-US/products/pierscionek-z-perla
+  src/server.ts          sitemap? robots? ws? → nie; resolveLocale → kanoniczny
+  executionContextStorage.run({ waitUntil })
+  router rewrite.input   /products/pierscionek-z-perla
+  __root beforeLoad      getCurrentLocale, preloadNamespaces(root + trasa)
+  _storefront            brak guarda, ładuje storefront.css
+  loader trasy           getProductQuery (staleTime: "static") + wiadomości pages.product
+                         defer(getRelatedProductsQuery)
+  SSR                    HTML + serializowany cache zapytań + nagłówek Link
+```
+
+## Wywołanie funkcji serwerowej
+
+1. Build zastąpił wywołanie po stronie przeglądarki żądaniem RPC. `shouldIgnorePath` dopasowuje `/_serverFn`, więc `resolveLocale` je pomija, a `getCurrentLocale()` sięga do cookie `marte_locale` zamiast do URL-a.
+2. Middleware działa w zadeklarowanej kolejności. `withRequest` przechwytuje `getRequest().headers` do kontekstu i owija resztę w `.catch(handleRequestError)`. `withRateLimit(kind, limit)` liczy próbę. `authorized(permission?)` ładuje sesję i sprawdza uprawnienie.
+3. Walidator parsuje wejście schematem Zod modułu.
+4. Handler odpytuje D1 albo woła dostawcę, planuje pracę audytową i e-mailową w tle i zwraca zwykłe dane.
+5. Błędy są normalizowane po drodze na zewnątrz. `handleRequestError` ponownie rzuca `AppError` z jego kodem, mapuje błąd API Better Auth na `AUTH_API_ERROR` z kluczem tłumaczenia, mapuje `ZodError` na `VALIDATION`, a wszystko inne zamienia na `INTERNAL_ERROR` po zalogowaniu oryginału.
+6. Komponent otrzymuje dane albo błąd, którego wiadomość jest kodem. `useActionError()` zamienia ten kod na przetłumaczony tekst.
+
+```text
+POST /_serverFn/…  (shipOrder)
+  withRequest      przechwyć nagłówki, zainstaluj normalizator błędów
+  authorized({ order: ["update"] })
+                   getRequestSession → hasPermission → context.auth
+  validator        orderZodSchemas.adminOrderIdInput.parse
+  handler          assertOrderActionState → UPDATE order
+                   recordOrderShippedAudit      → AUDIT_LOG_QUEUE (waitUntil)
+                   scheduleBackgroundWork(notifyOrderShipped)  (waitUntil)
+  odpowiedź        { ok: true, orderId }  albo kod AppError
+```
+
+## Żądanie webhooka
+
+`POST /api/webhooks/stripe` to handler HTTP TanStack Start, a nie funkcja serwerowa:
+
+1. Handler wymaga nagłówka `stripe-signature` oraz `env.STRIPE_WEBHOOK_SECRET`; brak któregokolwiek to `400`.
+2. `stripe.webhooks.constructEventAsync` weryfikuje podpis. Niepowodzenie jest logowane i zwracane jako `400`.
+3. Typ zdarzenia jest wyszukiwany w `webhookHandlers`. Nieobsługiwany typ jest logowany przez `console.info` i potwierdzany odpowiedzią `{ received: true }`, więc Stripe przestaje go ponawiać.
+4. Handler, który rzuci wyjątek, jest logowany i zwraca `500`, co sprawia, że Stripe ponawia próbę.
+
+`GET|POST /api/auth/$` to drugi handler. Deleguje do `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.server.ts`, które owija `auth.handler(request)`: przed wywołaniem klonuje ciało żądania, żeby odczytać e-mail logowania, i ustala sesję, która właśnie zostanie zniszczona; po wywołaniu nieudany `POST /sign-in/email` staje się zdarzeniem `auth.login_failed`, a udany `POST /sign-out` — zdarzeniem `auth.logout`. Zdarzenie udanego logowania powstaje w innym miejscu — w hooku `databaseHooks.session.create.after` Better Auth w `auth.server.ts`.
+
+## Wiadomość z kolejki
+
+Dziennik audytu zapisuje konsument kolejki, a nie żądanie, które wygenerowało zdarzenie:
+
+1. Rejestrator woła `scheduleAuditLog` albo `scheduleAuditLogFromRequest`, które generuje identyfikator wiersza przez `uuidv7()` i stempluje `createdAt` wartością `Date.now()` w momencie wysłania do kolejki, żeby kolejność przetrwała grupowanie w batche.
+2. `scheduleBackgroundWork` przekazuje obietnicę `env.AUDIT_LOG_QUEUE.send(...)` do `waitUntil`.
+3. Cloudflare dostarcza batch do 50 wiadomości do eksportu `queue` w `src/server.ts`.
+4. `processAuditLogQueueBatch` wstawia cały batch przez `insertAuditLogs`, potwierdza każdą wiadomość, a następnie publikuje unieważnienie realtime dla `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` i `.STATS`. Jeśli wstawienie rzuci wyjątek, każda wiadomość jest ponawiana; po trzech próbach batch jest tracony, bo nie skonfigurowano kolejki martwych listów.
+
+## Powiązane strony
+
+- [Warstwy](/docs/architecture/layering)
+- [Cache i SSR](/docs/architecture/caching-and-ssr)
+- [Model bezpieczeństwa](/docs/architecture/security-model)

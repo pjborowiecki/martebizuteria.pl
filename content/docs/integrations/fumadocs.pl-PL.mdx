@@ -1,0 +1,212 @@
+---
+title: "Fumadocs"
+description: "Kolekcje MDX docs i legal, źródła z lokalizacją oraz sposób renderowania tych stron."
+---
+
+Fumadocs zamienia pliki MDX w tej aplikacji w dwie rzeczy: dokumenty prawne pod `/privacy-policy` i `/exchanges-and-returns` oraz stronę dokumentacji, którą właśnie czytasz. Oba korzystają z tego samego wzorca — kolekcja zdefiniowana w `src/integrations/fumadocs/`, `loader` z lokalizacją, funkcja serwerowa rozwiązująca stronę i loader po stronie klienta renderujący skompilowany MDX.
+
+## Kolekcje
+
+Plik `fumadocs.config.ts` deklaruje dwie:
+
+```ts
+export const docs = defineDocs({
+  dir: "./content/docs",
+})
+
+export const legal = defineDocs({
+  dir: "./content/legal",
+  docs: {
+    schema: legalSchema,
+  },
+})
+
+export default defineConfig()
+```
+
+`legalSchema` w `fumadocs.schema.ts` rozszerza własny schemat stron Fumadocs o wymaganą datę, więc dokumentu prawnego nie da się opublikować bez podania, kiedy był ostatnio zmieniany:
+
+```ts
+export const legalSchema = pageSchema.extend({
+  updated: zod.iso.date(),
+})
+```
+
+Strony dokumentacji używają schematu domyślnego: `title` jest wymagane, `description` opcjonalne.
+
+## Lokalizacja
+
+Plik `fumadocs.i18n.ts` to cztery linie konfiguracji, które niosą bardzo dużo zachowania:
+
+```ts
+export const i18n = defineI18n({
+  defaultLanguage: I18N.DEFAULT_LOCALE,
+  fallbackLanguage: I18N.DEFAULT_LOCALE,
+  hideLocale: "always",
+  languages: [...I18N.SUPPORTED_LOCALES],
+  parser: "dot",
+})
+```
+
+- **`parser: "dot"`** jest powodem, dla którego pliki nazywają się `page.pl-PL.mdx`, a nie mieszkają w `pl-PL/page.mdx`. Oba języki jednej strony leżą obok siebie w tym samym katalogu.
+- **`hideLocale: "always"`** oznacza, że Fumadocs nigdy nie wstawia języka do generowanych adresów. Prefiks językowy jest w całości sprawą aplikacji — zobacz [use-intl](/docs/integrations/use-intl).
+- **`fallbackLanguage`** to `pl-PL`, więc angielska strona, której jeszcze nie napisano, rozwiązuje się do polskiej, a nie zwraca 404. Jest to wygodne, a jednocześnie jest pułapką: brakujące tłumaczenie angielskie wygląda jak działająca strona. Dla każdej strony oczekiwane są oba pliki językowe.
+- **`languages`** rozwijane jest z `I18N.SUPPORTED_LOCALES`, więc lista języków ma dokładnie jedno źródło prawdy.
+
+## Źródła
+
+Plik `fumadocs.source.ts` buduje źródło dokumentów prawnych, zamontowane w korzeniu serwisu, ponieważ trasy prawne to ścieżki najwyższego poziomu:
+
+```ts
+export const legalSource = loader({
+  baseUrl: "/",
+  i18n,
+  source: legal.toFumadocsSource(),
+})
+```
+
+Plik `fumadocs.docs.ts` buduje źródło dokumentacji pod `ROUTES.DOCS`:
+
+```ts
+export const docsSource = loader({
+  baseUrl: ROUTES.DOCS,
+  i18n,
+  source: docs.toFumadocsSource(),
+})
+```
+
+Oba importują `docs` i `legal` z `collections/server`, czyli aliasu ścieżki z `tsconfig.json` wskazującego na `./.source/*` — katalog generowany przez `fumadocs-mdx`.
+
+## Generowane wyjście
+
+```bash
+bun run content
+# fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source
+```
+
+Polecenie zapisuje `.source/server.ts`, `.source/browser.ts` i `.source/dynamic.ts`. `bun run dev`, `bun run typegen` i oba skrypty budowania uruchamiają je jako pierwsze, więc rzadko wywołuje się je ręcznie — ale jeśli TypeScript nie potrafi rozwiązać `collections/server`, to właśnie to polecenie. `.source` jest wymieniony w `.gitignore` oraz na liście `ignorePatterns` formattera i lintera, a `bun run clean` go usuwa.
+
+Po stronie Vite jest to leniwa wtyczka w `vite.config.ts`:
+
+```ts
+const { fumadocsMdx } = await import("fumadocs-mdx/vite")
+const fumadocs = fumadocsMdx({ configPath: "./src/integrations/fumadocs/fumadocs.config.ts" })
+```
+
+Znajduje się zarówno na normalnej liście wtyczek, jak i na liście używanej tylko przez Vitest — dzięki temu testy komponentowe potrafią renderować prawdziwe strony MDX.
+
+## Rozwiązywanie strony dokumentacji
+
+Plik `fumadocs.docs.ts` udostępnia dwie funkcje serwerowe za dwoma cienkimi opakowaniami.
+
+`loadDocsPage(splat)` rozwiązuje stronę i równolegle wstępnie ładuje jej skompilowany moduł:
+
+```ts
+export const loadDocsPage = async (splat?: string) => {
+  const [{ docsContent }, page] = await Promise.all([
+    import("~/src/presentation/components/custom/docs-content"),
+    getDocsPage({ data: { locale: getCurrentLocale(), slugs: docsSlugsOf(splat) } }),
+  ])
+  await docsContent.preload(page.path)
+
+  return page
+}
+```
+
+`getDocsPage` rzuca `notFound()`, gdy dany identyfikator nie istnieje, a w przeciwnym razie zwraca wyłącznie `{ description, path, title }` — _treść_ strony nigdy nie jest serializowana do danych SSR, ponieważ loader klienta sam importuje skompilowany moduł. `docsSlugsOf` zamienia splat na segmenty identyfikatora (`undefined` lub `""` daje `[]`, czyli stronę główną), a `docsSplatOf` wykonuje operację odwrotną dla odnośników.
+
+`loadDocsNavigation()` buduje panel boczny. `buildDocsNavigation(locale)` przechodzi drzewo stron, zachowuje tylko katalogi i zamienia każdy w sekcję, której pierwszym odnośnikiem jest własna strona indeksu tego katalogu:
+
+```ts
+const folderPages = (folder: Folder): Item[] => [
+  ...(folder.index === undefined ? [] : [folder.index]),
+  ...folder.children.filter(isPageNode),
+]
+```
+
+Dlatego `index` **nie może** być wymieniony w tablicy `pages` w pliku `meta.<locale>.json` katalogu — Fumadocs już traktuje go jako indeks katalogu, a wypisanie umieściłoby go dwukrotnie.
+
+## Trasy
+
+| Trasa     | Plik                        | Działanie                                                                     |
+| --------- | --------------------------- | ----------------------------------------------------------------------------- |
+| `/docs`   | `src/routes/docs.tsx`       | Układ: nawigacja, `DocsSidebar`, stopka; loaderem jest `loadDocsNavigation()` |
+| `/docs`   | `src/routes/docs.index.tsx` | Strona główna, `loadDocsPage()` bez splata                                    |
+| `/docs/$` | `src/routes/docs.$.tsx`     | Każda inna strona, `loadDocsPage(params._splat)`                              |
+
+Układ deklaruje `staticData: { namespaces: ["pages.docs"] }` — stąd pochodzą własne etykiety panelu bocznego (`messages/{locale}/pages.docs.json`: `navigation.title`, `navigation.label`, `navigation.overview`). Obie trasy stron ustawiają `head: pageHead` i `wrapInSuspense: false`.
+
+`DocsSidebar` w `src/presentation/components/custom/pages/docs/docs-sidebar.tsx` renderuje odnośnik „Przegląd" do `ROUTES.DOCS`, a po nim po jednej grupie na sekcję, używając `LocalizedLink` z `activeOptions={{ exact: true }}`.
+
+## Renderowanie MDX
+
+Plik `src/presentation/components/custom/docs-content.tsx` to loader po stronie klienta:
+
+```tsx
+export const docsContent = browserCollections.docs.createClientLoader({
+  component: ({ default: Mdx, frontmatter }) => (
+    <article className="min-w-0 pb-16">
+      <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl">{frontmatter.title}</h1>
+      <Mdx components={docsMdxComponents} />
+    </article>
+  ),
+  id: "docs",
+})
+```
+
+Nagłówek `<h1>` pochodzi z `title` we frontmatterze — dlatego treść strony powinna zaczynać się od `##`.
+
+### Jakie komponenty są dostępne w stronie
+
+To najważniejsze ograniczenie, które trzeba znać przed napisaniem strony. `docsMdxComponents` w `docs-mdx.tsx` rozwija `mdxComponents` z `mdx.tsx` i dodaje kilka kolejnych, a cała mapa zawiera **wyłącznie nadpisania elementów HTML**:
+
+`a`, `h1`, `h2`, `h3`, `h4`, `p`, `ul`, `ol`, `li`, `strong`, `blockquote`, `code`, `pre`, `hr`, `table`, `th`, `td`.
+
+**Nie ma zarejestrowanego komponentu `Callout`, `Cards`, `Steps`, `Tabs`, `Accordion` ani `File`.** Biblioteka komponentów interfejsu Fumadocs nie jest zależnością tego projektu — są tylko `fumadocs-core` i `fumadocs-mdx`. Napisanie `<Callout>` w stronie nie wyrenderuje ramki informacyjnej. Strony dokumentacji są zatem czystym Markdownem: nagłówki, akapity, listy, tabele, bloki kodu i cytaty, stylowane powyższą mapą.
+
+`MdxLink` to jedyny komponent z własnym zachowaniem. Dodaje prefiks językowy do każdego href, który zaczyna się od `/` i nie wygląda jak plik:
+
+```ts
+const ASSET_PATH_PATTERN = /\.[a-z0-9]+$/iu
+
+href={isLocalizablePath(href) ? localizePathname({ locale: getCurrentLocale(), pathname: href }) : href}
+```
+
+Zawsze zapisuj więc odnośniki wewnętrzne bez języka — `/docs/integrations/stripe`, a nie `/en-US/docs/integrations/stripe` — a prefiks czytelnika zostanie dodany za Ciebie. Adres zewnętrzny lub ścieżka kończąca się rozszerzeniem (`/forms/formularz_zwrotu.pdf`) pozostaje nietknięta.
+
+`legalContent` w `legal-content.tsx` to ten sam pomysł z węższą mapą `mdxComponents` i wyśrodkowanym kontenerem tekstu.
+
+## Dokumenty prawne
+
+Plik `fumadocs.legal.ts` nazywa dokumenty, zamiast przyjmować dowolny identyfikator:
+
+```ts
+export const LEGAL_DOCUMENT_SLUGS = {
+  exchangesAndReturns: "exchanges-and-returns",
+  privacyPolicy: "privacy-policy",
+} as const
+```
+
+`loadLegalPage(slug)` odzwierciedla `loadDocsPage` i dodatkowo zwraca `updated` z frontmattera. Pliki `src/routes/_storefront.privacy-policy.tsx` i `_storefront.exchanges-and-returns.tsx` wywołują je z jedną stałą każdy, więc nie da się dosięgnąć niezamierzonego dokumentu.
+
+## Dodawanie strony dokumentacji
+
+1. Utwórz `content/docs/<section>/<slug>.en-US.mdx` **oraz** `<slug>.pl-PL.mdx`. Frontmatter to `title` i `description`.
+2. Dodaj `"<slug>"` do tablicy `pages` w **obu** plikach: `content/docs/<section>/meta.en-US.json` i `meta.pl-PL.json`, w kolejności czytania. Nie wypisuj `index`.
+3. Pisz czystym Markdownem. Rozpocznij treść od `##`. Odnośniki wewnętrzne zapisuj bez prefiksu językowego.
+4. Uruchom `bun run content` (albo zrestartuj `bun run dev`), aby `.source` zauważyło pliki.
+5. Uruchom `bun run format`, `bun run check` i `bun run test`.
+
+## Brak wyszukiwania
+
+Aplikacja nie ma trasy `/api/search` i nie używa `fumadocs-core/search`. Po dokumentacji nawiguje się wyłącznie panelem bocznym. Dodanie wyszukiwania oznaczałoby nową trasę z handlerem oraz komponent wyszukiwania po stronie klienta.
+
+## Testy
+
+Katalog `src/integrations/fumadocs/__test__/` zawiera pięć plików. `fumadocs.config.test.ts` sprawdza katalogi kolekcji i schemat frontmattera dokumentów prawnych, w tym że `updated` jest poprawną datą. `fumadocs.docs.source.component.test.ts` sprawdza, że każda strona serwowana jest pod trasą dokumentacji, że drzewo stron zamienia każdy katalog w sekcję z indeksem na początku oraz że `docsSplatOf` i `docsSlugsOf` działają w obie strony — a także, że adres bez prefiksu rozwiązuje stronę **polską**, a adres angielski stronę angielską. `fumadocs.docs.component.test.tsx` renderuje prawdziwą stronę i sprawdza, że treść jest renderowana wewnątrz jednego `<article>`. Dwa pliki `fumadocs.legal.*` robią to samo dla dokumentów prawnych, aż po sprawdzenie, że polityka prywatności podaje administratora danych wraz z adresem w Bochni i numerem NIP.
+
+## Powiązane strony
+
+- [use-intl](/docs/integrations/use-intl)
+- [System interfejsu](/docs/ui)
+- [Poradniki](/docs/guides)

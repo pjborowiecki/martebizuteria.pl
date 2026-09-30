@@ -1,0 +1,93 @@
+---
+title: "Licence"
+description: "The M'Arte source code is shared under CC BY-NC 4.0. What that permits, what it does not, and how brand names and third-party assets are treated."
+---
+
+The authoritative text is `LICENSE.md` at the repository root. `package.json` records `"license": "SEE LICENSE IN LICENSE.md"` rather than an SPDX identifier, precisely because the licence carries a non-commercial condition and several notices that a bare identifier would not convey. This page summarises that file; where the two differ, `LICENSE.md` wins.
+
+## The short version
+
+The project's source code is shared under the **Creative Commons Attribution-NonCommercial 4.0 International** licence (CC BY-NC 4.0), for educational purposes.
+
+| You may                                        | You may not                                                              |
+| ---------------------------------------------- | ------------------------------------------------------------------------ |
+| Use it for personal learning and education     | Use it for commercial purposes without a separate licence                |
+| Fork and modify it for non-commercial purposes | Sell it, or include it in a paid product                                 |
+| Share it, with proper attribution              | Remove attribution or licence notices                                    |
+| Use it as a portfolio project                  | Sublicense it commercially                                               |
+| Reference it in blog posts and tutorials       | Apply legal or technical measures that restrict what the licence permits |
+
+The licensor cannot revoke those freedoms as long as you follow the terms.
+
+## Attribution
+
+Appropriate credit means three things: name the source, link to the licence, and state whether you changed anything. You may do this in any reasonable manner, but not in a way that suggests the licensor endorses you or your use.
+
+A minimal notice that satisfies all three:
+
+```
+Based on M'Arte (https://github.com/pjborowiecki/martebizuteria.pl)
+by Piotr Borowiecki, licensed under CC BY-NC 4.0.
+Modified.
+```
+
+## NonCommercial
+
+The licence does not define "commercial" with a bright line, and this page will not invent one. Concretely, the cases `LICENSE.md` names as excluded are selling the code, bundling it into a paid product, and sublicensing it commercially. Running the project as your own live shop, or as part of a client engagement, is the case you should assume needs a separate licence rather than the case you should assume is covered.
+
+If you want to use the code commercially, contact the author for a separate commercial arrangement. See [Commercial licensing](#commercial-licensing).
+
+## Brand names and trademarks
+
+Two separate notices apply, and they point in the same direction: nothing here grants you brand rights.
+
+**"M'Arte"** is the name of the real jewellery business this project was built for. The author does not claim any trademark or other intellectual-property right over the name, the logos or the branding used in the project — but neither does the licence transfer them to you. Reusing the code does not entitle you to present your deployment as M'Arte, and `LICENSE.md` states that this project is not affiliated with, endorsed by, or connected to any other jewellery platform or company.
+
+The brand surface you would need to replace is small and deliberately centralised in `src/presentation/branding/`, with the visual tokens in `src/presentation/theme/` and `src/presentation/styles/globals.css`. See [Theming and branding](/docs/guides/theming-and-branding).
+
+**Third-party names, logos and trademarks** — Stripe, Resend, Cloudflare, React, Tailwind CSS, TypeScript, shadcn/ui and the rest — remain the property of their owners. They appear in this repository and in this documentation only to describe the technologies used.
+
+## Assets that are not the source code
+
+The CC BY-NC grant in `LICENSE.md` is written about the project's source code. Several things shipped alongside it come with their own terms, which you must check separately before redistributing:
+
+| Asset                            | Where                                                               | Note                                                                                                     |
+| -------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Fonts                            | 12 `woff2` files in `public/fonts/`                                 | Manrope and Cormorant Garamond, self-hosted subsets. Check their upstream licences before redistribution |
+| Product photography and video    | R2 bucket `martebizuteria`, plus `public/video/`                    | Brand material, not covered by the code grant                                                            |
+| Logos, favicon, Open Graph image | `public/favicon.svg`, `public/og.png`, `src/presentation/branding/` | Brand material                                                                                           |
+| npm dependencies                 | `package.json`                                                      | Each under its own licence, unchanged by this project's terms                                            |
+
+`LICENSE.md` also notes that you do not have to comply with the licence for material in the public domain, or where your use is covered by an applicable exception or limitation.
+
+## No warranty
+
+The project is provided "as is", without warranty of any kind, express or implied, including merchantability, fitness for a particular purpose and non-infringement. The authors are not liable for any claim, damages or other liability arising from its use.
+
+That disclaimer is not boilerplate here. [About](/docs/project/about) and [Roadmap](/docs/project/roadmap) list the parts that are unfinished, and some of them — a best-effort inventory rollback, an order status nothing ever writes — would matter in a live shop. Read those pages before you take this code near real money.
+
+## Commercial licensing
+
+For commercial use, contact the author:
+
+|            |                                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| Author     | Piotr Borowiecki                                                                               |
+| Email      | `hello@pjborowiecki.com`                                                                       |
+| Website    | [pjborowiecki.com](https://pjborowiecki.com)                                                   |
+| Repository | [github.com/pjborowiecki/martebizuteria.pl](https://github.com/pjborowiecki/martebizuteria.pl) |
+
+## Not the same as the shop's legal pages
+
+This page is about the licence on the code. The shop's own legal documents are separate content, written for customers and rendered from `content/legal/`:
+
+| Document              | File                                               | Route                    |
+| --------------------- | -------------------------------------------------- | ------------------------ |
+| Privacy policy        | `content/legal/privacy-policy.<locale>.mdx`        | `/privacy-policy`        |
+| Exchanges and returns | `content/legal/exchanges-and-returns.<locale>.mdx` | `/exchanges-and-returns` |
+
+Those files carry an `updated` date in their frontmatter, enforced by `legalSchema` in `src/integrations/fumadocs/fumadocs.schema.ts`, so a change to a customer-facing legal document cannot be published without dating it. `/terms-of-service` is also routed, but `src/routes/_storefront.terms-of-service.tsx` currently renders a short placeholder from the `pages.terms-of-service` message namespace rather than a document in `content/legal/`.
+
+## Full text
+
+The complete CC BY-NC 4.0 legal text is at [creativecommons.org/licenses/by-nc/4.0/legalcode](https://creativecommons.org/licenses/by-nc/4.0/legalcode).

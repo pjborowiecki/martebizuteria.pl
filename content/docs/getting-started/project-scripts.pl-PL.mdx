@@ -1,0 +1,135 @@
+---
+title: "Skrypty projektu"
+description: "Polecenia używane codziennie, to, co faktycznie uruchamiają, i kolejność, w jakiej wykonuje je CI."
+---
+
+Wszystko jest skryptem z `package.json` napędzanym przez Vite+. Dwie zasady oszczędzają zamieszania:
+
+- `vp <nazwa>` uruchamia polecenie **wbudowane** w Vite+; `vp run <nazwa>` uruchamia **skrypt lub zadanie**. Skrypty nie mogą przesłonić wbudowanych poleceń, więc `vp dev` i `vp run dev` to nie to samo — `vp dev` to serwer deweloperski Vite, a `vp run dev` to skrypt `dev` tego projektu, który najpierw generuje jeszcze kolekcje Fumadocs.
+- Używaj `bun run <nazwa>` (albo `vp run <nazwa>`) zamiast wywoływać narzędzia bezpośrednio — dzięki temu dostajesz wersje przypięte w `devDependencies`, a nie to, co akurat jest w `PATH`.
+
+## Codzienna praca
+
+| Zadanie                                        | Polecenie              | Uruchamia                                                                         |
+| ---------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------- |
+| Start serwera deweloperskiego                  | `bun run dev`          | `bun run content`, a potem `CLOUDFLARE_ENV=development vp dev --mode development` |
+| Formatowanie, lint i kontrola typów            | `bun run check`        | `vp check` — brama, którą przechodzi CI                                           |
+| To samo, z automatyczną naprawą                | `bun run check:fix`    | `vp check --fix`                                                                  |
+| Tylko formatowanie                             | `bun run format`       | `vp fmt`                                                                          |
+| Sprawdzenie formatowania bez zapisu            | `bun run format:check` | `vp fmt --check`                                                                  |
+| Tylko lint                                     | `bun run lint`         | `vp lint`                                                                         |
+| Ponowne wygenerowanie kolekcji MDX             | `bun run content`      | `fumadocs-mdx … .source`                                                          |
+| Ponowne wygenerowanie typów Workera i kolekcji | `bun run typegen`      | `bun run cf-typegen && bun run content`                                           |
+
+`bun run check` to jedno polecenie wykonujące trzy zadania, wszystkie skonfigurowane w `vite.config.ts`: Oxfmt z 17 własnymi grupami importów, Oxlint z sześcioma kategoriami ustawionymi na `error` (włącznie z `nursery`) oraz kontrolę typów. `denyWarnings: true` i `reportUnusedDisableDirectives: "error"` oznaczają, że ostrzeżenie albo nieaktualne wyłączenie reguły również przerywa przebieg, nie tylko błąd.
+
+## Testy
+
+| Zadanie                   | Polecenie                  | Projekt Vitest                              |
+| ------------------------- | -------------------------- | ------------------------------------------- |
+| Wszystko raz              | `bun run test`             | wszystkie trzy                              |
+| Testy jednostkowe         | `bun run test:unit`        | `node`                                      |
+| Testy bazodanowe          | `bun run test:integration` | `integration` — `*.integration.test.ts`     |
+| Testy komponentów         | `bun run test:component`   | `component` — `*.component.test.tsx`, jsdom |
+| Tylko to, co się zmieniło | `bun run test:changed`     | wszystkie trzy, `--changed`                 |
+| Tryb obserwowania         | `bun run test:watch`       | wszystkie trzy                              |
+| Pokrycie wraz z progami   | `bun run test:coverage`    | wszystkie trzy plus progi                   |
+
+Trzy projekty są zadeklarowane w `vite.config.ts`. Projekt `node` wyklucza `*.component.test.*` i `*.integration.test.*`, więc `test:unit` faktycznie jest szybkim podzbiorem. Tylko projekt `component` wczytuje `src/platform/testing/setup.ts` i działa w jsdom.
+
+Progi pokrycia są zapadką, a nie ambicją:
+
+```ts
+thresholds: {
+  autoUpdate: false,
+  branches: 69,
+  functions: 68,
+  lines: 71,
+  statements: 72,
+},
+```
+
+Leżą nieco poniżej aktualnych wartości, więc regresja przerywa CI. `autoUpdate: false` oznacza, że podnosi się je świadomie, edytując ten blok. Z pomiaru wykluczone są `src/presentation/components/shadcn/**`, `src/platform/testing/**` oraz `src/routeTree.gen.ts`.
+
+Używaj `bun run test`, nigdy `bun test` — to drugie to własny runner Buna, który nie wie nic o projektach Vitest, o pliku setup ani o wartościach środowiska `test` wczytywanych przez `loadEnv("test", …)`.
+
+## Baza danych
+
+Wszystko to znajduje się w `src/integrations/drizzle-orm/`. Pliki migracji trafiają do `migrations/`, zbiorczy plik schematu to `drizzle.schemas.ts`, a konfiguracja CLI to `drizzle.config.ts`.
+
+| Zadanie                            | Polecenie                                                | Uwagi                                                           |
+| ---------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------- |
+| Wygenerowanie migracji ze schematu | `bun run db:generate`                                    | `drizzle-kit generate`, prefiks czasowy, zapis do `migrations/` |
+| Nałożenie migracji zdalnie         | `bun run db:migrate:{development,preview,production}`    | `wrangler d1 migrations apply DB --env <env> --remote`          |
+| Nałożenie migracji na lokalną bazę | `bun run db:migrate:local`                               | `--env development --local`, dla `bun run start`                |
+| Lista nałożonych migracji          | `bun run db:migrations:{development,preview,production}` | Tylko odczyt                                                    |
+| Otwarcie Drizzle Studio            | `bun run db:studio:{development,preview,production}`     | Używa wartości `CLOUDFLARE_*` z odpowiedniego pliku `.env`      |
+| Wypchnięcie schematu bez migracji  | `bun run db:push:{development,preview,production}`       | Bezpośrednia synchronizacja; unikaj dla trwałych zmian          |
+| Introspekcja istniejącej bazy      | `bun run db:introspect:{development,preview,production}` | Zapisuje `migrations/schema.ts` i `relations.ts`                |
+| Wypełnienie danymi słownikowymi    | `bun run db:seed:{preview,production}`                   | **Zapisuje do zdalnej bazy.** Zobacz ostrzeżenie poniżej        |
+
+Skrócone aliasy: `db:migrate` → preview, `db:studio` → development, `db:push` → development, `db:pull` → `db:introspect:development`, `db:seed` → preview.
+
+Skrypty wypełniające wykonują po kolei jedenaście wywołań `wrangler d1 execute … --remote` na żywej bazie — najpierw kurierzy i metody dostawy, potem kategorie, kolekcje, atrybuty, produkty, warianty, stany magazynowe, zdjęcia i trzy tabele łączące. Nie są zsynchronizowane z żywym katalogiem. Nie uruchamiaj ich na bazie z prawdziwymi danymi.
+
+Migracje nakłada `wrangler d1 migrations apply` w kolejności nazw plików. Obecnie w `migrations/` jest 57 plików `.sql`, natomiast własny `meta/_journal.json` Drizzle wymienia 51 pozycji — dziennik nie jest już źródłem prawdy, a faktyczną kolejność wyznaczają nazwy plików.
+
+## Build, podglądy i wdrożenia
+
+| Zadanie                      | Polecenie                   | Uruchamia                                                                                                |
+| ---------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Build Workera preview        | `bun run build:preview`     | `rm -rf dist` → `content` → `CLOUDFLARE_ENV=preview vp build --mode preview` → `verify-build.ts preview` |
+| Build Workera produkcyjnego  | `bun run build:production`  | To samo z `production`                                                                                   |
+| Build (alias)                | `bun run build`             | `build:preview`                                                                                          |
+| Serwowanie ostatniego buildu | `bun run start`             | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                          |
+| Serwowanie buildu (alias)    | `bun run preview`           | `start`                                                                                                  |
+| Wdrożenie preview            | `bun run deploy:preview`    | Zobacz [Wdrożenie podglądu](/docs/getting-started/deploy-preview)                                        |
+| Wdrożenie produkcyjne        | `bun run deploy:production` | To samo dla środowiska `production`                                                                      |
+
+Oba buildy kończą się skryptem weryfikującym, a nie ostrzeżeniem. `scripts/verify-build.ts` przerywa pracę, jeśli zbudowany Worker celuje w niewłaściwe środowisko, jeśli brakuje `dist/client/fonts`, jeśli nie ma klienckiego JavaScriptu lub CSS, albo jeśli którykolwiek zasób kliencki nadal importuje `cloudflare:workers` lub wbudowany moduł `node:`.
+
+## Porządki
+
+| Zadanie                           | Polecenie                | Uwagi                                                                 |
+| --------------------------------- | ------------------------ | --------------------------------------------------------------------- |
+| Przekazywanie webhooków Stripe    | `bun run stripe:listen`  | Wymaga Stripe CLI; przekazuje na `localhost:3000/api/webhooks/stripe` |
+| Przywrócenie umiejętności agentów | `bun run skills:sync`    | Na podstawie `skills-lock.json`                                       |
+| Aktualizacja umiejętności agentów | `bun run skills:update`  | Jedyny przewidziany sposób zmiany `.agents/skills` i `.claude/skills` |
+| Usunięcie generowanych plików     | `bun run clean`          | Usuwa też `.wrangler`, czyli stan lokalnej bazy danych                |
+| …oraz `node_modules`              | `bun run clean:deep`     |                                                                       |
+| …oraz `bun.lock` i `opensrc`      | `bun run clean:hardcore` |                                                                       |
+
+## Co uruchamiają hooki
+
+`.vite-hooks/pre-commit` to jedna linia:
+
+```sh
+bun run check:pre-commit
+```
+
+Czyli `vp staged`, a `vite.config.ts` definiuje, co to znaczy:
+
+```ts
+staged: { "*": ["vp check --fix"] },
+```
+
+Każdy commit formatuje więc, lintuje i sprawdza typy plików w przechowalni, naprawiając to, co da się naprawić. `bun run check:staged` i `bun run lint:staged` robią to samo z flagą `--no-fmt`, gdy chcesz kontroli bez przeformatowania.
+
+`.vite-hooks/prepare-commit-msg` uruchamia `scripts/commit-msg.ts`, który wymusza konwencjonalny temat commita i dokleja do niego emoji. Dozwolone typy to `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` i `test`; cokolwiek innego kończy się kodem błędu i wypisaniem listy. Tematy commitów merge, revert, fixup i squash przechodzą bez zmian.
+
+## Kolejność, w jakiej działa CI
+
+`.github/workflows/ci.yml`, po `.github/actions/setup`:
+
+```sh
+bun run check
+bun run test:coverage
+bun run build:preview
+```
+
+Uruchom te trzy polecenia przed otwarciem pull requesta i nie powinno być niespodzianek. Oba workflow wdrożeniowe ponownie uruchamiają `bun run check` przed buildem, więc potknięcie w formatowaniu blokuje zarówno merge, jak i wdrożenie.
+
+## Powiązane
+
+- [Wdrożenie podglądu](/docs/getting-started/deploy-preview)
+- [Narzędzia](/docs/tooling) — Vite+, projekty Vitest i workflow szczegółowo

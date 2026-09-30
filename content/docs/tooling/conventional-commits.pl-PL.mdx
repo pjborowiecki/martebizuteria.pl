@@ -1,0 +1,109 @@
+---
+title: "Konwencjonalne commity"
+description: "Format tematu commita, emoji dodawane przez hook i to, co powoduje odrzucenie commita."
+---
+
+Tematy commitów trzymają się formatu Conventional Commits:
+
+```
+<type>(<scope>): <description>
+```
+
+Zakres jest opcjonalny, a `!` przed dwukropkiem oznacza zmianę łamiącą zgodność. Temat pisz **bez** emoji — doda je hook:
+
+```sh
+git commit -m "fix(checkout): keep the reserved quantity when a card is declined"
+```
+
+Taki commit wyląduje jako:
+
+```
+🐛 fix(checkout): keep the reserved quantity when a card is declined
+```
+
+## Hook
+
+`.vite-hooks/prepare-commit-msg` ma jedną linię:
+
+```sh
+bun scripts/commit-msg.ts "$1" "$2"
+```
+
+Git przekazuje ścieżkę do pliku z komunikatem jako `$1`, a źródło komunikatu jako `$2`. `scripts/commit-msg.ts` czyta plik, znajduje pierwszą linię, która nie jest pusta ani komentarzem `#`, i decyduje, co z nią zrobić.
+
+| Typ        | Emoji |
+| ---------- | ----- |
+| `build`    | 🛠️    |
+| `chore`    | ♻️    |
+| `ci`       | ⚙️    |
+| `docs`     | 📚    |
+| `feat`     | ✨    |
+| `fix`      | 🐛    |
+| `perf`     | 🚀    |
+| `refactor` | 📦    |
+| `revert`   | 🗑️    |
+| `style`    | 💎    |
+| `test`     | 🚨    |
+
+Jedenaście typów i nic poza nimi. Hook dokleja odpowiednie emoji na początku linii tematu i nie rusza treści commita.
+
+## Co powoduje odrzucenie
+
+Dwie rzeczy przerywają commit z kodem wyjścia 1.
+
+**Temat, który nie pasuje do wzorca konwencji** — hook sprawdza go wyrażeniem `/^([a-z]+)(?:\([^)]*\))?!?:\s/`, więc typ musi składać się z małych liter, zakres musi być w nawiasach, jeśli występuje, a po dwukropku musi być spacja:
+
+```
+❌  Commit message does not follow conventional format.
+   Expected: <type>(<scope>): <description>
+   Allowed types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test
+```
+
+**Poprawnie zbudowany temat z nieznanym typem** — na przykład `wip: …` albo `feature: …`:
+
+```
+❌  Unknown commit type: "feature"
+   Allowed types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test
+```
+
+## Czego hook nie rusza
+
+Hook kończy działanie bez zmiany komunikatu w pięciu przypadkach:
+
+- źródłem komunikatu jest `squash`, `merge` albo `template`;
+- komunikat jest pusty lub nie ma żadnej linii innej niż komentarz;
+- temat już zaczyna się od emoji, co sprawdza `/^\p{Emoji_Presentation}/u` — dzięki temu poprawianie commita, który hook już ozdobił, jest idempotentne;
+- temat pasuje do `/^(?:Merge |Revert "|fixup! |squash! )/`, co pokrywa tematy generowane przez samego Gita;
+- nie przekazano ścieżki do pliku z komunikatem.
+
+Jeśli skrypt wyrzuci wyjątek z jakiegokolwiek innego powodu, wypisuje `❌  Failed to process commit message:` i kończy się kodem 1 — zepsuty hook przerywa pracę głośno, zamiast przepuszczać zdeformowany temat.
+
+## Przed hookiem komunikatu
+
+`.vite-hooks/pre-commit` uruchamia się pierwszy:
+
+```sh
+bun run check:pre-commit
+```
+
+To `vp staged`, który stosuje blok `staged` z `vite.config.ts` — `vp check --fix` na każdym pliku w przechowalni. Commita nie da się więc utworzyć, dopóki pliki w przechowalni nie przejdą formatowania, lintu i kontroli typów.
+
+Nie obchodź hooków przez `--no-verify`. Przepływy wdrożeniowe uruchamiają `bun run check` ponownie, więc commit, który pominął hook, wysypie się później i drożej.
+
+Oba hooki instaluje `vp config --no-agent`, uruchamiany przez `bun install` w skrypcie `prepare`. `vp hooks status` pokaże, czy są aktywne w Twoim klonie.
+
+## Zakresy w praktyce
+
+Zakresy nie są walidowane, ale repozytorium ma faktycznie używane słownictwo wzięte ze struktury katalogów — `app`, `ui`, `admin/orders`, `admin/catalog/products`, `checkout`, `auth`, `docs`. Używaj modułu albo obszaru tras, do którego należy zmiana, a gdy zmiana jest węższa niż cały obszar, użyj zakresu zagnieżdżonego:
+
+```sh
+git commit -m "feat(admin/catalog/products): allow bulk status changes"
+git commit -m "refactor(app): move rate limiting into src/lib"
+git commit -m "docs(tooling): document the deploy secret pipeline"
+```
+
+## Powiązane strony
+
+- [Lint i formatowanie](/docs/tooling/lint-and-format)
+- [Vite+](/docs/tooling/vite-plus)
+- [Projekt](/docs/project/about)

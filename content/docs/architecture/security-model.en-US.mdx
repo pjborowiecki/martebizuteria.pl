@@ -1,0 +1,154 @@
+---
+title: "Security model"
+description: "How access is enforced on routes, server functions and WebSockets, and how sessions, rate limits and errors are protected."
+---
+
+## Two layers, only one of which is a boundary
+
+**Route guards** in `src/integrations/better-auth/auth.routes.ts` run in `beforeLoad` and redirect:
+
+| Guard                     | Used by                          | Behaviour                                                           |
+| ------------------------- | -------------------------------- | ------------------------------------------------------------------- |
+| `requireUser()`           | Building block for the other two | Redirects to `/auth/sign-in` without a session                      |
+| `requireAdmin()`          | `admin.tsx`                      | Also requires `hasAdminAccess(role)`, otherwise `/account/overview` |
+| `requireCustomer()`       | `account.tsx`                    | Sends an admin to `/admin` instead                                  |
+| `redirectAuthenticated()` | The auth pages                   | Sends a signed-in user to `postAuthRouteFor(user)`                  |
+
+Guards decide what a user _sees_. They also run in the browser, so they are navigation UX, not protection.
+
+**Server function middleware** in `auth.middleware.ts` is the actual boundary, because a server function is a public HTTP endpoint that is reachable whether or not its page was ever loaded:
+
+```ts
+export const authorized = (permission?: Permission) =>
+  createMiddleware({ type: "function" })
+    .middleware([withRequest])
+    .server(async ({ next }) => {
+      const session = await getRequestSession()
+      if (session === null) {
+        throw new AppError(ERROR_CODES.UNAUTHORIZED)
+      }
+
+      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+        throw new AppError(ERROR_CODES.FORBIDDEN)
+      }
+
+      return next({ context: { auth: session } })
+    })
+```
+
+Across `src/modules` and `src/integrations`, `authorized()` appears 62 times: 14 bare (a session is enough), and the rest with a permission — `product: ["read"]` ×14, `product: ["update"]` ×9, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×5, `order: ["read"]` ×3, `order: ["update"]` ×3, and the Better Auth admin statements `user: ["list" | "get" | "update" | "delete"]`.
+
+## Roles and permissions
+
+`auth.access.ts` builds the access control from Better Auth's `createAccessControl`:
+
+- **Roles**: `admin` and `customer`; `DEFAULT_ROLE` is `customer` and `ADMIN_PANEL_ROLES` is `["admin"]`.
+- **Resources and actions**: `order: [read, update, refund]`, `product: [create, read, update, delete, publish]`, `settings: [manage]`, plus Better Auth's own `defaultStatements` for `user` and `session`.
+- **`ROLES_CONFIG`** grants the admin role every statement plus `adminAc.statements`; the customer role is granted nothing.
+- **`hasAdminAccess(role)`** is the coarse check used by the route guards and the WebSocket handshake; `hasPermission({ permission, role })` is the fine-grained check used by `authorized()`.
+
+Because the customer role holds no statements, the resource matrix currently behaves as a binary admin check. It is worth keeping in mind before adding a third role: the matrix is already there, but nothing yet exercises it partially.
+
+## Ownership is compiled into the SQL
+
+Customer-facing reads and writes never trust an id from the input. They filter by `context.auth.user.id` inside the query:
+
+```ts
+where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
+```
+
+The same pattern appears in `list-customer-orders.ts`, `list-customer-sessions.ts`, `list-customer-login-history.ts`, `get-customer-overview.ts`, `revoke-customer-session.ts`, `revoke-other-customer-sessions.ts`, `update-customer-phone.ts` and all five address use cases. A foreign id returns no row, so there is nothing to filter out afterwards and nothing to leak.
+
+`revoke-customer-session.ts` additionally refuses to revoke the caller's own session, and `delete-customer.ts` refuses to delete the acting admin.
+
+## Sessions
+
+- Better Auth stores sessions in D1 through `drizzleAdapter(db, { provider: "sqlite", schema })`, with `storeSessionInDatabase: true` and **no `secondaryStorage`** — KV was rejected for sessions, verification tokens and rate-limit counters because it is eventually consistent and cannot do an atomic consume-and-increment.
+- `useSecureCookies` is on outside `development` and `test` (`isLocalMode(import.meta.env.MODE)`).
+- Allowed hosts are fixed per build mode by `appHostsForMode` in `_core/constants/api.ts`: `martebizuteria.pl` in production, `preview.martebizuteria.pl` in preview, `localhost:3000` and `127.0.0.1:3000` locally, plus the matching `workers.dev` hostnames.
+- `getRequestSession` bypasses the cookie cache (`disableCookieCache: true`) and memoizes the result in a `WeakMap` keyed on the `Request`.
+- `getCurrentSession` — the server function the browser calls — projects the session before returning it, dropping `session.token`:
+
+  ```ts
+  const toClientSession = ({ session: { token: _token, ...session }, user }: RequestSession) => ({ session, user })
+  ```
+
+- `tanstackStartCookies()` is the last plugin in the list, so cookies set during a server function reach the response.
+- `multiSession({ maximumSessions: 5 })` caps concurrent sessions; `verification: { storeIdentifier: "hashed" }` means verification identifiers are hashed at rest; `account.encryptOAuthTokens` encrypts OAuth tokens.
+- Email verification is required before sign-in (`requireEmailVerification: true`, `sendOnSignUp: true`, `autoSignInAfterVerification: true`), and `resolveEmailVerificationCallbackUrl` rewrites a storefront-home callback to `/account/overview?verified=true` so a verified user lands somewhere useful.
+
+## Rate limits
+
+Two limiters share the `rate_limit` table.
+
+**Better Auth's own**, configured in `auth.server.ts` with `storage: "database"`, a 100-request default per 60 s window and custom rules:
+
+| Route                     | Max per minute |
+| ------------------------- | -------------- |
+| `/sign-in/email`          | 5              |
+| `/sign-up/email`          | 3              |
+| `/request-password-reset` | 3              |
+| `/reset-password`         | 5              |
+
+**The application's own**, `withRateLimit(kind, limit)` over `withinRateLimit` in `src/lib/rate-limit.ts`. `RATE_LIMITS` defines `SENSITIVE` (3/60 s), `TOKEN` (5/60 s) and `CHECKOUT` (10/60 s), and the counter is a single atomic D1 upsert:
+
+```ts
+.onConflictDoUpdate({
+  set: {
+    count: sql`case when ${rateLimit.lastRequest} <= ${windowStart} then 1 else ${rateLimit.count} + 1 end`,
+    lastRequest: sql`case when ${rateLimit.lastRequest} <= ${windowStart} then ${now} else ${rateLimit.lastRequest} end`,
+  },
+  setWhere: sql`${rateLimit.lastRequest} <= ${windowStart} or ${rateLimit.count} < ${limit}`,
+  target: rateLimit.key,
+})
+```
+
+The key is `${kind}:${clientAddress(headers)}`, and `clientAddress` reads **only** `cf-connecting-ip`, which a client cannot spoof. If the counter storage fails the request is refused, not admitted. Currently applied to `checkout-create`, `checkout-update`, `create-user-address`, `update-customer-phone` and `revoke-other-customer-sessions`. Limits are per IP; there is no per-account lockout.
+
+Note that `resolveRequestIp` in `src/lib/request.ts` — used for the _audit log_ only — falls back to `x-forwarded-for`, which is client-spoofable. Rate limiting is unaffected because it does not use that helper.
+
+## WebSocket authorization
+
+A Durable Object `fetch` has no cookie or session context of its own, so the admin hub is role-checked in the Worker **before** the object is addressed:
+
+```ts
+if (hubName === REALTIME_INVALIDATION_HUB.ADMIN) {
+  const unauthorized = await assertAdminWebSocket(request)
+  if (unauthorized !== undefined) {
+    return unauthorized
+  }
+}
+
+const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
+
+return hub.fetch(request)
+```
+
+Checking after `getByName()` would already have let an unauthenticated client open the object. The storefront hub is public — it only ever broadcasts catalog query keys, never data.
+
+## Webhooks
+
+`POST /api/webhooks/stripe` requires a `stripe-signature` header and verifies it with `env.STRIPE_WEBHOOK_SECRET` through `stripe.webhooks.constructEventAsync` before any handler runs. An unverifiable body is a `400` and nothing is touched.
+
+## Errors
+
+`withRequest` installs one normalizer for every server function:
+
+| Thrown                 | Reaches the client as                         |
+| ---------------------- | --------------------------------------------- |
+| `AppError`             | Its own code                                  |
+| Better Auth `APIError` | `AUTH_API_ERROR` plus a translation key       |
+| `ZodError`             | `VALIDATION`                                  |
+| Anything else          | `INTERNAL_ERROR`, original logged server-side |
+
+`ERROR_CODES` in `src/modules/_core/constants/errors.ts` holds the eight codes, and `useActionError()` maps a code to `errors.action.<CODE>`. Internal messages, stack traces and SQL never reach the browser.
+
+## Indexing and exposure
+
+`isNoIndexPathname` in `src/lib/seo.ts` marks `/account`, `/admin` and `/checkout` (and their subtrees) `noindex, nofollow`, and `__root.tsx` additionally emits the noindex meta on every non-production build. `generateRobotsTxt` returns a blanket `Disallow: /` unless `APP_ENV` is `production`, and in production disallows `/api/`, `/admin`, `/account` and `/checkout`.
+
+## Related pages
+
+- [Layering](/docs/architecture/layering)
+- [Modules and use cases](/docs/architecture/modules-and-use-cases)
+- [Realtime invalidation](/docs/architecture/realtime-invalidation)

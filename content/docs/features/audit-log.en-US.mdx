@@ -1,0 +1,209 @@
+---
+title: "Audit log"
+description: "Every significant event goes through a Cloudflare Queue into the audit_log table, feeding the admin audit screen, the customer timeline and the dashboard's page-view KPI."
+---
+
+The audit log is the shop's event history and doubles as its analytics store. It is the only part of the system that writes through a queue rather than directly to D1.
+
+## The table
+
+`audit_log` (`src/modules/audit-log/audit-log.schema.ts`):
+
+| Column        | Notes                                                              |
+| ------------- | ------------------------------------------------------------------ |
+| `id`          | Primary key; a UUIDv7, so the id itself sorts chronologically      |
+| `created_at`  | `timestampNow("created_at")`                                       |
+| `action`      | Not null; one of `AUDIT_LOG_ACTION`                                |
+| `category`    | Enum `orders \| email \| customers \| catalog \| settings \| auth` |
+| `severity`    | Enum `info \| success \| warning \| error`                         |
+| `actor_role`  | Enum `admin \| customer \| system \| unknown`                      |
+| `actor_id`    | Nullable                                                           |
+| `actor_name`  | Not null                                                           |
+| `target`      | Not null; the human-readable subject                               |
+| `resource_id` | Nullable; the machine id, defaulting to `target`                   |
+| `detail`      | Nullable free text                                                 |
+| `metadata`    | Nullable JSON string                                               |
+| `ip`          | Nullable                                                           |
+
+Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` and the composite `audit_log_resource_idx` on (`category`, `resource_id`) — which is what makes "everything that happened to this order" cheap.
+
+## The 33 actions
+
+`AUDIT_LOG_ACTION` in `audit-log.constants.ts`:
+
+| Category    | Actions                                                                                                                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`                                                                              |
+| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_initiated`, `order.released`, `order.dispute_opened`, `order.dispute_closed` |
+| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                              |
+| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`                                                                                                                          |
+| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                |
+| `settings`  | `settings.updated`                                                                                                                                                                                                            |
+
+`email.deferred` and `settings.updated` are declared but nothing emits them.
+
+## Writing an event
+
+Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 32 exported `record*` functions, which is 31 action recorders plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
+
+| Scheduler                     | Actor resolution                                                                                                       |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `scheduleAuditLogFromRequest` | `resolveRequestAuditActor()` from the session, falling back to `SYSTEM_AUDIT_ACTOR`; IP from `resolveRequestAuditIp()` |
+| `scheduleAuditLog`            | The caller supplies the actor                                                                                          |
+| `scheduleSystemAuditLog`      | Always `SYSTEM_AUDIT_ACTOR` (`{ name: "System", role: "system" }`)                                                     |
+
+All three are **fire and forget**:
+
+```ts
+export const scheduleAuditLog = (input: AuditLogEventInput): void => {
+  scheduleBackgroundWork(enqueueAuditLogMessage(buildQueueMessage(input)))
+}
+```
+
+`scheduleBackgroundWork` (`src/lib/background.ts`) hands the promise to the Worker's `waitUntil`, so a recorder never delays a response and a queue failure never fails a mutation. Note the return type: `void`, not `Promise<void>` — you do not `await` a recorder.
+
+`buildQueueMessage` assigns `id: uuidv7()` and `createdAt: Date.now()` at the call site, so ordering reflects when the event happened rather than when the consumer ran. `serializeAuditMetadata` turns the metadata object into the stored JSON string.
+
+Two helpers shape `target` and `resource_id` consistently: `withResourceId(target, options)` defaults `resourceId` to `target`, and `resolveActorAuditTarget(actor, options)` prefers the actor's email as the target and puts it in the metadata, falling back to the name.
+
+## The queue
+
+The producer binding is `AUDIT_LOG_QUEUE`:
+
+```ts
+const enqueueAuditLogMessage = async (message: AuditLogQueueMessage): Promise<void> => {
+  await env.AUDIT_LOG_QUEUE.send(message, { contentType: "json" })
+}
+```
+
+`wrangler.jsonc` declares a producer and a consumer per environment, for example in `development`:
+
+```jsonc
+"queues": {
+  "producers": [{ "binding": "AUDIT_LOG_QUEUE", "queue": "martebizuteria-audit-log-preview" }],
+  "consumers": [{ "queue": "martebizuteria-audit-log-preview", "max_batch_size": 50, "max_batch_timeout": 5, "max_retries": 3 }],
+},
+```
+
+The consumer entry point is the `queue` export in `src/server.ts`:
+
+```ts
+async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  await processAuditLogQueueBatch(batch)
+},
+```
+
+`processAuditLogQueueBatch` (`audit-log.queue.server.ts`) inserts the whole batch in one statement and only then acknowledges:
+
+```ts
+try {
+  await insertAuditLogs(rows)
+
+  for (const message of batch.messages) {
+    message.ack()
+  }
+
+  await publishRealtimeInvalidation({ admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] })
+} catch (error) {
+  console.error("[AuditLog Queue] Batch insert failed:", error)
+
+  for (const message of batch.messages) {
+    message.retry()
+  }
+}
+```
+
+So up to 50 events become one D1 insert, and a failed batch is retried up to three times. The consequence to keep in mind: **an audit entry is eventually consistent** — it can take up to `max_batch_timeout` (5 seconds) to appear, which is why the consumer publishes a realtime invalidation instead of relying on the writer to refresh the UI.
+
+## Change diffs
+
+For update actions the recorders carry a structured diff. `audit-log.diff.utils.ts` exports three generic helpers:
+
+- `buildAuditChangeMetadata(before, after, …)` — the changed fields
+- `formatAuditDetailFromChanges(…)` — the one-line human summary
+- `toAuditMetadataRecord(metadata)` — flattens it for storage
+
+Callers build a snapshot on each side. For a product, `product-audit.utils.ts` has `extractProductAuditSnapshot` and `buildProductAuditChange`, used by `updateCompleteProduct`, which reads the product before and after the write. For a refund, `order-audit.utils.ts` has `buildOrderRefundAuditChange`.
+
+## Automatic auth events
+
+`audit-log.auth.server.ts` wraps the Better Auth handler so login and logout are recorded without touching Better Auth itself:
+
+```ts
+export const handleAuthRequestWithAudit = async (request: Request): Promise<Response> => {
+  const authPath = resolveAuthPathname(request)
+  const shouldAuditFailedLogin = isEmailSignInAttempt(authPath, request.method)
+  const shouldAuditLogout = isSignOutAttempt(authPath, request.method)
+  const signInEmail = shouldAuditFailedLogin ? await parseSignInEmail(request) : undefined
+  ...
+  const response = await auth.handler(request)
+  ...
+}
+```
+
+Details worth knowing:
+
+- It matches on `ROUTES.API_AUTH.SIGN_IN_EMAIL` and `ROUTES.API_AUTH.SIGN_OUT` under the `/api/auth` prefix, so the route table stays the single source of those paths.
+- The request body is read with `request.clone().json()` so the real handler still receives it.
+- For a sign-out it reads the session **before** calling the handler, because afterwards there is none.
+- A failed login is recorded only when the response is not `ok`, and the email becomes the `target` — which is how the log shows attempts against addresses that may not exist.
+
+## Customer activity
+
+`recordCustomerActivity` (`src/modules/customer-activity/use-cases/record-customer-activity.ts`) is public (`withRequest`) but returns `{ ok: true, recorded: false }` without writing when there is no session, so anonymous traffic is never logged.
+
+It handles three kinds and formats a detail line for each:
+
+| `kind`            | Recorder                           | Detail                         |
+| ----------------- | ---------------------------------- | ------------------------------ |
+| `cart_item_added` | `recordCustomerCartItemAddedAudit` | `"<title> (<variant>) ×<qty>"` |
+| `cart_abandoned`  | `recordCustomerCartAbandonedAudit` | `"<n> items in cart"`          |
+| `page_viewed`     | `recordCustomerPageViewedAudit`    | The path                       |
+
+The client side is `customer-activity.tracking.ts`, whose `trackCartItemAdded`, `trackCartAbandoned` and `trackPageViewed` are wrapped in `createClientOnlyFn` and swallow their own errors (`fireAndForget`), so tracking can never break a page. Page views and abandonment are de-duplicated per session through `sessionStorage` keys prefixed `customer-activity:page-view:` and `customer-activity:cart-abandoned-sent`.
+
+This is what makes the dashboard's "page views" KPI possible — see [Admin dashboard](/docs/features/admin-dashboard) — and it also means the figure counts distinct pages per session for signed-in customers only.
+
+## Admin screen
+
+`/admin/audit` (`src/routes/admin.audit.tsx`) prefetches `getAuditLogStatsQuery()` and `listAuditLogsQuery({ page: 1, pageSize: ADMIN_AUDIT_LOG_PAGE_SIZE })`. The page size is **100** and `AUDIT_LOG_QUERY_STALE_MS` is 30 000 — the shortest stale time in the codebase.
+
+All three use cases are guarded by `authorized({ settings: ["manage"] })`, so reading the audit log is a settings-level permission rather than a per-resource one:
+
+| Use case                 | Returns                                                                   |
+| ------------------------ | ------------------------------------------------------------------------- |
+| `list-audit-logs.ts`     | A page, filtered by `category`, `severity`, `createdAt` and a search term |
+| `get-audit-log-stats.ts` | `{ totalCount, todayCount, warningCount, errorCount }`                    |
+| `delete-audit-logs.ts`   | `{ deleted, ok }` and publishes a realtime invalidation                   |
+
+`getAdminAuditLogStats` is one `db.batch` of four counts, with "today" coming from `resolveStartOfToday()`.
+
+`listAuditLogs` handles a missing total gracefully:
+
+```ts
+const hasMore = total === undefined ? items.length === params.limit : params.offset + items.length < total
+```
+
+The filter constants are `AUDIT_LOG_CATEGORY_FILTER` (the categories plus `all`) and `AUDIT_LOG_DATE_RANGE` (`today`, `7d`, `30d`, `all`) with `AUDIT_LOG_DATE_RANGE_MS` for the two windows. Presentation maps: `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS`, `ACTOR_ROLE_COLORS`, plus `AUDIT_LOG_TABLE_COLUMN_ID`, `_SIZE` and `_PINNING`.
+
+Components live in `.../admin/audit/`: `audit-log.tsx`, `components/audit-columns.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, the cells in `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-table-cell`), and `audit-stats.config.ts`.
+
+Deletion is the only mutation. There is no retention policy or scheduled cleanup, so the table grows until an admin selects rows and deletes them.
+
+## Read as a feed elsewhere
+
+Three other screens read `audit_log` rather than a table of their own:
+
+- `/account/overview` — the activity feed, through `getCustomerActivityAuditRows` and `mapAuditLogToActivityItem`
+- `/account/sessions` — the login history, filtered to `auth.login` and `auth.login_failed`
+- `/admin/customers/$id` — the customer timeline, `getCustomerAuditTimelineQuery` with `CUSTOMER_AUDIT_TIMELINE_LIMIT = 50`
+
+Deleting audit rows therefore also erases those views.
+
+## Related pages
+
+- [Account](/docs/features/account)
+- [Admin customers](/docs/features/admin-customers)
+- [Admin dashboard](/docs/features/admin-dashboard)
+- [Orders](/docs/features/orders)
+- [Transactional email](/docs/features/email)

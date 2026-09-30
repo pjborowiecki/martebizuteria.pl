@@ -1,0 +1,114 @@
+---
+title: "Internacjonalizacja"
+description: "Jak locale pojawia się w URL-ach, jak ładowane są przestrzenie nazw tłumaczeń i dlaczego pliki tras nie zawierają segmentu locale."
+---
+
+M'Arte obsługuje dwa locale: **`pl-PL` (domyślne)** i **`en-US`**. Oba to tagi BCP-47 — nie ma samego `pl` ani `en`. Domyślne locale nie ma prefiksu w URL-u, więc `/products` (polski) i `/en-US/products` (angielski) to ta sama trasa. Same segmenty ścieżek nie są tłumaczone — `ROUTES` w `src/routes.ts` zawiera jedną angielską ścieżkę na stronę i tylko prefiks zmienia się razem z locale.
+
+## Konfiguracja
+
+`src/integrations/use-intl/i18n.config.ts` jest jedynym źródłem:
+
+```ts
+export const I18N = {
+  COOKIE_NAME: "marte_locale",
+  DEFAULT_LOCALE: "pl-PL",
+  DEFAULT_TIMEZONE: "Europe/Warsaw",
+  SUPPORTED_LOCALES: ["pl-PL", "en-US"],
+  TIME_ZONES: ["UTC", "America/New_York", "Europe/Warsaw"],
+} as const
+```
+
+Typ `SupportedLocale` jest wyprowadzany z `SUPPORTED_LOCALES`, więc dodanie locale to zmiana jednej linii, a potem nowy katalog `messages/<locale>` i nowy plik `.mdx` dla każdej strony w `content/`.
+
+## URL-e
+
+| Plik                 | Eksportuje                                                                                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `i18n.paths.ts`      | `localizePathname`, `deLocalizePathname`, `canonicalizePathname`, `extractLocaleFromPath`, `isSupportedLocale`, `shouldIgnorePath`, `localeLinks` |
+| `i18n.utils.ts`      | `getCurrentLocale`, `getCurrentPathname`, `localizeUrl`, `deLocalizeUrl`, `parseLocaleCookie`                                                     |
+| `i18n.middleware.ts` | `resolveLocale`, używane przez Workera do przekierowania i cookie                                                                                 |
+| `i18n.messages.ts`   | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`                         |
+
+`shouldIgnorePath` wyklucza `/api`, `/rpc`, `/_serverFn` i `/assets` z całej obsługi locale.
+
+`canonicalizePathname` zwija alias samego języka i zbędny prefiks domyślnego locale: `/pl/products` i `/pl-PL/products` kanonizują się do `/products`, a Worker odpowiada kodem `301`. `localeLinks` buduje link `rel="canonical"`, po jednym `rel="alternate"` na locale oraz alternatywę `x-default` — emitują je zarówno `__root.tsx`, jak i `buildPageHead`.
+
+## Pliki tras nie zawierają locale
+
+Tłumaczeniem zajmuje się router, w `src/router.tsx`:
+
+```ts
+rewrite: {
+  input: ({ url }) => deLocalizeUrl(url),
+  output: ({ url }) => localizeUrl(url),
+},
+```
+
+`rewrite.input` usuwa prefiks przed dopasowaniem, więc `_storefront.products.$handle.tsx` obsługuje zarówno `/products/<handle>`, jak i `/en-US/products/<handle>`. `rewrite.output` przywraca bieżące locale, gdy router generuje href, więc `<Link to={ROUTES.PRODUCT}>` nie wymaga żadnej obsługi locale.
+
+**Konsekwencja warta zapamiętania:** ponieważ router widzi wyłącznie ścieżkę bez locale, wszystko, co wyprowadza locale z lokalizacji routera, po cichu zwróci wartość domyślną. `getCurrentLocale()` jest jedynym używanym wyprowadzeniem. To funkcja izomorficzna: na serwerze czyta prawdziwy URL żądania (albo cookie dla ścieżek ignorowanych), a w przeglądarce `location.pathname` (albo `document.cookie`).
+
+`localizePathname` służy wyłącznie do surowych URL-i pomijających router — wartości `callbackURL` Better Auth, linków w e-mailach i ręcznie budowanych elementów `<a href>`. `src/presentation/components/custom/mdx.tsx` stosuje je do każdego wewnętrznego linku w stronie MDX, dlatego linki w tej dokumentacji są zapisane bez prefiksu.
+
+## Cookie
+
+`marte_locale` jest zapisywane z dwóch miejsc: `resolveLocale` dopisuje `Set-Cookie`, gdy locale z URL-a różni się od cookie, a `TranslationsProvider` zapisuje `document.cookie` w efekcie przy każdej zmianie aktywnego locale. Cookie ma znaczenie tylko dla żądań, w których URL nie zawiera locale do odczytania — `/api/*` i wywołań funkcji serwerowych.
+
+Funkcje serwerowe zwracające zlokalizowaną treść przyjmują locale jako jawne wejście, a nie polegają na cookie. `localeField` w `src/modules/_core/utils/zod-fields.ts` jest wspólnym walidatorem:
+
+```ts
+export const localeField = zod.enum(I18N.SUPPORTED_LOCALES)
+```
+
+`getProductQuery(handle, locale)` i `getDocsPage({ locale, slugs })` idą tym wzorcem, a locale jest częścią klucza zapytania, więc zmiana języka nie zwróci zapisanej w cache'u wersji w innym języku.
+
+## Tłumaczenia
+
+Tłumaczenia leżą w `messages/<locale>/<namespace>.json` — 48 plików na locale. Nazwa pliku **jest** przestrzenią nazw, a kropki oznaczają zagnieżdżenie: `pages.admin.catalog.products.json` odczytuje `useTranslations("pages.admin.catalog.products")`. `buildMessageTree` rozwija każdą kropkowaną przestrzeń nazw z powrotem w zagnieżdżony obiekt i scala je, więc provider widzi jedno drzewo wiadomości.
+
+Rodziny przestrzeni nazw:
+
+| Prefiks        | Przykłady                                                                                          |
+| -------------- | -------------------------------------------------------------------------------------------------- |
+| `common`       | Współdzielone etykiety                                                                             |
+| `errors`       | `errors.action.<ERROR_CODE>` dla `useActionError`                                                  |
+| `components.*` | `components.custom`, `components.shadcn`, `components.datagrid`, `components.defaults`             |
+| `pages.*`      | Po jednej na stronę lub obszar, np. `pages.product`, `pages.checkout`, `pages.admin`, `pages.docs` |
+| `emails.*`     | Po jednej na szablon, np. `emails.order-confirmation`                                              |
+
+Przestrzenie nazw stron zawierają własne `metadata.title` i `metadata.description`, które loader odczytuje na potrzeby tagów head.
+
+## Ładowanie
+
+- **Przestrzenie nazw root** są odkrywane przez `import.meta.glob` w `i18n.messages.ts` i eksportowane jako `ROOT_NAMESPACES`: `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors` i `pages.auth.toast`. Są ładowane zawsze.
+- **Każda trasa deklaruje własne** w `staticData.namespaces`, na przykład `["pages.product"]` na stronie produktu, `["pages.admin", "components.datagrid"]` w layoucie panelu, `["pages.checkout", "pages.cart"]` w layoucie checkoutu.
+- **`beforeLoad` w `__root.tsx`** woła `getRouteNamespaces(matches)`, które łączy `ROOT_NAMESPACES` z deklaracjami wszystkich dopasowanych tras, a następnie `preloadNamespaces` rozwiązuje je równolegle do `QueryClient` tego żądania.
+- **`TranslationsProvider`** czyta tę samą listę ponownie przez `useMatches` i `useSuspenseQueries`, buduje drzewo i przekazuje je do `IntlProvider` z use-intl razem z `I18N.DEFAULT_TIMEZONE`. Ponieważ opakowuje body dokumentu w shellu root, przetłumaczone są nawet ekrany błędu i 404.
+- **E-maile** ładują swoją przestrzeń nazw na serwerze przez `loadNamespace` w kodzie, który je wysyła, i tłumaczą przez `createTranslator`.
+
+Strona wysyła więc sześć przestrzeni nazw root plus to, co zadeklarowała jej trasa i jej layouty przodków — a nie cały katalog tłumaczeń.
+
+## Dokumentacja i treści prawne
+
+Fumadocs jest skonfigurowane z tą samą listą locale w `src/integrations/fumadocs/fumadocs.i18n.ts`:
+
+```ts
+export const i18n = defineI18n({
+  defaultLanguage: I18N.DEFAULT_LOCALE,
+  fallbackLanguage: I18N.DEFAULT_LOCALE,
+  hideLocale: "always",
+  languages: [...I18N.SUPPORTED_LOCALES],
+  parser: "dot",
+})
+```
+
+`parser: "dot"` sprawia, że działają `<strona>.<locale>.mdx` i `meta.<locale>.json`, a `hideLocale: "always"` trzyma locale poza URL-ami Fumadocs, bo prefiks routera już je nosi. `docsSource.getPage(slugs, locale)` i `docsSource.getPageTree(locale)` są wołane z locale z `getCurrentLocale()`.
+
+Oba locale muszą wymieniać te same slugi w `meta.<locale>.json`: strona dodana po angielsku musi zostać dodana też po polsku, inaczej panel boczny będzie się różnił między językami.
+
+## Powiązane strony
+
+- [Cykl życia żądania](/docs/architecture/request-lifecycle)
+- [Warstwa prezentacji](/docs/architecture/presentation-layer)
+- [Cache i SSR](/docs/architecture/caching-and-ssr)

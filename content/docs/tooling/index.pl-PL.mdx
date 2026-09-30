@@ -1,0 +1,55 @@
+---
+title: "Wprowadzenie"
+description: "Narzędzia M'Arte: Bun, Vite+, Wrangler, drizzle-kit oraz kontrole, które pilnują każdego commita."
+---
+
+M'Arte ma jeden menedżer pakietów i jeden zestaw narzędzi. Bun (`bun@1.4.0`, przypięty w polu `packageManager` w `package.json`) instaluje zależności i uruchamia skrypty; Vite+ (`vp`) obsługuje serwer deweloperski, kompilacje, testy, linter, formater i kontrole plików w przechowalni Gita; Wrangler rozmawia z Cloudflare; drizzle-kit generuje migracje i otwiera Drizzle Studio. Wszystko, czego te narzędzia potrzebują, znajduje się w trzech plikach w katalogu głównym repozytorium: `package.json`, `vite.config.ts` i `wrangler.jsonc`.
+
+Nie ma tu osobnych wywołań ESLinta, Prettiera, Jesta czy `tsc`. `bun run check` to jedyna bramka statyczna — formatowanie, lint i kontrola typów — a `bun run test` to jedyne wejście do testów.
+
+## Stos w skrócie
+
+| Narzędzie   | Wersja                 | Skąd pochodzi                 | Do czego służy                                                          |
+| ----------- | ---------------------- | ----------------------------- | ----------------------------------------------------------------------- |
+| Bun         | `1.4.0`                | `packageManager`              | Instalacja, uruchamianie skryptów, `Bun.Transpiler` w `verify-build.ts` |
+| Vite+       | `1.0.0-rc.0`           | `devDependencies.vite-plus`   | `vp dev`, `vp build`, `vp test`, `vp check`, `vp staged`                |
+| Vitest      | `5.0.1`                | `overrides.vitest`            | Runner testów pod `vp test`                                             |
+| TypeScript  | `~7.0.2`               | `devDependencies.typescript`  | Typy, sprawdzane przez Vite+, a nie osobnym wywołaniem `tsc`            |
+| Wrangler    | `^4.138.0`             | `devDependencies.wrangler`    | Migracje D1, wdrożenia, typy bindingów                                  |
+| drizzle-kit | `^0.31.11`             | `devDependencies.drizzle-kit` | Generowanie migracji, introspekcja, Studio                              |
+| Fumadocs    | `fumadocs-mdx@^15.4.4` | `dependencies`                | Kompiluje `content/` do `.source/`                                      |
+
+`package.json` przestawia także samo Vite: `overrides.vite` wskazuje na `npm:@voidzero-dev/vite-plus-core@1.0.0-rc.0`, więc Vite, które projekt rozwiązuje, jest tym dostarczanym przez Vite+.
+
+## W tym rozdziale
+
+- [Vite+](/docs/tooling/vite-plus): CLI `vp`, każda sekcja `vite.config.ts`, stos wtyczek i hooki Gita
+- [Skrypty projektu](/docs/tooling/scripts): każdy skrypt z `package.json` i to, co faktycznie uruchamia
+- [Lint i formatowanie](/docs/tooling/lint-and-format): ustawienia oxfmt, sześć kategorii oxlint, limity rozmiaru i wąskie wyjątki
+- [Testy](/docs/tooling/testing): trzy projekty Vitest, wspólna infrastruktura testowa i progi pokrycia
+- [Baza danych](/docs/tooling/database): generowanie migracji przez drizzle-kit, nakładanie ich przez Wranglera, Studio, introspekcja i seedy
+- [CI/CD](/docs/tooling/ci-cd): trzy przepływy GitHub Actions, wspólna akcja setup i sposób przekazywania sekretów do wdrożenia
+- [Konwencjonalne commity](/docs/tooling/conventional-commits): format commita i hook dodający emoji
+- [Umiejętności agentów](/docs/tooling/agent-skills): `skills-lock.json`, `scripts/sync-skills.ts` i grupy dostawców
+
+## Czego tutaj nie ma
+
+Nie ma testów przeglądarkowych ani end-to-end. `vite.config.ts` wymienia `e2e`, `playwright/.cache`, `playwright-report` i `test-results` we wzorcach ignorowania i wykluczania, ale katalog `e2e/` nie istnieje, a Playwright nie jest zależnością. Te wzorce są zapobiegawcze, a nie dowodem na istnienie zestawu testów.
+
+CI nie nakłada migracji bazy danych. `bun run db:migrate:preview` i `bun run db:migrate:production` uruchamia się ręcznie przed wdrożeniem, które ich wymaga — zobacz [Baza danych](/docs/tooling/database).
+
+## Pierwsze uruchomienie
+
+```sh
+bun install
+bun run dev
+```
+
+`bun install` wywołuje dwa skrypty cyklu życia: `prepare` (`vp config --no-agent`, który instaluje dyspozytor hooków Gita) oraz `postinstall` (`bun run typegen`, który odtwarza `src/types/worker-configuration.d.ts` i `.source/`). Oba wyniki są w `.gitignore`, więc świeży klon nie przejdzie kontroli typów, dopóki nie powstaną.
+
+`bun run dev` odtwarza kolekcje dokumentacji i startuje Vite+ w środowisku Cloudflare `development` na http://localhost:3000. To środowisko korzysta z **zdalnych** bindingów, więc serwer deweloperski czyta i zapisuje prawdziwą bazę D1 preview, przestrzeń KV i zasobnik R2.
+
+## Powiązane strony
+
+- [Pierwsze kroki](/docs/getting-started)
+- [Materiały referencyjne](/docs/reference)

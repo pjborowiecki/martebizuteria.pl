@@ -1,0 +1,143 @@
+---
+title: "Strona główna"
+description: "Piętnaście sekcji strony /, dane które wczytują, choreografia przewijania w GSAP i te elementy, które są wciąż tylko treścią."
+---
+
+## Trasa
+
+`src/routes/_storefront.index.tsx` to cała strona. Renderuje piętnaście sekcji z katalogu `src/presentation/components/custom/pages/landing-page/sections`, w tej kolejności:
+
+```tsx
+<main ref={rootRef} className="bg-background text-foreground" data-landing-page>
+  <HeroSection />
+  <VideoExperienceSection />
+  <ValuesSection />
+  <ManifestoSection />
+  <NewArrivalsSection />
+  <MobileCategoriesSection />
+  <DesktopCategoriesSection />
+  <ArchiveSection />
+  <BreakerSection />
+  <ShopCategoriesSection />
+  <PhilosophySection />
+  <SilverPremiumSection />
+  <MaisonHeritageSection />
+  <ShopCollectionsSection />
+  <NewsletterSection />
+</main>
+```
+
+Cała treść pochodzi z przestrzeni nazw `pages.landing` (`messages/{locale}/pages.landing.json`). Trasa deklaruje `staticData.namespaces: ["pages.landing", "pages.categories"]`, więc oba katalogi komunikatów są wczytywane przed renderem strony.
+
+Layout `_storefront` w `src/routes/_storefront.tsx` dostarcza nawigację, banner dostępności koszyka i stopkę.
+
+## Co wczytuje loader
+
+Loader uruchamia równolegle trzy zapytania i zwraca metadane strony:
+
+| Zapytanie               | Use case                                                   | Używane przez                                         |
+| ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| `messagesQueryOptions`  | `src/integrations/use-intl/i18n.messages.ts`               | tytuł i opis w `head`                                 |
+| `getNewArrivalsQuery()` | `src/modules/product/use-cases/get-new-arrivals.ts`        | `NewArrivalsSection`                                  |
+| `getCategoriesQuery()`  | `src/modules/product-category/use-cases/get-categories.ts` | `MobileCategoriesSection`, `DesktopCategoriesSection` |
+
+Oba zapytania katalogowe są wykonywane z `staleTime: "static"`, więc render serwerowy nigdy ich nie odświeża. Po ich rozwiązaniu `prefetchProductThumbnails(newArrivals, context.imagePrefetchService)` z `src/lib/image.ts` rozgrzewa miniatury produktów z nowości.
+
+## Nowości
+
+`getNewArrivals` to funkcja serwerowa `GET` wyłącznie z middleware `withRequest` — jest publiczna. Rozwiązuje jedną kolekcję po handle i listuje jej opublikowane, dostępne produkty:
+
+```ts
+const collection = await getStorefrontCollectionByHandleQuery.execute({
+  handle: LANDING_NEW_ARRIVALS_COLLECTION_HANDLE,
+})
+
+if (collection === undefined) {
+  return []
+}
+
+const { items } = await getPublishedProductsByCollectionId(collection.id, {
+  limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
+  offset: 0,
+})
+```
+
+Obie stałe leżą w `src/modules/product/product.constants.ts`:
+
+- `LANDING_NEW_ARRIVALS_COLLECTION_HANDLE = "nowosci"`
+- `LANDING_NEW_ARRIVALS_PRODUCT_LIMIT = 9`
+
+**Sekcja jest w całości napędzana tym jednym handle kolekcji.** Jeśli żadna aktywna kolekcja nie ma handle `nowosci`, siatka renderuje się pusta i nie zgłasza błędu. Aby zmienić, które produkty się pokazują, zmień skład kolekcji w [panelu katalogu](/docs/features/admin-catalog), a nie w kodzie.
+
+Kluczem zapytania jest `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`, jeden z kluczy, które `scheduleProductCatalogInvalidation()` i `scheduleCollectionCatalogInvalidation()` wysyłają przez hub realtime witryny — publikacja produktu albo edycja kolekcji odświeża więc otwarte strony główne.
+
+## Kategorie
+
+`MobileCategoriesSection` i `DesktopCategoriesSection` czytają `getCategoriesQuery()` przez `useSuspenseQuery`. Wariant desktopowy przypina sekcję i przewija panele kategorii poziomo; pomocniki do tego leżą w `landing-category-horizontal-scroll.ts`, a wspólne rozwiązywanie treści w `landing-category-panel.utils.ts` (`resolveLandingCategoryPanelCopy`).
+
+## Statyczne zasoby marketingowe
+
+`src/data/landing.ts` przechowuje adresy zasobów i trzy kafle kolekcji z `ShopCollectionsSection`:
+
+```ts
+export const LANDING_HERO_IMG = getAssetURL("marketing/hero.webp")
+export const LANDING_VIDEO_POSTER = getAssetURL("placeholder.svg")
+export const LANDING_VIDEO_SRC = getAssetURL("marketing/landing-video.mp4")
+
+export const LANDING_SHOP_COLLECTIONS = [
+  {
+    descKey: "items.newArrivals.description",
+    image: getAssetURL("collections/new_arrivals.webp"),
+    nameKey: "items.newArrivals.name",
+    slug: "nowosci",
+  },
+  {
+    descKey: "items.silver.description",
+    image: getAssetURL("collections/silver925.webp"),
+    nameKey: "items.silver.name",
+    slug: "srebro-925",
+  },
+  { descKey: "items.gold.description", image: getAssetURL("collections/gold585.webp"), nameKey: "items.gold.name", slug: "zloto-585" },
+] as const
+```
+
+Te trzy slugi to zapisane na stałe handle kolekcji. `getAssetURL` (`src/lib/url.ts`) rozwiązuje je względem publicznego adresu R2.
+
+## Animacja przewijania
+
+`src/hooks/use-landing-animations.ts` jest wywoływany raz z komponentu strony, z referencją do `<main>`. Pobiera GSAP i `ScrollTrigger` z `src/integrations/gsap/gsap.config.ts` i podłącza trzy efekty po nazwie klasy:
+
+| Klasa            | Efekt                                                                                                                      |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `.reveal`        | jednorazowe pojawienie się z przesunięciem, wsadowo przez `ScrollTrigger.batch`; elementy już widoczne animują się od razu |
+| `.line-reveal`   | linia rozciąga się od lewej, jednorazowo                                                                                   |
+| `.parallax-wrap` | element `.parallax-img` wewnątrz przesuwa się wraz z przewijaniem kontenera                                                |
+
+Nowa sekcja dołącza do tej choreografii przez dodanie klasy `reveal` na swoim elemencie zewnętrznym — nie ma nic do rejestrowania.
+
+Samo płynne przewijanie to Lenis, montowany przez `src/presentation/components/custom/smooth-scroll.tsx` i synchronizowany z routerem przez `src/hooks/use-lenis-router-scroll-sync.ts`.
+
+## Sekcja newslettera to tylko treść
+
+`newsletter-section.tsx` renderuje `Input` z shadcn i `<button type="button">` bez `onClick`, bez elementu formularza i bez funkcji serwerowej:
+
+```tsx
+<Input placeholder={t("placeholder")} aria-label={t("placeholder")} className="..." />
+<button type="button" className="...">
+  {t("cta")}
+  <ArrowRight className="size-4" />
+</button>
+```
+
+Nie ma tabeli newslettera, nie ma use case'a zapisu i nie ma e-maila potwierdzającego. Wysłanie formularza nie robi nic. Podłączenie go oznacza dodanie modułu (na przykład `src/modules/newsletter`) z funkcją `createServerFn` objętą limitem żądań, tabelą i szablonem w `src/presentation/emails`.
+
+## Zakotwiczenia sekcji
+
+`NewArrivalsSection` to jedyna sekcja z atrybutem `id`: `id="nowosci"`. Odnośniki, które mają do niej trafiać, używają tego fragmentu adresu. Pozostałe sekcje nie są adresowalne.
+
+## Powiązane strony
+
+- [Katalog i wyszukiwanie](/docs/features/catalog-and-search) — strony `/products` i `/categories`, do których prowadzą przyciski
+- [Panel katalogu](/docs/features/admin-catalog) — edycja kolekcji `nowosci`
+- [Integracje: GSAP i Lenis](/docs/integrations/gsap-and-lenis)
+- [System UI: tokeny projektowe](/docs/ui/theme)

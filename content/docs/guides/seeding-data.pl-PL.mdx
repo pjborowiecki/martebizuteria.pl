@@ -1,0 +1,122 @@
+---
+title: "Dane startowe"
+description: "Co zawiera jedenaście plików seed, w jakiej kolejności muszą się wykonać i dlaczego nie wolno ich dziś uruchamiać na bazie produkcyjnej."
+---
+
+## Przeczytaj to najpierw
+
+**Nie uruchamiaj `bun run db:seed`, `bun run db:seed:preview` ani `bun run db:seed:production`.**
+
+Pliki seed w `src/integrations/drizzle-orm/seeds/` napisano dla wcześniejszego stanu katalogu. Bazy preview i produkcyjna były od tamtej pory edytowane przez panel administracyjny. Każdy plik seed zaczyna się instrukcją `DELETE` zawężoną po handle'u albo SKU, więc uruchomienie któregokolwiek teraz usunęłoby prawdziwe wiersze katalogu i zastąpiło je przeterminowanymi danymi z repozytorium.
+
+Pliki zostają w repozytorium z dwóch dobrych powodów: dokumentują wzorcowy kształt katalogu i są punktem startowym dla całkiem nowej bazy. Nie są przyciskiem „przywróć znany stan” dla środowiska, w którym są prawdziwe dane. Pamiętaj też, że `development` i `preview` wskazują na **tę samą** bazę D1 (`martebizuteria-preview`), więc nie ma bezpiecznego środowiska do ćwiczeń.
+
+## Pliki
+
+Jedenaście plików SQL, wymienionych tu w kolejności, w jakiej uruchamia je `db:seed:preview` — czyli w kolejności zależności, nie alfabetycznej:
+
+| Kolejność | Plik                        | Tabele                       | Zależy od                                 |
+| --------- | --------------------------- | ---------------------------- | ----------------------------------------- |
+| 1         | `delivery-methods.sql`      | `courier`, `delivery_method` | —                                         |
+| 2         | `product-categories.sql`    | `product_category`           | —                                         |
+| 3         | `product-collections.sql`   | `product_collection`         | —                                         |
+| 4         | `product-attributes.sql`    | `product_attribute`          | —                                         |
+| 5         | `products.sql`              | `product`                    | `product-categories.sql`                  |
+| 6         | `product-variants.sql`      | `product_variant`            | `products.sql`                            |
+| 7         | `inventory.sql`             | `inventory`                  | `product-variants.sql`                    |
+| 8         | `product-images.sql`        | `product_image`              | `products.sql`                            |
+| 9         | `category-on-product.sql`   | `category_on_product`        | `products.sql`, `product-categories.sql`  |
+| 10        | `collection-on-product.sql` | `collection_on_product`      | `products.sql`, `product-collections.sql` |
+| 11        | `attribute-on-product.sql`  | `attribute_on_product`       | `products.sql`, `product-attributes.sql`  |
+
+Każdy zależny plik podaje swoje wymagania w komentarzu na początku, na przykład `-- Depends on product-variants.sql.` w `inventory.sql`.
+
+## Obowiązujące konwencje
+
+Przeczytaj jeden, zanim napiszesz własny. `delivery-methods.sql` jest najprostszy i używa `INSERT OR IGNORE`, więc ponowne uruchomienie jest nieszkodliwe:
+
+```sql
+INSERT OR IGNORE INTO courier (id, internal_code, is_active, logo, name, created_at, updated_at) VALUES
+('019f4a10-0000-7000-8000-000000000001', 'inpost', 1, NULL, 'InPost', unixepoch() * 1000, unixepoch() * 1000),
+('019f4a10-0000-7000-8000-000000000002', 'marte-atelier', 1, NULL, 'M''ARTE Atelier', unixepoch() * 1000, unixepoch() * 1000);
+```
+
+Wstawia trzy metody dostawy dla dwóch kurierów: `inpost_locker_standard` (Paczkomat InPost, `type: "locker"`, 1499), `inpost_courier_standard` (Kurier InPost, `type: "courier"`, 1999) oraz `marte_atelier_pickup` (Odbiór w atelier, `type: "in_store"`, 0).
+
+Pliki katalogowe są celowo destrukcyjne. `products.sql` zaczyna się tak:
+
+```sql
+-- Depends on product-categories.sql (primary_category_id).
+
+DELETE FROM product
+WHERE handle IN ('lapis-lazuli-necklace', 'onyx-necklace')
+  AND id NOT IN (
+    '019e99d8-9f56-777d-8f3c-95c393be568b',
+    '019e99f2-dfa2-7798-b04f-cebfdbbdb427'
+  );
+```
+
+Wzorzec to „usuń każdy wiersz z moim handle'em, który nie jest moim wierszem, a potem wstaw moje wiersze” — idempotentny, dopóki identyfikatory w pliku się nie zmieniają, i destrukcyjny w chwili, gdy w katalogu produkcyjnym pojawią się inne wiersze o tym samym handle'u.
+
+Inne konwencje warte naśladowania:
+
+- **Ustalone identyfikatory UUIDv7, zapisane w całości.** Identyfikator wiersza seed jest częścią kontraktu pliku, bo odwołują się do niego pliki zależne. Identyfikatory w stylu `019f4a10-0001-7000-8000-000000000001` są komponowane ręcznie, nie generowane, więc czyta się je jako oczywiście sztuczne.
+- **Znaczniki czasu jako `unixepoch() * 1000`**, zgodnie z trybem `timestamp_ms` używanym w schemacie.
+- **Wartości logiczne jako `1` i `0`.**
+- **Kolumny tłumaczone jako `json_object`:**
+
+```sql
+json_object('pl-PL', 'Naszyjnik Lapis Lazuli', 'en-US', 'Lapis Lazuli Necklace')
+```
+
+Oba klucze językowe są zawsze obecne, z pełnymi znacznikami BCP 47.
+
+- **Ceny jako całkowite jednostki podrzędne.** `1499` to 14,99 zł.
+- **Podwojone apostrofy**, bo `M'ARTE` trzeba w SQL zapisać jako `M''ARTE`.
+- **Adresy obrazów wskazujące na publiczny kubełek R2**, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp` — te same klucze adresowane treścią, jakie tworzy `uploadImageFn` w `src/integrations/cloudflare-r2/media.mutations.ts`.
+
+## Co zawiera katalog startowy
+
+Tyle, żeby przetestować każdą powierzchnię witryny i panelu, a nie realistyczny asortyment: siedem polskich kategorii produktów (naszyjniki, kolczyki, chokery, bransoletki, bransoletki urodzeniowe, pierścionki, biżuteria z odciskami), zestaw kolekcji i atrybutów produktu, dwa produkty (`lapis-lazuli-necklace` i `onyx-necklace`) z dwoma wariantami (`MRT-0001`, `MRT-0002`), ich wiersze stanów magazynowych, obrazy i wiersze łączące, które umieszczają je w kategoriach, kolekcjach i zestawach atrybutów.
+
+Oba produkty mają pełne polskie i angielskie tytuły oraz długie opisy, co czyni je przydatnymi do sprawdzania przełączania języka na stronie produktu.
+
+## Zasilanie nowej bazy
+
+Dla naprawdę pustej bazy D1 — nowego środowiska albo świeżej instancji lokalnej — kolejność jest taka:
+
+```sh
+bun run db:migrate:local      # albo skrypt migracji właściwy dla środowiska
+```
+
+a następnie uruchom jedenaście plików w kolejności z tabeli powyżej przez `wrangler d1 execute`. Skrypty w `package.json` łączą dokładnie to operatorem `&&`, więc możesz skopiować komendę i zmienić flagę `--env`, ale najpierw dwukrotnie sprawdź, na którą bazę wskazujesz. Wybieraj `--local`, chyba że masz pewność.
+
+## Zmiana pliku seed
+
+Jeśli jednak go zmieniasz, zachowaj spójność ze schematem produkcyjnym:
+
+- Listy kolumn muszą dokładnie odpowiadać aktualnej tabeli. `product-categories.sql`, `product-collections.sql`, `product-attributes.sql`, `products.sql` i `delivery-methods.sql` były modyfikowane znacznie później niż pozostałe, więc starsze pliki mają większe szanse na rozjechanie się ze schematem.
+- Zachowaj stałe identyfikatory albo zaktualizuj każdy plik, który się do nich odwołuje.
+- Zachowaj oba klucze językowe w każdym `json_object`.
+- Pliki seed są wyłączone z lintu i z zestawu testów, więc nic ich automatycznie nie weryfikuje. Jedyną prawdziwą kontrolą jest zastosowanie ich na pustej bazie i otwarcie witryny.
+
+## Zamiast tego: dane testowe
+
+Do testu prawie nigdy nie potrzebujesz pliku seed. Testy integracyjne budują własny schemat w pamięci:
+
+```ts
+const sqlite = new DatabaseSync(":memory:")
+const database = drizzle(createTestD1Database(sqlite))
+
+beforeAll(() => {
+  sqlite.exec("create table search_entry (id integer primary key, label text not null, reference integer not null)")
+})
+```
+
+`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje wbudowany moduł Node'a `node:sqlite` do interfejsu `D1Database`, wraz z `batch()` opartym na prawdziwej transakcji. Wzorcem jest `src/modules/_core/utils/__test__/search-conditions.integration.test.ts`. Zobacz [Pisanie testów](/docs/guides/writing-tests).
+
+## Powiązane przewodniki
+
+- [Migracje bazy danych](/docs/guides/database-migrations)
+- [Pisanie testów](/docs/guides/writing-tests)
+- [Debugowanie lokalne](/docs/guides/local-debugging)

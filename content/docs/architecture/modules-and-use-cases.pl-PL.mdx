@@ -1,0 +1,141 @@
+---
+title: "Moduły i przypadki użycia"
+description: "Jak zbudowany jest moduł funkcjonalny, co oznacza każdy sufiks pliku i jaki kształt ma każdy przypadek użycia."
+---
+
+## 36 modułów
+
+```text
+_core                   address                 admin-dashboard
+account                 attribute-on-product    audit-log
+cart                    cart-item               category-on-product
+checkout                collection-on-product   courier
+customer-account        customer-activity       delivery-method
+discount                inventory               option-on-variant
+order                   order-address           order-item
+payment                 product                 product-attribute
+product-category        product-collection      product-image
+product-option          product-option-value    product-variant
+rate-limit              session                 storefront-search
+two-factor              user                    verification
+```
+
+31 z nich eksportuje tabelę Drizzle, a `src/integrations/drizzle-orm/drizzle.schemas.ts` re-eksportuje wszystkie 31, żeby klient Drizzle, adapter Better Auth i `drizzle-kit` widziały jeden rejestr schematu. `admin-dashboard`, `customer-account`, `customer-activity` i `storefront-search` to modele odczytu nad tabelami innych modułów i nie mają własnego schematu; `_core` jest współdzielonym jądrem.
+
+## Sufiksy plików
+
+| Plik                       | Zawiera                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| `<feature>.schema.ts`      | Definicję `sqliteTable`, jej indeksy i `relations`                             |
+| `<feature>.zod.ts`         | Schematy wejścia wspólne dla react-hook-form i walidatorów funkcji serwerowych |
+| `<feature>.constants.ts`   | Klucze zapytań i mutacji, enumy, rozmiary stron, czasy stale, metadane kolumn  |
+| `<feature>.types.ts`       | Typy wiersza i wejścia wyprowadzone ze schematu i kształtów Zod                |
+| `<feature>.utils.ts`       | Czyste helpery bez dostępu do bazy i żądania                                   |
+| `<feature>.accessors.ts`   | Dostęp do danych: zapytania Drizzle, prepared statements, buildery batchy      |
+| `<feature>.*.server.ts`    | Helpery wyłącznie serwerowe, które nie są endpointami RPC                      |
+| `use-cases/<verb-noun>.ts` | Jedno `createServerFn` plus opcje zapytania lub mutacji, które je wołają       |
+
+`order` to dobry moduł do przeczytania od początku do końca: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.display.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.settled.server.ts`, `order.audit.utils.ts`, `order.admin-list-filters.ts` i dziewięć plików w `use-cases/`.
+
+## Przypadek użycia mutujący
+
+```ts
+export const shipOrder = createServerFn({ method: "POST" })
+  .middleware([authorized({ order: ["update"] })])
+  .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
+  .handler(async ({ data: { orderId } }) => {
+    assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
+      canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
+    )
+
+    await db.update(order).set({ fulfillmentStatus: "shipped", shippedAt: new Date(), updatedAt: new Date() }).where(eq(order.id, orderId))
+
+    recordOrderShippedAudit(orderId)
+    scheduleBackgroundWork(notifyOrderShipped(orderId))
+
+    return { ok: true, orderId }
+  })
+
+export const shipOrderMutation = mutationOptions({
+  mutationFn: (data: Parameters<typeof shipOrder>[0]["data"]) => shipOrder({ data }),
+  mutationKey: ORDER_MUTATION_KEYS.SHIP,
+})
+```
+
+Każdy element jest tu istotny:
+
+- **Middleware** pochodzi z `src/integrations/better-auth/auth.middleware.ts`. `withRequest` przechwytuje nagłówki żądania i normalizuje błędy; `authorized()` wymaga sesji; `authorized({ order: ["update"] })` sprawdza dodatkowo uprawnienie roli z `auth.access.ts`; `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` liczy próby na operację i adres IP.
+- **Walidacja** parsuje wejście schematem Zod modułu przed uruchomieniem handlera, więc handler otrzymuje typy `zod.output`.
+- **Guardy stanu** mieszkają w module, nie w komponencie. `assertOrderActionState` odrzuca przejścia, które `order.admin-actions.utils.ts` uznaje za niemożliwe.
+- **Audyt i e-mail to praca w tle.** Rejestrator wysyła zdarzenie do kolejki Cloudflare; e-mail trafia do `scheduleBackgroundWork`, więc żadne z nich nie opóźnia odpowiedzi.
+- **Opcje mutacji są eksportowane obok funkcji**, z kluczem `ORDER_MUTATION_KEYS.SHIP`.
+
+## Przypadek użycia odczytujący
+
+Odczyty eksportują zamiast tego `queryOptions`, zwykle jako funkcję swojego wejścia, żeby klucz je zawierał:
+
+```ts
+export const getAdminOrdersPageQuery = (input: Order["adminPageInput"]) =>
+  queryOptions({
+    queryFn: () => getAdminOrdersPage({ data: input }),
+    queryKey: [...ORDER_QUERY_KEYS.ADMIN.PAGE, input],
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: ORDER_QUERY_STALE_MS,
+  })
+```
+
+Wszystkie paginowane listy administracyjne zwracają `{ hasMore, items, limit, offset, total }` przez `buildListPaginationResult` i `listPaginationParamsFromPage` z `src/modules/_core/utils/pagination.ts`, więc siatka danych nie musi wiedzieć, jaką encję pokazuje.
+
+Publiczne odczyty sklepu używają samego `withRequest` — sesja nie jest wymagana — i zwracają `false` zamiast rzucać wyjątek, gdy nic nie pasuje. Tak `get-product.ts` odróżnia „nie ma takiego opublikowanego produktu” od błędu:
+
+```ts
+export const getProduct = createServerFn({ method: "GET" })
+  .middleware([withRequest])
+  .validator((input: zod.input<typeof productZodSchemas.productByHandleInput>) => productZodSchemas.productByHandleInput.parse(input))
+  .handler(async ({ data }) => {
+    const prod = await getPublishedProductByHandleQuery.execute({ handle: data.handle })
+
+    if (prod === undefined || !isProductInStock(prod.variants)) {
+      return false
+    }
+
+    return mapPublishedProductForStorefront(prod, data.locale ?? I18N.DEFAULT_LOCALE)
+  })
+```
+
+## Klucze zapytań
+
+Klucze to krotki należące do `*.constants.ts` modułu, zagnieżdżone według odbiorcy:
+
+```ts
+export const PRODUCT_QUERY_KEYS = {
+  ADMIN: {
+    ALL: ["admin", "products"] as const,
+    BY_HANDLE: ["admin", "products", "by-handle"] as const,
+    PAGE: ["admin", "products", "page"] as const,
+    STATS: ["admin", "products", "stats"] as const,
+  },
+  ALL: ["products"] as const,
+  BY_HANDLE: ["product"] as const,
+  LANDING_NEW_ARRIVALS: ["products", "landing-new-arrivals"] as const,
+  RELATED_BY_CATEGORY: ["related-products"] as const,
+  STOREFRONT_PAGE: ["products", "storefront-page"] as const,
+} as const
+```
+
+Przy przenoszeniu kodu zachowuj wartości krotek. Z tych samych stałych korzystają loadery, komponenty, prefiksy unieważniania w `realtime-invalidation.subscriptions.ts` oraz publikatory w `realtime-invalidation.catalog.server.ts`, więc zmiana krotki po cichu psuje unieważnianie w czasie rzeczywistym.
+
+## Funkcje serwerowe bez granicy RPC
+
+Nie każda operacja jest funkcją serwerową. `createCheckout`, `fulfillCheckout` i `releaseCheckout` w `src/modules/checkout/use-cases/*.server.ts` to zwykłe funkcje asynchroniczne: wołane są wyłącznie z handlera webhooka Stripe, który jest już uwierzytelniony weryfikacją podpisu, więc wystawienie ich jako endpointów tylko poszerzyłoby powierzchnię ataku.
+
+## Wywołanie przypadku użycia z komponentu
+
+Komponenty rozwijają wyeksportowane opcje, tłumaczą błędy przez `useActionError()` z `src/hooks/use-action-error.ts` i unieważniają klucze modułu po sukcesie. `useActionError` mapuje kod `AppError` na `errors.action.<CODE>`, a błąd Better Auth na `pages.auth.errors.<key>`, z `INTERNAL_ERROR` jako wartością domyślną.
+
+## Powiązane strony
+
+- [Warstwy](/docs/architecture/layering)
+- [Model bezpieczeństwa](/docs/architecture/security-model)
+- [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation)

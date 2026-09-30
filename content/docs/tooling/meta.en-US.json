@@ -1,0 +1,4 @@
+{
+  "title": "Tooling",
+  "pages": ["index", "vite-plus", "scripts", "lint-and-format", "testing", "database", "ci-cd", "conventional-commits", "agent-skills"]
+}

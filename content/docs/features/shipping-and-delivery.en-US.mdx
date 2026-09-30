@@ -1,0 +1,185 @@
+---
+title: "Shipping and delivery"
+description: "The courier and delivery_method tables, the three delivery types, the InPost point picker on a MapLibre map, and how delivery reaches the order."
+---
+
+## Two tables
+
+`courier` (`src/modules/courier/courier.schema.ts`) is the carrier:
+
+| Column          | Notes                            |
+| --------------- | -------------------------------- |
+| `internal_code` | Unique, not null (e.g. `inpost`) |
+| `name`          | Not null                         |
+| `logo`          | Nullable, up to 2048 characters  |
+| `is_active`     | Boolean, default `true`          |
+
+`delivery_method` (`src/modules/delivery-method/delivery-method.schema.ts`) is what the customer picks:
+
+| Column             | Notes                                                                |
+| ------------------ | -------------------------------------------------------------------- |
+| `courier_id`       | `references(() => courier.id, { onDelete: "cascade" })`, not null    |
+| `name`             | Not null; shown verbatim in checkout, so it is **not** translated    |
+| `description`      | Nullable                                                             |
+| `price`            | Integer minor units, not null; `0` means free                        |
+| `type`             | `locker \| courier \| in_store`, not null                            |
+| `api_service_code` | Not null; a carrier service identifier, currently informational only |
+| `is_active`        | Boolean, default `true`                                              |
+
+`api_service_code` is stored but never read — nothing generates labels or books shipments against a carrier API.
+
+## The three types
+
+`delivery-method.constants.ts`:
+
+```ts
+export const DELIVERY_METHOD = { COURIER: "courier", IN_STORE: "in_store", LOCKER: "locker" } as const
+export const DELIVERY_METHODS = [DELIVERY_METHOD.COURIER, DELIVERY_METHOD.LOCKER, DELIVERY_METHOD.IN_STORE] as const
+export const DELIVERY_METHOD_QUERY_KEYS = { ALL: ["deliveryMethods"] as const } as const
+```
+
+`DELIVERY_METHODS` fixes the display order in the checkout step: courier, then locker, then in-store.
+
+## Listing methods
+
+`listDeliveryMethods` (`use-cases/list-delivery-methods.ts`) is public (`withRequest`) and returns only rows whose method **and** courier are both active:
+
+```ts
+const rows = await db
+  .select({ courier, deliveryMethod })
+  .from(deliveryMethod)
+  .innerJoin(courier, eq(deliveryMethod.courierId, courier.id))
+  .where(and(eq(deliveryMethod.isActive, true), eq(courier.isActive, true)))
+
+return rows.map((row) => Object.assign(row.deliveryMethod, { courier: row.courier }))
+```
+
+Deactivating a courier therefore hides all of its methods at once.
+
+`listDeliveryMethodsQuery()` has no `staleTime`, so it follows the client's default. It is read by the delivery step, the courier sub-step and the payment step (which needs the price to compute the Stripe amount).
+
+`getActiveDeliveryMethodByIdQuery(id)` in `delivery-method.accessors.ts` is the server-side lookup used by `resolveShippingCost`; it also filters on `isActive`, so a method deactivated mid-checkout resolves to a `0` shipping cost rather than an error.
+
+## Seed data
+
+`src/integrations/drizzle-orm/seeds/delivery-methods.sql` inserts two couriers (`inpost` and `marte-atelier`) and three methods:
+
+| Method           | Type       | Price (minor units) | `api_service_code`        |
+| ---------------- | ---------- | ------------------- | ------------------------- |
+| Paczkomat InPost | `locker`   | 1499                | `inpost_locker_standard`  |
+| Kurier InPost    | `courier`  | 1999                | `inpost_courier_standard` |
+| Odbiór w atelier | `in_store` | 0                   | `marte_atelier_pickup`    |
+
+The seed uses `INSERT OR IGNORE` with fixed UUIDv7 ids. Do not run `bun run db:seed:preview` against the live database — the seed files lag behind production data.
+
+## Delivery step
+
+`_steps/delivery-step.tsx` renders one `OptionCard` per **type** that has at least one active method, using `DELIVERY_ICONS` (`Truck`, `Package`, `Store` from lucide). The card description shows the cheapest price in the group:
+
+```ts
+const lowestPrice = Math.min(...methods.map((m) => m.price))
+if (lowestPrice === 0) {
+  return t("deliverySubsteps.free")
+}
+
+const price = format.number(lowestPrice / CENTS_IN_ZLOTY, { currency: "PLN", style: "currency" })
+
+return methods.length > 1 ? `${t("deliverySubsteps.from")} ${price}` : price
+```
+
+Picking a type writes `deliveryMethodType` and either auto-selects the single method or clears `deliveryMethod` so the sub-step must choose.
+
+### Courier
+
+`delivery/courier/delivery-courier.tsx` renders a radio group of the `courier` methods with their formatted prices, plus the free-text `deliveryNotes` field. That field is persisted as `checkout.customer_note` and copied onto `order.customer_note`. The component returns `undefined` when there are no courier methods.
+
+### In-store
+
+`delivery/store/delivery-in-store.tsx` is copy only: two paragraphs from `deliverySubsteps.inStoreTitle` and `deliverySubsteps.inStoreText`. There is no store picker; the `storeLocation` field exists in `checkoutSchema` but nothing writes it.
+
+### Locker
+
+`delivery/locker/delivery-locker.tsx` shows the currently selected locker id and hosts `InpostSelector`. The `lockerId` field is required by the `superRefine` in `checkoutSchema` whenever `deliveryMethodType === "locker"`.
+
+## InPost point picker
+
+The integration is four small files in `src/integrations/inpost`:
+
+```ts
+const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
+const MIN_CITY_LENGTH = 3
+
+export const fetchPointsByCity = async (city: string): Promise<InpostPointParsed[]> => {
+  const trimmed = city.trim()
+  if (trimmed.length < MIN_CITY_LENGTH) {
+    return []
+  }
+
+  const url = `${INPOST_API_BASE}?city=${encodeURIComponent(capitalizeCity(trimmed))}&per_page=1000`
+  ...
+}
+```
+
+Points of note:
+
+- The call goes **straight from the browser** to InPost's public points API. There is no server function, no proxy and no API key.
+- `capitalizeCity` upper-cases the first letter of each word, which the API expects.
+- A non-OK response throws; a response that fails `inpostApiResponseSchema.safeParse` returns `[]` rather than throwing, so a schema drift at InPost degrades to "no points found".
+- `inpostPointsByCityQueryOptions(city)` caches aggressively: `staleTime` one day, `gcTime` two days, keyed by the lower-cased trimmed city, and `enabled` only from three characters.
+
+`inpost.zod.ts` parses each point into `{ address_details, location, location_description, location_type, name, opening_hours, payment_available, status }`. `location_description` is transformed from `null` to `""`.
+
+The UI lives in `.../delivery/locker/inpost/`:
+
+| File                                            | Role                                                               |
+| ----------------------------------------------- | ------------------------------------------------------------------ |
+| `inpost-provider.tsx`                           | `InpostProvider` / `useInpost`; debounces the city input by 400 ms |
+| `inpost-selector.tsx`                           | The dialog with the MapLibre map and the sidebar                   |
+| `inpost-map-updater.tsx`                        | Recentres the map when the point set changes                       |
+| `inpost-marker.tsx`                             | One marker per point                                               |
+| `inpost-popup.tsx`                              | `HoveredPointPopup` for the hovered marker                         |
+| `inpost-sidebar.tsx`, `inpost-sidebar-item.tsx` | The scrollable point list                                          |
+| `inpost-point-details.tsx`                      | The selected point's address and opening hours                     |
+
+The map is `react-map-gl/maplibre` with the Carto Voyager basemap (`https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json`) and `maxBounds` clamped to Poland. Clicking the map background clears `lockerId`. The chosen point's `name` is what goes into the form, so `checkout.locker_id` and `order.locker_id` hold an InPost point name such as `KRA01A`.
+
+## How delivery reaches the order
+
+1. `deliveryMethod` (the method id) is submitted with the checkout form.
+2. `prepareCreateCheckoutBatch` writes it to `checkout.delivery_method_id`, and `lockerId` to `checkout.locker_id`.
+3. `resolveShippingCost` reads the method's `price` and `createStripeSession` adds a `"Shipping"` line item for it when it is above zero.
+4. `prepareFulfillCheckoutBatch` copies `deliveryMethodId`, `lockerId` and `customerNote` from the checkout snapshot onto the new `order` row, and computes `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
+
+## Delivery in the emails
+
+`src/integrations/resend/order-confirmation.utils.ts` renders the delivery block. `resolveDeliveryMethodLabel` appends the locker id for a locker method:
+
+```ts
+if (method.type === "locker" && lockerId !== undefined && lockerId !== "") {
+  return `${method.name} · ${lockerId}`
+}
+```
+
+The estimated delivery and fulfilment times are **not** stored anywhere — they are copy, looked up by delivery type:
+
+```ts
+const deliveryType = context?.deliveryMethod?.type ?? "courier"
+const { estimatedDelivery, fulfillmentTime } = messages.deliveryTiming[deliveryType]
+```
+
+So `messages/{locale}/emails.order-confirmation.json` has a `deliveryTiming` object keyed by `courier`, `locker` and `in_store`. Changing the promised lead time is a message-catalogue edit.
+
+## What is not there
+
+- No label generation, no shipment booking, no carrier API call besides the public points lookup.
+- No tracking write path: `order.tracking_number` and `order.tracking_url` are never set by the app.
+- No shipping rules: the price is a flat per-method amount with no weight, size, basket-value or destination logic.
+- No store locations table for `in_store`.
+- No admin screen for couriers or delivery methods — rows are managed directly in D1.
+
+## Related pages
+
+- [Checkout](/docs/features/checkout)
+- [Orders](/docs/features/orders)
+- [Transactional email](/docs/features/email)
+- [Integrations: InPost](/docs/integrations/inpost)

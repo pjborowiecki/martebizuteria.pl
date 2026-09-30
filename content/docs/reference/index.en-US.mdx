@@ -1,0 +1,46 @@
+---
+title: "Introduction"
+description: "Lookup tables for routes, modules, permissions, environment variables, file names and project conventions."
+---
+
+This chapter is for looking things up. It answers "what is the exact name of that", "where does that live" and "which environment has that binding" without any narrative around it. For step-by-step recipes read the [guides](/docs/guides); for how the parts fit together read [Architecture](/docs/architecture).
+
+Everything here is derived from the repository itself. When a table lists a path, a script, a column or an export, that name exists in the code as written. If a page says that something is declared but unused, that is a deliberate statement about the current state of the codebase, not a gap in the documentation.
+
+## In this chapter
+
+| Page                                                    | What it answers                                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [Conventions](/docs/reference/conventions)              | How code, routes, modules, components, commits and tests are expected to look    |
+| [File naming](/docs/reference/file-naming)              | What every file suffix means, from `.accessors.ts` to `.component.test.tsx`      |
+| [Module catalog](/docs/reference/modules)               | All 36 modules in `src/modules`, their tables and their use cases                |
+| [Routes](/docs/reference/routes)                        | Every path, its `ROUTES` constant, its route file and its guard                  |
+| [Environment and bindings](/docs/reference/environment) | Environment files, secrets, Cloudflare bindings per Wrangler environment         |
+| [Permissions](/docs/reference/permissions)              | Roles, statements, the `authorized` middleware and the public-endpoint allowlist |
+| [Glossary](/docs/reference/glossary)                    | The vocabulary used across these docs and across the code                        |
+| [Troubleshooting](/docs/reference/troubleshooting)      | Concrete errors from `dev`, `check`, `test`, `db:*` and the deploy scripts       |
+| [Frequently asked questions](/docs/reference/faq)       | Short answers to the questions new contributors actually ask                     |
+
+## The shape of the repository in one table
+
+| Directory                    | Owns                                                                                      |
+| ---------------------------- | ----------------------------------------------------------------------------------------- |
+| `src/routes`                 | TanStack Start file routes, `api/` HTTP handlers, route guards and loaders                |
+| `src/routes.ts`              | `ROUTES`, the single table of path literals the rest of the code imports                  |
+| `src/modules/{feature}`      | Domain logic: Drizzle tables, Zod schemas, constants, accessors and `use-cases/`          |
+| `src/modules/_core`          | Shared primitives with no table of their own: `AppError`, currency, CSV, pagination       |
+| `src/integrations/{vendor}`  | One folder per third party: Better Auth, Stripe, Drizzle, R2, Resend, InPost, use-intl    |
+| `src/presentation`           | All UI: `components/shadcn`, `components/custom`, `styles`, `theme`, `branding`, `emails` |
+| `src/platform/testing`       | Shared test infrastructure: the D1 mock, render helpers, the Vitest setup file            |
+| `src/lib`                    | Small request-scoped helpers: cookies, rate limiting, SEO, image URLs, `waitUntil`        |
+| `src/durable-objects`        | `RealtimeInvalidationHub`, the WebSocket fan-out object                                   |
+| `src/hooks`, `src/providers` | Shared React hooks and the two application providers                                      |
+| `src/data`                   | Static fixtures still backing a few unfinished admin pages                                |
+| `src/server.ts`              | The Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, queue consumer    |
+| `content/`, `messages/`      | MDX content (`docs`, `legal`) and the per-namespace message catalogues                    |
+
+## Conventions used in these pages
+
+Paths are always written from the repository root, so `src/modules/order/use-cases/ship-order.ts` can be pasted straight into an editor. Commands are written as `bun run <script>`, which is how `package.json` expects them to be invoked; `vp <command>` is the underlying Vite+ CLI and appears only where a script does not wrap it.
+
+Links between doc pages are written without a locale prefix, for example `/docs/reference/routes`. The MDX link component adds the reader's prefix, so a Polish reader following that link lands on the Polish page.

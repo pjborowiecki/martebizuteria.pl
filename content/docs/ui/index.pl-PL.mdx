@@ -1,0 +1,49 @@
+---
+title: "Wprowadzenie"
+description: "Jak zorganizowany jest interfejs: prymitywy Base UI, komponenty aplikacji, style, motyw, branding i szablony e-maili."
+---
+
+Cała warstwa wizualna mieszka w `src/presentation`. Żadna inna część repozytorium nie decyduje o kolorze, typografii, odstępach ani znacznikach: trasy rozkładają komponenty, moduły zwracają dane, a warstwa prezentacji decyduje, jak to wygląda.
+
+| Katalog                               | Zawartość                                                                                                                                                                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/presentation/components/shadcn/` | 57 wygenerowanych prymitywów shadcn/ui w stylu `base-lyra`, zbudowanych na Base UI                                                                                                                                        |
+| `src/presentation/components/custom/` | Komponenty aplikacji: płaskie pliki współdzielone (`image.tsx`, `product-card.tsx`, `localized-link.tsx`, `icons.tsx`, …), zestawy `datagrid/`, `checkout/` i `image-upload/` oraz po jednym katalogu na ekran w `pages/` |
+| `src/presentation/styles/`            | `globals.css` (Tailwind, tokeny, warstwa bazowa), `fonts.css`, `critical-fonts.css`, `admin.css`, `storefront.css`                                                                                                        |
+| `src/presentation/theme/`             | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                                                                                                                                                      |
+| `src/presentation/branding/`          | `app.ts`, `business.ts`, `socials.ts`                                                                                                                                                                                     |
+| `src/presentation/emails/`            | Szablony React Email oraz `email-styles.ts`                                                                                                                                                                               |
+| `src/presentation/document-assets.ts` | `getCriticalFontPreloads(locale)`                                                                                                                                                                                         |
+| `src/providers/`                      | `ThemesProvider`, `TranslationsProvider`                                                                                                                                                                                  |
+
+## Dwie powłoki, jeden zestaw tokenów
+
+Aplikacja renderuje dwie wizualnie różne powłoki z tych samych definicji tokenów.
+
+- **Wygląd sklepu**: szeryfowa typografia nagłówków, szerokie odstępy, płynne przewijanie Lenis, jasny i ciemny zestaw tokenów. `src/routes/_storefront.tsx` jest layoutem stron publicznych i opakowuje je w `Navigation` oraz `Footer`; `account.tsx`, `auth.tsx`, `checkout.tsx` i `docs.tsx` są osobnymi layoutami najwyższego poziomu, które korzystają z tych samych tokenów, a `docs.tsx` używa tej samej nawigacji i stopki.
+- **Wygląd panelu** (`/admin/**`): gęsta konsola. `src/routes/admin.tsx` wymusza jasne tokeny wewnątrz `[data-admin-main]`, maluje chrom strony ciemnym kolorem panelu bocznego i pomija płynne przewijanie.
+
+Trasa główna (`src/routes/__root.tsx`) rozstrzyga to przez `isAdminPathname(...)` i ustawia atrybut `data-admin-shell` na `html`. Skrypty, które robią to jeszcze przed pierwszym renderem, opisuje [Motyw](/docs/ui/theme).
+
+## Katalogi ekranów
+
+`src/presentation/components/custom/pages/` zawiera po jednym katalogu na obszar: `account`, `admin`, `auth`, `cart-page`, `categories`, `collections`, `docs`, `landing-page`, `product-page`, `products-catalog`. Większe obszary dzielą się dalej — ekran zamówień w panelu to `orders/components/`, `orders/hooks/`, `orders/lib/`, `orders/detail/` i `orders/utils/`.
+
+Każdy katalog trzyma testy obok kodu, w `__test__/`, w konwencji `<plik>.component.test.tsx`. Uruchamiasz je tak:
+
+```bash
+bun run test:component
+```
+
+## W tym rozdziale
+
+- [Motyw](/docs/ui/theme): zestawy tokenów, skrypty uruchamiane przed pierwszym renderem, nadpisanie dla panelu i preferencje zapisywane w przeglądarce.
+- [Fonty i branding](/docs/ui/fonts-and-branding): Manrope i Cormorant Garamond, preloady zależne od języka oraz stałe marki i firmy.
+- [Komponenty shadcn](/docs/ui/shadcn-components): prymitywy Base UI i konwencje propsów, które różnią się od Radix.
+- [Tabela danych](/docs/ui/data-table): zestaw tabel panelu — funkcje, trwałość ustawień, kolumny, filtry i paginacja po stronie serwera.
+- [Wzorce kompozycji](/docs/ui/composition-patterns): jak trasy, ekrany i komponenty łączą się w całość i jakie reguły utrzymują w nich spójność.
+
+## Powiązane strony
+
+- [Warstwa prezentacji](/docs/architecture/presentation-layer)
+- [Konwencje](/docs/reference/conventions)

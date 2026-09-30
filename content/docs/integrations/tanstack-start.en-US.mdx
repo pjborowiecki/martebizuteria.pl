@@ -1,0 +1,172 @@
+---
+title: "TanStack Start"
+description: "The router, the Worker entry point, file routes, server functions and HTTP handlers."
+---
+
+The application is one TanStack Start app that Cloudflare runs as a single Worker. Three files describe it: `src/router.tsx` builds the router, `src/server.ts` is the Worker's `ExportedHandler`, and `vite.config.ts` wires the Start plugin together with the Cloudflare plugin.
+
+## The router
+
+`getRouter()` in `src/router.tsx` creates a fresh `QueryClient` and a fresh `ImagePrefetchService` per request, puts both into the router context, and registers the SSR query integration:
+
+```tsx
+const router = createRouter({
+  context: { imagePrefetchService, queryClient },
+  defaultErrorComponent: DefaultErrorComponent,
+  defaultNotFoundComponent: DefaultNotFoundComponent,
+  defaultPendingComponent: DefaultPendingComponent,
+  defaultPendingMinMs: PENDING_MIN_DISPLAY_MS,
+  defaultPendingMs: PENDING_SHOW_DELAY_MS,
+  defaultPreload: "intent",
+  defaultPreloadDelay: 100,
+  defaultPreloadIntentProximity: 1000,
+  defaultPreloadStaleTime: 0,
+  defaultStaleTime: ONE_MIN_IN_MS,
+  defaultStructuralSharing: true,
+  rewrite: {
+    input: ({ url }) => deLocalizeUrl(url),
+    output: ({ url }) => localizeUrl(url),
+  },
+  routeTree,
+  scrollRestoration: true,
+  scrollRestorationBehavior: "instant",
+})
+setupRouterSsrQueryIntegration({ queryClient, router })
+```
+
+The `rewrite` pair is what makes locale prefixes invisible to the route tree: an incoming `/en-US/products` is de-localized to `/products` before matching, and every generated href is re-localized on the way out. See [use-intl](/docs/integrations/use-intl) for `deLocalizeUrl` and `localizeUrl`.
+
+Pending, error and not-found components are global defaults from `src/presentation/components/custom/defaults/`. A pending component appears only after 200 ms and then stays for at least 300 ms, so fast navigations never flash. `ReactQueryDevtools` is mounted through `Wrap` but only under `import.meta.env.DEV`.
+
+## The Worker entry point
+
+`wrangler.jsonc` points `main` at `./src/server.ts`. That file handles four things before the Start handler ever sees the request:
+
+| Path                          | Behaviour                                                            |
+| ----------------------------- | -------------------------------------------------------------------- |
+| `/sitemap.xml`                | `generateSitemapXml(origin)` from `src/lib/seo.ts`, cached for a day |
+| `/robots.txt`                 | `generateRobotsTxt(origin, env.APP_ENV)`, cached for a day           |
+| `/api/realtime/admin/ws`      | WebSocket upgrade into the admin invalidation hub                    |
+| `/api/realtime/storefront/ws` | WebSocket upgrade into the storefront invalidation hub               |
+
+Everything else goes through `resolveLocale(request)`, which can return a 301 to the canonical locale path or a `Set-Cookie` to be appended to the response, and is then handed to `handler.fetch` inside `executionContextStorage.run({ waitUntil }, …)`. That `AsyncLocalStorage` store is how `scheduleBackgroundWork` in `src/lib/background.ts` reaches `ctx.waitUntil` from deep inside a use case, which the audit log, the transactional emails and [realtime invalidation](/docs/integrations/realtime-invalidation) all rely on.
+
+The same file exports the Durable Object class and a `queue` handler:
+
+```ts
+export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub"
+
+async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  await processAuditLogQueueBatch(batch)
+}
+```
+
+`RequestContext` is declared into `@tanstack/react-start` in the same file, so `env`, `waitUntil` and `passThroughOnException` are typed everywhere a server function reads the request context.
+
+## File routes
+
+`src/routes/` holds flat file routes. `admin.catalog.products.tsx` serves `/admin/catalog/products`, `_storefront.tsx` is a pathless layout that wraps the public pages, `docs.$.tsx` is a splat route and `api/webhooks.stripe.ts` is a handler-only route. `routeFileIgnorePattern: "__test__"` in `vite.config.ts` keeps the colocated test folders out of the route tree, and `src/routeTree.gen.ts` is generated — never edit it by hand.
+
+Code splitting is configured explicitly:
+
+```ts
+codeSplittingOptions: {
+  defaultBehavior: [["component"], ["loader"], ["errorComponent"], ["notFoundComponent"]],
+}
+```
+
+`src/routes.ts` exports `ROUTES`, the single table of path constants. Links, guards, `head` tags, the sitemap and the WebSocket paths all read from it, so a path is written once:
+
+```ts
+export const ROUTES = {
+  ACCOUNT_ORDER: "/account/orders/$id",
+  ADMIN_PRODUCTS: "/admin/catalog/products",
+  API_REALTIME: {
+    ADMIN_WS: "/api/realtime/admin/ws",
+    STOREFRONT_WS: "/api/realtime/storefront/ws",
+  },
+  DOCS_PAGE: "/docs/$",
+  PRODUCT: "/products/$handle",
+} as const
+```
+
+## What belongs in a route file
+
+A route file composes a page and nothing more. It declares its component, its `staticData.namespaces`, a loader that runs message loading and data prefetching in one `Promise.all`, and a `head`. `src/routes/_storefront.products.index.tsx` is representative:
+
+```ts
+loader: async ({ context, deps }) => {
+  const [messages] = await Promise.all([
+    context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
+    prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
+  ])
+
+  return { description: messages.description, title: messages.title }
+},
+loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
+staticData: { namespaces: ["pages.products"] },
+validateSearch: storefrontProductsSearchSchema,
+```
+
+Widgets, dialogs, forms and table columns live under `src/presentation/components/custom/` and read their own translations and their own queries. The simpler routes use `head: pageHead` from `src/lib/seo.ts`, which turns the loader's `{ title, description }` into `<title>`, `description` and the two matching Open Graph tags.
+
+`src/routes/__root.tsx` owns the document shell: `beforeLoad` resolves the locale and preloads every namespace the matched routes ask for, `shellComponent` renders `<html lang>` with the theme, sidebar and datagrid init scripts, and `head` assembles the canonical and `hreflang` links from `localeLinks`. Storefront pages are wrapped in `SmoothScroll`; admin pages are not.
+
+## Server functions
+
+Mutations and server-side reads are native `createServerFn` functions exported from module use cases, so the application exposes no REST surface for them. A use case declares its own authorization and validation:
+
+```ts
+export const createCompleteProduct = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["create"] })])
+  .validator((input: zod.input<typeof productZodSchemas.createCompleteInput>) => productZodSchemas.createCompleteInput.parse(input))
+  .handler(async ({ data }) => {
+    /* … */
+  })
+```
+
+Route guards in `beforeLoad` only decide what to render; they never stand in for authorization. See [Better Auth](/docs/integrations/better-auth) for `authorized`, `withRequest` and `withRateLimit`.
+
+Where a handler would pull heavy server-only code into the client graph, the module splits into `x.ts` and `x.server.ts` and imports lazily. `src/integrations/stripe/stripe.actions.ts` does exactly this:
+
+```ts
+.handler(async ({ data }) => {
+  const { handleCreateCheckoutSession } = await import("~/src/integrations/stripe/stripe.actions.server")
+
+  return handleCreateCheckoutSession(data)
+})
+```
+
+## HTTP handlers
+
+Only three routes declare `server.handlers`:
+
+| Route                  | File                                | Handler                                                                     |
+| ---------------------- | ----------------------------------- | --------------------------------------------------------------------------- |
+| `/api/auth/$`          | `src/routes/api/auth.$.ts`          | `handleAuthRequestWithAudit(request)` for `GET` and `POST`                  |
+| `/api/webhooks/stripe` | `src/routes/api/webhooks.stripe.ts` | `POST` only; verifies `stripe-signature`, then dispatches `webhookHandlers` |
+| `/dev/emails`          | `src/routes/dev.emails.tsx`         | `GET`; returns 404 unless `import.meta.env.DEV`                             |
+
+```ts
+export const Route = createFileRoute("/api/auth/$")({
+  server: {
+    handlers: {
+      GET: ({ request }) => handleAuthRequestWithAudit(request),
+      POST: ({ request }) => handleAuthRequestWithAudit(request),
+    },
+  },
+})
+```
+
+The realtime WebSocket endpoints are deliberately _not_ file routes — they are matched in `src/server.ts` before the Start handler, because a WebSocket upgrade has to be answered by the Durable Object itself.
+
+## No prerendering
+
+`vite.config.ts` does not enable prerendering, and no script prerenders pages. Every page, including the storefront and these documentation pages, is server-rendered on the Worker for each request. Caching therefore comes from the query layer and from HTTP cache headers rather than from a build-time HTML snapshot.
+
+## Related pages
+
+- [Request lifecycle](/docs/architecture/request-lifecycle)
+- [Routing](/docs/architecture/request-lifecycle)
+- [TanStack Query](/docs/integrations/tanstack-query)
+- [Guides](/docs/guides)

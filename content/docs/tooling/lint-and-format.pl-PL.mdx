@@ -1,0 +1,175 @@
+---
+title: "Lint i formatowanie"
+description: "oxfmt i oxlint przez Vite+: dokładne ustawienia, sześć kategorii błędów, limity rozmiaru i wąskie wyjątki."
+---
+
+Formatowanie i lintowanie to wbudowane funkcje Vite+, konfigurowane w blokach `fmt` i `lint` w `vite.config.ts`. Nie ma `.prettierrc`, nie ma `eslint.config.js` i nie ma osobnego kroku `tsc --noEmit`: `vp check` uruchamia oxfmt, oxlint i kontrolę typów TypeScriptu w jednym przebiegu.
+
+```sh
+bun run check        # vp check — formatowanie, lint, kontrola typów
+bun run check:fix    # vp check --fix — to samo, z poprawkami
+bun run lint         # vp lint
+bun run format       # vp fmt
+bun run format:check # vp fmt --check
+```
+
+`bun run check` to bramka. CI uruchamia ją we wszystkich trzech przepływach, a hook pre-commit uruchamia jej odpowiednik dla plików w przechowalni.
+
+## Formatowanie
+
+Blok `fmt` jest jawny w każdym istotnym ustawieniu:
+
+| Ustawienie       | Wartość    |
+| ---------------- | ---------- |
+| `semi`           | `false`    |
+| `singleQuote`    | `false`    |
+| `jsxSingleQuote` | `false`    |
+| `printWidth`     | `140`      |
+| `tabWidth`       | `2`        |
+| `useTabs`        | `false`    |
+| `trailingComma`  | `"all"`    |
+| `arrowParens`    | `"always"` |
+| `bracketSpacing` | `true`     |
+| `endOfLine`      | `"lf"`     |
+
+Bez średników, podwójne cudzysłowy, przecinki na końcu wszędzie, wcięcia dwoma spacjami i szerokość 140 kolumn. Nie walcz z tym ręcznie — uruchom formater.
+
+### Grupy importów
+
+`fmt.sortImports` definiuje nazwane grupy według wzorców modułów, a potem jawną kolejność grup:
+
+1. `server-only` — `@tanstack/react-start/server-only`
+2. `cloudflare` — `cloudflare:workers`
+3. `react` — `react`, `react/**`, `react-dom`, `react-dom/**`
+4. `builtin` i `external` (jedna wspólna grupa)
+5. `platform` — `~/src/platform/**`
+6. `providers` — `~/src/providers/**`
+7. `integrations` — `~/src/integrations/**`
+8. `modules` — `~/src/modules/**`
+9. `routes` — `~/src/routes/**`
+10. `hooks` — `~/src/hooks/**`
+11. `constants` — `~/src/data/**` i `~/src/presentation/theme/**`
+12. `types` — `~/src/types/**`
+13. `lib` — `~/src/lib/**`
+14. `branding` — `~/src/presentation/branding/**`
+15. `components-shadcn` — `~/src/presentation/components/shadcn/**`
+16. `components-custom` — `~/src/presentation/components/custom/**`
+17. `components-other` — pozostałe `~/src/presentation/components/**`
+18. `styles` — `~/src/presentation/styles/**`
+19. `internal`, `parent`, `sibling`, `index` (jedna wspólna grupa)
+20. `unknown`
+
+`newlinesBetween: true` wstawia pustą linię między grupami, `ignoreCase: true` sortuje bez uwzględniania wielkości liter, a `sortSideEffects: true` sortuje także importy wywoływane wyłącznie dla efektu ubocznego. Dlatego początek modułu serwerowego czyta się jako `import "@tanstack/react-start/server-only"`, potem `cloudflare:workers`, potem pakiety, a następnie `~/src/...` w kolejności warstw — odzwierciedla to kierunek zależności opisany w [Architekturze](/docs/architecture).
+
+### Sortowanie klas Tailwinda
+
+```ts
+sortTailwindcss: {
+  attributes: ["className", "classList"],
+  functions: ["cn", "cva", "tw"],
+  stylesheet: "./src/presentation/styles/globals.css",
+}
+```
+
+Klasy są sortowane w atrybutach `className` i `classList` oraz w wywołaniach `cn`, `cva` i `tw`. Formater czyta arkusz stylów projektu, więc własne narzędzia motywu zdefiniowane w `globals.css` sortują się poprawnie, zamiast być traktowane jako nieznane.
+
+## Lintowanie
+
+Wszystkie sześć kategorii oxlint to błędy:
+
+```ts
+categories: {
+  correctness: "error",
+  nursery: "error",
+  pedantic: "error",
+  perf: "error",
+  style: "error",
+  suspicious: "error",
+}
+```
+
+`nursery` jako błąd to nietypowa i celowa decyzja — jest częścią wspólnej bazy, którą repozytorium dzieli ze swoimi projektami referencyjnymi, i nie wolno jej obniżać.
+
+```ts
+options: {
+  denyWarnings: true,
+  reportUnusedDisableDirectives: "error",
+  typeAware: true,
+  typeCheck: true,
+}
+```
+
+- `denyWarnings` oznacza, że ostrzeżenie kończy przebieg błędem. Nie istnieje tu pojęcie tolerowanego ostrzeżenia.
+- `reportUnusedDisableDirectives: "error"` oznacza, że komentarz wyłączający regułę, który już nic nie wycisza, sam jest błędem.
+- `typeAware` włącza reguły wymagające informacji o typach; `typeCheck` sprawia, że `vp check` wykonuje kontrolę TypeScriptu w tym samym przebiegu.
+
+`lint.env` deklaruje `browser`, `es2024`, `node` i `worker`, a `lint.globals` dodaje trzy globalne wartości Workers, których nie pokrywają definicje typów: `HTMLRewriter`, `WebSocketPair` i `caches`, wszystkie jako `readonly`.
+
+### Skonfigurowane reguły
+
+| Reguła                                       | Konfiguracja                                                                           |
+| -------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `max-lines`                                  | `800` na plik                                                                          |
+| `max-lines-per-function`                     | `150`                                                                                  |
+| `max-statements`                             | `20`                                                                                   |
+| `id-length`                                  | Co najmniej dwa znaki; wyjątki `_`, `m` i `t`, właściwości nie są sprawdzane           |
+| `no-magic-numbers`                           | Dozwolone `-1`, `0` i `1`; indeksy tablic, wartości domyślne i indeksy typów wyłączone |
+| `no-underscore-dangle`                       | Dozwolone wyłącznie `_splat` i `__executeServer`                                       |
+| `one-var`                                    | `"never"`                                                                              |
+| `new-cap`                                    | `properties: false`                                                                    |
+| `sort-imports`                               | `ignoreDeclarationSort: true` (kolejnością deklaracji zarządza oxfmt)                  |
+| `no-ternary`                                 | `"off"`                                                                                |
+| `typescript/only-throw-error`                | Dopuszcza `NotFoundError` i `Redirect` z `@tanstack/router-core`                       |
+| `typescript/prefer-readonly-parameter-types` | `"off"`                                                                                |
+| `unicorn/no-useless-undefined`               | `checkArguments: false`                                                                |
+
+Trzy limity rozmiaru kształtują tę bazę kodu bardziej niż cokolwiek innego: przypadek użycia, który potrzebuje więcej niż 20 instrukcji, mówi Ci, że robi dwie rzeczy, a limit 150 linii na funkcję jest tym, co nie pozwala komponentom tras wchłonąć własnej logiki danych.
+
+Wyjątek w `only-throw-error` istnieje, bo TanStack Router sygnalizuje 404 i przekierowanie przez rzucenie `notFound()` i `redirect()`, a rzucane wartości nie są instancjami `Error`.
+
+`no-underscore-dangle` dopuszcza dokładnie dwie nazwy: `_splat`, parametr trasy „catch-all” w TanStack Routerze (używany przez `src/routes/docs.$.tsx`), oraz `__executeServer`, wewnętrzne wejście funkcji serwerowej, po które musi sięgnąć `src/platform/testing/lib/server-function.ts`, aby przepuścić funkcje serwerowe przez ich prawdziwy łańcuch middleware w testach.
+
+### Wyjątki
+
+Pięć wąskich wyjątków rozluźnia konkretne reguły dla konkretnych drzew. Nic więcej nie jest wyłączone.
+
+| Pliki                                                                     | Wyłączone reguły                                                                   |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `src/**/*.test.{ts,tsx}`, `src/**/__test__/**`, `src/platform/testing/**` | `no-await-in-loop`, `no-magic-numbers`, `unicorn/no-null`                          |
+| `src/presentation/**`, `src/hooks/**`                                     | `typescript/consistent-return`                                                     |
+| `src/platform/testing/mocks/**`                                           | `require-await`, `typescript/require-await`, `typescript/no-unsafe-type-assertion` |
+| `src/routes/**`                                                           | `sort-keys`                                                                        |
+| `vite.config.ts`                                                          | `max-lines`                                                                        |
+
+Testy potrzebują literałów liczbowych, wartości `null` w danych testowych i sekwencyjnych `await`. Kod komponentów zwraca z niektórych gałęzi `undefined` z założenia. Mocki Cloudflare potwierdzają swój kształt raz, na granicy (`createTestD1Database` kończy się `client as unknown as D1Database`), i to jedyne miejsce, gdzie takie rzutowanie jest dopuszczalne. Pliki tras są uporządkowane według konwencji opcji TanStacka, a nie alfabetycznie. A `vite.config.ts` to sama konfiguracja o objętości przekraczającej 800 linii.
+
+## Zasada dotycząca wyciszeń
+
+Napraw przyczynę. Nie dodawaj `// oxlint-disable`, `@ts-expect-error`, `@ts-nocheck`, `any`, `as never` ani `as unknown as`, żeby przejść przez regułę. `reportUnusedDisableDirectives` jest błędem właśnie po to, by wyciszenia nie mogły się cicho odkładać, a `denyWarnings` oznacza, że nie ma ścieżki „stopniowego wdrażania”, za którą można się schować. Jeśli reguła naprawdę nie dotyczy całego drzewa katalogów, dodaj udokumentowany wyjątek w `vite.config.ts`, a nie komentarz w pliku.
+
+To samo dotyczy komentarzy w ogóle: w tym repozytorium nie ma komentarzy objaśniających w TypeScripcie ani TSX. Intencję przenoszą nazwy i typy.
+
+## Kontrole plików w przechowalni
+
+Blok `staged` wygląda tak:
+
+```ts
+staged: { "*": ["vp check --fix"] }
+```
+
+Wzorzec `*` obejmuje każdy plik w przechowalni, nie tylko TypeScript. `bun run check:pre-commit` uruchamia `vp staged`, i to właśnie wywołuje `.vite-hooks/pre-commit`.
+
+`bun run check:fix` uruchamia `vp check --fix` na całym repozytorium. Z przyjemnością przeformatuje pliki, których nigdy nie tknąłeś, więc przeczytaj jego diff przed commitem. Aby poprawić tylko to, co zmieniłeś, przekaż ścieżki wprost do `vp`:
+
+```sh
+vp fmt src/modules/order/use-cases/create-order.ts
+vp lint --fix src/modules/order/use-cases/create-order.ts
+```
+
+> `bun run check:staged` i `bun run lint:staged` to oba `vp staged --no-fmt`, ale `--no-fmt` nie jest opcją `vp staged` (należy do `vp check`). Każdy z tych skryptów kończy się natychmiast błędem `error: unexpected argument '--no-fmt' found`. Używaj `bun run check:pre-commit`, czyli czystego `vp staged`.
+
+## Powiązane strony
+
+- [Vite+](/docs/tooling/vite-plus)
+- [Konwencjonalne commity](/docs/tooling/conventional-commits)
+- [Materiały referencyjne](/docs/reference)

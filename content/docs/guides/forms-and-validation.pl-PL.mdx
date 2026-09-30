@@ -1,0 +1,269 @@
+---
+title: "Formularze i walidacja"
+description: "React Hook Form z resolverem Zod, przetłumaczone błędy pól, klucze tłumaczeń jako komunikaty błędów i mapowanie kodów błędów serwera na pola."
+---
+
+Każdy formularz w M'Arte to React Hook Form napędzany resolverem Zod. Schemat Zod mieszka razem z danymi, które waliduje — w `{feature}.zod.ts` modułu albo w `src/integrations/better-auth/auth.zod.ts` dla formularzy uwierzytelniania — nigdy w samym komponencie.
+
+Jedna zasada kształtuje wszystko pozostałe: **komunikat w Zodzie to klucz tłumaczenia, a nie zdanie.** Schemat mówi `"passwordMinLength"`; komponent pola zamienia to na tekst w języku czytelnika.
+
+## Wzorzec formularza uwierzytelniania
+
+`src/presentation/components/custom/pages/auth/sign-in-with-password-form.tsx` to najprostszy kompletny przykład:
+
+```tsx
+const form = useForm<SignInFormValues>({
+  defaultValues: {
+    email: "",
+    password: "",
+  },
+  mode: "onTouched",
+  resolver: zodResolver(signInWithPasswordSchema),
+})
+```
+
+Jego schemat w `auth.zod.ts` niesie klucze, nie prozę:
+
+```ts
+export const emailSchema = z.email({ message: "invalidEmail" }).max(EMAIL_MAX_LENGTH, { message: "emailMaxLength" })
+
+export const strictPasswordSchema = signInPasswordSchema
+  .min(PASSWORD_MIN_LENGTH, { message: "passwordMinLength" })
+  .max(PASSWORD_MAX_LENGTH, { message: "passwordMaxLength" })
+  .refine((value) => PASSWORD_UPPERCASE_PATTERN.test(value), { message: "passwordUppercase" })
+  .refine((value) => PASSWORD_SPECIAL_CHAR_PATTERN.test(value), { message: "passwordSpecialCharacter" })
+```
+
+Limity pochodzą z `src/integrations/better-auth/auth.constraints.ts`, który czyta również konfiguracja serwera Better Auth, więc klient i serwer nie mogą różnić się co do minimalnej długości hasła.
+
+Wysyłkę zawsze owijamy tak, żeby obietnica nie wracała z handlera DOM:
+
+```tsx
+const handleFormSubmit = useCallback(
+  (event: SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void form.handleSubmit(onSubmit)(event)
+  },
+  [form, onSubmit],
+)
+```
+
+## Renderowanie pola
+
+Pola budujemy na `useController`, nie na `register`, żeby pole znało swoją poprawność. `AuthTextField` w `src/presentation/components/custom/pages/auth/auth-fields.tsx` składa cztery elementy:
+
+```tsx
+<Field className="relative" data-invalid={fieldState.invalid}>
+  <Input
+    {...rest}
+    {...field}
+    value={valueStr}
+    id={id}
+    variant="floating"
+    placeholder=" "
+    aria-invalid={fieldState.invalid}
+    aria-required={required}
+    className={cn("peer", showValid && VALID_INPUT_CLASS, className)}
+  />
+  <FloatingLabel htmlFor={id} label={label} required={required} />
+  <ValidCheck show={showValid} />
+  <ValidationFieldError message={fieldState.error?.message} namespace={AUTH_VALIDATION_NAMESPACE} params={AUTH_VALIDATION_PARAMS} />
+</Field>
+```
+
+- `Field` to opakowanie shadcn z `src/presentation/components/shadcn/field.tsx`.
+- `FloatingLabel`, `VALID_INPUT_CLASS`, `ValidCheck`, `isFieldValid` i `toStringValue` pochodzą z `src/presentation/components/custom/floating-field.tsx`. Efekt unoszącej się etykiety jest w czystym CSS, napędzany klasą `peer` i `placeholder=" "`; nie zamieniaj placeholdera na prawdziwy tekst, bo etykieta przestanie się podnosić.
+- `ValidationFieldError` rozwiązuje klucz.
+
+## Tłumaczenie błędu pola
+
+`src/presentation/components/custom/validation-field-error.tsx` jest dość krótki, żeby zacytować go w całości:
+
+```tsx
+export const ValidationFieldError = ({ message, namespace, params }: ValidationFieldErrorProps): JSX.Element | undefined => {
+  const t = useTranslations()
+
+  if (message === undefined || message === "") {
+    return undefined
+  }
+
+  const key = `${namespace}.${message}`
+
+  return <FieldError>{t.has(key) ? t(key, params?.[message]) : t(`errors.action.${ERROR_CODES.VALIDATION}`)}</FieldError>
+}
+```
+
+Szuka klucza `<namespace>.<message>`, a jeśli go nie ma, sięga po ogólny komunikat `errors.action.VALIDATION`. Oznacza to, że komunikat ze schematu musi mieć odpowiadający wpis w katalogu danej przestrzeni nazw — dla formularzy uwierzytelniania w `messages/pl-PL/pages.auth.validations.json` i `messages/en-US/pages.auth.validations.json`.
+
+`params` pozwala komunikatowi wstawić liczbę. `AUTH_VALIDATION_PARAMS` w `auth.constraints.ts` mapuje klucz komunikatu na wartości potrzebne jego placeholderom ICU — dzięki temu `passwordMinLength` może wyrenderować „co najmniej 8 znaków” bez wpisywania ósemki na sztywno w katalogu.
+
+## Wzorzec formularza katalogowego w panelu
+
+Formularze w panelu są większe: obsługują wiele języków, mieszkają w panelu wysuwanym, wysyłają obrazy i dzielą stan między kilka komponentów sekcji. `src/presentation/components/custom/pages/admin/catalog/categories/add-category/` to implementacja wzorcowa i ta sama struktura powtarza się dla kolekcji, atrybutów i produktów.
+
+| Plik                              | Rola                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------- |
+| `category-sheet.tsx`              | Powłoka panelu wysuwanego, otwierana kliknięciem wiersza tabeli lub przyciskiem Dodaj |
+| `category-form-provider.tsx`      | `useForm`, mutacja tworzenia/aktualizacji, kontekst konsumowany przez sekcje          |
+| `category-form-section.tsx`       | Opakowanie sekcji używane przez każdy plik `_sections/*`                              |
+| `_sections/*.tsx`                 | Podstawowe dane, kategoria nadrzędna, multimedia, status                              |
+| `category-form.utils.ts`          | `adminListItemToFormValues`, `createDefaultCategoryFormValues`                        |
+| `category-form-locale.utils.ts`   | `localesWithIncompleteCategoryFormValues`                                             |
+| `category-form-locale-layout.tsx` | Układ pól tłumaczonych, osobno dla każdego języka                                     |
+
+Provider jest właścicielem formularza i przekazuje kontekstem tylko to, czego potrzebują sekcje:
+
+```tsx
+const resolver = useMemo(() => zodResolver(productCategoryZodSchemas.formValues), [])
+const form = useForm<ProductCategory["formValues"]>({
+  defaultValues: initialValues,
+  mode: "onSubmit",
+  reValidateMode: "onSubmit",
+  resolver,
+})
+```
+
+Zwróć uwagę na `mode: "onSubmit"` tutaj, w odróżnieniu od `mode: "onTouched"` w formularzach uwierzytelniania. Długi formularz wielojęzyczny nie powinien świecić się na czerwono, kiedy wciąż wypełniasz drugi język.
+
+`defaultValues` pochodzą z jednej z dwóch czystych funkcji w `category-form.utils.ts` — `createDefaultCategoryFormValues()` przy tworzeniu, `adminListItemToFormValues(category)` przy edycji — więc formularz edycji jest zawsze wypełniany z tego samego typu wiersza, jaki trzyma tabela.
+
+### Pola wielojęzyczne
+
+Tłumaczone kolumny są przechowywane jako mapy JSON kluczowane językiem w formacie BCP 47. Schemat buduje je z `I18N.SUPPORTED_LOCALES`, więc dodanie języka nie może zostawić pola bez walidacji:
+
+```ts
+const categoryLocaleMapSchema = (maxLength: number, tooLongMessage?: string) =>
+  zod.object(Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, zod.string().trim().max(maxLength, tooLongMessage)])))
+
+const categoryLocaleMapRequiredSchema = (maxLength: number) =>
+  categoryLocaleMapSchema(maxLength).superRefine((map, context) => {
+    for (const locale of I18N.SUPPORTED_LOCALES) {
+      if (map[locale].trim() === "") {
+        context.addIssue({
+          code: "custom",
+          message: CATEGORY_FORM_VALIDATION_KEYS.localeTitleRequired,
+          path: [locale],
+        })
+      }
+    }
+  })
+```
+
+`CATEGORY_FORM_VALIDATION_KEYS` w `product-category.constants.ts` to jedyna lista kluczy, jakie formularz może wyemitować — każdy wskazuje na ścieżkę wewnątrz `pages.admin.catalog.categories`:
+
+```ts
+export const CATEGORY_FORM_VALIDATION_KEYS = {
+  descriptionTooLong: "form.validation.descriptionTooLong",
+  localeTitleRequired: "form.validation.LOCALE_TITLE_REQUIRED",
+  shortDescriptionTooLong: "form.validation.shortDescriptionTooLong",
+  slugInvalid: "form.validation.slugInvalid",
+  slugRequired: "form.validation.slugRequired",
+  subtitleTooLong: "form.validation.subtitleTooLong",
+  titleRequired: "form.validation.titleRequired",
+  titleTooLong: "form.validation.titleTooLong",
+} as const
+```
+
+Kiedy wysyłka nie przejdzie walidacji, handler nieprawidłowego formularza ustala, które języki są niekompletne, i mówi o tym wprost, zamiast zostawiać użytkownika szukającego po zwiniętych zakładkach językowych:
+
+```tsx
+const onSubmitInvalid = useCallback(
+  (_errors: FieldErrors<ProductCategory["formValues"]>) => {
+    const values = form.getValues()
+    const incompleteLocales = localesWithIncompleteCategoryFormValues(values)
+    if (incompleteLocales.length > 0) {
+      focusIncompleteLocales(incompleteLocales)
+      toast.error(tLocale("incompleteToastTitle"), {
+        description: tLocale("incompleteToastDescription", {
+          locales: formatCatalogLocaleList(incompleteLocales, (locale) => tLocale(`localeNames.${locale}`)),
+        }),
+      })
+
+      return
+    }
+    toast.error(t("form.validation.submitBlockedTitle"), {
+      description: t("form.validation.submitBlockedDescription"),
+    })
+  },
+  [focusIncompleteLocales, form, t, tLocale],
+)
+```
+
+## Mapowanie błędu serwera na pole
+
+Serwer waliduje ponownie, a jego niepowodzenia to kody, nie komunikaty. `useCategoryMutation` wewnątrz providera tłumaczy je i przypina do pola, które je wywołało:
+
+```tsx
+const handleError = useCallback(
+  (error: unknown) => {
+    const code = errorCode(error)
+
+    if (code === ERROR_CODES.CONFLICT) {
+      setError("handle", {
+        message: t("toast.duplicateHandle"),
+        type: "manual",
+      })
+      toast.error(t("toast.errorTitle"), { description: t("toast.duplicateHandle") })
+
+      return
+    }
+
+    if (code === ERROR_CODES.VALIDATION) {
+      setError("parentId", {
+        message: t("toast.invalidParent"),
+        type: "manual",
+      })
+      toast.error(t("toast.errorTitle"), { description: t("toast.invalidParent") })
+
+      return
+    }
+    toast.error(t("toast.errorTitle"), { description: t("toast.errorDescription") })
+  },
+  [setError, t],
+)
+```
+
+Dla formularzy, które nie mają nic do powiedzenia o konkretnym polu, `useActionError` z `src/hooks/use-action-error.ts` tworzy właściwe zdanie z dowolnego błędu w jednym wywołaniu. Używaj go, chyba że naprawdę możesz wskazać pole.
+
+## Po powodzeniu
+
+Mutacja unieważnia każdy klucz zapytania, którego dotyczy zapis, pokazuje powiadomienie i resetuje formularz:
+
+```tsx
+const invalidate = useCallback(async () => {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.ALL }),
+    queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.ADMIN.ALL }),
+    queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.ADMIN.STATS }),
+  ])
+}, [queryClient])
+```
+
+To lokalna połowa historii. Funkcja serwerowa już zaplanowała unieważnienie w czasie rzeczywistym dla tych samych prefiksów, więc inne otwarte karty też pobiorą dane ponownie — zobacz [Dodawanie przypadku użycia](/docs/guides/add-a-use-case).
+
+Provider resetuje też formularz przy każdym zamknięciu panelu, żeby po ponownym otwarciu nigdy nie było widać wartości poprzedniego rekordu:
+
+```tsx
+useEffect(() => {
+  if (!open) {
+    resetFormState(initialValues)
+  }
+}, [initialValues, open, resetFormState])
+```
+
+## Lista kontrolna dla nowego formularza
+
+- Schemat Zod mieszka w `.zod.ts` modułu (albo w `auth.zod.ts`), z **kluczami** komunikatów i limitami importowanymi z pliku stałych.
+- Oba katalogi tłumaczeń mają wpis dla każdego klucza, jaki schemat może wyemitować.
+- Pola używają `useController` i renderują `ValidationFieldError` z właściwą przestrzenią nazw.
+- `mode` to `"onTouched"` dla krótkiego formularza i `"onSubmit"` dla długiego, wielojęzycznego.
+- Handlery wysyłki używają `void` na obietnicy i nigdy nie zwracają jej do DOM.
+- Handler błędu mapuje `errorCode(error)` na pole tam, gdzie może, a w pozostałych przypadkach sięga po `useActionError`.
+- Powodzenie unieważnia każdy dotknięty klucz zapytania.
+- Formularz resetuje się przy zamknięciu kontenera.
+
+## Powiązane przewodniki
+
+- [Tłumaczenia](/docs/guides/i18n-messages)
+- [Dodawanie przypadku użycia](/docs/guides/add-a-use-case)
+- [Dodawanie tabeli danych](/docs/guides/add-a-data-table)

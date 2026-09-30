@@ -1,0 +1,140 @@
+---
+title: "Deploy a preview"
+description: "Provision the Cloudflare resources, then build, verify and deploy the preview Worker."
+---
+
+The `preview` environment deploys a Worker named `martebizuteria-preview`, which Cloudflare serves at `https://martebizuteria-preview.pjborowiecki.workers.dev` — the URL the preview workflow posts on each pull request. Production deploys `martebizuteria`.
+
+`wrangler.jsonc` declares no `routes` and no `custom_domain`, so both Workers are reachable on their `workers.dev` subdomains only. `APP_DOMAIN` in `src/presentation/branding/app.ts` is `martebizuteria.pl` and `HOSTS_BY_MODE` lists `preview.martebizuteria.pl` as an accepted auth host, but nothing in the Wrangler configuration attaches those hostnames. If you need a custom domain, adding it is a Wrangler configuration change, not a code change.
+
+## Provision the resources
+
+`bun run deploy:preview` starts with `scripts/verify-bindings.ts`, which reads the same JSONC that Wrangler reads and throws unless all five bindings resolve. So provision first:
+
+```sh
+bunx wrangler login
+bunx wrangler d1 create martebizuteria-preview
+bunx wrangler kv namespace create martebizuteria-cache-preview
+bunx wrangler r2 bucket create martebizuteria
+bunx wrangler queues create martebizuteria-audit-log-preview
+```
+
+Then put the ids into `wrangler.jsonc`, under both `development` and `preview` if you want them to share resources as the committed configuration does:
+
+| Field                          | Where                                 |
+| ------------------------------ | ------------------------------------- |
+| `d1_databases[].database_id`   | `env.development` and `env.preview`   |
+| `d1_databases[].database_name` | The same two                          |
+| `kv_namespaces[].id`           | The same two                          |
+| `r2_buckets[].bucket_name`     | The same two                          |
+| `queues.producers[].queue`     | Must match `queues.consumers[].queue` |
+
+Keep the binding names exactly as they are — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `REALTIME_INVALIDATION_HUB` — and keep `migrations_dir` pointing at `./src/integrations/drizzle-orm/migrations`. The binding names are what `src/types/worker-configuration.d.ts` is generated from and what the whole server layer is typed against.
+
+The Durable Object needs no provisioning. It is created by the migration already in the file:
+
+```jsonc
+"migrations": [
+  {
+    "tag": "v1",
+    "new_sqlite_classes": ["RealtimeInvalidationHub"],
+  },
+],
+```
+
+Here is exactly what `verify-bindings.ts` insists on, so you know when you are done:
+
+```ts
+if (
+  !database?.database_id ||
+  /^[0-]+$/u.test(database.database_id) ||
+  !cache?.id ||
+  /^[0-]+$/u.test(cache.id) ||
+  !images?.bucket_name ||
+  !audit?.queue ||
+  !config.queues.consumers.some(({ queue }) => queue === audit.queue) ||
+  realtime?.class_name !== "RealtimeInvalidationHub"
+) {
+  throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)
+}
+```
+
+Note the placeholder check: an id of all zeroes and dashes is rejected, which is what stops a copied template being deployed.
+
+### If you change the hostname
+
+Two code changes go with it:
+
+- `APP_DOMAIN` in `src/presentation/branding/app.ts`, which `APP_URL`, the sitemap, the OG tags and the email links derive from.
+- `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts`. Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`, so a host absent from that list has its auth requests rejected and sign-in fails on the new domain with no obvious error.
+
+## Deploy
+
+```sh
+bun run db:migrate:preview
+bun run deploy:preview
+```
+
+Migrations are never applied by a build or a deploy. Run `db:migrate:preview` first whenever you are shipping code that needs a new schema, or the Worker will deploy and then fail at runtime on a missing column.
+
+`deploy:preview` is four steps chained with `&&`:
+
+```sh
+bun scripts/verify-bindings.ts preview \
+  && bun run build:preview \
+  && bun scripts/prepare-deploy-secrets.ts preview \
+  && env -u CLOUDFLARE_ENV vp exec wrangler deploy \
+       --config dist/server/wrangler.json \
+       --secrets-file .wrangler/secrets.preview.json
+```
+
+1. **`verify-bindings.ts preview`** — the binding check above. Fails the deploy rather than warning.
+2. **`build:preview`** — `rm -rf dist`, regenerate `.source/`, `CLOUDFLARE_ENV=preview vp build --mode preview`, then `verify-build.ts preview`.
+3. **`prepare-deploy-secrets.ts preview`** — reads `secrets.required` from `wrangler.jsonc`, takes each value from the process environment or `.env.preview`, and writes `.wrangler/secrets.preview.json` with mode `0600`. A missing or blank value throws `Missing <NAME> in .env.preview or the process environment`. Only declared secrets are written, which is how `CLOUDFLARE_ACCESS_TOKEN` and the other management credentials stay off the Worker.
+4. **`wrangler deploy`** — deploys the generated `dist/server/wrangler.json` and uploads the secrets file in the same call. The generated config is flat: it already carries `"name": "martebizuteria-preview"` and `"vars": { "APP_ENV": "preview" }` at the top level with no `env` section, which is why the command unsets `CLOUDFLARE_ENV` first — with it set, Wrangler would look for an environment section that the generated file does not have.
+
+### What the build verification catches
+
+`scripts/verify-build.ts` reads `.wrangler/deploy/config.json`, resolves the config it points at, and then refuses to pass unless:
+
+- the resolved path is exactly `dist/server/wrangler.json`;
+- `vars.APP_ENV` equals the environment you asked for;
+- the Worker name matches — `martebizuteria` for production, `martebizuteria-preview` otherwise;
+- the entrypoint and `dist/client/fonts` both exist;
+- `assets.directory` resolves to `dist/client`;
+- `dist/client/assets` contains at least one `.js` and one `.css` file;
+- no client `.js` asset imports `cloudflare:workers` or any `node:` builtin.
+
+That last one is the interesting check. It scans each client bundle with `Bun.Transpiler` and fails on a server-only import that leaked into the browser graph — the class of mistake that otherwise shows up as a blank page in production.
+
+## Automatic deployments
+
+| Workflow                | Trigger                             | Environment  |
+| ----------------------- | ----------------------------------- | ------------ |
+| `ci.yml`                | Pull requests, and pushes to `main` | none         |
+| `deploy-preview.yml`    | Pull requests to `main`             | `preview`    |
+| `deploy-production.yml` | Pushes to `main`                    | `production` |
+
+Both deploy workflows use `.github/actions/setup`, re-run `bun run check`, then `touch .env.<env>` and run the deploy script with every value supplied through the job environment. `prepare-deploy-secrets.ts` prefers `process.env` over the file, so the empty file is intentional — it exists only so the `readFile` call succeeds.
+
+The preview workflow finishes by posting or updating a comment on the pull request with the preview URL. Concurrency is keyed per pull request for preview and globally for production, with `cancel-in-progress: false` on production so two pushes to `main` cannot race.
+
+### Required GitHub configuration
+
+Repository **secrets**:
+
+`CLOUDFLARE_ACCESS_TOKEN` (passed to Wrangler as `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+
+Repository **variables**:
+
+`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY` and `VITE_APP_URL`. The first two are inlined into the client bundle at build time, so they must be variables rather than secrets. `VITE_APP_URL` is passed by both workflows but is not read anywhere in `src/` and is not a declared Worker secret — see [Environment variables](/docs/getting-started/environment-variables).
+
+## After deploying
+
+Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` and the Stripe endpoint at `/api/webhooks/stripe`. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ.
+
+## Related
+
+- [Project scripts](/docs/getting-started/project-scripts)
+- [Tooling](/docs/tooling) — Wrangler, environments and the workflows in detail
+- [Integrations](/docs/integrations) — Cloudflare, Stripe, Resend and Better Auth adapters

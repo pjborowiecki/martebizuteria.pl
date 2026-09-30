@@ -1,0 +1,169 @@
+---
+title: "Kasa"
+description: "Czterokrokowy formularz renderowany po stronie klienta, kopia robocza w sessionStorage i funkcje serwerowe, które rezerwują stan i otwierają sesję Stripe."
+---
+
+## Trasa
+
+Dwa pliki:
+
+- `src/routes/checkout.tsx` — layout. Waliduje parametry wyszukiwania i renderuje `CheckoutHeader` oraz `Outlet`. **Nie** leży wewnątrz `_storefront`, więc nie ma nawigacji sklepu ani stopki.
+- `src/routes/checkout.index.tsx` — strona, czyli albo panel sukcesu, albo formularz za strażnikiem.
+
+Schemat parametrów toleruje śmieci:
+
+```ts
+const checkoutSearchSchema = z.object({
+  step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
+  success: z.preprocess(coerceSuccess, z.boolean().optional()),
+})
+```
+
+`coerceStep` zwraca `DEFAULT_STEP` (1) dla wszystkiego, co nie jest liczbą całkowitą od 1 do 4; `coerceSuccess` przyjmuje `true` i napis `"true"`. Adres `/checkout?step=banana` ląduje więc na kroku 1, a nie w błędzie.
+
+Nie ma wymogu zalogowania. Zakup jako gość to ścieżka domyślna; zalogowaną sesję przechwytuje po stronie serwera `getRequestSession()` przy tworzeniu sesji Stripe.
+
+## Strażnik
+
+`CheckoutGuard` w `checkout.index.tsx` czeka na rehydratację koszyka, a potem odsyła niepoprawne koszyki:
+
+```ts
+const isEmpty = hydrated && itemCount === 0
+const hasStockIssues = hydrated && !isChecking && hasUnavailableItems
+useEffect(() => {
+  if (isEmpty || hasStockIssues) {
+    void navigate({ params: (prev) => prev, replace: true, to: "/cart" })
+  }
+}, [hasStockIssues, isEmpty, navigate])
+```
+
+Dopóki koszyk nie jest zhydratowany, sprawdzony i poprawny, renderowany jest `CheckoutFormSkeleton`. Sam formularz jest owinięty w `ClientOnly` i `Suspense`, bo `CheckoutForm` leży w `checkout-form.client.tsx` i importuje `@tanstack/react-start/client-only`.
+
+## Cztery kroki
+
+`src/presentation/components/custom/checkout/lib/checkout-steps.ts` to jedyna definicja kroków i ich pól:
+
+| Indeks | `id`       | `titleKey`       | Walidowane pola                                                                                                                      |
+| ------ | ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 0      | `contact`  | `steps.contact`  | `email`, `phone`                                                                                                                     |
+| 1      | `billing`  | `steps.billing`  | `firstName`, `lastName`, `address1`, `address2`, `postalCode`, `city`, `countryCode`, `province`, `sameAsShipping` i pola `billing*` |
+| 2      | `delivery` | `steps.delivery` | `deliveryMethod`, `lockerId`                                                                                                         |
+| 3      | `payment`  | `steps.payment`  | brak                                                                                                                                 |
+
+`getFurthestReachableStepIndex(values)` parsuje cały formularz przez `checkoutSchema` i zwraca indeks pierwszego kroku, który posiada niepoprawne pole, albo ostatni indeks, gdy wszystko jest poprawne. Provider ogranicza żądany `?step=` do tej wartości, więc nie da się wejść linkiem w krok dalszy niż nieukończony.
+
+Każdy krok jest w osobnym pakiecie. `checkout-step-loaders.client.ts` mapuje każde `id` na `lazy()` import komponentu, więc krok płatności wraz z pakietem Stripe wczytuje się tylko wtedy, gdy odwiedzający do niego dotrze.
+
+## Stan formularza
+
+`checkout-form-provider.tsx` buduje instancję `react-hook-form`:
+
+```ts
+const form = useForm<CheckoutFormSchema>({
+  defaultValues: {/* wszystkie pola, z countryCode i billingCountryCode ustawionymi na "PL" */},
+  mode: "onTouched",
+  resolver: zodResolver(checkoutSchema),
+})
+```
+
+`useCheckoutForm()` udostępnia `activeStepIndex`, `control`, `getValues`, `setValue`, `trigger`, `isFormValid`, `isPending`, `onNext`, `onEdit`, `checkoutSession` i `setCheckoutSession`. `onNext(stepId)` uruchamia walidację tylko pól tego kroku i po sukcesie nawiguje do `?step=<następny>` wewnątrz `startTransition`. `onEdit(stepId)` cofa bez walidacji.
+
+## Kopia robocza
+
+`checkout-draft.ts` utrwala formularz w **`sessionStorage`** pod kluczem `marte-checkout-draft`, w wersjonowanej kopercie:
+
+```ts
+interface CheckoutDraftEnvelope {
+  readonly v: number
+  readonly values: Partial<CheckoutFormSchema>
+}
+```
+
+`SCHEMA_VERSION` wynosi `1`, a `isDraftEnvelope` odrzuca wszystko z innym `v`, więc stara kopia jest ignorowana, a nie scalana. Każdy dostęp jest owinięty w `try`/`catch` i zwraca `undefined`, gdy magazyn jest niedostępny — formularz działa więc również w oknie prywatnym. `useCheckoutDraftPersistence` przywraca kopię przy montowaniu i zapisuje przy każdej zmianie `watch`; `CheckoutSuccess` wywołuje `clearCheckoutDraft()`.
+
+Ponieważ to `sessionStorage`, kopia przeżywa odświeżenie, ale nie nową kartę — inaczej niż koszyk, który jest w `localStorage`.
+
+## Walidacja
+
+`src/modules/checkout/checkout.zod.ts` buduje `checkoutSchema` ze schematu adresu wyprowadzonego z Drizzle oraz pól występujących tylko w kasie. Jego komunikaty to **klucze komunikatów**, a nie zdania: `"validation.addressRequired"`, `"validation.phoneInvalid"` i tak dalej, rozwiązywane względem `pages.checkout` przez `validation-field-error.tsx`.
+
+Trzy reguły wychodzą poza samą obecność pól i wszystkie leżą w `superRefine`:
+
+1. **Polski kod pocztowy.** `POSTAL_CODE_PATTERNS` zawiera obecnie tylko `PL: /^\d{2}-\d{3}$/u`. Kraj bez wzorca przechodzi walidację.
+2. **Adres rozliczeniowy.** Gdy `sameAsShipping` jest `false`, każde pole `billing*` staje się wymagane, a kod pocztowy rozliczeniowy jest dodatkowo sprawdzany wzorcem.
+3. **Paczkomat.** Gdy `deliveryMethodType === "locker"`, `lockerId` musi być niepustym napisem.
+
+Numery telefonów są walidowane przez `isValidPhoneNumber(value, "PL")` z `libphonenumber-js/mobile`, więc numer komórkowy musi być poprawny dla Polski.
+
+## Krok dostawy
+
+`_steps/delivery-step.tsx` czyta `listDeliveryMethodsQuery()` i grupuje wiersze po `type` w ustalonej kolejności `DELIVERY_METHODS` (`courier`, `locker`, `in_store`). Wybór typu ustawia `deliveryMethodType`, a gdy ten typ ma dokładnie jedną metodę — automatycznie ustawia `deliveryMethod`; w przeciwnym razie je czyści. Podtytuł karty pokazuje najniższą cenę grupy, `deliverySubsteps.free`, gdy ta cena to zero, albo `od <cena>`, gdy grupa ma więcej niż jedną metodę.
+
+Podkrok zależy od typu: `DeliveryCourier`, `DeliveryLocker` (z mapą InPost) albo `DeliveryInStore` (sama treść). Zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery).
+
+## Krok płatności
+
+`_steps/payment-step.client.tsx` obsługuje kasę Stripe Elements. Najciekawszy jest `useCheckoutSessionLoader`:
+
+- `amountCents = cartTotal() + deliveryCost`, gdzie `deliveryCost` to `price` wybranej metody z `listDeliveryMethodsQuery()`.
+- Wylicza dwa odciski z `src/integrations/stripe/stripe.checkout.ts`: `buildCheckoutLinesFingerprint(items)` (posortowane pary `variantId:qty`) i `buildCheckoutValuesFingerprint(values)` (wartości formularza jako posortowany JSON).
+- `sessionMatches` jest prawdziwe, gdy kwota i oba odciski są równe tym z zapisanej sesji. Gdy nie są, `ensureCheckoutSession` albo tworzy sesję, albo aktualizuje istniejącą.
+- Jeśli `isCheckoutComplete(getValues())` jest fałszywe, wywołuje `onEdit(CHECKOUT_STEP_ID.CONTACT)` i odsyła odwiedzającego na krok 1.
+- `inFlightRef` zapobiega równoległym wywołaniom sesji.
+- Przy błędzie pokazuje `PaymentError` i toast `t(getCheckoutErrorKey(error))`, który mapuje `INSUFFICIENT_INVENTORY`, `INVALID_PRICE`, `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND` i `UNKNOWN_ERROR` na klucze pod `errors.` (`src/integrations/stripe/stripe.errors.ts`).
+
+`PaymentElement` jest skonfigurowany w `PAYMENT_ELEMENT_OPTIONS`: układ akordeonowy, `billingDetails: "never"` (M'Arte sam zbiera adres), wyłączone portfele i Link oraz `paymentMethodOrder` ze `CHECKOUT_PAYMENT_METHOD_ORDER` — `["card", "blik", "p24"]`.
+
+Potwierdzenie wywołuje `confirmCheckoutSession`, które uruchamia `checkout.confirm({ billingAddress: buildCheckoutContact(values), redirect: "if_required" })`. Każdy błąd inny niż kod `paymentFailed` jest traktowany jako naprawialny: sesja jest resetowana, a odwiedzający proszony o ponowną próbę. Po sukcesie strona nawiguje do `?success=true`.
+
+`CheckoutSuccess` czyści wtedy w jednym efekcie koszyk, kopię roboczą i flagę porzucenia.
+
+## Strona serwera
+
+`createCheckoutSessionFn` i `updateCheckoutSessionFn` (`src/integrations/stripe/stripe.actions.ts`) są cienkie: walidują schematami z `stripe.actions.schemas.ts`, nakładają `withRateLimit("checkout-create" | "checkout-update", RATE_LIMITS.CHECKOUT)` — dziesięć wywołań na minutę na adres klienta — i dynamicznie importują handler, żeby serwerowe SDK Stripe nie wpadło do pakietu klienta.
+
+`handleCreateCheckoutSession` w `stripe.actions.server.ts` wykonuje następującą kolejność:
+
+1. `validateAndCalculateItems(data.items)` — wczytuje produkty po handle razem ze stanem, a potem dla każdej linii rozwiązuje wariant i rzuca `AppError` z kodem z `CHECKOUT_ERROR_CODES`, gdy brak produktu albo wariantu, gdy cena nie przechodzi `isSellPriceCentsValid` albo gdy `inventory.quantityAvailable < qty`. **Od tego momentu używana jest cena `variant.price` z bazy, a nie z koszyka.**
+2. `resolveShippingCost(deliveryMethod)` — `getActiveDeliveryMethodByIdQuery(id)?.price ?? 0`.
+3. `reserveInventoryForItems(validatedItems)` — rezerwacja optymistyczna, zobacz [Stany magazynowe](/docs/features/inventory).
+4. `createCheckout(...)` — wstawia wiersze `address` i wiersz `checkout` w jednym wsadzie D1.
+5. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, pozycje sesji plus linia `"Shipping"`, gdy koszt jest większy od zera, oraz metadane z `checkoutId`, `locale`, `userId` i pociętą listą pozycji.
+6. `createPendingPayment(...)` — wiersz `payment` ze `status: "pending"` i `transaction_id` równym identyfikatorowi sesji Stripe.
+7. `scheduleProductCatalogInvalidation()`.
+
+Jeśli cokolwiek po kroku 3 rzuci wyjątek, `releaseInventoryForItems` zwraca rezerwację przed propagacją błędu.
+
+`handleUpdateCheckoutSession` dodatkowo weryfikuje własność (`context.userId` musi zgadzać się z bieżącą sesją, gdy checkout należy do użytkownika), odczytuje zarezerwowane linie starej sesji z jej metadanych, wymienia rezerwację przez `swapCheckoutInventory` (zwalniając stare linie, walidując i rezerwując nowe, a przy porażce przywracając stare), aktualizuje wiersz checkoutu, tworzy nową sesję Stripe, przekierowuje wiersz `payment` na nowy identyfikator sesji przez `repointPayment` i wygasza starą sesję.
+
+## Cięcie metadanych
+
+Stripe ogranicza wartość metadanej do 500 znaków, więc `checkout-metadata.zod.ts` rozdziela JSON pozycji na `items0`, `items1`, … i składa go z powrotem:
+
+```ts
+export const readCheckoutSessionItemsJson = (metadata: Record<string, string | undefined> | null | undefined): string => {
+  ...
+  const legacy = metadata[ITEMS_CHUNK_KEY_PREFIX]
+  if (legacy !== undefined && legacy !== "") {
+    return legacy
+  }
+  ...
+}
+```
+
+Pojedynczy klucz `items` jest wciąż czytany dla sesji utworzonych przed wprowadzeniem cięcia, a brak obiektu metadanych daje `"[]"`.
+
+## Wiersz checkoutu
+
+`checkout` (`src/modules/checkout/checkout.schema.ts`) trzyma `email`, `customer_note`, `locker_id`, `delivery_method_id`, `shipping_address_id`, `billing_address_id`, `cart_id`, `discount_id`, `user_id` oraz `status` o wartościach `pending | processing | completed | failed | abandoned`. W praktyce kod używa `pending`, `completed` (zrealizowane) i `failed` (zwolnione); `processing` i `abandoned` nigdy nie są zapisywane.
+
+Gdy `sameAsShipping` jest prawdziwe, `prepareCreateCheckoutBatch` wskazuje oba identyfikatory adresu na **ten sam** wiersz `address`, zamiast go duplikować.
+
+`prepareUpdateCheckoutDeliveryBatch` korzysta z `INSERT … SELECT … ON CONFLICT DO UPDATE`, którego wierszem źródłowym jest checkout w stanie `pending` — upsert adresu po prostu nic nie robi, jeśli checkout nie jest już oczekujący. `updateCheckoutDelivery` sprawdza potem `returning()` ostatniej instrukcji i rzuca `ERROR_CODES.CONFLICT`, gdy żaden wiersz nie został zaktualizowany.
+
+## Powiązane strony
+
+- [Płatności](/docs/features/payments) — webhooki zamieniające checkout w zamówienie
+- [Wysyłka i dostawa](/docs/features/shipping-and-delivery)
+- [Stany magazynowe](/docs/features/inventory)
+- [Integracje: Stripe](/docs/integrations/stripe)

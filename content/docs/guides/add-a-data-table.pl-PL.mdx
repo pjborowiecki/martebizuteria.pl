@@ -1,0 +1,219 @@
+---
+title: "Dodawanie tabeli danych"
+description: "Zbuduj tabelę panelu na wspólnym datagridzie: kolumny, instancja tabeli, zapamiętane preferencje, akcje paska narzędzi i stronicowanie po stronie serwera."
+---
+
+Każda lista w panelu M'Arte jest zbudowana na jednej wspólnej tabeli danych w `src/presentation/components/custom/datagrid/`. Owija ona TanStack Table v9 i dokłada zmianę szerokości kolumn, przeciąganie kolumn, przypinanie, zapamiętywane per użytkownik preferencje, stan szkieletowy podczas ładowania, pole wyszukiwania z opóźnieniem, przeciąganie wierszy i stronicowanie.
+
+Najczytelniejszym przykładem od początku do końca jest tabela kategorii w `src/presentation/components/custom/pages/admin/catalog/categories/`. Ten przewodnik idzie jej śladem.
+
+## Elementy
+
+| Plik                                             | Rola                                                              |
+| ------------------------------------------------ | ----------------------------------------------------------------- |
+| `datagrid/components/create-data-grid.tsx`       | `createDataGrid<TRow>({ persistenceKey })` — fabryka              |
+| `datagrid/hooks/use-data-grid-instance.ts`       | `useDataGridInstance` — buduje tabelę TanStack                    |
+| `datagrid/hooks/use-data-grid-preferences.ts`    | Kolejność, szerokość i widoczność kolumn, zapamiętywane           |
+| `datagrid/components/data-grid-shell.tsx`        | `DataGridShell` — karta z trzyrzędowym układem grid               |
+| `datagrid/components/selection-column.tsx`       | `selectionColumn(...)` — kolumna z polami wyboru                  |
+| `datagrid/lib/data-grid.features.ts`             | Zestaw `tableFeatures(...)` oraz funkcje filtrowania i sortowania |
+| `datagrid/lib/data-grid.types.ts`                | `DataGridContextValue`, `DataGridColumnMeta`, API przeciągania    |
+| `datagrid/lib/catalog-table-global-filter.ts`    | `createCatalogTableGlobalFilterFn`                                |
+| `datagrid/lib/data-grid-pagination.constants.ts` | Rozmiary stron: 10, 25, 50, 100, 250, domyślnie 10                |
+
+## 1. Utwórz przestrzeń tabeli
+
+Jeden plik, eksportujący jedną tabelę. Z `.../categories/utils/categories-data-grid.ts`:
+
+```ts
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
+
+import { createDataGrid } from "~/src/presentation/components/custom/datagrid/components/create-data-grid"
+
+export const CATEGORIES_DATA_GRID_KEY = "admin.catalog.categories"
+
+export const categoriesDataGrid = createDataGrid<ProductCategory["adminListItem"]>({
+  persistenceKey: CATEGORIES_DATA_GRID_KEY,
+})
+```
+
+`createDataGrid` zwraca `{ Body, Pagination, Provider, Toolbar, persistenceKey, useDataGrid }` — prywatny kontekst React plus cztery komponenty, które z niego czytają. Każda tabela dostaje własny kontekst, więc dwie tabele na jednej stronie nigdy nie dzielą stanu.
+
+`persistenceKey` jest kluczem przechowywania. Preferencje zapisują się pod `marte:datagrid:v1:<persistenceKey>` w `localStorage`, a wbudowany skrypt z `datagrid/datagrid-init.ts` — wstawiany przez `src/routes/__root.tsx` — czyta je przed hydratacją i ustawia na `<html>` zmienne CSS `--marte-dg-<slug>-<column>`, żeby szerokości kolumn nie skakały przy pierwszym renderowaniu. **Zmiana `persistenceKey` odrzuca zapisany układ tej tabeli u każdego użytkownika.**
+
+## 2. Zdefiniuj kolumny
+
+Kolumny mieszkają w hooku, żeby nagłówki dały się tłumaczyć, a komórki mogły korzystać z `useFormatter`. Z `.../categories/components/categories-columns.tsx`:
+
+```tsx
+const columnHelper = createColumnHelper<DataGridFeatures, ProductCategory["adminListItem"]>()
+
+columnHelper.accessor("createdAt", {
+  cell: ({ getValue }) => <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>,
+  header: t("columns.createdAt"),
+  id: CATEGORY_TABLE_COLUMN_ID.createdAt,
+  maxSize: 320,
+  meta: {
+    skeletonVariant: "date",
+  },
+  minSize: CATEGORY_TABLE_COLUMN_SIZE.createdAt,
+  size: CATEGORY_TABLE_COLUMN_SIZE.createdAt,
+})
+```
+
+Konwencje:
+
+- `id` pochodzi z mapy `*_TABLE_COLUMN_ID` modułu, a `size` i `minSize` z `*_TABLE_COLUMN_SIZE` — oba w pliku stałych modułu. Zapamiętane preferencje są kluczowane identyfikatorem kolumny, więc identyfikator jest tak trwały jak `persistenceKey`.
+- `meta` ma typ `DataGridColumnMeta`. Dostępne opcje to `cellClassName`, `headClassName`, `fillsRemainingWidth`, `absorbsTrailingSlack`, `filterOnly`, `preventRowClick` i `skeletonVariant`. `skeletonVariant` wybiera kształt zaślepki podczas pobierania danych: `badge`, `checkbox`, `date`, `icon`, `iconEnd`, `number`, `recordId`, `text`, `thumbnail` albo `title`.
+- Kolumny pomocnicze to `select`, `drag`, `image` i `actions` — identyfikatory wymienione w `DATAGRID_UTILITY_COLUMN_IDS`. Nigdy nie da się zmienić ich szerokości ani kolejności i są wyłączone z zapamiętywanych rozmiarów. Ustaw im stałą szerokość przez `fixedDataGridColumnWidth(size)`, które zwraca spójne `size`, `minSize` i `maxSize`.
+- Kolumna z polami wyboru to `selectionColumn(columnHelper, { all: t(...), row: t(...) })`, z etykietami pobieranymi z `*_TABLE_A11Y_KEYS` modułu.
+- Komórki są małymi komponentami deklarowanymi nad budownikiem kolumn, a nie domknięciami w miejscu — dzięki temu można je memoizować i nie przekraczać limitu długości funkcji.
+
+Ponieważ prawdziwa tabela katalogu ma więcej kolumn, niż pozwala funkcja o 150 liniach, budownik się dzieli: `buildCategoryTimestampColumns(context)` i `buildCategoryDataGridColumns(context)` w tym pliku zwracają `columnHelper.columns([...])` i są składane przez hook.
+
+## 3. Zbuduj instancję tabeli
+
+Hook `use-<entity>-data-grid.ts` ładuje dane i zwraca `DataGridContextValue`:
+
+```ts
+const { data: categories, isFetching } = useSuspenseQuery(getAdminCategoriesQuery())
+const columns = useCategoryColumns()
+const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns])
+
+const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
+  columns,
+  data: ordering.items,
+  defaultColumnVisibility: CATEGORY_TABLE_DEFAULT_COLUMN_VISIBILITY,
+  getRowId: (row) => row.id,
+  globalFilterFn,
+  initialColumnOrder,
+  initialColumnPinning: CATEGORY_TABLE_COLUMN_PINNING,
+  persistenceKey: categoriesDataGrid.persistenceKey,
+})
+```
+
+`useDataGridInstance` ustawia `columnResizeMode: "onChange"`, włącza przypinanie, zmianę szerokości i zaznaczanie wierszy, stosuje zestaw `dataGridFeatures`, wylicza rozmiary minimalne i maksymalne z definicji kolumn i przekazuje powstały stan do `useDataGridPreferences`. Wszystko, czego potrzebuje, jest w opcjach — nie buduj własnego wywołania `useTable`.
+
+Hook zwraca wartość kontekstu, jakiej oczekują komponenty tabeli:
+
+```ts
+return useMemo(
+  () => ({
+    columnReorder,
+    hasPreferenceOverrides,
+    isLoading: showSkeletonRows,
+    onRowClick,
+    persistenceKey: categoriesDataGrid.persistenceKey,
+    resetPreferences,
+    rowReorder,
+    searchPlaceholder: t("searchPlaceholder"),
+    table,
+  }),
+  [columnReorder, hasPreferenceOverrides, onRowClick, resetPreferences, rowReorder, showSkeletonRows, t, table],
+)
+```
+
+### Wyszukiwanie po stronie klienta
+
+`createCatalogTableGlobalFilterFn` przyjmuje funkcję z wiersza na napisy, które mają być dopasowywane, a filtr zamienia je na małe litery, scala i szuka podciągu:
+
+```ts
+const globalFilterFn = useMemo(
+  () =>
+    createCatalogTableGlobalFilterFn<ProductCategory["adminListItem"]>((row) => {
+      const statusLabel = t(row.status === CATEGORY_STATUS.ACTIVE ? CATEGORY_STATUS_LABEL_KEYS.active : CATEGORY_STATUS_LABEL_KEYS.draft)
+
+      return getCategoryAdminSearchParts(row, statusLabel)
+    }),
+  [t],
+)
+```
+
+Przekazanie przetłumaczonej etykiety statusu oznacza, że polski administrator może szukać frazy „aktywna”, a angielski „active”, w tych samych wierszach.
+
+### Przeciąganie wierszy
+
+Tabele z możliwością zmiany kolejności udostępniają `RowReorderApi`, ale tylko wtedy, gdy widoczna jest naturalna kolejność — przeciąganie wierszy przy aktywnym sortowaniu albo filtrze nie miałoby sensu:
+
+```ts
+const columnFilters = table.atoms.columnFilters.get()
+const sorting = table.atoms.sorting.get()
+const search = String(table.atoms.globalFilter.get() ?? "").trim()
+const naturalOrder = sorting.length === 0 && columnFilters.length === 0 && search === ""
+```
+
+Same handlery przeciągania pochodzą z hooka `use-<entity>-ordering.ts`, który utrzymuje optymistyczną lokalną kolejność i wywołuje mutację zmieniającą kolejność.
+
+## 4. Złóż tabelę
+
+Rozpakuj komponenty tabeli raz, na końcu pliku, i rozłóż je wewnątrz `DataGridShell`:
+
+```tsx
+const { Body, Pagination, Provider, Toolbar } = categoriesDataGrid
+```
+
+```tsx
+<Provider value={grid}>
+  <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>
+    <CategoriesStats />
+    <DataGridShell>
+      <Toolbar actions={toolbarActions}>
+        <CategoriesRefreshAction />
+        <CategoriesExportAction />
+        <CategoriesStatusFilter />
+      </Toolbar>
+      <Body />
+      <Pagination />
+    </DataGridShell>
+  </div>
+</Provider>
+```
+
+`DataGridShell` to karta z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i stronicowanie zachowują wysokość, a treść się przewija. Trzy slota `Toolbar` to `children` (kontrolki wstawiane obok pola wyszukiwania), `filters` oraz `actions` (wyrównane do prawej). Kiedy `hasPreferenceOverrides` jest prawdą, pasek narzędzi pokazuje przycisk resetu połączony z `resetPreferences`.
+
+## 5. Dodaj akcje wiersza i akcje zbiorcze
+
+Każda tabela ma dwa komponenty obok siebie:
+
+- `<entity>-row-actions.tsx` — menu dla jednego wiersza, renderowane przez kolumnę `actions` z `meta.preventRowClick`, żeby otwarcie menu nie otwierało jednocześnie panelu edycji.
+- `<entity>-bulk-actions.tsx` — czyta `table.getSelectedRowModel()` i działa na zaznaczeniu; przekazywane do slotu `actions` paska narzędzi.
+
+Oba wywołują hook `use-delete-<entity>.ts` albo `use-reorder-<entity>.ts`, który jest właścicielem mutacji, powiadomienia i unieważniania cache'u.
+
+## 6. Stronicowanie po stronie serwera, jeśli tabela jest duża
+
+Kategorie, kolekcje i atrybuty są ładowane w całości i filtrowane w przeglądarce. Produkty nie: `src/routes/admin.catalog.products.index.tsx` napędza zapytanie serwerowe. Różnicę robią cztery flagi w `useDataGridInstance` plus kontrolowany stan:
+
+```ts
+manualFiltering, manualPagination, manualSorting,
+pagination, sorting, pageCount, rowCount,
+onPaginationChange, onSortingChange, onColumnFiltersChange,
+```
+
+`use-products-list-data.ts` trzyma wtedy dwa zapytania i przełącza się między nimi:
+
+```ts
+const pageQueryOptions = getAdminProductsPageQuery({
+  categoryId: filters.categoryId,
+  createdAt: columnFilters.createdAt,
+  page: pagination.pageIndex + LIST_PAGE_STEP,
+  pageSize: pagination.pageSize,
+  search,
+  sort,
+  status: filters.status,
+})
+```
+
+`LIST_PAGE_STEP` z `src/modules/_core/utils/pagination.ts` to przeliczenie z numeracji od zera na numerację od jedynki. `placeholderData: keepPreviousData` utrzymuje poprzednią stronę na ekranie, dopóki nie doładuje się następna. `use-products-server-list-sync.ts` resetuje `pageIndex` do zera przy każdej zmianie tekstu wyszukiwania, filtrów kolumn albo sortowania — bez tego filtr zastosowany na siódmej stronie pokazałby pustą tabelę.
+
+Wyszukiwania są opóźniane przed dotarciem do zapytania przez `use-admin-debounced-table-search.ts`, zbudowane na `src/hooks/use-debounce.ts`.
+
+## 7. Przetestuj
+
+Hooki i komponenty tabeli mają testy w `datagrid/**/__test__/`, a każda tabela panelu ma własne w swoim katalogu funkcjonalności. Testy tabel działają w projekcie Vitest `component` (`*.component.test.tsx`), który używa `jsdom` i `src/platform/testing/setup.ts` — ten plik podstawia `ResizeObserver` i `IntersectionObserver`, których tabela potrzebuje do mierzenia kolumn. Zobacz [Pisanie testów](/docs/guides/writing-tests).
+
+## Powiązane przewodniki
+
+- [Dodawanie strony panelu](/docs/guides/add-an-admin-page)
+- [Dodawanie przypadku użycia](/docs/guides/add-a-use-case)
+- [Stan w adresie URL](/docs/guides/url-state)

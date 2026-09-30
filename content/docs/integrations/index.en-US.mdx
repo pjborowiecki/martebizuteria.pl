@@ -1,0 +1,65 @@
+---
+title: "Introduction"
+description: "The vendor adapters under src/integrations and the rules that keep them thin."
+---
+
+Every third party the application talks to lives in `src/integrations/<vendor>/`, and every file in such a folder is named `<vendor>.<concern>.ts`. A folder holds configuration, the vendor client, request-time adapters and the Zod schemas that describe the vendor's payloads — nothing else. Business rules and database access belong in `src/modules/{feature}/`, and components in `src/presentation/` never construct a vendor client themselves.
+
+The formatter enforces this separation at the import level: `vite.config.ts` defines an `integrations` import group for `~/src/integrations/**` that always sorts above `modules`, `lib` and the component groups, so a file that reaches for a vendor is visible at a glance.
+
+## The thirteen folders
+
+| Folder                  | Files                                                                                                                                                                                                                                | Purpose                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `better-auth`           | `auth.server.ts`, `auth.client.ts`, `auth.access.ts`, `auth.middleware.ts`, `auth.routes.ts`, `auth.session.ts`, `auth.zod.ts`, `auth.constraints.ts`, `auth.errors.ts`                                                              | Sessions, OAuth, roles and permissions, server-function middleware, guards  |
+| `cloudflare-r2`         | `media.mutations.ts`, `media.zod.ts`                                                                                                                                                                                                 | Image upload to the `IMAGES` bucket, MIME and size rules                    |
+| `drizzle-orm`           | `drizzle.database.ts`, `drizzle.schemas.ts`, `drizzle.utils.ts`, `drizzle.batch.ts`, `drizzle.config.ts`, `migrations/`, `seeds/`                                                                                                    | The D1 client, the schema barrel, column helpers, drizzle-kit configuration |
+| `fumadocs`              | `fumadocs.config.ts`, `fumadocs.i18n.ts`, `fumadocs.source.ts`, `fumadocs.docs.ts`, `fumadocs.legal.ts`, `fumadocs.schema.ts`                                                                                                        | The `docs` and `legal` MDX collections, localized sources, page loaders     |
+| `gsap`                  | `gsap.config.ts`                                                                                                                                                                                                                     | Plugin registration and the global tween defaults                           |
+| `inpost`                | `inpost.api.ts`, `inpost.queries.ts`, `inpost.zod.ts`, `inpost.constants.ts`                                                                                                                                                         | Parcel-locker lookup for the checkout delivery step                         |
+| `lenis`                 | `lenis.instance.ts`, `lenis.scroll.ts`                                                                                                                                                                                               | The smooth-scroll singleton and programmatic scrolling                      |
+| `react-day-picker`      | `react-day-picker.locale.ts`                                                                                                                                                                                                         | Maps `pl-PL` and `en-US` onto the calendar's own locale objects             |
+| `realtime-invalidation` | `realtime-invalidation.protocol.ts`, `.subscriptions.ts`, `.publish.server.ts`, `.catalog.server.ts`, `.ws.server.ts`                                                                                                                | The WebSocket cache-invalidation hub built on a Durable Object              |
+| `resend`                | `resend.config.ts`, `resend.send.ts`, `order-confirmation.utils.ts`, `order-shipped.utils.ts`, `order-shipped.notification.server.ts`, `email-previews.tsx`                                                                          | Transactional email delivery and the developer preview renderer             |
+| `stripe`                | `stripe.server.ts`, `stripe.client.ts`, `stripe.constants.ts`, `stripe.actions.ts`, `stripe.actions.server.ts`, `stripe.actions.schemas.ts`, `stripe.checkout.ts`, `stripe.appearance.ts`, `stripe.errors.ts`, `stripe.webhooks.tsx` | Checkout Sessions, Elements theming, webhook handlers                       |
+| `tanstack-query`        | `query.sync.ts`                                                                                                                                                                                                                      | Cross-tab query invalidation over a `BroadcastChannel`                      |
+| `use-intl`              | `i18n.config.ts`, `i18n.messages.ts`, `i18n.middleware.ts`, `i18n.paths.ts`, `i18n.utils.ts`                                                                                                                                         | Locales, message namespaces, locale middleware, URL helpers                 |
+
+TanStack Start, TanStack Router and TanStack Query have no adapter folder of their own beyond `query.sync.ts`, because they are the application framework rather than a vendor behind a seam. Their configuration lives in `src/router.tsx`, `src/server.ts` and `vite.config.ts`; the [TanStack Start](/docs/integrations/tanstack-start) and [TanStack Query](/docs/integrations/tanstack-query) pages document those files.
+
+## Conventions
+
+A file ending in `.server.ts` or `.server.tsx` is never imported from a component; it is reached either from a server function's handler or from a Worker handler. `src/integrations/drizzle-orm/drizzle.database.ts` and `src/lib/background.ts` additionally open with `import "@tanstack/react-start/server-only"`, which makes a client import a build error rather than a runtime surprise.
+
+Secrets are read through `env` from `cloudflare:workers`, never from `process.env`, and only in server files:
+
+```ts
+import { env } from "cloudflare:workers"
+
+import StripeServer from "stripe"
+
+export const stripe = new StripeServer(env.STRIPE_SECRET_KEY, {
+  apiVersion: STRIPE_API_VERSION,
+  appInfo: { name: APP_NAME },
+  httpClient: StripeServer.createFetchHttpClient(),
+})
+```
+
+Browser-visible configuration uses `import.meta.env.VITE_*` instead — `VITE_STRIPE_PUBLISHABLE_KEY` in `stripe.client.ts` and `VITE_R2_URL` in `src/lib/url.ts`. The required secrets per environment are listed in `wrangler.jsonc` under `env.<name>.secrets.required`.
+
+Each folder has a sibling `__test__/` directory; there are 53 test files across `src/integrations/`, run by `bun run test`. Tests named `*.component.test.ts(x)` run in the jsdom project and `*.integration.test.ts` in the integration project — see [Tooling](/docs/tooling).
+
+## In this chapter
+
+- [TanStack Start](/docs/integrations/tanstack-start) — the router, the Worker entry point and the HTTP handlers
+- [TanStack Query](/docs/integrations/tanstack-query) — the per-request client, query keys and cross-tab sync
+- [Drizzle ORM and D1](/docs/integrations/drizzle-orm-d1) — the database client, migrations and column helpers
+- [Better Auth](/docs/integrations/better-auth) — sessions, roles, permissions and authorization middleware
+- [Stripe](/docs/integrations/stripe) — Checkout Sessions, Elements and webhook fulfilment
+- [InPost](/docs/integrations/inpost) — parcel-locker lookup during checkout
+- [Resend](/docs/integrations/resend) — the six transactional emails and their previews
+- [Cloudflare R2](/docs/integrations/cloudflare-r2) — product image upload and asset URLs
+- [use-intl](/docs/integrations/use-intl) — locales, message namespaces and localized URLs
+- [Fumadocs](/docs/integrations/fumadocs) — these documentation pages and the legal documents
+- [Realtime invalidation](/docs/integrations/realtime-invalidation) — the Durable Object cache hub
+- [GSAP and Lenis](/docs/integrations/gsap-and-lenis) — storefront motion and smooth scrolling

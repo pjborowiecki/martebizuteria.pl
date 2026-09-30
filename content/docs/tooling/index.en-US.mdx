@@ -1,0 +1,55 @@
+---
+title: "Introduction"
+description: "The toolchain behind M'Arte: Bun, Vite+, Wrangler, drizzle-kit and the checks that guard every commit."
+---
+
+M'Arte has one package manager and one toolchain. Bun (`bun@1.4.0`, pinned by `packageManager` in `package.json`) installs dependencies and runs the scripts; Vite+ (`vp`) runs the dev server, the builds, the tests, the linter, the formatter and the staged-file checks; Wrangler talks to Cloudflare; drizzle-kit generates migrations and opens Drizzle Studio. Everything these tools need is configured in three files at the repository root: `package.json`, `vite.config.ts` and `wrangler.jsonc`.
+
+There is no separate ESLint, Prettier, Jest or tsc invocation. `bun run check` is the single static gate — format, lint and type check — and `bun run test` is the single test entry point.
+
+## The stack at a glance
+
+| Tool        | Version                | Comes from                    | Used for                                                      |
+| ----------- | ---------------------- | ----------------------------- | ------------------------------------------------------------- |
+| Bun         | `1.4.0`                | `packageManager`              | Install, script runner, `Bun.Transpiler` in `verify-build.ts` |
+| Vite+       | `1.0.0-rc.0`           | `devDependencies.vite-plus`   | `vp dev`, `vp build`, `vp test`, `vp check`, `vp staged`      |
+| Vitest      | `5.0.1`                | `overrides.vitest`            | Test runner behind `vp test`                                  |
+| TypeScript  | `~7.0.2`               | `devDependencies.typescript`  | Types, checked through Vite+ rather than a separate `tsc` run |
+| Wrangler    | `^4.138.0`             | `devDependencies.wrangler`    | D1 migrations, deploys, binding types                         |
+| drizzle-kit | `^0.31.11`             | `devDependencies.drizzle-kit` | Migration generation, introspection, Studio                   |
+| Fumadocs    | `fumadocs-mdx@^15.4.4` | `dependencies`                | Compiles `content/` into `.source/`                           |
+
+`package.json` also rewires Vite itself: `overrides.vite` points at `npm:@voidzero-dev/vite-plus-core@1.0.0-rc.0`, so the Vite that the project resolves is the one Vite+ ships.
+
+## In this chapter
+
+- [Vite+](/docs/tooling/vite-plus): the `vp` CLI, every section of `vite.config.ts`, the plugin stack and the Git hooks
+- [Project scripts](/docs/tooling/scripts): every `package.json` script and what it actually runs
+- [Lint and format](/docs/tooling/lint-and-format): oxfmt settings, the six oxlint categories, the size limits and the overrides
+- [Testing](/docs/tooling/testing): the three Vitest projects, the shared test platform and the coverage thresholds
+- [Database](/docs/tooling/database): generating migrations with drizzle-kit, applying them with Wrangler, Studio, introspection and the seeds
+- [CI/CD](/docs/tooling/ci-cd): the three GitHub Actions workflows, the shared setup action and how deploys get their secrets
+- [Conventional commits](/docs/tooling/conventional-commits): the commit format and the emoji hook
+- [Agent skills](/docs/tooling/agent-skills): `skills-lock.json`, `scripts/sync-skills.ts` and the vendor groups
+
+## What is not here
+
+There are no browser or end-to-end tests. `vite.config.ts` lists `e2e`, `playwright/.cache`, `playwright-report` and `test-results` in its ignore and exclude patterns, but no `e2e/` directory exists and Playwright is not a dependency. Those patterns are pre-emptive, not evidence of a suite.
+
+CI does not apply database migrations. `bun run db:migrate:preview` and `bun run db:migrate:production` are run by hand before a deploy that needs them — see [Database](/docs/tooling/database).
+
+## First run
+
+```sh
+bun install
+bun run dev
+```
+
+`bun install` triggers two lifecycle scripts: `prepare` (`vp config --no-agent`, which installs the Git hook dispatcher) and `postinstall` (`bun run typegen`, which regenerates `src/types/worker-configuration.d.ts` and `.source/`). Both generated outputs are gitignored, so a fresh clone will not type check until they exist.
+
+`bun run dev` regenerates the docs collections and starts Vite+ in the `development` Cloudflare environment on http://localhost:3000. That environment uses **remote** bindings, so the dev server reads and writes the real preview D1 database, KV namespace and R2 bucket.
+
+## Related pages
+
+- [Getting started](/docs/getting-started)
+- [Reference](/docs/reference)

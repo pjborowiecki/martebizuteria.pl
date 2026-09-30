@@ -1,0 +1,97 @@
+---
+title: "Frequently asked questions"
+description: "Short answers to the questions that come up first when working on this repository."
+---
+
+## What runs this application?
+
+One Cloudflare Worker. `src/server.ts` is the entry point; TanStack Start handles everything that is not short-circuited before it. Data is in D1, media in R2, the audit log travels through a Cloudflare Queue, realtime invalidation goes through a Durable Object, and `CACHE` is a KV namespace declared in every environment.
+
+Bun installs packages and runs `package.json` scripts. Vite+ (`vp`) provides the dev server, the build, the formatter, the linter and the test runner, all configured in `vite.config.ts`.
+
+## Which package manager, and which versions?
+
+`packageManager` is `bun@1.4.0`. Use `bun install` and `bun run <script>` so the repository's tool versions are selected. `vp toolchain` prints the versions in the active Vite+ release.
+
+## Do I need a Cloudflare account to develop?
+
+For `bun run dev`, yes. The `development` Wrangler environment uses remote bindings — it talks to the real preview D1 database, the real R2 bucket and the real KV namespace. For tests, no: they run against an in-memory `node:sqlite` database behind a D1-shaped transport and read dummy values from the committed `.env.test`.
+
+## Which locale is the default?
+
+`pl-PL`. It is served with no prefix, so `/products` is Polish. `en-US` is served under `/en-US`. Both are declared in `src/integrations/use-intl/i18n.config.ts`, along with the `marte_locale` cookie name and `Europe/Warsaw` as the default timezone. A redundant `/pl-PL/...` URL is 301'd to the bare path in the Worker.
+
+## Where does a new operation go?
+
+If it reads or writes a database table, it is a use case in that table's module: `src/modules/<feature>/use-cases/<verb>-<noun>.ts`. It exports a `createServerFn` server function with its `authorized` middleware, a Zod `validator` and the query or mutation options next to it.
+
+If it is pure data access with no authorization decision, it belongs in that module's `*.accessors.ts` and is called from a use case.
+
+If it touches no table and only one route needs it, define it in that route file. If it is a small request-scoped helper, `src/lib`.
+
+## When do I create a new module?
+
+Normally only when you add a database table. Five modules exist without one — `_core`, `admin-dashboard`, `customer-account`, `customer-activity`, `storefront-search` — and each earns that by grouping operations that read across several tables. A new table-less module needs the same justification.
+
+## Where does a new component go?
+
+`src/presentation/components/custom`. A component shared across areas is a flat file there; a component belonging to one page or area goes under `components/custom/pages/<area>/`. One widget, dialog, form or column definition per file. shadcn primitives live in `components/shadcn` and are not hand-edited.
+
+## How do I pass text into a component?
+
+You don't. The component calls `useTranslations` for its own namespace and reads the text itself. There are no `label` or `title` props, and no component takes data it could fetch through the owning use case's query options.
+
+## How do I add a translation namespace?
+
+Create `messages/en-US/<namespace>.json` and `messages/pl-PL/<namespace>.json` — both, always — then list the namespace in the route's `staticData.namespaces`. A namespace declared without a file throws `Missing translation namespace: messages/<locale>/<namespace>.json` at load time.
+
+## Why does every server-side request read the session from D1?
+
+Better Auth is configured with a 300-second cookie cache, but `getRequestSession` passes `disableCookieCache: true` so a banned or signed-out user cannot ride a cached cookie. The cost is one D1 read per HTTP request, not per call: the lookup is memoized per `Request` in a `WeakMap`, so concurrent loaders and server functions in the same request share it.
+
+## Why is authorization inside the use cases rather than on the routes?
+
+Because a server function is a public HTTP endpoint. It can be called directly, without the route that normally calls it ever being loaded, so a `beforeLoad` guard cannot protect it — and guards also run in the browser. The `authorized` middleware runs on the server, before any database access. Route guards exist for navigation only.
+
+A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` enforces this: every use case with a `createServerFn` must contain `authorized(` unless it is on the 13-entry public allowlist.
+
+## Why are there no database transactions?
+
+D1 has no interactive transactions. `db.batch()` is atomic, so anything that must be all-or-nothing is built as a list of statements and run through `runDrizzleBatch`. Where a read has to happen before the write, the code uses a guarded `UPDATE` — inventory reservation compares on both `version` and `quantityAvailable >= quantity` — plus a unique index that makes the losing branch's `INSERT` fail the whole batch.
+
+## How is money stored?
+
+As integers in the currency's minor unit. `product_variant.price` and `compare_at_price`, and `order.subtotal`, `tax_total`, `shipping_total`, `discount_total` and `total` are all `integer`. `order.currency_code` is a three-character column defaulting to `PLN`. Exponents come from the ISO 4217 table in `src/modules/_core/constants/currency.ts`, so formatting never guesses at two decimal places.
+
+## How does a change in one browser tab reach another admin's screen?
+
+Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 12 for admin, 10 for storefront — and discard messages that do not overlap.
+
+## How do I preview a transactional email?
+
+Run the dev server and open `/dev/emails`. The route is defined in `src/routes/dev.emails.tsx` and renders nothing unless `import.meta.env.DEV`. The templates themselves are in `src/presentation/emails/`, and each one reads its own `emails.*` namespace.
+
+## What is scaffolded but not finished?
+
+Two-factor authentication has the Better Auth plugin and the `two_factor` table but no enrolment flow. Discounts and coupons have a `discount` table that no code path writes. InPost covers parcel-locker discovery only — `fetchPointsByCity` against the public `api-pl-points.easypack24.net` endpoint — with no shipment creation or labels. `order_address` is registered in the Drizzle schema but unused. `/admin/coupons`, `/admin/content`, `/admin/marketing` and `/admin/settings` render from fixtures in `src/data/`. `SENTRY_AUTH_TOKEN` is declared in `.env.example` but nothing reads it.
+
+## How are the docs themselves organized?
+
+`content/docs/<folder>/<slug>.<locale>.mdx`, with a `meta.<locale>.json` per folder listing `pages` in reading order and a translated `title`. Both locales must carry the same slugs. The sidebar is built from the **top-level folders** only, so a page must live one level deep to appear. `bun run content` regenerates `.source/`; `bun run dev` runs it for you.
+
+Pages are plain Markdown. The renderer in `src/presentation/components/custom/docs-mdx.tsx` maps HTML elements only, with no component registry, so custom MDX components are not available.
+
+## Which command do I run before pushing?
+
+```sh
+bun run check
+bun run test
+```
+
+`check` is format, lint and type check; CI then adds `test:coverage` and `build:preview`. The pre-commit hook already runs `vp staged` over changed files, and `prepare-commit-msg` validates the Conventional Commit type and prefixes its emoji.
+
+## Related pages
+
+- [Troubleshooting](/docs/reference/troubleshooting)
+- [Conventions](/docs/reference/conventions)
+- [Getting started](/docs/getting-started)

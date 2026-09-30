@@ -1,0 +1,20 @@
+{
+  "title": "Przewodniki",
+  "pages": [
+    "index",
+    "add-a-module",
+    "add-a-use-case",
+    "server-functions",
+    "forms-and-validation",
+    "add-an-admin-page",
+    "add-a-data-table",
+    "url-state",
+    "i18n-messages",
+    "theming-and-branding",
+    "database-migrations",
+    "seeding-data",
+    "writing-tests",
+    "security-checklist",
+    "local-debugging"
+  ]
+}

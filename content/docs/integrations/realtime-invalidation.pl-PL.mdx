@@ -1,0 +1,224 @@
+---
+title: "Unieważnianie w czasie rzeczywistym"
+description: "Hub w Durable Object, który wypycha unieważnienia cache zapytań do podłączonych przeglądarek."
+---
+
+Zapis na Workerze nie może dosięgnąć cache zapytań w przeglądarce innej osoby. Gdy administrator opublikuje produkt, każdy otwarty sklep powinien to zauważyć, a jego własna lista produktów powinna odświeżyć się w każdej otwartej karcie. Ten adapter jest właśnie tym mechanizmem: kod serwerowy publikuje zbiór prefiksów kluczy zapytań do huba w Durable Object, hub rozsyła je przez WebSocket, a każdy klient unieważnia tylko te zapytania, które faktycznie subskrybuje.
+
+Świadomie _nie_ jest to kanał danych. Przez połączenie przechodzą wyłącznie klucze zapytań — żadnych wierszy, ładunków ani identyfikatorów. Klient, który otrzyma powiadomienie, pobiera dane ponownie przez zwykłe funkcje serwerowe, więc autoryzacja wymuszana jest dokładnie tak jak zawsze.
+
+## Dwa huby
+
+Plik `realtime-invalidation.subscriptions.ts` nazywa je i wypisuje, co każdy z nich niesie:
+
+```ts
+export const REALTIME_INVALIDATION_HUB = { ADMIN: "admin", STOREFRONT: "storefront" } as const
+```
+
+| Hub          | Subskrybowane prefiksy                                                                                                                                                                                    |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — strona i statystyki dziennika audytu, zamówienia panelu, klienci panelu oraz klucze `ALL` i `STATS` kategorii, kolekcji, produktów i atrybutów produktów                |
+| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY` oraz kategorie i kolekcje `ALL` / `BY_HANDLE` |
+
+Obie listy to `as const satisfies readonly QueryKey[]`, więc zmiana nazwy stałej klucza jest błędem typowania, a nie cicho martwą subskrypcją. Podział ma znaczenie zarówno dla prywatności, jak i dla ograniczenia szumu: hub sklepu nigdy nie niesie prefiksu `["admin", …]`, więc przeglądarka klienta nie dowiaduje się niczego o działaniach administratora.
+
+## Protokół
+
+Plik `realtime-invalidation.protocol.ts` to klucz zapytania serializowany jako JSON oraz porównanie prefiksów:
+
+```ts
+export const serializeQueryKeyPrefix = (queryKey: QueryKey): string => JSON.stringify(queryKey)
+
+export const queryKeyPrefixesOverlap = (left: QueryKey, right: QueryKey): boolean => {
+  const length = Math.min(left.length, right.length)
+  for (let index = 0; index < length; index++) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+
+  return true
+}
+```
+
+`queryKeyPrefixesOverlap` porównuje tylko do długości krótszego klucza, więc `["products"]` pokrywa się z `["products", "storefront-page"]` w obie strony. To właśnie pozwala publikującemu podać prefiks szeroki, a subskrybentowi węższy, albo odwrotnie, bez wiedzy żadnej ze stron o dokładnym kształcie drugiej.
+
+Wiadomość na łączu jest minimalna:
+
+```ts
+export interface RealtimeInvalidationPayload {
+  readonly topics: readonly string[]
+  readonly type: typeof REALTIME_INVALIDATION_MESSAGE.INVALIDATE
+}
+```
+
+`isRealtimeInvalidationPayload` waliduje ją strukturalnie na kliencie, a `parseSerializedQueryKeyPrefix` zwraca `undefined`, zamiast rzucać wyjątek przy zniekształconym JSON.
+
+## Publikowanie
+
+Plik `realtime-invalidation.publish.server.ts` adresuje hub po nazwie i wywołuje metodę Durable Object bezpośrednio przez powiązanie RPC:
+
+```ts
+const publishToHub = async (hubName: RealtimeInvalidationHubName, queryKeys: readonly QueryKey[]): Promise<void> => {
+  if (queryKeys.length === 0) {
+    return
+  }
+
+  const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
+  await hub.notifyInvalidation(toSerializedTopicPrefixes(queryKeys))
+}
+```
+
+`getByName` oznacza, że istnieją dokładnie dwie instancje obiektu, po jednej na nazwę huba — i to właśnie umożliwia rozsyłanie.
+
+`publishRealtimeInvalidation({ admin?, storefront? })` publikuje do obu równolegle, a `scheduleRealtimeInvalidation(input)` owija to w `scheduleBackgroundWork`, aby żądanie nie czekało:
+
+```ts
+export const scheduleRealtimeInvalidation = (input: PublishRealtimeInvalidationInput): void => {
+  scheduleBackgroundWork(publishRealtimeInvalidation(input))
+}
+```
+
+Kod serwerowy prawie nigdy nie wywołuje żadnej z tych funkcji bezpośrednio. Plik `realtime-invalidation.catalog.server.ts` dostarcza zamiast tego nazwane intencje:
+
+| Funkcja                                         | Unieważniane klucze panelu                | Unieważniane klucze sklepu                                                                                           |
+| ----------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `scheduleProductCatalogInvalidation()`          | produkty `ALL`, `STATS`                   | produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY` |
+| `scheduleCategoryCatalogInvalidation()`         | kategorie `ALL`, `STATS`                  | kategorie `ALL`, `BY_HANDLE`                                                                                         |
+| `scheduleCollectionCatalogInvalidation()`       | kolekcje `ALL`, `STATS`                   | kolekcje `ALL`, `BY_HANDLE`, produkty `LANDING_NEW_ARRIVALS`                                                         |
+| `scheduleProductAttributeCatalogInvalidation()` | atrybuty produktów `ALL`, `STATS`         | —                                                                                                                    |
+| `scheduleAdminCustomersInvalidation()`          | użytkownicy `CUSTOMERS`, `CUSTOMERS_PAGE` | —                                                                                                                    |
+| `scheduleAdminOrdersInvalidation()`             | zamówienia `ORDERS`                       | —                                                                                                                    |
+
+Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także sklepowy klucz nowości, ponieważ sekcja na stronie startowej napędzana jest kolekcją `nowosci`; a `scheduleProductCatalogInvalidation` unieważnia klucz dostępności koszyka, ponieważ zmiana stanu magazynowego może uczynić pozycję koszyka niemożliwą do kupienia.
+
+### Kto je wywołuje
+
+- **Każda mutacja katalogu.** Wszystkie przypadki użycia `create-`, `update-`, `delete-` i `reorder-` w `src/modules/product/`, `product-category/`, `product-collection/` i `product-attribute/`.
+- **Zamówienie.** `stripe.actions.server.ts` wywołuje `scheduleProductCatalogInvalidation()` przy tworzeniu i aktualizacji sesji, ponieważ rezerwacja towaru zmienia dostępność.
+- **Webhooki.** `stripe.webhooks.tsx` wywołuje `scheduleAdminOrdersInvalidation()` i `scheduleProductCatalogInvalidation()` przy realizacji, zwolnieniu, zwrocie i sporze.
+- **Tożsamość.** `auth.server.ts` wywołuje `scheduleAdminCustomersInvalidation()` z hooków tworzenia, aktualizacji i usuwania użytkownika.
+- **Audyt.** `audit-log.queue.server.ts` i `delete-audit-logs.ts`.
+
+## Durable Object
+
+Plik `src/durable-objects/realtime-invalidation-hub.ts` korzysta z hibernowanych połączeń WebSocket, więc bezczynny hub nic nie kosztuje:
+
+```ts
+export class RealtimeInvalidationHub extends DurableObject<Env> {
+  fetch(request: Request): Response {
+    if (request.headers.get("Upgrade") !== "websocket") {
+      return new Response("Expected WebSocket", { status: HTTP_STATUS.UPGRADE_REQUIRED })
+    }
+
+    const hubName = this.ctx.id.name
+    if (hubName === undefined) {
+      return new Response("Hub name required", { status: HTTP_STATUS.BAD_REQUEST })
+    }
+
+    const { client, server } = splitWebSocketPair(new WebSocketPair())
+    this.ctx.acceptWebSocket(server, [hubName])
+
+    return new Response(undefined, { status: HTTP_STATUS.SWITCHING_PROTOCOLS, webSocket: client })
+  }
+  // …
+}
+```
+
+`acceptWebSocket(server, [hubName])` oznacza każde gniazdo nazwą jego huba, a `notifyInvalidation` pobiera tylko gniazda z tą etykietą przez `ctx.getWebSockets(hubName)`, wracając do wszystkich gniazd, gdyby nazwa okazała się nierozpoznana. Wysyłki owinięte są w puste `try`/`catch`, więc jedno martwe gniazdo nie zatrzyma pętli. `webSocketError` zamyka połączenie kodem 1011.
+
+Klasa rejestrowana jest w dwóch miejscach. `src/server.ts` eksportuje ją ponownie:
+
+```ts
+export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub"
+```
+
+a `wrangler.jsonc` deklaruje powiązanie w każdym środowisku wraz z migracją opartą na SQLite:
+
+```jsonc
+"migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeInvalidationHub"] }],
+"durable_objects": {
+  "bindings": [{ "name": "REALTIME_INVALIDATION_HUB", "class_name": "RealtimeInvalidationHub" }]
+}
+```
+
+## Punkt końcowy podniesienia połączenia
+
+Plik `realtime-invalidation.ws.server.ts` pełni rolę odźwiernego:
+
+```ts
+export const handleRealtimeInvalidationWebSocket = async (request, env, hubName) => {
+  if (request.headers.get("Upgrade") !== "websocket") {
+    return new Response("Expected WebSocket", { status: HTTP_STATUS.UPGRADE_REQUIRED })
+  }
+
+  if (hubName === REALTIME_INVALIDATION_HUB.ADMIN) {
+    const unauthorized = await assertAdminWebSocket(request)
+    if (unauthorized !== undefined) {
+      return unauthorized
+    }
+  }
+
+  const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
+
+  return hub.fetch(request)
+}
+```
+
+Hub panelu wymaga `hasAdminAccess(session?.user.role)`, a w przeciwnym razie zwraca 401. Hub sklepu jest otwarty, i słusznie — rozgłasza wyłącznie publiczne klucze katalogu.
+
+Trasy te obsługiwane są w `src/server.ts` przed handlerem TanStack Start, ponieważ na podniesienie połączenia WebSocket musi odpowiedzieć Durable Object, a nie komponent trasy:
+
+```ts
+if (pathname === ROUTES.API_REALTIME.ADMIN_WS) {
+  return handleRealtimeInvalidationWebSocket(request, env, REALTIME_INVALIDATION_HUB.ADMIN)
+}
+```
+
+Dwie ścieżki to `/api/realtime/admin/ws` i `/api/realtime/storefront/ws`, obie z `ROUTES.API_REALTIME`.
+
+## Klient
+
+Hook `src/hooks/use-realtime-query-sync.ts` utrzymuje połączenie. Używany jest dokładnie dwa razy, po jednym na układ:
+
+```tsx
+// src/routes/_storefront.tsx
+useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.STOREFRONT, subscriptions: STOREFRONT_REALTIME_QUERY_PREFIXES })
+
+// src/routes/admin.tsx
+useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })
+```
+
+Hook buduje `wss://` lub `ws://` z `globalThis.location.protocol`, łączy się, a przy każdej wiadomości parsuje ładunek, dopasowuje każdy temat do listy subskrypcji przez `queryKeyPrefixesOverlap` i unieważnia każde trafienie przez `syncQueryInvalidation` — które rozgłasza je również do pozostałych kart odwiedzającego. Zobacz [TanStack Query](/docs/integrations/tanstack-query).
+
+Ponowne łączenie jest wykładnicze z górnym ograniczeniem:
+
+```ts
+const BASE_RECONNECT_DELAY_MS = 1000
+
+const MAX_RECONNECT_DELAY_MS = 30_000
+
+const RECONNECT_BACKOFF_FACTOR = 2
+```
+
+Udane `open` zeruje licznik prób, funkcja czyszczenia ustawia flagę `disposed`, aby oczekujący licznik czasu nie wskrzesił zamkniętego połączenia, a zniekształcona wiadomość jest pochłaniana. Efekt zależy od `[hub, queryClient, subscriptions]`, a obie tablice subskrypcji są stałymi na poziomie modułu, więc gniazdo otwierane jest raz na zamontowanie układu, a nie przy każdym renderowaniu.
+
+## Dodawanie nowego unieważnienia
+
+1. Upewnij się, że klucz zapytania jest stabilną krotką `as const` w pliku `{feature}.constants.ts` właściwej funkcji.
+2. Dodaj prefiks do `ADMIN_REALTIME_QUERY_PREFIXES` lub `STOREFRONT_REALTIME_QUERY_PREFIXES` w `realtime-invalidation.subscriptions.ts`, aby klienci go nasłuchiwali.
+3. Dodaj nazwaną funkcję `schedule…Invalidation()` w `realtime-invalidation.catalog.server.ts` albo rozszerz istniejącą, której intencja pasuje.
+4. Wywołaj ją z przypadku użycia, po udanym zapisie i przed zwróceniem wyniku.
+5. Nigdy nie wywołuj `publishRealtimeInvalidation` z przypadku użycia z `await` — używaj formy `schedule…`, aby żądanie klienta nie czekało na rozsyłanie.
+
+Prefiks publikowany, ale niesubskrybowany jest po cichu ignorowany przez każdego klienta; prefiks subskrybowany, ale nigdy niepublikowany po prostu nigdy się nie uruchamia. Żaden z tych przypadków nie zawodzi głośno, więc gdy coś się nie odświeża, sprawdź obie listy.
+
+## Testy
+
+Katalog `src/integrations/realtime-invalidation/__test__/` zawiera cztery pliki obejmujące serializację i reguły pokrywania się w protokole, adresowanie huba w publikatorze, listy subskrypcji oraz sprawdzenia podniesienia połączenia i autoryzacji w odźwiernym WebSocket. Katalog `src/durable-objects/__test__/` pokrywa sam hub.
+
+## Powiązane strony
+
+- [TanStack Query](/docs/integrations/tanstack-query)
+- [Czas rzeczywisty](/docs/architecture/realtime-invalidation)
+- [Panel administracyjny](/docs/features/admin-dashboard)

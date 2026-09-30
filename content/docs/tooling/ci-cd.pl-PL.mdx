@@ -1,0 +1,138 @@
+---
+title: "CI/CD"
+description: "Trzy przepływy GitHub Actions, jedna wspólna akcja setup i sposób, w jaki wdrożenie składa sekrety Workera."
+---
+
+`.github/workflows/` zawiera trzy przepływy. Wszystkie trzy instalują zestaw narzędzi przez akcję złożoną `.github/actions/setup` i wszystkie trzy uruchamiają `bun run check`. Tylko jeden z nich uruchamia testy.
+
+| Przepływ                | Wyzwalacz                                               | Co robi                                                             |
+| ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------------- |
+| `ci.yml`                | Każdy pull request; pushe do `main`                     | `check`, `test:coverage`, `build:preview`, wysyła raport pokrycia   |
+| `deploy-preview.yml`    | Pull requesty do `main` (opened, synchronize, reopened) | `check`, potem `deploy:preview`, potem komentarz z adresem podglądu |
+| `deploy-production.yml` | Pushe do `main`                                         | `check`, potem `deploy:production`                                  |
+
+## Akcja setup
+
+`.github/actions/setup/action.yml` to cztery kroki i jedno wejście:
+
+```yaml
+- uses: oven-sh/setup-bun@v2
+  with:
+    bun-version: "1.4.0"
+- uses: voidzero-dev/setup-vp@v1.20.0
+  with:
+    node-version: "24"
+    cache: true
+    run-install: false
+- run: bun install --frozen-lockfile --ignore-scripts
+- run: bun run typegen # gdy test-environment == 'true', poprzedzone kopiowaniem .env.test
+```
+
+Dwa szczegóły mają znaczenie:
+
+- **`--ignore-scripts`** oznacza, że skrypty cyklu życia `prepare` i `postinstall` się nie uruchamiają, więc na runnerze nie instalują się hooki Gita, a `typegen` wywoływany jest jawnie jako osobny krok. `typegen` to `bun run cf-typegen && bun run content`, co zapisuje `src/types/worker-configuration.d.ts` i `.source/`. Oba są w `.gitignore`, a `bun run check` nie wykona kontroli typów bez nich.
+- **`test-environment`** (domyślnie `"false"`) kopiuje `.env.test` na `.env.development` i `.env.preview`, gdy ma wartość `"true"`. `ci.yml` to ustawia; dwa przepływy wdrożeniowe nie, bo wstrzykują prawdziwe wartości jako zmienne środowiskowe.
+
+## ci.yml
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+```
+
+Jedno zadanie, `verify`, z limitem 15 minut, na `ubuntu-latest`, z `persist-credentials: false` przy checkoucie. Kroki to `bun run check`, `bun run test:coverage`, `bun run build:preview` oraz wysłanie `coverage/` jako artefaktu `coverage` z siedmiodniowym okresem przechowywania (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
+
+Krok kompilacji działa na atrapowym `.env.preview`, który akcja setup skopiowała z `.env.test`, i to wystarcza, bo `scripts/verify-build.ts` sprawdza kształt wyniku — konfigurację wdrożenia, nazwę Workera, zmienną `APP_ENV`, obecność fontów, JS-a i CSS-a klienta oraz brak importów `cloudflare:workers` i `node:` w zasobach klienta — a nie wartości jakichkolwiek danych uwierzytelniających.
+
+## Przepływy wdrożeniowe
+
+Oba przepływy wdrożeniowe mają ten sam kształt: `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` na poziomie przepływu, środowisko GitHuba (`preview` albo `production`), akcja setup, `bun run check`, a następnie jeden krok, który tworzy pusty plik środowiska i uruchamia skrypt wdrożeniowy:
+
+```yaml
+run: |
+  touch .env.preview
+  bun run deploy:preview
+```
+
+`touch` istnieje, bo `scripts/prepare-deploy-secrets.ts` czyta ten plik bezwarunkowo; same wartości pochodzą z bloku `env:` tego kroku, który skrypt przedkłada nad plik:
+
+```ts
+const value = process.env[name] ?? values[name]
+```
+
+Współbieżność różni się celowo. Podgląd grupuje po numerze pull requesta i anuluje trwające przebiegi (`preview-${{ github.event.pull_request.number }}`, `cancel-in-progress: true`), więc kolejny push do gałęzi zastępuje jej podgląd. Produkcja używa stałej grupy `production` z `cancel-in-progress: false`, więc pushe do `main` ustawiają się w kolejce, zamiast przerywać się w połowie wdrożenia.
+
+`deploy-preview.yml` bierze dodatkowo `pull-requests: write` i kończy krokiem `actions/github-script@v7`, który publikuje — albo aktualizuje, szukając w istniejących komentarzach napisu `Preview Deployment` — komentarz z odnośnikiem do `https://martebizuteria-preview.pjborowiecki.workers.dev`.
+
+> Przepływy wdrożeniowe uruchamiają `bun run check`, ale **nie** `bun run test:coverage`. Testy działają tylko w `ci.yml`, który jest osobnym przepływem bez relacji blokującej wdrożenia. Push do `main` z niedziałającymi testami i tak wdroży się na produkcję, dopóki formatowanie, lint i typy są w porządku. Jeśli chcesz twardej bramki, to jest rzecz do zmiany.
+
+Podgląd jest jednym wspólnym wdrożeniem: każdy pull request wdraża się na tego samego Workera (`martebizuteria-preview`) opartego na tej samej bazie D1 preview, przestrzeni KV i zasobniku R2, więc na żywo jest ostatnie wdrożenie podglądu.
+
+## Co dokładnie robi wdrożenie
+
+```json
+"deploy:preview": "bun scripts/verify-bindings.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json"
+```
+
+Cztery etapy.
+
+### 1. verify-bindings.ts
+
+Czyta `wrangler.jsonc` dla docelowego środowiska przez `unstable_readConfig` i odmawia kontynuacji, dopóki każdy binding nie jest obecny i prawdziwy:
+
+- binding D1 `DB` z `database_id`, który nie składa się z samych zer i myślników,
+- binding KV `CACHE` z prawdziwym `id`,
+- binding R2 `IMAGES` z `bucket_name`,
+- producent `AUDIT_LOG_QUEUE` **oraz** konsument tej samej kolejki,
+- binding Durable Object `REALTIME_INVALIDATION_HUB`, którego `class_name` to `RealtimeInvalidationHub`.
+
+To ta kontrola wyłapuje zastępczy identyfikator skopiowany między środowiskami.
+
+### 2. kompilacja
+
+`bun run build:preview` usuwa `dist`, odtwarza `.source/`, uruchamia `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `bun scripts/verify-build.ts preview`. `verify-build.ts` czyta `.wrangler/deploy/config.json`, idzie za jego `configPath` i sprawdza, że wskazuje dokładnie na `dist/server/wrangler.json`; że `vars.APP_ENV` skompilowanej konfiguracji odpowiada celowi, a jej `name` to `martebizuteria-preview` (albo `martebizuteria` dla produkcji); że istnieją `main` i `dist/client`; że istnieje `dist/client/fonts`; że `dist/client/assets` zawiera co najmniej jeden plik `.js` i jeden `.css`; a na koniec skanuje każdy plik `.js` klienta przez `new Bun.Transpiler({ loader: "js" })` i przerywa przy jakimkolwiek imporcie `cloudflare:workers` lub modułu `node:`.
+
+### 3. prepare-deploy-secrets.ts
+
+Czyta `secrets.required` z bloku danego środowiska w `wrangler.jsonc`, rozwiązuje każdą nazwę najpierw z `process.env`, a potem z `.env.<środowisko>`, przerywa na pierwszej brakującej lub pustej wartości i zapisuje `.wrangler/secrets.<środowisko>.json` z uprawnieniami `0o600`.
+
+Zapisywane są wyłącznie nazwy zadeklarowane w `wrangler.jsonc`. `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` i `CLOUDFLARE_ACCESS_TOKEN` celowo nie są na tej liście: to dane uwierzytelniające do zarządzania, potrzebne drizzle-kitowi i Wranglerowi, a nie sekrety uruchomieniowe Workera, i wysłanie ich do Workera byłoby wyciekiem uprawnień.
+
+### 4. wrangler deploy
+
+```sh
+env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json
+```
+
+`CLOUDFLARE_ENV` jest dla tej komendy usuwane, bo skompilowany `dist/server/wrangler.json` jest już spłaszczony do jednego środowiska — zostawienie tej zmiennej kazałoby Wranglerowi szukać sekcji środowiska w konfiguracji, która jej już nie ma. Plik sekretów jest wysyłany razem z wdrożeniem, więc dziesięć zadeklarowanych sekretów ustawia się atomowo wraz z nową wersją.
+
+## Konfiguracja repozytorium
+
+| Rodzaj                | Nazwy                                                                                                                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Secrets** w Actions | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| **Vars** w Actions    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                                                                       |
+
+`CLOUDFLARE_ACCESS_TOKEN` jest przekazywany do kroku jako `CLOUDFLARE_API_TOKEN`, bo taką nazwę czyta Wrangler. Oba przepływy wdrożeniowe korzystają ze środowisk GitHuba (`preview`, `production`), więc sekrety można tam zawęzić do środowiska.
+
+`VITE_R2_URL` jest wymieniony w `secrets.required` w `wrangler.jsonc`, ale dostarczany z **vars** Actions, a nie z secrets — to publiczny adres zasobnika, który dodatkowo musi być widoczny dla pakietu klienta przez przedrostek `VITE_`. `prepare-deploy-secrets.ts` czyta go z `process.env`, więc to działa.
+
+## Migracje a CI
+
+Żaden przepływ nie nakłada migracji D1. Przed scaleniem pull requesta, którego kod potrzebuje nowej kolumny, nałóż ją samodzielnie:
+
+```sh
+bun run db:migrate:preview     # zanim wdrożenie podglądu zacznie mieć znaczenie
+bun run db:migrate:production  # przed scaleniem do main
+```
+
+Zobacz [Baza danych](/docs/tooling/database).
+
+## Powiązane strony
+
+- [Skrypty projektu](/docs/tooling/scripts)
+- [Baza danych](/docs/tooling/database)
+- [Testy](/docs/tooling/testing)

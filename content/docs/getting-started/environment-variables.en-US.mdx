@@ -1,0 +1,147 @@
+---
+title: "Environment variables"
+description: "The .env files, which values reach the browser, and which are uploaded as Worker secrets."
+---
+
+## The environment files
+
+| File               | Tracked by Git | Loaded by                                                                                 |
+| ------------------ | -------------- | ----------------------------------------------------------------------------------------- |
+| `.env.example`     | Yes            | Nothing — it is the template you copy                                                     |
+| `.env.development` | No             | `bun run dev` (Vite mode `development`, `CLOUDFLARE_ENV=development`)                     |
+| `.env.preview`     | No             | `bun run build:preview`, `bun run start`, and `scripts/prepare-deploy-secrets.ts preview` |
+| `.env.production`  | No             | `bun run build:production` and `scripts/prepare-deploy-secrets.ts production`             |
+| `.env.test`        | Yes            | `vite.config.ts` via `loadEnv("test", …)` for the Vitest projects, and CI builds          |
+
+`.gitignore` implements exactly that:
+
+```text
+.env*
+!.env.example
+!.env.test
+```
+
+Bun's automatic env loading is switched off, so nothing is ever picked up implicitly:
+
+```toml
+# bunfig.toml
+# Let Vite and Wrangler choose the requested mode. Drizzle scripts opt in with --env-file.
+env = false
+```
+
+That is why every database script names its file explicitly — `bun --env-file=.env.development run drizzle-kit push …`. Vite loads `.env.<mode>` itself, and Wrangler loads the file matching `CLOUDFLARE_ENV` for local Worker secrets.
+
+Start by copying the template and generating a signing secret:
+
+```sh
+cp .env.example .env.development
+openssl rand -base64 48
+```
+
+Use a different `AUTH_SECRET` per environment. It is the Better Auth signing and encryption secret (`secret: env.AUTH_SECRET` in `src/integrations/better-auth/auth.server.ts`), so rotating it invalidates every session.
+
+## Three kinds of value
+
+The distinction matters more here than the list of names does.
+
+**1. Browser-visible build inputs (`VITE_` prefix).** Vite inlines these into the client bundle at build time. Never put a secret behind a `VITE_` name.
+
+| Variable                      | Read at                                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts` — `import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY` |
+| `VITE_R2_URL`                 | `src/lib/url.ts` — the client branch of `getAssetCdnBase()`                                |
+
+**2. Worker secrets.** Declared per environment under `secrets.required` in `wrangler.jsonc` and read on the server with `import { env } from "cloudflare:workers"`. All three environments declare the same ten:
+
+| Secret                      | Read at                                                           |
+| --------------------------- | ----------------------------------------------------------------- |
+| `AUTH_SECRET`               | `src/integrations/better-auth/auth.server.ts`                     |
+| `AUTH_GOOGLE_CLIENT_ID`     | `socialProviders.google` in `auth.server.ts`                      |
+| `AUTH_GOOGLE_CLIENT_SECRET` | `socialProviders.google` in `auth.server.ts`                      |
+| `AUTH_GITHUB_CLIENT_ID`     | `socialProviders.github` in `auth.server.ts`                      |
+| `AUTH_GITHUB_CLIENT_SECRET` | `socialProviders.github` in `auth.server.ts`                      |
+| `RESEND_API_KEY`            | `src/integrations/resend/resend.config.ts`                        |
+| `RESEND_EMAIL_FROM`         | `src/integrations/resend/resend.send.ts`, wrapped as `M'Arte <…>` |
+| `STRIPE_SECRET_KEY`         | `src/integrations/stripe/stripe.server.ts`                        |
+| `STRIPE_WEBHOOK_SECRET`     | `src/routes/api/webhooks.stripe.ts`, for signature verification   |
+| `VITE_R2_URL`               | `src/lib/url.ts` — the server branch of `getAssetCdnBase()`       |
+
+`VITE_R2_URL` is deliberately in both lists. It is not a secret; it is the public R2 base URL, and both the SSR render and the browser need it, so it is uploaded as a Worker binding _and_ inlined into the client bundle.
+
+**3. Local tooling credentials.** These are never uploaded. `scripts/prepare-deploy-secrets.ts` copies only the names under `secrets.required`, and its comment says why:
+
+```ts
+// Only declared Worker bindings are uploaded; Cloudflare management tokens stay local.
+```
+
+| Variable                  | Used by                                                                     |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID`   | `src/integrations/drizzle-orm/drizzle.config.ts`, D1 HTTP driver            |
+| `CLOUDFLARE_DATABASE_ID`  | The same — which database `db:push`, `db:studio` and `db:introspect` target |
+| `CLOUDFLARE_ACCESS_TOKEN` | The same, as the API token                                                  |
+
+All three are read through `process.env` in the Drizzle config and default to `""`, so a missing value surfaces as an authentication failure from the D1 HTTP API rather than a clear error.
+
+## Plain vars, not secrets
+
+`wrangler.jsonc` also sets one plain variable per environment:
+
+```jsonc
+"vars": {
+  "APP_ENV": "preview",
+},
+```
+
+`APP_ENV` is read in `src/server.ts` to decide what `robots.txt` says, and `scripts/verify-build.ts` asserts that the built Worker's `APP_ENV` matches the environment you asked for. That is the guard that stops a preview build being deployed to production.
+
+## Values that live in code, not in the environment
+
+Several settings people expect to find in `.env` are constants:
+
+| What                                                                         | Where                                                   |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, OG image, theme colour, R2 fallback URL | `src/presentation/branding/app.ts`                      |
+| Legal name, NIP, REGON, address, phone, opening hours                        | `src/presentation/branding/business.ts`                 |
+| Facebook and Instagram links                                                 | `src/presentation/branding/socials.ts`                  |
+| Hosts Better Auth accepts per mode                                           | `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts` |
+| Supported locales, default locale, locale cookie name, timezones             | `src/integrations/use-intl/i18n.config.ts`              |
+| D1, R2, KV and Queue identifiers, Worker names                               | `wrangler.jsonc`                                        |
+
+`appHostsForMode` is the one to remember when you change domains:
+
+```ts
+const HOSTS_BY_MODE: Readonly<Record<string, readonly string[]>> = {
+  preview: [`preview.${APP_DOMAIN}`, "martebizuteria-preview.pjborowiecki.workers.dev"],
+  production: [APP_DOMAIN, "martebizuteria.pjborowiecki.workers.dev"],
+}
+
+const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]
+```
+
+Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. A host missing from this list will have its auth requests rejected, which looks like sign-in silently failing on a new domain.
+
+## Provider callbacks to register
+
+| Provider | URL                                       | Verified with           |
+| -------- | ----------------------------------------- | ----------------------- |
+| Google   | `https://<host>/api/auth/callback/google` | Client id and secret    |
+| GitHub   | `https://<host>/api/auth/callback/github` | Client id and secret    |
+| Stripe   | `https://<host>/api/webhooks/stripe`      | `STRIPE_WEBHOOK_SECRET` |
+
+The auth handler is `src/routes/api/auth.$.ts`, mounted at `/api/auth/$`; the Stripe handler is `src/routes/api/webhooks.stripe.ts` and accepts `POST` only.
+
+## Declared but not wired
+
+Three names exist in the repository without a matching consumer. They are listed here so you do not spend time hunting for the code that reads them:
+
+| Name                    | Where it appears                                                             | Status                                                                                                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SENTRY_AUTH_TOKEN`     | `.env.example` and the local `.env` files                                    | Nothing in `src/` references Sentry. Error reporting is not implemented                                                                                     |
+| `VITE_APP_URL`          | `env:` in `.github/workflows/deploy-preview.yml` and `deploy-production.yml` | Not in `.env.example`, not a declared secret, and not read anywhere in `src/`. The canonical URL comes from `APP_URL` in `src/presentation/branding/app.ts` |
+| `VITE_IMAGE_CDN_DOMAIN` | Read in `src/lib/image.ts` by `resolveImageCdnDomain()`                      | Absent from `.env.example`. When unset it falls back to the hostname of `APP_URL`, which is the normal case                                                 |
+
+## Related
+
+- [Deploy a preview](/docs/getting-started/deploy-preview) — how these values reach Cloudflare
+- [Tooling](/docs/tooling) — environments, bindings and Wrangler in depth
+- [Reference](/docs/reference) — the full variable table

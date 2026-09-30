@@ -14,6 +14,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as StorefrontIndexRouteImport } from './routes/_storefront.index'
 import { Route as StorefrontAboutRouteImport } from './routes/_storefront.about'
 import { Route as StorefrontCartRouteImport } from './routes/_storefront.cart'
@@ -42,6 +43,8 @@ import { Route as AuthSignInRouteImport } from './routes/auth.sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/auth.sign-up'
 import { Route as CheckoutIndexRouteImport } from './routes/checkout.index'
 import { Route as DevEmailsRouteImport } from './routes/dev.emails'
+import { Route as DocsIndexRouteImport } from './routes/docs.index'
+import { Route as DocsSplatRouteImport } from './routes/docs.$'
 import { Route as StorefrontBlogIndexRouteImport } from './routes/_storefront.blog.index'
 import { Route as StorefrontBlogSlugRouteImport } from './routes/_storefront.blog.$slug'
 import { Route as StorefrontCategoriesIndexRouteImport } from './routes/_storefront.categories.index'
@@ -92,6 +95,11 @@ const AuthRoute = AuthRouteImport.update({
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StorefrontIndexRoute = StorefrontIndexRouteImport.update({
@@ -235,6 +243,16 @@ const DevEmailsRoute = DevEmailsRouteImport.update({
   id: '/dev/emails',
   path: '/dev/emails',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => DocsRoute,
 } as any)
 const StorefrontBlogIndexRoute = StorefrontBlogIndexRouteImport.update({
   id: '/blog/',
@@ -389,6 +407,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/checkout': typeof CheckoutRouteWithChildren
+  '/docs': typeof DocsRouteWithChildren
   '/about': typeof StorefrontAboutRoute
   '/cart': typeof StorefrontCartRoute
   '/exchanges-and-returns': typeof StorefrontExchangesAndReturnsRoute
@@ -413,9 +432,11 @@ export interface FileRoutesByFullPath {
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/emails': typeof DevEmailsRoute
+  '/docs/$': typeof DocsSplatRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/checkout/': typeof CheckoutIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/blog/$slug': typeof StorefrontBlogSlugRoute
   '/categories/$handle': typeof StorefrontCategoriesHandleRoute
   '/collections/$handle': typeof StorefrontCollectionsHandleRoute
@@ -469,10 +490,12 @@ export interface FileRoutesByTo {
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/emails': typeof DevEmailsRoute
+  '/docs/$': typeof DocsSplatRoute
   '/': typeof StorefrontIndexRoute
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
   '/checkout': typeof CheckoutIndexRoute
+  '/docs': typeof DocsIndexRoute
   '/blog/$slug': typeof StorefrontBlogSlugRoute
   '/categories/$handle': typeof StorefrontCategoriesHandleRoute
   '/collections/$handle': typeof StorefrontCollectionsHandleRoute
@@ -504,6 +527,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/checkout': typeof CheckoutRouteWithChildren
+  '/docs': typeof DocsRouteWithChildren
   '/_storefront/about': typeof StorefrontAboutRoute
   '/_storefront/cart': typeof StorefrontCartRoute
   '/_storefront/exchanges-and-returns': typeof StorefrontExchangesAndReturnsRoute
@@ -528,10 +552,12 @@ export interface FileRoutesById {
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/emails': typeof DevEmailsRoute
+  '/docs/$': typeof DocsSplatRoute
   '/_storefront/': typeof StorefrontIndexRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/checkout/': typeof CheckoutIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/_storefront/blog/$slug': typeof StorefrontBlogSlugRoute
   '/_storefront/categories/$handle': typeof StorefrontCategoriesHandleRoute
   '/_storefront/collections/$handle': typeof StorefrontCollectionsHandleRoute
@@ -568,6 +594,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/checkout'
+    | '/docs'
     | '/about'
     | '/cart'
     | '/exchanges-and-returns'
@@ -592,9 +619,11 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/dev/emails'
+    | '/docs/$'
     | '/account/'
     | '/admin/'
     | '/checkout/'
+    | '/docs/'
     | '/blog/$slug'
     | '/categories/$handle'
     | '/collections/$handle'
@@ -648,10 +677,12 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/dev/emails'
+    | '/docs/$'
     | '/'
     | '/account'
     | '/admin'
     | '/checkout'
+    | '/docs'
     | '/blog/$slug'
     | '/categories/$handle'
     | '/collections/$handle'
@@ -682,6 +713,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/checkout'
+    | '/docs'
     | '/_storefront/about'
     | '/_storefront/cart'
     | '/_storefront/exchanges-and-returns'
@@ -706,10 +738,12 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/dev/emails'
+    | '/docs/$'
     | '/_storefront/'
     | '/account/'
     | '/admin/'
     | '/checkout/'
+    | '/docs/'
     | '/_storefront/blog/$slug'
     | '/_storefront/categories/$handle'
     | '/_storefront/collections/$handle'
@@ -745,6 +779,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   CheckoutRoute: typeof CheckoutRouteWithChildren
+  DocsRoute: typeof DocsRouteWithChildren
   DevEmailsRoute: typeof DevEmailsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
@@ -785,6 +820,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_storefront/': {
@@ -982,6 +1024,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dev/emails'
       preLoaderRoute: typeof DevEmailsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/_storefront/blog/': {
       id: '/_storefront/blog/'
@@ -1379,12 +1435,25 @@ const CheckoutRouteWithChildren = CheckoutRoute._addFileChildren(
   CheckoutRouteChildren,
 )
 
+interface DocsRouteChildren {
+  DocsSplatRoute: typeof DocsSplatRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+}
+
+const DocsRouteChildren: DocsRouteChildren = {
+  DocsSplatRoute: DocsSplatRoute,
+  DocsIndexRoute: DocsIndexRoute,
+}
+
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   StorefrontRoute: StorefrontRouteWithChildren,
   AccountRoute: AccountRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   CheckoutRoute: CheckoutRouteWithChildren,
+  DocsRoute: DocsRouteWithChildren,
   DevEmailsRoute: DevEmailsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,

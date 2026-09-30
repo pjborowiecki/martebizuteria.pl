@@ -1,0 +1,153 @@
+---
+title: "TanStack Query"
+description: "The per-request QueryClient, query keys, loader prefetching and cross-tab invalidation."
+---
+
+TanStack Query is the only data cache in the application. Route loaders prime it on the server, components read it on the client, mutations invalidate it, and two separate channels push invalidations in from outside: a `BroadcastChannel` between tabs and a WebSocket hub from the Worker.
+
+## One client per request
+
+`getRouter()` in `src/router.tsx` builds a fresh `QueryClient` for every request, so nothing leaks between visitors on the Worker:
+
+```tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: FIVE_MINS_IN_MS,
+      staleTime: ONE_MIN_IN_MS,
+    },
+  },
+})
+```
+
+`setupRouterSsrQueryIntegration({ queryClient, router })` dehydrates whatever the loaders fetched into the SSR payload and rehydrates it in the browser, so a loader's work is not repeated on hydration. The client is exposed through the router context as `context.queryClient`, which is how loaders reach it.
+
+## Query options live with the use case
+
+There is no central query registry. Each feature exports its query options from the same file as the server function they call, in `src/modules/{feature}/use-cases/{verb-noun}.ts`:
+
+```ts
+export const getCategories = createServerFn({ method: "GET" })
+  .middleware([withRequest])
+  .handler(async () => {
+    /* … */
+  })
+
+export const getCategoriesQuery = () =>
+  queryOptions({
+    queryFn: () => getCategories(),
+    queryKey: CATEGORY_QUERY_KEYS.ALL,
+    staleTime: CATEGORY_QUERY_STALE_MS,
+  })
+```
+
+Loaders, components and cache operations all use that same `getCategoriesQuery()`, so a key and a stale time are never written twice. Infinite lists use `infiniteQueryOptions` the same way — `getStorefrontProductsPageQuery(search, scope)` in `src/modules/product/use-cases/get-storefront-products-page.ts` derives its key from the normalized search object:
+
+```ts
+queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, effective],
+getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+  (!filtered && lastPage.hasMore ? lastPageParam + LIST_PAGE_STEP : undefined),
+initialPageParam: LIST_PAGE_FIRST,
+```
+
+## Query keys
+
+Keys belong to the feature that owns the data, in `src/modules/{feature}/{feature}.constants.ts`, as `as const` tuples:
+
+```ts
+export const PRODUCT_QUERY_KEYS = {
+  ADMIN: {
+    ALL: ["admin", "products"] as const,
+    BY_HANDLE: ["admin", "products", "by-handle"] as const,
+    PAGE: ["admin", "products", "page"] as const,
+    STATS: ["admin", "products", "stats"] as const,
+  },
+  ALL: ["products"] as const,
+  BY_HANDLE: ["product"] as const,
+  LANDING_NEW_ARRIVALS: ["products", "landing-new-arrivals"] as const,
+  RELATED_BY_CATEGORY: ["related-products"] as const,
+  STOREFRONT_PAGE: ["products", "storefront-page"] as const,
+} as const
+```
+
+The `ADMIN` sub-object prefixes every admin key with `"admin"`, which is what lets the two realtime hubs invalidate disjoint sets of keys. Mutation keys live beside them as `PRODUCT_MUTATION_KEYS`. When you move code, preserve the tuple values: a changed key silently orphans cache entries and breaks the prefix matching described below.
+
+## Prefetching in loaders
+
+Loaders call `queryClient.query(...)` for a single query and `queryClient.infiniteQuery(...)` for a paginated one, then let the component subscribe to the already-warm cache. `src/presentation/components/custom/pages/products-catalog/products-catalog.loader.ts` shows the shape:
+
+```ts
+const [infiniteData] = await Promise.all([
+  queryClient.infiniteQuery(getStorefrontProductsPageQuery(normalizedSearch, scope)),
+  scope?.categoryHandle === undefined ? queryClient.query({ ...getCategoriesQuery(), staleTime: "static" }) : undefined,
+  scope?.collectionHandle === undefined ? queryClient.query({ ...getCollectionsQuery(), staleTime: "static" }) : undefined,
+])
+```
+
+`staleTime: "static"` marks the categories and collections as reference data that should not refetch on this navigation. The first page's thumbnails are then handed to `prefetchProductThumbnails` so the image requests start before the component mounts.
+
+## Message loading
+
+Translations use the same cache. `messagesQueryOptions` in `src/integrations/use-intl/i18n.messages.ts` sets both `staleTime` and `gcTime` to `Infinity`, because a JSON namespace never changes within a deployment:
+
+```ts
+queryOptions({
+  gcTime: Infinity,
+  queryFn: () => loadNamespace<TMessages>({ locale, namespace }),
+  queryKey: [MESSAGES_QUERY_KEY, locale, namespace],
+  staleTime: Infinity,
+})
+```
+
+`TranslationsProvider` reads them with `useSuspenseQueries` and combines the results into one message tree. See [use-intl](/docs/integrations/use-intl).
+
+## The session query
+
+`src/integrations/better-auth/auth.session.ts` exports `getCurrentSessionQuery`, which deliberately opts out of background refetching so a signed-in header does not flicker:
+
+```ts
+export const getCurrentSessionQuery = queryOptions({
+  queryFn: () => getCurrentSession(),
+  queryKey: SESSION_QUERY_KEYS.CURRENT,
+  refetchOnReconnect: false,
+  refetchOnWindowFocus: false,
+  retry: false,
+  staleTime: SESSION_STALE_TIME_MS,
+})
+```
+
+## Cross-tab invalidation
+
+`src/integrations/tanstack-query/query.sync.ts` is the only file in the `tanstack-query` folder. It mirrors invalidations across browser tabs of the same origin over a `BroadcastChannel` named `marte-query-invalidation`:
+
+```ts
+export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryKey): Promise<void> => {
+  const invalidation = queryClient.invalidateQueries({ queryKey, refetchType: "all" })
+
+  try {
+    getInvalidationChannel()?.postMessage({ queryKey })
+  } catch {
+    return invalidation
+  }
+
+  return invalidation
+}
+```
+
+`setupQueryClientInvalidationBroadcast(queryClient)` installs the listener, and `src/router.tsx` calls it once per client, guarded by `if (!import.meta.env.SSR)`. Both functions are defensive: `getInvalidationChannel` returns `undefined` when `document` or `BroadcastChannel` is missing, a `WeakSet` prevents a duplicate listener on the same client, and the message handler ignores anything without an array `queryKey`.
+
+Use `syncQueryInvalidation` rather than `queryClient.invalidateQueries` whenever the change should be visible in the customer's other tabs — a cart change, an address change, a placed order.
+
+## Server-pushed invalidation
+
+Writes on the Worker cannot reach a browser's cache directly. They publish a set of query-key prefixes into a Durable Object hub, which fans them out over WebSocket to every connected client; `useRealtimeQuerySync` matches the prefixes against the layout's subscription list and calls `syncQueryInvalidation` for each match, which then also fans out to the other tabs. The whole mechanism is documented in [Realtime invalidation](/docs/integrations/realtime-invalidation).
+
+## Devtools
+
+`ReactQueryDevtools` is rendered from the router's `Wrap` under `import.meta.env.DEV` only, so it is never shipped to preview or production.
+
+## Related pages
+
+- [Architecture](/docs/architecture)
+- [Realtime invalidation](/docs/integrations/realtime-invalidation)
+- [TanStack Start](/docs/integrations/tanstack-start)

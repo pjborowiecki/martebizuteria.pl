@@ -1,0 +1,216 @@
+---
+title: "Dodawanie modułu"
+description: "Utwórz moduł funkcjonalny: tabelę Drizzle, schematy Zod, stałe, typy, akcesory i przypadki użycia."
+---
+
+Moduł to jedna funkcjonalność zbudowana wokół jednej tabeli bazy danych. Mieszka w `src/modules/{feature}/` i jest właścicielem wszystkiego, co jest prawdą o tej tabeli: jej kolumn, reguł walidacji, kluczy zapytań, typów wierszy i operacji. W `src/modules/` jest obecnie 36 modułów. Najmniejszy kompletny moduł, od którego warto zacząć lekturę, to `src/modules/address`; najbogatszy to `src/modules/product`.
+
+Logika serwerowa, która nie należy do żadnej tabeli, nie dostaje modułu. Funkcje pomocnicze związane z żądaniem trafiają do `src/lib/`, adaptery dostawców do `src/integrations/{vendor}/`, a wspólne elementy potrzebne wielu modułom do `src/modules/_core/`.
+
+## Pliki
+
+| Plik                       | Zawartość                                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `{feature}.schema.ts`      | Tabela Drizzle `sqliteTable`, jej indeksy i `relations(...)`                                             |
+| `{feature}.zod.ts`         | Schematy insert/select/update z `drizzle-zod` plus po jednym ręcznym schemacie wejścia na operację       |
+| `{feature}.constants.ts`   | Krotki kluczy zapytań i mutacji, limity długości kolumn, krotki wartości wyliczeniowych, czasy świeżości |
+| `{feature}.types.ts`       | Typy wierszy wywnioskowane z tabeli, eksportowane jako jeden interfejs na moduł                          |
+| `{feature}.utils.ts`       | Czyste funkcje — mapowanie wierszy, normalizacja, wyznaczanie etykiet                                    |
+| `{feature}.accessors.ts`   | Wielokrotnie używane odczyty i zapisy do bazy, które niosą prawdziwe zachowanie                          |
+| `{feature}.*.server.ts`    | Funkcje wyłącznie serwerowe: zapytania przygotowane, budowniki filtrów, ładowanie agregatów              |
+| `use-cases/{verb-noun}.ts` | Jedna funkcja serwerowa na plik, razem z opcjami zapytania lub mutacji                                   |
+| `__test__/`                | Testy nazwane od pliku źródłowego                                                                        |
+
+Nie każdy moduł potrzebuje wszystkich plików. `src/modules/payment` ma tylko `payment.schema.ts` i `payment.accessors.ts`, bo nic więcej nie jest o nim jeszcze prawdą.
+
+## 1. Zdefiniuj tabelę
+
+`src/modules/address/address.schema.ts` pokazuje cały wzorzec na jednym ekranie:
+
+```ts
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
+
+import { user } from "~/src/modules/user/user.schema"
+
+export const address = sqliteTable(
+  "address",
+  {
+    address1: text("address1", { length: 512 }).notNull(),
+    address2: text("address2", { length: 512 }),
+    city: text("city", { length: 256 }).notNull(),
+    countryCode: text("country_code", { length: 2 }).notNull(),
+    id: text("id").primaryKey(),
+    isDefault: integer("is_default", { mode: "boolean" }).default(false).notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    ...timestamps(),
+  },
+  (table) => [index("address_userId_idx").on(table.userId), index("address_userId_isDefault_idx").on(table.userId, table.isDefault)],
+)
+
+export const addressRelations = relations(address, ({ one }) => ({
+  user: one(user, {
+    fields: [address.userId],
+    references: [user.id],
+  }),
+}))
+```
+
+Konwencje obowiązujące w całym schemacie:
+
+- Nazwy kolumn zapisujemy w snake_case, a właściwości TypeScriptu w camelCase. Właściwości są posortowane alfabetycznie, a `...timestamps()` jest na końcu — kolejność wymusza reguła `sort-keys` Oxfmta.
+- `id` to klucz główny typu `text` wypełniany przez `v7()` z pakietu `uuid` (w większości plików importowany jako `v7 as uuidv7`). Nigdy nie pozwalamy generować go SQLite.
+- `createdAt` i `updatedAt` pochodzą z `timestamps()` w `src/integrations/drizzle-orm/drizzle.utils.ts`. Oba to `integer(..., { mode: "timestamp_ms" })` z domyślną wartością `(unixepoch() * 1000)`, a `updatedAt` dodatkowo ma `$onUpdateFn(() => new Date())`.
+- Wartości logiczne to `integer(..., { mode: "boolean" })`.
+- Klucze obce używają `.references(() => other.id, { onDelete: "cascade" })`, a `relations(...)` deklaruje złączenia, którymi może chodzić `db.query.<table>`.
+- Nazwy indeksów mają wzór `<table>_<column>_idx`, a złożone wymieniają wszystkie kolumny: `address_userId_isDefault_idx`.
+
+## 2. Zarejestruj tabelę
+
+`src/integrations/drizzle-orm/drizzle.schemas.ts` to jedyny plik czytany przez klienta Drizzle i przez drizzle-kit. Wyeksportuj tam tabelę i jej relacje:
+
+```ts
+export { address, addressRelations } from "~/src/modules/address/address.schema"
+```
+
+Kolejność w tym pliku to kolejność zależności — `user` przed `address`, `product` przed `productVariant` — więc dopisz swój eksport obok tabel, do których się odwołuje. Bez tej linii tabela jest niewidoczna dla `db.query`, dla `bun run db:generate` i dla `bun run db:push`.
+
+## 3. Napisz schematy Zod
+
+`{feature}.zod.ts` importuje `zod/v4` (nie samo `zod`) i buduje schematy generowane przez `createSchemaFactory`, żeby kształty generowane i pisane ręcznie pochodziły z tej samej instancji Zoda:
+
+```ts
+import { createSchemaFactory } from "drizzle-zod"
+import zod from "zod/v4"
+
+import { address } from "~/src/modules/address/address.schema"
+
+export const COUNTRY_CODE_LENGTH = 2
+
+const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
+  zodInstance: zod,
+})
+
+export const addressZodSchemas = {
+  insert: createInsertSchema(address),
+  select: createSelectSchema(address),
+  update: createUpdateSchema(address),
+}
+
+export const addressFieldsSchema = zod.object({
+  address1: zod.string().min(1),
+  city: zod.string().min(1),
+  countryCode: zod.string().length(COUNTRY_CODE_LENGTH),
+  isDefault: zod.boolean().optional(),
+})
+
+export const addressIdInputSchema = zod.object({ addressId: zod.string().min(1) })
+```
+
+Gotowe budowniki pól leżą w `src/modules/_core/utils/zod-fields.ts`: `idField`, `uuidField`, `handleField`, `localeField`, `searchTermField`, `pageField`, `pageSizeField`, `dateColumnFilterField`, `numericColumnFilterField` i `dateTimeColumnFilterField`. Używaj ich, zamiast powtarzać to samo `zod.string().trim().min(1)`.
+
+Większe moduły grupują wszystko w jednym eksportowanym obiekcie — `productCategoryZodSchemas` w `src/modules/product-category/product-category.zod.ts` udostępnia `createInput`, `updateInput`, `formValues` i inne — a limity długości biorą ze pliku stałych, żeby schemat i kolumna nigdy się nie rozjechały:
+
+```ts
+const categoryCreateInputSchema = zod.object({
+  handle: zod.string().trim().min(CATEGORY_MIN_LENGTH).regex(CATEGORY_HANDLE_PATTERN),
+  status: zod.enum(CATEGORY_STATUSES),
+  titles: categoryTitlesSchema,
+})
+```
+
+## 4. Zadeklaruj stałe
+
+`{feature}.constants.ts` przechowuje wartości, co do których pozostałe warstwy muszą się zgadzać. Nic w tym pliku nie powinno importować z `src/presentation` — `product-category.constants.ts` importuje `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX`, ale to wyjątek, nie wzorzec.
+
+```ts
+export const ADDRESS_QUERY_KEYS = {
+  ALL: ["userAddresses"] as const,
+} as const
+
+export const ADDRESS_MUTATION_KEYS = {
+  DELETE: ["address", "deleteUserAddress"] as const,
+  SET_DEFAULT: ["address", "setDefaultUserAddress"] as const,
+} as const
+```
+
+Moduły z powierzchnią administracyjną zagnieżdżają grupę `ADMIN`, bo cache panelu i cache witryny sklepowej unieważnia się niezależnie:
+
+```ts
+export const CATEGORY_QUERY_KEYS = {
+  ADMIN: {
+    ALL: ["admin", "categories"] as const,
+    STATS: ["admin", "categories", "stats"] as const,
+  },
+  ALL: ["categories"] as const,
+  BY_HANDLE: ["category"] as const,
+} as const
+```
+
+Klucze zapytań są publicznym kontraktem modułu. `src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts` wymienia je, żeby zdecydować, co unieważnia wiadomość WebSocket, więc przenosząc kod zachowaj wartości krotek bez zmian. Tutaj trzymamy również krotki wartości wyliczeniowych (`CATEGORY_STATUSES`), limity kolumn (`CATEGORY_COLUMN_LENGTH`), wzorce (`CATEGORY_HANDLE_PATTERN`) i czasy świeżości (`CATEGORY_QUERY_STALE_MS`).
+
+## 5. Wywnioskuj typy
+
+`{feature}.types.ts` eksportuje jeden interfejs na moduł i wyprowadza każdy jego element z tabeli albo ze schematu. Nie ma tu ręcznie pisanych kształtów wierszy:
+
+```ts
+import { type address } from "~/src/modules/address/address.schema"
+
+export interface Address {
+  insert: typeof address.$inferInsert
+  select: typeof address.$inferSelect
+}
+```
+
+Konsumenci piszą wtedy `Address["select"]`. Bogatsze moduły dodają elementy pochodne — `ProductCategory["adminListItem"]` i `ProductCategory["formValues"]` to właśnie to, czym posługują się tabela i formularz w panelu.
+
+## 6. Dodaj akcesory, jeśli niosą zachowanie
+
+`{feature}.accessors.ts` jest dla pracy z bazą, której potrzebuje więcej niż jedno miejsce, albo która jest zbyt złożona, żeby siedzieć wewnątrz handlera. `src/modules/address/address.accessors.ts` jest dobrym przykładem: `setDefaultUserAddress` musi wyczyścić poprzedni adres domyślny przed ustawieniem nowego, a `updateUserAddress` musi zawęzić zarówno odczyt, jak i zapis do `userId`:
+
+```ts
+export const setDefaultUserAddress = async (userId: string, addressId: string): Promise<boolean> => {
+  const existing = await db
+    .select()
+    .from(address)
+    .where(and(eq(address.id, addressId), eq(address.userId, userId)))
+    .limit(1)
+  if (existing[0] === undefined) {
+    return false
+  }
+  await clearDefaultAddressesForUser(userId)
+  await db
+    .update(address)
+    .set({ isDefault: true })
+    .where(and(eq(address.id, addressId), eq(address.userId, userId)))
+  return true
+}
+```
+
+Akcesory zwracają wartości domenowe — wiersz, `undefined`, wartość logiczną — i nie rzucają `AppError`. Zamiana `false` na `NOT_FOUND` to zadanie przypadku użycia. Jednoinstrukcyjny odczyt potrzebny tylko jednemu przypadkowi użycia nie zasługuje na akcesor — zostaw go w handlerze.
+
+## 7. Napisz przypadki użycia
+
+Jedna operacja na plik w `use-cases/`, nazwana `{verb-noun}.ts`: `create-user-address.ts`, `list-user-addresses.ts`, `set-default-user-address.ts`. Pełny przepis znajdziesz w [Dodawaniu przypadku użycia](/docs/guides/add-a-use-case).
+
+## 8. Wygeneruj migrację
+
+Kiedy tabela jest już w `drizzle.schemas.ts`:
+
+```sh
+bun run db:generate
+```
+
+To zapisze nowy plik SQL w `src/integrations/drizzle-orm/migrations/` oraz snapshot w `migrations/meta/`. Przeczytaj wygenerowany SQL przed zastosowaniem — SQLite nie potrafi zmienić większości definicji kolumn w miejscu, a D1 ma własne ograniczenia. [Migracje bazy danych](/docs/guides/database-migrations) opisują ich stosowanie i pisanie ręczne.
+
+## 9. Przetestuj
+
+Dodaj `__test__/{feature}.schema.test.ts` i `__test__/{feature}.zod.test.ts` dla powierzchni modułu oraz `use-cases/__test__/` dla operacji. `src/modules/address/use-cases/__test__/address-use-cases.test.ts` pokrywa wszystkie pięć operacji adresowych w jednym pliku, co jest konwencją dla małych modułów. [Pisanie testów](/docs/guides/writing-tests) wyjaśnia trzy projekty Vitest i funkcje pomocnicze do mockowania.
+
+## Powiązane przewodniki
+
+- [Dodawanie przypadku użycia](/docs/guides/add-a-use-case)
+- [Funkcje serwerowe](/docs/guides/server-functions)
+- [Migracje bazy danych](/docs/guides/database-migrations)

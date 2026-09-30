@@ -1,0 +1,141 @@
+---
+title: "Modules and use cases"
+description: "How a feature module is laid out, what each file suffix means, and the shape every use case follows."
+---
+
+## The 36 modules
+
+```text
+_core                   address                 admin-dashboard
+account                 attribute-on-product    audit-log
+cart                    cart-item               category-on-product
+checkout                collection-on-product   courier
+customer-account        customer-activity       delivery-method
+discount                inventory               option-on-variant
+order                   order-address           order-item
+payment                 product                 product-attribute
+product-category        product-collection      product-image
+product-option          product-option-value    product-variant
+rate-limit              session                 storefront-search
+two-factor              user                    verification
+```
+
+31 of them export a Drizzle table, and `src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports all 31 so that the Drizzle client, the Better Auth adapter and `drizzle-kit` see one schema registry. `admin-dashboard`, `customer-account`, `customer-activity` and `storefront-search` are read models over other modules' tables and have no schema of their own; `_core` is the shared kernel.
+
+## File suffixes
+
+| File                       | Contains                                                                   |
+| -------------------------- | -------------------------------------------------------------------------- |
+| `<feature>.schema.ts`      | The `sqliteTable` definition, its indexes and its `relations`              |
+| `<feature>.zod.ts`         | Input schemas shared by react-hook-form and the server function validators |
+| `<feature>.constants.ts`   | Query keys, mutation keys, enums, page sizes, stale times, column metadata |
+| `<feature>.types.ts`       | Row and input types derived from the schema and the Zod shapes             |
+| `<feature>.utils.ts`       | Pure helpers with no database or request access                            |
+| `<feature>.accessors.ts`   | Data access: Drizzle queries, prepared statements, batch builders          |
+| `<feature>.*.server.ts`    | Server-only helpers that are not RPC endpoints                             |
+| `use-cases/<verb-noun>.ts` | One `createServerFn` plus the query or mutation options that call it       |
+
+`order` is a good module to read end to end: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.display.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.settled.server.ts`, `order.audit.utils.ts`, `order.admin-list-filters.ts` and nine files under `use-cases/`.
+
+## A mutation use case
+
+```ts
+export const shipOrder = createServerFn({ method: "POST" })
+  .middleware([authorized({ order: ["update"] })])
+  .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
+  .handler(async ({ data: { orderId } }) => {
+    assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
+      canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
+    )
+
+    await db.update(order).set({ fulfillmentStatus: "shipped", shippedAt: new Date(), updatedAt: new Date() }).where(eq(order.id, orderId))
+
+    recordOrderShippedAudit(orderId)
+    scheduleBackgroundWork(notifyOrderShipped(orderId))
+
+    return { ok: true, orderId }
+  })
+
+export const shipOrderMutation = mutationOptions({
+  mutationFn: (data: Parameters<typeof shipOrder>[0]["data"]) => shipOrder({ data }),
+  mutationKey: ORDER_MUTATION_KEYS.SHIP,
+})
+```
+
+Every part of that is load-bearing:
+
+- **Middleware** comes from `src/integrations/better-auth/auth.middleware.ts`. `withRequest` captures the request headers and normalizes errors; `authorized()` requires a session; `authorized({ order: ["update"] })` also checks the role's permission from `auth.access.ts`; `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` counts attempts per operation and IP.
+- **Validation** parses the input with the module's Zod schema before the handler runs, so the handler receives `zod.output` types.
+- **State guards** live in the module, not the component. `assertOrderActionState` refuses transitions that `order.admin-actions.utils.ts` says are impossible.
+- **Audit and email are background work.** The recorder enqueues to the Cloudflare Queue; the email is handed to `scheduleBackgroundWork`, so neither delays the response.
+- **The mutation options are exported next to the function**, keyed by `ORDER_MUTATION_KEYS.SHIP`.
+
+## A read use case
+
+Reads export `queryOptions` instead, usually as a function of their input so the key carries it:
+
+```ts
+export const getAdminOrdersPageQuery = (input: Order["adminPageInput"]) =>
+  queryOptions({
+    queryFn: () => getAdminOrdersPage({ data: input }),
+    queryKey: [...ORDER_QUERY_KEYS.ADMIN.PAGE, input],
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: ORDER_QUERY_STALE_MS,
+  })
+```
+
+Paginated admin lists all resolve `{ hasMore, items, limit, offset, total }` through `buildListPaginationResult` and `listPaginationParamsFromPage` from `src/modules/_core/utils/pagination.ts`, so the data grid does not care which entity it is showing.
+
+Public storefront reads use `withRequest` alone — no session is required — and return `false` rather than throwing when nothing matches, which is how `get-product.ts` distinguishes "no such published product" from an error:
+
+```ts
+export const getProduct = createServerFn({ method: "GET" })
+  .middleware([withRequest])
+  .validator((input: zod.input<typeof productZodSchemas.productByHandleInput>) => productZodSchemas.productByHandleInput.parse(input))
+  .handler(async ({ data }) => {
+    const prod = await getPublishedProductByHandleQuery.execute({ handle: data.handle })
+
+    if (prod === undefined || !isProductInStock(prod.variants)) {
+      return false
+    }
+
+    return mapPublishedProductForStorefront(prod, data.locale ?? I18N.DEFAULT_LOCALE)
+  })
+```
+
+## Query keys
+
+Keys are tuples owned by the module's `*.constants.ts`, nested by audience:
+
+```ts
+export const PRODUCT_QUERY_KEYS = {
+  ADMIN: {
+    ALL: ["admin", "products"] as const,
+    BY_HANDLE: ["admin", "products", "by-handle"] as const,
+    PAGE: ["admin", "products", "page"] as const,
+    STATS: ["admin", "products", "stats"] as const,
+  },
+  ALL: ["products"] as const,
+  BY_HANDLE: ["product"] as const,
+  LANDING_NEW_ARRIVALS: ["products", "landing-new-arrivals"] as const,
+  RELATED_BY_CATEGORY: ["related-products"] as const,
+  STOREFRONT_PAGE: ["products", "storefront-page"] as const,
+} as const
+```
+
+Preserve the tuple values when you move code. The same constants are used by loaders, by components, by the realtime invalidation prefixes in `realtime-invalidation.subscriptions.ts` and by the publishers in `realtime-invalidation.catalog.server.ts`, so changing a tuple silently breaks live invalidation.
+
+## Server functions without an RPC boundary
+
+Not every operation is a server function. `createCheckout`, `fulfillCheckout` and `releaseCheckout` in `src/modules/checkout/use-cases/*.server.ts` are plain async functions: they are only ever called from the Stripe webhook handler, which is already authenticated by signature verification, so exposing them as endpoints would only widen the surface.
+
+## Calling a use case from a component
+
+Components spread the exported options, translate errors with `useActionError()` from `src/hooks/use-action-error.ts` and invalidate the module's keys on success. `useActionError` maps an `AppError` code to `errors.action.<CODE>` and a Better Auth error to `pages.auth.errors.<key>`, falling back to `INTERNAL_ERROR`.
+
+## Related pages
+
+- [Layering](/docs/architecture/layering)
+- [Security model](/docs/architecture/security-model)
+- [Realtime invalidation](/docs/architecture/realtime-invalidation)

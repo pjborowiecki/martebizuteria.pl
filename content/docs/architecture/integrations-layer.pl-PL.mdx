@@ -1,0 +1,62 @@
+---
+title: "Warstwa integracji"
+description: "13 katalogów dostawców w src/integrations, co każdy z nich konfiguruje i co do nich nie należy."
+---
+
+Każda usługa zewnętrzna wymagająca konfiguracji ma jeden katalog w `src/integrations`. Pliki nazywają się `<prefix>.<concern>.ts`, gdzie prefiks to krótka nazwa dostawcy — `auth.*`, `drizzle.*`, `stripe.*`, `i18n.*`, `fumadocs.*`, `inpost.*`, `media.*`.
+
+| Katalog                 | Pliki                                                                                                                                                                                                 | Odpowiedzialność                                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `better-auth`           | `auth.server`, `auth.client`, `auth.access`, `auth.middleware`, `auth.routes`, `auth.session`, `auth.errors`, `auth.zod`, `auth.constraints`                                                          | Konfiguracja uwierzytelniania, role i uprawnienia, middleware funkcji serwerowych, guardy tras, zapytanie o sesję |
+| `drizzle-orm`           | `drizzle.config`, `drizzle.database`, `drizzle.schemas`, `drizzle.batch`, `drizzle.utils`, `migrations/`, `seeds/`                                                                                    | Klient D1, rejestr schematu, atomowy runner batchy, wspólne helpery kolumn, migracje SQL                          |
+| `stripe`                | `stripe.server`, `stripe.client`, `stripe.constants`, `stripe.checkout`, `stripe.actions`, `stripe.actions.server`, `stripe.actions.schemas`, `stripe.webhooks`, `stripe.appearance`, `stripe.errors` | SDK Stripe, sesja Checkout w trybie Elements i tablica handlerów webhooków                                        |
+| `resend`                | `resend.config`, `resend.send`, `order-confirmation.utils`, `order-shipped.utils`, `order-shipped.notification.server`, `email-previews`                                                              | Klient Resend, `sendEmail` i buildery zamieniające zamówienie na treść e-maila                                    |
+| `cloudflare-r2`         | `media.mutations`, `media.zod`                                                                                                                                                                        | Upload i usuwanie zdjęć produktów w buckecie `IMAGES`                                                             |
+| `use-intl`              | `i18n.config`, `i18n.messages`, `i18n.middleware`, `i18n.paths`, `i18n.utils`                                                                                                                         | Locale, ładowanie przestrzeni nazw, przekierowanie locale, URL-e i cookie                                         |
+| `fumadocs`              | `fumadocs.config`, `fumadocs.docs`, `fumadocs.source`, `fumadocs.i18n`, `fumadocs.schema`, `fumadocs.legal`                                                                                           | Kolekcje MDX `docs` i `legal`, ładowanie stron, drzewo dokumentacji                                               |
+| `realtime-invalidation` | `realtime-invalidation.subscriptions`, `.protocol`, `.publish.server`, `.catalog.server`, `.ws.server`                                                                                                | Tematy oparte na kluczach zapytań, protokół, publikowanie do huba, handshake                                      |
+| `tanstack-query`        | `query.sync`                                                                                                                                                                                          | `BroadcastChannel` lustrzący unieważnienia między kartami                                                         |
+| `inpost`                | `inpost.api`, `inpost.queries`, `inpost.constants`, `inpost.zod`                                                                                                                                      | Wyszukiwanie paczkomatów w `api-pl-points.easypack24.net`                                                         |
+| `gsap`                  | `gsap.config`                                                                                                                                                                                         | Rejestracja pluginów i wspólne easingi animacji sklepu                                                            |
+| `lenis`                 | `lenis.instance`, `lenis.scroll`                                                                                                                                                                      | Instancja smooth scroll i helpery przewijania                                                                     |
+| `react-day-picker`      | `react-day-picker.locale`                                                                                                                                                                             | Obiekty locale date pickera dla `pl-PL` i `en-US`                                                                 |
+
+## Co nie jest integracją
+
+- **Bindingi Cloudflare nie potrzebują adaptera.** Kod serwerowy czyta `DB`, `IMAGES`, `CACHE`, `ASSETS`, `REALTIME_INVALIDATION_HUB` i `AUDIT_LOG_QUEUE` z `env` w `cloudflare:workers`.
+- **Limitowanie żądań** to `src/lib/rate-limit.ts` na tabeli `rate_limit`, osiągane przez middleware `withRateLimit`, a nie przez katalog dostawcy.
+- **Klasa Durable Object** leży w `src/durable-objects/realtime-invalidation-hub.ts`, a nie w katalogu integracji, bo Wrangler binduje klasę z punktu wejścia Workera.
+- **SEO, sitemap i robots** to `src/lib/seo.ts`.
+
+## Logika biznesowa zostaje w modułach
+
+Integracja konfiguruje dostawcę i oddaje decyzję:
+
+- `src/routes/api/webhooks.stripe.ts` weryfikuje podpis sekretem `STRIPE_WEBHOOK_SECRET` i wyszukuje typ zdarzenia w `webhookHandlers`. Nieznany typ jest logowany i potwierdzany odpowiedzią `{ received: true }`; handler, który rzuci wyjątek, zwraca 500, żeby Stripe ponowił próbę.
+- `stripe.webhooks.tsx` woła następnie przypadki użycia zamówienia i checkoutu: `fulfillCheckout`, `releaseCheckout`, `refundOrder`, `flagOrderDispute`, `clearOrderDispute`. Nie jest właścicielem żadnej z tych logik.
+- `auth.server.ts` podłącza `databaseHooks` Better Auth do rejestratorów audytu i do `scheduleAdminCustomersInvalidation`, a swoje callbacki e-mailowe do szablonów w `src/presentation/emails`.
+- Wzorzec wysyłki e-maila jest zawsze taki sam: ustal locale, załaduj przestrzeń nazw szablonu, wyrenderuj, wyślij.
+
+```ts
+const locale = getCurrentLocale()
+const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
+const failure = await sendEmail({
+  react: createElement(VerifyEmail, { locale, messages, name: user.name, verificationUrl }),
+  subject: createTranslator({ locale, messages })("subject"),
+  to: user.email,
+})
+```
+
+`sendEmail` zwraca tekst błędu, a nie rzuca wyjątku, więc wywołujący decyduje, czy nieudana wysyłka jest zdarzeniem audytowym (`recordOrderEmailOutcome`), czy tylko wpisem w logu (`reportEmailFailure`).
+
+## Zakres integracji wart zapamiętania
+
+- **InPost służy wyłącznie do wyszukiwania punktów.** `fetchPointsByCity` czyta publiczne API punktów; nie ma tworzenia przesyłek, generowania etykiet ani klucza API. Wybór paczkomatu w checkoucie jest zbudowany nad tym w `components/custom/checkout/components/_steps/delivery/locker/inpost`.
+- **Stripe działa w trybie Elements.** `stripe.checkout.sessions.create` jest wołane z `ui_mode: "elements"` i `return_url`, a client secret przekazywany do `@stripe/react-stripe-js`. Nie ma przekierowania na Checkout hostowany przez Stripe.
+- **R2 jest serwowane przez publiczny URL bucketa.** `VITE_R2_URL` (z `DEFAULT_R2_PUBLIC_URL` z `branding/app.ts` jako wartością zapasową) jest rozwiązywane przez `src/lib/url.ts`, a uploady zapisywane z nagłówkiem `Cache-Control: public, max-age=31536000, immutable`.
+
+## Powiązane strony
+
+- [Reguły zależności](/docs/architecture/dependency-rules)
+- [Warstwa platformy](/docs/architecture/platform-layer)
+- [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation)

@@ -1,0 +1,108 @@
+---
+title: "Agent skills"
+description: "skills-lock.json, scripts/sync-skills.ts, the vendor groups and the agent instruction files in this repository."
+---
+
+The repository pins a set of vendor documentation skills for coding agents. The lock file is committed; the installed skills are not — `.gitignore` excludes `.agents/`, `.claude/`, `.codex/` and `.cursor/` in full, with the comment "Skills are restored from `skills-lock.json` with `bun run skills:sync`".
+
+```sh
+bun run skills:sync    # restore exactly what the lock file pins
+bun run skills:update  # update the lock file, then re-sync
+```
+
+`skills:update` is `bunx --bun skills update --project --yes && bun run skills:sync`. Updating is an explicit act: nothing updates skills on install.
+
+## skills-lock.json
+
+52 skills from seven upstream sources. Each entry records the source repository, the source type, the path to the `SKILL.md` inside monorepo sources, and a content hash:
+
+```json
+"tanstack-start": {
+  "source": "tanstack-skills/tanstack-skills",
+  "sourceType": "github",
+  "skillPath": "plugins/tanstack-start/skills/tanstack-start/SKILL.md",
+  "computedHash": "e9d8355fe3e47b118e739081f1123c52aa0ecde57da840722177e1ad5caf9908"
+}
+```
+
+| Source                            | Group        | Skills | Covers                                                                                          |
+| --------------------------------- | ------------ | ------ | ----------------------------------------------------------------------------------------------- |
+| `tanstack-skills/tanstack-skills` | `tanstack`   | 14     | Router, Start, Query, Table, Form, Store, Virtual, DB, Pacer, Ranger, CLI, config, devtools, AI |
+| `medusajs/medusa-agent-skills`    | `medusa`     | 15     | E-commerce domain patterns, storefront practices, Medusa Cloud                                  |
+| `greensock/gsap-skills`           | `gsap`       | 8      | Core, timeline, ScrollTrigger, plugins, React, frameworks, performance, utils                   |
+| `cloudflare/skills`               | `cloudflare` | 6      | Workers practices, Wrangler, Durable Objects, email, web performance                            |
+| `resend/resend-skills`            | `resend`     | 5      | Resend API, React Email, CLI, inbox agent, email practices                                      |
+| `stripe/ai`                       | `stripe`     | 3      | Stripe practices, project patterns, version upgrades                                            |
+| `antfu/skills`                    | `antfu`      | 1      | Web design guidelines                                                                           |
+
+The Medusa and GSAP sets are reference material for patterns, not dependencies: M'Arte does not run Medusa, and the GSAP skills back the animation work in `src/integrations/gsap/` and the storefront motion code.
+
+## How the sync works
+
+`scripts/sync-skills.ts` maps each upstream source to a vendor group:
+
+```ts
+const GROUPS: Record<string, string> = {
+  "antfu/skills": "antfu",
+  "cloudflare/skills": "cloudflare",
+  "greensock/gsap-skills": "gsap",
+  "medusajs/medusa-agent-skills": "medusa",
+  "resend/resend-skills": "resend",
+  "stripe/ai": "stripe",
+  "tanstack-skills/tanstack-skills": "tanstack",
+}
+```
+
+A source with no mapping is a hard error: `Add a vendor group for <source> before syncing <name>.` Adding a new upstream therefore means editing this object, not just the lock file.
+
+Sources that ship skills inside plugin directories get a second path segment. The script extracts the plugin name from `skillPath` with `/^plugins\/([^/]+)\//` and strips the group prefix from it, so `plugins/tanstack-start/…` becomes the group `tanstack/start` and `plugins/medusa-cloud/…` becomes `medusa/cloud`. A plugin name that does not start with the group name is kept whole, which is why `plugins/learn-medusa/…` lands in `medusa/learn-medusa`.
+
+The script then does the work in a temporary directory and only replaces the installed tree once the whole replacement has been built and validated:
+
+1. Create a staging directory under the OS temp directory.
+2. Copy `skills-lock.json` into it and run `bun x --bun skills experimental_install` there. A non-zero exit fails with "Skill restore failed; the existing installation has been preserved."
+3. For every locked skill, copy it into `staging/grouped/<group>/<name>`. A missing `SKILL.md` fails the same way, before anything is deleted.
+4. Delete `.agents/skills`, copy the staged tree in, delete `.claude/skills`, recreate it, and symlink each top-level group: `.claude/skills/<root> → ../../.agents/skills/<root>`.
+
+The result is seven symlinks and a grouped tree:
+
+```
+.agents/skills/
+  antfu/web-design-guidelines/
+  cloudflare/{cloudflare,cloudflare-email-service,durable-objects,web-perf,workers-best-practices,wrangler}/
+  gsap/gsap-core/ … gsap/gsap-utils/
+  medusa/{cloud,dev,ecommerce-storefront,learn-medusa}/
+  resend/{agent-email-inbox,email-best-practices,react-email,resend,resend-cli}/
+  stripe/{stripe-best-practices,stripe-projects,upgrade-stripe}/
+  tanstack/{router,start,query,table,form,store,virtual,db,pacer,ranger,cli,config,devtools,ai}/
+```
+
+The sync **replaces both directories wholesale**, so anything you put in `.agents/skills` or `.claude/skills` by hand is deleted on the next run. Keep custom skills outside those two trees.
+
+`scripts/sync-skills.ts` also accepts `--local`:
+
+```sh
+bun scripts/sync-skills.ts --local
+```
+
+That skips the network install and regroups whatever is already present under `.agents/skills`, looking for each skill flat at `.agents/skills/<name>` and falling back to its grouped location. Use it to repair the grouping or rebuild the `.claude/skills` symlinks without re-downloading anything.
+
+## Using a skill
+
+Before changing code that touches TanStack Start, Router, Query or Table, Stripe, Resend, React Email, Cloudflare Workers, Wrangler, Durable Objects or GSAP, read the matching skill first. The skills describe the current vendor API; they say nothing about this repository's own conventions.
+
+Those live in three places instead:
+
+| File                 | Contents                                                                                  |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| `AGENTS.md`          | The project conventions: Vite+ usage, the review checklist, the layering and naming rules |
+| `rules/viteplus.mdc` | The Vite+ rule file, in the editor-rule format                                            |
+| `content/docs/`      | These pages                                                                               |
+
+When the vendor skill and `AGENTS.md` disagree about how this repository does something, `AGENTS.md` wins.
+
+## Related pages
+
+- [Vite+](/docs/tooling/vite-plus)
+- [Project scripts](/docs/tooling/scripts)
+- [Project](/docs/project/about)

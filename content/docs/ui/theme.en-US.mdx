@@ -1,0 +1,159 @@
+---
+title: "Theme"
+description: "The token sets in globals.css, the pre-paint init scripts, the admin override and the preferences stored in the browser."
+---
+
+## Where the tokens live
+
+`src/presentation/styles/globals.css` is the only Tailwind entry point. It imports the fonts, runs Tailwind over the whole repository, and declares every design token twice — once in `:root` and once in `.dark`:
+
+```css
+@import "./fonts.css";
+
+@import "tailwindcss" source("../../");
+
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "lenis/dist/lenis.css";
+
+@plugin "@tailwindcss/typography" {
+  classname: wysiwyg;
+}
+
+@custom-variant dark (&:is(.dark *));
+```
+
+Two families of variables sit side by side in `:root`.
+
+**The M'Arte palette** names the shop's own colours and is used directly in CSS and in arbitrary Tailwind values:
+
+| Variable                                      | Light                           | Meaning                                   |
+| --------------------------------------------- | ------------------------------- | ----------------------------------------- |
+| `--sea-ink`, `--sea-ink-soft`                 | `#173a40`, `#416166`            | Deep ink text tones                       |
+| `--lagoon`, `--lagoon-deep`                   | `#4fb8b2`, `#328f97`            | The turquoise accent pair                 |
+| `--palm`                                      | `#2f6a4a`                       | Green accent, also the base of `--kicker` |
+| `--sand`, `--foam`, `--bg-base`               | `#e7f0e8`, `#f3faf5`, `#e7f3ec` | Page and panel grounds                    |
+| `--surface`, `--surface-strong`               | translucent white               | Frosted card fills                        |
+| `--line`, `--chip-line`, `--inset-glint`      | translucent                     | Hairlines and inner highlights            |
+| `--header-bg`, `--chip-bg`, `--link-bg-hover` | translucent                     | Navigation and chip backgrounds           |
+| `--hero-a`, `--hero-b`                        | translucent                     | The hero gradient stops                   |
+
+**The shadcn tokens** are OKLCH and drive the primitives: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive`, `success`, `border`, `input`, `ring`, `chart-1` … `chart-5`, the eight `sidebar-*` tokens and `--radius`.
+
+Two details are worth knowing:
+
+- `--radius` is `0.25rem`. The corner scale derives from it, so `rounded-md` and `rounded-lg` are both `0.25rem` and only `rounded-xl` steps up.
+- `--sidebar` in `:root` is the _dark_ value `oklch(0.141 0.005 285.823)`. The admin sidebar is dark even while the rest of the console is light, which is why it is defined that way in the light set.
+
+`@theme inline` maps the variables onto Tailwind utilities and adds the project's own scale entries:
+
+```css
+@theme inline {
+  --font-sans: "Manrope", "Manrope Fallback", system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", "Cormorant Garamond Fallback", "Times New Roman", serif;
+  /* … colour mappings … */
+  --radius-sm: max(0px, calc(var(--radius) - 2px));
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+  --max-width-400: min(100rem, calc(100% - 1.5rem));
+  --spacing-18: 4.5rem;
+  --spacing-54: 13.5rem;
+}
+```
+
+`max-w-400` is the standard page container: it caps at `100rem` and otherwise leaves a `0.75rem` gutter on each side. Use it instead of hand-rolling `mx-auto max-w-[...] px-6`.
+
+## Light and dark
+
+`.dark` redefines both families. `@custom-variant dark (&:is(.dark *))` means the `dark:` prefix follows the class, not the OS setting, so the theme is a class on `html`.
+
+The class is set in two places:
+
+1. **Before first paint.** `THEME_INIT_SCRIPT` in `src/presentation/theme/theme-init.ts` is injected as an inline `<script>` in the root document head. It reads the stored theme and adds `dark` to `documentElement` — unless the path contains `/admin`, in which case it removes `dark`, sets `data-admin-shell` and paints `html` and `body` with `ADMIN_SHELL_CHROME_BG` so the console never flashes white.
+2. **After hydration.** `src/providers/themes-provider.tsx` wraps the document body with `@wrksz/themes`:
+
+```tsx
+<WrkszThemeProvider
+  attribute="class"
+  enableSystem={false}
+  themes={THEMES}
+  defaultTheme="light"
+  storage="localStorage"
+  storageKey={THEME_STORAGE_KEY}
+  disableTransitionOnChange
+>
+```
+
+`THEME_STORAGE_KEY` is `` `${APP_NAME}-theme` `` — literally `M'Arte-theme` in `localStorage`. `enableSystem` is off, so there is no `system` theme: only `light` and `dark`, defaulting to `light`.
+
+There is currently **no theme switcher in the interface.** Nothing in `src/presentation` calls `setTheme`; the only consumers of `useTheme` are `shadcn/sonner.tsx` (to theme toasts) and the Stripe payment step (to pick the Stripe Elements appearance). The dark token set is complete and the plumbing works, but until a switch is added the storefront renders light unless someone sets `M'Arte-theme` to `dark` by hand.
+
+## The admin override
+
+`src/presentation/styles/admin.css` is a small stylesheet loaded by the `/admin` route as a `?url` link. It opens with `@reference "./globals.css"`, which lets Tailwind resolve the theme without re-emitting the framework, and then overrides tokens with plain CSS — there is no `@apply` and no second utility build:
+
+```css
+@layer base {
+  html[data-admin-shell],
+  html[data-admin-shell] body {
+    background-color: var(--sidebar);
+    color-scheme: light;
+  }
+
+  [data-admin-main] {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.141 0.005 285.823);
+    /* … card, popover, muted, secondary, accent, border, input, ring … */
+    color-scheme: light;
+  }
+}
+```
+
+So the console is always light regardless of the stored theme. Three things cooperate:
+
+| Piece                                               | Job                                                                      |
+| --------------------------------------------------- | ------------------------------------------------------------------------ |
+| `THEME_INIT_SCRIPT`                                 | Strips `dark` and paints the chrome before paint                         |
+| `adminShellCriticalStyle(pathname)`                 | Emits the same background as an inline `<style>` in `head`               |
+| `useAdminLightTheme()` (`use-admin-light-theme.ts`) | Removes `dark` on mount and restores it on unmount when leaving `/admin` |
+
+`admin.css` also styles the data-grid scrollbars and re-skins Sonner toasts inside the admin shell so they use the sidebar palette. `admin-layout.styles.ts` holds the shared class strings — `ADMIN_LAYOUT_BG_CLASS` (`bg-zinc-100`), `ADMIN_CARD_CLASS`, the `ADMIN_STAT_*` set and the two catalog page classes.
+
+The storefront's route stylesheet, `storefront.css`, is much smaller: it sets the pre-animation state of `.reveal` and `.line-reveal` under `[data-landing-page]` and flattens both under `prefers-reduced-motion: reduce`.
+
+## Preferences stored in the browser
+
+Three inline scripts run in `head`, in this order, from `src/routes/__root.tsx`:
+
+| Script                       | Source                                        | Storage                                                                     |
+| ---------------------------- | --------------------------------------------- | --------------------------------------------------------------------------- |
+| `THEME_INIT_SCRIPT`          | `theme/theme-init.ts`                         | `localStorage` key `M'Arte-theme`                                           |
+| `SIDEBAR_INIT_SCRIPT`        | `theme/sidebar-preference.ts`                 | `localStorage` key `sidebar_state`, mirrored into a cookie of the same name |
+| `DATAGRID_PREFS_INIT_SCRIPT` | `components/custom/datagrid/datagrid-init.ts` | `localStorage` keys under `marte:datagrid:v1:`                              |
+
+The sidebar script only acts on `/admin` paths. It copies `sidebar_state` from `localStorage` into a one-year `Path=/` cookie so the server can read it, and sets `data-sidebar-collapsed` on `html` when the value is `0`. `adminSidebarCollapsedCriticalStyle(pathname)` then emits inline CSS pinning the sidebar gap and container to `4rem`, which removes the expand-then-collapse jump on a hard reload. On the server, `getAdminSidebarDefaultOpen()` — a `createIsomorphicFn` that reads the request cookie on the server and `localStorage` in the browser — feeds `defaultOpen` on `SidebarProvider`.
+
+The data-grid script rewrites saved column widths into CSS custom properties named `--marte-dg-<persistence-key-slug>-<column-id>` on `documentElement`, so a resized column keeps its width through SSR. See [Data grid](/docs/ui/data-table).
+
+## Toasts
+
+`Toaster` (`shadcn/sonner.tsx`) takes a `variant` of `"default"` or `"admin"`. The root route picks it from the path:
+
+```tsx
+<Toaster variant={isAdmin ? "admin" : "default"} />
+```
+
+The default variant maps Sonner's CSS variables onto `--popover`, `--border` and `--popover-foreground` and follows `useTheme()`. The admin variant forces `theme="dark"` and maps every state — normal, success, error, warning, info — onto the `--sidebar-*` tokens, which is why admin toasts match the sidebar rather than the page.
+
+## Changing a colour
+
+1. Edit the variable in `:root` in `globals.css`, and its counterpart in `.dark`.
+2. If the admin console must not follow the change, add the light value to the `[data-admin-main]` block in `admin.css`.
+3. If it affects the browser chrome, update `THEME_COLOR` in `src/presentation/branding/app.ts` (the `theme-color` meta tag) and `ADMIN_SHELL_CHROME_BG` in `admin-layout.styles.ts` (the pre-paint admin background, which is a literal OKLCH string, not a `var()`).
+4. Run `bun run check`.
+
+## Related pages
+
+- [Fonts & branding](/docs/ui/fonts-and-branding)
+- [shadcn components](/docs/ui/shadcn-components)

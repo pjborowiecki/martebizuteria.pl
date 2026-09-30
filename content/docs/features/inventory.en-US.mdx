@@ -1,0 +1,185 @@
+---
+title: "Inventory"
+description: "One row per variant, optimistic concurrency on a version column, and the reserve → convert → release cycle around a Stripe session."
+---
+
+## The table
+
+`inventory` (`src/modules/inventory/inventory.schema.ts`) is one row per variant:
+
+```ts
+export const inventory = sqliteTable(
+  "inventory",
+  {
+    id: text("id", { length: INVENTORY_COLUMN_LENGTH.id })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    quantityAvailable: integer("quantity_available").default(INVENTORY_DEFAULT_QUANTITY).notNull(),
+    quantityReserved: integer("quantity_reserved").default(INVENTORY_DEFAULT_QUANTITY).notNull(),
+    variantId: text("variant_id", { length: INVENTORY_COLUMN_LENGTH.variantId })
+      .references(() => productVariant.id, { onDelete: "cascade" })
+      .notNull(),
+    version: integer("version").default(INVENTORY_DEFAULT_VERSION).notNull(),
+    ...timestamps(),
+  },
+  (table) => [index("inventory_variantId_idx").on(table.variantId), uniqueIndex("inventory_variantId_unique").on(table.variantId)],
+)
+```
+
+`INVENTORY_DEFAULT_QUANTITY` is `0` and `INVENTORY_DEFAULT_VERSION` is `1` (`inventory.constants.ts`). The unique index on `variant_id` guarantees the one-to-one relationship, and the cascade means deleting a variant removes its stock row.
+
+There are no warehouses, no locations and no stock ledger — the two counters and the version are the whole model.
+
+Rows are created alongside variants: `product.mutations.ts` pushes `db.insert(inventory).values(inventoryRows)` into the same D1 batch that inserts the variants, from the `quantity` field of the product form. Every variant is persisted with `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` in `product.utils.ts`), so the `product_variant.manage_inventory` column exists but is never `false` in practice.
+
+## Reading availability
+
+`inventory.availability.utils.ts` holds the pure helpers used by both the storefront and the cart:
+
+| Function                                      | Meaning                                      |
+| --------------------------------------------- | -------------------------------------------- |
+| `getVariantQuantityAvailable(variant)`        | `variant?.inventory?.quantityAvailable ?? 0` |
+| `isVariantPurchasable(variant, qty)`          | `qty > 0` and available `>= qty`             |
+| `resolveProductTotalAvailableStock(variants)` | Sum across variants                          |
+| `isProductInStock(variants)`                  | Total above zero                             |
+
+A missing `inventory` row therefore reads as zero rather than as unknown.
+
+`getAvailabilityByVariantIds(variantIds)` in `inventory.accessors.ts` returns a `Map<variantId, quantityAvailable>` for a batch of ids and is what the cart's availability check uses.
+
+## Optimistic reservation
+
+`reserveInventoryStmt` is a prepared statement whose `WHERE` is the concurrency control:
+
+```ts
+const reserveInventoryStmt = db
+  .update(inventory)
+  .set({
+    quantityAvailable: sql`${inventory.quantityAvailable} - ${qtyPlaceholder}`,
+    quantityReserved: sql`${inventory.quantityReserved} + ${qtyPlaceholder}`,
+    version: sql`${inventory.version} + 1`,
+  })
+  .where(
+    and(
+      eq(inventory.id, inventoryIdPlaceholder),
+      eq(inventory.version, currentVersionPlaceholder),
+      gte(inventory.quantityAvailable, qtyPlaceholder),
+    ),
+  )
+  .returning()
+  .prepare()
+```
+
+Three conditions must hold: the row exists, its `version` still equals the version the caller read, and there is enough available. `reserveInventory` returns `result.length > 0`, so a lost race returns `false` instead of overselling. Every successful write bumps `version`.
+
+The version the caller compares against is captured in `validateAndCalculateItems` (`src/integrations/stripe/stripe.actions.server.ts`), which returns `currentVersion: inv.version` and `inventoryId: inv.id` alongside the validated line.
+
+## All-or-nothing across lines
+
+`reserveInventoryForItems` in `inventory.utils.ts` reserves every line in parallel and rolls back if any fails:
+
+```ts
+const failures = outcomes.filter((outcome) => !outcome.reserved)
+if (failures.length > 0) {
+  const reserved = outcomes.filter((outcome) => outcome.reserved).map((outcome) => outcome.item)
+  await releaseInventoryForItems(reserved).catch((error: unknown) => {
+    console.error("Failed to roll back partial inventory reservation:", error)
+  })
+
+  const [firstFailure] = failures
+
+  throw new Error(`Inventory reservation failed for ${firstFailure?.item.title ?? "item"}. Stock changed or unavailable.`)
+}
+```
+
+These are separate D1 statements, not one transaction, so the window between them is closed by the compensating release rather than by the database.
+
+`reserveInventoryByVariantLines(lines)` is the variant-id-based variant used when restoring a previous reservation during a checkout update: it looks each inventory row up first to read its current `version`, then delegates to `reserveInventoryForItems`.
+
+## Release is clamped
+
+Both release statements use `min`/`max` so a duplicate release cannot invent stock:
+
+```ts
+.set({
+  quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qtyPlaceholder})`,
+  quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qtyPlaceholder})`,
+  version: sql`${inventory.version} + 1`,
+})
+```
+
+`releaseInventoryForItems(items)` keys on `inventoryId`; `releaseInventoryByVariantLines(lines)` keys on `variantId`. Unlike reservation, release is unconditional on `version` — it must always succeed.
+
+## The full cycle
+
+| Moment                                                                  | Effect on the row                                                      |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Stripe session created (`handleCreateCheckoutSession`)                  | `available -= qty`, `reserved += qty`, `version += 1`                  |
+| Checkout edited (`handleUpdateCheckoutSession`)                         | Old lines released, new lines reserved (`swapCheckoutInventory`)       |
+| Session paid (`prepareFulfillCheckoutBatch`)                            | `reserved -= qty`; `available` untouched — the reservation is consumed |
+| Session expired or async payment failed (`prepareReleaseCheckoutBatch`) | `available += min(reserved, qty)`, `reserved -= qty`                   |
+| Full refund with restock (`prepareRefundBatch`)                         | `available += quantity`, from `getRestockLinesForOrder(orderId)`       |
+| Lost dispute                                                            | Nothing — `refundOrder` is called with `restock: false`                |
+
+Note that the fulfilment and release batches update `inventory` **without** bumping `version`, because they run inside a D1 batch alongside the order writes rather than through the prepared statements.
+
+Local error handling in `stripe.actions.server.ts` always compensates: a failure after reserving calls `releaseInventoryForItems`, and a failure during a checkout update additionally calls `reserveInventoryByVariantLines(oldReservedLines)` to put the previous reservation back.
+
+## Stock decides visibility
+
+`publishedInStockWhere` in `src/modules/product/product.stock.server.ts` gates every storefront read on stock:
+
+```ts
+export const totalStockSubquery = () =>
+  sql<number>`(
+    select coalesce(sum("inventory"."quantity_available"), 0)
+    from "product_variant"
+    left join "inventory" on "inventory"."variant_id" = "product_variant"."id"
+    where "product_variant"."product_id" = ${product.id}
+  )`
+```
+
+A published product whose variants total zero available disappears from the catalog listing, from search and from its own page — `getProduct` returns `false` and the route throws `notFound()`. Reserving stock for a checkout therefore also hides the last unit from other shoppers, which is the point.
+
+## Low stock in the admin console
+
+`PRODUCT_LOW_STOCK_THRESHOLD = 10` (`product.constants.ts`) and `PRODUCT_INVENTORY_LEVEL` is `{ LOW: "low", OK: "ok", OUT: "out" }`.
+
+```ts
+export const resolveProductInventoryLevel = (status: ProductStatus, totalStock: number): ProductInventoryLevel => {
+  if (status !== PRODUCT_STATUS.PUBLISHED) {
+    return PRODUCT_INVENTORY_LEVEL.OK
+  }
+  if (totalStock <= 0) {
+    return PRODUCT_INVENTORY_LEVEL.OUT
+  }
+  if (totalStock <= PRODUCT_LOW_STOCK_THRESHOLD) {
+    return PRODUCT_INVENTORY_LEVEL.LOW
+  }
+
+  return PRODUCT_INVENTORY_LEVEL.OK
+}
+```
+
+Unpublished products are always reported as `ok`, so a draft with no stock is not flagged.
+
+`getLowStockPublishedProductCountQuery` in `product.accessors.ts` is the prepared count behind the dashboard card:
+
+```ts
+.where(and(eq(product.status, PRODUCT_STATUS.PUBLISHED), sql`${totalStockSubquery()} between 1 and ${PRODUCT_LOW_STOCK_THRESHOLD}`))
+```
+
+`buildInventoryLevelStockCondition` turns the level into the `WHERE` for the products grid's stock filter, and `products-stock-column-filter.tsx` is the control.
+
+## Changing stock
+
+There is **no dedicated stock adjustment use case**. Quantities are written through the product editor: `createCompleteProduct` and `updateCompleteProduct` carry a `quantity` per variant and persist it into `inventory`. Everything else — reserve, convert, release, restock — happens automatically around a checkout.
+
+If you need a stock-adjustment screen, the place to add it is a new use case under `src/modules/inventory/use-cases/` with `authorized({ product: ["update"] })`, using the same version-guarded prepared statement so it cannot race a live checkout, followed by `scheduleProductCatalogInvalidation()`.
+
+## Related pages
+
+- [Checkout](/docs/features/checkout)
+- [Payments](/docs/features/payments)
+- [Cart](/docs/features/cart)
+- [Admin catalog](/docs/features/admin-catalog)

@@ -1,0 +1,150 @@
+---
+title: "About"
+description: "What the M'Arte repository is, what the shop does, which parts are finished and who maintains it."
+---
+
+M'Arte is a full-stack jewellery shop: a Polish-language storefront, a customer account area and an admin console, served from one Cloudflare Worker. The repository is the whole product — there is no separate backend, no separate admin app and no separate CMS. `src/server.ts` is the single entry point, and everything the shop does happens behind it.
+
+The codebase exists for two reasons at once. It runs a real jewellery brand's shop, and it is written as a study in how far a commerce application can be pushed on a runtime with no filesystem, no long-lived Node process and no interactive database transactions. Most of the design decisions documented in [Architecture](/docs/architecture) trace back to those constraints rather than to taste.
+
+## The shop
+
+| Fact                | Value                                                                                               |
+| ------------------- | --------------------------------------------------------------------------------------------------- |
+| Locales             | `pl-PL` (default, no URL prefix) and `en-US` — `I18N` in `src/integrations/use-intl/i18n.config.ts` |
+| Time zone           | `Europe/Warsaw`                                                                                     |
+| Currency            | `PLN` only — `STORE_CURRENCY_CODE` in `src/modules/_core/constants/currency.ts`                     |
+| Payment             | Stripe, card and Stripe-hosted methods, webhook-driven fulfilment                                   |
+| Delivery            | Courier and InPost parcel lockers, seeded into the `delivery_method` table                          |
+| Transactional email | Resend, six React Email templates in `src/presentation/emails/`                                     |
+| Worker name         | `martebizuteria` in production, `martebizuteria-preview`, `martebizuteria-development`              |
+
+`wrangler.jsonc` declares no `routes` block and no custom domain, so each environment is served on its `*.workers.dev` hostname. The production URL recorded in `package.json` is `https://martebizuteria.pjborowiecki.workers.dev`.
+
+## One Worker, one route tree
+
+Route files live flat in `src/routes/` and carry no locale segment. The router de-localizes the URL before matching and re-applies the prefix when generating links, so `_storefront.products.index.tsx` serves both `/products` (Polish, the default locale, which takes no prefix) and `/en-US/products`. Path segments themselves are never translated. See [i18n architecture](/docs/architecture/i18n-architecture) for the mechanism.
+
+| Prefix              | Files                             | What it serves                                                 |
+| ------------------- | --------------------------------- | -------------------------------------------------------------- |
+| `_storefront.*.tsx` | 16 files                          | Landing page, catalog, product pages, cart, blog, legal pages  |
+| `checkout.*.tsx`    | 2 files                           | The four-step checkout flow                                    |
+| `account.*.tsx`     | 10 files                          | Signed-in customer area — orders, addresses, sessions, profile |
+| `admin.*.tsx`       | 24 files                          | Admin console — catalog, orders, customers, audit, settings    |
+| `auth.*.tsx`        | 5 files                           | Sign in, sign up, forgot and reset password                    |
+| `docs.*.tsx`        | 3 files                           | These documentation pages                                      |
+| `api/`              | `auth.$.ts`, `webhooks.stripe.ts` | Better Auth handler and the Stripe webhook endpoint            |
+
+`__root.tsx` and `dev.emails.tsx` complete the 62 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
+
+Four request paths short-circuit inside `src/server.ts` before the React framework is reached — `/sitemap.xml`, `/robots.txt`, the two WebSocket upgrades — plus the locale redirect, because none of them need an SSR render.
+
+## Bindings
+
+`wrangler.jsonc` declares the same five application bindings in all three environments:
+
+| Binding                     | Resource         | Used for                                                        |
+| --------------------------- | ---------------- | --------------------------------------------------------------- |
+| `DB`                        | D1 database      | Every table — 31 of them                                        |
+| `IMAGES`                    | R2 bucket        | Product image uploads                                           |
+| `CACHE`                     | KV namespace     | Declared but not referenced by any application code             |
+| `AUDIT_LOG_QUEUE`           | Cloudflare Queue | Audit events, drained by the `queue` handler in `src/server.ts` |
+| `REALTIME_INVALIDATION_HUB` | Durable Object   | WebSocket fan-out for realtime cache invalidation               |
+
+## The stack
+
+| Concern         | Choice                                                                         | Where it is configured                              |
+| --------------- | ------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Framework       | TanStack Start 1.168 + TanStack Router 1.170                                   | `vite.config.ts`, `src/router.tsx`                  |
+| UI              | React 19.3, Tailwind CSS 4, shadcn primitives, Base UI                         | `src/presentation/`                                 |
+| Data            | D1 + Drizzle ORM 0.45, `drizzle-zod` for schemas                               | `src/integrations/drizzle-orm/`                     |
+| Client cache    | TanStack Query 5.103, query options exported per use case                      | `src/integrations/tanstack-query/`                  |
+| Auth            | Better Auth 1.7 with `admin`, `twoFactor`, `multiSession`, `anonymous` plugins | `src/integrations/better-auth/auth.server.ts`       |
+| Payments        | Stripe 22.6 server SDK + `@stripe/react-stripe-js`                             | `src/integrations/stripe/`                          |
+| Email           | Resend 6.28 + React Email 6.11                                                 | `src/integrations/resend/`                          |
+| i18n            | `use-intl` 4.14, one JSON file per namespace                                   | `src/integrations/use-intl/`, `messages/{locale}/`  |
+| Docs            | Fumadocs MDX 15 + `fumadocs-core` 16                                           | `src/integrations/fumadocs/`                        |
+| Motion          | GSAP 3.15 + Lenis smooth scroll                                                | `src/integrations/gsap/`, `src/integrations/lenis/` |
+| Validation      | Zod 4.6                                                                        | `{feature}.zod.ts` per module                       |
+| Toolchain       | Vite+ `1.0.0-rc.0` — dev, build, fmt, lint, test in one                        | `vite.config.ts`                                    |
+| Package manager | Bun 1.4.0                                                                      | `packageManager` in `package.json`                  |
+
+## The repository in numbers
+
+Counted against the working tree, not aspirational:
+
+| Thing                                     | Count                                                                                                 |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Feature modules                           | 36 in `src/modules/`                                                                                  |
+| Database tables                           | 31, one `*.schema.ts` each                                                                            |
+| D1 migrations                             | 57 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
+| Use cases                                 | 82 files under `src/modules/*/use-cases/`                                                             |
+| Server functions                          | 83 `createServerFn(...)` call sites                                                                   |
+| Integrations                              | 13 vendor adapters in `src/integrations/`                                                             |
+| Route files                               | 62 in `src/routes/`                                                                                   |
+| Presentation files                        | 568 non-test files under `src/presentation/`, of which 57 shadcn primitives and 366 custom components |
+| Message namespaces                        | 48 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |
+| Test files                                | 873 — 322 unit, 30 integration, 511 component                                                         |
+| Comments in hand-written source           | 3                                                                                                     |
+| Lint suppressions outside generated files | 0                                                                                                     |
+
+## What works, and what does not
+
+Being precise about the boundary is more useful than a feature list.
+
+### Wired end to end
+
+Catalog (products, variants, options, attributes, categories, collections, search, filtering, pagination), cart, the four-step checkout, Stripe payment with webhook-driven fulfilment, inventory reservation with compensation, order placement, order fulfilment and shipping from the admin console, refunds with optional restock, customer accounts (orders, addresses, sessions, profile), transactional email in both locales, the audit log behind a Cloudflare Queue, realtime cache invalidation over WebSockets, and admin management of products, categories, collections, attributes, customers, orders and audit.
+
+### Scaffolded, not finished
+
+| Area                                        | State                                                                                                                            |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Two-factor auth                             | `twoFactor()` plugin configured and the `two_factor` table exists; no enrolment UI                                               |
+| Discounts, coupons                          | `discount` table plus `discount_id` columns on `cart`, `checkout` and `order`; nothing reads or writes them                      |
+| InPost                                      | Parcel-locker _discovery_ only — `fetchPointsByCity` in `src/integrations/inpost/inpost.api.ts`. No shipment creation, no labels |
+| Wishlist                                    | `/account/wishlist` renders a hardcoded empty state; no table, no persistence                                                    |
+| Saved payment methods                       | `/account/payment` renders a hardcoded empty state                                                                               |
+| Admin order detail                          | `/admin/orders/$orderId` mixes real actions with fixture cards from `src/data/order-detail.ts`                                   |
+| Admin coupons, content, marketing, settings | Render from fixtures in `src/data/`                                                                                              |
+| Order completion                            | Nothing ever writes `order.status = 'completed'`, which every revenue figure filters on                                          |
+
+### Absent
+
+No end-to-end or browser tests. No cron triggers or reconciliation job — `wrangler.jsonc` declares no `crons`. No dead-letter queue, so an audit batch that fails its three retries is dropped. No error reporting service is initialised. No expiry sweep for `session`, `verification` or `rate_limit` rows.
+
+[Roadmap](/docs/project/roadmap) lists these in the order they are worth fixing.
+
+## How the code is written
+
+Four conventions are visible within the first file you open, and all four are enforced by `bun run check` rather than by review:
+
+- **Modules own tables.** `src/modules/{feature}/` holds the Drizzle table, the Zod schemas, the query-key tuples, the inferred types, the pure helpers and the accessors for exactly one table. One operation per file under `use-cases/`, named `{verb-noun}.ts`, exporting a server function next to the TanStack Query options that fetch it.
+- **Authorization lives on the server function.** A server function is a public HTTP endpoint, so route guards cannot protect it. The `authorized(permission)` middleware in `src/integrations/better-auth/auth.middleware.ts` is applied at 63 call sites — 14 of them as bare `authorized()`, which only requires a valid session, and 49 with a permission such as `authorized({ order: ["update"] })`, checked against the role matrix in `auth.access.ts`.
+- **The presentation layer never touches the database.** Everything under `src/presentation/` imports use cases, never `db`.
+- **The code carries no narration.** Three comments exist in the whole of `src/`, each explaining a constraint that the types cannot express. Intent goes in names and types.
+
+The lint baseline is six Oxlint categories as errors — including `nursery` — with type-aware linting and type checking on, warnings failing the build, and hard limits of 800 lines per file, 150 lines per function and 20 statements per function. See [Conventions](/docs/reference/conventions) and [Vite+](/docs/tooling/vite-plus).
+
+## Maintainer
+
+|            |                                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| Author     | Piotr Borowiecki — `hello@pjborowiecki.com`, [pjborowiecki.com](https://pjborowiecki.com)                    |
+| Repository | [github.com/pjborowiecki/martebizuteria.pl](https://github.com/pjborowiecki/martebizuteria.pl)               |
+| Issues     | [github.com/pjborowiecki/martebizuteria.pl/issues](https://github.com/pjborowiecki/martebizuteria.pl/issues) |
+| History    | 43 commits between 2026-04-24 and 2026-09-30, several of them very large refactors                           |
+| Licence    | CC BY-NC 4.0 — see [Licence](/docs/project/license)                                                          |
+
+The brand name "M'Arte" belongs to the jewellery business this shop was built for. No trademark claim is made over it here.
+
+## Where to go next
+
+| If you want to          | Read                                        |
+| ----------------------- | ------------------------------------------- |
+| Run it on your machine  | [Getting started](/docs/getting-started)    |
+| Understand the layering | [Architecture](/docs/architecture/layering) |
+| Find a feature's code   | [Features](/docs/features)                  |
+| Change something safely | [Guides](/docs/guides)                      |
+| Submit a change         | [Contributing](/docs/project/contributing)  |
+| Know what is planned    | [Roadmap](/docs/project/roadmap)            |

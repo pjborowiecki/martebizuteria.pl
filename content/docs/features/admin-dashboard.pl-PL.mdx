@@ -1,0 +1,152 @@
+---
+title: "Pulpit admina"
+description: "Layout i strażnik /admin, migawka przeglądu zbudowana z jednego wsadu D1 oraz cztery ekrany narzędziowe będące wyłączonymi makietami."
+---
+
+## Layout
+
+`src/routes/admin.tsx` to powłoka panelu.
+
+```ts
+beforeLoad: async () => ({
+  user: await requireAdmin(),
+}),
+```
+
+`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) wymaga sesji, której rola przechodzi `hasAdminAccess`, czyli należy do `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`).
+
+Trzy rzeczy, które robi ten layout i których nie robi nic innego:
+
+1. **Własny arkusz stylów.** `head` dołącza `src/presentation/styles/admin.css?url`, więc CSS panelu nie jest wczytywany w witrynie.
+2. **Wymusza tryb jasny.** `useAdminLightTheme()` (`src/presentation/theme/use-admin-light-theme.ts`) usuwa klasę `dark` przy montowaniu i przy odmontowaniu przywraca preferencję witryny z `localStorage`.
+3. **Subskrybuje unieważnianie w czasie rzeczywistym.**
+
+```ts
+useRealtimeQuerySync({
+  hub: REALTIME_INVALIDATION_HUB.ADMIN,
+  subscriptions: ADMIN_REALTIME_QUERY_PREFIXES,
+})
+```
+
+`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) wymienia dwanaście prefiksów kluczy — strona i statystyki dziennika audytu, zamówienia w panelu, klienci w panelu oraz klucze all/stats kategorii, kolekcji, produktów i atrybutów produktu. Mutacja w dowolnym miejscu panelu odświeża każdą inną otwartą kartę panelu.
+
+Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefaultOpen()` z ciasteczka `sidebar_state` (`src/presentation/theme/sidebar-preference.ts`), a wstawiony inline `SIDEBAR_INIT_SCRIPT` kopiuje wartość z `localStorage` do tego ciasteczka jeszcze przed hydratacją, żeby panel nie migał.
+
+`/admin` przekierowuje na `/admin/overview`, a layout deklaruje `staticData.namespaces: ["pages.admin", "components.datagrid"]`.
+
+## Nawigacja
+
+`admin-sidebar.tsx` definiuje cztery grupy:
+
+| Grupa  | Pozycje                                                                                      |
+| ------ | -------------------------------------------------------------------------------------------- |
+| (góra) | Pulpit (`/admin/overview`)                                                                   |
+| Main   | Zamówienia, Klienci oraz rozwijany Katalog z Produktami, Kategoriami, Kolekcjami, Atrybutami |
+| Tools  | Marketing, Kupony, Treści — wszystkie trzy z `disabled: true`                                |
+| System | Audyt, Ustawienia — Ustawienia mają `disabled: true`                                         |
+
+Pozycja wyłączona renderuje się jako nieinteraktywny `SidebarMenuButton disabled` z `cursor-not-allowed opacity-50`, więc cztery ekrany makiet są w ogóle nieosiągalne z interfejsu — tylko po wpisaniu adresu.
+
+## Przegląd
+
+`/admin/overview` (`src/routes/admin.overview.tsx`) wczytuje wstępnie jedno zapytanie i renderuje `DashboardOverviewContent`, czyli jeden `Suspense` wokół czterech komponentów:
+
+```tsx
+<Suspense fallback={dashboardOverviewFallback}>
+  <div className="space-y-6">
+    <DashboardStats />
+    <DashboardCharts />
+    <div className="grid gap-5 xl:grid-cols-4">
+      <DashboardRecentOrders />
+      <DashboardTopProducts />
+    </div>
+  </div>
+</Suspense>
+```
+
+## Migawka
+
+`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) jest zabezpieczone przez `authorized({ settings: ["manage"] })` — tym samym uprawnieniem co dziennik audytu, a nie uprawnieniem `order` czy `product`. Przyjmuje `locale`, żeby etykiety wykresów można było sformatować po stronie serwera, i uruchamia **piętnaście zapytań w jednym `db.batch`**.
+
+Okno porównania pochodzi z `resolveAdminDashboardComparisonPeriod(now)` z `ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS = 30`, więc każdy wskaźnik to „ostatnie 30 dni wobec 30 poprzednich”.
+
+| Wskaźnik            | Akcesor                           | Źródło                                                       |
+| ------------------- | --------------------------------- | ------------------------------------------------------------ |
+| `revenue`           | `completedRevenueSumQuery`        | `sum(order.total)` dla statusu `completed`                   |
+| `orders`            | `countableOrdersQuery`            | `count()` po statusach liczonych                             |
+| `customers`         | `newCustomersQuery`               | `count()` wierszy `user` po `created_at`                     |
+| `pageViews`         | `pageViewsQuery`                  | `count()` wierszy `audit_log` z akcją `customer.page_viewed` |
+| `averageOrderValue` | `averageCompletedOrderValueQuery` | zaokrąglona średnia `order.total` po `completed`             |
+
+**Odsłony stron pochodzą z dziennika audytu**, zapisywane przez `trackPageViewed` w `src/modules/customer-activity`. Ponieważ ten tracker działa tylko dla zalogowanych użytkowników i deduplikuje odsłony w obrębie sesji przez `sessionStorage`, liczba oznacza „unikalne strony obejrzane przez zalogowanych klientów”, a nie cały ruch.
+
+`buildAdminDashboardKpiStat(current, previous)` wylicza `trendPercent` z `ADMIN_DASHBOARD_TREND_PERCENT_SCALE = 100`.
+
+## Wykresy
+
+Trzy serie są wyliczane z wyprzedzeniem w tej samej migawce:
+
+- `chartPoints30d` — `buildAdminDashboardDailyChartPoints` na `dailyOrderAggregatesQuery(chartStart)`, z `ADMIN_DASHBOARD_CHART_DAYS_30 = 30`
+- `chartPoints7d` — `chartPoints30d.slice(-7)`, czyli bez dodatkowego zapytania
+- `chartPoints1y` — `buildAdminDashboardMonthlyChartPoints` na `monthlyOrderAggregatesQuery`, z `ADMIN_DASHBOARD_CHART_MONTHS_1Y = 12`
+
+`yearToDateRevenueMinorUnits` to osobne `completedRevenueSumQuery(resolveAdminDashboardYearStart(now))`.
+
+Zakres własny to druga funkcja serwerowa. `getDashboardChartRange` przyjmuje `{ startDate, endDate, locale }` jako daty ISO, zwraca `[]`, gdy `isAdminDashboardCustomChartRangeValid` odrzuci parę, a w przeciwnym razie ponownie uruchamia `dailyOrderAggregatesQuery` między `parseIsoDateToStartMs(startDate)` a `parseIsoDateToEndMs(endDate)`. Jego zapytanie jest `enabled` wyłącznie dla poprawnego zakresu. Kontrolki to `dashboard/components/dashboard-chart-range-controls.tsx` napędzane przez `dashboard/hooks/use-dashboard-chart-range.ts`, korzystające z `react-day-picker`.
+
+## Karty wskaźników
+
+`dashboard-stats.tsx` renderuje cztery karty z lokalnej stałej `STAT_CARDS` o kluczach `revenue`, `orders`, `customers` i `views`, każda z ikoną lucide i gradientem Tailwind. Etykiety pochodzą z `pages.admin.dashboard.stats.<key>.label`, a podpis porównania z `dashboard.stats.vsPrevious`. `dashboard/dashboard-trend-badge.tsx` renderuje plakietkę wzrostu lub spadku.
+
+## Ostatnie zamówienia
+
+`recentOrdersQuery` wybiera najnowsze `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` zamówień, dołączając lewostronnie `user` dla nazwy klienta i `payment` dla statusu, a migawka mapuje każdy wiersz przez `toAdminOrderListItem` — ten sam mapper, którego używa siatka zamówień, więc plakietki są spójne. Zwróć uwagę, że przekazuje `itemCount: 0`, więc lista ostatnich zamówień nigdy nie pokazuje liczby pozycji.
+
+## Najlepsze produkty są zawsze puste
+
+`topProductsQuery` grupuje `order_item` po `product_id`:
+
+```ts
+.from(orderItem)
+.innerJoin(order, eq(orderItem.orderId, order.id))
+.leftJoin(product, eq(product.id, orderItem.productId))
+.leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
+.leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
+.where(eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS))
+.groupBy(orderItem.productId)
+```
+
+a migawka odrzuca potem wiersze z pustym identyfikatorem:
+
+```ts
+const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
+```
+
+Ale `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) nigdy nie zapisuje `order_item.product_id` — wstawia tylko `orderId`, `quantity`, `subtotal`, `title`, `total`, `unitPrice` i `variantId`. Każda pozycja zamówienia ma więc `product_id = NULL`, każdy zgrupowany wiersz jest odfiltrowany, a **`DashboardTopProducts` renderuje stan pusty niezależnie od tego, ile sprzedano**. To samo dotyczy `orderItem.thumbnail`, które zapytanie odczytuje przez `max(...)`.
+
+`ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` to 4. `resolveTopProductName` i `resolveTopProductCategoryLabel` wybierają język z map tytułów w JSON, z fallbackiem na zapisane `order_item.title`.
+
+## Zamówienia tygodniowe
+
+`buildAdminDashboardWeeklyOrderPoints` korzysta z tych samych `dailyAggregateRows`, żeby wyprodukować punkty `{ dateKey, dayLabel, orders }`, również bez dodatkowego zapytania.
+
+## Cztery wyłączone ekrany
+
+| Trasa              | Plik                  | Komponenty                                                                             | Dane                                                                                              |
+| ------------------ | --------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `/admin/marketing` | `admin.marketing.tsx` | `MarketingStats`, `MarketingEngagementChart`, `MarketingCampaignsTable`                | `src/data/marketing.ts` (`MARKETING_STATS`, `ENGAGEMENT_DATA`, `CAMPAIGNS`)                       |
+| `/admin/content`   | `admin.content.tsx`   | `ContentTypeCards`, `ContentListTable`                                                 | `src/data/content.ts` (`CONTENT_TYPES`, `PAGES`)                                                  |
+| `/admin/coupons`   | `admin.coupons.tsx`   | `CouponStats`, `CouponListTable`                                                       | `src/data/coupons.ts` — zobacz [Rabaty](/docs/features/discounts)                                 |
+| `/admin/settings`  | `admin.settings.tsx`  | `SettingsPage` z `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`) |
+
+Żadna z tych tras nie ma loadera, zapytania ani mutacji. Ich przyciski eksportu i tworzenia nie mają obsługi zdarzeń. Zakładka General w ustawieniach renderuje `STORE_INFO_DEFAULTS` do pól i `TOGGLE_SETTING_KEYS` do przełączników trzymających wyłącznie stan lokalny; pozostałe zakładki renderują `settings-placeholder.tsx`.
+
+`/admin/orders/$orderId` to piąty ekran makiety — zobacz [Zamówienia](/docs/features/orders).
+
+## Powiązane strony
+
+- [Zamówienia](/docs/features/orders)
+- [Panel katalogu](/docs/features/admin-catalog)
+- [Klienci w panelu](/docs/features/admin-customers)
+- [Dziennik audytu](/docs/features/audit-log)
+- [Integracje: unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation)

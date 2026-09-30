@@ -50,6 +50,8 @@ export const ROUTES = {
   CHECKOUT: "/checkout",
   COLLECTION: "/collections/$handle",
   COLLECTIONS: "/collections",
+  DOCS: "/docs",
+  DOCS_PAGE: "/docs/$",
   EXCHANGES_AND_RETURNS: "/exchanges-and-returns",
   FAQ: "/faq",
   HOME: "/",

@@ -1,0 +1,209 @@
+---
+title: "Dziennik audytu"
+description: "Każde istotne zdarzenie przechodzi przez kolejkę Cloudflare do tabeli audit_log, zasilając ekran audytu, oś czasu klienta i wskaźnik odsłon na pulpicie."
+---
+
+Dziennik audytu to historia zdarzeń sklepu, która pełni jednocześnie rolę magazynu analitycznego. To jedyna część systemu zapisująca przez kolejkę, a nie wprost do D1.
+
+## Tabela
+
+`audit_log` (`src/modules/audit-log/audit-log.schema.ts`):
+
+| Kolumna       | Uwagi                                                                    |
+| ------------- | ------------------------------------------------------------------------ |
+| `id`          | klucz główny; UUIDv7, więc sam identyfikator sortuje się chronologicznie |
+| `created_at`  | `timestampNow("created_at")`                                             |
+| `action`      | not null; jedna z `AUDIT_LOG_ACTION`                                     |
+| `category`    | enum `orders \| email \| customers \| catalog \| settings \| auth`       |
+| `severity`    | enum `info \| success \| warning \| error`                               |
+| `actor_role`  | enum `admin \| customer \| system \| unknown`                            |
+| `actor_id`    | nullowalna                                                               |
+| `actor_name`  | not null                                                                 |
+| `target`      | not null; czytelny dla człowieka podmiot zdarzenia                       |
+| `resource_id` | nullowalna; identyfikator maszynowy, domyślnie równy `target`            |
+| `detail`      | nullowalny tekst swobodny                                                |
+| `metadata`    | nullowalny napis JSON                                                    |
+| `ip`          | nullowalna                                                               |
+
+Pięć indeksów: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` oraz złożony `audit_log_resource_idx` na (`category`, `resource_id`) — właśnie on sprawia, że pytanie „co się stało z tym zamówieniem” jest tanie.
+
+## 33 akcje
+
+`AUDIT_LOG_ACTION` w `audit-log.constants.ts`:
+
+| Kategoria   | Akcje                                                                                                                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`                                                                              |
+| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_initiated`, `order.released`, `order.dispute_opened`, `order.dispute_closed` |
+| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                              |
+| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`                                                                                                                          |
+| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                |
+| `settings`  | `settings.updated`                                                                                                                                                                                                            |
+
+`email.deferred` i `settings.updated` są zadeklarowane, ale nic ich nie emituje.
+
+## Zapis zdarzenia
+
+Nigdy nie zapisuj do `audit_log` bezpośrednio. `audit-log.events.server.ts` eksportuje nazwany rejestrator na każdą akcję: 32 eksportowane funkcje `record*`, czyli 31 rejestratorów akcji plus wrapper `recordOrderEmailOutcome`. Każdy rejestrator uzupełnia akcję, kategorię i poziom ważności, a następnie deleguje do jednego z trzech schedulerów w `audit-log.record.server.ts`:
+
+| Scheduler                     | Rozwiązywanie aktora                                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `scheduleAuditLogFromRequest` | `resolveRequestAuditActor()` z sesji, z fallbackiem na `SYSTEM_AUDIT_ACTOR`; IP z `resolveRequestAuditIp()` |
+| `scheduleAuditLog`            | aktora podaje wywołujący                                                                                    |
+| `scheduleSystemAuditLog`      | zawsze `SYSTEM_AUDIT_ACTOR` (`{ name: "System", role: "system" }`)                                          |
+
+Wszystkie trzy działają w trybie **wyślij i zapomnij**:
+
+```ts
+export const scheduleAuditLog = (input: AuditLogEventInput): void => {
+  scheduleBackgroundWork(enqueueAuditLogMessage(buildQueueMessage(input)))
+}
+```
+
+`scheduleBackgroundWork` (`src/lib/background.ts`) przekazuje obietnicę do `waitUntil` Workera, więc rejestrator nigdy nie opóźnia odpowiedzi, a awaria kolejki nigdy nie wywala mutacji. Zwróć uwagę na typ zwracany: `void`, a nie `Promise<void>` — rejestratora się nie `await`-uje.
+
+`buildQueueMessage` przypisuje `id: uuidv7()` i `createdAt: Date.now()` w miejscu wywołania, więc kolejność odzwierciedla moment zdarzenia, a nie moment przetworzenia przez konsumenta. `serializeAuditMetadata` zamienia obiekt metadanych w przechowywany napis JSON.
+
+Dwa pomocniki spójnie kształtują `target` i `resource_id`: `withResourceId(target, options)` domyślnie ustawia `resourceId` na `target`, a `resolveActorAuditTarget(actor, options)` preferuje jako cel adres e-mail aktora i umieszcza go w metadanych, z fallbackiem na nazwę.
+
+## Kolejka
+
+Bindingiem producenta jest `AUDIT_LOG_QUEUE`:
+
+```ts
+const enqueueAuditLogMessage = async (message: AuditLogQueueMessage): Promise<void> => {
+  await env.AUDIT_LOG_QUEUE.send(message, { contentType: "json" })
+}
+```
+
+`wrangler.jsonc` deklaruje producenta i konsumenta dla każdego środowiska, na przykład w `development`:
+
+```jsonc
+"queues": {
+  "producers": [{ "binding": "AUDIT_LOG_QUEUE", "queue": "martebizuteria-audit-log-preview" }],
+  "consumers": [{ "queue": "martebizuteria-audit-log-preview", "max_batch_size": 50, "max_batch_timeout": 5, "max_retries": 3 }],
+},
+```
+
+Punktem wejścia konsumenta jest eksport `queue` w `src/server.ts`:
+
+```ts
+async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  await processAuditLogQueueBatch(batch)
+},
+```
+
+`processAuditLogQueueBatch` (`audit-log.queue.server.ts`) wstawia cały wsad jedną instrukcją i tylko wtedy potwierdza wiadomości:
+
+```ts
+try {
+  await insertAuditLogs(rows)
+
+  for (const message of batch.messages) {
+    message.ack()
+  }
+
+  await publishRealtimeInvalidation({ admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] })
+} catch (error) {
+  console.error("[AuditLog Queue] Batch insert failed:", error)
+
+  for (const message of batch.messages) {
+    message.retry()
+  }
+}
+```
+
+Do 50 zdarzeń staje się więc jednym insertem do D1, a nieudany wsad jest ponawiany do trzech razy. Konsekwencja, o której trzeba pamiętać: **wpis audytu jest spójny ostatecznie** — może pojawić się nawet po `max_batch_timeout` (5 sekund), dlatego konsument publikuje unieważnienie realtime, a nie liczy na to, że interfejs odświeży sam zapisujący.
+
+## Różnice zmian
+
+Dla akcji aktualizacji rejestratory niosą strukturalną różnicę. `audit-log.diff.utils.ts` eksportuje trzy generyczne pomocniki:
+
+- `buildAuditChangeMetadata(before, after, …)` — zmienione pola
+- `formatAuditDetailFromChanges(…)` — jednowierszowe podsumowanie dla człowieka
+- `toAuditMetadataRecord(metadata)` — spłaszczenie do zapisu
+
+Wywołujący budują migawkę z każdej strony. Dla produktu `product-audit.utils.ts` ma `extractProductAuditSnapshot` i `buildProductAuditChange`, używane przez `updateCompleteProduct`, które czyta produkt przed i po zapisie. Dla zwrotu `order-audit.utils.ts` ma `buildOrderRefundAuditChange`.
+
+## Automatyczne zdarzenia uwierzytelniania
+
+`audit-log.auth.server.ts` owija handler Better Auth, żeby logowanie i wylogowanie były zapisywane bez ingerencji w samo Better Auth:
+
+```ts
+export const handleAuthRequestWithAudit = async (request: Request): Promise<Response> => {
+  const authPath = resolveAuthPathname(request)
+  const shouldAuditFailedLogin = isEmailSignInAttempt(authPath, request.method)
+  const shouldAuditLogout = isSignOutAttempt(authPath, request.method)
+  const signInEmail = shouldAuditFailedLogin ? await parseSignInEmail(request) : undefined
+  ...
+  const response = await auth.handler(request)
+  ...
+}
+```
+
+Szczegóły warte uwagi:
+
+- Dopasowuje `ROUTES.API_AUTH.SIGN_IN_EMAIL` i `ROUTES.API_AUTH.SIGN_OUT` pod prefiksem `/api/auth`, więc tabela tras pozostaje jedynym źródłem tych ścieżek.
+- Treść żądania jest czytana przez `request.clone().json()`, żeby prawdziwy handler wciąż ją otrzymał.
+- Przy wylogowaniu sesja jest czytana **przed** wywołaniem handlera, bo potem już jej nie ma.
+- Nieudane logowanie jest zapisywane tylko wtedy, gdy odpowiedź nie jest `ok`, a adres e-mail staje się `target` — dzięki temu dziennik pokazuje próby na adresach, które mogą nie istnieć.
+
+## Aktywność klienta
+
+`recordCustomerActivity` (`src/modules/customer-activity/use-cases/record-customer-activity.ts`) jest publiczne (`withRequest`), ale bez sesji zwraca `{ ok: true, recorded: false }` bez zapisu, więc ruch anonimowy nigdy nie jest logowany.
+
+Obsługuje trzy rodzaje zdarzeń i formatuje dla każdego linię szczegółów:
+
+| `kind`            | Rejestrator                        | Szczegół                         |
+| ----------------- | ---------------------------------- | -------------------------------- |
+| `cart_item_added` | `recordCustomerCartItemAddedAudit` | `"<tytuł> (<wariant>) ×<ilość>"` |
+| `cart_abandoned`  | `recordCustomerCartAbandonedAudit` | `"<n> items in cart"`            |
+| `page_viewed`     | `recordCustomerPageViewedAudit`    | ścieżka                          |
+
+Strona klienta to `customer-activity.tracking.ts`, którego `trackCartItemAdded`, `trackCartAbandoned` i `trackPageViewed` są owinięte w `createClientOnlyFn` i pochłaniają własne błędy (`fireAndForget`), więc śledzenie nigdy nie zepsuje strony. Odsłony i porzucenia są deduplikowane w obrębie sesji przez klucze `sessionStorage` z prefiksami `customer-activity:page-view:` i `customer-activity:cart-abandoned-sent`.
+
+To właśnie umożliwia wskaźnik „odsłony stron” na pulpicie — zobacz [Pulpit admina](/docs/features/admin-dashboard) — i oznacza też, że liczba dotyczy wyłącznie odrębnych stron na sesję dla zalogowanych klientów.
+
+## Ekran w panelu
+
+`/admin/audit` (`src/routes/admin.audit.tsx`) wczytuje wstępnie `getAuditLogStatsQuery()` i `listAuditLogsQuery({ page: 1, pageSize: ADMIN_AUDIT_LOG_PAGE_SIZE })`. Rozmiar strony to **100**, a `AUDIT_LOG_QUERY_STALE_MS` to 30 000 — najkrótszy czas świeżości w całym kodzie.
+
+Wszystkie trzy use case'y są zabezpieczone przez `authorized({ settings: ["manage"] })`, więc czytanie dziennika audytu to uprawnienie poziomu ustawień, a nie uprawnienie per zasób:
+
+| Use case                 | Zwraca                                                             |
+| ------------------------ | ------------------------------------------------------------------ |
+| `list-audit-logs.ts`     | stronę, filtrowaną po `category`, `severity`, `createdAt` i frazie |
+| `get-audit-log-stats.ts` | `{ totalCount, todayCount, warningCount, errorCount }`             |
+| `delete-audit-logs.ts`   | `{ deleted, ok }` i publikuje unieważnienie realtime               |
+
+`getAdminAuditLogStats` to jeden `db.batch` z czterema zliczeniami, gdzie „dzisiaj” pochodzi z `resolveStartOfToday()`.
+
+`listAuditLogs` radzi sobie z brakiem wartości `total`:
+
+```ts
+const hasMore = total === undefined ? items.length === params.limit : params.offset + items.length < total
+```
+
+Stałe filtrów to `AUDIT_LOG_CATEGORY_FILTER` (kategorie plus `all`) i `AUDIT_LOG_DATE_RANGE` (`today`, `7d`, `30d`, `all`) wraz z `AUDIT_LOG_DATE_RANGE_MS` dla dwóch okien. Mapy prezentacji: `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS`, `ACTOR_ROLE_COLORS`, a także `AUDIT_LOG_TABLE_COLUMN_ID`, `_SIZE` i `_PINNING`.
+
+Komponenty leżą w `.../admin/audit/`: `audit-log.tsx`, `components/audit-columns.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, komórki w `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-table-cell`) oraz `audit-stats.config.ts`.
+
+Usuwanie to jedyna mutacja. Nie ma polityki retencji ani zaplanowanego czyszczenia, więc tabela rośnie, dopóki administrator nie zaznaczy i nie usunie wierszy.
+
+## Czytany jako strumień w innych miejscach
+
+Trzy inne ekrany czytają `audit_log`, a nie własną tabelę:
+
+- `/account/overview` — strumień aktywności, przez `getCustomerActivityAuditRows` i `mapAuditLogToActivityItem`
+- `/account/sessions` — historia logowań, filtrowana do `auth.login` i `auth.login_failed`
+- `/admin/customers/$id` — oś czasu klienta, `getCustomerAuditTimelineQuery` z `CUSTOMER_AUDIT_TIMELINE_LIMIT = 50`
+
+Usunięcie wierszy audytu wymazuje więc również te widoki.
+
+## Powiązane strony
+
+- [Konto](/docs/features/account)
+- [Klienci w panelu](/docs/features/admin-customers)
+- [Pulpit admina](/docs/features/admin-dashboard)
+- [Zamówienia](/docs/features/orders)
+- [E-maile transakcyjne](/docs/features/email)

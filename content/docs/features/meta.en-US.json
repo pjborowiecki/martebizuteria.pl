@@ -1,0 +1,24 @@
+{
+  "title": "Features",
+  "pages": [
+    "index",
+    "landing-page",
+    "catalog-and-search",
+    "product-page",
+    "cart",
+    "checkout",
+    "payments",
+    "orders",
+    "inventory",
+    "shipping-and-delivery",
+    "discounts",
+    "account",
+    "admin-dashboard",
+    "admin-catalog",
+    "admin-customers",
+    "audit-log",
+    "legal-pages",
+    "email",
+    "internationalization"
+  ]
+}

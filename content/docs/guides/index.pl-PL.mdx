@@ -1,0 +1,55 @@
+---
+title: "Przewodniki"
+description: "Praktyczne przepisy na zmiany w M'Arte: moduły, przypadki użycia, strony panelu, tabele danych, formularze, tłumaczenia, migracje, testy i bezpieczeństwo wdrożeń."
+---
+
+Każda strona w tym rozdziale to przepis na jedno konkretne zadanie, napisany na podstawie kodu w jego aktualnym stanie. Jeśli przewodnik pokazuje plik — ten plik istnieje; jeśli pokazuje komendę — ta komenda jest w `package.json`. Jeśli najpierw potrzebujesz szerszego obrazu, czyli jak przebiega żądanie i dlaczego warstwy są rozdzielone właśnie tak, zacznij od [Architektury](/docs/architecture) i wróć tutaj.
+
+## Wybierz przewodnik
+
+| Chcesz                                                                | Przeczytaj                                                        |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Dodać nową tabelę w bazie i kod wokół niej                            | [Dodawanie modułu](/docs/guides/add-a-module)                     |
+| Dodać jedną operację — tworzenie, listowanie, aktualizację, usunięcie | [Dodawanie przypadku użycia](/docs/guides/add-a-use-case)         |
+| Zrozumieć middleware, walidatory, błędy i unieważnianie cache'u       | [Funkcje serwerowe](/docs/guides/server-functions)                |
+| Zbudować formularz zapisujący dane do bazy                            | [Formularze i walidacja](/docs/guides/forms-and-validation)       |
+| Dodać stronę do panelu administracyjnego                              | [Dodawanie strony panelu](/docs/guides/add-an-admin-page)         |
+| Dodać tabelę z sortowaniem, filtrowaniem i zmianą szerokości kolumn   | [Dodawanie tabeli danych](/docs/guides/add-a-data-table)          |
+| Umieścić filtry albo tryb panelu bocznego w adresie URL               | [Stan w adresie URL](/docs/guides/url-state)                      |
+| Dodać lub zmienić tekst widoczny dla użytkownika w obu językach       | [Tłumaczenia](/docs/guides/i18n-messages)                         |
+| Zmienić kolory, kroje pisma albo nazwę i odnośniki sklepu             | [Motyw i branding](/docs/guides/theming-and-branding)             |
+| Bezpiecznie zmienić schemat bazy danych                               | [Migracje bazy danych](/docs/guides/database-migrations)          |
+| Zrozumieć pliki seed i wiedzieć, kiedy ich nie uruchamiać             | [Dane startowe](/docs/guides/seeding-data)                        |
+| Napisać test jednostkowy, integracyjny albo komponentu                | [Pisanie testów](/docs/guides/writing-tests)                      |
+| Sprawdzić zmianę przed scaleniem                                      | [Lista kontrolna bezpieczeństwa](/docs/guides/security-checklist) |
+| Uruchomić aplikację lokalnie, odtworzyć webhook, podejrzeć e-mail     | [Debugowanie lokalne](/docs/guides/local-debugging)               |
+
+## Kształt typowej zmiany
+
+Większość zmian w tym repozytorium dotyka czterech miejsc, w tej kolejności:
+
+1. **Moduł** — `src/modules/{feature}/`. Tabela Drizzle, schematy Zod, stałe (klucze zapytań, limity długości kolumn, krotki wartości wyliczeniowych), typy wywnioskowane z tabeli oraz czyste funkcje pomocnicze.
+2. **Przypadek użycia** — `src/modules/{feature}/use-cases/{verb-noun}.ts`. Jedna operacja na plik: `createServerFn` plus `queryOptions` albo `mutationOptions`, które loadery i komponenty rozwijają operatorem spread.
+3. **Warstwa prezentacji** — `src/presentation/`. Komponenty, hooki, style, branding, szablony e-mail. Nic tutaj nie rozmawia bezpośrednio z bazą danych — wszystko importuje przypadki użycia.
+4. **Trasa** — `src/routes/`. Trasa plikowa, która pilnuje dostępu, wstępnie ładuje zapytania w swoim `loaderze`, deklaruje przestrzenie nazw tłumaczeń w `staticData.namespaces` i renderuje komponent z warstwy prezentacji.
+
+Testy leżą obok kodu, który pokrywają, w katalogach `__test__/`, i nazywają się od pliku źródłowego.
+
+## Zasady obowiązujące w każdym przewodniku
+
+Te reguły wymusza `bun run check`, a nie przegląd kodu:
+
+- **Żadnych komentarzy w TypeScript ani TSX.** Intencję wyrażają nazwy i typy. Proza należy do plików `.mdx`, takich jak ten.
+- **Żadnego `any`, `as never`, `as unknown as`, `@ts-nocheck` ani wyciszania reguł lintera.** `vite.config.ts` podnosi wszystkie sześć kategorii oxlint — w tym `nursery` — do poziomu błędu, z lintowaniem świadomym typów i `denyWarnings: true`. Nieużywana dyrektywa wyciszająca sama jest błędem.
+- **Limity rozmiaru.** 800 linii na plik, 150 linii na funkcję, 20 instrukcji na funkcję. Kiedy natrafisz na limit, wydziel funkcję pomocniczą do pliku obok, zamiast rozluźniać regułę.
+- **Import z pliku definiującego.** Nie ma plików typu barrel. `src/modules/_core` przechowuje wspólne elementy, ale każdy importuje się z jego własnej ścieżki.
+- **Zawsze oba języki.** Każda przestrzeń nazw tłumaczeń istnieje w `messages/pl-PL/` i `messages/en-US/`; każda strona dokumentacji istnieje jako `<slug>.pl-PL.mdx` i `<slug>.en-US.mdx`.
+
+## Przed otwarciem pull requesta
+
+```sh
+bun run check      # formatowanie, lint i kontrola typów
+bun run test       # wszystkie trzy projekty Vitest
+```
+
+`bun run check` uruchamia `vp check`, które formatuje kod Oxfmt (razem z kolejnością grup importów i sortowaniem klas Tailwind), lintuje Oxlintem i sprawdza typy TypeScriptem. `bun run test` uruchamia projekty `node`, `integration` i `component` zdefiniowane w `vite.config.ts`. Hook `.vite-hooks/pre-commit` wywołuje `bun run check:pre-commit` na plikach w staging area, więc zepsuty commit zwykle zostaje wyłapany jeszcze przed CI.

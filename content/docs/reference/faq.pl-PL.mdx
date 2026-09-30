@@ -1,0 +1,97 @@
+---
+title: "Często zadawane pytania"
+description: "Krótkie odpowiedzi na pytania, które pojawiają się jako pierwsze przy pracy z tym repozytorium."
+---
+
+## Co uruchamia tę aplikację?
+
+Jeden Worker Cloudflare. `src/server.ts` jest punktem wejścia; wszystkim, co nie zostanie obsłużone wcześniej, zajmuje się TanStack Start. Dane leżą w D1, media w R2, dziennik audytu podróżuje przez kolejkę Cloudflare, unieważnianie realtime idzie przez Durable Object, a `CACHE` to przestrzeń KV zadeklarowana w każdym środowisku.
+
+Bun instaluje pakiety i uruchamia skrypty z `package.json`. Vite+ (`vp`) dostarcza serwer developerski, budowanie, formatter, linter i runner testów — wszystko konfigurowane w `vite.config.ts`.
+
+## Jaki menedżer pakietów i jakie wersje?
+
+`packageManager` to `bun@1.4.0`. Używaj `bun install` i `bun run <skrypt>`, żeby wybrać wersje narzędzi z repozytorium. `vp toolchain` wypisuje wersje w aktywnym wydaniu Vite+.
+
+## Czy potrzebuję konta Cloudflare, żeby programować?
+
+Do `bun run dev` — tak. Środowisko Wranglera `development` używa zdalnych powiązań: rozmawia z prawdziwą bazą D1 preview, prawdziwym bucketem R2 i prawdziwą przestrzenią KV. Do testów — nie: działają przeciwko bazie `node:sqlite` w pamięci za transportem w kształcie D1 i czytają atrapy z zacommitowanego `.env.test`.
+
+## Która lokalizacja jest domyślna?
+
+`pl-PL`. Jest serwowana bez prefiksu, więc `/products` to wersja polska. `en-US` jest serwowana pod `/en-US`. Obie są zadeklarowane w `src/integrations/use-intl/i18n.config.ts`, razem z nazwą cookie `marte_locale` i `Europe/Warsaw` jako domyślną strefą czasową. Nadmiarowy adres `/pl-PL/...` dostaje 301 na czystą ścieżkę już w Workerze.
+
+## Gdzie trafia nowa operacja?
+
+Jeśli czyta lub zapisuje tabelę bazy danych, to przypadek użycia w module tej tabeli: `src/modules/<feature>/use-cases/<czasownik>-<rzeczownik>.ts`. Eksportuje funkcję serwerową `createServerFn` z middleware `authorized`, walidatorem Zod w `validator` oraz opcjami zapytania lub mutacji obok.
+
+Jeśli to czysty dostęp do danych bez decyzji autoryzacyjnej, należy do `*.accessors.ts` tego modułu i jest wywoływany z przypadku użycia.
+
+Jeśli nie dotyka żadnej tabeli i potrzebuje go tylko jedna trasa, zdefiniuj to w pliku tej trasy. Jeśli to mały helper w zasięgu zapytania — `src/lib`.
+
+## Kiedy tworzę nowy moduł?
+
+Zwykle tylko wtedy, gdy dodajesz tabelę w bazie danych. Pięć modułów istnieje bez tabeli — `_core`, `admin-dashboard`, `customer-account`, `customer-activity`, `storefront-search` — i każdy z nich zasługuje na to, grupując operacje czytające z kilku tabel. Nowy moduł bez tabeli wymaga takiego samego uzasadnienia.
+
+## Gdzie trafia nowy komponent?
+
+Do `src/presentation/components/custom`. Komponent wspólny dla wielu obszarów to płaski plik w tym katalogu; komponent należący do jednej strony lub obszaru idzie do `components/custom/pages/<obszar>/`. Jeden widget, dialog, formularz albo definicja kolumn na plik. Primitywy shadcn leżą w `components/shadcn` i nie są edytowane ręcznie.
+
+## Jak przekazać tekst do komponentu?
+
+Nie przekazujesz. Komponent wywołuje `useTranslations` dla własnej przestrzeni nazw i sam czyta tekst. Nie ma propsów `label` ani `title`, i żaden komponent nie przyjmuje danych, które mógłby pobrać przez opcje zapytania właściwego przypadku użycia.
+
+## Jak dodać przestrzeń nazw tłumaczeń?
+
+Utwórz `messages/en-US/<namespace>.json` i `messages/pl-PL/<namespace>.json` — oba, zawsze — a potem wymień przestrzeń w `staticData.namespaces` trasy. Przestrzeń zadeklarowana bez pliku rzuca przy ładowaniu `Missing translation namespace: messages/<locale>/<namespace>.json`.
+
+## Dlaczego każde zapytanie serwerowe czyta sesję z D1?
+
+Better Auth jest skonfigurowany z 300-sekundowym cache cookie, ale `getRequestSession` przekazuje `disableCookieCache: true`, żeby zablokowany lub wylogowany użytkownik nie mógł jechać na zapisanym cookie. Kosztem jest jeden odczyt D1 na zapytanie HTTP, a nie na wywołanie: wynik jest zapamiętywany per `Request` w `WeakMap`, więc równoległe loadery i funkcje serwerowe w tym samym zapytaniu go dzielą.
+
+## Dlaczego autoryzacja jest w przypadkach użycia, a nie na trasach?
+
+Bo funkcja serwerowa jest publicznym endpointem HTTP. Można ją wywołać bezpośrednio, bez załadowania trasy, która zwykle ją wywołuje — więc strażnik w `beforeLoad` nie może jej chronić, a dodatkowo strażnicy działają też w przeglądarce. Middleware `authorized` działa na serwerze, przed jakimkolwiek dostępem do bazy. Strażnicy tras istnieją wyłącznie dla nawigacji.
+
+Test w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` to wymusza: każdy przypadek użycia z `createServerFn` musi zawierać `authorized(`, o ile nie jest na trzynastoelementowej liście publicznej.
+
+## Dlaczego nie ma transakcji bazodanowych?
+
+D1 nie ma transakcji interaktywnych. `db.batch()` jest atomowe, więc wszystko, co ma być „albo całość, albo nic", buduje się jako listę instrukcji i uruchamia przez `runDrizzleBatch`. Tam, gdzie odczyt musi poprzedzić zapis, kod używa strzeżonego `UPDATE` — rezerwacja magazynu porównuje zarówno `version`, jak i `quantityAvailable >= quantity` — plus unikalnego indeksu, który sprawia, że `INSERT` przegrywającej gałęzi wywala cały wsad.
+
+## Jak przechowywane są pieniądze?
+
+Jako liczby całkowite w jednostce podrzędnej waluty. `product_variant.price` i `compare_at_price` oraz `order.subtotal`, `tax_total`, `shipping_total`, `discount_total` i `total` to wszystko kolumny `integer`. `order.currency_code` ma trzy znaki i domyślną wartość `PLN`; `STORE_CURRENCY_CODE` również wynosi `PLN`. Wykładniki pochodzą z tabeli ISO 4217 w `src/modules/_core/constants/currency.ts`, więc formatowanie nigdy nie zgaduje dwóch miejsc po przecinku.
+
+## Jak zmiana w jednej karcie przeglądarki dociera na ekran innego administratora?
+
+Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 12 dla panelu, 10 dla sklepu — i odrzucają komunikaty, które się nie pokrywają.
+
+## Jak podejrzeć e-mail transakcyjny?
+
+Uruchom serwer developerski i otwórz `/dev/emails`. Trasa jest zdefiniowana w `src/routes/dev.emails.tsx` i nic nie renderuje, jeśli `import.meta.env.DEV` jest fałszywe. Same szablony leżą w `src/presentation/emails/`, a każdy z nich czyta własną przestrzeń `emails.*`.
+
+## Co jest zaczęte, ale niedokończone?
+
+Uwierzytelnianie dwuskładnikowe ma wtyczkę Better Auth i tabelę `two_factor`, ale nie ma procesu rejestracji drugiego czynnika. Rabaty i kupony mają tabelę `discount`, której żadna ścieżka kodu nie zapisuje. InPost obejmuje wyłącznie wyszukiwanie paczkomatów — `fetchPointsByCity` przeciwko publicznemu endpointowi `api-pl-points.easypack24.net` — bez tworzenia przesyłek i etykiet. `order_address` jest zarejestrowana w schemacie Drizzle, ale nieużywana. Strony `/admin/coupons`, `/admin/content`, `/admin/marketing` i `/admin/settings` renderują dane z fikstur w `src/data/`. `SENTRY_AUTH_TOKEN` jest zadeklarowany w `.env.example`, ale nic go nie czyta.
+
+## Jak zorganizowana jest sama dokumentacja?
+
+`content/docs/<katalog>/<slug>.<locale>.mdx`, z plikiem `meta.<locale>.json` na katalog, wymieniającym `pages` w kolejności czytania i przetłumaczony `title`. Obie lokalizacje muszą mieć te same slugi. Sidebar jest budowany wyłącznie z **katalogów najwyższego poziomu**, więc strona musi leżeć jeden poziom w głąb, żeby się pojawić. `bun run content` odtwarza `.source/`; `bun run dev` robi to za ciebie.
+
+Strony to zwykły Markdown. Renderer w `src/presentation/components/custom/docs-mdx.tsx` mapuje wyłącznie elementy HTML, bez rejestru komponentów, więc własne komponenty MDX nie są dostępne.
+
+## Jaką komendę uruchomić przed wypchnięciem zmian?
+
+```sh
+bun run check
+bun run test
+```
+
+`check` to formatowanie, linting i sprawdzanie typów; CI dodaje jeszcze `test:coverage` i `build:preview`. Hook pre-commit już uruchamia `vp staged` na zmienionych plikach, a `prepare-commit-msg` waliduje typ Conventional Commit i dokleja jego emoji.
+
+## Powiązane strony
+
+- [Rozwiązywanie problemów](/docs/reference/troubleshooting)
+- [Konwencje](/docs/reference/conventions)
+- [Pierwsze kroki](/docs/getting-started)

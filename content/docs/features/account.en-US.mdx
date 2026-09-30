@@ -1,0 +1,169 @@
+---
+title: "Account"
+description: "The seven /account pages, the customer-account and address modules, and the two screens that are still placeholders."
+---
+
+## Layout and guard
+
+`src/routes/account.tsx` is the layout. Its `beforeLoad` runs the guard and puts the user in the route context:
+
+```ts
+beforeLoad: async () => ({
+  user: await requireCustomer(),
+}),
+```
+
+`requireCustomer` (`src/integrations/better-auth/auth.routes.ts`) requires a session and then **redirects admins away**:
+
+```ts
+export const requireCustomer = async (): Promise<SessionUser> => {
+  const user = await requireUser()
+
+  return hasAdminAccess(user.role) ? redirectTo(ROUTES.ADMIN) : user
+}
+```
+
+So an admin cannot browse the customer area; they land on `/admin`. The layout renders the storefront `Navigation`, the `AccountSidebar` and the outlet, each wrapped in `Suspense` with its own skeleton. It preloads four namespaces: `pages.account`, `pages.account.meta`, `pages.auth.errors` and `pages.auth.validations`.
+
+`/account` itself only redirects:
+
+```ts
+beforeLoad: () => {
+  redirect({ throw: true, to: "/account/overview" })
+},
+```
+
+## The seven pages
+
+| Route                 | File                       | Query                                                            | Status      |
+| --------------------- | -------------------------- | ---------------------------------------------------------------- | ----------- |
+| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                               | Live        |
+| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`                                      | Live        |
+| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery()`                                      | Live        |
+| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                      | Live        |
+| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                       | Live        |
+| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()` | Live        |
+| `/account/payment`    | `account.payment.tsx`      | none                                                             | Placeholder |
+| `/account/wishlist`   | `account.wishlist.tsx`     | none                                                             | Placeholder |
+
+The sidebar order is `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`).
+
+Every route loader prefetches with `staleTime: "static"` and sets the route's `staleTime` to `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
+
+## Authorization pattern
+
+Every use case in `src/modules/customer-account/use-cases/` uses `authorized()` with no permission argument — any signed-in user — and then scopes the query to `context.auth.user.id` itself. There is no route-level ownership check to bypass; the server function is the boundary. `getCustomerOrder`, for example, filters on `and(eq(order.id, orderId), eq(order.userId, context.auth.user.id))`.
+
+## Overview
+
+`getCustomerOverview` fans out five queries in parallel, then a sixth for the order items:
+
+| Source                                 | Feeds                                 |
+| -------------------------------------- | ------------------------------------- |
+| `getCustomerOrderStatsQuery([userId])` | `totalOrders`, `totalSpentMinorUnits` |
+| `getCustomerOrderRows(userId, 3)`      | The recent-orders list                |
+| `getCustomerActivityAuditRows(userId)` | The activity feed                     |
+| `getUserById(userId)`                  | `memberSinceYear` from `createdAt`    |
+| The `nowosci` collection               | The recommendations grid              |
+
+The limits are in `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`.
+
+Two things to know:
+
+- **Recommendations are not personalised.** They are the first three published products of the `nowosci` collection, the same collection the landing page's new arrivals uses (`LANDING_NEW_ARRIVALS_COLLECTION_HANDLE`).
+- **`wishlistCount` is hard-coded to `0`** in the returned stats, because there is no wishlist table.
+
+The activity feed is built from the audit log: `getCustomerActivityAuditRows` reads `audit_log` rows for the user and `mapAuditLogToActivityItem` turns each recognised action into `{ actionKey, params, createdAt }`, dropping anything it does not recognise. The page maps `actionKey` to an icon through the local `ACTIVITY_ICONS` map and formats the timestamp with `formatCustomerAccountRelativeTime`.
+
+## Profile
+
+`getCustomerProfile` returns `{ createdAt, email, name, phone, timezone }` from the `user` row.
+
+`updateCustomerPhone` is the only field a customer can change here:
+
+```ts
+export const updateCustomerPhone = createServerFn({ method: "POST" })
+  .middleware([withRateLimit("update-customer-phone", RATE_LIMITS.SENSITIVE), authorized()])
+  .validator((input: zod.input<typeof customerAccountZodSchemas.phoneInput>) => customerAccountZodSchemas.phoneInput.parse(input))
+  .handler(async ({ context, data: { phone } }): Promise<boolean> => {
+    await db
+      .update(user)
+      .set({ phone: phone === "" ? sql`NULL` : phone })
+      .where(eq(user.id, context.auth.user.id))
+
+    return true
+  })
+```
+
+`RATE_LIMITS.SENSITIVE` is three calls per minute. An empty string clears the column to `NULL` rather than storing `""`. Name, email and password changes go through Better Auth, not through this module.
+
+## Addresses
+
+`src/modules/address` has five use cases, all `authorized()` and all scoped to the current user:
+
+| Use case                      | Middleware                                                                     | Notes                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| `list-user-addresses.ts`      | `authorized()`                                                                 | `findMany` where `userId` matches                       |
+| `create-user-address.ts`      | `withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE)` + `authorized()` | Forces `userId` from the session                        |
+| `update-user-address.ts`      | rate limited + `authorized()`                                                  |                                                         |
+| `delete-user-address.ts`      | `authorized()`                                                                 |                                                         |
+| `set-default-user-address.ts` | `authorized()`                                                                 | Throws `ERROR_CODES.NOT_FOUND` when nothing was updated |
+
+`addressFieldsSchema` (`address.zod.ts`) requires `address1`, `city` and a two-character `countryCode`; `firstName`, `lastName`, `phone`, `postalCode`, `province` and `address2` are optional, matching the nullable columns.
+
+The `address` table (`address.schema.ts`) has `is_default` and two indexes, `address_userId_idx` and `address_userId_isDefault_idx`. Note that checkout also writes `address` rows — with `user_id` null for a guest — and `isDefault` is set from the `saveShippingAddress` / `saveBillingAddress` checkboxes. See [Checkout](/docs/features/checkout).
+
+## Sessions
+
+`listCustomerSessions` selects the `session` rows for the user ordered by `updatedAt` descending and enriches each one:
+
+```ts
+return rows.map((row) => {
+  const parsed = parseUserAgent(row.userAgent)
+
+  return {
+    browser: parsed.browser,
+    createdAt: row.createdAt,
+    device: parsed.device,
+    deviceType: parsed.deviceType,
+    id: row.id,
+    ipAddress: row.ipAddress ?? undefined,
+    isCurrent: row.id === context.auth.session.id,
+    lastActiveAt: row.updatedAt,
+  } satisfies CustomerAccount["session"]
+})
+```
+
+`parseUserAgent` is in `customer-account.utils.ts`. `lastActiveAt` is the session row's `updatedAt`.
+
+Two revoke mutations:
+
+- `revokeCustomerSession({ sessionId })` — returns `false` without deleting when the id is the **current** session, so a customer cannot sign themselves out from this screen. The delete is `and(eq(session.id, sessionId), eq(session.userId, context.auth.user.id))`.
+- `revokeOtherCustomerSessions()` — deletes every other session for the user.
+
+`listCustomerLoginHistory` reuses the same audit rows and keeps only `auth.login` and `auth.login_failed`, mapping the failure to `status: "blocked"`. So the login history is a view over [the audit log](/docs/features/audit-log), not a separate table.
+
+## The two placeholders
+
+`/account/payment` renders a `CreditCard` icon, the message `pages.account.payment.empty` and a hard-coded count:
+
+```tsx
+<h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+  {t("saved")} ({0})
+</h2>
+```
+
+There is no saved-card table and no Stripe customer portal link. `user.stripe_customer_id` exists as a column but nothing writes it.
+
+`/account/wishlist` renders an empty state with `t("subtitle", { count: 0 })`. There is no wishlist table, no use case and no add-to-wishlist control anywhere in the storefront.
+
+## Activity tracking
+
+`CustomerActivityTracker` (`src/presentation/components/custom/customer-activity-tracker.tsx`) is mounted in the storefront and records page views and cart abandonment — but only for signed-in users, and `shouldTrackStorefrontPath` skips any path containing `/admin` or `/account`, so the account area itself is not tracked.
+
+## Related pages
+
+- [Orders](/docs/features/orders)
+- [Audit log](/docs/features/audit-log)
+- [Admin customers](/docs/features/admin-customers)
+- [Integrations: Better Auth](/docs/integrations/better-auth)

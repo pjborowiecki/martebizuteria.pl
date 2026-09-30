@@ -1,0 +1,9 @@
+{
+  "title": "Documentation",
+  "description": "Architecture, guides, features and reference for the M'Arte storefront and admin console.",
+  "navigation": {
+    "title": "Documentation",
+    "label": "Documentation sections",
+    "overview": "Overview"
+  }
+}

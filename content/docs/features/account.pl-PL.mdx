@@ -1,0 +1,169 @@
+---
+title: "Konto"
+description: "Siedem stron w /account, moduły customer-account i address oraz dwa ekrany, które są jeszcze placeholderami."
+---
+
+## Layout i strażnik
+
+`src/routes/account.tsx` to layout. Jego `beforeLoad` uruchamia strażnika i wkłada użytkownika do kontekstu trasy:
+
+```ts
+beforeLoad: async () => ({
+  user: await requireCustomer(),
+}),
+```
+
+`requireCustomer` (`src/integrations/better-auth/auth.routes.ts`) wymaga sesji, a następnie **odsyła administratorów**:
+
+```ts
+export const requireCustomer = async (): Promise<SessionUser> => {
+  const user = await requireUser()
+
+  return hasAdminAccess(user.role) ? redirectTo(ROUTES.ADMIN) : user
+}
+```
+
+Administrator nie może więc przeglądać strefy klienta; trafia na `/admin`. Layout renderuje `Navigation` z witryny, `AccountSidebar` i outlet, każde owinięte w `Suspense` z własnym szkieletem. Wstępnie wczytuje cztery przestrzenie nazw: `pages.account`, `pages.account.meta`, `pages.auth.errors` i `pages.auth.validations`.
+
+Samo `/account` tylko przekierowuje:
+
+```ts
+beforeLoad: () => {
+  redirect({ throw: true, to: "/account/overview" })
+},
+```
+
+## Siedem stron
+
+| Trasa                 | Plik                       | Zapytanie                                                        | Stan        |
+| --------------------- | -------------------------- | ---------------------------------------------------------------- | ----------- |
+| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                               | działa      |
+| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`                                      | działa      |
+| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery()`                                      | działa      |
+| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                      | działa      |
+| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                       | działa      |
+| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()` | działa      |
+| `/account/payment`    | `account.payment.tsx`      | brak                                                             | placeholder |
+| `/account/wishlist`   | `account.wishlist.tsx`     | brak                                                             | placeholder |
+
+Kolejność w panelu bocznym to `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`).
+
+Każdy loader trasy wczytuje dane wstępnie z `staleTime: "static"` i ustawia `staleTime` trasy na `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
+
+## Wzorzec autoryzacji
+
+Każdy use case w `src/modules/customer-account/use-cases/` używa `authorized()` bez argumentu uprawnień — czyli dowolny zalogowany użytkownik — a następnie sam zawęża zapytanie do `context.auth.user.id`. Nie ma sprawdzenia własności na poziomie trasy, które można by obejść; granicą jest funkcja serwerowa. `getCustomerOrder` filtruje na przykład po `and(eq(order.id, orderId), eq(order.userId, context.auth.user.id))`.
+
+## Przegląd
+
+`getCustomerOverview` rozsyła równolegle pięć zapytań, a potem szóste po pozycje zamówień:
+
+| Źródło                                 | Zasila                                |
+| -------------------------------------- | ------------------------------------- |
+| `getCustomerOrderStatsQuery([userId])` | `totalOrders`, `totalSpentMinorUnits` |
+| `getCustomerOrderRows(userId, 3)`      | listę ostatnich zamówień              |
+| `getCustomerActivityAuditRows(userId)` | strumień aktywności                   |
+| `getUserById(userId)`                  | `memberSinceYear` z `createdAt`       |
+| kolekcja `nowosci`                     | siatkę rekomendacji                   |
+
+Limity leżą w `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`.
+
+Dwie rzeczy warto wiedzieć:
+
+- **Rekomendacje nie są personalizowane.** To pierwsze trzy opublikowane produkty kolekcji `nowosci`, tej samej, z której korzystają nowości na stronie głównej (`LANDING_NEW_ARRIVALS_COLLECTION_HANDLE`).
+- **`wishlistCount` jest zapisane na stałe jako `0`** w zwracanych statystykach, bo nie ma tabeli listy życzeń.
+
+Strumień aktywności jest budowany z dziennika audytu: `getCustomerActivityAuditRows` czyta wiersze `audit_log` dla użytkownika, a `mapAuditLogToActivityItem` zamienia każdą rozpoznaną akcję w `{ actionKey, params, createdAt }`, odrzucając to, czego nie rozpoznaje. Strona mapuje `actionKey` na ikonę przez lokalną mapę `ACTIVITY_ICONS` i formatuje znacznik czasu przez `formatCustomerAccountRelativeTime`.
+
+## Profil
+
+`getCustomerProfile` zwraca `{ createdAt, email, name, phone, timezone }` z wiersza `user`.
+
+`updateCustomerPhone` to jedyne pole, które klient może tu zmienić:
+
+```ts
+export const updateCustomerPhone = createServerFn({ method: "POST" })
+  .middleware([withRateLimit("update-customer-phone", RATE_LIMITS.SENSITIVE), authorized()])
+  .validator((input: zod.input<typeof customerAccountZodSchemas.phoneInput>) => customerAccountZodSchemas.phoneInput.parse(input))
+  .handler(async ({ context, data: { phone } }): Promise<boolean> => {
+    await db
+      .update(user)
+      .set({ phone: phone === "" ? sql`NULL` : phone })
+      .where(eq(user.id, context.auth.user.id))
+
+    return true
+  })
+```
+
+`RATE_LIMITS.SENSITIVE` to trzy wywołania na minutę. Pusty napis czyści kolumnę do `NULL`, a nie zapisuje `""`. Zmiany nazwy, adresu e-mail i hasła przechodzą przez Better Auth, a nie przez ten moduł.
+
+## Adresy
+
+`src/modules/address` ma pięć use case'ów, wszystkie z `authorized()` i wszystkie zawężone do bieżącego użytkownika:
+
+| Use case                      | Middleware                                                                     | Uwagi                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| `list-user-addresses.ts`      | `authorized()`                                                                 | `findMany` po zgodnym `userId`                            |
+| `create-user-address.ts`      | `withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE)` + `authorized()` | wymusza `userId` z sesji                                  |
+| `update-user-address.ts`      | z limitem żądań + `authorized()`                                               |                                                           |
+| `delete-user-address.ts`      | `authorized()`                                                                 |                                                           |
+| `set-default-user-address.ts` | `authorized()`                                                                 | rzuca `ERROR_CODES.NOT_FOUND`, gdy nic nie zaktualizowano |
+
+`addressFieldsSchema` (`address.zod.ts`) wymaga `address1`, `city` i dwuznakowego `countryCode`; `firstName`, `lastName`, `phone`, `postalCode`, `province` i `address2` są opcjonalne, zgodnie z nullowalnymi kolumnami.
+
+Tabela `address` (`address.schema.ts`) ma `is_default` i dwa indeksy: `address_userId_idx` oraz `address_userId_isDefault_idx`. Zwróć uwagę, że wiersze `address` zapisuje również kasa — z `user_id` równym `null` dla gościa — a `isDefault` jest ustawiane z pól wyboru `saveShippingAddress` / `saveBillingAddress`. Zobacz [Kasa](/docs/features/checkout).
+
+## Sesje
+
+`listCustomerSessions` wybiera wiersze `session` użytkownika uporządkowane malejąco po `updatedAt` i wzbogaca każdy z nich:
+
+```ts
+return rows.map((row) => {
+  const parsed = parseUserAgent(row.userAgent)
+
+  return {
+    browser: parsed.browser,
+    createdAt: row.createdAt,
+    device: parsed.device,
+    deviceType: parsed.deviceType,
+    id: row.id,
+    ipAddress: row.ipAddress ?? undefined,
+    isCurrent: row.id === context.auth.session.id,
+    lastActiveAt: row.updatedAt,
+  } satisfies CustomerAccount["session"]
+})
+```
+
+`parseUserAgent` leży w `customer-account.utils.ts`. `lastActiveAt` to `updatedAt` wiersza sesji.
+
+Dwie mutacje unieważniające:
+
+- `revokeCustomerSession({ sessionId })` — zwraca `false` bez usuwania, gdy identyfikator wskazuje **bieżącą** sesję, więc klient nie może się z tego ekranu wylogować. Usunięcie to `and(eq(session.id, sessionId), eq(session.userId, context.auth.user.id))`.
+- `revokeOtherCustomerSessions()` — usuwa wszystkie pozostałe sesje użytkownika.
+
+`listCustomerLoginHistory` korzysta z tych samych wierszy audytu i zachowuje tylko `auth.login` oraz `auth.login_failed`, mapując niepowodzenie na `status: "blocked"`. Historia logowań jest więc widokiem na [dziennik audytu](/docs/features/audit-log), a nie osobną tabelą.
+
+## Dwa placeholdery
+
+`/account/payment` renderuje ikonę `CreditCard`, komunikat `pages.account.payment.empty` i licznik zapisany na stałe:
+
+```tsx
+<h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+  {t("saved")} ({0})
+</h2>
+```
+
+Nie ma tabeli zapisanych kart ani odnośnika do portalu klienta Stripe. `user.stripe_customer_id` istnieje jako kolumna, ale nic go nie zapisuje.
+
+`/account/wishlist` renderuje stan pusty z `t("subtitle", { count: 0 })`. Nie ma tabeli listy życzeń, nie ma use case'a i nie ma nigdzie w witrynie kontrolki dodania do listy życzeń.
+
+## Śledzenie aktywności
+
+`CustomerActivityTracker` (`src/presentation/components/custom/customer-activity-tracker.tsx`) jest montowany w witrynie i zapisuje odsłony oraz porzucenie koszyka — ale tylko dla zalogowanych użytkowników, a `shouldTrackStorefrontPath` pomija każdą ścieżkę zawierającą `/admin` albo `/account`, więc sama strefa konta nie jest śledzona.
+
+## Powiązane strony
+
+- [Zamówienia](/docs/features/orders)
+- [Dziennik audytu](/docs/features/audit-log)
+- [Klienci w panelu](/docs/features/admin-customers)
+- [Integracje: Better Auth](/docs/integrations/better-auth)

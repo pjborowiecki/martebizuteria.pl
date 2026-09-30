@@ -1,0 +1,260 @@
+---
+title: "Pisanie testów"
+description: "Trzy projekty Vitest, gdzie leżą testy, wspólne funkcje pomocnicze, wzorce mockowania funkcji serwerowych i tras oraz progi pokrycia."
+---
+
+W `src/` jest 873 plików testowych. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`.
+
+## Trzy projekty
+
+`vite.config.ts` definiuje trzy projekty Vitest, rozróżniane nazwą pliku:
+
+| Projekt       | Pliki                                              | Środowisko | Plik konfiguracyjny             | Liczba |
+| ------------- | -------------------------------------------------- | ---------- | ------------------------------- | ------ |
+| `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | ~330   |
+| `integration` | `*.integration.test.ts`                            | `node`     | brak                            | 30     |
+| `component`   | `*.component.test.tsx`                             | `jsdom`    | `src/platform/testing/setup.ts` | 511    |
+
+```sh
+bun run test              # wszystkie trzy
+bun run test:unit         # tylko node
+bun run test:integration  # tylko integration
+bun run test:component    # tylko component
+bun run test:watch        # tryb obserwowania
+bun run test:changed      # tylko testy dotknięte Twoimi zmianami
+bun run test:coverage     # wszystkie trzy, z pokryciem
+```
+
+Ustawione jest `passWithNoTests: false`, więc projekt, który nic nie dopasuje, oznacza porażkę. `env: loadEnv("test", ...)` ładuje `.env.test`, zawierający atrapy wszystkich sekretów — dzięki temu moduły uwierzytelniania i Stripe można zaimportować bez prawdziwych danych dostępowych.
+
+## Nazywanie pliku testowego
+
+| Źródło                                          | Test                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------ |
+| `src/modules/_core/utils/csv.ts`                | `src/modules/_core/utils/__test__/csv.test.ts`                           |
+| `src/modules/address/use-cases/*.ts`            | `src/modules/address/use-cases/__test__/address-use-cases.test.ts`       |
+| `src/routes/admin.catalog.categories.index.tsx` | `src/routes/__test__/admin.catalog.categories.index.component.test.tsx`  |
+| Loader testowany osobno od komponentu           | `src/routes/__test__/account.addresses.loader.test.ts`                   |
+| Zapytanie wymagające prawdziwego SQL-a          | `src/modules/_core/utils/__test__/search-conditions.integration.test.ts` |
+
+Małe moduły umieszczają wszystkie operacje w jednym pliku; duże dzielą się tematycznie, jak testy `_core/utils` (`currency.test.ts`, `currency.configuration.test.ts`, `currency.zero-decimal.test.ts`).
+
+Pliki testowe mają w `vite.config.ts` złagodzone reguły lintera — `no-await-in-loop`, `no-magic-numbers` i `unicorn/no-null` są wyłączone — ale wszystko pozostałe obowiązuje, w tym zakaz `any` i wyciszania reguł.
+
+## Test jednostkowy
+
+Zwykłe funkcje nie wymagają ceremonii. `src/modules/_core/utils/__test__/csv.test.ts`:
+
+```ts
+import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+
+import { downloadCsvFile, escapeCsvField } from "~/src/modules/_core/utils/csv"
+
+describe("escapeCsvField", () => {
+  it("doubles embedded quotes so the field survives a round trip", () => {
+    expect(escapeCsvField('Ring "Aurora"')).toBe('Ring ""Aurora""')
+  })
+})
+```
+
+Dwie rzeczy warte skopiowania. Po pierwsze, opis w `it` mówi o **zachowaniu i o tym, dlaczego jest ważne**, a nie o mechanice — „doubles embedded quotes so the field survives a round trip”, nie „escapes quotes”. Po drugie, globalne obiekty przeglądarki podstawia się przez `vi.stubGlobal` i zwalnia w `afterEach` przez `vi.unstubAllGlobals()`:
+
+```ts
+vi.stubGlobal("URL", { createObjectURL, revokeObjectURL })
+vi.stubGlobal("document", { createElement: vi.fn(() => anchor) })
+```
+
+## Testowanie funkcji serwerowej
+
+Testy przypadków użycia mockują trzy rzeczy: moduł middleware, moduł bazy danych i moduł akcesorów. Następnie zastępują `createServerFn` sztucznym budowniczym wstrzykującym znaną sesję. Z `src/modules/address/use-cases/__test__/address-use-cases.test.ts`:
+
+```ts
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
+  RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
+  authorized: () => ({}),
+  withRateLimit: (...args: unknown[]) => {
+    middleware.rateLimitCalls.push(args)
+
+    return {}
+  },
+}))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
+  db: { query: { address: { findMany: database.findMany } } },
+}))
+vi.mock("~/src/modules/address/address.accessors", () => ({
+  createUserAddress: accessors.create,
+  deleteUserAddress: accessors.delete,
+  setDefaultUserAddress: accessors.setDefault,
+  updateUserAddress: accessors.update,
+}))
+vi.mock("@tanstack/react-start", () => ({
+  createServerFn: () => {
+    const builder = {
+      handler: (handler: (options: { context: unknown; data: unknown }) => unknown) => (options?: { data?: unknown }) =>
+        handler({ context: { auth: { user: { id: USER_ID } } }, data: options?.data }),
+      middleware: () => builder,
+      validator: (validate: (input: unknown) => unknown) => {
+        const validating = {
+          handler: (handler: (options: { context: unknown; data: unknown }) => unknown) => (options?: { data?: unknown }) =>
+            handler({ context: { auth: { user: { id: USER_ID } } }, data: validate(options?.data) }),
+          middleware: () => validating,
+          validator: () => validating,
+        }
+
+        return validating
+      },
+    }
+
+    return builder
+  },
+}))
+```
+
+Sztuczny budowniczy wciąż uruchamia **prawdziwy walidator**, więc niepowodzenia schematu są testowane. Mocki deklaruje się przez `vi.hoisted`, żeby istniały przed uruchomieniem fabryk modułów:
+
+```ts
+const accessors = vi.hoisted(() => ({
+  create: vi.fn(),
+  delete: vi.fn(),
+  setDefault: vi.fn(),
+  update: vi.fn(),
+}))
+```
+
+Co taki test powinien pokryć:
+
+- **Użytkownika dostarcza sesja, nie wejście.** `expect(accessors.create).toHaveBeenCalledExactlyOnceWith({ ...fields, userId: USER_ID })`.
+- **Pola opcjonalne przechodzą dalej.** Przekaż `phone` i `postalCode` i sprawdź, że dotarły do akcesora.
+- **Ogranicznik żądań jest skonfigurowany.** `expect(middleware.rateLimitCalls).toContainEqual(["create-user-address", { limit: 5, windowSeconds: 60 }])`.
+- **Nieprawidłowe wejście jest odrzucane**, przy pomocy `it.each` po błędnych przypadkach.
+- **Każdy kod rzucany przez handler.** Brakujący wiersz musi dać `NOT_FOUND`, zduplikowany handle `CONFLICT`, i tak dalej.
+
+## Testowanie z prawdziwym SQL-em
+
+Dla zapytania, w którym poprawność _tkwi_ w SQL-u — znaki specjalne, semantyka `LIKE`, kolejność zależna od indeksu — napisz test integracyjny na prawdziwej bazie SQLite w pamięci:
+
+```ts
+import { drizzle } from "drizzle-orm/d1"
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+import { DatabaseSync } from "node:sqlite"
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test"
+
+import { createTestD1Database } from "~/src/platform/testing/mocks/d1"
+
+import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
+
+const sqlite = new DatabaseSync(":memory:")
+
+const database = drizzle(createTestD1Database(sqlite))
+```
+
+`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje moduł Node'a `node:sqlite` do interfejsu `D1Database` — `prepare`, `bind`, `all`, `run`, `raw` oraz `batch`, które owija instrukcje w prawdziwe `begin`/`commit`/`rollback`. Przyjmuje też opcjonalne wywołanie zwrotne `onQuery`, więc test może sprawdzić, jaki SQL faktycznie poszedł do bazy.
+
+Deklaruj tabelę lokalnie, zamiast importować schemat produkcyjny, kiedy potrzebujesz tylko kilku kolumn, utwórz ją w `beforeAll` i zamknij bazę przez `sqlite.close()` w `afterAll`. Wspomniany test wyszukiwania dobrze pokazuje, _do czego_ służą testy integracyjne: podaje `100%`, `ring_1`, `path\`, `%_\` i `x' OR 1=1 --` i sprawdza, że każdy z nich jest dopasowywany jako dosłowny tekst.
+
+## Testowanie komponentu
+
+`renderWithProviders` w `src/platform/testing/lib/render.tsx` owija drzewo w `IntlProvider`, `QueryClientProvider` i `RouterContextProvider`:
+
+```tsx
+const { queryClient, router } = renderWithProviders(<CategoriesTable />)
+```
+
+Domyślnie dostajesz świeży `QueryClient` z wyłączonymi ponowieniami i router na historii w pamięci pod `/`. Przekaż `queryClient` albo `router`, żeby to nadpisać, a `createTestRouter("/some/path")` dla innej ścieżki startowej.
+
+Tłumaczenia pochodzą z `src/platform/testing/lib/messages.ts`, które zachłannie globuje **wszystkie** pliki w `messages/en-US/` i buduje całe drzewo przez `buildMessageTree`. Językiem testów jest więc zawsze `en-US`. Praktyczna konsekwencja: komponent używający klucza, którego brakuje w katalogu angielskim, zawodzi w swoim teście komponentu — i to jest główne zabezpieczenie repozytorium przed nieprzetłumaczonymi napisami.
+
+`src/platform/testing/setup.ts` wykonuje się przed każdym testem komponentu i podstawia to, czego brakuje w jsdom: `IntersectionObserver`, `ResizeObserver` (atrapa raportuje stałe 1024×768, czego potrzebuje mierzenie kolumn w tabeli) oraz `matchMedia` (zawsze `matches: false`). Instaluje też dwa globalne mocki:
+
+```ts
+vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
+  const actual = await importOriginal()
+  const { withTestRpc } = await import("~/src/platform/testing/lib/server-function")
+
+  return {
+    ...actual,
+    createServerFn: new Proxy(actual.createServerFn, {
+      apply: (target, thisArg, args: unknown[]) => withTestRpc(Reflect.apply(target, thisArg, args)),
+    }),
+  }
+})
+```
+
+`withTestRpc` w `src/platform/testing/lib/server-function.ts` owija każdą funkcję serwerową tak, że jej wywołanie uruchamia handler w tym samym procesie, wewnątrz `runWithStartContext`, zamiast próbować wykonać żądanie HTTP. `getRequest` jest również mockowane i zwraca ustalone `Request` dla `http://127.0.0.1:3000/`. Zatem w teście komponentu funkcja serwerowa **wykonuje się naprawdę, przez swoje prawdziwe middleware i walidator** — jeśli chcesz, żeby się nie wykonała, zamockuj jej moduł.
+
+## Testowanie trasy
+
+Trasy testuje się przez przechwycenie `createFileRoute` i uchwycenie obiektu opcji:
+
+```tsx
+const captured: { current: CategoriesRouteDefinition | undefined } = { current: undefined }
+
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof ReactRouter>()
+
+  return {
+    ...actual,
+    createFileRoute: () => (options: CategoriesRouteDefinition) => {
+      captured.current = options
+
+      return { options }
+    },
+  }
+})
+
+await import("~/src/routes/admin.catalog.categories.index")
+
+const route = captured.current
+```
+
+Zwróć uwagę na `await import(...)` **po** mockach — moduł trasy musi zostać załadowany, gdy przechwycenie jest już na miejscu, dlatego te pliki mają importy poniżej swoich wywołań `vi.mock`. Ta odwrócona kolejność jest celowa, a nie przeoczeniem.
+
+Mając opcje, możesz sprawdzić `staleTime`, `shouldReload` i `staticData.namespaces`, wywołać `loader({ context: { queryClient } })` i zweryfikować, które zapytania zostały rozgrzane, oraz wyrenderować `component` przez `renderWithProviders`. Ciężkie komponenty potomne zwykle się podstawia:
+
+```tsx
+vi.mock("~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-table", async () => {
+  const { useCategoriesSheet } =
+    await import("~/src/presentation/components/custom/pages/admin/catalog/categories/hooks/use-categories-sheet")
+
+  return {
+    CategoriesTableContent: (): JSX.Element => {
+      const { mode, open } = useCategoriesSheet()
+
+      return <p>{`${mode}|${String(open)}`}</p>
+    },
+  }
+})
+```
+
+Ta atrapa renderuje badany stan jako tekst, więc asercja to jedno `screen.getByText("create|true")`.
+
+## Pokrycie
+
+`bun run test:coverage` używa dostawcy v8 i wymusza progi:
+
+```ts
+thresholds: {
+  autoUpdate: false,
+  branches: 69,
+  functions: 68,
+  lines: 71,
+  statements: 72,
+}
+```
+
+Z pokrycia wyłączone są: pliki testowe, katalogi `__test__/`, pliki `.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` (komponenty podstawowe skopiowane z zewnątrz) oraz `src/platform/testing/**`. `autoUpdate: false` oznacza, że liczby nie obniżają się same — jeśli Twoja zmiana zbija pokrycie poniżej progu, dopisz testy, a nie obniżaj progu.
+
+CI (`.github/workflows/ci.yml`) uruchamia `bun run check`, potem `bun run test:coverage`, potem `bun run build:preview`, i wysyła raport pokrycia jako artefakt.
+
+## Asercje warte poznania
+
+- `toHaveBeenCalledExactlyOnceWith(...)` — używane w całym repozytorium i mocniejsze niż `toHaveBeenCalledWith` plus osobne sprawdzenie liczby wywołań.
+- `toStrictEqual` zamiast `toEqual`, żeby przypadkowa właściwość `undefined` zawiodła test.
+- `it.each([...])("refuses the incomplete address %j", (data) => ...)` dla przypadków sterowanych tabelą.
+- Matchery jsdom z `@testing-library/jest-dom` są rozszerzane w pliku konfiguracyjnym i typowane przez `src/platform/testing/vitest-env.d.ts`, więc `toBeInTheDocument()` i pokrewne działają w testach komponentów.
+
+## Powiązane przewodniki
+
+- [Dodawanie przypadku użycia](/docs/guides/add-a-use-case)
+- [Dodawanie tabeli danych](/docs/guides/add-a-data-table)
+- [Debugowanie lokalne](/docs/guides/local-debugging)

@@ -1,0 +1,153 @@
+---
+title: "TanStack Query"
+description: "Klient QueryClient na żądanie, klucze zapytań, wstępne pobieranie w loaderach i unieważnianie między kartami."
+---
+
+TanStack Query jest jedynym cache danych w aplikacji. Loadery tras wypełniają go na serwerze, komponenty czytają go na kliencie, mutacje go unieważniają, a dwa osobne kanały wpuszczają unieważnienia z zewnątrz: `BroadcastChannel` między kartami przeglądarki oraz hub WebSocket z Workera.
+
+## Jeden klient na żądanie
+
+Funkcja `getRouter()` w `src/router.tsx` buduje świeży `QueryClient` dla każdego żądania, więc na Workerze nic nie wycieka między odwiedzającymi:
+
+```tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: FIVE_MINS_IN_MS,
+      staleTime: ONE_MIN_IN_MS,
+    },
+  },
+})
+```
+
+`setupRouterSsrQueryIntegration({ queryClient, router })` serializuje wszystko, co pobrały loadery, do danych SSR i odtwarza to w przeglądarce, więc praca loadera nie powtarza się przy hydracji. Klient udostępniany jest przez kontekst routera jako `context.queryClient` — właśnie tak dosięgają go loadery.
+
+## Opcje zapytań mieszkają przy przypadku użycia
+
+Nie ma centralnego rejestru zapytań. Każda funkcja eksportuje swoje opcje zapytania z tego samego pliku, co wywoływaną funkcję serwerową, w `src/modules/{feature}/use-cases/{verb-noun}.ts`:
+
+```ts
+export const getCategories = createServerFn({ method: "GET" })
+  .middleware([withRequest])
+  .handler(async () => {
+    /* … */
+  })
+
+export const getCategoriesQuery = () =>
+  queryOptions({
+    queryFn: () => getCategories(),
+    queryKey: CATEGORY_QUERY_KEYS.ALL,
+    staleTime: CATEGORY_QUERY_STALE_MS,
+  })
+```
+
+Loadery, komponenty i operacje na cache używają tego samego `getCategoriesQuery()`, więc klucz i czas świeżości nigdy nie są zapisane dwukrotnie. Nieskończone listy używają `infiniteQueryOptions` w ten sam sposób — `getStorefrontProductsPageQuery(search, scope)` w `src/modules/product/use-cases/get-storefront-products-page.ts` wyprowadza swój klucz ze znormalizowanego obiektu wyszukiwania:
+
+```ts
+queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, effective],
+getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+  (!filtered && lastPage.hasMore ? lastPageParam + LIST_PAGE_STEP : undefined),
+initialPageParam: LIST_PAGE_FIRST,
+```
+
+## Klucze zapytań
+
+Klucze należą do funkcji, która jest właścicielem danych, i mieszkają w `src/modules/{feature}/{feature}.constants.ts` jako krotki `as const`:
+
+```ts
+export const PRODUCT_QUERY_KEYS = {
+  ADMIN: {
+    ALL: ["admin", "products"] as const,
+    BY_HANDLE: ["admin", "products", "by-handle"] as const,
+    PAGE: ["admin", "products", "page"] as const,
+    STATS: ["admin", "products", "stats"] as const,
+  },
+  ALL: ["products"] as const,
+  BY_HANDLE: ["product"] as const,
+  LANDING_NEW_ARRIVALS: ["products", "landing-new-arrivals"] as const,
+  RELATED_BY_CATEGORY: ["related-products"] as const,
+  STOREFRONT_PAGE: ["products", "storefront-page"] as const,
+} as const
+```
+
+Podobiekt `ADMIN` poprzedza każdy klucz panelu administracyjnego segmentem `"admin"` — to właśnie pozwala dwóm hubom czasu rzeczywistego unieważniać rozłączne zbiory kluczy. Klucze mutacji leżą obok jako `PRODUCT_MUTATION_KEYS`. Przy przenoszeniu kodu zachowaj wartości krotek: zmieniony klucz po cichu osierocia wpisy cache i psuje dopasowanie prefiksów opisane poniżej.
+
+## Wstępne pobieranie w loaderach
+
+Loadery wywołują `queryClient.query(...)` dla pojedynczego zapytania i `queryClient.infiniteQuery(...)` dla zapytania stronicowanego, a następnie pozwalają komponentowi zasubskrybować już rozgrzany cache. Plik `src/presentation/components/custom/pages/products-catalog/products-catalog.loader.ts` pokazuje ten wzorzec:
+
+```ts
+const [infiniteData] = await Promise.all([
+  queryClient.infiniteQuery(getStorefrontProductsPageQuery(normalizedSearch, scope)),
+  scope?.categoryHandle === undefined ? queryClient.query({ ...getCategoriesQuery(), staleTime: "static" }) : undefined,
+  scope?.collectionHandle === undefined ? queryClient.query({ ...getCollectionsQuery(), staleTime: "static" }) : undefined,
+])
+```
+
+Wartość `staleTime: "static"` oznacza kategorie i kolekcje jako dane referencyjne, których nie należy pobierać ponownie przy tej nawigacji. Miniatury pierwszej strony przekazywane są następnie do `prefetchProductThumbnails`, aby żądania obrazów rozpoczęły się przed zamontowaniem komponentu.
+
+## Ładowanie komunikatów
+
+Tłumaczenia korzystają z tego samego cache. `messagesQueryOptions` w `src/integrations/use-intl/i18n.messages.ts` ustawia zarówno `staleTime`, jak i `gcTime` na `Infinity`, ponieważ przestrzeń nazw JSON nie zmienia się w obrębie jednego wdrożenia:
+
+```ts
+queryOptions({
+  gcTime: Infinity,
+  queryFn: () => loadNamespace<TMessages>({ locale, namespace }),
+  queryKey: [MESSAGES_QUERY_KEY, locale, namespace],
+  staleTime: Infinity,
+})
+```
+
+`TranslationsProvider` czyta je przez `useSuspenseQueries` i scala wyniki w jedno drzewo komunikatów. Zobacz [use-intl](/docs/integrations/use-intl).
+
+## Zapytanie o sesję
+
+Plik `src/integrations/better-auth/auth.session.ts` eksportuje `getCurrentSessionQuery`, które świadomie rezygnuje z odświeżania w tle, aby nagłówek zalogowanego użytkownika nie migał:
+
+```ts
+export const getCurrentSessionQuery = queryOptions({
+  queryFn: () => getCurrentSession(),
+  queryKey: SESSION_QUERY_KEYS.CURRENT,
+  refetchOnReconnect: false,
+  refetchOnWindowFocus: false,
+  retry: false,
+  staleTime: SESSION_STALE_TIME_MS,
+})
+```
+
+## Unieważnianie między kartami
+
+`src/integrations/tanstack-query/query.sync.ts` jest jedynym plikiem w katalogu `tanstack-query`. Powiela unieważnienia między kartami przeglądarki tego samego pochodzenia przez `BroadcastChannel` o nazwie `marte-query-invalidation`:
+
+```ts
+export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryKey): Promise<void> => {
+  const invalidation = queryClient.invalidateQueries({ queryKey, refetchType: "all" })
+
+  try {
+    getInvalidationChannel()?.postMessage({ queryKey })
+  } catch {
+    return invalidation
+  }
+
+  return invalidation
+}
+```
+
+`setupQueryClientInvalidationBroadcast(queryClient)` instaluje nasłuchiwanie, a `src/router.tsx` wywołuje je raz na klienta, pod warunkiem `if (!import.meta.env.SSR)`. Obie funkcje są odporne na brak środowiska: `getInvalidationChannel` zwraca `undefined`, gdy brakuje `document` lub `BroadcastChannel`, `WeakSet` zapobiega zduplikowanemu nasłuchiwaniu na tym samym kliencie, a handler wiadomości ignoruje wszystko, co nie zawiera tablicowego `queryKey`.
+
+Używaj `syncQueryInvalidation`, a nie `queryClient.invalidateQueries`, zawsze gdy zmiana powinna być widoczna w pozostałych kartach klienta — zmiana koszyka, zmiana adresu, złożone zamówienie.
+
+## Unieważnianie wypychane z serwera
+
+Zapisy na Workerze nie mogą dosięgnąć cache w przeglądarce bezpośrednio. Publikują zbiór prefiksów kluczy zapytań do huba w Durable Object, który rozsyła je przez WebSocket do wszystkich podłączonych klientów; `useRealtimeQuerySync` dopasowuje prefiksy do listy subskrypcji układu i wywołuje `syncQueryInvalidation` dla każdego trafienia, co z kolei rozsyła zmianę do pozostałych kart. Cały mechanizm opisuje strona [Unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation).
+
+## Narzędzia deweloperskie
+
+`ReactQueryDevtools` renderowane jest z `Wrap` routera wyłącznie pod `import.meta.env.DEV`, więc nigdy nie trafia do środowiska preview ani produkcyjnego.
+
+## Powiązane strony
+
+- [Architektura](/docs/architecture)
+- [Unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation)
+- [TanStack Start](/docs/integrations/tanstack-start)

@@ -1,0 +1,170 @@
+---
+title: "Konwencje"
+description: "Konwencje kodu, formatowania, tras, modułów, komponentów, tłumaczeń, testów i commitów wymuszane w tym repozytorium."
+---
+
+Prawie każda reguła na tej stronie jest wymuszana przez narzędzia, nie przez recenzję. `bun run check` uruchamia formatter, linter i sprawdzanie typów w jednym przebiegu — i jest to ta sama komenda, którą uruchamia CI. Jeśli któraś konwencja nie jest sprawdzana maszynowo, jest to wyraźnie zaznaczone.
+
+## Kod
+
+- **Komentarze tylko dla nieoczywistych ograniczeń.** Intencję przenoszą nazwy i typy; nie ma narracji nad kodem, ozdobnych separatorów ani komentarzy powtarzających to, co mówi już nazwa. W praktyce cały katalog `src` zawiera trzy komentarze, z których każdy utrwala ograniczenie niewyrażalne w kodzie — na przykład to, że `INSERT ... SELECT` w `checkout/checkout.utils.ts` musi zachować kolejność kolumn tabeli. Proza należy do plików `.mdx`, takich jak ten.
+- **Żadnych obejść systemu typów.** Bez `any`, bez `as never`, bez `as unknown as`, bez `@ts-nocheck`, bez `@ts-expect-error` i bez wyciszania reguł lintera, żeby coś przeszło. Naprawiamy przyczynę. Ustawienie `reportUnusedDisableDirectives: "error"` powoduje, że nawet nieaktualne wyciszenie wywala build.
+- **Żadnych plików zbiorczych (barrels).** Importujemy z pliku, który definiuje symbol. Nie ma warstwy re-eksportów w `index.ts` ani obiektów, których jedynym zadaniem jest zebranie niepowiązanych funkcji.
+- **Żadnych warstw przekazujących.** Komponent, który tylko przekazuje propsy, funkcja, która tylko wywołuje jedną inną funkcję, albo alias na zwykłe `0` czy `1` — wszystko to odpada w recenzji, a zwykle i tak wcześniej pod presją `max-lines`.
+- **Magiczne liczby zamieniamy na nazwane stałe.** Reguła `no-magic-numbers` dopuszcza tylko `-1`, `0` i `1`, a poza tym indeksy tablic, wartości domyślne i indeksy typów. Dlatego w plikach widać stałe takie jak `MS_PER_SECOND`, `SINGLE_REQUEST` i `UUID_STRING_LENGTH`.
+- **Jedna deklaracja na instrukcję.** `one-var: ["error", "never"]`.
+- **Identyfikatory to słowa.** `id-length` dopuszcza dokładnie trzy krótkie nazwy: `_`, `m` i `t` — przy czym `t` to funkcja tłumacząca zwracana przez `useTranslations`.
+
+### Linting
+
+`vite.config.ts` ustawia sześć kategorii Oxlinta na `error`, łącznie z `nursery`:
+
+```ts
+lint: {
+  categories: {
+    correctness: "error",
+    nursery: "error",
+    pedantic: "error",
+    perf: "error",
+    style: "error",
+    suspicious: "error",
+  },
+  options: {
+    denyWarnings: true,
+    reportUnusedDisableDirectives: "error",
+    typeAware: true,
+    typeCheck: true,
+  },
+}
+```
+
+Twarde limity strukturalne, również z `vite.config.ts`:
+
+| Limit                 | Wartość | Reguła                   |
+| --------------------- | ------- | ------------------------ |
+| Linii na plik         | 800     | `max-lines`              |
+| Linii na funkcję      | 150     | `max-lines-per-function` |
+| Instrukcji na funkcję | 20      | `max-statements`         |
+
+Wyjątki są wąskie i przypisane do konkretnych plików, nie do całego repozytorium. Testy i `src/platform/testing/**` rozluźniają `no-await-in-loop`, `no-magic-numbers` i `unicorn/no-null`; `src/presentation/**` oraz `src/hooks/**` rozluźniają `typescript/consistent-return`; katalog z mockami rozluźnia `require-await` i `typescript/no-unsafe-type-assertion`; w `src/routes/**` wyłączona jest reguła `sort-keys`, bo kolejność opcji trasy wynika z kształtu API TanStack Start; `vite.config.ts` jest zwolniony z `max-lines`.
+
+### Sprawdzanie typów
+
+`tsconfig.json` włącza te flagi, które realnie zmieniają sposób pisania kodu:
+
+| Flaga                                  | Konsekwencja                                                        |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| `strict`                               | Standardowa rodzina reguł strict                                    |
+| `exactOptionalPropertyTypes`           | `{ k: undefined }` to nie to samo co pominięcie `k`                 |
+| `noUncheckedIndexedAccess`             | `arr[i]` ma typ `T \| undefined`                                    |
+| `noPropertyAccessFromIndexSignature`   | Sygnatury indeksowe czytamy jako `obj["k"]`, nigdy `obj.k`          |
+| `noImplicitReturns`                    | Każda ścieżka wykonania zwraca wartość                              |
+| `noFallthroughCasesInSwitch`           | Brak niejawnego przechodzenia między `case`                         |
+| `erasableSyntaxOnly`                   | Bez `enum`, bez właściwości w parametrach, bez składni runtime'owej |
+| `noUnusedLocals`, `noUnusedParameters` | Martwe wiązania wywalają build                                      |
+
+Istnieją dwa aliasy ścieżek: `~/*` wskazuje na katalog główny repozytorium (dlatego importy wyglądają jak `~/src/modules/...` i `~/messages/...`), a `collections/*` wskazuje na `./.source/*`, czyli wygenerowane kolekcje Fumadocs.
+
+## Formatowanie
+
+`vp fmt` (opakowany przez `bun run format`) stosuje jedną konfigurację z `vite.config.ts`: `printWidth: 140`, brak średników, podwójne cudzysłowy, przecinki na końcu wszędzie, końce linii LF, wcięcia dwoma spacjami, nawiasy zawsze przy parametrach funkcji strzałkowych.
+
+Formatter robi też dwie rzeczy wykraczające poza białe znaki:
+
+**Kolejność importów.** `sortImports` deklaruje siedemnaście własnych grup, tak aby importy każdego pliku czytały się jako lista warstw, w kolejności: `@tanstack/react-start/server-only`, `cloudflare:workers`, React, moduły wbudowane i pakiety zewnętrzne, `src/platform`, `src/providers`, `src/integrations`, `src/modules`, `src/routes`, `src/hooks`, stałe (`src/data`, `src/presentation/theme`), `src/types`, `src/lib`, `src/presentation/branding`, komponenty shadcn, komponenty custom, pozostałe komponenty presentation, styles, a na końcu importy relatywne. Tej kolejności nie pisze się ręcznie — uruchom formatter.
+
+**Kolejność klas Tailwind.** `sortTailwindcss` sortuje atrybuty `className` i `classList` oraz argumenty wywołań `cn`, `cva` i `tw` względem `src/presentation/styles/globals.css`.
+
+## Trasy
+
+Trasa strony w `src/routes` ma jeden ustalony kształt. Z pliku `src/routes/_storefront.products.index.tsx`:
+
+```ts
+export const Route = createFileRoute("/_storefront/products/")({
+  component: ProductsPage,
+  head: ({ loaderData }) => ({ meta: [...] }),
+  loader: async ({ context, deps }) => {
+    const [messages] = await Promise.all([
+      context.queryClient.query(messagesQueryOptions({ locale: context.locale, namespace: "pages.products" })),
+      prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
+    ])
+    return { description: messages.description, title: messages.title }
+  },
+  staticData: { namespaces: ["pages.products"] },
+  validateSearch: storefrontProductsSearchSchema,
+})
+```
+
+- Komponent to lokalna stała nazwana `<Nazwa>Page` dla strony i `<Nazwa>Layout` dla layoutu, zwracająca `JSX.Element` lub `ReactNode`.
+- `staticData.namespaces` wymienia przestrzenie nazw tłumaczeń, których trasa potrzebuje. Router je wstępnie ładuje; przestrzeń wymieniona tutaj musi istnieć jako `messages/<locale>/<namespace>.json` w **obu** lokalizacjach.
+- Loadery wykonują swoją pracę w jednym `Promise.all`. Tłumaczenia pobieramy przez `messagesQueryOptions` na `context.queryClient`, a dane — przez opcje zapytania eksportowane obok przypadku użycia.
+- `head` to albo wspólny `pageHead` z `src/lib/seo.ts`, albo funkcja inline budująca `meta` z `loaderData`.
+- Parametry wyszukiwania walidujemy schematem Zod w `validateSearch`, a `loaderDeps` je normalizuje, żeby klucz loadera był stabilny.
+- Ścieżki pochodzą ze `ROUTES` w `src/routes.ts`. Pliki tras **nie zawierają segmentu lokalizacji** — router przepisuje adres przez `deLocalizeUrl` na wejściu i `localizeUrl` na wyjściu, więc jeden plik obsługuje obie lokalizacje.
+- Strażnicy tras trafiają do `beforeLoad` i pochodzą z `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireCustomer`, `requireUser`, `redirectAuthenticated`. Istnieją dla nawigacji, nie dla autoryzacji — zobacz [Uprawnienia](/docs/reference/permissions).
+
+## Moduły
+
+Moduł jest właścicielem jednej tabeli Drizzle i wszystkiego, co z niej wynika. Wewnątrz modułu:
+
+- `*.schema.ts` definiuje tabelę i jej relacje — i nic więcej.
+- `*.accessors.ts` zawiera czysty dostęp do danych. Akcesory nie wiedzą, kto pyta; przyjmują argumenty i rozmawiają z `db`.
+- `*.server.ts` zawiera helpery wyłącznie serwerowe, zwykle przygotowane zapytania (prepared statements).
+- `use-cases/<czasownik>-<rzeczownik>.ts` zawiera jedną operację. Eksportuje funkcję serwerową `createServerFn` oraz `queryOptions` lub klucz mutacji, z których korzystają wywołujący. Loadery, komponenty i unieważnianie cache importują ten sam obiekt opcji, więc z konstrukcji dzielą jeden klucz zapytania.
+- Stałe — długości kolumn, enumy statusów, kody błędów, klucze zapytań, klucze mutacji, identyfikatory kolumn tabeli — leżą w `*.constants.ts` jako obiekty `SCREAMING_SNAKE_CASE` z prefiksem encji, na przykład `CATEGORY_QUERY_KEYS` i `CATEGORY_ERROR_CODES`.
+- `*.zod.ts` buduje schematy Zod, zwykle przez `createSchemaFactory` z `drizzle-zod`, i eksportuje je jako jeden obiekt `<encja>ZodSchemas` plus nazwane schematy wejściowe.
+- `*.types.ts` wyprowadza typy z tabeli, zamiast powtarzać je ręcznie:
+
+```ts
+export interface Address {
+  insert: typeof address.$inferInsert
+  select: typeof address.$inferSelect
+}
+```
+
+### Błędy
+
+Kod serwerowy rzuca `AppError` z `src/modules/_core/constants/errors.ts` z jednym z ośmiu `ERROR_CODES`: `AUTH_API_ERROR`, `CONFLICT`, `FORBIDDEN`, `INTERNAL_ERROR`, `NOT_FOUND`, `TOO_MANY_REQUESTS`, `UNAUTHORIZED`, `VALIDATION`. Drugi argument przenosi przyczynę specyficzną dla modułu — dlatego `create-category.ts` rzuca `new AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)`. Middleware `withRequest` zamienia błędy API Better Auth oraz `ZodError` na `AppError`, żeby przeglądarka zawsze widziała ten sam kształt błędu.
+
+## Komponenty
+
+- Jeden widget, dialog, formularz albo definicja kolumn na plik, w `src/presentation/components/custom`. Wspólne primitywy zostają w `src/presentation/components/shadcn` i nie są edytowane ręcznie.
+- Komponent sam czyta swoje tłumaczenia i swoje dane. Nie ma propsów `label`, `title` czy `data`, które komponent mógłby pobrać samodzielnie.
+- Dokładnie jedno wywołanie `useTranslations` na komponent, a wynik nazywa się `t`.
+- Klasy warunkowe zapisujemy przez `cn` ze składnią obiektową, nie łańcuchem operatorów trójargumentowych.
+- Formularze używają `react-hook-form` z `zodResolver` z `@hookform/resolvers/zod` i własnego schematu Zod modułu — zobacz `src/presentation/components/custom/checkout/components/checkout-form-provider.tsx`.
+- Tabele w panelu korzystają z generycznego data grida w `src/presentation/components/custom/datagrid`, konfigurowanego plikiem definicji kolumn i stałymi `*_TABLE_COLUMN_*` z modułu będącego właścicielem danych.
+
+## Tłumaczenia
+
+Pliki tłumaczeń to jeden JSON na przestrzeń nazw w `messages/<locale>/`, nazwany tak jak przestrzeń: `pages.admin.catalog.products.json` to przestrzeń `pages.admin.catalog.products`. Przestrzeni jest 48 i obie lokalizacje mają wszystkie.
+
+Przestrzenie korzeniowe — `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors`, `pages.auth.toast` — są wstępnie ładowane dla każdej trasy. Wszystko inne deklaruje się per trasa w `staticData.namespaces`. Test w `src/integrations/use-intl/__test__/i18n.messages.test.ts` sprawdza, że polski zawiera każdy klucz obecny w angielskim, oraz że żadna przestrzeń `emails.*` nie przecieka do zbioru korzeniowego.
+
+## Commity
+
+Wiadomości commitów trzymają się Conventional Commits: `<typ>(<zakres>): <opis>`. Hook `prepare-commit-msg` uruchamia `bun scripts/commit-msg.ts`, który odrzuca nieznane typy i dokleja emoji danego typu na początku tematu:
+
+| Typ        | Emoji |
+| ---------- | ----- |
+| `feat`     | ✨    |
+| `fix`      | 🐛    |
+| `perf`     | 🚀    |
+| `refactor` | 📦    |
+| `docs`     | 📚    |
+| `test`     | 🚨    |
+| `build`    | 🛠️    |
+| `ci`       | ⚙️    |
+| `chore`    | ♻️    |
+| `style`    | 💎    |
+| `revert`   | 🗑️    |
+
+Wiadomości typu merge, revert, `fixup!`, `squash!` oraz pochodzące z szablonu są pomijane, a temat, który już zaczyna się od emoji, zostaje bez zmian.
+
+Hook `pre-commit` uruchamia `bun run check:pre-commit`, czyli `vp staged`; `vite.config.ts` konfiguruje staged tak, aby uruchamiał `vp check --fix` na zmienionych plikach. W pull requeście workflow CI uruchamia `bun run check`, potem `bun run test:coverage`, a na końcu `bun run build:preview`.
+
+## Powiązane strony
+
+- [Nazewnictwo plików](/docs/reference/file-naming)
+- [Katalog modułów](/docs/reference/modules)
+- [Struktura katalogów](/docs/architecture/directory-structure)

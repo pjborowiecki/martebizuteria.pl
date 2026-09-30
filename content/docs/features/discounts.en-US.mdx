@@ -1,0 +1,102 @@
+---
+title: "Discounts"
+description: "The discount table exists, the admin coupons screen is a demo, and no code path applies a discount to a basket or an order."
+---
+
+Discounts are the largest deliberately unfinished area of the shop. The database schema is in place, an admin screen is designed and rendered, and nothing connects the two.
+
+## What exists
+
+`discount` (`src/modules/discount/discount.schema.ts`):
+
+```ts
+export const discount = sqliteTable(
+  "discount",
+  {
+    code: text("code").notNull().unique(),
+    endsAt: timestamp("ends_at"),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+    startsAt: timestamp("starts_at"),
+    type: text("type", { enum: ["percentage", "fixed_amount", "free_shipping"] }).notNull(),
+    usageCount: integer("usage_count").default(0).notNull(),
+    usageLimit: integer("usage_limit"),
+    value: integer("value").notNull(),
+    ...timestamps(),
+  },
+  (table) => [index("discount_code_idx").on(table.code)],
+)
+```
+
+The three types are `percentage`, `fixed_amount` and `free_shipping`. `value` is a single integer, so a percentage discount and a fixed amount in minor units share one column. `usage_limit` is nullable — null means unlimited.
+
+`discountRelations` declares `many(cart)`, `many(checkout)` and `many(order)`, and the three tables each carry a `discount_id` column. `order` additionally has `discount_total`.
+
+## What is missing
+
+The module is a schema file and nothing else — no `*.constants.ts`, no `*.zod.ts`, no `use-cases/`:
+
+```
+src/modules/discount/
+└── discount.schema.ts
+```
+
+A repository-wide search for `discount` outside the schema files and the migrations finds only the demo data and the demo screen. Specifically:
+
+| Column                 | Written by                            | Read by                                    |
+| ---------------------- | ------------------------------------- | ------------------------------------------ |
+| `cart.discount_id`     | nothing                               | nothing                                    |
+| `checkout.discount_id` | nothing                               | nothing                                    |
+| `order.discount_id`    | nothing                               | nothing                                    |
+| `order.discount_total` | nothing — it stays at its default `0` | included in the row but not shown anywhere |
+| `discount.usage_count` | nothing                               | nothing                                    |
+
+There is no coupon field in the checkout form: `checkoutSchema` in `src/modules/checkout/checkout.zod.ts` has no discount input, and `createStripeSession` is called with `discounts` unset, so Stripe's own promotion codes are not enabled either.
+
+`prepareFulfillCheckoutBatch` computes the order totals from the Stripe session amount and the metadata lines alone, so there is no place a discount could currently reduce a total.
+
+## The admin coupons screen is a demo
+
+`/admin/coupons` is `src/routes/admin.coupons.tsx`. It renders `CouponStats` and `CouponListTable`, both of which read `src/data/coupons.ts`.
+
+`COUPONS` is four literal rows shaped for display, not for the database:
+
+```ts
+{
+  code: "WELCOME20",
+  discount: "20%",
+  expires: "Dec 31, 2023",
+  id: "coupon-001",
+  minOrder: "$100",
+  status: "active",
+  type: "Percentage",
+  usage: "142 / 500",
+}
+```
+
+Note that the shape does not match the table: amounts are pre-formatted strings in **dollars**, dates are English strings, `usage` is `"142 / 500"` as text, and `minOrder` has no counterpart column at all. `status` has the values `active` and `scheduled`, where the table has a boolean `is_active` plus `starts_at`/`ends_at`.
+
+`COUPON_STATS` is four cards with hard-coded sparkline arrays and trend strings; the displayed numbers come from the message catalogue (`pages.admin.coupons.stats.<key>.value`), not from the data.
+
+The page's Export and Create coupon buttons in `admin.coupons.tsx` have no `onClick`. The search input in `coupon-list-table.tsx` has a hard-coded English `placeholder="Search coupons..."` and no state. The row menu's Copy, View and Delete items are not wired.
+
+## What a real implementation would need
+
+Nothing here is a recommendation about product design — it is the list of seams the existing code already leaves open:
+
+1. **A module.** `src/modules/discount/` with `discount.constants.ts` (query keys, the type union, an error-code map), `discount.zod.ts`, `discount.accessors.ts` and `use-cases/`.
+2. **Validation on the server.** A use case that takes a code and the basket lines, checks `is_active`, the `starts_at`/`ends_at` window and `usage_count < usage_limit`, and returns the computed reduction — never trusting a client-side amount, the same way `validateAndCalculateItems` re-reads prices.
+3. **A checkout field.** A `discountCode` field on `checkoutSchema`, validated in the contact or delivery step, written to `checkout.discount_id`.
+4. **Application at session time.** Either a negative adjustment in `toLineItems`, or Stripe coupons created from the `discount` rows and passed as `discounts` on the session. The `free_shipping` type interacts with `resolveShippingCost`.
+5. **Recording on fulfilment.** `prepareFulfillCheckoutBatch` would need to copy `discount_id` onto the order, set `discount_total`, and increment `discount.usage_count` in the same D1 batch — and, because the fulfilment batch is the idempotency point, the increment must be part of it rather than a separate write.
+6. **Admin CRUD.** Server functions guarded by `authorized({ settings: ["manage"] })` or a new `discount` resource in `src/integrations/better-auth/auth.access.ts`, plus audit events in `AUDIT_LOG_ACTION` — there is currently no discount action in that map.
+7. **Realtime invalidation.** A `DISCOUNT_QUERY_KEYS` entry in `ADMIN_REALTIME_QUERY_PREFIXES` and a `scheduleDiscountInvalidation()` helper next to the existing ones in `realtime-invalidation.catalog.server.ts`.
+
+## Related pages
+
+- [Checkout](/docs/features/checkout)
+- [Payments](/docs/features/payments)
+- [Orders](/docs/features/orders)
+- [Guides: adding a module](/docs/guides/add-a-module)

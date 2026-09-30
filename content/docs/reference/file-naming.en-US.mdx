@@ -1,0 +1,127 @@
+---
+title: "File naming"
+description: "Every file suffix and folder convention used in src, messages, content and migrations, with real examples."
+---
+
+Every file and folder in this repository uses kebab-case. The only exceptions are `src/routes`, where dots are path separators required by TanStack Start, and `src/routeTree.gen.ts`, which is generated.
+
+Names are compound rather than nested: a module's files sit flat beside each other and the suffix says what the file is for. `src/modules/order/order.accessors.ts` rather than `src/modules/order/accessors/index.ts`.
+
+## Module files
+
+A module in `src/modules/<feature>/` is named after its feature and every file in it repeats that name as a prefix.
+
+| Pattern                             | Contains                                                                   | Example                                           |
+| ----------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------- |
+| `<feature>.schema.ts`               | The Drizzle table and its `relations`                                      | `order/order.schema.ts`                           |
+| `<feature>.types.ts`                | Types derived from the table, usually one interface with `select`/`insert` | `address/address.types.ts`                        |
+| `<feature>.zod.ts`                  | Zod schemas, mostly built from `drizzle-zod`                               | `product/product.zod.ts`                          |
+| `<feature>.constants.ts`            | Column lengths, status enums, error codes, query and mutation keys         | `product-category/product-category.constants.ts`  |
+| `<feature>.utils.ts`                | Pure helpers with no I/O                                                   | `inventory/inventory.utils.ts`                    |
+| `<feature>.accessors.ts`            | Data access with no authorization: reads and writes against `db`           | `payment/payment.accessors.ts`                    |
+| `<feature>.server.ts`               | Server-only helpers, typically prepared statements                         | `product-collection/product-collection.server.ts` |
+| `use-cases/<verb>-<noun>.ts`        | One operation, exporting its server function and query options             | `order/use-cases/ship-order.ts`                   |
+| `use-cases/<verb>-<noun>.server.ts` | One operation with no RPC endpoint, called from server code only           | `checkout/use-cases/fulfill-checkout.server.ts`   |
+
+Some modules need a second axis and stack two suffixes. The second-to-last segment narrows the concern:
+
+| File                                              | Purpose                                                |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| `audit-log/audit-log.diff.utils.ts`               | Helpers for diffing before/after audit snapshots       |
+| `audit-log/audit-log.queue.server.ts`             | The Cloudflare Queue producer and consumer             |
+| `audit-log/audit-log.events.server.ts`            | The typed recorder functions the domain layer calls    |
+| `inventory/inventory.availability.utils.ts`       | Availability arithmetic separated from row mapping     |
+| `product/product.admin-list.server.ts`            | The admin list query, separate from the storefront one |
+| `product/product.storefront-catalog.accessors.ts` | Storefront catalog reads                               |
+| `product-image/product-image.persist.utils.ts`    | Image persistence helpers                              |
+| `order/order.settled.server.ts`                   | Lookups for orders that have already settled           |
+
+## Routes
+
+`src/routes` uses TanStack Start's flat file-route convention. A dot is a path separator, so the file name reads as the URL.
+
+| Pattern                            | Meaning                                                      | Example                                   |
+| ---------------------------------- | ------------------------------------------------------------ | ----------------------------------------- |
+| `<segment>.<segment>.tsx`          | Nested path                                                  | `admin.catalog.categories.tsx`            |
+| `_<name>.tsx`                      | Pathless layout: wraps children without adding a URL segment | `_storefront.tsx`                         |
+| `<path>.index.tsx`                 | The index route for that path                                | `admin.catalog.products.index.tsx`        |
+| `$<param>`                         | A dynamic parameter                                          | `_storefront.products.$handle.tsx`        |
+| `$.tsx`                            | A splat route; the value arrives as `params._splat`          | `docs.$.tsx`                              |
+| `__root.tsx`                       | The root route                                               | `__root.tsx`                              |
+| `api/<name>.ts`, `api/<name>.$.ts` | HTTP handlers rather than pages                              | `api/webhooks.stripe.ts`, `api/auth.$.ts` |
+
+Route files never contain a locale segment. `src/routeTree.gen.ts` is generated by the TanStack Start plugin and must not be edited by hand.
+
+## Presentation
+
+| Pattern                                     | Contains                                                                              | Example                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `components/shadcn/<primitive>.tsx`         | A shadcn primitive, generated and left alone                                          | `components/shadcn/sidebar.tsx`                                       |
+| `components/custom/<name>.tsx`              | An application component shared across areas                                          | `components/custom/product-card.tsx`                                  |
+| `components/custom/pages/<area>/<name>.tsx` | A component belonging to one page or area                                             | `components/custom/pages/admin/admin-sidebar.tsx`                     |
+| `<name>.styles.ts`                          | Class-name constants extracted out of a component                                     | `components/custom/pages/admin/admin-layout.styles.ts`                |
+| `<name>.loader.ts`                          | Prefetch helpers a route loader calls                                                 | `components/custom/pages/products-catalog/products-catalog.loader.ts` |
+| `emails/<name>.tsx`                         | A React Email template                                                                | `emails/order-confirmation.tsx`                                       |
+| `styles/<layer>.css`                        | One stylesheet per shell: `globals`, `storefront`, `admin`, `fonts`, `critical-fonts` | `styles/admin.css`                                                    |
+| `branding/<concern>.ts`                     | Brand constants: `app`, `business`, `socials`                                         | `branding/app.ts`                                                     |
+
+## Integrations
+
+| Pattern                          | Example                                                        |
+| -------------------------------- | -------------------------------------------------------------- |
+| `<vendor>/<prefix>.<concern>.ts` | `better-auth/auth.middleware.ts`, `stripe/stripe.webhooks.tsx` |
+| `<vendor>/<prefix>.config.ts`    | `use-intl/i18n.config.ts`, `drizzle-orm/drizzle.config.ts`     |
+| `<vendor>/<prefix>.client.ts`    | `better-auth/auth.client.ts`, `stripe/stripe.client.ts`        |
+| `<vendor>/<prefix>.server.ts`    | `better-auth/auth.server.ts`, `stripe/stripe.server.ts`        |
+
+The prefix is the vendor's short name rather than the folder name, which is why the `use-intl` folder holds `i18n.*` files and the `cloudflare-r2` folder holds `media.*` files.
+
+## Hooks and providers
+
+| Pattern                             | Example                                   |
+| ----------------------------------- | ----------------------------------------- |
+| `src/hooks/use-<name>.ts`           | `src/hooks/use-realtime-query-sync.ts`    |
+| `src/providers/<name>-provider.tsx` | `src/providers/translations-provider.tsx` |
+
+## Tests
+
+Tests live in a `__test__` folder beside the code they cover — there are 174 such folders. The suffix picks the Vitest project.
+
+| Pattern                               | Vitest project | Environment                                   |
+| ------------------------------------- | -------------- | --------------------------------------------- |
+| `__test__/<name>.test.ts`             | `node`         | `node`                                        |
+| `__test__/<name>.integration.test.ts` | `integration`  | `node`, against `node:sqlite`                 |
+| `__test__/<name>.component.test.tsx`  | `component`    | `jsdom`, with `src/platform/testing/setup.ts` |
+
+A test file is named after the file it covers: `src/modules/address/__test__/` holds `address.schema.test.ts`, `address.constants.test.ts` and `address.accessors.integration.test.ts`. Route tests replace the `$` of a dynamic segment with a plain word, because `$` is awkward on the command line: `_storefront.categories.handle.component.test.tsx` covers `_storefront.categories.$handle.tsx`.
+
+`routeFileIgnorePattern: "__test__"` in `vite.config.ts` keeps the route generator from treating `src/routes/__test__` as routes.
+
+## Content and messages
+
+| Pattern                                   | Meaning                                                              |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| `content/docs/<path>/<page>.<locale>.mdx` | One documentation page in one locale                                 |
+| `content/docs/<path>/meta.<locale>.json`  | Navigation order and title for that folder, per locale               |
+| `content/legal/<page>.<locale>.mdx`       | A legal document rendered by the storefront                          |
+| `messages/<locale>/<namespace>.json`      | One translation namespace, named after it: `pages.admin.orders.json` |
+
+The locale suffix is parsed by Fumadocs with `parser: "dot"` and `hideLocale: "always"`, configured in `src/integrations/fumadocs/fumadocs.i18n.ts`. Both locales must carry the same slugs.
+
+## Database
+
+| Pattern                                                          | Meaning                                  |
+| ---------------------------------------------------------------- | ---------------------------------------- |
+| `src/integrations/drizzle-orm/migrations/<timestamp>_<name>.sql` | One migration, applied in filename order |
+| `src/integrations/drizzle-orm/migrations/meta/`                  | Drizzle Kit's journal and snapshots      |
+| `src/integrations/drizzle-orm/seeds/<table>.sql`                 | Seed data for one table                  |
+
+## Scripts
+
+`scripts/<verb>-<noun>.ts`, run with `bun scripts/<name>.ts`: `commit-msg.ts`, `prepare-deploy-secrets.ts`, `sync-skills.ts`, `verify-bindings.ts`, `verify-build.ts`.
+
+## Related pages
+
+- [Conventions](/docs/reference/conventions)
+- [Module catalog](/docs/reference/modules)
+- [Directory structure](/docs/architecture/directory-structure)

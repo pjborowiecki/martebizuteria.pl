@@ -1,0 +1,68 @@
+---
+title: "Dependency rules"
+description: "Which folders may import which, how server-only code stays out of the browser bundle, and the import order the formatter enforces."
+---
+
+## Import directions
+
+| Folder                       | May import                                                                                                         | Must not import                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `src/routes`                 | presentation, module query and mutation options, route guards, i18n, Fumadocs, `src/data`, `src/lib`               | `db` or any provider client outside a server function               |
+| `src/presentation`           | module query options, Zod schemas, constants and types, hooks, `src/data`, `src/lib`, browser-safe integrations    | `drizzle.database.ts`, `auth.server.ts`, `stripe.server.ts`, Resend |
+| `src/modules/*/use-cases`    | integrations (`db`, `authorized`, `sendEmail`, Stripe, R2), `_core`, module accessors and schemas, email templates | components                                                          |
+| `src/modules/*.accessors.ts` | `db`, module schemas, `_core` utils                                                                                | route guards, components, other modules' use cases                  |
+| `src/integrations`           | `_core`, module schemas, accessors and the use cases a vendor calls back into                                      | components, except the email templates a vendor renders             |
+| `src/server.ts`              | the Start handler, `resolveLocale`, the realtime hub, the audit queue consumer, `src/lib`                          | the database, Better Auth or the Stripe SDK directly                |
+
+Browser-safe integrations are the ones with no `env` read and no server-only marker: `i18n.config.ts`, `i18n.paths.ts`, `i18n.utils.ts`, `auth.client.ts`, `auth.access.ts`, `auth.errors.ts`, `auth.zod.ts`, `auth.constraints.ts`, `stripe.client.ts`, `stripe.appearance.ts`, `gsap.config.ts`, `lenis.instance.ts`, `react-day-picker.locale.ts` and `query.sync.ts`.
+
+## Server-only boundaries
+
+- **Server functions.** TanStack Start compiles every `createServerFn` handler out of the browser bundle and replaces the call with an RPC request. That is why a component can import `shipOrderMutation` from the same file that imports `db`.
+- **Server-only modules.** Files that read secrets or bindings start with `import "@tanstack/react-start/server-only"`, which keeps them out of the client build. In this repository that is `drizzle.database.ts`, `src/lib/rate-limit.ts` and `src/lib/background.ts`.
+- **The `.server.ts` suffix** marks module files that are only ever reached from a server function or a webhook — `order.settled.server.ts`, `checkout.pending.server.ts`, `audit-log.record.server.ts`, `product.catalog.server.ts` and the rest. The suffix is a convention for readers; the bundle exclusion comes from the `createServerFn` boundary or the explicit `server-only` import.
+- **Environment-specific functions.** `createServerOnlyFn` wraps code that only runs on the server (`getRequestSession`). `createIsomorphicFn` provides separate implementations per environment (`getCurrentLocale`, `getCurrentPathname` in `i18n.utils.ts`).
+- **Bindings and secrets** come from `env` in `cloudflare:workers` and are read only in server-only modules, `src/server.ts` or a server function handler.
+
+```ts
+import "@tanstack/react-start/server-only"
+
+import { env } from "cloudflare:workers"
+
+import { drizzle } from "drizzle-orm/d1"
+
+import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
+
+export const db = drizzle(env.DB, { schema })
+```
+
+`bun run build:preview` ends with `bun scripts/verify-build.ts preview`, which fails the build if the client bundle still carries an unbundled `cloudflare:workers` or `node:*` import. That script is the mechanical check behind these rules.
+
+## The import order is a layer diagram
+
+`vite.config.ts` defines 17 custom import groups under `fmt.sortImports`, and the formatter applies them. Reading the groups top to bottom is reading the dependency direction:
+
+```text
+server-only → cloudflare → react → builtin/external → platform → providers →
+integrations → modules → routes → hooks → constants → types → lib → branding →
+components-shadcn → components-custom → components-other → styles → relative
+```
+
+`bun run format` (or `bun run check`) rewrites the import block into that order, so a file whose imports look wrong is usually a file in the wrong layer.
+
+## Aliases
+
+`tsconfig.json` maps two prefixes:
+
+| Prefix          | Resolves to   | Used for                                                |
+| --------------- | ------------- | ------------------------------------------------------- |
+| `~/*`           | `./*`         | Every internal import, always from the repository root  |
+| `collections/*` | `./.source/*` | The Fumadocs collections generated by `bun run content` |
+
+Outside the generated `src/integrations/drizzle-orm/migrations` folder, the only relative import in `src` is in `src/integrations/fumadocs/fumadocs.config.ts`, which is loaded by `fumadocs-mdx` before the alias is available.
+
+## Related pages
+
+- [Layering](/docs/architecture/layering)
+- [Directory structure](/docs/architecture/directory-structure)
+- [Platform layer](/docs/architecture/platform-layer)

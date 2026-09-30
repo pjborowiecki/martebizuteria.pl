@@ -1,0 +1,88 @@
+---
+title: "Warstwy"
+description: "Pięć warstw aplikacji, o czym każda z nich może decydować i dlaczego podział na akcesory i przypadki użycia jest tym najważniejszym."
+---
+
+## Warstwy
+
+| Warstwa          | Znajduje się w                              | Decyduje o                                                                              |
+| ---------------- | ------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Wejście Workera  | `src/server.ts`                             | Które żądania nigdy nie dotrą do Reacta; przekierowania locale; przekazanie `waitUntil` |
+| Dostarczanie     | `src/routes`, `src/router.tsx`              | Kształt URL-i, guardy, co strona wstępnie ładuje, tagi head                             |
+| Przypadki użycia | `src/modules/*/use-cases`                   | Kto może wywołać operację, jakie wejście jest poprawne, które klucze zapytań posiada    |
+| Dostęp do danych | `src/modules/*.accessors.ts`, `*.server.ts` | Jak wiersz jest czytany lub zapisywany; kształt SQL; prepared statements                |
+| Prezentacja      | `src/presentation`, `src/providers`         | Markup, style, które opcje zapytań odczytać                                             |
+
+Dostawcy stoją obok tych warstw, nie w nich: `src/integrations/{vendor}` konfiguruje usługę zewnętrzną i oddaje decyzje domenowe modułowi, który jest właścicielem danych.
+
+## Podział, który wykonuje pracę
+
+Akcesor to zwykły dostęp do danych bez pojęcia o tym, kto pyta:
+
+```ts
+export const getInventoryByVariantId = (variantId: string) =>
+  db.query.inventory.findFirst({
+    where: eq(inventory.variantId, variantId),
+  })
+```
+
+Przypadek użycia opakowuje dostęp do danych w endpoint RPC i jest jedynym miejscem, w którym wyrażana jest autoryzacja:
+
+```ts
+export const shipOrder = createServerFn({ method: "POST" })
+  .middleware([authorized({ order: ["update"] })])
+  .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
+  .handler(async ({ data: { orderId } }) => {
+    // czyta zamówienie, zapisuje fulfillmentStatus, rejestruje audyt, kolejkuje e-mail
+  })
+```
+
+Ponieważ istnieje dokładnie jedna warstwa, w której można zapomnieć o `authorized()`, to właśnie ją celują testy. Przypadek użycia czytający dane samego wywołującego wkompilowuje predykat własności w SQL, a nie pobiera i filtruje:
+
+```ts
+where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
+```
+
+Obce `orderId` nie zwraca żadnego wiersza, więc nie ma czego wyciekać.
+
+## O czym decyduje Worker przed uruchomieniem Reacta
+
+`src/server.ts` skraca obsługę czterech rodzajów żądań, zanim zostanie osiągnięty handler TanStack Start, bo żadne z nich nie potrzebuje renderu SSR:
+
+1. `GET /sitemap.xml` — `generateSitemapXml` z `src/lib/seo.ts`, cache'owane na dobę.
+2. `GET /robots.txt` — `generateRobotsTxt`, który zwraca całkowite `Disallow: /`, o ile `APP_ENV` nie jest równe `production`.
+3. `ROUTES.API_REALTIME.ADMIN_WS` i `ROUTES.API_REALTIME.STOREFRONT_WS` — upgrade'y WebSocket przekazywane do `handleRealtimeInvalidationWebSocket`.
+4. Przekierowanie locale z `resolveLocale`, zwracane jako `301` przed czymkolwiek innym.
+
+Wszystko pozostałe jest owinięte w `executionContextStorage.run({ waitUntil }, …)`, żeby praca w tle zaplanowana głęboko w warstwie domenowej wciąż mogła dosięgnąć `ExecutionContext` Workera. Ten sam plik eksportuje również handler `queue`, który opróżnia kolejkę dziennika audytu, i re-eksportuje klasę `RealtimeInvalidationHub`, żeby Wrangler mógł ją zbindować.
+
+## Praca w tle
+
+Obietnica wciąż oczekująca, gdy Worker zwraca odpowiedź, jest przerywana. Hooki Better Auth i rejestratory audytu nie mają dostępu do `ExecutionContext`, dlatego `src/lib/background.ts` trzyma go w `AsyncLocalStorage`:
+
+```ts
+export const scheduleBackgroundWork = (task: Promise<unknown> | PromiseLike<unknown>): void => {
+  const store = executionContextStorage.getStore()
+
+  if (store === undefined) {
+    void runSafely(task)
+
+    return
+  }
+  store.waitUntil(runSafely(task))
+}
+```
+
+Bez magazynu — konsument kolejki, testy jednostkowe, ścieżki skracane przed wejściem w magazyn — degraduje się do „odpal i zapomnij”, ale odrzucenie jest logowane, a nie milcząco tracone.
+
+## Spójność bez transakcji
+
+D1 nie ma transakcji interaktywnych. `db.batch()` jest atomowy, więc wszystko, co musi być „wszystko albo nic”, składa się w tablicę instrukcji i przekazuje do `runDrizzleBatch` z `src/integrations/drizzle-orm/drizzle.batch.ts`. Wszystko, co musi przeczytać, zdecydować, a potem zapisać, korzysta zamiast tego z optymistycznej współbieżności: instrukcja rezerwacji stanu magazynowego w `src/modules/inventory/inventory.accessors.ts` to compare-and-set zabezpieczone zarówno wersją wiersza (`version`) zaobserwowaną podczas walidacji, jak i warunkiem `quantityAvailable >= qty`, a sygnałem sukcesu jest długość `.returning()`.
+
+Koszyki z wieloma pozycjami rezerwują współbieżnie i kompensują. `reserveInventoryForItems` zwalnia rezerwacje, które już się udały, gdy którakolwiek pozycja nie przejdzie swojego warunku — a sama kompensacja jest owinięta w `.catch()` i tylko logowana, więc nieudane wycofanie zostawia towar zarezerwowany. To saga ze znaną dziurą, a nie transakcja rozproszona.
+
+## Powiązane strony
+
+- [Moduły i przypadki użycia](/docs/architecture/modules-and-use-cases)
+- [Cykl życia żądania](/docs/architecture/request-lifecycle)
+- [Model bezpieczeństwa](/docs/architecture/security-model)

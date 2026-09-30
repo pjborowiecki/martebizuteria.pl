@@ -1,0 +1,61 @@
+---
+title: "Słownik"
+description: "Słownictwo używane w dokumentacji i kodzie M'Arte, z plikiem definiującym każde pojęcie."
+---
+
+Pojęcia są uporządkowane alfabetycznie według angielskiej nazwy, bo tak brzmią w kodzie. Tam, gdzie pojęcie odpowiada konkretnemu eksportowi, podany jest plik, który go definiuje.
+
+## Słownictwo aplikacji
+
+- **Accessor (akcesor)** — zwykła funkcja dostępu do danych w `<module>/<module>.accessors.ts`. Przyjmuje argumenty, rozmawia z `db` i nie wie, kto pyta. Autoryzacja leży warstwę wyżej, w przypadku użycia.
+- **AppError** — jedyna klasa błędu, którą rzuca kod serwerowy, z `src/modules/_core/constants/errors.ts`. Przenosi jeden z ośmiu `ERROR_CODES` oraz opcjonalny powód specyficzny dla modułu.
+- **Audit event (zdarzenie audytu)** — wiersz w tabeli `audit_log`, kolejkowany, a nie zapisywany w linii. Kategorie to `orders`, `email`, `customers`, `catalog`, `settings` i `auth`; poziomy istotności to `info`, `success`, `warning`, `error`; role aktora to `admin`, `customer`, `system`, `unknown`. Zdefiniowane w `src/modules/audit-log/audit-log.constants.ts`.
+- **Binding (powiązanie)** — zasób Cloudflare, który Worker otrzymuje z `env`: `DB` (D1), `CACHE` (KV), `IMAGES` (R2), `AUDIT_LOG_QUEUE` (producent kolejki), `REALTIME_INVALIDATION_HUB` (Durable Object) i `ASSETS` (zasoby statyczne).
+- **Checkout** — wiersz w tabeli `checkout` reprezentujący jedną próbę płatności, tworzony przed kontaktem ze Stripe i rozstrzygany webhookiem. To nie to samo co **koszyk**, który jest sklepem Zustand z `persist` w `src/modules/cart/cart.store.ts` plus tabelami `cart` i `cart_item`.
+- **Collection (kolekcja)** — wyselekcjonowana grupa produktów (`product_collection`, połączona przez `collection_on_product`). To nie to samo co **kategoria** (`product_category`), która jest hierarchiczna i ma `parentId`.
+- **Compensation (kompensacja)** — zwolnienie już zarezerwowanego stanu magazynowego, gdy kolejna pozycja tego samego koszyka nie przejdzie swojego strażnika rezerwacji. Działanie najlepszego wysiłku: własna awaria kompensacji jest przechwytywana i logowana.
+- **Drizzle batch (wsad Drizzle)** — lista instrukcji uruchamiana atomowo na D1 przez `runDrizzleBatch` w `src/integrations/drizzle-orm/drizzle.batch.ts`. D1 nie ma transakcji interaktywnych, więc wsad to jedyny dostępny mechanizm atomowości.
+- **Guard (strażnik)** — funkcja użyta w `beforeLoad` trasy, przekierowująca przed jej załadowaniem: `requireUser`, `requireAdmin`, `requireCustomer`, `redirectAuthenticated`, wszystkie w `src/integrations/better-auth/auth.routes.ts`. Strażnicy są elementem doświadczenia nawigacji, nie autoryzacją.
+- **Handle** — bezpieczny w adresie URL slug produktu, kategorii lub kolekcji. Unikalny, małymi literami, rozdzielany myślnikami, walidowany wzorcem takim jak `CATEGORY_HANDLE_PATTERN`. Używany zamiast identyfikatora w adresach sklepu i panelu.
+- **Integration (integracja)** — katalog w `src/integrations` opakowujący jednego dostawcę: `better-auth`, `cloudflare-r2`, `drizzle-orm`, `fumadocs`, `gsap`, `inpost`, `lenis`, `react-day-picker`, `realtime-invalidation`, `resend`, `stripe`, `tanstack-query`, `use-intl`.
+- **Layout route (trasa layoutu)** — trasa renderująca `Outlet` dla swoich dzieci i zwykle deklarująca wspólne `staticData.namespaces`: `_storefront.tsx`, `account.tsx`, `admin.tsx`, `auth.tsx`, `checkout.tsx`, `docs.tsx`.
+- **Locale prefix (prefiks lokalizacji)** — segment `/<locale>` używany dla każdej lokalizacji poza domyślną. `pl-PL` jest domyślna i zwija się do braku prefiksu; `en-US` jest serwowana pod `/en-US`. Obsługiwane przez `localizePathname` i `deLocalizePathname` w `src/integrations/use-intl/i18n.paths.ts`.
+- **Middleware** — funkcja uruchamiana przed handlerem funkcji serwerowej: `withRequest` (normalizacja błędów), `authorized` (sesja i uprawnienie), `withRateLimit` (budżet per IP). Wszystkie trzy w `src/integrations/better-auth/auth.middleware.ts`.
+- **Module (moduł)** — katalog w `src/modules`. Trzydzieści jeden posiada po jednej tabeli bazy danych; pięć nie ma tabeli i grupuje operacje.
+- **Mutation key (klucz mutacji)** — krotka z `<ENTITY>_MUTATION_KEYS` modułu, identyfikująca mutację dla cache i stanu oczekiwania, na przykład `CATEGORY_MUTATION_KEYS.REORDER`.
+- **Namespace (przestrzeń nazw)** — jeden plik tłumaczeń, nazwany tak jak ona sama: `pages.admin.catalog.products` to `messages/<locale>/pages.admin.catalog.products.json`. Trasy deklarują potrzebne im przestrzenie w `staticData.namespaces`.
+- **Optimistic concurrency (optymistyczna współbieżność)** — strategia rezerwacji magazynu. `UPDATE` rezerwujący jest strzeżony zarówno kolumną `version` odczytaną przy walidacji, jak i warunkiem `quantityAvailable >= quantity`, a sukces sygnalizuje długość `.returning()`. Nie ma żadnego blokowania.
+- **Pathless layout (layout bez ścieżki)** — trasa layoutu, której nazwa pliku zaczyna się od `_`, więc otacza dzieci, nie wnosząc segmentu URL. `_storefront.tsx` jest jedyna.
+- **Query key (klucz zapytania)** — krotka identyfikująca zapytanie w cache, zawsze brana z `<ENTITY>_QUERY_KEYS` modułu; na przykład `CATEGORY_QUERY_KEYS.ADMIN.ALL` to `["admin", "categories"]`. Kluczy nigdy nie zapisuje się w miejscu użycia.
+- **Query options (opcje zapytania)** — obiekt `queryOptions` eksportowany obok przypadku użycia odczytującego dane. Loadery, komponenty i unieważnianie importują ten sam obiekt, więc nie mogą się rozjechać.
+- **Realtime hub (hub realtime)** — jedna nazwana instancja Durable Object `RealtimeInvalidationHub`. Są dwie publiczności, `admin` i `storefront`, zadeklarowane w `REALTIME_INVALIDATION_HUB`. Hub administracyjny subskrybuje 12 prefiksów kluczy zapytań, a hub sklepu 10.
+- **Root namespaces (przestrzenie korzeniowe)** — sześć przestrzeni tłumaczeń wstępnie ładowanych dla każdej trasy: `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors`, `pages.auth.toast`. Wyznaczane przez `ROOT_NAMESPACES` w `src/integrations/use-intl/i18n.messages.ts`.
+- **Server function (funkcja serwerowa)** — typowana operacja RPC utworzona przez `createServerFn`, zawsze wykonywana na serwerze i osiągalna po HTTP. W `src/modules/*/use-cases/` jest ich 75.
+- **Statement (deklaracja uprawnienia)** — jeden wpis zasób-plus-akcje w macierzy kontroli dostępu, na przykład `product: ["create", "read", "update", "delete", "publish"]`. Zdefiniowane w `PERMISSIONS_STATEMENTS`.
+- **Use case (przypadek użycia)** — jedna operacja w `<module>/use-cases/<czasownik>-<rzeczownik>.ts`. Eksportuje funkcję serwerową oraz towarzyszące jej opcje zapytania lub mutacji.
+- **Variant (wariant)** — kupowalna konfiguracja produktu (`product_variant`), opisana wartościami opcji przez `option_on_variant` i zatowarowana przez wiersz `inventory` w relacji jeden do jednego.
+- **Wrangler environment (środowisko Wranglera)** — jedno z `development`, `preview` lub `production` w `wrangler.jsonc`, każde z własnymi powiązaniami, `APP_ENV` i listą `secrets.required`.
+
+## Słownictwo infrastruktury
+
+- **`background`** — `src/lib/background.ts`. `executionContextStorage` to `AsyncLocalStorage` przenoszące `waitUntil` Workera; `scheduleBackgroundWork(task)` wyciąga je na dowolnej głębokości, żeby obietnica przeżyła odpowiedź. Bez magazynu degraduje się do przechwyconego „odpal i zapomnij".
+- **Cloudflare Queue** — transport dziennika audytu. Zdarzenia są kolejkowane przez `AUDIT_LOG_QUEUE` i konsumowane przez eksport `queue` w `src/server.ts`, w paczkach do 50, z 5-sekundowym limitem czasu i 3 ponowieniami.
+- **D1** — baza SQLite Cloudflare, powiązana jako `DB`. Brak transakcji interaktywnych; `db.batch()` jest mechanizmem atomowości.
+- **Durable Object** — `RealtimeInvalidationHub` w `src/durable-objects/realtime-invalidation-hub.ts`, utworzony migracją o tagu `v1`. Rozsyła komunikaty unieważniające do podłączonych WebSocketów i nie przechowuje trwałego stanu — `notifyInvalidation` iteruje po `ctx.getWebSockets(hubName)`.
+- **KV** — przestrzeń `CACHE`. Zadeklarowana w każdym środowisku.
+- **R2** — bucket `IMAGES` przechowujący media produktów. Publiczne odczyty idą przez adres bazowy z `VITE_R2_URL`.
+- **Vite+** — ujednolicony łańcuch narzędzi wywoływany jako `vp`. Dostarcza `vp dev`, `vp build`, `vp check`, `vp fmt`, `vp lint`, `vp test` i `vp staged`, wszystko konfigurowane w `vite.config.ts`.
+
+## Słownictwo narzędziowe
+
+- **`.source/`** — katalog generowany przez Fumadocs MDX z `src/integrations/fumadocs/fumadocs.config.ts`. Ma alias `collections/*` w `tsconfig.json` i jest odtwarzany przez `bun run content`.
+- **Component test (test komponentu)** — plik `*.component.test.tsx`, uruchamiany projektem Vitest `component` w `jsdom` z `src/platform/testing/setup.ts`.
+- **Integration test (test integracyjny)** — plik `*.integration.test.ts`, uruchamiany projektem Vitest `integration` przeciwko bazie `node:sqlite` w pamięci, za transportem w kształcie D1 z `src/platform/testing/mocks/d1.ts`.
+- **Unit test (test jednostkowy)** — każdy inny plik `*.test.ts` lub `*.test.tsx`, uruchamiany projektem Vitest `node`.
+- **`vp check`** — formatowanie, linting i sprawdzanie typów w jednej komendzie. Bramka uruchamiana przez CI oraz przez hook pre-commit na plikach w staging.
+
+## Powiązane strony
+
+- [Architektura](/docs/architecture)
+- [Konwencje](/docs/reference/conventions)
+- [Katalog modułów](/docs/reference/modules)

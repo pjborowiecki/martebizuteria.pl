@@ -1,0 +1,166 @@
+---
+title: "Komponenty shadcn"
+description: "Prymitywy Base UI w src/presentation/components/shadcn, ich konwencje propsów i sposób użycia na ekranach."
+---
+
+`src/presentation/components/shadcn/` zawiera 58 plików: 57 prymitywów wygenerowanych przez CLI shadcn w stylu `base-lyra` oraz `sheet-control.styles.ts`, który jest zestawem łańcuchów klas, a nie komponentem. **Są zbudowane na Base UI, nie na Radix.** Trzydzieści jeden z nich re-eksportuje części `@base-ui/react` z klasami projektu; pozostałe opakowują inną bibliotekę albo są zwykłymi znacznikami. Ekrany importują prymitywy bezpośrednio — nie ma wokół nich żadnych nakładek.
+
+`components.json` zapisuje konfigurację:
+
+```json
+{
+  "style": "base-lyra",
+  "tailwind": { "css": "~/src/presentation/styles/globals.css", "baseColor": "neutral", "cssVariables": true },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "~/src/presentation/components",
+    "utils": "cn",
+    "ui": "~/src/presentation/components/shadcn",
+    "lib": "~/src/lib",
+    "hooks": "~/src/hooks"
+  }
+}
+```
+
+Alias `utils` to goła nazwa pakietu `cn` — `cn@0.3` z projektu shadcn, skompilowany zamiennik `clsx` + `tailwind-merge` — dlatego każdy komponent pisze `import { cn } from "cn"`, a nie z lokalnego pliku.
+
+## Co opakowuje co
+
+| Biblioteka bazowa          | Prymitywy                                                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@base-ui/react`           | `accordion`, `alert-dialog`, `avatar`, `badge`, `breadcrumb`, `button`, `button-group`, `checkbox`, `collapsible`, `context-menu`, `dialog`, `dropdown-menu`, `hover-card`, `input`, `item`, `menubar`, `navigation-menu`, `popover`, `progress`, `radio-group`, `scroll-area`, `select`, `separator`, `sheet`, `sidebar`, `slider`, `switch`, `tabs`, `toggle`, `toggle-group`, `tooltip` |
+| `react-day-picker`         | `calendar`, `locale-date-picker`                                                                                                                                                                                                                                                                                                                                                           |
+| `embla-carousel-react`     | `carousel`                                                                                                                                                                                                                                                                                                                                                                                 |
+| `recharts`                 | `chart`                                                                                                                                                                                                                                                                                                                                                                                    |
+| `cmdk`                     | `command`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `vaul`                     | `drawer`                                                                                                                                                                                                                                                                                                                                                                                   |
+| `input-otp`                | `input-otp`                                                                                                                                                                                                                                                                                                                                                                                |
+| `react-resizable-panels`   | `resizable`                                                                                                                                                                                                                                                                                                                                                                                |
+| `sonner` + `@wrksz/themes` | `sonner`                                                                                                                                                                                                                                                                                                                                                                                   |
+| Zwykłe znaczniki i `cva`   | `alert`, `aspect-ratio`, `card`, `data-table`, `empty`, `field`, `input-group`, `kbd`, `label`, `locale-time-picker`, `native-select`, `pagination`, `skeleton`, `spinner`, `table`, `textarea`, `typography`                                                                                                                                                                              |
+
+## Konwencje Base UI
+
+Jeśli pracowałeś wcześniej z shadcn na Radix, to są różnice, które faktycznie dają się we znaki:
+
+| Nawyk z Radix                 | Base UI tutaj                                                          |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `asChild` na triggerze        | `render={<Element />}` — gotowy element, nie dziecko                   |
+| `onSelect` na pozycji menu    | `onClick`                                                              |
+| `checked="indeterminate"`     | `checked` pozostaje wartością logiczną; `indeterminate` to osobny prop |
+| `data-state="checked"`        | `data-checked` / `data-unchecked`                                      |
+| `data-state="open"`           | `data-popup-open` (popupy) albo `data-open`                            |
+| `data-disabled` na opakowaniu | `data-disabled` na samej części                                        |
+
+`Button` renderuje prawdziwy `<button>`, więc `onClick` i `disabled` działają tak jak w DOM. Dialogi, menu, popovery i panele sterowane są przez `open` i `onOpenChange`. `Select` przyjmuje `items`, `value` i `onValueChange` na korzeniu oraz `SelectValue` wewnątrz `SelectTrigger`.
+
+Prop `render` oczekuje elementu, a element tworzony w trakcie renderu to za każdym razem nowy obiekt, dlatego wynosimy go wyżej:
+
+```tsx
+const trigger = useMemo(
+  () => (
+    <Button variant="ghost" size="icon" className="size-8">
+      <MoreHorizontal className="size-4" strokeWidth={1.5} />
+    </Button>
+  ),
+  [],
+)
+
+return (
+  <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
+    <DropdownMenuTrigger render={trigger} />
+    <DropdownMenuContent align="end" className="min-w-52 p-1.5">
+      …
+    </DropdownMenuContent>
+  </DropdownMenu>
+)
+```
+
+Zagnieżdżenie jednego triggera w drugim robi się tak samo — przycisk widoczności kolumn w tabeli danych to `DropdownMenuTrigger` wyrenderowany w `TooltipTrigger`:
+
+```tsx
+const menuTrigger = useMemo(() => <DropdownMenuTrigger render={button} />, [button])
+…
+<TooltipTrigger render={menuTrigger} />
+```
+
+`Tooltip.Provider` montowany jest raz, w `src/routes/__root.tsx`, z `delay={0}`.
+
+## Warianty warte znajomości
+
+`Button` (`button.tsx`) to najbogatszy prymityw. Warianty: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive` oraz zestaw sklepowy `account`, `account-outline`, `account-ghost`, `account-destructive`. Rozmiary: `xs`, `sm`, `default`, `lg`, `xl`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`, `account`, `account-sm`. Konsola administratora używa `outline` z `icon-lg` lub `icon-sm`; sklep używa zestawu `account-*`, pisany wersalikami z rozstrzelonym światłem liter.
+
+`Input` (`input.tsx`) ma sześć wariantów i domyślnie brak zaokrągleń — pola w tym sklepie to podkreślenia, nie ramki:
+
+| Wariant          | Używany przez                                                          |
+| ---------------- | ---------------------------------------------------------------------- |
+| `default`        | Większość formularzy: dolna krawędź, `min-h-11`, fokus na `foreground` |
+| `floating`       | Formularze kasy i konta, w parze z `FloatingLabel`                     |
+| `account`        | Edycja inline w panelu klienta: tylko dolna krawędź, 14px              |
+| `account-inline` | Edycja inline bez obramowania                                          |
+| `sheet`          | Panele wysuwane w administracji, przez `sheet-control.styles.ts`       |
+| `sheet-inset`    | Pola wewnątrz `InputGroup` w panelu wysuwanym                          |
+
+`sheet-control.styles.ts` nie jest komponentem — eksportuje łańcuchy klas (`SHEET_CONTROL_HEIGHT`, `sheetInputClassName`, `sheetInputGroupClassName`, `sheetSelectTriggerClassName`, …), które trzymają każdą kontrolkę w panelu wysuwanym na tej samej wysokości 40px i z tym samym `rounded-lg`. `globals.css` dodaje regułę w warstwie komponentów wymuszającą `var(--radius)` na polach, selectach, grupach pól i obszarach tekstowych wewnątrz `[data-slot="sheet-content"]`.
+
+## Formularze
+
+Formularze korzystają z **react-hook-form** z resolverami Zod, nie z TanStack Form. Używane prymitywy to `Field`, `FieldGroup`, `FieldLabel`, `FieldError` (`field.tsx`), `Input`, `InputGroup` oraz współdzielone pomocniki z `src/presentation/components/custom/floating-field.tsx`.
+
+Pole z `checkout/components/checkout-fields.tsx`:
+
+```tsx
+const { field, fieldState } = useController({ control, name })
+
+const valueStr = displayValue ?? toStringValue(field.value)
+const showValid = !isReadOnly && isFieldValid(fieldState, valueStr)
+
+return (
+  <Field className={cn("relative", className)} data-invalid={fieldState.invalid}>
+    <Input
+      {...rest}
+      {...field}
+      variant="floating"
+      value={valueStr}
+      placeholder=" "
+      id={field.name}
+      aria-invalid={fieldState.invalid}
+      aria-required={required}
+      className={cn("peer", showValid && VALID_INPUT_CLASS)}
+    />
+    <FloatingLabel htmlFor={field.name} label={label} required={required} />
+    <ValidCheck show={showValid} />
+    <FieldErrorMessage fieldState={fieldState} />
+  </Field>
+)
+```
+
+Unosząca się etykieta to siostrzany `<label>` napędzany wyłącznie przez CSS: `FLOATING_LABEL_CLASS` używa `peer-focus:` i `peer-[:not(:placeholder-shown)]:`, aby ją podnieść i pomniejszyć — dlatego pole potrzebuje `placeholder=" "` oraz `className="peer"`. `ValidCheck` pokazuje zielony znacznik, gdy `fieldState.isTouched && !fieldState.invalid && value !== ""`.
+
+Dla komunikatów walidacji z serwera i komunikatów współdzielonych używaj `ValidationFieldError` (`custom/validation-field-error.tsx`). Przyjmuje klucz komunikatu i przestrzeń nazw, sprawdza klucz przez `t.has` i przy jego braku wraca do ogólnego komunikatu `errors.action.VALIDATION` — niezmapowany kod Zoda degraduje się więc do sensownego zdania, a nie do surowego kodu.
+
+## Tłumaczenia
+
+Prymitywy, które potrzebują słów, czytają je same z przestrzeni nazw `components.shadcn`: `breadcrumb.navLabel`, `carousel.nextSlide`, `dialog.close`, `command.title`, `pagination.*` i `sheet.close`. Nigdy nie przekazuj etykiety do prymitywu jako propa, jeśli prymityw ma już własny klucz. Nowe teksty dodawaj do `messages/en-US/components.shadcn.json` **oraz** `messages/pl-PL/components.shadcn.json`.
+
+## Rozmiar CSS
+
+`globals.css` wyłącza nieużywane prymitywy ze skanowania źródeł przez Tailwind, więc ich klasy nigdy nie są kompilowane:
+
+```css
+@source not "../components/shadcn/{alert,button-group,context-menu,drawer,empty,hover-card,input-otp,item,kbd,menubar,native-select,navigation-menu,pagination,progress,resizable,scroll-area,slider,tabs,toggle-group,toggle,typography}.tsx";
+```
+
+Wyłącza też `**/*.{test,spec}.{ts,tsx}`, `**/__test__/**` i `platform/testing/**`.
+
+**Gdy zaczynasz używać jednego z wyłączonych prymitywów, usuń go z tej listy**, bo inaczej wyrenderuje się bez stylów. I odwrotnie: jeśli przestajesz go używać, dopisz go z powrotem.
+
+## Znane nierówności
+
+- `typography.tsx` (`H1` … `H4`, `P`, `Lead`, `Large`, `Small`, `Muted`, `Blockquote`, `InlineCode`, `List`, `TableWrap`, `Prose`) nie jest nigdzie importowany i znajduje się na liście `@source not`. Jego komponent `Prose` używa klas `prose`, `prose-neutral` i `prose-headings:*`, ale `globals.css` rejestruje `@tailwindcss/typography` pod `classname: wysiwyg`, więc narzędzia `prose*` w tym buildzie nie istnieją. Do treści ciągłej używaj mapy komponentów MDX z `custom/mdx.tsx` albo najpierw popraw `Prose` na `wysiwyg`.
+- `Spinner` ma zaszyte `aria-label="Loading"` po angielsku, zamiast czytać klucz komunikatu.
+
+## Powiązane strony
+
+- [Wzorce kompozycji](/docs/ui/composition-patterns)
+- [Tabela danych](/docs/ui/data-table)

@@ -1,0 +1,204 @@
+---
+title: "Motyw i branding"
+description: "Zmiana kolorów, typografii, krojów pisma i tożsamości sklepu: warstwy tokenów, dwie powłoki, inicjalizacja motywu i stałe brandingowe."
+---
+
+Wszystko, co wizualne, mieszka pod `src/presentation/`. Style w `styles/`, mechanika motywu w `theme/`, stałe tożsamości w `branding/`, a stylowanie wiadomości e-mail w `emails/`. Nic poza `src/presentation` nie deklaruje koloru, kroju pisma ani danych firmy.
+
+## Trzy arkusze stylów
+
+| Plik                 | Linie | Ładowany przez                                 | Zakres                                     |
+| -------------------- | ----- | ---------------------------------------------- | ------------------------------------------ |
+| `globals.css`        | 233   | `src/routes/__root.tsx` jako `link` trasy      | Tokeny, warstwa bazowa, wspólne komponenty |
+| `admin.css`          | 84    | `src/routes/admin.tsx` jako `link` trasy       | Wyłącznie powłoka panelu                   |
+| `storefront.css`     | 20    | `src/routes/_storefront.tsx` jako `link` trasy | Animacje odsłaniania na stronie głównej    |
+| `fonts.css`          | 84    | `@import` na początku `globals.css`            | Niekrytyczne reguły `@font-face`           |
+| `critical-fonts.css` | 60    | Wstawiany do `<head>` przez `?raw`             | Dwa kroje widoczne nad linią zgięcia       |
+
+Zachowaj ten podział. Reguła potrzebna tylko panelowi należy do `admin.css`; reguła potrzebna tylko stronie głównej należy do `storefront.css`. `globals.css` jest dla tego, co obie powłoki dzielą.
+
+## Warstwy tokenów
+
+`globals.css` deklaruje tokeny trzykrotnie.
+
+**Paleta M'Arte** — własne, nazwane kolory witryny sklepowej, w `:root` i redefiniowane w `.dark`:
+
+```css
+:root {
+  --sea-ink: #173a40;
+  --lagoon: #4fb8b2;
+  --palm: #2f6a4a;
+  --sand: #e7f0e8;
+  --foam: #f3faf5;
+  --bg-base: #e7f3ec;
+  --header-bg: rgba(251, 255, 248, 0.84);
+  /* surface, line, chip, gradienty hero … */
+}
+```
+
+To ręcznie dobrane wartości hex i `rgba`, używane przez autorskie sekcje witryny sklepowej.
+
+**Tokeny semantyczne shadcn** — `--background`, `--foreground`, `--card`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--success`, `--border`, `--input`, `--ring`, `--chart-1` do `--chart-5`, `--radius` oraz osiem tokenów `--sidebar-*`. Są w `oklch(...)` i to je czyta każdy komponent podstawowy shadcn.
+
+**Motyw Tailwind** — `@theme inline` mapuje każdy token semantyczny na narzędzie Tailwind, więc `bg-card` rozwiązuje się do `var(--card)`:
+
+```css
+@theme inline {
+  --font-sans: "Manrope", "Manrope Fallback", system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", "Cormorant Garamond Fallback", "Times New Roman", serif;
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --radius-sm: max(0px, calc(var(--radius) - 2px));
+  --radius-md: var(--radius);
+  --max-width-400: min(100rem, calc(100% - 1.5rem));
+  --spacing-18: 4.5rem;
+  --spacing-54: 13.5rem;
+}
+```
+
+Zwróć uwagę na `--radius: 0.25rem` — cały produkt używa wąskiego promienia, a `--radius-md` i `--radius-lg` są celowo mu równe. Istnieją trzy własne wpisy skali: `max-w-400` dla kontenera strony oraz `spacing-18` i `spacing-54`.
+
+**Żeby zmienić kolor**, zmień token w `:root` i w `.dark`. Nigdy nie wpisuj literału koloru w `className` komponentu.
+
+## Tryb ciemny
+
+`@custom-variant dark (&:is(.dark *))` — tryb ciemny opiera się na klasie nadawanej elementowi `<html>`. `src/providers/themes-provider.tsx` opakowuje `@wrksz/themes`:
+
+```tsx
+<WrkszThemeProvider
+  attribute="class"
+  enableSystem={false}
+  themes={THEMES}
+  defaultTheme="light"
+  storage="localStorage"
+  storageKey={THEME_STORAGE_KEY}
+  disableTransitionOnChange
+>
+```
+
+`enableSystem={false}` i `defaultTheme="light"` są celowe: jasny motyw jest domyślny dla marki, a preferencja systemowa nie jest respektowana. `THEME_STORAGE_KEY` to `` `${APP_NAME}-theme` ``, czyli `M'Arte-theme`.
+
+## Dwie powłoki
+
+Panel administracyjny jest zawsze jasny, także dla gościa, który w witrynie sklepowej wybrał motyw ciemny. Działa to bez mignięcia dzięki trzem mechanizmom.
+
+**1. Skrypt inicjalizujący.** `THEME_INIT_SCRIPT` w `src/presentation/theme/theme-init.ts` jest wstawiany do `<head>` przez `__root.tsx` przed czymkolwiek innym. Czyta zapisany motyw, sprawdza, czy ścieżka zawiera `/admin`, i albo ustawia `data-admin-shell` oraz tło chromu na `<html>` i `<body>`, albo dodaje klasę `dark`:
+
+```ts
+export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var t=localStorage.getItem(k);var d=t==="dark";var p=location.pathname;var a=p.indexOf("/admin")!==-1;var c=${ADMIN_CHROME_BG_JSON};if(a){document.documentElement.classList.remove("dark");document.documentElement.dataset.adminShell="";document.documentElement.style.backgroundColor=c;document.body.style.backgroundColor=c}else if(d){document.documentElement.classList.add("dark")}}catch(e){}})();`
+```
+
+`__root.tsx` ustawia też `data-admin-shell` po stronie serwera na elemencie `<html>` i wstawia w treści `adminShellCriticalStyle(path)`, więc ciemny chrom jest namalowany przed załadowaniem jakiegokolwiek arkusza stylów.
+
+**2. `admin.css` redeklaruje tokeny.** Wewnątrz `[data-admin-main]` resetuje `--background`, `--foreground`, `--card`, `--muted`, `--border`, `--input`, `--ring` i promienie do wartości jasnych oraz ustawia `color-scheme: light`. `html[data-admin-shell]` dostaje `background-color: var(--sidebar)` — ciemny chrom, na którym siedzi menu boczne.
+
+**3. `useAdminLightTheme`.** Hook w `src/presentation/theme/use-admin-light-theme.ts` usuwa klasę `dark` przy montowaniu, a w funkcji porządkującej przywraca zapisaną preferencję gościa:
+
+```ts
+useEffect(() => {
+  document.documentElement.classList.remove("dark")
+
+  return function restoreStorefrontTheme() {
+    if (typeof localStorage === "undefined") {
+      return
+    }
+
+    try {
+      if (globalThis.localStorage.getItem(THEME_STORAGE_KEY) === "dark") {
+        document.documentElement.classList.add("dark")
+      }
+    } catch {}
+  }
+}, [])
+```
+
+`admin.css` stylizuje dodatkowo powiadomienia Sonner wewnątrz `html[data-admin-shell]`, żeby pasowały do ciemnego menu bocznego, oraz nadaje kontenerowi przewijania tabeli cienkie własne paski przewijania. `src/presentation/components/custom/pages/admin/admin-layout.styles.ts` przechowuje wielokrotnie używane napisy klas panelu — `ADMIN_LAYOUT_BG_CLASS`, `ADMIN_CARD_CLASS`, zestaw `ADMIN_STAT_*` — żeby żadna strona ich nie powtarzała.
+
+## Typografia
+
+Dwa kroje pisma, oba hostowane lokalnie z `public/fonts/`:
+
+- **Manrope** dla `font-sans` — krój zmienny.
+- **Cormorant Garamond** dla `font-serif` — używany w każdym nagłówku.
+
+`critical-fonts.css` jest wstawiany w treść dokumentu, nie linkowany. Zawiera kroje zastępcze dopasowane metrycznie (`Manrope Fallback` z Ariala, `Cormorant Garamond Fallback` z Times New Roman, z `size-adjust`, `ascent-override`, `descent-override` i `line-gap-override`) oraz dwie reguły `@font-face` potrzebne przy pierwszym renderowaniu. `fonts.css` niesie pozostałe grubości i kursywy i jest importowany zwyczajnie.
+
+`StorefrontCriticalFontsHead` emituje preloady i wstawia ten CSS przez `?raw`:
+
+```tsx
+export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriticalFontsHeadProps>): JSX.Element => (
+  <>
+    {getCriticalFontPreloads(locale).map((link) => (
+      <link key={link.href} {...link} />
+    ))}
+    <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
+  </>
+)
+```
+
+`getCriticalFontPreloads` w `src/presentation/document-assets.ts` wybiera podzbiór znaków zależnie od języka: polski dostaje `latin-ext` (potrzebuje ą, ć, ę, ł, ń, ó, ś, ź, ż), angielski zwykły `latin`. `__root.tsx` renderuje ten komponent tylko wtedy, gdy ścieżka nie jest pod `/admin`, bo panel nie używa kroju szeryfowego.
+
+**Zmiana kroju pisma** oznacza dodanie plików `.woff2` do `public/fonts/`, dopisanie reguł `@font-face` z właściwym `unicode-range` (grubości krytyczne w `critical-fonts.css`, pozostałe w `fonts.css`), wyliczenie nowych metryk kroju zastępczego i aktualizację `--font-sans` albo `--font-serif` w bloku `@theme inline`. Zachowaj podział na dwa pliki — przeniesienie wszystkiego do `fonts.css` pogarsza pierwsze renderowanie tekstu.
+
+## Stałe brandingowe
+
+`src/presentation/branding/` zawiera trzy pliki i jest jedynym miejscem, w którym te dane występują.
+
+`app.ts` — tożsamość produktu:
+
+```ts
+export const APP_DOMAIN = "martebizuteria.pl"
+export const APP_URL = `https://${APP_DOMAIN}`
+export const APP_NAME = "M'Arte"
+export const APP_ICON = "/favicon.svg"
+export const THEME_COLOR = "#e7f3ec"
+export const OG_IMAGE_PATH = "/og.png"
+export const OG_IMAGE_WIDTH = "1200"
+export const OG_IMAGE_HEIGHT = "630"
+export const DEFAULT_R2_PUBLIC_URL = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev"
+export const APP_GITHUB_OWNER = "pjborowiecki"
+export const APP_GITHUB_REPO = APP_DOMAIN
+```
+
+`APP_NAME` zasila tytuł dokumentu, `appName` w Better Auth, wystawcę dla uwierzytelniania dwuskładnikowego oraz klucz przechowywania motywu. `THEME_COLOR` to znacznik meta `theme-color` i pokrywa się z `--bg-base`. `APP_DOMAIN` zasila `appHostsForMode` w `src/modules/_core/constants/api.ts`, czyli `baseURL.allowedHosts` w Better Auth — zmiana domeny zmienia więc również listę dozwolonych hostów uwierzytelniania.
+
+`business.ts` — podmiot prawny, używany w stopce, na stronach prawnych i w danych strukturalnych:
+
+```ts
+export const BUSINESS = {
+  CITY: "Bochnia",
+  COUNTRY_CODE: "PL",
+  EMAIL: "kontakt@martebizuteria.pl",
+  LEGAL_NAME: "Pyciak Mariusz Firma Jubilerska",
+  NIP: "8681772646",
+  OPENING_HOURS_CLOSE: "17:00",
+  OPENING_HOURS_OPEN: "09:00",
+  PHONE: "+48 663 150 820",
+  POSTAL_CODE: "32-700",
+  REGON: "384616568",
+  STREET: "ul. Wąska 11",
+} as const
+```
+
+`BUSINESS_POSTAL_ADDRESS_LINES` w tym samym pliku składa trzyliniowy adres pocztowy.
+
+`socials.ts` — adresy Facebooka i Instagrama.
+
+## Wiadomości e-mail
+
+Stylowanie e-maili jest osobne: bez Tailwinda i bez zmiennych CSS, bo klienty pocztowe nie wspierają ich niezawodnie. `src/presentation/emails/email-styles.ts` przechowuje obiekty stylów inline, `email-layout.tsx` to wspólna powłoka, a `email-highlight-box.tsx` jedyny wspólny blok. Sześć szablonów to `account-deleted`, `change-email`, `order-confirmation`, `order-shipped`, `reset-password` i `verify-email`. Każdy przyjmuje `locale` i `messages` jako właściwości. Podejrzysz je pod `/dev/emails`.
+
+## Lista kontrolna zmiany wizualnej
+
+- Kolor zmienia się w `:root` **i** `.dark` w `globals.css`, nigdy w komponencie.
+- Reguła tylko dla panelu trafia do `admin.css`, zawężona do `[data-admin-main]` albo `html[data-admin-shell]`.
+- Powtarzający się napis klas panelu trafia do `admin-layout.styles.ts`.
+- Dane sklepu trafiają do `branding/`, a komponent importuje je stamtąd.
+- Zmiany krojów pisma zachowują podział na krytyczne i niekrytyczne oraz aktualizują metryki krojów zastępczych.
+- `bun run format` sortuje Twoje klasy Tailwind — `vite.config.ts` wskazuje sorterowi `globals.css`, więc dodane tam własne narzędzie jest rozpoznawane.
+
+## Powiązane przewodniki
+
+- [Dodawanie strony panelu](/docs/guides/add-an-admin-page)
+- [Tłumaczenia](/docs/guides/i18n-messages)
+- [Debugowanie lokalne](/docs/guides/local-debugging)

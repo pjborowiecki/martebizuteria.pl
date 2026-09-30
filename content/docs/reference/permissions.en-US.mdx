@@ -1,0 +1,175 @@
+---
+title: "Permissions"
+description: "Roles, permission statements, the authorized middleware, the public-endpoint allowlist and every rate limit."
+---
+
+Access control is defined once in `src/integrations/better-auth/auth.access.ts` using Better Auth's access-control plugin, and the same definitions are used by the server middleware, the route guards and the Better Auth client.
+
+The important structural fact: **a server function is a public HTTP endpoint.** It is reachable whether or not the route that normally calls it was ever loaded, so a route guard cannot protect it. Authorization is enforced by the `authorized` middleware at the top of each use case, before any database access.
+
+## Roles
+
+```ts
+export const ROLES = {
+  ADMIN: "admin",
+  CUSTOMER: "customer",
+} as const
+
+export const DEFAULT_ROLE = ROLES.CUSTOMER
+
+export const ADMIN_PANEL_ROLES = [ROLES.ADMIN] as const
+```
+
+| Role     | Code       | Gets                                                                                             |
+| -------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| Admin    | `admin`    | Every application statement, plus Better Auth's `adminAc` statements for `user` and `session`    |
+| Customer | `customer` | No statements at all. Customers can only call endpoints that require a session, not a permission |
+
+New accounts get `customer` through `DEFAULT_ROLE`. `hasAdminAccess(role)` is the narrow predicate used where only "is this the admin console audience" matters — the route guards and the admin WebSocket handshake.
+
+## Statements
+
+Application statements come from `PERMISSIONS_STATEMENTS`, which spreads Better Auth's admin `defaultStatements` and adds three resources:
+
+| Resource   | Actions                                         |
+| ---------- | ----------------------------------------------- |
+| `order`    | `read`, `update`, `refund`                      |
+| `product`  | `create`, `read`, `update`, `delete`, `publish` |
+| `settings` | `manage`                                        |
+
+Better Auth's own statements, granted to `admin` through `...adminAc.statements`:
+
+| Resource  | Actions                                                                                                    |
+| --------- | ---------------------------------------------------------------------------------------------------------- |
+| `user`    | `create`, `list`, `set-role`, `ban`, `impersonate`, `delete`, `set-password`, `set-email`, `get`, `update` |
+| `session` | `list`, `revoke`, `delete`                                                                                 |
+
+Note that `product` covers the whole catalog, not only the `product` table: categories, collections, attributes and product images are all gated on `product` actions. There is no separate `category` or `collection` resource.
+
+## Where each permission is checked
+
+Of the 75 server functions in `src/modules/*/use-cases/`, 48 require a permission, 14 require only a session and 13 are public.
+
+| Permission               | Checked by                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product: ["read"]`      | `get-admin-products`, `get-admin-products-page`, `get-admin-product`, `get-product-stats`, `export-admin-products`, `validate-product-skus`, `get-product-images`, `get-product-attributes`, `get-admin-product-attributes`, `get-product-attribute-stats`, `get-admin-categories`, `get-category-stats`, `get-admin-collections`, `get-collection-stats` |
+| `product: ["create"]`    | `create-complete-product`, `create-product-attribute`, `create-category`, `create-collection`                                                                                                                                                                                                                                                             |
+| `product: ["update"]`    | `update-complete-product`, `reorder-products`, `update-product-attribute`, `reorder-product-attributes`, `set-all-product-attributes`, `update-category`, `reorder-categories`, `update-collection`, `reorder-collections`, plus the media upload mutations in `src/integrations/cloudflare-r2/media.mutations.ts`                                        |
+| `product: ["delete"]`    | `delete-products`, `delete-product-attributes`, `delete-categories`, `delete-collections`                                                                                                                                                                                                                                                                 |
+| `order: ["read"]`        | `get-admin-orders-page`, `get-admin-order-stats`, `export-admin-orders`                                                                                                                                                                                                                                                                                   |
+| `order: ["update"]`      | `ship-order`, `fulfill-order`, `cancel-order`                                                                                                                                                                                                                                                                                                             |
+| `settings: ["manage"]`   | `get-dashboard-snapshot`, `get-dashboard-chart-range`, `list-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`                                                                                                                                                                                                                                      |
+| `user: ["list"]`         | `get-admin-customers-page`, `get-admin-customer-stats`, `export-admin-customers`                                                                                                                                                                                                                                                                          |
+| `user: ["get"]`          | `get-admin-customer`                                                                                                                                                                                                                                                                                                                                      |
+| `user: ["update"]`       | `update-customer`                                                                                                                                                                                                                                                                                                                                         |
+| `user: ["delete"]`       | `delete-customer`                                                                                                                                                                                                                                                                                                                                         |
+| A session, no permission | All nine `customer-account` use cases and all five `address` use cases                                                                                                                                                                                                                                                                                    |
+
+`order: ["refund"]` and `product: ["publish"]` are declared but not checked by any server function. Refunds arrive from Stripe and are handled by `order/use-cases/refund-order.ts`, a plain function with no RPC endpoint, so there is no caller to authorize.
+
+## Public endpoints
+
+Thirteen use cases deliberately take no `authorized` middleware, because the storefront must serve anonymous visitors. The list is not implicit — it is written down in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` as `PUBLIC_USE_CASES`:
+
+| Use case                                                    |
+| ----------------------------------------------------------- |
+| `cart/use-cases/check-cart-availability.ts`                 |
+| `customer-activity/use-cases/record-customer-activity.ts`   |
+| `delivery-method/use-cases/list-delivery-methods.ts`        |
+| `product/use-cases/get-storefront-products-page.ts`         |
+| `product/use-cases/get-product.ts`                          |
+| `product/use-cases/get-related-products.ts`                 |
+| `product/use-cases/get-new-arrivals.ts`                     |
+| `product-category/use-cases/get-categories.ts`              |
+| `product-category/use-cases/get-storefront-category.ts`     |
+| `product-collection/use-cases/get-collections.ts`           |
+| `product-collection/use-cases/get-storefront-collection.ts` |
+| `storefront-search/use-cases/search-storefront.ts`          |
+| `storefront-search/use-cases/get-trending-searches.ts`      |
+
+That test enumerates every file under `src/modules/*/use-cases/` and asserts three things: a file containing `createServerFn` and not on the allowlist **must** contain `authorized(`; a file on the allowlist **must not**; and every allowlist entry must still exist. Adding a use case without authorization therefore fails the test suite rather than shipping.
+
+## Checking a permission
+
+Server functions use the middleware:
+
+```ts
+export const createCategory = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["create"] })])
+  .validator((input) => productCategoryZodSchemas.createInput.parse(input))
+  .handler(async ({ data }) => {
+    /* ... */
+  })
+```
+
+`authorized` is built on `withRequest`, so it also normalises errors. It reads the session with `getRequestSession()`, throws `AppError(ERROR_CODES.UNAUTHORIZED)` when there is none, throws `AppError(ERROR_CODES.FORBIDDEN)` when the role lacks the permission, and otherwise puts the session on `context.auth`:
+
+```ts
+export const authorized = (permission?: Permission) =>
+  createMiddleware({ type: "function" })
+    .middleware([withRequest])
+    .server(async ({ next }) => {
+      const session = await getRequestSession()
+      if (session === null) {
+        throw new AppError(ERROR_CODES.UNAUTHORIZED)
+      }
+      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+        throw new AppError(ERROR_CODES.FORBIDDEN)
+      }
+      return next({ context: { auth: session } })
+    })
+```
+
+Calling `authorized()` with no argument means "any signed-in user". That is what the customer-account and address use cases do; they then narrow by identity in SQL rather than by role.
+
+Code outside the middleware path calls `hasPermission({ permission, role })` or `hasAdminAccess(role)` directly. `hasPermission` returns `false` for an unknown role rather than throwing.
+
+## Ownership, not just roles
+
+Customer-facing reads do not fetch a row and then compare its owner. The ownership predicate is compiled into the query, so a foreign id returns no row at all. `customer-account/use-cases/get-customer-order.ts` is the pattern:
+
+```ts
+const orderRow = await db.query.order.findFirst({
+  where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
+  with: { checkout: { with: { billingAddress: true, shippingAddress: true } }, payment: true },
+})
+```
+
+That is why the `authorized()` calls in `customer-account` and `address` carry no permission: the SQL is the authorization. Passing someone else's order id returns `undefined`, and the query options turn that into `notFound()`.
+
+## Session handling
+
+`getRequestSession` in `src/integrations/better-auth/auth.session.ts` memoizes the session lookup per `Request` in a `WeakMap`, and passes `disableCookieCache: true`, so every server-side read revalidates against D1 while concurrent loaders in one request share a single lookup.
+
+Better Auth is configured in `auth.server.ts` with a 300-second signed cookie cache (`cookieCache.maxAge`), `storeSessionInDatabase: true` and at most five concurrent sessions per user (`multiSession({ maximumSessions: 5 })`). The browser's own `useSession()` goes through `/api/auth/get-session`, which does consult the cookie cache, so the client can briefly render a stale signed-in state even though every server read is fresh.
+
+`getCurrentSession` strips the session token before returning to the browser — `toClientSession` destructures `token` away — so the client never receives it.
+
+## Rate limits
+
+Two layers, both writing to the `rate_limit` table.
+
+**Better Auth's own limiter**, configured with `storage: "database"`, a global 100 requests per 60 seconds, and four per-endpoint rules:
+
+| Endpoint                           | Max per 60s |
+| ---------------------------------- | ----------- |
+| `/api/auth/sign-in/email`          | 5           |
+| `/api/auth/sign-up/email`          | 3           |
+| `/api/auth/request-password-reset` | 3           |
+| `/api/auth/reset-password`         | 5           |
+
+**The application's `withRateLimit` middleware**, with three named budgets in `auth.middleware.ts`, all over a 60-second window:
+
+| Budget      | Max | Applied to                                                                             |
+| ----------- | --- | -------------------------------------------------------------------------------------- |
+| `CHECKOUT`  | 10  | `checkout-create` and `checkout-update` in `src/integrations/stripe/stripe.actions.ts` |
+| `SENSITIVE` | 3   | `create-user-address`, `update-customer-phone`, `revoke-other-customer-sessions`       |
+| `TOKEN`     | 5   | Nothing yet; only asserted against `SENSITIVE` in `auth.middleware.test.ts`            |
+
+Both layers key on the client IP. `clientAddress` in `src/lib/rate-limit.ts` reads only the `cf-connecting-ip` header, which the edge sets and a client cannot spoof. The counter itself is a single `INSERT ... ON CONFLICT DO UPDATE` with a `setWhere` guard, so the window reset and the increment are one atomic statement. If the table is unreachable the helper logs `Rate-limit storage unavailable` and returns `false`, so the middleware throws `TOO_MANY_REQUESTS` — it fails closed.
+
+## Related pages
+
+- [Security model](/docs/architecture/security-model)
+- [Module catalog](/docs/reference/modules)
+- [Routes](/docs/reference/routes)

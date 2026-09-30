@@ -1,0 +1,56 @@
+---
+title: "Documentation"
+description: "Architecture, guides, features and reference for the M'Arte jewellery storefront and admin console."
+---
+
+M'Arte is the source of martebizuteria.pl: one TanStack Start application that serves the public storefront, the customer account area and the admin console from a single Cloudflare Worker, backed by D1, KV, R2, Durable Objects, Better Auth, Stripe, InPost, Resend, use-intl and Fumadocs.
+
+These pages document the whole repository: where each piece of code lives, how a request travels through it, how the shop behaves, and what to change when you need to add or alter something. Every page exists in Polish and English as `<slug>.<locale>.mdx`, and Polish is the default locale, so `/docs` serves Polish and `/en-US/docs` serves English.
+
+## Start here
+
+| If you want to                                 | Read                |
+| ---------------------------------------------- | ------------------- |
+| Understand what the project is and who owns it | **Project**         |
+| Get the application running on your machine    | **Getting started** |
+| Find out where code lives and why              | **Architecture**    |
+| Learn how a part of the shop behaves           | **Features**        |
+| Follow a recipe for a concrete task            | **Guides**          |
+| Configure or debug a vendor adapter            | **Integrations**    |
+| Style a page or reuse a component              | **UI system**       |
+| Run checks, tests, builds and deployments      | **Tooling**         |
+| Look something up quickly                      | **Reference**       |
+
+## Chapters
+
+| Chapter         | Contents                                                                                           |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| Project         | About the shop, repository layout, conventions, contributing, licence                              |
+| Getting started | Prerequisites, installation, environment files, first run, everyday scripts                        |
+| Architecture    | Routes, modules and use cases, integrations, presentation, request lifecycle, i18n, security       |
+| Features        | Catalog, cart, checkout and payments, orders, inventory, accounts, admin console, audit, realtime  |
+| Guides          | Adding a module or use case, admin pages, data grids, forms, emails, messages, migrations, tests   |
+| Integrations    | TanStack Start, Better Auth, Drizzle and D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, GSAP |
+| UI system       | Design tokens, shadcn primitives, custom components, styles, fonts, branding, emails               |
+| Tooling         | Vite+, environments, Wrangler, Vitest projects, coverage, git hooks, CI and deployment workflows   |
+| Reference       | Route table, environment variables, message catalogues, database schema, scripts, glossary         |
+
+## How the application is laid out
+
+`src/routes` holds the TanStack Start file routes: the `_storefront` layout and its pages, the `account` area, the `admin` console, `auth`, `checkout`, this `docs` site and the `api` handlers. `src/routes.ts` is the single table of route paths that the rest of the code imports.
+
+`src/modules/{feature}` holds feature logic. Each feature keeps its operations in `use-cases/{verb-noun}.ts`, exporting a server function together with the query options that loaders and components use. `src/modules/_core` holds the shared primitives those use cases build on.
+
+`src/integrations/{vendor}` wraps every third party behind a small adapter: Better Auth, Drizzle ORM against D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, Fumadocs, GSAP, Lenis and the realtime invalidation hub.
+
+`src/presentation` owns everything visual: `components/shadcn` primitives, `components/custom` application components, `styles` with the Tailwind layers, `theme`, `branding`, `emails` and the document assets. `src/platform/testing` holds shared test infrastructure, `src/lib` holds small request-scoped helpers, `src/durable-objects` holds the realtime and rate-limit objects, and `src/providers` holds the React context providers.
+
+Content lives outside `src`: `content/legal` holds the legal documents, `content/docs` holds these pages and `messages/{locale}` holds the UI message catalogues.
+
+## Editing these docs
+
+Pages live in `content/docs` as `<slug>.<locale>.mdx`, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. Both locales list the same slugs, so a page added in Polish must be added in English too.
+
+`bun run content` regenerates `.source/` from the Fumadocs collections, and `bun run dev` runs it for you. After editing, `bun run format` and `bun run check` keep the repository clean and `bun run test` covers the docs source alongside everything else.
+
+Internal links such as `/docs/architecture/routing` pick up the reader's locale prefix automatically, so always write them without one.

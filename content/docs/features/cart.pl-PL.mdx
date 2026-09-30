@@ -1,0 +1,145 @@
+---
+title: "Koszyk"
+description: "Koszyk to utrwalany store zustand w przeglądarce; serwer odpowiada wyłącznie na pytanie o dostępność."
+---
+
+M'Arte nie ma koszyka po stronie serwera. Koszyk żyje w `localStorage` pod kluczem `marte-cart`, a tabele `cart` i `cart_item` w bazie są nieużywane. Jedyne odwołanie do serwera to sprawdzenie stanu magazynowego.
+
+## Store
+
+`src/modules/cart/cart.store.ts` tworzy `useCartStore` z middleware `persist` z zustand:
+
+```ts
+{
+  migrate: (persisted) => { /* zachowuje tylko wiersze przechodzące isPersistedCartItem */ },
+  name: "marte-cart",
+  version: CART_PERSIST_VERSION,
+}
+```
+
+`CART_PERSIST_VERSION` wynosi `2`. Funkcja `migrate` nie przekształca starych kształtów — waliduje ponownie każdy wiersz predykatem typu `isPersistedCartItem` i odrzuca wszystko, co nie pasuje, więc koszyk zapisany przez starszą wersję degraduje się do pustego lub częściowego, a nie wywala strony.
+
+Linia koszyka to:
+
+```ts
+export interface CartItem {
+  readonly id: string
+  readonly variantId: string
+  readonly slug: string
+  readonly title: string
+  readonly variantTitle: string
+  readonly image: string
+  readonly price: string
+  readonly rawPrice: number
+  qty: number
+}
+```
+
+`id` jest zawsze ustawiane przez `addItem` na `variantId`, więc **tożsamością linii jest wariant**: dodanie tego samego wariantu dwa razy zwiększa `qty`, a nie tworzy drugiej linii. `price` to gotowy napis do wyświetlenia, a `rawPrice` to jednostki podrzędne.
+
+Akcje: `addItem`, `removeItem(id)`, `updateQuantity(id, qty)` (ograniczane do minimum 1), `clearCart`, `itemCount()` i `cartTotal()`.
+
+Obok store'a eksportowane jest `useCartHydrated()`. Subskrybuje `useCartStore.persist.onFinishHydration` i zwraca `false`, dopóki rehydratacja się nie zakończy — korzysta z niego każdy odbiorca, który nie może działać na pustym koszyku przed hydratacją, a przede wszystkim strażnik kasy.
+
+## Ceny
+
+`src/modules/cart/cart.pricing.ts` zawiera dwie funkcje wspólne dla store'a i interfejsu:
+
+```ts
+export const getCartLineUnitPriceCents = (item: { readonly price: string; readonly rawPrice: number }): number => {
+  if (Number.isFinite(item.rawPrice) && item.rawPrice >= MIN_PRICE_CENTS) {
+    return item.rawPrice
+  }
+
+  return parseMoneyInputToMinorUnits(item.price, STORE_CURRENCY_CODE) ?? 0
+}
+
+export const getCartLineTotalCents = (item: { readonly price: string; readonly qty: number; readonly rawPrice: number }): number =>
+  getCartLineUnitPriceCents(item) * item.qty
+```
+
+`rawPrice` ma priorytet; parsowanie napisu to fallback dla koszyków zapisanych, zanim `rawPrice` istniało. `MIN_PRICE_CENTS` i `parseMoneyInputToMinorUnits` pochodzą z `src/modules/_core/utils/currency.ts`.
+
+**Ceny w koszyku to migawka.** Nie są ponownie walidowane, dopóki koszyk leży w przeglądarce. Cena wiążąca jest odczytywana na nowo po stronie serwera w `validateAndCalculateItems` przy tworzeniu sesji Stripe — zobacz [Kasa](/docs/features/checkout).
+
+## Sprawdzenie dostępności
+
+`src/modules/cart/use-cases/check-cart-availability.ts` to jedyna funkcja serwerowa w tym module. Jest publiczna (`withRequest`), przyjmuje `{ lines: [{ variantId, qty }] }` i odpowiada dla każdej linii:
+
+```ts
+const availabilityByVariantId = await getAvailabilityByVariantIds(lines.map((line) => line.variantId))
+
+const issues = lines.flatMap((line) => {
+  const available = availabilityByVariantId.get(line.variantId) ?? 0
+  if (available >= line.qty) {
+    return []
+  }
+
+  return [{ available, qty: line.qty, variantId: line.variantId }]
+})
+
+return { hasUnavailableItems: issues.length > 0, issues }
+```
+
+Wariant bez wiersza w `inventory` liczy się jako `0` dostępnych sztuk.
+
+`checkCartAvailabilityQuery(lines)` jest `enabled` tylko wtedy, gdy jest co najmniej jedna linia, i używa `staleTime: 0`, więc sprawdzenie jest świeże przy każdym montowaniu. Klucz to `[...CART_QUERY_KEYS.AVAILABILITY, lines]` — linie są częścią klucza, więc zmiana ilości wywołuje ponowne zapytanie. `CART_QUERY_KEYS.AVAILABILITY` to `["cart", "availability"]` i występuje w `STOREFRONT_REALTIME_QUERY_PREFIXES`, więc zmiana stanu wypchnięta z panelu ponawia sprawdzenie w otwartych kartach.
+
+`src/hooks/use-cart-availability.ts` owija to i zwraca `{ hasUnavailableItems, isChecking, issues, issuesByVariantId }`. `isChecking` jest prawdziwe, gdy `isPending || isFetching` i jest co najmniej jedna linia.
+
+## Strony i komponenty
+
+| Plik                                                                     | Rola                                                                 |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| `src/routes/_storefront.cart.tsx`                                        | `/cart`; renderuje `EmptyCart`, gdy nie ma linii                     |
+| `.../custom/pages/cart-page/cart-item-card.tsx`                          | jedna linia: zdjęcie, tytuły, kontrolka ilości, usunięcie            |
+| `.../custom/pages/cart-page/cart-summary.tsx`                            | podsumowanie i odnośnik do kasy                                      |
+| `.../custom/cart-availability-banner.tsx`                                | banner na całą witrynę, renderowany przez layout `_storefront`       |
+| `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | licznik w nagłówku, `items.reduce((sum, item) => sum + item.qty, 0)` |
+
+Strona koszyka formatuje własne kwoty, nie korzystając z `useFormatter`:
+
+```ts
+const CENTS_IN_ZLOTY = 100
+const total = cartTotal() / CENTS_IN_ZLOTY
+const subtotal = new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" }).format(total)
+```
+
+**Ten format jest zapisany na stałe jako `pl-PL`**, więc angielska wersja koszyka wciąż pokazuje polskie formatowanie liczb.
+
+## Podsumowanie to tylko suma częściowa
+
+`cart-summary.tsx` renderuje trzy wiersze — sumę częściową, dostawę i sumę — ale dostawa to komunikat `pages.cart.summary.shippingValue`, a wiersz sumy wypisuje tę samą wartość `subtotal`:
+
+```tsx
+<div className="flex justify-between">
+  <span className="font-medium">{t("summary.total")}</span>
+  <span className="font-medium">{subtotal}</span>
+</div>
+```
+
+Koszt dostawy nie jest znany, dopóki nie wybrano metody dostawy, a to dzieje się w kasie. Prawdziwą sumę z dostawą wylicza Stripe z pozycji sesji.
+
+Gdy `checkoutDisabled` jest prawdziwe, odnośnik do kasy zastępuje nieinteraktywny `<span aria-disabled="true">`, więc nie ma przycisku, który daje się kliknąć, ale nic nie robi.
+
+## Blokowanie niepoprawnego koszyka
+
+Wynik sprawdzenia dostępności wykorzystują trzy strażniki:
+
+- `/cart` blokuje odnośnik do kasy, dopóki `hasUnavailableItems || isChecking`.
+- `CartAvailabilityBanner` renderuje pasek z `role="alert"` i komunikatem `pages.cart.availability.banner`, gdy linie są niedostępne.
+- `/checkout` przekierowuje z powrotem na `/cart`, gdy zhydratowany koszyk jest pusty albo ma problemy ze stanem. Zobacz [Kasa](/docs/features/checkout).
+
+## Śledzenie porzucenia koszyka
+
+`src/presentation/components/custom/customer-activity-tracker.tsx` obserwuje store. Dla zalogowanego odwiedzającego, gdy `document.visibilityState` zmienia się na `hidden`, a koszyk nie jest pusty, wywołuje `trackCartAbandoned({ itemCount, lineCount })` raz na sesję (zabezpieczone kluczem `sessionStorage` `customer-activity:cart-abandoned-sent`). Opróżnienie koszyka czyści tę flagę przez `resetCartAbandonedTracking()`.
+
+## Nieużywane tabele
+
+`cart` i `cart_item` istnieją w `src/modules/cart/cart.schema.ts` oraz `src/modules/cart-item/cart-item.schema.ts`, z kolumnami `discount_id`, `expires_at`, `session_id` i `user_id` oraz standardowymi indeksami, i są eksportowane z `src/integrations/drizzle-orm/drizzle.schemas.ts`. Nic ich nie czyta ani nie zapisuje. To schemat koszyka serwerowego, którego nie zbudowano; `checkout.cart_id` odwołuje się do `cart.id`, ale nigdy nie jest wypełniane.
+
+## Powiązane strony
+
+- [Kasa](/docs/features/checkout)
+- [Stany magazynowe](/docs/features/inventory)
+- [Karta produktu](/docs/features/product-page)

@@ -1,0 +1,107 @@
+---
+title: "Unieważnianie w czasie rzeczywistym"
+description: "Jak zmiana wprowadzona przez jednego administratora dociera do każdej innej otwartej karty: hub Durable Object, protokół kluczy zapytań i hook kliencki."
+---
+
+Panele administracyjne dezaktualizują się w chwili, gdy pracuje druga osoba, a zapytania list administracyjnych świadomie nie odświeżają się przy montowaniu ani przy powrocie do okna. Świeżość jest wypychana, a nie odpytywana.
+
+## Elementy
+
+| Plik                                               | Rola                                                                       |
+| -------------------------------------------------- | -------------------------------------------------------------------------- |
+| `src/durable-objects/realtime-invalidation-hub.ts` | `RealtimeInvalidationHub` — obiekt rozdzielający połączenia                |
+| `realtime-invalidation.subscriptions.ts`           | Nazwy hubów i stałe listy prefiksów, na które subskrybuje każdy odbiorca   |
+| `realtime-invalidation.protocol.ts`                | Serializacja tematów i test nakładania się prefiksów                       |
+| `realtime-invalidation.publish.server.ts`          | `publishRealtimeInvalidation`, `scheduleRealtimeInvalidation`              |
+| `realtime-invalidation.catalog.server.ts`          | Sześć nazwanych publikatorów, z których naprawdę korzysta warstwa domenowa |
+| `realtime-invalidation.ws.server.ts`               | Handshake upgrade'u i sprawdzenie roli administratora                      |
+| `src/hooks/use-realtime-query-sync.ts`             | Subskrypcja kliencka, dopasowywanie i ponowne łączenie                     |
+| `src/integrations/tanstack-query/query.sync.ts`    | Lustrzenie unieważnień między kartami przez `BroadcastChannel`             |
+
+## Dwóch odbiorców, po jednym obiekcie
+
+`REALTIME_INVALIDATION_HUB` ma dwie nazwy, `admin` i `storefront`, a obiekt jest adresowany po nazwie przez `env.REALTIME_INVALIDATION_HUB.getByName(hubName)`. Hub nie trzyma trwałego stanu — jest rozgłaszaczem, nie magazynem — i przyjmuje gniazda z tagiem równym własnej nazwie, żeby `ctx.getWebSockets(hubName)` mógł zwrócić dokładnie jego odbiorców.
+
+Handshake upgrade'u musi przejść przez `fetch`, bo upgrade WebSocketu nie ma alternatywy. Unieważnienia nie muszą: korzystają z **natywnej metody RPC** na stubie Durable Objectu, co pozwala uniknąć konstruowania `Request` i `Response` na ścieżce krytycznej.
+
+```ts
+const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
+await hub.notifyInvalidation(toSerializedTopicPrefixes(queryKeys))
+```
+
+`notifyInvalidation` serializuje jeden payload, iteruje po swoich gniazdach i przełyka błąd wysyłki na pojedynczym gnieździe, żeby jedno martwe połączenie nie przerwało całego rozgłoszenia.
+
+## Tematem jest zserializowany klucz zapytania
+
+Temat to po prostu `JSON.stringify(queryKey)`, więc format przesyłu i klucze cache'u nie mogą się rozjechać:
+
+```ts
+export const serializeQueryKeyPrefix = (queryKey: QueryKey): string => JSON.stringify(queryKey)
+```
+
+Dopasowanie to **symetryczne nakładanie się prefiksów** — celowo szersze niż jednokierunkowe dopasowanie prefiksu w TanStack Query:
+
+```ts
+export const queryKeyPrefixesOverlap = (left: QueryKey, right: QueryKey): boolean => {
+  const length = Math.min(left.length, right.length)
+  for (let index = 0; index < length; index++) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+
+  return true
+}
+```
+
+Ponieważ porównywana jest tylko wspólna długość, wąska publikacja (`["admin", "products", "page"]`) unieważnia również grubszą subskrypcję (`["admin", "products"]`) i odwrotnie. Hub rozgłasza do całej grupy odbiorców, a każda karta odrzuca to, co nie nakłada się na jej własną listę.
+
+## Subskrypcje
+
+`ADMIN_REALTIME_QUERY_PREFIXES` ma 12 wpisów: strona i statystyki dziennika audytu, zamówienia administracyjne, klienci administracyjni oraz pary `ALL`/`STATS` dla kategorii, kolekcji, produktów i atrybutów produktów. `STOREFRONT_REALTIME_QUERY_PREFIXES` ma 10: klucze produktów (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), dostępność koszyka oraz pary `ALL`/`BY_HANDLE` kategorii i kolekcji.
+
+Obie listy są zbudowane ze stałych `*_QUERY_KEYS` samych modułów i typowane jako `as const satisfies readonly QueryKey[]`, więc zmiana nazwy klucza jest błędem typu, a nie po cichu martwą subskrypcją.
+
+## Publikowanie
+
+`realtime-invalidation.catalog.server.ts` udostępnia sześć publikatorów, z których korzysta warstwa domenowa; każdy nazywa odbiorców, których dotyczy:
+
+| Publikator                                    | Klucze administracyjne                         | Klucze sklepu                                   |
+| --------------------------------------------- | ---------------------------------------------- | ----------------------------------------------- |
+| `scheduleProductCatalogInvalidation`          | produkt `ADMIN.ALL`, `ADMIN.STATS`             | pięć kluczy produktu plus dostępność koszyka    |
+| `scheduleCategoryCatalogInvalidation`         | kategoria `ADMIN.ALL`, `ADMIN.STATS`           | kategoria `ALL`, `BY_HANDLE`                    |
+| `scheduleCollectionCatalogInvalidation`       | kolekcja `ADMIN.ALL`, `ADMIN.STATS`            | kolekcja `ALL`, `BY_HANDLE`, nowości produktowe |
+| `scheduleProductAttributeCatalogInvalidation` | atrybut `ADMIN.ALL`, `ADMIN.STATS`             | —                                               |
+| `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                               |
+| `scheduleAdminOrdersInvalidation`             | zamówienie `ADMIN.ORDERS`                      | —                                               |
+
+Forma `schedule*` przekazuje publikację do `scheduleBackgroundWork`, więc wykonuje się pod `waitUntil` i nigdy nie opóźnia odpowiedzi. `publishRealtimeInvalidation` to forma oczekiwana, używana tam, gdzie nie ma żądania, z którego można wrócić — konsument kolejki audytu czeka na nią po udanym wstawieniu batcha.
+
+Wywołujący warci zapamiętania: handlery webhooków Stripe (`scheduleAdminOrdersInvalidation` i `scheduleProductCatalogInvalidation` po realizacji, zwrocie lub sporze), `handleCreateCheckoutSession` i `handleUpdateCheckoutSession` (katalog produktów, bo zmienił się stan magazynowy), hooki tworzenia, aktualizacji i usunięcia użytkownika w Better Auth (`scheduleAdminCustomersInvalidation`) oraz mutacje katalogu w panelu administracyjnym.
+
+## Strona kliencka
+
+`useRealtimeQuerySync({ hub, subscriptions })` jest montowany dokładnie dwa razy: w `admin.tsx` z prefiksami administracyjnymi i w `_storefront.tsx` z prefiksami sklepu.
+
+```ts
+useRealtimeQuerySync({
+  hub: REALTIME_INVALIDATION_HUB.ADMIN,
+  subscriptions: ADMIN_REALTIME_QUERY_PREFIXES,
+})
+```
+
+Hook otwiera `wss://<host>/api/realtime/{admin,storefront}/ws`, waliduje każdą wiadomość przez `isRealtimeInvalidationPayload`, parsuje tematy z powrotem na klucze zapytań, zachowuje subskrypcje, które się nakładają, i woła dla każdej `syncQueryInvalidation(queryClient, prefix)`. Ponowne łączenie to wykładnicze wycofywanie od 1 s, z podwajaniem, z limitem 30 s, zerowane przy udanym zdarzeniu `open`; funkcja porządkująca zamyka gniazdo i czyści oczekujący timer.
+
+`syncQueryInvalidation` robi dwie rzeczy: unieważnia lokalnie z `refetchType: "all"` i publikuje klucz na kanale `BroadcastChannel` o nazwie `marte-query-invalidation`. `setupQueryClientInvalidationBroadcast` — podłączane w `getRouter` wyłącznie dla przeglądarki — słucha na tym kanale i unieważnia ten sam klucz, więc inne karty tej samej przeglądarki pozostają zsynchronizowane bez drugiego WebSocketu. Obie strony są zabezpieczone try/catch i `WeakSet`, żeby listener został zainstalowany raz na `QueryClient`.
+
+## Uwagi operacyjne
+
+- Hub jest zadeklarowany w `wrangler.jsonc` jako klasa SQLite Durable Object (`tag: "v1"`), mimo że nic nie przechowuje. To kontrakt migracji, a nie podpowiedź, że istnieje stan.
+- Nie ma gwarancji dostarczenia ani powtórki. Karta rozłączona w momencie publikacji nie dowie się o niej po ponownym połączeniu; wróci do aktualności przy kolejnej nawigacji albo ręcznym odświeżeniu.
+- Hub sklepu przyjmuje dowolnego klienta. Przenosi wyłącznie prefiksy kluczy zapytań, nigdy dane wierszy.
+
+## Powiązane strony
+
+- [Cache i SSR](/docs/architecture/caching-and-ssr)
+- [Model bezpieczeństwa](/docs/architecture/security-model)
+- [Warstwa platformy](/docs/architecture/platform-layer)

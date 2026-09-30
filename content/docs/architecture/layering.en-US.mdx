@@ -1,0 +1,88 @@
+---
+title: "Layering"
+description: "The five layers of the application, what each one is allowed to decide, and why the accessor/use-case split is the one that matters."
+---
+
+## The layers
+
+| Layer        | Lives in                                    | Decides                                                                  |
+| ------------ | ------------------------------------------- | ------------------------------------------------------------------------ |
+| Worker entry | `src/server.ts`                             | Which requests never reach React; locale redirects; `waitUntil` plumbing |
+| Delivery     | `src/routes`, `src/router.tsx`              | URL shape, guards, what a page preloads, head tags                       |
+| Use cases    | `src/modules/*/use-cases`                   | Who may call an operation, what input is valid, which query keys it owns |
+| Data access  | `src/modules/*.accessors.ts`, `*.server.ts` | How a row is read or written; SQL shape; prepared statements             |
+| Presentation | `src/presentation`, `src/providers`         | Markup, styles, which query options to read                              |
+
+Vendors sit beside these layers rather than inside them: `src/integrations/{vendor}` configures a third party and hands the domain decisions back to the module that owns the data.
+
+## The split that does the work
+
+An accessor is plain data access with no notion of who is asking:
+
+```ts
+export const getInventoryByVariantId = (variantId: string) =>
+  db.query.inventory.findFirst({
+    where: eq(inventory.variantId, variantId),
+  })
+```
+
+A use case wraps data access in an RPC endpoint and is the only place authorization is expressed:
+
+```ts
+export const shipOrder = createServerFn({ method: "POST" })
+  .middleware([authorized({ order: ["update"] })])
+  .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
+  .handler(async ({ data: { orderId } }) => {
+    // reads the order, writes fulfillmentStatus, records audit, queues email
+  })
+```
+
+Because there is exactly one layer where `authorized()` can be forgotten, that layer is the one the tests target. A use case that reads the caller's own data compiles the ownership predicate into the SQL rather than fetching and filtering:
+
+```ts
+where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
+```
+
+A foreign order id returns no row, so there is nothing to leak.
+
+## What the Worker decides before React runs
+
+`src/server.ts` short-circuits four kinds of request before the TanStack Start handler is reached, because none of them needs an SSR render:
+
+1. `GET /sitemap.xml` — `generateSitemapXml` from `src/lib/seo.ts`, cached for a day.
+2. `GET /robots.txt` — `generateRobotsTxt`, which returns a blanket `Disallow: /` unless `APP_ENV` is `production`.
+3. `ROUTES.API_REALTIME.ADMIN_WS` and `ROUTES.API_REALTIME.STOREFRONT_WS` — WebSocket upgrades, handed to `handleRealtimeInvalidationWebSocket`.
+4. A locale redirect from `resolveLocale`, returned as a `301` before anything else happens.
+
+Everything else is wrapped in `executionContextStorage.run({ waitUntil }, …)` so that background work scheduled deep inside the domain layer can still reach the Worker's `ExecutionContext`. The same file also exports the `queue` handler that drains the audit-log queue, and re-exports the `RealtimeInvalidationHub` class so Wrangler can bind it.
+
+## Background work
+
+A promise still pending when a Worker returns its response is terminated. Better Auth's hooks and the audit recorders have no access to the `ExecutionContext`, so `src/lib/background.ts` keeps it in an `AsyncLocalStorage`:
+
+```ts
+export const scheduleBackgroundWork = (task: Promise<unknown> | PromiseLike<unknown>): void => {
+  const store = executionContextStorage.getStore()
+
+  if (store === undefined) {
+    void runSafely(task)
+
+    return
+  }
+  store.waitUntil(runSafely(task))
+}
+```
+
+With no store — the queue consumer, unit tests, the paths that short-circuit before the store is entered — it degrades to a fire-and-forget whose rejection is logged rather than swallowed.
+
+## Consistency without transactions
+
+D1 has no interactive transactions. `db.batch()` is atomic, so anything that must be all-or-nothing is assembled as an array of statements and handed to `runDrizzleBatch` from `src/integrations/drizzle-orm/drizzle.batch.ts`. Anything that must read, decide, then write uses optimistic concurrency instead: the inventory reserve statement in `src/modules/inventory/inventory.accessors.ts` is a compare-and-set guarded on both the row `version` observed during validation and `quantityAvailable >= qty`, and uses the length of `.returning()` as its success signal.
+
+Multi-line carts reserve concurrently and compensate. `reserveInventoryForItems` releases the reservations that already succeeded when any line fails its guard — and the compensation itself is wrapped in `.catch()` and only logged, so a failed rollback leaves stock reserved. That is a saga with a known hole, not a distributed transaction.
+
+## Related pages
+
+- [Modules and use cases](/docs/architecture/modules-and-use-cases)
+- [Request lifecycle](/docs/architecture/request-lifecycle)
+- [Security model](/docs/architecture/security-model)

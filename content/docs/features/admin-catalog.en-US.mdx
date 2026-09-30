@@ -1,0 +1,205 @@
+---
+title: "Admin catalog"
+description: "Products, categories, collections and attributes: four tabs, four modules, sheet-based editors, drag-to-reorder and R2 image upload."
+---
+
+## Route shape
+
+`/admin/catalog` is a pass-through layout (`src/routes/admin.catalog.tsx`) that only declares the namespaces `pages.admin.catalog` and `pages.admin.catalog.localePicker`, and `/admin/catalog/` redirects to `ROUTES.ADMIN_PRODUCTS`.
+
+Four tabs, rendered by `catalog/catalog-tabs.tsx` from `ROUTES.ADMIN_CATALOG`, `ADMIN_CATEGORIES`, `ADMIN_COLLECTIONS` and `ADMIN_ATTRIBUTES`:
+
+| Tab         | Path                         | Index route                           | Module                           |
+| ----------- | ---------------------------- | ------------------------------------- | -------------------------------- |
+| Products    | `/admin/catalog/products`    | `admin.catalog.products.index.tsx`    | `src/modules/product`            |
+| Categories  | `/admin/catalog/categories`  | `admin.catalog.categories.index.tsx`  | `src/modules/product-category`   |
+| Collections | `/admin/catalog/collections` | `admin.catalog.collections.index.tsx` | `src/modules/product-collection` |
+| Attributes  | `/admin/catalog/attributes`  | `admin.catalog.attributes.index.tsx`  | `src/modules/product-attribute`  |
+
+Categories and collections also have a detail route, `admin.catalog.categories.$handle.tsx` and `admin.catalog.collections.$handle.tsx`.
+
+The products route loader prefetches five queries in parallel, because the editor needs the pick lists:
+
+```ts
+await Promise.all([
+  context.queryClient.query({ ...getAdminProductsQuery(), staleTime: "static" }),
+  context.queryClient.query({ ...getProductStatsQuery(), staleTime: "static" }),
+  context.queryClient.query({ ...getAdminCategoriesQuery(), staleTime: "static" }),
+  context.queryClient.query({ ...getAdminCollectionsQuery(), staleTime: "static" }),
+  context.queryClient.query({ ...getAdminProductAttributesQuery(), staleTime: "static" }),
+])
+```
+
+## Tables
+
+The catalog is eleven tables. All the title-like columns are **JSON locale maps**, not plain text: `titles`, `subtitles`, `descriptions`, `tags`, `labels`.
+
+| Table                  | Key columns                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `product`              | `handle` (unique), `titles`, `subtitles`, `descriptions`, `tags`, `thumbnail`, `status`, `rank`, `primary_category_id`, `metadata`      |
+| `product_variant`      | `product_id`, `title`, `sku` (unique), `barcode`, `price`, `compare_at_price`, `manage_inventory`                                       |
+| `inventory`            | `variant_id` (unique), `quantity_available`, `quantity_reserved`, `version`                                                             |
+| `product_image`        | `product_id`, `variant_id` (nullable), `url`, `alt`, `rank`                                                                             |
+| `product_option`       | `product_id`, `titles`                                                                                                                  |
+| `product_option_value` | `option_id`, `labels`, `rank`                                                                                                           |
+| `option_on_variant`    | `variant_id`, `option_id`, `value_id`; unique on (`variant_id`, `option_id`)                                                            |
+| `product_category`     | `handle` (unique), `parent_id` (self-reference), `titles`, `subtitles`, `short_descriptions`, `descriptions`, `image`, `status`, `rank` |
+| `product_collection`   | `handle` (unique), `titles`, `descriptions`, `image`, `status`, `rank`                                                                  |
+| `product_attribute`    | `handle` (unique), `titles`, `type`, `unit`, `allowed_values` (JSON), `rank`                                                            |
+| `attribute_on_product` | Join table; a row may be scoped to a variant                                                                                            |
+
+Plus `category_on_product` (with `is_primary`) and `collection_on_product`.
+
+`product.status` is `draft | published | archived` with `DEFAULT_PRODUCT_STATUS = draft`. Categories and collections use a different two-value status, `draft | active`, also defaulting to `draft`.
+
+Handles are validated against the same pattern in each module, for example `PRODUCT_HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u`.
+
+## Products
+
+### Reading
+
+| Use case                     | Permission          | Returns                                               |
+| ---------------------------- | ------------------- | ----------------------------------------------------- |
+| `get-admin-products-page.ts` | `product: ["read"]` | Paginated rows, `ADMIN_PRODUCTS_PAGE_SIZE = 25`       |
+| `get-admin-products.ts`      | `product: ["read"]` | The unpaginated list the grid boots from              |
+| `get-admin-product.ts`       | `product: ["read"]` | One product with everything the editor needs          |
+| `get-product-stats.ts`       | `product: ["read"]` | The stat cards, including the low-stock count         |
+| `export-admin-products.ts`   | `product: ["read"]` | Every matching row, for the CSV                       |
+| `validate-product-skus.ts`   | `product: ["read"]` | `{ takenSkus }` from `findTakenSkus(skus, productId)` |
+
+The list filters are assembled by `product.admin-list-filters.ts`, `product.admin-list-variant-filters.server.ts`, `product.admin-list-search.server.ts` and `product.admin-list-sort.ts`, and executed by `product.admin-list.server.ts`. As on the storefront, the variant-stats join is conditional: `adminProductsListNeedsVariantStatsJoin` is true only when an inventory level, a variant kind or a price-dependent sort is in play.
+
+`PRODUCT_VARIANT_KIND` is `{ MULTI: "multi", SINGLE: "single" }` with `PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD = 1`, driving `products-variant-kind-filter.tsx`.
+
+### Writing
+
+| Use case                     | Permission            | Notes                                                                                       |
+| ---------------------------- | --------------------- | ------------------------------------------------------------------------------------------- |
+| `create-complete-product.ts` | `product: ["create"]` | One call creates product, options, values, variants, inventory, images and attribute values |
+| `update-complete-product.ts` | `product: ["update"]` | Same, replacing images and attributes                                                       |
+| `delete-products.ts`         | `product: ["delete"]` | Bulk delete by id array                                                                     |
+| `reorder-products.ts`        | `product: ["update"]` | `orderedIds.map((id, index) => ({ id, rank: index }))`                                      |
+
+`createCompleteProduct` is careful about partial failure:
+
+```ts
+await deleteOrphanProductByHandle(data.handle)
+
+const id = uuidv7()
+
+try {
+  await persistProduct(id, data)
+} catch (error) {
+  await deleteProducts([id]).catch((cleanupError: unknown) => {
+    console.error(`Failed to roll back partially created product ${id}:`, cleanupError)
+  })
+
+  return rethrowProductMutationError(error)
+}
+```
+
+`rethrowProductMutationError` (`product.mutation-errors.ts`) maps a D1 unique-constraint failure onto `PRODUCT_ERROR_CODES.DUPLICATE_HANDLE` or `DUPLICATE_SKU` so the form can show the right field error.
+
+`updateCompleteProduct` additionally rejects a handle already taken by a different product (`ERROR_CODES.CONFLICT` with `DUPLICATE_HANDLE`), calls `assertCatalogSkusAvailable`, and builds an audit diff by reading the product before and after (`extractProductAuditSnapshot` and `buildProductAuditChange` in `product-audit.utils.ts`).
+
+Every write ends with `scheduleProductCatalogInvalidation()` and a `recordCatalogProduct*Audit` call.
+
+### The form
+
+`product.zod.ts` is the largest `*.zod.ts` file in the repository, at 472 lines. `productFormSchemaDefinition` extends the shared `catalogUpsertBaseSchema` with the locale maps and media fields, and adds three refinements:
+
+- `refineDuplicateSkusInForm`
+- `refineDuplicateProductAttributes`
+- `refineCatalogUpsert`, which requires at least one variant and, for an active product, a variant for **every** option combination (`buildVariantCombinations`) plus valid pricing (`refineActiveProductPricing`)
+
+All messages are keys from `PRODUCT_FORM_VALIDATION_KEYS`.
+
+`parseCatalogUpsertInput(values)` strips the media and attribute fields, parses the rest and then forces inventory tracking on:
+
+```ts
+const withInventoryAlwaysTracked = (input: CatalogUpsertInput): CatalogUpsertInput => ({
+  ...input,
+  simpleVariant: input.simpleVariant === undefined ? undefined : { ...input.simpleVariant, manageInventory: true },
+  variants: input.variants.map((row) => ({ ...row, manageInventory: true })),
+})
+```
+
+The editor UI is a sheet, not a page. `catalog/product-editor/` has 26 files: `product-sheet.tsx` with `product-form-provider.tsx`, the sections `product-editor-basic`, `-pricing`, `-media`, `-organization`, `-status`, `-tags`, `-attributes`, `-variants-section`, `-variant-list`, `-variant-mode`, plus `product-form-locale-layout.tsx` for the per-locale fields and the `product-form.utils.ts` / `product-variant-form.utils.ts` / `product-image-form.utils.ts` helpers. `useProductsSheetState` / `ProductsSheetProvider` (`catalog/products/hooks/use-products-sheet.ts`) own the open/close state, which is why the index route wraps the table in that provider.
+
+## Categories
+
+`product_category.parent_id` self-references, so categories form a tree. `collectDescendantCategoryIds` is what makes a storefront category filter include its children.
+
+| Use case                     | Permission             | Notes                                                             |
+| ---------------------------- | ---------------------- | ----------------------------------------------------------------- |
+| `get-categories.ts`          | public (`withRequest`) | Storefront list                                                   |
+| `get-storefront-category.ts` | public                 | One category by handle                                            |
+| `get-admin-categories.ts`    | `product: ["read"]`    | Admin tree                                                        |
+| `get-category-stats.ts`      | `product: ["read"]`    | Stat cards                                                        |
+| `create-category.ts`         | `product: ["create"]`  | Rejects a duplicate handle and a non-existent parent              |
+| `update-category.ts`         | `product: ["update"]`  |                                                                   |
+| `delete-categories.ts`       | `product: ["delete"]`  | `CATEGORY_ERROR_CODES` includes `HAS_CHILDREN` and `HAS_PRODUCTS` |
+| `reorder-categories.ts`      | `product: ["update"]`  | Rank within the parent                                            |
+
+`createCategory` shows the shape all four modules follow:
+
+```ts
+const nextRank = await getNextRankForParent(parentId)
+const id = uuidv7()
+await db.insert(productCategory).values(toCategoryRow(data, id, nextRank))
+scheduleCategoryCatalogInvalidation()
+recordCatalogCategoryCreatedAudit(data.handle)
+```
+
+Ranks are assigned server-side by `getNextRankForParent`, never sent from the client.
+
+## Collections
+
+The same eight use cases without the tree: `get-collections`, `get-storefront-collection`, `get-admin-collections`, `get-collection-stats`, `create-collection`, `update-collection`, `delete-collections`, `reorder-collections`. `COLLECTION_ERROR_CODES` has `DUPLICATE_HANDLE` and `HAS_PRODUCTS`.
+
+Collections matter beyond the catalog: the `nowosci` collection drives the landing page's new arrivals and the account overview's recommendations, and `scheduleCollectionCatalogInvalidation()` therefore also invalidates `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`.
+
+## Attributes
+
+An attribute is a reusable specification definition. `PRODUCT_ATTRIBUTE_TYPE` is `text`, `number`, `boolean`, `select` and `multiselect`; `productAttributeTypeUsesAllowedValues(type)` decides whether `allowed_values` is persisted. `PRODUCT_ATTRIBUTE_UNIT_PRESETS` is `["mm", "cm", "m", "km", "mg", "g", "kg", "ml", "l", "szt.", "par", "%"]`, with `PRODUCT_ATTRIBUTE_UNIT_CUSTOM_SELECT_VALUE = "__custom__"` for a free-text unit.
+
+Use cases: `get-admin-product-attributes`, `get-product-attribute-stats`, `create-product-attribute`, `update-product-attribute`, `delete-product-attributes`, `reorder-product-attributes`. They call `scheduleProductAttributeCatalogInvalidation()`, which invalidates only the admin keys — attributes are read on the storefront as part of the product query, not on their own.
+
+Values are attached through `src/modules/attribute-on-product`: `get-product-attributes` and `set-all-product-attributes`, with `replaceAttributesForProduct` and `replaceAllAttributesForProduct` doing the replace. A row can be scoped to a variant, which is how `mapPublishedProductForStorefront` gives a variant its own specifications with the product-level ones as a fallback.
+
+## Images and R2
+
+`uploadImageFn` (`src/integrations/cloudflare-r2/media.mutations.ts`) is guarded by `authorized({ product: ["update"] })` and validated against `media.zod.ts`:
+
+- accepted MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/avif`
+- maximum size: `MAX_IMAGE_BYTES` = 5 MiB
+- folders: `collections`, `products`, `categories`, `uploads` (the fallback)
+
+The key is **content-addressed**, which makes re-uploading the same file free:
+
+```ts
+const buffer = await file.arrayBuffer()
+const digest = await crypto.subtle.digest("SHA-256", buffer)
+const key = `${folder}/${bufferToHex(digest)}.${MIME_EXTENSION[file.type]}`
+if ((await env.IMAGES.head(key)) === null) {
+  await env.IMAGES.put(key, buffer, { httpMetadata: { cacheControl: IMMUTABLE_CACHE_CONTROL, contentType: file.type } })
+}
+```
+
+`IMMUTABLE_CACHE_CONTROL` is `public, max-age=31536000, immutable`, which is safe precisely because the key is the hash. The binding is `IMAGES` in `wrangler.jsonc`, and `getAssetURL` / `resolveAssetURL` in `src/lib/url.ts` turn a key into a public URL using `VITE_R2_URL`.
+
+`product-image.persist.utils.ts` (`replaceProductImages`) rewrites a product's image rows, and `product-image.server.ts` keeps `product.thumbnail` in step through `getFirstImageUrl` and `updateProductThumbnail`. The upload widgets live in `src/presentation/components/custom/image-upload/`.
+
+## Shared grid infrastructure
+
+`catalog/table/`, `catalog/toolbar/`, `catalog/form/`, `catalog/dialog/` and `catalog/lib/` hold the pieces the four tabs share, including `catalog-admin-datagrid.constants.ts` — which is where `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX` comes from, imported even by `order.constants.ts` and `user.constants.ts` so every grid's id column lines up. The generic data grid itself is `src/presentation/components/custom/datagrid/`, translated through the `components.datagrid` namespace.
+
+Each tab's per-locale editing is helped by `pages.admin.catalog.localePicker` and `product-form-locale.utils.ts`.
+
+## Related pages
+
+- [Catalog and search](/docs/features/catalog-and-search)
+- [Product page](/docs/features/product-page)
+- [Inventory](/docs/features/inventory)
+- [Internationalization](/docs/features/internationalization) for the locale-map convention
+- [Audit log](/docs/features/audit-log)

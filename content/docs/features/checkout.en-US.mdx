@@ -1,0 +1,169 @@
+---
+title: "Checkout"
+description: "The four-step client-rendered form, the session-storage draft, and the server functions that reserve stock and open a Stripe session."
+---
+
+## Route
+
+Two files:
+
+- `src/routes/checkout.tsx` — the layout. It validates the search params and renders `CheckoutHeader` plus an `Outlet`. It is **not** inside `_storefront`, so it has no shop navigation or footer.
+- `src/routes/checkout.index.tsx` — the page, which is either the success panel or the guarded form.
+
+The search schema tolerates junk:
+
+```ts
+const checkoutSearchSchema = z.object({
+  step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
+  success: z.preprocess(coerceSuccess, z.boolean().optional()),
+})
+```
+
+`coerceStep` returns `DEFAULT_STEP` (1) for anything that is not an integer between 1 and 4; `coerceSuccess` accepts `true` and the string `"true"`. So `/checkout?step=banana` lands on step 1 instead of erroring.
+
+There is no sign-in requirement. Guest checkout is the default path; a signed-in session is picked up server-side by `getRequestSession()` when the Stripe session is created.
+
+## The guard
+
+`CheckoutGuard` in `checkout.index.tsx` waits for the basket to rehydrate, then bounces bad baskets back:
+
+```ts
+const isEmpty = hydrated && itemCount === 0
+const hasStockIssues = hydrated && !isChecking && hasUnavailableItems
+useEffect(() => {
+  if (isEmpty || hasStockIssues) {
+    void navigate({ params: (prev) => prev, replace: true, to: "/cart" })
+  }
+}, [hasStockIssues, isEmpty, navigate])
+```
+
+Until the basket is hydrated, checked and valid it renders `CheckoutFormSkeleton`. The form itself is wrapped in `ClientOnly` and `Suspense`, because `CheckoutForm` lives in `checkout-form.client.tsx` and imports `@tanstack/react-start/client-only`.
+
+## The four steps
+
+`src/presentation/components/custom/checkout/lib/checkout-steps.ts` is the single definition of the steps and their fields:
+
+| Index | `id`       | `titleKey`       | Validated fields                                                                                                                              |
+| ----- | ---------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | `contact`  | `steps.contact`  | `email`, `phone`                                                                                                                              |
+| 1     | `billing`  | `steps.billing`  | `firstName`, `lastName`, `address1`, `address2`, `postalCode`, `city`, `countryCode`, `province`, `sameAsShipping`, and the `billing*` fields |
+| 2     | `delivery` | `steps.delivery` | `deliveryMethod`, `lockerId`                                                                                                                  |
+| 3     | `payment`  | `steps.payment`  | none                                                                                                                                          |
+
+`getFurthestReachableStepIndex(values)` parses the whole form with `checkoutSchema` and returns the index of the first step that owns an invalid field, or the last index when everything validates. The provider clamps the requested `?step=` to that index, so a visitor cannot deep-link past an incomplete step.
+
+Each step is code-split. `checkout-step-loaders.client.ts` maps each `id` to a `lazy()` import of its component, so the payment step and its Stripe bundle only load when the visitor reaches step 4.
+
+## Form state
+
+`checkout-form-provider.tsx` builds the `react-hook-form` instance:
+
+```ts
+const form = useForm<CheckoutFormSchema>({
+  defaultValues: {/* every field, with countryCode and billingCountryCode preset to "PL" */},
+  mode: "onTouched",
+  resolver: zodResolver(checkoutSchema),
+})
+```
+
+`useCheckoutForm()` exposes `activeStepIndex`, `control`, `getValues`, `setValue`, `trigger`, `isFormValid`, `isPending`, `onNext`, `onEdit`, `checkoutSession` and `setCheckoutSession`. `onNext(stepId)` triggers validation for just that step's fields and, on success, navigates to `?step=<next>` inside a `startTransition`. `onEdit(stepId)` jumps back without validating.
+
+## The draft
+
+`checkout-draft.ts` persists the form to **`sessionStorage`** under `marte-checkout-draft`, in a versioned envelope:
+
+```ts
+interface CheckoutDraftEnvelope {
+  readonly v: number
+  readonly values: Partial<CheckoutFormSchema>
+}
+```
+
+`SCHEMA_VERSION` is `1` and `isDraftEnvelope` rejects anything with a different `v`, so an old draft is ignored rather than merged. Every accessor is wrapped in `try`/`catch` and returns `undefined` when storage is unavailable, so the form still works in a private window. `useCheckoutDraftPersistence` restores on mount and saves on every `watch` change; `CheckoutSuccess` calls `clearCheckoutDraft()`.
+
+Because it is `sessionStorage`, the draft survives a reload but not a new tab — unlike the basket, which is `localStorage`.
+
+## Validation
+
+`src/modules/checkout/checkout.zod.ts` builds `checkoutSchema` from a Drizzle-derived address schema plus the checkout-only fields. Its messages are **message keys**, not sentences: `"validation.addressRequired"`, `"validation.phoneInvalid"` and so on, resolved against `pages.checkout` by `validation-field-error.tsx`.
+
+Three rules go beyond field presence, all in the `superRefine`:
+
+1. **Polish postal code.** `POSTAL_CODE_PATTERNS` currently contains only `PL: /^\d{2}-\d{3}$/u`. A country with no pattern passes.
+2. **Billing address.** When `sameAsShipping` is `false`, each `billing*` field becomes required and the billing postal code is pattern-checked too.
+3. **Locker.** When `deliveryMethodType === "locker"`, `lockerId` must be a non-empty string.
+
+Phone numbers are validated with `libphonenumber-js/mobile`'s `isValidPhoneNumber(value, "PL")`, so a mobile number must be valid for Poland.
+
+## Delivery step
+
+`_steps/delivery-step.tsx` reads `listDeliveryMethodsQuery()` and groups the rows by `type` in the fixed order of `DELIVERY_METHODS` (`courier`, `locker`, `in_store`). Choosing a type sets `deliveryMethodType` and, when that type has exactly one method, auto-selects `deliveryMethod`; otherwise it clears it. The card subtitle shows the lowest price of the group, `deliverySubsteps.free` when that price is zero, or `from <price>` when the group has more than one method.
+
+The sub-step depends on the type: `DeliveryCourier`, `DeliveryLocker` (with the InPost map) or `DeliveryInStore` (copy only). See [Shipping and delivery](/docs/features/shipping-and-delivery).
+
+## Payment step
+
+`_steps/payment-step.client.tsx` drives the Stripe Elements checkout. `useCheckoutSessionLoader` is the interesting part:
+
+- `amountCents = cartTotal() + deliveryCost`, where `deliveryCost` is the selected method's `price` from `listDeliveryMethodsQuery()`.
+- It computes two fingerprints from `src/integrations/stripe/stripe.checkout.ts`: `buildCheckoutLinesFingerprint(items)` (sorted `variantId:qty` pairs) and `buildCheckoutValuesFingerprint(values)` (the form values as sorted JSON).
+- `sessionMatches` is true when the amount and both fingerprints equal the stored session's. When they do not, `ensureCheckoutSession` either creates a session or updates the existing one.
+- If `isCheckoutComplete(getValues())` is false it calls `onEdit(CHECKOUT_STEP_ID.CONTACT)` and sends the visitor back to step 1.
+- `inFlightRef` prevents concurrent session calls.
+- On error it shows `PaymentError` and toasts `t(getCheckoutErrorKey(error))`, which maps `INSUFFICIENT_INVENTORY`, `INVALID_PRICE`, `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND` and `UNKNOWN_ERROR` to keys under `errors.` (`src/integrations/stripe/stripe.errors.ts`).
+
+The `PaymentElement` is configured in `PAYMENT_ELEMENT_OPTIONS`: accordion layout, `billingDetails: "never"` (M'Arte collects the address itself), wallets and Link disabled, and `paymentMethodOrder` from `CHECKOUT_PAYMENT_METHOD_ORDER` — `["card", "blik", "p24"]`.
+
+Confirming calls `confirmCheckoutSession`, which runs `checkout.confirm({ billingAddress: buildCheckoutContact(values), redirect: "if_required" })`. Any error other than code `paymentFailed` is treated as recoverable: the session is reset and the visitor is asked to retry. On success the page navigates to `?success=true`.
+
+`CheckoutSuccess` then clears the basket, the draft and the abandonment flag in one effect.
+
+## Server side
+
+`createCheckoutSessionFn` and `updateCheckoutSessionFn` (`src/integrations/stripe/stripe.actions.ts`) are thin: they validate with the schemas in `stripe.actions.schemas.ts`, apply `withRateLimit("checkout-create" | "checkout-update", RATE_LIMITS.CHECKOUT)` — ten calls per minute per client address — and dynamically import the handler so the Stripe server SDK stays out of the client bundle.
+
+`handleCreateCheckoutSession` in `stripe.actions.server.ts` runs this order:
+
+1. `validateAndCalculateItems(data.items)` — loads the products by handle with inventory, then for each line resolves the variant and throws an `AppError` with a `CHECKOUT_ERROR_CODES` code when the product or variant is missing, the price fails `isSellPriceCentsValid`, or `inventory.quantityAvailable < qty`. **The price used from here on is `variant.price` from the database, not the basket's.**
+2. `resolveShippingCost(deliveryMethod)` — `getActiveDeliveryMethodByIdQuery(id)?.price ?? 0`.
+3. `reserveInventoryForItems(validatedItems)` — optimistic reservation, see [Inventory](/docs/features/inventory).
+4. `createCheckout(...)` — inserts the `address` rows and the `checkout` row in one D1 batch.
+5. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, line items plus a `"Shipping"` line when the cost is above zero, and metadata carrying `checkoutId`, `locale`, `userId` and the chunked item list.
+6. `createPendingPayment(...)` — a `payment` row with `status: "pending"` and `transaction_id` set to the Stripe session id.
+7. `scheduleProductCatalogInvalidation()`.
+
+If anything after step 3 throws, `releaseInventoryForItems` gives the reservation back before the error propagates.
+
+`handleUpdateCheckoutSession` additionally verifies ownership (`context.userId` must match the current session when the checkout belongs to a user), reads the old session's reserved lines out of its metadata, swaps the reservation with `swapCheckoutInventory` (releasing the old lines, validating and reserving the new ones, and restoring the old ones if that fails), updates the checkout row, creates a new Stripe session, `repointPayment`s the `payment` row onto the new session id, and expires the old session.
+
+## Metadata chunking
+
+Stripe caps a metadata value at 500 characters, so `checkout-metadata.zod.ts` splits the item JSON across `items0`, `items1`, … and reassembles it:
+
+```ts
+export const readCheckoutSessionItemsJson = (metadata: Record<string, string | undefined> | null | undefined): string => {
+  ...
+  const legacy = metadata[ITEMS_CHUNK_KEY_PREFIX]
+  if (legacy !== undefined && legacy !== "") {
+    return legacy
+  }
+  ...
+}
+```
+
+A single `items` key is still read for sessions created before the chunking, and a missing metadata object yields `"[]"`.
+
+## The checkout row
+
+`checkout` (`src/modules/checkout/checkout.schema.ts`) holds `email`, `customer_note`, `locker_id`, `delivery_method_id`, `shipping_address_id`, `billing_address_id`, `cart_id`, `discount_id`, `user_id` and a `status` of `pending | processing | completed | failed | abandoned`. In practice the code uses `pending`, `completed` (fulfilled) and `failed` (released); `processing` and `abandoned` are never written.
+
+When `sameAsShipping` is true, `prepareCreateCheckoutBatch` points both address columns at the **same** `address` row rather than duplicating it.
+
+`prepareUpdateCheckoutDeliveryBatch` uses an `INSERT … SELECT … ON CONFLICT DO UPDATE` whose source row is the pending checkout, so an address upsert simply does nothing if the checkout is no longer pending. `updateCheckoutDelivery` then inspects the last statement's `returning()` and throws `ERROR_CODES.CONFLICT` when no row was updated.
+
+## Related pages
+
+- [Payments](/docs/features/payments) for the webhooks that turn a checkout into an order
+- [Shipping and delivery](/docs/features/shipping-and-delivery)
+- [Inventory](/docs/features/inventory)
+- [Integrations: Stripe](/docs/integrations/stripe)

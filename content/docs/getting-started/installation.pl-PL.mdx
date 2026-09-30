@@ -1,0 +1,100 @@
+---
+title: "Instalacja"
+description: "Instalacja zależności i generowanych plików, od których zależą kontrola typów i strona dokumentacji."
+---
+
+Sklonuj repozytorium i zainstaluj zależności z jego katalogu głównego:
+
+```sh
+git clone https://github.com/pjborowiecki/martebizuteria.pl.git
+cd martebizuteria.pl
+vp install
+```
+
+`vp install` przekazuje pracę Bunowi — menedżerowi pakietów przypiętemu przez `"packageManager": "bun@1.4.0"`. `bun install --frozen-lockfile` jest równoważne i to właśnie tego chcesz zawsze, gdy nie wolno ruszać pliku `bun.lock`.
+
+## Co robią skrypty cyklu życia
+
+Dwa skrypty w `package.json` uruchamiają się automatycznie i oba są istotne:
+
+```json
+"postinstall": "bun run typegen",
+"prepare": "vp config --no-agent",
+```
+
+| Skrypt        | Uruchamia              | Efekt                                                                                                               |
+| ------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `prepare`     | `vp config --no-agent` | Rejestruje dyspozytor hooków Git, dzięki czemu działają `.vite-hooks/pre-commit` i `.vite-hooks/prepare-commit-msg` |
+| `postinstall` | `bun run typegen`      | Uruchamia `cf-typegen` i `content`, czyli dwa kroki generowania opisane poniżej                                     |
+
+### `cf-typegen` — typy bindingów Workera
+
+```sh
+vp exec wrangler types --env development src/types/worker-configuration.d.ts
+```
+
+To polecenie czyta `wrangler.jsonc` i zapisuje interfejs `Env`, względem którego typowana jest cała warstwa serwerowa:
+
+```ts
+interface __BaseEnv_Env {
+  CACHE: KVNamespace
+  IMAGES: R2Bucket
+  DB: D1Database
+  AUDIT_LOG_QUEUE: Queue
+  APP_ENV: "development"
+  AUTH_GITHUB_CLIENT_ID: string
+  // …pozostałe pozycje z secrets.required…
+  REALTIME_INVALIDATION_HUB: DurableObjectNamespace<import("../server").RealtimeInvalidationHub>
+}
+```
+
+Plik jest generowany, nie jest wersjonowany, a `bun run clean` go usuwa. Nigdy nie edytuj go ręcznie — dodaj binding lub sekret do `wrangler.jsonc` i uruchom `bun run typegen` ponownie. Ponieważ polecenie przekazuje `--env development`, `APP_ENV` jest typowany jako literał `"development"`; tak ma być i nie wpływa to na buildy preview ani produkcyjne.
+
+### `content` — kolekcje Fumadocs
+
+```sh
+fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source
+```
+
+To polecenie kompiluje dwie kolekcje MDX zadeklarowane w `src/integrations/fumadocs/fumadocs.config.ts` — `content/docs` i `content/legal` — do plików `.source/browser.ts`, `.source/server.ts` i `.source/dynamic.ts`. To właśnie te moduły importują `src/presentation/components/custom/docs-content.tsx` oraz `src/integrations/fumadocs/fumadocs.docs.ts` jako `collections/browser` i `collections/server`.
+
+Bez katalogu `.source/` kontrola typów kończy się błędem, a trasy `/docs` i `/privacy-policy` nie mogą znaleźć swojej treści. `bun run dev` i oba skrypty budujące uruchamiają `bun run content` jako pierwszy krok, więc przy normalnej pracy nie musisz o tym pamiętać.
+
+## Instalacja tak, jak robi to CI
+
+`.github/actions/setup` świadomie pomija skrypty cyklu życia, a potem uruchamia krok generowania jawnie:
+
+```yaml
+- name: Install dependencies
+  shell: bash
+  run: bun install --frozen-lockfile --ignore-scripts
+- name: Generate binding types
+  shell: bash
+  run: bun run typegen
+```
+
+Zrób to samo lokalnie, jeśli chcesz zainstalować zależności bez ruszania swoich hooków Git. Jeśli kiedyś zainstalujesz z `--ignore-scripts` i zapomnisz o `bun run typegen`, pierwszym objawem będą tysiące błędów typów o brakującym `Env`.
+
+## Opcjonalne dodatki
+
+```sh
+bun run skills:sync
+```
+
+Przywraca dołączone umiejętności agentów do `.agents/skills` i `.claude/skills` na podstawie `skills-lock.json`, przy użyciu `scripts/sync-skills.ts`. Oba katalogi są generowanymi grupami zewnętrznymi — `bun run skills:update` jest jedynym przewidzianym sposobem zmiany ich zawartości.
+
+## Porządki
+
+Trzy poziomy, zdefiniowane w `package.json`:
+
+| Polecenie                | Usuwa                                                                                                                                                    |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run clean`          | `.source`, `.output`, `.tanstack`, `.wrangler`, `.bun-cache`, `dist`, `coverage`, raporty testów, `*.tsbuildinfo`, `src/types/worker-configuration.d.ts` |
+| `bun run clean:deep`     | To, co powyżej, oraz `node_modules`                                                                                                                      |
+| `bun run clean:hardcore` | To, co powyżej, oraz `bun.lock` i `opensrc`                                                                                                              |
+
+Zwróć uwagę, że `bun run clean` usuwa katalog `.wrangler`, w którym żyje lokalny, symulowany stan D1, R2 i KV. Po takim wyczyszczeniu lokalne uruchomienie znowu startuje z pustą bazą danych.
+
+## Dalej
+
+Uzupełnij [zmienne środowiskowe](/docs/getting-started/environment-variables).
