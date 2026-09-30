@@ -2,6 +2,7 @@ import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import {
+  MIN_FIELD_LENGTH,
   dateColumnFilterField,
   numericColumnFilterField,
   pageField,
@@ -40,6 +41,8 @@ const adminOrdersPageInput = adminOrdersExportInput.extend({
   pageSize: pageSizeField.optional(),
 })
 
+const STRIPE_SESSION_ID_MAX_LENGTH = 255
+
 const disputeMetadata = zod.object({
   amount: zod.number(),
   id: zod.string(),
@@ -61,6 +64,9 @@ export const orderZodSchemas = {
   disputeMetadata,
   insert: createInsertSchema(order),
   metadata: zod.record(zod.string(), zod.unknown()),
+  orderConfirmationInput: zod.object({
+    sessionId: zod.string().trim().min(MIN_FIELD_LENGTH).max(STRIPE_SESSION_ID_MAX_LENGTH),
+  }),
   select: createSelectSchema(order),
   update: createUpdateSchema(order),
 }

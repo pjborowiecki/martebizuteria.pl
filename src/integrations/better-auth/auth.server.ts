@@ -22,6 +22,7 @@ import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { appHostsForMode, isLocalMode } from "~/src/modules/_core/constants/api"
 import { recordAuthLoginAudit, recordCustomerRegisteredAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
+import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
 import { user as userTable } from "~/src/modules/user/user.schema"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
@@ -198,7 +199,12 @@ export const auth = betterAuth({
         after: async (user) => {
           scheduleAdminCustomersInvalidation()
           recordCustomerRegisteredAudit(user.email, { detail: user.name, resourceId: user.id })
-          await Promise.resolve()
+
+          // A trusted OAuth provider has already verified the address, so the
+          // Account starts out owning any guest orders placed with it.
+          if (user.emailVerified) {
+            await claimGuestOrdersForUser({ email: user.email, userId: user.id })
+          }
         },
       },
       delete: {
@@ -223,6 +229,9 @@ export const auth = betterAuth({
     sendResetPassword,
   },
   emailVerification: {
+    afterEmailVerification: async (user) => {
+      await claimGuestOrdersForUser({ email: user.email, userId: user.id })
+    },
     autoSignInAfterVerification: true,
     sendOnSignUp: true,
     sendVerificationEmail,

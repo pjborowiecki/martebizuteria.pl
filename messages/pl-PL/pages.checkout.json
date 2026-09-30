@@ -16,8 +16,25 @@
   },
   "checkoutSuccess": {
     "title": "Zamówienie potwierdzone",
-    "description": "Dziękujemy za zakupy! Otrzymaliśmy Twoje zamówienie i przystąpiliśmy do jego realizacji. Wkrótce otrzymasz potwierdzenie na podany adres e-mail.",
-    "continueShopping": "Powrót na stronę sklepu"
+    "description": "Dziękujemy za zakup. Potwierdzenie jest już w drodze na adres {email}.",
+    "pendingTitle": "Potwierdzamy płatność",
+    "pendingDescription": "To chwilę potrwa. Płatność się powiodła — zapisujemy właśnie zamówienie.",
+    "unavailableTitle": "Nie udało się wczytać tego zamówienia",
+    "unavailableDescription": "Płatność mogła zostać zrealizowana. Sprawdź skrzynkę e-mail lub skontaktuj się z nami, a sprawdzimy to za Ciebie.",
+    "orderNumberLabel": "Numer zamówienia",
+    "placedOnLabel": "Złożono",
+    "itemsLabel": "Produkty",
+    "deliveryLabel": "Dostawa",
+    "shippingToLabel": "Adres dostawy",
+    "subtotalLabel": "Wartość produktów",
+    "discountLabel": "Rabat",
+    "shippingLabel": "Wysyłka",
+    "totalLabel": "Razem",
+    "vatIncludedLabel": "W tym VAT ({rate}%)",
+    "viewOrder": "Zobacz zamówienie",
+    "guestPrompt": "Załóż konto na adres {email}, a to zamówienie pojawi się w historii automatycznie.",
+    "createAccount": "Załóż konto",
+    "continueShopping": "Wróć do sklepu"
   },
   "checkoutForm": {
     "paymentCard": "Karta",

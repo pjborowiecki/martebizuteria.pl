@@ -8,6 +8,9 @@ const PUBLIC_USE_CASES = new Set([
   "cart/use-cases/check-cart-availability.ts",
   "customer-activity/use-cases/record-customer-activity.ts",
   "delivery-method/use-cases/list-delivery-methods.ts",
+  // Reached straight after payment by guests, who have no session to scope it
+  // By; the Stripe checkout session id is the capability instead.
+  "order/use-cases/get-order-confirmation.ts",
   "product-category/use-cases/get-categories.ts",
   "product-category/use-cases/get-storefront-category.ts",
   "product-collection/use-cases/get-collections.ts",
