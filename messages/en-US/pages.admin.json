@@ -775,35 +775,23 @@
     "title": "Discount Coupons",
     "description": "Manage promotional codes, discounts, and free shipping offers.",
     "actions": {
-      "export": "Export",
-      "createCoupon": "Create Coupon",
+      "createCoupon": "Create coupon",
       "delete": "Delete coupon",
-      "duplicate": "Duplicate coupon",
-      "viewDetails": "View details"
+      "edit": "Edit coupon",
+      "search": "Search codes",
+      "searchPlaceholder": "Search by code or description..."
     },
     "stats": {
-      "activeCoupons": {
-        "label": "Active Coupons",
-        "value": "18"
-      },
-      "totalRedemptions": {
-        "label": "Total Redemptions",
-        "value": "1,492"
-      },
-      "revenueSaved": {
-        "label": "Revenue Saved",
-        "value": "$12,450"
-      },
-      "avgDiscount": {
-        "label": "Avg Discount",
-        "value": "18%"
-      }
+      "activeCoupons": "Active coupons",
+      "totalCoupons": "Total coupons",
+      "totalRedemptions": "Redemptions",
+      "revenueGivenAway": "Given away"
     },
     "columns": {
       "code": "Code",
       "type": "Type",
       "discount": "Discount",
-      "minOrder": "Min. Order",
+      "minOrder": "Min. order",
       "usage": "Usage",
       "status": "Status",
       "expires": "Expires",
@@ -811,8 +799,77 @@
     },
     "status": {
       "active": "Active",
-      "scheduled": "Scheduled",
-      "expired": "Expired"
+      "disabled": "Disabled",
+      "exhausted": "Fully redeemed",
+      "expired": "Expired",
+      "scheduled": "Scheduled"
+    },
+    "type": {
+      "fixed_amount": "Fixed amount",
+      "free_shipping": "Free shipping",
+      "percentage": "Percentage"
+    },
+    "empty": {
+      "title": "No coupons yet",
+      "description": "Create a code and it will be available at checkout straight away.",
+      "noMatches": "No coupons match that search."
+    },
+    "usage": {
+      "unlimited": "{used} used",
+      "limited": "{used} / {limit}"
+    },
+    "form": {
+      "createTitle": "Create coupon",
+      "editTitle": "Edit coupon",
+      "createDescription": "The code works at checkout as soon as it is active.",
+      "editDescription": "Changes apply to checkouts started from now on.",
+      "code": "Code",
+      "codeHint": "Letters, digits, hyphens and underscores.",
+      "description": "Internal description",
+      "type": "Type",
+      "percentageValue": "Percent off",
+      "amountValue": "Amount off",
+      "maxDiscountAmount": "Maximum discount",
+      "maxDiscountAmountHint": "Caps what a percentage code can take off. Leave blank for no cap.",
+      "minOrderTotal": "Minimum basket",
+      "minOrderTotalHint": "Leave blank to allow any basket.",
+      "usageLimit": "Total uses",
+      "usageLimitHint": "Leave blank for unlimited.",
+      "perCustomerLimit": "Uses per customer",
+      "perCustomerLimitHint": "Leave blank for unlimited.",
+      "startsAt": "Starts",
+      "endsAt": "Ends",
+      "isActive": "Active",
+      "isActiveHint": "An inactive code is refused at checkout whatever its dates say.",
+      "freeShippingNote": "Free shipping takes the whole delivery charge off, so it needs no value.",
+      "cancel": "Cancel",
+      "save": "Save coupon",
+      "amountInMinorUnits": "Amounts are in grosze (100 gr = 1 zł)."
+    },
+    "validation": {
+      "codeTooShort": "Use at least 3 characters.",
+      "codeTooLong": "Use at most 32 characters.",
+      "codeCharacters": "Use only letters, digits, hyphens and underscores.",
+      "percentageRange": "Enter a percentage between 1 and 100.",
+      "amountRequired": "Enter an amount above zero.",
+      "endBeforeStart": "The end must come after the start."
+    },
+    "toast": {
+      "createdTitle": "Coupon created",
+      "createdDescription": "{code} can be used at checkout now.",
+      "updatedTitle": "Coupon updated",
+      "updatedDescription": "{code} has been saved.",
+      "deletedTitle": "Coupon deleted",
+      "deletedDescription": "{code} can no longer be redeemed.",
+      "errorTitle": "Could not save the coupon",
+      "codeTakenDescription": "That code is already in use.",
+      "errorDescription": "Please try again in a moment."
+    },
+    "deleteDialog": {
+      "title": "Delete this coupon?",
+      "description": "{code} will stop working immediately. Orders that already used it are unaffected.",
+      "cancel": "Keep coupon",
+      "confirm": "Delete coupon"
     }
   },
   "content": {

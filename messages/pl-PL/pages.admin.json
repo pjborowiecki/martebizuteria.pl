@@ -772,47 +772,104 @@
     }
   },
   "coupons": {
-    "title": "Kupony rabatowe",
-    "description": "Zarządzaj kodami promocyjnymi, zniżkami i darmową dostawą.",
+    "title": "Kody rabatowe",
+    "description": "Zarządzaj kodami promocyjnymi, rabatami i darmową dostawą.",
     "actions": {
-      "export": "Eksportuj",
-      "createCoupon": "Nowy kupon",
-      "delete": "Usuń kupon",
-      "duplicate": "Duplikuj kupon",
-      "viewDetails": "Zobacz szczegóły"
+      "createCoupon": "Utwórz kod",
+      "delete": "Usuń kod",
+      "edit": "Edytuj kod",
+      "search": "Szukaj kodów",
+      "searchPlaceholder": "Szukaj po kodzie lub opisie..."
     },
     "stats": {
-      "activeCoupons": {
-        "label": "Aktywne kupony",
-        "value": "18"
-      },
-      "totalRedemptions": {
-        "label": "Liczba użyć",
-        "value": "1 492"
-      },
-      "revenueSaved": {
-        "label": "Zaoszczędzone",
-        "value": "12 450 PLN"
-      },
-      "avgDiscount": {
-        "label": "Średni rabat",
-        "value": "18%"
-      }
+      "activeCoupons": "Aktywne kody",
+      "totalCoupons": "Wszystkie kody",
+      "totalRedemptions": "Wykorzystania",
+      "revenueGivenAway": "Udzielone rabaty"
     },
     "columns": {
       "code": "Kod",
       "type": "Typ",
-      "discount": "Zniżka",
-      "minOrder": "Min. zamówienie",
-      "usage": "Użycia",
+      "discount": "Rabat",
+      "minOrder": "Min. koszyk",
+      "usage": "Wykorzystanie",
       "status": "Status",
       "expires": "Wygasa",
       "actions": "Akcje"
     },
     "status": {
       "active": "Aktywny",
-      "scheduled": "Zaplanowany",
-      "expired": "Wygasły"
+      "disabled": "Wyłączony",
+      "exhausted": "Wykorzystany",
+      "expired": "Wygasł",
+      "scheduled": "Zaplanowany"
+    },
+    "type": {
+      "fixed_amount": "Kwota",
+      "free_shipping": "Darmowa dostawa",
+      "percentage": "Procent"
+    },
+    "empty": {
+      "title": "Brak kodów",
+      "description": "Utwórz kod, a od razu zadziała w koszyku.",
+      "noMatches": "Żaden kod nie odpowiada wyszukiwaniu."
+    },
+    "usage": {
+      "unlimited": "użyto {used}",
+      "limited": "{used} / {limit}"
+    },
+    "form": {
+      "createTitle": "Utwórz kod",
+      "editTitle": "Edytuj kod",
+      "createDescription": "Kod zadziała w koszyku, gdy tylko będzie aktywny.",
+      "editDescription": "Zmiany obowiązują dla zamówień rozpoczętych od teraz.",
+      "code": "Kod",
+      "codeHint": "Litery, cyfry, myślniki i podkreślenia.",
+      "description": "Opis wewnętrzny",
+      "type": "Typ",
+      "percentageValue": "Procent rabatu",
+      "amountValue": "Kwota rabatu",
+      "maxDiscountAmount": "Maksymalny rabat",
+      "maxDiscountAmountHint": "Ogranicza rabat procentowy. Pozostaw puste, aby nie ograniczać.",
+      "minOrderTotal": "Minimalny koszyk",
+      "minOrderTotalHint": "Pozostaw puste, aby dopuścić każdy koszyk.",
+      "usageLimit": "Liczba użyć",
+      "usageLimitHint": "Pozostaw puste dla braku limitu.",
+      "perCustomerLimit": "Użyć na klienta",
+      "perCustomerLimitHint": "Pozostaw puste dla braku limitu.",
+      "startsAt": "Początek",
+      "endsAt": "Koniec",
+      "isActive": "Aktywny",
+      "isActiveHint": "Nieaktywny kod jest odrzucany niezależnie od daty.",
+      "freeShippingNote": "Darmowa dostawa pokrywa cały koszt wysyłki, więc nie wymaga wartości.",
+      "cancel": "Anuluj",
+      "save": "Zapisz kod",
+      "amountInMinorUnits": "Kwoty podawaj w groszach (100 gr = 1 zł)."
+    },
+    "validation": {
+      "codeTooShort": "Użyj co najmniej 3 znaków.",
+      "codeTooLong": "Użyj maksymalnie 32 znaków.",
+      "codeCharacters": "Użyj tylko liter, cyfr, myślników i podkreśleń.",
+      "percentageRange": "Podaj procent od 1 do 100.",
+      "amountRequired": "Podaj kwotę większą od zera.",
+      "endBeforeStart": "Koniec musi być po początku."
+    },
+    "toast": {
+      "createdTitle": "Kod utworzony",
+      "createdDescription": "{code} działa już w koszyku.",
+      "updatedTitle": "Kod zaktualizowany",
+      "updatedDescription": "{code} został zapisany.",
+      "deletedTitle": "Kod usunięty",
+      "deletedDescription": "{code} nie może już być wykorzystany.",
+      "errorTitle": "Nie udało się zapisać kodu",
+      "codeTakenDescription": "Ten kod jest już używany.",
+      "errorDescription": "Spróbuj ponownie za chwilę."
+    },
+    "deleteDialog": {
+      "title": "Usunąć ten kod?",
+      "description": "{code} przestanie działać natychmiast. Nie wpływa to na zamówienia, które już go użyły.",
+      "cancel": "Zachowaj kod",
+      "confirm": "Usuń kod"
     }
   },
   "content": {
