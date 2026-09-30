@@ -24,9 +24,8 @@ const DetailRow = ({ isFirst = false, label, value }: Readonly<DetailRowProps>):
   </Section>
 )
 
-export const OrderShipped = ({ accountCta, details, locale, messages, orderId }: Readonly<OrderShippedProps>): JSX.Element => {
+export const OrderShipped = ({ accountCta, details, locale, messages, orderNumber }: Readonly<OrderShippedProps>): JSX.Element => {
   const t = createTranslator({ locale, messages: { emails: { "order-shipped": messages } }, namespace: ORDER_SHIPPED_NAMESPACE })
-  const reference = orderId.slice(0, REFERENCE_LENGTH).toUpperCase()
 
   return (
     <EmailLayout locale={locale} preview={t("preview")} tagline={t("tagline")}>
@@ -39,7 +38,7 @@ export const OrderShipped = ({ accountCta, details, locale, messages, orderId }:
 
       <EmailBorderedSection>
         <Text className="text-ink m-0 text-[11px] leading-[16px] font-semibold tracking-[0.22em] uppercase">{t("orderLabel")}</Text>
-        <Text className="text-ink mt-[10px] mb-0 font-serif text-[20px] leading-[26px] tracking-[0.12em]">{reference}</Text>
+        <Text className="text-ink mt-[10px] mb-0 font-serif text-[20px] leading-[26px] tracking-[0.12em]">{orderNumber}</Text>
 
         <Hr className="border-line my-[20px]" />
 
@@ -63,8 +62,6 @@ export const OrderShipped = ({ accountCta, details, locale, messages, orderId }:
   )
 }
 
-const REFERENCE_LENGTH = 8
-
 const DETAIL_GROUP_TOP_MARGIN = "mt-[20px]"
 
 const DETAIL_LABEL_CLASS = "text-ink m-0 text-[11px] leading-[16px] font-semibold tracking-[0.22em] uppercase"
@@ -84,7 +81,7 @@ interface OrderShippedProps {
   readonly details: OrderShippedDetails
   readonly locale: SupportedLocale
   readonly messages: typeof emailMessages
-  readonly orderId: string
+  readonly orderNumber: string
 }
 
 interface DetailRowProps {

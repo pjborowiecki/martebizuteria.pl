@@ -2,7 +2,6 @@ import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import {
-  ADMIN_ORDER_DETAIL_DISPLAY_ID_LENGTH,
   ADMIN_ORDER_DETAIL_RETURNING_MIN_ORDERS,
   ADMIN_ORDER_DETAIL_TAG,
   ADMIN_ORDER_FULFILLMENT_STEPS,
@@ -17,9 +16,6 @@ import { parseOrderMetadata } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils"
-
-export const formatAdminOrderDisplayId = (orderId: string): string =>
-  `#${orderId.slice(0, ADMIN_ORDER_DETAIL_DISPLAY_ID_LENGTH).toUpperCase()}`
 
 export const resolveAdminOrderDispute = (metadata: string | null | undefined): Order["disputeMetadata"] | undefined =>
   orderZodSchemas.disputeMetadata.safeParse(parseOrderMetadata(metadata)["dispute"]).data

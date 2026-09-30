@@ -90,8 +90,9 @@ export const getCustomerOverview = createServerFn({ method: "GET" })
       totalSpent: 0,
     }
 
+    const orderNumberByOrderId = new Map(orderRows.map((row) => [row.id, row.orderNumber]))
     const activity = auditRows
-      .map((row) => mapAuditLogToActivityItem(row))
+      .map((row) => mapAuditLogToActivityItem(row, orderNumberByOrderId))
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
       .slice(0, CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT)
 

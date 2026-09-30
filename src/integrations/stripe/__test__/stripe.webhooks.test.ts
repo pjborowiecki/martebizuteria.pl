@@ -10,6 +10,7 @@ const {
   flagOrderDispute,
   fulfillCheckout,
   getCheckoutEmailContext,
+  getOrderTotalsForEmail,
   paymentIntentsRetrieve,
   recordEmailFailedAudit,
   recordOrderDisputeClosedAudit,
@@ -30,6 +31,7 @@ const {
   flagOrderDispute: vi.fn<(transactionId: string, dispute: object) => Promise<void>>(),
   fulfillCheckout: vi.fn<(input: object) => Promise<string | undefined>>(),
   getCheckoutEmailContext: vi.fn<(checkoutId: string) => Promise<object | undefined>>(),
+  getOrderTotalsForEmail: vi.fn<(orderId: string) => Promise<Record<string, unknown> | undefined>>(),
   paymentIntentsRetrieve: vi.fn<(id: string, params: object) => Promise<{ payment_method: { type: string } | null }>>(),
   recordEmailFailedAudit: vi.fn(),
   recordOrderDisputeClosedAudit: vi.fn(),
@@ -69,6 +71,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailContext }))
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout }))
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout }))
+vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderTotalsForEmail }))
 vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrderDispute }))
 vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute }))
 vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder }))
@@ -143,6 +146,15 @@ const sentEmail = () => {
 beforeEach(() => {
   vi.clearAllMocks()
   fulfillCheckout.mockResolvedValue("order-1")
+  getOrderTotalsForEmail.mockResolvedValue({
+    discountTotal: 0,
+    orderNumber: "MRT-2026-00042",
+    shippingTotal: SHIPPING_TOTAL,
+    subtotal: ITEMS_TOTAL,
+    taxBasisPoints: 2300,
+    taxTotal: 12_080,
+    total: AMOUNT_TOTAL,
+  })
   getCheckoutEmailContext.mockResolvedValue(undefined)
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
   releaseCheckout.mockResolvedValue(undefined)
@@ -173,10 +185,10 @@ describe("checkout session fulfillment", () => {
     )
 
     expect(fulfillCheckout).toHaveBeenCalledWith({
-      amount: AMOUNT_TOTAL,
       currency: "PLN",
       lines: fulfillmentLines,
       locale: "pl-PL",
+      paidAmount: AMOUNT_TOTAL,
       transactionId: "cs_test_1",
     })
   })
@@ -185,10 +197,10 @@ describe("checkout session fulfillment", () => {
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata, locale: "en-US" })))
 
     expect(fulfillCheckout).toHaveBeenCalledWith({
-      amount: AMOUNT_TOTAL,
       currency: "PLN",
       lines: fulfillmentLines,
       locale: "en-US",
+      paidAmount: AMOUNT_TOTAL,
       transactionId: "cs_test_1",
     })
   })
@@ -263,24 +275,28 @@ describe("order confirmation email", () => {
     expect(sentEmail().react.props.locale).toBe("en-US")
   })
 
-  it("splits the session total into the item subtotal and the shipping remainder", async () => {
+  it("reports the totals persisted on the order rather than re-deriving them", async () => {
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
 
     const { props } = sentEmail().react
 
+    expect(getOrderTotalsForEmail).toHaveBeenCalledWith("order-1")
     expect(props.subtotal).toBe(ITEMS_TOTAL)
     expect(props.shippingTotal).toBe(SHIPPING_TOTAL)
     expect(props.total).toBe(AMOUNT_TOTAL)
+    expect(props.taxTotal).toBe(12_080)
     expect(props.currency).toBe("PLN")
-    expect(props.orderId).toBe("order-1")
+    expect(props.orderNumber).toBe("MRT-2026-00042")
   })
 
-  it("never reports a negative shipping cost when the total is below the item subtotal", async () => {
-    const session = checkoutSession({ amountTotal: 1000, customerEmail: "anna@example.com", metadata: { items: itemsMetadata } })
+  it("falls back to the session total when the order row cannot be read back", async () => {
+    getOrderTotalsForEmail.mockResolvedValue(undefined)
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
 
-    await dispatch(checkoutSessionCompletedEvent(session))
+    const { props } = sentEmail().react
 
-    expect(sentEmail().react.props.shippingTotal).toBe(0)
+    expect(props.total).toBe(AMOUNT_TOTAL)
+    expect(props.orderNumber).toBe("order-1")
   })
 
   it("labels the payment method Stripe reports for the intent", async () => {
@@ -338,6 +354,15 @@ describe("order confirmation email", () => {
     vi.clearAllMocks()
     sendEmail.mockResolvedValue(undefined)
     fulfillCheckout.mockResolvedValue("order-1")
+    getOrderTotalsForEmail.mockResolvedValue({
+      discountTotal: 0,
+      orderNumber: "MRT-2026-00042",
+      shippingTotal: SHIPPING_TOTAL,
+      subtotal: ITEMS_TOTAL,
+      taxBasisPoints: 2300,
+      taxTotal: 12_080,
+      total: AMOUNT_TOTAL,
+    })
     getCheckoutEmailContext.mockResolvedValue(undefined)
 
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata, userId: "usr-1" })))
@@ -373,9 +398,14 @@ describe("order confirmation email delivery", () => {
   it("uses zero totals and the store defaults when Stripe omits optional session data", async () => {
     await dispatch(checkoutSessionCompletedEvent(checkoutSession({ currency: null, customerEmail: "anna@example.com" })))
 
-    expect(fulfillCheckout).toHaveBeenCalledWith({ amount: 0, currency: "PLN", lines: [], locale: "pl-PL", transactionId: "cs_test_1" })
+    expect(fulfillCheckout).toHaveBeenCalledWith({
+      currency: "PLN",
+      lines: [],
+      locale: "pl-PL",
+      paidAmount: 0,
+      transactionId: "cs_test_1",
+    })
     expect(recordOrderPaymentCapturedAudit).toHaveBeenCalledWith("order-1", { detail: "0,00 PLN", resourceId: "order-1" })
-    expect(sentEmail().react.props).toMatchObject({ shippingTotal: 0, subtotal: 0, total: 0 })
     expect(getCheckoutEmailContext).not.toHaveBeenCalled()
   })
 

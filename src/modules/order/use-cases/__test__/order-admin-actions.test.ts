@@ -39,6 +39,12 @@ const audit = vi.hoisted(() => ({
 
 const background = vi.hoisted(() => ({ notifyOrderShipped: vi.fn(() => Promise.resolve(undefined)), scheduled: vi.fn() }))
 
+const cancellation = vi.hoisted(() => ({
+  catalogInvalidated: vi.fn(),
+  restockLines: { current: [] as { quantity: number; variantId: string | null }[] },
+  runBatch: vi.fn(() => Promise.resolve(undefined)),
+}))
+
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { update: () => ({ set: database.updateSet }) },
@@ -47,6 +53,20 @@ vi.mock("~/src/integrations/resend/order-shipped.notification.server", () => ({
   notifyOrderShipped: background.notifyOrderShipped,
 }))
 vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork: background.scheduled }))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch: cancellation.runBatch }))
+vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
+  scheduleProductCatalogInvalidation: cancellation.catalogInvalidated,
+}))
+vi.mock("~/src/modules/order/order.accessors", () => ({
+  getRestockLinesForOrder: () => Promise.resolve(cancellation.restockLines.current),
+}))
+vi.mock("~/src/modules/order/order.utils", () => ({
+  prepareCancelOrderBatch: (orderId: string, lines: readonly { quantity: number; variantId: string }[]) => {
+    database.updates.push({ canceledAt: new Date(), fulfillmentStatus: "cancelled", orderId, restocked: lines, status: "cancelled" })
+
+    return ["cancel-stmt"]
+  },
+}))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderCancelledAudit: audit.cancelled,
   recordOrderFulfillmentStartedAudit: audit.fulfillmentStarted,
@@ -78,6 +98,7 @@ vi.mock("@tanstack/react-start", () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   database.updates.length = 0
+  cancellation.restockLines.current = [{ quantity: 2, variantId: "v-1" }]
   orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
 })
 
@@ -92,6 +113,21 @@ describe("cancelOrder", () => {
     await cancelOrder({ data: { orderId: ORDER_ID } })
 
     expect(audit.cancelled).toHaveBeenCalledWith(ORDER_ID)
+  })
+
+  it("returns the cancelled lines to stock, as a refund would", async () => {
+    await cancelOrder({ data: { orderId: ORDER_ID } })
+
+    expect(database.updates[0]?.["restocked"]).toStrictEqual([{ quantity: 2, variantId: "v-1" }])
+    expect(cancellation.runBatch).toHaveBeenCalledWith(["cancel-stmt"])
+    expect(cancellation.catalogInvalidated).toHaveBeenCalledOnce()
+  })
+
+  it("skips lines whose variant has since been deleted", async () => {
+    cancellation.restockLines.current = [{ quantity: 2, variantId: null }]
+    await cancelOrder({ data: { orderId: ORDER_ID } })
+
+    expect(database.updates[0]?.["restocked"]).toStrictEqual([])
   })
 
   it("refuses to cancel an order that is already cancelled", async () => {

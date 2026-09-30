@@ -5,7 +5,7 @@ import englishCopy from "~/messages/en-US/emails.order-shipped.json"
 import polishCopy from "~/messages/pl-PL/emails.order-shipped.json"
 import { ORDER_SHIPPED_NAMESPACE, OrderShipped, type OrderShippedDetails } from "~/src/presentation/emails/order-shipped"
 
-const ORDER_ID = "a1b2c3d4-0000-0000-0000-000000000000"
+const ORDER_NUMBER = "MRT-2026-00042"
 
 const details: OrderShippedDetails = {
   deliveryMethod: "DPD courier",
@@ -21,7 +21,7 @@ const asHtmlText = (copy: string): string => copy.replaceAll("'", "&#x27;")
 
 const renderShipped = (plainText = true): Promise<string> =>
   render(
-    <OrderShipped accountCta={customerCta} details={details} locale="en-US" messages={englishCopy} orderId={ORDER_ID} />,
+    <OrderShipped accountCta={customerCta} details={details} locale="en-US" messages={englishCopy} orderNumber={ORDER_NUMBER} />,
     plainText ? { plainText: true } : { plainText: false },
   )
 
@@ -34,7 +34,7 @@ const renderTracked = (plainText = true): Promise<string> =>
       details={{ ...details, trackingNumber: "00259007123456789012", trackingUrl: TRACKING_URL }}
       locale="en-US"
       messages={englishCopy}
-      orderId={ORDER_ID}
+      orderNumber={ORDER_NUMBER}
     />,
     plainText ? { plainText: true } : { plainText: false },
   )
@@ -44,12 +44,11 @@ describe("OrderShipped", () => {
     expect(ORDER_SHIPPED_NAMESPACE).toBe("emails.order-shipped")
   })
 
-  it("shows the eight character uppercase order reference", async () => {
+  it("shows the human readable order number", async () => {
     const text = await renderShipped()
 
     expect(text).toContain(englishCopy.orderLabel)
-    expect(text).toContain("A1B2C3D4")
-    expect(text).not.toContain(ORDER_ID)
+    expect(text).toContain(ORDER_NUMBER)
   })
 
   it("lists the delivery method, the address and the estimate under their labels", async () => {
@@ -111,7 +110,7 @@ describe("OrderShipped", () => {
         details={details}
         locale="en-US"
         messages={englishCopy}
-        orderId={ORDER_ID}
+        orderNumber={ORDER_NUMBER}
       />,
     )
 
@@ -125,7 +124,7 @@ describe("OrderShipped", () => {
         details={{ ...details, estimatedDelivery: polishCopy.deliveryTiming.courier.estimatedDelivery }}
         locale="pl-PL"
         messages={polishCopy}
-        orderId={ORDER_ID}
+        orderNumber={ORDER_NUMBER}
       />,
     )
 

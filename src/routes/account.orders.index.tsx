@@ -12,7 +12,7 @@ import {
   type CustomerAccountOrderFilter,
 } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { formatCustomerOrderDisplayId, matchesCustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.utils"
+import { matchesCustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.utils"
 import { listCustomerOrdersQuery } from "~/src/modules/customer-account/use-cases/list-customer-orders"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -127,7 +127,7 @@ const OrderRowHeader = ({
 }>): JSX.Element => {
   const t = useTranslations("pages.account.orders")
   const format = useFormatter()
-  const displayId = formatCustomerOrderDisplayId(order.id)
+  const displayId = order.orderNumber
   const totalLabel = format.number(centsToDisplayAmount(order.totalMinorUnits), {
     currency: order.currencyCode,
     style: "currency",

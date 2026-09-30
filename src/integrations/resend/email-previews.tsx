@@ -5,6 +5,8 @@ import { render } from "react-email"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
+import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
+
 import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
 import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
@@ -20,7 +22,7 @@ import { VERIFY_EMAIL_NAMESPACE, VerifyEmail } from "~/src/presentation/emails/v
 
 const PREVIEW_NAME = "Jane Doe"
 
-const PREVIEW_ORDER_ID = "a1b2c3d4-0000-0000-0000-000000000000"
+const PREVIEW_ORDER_NUMBER = "MRT-2026-00042"
 
 const PREVIEW_IMAGE = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/placeholder.svg"
 
@@ -98,9 +100,12 @@ export const EMAIL_PREVIEWS = {
         items={PREVIEW_ORDER_ITEMS}
         locale={locale}
         messages={await loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE })}
-        orderId={PREVIEW_ORDER_ID}
+        discountTotal={0}
+        orderNumber={PREVIEW_ORDER_NUMBER}
         shippingTotal={1900}
         subtotal={62_700}
+        taxBasisPoints={STANDARD_VAT_BASIS_POINTS}
+        taxTotal={12_080}
         total={64_600}
       />
     ),
@@ -119,7 +124,7 @@ export const EMAIL_PREVIEWS = {
         }}
         locale={locale}
         messages={await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })}
-        orderId={PREVIEW_ORDER_ID}
+        orderNumber={PREVIEW_ORDER_NUMBER}
       />
     ),
     label: "Order shipped",

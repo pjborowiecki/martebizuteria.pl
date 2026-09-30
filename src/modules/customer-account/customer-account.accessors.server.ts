@@ -30,6 +30,7 @@ export const getCustomerOrderRows = (userId: string, limit = CUSTOMER_ACCOUNT_OR
       currencyCode: order.currencyCode,
       fulfillmentStatus: order.fulfillmentStatus,
       id: order.id,
+      orderNumber: order.orderNumber,
       status: order.status,
       total: order.total,
     })

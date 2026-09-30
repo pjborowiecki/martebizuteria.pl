@@ -21,6 +21,7 @@ import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.con
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
+import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
 import {
   recordEmailFailedAudit,
@@ -41,6 +42,7 @@ import {
 import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
+import { getOrderTotalsForEmail } from "~/src/modules/order/order.accessors"
 import { clearOrderDispute } from "~/src/modules/order/use-cases/clear-order-dispute"
 import { flagOrderDispute } from "~/src/modules/order/use-cases/flag-order-dispute"
 import { refundOrder } from "~/src/modules/order/use-cases/refund-order"
@@ -125,8 +127,7 @@ const buildOrderConfirmationEmailPayload = async (
     messages,
   )
 
-  const itemsSubtotal = order.lines.reduce((sum, line) => sum + line.price * line.qty, NO_AMOUNT)
-  const shippingTotal = Math.max((session.amount_total ?? NO_AMOUNT) - itemsSubtotal, NO_AMOUNT)
+  const totals = await getOrderTotalsForEmail(order.orderId)
   const emailItems = buildOrderConfirmationItems(order.lines, locale)
   const rawUserId = session.metadata?.["userId"]
   const isGuest = rawUserId === undefined || rawUserId === ""
@@ -143,10 +144,13 @@ const buildOrderConfirmationEmailPayload = async (
         items={emailItems}
         locale={locale}
         messages={messages}
-        orderId={order.orderId}
-        shippingTotal={shippingTotal}
-        subtotal={itemsSubtotal}
-        total={session.amount_total ?? NO_AMOUNT}
+        discountTotal={totals?.discountTotal ?? NO_AMOUNT}
+        orderNumber={totals?.orderNumber ?? order.orderId}
+        shippingTotal={totals?.shippingTotal ?? NO_AMOUNT}
+        subtotal={totals?.subtotal ?? NO_AMOUNT}
+        taxBasisPoints={totals?.taxBasisPoints ?? STANDARD_VAT_BASIS_POINTS}
+        taxTotal={totals?.taxTotal ?? NO_AMOUNT}
+        total={totals?.total ?? session.amount_total ?? NO_AMOUNT}
       />
     ),
     subject: createTranslator({ locale, messages })("subject"),
@@ -190,10 +194,10 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
   const currency = (session.currency ?? STRIPE_CURRENCY).toUpperCase()
   const locale = resolveLocale(session)
   const orderId = await fulfillCheckout({
-    amount: session.amount_total ?? NO_AMOUNT,
     currency,
     lines,
     locale,
+    paidAmount: session.amount_total ?? NO_AMOUNT,
     transactionId: session.id,
   })
 

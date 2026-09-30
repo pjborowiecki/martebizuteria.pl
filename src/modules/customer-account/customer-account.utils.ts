@@ -6,8 +6,6 @@ import { type Order } from "~/src/modules/order/order.types"
 
 import { getProductImageUrl } from "~/src/lib/image"
 
-export const formatCustomerOrderDisplayId = (orderId: string): string => `#${orderId.slice(0, ORDER_ID_PREFIX_LENGTH).toUpperCase()}`
-
 export const resolveCustomerAccountOrderFilter = (
   status: Order["select"]["status"],
   fulfillmentStatus: Order["select"]["fulfillmentStatus"],
@@ -59,6 +57,7 @@ export const mapCustomerOrderSummaryRow = (
     readonly currencyCode: string
     readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
     readonly id: string
+    readonly orderNumber: string
     readonly status: Order["select"]["status"]
     readonly total: number
   },
@@ -76,6 +75,7 @@ export const mapCustomerOrderSummaryRow = (
   fulfillmentStatus: orderRow.fulfillmentStatus,
   id: orderRow.id,
   items: items.map((item) => mapOrderItemRow(item)),
+  orderNumber: orderRow.orderNumber,
   status: orderRow.status,
   totalMinorUnits: orderRow.total,
 })
@@ -169,6 +169,7 @@ export const mapCustomerOrderDetail = (
     readonly deliveredAt: Date | null
     readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
     readonly id: string
+    readonly orderNumber: string
     readonly shippedAt: Date | null
     readonly shippingTotal: number
     readonly status: Order["select"]["status"]
@@ -216,11 +217,11 @@ export const mapAuditLogToActivityItem = (
     readonly detail: string | null
     readonly metadata: string | null
   },
-  orderIdByResource?: string,
+  orderNumberByOrderId: ReadonlyMap<string, string> = new Map(),
 ): CustomerAccount["activityItem"] | undefined => {
   const metadata = parseActivityMetadata(row.metadata)
   const metadataOrderId = typeof metadata["orderId"] === "string" ? metadata["orderId"].trim() : ""
-  const orderId = metadataOrderId === "" ? orderIdByResource : metadataOrderId
+  const orderId = metadataOrderId === "" ? undefined : orderNumberByOrderId.get(metadataOrderId)
   switch (row.action) {
     case AUDIT_LOG_ACTION.AUTH_LOGIN: {
       return {
@@ -263,7 +264,7 @@ export const mapAuditLogToActivityItem = (
             actionKey: "orderPlaced",
             createdAt: row.createdAt,
             params: {
-              id: formatCustomerOrderDisplayId(orderId),
+              id: orderId,
             },
           }
     }
@@ -274,7 +275,7 @@ export const mapAuditLogToActivityItem = (
             actionKey: "orderShipped",
             createdAt: row.createdAt,
             params: {
-              id: formatCustomerOrderDisplayId(orderId),
+              id: orderId,
             },
           }
     }
@@ -285,7 +286,7 @@ export const mapAuditLogToActivityItem = (
             actionKey: "orderDelivered",
             createdAt: row.createdAt,
             params: {
-              id: formatCustomerOrderDisplayId(orderId),
+              id: orderId,
             },
           }
     }
@@ -443,8 +444,6 @@ export const formatCustomerAccountRelativeTime = (date: Date, locale: string): s
     dateStyle: "medium",
   }).format(date)
 }
-
-const ORDER_ID_PREFIX_LENGTH = 8
 
 const RELATIVE_TIME_DIVISOR_MS = {
   day: 86_400_000,

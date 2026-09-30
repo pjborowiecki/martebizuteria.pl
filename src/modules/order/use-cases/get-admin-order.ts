@@ -17,7 +17,6 @@ import { ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/orde
 import {
   buildAdminOrderDetailCustomer,
   buildAdminOrderFulfillmentSteps,
-  formatAdminOrderDisplayId,
   mapAdminOrderDetailAddress,
   mapAdminOrderDetailItem,
   mapAdminOrderTimeline,
@@ -78,7 +77,7 @@ const buildAdminOrderDetail = ({
             type: deliveryMethod.type,
           },
     discountTotalMinorUnits: orderRow.discountTotal,
-    displayId: formatAdminOrderDisplayId(orderRow.id),
+    displayId: orderRow.orderNumber,
     dispute,
     fulfillmentStatus: orderRow.fulfillmentStatus,
     fulfillmentSteps: buildAdminOrderFulfillmentSteps({

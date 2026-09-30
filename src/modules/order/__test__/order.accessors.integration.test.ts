@@ -59,7 +59,10 @@ beforeEach(() => {
       id text primary key, checkout_id text, payment_id text, user_id text, email text not null,
       currency_code text not null default 'PLN', status text not null default 'pending',
       fulfillment_status text not null default 'not_fulfilled', total integer not null default 0,
-      metadata text, tracking_number text, tracking_url text, created_at integer not null, updated_at integer not null
+      metadata text, order_number text, tracking_number text, tracking_url text,
+      discount_total integer not null default 0, shipping_total integer not null default 0,
+      subtotal integer not null default 0, tax_total integer not null default 0, tax_basis_points integer not null default 2300,
+      created_at integer not null, updated_at integer not null
     );
     create table order_item (
       id text primary key, order_id text, variant_id text, quantity integer not null default 1,
@@ -73,12 +76,12 @@ beforeEach(() => {
       ('pay-refunded', 'refunded', 'pi_refunded', ${JUNE}, ${JUNE}),
       ('pay-pending', 'pending', null, ${JUNE}, ${JUNE});
 
-    insert into "order" (id, checkout_id, payment_id, user_id, email, status, fulfillment_status, total, metadata, tracking_number, created_at, updated_at) values
-      ('o-pending', 'chk-1', 'pay-pending', 'u-anna', 'anna@example.com', 'pending', 'not_fulfilled', 10000, '{"locale":"en-US"}', null, ${JANUARY}, ${JANUARY}),
-      ('o-unfulfilled', 'chk-2', 'pay-paid', 'u-anna', 'anna@example.com', 'processing', 'not_fulfilled', 20000, null, null, ${JUNE}, ${JUNE}),
-      ('o-shipped', 'chk-3', 'pay-paid', null, 'guest@example.com', 'processing', 'shipped', 30000, null, 'TRK-9', ${JUNE}, ${JUNE}),
-      ('o-delivered', 'chk-4', 'pay-refunded', null, 'guest@example.com', 'completed', 'delivered', 40000, null, null, ${JUNE}, ${JUNE}),
-      ('o-cancelled', 'chk-5', null, null, 'guest@example.com', 'cancelled', 'cancelled', 50000, null, null, ${JUNE}, ${JUNE});
+    insert into "order" (id, checkout_id, payment_id, user_id, email, status, fulfillment_status, total, metadata, order_number, tracking_number, created_at, updated_at) values
+      ('o-pending', 'chk-1', 'pay-pending', 'u-anna', 'anna@example.com', 'pending', 'not_fulfilled', 10000, '{"locale":"en-US"}', 'MRT-2024-00001', null, ${JANUARY}, ${JANUARY}),
+      ('o-unfulfilled', 'chk-2', 'pay-paid', 'u-anna', 'anna@example.com', 'processing', 'not_fulfilled', 20000, null, 'MRT-2024-00002', null, ${JUNE}, ${JUNE}),
+      ('o-shipped', 'chk-3', 'pay-paid', null, 'guest@example.com', 'processing', 'shipped', 30000, null, 'MRT-2024-00003', 'TRK-9', ${JUNE}, ${JUNE}),
+      ('o-delivered', 'chk-4', 'pay-refunded', null, 'guest@example.com', 'completed', 'delivered', 40000, null, 'MRT-2024-00004', null, ${JUNE}, ${JUNE}),
+      ('o-cancelled', 'chk-5', null, null, 'guest@example.com', 'cancelled', 'cancelled', 50000, null, 'MRT-2024-00005', null, ${JUNE}, ${JUNE});
 
     insert into order_item (id, order_id, variant_id, quantity, created_at, updated_at) values
       ('oi-1', 'o-pending', 'v-1', 2, ${JANUARY}, ${JANUARY}),
@@ -328,6 +331,7 @@ describe("single order lookups", () => {
       email: "anna@example.com",
       id: "o-pending",
       metadata: '{"locale":"en-US"}',
+      orderNumber: "MRT-2024-00001",
       trackingNumber: null,
       trackingUrl: null,
       userId: "u-anna",

@@ -37,6 +37,7 @@ const orderSummary = (overrides: Partial<CustomerAccount["orderSummary"]> = {}):
   filterStatus: "shipped",
   fulfillmentStatus: "shipped",
   id: "0199aa11-bbbb-cccc-dddd-eeeeeeeeeeee",
+  orderNumber: "MRT-2026-00007",
   items: [{ image: "products/aurora.jpg", name: "Bransoletka Aurora", priceMinorUnits: 24_900, qty: 2 }],
   status: "processing",
   totalMinorUnits: 49_800,
@@ -97,11 +98,11 @@ describe("account orders page", () => {
     ])
   })
 
-  it("lists an order by its shortened id, date, total and status", () => {
+  it("lists an order by its number, date, total and status", () => {
     ordersRef.current = [orderSummary()]
     renderOrders()
 
-    expect(screen.getByText("#0199AA11")).toBeInTheDocument()
+    expect(screen.getByText("MRT-2026-00007")).toBeInTheDocument()
     expect(screen.getByText("Mar 14, 2026")).toBeInTheDocument()
     expect(screen.getByText("PLN 498.00")).toBeInTheDocument()
     expect(screen.getByText("Shipped", { selector: "p" })).toBeInTheDocument()
@@ -139,6 +140,7 @@ describe("account orders page", () => {
         filterStatus: "cancelled",
         fulfillmentStatus: "cancelled",
         id: "bbbb2222-0000-0000-0000-000000000000",
+        orderNumber: "MRT-2026-00009",
         status: "cancelled",
       }),
     ]
@@ -147,7 +149,7 @@ describe("account orders page", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancelled" }))
 
     expect(screen.queryByText("#AAAA1111")).toBeNull()
-    expect(screen.getByText("#BBBB2222")).toBeInTheDocument()
+    expect(screen.getByText("MRT-2026-00009")).toBeInTheDocument()
   })
 
   it("says nothing matches once a filter empties the list", async () => {
@@ -166,7 +168,7 @@ describe("account orders page", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delivered" }))
     await userEvent.click(screen.getByRole("button", { name: "All" }))
 
-    expect(screen.getByText("#0199AA11")).toBeInTheDocument()
+    expect(screen.getByText("MRT-2026-00007")).toBeInTheDocument()
   })
 
   it("lists the line items of an order with their quantity and price", () => {
