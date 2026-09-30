@@ -2,12 +2,12 @@ import { type JSX, useCallback, useMemo } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { useController, useFormContext } from "react-hook-form"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
-import { adminCategoriesQueryOptions } from "~/src/modules/product-category/use-cases/get-admin-categories"
+import { getAdminCategoriesQuery } from "~/src/modules/product-category/use-cases/get-admin-categories"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
-import { adminCollectionsQueryOptions } from "~/src/modules/product-collection/use-cases/get-admin-collections"
+import { getAdminCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-admin-collections"
 import { PRODUCT_FORM_VALIDATION_KEYS } from "~/src/modules/product/product.constants"
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
 
@@ -22,6 +22,7 @@ import {
   CATALOG_SHEET_CARD_CONTENT_CLASS,
   CATALOG_SHEET_FIELD_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+
 export const ProductEditorOrganization = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")
   const locale = useLocale()
@@ -31,16 +32,19 @@ export const ProductEditorOrganization = (): JSX.Element => {
     control,
     name: "primaryCategoryId",
   })
+
   const { field: additionalCategoriesField } = useController({
     control,
     name: "additionalCategoryIds",
   })
+
   const { field: collectionsField } = useController({
     control,
     name: "collectionIds",
   })
-  const { data: categories } = useSuspenseQuery(adminCategoriesQueryOptions())
-  const { data: collections } = useSuspenseQuery(adminCollectionsQueryOptions())
+
+  const { data: categories } = useSuspenseQuery(getAdminCategoriesQuery())
+  const { data: collections } = useSuspenseQuery(getAdminCollectionsQuery())
   const categoryOptions = useMemo(
     () =>
       categories.map((category) => ({
@@ -49,6 +53,7 @@ export const ProductEditorOrganization = (): JSX.Element => {
       })),
     [categories, locale],
   )
+
   const additionalCategoryOptions = useMemo(
     () =>
       categories
@@ -59,6 +64,7 @@ export const ProductEditorOrganization = (): JSX.Element => {
         })),
     [categories, locale, primaryCategoryField.value],
   )
+
   const collectionOptions = useMemo(
     () =>
       collections.map((collection) => ({
@@ -67,6 +73,7 @@ export const ProductEditorOrganization = (): JSX.Element => {
       })),
     [collections, locale],
   )
+
   const primaryCategorySelectValue = typeof primaryCategoryField.value === "string" ? primaryCategoryField.value : ""
   const handlePrimaryCategoryChange = useCallback(
     (resolvedPrimary: string | null = "") => {
@@ -75,18 +82,21 @@ export const ProductEditorOrganization = (): JSX.Element => {
     },
     [additionalCategoriesField, primaryCategoryField],
   )
+
   const handleAdditionalCategoriesChange = useCallback(
     (ids: readonly string[]) => {
       additionalCategoriesField.onChange([...ids])
     },
     [additionalCategoriesField],
   )
+
   const handleCollectionsChange = useCallback(
     (ids: readonly string[]) => {
       collectionsField.onChange([...ids])
     },
     [collectionsField],
   )
+
   return (
     <Card>
       <CardHeader>

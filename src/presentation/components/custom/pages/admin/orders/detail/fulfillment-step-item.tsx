@@ -1,11 +1,13 @@
 import { type JSX } from "react"
 
 import { Check } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { type FulfillmentStep } from "~/src/data/order-detail-data"
+import { type FulfillmentStep } from "~/src/data/order-detail"
+
 export const FulfillmentStepItem = ({ index, step }: FulfillmentStepItemProps): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <div className="flex flex-1 flex-col items-center text-center">
       <div className="relative flex w-full items-center justify-center">
@@ -23,6 +25,7 @@ export const FulfillmentStepItem = ({ index, step }: FulfillmentStepItemProps): 
     </div>
   )
 }
+
 interface FulfillmentStepItemProps {
   readonly index: number
   readonly step: FulfillmentStep

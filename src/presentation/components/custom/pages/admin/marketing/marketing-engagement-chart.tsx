@@ -1,12 +1,13 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { ENGAGEMENT_DATA } from "~/src/data/marketing-data"
+import { ENGAGEMENT_DATA } from "~/src/data/marketing"
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/presentation/components/shadcn/chart"
+
 export const MarketingEngagementChart = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const chartConfig: ChartConfig = useMemo(
@@ -22,6 +23,7 @@ export const MarketingEngagementChart = (): JSX.Element => {
     }),
     [],
   )
+
   const chartMargin = useMemo(
     () => ({
       bottom: 0,
@@ -31,14 +33,17 @@ export const MarketingEngagementChart = (): JSX.Element => {
     }),
     [],
   )
+
   const tickFont = useMemo(
     () => ({
       fontSize: 11,
     }),
     [],
   )
+
   const formatYAxis = useCallback((value: number) => `${value}%`, [])
   const tooltipContent = useMemo(() => <ChartTooltipContent />, [])
+
   return (
     <Card className="border-border/40 bg-linear-to-br from-pink-500/10 via-rose-500/5 to-transparent shadow-none">
       <CardHeader className="pb-2">
@@ -68,6 +73,7 @@ export const MarketingEngagementChart = (): JSX.Element => {
     </Card>
   )
 }
+
 const ChartGradients = (): JSX.Element => (
   <defs>
     <linearGradient id="fillOpen" x1="0" y1="0" x2="0" y2="1">

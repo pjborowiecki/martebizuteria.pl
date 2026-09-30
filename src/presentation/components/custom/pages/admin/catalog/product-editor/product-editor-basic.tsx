@@ -2,7 +2,7 @@ import { type ChangeEvent, type JSX, useCallback, useMemo, useState } from "reac
 
 import { cn } from "cn"
 import { useFormContext, useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_COLUMN_LENGTH, PRODUCT_FORM_VALIDATION_KEYS } from "~/src/modules/product/product.constants"
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
@@ -15,7 +15,6 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "~/src/presentation
 import { CatalogFormFieldError } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-error"
 import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-label"
 import {
-  type CatalogLocaleFieldsCopy,
   ProductCatalogLocaleFormField,
   ProductCatalogLocaleTextareaFormField,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-locale-fields"
@@ -24,7 +23,9 @@ import {
   CATALOG_SHEET_FIELD_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
 import { normalizeSlugInput, slugify } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-slug.utils"
+import { useProductEditorBasicCopy } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/use-product-editor-basic-copy"
 import { useProductEditorBasicFields } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/use-product-editor-basic-fields"
+
 export const ProductEditorBasic = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")
   const { control, setValue } = useFormContext<ProductFormValues>()
@@ -32,33 +33,12 @@ export const ProductEditorBasic = (): JSX.Element => {
     control,
     name: "hasVariants",
   })
+
   const validationKeySet = useMemo(() => new Set<string>(Object.values(PRODUCT_FORM_VALIDATION_KEYS)), [])
   const fields = useProductEditorBasicFields(control)
   const [handleLocked, setHandleLocked] = useState(false)
-  const titleCopy = useMemo<CatalogLocaleFieldsCopy>(
-    () => ({
-      hint: (locale) => t(`form.hints.titleLocale.${locale}`),
-      label: (locale) => t(`form.titleLocale.${locale}`),
-      placeholder: (locale) => t(`form.titleLocalePlaceholder.${locale}`),
-    }),
-    [t],
-  )
-  const subtitleCopy = useMemo<CatalogLocaleFieldsCopy>(
-    () => ({
-      hint: (locale) => t(`form.hints.subtitleLocale.${locale}`),
-      label: (locale) => t(`form.subtitleLocale.${locale}`),
-      placeholder: (locale) => t(`form.subtitleLocalePlaceholder.${locale}`),
-    }),
-    [t],
-  )
-  const descriptionCopy = useMemo<CatalogLocaleFieldsCopy>(
-    () => ({
-      hint: (locale) => t(`form.hints.descriptionLocale.${locale}`),
-      label: (locale) => t(`form.descriptionLocale.${locale}`),
-      placeholder: (locale) => t(`form.descriptionLocalePlaceholder.${locale}`),
-    }),
-    [t],
-  )
+  const { descriptionCopy, subtitleCopy, titleCopy } = useProductEditorBasicCopy(t)
+
   const syncHandleFromTitle = useCallback(
     (value: string) => {
       if (!handleLocked) {
@@ -69,6 +49,7 @@ export const ProductEditorBasic = (): JSX.Element => {
     },
     [handleLocked, setValue],
   )
+
   const handleSlugInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setHandleLocked(true)
@@ -76,9 +57,11 @@ export const ProductEditorBasic = (): JSX.Element => {
     },
     [fields.slugField],
   )
+
   const handleSlugBlur = useCallback(() => {
     fields.slugField.onChange(slugify(fields.slugValue))
   }, [fields.slugField, fields.slugValue])
+
   return (
     <Card className="flex h-full flex-col">
       <CardHeader>

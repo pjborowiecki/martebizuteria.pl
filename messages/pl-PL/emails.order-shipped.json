@@ -1,0 +1,29 @@
+{
+  "subject": "Twoje zamówienie zostało wysłane — M'Arte",
+  "preview": "Twoja paczka jest w drodze — dziękujemy za cierpliwość.",
+  "heading": "Zamówienie wysłane",
+  "message": "Z radością informujemy, że Twoje zamówienie opuściło naszą pracownię i jest już w drodze do Ciebie.",
+  "messageSecondary": "Poniżej znajdziesz najważniejsze informacje o dostawie.",
+  "orderLabel": "Numer zamówienia",
+  "deliveryMethodLabel": "Sposób dostawy",
+  "shippingAddressLabel": "Adres dostawy",
+  "estimatedDeliveryLabel": "Szacowany czas dostawy",
+  "createAccountCta": "Załóż konto i śledź zamówienie",
+  "viewOrderCta": "Zobacz zamówienie",
+  "unavailable": "Niedostępne",
+  "deliveryTiming": {
+    "courier": {
+      "estimatedDelivery": "2–4 dni robocze od wysyłki"
+    },
+    "locker": {
+      "estimatedDelivery": "2–3 dni robocze od wysyłki"
+    },
+    "in_store": {
+      "estimatedDelivery": "Odbiór w pracowni po powiadomieniu"
+    }
+  },
+  "closingNote": "Jeśli masz pytania dotyczące przesyłki, odpowiedz na tę wiadomość — chętnie pomożemy.",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { cn } from "cn"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
+
 export const CatalogStatusBadge = ({
   isActive,
   label,

@@ -1,7 +1,7 @@
-import { DEFAULT_LOCALE, LOCALES } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD } from "~/src/modules/product/product.constants"
-import { type ProductLocaleMap } from "~/src/modules/product/product.types"
+import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"
 
 export const DEFAULT_VARIANT_TITLE = "Default"
@@ -12,12 +12,12 @@ export const MAX_PRODUCT_OPTIONS = 3
 
 export interface ProductOptionValueDraft {
   readonly id?: string | undefined
-  readonly labels: ProductLocaleMap
+  readonly labels: Product["localeMap"]
 }
 
 export interface ProductOptionDraft {
   readonly id?: string | undefined
-  readonly titles: ProductLocaleMap
+  readonly titles: Product["localeMap"]
   readonly values: readonly ProductOptionValueDraft[]
 }
 
@@ -33,6 +33,7 @@ export const buildVariantTitle = (optionValues: Readonly<Record<string, string>>
   if (parts.length === 0) {
     return DEFAULT_VARIANT_TITLE
   }
+
   return parts.join(VARIANT_TITLE_SEPARATOR)
 }
 
@@ -49,12 +50,14 @@ export const buildVariantDisplayTitle = (
       }
     }
   }
+
   const parts = Object.entries(optionValues)
     .map(([, valueId]) => valueLabelById.get(valueId) ?? valueId)
     .filter((label) => label.trim() !== "")
   if (parts.length === 0) {
     return DEFAULT_VARIANT_TITLE
   }
+
   return parts.join(VARIANT_TITLE_SEPARATOR)
 }
 
@@ -64,30 +67,34 @@ export const buildVariantCombinationKey = (optionValues: Readonly<Record<string,
     .map(([optionId, valueId]) => `${optionId}=${valueId}`)
     .join("|")
 
-const hasCompleteOptionTitles = (titles: ProductLocaleMap): boolean => LOCALES.every((locale) => titles[locale].trim() !== "")
+const hasCompleteOptionTitles = (titles: Product["localeMap"]): boolean =>
+  I18N.SUPPORTED_LOCALES.every((locale) => titles[locale].trim() !== "")
 
 const normalizeOptionValueDraftsForForm = (values: readonly ProductOptionValueDraft[]): ProductOptionValueDraft[] =>
   values.map((value) => ({
     id: value.id,
-    labels: Object.fromEntries(LOCALES.map((locale) => [locale, value.labels[locale].trim()])) as ProductLocaleMap,
+    labels: Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, value.labels[locale].trim()])) as Product["localeMap"],
   }))
 
 const normalizeOptionValueDrafts = (values: readonly ProductOptionValueDraft[]): ProductOptionValueDraft[] => {
   const seen = new Set<string>()
+
   return values
     .map((value) => ({
       id: value.id,
-      labels: Object.fromEntries(LOCALES.map((locale) => [locale, value.labels[locale].trim()])) as ProductLocaleMap,
+      labels: Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, value.labels[locale].trim()])) as Product["localeMap"],
     }))
     .filter((value) => {
-      if (!LOCALES.every((locale) => value.labels[locale] !== "")) {
+      if (!I18N.SUPPORTED_LOCALES.every((locale) => value.labels[locale] !== "")) {
         return false
       }
-      const key = LOCALES.map((locale) => value.labels[locale]).join("|")
+
+      const key = I18N.SUPPORTED_LOCALES.map((locale) => value.labels[locale]).join("|")
       if (seen.has(key)) {
         return false
       }
       seen.add(key)
+
       return true
     })
 }
@@ -96,16 +103,18 @@ const resolveCombinationValueKey = (value: ProductOptionValueDraft, index: numbe
   if (value.id !== undefined && value.id !== "") {
     return value.id
   }
-  if (value.labels[DEFAULT_LOCALE] !== "") {
-    return value.labels[DEFAULT_LOCALE]
+
+  if (value.labels[I18N.DEFAULT_LOCALE] !== "") {
+    return value.labels[I18N.DEFAULT_LOCALE]
   }
+
   return `__draft_${index}`
 }
 
 const buildVariantCombinationsFromNormalizedOptions = (
   normalized: readonly {
     readonly id?: string | undefined
-    readonly titles: ProductLocaleMap
+    readonly titles: Product["localeMap"]
     readonly values: readonly ProductOptionValueDraft[]
   }[],
   useDraftKeys: boolean,
@@ -118,23 +127,26 @@ const buildVariantCombinationsFromNormalizedOptions = (
       },
     ]
   }
+
   return normalized.reduce<VariantCombination[]>((combinations, option) => {
-    const optionId = option.id ?? option.titles[DEFAULT_LOCALE]
+    const optionId = option.id ?? option.titles[I18N.DEFAULT_LOCALE]
     if (combinations.length === 0) {
       return option.values.map((value, index) => {
-        const valueKey = useDraftKeys ? resolveCombinationValueKey(value, index) : (value.id ?? value.labels[DEFAULT_LOCALE])
+        const valueKey = useDraftKeys ? resolveCombinationValueKey(value, index) : (value.id ?? value.labels[I18N.DEFAULT_LOCALE])
+
         return {
           optionValues: {
             [optionId]: valueKey,
           },
-          title: value.labels[DEFAULT_LOCALE],
+          title: value.labels[I18N.DEFAULT_LOCALE],
         }
       })
     }
+
     const next: VariantCombination[] = []
     for (const combination of combinations) {
       for (const [index, value] of option.values.entries()) {
-        const valueKey = useDraftKeys ? resolveCombinationValueKey(value, index) : (value.id ?? value.labels[DEFAULT_LOCALE])
+        const valueKey = useDraftKeys ? resolveCombinationValueKey(value, index) : (value.id ?? value.labels[I18N.DEFAULT_LOCALE])
         const optionValues = {
           ...combination.optionValues,
           [optionId]: valueKey,
@@ -145,11 +157,11 @@ const buildVariantCombinationsFromNormalizedOptions = (
         })
       }
     }
+
     return next
   }, [])
 }
 
-/** Lenient draft normalization for the admin form — one row per named variant. */
 export const buildVariantCombinationsFromFormDrafts = (options: readonly ProductOptionDraft[]): VariantCombination[] => {
   const normalized = options
     .map((option) => ({
@@ -184,11 +196,14 @@ export const inferHasVariants = (
   if (variantCount > PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD) {
     return true
   }
+
   return options.some((option) => {
     if (option.values !== undefined) {
       return option.values.length > PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD
     }
+
     const uniqueValues = new Set(option.optionOnVariants?.map((row) => row.valueId))
+
     return uniqueValues.size > PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD
   })
 }
@@ -197,7 +212,7 @@ export const normalizeOptionDrafts = (options: readonly ProductOptionDraft[]): P
   options
     .map((option) => ({
       id: option.id,
-      titles: Object.fromEntries(LOCALES.map((locale) => [locale, option.titles[locale].trim()])) as ProductLocaleMap,
+      titles: Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, option.titles[locale].trim()])) as Product["localeMap"],
       values: normalizeOptionValueDrafts(option.values),
     }))
     .filter((option) => hasCompleteOptionTitles(option.titles) && option.values.length > 0)
@@ -214,5 +229,6 @@ export const resolveVariantOptionValueIds = (variant: {
   }[]
 }): Record<string, string> => {
   const rows = variant.optionOnVariants ?? []
+
   return Object.fromEntries(rows.map((row) => [row.option.id, row.value.id]))
 }

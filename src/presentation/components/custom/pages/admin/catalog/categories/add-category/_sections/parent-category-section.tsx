@@ -3,11 +3,11 @@ import { type JSX, useCallback, useMemo } from "react"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { FolderTree } from "lucide-react"
 import { useController } from "react-hook-form"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { CATEGORY_FORM_VALIDATION_KEYS } from "~/src/modules/product-category/product-category.constants"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
-import { adminCategoriesQueryOptions } from "~/src/modules/product-category/use-cases/get-admin-categories"
+import { getAdminCategoriesQuery } from "~/src/modules/product-category/use-cases/get-admin-categories"
 
 import { Field } from "~/src/presentation/components/shadcn/field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
@@ -16,6 +16,7 @@ import { useCategoryForm } from "~/src/presentation/components/custom/pages/admi
 import { CategoryFormSection } from "~/src/presentation/components/custom/pages/admin/catalog/categories/add-category/category-form-section"
 import { CatalogFormFieldError } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-error"
 import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-label"
+
 export const ParentCategorySection = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.categories")
   const locale = useLocale()
@@ -25,7 +26,8 @@ export const ParentCategorySection = (): JSX.Element => {
     control,
     name: "parentId",
   })
-  const { data: categories } = useSuspenseQuery(adminCategoriesQueryOptions())
+
+  const { data: categories } = useSuspenseQuery(getAdminCategoriesQuery())
   const parentOptions = useMemo(() => {
     const options = [
       {
@@ -33,14 +35,17 @@ export const ParentCategorySection = (): JSX.Element => {
         value: NO_PARENT_VALUE,
       },
     ]
+
     for (const item of categories.filter((row) => row.id !== categoryId)) {
       options.push({
         label: resolveCategoryTitle(item.titles, locale),
         value: item.id,
       })
     }
+
     return options
   }, [categories, categoryId, locale, t])
+
   const handleParentChange = useCallback(
     (value: string | null) => {
       if (value !== null) {
@@ -49,6 +54,7 @@ export const ParentCategorySection = (): JSX.Element => {
     },
     [field],
   )
+
   return (
     <CategoryFormSection icon={FolderTree} title={t("form.sectionParent")}>
       <Field className="gap-2" data-invalid={fieldState.invalid}>
@@ -70,4 +76,5 @@ export const ParentCategorySection = (): JSX.Element => {
     </CategoryFormSection>
   )
 }
+
 const NO_PARENT_VALUE = ""

@@ -4,13 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { type Control, type FieldErrors, type UseFormSetError, type UseFormSetValue, useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { PRODUCT_ATTRIBUTE_ERROR_CODES, PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
+import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
+import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
-import { productAttributeFormSchema } from "~/src/modules/product-attribute/product-attribute.zod"
-import { createProductAttributeFn } from "~/src/modules/product-attribute/use-cases/create-product-attribute"
-import { updateProductAttributeFn } from "~/src/modules/product-attribute/use-cases/update-product-attribute"
+import { productAttributeZodSchemas } from "~/src/modules/product-attribute/product-attribute.zod"
+import { createProductAttribute } from "~/src/modules/product-attribute/use-cases/create-product-attribute"
+import { updateProductAttribute } from "~/src/modules/product-attribute/use-cases/update-product-attribute"
 
 import { useAttributeFormLocaleControls } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/add-attribute/attribute-form-locale-controls"
 import { formatLocaleList } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/add-attribute/attribute-form-locale-validation"
@@ -59,13 +60,12 @@ const useAttributeMutation = ({ attributeId, mode, onCompleted, setError }: UseA
 
   const handleError = useCallback(
     (error: unknown) => {
-      const code = error instanceof Error ? error.message : ""
-
-      if (code.includes(PRODUCT_ATTRIBUTE_ERROR_CODES.DUPLICATE_HANDLE)) {
+      if (errorCode(error) === ERROR_CODES.CONFLICT) {
         setError("handle", { message: t("toast.duplicateHandle"), type: "manual" })
         toast.error(t("toast.errorTitle"), {
           description: t("toast.duplicateHandle"),
         })
+
         return
       }
 
@@ -77,7 +77,7 @@ const useAttributeMutation = ({ attributeId, mode, onCompleted, setError }: UseA
   )
 
   const createMutation = useMutation({
-    mutationFn: (values: ProductAttribute["formValues"]) => createProductAttributeFn({ data: values }),
+    mutationFn: (values: ProductAttribute["formValues"]) => createProductAttribute({ data: values }),
     onError: handleError,
     onSuccess: async () => {
       await invalidate()
@@ -93,7 +93,8 @@ const useAttributeMutation = ({ attributeId, mode, onCompleted, setError }: UseA
       if (attributeId === undefined) {
         throw new Error("Attribute id is required for update")
       }
-      return updateProductAttributeFn({ data: { ...values, id: attributeId } })
+
+      return updateProductAttribute({ data: { ...values, id: attributeId } })
     },
     onError: handleError,
     onSuccess: async () => {
@@ -134,8 +135,7 @@ export const AttributeFormProvider = ({
     [attribute, mode],
   )
 
-  const formSchema = useMemo(() => productAttributeFormSchema(), [])
-  const resolver = useMemo(() => zodResolver(formSchema), [formSchema])
+  const resolver = useMemo(() => zodResolver(productAttributeZodSchemas.createInput), [])
 
   const form = useForm<ProductAttribute["formValues"]>({
     defaultValues: initialValues,
@@ -194,6 +194,7 @@ export const AttributeFormProvider = ({
         const incompleteAllowedLocales = incompleteLocales.filter((locale) =>
           values.allowedValues.some((row) => row.labels[locale].trim() === ""),
         )
+
         const description =
           incompleteAllowedLocales.length > 0
             ? t("form.localePicker.incompleteAllowedValuesDescription", {
@@ -203,6 +204,7 @@ export const AttributeFormProvider = ({
                 locales: formatLocaleList(incompleteLocales),
               })
         toast.error(t("form.localePicker.incompleteToastTitle"), { description })
+
         return
       }
 
@@ -210,6 +212,7 @@ export const AttributeFormProvider = ({
         toast.error(t("form.validation.submitBlockedTitle"), {
           description: t("form.validation.ALLOWED_VALUES_REQUIRED"),
         })
+
         return
       }
 
@@ -265,5 +268,6 @@ export const useAttributeForm = (): AttributeFormContextValue => {
   if (context === undefined) {
     throw new Error("useAttributeForm must be used within AttributeFormProvider")
   }
+
   return context
 }

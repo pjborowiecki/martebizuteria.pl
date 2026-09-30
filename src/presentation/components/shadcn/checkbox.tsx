@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox"
 import { cn } from "cn"
 import { CheckIcon } from "lucide-react"
+
 const Checkbox = ({ className, ...props }: Readonly<CheckboxPrimitive.Root.Props>): JSX.Element => (
   <CheckboxPrimitive.Root
     data-slot="checkbox"

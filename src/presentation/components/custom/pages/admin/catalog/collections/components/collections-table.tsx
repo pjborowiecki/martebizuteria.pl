@@ -1,6 +1,6 @@
 import { type JSX, useCallback, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
@@ -18,9 +18,11 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/collections/hooks/use-collections-sheet"
 import { collectionsDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/collections/utils/collections-data-grid"
 import { CatalogToolbarAddButton } from "~/src/presentation/components/custom/pages/admin/catalog/toolbar/components/catalog-toolbar-add-button"
+
 const CollectionsTableToolbarActions = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.collections")
   const { openCreate } = useCollectionsSheet()
+
   return (
     <>
       <CollectionsBulkActions />
@@ -28,19 +30,23 @@ const CollectionsTableToolbarActions = (): JSX.Element => {
     </>
   )
 }
+
 export const CollectionsTableContent = (): JSX.Element => {
   const sheet = useCollectionsSheet()
   const grid = useCollectionsDataGrid({
     onRowClick: sheet.openEdit,
   })
+
   const handleSheetOpenChange = useCallback(
     (open: boolean) => {
       sheet.setOpen(open)
     },
     [sheet],
   )
+
   const toolbarActions = useMemo(() => <CollectionsTableToolbarActions />, [])
   const sheetMode = sheet.mode === "closed" ? "create" : sheet.mode
+
   return (
     <>
       <Provider value={grid}>
@@ -65,10 +71,12 @@ export const CollectionsTableContent = (): JSX.Element => {
 
 export const CollectionsTable = (): JSX.Element => {
   const sheetState = useCollectionsSheetState()
+
   return (
     <CollectionsSheetProvider value={sheetState}>
       <CollectionsTableContent />
     </CollectionsSheetProvider>
   )
 }
+
 const { Body, Pagination, Provider, Toolbar } = collectionsDataGrid

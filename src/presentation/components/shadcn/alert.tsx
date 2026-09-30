@@ -2,6 +2,7 @@ import { type ComponentProps, type JSX } from "react"
 
 import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
+
 const Alert = ({ className, variant, ...props }: Readonly<ComponentProps<"div"> & VariantProps<typeof alertVariants>>): JSX.Element => (
   <div
     className={cn(
@@ -60,4 +61,5 @@ const alertVariants = cva(
     },
   },
 )
+
 export { Alert, AlertAction, AlertDescription, AlertTitle }

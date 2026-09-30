@@ -1,7 +1,5 @@
 import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { QUERY_KEY_ROOTS } from "~/src/modules/_core/constants/query-keys"
-
 export const PRODUCT_COLUMN_LENGTH = {
   description: 1024,
   handle: 255,
@@ -33,23 +31,18 @@ export type ProductStatus = (typeof PRODUCT_STATUSES)[number]
 
 export const DEFAULT_PRODUCT_STATUS: ProductStatus = PRODUCT_STATUS.DRAFT
 
-/** Default page size for storefront product listings on category/collection pages. */
 export const PRODUCT_STOREFRONT_LIST_LIMIT = 20
 
-/** Products catalog (/products): items per infinite-scroll page (3-column grid). */
 export const PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE = 12
 
-/** Max products returned when catalog filters are active (no infinite scroll). */
 export const PRODUCT_STOREFRONT_FILTERED_MAX = 100
 
 export const LANDING_NEW_ARRIVALS_COLLECTION_HANDLE = "nowosci"
 
 export const LANDING_NEW_ARRIVALS_PRODUCT_LIMIT = 9
 
-/** Default page size for the admin products data grid (server-side pagination). */
 export const ADMIN_PRODUCTS_PAGE_SIZE = 25
 
-/** Published products with total stock in (0, threshold] count as low stock. */
 export const PRODUCT_LOW_STOCK_THRESHOLD = 10
 
 export const PRODUCT_INVENTORY_LEVEL = {
@@ -60,7 +53,6 @@ export const PRODUCT_INVENTORY_LEVEL = {
 
 export type ProductInventoryLevel = (typeof PRODUCT_INVENTORY_LEVEL)[keyof typeof PRODUCT_INVENTORY_LEVEL]
 
-/** Admin list: one sellable variant vs multiple variant rows. */
 export const PRODUCT_VARIANT_KIND = {
   MULTI: "multi",
   SINGLE: "single",
@@ -94,6 +86,7 @@ export const PRODUCT_FORM_VALIDATION_KEYS = {
   subtitleTooLong: "form.validation.subtitleTooLong",
   titleRequired: "form.validation.titleRequired",
   titleTooLong: "form.validation.titleTooLong",
+  variantCombinationsRequired: "form.validation.variantCombinationsRequired",
   variantsRequired: "form.validation.variantsRequired",
 } as const
 
@@ -171,14 +164,19 @@ export const PRODUCT_QUERY_STALE_MS = 60_000
 
 export const PRODUCT_QUERY_KEYS = {
   ADMIN: {
-    ALL: [...QUERY_KEY_ROOTS.ADMIN, "products"] as const,
-    BY_HANDLE: [...QUERY_KEY_ROOTS.ADMIN, "products", "by-handle"] as const,
-    PAGE: [...QUERY_KEY_ROOTS.ADMIN, "products", "page"] as const,
-    STATS: [...QUERY_KEY_ROOTS.ADMIN, "products", "stats"] as const,
+    ALL: ["admin", "products"] as const,
+    BY_HANDLE: ["admin", "products", "by-handle"] as const,
+    PAGE: ["admin", "products", "page"] as const,
+    STATS: ["admin", "products", "stats"] as const,
   },
   ALL: ["products"] as const,
   BY_HANDLE: ["product"] as const,
   LANDING_NEW_ARRIVALS: ["products", "landing-new-arrivals"] as const,
   RELATED_BY_CATEGORY: ["related-products"] as const,
   STOREFRONT_PAGE: ["products", "storefront-page"] as const,
+} as const
+
+export const PRODUCT_MUTATION_KEYS = {
+  DELETE: ["product", "deleteProducts"] as const,
+  REORDER: ["product", "reorderProducts"] as const,
 } as const

@@ -3,7 +3,7 @@ import { type JSX, type ReactNode, createContext, useCallback, useContext, useMe
 import { useQueryClient } from "@tanstack/react-query"
 
 import { type Product } from "~/src/modules/product/product.types"
-import { adminProductByHandleQueryOptions } from "~/src/modules/product/use-cases/get-admin-product"
+import { getAdminProductQuery } from "~/src/modules/product/use-cases/get-admin-product"
 
 export const useProductsSheetState = (): ProductsSheetApi => {
   const queryClient = useQueryClient()
@@ -11,19 +11,19 @@ export const useProductsSheetState = (): ProductsSheetApi => {
   const prefetchEdit = useCallback(
     async (product: Product["adminListItem"]) => {
       try {
-        await queryClient.query(adminProductByHandleQueryOptions(product.handle))
-      } catch {
-        // Hover prefetch is optional; opening the sheet retries a failed request.
-      }
+        await queryClient.query(getAdminProductQuery(product.handle))
+      } catch {}
     },
     [queryClient],
   )
+
   const openCreate = useCallback(() => {
     setState({
       mode: "create",
       product: undefined,
     })
   }, [])
+
   const openEdit = useCallback(
     (product: Product["adminListItem"]) => {
       const openSheet = () => {
@@ -32,13 +32,15 @@ export const useProductsSheetState = (): ProductsSheetApi => {
           product,
         })
       }
-      if (queryClient.getQueryData(adminProductByHandleQueryOptions(product.handle).queryKey) !== undefined) {
+
+      if (queryClient.getQueryData(getAdminProductQuery(product.handle).queryKey) !== undefined) {
         openSheet()
+
         return
       }
       void (async () => {
         await queryClient.query({
-          ...adminProductByHandleQueryOptions(product.handle),
+          ...getAdminProductQuery(product.handle),
           staleTime: "static",
         })
         openSheet()
@@ -46,14 +48,17 @@ export const useProductsSheetState = (): ProductsSheetApi => {
     },
     [queryClient],
   )
+
   const close = useCallback(() => {
     setState(CLOSED_STATE)
   }, [])
+
   const setOpen = useCallback((open: boolean) => {
     if (!open) {
       setState(CLOSED_STATE)
     }
   }, [])
+
   return useMemo(
     () => ({
       close,
@@ -68,6 +73,7 @@ export const useProductsSheetState = (): ProductsSheetApi => {
     [close, openCreate, openEdit, prefetchEdit, setOpen, state.mode, state.product],
   )
 }
+
 export const ProductsSheetProvider = ({
   children,
   value,
@@ -76,20 +82,26 @@ export const ProductsSheetProvider = ({
   value: ProductsSheetApi
 }>): JSX.Element => {
   const { Provider } = ProductsSheetContext
+
   return <Provider value={value}>{children}</Provider>
 }
+
 export const useProductsSheet = (): ProductsSheetApi => {
   const context = useContext(ProductsSheetContext)
   if (context === undefined) {
     throw new Error("useProductsSheet must be used within ProductsSheetProvider")
   }
+
   return context
 }
+
 export type ProductsSheetMode = "closed" | "create" | "edit"
+
 export interface ProductsSheetState {
   readonly mode: ProductsSheetMode
   readonly product: Product["adminListItem"] | undefined
 }
+
 export interface ProductsSheetApi {
   readonly close: () => void
   readonly mode: ProductsSheetMode
@@ -100,8 +112,10 @@ export interface ProductsSheetApi {
   readonly product: Product["adminListItem"] | undefined
   readonly setOpen: (open: boolean) => void
 }
+
 const CLOSED_STATE: ProductsSheetState = {
   mode: "closed",
   product: undefined,
 }
+
 const ProductsSheetContext = createContext<ProductsSheetApi | undefined>(undefined)

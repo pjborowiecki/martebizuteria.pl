@@ -5,37 +5,47 @@ import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react
 import { type DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
 
 import { Button, buttonVariants } from "~/src/presentation/components/shadcn/button"
+
 const CalendarRoot = ({ className, rootRef, ...props }: Readonly<RootProps>): JSX.Element => (
   <div className={cn(className)} data-slot="calendar" ref={rootRef} {...props} />
 )
+
 const CalendarChevron = ({ className, orientation, ...props }: Readonly<ChevronProps>): JSX.Element => {
   if (orientation === "left") {
     return <ChevronLeftIcon className={cn("size-4", className)} {...props} />
   }
+
   if (orientation === "right") {
     return <ChevronRightIcon className={cn("size-4", className)} {...props} />
   }
+
   return <ChevronDownIcon className={cn("size-4", className)} {...props} />
 }
+
 const CalendarWeekNumber = ({ children, ...props }: Readonly<WeekNumberProps>): JSX.Element => (
   <td {...props}>
     <div className="flex size-(--cell-size) items-center justify-center text-center">{children}</div>
   </td>
 )
+
 const useCalendarStyles = (opt: StyleOptions) => {
   const defaults = getDefaultClassNames()
+
   return useMemo(() => {
     let cap = "font-medium select-none text-sm"
     if (opt.captionLayout !== "label") {
       cap = "flex items-center gap-1 rounded-(--cell-radius) text-sm font-medium select-none [&>svg]:size-3.5 [&>svg]:text-muted-foreground"
     }
+
     let date =
       "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius) [&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)"
     if (opt.showWeekNumber) {
       date =
         "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius) [&:nth-child(2)[data-selected=true]_button]:rounded-l-(--cell-radius)"
     }
+
     const navBtn = "size-(--cell-size) p-0 select-none aria-disabled:opacity-50"
+
     return {
       ...BASE_CLASS_NAMES,
       button_next: cn(
@@ -58,6 +68,7 @@ const useCalendarStyles = (opt: StyleOptions) => {
     }
   }, [opt, defaults])
 }
+
 const useCalendarConfig = (
   components?: DayPickerComponents,
   formatters?: ComponentProps<typeof DayPicker>["formatters"],
@@ -73,6 +84,7 @@ const useCalendarConfig = (
     }),
     [locale, formatters],
   )
+
   const comps = useMemo(
     () => ({
       Chevron: CalendarChevron,
@@ -83,15 +95,19 @@ const useCalendarConfig = (
     }),
     [components],
   )
+
   return {
     comps,
     fmts,
   }
 }
+
 const CalendarDayButtonSlot = ({ ...props }: Readonly<DayButtonProps>): JSX.Element => {
   const locale = useContext(CalendarLocaleContext)
+
   return <CalendarDayButton locale={locale} {...props} />
 }
+
 const Calendar = ({
   buttonVariant = "ghost",
   captionLayout = "label",
@@ -113,7 +129,9 @@ const Calendar = ({
     classNames,
     showWeekNumber: props.showWeekNumber === true,
   })
+
   const { comps, fmts } = useCalendarConfig(components, formatters, locale)
+
   return (
     <CalendarLocaleContext.Provider value={locale}>
       <DayPicker
@@ -134,6 +152,7 @@ const Calendar = ({
     </CalendarLocaleContext.Provider>
   )
 }
+
 const CalendarDayButton = ({
   className,
   day,
@@ -153,6 +172,7 @@ const CalendarDayButton = ({
     }
     ref.current?.focus()
   }, [modifiers["focused"]])
+
   const isSel =
     modifiers["selected"] === true &&
     modifiers["range_start"] !== true &&
@@ -176,14 +196,23 @@ const CalendarDayButton = ({
     />
   )
 }
+
 type FirstArg<TValue> = TValue extends (arg: infer TArgument, ...args: readonly any[]) => any ? TArgument : never
+
 type DayPickerComponents = NonNullable<ComponentProps<typeof DayPicker>["components"]>
+
 type DayPickerLocale = ComponentProps<typeof DayPicker>["locale"]
+
 type RootProps = FirstArg<NonNullable<DayPickerComponents["Root"]>>
+
 type ChevronProps = FirstArg<NonNullable<DayPickerComponents["Chevron"]>>
+
 type WeekNumberProps = FirstArg<NonNullable<DayPickerComponents["WeekNumber"]>>
+
 type DayButtonProps = FirstArg<NonNullable<DayPickerComponents["DayButton"]>>
+
 const CalendarLocaleContext = createContext<DayPickerLocale | undefined>(undefined)
+
 const BASE_CLASS_NAMES = {
   disabled: "text-muted-foreground opacity-50",
   dropdown: "absolute inset-0 bg-popover opacity-0",
@@ -208,10 +237,12 @@ const BASE_CLASS_NAMES = {
   weekday: "flex-1 rounded-(--cell-radius) text-[0.8rem] font-normal text-muted-foreground select-none",
   weekdays: "flex",
 }
+
 interface StyleOptions {
   readonly buttonVariant: ComponentProps<typeof Button>["variant"]
   readonly captionLayout: ComponentProps<typeof DayPicker>["captionLayout"]
   readonly classNames?: ComponentProps<typeof DayPicker>["classNames"]
   readonly showWeekNumber: boolean
 }
+
 export { Calendar, CalendarDayButton }

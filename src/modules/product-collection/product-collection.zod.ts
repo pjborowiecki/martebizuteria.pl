@@ -1,8 +1,9 @@
 import { createSchemaFactory } from "drizzle-zod"
-import { z } from "zod/v4"
+import zod from "zod/v4"
 
-import { LOCALES } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
+import { handleField } from "~/src/modules/_core/utils/zod-fields"
 import {
   COLLECTION_COLUMN_LENGTH,
   COLLECTION_FORM_VALIDATION_KEYS,
@@ -13,7 +14,7 @@ import {
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: z,
+  zodInstance: zod,
 })
 
 const collectionInsertSchema = createInsertSchema(productCollection)
@@ -21,11 +22,11 @@ const collectionInsertSchema = createInsertSchema(productCollection)
 const collectionSelectSchema = createSelectSchema(productCollection)
 
 const collectionLocaleMapSchema = (maxLength: number, tooLongMessage?: string) =>
-  z.object(Object.fromEntries(LOCALES.map((locale) => [locale, z.string().trim().max(maxLength, tooLongMessage)])))
+  zod.object(Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, zod.string().trim().max(maxLength, tooLongMessage)])))
 
 const collectionLocaleMapRequiredSchema = (maxLength: number) =>
   collectionLocaleMapSchema(maxLength).superRefine((map, context) => {
-    for (const locale of LOCALES) {
+    for (const locale of I18N.SUPPORTED_LOCALES) {
       if (map[locale].trim() === "") {
         context.addIssue({
           code: "custom",
@@ -40,49 +41,49 @@ const collectionTitlesSchema = collectionLocaleMapRequiredSchema(COLLECTION_COLU
 
 const collectionDescriptionsSchema = collectionLocaleMapSchema(COLLECTION_COLUMN_LENGTH.description)
 
-const collectionCreateInputSchema = z.object({
+const collectionCreateInputSchema = zod.object({
   descriptions: collectionDescriptionsSchema,
-  handle: z.string().trim().min(COLLECTION_MIN_LENGTH).regex(COLLECTION_HANDLE_PATTERN),
-  image: z.string().trim().default(""),
-  status: z.enum(COLLECTION_STATUSES),
+  handle: zod.string().trim().min(COLLECTION_MIN_LENGTH).regex(COLLECTION_HANDLE_PATTERN),
+  image: zod.string().trim().default(""),
+  status: zod.enum(COLLECTION_STATUSES),
   titles: collectionTitlesSchema,
 })
 
-/** Client-side form schema. Validation `message` values are admin i18n keys, not literal copy. */
-export const collectionFormSchema = () =>
-  z.object({
-    descriptions: collectionLocaleMapSchema(COLLECTION_COLUMN_LENGTH.description, COLLECTION_FORM_VALIDATION_KEYS.descriptionTooLong),
-    handle: z
-      .string()
-      .trim()
-      .min(COLLECTION_MIN_LENGTH, {
-        message: COLLECTION_FORM_VALIDATION_KEYS.slugRequired,
-      })
-      .regex(COLLECTION_HANDLE_PATTERN, {
-        message: COLLECTION_FORM_VALIDATION_KEYS.slugInvalid,
-      }),
-    image: z.string().trim(),
-    status: z.enum(COLLECTION_STATUSES),
-    titles: collectionTitlesSchema,
-  })
+const collectionFormValuesSchema = zod.object({
+  descriptions: collectionLocaleMapSchema(COLLECTION_COLUMN_LENGTH.description, COLLECTION_FORM_VALIDATION_KEYS.descriptionTooLong),
+  handle: zod
+    .string()
+    .trim()
+    .min(COLLECTION_MIN_LENGTH, {
+      message: COLLECTION_FORM_VALIDATION_KEYS.slugRequired,
+    })
+    .regex(COLLECTION_HANDLE_PATTERN, {
+      message: COLLECTION_FORM_VALIDATION_KEYS.slugInvalid,
+    }),
+  image: zod.string().trim(),
+  status: zod.enum(COLLECTION_STATUSES),
+  titles: collectionTitlesSchema,
+})
 
-export const collectionZodSchemas = {
+export const productCollectionZodSchemas = {
   adminListItem: collectionSelectSchema.extend({
-    productCount: z.number(),
+    productCount: zod.number(),
   }),
   createInput: collectionCreateInputSchema,
-  deleteInput: z.array(z.uuid()).min(COLLECTION_MIN_LENGTH),
+  deleteInput: zod.array(zod.uuid()).min(COLLECTION_MIN_LENGTH),
+  formValues: collectionFormValuesSchema,
+  handleInput: handleField,
   insert: collectionInsertSchema,
-  reorderInput: z.array(z.uuid()).min(COLLECTION_MIN_LENGTH),
+  reorderInput: zod.array(zod.uuid()).min(COLLECTION_MIN_LENGTH),
   select: collectionSelectSchema,
-  stats: z.object({
-    active: z.number(),
-    avgProducts: z.number(),
-    draft: z.number(),
-    total: z.number(),
+  stats: zod.object({
+    active: zod.number(),
+    avgProducts: zod.number(),
+    draft: zod.number(),
+    total: zod.number(),
   }),
   update: createUpdateSchema(productCollection),
   updateInput: collectionCreateInputSchema.extend({
-    id: z.uuid(),
+    id: zod.uuid(),
   }),
 }

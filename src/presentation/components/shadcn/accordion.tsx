@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion"
 import { cn } from "cn"
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react"
+
 const Accordion = ({ className, ...props }: Readonly<AccordionPrimitive.Root.Props>): JSX.Element => (
   <AccordionPrimitive.Root data-slot="accordion" className={cn("flex w-full flex-col", className)} {...props} />
 )

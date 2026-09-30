@@ -3,6 +3,7 @@ import { type ComponentProps, type JSX, useContext } from "react"
 import { cn } from "cn"
 import { type OTPInputProps as BaseOTPInputProps, OTPInput, OTPInputContext } from "input-otp"
 import { MinusIcon } from "lucide-react"
+
 const InputOTP = ({ className, containerClassName, ...props }: Readonly<InputOTPProps>): JSX.Element => (
   <OTPInput
     className={cn("disabled:cursor-not-allowed", className)}
@@ -30,6 +31,7 @@ const InputOTPSlot = ({ className, index, ...props }: Readonly<InputOTPSlotProps
   const char = slot?.char
   const hasFakeCaret = slot?.hasFakeCaret
   const isActive = slot?.isActive
+
   return (
     <div
       className={cn(
@@ -49,6 +51,7 @@ const InputOTPSlot = ({ className, index, ...props }: Readonly<InputOTPSlotProps
     </div>
   )
 }
+
 const InputOTPSeparator = ({ ...props }: Readonly<ComponentProps<"div">>): JSX.Element => (
   <div aria-hidden="true" className="flex items-center [&_svg:not([class*='size-'])]:size-4" data-slot="input-otp-separator" {...props}>
     <MinusIcon />
@@ -58,7 +61,9 @@ const InputOTPSeparator = ({ ...props }: Readonly<ComponentProps<"div">>): JSX.E
 type InputOTPProps = BaseOTPInputProps & {
   readonly containerClassName?: string
 }
+
 interface InputOTPSlotProps extends ComponentProps<"div"> {
   readonly index: number
 }
+
 export { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot }

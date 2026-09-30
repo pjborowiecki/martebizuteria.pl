@@ -10,8 +10,10 @@ export const buildAdminVariantKindFilterSql = (variantKind: ProductVariantKind |
   if (variantKind === undefined) {
     return undefined
   }
+
   if (variantKind === PRODUCT_VARIANT_KIND.MULTI) {
     return sql`coalesce(${variantCountColumn}, 0) > ${PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD}`
   }
+
   return sql`coalesce(${variantCountColumn}, 0) <= ${PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD}`
 }

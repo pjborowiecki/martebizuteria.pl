@@ -3,6 +3,7 @@ import { type ComponentProps, type JSX } from "react"
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu"
 import { cn } from "cn"
 import { CheckIcon, ChevronRightIcon } from "lucide-react"
+
 const ContextMenu = ({ ...props }: Readonly<ContextMenuPrimitive.Root.Props>): JSX.Element => (
   <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />
 )
@@ -185,7 +186,9 @@ const ContextMenuShortcut = ({ className, ...props }: ComponentProps<"span">): J
 )
 
 const CONTEXT_MENU_ALIGN_OFFSET = 4
+
 const CONTEXT_MENU_SIDE_OFFSET = 0
+
 export {
   ContextMenu,
   ContextMenuCheckboxItem,

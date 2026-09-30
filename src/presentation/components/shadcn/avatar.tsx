@@ -2,6 +2,7 @@ import { type ComponentProps, type JSX } from "react"
 
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar"
 import { cn } from "cn"
+
 const Avatar = ({
   className,
   size = "default",

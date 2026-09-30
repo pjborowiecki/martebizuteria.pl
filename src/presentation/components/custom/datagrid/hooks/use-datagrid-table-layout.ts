@@ -1,6 +1,5 @@
 import { type RefObject, useLayoutEffect, useState } from "react"
 
-/** Scroll container width — used to size the flex-fill column in px. */
 export const useDatagridContainerWidth = (containerRef: RefObject<HTMLElement | null>, layoutKey: number): number => {
   const [clientWidth, setClientWidth] = useState(0)
 

@@ -1,19 +1,22 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { ListFilter } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_STATUS, type ProductStatus } from "~/src/modules/product/product.constants"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
 
 import { useProductsDataGridContext } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-data-grid"
+
 const parseStatusFilter = (value: string): ProductStatus | undefined => {
   if (value === PRODUCT_STATUS.PUBLISHED || value === PRODUCT_STATUS.DRAFT || value === PRODUCT_STATUS.ARCHIVED) {
     return value
   }
+
   return undefined
 }
+
 export const ProductsStatusFilter = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products.catalogList")
   const { activeStatusFilter, applyProductsFilter } = useProductsDataGridContext()
@@ -39,6 +42,7 @@ export const ProductsStatusFilter = (): JSX.Element => {
     ],
     [t],
   )
+
   const handleChange = useCallback(
     (value: string | null) => {
       if (value === null) {
@@ -50,6 +54,7 @@ export const ProductsStatusFilter = (): JSX.Element => {
     },
     [applyProductsFilter],
   )
+
   return (
     <Select items={options} value={current} onValueChange={handleChange}>
       <SelectTrigger size="sm" className="h-9 w-[200px] gap-2 rounded-lg text-xs data-[size=sm]:h-9" aria-label={t("filter.status")}>
@@ -66,4 +71,5 @@ export const ProductsStatusFilter = (): JSX.Element => {
     </Select>
   )
 }
+
 const ALL_VALUE = "all"

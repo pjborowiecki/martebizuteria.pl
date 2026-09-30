@@ -1,0 +1,48 @@
+{
+  "subject": "Potwierdzenie zamówienia — M'Arte",
+  "preview": "Twoje zamówienie zostało przyjęte — dziękujemy za zaufanie.",
+  "heading": "Dziękujemy za zamówienie",
+  "message": "Z radością potwierdzamy przyjęcie Twojego zamówienia. Każdy egzemplarz M'Arte powstaje ręcznie — już niebawem nasza pracownia rozpocznie przygotowania.",
+  "messageSecondary": "Poniżej znajdziesz podsumowanie zakupu.",
+  "orderLabel": "Numer zamówienia",
+  "itemsLabel": "Zamówione produkty",
+  "subtotalLabel": "Suma produktów",
+  "shippingLabel": "Dostawa",
+  "totalLabel": "Razem",
+  "viewProductLink": "Zobacz w sklepie",
+  "accountCtaNote": "Załóż konto, aby śledzić status zamówienia i przeglądać historię zakupów.",
+  "createAccountCta": "Załóż konto i śledź zamówienie",
+  "viewOrderCta": "Zobacz zamówienie",
+  "paymentMethodLabel": "Metoda płatności",
+  "deliveryMethodLabel": "Sposób dostawy",
+  "shippingAddressLabel": "Adres dostawy",
+  "billingAddressLabel": "Adres rozliczeniowy",
+  "fulfillmentTimeLabel": "Czas realizacji",
+  "estimatedDeliveryLabel": "Szacowany czas dostawy",
+  "unavailable": "Niedostępne",
+  "billingSameAsShipping": "Tak jak adres dostawy",
+  "paymentMethodUnknown": "Płatność online",
+  "paymentMethods": {
+    "card": "Karta płatnicza",
+    "blik": "BLIK",
+    "p24": "Przelewy24"
+  },
+  "deliveryTiming": {
+    "courier": {
+      "fulfillmentTime": "1–3 dni robocze",
+      "estimatedDelivery": "2–4 dni robocze od wysyłki"
+    },
+    "locker": {
+      "fulfillmentTime": "1–3 dni robocze",
+      "estimatedDelivery": "2–3 dni robocze od wysyłki"
+    },
+    "in_store": {
+      "fulfillmentTime": "1–2 dni robocze",
+      "estimatedDelivery": "Odbiór w pracowni po powiadomieniu"
+    }
+  },
+  "closingNote": "Wyślemy kolejną wiadomość, gdy tylko Twoje zamówienie zostanie wysłane. Jeśli masz pytania dotyczące zamówienia, odpowiedz na tę wiadomość — chętnie pomożemy.",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

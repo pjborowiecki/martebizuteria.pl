@@ -2,7 +2,7 @@ import { type JSX, type MouseEvent, useCallback, useMemo, useState } from "react
 
 import { Copy, Edit2, MoreHorizontal, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import { resolveProductAttributeTitle } from "~/src/modules/product-attribute/product-attribute.utils"
@@ -21,6 +21,7 @@ import { useAttributesSheet } from "~/src/presentation/components/custom/pages/a
 import { useDeleteAttributes } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/hooks/use-delete-attributes"
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
 import { useCatalogRowActionMenu } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/lib/use-catalog-row-action-menu"
+
 export const AttributesRowActions = ({ attribute }: AttributesRowActionsProps): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.attributes.rowActions")
   const locale = useLocale()
@@ -31,22 +32,27 @@ export const AttributesRowActions = ({ attribute }: AttributesRowActionsProps): 
     confirmOpen,
     setConfirmOpen,
   )
+
   const { handle, id, titles } = attribute
   const title = resolveProductAttributeTitle(titles, locale)
   const handleEdit = useCallback(() => {
     openEdit(attribute)
   }, [attribute, openEdit])
+
   const handleCopyId = useCallback(() => {
     void navigator.clipboard.writeText(id)
     toast.success(t("copyIdToast"))
   }, [id, t])
+
   const handleCopyUrlSlug = useCallback(() => {
     void navigator.clipboard.writeText(handle)
     toast.success(t("copyUrlSlugToast"))
   }, [handle, t])
+
   const handleDelete = useCallback(() => {
     closeMenuAndRequestDeleteConfirm()
   }, [closeMenuAndRequestDeleteConfirm])
+
   const handleConfirmDelete = useCallback(() => {
     deleteProductAttributes.mutate([id], {
       onSuccess: () => {
@@ -54,6 +60,7 @@ export const AttributesRowActions = ({ attribute }: AttributesRowActionsProps): 
       },
     })
   }, [deleteProductAttributes, handleConfirmOpenChange, id])
+
   const runMenuAction = useCallback(
     (action: () => void) => (event: MouseEvent) => {
       event.preventDefault()
@@ -63,9 +70,11 @@ export const AttributesRowActions = ({ attribute }: AttributesRowActionsProps): 
     },
     [],
   )
+
   const stopRowClick = useCallback((event: MouseEvent) => {
     event.stopPropagation()
   }, [])
+
   const trigger = useMemo(
     () => (
       <Button variant="ghost" size="icon" className="size-8" onClick={stopRowClick} onPointerDown={stopRowClick}>
@@ -74,6 +83,7 @@ export const AttributesRowActions = ({ attribute }: AttributesRowActionsProps): 
     ),
     [stopRowClick],
   )
+
   return (
     <>
       <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
@@ -115,7 +125,9 @@ export const AttributesRowActions = ({ attribute }: AttributesRowActionsProps): 
     </>
   )
 }
+
 const ITEM_CLASS = "px-3 py-2.5 text-[13px] gap-3"
+
 interface AttributesRowActionsProps {
   readonly attribute: ProductAttribute["adminListItem"]
 }

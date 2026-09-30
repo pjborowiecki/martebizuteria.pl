@@ -1,10 +1,12 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
+
 export const AuthDivider = (): JSX.Element => {
   const t = useTranslations("components.custom.authDivider")
+
   return (
     <div className="flex items-center gap-4">
       <Separator className="flex-1 bg-border/50" />

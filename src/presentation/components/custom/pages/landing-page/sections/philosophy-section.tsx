@@ -1,10 +1,12 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
+
 export const PhilosophySection = (): JSX.Element => {
   const t = useTranslations("pages.landing.philosophySection")
+
   return (
     <section className="mx-auto max-w-400 px-6 pb-20 lg:px-12 lg:pb-28">
       <div className="reveal mx-auto max-w-3xl space-y-6 text-center">

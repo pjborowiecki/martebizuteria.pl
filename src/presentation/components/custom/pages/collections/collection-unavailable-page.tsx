@@ -1,15 +1,15 @@
 import { type JSX, useMemo } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
-import { collectionsQueryOptions } from "~/src/modules/product-collection/use-cases/get-collections"
+import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils"
-import { landingNewArrivalsQueryOptions } from "~/src/modules/product/use-cases/get-new-arrivals"
+import { getNewArrivalsQuery } from "~/src/modules/product/use-cases/get-new-arrivals"
 
-import { centsToDisplayAmount } from "~/src/lib/currency"
 import { getProductImageUrl } from "~/src/lib/image"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
@@ -17,6 +17,7 @@ import { CollectionCard } from "~/src/presentation/components/custom/pages/colle
 import { ProductCard } from "~/src/presentation/components/custom/product-card"
 
 import { ROUTES } from "~/src/routes"
+
 const SuggestedProductCard = ({
   index,
   product,
@@ -32,6 +33,7 @@ const SuggestedProductCard = ({
     }),
     [product.handle],
   )
+
   const variant = product.variants?.[0]
   const variantPrice = variant?.price
   const price =
@@ -44,6 +46,7 @@ const SuggestedProductCard = ({
   const variantTitle = variant?.title === DEFAULT_VARIANT_TITLE ? "" : (variant?.title ?? "")
   const name = resolveProductTitle(product.titles, locale)
   const detail = resolveProductSubtitle(product.subtitles, locale)
+
   return (
     <ProductCard
       detail={detail}
@@ -61,12 +64,14 @@ const SuggestedProductCard = ({
     />
   )
 }
+
 export const CollectionUnavailablePage = (): JSX.Element => {
   const t = useTranslations("pages.collection.unavailable")
-  const { data: collections } = useSuspenseQuery(collectionsQueryOptions())
-  const { data: newArrivals } = useSuspenseQuery(landingNewArrivalsQueryOptions())
+  const { data: collections } = useSuspenseQuery(getCollectionsQuery())
+  const { data: newArrivals } = useSuspenseQuery(getNewArrivalsQuery())
   const suggestedCollections = collections.slice(0, SUGGESTED_COLLECTION_LIMIT)
   const suggestedProducts = newArrivals.slice(0, SUGGESTED_PRODUCT_LIMIT)
+
   return (
     <main className="mx-auto max-w-400 px-6 pt-8 pb-24 lg:px-12 lg:pt-10 lg:pb-32">
       <header className="mx-auto max-w-2xl space-y-5 text-center lg:space-y-6">
@@ -121,9 +126,13 @@ export const CollectionUnavailablePage = (): JSX.Element => {
     </main>
   )
 }
+
 const PRIORITY_IMAGE_COUNT = 3
+
 const SUGGESTED_COLLECTION_LIMIT = 3
+
 const SUGGESTED_PRODUCT_LIMIT = 3
+
 type SuggestedProduct = Pick<Product["select"], "handle" | "id" | "subtitles" | "thumbnail" | "titles"> & {
   readonly variants?: readonly {
     readonly id: string

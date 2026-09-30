@@ -1,7 +1,8 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
@@ -25,7 +26,7 @@ import {
   ADMIN_DASHBOARD_QUERY_KEYS,
   ADMIN_DASHBOARD_QUERY_STALE_MS,
 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { type AdminDashboardSnapshot } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 import {
   buildAdminDashboardDailyChartPoints,
   buildAdminDashboardKpiStat,
@@ -36,16 +37,13 @@ import {
   resolveAdminDashboardMonthlyChartStart,
   resolveAdminDashboardYearStart,
 } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
+import { adminDashboardZodSchemas } from "~/src/modules/admin-dashboard/admin-dashboard.zod"
 import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
 
-export interface AdminDashboardInput {
-  readonly locale: string
-}
-
-export const fetchAdminDashboardSnapshotFn = createServerFn({ method: "GET" })
-  .validator((input: AdminDashboardInput) => input)
-  .handler(async ({ data: { locale } }): Promise<AdminDashboardSnapshot> => {
-    await assertAdmin()
+export const getDashboardSnapshot = createServerFn({ method: "GET" })
+  .middleware([authorized({ settings: ["manage"] })])
+  .validator((input: zod.input<typeof adminDashboardZodSchemas.snapshotInput>) => adminDashboardZodSchemas.snapshotInput.parse(input))
+  .handler(async ({ data: { locale } }): Promise<AdminDashboard["snapshot"]> => {
     const now = new Date()
     const { currentStart, previousEnd, previousStart } = resolveAdminDashboardComparisonPeriod(now)
     const chartStart = resolveAdminDashboardChartStart(now, ADMIN_DASHBOARD_CHART_DAYS_30)
@@ -102,6 +100,7 @@ export const fetchAdminDashboardSnapshotFn = createServerFn({ method: "GET" })
       referenceDate: now,
       rows: monthlyAggregateRows,
     })
+
     const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
 
     return {
@@ -147,10 +146,10 @@ export const fetchAdminDashboardSnapshotFn = createServerFn({ method: "GET" })
     }
   })
 
-export const adminDashboardSnapshotQueryOptions = (input: AdminDashboardInput) =>
+export const getDashboardSnapshotQuery = (input: zod.input<typeof adminDashboardZodSchemas.snapshotInput>) =>
   queryOptions({
-    queryFn: () => fetchAdminDashboardSnapshotFn({ data: input }),
-    queryKey: [...ADMIN_DASHBOARD_QUERY_KEYS.SNAPSHOT, input.locale] as const,
+    queryFn: () => getDashboardSnapshot({ data: input }),
+    queryKey: [...ADMIN_DASHBOARD_QUERY_KEYS.SNAPSHOT, input.locale],
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: ADMIN_DASHBOARD_QUERY_STALE_MS,

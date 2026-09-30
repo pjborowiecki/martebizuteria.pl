@@ -1,10 +1,10 @@
 import { type ChangeEvent, type JSX, useCallback, useMemo } from "react"
 
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { ATTRIBUTE_ON_PRODUCT_COLUMN_LENGTH } from "~/src/modules/attribute-on-product/attribute-on-product.constants"
 import { PRODUCT_ATTRIBUTE_TYPE, type ProductAttributeType } from "~/src/modules/product-attribute/product-attribute.constants"
-import { type ProductAttributeAllowedValue } from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import {
   parseMultiselectStoredValue,
   resolveAllowedValueLabel,
@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 
 import { CatalogEntityMultiSelect } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-entity-multi-select"
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
+
 export const ProductEditorAttributeValueInput = ({
   definition,
   disabled = false,
@@ -30,13 +31,16 @@ export const ProductEditorAttributeValueInput = ({
   if (type === PRODUCT_ATTRIBUTE_TYPE.BOOLEAN) {
     return <BooleanValueInput disabled={disabled} onChange={onChange} t={t} value={rawValue} />
   }
+
   const allowedValues = definition?.allowedValues
   if (type === PRODUCT_ATTRIBUTE_TYPE.SELECT && allowedValues !== null && allowedValues !== undefined) {
     return <SelectValueInput allowedValues={allowedValues} disabled={disabled} locale={locale} onChange={onChange} value={rawValue} />
   }
+
   if (type === PRODUCT_ATTRIBUTE_TYPE.MULTISELECT && allowedValues !== null && allowedValues !== undefined) {
     return <MultiselectValueInput allowedValues={allowedValues} disabled={disabled} locale={locale} onChange={onChange} value={rawValue} />
   }
+
   if (type === PRODUCT_ATTRIBUTE_TYPE.NUMBER) {
     return (
       <NumberValueInput
@@ -48,8 +52,10 @@ export const ProductEditorAttributeValueInput = ({
       />
     )
   }
+
   return <TextValueInput disabled={disabled} inputMode="text" onChange={onChange} placeholder={t("valuePlaceholder")} value={rawValue} />
 }
+
 const TextValueInput = ({
   disabled,
   inputMode,
@@ -69,6 +75,7 @@ const TextValueInput = ({
     },
     [onChange],
   )
+
   return (
     <Input
       variant="sheet"
@@ -83,6 +90,7 @@ const TextValueInput = ({
     />
   )
 }
+
 const NumberValueInput = ({
   disabled,
   onChange,
@@ -104,9 +112,11 @@ const NumberValueInput = ({
     },
     [onChange],
   )
+
   if (!hasUnit) {
     return <TextValueInput disabled={disabled} inputMode="decimal" onChange={onChange} placeholder={placeholder} value={value} />
   }
+
   return (
     <InputGroup variant="sheet">
       <InputGroupInput
@@ -124,6 +134,7 @@ const NumberValueInput = ({
     </InputGroup>
   )
 }
+
 const BooleanValueInput = ({
   disabled,
   onChange,
@@ -148,6 +159,7 @@ const BooleanValueInput = ({
     ],
     [t],
   )
+
   const selectValue = value === "true" || value === "false" ? value : ""
   const handleChange = useCallback(
     (next: string | null) => {
@@ -157,6 +169,7 @@ const BooleanValueInput = ({
     },
     [onChange],
   )
+
   return (
     <Select disabled={disabled} items={items} onValueChange={handleChange} value={selectValue}>
       <SelectTrigger size="sheet">
@@ -172,6 +185,7 @@ const BooleanValueInput = ({
     </Select>
   )
 }
+
 const SelectValueInput = ({
   allowedValues,
   disabled,
@@ -179,7 +193,7 @@ const SelectValueInput = ({
   onChange,
   value,
 }: Readonly<{
-  allowedValues: readonly ProductAttributeAllowedValue[]
+  allowedValues: readonly ProductAttribute["allowedValue"][]
   disabled: boolean
   locale: string
   onChange: (value: string) => void
@@ -194,6 +208,7 @@ const SelectValueInput = ({
       })),
     [allowedValues, locale],
   )
+
   const handleChange = useCallback(
     (next: string | null) => {
       if (next !== null) {
@@ -202,6 +217,7 @@ const SelectValueInput = ({
     },
     [onChange],
   )
+
   return (
     <Select disabled={disabled} items={items} onValueChange={handleChange} value={value}>
       <SelectTrigger size="sheet">
@@ -217,6 +233,7 @@ const SelectValueInput = ({
     </Select>
   )
 }
+
 const MultiselectValueInput = ({
   allowedValues,
   disabled,
@@ -224,7 +241,7 @@ const MultiselectValueInput = ({
   onChange,
   value,
 }: Readonly<{
-  allowedValues: readonly ProductAttributeAllowedValue[]
+  allowedValues: readonly ProductAttribute["allowedValue"][]
   disabled: boolean
   locale: string
   onChange: (value: string) => void
@@ -239,6 +256,7 @@ const MultiselectValueInput = ({
       })),
     [allowedValues, locale],
   )
+
   const selectedIds = useMemo(() => parseMultiselectStoredValue(value), [value])
   const handleChange = useCallback(
     (ids: readonly string[]) => {
@@ -246,6 +264,7 @@ const MultiselectValueInput = ({
     },
     [onChange],
   )
+
   return (
     <CatalogEntityMultiSelect
       ariaLabel={t("value")}
@@ -258,11 +277,13 @@ const MultiselectValueInput = ({
     />
   )
 }
+
 export interface ProductEditorAttributeDefinition {
-  readonly allowedValues: readonly ProductAttributeAllowedValue[] | null
+  readonly allowedValues: readonly ProductAttribute["allowedValue"][] | null
   readonly type: ProductAttributeType
   readonly unit?: string | null
 }
+
 interface ProductEditorAttributeValueInputProps {
   readonly definition: ProductEditorAttributeDefinition | undefined
   readonly disabled?: boolean

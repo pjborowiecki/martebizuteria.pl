@@ -1,7 +1,7 @@
 import { type DragEvent, type JSX, type KeyboardEvent, useCallback } from "react"
 
 import { GripVertical } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -19,6 +19,7 @@ export const CategoryReorderCell = ({ id }: CategoryReorderCellProps): JSX.Eleme
     },
     [id, rowReorder],
   )
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>) => {
       if (event.key === "ArrowUp") {
@@ -31,6 +32,7 @@ export const CategoryReorderCell = ({ id }: CategoryReorderCellProps): JSX.Eleme
     },
     [id, rowReorder],
   )
+
   return (
     <div className="flex justify-center">
       <Button
@@ -50,6 +52,7 @@ export const CategoryReorderCell = ({ id }: CategoryReorderCellProps): JSX.Eleme
     </div>
   )
 }
+
 interface CategoryReorderCellProps {
   readonly id: string
 }

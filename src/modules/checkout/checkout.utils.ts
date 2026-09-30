@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { type BatchItem } from "drizzle-orm/batch"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -109,26 +109,114 @@ export const resolvePendingCheckout = (
 ): PendingCheckout | undefined => {
   if (paymentRow === undefined) {
     console.info(`No live payment for transaction ${transactionId}; ignoring.`)
+
     return undefined
   }
 
   if (checkoutRow?.status !== "pending") {
     console.info(`Checkout ${paymentRow.checkoutId} missing or already processed.`)
+
     return undefined
   }
 
   return { checkoutId: paymentRow.checkoutId, email: checkoutRow.email, paymentId: paymentRow.id, userId: checkoutRow.userId }
 }
 
-export const prepareUpdateCheckoutDeliveryBatch = (checkoutId: string, checkoutValues: CheckoutFormSchema): BatchItem<"sqlite"> =>
-  db
-    .update(checkout)
-    .set({
-      customerNote: checkoutValues.deliveryNotes,
-      deliveryMethodId: checkoutValues.deliveryMethod,
-      lockerId: checkoutValues.lockerId,
+const preparePendingCheckoutAddressUpsert = (checkoutId: string, values: typeof address.$inferInsert): BatchItem<"sqlite"> => {
+  // INSERT SELECT requires the table's column order, including the timestamps appended by its schema.
+  const addressFields = {
+    address1: sql<string>`${values.address1}`.as("address1"),
+    address2: sql<string | null>`${values.address2 ?? sql`NULL`}`.as("address2"),
+    city: sql<string>`${values.city}`.as("city"),
+    countryCode: sql<string>`${values.countryCode}`.as("country_code"),
+    firstName: sql<string | null>`${values.firstName ?? sql`NULL`}`.as("first_name"),
+    id: sql<string>`${values.id}`.as("id"),
+    isDefault: sql<boolean>`${sql.param(values.isDefault ?? false, address.isDefault)}`.as("is_default"),
+    lastName: sql<string | null>`${values.lastName ?? sql`NULL`}`.as("last_name"),
+    phone: sql<string | null>`${values.phone ?? sql`NULL`}`.as("phone"),
+    postalCode: sql<string | null>`${values.postalCode ?? sql`NULL`}`.as("postal_code"),
+    province: sql<string | null>`${values.province ?? sql`NULL`}`.as("province"),
+    userId: sql<string | null>`${values.userId ?? sql`NULL`}`.as("user_id"),
+  }
+  const fields = Object.assign(addressFields, {
+    createdAt: sql<Date>`${sql.param(new Date(), address.createdAt)}`.as("created_at"),
+    updatedAt: sql<Date>`${sql.param(new Date(), address.updatedAt)}`.as("updated_at"),
+  })
+  const pendingAddress = db
+    .select(fields)
+    .from(checkout)
+    .where(and(eq(checkout.id, checkoutId), eq(checkout.status, "pending")))
+
+  // No pending source row means neither an insert nor a conflict update runs.
+  return db
+    .insert(address)
+    .select(pendingAddress)
+    .onConflictDoUpdate({
+      set: { ...values, address2: values.address2 ?? sql`NULL`, province: values.province ?? sql`NULL` },
+      target: address.id,
     })
-    .where(eq(checkout.id, checkoutId))
+}
+
+export const prepareUpdateCheckoutDeliveryBatch = (
+  context: Pick<typeof checkout.$inferSelect, "id" | "shippingAddressId" | "billingAddressId" | "userId">,
+  checkoutValues: CheckoutFormSchema,
+): [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] => {
+  const pendingCheckout = and(eq(checkout.id, context.id), eq(checkout.status, "pending"))
+  const shippingAddressId = context.shippingAddressId ?? crypto.randomUUID()
+  let billingAddressId = shippingAddressId
+  if (checkoutValues.sameAsShipping === false) {
+    billingAddressId =
+      context.billingAddressId === shippingAddressId ? crypto.randomUUID() : (context.billingAddressId ?? crypto.randomUUID())
+  }
+  const shippingValues = {
+    address1: checkoutValues.address1,
+    address2: checkoutValues.address2,
+    city: checkoutValues.city,
+    countryCode: checkoutValues.countryCode,
+    firstName: checkoutValues.firstName,
+    id: shippingAddressId,
+    isDefault: checkoutValues.saveShippingAddress ?? false,
+    lastName: checkoutValues.lastName,
+    phone: checkoutValues.phone,
+    postalCode: checkoutValues.postalCode,
+    province: checkoutValues.province,
+    userId: context.userId,
+  }
+  const statements: [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] = [preparePendingCheckoutAddressUpsert(context.id, shippingValues)]
+
+  if (billingAddressId !== shippingAddressId) {
+    const billingValues = {
+      address1: checkoutValues.billingAddress1 ?? "",
+      city: checkoutValues.billingCity ?? "",
+      countryCode: checkoutValues.billingCountryCode ?? "",
+      firstName: checkoutValues.billingFirstName ?? "",
+      id: billingAddressId,
+      isDefault: checkoutValues.saveBillingAddress ?? false,
+      lastName: checkoutValues.billingLastName ?? "",
+      phone: checkoutValues.phone,
+      postalCode: checkoutValues.billingPostalCode ?? "",
+      userId: context.userId,
+    }
+    statements.push(preparePendingCheckoutAddressUpsert(context.id, billingValues))
+  }
+
+  statements.push(
+    db
+      .update(checkout)
+      .set({
+        billingAddressId,
+        customerNote: checkoutValues.deliveryNotes,
+        deliveryMethodId: checkoutValues.deliveryMethod,
+        email: checkoutValues.email,
+        lockerId: checkoutValues.lockerId ?? sql`NULL`,
+        shippingAddressId,
+      })
+      .where(pendingCheckout)
+      .returning({ id: checkout.id }),
+  )
+
+  return statements
+}
 
 export const prepareFulfillCheckoutBatch = (
   context: PendingCheckout,
@@ -170,7 +258,10 @@ export const prepareFulfillCheckoutBatch = (
     orderId,
     statements: [
       db.update(payment).set({ status: "succeeded" }).where(eq(payment.transactionId, transactionId)),
-      db.update(checkout).set({ status: "completed" }).where(eq(checkout.id, context.checkoutId)),
+      db
+        .update(checkout)
+        .set({ status: "completed" })
+        .where(and(eq(checkout.id, context.checkoutId), eq(checkout.status, "pending"))),
       db.insert(order).values({
         checkoutId: context.checkoutId,
         currencyCode: currency,
@@ -202,7 +293,7 @@ export const prepareReleaseCheckoutBatch = (
     db
       .update(inventory)
       .set({
-        quantityAvailable: sql`${inventory.quantityAvailable} + ${line.qty}`,
+        quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${line.qty})`,
         quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${line.qty})`,
       })
       .where(eq(inventory.variantId, line.variantId)),

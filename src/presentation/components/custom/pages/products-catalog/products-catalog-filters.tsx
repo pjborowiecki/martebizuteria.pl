@@ -1,15 +1,15 @@
 import { type JSX, type ReactNode, useCallback } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { type Category } from "~/src/modules/product-category/product-category.types"
-import { type Collection } from "~/src/modules/product-collection/product-collection.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 import {
   STOREFRONT_PRODUCTS_SORT,
   STOREFRONT_PRODUCTS_SORTS,
   type StorefrontProductsSearch,
-  isStorefrontProductsSort,
+  type StorefrontProductsSort,
 } from "~/src/modules/product/product.storefront-catalog"
 
 import { ProductsCatalogPriceFilter } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-price-filter"
@@ -18,6 +18,7 @@ import {
   flattenStorefrontCategoryFilters,
   mapStorefrontCollectionFilters,
 } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog.utils"
+
 const categoryDepthPaddingClass = (depth: number): string => CATEGORY_DEPTH_PADDING_CLASS[depth] ?? "ps-12"
 
 const FilterSection = ({
@@ -33,7 +34,7 @@ const FilterSection = ({
   </section>
 )
 
-const FilterChoice = ({
+const FilterChoice = <TValue extends string>({
   active,
   children,
   onSelect,
@@ -41,12 +42,13 @@ const FilterChoice = ({
 }: Readonly<{
   active: boolean
   children: ReactNode
-  onSelect: (value: string) => void
-  selectValue: string
+  onSelect: (value: TValue) => void
+  selectValue: TValue
 }>): JSX.Element => {
   const handleClick = useCallback(() => {
     onSelect(selectValue)
   }, [onSelect, selectValue])
+
   return (
     <button
       type="button"
@@ -69,6 +71,7 @@ const FilterChoice = ({
     </button>
   )
 }
+
 export const ProductsCatalogFilters = ({
   categories,
   collections,
@@ -89,6 +92,7 @@ export const ProductsCatalogFilters = ({
     },
     [onSearchChange],
   )
+
   const handleCollectionChange = useCallback(
     (handle: string) => {
       onSearchChange({
@@ -97,22 +101,24 @@ export const ProductsCatalogFilters = ({
     },
     [onSearchChange],
   )
+
   const handleSortChange = useCallback(
-    (value: string) => {
+    (value: StorefrontProductsSort) => {
       if (value === STOREFRONT_PRODUCTS_SORT.RANK) {
         onSearchChange({
           sort: undefined,
         })
+
         return
       }
-      if (isStorefrontProductsSort(value)) {
-        onSearchChange({
-          sort: value,
-        })
-      }
+
+      onSearchChange({
+        sort: value,
+      })
     },
     [onSearchChange],
   )
+
   return (
     <aside className="space-y-8 lg:sticky lg:top-24 lg:self-start">
       <FilterSection title={t("sort")}>
@@ -174,16 +180,19 @@ export const ProductsCatalogFilters = ({
     </aside>
   )
 }
+
 const ALL_VALUE = ""
+
 const CATEGORY_DEPTH_PADDING_CLASS: Record<number, string> = {
   0: "",
   1: "ps-3",
   2: "ps-6",
   3: "ps-9",
 }
+
 interface ProductsCatalogFiltersProps {
-  readonly categories: readonly Category["select"][]
-  readonly collections: readonly Collection["select"][]
+  readonly categories: readonly ProductCategory["select"][]
+  readonly collections: readonly ProductCollection["select"][]
   readonly locale: string
   readonly onSearchChange: (
     patch: Partial<StorefrontProductsSearch>,

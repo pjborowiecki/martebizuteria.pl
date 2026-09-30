@@ -1,17 +1,16 @@
 import { type JSX, useCallback, useMemo, useState } from "react"
 
 import { FileSpreadsheet } from "lucide-react"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
+import { downloadCsvFile, escapeCsvField } from "~/src/modules/_core/utils/csv"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"
-import { fetchAdminProductsExportFn } from "~/src/modules/product/use-cases/export-admin-products"
+import { exportAdminProducts } from "~/src/modules/product/use-cases/export-admin-products"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { DataGridIconTooltip } from "~/src/presentation/components/custom/datagrid/components/data-grid-icon-tooltip"
 import { useProductsDataGridContext } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-data-grid"
-
-const escapeCsvField = (value: string): string => value.replaceAll('"', '""')
 
 const buildProductsCsvRows = (
   rows: readonly {
@@ -59,19 +58,10 @@ export const ProductsExportAction = (): JSX.Element => {
       try {
         const headers = ["ID", "Title", "Handle", "SKU", "Status", "Categories", "Collections", "Min price", "Stock", "Variants"]
         const rows = hasServerListQuery
-          ? await fetchAdminProductsExportFn({ data: exportListInput })
+          ? await exportAdminProducts({ data: exportListInput })
           : table.getFilteredRowModel().rows.map((row) => row.original)
 
-        const csvContent = [headers.join(","), ...buildProductsCsvRows(rows, locale)].join("\n")
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement("a")
-
-        link.href = url
-        link.setAttribute("download", "products.csv")
-        link.rel = "noopener"
-        link.click()
-        URL.revokeObjectURL(url)
+        downloadCsvFile("products.csv", [headers.join(","), ...buildProductsCsvRows(rows, locale)].join("\n"))
       } finally {
         setIsExporting(false)
       }

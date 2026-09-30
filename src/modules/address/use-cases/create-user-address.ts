@@ -1,18 +1,12 @@
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { RATE_LIMITS, authorized, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 
-import { createUserAddress } from "~/src/modules/address/address.accessors"
+import { createUserAddress as addressCreateUserAddress } from "~/src/modules/address/address.accessors"
 import { addressFieldsSchema } from "~/src/modules/address/address.zod"
 
-export const createUserAddressFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => addressFieldsSchema.parse(data))
-  .handler(async (ctx) => {
-    const session = await getRequestSession()
-    const userId = session?.user.id
-    if (userId === undefined) {
-      throw new Error("Unauthorized")
-    }
-
-    return createUserAddress({ ...ctx.data, userId })
-  })
+export const createUserAddress = createServerFn({ method: "POST" })
+  .middleware([withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE), authorized()])
+  .validator((input: zod.input<typeof addressFieldsSchema>) => addressFieldsSchema.parse(input))
+  .handler(({ context, data }) => addressCreateUserAddress({ ...data, userId: context.auth.user.id }))

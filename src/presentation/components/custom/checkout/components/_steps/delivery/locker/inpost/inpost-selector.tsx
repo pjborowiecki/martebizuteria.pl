@@ -4,7 +4,7 @@ import { MapPin } from "lucide-react"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { useWatch } from "react-hook-form"
 import Map from "react-map-gl/maplibre"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {
@@ -25,12 +25,14 @@ import {
 } from "~/src/presentation/components/custom/checkout/components/_steps/delivery/locker/inpost/inpost-provider"
 import { InpostSidebar } from "~/src/presentation/components/custom/checkout/components/_steps/delivery/locker/inpost/inpost-sidebar"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+
 const InpostMapContent = (): JSX.Element => {
   const { setValue } = useCheckoutForm()
   const { points } = useInpost()
   const handleMapClick = useCallback(() => {
     setValue("lockerId", "")
   }, [setValue])
+
   return (
     <div className="relative z-0 flex-1 bg-muted/20">
       <Map
@@ -52,6 +54,7 @@ const InpostMapContent = (): JSX.Element => {
     </div>
   )
 }
+
 export const InpostSelector = (): JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
   const t = useTranslations("pages.checkout.checkoutForm")
@@ -60,6 +63,7 @@ export const InpostSelector = (): JSX.Element => {
     control,
     name: "lockerCity",
   })
+
   const triggerRender = useMemo(
     () => (
       <Button className="w-full cursor-pointer gap-2 rounded-none border-border/50 py-6 tracking-widest uppercase" variant="secondary" />
@@ -67,7 +71,6 @@ export const InpostSelector = (): JSX.Element => {
     [],
   )
 
-  // Keep search and selection mounted while the dialog is closed.
   return (
     <InpostProvider initialCity={lockerCity ?? ""}>
       <Dialog onOpenChange={setIsOpen} open={isOpen}>
@@ -92,21 +95,32 @@ export const InpostSelector = (): JSX.Element => {
     </InpostProvider>
   )
 }
+
 const MAP_CENTER_LAT = 52.0693
+
 const MAP_CENTER_LNG = 19.4803
+
 const MAP_ZOOM_DEFAULT = 6
+
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+
 const MAP_CONTAINER_STYLE = {
   height: "100%",
   width: "100%",
 }
+
 const INITIAL_VIEW_STATE = {
   latitude: MAP_CENTER_LAT,
   longitude: MAP_CENTER_LNG,
   zoom: MAP_ZOOM_DEFAULT,
 }
+
 const POLAND_MIN_LNG = 12
+
 const POLAND_MIN_LAT = 47.5
+
 const POLAND_MAX_LNG = 26.2
+
 const POLAND_MAX_LAT = 56.4
+
 const MAX_BOUNDS: [number, number, number, number] = [POLAND_MIN_LNG, POLAND_MIN_LAT, POLAND_MAX_LNG, POLAND_MAX_LAT]

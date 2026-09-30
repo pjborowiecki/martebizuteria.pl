@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { useController, useFormContext } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_ADMIN_STATUS, PRODUCT_FORM_VALIDATION_KEYS } from "~/src/modules/product/product.constants"
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
@@ -16,6 +16,7 @@ import {
   CATALOG_SHEET_CARD_CONTENT_CLASS,
   CATALOG_SHEET_FIELD_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+
 export const ProductEditorStatus = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")
   const { control } = useFormContext<ProductFormValues>()
@@ -24,6 +25,7 @@ export const ProductEditorStatus = (): JSX.Element => {
     control,
     name: "status",
   })
+
   const statusOptions = useMemo(
     () => [
       {
@@ -41,12 +43,14 @@ export const ProductEditorStatus = (): JSX.Element => {
     ],
     [t],
   )
+
   const handleStatusChange = useCallback(
     (value: string | null) => {
       field.onChange(value ?? "")
     },
     [field],
   )
+
   return (
     <Card>
       <CardHeader>

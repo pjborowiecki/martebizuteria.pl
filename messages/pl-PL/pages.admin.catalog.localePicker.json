@@ -1,0 +1,12 @@
+{
+  "label": "Język",
+  "filledCount": "{filled} z {total} uzupełnionych",
+  "filledCountHint": "wymagane nazwy w każdym języku",
+  "incompleteHint": "Uzupełnij wymagane pola dla: {locales}.",
+  "incompleteToastTitle": "Brakujące tłumaczenia",
+  "incompleteToastDescription": "Uzupełnij wymaganą nazwę dla: {locales}.",
+  "localeNames": {
+    "en-US": "angielski",
+    "pl-PL": "polski"
+  }
+}

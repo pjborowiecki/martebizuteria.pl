@@ -1,12 +1,14 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { CONTENT_TYPES } from "~/src/data/content-data"
+import { CONTENT_TYPES } from "~/src/data/content"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
+
 export const ContentTypeCards = (): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <div className="mb-5 grid shrink-0 gap-5 sm:grid-cols-3">
       {CONTENT_TYPES.map((ct) => (

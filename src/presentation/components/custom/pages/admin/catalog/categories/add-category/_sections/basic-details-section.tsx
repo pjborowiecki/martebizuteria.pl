@@ -2,7 +2,7 @@ import { type ChangeEvent, type JSX, useCallback, useMemo, useState } from "reac
 
 import { Info } from "lucide-react"
 import { useController } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { CATEGORY_COLUMN_LENGTH, CATEGORY_FORM_VALIDATION_KEYS } from "~/src/modules/product-category/product-category.constants"
 
@@ -21,6 +21,7 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-locale-fields"
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
 import { normalizeSlugInput, slugify } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-slug.utils"
+
 export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionProps>): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.categories")
   const { categoryId, control, isPending, mode, setValue } = useCategoryForm()
@@ -30,6 +31,7 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
     control,
     name: "handle",
   })
+
   const handleValue = catalogFieldStringValue(handleField.value)
   const [handleLocked, setHandleLocked] = useState(false)
   const titleCopy = useMemo<CatalogLocaleFieldsCopy>(
@@ -40,6 +42,7 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
     }),
     [t],
   )
+
   const subtitleCopy = useMemo<CatalogLocaleFieldsCopy>(
     () => ({
       hint: (locale) => t(`form.hints.subtitleLocale.${locale}`),
@@ -48,6 +51,7 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
     }),
     [t],
   )
+
   const shortDescriptionCopy = useMemo<CatalogLocaleFieldsCopy>(
     () => ({
       hint: (locale) => t(`form.hints.shortDescriptionLocale.${locale}`),
@@ -56,6 +60,7 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
     }),
     [t],
   )
+
   const descriptionCopy = useMemo<CatalogLocaleFieldsCopy>(
     () => ({
       hint: (locale) => t(`form.hints.descriptionLocale.${locale}`),
@@ -64,6 +69,7 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
     }),
     [t],
   )
+
   const syncHandleFromTitle = useCallback(
     (value: string) => {
       if (!handleLocked) {
@@ -74,6 +80,7 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
     },
     [handleLocked, setValue],
   )
+
   const handleSlugInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setHandleLocked(true)
@@ -81,9 +88,11 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
     },
     [handleField],
   )
+
   const handleSlugBlur = useCallback(() => {
     handleField.onChange(slugify(handleValue))
   }, [handleField, handleValue])
+
   return (
     <CategoryFormSection icon={Info} title={t("form.sectionBasic")}>
       {displayId !== undefined && displayId !== "" && (
@@ -161,6 +170,7 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
     </CategoryFormSection>
   )
 }
+
 interface BasicDetailsSectionProps {
   readonly recordId?: string | undefined
 }

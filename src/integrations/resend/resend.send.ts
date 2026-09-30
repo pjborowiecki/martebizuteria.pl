@@ -4,18 +4,22 @@ import { type ReactElement } from "react"
 
 import { resend } from "~/src/integrations/resend/resend.config"
 
-import { tryCatch } from "~/src/lib/try-catch"
-
 import { APP_NAME } from "~/src/presentation/branding/app"
-export const sendEmail = ({ from, react, subject, to }: Readonly<SendEmailOptions>) =>
-  tryCatch(
-    resend.emails.send({
+
+export const sendEmail = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  try {
+    const { error } = await resend.emails.send({
       from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
       react,
       subject,
       to,
-    }),
-  )
+    })
+
+    return error?.message
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
+}
 
 interface SendEmailOptions {
   readonly from?: string

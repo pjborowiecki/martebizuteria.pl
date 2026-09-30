@@ -1,6 +1,7 @@
 import { type JSX } from "react"
 
 import { type InpostPointParsed } from "~/src/integrations/inpost/inpost.zod"
+
 export const PointDetails = ({ point }: { readonly point: InpostPointParsed }): JSX.Element => (
   <div className="flex min-w-0 flex-col gap-0.5">
     <span className="text-xs font-medium text-foreground">{point.name}</span>

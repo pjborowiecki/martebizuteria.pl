@@ -1,4 +1,5 @@
 import { type collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
+
 export const resolveCollectionIds = (
   assignments: readonly {
     readonly collectionId: string
@@ -10,6 +11,7 @@ export const buildCollectionOnProductRows = (
   collectionIds: readonly string[],
 ): (typeof collectionOnProduct.$inferInsert)[] => {
   const uniqueIds = [...new Set(collectionIds)]
+
   return uniqueIds.map((collectionId, rank) => ({
     collectionId,
     productId,

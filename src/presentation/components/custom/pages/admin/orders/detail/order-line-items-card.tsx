@@ -1,16 +1,18 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { DEMO_LINE_ITEMS, DEMO_SUMMARY } from "~/src/data/order-detail-data"
+import { DEMO_LINE_ITEMS, DEMO_SUMMARY } from "~/src/data/order-detail"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "~/src/presentation/components/shadcn/table"
 
 import { OrderLineItemRow } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-line-item-row"
+
 export const OrderLineItemsCard = (): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">
       <CardContent className="p-0">
@@ -68,4 +70,5 @@ export const OrderLineItemsCard = (): JSX.Element => {
     </Card>
   )
 }
+
 const HEADER_CLASS = "text-xs font-medium uppercase tracking-wider text-muted-foreground/60"

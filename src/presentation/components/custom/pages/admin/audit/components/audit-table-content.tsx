@@ -9,11 +9,13 @@ import { AuditRefreshAction } from "~/src/presentation/components/custom/pages/a
 import { AuditStats } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-stats"
 import { useAuditDataGrid } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-data-grid"
 import { auditDataGrid } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-data-grid"
+
 const AuditTableToolbarActions = (): JSX.Element => <AuditBulkActions />
 
 export const AuditTableContent = (): JSX.Element => {
   const grid = useAuditDataGrid()
   const toolbarActions = useMemo(() => <AuditTableToolbarActions />, [])
+
   return (
     <Provider value={grid}>
       <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>
@@ -32,4 +34,5 @@ export const AuditTableContent = (): JSX.Element => {
     </Provider>
   )
 }
+
 const { Body, Pagination, Provider, Toolbar } = auditDataGrid

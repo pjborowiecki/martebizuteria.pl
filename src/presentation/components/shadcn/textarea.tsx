@@ -1,6 +1,7 @@
 import { type ComponentProps, type JSX } from "react"
 
 import { cn } from "cn"
+
 const Textarea = ({ className, ...props }: Readonly<ComponentProps<"textarea">>): JSX.Element => (
   <textarea
     data-slot="textarea"

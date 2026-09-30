@@ -2,13 +2,13 @@ import { useMemo } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 
+import { useCartStore } from "~/src/modules/cart/cart.store"
 import {
   type CartAvailabilityIssue,
   type CartAvailabilityLine,
-  cartAvailabilityQueryOptions,
+  checkCartAvailabilityQuery,
 } from "~/src/modules/cart/use-cases/check-cart-availability"
 
-import { useCartStore } from "~/src/stores/cart.store"
 export const useCartAvailability = (): CartAvailabilityState => {
   const items = useCartStore((state) => state.items)
   const lines = useMemo(
@@ -21,9 +21,11 @@ export const useCartAvailability = (): CartAvailabilityState => {
           })),
     [items],
   )
-  const { data, isFetching, isPending } = useQuery(cartAvailabilityQueryOptions(lines))
+
+  const { data, isFetching, isPending } = useQuery(checkCartAvailabilityQuery(lines))
   const issues = data?.issues ?? EMPTY_ISSUES
   const issuesByVariantId = useMemo(() => new Map(issues.map((issue) => [issue.variantId, issue])), [issues])
+
   return {
     hasUnavailableItems: data?.hasUnavailableItems === true,
     isChecking: lines.length > 0 && (isPending || isFetching),
@@ -31,8 +33,11 @@ export const useCartAvailability = (): CartAvailabilityState => {
     issuesByVariantId,
   }
 }
+
 const EMPTY_LINES: CartAvailabilityLine[] = []
+
 const EMPTY_ISSUES: CartAvailabilityIssue[] = []
+
 interface CartAvailabilityState {
   readonly hasUnavailableItems: boolean
   readonly isChecking: boolean

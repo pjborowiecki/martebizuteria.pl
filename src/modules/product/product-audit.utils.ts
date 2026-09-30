@@ -35,6 +35,7 @@ const normalizeVariantSnapshots = (product: AdminProductDetail): ProductAuditVar
 
 export const extractProductAuditSnapshot = (product: AdminProductDetail): ProductAuditSnapshot => {
   const variants = normalizeVariantSnapshots(product)
+
   return {
     status: product.status,
     totalStock: variants.reduce((sum, variant) => sum + variant.quantity, 0),
@@ -46,8 +47,10 @@ const variantsChanged = (before: readonly ProductAuditVariantSnapshot[], after: 
   if (before.length !== after.length) {
     return true
   }
+
   return before.some((variant, index) => {
     const next = after[index]
+
     return variant.price !== next?.price || variant.quantity !== next.quantity || variant.sku !== next.sku
   })
 }
@@ -62,15 +65,18 @@ export const buildProductAuditChange = (
   if (before === undefined) {
     return {}
   }
+
   const baseChange = buildAuditChangeMetadata(before, after, ["status", "totalStock"])
   const hasVariantChange = variantsChanged(before.variants, after.variants)
   if (baseChange === undefined && !hasVariantChange) {
     return {}
   }
+
   const changed = [...(baseChange?.changed ?? [])]
   if (hasVariantChange) {
     changed.push("variants")
   }
+
   const metadata: AuditChangeMetadata<ProductAuditSnapshot, ProductAuditSnapshot> = {
     changed,
     new: {
@@ -90,8 +96,10 @@ export const buildProductAuditChange = (
         : {}),
     },
   }
+
   const detailParts = formatAuditDetailFromChanges(PRODUCT_AUDIT_FIELD_LABELS, metadata)
   const variantDetail = hasVariantChange ? "Variants updated" : undefined
+
   return {
     detail: [detailParts, variantDetail].filter((part) => part !== undefined && part !== "").join("; ") || undefined,
     metadata: toAuditMetadataRecord(metadata),

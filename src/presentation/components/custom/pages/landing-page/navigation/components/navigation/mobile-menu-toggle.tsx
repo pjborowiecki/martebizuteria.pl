@@ -1,11 +1,12 @@
 import { type JSX, useCallback } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { useNavigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider"
 import { NAVIGATION_MENU_ID } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"
+
 const MenuMark = (): JSX.Element => (
   <span className="flex flex-col items-center justify-center gap-[5px]" aria-hidden>
     <span className="h-px w-[22px] bg-current" />
@@ -23,6 +24,7 @@ export const MobileMenuToggle = (): JSX.Element => {
   const handleOpenMenu = useCallback(() => {
     setMenuOpen(true)
   }, [setMenuOpen])
+
   return (
     <Button
       variant="ghost"

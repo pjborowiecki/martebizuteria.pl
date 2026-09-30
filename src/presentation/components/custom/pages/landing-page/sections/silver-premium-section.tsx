@@ -1,6 +1,6 @@
 import { type JSX, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { getAssetURL } from "~/src/lib/url"
 
@@ -11,9 +11,11 @@ import { LocalizedLink } from "~/src/presentation/components/custom/localized-li
 import { SILVER_925_COLLECTION_HANDLE } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"
 
 import { ROUTES } from "~/src/routes"
+
 export const SilverPremiumSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.silverPremiumSection")
   const silverCollectionParams = useMemo(() => ({ handle: SILVER_925_COLLECTION_HANDLE }), [])
+
   return (
     <section id="srebro" className="bg-primary text-primary-foreground">
       <div className="mx-auto grid max-w-400 gap-12 px-6 py-20 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-12 lg:py-32">
@@ -76,4 +78,5 @@ export const SilverPremiumSection = (): JSX.Element => {
     </section>
   )
 }
+
 const ASPECT_RATIO_TALL = 0.9

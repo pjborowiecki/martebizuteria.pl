@@ -2,7 +2,7 @@ import { type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
 import { type RowData, type Table } from "@tanstack/react-table"
 import { ListFilter } from "lucide-react"
-import { useFormatter } from "use-intl"
+import { useFormatter } from "use-intl/react"
 
 import {
   DATE_COLUMN_FILTER_OPERATOR,
@@ -11,13 +11,16 @@ import {
   type DateColumnFilterValue,
   isDateColumnFilterOperator,
   isDateColumnFilterValue,
-} from "~/src/lib/admin-column-filters"
-import { formatDateFilterTriggerLabel, isDateFilterRangeValid } from "~/src/lib/admin-date-filter"
-import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToStartMs } from "~/src/lib/iso-date"
+} from "~/src/modules/_core/utils/column-filters"
+import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"
 
+import {
+  formatDateFilterTriggerLabel,
+  isDateFilterRangeValid,
+} from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { adminColumnFilterTriggerClass } from "~/src/presentation/components/custom/pages/admin/lib/admin-column-filter-trigger"
 import {
@@ -25,16 +28,19 @@ import {
   type AdminDateFilterFormLabels,
   type DateFilterDraft,
 } from "~/src/presentation/components/custom/pages/admin/lib/admin-date-filter-form"
+
 const emptyDraft = (): DateFilterDraft => ({
   date: "",
   endDate: "",
   operator: DEFAULT_OPERATOR,
   startDate: "",
 })
+
 const toDraft = (filter: DateColumnFilterValue | undefined): DateFilterDraft => {
   if (filter === undefined) {
     return emptyDraft()
   }
+
   if (filter.operator === DATE_COLUMN_FILTER_OPERATOR.BETWEEN) {
     return {
       date: "",
@@ -43,6 +49,7 @@ const toDraft = (filter: DateColumnFilterValue | undefined): DateFilterDraft => 
       startDate: filter.startDate ?? "",
     }
   }
+
   return {
     date: filter.date ?? "",
     endDate: "",
@@ -50,12 +57,15 @@ const toDraft = (filter: DateColumnFilterValue | undefined): DateFilterDraft => 
     startDate: "",
   }
 }
+
 const isDraftValid = (draft: DateFilterDraft): boolean => {
   if (draft.operator === DATE_COLUMN_FILTER_OPERATOR.BETWEEN) {
     return isDateFilterRangeValid(draft.startDate, draft.endDate)
   }
+
   return isIsoDateString(draft.date)
 }
+
 const toFilterValue = (draft: DateFilterDraft): DateColumnFilterValue => {
   if (draft.operator === DATE_COLUMN_FILTER_OPERATOR.BETWEEN) {
     return {
@@ -64,6 +74,7 @@ const toFilterValue = (draft: DateFilterDraft): DateColumnFilterValue => {
       startDate: draft.startDate,
     }
   }
+
   return {
     date: draft.date,
     operator: draft.operator,
@@ -89,6 +100,7 @@ export const AdminDateColumnFilter = <TData extends RowData>({
       setDraft(toDraft(activeFilter))
     }
   }, [activeFilter, open])
+
   const operatorOptions = useMemo(
     () =>
       DATE_COLUMN_FILTER_OPERATORS.map((operator) => ({
@@ -97,6 +109,7 @@ export const AdminDateColumnFilter = <TData extends RowData>({
       })),
     [labels],
   )
+
   const formatIsoDateLabel = useCallback(
     (isoDate: string): string =>
       format.dateTime(new Date(parseIsoDateToStartMs(isoDate)), {
@@ -104,11 +117,13 @@ export const AdminDateColumnFilter = <TData extends RowData>({
       }),
     [format],
   )
+
   const triggerLabel = formatDateFilterTriggerLabel({
     activeFilter,
     formatIsoDateLabel,
     idleLabel: label,
   })
+
   const handleOperatorChange = useCallback((value: string | null) => {
     if (value === null || !isDateColumnFilterOperator(value)) {
       return
@@ -118,24 +133,28 @@ export const AdminDateColumnFilter = <TData extends RowData>({
       operator: value,
     }))
   }, [])
+
   const handleDateChange = useCallback((isoDate: string) => {
     setDraft((current) => ({
       ...current,
       date: isoDate,
     }))
   }, [])
+
   const handleStartDateChange = useCallback((isoDate: string) => {
     setDraft((current) => ({
       ...current,
       startDate: isoDate,
     }))
   }, [])
+
   const handleEndDateChange = useCallback((isoDate: string) => {
     setDraft((current) => ({
       ...current,
       endDate: isoDate,
     }))
   }, [])
+
   const handleApply = useCallback(() => {
     if (!isDraftValid(draft)) {
       return
@@ -144,12 +163,14 @@ export const AdminDateColumnFilter = <TData extends RowData>({
     table.setPageIndex(0)
     setOpen(false)
   }, [column, draft, table])
+
   const handleClear = useCallback(() => {
     column?.setFilterValue(undefined)
     table.setPageIndex(0)
     setDraft(emptyDraft())
     setOpen(false)
   }, [column, table])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger aria-label={ariaLabel} className={adminColumnFilterTriggerClass(activeFilter !== undefined)}>
@@ -186,7 +207,9 @@ export const AdminDateColumnFilter = <TData extends RowData>({
     </Popover>
   )
 }
+
 const DEFAULT_OPERATOR = DATE_COLUMN_FILTER_OPERATOR.ON
+
 export interface AdminDateColumnFilterLabels extends AdminDateFilterFormLabels {
   readonly apply: string
   readonly clear: string
@@ -195,6 +218,7 @@ export interface AdminDateColumnFilterLabels extends AdminDateFilterFormLabels {
   readonly operatorBetween: string
   readonly operatorOn: string
 }
+
 interface AdminDateColumnFilterProps<TData extends RowData> {
   readonly ariaLabel: string
   readonly columnId: string
@@ -202,6 +226,7 @@ interface AdminDateColumnFilterProps<TData extends RowData> {
   readonly labels: AdminDateColumnFilterLabels
   readonly table: Table<DataGridFeatures, TData>
 }
+
 const DATE_FILTER_OPERATOR_LABEL_KEY: Record<DateColumnFilterOperator, keyof AdminDateColumnFilterLabels> = {
   [DATE_COLUMN_FILTER_OPERATOR.AFTER]: "operatorAfter",
   [DATE_COLUMN_FILTER_OPERATOR.BEFORE]: "operatorBefore",

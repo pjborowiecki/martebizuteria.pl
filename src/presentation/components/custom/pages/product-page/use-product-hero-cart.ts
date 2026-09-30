@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
 
+import { useCartStore } from "~/src/modules/cart/cart.store"
+import { trackCartItemAdded } from "~/src/modules/customer-activity/customer-activity.tracking"
 import { getVariantQuantityAvailable, isVariantPurchasable } from "~/src/modules/inventory/inventory.availability.utils"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
-import { type StorefrontProduct, type StorefrontProductVariant } from "~/src/modules/product/product.types"
+import { type Product } from "~/src/modules/product/product.types"
 
-import { trackCartItemAdded } from "~/src/lib/customer-activity/customer-activity.tracking"
 import { getProductImageUrl } from "~/src/lib/image"
 
-import { useCartStore } from "~/src/stores/cart.store"
 export const useProductHeroCart = ({ heroImage, price, product, selectedVariant, variantPrice }: UseProductHeroCartInput) => {
   const [quantity, setQuantity] = useState(MIN_QUANTITY)
   const [isAdded, setIsAdded] = useState(false)
@@ -23,10 +23,12 @@ export const useProductHeroCart = ({ heroImage, price, product, selectedVariant,
   useEffect(() => {
     setQuantity(MIN_QUANTITY)
   }, [selectedVariant?.id])
+
   const handleAddToCart = useCallback(() => {
     if (selectedVariant === undefined || variantPrice === undefined || !isVariantPurchasable(selectedVariant, quantity)) {
       return
     }
+
     const variantTitle = selectedVariant.title === DEFAULT_VARIANT_TITLE ? "" : selectedVariant.title
     const addQuantity = Math.max(MIN_QUANTITY, quantity)
     addItem({
@@ -52,13 +54,16 @@ export const useProductHeroCart = ({ heroImage, price, product, selectedVariant,
     if (!isAdded) {
       return
     }
+
     const timer = setTimeout(() => {
       setIsAdded(false)
     }, RESET_ADDED_TIMEOUT)
+
     return () => {
       clearTimeout(timer)
     }
   }, [isAdded])
+
   return {
     availableQuantity,
     canPurchase,
@@ -69,12 +74,15 @@ export const useProductHeroCart = ({ heroImage, price, product, selectedVariant,
     setQuantity,
   }
 }
+
 const MIN_QUANTITY = 1
+
 const RESET_ADDED_TIMEOUT = 2000
+
 interface UseProductHeroCartInput {
   readonly heroImage: string | null
   readonly price: string
-  readonly product: StorefrontProduct
-  readonly selectedVariant: StorefrontProductVariant | undefined
+  readonly product: Product["storefront"]
+  readonly selectedVariant: Product["storefrontVariant"] | undefined
   readonly variantPrice: number | undefined
 }

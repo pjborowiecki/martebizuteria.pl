@@ -2,6 +2,7 @@ import { type ComponentProps, type JSX } from "react"
 
 import { cn } from "cn"
 import { Drawer as DrawerPrimitive } from "vaul"
+
 const Drawer = ({ ...props }: Readonly<ComponentProps<typeof DrawerPrimitive.Root>>): JSX.Element => (
   <DrawerPrimitive.Root data-slot="drawer" {...props} />
 )

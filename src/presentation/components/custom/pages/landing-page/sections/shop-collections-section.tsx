@@ -1,8 +1,8 @@
 import { type JSX, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { LANDING_SHOP_COLLECTIONS } from "~/src/data/landing-data"
+import { LANDING_SHOP_COLLECTIONS } from "~/src/data/landing"
 
 import { AspectRatio } from "~/src/presentation/components/shadcn/aspect-ratio"
 
@@ -10,9 +10,11 @@ import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 const CollectionCard = ({ collection }: Readonly<CollectionCardProps>): JSX.Element => {
   const t = useTranslations("pages.landing.shopCollectionsSection")
   const params = useMemo(() => ({ handle: collection.slug }), [collection.slug])
+
   return (
     <LocalizedLink className="reveal group block" params={params} to={ROUTES.COLLECTION}>
       <AspectRatio className="parallax-wrap overflow-hidden bg-secondary" ratio={ASPECT_RATIO_PORTRAIT}>
@@ -36,8 +38,10 @@ const CollectionCard = ({ collection }: Readonly<CollectionCardProps>): JSX.Elem
     </LocalizedLink>
   )
 }
+
 export const ShopCollectionsSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.shopCollectionsSection")
+
   return (
     <section className="mx-auto max-w-400 space-y-10 px-6 pb-20 lg:px-12 lg:pb-28">
       <div className="reveal flex flex-wrap items-end justify-between gap-4">
@@ -62,8 +66,11 @@ export const ShopCollectionsSection = (): JSX.Element => {
     </section>
   )
 }
+
 const ASPECT_RATIO_PORTRAIT = 0.8
+
 type CollectionItem = (typeof LANDING_SHOP_COLLECTIONS)[number]
+
 interface CollectionCardProps {
   collection: CollectionItem
 }

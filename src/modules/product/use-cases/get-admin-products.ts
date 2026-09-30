@@ -1,24 +1,24 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { getAdminProductsCatalogList, loadAdminListAggregates } from "~/src/modules/product/product.admin-list.server"
 import { PRODUCT_QUERY_KEYS, PRODUCT_QUERY_STALE_MS } from "~/src/modules/product/product.constants"
 import { toAdminProductListItem } from "~/src/modules/product/product.utils"
 
-export const fetchAdminProductsFn = createServerFn({ method: "GET" }).handler(async () => {
-  await assertAdmin()
+export const getAdminProducts = createServerFn({ method: "GET" })
+  .middleware([authorized({ product: ["read"] })])
+  .handler(async () => {
+    const products = await getAdminProductsCatalogList()
+    const aggregates = await loadAdminListAggregates(products)
 
-  const products = await getAdminProductsCatalogList()
-  const aggregates = await loadAdminListAggregates(products)
+    return products.map((row) => toAdminProductListItem(row, aggregates.statsByProductId, aggregates.skuSummaryByProductId))
+  })
 
-  return products.map((row) => toAdminProductListItem(row, aggregates.statsByProductId, aggregates.skuSummaryByProductId))
-})
-
-export const adminProductsQueryOptions = () =>
+export const getAdminProductsQuery = () =>
   queryOptions({
-    queryFn: () => fetchAdminProductsFn(),
+    queryFn: () => getAdminProducts(),
     queryKey: PRODUCT_QUERY_KEYS.ADMIN.ALL,
     refetchOnMount: false,
     refetchOnWindowFocus: false,

@@ -8,7 +8,6 @@ import {
 } from "~/src/presentation/components/custom/datagrid/lib/data-grid-preferences"
 
 const PERSIST_DEBOUNCE_MS = 300
-const INITIAL_PERSIST_TIMER: ReturnType<typeof globalThis.setTimeout> | undefined = void 0
 
 interface UseDataGridPersistEffectsOptions {
   readonly canonicalOrder: readonly string[]
@@ -22,7 +21,6 @@ interface UseDataGridPersistEffectsOptions {
   readonly snapshotRef: RefObject<DataGridPreferencesSnapshot>
 }
 
-/** Debounced localStorage persistence and flush on page hide. */
 export const useDataGridPersistEffects = ({
   canonicalOrder,
   columnMaxSizesRef,
@@ -34,20 +32,17 @@ export const useDataGridPersistEffects = ({
   snapshot,
   snapshotRef,
 }: UseDataGridPersistEffectsOptions): RefObject<ReturnType<typeof globalThis.setTimeout> | undefined> => {
-  const persistTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(INITIAL_PERSIST_TIMER)
+  const persistTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     if (skipPersistRef.current) {
       skipPersistRef.current = false
+
       return
     }
 
-    if (persistTimerRef.current !== undefined) {
-      globalThis.clearTimeout(persistTimerRef.current)
-    }
-
     persistTimerRef.current = globalThis.setTimeout(() => {
-      persistTimerRef.current = INITIAL_PERSIST_TIMER
+      persistTimerRef.current = undefined
       persistDataGridPreferences({
         canonicalOrder,
         columnMaxSizes: columnMaxSizesRef.current,
@@ -62,7 +57,7 @@ export const useDataGridPersistEffects = ({
     return () => {
       if (persistTimerRef.current !== undefined) {
         globalThis.clearTimeout(persistTimerRef.current)
-        persistTimerRef.current = INITIAL_PERSIST_TIMER
+        persistTimerRef.current = undefined
       }
     }
   }, [canonicalOrder, columnMaxSizesRef, columnPinning, defaultColumnVisibility, lockedColumnIds, persistenceKey, skipPersistRef, snapshot])

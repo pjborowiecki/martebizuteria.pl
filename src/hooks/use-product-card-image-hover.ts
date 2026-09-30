@@ -1,6 +1,7 @@
 import { type RefObject, useRef } from "react"
 
-import { gsap, useGSAP } from "~/src/lib/gsap"
+import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+
 export const useProductCardImageHover = (imageLayerRef: RefObject<HTMLDivElement | null>): ProductCardImageHoverHandlers => {
   const canAnimateRef = useRef(true)
   const { contextSafe } = useGSAP(
@@ -9,6 +10,7 @@ export const useProductCardImageHover = (imageLayerRef: RefObject<HTMLDivElement
       if (layer === null) {
         return
       }
+
       const mm = gsap.matchMedia()
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         canAnimateRef.current = true
@@ -24,6 +26,7 @@ export const useProductCardImageHover = (imageLayerRef: RefObject<HTMLDivElement
           transformOrigin: TRANSFORM_ORIGIN,
         })
       })
+
       return () => {
         mm.revert()
       }
@@ -33,6 +36,7 @@ export const useProductCardImageHover = (imageLayerRef: RefObject<HTMLDivElement
       scope: imageLayerRef,
     },
   )
+
   const handleMouseEnter = contextSafe(() => {
     const layer = imageLayerRef.current
     if (layer === null || !canAnimateRef.current) {
@@ -45,15 +49,18 @@ export const useProductCardImageHover = (imageLayerRef: RefObject<HTMLDivElement
       scale: HOVER_SCALE,
     })
   })
+
   const handleMouseLeave = contextSafe(() => {
     const layer = imageLayerRef.current
     if (layer === null) {
       return
     }
+
     if (!canAnimateRef.current) {
       gsap.set(layer, {
         scale: 1,
       })
+
       return
     }
     gsap.to(layer, {
@@ -63,16 +70,23 @@ export const useProductCardImageHover = (imageLayerRef: RefObject<HTMLDivElement
       scale: 1,
     })
   })
+
   return {
     handleMouseEnter,
     handleMouseLeave,
   }
 }
+
 const HOVER_SCALE = 1.03
+
 const HOVER_IN_DURATION = 0.55
+
 const HOVER_OUT_DURATION = 0.7
+
 const HOVER_EASE = "power3.out"
+
 const TRANSFORM_ORIGIN = "center center"
+
 interface ProductCardImageHoverHandlers {
   readonly handleMouseEnter: () => void
   readonly handleMouseLeave: () => void

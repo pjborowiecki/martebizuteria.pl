@@ -1,7 +1,5 @@
 import { STORE_CURRENCY_CODE, type SupportedCurrencyCode } from "~/src/modules/_core/constants/currency"
 
-import { getMinPriceMinorUnits } from "~/src/lib/currency"
-
 export const STRIPE_API_VERSION = "2026-08-26.dahlia" as const
 
 export const CHECKOUT_PAYMENT_METHOD_ORDER = ["card", "blik", "p24"] as const
@@ -11,9 +9,6 @@ const STRIPE_CURRENCY_BY_CODE = {
 } as const satisfies Record<SupportedCurrencyCode, string>
 
 export const STRIPE_CURRENCY = STRIPE_CURRENCY_BY_CODE[STORE_CURRENCY_CODE]
-
-// Stripe minimum in store-currency minor units.
-export const STRIPE_MIN_PRICE_CENTS = getMinPriceMinorUnits(STORE_CURRENCY_CODE)
 
 export const STRIPE_WEBHOOK_EVENTS = {
   CHARGE_DISPUTE_CLOSED: "charge.dispute.closed",

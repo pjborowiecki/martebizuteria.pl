@@ -1,10 +1,11 @@
-import { type ChangeEvent, type JSX, useCallback } from "react"
+import { type ChangeEvent, type ChangeEventHandler, type JSX, useCallback } from "react"
 
 import { MapPin } from "lucide-react"
-import { useController } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { type ControllerRenderProps, useController } from "react-hook-form"
+import { useTranslations } from "use-intl/react"
 
 import { ADMIN_CUSTOMER_FORM_FIELD_MAX } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
 
 import { Field } from "~/src/presentation/components/shadcn/field"
 import { InputGroup, InputGroupInput } from "~/src/presentation/components/shadcn/input-group"
@@ -13,6 +14,63 @@ import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/page
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
 import { useCustomerForm } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-provider"
 import { CustomerFormSection } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-section"
+
+const PostalFields = ({
+  countryCodeField,
+  countryCodeValue,
+  isPending,
+  onCountryCodeChange,
+  postalCodeField,
+  postalCodeValue,
+}: Readonly<{
+  countryCodeField: ControllerRenderProps<User["adminCustomerFormValues"], "address.countryCode">
+  countryCodeValue: string
+  isPending: boolean
+  onCountryCodeChange: ChangeEventHandler<HTMLInputElement>
+  postalCodeField: ControllerRenderProps<User["adminCustomerFormValues"], "address.postalCode">
+  postalCodeValue: string
+}>): JSX.Element => {
+  const t = useTranslations("pages.admin.customerDetail.form")
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field className="gap-2">
+        <CatalogFormFieldLabel
+          counter={`${postalCodeValue.length}/${ADMIN_CUSTOMER_FORM_FIELD_MAX.POSTAL_CODE}`}
+          hint={t("hints.postalCode")}
+          label={t("postalCode")}
+        />
+        <InputGroup variant="sheet">
+          <InputGroupInput
+            {...postalCodeField}
+            placeholder={t("postalCodePlaceholder")}
+            disabled={isPending}
+            maxLength={ADMIN_CUSTOMER_FORM_FIELD_MAX.POSTAL_CODE}
+            value={postalCodeValue}
+          />
+        </InputGroup>
+      </Field>
+      <Field className="gap-2">
+        <CatalogFormFieldLabel
+          counter={`${countryCodeValue.length}/${ADMIN_CUSTOMER_FORM_FIELD_MAX.COUNTRY_CODE}`}
+          hint={t("hints.countryCode")}
+          label={t("countryCode")}
+        />
+        <InputGroup variant="sheet">
+          <InputGroupInput
+            {...countryCodeField}
+            placeholder={t("countryCodePlaceholder")}
+            disabled={isPending}
+            maxLength={COUNTRY_CODE_LENGTH}
+            value={countryCodeValue}
+            onChange={onCountryCodeChange}
+          />
+        </InputGroup>
+      </Field>
+    </div>
+  )
+}
+
 export const AddressSection = (): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail.form")
   const { control, isPending } = useCustomerForm()
@@ -20,26 +78,32 @@ export const AddressSection = (): JSX.Element => {
     control,
     name: "address.address1",
   })
+
   const { field: address2Field } = useController({
     control,
     name: "address.address2",
   })
+
   const { field: cityField } = useController({
     control,
     name: "address.city",
   })
+
   const { field: provinceField } = useController({
     control,
     name: "address.province",
   })
+
   const { field: postalCodeField } = useController({
     control,
     name: "address.postalCode",
   })
+
   const { field: countryCodeField } = useController({
     control,
     name: "address.countryCode",
   })
+
   const address1Value = catalogFieldStringValue(address1Field.value)
   const address2Value = catalogFieldStringValue(address2Field.value)
   const cityValue = catalogFieldStringValue(cityField.value)
@@ -52,6 +116,7 @@ export const AddressSection = (): JSX.Element => {
     },
     [countryCodeField],
   )
+
   return (
     <CustomerFormSection description={t("sections.addressDescription")} icon={MapPin} title={t("sections.address")}>
       <Field className="gap-2">
@@ -120,42 +185,16 @@ export const AddressSection = (): JSX.Element => {
           </InputGroup>
         </Field>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field className="gap-2">
-          <CatalogFormFieldLabel
-            counter={`${postalCodeValue.length}/${ADMIN_CUSTOMER_FORM_FIELD_MAX.POSTAL_CODE}`}
-            hint={t("hints.postalCode")}
-            label={t("postalCode")}
-          />
-          <InputGroup variant="sheet">
-            <InputGroupInput
-              {...postalCodeField}
-              placeholder={t("postalCodePlaceholder")}
-              disabled={isPending}
-              maxLength={ADMIN_CUSTOMER_FORM_FIELD_MAX.POSTAL_CODE}
-              value={postalCodeValue}
-            />
-          </InputGroup>
-        </Field>
-        <Field className="gap-2">
-          <CatalogFormFieldLabel
-            counter={`${countryCodeValue.length}/${ADMIN_CUSTOMER_FORM_FIELD_MAX.COUNTRY_CODE}`}
-            hint={t("hints.countryCode")}
-            label={t("countryCode")}
-          />
-          <InputGroup variant="sheet">
-            <InputGroupInput
-              {...countryCodeField}
-              placeholder={t("countryCodePlaceholder")}
-              disabled={isPending}
-              maxLength={COUNTRY_CODE_LENGTH}
-              value={countryCodeValue}
-              onChange={handleCountryCodeChange}
-            />
-          </InputGroup>
-        </Field>
-      </div>
+      <PostalFields
+        countryCodeField={countryCodeField}
+        countryCodeValue={countryCodeValue}
+        isPending={isPending}
+        onCountryCodeChange={handleCountryCodeChange}
+        postalCodeField={postalCodeField}
+        postalCodeValue={postalCodeValue}
+      />
     </CustomerFormSection>
   )
 }
+
 const COUNTRY_CODE_LENGTH = ADMIN_CUSTOMER_FORM_FIELD_MAX.COUNTRY_CODE

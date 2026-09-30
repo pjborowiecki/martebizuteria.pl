@@ -1,8 +1,8 @@
 import { createSchemaFactory } from "drizzle-zod"
-import { z } from "zod/v4"
+import zod from "zod/v4"
 
 import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
-import { LOCALES } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
   PRODUCT_ATTRIBUTE_ALLOWED_VALUE_KEY_PATTERN,
@@ -15,17 +15,17 @@ import {
 import { productAttribute } from "~/src/modules/product-attribute/product-attribute.schema"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: z,
+  zodInstance: zod,
 })
 
 const productAttributeLocaleMapShape = Object.fromEntries(
-  LOCALES.map((locale) => [locale, z.string().trim().max(PRODUCT_ATTRIBUTE_COLUMN_LENGTH.title)]),
+  I18N.SUPPORTED_LOCALES.map((locale) => [locale, zod.string().trim().max(PRODUCT_ATTRIBUTE_COLUMN_LENGTH.title)]),
 )
 
-const productAttributeLocaleMapSchema = z.object(productAttributeLocaleMapShape)
+const productAttributeLocaleMapSchema = zod.object(productAttributeLocaleMapShape)
 
-export const productAttributeLocaleMapRequiredSchema = productAttributeLocaleMapSchema.superRefine((map, context) => {
-  for (const locale of LOCALES) {
+const productAttributeLocaleMapRequiredSchema = productAttributeLocaleMapSchema.superRefine((map, context) => {
+  for (const locale of I18N.SUPPORTED_LOCALES) {
     if (map[locale].trim() === "") {
       context.addIssue({
         code: "custom",
@@ -36,19 +36,19 @@ export const productAttributeLocaleMapRequiredSchema = productAttributeLocaleMap
   }
 })
 
-export const productAttributeAllowedValueSchema = z.object({
+const productAttributeAllowedValueSchema = zod.object({
   labels: productAttributeLocaleMapRequiredSchema,
-  value: z.string().trim().min(1).max(PRODUCT_ATTRIBUTE_COLUMN_LENGTH.allowedValueKey).regex(PRODUCT_ATTRIBUTE_ALLOWED_VALUE_KEY_PATTERN),
+  value: zod.string().trim().min(1).max(PRODUCT_ATTRIBUTE_COLUMN_LENGTH.allowedValueKey).regex(PRODUCT_ATTRIBUTE_ALLOWED_VALUE_KEY_PATTERN),
 })
 
 const productAttributeSelectSchema = createSelectSchema(productAttribute)
 
-const productAttributeIdSchema = z.string().trim().min(1).max(UUID_STRING_LENGTH)
+const productAttributeIdSchema = zod.string().trim().min(1).max(UUID_STRING_LENGTH)
 
-const productAttributeCreateInputSchema = z
+const productAttributeCreateInputSchema = zod
   .object({
-    allowedValues: z.array(productAttributeAllowedValueSchema),
-    handle: z
+    allowedValues: zod.array(productAttributeAllowedValueSchema),
+    handle: zod
       .string()
       .trim()
       .min(1, {
@@ -58,13 +58,14 @@ const productAttributeCreateInputSchema = z
         message: PRODUCT_ATTRIBUTE_FORM_VALIDATION_KEYS.handleInvalid,
       }),
     titles: productAttributeLocaleMapRequiredSchema,
-    type: z.enum(PRODUCT_ATTRIBUTE_TYPES),
-    unit: z.string().trim().max(PRODUCT_ATTRIBUTE_COLUMN_LENGTH.unit),
+    type: zod.enum(PRODUCT_ATTRIBUTE_TYPES),
+    unit: zod.string().trim().max(PRODUCT_ATTRIBUTE_COLUMN_LENGTH.unit),
   })
   .superRefine((data, context) => {
     if (!productAttributeTypeUsesAllowedValues(data.type)) {
       return
     }
+
     if (data.allowedValues.length === 0) {
       context.addIssue({
         code: "custom",
@@ -74,22 +75,33 @@ const productAttributeCreateInputSchema = z
     }
   })
 
-export const productAttributeFormSchema = () => productAttributeCreateInputSchema
+const productAttributeRawAllowedValueSchema = zod.object({
+  labels: zod.record(zod.string(), zod.string()),
+  value: zod.string(),
+})
+
+const productAttributeRawAllowedValuesSchema = zod.array(productAttributeRawAllowedValueSchema)
+
+const productAttributeRawLocaleMapSchema = zod.record(zod.string(), zod.unknown())
 
 export const productAttributeZodSchemas = {
   adminListItem: productAttributeSelectSchema.extend({
-    productCount: z.number(),
+    productCount: zod.number(),
   }),
+  allowedValue: productAttributeAllowedValueSchema,
   createInput: productAttributeCreateInputSchema,
-  deleteInput: z.array(productAttributeIdSchema).min(1),
+  deleteInput: zod.array(productAttributeIdSchema).min(1),
   insert: createInsertSchema(productAttribute),
-  reorderInput: z.array(productAttributeIdSchema).min(1),
+  localeMapRequired: productAttributeLocaleMapRequiredSchema,
+  rawAllowedValues: productAttributeRawAllowedValuesSchema,
+  rawLocaleMap: productAttributeRawLocaleMapSchema,
+  reorderInput: zod.array(productAttributeIdSchema).min(1),
   select: productAttributeSelectSchema,
-  stats: z.object({
-    inUse: z.number(),
-    total: z.number(),
-    unused: z.number(),
-    withChoices: z.number(),
+  stats: zod.object({
+    inUse: zod.number(),
+    total: zod.number(),
+    unused: zod.number(),
+    withChoices: zod.number(),
   }),
   update: createUpdateSchema(productAttribute),
   updateInput: productAttributeCreateInputSchema.extend({

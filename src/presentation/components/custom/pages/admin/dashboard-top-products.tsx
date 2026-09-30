@@ -1,18 +1,20 @@
 import { type JSX } from "react"
 
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
-import { formatPrice } from "~/src/lib/currency"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
 
 import { Image } from "~/src/presentation/components/custom/image"
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
+
 export const DashboardTopProducts = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
   const locale = useLocale()
   const { data: snapshot } = useAdminDashboardSnapshot()
+
   return (
     <Card className="border-border/40 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent shadow-none">
       <CardHeader>
@@ -56,4 +58,5 @@ export const DashboardTopProducts = (): JSX.Element => {
     </Card>
   )
 }
+
 const PRODUCT_INITIALS_LENGTH = 2

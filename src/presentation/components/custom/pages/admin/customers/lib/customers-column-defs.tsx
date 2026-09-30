@@ -1,6 +1,8 @@
 import { type Row, createColumnHelper } from "@tanstack/react-table"
-import { type useFormatter, type useTranslations } from "use-intl"
+import { type useFormatter, type useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 import {
   ADMIN_CUSTOMER_TABLE_A11Y_KEYS,
   ADMIN_CUSTOMER_TABLE_COLUMN_ID,
@@ -10,16 +12,12 @@ import {
 import { type User } from "~/src/modules/user/user.types"
 import { formatAdminCustomerLocation } from "~/src/modules/user/user.utils"
 
-import { matchesDateColumnFilter } from "~/src/lib/admin-date-filter"
-import { formatPrice } from "~/src/lib/currency"
-
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
+import { matchesDateColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
+import { matchesNumericColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-numeric-filter"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
-import {
-  CATALOG_RECORD_ID_COLUMN_META,
-  catalogRecordIdColumnWidth,
-} from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
+import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
 import { CatalogTruncatedTextCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 import { CustomerBannedBadge } from "~/src/presentation/components/custom/pages/admin/customers/components/customer-banned-badge"
 import { CustomerEmailVerifiedBadge } from "~/src/presentation/components/custom/pages/admin/customers/components/customer-email-verified-badge"
@@ -30,23 +28,24 @@ import {
   CustomerStripeCustomerIdCell,
 } from "~/src/presentation/components/custom/pages/admin/customers/components/customer-table-cells"
 import { CustomersRowActions } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-row-actions"
-import {
-  CUSTOMER_STRIPE_CUSTOMER_ID_COLUMN_META,
-  customerStripeCustomerIdColumnWidth,
-} from "~/src/presentation/components/custom/pages/admin/customers/lib/customer-stripe-id-column"
-import { matchesNumericColumnFilter } from "~/src/presentation/components/custom/pages/admin/customers/lib/customers-numeric-filter"
+import { CUSTOMER_STRIPE_CUSTOMER_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/customers/lib/customer-stripe-id-column"
+
 const matchesBooleanColumnFilter = (row: Row<DataGridFeatures, AdminCustomerRow>, columnId: string, filterValue: unknown): boolean => {
   if (typeof filterValue !== "boolean") {
     return true
   }
+
   return row.getValue(columnId) === filterValue
 }
+
 const matchesBannedColumnFilter = (row: Row<DataGridFeatures, AdminCustomerRow>, columnId: string, filterValue: unknown): boolean => {
   if (typeof filterValue !== "boolean") {
     return true
   }
+
   return (row.getValue(columnId) === true) === filterValue
 }
+
 const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInput, "t" | "tAdmin">) =>
   columnHelper.columns([
     selectionColumn(columnHelper, {
@@ -68,14 +67,14 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
       header: t("columns.id"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.recordId,
       meta: CATALOG_RECORD_ID_COLUMN_META,
-      ...catalogRecordIdColumnWidth(),
+      ...fixedDataGridColumnWidth(ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.recordId),
     }),
     columnHelper.accessor((row) => row.stripeCustomerId ?? "", {
       cell: ({ row }) => <CustomerStripeCustomerIdCell stripeCustomerId={row.original.stripeCustomerId} />,
       header: t("columns.stripeCustomerId"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.stripeCustomerId,
       meta: CUSTOMER_STRIPE_CUSTOMER_ID_COLUMN_META,
-      ...customerStripeCustomerIdColumnWidth(),
+      ...fixedDataGridColumnWidth(ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.stripeCustomerId),
     }),
     columnHelper.accessor("role", {
       cell: ({ getValue }) => <CustomerRoleBadge role={getValue()} />,
@@ -140,7 +139,12 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
                   province: row.original.province,
                 },
           )
-          return location === undefined ? <span className={EMPTY_DASH_CLASS}>—</span> : <CatalogTruncatedTextCell text={location} />
+
+          return location === undefined ? (
+            <span className={EMPTY_DASH_CLASS}>{EMPTY_VALUE}</span>
+          ) : (
+            <CatalogTruncatedTextCell text={location} />
+          )
         },
         header: t("columns.location"),
         id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.location,
@@ -202,8 +206,9 @@ const buildCustomerMetricsColumns = ({ format, locale, t }: Pick<BuildCustomerCo
       cell: ({ getValue }) => {
         const value = getValue()
         if (value === undefined) {
-          return <span className={EMPTY_DASH_CLASS}>—</span>
+          return <span className={EMPTY_DASH_CLASS}>{EMPTY_VALUE}</span>
         }
+
         return (
           <span className="text-muted-foreground">
             {format.dateTime(new Date(value), {
@@ -259,9 +264,13 @@ export const buildCustomerColumns = (input: BuildCustomerColumnsInput) =>
   columnHelper.columns([...buildCustomerProfileColumns(input), ...buildCustomerMetricsColumns(input)])
 
 const columnHelper = createColumnHelper<DataGridFeatures, User["adminCustomerListItem"]>()
+
 const DATE_COLUMN_MAX_SIZE = 320
+
 const EMPTY_DASH_CLASS = "text-sm text-muted-foreground/50"
+
 type AdminCustomerRow = User["adminCustomerListItem"]
+
 interface BuildCustomerColumnsInput {
   readonly format: ReturnType<typeof useFormatter>
   readonly locale: string

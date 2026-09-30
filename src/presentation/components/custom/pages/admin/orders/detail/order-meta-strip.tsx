@@ -1,13 +1,15 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { DEMO_ORDER, DEMO_SUMMARY, ORDER_PAYMENT_STYLES, ORDER_STATUS_STYLES } from "~/src/data/order-detail-data"
+import { DEMO_ORDER, DEMO_SUMMARY, ORDER_PAYMENT_STYLES, ORDER_STATUS_STYLES } from "~/src/data/order-detail"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
+
 export const OrderMetaStrip = (): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">
       <CardContent className="flex flex-wrap items-center gap-x-8 gap-y-3 p-5">

@@ -1,15 +1,14 @@
-import { type SQL, and, asc, desc, eq, inArray, max, ne, notInArray, or, sql } from "drizzle-orm"
+import { type SQL, and, asc, desc, eq, inArray, max, ne, or, sql } from "drizzle-orm"
+import { type SQLiteColumn, type SQLiteTable } from "drizzle-orm/sqlite-core"
 
-import { type DrizzleBatchStatement, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
+import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
+import { type ListPaginationParams, sortRowsByIdOrder } from "~/src/modules/_core/utils/pagination"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
-import { resolvePrimaryCategoryId } from "~/src/modules/category-on-product/category-on-product.utils"
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
-import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema"
-import { productOptionValue } from "~/src/modules/product-option-value/product-option-value.schema"
-import { productOption } from "~/src/modules/product-option/product-option.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 import { buildAdminProductSearchCondition } from "~/src/modules/product/product.admin-list-search.server"
 import { type AdminProductsListSort, adminProductsListSortRequiresVariantStats } from "~/src/modules/product/product.admin-list-sort"
@@ -25,45 +24,16 @@ import {
   type ProductVariantKind,
 } from "~/src/modules/product/product.constants"
 import { product } from "~/src/modules/product/product.schema"
-import { type ProductCatalogReplacePayload, type ProductOrganizationReplacePayload } from "~/src/modules/product/product.utils"
-
-import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/lib/admin-column-filters"
-import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/lib/admin-column-filters.server"
-import { type ListPaginationParams } from "~/src/lib/list-pagination"
+import {
+  productVariantStatsSubquery,
+  publishedInStockWhere,
+  storefrontListVariantColumns,
+  totalStockSubquery,
+} from "~/src/modules/product/product.stock.server"
 
 const RELATED_PRODUCTS_LIMIT = 3
 
 const handlePlaceholder = sql.placeholder("handle")
-
-const storefrontListVariantColumns = {
-  id: true,
-  price: true,
-  productId: true,
-  title: true,
-} as const
-
-const publishedProductHasAvailableStockCondition = (): SQL => sql`(${totalStockSubquery()}) > ${0}`
-
-const publishedInStockWhere = (...extraConditions: (SQL | undefined)[]): SQL => {
-  const conditions = [
-    eq(product.status, PRODUCT_STATUS.PUBLISHED),
-    publishedProductHasAvailableStockCondition(),
-    ...extraConditions,
-  ].filter((condition): condition is SQL => condition !== undefined)
-  return and(...conditions)!
-}
-
-const sortProductsByIdOrder = <
-  TProduct extends {
-    id: string
-  },
->(
-  items: readonly TProduct[],
-  orderedIds: readonly string[],
-): TProduct[] => {
-  const orderById = new Map(orderedIds.map((id, index) => [id, index]))
-  return [...items].toSorted((left, right) => (orderById.get(left.id) ?? 0) - (orderById.get(right.id) ?? 0))
-}
 
 export interface AdminProductsListParams extends ListPaginationParams {
   readonly categoryId?: string | undefined
@@ -112,7 +82,6 @@ export const getProductStatusCountsQuery = db
   .from(product)
   .prepare()
 
-// NOTE: intentionally NOT a prepared statement — variable-length `IN` on D1/SQLite.
 export const getProductsWithInventoryByHandles = (handles: readonly string[]) =>
   db.query.product.findMany({
     where: inArray(product.handle, [...handles]),
@@ -144,7 +113,6 @@ export const getMaxRankQuery = db
   .from(product)
   .prepare()
 
-/** Admin / checkout: any status by handle. */
 export const getProductByHandleQuery = db.query.product
   .findFirst({
     where: eq(product.handle, handlePlaceholder),
@@ -246,7 +214,6 @@ export const getAdminProductDetailByIdQuery = db.query.product
   })
   .prepare()
 
-/** Storefront PDP: published products only. */
 export const getPublishedProductByHandleQuery = db.query.product
   .findFirst({
     where: and(eq(product.handle, handlePlaceholder), eq(product.status, PRODUCT_STATUS.PUBLISHED)),
@@ -302,16 +269,6 @@ export const getPublishedProductByHandleQuery = db.query.product
   })
   .prepare()
 
-// Raw table/column names, not Drizzle column refs.
-// Drizzle refs inside this correlated subquery resolve against the outer `product` alias and produce invalid SQL.
-const totalStockSubquery = () =>
-  sql<number>`(
-    select coalesce(sum("inventory"."quantity_available"), 0)
-    from "product_variant"
-    left join "inventory" on "inventory"."variant_id" = "product_variant"."id"
-    where "product_variant"."product_id" = ${product.id}
-  )`
-
 export const getLowStockPublishedProductCountQuery = db
   .select({
     count: sql<number>`count(*)`,
@@ -319,19 +276,6 @@ export const getLowStockPublishedProductCountQuery = db
   .from(product)
   .where(and(eq(product.status, PRODUCT_STATUS.PUBLISHED), sql`${totalStockSubquery()} between 1 and ${PRODUCT_LOW_STOCK_THRESHOLD}`))
   .prepare()
-
-const productVariantStatsSubquery = () =>
-  db
-    .select({
-      minPrice: sql<number | null>`min(${productVariant.price})`.as("min_price"),
-      productId: productVariant.productId,
-      totalStock: sql<number>`coalesce(sum(${inventory.quantityAvailable}), 0)`.as("total_stock"),
-      variantCount: sql<number>`count(${productVariant.id})`.as("variant_count"),
-    })
-    .from(productVariant)
-    .leftJoin(inventory, eq(inventory.variantId, productVariant.id))
-    .groupBy(productVariant.productId)
-    .as("product_variant_stats")
 
 const adminProductsListNeedsVariantStatsJoin = (
   params: Pick<AdminProductsListParams, "inventoryLevel" | "sort" | "variantKind">,
@@ -345,6 +289,7 @@ const buildAdminProductsOrderClauses = (
   if (sort === undefined) {
     return [desc(product.updatedAt)]
   }
+
   const direction = sort.desc ? desc : asc
   switch (sort.columnId) {
     case PRODUCT_TABLE_COLUMN_ID.title: {
@@ -381,6 +326,7 @@ const loadAdminProductRowsByIds = async (ids: readonly string[]) => {
   if (ids.length === 0) {
     return []
   }
+
   const rows = await db.query.product.findMany({
     where: inArray(product.id, ids),
     with: {
@@ -414,7 +360,8 @@ const loadAdminProductRowsByIds = async (ids: readonly string[]) => {
       },
     },
   })
-  return sortProductsByIdOrder(rows, ids)
+
+  return sortRowsByIdOrder(rows, ids)
 }
 
 const buildInventoryLevelStockCondition = (level: ProductInventoryLevel, totalStock: SQL<number>): SQL => {
@@ -422,9 +369,11 @@ const buildInventoryLevelStockCondition = (level: ProductInventoryLevel, totalSt
   if (level === PRODUCT_INVENTORY_LEVEL.OUT) {
     return and(eq(product.status, PRODUCT_STATUS.PUBLISHED), sql`${stock} <= 0`)!
   }
+
   if (level === PRODUCT_INVENTORY_LEVEL.LOW) {
     return and(eq(product.status, PRODUCT_STATUS.PUBLISHED), sql`${stock} > 0`, sql`${stock} <= ${PRODUCT_LOW_STOCK_THRESHOLD}`)!
   }
+
   return or(ne(product.status, PRODUCT_STATUS.PUBLISHED), sql`${stock} > ${PRODUCT_LOW_STOCK_THRESHOLD}`)!
 }
 
@@ -444,15 +393,19 @@ const buildAdminProductsWhere = (
   if (searchCondition !== undefined) {
     conditions.push(searchCondition)
   }
+
   if (params.status !== undefined) {
     conditions.push(eq(product.status, params.status))
   }
+
   if (params.createdAt !== undefined) {
     conditions.push(buildAdminDateFilterSql(sql`${product.createdAt}`, params.createdAt))
   }
+
   if (params.inventoryLevel !== undefined && options?.skipInventory !== true) {
     conditions.push(buildInventoryLevelStockCondition(params.inventoryLevel, sql<number>`(${totalStockSubquery()})`))
   }
+
   if (params.categoryId !== undefined) {
     const productIdsInCategory = db
       .select({
@@ -462,6 +415,7 @@ const buildAdminProductsWhere = (
       .where(eq(categoryOnProduct.categoryId, params.categoryId))
     conditions.push(inArray(product.id, productIdsInCategory))
   }
+
   if (params.collectionId !== undefined) {
     const productIdsInCollection = db
       .select({
@@ -471,6 +425,7 @@ const buildAdminProductsWhere = (
       .where(eq(collectionOnProduct.collectionId, params.collectionId))
     conditions.push(inArray(product.id, productIdsInCollection))
   }
+
   return and(...conditions)
 }
 
@@ -497,6 +452,7 @@ const selectAdminProductIds = (options: {
   if (options.slice === undefined) {
     return ordered
   }
+
   return ordered.limit(options.slice.limit).offset(options.slice.offset)
 }
 
@@ -513,6 +469,7 @@ const queryAdminProducts = async (
   const whereClause = buildAdminProductsWhere(params, {
     skipInventory: needsVariantStatsJoin,
   })
+
   let combinedWhere = whereClause
   if (needsVariantStatsJoin) {
     const joinedStock = sql<number>`coalesce(${variantStats.totalStock}, 0)`
@@ -527,6 +484,7 @@ const queryAdminProducts = async (
     )
     combinedWhere = joinConditions.length === 0 ? undefined : and(...joinConditions)
   }
+
   const orderClauses = buildAdminProductsOrderClauses(params.sort, needsVariantStatsJoin ? variantStats : undefined)
   const countQuery = needsVariantStatsJoin
     ? db
@@ -550,8 +508,10 @@ const queryAdminProducts = async (
       variantStats,
     }),
   ])
+
   const ids = idRows.map((row) => row.id)
   const rows = await loadAdminProductRowsByIds(ids)
+
   return {
     rows,
     total: countRow?.count ?? 0,
@@ -566,104 +526,96 @@ export const getAdminProductsPage = (params: AdminProductsListParams) =>
 
 export const getAdminProductsFilteredList = async (params: AdminProductsExportListParams) => {
   const { rows } = await queryAdminProducts(params)
+
   return rows
 }
 
 type PublishedProductListRow = Awaited<ReturnType<typeof getPublishedProductsInStock>>[number]
 
-export const getPublishedProductsByCategoryIds = async (categoryIds: readonly string[], params: ListPaginationParams) => {
-  if (categoryIds.length === 0) {
-    return {
-      items: [] as PublishedProductListRow[],
-      total: 0,
-    }
-  }
-  const whereClause = publishedInStockWhere(inArray(categoryOnProduct.categoryId, [...categoryIds]))
+interface PublishedProductsPage {
+  readonly items: PublishedProductListRow[]
+  readonly total: number
+}
+
+const getPublishedProductsPageInRelation = async (
+  relation: {
+    productId: SQLiteColumn
+    table: SQLiteTable
+  },
+  scopeCondition: SQL,
+  params: ListPaginationParams,
+): Promise<PublishedProductsPage> => {
+  const whereClause = publishedInStockWhere(scopeCondition)
   const [countRow] = await db
     .select({
       count: sql<number>`count(distinct ${product.id})`,
     })
     .from(product)
-    .innerJoin(categoryOnProduct, eq(categoryOnProduct.productId, product.id))
+    .innerJoin(relation.table, eq(relation.productId, product.id))
     .where(whereClause)
   const productIdRows = await db
     .select({
       productId: product.id,
     })
     .from(product)
-    .innerJoin(categoryOnProduct, eq(categoryOnProduct.productId, product.id))
+    .innerJoin(relation.table, eq(relation.productId, product.id))
     .where(whereClause)
     .groupBy(product.id)
     .orderBy(asc(product.rank), desc(product.createdAt))
     .limit(params.limit)
     .offset(params.offset)
+  const total = countRow?.count ?? 0
   const productIds = productIdRows.map((row) => row.productId)
   if (productIds.length === 0) {
     return {
-      items: [] as PublishedProductListRow[],
-      total: countRow?.count ?? 0,
+      items: [],
+      total,
     }
   }
-  const items = sortProductsByIdOrder(
-    await db.query.product.findMany({
-      where: inArray(product.id, productIds),
-      with: {
-        variants: {
-          columns: storefrontListVariantColumns,
-        },
-      },
-    }),
-    productIds,
-  )
+
   return {
-    items,
-    total: countRow?.count ?? 0,
+    items: sortRowsByIdOrder(
+      await db.query.product.findMany({
+        where: inArray(product.id, productIds),
+        with: {
+          variants: {
+            columns: storefrontListVariantColumns,
+          },
+        },
+      }),
+      productIds,
+    ),
+    total,
   }
 }
 
-export const getPublishedProductsByCollectionId = async (collectionId: string, params: ListPaginationParams) => {
-  const whereClause = publishedInStockWhere(eq(collectionOnProduct.collectionId, collectionId))
-  const [countRow] = await db
-    .select({
-      count: sql<number>`count(distinct ${product.id})`,
-    })
-    .from(product)
-    .innerJoin(collectionOnProduct, eq(collectionOnProduct.productId, product.id))
-    .where(whereClause)
-  const productIdRows = await db
-    .select({
-      productId: product.id,
-    })
-    .from(product)
-    .innerJoin(collectionOnProduct, eq(collectionOnProduct.productId, product.id))
-    .where(whereClause)
-    .groupBy(product.id)
-    .orderBy(asc(product.rank), desc(product.createdAt))
-    .limit(params.limit)
-    .offset(params.offset)
-  const productIds = productIdRows.map((row) => row.productId)
-  if (productIds.length === 0) {
-    return {
-      items: [] as PublishedProductListRow[],
-      total: countRow?.count ?? 0,
-    }
-  }
-  const items = sortProductsByIdOrder(
-    await db.query.product.findMany({
-      where: inArray(product.id, productIds),
-      with: {
-        variants: {
-          columns: storefrontListVariantColumns,
+export const getPublishedProductsByCategoryIds = (
+  categoryIds: readonly string[],
+  params: ListPaginationParams,
+): Promise<PublishedProductsPage> =>
+  categoryIds.length === 0
+    ? Promise.resolve({
+        items: [],
+        total: 0,
+      })
+    : getPublishedProductsPageInRelation(
+        {
+          productId: categoryOnProduct.productId,
+          table: categoryOnProduct,
         },
-      },
-    }),
-    productIds,
+        inArray(categoryOnProduct.categoryId, [...categoryIds]),
+        params,
+      )
+
+export const getPublishedProductsByCollectionId = (collectionId: string, params: ListPaginationParams): Promise<PublishedProductsPage> =>
+  getPublishedProductsPageInRelation(
+    {
+      productId: collectionOnProduct.productId,
+      table: collectionOnProduct,
+    },
+    eq(collectionOnProduct.collectionId, collectionId),
+    params,
   )
-  return {
-    items,
-    total: countRow?.count ?? 0,
-  }
-}
 
 export const getPublishedRelatedProducts = (categoryId: string, excludeProductId: string) => {
   const productIdsInCategory = db
@@ -682,114 +634,4 @@ export const getPublishedRelatedProducts = (categoryId: string, excludeProductId
       },
     },
   })
-}
-
-export const deleteProducts = async (ids: readonly string[]): Promise<void> => {
-  if (ids.length === 0) {
-    return
-  }
-  await db.delete(product).where(inArray(product.id, [...ids]))
-}
-
-export const setProductRanks = async (
-  updates: readonly {
-    id: string
-    rank: number
-  }[],
-): Promise<void> => {
-  if (updates.length === 0) {
-    return
-  }
-  const ids = updates.map((entry) => entry.id)
-  const cases = updates.map((entry) => sql`when ${product.id} = ${entry.id} then ${entry.rank}`)
-  const rankExpression = sql`(case ${sql.join(cases, sql.raw(" "))} end)`
-  await db
-    .update(product)
-    .set({
-      rank: rankExpression,
-    })
-    .where(inArray(product.id, ids))
-}
-
-export const findTakenSkus = async (skus: readonly string[], excludeProductId?: string): Promise<string[]> => {
-  const normalizedSkus = [...new Set(skus.map((sku) => sku.trim()).filter((sku) => sku !== ""))]
-  if (normalizedSkus.length === 0) {
-    return []
-  }
-  let excludeVariantIds: string[] = []
-  if (excludeProductId !== undefined) {
-    const variantIdRows = await db
-      .select({
-        id: productVariant.id,
-      })
-      .from(productVariant)
-      .where(eq(productVariant.productId, excludeProductId))
-    excludeVariantIds = variantIdRows.map((row) => row.id)
-  }
-  const whereConditions: SQL[] = [inArray(productVariant.sku, normalizedSkus)]
-  if (excludeVariantIds.length > 0) {
-    whereConditions.push(notInArray(productVariant.id, excludeVariantIds))
-  }
-  const rows = await db
-    .select({
-      sku: productVariant.sku,
-    })
-    .from(productVariant)
-    .where(and(...whereConditions))
-  return rows.map((row) => row.sku).filter((sku): sku is string => sku !== null && sku !== "")
-}
-
-export const replaceProductCatalog = async (productId: string, payload: ProductCatalogReplacePayload): Promise<void> => {
-  const { inventoryRows, optionOnVariantRows, optionRows, optionValueRows, variantRows } = payload
-
-  // D1 has no interactive transactions (`BEGIN` fails); batch keeps writes atomic.
-  const statements: DrizzleBatchStatement[] = [
-    db.delete(productOption).where(eq(productOption.productId, productId)),
-    db.delete(productVariant).where(eq(productVariant.productId, productId)),
-  ]
-  if (optionRows.length > 0) {
-    statements.push(db.insert(productOption).values(optionRows))
-  }
-  if (optionValueRows.length > 0) {
-    statements.push(db.insert(productOptionValue).values(optionValueRows))
-  }
-  if (variantRows.length > 0) {
-    statements.push(db.insert(productVariant).values(variantRows))
-  }
-  if (inventoryRows.length > 0) {
-    statements.push(db.insert(inventory).values(inventoryRows))
-  }
-  if (optionOnVariantRows.length > 0) {
-    statements.push(db.insert(optionOnVariant).values(optionOnVariantRows))
-  }
-  await runDrizzleBatch(statements)
-}
-
-export const replaceProductOrganization = async (productId: string, payload: ProductOrganizationReplacePayload): Promise<void> => {
-  const { categoryRows, collectionRows } = payload
-  const primaryCategoryId = resolvePrimaryCategoryId(
-    categoryRows.map((row) => ({
-      categoryId: row.categoryId,
-      isPrimary: row.isPrimary ?? false,
-    })),
-  )
-  const statements: DrizzleBatchStatement[] = [
-    db.delete(categoryOnProduct).where(eq(categoryOnProduct.productId, productId)),
-    db.delete(collectionOnProduct).where(eq(collectionOnProduct.productId, productId)),
-  ]
-  if (categoryRows.length > 0) {
-    statements.push(db.insert(categoryOnProduct).values(categoryRows))
-  }
-  if (collectionRows.length > 0) {
-    statements.push(db.insert(collectionOnProduct).values(collectionRows))
-  }
-  statements.push(
-    db
-      .update(product)
-      .set({
-        primaryCategoryId: primaryCategoryId ?? sql`null`,
-      })
-      .where(eq(product.id, productId)),
-  )
-  await runDrizzleBatch(statements)
 }

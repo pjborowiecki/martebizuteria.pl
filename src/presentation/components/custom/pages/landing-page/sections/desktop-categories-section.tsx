@@ -1,11 +1,11 @@
 import { type JSX, useMemo, useRef } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { categoriesQueryOptions } from "~/src/modules/product-category/use-cases/get-categories"
+import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
 
-import { gsap, useGSAP } from "~/src/lib/gsap"
+import { getCategoriesQuery } from "~/src/modules/product-category/use-cases/get-categories"
 
 import { AspectRatio } from "~/src/presentation/components/shadcn/aspect-ratio"
 
@@ -26,6 +26,7 @@ import {
 } from "~/src/presentation/components/custom/pages/landing-page/sections/landing-category-panel.utils"
 
 import { ROUTES } from "~/src/routes"
+
 const DesktopCategoryPanel = ({
   category,
   index,
@@ -37,6 +38,7 @@ const DesktopCategoryPanel = ({
   const t = useTranslations("pages.landing.categoriesSection")
   const panel = resolveLandingCategoryPanelCopy(category, locale)
   const params = useMemo(() => ({ handle: panel.handle }), [panel.handle])
+
   return (
     <article className="flex h-screen w-screen shrink-0 items-center px-8 sm:px-12">
       <div className="mx-auto grid w-full max-w-400 grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] lg:gap-14">
@@ -67,9 +69,10 @@ const DesktopCategoryPanel = ({
     </article>
   )
 }
+
 export const DesktopCategoriesSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.categoriesSection")
-  const { data: categories } = useSuspenseQuery(categoriesQueryOptions())
+  const { data: categories } = useSuspenseQuery(getCategoriesQuery())
   const sectionRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const panelCount = categories.length
@@ -95,13 +98,17 @@ export const DesktopCategoriesSection = (): JSX.Element => {
           },
           x: () => resolveHorizontalTrackOffset(track, section),
         })
+
         const { scrollTrigger } = animation
         if (scrollTrigger === undefined) {
           animation.kill()
+
           return () => {}
         }
+
         const clearLayoutObserver = observeHorizontalCategoryScrollLayout(track, refreshHorizontalCategoryScroll)
         scheduleHorizontalCategoryScrollRefresh()
+
         return () => {
           clearLayoutObserver()
           scrollTrigger.kill()
@@ -111,6 +118,7 @@ export const DesktopCategoriesSection = (): JSX.Element => {
     },
     { dependencies: [categoryScrollKey, panelCount], scope: sectionRef },
   )
+
   return (
     <section ref={sectionRef} id="kolekcje" className="horizontal-section relative hidden overflow-hidden bg-background lg:block">
       <div ref={trackRef} className="horizontal-track flex w-max will-change-transform">
@@ -129,4 +137,5 @@ export const DesktopCategoriesSection = (): JSX.Element => {
     </section>
   )
 }
+
 const ASPECT_RATIO_PORTRAIT = 0.8

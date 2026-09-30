@@ -3,24 +3,25 @@ import { type Column, type ColumnSizingState, type RowData } from "@tanstack/rea
 import { columnAbsorbsTrailingSlack, readColumnDesignWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid-table-layout"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 
-/** Width from column def only — never from `columnSizing` state. */
 export const getFixedDataGridColumnDefSize = <TData extends RowData>(column: Column<DataGridFeatures, TData>): number | undefined => {
   const { maxSize, minSize, size } = column.columnDef
   if (typeof size === "number" && Number.isFinite(size)) {
     return size
   }
+
   if (typeof minSize === "number" && typeof maxSize === "number" && minSize === maxSize && Number.isFinite(minSize)) {
     return minSize
   }
+
   return undefined
 }
 
 export const getDataGridColumnDefMinSize = <TData extends RowData>(column: Column<DataGridFeatures, TData>): number | undefined => {
   const { minSize } = column.columnDef
+
   return typeof minSize === "number" && Number.isFinite(minSize) ? minSize : undefined
 }
 
-/** Pixel width from column defs — never TanStack `getSize()` (it shifts unrelated columns during resize). */
 export const getDataGridColumnWidth = <TData extends RowData>(column: Column<DataGridFeatures, TData>): number => {
   if (!column.getCanResize()) {
     const locked = getFixedDataGridColumnDefSize(column)
@@ -31,6 +32,7 @@ export const getDataGridColumnWidth = <TData extends RowData>(column: Column<Dat
 
   const designWidth = readColumnDesignWidth(column)
   const defMin = getDataGridColumnDefMinSize(column)
+
   return defMin === undefined ? designWidth : Math.max(designWidth, defMin)
 }
 
@@ -50,6 +52,7 @@ export const getDataGridLayoutColumnWidth = <TData extends RowData>(
     if (typeof maxSize === "number" && Number.isFinite(maxSize)) {
       return Math.min(clamped, maxSize)
     }
+
     return clamped
   }
 

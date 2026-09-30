@@ -6,6 +6,7 @@ import { type Product } from "~/src/modules/product/product.types"
 
 import { type RowMoveDirection } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { moveItemBefore, sameOrder, swapItems } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
+
 export const useProductOrdering = (
   data: Product["adminListItem"][],
   reorder: UseMutationResult<
@@ -13,7 +14,7 @@ export const useProductOrdering = (
       ok: boolean
     },
     Error,
-    readonly string[]
+    string[]
   >,
 ): ProductOrdering => {
   const [items, setItems] = useState<Product["adminListItem"][]>(data)
@@ -28,6 +29,7 @@ export const useProductOrdering = (
       setItems(data)
     }
   }, [data, draggingId, isReordering])
+
   const persistOrder = useCallback(
     (ordered: Product["adminListItem"][]) => {
       const orderedIds = ordered.map((item) => item.id)
@@ -38,9 +40,11 @@ export const useProductOrdering = (
     },
     [data, reorder],
   )
+
   const handleDragStart = useCallback((id: string) => {
     setDraggingId(id)
   }, [])
+
   const handleDragEnter = useCallback((overId: string) => {
     const dragId = draggingIdRef.current
     if (dragId === undefined || dragId === overId) {
@@ -48,10 +52,12 @@ export const useProductOrdering = (
     }
     setItems((list) => moveItemBefore(list, dragId, overId))
   }, [])
+
   const handleDrop = useCallback(() => {
     setDraggingId(undefined)
     persistOrder(itemsRef.current)
   }, [persistOrder])
+
   const handleMove = useCallback(
     (id: string, direction: RowMoveDirection) => {
       const list = itemsRef.current
@@ -71,6 +77,7 @@ export const useProductOrdering = (
     },
     [persistOrder],
   )
+
   return useMemo(
     () => ({
       draggingId,
@@ -83,6 +90,7 @@ export const useProductOrdering = (
     [draggingId, handleDragEnter, handleDragStart, handleDrop, handleMove, items],
   )
 }
+
 export interface ProductOrdering {
   readonly draggingId: string | undefined
   readonly handleDragEnter: (overId: string) => void

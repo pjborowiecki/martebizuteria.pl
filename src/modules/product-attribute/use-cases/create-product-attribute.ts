@@ -1,9 +1,12 @@
 import { createServerFn } from "@tanstack/react-start"
 import { v7 as uuidv7 } from "uuid"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { scheduleProductAttributeCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordCatalogAttributeCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   PRODUCT_ATTRIBUTE_ERROR_CODES,
@@ -17,16 +20,15 @@ import {
 } from "~/src/modules/product-attribute/product-attribute.utils"
 import { productAttributeZodSchemas } from "~/src/modules/product-attribute/product-attribute.zod"
 
-import { scheduleProductAttributeCatalogInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server"
-
-export const createProductAttributeFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => productAttributeZodSchemas.createInput.parse(data))
+export const createProductAttribute = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["create"] })])
+  .validator((input: zod.input<typeof productAttributeZodSchemas.createInput>) => productAttributeZodSchemas.createInput.parse(input))
   .handler(async ({ data }) => {
-    await assertAdmin()
     const existing = await getProductAttributeByHandleQuery.execute({ handle: data.handle })
     if (existing !== undefined) {
-      throw new Error(PRODUCT_ATTRIBUTE_ERROR_CODES.DUPLICATE_HANDLE)
+      throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ATTRIBUTE_ERROR_CODES.DUPLICATE_HANDLE)
     }
+
     const id = uuidv7()
     const rank = await getNextProductAttributeRank()
     await db.insert(productAttribute).values({
@@ -40,5 +42,6 @@ export const createProductAttributeFn = createServerFn({ method: "POST" })
     })
     scheduleProductAttributeCatalogInvalidation()
     recordCatalogAttributeCreatedAudit(data.handle, { resourceId: id })
+
     return { handle: data.handle, id }
   })

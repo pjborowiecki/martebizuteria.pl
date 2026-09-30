@@ -1,6 +1,6 @@
 import { type JSX, useCallback } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 
@@ -17,6 +17,7 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/add-attribute/attribute-form-provider"
 import { AttributeSheetFooter } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/add-attribute/attribute-sheet-footer"
 import { CatalogFormSheetContent } from "~/src/presentation/components/custom/pages/admin/catalog/catalog-form-sheet-content"
+
 const AttributeSheetSections = ({
   recordId,
 }: Readonly<{
@@ -67,9 +68,11 @@ export const AttributeSheet = ({ attribute, mode, onOpenChange, open }: Attribut
   const handleDismiss = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   const handleSuccess = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <CatalogFormSheetContent>
@@ -90,6 +93,7 @@ export const AttributeSheet = ({ attribute, mode, onOpenChange, open }: Attribut
     </Sheet>
   )
 }
+
 interface AttributeSheetProps {
   readonly attribute: ProductAttribute["adminListItem"] | undefined
   readonly mode: AttributeFormMode

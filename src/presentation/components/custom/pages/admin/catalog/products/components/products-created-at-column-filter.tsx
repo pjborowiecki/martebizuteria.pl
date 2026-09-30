@@ -1,6 +1,6 @@
 import { type JSX, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_TABLE_COLUMN_ID } from "~/src/modules/product/product.constants"
 
@@ -28,6 +28,7 @@ export const ProductsCreatedAtColumnFilter = (): JSX.Element => {
     }),
     [t],
   )
+
   return (
     <AdminDateColumnFilter
       ariaLabel={t("filter.createdAt")}

@@ -1,25 +1,28 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
-import { ATTRIBUTE_ON_PRODUCT_QUERY_KEYS } from "~/src/modules/attribute-on-product/attribute-on-product.constants"
+import {
+  ATTRIBUTE_ON_PRODUCT_QUERY_KEYS,
+  ATTRIBUTE_ON_PRODUCT_QUERY_STALE_MS,
+} from "~/src/modules/attribute-on-product/attribute-on-product.constants"
 import { getByProductIdQuery } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { attributeOnProductZodSchemas } from "~/src/modules/attribute-on-product/attribute-on-product.zod"
 
-const ATTRIBUTE_ON_PRODUCT_QUERY_STALE_MS = 60_000
+export const getProductAttributes = createServerFn({ method: "GET" })
+  .middleware([authorized({ product: ["read"] })])
+  .validator((input: zod.input<typeof attributeOnProductZodSchemas.productIdInput>) =>
+    attributeOnProductZodSchemas.productIdInput.parse(input),
+  )
+  .handler(({ data: productId }) => getByProductIdQuery.execute({ productId }))
 
-export const fetchByProductIdFn = createServerFn({ method: "GET" })
-  .validator((productId: string) => productId)
-  .handler(async ({ data: productId }) => {
-    await assertAdmin()
-    return getByProductIdQuery.execute({ productId })
-  })
-
-export const byProductId = (productId: string) =>
+export const getProductAttributesQuery = (productId: string) =>
   queryOptions({
     enabled: productId !== "",
-    queryFn: () => fetchByProductIdFn({ data: productId }),
-    queryKey: [...ATTRIBUTE_ON_PRODUCT_QUERY_KEYS.BY_PRODUCT_ID, productId] as const,
+    queryFn: () => getProductAttributes({ data: productId }),
+    queryKey: [...ATTRIBUTE_ON_PRODUCT_QUERY_KEYS.BY_PRODUCT_ID, productId],
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: ATTRIBUTE_ON_PRODUCT_QUERY_STALE_MS,

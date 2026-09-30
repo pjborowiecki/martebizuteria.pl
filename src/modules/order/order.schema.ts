@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
 import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
@@ -52,6 +52,7 @@ export const order = sqliteTable(
     index("order_userId_status_idx").on(table.userId, table.status),
     index("order_status_idx").on(table.status),
     index("order_createdAt_idx").on(table.createdAt),
+    uniqueIndex("order_checkoutId_unique").on(table.checkoutId),
   ],
 )
 

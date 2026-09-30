@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
 import { ListFilter } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl"
+import { useFormatter, useTranslations } from "use-intl/react"
 
 import {
   DATE_COLUMN_FILTER_OPERATOR,
@@ -10,29 +10,35 @@ import {
   type DateColumnFilterValue,
   isDateColumnFilterOperator,
   isDateColumnFilterValue,
-} from "~/src/lib/admin-column-filters"
-import { formatDateFilterTriggerLabel, isDateFilterRangeValid } from "~/src/lib/admin-date-filter"
-import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToStartMs } from "~/src/lib/iso-date"
+} from "~/src/modules/_core/utils/column-filters"
+import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"
 
 import {
+  formatDateFilterTriggerLabel,
+  isDateFilterRangeValid,
+} from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
+import {
   CustomersDateFilterForm,
   type DateFilterDraft,
 } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-date-filter-form"
-import { customersColumnFilterTriggerClass } from "~/src/presentation/components/custom/pages/admin/customers/lib/customers-column-filter-trigger"
 import { customersDataGrid } from "~/src/presentation/components/custom/pages/admin/customers/utils/customers-data-grid"
+import { adminColumnFilterTriggerClass } from "~/src/presentation/components/custom/pages/admin/lib/admin-column-filter-trigger"
+
 const emptyDraft = (): DateFilterDraft => ({
   date: "",
   endDate: "",
   operator: DEFAULT_OPERATOR,
   startDate: "",
 })
+
 const toDraft = (filter: DateColumnFilterValue | undefined): DateFilterDraft => {
   if (filter === undefined) {
     return emptyDraft()
   }
+
   if (filter.operator === DATE_COLUMN_FILTER_OPERATOR.BETWEEN) {
     return {
       date: "",
@@ -41,6 +47,7 @@ const toDraft = (filter: DateColumnFilterValue | undefined): DateFilterDraft => 
       startDate: filter.startDate ?? "",
     }
   }
+
   return {
     date: filter.date ?? "",
     endDate: "",
@@ -48,12 +55,15 @@ const toDraft = (filter: DateColumnFilterValue | undefined): DateFilterDraft => 
     startDate: "",
   }
 }
+
 const isDraftValid = (draft: DateFilterDraft): boolean => {
   if (draft.operator === DATE_COLUMN_FILTER_OPERATOR.BETWEEN) {
     return isDateFilterRangeValid(draft.startDate, draft.endDate)
   }
+
   return isIsoDateString(draft.date)
 }
+
 const toFilterValue = (draft: DateFilterDraft): DateColumnFilterValue => {
   if (draft.operator === DATE_COLUMN_FILTER_OPERATOR.BETWEEN) {
     return {
@@ -62,6 +72,7 @@ const toFilterValue = (draft: DateFilterDraft): DateColumnFilterValue => {
       startDate: draft.startDate,
     }
   }
+
   return {
     date: draft.date,
     operator: draft.operator,
@@ -83,6 +94,7 @@ export const CustomersDateColumnFilter = ({ ariaLabelKey, columnId, labelKey }: 
       setDraft(toDraft(activeFilter))
     }
   }, [activeFilter, open])
+
   const operatorOptions = useMemo(
     () =>
       DATE_COLUMN_FILTER_OPERATORS.map((operator) => ({
@@ -91,6 +103,7 @@ export const CustomersDateColumnFilter = ({ ariaLabelKey, columnId, labelKey }: 
       })),
     [t],
   )
+
   const formatIsoDateLabel = useCallback(
     (isoDate: string): string =>
       format.dateTime(new Date(parseIsoDateToStartMs(isoDate)), {
@@ -98,11 +111,13 @@ export const CustomersDateColumnFilter = ({ ariaLabelKey, columnId, labelKey }: 
       }),
     [format],
   )
+
   const triggerLabel = formatDateFilterTriggerLabel({
     activeFilter,
     formatIsoDateLabel,
     idleLabel: t(labelKey),
   })
+
   const handleOperatorChange = useCallback((value: string | null) => {
     if (value === null || !isDateColumnFilterOperator(value)) {
       return
@@ -112,24 +127,28 @@ export const CustomersDateColumnFilter = ({ ariaLabelKey, columnId, labelKey }: 
       operator: value,
     }))
   }, [])
+
   const handleDateChange = useCallback((isoDate: string) => {
     setDraft((current) => ({
       ...current,
       date: isoDate,
     }))
   }, [])
+
   const handleStartDateChange = useCallback((isoDate: string) => {
     setDraft((current) => ({
       ...current,
       startDate: isoDate,
     }))
   }, [])
+
   const handleEndDateChange = useCallback((isoDate: string) => {
     setDraft((current) => ({
       ...current,
       endDate: isoDate,
     }))
   }, [])
+
   const handleApply = useCallback(() => {
     if (!isDraftValid(draft)) {
       return
@@ -138,15 +157,17 @@ export const CustomersDateColumnFilter = ({ ariaLabelKey, columnId, labelKey }: 
     table.setPageIndex(0)
     setOpen(false)
   }, [column, draft, table])
+
   const handleClear = useCallback(() => {
     column?.setFilterValue(undefined)
     table.setPageIndex(0)
     setDraft(emptyDraft())
     setOpen(false)
   }, [column, table])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger aria-label={t(ariaLabelKey)} className={customersColumnFilterTriggerClass(activeFilter !== undefined)}>
+      <PopoverTrigger aria-label={t(ariaLabelKey)} className={adminColumnFilterTriggerClass(activeFilter !== undefined)}>
         <ListFilter className="size-3.5 shrink-0 text-muted-foreground/60" strokeWidth={1.5} />
         <span className="truncate">{triggerLabel}</span>
       </PopoverTrigger>
@@ -180,13 +201,16 @@ export const CustomersDateColumnFilter = ({ ariaLabelKey, columnId, labelKey }: 
     </Popover>
   )
 }
+
 const DEFAULT_OPERATOR = DATE_COLUMN_FILTER_OPERATOR.ON
+
 const DATE_FILTER_OPERATOR_LABEL_KEY: Record<DateColumnFilterOperator, string> = {
   [DATE_COLUMN_FILTER_OPERATOR.AFTER]: "filter.date.operatorAfter",
   [DATE_COLUMN_FILTER_OPERATOR.BEFORE]: "filter.date.operatorBefore",
   [DATE_COLUMN_FILTER_OPERATOR.BETWEEN]: "filter.date.operatorBetween",
   [DATE_COLUMN_FILTER_OPERATOR.ON]: "filter.date.operatorOn",
 }
+
 interface CustomersDateColumnFilterProps {
   readonly ariaLabelKey: "filter.createdAt" | "filter.lastOrderAt"
   readonly columnId: string

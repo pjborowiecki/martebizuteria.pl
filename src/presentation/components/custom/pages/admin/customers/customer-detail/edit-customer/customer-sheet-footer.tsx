@@ -1,7 +1,7 @@
 import { type JSX } from "react"
 
 import { Loader2 } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -9,9 +9,11 @@ import {
   CUSTOMER_FORM_ID,
   useCustomerForm,
 } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-provider"
+
 export const CustomerSheetFooter = (): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail.form")
   const { dismiss, isPending } = useCustomerForm()
+
   return (
     <div className="shrink-0 border-t border-border bg-background px-6 py-4">
       <div className="flex flex-row justify-end gap-3">

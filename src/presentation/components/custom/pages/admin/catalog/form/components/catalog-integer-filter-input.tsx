@@ -4,6 +4,7 @@ import { cn } from "cn"
 
 import { Input } from "~/src/presentation/components/shadcn/input"
 import { sheetNumberInputNoSpinnerClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
+
 const sanitizeIntegerInput = (raw: string): string => raw.replace(NON_DIGIT_PATTERN, "")
 
 export const CatalogIntegerFilterInput = ({
@@ -19,11 +20,13 @@ export const CatalogIntegerFilterInput = ({
     },
     [onValueChange],
   )
+
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
     if (BLOCKED_INTEGER_INPUT_KEYS.has(event.key)) {
       event.preventDefault()
     }
   }, [])
+
   return (
     <Input
       aria-label={ariaLabel}
@@ -40,8 +43,11 @@ export const CatalogIntegerFilterInput = ({
     />
   )
 }
+
 const NON_DIGIT_PATTERN = /\D/gu
+
 const BLOCKED_INTEGER_INPUT_KEYS = new Set(["e", "E", "+", "-", ".", ","])
+
 interface CatalogIntegerFilterInputProps {
   readonly "aria-label"?: string
   readonly className?: string

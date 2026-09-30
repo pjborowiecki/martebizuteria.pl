@@ -4,6 +4,7 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 import { cn } from "cn"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
+
 const AlertDialog = ({ ...props }: Readonly<AlertDialogPrimitive.Root.Props>): JSX.Element => (
   <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
 )
@@ -119,8 +120,10 @@ const AlertDialogCancel = ({
   ...props
 }: Readonly<AlertDialogPrimitive.Close.Props & Pick<ComponentProps<typeof Button>, "variant" | "size">>): JSX.Element => {
   const renderButton = useMemo(() => <Button variant={variant} size={size} />, [variant, size])
+
   return <AlertDialogPrimitive.Close data-slot="alert-dialog-cancel" className={cn(className)} render={renderButton} {...props} />
 }
+
 export {
   AlertDialog,
   AlertDialogAction,

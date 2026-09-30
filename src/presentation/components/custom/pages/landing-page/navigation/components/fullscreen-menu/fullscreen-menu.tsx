@@ -7,6 +7,7 @@ import { PrimaryNav } from "~/src/presentation/components/custom/pages/landing-p
 import { SecondaryNav } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/fullscreen-menu/secondary-nav"
 import { useNavigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider"
 import { NAVIGATION_MENU_ID } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"
+
 export const FullscreenMenu = (): JSX.Element => {
   const { containerRef, panelRef, mounted, handleClose, handleMouseMove } = useNavigation()
   const overlayStyle = useMemo<CSSProperties>(() => ({ pointerEvents: mounted ? "auto" : "none" }), [mounted])
@@ -14,6 +15,7 @@ export const FullscreenMenu = (): JSX.Element => {
     () => ({ display: "flex", opacity: 0, pointerEvents: mounted ? "auto" : "none", visibility: "hidden" }),
     [mounted],
   )
+
   return (
     <div ref={containerRef}>
       <div

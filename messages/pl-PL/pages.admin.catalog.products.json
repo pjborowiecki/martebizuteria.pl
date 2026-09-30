@@ -1,0 +1,265 @@
+{
+  "form": {
+    "titleAdd": "Dodaj produkt",
+    "titleEdit": "Edytuj produkt",
+    "sheetDescription": "Utwórz nowy produkt w swoim katalogu",
+    "sheetDescriptionEdit": "Zaktualizuj szczegóły, organizację, ceny i warianty tego produktu.",
+    "cancel": "Anuluj",
+    "create": "Utwórz produkt",
+    "save": "Zapisz zmiany",
+    "localePicker": {
+      "filledCountHint": "nazwa w każdym języku"
+    },
+    "titleLocale": {
+      "pl-PL": "Nazwa produktu (PL)",
+      "en-US": "Nazwa produktu (EN)"
+    },
+    "titleLocalePlaceholder": {
+      "pl-PL": "np. Minimalistyczne złote kolczyki",
+      "en-US": "np. Minimalist Gold Hoop"
+    },
+    "subtitleLocale": {
+      "pl-PL": "Podtytuł (PL)",
+      "en-US": "Podtytuł (EN)"
+    },
+    "subtitleLocalePlaceholder": {
+      "pl-PL": "Opcjonalna krótka linia pod tytułem",
+      "en-US": "Optional short line under the title"
+    },
+    "descriptionLocale": {
+      "pl-PL": "Opis (PL)",
+      "en-US": "Opis (EN)"
+    },
+    "descriptionLocalePlaceholder": {
+      "pl-PL": "Szczegółowy opis produktu...",
+      "en-US": "Detailed description of the product..."
+    },
+    "hints": {
+      "titleLocale": {
+        "pl-PL": "Nazwa widoczna w katalogu, na stronie produktu i w koszyku (polski).",
+        "en-US": "Nazwa widoczna w katalogu, na stronie produktu i w koszyku (angielski)."
+      },
+      "subtitleLocale": {
+        "pl-PL": "Opcjonalna krótka linia pod tytułem na stronie produktu (polski).",
+        "en-US": "Opcjonalna krótka linia pod tytułem na stronie produktu (angielski)."
+      },
+      "descriptionLocale": {
+        "pl-PL": "Pełny opis widoczny na stronie produktu w sklepie (polski).",
+        "en-US": "Pełny opis widoczny na stronie produktu w sklepie (angielski)."
+      },
+      "tagsLocale": "Opcjonalne etykiety do filtrowania w panelu ({locale}). Wpisz tag i kliknij „Dodaj tag” lub naciśnij Enter.",
+      "slug": "Fragment adresu URL produktu (np. /products/zlote-kolczyki). Tylko małe litery, cyfry i myślniki.",
+      "sku": "Opcjonalny kod magazynowy dla produktu z jednym wariantem.",
+      "subtitle": "Opcjonalna krótka linia pod tytułem na stronie produktu.",
+      "description": "Pełny opis widoczny na stronie produktu w sklepie.",
+      "price": "Cena sprzedaży w PLN dla produktu z jednym wariantem.",
+      "stockQuantity": "Liczba sztuk dostępnych do sprzedaży (całkowita liczba, nie ułamek).",
+      "primaryCategory": "Główna kategoria w drzewie katalogu (breadcrumbs, SEO).",
+      "additionalCategories": "Opcjonalnie: dodatkowe kategorie, w których produkt ma się pojawiać.",
+      "collections": "Kolekcje merchandisingowe (np. Nowości i Srebro 925 jednocześnie).",
+      "status": "Wersje robocze są ukryte w sklepie; aktywne są widoczne dla klientów; zarchiwizowane nie są sprzedawane.",
+      "productType": "Jeden wariant — jedna cena i jeden stan. Wiele wariantów — opcje (np. rozmiar) i osobne ceny lub stany dla każdej kombinacji.",
+      "tags": "Opcjonalne etykiety do filtrowania i organizacji w panelu. Wpisz tag i kliknij „Dodaj tag” lub naciśnij Enter.",
+      "attributeProperty": "Atrybut z katalogu (np. waga, kolor). Jeśli go nie ma, utwórz go w zakładce Atrybuty.",
+      "attributeValue": "Wartość tej właściwości tylko dla tego produktu (np. 14 g lub srebro).",
+      "optionName": "Nazwa osi wariantów widoczna w sklepie (np. Rozmiar, Metal).",
+      "optionValues": "Jedna wartość na wiersz (np. Srebrny). Wiersze wariantów pojawią się od razu po wpisaniu wartości po polsku. Przełącz język u góry, aby dodać tłumaczenie ({locale}).",
+      "variantSku": "Opcjonalny kod magazynowy dla tej kombinacji opcji.",
+      "variantPrice": "Cena sprzedaży w PLN dla tej kombinacji (minimum 2,00 PLN przy publikacji).",
+      "variantStock": "Liczba sztuk dostępnych do sprzedaży dla tego wariantu."
+    },
+    "validation": {
+      "titleRequired": "Podaj nazwę produktu.",
+      "titleTooLong": "Nazwa produktu jest za długa.",
+      "slugRequired": "Podaj slug URL.",
+      "slugInvalid": "Użyj małych liter, cyfr i myślników (np. zlote-kolczyki).",
+      "slugTooLong": "Slug URL jest za długi.",
+      "activePriceRequired": "Aktywne produkty: cena minimalna to 2,00 PLN.",
+      "priceRequired": "Cena minimalna to 2,00 PLN.",
+      "priceInvalid": "Podaj poprawną cenę w PLN (np. 199,00 — maksymalnie 2 miejsca po przecinku).",
+      "compareAtInvalid": "Cena przed obniżką musi być pusta lub nie niższa od ceny sprzedaży.",
+      "simpleVariantRequired": "Podaj cenę i stan magazynowy dla tego produktu.",
+      "optionsRequired": "Dodaj co najmniej jedną opcję (np. rozmiar) dla produktów z wariantami.",
+      "variantsRequired": "Wygeneruj co najmniej jeden wiersz wariantu.",
+      "variantCombinationsRequired": "Przed aktywowaniem produktu wygeneruj wszystkie kombinacje opcji i ustal ich ceny.",
+      "LOCALE_TITLE_REQUIRED": "Uzupełnij to pole w tym języku.",
+      "submitBlockedTitle": "Popraw błędy w formularzu",
+      "submitBlockedDescription": "Sprawdź podświetlone pola i spróbuj ponownie.",
+      "duplicateAttribute": "Ten atrybut jest już przypisany do produktu — każdy atrybut może wystąpić tylko raz.",
+      "duplicateSku": "Ten kod SKU jest już używany przez inny wariant."
+    }
+  },
+  "toast": {
+    "createSuccessTitle": "Produkt utworzony",
+    "createSuccessDescription": "Produkt został pomyślnie dodany do katalogu.",
+    "updateSuccessTitle": "Produkt zapisany",
+    "updateSuccessDescription": "Zmiany zostały zapisane.",
+    "errorTitle": "Nie udało się zapisać produktu",
+    "errorDescription": "Sprawdź formularz i spróbuj ponownie.",
+    "duplicateHandle": "Ten adres URL jest już używany przez inny produkt. Jeśli listy produktów nie widać tego wpisu, kliknij „Utwórz produkt” jeszcze raz — poprzednia próba mogła zostać wycofana.",
+    "duplicateSku": "Ten kod SKU jest już używany przez inny wariant.",
+    "duplicateAttribute": "Ten sam atrybut nie może być przypisany do produktu więcej niż raz.",
+    "databaseSchemaOutdated": "Baza danych jest nieaktualna. Uruchom migracje: bun run db:migrate"
+  },
+  "basic": {
+    "description": "Opis",
+    "descriptionPlaceholder": "Szczegółowy opis produktu...",
+    "material": "Materiał",
+    "name": "Nazwa produktu",
+    "namePlaceholder": "np. Minimalistyczne złote kolczyki",
+    "subtitle": "Podtytuł",
+    "subtitlePlaceholder": "Opcjonalna krótka linia pod tytułem",
+    "ref": "SKU",
+    "selectMaterial": "Wybierz materiał...",
+    "slug": "Adres URL (slug)",
+    "slugPlaceholder": "minimalistyczne-zlote-kolczyki",
+    "title": "Dane podstawowe"
+  },
+  "breadcrumb": {
+    "catalog": "Katalog",
+    "dashboard": "Panel"
+  },
+  "inventory": {
+    "quantity": "Ilość",
+    "sellWhenOOS": "Kontynuuj sprzedaż gdy brak w magazynie",
+    "title": "Zapasy"
+  },
+  "media": {
+    "dragDrop": "Przeciągnij i upuść zdjęcia tutaj",
+    "formats": "Obsługuje JPG, PNG, WEBP. Max 5MB.",
+    "galleryLabel": "Galeria produktu",
+    "hint": "Pierwsze zdjęcie (oznaczone jako główne) staje się miniaturą w katalogu. Przeciągnij, aby zmienić kolejność.",
+    "galleryLabelShared": "Wspólne zdjęcia (opcjonalnie)",
+    "hintSharedVariants": "Zdjęcia widoczne dla wszystkich wariantów, gdy dany wariant nie ma własnej galerii. Aby każdy wariant miał inne zdjęcia, dodaj je w sekcji Warianty.",
+    "title": "Media"
+  },
+  "attributes": {
+    "title": "Atrybuty",
+    "hint": "Wybierz atrybuty z katalogu (np. waga, kolor) i ustaw wartości tylko dla tego produktu.",
+    "hintSharedVariants": "Atrybuty wspólne dla całego produktu (np. materiał). Wartości różne per wariant — np. waga — ustaw w sekcji Warianty przy każdym wierszu.",
+    "emptyVariant": "Brak atrybutów tylko dla tego wariantu. Wybierz atrybut i wartość powyżej, potem kliknij „Dodaj atrybut”.",
+    "add": "Dodaj atrybut",
+    "empty": "Nie przypisano jeszcze żadnych wartości. Wybierz atrybut i wartość powyżej, potem kliknij „Dodaj atrybut”.",
+    "emptyNoCatalogAttributes": "W katalogu nie ma jeszcze żadnych atrybutów. Utwórz je w zakładce Atrybuty, a następnie wróć tutaj i przypisz do produktu.",
+    "createInCatalog": "Utwórz atrybut w katalogu",
+    "attribute": "Atrybut",
+    "selectAttribute": "Wybierz atrybut…",
+    "value": "Wartość",
+    "valuePlaceholder": "Wartość dla tego produktu",
+    "selectAllowedValue": "Wybierz wartość…",
+    "selectBoolean": "Wybierz…",
+    "booleanYes": "Tak",
+    "booleanNo": "Nie",
+    "remove": "Usuń atrybut"
+  },
+  "organization": {
+    "title": "Organizacja",
+    "primaryCategory": "Kategoria główna",
+    "additionalCategories": "Dodatkowe kategorie",
+    "collections": "Kolekcje",
+    "selectCategory": "Wybierz kategorię...",
+    "selectCategories": "Wybierz kategorie...",
+    "selectCollections": "Wybierz kolekcje...",
+    "multiSelect": {
+      "noResults": "Brak wyników.",
+      "removeItem": "Usuń {label}",
+      "searchPlaceholder": "Szukaj...",
+      "selectedCount": "Wybrano: {count}"
+    },
+    "validation": {
+      "primaryCategoryRequired": "Wybierz kategorię główną."
+    }
+  },
+  "pricing": {
+    "cost": "Koszt za sztukę",
+    "hint": "Klienci tego nie zobaczą.",
+    "price": "Cena",
+    "stockQuantity": "Stan magazynowy (szt.)",
+    "title": "Ceny i Zapasy",
+    "variantsHint": "Ceny, SKU i stan ustawiasz osobno dla każdego wariantu poniżej."
+  },
+  "variantMode": {
+    "title": "Typ produktu",
+    "typeLabel": "Typ",
+    "optionSimple": "Jeden wariant",
+    "optionVariants": "Wiele wariantów",
+    "descriptionSimple": "Jedna wersja do sprzedaży — jedna cena, jedno SKU, jeden stan.",
+    "descriptionVariants": "Wiele kombinacji (np. rozmiar, metal, wykończenie).",
+    "hintSimple": "Dla unikatów lub produktów bez opcji.",
+    "hintVariants": "Zdefiniuj opcje, kombinacje i ceny dla każdego z wariantów poniżej."
+  },
+  "options": {
+    "title": "Opcje",
+    "addOption": "Dodaj opcję",
+    "empty": "Dodaj opcję, np. Rozmiar lub Metal, aby utworzyć warianty.",
+    "optionName": "Nazwa opcji",
+    "optionNamePlaceholder": "np. Wykończenie",
+    "optionValues": "Wartości",
+    "optionValueLabel": {
+      "en-US": "Wartość (angielski)",
+      "pl-PL": "Wartość (PL)"
+    },
+    "optionValuePlaceholder": {
+      "en-US": "np. Silver",
+      "pl-PL": "np. Srebrny"
+    },
+    "addValue": "Dodaj wartość",
+    "removeValue": "Usuń wartość",
+    "removeOption": "Usuń opcję"
+  },
+  "shipping": {
+    "fulfillmentTime": "Czas realizacji",
+    "dimensions": "Wymiary",
+    "requiresShipping": "To jest produkt fizyczny",
+    "title": "Wysyłka",
+    "weight": "Waga",
+    "unit": "Jednostka",
+    "days": "Dni",
+    "weeks": "Tygodnie",
+    "months": "Miesiące"
+  },
+  "status": {
+    "active": "Aktywny",
+    "archived": "Zarchiwizowany",
+    "draft": "Wersja robocza",
+    "featured": "Polecany Produkt",
+    "title": "Status",
+    "label": "Status",
+    "low": "Niski stan"
+  },
+  "tags": {
+    "add": "Dodaj tag",
+    "fieldLabel": {
+      "en-US": "Tag (angielski)",
+      "pl-PL": "Tag (PL)"
+    },
+    "placeholder": "Dodaj tag...",
+    "title": "Tagi"
+  },
+  "title": "Dodaj Nowy Produkt",
+  "editTitle": "Edytuj Produkt",
+  "variants": {
+    "sectionHint": "Każdy wiersz to jeden wariant (np. Srebrny, Pozłacany). Ustaw nazwę, cenę, stan i zdjęcia. Przełącz PL/EN u góry, aby przetłumaczyć nazwy.",
+    "listHint": "Nazwa wariantu w języku {locale}. Przełącz PL/EN u góry formularza, aby dodać tłumaczenie.",
+    "addVariant": "Dodaj wariant",
+    "removeVariant": "Usuń wariant",
+    "unnamedVariant": "ten wariant",
+    "nameLabel": {
+      "en-US": "Nazwa wariantu (EN)",
+      "pl-PL": "Nazwa wariantu (PL)"
+    },
+    "namePlaceholder": {
+      "en-US": "np. Gold plated",
+      "pl-PL": "np. Srebrny"
+    },
+    "imagesLabel": "Zdjęcia: {name}",
+    "imagesHint": "Galeria tylko dla tego wariantu. Gdy pusta, sklep pokazuje wspólne zdjęcia z sekcji Media.",
+    "variantRowTitle": "Wariant: {name}",
+    "attributesTitle": "Atrybuty wariantu",
+    "attributesHint": "Wartości tylko dla tego wariantu (np. waga Srebrny vs Pozłacany). Atrybuty wspólne ustaw w sekcji Atrybuty poniżej.",
+    "sku": "SKU",
+    "stockQuantity": "Stan magazynowy (szt.)",
+    "price": "Cena",
+    "title": "Warianty"
+  }
+}

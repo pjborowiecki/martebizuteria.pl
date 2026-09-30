@@ -1,4 +1,4 @@
-import { QUERY_KEY_ROOTS } from "~/src/modules/_core/constants/query-keys"
+import { COUNTRY_CODE_LENGTH } from "~/src/modules/address/address.zod"
 
 import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants"
 
@@ -30,11 +30,7 @@ export const ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS = {
   yes: "booleanYes",
 } as const
 
-export const ADMIN_CUSTOMER_STRIPE_CUSTOMER_ID_COLUMN_WIDTH_PX = 300
-
 export const ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS = "completed" as const
-
-export const ADMIN_CUSTOMER_ORDER_REVENUE_STATUSES = [ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS] as const
 
 export const ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES = ["completed", "processing", "pending"] as const
 
@@ -79,7 +75,7 @@ export const ADMIN_CUSTOMER_TABLE_COLUMN_SIZE = {
   phone: 140,
   recordId: CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX,
   role: 110,
-  stripeCustomerId: ADMIN_CUSTOMER_STRIPE_CUSTOMER_ID_COLUMN_WIDTH_PX,
+  stripeCustomerId: 300,
   totalSpent: 140,
 } as const
 
@@ -102,7 +98,7 @@ export const DEFAULT_ADMIN_CUSTOMER_CURRENCY = "PLN"
 export const ADMIN_CUSTOMER_FORM_FIELD_MAX = {
   ADDRESS_LINE: 512,
   CITY: 256,
-  COUNTRY_CODE: 2,
+  COUNTRY_CODE: COUNTRY_CODE_LENGTH,
   CUSTOM_TAG: 50,
   CUSTOM_TAGS_COUNT: 20,
   NOTES: 4000,
@@ -119,9 +115,14 @@ export const USER_ERROR_CODES = {
 
 export const USER_QUERY_KEYS = {
   ADMIN: {
-    CUSTOMERS: [...QUERY_KEY_ROOTS.ADMIN, "users", "customers"] as const,
-    CUSTOMERS_PAGE: [...QUERY_KEY_ROOTS.ADMIN, "users", "customers", "page"] as const,
-    CUSTOMER_BY_ID: [...QUERY_KEY_ROOTS.ADMIN, "users", "customers", "detail"] as const,
-    CUSTOMER_STATS: [...QUERY_KEY_ROOTS.ADMIN, "users", "customers", "stats"] as const,
+    CUSTOMERS: ["admin", "users", "customers"] as const,
+    CUSTOMERS_PAGE: ["admin", "users", "customers", "page"] as const,
+    CUSTOMER_BY_ID: ["admin", "users", "customers", "detail"] as const,
+    CUSTOMER_STATS: ["admin", "users", "customers", "stats"] as const,
   },
+} as const
+
+export const USER_MUTATION_KEYS = {
+  DELETE_CUSTOMER: ["user", "deleteCustomer"] as const,
+  UPDATE_CUSTOMER: ["user", "updateCustomer"] as const,
 } as const

@@ -3,16 +3,17 @@ import { type JSX, useCallback, useMemo, useState } from "react"
 import { cn } from "cn"
 import { CalendarIcon } from "lucide-react"
 import { type Matcher } from "react-day-picker"
-import { useFormatter, useLocale } from "use-intl"
+import { useFormatter, useLocale } from "use-intl/react"
 
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
-import { isValidLocale } from "~/src/integrations/use-intl/i18n.utils"
+import { getDayPickerLocale } from "~/src/integrations/react-day-picker/react-day-picker.locale"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
+import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
-import { getDayPickerLocale } from "~/src/lib/day-picker-locale"
-import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToLocalDate } from "~/src/lib/iso-date"
+import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Calendar } from "~/src/presentation/components/shadcn/calendar"
+
 const buildDisabledMatchers = (min: string | undefined, max: string | undefined): Matcher[] | undefined => {
   const matchers: Matcher[] = []
   if (min !== undefined && isIsoDateString(min)) {
@@ -20,15 +21,16 @@ const buildDisabledMatchers = (min: string | undefined, max: string | undefined)
       before: parseIsoDateToLocalDate(min),
     })
   }
+
   if (max !== undefined && isIsoDateString(max)) {
     matchers.push({
       after: parseIsoDateToLocalDate(max),
     })
   }
+
   return matchers.length > 0 ? matchers : undefined
 }
 
-/** Locale-aware date field using shadcn `Calendar` (react-day-picker), not the native `type="date"` picker. */
 export const LocaleDatePicker = ({
   ariaLabel,
   clearLabel,
@@ -42,7 +44,7 @@ export const LocaleDatePicker = ({
 }: Readonly<LocaleDatePickerProps>): JSX.Element => {
   const appLocale = useLocale()
   const format = useFormatter()
-  const dayPickerLocale = getDayPickerLocale(isValidLocale(appLocale) ? appLocale : DEFAULT_LOCALE)
+  const dayPickerLocale = getDayPickerLocale(isSupportedLocale(appLocale) ? appLocale : I18N.DEFAULT_LOCALE)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const hasSelectedDate = value !== "" && isIsoDateString(value)
   const selectedDate = hasSelectedDate ? parseIsoDateToLocalDate(value) : undefined
@@ -51,10 +53,12 @@ export const LocaleDatePicker = ({
     if (value === "" || !isIsoDateString(value)) {
       return placeholder
     }
+
     return format.dateTime(parseIsoDateToLocalDate(value), {
       dateStyle: "short",
     })
   }, [format, placeholder, value])
+
   const handleSelect = useCallback(
     (date: Date | undefined) => {
       if (date === undefined) {
@@ -65,17 +69,21 @@ export const LocaleDatePicker = ({
     },
     [onChange],
   )
+
   const handleClear = useCallback(() => {
     onChange("")
     setCalendarOpen(false)
   }, [onChange])
+
   const handleToday = useCallback(() => {
     onChange(todayIso)
     setCalendarOpen(false)
   }, [onChange, todayIso])
+
   const toggleCalendar = useCallback(() => {
     setCalendarOpen((open) => !open)
   }, [])
+
   return (
     <div className="space-y-2">
       <Button
@@ -113,6 +121,7 @@ export const LocaleDatePicker = ({
     </div>
   )
 }
+
 interface LocaleDatePickerProps {
   readonly ariaLabel: string
   readonly clearLabel: string

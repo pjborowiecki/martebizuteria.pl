@@ -1,9 +1,9 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { ListFilter } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { ROLES } from "~/src/integrations/better-auth/auth.constants"
+import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
 import { ADMIN_CUSTOMER_ROLE_LABEL_KEYS, ADMIN_CUSTOMER_TABLE_COLUMN_ID } from "~/src/modules/user/user.constants"
 
@@ -34,6 +34,7 @@ export const CustomersRoleFilter = (): JSX.Element => {
     ],
     [t],
   )
+
   const handleChange = useCallback(
     (value: string | null) => {
       if (value === null) {
@@ -44,6 +45,7 @@ export const CustomersRoleFilter = (): JSX.Element => {
     },
     [column, table],
   )
+
   return (
     <Select items={options} value={current} onValueChange={handleChange}>
       <SelectTrigger size="sm" className="h-9 w-[200px] gap-2 rounded-lg text-xs data-[size=sm]:h-9" aria-label={t("filter.role")}>
@@ -60,4 +62,5 @@ export const CustomersRoleFilter = (): JSX.Element => {
     </Select>
   )
 }
+
 const ALL_VALUE = "all"

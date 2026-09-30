@@ -2,8 +2,10 @@ import { type JSX, useMemo } from "react"
 
 import { createColumnHelper } from "@tanstack/react-table"
 import { cn } from "cn"
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 import {
   PRODUCT_INVENTORY_LEVEL,
   PRODUCT_STATUS_LABEL_KEYS,
@@ -15,22 +17,17 @@ import {
 import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductTitle, resolveProductVariantKind } from "~/src/modules/product/product.utils"
 
-import { matchesDateColumnFilter } from "~/src/lib/admin-date-filter"
-import { formatPrice } from "~/src/lib/currency"
-
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
+import { matchesDateColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
+import { matchesNumericColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-numeric-filter"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { Image } from "~/src/presentation/components/custom/image"
-import {
-  CATALOG_RECORD_ID_COLUMN_META,
-  catalogRecordIdColumnWidth,
-} from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
+import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
 import { createProductReorderColumn } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/product-reorder-column"
 import { ProductsRowActions } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-row-actions"
-import { matchesNumericColumnFilter } from "~/src/presentation/components/custom/pages/admin/catalog/products/lib/products-numeric-filter"
 import { CatalogTitleHandleCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
 import {
   CATALOG_DATAGRID_EMPTY_TEXT_CLASS,
@@ -38,6 +35,7 @@ import {
   CatalogTruncatedTextCell,
 } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 import { ProductStatusBadge } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/product-status-badge"
+
 const ProductImageCell = ({
   thumbnail,
   title,
@@ -46,12 +44,14 @@ const ProductImageCell = ({
   title: string
 }>): JSX.Element => {
   const src = thumbnail ?? undefined
+
   return (
     <div className="relative size-9 shrink-0 overflow-hidden rounded-lg border border-border/50 bg-secondary">
       {src !== undefined && <Image src={src} alt={title} width={THUMBNAIL_SIZE} height={THUMBNAIL_SIZE} className="object-cover" />}
     </div>
   )
 }
+
 const ProductStockCell = ({
   inventoryLevel,
   totalStock,
@@ -66,12 +66,14 @@ const ProductStockCell = ({
     inventoryLevel === PRODUCT_INVENTORY_LEVEL.LOW && "text-amber-600",
     inventoryLevel === PRODUCT_INVENTORY_LEVEL.OK && "text-foreground",
   )
+
   return (
     <span className={className} title={inventoryLevel === PRODUCT_INVENTORY_LEVEL.LOW ? t("stockLow") : undefined}>
       {totalStock}
     </span>
   )
 }
+
 const statusLabelKey = (
   status: Product["adminListItem"]["status"],
 ): (typeof PRODUCT_STATUS_LABEL_KEYS)[keyof typeof PRODUCT_STATUS_LABEL_KEYS] => PRODUCT_STATUS_LABEL_KEYS[status]
@@ -90,6 +92,7 @@ const ProductVariantKindCell = ({
       </Badge>
     )
   }
+
   return (
     <Badge className="font-normal" variant="outline">
       {t("variantKind.multiCount", {
@@ -98,6 +101,7 @@ const ProductVariantKindCell = ({
     </Badge>
   )
 }
+
 const buildProductTimestampColumns = ({ format, t }: ProductColumnBuildContext) =>
   columnHelper.columns([
     columnHelper.accessor("createdAt", {
@@ -139,6 +143,7 @@ const buildProductTimestampColumns = ({ format, t }: ProductColumnBuildContext) 
 
 const buildProductDataGridColumns = (context: ProductColumnBuildContext) => {
   const { locale, t, tAdmin } = context
+
   return columnHelper.columns([
     selectionColumn(columnHelper, {
       all: tAdmin(PRODUCT_TABLE_A11Y_KEYS.selectAll),
@@ -169,7 +174,7 @@ const buildProductDataGridColumns = (context: ProductColumnBuildContext) => {
       header: t("columns.id"),
       id: PRODUCT_TABLE_COLUMN_ID.recordId,
       meta: CATALOG_RECORD_ID_COLUMN_META,
-      ...catalogRecordIdColumnWidth(),
+      ...fixedDataGridColumnWidth(PRODUCT_TABLE_COLUMN_SIZE.recordId),
     }),
     columnHelper.accessor("status", {
       cell: ({ getValue }) => <ProductStatusBadge status={getValue()} label={t(statusLabelKey(getValue()))} />,
@@ -206,8 +211,9 @@ const buildProductDataGridColumns = (context: ProductColumnBuildContext) => {
       cell: ({ getValue }) => {
         const price = getValue()
         if (price === undefined) {
-          return <span className="text-muted-foreground/40">—</span>
+          return <span className="text-muted-foreground/40">{EMPTY_VALUE}</span>
         }
+
         return <span className="block font-mono text-sm font-medium tabular-nums">{formatPrice(price, "PLN", locale)}</span>
       },
       filterFn: matchesNumericColumnFilter,
@@ -233,8 +239,9 @@ const buildProductDataGridColumns = (context: ProductColumnBuildContext) => {
       cell: ({ getValue }) => {
         const value = getValue()
         if (value === undefined || value === "") {
-          return <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>—</span>
+          return <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>{EMPTY_VALUE}</span>
         }
+
         return <span className={CATALOG_DATAGRID_MUTED_TEXT_CLASS}>{value}</span>
       },
       header: t("columns.categories"),
@@ -287,6 +294,7 @@ export const useProductColumns = () => {
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
   const locale = useLocale()
+
   return useMemo(
     () =>
       buildProductDataGridColumns({
@@ -298,8 +306,11 @@ export const useProductColumns = () => {
     [format, locale, t, tAdmin],
   )
 }
+
 const THUMBNAIL_SIZE = 36
+
 const columnHelper = createColumnHelper<DataGridFeatures, Product["adminListItem"]>()
+
 interface ProductColumnBuildContext {
   readonly format: ReturnType<typeof useFormatter>
   readonly locale: string

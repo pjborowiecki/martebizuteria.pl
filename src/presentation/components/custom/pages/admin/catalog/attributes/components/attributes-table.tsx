@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useEffect, useMemo } from "react"
 
 import { useSearch } from "@tanstack/react-router"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
@@ -19,9 +19,11 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/hooks/use-attributes-sheet"
 import { attributesDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/utils/attributes-data-grid"
 import { CatalogToolbarAddButton } from "~/src/presentation/components/custom/pages/admin/catalog/toolbar/components/catalog-toolbar-add-button"
+
 const AttributesTableToolbarActions = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.attributes")
   const { openCreate } = useAttributesSheet()
+
   return (
     <>
       <AttributesBulkActions />
@@ -29,11 +31,13 @@ const AttributesTableToolbarActions = (): JSX.Element => {
     </>
   )
 }
+
 export const AttributesTableContent = (): JSX.Element => {
   const sheet = useAttributesSheet()
   const { create } = useSearch({
-    from: "/{-$locale}/admin/catalog/attributes/",
+    from: "/admin/catalog/attributes/",
   })
+
   const grid = useAttributesDataGrid({
     onRowClick: sheet.openEdit,
   })
@@ -42,14 +46,17 @@ export const AttributesTableContent = (): JSX.Element => {
       sheet.openCreate()
     }
   }, [create, sheet])
+
   const handleSheetOpenChange = useCallback(
     (open: boolean) => {
       sheet.setOpen(open)
     },
     [sheet],
   )
+
   const toolbarActions = useMemo(() => <AttributesTableToolbarActions />, [])
   const sheetMode = sheet.mode === "closed" ? "create" : sheet.mode
+
   return (
     <>
       <Provider value={grid}>
@@ -74,10 +81,12 @@ export const AttributesTableContent = (): JSX.Element => {
 
 export const AttributesTable = (): JSX.Element => {
   const sheetState = useAttributesSheetState()
+
   return (
     <AttributesSheetProvider value={sheetState}>
       <AttributesTableContent />
     </AttributesSheetProvider>
   )
 }
+
 const { Body, Pagination, Provider, Toolbar } = attributesDataGrid

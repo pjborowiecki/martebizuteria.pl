@@ -3,7 +3,7 @@ import { type JSX, useCallback } from "react"
 import { cn } from "cn"
 import { ImageIcon } from "lucide-react"
 import { useController, useFormContext, useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
 
@@ -15,6 +15,7 @@ import { type GalleryImage } from "~/src/presentation/components/custom/image-up
 import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-label"
 import { useProductForm } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-form-provider"
 import { productImagesToGallery } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-image-form.utils"
+
 export const ProductEditorMedia = ({ fillHeight = false }: Readonly<ProductEditorMediaProps>): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")
   const { control } = useFormContext<ProductFormValues>()
@@ -22,15 +23,18 @@ export const ProductEditorMedia = ({ fillHeight = false }: Readonly<ProductEdito
     control,
     name: "hasVariants",
   })
+
   const { isPending, setUploading } = useProductForm()
   const imagesField = useController({
     control,
     name: "images",
   })
+
   const mainField = useController({
     control,
     name: "mainImageId",
   })
+
   const galleryValue = productImagesToGallery(imagesField.field.value)
   const handleGalleryChange = useCallback(
     (images: readonly GalleryImage[]) => {
@@ -45,18 +49,21 @@ export const ProductEditorMedia = ({ fillHeight = false }: Readonly<ProductEdito
     },
     [imagesField.field],
   )
+
   const handleMainChange = useCallback(
     (id: string | undefined) => {
       mainField.field.onChange(id)
     },
     [mainField.field],
   )
+
   const handleUploadingChange = useCallback(
     (uploading: boolean) => {
       setUploading(uploading)
     },
     [setUploading],
   )
+
   return (
     <Card className={cn(fillHeight && "flex h-full flex-col")}>
       <CardHeader className="flex flex-row items-center gap-2 space-y-0">
@@ -85,6 +92,7 @@ export const ProductEditorMedia = ({ fillHeight = false }: Readonly<ProductEdito
     </Card>
   )
 }
+
 interface ProductEditorMediaProps {
   readonly fillHeight?: boolean
 }

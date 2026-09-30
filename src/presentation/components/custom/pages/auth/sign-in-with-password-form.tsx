@@ -2,17 +2,18 @@ import { type JSX, type SyntheticEvent, useCallback } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigate } from "@tanstack/react-router"
+import { createClientOnlyFn } from "@tanstack/react-start"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { signIn } from "~/src/integrations/better-auth/auth-client"
-import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.errors"
-import { postAuthRouteFor } from "~/src/integrations/better-auth/auth.guards"
-import { type SignInFormValues, signInWithPasswordSchema } from "~/src/integrations/better-auth/auth.schemas"
+import { signIn } from "~/src/integrations/better-auth/auth.client"
+import { postAuthRouteFor } from "~/src/integrations/better-auth/auth.routes"
+import { getCurrentSession } from "~/src/integrations/better-auth/auth.session"
+import { type SignInFormValues, signInWithPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
 
-import { getSessionFn } from "~/src/modules/session/use-cases/get-session"
+import { useActionError } from "~/src/hooks/use-action-error"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -20,33 +21,38 @@ import { LocalizedLink } from "~/src/presentation/components/custom/localized-li
 import { AuthPasswordField, AuthTextField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
 import { ROUTES } from "~/src/routes"
+
+const signInEmail = createClientOnlyFn((input: Parameters<typeof signIn.email>[0]) => signIn.email(input))
+
 export const SignInWithPasswordForm = (): JSX.Element => {
   const navigate = useNavigate()
   const t = useTranslations()
-  const formSchema = signInWithPasswordSchema(t)
+  const actionError = useActionError()
   const form = useForm<SignInFormValues>({
     defaultValues: {
       email: "",
       password: "",
     },
     mode: "onTouched",
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(signInWithPasswordSchema),
   })
+
   const onSubmit = useCallback(
     async (data: SignInFormValues) => {
-      await signIn.email({
+      await signInEmail({
         email: data.email,
         fetchOptions: {
           onError: (ctx) => {
             toast.error(t("pages.auth.toast.errorTitle"), {
-              description: getAuthErrorMessage(t, ctx.error),
+              description: actionError(ctx.error),
             })
           },
           onSuccess: async () => {
             toast.success(t("pages.auth.toast.signInTitle"), {
               description: t("pages.auth.toast.signInDescription"),
             })
-            const session = await getSessionFn()
+
+            const session = await getCurrentSession()
             if (session?.user) {
               void navigate({
                 to: postAuthRouteFor(session.user),
@@ -59,6 +65,7 @@ export const SignInWithPasswordForm = (): JSX.Element => {
     },
     [navigate, t],
   )
+
   const handleFormSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault()
@@ -66,7 +73,9 @@ export const SignInWithPasswordForm = (): JSX.Element => {
     },
     [form, onSubmit],
   )
+
   const { isSubmitting } = form.formState
+
   return (
     <form id="sign-in-form" onSubmit={handleFormSubmit} className="space-y-5">
       <AuthTextField

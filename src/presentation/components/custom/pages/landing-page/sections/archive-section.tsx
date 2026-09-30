@@ -1,7 +1,7 @@
 import { type JSX, useMemo } from "react"
 
 import { ArrowRight } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { LANDING_ARCHIVE_ARTICLES } from "~/src/data/blog-posts"
 
@@ -13,9 +13,11 @@ import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 const ArchiveArticleItem = ({ article }: Readonly<ArticleLinkProps>): JSX.Element => {
   const t = useTranslations("pages.landing.archiveSection")
   const params = useMemo(() => ({ slug: article.slug }), [article.slug])
+
   return (
     <li>
       <LocalizedLink
@@ -29,8 +31,10 @@ const ArchiveArticleItem = ({ article }: Readonly<ArticleLinkProps>): JSX.Elemen
     </li>
   )
 }
+
 export const ArchiveSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.archiveSection")
+
   return (
     <section className="mx-auto max-w-400 px-6 py-16 lg:px-12 lg:py-24">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-center lg:gap-12">
@@ -59,8 +63,11 @@ export const ArchiveSection = (): JSX.Element => {
     </section>
   )
 }
+
 const ASPECT_RATIO_PORTRAIT = 0.8
+
 type ArchiveArticle = (typeof LANDING_ARCHIVE_ARTICLES)[number]
+
 interface ArticleLinkProps {
   article: ArchiveArticle
 }

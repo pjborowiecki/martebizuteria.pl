@@ -1,9 +1,9 @@
 import { type JSX } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { adminCustomerStatsQueryOptions } from "~/src/modules/user/use-cases/get-admin-customer-stats"
+import { getAdminCustomerStatsQuery } from "~/src/modules/user/use-cases/get-admin-customer-stats"
 
 import {
   CustomerStatCard,
@@ -13,13 +13,13 @@ import {
 import { CUSTOMER_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/customers/customers-stats.config"
 import { useCustomersDataGridContext } from "~/src/presentation/components/custom/pages/admin/customers/hooks/use-customers-data-grid"
 
-/** Lives inside `customersDataGrid.Provider` so cards can sync the stat filter. */
 export const CustomersStats = (): JSX.Element => {
   const t = useTranslations("pages.admin.customers")
   const locale = useLocale()
-  const { data: resolvedStats, isFetching, isStale } = useSuspenseQuery(adminCustomerStatsQueryOptions())
+  const { data: resolvedStats, isFetching, isStale } = useSuspenseQuery(getAdminCustomerStatsQuery())
   const valuesPending = isFetching && isStale
   const { activeStatFilter, applyCustomerStatFilter } = useCustomersDataGridContext()
+
   return (
     <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {CUSTOMER_STAT_CARDS.map((config) => {

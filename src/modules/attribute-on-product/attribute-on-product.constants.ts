@@ -13,6 +13,8 @@ export const ATTRIBUTE_ON_PRODUCT_COLUMN_LENGTH = {
 
 export const ATTRIBUTE_ON_PRODUCT_DEFAULT_RANK = 0
 
+export const ATTRIBUTE_ON_PRODUCT_QUERY_STALE_MS = 60_000
+
 export const ATTRIBUTE_ON_PRODUCT_QUERY_KEYS = {
   BY_PRODUCT_ID: ["attribute-on-product"] as const,
 } as const

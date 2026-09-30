@@ -1,9 +1,12 @@
 import { createServerFn } from "@tanstack/react-start"
 import { eq } from "drizzle-orm"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { scheduleProductAttributeCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordCatalogAttributeUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   PRODUCT_ATTRIBUTE_ERROR_CODES,
@@ -17,15 +20,13 @@ import {
 } from "~/src/modules/product-attribute/product-attribute.utils"
 import { productAttributeZodSchemas } from "~/src/modules/product-attribute/product-attribute.zod"
 
-import { scheduleProductAttributeCatalogInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server"
-
-export const updateProductAttributeFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => productAttributeZodSchemas.updateInput.parse(data))
+export const updateProductAttribute = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["update"] })])
+  .validator((input: zod.input<typeof productAttributeZodSchemas.updateInput>) => productAttributeZodSchemas.updateInput.parse(input))
   .handler(async ({ data }) => {
-    await assertAdmin()
     const existing = await getProductAttributeByHandleQuery.execute({ handle: data.handle })
     if (existing !== undefined && existing.id !== data.id) {
-      throw new Error(PRODUCT_ATTRIBUTE_ERROR_CODES.DUPLICATE_HANDLE)
+      throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ATTRIBUTE_ERROR_CODES.DUPLICATE_HANDLE)
     }
     await db
       .update(productAttribute)
@@ -39,5 +40,6 @@ export const updateProductAttributeFn = createServerFn({ method: "POST" })
       .where(eq(productAttribute.id, data.id))
     scheduleProductAttributeCatalogInvalidation()
     recordCatalogAttributeUpdatedAudit(data.handle, { resourceId: data.id })
+
     return { handle: data.handle, id: data.id }
   })

@@ -6,7 +6,9 @@ import { createDataGridColumnResizeHandler } from "~/src/presentation/components
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 
 const features: DataGridFeatures = tableFeatures({ ...dataGridFeatures, coreReactivityFeature: storeReactivityBindings() })
+
 const columnHelper = createColumnHelper<typeof features, { title: string }>()
+
 const columns = columnHelper.columns([columnHelper.accessor("title", { size: 100 })])
 
 const createGrid = (columnResizeMode: ColumnResizeMode) => {
@@ -15,13 +17,16 @@ const createGrid = (columnResizeMode: ColumnResizeMode) => {
   if (header === undefined) {
     throw new Error("expected a leaf header for the title column")
   }
+
   return { column: header.column, resize: createDataGridColumnResizeHandler(header) }
 }
 
-const touchEvent = (type: string, touches: { clientX: number }[], changedTouches: { clientX: number }[] = []) =>
-  Object.assign(new Event(type, { cancelable: true }), { changedTouches, touches })
+const touchEvent = (
+  type: string,
+  touches: { clientX: number }[],
+  { changedTouches = [], cancelable = true }: { changedTouches?: { clientX: number }[]; cancelable?: boolean } = {},
+) => Object.assign(new Event(type, { cancelable }), { changedTouches, touches })
 
-/** `target instanceof Element` must stay evaluable under the node environment; no synthetic event is an instance of this stub. */
 const ElementStub = vi.fn()
 
 describe("column resize pointer lifecycle", () => {
@@ -41,7 +46,7 @@ describe("column resize pointer lifecycle", () => {
     const { column, resize } = createGrid(mode)
     resize(touchEvent("touchstart", [{ clientX: 100 }]))
     document.dispatchEvent(touchEvent("touchmove", [{ clientX: 140 }]))
-    document.dispatchEvent(touchEvent("touchend", [], [{ clientX: 150 }]))
+    document.dispatchEvent(touchEvent("touchend", [], { changedTouches: [{ clientX: 150 }] }))
 
     expect(column.getSize()).toBe(150)
     expect(column.getIsResizing()).toBe(false)
@@ -59,9 +64,46 @@ describe("column resize pointer lifecycle", () => {
     expect(column.getSize()).toBe(140)
     expect(column.getIsResizing()).toBe(false)
 
-    document.dispatchEvent(touchEvent("touchend", [], [{ clientX: 200 }]))
+    document.dispatchEvent(touchEvent("touchend", [], { changedTouches: [{ clientX: 200 }] }))
     document.dispatchEvent(touchEvent("touchmove", [{ clientX: 220 }]))
     expect(column.getSize()).toBe(140)
+  })
+
+  it("retains the last pointer position when a touch move or cancellation carries no touches", () => {
+    const { column, resize } = createGrid("onChange")
+    resize(touchEvent("touchstart", [{ clientX: 100 }]))
+    document.dispatchEvent(touchEvent("touchmove", [{ clientX: 140 }]))
+    document.dispatchEvent(touchEvent("touchmove", []))
+    document.dispatchEvent(touchEvent("touchcancel", []))
+
+    expect(column.getSize()).toBe(140)
+    expect(column.getIsResizing()).toBe(false)
+  })
+
+  it("handles non-cancelable touch events without trying to prevent browser defaults", () => {
+    const { column, resize } = createGrid("onChange")
+    const move = touchEvent("touchmove", [{ clientX: 140 }], { cancelable: false })
+    const end = touchEvent("touchend", [], { cancelable: false, changedTouches: [{ clientX: 150 }] })
+    const preventMove = vi.spyOn(move, "preventDefault")
+    const preventEnd = vi.spyOn(end, "preventDefault")
+    resize(touchEvent("touchstart", [{ clientX: 100 }]))
+
+    document.dispatchEvent(move)
+    document.dispatchEvent(end)
+
+    expect(column.getSize()).toBe(150)
+    expect(preventMove).not.toHaveBeenCalled()
+    expect(preventEnd).not.toHaveBeenCalled()
+    expect(column.getIsResizing()).toBe(false)
+  })
+
+  it("avoids invalid widths when the initial touch coordinates are unavailable", () => {
+    const { column, resize } = createGrid("onEnd")
+    resize(touchEvent("touchstart", []))
+    document.dispatchEvent(touchEvent("touchend", []))
+
+    expect(column.getSize()).toBe(100)
+    expect(column.getIsResizing()).toBe(false)
   })
 
   it("preserves mouse resizing and removes listeners after release", () => {

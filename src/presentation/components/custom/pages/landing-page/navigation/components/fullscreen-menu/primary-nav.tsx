@@ -1,12 +1,13 @@
 import { type JSX, useCallback } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { resolveLocalizedMenuPath } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-path"
 import { useNavigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider"
 import { PRIMARY } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"
+
 const PrimaryNavItemContent = ({
   item,
   t,
@@ -26,6 +27,7 @@ const PrimaryNavItemContent = ({
     ) : undefined}
   </>
 )
+
 const PrimaryNavItem = ({
   dismissMenuForRouteNavigation,
   handleNavigateToHash,
@@ -43,13 +45,17 @@ const PrimaryNavItem = ({
   const handleHashClick = useCallback(() => {
     handleNavigateToHash(item.hash)
   }, [handleNavigateToHash, item.hash])
+
   const handleRouteClick = useCallback(() => {
     dismissMenuForRouteNavigation()
   }, [dismissMenuForRouteNavigation])
+
   const handleMouseEnter = useCallback(() => {
     handleHover(index)
   }, [handleHover, index])
+
   const localizedPath = item.hash.startsWith("/") ? resolveLocalizedMenuPath(item.hash) : undefined
+
   return (
     <div className="overflow-hidden pb-1">
       {localizedPath === undefined ? (
@@ -77,9 +83,11 @@ const PrimaryNavItem = ({
     </div>
   )
 }
+
 export const PrimaryNav = (): JSX.Element => {
   const { dismissMenuForRouteNavigation, handleNavigateToHash, handleHover } = useNavigation()
   const t = useTranslations("components.custom.navigation")
+
   return (
     <nav aria-label={t("overlayNavLabel")} className="flex flex-col gap-6 sm:gap-8">
       {PRIMARY.map((item, index) => (
@@ -95,6 +103,8 @@ export const PrimaryNav = (): JSX.Element => {
     </nav>
   )
 }
+
 const PAD_LENGTH = 2
+
 const PRIMARY_MENU_LINK_CLASS_NAME =
   "group w-max cursor-pointer border-0 bg-transparent p-0 text-left font-serif text-5xl font-light tracking-tight text-primary-foreground uppercase transition-transform duration-300 ease-out will-change-transform outline-none hover:translate-x-2 hover:text-primary-foreground/70 sm:text-6xl xl:text-7xl"

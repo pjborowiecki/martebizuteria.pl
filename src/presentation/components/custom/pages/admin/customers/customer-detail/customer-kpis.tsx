@@ -1,12 +1,13 @@
 import { type JSX } from "react"
 
 import { ArrowUpRight, CreditCard, ShoppingBag, TrendingUp } from "lucide-react"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { type User } from "~/src/modules/user/user.types"
 import { formatAdminCustomerDetailKpiPrice } from "~/src/modules/user/user.utils"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
+
 export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
   const locale = useLocale()
@@ -36,6 +37,7 @@ export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
       value: `${customer.returningRate}%`,
     },
   ]
+
   return (
     <div className="grid gap-5 sm:grid-cols-4">
       {kpis.map((kpi) => (
@@ -54,6 +56,7 @@ export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
     </div>
   )
 }
+
 interface CustomerKpisProps {
   readonly customer: User["adminCustomerDetail"]
 }

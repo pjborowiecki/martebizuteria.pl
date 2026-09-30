@@ -2,7 +2,7 @@ import { type MouseEvent, type ReactNode, type RefObject, createContext, useCall
 
 import { useRouter } from "@tanstack/react-router"
 
-import { scrollToSectionById } from "~/src/lib/lenis/scroll-to-section"
+import { scrollToSectionById } from "~/src/integrations/lenis/lenis.scroll"
 
 import * as CONSTANTS from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-constants"
 import { resolveMenuPathNavigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-path"
@@ -11,12 +11,14 @@ import {
   type HoverOptions,
   useNavigationLogic,
 } from "~/src/presentation/components/custom/pages/landing-page/navigation/hooks/use-navigation-logic"
+
 const scrollToSection = (id: string, navigate: ReturnType<typeof useRouter>["navigate"]) => {
   if (scrollToSectionById(id, CONSTANTS.HEADER_OFFSET_PX) !== undefined) {
     return
   }
-  void navigate({ hash: id, to: "/{-$locale}" })
+  void navigate({ hash: id, to: "/" })
 }
+
 export const NavigationProvider = ({
   children,
 }: Readonly<{
@@ -38,9 +40,11 @@ export const NavigationProvider = ({
     setMenuOpen,
     setPendingHashGlobal,
   } = useNavigationLogic(containerRef, panelRef, routerRef.current.navigate)
+
   const handleClose = useCallback(() => {
     setMenuOpen(false)
   }, [setMenuOpen])
+
   const handleNavigateToHash = useCallback(
     (hash: string) => {
       if (hash.startsWith("/")) {
@@ -56,8 +60,10 @@ export const NavigationProvider = ({
                 to: target.to,
               },
         )
+
         return
       }
+
       const id = hash.replace(/^#/u, "")
       if (menuOpen) {
         setPendingHashGlobal(id)
@@ -68,6 +74,7 @@ export const NavigationProvider = ({
     },
     [dismissMenuForRouteNavigation, menuOpen, router, setPendingHashGlobal, setMenuOpen],
   )
+
   const value = useMemo(
     (): NavigationContextValue => ({
       containerRef,
@@ -96,15 +103,19 @@ export const NavigationProvider = ({
       getHoverProps,
     ],
   )
+
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>
 }
+
 export const useNavigation = (): NavigationContextValue => {
   const ctx = useContext(NavigationContext)
   if (!ctx) {
     throw new Error("useNavigation must be used within NavigationProvider")
   }
+
   return ctx
 }
+
 export interface NavigationContextValue {
   containerRef: RefObject<HTMLDivElement | null>
   panelRef: RefObject<HTMLDialogElement | null>
@@ -119,4 +130,5 @@ export interface NavigationContextValue {
   handleNavigateToHash: (hash: string) => void
   getHoverProps: (options?: HoverOptions) => HoverHandlers
 }
+
 const NavigationContext = createContext<NavigationContextValue | undefined>(undefined)

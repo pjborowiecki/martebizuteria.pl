@@ -1,8 +1,10 @@
 import { type JSX, useCallback, useMemo, useState } from "react"
 
 import { FileSpreadsheet } from "lucide-react"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
+import { downloadCsvFile, escapeCsvField } from "~/src/modules/_core/utils/csv"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 import {
   ADMIN_ORDER_FULFILLMENT_LABEL_KEYS,
   ADMIN_ORDER_PAYMENT_LABEL_KEYS,
@@ -11,15 +13,12 @@ import {
   isAdminOrderPaymentUiKey,
 } from "~/src/modules/order/order.constants"
 import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
-import { fetchAdminOrdersExportFn } from "~/src/modules/order/use-cases/export-admin-orders"
-
-import { formatPrice } from "~/src/lib/currency"
+import { exportAdminOrders } from "~/src/modules/order/use-cases/export-admin-orders"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { DataGridIconTooltip } from "~/src/presentation/components/custom/datagrid/components/data-grid-icon-tooltip"
 import { useOrdersDataGridContext } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-orders-data-grid"
-const escapeCsvField = (value: string): string => value.replaceAll('"', '""')
 
 const resolvePaymentLabel = (paymentUiKey: string, t: ReturnType<typeof useTranslations<"pages.admin.orders">>): string =>
   isAdminOrderPaymentUiKey(paymentUiKey) ? t(ADMIN_ORDER_PAYMENT_LABEL_KEYS[paymentUiKey]) : paymentUiKey
@@ -36,9 +35,10 @@ export const OrdersExportAction = (): JSX.Element => {
     void (async () => {
       setIsExporting(true)
       try {
-        const orders = await fetchAdminOrdersExportFn({
+        const orders = await exportAdminOrders({
           data: exportListInput,
         })
+
         const headers = ["Order ID", "Customer", "Email", "Date", "Items", "Total", "Payment", "Fulfillment", "Status"]
         const csvContent = [
           headers.join(","),
@@ -54,23 +54,18 @@ export const OrdersExportAction = (): JSX.Element => {
               resolveFulfillmentLabel(order.fulfillmentUiKey, t),
               t(ADMIN_ORDER_STATUS_LABEL_KEYS[order.status]),
             ]
+
             return fields.map((field) => `"${escapeCsvField(field)}"`).join(",")
           }),
         ].join("\n")
-        const blob = new Blob([csvContent], {
-          type: "text/csv;charset=utf-8;",
-        })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement("a")
-        link.href = url
-        link.download = `orders-export-${new Date().toISOString().slice(0, ISO_DATE_SLICE_END)}.csv`
-        link.click()
-        URL.revokeObjectURL(url)
+
+        downloadCsvFile(`orders-export-${new Date().toISOString().slice(0, ISO_DATE_SLICE_END)}.csv`, csvContent)
       } finally {
         setIsExporting(false)
       }
     })()
   }, [exportListInput, locale, t])
+
   const button = useMemo(
     () => (
       <Button
@@ -86,6 +81,8 @@ export const OrdersExportAction = (): JSX.Element => {
     ),
     [handleExport, isExporting, t],
   )
+
   return <DataGridIconTooltip label={t("actions.export")} trigger={button} />
 }
+
 const ISO_DATE_SLICE_END = 10

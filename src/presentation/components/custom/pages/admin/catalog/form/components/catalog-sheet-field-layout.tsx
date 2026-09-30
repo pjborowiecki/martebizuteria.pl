@@ -23,7 +23,6 @@ export const CatalogSheetControlsActionRow = ({
   children: ReactNode
 }>): JSX.Element => <div className="flex items-start gap-2">{children}</div>
 
-/** Align actions with the 40px controls beneath their labels. */
 export const CatalogSheetActionColumn = ({
   children,
 }: Readonly<{

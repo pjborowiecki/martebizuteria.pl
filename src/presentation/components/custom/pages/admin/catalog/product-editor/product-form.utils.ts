@@ -1,7 +1,8 @@
 import { v7 as uuidv7 } from "uuid"
 
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
+import { formatCentsToMoneyInput } from "~/src/modules/_core/utils/currency"
 import { resolveAdditionalCategoryIds, resolvePrimaryCategoryId } from "~/src/modules/category-on-product/category-on-product.utils"
 import { resolveCollectionIds } from "~/src/modules/collection-on-product/collection-on-product.utils"
 import { createEmptyProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.utils"
@@ -24,10 +25,9 @@ import {
 } from "~/src/modules/product/product.utils"
 import { type CatalogUpsertInput, type ProductFormValues } from "~/src/modules/product/product.zod"
 
-import { formatCentsToMoneyInput } from "~/src/lib/currency"
-
 import { resolveMainImageId } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-image-form.utils"
 import { ensureImplicitVariantOptions } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-variant-form.utils"
+
 const isProductStatus = (value: string): value is ProductStatus => (PRODUCT_STATUSES as readonly string[]).includes(value)
 
 export const createEmptyProductFormValues = (): ProductFormValues => ({
@@ -54,6 +54,7 @@ export const createEmptyProductFormValues = (): ProductFormValues => ({
   titles: createEmptyProductAttributeLocaleMap(),
   variants: [],
 })
+
 const mapVariantImages = (
   images: readonly {
     readonly id: string
@@ -69,11 +70,13 @@ const mapVariantImages = (
     id: image.id,
     url: image.url,
   }))
+
   return {
     images: mapped,
     mainImageId: mapped[0]?.id,
   }
 }
+
 const resolveVariantImageRows = (
   variant: ProductDetailVariant,
   productImages: AdminProductDetail["images"],
@@ -86,21 +89,26 @@ const resolveVariantImageRows = (
   if (relationImages.length > 0) {
     return relationImages
   }
+
   return productImages.filter((image) => image.variantId === variant.id).toSorted((left, right) => left.rank - right.rank)
 }
+
 const buildFormOptionValues = (option: ProductOptionDraft, value: ProductOptionValueDraft, index: number): Record<string, string> => {
-  const optionId = option.id ?? option.titles[DEFAULT_LOCALE]
+  const optionId = option.id ?? option.titles[I18N.DEFAULT_LOCALE]
   let valueId = value.id
   if (valueId === undefined || valueId === "") {
-    valueId = value.labels[DEFAULT_LOCALE] === "" ? `__draft_${index}` : value.labels[DEFAULT_LOCALE]
+    valueId = value.labels[I18N.DEFAULT_LOCALE] === "" ? `__draft_${index}` : value.labels[I18N.DEFAULT_LOCALE]
   }
+
   return {
     [optionId]: valueId,
   }
 }
+
 const mapVariantRow = (variant: ProductDetailVariant, context: VariantRowMapContext): ProductFormValues["variants"][number] => {
   const { optionValues, options, productImages } = context
   const media = mapVariantImages(resolveVariantImageRows(variant, productImages))
+
   return {
     attributeValues: variant.attributes.map((row) => ({
       attributeId: row.attributeId,
@@ -117,9 +125,10 @@ const mapVariantRow = (variant: ProductDetailVariant, context: VariantRowMapCont
     price: formatCentsToMoneyInput(variant.price),
     quantity: variant.inventory?.quantityAvailable ?? 0,
     sku: variant.sku ?? "",
-    title: buildVariantDisplayTitle(optionValues, options, DEFAULT_LOCALE),
+    title: buildVariantDisplayTitle(optionValues, options, I18N.DEFAULT_LOCALE),
   }
 }
+
 const mapOptions = (product: AdminProductDetail): ProductFormValues["options"] =>
   product.options.map((option) => ({
     id: option.id,
@@ -130,8 +139,20 @@ const mapOptions = (product: AdminProductDetail): ProductFormValues["options"] =
     })),
   }))
 
-const findVariantByOptionValueId = (productVariants: readonly ProductDetailVariant[], valueId: string): ProductDetailVariant | undefined =>
-  productVariants.find((variant) => variant.optionOnVariants.some((row) => row.value.id === valueId))
+const takeMatchingVariant = (
+  variants: Set<ProductDetailVariant>,
+  predicate: (variant: ProductDetailVariant) => boolean,
+): ProductDetailVariant | undefined => {
+  for (const variant of variants) {
+    if (predicate(variant)) {
+      variants.delete(variant)
+
+      return variant
+    }
+  }
+
+  return undefined
+}
 
 const sortVariantsByOptionValueRank = (
   productVariants: readonly ProductDetailVariant[],
@@ -141,23 +162,28 @@ const sortVariantsByOptionValueRank = (
   if (option === undefined) {
     return [...productVariants]
   }
+
   const valueRankById = new Map(option.values.map((value, index) => [value.id ?? "", index] as const))
   const maxRank = option.values.length
+
   return [...productVariants].toSorted((left, right) => {
     const leftRank = valueRankById.get(left.optionOnVariants[0]?.value.id ?? "") ?? maxRank
     const rightRank = valueRankById.get(right.optionOnVariants[0]?.value.id ?? "") ?? maxRank
     if (leftRank !== rightRank) {
       return leftRank - rightRank
     }
+
     return left.title.localeCompare(right.title)
   })
 }
+
 const createEmptyVariantFormRow = (
   option: ProductOptionDraft,
   value: ProductOptionValueDraft,
   index: number,
 ): ProductFormValues["variants"][number] => {
   const optionValues = buildFormOptionValues(option, value, index)
+
   return {
     attributeValues: [],
     compareAtPrice: "",
@@ -169,11 +195,10 @@ const createEmptyVariantFormRow = (
     price: "",
     quantity: 0,
     sku: "",
-    title: buildVariantDisplayTitle(optionValues, [option], DEFAULT_LOCALE),
+    title: buildVariantDisplayTitle(optionValues, [option], I18N.DEFAULT_LOCALE),
   }
 }
 
-/** One form row per option value, matched to DB variant by value id then index. */
 const mapVariantsToFormRows = (
   productVariants: readonly ProductDetailVariant[],
   options: ProductOptionDraft[],
@@ -183,16 +208,30 @@ const mapVariantsToFormRows = (
   if (option === undefined) {
     return []
   }
-  const sortedVariants = sortVariantsByOptionValueRank(productVariants, options)
+
+  const remainingVariants = new Set(sortVariantsByOptionValueRank(productVariants, options))
+  // Reserve explicit identities before legacy fallbacks so no stored variant can populate two rows.
+  const linkedVariants = option.values.map((value) =>
+    takeMatchingVariant(
+      remainingVariants,
+      (variant) => value.id !== undefined && value.id !== "" && variant.optionOnVariants.some((row) => row.value.id === value.id),
+    ),
+  )
+  const namedVariants = option.values.map(
+    (value, index) =>
+      linkedVariants[index] ??
+      takeMatchingVariant(remainingVariants, (variant) => variant.title.trim() === value.labels[I18N.DEFAULT_LOCALE].trim()),
+  )
+
   return option.values.map((value, index) => {
     const optionValues = buildFormOptionValues(option, value, index)
-    const dbVariant =
-      (value.id !== undefined && value.id !== "" ? findVariantByOptionValueId(productVariants, value.id) : undefined) ??
-      sortedVariants[index] ??
-      productVariants.find((variant) => variant.title.trim() === value.labels[DEFAULT_LOCALE].trim())
+    const dbVariant = namedVariants[index] ?? remainingVariants.values().next().value
     if (dbVariant === undefined) {
       return createEmptyVariantFormRow(option, value, index)
     }
+
+    remainingVariants.delete(dbVariant)
+
     return mapVariantRow(dbVariant, {
       optionValues,
       options,
@@ -200,6 +239,7 @@ const mapVariantsToFormRows = (
     })
   })
 }
+
 const mapProductImages = (
   product: AdminProductDetail,
 ): {
@@ -213,11 +253,13 @@ const mapProductImages = (
     id: image.id,
     url: image.url,
   }))
+
   return {
     images,
     mainImageId: resolveMainImageId(images, product.thumbnail),
   }
 }
+
 export const mapProductDetailToFormValues = (product: AdminProductDetail): ProductFormValues => {
   const options = mapOptions(product)
   const hasVariants = inferHasVariants(product.options, product.variants.length)
@@ -225,6 +267,7 @@ export const mapProductDetailToFormValues = (product: AdminProductDetail): Produ
   const productVariants: readonly ProductDetailVariant[] = product.variants
   const [firstVariant] = productVariants
   const media = mapProductImages(product)
+
   return {
     additionalCategoryIds: resolveAdditionalCategoryIds(product.categories),
     attributeValues: product.attributes
@@ -261,16 +304,17 @@ export const mapProductDetailToFormValues = (product: AdminProductDetail): Produ
   }
 }
 
-/** Rebuild variant rows after add/remove variant names — preserves SKU/price/images by index. */
 export const regenerateVariantRows = (
   options: readonly ProductOptionDraft[],
-  currentVariants: readonly VariantFormRow[],
+  currentVariants: readonly Partial<VariantFormRow>[],
 ): ProductFormValues["variants"] => {
   const combinations = buildVariantCombinationsFromFormDrafts(options)
+
   return combinations.map((combination, index) => {
+    const combinationKey = buildVariantCombinationKey(combination.optionValues)
     const existing =
       currentVariants[index] ??
-      currentVariants.find((row) => buildVariantCombinationKey(row.optionValues) === buildVariantCombinationKey(combination.optionValues))
+      currentVariants.find((row) => row.optionValues !== undefined && buildVariantCombinationKey(row.optionValues) === combinationKey)
     return {
       attributeValues: existing?.attributeValues ?? [],
       compareAtPrice: existing?.compareAtPrice ?? "",
@@ -282,23 +326,28 @@ export const regenerateVariantRows = (
       price: existing?.price ?? "",
       quantity: existing?.quantity ?? 0,
       sku: existing?.sku ?? "",
-      title: buildVariantDisplayTitle(combination.optionValues, options, DEFAULT_LOCALE),
+      title: buildVariantDisplayTitle(combination.optionValues, options, I18N.DEFAULT_LOCALE),
     }
   })
 }
+
 export const toCatalogUpsertPayload = (values: CatalogUpsertInput, productId: string) => ({
   ...values,
   id: productId,
 })
+
 const EMPTY_TAGS = createEmptyProductTagsLocaleMap()
+
 type AdminProductVariant = AdminProductDetail["variants"][number]
-/** Drizzle types the inventory one-relation as always present, but a variant without an inventory row returns none. */
+
 type ProductDetailVariant = Omit<AdminProductVariant, "inventory"> & {
   readonly inventory?: AdminProductVariant["inventory"] | null
 }
+
 interface VariantRowMapContext {
   readonly optionValues: Record<string, string>
   readonly options: ProductOptionDraft[]
   readonly productImages: AdminProductDetail["images"]
 }
+
 type VariantFormRow = ProductFormValues["variants"][number]

@@ -1,4 +1,4 @@
-import { type NumericColumnFilterOperator } from "~/src/lib/admin-column-filters"
+import { type NumericColumnFilterOperator } from "~/src/modules/_core/utils/column-filters"
 
 export interface NumericFilterDraft {
   readonly amount: string

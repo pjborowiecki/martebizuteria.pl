@@ -1,10 +1,15 @@
 import { queryOptions } from "@tanstack/react-query"
+import { notFound } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
-import { ROLES } from "~/src/integrations/better-auth/auth.constants"
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { ROLES } from "~/src/integrations/better-auth/auth.access"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
+import { formatShortDate } from "~/src/modules/_core/utils/datetime"
 import {
   formatAdminOrderDate,
   resolveAdminOrderFulfillmentUiKey,
@@ -12,40 +17,40 @@ import {
 } from "~/src/modules/order/order.display.utils"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
-import { getCustomerOrderStatsQuery, getUserById } from "~/src/modules/user/user.accessors"
 import {
   getAdminCustomerOrderRowsQuery,
   getCustomerAuditTimelineQuery,
   getCustomerCategoryBreakdownQuery,
   getCustomerMonthlySpendingQuery,
+  getCustomerOrderStatsQuery,
   getCustomerPreferredCategoryQuery,
   getCustomerPreferredCollectionQuery,
   getDefaultCustomerAddressFullQuery,
   getLatestSessionActivityQuery,
   getOrderItemTitlesQuery,
-} from "~/src/modules/user/user.admin-customer-detail.accessors.server"
+  getUserById,
+} from "~/src/modules/user/user.accessors"
 import {
   ADMIN_CUSTOMER_DETAIL_MONTHS,
   ADMIN_CUSTOMER_MIN_REPEAT_ORDERS,
   ADMIN_CUSTOMER_QUERY_STALE_MS,
   USER_QUERY_KEYS,
 } from "~/src/modules/user/user.constants"
-import { parseAdminUserMetadata } from "~/src/modules/user/user.metadata.utils"
 import { type User } from "~/src/modules/user/user.types"
 import {
   buildAdminCustomerMonthlySpendingSeries,
   buildAdminCustomerTimeline,
   formatAdminCustomerFullAddress,
-  formatAdminCustomerJoinDate,
   formatAdminCustomerLastActive,
   mapCustomerOrderStats,
+  parseAdminUserMetadata,
   resolveAdminCustomerAverageOrderValue,
   resolveAdminCustomerInitials,
   resolveAdminCustomerReturningRate,
   resolveAdminCustomerTags,
 } from "~/src/modules/user/user.utils"
+import { userZodSchemas } from "~/src/modules/user/user.zod"
 
-import { formatPrice } from "~/src/lib/currency"
 const groupOrderItemTitles = (
   rows: readonly {
     orderId: string
@@ -58,23 +63,31 @@ const groupOrderItemTitles = (
     existing.push(row.title)
     titlesByOrderId.set(row.orderId, existing)
   }
+
   return titlesByOrderId
 }
+
 const resolveLocalizedCategoryLabel = (titles: unknown, locale: string): string => {
   const label = resolveCategoryTitle(titles, locale).trim()
-  return label === "" ? UNCATEGORIZED_LABEL : label
+
+  return label === "" ? EMPTY_VALUE : label
 }
+
 const resolveLocalizedCollectionLabel = (titles: unknown, locale: string): string | undefined => {
   const label = resolveCollectionTitle(titles, locale).trim()
+
   return label === "" ? undefined : label
 }
+
 const resolveSpendingWindowStart = (monthsWindow: number): Date => {
   const since = new Date()
   since.setMonth(since.getMonth() - (monthsWindow - 1))
   since.setDate(1)
   since.setHours(0, 0, 0, 0)
+
   return since
 }
+
 const resolveAdminCustomerRoleBadgeKey = (
   role: User["select"]["role"],
   isReturning: boolean,
@@ -82,11 +95,14 @@ const resolveAdminCustomerRoleBadgeKey = (
   if (role === ROLES.ADMIN) {
     return "roleAdmin"
   }
+
   if (isReturning) {
     return "returning"
   }
+
   return "roleCustomer"
 }
+
 const loadAdminCustomerDetailQueryResult = async (userId: string, since: Date): Promise<AdminCustomerDetailQueryResult> => {
   const [
     orderStatsRows,
@@ -109,8 +125,10 @@ const loadAdminCustomerDetailQueryResult = async (userId: string, since: Date): 
     getAdminCustomerOrderRowsQuery(userId),
     getCustomerAuditTimelineQuery(userId),
   ])
+
   const itemTitleRows = await getOrderItemTitlesQuery(orderRows.map((row) => row.id))
   const statsByUserId = mapCustomerOrderStats(orderStatsRows)
+
   return {
     addressRow: addressRows[0],
     auditRows,
@@ -124,6 +142,7 @@ const loadAdminCustomerDetailQueryResult = async (userId: string, since: Date): 
     sessionRow: sessionRows[0],
   }
 }
+
 const mapAdminCustomerDetailOrders = (
   orderRows: readonly AdminCustomerOrderRow[],
   titlesByOrderId: Map<string, string[]>,
@@ -187,14 +206,14 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
     customTags: adminMetadata.tags ?? [],
     initials: resolveAdminCustomerInitials(userRow.name),
     isReturning,
-    joinDate: formatAdminCustomerJoinDate(userRow.createdAt, locale),
+    joinDate: formatShortDate(userRow.createdAt, locale),
     lastActive: formatAdminCustomerLastActive(lastActiveAt, locale),
     lastOrderAt: queryResult.orderStats?.lastOrderAt,
     monthlySpending,
     notes: adminMetadata.notes,
     orderCount,
     orders,
-    preferredCategory: preferredCategory === UNCATEGORIZED_LABEL ? undefined : preferredCategory,
+    preferredCategory: preferredCategory === EMPTY_VALUE ? undefined : preferredCategory,
     preferredCollection,
     returningRate,
     roleBadgeKey: resolveAdminCustomerRoleBadgeKey(userRow.role, isReturning),
@@ -218,49 +237,45 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
     totalSpent,
   }
 }
-const UNCATEGORIZED_LABEL = "—"
-export interface AdminCustomerDetailInput {
-  readonly id: string
-  readonly locale?: string
-}
+
 type AdminCustomerOrderRow = Awaited<ReturnType<typeof getAdminCustomerOrderRowsQuery>>[number]
-interface CustomerOrderStats {
-  readonly lastOrderAt?: Date | undefined
-  readonly orderCount: number
-  readonly totalSpent: number
-}
+
 interface AdminCustomerDetailQueryResult {
   readonly addressRow: Awaited<ReturnType<typeof getDefaultCustomerAddressFullQuery>>[number] | undefined
   readonly categoryBreakdownRows: Awaited<ReturnType<typeof getCustomerCategoryBreakdownQuery>>
   readonly itemTitleRows: Awaited<ReturnType<typeof getOrderItemTitlesQuery>>
   readonly monthlySpendingRows: Awaited<ReturnType<typeof getCustomerMonthlySpendingQuery>>
   readonly orderRows: AdminCustomerOrderRow[]
-  readonly orderStats: CustomerOrderStats | undefined
+  readonly orderStats: User["customerOrderStats"] | undefined
   readonly preferredCategoryRow: Awaited<ReturnType<typeof getCustomerPreferredCategoryQuery>>[number] | undefined
   readonly preferredCollectionRow: Awaited<ReturnType<typeof getCustomerPreferredCollectionQuery>>[number] | undefined
   readonly auditRows: Awaited<ReturnType<typeof getCustomerAuditTimelineQuery>>
   readonly sessionRow: Awaited<ReturnType<typeof getLatestSessionActivityQuery>>[number] | undefined
 }
+
 interface BuildAdminCustomerDetailPayloadInput {
   readonly locale: string
   readonly monthsWindow: number
   readonly queryResult: AdminCustomerDetailQueryResult
   readonly userRow: User["select"]
 }
-export const fetchAdminCustomerByIdFn = createServerFn({
+
+export const getAdminCustomer = createServerFn({
   method: "GET",
 })
-  .validator((input: AdminCustomerDetailInput) => input)
+  .middleware([authorized({ user: ["get"] })])
+  .validator((input: zod.input<typeof userZodSchemas.adminCustomerDetailInput>) => userZodSchemas.adminCustomerDetailInput.parse(input))
   .handler(async ({ data: input }): Promise<User["adminCustomerDetail"] | undefined> => {
-    await assertAdmin()
-    const locale = input.locale ?? DEFAULT_LOCALE
+    const locale = input.locale ?? I18N.DEFAULT_LOCALE
     const userRow = await getUserById(input.id)
     if (userRow === undefined) {
       return undefined
     }
+
     const monthsWindow = ADMIN_CUSTOMER_DETAIL_MONTHS
     const since = resolveSpendingWindowStart(monthsWindow)
     const queryResult = await loadAdminCustomerDetailQueryResult(input.id, since)
+
     return buildAdminCustomerDetailPayload({
       locale,
       monthsWindow,
@@ -268,17 +283,25 @@ export const fetchAdminCustomerByIdFn = createServerFn({
       userRow,
     })
   })
-export const adminCustomerByIdQueryOptions = (id: string, locale: string) =>
+
+export const getAdminCustomerQuery = (id: string, locale: string) =>
   queryOptions({
     enabled: id !== "",
-    queryFn: () =>
-      fetchAdminCustomerByIdFn({
+    queryFn: async () => {
+      const detail = await getAdminCustomer({
         data: {
           id,
           locale,
         },
-      }),
-    queryKey: [...USER_QUERY_KEYS.ADMIN.CUSTOMER_BY_ID, id, locale] as const,
+      })
+
+      if (detail === undefined) {
+        throw notFound()
+      }
+
+      return detail
+    },
+    queryKey: [...USER_QUERY_KEYS.ADMIN.CUSTOMER_BY_ID, id, locale],
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: ADMIN_CUSTOMER_QUERY_STALE_MS,

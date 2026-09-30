@@ -1,13 +1,14 @@
 import { type JSX, type ReactNode } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Card, CardContent, CardHeader } from "~/src/presentation/components/shadcn/card"
 import { SheetDescription, SheetHeader, SheetTitle } from "~/src/presentation/components/shadcn/sheet"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
 import { CATALOG_SHEET_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+
 const CatalogSheetFieldSkeleton = ({
   className,
 }: Readonly<{
@@ -151,6 +152,7 @@ const ProductSheetFooterSkeleton = (): JSX.Element => (
 
 export const ProductSheetLoading = ({ description, title }: Readonly<ProductSheetLoadingProps>): JSX.Element => {
   const t = useTranslations("common")
+
   return (
     <>
       <SheetHeader className="shrink-0 space-y-1 border-b border-border px-6 py-5 pr-14">
@@ -164,6 +166,7 @@ export const ProductSheetLoading = ({ description, title }: Readonly<ProductShee
     </>
   )
 }
+
 interface ProductSheetLoadingProps {
   readonly description: string
   readonly title: string

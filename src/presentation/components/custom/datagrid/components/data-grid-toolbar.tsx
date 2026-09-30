@@ -17,7 +17,6 @@ interface DataGridToolbarProps<TData extends RowData> {
   readonly table: Table<DataGridFeatures, TData>
 }
 
-/** Top toolbar: search, view, layout reset, then page tools on the left; primary actions on the right. Optional `filters` render on a second row. */
 export const DataGridToolbar = <TData extends RowData>({
   actions,
   children,

@@ -1,23 +1,22 @@
 import { type UseMutationResult, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
-import { reorderProductAttributesFn } from "~/src/modules/product-attribute/use-cases/reorder-product-attributes"
+import { reorderProductAttributesMutation } from "~/src/modules/product-attribute/use-cases/reorder-product-attributes"
+
 export const useReorderAttributes = (): UseMutationResult<
   {
     ok: boolean
   },
   Error,
-  readonly string[]
+  string[]
 > => {
   const t = useTranslations("pages.admin.catalog.attributes")
   const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: (orderedIds: readonly string[]) =>
-      reorderProductAttributesFn({
-        data: [...orderedIds],
-      }),
+    ...reorderProductAttributesMutation,
     onError: () => {
       toast.error(t("toast.reorderErrorTitle"), {
         description: t("toast.reorderErrorDescription"),

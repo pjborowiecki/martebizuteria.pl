@@ -1,11 +1,11 @@
 import { type JSX, useEffect, useRef, useState } from "react"
 
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
+import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
-import { type StorefrontProduct, type StorefrontProductVariant } from "~/src/modules/product/product.types"
-
-import { centsToDisplayAmount } from "~/src/lib/currency"
+import { type Product } from "~/src/modules/product/product.types"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
@@ -16,6 +16,7 @@ import { ProductMobileBuyBar } from "~/src/presentation/components/custom/pages/
 import { ProductVariantPicker } from "~/src/presentation/components/custom/pages/product-page/product-variant-picker"
 import { QuantityPicker } from "~/src/presentation/components/custom/pages/product-page/quantity-picker"
 import { useProductHeroCart } from "~/src/presentation/components/custom/pages/product-page/use-product-hero-cart"
+
 export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds, selectedVariant }: ProductHeroInfoProps): JSX.Element => {
   const t = useTranslations("pages.product.heroSection")
   const tProduct = useTranslations("pages.product")
@@ -25,7 +26,7 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
   const heroImage = selectedVariant?.imageUrls[0] ?? product.sharedImageUrls[0] ?? product.thumbnail
   const price =
     variantPrice === undefined
-      ? "—"
+      ? EMPTY_VALUE
       : format.number(centsToDisplayAmount(variantPrice), {
           currency: "PLN",
           style: "currency",
@@ -37,6 +38,7 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
     selectedVariant,
     variantPrice,
   })
+
   const specifications = selectedVariant?.specifications ?? product.sharedSpecifications
   const selectedSku = selectedVariant?.sku?.trim() ?? EMPTY_SKU
   const productDetailLine = resolveProductHeroDetailLine(product.subtitle, specifications, locale)
@@ -47,22 +49,27 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
     if (purchaseRow === null) {
       return
     }
+
     const mobileQuery = globalThis.matchMedia("(max-width: 1023px)")
     const updateVisibility = (entries: readonly IntersectionObserverEntry[]): void => {
       if (!mobileQuery.matches) {
         setShowMobileBuyBar(false)
+
         return
       }
+
       const [entry] = entries
       if (entry === undefined) {
         return
       }
       setShowMobileBuyBar(!entry.isIntersecting)
     }
+
     const observer = new IntersectionObserver(updateVisibility, {
       rootMargin: "0px 0px -12px 0px",
       threshold: 0,
     })
+
     const handleViewportChange = (): void => {
       if (!mobileQuery.matches) {
         setShowMobileBuyBar(false)
@@ -70,11 +77,13 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
     }
     observer.observe(purchaseRow)
     mobileQuery.addEventListener("change", handleViewportChange)
+
     return function disconnectPurchaseRowObserver() {
       observer.disconnect()
       mobileQuery.removeEventListener("change", handleViewportChange)
     }
   }, [isOutOfStock])
+
   return (
     <aside className="reveal space-y-6 lg:sticky lg:top-24 lg:self-start">
       <header className="space-y-3">
@@ -115,11 +124,7 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
             onClick={handleAddToCart}
             type="button"
           >
-            {isAdded
-              ? t("addedToCart", {
-                  fallback: "Dodano",
-                })
-              : t("addToCart")}
+            {isAdded ? t("addedToCart") : t("addToCart")}
           </Button>
         </div>
       )}
@@ -134,10 +139,12 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
     </aside>
   )
 }
+
 const EMPTY_SKU = ""
-export interface ProductHeroInfoProps {
+
+interface ProductHeroInfoProps {
   readonly onSelectOptionValue: (optionId: string, valueId: string) => void
-  readonly product: StorefrontProduct
+  readonly product: Product["storefront"]
   readonly selectedValueIds: Readonly<Record<string, string>>
-  readonly selectedVariant: StorefrontProductVariant | undefined
+  readonly selectedVariant: Product["storefrontVariant"] | undefined
 }

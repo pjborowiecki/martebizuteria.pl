@@ -9,7 +9,12 @@ export const NAVIGATION_MENU_ID = "navbar-fullscreen-menu" as const
 export const NEW_ARRIVALS_COLLECTION_PATH = `/collections/${LANDING_NEW_ARRIVALS_COLLECTION_HANDLE}` as const
 
 export const SILVER_925_COLLECTION_HANDLE = "srebro-925" as const
+
 export const SILVER_925_COLLECTION_PATH = `/collections/${SILVER_925_COLLECTION_HANDLE}` as const
+
+export const GOLD_585_COLLECTION_HANDLE = "zloto-585" as const
+
+export const GOLD_585_COLLECTION_PATH = `/collections/${GOLD_585_COLLECTION_HANDLE}` as const
 
 export type PrimaryTranslationKey =
   | "menu.primary.newArrivals"

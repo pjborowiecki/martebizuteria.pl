@@ -1,10 +1,11 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import { asc, desc, eq } from "drizzle-orm"
-import { z } from "zod/v4"
+import zod from "zod/v4"
 
+import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
@@ -19,17 +20,18 @@ import {
   STOREFRONT_SEARCH_TRENDING_LIMIT,
   STOREFRONT_SEARCH_TRENDING_SOURCE_COUNT,
 } from "~/src/modules/storefront-search/storefront-search.constants"
-import { type StorefrontSearchTrendingItem } from "~/src/modules/storefront-search/storefront-search.types"
+import { type StorefrontSearch } from "~/src/modules/storefront-search/storefront-search.types"
 
 import { getProductImageUrl } from "~/src/lib/image"
 
-const storefrontSearchTrendingInputSchema = z.object({
-  locale: z.string().min(STOREFRONT_SEARCH_LOCALE_MIN_LENGTH).default(DEFAULT_LOCALE),
+const storefrontSearchTrendingInputSchema = zod.object({
+  locale: zod.string().min(STOREFRONT_SEARCH_LOCALE_MIN_LENGTH).default(I18N.DEFAULT_LOCALE),
 })
 
-export const fetchStorefrontSearchTrendingFn = createServerFn({ method: "GET" })
-  .validator((input: z.infer<typeof storefrontSearchTrendingInputSchema>) => storefrontSearchTrendingInputSchema.parse(input))
-  .handler(async ({ data: { locale } }): Promise<readonly StorefrontSearchTrendingItem[]> => {
+export const getTrendingSearches = createServerFn({ method: "GET" })
+  .middleware([withRequest])
+  .validator((input: zod.input<typeof storefrontSearchTrendingInputSchema>) => storefrontSearchTrendingInputSchema.parse(input))
+  .handler(async ({ data: { locale } }): Promise<readonly StorefrontSearch["trendingItem"][]> => {
     const perSourceLimit = Math.ceil(STOREFRONT_SEARCH_TRENDING_LIMIT / STOREFRONT_SEARCH_TRENDING_SOURCE_COUNT)
 
     const [categories, collections] = await Promise.all([
@@ -55,7 +57,7 @@ export const fetchStorefrontSearchTrendingFn = createServerFn({ method: "GET" })
         .limit(perSourceLimit),
     ])
 
-    const items: StorefrontSearchTrendingItem[] = []
+    const items: StorefrontSearch["trendingItem"][] = []
 
     for (const row of categories) {
       const label = resolveCategoryTitle(row.titles, locale).trim()
@@ -84,9 +86,9 @@ export const fetchStorefrontSearchTrendingFn = createServerFn({ method: "GET" })
     return items.slice(0, STOREFRONT_SEARCH_TRENDING_LIMIT)
   })
 
-export const trendingQueryOptions = (locale: string = DEFAULT_LOCALE) =>
+export const getTrendingSearchesQuery = (locale: string = I18N.DEFAULT_LOCALE) =>
   queryOptions({
-    queryFn: () => fetchStorefrontSearchTrendingFn({ data: { locale } }),
-    queryKey: [...STOREFRONT_SEARCH_QUERY_KEYS.TRENDING, locale] as const,
+    queryFn: () => getTrendingSearches({ data: { locale } }),
+    queryKey: [...STOREFRONT_SEARCH_QUERY_KEYS.TRENDING, locale],
     staleTime: STOREFRONT_SEARCH_QUERY_STALE_MS,
   })

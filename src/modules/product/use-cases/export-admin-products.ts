@@ -1,17 +1,19 @@
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { getAdminProductsFilteredList } from "~/src/modules/product/product.accessors"
 import { buildAdminProductsFilterParams, loadAdminListAggregates } from "~/src/modules/product/product.admin-list.server"
-import { type AdminProductsExportInput } from "~/src/modules/product/product.admin-list.types"
 import { toAdminProductListItem } from "~/src/modules/product/product.utils"
+import { productZodSchemas } from "~/src/modules/product/product.zod"
 
-export const fetchAdminProductsExportFn = createServerFn({ method: "GET" })
-  .validator((input: AdminProductsExportInput) => input)
+export const exportAdminProducts = createServerFn({ method: "GET" })
+  .middleware([authorized({ product: ["read"] })])
+  .validator((input: zod.input<typeof productZodSchemas.adminProductsExportInput>) =>
+    productZodSchemas.adminProductsExportInput.parse(input),
+  )
   .handler(async ({ data: input }) => {
-    await assertAdmin()
-
     const rows = await getAdminProductsFilteredList(buildAdminProductsFilterParams(input))
     const aggregates = await loadAdminListAggregates(rows)
 

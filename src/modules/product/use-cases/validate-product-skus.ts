@@ -1,23 +1,21 @@
 import { createServerFn } from "@tanstack/react-start"
-import { z } from "zod/v4"
+import zod from "zod/v4"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
-import { findTakenSkus } from "~/src/modules/product/product.accessors"
 import { PRODUCT_MIN_LENGTH } from "~/src/modules/product/product.constants"
+import { findTakenSkus } from "~/src/modules/product/product.mutations"
 
-export const validateProductSkusFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) =>
-    z
-      .object({
-        productId: z.string().trim().min(PRODUCT_MIN_LENGTH).optional(),
-        skus: z.array(z.string().trim()),
-      })
-      .parse(data),
-  )
+const validateProductSkusSchema = zod.object({
+  productId: zod.string().trim().min(PRODUCT_MIN_LENGTH).optional(),
+  skus: zod.array(zod.string().trim()),
+})
+
+export const validateProductSkus = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["read"] })])
+  .validator((input: zod.input<typeof validateProductSkusSchema>) => validateProductSkusSchema.parse(input))
   .handler(async ({ data }) => {
-    await assertAdmin()
-
     const takenSkus = await findTakenSkus(data.skus, data.productId)
+
     return { takenSkus }
   })

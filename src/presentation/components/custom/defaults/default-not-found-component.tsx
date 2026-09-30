@@ -1,16 +1,12 @@
 import { type JSX } from "react"
 
-import { useRouterState } from "@tanstack/react-router"
+import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
-import { extractLocaleFromPath } from "~/src/integrations/use-intl/i18n.utils"
+import { getDefaultComponentMessages } from "~/src/presentation/components/custom/defaults/default-messages"
 
-import { DEFAULT_MESSAGES } from "~/src/presentation/components/custom/defaults/default-messages"
 export const DefaultNotFoundComponent = (): JSX.Element => {
-  const locale = useRouterState({
-    select: (state) => extractLocaleFromPath(new URL(state.location.publicHref, "http://localhost").pathname) ?? DEFAULT_LOCALE,
-  })
-  const messages = DEFAULT_MESSAGES[locale].notFound
+  const messages = getDefaultComponentMessages(getCurrentLocale()).notFound
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-2 p-4">
       <h2 className="font-semibold">{messages.heading}</h2>

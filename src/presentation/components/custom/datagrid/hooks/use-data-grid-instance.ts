@@ -37,13 +37,9 @@ export interface UseDataGridInstanceOptions<TData extends RowData> {
   readonly getRowId: NonNullable<TableOptions<DataGridFeatures, TData>["getRowId"]>
   readonly initialColumnOrder: readonly string[]
   readonly initialColumnPinning?: ColumnPinningState
-  /** Columns hidden until toggled on (e.g. `{ editedAt: false }`). */
   readonly defaultColumnVisibility?: ColumnVisibilityState
-  /** Filter-only columns that must never render (overrides saved visibility). */
   readonly forcedHiddenColumnIds?: readonly string[]
-  /** Stable id for localStorage (e.g. `admin.catalog.collections`). */
   readonly persistenceKey: string
-  /** Overrides default `includesString` (e.g. catalog tables that search handle + status labels). */
   readonly globalFilterFn?: FilterFn<DataGridFeatures, TData>
   readonly manualFiltering?: boolean
   readonly manualPagination?: boolean
@@ -64,11 +60,6 @@ export interface DataGridInstance<TData extends RowData> {
   readonly table: Table<DataGridFeatures, TData>
 }
 
-/**
- * Builds a fully-featured TanStack Table instance — sorting, column visibility,
- * column ordering, faceted/column filters, global search, pagination and row
- * selection — wired to local state. Pages supply columns, data and row ids.
- */
 export const useDataGridInstance = <TData extends RowData>({
   columns,
   data,
@@ -100,6 +91,7 @@ export const useDataGridInstance = <TData extends RowData>({
     pageIndex: 0,
     pageSize: normalizeDataGridPageSize(defaultPageSize),
   })
+
   const pagination = controlledPagination ?? internalPagination
   const setPagination = onPaginationChange ?? setInternalPagination
 
@@ -142,6 +134,7 @@ export const useDataGridInstance = <TData extends RowData>({
       setColumnFilters((previous) => {
         const next = typeof updater === "function" ? updater(previous) : updater
         onColumnFiltersChange?.(next)
+
         return next
       })
     },

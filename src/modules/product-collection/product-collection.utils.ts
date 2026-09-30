@@ -1,32 +1,24 @@
-import { DEFAULT_LOCALE, LOCALES } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
   coerceProductAttributeLocaleMap,
-  createEmptyProductAttributeLocaleMap,
   normalizeProductAttributeLocaleMapForSave,
   resolveLocalizedString,
 } from "~/src/modules/product-attribute/product-attribute.utils"
-import { type Collection, type CollectionLocaleMap } from "~/src/modules/product-collection/product-collection.types"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 
 const AVG_DECIMALS = 10
 
-export const coerceCollectionLocaleMap = (value: unknown): CollectionLocaleMap => {
-  if (typeof value === "string") {
-    return coerceProductAttributeLocaleMap({
-      [DEFAULT_LOCALE]: value,
-    })
-  }
-  if (value === null || value === undefined || typeof value !== "object" || Array.isArray(value)) {
-    return createEmptyProductAttributeLocaleMap()
-  }
-  return coerceProductAttributeLocaleMap(value)
-}
+export const coerceCollectionLocaleMap = (value: unknown): ProductCollection["localeMap"] => coerceProductAttributeLocaleMap(value)
 
-export const normalizeOptionalCollectionLocaleMapForSave = (map: CollectionLocaleMap): CollectionLocaleMap | undefined => {
+export const normalizeOptionalCollectionLocaleMapForSave = (
+  map: ProductCollection["localeMap"],
+): ProductCollection["localeMap"] | undefined => {
   const normalized = normalizeProductAttributeLocaleMapForSave(map)
-  if (LOCALES.every((locale) => normalized[locale] === "")) {
+  if (I18N.SUPPORTED_LOCALES.every((locale) => normalized[locale] === "")) {
     return undefined
   }
+
   return normalized
 }
 
@@ -36,13 +28,13 @@ export const resolveCollectionTitle = (titles: unknown, locale: string): string 
 export const resolveCollectionDescription = (descriptions: unknown, locale: string): string =>
   resolveLocalizedString(coerceCollectionLocaleMap(descriptions), locale)
 
-export const toAdminCollectionListItem = (row: Collection["select"], productCount: number): Collection["adminListItem"] => ({
+export const toAdminCollectionListItem = (row: ProductCollection["select"], productCount: number): ProductCollection["adminListItem"] => ({
   ...row,
   productCount,
   titles: coerceCollectionLocaleMap(row.titles),
 })
 
-export const toCollectionRow = (input: Collection["createInput"], id: string, rank: number): Collection["insert"] => ({
+export const toCollectionRow = (input: ProductCollection["createInput"], id: string, rank: number): ProductCollection["insert"] => ({
   descriptions: normalizeOptionalCollectionLocaleMapForSave(input.descriptions),
   handle: input.handle,
   id,
@@ -61,9 +53,10 @@ export const computeCollectionStats = (
       }
     | undefined,
   productTotal: number,
-): Collection["stats"] => {
+): ProductCollection["stats"] => {
   const total = counts?.total ?? 0
   const avgProducts = total === 0 ? 0 : Math.round((productTotal / total) * AVG_DECIMALS) / AVG_DECIMALS
+
   return {
     active: counts?.active ?? 0,
     avgProducts,

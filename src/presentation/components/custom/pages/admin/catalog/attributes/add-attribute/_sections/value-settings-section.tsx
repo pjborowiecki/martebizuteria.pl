@@ -2,7 +2,7 @@ import { type JSX, useCallback, useEffect, useMemo } from "react"
 
 import { SlidersHorizontal } from "lucide-react"
 import { useController, useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   PRODUCT_ATTRIBUTE_TYPE,
@@ -19,6 +19,7 @@ import { useAttributeForm } from "~/src/presentation/components/custom/pages/adm
 import { AttributeFormSection } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/add-attribute/attribute-form-section"
 import { CatalogFormFieldError } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-error"
 import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-label"
+
 export const ValueSettingsSection = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.attributes")
   const { control, isPending, setValue } = useAttributeForm()
@@ -26,10 +27,12 @@ export const ValueSettingsSection = (): JSX.Element => {
     control,
     name: "type",
   })
+
   const { field: typeField, fieldState: typeFieldState } = useController({
     control,
     name: "type",
   })
+
   const typeOptions = useMemo(
     () =>
       PRODUCT_ATTRIBUTE_TYPES.map((type) => ({
@@ -38,6 +41,7 @@ export const ValueSettingsSection = (): JSX.Element => {
       })),
     [t],
   )
+
   const isNumberType = selectedType === PRODUCT_ATTRIBUTE_TYPE.NUMBER
   const showAllowedValues = productAttributeTypeUsesAllowedValues(selectedType)
   const handleTypeChange = useCallback(
@@ -55,6 +59,7 @@ export const ValueSettingsSection = (): JSX.Element => {
       })
     }
   }, [selectedType, setValue])
+
   return (
     <AttributeFormSection icon={SlidersHorizontal} title={t("form.sectionValue")}>
       <Field className="gap-2" data-invalid={typeFieldState.invalid}>

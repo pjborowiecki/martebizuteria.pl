@@ -1,12 +1,12 @@
 import { createSchemaFactory } from "drizzle-zod"
-import { z } from "zod/v4"
+import zod from "zod/v4"
 
 import { address } from "~/src/modules/address/address.schema"
 
-const COUNTRY_CODE_LENGTH = 2
+export const COUNTRY_CODE_LENGTH = 2
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: z,
+  zodInstance: zod,
 })
 
 export const addressZodSchemas = {
@@ -15,17 +15,17 @@ export const addressZodSchemas = {
   update: createUpdateSchema(address),
 }
 
-export const addressFieldsSchema = z.object({
-  address1: z.string().min(1),
-  address2: z.string().optional(),
-  city: z.string().min(1),
-  countryCode: z.string().length(COUNTRY_CODE_LENGTH),
-  firstName: z.string().optional(),
-  isDefault: z.boolean().optional(),
-  lastName: z.string().optional(),
-  phone: z.string().optional(),
-  postalCode: z.string().optional(),
-  province: z.string().optional(),
+export const addressFieldsSchema = zod.object({
+  address1: zod.string().min(1),
+  address2: zod.string().optional(),
+  city: zod.string().min(1),
+  countryCode: zod.string().length(COUNTRY_CODE_LENGTH),
+  firstName: zod.string().optional(),
+  isDefault: zod.boolean().optional(),
+  lastName: zod.string().optional(),
+  phone: zod.string().optional(),
+  postalCode: zod.string().optional(),
+  province: zod.string().optional(),
 })
 
-export const addressIdInputSchema = z.object({ addressId: z.string().min(1) })
+export const addressIdInputSchema = zod.object({ addressId: zod.string().min(1) })

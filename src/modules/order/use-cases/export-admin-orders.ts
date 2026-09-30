@@ -1,35 +1,34 @@
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { getAdminOrdersExport as orderGetAdminOrdersExport } from "~/src/modules/order/order.accessors"
-import { type AdminOrdersExportInput } from "~/src/modules/order/order.admin-list.types"
-import { isAdminOrderTab } from "~/src/modules/order/order.constants"
 import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
+import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
-import { normalizeAdminSearchTerm } from "~/src/lib/admin-search.server"
-const buildAdminOrdersExportParams = (input: AdminOrdersExportInput) => {
-  const tab = input.tab !== undefined && isAdminOrderTab(input.tab) ? input.tab : undefined
-  return {
-    filters: {
-      createdAt: input.createdAt,
-      fulfillment: input.fulfillment,
-      payment: input.payment,
-      status: input.status,
-      total: input.total,
-    },
-    search: normalizeAdminSearchTerm(input.search),
-    statFilter: input.statFilter,
-    tab,
-  }
-}
-export const fetchAdminOrdersExportFn = createServerFn({
+const buildAdminOrdersExportParams = (input: zod.output<typeof orderZodSchemas.adminOrdersExportInput>) => ({
+  filters: {
+    createdAt: input.createdAt,
+    fulfillment: input.fulfillment,
+    payment: input.payment,
+    status: input.status,
+    total: input.total,
+  },
+  search: normalizeAdminSearchTerm(input.search),
+  statFilter: input.statFilter,
+  tab: input.tab,
+})
+
+export const exportAdminOrders = createServerFn({
   method: "GET",
 })
-  .validator((input: AdminOrdersExportInput) => input)
+  .middleware([authorized({ order: ["read"] })])
+  .validator((input: zod.input<typeof orderZodSchemas.adminOrdersExportInput>) => orderZodSchemas.adminOrdersExportInput.parse(input))
   .handler(async ({ data: input }) => {
-    await assertAdmin()
     const params = buildAdminOrdersExportParams(input)
     const rows = await orderGetAdminOrdersExport(params)
+
     return rows.map((row) => toAdminOrderListItem(row))
   })

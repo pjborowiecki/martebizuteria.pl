@@ -20,6 +20,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "~/src/presentation/components/shadcn/dropdown-menu"
+
 const Menubar = ({ className, ...props }: Readonly<MenubarPrimitive.Props>): JSX.Element => (
   <MenubarPrimitive data-slot="menubar" className={cn("flex h-8 items-center gap-0.5 rounded-lg border p-1", className)} {...props} />
 )
@@ -197,7 +198,9 @@ const MenubarSubContent = ({ className, ...props }: ComponentProps<typeof Dropdo
 )
 
 const MENUBAR_ALIGN_OFFSET = -4
+
 const MENUBAR_SIDE_OFFSET = 8
+
 export {
   Menubar,
   MenubarCheckboxItem,

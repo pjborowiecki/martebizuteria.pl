@@ -13,37 +13,38 @@ import {
 
 export const STORAGE_PREFIX = "marte:datagrid:v1:"
 
-const NOT_FOUND_INDEX = -1
-
-const MIN_SAVED_COLUMN_SIZE = 0
-/** TanStack row ids also use `id`; catalog tables renamed this column to `recordId`. */
 const LEGACY_RECORD_ID_COLUMN_KEY = "id"
+
 const RECORD_ID_COLUMN_KEY = "recordId"
-/** Attributes table renamed the title column from `handle` to `title`. */
+
 const LEGACY_ATTRIBUTE_TITLE_COLUMN_KEY = "handle"
+
 const ATTRIBUTE_TITLE_COLUMN_KEY = "title"
 
 const migrateLegacyColumnPreferenceKey = (columnId: string, canonical: ReadonlySet<string>): string => {
   if (columnId === LEGACY_RECORD_ID_COLUMN_KEY && canonical.has(RECORD_ID_COLUMN_KEY)) {
     return RECORD_ID_COLUMN_KEY
   }
+
   if (columnId === LEGACY_ATTRIBUTE_TITLE_COLUMN_KEY && canonical.has(ATTRIBUTE_TITLE_COLUMN_KEY)) {
     return ATTRIBUTE_TITLE_COLUMN_KEY
   }
+
   return columnId
 }
 
-/** Legacy attribute slug column width must not shrink the title column after `handle` → `title`. */
 const skipLegacyColumnSizingMigration = (sourceId: string, migratedId: string): boolean =>
   sourceId === LEGACY_ATTRIBUTE_TITLE_COLUMN_KEY && migratedId === ATTRIBUTE_TITLE_COLUMN_KEY
 
 const dedupeColumnOrder = (order: readonly string[]): string[] => {
   const seen = new Set<string>()
+
   return order.filter((columnId) => {
     if (seen.has(columnId)) {
       return false
     }
     seen.add(columnId)
+
     return true
   })
 }
@@ -67,14 +68,17 @@ export const readDataGridPreferences = (persistenceKey: string): StoredDataGridP
     if (typeof localStorage === "undefined") {
       return undefined
     }
+
     const raw = localStorage.getItem(dataGridPreferencesStorageKey(persistenceKey))
     if (raw === null || raw === "") {
       return undefined
     }
+
     const parsed: unknown = JSON.parse(raw)
     if (parsed === null || typeof parsed !== "object") {
       return undefined
     }
+
     return parsed
   } catch {
     return undefined
@@ -96,9 +100,7 @@ export const writeDataGridPreferences = (
       persistenceKey,
       sizing: snapshot.columnSizing,
     })
-  } catch {
-    // Quota or private mode: persistence is best-effort.
-  }
+  } catch {}
 }
 
 export const clearDataGridPreferences = (persistenceKey: string, columnIds: readonly string[] = []): void => {
@@ -120,7 +122,7 @@ const findInsertIndexForMissingColumn = (next: readonly string[], canonical: rea
     const anchorId = canonical[probe]
     if (anchorId !== undefined) {
       const anchorIndex = next.indexOf(anchorId)
-      if (anchorIndex !== NOT_FOUND_INDEX) {
+      if (anchorIndex !== -1) {
         insertAt = anchorIndex + 1
         break
       }
@@ -130,7 +132,6 @@ const findInsertIndexForMissingColumn = (next: readonly string[], canonical: rea
   return insertAt
 }
 
-/** Inserts columns that exist in `canonical` but not yet in `order`, at their definition index. */
 const insertMissingColumnsAtCanonicalPositions = (order: readonly string[], canonical: readonly string[]): string[] => {
   let next = [...order]
 
@@ -145,7 +146,6 @@ const insertMissingColumnsAtCanonicalPositions = (order: readonly string[], cano
   return next
 }
 
-/** Keeps saved order for known columns, inserts new ids at their def position, then groups for pinning. */
 export const sanitizeColumnOrder = (
   saved: readonly string[] | undefined,
   canonical: readonly string[],
@@ -210,7 +210,7 @@ export const sanitizeColumnSizing = ({
       !fixed.has(columnId) &&
       typeof size === "number" &&
       Number.isFinite(size) &&
-      size > MIN_SAVED_COLUMN_SIZE &&
+      size > 0 &&
       next[columnId] === undefined
     ) {
       const minSize = columnMinSizes[columnId]
@@ -274,6 +274,7 @@ const columnVisibleByDefault = (columnVisibility: ColumnVisibilityState, columnI
   }
 
   const defaultVisibility = defaults[columnId]
+
   return defaultVisibility ?? true
 }
 
@@ -325,7 +326,6 @@ export interface PersistDataGridPreferencesInput {
   readonly snapshot: DataGridPreferencesSnapshot
 }
 
-/** Writes layout prefs when they differ from defaults; clears storage when layout matches defaults. */
 export const persistDataGridPreferences = ({
   canonicalOrder,
   columnMaxSizes = {},
@@ -339,6 +339,7 @@ export const persistDataGridPreferences = ({
 
   if (!hasDataGridPreferenceOverrides({ canonicalOrder, current: prepared, defaultColumnVisibility, pinning: columnPinning })) {
     clearDataGridPreferences(persistenceKey, canonicalOrder)
+
     return
   }
 

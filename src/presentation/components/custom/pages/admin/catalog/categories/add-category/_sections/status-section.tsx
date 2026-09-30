@@ -2,7 +2,7 @@ import { type JSX, useCallback, useMemo } from "react"
 
 import { CircleDot } from "lucide-react"
 import { useController } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   CATEGORY_FORM_VALIDATION_KEYS,
@@ -17,6 +17,7 @@ import { useCategoryForm } from "~/src/presentation/components/custom/pages/admi
 import { CategoryFormSection } from "~/src/presentation/components/custom/pages/admin/catalog/categories/add-category/category-form-section"
 import { CatalogFormFieldError } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-error"
 import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-label"
+
 export const StatusSection = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.categories")
   const { control, isPending } = useCategoryForm()
@@ -25,6 +26,7 @@ export const StatusSection = (): JSX.Element => {
     control,
     name: "status",
   })
+
   const statusOptions = useMemo(
     () =>
       CATEGORY_STATUSES.map((status) => ({
@@ -33,6 +35,7 @@ export const StatusSection = (): JSX.Element => {
       })),
     [t],
   )
+
   const handleStatusChange = useCallback(
     (value: string | null) => {
       if (value !== null) {
@@ -41,6 +44,7 @@ export const StatusSection = (): JSX.Element => {
     },
     [field],
   )
+
   return (
     <CategoryFormSection icon={CircleDot} title={t("form.displayOptions")}>
       <Field className="gap-2" data-invalid={fieldState.invalid}>

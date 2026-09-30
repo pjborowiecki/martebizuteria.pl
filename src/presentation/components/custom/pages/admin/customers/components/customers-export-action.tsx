@@ -1,11 +1,13 @@
 import { type JSX, useCallback, useMemo, useState } from "react"
 
 import { FileSpreadsheet } from "lucide-react"
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
-import { ROLES } from "~/src/integrations/better-auth/auth.constants"
+import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
-import { fetchAdminCustomersExportFn } from "~/src/modules/user/use-cases/export-admin-customers"
+import { downloadCsvFile, escapeCsvField } from "~/src/modules/_core/utils/csv"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
+import { exportAdminCustomers } from "~/src/modules/user/use-cases/export-admin-customers"
 import {
   ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS,
   ADMIN_CUSTOMER_ROLE_LABEL_KEYS,
@@ -13,13 +15,10 @@ import {
 } from "~/src/modules/user/user.constants"
 import { formatAdminCustomerLocation } from "~/src/modules/user/user.utils"
 
-import { formatPrice } from "~/src/lib/currency"
-
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { DataGridIconTooltip } from "~/src/presentation/components/custom/datagrid/components/data-grid-icon-tooltip"
 import { useCustomersDataGridContext } from "~/src/presentation/components/custom/pages/admin/customers/hooks/use-customers-data-grid"
-const escapeCsvField = (value: string): string => value.replaceAll('"', '""')
 
 export const CustomersExportAction = (): JSX.Element => {
   const t = useTranslations("pages.admin.customers")
@@ -31,9 +30,10 @@ export const CustomersExportAction = (): JSX.Element => {
     void (async () => {
       setIsExporting(true)
       try {
-        const customers = await fetchAdminCustomersExportFn({
+        const customers = await exportAdminCustomers({
           data: exportListInput,
         })
+
         const headers = [
           "ID",
           "Stripe Customer ID",
@@ -50,6 +50,7 @@ export const CustomersExportAction = (): JSX.Element => {
           "Last Order",
           "Account Created",
         ]
+
         const csvContent = [
           headers.join(","),
           ...customers.map((customer) => {
@@ -72,13 +73,17 @@ export const CustomersExportAction = (): JSX.Element => {
             const createdAt = format.dateTime(new Date(customer.createdAt), {
               dateStyle: "medium",
             })
+
             const roleLabel = t(
               customer.role === ROLES.ADMIN ? ADMIN_CUSTOMER_ROLE_LABEL_KEYS.admin : ADMIN_CUSTOMER_ROLE_LABEL_KEYS.customer,
             )
+
             const emailVerifiedLabel = t(
               customer.emailVerified ? ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS.yes : ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS.no,
             )
+
             const bannedLabel = t(customer.banned === true ? ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS.yes : ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS.no)
+
             return [
               customer.id,
               customer.stripeCustomerId ?? "",
@@ -97,21 +102,13 @@ export const CustomersExportAction = (): JSX.Element => {
             ].join(",")
           }),
         ].join("\n")
-        const blob = new Blob([csvContent], {
-          type: "text/csv;charset=utf-8;",
-        })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement("a")
-        link.href = url
-        link.setAttribute("download", "customers.csv")
-        link.rel = "noopener"
-        link.click()
-        URL.revokeObjectURL(url)
+        downloadCsvFile("customers.csv", csvContent)
       } finally {
         setIsExporting(false)
       }
     })()
   }, [exportListInput, format, locale, t])
+
   const button = useMemo(
     () => (
       <Button
@@ -127,5 +124,6 @@ export const CustomersExportAction = (): JSX.Element => {
     ),
     [handleExport, isExporting, t],
   )
+
   return <DataGridIconTooltip label={t("actions.exportCsv")} trigger={button} />
 }

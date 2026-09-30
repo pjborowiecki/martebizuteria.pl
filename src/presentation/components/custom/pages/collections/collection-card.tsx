@@ -1,8 +1,8 @@
 import { type JSX, useMemo } from "react"
 
-import { useLocale } from "use-intl"
+import { useLocale } from "use-intl/react"
 
-import { type Collection } from "~/src/modules/product-collection/product-collection.types"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 import { resolveCollectionDescription, resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 
 import { getProductImageUrl } from "~/src/lib/image"
@@ -13,10 +13,11 @@ import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 export const CollectionCard = ({
   collection,
 }: Readonly<{
-  collection: Pick<Collection["select"], "descriptions" | "handle" | "id" | "image" | "titles">
+  collection: Pick<ProductCollection["select"], "descriptions" | "handle" | "id" | "image" | "titles">
 }>): JSX.Element => {
   const locale = useLocale()
   const params = useMemo(
@@ -25,9 +26,11 @@ export const CollectionCard = ({
     }),
     [collection.handle],
   )
+
   const title = resolveCollectionTitle(collection.titles, locale)
   const description = resolveCollectionDescription(collection.descriptions, locale)
   const imageSrc = getProductImageUrl(collection.image)
+
   return (
     <LocalizedLink className="group block" params={params} to={ROUTES.COLLECTION}>
       <AspectRatio className="overflow-hidden bg-secondary" ratio={ASPECT_RATIO_PORTRAIT}>
@@ -49,4 +52,5 @@ export const CollectionCard = ({
     </LocalizedLink>
   )
 }
+
 const ASPECT_RATIO_PORTRAIT = 0.8

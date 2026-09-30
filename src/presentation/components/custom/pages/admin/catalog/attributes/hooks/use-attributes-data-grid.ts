@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import {
   ADMIN_PRODUCT_ATTRIBUTES_PAGE_SIZE,
@@ -15,7 +15,7 @@ import {
   filterAdminProductAttributesByStat,
   formatAdminProductAttributeAllowedValuesList,
 } from "~/src/modules/product-attribute/product-attribute.utils"
-import { adminProductAttributesQueryOptions } from "~/src/modules/product-attribute/use-cases/get-admin-product-attributes"
+import { getAdminProductAttributesQuery } from "~/src/modules/product-attribute/use-cases/get-admin-product-attributes"
 
 import { useDataGridInstance } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-instance"
 import { createCatalogTableGlobalFilterFn } from "~/src/presentation/components/custom/datagrid/lib/catalog-table-global-filter"
@@ -26,6 +26,7 @@ import { useAttributeOrdering } from "~/src/presentation/components/custom/pages
 import { useReorderAttributes } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/hooks/use-reorder-attributes"
 import { attributesDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/utils/attributes-data-grid"
 import { getAttributeAdminSearchParts } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-table-search"
+
 const isAttributesNaturalOrder = (
   table: AttributesDataGridValue["table"],
   filteredAttributes: ProductAttribute["adminListItem"][],
@@ -36,12 +37,14 @@ const isAttributesNaturalOrder = (
   const filteredRowCount = table.getFilteredRowModel().rows.length
   const coreRowCount = table.getCoreRowModel().rows.length
   const statFilterCoversFullCatalog = filteredAttributes.length === attributes.length
+
   return sorting.length === 0 && search === "" && filteredRowCount === coreRowCount && statFilterCoversFullCatalog
 }
+
 export const useAttributesDataGrid = ({ onRowClick }: UseAttributesDataGridOptions): AttributesDataGridValue => {
   const t = useTranslations("pages.admin.catalog.attributes")
   const locale = useLocale()
-  const { data: attributes, isFetching } = useSuspenseQuery(adminProductAttributesQueryOptions())
+  const { data: attributes, isFetching } = useSuspenseQuery(getAdminProductAttributesQuery())
   const showSkeletonRows = isFetching
   const [statFilter, setStatFilter] = useState<ProductAttributeStatFilter | undefined>()
   const filteredAttributes = useMemo(() => filterAdminProductAttributesByStat(attributes, statFilter), [attributes, statFilter])
@@ -58,10 +61,12 @@ export const useAttributesDataGrid = ({ onRowClick }: UseAttributesDataGridOptio
           locale,
           type: row.type,
         })
+
         return getAttributeAdminSearchParts(row, typeLabel, allowedValuesDisplay)
       }),
     [locale, t],
   )
+
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
     columns,
     data: ordering.items,
@@ -73,6 +78,7 @@ export const useAttributesDataGrid = ({ onRowClick }: UseAttributesDataGridOptio
     initialColumnPinning: PRODUCT_ATTRIBUTE_TABLE_COLUMN_PINNING,
     persistenceKey: attributesDataGrid.persistenceKey,
   })
+
   const naturalOrder = isAttributesNaturalOrder(table, filteredAttributes, attributes)
   const applyAttributeStatFilter = useCallback(
     (filter?: ProductAttributeStatFilter) => {
@@ -81,6 +87,7 @@ export const useAttributesDataGrid = ({ onRowClick }: UseAttributesDataGridOptio
     },
     [table],
   )
+
   const rowReorder = useMemo<RowReorderApi>(
     () => ({
       draggingId: ordering.draggingId,
@@ -92,6 +99,7 @@ export const useAttributesDataGrid = ({ onRowClick }: UseAttributesDataGridOptio
     }),
     [naturalOrder, ordering],
   )
+
   return useMemo(
     () => ({
       activeStatFilter: statFilter,
@@ -120,6 +128,7 @@ export const useAttributesDataGrid = ({ onRowClick }: UseAttributesDataGridOptio
     ],
   )
 }
+
 const isAttributesDataGridValue = (value: DataGridContextValue<ProductAttribute["adminListItem"]>): value is AttributesDataGridValue =>
   "applyAttributeStatFilter" in value && typeof value.applyAttributeStatFilter === "function"
 
@@ -128,12 +137,15 @@ export const useAttributesDataGridContext = (): AttributesDataGridValue => {
   if (!isAttributesDataGridValue(value)) {
     throw new Error("useAttributesDataGridContext must be used within the attributes table Provider.")
   }
+
   return value
 }
+
 export interface AttributesDataGridValue extends DataGridContextValue<ProductAttribute["adminListItem"]> {
   readonly activeStatFilter: ProductAttributeStatFilter | undefined
   readonly applyAttributeStatFilter: (filter?: ProductAttributeStatFilter) => void
 }
+
 interface UseAttributesDataGridOptions {
   readonly onRowClick?: (attribute: ProductAttribute["adminListItem"]) => void
 }

@@ -8,11 +8,9 @@ import { Input } from "~/src/presentation/components/shadcn/input"
 
 import { UploadDropzone } from "~/src/presentation/components/custom/image-upload/components/upload-dropzone"
 import { UploadedPreview } from "~/src/presentation/components/custom/image-upload/components/uploaded-preview"
-import { FIRST_INDEX } from "~/src/presentation/components/custom/image-upload/constants"
 import { useImageUpload } from "~/src/presentation/components/custom/image-upload/hooks/use-image-upload"
 import { type ImageUploadBaseProps } from "~/src/presentation/components/custom/image-upload/lib/image-upload.types"
 
-/** Uploads to R2 and reports the public, CDN-optimizable URL through `onChange`. */
 export const ImageUpload = ({
   className,
   disabled = false,
@@ -27,15 +25,16 @@ export const ImageUpload = ({
   const [isDragging, setIsDragging] = useState(false)
   const { isUploading, uploadFiles } = useImageUpload(folder, onUploadingChange)
 
-  // Object URLs stay allocated until revoked.
   useEffect(() => {
     if (localPreview === undefined) {
       return
     }
+
     return () => {
       URL.revokeObjectURL(localPreview)
     }
   }, [localPreview])
+
   const handleFile = useCallback(
     async (file: File | undefined) => {
       if (file === undefined) {
@@ -50,20 +49,24 @@ export const ImageUpload = ({
     },
     [uploadFiles, onChange],
   )
+
   const openPicker = useCallback(() => {
     inputRef.current?.click()
   }, [])
+
   const handleInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      void handleFile(event.target.files?.[FIRST_INDEX])
+      void handleFile(event.target.files?.[0])
       event.target.value = ""
     },
     [handleFile],
   )
+
   const handleRemove = useCallback(() => {
     setLocalPreview(undefined)
     onChange("")
   }, [onChange])
+
   const isBusy = disabled || isUploading
   const handleDragOver = useCallback(
     (event: DragEvent<HTMLElement>) => {
@@ -74,22 +77,26 @@ export const ImageUpload = ({
     },
     [isBusy],
   )
+
   const handleDragLeave = useCallback((event: DragEvent<HTMLElement>) => {
     event.preventDefault()
     setIsDragging(false)
   }, [])
+
   const handleDrop = useCallback(
     (event: DragEvent<HTMLElement>) => {
       event.preventDefault()
       setIsDragging(false)
       if (!isBusy) {
-        void handleFile(event.dataTransfer.files[FIRST_INDEX])
+        void handleFile(event.dataTransfer.files[0])
       }
     },
     [handleFile, isBusy],
   )
+
   const hasImage = value !== "" || (isUploading && localPreview !== undefined)
   const overlaySrc = localPreview ?? value
+
   return (
     <div className={cn("w-full max-w-[320px]", className)}>
       <Input
@@ -126,7 +133,8 @@ export const ImageUpload = ({
     </div>
   )
 }
-export interface ImageUploadProps extends ImageUploadBaseProps {
+
+interface ImageUploadProps extends ImageUploadBaseProps {
   readonly invalid?: boolean
   readonly onChange: (url: string) => void
   readonly value: string

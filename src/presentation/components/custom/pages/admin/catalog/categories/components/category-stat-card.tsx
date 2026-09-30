@@ -1,38 +1,29 @@
-import { type JSX, useCallback } from "react"
+import { type JSX } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
-import { type Category } from "~/src/modules/product-category/product-category.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
 import {
   ADMIN_CARD_CLASS,
+  ADMIN_STAT_CAPTION_SLOT_CLASS,
   ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
+  ADMIN_STAT_LABEL_CLASS,
+  ADMIN_STAT_VALUE_CLASS,
+  ADMIN_STAT_VALUE_SLOT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { AdminStatCaption } from "~/src/presentation/components/custom/pages/admin/admin-stat-caption"
 import {
   type CategoryStatCardConfig,
   type CategoryStatKey,
 } from "~/src/presentation/components/custom/pages/admin/catalog/categories/categories-stats.config"
-const renderStatCaptionSlot = ({
-  caption,
-  valuesPending,
-}: Readonly<{
-  caption?: string | undefined
-  valuesPending: boolean
-}>): JSX.Element | undefined => {
-  if (valuesPending) {
-    return <Skeleton className="h-3 w-28" />
-  }
-  if (caption === undefined) {
-    return undefined
-  }
-  return <p className={STAT_CAPTION_CLASS}>{caption}</p>
-}
+
 export const CategoryStatCard = ({
   activeFilter,
   caption,
@@ -45,16 +36,6 @@ export const CategoryStatCard = ({
   const { filterStatus, gradient, icon: Icon, key } = config
   const isFilterable = onFilter !== undefined && (filterStatus !== undefined || key === "total")
   const isActive = key === "total" ? activeFilter === undefined : activeFilter === filterStatus
-  const handleFilterClick = useCallback(() => {
-    if (onFilter === undefined || valuesPending) {
-      return
-    }
-    if (filterStatus === undefined) {
-      onFilter()
-      return
-    }
-    onFilter(isActive ? undefined : filterStatus)
-  }, [filterStatus, isActive, onFilter, valuesPending])
   const cardClassName = cn(
     "h-full gap-0 py-0",
     ADMIN_CARD_CLASS,
@@ -63,18 +44,16 @@ export const CategoryStatCard = ({
     isFilterable && !valuesPending && ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
     isFilterable && isActive && ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   )
+
   const content = (
     <CardContent className="flex h-full items-start justify-between gap-4 p-5">
       <div className="min-w-0 flex-1 space-y-2">
-        <p className={STAT_LABEL_CLASS}>{t(`stats.${key}.label`)}</p>
-        <div className={STAT_VALUE_SLOT_CLASS}>
-          {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={STAT_VALUE_CLASS}>{displayValue}</p>}
+        <p className={ADMIN_STAT_LABEL_CLASS}>{t(`stats.${key}.label`)}</p>
+        <div className={ADMIN_STAT_VALUE_SLOT_CLASS}>
+          {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={ADMIN_STAT_VALUE_CLASS}>{displayValue}</p>}
         </div>
-        <div className={STAT_CAPTION_SLOT_CLASS}>
-          {renderStatCaptionSlot({
-            caption,
-            valuesPending,
-          })}
+        <div className={ADMIN_STAT_CAPTION_SLOT_CLASS}>
+          <AdminStatCaption caption={caption} valuesPending={valuesPending} />
         </div>
       </div>
       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary shadow-none">
@@ -82,9 +61,20 @@ export const CategoryStatCard = ({
       </div>
     </CardContent>
   )
-  if (!isFilterable) {
+
+  if (onFilter === undefined || (key !== "total" && filterStatus === undefined)) {
     return <Card className={cardClassName}>{content}</Card>
   }
+
+  const handleFilterClick = (): void => {
+    if (filterStatus === undefined) {
+      onFilter()
+
+      return
+    }
+    onFilter(isActive ? undefined : filterStatus)
+  }
+
   return (
     <Card className={cardClassName}>
       <button
@@ -100,14 +90,17 @@ export const CategoryStatCard = ({
     </Card>
   )
 }
-const formatCategoryStatValue = (key: CategoryStatKey, value: number): string => {
+
+export const formatCategoryStatValue = (key: CategoryStatKey, value: number): string => {
   if (key === "avgProducts") {
     return value.toLocaleString(undefined, {
       maximumFractionDigits: AVG_PRODUCTS_DECIMALS,
     })
   }
+
   return value.toLocaleString()
 }
+
 export const buildCategoryStatCaption = ({ key, stats, t, value }: Readonly<BuildCategoryStatCaptionInput>): string | undefined => {
   const sharePercent = key === "active" || key === "draft" ? statShare(value, stats.total) : undefined
   if (sharePercent !== undefined) {
@@ -115,26 +108,24 @@ export const buildCategoryStatCaption = ({ key, stats, t, value }: Readonly<Buil
       percent: sharePercent,
     })
   }
+
   if (key === "avgProducts") {
     return t("stats.avgProducts.caption", {
       count: Math.round(stats.avgProducts * stats.total).toLocaleString(),
     })
   }
+
   return undefined
 }
+
 const statShare = (part: number, total: number): number => {
   if (total <= 0) {
     return 0
   }
+
   return Math.round((part / total) * PERCENT_SCALE)
 }
-export const formatCategoryStatDisplayValue = (key: CategoryStatKey, value: number): string => formatCategoryStatValue(key, value)
 
-const STAT_LABEL_CLASS = "text-[13px] leading-5 text-muted-foreground"
-const STAT_VALUE_CLASS = "text-3xl leading-9 font-semibold tracking-tight tabular-nums"
-const STAT_VALUE_SLOT_CLASS = "flex min-h-9 items-center"
-const STAT_CAPTION_SLOT_CLASS = "flex min-h-4 items-center"
-const STAT_CAPTION_CLASS = "text-xs text-muted-foreground/80"
 interface CategoryStatCardProps {
   readonly activeFilter?: string | undefined
   readonly caption?: string | undefined
@@ -143,11 +134,14 @@ interface CategoryStatCardProps {
   readonly onFilter?: (status?: (typeof CATEGORY_STATUS)[keyof typeof CATEGORY_STATUS]) => void
   readonly valuesPending: boolean
 }
+
 const PERCENT_SCALE = 100
+
 const AVG_PRODUCTS_DECIMALS = 1
+
 interface BuildCategoryStatCaptionInput {
   readonly key: CategoryStatKey
-  readonly stats: Category["stats"]
+  readonly stats: ProductCategory["stats"]
   readonly t: ReturnType<typeof useTranslations<"pages.admin.catalog.categories">>
   readonly value: number
 }

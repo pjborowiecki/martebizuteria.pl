@@ -1,12 +1,14 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { Minus, Plus, X } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl"
+import { useFormatter, useTranslations } from "use-intl/react"
+
+import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
+import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
-import { getCartLineUnitPriceCents } from "~/src/lib/cart-line"
-import { centsToDisplayAmount } from "~/src/lib/currency"
 import { getProductImageUrl } from "~/src/lib/image"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -15,7 +17,7 @@ import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
-import { type CartItem, useCartStore } from "~/src/stores/cart.store"
+
 export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element => {
   const t = useTranslations("pages.cart")
   const format = useFormatter()
@@ -28,21 +30,26 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
     currency: "PLN",
     style: "currency",
   })
+
   const handleDecrease = useCallback(() => {
     updateQuantity(item.id, item.qty - 1)
   }, [item.id, item.qty, updateQuantity])
+
   const handleIncrease = useCallback(() => {
     updateQuantity(item.id, item.qty + 1)
   }, [item.id, item.qty, updateQuantity])
+
   const handleRemove = useCallback(() => {
     removeItem(item.id)
   }, [item.id, removeItem])
+
   const productParams = useMemo(
     () => ({
       handle: item.slug,
     }),
     [item.slug],
   )
+
   return (
     <div className="grid grid-cols-[100px_1fr] gap-5 py-6 sm:grid-cols-[120px_1fr] sm:gap-6 lg:grid-cols-[140px_1fr] lg:py-8">
       <LocalizedLink className="group relative aspect-4/5 overflow-hidden bg-secondary" params={productParams} to={ROUTES.PRODUCT}>
@@ -119,6 +126,7 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
     </div>
   )
 }
-export interface CartItemCardProps {
+
+interface CartItemCardProps {
   readonly item: CartItem
 }

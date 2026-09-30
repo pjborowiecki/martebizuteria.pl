@@ -6,7 +6,6 @@ import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
 import { type DataGridSkeletonVariant } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 
-/** Overrides the shared `rounded-lg` skeleton default — thin row bars look like pills at that radius. */
 const DataGridSkeletonBlock = ({ className, ...props }: Readonly<ComponentProps<typeof Skeleton>>): JSX.Element => (
   <Skeleton className={cn("rounded-sm", className)} {...props} />
 )

@@ -2,7 +2,7 @@ import { type JSX, useMemo, useRef } from "react"
 
 import { type RowData, type Table } from "@tanstack/react-table"
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { DataTable, DataTableContainer, dataTableContentStyle } from "~/src/presentation/components/shadcn/data-table"
 import { TableBody, TableHeader, TableRow } from "~/src/presentation/components/shadcn/table"
@@ -32,6 +32,7 @@ import {
 
 const getDataGridPlaceholderBodyState = (rowCount: number): { isPlaceholderBody: boolean; skeletonRowCount: number } => {
   const isPlaceholderBody = rowCount === 0
+
   return {
     isPlaceholderBody,
     skeletonRowCount: isPlaceholderBody ? DATA_GRID_EMPTY_PLACEHOLDER_ROW_COUNT : rowCount,
@@ -88,6 +89,7 @@ export const DataGridTable = <TData extends RowData>({
   const resolvedTableWidth = useMemo(() => {
     if (layoutColumnWidthsSum !== undefined) {
       const measuredFloor = hasMeasuredContainer ? tableClientWidth : 0
+
       return Math.max(tableMinWidth, layoutColumnWidthsSum, measuredFloor)
     }
 
@@ -98,6 +100,7 @@ export const DataGridTable = <TData extends RowData>({
     () => dataTableContentStyle({ containerWidthPx: tableClientWidth, layoutWidthPx: resolvedTableWidth, minWidthPx: tableMinWidth }),
     [resolvedTableWidth, tableClientWidth, tableMinWidth],
   )
+
   const rightPinnedScrollPaddingPx = useMemo(
     () => getDataGridRightPinnedScrollPaddingPx(layoutColumns, columnSizing, tableLayout),
     [columnSizing, layoutColumns, tableLayout],

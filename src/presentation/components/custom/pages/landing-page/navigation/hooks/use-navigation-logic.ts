@@ -3,11 +3,12 @@ import { type MouseEvent, type RefObject, useCallback, useEffect, useRef, useSta
 import { useRouterState } from "@tanstack/react-router"
 import { useShallow } from "zustand/react/shallow"
 
-import { ScrollTrigger, gsap, useGSAP } from "~/src/lib/gsap"
-import { scrollToSectionById } from "~/src/lib/lenis/scroll-to-section"
+import { ScrollTrigger, gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+import { scrollToSectionById } from "~/src/integrations/lenis/lenis.scroll"
 
 import * as CONSTANTS from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-constants"
 import { useNavigationStore } from "~/src/presentation/components/custom/pages/landing-page/navigation/store/navigation-store"
+
 const useNavigationHoverLogic = ({
   activeImageIndex,
   contextSafe,
@@ -47,14 +48,17 @@ const useNavigationHoverLogic = ({
     )
     activeImageIndex.current = index
   })
+
   const handleMouseMove = contextSafe((event: MouseEvent) => {
     if (isReducedMotion.current || !isDesktop.current) {
       return
     }
+
     const el = event.currentTarget
     if (!(el instanceof HTMLElement)) {
       return
     }
+
     const xPos = (event.clientX / el.clientWidth - CONSTANTS.MOUSE_CENTER_OFFSET) * CONSTANTS.MOUSE_MULTIPLIER
     const yPos = (event.clientY / el.clientHeight - CONSTANTS.MOUSE_CENTER_OFFSET) * CONSTANTS.MOUSE_MULTIPLIER
     parallax.current?.x(xPos * CONSTANTS.PARALLAX_OFFSET)
@@ -70,6 +74,7 @@ const useNavigationHoverLogic = ({
       })
     }
   })
+
   const getHoverProps = useCallback(
     (options?: HoverOptions): HoverHandlers => {
       const {
@@ -78,7 +83,9 @@ const useNavigationHoverLogic = ({
         enterDuration = CONSTANTS.HOVER_ENTER_DURATION,
         leaveDuration = CONSTANTS.HOVER_LEAVE_DURATION,
       } = options ?? {}
+
       let element: HTMLElement | undefined = globalThis.undefined
+
       return {
         onMouseEnter: contextSafe(() => {
           if (isReducedMotion.current || !element) {
@@ -111,12 +118,14 @@ const useNavigationHoverLogic = ({
     },
     [contextSafe, isReducedMotion],
   )
+
   return {
     getHoverProps,
     handleHover,
     handleMouseMove,
   }
 }
+
 const createMenuTimeline = ({
   dur,
   ease,
@@ -204,10 +213,12 @@ const createMenuTimeline = ({
     )
   return tl
 }
+
 const clearNavigationMenuScrollLock = (): void => {
   gsap.set("html", { clearProps: "overflow" })
   gsap.set("body", { clearProps: "overflow,paddingRight" })
 }
+
 const forceDismissNavigationMenu = ({
   containerRef,
   panelRef,
@@ -228,19 +239,23 @@ const forceDismissNavigationMenu = ({
     tl.pause()
     tl.progress(CONSTANTS.POS_IMMEDIATE)
   }
+
   if (panel !== null) {
     gsap.set(panel, { autoAlpha: CONSTANTS.AUTO_ALPHA_HIDDEN, clipPath: CONSTANTS.CLIP_CLOSED, visibility: "hidden" })
   }
+
   if (backdrop instanceof HTMLElement) {
     gsap.set(backdrop, { autoAlpha: CONSTANTS.AUTO_ALPHA_HIDDEN })
   }
 }
+
 const scrollToSection = (id: string, navigate: (opts: { hash?: string; to?: string }) => void | Promise<void>) => {
   if (scrollToSectionById(id, CONSTANTS.HEADER_OFFSET_PX) !== undefined) {
     return
   }
-  void navigate({ hash: id, to: "/{-$locale}" })
+  void navigate({ hash: id, to: "/" })
 }
+
 const useNavigationStateEffects = ({
   menuOpen,
   setMenuOpen,
@@ -265,6 +280,7 @@ const useNavigationStateEffects = ({
       if (!menuOpen) {
         return
       }
+
       const scrollbarWidth = document.documentElement.offsetWidth - document.documentElement.clientWidth
       gsap.set("html", { overflow: "hidden" })
       gsap.set("body", { overflow: "hidden" })
@@ -279,12 +295,14 @@ const useNavigationStateEffects = ({
       if (!menuOpen) {
         return
       }
+
       const onKeyDown = (event: KeyboardEvent) => {
         if (event.key === "Escape") {
           setMenuOpen(false)
         }
       }
       document.addEventListener("keydown", onKeyDown)
+
       return () => {
         document.removeEventListener("keydown", onKeyDown)
       }
@@ -292,6 +310,7 @@ const useNavigationStateEffects = ({
     { dependencies: [menuOpen, setMenuOpen], revertOnUpdate: true },
   )
 }
+
 const useNavigationEffects = ({
   containerRef,
   isDesktop,
@@ -319,6 +338,7 @@ const useNavigationEffects = ({
       if (!containerRef.current || !panelRef.current) {
         return
       }
+
       const imgContainer = containerRef.current.querySelector("[data-menu-image-container]")
       parallaxTargetRef.current = imgContainer ?? undefined
       if (imgContainer) {
@@ -327,6 +347,7 @@ const useNavigationEffects = ({
       } else {
         parallax.current = globalThis.undefined
       }
+
       const mm = gsap.matchMedia()
       mm.add(
         CONSTANTS.MENU_MEDIA,
@@ -358,6 +379,7 @@ const useNavigationEffects = ({
             pos,
           })
           tlRef.current = tl
+
           return () => {
             tl.kill()
             tlRef.current = undefined
@@ -365,6 +387,7 @@ const useNavigationEffects = ({
         },
         containerRef,
       )
+
       return () => {
         mm.revert()
         parallax.current = globalThis.undefined
@@ -373,6 +396,7 @@ const useNavigationEffects = ({
     },
     { scope: containerRef },
   )
+
   const forceDismissMenu = useCallback(() => {
     forceDismissNavigationMenu({
       containerRef,
@@ -387,6 +411,7 @@ const useNavigationEffects = ({
       if (!tl) {
         return
       }
+
       if (menuOpen) {
         setMounted(true)
         const NORMAL_TIME_SCALE = 1
@@ -397,11 +422,13 @@ const useNavigationEffects = ({
     },
     { dependencies: [menuOpen] },
   )
+
   return {
     contextSafe,
     forceDismissMenu,
   }
 }
+
 export const useNavigationLogic = (
   containerRef: RefObject<HTMLDivElement | null>,
   panelRef: RefObject<HTMLDialogElement | null>,
@@ -422,6 +449,7 @@ export const useNavigationLogic = (
       setScrolled: state.setScrolled,
     })),
   )
+
   const activeImageIndex = useRef(CONSTANTS.POS_IMMEDIATE)
   const isReducedMotion = useRef(false)
   const isDesktop = useRef(true)
@@ -433,6 +461,7 @@ export const useNavigationLogic = (
     setMenuOpen,
     setScrolled,
   })
+
   const { contextSafe, forceDismissMenu } = useNavigationEffects({
     containerRef,
     isDesktop,
@@ -444,11 +473,13 @@ export const useNavigationLogic = (
     routerNavigate,
     setMounted,
   })
+
   const dismissMenuForRouteNavigation = useCallback(() => {
     setMenuOpen(false)
     setPendingHashGlobal(undefined)
     forceDismissMenu()
   }, [forceDismissMenu, setMenuOpen, setPendingHashGlobal])
+
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const previousPathnameRef = useRef(pathname)
   useEffect(() => {
@@ -458,6 +489,7 @@ export const useNavigationLogic = (
     previousPathnameRef.current = pathname
     dismissMenuForRouteNavigation()
   }, [dismissMenuForRouteNavigation, pathname])
+
   const { getHoverProps, handleHover, handleMouseMove } = useNavigationHoverLogic({
     activeImageIndex,
     contextSafe,
@@ -466,6 +498,7 @@ export const useNavigationLogic = (
     parallax,
     parallaxTargetRef,
   })
+
   return {
     dismissMenuForRouteNavigation,
     getHoverProps,
@@ -478,17 +511,20 @@ export const useNavigationLogic = (
     setPendingHashGlobal,
   }
 }
+
 export interface HoverOptions {
   y?: number
   scale?: number
   enterDuration?: number
   leaveDuration?: number
 }
+
 export interface HoverHandlers {
   ref: (el: HTMLElement | null) => void
   onMouseEnter: () => void
   onMouseLeave: () => void
 }
+
 interface ParallaxQuickTo {
   x: gsap.QuickToFunc
   y: gsap.QuickToFunc

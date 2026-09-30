@@ -46,7 +46,7 @@ const reserveInventoryStmt = db
 const releaseInventoryStmt = db
   .update(inventory)
   .set({
-    quantityAvailable: sql`${inventory.quantityAvailable} + ${qtyPlaceholder}`,
+    quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qtyPlaceholder})`,
     quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qtyPlaceholder})`,
     version: sql`${inventory.version} + 1`,
   })
@@ -59,6 +59,7 @@ export const reserveInventory = async (input: ReserveInventoryInput): Promise<bo
     inventoryId: input.inventoryId,
     qty: input.qty,
   })
+
   return result.length > 0
 }
 
@@ -79,7 +80,7 @@ export const releaseInventoryForItems = async (items: ReleaseInventoryItem[]): P
 const releaseInventoryByVariantStmt = db
   .update(inventory)
   .set({
-    quantityAvailable: sql`${inventory.quantityAvailable} + ${qtyPlaceholder}`,
+    quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qtyPlaceholder})`,
     quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qtyPlaceholder})`,
     version: sql`${inventory.version} + 1`,
   })
@@ -109,6 +110,7 @@ export const getAvailabilityByVariantIds = async (variantIds: readonly string[])
   if (variantIds.length === 0) {
     return new Map()
   }
+
   const rows = await db
     .select({
       quantityAvailable: inventory.quantityAvailable,

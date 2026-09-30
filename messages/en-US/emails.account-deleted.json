@@ -1,0 +1,14 @@
+{
+  "subject": "Your M'Arte account has been deleted",
+  "preview": "Confirmation that your account and personal data have been removed.",
+  "heading": "Until we meet again",
+  "greeting": "Dear {name},",
+  "message": "As you requested, we have deleted the M'Arte account associated with this email address. All personal data held in connection with your account has been permanently removed from our systems, in accordance with GDPR.",
+  "messageSecondary": "We are sorry to see you go — everyone who chooses M'Arte is special to us. Should you ever wish to return, our doors remain open.",
+  "messageTertiary": "Our collection is still here for you. You may continue browsing the shop without an account, or create a new one whenever you are ready.",
+  "security": "If you did not request account deletion, please reply to this email as soon as possible — we want to make sure everything is in order.",
+  "cta": "Return to M'Arte",
+  "signoff": "With gratitude for the time you spent with us,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}

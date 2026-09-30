@@ -1,0 +1,14 @@
+{
+  "subject": "Twoje konto M'Arte zostało usunięte",
+  "preview": "Potwierdzamy usunięcie Twojego konta i danych osobowych.",
+  "heading": "Do zobaczenia",
+  "greeting": "Droga {name},",
+  "message": "Zgodnie z Twoją prośbą usunęliśmy konto M'Arte powiązane z tym adresem e-mail. Wszystkie dane osobowe przechowywane w związku z kontem zostały trwale usunięte z naszych systemów, zgodnie z RODO.",
+  "messageSecondary": "Szkoda, że odchodzisz — każda osoba, która wybiera M'Arte, jest dla nas wyjątkowa. Jeśli kiedykolwiek zechcesz wrócić, nasze drzwi pozostają otwarte.",
+  "messageTertiary": "Nasza kolekcja wciąż czeka na Ciebie. Możesz nadal przeglądać sklep bez konta lub założyć nowe, kiedy zechcesz.",
+  "security": "Jeśli nie Ty prosiłeś o usunięcie konta, odpowiedz na tę wiadomość jak najszybciej — chcemy upewnić się, że wszystko jest w porządku.",
+  "cta": "Wróć do M'Arte",
+  "signoff": "Z wdzięcznością za czas spędzony z nami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

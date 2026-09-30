@@ -14,13 +14,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { type Control, type FieldErrors, type UseFormSetError, type UseFormSetValue, useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { CATEGORY_ERROR_CODES, CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
-import { type Category } from "~/src/modules/product-category/product-category.types"
-import { categoryFormSchema } from "~/src/modules/product-category/product-category.zod"
-import { createCategoryFn } from "~/src/modules/product-category/use-cases/create-category"
-import { updateCategoryFn } from "~/src/modules/product-category/use-cases/update-category"
+import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
+import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
+import { productCategoryZodSchemas } from "~/src/modules/product-category/product-category.zod"
+import { createCategory } from "~/src/modules/product-category/use-cases/create-category"
+import { updateCategory } from "~/src/modules/product-category/use-cases/update-category"
 
 import { localesWithIncompleteCategoryFormValues } from "~/src/presentation/components/custom/pages/admin/catalog/categories/add-category/category-form-locale.utils"
 import {
@@ -31,6 +32,7 @@ import {
   formatCatalogLocaleList,
   useCatalogFormLocaleControls,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-locale-controls"
+
 const useCategoryMutation = ({ categoryId, mode, onCompleted, setError }: UseCategoryMutationOptions) => {
   const t = useTranslations("pages.admin.catalog.categories")
   const queryClient = useQueryClient()
@@ -47,10 +49,12 @@ const useCategoryMutation = ({ categoryId, mode, onCompleted, setError }: UseCat
       }),
     ])
   }, [queryClient])
+
   const handleError = useCallback(
     (error: unknown) => {
-      const code = error instanceof Error ? error.message : ""
-      if (code.includes(CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)) {
+      const code = errorCode(error)
+
+      if (code === ERROR_CODES.CONFLICT) {
         setError("handle", {
           message: t("toast.duplicateHandle"),
           type: "manual",
@@ -58,9 +62,11 @@ const useCategoryMutation = ({ categoryId, mode, onCompleted, setError }: UseCat
         toast.error(t("toast.errorTitle"), {
           description: t("toast.duplicateHandle"),
         })
+
         return
       }
-      if (code.includes(CATEGORY_ERROR_CODES.INVALID_PARENT)) {
+
+      if (code === ERROR_CODES.VALIDATION) {
         setError("parentId", {
           message: t("toast.invalidParent"),
           type: "manual",
@@ -68,6 +74,7 @@ const useCategoryMutation = ({ categoryId, mode, onCompleted, setError }: UseCat
         toast.error(t("toast.errorTitle"), {
           description: t("toast.invalidParent"),
         })
+
         return
       }
       toast.error(t("toast.errorTitle"), {
@@ -76,9 +83,10 @@ const useCategoryMutation = ({ categoryId, mode, onCompleted, setError }: UseCat
     },
     [setError, t],
   )
+
   const createMutation = useMutation({
-    mutationFn: (values: Category["formValues"]) =>
-      createCategoryFn({
+    mutationFn: (values: ProductCategory["formValues"]) =>
+      createCategory({
         data: values,
       }),
     onError: handleError,
@@ -90,12 +98,14 @@ const useCategoryMutation = ({ categoryId, mode, onCompleted, setError }: UseCat
       onCompleted()
     },
   })
+
   const updateMutation = useMutation({
-    mutationFn: (values: Category["formValues"]) => {
+    mutationFn: (values: ProductCategory["formValues"]) => {
       if (categoryId === undefined) {
         throw new Error("Category id is required for update")
       }
-      return updateCategoryFn({
+
+      return updateCategory({
         data: {
           ...values,
           id: categoryId,
@@ -111,8 +121,10 @@ const useCategoryMutation = ({ categoryId, mode, onCompleted, setError }: UseCat
       onCompleted()
     },
   })
+
   return mode === "create" ? createMutation : updateMutation
 }
+
 export const CategoryFormProvider = ({
   category,
   children,
@@ -129,18 +141,19 @@ export const CategoryFormProvider = ({
     () => (mode === "edit" && category !== undefined ? adminListItemToFormValues(category) : DEFAULT_VALUES),
     [category, mode],
   )
-  const formSchema = useMemo(() => categoryFormSchema(), [])
-  const resolver = useMemo(() => zodResolver(formSchema), [formSchema])
-  const form = useForm<Category["formValues"]>({
+
+  const resolver = useMemo(() => zodResolver(productCategoryZodSchemas.formValues), [])
+  const form = useForm<ProductCategory["formValues"]>({
     defaultValues: initialValues,
     mode: "onSubmit",
     reValidateMode: "onSubmit",
     resolver,
   })
+
   const { clearErrors, control, reset, setError, setValue } = form
   const [isUploading, setIsUploading] = useState(false)
   const resetFormState = useCallback(
-    (values: Category["formValues"]) => {
+    (values: ProductCategory["formValues"]) => {
       reset(values, {
         keepDirty: false,
         keepTouched: false,
@@ -155,28 +168,33 @@ export const CategoryFormProvider = ({
       resetFormState(initialValues)
     }
   }, [initialValues, open, resetFormState])
+
   const dismiss = useCallback(() => {
     resetFormState(initialValues)
     onDismiss()
   }, [initialValues, onDismiss, resetFormState])
+
   const handleCompleted = useCallback(() => {
     resetFormState(DEFAULT_VALUES)
     onSuccess?.()
   }, [onSuccess, resetFormState])
+
   const { mutate, isPending } = useCategoryMutation({
     categoryId,
     mode,
     onCompleted: handleCompleted,
     setError,
   })
+
   const onSubmit = useCallback(
-    (values: Category["formValues"]) => {
+    (values: ProductCategory["formValues"]) => {
       mutate(values)
     },
     [mutate],
   )
+
   const onSubmitInvalid = useCallback(
-    (_errors: FieldErrors<Category["formValues"]>) => {
+    (_errors: FieldErrors<ProductCategory["formValues"]>) => {
       const values = form.getValues()
       const incompleteLocales = localesWithIncompleteCategoryFormValues(values)
       if (incompleteLocales.length > 0) {
@@ -186,6 +204,7 @@ export const CategoryFormProvider = ({
             locales: formatCatalogLocaleList(incompleteLocales, (locale) => tLocale(`localeNames.${locale}`)),
           }),
         })
+
         return
       }
       toast.error(t("form.validation.submitBlockedTitle"), {
@@ -194,12 +213,14 @@ export const CategoryFormProvider = ({
     },
     [focusIncompleteLocales, form, t, tLocale],
   )
+
   const handleSubmit = useCallback(
     (event?: BaseSyntheticEvent) => {
       void form.handleSubmit(onSubmit, onSubmitInvalid)(event)
     },
     [form, onSubmit, onSubmitInvalid],
   )
+
   const value = useMemo<CategoryFormContextValue>(
     () => ({
       categoryId,
@@ -214,54 +235,66 @@ export const CategoryFormProvider = ({
     }),
     [categoryId, control, dismiss, handleSubmit, isPending, isUploading, mode, setValue],
   )
+
   return (
     <CategoryFormContext.Provider value={value}>
       <div className="flex h-full min-h-0 flex-col">{children}</div>
     </CategoryFormContext.Provider>
   )
 }
+
 export const CategoryForm = ({
   children,
 }: Readonly<{
   children: ReactNode
 }>): JSX.Element => {
   const { onFormSubmit } = useCategoryForm()
+
   return (
     <form id={CATEGORY_FORM_ID} onSubmit={onFormSubmit} noValidate className="min-h-0 flex-1 overflow-y-auto">
       {children}
     </form>
   )
 }
+
 export const useCategoryForm = (): CategoryFormContextValue => {
   const context = useContext(CategoryFormContext)
   if (context === undefined) {
     throw new Error("useCategoryForm must be used within CategoryFormProvider")
   }
+
   return context
 }
+
 export const CATEGORY_FORM_ID = "category-form"
+
 const DEFAULT_VALUES = createDefaultCategoryFormValues()
+
 export type CategoryFormMode = "create" | "edit"
+
 export interface CategoryFormContextValue {
   readonly categoryId: string | undefined
-  readonly control: Control<Category["formValues"]>
+  readonly control: Control<ProductCategory["formValues"]>
   readonly dismiss: () => void
   readonly isPending: boolean
   readonly isUploading: boolean
   readonly mode: CategoryFormMode
   readonly onFormSubmit: (event?: BaseSyntheticEvent) => void
   readonly setUploading: (uploading: boolean) => void
-  readonly setValue: UseFormSetValue<Category["formValues"]>
+  readonly setValue: UseFormSetValue<ProductCategory["formValues"]>
 }
+
 const CategoryFormContext = createContext<CategoryFormContextValue | undefined>(undefined)
+
 interface UseCategoryMutationOptions {
   readonly categoryId: string | undefined
   readonly mode: CategoryFormMode
   readonly onCompleted: () => void
-  readonly setError: UseFormSetError<Category["formValues"]>
+  readonly setError: UseFormSetError<ProductCategory["formValues"]>
 }
+
 interface CategoryFormProviderProps {
-  readonly category: Category["adminListItem"] | undefined
+  readonly category: ProductCategory["adminListItem"] | undefined
   readonly children: ReactNode
   readonly mode: CategoryFormMode
   readonly onDismiss: () => void

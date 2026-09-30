@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area"
 import { cn } from "cn"
+
 const ScrollArea = ({ className, children, ...props }: Readonly<ScrollAreaPrimitive.Root.Props>): JSX.Element => (
   <ScrollAreaPrimitive.Root data-slot="scroll-area" className={cn("relative", className)} {...props}>
     <ScrollAreaPrimitive.Viewport

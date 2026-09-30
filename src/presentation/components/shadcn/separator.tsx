@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { Separator as SeparatorPrimitive } from "@base-ui/react/separator"
 import { cn } from "cn"
+
 const Separator = ({ className, orientation = "horizontal", ...props }: Readonly<SeparatorPrimitive.Props>): JSX.Element => (
   <SeparatorPrimitive
     data-slot="separator"

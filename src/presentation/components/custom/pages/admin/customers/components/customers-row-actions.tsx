@@ -1,12 +1,13 @@
 import { type JSX, type MouseEvent, useCallback, useMemo, useState } from "react"
 
+import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { Copy, Eye, MoreHorizontal, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { useSession } from "~/src/integrations/better-auth/auth-client"
-import { ROLES } from "~/src/integrations/better-auth/auth.constants"
+import { ROLES } from "~/src/integrations/better-auth/auth.access"
+import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
 
 import { type User } from "~/src/modules/user/user.types"
 
@@ -25,16 +26,18 @@ import { useCatalogRowActionMenu } from "~/src/presentation/components/custom/pa
 import { useDeleteCustomer } from "~/src/presentation/components/custom/pages/admin/customers/hooks/use-delete-customer"
 
 import { ROUTES } from "~/src/routes"
+
 export const CustomersRowActions = ({ customer }: CustomersRowActionsProps): JSX.Element => {
   const t = useTranslations("pages.admin.customers.rowActions")
   const navigate = useNavigate()
-  const { data: session } = useSession()
+  const { data: session } = useQuery(getCurrentSessionQuery)
   const deleteCustomer = useDeleteCustomer()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const { closeMenuAndRequestDeleteConfirm, handleConfirmOpenChange, handleMenuOpenChange, menuOpen } = useCatalogRowActionMenu(
     confirmOpen,
     setConfirmOpen,
   )
+
   const { email, id, name, role, stripeCustomerId } = customer
   const canDelete = session?.user.id !== id && role !== ROLES.ADMIN
   const handleViewDetails = useCallback(() => {
@@ -42,37 +45,47 @@ export const CustomersRowActions = ({ customer }: CustomersRowActionsProps): JSX
       params: {
         id,
       },
-      to: `/{-$locale}${ROUTES.ADMIN_CUSTOMER}`,
+      to: ROUTES.ADMIN_CUSTOMER,
     })
   }, [id, navigate])
+
   const handleCopyId = useCallback(() => {
     void navigator.clipboard.writeText(id)
     toast.success(t("copyIdToast"))
   }, [id, t])
+
   const handleCopyEmail = useCallback(() => {
     void navigator.clipboard.writeText(email)
     toast.success(t("copyEmailToast"))
   }, [email, t])
+
   const handleCopyStripeCustomerId = useCallback(() => {
     const value = stripeCustomerId?.trim()
     if (value === undefined || value === "") {
       toast.error(t("copyStripeCustomerIdMissingToast"))
+
       return
     }
     void navigator.clipboard.writeText(value)
     toast.success(t("copyStripeCustomerIdToast"))
   }, [stripeCustomerId, t])
+
   const handleDelete = useCallback(() => {
     suppressDataGridRowClickAfterDialogDismiss()
     closeMenuAndRequestDeleteConfirm()
   }, [closeMenuAndRequestDeleteConfirm])
+
   const handleConfirmDelete = useCallback(() => {
-    deleteCustomer.mutate(id, {
-      onSuccess: () => {
-        handleConfirmOpenChange(false)
+    deleteCustomer.mutate(
+      { userId: id },
+      {
+        onSuccess: () => {
+          handleConfirmOpenChange(false)
+        },
       },
-    })
+    )
   }, [deleteCustomer, handleConfirmOpenChange, id])
+
   const runMenuAction = useCallback(
     (action: () => void) => (event: MouseEvent) => {
       event.preventDefault()
@@ -82,9 +95,11 @@ export const CustomersRowActions = ({ customer }: CustomersRowActionsProps): JSX
     },
     [],
   )
+
   const stopRowClick = useCallback((event: MouseEvent) => {
     event.stopPropagation()
   }, [])
+
   const trigger = useMemo(
     () => (
       <Button variant="ghost" size="icon" className="size-8" onClick={stopRowClick} onPointerDown={stopRowClick}>
@@ -93,6 +108,7 @@ export const CustomersRowActions = ({ customer }: CustomersRowActionsProps): JSX
     ),
     [stopRowClick],
   )
+
   return (
     <>
       <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
@@ -147,7 +163,9 @@ export const CustomersRowActions = ({ customer }: CustomersRowActionsProps): JSX
     </>
   )
 }
+
 const ITEM_CLASS = "px-3 py-2.5 text-[13px] gap-3"
+
 interface CustomersRowActionsProps {
   readonly customer: User["adminCustomerListItem"]
 }

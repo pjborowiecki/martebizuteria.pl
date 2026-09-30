@@ -1,8 +1,8 @@
 import { type JSX, useCallback } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { type Collection } from "~/src/modules/product-collection/product-collection.types"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 
 import { Sheet, SheetDescription, SheetHeader, SheetTitle } from "~/src/presentation/components/shadcn/sheet"
 
@@ -18,6 +18,7 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/collections/add-collection/collection-form-provider"
 import { CollectionSheetFooter } from "~/src/presentation/components/custom/pages/admin/catalog/collections/add-collection/collection-sheet-footer"
 import { CatalogFormLocaleControlsProvider } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-locale-controls"
+
 const CollectionSheetSections = ({
   recordId,
 }: Readonly<{
@@ -69,9 +70,11 @@ export const CollectionSheet = ({ collection, mode, onOpenChange, open }: Collec
   const handleDismiss = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   const handleSuccess = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <CatalogFormSheetContent>
@@ -92,8 +95,9 @@ export const CollectionSheet = ({ collection, mode, onOpenChange, open }: Collec
     </Sheet>
   )
 }
+
 interface CollectionSheetProps {
-  readonly collection: Collection["adminListItem"] | undefined
+  readonly collection: ProductCollection["adminListItem"] | undefined
   readonly mode: CollectionFormMode
   readonly onOpenChange: (open: boolean) => void
   readonly open: boolean

@@ -1,11 +1,12 @@
 import { type JSX, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 
 import { AdminNumericColumnFilter } from "~/src/presentation/components/custom/pages/admin/lib/admin-numeric-column-filter"
 import { ordersDataGrid } from "~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid"
+
 export const OrdersNumericColumnFilter = ({ ariaLabelKey, columnId, labelKey }: Readonly<OrdersNumericColumnFilterProps>): JSX.Element => {
   const tOrders = useTranslations("pages.admin.orders")
   const tCustomers = useTranslations("pages.admin.customers")
@@ -27,6 +28,7 @@ export const OrdersNumericColumnFilter = ({ ariaLabelKey, columnId, labelKey }: 
     }),
     [tCustomers],
   )
+
   return (
     <AdminNumericColumnFilter
       ariaLabel={tOrders(ariaLabelKey)}
@@ -38,6 +40,7 @@ export const OrdersNumericColumnFilter = ({ ariaLabelKey, columnId, labelKey }: 
     />
   )
 }
+
 interface OrdersNumericColumnFilterProps {
   readonly ariaLabelKey: "filter.total"
   readonly columnId: string

@@ -2,7 +2,9 @@ import { type JSX, useCallback } from "react"
 
 import { cn } from "cn"
 import { Search, ShoppingBag, UserRound } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
+
+import { useCartStore } from "~/src/modules/cart/cart.store"
 
 import { Button, buttonVariants } from "~/src/presentation/components/shadcn/button"
 
@@ -11,7 +13,7 @@ import { useNavigation } from "~/src/presentation/components/custom/pages/landin
 import { useNavigationStore } from "~/src/presentation/components/custom/pages/landing-page/navigation/store/navigation-store"
 
 import { ROUTES } from "~/src/routes"
-import { useCartStore } from "~/src/stores/cart.store"
+
 export const UserUtilityNav = (): JSX.Element => {
   const t = useTranslations("components.custom.navigation")
   const { getHoverProps } = useNavigation()
@@ -23,6 +25,7 @@ export const UserUtilityNav = (): JSX.Element => {
   const handleOpenSearch = useCallback(() => {
     setSearchOpen(true)
   }, [setSearchOpen])
+
   return (
     <div className="flex h-full min-w-0 items-center justify-end gap-1 justify-self-end text-foreground sm:gap-1.5">
       <Button
@@ -72,4 +75,5 @@ export const UserUtilityNav = (): JSX.Element => {
     </div>
   )
 }
+
 const utilityIcon = "size-[1.125rem] text-foreground"

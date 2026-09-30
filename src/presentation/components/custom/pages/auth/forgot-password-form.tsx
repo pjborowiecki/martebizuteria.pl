@@ -2,42 +2,50 @@ import { type JSX, type SyntheticEvent, useCallback, useState } from "react"
 
 import { type ErrorContext } from "@better-fetch/fetch"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { createClientOnlyFn } from "@tanstack/react-start"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { authClient } from "~/src/integrations/better-auth/auth-client"
-import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.errors"
-import { type ForgotPasswordFormValues, forgotPasswordSchema } from "~/src/integrations/better-auth/auth.schemas"
+import { authClient } from "~/src/integrations/better-auth/auth.client"
+import { type ForgotPasswordFormValues, forgotPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
 
-import { buildLocalizedUrl } from "~/src/lib/sitemap"
+import { useActionError } from "~/src/hooks/use-action-error"
+
+import { buildLocalizedUrl } from "~/src/lib/seo"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { AuthTextField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
 import { ROUTES } from "~/src/routes"
+
+const requestPasswordReset = createClientOnlyFn((input: Parameters<typeof authClient.requestPasswordReset>[0]) =>
+  authClient.requestPasswordReset(input),
+)
+
 export const ForgotPasswordForm = (): JSX.Element => {
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const t = useTranslations()
+  const actionError = useActionError()
   const locale = useLocale()
-  const formSchema = forgotPasswordSchema(t)
   const form = useForm<ForgotPasswordFormValues>({
     defaultValues: {
       email: "",
     },
     mode: "onTouched",
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(forgotPasswordSchema),
   })
+
   const onSubmit = useCallback(
     async (data: ForgotPasswordFormValues) => {
-      await authClient.requestPasswordReset({
+      await requestPasswordReset({
         email: data.email,
         fetchOptions: {
           onError: (ctx: ErrorContext) => {
             toast.error(t("pages.auth.toast.errorTitle"), {
-              description: getAuthErrorMessage(t, ctx.error),
+              description: actionError(ctx.error),
             })
           },
           onSuccess: () => {
@@ -52,6 +60,7 @@ export const ForgotPasswordForm = (): JSX.Element => {
     },
     [locale, t],
   )
+
   const handleFormSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault()
@@ -59,6 +68,7 @@ export const ForgotPasswordForm = (): JSX.Element => {
     },
     [form, onSubmit],
   )
+
   const { isSubmitting } = form.formState
   if (hasSubmitted) {
     return (
@@ -67,6 +77,7 @@ export const ForgotPasswordForm = (): JSX.Element => {
       </div>
     )
   }
+
   return (
     <form id="forgot-password-form" onSubmit={handleFormSubmit} className="space-y-5">
       <AuthTextField

@@ -15,14 +15,16 @@ import {
   Tag,
   UserRound,
 } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { type User } from "~/src/modules/user/user.types"
 
 import { Avatar, AvatarFallback } from "~/src/presentation/components/shadcn/avatar"
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
+
 const resolveTimelineDescription = (
   event: User["adminCustomerDetail"]["timeline"][number],
   t: ReturnType<typeof useTranslations<"pages.admin.customerDetail">>,
@@ -33,45 +35,57 @@ const resolveTimelineDescription = (
       total: event.total,
     })
   }
+
   if (event.kind === "signed_in") {
     return t("timeline.signedIn")
   }
+
   if (event.kind === "signed_out") {
     return t("timeline.signedOut")
   }
+
   if (event.kind === "cart_item_added") {
     return t("timeline.cartItemAdded", {
       product: event.productTitle,
       quantity: event.quantity ?? DEFAULT_CART_QUANTITY,
     })
   }
+
   if (event.kind === "cart_abandoned") {
     return t("timeline.cartAbandoned", {
       count: event.itemCount,
     })
   }
+
   if (event.kind === "page_viewed") {
     return t("timeline.pageViewed", {
       path: event.path,
     })
   }
+
   return t("timeline.accountCreated")
 }
+
 const resolveTimelineEventKey = (event: User["adminCustomerDetail"]["timeline"][number]): string => {
   if (event.kind === "order_placed") {
     return `${event.date}-${event.kind}-${event.orderId}`
   }
+
   if (event.kind === "cart_item_added") {
     return `${event.date}-${event.kind}-${event.productTitle}-${event.quantity ?? DEFAULT_CART_QUANTITY}`
   }
+
   if (event.kind === "cart_abandoned") {
     return `${event.date}-${event.kind}-${event.itemCount}`
   }
+
   if (event.kind === "page_viewed") {
     return `${event.date}-${event.kind}-${event.path}`
   }
+
   return `${event.date}-${event.kind}`
 }
+
 export const CustomerSidebar = ({ customer }: CustomerSidebarProps): JSX.Element => (
   <div className="space-y-6">
     <CustomerProfileCard customer={customer} />
@@ -84,6 +98,7 @@ export const CustomerSidebar = ({ customer }: CustomerSidebarProps): JSX.Element
 const CustomerProfileCard = ({ customer }: { customer: User["adminCustomerDetail"] }): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
   const tCustomers = useTranslations("pages.admin.customers")
+
   return (
     <Card className="shadow-none">
       <CardContent className="p-6">
@@ -116,17 +131,19 @@ const CustomerProfileCard = ({ customer }: { customer: User["adminCustomerDetail
           </div>
           <div className="flex items-center gap-3 text-sm">
             <Phone className="size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />
-            <span className="text-muted-foreground">{customer.phone?.trim() === "" || customer.phone === null ? "—" : customer.phone}</span>
+            <span className="text-muted-foreground">
+              {customer.phone?.trim() === "" || customer.phone === null ? EMPTY_VALUE : customer.phone}
+            </span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <MapPin className="size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />
-            <span className="text-muted-foreground">{customer.address ?? "—"}</span>
+            <span className="text-muted-foreground">{customer.address ?? EMPTY_VALUE}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <Clock className="size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />
             <span className="text-muted-foreground">
               {customer.lastActive === undefined
-                ? "—"
+                ? EMPTY_VALUE
                 : t("profile.lastActive", {
                     time: customer.lastActive,
                   })}
@@ -143,7 +160,7 @@ const CustomerProfileCard = ({ customer }: { customer: User["adminCustomerDetail
             <span className="text-muted-foreground">
               {t("profile.preferredCategory")}
               {": "}
-              <span className="text-foreground">{customer.preferredCategory ?? "—"}</span>
+              <span className="text-foreground">{customer.preferredCategory ?? EMPTY_VALUE}</span>
             </span>
           </div>
           <div className="flex items-center gap-3 text-sm">
@@ -151,7 +168,7 @@ const CustomerProfileCard = ({ customer }: { customer: User["adminCustomerDetail
             <span className="text-muted-foreground">
               {t("profile.preferredCollection")}
               {": "}
-              <span className="text-foreground">{customer.preferredCollection ?? "—"}</span>
+              <span className="text-foreground">{customer.preferredCollection ?? EMPTY_VALUE}</span>
             </span>
           </div>
         </div>
@@ -159,8 +176,10 @@ const CustomerProfileCard = ({ customer }: { customer: User["adminCustomerDetail
     </Card>
   )
 }
+
 const CustomerTagsCard = ({ customer }: { customer: User["adminCustomerDetail"] }): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
+
   return (
     <Card className="shadow-none">
       <CardContent className="p-5">
@@ -200,8 +219,10 @@ const CustomerTagsCard = ({ customer }: { customer: User["adminCustomerDetail"] 
     </Card>
   )
 }
+
 const CustomerNotesCard = ({ customer }: { customer: User["adminCustomerDetail"] }): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
+
   return (
     <Card className="shadow-none">
       <CardContent className="p-5">
@@ -211,8 +232,10 @@ const CustomerNotesCard = ({ customer }: { customer: User["adminCustomerDetail"]
     </Card>
   )
 }
+
 const CustomerTimelineCard = ({ customer }: { customer: User["adminCustomerDetail"] }): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
+
   return (
     <Card className="shadow-none">
       <CardContent className="p-5">
@@ -225,6 +248,7 @@ const CustomerTimelineCard = ({ customer }: { customer: User["adminCustomerDetai
               const Icon = TIMELINE_ICONS[event.kind]
               const eventKey = resolveTimelineEventKey(event)
               const description = resolveTimelineDescription(event, t)
+
               return (
                 <div key={eventKey} className="relative flex gap-3 pb-5 last:pb-0">
                   {index < customer.timeline.length - 1 && (
@@ -246,7 +270,9 @@ const CustomerTimelineCard = ({ customer }: { customer: User["adminCustomerDetai
     </Card>
   )
 }
+
 const DEFAULT_CART_QUANTITY = 1
+
 const TIMELINE_ICONS: Record<User["adminCustomerDetail"]["timeline"][number]["kind"], LucideIcon> = {
   account_created: UserRound,
   cart_abandoned: ShoppingBag,
@@ -256,6 +282,7 @@ const TIMELINE_ICONS: Record<User["adminCustomerDetail"]["timeline"][number]["ki
   signed_in: LogIn,
   signed_out: LogOut,
 }
+
 interface CustomerSidebarProps {
   readonly customer: User["adminCustomerDetail"]
 }

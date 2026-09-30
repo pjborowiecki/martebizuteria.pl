@@ -25,9 +25,11 @@ export const normalizeAttributeOnProductRows = (
 ): (typeof attributeOnProduct.$inferInsert)[] => {
   const { productAttributes, productId, rows, variantId } = input
   const productAttributeById = new Map(productAttributes.map((entry) => [entry.id, entry]))
+
   return rows.map((row, index) => {
     const definition = productAttributeById.get(row.attributeId)
     const type = definition?.type ?? "text"
+
     return {
       attributeId: row.attributeId,
       id: row.id ?? uuidv7(),

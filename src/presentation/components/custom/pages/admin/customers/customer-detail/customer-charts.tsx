@@ -1,13 +1,14 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { useFormatter, useTranslations } from "use-intl"
+import { useFormatter, useTranslations } from "use-intl/react"
 
 import { DEFAULT_ADMIN_CUSTOMER_CURRENCY } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/presentation/components/shadcn/chart"
+
 export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
   const format = useFormatter()
@@ -20,6 +21,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
     }),
     [t],
   )
+
   const categoryConfig: ChartConfig = useMemo(
     () => ({
       amount: {
@@ -29,6 +31,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
     }),
     [t],
   )
+
   const tickConfig = useMemo(
     () => ({
       fill: "hsl(var(--muted-foreground) / 0.5)",
@@ -36,6 +39,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
     }),
     [],
   )
+
   const categoryTickConfig = useMemo(
     () => ({
       fill: "hsl(var(--muted-foreground))",
@@ -43,6 +47,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
     }),
     [],
   )
+
   const chartMargin = useMemo(
     () => ({
       bottom: 0,
@@ -52,6 +57,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
     }),
     [],
   )
+
   const barChartMargin = useMemo(
     () => ({
       bottom: 0,
@@ -61,6 +67,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
     }),
     [],
   )
+
   const tickFormatter = useCallback(
     (value: number) => {
       const formatted = format.number(value / MINOR_UNITS_PER_MAJOR / THOUSAND_DIVISOR, {
@@ -69,16 +76,19 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
         minimumFractionDigits: TICK_DECIMALS,
         style: "currency",
       })
+
       return `${formatted}${THOUSAND_SUFFIX}`
     },
     [format],
   )
+
   const RADIUS_RIGHT = 4
   const RADIUS_OTHER = 0
   const barRadius = useMemo<[number, number, number, number]>(() => [RADIUS_OTHER, RADIUS_RIGHT, RADIUS_RIGHT, RADIUS_OTHER], [])
   const tooltipContent = useMemo(() => <ChartTooltipContent />, [])
   const hasSpendingData = customer.monthlySpending.some((entry) => entry.amount > 0)
   const hasCategoryData = customer.categoryBreakdown.length > 0
+
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_280px]">
       <Card className="shadow-none">
@@ -126,6 +136,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
     </div>
   )
 }
+
 const SpendingChart = ({
   data,
   margin,
@@ -180,9 +191,13 @@ const ChartGradients = (): JSX.Element => (
 )
 
 const MINOR_UNITS_PER_MAJOR = 100
+
 const THOUSAND_DIVISOR = 1000
+
 const TICK_DECIMALS = 0
+
 const THOUSAND_SUFFIX = "k"
+
 interface CustomerChartsProps {
   readonly customer: User["adminCustomerDetail"]
 }

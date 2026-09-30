@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { Slider as SliderPrimitive } from "@base-ui/react/slider"
 import { cn } from "cn"
+
 const Slider = ({
   className,
   defaultValue,
@@ -14,11 +15,14 @@ const Slider = ({
     if (Array.isArray(value)) {
       return value as readonly number[]
     }
+
     if (Array.isArray(defaultValue)) {
       return defaultValue as readonly number[]
     }
+
     return [min, max]
   })()
+
   return (
     <SliderPrimitive.Root
       className={cn("data-horizontal:w-full data-vertical:h-full", className)}
@@ -51,6 +55,9 @@ const Slider = ({
     </SliderPrimitive.Root>
   )
 }
+
 const DEFAULT_MIN = 0
+
 const DEFAULT_MAX = 100
+
 export { Slider }

@@ -1,13 +1,14 @@
 import { type JSX } from "react"
 
 import { Button, Column, Heading, Hr, Img, Link, Row, Section, Text } from "react-email"
+import { createTranslator } from "use-intl"
 
 import { type OrderAccountCta } from "~/src/integrations/resend/order-confirmation.utils"
-import { getEmailMessages } from "~/src/integrations/use-intl/i18n.emails"
-import { type Locale } from "~/src/integrations/use-intl/i18n.types"
+import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { formatPrice } from "~/src/lib/currency"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 
+import type emailMessages from "~/messages/en-US/emails.order-confirmation.json"
 import {
   EMAIL_CTA_BUTTON_CLASS,
   EMAIL_CTA_SECTION_WITH_TOP_SPACING_CLASS,
@@ -17,6 +18,9 @@ import {
 } from "~/src/presentation/emails/email-highlight-box"
 import { EmailLayout } from "~/src/presentation/emails/email-layout"
 import { EMAIL_PRODUCT_IMAGE_STYLE } from "~/src/presentation/emails/email-styles"
+
+export const ORDER_CONFIRMATION_NAMESPACE = "emails.order-confirmation"
+
 const DetailRow = ({ isFirst = false, label, value }: Readonly<DetailRowProps>): JSX.Element => (
   <Section className={isFirst ? "m-0" : DETAIL_GROUP_TOP_MARGIN}>
     <Text className={DETAIL_LABEL_CLASS}>{label}</Text>
@@ -56,29 +60,36 @@ export const OrderConfirmation = ({
   details,
   items,
   locale,
+  messages,
   orderId,
   shippingTotal,
   subtotal,
   total,
 }: Readonly<OrderConfirmationProps>): JSX.Element => {
-  const t = getEmailMessages(locale).emails.orderConfirmation
+  const t = createTranslator({
+    locale,
+    messages: { emails: { "order-confirmation": messages } },
+    namespace: ORDER_CONFIRMATION_NAMESPACE,
+  })
+
   const reference = orderId.slice(0, REFERENCE_LENGTH).toUpperCase()
+
   return (
-    <EmailLayout locale={locale} preview={t.preview} tagline={t.tagline}>
+    <EmailLayout locale={locale} preview={t("preview")} tagline={t("tagline")}>
       <Heading className="text-ink m-0 text-center font-serif text-[30px] leading-[38px] font-normal tracking-[0.02em]">
-        {t.heading}
+        {t("heading")}
       </Heading>
 
-      <EmailBodyText className="mt-[30px]">{t.message}</EmailBodyText>
-      <EmailBodyText className="mt-[16px]">{t.messageSecondary}</EmailBodyText>
+      <EmailBodyText className="mt-[30px]">{t("message")}</EmailBodyText>
+      <EmailBodyText className="mt-[16px]">{t("messageSecondary")}</EmailBodyText>
 
       <EmailBorderedSection>
-        <Text className="text-ink m-0 text-[11px] leading-[16px] font-semibold tracking-[0.22em] uppercase">{t.orderLabel}</Text>
+        <Text className="text-ink m-0 text-[11px] leading-[16px] font-semibold tracking-[0.22em] uppercase">{t("orderLabel")}</Text>
         <Text className="text-ink mt-[10px] mb-0 font-serif text-[20px] leading-[26px] tracking-[0.12em]">{reference}</Text>
 
         <Hr className="border-line my-[22px]" />
 
-        <Text className="text-ink m-0 text-[11px] leading-[16px] font-semibold tracking-[0.22em] uppercase">{t.itemsLabel}</Text>
+        <Text className="text-ink m-0 text-[11px] leading-[16px] font-semibold tracking-[0.22em] uppercase">{t("itemsLabel")}</Text>
         {items.map((item, index) => (
           <OrderItemRow
             key={`${item.title}-${item.productUrl}-${item.qty}`}
@@ -86,7 +97,7 @@ export const OrderConfirmation = ({
             isFirst={index === 0}
             item={item}
             locale={locale}
-            viewProductLabel={t.viewProductLink}
+            viewProductLabel={t("viewProductLink")}
           />
         ))}
 
@@ -94,31 +105,31 @@ export const OrderConfirmation = ({
 
         <Section className="m-0">
           <Text className="text-ink m-0 text-[14px] leading-[24px]">
-            {t.subtotalLabel}: {formatPrice(subtotal, currency, locale)}
+            {t("subtotalLabel")}: {formatPrice(subtotal, currency, locale)}
           </Text>
           <Text className="text-ink mt-[8px] mb-0 text-[14px] leading-[24px]">
-            {t.shippingLabel}: {formatPrice(shippingTotal, currency, locale)}
+            {t("shippingLabel")}: {formatPrice(shippingTotal, currency, locale)}
           </Text>
           <Text className="text-ink mt-[12px] mb-0 text-[15px] leading-[24px] font-semibold">
-            {t.totalLabel}: {formatPrice(total, currency, locale)}
+            {t("totalLabel")}: {formatPrice(total, currency, locale)}
           </Text>
         </Section>
 
         <Hr className="border-line my-[22px]" />
 
-        <DetailRow isFirst label={t.paymentMethodLabel} value={details.paymentMethod} />
-        <DetailRow label={t.deliveryMethodLabel} value={details.deliveryMethod} />
-        <DetailRow label={t.shippingAddressLabel} value={details.shippingAddress} />
-        <DetailRow label={t.billingAddressLabel} value={details.billingAddress} />
-        <DetailRow label={t.fulfillmentTimeLabel} value={details.fulfillmentTime} />
-        <DetailRow label={t.estimatedDeliveryLabel} value={details.estimatedDelivery} />
+        <DetailRow isFirst label={t("paymentMethodLabel")} value={details.paymentMethod} />
+        <DetailRow label={t("deliveryMethodLabel")} value={details.deliveryMethod} />
+        <DetailRow label={t("shippingAddressLabel")} value={details.shippingAddress} />
+        <DetailRow label={t("billingAddressLabel")} value={details.billingAddress} />
+        <DetailRow label={t("fulfillmentTimeLabel")} value={details.fulfillmentTime} />
+        <DetailRow label={t("estimatedDeliveryLabel")} value={details.estimatedDelivery} />
       </EmailBorderedSection>
 
-      <EmailBodyText>{t.closingNote}</EmailBodyText>
+      <EmailBodyText>{t("closingNote")}</EmailBodyText>
 
       {accountCta.isGuest ? (
         <Section className="mt-[16px]">
-          <Text className={EMAIL_MUTED_TEXT_CLASS}>{t.accountCtaNote}</Text>
+          <Text className={EMAIL_MUTED_TEXT_CLASS}>{t("accountCtaNote")}</Text>
         </Section>
       ) : undefined}
 
@@ -128,19 +139,28 @@ export const OrderConfirmation = ({
         </Button>
       </Section>
 
-      <EmailBodyText className="mt-[34px]">{t.signoff}</EmailBodyText>
-      <EmailBodyText className="font-serif italic">{t.sender}</EmailBodyText>
+      <EmailBodyText className="mt-[34px]">{t("signoff")}</EmailBodyText>
+      <EmailBodyText className="font-serif italic">{t("sender")}</EmailBodyText>
     </EmailLayout>
   )
 }
+
 const REFERENCE_LENGTH = 8
+
 const FIRST_ITEM_TOP_MARGIN = "mt-[8px]"
+
 const ITEM_TOP_MARGIN = "mt-[16px]"
+
 const DETAIL_GROUP_TOP_MARGIN = "mt-[24px]"
+
 const PRODUCT_IMAGE_SIZE = 72
+
 const DETAIL_LABEL_CLASS = "text-ink m-0 text-[11px] leading-[16px] font-semibold tracking-[0.22em] uppercase"
+
 const DETAIL_VALUE_CLASS = "text-ink mt-[6px] mb-0 text-[14px] leading-[22px] whitespace-pre-line"
+
 const PRODUCT_LINK_CLASS = "text-muted mt-[6px] inline-block text-[12px] leading-[18px] underline"
+
 export interface OrderConfirmationItem {
   readonly imageUrl: string
   readonly price: number
@@ -148,6 +168,7 @@ export interface OrderConfirmationItem {
   readonly qty: number
   readonly title: string
 }
+
 export interface OrderConfirmationDetails {
   readonly billingAddress: string
   readonly deliveryMethod: string
@@ -156,64 +177,30 @@ export interface OrderConfirmationDetails {
   readonly paymentMethod: string
   readonly shippingAddress: string
 }
-export interface OrderConfirmationProps {
+
+interface OrderConfirmationProps {
   readonly accountCta: OrderAccountCta
   readonly currency: string
   readonly details: OrderConfirmationDetails
   readonly items: readonly OrderConfirmationItem[]
-  readonly locale: Locale
+  readonly locale: SupportedLocale
+  readonly messages: typeof emailMessages
   readonly orderId: string
   readonly shippingTotal: number
   readonly subtotal: number
   readonly total: number
 }
-export const getOrderConfirmationSubject = (locale: Locale): string => getEmailMessages(locale).emails.orderConfirmation.subject
+
 interface DetailRowProps {
   readonly isFirst?: boolean
   readonly label: string
   readonly value: string
 }
+
 interface OrderItemRowProps {
   readonly currency: string
   readonly isFirst: boolean
   readonly item: OrderConfirmationItem
-  readonly locale: Locale
+  readonly locale: SupportedLocale
   readonly viewProductLabel: string
 }
-OrderConfirmation.PreviewProps = {
-  accountCta: {
-    href: "http://localhost:3000/auth/sign-up",
-    isGuest: true,
-    label: "Załóż konto i śledź zamówienie",
-  },
-  currency: "PLN",
-  details: {
-    billingAddress: "Tak jak adres dostawy",
-    deliveryMethod: "Kurier DPD · dostawa do domu",
-    estimatedDelivery: "2–4 dni robocze od wysyłki",
-    fulfillmentTime: "1–3 dni robocze",
-    paymentMethod: "Karta płatnicza",
-    shippingAddress: "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa\nPL\n+48 600 123 456",
-  },
-  items: [
-    {
-      imageUrl: "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/placeholder.svg",
-      price: 24_900,
-      productUrl: "http://localhost:3000/products/bransoletka-aurora",
-      qty: 1,
-      title: "Bransoletka Aurora",
-    },
-    {
-      imageUrl: "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/placeholder.svg",
-      price: 18_900,
-      productUrl: "http://localhost:3000/products/kolczyki-luna",
-      qty: 2,
-      title: "Kolczyki Luna",
-    },
-  ],
-  locale: "pl",
-  orderId: "a1b2c3d4-0000-0000-0000-000000000000",
-  shippingTotal: 1900,
-  subtotal: 62_700,
-  total: 64_600,
-} satisfies OrderConfirmationProps

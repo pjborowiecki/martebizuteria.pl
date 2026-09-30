@@ -9,6 +9,7 @@ import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/c
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
 import { ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES } from "~/src/modules/user/user.constants"
+
 export const getCustomerActivityAuditRows = (userId: string) =>
   db
     .select({
@@ -41,6 +42,7 @@ export const getOrderItemsForOrders = (orderIds: readonly string[]) => {
   if (orderIds.length === 0) {
     return []
   }
+
   return db
     .select({
       orderId: orderItem.orderId,
@@ -53,6 +55,7 @@ export const getOrderItemsForOrders = (orderIds: readonly string[]) => {
     .from(orderItem)
     .where(inArray(orderItem.orderId, [...orderIds]))
 }
+
 const CUSTOMER_ACCOUNT_ACTIVITY_ACTIONS = [
   AUDIT_LOG_ACTION.AUTH_LOGIN,
   AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED,

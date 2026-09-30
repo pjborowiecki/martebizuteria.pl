@@ -1,0 +1,787 @@
+{
+  "brand": "M'ARTE",
+  "subtitle": "Admin panel",
+  "a11y": {
+    "selectAll": "Select all rows",
+    "selectRow": "Select row"
+  },
+  "catalogForm": {
+    "requiredFieldHint": "Required field."
+  },
+  "customerDetail": {
+    "breadcrumb": {
+      "dashboard": "Dashboard",
+      "customers": "Customers"
+    },
+    "actions": {
+      "edit": "Edit customer",
+      "createOrder": "Create Order"
+    },
+    "kpi": {
+      "totalSpent": "Total Spent",
+      "orders": "Orders",
+      "avgOrder": "Average Order",
+      "returnRate": "Returning Rate"
+    },
+    "spending": {
+      "title": "Spending Activity",
+      "subtitle": "Monthly spending over the last 12 months",
+      "empty": "No completed orders in the last 12 months."
+    },
+    "categoryBreakdown": {
+      "title": "Category Breakdown",
+      "empty": "No category spending data yet."
+    },
+    "orders": {
+      "title": "Order History",
+      "viewAll": "View All",
+      "columns": {
+        "order": "Order",
+        "date": "Date",
+        "items": "Items",
+        "total": "Total",
+        "status": "Status",
+        "payment": "Payment"
+      },
+      "empty": "No orders yet.",
+      "status": {
+        "delivered": "Delivered",
+        "shipped": "Shipped",
+        "returned": "Returned",
+        "pending": "Pending",
+        "unfulfilled": "Unfulfilled"
+      },
+      "payment": {
+        "paid": "Paid",
+        "refunded": "Refunded",
+        "authorized": "Authorized"
+      }
+    },
+    "profile": {
+      "accountCreated": "Account created: {date}",
+      "lastActive": "Last active {time}",
+      "returningBadge": "Returning",
+      "preferences": "Preferences",
+      "preferredCategory": "Preferred Category",
+      "preferredCollection": "Preferred Collection"
+    },
+    "tags": {
+      "title": "Tags",
+      "sidebarHint": "System tags are automatic. Add or remove your own labels via Edit customer.",
+      "system": "System",
+      "custom": "Custom",
+      "empty": "No tags for this customer.",
+      "values": {
+        "admin": "Admin",
+        "banned": "Banned",
+        "customer": "Customer",
+        "returning": "Returning",
+        "verified": "Verified"
+      }
+    },
+    "notes": {
+      "title": "Internal Notes",
+      "empty": "No internal notes."
+    },
+    "timeline": {
+      "title": "Activity Timeline",
+      "empty": "No activity yet.",
+      "accountCreated": "Account created",
+      "orderPlaced": "Placed order {id} — {total}",
+      "signedIn": "Signed in",
+      "signedOut": "Signed out",
+      "cartItemAdded": "Added {product} to cart (×{quantity})",
+      "cartAbandoned": "Left with {count} items in cart",
+      "pageViewed": "Viewed {path}"
+    },
+    "form": {
+      "title": "Edit customer",
+      "description": "Update contact details, default address, internal notes, and custom tags.",
+      "cancel": "Cancel",
+      "save": "Save changes",
+      "sections": {
+        "contact": "Contact details",
+        "address": "Default address",
+        "addressDescription": "Used on the customer profile and as the default shipping address when available.",
+        "notes": "Internal notes",
+        "tags": "Custom tags",
+        "tagsDescription": "System tags such as Verified or Returning are assigned automatically."
+      },
+      "id": "Customer ID",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "phonePlaceholder": "+48 123 456 789",
+      "address1": "Address line 1",
+      "address1Placeholder": "Street and number",
+      "address2": "Address line 2",
+      "address2Placeholder": "Apartment, suite, etc.",
+      "city": "City",
+      "cityPlaceholder": "City",
+      "province": "State / province",
+      "provincePlaceholder": "State or province",
+      "postalCode": "Postal code",
+      "postalCodePlaceholder": "00-000",
+      "countryCode": "Country",
+      "countryCodePlaceholder": "PL",
+      "notes": "Internal notes",
+      "notesPlaceholder": "Notes visible only to admins",
+      "customTags": "Custom tags",
+      "systemTags": "System tags",
+      "addTag": "Add tag",
+      "customTagsPlaceholder": "Add a tag…",
+      "hints": {
+        "systemTags": "Assigned automatically from account status (e.g. verified email, repeat orders). These cannot be edited.",
+        "id": "Permanent identifier for this customer. Used in the admin and APIs; it cannot be changed.",
+        "name": "Display name from the customer account. Managed by the customer during registration or profile updates.",
+        "email": "Primary email address linked to the account. Cannot be edited here.",
+        "phone": "Optional contact phone number shown in the admin customer profile.",
+        "address1": "Street name and building number for the default address.",
+        "address2": "Optional apartment, suite, or additional address line.",
+        "city": "City or locality for the default address.",
+        "province": "Optional state, province, or region.",
+        "postalCode": "Postal or ZIP code for the default address.",
+        "countryCode": "Two-letter ISO country code, for example PL or DE.",
+        "notes": "Private notes for your team. Never shown to the customer on the storefront.",
+        "customTags": "Add your own labels to segment or flag customers. Type a tag and click Add tag or press Enter."
+      },
+      "removeTag": "Remove tag {tag}",
+      "toast": {
+        "errorTitle": "Could not save customer",
+        "errorDescription": "Please check the form and try again.",
+        "successTitle": "Customer updated",
+        "successDescription": "Changes were saved successfully."
+      }
+    }
+  },
+  "nav": {
+    "main": "Main menu",
+    "dashboard": "Dashboard",
+    "catalog": "Catalog",
+    "products": "Products",
+    "categories": "Categories",
+    "collections": "Collections",
+    "attributes": "Attributes",
+    "orders": "Orders",
+    "customers": "Customers",
+    "tools": "Tools",
+    "marketing": "Marketing",
+    "coupons": "Coupons",
+    "content": "Content",
+    "audit": "Audit Log",
+    "settings": "Settings"
+  },
+  "media": {
+    "cta": "Click to upload or drag and drop",
+    "hint": "JPG, PNG, WEBP or AVIF · up to 5MB",
+    "uploading": "Uploading…",
+    "dropHere": "Drop image to upload",
+    "change": "Change",
+    "remove": "Remove",
+    "errorTitle": "Upload failed",
+    "errorUpload": "The image could not be uploaded. Please try again.",
+    "errorInvalidType": "Unsupported file type. Use JPG, PNG, WEBP or AVIF.",
+    "errorTooLarge": "Image is too large. Maximum size is 5MB.",
+    "main": "Main",
+    "setMain": "Set as main",
+    "addMore": "Add images",
+    "reorderAria": "Image {position} of {total}. Use arrow keys to reorder."
+  },
+  "user": {
+    "name": "Jane Doe",
+    "role": "Administrator",
+    "initials": "JD",
+    "signOut": "Sign out"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Overview of your store's performance and recent activity.",
+    "stats": {
+      "vsPrevious": "vs previous 30 days",
+      "revenue": {
+        "label": "Revenue (30 days)"
+      },
+      "orders": {
+        "label": "Orders (30 days)"
+      },
+      "customers": {
+        "label": "New customers (30 days)"
+      },
+      "views": {
+        "label": "Page views (30 days)"
+      }
+    },
+    "chart": {
+      "title": "Revenue Overview",
+      "description7d": "Revenue for the last {days} days",
+      "description30d": "Revenue for the last {days} days",
+      "description1y": "Revenue for the last year",
+      "descriptionCustom": "Revenue from {startDate} to {endDate}",
+      "descriptionCustomIdle": "Select a date range",
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "lastYear": "Last year",
+      "custom": "Custom",
+      "customRange": "Date range",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "placeholder": "Pick a date",
+      "today": "Today",
+      "clearDate": "Clear",
+      "apply": "Apply",
+      "clear": "Clear",
+      "revenueLabel": "Revenue"
+    },
+    "weeklyOrders": {
+      "title": "Orders this week",
+      "seriesLabel": "Orders"
+    },
+    "avgOrder": {
+      "label": "Average Order Value"
+    },
+    "totalSales": {
+      "label": "Year-to-date sales",
+      "period": "View all orders"
+    },
+    "recentOrders": {
+      "title": "Recent Orders",
+      "empty": "No orders yet.",
+      "viewAll": "View all",
+      "columns": {
+        "order": "Order",
+        "customer": "Customer",
+        "date": "Date",
+        "total": "Total",
+        "payment": "Payment",
+        "fulfillment": "Fulfillment"
+      },
+      "status": {
+        "unfulfilled": "Unfulfilled",
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "returned": "Returned",
+        "pending": "Pending",
+        "paid": "Paid",
+        "refunded": "Refunded",
+        "authorized": "Authorized"
+      }
+    },
+    "topProducts": {
+      "title": "Top Selling Products",
+      "empty": "No product sales data yet.",
+      "soldCount": "{count} sold",
+      "uncategorized": "Uncategorized"
+    }
+  },
+  "audit": {
+    "title": "Audit Log",
+    "description": "Track all system events and administrative actions.",
+    "breadcrumb": {
+      "dashboard": "Dashboard"
+    },
+    "stats": {
+      "totalEvents": "Total events",
+      "today": "Today",
+      "warnings": "Warnings",
+      "errors": "Errors",
+      "shareCaption": "{percent}% of total"
+    },
+    "categories": {
+      "all": "All",
+      "orders": "Orders",
+      "email": "Email",
+      "customers": "Customers",
+      "catalog": "Catalog",
+      "settings": "Settings",
+      "auth": "Auth"
+    },
+    "severity": {
+      "info": "Info",
+      "success": "Success",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "dateRange": {
+      "all": "All time",
+      "today": "Today",
+      "7d": "7 days",
+      "30d": "30 days",
+      "custom": "Custom",
+      "from": "From",
+      "to": "To",
+      "apply": "Apply"
+    },
+    "columns": {
+      "status": "Status",
+      "event": "Event",
+      "target": "Subject",
+      "detail": "Detail",
+      "category": "Category",
+      "actor": "Actor",
+      "timestamp": "Timestamp",
+      "ip": "IP",
+      "actions": "Row actions"
+    },
+    "rowActions": {
+      "delete": "Delete entry",
+      "deleteTitle": "Delete audit log entry?",
+      "deleteDescription": "This will permanently delete the “{event}” event. This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "filter": {
+      "category": "Filter by category",
+      "severity": "Filter by status",
+      "dateRange": "Filter by date range",
+      "allCategories": "All categories",
+      "allSeverities": "All statuses",
+      "date": {
+        "apply": "Apply",
+        "clear": "Clear",
+        "clearDate": "Clear date",
+        "date": "Date",
+        "endDate": "To",
+        "operator": "Condition",
+        "operatorAfter": "After",
+        "operatorBefore": "Before",
+        "operatorBetween": "Date range",
+        "operatorOn": "At",
+        "placeholder": "Select date",
+        "startDate": "From",
+        "startTime": "From (time)",
+        "endTime": "To (time)",
+        "time": "Time",
+        "timePlaceholder": "Select time",
+        "today": "Today"
+      }
+    },
+    "toolbar": {
+      "refresh": "Refresh table data"
+    },
+    "bulk": {
+      "selected": "Selected: {count}",
+      "delete": "Delete ({count})",
+      "confirmTitle": "Delete audit log entries?",
+      "confirmDescription": "This will permanently delete {count} audit log entries. This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "deleteSuccessTitle": "Entries deleted",
+      "deleteSuccessDescription": "Deleted {count} audit log entries.",
+      "deleteErrorTitle": "Could not delete entries",
+      "deleteErrorDescription": "Please try again in a moment."
+    },
+    "actions": {
+      "email_sent": "Email sent",
+      "email_failed": "Email failed",
+      "email_deferred": "Email deferred",
+      "order_cancelled": "Order cancelled",
+      "order_shipped": "Order shipped",
+      "order_placed": "Order placed",
+      "order_payment_captured": "Payment captured",
+      "order_fulfillment_started": "Fulfillment started",
+      "order_refund_initiated": "Refund initiated",
+      "settings_updated": "Settings updated",
+      "product_updated": "Product updated",
+      "product_created": "Product created",
+      "product_deleted": "Product deleted",
+      "category_created": "Category created",
+      "category_updated": "Category updated",
+      "category_deleted": "Category deleted",
+      "collection_created": "Collection created",
+      "collection_updated": "Collection updated",
+      "collection_deleted": "Collection deleted",
+      "attribute_created": "Attribute created",
+      "attribute_updated": "Attribute updated",
+      "attribute_deleted": "Attribute deleted",
+      "order_released": "Checkout released",
+      "order_dispute_opened": "Dispute opened",
+      "order_dispute_closed": "Dispute closed",
+      "order_payment_failed": "Payment failed",
+      "customer_tier_upgrade": "Tier upgrade",
+      "customer_registered": "Customer registered",
+      "auth_login": "Login",
+      "auth_login_failed": "Login failed",
+      "auth_logout": "Logout",
+      "customer_cart_abandoned": "Cart abandoned",
+      "customer_cart_item_added": "Added to cart",
+      "customer_page_viewed": "Page viewed"
+    },
+    "searchPlaceholder": "Search events…",
+    "clearFilter": "Clear",
+    "pagination": {
+      "showing": "Showing {count} of {total} events",
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your store configuration and preferences.",
+    "tabs": {
+      "general": "General",
+      "account": "Account",
+      "shipping": "Shipping",
+      "appearance": "Appearance",
+      "security": "Security",
+      "localization": "Localization"
+    },
+    "general": {
+      "storeInfo": {
+        "title": "Store Information",
+        "description": "Basic details about your store.",
+        "name": "Store name",
+        "email": "Contact email",
+        "desc": "Description"
+      },
+      "preferences": {
+        "title": "Preferences",
+        "description": "Configure how your store operates.",
+        "maintenance": {
+          "label": "Maintenance mode",
+          "description": "Temporarily disable the storefront for visitors."
+        },
+        "inventoryTracking": {
+          "label": "Inventory tracking",
+          "description": "Automatically track stock levels for all products."
+        },
+        "autoFulfillment": {
+          "label": "Automatic fulfillment",
+          "description": "Automatically fulfill orders when payment is captured."
+        },
+        "orderConfirmation": {
+          "label": "Order confirmation emails",
+          "description": "Send a confirmation email when an order is placed."
+        }
+      },
+      "save": "Save changes"
+    },
+    "comingSoon": "This section is coming soon."
+  },
+  "orders": {
+    "title": "Orders",
+    "description": "Manage and track customer orders.",
+    "actions": {
+      "export": "Export",
+      "newOrder": "New Order",
+      "refresh": "Refresh orders"
+    },
+    "stats": {
+      "totalOrders": {
+        "label": "Total Orders"
+      },
+      "pending": {
+        "label": "Pending"
+      },
+      "revenueMinorUnits": {
+        "label": "Revenue"
+      },
+      "avgValueMinorUnits": {
+        "label": "Avg. Value"
+      }
+    },
+    "filter": {
+      "allPayments": "All payments",
+      "allFulfillment": "All fulfillment",
+      "allStatuses": "All statuses",
+      "payment": "Filter by payment",
+      "fulfillment": "Filter by fulfillment",
+      "status": "Filter by status",
+      "total": "Filter by total",
+      "createdAt": "Filter by date",
+      "date": {
+        "apply": "Apply",
+        "clear": "Clear",
+        "clearDate": "Clear date",
+        "date": "Date",
+        "endDate": "To",
+        "operator": "Condition",
+        "operatorAfter": "After",
+        "operatorBefore": "Before",
+        "operatorBetween": "Date range",
+        "operatorOn": "On",
+        "placeholder": "Pick a date",
+        "startDate": "From",
+        "today": "Today"
+      }
+    },
+    "searchPlaceholder": "Search orders…",
+    "columns": {
+      "order": "Order",
+      "customer": "Customer",
+      "email": "Email",
+      "date": "Date",
+      "items": "Items",
+      "total": "Total",
+      "payment": "Payment",
+      "fulfillment": "Fulfillment",
+      "status": "Status",
+      "actions": "Row actions"
+    },
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
+    },
+    "payment": {
+      "paid": "Paid",
+      "authorized": "Authorized",
+      "refunded": "Refunded"
+    },
+    "fulfillment": {
+      "unfulfilled": "Unfulfilled",
+      "pending": "Pending",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "returned": "Returned"
+    },
+    "empty": "No orders match your search.",
+    "pagination": {
+      "page": "Page {page} of {total}",
+      "showing": "Showing {count} of {total} orders",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "rowActions": {
+      "viewOrder": "View order",
+      "copyId": "Copy #{id}",
+      "copySuccess": "Order ID copied",
+      "copyError": "Could not copy order ID",
+      "fulfill": "Fulfill order",
+      "markShipped": "Mark as shipped",
+      "printInvoice": "Print invoice",
+      "refund": "Refund",
+      "cancel": "Cancel order",
+      "cancelDialog": {
+        "title": "Cancel order?",
+        "description": "Order #{id} will be cancelled. This action cannot be undone.",
+        "cancel": "Keep order",
+        "confirm": "Cancel order"
+      },
+      "toast": {
+        "successTitle": "Order updated",
+        "fulfillSuccessDescription": "Fulfillment started for this order.",
+        "shipSuccessDescription": "Order marked as shipped.",
+        "cancelSuccessDescription": "Order cancelled.",
+        "errorTitle": "Could not update order",
+        "errorDescription": "Please try again in a moment.",
+        "notFoundDescription": "This order no longer exists.",
+        "invalidStateDescription": "This action is not available for the order's current state."
+      }
+    }
+  },
+  "orderDetail": {
+    "actions": {
+      "print": "Print",
+      "refund": "Refund",
+      "fulfill": "Fulfill"
+    },
+    "meta": {
+      "date": "Date",
+      "status": "Status",
+      "payment": "Payment",
+      "channel": "Channel",
+      "total": "Total"
+    },
+    "status": {
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "pending": "Pending",
+      "unfulfilled": "Unfulfilled",
+      "returned": "Returned",
+      "cancelled": "Cancelled"
+    },
+    "payment": {
+      "paid": "Paid",
+      "authorized": "Authorized",
+      "refunded": "Refunded",
+      "pending": "Pending"
+    },
+    "fulfillment": {
+      "title": "Fulfillment",
+      "steps": {
+        "confirmed": "Confirmed",
+        "processing": "Processing",
+        "shipped": "Shipped",
+        "outForDelivery": "Out for Delivery",
+        "delivered": "Delivered"
+      }
+    },
+    "items": {
+      "title": "Items",
+      "columns": {
+        "product": "Product",
+        "sku": "SKU",
+        "qty": "Qty",
+        "price": "Price",
+        "total": "Total"
+      }
+    },
+    "summary": {
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "tax": "Tax",
+      "total": "Total"
+    },
+    "timeline": {
+      "title": "Activity",
+      "emailStatus": {
+        "delivered": "Delivered",
+        "failed": "Failed",
+        "bounced": "Bounced",
+        "deferred": "Deferred"
+      }
+    },
+    "customer": {
+      "title": "Customer",
+      "ordersCount": "{count} orders",
+      "viewProfile": "View profile"
+    },
+    "shipping": {
+      "title": "Shipping Address",
+      "estimatedDelivery": "Est. delivery"
+    },
+    "billing": {
+      "title": "Billing Address",
+      "sameAsShipping": "Same as shipping"
+    },
+    "paymentDetails": {
+      "title": "Payment"
+    },
+    "tags": {
+      "title": "Tags"
+    },
+    "notes": {
+      "title": "Internal Notes",
+      "edit": "Edit"
+    }
+  },
+  "marketing": {
+    "title": "Marketing Campaigns",
+    "description": "Manage promotional campaigns, track impressions, click rates, and conversions.",
+    "actions": {
+      "export": "Export",
+      "newCampaign": "New Campaign"
+    },
+    "stats": {
+      "totalCampaigns": {
+        "label": "Total Campaigns",
+        "value": "12"
+      },
+      "activeCampaigns": {
+        "label": "Active Campaigns",
+        "value": "3"
+      },
+      "totalReach": {
+        "label": "Total Reach",
+        "value": "19.4K"
+      },
+      "totalRevenue": {
+        "label": "Total Revenue",
+        "value": "$85,200"
+      }
+    },
+    "chart": {
+      "title": "Campaign Engagement",
+      "description": "Showing average open rate and click rate for recent months"
+    },
+    "campaigns": {
+      "title": "Campaign Overview",
+      "columns": {
+        "campaign": "Campaign",
+        "type": "Channel",
+        "status": "Status",
+        "sent": "Reach",
+        "openRate": "Open Rate",
+        "revenue": "Revenue"
+      }
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "draft": "Draft"
+    }
+  },
+  "coupons": {
+    "title": "Discount Coupons",
+    "description": "Manage promotional codes, discounts, and free shipping offers.",
+    "actions": {
+      "export": "Export",
+      "createCoupon": "Create Coupon",
+      "delete": "Delete coupon",
+      "duplicate": "Duplicate coupon",
+      "viewDetails": "View details"
+    },
+    "stats": {
+      "activeCoupons": {
+        "label": "Active Coupons",
+        "value": "18"
+      },
+      "totalRedemptions": {
+        "label": "Total Redemptions",
+        "value": "1,492"
+      },
+      "revenueSaved": {
+        "label": "Revenue Saved",
+        "value": "$12,450"
+      },
+      "avgDiscount": {
+        "label": "Avg Discount",
+        "value": "18%"
+      }
+    },
+    "columns": {
+      "code": "Code",
+      "type": "Type",
+      "discount": "Discount",
+      "minOrder": "Min. Order",
+      "usage": "Usage",
+      "status": "Status",
+      "expires": "Expires",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "scheduled": "Scheduled",
+      "expired": "Expired"
+    }
+  },
+  "content": {
+    "title": "Content Management",
+    "description": "Manage your store's pages, articles, and promotional banners.",
+    "actions": {
+      "export": "Export",
+      "newPage": "New Page"
+    },
+    "types": {
+      "pages": {
+        "title": "Pages",
+        "description": "Static pages"
+      },
+      "banners": {
+        "title": "Banners",
+        "description": "Promotional banners"
+      },
+      "articles": {
+        "title": "Articles",
+        "description": "Blog posts and articles"
+      }
+    },
+    "pagesTable": {
+      "title": "All Pages",
+      "columns": {
+        "title": "Title",
+        "path": "Path",
+        "sections": "Sections",
+        "lastEdited": "Last Edited",
+        "status": "Status",
+        "actions": "Actions"
+      }
+    },
+    "status": {
+      "published": "Published",
+      "draft": "Draft"
+    }
+  }
+}

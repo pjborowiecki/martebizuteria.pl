@@ -1,7 +1,5 @@
 import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { QUERY_KEY_ROOTS } from "~/src/modules/_core/constants/query-keys"
-
 import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants"
 
 export const PRODUCT_ATTRIBUTE_COLUMN_LENGTH = {
@@ -12,7 +10,6 @@ export const PRODUCT_ATTRIBUTE_COLUMN_LENGTH = {
   unit: 64,
 } as const
 
-/** Common units for numeric attributes — quick-pick presets; admins can still enter a custom unit. */
 export const PRODUCT_ATTRIBUTE_UNIT_PRESETS = ["mm", "cm", "m", "km", "mg", "g", "kg", "ml", "l", "szt.", "par", "%"] as const
 
 export type ProductAttributeUnitPreset = (typeof PRODUCT_ATTRIBUTE_UNIT_PRESETS)[number]
@@ -43,7 +40,6 @@ export const isProductAttributeType = (value: string): value is ProductAttribute
 export const productAttributeTypeUsesAllowedValues = (type: ProductAttributeType): boolean =>
   type === PRODUCT_ATTRIBUTE_TYPE.SELECT || type === PRODUCT_ATTRIBUTE_TYPE.MULTISELECT
 
-/** Stat-card table filters (not persisted). */
 export const PRODUCT_ATTRIBUTE_STAT_FILTER = {
   CHOICE: "choice",
   IN_USE: "inUse",
@@ -73,7 +69,6 @@ export const PRODUCT_ATTRIBUTE_FORM_VALIDATION_KEYS = {
 
 export const PRODUCT_ATTRIBUTE_QUERY_STALE_MS = 60_000
 
-/** Default rows per page on the admin attributes (Atrybuty) datagrid. */
 export const ADMIN_PRODUCT_ATTRIBUTES_PAGE_SIZE = 25
 
 export const PRODUCT_ATTRIBUTE_TABLE_A11Y_KEYS = {
@@ -118,16 +113,14 @@ export const PRODUCT_ATTRIBUTE_TABLE_COLUMN_PINNING = {
   start: [PRODUCT_ATTRIBUTE_TABLE_COLUMN_ID.select, PRODUCT_ATTRIBUTE_TABLE_COLUMN_ID.drag, PRODUCT_ATTRIBUTE_TABLE_COLUMN_ID.title],
 }
 
-export const PRODUCT_ATTRIBUTE_SEED_HANDLES = {
-  CARE: "care",
-  DIMENSIONS: "dimensions",
-  MATERIALS: "materials",
-  SHIPPING: "shipping",
-} as const
-
 export const PRODUCT_ATTRIBUTE_QUERY_KEYS = {
   ADMIN: {
-    ALL: [...QUERY_KEY_ROOTS.ADMIN, "product-attributes"] as const,
-    STATS: [...QUERY_KEY_ROOTS.ADMIN, "product-attributes", "stats"] as const,
+    ALL: ["admin", "product-attributes"] as const,
+    STATS: ["admin", "product-attributes", "stats"] as const,
   },
+} as const
+
+export const PRODUCT_ATTRIBUTE_MUTATION_KEYS = {
+  DELETE: ["product-attribute", "deleteProductAttributes"] as const,
+  REORDER: ["product-attribute", "reorderProductAttributes"] as const,
 } as const

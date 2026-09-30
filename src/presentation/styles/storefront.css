@@ -18,17 +18,3 @@
     transform: none;
   }
 }
-
-@media (pointer: fine) {
-  [data-custom-cursor],
-  [data-custom-cursor] a,
-  [data-custom-cursor] button,
-  [data-custom-cursor] input,
-  [data-custom-cursor] select,
-  [data-custom-cursor] textarea,
-  [data-custom-cursor] [role="button"],
-  [data-custom-cursor] .hover-target,
-  [data-custom-cursor] summary {
-    cursor: none !important;
-  }
-}

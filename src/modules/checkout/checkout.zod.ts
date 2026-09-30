@@ -1,14 +1,16 @@
 import { createSchemaFactory } from "drizzle-zod"
 import { isValidPhoneNumber } from "libphonenumber-js/mobile"
-import { z } from "zod"
+import zod from "zod/v4"
 
 import { address } from "~/src/modules/address/address.schema"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
+
 const isValidPostalCode = (countryCode: string, postalCode: string): boolean => {
   const pattern = POSTAL_CODE_PATTERNS[countryCode]
+
   return pattern === undefined ? true : pattern.test(postalCode.trim())
 }
-// Delivery SMS requires a mobile number in the default country.
+
 const isValidCheckoutPhone = (value: string): boolean => {
   try {
     return isValidPhoneNumber(value, DEFAULT_COUNTRY)
@@ -16,13 +18,17 @@ const isValidCheckoutPhone = (value: string): boolean => {
     return false
   }
 }
+
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: z,
+  zodInstance: zod,
 })
+
 const DEFAULT_COUNTRY = "PL"
+
 const POSTAL_CODE_PATTERNS: Record<string, RegExp> = {
   PL: /^\d{2}-\d{3}$/u,
 }
+
 const baseAddressSchema = createInsertSchema(address)
   .pick({
     address1: true,
@@ -35,37 +41,37 @@ const baseAddressSchema = createInsertSchema(address)
     province: true,
   })
   .extend({
-    address1: z.string().min(1, "validation.addressRequired"),
-    city: z.string().min(1, "validation.cityRequired"),
-    countryCode: z.string().min(1, "validation.countryRequired"),
-    firstName: z.string().min(1, "validation.firstNameRequired"),
-    lastName: z.string().min(1, "validation.lastNameRequired"),
-    postalCode: z.string().min(1, "validation.postCodeRequired"),
+    address1: zod.string().min(1, "validation.addressRequired"),
+    city: zod.string().min(1, "validation.cityRequired"),
+    countryCode: zod.string().min(1, "validation.countryRequired"),
+    firstName: zod.string().min(1, "validation.firstNameRequired"),
+    lastName: zod.string().min(1, "validation.lastNameRequired"),
+    postalCode: zod.string().min(1, "validation.postCodeRequired"),
   })
+
 export const checkoutSchema = baseAddressSchema
   .extend({
-    billingAddress1: z.string().optional(),
-    billingCity: z.string().optional(),
-    billingCountryCode: z.string().optional(),
-    billingFirstName: z.string().optional(),
-    billingLastName: z.string().optional(),
-    billingPostalCode: z.string().optional(),
-    deliveryMethod: z.string().min(1, "validation.deliveryRequired"),
-    deliveryMethodType: z.string().optional(),
-    deliveryNotes: z.string().optional(),
-    email: z.email({
+    billingAddress1: zod.string().optional(),
+    billingCity: zod.string().optional(),
+    billingCountryCode: zod.string().optional(),
+    billingFirstName: zod.string().optional(),
+    billingLastName: zod.string().optional(),
+    billingPostalCode: zod.string().optional(),
+    deliveryMethod: zod.string().min(1, "validation.deliveryRequired"),
+    deliveryMethodType: zod.string().optional(),
+    deliveryNotes: zod.string().optional(),
+    email: zod.email({
       message: "validation.emailInvalid",
     }),
-    // Restores the locker picker search; unused by server fulfillment.
-    lockerCity: z.string().optional(),
-    lockerId: z.string().optional(),
-    phone: z.string().min(1, "validation.phoneRequired").refine(isValidCheckoutPhone, {
+    lockerCity: zod.string().optional(),
+    lockerId: zod.string().optional(),
+    phone: zod.string().min(1, "validation.phoneRequired").refine(isValidCheckoutPhone, {
       message: "validation.phoneInvalid",
     }),
-    sameAsShipping: z.boolean().default(true),
-    saveBillingAddress: z.boolean().default(false),
-    saveShippingAddress: z.boolean().default(false),
-    storeLocation: z.string().optional(),
+    sameAsShipping: zod.boolean().default(true),
+    saveBillingAddress: zod.boolean().default(false),
+    saveShippingAddress: zod.boolean().default(false),
+    storeLocation: zod.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.postalCode.length > 0 && !isValidPostalCode(data.countryCode, data.postalCode)) {
@@ -75,6 +81,7 @@ export const checkoutSchema = baseAddressSchema
         path: ["postalCode"],
       })
     }
+
     if (!data.sameAsShipping) {
       if (typeof data.billingAddress1 !== "string" || data.billingAddress1.length === 0) {
         ctx.addIssue({
@@ -83,6 +90,7 @@ export const checkoutSchema = baseAddressSchema
           path: ["billingAddress1"],
         })
       }
+
       if (typeof data.billingFirstName !== "string" || data.billingFirstName.length === 0) {
         ctx.addIssue({
           code: "custom",
@@ -90,6 +98,7 @@ export const checkoutSchema = baseAddressSchema
           path: ["billingFirstName"],
         })
       }
+
       if (typeof data.billingLastName !== "string" || data.billingLastName.length === 0) {
         ctx.addIssue({
           code: "custom",
@@ -97,6 +106,7 @@ export const checkoutSchema = baseAddressSchema
           path: ["billingLastName"],
         })
       }
+
       if (typeof data.billingCity !== "string" || data.billingCity.length === 0) {
         ctx.addIssue({
           code: "custom",
@@ -104,6 +114,7 @@ export const checkoutSchema = baseAddressSchema
           path: ["billingCity"],
         })
       }
+
       if (typeof data.billingCountryCode !== "string" || data.billingCountryCode.length === 0) {
         ctx.addIssue({
           code: "custom",
@@ -111,6 +122,7 @@ export const checkoutSchema = baseAddressSchema
           path: ["billingCountryCode"],
         })
       }
+
       if (typeof data.billingPostalCode !== "string" || data.billingPostalCode.length === 0) {
         ctx.addIssue({
           code: "custom",
@@ -125,6 +137,7 @@ export const checkoutSchema = baseAddressSchema
         })
       }
     }
+
     if (data.deliveryMethodType === "locker" && (typeof data.lockerId !== "string" || data.lockerId.trim().length === 0)) {
       ctx.addIssue({
         code: "custom",
@@ -133,7 +146,9 @@ export const checkoutSchema = baseAddressSchema
       })
     }
   })
-export type CheckoutFormSchema = z.input<typeof checkoutSchema>
+
+export type CheckoutFormSchema = zod.input<typeof checkoutSchema>
+
 export const checkoutZodSchemas = {
   insert: createInsertSchema(checkout),
   select: createSelectSchema(checkout),

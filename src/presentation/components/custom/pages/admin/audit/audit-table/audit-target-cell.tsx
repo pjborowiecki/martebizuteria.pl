@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { formatAdminAuditTarget } from "~/src/modules/audit-log/audit-log.utils"
 
 import { AuditTableCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-table-cell"
+
 export const AuditTargetCell = ({ resourceId, target }: Readonly<AuditTargetCellProps>): JSX.Element => {
   if (resourceId === undefined || resourceId === target) {
     return (
@@ -11,6 +12,7 @@ export const AuditTargetCell = ({ resourceId, target }: Readonly<AuditTargetCell
       </AuditTableCell>
     )
   }
+
   return (
     <AuditTableCell>
       <span className="truncate text-xs" title={formatAdminAuditTarget(target, resourceId)}>
@@ -20,6 +22,7 @@ export const AuditTargetCell = ({ resourceId, target }: Readonly<AuditTargetCell
     </AuditTableCell>
   )
 }
+
 interface AuditTargetCellProps {
   readonly resourceId?: string | undefined
   readonly target: string

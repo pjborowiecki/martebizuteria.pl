@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { useController, useFormContext, useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_FORM_VALIDATION_KEYS } from "~/src/modules/product/product.constants"
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
@@ -17,6 +17,7 @@ import {
   CATALOG_SHEET_CARD_CONTENT_CLASS,
   CATALOG_SHEET_FIELD_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+
 export const ProductEditorPricing = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")
   const { control, formState } = useFormContext<ProductFormValues>()
@@ -24,15 +25,18 @@ export const ProductEditorPricing = (): JSX.Element => {
     control,
     name: "hasVariants",
   })
+
   const validationKeySet = useMemo(() => new Set<string>(Object.values(PRODUCT_FORM_VALIDATION_KEYS)), [])
   const { field: priceField, fieldState: priceFieldState } = useController({
     control,
     name: "simpleVariant.price",
   })
+
   const { field: quantityField, fieldState: quantityFieldState } = useController({
     control,
     name: "simpleVariant.quantity",
   })
+
   const simpleVariantError = formState.errors.simpleVariant
   const simpleVariantMessage =
     simpleVariantError?.message === PRODUCT_FORM_VALIDATION_KEYS.simpleVariantRequired
@@ -44,12 +48,14 @@ export const ProductEditorPricing = (): JSX.Element => {
     },
     [priceField],
   )
+
   const handleQuantityChange = useCallback(
     (nextValue: number) => {
       quantityField.onChange(nextValue)
     },
     [quantityField],
   )
+
   if (hasVariants) {
     return (
       <Card>
@@ -62,6 +68,7 @@ export const ProductEditorPricing = (): JSX.Element => {
       </Card>
     )
   }
+
   return (
     <Card>
       <CardHeader>
@@ -105,4 +112,5 @@ export const ProductEditorPricing = (): JSX.Element => {
     </Card>
   )
 }
+
 const DEFAULT_QUANTITY_MIN = 0

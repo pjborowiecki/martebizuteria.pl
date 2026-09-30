@@ -1,8 +1,9 @@
 import { createSchemaFactory } from "drizzle-zod"
-import { z } from "zod/v4"
+import zod from "zod/v4"
 
-import { LOCALES } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
+import { handleField } from "~/src/modules/_core/utils/zod-fields"
 import {
   CATEGORY_COLUMN_LENGTH,
   CATEGORY_FORM_VALIDATION_KEYS,
@@ -13,21 +14,21 @@ import {
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: z,
+  zodInstance: zod,
 })
 
 const categoryInsertSchema = createInsertSchema(productCategory)
 
 const categorySelectSchema = createSelectSchema(productCategory)
 
-const categoryIdSchema = z.string().trim().min(CATEGORY_MIN_LENGTH).max(CATEGORY_COLUMN_LENGTH.id)
+const categoryIdSchema = zod.string().trim().min(CATEGORY_MIN_LENGTH).max(CATEGORY_COLUMN_LENGTH.id)
 
 const categoryLocaleMapSchema = (maxLength: number, tooLongMessage?: string) =>
-  z.object(Object.fromEntries(LOCALES.map((locale) => [locale, z.string().trim().max(maxLength, tooLongMessage)])))
+  zod.object(Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, zod.string().trim().max(maxLength, tooLongMessage)])))
 
 const categoryLocaleMapRequiredSchema = (maxLength: number) =>
   categoryLocaleMapSchema(maxLength).superRefine((map, context) => {
-    for (const locale of LOCALES) {
+    for (const locale of I18N.SUPPORTED_LOCALES) {
       if (map[locale].trim() === "") {
         context.addIssue({
           code: "custom",
@@ -46,55 +47,56 @@ const categoryShortDescriptionsSchema = categoryLocaleMapSchema(CATEGORY_COLUMN_
 
 const categoryDescriptionsSchema = categoryLocaleMapSchema(CATEGORY_COLUMN_LENGTH.description)
 
-const categoryCreateInputSchema = z.object({
+const categoryCreateInputSchema = zod.object({
   descriptions: categoryDescriptionsSchema,
-  handle: z.string().trim().min(CATEGORY_MIN_LENGTH).regex(CATEGORY_HANDLE_PATTERN),
-  image: z.string().trim().default(""),
-  parentId: z.union([z.literal(""), z.uuid()]).default(""),
+  handle: zod.string().trim().min(CATEGORY_MIN_LENGTH).regex(CATEGORY_HANDLE_PATTERN),
+  image: zod.string().trim().default(""),
+  parentId: zod.union([zod.literal(""), zod.uuid()]).default(""),
   shortDescriptions: categoryShortDescriptionsSchema,
-  status: z.enum(CATEGORY_STATUSES),
+  status: zod.enum(CATEGORY_STATUSES),
   subtitles: categorySubtitlesSchema,
   titles: categoryTitlesSchema,
 })
 
-export const categoryFormSchema = () =>
-  z.object({
-    descriptions: categoryLocaleMapSchema(CATEGORY_COLUMN_LENGTH.description, CATEGORY_FORM_VALIDATION_KEYS.descriptionTooLong),
-    handle: z
-      .string()
-      .trim()
-      .min(CATEGORY_MIN_LENGTH, {
-        message: CATEGORY_FORM_VALIDATION_KEYS.slugRequired,
-      })
-      .regex(CATEGORY_HANDLE_PATTERN, {
-        message: CATEGORY_FORM_VALIDATION_KEYS.slugInvalid,
-      }),
-    image: z.string().trim(),
-    parentId: z.union([z.literal(""), z.uuid()]),
-    shortDescriptions: categoryLocaleMapSchema(
-      CATEGORY_COLUMN_LENGTH.shortDescription,
-      CATEGORY_FORM_VALIDATION_KEYS.shortDescriptionTooLong,
-    ),
-    status: z.enum(CATEGORY_STATUSES),
-    subtitles: categoryLocaleMapSchema(CATEGORY_COLUMN_LENGTH.subtitle, CATEGORY_FORM_VALIDATION_KEYS.subtitleTooLong),
-    titles: categoryTitlesSchema,
-  })
+const categoryFormValuesSchema = zod.object({
+  descriptions: categoryLocaleMapSchema(CATEGORY_COLUMN_LENGTH.description, CATEGORY_FORM_VALIDATION_KEYS.descriptionTooLong),
+  handle: zod
+    .string()
+    .trim()
+    .min(CATEGORY_MIN_LENGTH, {
+      message: CATEGORY_FORM_VALIDATION_KEYS.slugRequired,
+    })
+    .regex(CATEGORY_HANDLE_PATTERN, {
+      message: CATEGORY_FORM_VALIDATION_KEYS.slugInvalid,
+    }),
+  image: zod.string().trim(),
+  parentId: zod.union([zod.literal(""), zod.uuid()]),
+  shortDescriptions: categoryLocaleMapSchema(
+    CATEGORY_COLUMN_LENGTH.shortDescription,
+    CATEGORY_FORM_VALIDATION_KEYS.shortDescriptionTooLong,
+  ),
+  status: zod.enum(CATEGORY_STATUSES),
+  subtitles: categoryLocaleMapSchema(CATEGORY_COLUMN_LENGTH.subtitle, CATEGORY_FORM_VALIDATION_KEYS.subtitleTooLong),
+  titles: categoryTitlesSchema,
+})
 
-export const categoryZodSchemas = {
+export const productCategoryZodSchemas = {
   adminListItem: categorySelectSchema.extend({
     parentTitles: categoryLocaleMapSchema(CATEGORY_COLUMN_LENGTH.title).optional(),
-    productCount: z.number(),
+    productCount: zod.number(),
   }),
   createInput: categoryCreateInputSchema,
-  deleteInput: z.array(categoryIdSchema).min(CATEGORY_MIN_LENGTH),
+  deleteInput: zod.array(categoryIdSchema).min(CATEGORY_MIN_LENGTH),
+  formValues: categoryFormValuesSchema,
+  handleInput: handleField,
   insert: categoryInsertSchema,
-  reorderInput: z.array(categoryIdSchema).min(CATEGORY_MIN_LENGTH),
+  reorderInput: zod.array(categoryIdSchema).min(CATEGORY_MIN_LENGTH),
   select: categorySelectSchema,
-  stats: z.object({
-    active: z.number(),
-    avgProducts: z.number(),
-    draft: z.number(),
-    total: z.number(),
+  stats: zod.object({
+    active: zod.number(),
+    avgProducts: zod.number(),
+    draft: zod.number(),
+    total: zod.number(),
   }),
   update: createUpdateSchema(productCategory),
   updateInput: categoryCreateInputSchema.extend({

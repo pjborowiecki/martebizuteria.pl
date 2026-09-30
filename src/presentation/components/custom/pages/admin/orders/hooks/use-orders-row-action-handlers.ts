@@ -2,7 +2,7 @@ import { type MouseEvent, useCallback } from "react"
 
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   canCancelAdminOrder,
@@ -19,6 +19,7 @@ import {
   useFulfillOrder,
   useMarkOrderShipped,
 } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions"
+
 const resolveOrderRowActionAvailability = (order: Order["adminListItem"]): OrderRowActionAvailability => ({
   canCancel: canCancelAdminOrder(order),
   canFulfill: canFulfillAdminOrder(order),
@@ -26,6 +27,7 @@ const resolveOrderRowActionAvailability = (order: Order["adminListItem"]): Order
   canRefund: canRefundAdminOrder(order),
   canShip: canMarkAdminOrderShipped(order),
 })
+
 export const useOrdersRowActionHandlers = (
   order: Order["adminListItem"],
   closeMenuAndRequestDeleteConfirm: () => void,
@@ -44,51 +46,63 @@ export const useOrdersRowActionHandlers = (
       params: {
         orderId: order.id,
       },
-      to: "/{-$locale}/admin/orders/$orderId",
+      to: "/admin/orders/$orderId",
     })
   }, [navigate, order.id])
+
   const handleCopyId = useCallback(() => {
     void navigator.clipboard.writeText(order.id)
     toast.success(t("copySuccess"))
   }, [order.id, t])
+
   const handleFulfill = useCallback(() => {
-    fulfillOrder.mutate(order.id)
+    fulfillOrder.mutate({ orderId: order.id })
   }, [fulfillOrder, order.id])
+
   const handleMarkShipped = useCallback(() => {
-    markOrderShipped.mutate(order.id)
+    markOrderShipped.mutate({ orderId: order.id })
   }, [markOrderShipped, order.id])
+
   const handlePrintInvoice = useCallback(() => {
     const detailUrl = router.buildLocation({
       params: {
         orderId: order.id,
       },
-      to: "/{-$locale}/admin/orders/$orderId",
+      to: "/admin/orders/$orderId",
     }).href
     globalThis.open(detailUrl, "_blank", "noopener,noreferrer")
   }, [order.id, router])
+
   const handleRefund = useCallback(() => {
     void navigate({
       params: {
         orderId: order.id,
       },
-      to: "/{-$locale}/admin/orders/$orderId",
+      to: "/admin/orders/$orderId",
     })
   }, [navigate, order.id])
+
   const handleCancelRequest = useCallback(() => {
     suppressDataGridRowClickAfterDialogDismiss()
     closeMenuAndRequestDeleteConfirm()
   }, [closeMenuAndRequestDeleteConfirm])
+
   const handleConfirmCancel = useCallback(() => {
-    cancelOrder.mutate(order.id, {
-      onSuccess: () => {
-        handleConfirmOpenChange(false)
+    cancelOrder.mutate(
+      { orderId: order.id },
+      {
+        onSuccess: () => {
+          handleConfirmOpenChange(false)
+        },
       },
-    })
+    )
   }, [cancelOrder, handleConfirmOpenChange, order.id])
+
   const handleStopRowClick = useCallback((event: MouseEvent) => {
     event.stopPropagation()
     suppressDataGridRowClickAfterDialogDismiss()
   }, [])
+
   const runMenuAction = useCallback(
     (action: () => void) => (event: MouseEvent) => {
       event.preventDefault()
@@ -98,6 +112,7 @@ export const useOrdersRowActionHandlers = (
     },
     [],
   )
+
   return {
     ...availability,
     handleCancelRequest,
@@ -113,6 +128,7 @@ export const useOrdersRowActionHandlers = (
     runMenuAction,
   }
 }
+
 interface OrderRowActionAvailability {
   readonly canCancel: boolean
   readonly canFulfill: boolean
@@ -120,6 +136,7 @@ interface OrderRowActionAvailability {
   readonly canRefund: boolean
   readonly canShip: boolean
 }
+
 interface UseOrdersRowActionHandlersResult extends OrderRowActionAvailability {
   readonly handleCancelRequest: () => void
   readonly handleConfirmCancel: () => void

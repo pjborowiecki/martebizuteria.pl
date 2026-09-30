@@ -1,6 +1,7 @@
 import { defineConfig, lazyPlugins, loadEnv } from "vite-plus"
 
 const ignorePatterns = [
+  ".source",
   "node_modules",
   "dist",
   "coverage",
@@ -152,7 +153,11 @@ export default defineConfig({
       },
       {
         files: ["src/platform/testing/mocks/**"],
-        rules: { "require-await": "off", "typescript/require-await": "off" },
+        rules: {
+          "require-await": "off",
+          "typescript/no-unsafe-type-assertion": "off",
+          "typescript/require-await": "off",
+        },
       },
       {
         files: ["src/routes/**"],
@@ -192,9 +197,11 @@ export default defineConfig({
   plugins:
     lazyPlugins(async () => {
       const { default: react } = await import("@vitejs/plugin-react")
+      const { fumadocsMdx } = await import("fumadocs-mdx/vite")
+      const fumadocs = fumadocsMdx({ configPath: "./src/integrations/fumadocs/fumadocs.config.ts" })
 
       if (process.env["VITEST"] === "true") {
-        return [...react()]
+        return [...react(), ...fumadocs]
       }
 
       const { cloudflare } = await import("@cloudflare/vite-plugin")
@@ -207,6 +214,7 @@ export default defineConfig({
           remoteBindings: process.env["CLOUDFLARE_ENV"] === "development",
           viteEnvironment: { name: "ssr" },
         }),
+        ...fumadocs,
         ...tailwindcss(),
         ...tanstackStart({
           router: {
@@ -222,7 +230,7 @@ export default defineConfig({
 
   resolve: { tsconfigPaths: true },
   server: { port: 3000, strictPort: true, watch: { ignored: ["**/coverage/**"] } },
-  staged: { "*": "vp check --fix" },
+  staged: { "*": ["vp check --fix"] },
   test: {
     coverage: {
       clean: true,
@@ -238,18 +246,26 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html", "json-summary"],
       reportsDirectory: "./coverage",
+      thresholds: {
+        autoUpdate: false,
+        branches: 69,
+        functions: 68,
+        lines: 71,
+        statements: 72,
+      },
     },
     env: loadEnv("test", import.meta.dirname, ""),
     environment: "node",
     exclude: ["node_modules/**", "opensrc/**", "dist/**", "scripts/**", "e2e/**", "src/integrations/drizzle-orm/migrations/**"],
     isolate: true,
+    maxWorkers: "50%",
     passWithNoTests: false,
     pool: "threads",
     projects: [
       {
         extends: true,
         test: {
-          exclude: ["src/**/*.integration.test.{ts,tsx}"],
+          exclude: ["src/**/*.component.test.{ts,tsx}", "src/**/*.integration.test.{ts,tsx}"],
           include: ["src/**/*.{test,spec}.{ts,tsx}"],
           name: "node",
         },
@@ -259,6 +275,15 @@ export default defineConfig({
         test: {
           include: ["src/**/*.integration.test.{ts,tsx}"],
           name: "integration",
+        },
+      },
+      {
+        extends: true,
+        test: {
+          environment: "jsdom",
+          include: ["src/**/*.component.test.{ts,tsx}"],
+          name: "component",
+          setupFiles: ["src/platform/testing/setup.ts"],
         },
       },
     ],

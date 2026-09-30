@@ -5,6 +5,7 @@ import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
 
 import { sheetInputClassName, sheetInputGroupInputClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
+
 const Input = ({ className, type, variant = "default", ...props }: Readonly<InputProps>): JSX.Element => (
   <InputPrimitive
     type={type}
@@ -39,5 +40,7 @@ const inputVariants = cva(
     },
   },
 )
+
 interface InputProps extends ComponentProps<"input">, VariantProps<typeof inputVariants> {}
+
 export { Input, inputVariants, type InputProps }

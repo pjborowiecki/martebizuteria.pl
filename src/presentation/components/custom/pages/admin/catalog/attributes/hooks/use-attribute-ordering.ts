@@ -6,6 +6,7 @@ import { type ProductAttribute } from "~/src/modules/product-attribute/product-a
 
 import { type RowMoveDirection } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { moveItemBefore, sameOrder, swapItems } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
+
 export const useAttributeOrdering = (
   data: ProductAttribute["adminListItem"][],
   reorder: UseMutationResult<
@@ -13,7 +14,7 @@ export const useAttributeOrdering = (
       ok: boolean
     },
     Error,
-    readonly string[]
+    string[]
   >,
 ): AttributeOrdering => {
   const [items, setItems] = useState<ProductAttribute["adminListItem"][]>(data)
@@ -28,6 +29,7 @@ export const useAttributeOrdering = (
       setItems(data)
     }
   }, [data, draggingId, isReordering])
+
   const persistOrder = useCallback(
     (ordered: ProductAttribute["adminListItem"][]) => {
       const orderedIds = ordered.map((item) => item.id)
@@ -38,9 +40,11 @@ export const useAttributeOrdering = (
     },
     [data, reorder],
   )
+
   const handleDragStart = useCallback((id: string) => {
     setDraggingId(id)
   }, [])
+
   const handleDragEnter = useCallback((overId: string) => {
     const dragId = draggingIdRef.current
     if (dragId === undefined || dragId === overId) {
@@ -48,10 +52,12 @@ export const useAttributeOrdering = (
     }
     setItems((list) => moveItemBefore(list, dragId, overId))
   }, [])
+
   const handleDrop = useCallback(() => {
     setDraggingId(undefined)
     persistOrder(itemsRef.current)
   }, [persistOrder])
+
   const handleMove = useCallback(
     (id: string, direction: RowMoveDirection) => {
       const list = itemsRef.current
@@ -71,6 +77,7 @@ export const useAttributeOrdering = (
     },
     [persistOrder],
   )
+
   return {
     draggingId,
     handleDragEnter,
@@ -80,6 +87,7 @@ export const useAttributeOrdering = (
     items,
   }
 }
+
 export interface AttributeOrdering {
   readonly draggingId: string | undefined
   readonly handleDragEnter: (overId: string) => void

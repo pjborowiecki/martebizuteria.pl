@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { type PaginationState } from "@tanstack/react-table"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
+import { type DateTimeColumnFilterValue } from "~/src/modules/_core/utils/datetime-column-filter"
+import { LIST_PAGE_STEP } from "~/src/modules/_core/utils/pagination"
 import {
   ADMIN_AUDIT_LOG_PAGE_SIZE,
   AUDIT_LOG_CATEGORY_FILTER,
@@ -14,10 +16,7 @@ import {
 } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { resolveAuditLogCategoryFilter } from "~/src/modules/audit-log/audit-log.utils"
-import { adminAuditLogsPageQueryOptions, fetchAdminAuditLogsPageFn } from "~/src/modules/audit-log/use-cases/list-audit-logs"
-
-import { type DateTimeColumnFilterValue } from "~/src/lib/admin-datetime-filter"
-import { LIST_PAGE_STEP } from "~/src/lib/list-pagination"
+import { listAuditLogs, listAuditLogsQuery } from "~/src/modules/audit-log/use-cases/list-audit-logs"
 
 import { useAdminDebouncedTableSearch } from "~/src/presentation/components/custom/datagrid/hooks/use-admin-debounced-table-search"
 import { useDataGridInstance } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-instance"
@@ -25,15 +24,18 @@ import { type DataGridContextValue } from "~/src/presentation/components/custom/
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useAuditColumns } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-columns"
 import { auditDataGrid } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-data-grid"
+
 export const useAuditDataGrid = (): AuditDataGridValue => {
   const t = useTranslations("pages.admin")
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: ADMIN_AUDIT_LOG_PAGE_SIZE,
   })
+
   const [filters, setFilters] = useState<AuditListFilters>({
     category: AUDIT_LOG_CATEGORY_FILTER.ALL,
   })
+
   const [serverSearch, setServerSearch] = useState("")
   const listTotalRef = useRef<number>(EMPTY_AUDIT_PAGE.total)
   const pageQueryInput = useMemo(
@@ -50,7 +52,8 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
   useEffect(() => {
     listTotalRef.current = EMPTY_AUDIT_PAGE.total
   }, [filters.category, filters.createdAt, filters.severity, serverSearch])
-  const pageQueryOptions = adminAuditLogsPageQueryOptions(pageQueryInput)
+
+  const pageQueryOptions = listAuditLogsQuery(pageQueryInput)
   const {
     data = EMPTY_AUDIT_PAGE,
     isFetching,
@@ -59,18 +62,21 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
     ...pageQueryOptions,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const page = await fetchAdminAuditLogsPageFn({
+      const page = await listAuditLogs({
         data: pageQueryInput,
       })
+
       if (page.total !== undefined) {
         listTotalRef.current = page.total
       }
+
       return {
         ...page,
         total: page.total ?? listTotalRef.current,
       }
     },
   })
+
   const showSkeletonRows = isFetching || isPending
   const columns = useAuditColumns()
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns])
@@ -93,6 +99,7 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
     persistenceKey: auditDataGrid.persistenceKey,
     rowCount: resolvedListTotal,
   })
+
   const { debouncedSearch } = useAdminDebouncedTableSearch(table)
   useEffect(() => {
     setServerSearch(debouncedSearch)
@@ -101,6 +108,7 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
       pageIndex: 0,
     }))
   }, [debouncedSearch])
+
   const applyAuditFilter = useCallback((patch?: AuditListFilters) => {
     if (patch === undefined) {
       return
@@ -114,6 +122,7 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
       pageIndex: 0,
     }))
   }, [])
+
   return useMemo(
     () => ({
       activeCategoryFilter: filters.category ?? AUDIT_LOG_CATEGORY_FILTER.ALL,
@@ -143,6 +152,7 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
     ],
   )
 }
+
 const isAuditDataGridValue = (value: DataGridContextValue<AuditLog["adminListItem"]>): value is AuditDataGridValue =>
   "applyAuditFilter" in value && typeof value.applyAuditFilter === "function"
 
@@ -151,8 +161,10 @@ export const useAuditDataGridContext = (): AuditDataGridValue => {
   if (!isAuditDataGridValue(value)) {
     throw new Error("useAuditDataGridContext must be used within the audit table Provider.")
   }
+
   return value
 }
+
 interface AuditListPageData {
   readonly hasMore: boolean
   readonly items: readonly AuditLog["adminListItem"][]
@@ -160,6 +172,7 @@ interface AuditListPageData {
   readonly offset: number
   readonly total: number
 }
+
 const EMPTY_AUDIT_PAGE: AuditListPageData = {
   hasMore: false,
   items: [],
@@ -167,11 +180,13 @@ const EMPTY_AUDIT_PAGE: AuditListPageData = {
   offset: 0,
   total: 0,
 }
+
 export interface AuditListFilters {
   readonly category?: AuditLogCategoryFilter | undefined
   readonly createdAt?: DateTimeColumnFilterValue | undefined
   readonly severity?: AuditLogSeverity | undefined
 }
+
 export interface AuditDataGridValue extends DataGridContextValue<AuditLog["adminListItem"]> {
   readonly activeCategoryFilter: AuditLogCategoryFilter
   readonly activeDateFilter: DateTimeColumnFilterValue | undefined

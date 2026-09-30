@@ -6,6 +6,7 @@ import { type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 import { toggleVariants } from "~/src/presentation/components/shadcn/toggle"
+
 const ToggleGroup = ({
   className,
   variant,
@@ -24,12 +25,14 @@ const ToggleGroup = ({
     }),
     [orientation, size, spacing, variant],
   )
+
   const groupStyle = useMemo(
     (): Record<string, number> & CSSProperties => ({
       "--gap": spacing,
     }),
     [spacing],
   )
+
   return (
     <ToggleGroupPrimitive
       data-slot="toggle-group"
@@ -48,6 +51,7 @@ const ToggleGroup = ({
     </ToggleGroupPrimitive>
   )
 }
+
 const ToggleGroupItem = ({
   className,
   children,
@@ -58,6 +62,7 @@ const ToggleGroupItem = ({
   const context = useContext(ToggleGroupContext)
   const resolvedVariant = context.variant ?? variant
   const resolvedSize = context.size ?? size
+
   return (
     <TogglePrimitive
       data-slot="toggle-group-item"
@@ -78,20 +83,26 @@ const ToggleGroupItem = ({
     </TogglePrimitive>
   )
 }
+
 const DEFAULT_SPACING = 0
+
 type ToggleGroupContextValue = VariantProps<typeof toggleVariants> & {
   readonly spacing?: number
   readonly orientation?: "horizontal" | "vertical"
 }
+
 const ToggleGroupContext = createContext<ToggleGroupContextValue>({
   orientation: "horizontal",
   size: "default",
   spacing: DEFAULT_SPACING,
   variant: "default",
 })
+
 interface ToggleGroupProps extends ToggleGroupPrimitive.Props, VariantProps<typeof toggleVariants> {
   readonly spacing?: number
   readonly orientation?: "horizontal" | "vertical"
 }
+
 interface ToggleGroupItemProps extends TogglePrimitive.Props, VariantProps<typeof toggleVariants> {}
+
 export { ToggleGroup, ToggleGroupItem }

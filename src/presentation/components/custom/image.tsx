@@ -4,6 +4,7 @@ import { Image as UnpicImage } from "@unpic/react"
 
 import { IMAGE_CONSTANTS, getOptimizedImageUrl } from "~/src/lib/image"
 import { resolveAssetURL } from "~/src/lib/url"
+
 export const Image = ({
   alt,
   blurDataURL,
@@ -22,12 +23,14 @@ export const Image = ({
     if (!optimize) {
       return resolveAssetURL(src)
     }
+
     let targetQuality = IMAGE_CONSTANTS.DEFAULT_QUALITY
     if (quality !== undefined) {
       targetQuality = quality
     } else if (priority) {
       targetQuality = IMAGE_CONSTANTS.HIGH_QUALITY
     }
+
     return getOptimizedImageUrl({
       height,
       quality: targetQuality,
@@ -35,12 +38,14 @@ export const Image = ({
       width,
     })
   }, [height, optimize, priority, quality, src, width])
+
   let resolvedLoading: "eager" | "lazy" = "lazy"
   if (priority) {
     resolvedLoading = "eager"
   } else if (loading !== undefined) {
     resolvedLoading = loading
   }
+
   return (
     <UnpicImage
       alt={alt}
@@ -56,7 +61,8 @@ export const Image = ({
     />
   )
 }
-export interface CustomImageProps {
+
+interface CustomImageProps {
   readonly alt: string
   readonly blurDataURL?: string | null
   readonly className?: string

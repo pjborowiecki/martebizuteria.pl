@@ -1,12 +1,11 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
+import { formatPrice, minorUnitsPerMajor } from "~/src/modules/_core/utils/currency"
+import { parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
 import { ADMIN_DASHBOARD_CHART_DAYS_30, ADMIN_DASHBOARD_CHART_DAYS_7 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-
-import { formatPrice, minorUnitsPerMajor } from "~/src/lib/currency"
-import { parseIsoDateToLocalDate } from "~/src/lib/iso-date"
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/presentation/components/shadcn/chart"
@@ -18,6 +17,7 @@ import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/
 import { useDashboardChartRange } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-dashboard-chart-range"
 
 import { ROUTES } from "~/src/routes"
+
 export const DashboardCharts = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
@@ -34,6 +34,7 @@ export const DashboardCharts = (): JSX.Element => {
     }),
     [t],
   )
+
   const chartTooltipContent = useMemo(() => <ChartTooltipContent />, [])
   const formatIsoDateLabel = useCallback(
     (isoDate: string) =>
@@ -42,6 +43,7 @@ export const DashboardCharts = (): JSX.Element => {
       }),
     [format],
   )
+
   const chartDescription = useMemo(() => {
     switch (chartRange) {
       case "7d": {
@@ -61,6 +63,7 @@ export const DashboardCharts = (): JSX.Element => {
         if (customRange === undefined) {
           return t("dashboard.chart.descriptionCustomIdle")
         }
+
         return t("dashboard.chart.descriptionCustom", {
           endDate: formatIsoDateLabel(customRange.endDate),
           startDate: formatIsoDateLabel(customRange.startDate),
@@ -68,6 +71,7 @@ export const DashboardCharts = (): JSX.Element => {
       }
     }
   }, [chartRange, customRange, formatIsoDateLabel, t])
+
   const formatYAxisTick = useCallback(
     (value: number) =>
       format.number(value / minorUnitsPerMajor(snapshot.currencyCode), {
@@ -76,7 +80,9 @@ export const DashboardCharts = (): JSX.Element => {
       }),
     [format, snapshot.currencyCode],
   )
+
   const chartDataPoints = useMemo(() => [...chartData], [chartData])
+
   return (
     <div className="grid gap-5 xl:grid-cols-4">
       <Card className="border-border/40 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent shadow-none xl:col-span-3">
@@ -143,6 +149,7 @@ export const DashboardCharts = (): JSX.Element => {
     </div>
   )
 }
+
 const WeeklyOrdersChart = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const { data: snapshot } = useAdminDashboardSnapshot()
@@ -155,8 +162,10 @@ const WeeklyOrdersChart = (): JSX.Element => {
     }),
     [t],
   )
+
   const chartTooltipContent = useMemo(() => <ChartTooltipContent hideLabel />, [])
   const weeklyOrdersData = useMemo(() => [...snapshot.weeklyOrders], [snapshot.weeklyOrders])
+
   return (
     <Card className="border-border/40 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent shadow-none">
       <CardHeader className="pb-2">
@@ -175,32 +184,42 @@ const WeeklyOrdersChart = (): JSX.Element => {
     </Card>
   )
 }
+
 const REVENUE_CHART_MARGIN = {
   bottom: 0,
   left: -12,
   right: 8,
   top: 8,
 }
+
 const ORDERS_CHART_MARGIN = {
   bottom: 0,
   left: -24,
   right: 0,
   top: 4,
 }
+
 const TICK_FONT_12 = {
   fontSize: 12,
 }
+
 const TICK_FONT_11 = {
   fontSize: 11,
 }
+
 const CHART_TOOLTIP_CURSOR = {
   stroke: "var(--color-border)",
   strokeDasharray: "4 4",
 }
+
 const BAR_RADIUS_TOP = 4
+
 const BAR_RADIUS_BOTTOM = 0
+
 const BAR_RADIUS: [number, number, number, number] = [BAR_RADIUS_TOP, BAR_RADIUS_TOP, BAR_RADIUS_BOTTOM, BAR_RADIUS_BOTTOM]
+
 const REVENUE_AXIS_MAX_FRACTION_DIGITS = 0
+
 const REVENUE_CHART_DEFS = (
   <defs>
     <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">

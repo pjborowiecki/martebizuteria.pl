@@ -6,15 +6,12 @@ import {
 } from "~/src/presentation/components/custom/datagrid/lib/data-grid-table-layout"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 
-const NOT_FOUND_INDEX = -1
-
 const DEFAULT_SAVED_COLUMN_MAX_WIDTH_PX = 720
+
 const FILL_COLUMN_MAX_WIDTH_MULTIPLIER = 2.5
 
-/** Column ids that must never receive persisted/CSS-var widths (shared across admin datagrids). */
 export const DATAGRID_UTILITY_COLUMN_IDS = ["actions", "drag", "image", "select"] as const
 
-/** Column def fragment for utility columns (checkbox, drag, actions) that must not resize. */
 export const fixedDataGridColumnWidth = (size: number) => ({
   enableResizing: false as const,
   maxSize: size,
@@ -26,27 +23,29 @@ const getColumnDefId = <TData extends RowData>(column: ColumnDef<DataGridFeature
   if (typeof column.id === "string") {
     return column.id
   }
+
   const accessorKey = "accessorKey" in column && typeof column.accessorKey === "string" ? column.accessorKey : undefined
+
   return accessorKey
 }
 
 const columnDefAbsorbsTrailingSlack = <TData extends RowData>(column: ColumnDef<DataGridFeatures, TData>): boolean =>
   column.meta?.absorbsTrailingSlack === true
 
-/** Ids of columns excluded from persisted sizing (fixed utility + slack absorber). */
 export const getNonResizableColumnIds = <TData extends RowData>(columns: readonly ColumnDef<DataGridFeatures, TData>[]): string[] =>
   columns.flatMap((column) => {
     const id = getColumnDefId(column)
     if (id === undefined) {
       return []
     }
+
     if (column.enableResizing === false || columnDefAbsorbsTrailingSlack(column)) {
       return [id]
     }
+
     return []
   })
 
-/** Per-column minimum widths for clamping persisted sizing (resizable columns only). */
 export const buildDataGridColumnMinSizes = <TData extends RowData>(
   columns: readonly ColumnDef<DataGridFeatures, TData>[],
 ): Record<string, number> =>
@@ -54,11 +53,13 @@ export const buildDataGridColumnMinSizes = <TData extends RowData>(
     if (column.enableResizing === false) {
       return next
     }
+
     const id = getColumnDefId(column)
     const { minSize } = column
     if (id !== undefined && typeof minSize === "number" && Number.isFinite(minSize)) {
       next[id] = minSize
     }
+
     return next
   }, {})
 
@@ -67,15 +68,17 @@ const readColumnDefMaxWidth = <TData extends RowData>(column: ColumnDef<DataGrid
   if (typeof maxSize === "number" && Number.isFinite(maxSize)) {
     return maxSize
   }
+
   if (typeof size === "number" && Number.isFinite(size)) {
     const expanded = Math.round(size * FILL_COLUMN_MAX_WIDTH_MULTIPLIER)
     const floor = typeof minSize === "number" && Number.isFinite(minSize) ? minSize : size
+
     return Math.min(Math.max(expanded, floor), DEFAULT_SAVED_COLUMN_MAX_WIDTH_PX)
   }
+
   return DEFAULT_SAVED_COLUMN_MAX_WIDTH_PX
 }
 
-/** Per-column maximum widths for clamping persisted sizing and CSS vars (resizable columns only). */
 export const buildDataGridColumnMaxSizes = <TData extends RowData>(
   columns: readonly ColumnDef<DataGridFeatures, TData>[],
 ): Record<string, number> =>
@@ -83,11 +86,13 @@ export const buildDataGridColumnMaxSizes = <TData extends RowData>(
     if (column.enableResizing === false) {
       return next
     }
+
     const id = getColumnDefId(column)
     const maxWidth = readColumnDefMaxWidth(column)
     if (id !== undefined && maxWidth !== undefined) {
       next[id] = maxWidth
     }
+
     return next
   }, {})
 
@@ -137,11 +142,12 @@ export const measureDataGridContainerWidth = (event: Event): number => {
   if (!(target instanceof Element)) {
     return 0
   }
+
   const container = target.closest("[data-slot='data-table-container']")
+
   return container instanceof HTMLElement ? container.clientWidth : 0
 }
 
-/** Drops sizing entries for utility columns so localStorage cannot widen checkboxes/actions. */
 export const omitNonResizableColumnSizing = (sizing: ColumnSizingState, nonResizableColumnIds: readonly string[]): ColumnSizingState => {
   const fixed = new Set(nonResizableColumnIds)
   const next: ColumnSizingState = {}
@@ -155,10 +161,6 @@ export const omitNonResizableColumnSizing = (sizing: ColumnSizingState, nonResiz
   return next
 }
 
-/**
- * Leaf header row used for `<colgroup>`, `<th>`, and `<td>` (left → center → right).
- * Prefer the deepest header group and skip placeholders so column add/remove cannot desync layout.
- */
 export const getDataGridLayoutHeaders = <TData extends RowData>(
   table: Table<DataGridFeatures, TData>,
 ): Header<DataGridFeatures, TData>[] => {
@@ -166,6 +168,7 @@ export const getDataGridLayoutHeaders = <TData extends RowData>(
   if (!leafGroup) {
     return []
   }
+
   return leafGroup.headers.filter(
     (header) => !header.isPlaceholder && header.column.getIsVisible() && header.column.columnDef.meta?.filterOnly !== true,
   )
@@ -178,26 +181,26 @@ export const getDataGridLayoutColumns = <TData extends RowData>(
   if (headers.length === 0) {
     return table.getVisibleLeafColumns().filter((column) => column.columnDef.meta?.filterOnly !== true)
   }
+
   return headers.map((header) => header.column)
 }
 
-/** Minimal column shape for reading declaration order ids (avoids TanStack `ColumnDef` TValue variance). */
 type DataGridColumnIdSource = Readonly<{
   accessorKey?: string | number | symbol
   id?: string
 }>
 
-/** Default column order from a `columns` array (declaration order in the column defs). */
 export const getDataGridColumnIds = (columns: readonly DataGridColumnIdSource[]): string[] =>
   columns.flatMap((column) => {
     if (typeof column.id === "string") {
       return [column.id]
     }
+
     const accessorKey = "accessorKey" in column && typeof column.accessorKey === "string" ? column.accessorKey : undefined
+
     return accessorKey === undefined ? [] : [accessorKey]
   })
 
-/** Returns a new id list with `draggedId` moved into the slot held by `overId`. */
 export const reorderColumnOrder = (order: readonly string[], draggedId: string, overId: string): string[] => {
   if (draggedId === overId) {
     return [...order]
@@ -205,17 +208,17 @@ export const reorderColumnOrder = (order: readonly string[], draggedId: string, 
 
   const from = order.indexOf(draggedId)
   const to = order.indexOf(overId)
-  if (from === NOT_FOUND_INDEX || to === NOT_FOUND_INDEX) {
+  if (from === -1 || to === -1) {
     return [...order]
   }
 
   const next = [...order]
   next.splice(from, 1)
   next.splice(to, 0, draggedId)
+
   return next
 }
 
-/** Returns a new list with the `draggingId` item moved to the position of `overId`. */
 export const moveItemBefore = <TItem extends { id: string }>(list: readonly TItem[], draggingId: string, overId: string): TItem[] => {
   if (draggingId === overId) {
     return [...list]
@@ -224,17 +227,17 @@ export const moveItemBefore = <TItem extends { id: string }>(list: readonly TIte
   const from = list.findIndex((item) => item.id === draggingId)
   const to = list.findIndex((item) => item.id === overId)
   const moved = list[from]
-  if (moved === undefined || to === NOT_FOUND_INDEX) {
+  if (moved === undefined || to === -1) {
     return [...list]
   }
 
   const next = [...list]
   next.splice(from, 1)
   next.splice(to, 0, moved)
+
   return next
 }
 
-/** Returns a new list with the item at `index` swapped with `target`, if in range. */
 export const swapItems = <TItem extends { id: string }>(list: readonly TItem[], index: number, target: number): TItem[] => {
   const source = list[index]
   const destination = list[target]
@@ -245,10 +248,10 @@ export const swapItems = <TItem extends { id: string }>(list: readonly TItem[], 
   const next = [...list]
   next[index] = destination
   next[target] = source
+
   return next
 }
 
-/** Shallow, order-sensitive equality between two id lists. */
 export const sameOrder = (left: readonly string[], right: readonly string[]): boolean =>
   left.length === right.length && left.every((id, index) => id === right[index])
 
@@ -275,6 +278,7 @@ export const getDataGridRightPinnedScrollPaddingPx = <TData extends RowData>(
     if (column.getIsPinned() !== "end") {
       return sum
     }
+
     return sum + getDataGridColumnLayoutWidth(column, columnSizing, tableLayout)
   }, 0)
 
@@ -297,6 +301,7 @@ const getDataGridRightPinOffset = <TData extends RowData>(input: DataGridRightPi
     if (col === undefined || col.id === column.id) {
       break
     }
+
     if (col.getIsPinned() === "end") {
       offset += getDataGridColumnLayoutWidth(col, columnSizing, tableLayout)
     }
@@ -323,10 +328,12 @@ export const getDataGridPinOffset = <TData extends RowData>(input: DataGridPinOf
       if (col.id === column.id) {
         break
       }
+
       if (col.getIsPinned() === "start") {
         offset += getDataGridColumnLayoutWidth(col, columnSizing, tableLayout)
       }
     }
+
     return offset
   }
 

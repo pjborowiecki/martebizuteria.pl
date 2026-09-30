@@ -3,10 +3,11 @@ import { type ComponentProps, type JSX, type ReactNode } from "react"
 import { Command as CommandPrimitive } from "cmdk"
 import { cn } from "cn"
 import { CheckIcon, SearchIcon } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/src/presentation/components/shadcn/dialog"
 import { InputGroup, InputGroupAddon } from "~/src/presentation/components/shadcn/input-group"
+
 const Command = ({ className, ...props }: Readonly<ComponentProps<typeof CommandPrimitive>>): JSX.Element => (
   <CommandPrimitive
     className={cn("flex size-full flex-col overflow-hidden rounded-lg bg-popover text-popover-foreground", className)}
@@ -24,6 +25,7 @@ const CommandDialog = ({
   ...props
 }: Readonly<CommandDialogProps>): JSX.Element => {
   const t = useTranslations("components.shadcn.command")
+
   return (
     <Dialog {...props}>
       <DialogHeader className="sr-only">
@@ -36,6 +38,7 @@ const CommandDialog = ({
     </Dialog>
   )
 }
+
 const CommandInput = ({ className, ...props }: Readonly<ComponentProps<typeof CommandPrimitive.Input>>): JSX.Element => (
   <div className="border-b pb-0" data-slot="command-input-wrapper">
     <InputGroup className="h-8 border-none border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2!">
@@ -107,4 +110,5 @@ interface CommandDialogProps extends Omit<ComponentProps<typeof Dialog>, "childr
   readonly showCloseButton?: boolean
   readonly title?: string
 }
+
 export { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut }

@@ -1,18 +1,20 @@
 import { type JSX } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { categoriesQueryOptions } from "~/src/modules/product-category/use-cases/get-categories"
+import { getCategoriesQuery } from "~/src/modules/product-category/use-cases/get-categories"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { StorefrontCategoryCard } from "~/src/presentation/components/custom/pages/categories/category-card"
 
 import { ROUTES } from "~/src/routes"
+
 export const ShopCategoriesSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.shopCategoriesSection")
-  const { data: categories } = useSuspenseQuery(categoriesQueryOptions())
+  const { data: categories } = useSuspenseQuery(getCategoriesQuery())
   const [cat1, cat2, cat3, cat4, cat5] = categories.slice(0, SHOP_CATEGORY_DISPLAY_LIMIT)
+
   return (
     <section className="mx-auto max-w-400 px-6 pb-24 lg:px-12 lg:pb-36">
       <div className="reveal mb-14 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between lg:mb-18">
@@ -56,4 +58,5 @@ export const ShopCategoriesSection = (): JSX.Element => {
     </section>
   )
 }
+
 const SHOP_CATEGORY_DISPLAY_LIMIT = 5

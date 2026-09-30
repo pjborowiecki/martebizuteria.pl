@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query"
 import "@tanstack/react-start/client-only"
 import { cn } from "cn"
 import { Pencil } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { DELIVERY_METHOD } from "~/src/modules/delivery-method/delivery-method.constants"
-import { deliveryMethodsQueryOptions } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
+import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
@@ -15,29 +15,38 @@ import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
 import { type CheckoutStepConfig } from "~/src/presentation/components/custom/checkout/lib/checkout-step-loaders.client"
 import { CHECKOUT_STEP_ID, type CheckoutStepId } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
+
 const useStepSummary = (stepId: CheckoutStepId): string | undefined => {
   const { getValues } = useCheckoutForm()
   const values = getValues()
-  const { data: deliveryMethods = [] } = useQuery(deliveryMethodsQueryOptions())
+  const { data: deliveryMethods = [] } = useQuery(listDeliveryMethodsQuery())
   if (stepId === CHECKOUT_STEP_ID.CONTACT) {
     const parts = [values.email, values.phone].filter((part): part is string => typeof part === "string" && part !== "")
+
     return parts.length > 0 ? parts.join(", ") : undefined
   }
+
   if (stepId === CHECKOUT_STEP_ID.BILLING) {
     const locality = [values.postalCode, values.city].filter((part) => part !== "").join(" ")
     const parts = [values.address1, locality].filter((part) => part !== "")
+
     return parts.length > 0 ? parts.join(", ") : undefined
   }
+
   if (stepId === CHECKOUT_STEP_ID.DELIVERY) {
     const method = deliveryMethods.find((m) => m.id === values.deliveryMethod)
     if (method === undefined) {
       return undefined
     }
+
     const hasLocker = values.deliveryMethodType === DELIVERY_METHOD.LOCKER && typeof values.lockerId === "string" && values.lockerId !== ""
+
     return hasLocker ? `${method.name} ${values.lockerId}` : method.name
   }
+
   return undefined
 }
+
 const StepSummary = ({
   stepId,
 }: Readonly<{
@@ -47,12 +56,14 @@ const StepSummary = ({
   if (summary === undefined) {
     return undefined
   }
+
   return (
     <span className="hidden max-w-[55%] shrink-0 truncate text-right text-[11px] tracking-wide text-muted-foreground normal-case sm:inline-block">
       {summary}
     </span>
   )
 }
+
 const StepSkeleton = (): JSX.Element => (
   <div className="space-y-4 p-6">
     <Skeleton className="h-10 w-full rounded-none" />
@@ -79,6 +90,7 @@ export const CheckoutStep = ({
       onEdit(stepConfig.id)
     }
   }, [isCompleted, onEdit, stepConfig.id])
+
   return (
     <div
       className={cn(
@@ -132,6 +144,9 @@ export const CheckoutStep = ({
     </div>
   )
 }
+
 const PAD_LENGTH = 2
+
 const PAD_CHAR = "0"
+
 const stepSkeletonElement = <StepSkeleton />

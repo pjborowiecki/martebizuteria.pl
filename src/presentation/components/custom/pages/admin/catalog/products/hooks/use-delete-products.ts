@@ -1,18 +1,16 @@
 import { type UseMutationResult, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
-import { deleteProductsFn } from "~/src/modules/product/use-cases/delete-products"
+import { deleteProductsMutation } from "~/src/modules/product/use-cases/delete-products"
 
-export const useDeleteProducts = (): UseMutationResult<DeleteResult, Error, readonly string[]> => {
+export const useDeleteProducts = (): UseMutationResult<DeleteResult, Error, string[]> => {
   const t = useTranslations("pages.admin.catalog.products.catalogList")
   const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: (ids: readonly string[]) =>
-      deleteProductsFn({
-        data: [...ids],
-      }),
+    ...deleteProductsMutation,
     onError: () => {
       toast.error(t("toast.deleteErrorTitle"), {
         description: t("toast.deleteErrorDescription"),
@@ -40,6 +38,7 @@ export const useDeleteProducts = (): UseMutationResult<DeleteResult, Error, read
     },
   })
 }
+
 interface DeleteResult {
   readonly deleted: number
   readonly ok: boolean

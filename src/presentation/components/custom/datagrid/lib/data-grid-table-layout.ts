@@ -17,6 +17,7 @@ export const columnFillUsesFlexWidth = <TData extends RowData>(input: {
   readonly columnSizing: ColumnSizingState
 }): boolean => {
   const { column, columnSizing } = input
+
   return columnFillsRemainingWidth(column) && columnSizing[column.id] === undefined
 }
 
@@ -40,24 +41,25 @@ const readColumnMinWidth = <TData extends RowData>(column: Column<DataGridFeatur
   if (typeof minSize === "number" && Number.isFinite(minSize)) {
     return minSize
   }
+
   if (typeof size === "number" && Number.isFinite(size)) {
     return size
   }
+
   return 0
 }
 
-/** Canonical width from the column def — ignores stray persisted `columnSizing` overrides. */
 export const readColumnDesignWidth = <TData extends RowData>(column: Column<DataGridFeatures, TData>): number => {
   const { size } = column.columnDef
   if (typeof size === "number" && Number.isFinite(size)) {
     return size
   }
+
   return readColumnMinWidth(column)
 }
 
 const readSlackAbsorberWidth = <TData extends RowData>(column: Column<DataGridFeatures, TData>): number => readColumnDesignWidth(column)
 
-/** Sum of columns with explicit widths (excludes fill + slack absorber). */
 export const getDataGridIntrinsicColumnsWidthSum = <TData extends RowData>(
   columns: readonly Column<DataGridFeatures, TData>[],
   columnSizing: ColumnSizingState,
@@ -66,6 +68,7 @@ export const getDataGridIntrinsicColumnsWidthSum = <TData extends RowData>(
     if (columnFillsRemainingWidth(column) || columnAbsorbsTrailingSlack(column)) {
       return sum
     }
+
     return sum + getDataGridLayoutColumnWidth(column, columnSizing)
   }, 0)
 
@@ -99,8 +102,6 @@ const resolveUserSizedFillLayout = <TData extends RowData>(input: {
   const preferredFill = Math.max(minFill, preferredFillWidth)
 
   if (absorberColumn === undefined) {
-    // Catalog tables have no trailing slack absorber, so the fill column grows until widths sum to the container.
-    // Otherwise `table-layout: fixed` distributes slack into utility columns (select/actions).
     const fillWidth = Math.max(preferredFill, tableClientWidth - intrinsicSum)
 
     return {
@@ -124,11 +125,6 @@ const resolveUserSizedFillLayout = <TData extends RowData>(input: {
   }
 }
 
-/**
- * Fill column + optional trailing slack absorber:
- * - Default: fill column grows; absorber keeps its saved width; table spans the container.
- * - User-sized fill: fill column uses saved width; absorber expands to keep the table full width.
- */
 export const resolveDataGridTableLayout = <TData extends RowData>(input: {
   readonly columnSizing: ColumnSizingState
   readonly columns: readonly Column<DataGridFeatures, TData>[]
@@ -185,6 +181,7 @@ export const getDataGridColumnLayoutWidth = <TData extends RowData>(
     if (layout.fillColumnIsUserSized) {
       return Math.min(layout.slackAbsorberColumnWidth, readSlackAbsorberWidth(column))
     }
+
     return readSlackAbsorberWidth(column)
   }
 
@@ -201,6 +198,7 @@ export const getDataGridContentWidth = <TData extends RowData>(input: {
   }
 
   const layout = resolveDataGridTableLayout(input)
+
   return layout?.tableWidth ?? getDataGridTableMinWidth(input.columns, input.columnSizing)
 }
 
@@ -213,12 +211,13 @@ export const getDataGridTableMinWidth = <TData extends RowData>(
       const { minSize } = column.columnDef
       const fallback = typeof minSize === "number" && Number.isFinite(minSize) ? minSize : getDataGridColumnWidth(column)
       const override = columnSizing[column.id]
+
       return sum + (typeof override === "number" && Number.isFinite(override) ? override : fallback)
     }
+
     return sum + getDataGridLayoutColumnWidth(column, columnSizing)
   }, 0)
 
-/** Sum of resolved layout column widths — must match `<colgroup>` to avoid phantom horizontal scroll. */
 export const sumDataGridLayoutColumnWidths = <TData extends RowData>(
   columns: readonly Column<DataGridFeatures, TData>[],
   columnSizing: ColumnSizingState,

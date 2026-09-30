@@ -4,10 +4,11 @@ import { useSuspenseQuery } from "@tanstack/react-query"
 import { cn } from "cn"
 import { Plus, Trash2 } from "lucide-react"
 import { useController, useFormContext, useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
+import { v7 as uuidv7 } from "uuid"
 
 import { createEmptyProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.utils"
-import { adminProductAttributesQueryOptions } from "~/src/modules/product-attribute/use-cases/get-admin-product-attributes"
+import { getAdminProductAttributesQuery } from "~/src/modules/product-attribute/use-cases/get-admin-product-attributes"
 import { PRODUCT_COLUMN_LENGTH, PRODUCT_FORM_VALIDATION_KEYS } from "~/src/modules/product/product.constants"
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
 
@@ -27,10 +28,10 @@ import { useProductForm } from "~/src/presentation/components/custom/pages/admin
 import { regenerateVariantRows } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-form.utils"
 import { productImagesToGallery } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-image-form.utils"
 import {
-  createDraftOptionValueId,
   createImplicitVariantOptionSetup,
   ensureImplicitVariantOptions,
 } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-variant-form.utils"
+
 export const ProductEditorVariantList = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products.variants")
   const tLocale = useTranslations("pages.admin.catalog.localePicker")
@@ -41,11 +42,13 @@ export const ProductEditorVariantList = (): JSX.Element => {
     defaultValue: [],
     name: "options",
   })
+
   const variants = useWatch({
     control,
     defaultValue: [],
     name: "variants",
   })
+
   const option = options[0] ?? createImplicitVariantOptionSetup()
   const valueRows =
     option.values.length === 0
@@ -63,7 +66,7 @@ export const ProductEditorVariantList = (): JSX.Element => {
         values: [
           ...firstOption.values,
           {
-            id: createDraftOptionValueId(),
+            id: uuidv7(),
             labels: createEmptyProductAttributeLocaleMap(),
           },
         ],
@@ -76,6 +79,7 @@ export const ProductEditorVariantList = (): JSX.Element => {
       shouldDirty: true,
     })
   }, [getValues, setValue])
+
   const handleRemoveVariant = useCallback(
     (index: number) => {
       const [firstOption] = ensureImplicitVariantOptions(getValues("options"))
@@ -87,7 +91,7 @@ export const ProductEditorVariantList = (): JSX.Element => {
             nextValues.length === 0
               ? [
                   {
-                    id: createDraftOptionValueId(),
+                    id: uuidv7(),
                     labels: createEmptyProductAttributeLocaleMap(),
                   },
                 ]
@@ -103,6 +107,7 @@ export const ProductEditorVariantList = (): JSX.Element => {
     },
     [getValues, setValue],
   )
+
   const handleNameChange = useCallback(
     (index: number, nextValue: string) => {
       setValue(`options.0.values.${index}.labels.${activeLocale}`, nextValue, {
@@ -111,6 +116,7 @@ export const ProductEditorVariantList = (): JSX.Element => {
     },
     [activeLocale, setValue],
   )
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -141,6 +147,7 @@ export const ProductEditorVariantList = (): JSX.Element => {
     </div>
   )
 }
+
 const VariantListRow = ({
   index,
   name,
@@ -167,18 +174,21 @@ const VariantListRow = ({
     control,
     name: `variants.${index}.sku`,
   })
+
   const handleNameInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onNameChange(index, event.target.value)
     },
     [index, onNameChange],
   )
+
   const handleSkuChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       skuField.onChange(event.target.value)
     },
     [skuField],
   )
+
   const handlePriceChange = useCallback(
     (value: string) => {
       setValue(`variants.${index}.price`, value, {
@@ -187,6 +197,7 @@ const VariantListRow = ({
     },
     [index, setValue],
   )
+
   const handleStockChange = useCallback(
     (quantity: number) => {
       setValue(`variants.${index}.quantity`, quantity, {
@@ -195,10 +206,13 @@ const VariantListRow = ({
     },
     [index, setValue],
   )
+
   const handleRemoveClick = useCallback(() => {
     onRemove(index)
   }, [index, onRemove])
+
   const variantLabel = name.trim() === "" ? t("unnamedVariant") : name
+
   return (
     <section className="overflow-hidden rounded-lg border border-border/60 bg-card">
       <header className="border-b border-border/50 bg-muted/25 px-3 py-2.5">
@@ -280,6 +294,7 @@ const VariantListRow = ({
     </section>
   )
 }
+
 const VariantListRowAttributes = ({
   index,
 }: Readonly<{
@@ -287,7 +302,7 @@ const VariantListRowAttributes = ({
 }>): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products.variants")
   const { getValues, setValue } = useFormContext<ProductFormValues>()
-  const { data: attributes } = useSuspenseQuery(adminProductAttributesQueryOptions())
+  const { data: attributes } = useSuspenseQuery(getAdminProductAttributesQuery())
   useEffect(() => {
     const fieldName = `variants.${index}.attributeValues` as const
     if (getValues(fieldName) === undefined) {
@@ -296,6 +311,7 @@ const VariantListRowAttributes = ({
       })
     }
   }, [getValues, index, setValue])
+
   return (
     <ProductEditorAttributeListPanel
       attributes={attributes}
@@ -307,6 +323,7 @@ const VariantListRowAttributes = ({
     />
   )
 }
+
 const VariantListRowGallery = ({
   index,
   variant,
@@ -337,6 +354,7 @@ const VariantListRowGallery = ({
     },
     [index, setValue, variant?.images],
   )
+
   const handleMainChange = useCallback(
     (id: string | undefined) => {
       setValue(`variants.${index}.mainImageId`, id, {
@@ -345,12 +363,14 @@ const VariantListRowGallery = ({
     },
     [index, setValue],
   )
+
   const handleUploadingChange = useCallback(
     (uploading: boolean) => {
       setUploading(uploading)
     },
     [setUploading],
   )
+
   return (
     <div className="border-t border-border/40 bg-muted/5 px-3 py-3">
       <Field className="gap-2">
@@ -374,10 +394,14 @@ const VariantListRowGallery = ({
     </div>
   )
 }
+
 const MIN_VARIANT_ROWS = 1
+
 const VARIANT_ATTRIBUTES_FALLBACK = <div className="h-24 rounded-lg bg-muted/20" />
+
 const VARIANT_GRID_CLASS =
   "grid grid-cols-[minmax(0,1.4fr)_minmax(108px,1fr)_minmax(116px,1fr)_minmax(80px,0.85fr)_2.5rem] items-center gap-3"
+
 const VARIANT_FIELDS_HEADER_CLASS = cn(
   VARIANT_GRID_CLASS,
   "border-b border-border/30 bg-muted/15 px-3 py-2 text-[11px] font-medium text-muted-foreground",

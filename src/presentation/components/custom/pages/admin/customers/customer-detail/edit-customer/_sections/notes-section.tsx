@@ -2,7 +2,7 @@ import { type JSX } from "react"
 
 import { NotebookPen } from "lucide-react"
 import { useController } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { ADMIN_CUSTOMER_FORM_FIELD_MAX } from "~/src/modules/user/user.constants"
 
@@ -13,6 +13,7 @@ import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/page
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
 import { useCustomerForm } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-provider"
 import { CustomerFormSection } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-section"
+
 export const NotesSection = (): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail.form")
   const { control, isPending } = useCustomerForm()
@@ -20,7 +21,9 @@ export const NotesSection = (): JSX.Element => {
     control,
     name: "notes",
   })
+
   const notesValue = catalogFieldStringValue(notesField.value)
+
   return (
     <CustomerFormSection icon={NotebookPen} title={t("sections.notes")}>
       <Field className="gap-2">

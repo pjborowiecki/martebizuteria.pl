@@ -14,16 +14,19 @@ import { cn } from "cn"
 import { type EmblaCarouselType, type EmblaOptionsType, type EmblaPluginType } from "embla-carousel"
 import useEmblaCarousel, { type EmblaViewportRefType } from "embla-carousel-react"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
+
 const useCarousel = (): CarouselContextProps => {
   const context = useContext(CarouselContext)
   if (context === undefined) {
     throw new Error("useCarousel must be used within a <Carousel />")
   }
+
   return context
 }
+
 const useCarouselNavigation = (api: CarouselApi | undefined) => {
   const [canScrollPrev, setCanScrollPrev] = useState(false)
   const [canScrollNext, setCanScrollNext] = useState(false)
@@ -31,9 +34,11 @@ const useCarouselNavigation = (api: CarouselApi | undefined) => {
     setCanScrollPrev(emblaApi.canScrollPrev())
     setCanScrollNext(emblaApi.canScrollNext())
   }, [])
+
   const scrollPrev = useCallback(() => {
     api?.scrollPrev()
   }, [api])
+
   const scrollNext = useCallback(() => {
     api?.scrollNext()
   }, [api])
@@ -44,6 +49,7 @@ const useCarouselNavigation = (api: CarouselApi | undefined) => {
       currentApi.on("reInit", onSelect)
       currentApi.on("select", onSelect)
     }
+
     return function unsubscribeFromCarouselEvents() {
       if (currentApi !== undefined) {
         currentApi.off("reInit", onSelect)
@@ -51,6 +57,7 @@ const useCarouselNavigation = (api: CarouselApi | undefined) => {
       }
     }
   }, [api, onSelect])
+
   return {
     canScrollNext,
     canScrollPrev,
@@ -58,6 +65,7 @@ const useCarouselNavigation = (api: CarouselApi | undefined) => {
     scrollPrev,
   }
 }
+
 const useCarouselKeyboard = (scrollPrev: () => void, scrollNext: () => void) =>
   useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
@@ -82,6 +90,7 @@ const useCarouselContext = ({
   setApi,
 }: CarouselContextOptions): CarouselContextProps => {
   const { canScrollNext, canScrollPrev, scrollNext, scrollPrev } = nav
+
   return useMemo<CarouselContextProps>(
     () => ({
       api,
@@ -98,15 +107,18 @@ const useCarouselContext = ({
     [api, canScrollNext, canScrollPrev, carouselRef, opts, orientation, plugins, scrollNext, scrollPrev, setApi],
   )
 }
+
 const useCarouselSetup = (orientation: "horizontal" | "vertical", opts?: EmblaOptionsType, plugins?: CarouselPlugin) => {
   let axis: "x" | "y" = "y"
   if (orientation === "horizontal") {
     axis = "x"
   }
+
   let resolvedOrientation: "horizontal" | "vertical" = orientation
   if (opts?.axis === "y" && orientation === "horizontal") {
     resolvedOrientation = "vertical"
   }
+
   const [carouselRef, api] = useEmblaCarousel(
     {
       ...opts,
@@ -114,12 +126,14 @@ const useCarouselSetup = (orientation: "horizontal" | "vertical", opts?: EmblaOp
     },
     plugins,
   )
+
   return {
     api,
     carouselRef,
     resolvedOrientation,
   }
 }
+
 const Carousel = ({
   orientation = "horizontal",
   opts,
@@ -148,6 +162,7 @@ const Carousel = ({
     }
     setApi(api)
   }, [api, setApi])
+
   return (
     <CarouselContext.Provider value={contextValue}>
       <section
@@ -163,26 +178,31 @@ const Carousel = ({
     </CarouselContext.Provider>
   )
 }
+
 const CarouselContent = ({ className, ...props }: Readonly<ComponentProps<"div">>): JSX.Element => {
   const { carouselRef, orientation } = useCarousel()
   let layoutClass = "-mt-4 flex-col"
   if (orientation === "horizontal") {
     layoutClass = "-ml-4"
   }
+
   return (
     <div ref={carouselRef} className="overflow-hidden" data-slot="carousel-content">
       <div className={cn("flex", layoutClass, className)} {...props} />
     </div>
   )
 }
+
 const CarouselItem = ({ className, ...props }: Readonly<ComponentProps<"div">>): JSX.Element => {
   const { orientation } = useCarousel()
   let layoutClass = "pt-4"
   if (orientation === "horizontal") {
     layoutClass = "pl-4"
   }
+
   return <div data-slot="carousel-item" className={cn("min-w-0 shrink-0 grow-0 basis-full", layoutClass, className)} {...props} />
 }
+
 const CarouselPrevious = ({
   className,
   variant = "outline",
@@ -195,6 +215,7 @@ const CarouselPrevious = ({
   if (orientation === "horizontal") {
     posClass = "top-1/2 -left-12 -translate-y-1/2"
   }
+
   return (
     <Button
       data-slot="carousel-previous"
@@ -210,6 +231,7 @@ const CarouselPrevious = ({
     </Button>
   )
 }
+
 const CarouselNext = ({
   className,
   variant = "outline",
@@ -222,6 +244,7 @@ const CarouselNext = ({
   if (orientation === "horizontal") {
     posClass = "top-1/2 -right-12 -translate-y-1/2"
   }
+
   return (
     <Button
       data-slot="carousel-next"
@@ -237,15 +260,20 @@ const CarouselNext = ({
     </Button>
   )
 }
+
 type CarouselApi = EmblaCarouselType
+
 type CarouselRef = EmblaViewportRefType
+
 type CarouselPlugin = EmblaPluginType[]
+
 interface CarouselProps {
   readonly opts?: EmblaOptionsType | undefined
   readonly plugins?: CarouselPlugin | undefined
   readonly orientation?: "horizontal" | "vertical" | undefined
   readonly setApi?: ((api: CarouselApi) => void) | undefined
 }
+
 interface CarouselContextProps extends CarouselProps {
   readonly api: CarouselApi | undefined
   readonly canScrollNext: boolean
@@ -254,7 +282,9 @@ interface CarouselContextProps extends CarouselProps {
   readonly scrollNext: () => void
   readonly scrollPrev: () => void
 }
+
 const CarouselContext = createContext<CarouselContextProps | undefined>(undefined)
+
 interface CarouselContextOptions {
   readonly api: CarouselApi | undefined
   readonly carouselRef: CarouselRef
@@ -264,4 +294,5 @@ interface CarouselContextOptions {
   readonly plugins?: CarouselPlugin | undefined
   readonly setApi?: ((api: CarouselApi) => void) | undefined
 }
+
 export { Carousel, type CarouselApi, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, useCarousel }

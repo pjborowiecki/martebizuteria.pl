@@ -1,17 +1,19 @@
 import { type ComponentType, type JSX, type SVGProps, useCallback } from "react"
 
 import { Loader2 } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { useOAuthSignIn } from "~/src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in"
+
 export const OAuthButton = ({ Icon, label, provider }: Readonly<OAuthButtonProps>): JSX.Element => {
   const t = useTranslations()
   const { isPending, mutate } = useOAuthSignIn()
   const handleOAuth = useCallback(() => {
     mutate(provider)
   }, [mutate, provider])
+
   return (
     <Button
       type="button"
@@ -28,7 +30,9 @@ export const OAuthButton = ({ Icon, label, provider }: Readonly<OAuthButtonProps
     </Button>
   )
 }
+
 type Provider = "google" | "github"
+
 interface OAuthButtonProps {
   readonly Icon: ComponentType<SVGProps<SVGSVGElement>>
   readonly label: string

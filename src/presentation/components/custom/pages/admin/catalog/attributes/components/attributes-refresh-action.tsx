@@ -3,32 +3,36 @@ import { type JSX, useCallback, useMemo } from "react"
 import { useIsFetching, useQueryClient } from "@tanstack/react-query"
 import { cn } from "cn"
 import { RefreshCw } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { adminProductAttributesQueryOptions } from "~/src/modules/product-attribute/use-cases/get-admin-product-attributes"
-import { productAttributeStatsQueryOptions } from "~/src/modules/product-attribute/use-cases/get-product-attribute-stats"
+import { getAdminProductAttributesQuery } from "~/src/modules/product-attribute/use-cases/get-admin-product-attributes"
+import { getProductAttributeStatsQuery } from "~/src/modules/product-attribute/use-cases/get-product-attribute-stats"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { DataGridIconTooltip } from "~/src/presentation/components/custom/datagrid/components/data-grid-icon-tooltip"
+
 export const AttributesRefreshAction = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.attributes")
   const queryClient = useQueryClient()
   const attributesFetching = useIsFetching({
-    queryKey: adminProductAttributesQueryOptions().queryKey,
+    queryKey: getAdminProductAttributesQuery().queryKey,
   })
+
   const statsFetching = useIsFetching({
-    queryKey: productAttributeStatsQueryOptions().queryKey,
+    queryKey: getProductAttributeStatsQuery().queryKey,
   })
+
   const isRefreshing = attributesFetching > 0 || statsFetching > 0
   const handleRefresh = useCallback(() => {
     void queryClient.invalidateQueries({
-      queryKey: adminProductAttributesQueryOptions().queryKey,
+      queryKey: getAdminProductAttributesQuery().queryKey,
     })
     void queryClient.invalidateQueries({
-      queryKey: productAttributeStatsQueryOptions().queryKey,
+      queryKey: getProductAttributeStatsQuery().queryKey,
     })
   }, [queryClient])
+
   const button = useMemo(
     () => (
       <Button
@@ -44,5 +48,6 @@ export const AttributesRefreshAction = (): JSX.Element => {
     ),
     [handleRefresh, isRefreshing, t],
   )
+
   return <DataGridIconTooltip label={t("actions.refresh")} trigger={button} />
 }

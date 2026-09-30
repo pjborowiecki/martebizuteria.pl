@@ -1,11 +1,17 @@
 import { type CSSProperties, type ComponentProps, type JSX, type PointerEvent, useCallback, useMemo, useState } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
-
-import { bindSheetWidthPointerListeners, getMaxSheetWidthPx, resolveInitialSheetWidth, writeStoredSheetWidth } from "~/src/lib/sheet-resize"
+import { useTranslations } from "use-intl/react"
 
 import { SheetContent } from "~/src/presentation/components/shadcn/sheet"
+
+import {
+  bindSheetWidthPointerListeners,
+  getMaxSheetWidthPx,
+  resolveInitialSheetWidth,
+  writeStoredSheetWidth,
+} from "~/src/presentation/components/custom/pages/admin/catalog/lib/sheet-resize"
+
 const resolveProductFormSheetWidth = (): number =>
   resolveInitialSheetWidth({
     defaultWidthPx: PRODUCT_SHEET_DEFAULT_WIDTH_PX,
@@ -27,13 +33,16 @@ export const ProductFormSheetContent = ({ children, className, ...props }: Produ
       }) as CSSProperties,
     [widthPx],
   )
+
   const handleResizePointerDown = useCallback(
     (event: PointerEvent<HTMLButtonElement>) => {
       if (event.button !== PRIMARY_MOUSE_BUTTON) {
         return
       }
       event.preventDefault()
-      event.currentTarget.setPointerCapture(event.pointerId)
+      const resizeHandle = event.currentTarget
+      const { pointerId } = event
+      resizeHandle.setPointerCapture(pointerId)
       const startClientX = event.clientX
       const startWidth = widthPx
       const maxWidth = getMaxSheetWidthPx(PRODUCT_SHEET_MAX_WIDTH_OPTIONS)
@@ -41,20 +50,21 @@ export const ProductFormSheetContent = ({ children, className, ...props }: Produ
         maxWidth,
         minWidth: PRODUCT_SHEET_MIN_WIDTH_PX,
         onEnd: (nextWidth) => {
-          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId)
+          if (resizeHandle.hasPointerCapture(pointerId)) {
+            resizeHandle.releasePointerCapture(pointerId)
           }
           setWidthPx(nextWidth)
           writeStoredSheetWidth(PRODUCT_FORM_SHEET_RESIZE_KEY, nextWidth)
         },
         onMove: setWidthPx,
-        pointerId: event.pointerId,
+        pointerId,
         startClientX,
         startWidth,
       })
     },
     [widthPx],
   )
+
   return (
     <SheetContent side="right" style={panelStyle} className={cn(PRODUCT_FORM_SHEET_CLASS, className)} {...props}>
       <button
@@ -74,6 +84,7 @@ export const ProductFormSheetContent = ({ children, className, ...props }: Produ
     </SheetContent>
   )
 }
+
 const PRODUCT_FORM_SHEET_CLASS = cn(
   "flex h-full flex-col gap-0 border-l border-border bg-background p-0 text-foreground shadow-none",
   "data-[side=right]:!w-[var(--catalog-form-sheet-width)] data-[side=right]:!max-w-[var(--catalog-form-sheet-width)]",
@@ -81,7 +92,6 @@ const PRODUCT_FORM_SHEET_CLASS = cn(
 
 export const PRODUCT_FORM_SHEET_RESIZE_KEY = "admin.catalog.product-form-sheet"
 
-/** Leave room for the two-column product form. */
 export const PRODUCT_SHEET_DEFAULT_WIDTH_PX = 1040
 
 const PRODUCT_SHEET_MIN_WIDTH_PX = PRODUCT_SHEET_DEFAULT_WIDTH_PX
@@ -90,5 +100,7 @@ const PRODUCT_SHEET_MAX_WIDTH_OPTIONS = {
   maxWidthPx: 2560,
   viewportRatio: 0.98,
 } as const
+
 const PRIMARY_MOUSE_BUTTON = 0
+
 type ProductFormSheetContentProps = Omit<ComponentProps<typeof SheetContent>, "side" | "style">

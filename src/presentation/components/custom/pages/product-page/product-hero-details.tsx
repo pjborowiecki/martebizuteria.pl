@@ -1,14 +1,15 @@
 import { type JSX, type ReactNode, useMemo } from "react"
 
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import {
   formatProductAttributeValueForDisplay,
   resolveProductAttributeTitle,
 } from "~/src/modules/product-attribute/product-attribute.utils"
-import { type ProductSpecification } from "~/src/modules/product/product.types"
+import { type Product } from "~/src/modules/product/product.types"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/src/presentation/components/shadcn/accordion"
+
 const AdditionalInfoEmailLink = ({
   children,
 }: Readonly<{
@@ -24,7 +25,7 @@ const AdditionalInfoEmailLink = ({
 
 const renderAdditionalInfoEmail = (chunks: ReactNode): JSX.Element => <AdditionalInfoEmailLink>{chunks}</AdditionalInfoEmailLink>
 
-const formatSpecificationValue = (spec: ProductSpecification, locale: string): string =>
+const formatSpecificationValue = (spec: Product["specification"], locale: string): string =>
   formatProductAttributeValueForDisplay(spec.type, spec.value, {
     allowedValues: spec.allowedValues,
     locale,
@@ -34,9 +35,10 @@ const formatSpecificationValue = (spec: ProductSpecification, locale: string): s
 const ProductSpecificationsList = ({
   specifications,
 }: Readonly<{
-  specifications: readonly ProductSpecification[]
+  specifications: readonly Product["specification"][]
 }>): JSX.Element => {
   const locale = useLocale()
+
   return (
     <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
       {specifications.map((spec) => (
@@ -48,6 +50,7 @@ const ProductSpecificationsList = ({
     </dl>
   )
 }
+
 const ProductAdditionalInfo = ({
   fulfillmentTime,
 }: Readonly<{
@@ -84,6 +87,7 @@ const ProductAdditionalInfo = ({
       ] as const,
     [fulfillmentTime, t],
   )
+
   return (
     <div className="divide-y divide-border/60">
       {sections.map((section) => (
@@ -95,6 +99,7 @@ const ProductAdditionalInfo = ({
     </div>
   )
 }
+
 export const ProductHeroDetails = ({ description, specifications }: ProductHeroDetailsProps): JSX.Element => {
   const t = useTranslations("pages.product.heroSection.details")
   const locale = useLocale()
@@ -105,19 +110,23 @@ export const ProductHeroDetails = ({ description, specifications }: ProductHeroD
         .toSorted((left, right) => left.rank - right.rank),
     [specifications],
   )
+
   const fulfillmentTime = useMemo(() => {
     const fulfillmentSpec = specifications.find((spec) => spec.handle === FULFILLMENT_TIME_ATTRIBUTE_HANDLE)
     if (fulfillmentSpec === undefined || fulfillmentSpec.value.trim() === "") {
       return
     }
+
     return formatSpecificationValue(fulfillmentSpec, locale)
   }, [locale, specifications])
+
   const accordionItems = useMemo(() => {
     const items: {
       content: JSX.Element
       key: string
       title: string
     }[] = []
+
     if (description.trim() !== "") {
       items.push({
         content: <p className="text-sm/relaxed whitespace-pre-wrap text-muted-foreground">{description}</p>,
@@ -125,6 +134,7 @@ export const ProductHeroDetails = ({ description, specifications }: ProductHeroD
         title: t("description.title"),
       })
     }
+
     if (detailSpecifications.length > 0) {
       items.push({
         content: <ProductSpecificationsList specifications={detailSpecifications} />,
@@ -137,12 +147,12 @@ export const ProductHeroDetails = ({ description, specifications }: ProductHeroD
       key: "additionalInfo",
       title: t("additionalInfo.title"),
     })
+
     return items
   }, [description, detailSpecifications, fulfillmentTime, t])
-  const defaultValue = useMemo(() => {
-    const [firstItem] = accordionItems
-    return firstItem === undefined ? DEFAULT_ACCORDION_VALUE : [firstItem.key]
-  }, [accordionItems])
+
+  const defaultValue = useMemo(() => accordionItems.slice(0, 1).map((item) => item.key), [accordionItems])
+
   return (
     <Accordion className="w-full" defaultValue={defaultValue}>
       {accordionItems.map((section) => (
@@ -156,9 +166,10 @@ export const ProductHeroDetails = ({ description, specifications }: ProductHeroD
     </Accordion>
   )
 }
-const DEFAULT_ACCORDION_VALUE = ["description"]
+
 const FULFILLMENT_TIME_ATTRIBUTE_HANDLE = "czas-realizacji"
-export interface ProductHeroDetailsProps {
+
+interface ProductHeroDetailsProps {
   readonly description: string
-  readonly specifications: readonly ProductSpecification[]
+  readonly specifications: readonly Product["specification"][]
 }

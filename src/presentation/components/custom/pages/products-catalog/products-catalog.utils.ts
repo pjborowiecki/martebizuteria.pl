@@ -1,7 +1,8 @@
-import { type Category } from "~/src/modules/product-category/product-category.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
-import { type Collection } from "~/src/modules/product-collection/product-collection.types"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
+
 export const flattenStorefrontCategoryFilters = (
   roots: readonly CategoryWithChildren[],
   locale: string,
@@ -15,6 +16,7 @@ export const flattenStorefrontCategoryFilters = (
         id: node.id,
         title: resolveCategoryTitle(node.titles, locale),
       })
+
       const children = node.children ?? []
       if (children.length > 0) {
         visit(children, depth + 1)
@@ -22,10 +24,12 @@ export const flattenStorefrontCategoryFilters = (
     }
   }
   visit(roots, 0)
+
   return options
 }
+
 export const mapStorefrontCollectionFilters = (
-  collections: readonly Collection["select"][],
+  collections: readonly ProductCollection["select"][],
   locale: string,
 ): readonly {
   readonly handle: string
@@ -44,6 +48,7 @@ export interface StorefrontCategoryFilterOption {
   readonly id: string
   readonly title: string
 }
-type CategoryWithChildren = Category["select"] & {
-  readonly children?: readonly Category["select"][]
+
+type CategoryWithChildren = ProductCategory["select"] & {
+  readonly children?: readonly ProductCategory["select"][]
 }

@@ -1,8 +1,8 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { LANDING_HERO_IMG } from "~/src/data/landing-data"
+import { LANDING_HERO_IMG } from "~/src/data/landing"
 
 import { AspectRatio } from "~/src/presentation/components/shadcn/aspect-ratio"
 import { Badge } from "~/src/presentation/components/shadcn/badge"
@@ -12,8 +12,10 @@ import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 const HeroTitle = (): JSX.Element => {
   const t = useTranslations("pages.landing.heroSection")
+
   return (
     <h1 className="font-serif text-5xl leading-[0.94] tracking-tight md:text-6xl lg:text-7xl">
       {t("titleLine1")}
@@ -22,8 +24,10 @@ const HeroTitle = (): JSX.Element => {
     </h1>
   )
 }
+
 export const HeroSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.heroSection")
+
   return (
     <section className="mx-auto max-w-400 px-6 pt-10 pb-16 lg:px-12 lg:pt-14 lg:pb-20">
       <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
@@ -77,4 +81,5 @@ export const HeroSection = (): JSX.Element => {
     </section>
   )
 }
+
 const ASPECT_RATIO_TALL = 0.833333

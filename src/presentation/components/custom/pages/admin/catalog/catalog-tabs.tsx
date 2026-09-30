@@ -1,14 +1,16 @@
 import { type JSX } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 import { ADMIN_LAYOUT_BG_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 
 import { ROUTES } from "~/src/routes"
+
 export const CatalogTabs = ({ active }: CatalogTabsProps): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <div
       className={cn(
@@ -23,6 +25,7 @@ export const CatalogTabs = ({ active }: CatalogTabsProps): JSX.Element => {
     </div>
   )
 }
+
 const TabLink = ({
   href,
   label,

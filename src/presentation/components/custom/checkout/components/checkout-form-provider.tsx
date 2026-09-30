@@ -51,16 +51,15 @@ const CheckoutFormContext = createContext<CheckoutFormContextValue | undefined>(
 
 const STEP_NOT_FOUND = -1
 
-// The `?step=` URL param is 1-based (human-friendly); internal indices are 0-based.
-
 const LAST_STEP_INDEX = CHECKOUT_STEP_DEFINITIONS.length - 1
 
 const stepParamToIndex = (param: number): number => param - 1
+
 const stepIndexToParam = (index: number): number => index + 1
 
 const useCheckoutNavigation = (form: UseFormReturn<CheckoutFormSchema>, hydrated: boolean) => {
   const { getValues, trigger } = form
-  const search = useSearch({ from: "/{-$locale}/checkout" })
+  const search = useSearch({ from: "/checkout" })
   const navigate = useNavigate()
   const [isPending, startTransition] = useTransition()
 
@@ -132,8 +131,6 @@ const useCheckoutDraftPersistence = (form: UseFormReturn<CheckoutFormSchema>): b
 
     setHydrated(true)
 
-    // Subscribe via the `watch` callback, not render-time `watch()` / `useWatch`.
-    // That keeps draft persistence from re-rendering the whole checkout tree on every keystroke.
     const subscription = watch((values) => {
       saveCheckoutDraft(values)
     })
@@ -207,11 +204,6 @@ export const CheckoutFormProvider = ({ children }: Readonly<{ children: ReactNod
 
   return (
     <CheckoutFormContext.Provider value={value}>
-      {/*
-        Intentionally a <div>, not a <form>: each step advances via button
-        onClick (onNext), and the payment step renders its own <form> for Stripe.
-        A wrapping <form> here would nest forms (invalid HTML + hydration error).
-      */}
       <div className="flex flex-col gap-2 lg:gap-4">{children}</div>
     </CheckoutFormContext.Provider>
   )
@@ -222,5 +214,6 @@ export const useCheckoutForm = (): CheckoutFormContextValue => {
   if (context === undefined) {
     throw new Error("useCheckoutForm must be used within CheckoutFormProvider")
   }
+
   return context
 }

@@ -4,6 +4,7 @@ import { type ColumnFiltersState, type SortingState } from "@tanstack/react-tabl
 
 import { type RowReorderApi } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { type useProductOrdering } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-product-ordering"
+
 export const useProductsRowReorder = ({
   columnFilters,
   hasServerListQuery,
@@ -11,6 +12,7 @@ export const useProductsRowReorder = ({
   sorting,
 }: UseProductsRowReorderOptions): RowReorderApi => {
   const naturalOrder = !hasServerListQuery && sorting.length === 0 && columnFilters.length === 0
+
   return useMemo(
     () => ({
       draggingId: ordering.draggingId,
@@ -23,6 +25,7 @@ export const useProductsRowReorder = ({
     [naturalOrder, ordering],
   )
 }
+
 interface UseProductsRowReorderOptions {
   readonly columnFilters: ColumnFiltersState
   readonly hasServerListQuery: boolean

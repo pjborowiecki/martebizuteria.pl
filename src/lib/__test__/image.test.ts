@@ -76,6 +76,16 @@ describe("image prefetching", () => {
     expect(cache.getSize()).toBe(1)
   })
 
+  it("does nothing when there is nothing to prefetch", () => {
+    const cache = new ImagePrefetchService()
+
+    executeDomPrefetch(undefined, cache)
+    executeDomPrefetch([], cache)
+
+    expect(images).toStrictEqual([])
+    expect(cache.getSize()).toBe(0)
+  })
+
   it("evicts old sources when its cache fills", () => {
     const cache = new ImagePrefetchService(2)
     executeDomPrefetch([{ src: "one.jpg" }, { src: "two.jpg" }, { src: "three.jpg" }, { src: "one.jpg" }], cache)
@@ -85,6 +95,31 @@ describe("image prefetching", () => {
     expect(cache.isSeen("two.jpg")).toBe(false)
     cache.clear()
     expect(cache.getSize()).toBe(0)
+  })
+
+  it("keeps duplicate cache marks idempotent without evicting a different image", () => {
+    const cache = new ImagePrefetchService(2)
+    cache.markSeen("one.jpg")
+    cache.markSeen("two.jpg")
+    cache.markSeen("two.jpg")
+
+    expect(cache.getSize()).toBe(2)
+    expect(cache.isSeen("one.jpg")).toBe(true)
+    expect(cache.isSeen("two.jpg")).toBe(true)
+  })
+
+  it("uses default image dimensions when the caller supplies no prefetch configuration", () => {
+    const cache = new ImagePrefetchService()
+
+    prefetchRawImageUrls(["https://images.test/ring.jpg"], cache, undefined)
+
+    expect(transformUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ height: 256, quality: 75, width: 256 }),
+      { cloudflare: { f: "auto", format: "auto" } },
+      { cloudflare: { domain: "martebizuteria.pl" } },
+    )
+    expect(images.map((image) => image.src)).toStrictEqual(["https://images.test/ring.jpg?width=256"])
+    expect(cache.getSize()).toBe(1)
   })
 
   it("only transforms the first six available product thumbnails", () => {

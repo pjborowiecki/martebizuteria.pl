@@ -1,22 +1,23 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
 import { dailyOrderAggregatesQuery } from "~/src/modules/admin-dashboard/admin-dashboard.accessors"
 import { ADMIN_DASHBOARD_QUERY_KEYS, ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { type AdminDashboardChartPoint, type AdminDashboardChartRangeInput } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 import {
   buildAdminDashboardDailyChartPointsForIsoDateRange,
   isAdminDashboardCustomChartRangeValid,
 } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
+import { adminDashboardZodSchemas } from "~/src/modules/admin-dashboard/admin-dashboard.zod"
 
-import { parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/lib/iso-date"
-
-export const fetchAdminDashboardChartRangeFn = createServerFn({ method: "GET" })
-  .validator((input: AdminDashboardChartRangeInput) => input)
-  .handler(async ({ data: input }): Promise<readonly AdminDashboardChartPoint[]> => {
-    await assertAdmin()
+export const getDashboardChartRange = createServerFn({ method: "GET" })
+  .middleware([authorized({ settings: ["manage"] })])
+  .validator((input: zod.input<typeof adminDashboardZodSchemas.chartRangeInput>) => adminDashboardZodSchemas.chartRangeInput.parse(input))
+  .handler(async ({ data: input }): Promise<readonly AdminDashboard["chartPoint"][]> => {
     const { endDate, locale, startDate } = input
 
     if (!isAdminDashboardCustomChartRangeValid(startDate, endDate)) {
@@ -35,11 +36,11 @@ export const fetchAdminDashboardChartRangeFn = createServerFn({ method: "GET" })
     })
   })
 
-export const adminDashboardChartRangeQueryOptions = (input: AdminDashboardChartRangeInput) =>
+export const getDashboardChartRangeQuery = (input: AdminDashboard["chartRangeInput"]) =>
   queryOptions({
     enabled: isAdminDashboardCustomChartRangeValid(input.startDate, input.endDate),
-    queryFn: () => fetchAdminDashboardChartRangeFn({ data: input }),
-    queryKey: [...ADMIN_DASHBOARD_QUERY_KEYS.CHART_RANGE, input.locale, input.startDate, input.endDate] as const,
+    queryFn: () => getDashboardChartRange({ data: input }),
+    queryKey: [...ADMIN_DASHBOARD_QUERY_KEYS.CHART_RANGE, input.locale, input.startDate, input.endDate],
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: ADMIN_DASHBOARD_QUERY_STALE_MS,

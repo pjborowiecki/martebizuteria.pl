@@ -1,0 +1,17 @@
+{
+  "subject": "Witamy w M'Arte — potwierdź swój adres e-mail",
+  "preview": "Ostatni krok, zanim otworzymy przed Tobą drzwi do świata M'Arte.",
+  "heading": "Witamy w M'Arte",
+  "greeting": "Witaj {name},",
+  "message": "Cieszymy się, że jesteś z nami. M'Arte to miejsce, w którym każdy detal ma znaczenie — od pierwszego szkicu po ostatni szlif w naszej pracowni.",
+  "messageSecondary": "Założenie konta pozwoli Ci wygodnie śledzić zamówienia, zapisywać adresy dostawy i wracać do ulubionych kolekcji, kiedy tylko zechcesz.",
+  "messageTertiary": "Zanim zaczniemy, prosimy o jeden drobny krok: potwierdź swój adres e-mail. Dzięki temu Twoje konto będzie bezpieczne, a my będziemy mogli wysyłać Ci wyłącznie wiadomości, które są dla Ciebie ważne.",
+  "highlightTitle": "Co czeka Cię dalej",
+  "highlightBody": "Po potwierdzeniu adresu e-mail Twoje konto zostanie aktywowane. Od tej chwili możesz odkrywać nasze kolekcje, składać zamówienia i cieszyć się biżuterią tworzoną z dbałością o każdy szczegół.",
+  "cta": "Potwierdź adres e-mail",
+  "expiry": "Ze względów bezpieczeństwa link wygaśnie po 60 minutach.",
+  "ignore": "Jeśli nie Ty zakładałeś tego konta, zignoruj tę wiadomość — żadne konto nie zostanie utworzone.",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

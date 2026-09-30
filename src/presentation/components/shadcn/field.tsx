@@ -5,6 +5,7 @@ import { cn } from "cn"
 
 import { Label } from "~/src/presentation/components/shadcn/label"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
+
 const FieldSet = ({ className, ...props }: Readonly<ComponentProps<"fieldset">>): JSX.Element => (
   <fieldset
     className={cn("flex flex-col gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3", className)}
@@ -94,6 +95,7 @@ const FieldSeparator = ({ children, className, ...props }: Readonly<FieldSeparat
       </span>
     )
   }
+
   return (
     <div
       className={cn("relative -my-2 h-5 text-xs group-data-[variant=outline]/field-group:-mb-2", className)}
@@ -106,6 +108,7 @@ const FieldSeparator = ({ children, className, ...props }: Readonly<FieldSeparat
     </div>
   )
 }
+
 const getValidErrors = (
   errors?: readonly (FieldErrorItem | undefined)[],
 ): readonly (FieldErrorItem & {
@@ -114,7 +117,9 @@ const getValidErrors = (
   if (errors === undefined) {
     return []
   }
+
   const uniqueErrors = [...new Map(errors.map((error) => [error?.message, error])).values()]
+
   return uniqueErrors.filter(
     (
       error,
@@ -123,6 +128,7 @@ const getValidErrors = (
     } => error?.message !== undefined && error.message !== "",
   )
 }
+
 const getFieldErrorContent = (
   children: ReactNode,
   validErrors: readonly (FieldErrorItem & {
@@ -133,13 +139,16 @@ const getFieldErrorContent = (
   if (hasChildren) {
     return children
   }
+
   const [firstError, ...otherErrors] = validErrors
   if (firstError === undefined) {
     return false
   }
+
   if (otherErrors.length === 0) {
     return firstError.message
   }
+
   return (
     <ul className="ml-4 flex list-disc flex-col gap-1">
       {validErrors.map((error) => (
@@ -148,21 +157,25 @@ const getFieldErrorContent = (
     </ul>
   )
 }
+
 const FieldError = ({ children, className, errors, ...props }: Readonly<FieldErrorProps>): JSX.Element | false => {
   const validErrors = useMemo(() => getValidErrors(errors), [errors])
   const content = useMemo(() => getFieldErrorContent(children, validErrors), [children, validErrors])
   if (content === false) {
     return false
   }
+
   return (
     <div className={cn("text-xs font-normal text-destructive", className)} data-slot="field-error" role="alert" {...props}>
       {content}
     </div>
   )
 }
+
 interface FieldLegendProps extends ComponentProps<"legend"> {
   readonly variant?: "label" | "legend"
 }
+
 const fieldVariants = cva("group/field flex w-full gap-2 data-[invalid=true]:text-destructive", {
   defaultVariants: {
     orientation: "vertical",
@@ -177,14 +190,19 @@ const fieldVariants = cva("group/field flex w-full gap-2 data-[invalid=true]:tex
     },
   },
 })
+
 interface FieldProps extends ComponentProps<"div">, VariantProps<typeof fieldVariants> {}
+
 interface FieldSeparatorProps extends ComponentProps<"div"> {
   readonly children?: ReactNode
 }
+
 interface FieldErrorItem {
   readonly message?: string
 }
+
 interface FieldErrorProps extends ComponentProps<"div"> {
   readonly errors?: readonly (FieldErrorItem | undefined)[]
 }
+
 export { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSeparator, FieldSet, FieldTitle }

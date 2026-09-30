@@ -15,7 +15,6 @@ export const checkout = sqliteTable(
     billingAddressId: text("billing_address_id").references(() => address.id, {
       onDelete: "set null",
     }),
-    // Nullable if cart is cleared after checkout
     cartId: text("cart_id").references(() => cart.id, { onDelete: "set null" }),
     customerNote: text("customer_note"),
     deliveryMethodId: text("delivery_method_id").references(() => deliveryMethod.id, {

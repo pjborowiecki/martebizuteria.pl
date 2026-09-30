@@ -2,14 +2,13 @@ import { type SQL, and, count, desc, eq, gte, inArray } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { type DateTimeColumnFilterValue } from "~/src/modules/_core/utils/datetime-column-filter"
+import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-column-filter.server"
+import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
+import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
 import { type AuditLogCategory, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
-
-import { type DateTimeColumnFilterValue } from "~/src/lib/admin-datetime-filter"
-import { buildAdminDateTimeFilterSql } from "~/src/lib/admin-datetime-filter.server"
-import { buildAdminSearchOrCondition } from "~/src/lib/admin-search.server"
-import { type ListPaginationParams } from "~/src/lib/list-pagination"
 
 export interface AdminAuditLogsListParams extends ListPaginationParams {
   readonly category?: AuditLogCategory | undefined
@@ -79,6 +78,7 @@ const buildAdminAuditLogsWhere = (
     auditLog.actorName,
     auditLog.ip,
   ])
+
   if (searchCondition !== undefined) {
     conditions.push(searchCondition)
   }
@@ -113,6 +113,7 @@ export const getAdminAuditLogsPage = async (params: AdminAuditLogsListParams): P
 
   if (params.offset > 0) {
     const rows = await rowsQuery
+
     return { rows }
   }
 
@@ -170,5 +171,6 @@ export const deleteAuditLogs = async (ids: readonly string[]): Promise<number> =
   }
 
   await db.delete(auditLog).where(inArray(auditLog.id, [...ids]))
+
   return ids.length
 }

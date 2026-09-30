@@ -1,30 +1,36 @@
 import { type UseMutationResult, useMutation, useQueryClient } from "@tanstack/react-query"
+import { createClientOnlyFn } from "@tanstack/react-start"
 import { toast } from "sonner"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { authClient } from "~/src/integrations/better-auth/auth-client"
-import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.errors"
+import { authClient } from "~/src/integrations/better-auth/auth.client"
+import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
 
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
-import { syncQueryInvalidation } from "~/src/lib/query-client-sync"
-import { buildLocalizedUrl } from "~/src/lib/sitemap"
+import { useActionError } from "~/src/hooks/use-action-error"
+
+import { buildLocalizedUrl } from "~/src/lib/seo"
 
 import { ROUTES } from "~/src/routes"
 
+const signInSocial = createClientOnlyFn((input: Parameters<typeof authClient.signIn.social>[0]) => authClient.signIn.social(input))
+
 type OAuthProvider = "google" | "github"
 
-/** Social sign-in; on settle, refreshes the admin customer registry (new OAuth users). */
 export const useOAuthSignIn = (): UseMutationResult<void, unknown, OAuthProvider> => {
   const queryClient = useQueryClient()
   const t = useTranslations()
+  const actionError = useActionError()
   const locale = useLocale()
+
   return useMutation({
     mutationFn: async (provider: OAuthProvider) => {
-      const { error } = await authClient.signIn.social({
+      const { error } = await signInSocial({
         callbackURL: buildLocalizedUrl("", ROUTES.ACCOUNT_OVERVIEW, locale),
         provider,
       })
+
       if (error !== null) {
         throw new Error("OAUTH_SIGN_IN_FAILED", {
           cause: error,
@@ -34,7 +40,7 @@ export const useOAuthSignIn = (): UseMutationResult<void, unknown, OAuthProvider
     onError: (error) => {
       const authError = error instanceof Error ? error.cause : error
       toast.error(t("pages.auth.toast.errorTitle"), {
-        description: getAuthErrorMessage(t, authError),
+        description: actionError(authError),
       })
     },
     onSettled: () => {

@@ -1,10 +1,13 @@
-import { QUERY_KEY_ROOTS } from "~/src/modules/_core/constants/query-keys"
-
 const MILLISECONDS_PER_SECOND = 1000
+
 const SECONDS_PER_MINUTE = 60
+
 const MINUTES_PER_HOUR = 60
+
 const HOURS_PER_DAY = 24
+
 const AUDIT_LOG_RANGE_DAYS_7 = 7
+
 const AUDIT_LOG_RANGE_DAYS_30 = 30
 
 const MILLISECONDS_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND
@@ -140,8 +143,12 @@ export const AUDIT_LOG_TABLE_DEFAULT_COLUMN_VISIBILITY = {} as const
 
 export const AUDIT_LOG_QUERY_KEYS = {
   ADMIN: {
-    ALL: [...QUERY_KEY_ROOTS.ADMIN, "audit-log"] as const,
-    PAGE: [...QUERY_KEY_ROOTS.ADMIN, "audit-log", "page"] as const,
-    STATS: [...QUERY_KEY_ROOTS.ADMIN, "audit-log", "stats"] as const,
+    ALL: ["admin", "audit-log"] as const,
+    PAGE: ["admin", "audit-log", "page"] as const,
+    STATS: ["admin", "audit-log", "stats"] as const,
   },
+} as const
+
+export const AUDIT_LOG_MUTATION_KEYS = {
+  DELETE: ["audit-log", "deleteAuditLogs"] as const,
 } as const

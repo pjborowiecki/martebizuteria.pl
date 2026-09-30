@@ -1,8 +1,13 @@
 import { type ReactElement } from "react"
 
 import type StripeType from "stripe"
+import { createTranslator } from "use-intl"
 import { z } from "zod"
 
+import {
+  scheduleAdminOrdersInvalidation,
+  scheduleProductCatalogInvalidation,
+} from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import {
   buildOrderAccountCta,
   buildOrderConfirmationDetails,
@@ -12,15 +17,16 @@ import {
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { STRIPE_CURRENCY, STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/stripe/stripe.constants"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
-import { type Locale } from "~/src/integrations/use-intl/i18n.types"
-import { isValidLocale } from "~/src/integrations/use-intl/i18n.utils"
+import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
+import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
+import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
 import {
   recordEmailFailedAudit,
-  recordEmailSentAudit,
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
+  recordOrderEmailOutcome,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit,
   recordOrderPlacedAudit,
@@ -30,6 +36,7 @@ import {
   type CheckoutFulfillmentLine,
   checkoutFulfillmentLinesSchema,
   checkoutReleaseLinesSchema,
+  readCheckoutSessionItemsJson,
 } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
@@ -38,31 +45,23 @@ import { clearOrderDispute } from "~/src/modules/order/use-cases/clear-order-dis
 import { flagOrderDispute } from "~/src/modules/order/use-cases/flag-order-dispute"
 import { refundOrder } from "~/src/modules/order/use-cases/refund-order"
 
-import { formatMinorUnitsAsDecimal } from "~/src/lib/currency"
-import {
-  scheduleAdminOrdersInvalidation,
-  scheduleProductCatalogInvalidation,
-} from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server"
-
-import { OrderConfirmation, getOrderConfirmationSubject } from "~/src/presentation/emails/order-confirmation"
+import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
+import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
 
 const NO_AMOUNT = 0
+
 const SINGLE_RESULT = 1
+
 const DISPUTE_LOST = "lost"
 
-/** A Stripe ref that may arrive expanded or as a bare id. Returns its id, or `undefined`. */
 const refId = (ref: string | { id: string } | null): string | undefined => {
   if (ref === null) {
     return undefined
   }
+
   return typeof ref === "string" ? ref : ref.id
 }
 
-/**
- * Refunds and disputes reference the Charge/PaymentIntent, but our `payment`
- * rows are keyed by the Checkout Session id. This bridges the two by asking
- * Stripe which session owns the PaymentIntent.
- */
 const resolveTransactionId = async (paymentIntent: string | { id: string } | null): Promise<string | undefined> => {
   const paymentIntentId = refId(paymentIntent)
   if (paymentIntentId === undefined) {
@@ -73,46 +72,27 @@ const resolveTransactionId = async (paymentIntent: string | { id: string } | nul
     limit: SINGLE_RESULT,
     payment_intent: paymentIntentId,
   })
+
   const [session] = sessions.data
+
   return session?.id
 }
 
 const FULFILLABLE_PAYMENT_STATUSES = new Set<StripeType.Checkout.Session["payment_status"]>(["no_payment_required", "paid"])
 
-const parseMetadataItems = (session: StripeType.Checkout.Session): string => session.metadata?.["items"] ?? "[]"
+const parseMetadataItems = (session: StripeType.Checkout.Session): string => readCheckoutSessionItemsJson(session.metadata)
 
-const resolveLocale = (session: StripeType.Checkout.Session): Locale => {
+const resolveLocale = (session: StripeType.Checkout.Session): SupportedLocale => {
   const raw = session.metadata?.["locale"]
-  return typeof raw === "string" && isValidLocale(raw) ? raw : DEFAULT_LOCALE
+
+  return typeof raw === "string" && isSupportedLocale(raw) ? raw : I18N.DEFAULT_LOCALE
 }
 
 interface OrderConfirmationEmailPayload {
   readonly email: string
-  readonly locale: Locale
+  readonly locale: SupportedLocale
   readonly react: ReactElement
   readonly subject: string
-}
-
-const recordOrderConfirmationEmailOutcome = (
-  orderId: string,
-  email: string,
-  outcome: Readonly<{ error?: unknown; rejectedMessage?: string | undefined }>,
-): void => {
-  const detailPrefix = `Order confirmation → ${email}`
-
-  if (outcome.error !== undefined) {
-    console.error(`Order confirmation email failed for ${orderId}:`, outcome.error)
-    recordEmailFailedAudit(orderId, { detail: detailPrefix, resourceId: orderId })
-    return
-  }
-
-  if (outcome.rejectedMessage !== undefined) {
-    console.error(`Order confirmation email rejected for ${orderId}: ${outcome.rejectedMessage}`)
-    recordEmailFailedAudit(orderId, { detail: `${detailPrefix} — ${outcome.rejectedMessage}`, resourceId: orderId })
-    return
-  }
-
-  recordEmailSentAudit(orderId, { detail: detailPrefix, resourceId: orderId })
 }
 
 const buildOrderConfirmationEmailPayload = async (
@@ -127,7 +107,8 @@ const buildOrderConfirmationEmailPayload = async (
   const locale = resolveLocale(session)
   const checkoutId = session.metadata?.["checkoutId"]
   const checkoutContext = typeof checkoutId === "string" && checkoutId !== "" ? await getCheckoutEmailContext(checkoutId) : undefined
-  const paymentMethod = await resolveStripePaymentMethodLabel(session, locale)
+  const messages = await loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE })
+  const paymentMethod = await resolveStripePaymentMethodLabel(session, messages)
   const details = buildOrderConfirmationDetails(
     checkoutContext === undefined
       ? undefined
@@ -140,15 +121,16 @@ const buildOrderConfirmationEmailPayload = async (
           shippingAddress: checkoutContext.shippingAddress,
           shippingAddressId: checkoutContext.shippingAddressId,
         },
-    locale,
     paymentMethod,
+    messages,
   )
+
   const itemsSubtotal = order.lines.reduce((sum, line) => sum + line.price * line.qty, NO_AMOUNT)
   const shippingTotal = Math.max((session.amount_total ?? NO_AMOUNT) - itemsSubtotal, NO_AMOUNT)
   const emailItems = buildOrderConfirmationItems(order.lines, locale)
   const rawUserId = session.metadata?.["userId"]
   const isGuest = rawUserId === undefined || rawUserId === ""
-  const accountCta = buildOrderAccountCta(locale, order.orderId, isGuest)
+  const accountCta = buildOrderAccountCta({ isGuest, locale, messages, orderId: order.orderId })
 
   return {
     email,
@@ -160,41 +142,47 @@ const buildOrderConfirmationEmailPayload = async (
         details={details}
         items={emailItems}
         locale={locale}
+        messages={messages}
         orderId={order.orderId}
         shippingTotal={shippingTotal}
         subtotal={itemsSubtotal}
         total={session.amount_total ?? NO_AMOUNT}
       />
     ),
-    subject: getOrderConfirmationSubject(locale),
+    subject: createTranslator({ locale, messages })("subject"),
   }
 }
 
-/** Emails the buyer their order confirmation. Best-effort: a failed send is logged, never thrown. */
 const notifyOrderConfirmed = async (
   session: StripeType.Checkout.Session,
   order: Readonly<{ currency: string; lines: CheckoutFulfillmentLine[]; orderId: string }>,
 ): Promise<void> => {
-  const payload = await buildOrderConfirmationEmailPayload(session, order)
-  if (payload === undefined) {
-    return
+  try {
+    const payload = await buildOrderConfirmationEmailPayload(session, order)
+    if (payload === undefined) {
+      return
+    }
+
+    const failure = await sendEmail({
+      react: payload.react,
+      subject: payload.subject,
+      to: payload.email,
+    })
+
+    recordOrderEmailOutcome({ failure, label: `Order confirmation → ${payload.email}`, orderId: order.orderId })
+  } catch (error: unknown) {
+    console.error(`Order ${order.orderId} confirmation email could not be prepared:`, error)
+    recordEmailFailedAudit(order.orderId, {
+      detail: error instanceof Error ? error.message : "Unknown error",
+      resourceId: order.orderId,
+    })
   }
-
-  const [response, error] = await sendEmail({
-    react: payload.react,
-    subject: payload.subject,
-    to: payload.email,
-  })
-
-  recordOrderConfirmationEmailOutcome(order.orderId, payload.email, {
-    error,
-    rejectedMessage: response?.error?.message ?? undefined,
-  })
 }
 
 const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session): Promise<void> => {
   if (!FULFILLABLE_PAYMENT_STATUSES.has(session.payment_status)) {
     console.info(`Session ${session.id} completed with payment_status=${session.payment_status}; awaiting async settlement.`)
+
     return
   }
 
@@ -209,8 +197,6 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
     transactionId: session.id,
   })
 
-  // `fulfillCheckout` is idempotent: a defined orderId means THIS event created the order.
-  // The confirmation email is therefore sent exactly once.
   if (orderId === undefined) {
     return
   }
@@ -238,17 +224,11 @@ const handleReleaseCheckoutSession = async (session: StripeType.Checkout.Session
   console.info(`Checkout released after failed/expired session ${session.id}.`)
 }
 
-/**
- * A card decline keeps the Checkout Session open and retryable, so this is NOT
- * a terminal state: we deliberately do NOT release inventory here (that would
- * free stock while the shopper is mid-retry). Reservations are reclaimed when
- * the session ends — `checkout.session.expired` / `async_payment_failed`. We
- * handle the event purely for observability / support follow-up.
- */
 const handlePaymentIntentFailed = (paymentIntent: StripeType.PaymentIntent): Promise<void> => {
   const reason = paymentIntent.last_payment_error?.message ?? "unknown"
   recordOrderPaymentFailedAudit(paymentIntent.id, { detail: reason, resourceId: paymentIntent.id })
   console.warn(`Payment failed for intent ${paymentIntent.id} (checkout ${paymentIntent.metadata["checkoutId"] ?? "?"}): ${reason}`)
+
   return Promise.resolve()
 }
 
@@ -256,6 +236,7 @@ const handleChargeRefunded = async (charge: StripeType.Charge): Promise<void> =>
   const transactionId = await resolveTransactionId(charge.payment_intent)
   if (transactionId === undefined) {
     console.info(`Charge ${charge.id} refunded but no Checkout Session resolved; skipping.`)
+
     return
   }
 
@@ -274,6 +255,7 @@ const handleChargeDisputeCreated = async (dispute: StripeType.Dispute): Promise<
   const transactionId = await resolveTransactionId(dispute.payment_intent)
   if (transactionId === undefined) {
     console.warn(`Dispute ${dispute.id} created but no Checkout Session resolved; skipping.`)
+
     return
   }
 
@@ -295,11 +277,10 @@ const handleChargeDisputeClosed = async (dispute: StripeType.Dispute): Promise<v
   const transactionId = await resolveTransactionId(dispute.payment_intent)
   if (transactionId === undefined) {
     console.info(`Dispute ${dispute.id} closed but no Checkout Session resolved; skipping.`)
+
     return
   }
 
-  // A lost dispute is a forced reversal of funds: record it as a refund, but do
-  // NOT restock — the goods were almost certainly shipped and not returned.
   if (dispute.status === DISPUTE_LOST) {
     await refundOrder({
       fullyRefunded: true,
@@ -309,6 +290,7 @@ const handleChargeDisputeClosed = async (dispute: StripeType.Dispute): Promise<v
     })
     scheduleAdminOrdersInvalidation()
     console.warn(`Dispute ${dispute.id} lost; order marked refunded — review inventory manually.`)
+
     return
   }
 

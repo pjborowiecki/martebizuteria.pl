@@ -4,7 +4,8 @@ import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cn } from "cn"
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
+
 const Breadcrumb = ({
   className,
   ariaLabel,
@@ -15,8 +16,10 @@ const Breadcrumb = ({
   }
 >): JSX.Element => {
   const t = useTranslations("components.shadcn.breadcrumb")
+
   return <nav aria-label={ariaLabel ?? t("navLabel")} data-slot="breadcrumb" className={cn(className)} {...props} />
 }
+
 const BreadcrumbList = ({ className, ...props }: Readonly<ComponentProps<"ol">>): JSX.Element => (
   <ol
     data-slot="breadcrumb-list"
@@ -56,6 +59,7 @@ const BreadcrumbSeparator = ({ children, className, ...props }: Readonly<Compone
 
 const BreadcrumbEllipsis = ({ className, ...props }: Readonly<ComponentProps<"span">>): JSX.Element => {
   const t = useTranslations("components.shadcn.breadcrumb")
+
   return (
     <span data-slot="breadcrumb-ellipsis" className={cn("flex size-5 items-center justify-center [&>svg]:size-4", className)} {...props}>
       <MoreHorizontalIcon aria-hidden="true" focusable="false" />
@@ -63,4 +67,5 @@ const BreadcrumbEllipsis = ({ className, ...props }: Readonly<ComponentProps<"sp
     </span>
   )
 }
+
 export { Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator }

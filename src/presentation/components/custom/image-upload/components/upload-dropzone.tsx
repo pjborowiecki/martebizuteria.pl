@@ -2,7 +2,7 @@ import { type DragEvent, type JSX } from "react"
 
 import { cn } from "cn"
 import { ImageUp } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -16,6 +16,7 @@ export const UploadDropzone = ({
   onPick,
 }: UploadDropzoneProps): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <div className="relative">
       <Button
@@ -45,7 +46,8 @@ export const UploadDropzone = ({
     </div>
   )
 }
-export interface UploadDropzoneProps {
+
+interface UploadDropzoneProps {
   readonly disabled: boolean
   readonly invalid: boolean
   readonly isDragging: boolean

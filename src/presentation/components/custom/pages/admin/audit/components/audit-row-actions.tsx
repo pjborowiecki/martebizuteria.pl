@@ -1,7 +1,7 @@
 import { type JSX, type MouseEvent, useCallback, useMemo, useState } from "react"
 
 import { Loader2, MoreHorizontal, Trash2 } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 
@@ -26,6 +26,7 @@ import {
 import { suppressNextDataGridRowClick } from "~/src/presentation/components/custom/datagrid/lib/data-grid-row-click"
 import { useDeleteAuditLogs } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-delete-audit-logs"
 import { useCatalogRowActionMenu } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/lib/use-catalog-row-action-menu"
+
 export const AuditRowActions = ({ entry, eventLabel }: Readonly<AuditRowActionsProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
   const deleteAuditLogs = useDeleteAuditLogs()
@@ -34,9 +35,11 @@ export const AuditRowActions = ({ entry, eventLabel }: Readonly<AuditRowActionsP
     confirmOpen,
     setConfirmOpen,
   )
+
   const handleDelete = useCallback(() => {
     closeMenuAndRequestDeleteConfirm()
   }, [closeMenuAndRequestDeleteConfirm])
+
   const handleConfirmDelete = useCallback(() => {
     deleteAuditLogs.mutate([entry.id], {
       onSuccess: () => {
@@ -44,6 +47,7 @@ export const AuditRowActions = ({ entry, eventLabel }: Readonly<AuditRowActionsP
       },
     })
   }, [deleteAuditLogs, entry.id, handleConfirmOpenChange])
+
   const runMenuAction = useCallback(
     (action: () => void) => (event: MouseEvent) => {
       event.preventDefault()
@@ -53,9 +57,11 @@ export const AuditRowActions = ({ entry, eventLabel }: Readonly<AuditRowActionsP
     },
     [],
   )
+
   const stopRowClick = useCallback((event: MouseEvent) => {
     event.stopPropagation()
   }, [])
+
   const trigger = useMemo(
     () => (
       <Button variant="ghost" size="icon" className="size-8" onClick={stopRowClick} onPointerDown={stopRowClick}>
@@ -64,6 +70,7 @@ export const AuditRowActions = ({ entry, eventLabel }: Readonly<AuditRowActionsP
     ),
     [stopRowClick],
   )
+
   return (
     <>
       <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
@@ -98,7 +105,9 @@ export const AuditRowActions = ({ entry, eventLabel }: Readonly<AuditRowActionsP
     </>
   )
 }
+
 const ITEM_CLASS = "px-3 py-2.5 text-[13px] gap-3"
+
 interface AuditRowActionsProps {
   readonly entry: AuditLog["adminListItem"]
   readonly eventLabel: string

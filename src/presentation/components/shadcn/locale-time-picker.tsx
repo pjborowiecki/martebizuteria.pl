@@ -3,10 +3,11 @@ import { type JSX, useCallback, useMemo, useState } from "react"
 import { cn } from "cn"
 import { Clock3 } from "lucide-react"
 
-import { isTimeInputValue } from "~/src/lib/iso-datetime"
+import { isTimeInputValue } from "~/src/modules/_core/utils/iso-datetime"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
+
 const buildTimePartOptions = (
   count: number,
 ): readonly {
@@ -19,6 +20,7 @@ const buildTimePartOptions = (
     },
     (_, index) => {
       const part = String(index).padStart(TIME_PART_WIDTH, "0")
+
       return {
         label: part,
         value: part,
@@ -38,14 +40,15 @@ const splitTimeValue = (
       minutes: DEFAULT_MINUTE,
     }
   }
+
   const [hours = DEFAULT_HOUR, minutes = DEFAULT_MINUTE] = value.split(":")
+
   return {
     hours,
     minutes,
   }
 }
 
-/** Locale-neutral time field using the same outline trigger + panel pattern as `LocaleDatePicker`. */
 export const LocaleTimePicker = ({ ariaLabel, onChange, placeholder, value }: Readonly<LocaleTimePickerProps>): JSX.Element => {
   const [panelOpen, setPanelOpen] = useState(false)
   const hourOptions = useMemo(() => buildTimePartOptions(HOUR_COUNT), [])
@@ -56,6 +59,7 @@ export const LocaleTimePicker = ({ ariaLabel, onChange, placeholder, value }: Re
   const handleTogglePanel = useCallback(() => {
     setPanelOpen((open) => !open)
   }, [])
+
   const handleHourChange = useCallback(
     (nextHour: string | null) => {
       if (nextHour === null) {
@@ -65,6 +69,7 @@ export const LocaleTimePicker = ({ ariaLabel, onChange, placeholder, value }: Re
     },
     [minutes, onChange],
   )
+
   const handleMinuteChange = useCallback(
     (nextMinute: string | null) => {
       if (nextMinute === null) {
@@ -74,6 +79,7 @@ export const LocaleTimePicker = ({ ariaLabel, onChange, placeholder, value }: Re
     },
     [hours, onChange],
   )
+
   return (
     <div className="space-y-2">
       <Button
@@ -121,11 +127,17 @@ export const LocaleTimePicker = ({ ariaLabel, onChange, placeholder, value }: Re
     </div>
   )
 }
+
 const HOUR_COUNT = 24
+
 const MINUTE_COUNT = 60
+
 const TIME_PART_WIDTH = 2
+
 const DEFAULT_HOUR = "00"
+
 const DEFAULT_MINUTE = "00"
+
 interface LocaleTimePickerProps {
   readonly ariaLabel: string
   readonly onChange: (time: string) => void

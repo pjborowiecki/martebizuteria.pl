@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { ListFilter } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   ADMIN_ORDER_PAYMENT_LABEL_KEYS,
@@ -12,6 +12,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
 
 import { ordersDataGrid } from "~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid"
+
 export const OrdersPaymentFilter = (): JSX.Element => {
   const t = useTranslations("pages.admin.orders")
   const { table } = ordersDataGrid.useDataGrid()
@@ -39,6 +40,7 @@ export const OrdersPaymentFilter = (): JSX.Element => {
     ],
     [t],
   )
+
   const handleChange = useCallback(
     (value: string | null) => {
       if (value === null) {
@@ -49,6 +51,7 @@ export const OrdersPaymentFilter = (): JSX.Element => {
     },
     [column, table],
   )
+
   return (
     <Select items={options} value={current} onValueChange={handleChange}>
       <SelectTrigger size="sm" className="h-9 w-[180px] gap-2 rounded-lg text-xs data-[size=sm]:h-9" aria-label={t("filter.payment")}>
@@ -65,4 +68,5 @@ export const OrdersPaymentFilter = (): JSX.Element => {
     </Select>
   )
 }
+
 const ALL_VALUE = "all"

@@ -11,6 +11,7 @@ export const getStripeAppearance = (theme: "light" | "dark"): Appearance => {
   const colorMutedSurface = isDark ? "#141414" : "#f7f7f7"
   const tabBorderResting = isDark ? "#1f1f1f" : "#ededed"
   const tabBorderSelected = isDark ? "#525252" : "#b6b6b6"
+
   return {
     rules: {
       ".AccordionItem": {
@@ -36,8 +37,6 @@ export const getStripeAppearance = (theme: "light" | "dark"): Appearance => {
         backgroundColor: colorMutedSurface,
         borderColor: colorBorder,
       },
-      // Style the closed Przelewy24 select through .Input; the macOS popup is native.
-      // Dropdown excludes backgroundColor: https://docs.stripe.com/elements/appearance-api
       ".Input": {
         backgroundColor: "transparent",
         border: "none",
@@ -99,4 +98,5 @@ export const getStripeAppearance = (theme: "light" | "dark"): Appearance => {
     },
   }
 }
+
 const FONT_FAMILY = "Manrope, ui-sans-serif, system-ui, sans-serif"

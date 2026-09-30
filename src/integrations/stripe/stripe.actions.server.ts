@@ -2,6 +2,7 @@ import { getRequestHeader } from "@tanstack/react-start/server"
 import { type z } from "zod"
 
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import {
   type CreateCheckoutSessionInput,
   type UpdateCheckoutSessionInput,
@@ -12,9 +13,16 @@ import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
-import { type CheckoutReleaseLine, parseCheckoutSessionReleaseLines } from "~/src/modules/checkout/checkout-metadata.zod"
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { isSellPriceCentsValid } from "~/src/modules/_core/utils/currency"
+import {
+  type CheckoutReleaseLine,
+  parseCheckoutSessionReleaseLines,
+  readCheckoutSessionItemsJson,
+  toCheckoutSessionItemsMetadata,
+} from "~/src/modules/checkout/checkout-metadata.zod"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
-import { createCheckoutAndAddress } from "~/src/modules/checkout/use-cases/create-checkout.server"
+import { createCheckout } from "~/src/modules/checkout/use-cases/create-checkout.server"
 import { updateCheckoutDelivery } from "~/src/modules/checkout/use-cases/update-checkout-delivery.server"
 import { getActiveDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { releaseInventoryByVariantLines, releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
@@ -22,15 +30,16 @@ import { reserveInventoryByVariantLines, reserveInventoryForItems } from "~/src/
 import { createPendingPayment, getPaymentContextByTransactionId, repointPayment } from "~/src/modules/payment/payment.accessors"
 import { getProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 
-import { isSellPriceCentsValid } from "~/src/lib/currency"
-import { scheduleProductCatalogInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server"
-import { getBaseURL, resolveAssetURL } from "~/src/lib/url"
+import { resolveAssetURL } from "~/src/lib/url"
+
+import { APP_URL } from "~/src/presentation/branding/app"
 
 const EMPTY_VARIANTS_COUNT = 0
 
 const NO_COST = 0
 
 const SHIPPING_QUANTITY = 1
+
 const SHIPPING_LABEL = "Shipping"
 
 const CLIENT_SECRET_MISSING = "Failed to create Checkout Session: client_secret is missing"
@@ -52,8 +61,9 @@ interface SessionLineItem {
 }
 
 type ResolvedProducts = Awaited<ReturnType<typeof getProductsWithInventoryByHandles>>
+
 type ResolvedProduct = ResolvedProducts[number]
-// Drizzle types a `one` relation keyed on a non-null column as always present, but a variant with no inventory row selects as null.
+
 type ResolvedVariant = Omit<ResolvedProduct["variants"][number], "inventory"> & {
   inventory: ResolvedProduct["variants"][number]["inventory"] | null
 }
@@ -62,23 +72,25 @@ const resolveShippingCost = async (deliveryMethodId: string): Promise<number> =>
   if (deliveryMethodId === "") {
     return NO_COST
   }
+
   const method = await getActiveDeliveryMethodByIdQuery(deliveryMethodId)
+
   return method?.price ?? NO_COST
 }
 
 const resolveVariant = (products: ResolvedProducts, item: CartItem): { product: ResolvedProduct; variant: ResolvedVariant } => {
   const product = products.find((candidate) => candidate.handle === item.slug)
   if (product === undefined || product.variants.length === EMPTY_VARIANTS_COUNT) {
-    throw new Error(CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND)
+    throw new AppError(ERROR_CODES.NOT_FOUND, CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND)
   }
 
   const variant = product.variants.find((candidate) => candidate.id === item.variantId)
   if (variant === undefined) {
-    throw new Error(CHECKOUT_ERROR_CODES.VARIANT_NOT_FOUND)
+    throw new AppError(ERROR_CODES.NOT_FOUND, CHECKOUT_ERROR_CODES.VARIANT_NOT_FOUND)
   }
 
   if (!isSellPriceCentsValid(variant.price)) {
-    throw new Error(CHECKOUT_ERROR_CODES.INVALID_PRICE)
+    throw new AppError(ERROR_CODES.VALIDATION, CHECKOUT_ERROR_CODES.INVALID_PRICE)
   }
 
   return { product, variant }
@@ -92,7 +104,7 @@ const validateAndCalculateItems = async (items: CartItem[]) => {
 
     const inv = variant.inventory
     if (inv === null || inv.quantityAvailable < item.qty) {
-      throw new Error(CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY)
+      throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY)
     }
 
     return {
@@ -125,8 +137,8 @@ const toLineItems = (lines: OrderLine[], shippingCost: number): SessionLineItem[
   return lineItems
 }
 
-const toMetaItems = (lines: OrderLine[]): string =>
-  JSON.stringify(
+const toMetaItems = (lines: OrderLine[]): Record<string, string> =>
+  toCheckoutSessionItemsMetadata(
     lines.map((line) => ({
       handle: line.handle,
       imageUrl: line.imageUrl,
@@ -142,15 +154,17 @@ const resolveOrigin = (): string => {
   if (origin !== undefined && origin !== "") {
     return origin
   }
+
   const referer = getRequestHeader("referer")
   if (referer !== undefined && referer !== "") {
     try {
       return new URL(referer).origin
     } catch {
-      return getBaseURL()
+      return APP_URL
     }
   }
-  return getBaseURL()
+
+  return APP_URL
 }
 
 interface CreateSessionArgs {
@@ -165,9 +179,9 @@ const createStripeSession = async ({ checkoutId, email, lines, shippingCost, use
   const returnUrl = `${resolveOrigin()}/checkout?success=true`
   const metadata = {
     checkoutId,
-    items: toMetaItems(lines),
     locale: getCurrentLocale(),
     userId: userId ?? "",
+    ...toMetaItems(lines),
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -185,6 +199,7 @@ const createStripeSession = async ({ checkoutId, email, lines, shippingCost, use
   }
 
   const amount = session.amount_total ?? NO_COST
+
   return { amount, clientSecret: session.client_secret, sessionId: session.id }
 }
 
@@ -206,11 +221,13 @@ const swapCheckoutInventory = async (oldReservedLines: CheckoutReleaseLine[], it
   try {
     const validatedItems = await validateAndCalculateItems(items)
     await reserveInventoryForItems(validatedItems)
+
     return validatedItems
   } catch (error) {
     await reserveInventoryByVariantLines(oldReservedLines).catch((restoreError: unknown) => {
       console.error("Failed to restore prior inventory after checkout update validation error:", restoreError)
     })
+
     throw error
   }
 }
@@ -264,6 +281,7 @@ const persistCheckoutSessionUpdate = async ({
       console.error("Failed to restore prior inventory after checkout update error:", restoreError)
     })
     console.error("Stripe/DB error during checkout session update:", error)
+
     throw error
   }
 }
@@ -280,7 +298,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
   await reserveInventoryForItems(validatedItems)
 
   try {
-    const checkoutId = await createCheckoutAndAddress(data.checkoutValues, userId, email)
+    const checkoutId = await createCheckout(data.checkoutValues, userId, email)
 
     const result = await createStripeSession({ checkoutId, email, lines, shippingCost, userId })
 
@@ -300,6 +318,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
       console.error("Failed to release inventory after checkout error:", releaseError)
     })
     console.error("Stripe/DB error:", error)
+
     throw error
   }
 }
@@ -307,11 +326,18 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
 export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInput) => {
   const context = await getPaymentContextByTransactionId(data.sessionId)
   if (context === undefined) {
-    throw new Error("No payment found for the provided Checkout Session")
+    throw new AppError(ERROR_CODES.NOT_FOUND)
+  }
+
+  if (context.userId !== undefined) {
+    const session = await getRequestSession()
+    if (session?.user.id !== context.userId) {
+      throw new AppError(ERROR_CODES.FORBIDDEN)
+    }
   }
 
   const oldStripeSession = await stripe.checkout.sessions.retrieve(data.sessionId)
-  const oldReservedLines = parseCheckoutSessionReleaseLines(oldStripeSession.metadata?.["items"] ?? "[]")
+  const oldReservedLines = parseCheckoutSessionReleaseLines(readCheckoutSessionItemsJson(oldStripeSession.metadata))
   const validatedItems = await swapCheckoutInventory(oldReservedLines, data.items)
   const lines = toOrderLines(validatedItems)
   const shippingCost = await resolveShippingCost(data.checkoutValues.deliveryMethod)
@@ -319,7 +345,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   return persistCheckoutSessionUpdate({
     checkoutId: context.checkoutId,
     checkoutValues: data.checkoutValues,
-    email: context.email,
+    email: data.checkoutValues.email,
     lines,
     oldReservedLines,
     oldSessionId: data.sessionId,

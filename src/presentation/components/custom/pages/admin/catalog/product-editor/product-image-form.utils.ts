@@ -1,4 +1,5 @@
 import { type GalleryImage } from "~/src/presentation/components/custom/image-upload/lib/image-upload.types"
+
 export const productImagesToGallery = (
   images: readonly {
     readonly id: string
@@ -20,6 +21,8 @@ export const resolveMainImageId = (
   if (images.length === 0) {
     return undefined
   }
+
   const match = thumbnail === undefined || thumbnail === null ? undefined : images.find((image) => image.url === thumbnail)
+
   return match?.id ?? images[0]?.id
 }

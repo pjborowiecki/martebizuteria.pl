@@ -1,17 +1,22 @@
+import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import { and, eq, ne } from "drizzle-orm"
 
-import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { RATE_LIMITS, authorized, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { CUSTOMER_ACCOUNT_MUTATION_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { session } from "~/src/modules/session/session.schema"
 
-export const revokeOtherCustomerSessionsFn = createServerFn({ method: "POST" }).handler(async (): Promise<{ ok: true }> => {
-  const authSession = await getRequestSession()
-  if (authSession?.user === undefined) {
-    return { ok: true }
-  }
+export const revokeOtherCustomerSessions = createServerFn({ method: "POST" })
+  .middleware([withRateLimit("revoke-other-customer-sessions", RATE_LIMITS.SENSITIVE), authorized()])
+  .handler(async ({ context }): Promise<{ ok: true }> => {
+    await db.delete(session).where(and(eq(session.userId, context.auth.user.id), ne(session.id, context.auth.session.id)))
 
-  await db.delete(session).where(and(eq(session.userId, authSession.user.id), ne(session.id, authSession.session.id)))
-  return { ok: true }
+    return { ok: true }
+  })
+
+export const revokeOtherCustomerSessionsMutation = mutationOptions({
+  mutationFn: () => revokeOtherCustomerSessions(),
+  mutationKey: CUSTOMER_ACCOUNT_MUTATION_KEYS.REVOKE_OTHER_SESSIONS,
 })

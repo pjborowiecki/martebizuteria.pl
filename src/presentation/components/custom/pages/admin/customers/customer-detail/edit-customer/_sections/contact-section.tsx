@@ -2,7 +2,7 @@ import { type JSX } from "react"
 
 import { Info } from "lucide-react"
 import { useController } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { ADMIN_CUSTOMER_FORM_FIELD_MAX } from "~/src/modules/user/user.constants"
 
@@ -15,6 +15,7 @@ import { CatalogFormReadOnlyField } from "~/src/presentation/components/custom/p
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
 import { useCustomerForm } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-provider"
 import { CustomerFormSection } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-section"
+
 export const ContactSection = (): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail.form")
   const { control, customer, isPending } = useCustomerForm()
@@ -22,7 +23,9 @@ export const ContactSection = (): JSX.Element => {
     control,
     name: "phone",
   })
+
   const phoneValue = catalogFieldStringValue(phoneField.value)
+
   return (
     <CustomerFormSection icon={Info} title={t("sections.contact")}>
       <CatalogFormReadOnlyField hint={t("hints.id")} label={t("id")} value={customer.id} />

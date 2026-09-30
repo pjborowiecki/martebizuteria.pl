@@ -1,12 +1,12 @@
 import { type JSX } from "react"
 
 import { ArrowRight } from "lucide-react"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
+import { formatPrice } from "~/src/modules/_core/utils/currency"
+import { type AdminOrderFulfillmentUiKey } from "~/src/modules/order/order.constants"
 import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
-
-import { formatPrice } from "~/src/lib/currency"
 
 import { Avatar, AvatarFallback } from "~/src/presentation/components/shadcn/avatar"
 import { Badge } from "~/src/presentation/components/shadcn/badge"
@@ -17,9 +17,11 @@ import { LocalizedLink } from "~/src/presentation/components/custom/localized-li
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
 
 import { ROUTES } from "~/src/routes"
+
 export const DashboardRecentOrders = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const { data: snapshot } = useAdminDashboardSnapshot()
+
   return (
     <Card className="border-border/40 bg-gradient-to-br from-cyan-500/10 via-sky-500/5 to-transparent shadow-none xl:col-span-3">
       <CardHeader className="pb-0">
@@ -60,9 +62,11 @@ export const DashboardRecentOrders = (): JSX.Element => {
     </Card>
   )
 }
+
 const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): JSX.Element => {
   const t = useTranslations("pages.admin")
   const locale = useLocale()
+
   return (
     <TableRow className="hover:bg-transparent">
       <TableCell className="pl-6 font-mono text-sm font-medium">{`#${order.id}`}</TableCell>
@@ -88,14 +92,15 @@ const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): 
       </TableCell>
       <TableCell className="pr-6">
         <span className="flex items-center gap-2">
-          <span className={`size-2 rounded-full ${FULFILLMENT_COLORS[order.fulfillmentUiKey] ?? "bg-muted-foreground/30"}`} />
+          <span className={`size-2 rounded-full ${FULFILLMENT_COLORS[order.fulfillmentUiKey]}`} />
           <span className="text-sm text-muted-foreground capitalize">{t(`dashboard.recentOrders.status.${order.fulfillmentUiKey}`)}</span>
         </span>
       </TableCell>
     </TableRow>
   )
 }
-const FULFILLMENT_COLORS: Record<string, string> = {
+
+const FULFILLMENT_COLORS: Record<AdminOrderFulfillmentUiKey, string> = {
   delivered: "bg-emerald-500",
   pending: "bg-amber-500",
   returned: "bg-red-500",

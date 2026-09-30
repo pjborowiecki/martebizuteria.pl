@@ -1,6 +1,7 @@
 import { type JSX } from "react"
 
 import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible"
+
 const Collapsible = ({ ...props }: Readonly<CollapsiblePrimitive.Root.Props>): JSX.Element => (
   <CollapsiblePrimitive.Root data-slot="collapsible" {...props} />
 )

@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { Card, CardContent, CardHeader } from "~/src/presentation/components/shadcn/card"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
+
 const StatCardSkeleton = (): JSX.Element => (
   <Card className="border-border/40 shadow-none">
     <CardContent className="space-y-3 p-5">

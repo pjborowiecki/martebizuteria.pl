@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm"
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { DEFAULT_ROLE, ROLES } from "~/src/integrations/better-auth/auth.constants"
+import { DEFAULT_ROLE, ROLES } from "~/src/integrations/better-auth/auth.access"
 import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { account } from "~/src/modules/account/account.schema"
@@ -31,6 +31,7 @@ export const user = sqliteTable(
   },
   (table) => [index("user_createdAt_idx").on(table.createdAt)],
 )
+
 export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
   sessions: many(session),

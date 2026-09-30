@@ -2,7 +2,7 @@ import { type ChangeEvent, type DragEvent, type JSX, useCallback, useRef, useSta
 
 import { cn } from "cn"
 import { ImagePlus } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "~/src/integrations/cloudflare-r2/media.zod"
 
@@ -17,6 +17,7 @@ export const GalleryAddTile = ({ disabled, isUploading, layout = "grid-tile", on
   const openPicker = useCallback(() => {
     inputRef.current?.click()
   }, [])
+
   const handleInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       if (event.target.files !== null) {
@@ -26,6 +27,7 @@ export const GalleryAddTile = ({ disabled, isUploading, layout = "grid-tile", on
     },
     [onFiles],
   )
+
   const handleDragOver = useCallback(
     (event: DragEvent<HTMLElement>) => {
       event.preventDefault()
@@ -35,9 +37,11 @@ export const GalleryAddTile = ({ disabled, isUploading, layout = "grid-tile", on
     },
     [disabled],
   )
+
   const handleDragLeave = useCallback(() => {
     setIsDraggingFile(false)
   }, [])
+
   const handleDrop = useCallback(
     (event: DragEvent<HTMLElement>) => {
       event.preventDefault()
@@ -48,6 +52,7 @@ export const GalleryAddTile = ({ disabled, isUploading, layout = "grid-tile", on
     },
     [disabled, onFiles],
   )
+
   const isDropzone = layout === "dropzone"
   let label = t("media.addMore")
   if (isUploading) {
@@ -55,6 +60,7 @@ export const GalleryAddTile = ({ disabled, isUploading, layout = "grid-tile", on
   } else if (isDropzone) {
     label = t("media.cta")
   }
+
   const hint = isDropzone ? t("media.hint") : undefined
   const pickerButton = (
     <Button
@@ -80,6 +86,7 @@ export const GalleryAddTile = ({ disabled, isUploading, layout = "grid-tile", on
       {hint !== undefined && <span className="text-[11px] text-muted-foreground/70">{hint}</span>}
     </Button>
   )
+
   const fileInput = (
     <Input
       ref={inputRef}
@@ -93,6 +100,7 @@ export const GalleryAddTile = ({ disabled, isUploading, layout = "grid-tile", on
       onChange={handleInputChange}
     />
   )
+
   if (isDropzone) {
     return (
       <div className="w-full">
@@ -101,6 +109,7 @@ export const GalleryAddTile = ({ disabled, isUploading, layout = "grid-tile", on
       </div>
     )
   }
+
   return (
     <li className="aspect-square">
       {fileInput}
@@ -108,7 +117,8 @@ export const GalleryAddTile = ({ disabled, isUploading, layout = "grid-tile", on
     </li>
   )
 }
-export interface GalleryAddTileProps {
+
+interface GalleryAddTileProps {
   readonly disabled: boolean
   readonly isUploading: boolean
   readonly layout?: "grid-tile" | "dropzone"

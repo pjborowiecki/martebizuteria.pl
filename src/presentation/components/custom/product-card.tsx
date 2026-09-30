@@ -1,19 +1,19 @@
 import { type JSX, type MouseEvent, useCallback, useRef, useState } from "react"
 
+import { useRouter } from "@tanstack/react-router"
 import { cn } from "cn"
 import { Heart, Share2, ShoppingBag } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
+import { useCartStore } from "~/src/modules/cart/cart.store"
+import { trackCartItemAdded } from "~/src/modules/customer-activity/customer-activity.tracking"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 
 import { useProductCardImageHover } from "~/src/hooks/use-product-card-image-hover"
 
-import { trackCartItemAdded } from "~/src/lib/customer-activity/customer-activity.tracking"
-
 import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 
-import { useCartStore } from "~/src/stores/cart.store"
 const useProductCardLogic = ({
   href,
   image,
@@ -35,6 +35,7 @@ const useProductCardLogic = ({
     event.preventDefault()
     event.stopPropagation()
   }, [])
+
   const handleWishlist = useCallback(
     (event: MouseEvent) => {
       stop(event)
@@ -45,12 +46,14 @@ const useProductCardLogic = ({
     },
     [stop, onWishlistToggle],
   )
+
   const handleAddToCart = useCallback(
     (event: MouseEvent) => {
       stop(event)
       if (variantId === undefined || slug === undefined || rawPrice === undefined) {
         return
       }
+
       const resolvedVariantTitle = variantTitle ?? ""
       const normalizedVariantTitle = resolvedVariantTitle === DEFAULT_VARIANT_TITLE ? "" : resolvedVariantTitle
       addItem({
@@ -73,6 +76,7 @@ const useProductCardLogic = ({
       if (onAddToCart !== undefined) {
         onAddToCart()
       }
+
       if (timeoutRef.current !== undefined) {
         globalThis.clearTimeout(timeoutRef.current)
       }
@@ -82,6 +86,7 @@ const useProductCardLogic = ({
     },
     [stop, addItem, slug, variantId, variantTitle, image, price, rawPrice, name, onAddToCart],
   )
+
   const handleShare = useCallback(
     (event: MouseEvent) => {
       stop(event)
@@ -89,21 +94,18 @@ const useProductCardLogic = ({
         if (typeof navigator.share === "function") {
           try {
             await navigator.share({ title: name, url: href })
-          } catch {
-            // Sharing can be canceled or denied by the browser.
-          }
+          } catch {}
         } else {
           try {
             await navigator.clipboard.writeText(globalThis.location.origin + href)
-          } catch {
-            // Clipboard access may be denied.
-          }
+          } catch {}
         }
       }
       void shareAsync()
     },
     [stop, name, href],
   )
+
   return {
     handleAddToCart,
     handleShare,
@@ -112,6 +114,7 @@ const useProductCardLogic = ({
     wishlisted,
   }
 }
+
 export const ProductCard = ({
   badge,
   className,
@@ -134,10 +137,12 @@ export const ProductCard = ({
   wishlisted: initialWishlisted = false,
 }: Readonly<ProductCardProps>): JSX.Element => {
   const t = useTranslations("components.custom.productCard")
+  const router = useRouter()
+  const productHref = router.buildLocation({ params: params ?? true, to: href }).href
   const imageHoverRef = useRef<HTMLDivElement>(null)
   const { handleMouseEnter, handleMouseLeave } = useProductCardImageHover(imageHoverRef)
   const { handleAddToCart, handleShare, handleWishlist, justAdded, wishlisted } = useProductCardLogic({
-    href,
+    href: productHref,
     image,
     initialWishlisted,
     name,
@@ -149,6 +154,7 @@ export const ProductCard = ({
     variantId,
     variantTitle,
   })
+
   return (
     <LocalizedLink className={cn("group/card block", className)} to={href} params={params}>
       <div
@@ -156,7 +162,6 @@ export const ProductCard = ({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Animate scale on a separate wrapper so it does not overwrite the parallax transform. */}
         <div className={cn(parallax ? "parallax-img absolute inset-x-0 inset-y-[-8%]" : "absolute inset-0")}>
           <div ref={imageHoverRef} className="size-full will-change-transform">
             <Image src={image} alt={name} width={600} height={750} sizes={sizes} priority={priority} className="size-full object-cover" />
@@ -224,15 +229,20 @@ export const ProductCard = ({
     </LocalizedLink>
   )
 }
+
 const ADD_TO_CART_TIMEOUT_MS = 1800
+
 const DEFAULT_ADD_QUANTITY = 1
+
 type ProductCardLogicInput = Pick<
   ProductCardProps,
-  "href" | "image" | "name" | "onAddToCart" | "onWishlistToggle" | "price" | "rawPrice" | "slug" | "variantId" | "variantTitle"
+  "image" | "name" | "onAddToCart" | "onWishlistToggle" | "price" | "rawPrice" | "slug" | "variantId" | "variantTitle"
 > & {
+  readonly href: string
   readonly initialWishlisted: boolean
 }
-export interface ProductCardProps {
+
+interface ProductCardProps {
   readonly badge?: string | undefined
   readonly className?: string | undefined
   readonly compact?: boolean | undefined

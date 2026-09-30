@@ -1,6 +1,7 @@
 import { createColumnHelper } from "@tanstack/react-table"
-import { type useTranslations } from "use-intl"
+import { type useTranslations } from "use-intl/react"
 
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 import {
   ADMIN_ORDER_TABLE_A11Y_KEYS,
   ADMIN_ORDER_TABLE_COLUMN_ID,
@@ -9,20 +10,16 @@ import {
 import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
-import { formatPrice } from "~/src/lib/currency"
-
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
-import {
-  CATALOG_RECORD_ID_COLUMN_META,
-  catalogRecordIdColumnWidth,
-} from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
+import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
 import { OrderCustomerCell } from "~/src/presentation/components/custom/pages/admin/orders/components/order-customer-cell"
 import { OrderFulfillmentCell } from "~/src/presentation/components/custom/pages/admin/orders/components/order-fulfillment-cell"
 import { OrderPaymentBadge } from "~/src/presentation/components/custom/pages/admin/orders/components/order-payment-badge"
 import { OrderStatusBadge } from "~/src/presentation/components/custom/pages/admin/orders/components/order-status-badge"
 import { OrdersRowActions } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-row-actions"
+
 export const buildOrderColumns = ({ locale, t, tAdmin }: BuildOrderColumnsInput) =>
   columnHelper.columns([
     selectionColumn(columnHelper, {
@@ -35,7 +32,7 @@ export const buildOrderColumns = ({ locale, t, tAdmin }: BuildOrderColumnsInput)
       header: t("columns.order"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.orderId,
       meta: CATALOG_RECORD_ID_COLUMN_META,
-      ...catalogRecordIdColumnWidth(),
+      ...fixedDataGridColumnWidth(ADMIN_ORDER_TABLE_COLUMN_SIZE.orderId),
     }),
     columnHelper.accessor("createdAt", {
       cell: ({ row }) => (
@@ -153,7 +150,9 @@ export const buildOrderColumns = ({ locale, t, tAdmin }: BuildOrderColumnsInput)
   ])
 
 const columnHelper = createColumnHelper<DataGridFeatures, Order["adminListItem"]>()
+
 const DATE_COLUMN_MAX_SIZE = 320
+
 interface BuildOrderColumnsInput {
   readonly locale: string
   readonly t: ReturnType<typeof useTranslations<"pages.admin.orders">>

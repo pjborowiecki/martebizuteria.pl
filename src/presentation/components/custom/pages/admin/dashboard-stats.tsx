@@ -2,17 +2,20 @@ import { type JSX } from "react"
 
 import { cn } from "cn"
 import { DollarSign, Eye, ShoppingCart, Users } from "lucide-react"
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
-import { type AdminDashboardKpiStat } from "~/src/modules/admin-dashboard/admin-dashboard.types"
-
-import { formatPrice } from "~/src/lib/currency"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
+import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
 import { DashboardTrendBadge } from "~/src/presentation/components/custom/pages/admin/dashboard/dashboard-trend-badge"
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
-const resolveStatValue = (key: DashboardStatKey, snapshot: ReturnType<typeof useAdminDashboardSnapshot>["data"]): AdminDashboardKpiStat => {
+
+const resolveStatValue = (
+  key: DashboardStatKey,
+  snapshot: ReturnType<typeof useAdminDashboardSnapshot>["data"],
+): AdminDashboard["kpiStat"] => {
   switch (key) {
     case "customers": {
       return snapshot.customers
@@ -31,6 +34,7 @@ const resolveStatValue = (key: DashboardStatKey, snapshot: ReturnType<typeof use
     }
   }
 }
+
 const formatStatDisplayValue = ({
   currencyCode,
   format,
@@ -42,18 +46,21 @@ const formatStatDisplayValue = ({
   format: ReturnType<typeof useFormatter>
   key: DashboardStatKey
   locale: string
-  stat: AdminDashboardKpiStat
+  stat: AdminDashboard["kpiStat"]
 }>): string => {
   if (key === "revenue") {
     return formatPrice(stat.current, currencyCode, locale)
   }
+
   return format.number(stat.current)
 }
+
 export const DashboardStats = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
   const locale = useLocale()
   const { data: snapshot } = useAdminDashboardSnapshot()
+
   return (
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
       {STAT_CARDS.map((card) => {
@@ -65,6 +72,7 @@ export const DashboardStats = (): JSX.Element => {
           locale,
           stat,
         })
+
         return (
           <Card key={card.key} className={cn("border-border/40 bg-gradient-to-br shadow-none", card.gradient)}>
             <CardContent className="p-5">
@@ -86,6 +94,7 @@ export const DashboardStats = (): JSX.Element => {
     </div>
   )
 }
+
 const STAT_CARDS = [
   {
     gradient: "from-emerald-500/20 via-emerald-500/5 to-transparent",
@@ -108,4 +117,5 @@ const STAT_CARDS = [
     key: "views",
   },
 ] as const
+
 type DashboardStatKey = (typeof STAT_CARDS)[number]["key"]

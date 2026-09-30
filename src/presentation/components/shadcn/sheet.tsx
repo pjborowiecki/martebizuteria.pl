@@ -3,9 +3,10 @@ import { type ComponentProps, type JSX, useMemo } from "react"
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"
 import { cn } from "cn"
 import { XIcon } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
+
 const Sheet = ({ ...props }: Readonly<SheetPrimitive.Root.Props>): JSX.Element => <SheetPrimitive.Root data-slot="sheet" {...props} />
 
 const SheetTrigger = ({ ...props }: Readonly<SheetPrimitive.Trigger.Props>): JSX.Element => (
@@ -40,6 +41,7 @@ const SheetContent = ({
 }: Readonly<SheetContentProps>): JSX.Element => {
   const t = useTranslations("components.shadcn.sheet")
   const closeButtonEl = useMemo(() => <Button variant="ghost" className="absolute top-3 right-3" size="icon-sm" />, [])
+
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -63,6 +65,7 @@ const SheetContent = ({
     </SheetPortal>
   )
 }
+
 const SheetHeader = ({ className, ...props }: Readonly<ComponentProps<"div">>): JSX.Element => (
   <div data-slot="sheet-header" className={cn("flex flex-col gap-0.5 p-4", className)} {...props} />
 )
@@ -83,4 +86,5 @@ interface SheetContentProps extends SheetPrimitive.Popup.Props {
   readonly side?: "top" | "right" | "bottom" | "left"
   readonly showCloseButton?: boolean
 }
+
 export { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger }

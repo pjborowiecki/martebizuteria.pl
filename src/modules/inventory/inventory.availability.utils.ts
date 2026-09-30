@@ -11,6 +11,7 @@ export const isVariantPurchasable = (variant: VariantWithInventory | undefined, 
   if (quantity <= 0) {
     return false
   }
+
   return getVariantQuantityAvailable(variant) >= quantity
 }
 

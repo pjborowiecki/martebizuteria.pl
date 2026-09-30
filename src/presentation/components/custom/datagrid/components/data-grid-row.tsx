@@ -12,29 +12,20 @@ import { type DataGridFeatures } from "~/src/presentation/components/custom/data
 import { type RowReorderApi } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { getDataGridLayoutColumns } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 
-/** Skeleton / empty placeholder row count when the grid has no data. */
 export const DATA_GRID_EMPTY_PLACEHOLDER_ROW_COUNT = 5
 
-/** Center row index for the empty-state message when {@link DATA_GRID_EMPTY_PLACEHOLDER_ROW_COUNT} is 5. */
 export const DATA_GRID_EMPTY_MESSAGE_ROW_INDEX = 2
 
-/** Fixed inner height for placeholder rows (`p-2` + `h-9` ⇒ 52px row — `min-h` on `<td>` is ignored). */
 export const DATA_GRID_PLACEHOLDER_CELL_INNER_CLASS = "box-border flex h-9 w-full min-w-0 shrink-0 items-center"
-
-/** Locks tbody height when the grid has no rows (5 × 52px). */
-export const DATA_GRID_PLACEHOLDER_TBODY_CLASS = "min-h-[260px]"
 
 export const DATA_GRID_BODY_CELL_CLASS = cn(
   "border-b border-border/60 bg-card transition-colors group-hover:bg-muted group-data-[state=selected]:bg-muted",
 )
 
-/** Shared with {@link DataGridSkeleton} and {@link DataGridEmptyRow}. */
 export const DATA_GRID_BODY_ROW_CLASS = cn("group border-border/50 transition-colors")
 
-/** Placeholder rows (empty + zero-row skeleton) — no row hover tint on cells. */
 export const DATA_GRID_PLACEHOLDER_BODY_ROW_CLASS = cn(DATA_GRID_BODY_ROW_CLASS, "border-b-0 hover:bg-transparent [&>td]:align-middle")
 
-/** Overrides {@link DATA_GRID_BODY_CELL_CLASS} group-hover so imaginary rows stay flat. */
 export const DATA_GRID_PLACEHOLDER_BODY_CELL_CLASS = cn(DATA_GRID_BODY_CELL_CLASS, "border-b-0 group-hover:bg-card hover:bg-card")
 
 interface DataGridRowProps<TData extends RowData> {
@@ -144,6 +135,7 @@ export const DataGridRow = <TData extends RowData>({
       if (onRowClick === undefined || consumeDataGridRowClickSuppression()) {
         return
       }
+
       const { target } = event
       if (target instanceof Element && target.closest("[data-prevent-row-click]") !== null) {
         return
@@ -176,6 +168,7 @@ export const DataGridRow = <TData extends RowData>({
         if (cell === undefined) {
           return <DataGridLayoutCell key={column.id} column={column} persistenceKey={persistenceKey} table={table} />
         }
+
         return <DataGridCell key={cell.id} cell={cell} persistenceKey={persistenceKey} />
       })}
     </TableRow>

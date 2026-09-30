@@ -6,6 +6,7 @@ import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
+
 const ItemGroup = ({ className, ...props }: Readonly<ComponentProps<"ul">>): JSX.Element => (
   <ul
     data-slot="item-group"
@@ -28,6 +29,7 @@ const Item = ({ className, variant = "default", size = "default", render, ...pro
       variant,
     }),
   )
+
   return useRender({
     defaultTagName: "li",
     props: mergeProps<"li">(
@@ -123,7 +125,9 @@ const itemVariants = cva(
     },
   },
 )
+
 interface ItemProps extends useRender.ComponentProps<"li">, VariantProps<typeof itemVariants> {}
+
 const itemMediaVariants = cva(
   "flex shrink-0 items-center justify-center gap-2 group-has-data-[slot=item-description]/item:translate-y-0.5 group-has-data-[slot=item-description]/item:self-start [&_svg]:pointer-events-none",
   {
@@ -140,4 +144,5 @@ const itemMediaVariants = cva(
     },
   },
 )
+
 export { Item, ItemActions, ItemContent, ItemDescription, ItemFooter, ItemGroup, ItemHeader, ItemMedia, ItemSeparator, ItemTitle }

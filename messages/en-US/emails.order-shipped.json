@@ -1,0 +1,29 @@
+{
+  "subject": "Your order has been shipped — M'Arte",
+  "preview": "Your package is on its way — thank you for your patience.",
+  "heading": "Order shipped",
+  "message": "We are delighted to let you know that your order has left our atelier and is on its way to you.",
+  "messageSecondary": "Below are the key delivery details.",
+  "orderLabel": "Order reference",
+  "deliveryMethodLabel": "Delivery method",
+  "shippingAddressLabel": "Shipping address",
+  "estimatedDeliveryLabel": "Estimated delivery",
+  "createAccountCta": "Create account and track your order",
+  "viewOrderCta": "View your order",
+  "unavailable": "Unavailable",
+  "deliveryTiming": {
+    "courier": {
+      "estimatedDelivery": "2–4 business days after dispatch"
+    },
+    "locker": {
+      "estimatedDelivery": "2–3 business days after dispatch"
+    },
+    "in_store": {
+      "estimatedDelivery": "Pickup at the atelier once notified"
+    }
+  },
+  "closingNote": "If you have any questions about your shipment, simply reply to this email — we are happy to help.",
+  "signoff": "With warm regards,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}

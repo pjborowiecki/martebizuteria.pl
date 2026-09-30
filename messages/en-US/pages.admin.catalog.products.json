@@ -1,0 +1,265 @@
+{
+  "form": {
+    "titleAdd": "Add New Product",
+    "titleEdit": "Edit product",
+    "sheetDescription": "Create a new product with details, pricing, media, and variants.",
+    "sheetDescriptionEdit": "Update this product’s details, organization, pricing, and variants.",
+    "cancel": "Cancel",
+    "create": "Create product",
+    "save": "Save changes",
+    "localePicker": {
+      "filledCountHint": "name in each language"
+    },
+    "titleLocale": {
+      "pl-PL": "Product name (PL)",
+      "en-US": "Product name (EN)"
+    },
+    "titleLocalePlaceholder": {
+      "pl-PL": "e.g. Minimalist Gold Hoop",
+      "en-US": "e.g. Minimalist Gold Hoop"
+    },
+    "subtitleLocale": {
+      "pl-PL": "Subtitle (PL)",
+      "en-US": "Subtitle (EN)"
+    },
+    "subtitleLocalePlaceholder": {
+      "pl-PL": "Optional short line under the title",
+      "en-US": "Optional short line under the title"
+    },
+    "descriptionLocale": {
+      "pl-PL": "Description (PL)",
+      "en-US": "Description (EN)"
+    },
+    "descriptionLocalePlaceholder": {
+      "pl-PL": "Detailed description of the product...",
+      "en-US": "Detailed description of the product..."
+    },
+    "hints": {
+      "titleLocale": {
+        "pl-PL": "Name shown in the catalog, on the product page, and in the cart (Polish).",
+        "en-US": "Name shown in the catalog, on the product page, and in the cart (English)."
+      },
+      "subtitleLocale": {
+        "pl-PL": "Optional short line under the title on the product page (Polish).",
+        "en-US": "Optional short line under the title on the product page (English)."
+      },
+      "descriptionLocale": {
+        "pl-PL": "Full description shown on the storefront product page (Polish).",
+        "en-US": "Full description shown on the storefront product page (English)."
+      },
+      "tagsLocale": "Optional labels for filtering in the admin ({locale}). Type a tag and click Add tag or press Enter.",
+      "slug": "URL path for this product (e.g. /products/gold-hoop). Lowercase letters, numbers, and hyphens only.",
+      "sku": "Optional stock-keeping unit for single-variant products.",
+      "subtitle": "Optional short line under the title on the product page.",
+      "description": "Full description shown on the storefront product page.",
+      "price": "Sell price in PLN for a single-variant product.",
+      "stockQuantity": "How many units are available to sell (whole numbers only).",
+      "primaryCategory": "Main category in the catalog tree (breadcrumbs, SEO).",
+      "additionalCategories": "Optional extra categories where this product should also appear.",
+      "collections": "Merchandising collections (e.g. New arrivals and Sterling 925 at the same time).",
+      "status": "Draft products are hidden from the storefront; active products are visible to customers; archived products are not sold.",
+      "productType": "Single variant — one price and one stock count. Multiple variants — options (e.g. size) with separate price and stock per combination.",
+      "tags": "Optional labels for filtering and organization in the admin. Type a tag and click Add tag or press Enter.",
+      "attributeProperty": "Attribute from your catalog (e.g. weight, colour). Create it under Attributes if it is missing.",
+      "attributeValue": "Value of that property for this product only (e.g. 14 g or silver).",
+      "optionName": "Variant axis name shown in the storefront (e.g. Size, Metal).",
+      "optionValues": "One value per row (e.g. Srebrny). Variant rows appear as soon as you enter the Polish label. Switch the locale at the top to add the {locale} translation.",
+      "variantSku": "Optional stock-keeping unit for this option combination.",
+      "variantPrice": "Sell price in PLN for this combination (minimum 2.00 PLN when published).",
+      "variantStock": "Units available to sell for this variant row."
+    },
+    "validation": {
+      "titleRequired": "Enter a product name.",
+      "titleTooLong": "Product name is too long.",
+      "slugRequired": "Enter a URL slug.",
+      "slugInvalid": "Use lowercase letters, numbers, and hyphens only (e.g. gold-hoop).",
+      "slugTooLong": "URL slug is too long.",
+      "activePriceRequired": "Active products: minimum price is 2.00 PLN.",
+      "priceRequired": "Minimum price is 2.00 PLN.",
+      "priceInvalid": "Enter a valid PLN price (e.g. 199.00 — up to 2 decimal places).",
+      "compareAtInvalid": "Compare-at price must be empty or not less than the sell price.",
+      "simpleVariantRequired": "Enter price and stock for this product.",
+      "optionsRequired": "Add at least one option (e.g. Size) for products with variants.",
+      "variantsRequired": "Generate at least one variant row.",
+      "variantCombinationsRequired": "Generate and price every option combination before activating the product.",
+      "LOCALE_TITLE_REQUIRED": "Fill in this field for the selected language.",
+      "submitBlockedTitle": "Fix form errors",
+      "submitBlockedDescription": "Check highlighted fields and try again.",
+      "duplicateAttribute": "This attribute is already assigned to the product — each attribute can only appear once.",
+      "duplicateSku": "This SKU is already used by another variant."
+    }
+  },
+  "toast": {
+    "createSuccessTitle": "Product created",
+    "createSuccessDescription": "The product was added to your catalog.",
+    "updateSuccessTitle": "Product saved",
+    "updateSuccessDescription": "Your changes have been saved.",
+    "errorTitle": "Could not save product",
+    "errorDescription": "Check the form and try again.",
+    "duplicateHandle": "This URL slug is already used by another product. If it is not in the list, click Create product again — the previous attempt may have been rolled back.",
+    "duplicateSku": "This SKU is already used by another variant.",
+    "duplicateAttribute": "The same attribute cannot be assigned to a product more than once.",
+    "databaseSchemaOutdated": "The database schema is out of date. Run migrations: bun run db:migrate"
+  },
+  "basic": {
+    "description": "Description",
+    "descriptionPlaceholder": "Detailed description of the product...",
+    "material": "Material",
+    "name": "Product Name",
+    "namePlaceholder": "e.g. Minimalist Gold Hoop",
+    "subtitle": "Subtitle",
+    "subtitlePlaceholder": "Optional short line under the title",
+    "ref": "SKU",
+    "selectMaterial": "Select material...",
+    "slug": "URL slug",
+    "slugPlaceholder": "minimalist-gold-hoop",
+    "title": "Basic details"
+  },
+  "breadcrumb": {
+    "catalog": "Catalog",
+    "dashboard": "Dashboard"
+  },
+  "inventory": {
+    "quantity": "Quantity",
+    "sellWhenOOS": "Continue selling when out of stock",
+    "title": "Inventory"
+  },
+  "media": {
+    "dragDrop": "Drag & drop your images here",
+    "formats": "Supports JPG, PNG, WEBP. Max 5MB.",
+    "galleryLabel": "Product gallery",
+    "hint": "First image (or “main”) becomes the catalog thumbnail. Drag to reorder.",
+    "galleryLabelShared": "Shared photos (optional)",
+    "hintSharedVariants": "Shown for every variant that has no gallery of its own. To use different photos per variant, upload them in the Variants section.",
+    "title": "Media"
+  },
+  "attributes": {
+    "title": "Attributes",
+    "hint": "Pick attributes from your catalog (e.g. weight, colour) and set values for this product only.",
+    "hintSharedVariants": "Shared attributes for the whole product (e.g. material). Per-variant values — e.g. weight — belong in the Variants section on each row.",
+    "emptyVariant": "No attributes for this variant yet. Pick an attribute and value above, then click Add attribute.",
+    "add": "Add attribute",
+    "empty": "No values assigned yet. Pick an attribute and value above, then click Add attribute.",
+    "emptyNoCatalogAttributes": "There are no attributes in your catalog yet. Create them under Attributes, then return here to assign them to this product.",
+    "createInCatalog": "Create attribute in catalog",
+    "attribute": "Attribute",
+    "selectAttribute": "Choose an attribute…",
+    "value": "Value",
+    "valuePlaceholder": "Value for this product",
+    "selectAllowedValue": "Choose a value…",
+    "selectBoolean": "Choose…",
+    "booleanYes": "Yes",
+    "booleanNo": "No",
+    "remove": "Remove attribute"
+  },
+  "organization": {
+    "title": "Organization",
+    "primaryCategory": "Primary category",
+    "additionalCategories": "Additional categories",
+    "collections": "Collections",
+    "selectCategory": "Select category...",
+    "selectCategories": "Select categories...",
+    "selectCollections": "Select collections...",
+    "multiSelect": {
+      "noResults": "No results found.",
+      "removeItem": "Remove {label}",
+      "searchPlaceholder": "Search...",
+      "selectedCount": "{count} selected"
+    },
+    "validation": {
+      "primaryCategoryRequired": "Select a primary category."
+    }
+  },
+  "pricing": {
+    "cost": "Cost per item",
+    "hint": "Customers won't see this.",
+    "price": "Price",
+    "stockQuantity": "Stock quantity (units)",
+    "title": "Pricing & Inventory",
+    "variantsHint": "Prices, SKU, and stock are set per variant below."
+  },
+  "variantMode": {
+    "title": "Product type",
+    "typeLabel": "Type",
+    "optionSimple": "Single variant",
+    "optionVariants": "Multiple variants",
+    "descriptionSimple": "Single sellable version — one price, one SKU, one stock count.",
+    "descriptionVariants": "Sell multiple combinations (e.g. size, metal, finish).",
+    "hintSimple": "Best for one-of-a-kind pieces or products with no options.",
+    "hintVariants": "Define options, generate combinations, then set price and stock for each row."
+  },
+  "options": {
+    "title": "Options",
+    "addOption": "Add option",
+    "empty": "Add an option such as Size or Metal to build variants.",
+    "optionName": "Option name",
+    "optionNamePlaceholder": "e.g. Finish",
+    "optionValues": "Values",
+    "optionValueLabel": {
+      "en-US": "Value (English)",
+      "pl-PL": "Value (PL)"
+    },
+    "optionValuePlaceholder": {
+      "en-US": "e.g. Gold plated",
+      "pl-PL": "e.g. Srebrny"
+    },
+    "addValue": "Add value",
+    "removeValue": "Remove value",
+    "removeOption": "Remove option"
+  },
+  "shipping": {
+    "fulfillmentTime": "Fulfillment Time",
+    "dimensions": "Dimensions",
+    "requiresShipping": "This is a physical product",
+    "title": "Shipping",
+    "weight": "Weight",
+    "unit": "Unit",
+    "days": "Days",
+    "weeks": "Weeks",
+    "months": "Months"
+  },
+  "status": {
+    "active": "Active",
+    "archived": "Archived",
+    "draft": "Draft",
+    "featured": "Featured Product",
+    "title": "Status",
+    "label": "Status",
+    "low": "Low Stock"
+  },
+  "tags": {
+    "add": "Add tag",
+    "fieldLabel": {
+      "en-US": "Tag (EN)",
+      "pl-PL": "Tag (Polish)"
+    },
+    "placeholder": "Add a tag...",
+    "title": "Tags"
+  },
+  "title": "Add New Product",
+  "editTitle": "Edit Product",
+  "variants": {
+    "sectionHint": "Each row is one variant (e.g. Silver, Gold plated). Set name, price, stock, and photos. Use the PL/EN picker at the top to translate names.",
+    "listHint": "Variant name in {locale}. Switch PL/EN at the top of the form to add the translation.",
+    "addVariant": "Add variant",
+    "removeVariant": "Remove variant",
+    "unnamedVariant": "this variant",
+    "nameLabel": {
+      "en-US": "Variant name (EN)",
+      "pl-PL": "Variant name (PL)"
+    },
+    "namePlaceholder": {
+      "en-US": "e.g. Gold plated",
+      "pl-PL": "e.g. Silver"
+    },
+    "imagesLabel": "Photos: {name}",
+    "imagesHint": "Gallery for this variant only. If empty, the storefront uses shared photos from Media.",
+    "variantRowTitle": "Variant: {name}",
+    "attributesTitle": "Variant attributes",
+    "attributesHint": "Values for this variant only (e.g. weight for Silver vs Gold plated). Shared attributes go in the Attributes section below.",
+    "sku": "SKU",
+    "price": "Price",
+    "stockQuantity": "Stock quantity (units)",
+    "title": "Variants"
+  }
+}

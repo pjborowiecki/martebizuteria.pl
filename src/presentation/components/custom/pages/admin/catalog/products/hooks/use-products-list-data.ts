@@ -3,18 +3,19 @@ import { useMemo } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { type PaginationState } from "@tanstack/react-table"
 
+import { LIST_PAGE_STEP } from "~/src/modules/_core/utils/pagination"
 import { type AdminProductsListColumnFilters } from "~/src/modules/product/product.admin-list-filters"
 import { type AdminProductsListSort } from "~/src/modules/product/product.admin-list-sort"
 import { ADMIN_PRODUCTS_PAGE_SIZE } from "~/src/modules/product/product.constants"
 import { type Product } from "~/src/modules/product/product.types"
-import { adminProductsQueryOptions } from "~/src/modules/product/use-cases/get-admin-products"
-import { adminProductsPageQueryOptions } from "~/src/modules/product/use-cases/get-admin-products-page"
-
-import { LIST_PAGE_STEP } from "~/src/lib/list-pagination"
+import { getAdminProductsQuery } from "~/src/modules/product/use-cases/get-admin-products"
+import { getAdminProductsPageQuery } from "~/src/modules/product/use-cases/get-admin-products-page"
 
 import { useProductOrdering } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-product-ordering"
 import { type ProductsListFilters } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-data-grid"
 import { useReorderProducts } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-reorder-products"
+
+const NO_PRODUCTS: Product["adminListItem"][] = []
 
 const EMPTY_PRODUCTS_PAGE = {
   hasMore: false,
@@ -41,7 +42,7 @@ export const useProductsListData = ({
   search,
   sort,
 }: UseProductsListDataOptions) => {
-  const pageQueryOptions = adminProductsPageQueryOptions({
+  const pageQueryOptions = getAdminProductsPageQuery({
     categoryId: filters.categoryId,
     collectionId: filters.collectionId,
     createdAt: columnFilters.createdAt,
@@ -53,14 +54,15 @@ export const useProductsListData = ({
     sort,
     status: filters.status,
     totalStock: columnFilters.totalStock,
+    variantKind: filters.variantKind,
   })
 
   const {
-    data: allProducts = [],
+    data: allProducts = NO_PRODUCTS,
     isFetching: isAllFetching,
     isPending: isAllPending,
   } = useQuery({
-    ...adminProductsQueryOptions(),
+    ...getAdminProductsQuery(),
     enabled: !hasServerListQuery,
     placeholderData: keepPreviousData,
   })
@@ -76,7 +78,7 @@ export const useProductsListData = ({
   })
 
   const reorder = useReorderProducts()
-  const ordering = useProductOrdering(hasServerListQuery ? [] : allProducts, reorder)
+  const ordering = useProductOrdering(hasServerListQuery ? NO_PRODUCTS : allProducts, reorder)
   const tableData = useMemo(() => (hasServerListQuery ? [...data.items] : ordering.items), [data.items, hasServerListQuery, ordering.items])
 
   return useMemo(

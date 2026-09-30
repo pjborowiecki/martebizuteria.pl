@@ -1,37 +1,27 @@
-import { type JSX, useCallback } from "react"
+import { type JSX } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { ADMIN_ORDER_STAT_FILTER, type AdminOrderStatFilter } from "~/src/modules/order/order.constants"
-import { type AdminOrderStats } from "~/src/modules/order/order.types"
-
-import { formatPrice } from "~/src/lib/currency"
+import { type Order } from "~/src/modules/order/order.types"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
 import {
   ADMIN_CARD_CLASS,
+  ADMIN_STAT_CAPTION_SLOT_CLASS,
   ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
+  ADMIN_STAT_LABEL_CLASS,
+  ADMIN_STAT_VALUE_CLASS,
+  ADMIN_STAT_VALUE_SLOT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { AdminStatCaption } from "~/src/presentation/components/custom/pages/admin/admin-stat-caption"
 import { type OrderStatCardConfig, type OrderStatKey } from "~/src/presentation/components/custom/pages/admin/orders/orders-stats.config"
-const renderStatCaptionSlot = ({
-  caption,
-  valuesPending,
-}: Readonly<{
-  caption?: string | undefined
-  valuesPending: boolean
-}>): JSX.Element | undefined => {
-  if (valuesPending) {
-    return <Skeleton className="h-3 w-28" />
-  }
-  if (caption === undefined) {
-    return undefined
-  }
-  return <p className={STAT_CAPTION_CLASS}>{caption}</p>
-}
+
 export const OrderStatCard = ({
   activeFilter,
   caption,
@@ -51,19 +41,7 @@ export const OrderStatCard = ({
   } else if (filter !== undefined) {
     isActive = activeFilter === filter
   }
-  const handleFilterClick = useCallback(() => {
-    if (onFilter === undefined || valuesPending) {
-      return
-    }
-    if (isTotalCard) {
-      onFilter()
-      return
-    }
-    if (filter === undefined) {
-      return
-    }
-    onFilter(isActive ? undefined : filter)
-  }, [filter, isActive, isTotalCard, onFilter, valuesPending])
+
   const cardClassName = cn(
     "h-full gap-0 py-0",
     ADMIN_CARD_CLASS,
@@ -72,18 +50,16 @@ export const OrderStatCard = ({
     isFilterable && !valuesPending && ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
     isFilterable && isActive && ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   )
+
   const content = (
     <CardContent className="flex h-full items-start justify-between gap-4 p-5">
       <div className="min-w-0 flex-1 space-y-2">
-        <p className={STAT_LABEL_CLASS}>{t(`stats.${key}.label`)}</p>
-        <div className={STAT_VALUE_SLOT_CLASS}>
-          {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={STAT_VALUE_CLASS}>{displayValue}</p>}
+        <p className={ADMIN_STAT_LABEL_CLASS}>{t(`stats.${key}.label`)}</p>
+        <div className={ADMIN_STAT_VALUE_SLOT_CLASS}>
+          {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={ADMIN_STAT_VALUE_CLASS}>{displayValue}</p>}
         </div>
-        <div className={STAT_CAPTION_SLOT_CLASS}>
-          {renderStatCaptionSlot({
-            caption,
-            valuesPending,
-          })}
+        <div className={ADMIN_STAT_CAPTION_SLOT_CLASS}>
+          <AdminStatCaption caption={caption} valuesPending={valuesPending} />
         </div>
       </div>
       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary shadow-none">
@@ -91,9 +67,20 @@ export const OrderStatCard = ({
       </div>
     </CardContent>
   )
-  if (!isFilterable) {
+
+  if (onFilter === undefined || (!isTotalCard && filter === undefined)) {
     return <Card className={cardClassName}>{content}</Card>
   }
+
+  const handleFilterClick = (): void => {
+    if (isTotalCard) {
+      onFilter()
+
+      return
+    }
+    onFilter(isActive ? undefined : filter)
+  }
+
   return (
     <Card className={cardClassName}>
       <button
@@ -109,6 +96,7 @@ export const OrderStatCard = ({
     </Card>
   )
 }
+
 export const formatOrderStatDisplayValue = ({
   currencyCode,
   key,
@@ -123,15 +111,12 @@ export const formatOrderStatDisplayValue = ({
   if (key === "revenueMinorUnits" || key === "avgValueMinorUnits") {
     return formatPrice(value, currencyCode, locale)
   }
+
   return value.toLocaleString(locale)
 }
-export const resolveOrderStatValue = (stats: AdminOrderStats, key: OrderStatKey): number => stats[key]
 
-const STAT_LABEL_CLASS = "text-[13px] leading-5 text-muted-foreground"
-const STAT_VALUE_CLASS = "text-3xl leading-9 font-semibold tracking-tight tabular-nums"
-const STAT_VALUE_SLOT_CLASS = "flex min-h-9 items-center"
-const STAT_CAPTION_SLOT_CLASS = "flex min-h-4 items-center"
-const STAT_CAPTION_CLASS = "text-xs text-muted-foreground/80"
+export const resolveOrderStatValue = (stats: Order["adminStats"], key: OrderStatKey): number => stats[key]
+
 interface OrderStatCardProps {
   readonly activeFilter?: AdminOrderStatFilter | undefined
   readonly caption?: string | undefined

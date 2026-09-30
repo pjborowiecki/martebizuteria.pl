@@ -40,16 +40,21 @@ export const buildAuditChangeMetadata = <TBefore extends object, TAfter extends 
   }
 }
 
+const isPrintableAuditValue = (value: unknown): boolean => value === null || typeof value !== "object"
+
 export const formatAuditDetailFromChanges = (
   labels: Readonly<Record<string, string>>,
   metadata: AuditChangeMetadata<object, object>,
 ): string =>
   metadata.changed
-    .map((field) => {
-      const label = labels[field] ?? field
+    .flatMap((field) => {
       const previous: unknown = Reflect.get(metadata.old, field)
       const next: unknown = Reflect.get(metadata.new, field)
-      return `${label}: ${String(previous)} → ${String(next)}`
+      if (!isPrintableAuditValue(previous) || !isPrintableAuditValue(next)) {
+        return []
+      }
+
+      return [`${labels[field] ?? field}: ${String(previous)} → ${String(next)}`]
     })
     .join("; ")
 

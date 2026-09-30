@@ -1,0 +1,17 @@
+{
+  "subject": "Welcome to M'Arte — confirm your email",
+  "preview": "One last step before we open the doors to M'Arte.",
+  "heading": "Welcome to M'Arte",
+  "greeting": "Dear {name},",
+  "message": "We are delighted you have joined us. At M'Arte, every detail matters — from the first sketch to the final polish in our workshop.",
+  "messageSecondary": "Your account will let you track orders with ease, save delivery addresses, and return to your favourite collections whenever you wish.",
+  "messageTertiary": "Before we begin, we ask one small favour: please confirm your email address. This keeps your account secure and ensures we only send you messages that matter to you.",
+  "highlightTitle": "What happens next",
+  "highlightBody": "Once your email is confirmed, your account will be activated. From that moment, you may explore our collections, place orders, and enjoy jewelry crafted with care for every detail.",
+  "cta": "Confirm my email",
+  "expiry": "For your security, this link will expire in 60 minutes.",
+  "ignore": "If you did not create an M'Arte account, you may disregard this message — no account will be created.",
+  "signoff": "With warm regards,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}

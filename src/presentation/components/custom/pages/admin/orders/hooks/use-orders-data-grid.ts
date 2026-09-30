@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { type ColumnFiltersState, type PaginationState } from "@tanstack/react-table"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
+import { LIST_PAGE_STEP } from "~/src/modules/_core/utils/pagination"
 import { parseAdminOrdersListFilters } from "~/src/modules/order/order.admin-list-filters"
-import { type AdminOrdersExportInput, type AdminOrdersPageInput } from "~/src/modules/order/order.admin-list.types"
 import {
   ADMIN_ORDERS_PAGE_SIZE,
   ADMIN_ORDER_TABLE_COLUMN_PINNING,
@@ -13,9 +13,7 @@ import {
   type AdminOrderStatFilter,
 } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
-import { adminOrdersPageQueryOptions } from "~/src/modules/order/use-cases/get-admin-orders-page"
-
-import { LIST_PAGE_STEP } from "~/src/lib/list-pagination"
+import { getAdminOrdersPageQuery } from "~/src/modules/order/use-cases/get-admin-orders-page"
 
 import { useAdminDebouncedTableSearch } from "~/src/presentation/components/custom/datagrid/hooks/use-admin-debounced-table-search"
 import { useDataGridInstance } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-instance"
@@ -23,6 +21,7 @@ import { type DataGridContextValue } from "~/src/presentation/components/custom/
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useOrderColumns } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-columns"
 import { ordersDataGrid } from "~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid"
+
 const buildAdminOrdersPageInput = ({
   listFilters,
   pageIndex,
@@ -35,7 +34,7 @@ const buildAdminOrdersPageInput = ({
   readonly pageSize: number
   readonly search: string
   readonly statFilter: AdminOrderStatFilter | undefined
-}): AdminOrdersPageInput => ({
+}): Order["adminPageInput"] => ({
   createdAt: listFilters.createdAt,
   fulfillment: listFilters.fulfillment,
   page: pageIndex + LIST_PAGE_STEP,
@@ -46,12 +45,14 @@ const buildAdminOrdersPageInput = ({
   status: listFilters.status,
   total: listFilters.total,
 })
+
 export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): OrdersDataGridValue => {
   const t = useTranslations("pages.admin.orders")
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: ADMIN_ORDERS_PAGE_SIZE,
   })
+
   const [statFilter, setStatFilter] = useState<AdminOrderStatFilter | undefined>()
   const [serverSearch, setServerSearch] = useState("")
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -67,7 +68,8 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
       }),
     [listFilters, pagination.pageIndex, pagination.pageSize, serverSearch, statFilter],
   )
-  const pageQueryOptions = adminOrdersPageQueryOptions(pageInput)
+
+  const pageQueryOptions = getAdminOrdersPageQuery(pageInput)
   const {
     data = EMPTY_ORDERS_PAGE,
     isFetching,
@@ -76,6 +78,7 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
     ...pageQueryOptions,
     placeholderData: keepPreviousData,
   })
+
   const showSkeletonRows = isFetching || isPending
   const columns = useOrderColumns()
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns])
@@ -97,6 +100,7 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
     persistenceKey: ordersDataGrid.persistenceKey,
     rowCount: data.total,
   })
+
   const { debouncedSearch } = useAdminDebouncedTableSearch(table)
   useEffect(() => {
     setServerSearch(debouncedSearch)
@@ -111,6 +115,7 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
       pageIndex: 0,
     }))
   }, [columnFilters])
+
   const applyOrderStatFilter = useCallback((filter?: AdminOrderStatFilter) => {
     setStatFilter(filter)
     setPagination((previous) => ({
@@ -118,8 +123,9 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
       pageIndex: 0,
     }))
   }, [])
+
   const exportListInput = useMemo(
-    (): AdminOrdersExportInput => ({
+    (): Order["adminExportInput"] => ({
       createdAt: listFilters.createdAt,
       fulfillment: listFilters.fulfillment,
       payment: listFilters.payment,
@@ -130,6 +136,7 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
     }),
     [listFilters, serverSearch, statFilter],
   )
+
   return useMemo(
     () => ({
       activeStatFilter: statFilter,
@@ -159,6 +166,7 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
     ],
   )
 }
+
 const isOrdersDataGridValue = (value: DataGridContextValue<Order["adminListItem"]>): value is OrdersDataGridValue =>
   "applyOrderStatFilter" in value && typeof value.applyOrderStatFilter === "function"
 
@@ -167,8 +175,10 @@ export const useOrdersDataGridContext = (): OrdersDataGridValue => {
   if (!isOrdersDataGridValue(value)) {
     throw new Error("useOrdersDataGridContext must be used within the orders table Provider.")
   }
+
   return value
 }
+
 const EMPTY_ORDERS_PAGE = {
   hasMore: false,
   items: [] as Order["adminListItem"][],
@@ -176,11 +186,13 @@ const EMPTY_ORDERS_PAGE = {
   offset: 0,
   total: 0,
 } as const
+
 export interface OrdersDataGridValue extends DataGridContextValue<Order["adminListItem"]> {
   readonly activeStatFilter: AdminOrderStatFilter | undefined
   readonly applyOrderStatFilter: (filter?: AdminOrderStatFilter) => void
-  readonly exportListInput: AdminOrdersExportInput
+  readonly exportListInput: Order["adminExportInput"]
 }
+
 interface UseOrdersDataGridOptions {
   readonly onRowClick?: ((order: Order["adminListItem"]) => void) | undefined
 }

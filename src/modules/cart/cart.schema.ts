@@ -16,7 +16,6 @@ export const cart = sqliteTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     sessionId: text("session_id"),
-    // Nullable for guest checkouts
     userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
     ...timestamps(),
   },

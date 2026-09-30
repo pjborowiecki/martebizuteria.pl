@@ -1,23 +1,27 @@
+import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
-import { setDefaultUserAddress } from "~/src/modules/address/address.accessors"
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { setDefaultUserAddress as addressSetDefaultUserAddress } from "~/src/modules/address/address.accessors"
+import { ADDRESS_MUTATION_KEYS } from "~/src/modules/address/address.constants"
 import { addressIdInputSchema } from "~/src/modules/address/address.zod"
 
-export const setDefaultUserAddressFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => addressIdInputSchema.parse(data))
-  .handler(async ({ data: { addressId } }) => {
-    const session = await getRequestSession()
-    const userId = session?.user.id
-    if (userId === undefined) {
-      throw new Error("Unauthorized")
-    }
-
-    const updated = await setDefaultUserAddress(userId, addressId)
+export const setDefaultUserAddress = createServerFn({ method: "POST" })
+  .middleware([authorized()])
+  .validator((input: zod.input<typeof addressIdInputSchema>) => addressIdInputSchema.parse(input))
+  .handler(async ({ context, data: { addressId } }) => {
+    const updated = await addressSetDefaultUserAddress(context.auth.user.id, addressId)
     if (!updated) {
-      throw new Error("Address not found")
+      throw new AppError(ERROR_CODES.NOT_FOUND)
     }
 
     return { ok: true as const }
   })
+
+export const setDefaultUserAddressMutation = mutationOptions({
+  mutationFn: (data: Parameters<typeof setDefaultUserAddress>[0]["data"]) => setDefaultUserAddress({ data }),
+  mutationKey: ADDRESS_MUTATION_KEYS.SET_DEFAULT,
+})

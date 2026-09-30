@@ -1,11 +1,11 @@
 import { type JSX, type MouseEvent, useCallback, useMemo, useState } from "react"
 
-import { useParams, useRouter } from "@tanstack/react-router"
+import { useRouter } from "@tanstack/react-router"
 import { Copy, Edit2, Link2, MoreHorizontal, PackageSearch, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { type Collection } from "~/src/modules/product-collection/product-collection.types"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -22,13 +22,11 @@ import { useCollectionsSheet } from "~/src/presentation/components/custom/pages/
 import { useDeleteCollections } from "~/src/presentation/components/custom/pages/admin/catalog/collections/hooks/use-delete-collections"
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
 import { useCatalogRowActionMenu } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/lib/use-catalog-row-action-menu"
+
 export const CollectionsRowActions = ({ collection }: CollectionsRowActionsProps): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.collections.rowActions")
   const adminLocale = useLocale()
   const router = useRouter()
-  const { locale } = useParams({
-    strict: false,
-  })
   const { openEdit } = useCollectionsSheet()
   const deleteCollections = useDeleteCollections()
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -36,35 +34,41 @@ export const CollectionsRowActions = ({ collection }: CollectionsRowActionsProps
     confirmOpen,
     setConfirmOpen,
   )
+
   const { handle, id } = collection
   const storefrontHref = useMemo(
     () =>
       router.buildLocation({
         params: {
           handle,
-          locale,
         },
-        to: "/{-$locale}/collections/$handle",
+        to: "/collections/$handle",
       }).href,
-    [router, handle, locale],
+    [router, handle],
   )
+
   const handleEdit = useCallback(() => {
     openEdit(collection)
   }, [collection, openEdit])
+
   const handleViewProducts = useCallback(() => {
     globalThis.open(storefrontHref, "_blank", "noopener,noreferrer")
   }, [storefrontHref])
+
   const handleCopyId = useCallback(() => {
     void navigator.clipboard.writeText(id)
     toast.success(t("copyIdToast"))
   }, [id, t])
+
   const handleCopyLink = useCallback(() => {
     void navigator.clipboard.writeText(`${globalThis.location.origin}${storefrontHref}`)
     toast.success(t("copyLinkToast"))
   }, [storefrontHref, t])
+
   const handleDelete = useCallback(() => {
     closeMenuAndRequestDeleteConfirm()
   }, [closeMenuAndRequestDeleteConfirm])
+
   const handleConfirmDelete = useCallback(() => {
     deleteCollections.mutate([id], {
       onSuccess: () => {
@@ -72,6 +76,7 @@ export const CollectionsRowActions = ({ collection }: CollectionsRowActionsProps
       },
     })
   }, [deleteCollections, handleConfirmOpenChange, id])
+
   const runMenuAction = useCallback(
     (action: () => void) => (event: MouseEvent) => {
       event.preventDefault()
@@ -81,9 +86,11 @@ export const CollectionsRowActions = ({ collection }: CollectionsRowActionsProps
     },
     [],
   )
+
   const stopRowClick = useCallback((event: MouseEvent) => {
     event.stopPropagation()
   }, [])
+
   const trigger = useMemo(
     () => (
       <Button variant="ghost" size="icon" className="size-8" onClick={stopRowClick} onPointerDown={stopRowClick}>
@@ -92,6 +99,7 @@ export const CollectionsRowActions = ({ collection }: CollectionsRowActionsProps
     ),
     [stopRowClick],
   )
+
   return (
     <>
       <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
@@ -137,7 +145,9 @@ export const CollectionsRowActions = ({ collection }: CollectionsRowActionsProps
     </>
   )
 }
+
 const ITEM_CLASS = "px-3 py-2.5 text-[13px] gap-3"
+
 interface CollectionsRowActionsProps {
-  readonly collection: Collection["adminListItem"]
+  readonly collection: ProductCollection["adminListItem"]
 }

@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { type UseFieldArrayRemove, useController, useFormContext } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
@@ -19,6 +19,7 @@ import { catalogFieldStringValue } from "~/src/presentation/components/custom/pa
 import { type ProductAttributeFieldArrayName } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-editor-attribute-list-panel"
 import { ProductEditorAttributeValueInput } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-editor-attribute-value-input"
 import { toProductEditorAttributeDefinition } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-editor-attribute-value.utils"
+
 export const ProductEditorAttributeFields = ({
   attributeOptions,
   attributesById,
@@ -33,10 +34,12 @@ export const ProductEditorAttributeFields = ({
     control,
     name: `${baseName}.${index}.attributeId`,
   })
+
   const { field: valueField } = useController({
     control,
     name: `${baseName}.${index}.value`,
   })
+
   const selectValue = catalogFieldStringValue(attributeIdField.value)
   const attributeValue = catalogFieldStringValue(valueField.value)
   const attributeId = catalogFieldStringValue(attributeIdField.value)
@@ -50,15 +53,18 @@ export const ProductEditorAttributeFields = ({
     },
     [attributeIdField, valueField],
   )
+
   const handleValueChange = useCallback(
     (value: string) => {
       valueField.onChange(value)
     },
     [valueField],
   )
+
   const handleRemove = useCallback((): void => {
     onRemove(index)
   }, [index, onRemove])
+
   return (
     <CatalogSheetControlsActionRow>
       <CatalogSheetControlColumn hint={tForm("attributeProperty")} label={t("attribute")}>
@@ -97,6 +103,7 @@ export const ProductEditorAttributeFields = ({
     </CatalogSheetControlsActionRow>
   )
 }
+
 interface ProductEditorAttributeFieldsProps {
   readonly attributeOptions: readonly {
     label: string

@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react"
 
 import { useQuery } from "@tanstack/react-query"
-import { useLocale } from "use-intl"
+import { useLocale } from "use-intl/react"
 
-import { type AdminDashboardChartPoint } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 import { isAdminDashboardCustomChartRangeValid } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
-import { adminDashboardChartRangeQueryOptions } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-chart-range"
+import { getDashboardChartRangeQuery } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-chart-range"
 
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
+
 export const useDashboardChartRange = (): {
   readonly applyCustomRange: (range: DashboardCustomChartRange) => void
-  readonly chartData: readonly AdminDashboardChartPoint[]
+  readonly chartData: readonly AdminDashboard["chartPoint"][]
   readonly chartRange: DashboardChartRange
   readonly clearCustomRange: () => void
   readonly customRange: DashboardCustomChartRange | undefined
@@ -22,7 +23,7 @@ export const useDashboardChartRange = (): {
   const [chartRange, setChartRange] = useState<DashboardChartRange>(DEFAULT_CHART_RANGE)
   const [customRange, setCustomRange] = useState<DashboardCustomChartRange | undefined>()
   const customChartQuery = useQuery({
-    ...adminDashboardChartRangeQueryOptions({
+    ...getDashboardChartRangeQuery({
       endDate: customRange?.endDate ?? "",
       locale,
       startDate: customRange?.startDate ?? "",
@@ -32,7 +33,8 @@ export const useDashboardChartRange = (): {
       customRange !== undefined &&
       isAdminDashboardCustomChartRangeValid(customRange.startDate, customRange.endDate),
   })
-  const presetChartData = useMemo((): readonly AdminDashboardChartPoint[] => {
+
+  const presetChartData = useMemo((): readonly AdminDashboard["chartPoint"][] => {
     switch (chartRange) {
       case "7d": {
         return snapshot.chartPoints7d
@@ -48,19 +50,23 @@ export const useDashboardChartRange = (): {
       }
     }
   }, [chartRange, snapshot.chartPoints1y, snapshot.chartPoints30d, snapshot.chartPoints7d])
+
   const chartData = chartRange === "custom" ? (customChartQuery.data ?? []) : presetChartData
   const isCustomLoading = chartRange === "custom" && customChartQuery.isFetching
   const selectPresetRange = (range: Exclude<DashboardChartRange, "custom">): void => {
     setChartRange(range)
   }
+
   const applyCustomRange = (range: DashboardCustomChartRange): void => {
     setCustomRange(range)
     setChartRange("custom")
   }
+
   const clearCustomRange = (): void => {
     setCustomRange(undefined)
     setChartRange(DEFAULT_CHART_RANGE)
   }
+
   return {
     applyCustomRange,
     chartData,
@@ -71,9 +77,12 @@ export const useDashboardChartRange = (): {
     selectPresetRange,
   }
 }
+
 export type DashboardChartRange = "7d" | "30d" | "1y" | "custom"
+
 export interface DashboardCustomChartRange {
   readonly endDate: string
   readonly startDate: string
 }
+
 const DEFAULT_CHART_RANGE: DashboardChartRange = "30d"

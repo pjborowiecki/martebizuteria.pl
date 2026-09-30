@@ -1,11 +1,12 @@
 import { type JSX } from "react"
 
-import { type useTranslations } from "use-intl"
+import { type useTranslations } from "use-intl/react"
 
-import { DATE_COLUMN_FILTER_OPERATOR, type DateColumnFilterOperator } from "~/src/lib/admin-column-filters"
+import { DATE_COLUMN_FILTER_OPERATOR, type DateColumnFilterOperator } from "~/src/modules/_core/utils/column-filters"
 
 import { LocaleDatePicker } from "~/src/presentation/components/shadcn/locale-date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
+
 export const CustomersDateFilterForm = ({
   draft,
   onDateChange,
@@ -22,6 +23,7 @@ export const CustomersDateFilterForm = ({
     placeholder: t("filter.date.placeholder"),
     today: t("filter.date.today"),
   }
+
   return (
     <>
       <div className="space-y-2">
@@ -88,12 +90,14 @@ export const CustomersDateFilterForm = ({
     </>
   )
 }
+
 export interface DateFilterDraft {
   readonly date: string
   readonly endDate: string
   readonly operator: DateColumnFilterOperator
   readonly startDate: string
 }
+
 interface CustomersDateFilterFormProps {
   readonly draft: DateFilterDraft
   readonly onDateChange: (isoDate: string) => void
