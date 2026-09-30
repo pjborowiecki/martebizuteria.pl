@@ -3,8 +3,7 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_BILLING } from "~/src/data/order-detail"
-
+import { SHIPPING_ADDRESS } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderBillingCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-billing-card"
 
 afterEach(() => {
@@ -12,26 +11,23 @@ afterEach(() => {
 })
 
 describe("OrderBillingCard", () => {
-  it("titles the card and states that billing matches shipping", () => {
-    renderWithProviders(<OrderBillingCard />)
+  it("titles the card and badges a shared shipping address", () => {
+    renderWithProviders(<OrderBillingCard billingAddress={SHIPPING_ADDRESS} sameAsShipping />)
 
     expect(screen.getByText("Billing Address")).toBeInTheDocument()
     expect(screen.getByText("Same as shipping")).toBeInTheDocument()
   })
 
-  it("prints the billing address with city and postcode on one line", () => {
-    renderWithProviders(<OrderBillingCard />)
+  it("prints a separate billing address without the badge", () => {
+    renderWithProviders(<OrderBillingCard billingAddress={{ ...SHIPPING_ADDRESS, name: "M'Arte Sp. z o.o." }} sameAsShipping={false} />)
 
-    expect(screen.getByText(DEMO_BILLING.name)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_BILLING.line1)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_BILLING.line2)).toBeInTheDocument()
-    expect(screen.getByText(`${DEMO_BILLING.city}, ${DEMO_BILLING.postcode}`)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_BILLING.country)).toBeInTheDocument()
+    expect(screen.getByText("M'Arte Sp. z o.o.")).toBeInTheDocument()
+    expect(screen.queryByText("Same as shipping")).not.toBeInTheDocument()
   })
 
-  it("carries no tracking or carrier details, unlike the shipping card", () => {
-    renderWithProviders(<OrderBillingCard />)
+  it("states when no billing address was captured", () => {
+    renderWithProviders(<OrderBillingCard billingAddress={undefined} sameAsShipping={false} />)
 
-    expect(screen.queryByText("Est. delivery", { exact: false })).not.toBeInTheDocument()
+    expect(screen.getByText("No billing address recorded.")).toBeInTheDocument()
   })
 })

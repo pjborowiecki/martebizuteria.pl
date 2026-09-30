@@ -8,6 +8,8 @@ import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { cancelOrderMutation } from "~/src/modules/order/use-cases/cancel-order"
 import { fulfillOrderMutation } from "~/src/modules/order/use-cases/fulfill-order"
+import { markOrderDeliveredMutation } from "~/src/modules/order/use-cases/mark-order-delivered"
+import { refundAdminOrderMutation } from "~/src/modules/order/use-cases/refund-admin-order"
 import { shipOrderMutation } from "~/src/modules/order/use-cases/ship-order"
 
 const resolveOrderActionErrorMessage = (error: Error, t: ReturnType<typeof useTranslations<"pages.admin.orders.rowActions">>): string => {
@@ -24,10 +26,10 @@ const resolveOrderActionErrorMessage = (error: Error, t: ReturnType<typeof useTr
   return t("toast.errorDescription")
 }
 
-const useAdminOrderActionMutation = (
-  options: AdminOrderActionOptions,
-  successDescriptionKey: "toast.fulfillSuccessDescription" | "toast.shipSuccessDescription" | "toast.cancelSuccessDescription",
-): UseMutationResult<OrderRowActionResult, Error, OrderIdInput> => {
+const useAdminOrderActionMutation = <TInput extends OrderIdInput>(
+  options: UseMutationOptions<OrderActionResult, Error, TInput>,
+  successDescriptionKey: OrderActionSuccessKey,
+): UseMutationResult<OrderActionResult, Error, TInput> => {
   const t = useTranslations("pages.admin.orders.rowActions")
   const queryClient = useQueryClient()
 
@@ -49,22 +51,38 @@ const useAdminOrderActionMutation = (
   })
 }
 
-export const useFulfillOrder = (): UseMutationResult<OrderRowActionResult, Error, OrderIdInput> =>
+export const useFulfillOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
   useAdminOrderActionMutation(fulfillOrderMutation, "toast.fulfillSuccessDescription")
 
-export const useMarkOrderShipped = (): UseMutationResult<OrderRowActionResult, Error, OrderIdInput> =>
+export const useMarkOrderShipped = (): UseMutationResult<OrderActionResult, Error, ShipOrderInput> =>
   useAdminOrderActionMutation(shipOrderMutation, "toast.shipSuccessDescription")
 
-export const useCancelOrder = (): UseMutationResult<OrderRowActionResult, Error, OrderIdInput> =>
+export const useMarkOrderDelivered = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
+  useAdminOrderActionMutation(markOrderDeliveredMutation, "toast.markDeliveredSuccessDescription")
+
+export const useCancelOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
   useAdminOrderActionMutation(cancelOrderMutation, "toast.cancelSuccessDescription")
 
-type AdminOrderActionOptions = UseMutationOptions<OrderRowActionResult, Error, OrderIdInput>
+export const useRefundOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
+  useAdminOrderActionMutation(refundAdminOrderMutation, "toast.refundSuccessDescription")
+
+type OrderActionSuccessKey =
+  | "toast.cancelSuccessDescription"
+  | "toast.fulfillSuccessDescription"
+  | "toast.markDeliveredSuccessDescription"
+  | "toast.refundSuccessDescription"
+  | "toast.shipSuccessDescription"
 
 interface OrderIdInput {
   readonly orderId: string
 }
 
-interface OrderRowActionResult {
+interface ShipOrderInput extends OrderIdInput {
+  readonly trackingNumber?: string | undefined
+  readonly trackingUrl?: string | undefined
+}
+
+interface OrderActionResult {
   readonly ok: true
   readonly orderId: string
 }

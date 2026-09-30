@@ -1,12 +1,13 @@
 import { type JSX } from "react"
 
 import { Check } from "lucide-react"
-import { useTranslations } from "use-intl/react"
+import { useFormatter, useTranslations } from "use-intl/react"
 
-import { type FulfillmentStep } from "~/src/data/order-detail"
+import { type Order } from "~/src/modules/order/order.types"
 
-export const FulfillmentStepItem = ({ index, step }: FulfillmentStepItemProps): JSX.Element => {
+export const FulfillmentStepItem = ({ index, step }: Readonly<FulfillmentStepItemProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
+  const format = useFormatter()
 
   return (
     <div className="flex flex-1 flex-col items-center text-center">
@@ -21,12 +22,16 @@ export const FulfillmentStepItem = ({ index, step }: FulfillmentStepItemProps): 
       <p className={`mt-2 text-[12px] ${step.done ? "font-medium text-foreground" : "text-muted-foreground/50"}`}>
         {t(`orderDetail.fulfillment.steps.${step.key}`)}
       </p>
-      {step.date !== undefined && <p className="text-[10px] text-muted-foreground/40">{step.date}</p>}
+      {step.at !== undefined && (
+        <p className="text-[10px] text-muted-foreground/40">
+          {format.dateTime(step.at, { day: "numeric", hour: "2-digit", minute: "2-digit", month: "short" })}
+        </p>
+      )}
     </div>
   )
 }
 
 interface FulfillmentStepItemProps {
   readonly index: number
-  readonly step: FulfillmentStep
+  readonly step: Order["adminOrderDetail"]["fulfillmentSteps"][number]
 }

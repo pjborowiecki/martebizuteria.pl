@@ -7,6 +7,7 @@
   "orderLabel": "Order reference",
   "deliveryMethodLabel": "Delivery method",
   "shippingAddressLabel": "Shipping address",
+  "trackingNumberLabel": "Tracking number",
   "estimatedDeliveryLabel": "Estimated delivery",
   "createAccountCta": "Create account and track your order",
   "viewOrderCta": "View your order",
@@ -25,5 +26,6 @@
   "closingNote": "If you have any questions about your shipment, simply reply to this email — we are happy to help.",
   "signoff": "With warm regards,",
   "sender": "The M'Arte Atelier",
-  "tagline": "Handcrafted Jewelry"
+  "tagline": "Handcrafted Jewelry",
+  "trackingCta": "Track your parcel"
 }

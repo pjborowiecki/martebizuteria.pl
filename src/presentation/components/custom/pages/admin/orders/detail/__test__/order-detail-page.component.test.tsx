@@ -1,10 +1,16 @@
 import { cleanup, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vite-plus/test"
+import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_LINE_ITEMS, DEMO_TIMELINE } from "~/src/data/order-detail"
+vi.mock("~/src/presentation/components/custom/image", () => ({
+  Image: ({ alt, src }: { readonly alt: string; readonly src: string }) => <img alt={alt} src={src} />,
+}))
 
+import {
+  ORDER_ITEM,
+  buildAdminOrderDetail,
+} from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderDetailPage } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail-page"
 
 afterEach(() => {
@@ -13,7 +19,7 @@ afterEach(() => {
 
 describe("OrderDetailPage", () => {
   it("assembles every card of the order detail view", () => {
-    renderWithProviders(<OrderDetailPage />)
+    renderWithProviders(<OrderDetailPage order={buildAdminOrderDetail()} />)
 
     for (const title of [
       "Fulfillment",
@@ -24,28 +30,29 @@ describe("OrderDetailPage", () => {
       "Billing Address",
       "Payment",
       "Tags",
-      "Internal Notes",
+      "Customer Note",
     ]) {
       expect(screen.getAllByText(title).length).toBeGreaterThan(0)
     }
   })
 
   it("shows the meta strip labels above the cards", () => {
-    renderWithProviders(<OrderDetailPage />)
+    renderWithProviders(<OrderDetailPage order={buildAdminOrderDetail()} />)
 
     expect(screen.getByText("Date")).toBeInTheDocument()
-    expect(screen.getByText("Channel")).toBeInTheDocument()
+    expect(screen.getAllByText("Total").length).toBeGreaterThan(0)
   })
 
-  it("renders the line items and the activity feed together", () => {
-    const { container } = renderWithProviders(<OrderDetailPage />)
+  it("renders the line items and the activity feed from the loaded order", () => {
+    const order = buildAdminOrderDetail({ items: [ORDER_ITEM, { ...ORDER_ITEM, id: "item-2" }] })
+    const { container } = renderWithProviders(<OrderDetailPage order={order} />)
 
-    expect(container.querySelectorAll("tbody tr")).toHaveLength(DEMO_LINE_ITEMS.length)
-    expect(screen.getByText(DEMO_TIMELINE[0]?.description ?? "")).toBeInTheDocument()
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(2)
+    expect(screen.getByText("Order shipped")).toBeInTheDocument()
   })
 
   it("splits the view into a main column and a sidebar", () => {
-    const { container } = renderWithProviders(<OrderDetailPage />)
+    const { container } = renderWithProviders(<OrderDetailPage order={buildAdminOrderDetail()} />)
 
     expect(container.querySelector(".grid")?.children).toHaveLength(2)
   })

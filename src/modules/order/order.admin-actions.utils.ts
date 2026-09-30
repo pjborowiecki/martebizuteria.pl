@@ -23,6 +23,17 @@ export const canMarkAdminOrderShipped = ({ fulfillmentStatus, status }: OrderAct
   return (SHIPPABLE_FULFILLMENT_STATUSES as readonly string[]).includes(fulfillmentStatus)
 }
 
+export const canMarkAdminOrderDelivered = ({
+  fulfillmentStatus,
+  status,
+}: Pick<OrderActionSnapshot, "fulfillmentStatus" | "status">): boolean => {
+  if (isCancelledOrderStatus(status)) {
+    return false
+  }
+
+  return fulfillmentStatus === "shipped"
+}
+
 export const canCancelAdminOrder = ({ status }: Pick<OrderActionSnapshot, "status">): boolean =>
   (OPEN_ORDER_STATUSES as readonly string[]).includes(status)
 

@@ -1,10 +1,16 @@
 import { cleanup, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vite-plus/test"
+import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_LINE_ITEMS, DEMO_SUMMARY } from "~/src/data/order-detail"
+vi.mock("~/src/presentation/components/custom/image", () => ({
+  Image: ({ alt, src }: { readonly alt: string; readonly src: string }) => <img alt={alt} src={src} />,
+}))
 
+import {
+  ORDER_ITEM,
+  buildAdminOrderDetail,
+} from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderLineItemsCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-line-items-card"
 
 afterEach(() => {
@@ -12,40 +18,46 @@ afterEach(() => {
 })
 
 describe("OrderLineItemsCard", () => {
-  it("counts the items beside the title", () => {
-    renderWithProviders(<OrderLineItemsCard />)
+  it("titles the card with the line count", () => {
+    renderWithProviders(<OrderLineItemsCard order={buildAdminOrderDetail()} />)
 
-    expect(screen.getByText("Items").textContent).toBe(`Items(${DEMO_LINE_ITEMS.length})`)
+    expect(screen.getByText("Items")).toBeInTheDocument()
+    expect(screen.getByText("(1)")).toBeInTheDocument()
   })
 
-  it("heads the table with the translated column names", () => {
-    const { container } = renderWithProviders(<OrderLineItemsCard />)
-    const headers = [...container.querySelectorAll("th")].map((head) => head.textContent)
+  it("labels every column", () => {
+    renderWithProviders(<OrderLineItemsCard order={buildAdminOrderDetail()} />)
 
-    expect(headers).toStrictEqual(["Product", "SKU", "Qty", "Price", "Total"])
-  })
-
-  it("renders one row per line item", () => {
-    const { container } = renderWithProviders(<OrderLineItemsCard />)
-
-    expect(container.querySelectorAll("tbody tr")).toHaveLength(DEMO_LINE_ITEMS.length)
-    for (const item of DEMO_LINE_ITEMS) {
-      expect(screen.getByText(item.sku)).toBeInTheDocument()
+    for (const column of ["Product", "SKU", "Qty", "Price", "Total"]) {
+      expect(screen.getAllByText(column).length).toBeGreaterThan(0)
     }
   })
 
-  it("annotates the shipping and tax lines with their demo labels", () => {
-    renderWithProviders(<OrderLineItemsCard />)
+  it("renders one row per order item", () => {
+    const { container } = renderWithProviders(
+      <OrderLineItemsCard order={buildAdminOrderDetail({ items: [ORDER_ITEM, { ...ORDER_ITEM, id: "item-2" }] })} />,
+    )
 
-    expect(screen.getByText("Shipping").textContent).toBe(`Shipping(${DEMO_SUMMARY.shippingLabel})`)
-    expect(screen.getByText("Tax").textContent).toBe(`Tax(${DEMO_SUMMARY.taxLabel})`)
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(2)
   })
 
-  it("totals the order after the line items", () => {
-    renderWithProviders(<OrderLineItemsCard />)
+  it("summarises subtotal, shipping, tax and total", () => {
+    renderWithProviders(<OrderLineItemsCard order={buildAdminOrderDetail()} />)
 
     expect(screen.getByText("Subtotal")).toBeInTheDocument()
-    expect(screen.getAllByText(DEMO_SUMMARY.total)).toHaveLength(2)
-    expect(screen.getAllByText(DEMO_SUMMARY.shipping)).toHaveLength(2)
+    expect(screen.getByText("Shipping")).toBeInTheDocument()
+    expect(screen.getByText("Tax")).toBeInTheDocument()
+    expect(screen.getByText(/19[.,]00/u)).toBeInTheDocument()
+  })
+
+  it("adds a discount line only when the order carries one", () => {
+    renderWithProviders(<OrderLineItemsCard order={buildAdminOrderDetail()} />)
+
+    expect(screen.queryByText("Discount")).not.toBeInTheDocument()
+
+    cleanup()
+    renderWithProviders(<OrderLineItemsCard order={buildAdminOrderDetail({ discountTotalMinorUnits: 5000 })} />)
+
+    expect(screen.getByText("Discount")).toBeInTheDocument()
   })
 })

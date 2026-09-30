@@ -13,13 +13,18 @@ import { type OrderShippedDetails } from "~/src/presentation/emails/order-shippe
 export const buildOrderShippedDetails = (
   context: CheckoutEmailContext | undefined,
   messages: typeof orderShippedMessages,
+  tracking?: Readonly<{ trackingNumber: string | null; trackingUrl: string | null }>,
 ): OrderShippedDetails => {
   const deliveryType = context?.deliveryMethod?.type ?? "courier"
+  const trackingNumber = tracking?.trackingNumber?.trim()
+  const trackingUrl = tracking?.trackingUrl?.trim()
 
   return {
     deliveryMethod: resolveDeliveryMethodLabel(context, messages.unavailable),
     estimatedDelivery: messages.deliveryTiming[deliveryType].estimatedDelivery,
     shippingAddress: formatEmailAddress(context?.shippingAddress) ?? messages.unavailable,
+    trackingNumber: trackingNumber === undefined || trackingNumber === "" ? undefined : trackingNumber,
+    trackingUrl: trackingUrl === undefined || trackingUrl === "" ? undefined : trackingUrl,
   }
 }
 

@@ -3,8 +3,6 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_ORDER } from "~/src/data/order-detail"
-
 import { OrderTagsCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-tags-card"
 
 afterEach(() => {
@@ -12,24 +10,18 @@ afterEach(() => {
 })
 
 describe("OrderTagsCard", () => {
-  it("titles the card with the tags heading", () => {
-    renderWithProviders(<OrderTagsCard />)
+  it("translates each derived tag", () => {
+    renderWithProviders(<OrderTagsCard tags={["returning", "locker", "disputed"]} />)
 
     expect(screen.getByText("Tags")).toBeInTheDocument()
+    expect(screen.getByText("Returning customer")).toBeInTheDocument()
+    expect(screen.getByText("Locker delivery")).toBeInTheDocument()
+    expect(screen.getByText("Disputed")).toBeInTheDocument()
   })
 
-  it("renders one badge per tag on the order", () => {
-    renderWithProviders(<OrderTagsCard />)
+  it("states when an order carries no tags", () => {
+    renderWithProviders(<OrderTagsCard tags={[]} />)
 
-    for (const tag of DEMO_ORDER.tags) {
-      expect(screen.getByText(tag)).toBeInTheDocument()
-    }
-  })
-
-  it("keeps the tags in the order the demo order lists them", () => {
-    const { container } = renderWithProviders(<OrderTagsCard />)
-    const badges = [...(container.querySelector("div.flex-wrap")?.children ?? [])].map((node) => node.textContent)
-
-    expect(badges).toStrictEqual([...DEMO_ORDER.tags])
+    expect(screen.getByText("No tags.")).toBeInTheDocument()
   })
 })

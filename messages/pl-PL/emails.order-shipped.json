@@ -7,6 +7,7 @@
   "orderLabel": "Numer zamówienia",
   "deliveryMethodLabel": "Sposób dostawy",
   "shippingAddressLabel": "Adres dostawy",
+  "trackingNumberLabel": "Numer przesyłki",
   "estimatedDeliveryLabel": "Szacowany czas dostawy",
   "createAccountCta": "Załóż konto i śledź zamówienie",
   "viewOrderCta": "Zobacz zamówienie",
@@ -25,5 +26,6 @@
   "closingNote": "Jeśli masz pytania dotyczące przesyłki, odpowiedz na tę wiadomość — chętnie pomożemy.",
   "signoff": "Z serdecznymi pozdrowieniami,",
   "sender": "Pracownia M'Arte",
-  "tagline": "Ręcznie tworzona biżuteria"
+  "tagline": "Ręcznie tworzona biżuteria",
+  "trackingCta": "Śledź przesyłkę"
 }

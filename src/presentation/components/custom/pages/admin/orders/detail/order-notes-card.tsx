@@ -2,25 +2,23 @@ import { type JSX } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { DEMO_ORDER } from "~/src/data/order-detail"
-
-import { Button } from "~/src/presentation/components/shadcn/button"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
-export const OrderNotesCard = (): JSX.Element => {
+import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
+
+export const OrderNotesCard = ({ customerNote }: Readonly<OrderNotesCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
 
   return (
-    <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">
+    <Card className={ORDER_DETAIL_CARD_CLASS}>
       <CardContent className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-medium">{t("orderDetail.notes.title")}</p>
-          <Button className="h-7 text-xs text-muted-foreground" size="sm" variant="ghost">
-            {t("orderDetail.notes.edit")}
-          </Button>
-        </div>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">{DEMO_ORDER.notes}</p>
+        <p className="mb-3 text-sm font-medium">{t("orderDetail.notes.title")}</p>
+        <p className="text-[13px] leading-relaxed text-muted-foreground">{customerNote ?? t("orderDetail.notes.empty")}</p>
       </CardContent>
     </Card>
   )
+}
+
+interface OrderNotesCardProps {
+  readonly customerNote: string | undefined
 }

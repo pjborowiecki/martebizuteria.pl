@@ -3,40 +3,27 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_TIMELINE } from "~/src/data/order-detail"
-
+import { buildAdminOrderDetail } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderTimelineCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-timeline-card"
+
+const order = buildAdminOrderDetail()
 
 afterEach(() => {
   cleanup()
 })
 
 describe("OrderTimelineCard", () => {
-  it("titles the card with the activity heading", () => {
-    renderWithProviders(<OrderTimelineCard />)
+  it("titles the feed and renders every audit entry", () => {
+    renderWithProviders(<OrderTimelineCard timeline={order.timeline} />)
 
     expect(screen.getByText("Activity")).toBeInTheDocument()
+    expect(screen.getByText("Order shipped")).toBeInTheDocument()
+    expect(screen.getByText("Email sent")).toBeInTheDocument()
   })
 
-  it("renders every demo event description", () => {
-    renderWithProviders(<OrderTimelineCard />)
+  it("states when an order has no recorded activity", () => {
+    renderWithProviders(<OrderTimelineCard timeline={[]} />)
 
-    for (const event of DEMO_TIMELINE) {
-      expect(screen.getByText(event.description)).toBeInTheDocument()
-    }
-  })
-
-  it("marks the delivery status of each email event", () => {
-    renderWithProviders(<OrderTimelineCard />)
-    const emails = DEMO_TIMELINE.filter((event) => event.type === "email")
-
-    expect(screen.getAllByText("Delivered")).toHaveLength(emails.length)
-  })
-
-  it("keeps the newest event first", () => {
-    const { container } = renderWithProviders(<OrderTimelineCard />)
-    const [first] = [...container.querySelectorAll(String.raw`p.text-\[13px\]`)]
-
-    expect(first?.textContent).toBe(DEMO_TIMELINE[0]?.description)
+    expect(screen.getByText("No recorded activity for this order yet.")).toBeInTheDocument()
   })
 })

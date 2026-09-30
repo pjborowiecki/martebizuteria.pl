@@ -45,14 +45,15 @@ export const OrderShipped = ({ accountCta, details, locale, messages, orderId }:
 
         <DetailRow isFirst label={t("deliveryMethodLabel")} value={details.deliveryMethod} />
         <DetailRow label={t("shippingAddressLabel")} value={details.shippingAddress} />
+        {details.trackingNumber !== undefined && <DetailRow label={t("trackingNumberLabel")} value={details.trackingNumber} />}
         <DetailRow label={t("estimatedDeliveryLabel")} value={details.estimatedDelivery} />
       </EmailBorderedSection>
 
       <EmailBodyText>{t("closingNote")}</EmailBodyText>
 
       <Section className={EMAIL_CTA_SECTION_WITH_TOP_SPACING_CLASS}>
-        <Button className={EMAIL_CTA_BUTTON_CLASS} href={accountCta.href}>
-          {accountCta.label}
+        <Button className={EMAIL_CTA_BUTTON_CLASS} href={details.trackingUrl ?? accountCta.href}>
+          {details.trackingUrl === undefined ? accountCta.label : t("trackingCta")}
         </Button>
       </Section>
 
@@ -74,6 +75,8 @@ export interface OrderShippedDetails {
   readonly deliveryMethod: string
   readonly estimatedDelivery: string
   readonly shippingAddress: string
+  readonly trackingNumber: string | undefined
+  readonly trackingUrl: string | undefined
 }
 
 interface OrderShippedProps {
