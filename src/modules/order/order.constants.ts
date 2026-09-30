@@ -299,6 +299,7 @@ export const ORDER_QUERY_KEYS = {
     PAGE: ["admin", "orders", "page"] as const,
     STATS: ["admin", "orders", "stats"] as const,
   },
+  CONFIRMATION: ["order", "confirmation"] as const,
 } as const
 
 export const ORDER_MUTATION_KEYS = {

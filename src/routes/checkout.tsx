@@ -38,7 +38,10 @@ const MIN_STEP = 1
 
 const MAX_STEP = 4
 
+const STRIPE_SESSION_ID_MAX_LENGTH = 255
+
 const checkoutSearchSchema = z.object({
+  session_id: z.string().trim().max(STRIPE_SESSION_ID_MAX_LENGTH).optional(),
   step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
   success: z.preprocess(coerceSuccess, z.boolean().optional()),
 })

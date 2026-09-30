@@ -150,6 +150,25 @@ interface AdminOrderDetail {
   readonly trackingUrl: string | undefined
 }
 
+interface OrderConfirmation {
+  readonly createdAt: Date
+  readonly currencyCode: string
+  readonly deliveryMethodName: string | undefined
+  readonly discountTotalMinorUnits: number
+  readonly email: string
+  readonly id: string
+  readonly isGuestOrder: boolean
+  readonly isOwnOrder: boolean
+  readonly items: readonly AdminOrderDetailItem[]
+  readonly orderNumber: string
+  readonly shippingAddress: AdminOrderDetailAddress | undefined
+  readonly shippingTotalMinorUnits: number
+  readonly subtotalMinorUnits: number
+  readonly taxBasisPoints: number
+  readonly taxTotalMinorUnits: number
+  readonly totalMinorUnits: number
+}
+
 interface AdminOrderStats {
   readonly avgValueMinorUnits: number
   readonly currencyCode: string
@@ -188,6 +207,7 @@ export interface Order {
   adminOrderDetailAddress: AdminOrderDetailAddress
   adminOrderDetailItem: AdminOrderDetailItem
   adminOrderDetailTimelineEvent: AdminOrderDetailTimelineEvent
+  confirmation: OrderConfirmation
   adminPageInput: AdminOrdersPageInput
   adminStats: AdminOrderStats
   auditSnapshot: AdminOrderAuditSnapshot

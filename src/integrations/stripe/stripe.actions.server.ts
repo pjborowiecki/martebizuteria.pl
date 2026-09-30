@@ -176,7 +176,9 @@ interface CreateSessionArgs {
 }
 
 const createStripeSession = async ({ checkoutId, email, lines, shippingCost, userId }: CreateSessionArgs) => {
-  const returnUrl = `${resolveOrigin()}/checkout?success=true`
+  // Stripe substitutes the session id, which is how the confirmation page finds
+  // The order for a guest who has no session to scope a lookup by.
+  const returnUrl = `${resolveOrigin()}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`
   const metadata = {
     checkoutId,
     locale: getCurrentLocale(),

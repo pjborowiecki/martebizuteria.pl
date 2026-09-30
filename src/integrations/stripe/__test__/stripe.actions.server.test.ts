@@ -331,7 +331,7 @@ describe("checkout session return URL", () => {
     await handleCreateCheckoutSession(createInput())
 
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ return_url: "https://store.test/checkout?success=true" }),
+      expect.objectContaining({ return_url: "https://store.test/checkout?success=true&session_id={CHECKOUT_SESSION_ID}" }),
     )
   })
 
@@ -341,7 +341,7 @@ describe("checkout session return URL", () => {
     await handleCreateCheckoutSession(createInput())
 
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ return_url: "https://referer.test/checkout?success=true" }),
+      expect.objectContaining({ return_url: "https://referer.test/checkout?success=true&session_id={CHECKOUT_SESSION_ID}" }),
     )
   })
 
@@ -350,7 +350,9 @@ describe("checkout session return URL", () => {
 
     await handleCreateCheckoutSession(createInput())
 
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ return_url: `${APP_URL}/checkout?success=true` }))
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ return_url: `${APP_URL}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}` }),
+    )
   })
 
   it("falls back to the app URL when neither header is present", async () => {
@@ -358,7 +360,9 @@ describe("checkout session return URL", () => {
 
     await handleCreateCheckoutSession(createInput())
 
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ return_url: `${APP_URL}/checkout?success=true` }))
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ return_url: `${APP_URL}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}` }),
+    )
   })
 })
 

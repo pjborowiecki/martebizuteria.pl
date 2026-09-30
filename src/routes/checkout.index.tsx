@@ -16,7 +16,7 @@ const CheckoutPage = (): JSX.Element => {
   })
 
   if (search.success === true) {
-    return <CheckoutSuccess />
+    return <CheckoutSuccess sessionId={search.session_id ?? ""} />
   }
 
   return <CheckoutGuard />

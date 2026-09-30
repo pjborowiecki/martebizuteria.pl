@@ -18,6 +18,7 @@ interface SentEmail {
 
 const stubs = vi.hoisted(() => ({
   buildLocalizedUrl: vi.fn<(base: string, path: string, locale: string) => string>(),
+  claimGuestOrdersForUser: vi.fn<(input: { email: string; userId: string }) => Promise<number>>(),
   findFirst: vi.fn(),
   getCurrentLocale: vi.fn<() => string>(),
   recordAuthLoginAudit: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { query: { user: { findFirst: stubs.findFirst } } },
 }))
 
+vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: stubs.claimGuestOrdersForUser }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: stubs.scheduleAdminCustomersInvalidation,
 }))
@@ -164,6 +166,24 @@ describe("customer list invalidation hooks", () => {
       resourceId: createdUser.id,
     })
     expect(stubs.scheduleAdminCustomersInvalidation).toHaveBeenCalledOnce()
+  })
+
+  it("adopts guest orders for an account whose address a provider already verified", async () => {
+    await hooks.user.create.after(createdUser)
+
+    expect(stubs.claimGuestOrdersForUser).toHaveBeenCalledWith({ email: createdUser.email, userId: createdUser.id })
+  })
+
+  it("waits for verification before adopting guest orders on an unverified sign-up", async () => {
+    await hooks.user.create.after({ ...createdUser, emailVerified: false })
+
+    expect(stubs.claimGuestOrdersForUser).not.toHaveBeenCalled()
+  })
+
+  it("adopts guest orders once the address is verified", async () => {
+    await auth.options.emailVerification.afterEmailVerification(createdUser)
+
+    expect(stubs.claimGuestOrdersForUser).toHaveBeenCalledWith({ email: createdUser.email, userId: createdUser.id })
   })
 
   it("refreshes the admin customer list after an update", async () => {
