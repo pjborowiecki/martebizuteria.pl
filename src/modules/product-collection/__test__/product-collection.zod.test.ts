@@ -13,10 +13,13 @@ const titles = { "en-US": "Nova", "pl-PL": "Nova" }
 
 const descriptions = { "en-US": "Sculpted silver", "pl-PL": "Rzeźbione srebro" }
 
+const shortDescriptions = { "en-US": "Silver, sculpted", "pl-PL": "Srebro, rzeźbione" }
+
 const createInput = {
   descriptions,
   handle: "nova",
   image: "",
+  shortDescriptions,
   status: COLLECTION_STATUS.DRAFT,
   titles,
 }
@@ -59,6 +62,12 @@ describe("collection create input", () => {
     )
   })
 
+  it("rejects a short description longer than the column allows", () => {
+    const tooLong = { ...shortDescriptions, "en-US": "s".repeat(COLLECTION_COLUMN_LENGTH.shortDescription + 1) }
+
+    expect(productCollectionZodSchemas.createInput.safeParse({ ...createInput, shortDescriptions: tooLong }).success).toBe(false)
+  })
+
   it("rejects a description longer than the column allows", () => {
     const tooLong = { ...descriptions, "en-US": "d".repeat(COLLECTION_COLUMN_LENGTH.description + 1) }
 
@@ -98,6 +107,18 @@ describe("productCollectionZodSchemas.formValues", () => {
       expect.objectContaining({
         message: COLLECTION_FORM_VALIDATION_KEYS.descriptionTooLong,
         path: ["descriptions", "pl-PL"],
+      }),
+    ])
+  })
+
+  it("reports an over-long short description with the translation key the form shows", () => {
+    const tooLong = { ...shortDescriptions, "pl-PL": "s".repeat(COLLECTION_COLUMN_LENGTH.shortDescription + 1) }
+    const parsed = productCollectionZodSchemas.formValues.safeParse({ ...createInput, shortDescriptions: tooLong })
+
+    expect(parsed.error?.issues).toStrictEqual([
+      expect.objectContaining({
+        message: COLLECTION_FORM_VALIDATION_KEYS.shortDescriptionTooLong,
+        path: ["shortDescriptions", "pl-PL"],
       }),
     ])
   })
@@ -154,6 +175,7 @@ describe("collection admin list item", () => {
     metadata: null,
     productCount: 7,
     rank: 0,
+    shortDescriptions,
     status: COLLECTION_STATUS.ACTIVE,
     titles,
     updatedAt: new Date("2026-01-02T00:00:00.000Z"),

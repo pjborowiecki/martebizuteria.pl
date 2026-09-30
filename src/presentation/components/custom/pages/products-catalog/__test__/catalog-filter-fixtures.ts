@@ -30,6 +30,7 @@ export const collectionFixture = (id: string, title: string): ProductCollection[
   image: null,
   metadata: null,
   rank: 0,
+  shortDescriptions: null,
   status: "active",
   titles: { "en-US": title, "pl-PL": `${title} PL` },
   updatedAt: EPOCH,

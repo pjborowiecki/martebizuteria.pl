@@ -331,7 +331,7 @@ const LOCALE_MAP_FIELD_PATHS = {
 
 type CategoryLocaleMapFieldName = "titles" | "subtitles" | "shortDescriptions" | "descriptions"
 
-type CollectionLocaleMapFieldName = "titles" | "descriptions"
+type CollectionLocaleMapFieldName = "titles" | "shortDescriptions" | "descriptions"
 
 type ProductLocaleMapFieldName = "titles" | "subtitles" | "descriptions"
 

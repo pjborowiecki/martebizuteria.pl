@@ -14,6 +14,7 @@ const adminListItem = (overrides: Partial<ProductCollection["adminListItem"]> = 
   metadata: null,
   productCount: 4,
   rank: 2,
+  shortDescriptions: { "en-US": "Short EN", "pl-PL": "Krótki PL" },
   status: "active",
   titles: { "en-US": "Silver rings", "pl-PL": "Srebrne pierścionki" },
   updatedAt: new Date("2026-09-02T00:00:00.000Z"),
@@ -26,6 +27,7 @@ describe("createDefaultCollectionFormValues", () => {
       descriptions: { "en-US": "", "pl-PL": "" },
       handle: "",
       image: "",
+      shortDescriptions: { "en-US": "", "pl-PL": "" },
       status: "draft",
       titles: { "en-US": "", "pl-PL": "" },
     })
@@ -42,6 +44,7 @@ describe("adminListItemToFormValues", () => {
       descriptions: { "en-US": "Rings in silver", "pl-PL": "Pierścionki ze srebra" },
       handle: "silver-rings",
       image: "https://cdn.example.test/silver.webp",
+      shortDescriptions: { "en-US": "Short EN", "pl-PL": "Krótki PL" },
       status: "active",
       titles: { "en-US": "Silver rings", "pl-PL": "Srebrne pierścionki" },
     })

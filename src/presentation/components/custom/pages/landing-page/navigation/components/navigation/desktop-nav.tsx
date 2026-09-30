@@ -15,7 +15,7 @@ export const DesktopNav = (): JSX.Element => {
   const t = useTranslations("components.custom.navigation")
 
   return (
-    <nav aria-label={t("desktopNavLabel")} className="hidden h-full min-w-0 items-center gap-8 text-muted-foreground lg:flex lg:gap-10">
+    <nav aria-label={t("desktopNavLabel")} className="hidden h-full min-w-0 items-center gap-8 text-muted-foreground xl:flex xl:gap-10">
       {DESKTOP_LINKS.map(({ hash, labelKey, active }) => (
         <NavLink key={hash} hash={hash} active={active}>
           {t(labelKey)}

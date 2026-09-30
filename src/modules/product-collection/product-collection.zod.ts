@@ -39,12 +39,15 @@ const collectionLocaleMapRequiredSchema = (maxLength: number) =>
 
 const collectionTitlesSchema = collectionLocaleMapRequiredSchema(COLLECTION_COLUMN_LENGTH.title)
 
+const collectionShortDescriptionsSchema = collectionLocaleMapSchema(COLLECTION_COLUMN_LENGTH.shortDescription)
+
 const collectionDescriptionsSchema = collectionLocaleMapSchema(COLLECTION_COLUMN_LENGTH.description)
 
 const collectionCreateInputSchema = zod.object({
   descriptions: collectionDescriptionsSchema,
   handle: zod.string().trim().min(COLLECTION_MIN_LENGTH).regex(COLLECTION_HANDLE_PATTERN),
   image: zod.string().trim().default(""),
+  shortDescriptions: collectionShortDescriptionsSchema,
   status: zod.enum(COLLECTION_STATUSES),
   titles: collectionTitlesSchema,
 })
@@ -61,6 +64,10 @@ const collectionFormValuesSchema = zod.object({
       message: COLLECTION_FORM_VALIDATION_KEYS.slugInvalid,
     }),
   image: zod.string().trim(),
+  shortDescriptions: collectionLocaleMapSchema(
+    COLLECTION_COLUMN_LENGTH.shortDescription,
+    COLLECTION_FORM_VALIDATION_KEYS.shortDescriptionTooLong,
+  ),
   status: zod.enum(COLLECTION_STATUSES),
   titles: collectionTitlesSchema,
 })

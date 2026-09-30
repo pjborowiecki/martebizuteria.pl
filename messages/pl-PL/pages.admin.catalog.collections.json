@@ -70,6 +70,14 @@
       "pl-PL": "np. Letnia kolekcja",
       "en-US": "np. Summer Collection"
     },
+    "shortDescriptionLocale": {
+      "pl-PL": "Krótki opis (PL)",
+      "en-US": "Krótki opis (EN)"
+    },
+    "shortDescriptionLocalePlaceholder": {
+      "pl-PL": "Krótkie podsumowanie na karty i listy...",
+      "en-US": "Brief summary for cards and listings..."
+    },
     "descriptionLocale": {
       "pl-PL": "Opis (PL)",
       "en-US": "Opis (EN)"
@@ -98,6 +106,10 @@
       },
       "slug": "Fragment adresu URL tej kolekcji. Uzupełniany z nazwy, dopóki nie edytujesz go ręcznie. Tylko małe litery, cyfry i myślniki.",
       "description": "Tekst marketingowy na stronie kolekcji i w podglądach.",
+      "shortDescriptionLocale": {
+        "pl-PL": "Krótkie podsumowanie na karty i listy (polski).",
+        "en-US": "Krótkie podsumowanie na karty i listy (angielski)."
+      },
       "descriptionLocale": {
         "pl-PL": "Tekst marketingowy na stronie kolekcji (polski).",
         "en-US": "Tekst marketingowy na stronie kolekcji (angielski)."
@@ -119,6 +131,7 @@
       "slugRequired": "Slug URL jest wymagany",
       "slugInvalid": "Używaj tylko małych liter, cyfr i myślników",
       "descriptionTooLong": "Opis jest zbyt długi",
+      "shortDescriptionTooLong": "Krótki opis jest zbyt długi",
       "submitBlockedTitle": "Popraw błędy w formularzu",
       "submitBlockedDescription": "Sprawdź podświetlone pola i spróbuj ponownie."
     }

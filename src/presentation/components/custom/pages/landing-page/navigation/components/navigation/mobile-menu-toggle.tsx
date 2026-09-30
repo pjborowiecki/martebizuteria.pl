@@ -34,7 +34,7 @@ export const MobileMenuToggle = (): JSX.Element => {
       onClick={handleOpenMenu}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="flex h-10 shrink-0 items-center gap-2.5 rounded-none px-1.5 text-foreground transition-colors hover:bg-transparent hover:text-muted-foreground focus-visible:bg-transparent active:bg-transparent aria-expanded:bg-transparent sm:gap-3 sm:px-2 lg:hidden"
+      className="flex h-10 shrink-0 items-center gap-2.5 rounded-none px-1.5 text-foreground transition-colors hover:bg-transparent hover:text-muted-foreground focus-visible:bg-transparent active:bg-transparent aria-expanded:bg-transparent sm:gap-3 sm:px-2 xl:hidden"
     >
       <span ref={hover.ref} className="inline-flex will-change-transform">
         <MenuMark />

@@ -160,20 +160,6 @@
     "eyebrow": "Curated editions",
     "title": "Our Collections",
     "description": "Themed selections created around mood, season, and occasion.",
-    "cta": "View all collections",
-    "items": {
-      "newArrivals": {
-        "name": "New Arrivals",
-        "description": "The latest additions to our atelier — fresh forms and seasonal stones."
-      },
-      "silver": {
-        "name": "Silver 925",
-        "description": "Timeless jewelry made of the highest quality 925 silver."
-      },
-      "gold": {
-        "name": "Gold 585",
-        "description": "A collection of 585 gold jewelry, created to last."
-      }
-    }
+    "cta": "View all collections"
   }
 }

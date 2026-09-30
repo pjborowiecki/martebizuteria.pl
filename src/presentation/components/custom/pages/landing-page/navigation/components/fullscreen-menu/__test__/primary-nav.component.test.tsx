@@ -67,23 +67,25 @@ describe("PrimaryNav", () => {
     renderWithProviders(<PrimaryNav />)
 
     expect(screen.getByText("01")).toBeInTheDocument()
-    expect(screen.getByText("05")).toBeInTheDocument()
+    expect(screen.getByText("06")).toBeInTheDocument()
   })
 
   it("labels the destinations with the translated menu copy", () => {
     renderWithProviders(<PrimaryNav />)
 
     expect(menuLink(0)).toHaveTextContent("New arrivals")
-    expect(menuLink(2)).toHaveTextContent("Collections")
-    expect(menuLink(3)).toHaveTextContent("Products")
-    expect(menuLink(4)).toHaveTextContent("Brand")
+    expect(menuLink(3)).toHaveTextContent("Collections")
+    expect(menuLink(4)).toHaveTextContent("Products")
+    expect(menuLink(5)).toHaveTextContent("Brand")
   })
 
-  it("sets the silver destination apart with its italic suffix", () => {
+  it("sets the alloy destinations apart with their italic suffixes", () => {
     renderWithProviders(<PrimaryNav />)
 
     expect(menuLink(1)).toHaveTextContent("Silver")
     expect(screen.getByText("925")).toHaveClass("italic")
+    expect(menuLink(2)).toHaveTextContent("Gold")
+    expect(screen.getByText("585")).toHaveClass("italic")
   })
 
   it("points each destination at its localized route", () => {
@@ -91,15 +93,16 @@ describe("PrimaryNav", () => {
 
     expect(menuLink(0)).toHaveAttribute("href", "/collections/nowosci")
     expect(menuLink(1)).toHaveAttribute("href", "/collections/srebro-925")
-    expect(menuLink(2)).toHaveAttribute("href", "/collections")
-    expect(menuLink(3)).toHaveAttribute("href", "/products")
-    expect(menuLink(4)).toHaveAttribute("href", "/about")
+    expect(menuLink(2)).toHaveAttribute("href", "/collections/zloto-585")
+    expect(menuLink(3)).toHaveAttribute("href", "/collections")
+    expect(menuLink(4)).toHaveAttribute("href", "/products")
+    expect(menuLink(5)).toHaveAttribute("href", "/about")
   })
 
   it("closes the overlay when the shopper follows a destination", async () => {
     renderWithProviders(<PrimaryNav />)
 
-    await userEvent.click(menuLink(4))
+    await userEvent.click(menuLink(5))
 
     expect(spies.dismissMenuForRouteNavigation).toHaveBeenCalled()
     expect(spies.handleNavigateToHash).not.toHaveBeenCalled()

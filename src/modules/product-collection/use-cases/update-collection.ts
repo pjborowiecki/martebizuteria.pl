@@ -27,13 +27,14 @@ export const updateCollection = createServerFn({ method: "POST" })
       throw new AppError(ERROR_CODES.CONFLICT, COLLECTION_ERROR_CODES.DUPLICATE_HANDLE)
     }
 
-    const { descriptions, handle, id, image, status, titles } = data
+    const { descriptions, handle, id, image, shortDescriptions, status, titles } = data
     await db
       .update(productCollection)
       .set({
         descriptions: normalizeOptionalCollectionLocaleMapForSave(descriptions),
         handle,
         image: image === "" ? undefined : image,
+        shortDescriptions: normalizeOptionalCollectionLocaleMapForSave(shortDescriptions),
         status,
         titles: normalizeProductAttributeLocaleMapForSave(titles),
       })

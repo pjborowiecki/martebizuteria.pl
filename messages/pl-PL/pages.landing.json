@@ -160,20 +160,6 @@
     "eyebrow": "Kuratorskie edycje",
     "title": "Nasze Kolekcje",
     "description": "Tematyczne selekcje stworzone wokół nastroju, sezonu i okazji.",
-    "cta": "Zobacz wszystkie kolekcje",
-    "items": {
-      "newArrivals": {
-        "name": "Nowości",
-        "description": "Najnowsze dodatki do naszego atelier — świeże formy i sezonowe kamienie."
-      },
-      "silver": {
-        "name": "Srebro 925",
-        "description": "Ponadczasowa biżuteria wykonana z najwyższej próby srebra 925."
-      },
-      "gold": {
-        "name": "Złoto 585",
-        "description": "Kolekcja złotej biżuterii próby 585, stworzona by trwać."
-      }
-    }
+    "cta": "Zobacz wszystkie kolekcje"
   }
 }

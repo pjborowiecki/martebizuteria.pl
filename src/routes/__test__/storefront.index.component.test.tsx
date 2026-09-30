@@ -25,6 +25,7 @@ const captured = vi.hoisted((): { current: RouteDefinition | undefined } => ({ c
 
 const spies = vi.hoisted(() => ({
   categoriesQuery: vi.fn(() => ({ queryKey: ["categories"] })),
+  collectionsQuery: vi.fn(() => ({ queryKey: ["collections"] })),
   landingAnimations: vi.fn<(options: { rootRef: RefObject<HTMLDivElement | null> }) => void>(),
   messagesQueryOptions: vi.fn((input: { locale: string; namespace: string }) => ({ queryKey: ["messages", input.namespace] })),
   newArrivalsQuery: vi.fn(() => ({ queryKey: ["new-arrivals"] })),
@@ -51,6 +52,7 @@ vi.mock("~/src/integrations/use-intl/i18n.messages", async (importOriginal) => (
 }))
 vi.mock("~/src/modules/product/use-cases/get-new-arrivals", () => ({ getNewArrivalsQuery: spies.newArrivalsQuery }))
 vi.mock("~/src/modules/product-category/use-cases/get-categories", () => ({ getCategoriesQuery: spies.categoriesQuery }))
+vi.mock("~/src/modules/product-collection/use-cases/get-collections", () => ({ getCollectionsQuery: spies.collectionsQuery }))
 vi.mock("~/src/lib/image", () => ({ prefetchProductThumbnails: spies.prefetchProductThumbnails }))
 vi.mock("~/src/presentation/components/custom/pages/landing-page/sections/hero-section", () => ({
   HeroSection: (): JSX.Element => <section>hero</section>,
@@ -189,11 +191,12 @@ describe("landing route loader", () => {
     expect(spies.messagesQueryOptions).toHaveBeenCalledWith({ locale: "en-US", namespace: "pages.landing" })
   })
 
-  it("prefetches the new arrivals and the categories the page shows", async () => {
+  it("prefetches the new arrivals, the categories and the collections the page shows", async () => {
     await runLoader()
 
     expect(spies.newArrivalsQuery).toHaveBeenCalled()
     expect(spies.categoriesQuery).toHaveBeenCalled()
+    expect(spies.collectionsQuery).toHaveBeenCalled()
   })
 
   it("warms the thumbnails of the new arrivals it just loaded", async () => {

@@ -7,6 +7,7 @@ export const COLLECTION_COLUMN_LENGTH = {
   handle: 255,
   id: UUID_STRING_LENGTH,
   image: 2048,
+  shortDescription: 500,
   title: 255,
 } as const
 
@@ -38,6 +39,7 @@ export const COLLECTION_FORM_VALIDATION_KEYS = {
   localeTitleRequired: "form.validation.LOCALE_TITLE_REQUIRED",
   nameRequired: "form.validation.nameRequired",
   nameTooLong: "form.validation.nameTooLong",
+  shortDescriptionTooLong: "form.validation.shortDescriptionTooLong",
   slugInvalid: "form.validation.slugInvalid",
   slugRequired: "form.validation.slugRequired",
 } as const

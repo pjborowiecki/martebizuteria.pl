@@ -5,6 +5,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getCategoriesQuery } from "~/src/modules/product-category/use-cases/get-categories"
+import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 import { getNewArrivalsQuery } from "~/src/modules/product/use-cases/get-new-arrivals"
 
 import { useLandingAnimations } from "~/src/hooks/use-landing-animations"
@@ -70,6 +71,10 @@ export const Route = createFileRoute("/_storefront/")({
       }),
       context.queryClient.query({
         ...getCategoriesQuery(),
+        staleTime: "static",
+      }),
+      context.queryClient.query({
+        ...getCollectionsQuery(),
         staleTime: "static",
       }),
     ])

@@ -3,7 +3,11 @@ import { type JSX, useMemo } from "react"
 import { useLocale } from "use-intl/react"
 
 import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
-import { resolveCollectionDescription, resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
+import {
+  resolveCollectionDescription,
+  resolveCollectionShortDescription,
+  resolveCollectionTitle,
+} from "~/src/modules/product-collection/product-collection.utils"
 
 import { getProductImageUrl } from "~/src/lib/image"
 
@@ -17,7 +21,7 @@ import { ROUTES } from "~/src/routes"
 export const CollectionCard = ({
   collection,
 }: Readonly<{
-  collection: Pick<ProductCollection["select"], "descriptions" | "handle" | "id" | "image" | "titles">
+  collection: Pick<ProductCollection["select"], "descriptions" | "handle" | "id" | "image" | "shortDescriptions" | "titles">
 }>): JSX.Element => {
   const locale = useLocale()
   const params = useMemo(
@@ -28,7 +32,8 @@ export const CollectionCard = ({
   )
 
   const title = resolveCollectionTitle(collection.titles, locale)
-  const description = resolveCollectionDescription(collection.descriptions, locale)
+  const shortDescription = resolveCollectionShortDescription(collection.shortDescriptions, locale)
+  const description = shortDescription === "" ? resolveCollectionDescription(collection.descriptions, locale) : shortDescription
   const imageSrc = getProductImageUrl(collection.image)
 
   return (

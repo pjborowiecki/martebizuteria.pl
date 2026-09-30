@@ -17,6 +17,7 @@ const collection = (id: string, rank: number): ProductCollection["adminListItem"
   metadata: null,
   productCount: 1,
   rank,
+  shortDescriptions: null,
   status: "active",
   titles: { "en-US": `Collection ${id}`, "pl-PL": `Kolekcja ${id}` },
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
