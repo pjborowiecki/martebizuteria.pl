@@ -6,11 +6,17 @@ WHERE handle IN ('nowosci', 'srebro-925', 'zloto-585')
     '019e97ab-79ea-77ac-8f36-bc18310c8ed0'
   );
 
-INSERT INTO product_collection (id, handle, titles, descriptions, status, rank, image, metadata, created_at, updated_at) VALUES
+INSERT INTO product_collection (id, handle, titles, short_descriptions, descriptions, status, rank, image, metadata, created_at, updated_at) VALUES
 (
   '019e97ab-79e8-7449-b193-28b63bd5be04',
   'nowosci',
   json_object('pl-PL', 'Nowości', 'en-US', 'New arrivals'),
+  json_object(
+    'pl-PL',
+    'Najnowsze dodatki do naszego atelier — świeże formy i sezonowe kamienie.',
+    'en-US',
+    'The latest additions to our atelier — fresh forms and seasonal stones.'
+  ),
   json_object(
     'pl-PL',
     'Pierwsze spojrzenie na to, co właśnie opuściło nasze warszawskie atelier. Każda forma rodzi się z umiaru — surowy minerał oprawiony w srebro próby 925, wykończony ręcznie tak, by przetrwać znacznie dłużej niż sezon. To nie premiera dla samej nowości, lecz starannie wyważony wybór projektów, które dopiero zaczynają swoją historię. Odkryj je, zanim staną się Twoją codziennością.',
@@ -30,6 +36,12 @@ INSERT INTO product_collection (id, handle, titles, descriptions, status, rank, 
   json_object('pl-PL', 'Srebro 925', 'en-US', 'Sterling silver 925'),
   json_object(
     'pl-PL',
+    'Ponadczasowa biżuteria wykonana z najwyższej próby srebra 925.',
+    'en-US',
+    'Timeless jewelry made of the highest quality 925 silver.'
+  ),
+  json_object(
+    'pl-PL',
     'Nasza flagowa kolekcja i punkt, w którym zaczyna się M''ARTE. Srebro próby 925 to nasze płótno — kruszec, który pięknie współpracuje ze światłem i z czasem staje się coraz bardziej Twój. Każdą formę ręcznie dopracowują rzemieślnicy z wieloletnim doświadczeniem, łącząc klasyczną technikę jubilerską z nowoczesną, surową prostotą. To biżuteria projektowana, by trwać — nie na jeden sezon, lecz na lata codziennego noszenia.',
     'en-US',
     'Our flagship collection and where M''ARTE begins. 925 silver is our canvas — a metal that works beautifully with light and becomes more yours over time. Each form is refined by hand by experienced craftspeople, blending classic jewellery technique with modern, raw simplicity. Pieces designed to last — not for one season, but for years of everyday wear.'
@@ -47,6 +59,12 @@ INSERT INTO product_collection (id, handle, titles, descriptions, status, rank, 
   json_object('pl-PL', 'Złoto 585', 'en-US', 'Gold 585'),
   json_object(
     'pl-PL',
+    'Kolekcja złotej biżuterii próby 585, stworzona by trwać.',
+    'en-US',
+    'A collection of 585 gold jewelry, created to last.'
+  ),
+  json_object(
+    'pl-PL',
     'Gdy szukasz ciepła, którego nie da srebro — i formy, która zostaje z Tobą na lata. Biżuteria z kruszcu próby 585, starannie opracowana w naszym atelier: ta sama ręczna precyzja, ta sama surowa estetyka, w szlachetnym, ciepłym blasku złota. Każdy detal jest dopracowany tak, by stać się częścią Twojego wizerunku — nie chwilowym dodatkiem, lecz trwałą inwestycją w elegancję, która nie potrzebuje głośnych słów.',
     'en-US',
     'When you want warmth silver cannot give — and a form that stays with you for years. 585 gold jewellery, carefully developed in our atelier: the same hand-finished precision, the same raw aesthetic, in gold''s warm glow. Every detail is refined to become part of your look — not a fleeting accessory, but a lasting investment in quiet elegance.'
@@ -61,6 +79,7 @@ INSERT INTO product_collection (id, handle, titles, descriptions, status, rank, 
 ON CONFLICT(id) DO UPDATE SET
   handle = excluded.handle,
   titles = excluded.titles,
+  short_descriptions = excluded.short_descriptions,
   descriptions = excluded.descriptions,
   status = excluded.status,
   rank = excluded.rank,

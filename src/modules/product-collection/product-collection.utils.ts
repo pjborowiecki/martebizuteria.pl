@@ -28,6 +28,9 @@ export const resolveCollectionTitle = (titles: unknown, locale: string): string 
 export const resolveCollectionDescription = (descriptions: unknown, locale: string): string =>
   resolveLocalizedString(coerceCollectionLocaleMap(descriptions), locale)
 
+export const resolveCollectionShortDescription = (shortDescriptions: unknown, locale: string): string =>
+  resolveLocalizedString(coerceCollectionLocaleMap(shortDescriptions), locale)
+
 export const toAdminCollectionListItem = (row: ProductCollection["select"], productCount: number): ProductCollection["adminListItem"] => ({
   ...row,
   productCount,
@@ -40,6 +43,7 @@ export const toCollectionRow = (input: ProductCollection["createInput"], id: str
   id,
   image: input.image === "" ? undefined : input.image,
   rank,
+  shortDescriptions: normalizeOptionalCollectionLocaleMapForSave(input.shortDescriptions),
   status: input.status,
   titles: normalizeProductAttributeLocaleMapForSave(input.titles),
 })

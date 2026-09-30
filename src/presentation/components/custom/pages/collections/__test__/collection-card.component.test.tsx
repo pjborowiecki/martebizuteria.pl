@@ -18,11 +18,29 @@ const collection = {
   handle: "gold-edit",
   id: "collection-1",
   image: "collections/gold.webp",
+  shortDescriptions: null,
   titles: { "en-US": "The Gold Edit", "pl-PL": "Złota Edycja" },
 }
 
 afterEach(() => {
   cleanup()
+})
+
+describe("CollectionCard copy", () => {
+  it("prefers the short description over the full marketing copy", () => {
+    renderWithProviders(
+      <CollectionCard collection={{ ...collection, shortDescriptions: { "en-US": "Warm gold, every day.", "pl-PL": "Ciepłe złoto." } }} />,
+    )
+
+    expect(screen.getByText("Warm gold, every day.")).toBeInTheDocument()
+    expect(screen.queryByText("Pieces cast in warm gold.")).toBeNull()
+  })
+
+  it("falls back to the full description when no short one is written", () => {
+    renderWithProviders(<CollectionCard collection={collection} />)
+
+    expect(screen.getByText("Pieces cast in warm gold.")).toBeInTheDocument()
+  })
 })
 
 describe("CollectionCard", () => {

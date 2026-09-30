@@ -358,6 +358,13 @@
       "when": 1789939455992,
       "tag": "20260920212415_auth_database_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "6",
+      "when": 1790781344843,
+      "tag": "20260930151544_collection_short_descriptions",
+      "breakpoints": true
     }
   ]
 }

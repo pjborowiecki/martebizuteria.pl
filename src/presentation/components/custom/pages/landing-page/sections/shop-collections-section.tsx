@@ -1,8 +1,17 @@
 import { type JSX, useMemo } from "react"
 
-import { useTranslations } from "use-intl/react"
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { LANDING_SHOP_COLLECTIONS } from "~/src/data/landing"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
+import {
+  resolveCollectionDescription,
+  resolveCollectionShortDescription,
+  resolveCollectionTitle,
+} from "~/src/modules/product-collection/product-collection.utils"
+import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
+
+import { getProductImageUrl } from "~/src/lib/image"
 
 import { AspectRatio } from "~/src/presentation/components/shadcn/aspect-ratio"
 
@@ -12,28 +21,31 @@ import { LocalizedLink } from "~/src/presentation/components/custom/localized-li
 import { ROUTES } from "~/src/routes"
 
 const CollectionCard = ({ collection }: Readonly<CollectionCardProps>): JSX.Element => {
-  const t = useTranslations("pages.landing.shopCollectionsSection")
-  const params = useMemo(() => ({ handle: collection.slug }), [collection.slug])
+  const locale = useLocale()
+  const title = resolveCollectionTitle(collection.titles, locale)
+  const shortDescription = resolveCollectionShortDescription(collection.shortDescriptions, locale)
+  const description = shortDescription === "" ? resolveCollectionDescription(collection.descriptions, locale) : shortDescription
+  const params = useMemo(() => ({ handle: collection.handle }), [collection.handle])
 
   return (
     <LocalizedLink className="reveal group block" params={params} to={ROUTES.COLLECTION}>
       <AspectRatio className="parallax-wrap overflow-hidden bg-secondary" ratio={ASPECT_RATIO_PORTRAIT}>
         <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
           <Image
-            alt={t(collection.nameKey)}
+            alt={title}
             className="absolute inset-0 size-full object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.25,0.46,0.45,0.94)] will-change-transform group-hover:scale-[1.06]"
             height={1200}
             sizes="(max-width: 768px) 100vw, 33vw"
-            src={collection.image}
+            src={getProductImageUrl(collection.image)}
             width={960}
           />
         </div>
       </AspectRatio>
       <div className="mt-5 space-y-2">
         <h3 className="font-serif text-xl leading-snug transition-colors duration-500 group-hover:text-muted-foreground lg:text-2xl">
-          {t(collection.nameKey)}
+          {title}
         </h3>
-        <p className="text-sm/relaxed text-muted-foreground">{t(collection.descKey)}</p>
+        {description !== "" && <p className="line-clamp-2 text-sm/relaxed text-muted-foreground">{description}</p>}
       </div>
     </LocalizedLink>
   )
@@ -41,6 +53,7 @@ const CollectionCard = ({ collection }: Readonly<CollectionCardProps>): JSX.Elem
 
 export const ShopCollectionsSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.shopCollectionsSection")
+  const { data: collections } = useSuspenseQuery(getCollectionsQuery())
 
   return (
     <section className="mx-auto max-w-400 space-y-10 px-6 pb-20 lg:px-12 lg:pb-28">
@@ -59,8 +72,8 @@ export const ShopCollectionsSection = (): JSX.Element => {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {LANDING_SHOP_COLLECTIONS.map((col) => (
-          <CollectionCard key={col.nameKey} collection={col} />
+        {collections.slice(0, SHOP_COLLECTION_DISPLAY_LIMIT).map((collection) => (
+          <CollectionCard key={collection.id} collection={collection} />
         ))}
       </div>
     </section>
@@ -69,8 +82,8 @@ export const ShopCollectionsSection = (): JSX.Element => {
 
 const ASPECT_RATIO_PORTRAIT = 0.8
 
-type CollectionItem = (typeof LANDING_SHOP_COLLECTIONS)[number]
+const SHOP_COLLECTION_DISPLAY_LIMIT = 3
 
 interface CollectionCardProps {
-  collection: CollectionItem
+  collection: Pick<ProductCollection["select"], "descriptions" | "handle" | "id" | "image" | "shortDescriptions" | "titles">
 }

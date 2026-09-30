@@ -19,48 +19,57 @@ export const GOLD_585_COLLECTION_PATH = `/collections/${GOLD_585_COLLECTION_HAND
 export type PrimaryTranslationKey =
   | "menu.primary.newArrivals"
   | "menu.primary.silver"
+  | "menu.primary.gold"
   | "menu.primary.collections"
   | "menu.primary.products"
   | "menu.primary.brand"
 
-export interface PrimaryItem {
+interface PrimaryDestination {
   hash: string
   labelKey: PrimaryTranslationKey
-  italicKey?: "menu.primary.silverItalic"
+  italicKey?: "menu.primary.silverItalic" | "menu.primary.goldItalic"
   step: number
-  image: string
 }
+
+export type PrimaryItem = (PrimaryDestination & { collectionHandle: string }) | (PrimaryDestination & { image: string })
 
 export const PRIMARY: readonly PrimaryItem[] = [
   {
+    collectionHandle: LANDING_NEW_ARRIVALS_COLLECTION_HANDLE,
     hash: NEW_ARRIVALS_COLLECTION_PATH,
-    image: getAssetURL("marketing/menu-arrivals.webp"),
     labelKey: "menu.primary.newArrivals",
     step: 1,
   },
   {
+    collectionHandle: SILVER_925_COLLECTION_HANDLE,
     hash: SILVER_925_COLLECTION_PATH,
-    image: getAssetURL("marketing/menu-silver-925.webp"),
     italicKey: "menu.primary.silverItalic",
     labelKey: "menu.primary.silver",
     step: 2,
   },
   {
+    collectionHandle: GOLD_585_COLLECTION_HANDLE,
+    hash: GOLD_585_COLLECTION_PATH,
+    italicKey: "menu.primary.goldItalic",
+    labelKey: "menu.primary.gold",
+    step: 3,
+  },
+  {
     hash: ROUTES.COLLECTIONS,
     image: getAssetURL("marketing/menu-collections.webp"),
     labelKey: "menu.primary.collections",
-    step: 3,
+    step: 4,
   },
   {
     hash: ROUTES.PRODUCTS,
     image: getAssetURL("marketing/editorial.webp"),
     labelKey: "menu.primary.products",
-    step: 4,
+    step: 5,
   },
   {
     hash: ROUTES.ABOUT,
     image: getAssetURL("marketing/menu-brand.webp"),
     labelKey: "menu.primary.brand",
-    step: 5,
+    step: 6,
   },
 ]

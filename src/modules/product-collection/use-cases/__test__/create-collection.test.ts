@@ -52,6 +52,7 @@ const input = {
   descriptions: { "en-US": "Everyday silver", "pl-PL": "Srebro na co dzień" },
   handle: "srebro-925",
   image: "",
+  shortDescriptions: { "en-US": "Everyday silver", "pl-PL": "Srebro na co dzień" },
   status: "active" as const,
   titles: { "en-US": "Silver 925", "pl-PL": "Srebro 925" },
 }

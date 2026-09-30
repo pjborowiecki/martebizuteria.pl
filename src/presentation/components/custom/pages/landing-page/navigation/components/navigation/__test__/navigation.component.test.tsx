@@ -37,6 +37,11 @@ vi.mock("~/src/modules/storefront-search/use-cases/search-storefront", async () 
       queryOptions({ queryFn: () => Promise.resolve({ categories: [], collections: [], products: [] }), queryKey: ["search", query] }),
   }
 })
+vi.mock("~/src/modules/product-collection/use-cases/get-collections", async () => {
+  const { queryOptions } = await import("@tanstack/react-query")
+
+  return { getCollectionsQuery: () => queryOptions({ queryFn: () => Promise.resolve([]), queryKey: ["product-collection", "all"] }) }
+})
 vi.mock("~/src/modules/storefront-search/use-cases/get-trending-searches", async () => {
   const { queryOptions } = await import("@tanstack/react-query")
 

@@ -70,6 +70,14 @@
       "pl-PL": "e.g. Summer Collection",
       "en-US": "e.g. Summer Collection"
     },
+    "shortDescriptionLocale": {
+      "pl-PL": "Short description (PL)",
+      "en-US": "Short description (EN)"
+    },
+    "shortDescriptionLocalePlaceholder": {
+      "pl-PL": "Brief summary for cards and listings...",
+      "en-US": "Brief summary for cards and listings..."
+    },
     "descriptionLocale": {
       "pl-PL": "Description (PL)",
       "en-US": "Description (EN)"
@@ -98,6 +106,10 @@
       },
       "slug": "URL path segment for this collection. Filled from the name until you edit it manually. Use lowercase letters, numbers, and hyphens only.",
       "description": "Marketing copy shown on the collection page and in previews.",
+      "shortDescriptionLocale": {
+        "pl-PL": "Brief summary for cards and listings (Polish).",
+        "en-US": "Brief summary for cards and listings (English)."
+      },
       "descriptionLocale": {
         "pl-PL": "Marketing copy on the collection page (Polish).",
         "en-US": "Marketing copy on the collection page (English)."
@@ -119,6 +131,7 @@
       "slugRequired": "URL slug is required",
       "slugInvalid": "Use lowercase letters, numbers and hyphens only",
       "descriptionTooLong": "Description is too long",
+      "shortDescriptionTooLong": "Short description is too long",
       "submitBlockedTitle": "Fix form errors",
       "submitBlockedDescription": "Check highlighted fields and try again."
     }

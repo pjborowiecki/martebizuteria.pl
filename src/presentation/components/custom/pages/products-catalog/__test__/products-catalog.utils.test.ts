@@ -39,6 +39,7 @@ const collection = (id: string, titles: Partial<Record<"en-US" | "pl-PL", string
   image: null,
   metadata: null,
   rank: 0,
+  shortDescriptions: null,
   status: "active",
   titles: { "en-US": titles["en-US"] ?? "", "pl-PL": titles["pl-PL"] ?? "" },
   updatedAt: EPOCH,

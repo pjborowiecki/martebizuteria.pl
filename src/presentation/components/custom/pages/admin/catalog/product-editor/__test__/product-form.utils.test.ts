@@ -88,6 +88,7 @@ const collection = (id: string, rank: number): CollectionAssignment => ({
     image: null,
     metadata: null,
     rank,
+    shortDescriptions: null,
     status: "active",
     titles: { "en-US": id, "pl-PL": id },
     ...stamps,

@@ -1,12 +1,22 @@
 import { type JSX, useMemo } from "react"
 
+import { useQuery } from "@tanstack/react-query"
 import { useTranslations } from "use-intl/react"
 
+import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
+
+import { getProductImageUrl } from "~/src/lib/image"
+
 import { Image } from "~/src/presentation/components/custom/image"
-import { PRIMARY } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"
+import { PRIMARY, type PrimaryItem } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"
+
+const resolveShowcaseImage = (item: PrimaryItem, collectionImages: ReadonlyMap<string, string | null>): string =>
+  getProductImageUrl("collectionHandle" in item ? collectionImages.get(item.collectionHandle) : item.image)
 
 export const ImageShowcase = (): JSX.Element => {
   const t = useTranslations("components.custom.navigation")
+  const { data: collections } = useQuery(getCollectionsQuery())
+  const collectionImages = useMemo(() => new Map(collections?.map((collection) => [collection.handle, collection.image])), [collections])
   const containerStyle = useMemo(() => ({ perspective: "1000px" }), [])
   const activeStyle = useMemo(() => ({ opacity: 1, visibility: "inherit" as const }), [])
   const inactiveStyle = useMemo(() => ({ opacity: 0, visibility: "hidden" as const }), [])
@@ -31,7 +41,7 @@ export const ImageShowcase = (): JSX.Element => {
               height={1200}
               priority={index === ACTIVE_INDEX}
               sizes="(max-width: 1024px) 0vw, 40vw"
-              src={item.image}
+              src={resolveShowcaseImage(item, collectionImages)}
               width={900}
             />
             <div aria-hidden className="pointer-events-none absolute inset-0 bg-primary/10" />

@@ -37,6 +37,7 @@ const defaults = (image: string): CollectionFormValues => ({
   descriptions: { "en-US": "", "pl-PL": "" },
   handle: "nowosci",
   image,
+  shortDescriptions: { "en-US": "", "pl-PL": "" },
   status: "draft",
   titles: { "en-US": "New arrivals", "pl-PL": "Nowości" },
 })

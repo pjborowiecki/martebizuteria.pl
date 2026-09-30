@@ -72,6 +72,7 @@ const collection = (id: string, overrides: Partial<ProductCollection["adminListI
   metadata: null,
   productCount: 0,
   rank: 0,
+  shortDescriptions: null,
   status: "active",
   titles: { "en-US": id, "pl-PL": id },
   updatedAt: EPOCH,

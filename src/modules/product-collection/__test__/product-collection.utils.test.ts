@@ -22,6 +22,7 @@ const collectionRow: ProductCollection["select"] = {
   image: null,
   metadata: null,
   rank: 0,
+  shortDescriptions: null,
   status: COLLECTION_STATUS.ACTIVE,
   titles: locales("Wiosna", "Spring"),
   updatedAt: new Date(2024, 0, 1),
@@ -69,6 +70,7 @@ describe("toCollectionRow", () => {
     descriptions: locales("", ""),
     handle: "wiosna",
     image: "",
+    shortDescriptions: locales("", ""),
     status: COLLECTION_STATUS.DRAFT,
     titles: locales(" Wiosna ", " Spring "),
   }

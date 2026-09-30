@@ -6,6 +6,7 @@ export const adminListItemToFormValues = (collection: ProductCollection["adminLi
   descriptions: coerceCollectionLocaleMap(collection.descriptions),
   handle: collection.handle,
   image: collection.image ?? "",
+  shortDescriptions: coerceCollectionLocaleMap(collection.shortDescriptions),
   status: collection.status,
   titles: coerceCollectionLocaleMap(collection.titles),
 })
@@ -14,6 +15,7 @@ export const createDefaultCollectionFormValues = (): ProductCollection["formValu
   descriptions: createEmptyProductAttributeLocaleMap(),
   handle: "",
   image: "",
+  shortDescriptions: createEmptyProductAttributeLocaleMap(),
   status: "draft",
   titles: createEmptyProductAttributeLocaleMap(),
 })

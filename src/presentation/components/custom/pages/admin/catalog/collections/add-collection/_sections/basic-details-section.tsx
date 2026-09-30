@@ -43,6 +43,15 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
     [t],
   )
 
+  const shortDescriptionCopy = useMemo<CatalogLocaleFieldsCopy>(
+    () => ({
+      hint: (locale) => t(`form.hints.shortDescriptionLocale.${locale}`),
+      label: (locale) => t(`form.shortDescriptionLocale.${locale}`),
+      placeholder: (locale) => t(`form.shortDescriptionLocalePlaceholder.${locale}`),
+    }),
+    [t],
+  )
+
   const descriptionCopy = useMemo<CatalogLocaleFieldsCopy>(
     () => ({
       hint: (locale) => t(`form.hints.descriptionLocale.${locale}`),
@@ -117,6 +126,17 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
         </InputGroup>
         <CatalogFormFieldError fieldState={handleFieldState} translate={t} validationKeySet={validationKeySet} />
       </Field>
+
+      <CollectionCatalogLocaleTextareaFormField
+        control={control}
+        copy={shortDescriptionCopy}
+        disabled={isPending}
+        maxLength={COLLECTION_COLUMN_LENGTH.shortDescription}
+        name="shortDescriptions"
+        rows={3}
+        translateValidation={t}
+        validationKeySet={validationKeySet}
+      />
 
       <CollectionCatalogLocaleTextareaFormField
         control={control}

@@ -25,6 +25,7 @@ const defaults = (status: CollectionStatus): CollectionFormValues => ({
   descriptions: { "en-US": "", "pl-PL": "" },
   handle: "nowosci",
   image: "",
+  shortDescriptions: { "en-US": "", "pl-PL": "" },
   status,
   titles: { "en-US": "New arrivals", "pl-PL": "Nowości" },
 })

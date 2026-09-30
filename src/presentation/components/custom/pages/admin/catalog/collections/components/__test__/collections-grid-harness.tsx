@@ -27,6 +27,7 @@ export const collectionRow = (overrides: Partial<CollectionRow> = {}): Collectio
   metadata: null,
   productCount: 4,
   rank: 0,
+  shortDescriptions: null,
   status: "active",
   titles: { "en-US": "New arrivals", "pl-PL": "Nowosci" },
   updatedAt: EPOCH,

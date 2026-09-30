@@ -31,6 +31,7 @@ const collection = (): ProductCollection["adminListItem"] => ({
   metadata: null,
   productCount: 2,
   rank: 0,
+  shortDescriptions: null,
   status: "active",
   titles: { "en-US": "Silver rings", "pl-PL": "Srebrne pierscionki" },
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),

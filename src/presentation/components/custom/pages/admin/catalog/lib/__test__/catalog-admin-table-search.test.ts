@@ -46,6 +46,7 @@ const collectionRow = (overrides: Partial<ProductCollection["adminListItem"]> = 
   metadata: null,
   productCount: 3,
   rank: 0,
+  shortDescriptions: null,
   status: COLLECTION_STATUS.ACTIVE,
   titles: locales("Wiosna", "Spring"),
   updatedAt: CREATED_AT,

@@ -20,6 +20,7 @@ const collection = (overrides: Partial<ProductCollection["adminListItem"]> = {})
   metadata: null,
   productCount: 4,
   rank: 0,
+  shortDescriptions: null,
   status: "active",
   titles: { "en-US": "New arrivals", "pl-PL": "Nowości" },
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),

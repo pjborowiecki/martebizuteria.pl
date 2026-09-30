@@ -20,6 +20,7 @@ export const productCollection = sqliteTable(
     image: text("image", { length: 2048 }),
     metadata: text("metadata", { mode: "json" }).$type<Record<string, never> | null>(),
     rank: integer("rank").notNull().default(COLLECTION_DEFAULT_RANK),
+    shortDescriptions: text("short_descriptions", { mode: "json" }).$type<ProductCollection["localeMap"] | null>(),
     status: text("status", { enum: COLLECTION_STATUSES }).notNull().default(DEFAULT_COLLECTION_STATUS),
     titles: text("titles", { mode: "json" }).$type<ProductCollection["localeMap"]>().notNull(),
     ...timestamps(),

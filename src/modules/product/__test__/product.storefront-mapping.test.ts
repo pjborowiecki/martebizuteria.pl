@@ -79,6 +79,7 @@ const collectionRow = (collectionId: string): Row["collections"][number] => ({
     image: null,
     metadata: null,
     rank: 0,
+    shortDescriptions: null,
     status: "active",
     titles: locales(collectionId),
     updatedAt: NOW,
