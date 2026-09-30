@@ -30,7 +30,7 @@ export { orderAddress, orderAddressRelations } from "~/src/modules/order-address
 
 export { orderItem, orderItemRelations } from "~/src/modules/order-item/order-item.schema"
 
-export { order, orderRelations } from "~/src/modules/order/order.schema"
+export { order, orderNumberSequence, orderRelations } from "~/src/modules/order/order.schema"
 
 export { productVariant, productVariantRelations } from "~/src/modules/product-variant/product-variant.schema"
 

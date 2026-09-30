@@ -6,6 +6,7 @@ import { type TestD1Query } from "~/src/platform/testing/mocks/d1"
 import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
 import { type FulfillCheckoutInput, prepareFulfillCheckoutBatch, resolvePendingCheckout } from "~/src/modules/checkout/checkout.utils"
+import { computeOrderTotals } from "~/src/modules/order/order.totals"
 
 const { queries, sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -46,10 +47,11 @@ const paymentRow = { checkoutId: CHECKOUT_ID, id: "pay_1" }
 const pendingCheckoutRow = { email: "buyer@example.com", status: "pending", userId: null }
 
 const fulfillInput: FulfillCheckoutInput = {
-  amount: UNIT_PRICE * RESERVED_QTY,
   currency: "PLN",
   lines: [{ price: UNIT_PRICE, qty: RESERVED_QTY, title: "Onyx earrings", variantId: VARIANT_ID }],
   locale: "pl",
+  orderNumber: "MRT-2026-00001",
+  totals: computeOrderTotals({ itemsSubtotal: UNIT_PRICE * RESERVED_QTY, shippingTotal: 0 }),
   transactionId: TRANSACTION_ID,
 }
 
@@ -92,7 +94,7 @@ beforeEach(() => {
       drop table if exists checkout;
       drop table if exists inventory;
 
-      create table checkout (id text primary key, status text not null, email text, user_id text, customer_note text, delivery_method_id text, locker_id text, created_at integer, updated_at integer);
+      create table checkout (id text primary key, billing_company_name text, billing_nip text, status text not null, email text, user_id text, customer_note text, delivery_method_id text, locker_id text, created_at integer, updated_at integer);
       create table payment (id text primary key, checkout_id text, status text, transaction_id text unique, created_at integer, updated_at integer);
       create table "order" (
         id text primary key, checkout_id text unique, payment_id text, user_id text, email text not null,
@@ -102,6 +104,7 @@ beforeEach(() => {
         discount_total integer not null default 0, total integer not null default 0,
         customer_note text, delivery_method_id text, locker_id text, discount_id text, metadata text,
         tracking_number text, tracking_url text, canceled_at integer, delivered_at integer, shipped_at integer,
+        order_number text, tax_basis_points integer not null default 2300, billing_company_name text, billing_nip text,
         created_at integer, updated_at integer
       );
       create table order_item (
@@ -151,7 +154,12 @@ describe("fulfilment input boundaries", () => {
       throw new Error("expected a pending checkout")
     }
     const inventoryBefore = sqlite.prepare("select * from inventory").all()
-    const { orderId, statements } = prepareFulfillCheckoutBatch(context, { ...fulfillInput, amount: 0, lines: [] })
+    const { orderId, statements } = prepareFulfillCheckoutBatch(context, {
+      ...fulfillInput,
+      lines: [],
+      orderNumber: "MRT-2026-00002",
+      totals: computeOrderTotals({ itemsSubtotal: 0, shippingTotal: 0 }),
+    })
 
     await runDrizzleBatch(statements)
 

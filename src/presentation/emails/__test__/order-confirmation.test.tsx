@@ -1,6 +1,8 @@
 import { render } from "react-email"
 import { describe, expect, it } from "vite-plus/test"
 
+import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
+
 import englishCopy from "~/messages/en-US/emails.order-confirmation.json"
 import {
   ORDER_CONFIRMATION_NAMESPACE,
@@ -9,7 +11,7 @@ import {
   type OrderConfirmationItem,
 } from "~/src/presentation/emails/order-confirmation"
 
-const ORDER_ID = "a1b2c3d4-0000-0000-0000-000000000000"
+const ORDER_NUMBER = "MRT-2026-00042"
 
 const details: OrderConfirmationDetails = {
   billingAddress: "Same as shipping",
@@ -50,9 +52,12 @@ const renderConfirmation = (accountCta: { href: string; isGuest: boolean; label:
       items={items}
       locale="en-US"
       messages={englishCopy}
-      orderId={ORDER_ID}
+      discountTotal={0}
+      orderNumber={ORDER_NUMBER}
       shippingTotal={1900}
       subtotal={62_700}
+      taxBasisPoints={STANDARD_VAT_BASIS_POINTS}
+      taxTotal={12_080}
       total={64_600}
     />,
     plainText ? { plainText: true } : { plainText: false },
@@ -66,8 +71,7 @@ describe("OrderConfirmation", () => {
   it("shortens the order id to an eight character uppercase reference", async () => {
     const text = await renderConfirmation(customerCta)
 
-    expect(text).toContain("A1B2C3D4")
-    expect(text).not.toContain(ORDER_ID)
+    expect(text).toContain(ORDER_NUMBER)
   })
 
   it("prices each line by unit and by line total", async () => {

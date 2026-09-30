@@ -395,6 +395,20 @@ export const getOrderMetadata = (orderId: string) =>
     where: eq(order.id, orderId),
   })
 
+export const getOrderTotalsForEmail = (orderId: string) =>
+  db.query.order.findFirst({
+    columns: {
+      discountTotal: true,
+      orderNumber: true,
+      shippingTotal: true,
+      subtotal: true,
+      taxBasisPoints: true,
+      taxTotal: true,
+      total: true,
+    },
+    where: eq(order.id, orderId),
+  })
+
 export const getOrderForShippedEmail = (orderId: string) =>
   db.query.order.findFirst({
     columns: {
@@ -402,6 +416,7 @@ export const getOrderForShippedEmail = (orderId: string) =>
       email: true,
       id: true,
       metadata: true,
+      orderNumber: true,
       trackingNumber: true,
       trackingUrl: true,
       userId: true,

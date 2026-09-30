@@ -8,7 +8,7 @@ import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { formatCustomerAccountRelativeTime, formatCustomerOrderDisplayId } from "~/src/modules/customer-account/customer-account.utils"
+import { formatCustomerAccountRelativeTime } from "~/src/modules/customer-account/customer-account.utils"
 import { getCustomerOverviewQuery } from "~/src/modules/customer-account/use-cases/get-customer-overview"
 
 import { Route as AccountRoute } from "~/src/routes/account"
@@ -126,7 +126,7 @@ const RecentOrders = ({
       ) : (
         <div className="divide-y divide-border">
           {orders.map((order) => {
-            const displayId = formatCustomerOrderDisplayId(order.id)
+            const displayId = order.orderNumber
             const totalLabel = format.number(centsToDisplayAmount(order.totalMinorUnits), {
               currency: order.currencyCode,
               style: "currency",

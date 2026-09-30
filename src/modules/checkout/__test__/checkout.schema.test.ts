@@ -35,6 +35,8 @@ describe("checkout table", () => {
   it("declares the checkout columns plus the audit timestamps", () => {
     expect(config.columns.map((column) => column.name)).toStrictEqual([
       "billing_address_id",
+      "billing_company_name",
+      "billing_nip",
       "cart_id",
       "customer_note",
       "delivery_method_id",

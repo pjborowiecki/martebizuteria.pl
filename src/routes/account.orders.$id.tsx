@@ -10,7 +10,6 @@ import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { formatCustomerOrderDisplayId } from "~/src/modules/customer-account/customer-account.utils"
 import { getCustomerOrderQuery } from "~/src/modules/customer-account/use-cases/get-customer-order"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -32,7 +31,7 @@ const OrderDetailPage = (): JSX.Element => {
     })
   }, [navigate])
 
-  const displayId = formatCustomerOrderDisplayId(order.id)
+  const displayId = order.orderNumber
   const formatMoney = (amount: number) =>
     format.number(centsToDisplayAmount(amount), {
       currency: order.currencyCode,

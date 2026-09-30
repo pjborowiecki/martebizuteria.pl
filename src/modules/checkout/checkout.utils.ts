@@ -9,6 +9,7 @@ import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
+import { type OrderTotals } from "~/src/modules/order/order.totals"
 import { payment } from "~/src/modules/payment/payment.schema"
 
 export interface PendingCheckout {
@@ -33,11 +34,21 @@ export interface ReleaseLine {
 }
 
 export interface FulfillCheckoutInput {
-  amount: number
   currency: string
   lines: FulfillmentLine[]
-  locale?: string
+  locale?: string | undefined
+  orderNumber: string
+  totals: OrderTotals
   transactionId: string
+}
+
+export interface CheckoutFulfillmentSnapshot {
+  readonly billingCompanyName?: string | null | undefined
+  readonly billingNip?: string | null | undefined
+  readonly customerNote?: string | null | undefined
+  readonly deliveryMethodId?: string | null | undefined
+  readonly discountId?: string | null | undefined
+  readonly lockerId?: string | null | undefined
 }
 
 export interface ReleaseCheckoutInput {
@@ -220,16 +231,10 @@ export const prepareUpdateCheckoutDeliveryBatch = (
 
 export const prepareFulfillCheckoutBatch = (
   context: PendingCheckout,
-  { amount, currency, lines, locale, transactionId }: FulfillCheckoutInput,
-  checkoutSnapshot?: {
-    readonly customerNote?: string | null | undefined
-    readonly deliveryMethodId?: string | null | undefined
-    readonly lockerId?: string | null | undefined
-  },
+  { currency, lines, locale, orderNumber, totals, transactionId }: FulfillCheckoutInput,
+  checkoutSnapshot?: CheckoutFulfillmentSnapshot,
 ): { orderId: string; statements: BatchItem<"sqlite">[] } => {
   const orderId = crypto.randomUUID()
-  const itemsSubtotal = lines.reduce((sum, line) => sum + line.price * line.qty, 0)
-  const shippingTotal = Math.max(amount - itemsSubtotal, 0)
 
   const tail =
     lines.length > 0
@@ -263,19 +268,26 @@ export const prepareFulfillCheckoutBatch = (
         .set({ status: "completed" })
         .where(and(eq(checkout.id, context.checkoutId), eq(checkout.status, "pending"))),
       db.insert(order).values({
+        billingCompanyName: checkoutSnapshot?.billingCompanyName,
+        billingNip: checkoutSnapshot?.billingNip,
         checkoutId: context.checkoutId,
         currencyCode: currency,
         customerNote: checkoutSnapshot?.customerNote,
         deliveryMethodId: checkoutSnapshot?.deliveryMethodId,
+        discountId: checkoutSnapshot?.discountId,
+        discountTotal: totals.discountTotal,
         email: context.email,
         id: orderId,
         lockerId: checkoutSnapshot?.lockerId,
         metadata: locale === undefined || locale === "" ? undefined : JSON.stringify({ locale }),
+        orderNumber,
         paymentId: context.paymentId,
-        shippingTotal,
+        shippingTotal: totals.shippingTotal,
         status: "processing",
-        subtotal: itemsSubtotal,
-        total: amount,
+        subtotal: totals.subtotal,
+        taxBasisPoints: totals.vatBasisPoints,
+        taxTotal: totals.taxTotal,
+        total: totals.total,
         userId: context.userId,
       }),
       ...tail,

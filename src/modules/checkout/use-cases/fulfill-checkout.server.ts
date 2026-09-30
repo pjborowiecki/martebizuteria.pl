@@ -1,22 +1,67 @@
 import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
-import { getCheckoutById } from "~/src/modules/checkout/checkout.accessors"
+import { getCheckoutForFulfillment } from "~/src/modules/checkout/checkout.accessors"
 import { findPendingCheckoutByTransaction } from "~/src/modules/checkout/checkout.pending.server"
 import { type FulfillCheckoutInput, prepareFulfillCheckoutBatch } from "~/src/modules/checkout/checkout.utils"
+import { allocateOrderNumber } from "~/src/modules/order/order.number.server"
+import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 
-export const fulfillCheckout = async (input: FulfillCheckoutInput): Promise<string | undefined> => {
+const NO_AMOUNT = 0
+
+/**
+ * Stripe's amount_total is the source of truth for what the customer paid, but
+ * it cannot say which part was shipping, discount or tax. Those come from the
+ * checkout the session was built from; a mismatch means the session drifted
+ * from the checkout and is worth surfacing rather than silently absorbing.
+ */
+const reconcileTotals = (totals: OrderTotals, paidAmount: number, transactionId: string): void => {
+  if (totals.total !== paidAmount) {
+    console.error(
+      `Checkout ${transactionId}: computed total ${String(totals.total)} does not match Stripe amount_total ${String(paidAmount)}.`,
+    )
+  }
+}
+
+export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): Promise<string | undefined> => {
   const context = await findPendingCheckoutByTransaction(input.transactionId)
   if (context === undefined) {
     return undefined
   }
 
-  const checkoutRow = await getCheckoutById(context.checkoutId)
-  const { orderId, statements } = prepareFulfillCheckoutBatch(context, input, {
-    customerNote: checkoutRow?.customerNote,
-    deliveryMethodId: checkoutRow?.deliveryMethodId,
-    lockerId: checkoutRow?.lockerId,
+  const checkoutRow = await getCheckoutForFulfillment(context.checkoutId)
+  const totals = computeOrderTotals({
+    discountTotal: input.discountTotal,
+    itemsSubtotal: sumOrderLineSubtotal(input.lines),
+    shippingTotal: checkoutRow?.deliveryMethod?.price ?? NO_AMOUNT,
   })
+  reconcileTotals(totals, input.paidAmount, input.transactionId)
+
+  const orderNumber = await allocateOrderNumber()
+  const { orderId, statements } = prepareFulfillCheckoutBatch(
+    context,
+    {
+      currency: input.currency,
+      lines: input.lines,
+      locale: input.locale,
+      orderNumber,
+      totals,
+      transactionId: input.transactionId,
+    },
+    {
+      billingCompanyName: checkoutRow?.billingCompanyName,
+      billingNip: checkoutRow?.billingNip,
+      customerNote: checkoutRow?.customerNote,
+      deliveryMethodId: checkoutRow?.deliveryMethodId,
+      discountId: checkoutRow?.discountId,
+      lockerId: checkoutRow?.lockerId,
+    },
+  )
   await runDrizzleBatch(statements)
 
   return orderId
+}
+
+export interface FulfillCheckoutFromSessionInput extends Pick<FulfillCheckoutInput, "currency" | "lines" | "locale" | "transactionId"> {
+  readonly discountTotal?: number | undefined
+  readonly paidAmount: number
 }

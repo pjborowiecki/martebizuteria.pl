@@ -43,6 +43,7 @@ const orderSummary = (overrides: Partial<CustomerAccount["orderSummary"]> = {}):
   filterStatus: "shipped",
   fulfillmentStatus: "shipped",
   id: "0199aa11-bbbb-cccc-dddd-eeeeeeeeeeee",
+  orderNumber: "MRT-2026-00007",
   items: [],
   status: "processing",
   totalMinorUnits: 49_800,
@@ -155,11 +156,11 @@ describe("account overview recent orders", () => {
     expect(screen.getByText("View all orders").closest("a")).toHaveAttribute("href", "/account/orders")
   })
 
-  it("shows the shortened order id, the total and the localized status", async () => {
+  it("shows the order number, the total and the localized status", async () => {
     overviewRef.current = overview({ recentOrders: [orderSummary()] })
     await renderOverview()
 
-    expect(screen.getByText("#0199AA11")).toBeInTheDocument()
+    expect(screen.getByText("MRT-2026-00007")).toBeInTheDocument()
     expect(screen.getByText("PLN 498.00")).toBeInTheDocument()
     expect(screen.getByText("Shipped")).toBeInTheDocument()
   })
@@ -168,7 +169,7 @@ describe("account overview recent orders", () => {
     overviewRef.current = overview({ recentOrders: [orderSummary()] })
     await renderOverview()
 
-    expect(screen.getByText("#0199AA11").closest("a")).toHaveAttribute("href", "/account/orders/0199aa11-bbbb-cccc-dddd-eeeeeeeeeeee")
+    expect(screen.getByText("MRT-2026-00007").closest("a")).toHaveAttribute("href", "/account/orders/0199aa11-bbbb-cccc-dddd-eeeeeeeeeeee")
   })
 })
 

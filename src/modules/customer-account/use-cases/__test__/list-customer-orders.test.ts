@@ -18,6 +18,7 @@ interface OrderRow {
   readonly currencyCode: string
   readonly fulfillmentStatus: "cancelled" | "delivered" | "fulfilled" | "shipped" | "unfulfilled"
   readonly id: string
+  readonly orderNumber: string
   readonly status: "cancelled" | "completed" | "paid" | "pending" | "refunded"
   readonly total: number
 }
@@ -49,6 +50,7 @@ const orderRow = (overrides: Partial<OrderRow> = {}): OrderRow => ({
   currencyCode: "PLN",
   fulfillmentStatus: "unfulfilled",
   id: "order-1",
+  orderNumber: "MRT-2026-00001",
   status: "paid",
   total: 12_000,
   ...overrides,
@@ -135,6 +137,7 @@ describe("listCustomerOrders", () => {
       fulfillmentStatus: "shipped",
       id: "order-1",
       items: [{ image: undefined, name: "Silver ring", priceMinorUnits: 9000, qty: 3, variantTitle: "Size 12" }],
+      orderNumber: "MRT-2026-00001",
       status: "paid",
       totalMinorUnits: 12_000,
     })

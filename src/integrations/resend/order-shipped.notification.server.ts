@@ -56,7 +56,7 @@ export const notifyOrderShipped = async (orderId: string): Promise<void> => {
       details,
       locale,
       messages,
-      orderId: orderRow.id,
+      orderNumber: orderRow.orderNumber,
     }),
     subject: createTranslator({ locale, messages })("subject"),
     to: orderRow.email,

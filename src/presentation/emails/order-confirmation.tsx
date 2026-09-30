@@ -7,6 +7,7 @@ import { type OrderAccountCta } from "~/src/integrations/resend/order-confirmati
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
+import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 
 import type emailMessages from "~/messages/en-US/emails.order-confirmation.json"
 import {
@@ -59,11 +60,14 @@ export const OrderConfirmation = ({
   currency,
   details,
   items,
+  discountTotal,
   locale,
   messages,
-  orderId,
+  orderNumber,
   shippingTotal,
   subtotal,
+  taxBasisPoints,
+  taxTotal,
   total,
 }: Readonly<OrderConfirmationProps>): JSX.Element => {
   const t = createTranslator({
@@ -71,8 +75,6 @@ export const OrderConfirmation = ({
     messages: { emails: { "order-confirmation": messages } },
     namespace: ORDER_CONFIRMATION_NAMESPACE,
   })
-
-  const reference = orderId.slice(0, REFERENCE_LENGTH).toUpperCase()
 
   return (
     <EmailLayout locale={locale} preview={t("preview")} tagline={t("tagline")}>
@@ -85,7 +87,7 @@ export const OrderConfirmation = ({
 
       <EmailBorderedSection>
         <Text className="text-ink m-0 text-[11px] leading-[16px] font-semibold tracking-[0.22em] uppercase">{t("orderLabel")}</Text>
-        <Text className="text-ink mt-[10px] mb-0 font-serif text-[20px] leading-[26px] tracking-[0.12em]">{reference}</Text>
+        <Text className="text-ink mt-[10px] mb-0 font-serif text-[20px] leading-[26px] tracking-[0.12em]">{orderNumber}</Text>
 
         <Hr className="border-line my-[22px]" />
 
@@ -107,11 +109,19 @@ export const OrderConfirmation = ({
           <Text className="text-ink m-0 text-[14px] leading-[24px]">
             {t("subtotalLabel")}: {formatPrice(subtotal, currency, locale)}
           </Text>
+          {discountTotal > NO_AMOUNT && (
+            <Text className="text-ink mt-[8px] mb-0 text-[14px] leading-[24px]">
+              {t("discountLabel")}: −{formatPrice(discountTotal, currency, locale)}
+            </Text>
+          )}
           <Text className="text-ink mt-[8px] mb-0 text-[14px] leading-[24px]">
             {t("shippingLabel")}: {formatPrice(shippingTotal, currency, locale)}
           </Text>
           <Text className="text-ink mt-[12px] mb-0 text-[15px] leading-[24px] font-semibold">
             {t("totalLabel")}: {formatPrice(total, currency, locale)}
+          </Text>
+          <Text className="m-0 mt-[6px] text-[12px] leading-[20px] text-muted">
+            {t("vatIncludedLabel", { rate: formatVatRatePercent(taxBasisPoints) })}: {formatPrice(taxTotal, currency, locale)}
           </Text>
         </Section>
 
@@ -145,7 +155,7 @@ export const OrderConfirmation = ({
   )
 }
 
-const REFERENCE_LENGTH = 8
+const NO_AMOUNT = 0
 
 const FIRST_ITEM_TOP_MARGIN = "mt-[8px]"
 
@@ -184,10 +194,13 @@ interface OrderConfirmationProps {
   readonly details: OrderConfirmationDetails
   readonly items: readonly OrderConfirmationItem[]
   readonly locale: SupportedLocale
+  readonly discountTotal: number
   readonly messages: typeof emailMessages
-  readonly orderId: string
+  readonly orderNumber: string
   readonly shippingTotal: number
   readonly subtotal: number
+  readonly taxBasisPoints: number
+  readonly taxTotal: number
   readonly total: number
 }
 

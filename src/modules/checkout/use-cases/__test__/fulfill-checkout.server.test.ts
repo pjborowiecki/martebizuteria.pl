@@ -5,44 +5,57 @@ interface PendingContext {
   paymentId: string
 }
 
-interface CheckoutSnapshot {
-  readonly customerNote?: string | null | undefined
-  readonly deliveryMethodId?: string | null | undefined
-  readonly lockerId?: string | null | undefined
-}
-
-const { getCheckoutById, findPendingCheckoutByTransaction, prepareFulfillCheckoutBatch, runDrizzleBatch } = vi.hoisted(() => ({
-  findPendingCheckoutByTransaction: vi.fn<(transactionId: string) => Promise<PendingContext | undefined>>(),
-  getCheckoutById: vi.fn<(checkoutId: string) => Promise<Record<string, unknown> | undefined>>(),
-  prepareFulfillCheckoutBatch:
-    vi.fn<
-      (context: PendingContext, input: FulfillCheckoutInput, snapshot: CheckoutSnapshot) => { orderId: string; statements: string[] }
-    >(),
-  runDrizzleBatch: vi.fn<(statements: readonly string[]) => Promise<void>>(),
-}))
+const { allocateOrderNumber, findPendingCheckoutByTransaction, getCheckoutForFulfillment, prepareFulfillCheckoutBatch, runDrizzleBatch } =
+  vi.hoisted(() => ({
+    allocateOrderNumber: vi.fn<() => Promise<string>>(),
+    findPendingCheckoutByTransaction: vi.fn<(transactionId: string) => Promise<PendingContext | undefined>>(),
+    getCheckoutForFulfillment: vi.fn<(checkoutId: string) => Promise<Record<string, unknown> | undefined>>(),
+    prepareFulfillCheckoutBatch:
+      vi.fn<
+        (
+          context: PendingContext,
+          input: { orderNumber: string; totals: Record<string, number> },
+          snapshot: Record<string, unknown>,
+        ) => { orderId: string; statements: string[] }
+      >(),
+    runDrizzleBatch: vi.fn<(statements: readonly string[]) => Promise<void>>(),
+  }))
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch }))
-vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutById }))
+vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutForFulfillment }))
 vi.mock("~/src/modules/checkout/checkout.pending.server", () => ({ findPendingCheckoutByTransaction }))
 vi.mock("~/src/modules/checkout/checkout.utils", () => ({ prepareFulfillCheckoutBatch }))
+vi.mock("~/src/modules/order/order.number.server", () => ({ allocateOrderNumber }))
 
-import { type FulfillCheckoutInput } from "~/src/modules/checkout/checkout.utils"
-import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
+import { type FulfillCheckoutFromSessionInput, fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 
-const input: FulfillCheckoutInput = {
-  amount: 30_000,
+const input: FulfillCheckoutFromSessionInput = {
   currency: "pln",
   lines: [{ price: 10_000, qty: 2, title: "Silver ring", variantId: "v-1" }],
   locale: "en-US",
+  paidAmount: 21_500,
   transactionId: "pi_123",
 }
 
 const context: PendingContext = { checkoutId: "chk-1", paymentId: "pay-1" }
 
+const checkoutRow = {
+  billingCompanyName: null,
+  billingNip: null,
+  customerNote: "Gift wrap it",
+  deliveryMethod: { price: 1500 },
+  deliveryMethodId: "dm-courier",
+  discountId: null,
+  lockerId: null,
+}
+
+const batchInput = () => prepareFulfillCheckoutBatch.mock.calls[0]?.[1]
+
 beforeEach(() => {
   vi.clearAllMocks()
   findPendingCheckoutByTransaction.mockResolvedValue(context)
-  getCheckoutById.mockResolvedValue({ customerNote: "Gift wrap it", deliveryMethodId: "dm-courier", lockerId: null })
+  getCheckoutForFulfillment.mockResolvedValue(checkoutRow)
+  allocateOrderNumber.mockResolvedValue("MRT-2026-00042")
   prepareFulfillCheckoutBatch.mockReturnValue({ orderId: "order-1", statements: ["stmt-a", "stmt-b"] })
   runDrizzleBatch.mockResolvedValue(undefined)
 })
@@ -59,19 +72,41 @@ describe("fulfillCheckout", () => {
     expect(runDrizzleBatch).toHaveBeenCalledWith(["stmt-a", "stmt-b"])
   })
 
-  it("passes the pending context and the webhook payload to the batch builder", async () => {
+  it("stamps the order with a freshly allocated number", async () => {
     await fulfillCheckout(input)
 
-    expect(prepareFulfillCheckoutBatch.mock.calls[0]?.[0]).toBe(context)
-    expect(prepareFulfillCheckoutBatch.mock.calls[0]?.[1]).toBe(input)
+    expect(allocateOrderNumber).toHaveBeenCalledOnce()
+    expect(batchInput()?.orderNumber).toBe("MRT-2026-00042")
+  })
+
+  it("takes shipping from the delivery method rather than inferring it from the paid amount", async () => {
+    await fulfillCheckout(input)
+
+    expect(batchInput()?.totals).toMatchObject({ shippingTotal: 1500, subtotal: 20_000, total: 21_500 })
+  })
+
+  it("carves VAT out of the gross total instead of adding it on top", async () => {
+    await fulfillCheckout(input)
+
+    expect(batchInput()?.totals["taxTotal"]).toBe(4020)
+  })
+
+  it("treats a checkout with no delivery method as free shipping", async () => {
+    getCheckoutForFulfillment.mockResolvedValue({ ...checkoutRow, deliveryMethod: null })
+    await fulfillCheckout({ ...input, paidAmount: 20_000 })
+
+    expect(batchInput()?.totals).toMatchObject({ shippingTotal: 0, total: 20_000 })
   })
 
   it("carries the stored checkout snapshot onto the order", async () => {
     await fulfillCheckout(input)
 
     expect(prepareFulfillCheckoutBatch.mock.calls[0]?.[2]).toStrictEqual({
+      billingCompanyName: null,
+      billingNip: null,
       customerNote: "Gift wrap it",
       deliveryMethodId: "dm-courier",
+      discountId: null,
       lockerId: null,
     })
   })
@@ -79,25 +114,37 @@ describe("fulfillCheckout", () => {
   it("reads the checkout row the pending context points at", async () => {
     await fulfillCheckout(input)
 
-    expect(getCheckoutById).toHaveBeenCalledWith("chk-1")
+    expect(getCheckoutForFulfillment).toHaveBeenCalledWith("chk-1")
   })
 
   it("leaves the snapshot fields undefined when the checkout row has gone", async () => {
-    getCheckoutById.mockResolvedValue(undefined)
+    getCheckoutForFulfillment.mockResolvedValue(undefined)
     await fulfillCheckout(input)
 
     expect(prepareFulfillCheckoutBatch.mock.calls[0]?.[2]).toStrictEqual({
+      billingCompanyName: undefined,
+      billingNip: undefined,
       customerNote: undefined,
       deliveryMethodId: undefined,
+      discountId: undefined,
       lockerId: undefined,
     })
+  })
+
+  it("reports a total that disagrees with what Stripe charged", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+    await fulfillCheckout({ ...input, paidAmount: 99_999 })
+
+    expect(error).toHaveBeenCalledOnce()
+    error.mockRestore()
   })
 
   it("does nothing when no pending checkout matches the transaction", async () => {
     findPendingCheckoutByTransaction.mockResolvedValue(undefined)
 
     await expect(fulfillCheckout(input)).resolves.toBeUndefined()
-    expect(getCheckoutById).not.toHaveBeenCalled()
+    expect(getCheckoutForFulfillment).not.toHaveBeenCalled()
+    expect(allocateOrderNumber).not.toHaveBeenCalled()
     expect(prepareFulfillCheckoutBatch).not.toHaveBeenCalled()
     expect(runDrizzleBatch).not.toHaveBeenCalled()
   })

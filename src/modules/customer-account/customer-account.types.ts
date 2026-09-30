@@ -20,6 +20,7 @@ interface CustomerAccountOrderSummary {
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly id: string
   readonly items: readonly CustomerAccountOrderItem[]
+  readonly orderNumber: string
   readonly status: Order["select"]["status"]
   readonly totalMinorUnits: number
 }

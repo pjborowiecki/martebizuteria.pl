@@ -4,7 +4,6 @@ import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
   formatCustomerAccountRelativeTime,
-  formatCustomerOrderDisplayId,
   groupOrderItemsByOrderId,
   hasCustomerOrderItems,
   mapAuditLogToActivityItem,
@@ -47,6 +46,7 @@ const orderRow = {
   deliveredAt: null,
   fulfillmentStatus: "not_fulfilled" as const,
   id: ORDER_ID,
+  orderNumber: "MRT-2026-00001",
   shippedAt: null,
   shippingTotal: 1500,
   status: "processing" as const,
@@ -57,15 +57,7 @@ const orderRow = {
   trackingUrl: null,
 }
 
-describe("formatCustomerOrderDisplayId", () => {
-  it("shows a short uppercase prefix of the order id", () => {
-    expect(formatCustomerOrderDisplayId(ORDER_ID)).toBe("#0195B6F4")
-  })
-
-  it("does not pad a shorter id", () => {
-    expect(formatCustomerOrderDisplayId("abc")).toBe("#ABC")
-  })
-})
+const ORDER_NUMBERS: ReadonlyMap<string, string> = new Map([[ORDER_ID, "MRT-2026-00001"]])
 
 describe("resolveCustomerAccountOrderFilter", () => {
   it("treats a cancelled order or a cancelled fulfilment as cancelled", () => {
@@ -239,17 +231,22 @@ describe("mapAuditLogToActivityItem", () => {
     [AUDIT_LOG_ACTION.ORDER_PLACED, "orderPlaced"],
     [AUDIT_LOG_ACTION.ORDER_SHIPPED, "orderShipped"],
     [AUDIT_LOG_ACTION.ORDER_RELEASED, "orderDelivered"],
-  ])("maps the order action %s to %s with the display id", (action, actionKey) => {
-    expect(mapAuditLogToActivityItem({ ...auditRow, action, metadata: JSON.stringify({ orderId: ORDER_ID }) })).toMatchObject({
+  ])("maps the order action %s to %s with the order number", (action, actionKey) => {
+    expect(
+      mapAuditLogToActivityItem({ ...auditRow, action, metadata: JSON.stringify({ orderId: ORDER_ID }) }, ORDER_NUMBERS),
+    ).toMatchObject({
       actionKey,
-      params: { id: "#0195B6F4" },
+      params: { id: "MRT-2026-00001" },
     })
   })
 
-  it("falls back to the resource id when the metadata carries no order id", () => {
-    expect(mapAuditLogToActivityItem({ ...auditRow, action: AUDIT_LOG_ACTION.ORDER_PLACED }, ORDER_ID)).toMatchObject({
-      params: { id: "#0195B6F4" },
-    })
+  it("drops an order event whose order is not among the customer's own", () => {
+    expect(
+      mapAuditLogToActivityItem(
+        { ...auditRow, action: AUDIT_LOG_ACTION.ORDER_PLACED, metadata: JSON.stringify({ orderId: "someone-else" }) },
+        ORDER_NUMBERS,
+      ),
+    ).toBeUndefined()
   })
 
   it.each([AUDIT_LOG_ACTION.ORDER_PLACED, AUDIT_LOG_ACTION.ORDER_SHIPPED, AUDIT_LOG_ACTION.ORDER_RELEASED])(
@@ -265,10 +262,8 @@ describe("mapAuditLogToActivityItem", () => {
     ).toBeUndefined()
   })
 
-  it.each([["{not json"], ['["silver"]']])("recovers from the unusable metadata %j", (metadata) => {
-    expect(mapAuditLogToActivityItem({ ...auditRow, action: AUDIT_LOG_ACTION.ORDER_PLACED, metadata }, ORDER_ID)).toMatchObject({
-      params: { id: "#0195B6F4" },
-    })
+  it.each([["{not json"], ['["silver"]']])("drops an order event with unusable metadata %j", (metadata) => {
+    expect(mapAuditLogToActivityItem({ ...auditRow, action: AUDIT_LOG_ACTION.ORDER_PLACED, metadata }, ORDER_NUMBERS)).toBeUndefined()
   })
 })
 

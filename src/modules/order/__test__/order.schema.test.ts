@@ -31,6 +31,8 @@ describe("order table", () => {
 
   it("declares the order columns plus the audit timestamps", () => {
     expect(config.columns.map((column) => column.name)).toStrictEqual([
+      "billing_company_name",
+      "billing_nip",
       "canceled_at",
       "checkout_id",
       "currency_code",
@@ -44,11 +46,13 @@ describe("order table", () => {
       "id",
       "locker_id",
       "metadata",
+      "order_number",
       "payment_id",
       "shipped_at",
       "shipping_total",
       "status",
       "subtotal",
+      "tax_basis_points",
       "tax_total",
       "total",
       "tracking_number",
@@ -140,12 +144,22 @@ describe("order table", () => {
       { columns: ["status"], name: "order_status_idx", unique: false },
       { columns: ["created_at"], name: "order_createdAt_idx", unique: false },
       { columns: ["checkout_id"], name: "order_checkoutId_unique", unique: true },
+      { columns: ["order_number"], name: "order_orderNumber_unique", unique: true },
     ])
+  })
+
+  it("gives every order a unique human readable number", () => {
+    expect(columnByName.get("order_number")?.notNull).toBe(true)
+  })
+
+  it("records the VAT rate the order was priced at rather than assuming today's", () => {
+    expect(columnByName.get("tax_basis_points")?.default).toBe(2300)
   })
 
   it("lets one checkout produce at most one order", () => {
     expect(config.indexes.filter((index) => index.config.unique).map((index) => index.config.name)).toStrictEqual([
       "order_checkoutId_unique",
+      "order_orderNumber_unique",
     ])
   })
 

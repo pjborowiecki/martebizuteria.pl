@@ -5,7 +5,6 @@ import {
   type AdminOrderFulfillmentSnapshot,
   buildAdminOrderDetailCustomer,
   buildAdminOrderFulfillmentSteps,
-  formatAdminOrderDisplayId,
   mapAdminOrderDetailAddress,
   mapAdminOrderDetailItem,
   mapAdminOrderTimeline,
@@ -51,12 +50,6 @@ const tagSnapshot = (overrides = {}) => ({
   refundedAmount: 0,
   userId: "user-1",
   ...overrides,
-})
-
-describe("formatAdminOrderDisplayId", () => {
-  it("shortens the uuid to an uppercase support reference", () => {
-    expect(formatAdminOrderDisplayId("a1b2c3d4-0000-0000-0000-000000000000")).toBe("#A1B2C3D4")
-  })
 })
 
 describe("resolveAdminOrderDispute", () => {

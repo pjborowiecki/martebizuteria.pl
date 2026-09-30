@@ -37,6 +37,37 @@ export const resolveSettledOrder = (
   }
 }
 
+/**
+ * An order only exists once payment succeeded, and fulfilment already drew the
+ * lines down from both available and reserved stock. Cancelling therefore has
+ * to hand the quantities back, exactly as a full refund does.
+ */
+export const prepareCancelOrderBatch = (
+  orderId: string,
+  restockLines: readonly {
+    quantity: number
+    variantId: string
+  }[],
+): BatchItem<"sqlite">[] => [
+  db
+    .update(order)
+    .set({
+      canceledAt: new Date(),
+      fulfillmentStatus: "cancelled",
+      status: "cancelled",
+      updatedAt: new Date(),
+    })
+    .where(eq(order.id, orderId)),
+  ...restockLines.map((line) =>
+    db
+      .update(inventory)
+      .set({
+        quantityAvailable: sql`${inventory.quantityAvailable} + ${line.quantity}`,
+      })
+      .where(eq(inventory.variantId, line.variantId)),
+  ),
+]
+
 export const prepareRefundBatch = (
   settled: Order["settled"],
   { fullyRefunded, refundedAmount }: Order["refundInput"],

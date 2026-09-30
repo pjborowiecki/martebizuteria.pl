@@ -193,6 +193,10 @@ export const ADMIN_ORDER_DETAIL_TAG = {
 
 export type AdminOrderDetailTag = (typeof ADMIN_ORDER_DETAIL_TAG)[keyof typeof ADMIN_ORDER_DETAIL_TAG]
 
+export const ORDER_NUMBER_PREFIX = "MRT"
+
+export const ORDER_NUMBER_PADDING = 5
+
 export const ADMIN_ORDER_DETAIL_DISPLAY_ID_LENGTH = 8
 
 export const ORDER_TRACKING_NUMBER_MAX_LENGTH = 128

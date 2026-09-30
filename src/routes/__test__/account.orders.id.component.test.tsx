@@ -59,6 +59,7 @@ const order = (overrides: Partial<CustomerAccount["orderDetail"]> = {}): Custome
   filterStatus: "shipped",
   fulfillmentStatus: "shipped",
   id: "a1b2c3d4-0000-0000-0000-000000000000",
+  orderNumber: "MRT-2026-00007",
   items: [{ name: "Silver ring", priceMinorUnits: 12_000, qty: 2 }],
   shippingMinorUnits: 1500,
   status: "completed",
@@ -88,10 +89,10 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe("account order detail header", () => {
-  it("shows the shortened order reference", async () => {
+  it("shows the order number as the page heading", async () => {
     renderPage()
 
-    expect(await screen.findByRole("heading", { level: 1, name: "#A1B2C3D4" })).toBeInTheDocument()
+    expect(await screen.findByRole("heading", { level: 1, name: "MRT-2026-00007" })).toBeInTheDocument()
   })
 
   it("names the order status", async () => {
