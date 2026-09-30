@@ -8,6 +8,7 @@ import { getPublishedProductCountsByRootCategory } from "~/src/modules/product/p
 
 const { sqlite, queries } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
+
   return {
     queries: [] as TestD1Query[],
     sqlite: new DatabaseSync(":memory:"),
@@ -22,6 +23,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const client = createTestD1Database(sqlite, (query) => {
     queries.push(query)
   })
+
   return { db: drizzle(client, { schema }) }
 })
 

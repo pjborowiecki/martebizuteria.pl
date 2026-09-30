@@ -1,19 +1,17 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { getPublishedRelatedProducts } from "~/src/modules/product/product.accessors"
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
+import { productZodSchemas } from "~/src/modules/product/product.zod"
 
-interface RelatedProductsInput {
-  readonly categoryId: string | null | undefined
-  readonly excludeProductId: string
-  readonly locale: string
-}
-
-export const fetchRelatedProductsFn = createServerFn({ method: "GET" })
-  .validator((input: RelatedProductsInput) => input)
+export const getRelatedProducts = createServerFn({ method: "GET" })
+  .middleware([withRequest])
+  .validator((input: zod.input<typeof productZodSchemas.relatedProductsInput>) => productZodSchemas.relatedProductsInput.parse(input))
   .handler(({ data: { categoryId, excludeProductId } }) => {
     if (categoryId === null || categoryId === undefined) {
       return []
@@ -22,12 +20,12 @@ export const fetchRelatedProductsFn = createServerFn({ method: "GET" })
     return getPublishedRelatedProducts(categoryId, excludeProductId)
   })
 
-export const relatedProductsQueryOptions = (
+export const getRelatedProductsQuery = (
   categoryId: string | null | undefined,
   excludeProductId: string,
-  locale: string = DEFAULT_LOCALE,
+  locale: string = I18N.DEFAULT_LOCALE,
 ) =>
   queryOptions({
-    queryFn: () => fetchRelatedProductsFn({ data: { categoryId, excludeProductId, locale } }),
-    queryKey: [...PRODUCT_QUERY_KEYS.RELATED_BY_CATEGORY, categoryId, excludeProductId, locale] as const,
+    queryFn: () => getRelatedProducts({ data: { categoryId, excludeProductId, locale } }),
+    queryKey: [...PRODUCT_QUERY_KEYS.RELATED_BY_CATEGORY, categoryId, excludeProductId, locale],
   })

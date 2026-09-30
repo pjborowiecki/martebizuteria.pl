@@ -2,24 +2,18 @@ import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import { eq } from "drizzle-orm"
 
-import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { ADDRESS_QUERY_KEYS } from "~/src/modules/address/address.constants"
 import { address } from "~/src/modules/address/address.schema"
 
-export const fetchUserAddressesFn = createServerFn({ method: "GET" }).handler(async () => {
-  const session = await getRequestSession()
+export const listUserAddresses = createServerFn({ method: "GET" })
+  .middleware([authorized()])
+  .handler(({ context }) => db.query.address.findMany({ where: eq(address.userId, context.auth.user.id) }))
 
-  if (!session) {
-    return []
-  }
-
-  return db.query.address.findMany({ where: eq(address.userId, session.user.id) })
-})
-
-export const userAddressesQueryOptions = () =>
+export const listUserAddressesQuery = () =>
   queryOptions({
-    queryFn: () => fetchUserAddressesFn(),
+    queryFn: () => listUserAddresses(),
     queryKey: ADDRESS_QUERY_KEYS.ALL,
   })

@@ -1,8 +1,9 @@
 import { type JSX, useMemo } from "react"
 
 import { createColumnHelper } from "@tanstack/react-table"
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import {
   PRODUCT_ATTRIBUTE_TABLE_A11Y_KEYS,
   PRODUCT_ATTRIBUTE_TABLE_COLUMN_ID,
@@ -18,22 +19,22 @@ import {
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
-import { AttributeAllowedValuesCell } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attribute-allowed-values-cell"
 import { AttributeReorderCell } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attribute-reorder-cell"
 import { AttributesRowActions } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-row-actions"
-import {
-  CATALOG_RECORD_ID_COLUMN_META,
-  catalogRecordIdColumnWidth,
-} from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
+import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
 import { CatalogTitleHandleCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
-import { CATALOG_DATAGRID_EMPTY_TEXT_CLASS } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
+import {
+  CATALOG_DATAGRID_EMPTY_TEXT_CLASS,
+  CatalogTruncatedTextCell,
+} from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 
 const columnHelper = createColumnHelper<DataGridFeatures, ProductAttribute["adminListItem"]>()
 
-const EmptyDash = (): JSX.Element => <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>—</span>
+const EmptyDash = (): JSX.Element => <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>{EMPTY_VALUE}</span>
 
 const AttributeTypeCell = ({ type }: Readonly<{ type: ProductAttribute["adminListItem"]["type"] }>): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.attributes")
+
   return <span>{t(`types.${type}`)}</span>
 }
 
@@ -77,7 +78,7 @@ export const useAttributeColumns = () => {
           header: t("columns.id"),
           id: PRODUCT_ATTRIBUTE_TABLE_COLUMN_ID.recordId,
           meta: CATALOG_RECORD_ID_COLUMN_META,
-          ...catalogRecordIdColumnWidth(),
+          ...fixedDataGridColumnWidth(PRODUCT_ATTRIBUTE_TABLE_COLUMN_SIZE.recordId),
         }),
         columnHelper.accessor("type", {
           cell: ({ getValue }) => <AttributeTypeCell type={getValue()} />,
@@ -94,6 +95,7 @@ export const useAttributeColumns = () => {
             if (unit === null || unit === "") {
               return <EmptyDash />
             }
+
             return <span className="font-mono text-muted-foreground">{unit}</span>
           },
           header: t("columns.unit"),
@@ -117,7 +119,7 @@ export const useAttributeColumns = () => {
               type: row.type,
             }),
           {
-            cell: ({ getValue }) => <AttributeAllowedValuesCell displayText={getValue()} />,
+            cell: ({ getValue }) => <CatalogTruncatedTextCell text={getValue()} />,
             header: t("columns.allowedValues"),
             id: PRODUCT_ATTRIBUTE_TABLE_COLUMN_ID.allowedValues,
             meta: { fillsRemainingWidth: true, skeletonVariant: "text" },

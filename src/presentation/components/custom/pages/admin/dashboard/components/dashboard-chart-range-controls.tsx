@@ -1,11 +1,12 @@
 import { type JSX, useCallback } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { DashboardChartCustomRangeFilter } from "~/src/presentation/components/custom/pages/admin/dashboard/components/dashboard-chart-custom-range-filter"
 import { type DashboardChartRange } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-dashboard-chart-range"
+
 export const DashboardChartRangeControls = ({
   chartRange,
   customRange,
@@ -17,12 +18,15 @@ export const DashboardChartRangeControls = ({
   const handleSelect7d = useCallback(() => {
     onSelectRange("7d")
   }, [onSelectRange])
+
   const handleSelect30d = useCallback(() => {
     onSelectRange("30d")
   }, [onSelectRange])
+
   const handleSelect1y = useCallback(() => {
     onSelectRange("1y")
   }, [onSelectRange])
+
   return (
     <div className="flex max-w-full flex-wrap items-center justify-end gap-0.5 rounded-lg border border-border/50 p-0.5">
       <Button
@@ -61,6 +65,7 @@ export const DashboardChartRangeControls = ({
     </div>
   )
 }
+
 interface DashboardChartRangeControlsProps {
   readonly chartRange: DashboardChartRange
   readonly customRange:

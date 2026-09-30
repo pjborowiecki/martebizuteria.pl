@@ -67,21 +67,27 @@ export const countActiveStorefrontProductFilters = (
   if (options?.ignoreCategory !== true && search.category !== undefined) {
     count++
   }
+
   if (options?.ignoreCollection !== true && search.collection !== undefined) {
     count++
   }
+
   if (search.minPrice !== undefined) {
     count++
   }
+
   if (search.maxPrice !== undefined) {
     count++
   }
+
   if (search.q !== undefined) {
     count++
   }
+
   if (search.sort !== undefined && search.sort !== STOREFRONT_PRODUCTS_SORT.RANK) {
     count++
   }
+
   return count
 }
 
@@ -118,21 +124,27 @@ export const normalizeStorefrontProductsSearch = (search: StorefrontProductsSear
   if (search.category !== undefined) {
     normalized.category = search.category
   }
+
   if (search.collection !== undefined) {
     normalized.collection = search.collection
   }
+
   if (search.minPrice !== undefined) {
     normalized.minPrice = search.minPrice
   }
+
   if (search.maxPrice !== undefined) {
     normalized.maxPrice = search.maxPrice
   }
+
   if (search.q !== undefined) {
     normalized.q = search.q
   }
+
   if (search.sort !== undefined) {
     normalized.sort = search.sort
   }
+
   return normalized
 }
 
@@ -144,6 +156,7 @@ const applyStorefrontScopeSearchPatch = (next: StorefrontProductsSearch, patch: 
       next.category = patch.category
     }
   }
+
   if ("collection" in patch) {
     if (patch.collection === undefined) {
       delete next.collection
@@ -161,6 +174,7 @@ const applyStorefrontRangeSearchPatch = (next: StorefrontProductsSearch, patch: 
       next.minPrice = patch.minPrice
     }
   }
+
   if ("maxPrice" in patch) {
     if (patch.maxPrice === undefined) {
       delete next.maxPrice
@@ -168,6 +182,7 @@ const applyStorefrontRangeSearchPatch = (next: StorefrontProductsSearch, patch: 
       next.maxPrice = patch.maxPrice
     }
   }
+
   if ("q" in patch) {
     if (patch.q === undefined) {
       delete next.q
@@ -175,6 +190,7 @@ const applyStorefrontRangeSearchPatch = (next: StorefrontProductsSearch, patch: 
       next.q = patch.q
     }
   }
+
   if ("sort" in patch) {
     if (patch.sort === undefined) {
       delete next.sort
@@ -194,11 +210,13 @@ export const applyStorefrontProductsSearchPatch = (
   if (options?.clearAll === true) {
     return {}
   }
+
   const next: StorefrontProductsSearch = {
     ...current,
   }
   applyStorefrontScopeSearchPatch(next, patch)
   applyStorefrontRangeSearchPatch(next, patch)
+
   return normalizeStorefrontProductsSearch(next)
 }
 

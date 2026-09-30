@@ -5,6 +5,7 @@ import { DashboardOverviewFallback } from "~/src/presentation/components/custom/
 import { DashboardRecentOrders } from "~/src/presentation/components/custom/pages/admin/dashboard-recent-orders"
 import { DashboardStats } from "~/src/presentation/components/custom/pages/admin/dashboard-stats"
 import { DashboardTopProducts } from "~/src/presentation/components/custom/pages/admin/dashboard-top-products"
+
 export const DashboardOverviewContent = (): JSX.Element => (
   <Suspense fallback={dashboardOverviewFallback}>
     <div className="space-y-6">

@@ -5,8 +5,11 @@ export const BLOG_POST_SLUGS = {
   layeredCompositions: "sztuka-proporcji-warstwowe-kompozycje",
   mineralGuide: "przewodnik-po-mineralach",
 } as const
+
 export type BlogPostSlug = (typeof BLOG_POST_SLUGS)[keyof typeof BLOG_POST_SLUGS]
+
 const BLOG_POST_SLUG_SET = new Set<string>(Object.values(BLOG_POST_SLUGS))
+
 export const LANDING_ARCHIVE_ARTICLES = [
   {
     slug: BLOG_POST_SLUGS.careRitual,
@@ -21,4 +24,5 @@ export const LANDING_ARCHIVE_ARTICLES = [
     titleKey: "articles.engraving",
   },
 ] as const
+
 export const BLOG_POST_SLUG_LIST: readonly BlogPostSlug[] = LANDING_ARCHIVE_ARTICLES.map((article) => article.slug)

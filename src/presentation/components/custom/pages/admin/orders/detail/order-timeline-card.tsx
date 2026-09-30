@@ -1,14 +1,16 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { DEMO_TIMELINE, TIMELINE_KEY_SLICE_LENGTH } from "~/src/data/order-detail-data"
+import { DEMO_TIMELINE, TIMELINE_KEY_SLICE_LENGTH } from "~/src/data/order-detail"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
 import { OrderTimelineEvent } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-timeline-event"
+
 export const OrderTimelineCard = (): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">
       <CardContent className="p-5">

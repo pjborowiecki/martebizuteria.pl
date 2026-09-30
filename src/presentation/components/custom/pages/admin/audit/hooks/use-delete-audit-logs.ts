@@ -1,18 +1,16 @@
 import { type UseMutationResult, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
-import { deleteAuditLogsFn } from "~/src/modules/audit-log/use-cases/delete-audit-logs"
+import { deleteAuditLogsMutation } from "~/src/modules/audit-log/use-cases/delete-audit-logs"
 
-export const useDeleteAuditLogs = (): UseMutationResult<DeleteResult, Error, readonly string[]> => {
+export const useDeleteAuditLogs = (): UseMutationResult<DeleteResult, Error, string[]> => {
   const t = useTranslations("pages.admin")
   const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: (ids: readonly string[]) =>
-      deleteAuditLogsFn({
-        data: [...ids],
-      }),
+    ...deleteAuditLogsMutation,
     onError: () => {
       toast.error(t("audit.bulk.deleteErrorTitle"), {
         description: t("audit.bulk.deleteErrorDescription"),
@@ -32,6 +30,7 @@ export const useDeleteAuditLogs = (): UseMutationResult<DeleteResult, Error, rea
     },
   })
 }
+
 interface DeleteResult {
   readonly deleted: number
   readonly ok: boolean

@@ -1,18 +1,20 @@
 import { type JSX, useCallback } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.availability.utils"
-import { type StorefrontProduct } from "~/src/modules/product/product.types"
+import { type Product } from "~/src/modules/product/product.types"
 
 import { IMPLICIT_VARIANT_OPTION_TITLES } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-variant-form.utils"
+
 export const ProductVariantPicker = ({ onSelectOptionValue, product, selectedValueIds }: ProductVariantPickerProps): JSX.Element => {
   const t = useTranslations("pages.product.heroSection")
   const showPicker = product.hasVariants && product.options.length > 0
   if (!showPicker) {
     return <div className="hidden" aria-hidden />
   }
+
   return (
     <div className="space-y-4">
       {product.options.map((option) => (
@@ -28,6 +30,7 @@ export const ProductVariantPicker = ({ onSelectOptionValue, product, selectedVal
     </div>
   )
 }
+
 const OptionAxis = ({
   onSelectValue,
   option,
@@ -35,13 +38,13 @@ const OptionAxis = ({
   selectedValueId,
 }: Readonly<{
   onSelectValue: (optionId: string, valueId: string) => void
-  option: StorefrontProduct["options"][number]
-  product: StorefrontProduct
+  option: Product["storefront"]["options"][number]
+  product: Product["storefront"]
   selectedValueId: string | undefined
 }>): JSX.Element => {
   const hideAxisTitle =
     product.options.length === 1 &&
-    (option.title === IMPLICIT_VARIANT_OPTION_TITLES.pl || option.title === IMPLICIT_VARIANT_OPTION_TITLES.en)
+    (option.title === IMPLICIT_VARIANT_OPTION_TITLES["pl-PL"] || option.title === IMPLICIT_VARIANT_OPTION_TITLES["en-US"])
   return (
     <div className="space-y-2">
       {!hideAxisTitle && <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{option.title}</p>}
@@ -63,6 +66,7 @@ const OptionAxis = ({
     </div>
   )
 }
+
 const OptionValueButton = ({
   isAvailable,
   isSelected,
@@ -81,6 +85,7 @@ const OptionValueButton = ({
   const handleClick = useCallback(() => {
     onSelectValue(optionId, valueId)
   }, [onSelectValue, optionId, valueId])
+
   return (
     <button
       aria-pressed={isSelected}
@@ -97,9 +102,11 @@ const OptionValueButton = ({
     </button>
   )
 }
+
 const MIN_STOCK = 1
-export interface ProductVariantPickerProps {
+
+interface ProductVariantPickerProps {
   readonly onSelectOptionValue: (optionId: string, valueId: string) => void
-  readonly product: StorefrontProduct
+  readonly product: Product["storefront"]
   readonly selectedValueIds: Readonly<Record<string, string>>
 }

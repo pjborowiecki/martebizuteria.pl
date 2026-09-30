@@ -1,27 +1,25 @@
 import { queryOptions } from "@tanstack/react-query"
+import { notFound } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { and, eq } from "drizzle-orm"
+import type * as zod from "zod"
 
-import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { CUSTOMER_ACCOUNT_QUERY_KEYS, CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccountOrderDetail } from "~/src/modules/customer-account/customer-account.types"
+import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { mapCustomerAccountAddressRow, mapCustomerOrderDetail } from "~/src/modules/customer-account/customer-account.utils"
 import { customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
 
-export const fetchCustomerOrderByIdFn = createServerFn({ method: "GET" })
-  .validator((data: unknown) => customerAccountZodSchemas.orderIdInput.parse(data))
-  .handler(async ({ data: { orderId } }): Promise<CustomerAccountOrderDetail | undefined> => {
-    const authSession = await getRequestSession()
-    if (authSession?.user === undefined) {
-      return undefined
-    }
-
+export const getCustomerOrder = createServerFn({ method: "GET" })
+  .middleware([authorized()])
+  .validator((input: zod.input<typeof customerAccountZodSchemas.orderIdInput>) => customerAccountZodSchemas.orderIdInput.parse(input))
+  .handler(async ({ context, data: { orderId } }): Promise<CustomerAccount["orderDetail"] | undefined> => {
     const orderRow = await db.query.order.findFirst({
-      where: and(eq(order.id, orderId), eq(order.userId, authSession.user.id)),
+      where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
       with: {
         checkout: {
           with: {
@@ -49,15 +47,23 @@ export const fetchCustomerOrderByIdFn = createServerFn({ method: "GET" })
       .where(eq(orderItem.orderId, orderId))
 
     return mapCustomerOrderDetail(orderRow, items, {
-      billingAddress: mapCustomerAccountAddressRow(orderRow.checkout?.billingAddress ?? undefined),
+      billingAddress: mapCustomerAccountAddressRow(orderRow.checkout?.billingAddress),
       paymentProvider: orderRow.payment?.provider,
-      shippingAddress: mapCustomerAccountAddressRow(orderRow.checkout?.shippingAddress ?? undefined),
+      shippingAddress: mapCustomerAccountAddressRow(orderRow.checkout?.shippingAddress),
     })
   })
 
-export const orderByIdQueryOptions = (orderId: string) =>
+export const getCustomerOrderQuery = (orderId: string) =>
   queryOptions({
-    queryFn: () => fetchCustomerOrderByIdFn({ data: { orderId } }),
-    queryKey: [...CUSTOMER_ACCOUNT_QUERY_KEYS.ORDER_BY_ID, orderId] as const,
+    queryFn: async () => {
+      const detail = await getCustomerOrder({ data: { orderId } })
+
+      if (detail === undefined) {
+        throw notFound()
+      }
+
+      return detail
+    },
+    queryKey: [...CUSTOMER_ACCOUNT_QUERY_KEYS.ORDER_BY_ID, orderId],
     staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
   })

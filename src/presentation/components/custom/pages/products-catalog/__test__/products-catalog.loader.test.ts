@@ -16,18 +16,18 @@ vi.mock("~/src/lib/image", () => ({
   prefetchProductThumbnails: vi.fn(),
 }))
 
-vi.mock("~/src/lib/dev/catalog-debug-log", () => ({ catalogDebugLog: vi.fn() }))
+vi.mock("~/src/lib/catalog-debug-log", () => ({ catalogDebugLog: vi.fn() }))
 
 vi.mock("~/src/modules/product-category/use-cases/get-categories", () => ({
-  categoriesQueryOptions: () => ({ queryFn: requests.categories, queryKey: ["categories"] }),
+  getCategoriesQuery: () => ({ queryFn: requests.categories, queryKey: ["categories"] }),
 }))
 
 vi.mock("~/src/modules/product-collection/use-cases/get-collections", () => ({
-  collectionsQueryOptions: () => ({ queryFn: requests.collections, queryKey: ["collections"] }),
+  getCollectionsQuery: () => ({ queryFn: requests.collections, queryKey: ["collections"] }),
 }))
 
 vi.mock("~/src/modules/product/use-cases/get-storefront-products-page", () => ({
-  storefrontProductsInfiniteQueryOptions: (search: unknown, scope: unknown) => ({
+  getStorefrontProductsPageQuery: (search: unknown, scope: unknown) => ({
     getNextPageParam: () => {},
     initialPageParam: 0,
     queryFn: requests.products,
@@ -101,5 +101,15 @@ describe("catalog prefetch", () => {
 
     await expect(prefetchProductsCatalogPage(queryClient, imagePrefetchService, { search: {} })).rejects.toBe(failure)
     expect(prefetchProductThumbnails).not.toHaveBeenCalled()
+  })
+
+  it("skips thumbnail prefetch when a restored infinite query contains no pages", async () => {
+    vi.spyOn(queryClient, "infiniteQuery").mockResolvedValueOnce({ pageParams: [], pages: [] })
+
+    await prefetchProductsCatalogPage(queryClient, imagePrefetchService, { search: {} })
+
+    expect(prefetchProductThumbnails).not.toHaveBeenCalled()
+    expect(requests.categories).toHaveBeenCalledOnce()
+    expect(requests.collections).toHaveBeenCalledOnce()
   })
 })

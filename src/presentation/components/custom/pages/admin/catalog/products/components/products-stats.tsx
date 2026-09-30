@@ -1,20 +1,20 @@
 import { type JSX } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { productStatsQueryOptions } from "~/src/modules/product/use-cases/get-product-stats"
+import { getProductStatsQuery } from "~/src/modules/product/use-cases/get-product-stats"
 
 import {
   ProductStatCard,
   buildProductStatCaption,
-  formatProductStatDisplayValue,
 } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/product-stat-card"
 import { useProductsDataGridContext } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-data-grid"
 import { PRODUCT_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/products/products-stats.config"
+
 export const ProductsStats = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products.catalogList")
-  const { data: resolvedStats, isFetching, isStale } = useSuspenseQuery(productStatsQueryOptions())
+  const { data: resolvedStats, isFetching, isStale } = useSuspenseQuery(getProductStatsQuery())
 
   const valuesPending = isFetching && isStale
   const {
@@ -25,6 +25,7 @@ export const ProductsStats = (): JSX.Element => {
     activeVariantKindFilter,
     applyProductsFilter,
   } = useProductsDataGridContext()
+
   return (
     <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {PRODUCT_STAT_CARDS.map((config) => {
@@ -47,7 +48,7 @@ export const ProductsStats = (): JSX.Element => {
             activeVariantKindFilter={activeVariantKindFilter}
             caption={caption}
             config={config}
-            displayValue={formatProductStatDisplayValue(config.key, value)}
+            displayValue={value.toLocaleString()}
             onFilter={applyProductsFilter}
             valuesPending={valuesPending}
           />

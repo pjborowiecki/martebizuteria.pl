@@ -1,12 +1,13 @@
 import { type JSX, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   AdminDateColumnFilter,
   type AdminDateColumnFilterLabels,
 } from "~/src/presentation/components/custom/pages/admin/lib/admin-date-column-filter"
 import { ordersDataGrid } from "~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid"
+
 export const OrdersDateColumnFilter = ({ ariaLabelKey, columnId, labelKey }: Readonly<OrdersDateColumnFilterProps>): JSX.Element => {
   const t = useTranslations("pages.admin.orders")
   const { table } = ordersDataGrid.useDataGrid()
@@ -28,8 +29,10 @@ export const OrdersDateColumnFilter = ({ ariaLabelKey, columnId, labelKey }: Rea
     }),
     [t],
   )
+
   return <AdminDateColumnFilter ariaLabel={t(ariaLabelKey)} columnId={columnId} label={t(labelKey)} labels={labels} table={table} />
 }
+
 interface OrdersDateColumnFilterProps {
   readonly ariaLabelKey: "filter.createdAt"
   readonly columnId: string

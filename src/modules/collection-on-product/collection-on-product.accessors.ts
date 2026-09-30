@@ -3,10 +3,12 @@ import { count, inArray, sql } from "drizzle-orm"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
+
 export const countProductsForCollections = async (collectionIds: readonly string[]): Promise<number> => {
   if (collectionIds.length === 0) {
     return 0
   }
+
   const [row] = await db
     .select({
       value: count(),
@@ -15,6 +17,7 @@ export const countProductsForCollections = async (collectionIds: readonly string
     .where(inArray(collectionOnProduct.collectionId, [...collectionIds]))
   return row?.value ?? 0
 }
+
 export const getProductCountsQuery = db
   .select({
     collectionId: collectionOnProduct.collectionId,

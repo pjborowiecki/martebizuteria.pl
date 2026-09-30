@@ -1,11 +1,12 @@
 import { type DragEvent, type JSX, type KeyboardEvent, useCallback } from "react"
 
 import { GripVertical } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { productsDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/products/utils/products-data-grid"
+
 export const ProductReorderCell = ({ id }: ProductReorderCellProps): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products.catalogList")
   const { rowReorder } = productsDataGrid.useDataGrid()
@@ -18,6 +19,7 @@ export const ProductReorderCell = ({ id }: ProductReorderCellProps): JSX.Element
     },
     [id, rowReorder],
   )
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>) => {
       if (event.key === "ArrowUp") {
@@ -30,6 +32,7 @@ export const ProductReorderCell = ({ id }: ProductReorderCellProps): JSX.Element
     },
     [id, rowReorder],
   )
+
   return (
     <div className="flex justify-center">
       <Button
@@ -49,6 +52,7 @@ export const ProductReorderCell = ({ id }: ProductReorderCellProps): JSX.Element
     </div>
   )
 }
+
 interface ProductReorderCellProps {
   readonly id: string
 }

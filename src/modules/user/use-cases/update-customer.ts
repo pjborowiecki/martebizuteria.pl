@@ -1,16 +1,20 @@
+import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import { eq, sql } from "drizzle-orm"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getDefaultAddressForUser, upsertDefaultAddressForUser } from "~/src/modules/address/address.accessors"
 import { getUserById } from "~/src/modules/user/user.accessors"
-import { USER_ERROR_CODES } from "~/src/modules/user/user.constants"
-import { serializeAdminUserMetadata } from "~/src/modules/user/user.metadata.utils"
+import { USER_ERROR_CODES, USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
 import { user } from "~/src/modules/user/user.schema"
 import { type User } from "~/src/modules/user/user.types"
+import { serializeAdminUserMetadata } from "~/src/modules/user/user.utils"
 import { userZodSchemas } from "~/src/modules/user/user.zod"
+
 const hasAddressInput = (
   values: User["adminCustomerFormValues"],
 ): values is User["adminCustomerFormValues"] & {
@@ -20,23 +24,26 @@ const hasAddressInput = (
   if (addressInput === undefined) {
     return false
   }
+
   return addressInput.address1.trim() !== "" && addressInput.city.trim() !== ""
 }
-export const updateAdminCustomerFn = createServerFn({
+
+export const updateCustomer = createServerFn({
   method: "POST",
 })
-  .validator((data: unknown) => userZodSchemas.updateAdminCustomerInput.parse(data))
+  .middleware([authorized({ user: ["update"] })])
+  .validator((input: zod.input<typeof userZodSchemas.updateAdminCustomerInput>) => userZodSchemas.updateAdminCustomerInput.parse(input))
   .handler(
     async ({
       data: input,
     }): Promise<{
       ok: true
     }> => {
-      await assertAdmin()
       const targetUser = await getUserById(input.id)
       if (targetUser === undefined) {
-        throw new Error(USER_ERROR_CODES.NOT_FOUND)
+        throw new AppError(ERROR_CODES.NOT_FOUND, USER_ERROR_CODES.NOT_FOUND)
       }
+
       const phone = input.values.phone?.trim()
       const metadata = serializeAdminUserMetadata({
         notes: input.values.notes,
@@ -56,6 +63,7 @@ export const updateAdminCustomerFn = createServerFn({
           const existingAddress = await getDefaultAddressForUser(input.id)
           countryCode = existingAddress?.countryCode ?? ""
         }
+
         if (countryCode !== "") {
           await upsertDefaultAddressForUser({
             address1: addressValues.address1.trim(),
@@ -68,8 +76,14 @@ export const updateAdminCustomerFn = createServerFn({
           })
         }
       }
+
       return {
         ok: true,
       }
     },
   )
+
+export const updateCustomerMutation = mutationOptions({
+  mutationFn: (data: Parameters<typeof updateCustomer>[0]["data"]) => updateCustomer({ data }),
+  mutationKey: USER_MUTATION_KEYS.UPDATE_CUSTOMER,
+})

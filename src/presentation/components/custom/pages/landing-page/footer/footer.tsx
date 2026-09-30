@@ -1,14 +1,16 @@
 import { type JSX, type ReactNode, type SVGProps } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { SOCIALS } from "~/src/presentation/branding/socials"
 
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 export const Footer = (): JSX.Element => {
   const t = useTranslations("components.custom.footer")
+
   return (
     <footer className="relative z-10 bg-primary py-16 text-primary-foreground md:py-24">
       <div className="container mx-auto px-4 md:px-8">
@@ -72,6 +74,7 @@ export const Footer = (): JSX.Element => {
     </footer>
   )
 }
+
 const FooterLink = ({ to, children }: { to: LocalizedTo; children: ReactNode }) => (
   <li>
     <LocalizedLink to={to} className="text-primary-foreground/80 transition-colors hover:text-primary-foreground">
@@ -79,6 +82,7 @@ const FooterLink = ({ to, children }: { to: LocalizedTo; children: ReactNode }) 
     </LocalizedLink>
   </li>
 )
+
 const FacebookIcon = (
   props: SVGProps<SVGSVGElement> & {
     title: string
@@ -100,6 +104,7 @@ const FacebookIcon = (
     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
   </svg>
 )
+
 const InstagramIcon = (
   props: SVGProps<SVGSVGElement> & {
     title: string

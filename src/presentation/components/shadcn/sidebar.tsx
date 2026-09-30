@@ -27,12 +27,15 @@ import { Separator } from "~/src/presentation/components/shadcn/separator"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "~/src/presentation/components/shadcn/sheet"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/presentation/components/shadcn/tooltip"
+
 const subscribeSidebarPreference = (onStoreChange: () => void): (() => void) => {
   globalThis.addEventListener(SIDEBAR_PREFERENCE_CHANGE_EVENT, onStoreChange)
+
   return () => {
     globalThis.removeEventListener(SIDEBAR_PREFERENCE_CHANGE_EVENT, onStoreChange)
   }
 }
+
 const usePersistedSidebarOpen = (defaultOpen: boolean): boolean =>
   useSyncExternalStore(
     subscribeSidebarPreference,
@@ -45,8 +48,10 @@ const useSidebar = () => {
   if (context === undefined) {
     throw new Error("useSidebar must be used within a SidebarProvider.")
   }
+
   return context
 }
+
 const SidebarProvider = ({
   defaultOpen = true,
   open: openProp,
@@ -74,6 +79,7 @@ const SidebarProvider = ({
     },
     [setOpenProp, open],
   )
+
   const toggleSidebar = useCallback(() => {
     if (isMobile) {
       setOpenMobile((prev) => !prev)
@@ -89,10 +95,12 @@ const SidebarProvider = ({
       }
     }
     globalThis.addEventListener("keydown", handleSidebarKeyboardShortcutKeyDown)
+
     return function unregisterSidebarKeyboardShortcut() {
       globalThis.removeEventListener("keydown", handleSidebarKeyboardShortcutKeyDown)
     }
   }, [toggleSidebar])
+
   const state = open ? "expanded" : "collapsed"
   const contextValue = useMemo<SidebarContextProps>(
     () => ({
@@ -106,6 +114,7 @@ const SidebarProvider = ({
     }),
     [state, open, setOpen, isMobile, openMobile, toggleSidebar],
   )
+
   const sidebarProviderStyle = useMemo<SidebarVars>(
     () => ({
       "--sidebar-width": SIDEBAR_WIDTH,
@@ -114,6 +123,7 @@ const SidebarProvider = ({
     }),
     [style],
   )
+
   return (
     <SidebarContext.Provider value={contextValue}>
       <div
@@ -127,6 +137,7 @@ const SidebarProvider = ({
     </SidebarContext.Provider>
   )
 }
+
 const Sidebar = ({
   side = "left",
   variant = "sidebar",
@@ -152,6 +163,7 @@ const Sidebar = ({
       </div>
     )
   }
+
   if (isMobile) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
@@ -173,6 +185,7 @@ const Sidebar = ({
       </Sheet>
     )
   }
+
   return (
     <div
       className="group peer hidden text-sidebar-foreground md:block"
@@ -182,7 +195,6 @@ const Sidebar = ({
       data-side={side}
       data-slot="sidebar"
     >
-      {/* This is what handles the sidebar gap on desktop */}
       <div
         data-slot="sidebar-gap"
         className={cn(
@@ -222,6 +234,7 @@ const Sidebar = ({
     </div>
   )
 }
+
 const SidebarTrigger = ({ className, onClick, ...props }: ComponentProps<typeof Button>): JSX.Element => {
   const { toggleSidebar } = useSidebar()
   const handleClick = useCallback(
@@ -231,6 +244,7 @@ const SidebarTrigger = ({ className, onClick, ...props }: ComponentProps<typeof 
     },
     [onClick, toggleSidebar],
   )
+
   return (
     <Button
       data-sidebar="trigger"
@@ -246,8 +260,10 @@ const SidebarTrigger = ({ className, onClick, ...props }: ComponentProps<typeof 
     </Button>
   )
 }
+
 const SidebarRail = ({ className, ...props }: ComponentProps<"button">): JSX.Element => {
   const { toggleSidebar } = useSidebar()
+
   return (
     <button
       data-sidebar="rail"
@@ -269,6 +285,7 @@ const SidebarRail = ({ className, ...props }: ComponentProps<"button">): JSX.Ele
     />
   )
 }
+
 const SidebarInset = ({ className, ...props }: ComponentProps<"main">): JSX.Element => (
   <main
     data-slot="sidebar-inset"
@@ -406,6 +423,7 @@ const SidebarMenuButton = ({
     }),
     className,
   )
+
   const comp = useRender({
     defaultTagName: "button",
     props: mergeProps<"button">(
@@ -422,14 +440,17 @@ const SidebarMenuButton = ({
       slot: "sidebar-menu-button",
     },
   })
+
   if (tooltip === undefined || tooltip === "") {
     return comp
   }
+
   if (typeof tooltip === "string") {
     tooltip = {
       children: tooltip,
     }
   }
+
   return (
     <Tooltip>
       {comp}
@@ -437,6 +458,7 @@ const SidebarMenuButton = ({
     </Tooltip>
   )
 }
+
 const SidebarMenuAction = ({
   className,
   render,
@@ -485,7 +507,6 @@ const SidebarMenuSkeleton = ({
 }: ComponentProps<"div"> & {
   showIcon?: boolean
 }): JSX.Element => {
-  // Random width between 50 to 90%.
   const [width, setWidth] = useState(() => `${Math.floor(Math.random() * SKELETON_WIDTH_RANGE) + SKELETON_MIN_WIDTH}%`)
   void setWidth
   const skeletonStyle = useMemo<SidebarVars>(
@@ -494,6 +515,7 @@ const SidebarMenuSkeleton = ({
     }),
     [width],
   )
+
   return (
     <div
       data-slot="sidebar-menu-skeleton"
@@ -506,6 +528,7 @@ const SidebarMenuSkeleton = ({
     </div>
   )
 }
+
 const SidebarMenuSub = ({ className, ...props }: ComponentProps<"ul">): JSX.Element => (
   <ul
     data-slot="sidebar-menu-sub"
@@ -559,19 +582,27 @@ const SidebarMenuSubButton = ({
   })
 
 const SIDEBAR_WIDTH = "16rem"
+
 const SIDEBAR_WIDTH_ICON = "4rem"
+
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+
 const SIDEBAR_MOBILE_TITLE = "Sidebar"
+
 const SIDEBAR_MOBILE_DESCRIPTION = "Displays the mobile sidebar."
+
 const SIDEBAR_TOGGLE_LABEL = "Toggle Sidebar"
+
 interface SidebarVars extends CSSProperties {
   "--sidebar-width"?: string
   "--sidebar-width-icon"?: string
   "--skeleton-width"?: string
 }
+
 const SIDEBAR_MOBILE_STYLE: SidebarVars = {
   "--sidebar-width": "18rem",
 }
+
 interface SidebarContextProps {
   state: "expanded" | "collapsed"
   open: boolean
@@ -581,7 +612,9 @@ interface SidebarContextProps {
   isMobile: boolean
   toggleSidebar: () => void
 }
+
 const SidebarContext = createContext<SidebarContextProps | undefined>(undefined)
+
 const sidebarMenuButtonVariants = cva(
   "peer/menu-button group/menu-button flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-lg p-2 text-left text-xs ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:h-12! group-data-[collapsible=icon]:w-full! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:rounded-none! group-data-[collapsible=icon]:px-0! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground [&_svg]:size-5 [&_svg]:shrink-0 group-data-[collapsible=icon]:[&>[data-sidebar-icon]]:flex! group-data-[collapsible=icon]:[&>[data-slot=avatar]]:flex! group-data-[collapsible=icon]:[&>div]:hidden! group-data-[collapsible=icon]:[&>span]:hidden! [&>span:last-child]:truncate",
   {
@@ -603,8 +636,11 @@ const sidebarMenuButtonVariants = cva(
     },
   },
 )
+
 const SKELETON_MIN_WIDTH = 50
+
 const SKELETON_WIDTH_RANGE = 40
+
 export {
   Sidebar,
   SidebarContent,

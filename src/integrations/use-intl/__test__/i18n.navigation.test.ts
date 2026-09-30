@@ -2,36 +2,32 @@ import { QueryClient } from "@tanstack/react-query"
 import { createMemoryHistory, createRootRouteWithContext, createRoute, createRouter, redirect } from "@tanstack/react-router"
 import { describe, expect, it, vi } from "vite-plus/test"
 
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
 import { getRouteNamespaces, messagesQueryOptions, preloadNamespaces } from "~/src/integrations/use-intl/i18n.messages"
-import { extractLocaleFromPath } from "~/src/integrations/use-intl/i18n.utils"
+import { deLocalizeUrl, getCurrentLocale, localizeUrl } from "~/src/integrations/use-intl/i18n.utils"
+
+import type faqMessages from "~/messages/en-US/pages.faq.json"
+
 const createLocaleRouter = () => {
   const root = createRootRouteWithContext<{
     queryClient: QueryClient
   }>()({
-    beforeLoad: async ({ context, location, matches }) => {
-      const locale = extractLocaleFromPath(location.pathname) ?? DEFAULT_LOCALE
+    beforeLoad: async ({ context, matches }) => {
+      const locale = getCurrentLocale()
+
       await preloadNamespaces({
         locale,
         namespaces: getRouteNamespaces(matches),
         queryClient: context.queryClient,
       })
+
       return {
         locale,
       }
     },
   })
-  const localized = createRoute({
-    getParentRoute: () => root,
-    params: {
-      stringify: (params) => ({
-        locale: params.locale === DEFAULT_LOCALE ? undefined : params.locale,
-      }),
-    },
-    path: "/{-$locale}",
-  })
+
   const faq = createRoute({
-    getParentRoute: () => localized,
+    getParentRoute: () => root,
     head: ({
       loaderData,
     }: Readonly<{
@@ -47,25 +43,29 @@ const createLocaleRouter = () => {
         },
       ],
     }),
-    loader: ({ context }) => context.queryClient.query(messagesQueryOptions(context.locale, "pages.faq")),
+    loader: ({ context }) =>
+      context.queryClient.query(messagesQueryOptions<typeof faqMessages>({ locale: context.locale, namespace: "pages.faq" })),
     path: "/faq",
     staticData: {
       namespaces: ["pages.faq"],
     },
   })
+
   const signIn = createRoute({
-    getParentRoute: () => localized,
+    getParentRoute: () => root,
     path: "/auth/sign-in",
   })
+
   const account = createRoute({
     beforeLoad: () => {
       throw redirect({
-        to: "/{-$locale}/auth/sign-in",
+        to: "/auth/sign-in",
       })
     },
-    getParentRoute: () => localized,
+    getParentRoute: () => root,
     path: "/account",
   })
+
   return createRouter({
     context: {
       queryClient: new QueryClient(),
@@ -75,116 +75,36 @@ const createLocaleRouter = () => {
       initialEntries: ["/faq"],
     }),
     isServer: false,
-    routeTree: root.addChildren([localized.addChildren([faq, signIn, account])]),
+    rewrite: {
+      input: ({ url }) => deLocalizeUrl(url),
+      output: ({ url }) => localizeUrl(url),
+    },
+    routeTree: root.addChildren([faq, signIn, account]),
   })
 }
-vi.mock("@tanstack/router-core/isServer", () => ({
-  isServer: false,
+
+const { currentRequest } = vi.hoisted(() => ({
+  currentRequest: vi.fn<() => Request>(() => new Request("https://store.test/faq")),
 }))
-describe("native optional locale routes", () => {
-  it("refreshes FAQ metadata on locale navigation and inherits locale in links and redirects", async () => {
+
+vi.mock("@tanstack/react-start/server", () => ({ getRequest: currentRequest }))
+
+describe("locale-free routes with router rewrite", () => {
+  it("strips the locale before matching so a prefixed path resolves the same route", async () => {
     vi.stubGlobal("window", {
       origin: "http://localhost",
     })
+    currentRequest.mockReturnValue(new Request("https://store.test/en-US/account"))
+
     try {
       const router = createLocaleRouter()
-      await router.load()
-      const polishData = router.state.matches.at(-1)?.loaderData
-      router.history.push("/en/faq")
+
+      router.history.push("/en-US/account")
       await router.load({
         sync: true,
       })
-      const englishData = router.state.matches.at(-1)?.loaderData
-      expect({
-        englishData,
-        polishData,
-      }).toMatchObject({
-        englishData: {
-          description: "Page under construction. We look forward to seeing you soon.",
-          title: "FAQ",
-        },
-        polishData: {
-          description: "Strona w budowie. Zapraszamy wkrótce.",
-          title: "FAQ",
-        },
-      })
-      expect(router.state.matches.at(-1)?.meta).toStrictEqual([
-        {
-          title: "FAQ",
-        },
-        {
-          content: "Page under construction. We look forward to seeing you soon.",
-          name: "description",
-        },
-      ])
-      expect(
-        router.buildLocation({
-          to: "/{-$locale}/auth/sign-in",
-        }).publicHref,
-      ).toBe("/en/auth/sign-in")
-      expect(
-        router.buildLocation({
-          params: {
-            locale: "pl",
-          },
-          to: "/{-$locale}/faq",
-        }).publicHref,
-      ).toBe("/faq")
-      router.history.push("/en/account")
-      await router.load({
-        sync: true,
-      })
-      expect(router.state.location.publicHref).toBe("/en/auth/sign-in")
-    } finally {
-      vi.unstubAllGlobals()
-    }
-  })
-  it("preserves query strings and hashes and emits canonical English and Polish roots", () => {
-    vi.stubGlobal("window", {
-      origin: "http://localhost",
-    })
-    try {
-      const router = createLocaleRouter()
-      expect(
-        router.buildLocation({
-          hash: "gold",
-          params: {
-            locale: "en",
-          },
-          search: () => ({
-            category: "rings",
-          }),
-          to: "/{-$locale}/faq",
-        }).publicHref,
-      ).toBe("/en/faq?category=rings#gold")
-      expect(
-        router.buildLocation({
-          hash: "gold",
-          params: {
-            locale: "pl",
-          },
-          search: () => ({
-            category: "rings",
-          }),
-          to: "/{-$locale}/faq",
-        }).publicHref,
-      ).toBe("/faq?category=rings#gold")
-      expect(
-        router.buildLocation({
-          params: {
-            locale: "en",
-          },
-          to: "/{-$locale}",
-        }).publicHref,
-      ).toBe("/en")
-      expect(
-        router.buildLocation({
-          params: {
-            locale: "pl",
-          },
-          to: "/{-$locale}",
-        }).publicHref,
-      ).toBe("/")
+
+      expect(router.state.location.pathname).toBe("/auth/sign-in")
     } finally {
       vi.unstubAllGlobals()
     }

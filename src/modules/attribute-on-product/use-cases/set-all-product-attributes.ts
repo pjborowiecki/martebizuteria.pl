@@ -1,18 +1,22 @@
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { replaceAllAttributesForProduct } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
 import { attributeOnProductZodSchemas } from "~/src/modules/attribute-on-product/attribute-on-product.zod"
 
-export const setAllForProductFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => attributeOnProductZodSchemas.setAllForProductInput.parse(data))
+export const setAllProductAttributes = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["update"] })])
+  .validator((input: zod.input<typeof attributeOnProductZodSchemas.setAllForProductInput>) =>
+    attributeOnProductZodSchemas.setAllForProductInput.parse(input),
+  )
   .handler(async ({ data }) => {
-    await assertAdmin()
     await replaceAllAttributesForProduct(
       data.productId,
       data.productValues,
       data.variantValues.map((group) => ({ rows: group.values, variantId: group.variantId })),
     )
+
     return { ok: true, productId: data.productId }
   })

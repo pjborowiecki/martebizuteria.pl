@@ -1,65 +1,56 @@
 import { createIsomorphicFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 
-import { DEFAULT_LOCALE, LOCALES, LOCALE_COOKIE_NAME } from "~/src/integrations/use-intl/i18n.config"
-import { type Locale } from "~/src/integrations/use-intl/i18n.types"
-export const isValidLocale = (locale: string): locale is Locale => LOCALE_SET.has(locale)
+import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+import {
+  deLocalizePathname,
+  extractLocaleFromPath,
+  isSupportedLocale,
+  localizePathname,
+  shouldIgnorePath,
+} from "~/src/integrations/use-intl/i18n.paths"
 
-export const shouldIgnorePath = (pathname: string): boolean => IGNORED_PATHS_REGEX.test(pathname)
+import { readCookie } from "~/src/lib/cookie"
 
-export const extractLocaleFromPath = (pathname: string): Locale | undefined => {
-  const [, segment] = LOCALE_SEGMENT_REGEX.exec(pathname) ?? []
-  if (segment !== undefined && isValidLocale(segment) && segment !== DEFAULT_LOCALE) {
-    return segment
-  }
-  return undefined
+const withPathname = ({ pathname, url }: { pathname: string; url: URL }): URL => {
+  const rewritten = new URL(url)
+  rewritten.pathname = pathname
+
+  return rewritten
 }
-export const parseLocaleCookie = (cookieHeader: string | undefined): Locale | undefined => {
-  if (cookieHeader === undefined) {
-    return undefined
-  }
-  const [, rawSegment] = COOKIE_LOCALE_REGEX.exec(cookieHeader) ?? []
-  if (rawSegment === undefined) {
-    return undefined
-  }
-  try {
-    const locale = decodeURIComponent(rawSegment)
-    return isValidLocale(locale) ? locale : undefined
-  } catch {
-    return undefined
-  }
+
+export const parseLocaleCookie = (cookieHeader: string | null | undefined): SupportedLocale | undefined => {
+  const locale = readCookie({ header: cookieHeader, name: I18N.COOKIE_NAME })
+
+  return locale !== undefined && isSupportedLocale(locale) ? locale : undefined
 }
-export const deLocalizeUrl = (url: ReadonlyUrl): URL => {
-  const locale = extractLocaleFromPath(url.pathname)
-  if (locale === undefined) {
-    return new URL(url.toString())
-  }
-  const localePrefix = `/${locale}`
-  const strippedPath = url.pathname.slice(localePrefix.length)
-  const newUrl = new URL(url.toString())
-  newUrl.pathname = strippedPath || "/"
-  return newUrl
-}
-type ReadonlyUrl = Pick<URL, "pathname" | "toString">
-const IGNORED_PATHS_REGEX = /^\/(?:api|rpc|_serverFn|assets)(?:\/|$)/u
-const LOCALE_SEGMENT_REGEX = /^\/(?<locale>[a-z]{2})(?:\/|$)/u
-const COOKIE_LOCALE_REGEX = new RegExp(String.raw`(?:^|;\s*)${LOCALE_COOKIE_NAME}=([^;]*)`, "u")
-const LOCALE_SET = new Set<string>(LOCALES)
+
+export const getCurrentPathname = createIsomorphicFn()
+  .server((): string => deLocalizePathname(new URL(getRequest().url).pathname))
+  .client((): string => deLocalizePathname(globalThis.location.pathname))
+
 export const getCurrentLocale = createIsomorphicFn()
-  .server((routerPathname?: string): Locale => {
+  .server((): SupportedLocale => {
     const request = getRequest()
-    const url = new URL(request.url)
-    const pathname = routerPathname ?? url.pathname
+    const { pathname } = new URL(request.url)
+
     if (shouldIgnorePath(pathname)) {
-      const cookie = request.headers.get("cookie") ?? undefined
-      return parseLocaleCookie(cookie) ?? DEFAULT_LOCALE
+      return parseLocaleCookie(request.headers.get("cookie")) ?? I18N.DEFAULT_LOCALE
     }
-    return extractLocaleFromPath(pathname) ?? DEFAULT_LOCALE
+
+    return extractLocaleFromPath(pathname) ?? I18N.DEFAULT_LOCALE
   })
-  .client((routerPathname?: string): Locale => {
-    const pathname = routerPathname ?? globalThis.location.pathname
+  .client((): SupportedLocale => {
+    const { pathname } = globalThis.location
+
     if (shouldIgnorePath(pathname)) {
-      return parseLocaleCookie(document.cookie) ?? DEFAULT_LOCALE
+      return parseLocaleCookie(document.cookie) ?? I18N.DEFAULT_LOCALE
     }
-    return extractLocaleFromPath(pathname) ?? DEFAULT_LOCALE
+
+    return extractLocaleFromPath(pathname) ?? I18N.DEFAULT_LOCALE
   })
+
+export const localizeUrl = (url: URL): URL =>
+  withPathname({ pathname: localizePathname({ locale: getCurrentLocale(), pathname: url.pathname }), url })
+
+export const deLocalizeUrl = (url: URL): URL => withPathname({ pathname: deLocalizePathname(url.pathname), url })

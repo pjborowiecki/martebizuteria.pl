@@ -9,11 +9,6 @@ export interface ColumnReorderState {
   readonly setColumnOrder: (updater: string[] | ((current: string[]) => string[])) => void
 }
 
-/**
- * Tracks left-to-right column order plus the header drag handlers that mutate it.
- * Dragging one header over another reorders both live; pinned utility columns
- * simply never start or accept a drag.
- */
 export interface UseColumnReorderOptions {
   readonly columnOrder: readonly string[]
   readonly setColumnOrder: (updater: string[] | ((current: string[]) => string[])) => void

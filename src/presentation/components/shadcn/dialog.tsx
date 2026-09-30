@@ -3,9 +3,10 @@ import { type ComponentProps, type JSX, type ReactNode, useMemo } from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { cn } from "cn"
 import { XIcon } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
+
 const Dialog = ({ ...props }: Readonly<DialogPrimitive.Root.Props>): JSX.Element => <DialogPrimitive.Root data-slot="dialog" {...props} />
 
 const DialogTrigger = ({ ...props }: Readonly<DialogPrimitive.Trigger.Props>): JSX.Element => (
@@ -43,6 +44,7 @@ const DialogContent = ({ children, className, showCloseButton = true, ...props }
       </DialogPrimitive.Close>
     )
   }
+
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -60,6 +62,7 @@ const DialogContent = ({ children, className, showCloseButton = true, ...props }
     </DialogPortal>
   )
 }
+
 const DialogHeader = ({ className, ...props }: Readonly<ComponentProps<"div">>): JSX.Element => (
   <div className={cn("flex flex-col gap-1 text-left", className)} data-slot="dialog-header" {...props} />
 )
@@ -72,6 +75,7 @@ const DialogFooter = ({ children, className, showCloseButton = false, ...props }
   if (showCloseButton) {
     closeButtonNode = <DialogPrimitive.Close render={closeButtonRender}>{t("close")}</DialogPrimitive.Close>
   }
+
   return (
     <div className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)} data-slot="dialog-footer" {...props}>
       {children}
@@ -79,6 +83,7 @@ const DialogFooter = ({ children, className, showCloseButton = false, ...props }
     </div>
   )
 }
+
 const DialogTitle = ({ className, ...props }: Readonly<DialogPrimitive.Title.Props>): JSX.Element => (
   <DialogPrimitive.Title className={cn("text-sm font-medium", className)} data-slot="dialog-title" {...props} />
 )
@@ -94,9 +99,11 @@ const DialogDescription = ({ className, ...props }: Readonly<DialogPrimitive.Des
 interface DialogContentProps extends DialogPrimitive.Popup.Props {
   readonly showCloseButton?: boolean
 }
+
 interface DialogFooterProps extends ComponentProps<"div"> {
   readonly showCloseButton?: boolean
 }
+
 export {
   Dialog,
   DialogClose,

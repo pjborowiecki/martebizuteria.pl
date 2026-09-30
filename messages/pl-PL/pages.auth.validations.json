@@ -1,0 +1,14 @@
+{
+  "invalidEmail": "Podaj prawidłowy adres e-mail.",
+  "emailMaxLength": "Adres e-mail może mieć maksymalnie {max} znaków.",
+  "firstNameRequired": "Imię jest wymagane.",
+  "lastNameRequired": "Nazwisko jest wymagane.",
+  "nameMaxLength": "Może mieć maksymalnie {max} znaków.",
+  "passwordRequired": "Hasło jest wymagane.",
+  "confirmPasswordRequired": "Potwierdź swoje hasło.",
+  "passwordMinLength": "Co najmniej {min} znaków",
+  "passwordMaxLength": "Hasło może mieć maksymalnie {max} znaków.",
+  "passwordUppercase": "Co najmniej jedna wielka litera",
+  "passwordSpecialCharacter": "Co najmniej jeden znak specjalny",
+  "passwordsMustMatch": "Hasła muszą się zgadzać."
+}

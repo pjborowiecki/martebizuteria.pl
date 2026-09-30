@@ -8,6 +8,7 @@ import { SidebarTrigger } from "~/src/presentation/components/shadcn/sidebar"
 
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 import { ADMIN_LAYOUT_BG_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+
 export const AdminHeader = ({ actions, backHref, breadcrumbs, description, tabs, title }: Readonly<AdminHeaderProps>): JSX.Element => (
   <div className={cn("sticky top-0 z-20 flex shrink-0 flex-col", ADMIN_LAYOUT_BG_CLASS)}>
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-sidebar-border bg-sidebar px-6 text-sidebar-foreground">

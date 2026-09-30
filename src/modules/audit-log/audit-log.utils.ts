@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
   AUDIT_LOG_CATEGORIES,
@@ -10,7 +10,7 @@ import {
   type AuditLogCategoryFilter,
   type AuditLogDateRange,
 } from "~/src/modules/audit-log/audit-log.constants"
-import { type AdminAuditListItem, type AuditLog } from "~/src/modules/audit-log/audit-log.types"
+import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils"
 
 export const isAuditLogCategoryFilter = (value: string): value is AuditLogCategoryFilter =>
@@ -27,6 +27,7 @@ export const resolveAuditLogCategoryFilter = (value: AuditLogCategoryFilter | un
 export const resolveStartOfToday = (): Date => {
   const startOfDay = new Date()
   startOfDay.setHours(0, 0, 0, 0)
+
   return startOfDay
 }
 
@@ -50,7 +51,8 @@ export const resolveAuditLogSince = (dateRange: AuditLogDateRange | undefined): 
 
 export const formatAdminAuditTimestamp = (createdAt: Date | string): string => {
   const date = createdAt instanceof Date ? createdAt : new Date(createdAt)
-  return date.toLocaleString(DEFAULT_LOCALE, {
+
+  return date.toLocaleString(I18N.DEFAULT_LOCALE, {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
@@ -142,7 +144,7 @@ export const formatAdminAuditTarget = (target: string, resourceId?: string): str
   return `${label} (${resolvedResourceId})`
 }
 
-export const toAdminAuditListItem = (row: AuditLogListSourceRow): AdminAuditListItem => {
+export const toAdminAuditListItem = (row: AuditLogListSourceRow): AuditLog["adminListItem"] => {
   const presentation = resolveAdminAuditTargetPresentation({
     metadata: parseAuditMetadata(row.metadata),
     resourceId: row.resourceId ?? undefined,

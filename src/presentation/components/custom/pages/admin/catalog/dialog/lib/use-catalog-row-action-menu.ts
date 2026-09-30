@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react"
 
-import { suppressNextDataGridRowClick } from "~/src/presentation/components/custom/datagrid/lib/data-grid-row-click"
 import {
-  requestCatalogConfirmDialog,
-  suppressDataGridRowClickAfterCatalogDialogDismiss,
-} from "~/src/presentation/components/custom/pages/admin/catalog/dialog/lib/catalog-dialog.utils"
+  suppressDataGridRowClickAfterDialogDismiss,
+  suppressNextDataGridRowClick,
+} from "~/src/presentation/components/custom/datagrid/lib/data-grid-row-click"
+import { requestCatalogConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/lib/catalog-dialog.utils"
 
 export const useCatalogRowActionMenu = (confirmOpen: boolean, setConfirmOpen: (open: boolean) => void): UseCatalogRowActionMenuResult => {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -12,6 +12,7 @@ export const useCatalogRowActionMenu = (confirmOpen: boolean, setConfirmOpen: (o
     (open: boolean) => {
       if (confirmOpen) {
         setMenuOpen(false)
+
         return
       }
       setMenuOpen(open)
@@ -21,9 +22,10 @@ export const useCatalogRowActionMenu = (confirmOpen: boolean, setConfirmOpen: (o
     },
     [confirmOpen],
   )
+
   const handleConfirmOpenChange = useCallback(
     (open: boolean) => {
-      suppressDataGridRowClickAfterCatalogDialogDismiss()
+      suppressDataGridRowClickAfterDialogDismiss()
       setConfirmOpen(open)
       if (!open) {
         setMenuOpen(false)
@@ -31,11 +33,13 @@ export const useCatalogRowActionMenu = (confirmOpen: boolean, setConfirmOpen: (o
     },
     [setConfirmOpen],
   )
+
   const closeMenuAndRequestDeleteConfirm = useCallback(() => {
-    suppressDataGridRowClickAfterCatalogDialogDismiss()
+    suppressDataGridRowClickAfterDialogDismiss()
     setMenuOpen(false)
     requestCatalogConfirmDialog(setConfirmOpen)
   }, [setConfirmOpen])
+
   return {
     closeMenuAndRequestDeleteConfirm,
     handleConfirmOpenChange,
@@ -43,6 +47,7 @@ export const useCatalogRowActionMenu = (confirmOpen: boolean, setConfirmOpen: (o
     menuOpen,
   }
 }
+
 interface UseCatalogRowActionMenuResult {
   readonly closeMenuAndRequestDeleteConfirm: () => void
   readonly handleConfirmOpenChange: (open: boolean) => void

@@ -1,9 +1,9 @@
 import { CheckCircle2, FolderTree, type LucideIcon, Package, PencilLine } from "lucide-react"
 
 import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
-import { type Category } from "~/src/modules/product-category/product-category.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 
-export type CategoryStatKey = keyof Category["stats"]
+export type CategoryStatKey = keyof ProductCategory["stats"]
 
 export interface CategoryStatCardConfig {
   readonly filterStatus?: (typeof CATEGORY_STATUS)[keyof typeof CATEGORY_STATUS]

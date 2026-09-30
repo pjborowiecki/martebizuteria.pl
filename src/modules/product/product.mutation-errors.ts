@@ -13,6 +13,7 @@ const collectErrorMessages = (error: unknown): string[] => {
     }
     current = current.cause
   }
+
   return messages
 }
 
@@ -38,12 +39,12 @@ export const isDatabaseSchemaOutdatedMutationError = (error: unknown): boolean =
     (message) => message.includes("no such column") || (message.includes("Failed query") && message.includes('"titles"')),
   )
 
-/** Prefer the deepest underlying message for display in admin toasts. */
 export const resolveProductMutationErrorMessage = (error: unknown): string => {
   const messages = collectErrorMessages(error)
   if (messages.length === 0) {
     return ""
   }
+
   return messages.pop() ?? ""
 }
 
@@ -53,10 +54,12 @@ export const rethrowProductMutationError = (error: unknown): never => {
       cause: error,
     })
   }
+
   if (isDuplicateSkuMutationError(error)) {
     throw new Error(PRODUCT_ERROR_CODES.DUPLICATE_SKU, {
       cause: error,
     })
   }
+
   throw error
 }

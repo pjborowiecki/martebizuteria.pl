@@ -1,14 +1,15 @@
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { type AdminCustomersListParams, getAdminCustomersFilteredList } from "~/src/modules/user/user.accessors"
-import { type AdminCustomersExportInput } from "~/src/modules/user/user.admin-list.types"
 import { mapCustomerOrderStats, toAdminCustomerListItem } from "~/src/modules/user/user.utils"
+import { userZodSchemas } from "~/src/modules/user/user.zod"
 
-import { normalizeAdminSearchTerm } from "~/src/lib/admin-search.server"
 const buildAdminCustomersExportParams = (
-  input: AdminCustomersExportInput,
+  input: zod.output<typeof userZodSchemas.adminCustomersExportInput>,
 ): Pick<AdminCustomersListParams, "search" | "statFilter" | "filters"> => ({
   filters: {
     averageOrderValue: input.averageOrderValue,
@@ -22,12 +23,13 @@ const buildAdminCustomersExportParams = (
   search: normalizeAdminSearchTerm(input.search),
   statFilter: input.statFilter,
 })
-export const fetchAdminCustomersExportFn = createServerFn({
+
+export const exportAdminCustomers = createServerFn({
   method: "GET",
 })
-  .validator((input: AdminCustomersExportInput) => input)
+  .middleware([authorized({ user: ["list"] })])
+  .validator((input: zod.input<typeof userZodSchemas.adminCustomersExportInput>) => userZodSchemas.adminCustomersExportInput.parse(input))
   .handler(async ({ data: input }) => {
-    await assertAdmin()
     const params = buildAdminCustomersExportParams(input)
     const { addresses, orderStats, rows } = await getAdminCustomersFilteredList(params)
     const statsByUserId = mapCustomerOrderStats(orderStats)
@@ -43,5 +45,6 @@ export const fetchAdminCustomersExportFn = createServerFn({
           },
         ]),
     )
+
     return rows.map((row) => toAdminCustomerListItem(row, statsByUserId.get(row.id), addressByUserId.get(row.id)))
   })

@@ -7,6 +7,9 @@
 @source not "../../**/__test__/**";
 
 @source not "../../platform/testing/**";
+
+@source not "../components/shadcn/{alert,button-group,context-menu,drawer,empty,hover-card,input-otp,item,kbd,menubar,native-select,navigation-menu,pagination,progress,resizable,scroll-area,slider,tabs,toggle-group,toggle,typography}.tsx";
+
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "lenis/dist/lenis.css";

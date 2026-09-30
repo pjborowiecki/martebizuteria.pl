@@ -1,6 +1,6 @@
 import { type JSX, useCallback, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
@@ -24,9 +24,11 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-sheet"
 import { productsDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/products/utils/products-data-grid"
 import { CatalogToolbarAddButton } from "~/src/presentation/components/custom/pages/admin/catalog/toolbar/components/catalog-toolbar-add-button"
+
 const ProductsTableToolbarActions = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products.catalogList")
   const { openCreate } = useProductsSheet()
+
   return (
     <>
       <ProductsBulkActions />
@@ -34,18 +36,21 @@ const ProductsTableToolbarActions = (): JSX.Element => {
     </>
   )
 }
+
 export const ProductsTableContent = (): JSX.Element => {
   const sheet = useProductsSheet()
   const grid = useProductsDataGrid({
     onRowClick: sheet.openEdit,
     onRowPointerEnter: sheet.prefetchEdit,
   })
+
   const handleSheetOpenChange = useCallback(
     (open: boolean) => {
       sheet.setOpen(open)
     },
     [sheet],
   )
+
   const toolbarActions = useMemo(() => <ProductsTableToolbarActions />, [])
   const toolbarFilters = useMemo(
     () => (
@@ -61,7 +66,9 @@ export const ProductsTableContent = (): JSX.Element => {
     ),
     [],
   )
+
   const sheetMode = sheet.mode === "closed" ? "create" : sheet.mode
+
   return (
     <>
       <Provider value={grid}>
@@ -85,10 +92,12 @@ export const ProductsTableContent = (): JSX.Element => {
 
 export const ProductsTable = (): JSX.Element => {
   const sheetState = useProductsSheetState()
+
   return (
     <ProductsSheetProvider value={sheetState}>
       <ProductsTableContent />
     </ProductsSheetProvider>
   )
 }
+
 const { Body, Pagination, Provider, Toolbar } = productsDataGrid

@@ -3,8 +3,7 @@ import { env } from "cloudflare:workers"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { v7 as uuidv7 } from "uuid"
 
-import { scheduleBackgroundWork } from "~/src/integrations/better-auth/auth.background"
-import { ROLES } from "~/src/integrations/better-auth/auth.constants"
+import { ROLES } from "~/src/integrations/better-auth/auth.access"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
 import {
@@ -15,6 +14,9 @@ import {
 } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.queue.server"
 import { serializeAuditMetadata } from "~/src/modules/audit-log/audit-log.utils"
+
+import { scheduleBackgroundWork } from "~/src/lib/background"
+import { resolveRequestIp } from "~/src/lib/request"
 
 export interface AuditLogActorInput {
   readonly email?: string | undefined
@@ -38,22 +40,6 @@ export interface AuditLogEventInput {
 export const SYSTEM_AUDIT_ACTOR: AuditLogActorInput = {
   name: "System",
   role: "system",
-}
-
-const resolveRequestIp = (headers: Headers): string | undefined => {
-  const connectingIp = headers.get("cf-connecting-ip")
-  if (connectingIp !== null && connectingIp !== "") {
-    return connectingIp
-  }
-
-  const forwarded = headers.get("x-forwarded-for")
-  if (forwarded === null || forwarded === "") {
-    return undefined
-  }
-
-  const [first] = forwarded.split(",")
-  const trimmed = first?.trim()
-  return trimmed === "" ? undefined : trimmed
 }
 
 export const resolveRequestAuditActor = async (): Promise<AuditLogActorInput | undefined> => {
@@ -101,7 +87,6 @@ const enqueueAuditLogMessage = async (message: AuditLogQueueMessage): Promise<vo
   await env.AUDIT_LOG_QUEUE.send(message, { contentType: "json" })
 }
 
-/** Non-blocking audit enqueue via Cloudflare Queues (`waitUntil` when available). */
 export const scheduleAuditLog = (input: AuditLogEventInput): void => {
   scheduleBackgroundWork(enqueueAuditLogMessage(buildQueueMessage(input)))
 }

@@ -1,19 +1,20 @@
-import { type JSX, useCallback, useMemo } from "react"
+import { type JSX, useMemo } from "react"
 
 import { cn } from "cn"
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
+import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils"
 
-import { centsToDisplayAmount } from "~/src/lib/currency"
 import { getProductImageUrl } from "~/src/lib/image"
 
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
 import { useProductsCatalogInfiniteScroll } from "~/src/presentation/components/custom/pages/products-catalog/hooks/use-products-catalog-infinite-scroll"
 import { ProductCard } from "~/src/presentation/components/custom/product-card"
+
 const CatalogProductCard = ({
   index,
   product,
@@ -29,6 +30,7 @@ const CatalogProductCard = ({
     }),
     [product.handle],
   )
+
   const variant = product.variants?.[0]
   const variantPrice = variant?.price
   const price =
@@ -41,6 +43,7 @@ const CatalogProductCard = ({
   const variantTitle = variant?.title === DEFAULT_VARIANT_TITLE ? "" : (variant?.title ?? "")
   const name = resolveProductTitle(product.titles, locale)
   const detail = resolveProductSubtitle(product.subtitles, locale)
+
   return (
     <ProductCard
       detail={detail}
@@ -58,6 +61,7 @@ const CatalogProductCard = ({
     />
   )
 }
+
 const CatalogProductCardSkeleton = (): JSX.Element => (
   <div aria-hidden="true">
     <Skeleton className="aspect-4/5 w-full rounded-none" />
@@ -80,33 +84,27 @@ const CatalogResultsToolbar = ({
   total: number
   t: ReturnType<typeof useTranslations>
   tFilters: ReturnType<typeof useTranslations>
-}>): JSX.Element => {
-  const handleClearFilters = useCallback(() => {
-    if (filtersActive) {
-      onClearFilters()
-    }
-  }, [filtersActive, onClearFilters])
-  return (
-    <div className="flex min-h-5 items-center justify-between gap-4">
-      <button
-        type="button"
-        disabled={!filtersActive}
-        onClick={handleClearFilters}
-        className={cn(
-          "text-[11px] tracking-[0.18em] uppercase transition-colors duration-300",
-          filtersActive ? "cursor-pointer text-muted-foreground hover:text-foreground" : "cursor-default text-muted-foreground/35",
-        )}
-      >
-        {tFilters("clearAll")}
-      </button>
-      <p className="text-[11px] tracking-[0.22em] text-muted-foreground uppercase tabular-nums">
-        {t("resultsCount", {
-          count: total,
-        })}
-      </p>
-    </div>
-  )
-}
+}>): JSX.Element => (
+  <div className="flex min-h-5 items-center justify-between gap-4">
+    <button
+      type="button"
+      disabled={!filtersActive}
+      onClick={onClearFilters}
+      className={cn(
+        "text-[11px] tracking-[0.18em] uppercase transition-colors duration-300",
+        filtersActive ? "cursor-pointer text-muted-foreground hover:text-foreground" : "cursor-default text-muted-foreground/35",
+      )}
+    >
+      {tFilters("clearAll")}
+    </button>
+    <p className="text-[11px] tracking-[0.22em] text-muted-foreground uppercase tabular-nums">
+      {t("resultsCount", {
+        count: total,
+      })}
+    </p>
+  </div>
+)
+
 export const ProductsCatalogGrid = ({
   fetchNextPage,
   filtersActive,
@@ -126,6 +124,7 @@ export const ProductsCatalogGrid = ({
     hasNextPage,
     isFetchingNextPage,
   })
+
   if (products.length === 0) {
     return (
       <div className="flex min-h-60 items-center justify-center px-6 py-16 text-center">
@@ -133,6 +132,7 @@ export const ProductsCatalogGrid = ({
       </div>
     )
   }
+
   return (
     <div className="space-y-10">
       <CatalogResultsToolbar filtersActive={filtersActive} onClearFilters={onClearFilters} t={t} tFilters={tFilters} total={total} />
@@ -160,8 +160,11 @@ export const ProductsCatalogGrid = ({
     </div>
   )
 }
+
 const PRIORITY_IMAGE_COUNT = 3
+
 const SKELETON_CARD_COUNT = 3
+
 type CatalogProduct = Pick<Product["select"], "handle" | "id" | "subtitles" | "thumbnail" | "titles"> & {
   readonly variants?: readonly {
     readonly id: string
@@ -169,6 +172,7 @@ type CatalogProduct = Pick<Product["select"], "handle" | "id" | "subtitles" | "t
     readonly title: string
   }[]
 }
+
 interface ProductsCatalogGridProps {
   readonly fetchNextPage: () => Promise<unknown>
   readonly filtersActive: boolean

@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { ListFilter } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   AUDIT_LOG_CATEGORIES,
@@ -14,6 +14,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
 
 import { useAuditDataGridContext } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-data-grid"
+
 const isAuditLogCategoryFilter = (value: string): value is AuditLogCategoryFilter =>
   (AUDIT_CATEGORY_FILTERS as readonly string[]).includes(value)
 
@@ -31,11 +32,13 @@ export const AuditCategoryFilter = (): JSX.Element => {
       })),
     [t],
   )
+
   const handleChange = useCallback(
     (value: string | null) => {
       if (value === null) {
         return
       }
+
       if (!isAuditLogCategoryFilter(value)) {
         return
       }
@@ -45,6 +48,7 @@ export const AuditCategoryFilter = (): JSX.Element => {
     },
     [applyAuditFilter],
   )
+
   return (
     <Select items={options} value={current} onValueChange={handleChange}>
       <SelectTrigger
@@ -65,6 +69,7 @@ export const AuditCategoryFilter = (): JSX.Element => {
     </Select>
   )
 }
+
 export const AuditSeverityFilter = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const { activeSeverityFilter, applyAuditFilter } = useAuditDataGridContext()
@@ -82,17 +87,21 @@ export const AuditSeverityFilter = (): JSX.Element => {
     ],
     [t],
   )
+
   const handleChange = useCallback(
     (value: string | null) => {
       if (value === null) {
         return
       }
+
       if (value === ALL_VALUE) {
         applyAuditFilter({
           severity: undefined,
         })
+
         return
       }
+
       if (!isAuditLogSeverity(value)) {
         return
       }
@@ -102,6 +111,7 @@ export const AuditSeverityFilter = (): JSX.Element => {
     },
     [applyAuditFilter],
   )
+
   return (
     <Select items={options} value={current} onValueChange={handleChange}>
       <SelectTrigger
@@ -122,5 +132,7 @@ export const AuditSeverityFilter = (): JSX.Element => {
     </Select>
   )
 }
+
 const ALL_VALUE = "all"
+
 const AUDIT_CATEGORY_FILTERS = [AUDIT_LOG_CATEGORY_FILTER.ALL, ...AUDIT_LOG_CATEGORIES] as const

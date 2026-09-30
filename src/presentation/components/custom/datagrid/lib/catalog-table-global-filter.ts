@@ -31,6 +31,7 @@ export const rowMatchesCatalogTableSearch = (parts: CatalogTableSearchPart[], fi
   }
 
   const haystack = parts.map((part) => String(part).toLowerCase()).join(" ")
+
   return haystack.includes(query)
 }
 

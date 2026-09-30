@@ -1,7 +1,7 @@
 import { type CSSProperties, type JSX, useMemo } from "react"
 
 import { RefreshCw, X } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Spinner } from "~/src/presentation/components/shadcn/spinner"
@@ -16,6 +16,7 @@ export const UploadedPreview = ({ disabled, isUploading, onPick, onRemove, overl
     }),
     [overlaySrc],
   )
+
   return (
     <div className="group/img relative w-full overflow-hidden rounded-lg border border-border bg-muted">
       <div className="relative aspect-video w-full">
@@ -46,7 +47,8 @@ export const UploadedPreview = ({ disabled, isUploading, onPick, onRemove, overl
     </div>
   )
 }
-export interface UploadedPreviewProps {
+
+interface UploadedPreviewProps {
   readonly disabled: boolean
   readonly isUploading: boolean
   readonly onPick: () => void

@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { cn } from "cn"
 import * as ResizablePrimitive from "react-resizable-panels"
+
 const ResizablePanelGroup = ({ className, ...props }: Readonly<ResizablePrimitive.GroupProps>): JSX.Element => (
   <ResizablePrimitive.Group
     data-slot="resizable-panel-group"
@@ -30,4 +31,5 @@ const ResizableHandle = ({ withHandle, className, ...props }: Readonly<Resizable
 interface ResizableHandleProps extends ResizablePrimitive.SeparatorProps {
   readonly withHandle?: boolean
 }
+
 export { ResizableHandle, ResizablePanel, ResizablePanelGroup }

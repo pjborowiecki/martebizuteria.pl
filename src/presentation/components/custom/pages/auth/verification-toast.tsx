@@ -1,7 +1,8 @@
 import { type JSX, useEffect } from "react"
 
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
+
 export const VerificationToast = (): JSX.Element | undefined => {
   const t = useTranslations("pages.auth.toast")
   useEffect(() => {
@@ -15,6 +16,8 @@ export const VerificationToast = (): JSX.Element | undefined => {
     url.searchParams.delete(VERIFIED_PARAM)
     globalThis.history.replaceState(undefined, "", `${url.pathname}${url.search}${url.hash}`)
   }, [t])
+
   return undefined
 }
+
 const VERIFIED_PARAM = "verified"

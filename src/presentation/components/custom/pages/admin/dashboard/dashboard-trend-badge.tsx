@@ -2,8 +2,10 @@ import { type JSX } from "react"
 
 import { cn } from "cn"
 import { ArrowDownRight, ArrowUpRight } from "lucide-react"
+
 export const DashboardTrendBadge = ({ className, trendPercent }: Readonly<DashboardTrendBadgeProps>): JSX.Element => {
   const isUp = trendPercent >= 0
+
   return (
     <span
       className={cn(
@@ -17,6 +19,7 @@ export const DashboardTrendBadge = ({ className, trendPercent }: Readonly<Dashbo
     </span>
   )
 }
+
 interface DashboardTrendBadgeProps {
   readonly className?: string
   readonly trendPercent: number

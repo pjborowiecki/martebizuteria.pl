@@ -9,16 +9,16 @@ import {
   PRODUCT_ATTRIBUTE_DEFAULT_RANK,
   PRODUCT_ATTRIBUTE_TYPES,
 } from "~/src/modules/product-attribute/product-attribute.constants"
-import { type ProductAttributeAllowedValue, type ProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 
 export const productAttribute = sqliteTable(
   "product_attribute",
   {
-    allowedValues: text("allowed_values", { mode: "json" }).$type<ProductAttributeAllowedValue[] | null>(),
+    allowedValues: text("allowed_values", { mode: "json" }).$type<ProductAttribute["allowedValue"][] | null>(),
     handle: text("handle", { length: PRODUCT_ATTRIBUTE_COLUMN_LENGTH.handle }).notNull().unique(),
     id: text("id", { length: PRODUCT_ATTRIBUTE_COLUMN_LENGTH.id }).primaryKey(),
     rank: integer("rank").notNull().default(PRODUCT_ATTRIBUTE_DEFAULT_RANK),
-    titles: text("titles", { mode: "json" }).$type<ProductAttributeLocaleMap>().notNull(),
+    titles: text("titles", { mode: "json" }).$type<ProductAttribute["localeMap"]>().notNull(),
     type: text("type", { enum: PRODUCT_ATTRIBUTE_TYPES }).notNull(),
     unit: text("unit", { length: PRODUCT_ATTRIBUTE_COLUMN_LENGTH.unit }),
     ...timestamps(),

@@ -1,20 +1,24 @@
 import { type RefObject } from "react"
 
-import { ScrollTrigger, gsap, useGSAP } from "~/src/lib/gsap"
+import { ScrollTrigger, gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+
 const isElementInRevealViewport = (element: HTMLElement): boolean => {
   const rect = element.getBoundingClientRect()
+
   return rect.top < window.innerHeight * REVEAL_IN_VIEW_THRESHOLD && rect.bottom > 0
 }
-const animateRevealElements = (elements: readonly HTMLElement[], stagger = false): void => {
+
+const animateRevealElements = (elements: readonly HTMLElement[]): void => {
   gsap.to(elements, {
     autoAlpha: 1,
     duration: REVEAL_DURATION,
     ease: "power2.out",
     overwrite: true,
-    stagger: stagger ? REVEAL_STAGGER : 0,
+    stagger: REVEAL_STAGGER,
     y: 0,
   })
 }
+
 const setupScrollReveals = (root: HTMLElement): void => {
   const revealElementsList = gsap.utils.toArray<HTMLElement>(".reveal", root)
   if (revealElementsList.length === 0) {
@@ -27,16 +31,18 @@ const setupScrollReveals = (root: HTMLElement): void => {
   ScrollTrigger.batch(revealElementsList, {
     onEnter: (batch) => {
       const elements = batch.filter((element): element is HTMLElement => element instanceof HTMLElement)
-      animateRevealElements(elements, true)
+      animateRevealElements(elements)
     },
     once: true,
     start: SCROLL_TRIGGER_BATCH_START,
   })
+
   const inViewElements = revealElementsList.filter((element) => isElementInRevealViewport(element))
   if (inViewElements.length > 0) {
-    animateRevealElements(inViewElements, true)
+    animateRevealElements(inViewElements)
   }
 }
+
 const setupLineReveals = (root: HTMLElement): void => {
   gsap.utils.toArray<HTMLElement>(".line-reveal", root).forEach((line) => {
     if (isElementInRevealViewport(line)) {
@@ -44,6 +50,7 @@ const setupLineReveals = (root: HTMLElement): void => {
         scaleX: 1,
         transformOrigin: "left center",
       })
+
       return
     }
     gsap.fromTo(
@@ -65,6 +72,7 @@ const setupLineReveals = (root: HTMLElement): void => {
     )
   })
 }
+
 const setupParallax = (root: HTMLElement): void => {
   gsap.utils.toArray<HTMLElement>(".parallax-wrap", root).forEach((wrap) => {
     const img = wrap.querySelector(".parallax-img")
@@ -89,12 +97,14 @@ const setupParallax = (root: HTMLElement): void => {
     )
   })
 }
+
 const showReducedMotionContent = (root: HTMLElement): void => {
   gsap.set(gsap.utils.toArray<HTMLElement>(".reveal, .line-reveal", root), {
     autoAlpha: 1,
     clearProps: "transform",
   })
 }
+
 export const useLandingAnimations = ({ rootRef }: LandingAnimationsProps) => {
   useGSAP(
     () => {
@@ -102,6 +112,7 @@ export const useLandingAnimations = ({ rootRef }: LandingAnimationsProps) => {
       if (root === null) {
         return
       }
+
       const mm = gsap.matchMedia()
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         setupScrollReveals(root)
@@ -114,6 +125,7 @@ export const useLandingAnimations = ({ rootRef }: LandingAnimationsProps) => {
       mm.add("(prefers-reduced-motion: reduce)", () => {
         showReducedMotionContent(root)
       })
+
       return () => {
         mm.revert()
       }
@@ -123,15 +135,25 @@ export const useLandingAnimations = ({ rootRef }: LandingAnimationsProps) => {
     },
   )
 }
+
 const LINE_REVEAL_DURATION = 1
+
 const PARALLAX_Y_PERCENT_END = 6
+
 const PARALLAX_Y_PERCENT_START = -6
+
 const REVEAL_DURATION = 0.9
+
 const REVEAL_IN_VIEW_THRESHOLD = 0.92
+
 const REVEAL_OFFSET_Y = 28
+
 const REVEAL_STAGGER = 0.08
+
 const SCROLL_TRIGGER_BATCH_START = "top 92%"
+
 const SCROLL_TRIGGER_LINE_START = "top 92%"
+
 interface LandingAnimationsProps {
   rootRef: RefObject<HTMLDivElement | null>
 }

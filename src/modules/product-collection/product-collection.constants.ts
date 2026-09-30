@@ -1,7 +1,5 @@
 import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { QUERY_KEY_ROOTS } from "~/src/modules/_core/constants/query-keys"
-
 import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants"
 
 export const COLLECTION_COLUMN_LENGTH = {
@@ -100,9 +98,14 @@ export const COLLECTION_QUERY_STALE_MS = 60_000
 
 export const COLLECTION_QUERY_KEYS = {
   ADMIN: {
-    ALL: [...QUERY_KEY_ROOTS.ADMIN, "collections"] as const,
-    STATS: [...QUERY_KEY_ROOTS.ADMIN, "collections", "stats"] as const,
+    ALL: ["admin", "collections"] as const,
+    STATS: ["admin", "collections", "stats"] as const,
   },
   ALL: ["collections"] as const,
   BY_HANDLE: ["collection"] as const,
+} as const
+
+export const COLLECTION_MUTATION_KEYS = {
+  DELETE: ["product-collection", "deleteCollections"] as const,
+  REORDER: ["product-collection", "reorderCollections"] as const,
 } as const

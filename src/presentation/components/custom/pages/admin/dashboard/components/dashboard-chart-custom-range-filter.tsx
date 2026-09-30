@@ -1,15 +1,16 @@
 import { type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
-import { useFormatter, useTranslations } from "use-intl"
+import { useFormatter, useTranslations } from "use-intl/react"
 
-import { isDateFilterRangeValid } from "~/src/lib/admin-date-filter"
-import { formatDateToIsoDateLocal, parseIsoDateToLocalDate } from "~/src/lib/iso-date"
+import { formatDateToIsoDateLocal, parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { LocaleDatePicker } from "~/src/presentation/components/shadcn/locale-date-picker"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"
 
+import { isDateFilterRangeValid } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
 import { type DashboardCustomChartRange } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-dashboard-chart-range"
+
 export const DashboardChartCustomRangeFilter = ({
   activeRange,
   isActive,
@@ -28,18 +29,23 @@ export const DashboardChartCustomRangeFilter = ({
       setEndDate(activeRange?.endDate ?? "")
     }
   }, [activeRange, open])
+
   const triggerLabel = useMemo(() => {
     if (activeRange === undefined) {
       return t("dashboard.chart.custom")
     }
+
     const startLabel = format.dateTime(parseIsoDateToLocalDate(activeRange.startDate), {
       dateStyle: "medium",
     })
+
     const endLabel = format.dateTime(parseIsoDateToLocalDate(activeRange.endDate), {
       dateStyle: "medium",
     })
+
     return `${startLabel} – ${endLabel}`
   }, [activeRange, format, t])
+
   const isDraftValid = isDateFilterRangeValid(startDate, endDate)
   const handleApply = useCallback(() => {
     if (!isDraftValid) {
@@ -51,10 +57,12 @@ export const DashboardChartCustomRangeFilter = ({
     })
     setOpen(false)
   }, [endDate, isDraftValid, onApply, startDate])
+
   const handleClear = useCallback(() => {
     onClear()
     setOpen(false)
   }, [onClear])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -116,6 +124,7 @@ export const DashboardChartCustomRangeFilter = ({
     </Popover>
   )
 }
+
 interface DashboardChartCustomRangeFilterProps {
   readonly activeRange: DashboardCustomChartRange | undefined
   readonly isActive: boolean

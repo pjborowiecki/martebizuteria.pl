@@ -3,7 +3,7 @@ import { type ChangeEvent, type JSX, type KeyboardEvent, useCallback, useState }
 import { cn } from "cn"
 import { X } from "lucide-react"
 import { useFormContext, useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_COLUMN_LENGTH } from "~/src/modules/product/product.constants"
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
@@ -20,6 +20,7 @@ import {
   CATALOG_SHEET_ACTION_BUTTON_CLASS,
   CATALOG_SHEET_FIELD_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+
 export const ProductEditorTags = ({ fillHeight = false }: Readonly<ProductEditorTagsProps>): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")
   const activeLocale = useCatalogActiveLocale()
@@ -29,12 +30,14 @@ export const ProductEditorTags = ({ fillHeight = false }: Readonly<ProductEditor
     defaultValue: [],
     name: `tags.${activeLocale}`,
   })
+
   const [tagInput, setTagInput] = useState("")
   const handleAddTag = useCallback(() => {
     const trimmed = tagInput.trim().toLowerCase()
     if (trimmed === "") {
       return
     }
+
     const fieldName = `tags.${activeLocale}` as const
     const current = getValues(fieldName)
     if (!current.includes(trimmed)) {
@@ -44,6 +47,7 @@ export const ProductEditorTags = ({ fillHeight = false }: Readonly<ProductEditor
       setTagInput("")
     }
   }, [activeLocale, getValues, setValue, tagInput])
+
   const handleRemoveTag = useCallback(
     (tag: string) => {
       const fieldName = `tags.${activeLocale}` as const
@@ -57,6 +61,7 @@ export const ProductEditorTags = ({ fillHeight = false }: Readonly<ProductEditor
     },
     [activeLocale, getValues, setValue],
   )
+
   return (
     <Card className={cn(fillHeight && "flex h-full flex-col")}>
       <CardHeader>
@@ -75,6 +80,7 @@ export const ProductEditorTags = ({ fillHeight = false }: Readonly<ProductEditor
     </Card>
   )
 }
+
 const TagAddField = ({ activeLocale, onAdd, onChange, value }: Readonly<TagAddFieldProps>): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")
   const tLocale = useTranslations("pages.admin.catalog.localePicker")
@@ -87,12 +93,14 @@ const TagAddField = ({ activeLocale, onAdd, onChange, value }: Readonly<TagAddFi
     },
     [onAdd],
   )
+
   const handleTagInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onChange(event.target.value)
     },
     [onChange],
   )
+
   return (
     <Field className={CATALOG_SHEET_FIELD_CLASS}>
       <CatalogFormFieldLabel
@@ -120,6 +128,7 @@ const TagAddField = ({ activeLocale, onAdd, onChange, value }: Readonly<TagAddFi
     </Field>
   )
 }
+
 const TagItem = ({
   onRemove,
   tag,
@@ -130,6 +139,7 @@ const TagItem = ({
   const handleRemove = useCallback(() => {
     onRemove(tag)
   }, [onRemove, tag])
+
   return (
     <Badge className="gap-1 rounded-md pr-1 text-[11px] font-normal" variant="secondary">
       {tag}
@@ -143,9 +153,11 @@ const TagItem = ({
     </Badge>
   )
 }
+
 interface ProductEditorTagsProps {
   readonly fillHeight?: boolean
 }
+
 interface TagAddFieldProps {
   readonly activeLocale: string
   readonly onAdd: () => void

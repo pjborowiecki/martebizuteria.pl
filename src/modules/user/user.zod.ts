@@ -1,90 +1,97 @@
 import { createSchemaFactory } from "drizzle-zod"
-import { z } from "zod/v4"
+import zod from "zod/v4"
 
-import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_FORM_FIELD_MAX } from "~/src/modules/user/user.constants"
+import { ROLES } from "~/src/integrations/better-auth/auth.access"
+
+import { dateColumnFilterField, idField, numericColumnFilterField, pageField, pageSizeField } from "~/src/modules/_core/utils/zod-fields"
+import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_FORM_FIELD_MAX, ADMIN_CUSTOMER_STAT_FILTER } from "~/src/modules/user/user.constants"
 import { user } from "~/src/modules/user/user.schema"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
-  zodInstance: z,
+  zodInstance: zod,
 })
 
 const userSelectSchema = createSelectSchema(user)
 
-const adminCustomerDetailOrderSchema = z.object({
-  currencyCode: z.string(),
-  date: z.string(),
-  fulfillment: z.string(),
-  id: z.string(),
-  itemTitles: z.array(z.string()),
-  payment: z.string(),
-  total: z.string(),
-  totalMinor: z.number(),
+const userInsertSchema = createInsertSchema(user)
+
+const userUpdateSchema = createUpdateSchema(user)
+
+const adminCustomerDetailOrderSchema = zod.object({
+  currencyCode: zod.string(),
+  date: zod.string(),
+  fulfillment: zod.string(),
+  id: zod.string(),
+  itemTitles: zod.array(zod.string()),
+  payment: zod.string(),
+  total: zod.string(),
+  totalMinor: zod.number(),
 })
 
-const adminCustomerCategoryBreakdownSchema = z.object({
-  amount: z.number(),
-  category: z.string(),
+const adminCustomerCategoryBreakdownSchema = zod.object({
+  amount: zod.number(),
+  category: zod.string(),
 })
 
-const adminCustomerMonthlySpendingSchema = z.object({
-  amount: z.number(),
-  month: z.string(),
+const adminCustomerMonthlySpendingSchema = zod.object({
+  amount: zod.number(),
+  month: zod.string(),
 })
 
-const adminCustomerDetailTimelineEventSchema = z.discriminatedUnion("kind", [
-  z.object({
-    date: z.string(),
-    kind: z.literal("account_created"),
+const adminCustomerDetailTimelineEventSchema = zod.discriminatedUnion("kind", [
+  zod.object({
+    date: zod.string(),
+    kind: zod.literal("account_created"),
   }),
-  z.object({
-    date: z.string(),
-    kind: z.literal("order_placed"),
-    orderId: z.string(),
-    total: z.string(),
+  zod.object({
+    date: zod.string(),
+    kind: zod.literal("order_placed"),
+    orderId: zod.string(),
+    total: zod.string(),
   }),
-  z.object({
-    date: z.string(),
-    kind: z.literal("signed_in"),
+  zod.object({
+    date: zod.string(),
+    kind: zod.literal("signed_in"),
   }),
-  z.object({
-    date: z.string(),
-    kind: z.literal("signed_out"),
+  zod.object({
+    date: zod.string(),
+    kind: zod.literal("signed_out"),
   }),
-  z.object({
-    date: z.string(),
-    kind: z.literal("cart_item_added"),
-    productTitle: z.string(),
-    quantity: z.number().optional(),
+  zod.object({
+    date: zod.string(),
+    kind: zod.literal("cart_item_added"),
+    productTitle: zod.string(),
+    quantity: zod.number().optional(),
   }),
-  z.object({
-    date: z.string(),
-    itemCount: z.number(),
-    kind: z.literal("cart_abandoned"),
+  zod.object({
+    date: zod.string(),
+    itemCount: zod.number(),
+    kind: zod.literal("cart_abandoned"),
   }),
-  z.object({
-    date: z.string(),
-    kind: z.literal("page_viewed"),
-    path: z.string(),
+  zod.object({
+    date: zod.string(),
+    kind: zod.literal("page_viewed"),
+    path: zod.string(),
   }),
 ])
 
-const adminCustomerAddressFormSchema = z.object({
-  address1: z.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.ADDRESS_LINE),
-  address2: z.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.ADDRESS_LINE).optional(),
-  city: z.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.CITY),
-  countryCode: z.union([z.literal(""), z.string().length(ADMIN_CUSTOMER_FORM_FIELD_MAX.COUNTRY_CODE)]),
-  postalCode: z.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.POSTAL_CODE).optional(),
-  province: z.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.PROVINCE).optional(),
+const adminCustomerAddressFormSchema = zod.object({
+  address1: zod.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.ADDRESS_LINE),
+  address2: zod.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.ADDRESS_LINE).optional(),
+  city: zod.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.CITY),
+  countryCode: zod.union([zod.literal(""), zod.string().length(ADMIN_CUSTOMER_FORM_FIELD_MAX.COUNTRY_CODE)]),
+  postalCode: zod.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.POSTAL_CODE).optional(),
+  province: zod.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.PROVINCE).optional(),
 })
 
-const adminCustomerFormValuesSchema = z.object({
+const adminCustomerFormValuesSchema = zod.object({
   address: adminCustomerAddressFormSchema.optional(),
-  customTags: z.array(z.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.CUSTOM_TAG)).max(ADMIN_CUSTOMER_FORM_FIELD_MAX.CUSTOM_TAGS_COUNT),
-  notes: z.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.NOTES).optional(),
-  phone: z.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.PHONE).optional(),
+  customTags: zod.array(zod.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.CUSTOM_TAG)).max(ADMIN_CUSTOMER_FORM_FIELD_MAX.CUSTOM_TAGS_COUNT),
+  notes: zod.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.NOTES).optional(),
+  phone: zod.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.PHONE).optional(),
 })
 
-const adminCustomerDetailTagSchema = z.enum([
+const adminCustomerDetailTagSchema = zod.enum([
   ADMIN_CUSTOMER_DETAIL_TAGS.ADMIN,
   ADMIN_CUSTOMER_DETAIL_TAGS.BANNED,
   ADMIN_CUSTOMER_DETAIL_TAGS.CUSTOMER,
@@ -92,57 +99,98 @@ const adminCustomerDetailTagSchema = z.enum([
   ADMIN_CUSTOMER_DETAIL_TAGS.VERIFIED,
 ])
 
+const adminCustomersFiltersSchema = zod.object({
+  averageOrderValue: numericColumnFilterField.optional(),
+  banned: zod.boolean().optional(),
+  createdAt: dateColumnFilterField.optional(),
+  emailVerified: zod.boolean().optional(),
+  lastOrderAt: dateColumnFilterField.optional(),
+  role: zod.enum(ROLES).optional(),
+  search: zod.string().optional(),
+  statFilter: zod.enum(ADMIN_CUSTOMER_STAT_FILTER).optional(),
+  totalSpent: numericColumnFilterField.optional(),
+})
+
+const adminUserMetadataSchema = zod.object({
+  notes: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
+})
+
+const adminCustomerDetailSchema = userSelectSchema.extend({
+  address: zod.string().optional(),
+  addressForm: adminCustomerAddressFormSchema.optional(),
+  averageOrderValue: zod.number(),
+  categoryBreakdown: zod.array(adminCustomerCategoryBreakdownSchema),
+  customTags: zod.array(zod.string()),
+  initials: zod.string(),
+  isReturning: zod.boolean(),
+  joinDate: zod.string(),
+  lastActive: zod.string().optional(),
+  lastOrderAt: zod.date().optional(),
+  monthlySpending: zod.array(adminCustomerMonthlySpendingSchema),
+  notes: zod.string().optional(),
+  orderCount: zod.number(),
+  orders: zod.array(adminCustomerDetailOrderSchema),
+  preferredCategory: zod.string().optional(),
+  preferredCollection: zod.string().optional(),
+  returningRate: zod.number(),
+  roleBadgeKey: zod.enum(["roleAdmin", "roleCustomer", "returning"]),
+  tags: zod.array(adminCustomerDetailTagSchema),
+  timeline: zod.array(adminCustomerDetailTimelineEventSchema),
+  totalSpent: zod.number(),
+})
+
+const adminCustomerDetailInputSchema = zod.object({
+  id: idField,
+  locale: zod.string().optional(),
+})
+
+const adminCustomerListItemSchema = userSelectSchema.extend({
+  averageOrderValue: zod.number(),
+  city: zod.string().optional(),
+  countryCode: zod.string().optional(),
+  lastOrderAt: zod.date().optional(),
+  orderCount: zod.number(),
+  province: zod.string().nullish(),
+  totalSpent: zod.number(),
+})
+
+const adminCustomerStatsSchema = zod.object({
+  averageLtv: zod.number(),
+  averageProductsPerOrder: zod.number(),
+  returningRate: zod.number(),
+  total: zod.number(),
+})
+
+const adminCustomersPageInputSchema = adminCustomersFiltersSchema.extend({
+  page: pageField.optional(),
+  pageSize: pageSizeField.optional(),
+})
+
+const deleteCustomerInputSchema = zod.object({
+  userId: zod.string().nonempty(),
+})
+
+const updateAdminCustomerInputSchema = zod.object({
+  id: zod.string().nonempty(),
+  values: adminCustomerFormValuesSchema,
+})
+
 export const userZodSchemas = {
   adminCustomerAddressForm: adminCustomerAddressFormSchema,
-  adminCustomerDetail: userSelectSchema.extend({
-    address: z.string().optional(),
-    addressForm: adminCustomerAddressFormSchema.optional(),
-    averageOrderValue: z.number(),
-    categoryBreakdown: z.array(adminCustomerCategoryBreakdownSchema),
-    customTags: z.array(z.string()),
-    initials: z.string(),
-    isReturning: z.boolean(),
-    joinDate: z.string(),
-    lastActive: z.string().optional(),
-    lastOrderAt: z.date().optional(),
-    monthlySpending: z.array(adminCustomerMonthlySpendingSchema),
-    notes: z.string().optional(),
-    orderCount: z.number(),
-    orders: z.array(adminCustomerDetailOrderSchema),
-    preferredCategory: z.string().optional(),
-    preferredCollection: z.string().optional(),
-    returningRate: z.number(),
-    roleBadgeKey: z.enum(["roleAdmin", "roleCustomer", "returning"]),
-    tags: z.array(adminCustomerDetailTagSchema),
-    timeline: z.array(adminCustomerDetailTimelineEventSchema),
-    totalSpent: z.number(),
-  }),
+  adminCustomerDetail: adminCustomerDetailSchema,
+  adminCustomerDetailInput: adminCustomerDetailInputSchema,
   adminCustomerDetailOrder: adminCustomerDetailOrderSchema,
   adminCustomerDetailTimelineEvent: adminCustomerDetailTimelineEventSchema,
   adminCustomerFormValues: adminCustomerFormValuesSchema,
-  adminCustomerListItem: userSelectSchema.extend({
-    averageOrderValue: z.number(),
-    city: z.string().optional(),
-    countryCode: z.string().optional(),
-    lastOrderAt: z.date().optional(),
-    orderCount: z.number(),
-    province: z.string().nullish(),
-    totalSpent: z.number(),
-  }),
-  adminCustomerStats: z.object({
-    averageLtv: z.number(),
-    averageProductsPerOrder: z.number(),
-    returningRate: z.number(),
-    total: z.number(),
-  }),
-  deleteCustomerInput: z.object({
-    userId: z.string().nonempty(),
-  }),
-  insert: createInsertSchema(user),
+  adminCustomerListItem: adminCustomerListItemSchema,
+  adminCustomerStats: adminCustomerStatsSchema,
+  adminCustomersExportInput: adminCustomersFiltersSchema,
+  adminCustomersPageInput: adminCustomersPageInputSchema,
+  adminUserMetadata: adminUserMetadataSchema,
+  deleteCustomerInput: deleteCustomerInputSchema,
+  insert: userInsertSchema,
   select: userSelectSchema,
-  update: createUpdateSchema(user),
-  updateAdminCustomerInput: z.object({
-    id: z.string().nonempty(),
-    values: adminCustomerFormValuesSchema,
-  }),
+  update: userUpdateSchema,
+  updateAdminCustomerInput: updateAdminCustomerInputSchema,
 }

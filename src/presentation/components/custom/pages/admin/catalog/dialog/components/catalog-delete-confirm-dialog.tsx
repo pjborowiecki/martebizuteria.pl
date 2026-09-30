@@ -14,6 +14,7 @@ import {
 } from "~/src/presentation/components/shadcn/alert-dialog"
 
 import { suppressDataGridRowClickAfterDialogDismiss } from "~/src/presentation/components/custom/datagrid/lib/data-grid-row-click"
+
 export const CatalogDeleteConfirmDialog = ({
   cancelLabel,
   confirmLabel,
@@ -34,11 +35,13 @@ export const CatalogDeleteConfirmDialog = ({
     },
     [isPending, onOpenChange],
   )
+
   const handleDismissInteraction = useCallback((event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
     suppressDataGridRowClickAfterDialogDismiss()
   }, [])
+
   const handleConfirm = useCallback(
     (event: MouseEvent) => {
       event.preventDefault()
@@ -48,6 +51,7 @@ export const CatalogDeleteConfirmDialog = ({
     },
     [onConfirm],
   )
+
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
@@ -75,6 +79,7 @@ export const CatalogDeleteConfirmDialog = ({
     </AlertDialog>
   )
 }
+
 interface CatalogDeleteConfirmDialogProps {
   readonly cancelLabel: string
   readonly confirmLabel: string

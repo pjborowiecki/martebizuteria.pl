@@ -1,7 +1,8 @@
-import { type SQL, and, asc, desc, eq, inArray, sql } from "drizzle-orm"
+import { type SQL, and, asc, desc, eq, inArray } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
 import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
@@ -9,29 +10,13 @@ import { COLLECTION_STATUS } from "~/src/modules/product-collection/product-coll
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 import { buildAdminProductSearchCondition } from "~/src/modules/product/product.admin-list-search.server"
-import { PRODUCT_STATUS } from "~/src/modules/product/product.constants"
 import { product } from "~/src/modules/product/product.schema"
+import { publishedInStockWhere } from "~/src/modules/product/product.stock.server"
 import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils"
-import { type StorefrontSearchResultItem } from "~/src/modules/storefront-search/storefront-search.types"
+import { type StorefrontSearch } from "~/src/modules/storefront-search/storefront-search.types"
 
-import { buildAdminSearchOrCondition } from "~/src/lib/admin-search.server"
 import { getProductImageUrl } from "~/src/lib/image"
-export const publishedProductHasAvailableStockCondition = (): SQL =>
-  sql`(
-    select coalesce(sum("inventory"."quantity_available"), 0)
-    from "product_variant"
-    left join "inventory" on "inventory"."variant_id" = "product_variant"."id"
-    where "product_variant"."product_id" = ${product.id}
-  ) > ${0}`
 
-export const publishedInStockWhere = (...extraConditions: (SQL | undefined)[]): SQL => {
-  const conditions = [
-    eq(product.status, PRODUCT_STATUS.PUBLISHED),
-    publishedProductHasAvailableStockCondition(),
-    ...extraConditions,
-  ].filter((condition): condition is SQL => condition !== undefined)
-  return and(...conditions)!
-}
 export const buildCategorySearchCondition = (term: string): SQL | undefined =>
   buildAdminSearchOrCondition(term, [
     productCategory.handle,
@@ -47,11 +32,12 @@ export const searchStorefrontProducts = async (
   term: string,
   locale: string,
   limit: number,
-): Promise<readonly StorefrontSearchResultItem[]> => {
+): Promise<readonly StorefrontSearch["resultItem"][]> => {
   const searchCondition = buildAdminProductSearchCondition(term)
   if (searchCondition === undefined) {
     return []
   }
+
   const rows = await db
     .select({
       handle: product.handle,
@@ -67,6 +53,7 @@ export const searchStorefrontProducts = async (
   if (rows.length === 0) {
     return []
   }
+
   const categoryIds = [...new Set(rows.map((row) => row.primaryCategoryId).filter((id): id is string => id !== null))]
   const categoryTitleById = new Map<string, string>()
   if (categoryIds.length > 0) {
@@ -81,28 +68,32 @@ export const searchStorefrontProducts = async (
       categoryTitleById.set(categoryRow.id, resolveCategoryTitle(categoryRow.titles, locale))
     }
   }
+
   return rows.map((row) => {
     const subtitle = resolveProductSubtitle(row.subtitles, locale)
     const categoryDetail = row.primaryCategoryId === null ? undefined : categoryTitleById.get(row.primaryCategoryId)
     const detail = subtitle.trim() === "" ? categoryDetail : subtitle
+
     return {
       detail,
       handle: row.handle,
       image: getProductImageUrl(row.thumbnail),
       name: resolveProductTitle(row.titles, locale),
       type: "product",
-    } satisfies StorefrontSearchResultItem
+    } satisfies StorefrontSearch["resultItem"]
   })
 }
+
 export const searchStorefrontCategories = async (
   term: string,
   locale: string,
   limit: number,
-): Promise<readonly StorefrontSearchResultItem[]> => {
+): Promise<readonly StorefrontSearch["resultItem"][]> => {
   const searchCondition = buildCategorySearchCondition(term)
   if (searchCondition === undefined) {
     return []
   }
+
   const rows = await db
     .select({
       handle: productCategory.handle,
@@ -120,18 +111,20 @@ export const searchStorefrontCategories = async (
         image: getProductImageUrl(row.image),
         name: resolveCategoryTitle(row.titles, locale),
         type: "category",
-      }) satisfies StorefrontSearchResultItem,
+      }) satisfies StorefrontSearch["resultItem"],
   )
 }
+
 export const searchStorefrontCollections = async (
   term: string,
   locale: string,
   limit: number,
-): Promise<readonly StorefrontSearchResultItem[]> => {
+): Promise<readonly StorefrontSearch["resultItem"][]> => {
   const searchCondition = buildCollectionSearchCondition(term)
   if (searchCondition === undefined) {
     return []
   }
+
   const rows = await db
     .select({
       handle: productCollection.handle,
@@ -149,6 +142,6 @@ export const searchStorefrontCollections = async (
         image: getProductImageUrl(row.image),
         name: resolveCollectionTitle(row.titles, locale),
         type: "collection",
-      }) satisfies StorefrontSearchResultItem,
+      }) satisfies StorefrontSearch["resultItem"],
   )
 }

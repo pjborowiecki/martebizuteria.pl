@@ -1,6 +1,7 @@
 import { type ComponentProps, type JSX } from "react"
 
 import { cn } from "cn"
+
 const Table = ({ className, ...props }: ComponentProps<"table">): JSX.Element => (
   <div data-slot="table-container" className="relative w-full overflow-x-auto">
     <table data-slot="table" className={cn("w-full caption-bottom text-xs", className)} {...props} />

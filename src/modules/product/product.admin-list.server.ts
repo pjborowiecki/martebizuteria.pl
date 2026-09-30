@@ -2,6 +2,7 @@ import { asc, desc, inArray } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
@@ -10,11 +11,9 @@ import {
   getProductVariantSkuRowsQuery,
   getProductVariantStatsQuery,
 } from "~/src/modules/product/product.accessors"
-import { type AdminProductsExportInput, type AdminProductsPageInput } from "~/src/modules/product/product.admin-list.types"
 import { product } from "~/src/modules/product/product.schema"
+import { type Product } from "~/src/modules/product/product.types"
 import { buildSkuSummaryByProductId, buildVariantStatsByProductId } from "~/src/modules/product/product.utils"
-
-import { normalizeAdminSearchTerm } from "~/src/lib/admin-search.server"
 
 export const loadAdminListAggregates = async (
   products: readonly {
@@ -27,6 +26,7 @@ export const loadAdminListAggregates = async (
       statsByProductId: buildVariantStatsByProductId([]),
     }
   }
+
   const productIds = JSON.stringify(products.map((row) => row.id))
   const [variantStats, skuRows] = await Promise.all([
     getProductVariantStatsQuery.execute({
@@ -36,6 +36,7 @@ export const loadAdminListAggregates = async (
       productIds,
     }),
   ])
+
   return {
     skuSummaryByProductId: buildSkuSummaryByProductId(skuRows),
     statsByProductId: buildVariantStatsByProductId(variantStats),
@@ -43,7 +44,7 @@ export const loadAdminListAggregates = async (
 }
 
 export const buildAdminProductsFilterParams = (
-  input: AdminProductsPageInput | AdminProductsExportInput,
+  input: Product["adminProductsPageInput"] | Product["adminProductsExportInput"],
 ): Pick<
   AdminProductsExportListParams,
   "categoryId" | "collectionId" | "createdAt" | "inventoryLevel" | "minPrice" | "search" | "sort" | "status" | "totalStock" | "variantKind"
@@ -60,12 +61,12 @@ export const buildAdminProductsFilterParams = (
   variantKind: input.variantKind,
 })
 
-/** Admin reorder list: one product query plus batched junction loads (no nested relational fan-out). */
 export const getAdminProductsCatalogList = async () => {
   const products = await db.select().from(product).orderBy(asc(product.rank), desc(product.createdAt))
   if (products.length === 0) {
     return []
   }
+
   const productIds = products.map((row) => row.id)
   const [attributeRows, categoryRows, collectionRows] = await Promise.all([
     db.query.attributeOnProduct.findMany({
@@ -100,6 +101,7 @@ export const getAdminProductsCatalogList = async () => {
       },
     }),
   ])
+
   const attributesByProductId = Object.groupBy(attributeRows, (row) => row.productId)
   const categoriesByProductId = Object.groupBy(categoryRows, (row) => row.productId)
   const collectionsByProductId = Object.groupBy(collectionRows, (row) => row.productId)
@@ -112,5 +114,6 @@ export const getAdminProductsCatalogList = async () => {
       collections: collectionsByProductId[row.id] ?? [],
     })
   }
+
   return catalogList
 }

@@ -1,7 +1,16 @@
 import { type InfiniteData, infiniteQueryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
-import { z } from "zod/v4"
+import zod from "zod/v4"
 
+import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
+
+import {
+  LIST_PAGE_FIRST,
+  LIST_PAGE_STEP,
+  type ListPaginationResult,
+  buildListPaginationResult,
+  listPaginationParamsFromPage,
+} from "~/src/modules/_core/utils/pagination"
 import { getCategoryHierarchyQuery, getStorefrontCategoryByHandleQuery } from "~/src/modules/product-category/product-category.server"
 import { collectDescendantCategoryIds } from "~/src/modules/product-category/product-category.utils"
 import { getStorefrontCollectionByHandleQuery } from "~/src/modules/product-collection/product-collection.server"
@@ -13,7 +22,6 @@ import {
 } from "~/src/modules/product/product.constants"
 import {
   type StorefrontCatalogScope,
-  type StorefrontProductsPageInput,
   type StorefrontProductsSearch,
   buildEffectiveStorefrontProductsSearch,
   hasActiveStorefrontProductFilters,
@@ -23,32 +31,29 @@ import {
 } from "~/src/modules/product/product.storefront-catalog"
 import { getStorefrontPublishedProductsPage } from "~/src/modules/product/product.storefront-catalog.accessors"
 
-import { catalogDebugLog } from "~/src/lib/dev/catalog-debug-log"
-import {
-  LIST_PAGE_FIRST,
-  LIST_PAGE_STEP,
-  type ListPaginationResult,
-  buildListPaginationResult,
-  listPaginationParamsFromPage,
-} from "~/src/lib/list-pagination"
+import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
 
 const CENTS_PER_PLN = 100
 
 const storefrontProductsPageInputSchema = storefrontProductsSearchSchema.extend({
-  page: z.coerce.number().int().min(LIST_PAGE_FIRST).optional(),
+  page: zod.coerce.number().int().min(LIST_PAGE_FIRST).optional(),
 })
 
 const resolveStorefrontCategoryIdsForSearch = async (categoryHandle: string | undefined): Promise<string[] | undefined> => {
   if (categoryHandle === undefined) {
     return undefined
   }
+
   const category = await getStorefrontCategoryByHandleQuery.execute({
     handle: categoryHandle,
   })
+
   if (category === undefined) {
     return []
   }
+
   const hierarchy = await getCategoryHierarchyQuery.execute()
+
   return collectDescendantCategoryIds(category.id, hierarchy)
 }
 
@@ -56,9 +61,11 @@ const resolveStorefrontCollectionIdForSearch = async (collectionHandle: string |
   if (collectionHandle === undefined) {
     return undefined
   }
+
   const collection = await getStorefrontCollectionByHandleQuery.execute({
     handle: collectionHandle,
   })
+
   return collection?.id
 }
 
@@ -67,6 +74,7 @@ const resolveStorefrontCatalogFilters = async (search: StorefrontProductsSearch)
     resolveStorefrontCategoryIdsForSearch(search.category),
     resolveStorefrontCollectionIdForSearch(search.collection),
   ])
+
   return {
     categoryIds,
     collectionId,
@@ -79,13 +87,14 @@ const resolveStorefrontCatalogFilters = async (search: StorefrontProductsSearch)
 
 type StorefrontProductsPage = ListPaginationResult<Awaited<ReturnType<typeof getStorefrontPublishedProductsPage>>["items"][number]>
 
-export const fetchStorefrontProductsPageFn = createServerFn({
+export const getStorefrontProductsPage = createServerFn({
   method: "GET",
 })
-  .validator((input: StorefrontProductsPageInput) => storefrontProductsPageInputSchema.parse(input))
+  .middleware([withRequest])
+  .validator((input: zod.input<typeof storefrontProductsPageInputSchema>) => storefrontProductsPageInputSchema.parse(input))
   .handler(async ({ data: input }) => {
     const startedAt = performance.now()
-    const search = normalizeStorefrontProductsSearch(storefrontProductsPageInputSchema.parse(input))
+    const search = normalizeStorefrontProductsSearch(input)
     const page = input.page ?? LIST_PAGE_FIRST
     const filtered = hasActiveStorefrontProductFilters(search)
     const pageSize = filtered ? PRODUCT_STOREFRONT_FILTERED_MAX : PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE
@@ -96,12 +105,15 @@ export const fetchStorefrontProductsPageFn = createServerFn({
       page,
       search,
     })
+
     if (filters.categoryIds?.length === 0) {
       catalogDebugLog("storefrontProductsPage.emptyCategory", {
         search,
       })
+
       return buildListPaginationResult([], 0, listParams)
     }
+
     const { items, total } = await getStorefrontPublishedProductsPage({
       ...listParams,
       categoryIds: filters.categoryIds,
@@ -118,13 +130,15 @@ export const fetchStorefrontProductsPageFn = createServerFn({
       page,
       total,
     })
+
     return buildListPaginationResult(items, total, listParams)
   })
 
-export const storefrontProductsInfiniteQueryOptions = (search: StorefrontProductsSearch, scope?: StorefrontCatalogScope) => {
+export const getStorefrontProductsPageQuery = (search: StorefrontProductsSearch, scope?: StorefrontCatalogScope) => {
   const normalized = normalizeStorefrontProductsSearch(search)
   const effective = buildEffectiveStorefrontProductsSearch(normalized, scope)
   const filtered = hasActiveStorefrontProductFilters(effective, storefrontCatalogFilterOptions(scope))
+
   return infiniteQueryOptions<
     StorefrontProductsPage,
     Error,
@@ -135,13 +149,13 @@ export const storefrontProductsInfiniteQueryOptions = (search: StorefrontProduct
     getNextPageParam: (lastPage, _allPages, lastPageParam) => (!filtered && lastPage.hasMore ? lastPageParam + LIST_PAGE_STEP : undefined),
     initialPageParam: LIST_PAGE_FIRST,
     queryFn: ({ pageParam }) =>
-      fetchStorefrontProductsPageFn({
+      getStorefrontProductsPage({
         data: {
           ...effective,
           page: pageParam,
         },
       }),
-    queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, effective] as const,
+    queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, effective],
     staleTime: PRODUCT_QUERY_STALE_MS,
   })
 }

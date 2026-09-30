@@ -2,12 +2,13 @@ import { type JSX } from "react"
 
 import { Package } from "lucide-react"
 import { useController } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Field, FieldError } from "~/src/presentation/components/shadcn/field"
 
 import { InpostSelector } from "~/src/presentation/components/custom/checkout/components/_steps/delivery/locker/inpost/inpost-selector"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+
 export const DeliveryLocker = (): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const { control } = useCheckoutForm()
@@ -15,6 +16,7 @@ export const DeliveryLocker = (): JSX.Element => {
     control,
     name: "lockerId",
   })
+
   return (
     <div className="flex flex-col gap-5 rounded-none border border-border/50 bg-background p-6">
       <div className="space-y-1">

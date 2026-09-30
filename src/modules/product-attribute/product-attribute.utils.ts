@@ -1,6 +1,4 @@
-import { z } from "zod/v4"
-
-import { DEFAULT_LOCALE, LOCALES } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
   PRODUCT_ATTRIBUTE_STAT_FILTER,
@@ -12,12 +10,8 @@ import {
   type ProductAttributeUnitPreset,
   productAttributeTypeUsesAllowedValues,
 } from "~/src/modules/product-attribute/product-attribute.constants"
-import {
-  type ProductAttribute,
-  type ProductAttributeAllowedValue,
-  type ProductAttributeLocaleCode,
-  type ProductAttributeLocaleMap,
-} from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
+import { productAttributeZodSchemas } from "~/src/modules/product-attribute/product-attribute.zod"
 
 const MULTISELECT_SEPARATOR = ", "
 
@@ -25,93 +19,111 @@ const ALLOWED_VALUES_DISPLAY_SEPARATOR = ", "
 
 const UNIT_PRESET_SET = new Set<string>(PRODUCT_ATTRIBUTE_UNIT_PRESETS)
 
-const rawAllowedValueSchema = z.object({
-  labels: z.record(z.string(), z.string()),
-  value: z.string(),
-})
-
-const rawAllowedValuesCoerceSchema = z.array(rawAllowedValueSchema)
-
-export const coerceProductAttributeAllowedValues = (value: unknown): ProductAttributeAllowedValue[] | undefined => {
+export const coerceProductAttributeAllowedValues = (value: unknown): ProductAttribute["allowedValue"][] | undefined => {
   if (value === null || value === undefined) {
     return undefined
   }
-  const parsed = rawAllowedValuesCoerceSchema.safeParse(value)
+
+  const parsed = productAttributeZodSchemas.rawAllowedValues.safeParse(value)
   if (!parsed.success) {
     return undefined
   }
+
   return parsed.data.map((entry) => ({
     labels: coerceProductAttributeLocaleMap(entry.labels),
     value: entry.value,
   }))
 }
 
-export const createEmptyProductAttributeLocaleMap = (): ProductAttributeLocaleMap =>
-  Object.fromEntries(LOCALES.map((locale) => [locale, ""]))
+export const createEmptyProductAttributeLocaleMap = (): ProductAttribute["localeMap"] =>
+  Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, ""]))
 
-export const coerceProductAttributeLocaleMap = (
-  value: Partial<ProductAttributeLocaleMap> | null | undefined,
-): ProductAttributeLocaleMap => {
-  const empty = createEmptyProductAttributeLocaleMap()
-  if (value === null || value === undefined || typeof value !== "object") {
-    return empty
+const parseSerializedLocaleMap = (value: string): Record<string, unknown> | undefined => {
+  if (!value.startsWith("{")) {
+    return undefined
   }
-  return Object.fromEntries(LOCALES.map((locale) => [locale, typeof value[locale] === "string" ? value[locale] : ""]))
+
+  try {
+    const parsed = productAttributeZodSchemas.rawLocaleMap.safeParse(JSON.parse(value))
+
+    return parsed.success ? parsed.data : undefined
+  } catch {
+    return undefined
+  }
 }
 
-export const normalizeProductAttributeLocaleMapForSave = (map: ProductAttributeLocaleMap): ProductAttributeLocaleMap =>
-  Object.fromEntries(LOCALES.map((locale) => [locale, map[locale].trim()]))
+export const coerceProductAttributeLocaleMap = (value: unknown): ProductAttribute["localeMap"] => {
+  if (typeof value === "string") {
+    return coerceProductAttributeLocaleMap(parseSerializedLocaleMap(value) ?? { [I18N.DEFAULT_LOCALE]: value })
+  }
 
-export const isProductAttributeLocaleMapComplete = (map: ProductAttributeLocaleMap): boolean =>
-  LOCALES.every((locale) => map[locale].trim() !== "")
+  const parsed = productAttributeZodSchemas.rawLocaleMap.safeParse(value)
+  if (!parsed.success || Array.isArray(value)) {
+    return createEmptyProductAttributeLocaleMap()
+  }
+
+  return Object.fromEntries(
+    I18N.SUPPORTED_LOCALES.map((locale) => [locale, typeof parsed.data[locale] === "string" ? parsed.data[locale] : ""]),
+  )
+}
+
+export const normalizeProductAttributeLocaleMapForSave = (map: ProductAttribute["localeMap"]): ProductAttribute["localeMap"] =>
+  Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, map[locale].trim()]))
+
+export const isProductAttributeLocaleMapComplete = (map: ProductAttribute["localeMap"]): boolean =>
+  I18N.SUPPORTED_LOCALES.every((locale) => map[locale].trim() !== "")
 
 export const formatProductAttributeLocaleMapChipExtras = (
-  map: ProductAttributeLocaleMap,
-  primaryLocale: ProductAttributeLocaleCode = DEFAULT_LOCALE,
+  map: ProductAttribute["localeMap"],
+  primaryLocale: ProductAttribute["localeCode"] = I18N.DEFAULT_LOCALE,
 ): string[] => {
   const primary = map[primaryLocale].trim()
-  return LOCALES.filter((locale) => locale !== primaryLocale)
+
+  return I18N.SUPPORTED_LOCALES.filter((locale) => locale !== primaryLocale)
     .map((locale) => map[locale].trim())
     .filter((label) => label !== "" && label !== primary)
 }
 
-export const localeFillMap = (map: ProductAttributeLocaleMap | undefined): Record<ProductAttributeLocaleCode, boolean> =>
-  Object.fromEntries(LOCALES.map((locale) => [locale, (map?.[locale] ?? "").trim() !== ""]))
+export const localeFillMap = (map: ProductAttribute["localeMap"] | undefined): Record<ProductAttribute["localeCode"], boolean> =>
+  Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, (map?.[locale] ?? "").trim() !== ""]))
 
-export const isProductAttributeLocaleCode = (value: string): value is ProductAttributeLocaleCode =>
-  (LOCALES as readonly string[]).includes(value)
+export const isProductAttributeLocaleCode = (value: string): value is ProductAttribute["localeCode"] =>
+  (I18N.SUPPORTED_LOCALES as readonly string[]).includes(value)
 
-export const resolveLocalizedString = (map: ProductAttributeLocaleMap, locale: string): string => {
-  const normalized = isProductAttributeLocaleCode(locale) ? locale : DEFAULT_LOCALE
+export const resolveLocalizedString = (map: ProductAttribute["localeMap"], locale: string): string => {
+  const normalized = isProductAttributeLocaleCode(locale) ? locale : I18N.DEFAULT_LOCALE
   const primary = map[normalized].trim()
   if (primary !== "") {
     return primary
   }
-  const fallback = map[DEFAULT_LOCALE].trim()
+
+  const fallback = map[I18N.DEFAULT_LOCALE].trim()
   if (fallback !== "") {
     return fallback
   }
-  for (const code of LOCALES) {
+
+  for (const code of I18N.SUPPORTED_LOCALES) {
     const candidate = map[code].trim()
     if (candidate !== "") {
       return candidate
     }
   }
+
   return ""
 }
 
-export const resolveProductAttributeTitle = (titles: ProductAttributeLocaleMap, locale: string): string =>
+export const resolveProductAttributeTitle = (titles: ProductAttribute["localeMap"], locale: string): string =>
   resolveLocalizedString(titles, locale)
 
-export const resolveAllowedValueLabel = (entry: ProductAttributeAllowedValue, locale: string): string => {
+export const resolveAllowedValueLabel = (entry: ProductAttribute["allowedValue"], locale: string): string => {
   const label = resolveLocalizedString(entry.labels, locale)
+
   return label === "" ? entry.value : label
 }
 
-/** Comma-separated allowed-value labels for admin tables (select / multiselect only). */
 export const formatAdminProductAttributeAllowedValuesList = (
   options: Readonly<{
-    allowedValues: readonly ProductAttributeAllowedValue[] | null | undefined
+    allowedValues: readonly ProductAttribute["allowedValue"][] | null | undefined
     locale: string
     type: ProductAttributeType
   }>,
@@ -120,6 +132,7 @@ export const formatAdminProductAttributeAllowedValuesList = (
   if (!productAttributeTypeUsesAllowedValues(type) || allowedValues === null || allowedValues === undefined || allowedValues.length === 0) {
     return ""
   }
+
   return allowedValues.map((entry) => resolveAllowedValueLabel(entry, locale)).join(ALLOWED_VALUES_DISPLAY_SEPARATOR)
 }
 
@@ -130,6 +143,7 @@ export const resolveProductAttributeUnitSelectValue = (unit: string): string => 
   if (trimmed === "") {
     return ""
   }
+
   return isProductAttributeUnitPreset(trimmed) ? trimmed : PRODUCT_ATTRIBUTE_UNIT_CUSTOM_SELECT_VALUE
 }
 
@@ -138,14 +152,14 @@ export const parseMultiselectStoredValue = (raw: string): string[] => {
   if (trimmed === "") {
     return []
   }
+
   try {
     const parsed: unknown = JSON.parse(trimmed)
     if (Array.isArray(parsed)) {
       return parsed.filter((entry): entry is string => typeof entry === "string")
     }
-  } catch {
-    // Legacy comma-separated values.
-  }
+  } catch {}
+
   return trimmed
     .split(",")
     .map((entry) => entry.trim())
@@ -157,29 +171,37 @@ export const stringifyMultiselectStoredValue = (keys: readonly string[]): string
 export const parseProductAttributeValueForType = (
   type: ProductAttributeType,
   raw: string,
-  allowedValues?: ProductAttributeAllowedValue[] | null,
+  allowedValues?: ProductAttribute["allowedValue"][] | null,
 ): string => {
   const trimmed = raw.trim()
   if (type === PRODUCT_ATTRIBUTE_TYPE.BOOLEAN) {
     if (trimmed === "true" || trimmed === "1" || trimmed.toLowerCase() === "yes") {
       return "true"
     }
+
     if (trimmed === "false" || trimmed === "0" || trimmed === "" || trimmed.toLowerCase() === "no") {
       return "false"
     }
+
     return trimmed
   }
+
   if (type === PRODUCT_ATTRIBUTE_TYPE.SELECT && allowedValues !== undefined && allowedValues !== null) {
     const match = allowedValues.find((entry) => entry.value === trimmed)
+
     return match?.value ?? trimmed
   }
+
   if (type === PRODUCT_ATTRIBUTE_TYPE.MULTISELECT) {
     const keys = parseMultiselectStoredValue(trimmed)
+
     return JSON.stringify(keys)
   }
+
   if (type === PRODUCT_ATTRIBUTE_TYPE.NUMBER) {
     return trimmed
   }
+
   return raw
 }
 
@@ -187,7 +209,7 @@ export const formatProductAttributeValueForDisplay = (
   type: ProductAttributeType,
   value: string,
   options: {
-    readonly allowedValues?: readonly ProductAttributeAllowedValue[] | null
+    readonly allowedValues?: readonly ProductAttribute["allowedValue"][] | null
     readonly locale: string
     readonly unit?: string | null
   },
@@ -196,25 +218,29 @@ export const formatProductAttributeValueForDisplay = (
   if (type === PRODUCT_ATTRIBUTE_TYPE.BOOLEAN) {
     return value === "true" ? "Yes" : "No"
   }
+
   if (type === PRODUCT_ATTRIBUTE_TYPE.SELECT && allowedValues !== null && allowedValues !== undefined) {
     const entry = allowedValues.find((item) => item.value === value)
+
     return entry === undefined ? value : resolveAllowedValueLabel(entry, locale)
   }
+
   if (type === PRODUCT_ATTRIBUTE_TYPE.MULTISELECT && allowedValues !== null && allowedValues !== undefined) {
     return parseMultiselectStoredValue(value)
       .map((key) => {
         const entry = allowedValues.find((item) => item.value === key)
+
         return entry === undefined ? key : resolveAllowedValueLabel(entry, locale)
       })
       .join(MULTISELECT_SEPARATOR)
   }
+
   if (type === PRODUCT_ATTRIBUTE_TYPE.NUMBER && unit !== undefined && unit !== null && unit !== "") {
     return `${value} ${unit}`
   }
+
   return value
 }
-
-export const productAttributeTypeHasAllowedValues = (type: ProductAttributeType): boolean => productAttributeTypeUsesAllowedValues(type)
 
 export const computeProductAttributeStats = (items: readonly ProductAttribute["adminListItem"][]): ProductAttribute["stats"] => {
   let inUse = 0
@@ -226,10 +252,12 @@ export const computeProductAttributeStats = (items: readonly ProductAttribute["a
     } else {
       unused++
     }
+
     if (productAttributeTypeUsesAllowedValues(row.type)) {
       withChoices++
     }
   }
+
   return {
     inUse,
     total: items.length,
@@ -245,16 +273,19 @@ export const filterAdminProductAttributesByStat = (
   if (filter === PRODUCT_ATTRIBUTE_STAT_FILTER.IN_USE) {
     return items.filter((row) => row.productCount > 0)
   }
+
   if (filter === PRODUCT_ATTRIBUTE_STAT_FILTER.UNUSED) {
     return items.filter((row) => row.productCount === 0)
   }
+
   if (filter === PRODUCT_ATTRIBUTE_STAT_FILTER.CHOICE) {
     return items.filter((row) => productAttributeTypeUsesAllowedValues(row.type))
   }
+
   return [...items]
 }
 
-export const normalizeAllowedValuesForSave = (allowedValues: ProductAttributeAllowedValue[]): ProductAttributeAllowedValue[] =>
+export const normalizeAllowedValuesForSave = (allowedValues: ProductAttribute["allowedValue"][]): ProductAttribute["allowedValue"][] =>
   allowedValues.map((entry) => ({
     labels: normalizeProductAttributeLocaleMapForSave(entry.labels),
     value: entry.value,

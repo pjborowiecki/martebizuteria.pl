@@ -1,9 +1,9 @@
 import { type JSX, useMemo } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { categoriesQueryOptions } from "~/src/modules/product-category/use-cases/get-categories"
+import { getCategoriesQuery } from "~/src/modules/product-category/use-cases/get-categories"
 
 import { AspectRatio } from "~/src/presentation/components/shadcn/aspect-ratio"
 
@@ -15,6 +15,7 @@ import {
 } from "~/src/presentation/components/custom/pages/landing-page/sections/landing-category-panel.utils"
 
 import { ROUTES } from "~/src/routes"
+
 const MobileCategoryPanel = ({
   category,
   index,
@@ -26,6 +27,7 @@ const MobileCategoryPanel = ({
   const t = useTranslations("pages.landing.categoriesSection")
   const panel = resolveLandingCategoryPanelCopy(category, locale)
   const params = useMemo(() => ({ handle: panel.handle }), [panel.handle])
+
   return (
     <article className="reveal overflow-hidden border border-border/60 bg-background">
       <AspectRatio className="w-full overflow-hidden bg-muted" ratio={ASPECT_RATIO_LANDSCAPE}>
@@ -54,9 +56,11 @@ const MobileCategoryPanel = ({
     </article>
   )
 }
+
 export const MobileCategoriesSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.categoriesSection")
-  const { data: categories } = useSuspenseQuery(categoriesQueryOptions())
+  const { data: categories } = useSuspenseQuery(getCategoriesQuery())
+
   return (
     <section className="mx-auto max-w-400 space-y-8 px-6 pb-8 lg:hidden lg:px-12">
       <div className="reveal">
@@ -73,4 +77,5 @@ export const MobileCategoriesSection = (): JSX.Element => {
     </section>
   )
 }
+
 const ASPECT_RATIO_LANDSCAPE = 1.25

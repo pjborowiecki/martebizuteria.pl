@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle"
 import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
+
 const Toggle = ({ className, variant = "default", size = "default", ...props }: Readonly<ToggleProps>): JSX.Element => (
   <TogglePrimitive
     data-slot="toggle"
@@ -37,5 +38,7 @@ const toggleVariants = cva(
     },
   },
 )
+
 interface ToggleProps extends TogglePrimitive.Props, VariantProps<typeof toggleVariants> {}
+
 export { Toggle, toggleVariants }

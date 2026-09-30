@@ -1,6 +1,6 @@
 import { type JSX, useCallback, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
@@ -18,9 +18,11 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/categories/hooks/use-categories-sheet"
 import { categoriesDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/categories/utils/categories-data-grid"
 import { CatalogToolbarAddButton } from "~/src/presentation/components/custom/pages/admin/catalog/toolbar/components/catalog-toolbar-add-button"
+
 const CategoriesTableToolbarActions = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.categories")
   const { openCreate } = useCategoriesSheet()
+
   return (
     <>
       <CategoriesBulkActions />
@@ -28,19 +30,23 @@ const CategoriesTableToolbarActions = (): JSX.Element => {
     </>
   )
 }
+
 export const CategoriesTableContent = (): JSX.Element => {
   const sheet = useCategoriesSheet()
   const grid = useCategoriesDataGrid({
     onRowClick: sheet.openEdit,
   })
+
   const handleSheetOpenChange = useCallback(
     (open: boolean) => {
       sheet.setOpen(open)
     },
     [sheet],
   )
+
   const toolbarActions = useMemo(() => <CategoriesTableToolbarActions />, [])
   const sheetMode = sheet.mode === "closed" ? "create" : sheet.mode
+
   return (
     <>
       <Provider value={grid}>
@@ -65,10 +71,12 @@ export const CategoriesTableContent = (): JSX.Element => {
 
 export const CategoriesTable = (): JSX.Element => {
   const sheetState = useCategoriesSheetState()
+
   return (
     <CategoriesSheetProvider value={sheetState}>
       <CategoriesTableContent />
     </CategoriesSheetProvider>
   )
 }
+
 const { Body, Pagination, Provider, Toolbar } = categoriesDataGrid

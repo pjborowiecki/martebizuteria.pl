@@ -1,14 +1,16 @@
 import { type JSX, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Image } from "~/src/presentation/components/custom/image"
 import { PRIMARY } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"
+
 export const ImageShowcase = (): JSX.Element => {
   const t = useTranslations("components.custom.navigation")
   const containerStyle = useMemo(() => ({ perspective: "1000px" }), [])
   const activeStyle = useMemo(() => ({ opacity: 1, visibility: "inherit" as const }), [])
   const inactiveStyle = useMemo(() => ({ opacity: 0, visibility: "hidden" as const }), [])
+
   return (
     <div className="hidden w-1/2 items-center justify-center py-12 pr-12 lg:flex">
       <div
@@ -39,4 +41,5 @@ export const ImageShowcase = (): JSX.Element => {
     </div>
   )
 }
+
 const ACTIVE_INDEX = 0

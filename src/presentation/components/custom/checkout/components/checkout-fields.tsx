@@ -2,7 +2,7 @@ import { type ComponentProps, type JSX, useCallback } from "react"
 
 import { cn } from "cn"
 import { type Control, type ControllerFieldState, useController } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 
@@ -25,8 +25,6 @@ const LABEL_CLASS = "font-medium text-[10px] text-muted-foreground uppercase tra
 
 const PHONE_PREFIX = "+48"
 
-// Validation messages are stored as translation keys (e.g. "validation.emailRequired").
-// The single place they're rendered also resolves them.
 const FieldErrorMessage = ({ fieldState }: Readonly<{ fieldState: ControllerFieldState }>): JSX.Element | undefined => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const message = fieldState.error?.message
@@ -34,6 +32,7 @@ const FieldErrorMessage = ({ fieldState }: Readonly<{ fieldState: ControllerFiel
   if (!fieldState.invalid || message === undefined || message === "") {
     return undefined
   }
+
   return <FieldError>{t(message)}</FieldError>
 }
 
@@ -104,8 +103,6 @@ export const CheckoutPhoneField = ({ className, control, label, name, required }
   return (
     <Field className={className} data-invalid={fieldState.invalid}>
       <div className="flex items-end gap-2">
-        {/* The pt-2 + h-11 pair drops the prefix to the input's (bottom-weighted) value baseline, and the border mirrors
-            the input's state so the underline stays continuous across the prefix and the number. */}
         <div
           className={cn(
             "flex h-11 shrink-0 items-center border-0 border-b bg-background px-3 pt-2 text-sm text-foreground dark:bg-input/30",
@@ -128,8 +125,6 @@ export const CheckoutPhoneField = ({ className, control, label, name, required }
             aria-required={required}
             className={cn("peer", showValid && VALID_INPUT_CLASS)}
           />
-          {/* The mobile-phone label is long; tighten the floated letter-spacing
-              (vs the global 0.22em) so the full label fits this narrow field. */}
           <FloatingLabel
             htmlFor={field.name}
             label={label}
@@ -219,8 +214,6 @@ interface OptionCardProps extends Omit<ComponentProps<typeof RadioGroupItem>, "c
   readonly description?: string | JSX.Element | undefined
 }
 
-// A bordered row (radio · icon · label · trailing price) that mirrors the Stripe Payment Element's accordion items.
-// Delivery and payment selection therefore look identical.
 export const OptionCard = ({ className, icon, id, label, value, description, ...rest }: OptionCardProps): JSX.Element => (
   <Label
     htmlFor={id}

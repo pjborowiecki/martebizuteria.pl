@@ -3,7 +3,7 @@ import { type CSSProperties, type DragEvent, type JSX, type MouseEvent, type Rea
 import { type Header, type RowData } from "@tanstack/react-table"
 import { cn } from "cn"
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { TableHead } from "~/src/presentation/components/shadcn/table"
 
@@ -36,13 +36,14 @@ const SortIcon = ({ direction }: Readonly<{ direction: false | "asc" | "desc" }>
   if (direction === "asc") {
     return <ArrowUp className="size-3.5" strokeWidth={2} />
   }
+
   if (direction === "desc") {
     return <ArrowDown className="size-3.5" strokeWidth={2} />
   }
+
   return <ChevronsUpDown className="size-3.5 opacity-0 transition-opacity group-hover/head:opacity-70" strokeWidth={2} />
 }
 
-/** Label area: grab cursor on hover for reorder; right padding keeps the resize hit zone clear. */
 const ColumnReorderHeaderArea = ({
   children,
   columnId,
@@ -191,7 +192,6 @@ export const DataGridHeaderCell = <TData extends RowData>({
     sortLabel: t("sortBy", { column: label }),
   })
 
-  /** `text-right` on headers clips the label start when the column is narrow; body cells keep alignment via `cellClassName`. */
   const headClassName = column.columnDef.meta?.headClassName?.replaceAll(/\btext-right\b/gu, "text-left")
 
   return (

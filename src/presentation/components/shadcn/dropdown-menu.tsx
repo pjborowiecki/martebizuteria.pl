@@ -176,31 +176,41 @@ const DropdownMenuShortcut = ({ className, ...props }: Readonly<ComponentProps<"
 )
 
 const DEFAULT_ALIGN_OFFSET = 0
+
 const DEFAULT_SIDE_OFFSET = 4
+
 const SUB_ALIGN_OFFSET = -3
+
 const SUB_SIDE_OFFSET = 0
+
 interface DropdownMenuContentProps extends MenuPrimitive.Popup.Props {
   readonly align?: MenuPrimitive.Positioner.Props["align"]
   readonly alignOffset?: MenuPrimitive.Positioner.Props["alignOffset"]
   readonly side?: MenuPrimitive.Positioner.Props["side"]
   readonly sideOffset?: MenuPrimitive.Positioner.Props["sideOffset"]
 }
+
 interface DropdownMenuLabelProps extends MenuPrimitive.GroupLabel.Props {
   readonly inset?: boolean
 }
+
 interface DropdownMenuItemProps extends MenuPrimitive.Item.Props {
   readonly inset?: boolean
   readonly variant?: "default" | "destructive"
 }
+
 interface DropdownMenuSubTriggerProps extends MenuPrimitive.SubmenuTrigger.Props {
   readonly inset?: boolean
 }
+
 interface DropdownMenuCheckboxItemProps extends MenuPrimitive.CheckboxItem.Props {
   readonly inset?: boolean
 }
+
 interface DropdownMenuRadioItemProps extends MenuPrimitive.RadioItem.Props {
   readonly inset?: boolean
 }
+
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,

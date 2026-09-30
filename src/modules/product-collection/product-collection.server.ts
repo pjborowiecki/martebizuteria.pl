@@ -7,21 +7,18 @@ import { productCollection } from "~/src/modules/product-collection/product-coll
 
 const handlePlaceholder = sql.placeholder("handle")
 
-/** Admin: all collections, manual order. */
 export const getAdminCollectionsQuery = db.query.productCollection
   .findMany({
     orderBy: (collections, { asc, desc }) => [asc(collections.rank), desc(collections.createdAt)],
   })
   .prepare()
 
-/** Admin: lookup by handle (any status). */
 export const getCollectionByHandleQuery = db.query.productCollection
   .findFirst({
     where: eq(productCollection.handle, handlePlaceholder),
   })
   .prepare()
 
-/** Storefront: active collections, manual order. */
 export const getStorefrontCollectionsQuery = db.query.productCollection
   .findMany({
     orderBy: (collections, { asc }) => [asc(collections.rank)],
@@ -29,7 +26,6 @@ export const getStorefrontCollectionsQuery = db.query.productCollection
   })
   .prepare()
 
-/** Storefront: active collection by handle. */
 export const getStorefrontCollectionByHandleQuery = db.query.productCollection
   .findFirst({
     where: and(eq(productCollection.handle, handlePlaceholder), eq(productCollection.status, COLLECTION_STATUS.ACTIVE)),
@@ -61,6 +57,7 @@ export const setCollectionRanks = async (
   if (updates.length === 0) {
     return
   }
+
   const ids = updates.map((entry) => entry.id)
   const cases = updates.map((entry) => sql`when ${productCollection.id} = ${entry.id} then ${entry.rank}`)
   const rankExpression = sql`(case ${sql.join(cases, sql.raw(" "))} end)`

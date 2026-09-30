@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
 import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
@@ -8,7 +8,6 @@ import { checkout } from "~/src/modules/checkout/checkout.schema"
 export const payment = sqliteTable(
   "payment",
   {
-    // Stored in cents
     amount: integer("amount").notNull(),
     checkoutId: text("checkout_id")
       .references(() => checkout.id, { onDelete: "cascade" })
@@ -25,11 +24,10 @@ export const payment = sqliteTable(
     })
       .default("pending")
       .notNull(),
-    // E.g., Stripe Checkout Session ID
     transactionId: text("transaction_id"),
     ...timestamps(),
   },
-  (table) => [index("payment_checkoutId_idx").on(table.checkoutId), index("payment_transactionId_idx").on(table.transactionId)],
+  (table) => [index("payment_checkoutId_idx").on(table.checkoutId), uniqueIndex("payment_transactionId_unique").on(table.transactionId)],
 )
 
 export const paymentRelations = relations(payment, ({ one }) => ({

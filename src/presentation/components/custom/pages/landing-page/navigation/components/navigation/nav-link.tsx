@@ -7,6 +7,7 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { resolveLocalizedMenuPath } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-path"
 import { useNavigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider"
+
 const NavLinkUnderline = ({
   active,
 }: Readonly<{
@@ -29,11 +30,14 @@ export const NavLink = ({ hash, active = false, children }: Readonly<NavLinkProp
   const handleHashClick = useCallback(() => {
     handleNavigateToHash(hash)
   }, [handleNavigateToHash, hash])
+
   const handleRouteClick = useCallback(() => {
     dismissMenuForRouteNavigation()
   }, [dismissMenuForRouteNavigation])
+
   if (hash.startsWith("/")) {
     const { params, to } = resolveLocalizedMenuPath(hash)
+
     return (
       <LocalizedLink
         aria-current={active ? "page" : undefined}
@@ -54,6 +58,7 @@ export const NavLink = ({ hash, active = false, children }: Readonly<NavLinkProp
       </LocalizedLink>
     )
   }
+
   return (
     <Button
       variant="ghost"
@@ -70,10 +75,12 @@ export const NavLink = ({ hash, active = false, children }: Readonly<NavLinkProp
     </Button>
   )
 }
+
 interface NavLinkProps {
   hash: string
   active?: boolean | undefined
   children: ReactNode
 }
+
 const NAV_LINK_CLASS_NAME =
   "font-inherit relative flex h-10 cursor-pointer items-center overflow-visible rounded-none border-0 bg-transparent px-0 text-xs tracking-[0.25em] uppercase outline-none transition-colors hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-ring/40"

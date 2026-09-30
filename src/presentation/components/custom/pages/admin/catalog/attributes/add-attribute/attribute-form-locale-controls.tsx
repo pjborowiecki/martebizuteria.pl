@@ -1,23 +1,23 @@
 import { type JSX, type ReactNode, createContext, useCallback, useContext, useMemo, useState } from "react"
 
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { type ProductAttributeLocaleCode } from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 
 interface AttributeFormLocaleControlsContextValue {
-  readonly activeLocale: ProductAttributeLocaleCode
+  readonly activeLocale: ProductAttribute["localeCode"]
   readonly clearLocaleSubmitError: () => void
-  readonly focusIncompleteLocales: (locales: readonly ProductAttributeLocaleCode[]) => void
-  readonly incompleteLocales: readonly ProductAttributeLocaleCode[]
+  readonly focusIncompleteLocales: (locales: readonly ProductAttribute["localeCode"][]) => void
+  readonly incompleteLocales: readonly ProductAttribute["localeCode"][]
   readonly localeSubmitError: boolean
-  readonly setActiveLocale: (locale: ProductAttributeLocaleCode) => void
+  readonly setActiveLocale: (locale: ProductAttribute["localeCode"]) => void
 }
 
 const AttributeFormLocaleControlsContext = createContext<AttributeFormLocaleControlsContextValue | undefined>(undefined)
 
 export const AttributeFormLocaleControlsProvider = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => {
-  const [activeLocale, setActiveLocale] = useState<ProductAttributeLocaleCode>(DEFAULT_LOCALE)
-  const [incompleteLocales, setIncompleteLocales] = useState<readonly ProductAttributeLocaleCode[]>([])
+  const [activeLocale, setActiveLocale] = useState<ProductAttribute["localeCode"]>(I18N.DEFAULT_LOCALE)
+  const [incompleteLocales, setIncompleteLocales] = useState<readonly ProductAttribute["localeCode"][]>([])
   const [localeSubmitError, setLocaleSubmitError] = useState(false)
 
   const clearLocaleSubmitError = useCallback(() => {
@@ -25,7 +25,7 @@ export const AttributeFormLocaleControlsProvider = ({ children }: Readonly<{ chi
     setLocaleSubmitError(false)
   }, [])
 
-  const focusIncompleteLocales = useCallback((locales: readonly ProductAttributeLocaleCode[]) => {
+  const focusIncompleteLocales = useCallback((locales: readonly ProductAttribute["localeCode"][]) => {
     const [firstIncompleteLocale] = locales
     setIncompleteLocales(locales)
     setLocaleSubmitError(firstIncompleteLocale !== undefined)

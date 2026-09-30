@@ -7,7 +7,6 @@ import { getProductCountsByAttributeId } from "~/src/modules/attribute-on-produc
 import { productAttribute } from "~/src/modules/product-attribute/product-attribute.schema"
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 
-// Each CASE entry uses three bindings; leave room for the updated-at binding on D1.
 const RANK_UPDATE_CHUNK_SIZE = 30
 
 export const getAdminProductAttributesQuery = db.query.productAttribute
@@ -67,6 +66,7 @@ export const getProductAttributesByIds = (
   if (ids.length === 0) {
     return Promise.resolve([])
   }
+
   return db
     .select({
       handle: productAttribute.handle,
@@ -89,6 +89,7 @@ export const getAdminProductAttributeListItems = async (): Promise<
   })[]
 > => {
   const [attributes, countsById] = await Promise.all([getAdminProductAttributesQuery.execute(), getProductCountsByAttributeId()])
+
   return attributes.map((row) =>
     Object.assign(row, {
       productCount: countsById.get(row.id) ?? 0,

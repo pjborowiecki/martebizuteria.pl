@@ -1,14 +1,16 @@
 import { type JSX } from "react"
 
 import { Clock } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { EMAIL_STATUS_CONFIG, TIMELINE_ICONS, TIMELINE_KEY_SLICE_LENGTH, type TimelineEvent } from "~/src/data/order-detail-data"
+import { EMAIL_STATUS_CONFIG, TIMELINE_ICONS, TIMELINE_KEY_SLICE_LENGTH, type TimelineEvent } from "~/src/data/order-detail"
+
 export const OrderTimelineEvent = ({ event }: OrderTimelineEventProps): JSX.Element => {
   const t = useTranslations("pages.admin")
   const Icon = TIMELINE_ICONS[event.type] ?? Clock
   const emailStatus = event.type === "email" && event.status !== undefined ? EMAIL_STATUS_CONFIG[event.status] : undefined
   const eventKey = `${event.date}-${event.type}-${event.description.slice(0, TIMELINE_KEY_SLICE_LENGTH)}`
+
   return (
     <div className="relative flex gap-3 pb-5 last:pb-0" key={eventKey}>
       <div className="absolute top-6 left-[11px] h-[calc(100%-16px)] w-px bg-border/50 last:hidden" />
@@ -32,6 +34,7 @@ export const OrderTimelineEvent = ({ event }: OrderTimelineEventProps): JSX.Elem
     </div>
   )
 }
+
 interface OrderTimelineEventProps {
   readonly event: TimelineEvent
 }

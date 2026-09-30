@@ -1,17 +1,17 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { FileSpreadsheet } from "lucide-react"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { LOCALES } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
+import { downloadCsvFile, escapeCsvField } from "~/src/modules/_core/utils/csv"
 import { resolveCollectionDescription } from "~/src/modules/product-collection/product-collection.utils"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { DataGridIconTooltip } from "~/src/presentation/components/custom/datagrid/components/data-grid-icon-tooltip"
 import { collectionsDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/collections/utils/collections-data-grid"
-const escapeCsvField = (value: string): string => value.replaceAll('"', '""')
 
 export const CollectionsExportAction = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.collections")
@@ -19,13 +19,14 @@ export const CollectionsExportAction = (): JSX.Element => {
   const { table } = collectionsDataGrid.useDataGrid()
   const handleExport = useCallback(() => {
     const { rows } = table.getFilteredRowModel()
-    const titleHeaders = LOCALES.map((code) => `Name ${code.toUpperCase()}`)
+    const titleHeaders = I18N.SUPPORTED_LOCALES.map((code) => `Name ${code.toUpperCase()}`)
     const headers = ["ID", ...titleHeaders, "Handle", "Status", "Products", "Description"]
     const csvContent = [
       headers.join(","),
       ...rows.map((row) => {
         const { descriptions, handle, id, productCount, status, titles } = row.original
-        const titleCells = LOCALES.map((code) => `"${escapeCsvField(titles[code])}"`)
+        const titleCells = I18N.SUPPORTED_LOCALES.map((code) => `"${escapeCsvField(titles[code])}"`)
+
         return [
           id,
           ...titleCells,
@@ -36,17 +37,10 @@ export const CollectionsExportAction = (): JSX.Element => {
         ].join(",")
       }),
     ].join("\n")
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;",
-    })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.setAttribute("download", "collections.csv")
-    link.rel = "noopener"
-    link.click()
-    URL.revokeObjectURL(url)
+
+    downloadCsvFile("collections.csv", csvContent)
   }, [locale, table])
+
   const button = useMemo(
     () => (
       <Button variant="outline" size="icon-lg" aria-label={t("actions.exportCsv")} onClick={handleExport}>
@@ -55,5 +49,6 @@ export const CollectionsExportAction = (): JSX.Element => {
     ),
     [handleExport, t],
   )
+
   return <DataGridIconTooltip label={t("actions.exportCsv")} trigger={button} />
 }

@@ -5,6 +5,7 @@ export const buildProductLevelAttributeRows = (values: ProductFormValues) => {
   if (values.hasVariants) {
     return []
   }
+
   return values.attributeValues
     .filter((row) => row.attributeId.trim() !== "" && row.value.trim() !== "")
     .map((row, index) => ({
@@ -43,7 +44,9 @@ export const buildAllProductImageRows = (values: ProductFormValues) => {
     if (variant.id === undefined) {
       return []
     }
+
     return galleryImagesToReplacePayload(variant.images ?? [], variant.mainImageId, variant.id)
   })
+
   return [...sharedImages, ...variantImages]
 }

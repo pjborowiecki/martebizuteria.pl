@@ -1,7 +1,7 @@
 import { type JSX } from "react"
 
 import { ListFilter } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"
@@ -18,6 +18,7 @@ export const AuditDateFilter = (): JSX.Element => {
     activeDateFilter,
     applyAuditFilter,
   })
+
   return (
     <Popover open={filter.open} onOpenChange={filter.handleOpenChange}>
       <PopoverTrigger

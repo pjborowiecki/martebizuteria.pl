@@ -1,7 +1,9 @@
 import { buildAuditChangeMetadata, formatAuditDetailFromChanges, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
+import { type Order } from "~/src/modules/order/order.types"
+
 export const buildOrderRefundAuditChange = (
-  before: OrderAuditSnapshot,
-  after: OrderAuditSnapshot,
+  before: Order["auditSnapshot"],
+  after: Order["auditSnapshot"],
 ): {
   detail?: string
   metadata?: Record<string, unknown>
@@ -10,16 +12,13 @@ export const buildOrderRefundAuditChange = (
   if (metadata === undefined) {
     return {}
   }
+
   return {
     detail: formatAuditDetailFromChanges(ORDER_AUDIT_FIELD_LABELS, metadata),
     metadata: toAuditMetadataRecord(metadata),
   }
 }
-export interface OrderAuditSnapshot {
-  readonly orderStatus?: string | undefined
-  readonly paymentStatus: string
-  readonly refundedAmount?: number | undefined
-}
+
 const ORDER_AUDIT_FIELD_LABELS = {
   orderStatus: "Order status",
   paymentStatus: "Payment status",

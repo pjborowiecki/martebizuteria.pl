@@ -35,10 +35,6 @@ export interface DataGridPreferencesApi {
   readonly setColumnVisibility: (updater: ColumnVisibilityState | ((current: ColumnVisibilityState) => ColumnVisibilityState)) => void
 }
 
-/**
- * Per-table layout preferences (order, widths, visibility) backed by localStorage.
- * Client `getSnapshot` reads the preferences store (hydrated from localStorage on first use).
- */
 export const useDataGridPreferences = ({
   columnMaxSizes,
   columnMinSizes,
@@ -50,6 +46,10 @@ export const useDataGridPreferences = ({
   persistenceKey,
 }: UseDataGridPreferencesOptions): DataGridPreferencesApi => {
   const canonicalOrder = useMemo(() => [...initialColumnOrder], [initialColumnOrder])
+  const effectiveDefaultVisibility = useMemo(
+    () => sanitizeColumnVisibility({ columnIds: canonicalOrder, defaults: defaultColumnVisibility, forcedHiddenColumnIds }),
+    [canonicalOrder, defaultColumnVisibility, forcedHiddenColumnIds],
+  )
   const stableColumnPinning = useStableColumnPinning(columnPinning)
   const lockedColumnIds = useMemo(() => [...nonResizableColumnIds], [nonResizableColumnIds])
   const columnMinSizesRef = useRef(columnMinSizes)
@@ -62,7 +62,7 @@ export const useDataGridPreferences = ({
     columnMaxSizes,
     columnMinSizes,
     columnPinning: stableColumnPinning,
-    defaultColumnVisibility,
+    defaultColumnVisibility: effectiveDefaultVisibility,
     forcedHiddenColumnIds,
     lockedColumnIds,
     persistenceKey,
@@ -76,7 +76,7 @@ export const useDataGridPreferences = ({
     canonicalOrder,
     columnMaxSizesRef,
     columnPinning: stableColumnPinning,
-    defaultColumnVisibility,
+    defaultColumnVisibility: effectiveDefaultVisibility,
     lockedColumnIds,
     persistenceKey,
     skipPersistRef,
@@ -133,18 +133,18 @@ export const useDataGridPreferences = ({
 
     clearDataGridPreferences(persistenceKey, canonicalOrder)
     skipPersistRef.current = true
-    getStore().setSnapshot(defaultPreferencesSnapshot(canonicalOrder, defaultColumnVisibility, stableColumnPinning))
-  }, [canonicalOrder, defaultColumnVisibility, getStore, persistenceKey, persistTimerRef, stableColumnPinning])
+    getStore().setSnapshot(defaultPreferencesSnapshot(canonicalOrder, effectiveDefaultVisibility, stableColumnPinning))
+  }, [canonicalOrder, effectiveDefaultVisibility, getStore, persistenceKey, persistTimerRef, stableColumnPinning])
 
   const hasPreferenceOverrides = useMemo(
     () =>
       hasDataGridPreferenceOverrides({
         canonicalOrder,
         current: snapshot,
-        defaultColumnVisibility,
+        defaultColumnVisibility: effectiveDefaultVisibility,
         pinning: stableColumnPinning,
       }),
-    [canonicalOrder, defaultColumnVisibility, snapshot, stableColumnPinning],
+    [canonicalOrder, effectiveDefaultVisibility, snapshot, stableColumnPinning],
   )
 
   return {

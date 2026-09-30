@@ -1,19 +1,20 @@
 import { type JSX, useMemo } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useFormatter, useLocale } from "use-intl"
+import { useFormatter, useLocale } from "use-intl/react"
 
+import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 import { LANDING_NEW_ARRIVALS_PRODUCT_LIMIT } from "~/src/modules/product/product.constants"
 import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils"
-import { landingNewArrivalsQueryOptions } from "~/src/modules/product/use-cases/get-new-arrivals"
+import { getNewArrivalsQuery } from "~/src/modules/product/use-cases/get-new-arrivals"
 
-import { centsToDisplayAmount } from "~/src/lib/currency"
 import { getProductImageUrl } from "~/src/lib/image"
 
 import { NewArrivalsProductCardSkeleton } from "~/src/presentation/components/custom/pages/landing-page/sections/new-arrivals-product-card-skeleton"
 import { ProductCard } from "~/src/presentation/components/custom/product-card"
+
 const LandingNewArrivalCard = ({
   className,
   index,
@@ -38,6 +39,7 @@ const LandingNewArrivalCard = ({
   const variantTitle = variant?.title === DEFAULT_VARIANT_TITLE ? "" : (variant?.title ?? "")
   const name = resolveProductTitle(product.titles, locale)
   const detail = resolveProductSubtitle(product.subtitles, locale)
+
   return (
     <ProductCard
       className={className}
@@ -57,8 +59,10 @@ const LandingNewArrivalCard = ({
     />
   )
 }
+
 export const NewArrivalsProductGrid = (): JSX.Element => {
-  const { data: products } = useSuspenseQuery(landingNewArrivalsQueryOptions())
+  const { data: products } = useSuspenseQuery(getNewArrivalsQuery())
+
   return (
     <div className="grid gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
       {products.map((product, index) => (
@@ -67,6 +71,7 @@ export const NewArrivalsProductGrid = (): JSX.Element => {
     </div>
   )
 }
+
 export const NewArrivalsProductGridSkeleton = (): JSX.Element => (
   <div className="grid gap-x-5 gap-y-10 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading new arrivals">
     {Array.from({ length: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT }, (_, index) => (
@@ -76,6 +81,7 @@ export const NewArrivalsProductGridSkeleton = (): JSX.Element => (
 )
 
 const PRIORITY_IMAGE_COUNT = 3
+
 type LandingNewArrivalsProduct = Pick<Product["select"], "handle" | "id" | "subtitles" | "thumbnail" | "titles"> & {
   readonly variants?: readonly {
     readonly id: string

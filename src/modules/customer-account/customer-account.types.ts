@@ -1,8 +1,11 @@
+import { type z } from "zod/v4"
+
 import { type Address } from "~/src/modules/address/address.types"
 import { type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
+import { type customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
 import { type Order } from "~/src/modules/order/order.types"
 
-export interface CustomerAccountOrderItem {
+interface CustomerAccountOrderItem {
   readonly image?: string | undefined
   readonly name: string
   readonly priceMinorUnits: number
@@ -10,7 +13,7 @@ export interface CustomerAccountOrderItem {
   readonly variantTitle?: string | undefined
 }
 
-export interface CustomerAccountOrderSummary {
+interface CustomerAccountOrderSummary {
   readonly createdAt: Date
   readonly currencyCode: string
   readonly filterStatus: CustomerAccountOrderFilter
@@ -21,7 +24,7 @@ export interface CustomerAccountOrderSummary {
   readonly totalMinorUnits: number
 }
 
-export interface CustomerAccountOrderAddress {
+interface CustomerAccountOrderAddress {
   readonly city: string
   readonly countryCode: string
   readonly line1: string
@@ -32,12 +35,12 @@ export interface CustomerAccountOrderAddress {
   readonly province?: string | undefined
 }
 
-export interface CustomerAccountOrderTimelineEntry {
+interface CustomerAccountOrderTimelineEntry {
   readonly date: Date
   readonly event: "cancelled" | "confirmed" | "delivered" | "placed" | "shipped"
 }
 
-export interface CustomerAccountOrderDetail extends CustomerAccountOrderSummary {
+interface CustomerAccountOrderDetail extends CustomerAccountOrderSummary {
   readonly billingAddress?: CustomerAccountOrderAddress | undefined
   readonly deliveredAt?: Date | undefined
   readonly paymentProvider?: string | undefined
@@ -51,20 +54,20 @@ export interface CustomerAccountOrderDetail extends CustomerAccountOrderSummary 
   readonly trackingUrl?: string | undefined
 }
 
-export interface CustomerAccountOverviewStats {
+interface CustomerAccountOverviewStats {
   readonly memberSinceYear: string
   readonly totalOrders: number
   readonly totalSpentMinorUnits: number
   readonly wishlistCount: number
 }
 
-export interface CustomerAccountActivityItem {
+interface CustomerAccountActivityItem {
   readonly actionKey: string
   readonly createdAt: Date
   readonly params: Record<string, string>
 }
 
-export interface CustomerAccountRecommendation {
+interface CustomerAccountRecommendation {
   readonly handle: string
   readonly image?: string | undefined
   readonly name: string
@@ -72,14 +75,14 @@ export interface CustomerAccountRecommendation {
   readonly productId: string
 }
 
-export interface CustomerAccountOverview {
+interface CustomerAccountOverview {
   readonly activity: readonly CustomerAccountActivityItem[]
   readonly recentOrders: readonly CustomerAccountOrderSummary[]
   readonly recommendations: readonly CustomerAccountRecommendation[]
   readonly stats: CustomerAccountOverviewStats
 }
 
-export interface CustomerAccountProfile {
+interface CustomerAccountProfile {
   readonly createdAt: Date
   readonly email: string
   readonly name: string
@@ -87,7 +90,7 @@ export interface CustomerAccountProfile {
   readonly timezone?: string | undefined
 }
 
-export interface CustomerAccountSession {
+interface CustomerAccountSession {
   readonly browser: string
   readonly createdAt: Date
   readonly device: string
@@ -98,10 +101,25 @@ export interface CustomerAccountSession {
   readonly lastActiveAt: Date
 }
 
-export interface CustomerAccountLoginHistoryItem {
+interface CustomerAccountLoginHistoryItem {
   readonly createdAt: Date
   readonly detail?: string | undefined
   readonly status: "blocked" | "success"
 }
 
-export type CustomerAccountAddress = Address["select"]
+export interface CustomerAccount {
+  activityItem: CustomerAccountActivityItem
+  address: Address["select"]
+  loginHistoryItem: CustomerAccountLoginHistoryItem
+  orderAddress: CustomerAccountOrderAddress
+  orderDetail: CustomerAccountOrderDetail
+  orderItem: CustomerAccountOrderItem
+  orderSummary: CustomerAccountOrderSummary
+  orderTimelineEntry: CustomerAccountOrderTimelineEntry
+  overview: CustomerAccountOverview
+  overviewStats: CustomerAccountOverviewStats
+  profile: CustomerAccountProfile
+  profileForm: z.infer<(typeof customerAccountZodSchemas)["profileForm"]>
+  recommendation: CustomerAccountRecommendation
+  session: CustomerAccountSession
+}

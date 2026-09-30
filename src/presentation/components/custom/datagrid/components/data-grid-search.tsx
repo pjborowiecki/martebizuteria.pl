@@ -12,7 +12,6 @@ interface DataGridSearchProps<TData extends RowData> {
   readonly table: Table<DataGridFeatures, TData>
 }
 
-/** Compact global-search input bound to the table's global filter. */
 export const DataGridSearch = <TData extends RowData>({ placeholder, table }: DataGridSearchProps<TData>): JSX.Element => {
   const value = String(table.atoms.globalFilter.get() ?? "")
 

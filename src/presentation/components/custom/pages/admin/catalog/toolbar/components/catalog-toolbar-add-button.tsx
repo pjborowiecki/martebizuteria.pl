@@ -10,6 +10,7 @@ export const CatalogToolbarAddButton = ({ children, onClick, render }: CatalogTo
 
 export const catalogToolbarAddButtonClassName =
   "h-9 cursor-pointer bg-foreground px-4 text-[13px] text-background shadow-none transition-colors hover:bg-foreground/80"
+
 interface CatalogToolbarAddButtonProps {
   readonly children: ReactNode
   readonly onClick?: () => void

@@ -11,8 +11,11 @@ import { type DataGridFeatures } from "~/src/presentation/components/custom/data
 import { getDataGridLayoutColumns, measureDataGridContainerWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 
 const RESIZE_DIRECTION_LTR = 1
+
 const RESIZE_DIRECTION_RTL = -1
+
 const DEFAULT_MIN_COLUMN_SIZE = 20
+
 const SIZE_ROUND_FACTOR = 100
 
 type ResizeEvent = MouseEvent | TouchEvent
@@ -38,8 +41,10 @@ const measureHeaderCellWidth = (event: ResizeEvent): number | undefined => {
   if (!(target instanceof Element)) {
     return undefined
   }
+
   const cell = target.closest("th")
   const width = cell instanceof HTMLTableCellElement ? cell.offsetWidth : undefined
+
   return typeof width === "number" && width > DEFAULT_MIN_COLUMN_SIZE ? width : undefined
 }
 
@@ -47,7 +52,9 @@ const isResizePointerEvent = (value: unknown): value is ResizeEvent => {
   if (typeof value !== "object" || value === null) {
     return false
   }
+
   const type = "type" in value && typeof value.type === "string" ? value.type : ""
+
   return type === "mousedown" || type === "touchstart"
 }
 
@@ -55,6 +62,7 @@ const getClientX = (event: ResizeEvent): number => {
   if (isTouchStartEvent(event)) {
     return Math.round(event.touches[0]?.clientX ?? 0)
   }
+
   return event.clientX
 }
 
@@ -215,13 +223,13 @@ const applyColumnResizeSize = <TData extends RowData>(context: ColumnResizeConte
     if (table.options.columnResizeMode === "onChange" || mode === "end") {
       persistColumnWidth({ column, table, width: nextWidth })
     }
+
     return
   }
 
   applyStandardColumnResize(context, nextWidth, mode)
 }
 
-/** Resize handler scoped to the active column only (TanStack default can scale every leaf header). */
 export const createDataGridColumnResizeHandler = <TData extends RowData>(
   header: Header<DataGridFeatures, TData>,
 ): ((event: unknown) => void) => {

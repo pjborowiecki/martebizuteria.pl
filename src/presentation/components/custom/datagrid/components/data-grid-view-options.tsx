@@ -2,7 +2,7 @@ import { type JSX, useCallback, useMemo } from "react"
 
 import { type Column, type RowData, type Table } from "@tanstack/react-table"
 import { Settings2 } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {
@@ -45,7 +45,6 @@ const ColumnToggleItem = <TData extends RowData>({ column }: Readonly<{ column: 
   )
 }
 
-/** Column visibility menu — the toolbar's "View" control. */
 export const DataGridViewOptions = <TData extends RowData>({ table }: DataGridViewOptionsProps<TData>): JSX.Element => {
   const t = useTranslations("components.datagrid")
   const hideableColumns = table.getAllColumns().filter((column) => column.getCanHide())

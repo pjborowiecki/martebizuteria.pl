@@ -1,10 +1,6 @@
 import { z } from "zod/v4"
-export const getAuthErrorMessage = (t: (key: string) => string, error: unknown): string => {
-  const { data } = authErrorSchema.safeParse(error)
-  const key = AUTH_ERRORS[data?.code ?? ""] ?? AUTH_ERRORS["UNKNOWN_ERROR"]
-  return t(`pages.auth.errors.${key}`)
-}
-export const AUTH_ERRORS: Record<string, string> = {
+
+export const AUTH_ERRORS = {
   ACCOUNT_NOT_FOUND: "accountNotFound",
   BANNED_USER: "bannedUser",
   COULD_NOT_CREATE_SESSION: "couldNotCreateSession",
@@ -32,7 +28,18 @@ export const AUTH_ERRORS: Record<string, string> = {
   UNKNOWN_ERROR: "unknownError",
   USER_ALREADY_EXISTS: "userAlreadyExists",
   USER_NOT_FOUND: "userNotFound",
-}
-const authErrorSchema = z.object({
-  code: z.string(),
-})
+} as const
+
+export type AuthErrorCode = keyof typeof AUTH_ERRORS
+
+export type AuthErrorMessageKey = (typeof AUTH_ERRORS)[AuthErrorCode]
+
+const AUTH_ERROR_BY_CODE = new Map<string, AuthErrorMessageKey>(Object.entries(AUTH_ERRORS))
+
+const errorCodeSchema = z.object({ code: z.string() })
+
+const authErrorBodySchema = z.object({ body: errorCodeSchema }).transform(({ body }) => body)
+
+const authErrorKeySchema = z.union([errorCodeSchema, authErrorBodySchema]).transform(({ code }) => AUTH_ERROR_BY_CODE.get(code))
+
+export const authErrorKey = (error: unknown): AuthErrorMessageKey => authErrorKeySchema.safeParse(error).data ?? AUTH_ERRORS.UNKNOWN_ERROR

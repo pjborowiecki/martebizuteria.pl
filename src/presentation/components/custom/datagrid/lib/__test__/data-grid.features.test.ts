@@ -5,12 +5,15 @@ import { describe, expect, it } from "vite-plus/test"
 import { dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 
 const features = tableFeatures({ ...dataGridFeatures, coreReactivityFeature: storeReactivityBindings() })
+
 const columnHelper = createColumnHelper<typeof features, { id: string; title: string; price: number }>()
+
 const columns = columnHelper.columns([
   columnHelper.accessor("id", {}),
   columnHelper.accessor("title", {}),
   columnHelper.accessor("price", {}),
 ])
+
 const data = [
   { id: "silver-ring", price: 200, title: "Silver ring" },
   { id: "gold-ring", price: 400, title: "Gold ring" },

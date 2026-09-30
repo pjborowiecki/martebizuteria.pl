@@ -1,23 +1,36 @@
 import { renderToString } from "react-dom/server"
 
 import { Outlet, RouterProvider, createMemoryHistory, createRootRoute, createRoute, createRouter } from "@tanstack/react-router"
-import { describe, expect, it } from "vite-plus/test"
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+
+const { currentRequest } = vi.hoisted(() => ({
+  currentRequest: vi.fn<() => Request>(() => new Request("https://store.test/")),
+}))
+
+vi.mock("@tanstack/react-start/server", () => ({ getRequest: currentRequest }))
 
 import { DefaultErrorComponent } from "~/src/presentation/components/custom/defaults/default-error-component"
 import { DefaultNotFoundComponent } from "~/src/presentation/components/custom/defaults/default-not-found-component"
 import { DefaultPendingComponent } from "~/src/presentation/components/custom/defaults/default-pending-component"
 
 describe("route fallbacks without translation queries", () => {
+  beforeEach(() => {
+    currentRequest.mockReturnValue(new Request("https://store.test/"))
+  })
+
   it.each([
-    { locale: "en", message: "Something went wrong", pathname: "/en/about" },
-    { locale: "pl", message: "Coś poszło nie tak", pathname: "/about" },
+    { locale: "en-US", message: "Something went wrong", pathname: "/en-US/about" },
+    { locale: "pl-PL", message: "Coś poszło nie tak", pathname: "/about" },
   ])("renders the $locale error boundary when namespace preloading fails", async ({ message, pathname }) => {
+    currentRequest.mockReturnValue(new Request(`https://store.test${pathname}`))
+
     const root = createRootRoute({
       beforeLoad: () => {
         throw new Error("Translation chunk unavailable")
       },
       component: Outlet,
     })
+
     const about = createRoute({ getParentRoute: () => root, path: pathname, staticData: { namespaces: ["pages.about"] } })
     const router = createRouter({
       defaultErrorComponent: DefaultErrorComponent,
@@ -35,10 +48,12 @@ describe("route fallbacks without translation queries", () => {
   })
 
   it("renders an English not-found page without QueryClient or IntlProvider", async () => {
+    currentRequest.mockReturnValue(new Request("https://store.test/en-US/missing"))
+
     const root = createRootRoute({ component: Outlet })
     const router = createRouter({
       defaultNotFoundComponent: DefaultNotFoundComponent,
-      history: createMemoryHistory({ initialEntries: ["/en/missing"] }),
+      history: createMemoryHistory({ initialEntries: ["/en-US/missing"] }),
       isServer: true,
       routeTree: root,
     })

@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo, useState } from "react"
 
 import { Loader2, Trash2 } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { useDeleteProducts } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-delete-products"
 import { productsDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/products/utils/products-data-grid"
+
 export const ProductsBulkActions = (): JSX.Element | undefined => {
   const t = useTranslations("pages.admin.catalog.products.catalogList")
   const { table } = productsDataGrid.useDataGrid()
@@ -34,6 +35,7 @@ export const ProductsBulkActions = (): JSX.Element | undefined => {
       },
     })
   }, [deleteProducts, selectedRows, table])
+
   const trigger = useMemo(
     () => (
       <Button variant="outline" size="sm" className="h-9 gap-2 border-destructive/30 text-xs text-destructive hover:bg-destructive/10">
@@ -45,9 +47,11 @@ export const ProductsBulkActions = (): JSX.Element | undefined => {
     ),
     [count, t],
   )
+
   if (selectedRows.length === 0) {
     return undefined
   }
+
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">

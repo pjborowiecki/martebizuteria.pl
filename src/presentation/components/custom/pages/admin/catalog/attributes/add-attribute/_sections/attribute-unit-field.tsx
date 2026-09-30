@@ -1,7 +1,7 @@
 import { type ChangeEvent, type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
 import { useController } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   PRODUCT_ATTRIBUTE_COLUMN_LENGTH,
@@ -21,6 +21,7 @@ import { useAttributeForm } from "~/src/presentation/components/custom/pages/adm
 import { CatalogFormFieldError } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-error"
 import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-label"
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
+
 export const AttributeUnitField = ({ disabled }: Readonly<AttributeUnitFieldProps>): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.attributes")
   const { control } = useAttributeForm()
@@ -28,11 +29,21 @@ export const AttributeUnitField = ({ disabled }: Readonly<AttributeUnitFieldProp
     control,
     name: "unit",
   })
+
   const unitValue = catalogFieldStringValue(field.value)
   const [customMode, setCustomMode] = useState(() => unitValue !== EMPTY_UNIT && !isProductAttributeUnitPreset(unitValue))
   useEffect(() => {
-    setCustomMode(unitValue !== EMPTY_UNIT && !isProductAttributeUnitPreset(unitValue))
+    if (isProductAttributeUnitPreset(unitValue)) {
+      setCustomMode(false)
+
+      return
+    }
+
+    if (unitValue !== EMPTY_UNIT) {
+      setCustomMode(true)
+    }
   }, [unitValue])
+
   const selectValue = resolveProductAttributeUnitSelectValue(unitValue)
   const showCustomInput = customMode || selectValue === PRODUCT_ATTRIBUTE_UNIT_CUSTOM_SELECT_VALUE
   const selectItems = useMemo(
@@ -52,13 +63,16 @@ export const AttributeUnitField = ({ disabled }: Readonly<AttributeUnitFieldProp
     ],
     [t],
   )
+
   const handleSelectChange = useCallback(
     (value: string | null) => {
       if (value === null) {
         return
       }
+
       if (value === PRODUCT_ATTRIBUTE_UNIT_CUSTOM_SELECT_VALUE) {
         setCustomMode(true)
+
         return
       }
       setCustomMode(false)
@@ -66,6 +80,7 @@ export const AttributeUnitField = ({ disabled }: Readonly<AttributeUnitFieldProp
     },
     [field],
   )
+
   const handleCustomInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       field.onChange(event.target.value)
@@ -73,6 +88,7 @@ export const AttributeUnitField = ({ disabled }: Readonly<AttributeUnitFieldProp
     },
     [field],
   )
+
   return (
     <Field className="gap-2" data-invalid={fieldState.invalid}>
       <CatalogFormFieldLabel hint={t("form.hints.unit")} label={t("form.unit")} />
@@ -109,7 +125,9 @@ export const AttributeUnitField = ({ disabled }: Readonly<AttributeUnitFieldProp
     </Field>
   )
 }
+
 const EMPTY_UNIT = ""
+
 interface AttributeUnitFieldProps {
   readonly disabled: boolean
 }

@@ -1,6 +1,6 @@
 import { type JSX, useMemo } from "react"
 
-import { type StorefrontProduct } from "~/src/modules/product/product.types"
+import { type Product } from "~/src/modules/product/product.types"
 
 import { getProductImageUrl } from "~/src/lib/image"
 
@@ -8,6 +8,7 @@ import { ProductBreadcrumb } from "~/src/presentation/components/custom/pages/pr
 import { ProductHeroGallery } from "~/src/presentation/components/custom/pages/product-page/product-hero-gallery"
 import { ProductHeroInfo } from "~/src/presentation/components/custom/pages/product-page/product-hero-info"
 import { useSelectedProductVariant } from "~/src/presentation/components/custom/pages/product-page/use-selected-product-variant"
+
 export const ProductHeroSection = ({ product }: ProductHeroSectionProps): JSX.Element => {
   const { selectOptionValue, selectedValueIds, selectedVariant } = useSelectedProductVariant(product)
   const images = useMemo(() => {
@@ -18,11 +19,14 @@ export const ProductHeroSection = ({ product }: ProductHeroSectionProps): JSX.El
     } else if (product.sharedImageUrls.length > 0) {
       sourceUrls = product.sharedImageUrls
     }
+
     if (sourceUrls.length === 0) {
       return [getProductImageUrl(product.thumbnail)]
     }
+
     return sourceUrls.map((src) => getProductImageUrl(src))
   }, [product, selectedVariant])
+
   return (
     <>
       <ProductBreadcrumb productTitle={product.title} />
@@ -42,6 +46,7 @@ export const ProductHeroSection = ({ product }: ProductHeroSectionProps): JSX.El
     </>
   )
 }
-export interface ProductHeroSectionProps {
-  readonly product: StorefrontProduct
+
+interface ProductHeroSectionProps {
+  readonly product: Product["storefront"]
 }

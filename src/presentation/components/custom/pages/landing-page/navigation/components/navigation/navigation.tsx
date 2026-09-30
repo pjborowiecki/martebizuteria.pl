@@ -8,6 +8,7 @@ import { NavigationHeader } from "~/src/presentation/components/custom/pages/lan
 import { NavigationProvider } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider"
 import { UserUtilityNav } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/user-utility-nav"
 import { SearchOverlay } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/search/search-overlay"
+
 export const Navigation = (): JSX.Element => (
   <NavigationProvider>
     <NavigationHeader>
@@ -26,5 +27,3 @@ export const Navigation = (): JSX.Element => (
     <SearchOverlay />
   </NavigationProvider>
 )
-
-export { NAVIGATION_MENU_ID } from "~/src/presentation/components/custom/pages/landing-page/navigation/constants"

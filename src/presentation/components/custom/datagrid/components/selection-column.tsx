@@ -15,8 +15,6 @@ export interface SelectionLabels {
   readonly row: string
 }
 
-// Keep selection checkboxes white in both states, because the shadcn default fills them with the near-black `primary`.
-// A dark tick keeps them legible on any row.
 const WHITE_CHECKBOX =
   "border-input bg-background data-[state=checked]:border-foreground data-[state=checked]:bg-background data-[state=checked]:text-foreground"
 
@@ -67,10 +65,6 @@ const RowSelectCheckbox = <TData extends RowData>({
   )
 }
 
-/**
- * Generic row-selection column (select-all header + per-row checkbox) built with
- * the page's own column helper so it unifies with the rest of the column list.
- */
 export const selectionColumn = <TData extends RowData>(
   helper: ReturnType<typeof createColumnHelper<DataGridFeatures, TData>>,
   labels: SelectionLabels,

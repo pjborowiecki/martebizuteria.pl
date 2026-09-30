@@ -9,7 +9,7 @@ import {
   PRODUCT_OPTION_VALUE_DEFAULT_RANK,
 } from "~/src/modules/product-option-value/product-option-value.constants"
 import { productOption } from "~/src/modules/product-option/product-option.schema"
-import { type ProductLocaleMap } from "~/src/modules/product/product.types"
+import { type Product } from "~/src/modules/product/product.types"
 
 export const productOptionValue = sqliteTable(
   "product_option_value",
@@ -17,7 +17,7 @@ export const productOptionValue = sqliteTable(
     id: text("id", { length: PRODUCT_OPTION_VALUE_COLUMN_LENGTH.id })
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    labels: text("labels", { mode: "json" }).$type<ProductLocaleMap>().notNull(),
+    labels: text("labels", { mode: "json" }).$type<Product["localeMap"]>().notNull(),
     optionId: text("option_id", { length: PRODUCT_OPTION_VALUE_COLUMN_LENGTH.optionId })
       .notNull()
       .references(() => productOption.id, { onDelete: "cascade" }),

@@ -1,10 +1,11 @@
 import { type JSX } from "react"
 
 import { SlidersHorizontalIcon } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "~/src/presentation/components/shadcn/sheet"
+
 export const ProductsCatalogMobileFilters = ({
   activeFilterCount,
   children,
@@ -14,6 +15,7 @@ export const ProductsCatalogMobileFilters = ({
 }: Readonly<ProductsCatalogMobileFiltersProps>): JSX.Element => {
   const tFilters = useTranslations("pages.products.filters")
   const showActiveFilterBadge = activeFilterCount > 0
+
   return (
     <div className="mb-6 lg:hidden">
       <Sheet onOpenChange={onOpenChange} open={open}>
@@ -48,6 +50,7 @@ export const ProductsCatalogMobileFilters = ({
     </div>
   )
 }
+
 const FILTER_TRIGGER_BUTTON = (
   <Button
     className="h-12 w-full justify-between rounded-none border border-border/60 bg-background px-4 text-[11px] tracking-[0.2em] uppercase"
@@ -55,6 +58,7 @@ const FILTER_TRIGGER_BUTTON = (
     variant="outline"
   />
 )
+
 interface ProductsCatalogMobileFiltersProps {
   readonly activeFilterCount: number
   readonly children: JSX.Element

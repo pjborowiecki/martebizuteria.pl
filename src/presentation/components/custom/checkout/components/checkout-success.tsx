@@ -1,15 +1,16 @@
 import { type JSX, useEffect } from "react"
 
 import { CheckCircle2 } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { resetCartAbandonedTracking } from "~/src/lib/customer-activity/customer-activity.tracking"
+import { useCartStore } from "~/src/modules/cart/cart.store"
+import { resetCartAbandonedTracking } from "~/src/modules/customer-activity/customer-activity.tracking"
 
 import { clearCheckoutDraft } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
-import { useCartStore } from "~/src/stores/cart.store"
+
 export const CheckoutSuccess = (): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutSuccess")
   const clearCart = useCartStore((state) => state.clearCart)
@@ -18,6 +19,7 @@ export const CheckoutSuccess = (): JSX.Element => {
     clearCheckoutDraft()
     resetCartAbandonedTracking()
   }, [clearCart])
+
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-12 text-center md:py-24">
       <CheckCircle2 className="size-16 text-success md:size-20" strokeWidth={1} />

@@ -4,18 +4,10 @@ import { cn } from "cn"
 
 import { GalleryAddTile } from "~/src/presentation/components/custom/image-upload/components/gallery-add-tile"
 import { GalleryItem } from "~/src/presentation/components/custom/image-upload/components/gallery-item"
-import {
-  EMPTY_COUNT,
-  FIRST_INDEX,
-  MOVE_BACKWARD,
-  MOVE_FORWARD,
-  NOT_FOUND_INDEX,
-  REMOVE_ONE,
-} from "~/src/presentation/components/custom/image-upload/constants"
 import { useImageUpload } from "~/src/presentation/components/custom/image-upload/hooks/use-image-upload"
 import { reorder } from "~/src/presentation/components/custom/image-upload/lib/gallery.utils"
 import { type GalleryImage, type ImageUploadBaseProps } from "~/src/presentation/components/custom/image-upload/lib/image-upload.types"
-/** The first image is the thumbnail; setting a main image moves it to the front. */
+
 export const ImageGalleryUpload = ({
   className,
   disabled = false,
@@ -32,27 +24,31 @@ export const ImageGalleryUpload = ({
   const applyOrder = useCallback(
     (next: readonly GalleryImage[]) => {
       onChange(next)
-      onMainChange(next[FIRST_INDEX]?.id)
+      onMainChange(next[0]?.id)
     },
     [onChange, onMainChange],
   )
+
   const handleFiles = useCallback(
     (files: readonly File[]) => {
       void (async () => {
         const urls = await uploadFiles(files)
-        if (urls.length === EMPTY_COUNT) {
+        if (urls.length === 0) {
           return
         }
+
         const added: GalleryImage[] = urls.map((url) => ({
           id: crypto.randomUUID(),
           url,
         }))
+
         const next = [...value, ...added]
         applyOrder(next)
       })()
     },
     [applyOrder, uploadFiles, value],
   )
+
   const handleRemove = useCallback(
     (id: string) => {
       const next = value.filter((image) => image.id !== id)
@@ -60,23 +56,26 @@ export const ImageGalleryUpload = ({
     },
     [applyOrder, value],
   )
+
   const handleSetMain = useCallback(
     (id: string) => {
       const index = value.findIndex((image) => image.id === id)
       const moved = value[index]
-      if (moved === undefined || index === FIRST_INDEX) {
+      if (moved === undefined || index === 0) {
         return
       }
-      applyOrder([moved, ...value.toSpliced(index, REMOVE_ONE)])
+      applyOrder([moved, ...value.toSpliced(index, 1)])
     },
     [applyOrder, value],
   )
+
   const moveByOffset = useCallback(
     (id: string, offset: number) => {
       const index = value.findIndex((image) => image.id === id)
-      if (index === NOT_FOUND_INDEX) {
+      if (index === -1) {
         return
       }
+
       const target = value[index + offset]
       if (target === undefined) {
         return
@@ -85,12 +84,15 @@ export const ImageGalleryUpload = ({
     },
     [applyOrder, value],
   )
+
   const handleDragStartItem = useCallback((id: string) => {
     setDraggingId(id)
   }, [])
+
   const handleDragEndItem = useCallback(() => {
     setDraggingId(undefined)
   }, [])
+
   const handleDragOverItem = useCallback(
     (event: DragEvent<HTMLElement>, overId: string) => {
       event.preventDefault()
@@ -101,19 +103,21 @@ export const ImageGalleryUpload = ({
     },
     [applyOrder, draggingId, value],
   )
+
   const handleKeyReorder = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>, id: string) => {
       if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
         event.preventDefault()
-        moveByOffset(id, MOVE_BACKWARD)
+        moveByOffset(id, -1)
       } else if (event.key === "ArrowRight" || event.key === "ArrowDown") {
         event.preventDefault()
-        moveByOffset(id, MOVE_FORWARD)
+        moveByOffset(id, 1)
       }
     },
     [moveByOffset],
   )
-  const isEmpty = value.length === EMPTY_COUNT
+
+  const isEmpty = value.length === 0
   if (isEmpty) {
     return (
       <div className={cn("w-full", className)}>
@@ -121,6 +125,7 @@ export const ImageGalleryUpload = ({
       </div>
     )
   }
+
   return (
     <div className={cn("w-full", className)}>
       <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
@@ -147,9 +152,9 @@ export const ImageGalleryUpload = ({
     </div>
   )
 }
-export interface ImageGalleryUploadProps extends ImageUploadBaseProps {
+
+interface ImageGalleryUploadProps extends ImageUploadBaseProps {
   readonly mainId: string | undefined
-  /** Receives the full next list, in display order, on every add, remove or reorder. */
   readonly onChange: (images: readonly GalleryImage[]) => void
   readonly onMainChange: (id: string | undefined) => void
   readonly value: readonly GalleryImage[]

@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { Progress as ProgressPrimitive } from "@base-ui/react/progress"
 import { cn } from "cn"
+
 const Progress = ({ className, children, value, ...props }: Readonly<ProgressPrimitive.Root.Props>): JSX.Element => (
   <ProgressPrimitive.Root value={value} data-slot="progress" className={cn("flex flex-wrap gap-3", className)} {...props}>
     {children}

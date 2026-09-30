@@ -3,18 +3,18 @@ import { type JSX, type SyntheticEvent, useCallback } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { type SignUpFormValues, signUpWithPasswordSchema } from "~/src/integrations/better-auth/auth.schemas"
+import { type SignUpFormValues, signUpWithPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { AuthPasswordField, AuthTextField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 import { useSignUpWithPassword } from "~/src/presentation/components/custom/pages/auth/hooks/use-sign-up-with-password"
+
 export const SignUpWithPasswordForm = (): JSX.Element => {
   const t = useTranslations()
   const signUpMutation = useSignUpWithPassword()
-  const formSchema = signUpWithPasswordSchema(t)
   const form = useForm<SignUpFormValues>({
     defaultValues: {
       confirmPassword: "",
@@ -24,14 +24,16 @@ export const SignUpWithPasswordForm = (): JSX.Element => {
       password: "",
     },
     mode: "onTouched",
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(signUpWithPasswordSchema),
   })
+
   const onSubmit = useCallback(
     (data: SignUpFormValues) => {
       signUpMutation.mutate(data)
     },
     [signUpMutation],
   )
+
   const handleFormSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault()
@@ -39,7 +41,9 @@ export const SignUpWithPasswordForm = (): JSX.Element => {
     },
     [form, onSubmit],
   )
+
   const isSubmitting = signUpMutation.isPending
+
   return (
     <form id="sign-up-form" onSubmit={handleFormSubmit} className="space-y-5">
       <div className="grid gap-5 sm:grid-cols-2">

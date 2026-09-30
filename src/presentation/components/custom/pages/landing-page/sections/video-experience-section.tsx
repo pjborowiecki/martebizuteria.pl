@@ -1,14 +1,15 @@
 import { type JSX, useRef } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { LANDING_VIDEO_POSTER, LANDING_VIDEO_SRC } from "~/src/data/landing-data"
+import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
 
-import { gsap, useGSAP } from "~/src/lib/gsap"
+import { LANDING_VIDEO_POSTER, LANDING_VIDEO_SRC } from "~/src/data/landing"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 export const VideoExperienceSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.videoExperienceSection")
   const sectionRef = useRef<HTMLElement>(null)
@@ -28,6 +29,7 @@ export const VideoExperienceSection = (): JSX.Element => {
     },
     { scope: sectionRef },
   )
+
   return (
     <section
       ref={sectionRef}

@@ -1,9 +1,10 @@
 import { type JSX } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { SOCIALS } from "~/src/presentation/branding/socials"
+
 export const MenuFooter = (): JSX.Element => {
   const t = useTranslations("components.custom.navigation")
   const linkStyles =

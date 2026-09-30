@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 
 import { type ColumnFiltersState, type PaginationState, type SortingState } from "@tanstack/react-table"
+
 export const useProductsServerListSync = ({
   columnFilters,
   debouncedSearch,
@@ -33,6 +34,7 @@ export const useProductsServerListSync = ({
     }
   }, [columnFilters, hasServerListQuery, serverSorting, setPagination])
 }
+
 interface UseProductsServerListSyncOptions {
   readonly columnFilters: ColumnFiltersState
   readonly debouncedSearch: string

@@ -6,6 +6,7 @@ import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
+
 const ButtonGroup = ({
   className,
   orientation,
@@ -73,4 +74,5 @@ const buttonGroupVariants = cva(
     },
   },
 )
+
 export { ButtonGroup, ButtonGroupSeparator, ButtonGroupText, buttonGroupVariants }

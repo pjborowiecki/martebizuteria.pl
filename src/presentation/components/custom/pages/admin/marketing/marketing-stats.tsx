@@ -2,11 +2,12 @@ import { type JSX } from "react"
 
 import { ArrowDownRight, ArrowUpRight } from "lucide-react"
 import { Area, AreaChart, ResponsiveContainer } from "recharts"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { MARKETING_STATS } from "~/src/data/marketing-data"
+import { MARKETING_STATS } from "~/src/data/marketing"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
+
 export const MarketingStats = (): JSX.Element => (
   <div className="grid gap-5 sm:grid-cols-4">
     {MARKETING_STATS.map((stat) => (
@@ -17,6 +18,7 @@ export const MarketingStats = (): JSX.Element => (
 
 const MarketingStatCard = ({ stat }: { stat: (typeof MARKETING_STATS)[number] }): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <Card className="overflow-hidden shadow-none">
       <CardContent className="relative p-5">
@@ -26,7 +28,7 @@ const MarketingStatCard = ({ stat }: { stat: (typeof MARKETING_STATS)[number] })
             <p className="mt-1 text-2xl font-semibold tracking-tight">{t(`marketing.stats.${stat.key}.value`)}</p>
             <div className="mt-2 flex items-center gap-1.5">
               <StatTrend trend={stat.trend} up={stat.up} />
-              <span className="text-[11px] text-muted-foreground/50">{t("customers.stats.vsPrevious")}</span>
+              <span className="text-[11px] text-muted-foreground/50">{t("dashboard.stats.vsPrevious")}</span>
             </div>
           </div>
           <MarketingStatSparkline stat={stat} />
@@ -35,6 +37,7 @@ const MarketingStatCard = ({ stat }: { stat: (typeof MARKETING_STATS)[number] })
     </Card>
   )
 }
+
 const StatGradient = ({ color, id }: { readonly color: string; readonly id: string }): JSX.Element => (
   <defs>
     <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
@@ -64,6 +67,7 @@ const StatTrend = ({ trend, up }: { readonly trend: string; readonly up: boolean
       </span>
     )
   }
+
   return (
     <span className="flex items-center gap-0.5 text-[12px] text-red-500">
       <ArrowDownRight className="size-3.5" strokeWidth={2} />

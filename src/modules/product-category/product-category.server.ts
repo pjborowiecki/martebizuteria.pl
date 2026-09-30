@@ -4,18 +4,16 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
-import { type Category } from "~/src/modules/product-category/product-category.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 
 const handlePlaceholder = sql.placeholder("handle")
 
-/** Admin: all categories, manual order. */
 export const getAdminCategoriesQuery = db.query.productCategory
   .findMany({
     orderBy: (categories, { asc, desc }) => [asc(categories.rank), desc(categories.createdAt)],
   })
   .prepare()
 
-/** Admin: lookup by handle (any status). */
 export const getCategoryByHandleQuery = db.query.productCategory
   .findFirst({
     where: eq(productCategory.handle, handlePlaceholder),
@@ -23,7 +21,6 @@ export const getCategoryByHandleQuery = db.query.productCategory
   })
   .prepare()
 
-/** Storefront: active root categories with children, ordered by rank. */
 export const getStorefrontRootCategoriesQuery = db.query.productCategory
   .findMany({
     orderBy: (categories, { asc }) => [asc(categories.rank)],
@@ -32,7 +29,6 @@ export const getStorefrontRootCategoriesQuery = db.query.productCategory
   })
   .prepare()
 
-/** Storefront: active category by handle. */
 export const getStorefrontCategoryByHandleQuery = db.query.productCategory
   .findFirst({
     where: and(eq(productCategory.handle, handlePlaceholder), eq(productCategory.status, CATEGORY_STATUS.ACTIVE)),
@@ -40,7 +36,6 @@ export const getStorefrontCategoryByHandleQuery = db.query.productCategory
   })
   .prepare()
 
-/** Lightweight id + parentId rows for descendant category resolution. */
 export const getCategoryHierarchyQuery = db
   .select({
     id: productCategory.id,
@@ -74,6 +69,7 @@ export const countChildCategories = async (parentIds: readonly string[]): Promis
   if (parentIds.length === 0) {
     return 0
   }
+
   const [row] = await db
     .select({ value: count() })
     .from(productCategory)
@@ -81,10 +77,11 @@ export const countChildCategories = async (parentIds: readonly string[]): Promis
   return row?.value ?? 0
 }
 
-export const getCategoriesByIds = (ids: readonly string[]): Promise<Category["select"][]> => {
+export const getCategoriesByIds = (ids: readonly string[]): Promise<ProductCategory["select"][]> => {
   if (ids.length === 0) {
     return Promise.resolve([])
   }
+
   return db
     .select()
     .from(productCategory)
@@ -100,6 +97,7 @@ export const setCategoryRanks = async (
   if (updates.length === 0) {
     return
   }
+
   const cases = updates.map((entry) => sql`when ${productCategory.id} = ${entry.id} then ${entry.rank}`)
   const rankExpression = sql`(case ${sql.join(cases, sql.raw(" "))} end)`
   await db

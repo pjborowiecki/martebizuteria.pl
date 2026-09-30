@@ -1,6 +1,6 @@
 import { type JSX, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { PRODUCT_TABLE_COLUMN_ID } from "~/src/modules/product/product.constants"
@@ -28,6 +28,7 @@ export const ProductsStockColumnFilter = (): JSX.Element => {
     }),
     [t],
   )
+
   return (
     <AdminNumericColumnFilter
       ariaLabel={t("filter.stock")}

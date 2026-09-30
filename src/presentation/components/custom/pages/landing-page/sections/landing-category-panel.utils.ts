@@ -1,4 +1,4 @@
-import { type Category } from "~/src/modules/product-category/product-category.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 import {
   resolveCategoryShortDescription,
   resolveCategorySubtitle,
@@ -6,6 +6,7 @@ import {
 } from "~/src/modules/product-category/product-category.utils"
 
 import { getProductImageUrl } from "~/src/lib/image"
+
 export const resolveLandingCategoryPanelCopy = (category: LandingCategoryPanel, locale: string): LandingCategoryPanelCopy => ({
   handle: category.handle,
   image: getProductImageUrl(category.image),
@@ -13,7 +14,9 @@ export const resolveLandingCategoryPanelCopy = (category: LandingCategoryPanel, 
   tag: resolveCategoryTitle(category.titles, locale),
   title: resolveCategorySubtitle(category.subtitles, locale),
 })
-export type LandingCategoryPanel = Pick<Category["select"], "handle" | "id" | "image" | "shortDescriptions" | "subtitles" | "titles">
+
+export type LandingCategoryPanel = Pick<ProductCategory["select"], "handle" | "id" | "image" | "shortDescriptions" | "subtitles" | "titles">
+
 export interface LandingCategoryPanelCopy {
   readonly handle: string
   readonly image: string

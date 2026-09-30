@@ -1,9 +1,11 @@
 import { v7 as uuidv7 } from "uuid"
 import { type z } from "zod/v4"
 
-import { DEFAULT_LOCALE, LOCALES } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
+import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
+import { parseMoneyInputToMinorUnits } from "~/src/modules/_core/utils/currency"
 import { type categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { buildCategoryOnProductRows, resolvePrimaryCategoryId } from "~/src/modules/category-on-product/category-on-product.utils"
 import { type collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
@@ -11,10 +13,9 @@ import { buildCollectionOnProductRows } from "~/src/modules/collection-on-produc
 import { type inventory } from "~/src/modules/inventory/inventory.schema"
 import { type optionOnVariant } from "~/src/modules/option-on-variant/option-on-variant.schema"
 import { type ProductAttributeType } from "~/src/modules/product-attribute/product-attribute.constants"
-import { type ProductAttributeAllowedValue, type ProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import {
   coerceProductAttributeLocaleMap,
-  createEmptyProductAttributeLocaleMap,
   normalizeProductAttributeLocaleMapForSave,
   resolveLocalizedString,
   resolveProductAttributeTitle,
@@ -54,17 +55,8 @@ import {
   type ProductStatus,
   type ProductVariantKind,
 } from "~/src/modules/product/product.constants"
-import {
-  type Product,
-  type ProductLocaleMap,
-  type ProductSpecification,
-  type ProductTagsLocaleMap,
-  type StorefrontProduct,
-  type StorefrontProductOption,
-} from "~/src/modules/product/product.types"
+import { type Product } from "~/src/modules/product/product.types"
 import { type productZodSchemas } from "~/src/modules/product/product.zod"
-
-import { parseMoneyInputToMinorUnits } from "~/src/lib/currency"
 
 const EMPTY_SKU = ""
 
@@ -106,7 +98,6 @@ type ProductByHandleRow = NonNullable<Awaited<ReturnType<(typeof getProductByHan
 
 type ProductByHandleVariantRow = ProductByHandleRow["variants"][number]
 
-// Drizzle types a `one` relation keyed on a non-null column as always present, but a variant with no inventory row comes back as null.
 export type AdminProductDetail = Omit<ProductByHandleRow, "variants"> & {
   readonly variants: (Omit<ProductByHandleVariantRow, "inventory"> & {
     readonly inventory: ProductByHandleVariantRow["inventory"] | null
@@ -117,23 +108,14 @@ export type PublishedProductByHandleRow = NonNullable<Awaited<ReturnType<(typeof
 
 export type ProductVariantStatsRow = Awaited<ReturnType<(typeof getProductVariantStatsQuery)["execute"]>>[number]
 
-export const coerceProductLocaleMap = (value: unknown): ProductLocaleMap => {
-  if (typeof value === "string") {
-    return coerceProductAttributeLocaleMap({
-      [DEFAULT_LOCALE]: value,
-    })
-  }
-  if (value === null || value === undefined || typeof value !== "object" || Array.isArray(value)) {
-    return createEmptyProductAttributeLocaleMap()
-  }
-  return coerceProductAttributeLocaleMap(value)
-}
+export const coerceProductLocaleMap = (value: unknown): Product["localeMap"] => coerceProductAttributeLocaleMap(value)
 
-export const normalizeOptionalProductLocaleMapForSave = (map: ProductLocaleMap): ProductLocaleMap | undefined => {
+export const normalizeOptionalProductLocaleMapForSave = (map: Product["localeMap"]): Product["localeMap"] | undefined => {
   const normalized = normalizeProductAttributeLocaleMapForSave(map)
-  if (LOCALES.every((locale) => normalized[locale] === "")) {
+  if (I18N.SUPPORTED_LOCALES.every((locale) => normalized[locale] === "")) {
     return undefined
   }
+
   return normalized
 }
 
@@ -146,45 +128,54 @@ export const resolveProductSubtitle = (subtitles: unknown, locale: string): stri
 export const resolveProductDescription = (descriptions: unknown, locale: string): string =>
   resolveLocalizedString(coerceProductLocaleMap(descriptions), locale)
 
-export const createEmptyProductTagsLocaleMap = (): ProductTagsLocaleMap =>
-  Object.fromEntries(LOCALES.map((locale) => [locale, [] as string[]]))
+export const createEmptyProductTagsLocaleMap = (): Product["tagsLocaleMap"] =>
+  Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, [] as string[]]))
 
-export const coerceProductTagsLocaleMap = (value: unknown): ProductTagsLocaleMap => {
+export const coerceProductTagsLocaleMap = (value: unknown): Product["tagsLocaleMap"] => {
   if (Array.isArray(value)) {
     return {
       ...createEmptyProductTagsLocaleMap(),
-      [DEFAULT_LOCALE]: value.filter((entry): entry is string => typeof entry === "string"),
+      [I18N.DEFAULT_LOCALE]: value.filter((entry): entry is string => typeof entry === "string"),
     }
   }
+
   if (value === null || value === undefined || typeof value !== "object" || Array.isArray(value)) {
     return createEmptyProductTagsLocaleMap()
   }
+
   const record = value as Partial<Record<string, unknown>>
+
   return Object.fromEntries(
-    LOCALES.map((locale) => {
+    I18N.SUPPORTED_LOCALES.map((locale) => {
       const tags = record[locale]
       if (!Array.isArray(tags)) {
         return [locale, [] as string[]]
       }
+
       return [locale, tags.filter((entry): entry is string => typeof entry === "string")]
     }),
   )
 }
 
-export const normalizeProductTagsLocaleMapForSave = (map: ProductTagsLocaleMap): ProductTagsLocaleMap | undefined => {
-  const normalized = Object.fromEntries(LOCALES.map((locale) => [locale, map[locale].map((tag) => tag.trim()).filter((tag) => tag !== "")]))
-  if (LOCALES.every((locale) => normalized[locale].length === 0)) {
+export const normalizeProductTagsLocaleMapForSave = (map: Product["tagsLocaleMap"]): Product["tagsLocaleMap"] | undefined => {
+  const normalized = Object.fromEntries(
+    I18N.SUPPORTED_LOCALES.map((locale) => [locale, map[locale].map((tag) => tag.trim()).filter((tag) => tag !== "")]),
+  )
+
+  if (I18N.SUPPORTED_LOCALES.every((locale) => normalized[locale].length === 0)) {
     return undefined
   }
+
   return normalized
 }
 
 export const resolveProductTags = (tags: unknown, locale: string): string[] => {
   const map = coerceProductTagsLocaleMap(tags)
-  if (locale === "pl" || locale === "en") {
+  if (isSupportedLocale(locale)) {
     return map[locale]
   }
-  return map[DEFAULT_LOCALE]
+
+  return map[I18N.DEFAULT_LOCALE]
 }
 
 export type ProductVariantSkuRow = Awaited<ReturnType<(typeof getProductVariantSkuRowsQuery)["execute"]>>[number]
@@ -213,6 +204,7 @@ export const buildSkuSummaryByProductId = (rows: readonly ProductVariantSkuRow[]
       skusByProductId.set(row.productId, existing)
     }
   }
+
   return new Map([...skusByProductId.entries()].map(([productId, skus]) => [productId, skus.join(", ")]))
 }
 
@@ -223,20 +215,22 @@ const formatUniqueProductAttributeTitles = (
   attributeRows: readonly {
     readonly attributeId: string
     readonly productAttribute: {
-      readonly titles: ProductAttributeLocaleMap
+      readonly titles: ProductAttribute["localeMap"]
     }
   }[],
 ): string => {
   const seenAttributeIds = new Set<string>()
+
   return attributeRows
     .filter((entry) => {
       if (seenAttributeIds.has(entry.attributeId)) {
         return false
       }
       seenAttributeIds.add(entry.attributeId)
+
       return true
     })
-    .map((entry) => resolveProductAttributeTitle(entry.productAttribute.titles, DEFAULT_LOCALE))
+    .map((entry) => resolveProductAttributeTitle(entry.productAttribute.titles, I18N.DEFAULT_LOCALE))
     .filter((title) => title !== "")
     .join(", ")
 }
@@ -268,13 +262,13 @@ export const toAdminProductListItem = (
     categoryTitle:
       primaryCategoryRow === undefined
         ? undefined
-        : resolveCategoryTitle(primaryCategoryRow.productCategory.titles, DEFAULT_LOCALE) || undefined,
+        : resolveCategoryTitle(primaryCategoryRow.productCategory.titles, I18N.DEFAULT_LOCALE) || undefined,
     categoryTitles: categoryRows
-      .map((entry) => resolveCategoryTitle(entry.productCategory.titles, DEFAULT_LOCALE))
+      .map((entry) => resolveCategoryTitle(entry.productCategory.titles, I18N.DEFAULT_LOCALE))
       .filter((title) => title !== "")
       .join(", "),
     collectionTitles: collectionRows
-      .map((entry) => resolveCollectionTitle(entry.productCollection.titles, DEFAULT_LOCALE))
+      .map((entry) => resolveCollectionTitle(entry.productCollection.titles, I18N.DEFAULT_LOCALE))
       .filter((title) => title !== "")
       .join(", "),
     descriptions: coerceProductLocaleMap(productRow.descriptions),
@@ -293,9 +287,11 @@ export const toProductDbStatus = (status: ProductAdminStatus): ProductStatus => 
   if (status === PRODUCT_ADMIN_STATUS.ACTIVE) {
     return PRODUCT_STATUS.PUBLISHED
   }
+
   if (status === PRODUCT_ADMIN_STATUS.ARCHIVED) {
     return PRODUCT_STATUS.ARCHIVED
   }
+
   return PRODUCT_STATUS.DRAFT
 }
 
@@ -303,9 +299,11 @@ export const toProductAdminStatus = (status: ProductStatus): ProductAdminStatus 
   if (status === PRODUCT_STATUS.PUBLISHED) {
     return PRODUCT_ADMIN_STATUS.ACTIVE
   }
+
   if (status === PRODUCT_STATUS.ARCHIVED) {
     return PRODUCT_ADMIN_STATUS.ARCHIVED
   }
+
   return PRODUCT_ADMIN_STATUS.DRAFT
 }
 
@@ -313,28 +311,31 @@ export const resolveProductInventoryLevel = (status: ProductStatus, totalStock: 
   if (status !== PRODUCT_STATUS.PUBLISHED) {
     return PRODUCT_INVENTORY_LEVEL.OK
   }
+
   if (totalStock <= 0) {
     return PRODUCT_INVENTORY_LEVEL.OUT
   }
+
   if (totalStock <= PRODUCT_LOW_STOCK_THRESHOLD) {
     return PRODUCT_INVENTORY_LEVEL.LOW
   }
+
   return PRODUCT_INVENTORY_LEVEL.OK
 }
 
 const mapAttributeRowsToSpecifications = (
   attributes: readonly {
     readonly productAttribute: {
-      readonly allowedValues: readonly ProductAttributeAllowedValue[] | null
+      readonly allowedValues: readonly ProductAttribute["allowedValue"][] | null
       readonly handle: string
-      readonly titles: ProductAttributeLocaleMap
+      readonly titles: ProductAttribute["localeMap"]
       readonly type: ProductAttributeType
       readonly unit: string | null
     }
     readonly rank: number
     readonly value: string
   }[],
-): ProductSpecification[] =>
+): Product["specification"][] =>
   attributes.map((entry) => ({
     allowedValues: entry.productAttribute.allowedValues,
     handle: entry.productAttribute.handle,
@@ -347,8 +348,8 @@ const mapAttributeRowsToSpecifications = (
 
 export const mapPublishedProductForStorefront = (
   productRow: PublishedProductByHandleRow,
-  locale: string = DEFAULT_LOCALE,
-): StorefrontProduct => {
+  locale: string = I18N.DEFAULT_LOCALE,
+): Product["storefront"] => {
   const { attributes, categories: categoryRows, collections: collectionRows, images: imageRows, options } = productRow
   const resolvedPrimaryCategoryId = productRow.primaryCategoryId ?? resolvePrimaryCategoryId(categoryRows)
   const primaryCategory = categoryRows.find((entry) => entry.categoryId === resolvedPrimaryCategoryId)?.productCategory
@@ -359,7 +360,7 @@ export const mapPublishedProductForStorefront = (
   const sharedImageUrls = imageRows.filter((image) => isProductLevelImage(image.variantId)).map((image) => image.url)
   const productLevelAttributes = attributes.filter((entry) => entry.variantId === null)
   const sharedSpecifications = mapAttributeRowsToSpecifications(productLevelAttributes)
-  const storefrontOptions: StorefrontProductOption[] = options.map((option) => ({
+  const storefrontOptions: Product["storefrontOption"][] = options.map((option) => ({
     id: option.id,
     title: resolveProductTitle(option.titles, locale),
     values: option.values.map((value) => ({
@@ -367,6 +368,7 @@ export const mapPublishedProductForStorefront = (
       label: resolveProductTitle(value.labels, locale),
     })),
   }))
+
   const hasVariants = inferHasVariants(options, productRow.variants.length)
   const variants = productRow.variants.map((variant) => {
     const variantImages = variant.images
@@ -375,6 +377,7 @@ export const mapPublishedProductForStorefront = (
     const variantAttributes = variant.attributes
     const variantSpecifications = mapAttributeRowsToSpecifications(variantAttributes)
     const specifications = variantSpecifications.length > 0 ? variantSpecifications : sharedSpecifications
+
     return {
       ...variant,
       imageUrls: fallbackImages,
@@ -382,6 +385,7 @@ export const mapPublishedProductForStorefront = (
       specifications,
     }
   })
+
   const firstVariantImages = variants[0]?.imageUrls ?? []
   let primaryImageUrls = imageRows.map((image) => image.url)
   if (firstVariantImages.length > 0) {
@@ -389,6 +393,7 @@ export const mapPublishedProductForStorefront = (
   } else if (sharedImageUrls.length > 0) {
     primaryImageUrls = [...sharedImageUrls]
   }
+
   return {
     categories: categoryRows.map((entry) => entry.productCategory),
     category: primaryCategory,
@@ -424,6 +429,7 @@ const normalizeSku = (sku: string | undefined): string | undefined => {
   if (trimmed === undefined || trimmed === EMPTY_SKU) {
     return undefined
   }
+
   return trimmed
 }
 
@@ -432,6 +438,7 @@ const requireMoneyMinorUnits = (input: string): number => {
   if (minor === undefined) {
     throw new Error("Invalid money input")
   }
+
   return minor
 }
 
@@ -455,11 +462,12 @@ const mergeVariantRows = (
 ): ProductVariantPersistRow[] => {
   const variantsByKey = new Map(variants.map((row) => [buildVariantCombinationKey(row.optionValues), row] as const))
   const variantsByTitle = new Map(variants.map((row) => [(row.title ?? "").trim(), row] as const))
+
   return combinations.map((combination, combinationIndex) => {
     const key = buildVariantCombinationKey(combination.optionValues)
     const existing =
       variantsByKey.get(key) ??
-      variantsByTitle.get(buildVariantDisplayTitle(combination.optionValues, options, DEFAULT_LOCALE)) ??
+      variantsByTitle.get(buildVariantDisplayTitle(combination.optionValues, options, I18N.DEFAULT_LOCALE)) ??
       variantsByTitle.get(combination.title) ??
       variants[combinationIndex]
     return {
@@ -484,6 +492,7 @@ const buildMultiVariantRows = (
 ): ProductVariantPersistRow[] => {
   const normalizedOptions = normalizeOptionDrafts(options)
   const combinations = buildVariantCombinations(normalizedOptions)
+
   return mergeVariantRows(combinations, variants, options)
 }
 
@@ -491,6 +500,7 @@ const buildVariantPersistRows = (input: CatalogUpsertInput): ProductVariantPersi
   if (input.hasVariants) {
     return buildMultiVariantRows(input.options, input.variants)
   }
+
   return buildSimpleVariantRows(
     input.simpleVariant ?? {
       compareAtPrice: "",
@@ -524,13 +534,15 @@ const buildOptionValueIdLookup = (
       if (valueId === undefined) {
         return
       }
-      const labelKey = LOCALES.map((locale) => value.labels[locale].trim()).join("|")
+
+      const labelKey = I18N.SUPPORTED_LOCALES.map((locale) => value.labels[locale].trim()).join("|")
       valueIdByOptionAndKey.set(`${optionId}|${labelKey}`, valueId)
       if (value.id !== undefined) {
         valueIdByOptionAndKey.set(`${optionId}|${value.id}`, valueId)
       }
     })
   })
+
   return valueIdByOptionAndKey
 }
 
@@ -542,11 +554,13 @@ export const prepareCatalogReplacePayload = (productId: string, input: CatalogUp
     productId,
     titles: normalizeProductAttributeLocaleMapForSave(option.titles),
   }))
+
   const optionValueRows = normalizedOptions.flatMap((option, optionIndex) => {
     const optionId = optionRows[optionIndex]?.id
     if (optionId === undefined) {
       return []
     }
+
     return option.values.map((value, valueIndex) => ({
       id: value.id ?? uuidv7(),
       labels: normalizeProductAttributeLocaleMapForSave(value.labels),
@@ -554,6 +568,7 @@ export const prepareCatalogReplacePayload = (productId: string, input: CatalogUp
       rank: valueIndex,
     }))
   })
+
   const valueIdByOptionAndKey = buildOptionValueIdLookup(normalizedOptions, optionRows, optionValueRows)
   const variantRows = variantPersistRows.map((variantRow) => ({
     compareAtPrice: variantRow.compareAtPrice,
@@ -564,6 +579,7 @@ export const prepareCatalogReplacePayload = (productId: string, input: CatalogUp
     sku: variantRow.sku,
     title: variantRow.title,
   }))
+
   const inventoryRows = variantPersistRows.map((variantRow) => ({
     id: uuidv7(),
     quantityAvailable: variantRow.quantity,
@@ -571,12 +587,14 @@ export const prepareCatalogReplacePayload = (productId: string, input: CatalogUp
     variantId: variantRow.id,
     version: 1,
   }))
+
   const optionOnVariantRows = variantPersistRows.flatMap((variantRow) =>
     Object.entries(variantRow.optionValues).flatMap(([optionId, valueKey]) => {
       const valueId = valueIdByOptionAndKey.get(`${optionId}|${valueKey}`)
       if (valueId === undefined) {
         return []
       }
+
       return [
         {
           id: uuidv7(),
@@ -587,6 +605,7 @@ export const prepareCatalogReplacePayload = (productId: string, input: CatalogUp
       ]
     }),
   )
+
   return {
     inventoryRows,
     optionOnVariantRows,
@@ -603,6 +622,7 @@ export const prepareOrganizationReplacePayload = (
   if (input.primaryCategoryId === "") {
     return undefined
   }
+
   return {
     categoryRows: buildCategoryOnProductRows(productId, input.primaryCategoryId, input.additionalCategoryIds),
     collectionRows: buildCollectionOnProductRows(productId, input.collectionIds),

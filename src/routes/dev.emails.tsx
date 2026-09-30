@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { EMAIL_PREVIEWS, isEmailPreviewSlug, renderEmailPreview } from "~/src/integrations/resend/email-previews"
-import { DEFAULT_LOCALE, LOCALES } from "~/src/integrations/use-intl/i18n.config"
-import { type Locale } from "~/src/integrations/use-intl/i18n.types"
-import { isValidLocale } from "~/src/integrations/use-intl/i18n.utils"
+import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
+
+import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
+
 const notFound = (): Response =>
   new Response("Not found", {
-    status: 404,
+    status: HTTP_STATUS.NOT_FOUND,
   })
 
 const html = (body: string): Response =>
@@ -19,10 +21,11 @@ const html = (body: string): Response =>
 const renderIndex = (): Response => {
   const cards = Object.entries(EMAIL_PREVIEWS)
     .map(([slug, preview]) => {
-      const links = LOCALES.flatMap((locale) => [
+      const links = I18N.SUPPORTED_LOCALES.flatMap((locale) => [
         `<a href="/dev/emails?template=${slug}&locale=${locale}">${locale.toUpperCase()} HTML</a>`,
         `<a href="/dev/emails?template=${slug}&locale=${locale}&format=${PLAIN_TEXT_FORMAT}">${locale.toUpperCase()} text</a>`,
       ]).join("")
+
       return `<li><strong>${preview.label}</strong><div class="links">${links}</div></li>`
     })
     .join("")
@@ -38,7 +41,9 @@ const renderIndex = (): Response => {
     </style></head>
     <body><h1>M'ARTE — Email previews</h1><ul>${cards}</ul></body></html>`)
 }
+
 const PLAIN_TEXT_FORMAT = "text"
+
 export const Route = createFileRoute("/dev/emails")({
   server: {
     handlers: {
@@ -46,18 +51,22 @@ export const Route = createFileRoute("/dev/emails")({
         if (!import.meta.env.DEV) {
           return notFound()
         }
+
         const url = new URL(request.url)
         const template = url.searchParams.get("template")
         if (template === null) {
           return renderIndex()
         }
+
         if (!isEmailPreviewSlug(template)) {
           return notFound()
         }
+
         const localeParam = url.searchParams.get("locale") ?? ""
-        const locale: Locale = isValidLocale(localeParam) ? localeParam : DEFAULT_LOCALE
+        const locale: SupportedLocale = isSupportedLocale(localeParam) ? localeParam : I18N.DEFAULT_LOCALE
         const plainText = url.searchParams.get("format") === PLAIN_TEXT_FORMAT
         const rendered = await renderEmailPreview(template, locale, plainText)
+
         return new Response(rendered, {
           headers: {
             "content-type": plainText ? "text/plain; charset=utf-8" : "text/html; charset=utf-8",

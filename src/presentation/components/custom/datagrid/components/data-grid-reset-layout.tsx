@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { RotateCcw } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -12,7 +12,6 @@ interface DataGridResetLayoutProps {
   readonly onReset: () => void
 }
 
-/** Restores default column order, widths, and visibility for this table. */
 export const DataGridResetLayout = ({ disabled, onReset }: DataGridResetLayoutProps): JSX.Element => {
   const t = useTranslations("components.datagrid")
 

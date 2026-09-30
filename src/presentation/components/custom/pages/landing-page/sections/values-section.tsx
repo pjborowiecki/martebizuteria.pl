@@ -1,16 +1,19 @@
 import { type JSX, useRef } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { gsap, useGSAP } from "~/src/lib/gsap"
+import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+
 import { getAssetURL } from "~/src/lib/url"
 
 import { AspectRatio } from "~/src/presentation/components/shadcn/aspect-ratio"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
 import { Image } from "~/src/presentation/components/custom/image"
+
 const ValuesImage = (): JSX.Element => {
   const t = useTranslations("pages.landing.valuesSection")
+
   return (
     <AspectRatio className="parallax-wrap overflow-hidden bg-secondary" ratio={ASPECT_RATIO_PORTRAIT}>
       <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">
@@ -26,6 +29,7 @@ const ValuesImage = (): JSX.Element => {
     </AspectRatio>
   )
 }
+
 export const ValuesSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.valuesSection")
   const sectionRef = useRef<HTMLElement>(null)
@@ -45,6 +49,7 @@ export const ValuesSection = (): JSX.Element => {
     },
     { scope: sectionRef },
   )
+
   return (
     <section ref={sectionRef} className="values-section relative z-10 bg-background py-20 lg:py-32">
       <div className="mx-auto max-w-400 px-6 lg:px-12">
@@ -80,4 +85,5 @@ export const ValuesSection = (): JSX.Element => {
     </section>
   )
 }
+
 const ASPECT_RATIO_PORTRAIT = 0.75

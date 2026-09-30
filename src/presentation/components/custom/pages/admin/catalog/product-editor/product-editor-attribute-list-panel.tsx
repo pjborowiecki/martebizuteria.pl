@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
 import { useFieldArray, useFormContext } from "react-hook-form"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import { resolveProductAttributeTitle } from "~/src/modules/product-attribute/product-attribute.utils"
@@ -25,6 +25,7 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-editor-attribute-value.utils"
 
 import { ROUTES } from "~/src/routes"
+
 export const ProductEditorAttributeListPanel = ({
   attributes,
   baseName,
@@ -39,6 +40,7 @@ export const ProductEditorAttributeListPanel = ({
     control,
     name: baseName,
   })
+
   const [draftAttributeId, setDraftAttributeId] = useState(EMPTY_DRAFT)
   const [draftValue, setDraftValue] = useState(EMPTY_DRAFT)
   const attributesById = useMemo(() => new Map(attributes.map((attribute) => [attribute.id, attribute])), [attributes])
@@ -50,10 +52,12 @@ export const ProductEditorAttributeListPanel = ({
       })),
     [attributes, locale],
   )
+
   const draftDefinition = useMemo(
     () => toProductEditorAttributeDefinition(attributesById.get(draftAttributeId)),
     [attributesById, draftAttributeId],
   )
+
   const hasCatalogAttributes = attributeOptions.length > 0
   const hasRows = fields.length > 0
   const canAddDraft = isProductAttributeValueComplete(draftDefinition, draftValue) && draftAttributeId !== EMPTY_DRAFT
@@ -73,11 +77,13 @@ export const ProductEditorAttributeListPanel = ({
   useEffect(() => {
     setDraftValue(EMPTY_DRAFT)
   }, [draftAttributeId])
+
   const listSpacing = compact ? "space-y-3" : "space-y-4"
   let listPadding = ""
   if (hasRows) {
     listPadding = compact ? "border-t border-border/40 pt-3" : "border-t border-border/60 pt-4"
   }
+
   return (
     <div className={compact ? "space-y-3" : "space-y-4"}>
       {title !== undefined && title !== "" && <p className="text-sm font-medium text-foreground">{title}</p>}
@@ -112,6 +118,7 @@ export const ProductEditorAttributeListPanel = ({
     </div>
   )
 }
+
 const AttributesEmptyState = ({
   emptyHintKey,
   hasCatalogAttributes,
@@ -122,6 +129,7 @@ const AttributesEmptyState = ({
   const t = useTranslations("pages.admin.catalog.products.attributes")
   const createAttributeLink = useMemo(() => <LocalizedLink search={ATTRIBUTES_CREATE_SEARCH} to={ROUTES.ADMIN_ATTRIBUTES} />, [])
   const emptyMessage = hasCatalogAttributes ? t(emptyHintKey) : t("emptyNoCatalogAttributes")
+
   return (
     <div className="rounded-lg border border-dashed border-border/70 bg-muted/15 px-4 py-6 text-center">
       <p className="text-sm text-muted-foreground">{emptyMessage}</p>
@@ -133,6 +141,7 @@ const AttributesEmptyState = ({
     </div>
   )
 }
+
 const AttributeComposerRow = ({
   attributeId,
   attributeOptions,
@@ -152,6 +161,7 @@ const AttributeComposerRow = ({
     },
     [onAttributeIdChange],
   )
+
   return (
     <CatalogSheetControlsActionRow>
       <CatalogSheetControlColumn hint={tForm("attributeProperty")} label={t("attribute")}>
@@ -184,15 +194,20 @@ const AttributeComposerRow = ({
     </CatalogSheetControlsActionRow>
   )
 }
+
 const EMPTY_DRAFT = ""
+
 const ATTRIBUTES_CREATE_SEARCH = {
   create: "1",
 } as const
+
 export type ProductAttributeFieldArrayName = "attributeValues" | `variants.${number}.attributeValues`
+
 interface AttributeOption {
   readonly label: string
   readonly value: string
 }
+
 interface ProductEditorAttributeListPanelProps {
   readonly attributes: readonly ProductAttribute["select"][]
   readonly baseName: ProductAttributeFieldArrayName
@@ -201,6 +216,7 @@ interface ProductEditorAttributeListPanelProps {
   readonly hint?: string
   readonly title?: string
 }
+
 interface AttributeComposerRowProps {
   readonly attributeId: string
   readonly attributeOptions: readonly AttributeOption[]

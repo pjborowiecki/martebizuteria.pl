@@ -1,4 +1,5 @@
 import { type RefObject, useEffect, useRef } from "react"
+
 export const useProductsCatalogInfiniteScroll = ({
   enabled,
   fetchNextPage,
@@ -10,10 +11,12 @@ export const useProductsCatalogInfiniteScroll = ({
     if (!enabled || !hasNextPage) {
       return
     }
+
     const sentinel = sentinelRef.current
     if (sentinel === null) {
       return
     }
+
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries
@@ -26,13 +29,17 @@ export const useProductsCatalogInfiniteScroll = ({
       },
     )
     observer.observe(sentinel)
+
     return () => {
       observer.disconnect()
     }
   }, [enabled, fetchNextPage, hasNextPage, isFetchingNextPage])
+
   return sentinelRef
 }
+
 const INTERSECTION_ROOT_MARGIN = "240px"
+
 interface UseProductsCatalogInfiniteScrollOptions {
   readonly enabled: boolean
   readonly fetchNextPage: () => Promise<unknown>

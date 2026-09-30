@@ -2,11 +2,13 @@ import { type ComponentProps, type JSX, useMemo } from "react"
 
 import { cn } from "cn"
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
+
 const Pagination = ({ className, ariaLabel, ...props }: Readonly<PaginationProps>): JSX.Element => {
   const t = useTranslations("components.shadcn.pagination")
+
   return (
     <nav
       aria-label={ariaLabel ?? t("navLabel")}
@@ -16,6 +18,7 @@ const Pagination = ({ className, ariaLabel, ...props }: Readonly<PaginationProps
     />
   )
 }
+
 const PaginationContent = ({ className, ...props }: Readonly<ComponentProps<"ul">>): JSX.Element => (
   <ul data-slot="pagination-content" className={cn("flex items-center gap-0.5", className)} {...props} />
 )
@@ -28,18 +31,23 @@ const PaginationLink = ({ className, isActive, size = "icon", ...props }: Readon
   if (active) {
     variant = "outline"
   }
+
   let ariaCurrent: "page" | undefined = undefined
   if (active) {
     ariaCurrent = "page"
   }
+
   const renderEl = useMemo(
     () => <a aria-current={ariaCurrent} data-active={active} data-slot="pagination-link" {...props} />,
     [ariaCurrent, active, props],
   )
+
   return <Button className={cn(className)} nativeButton={false} render={renderEl} size={size} variant={variant} />
 }
+
 const PaginationPrevious = ({ className, text, ariaLabel, ...props }: Readonly<PaginationPreviousProps>): JSX.Element => {
   const t = useTranslations("components.shadcn.pagination")
+
   return (
     <PaginationLink aria-label={ariaLabel ?? t("goToPreviousPage")} size="default" className={cn("pl-1.5!", className)} {...props}>
       <ChevronLeftIcon data-icon="inline-start" />
@@ -47,8 +55,10 @@ const PaginationPrevious = ({ className, text, ariaLabel, ...props }: Readonly<P
     </PaginationLink>
   )
 }
+
 const PaginationNext = ({ className, text, ariaLabel, ...props }: Readonly<PaginationNextProps>): JSX.Element => {
   const t = useTranslations("components.shadcn.pagination")
+
   return (
     <PaginationLink aria-label={ariaLabel ?? t("goToNextPage")} size="default" className={cn("pr-1.5!", className)} {...props}>
       <span className="hidden sm:block">{text ?? t("nextPage")}</span>
@@ -56,8 +66,10 @@ const PaginationNext = ({ className, text, ariaLabel, ...props }: Readonly<Pagin
     </PaginationLink>
   )
 }
+
 const PaginationEllipsis = ({ className, srLabel, ...props }: Readonly<PaginationEllipsisProps>): JSX.Element => {
   const t = useTranslations("components.shadcn.pagination")
+
   return (
     <span
       aria-hidden
@@ -70,22 +82,28 @@ const PaginationEllipsis = ({ className, srLabel, ...props }: Readonly<Paginatio
     </span>
   )
 }
+
 interface PaginationProps extends ComponentProps<"nav"> {
   readonly ariaLabel?: string
 }
+
 type PaginationLinkProps = {
   isActive?: boolean
 } & Pick<ComponentProps<typeof Button>, "size"> &
   ComponentProps<"a">
+
 interface PaginationPreviousProps extends ComponentProps<typeof PaginationLink> {
   readonly ariaLabel?: string
   readonly text?: string
 }
+
 interface PaginationNextProps extends ComponentProps<typeof PaginationLink> {
   readonly ariaLabel?: string
   readonly text?: string
 }
+
 interface PaginationEllipsisProps extends ComponentProps<"span"> {
   readonly srLabel?: string
 }
+
 export { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious }

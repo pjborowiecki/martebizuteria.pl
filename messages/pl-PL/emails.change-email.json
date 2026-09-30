@@ -1,0 +1,17 @@
+{
+  "subject": "Zmiana adresu e-mail — M'Arte",
+  "preview": "Ostatni krok zmiany adresu e-mail w Twoim koncie M'Arte.",
+  "heading": "Zmiana adresu e-mail",
+  "greeting": "Witaj {name},",
+  "message": "Otrzymaliśmy prośbę o zmianę adresu e-mail powiązanego z Twoim kontem M'Arte.",
+  "messageSecondary": "Aby dokończyć proces i zabezpieczyć konto, potwierdź nowy adres e-mail za pomocą poniższego przycisku.",
+  "messageTertiary": "Do momentu potwierdzenia nadal będziemy korzystać z dotychczasowego adresu.",
+  "highlightTitle": "Dlaczego to robimy",
+  "highlightBody": "Zmiana adresu e-mail wymaga potwierdzenia, aby nikt niepowołany nie mógł przejąć Twojego konta.",
+  "cta": "Potwierdź nowy adres e-mail",
+  "expiry": "Ze względów bezpieczeństwa link wygaśnie po 60 minutach.",
+  "ignore": "Jeśli nie Ty prosiłeś o zmianę, zignoruj tę wiadomość — Twoje konto pozostanie bezpieczne.",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

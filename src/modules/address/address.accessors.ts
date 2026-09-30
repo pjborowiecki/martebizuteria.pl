@@ -6,6 +6,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { address } from "~/src/modules/address/address.schema"
 import { type Address } from "~/src/modules/address/address.types"
+
 export const getDefaultAddressForUser = async (userId: string): Promise<Address["select"] | undefined> => {
   const rows = await db
     .select()
@@ -14,6 +15,7 @@ export const getDefaultAddressForUser = async (userId: string): Promise<Address[
     .limit(1)
   return rows[0]
 }
+
 export const upsertDefaultAddressForUser = async (input: UpsertDefaultAddressInput): Promise<void> => {
   const existing = await getDefaultAddressForUser(input.userId)
   const payload: Omit<Address["insert"], "id"> = {
@@ -23,24 +25,30 @@ export const upsertDefaultAddressForUser = async (input: UpsertDefaultAddressInp
     isDefault: true,
     userId: input.userId,
   }
+
   if (input.address2 !== undefined && input.address2 !== "") {
     payload.address2 = input.address2
   }
+
   if (input.postalCode !== undefined && input.postalCode !== "") {
     payload.postalCode = input.postalCode
   }
+
   if (input.province !== undefined && input.province !== "") {
     payload.province = input.province
   }
+
   if (existing === undefined) {
     await db.insert(address).values({
       ...payload,
       id: uuidv7(),
     } satisfies Address["insert"])
+
     return
   }
   await db.update(address).set(payload).where(eq(address.id, existing.id))
 }
+
 const clearDefaultAddressesForUser = async (userId: string): Promise<void> => {
   await db
     .update(address)
@@ -49,12 +57,14 @@ const clearDefaultAddressesForUser = async (userId: string): Promise<void> => {
     })
     .where(eq(address.userId, userId))
 }
+
 const OPTIONAL_ADDRESS_TEXT_FIELDS = ["address2", "firstName", "lastName", "phone", "postalCode", "province"] as const
 
 export const createUserAddress = async (input: CreateUserAddressInput): Promise<Address["select"]> => {
   if (input.isDefault === true) {
     await clearDefaultAddressesForUser(input.userId)
   }
+
   const id = uuidv7()
   const payload: Address["insert"] = {
     address1: input.address1,
@@ -64,6 +74,7 @@ export const createUserAddress = async (input: CreateUserAddressInput): Promise<
     isDefault: input.isDefault ?? false,
     userId: input.userId,
   }
+
   for (const field of OPTIONAL_ADDRESS_TEXT_FIELDS) {
     const value = input[field]
     if (value !== undefined && value !== "") {
@@ -75,8 +86,10 @@ export const createUserAddress = async (input: CreateUserAddressInput): Promise<
   if (created === undefined) {
     throw new Error("Created address could not be loaded")
   }
+
   return created
 }
+
 const clearableOptionalText = (value: string): string | SQL => (value === "" ? sql`NULL` : value)
 
 const buildAddressUpdatePayload = (input: UpdateUserAddressInput): SQLiteUpdateSetSource<typeof address> => {
@@ -84,23 +97,29 @@ const buildAddressUpdatePayload = (input: UpdateUserAddressInput): SQLiteUpdateS
   if (input.address1 !== undefined) {
     payload.address1 = input.address1
   }
+
   if (input.city !== undefined) {
     payload.city = input.city
   }
+
   if (input.countryCode !== undefined) {
     payload.countryCode = input.countryCode.toUpperCase()
   }
+
   if (input.isDefault !== undefined) {
     payload.isDefault = input.isDefault
   }
+
   for (const field of OPTIONAL_ADDRESS_TEXT_FIELDS) {
     const value = input[field]
     if (value !== undefined) {
       payload[field] = clearableOptionalText(value)
     }
   }
+
   return payload
 }
+
 export const updateUserAddress = async (input: UpdateUserAddressInput): Promise<Address["select"] | undefined> => {
   const existing = await db
     .select()
@@ -110,6 +129,7 @@ export const updateUserAddress = async (input: UpdateUserAddressInput): Promise<
   if (existing[0] === undefined) {
     return undefined
   }
+
   if (input.isDefault === true) {
     await clearDefaultAddressesForUser(input.userId)
   }
@@ -118,8 +138,10 @@ export const updateUserAddress = async (input: UpdateUserAddressInput): Promise<
     .set(buildAddressUpdatePayload(input))
     .where(and(eq(address.id, input.id), eq(address.userId, input.userId)))
   const rows = await db.select().from(address).where(eq(address.id, input.id)).limit(1)
+
   return rows[0]
 }
+
 export const deleteUserAddress = async (userId: string, addressId: string): Promise<boolean> => {
   const existing = await db
     .select()
@@ -130,8 +152,10 @@ export const deleteUserAddress = async (userId: string, addressId: string): Prom
     return false
   }
   await db.delete(address).where(and(eq(address.id, addressId), eq(address.userId, userId)))
+
   return true
 }
+
 export const setDefaultUserAddress = async (userId: string, addressId: string): Promise<boolean> => {
   const existing = await db
     .select()
@@ -150,6 +174,7 @@ export const setDefaultUserAddress = async (userId: string, addressId: string): 
     .where(and(eq(address.id, addressId), eq(address.userId, userId)))
   return true
 }
+
 interface UpsertDefaultAddressInput {
   readonly address1: string
   readonly address2?: string | undefined
@@ -159,6 +184,7 @@ interface UpsertDefaultAddressInput {
   readonly province?: string | undefined
   readonly userId: string
 }
+
 interface CreateUserAddressInput {
   readonly address1: string
   readonly address2?: string | undefined
@@ -172,6 +198,7 @@ interface CreateUserAddressInput {
   readonly province?: string | undefined
   readonly userId: string
 }
+
 interface UpdateUserAddressInput {
   readonly address1?: string | undefined
   readonly address2?: string | undefined

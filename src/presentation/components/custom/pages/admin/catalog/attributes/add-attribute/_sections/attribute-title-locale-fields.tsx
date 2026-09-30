@@ -2,9 +2,9 @@ import { type ChangeEvent, type JSX, useCallback } from "react"
 
 import { useController } from "react-hook-form"
 
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { type ProductAttributeLocaleCode } from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 
 import { Field } from "~/src/presentation/components/shadcn/field"
 import { Input } from "~/src/presentation/components/shadcn/input"
@@ -61,7 +61,7 @@ const AttributeTitleLocaleField = ({
 }: Readonly<{
   copy: CatalogLocaleFieldsCopy
   disabled: boolean
-  locale: ProductAttributeLocaleCode
+  locale: ProductAttribute["localeCode"]
   onDefaultLocaleChange?: ((value: string) => void) | undefined
   required: boolean
   translateValidation: (key: string) => string
@@ -72,12 +72,13 @@ const AttributeTitleLocaleField = ({
     control,
     name: `titles.${locale}`,
   })
+
   const value = catalogFieldStringValue(field.value)
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       field.onChange(event)
-      if (locale === DEFAULT_LOCALE) {
+      if (locale === I18N.DEFAULT_LOCALE) {
         onDefaultLocaleChange?.(event.target.value)
       }
     },

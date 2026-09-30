@@ -1,6 +1,7 @@
 import { type ComponentProps, type JSX } from "react"
 
 import { cn } from "cn"
+
 const Card = ({
   className,
   size = "default",

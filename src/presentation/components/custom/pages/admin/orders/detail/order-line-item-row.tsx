@@ -2,9 +2,10 @@ import { type JSX } from "react"
 
 import { Package } from "lucide-react"
 
-import { type LineItem } from "~/src/data/order-detail-data"
+import { type LineItem } from "~/src/data/order-detail"
 
 import { TableCell, TableRow } from "~/src/presentation/components/shadcn/table"
+
 export const OrderLineItemRow = ({ item }: OrderLineItemRowProps): JSX.Element => (
   <TableRow className="group">
     <TableCell className="pl-5">

@@ -1,6 +1,6 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { getAssetURL } from "~/src/lib/url"
 
@@ -10,8 +10,10 @@ import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 export const MaisonHeritageSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.maisonHeritageSection")
+
   return (
     <section id="marka" className="mx-auto max-w-400 px-6 py-16 lg:px-12 lg:py-24">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center lg:gap-12">
@@ -59,4 +61,5 @@ export const MaisonHeritageSection = (): JSX.Element => {
     </section>
   )
 }
+
 const ASPECT_RATIO_WIDE = 1.454545

@@ -1,7 +1,7 @@
 import { type JSX, useMemo, useState } from "react"
 
 import { Copy, Eye, MoreHorizontal, Package, Printer, RefreshCw, Trash2, Truck } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -17,6 +17,7 @@ import {
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
 import { useCatalogRowActionMenu } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/lib/use-catalog-row-action-menu"
 import { useOrdersRowActionHandlers } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-orders-row-action-handlers"
+
 export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JSX.Element => {
   const t = useTranslations("pages.admin.orders.rowActions")
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -24,6 +25,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
     confirmOpen,
     setConfirmOpen,
   )
+
   const handlers = useOrdersRowActionHandlers(order, closeMenuAndRequestDeleteConfirm, handleConfirmOpenChange)
   const trigger = useMemo(
     () => (
@@ -39,6 +41,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
     ),
     [handlers.handleStopRowClick],
   )
+
   return (
     <>
       <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
@@ -113,7 +116,9 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
     </>
   )
 }
+
 const ITEM_CLASS = "px-3 py-2.5 text-[13px] gap-3"
+
 interface OrdersRowActionsProps {
   readonly order: Order["adminListItem"]
 }

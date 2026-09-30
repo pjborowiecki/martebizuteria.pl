@@ -3,39 +3,45 @@ import { type JSX, type SyntheticEvent, useCallback } from "react"
 import { type ErrorContext } from "@better-fetch/fetch"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigate } from "@tanstack/react-router"
+import { createClientOnlyFn } from "@tanstack/react-start"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { resetPassword } from "~/src/integrations/better-auth/auth-client"
-import { getAuthErrorMessage } from "~/src/integrations/better-auth/auth.errors"
-import { type ResetPasswordFormValues, resetPasswordSchema } from "~/src/integrations/better-auth/auth.schemas"
+import { resetPassword } from "~/src/integrations/better-auth/auth.client"
+import { type ResetPasswordFormValues, resetPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
+
+import { useActionError } from "~/src/hooks/use-action-error"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { AuthPasswordField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
 import { ROUTES } from "~/src/routes"
+
+const resetPasswordRequest = createClientOnlyFn((input: Parameters<typeof resetPassword>[0]) => resetPassword(input))
+
 export const ResetPasswordForm = ({ token }: ResetPasswordFormProps): JSX.Element => {
   const navigate = useNavigate()
   const t = useTranslations()
-  const formSchema = resetPasswordSchema(t)
+  const actionError = useActionError()
   const form = useForm<ResetPasswordFormValues>({
     defaultValues: {
       confirmPassword: "",
       password: "",
     },
     mode: "onTouched",
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(resetPasswordSchema),
   })
+
   const onSubmit = useCallback(
     async (data: ResetPasswordFormValues) => {
-      await resetPassword({
+      await resetPasswordRequest({
         fetchOptions: {
           onError: (ctx: ErrorContext) => {
             toast.error(t("pages.auth.toast.errorTitle"), {
-              description: getAuthErrorMessage(t, ctx.error),
+              description: actionError(ctx.error),
             })
           },
           onSuccess: () => {
@@ -43,7 +49,7 @@ export const ResetPasswordForm = ({ token }: ResetPasswordFormProps): JSX.Elemen
               description: t("pages.auth.toast.resetPasswordDescription"),
             })
             void navigate({
-              to: `/{-$locale}${ROUTES.AUTH_SIGN_IN}`,
+              to: ROUTES.AUTH_SIGN_IN,
             })
           },
         },
@@ -53,6 +59,7 @@ export const ResetPasswordForm = ({ token }: ResetPasswordFormProps): JSX.Elemen
     },
     [navigate, t, token],
   )
+
   const handleFormSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault()
@@ -60,7 +67,9 @@ export const ResetPasswordForm = ({ token }: ResetPasswordFormProps): JSX.Elemen
     },
     [form, onSubmit],
   )
+
   const { isSubmitting } = form.formState
+
   return (
     <form id="reset-password-form" onSubmit={handleFormSubmit} className="space-y-5">
       <AuthPasswordField
@@ -91,6 +100,7 @@ export const ResetPasswordForm = ({ token }: ResetPasswordFormProps): JSX.Elemen
     </form>
   )
 }
+
 interface ResetPasswordFormProps {
   readonly token: string
 }

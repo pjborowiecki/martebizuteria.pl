@@ -1,11 +1,13 @@
 import { type CSSProperties } from "react"
 
 export const EMAIL_COLOR_CREAM = "#f3f0ea"
+
 export const EMAIL_COLOR_LINE = "#e2ddd4"
+
 export const EMAIL_COLOR_PAPER = "#ffffff"
+
 export const EMAIL_COLOR_WASH = "#faf8f5"
 
-/** Use inline Body padding for email clients that ignore Tailwind padding. */
 export const EMAIL_BODY_STYLE: CSSProperties = {
   backgroundColor: EMAIL_COLOR_CREAM,
   margin: 0,

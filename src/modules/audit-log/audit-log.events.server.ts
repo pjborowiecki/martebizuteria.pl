@@ -1,4 +1,4 @@
-import { ROLES } from "~/src/integrations/better-auth/auth.constants"
+import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
@@ -164,6 +164,7 @@ export const recordCatalogAttributeDeletedAudit = (target: string, options?: Aud
       severity: "warning",
       target: payload.target,
     })
+
     return
   }
 
@@ -371,6 +372,20 @@ export const recordEmailFailedAudit = (target: string, options?: AuditEventOptio
     severity: "error",
     ...withResourceId(target, options),
   })
+}
+
+export const recordOrderEmailOutcome = ({
+  failure,
+  label,
+  orderId,
+}: Readonly<{ failure: string | undefined; label: string; orderId: string }>): void => {
+  if (failure === undefined) {
+    recordEmailSentAudit(orderId, { detail: label, resourceId: orderId })
+
+    return
+  }
+  console.error(`${label} failed for order ${orderId}: ${failure}`)
+  recordEmailFailedAudit(orderId, { detail: `${label} — ${failure}`, resourceId: orderId })
 }
 
 export const resolveAuthAuditActor = (

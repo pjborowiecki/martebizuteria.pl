@@ -1,15 +1,17 @@
 import { type JSX } from "react"
 
-import { RotateCcw, ShieldCheck, Truck } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { RotateCcw, ShieldCheck } from "lucide-react"
+import { useTranslations } from "use-intl/react"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 export const CartSummary = ({ checkoutDisabled = false, subtotal }: Readonly<CartSummaryProps>): JSX.Element => {
   const t = useTranslations("pages.cart")
+
   return (
     <aside className="lg:sticky lg:top-28">
       <div className="space-y-6 border border-foreground/10 p-6 sm:p-8">
@@ -59,10 +61,6 @@ export const CartSummary = ({ checkoutDisabled = false, subtotal }: Readonly<Car
           <span className="text-xs leading-tight">{t("trust.securePayment")}</span>
         </div>
         <div className="flex items-center gap-2 text-muted-foreground/80">
-          <Truck className="size-4 shrink-0" strokeWidth={1.5} />
-          <span className="text-xs leading-tight">{t("trust.freeShipping")}</span>
-        </div>
-        <div className="flex items-center gap-2 text-muted-foreground/80">
           <RotateCcw className="size-4 shrink-0" strokeWidth={1.5} />
           <span className="text-xs leading-tight">{t("trust.returns")}</span>
         </div>
@@ -70,7 +68,8 @@ export const CartSummary = ({ checkoutDisabled = false, subtotal }: Readonly<Car
     </aside>
   )
 }
-export interface CartSummaryProps {
+
+interface CartSummaryProps {
   readonly checkoutDisabled?: boolean
   readonly subtotal: string
 }

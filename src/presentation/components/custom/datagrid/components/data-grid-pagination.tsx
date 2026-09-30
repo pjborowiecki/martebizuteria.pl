@@ -2,7 +2,7 @@ import { type JSX, useCallback, useEffect, useMemo } from "react"
 
 import { type RowData, type Table } from "@tanstack/react-table"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
@@ -18,7 +18,6 @@ interface DataGridPaginationProps<TData extends RowData> {
   readonly table: Table<DataGridFeatures, TData>
 }
 
-/** Bottom bar: rows-per-page selector, current range, and page navigation. */
 export const DataGridPagination = <TData extends RowData>({ table }: DataGridPaginationProps<TData>): JSX.Element => {
   const t = useTranslations("components.datagrid")
   const { pageIndex, pageSize } = table.atoms.pagination.get()
@@ -50,12 +49,15 @@ export const DataGridPagination = <TData extends RowData>({ table }: DataGridPag
   const handleFirst = useCallback(() => {
     table.setPageIndex(0)
   }, [table])
+
   const handlePrevious = useCallback(() => {
     table.previousPage()
   }, [table])
+
   const handleNext = useCallback(() => {
     table.nextPage()
   }, [table])
+
   const handleLast = useCallback(() => {
     table.setPageIndex(pageCount - 1)
   }, [table, pageCount])

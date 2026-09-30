@@ -1,6 +1,7 @@
 import { type ComponentProps, type JSX } from "react"
 
 import { cn } from "cn"
+
 const Label = ({ className, ...props }: Readonly<ComponentProps<"label">>): JSX.Element => (
   <label
     data-slot="label"

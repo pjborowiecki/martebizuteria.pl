@@ -1,8 +1,9 @@
 import { type JSX, useMemo } from "react"
 
 import { createColumnHelper } from "@tanstack/react-table"
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import {
   CATEGORY_STATUS,
   CATEGORY_STATUS_LABEL_KEYS,
@@ -10,7 +11,7 @@ import {
   CATEGORY_TABLE_COLUMN_ID,
   CATEGORY_TABLE_COLUMN_SIZE,
 } from "~/src/modules/product-category/product-category.constants"
-import { type Category } from "~/src/modules/product-category/product-category.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 import {
   resolveCategoryDescription,
   resolveCategoryShortDescription,
@@ -24,10 +25,7 @@ import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/d
 import { Image } from "~/src/presentation/components/custom/image"
 import { CategoriesRowActions } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-row-actions"
 import { CategoryReorderCell } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/category-reorder-cell"
-import {
-  CATALOG_RECORD_ID_COLUMN_META,
-  catalogRecordIdColumnWidth,
-} from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
+import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
 import { CatalogStatusBadge } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-status-badge"
 import { CatalogTitleHandleCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
 import {
@@ -35,6 +33,7 @@ import {
   CATALOG_DATAGRID_MUTED_TEXT_CLASS,
   CatalogTruncatedTextCell,
 } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
+
 const CategoryImageCell = ({
   image,
   title,
@@ -87,6 +86,7 @@ const buildCategoryTimestampColumns = ({ format, t }: CategoryColumnBuildContext
 
 const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
   const { locale, t, tAdmin } = context
+
   return columnHelper.columns([
     selectionColumn(columnHelper, {
       all: tAdmin(CATEGORY_TABLE_A11Y_KEYS.selectAll),
@@ -129,12 +129,13 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       header: t("columns.id"),
       id: CATEGORY_TABLE_COLUMN_ID.recordId,
       meta: CATALOG_RECORD_ID_COLUMN_META,
-      ...catalogRecordIdColumnWidth(),
+      ...fixedDataGridColumnWidth(CATEGORY_TABLE_COLUMN_SIZE.recordId),
     }),
     columnHelper.accessor("status", {
       cell: ({ getValue }) => {
         const status = getValue()
         const isActive = status === CATEGORY_STATUS.ACTIVE
+
         return (
           <CatalogStatusBadge
             isActive={isActive}
@@ -165,8 +166,9 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       cell: ({ row }) => {
         const parentTitle = row.original.parentTitles === undefined ? "" : resolveCategoryTitle(row.original.parentTitles, locale)
         if (parentTitle === "") {
-          return <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>—</span>
+          return <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>{EMPTY_VALUE}</span>
         }
+
         return <span className={CATALOG_DATAGRID_MUTED_TEXT_CLASS}>{parentTitle}</span>
       },
       header: t("columns.parent"),
@@ -227,6 +229,7 @@ export const useCategoryColumns = () => {
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
   const locale = useLocale()
+
   return useMemo(
     () =>
       buildCategoryDataGridColumns({
@@ -238,8 +241,11 @@ export const useCategoryColumns = () => {
     [format, locale, t, tAdmin],
   )
 }
+
 const THUMBNAIL_SIZE = 36
-const columnHelper = createColumnHelper<DataGridFeatures, Category["adminListItem"]>()
+
+const columnHelper = createColumnHelper<DataGridFeatures, ProductCategory["adminListItem"]>()
+
 interface CategoryColumnBuildContext {
   readonly format: ReturnType<typeof useFormatter>
   readonly locale: string

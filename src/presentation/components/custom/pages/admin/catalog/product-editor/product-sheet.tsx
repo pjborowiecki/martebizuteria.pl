@@ -1,10 +1,10 @@
-import { type JSX, useCallback } from "react"
+import { type JSX, Suspense, useCallback } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type Product } from "~/src/modules/product/product.types"
-import { adminProductByHandleQueryOptions } from "~/src/modules/product/use-cases/get-admin-product"
+import { getAdminProductQuery } from "~/src/modules/product/use-cases/get-admin-product"
 
 import { Sheet, SheetDescription, SheetHeader, SheetTitle } from "~/src/presentation/components/shadcn/sheet"
 
@@ -18,6 +18,7 @@ import { ProductSheetFooter } from "~/src/presentation/components/custom/pages/a
 import { ProductSheetFormBody } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-sheet-form-body"
 import { ProductSheetLoading } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-sheet-loading"
 import { ProductFormSheetContent } from "~/src/presentation/components/custom/pages/admin/catalog/product-form-sheet-content"
+
 export const ProductSheet = ({ mode, onOpenChange, open, product }: Readonly<ProductSheetProps>): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")
   const title = mode === "create" ? t("form.titleAdd") : t("form.titleEdit")
@@ -25,9 +26,11 @@ export const ProductSheet = ({ mode, onOpenChange, open, product }: Readonly<Pro
   const handleDismiss = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   const handleSuccess = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   const sheetKey = mode === "create" ? "create" : (product?.id ?? "edit")
   if (mode === "create") {
     return (
@@ -45,6 +48,7 @@ export const ProductSheet = ({ mode, onOpenChange, open, product }: Readonly<Pro
       </Sheet>
     )
   }
+
   if (product === undefined) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -52,6 +56,7 @@ export const ProductSheet = ({ mode, onOpenChange, open, product }: Readonly<Pro
       </Sheet>
     )
   }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <ProductFormSheetContent>
@@ -68,6 +73,7 @@ export const ProductSheet = ({ mode, onOpenChange, open, product }: Readonly<Pro
     </Sheet>
   )
 }
+
 const ProductSheetShell = ({ children, description, title }: Readonly<ProductSheetShellProps>): JSX.Element => (
   <>
     <SheetHeader className="shrink-0 space-y-1 border-b border-border px-6 py-5 pr-14">
@@ -91,11 +97,9 @@ const ProductSheetCreate = ({ description, onDismiss, onSuccess, open, title }: 
   </CatalogFormLocaleControlsProvider>
 )
 
-const ProductSheetEdit = ({ description, handle, onDismiss, onSuccess, open, title }: Readonly<ProductSheetEditProps>): JSX.Element => {
-  const { data: productDetail } = useSuspenseQuery(adminProductByHandleQueryOptions(handle))
-  if (productDetail === undefined) {
-    return <ProductSheetLoading title={title} description={description} />
-  }
+const ProductSheetEditForm = ({ description, handle, onDismiss, onSuccess, open, title }: Readonly<ProductSheetEditProps>): JSX.Element => {
+  const { data: productDetail } = useSuspenseQuery(getAdminProductQuery(handle))
+
   return (
     <CatalogFormLocaleControlsProvider>
       <ProductFormProvider initialProduct={productDetail} mode="edit" open={open} onDismiss={onDismiss} onSuccess={onSuccess}>
@@ -108,17 +112,26 @@ const ProductSheetEdit = ({ description, handle, onDismiss, onSuccess, open, tit
     </CatalogFormLocaleControlsProvider>
   )
 }
+
+const ProductSheetEdit = (props: Readonly<ProductSheetEditProps>): JSX.Element => (
+  <Suspense fallback={<ProductSheetLoading description={props.description} title={props.title} />}>
+    <ProductSheetEditForm {...props} />
+  </Suspense>
+)
+
 interface ProductSheetProps {
   readonly mode: ProductFormMode
   readonly onOpenChange: (open: boolean) => void
   readonly open: boolean
   readonly product: Product["adminListItem"] | undefined
 }
+
 interface ProductSheetShellProps {
   readonly children: JSX.Element
   readonly description: string
   readonly title: string
 }
+
 interface ProductSheetCreateProps {
   readonly description: string
   readonly onDismiss: () => void
@@ -126,6 +139,7 @@ interface ProductSheetCreateProps {
   readonly open: boolean
   readonly title: string
 }
+
 interface ProductSheetEditProps {
   readonly description: string
   readonly handle: string

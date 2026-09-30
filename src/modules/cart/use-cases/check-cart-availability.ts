@@ -1,20 +1,22 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
-import { z } from "zod"
+import zod from "zod/v4"
+
+import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { getAvailabilityByVariantIds } from "~/src/modules/inventory/inventory.accessors"
 
-const cartAvailabilityLineSchema = z.object({
-  qty: z.number().int().min(1),
-  variantId: z.string().min(1),
+const cartAvailabilityLineSchema = zod.object({
+  qty: zod.number().int().min(1),
+  variantId: zod.string().min(1),
 })
 
-const cartAvailabilityInputSchema = z.object({
-  lines: z.array(cartAvailabilityLineSchema),
+const cartAvailabilityInputSchema = zod.object({
+  lines: zod.array(cartAvailabilityLineSchema),
 })
 
-export type CartAvailabilityLine = z.infer<typeof cartAvailabilityLineSchema>
+export type CartAvailabilityLine = zod.infer<typeof cartAvailabilityLineSchema>
 
 export interface CartAvailabilityIssue {
   readonly available: number
@@ -29,8 +31,9 @@ export interface CartAvailabilityResult {
 
 const CART_AVAILABILITY_STALE_MS = 0
 
-export const fetchCartAvailabilityFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => cartAvailabilityInputSchema.parse(data))
+export const checkCartAvailability = createServerFn({ method: "POST" })
+  .middleware([withRequest])
+  .validator((input: zod.input<typeof cartAvailabilityInputSchema>) => cartAvailabilityInputSchema.parse(input))
   .handler(async ({ data: { lines } }): Promise<CartAvailabilityResult> => {
     const availabilityByVariantId = await getAvailabilityByVariantIds(lines.map((line) => line.variantId))
 
@@ -49,10 +52,10 @@ export const fetchCartAvailabilityFn = createServerFn({ method: "POST" })
     }
   })
 
-export const cartAvailabilityQueryOptions = (lines: readonly CartAvailabilityLine[]) =>
+export const checkCartAvailabilityQuery = (lines: readonly CartAvailabilityLine[]) =>
   queryOptions({
     enabled: lines.length > 0,
-    queryFn: () => fetchCartAvailabilityFn({ data: { lines } }),
-    queryKey: [...CART_QUERY_KEYS.AVAILABILITY, lines] as const,
+    queryFn: () => checkCartAvailability({ data: { lines: [...lines] } }),
+    queryKey: [...CART_QUERY_KEYS.AVAILABILITY, lines],
     staleTime: CART_AVAILABILITY_STALE_MS,
   })

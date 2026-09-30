@@ -1,9 +1,9 @@
 import { type JSX, useCallback, useMemo, useRef } from "react"
 
 import { ArrowRight, Loader2, Search, X } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { type StorefrontSearchTrendingItem } from "~/src/modules/storefront-search/storefront-search.types"
+import { type StorefrontSearch } from "~/src/modules/storefront-search/storefront-search.types"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
@@ -16,21 +16,24 @@ import {
 } from "~/src/presentation/components/custom/pages/landing-page/navigation/hooks/use-search-overlay-logic"
 
 import { ROUTES } from "~/src/routes"
+
 const TrendingQuickLink = ({
   item,
   onNavigate,
 }: Readonly<{
-  item: StorefrontSearchTrendingItem
+  item: StorefrontSearch["trendingItem"]
   onNavigate: () => void
 }>): JSX.Element => {
   const params = useMemo(() => ({ handle: item.handle }), [item.handle])
   const route = item.type === "category" ? ROUTES.CATEGORY : ROUTES.COLLECTION
+
   return (
     <LocalizedLink className={trendingChipClassName} params={params} to={route} onClick={onNavigate}>
       {item.label}
     </LocalizedLink>
   )
 }
+
 const SearchResultItem = ({
   item,
   onNavigate,
@@ -43,6 +46,7 @@ const SearchResultItem = ({
     dismissMenuForRouteNavigation()
     onNavigate()
   }, [dismissMenuForRouteNavigation, onNavigate])
+
   return (
     <LocalizedLink className={rowClassName} to={item.to} params={item.params} onClick={handleNavigate}>
       {item.image !== undefined && (
@@ -71,25 +75,27 @@ const SearchResultItem = ({
     </LocalizedLink>
   )
 }
+
 const SearchResultGroup = ({
   type,
   items,
   onNavigate,
 }: Readonly<{
-  type: string
+  type: SearchResult["type"]
   items: SearchResult[]
   onNavigate: () => void
 }>): JSX.Element => {
   const t = useTranslations("components.custom.navigation")
-  const sectionLabels: Record<string, string> = {
+  const sectionLabels: Record<SearchResult["type"], string> = {
     category: t("searchOverlay.sectionCategories"),
     collection: t("searchOverlay.sectionCollections"),
     page: t("searchOverlay.sectionPages"),
     product: t("searchOverlay.sectionProducts"),
   }
+
   return (
     <section>
-      <p className="mb-4 text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{sectionLabels[type] ?? type}</p>
+      <p className="mb-4 text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{sectionLabels[type]}</p>
       <div className="grid gap-px">
         {items.slice(0, MAX_RESULTS_PER_GROUP).map((item) => (
           <SearchResultItem key={`${item.type}:${item.params?.handle ?? item.to}`} item={item} onNavigate={onNavigate} />
@@ -98,6 +104,7 @@ const SearchResultGroup = ({
     </section>
   )
 }
+
 const ViewAllLink = ({
   onClick,
   query,
@@ -107,6 +114,7 @@ const ViewAllLink = ({
 }>): JSX.Element => {
   const t = useTranslations("components.custom.navigation")
   const search = useMemo(() => ({ q: query }), [query])
+
   return (
     <div className="pt-2 text-center">
       <LocalizedLink
@@ -121,6 +129,7 @@ const ViewAllLink = ({
     </div>
   )
 }
+
 export const SearchOverlay = (): JSX.Element => {
   const t = useTranslations("components.custom.navigation")
   const overlayRef = useRef<HTMLDialogElement>(null)
@@ -140,10 +149,12 @@ export const SearchOverlay = (): JSX.Element => {
     showTrending,
     trendingItems,
   } = useSearchOverlayLogic(overlayRef, inputRef)
+
   const resultGroups = RESULT_GROUP_ORDER.map((type) => ({
     items: grouped[type] ?? [],
     type,
   })).filter((group) => group.items.length > 0)
+
   return (
     <dialog
       ref={overlayRef}
@@ -242,10 +253,15 @@ export const SearchOverlay = (): JSX.Element => {
     </dialog>
   )
 }
+
 const rowClassName =
   "group flex items-center gap-4 border-b border-border/40 py-3.5 transition-colors last:border-b-0 hover:bg-secondary/30 lg:gap-5 lg:py-4"
+
 const trendingChipClassName =
   "rounded-full border border-border/80 px-5 py-2.5 text-[11px] tracking-[0.12em] text-muted-foreground transition-all hover:border-foreground hover:text-foreground"
+
 const MAX_RESULTS_PER_GROUP = 6
+
 const RESULT_GROUP_ORDER = ["product", "category", "collection", "page"] as const
+
 const OVERLAY_STYLE = { clipPath: "inset(0 0 100% 0)" }

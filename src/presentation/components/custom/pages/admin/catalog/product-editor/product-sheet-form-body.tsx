@@ -14,6 +14,7 @@ import { ProductEditorTags } from "~/src/presentation/components/custom/pages/ad
 import { ProductEditorVariantMode } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-editor-variant-mode"
 import { ProductEditorVariantsSection } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-editor-variants-section"
 import { ProductFormLocaleLayout } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-form-locale-layout"
+
 const ProductSheetFormSections = ({
   hasVariants,
 }: Readonly<{
@@ -54,6 +55,7 @@ export const ProductSheetFormBody = (): JSX.Element => {
     control,
     name: "hasVariants",
   })
+
   return (
     <div className="px-6 py-6">
       <ProductFormLocaleLayout>
@@ -62,5 +64,7 @@ export const ProductSheetFormBody = (): JSX.Element => {
     </div>
   )
 }
+
 const organizationFallback = <div className="h-36 rounded-lg bg-muted/30" />
+
 const attributesFallback = <div className="h-32 rounded-lg bg-muted/30" />

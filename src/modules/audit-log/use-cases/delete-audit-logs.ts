@@ -1,21 +1,19 @@
+import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
-import { z } from "zod/v4"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
 
-import { deleteAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
-import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
+import { deleteAuditLogs as auditLogDeleteAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
+import { AUDIT_LOG_MUTATION_KEYS, AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
+import { auditLogZodSchemas } from "~/src/modules/audit-log/audit-log.zod"
 
-import { publishRealtimeInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.publish.server"
-
-const deleteAuditLogsInput = z.array(z.string().min(1))
-
-export const deleteAuditLogsFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => deleteAuditLogsInput.parse(data))
+export const deleteAuditLogs = createServerFn({ method: "POST" })
+  .middleware([authorized({ settings: ["manage"] })])
+  .validator((input: zod.input<typeof auditLogZodSchemas.deleteAuditLogsInput>) => auditLogZodSchemas.deleteAuditLogsInput.parse(input))
   .handler(async ({ data: ids }) => {
-    await assertAdmin()
-
-    const deleted = await deleteAuditLogs(ids)
+    const deleted = await auditLogDeleteAuditLogs(ids)
 
     await publishRealtimeInvalidation({
       admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS],
@@ -23,3 +21,8 @@ export const deleteAuditLogsFn = createServerFn({ method: "POST" })
 
     return { deleted, ok: true as const }
   })
+
+export const deleteAuditLogsMutation = mutationOptions({
+  mutationFn: (data: Parameters<typeof deleteAuditLogs>[0]["data"]) => deleteAuditLogs({ data }),
+  mutationKey: AUDIT_LOG_MUTATION_KEYS.DELETE,
+})

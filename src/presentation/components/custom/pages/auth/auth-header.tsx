@@ -5,6 +5,7 @@ import { APP_NAME } from "~/src/presentation/branding/app"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 export const AuthHeader = ({
   title,
   subtitle,

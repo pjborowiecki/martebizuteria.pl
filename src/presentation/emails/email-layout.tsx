@@ -2,9 +2,10 @@ import { type JSX, type ReactNode } from "react"
 
 import { Body, Container, Head, Hr, Html, Preview, Section, Tailwind, Text } from "react-email"
 
-import { type Locale } from "~/src/integrations/use-intl/i18n.types"
+import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { EMAIL_BODY_STYLE, EMAIL_CONTAINER_STYLE } from "~/src/presentation/emails/email-styles"
+
 export const EmailLayout = ({ children, locale, preview, tagline }: Readonly<EmailLayoutProps>): JSX.Element => (
   <Html lang={locale}>
     <Head>
@@ -37,7 +38,9 @@ export const EmailLayout = ({ children, locale, preview, tagline }: Readonly<Ema
 )
 
 const SERIF_STACK = ["Georgia", "Cambria", "Times New Roman", "Times", "serif"]
+
 const SANS_STACK = ["Helvetica Neue", "Helvetica", "Arial", "sans-serif"]
+
 export const EMAIL_TAILWIND_CONFIG = {
   theme: {
     extend: {
@@ -57,9 +60,10 @@ export const EMAIL_TAILWIND_CONFIG = {
     },
   },
 }
+
 interface EmailLayoutProps {
   readonly children: ReactNode
-  readonly locale: Locale
+  readonly locale: SupportedLocale
   readonly preview: string
   readonly tagline: string
 }

@@ -1,6 +1,6 @@
 import { type JSX, Suspense } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import {
@@ -9,8 +9,10 @@ import {
 } from "~/src/presentation/components/custom/pages/landing-page/sections/new-arrivals-product-grid"
 
 import { ROUTES } from "~/src/routes"
+
 export const NewArrivalsSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.newArrivalsSection")
+
   return (
     <section id="nowosci" className="mx-auto max-w-400 space-y-10 px-6 pt-20 pb-20 lg:px-12 lg:pt-28 lg:pb-28">
       <div className="reveal flex flex-wrap items-end justify-between gap-4">
@@ -33,4 +35,5 @@ export const NewArrivalsSection = (): JSX.Element => {
     </section>
   )
 }
+
 const NEW_ARRIVALS_GRID_SUSPENSE_FALLBACK = <NewArrivalsProductGridSkeleton />

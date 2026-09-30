@@ -1,6 +1,7 @@
 import { type ComponentProps, type JSX } from "react"
 
 import { cn } from "cn"
+
 const Kbd = ({ className, ...props }: Readonly<ComponentProps<"kbd">>): JSX.Element => (
   <kbd
     data-slot="kbd"

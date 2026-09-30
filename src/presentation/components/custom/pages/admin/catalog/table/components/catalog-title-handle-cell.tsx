@@ -2,7 +2,6 @@ import { type JSX } from "react"
 
 const catalogSlugPath = (handle: string): string => (handle.startsWith("/") ? handle : `/${handle}`)
 
-/** Fixed height prevents row shifts when the column is toggled. */
 export const CatalogTitleHandleCell = ({
   handle,
   title,

@@ -6,6 +6,7 @@ import { type Product } from "~/src/modules/product/product.types"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { ProductReorderCell } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/product-reorder-cell"
+
 export const createProductReorderColumn = (helper: ReturnType<typeof createColumnHelper<DataGridFeatures, Product["adminListItem"]>>) =>
   helper.display({
     cell: ({ row }) => <ProductReorderCell id={row.original.id} />,

@@ -1,13 +1,15 @@
 import { type JSX, type MouseEvent, useCallback } from "react"
 
-import { useSuspenseQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { cn } from "cn"
 import { ArrowRight, MapPin } from "lucide-react"
 import { useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
+
+import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
 
 import { type Address } from "~/src/modules/address/address.types"
-import { userAddressesQueryOptions } from "~/src/modules/address/use-cases/list-user-addresses"
+import { listUserAddressesQuery } from "~/src/modules/address/use-cases/list-user-addresses"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { FieldGroup } from "~/src/presentation/components/shadcn/field"
@@ -16,7 +18,10 @@ import { CheckoutCheckboxField, CheckoutTextField } from "~/src/presentation/com
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
 import { CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
 
+const NO_SAVED_ADDRESSES: readonly Address["select"][] = []
+
 type AddressPrefix = "billing" | "shipping"
+
 type SelectAddress = (addr: Address["select"], prefix: AddressPrefix) => void
 
 export const AddressStep = (): JSX.Element => {
@@ -26,7 +31,8 @@ export const AddressStep = (): JSX.Element => {
 
   const sameAsShipping = useWatch({ control, name: "sameAsShipping" })
 
-  const { data: addresses } = useSuspenseQuery(userAddressesQueryOptions())
+  const { data: session } = useQuery(getCurrentSessionQuery)
+  const { data: addresses } = useQuery({ ...listUserAddressesQuery(), enabled: session !== null && session !== undefined })
 
   const handleContinue = useCallback(
     (event: MouseEvent) => {
@@ -52,7 +58,12 @@ export const AddressStep = (): JSX.Element => {
 
   return (
     <div className="flex flex-col gap-6">
-      <SavedAddresses addresses={addresses} heading={t("shippingAddress")} onSelect={populateAddress} prefix="shipping" />
+      <SavedAddresses
+        addresses={addresses ?? NO_SAVED_ADDRESSES}
+        heading={t("shippingAddress")}
+        onSelect={populateAddress}
+        prefix="shipping"
+      />
 
       <FieldGroup className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
         <CheckoutTextField control={control} name="firstName" label={t("firstName")} autoComplete="shipping given-name" required />
@@ -89,7 +100,12 @@ export const AddressStep = (): JSX.Element => {
 
       {sameAsShipping === false && (
         <div className="flex flex-col gap-6 border-t border-border/50 pt-4">
-          <SavedAddresses addresses={addresses} heading={t("billingAddress")} onSelect={populateAddress} prefix="billing" />
+          <SavedAddresses
+            addresses={addresses ?? NO_SAVED_ADDRESSES}
+            heading={t("billingAddress")}
+            onSelect={populateAddress}
+            prefix="billing"
+          />
           <FieldGroup className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
             <CheckoutTextField
               control={control}

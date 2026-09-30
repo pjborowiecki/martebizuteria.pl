@@ -1,7 +1,7 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { type ColumnFiltersState, type PaginationState, type SortingState, type Table } from "@tanstack/react-table"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   type AdminProductsListColumnFilters,
@@ -9,7 +9,6 @@ import {
   parseAdminProductsListColumnFilters,
 } from "~/src/modules/product/product.admin-list-filters"
 import { type AdminProductsListSort, parseAdminProductsListSort } from "~/src/modules/product/product.admin-list-sort"
-import { type AdminProductsExportInput } from "~/src/modules/product/product.admin-list.types"
 import {
   ADMIN_PRODUCTS_PAGE_SIZE,
   PRODUCT_TABLE_COLUMN_ID,
@@ -31,6 +30,7 @@ import { useProductsListData } from "~/src/presentation/components/custom/pages/
 import { useProductsRowReorder } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-row-reorder"
 import { useProductsServerListSync } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-server-list-sync"
 import { productsDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/products/utils/products-data-grid"
+
 const setProductsListFilterValue = <Key extends keyof ProductsListFilters>(
   next: MutableProductsListFilters,
   key: Key,
@@ -42,20 +42,25 @@ const setProductsListFilterValue = <Key extends keyof ProductsListFilters>(
     next[key] = value
   }
 }
+
 const applyProductsListFilterPatch = (previous: ProductsListFilters, patch: ProductsListFilterPatch | undefined): ProductsListFilters => {
   if (patch === undefined) {
     return {}
   }
+
   const next: MutableProductsListFilters = {
     ...previous,
   }
+
   for (const key of PRODUCTS_LIST_FILTER_PATCH_KEYS) {
     if (key in patch) {
       setProductsListFilterValue(next, key, patch[key])
     }
   }
+
   return next
 }
+
 export const hasProductsListFilters = (filters: ProductsListFilters): boolean =>
   filters.categoryId !== undefined ||
   filters.collectionId !== undefined ||
@@ -79,7 +84,7 @@ const buildProductsExportListInput = ({
   readonly filters: ProductsListFilters
   readonly listSort: AdminProductsListSort | undefined
   readonly serverSearch: string
-}): AdminProductsExportInput => ({
+}): Product["adminProductsExportInput"] => ({
   categoryId: filters.categoryId,
   collectionId: filters.collectionId,
   createdAt: columnFilters.createdAt,
@@ -91,6 +96,7 @@ const buildProductsExportListInput = ({
   totalStock: columnFilters.totalStock,
   variantKind: filters.variantKind,
 })
+
 const syncProductsToolbarColumnFilters = (
   statusColumn: ReturnType<Table<DataGridFeatures, Product["adminListItem"]>["getColumn"]>,
   variantKindColumn: ReturnType<Table<DataGridFeatures, Product["adminListItem"]>["getColumn"]>,
@@ -99,10 +105,12 @@ const syncProductsToolbarColumnFilters = (
   if (patch === undefined || "status" in patch) {
     statusColumn?.setFilterValue(patch?.status)
   }
+
   if (patch === undefined || "variantKind" in patch) {
     variantKindColumn?.setFilterValue(patch?.variantKind)
   }
 }
+
 const useProductsApplyFilter = (
   table: Table<DataGridFeatures, Product["adminListItem"]>,
   setFilters: Dispatch<SetStateAction<ProductsListFilters>>,
@@ -110,6 +118,7 @@ const useProductsApplyFilter = (
 ) => {
   const statusColumn = table.getColumn(PRODUCT_TABLE_COLUMN_ID.status)
   const variantKindColumn = table.getColumn(PRODUCT_TABLE_COLUMN_ID.variantKind)
+
   return useCallback(
     (patch?: ProductsListFilterPatch) => {
       setFilters((previous) => applyProductsListFilterPatch(previous, patch))
@@ -122,6 +131,7 @@ const useProductsApplyFilter = (
     [setFilters, setPagination, statusColumn, variantKindColumn],
   )
 }
+
 const useUnfilteredProductsPageSize = (
   table: Table<DataGridFeatures, Product["adminListItem"]>,
   hasServerListQuery: boolean,
@@ -135,17 +145,20 @@ const useUnfilteredProductsPageSize = (
     if (pageSize !== nextPageSize) {
       tableRef.current.setPageSize(nextPageSize)
     }
+
     if (!hasServerListQuery && pageIndex !== 0) {
       tableRef.current.setPageIndex(0)
     }
   }, [hasServerListQuery, rowCount])
 }
+
 export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProductsDataGridOptions): ProductsDataGridValue => {
   const t = useTranslations("pages.admin.catalog.products.catalogList")
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: ADMIN_PRODUCTS_PAGE_SIZE,
   })
+
   const [filters, setFilters] = useState<ProductsListFilters>({})
   const [serverSearch, setServerSearch] = useState("")
   const [serverSorting, setServerSorting] = useState<SortingState>([])
@@ -157,6 +170,7 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProduc
     }),
     [columnFilters, serverSorting],
   )
+
   const hasServerListQuery = hasProductsServerListQuery(filters, serverSearch, serverListState.listColumnFilters)
   const { ordering, pageCount, rowCount, showSkeletonRows, tableData } = useProductsListData({
     columnFilters: serverListState.listColumnFilters,
@@ -166,6 +180,7 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProduc
     search: serverSearch === "" ? undefined : serverSearch,
     sort: serverListState.listSort,
   })
+
   const columns = useProductColumns()
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns])
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
@@ -188,6 +203,7 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProduc
     rowCount: hasServerListQuery ? rowCount : undefined,
     sorting: hasServerListQuery ? serverSorting : undefined,
   })
+
   const { debouncedSearch } = useAdminDebouncedTableSearch(table)
   useProductsServerListSync({
     columnFilters,
@@ -198,6 +214,7 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProduc
     setServerSearch,
     setServerSorting,
   })
+
   const sorting = table.atoms.sorting.get()
   const rowReorder = useProductsRowReorder({
     columnFilters,
@@ -207,6 +224,7 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProduc
   })
   useUnfilteredProductsPageSize(table, hasServerListQuery, tableData.length)
   const applyProductsFilter = useProductsApplyFilter(table, setFilters, setPagination)
+
   return useMemo(
     () => ({
       activeCategoryFilter: filters.categoryId,
@@ -251,6 +269,7 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProduc
     ],
   )
 }
+
 const isProductsDataGridValue = (value: DataGridContextValue<Product["adminListItem"]>): value is ProductsDataGridValue =>
   "applyProductsFilter" in value && typeof value.applyProductsFilter === "function"
 
@@ -259,8 +278,10 @@ export const useProductsDataGridContext = (): ProductsDataGridValue => {
   if (!isProductsDataGridValue(value)) {
     throw new Error("useProductsDataGridContext must be used within the products table Provider.")
   }
+
   return value
 }
+
 export interface ProductsListFilters {
   readonly categoryId?: string
   readonly collectionId?: string
@@ -268,9 +289,13 @@ export interface ProductsListFilters {
   readonly status?: ProductStatus
   readonly variantKind?: ProductVariantKind
 }
+
 export type ProductsListFilterPatch = { readonly [Key in keyof ProductsListFilters]?: ProductsListFilters[Key] | undefined }
+
 type MutableProductsListFilters = { -readonly [Key in keyof ProductsListFilters]: ProductsListFilters[Key] }
+
 const PRODUCTS_LIST_FILTER_PATCH_KEYS = ["categoryId", "collectionId", "inventoryLevel", "status", "variantKind"] as const
+
 export interface ProductsDataGridValue extends DataGridContextValue<Product["adminListItem"]> {
   readonly activeCategoryFilter: string | undefined
   readonly activeCollectionFilter: string | undefined
@@ -278,9 +303,10 @@ export interface ProductsDataGridValue extends DataGridContextValue<Product["adm
   readonly activeStatusFilter: ProductStatus | undefined
   readonly activeVariantKindFilter: ProductVariantKind | undefined
   readonly applyProductsFilter: (patch?: ProductsListFilterPatch) => void
-  readonly exportListInput: AdminProductsExportInput
+  readonly exportListInput: Product["adminProductsExportInput"]
   readonly hasServerListQuery: boolean
 }
+
 interface UseProductsDataGridOptions {
   readonly onRowClick?: (product: Product["adminListItem"]) => void
   readonly onRowPointerEnter?: (product: Product["adminListItem"]) => void

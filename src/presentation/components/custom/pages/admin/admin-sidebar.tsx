@@ -1,6 +1,7 @@
 import { type JSX, type MouseEvent, useCallback, useMemo } from "react"
 
 import { useLocation, useRouter } from "@tanstack/react-router"
+import { createClientOnlyFn } from "@tanstack/react-start"
 import { cn } from "cn"
 import {
   BookOpen,
@@ -20,9 +21,9 @@ import {
   Tag,
   Users,
 } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { signOut } from "~/src/integrations/better-auth/auth-client"
+import { signOut } from "~/src/integrations/better-auth/auth.client"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/src/presentation/components/shadcn/collapsible"
 import {
@@ -45,15 +46,21 @@ import {
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
+const signOutRequest = createClientOnlyFn((input: Parameters<typeof signOut>[0]) => signOut(input))
+
 const matchRoute = (pathname: string, href: string): boolean => {
   if (href === ROUTES.ADMIN_OVERVIEW) {
     return pathname.endsWith(ROUTES.ADMIN_OVERVIEW)
   }
+
   if (href === ROUTES.ADMIN_CATALOG) {
     return pathname.endsWith(ROUTES.ADMIN_CATALOG) || pathname.includes(`${ROUTES.ADMIN_CATALOG}/new`)
   }
+
   return pathname.includes(href)
 }
+
 export const AdminSidebar = (): JSX.Element => {
   const router = useRouter()
   const { pathname } = useLocation()
@@ -63,12 +70,13 @@ export const AdminSidebar = (): JSX.Element => {
       if (!isCatalogRoute) {
         event.preventDefault()
         void router.navigate({
-          to: `/{-$locale}${ROUTES.ADMIN_PRODUCTS}`,
+          to: ROUTES.ADMIN_PRODUCTS,
         })
       }
     },
     [isCatalogRoute, router],
   )
+
   return (
     <Sidebar collapsible="icon" className="border-sidebar-border">
       <AdminSidebarHeader />
@@ -84,6 +92,7 @@ export const AdminSidebar = (): JSX.Element => {
     </Sidebar>
   )
 }
+
 const AdminSidebarHeader = (): JSX.Element => (
   <SidebarHeader className="flex h-16 justify-center border-b border-sidebar-border p-2">
     <SidebarMenu>
@@ -91,9 +100,11 @@ const AdminSidebarHeader = (): JSX.Element => (
     </SidebarMenu>
   </SidebarHeader>
 )
+
 const AdminSidebarHeaderBrand = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const homeLink = useMemo(() => <LocalizedLink to={ROUTES.HOME} />, [])
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton size="lg" render={homeLink} className="hover:bg-transparent active:bg-transparent">
@@ -107,6 +118,7 @@ const AdminSidebarHeaderBrand = (): JSX.Element => {
     </SidebarMenuItem>
   )
 }
+
 const AdminSidebarContent = ({
   pathname,
   isCatalogRoute,
@@ -117,6 +129,7 @@ const AdminSidebarContent = ({
   readonly handleCatalogClick: (event: MouseEvent<HTMLButtonElement>) => void
 }): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <SidebarContent>
       <SidebarGroup>
@@ -145,6 +158,7 @@ const AdminSidebarContent = ({
     </SidebarContent>
   )
 }
+
 const AdminSidebarMainGroup = ({
   pathname,
   isCatalogRoute,
@@ -168,6 +182,7 @@ const AdminSidebarMainGroup = ({
     ),
     [isCatalogRoute, t, handleCatalogClick],
   )
+
   return (
     <>
       <SidebarMenuItem>
@@ -204,23 +219,26 @@ const AdminSidebarMainGroup = ({
     </>
   )
 }
+
 const AdminSidebarFooter = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const router = useRouter()
   const handleSignOut = useCallback(async () => {
-    await signOut({
+    await signOutRequest({
       fetchOptions: {
         onSuccess: () => {
           globalThis.location.href = router.buildLocation({
-            to: `/{-$locale}${ROUTES.AUTH_SIGN_IN}`,
+            to: ROUTES.AUTH_SIGN_IN,
           }).publicHref
         },
       },
     })
   }, [router])
+
   const onSignOutClick = useCallback(() => {
     void handleSignOut()
   }, [handleSignOut])
+
   return (
     <SidebarFooter className="pb-4">
       <SidebarMenu>
@@ -234,10 +252,12 @@ const AdminSidebarFooter = (): JSX.Element => {
     </SidebarFooter>
   )
 }
+
 const AdminSidebarCatalogSubItem = ({ sub, pathname }: { readonly sub: NavItem; readonly pathname: string }): JSX.Element => {
   const t = useTranslations("pages.admin")
   const subActive = matchRoute(pathname, sub.href)
   const link = useMemo(() => <LocalizedLink to={sub.href} />, [sub.href])
+
   return (
     <SidebarMenuSubItem>
       <SidebarMenuSubButton isActive={subActive} render={link}>
@@ -247,6 +267,7 @@ const AdminSidebarCatalogSubItem = ({ sub, pathname }: { readonly sub: NavItem; 
     </SidebarMenuSubItem>
   )
 }
+
 const AdminSidebarCatalogSubMenu = ({ pathname }: { readonly pathname: string }): JSX.Element => (
   <SidebarMenuSub>
     {CATALOG_SUB.map((sub) => (
@@ -254,6 +275,7 @@ const AdminSidebarCatalogSubMenu = ({ pathname }: { readonly pathname: string })
     ))}
   </SidebarMenuSub>
 )
+
 const AdminSidebarNavItem = ({ item, pathname }: { readonly item: NavItem; readonly pathname: string }): JSX.Element => {
   const t = useTranslations("pages.admin")
   const isDisabled = item.disabled === true
@@ -269,6 +291,7 @@ const AdminSidebarNavItem = ({ item, pathname }: { readonly item: NavItem; reado
       </SidebarMenuItem>
     )
   }
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -284,6 +307,7 @@ const AdminSidebarNavItem = ({ item, pathname }: { readonly item: NavItem; reado
     </SidebarMenuItem>
   )
 }
+
 const AdminSidebarNavItems = ({ items, pathname }: { readonly items: readonly NavItem[]; readonly pathname: string }): JSX.Element => (
   <>
     {items.map((item) => (
@@ -291,12 +315,14 @@ const AdminSidebarNavItems = ({ items, pathname }: { readonly items: readonly Na
     ))}
   </>
 )
+
 interface NavItem {
   readonly href: LocalizedTo
   readonly icon: typeof LayoutDashboard
   readonly labelKey: string
   readonly disabled?: boolean
 }
+
 const SIMPLE_NAV: readonly NavItem[] = [
   {
     href: ROUTES.ADMIN_OVERVIEW,
@@ -314,7 +340,9 @@ const SIMPLE_NAV: readonly NavItem[] = [
     labelKey: "nav.customers",
   },
 ]
+
 const SIMPLE_NAV_ITEMS = SIMPLE_NAV.filter((item) => item.href !== ROUTES.ADMIN_OVERVIEW)
+
 const CATALOG_SUB: readonly NavItem[] = [
   {
     href: ROUTES.ADMIN_PRODUCTS,
@@ -337,6 +365,7 @@ const CATALOG_SUB: readonly NavItem[] = [
     labelKey: "nav.attributes",
   },
 ]
+
 const TOOLS_NAV: readonly NavItem[] = [
   {
     disabled: true,
@@ -357,6 +386,7 @@ const TOOLS_NAV: readonly NavItem[] = [
     labelKey: "nav.content",
   },
 ]
+
 const SYSTEM_NAV: readonly NavItem[] = [
   {
     href: ROUTES.ADMIN_AUDIT,

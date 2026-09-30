@@ -1,17 +1,20 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
+import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { type AdminCustomersListParams, getAdminCustomersPage as userGetAdminCustomersPage } from "~/src/modules/user/user.accessors"
-import { type AdminCustomersPageInput } from "~/src/modules/user/user.admin-list.types"
 import { ADMIN_CUSTOMER_PAGE_SIZE, ADMIN_CUSTOMER_QUERY_STALE_MS, USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
 import { mapCustomerOrderStats, toAdminCustomerListItem } from "~/src/modules/user/user.utils"
+import { userZodSchemas } from "~/src/modules/user/user.zod"
 
-import { normalizeAdminSearchTerm } from "~/src/lib/admin-search.server"
-import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/lib/list-pagination"
-const buildAdminCustomersListParams = (input: AdminCustomersPageInput): AdminCustomersListParams => {
+const buildAdminCustomersListParams = (input: zod.output<typeof userZodSchemas.adminCustomersPageInput>): AdminCustomersListParams => {
   const pageSize = input.pageSize ?? ADMIN_CUSTOMER_PAGE_SIZE
+
   return {
     ...listPaginationParamsFromPage(input.page ?? LIST_PAGE_FIRST, pageSize),
     filters: {
@@ -27,12 +30,13 @@ const buildAdminCustomersListParams = (input: AdminCustomersPageInput): AdminCus
     statFilter: input.statFilter,
   }
 }
-export const fetchAdminCustomersPageFn = createServerFn({
+
+export const getAdminCustomersPage = createServerFn({
   method: "GET",
 })
-  .validator((input: AdminCustomersPageInput) => input)
+  .middleware([authorized({ user: ["list"] })])
+  .validator((input: zod.input<typeof userZodSchemas.adminCustomersPageInput>) => userZodSchemas.adminCustomersPageInput.parse(input))
   .handler(async ({ data: input }) => {
-    await assertAdmin()
     const params = buildAdminCustomersListParams(input)
     const { addresses, orderStats, rows, total } = await userGetAdminCustomersPage(params)
     const statsByUserId = mapCustomerOrderStats(orderStats)
@@ -48,16 +52,19 @@ export const fetchAdminCustomersPageFn = createServerFn({
           },
         ]),
     )
+
     const items = rows.map((row) => toAdminCustomerListItem(row, statsByUserId.get(row.id), addressByUserId.get(row.id)))
+
     return buildListPaginationResult(items, total, params)
   })
-export const adminCustomersPageQueryOptions = (input: AdminCustomersPageInput) =>
+
+export const getAdminCustomersPageQuery = (input: User["adminCustomersPageInput"]) =>
   queryOptions({
     queryFn: () =>
-      fetchAdminCustomersPageFn({
+      getAdminCustomersPage({
         data: input,
       }),
-    queryKey: [...USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE, input] as const,
+    queryKey: [...USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE, input],
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: ADMIN_CUSTOMER_QUERY_STALE_MS,

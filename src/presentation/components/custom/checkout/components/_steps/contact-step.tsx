@@ -1,9 +1,10 @@
 import { type JSX, type MouseEvent, useCallback, useEffect } from "react"
 
+import { useQuery } from "@tanstack/react-query"
 import { ArrowRight } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { useSession } from "~/src/integrations/better-auth/auth-client"
+import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { FieldGroup } from "~/src/presentation/components/shadcn/field"
@@ -16,7 +17,7 @@ export const ContactStep = (): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
 
   const { control, getValues, isPending, onNext, setValue } = useCheckoutForm()
-  const { data: session } = useSession()
+  const { data: session } = useQuery(getCurrentSessionQuery)
 
   useEffect(() => {
     const sessionEmail = session?.user.email

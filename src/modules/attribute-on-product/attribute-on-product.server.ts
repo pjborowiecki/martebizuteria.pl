@@ -29,6 +29,7 @@ export const countForAttributeIds = async (ids: readonly string[]): Promise<numb
   if (ids.length === 0) {
     return 0
   }
+
   const [row] = await db
     .select({
       value: count(),

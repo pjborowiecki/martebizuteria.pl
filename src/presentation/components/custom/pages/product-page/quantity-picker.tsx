@@ -1,23 +1,27 @@
 import { type JSX, useCallback } from "react"
 
 import { Minus, Plus } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
+
 export const QuantityPicker = ({ maxQuantity, quantity, setQuantity }: QuantityPickerProps): JSX.Element => {
   const t = useTranslations("pages.product.heroSection")
   const handleDecrease = useCallback(() => {
     setQuantity((currentQuantity) => Math.max(MIN_QUANTITY, currentQuantity - MIN_QUANTITY))
   }, [setQuantity])
+
   const handleIncrease = useCallback(() => {
     setQuantity((currentQuantity) => {
       const next = currentQuantity + MIN_QUANTITY
       if (maxQuantity === undefined) {
         return next
       }
+
       return Math.min(next, maxQuantity)
     })
   }, [maxQuantity, setQuantity])
+
   return (
     <div className="flex items-center gap-4">
       <span className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("quantity")}</span>
@@ -46,8 +50,10 @@ export const QuantityPicker = ({ maxQuantity, quantity, setQuantity }: QuantityP
     </div>
   )
 }
+
 const MIN_QUANTITY = 1
-export interface QuantityPickerProps {
+
+interface QuantityPickerProps {
   readonly maxQuantity?: number
   readonly quantity: number
   readonly setQuantity: (quantity: number | ((prev: number) => number)) => void

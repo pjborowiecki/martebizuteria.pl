@@ -15,10 +15,12 @@ export const formPathToZodPath = (formPath: ProductSkuFormFieldPath): (string | 
   if (formPath === "simpleVariant.sku") {
     return ["simpleVariant", "sku"]
   }
+
   const variantIndex = VARIANT_SKU_PATH_REGEX.exec(formPath)?.groups?.["variantIndex"]
   if (variantIndex !== undefined) {
     return ["variants", Number(variantIndex), "sku"]
   }
+
   return []
 }
 
@@ -28,6 +30,7 @@ export const collectProductFormSkuEntries = (values: ProductFormValues): Product
     if (sku === EMPTY_SKU) {
       return []
     }
+
     return [
       {
         formPath: "simpleVariant.sku",
@@ -35,11 +38,13 @@ export const collectProductFormSkuEntries = (values: ProductFormValues): Product
       },
     ]
   }
+
   return values.variants.flatMap((variant, index): ProductFormSkuEntry[] => {
     const sku = variant.sku.trim()
     if (sku === EMPTY_SKU) {
       return []
     }
+
     return [
       {
         formPath: `variants.${index}.sku`,
@@ -52,7 +57,9 @@ export const collectProductFormSkuEntries = (values: ProductFormValues): Product
 export const collectSkusFromCatalogInput = (input: CatalogUpsertInput): string[] => {
   if (!input.hasVariants) {
     const sku = input.simpleVariant?.sku.trim() ?? EMPTY_SKU
+
     return sku === EMPTY_SKU ? [] : [sku]
   }
+
   return input.variants.map((variant) => variant.sku.trim()).filter((sku) => sku !== EMPTY_SKU)
 }

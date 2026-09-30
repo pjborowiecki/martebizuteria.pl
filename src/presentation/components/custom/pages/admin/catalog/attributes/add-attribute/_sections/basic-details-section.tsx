@@ -2,9 +2,9 @@ import { type ChangeEvent, type JSX, useCallback, useMemo, useState } from "reac
 
 import { Info } from "lucide-react"
 import { useController } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { type ProductAttributeLocaleCode } from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 
 import { Field } from "~/src/presentation/components/shadcn/field"
 import { Input } from "~/src/presentation/components/shadcn/input"
@@ -33,9 +33,9 @@ export const BasicDetailsSection = ({ recordId }: Readonly<BasicDetailsSectionPr
 
   const titleCopy = useMemo(
     () => ({
-      hint: (locale: ProductAttributeLocaleCode) => t(`form.hints.titleLocale.${locale}`),
-      label: (locale: ProductAttributeLocaleCode) => t(`form.titleLocale.${locale}`),
-      placeholder: (locale: ProductAttributeLocaleCode) => t(`form.titleLocalePlaceholder.${locale}`),
+      hint: (locale: ProductAttribute["localeCode"]) => t(`form.hints.titleLocale.${locale}`),
+      label: (locale: ProductAttribute["localeCode"]) => t(`form.titleLocale.${locale}`),
+      placeholder: (locale: ProductAttribute["localeCode"]) => t(`form.titleLocalePlaceholder.${locale}`),
     }),
     [t],
   )

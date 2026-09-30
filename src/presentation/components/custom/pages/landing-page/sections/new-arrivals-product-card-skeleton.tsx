@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { cn } from "cn"
 
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
+
 export const NewArrivalsProductCardSkeleton = ({
   className,
 }: Readonly<{

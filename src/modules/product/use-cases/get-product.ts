@@ -1,23 +1,22 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { isProductInStock } from "~/src/modules/inventory/inventory.availability.utils"
 import { getPublishedProductByHandleQuery } from "~/src/modules/product/product.accessors"
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
 import { mapPublishedProductForStorefront } from "~/src/modules/product/product.utils"
+import { productZodSchemas } from "~/src/modules/product/product.zod"
 
-interface ProductByHandleInput {
-  readonly handle: string
-  readonly locale?: string | undefined
-}
-
-export const fetchProductByHandleFn = createServerFn({ method: "GET" })
-  .validator((input: ProductByHandleInput) => input)
+export const getProduct = createServerFn({ method: "GET" })
+  .middleware([withRequest])
+  .validator((input: zod.input<typeof productZodSchemas.productByHandleInput>) => productZodSchemas.productByHandleInput.parse(input))
   .handler(async ({ data }) => {
     const { handle } = data
-    const locale = data.locale ?? DEFAULT_LOCALE
+    const locale = data.locale ?? I18N.DEFAULT_LOCALE
 
     const prod = await getPublishedProductByHandleQuery.execute({ handle })
 
@@ -28,8 +27,8 @@ export const fetchProductByHandleFn = createServerFn({ method: "GET" })
     return mapPublishedProductForStorefront(prod, locale)
   })
 
-export const productQueryOptions = (handle: string, locale: string = DEFAULT_LOCALE) =>
+export const getProductQuery = (handle: string, locale: string = I18N.DEFAULT_LOCALE) =>
   queryOptions({
-    queryFn: () => fetchProductByHandleFn({ data: { handle, locale } }),
-    queryKey: [...PRODUCT_QUERY_KEYS.BY_HANDLE, handle, locale] as const,
+    queryFn: () => getProduct({ data: { handle, locale } }),
+    queryKey: [...PRODUCT_QUERY_KEYS.BY_HANDLE, handle, locale],
   })

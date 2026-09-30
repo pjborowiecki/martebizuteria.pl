@@ -1,6 +1,7 @@
 import { type JSX } from "react"
 
 import { Avatar, AvatarFallback } from "~/src/presentation/components/shadcn/avatar"
+
 export const OrderCustomerCell = ({ customer, customerId, email, initials }: Readonly<OrderCustomerCellProps>): JSX.Element => (
   <div className="flex items-center gap-3">
     <Avatar size="lg" className="rounded-md after:rounded-md">

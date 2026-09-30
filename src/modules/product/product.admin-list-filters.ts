@@ -1,13 +1,12 @@
 import { type ColumnFiltersState } from "@tanstack/react-table"
 
-import { PRODUCT_TABLE_COLUMN_ID } from "~/src/modules/product/product.constants"
-
 import {
   type DateColumnFilterValue,
   type NumericColumnFilterValue,
   isDateColumnFilterValue,
   isNumericColumnFilterValue,
-} from "~/src/lib/admin-column-filters"
+} from "~/src/modules/_core/utils/column-filters"
+import { PRODUCT_TABLE_COLUMN_ID } from "~/src/modules/product/product.constants"
 
 export interface AdminProductsListColumnFilters {
   readonly createdAt?: DateColumnFilterValue
@@ -53,5 +52,6 @@ export const hasAdminProductsListColumnFilters = (columnFilters: AdminProductsLi
 export const parseAdminProductsListColumnFilters = (columnFilters: ColumnFiltersState): AdminProductsListColumnFilters =>
   columnFilters.reduce<AdminProductsListColumnFilters>((filters, { id, value }) => {
     const handler = ADMIN_PRODUCTS_COLUMN_FILTER_HANDLERS[id]
+
     return handler === undefined ? filters : handler(filters, value)
   }, {})

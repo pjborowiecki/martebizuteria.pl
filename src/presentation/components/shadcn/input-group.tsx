@@ -7,8 +7,10 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 import { Input, type inputVariants } from "~/src/presentation/components/shadcn/input"
 import { sheetInputGroupClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
 import { Textarea } from "~/src/presentation/components/shadcn/textarea"
+
 const InputGroup = ({ className, variant: variantProp = "default", ...props }: Readonly<InputGroupProps>): JSX.Element => {
   const variant: InputGroupVariant = variantProp ?? "default"
+
   return (
     <InputGroupVariantContext.Provider value={variant}>
       <div
@@ -25,6 +27,7 @@ const InputGroup = ({ className, variant: variantProp = "default", ...props }: R
     </InputGroupVariantContext.Provider>
   )
 }
+
 const InputGroupAddon = ({
   align = "inline-start",
   className,
@@ -77,6 +80,7 @@ const InputGroupText = ({ className, ...props }: Readonly<ComponentProps<"span">
 const InputGroupInput = ({ className, variant, ...props }: Readonly<InputGroupInputProps>): JSX.Element => {
   const groupVariant = useContext(InputGroupVariantContext)
   const resolvedVariant = variant ?? (groupVariant === "sheet" ? "sheet-inset" : "default")
+
   return (
     <Input
       className={cn(
@@ -90,6 +94,7 @@ const InputGroupInput = ({ className, variant, ...props }: Readonly<InputGroupIn
     />
   )
 }
+
 const InputGroupTextarea = ({ className, ...props }: Readonly<ComponentProps<"textarea">>): JSX.Element => (
   <Textarea
     className={cn(
@@ -116,9 +121,13 @@ const inputGroupVariants = cva(
     },
   },
 )
+
 type InputGroupVariant = NonNullable<VariantProps<typeof inputGroupVariants>["variant"]>
+
 const InputGroupVariantContext = createContext<InputGroupVariant>("default")
+
 interface InputGroupProps extends ComponentProps<"div">, VariantProps<typeof inputGroupVariants> {}
+
 const inputGroupAddonVariants = cva(
   "flex h-auto cursor-text items-center justify-center gap-2 py-2.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 group-data-[variant=sheet]/input-group:h-full group-data-[variant=sheet]/input-group:py-0 [&>kbd]:rounded-lg [&>svg:not([class*='size-'])]:size-4",
   {
@@ -135,6 +144,7 @@ const inputGroupAddonVariants = cva(
     },
   },
 )
+
 const inputGroupButtonVariants = cva("flex items-center gap-2 text-xs shadow-none", {
   defaultVariants: {
     size: "xs",
@@ -148,11 +158,14 @@ const inputGroupButtonVariants = cva("flex items-center gap-2 text-xs shadow-non
     },
   },
 })
+
 interface InputGroupButtonProps
   extends Omit<ComponentProps<typeof Button>, "size" | "type">, VariantProps<typeof inputGroupButtonVariants> {
   readonly type?: "button" | "reset" | "submit"
 }
+
 interface InputGroupInputProps extends ComponentProps<"input"> {
   readonly variant?: NonNullable<VariantProps<typeof inputVariants>["variant"]>
 }
+
 export { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupText, InputGroupTextarea }

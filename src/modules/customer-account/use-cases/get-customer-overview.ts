@@ -1,10 +1,10 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
-import { z } from "zod/v4"
+import zod from "zod/v4"
 
-import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
   getCustomerActivityAuditRows,
@@ -18,7 +18,7 @@ import {
   CUSTOMER_ACCOUNT_QUERY_STALE_MS,
   CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT,
 } from "~/src/modules/customer-account/customer-account.constants"
-import { type CustomerAccountOverview } from "~/src/modules/customer-account/customer-account.types"
+import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { mapAuditLogToActivityItem, mapCustomerOrderSummaryRow } from "~/src/modules/customer-account/customer-account.utils"
 import { getPublishedProductsByCollectionId } from "~/src/modules/product/product.accessors"
 import { LANDING_NEW_ARRIVALS_COLLECTION_HANDLE } from "~/src/modules/product/product.constants"
@@ -27,23 +27,28 @@ import { getCustomerOrderStatsQuery, getUserById } from "~/src/modules/user/user
 
 import { getProductImageUrl } from "~/src/lib/image"
 
-const localeInputSchema = z.object({
-  locale: z.string().optional(),
-})
+const localeInputSchema = zod
+  .object({
+    locale: zod.string().optional(),
+  })
+  .default({})
 
 const buildCustomerRecommendations = async (
   collection: { readonly id: string } | undefined,
   locale: string,
-): Promise<CustomerAccountOverview["recommendations"]> => {
+): Promise<CustomerAccount["overview"]["recommendations"]> => {
   if (collection === undefined) {
     return []
   }
+
   const { items } = await getPublishedProductsByCollectionId(collection.id, {
     limit: CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT,
     offset: 0,
   })
+
   return items.map((productRow) => {
     const [variant] = productRow.variants
+
     return {
       handle: productRow.handle,
       image: getProductImageUrl(productRow.thumbnail),
@@ -54,16 +59,12 @@ const buildCustomerRecommendations = async (
   })
 }
 
-export const fetchCustomerOverviewFn = createServerFn({ method: "GET" })
-  .validator((data: unknown) => localeInputSchema.parse(data ?? {}))
-  .handler(async ({ data }): Promise<CustomerAccountOverview | undefined> => {
-    const locale = data.locale ?? DEFAULT_LOCALE
-    const authSession = await getRequestSession()
-    if (authSession?.user === undefined) {
-      return undefined
-    }
-
-    const userId = authSession.user.id
+export const getCustomerOverview = createServerFn({ method: "GET" })
+  .middleware([authorized()])
+  .validator((input: zod.input<typeof localeInputSchema>) => localeInputSchema.parse(input))
+  .handler(async ({ context, data }): Promise<CustomerAccount["overview"] | undefined> => {
+    const locale = data.locale ?? I18N.DEFAULT_LOCALE
+    const userId = context.auth.user.id
     const [orderStatsRows, orderRows, auditRows, userRow, collection] = await Promise.all([
       getCustomerOrderStatsQuery([userId]),
       getCustomerOrderRows(userId, CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT),
@@ -95,7 +96,7 @@ export const fetchCustomerOverviewFn = createServerFn({ method: "GET" })
       .slice(0, CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT)
 
     const recommendations = await buildCustomerRecommendations(collection, locale)
-    const memberSince = userRow?.createdAt ?? authSession.user.createdAt
+    const memberSince = userRow?.createdAt ?? context.auth.user.createdAt
 
     return {
       activity,
@@ -110,9 +111,9 @@ export const fetchCustomerOverviewFn = createServerFn({ method: "GET" })
     }
   })
 
-export const overviewQueryOptions = (locale: string = DEFAULT_LOCALE) =>
+export const getCustomerOverviewQuery = (locale: string = I18N.DEFAULT_LOCALE) =>
   queryOptions({
-    queryFn: () => fetchCustomerOverviewFn({ data: { locale } }),
-    queryKey: [...CUSTOMER_ACCOUNT_QUERY_KEYS.OVERVIEW, locale] as const,
+    queryFn: () => getCustomerOverview({ data: { locale } }),
+    queryKey: [...CUSTOMER_ACCOUNT_QUERY_KEYS.OVERVIEW, locale],
     staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
   })

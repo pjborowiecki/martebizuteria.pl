@@ -2,11 +2,11 @@ import { type ChangeEvent, type JSX, useCallback, useMemo } from "react"
 
 import { Plus, Trash2 } from "lucide-react"
 import { useController, useFieldArray, useFormState } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { DEFAULT_LOCALE } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { type ProductAttributeAllowedValue } from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import { createEmptyProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.utils"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -29,29 +29,36 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
 import { slugify } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-slug.utils"
-const nextAllowedValueDraftKey = (existing: readonly ProductAttributeAllowedValue[]): string => {
+
+const nextAllowedValueDraftKey = (existing: readonly ProductAttribute["allowedValue"][]): string => {
   const used = new Set(existing.map((entry) => entry.value))
   let index = existing.length + 1
   while (used.has(`${DRAFT_VALUE_KEY_PREFIX}${index}`)) {
     index += 1
   }
+
   return `${DRAFT_VALUE_KEY_PREFIX}${index}`
 }
-const createEmptyAllowedValueRow = (existing: readonly ProductAttributeAllowedValue[]): ProductAttributeAllowedValue => ({
+
+const createEmptyAllowedValueRow = (existing: readonly ProductAttribute["allowedValue"][]): ProductAttribute["allowedValue"] => ({
   labels: createEmptyProductAttributeLocaleMap(),
   value: nextAllowedValueDraftKey(existing),
 })
-const resolvePrimaryLabelValueKey = (primaryLabel: string, rowIndex: number, rows: readonly ProductAttributeAllowedValue[]): string => {
+
+const resolvePrimaryLabelValueKey = (primaryLabel: string, rowIndex: number, rows: readonly ProductAttribute["allowedValue"][]): string => {
   const slug = slugify(primaryLabel)
   if (slug === "") {
     return rows[rowIndex]?.value ?? nextAllowedValueDraftKey(rows)
   }
+
   const taken = rows.some((entry, index) => index !== rowIndex && entry.value === slug)
   if (taken) {
     return rows[rowIndex]?.value ?? nextAllowedValueDraftKey(rows)
   }
+
   return slug
 }
+
 export const AttributeAllowedValuesField = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.attributes")
   const validationKeySet = useMemo(() => new Set<string>(Object.values(PRODUCT_ATTRIBUTE_FORM_VALIDATION_KEYS)), [])
@@ -60,14 +67,17 @@ export const AttributeAllowedValuesField = (): JSX.Element => {
     control,
     name: "allowedValues",
   })
+
   const { errors } = useFormState({
     control,
   })
+
   const showRootArrayError = errors.allowedValues?.message === PRODUCT_ATTRIBUTE_FORM_VALIDATION_KEYS.allowedValuesRequired
   const handleAddRow = useCallback(() => {
     const current = getValues("allowedValues")
     append(createEmptyAllowedValueRow(current))
   }, [append, getValues])
+
   const handleRemoveRow = useCallback(
     (index: number) => {
       remove(index)
@@ -75,6 +85,7 @@ export const AttributeAllowedValuesField = (): JSX.Element => {
     },
     [clearErrors, remove],
   )
+
   return (
     <Field className={CATALOG_SHEET_FIELD_CLASS} data-invalid={showRootArrayError}>
       <CatalogFormFieldLabel hint={t("form.hints.allowedValues")} label={t("form.allowedValues")} required />
@@ -96,6 +107,7 @@ export const AttributeAllowedValuesField = (): JSX.Element => {
     </Field>
   )
 }
+
 const AllowedValueRow = ({
   disabled,
   index,
@@ -112,11 +124,13 @@ const AllowedValueRow = ({
   const { errors } = useFormState({
     control,
   })
+
   const labelPath = `allowedValues.${index}.labels.${activeLocale}` as const
   const { field } = useController({
     control,
     name: labelPath,
   })
+
   const labelValue = catalogFieldStringValue(field.value)
   const labelError = allowedValueLabelFieldError(errors, index, activeLocale)
   const showLabelError = labelError !== undefined
@@ -126,7 +140,7 @@ const AllowedValueRow = ({
       const path = `allowedValues.${index}.labels.${activeLocale}` as const
       field.onChange(nextLabel)
       clearErrors(path)
-      if (activeLocale === DEFAULT_LOCALE) {
+      if (activeLocale === I18N.DEFAULT_LOCALE) {
         const rows = getValues("allowedValues")
         const nextValueKey = resolvePrimaryLabelValueKey(nextLabel, index, rows)
         if (rows[index]?.value !== nextValueKey) {
@@ -139,12 +153,15 @@ const AllowedValueRow = ({
     },
     [activeLocale, clearErrors, field, getValues, index, setValue, trigger],
   )
+
   const handleRemove = useCallback(() => {
     onRemove(index)
   }, [index, onRemove])
+
   const handleBlur = useCallback(() => {
     field.onBlur()
   }, [field])
+
   const labelFieldState = useMemo(
     () =>
       labelError === undefined
@@ -155,6 +172,7 @@ const AllowedValueRow = ({
           },
     [labelError],
   )
+
   return (
     <div className="rounded-lg border border-border/80 bg-muted/10 p-3">
       <CatalogSheetControlsActionRow>
@@ -199,8 +217,11 @@ const AllowedValueRow = ({
     </div>
   )
 }
+
 const LABEL_MAX_LENGTH = 255
+
 const DRAFT_VALUE_KEY_PREFIX = "opcja-"
+
 const ROOT_ARRAY_ERROR_FIELD_STATE = {
   error: {
     message: PRODUCT_ATTRIBUTE_FORM_VALIDATION_KEYS.allowedValuesRequired,

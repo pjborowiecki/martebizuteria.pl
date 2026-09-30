@@ -1,7 +1,8 @@
-import { type Locale } from "~/src/integrations/use-intl/i18n.types"
-/** One sans + one serif preload for the active locale subset (avoids bandwidth contention). */
-export const getCriticalFontPreloads = (locale: Locale) => {
-  const useLatinExt = locale === "pl"
+import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+
+export const getCriticalFontPreloads = (locale: SupportedLocale) => {
+  const useLatinExt = locale === "pl-PL"
+
   return [
     {
       ...FONT_PRELOAD_BASE,
@@ -13,6 +14,7 @@ export const getCriticalFontPreloads = (locale: Locale) => {
     },
   ] as const
 }
+
 const FONT_PRELOAD_BASE = {
   as: "font",
   crossOrigin: "anonymous",

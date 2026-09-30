@@ -1,8 +1,7 @@
 import { type JSX, useCallback } from "react"
 
 import { type SupportedCurrencyCode } from "~/src/modules/_core/constants/currency"
-
-import { NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/lib/admin-column-filters"
+import { NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
@@ -14,6 +13,7 @@ import {
   type AdminNumericColumnFilterLabels,
   type NumericFilterDraft,
 } from "~/src/presentation/components/custom/pages/admin/lib/admin-numeric-column-filter.types"
+
 const AdminNumericFilterAmountInput = ({
   ariaLabel,
   currencyCode,
@@ -24,8 +24,10 @@ const AdminNumericFilterAmountInput = ({
   if (inputMode === "integer") {
     return <CatalogIntegerFilterInput aria-label={ariaLabel} className="h-9" onValueChange={onChange} value={value} />
   }
+
   return <CatalogMoneyInput aria-label={ariaLabel} className="h-9" currencyCode={currencyCode} onValueChange={onChange} value={value} />
 }
+
 export const AdminNumericColumnFilterForm = ({
   canApply,
   currencyCode,
@@ -48,18 +50,21 @@ export const AdminNumericColumnFilterForm = ({
     },
     [onStartAmountChange],
   )
+
   const handleEndAmountChange = useCallback(
     (endAmount: string) => {
       onEndAmountChange(endAmount)
     },
     [onEndAmountChange],
   )
+
   const handleAmountChange = useCallback(
     (amount: string) => {
       onAmountChange(amount)
     },
     [onAmountChange],
   )
+
   return (
     <>
       <div className="space-y-2">
@@ -127,6 +132,7 @@ export const AdminNumericColumnFilterForm = ({
     </>
   )
 }
+
 export const isRangeNumericOperator = (operator: string): boolean => operator === NUMERIC_COLUMN_FILTER_OPERATOR.BETWEEN
 
 interface AdminNumericFilterAmountInputProps {
@@ -136,6 +142,7 @@ interface AdminNumericFilterAmountInputProps {
   readonly onChange: (value: string) => void
   readonly value: string
 }
+
 interface AdminNumericColumnFilterFormProps {
   readonly canApply: boolean
   readonly currencyCode: SupportedCurrencyCode

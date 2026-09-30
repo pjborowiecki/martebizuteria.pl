@@ -13,10 +13,12 @@ export const CatalogFormFieldError = ({
   if (rawMessage === undefined || rawMessage === "") {
     return undefined
   }
+
   const message =
     validationKeySet !== undefined && translate !== undefined && validationKeySet.has(rawMessage) ? translate(rawMessage) : rawMessage
   return <FieldError>{message}</FieldError>
 }
+
 interface CatalogFormFieldErrorProps {
   readonly fieldState: Pick<ControllerFieldState, "error" | "invalid">
   readonly translate?: ((messageKey: string) => string) | undefined

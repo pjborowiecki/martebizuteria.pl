@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { useFormContext, useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
 
@@ -16,6 +16,7 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
 import { regenerateVariantRows } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-form.utils"
 import { createImplicitVariantOptionSetup } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-variant-form.utils"
+
 export const ProductEditorVariantMode = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")
   const tVariantMode = useTranslations("pages.admin.catalog.products.variantMode")
@@ -24,6 +25,7 @@ export const ProductEditorVariantMode = (): JSX.Element => {
     control,
     name: "hasVariants",
   })
+
   const productType: ProductTypeValue = hasVariants ? PRODUCT_TYPE_VARIANTS : PRODUCT_TYPE_SIMPLE
   const typeOptions = useMemo(
     () => [
@@ -38,6 +40,7 @@ export const ProductEditorVariantMode = (): JSX.Element => {
     ],
     [tVariantMode],
   )
+
   const applyProductType = useCallback(
     (nextType: ProductTypeValue) => {
       const enableVariants = nextType === PRODUCT_TYPE_VARIANTS
@@ -47,6 +50,7 @@ export const ProductEditorVariantMode = (): JSX.Element => {
       setValue("hasVariants", enableVariants, {
         shouldDirty: true,
       })
+
       if (!enableVariants) {
         const [firstVariant] = getValues("variants")
         if (firstVariant !== undefined) {
@@ -60,8 +64,10 @@ export const ProductEditorVariantMode = (): JSX.Element => {
         }
         setValue("options", [])
         setValue("variants", [])
+
         return
       }
+
       const simple = getValues("simpleVariant")
       const optionSetup = createImplicitVariantOptionSetup()
       setValue("options", [optionSetup], {
@@ -92,6 +98,7 @@ export const ProductEditorVariantMode = (): JSX.Element => {
     },
     [getValues, hasVariants, setValue],
   )
+
   const handleTypeChange = useCallback(
     (value: ProductTypeValue | null) => {
       if (value === null) {
@@ -101,6 +108,7 @@ export const ProductEditorVariantMode = (): JSX.Element => {
     },
     [applyProductType],
   )
+
   return (
     <Card>
       <CardHeader>
@@ -123,6 +131,9 @@ export const ProductEditorVariantMode = (): JSX.Element => {
     </Card>
   )
 }
+
 const PRODUCT_TYPE_SIMPLE = "simple"
+
 const PRODUCT_TYPE_VARIANTS = "variants"
+
 type ProductTypeValue = typeof PRODUCT_TYPE_SIMPLE | typeof PRODUCT_TYPE_VARIANTS

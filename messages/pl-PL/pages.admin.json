@@ -1,0 +1,787 @@
+{
+  "brand": "M'ARTE",
+  "subtitle": "Panel administracyjny",
+  "a11y": {
+    "selectAll": "Zaznacz wszystkie wiersze",
+    "selectRow": "Zaznacz wiersz"
+  },
+  "catalogForm": {
+    "requiredFieldHint": "Pole wymagane."
+  },
+  "customerDetail": {
+    "breadcrumb": {
+      "dashboard": "Podsumowanie",
+      "customers": "Klienci"
+    },
+    "actions": {
+      "edit": "Edytuj klienta",
+      "createOrder": "Utwórz zamówienie"
+    },
+    "kpi": {
+      "totalSpent": "Całkowite wydatki",
+      "orders": "Zamówienia",
+      "avgOrder": "Średnie zamówienie",
+      "returnRate": "Wskaźnik powrotów"
+    },
+    "spending": {
+      "title": "Aktywność zakupowa",
+      "subtitle": "Miesięczne wydatki z ostatnich 12 miesięcy",
+      "empty": "Brak zrealizowanych zamówień w ostatnich 12 miesiącach."
+    },
+    "categoryBreakdown": {
+      "title": "Podział na kategorie",
+      "empty": "Brak danych o wydatkach w kategoriach."
+    },
+    "orders": {
+      "title": "Historia zamówień",
+      "viewAll": "Zobacz wszystko",
+      "columns": {
+        "order": "Zamówienie",
+        "date": "Data",
+        "items": "Przedmioty",
+        "total": "Suma",
+        "status": "Status",
+        "payment": "Płatność"
+      },
+      "empty": "Brak zamówień.",
+      "status": {
+        "delivered": "Dostarczone",
+        "shipped": "Wysłane",
+        "returned": "Zwrócone",
+        "pending": "Oczekujące",
+        "unfulfilled": "Niezrealizowane"
+      },
+      "payment": {
+        "paid": "Opłacone",
+        "refunded": "Zwrócone",
+        "authorized": "Autoryzowane"
+      }
+    },
+    "profile": {
+      "accountCreated": "Data utworzenia konta: {date}",
+      "lastActive": "Ostatnia aktywność {time}",
+      "returningBadge": "Powracający",
+      "preferences": "Preferencje",
+      "preferredCategory": "Preferowana kategoria",
+      "preferredCollection": "Preferowana kolekcja"
+    },
+    "tags": {
+      "title": "Tagi",
+      "sidebarHint": "Tagi systemowe są automatyczne. Własne etykiety dodasz lub usuniesz w Edytuj klienta.",
+      "system": "Systemowe",
+      "custom": "Własne",
+      "empty": "Brak tagów dla tego klienta.",
+      "values": {
+        "admin": "Administrator",
+        "banned": "Zablokowany",
+        "customer": "Klient",
+        "returning": "Powracający",
+        "verified": "Zweryfikowany"
+      }
+    },
+    "notes": {
+      "title": "Wewnętrzne notatki",
+      "empty": "Brak wewnętrznych notatek."
+    },
+    "timeline": {
+      "title": "Oś czasu aktywności",
+      "empty": "Brak aktywności.",
+      "accountCreated": "Utworzono konto",
+      "orderPlaced": "Złożono zamówienie {id} — {total}",
+      "signedIn": "Zalogowano się",
+      "signedOut": "Wylogowano się",
+      "cartItemAdded": "Dodano {product} do koszyka (×{quantity})",
+      "cartAbandoned": "Opuścił sklep z {count} produktami w koszyku",
+      "pageViewed": "Odwiedził {path}"
+    },
+    "form": {
+      "title": "Edytuj klienta",
+      "description": "Zaktualizuj dane kontaktowe, domyślny adres, wewnętrzne notatki i własne tagi.",
+      "cancel": "Anuluj",
+      "save": "Zapisz zmiany",
+      "sections": {
+        "contact": "Dane kontaktowe",
+        "address": "Domyślny adres",
+        "addressDescription": "Wyświetlany w profilu klienta i używany jako domyślny adres dostawy, gdy jest dostępny.",
+        "notes": "Wewnętrzne notatki",
+        "tags": "Własne tagi",
+        "tagsDescription": "Tagi systemowe, np. Zweryfikowany lub Powracający, są przypisywane automatycznie."
+      },
+      "id": "ID klienta",
+      "name": "Imię i nazwisko",
+      "email": "E-mail",
+      "phone": "Telefon",
+      "phonePlaceholder": "+48 123 456 789",
+      "address1": "Adres (linia 1)",
+      "address1Placeholder": "Ulica i numer",
+      "address2": "Adres (linia 2)",
+      "address2Placeholder": "Mieszkanie, lokal itd.",
+      "city": "Miasto",
+      "cityPlaceholder": "Miasto",
+      "province": "Województwo / region",
+      "provincePlaceholder": "Województwo lub region",
+      "postalCode": "Kod pocztowy",
+      "postalCodePlaceholder": "00-000",
+      "countryCode": "Kraj",
+      "countryCodePlaceholder": "PL",
+      "notes": "Wewnętrzne notatki",
+      "notesPlaceholder": "Notatki widoczne tylko dla administratorów",
+      "customTags": "Własne tagi",
+      "systemTags": "Tagi systemowe",
+      "addTag": "Dodaj tag",
+      "customTagsPlaceholder": "Dodaj tag…",
+      "hints": {
+        "systemTags": "Przypisywane automatycznie na podstawie statusu konta (np. zweryfikowany e-mail, powtarzalne zamówienia). Nie można ich edytować.",
+        "id": "Stały identyfikator klienta. Używany w panelu i API; nie można go zmienić.",
+        "name": "Nazwa wyświetlana z konta klienta. Zarządzana przez klienta przy rejestracji lub w profilu.",
+        "email": "Główny adres e-mail powiązany z kontem. Nie można go edytować tutaj.",
+        "phone": "Opcjonalny numer telefonu widoczny w profilu klienta w panelu.",
+        "address1": "Ulica i numer budynku dla domyślnego adresu.",
+        "address2": "Opcjonalne mieszkanie, lokal lub dodatkowa linia adresu.",
+        "city": "Miasto lub miejscowość dla domyślnego adresu.",
+        "province": "Opcjonalne województwo, region lub stan.",
+        "postalCode": "Kod pocztowy dla domyślnego adresu.",
+        "countryCode": "Dwuliterowy kod kraju ISO, np. PL lub DE.",
+        "notes": "Prywatne notatki dla zespołu. Nigdy nie są widoczne dla klienta w sklepie.",
+        "customTags": "Dodaj własne etykiety do segmentacji klientów. Wpisz tag i kliknij Dodaj tag lub naciśnij Enter."
+      },
+      "removeTag": "Usuń tag {tag}",
+      "toast": {
+        "errorTitle": "Nie udało się zapisać klienta",
+        "errorDescription": "Sprawdź formularz i spróbuj ponownie.",
+        "successTitle": "Klient zaktualizowany",
+        "successDescription": "Zmiany zostały zapisane."
+      }
+    }
+  },
+  "nav": {
+    "main": "Menu główne",
+    "dashboard": "Podsumowanie",
+    "catalog": "Katalog",
+    "products": "Produkty",
+    "categories": "Kategorie",
+    "collections": "Kolekcje",
+    "attributes": "Atrybuty",
+    "orders": "Zamówienia",
+    "customers": "Klienci",
+    "tools": "Narzędzia",
+    "marketing": "Marketing",
+    "coupons": "Kupony",
+    "content": "Treść",
+    "audit": "Dziennik zdarzeń",
+    "settings": "Ustawienia"
+  },
+  "media": {
+    "cta": "Kliknij, aby przesłać lub przeciągnij i upuść",
+    "hint": "JPG, PNG, WEBP lub AVIF · do 5MB",
+    "uploading": "Przesyłanie…",
+    "dropHere": "Upuść zdjęcie, aby przesłać",
+    "change": "Zmień",
+    "remove": "Usuń",
+    "errorTitle": "Przesyłanie nie powiodło się",
+    "errorUpload": "Nie udało się przesłać zdjęcia. Spróbuj ponownie.",
+    "errorInvalidType": "Nieobsługiwany typ pliku. Użyj JPG, PNG, WEBP lub AVIF.",
+    "errorTooLarge": "Zdjęcie jest zbyt duże. Maksymalny rozmiar to 5MB.",
+    "main": "Główne",
+    "setMain": "Ustaw jako główne",
+    "addMore": "Dodaj zdjęcia",
+    "reorderAria": "Zdjęcie {position} z {total}. Użyj strzałek, aby zmienić kolejność."
+  },
+  "user": {
+    "name": "Jane Doe",
+    "role": "Administrator",
+    "initials": "JD",
+    "signOut": "Wyloguj się"
+  },
+  "dashboard": {
+    "title": "Podsumowanie",
+    "description": "Przegląd wyników Twojego sklepu i ostatniej aktywności.",
+    "stats": {
+      "vsPrevious": "względem poprzednich 30 dni",
+      "revenue": {
+        "label": "Przychód (30 dni)"
+      },
+      "orders": {
+        "label": "Zamówienia (30 dni)"
+      },
+      "customers": {
+        "label": "Nowi klienci (30 dni)"
+      },
+      "views": {
+        "label": "Wyświetlenia stron (30 dni)"
+      }
+    },
+    "chart": {
+      "title": "Przegląd przychodów",
+      "description7d": "Przychód z ostatnich {days} dni",
+      "description30d": "Przychód z ostatnich {days} dni",
+      "description1y": "Przychód z ostatniego roku",
+      "descriptionCustom": "Przychód od {startDate} do {endDate}",
+      "descriptionCustomIdle": "Wybierz zakres dat",
+      "last7": "Ostatnie 7 dni",
+      "last30": "Ostatnie 30 dni",
+      "lastYear": "Ostatni rok",
+      "custom": "Własny",
+      "customRange": "Zakres dat",
+      "startDate": "Data początkowa",
+      "endDate": "Data końcowa",
+      "placeholder": "Wybierz datę",
+      "today": "Dzisiaj",
+      "clearDate": "Wyczyść",
+      "apply": "Zastosuj",
+      "clear": "Wyczyść",
+      "revenueLabel": "Przychód"
+    },
+    "weeklyOrders": {
+      "title": "Zamówienia w tym tygodniu",
+      "seriesLabel": "Zamówienia"
+    },
+    "avgOrder": {
+      "label": "Średnia wartość zamówienia"
+    },
+    "totalSales": {
+      "label": "Sprzedaż od początku roku",
+      "period": "Zobacz wszystkie zamówienia"
+    },
+    "recentOrders": {
+      "title": "Ostatnie zamówienia",
+      "empty": "Brak zamówień.",
+      "viewAll": "Zobacz wszystkie",
+      "columns": {
+        "order": "Zamówienie",
+        "customer": "Klient",
+        "date": "Data",
+        "total": "Razem",
+        "payment": "Płatność",
+        "fulfillment": "Realizacja"
+      },
+      "status": {
+        "unfulfilled": "Nie zrealizowano",
+        "shipped": "Wysłane",
+        "delivered": "Dostarczone",
+        "returned": "Zwrócone",
+        "pending": "Oczekujące",
+        "paid": "Opłacone",
+        "refunded": "Zwrócone",
+        "authorized": "Zautoryzowane"
+      }
+    },
+    "topProducts": {
+      "title": "Najlepiej sprzedające się produkty",
+      "empty": "Brak danych o sprzedaży produktów.",
+      "soldCount": "{count} szt.",
+      "uncategorized": "Bez kategorii"
+    }
+  },
+  "audit": {
+    "title": "Dziennik audytu",
+    "description": "Śledź wszystkie zdarzenia systemowe i działania administracyjne.",
+    "breadcrumb": {
+      "dashboard": "Podsumowanie"
+    },
+    "stats": {
+      "totalEvents": "Wszystkie zdarzenia",
+      "today": "Dzisiaj",
+      "warnings": "Ostrzeżenia",
+      "errors": "Błędy",
+      "shareCaption": "{percent}% wszystkich"
+    },
+    "categories": {
+      "all": "Wszystko",
+      "orders": "Zamówienia",
+      "email": "E-mail",
+      "customers": "Klienci",
+      "catalog": "Katalog",
+      "settings": "Ustawienia",
+      "auth": "Autoryzacja"
+    },
+    "severity": {
+      "info": "Informacja",
+      "success": "Sukces",
+      "warning": "Ostrzeżenie",
+      "error": "Błąd"
+    },
+    "dateRange": {
+      "all": "Cały okres",
+      "today": "Dzisiaj",
+      "7d": "7 dni",
+      "30d": "30 dni",
+      "custom": "Własny",
+      "from": "Od",
+      "to": "Do",
+      "apply": "Zastosuj"
+    },
+    "columns": {
+      "status": "Status",
+      "event": "Zdarzenie",
+      "target": "Podmiot",
+      "detail": "Szczegóły",
+      "category": "Kategoria",
+      "actor": "Użytkownik",
+      "timestamp": "Data i czas",
+      "ip": "IP",
+      "actions": "Akcje wiersza"
+    },
+    "rowActions": {
+      "delete": "Usuń wpis",
+      "deleteTitle": "Usunąć wpis dziennika?",
+      "deleteDescription": "Spowoduje to trwałe usunięcie zdarzenia „{event}”. Tej operacji nie można cofnąć.",
+      "cancel": "Anuluj",
+      "confirm": "Usuń"
+    },
+    "filter": {
+      "category": "Filtruj wg kategorii",
+      "severity": "Filtruj wg statusu",
+      "dateRange": "Filtruj wg okresu",
+      "allCategories": "Wszystkie kategorie",
+      "allSeverities": "Wszystkie statusy",
+      "date": {
+        "apply": "Zastosuj",
+        "clear": "Wyczyść",
+        "clearDate": "Wyczyść datę",
+        "date": "Data",
+        "endDate": "Do",
+        "operator": "Warunek",
+        "operatorAfter": "Po",
+        "operatorBefore": "Przed",
+        "operatorBetween": "Zakres dat",
+        "operatorOn": "Dokładnie",
+        "placeholder": "Wybierz datę",
+        "startDate": "Od",
+        "startTime": "Od (godzina)",
+        "endTime": "Do (godzina)",
+        "time": "Godzina",
+        "timePlaceholder": "Wybierz godzinę",
+        "today": "Dziś"
+      }
+    },
+    "toolbar": {
+      "refresh": "Odśwież dane tabeli"
+    },
+    "bulk": {
+      "selected": "Zaznaczono: {count}",
+      "delete": "Usuń ({count})",
+      "confirmTitle": "Usunąć wpisy dziennika?",
+      "confirmDescription": "Spowoduje to trwałe usunięcie {count} wpisów z dziennika zdarzeń. Tej operacji nie można cofnąć.",
+      "cancel": "Anuluj",
+      "confirm": "Usuń",
+      "deleteSuccessTitle": "Wpisy usunięte",
+      "deleteSuccessDescription": "Usunięto {count} wpisów z dziennika zdarzeń.",
+      "deleteErrorTitle": "Nie udało się usunąć wpisów",
+      "deleteErrorDescription": "Spróbuj ponownie za chwilę."
+    },
+    "actions": {
+      "email_sent": "E-mail wysłany",
+      "email_failed": "E-mail nieudany",
+      "email_deferred": "E-mail odroczony",
+      "order_cancelled": "Zamówienie anulowane",
+      "order_shipped": "Zamówienie wysłane",
+      "order_placed": "Zamówienie złożone",
+      "order_payment_captured": "Płatność pobrana",
+      "order_fulfillment_started": "Realizacja rozpoczęta",
+      "order_refund_initiated": "Zwrot zainicjowany",
+      "settings_updated": "Ustawienia zaktualizowane",
+      "product_updated": "Produkt zaktualizowany",
+      "product_created": "Produkt utworzony",
+      "product_deleted": "Produkt usunięty",
+      "category_created": "Kategoria utworzona",
+      "category_updated": "Kategoria zaktualizowana",
+      "category_deleted": "Kategoria usunięta",
+      "collection_created": "Kolekcja utworzona",
+      "collection_updated": "Kolekcja zaktualizowana",
+      "collection_deleted": "Kolekcja usunięta",
+      "attribute_created": "Atrybut utworzony",
+      "attribute_updated": "Atrybut zaktualizowany",
+      "attribute_deleted": "Atrybut usunięty",
+      "order_released": "Koszyk zwolniony",
+      "order_dispute_opened": "Spór otwarty",
+      "order_dispute_closed": "Spór zamknięty",
+      "order_payment_failed": "Płatność nieudana",
+      "customer_tier_upgrade": "Awans poziomu",
+      "customer_registered": "Klient zarejestrowany",
+      "auth_login": "Logowanie",
+      "auth_login_failed": "Logowanie nieudane",
+      "auth_logout": "Wylogowanie",
+      "customer_cart_abandoned": "Porzucony koszyk",
+      "customer_cart_item_added": "Dodano do koszyka",
+      "customer_page_viewed": "Odwiedzona strona"
+    },
+    "searchPlaceholder": "Szukaj zdarzeń…",
+    "clearFilter": "Wyczyść",
+    "pagination": {
+      "showing": "Wyświetlanie {count} z {total} zdarzeń",
+      "previous": "Poprzednia",
+      "next": "Następna"
+    }
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "description": "Zarządzaj konfiguracją i preferencjami sklepu.",
+    "tabs": {
+      "general": "Ogólne",
+      "account": "Konto",
+      "shipping": "Wysyłka",
+      "appearance": "Wygląd",
+      "security": "Bezpieczeństwo",
+      "localization": "Lokalizacja"
+    },
+    "general": {
+      "storeInfo": {
+        "title": "Informacje o sklepie",
+        "description": "Podstawowe dane o Twoim sklepie.",
+        "name": "Nazwa sklepu",
+        "email": "E-mail kontaktowy",
+        "desc": "Opis"
+      },
+      "preferences": {
+        "title": "Preferencje",
+        "description": "Konfiguruj działanie sklepu.",
+        "maintenance": {
+          "label": "Tryb konserwacji",
+          "description": "Tymczasowo wyłącz witrynę sklepu dla odwiedzających."
+        },
+        "inventoryTracking": {
+          "label": "Śledzenie zapasów",
+          "description": "Automatycznie śledź poziom zapasów dla wszystkich produktów."
+        },
+        "autoFulfillment": {
+          "label": "Automatyczna realizacja",
+          "description": "Automatycznie realizuj zamówienia po pobraniu płatności."
+        },
+        "orderConfirmation": {
+          "label": "E-maile potwierdzenia zamówienia",
+          "description": "Wyślij e-mail z potwierdzeniem po złożeniu zamówienia."
+        }
+      },
+      "save": "Zapisz zmiany"
+    },
+    "comingSoon": "Ta sekcja będzie dostępna wkrótce."
+  },
+  "orders": {
+    "title": "Zamówienia",
+    "description": "Zarządzaj i śledź zamówienia klientów.",
+    "actions": {
+      "export": "Eksportuj",
+      "newOrder": "Nowe zamówienie",
+      "refresh": "Odśwież zamówienia"
+    },
+    "stats": {
+      "totalOrders": {
+        "label": "Zamówienia ogółem"
+      },
+      "pending": {
+        "label": "Oczekujące"
+      },
+      "revenueMinorUnits": {
+        "label": "Przychód"
+      },
+      "avgValueMinorUnits": {
+        "label": "Średnia wartość"
+      }
+    },
+    "filter": {
+      "allPayments": "Wszystkie płatności",
+      "allFulfillment": "Wszystkie realizacje",
+      "allStatuses": "Wszystkie statusy",
+      "payment": "Filtruj wg płatności",
+      "fulfillment": "Filtruj wg realizacji",
+      "status": "Filtruj wg statusu",
+      "total": "Filtruj wg sumy",
+      "createdAt": "Filtruj wg daty",
+      "date": {
+        "apply": "Zastosuj",
+        "clear": "Wyczyść",
+        "clearDate": "Wyczyść datę",
+        "date": "Data",
+        "endDate": "Do",
+        "operator": "Warunek",
+        "operatorAfter": "Po",
+        "operatorBefore": "Przed",
+        "operatorBetween": "Zakres dat",
+        "operatorOn": "Dokładnie",
+        "placeholder": "Wybierz datę",
+        "startDate": "Od",
+        "today": "Dziś"
+      }
+    },
+    "searchPlaceholder": "Szukaj zamówień…",
+    "columns": {
+      "order": "Zamówienie",
+      "customer": "Klient",
+      "email": "E-mail",
+      "date": "Data",
+      "items": "Produkty",
+      "total": "Suma",
+      "payment": "Płatność",
+      "fulfillment": "Realizacja",
+      "status": "Status",
+      "actions": "Akcje wiersza"
+    },
+    "status": {
+      "pending": "Oczekujące",
+      "processing": "W realizacji",
+      "completed": "Zrealizowane",
+      "cancelled": "Anulowane",
+      "refunded": "Zwrócone"
+    },
+    "payment": {
+      "paid": "Opłacone",
+      "authorized": "Autoryzowane",
+      "refunded": "Zwrócone"
+    },
+    "fulfillment": {
+      "unfulfilled": "Niezrealizowane",
+      "pending": "Oczekujące",
+      "shipped": "Wysłane",
+      "delivered": "Dostarczone",
+      "returned": "Zwrócone"
+    },
+    "empty": "Brak zamówień pasujących do wyszukiwania.",
+    "pagination": {
+      "page": "Strona {page} z {total}",
+      "showing": "Wyświetlanie {count} z {total} zamówień",
+      "previous": "Poprzednia",
+      "next": "Następna"
+    },
+    "rowActions": {
+      "viewOrder": "Zobacz zamówienie",
+      "copyId": "Kopiuj #{id}",
+      "copySuccess": "Skopiowano ID zamówienia",
+      "copyError": "Nie udało się skopiować ID zamówienia",
+      "fulfill": "Realizuj zamówienie",
+      "markShipped": "Oznacz jako wysłane",
+      "printInvoice": "Drukuj fakturę",
+      "refund": "Zwrot",
+      "cancel": "Anuluj zamówienie",
+      "cancelDialog": {
+        "title": "Anulować zamówienie?",
+        "description": "Zamówienie #{id} zostanie anulowane. Tej operacji nie można cofnąć.",
+        "cancel": "Zostaw zamówienie",
+        "confirm": "Anuluj zamówienie"
+      },
+      "toast": {
+        "successTitle": "Zaktualizowano zamówienie",
+        "fulfillSuccessDescription": "Rozpoczęto realizację zamówienia.",
+        "shipSuccessDescription": "Zamówienie oznaczono jako wysłane.",
+        "cancelSuccessDescription": "Zamówienie anulowane.",
+        "errorTitle": "Nie udało się zaktualizować zamówienia",
+        "errorDescription": "Spróbuj ponownie za chwilę.",
+        "notFoundDescription": "To zamówienie już nie istnieje.",
+        "invalidStateDescription": "Ta akcja nie jest dostępna w bieżącym stanie zamówienia."
+      }
+    }
+  },
+  "orderDetail": {
+    "actions": {
+      "print": "Drukuj",
+      "refund": "Zwrot",
+      "fulfill": "Realizuj"
+    },
+    "meta": {
+      "date": "Data",
+      "status": "Status",
+      "payment": "Płatność",
+      "channel": "Kanał",
+      "total": "Suma"
+    },
+    "status": {
+      "shipped": "Wysłano",
+      "delivered": "Dostarczono",
+      "pending": "Oczekujące",
+      "unfulfilled": "Niezrealizowane",
+      "returned": "Zwrócone",
+      "cancelled": "Anulowane"
+    },
+    "payment": {
+      "paid": "Opłacone",
+      "authorized": "Autoryzowane",
+      "refunded": "Zwrócone",
+      "pending": "Oczekujące"
+    },
+    "fulfillment": {
+      "title": "Realizacja",
+      "steps": {
+        "confirmed": "Potwierdzone",
+        "processing": "Przetwarzanie",
+        "shipped": "Wysłane",
+        "outForDelivery": "W drodze",
+        "delivered": "Dostarczone"
+      }
+    },
+    "items": {
+      "title": "Produkty",
+      "columns": {
+        "product": "Produkt",
+        "sku": "SKU",
+        "qty": "Ilość",
+        "price": "Cena",
+        "total": "Suma"
+      }
+    },
+    "summary": {
+      "subtotal": "Produkty",
+      "shipping": "Wysyłka",
+      "tax": "Podatek",
+      "total": "Suma"
+    },
+    "timeline": {
+      "title": "Aktywność",
+      "emailStatus": {
+        "delivered": "Dostarczono",
+        "failed": "Niepowodzenie",
+        "bounced": "Odrzucono",
+        "deferred": "Opóźniono"
+      }
+    },
+    "customer": {
+      "title": "Klient",
+      "ordersCount": "{count} zamówień",
+      "viewProfile": "Zobacz profil"
+    },
+    "shipping": {
+      "title": "Adres wysyłki",
+      "estimatedDelivery": "Planowana dostawa"
+    },
+    "billing": {
+      "title": "Adres rozliczeniowy",
+      "sameAsShipping": "Taki sam jak wysyłki"
+    },
+    "paymentDetails": {
+      "title": "Płatność"
+    },
+    "tags": {
+      "title": "Tagi"
+    },
+    "notes": {
+      "title": "Notatki wewnętrzne",
+      "edit": "Edytuj"
+    }
+  },
+  "marketing": {
+    "title": "Kampanie marketingowe",
+    "description": "Zarządzaj kampaniami promocyjnymi, śledź zasięgi, kliknięcia i konwersje.",
+    "actions": {
+      "export": "Eksportuj",
+      "newCampaign": "Nowa kampania"
+    },
+    "stats": {
+      "totalCampaigns": {
+        "label": "Wszystkie kampanie",
+        "value": "12"
+      },
+      "activeCampaigns": {
+        "label": "Aktywne kampanie",
+        "value": "3"
+      },
+      "totalReach": {
+        "label": "Całkowity zasięg",
+        "value": "19.4K"
+      },
+      "totalRevenue": {
+        "label": "Całkowity przychód",
+        "value": "85 200 PLN"
+      }
+    },
+    "chart": {
+      "title": "Zaangażowanie kampanii",
+      "description": "Pokazuje średni współczynnik otwarć i kliknięć z ostatnich miesięcy"
+    },
+    "campaigns": {
+      "title": "Przegląd kampanii",
+      "columns": {
+        "campaign": "Kampania",
+        "type": "Kanał",
+        "status": "Status",
+        "sent": "Zasięg",
+        "openRate": "Wskaźnik otwarć",
+        "revenue": "Przychód"
+      }
+    },
+    "status": {
+      "active": "Aktywna",
+      "completed": "Zakończona",
+      "draft": "Szkic"
+    }
+  },
+  "coupons": {
+    "title": "Kupony rabatowe",
+    "description": "Zarządzaj kodami promocyjnymi, zniżkami i darmową dostawą.",
+    "actions": {
+      "export": "Eksportuj",
+      "createCoupon": "Nowy kupon",
+      "delete": "Usuń kupon",
+      "duplicate": "Duplikuj kupon",
+      "viewDetails": "Zobacz szczegóły"
+    },
+    "stats": {
+      "activeCoupons": {
+        "label": "Aktywne kupony",
+        "value": "18"
+      },
+      "totalRedemptions": {
+        "label": "Liczba użyć",
+        "value": "1 492"
+      },
+      "revenueSaved": {
+        "label": "Zaoszczędzone",
+        "value": "12 450 PLN"
+      },
+      "avgDiscount": {
+        "label": "Średni rabat",
+        "value": "18%"
+      }
+    },
+    "columns": {
+      "code": "Kod",
+      "type": "Typ",
+      "discount": "Zniżka",
+      "minOrder": "Min. zamówienie",
+      "usage": "Użycia",
+      "status": "Status",
+      "expires": "Wygasa",
+      "actions": "Akcje"
+    },
+    "status": {
+      "active": "Aktywny",
+      "scheduled": "Zaplanowany",
+      "expired": "Wygasły"
+    }
+  },
+  "content": {
+    "title": "Zarządzanie treścią",
+    "description": "Zarządzaj stronami, artykułami i banerami promocyjnymi w swoim sklepie.",
+    "actions": {
+      "export": "Eksportuj",
+      "newPage": "Nowa strona"
+    },
+    "types": {
+      "pages": {
+        "title": "Strony",
+        "description": "Strony statyczne"
+      },
+      "banners": {
+        "title": "Banery",
+        "description": "Banery promocyjne"
+      },
+      "articles": {
+        "title": "Artykuły",
+        "description": "Wpisy na blogu i artykuły"
+      }
+    },
+    "pagesTable": {
+      "title": "Wszystkie strony",
+      "columns": {
+        "title": "Tytuł",
+        "path": "Ścieżka",
+        "sections": "Sekcje",
+        "lastEdited": "Ostatnia edycja",
+        "status": "Status",
+        "actions": "Akcje"
+      }
+    },
+    "status": {
+      "published": "Opublikowana",
+      "draft": "Szkic"
+    }
+  }
+}

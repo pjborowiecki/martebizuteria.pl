@@ -1,6 +1,6 @@
 import { type JSX, useCallback } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type User } from "~/src/modules/user/user.types"
 
@@ -13,14 +13,17 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-provider"
 import { CustomerFormSections } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-sections"
 import { CustomerSheetFooter } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-sheet-footer"
+
 export const CustomerSheet = ({ customer, onOpenChange, open }: Readonly<CustomerSheetProps>): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail.form")
   const handleDismiss = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   const handleSuccess = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <CatalogFormSheetContent>
@@ -40,6 +43,7 @@ export const CustomerSheet = ({ customer, onOpenChange, open }: Readonly<Custome
     </Sheet>
   )
 }
+
 interface CustomerSheetProps {
   readonly customer: User["adminCustomerDetail"]
   readonly onOpenChange: (open: boolean) => void

@@ -1,36 +1,41 @@
 import { useCallback, useMemo, useState } from "react"
 
 import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.availability.utils"
-import { type StorefrontProduct, type StorefrontProductVariant } from "~/src/modules/product/product.types"
-const variantsMatchSelection = (variant: StorefrontProductVariant, selection: Readonly<Record<string, string>>): boolean =>
+import { type Product } from "~/src/modules/product/product.types"
+
+const variantsMatchSelection = (variant: Product["storefrontVariant"], selection: Readonly<Record<string, string>>): boolean =>
   Object.entries(selection).every(([optionId, valueId]) => variant.optionValueIds[optionId] === valueId)
 
 const findVariantForSelection = (
-  product: StorefrontProduct,
+  product: Product["storefront"],
   selection: Readonly<Record<string, string>>,
-): StorefrontProductVariant | undefined => product.variants.find((variant) => variantsMatchSelection(variant, selection))
+): Product["storefrontVariant"] | undefined => product.variants.find((variant) => variantsMatchSelection(variant, selection))
 
-const buildInitialSelection = (product: StorefrontProduct): Record<string, string> => {
+const buildInitialSelection = (product: Product["storefront"]): Record<string, string> => {
   const purchasableVariant = product.variants.find((variant) => getVariantQuantityAvailable(variant) >= MIN_STOCK) ?? product.variants[0]
   if (purchasableVariant === undefined) {
     return {}
   }
+
   return {
     ...purchasableVariant.optionValueIds,
   }
 }
-export const useSelectedProductVariant = (product: StorefrontProduct): UseSelectedProductVariantResult => {
+
+export const useSelectedProductVariant = (product: Product["storefront"]): UseSelectedProductVariantResult => {
   const [selectedValueIds, setSelectedValueIds] = useState<Record<string, string>>(() => buildInitialSelection(product))
   const selectedVariant = useMemo(
     () => findVariantForSelection(product, selectedValueIds) ?? product.variants[0],
     [product, selectedValueIds],
   )
+
   const selectOptionValue = useCallback(
     (optionId: string, valueId: string) => {
       const nextSelection = {
         ...selectedValueIds,
         [optionId]: valueId,
       }
+
       const nextVariant = findVariantForSelection(product, nextSelection)
       if (nextVariant === undefined) {
         return
@@ -39,15 +44,18 @@ export const useSelectedProductVariant = (product: StorefrontProduct): UseSelect
     },
     [product, selectedValueIds],
   )
+
   return {
     selectOptionValue,
     selectedValueIds,
     selectedVariant: product.variants.length === 0 ? undefined : selectedVariant,
   }
 }
+
 const MIN_STOCK = 1
+
 export interface UseSelectedProductVariantResult {
   readonly selectOptionValue: (optionId: string, valueId: string) => void
   readonly selectedValueIds: Readonly<Record<string, string>>
-  readonly selectedVariant: StorefrontProductVariant | undefined
+  readonly selectedVariant: Product["storefrontVariant"] | undefined
 }

@@ -1,8 +1,8 @@
 import { type JSX, useCallback } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { type Category } from "~/src/modules/product-category/product-category.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 
 import { Sheet, SheetDescription, SheetHeader, SheetTitle } from "~/src/presentation/components/shadcn/sheet"
 
@@ -19,6 +19,7 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/catalog/categories/add-category/category-form-provider"
 import { CategorySheetFooter } from "~/src/presentation/components/custom/pages/admin/catalog/categories/add-category/category-sheet-footer"
 import { CatalogFormLocaleControlsProvider } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-locale-controls"
+
 const CategorySheetSections = ({
   recordId,
 }: Readonly<{
@@ -71,9 +72,11 @@ export const CategorySheet = ({ category, mode, onOpenChange, open }: CategorySh
   const handleDismiss = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   const handleSuccess = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <CatalogFormSheetContent>
@@ -94,8 +97,9 @@ export const CategorySheet = ({ category, mode, onOpenChange, open }: CategorySh
     </Sheet>
   )
 }
+
 interface CategorySheetProps {
-  readonly category: Category["adminListItem"] | undefined
+  readonly category: ProductCategory["adminListItem"] | undefined
   readonly mode: CategoryFormMode
   readonly onOpenChange: (open: boolean) => void
   readonly open: boolean

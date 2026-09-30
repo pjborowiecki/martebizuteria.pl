@@ -1,3 +1,5 @@
+import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
+
 import { type AuditLogInsertRow, insertAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
 import {
   AUDIT_LOG_QUERY_KEYS,
@@ -6,8 +8,6 @@ import {
   type AuditLogCategory,
   type AuditLogSeverity,
 } from "~/src/modules/audit-log/audit-log.constants"
-
-import { publishRealtimeInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.publish.server"
 
 export interface AuditLogQueueMessage {
   readonly action: AuditLogAction

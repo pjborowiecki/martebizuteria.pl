@@ -1,9 +1,10 @@
 import { type JSX } from "react"
 
-import { DATE_COLUMN_FILTER_OPERATOR, type DateColumnFilterOperator } from "~/src/lib/admin-column-filters"
+import { DATE_COLUMN_FILTER_OPERATOR, type DateColumnFilterOperator } from "~/src/modules/_core/utils/column-filters"
 
 import { LocaleDatePicker } from "~/src/presentation/components/shadcn/locale-date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
+
 export const AdminDateFilterForm = ({
   draft,
   labels,
@@ -15,6 +16,7 @@ export const AdminDateFilterForm = ({
   todayIso,
 }: Readonly<AdminDateFilterFormProps>): JSX.Element => {
   const isRangeOperator = draft.operator === DATE_COLUMN_FILTER_OPERATOR.BETWEEN
+
   return (
     <>
       <div className="space-y-2">
@@ -81,12 +83,14 @@ export const AdminDateFilterForm = ({
     </>
   )
 }
+
 export interface DateFilterDraft {
   readonly date: string
   readonly endDate: string
   readonly operator: DateColumnFilterOperator
   readonly startDate: string
 }
+
 export interface AdminDateFilterFormLabels {
   readonly clearDate: string
   readonly date: string
@@ -96,6 +100,7 @@ export interface AdminDateFilterFormLabels {
   readonly startDate: string
   readonly today: string
 }
+
 interface AdminDateFilterFormProps {
   readonly draft: DateFilterDraft
   readonly labels: AdminDateFilterFormLabels

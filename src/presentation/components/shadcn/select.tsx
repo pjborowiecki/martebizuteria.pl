@@ -6,6 +6,7 @@ import { cn } from "cn"
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 
 import { sheetSelectTriggerClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
+
 const SelectGroup = ({ className, ...props }: Readonly<SelectPrimitive.Group.Props>): JSX.Element => (
   <SelectPrimitive.Group data-slot="select-group" className={cn("scroll-my-1", className)} {...props} />
 )
@@ -16,6 +17,7 @@ const SelectValue = ({ className, ...props }: Readonly<SelectPrimitive.Value.Pro
 
 const SelectTrigger = ({ className, size = "default", children, ...props }: Readonly<SelectTriggerProps>): JSX.Element => {
   const iconEl = useMemo(() => <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />, [])
+
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
@@ -33,6 +35,7 @@ const SelectTrigger = ({ className, size = "default", children, ...props }: Read
     </SelectPrimitive.Trigger>
   )
 }
+
 const SelectContent = ({
   className,
   children,
@@ -75,6 +78,7 @@ const SelectLabel = ({ className, ...props }: Readonly<SelectPrimitive.GroupLabe
 
 const SelectItem = ({ className, children, showIndicator = true, ...props }: Readonly<SelectItemProps>): JSX.Element => {
   const indicatorEl = useMemo(() => <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />, [])
+
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -94,6 +98,7 @@ const SelectItem = ({ className, children, showIndicator = true, ...props }: Rea
     </SelectPrimitive.Item>
   )
 }
+
 const SelectSeparator = ({ className, ...props }: Readonly<SelectPrimitive.Separator.Props>): JSX.Element => (
   <SelectPrimitive.Separator
     data-slot="select-separator"
@@ -129,8 +134,11 @@ const SelectScrollDownButton = ({ className, ...props }: Readonly<ComponentProps
 )
 
 const DEFAULT_SIDE_OFFSET = 4
+
 const DEFAULT_ALIGN_OFFSET = 0
+
 const Select = SelectPrimitive.Root
+
 const selectTriggerVariants = cva(
   "flex items-center justify-between gap-1.5 whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
@@ -147,14 +155,18 @@ const selectTriggerVariants = cva(
     },
   },
 )
+
 interface SelectTriggerProps extends SelectPrimitive.Trigger.Props, VariantProps<typeof selectTriggerVariants> {}
+
 interface SelectContentProps
   extends
     SelectPrimitive.Popup.Props,
     Pick<SelectPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"> {}
+
 interface SelectItemProps extends SelectPrimitive.Item.Props {
   readonly showIndicator?: boolean
 }
+
 export {
   Select,
   SelectContent,

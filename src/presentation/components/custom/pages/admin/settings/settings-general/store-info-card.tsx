@@ -1,13 +1,15 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { STORE_INFO_DEFAULTS } from "~/src/data/settings-data"
+import { STORE_INFO_DEFAULTS } from "~/src/data/settings"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
+
 export const StoreInfoCard = (): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">
       <CardHeader className="pb-4">

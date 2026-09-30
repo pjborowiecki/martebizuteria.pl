@@ -1,7 +1,7 @@
 import { type JSX, useMemo } from "react"
 
 import { createColumnHelper } from "@tanstack/react-table"
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import {
   COLLECTION_STATUS,
@@ -10,7 +10,7 @@ import {
   COLLECTION_TABLE_COLUMN_ID,
   COLLECTION_TABLE_COLUMN_SIZE,
 } from "~/src/modules/product-collection/product-collection.constants"
-import { type Collection } from "~/src/modules/product-collection/product-collection.types"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 import { resolveCollectionDescription, resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
@@ -19,13 +19,11 @@ import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/d
 import { Image } from "~/src/presentation/components/custom/image"
 import { CollectionReorderCell } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collection-reorder-cell"
 import { CollectionsRowActions } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-row-actions"
-import {
-  CATALOG_RECORD_ID_COLUMN_META,
-  catalogRecordIdColumnWidth,
-} from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
+import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
 import { CatalogStatusBadge } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-status-badge"
 import { CatalogTitleHandleCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
 import { CatalogTruncatedTextCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
+
 const CollectionImageCell = ({
   title,
   image,
@@ -43,6 +41,7 @@ export const useCollectionColumns = () => {
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
   const locale = useLocale()
+
   return useMemo(
     () =>
       columnHelper.columns([
@@ -89,12 +88,13 @@ export const useCollectionColumns = () => {
           header: t("columns.id"),
           id: COLLECTION_TABLE_COLUMN_ID.recordId,
           meta: CATALOG_RECORD_ID_COLUMN_META,
-          ...catalogRecordIdColumnWidth(),
+          ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.recordId),
         }),
         columnHelper.accessor("status", {
           cell: ({ getValue }) => {
             const status = getValue()
             const isActive = status === COLLECTION_STATUS.ACTIVE
+
             return (
               <CatalogStatusBadge
                 isActive={isActive}
@@ -183,5 +183,7 @@ export const useCollectionColumns = () => {
     [format, locale, t, tAdmin],
   )
 }
+
 const THUMBNAIL_SIZE = 36
-const columnHelper = createColumnHelper<DataGridFeatures, Collection["adminListItem"]>()
+
+const columnHelper = createColumnHelper<DataGridFeatures, ProductCollection["adminListItem"]>()

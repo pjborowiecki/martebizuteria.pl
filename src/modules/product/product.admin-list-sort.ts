@@ -23,6 +23,7 @@ export const parseAdminProductsListSort = (sorting: SortingState): AdminProducts
   if (active === undefined || !SERVER_SORTABLE_COLUMN_IDS.has(active.id)) {
     return undefined
   }
+
   return {
     columnId: active.id,
     desc: active.desc,
@@ -33,6 +34,7 @@ export const adminProductsListSortRequiresVariantStats = (sort: AdminProductsLis
   if (sort === undefined) {
     return false
   }
+
   return (
     sort.columnId === PRODUCT_TABLE_COLUMN_ID.minPrice ||
     sort.columnId === PRODUCT_TABLE_COLUMN_ID.stock ||

@@ -1,13 +1,15 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { SETTINGS_TAB_DEFINITIONS, type SettingsTab } from "~/src/data/settings-data"
+import { SETTINGS_TAB_DEFINITIONS, type SettingsTab } from "~/src/data/settings"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
+
 export const SettingsPlaceholder = ({ activeTab }: SettingsPlaceholderProps): JSX.Element => {
   const t = useTranslations("pages.admin")
   const tabDef = SETTINGS_TAB_DEFINITIONS.find((tab) => tab.key === activeTab)
+
   return (
     <div className="min-w-0 flex-1">
       <Card className="border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none">
@@ -22,6 +24,7 @@ export const SettingsPlaceholder = ({ activeTab }: SettingsPlaceholderProps): JS
     </div>
   )
 }
+
 interface SettingsPlaceholderProps {
   readonly activeTab: SettingsTab
 }

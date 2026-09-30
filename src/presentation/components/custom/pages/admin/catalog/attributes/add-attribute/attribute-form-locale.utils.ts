@@ -1,19 +1,14 @@
-import { LOCALES } from "~/src/integrations/use-intl/i18n.config"
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import {
-  type ProductAttribute,
-  type ProductAttributeAllowedValue,
-  type ProductAttributeLocaleCode,
-} from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 
-export const isCommittedAllowedValueRow = (entry: ProductAttributeAllowedValue): boolean =>
-  LOCALES.some((locale) => entry.labels[locale].trim() !== "")
+export const isCommittedAllowedValueRow = (entry: ProductAttribute["allowedValue"]): boolean =>
+  I18N.SUPPORTED_LOCALES.some((locale) => entry.labels[locale].trim() !== "")
 
-/** Locales still missing attribute title and/or any committed option label. */
-export const localesWithIncompleteAttributeFormValues = (values: ProductAttribute["formValues"]): ProductAttributeLocaleCode[] => {
+export const localesWithIncompleteAttributeFormValues = (values: ProductAttribute["formValues"]): ProductAttribute["localeCode"][] => {
   const committedRows = values.allowedValues.filter((entry) => isCommittedAllowedValueRow(entry))
 
-  return LOCALES.filter((locale) => {
+  return I18N.SUPPORTED_LOCALES.filter((locale) => {
     if (values.titles[locale].trim() === "") {
       return true
     }

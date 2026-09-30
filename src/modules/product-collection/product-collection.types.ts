@@ -1,19 +1,18 @@
 import { type z } from "zod/v4"
 
-import { type ProductAttributeLocaleMap } from "~/src/modules/product-attribute/product-attribute.types"
+import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import { type productCollection } from "~/src/modules/product-collection/product-collection.schema"
-import { type collectionFormSchema, type collectionZodSchemas } from "~/src/modules/product-collection/product-collection.zod"
+import { type productCollectionZodSchemas } from "~/src/modules/product-collection/product-collection.zod"
 
-export type CollectionLocaleMap = ProductAttributeLocaleMap
-
-export interface Collection {
-  adminListItem: z.infer<(typeof collectionZodSchemas)["adminListItem"]>
-  createInput: z.infer<(typeof collectionZodSchemas)["createInput"]>
-  deleteInput: z.infer<(typeof collectionZodSchemas)["deleteInput"]>
-  formValues: z.infer<ReturnType<typeof collectionFormSchema>>
+export interface ProductCollection {
+  adminListItem: z.infer<(typeof productCollectionZodSchemas)["adminListItem"]>
+  createInput: z.infer<(typeof productCollectionZodSchemas)["createInput"]>
+  deleteInput: z.infer<(typeof productCollectionZodSchemas)["deleteInput"]>
+  formValues: z.infer<(typeof productCollectionZodSchemas)["formValues"]>
   insert: typeof productCollection.$inferInsert
-  reorderInput: z.infer<(typeof collectionZodSchemas)["reorderInput"]>
+  localeMap: ProductAttribute["localeMap"]
+  reorderInput: z.infer<(typeof productCollectionZodSchemas)["reorderInput"]>
   select: typeof productCollection.$inferSelect
-  stats: z.infer<(typeof collectionZodSchemas)["stats"]>
-  updateInput: z.infer<(typeof collectionZodSchemas)["updateInput"]>
+  stats: z.infer<(typeof productCollectionZodSchemas)["stats"]>
+  updateInput: z.infer<(typeof productCollectionZodSchemas)["updateInput"]>
 }

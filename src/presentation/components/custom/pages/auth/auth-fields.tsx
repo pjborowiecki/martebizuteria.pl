@@ -4,7 +4,9 @@ import { cn } from "cn"
 import { Check } from "lucide-react"
 import { type Control, type FieldPath, type FieldValues, useController } from "react-hook-form"
 
-import { Field, FieldError } from "~/src/presentation/components/shadcn/field"
+import { AUTH_VALIDATION_PARAMS } from "~/src/integrations/better-auth/auth.constraints"
+
+import { Field } from "~/src/presentation/components/shadcn/field"
 import { Input } from "~/src/presentation/components/shadcn/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "~/src/presentation/components/shadcn/input-group"
 
@@ -16,6 +18,10 @@ import {
   toStringValue,
 } from "~/src/presentation/components/custom/floating-field"
 import { PasswordToggle } from "~/src/presentation/components/custom/pages/auth/password-toggle"
+import { ValidationFieldError } from "~/src/presentation/components/custom/validation-field-error"
+
+const AUTH_VALIDATION_NAMESPACE = "pages.auth.validations"
+
 export const AuthTextField = <TFieldValues extends FieldValues>({
   className,
   control,
@@ -29,8 +35,10 @@ export const AuthTextField = <TFieldValues extends FieldValues>({
     control,
     name,
   })
+
   const valueStr = toStringValue(field.value)
   const showValid = isFieldValid(fieldState, valueStr)
+
   return (
     <Field className="relative" data-invalid={fieldState.invalid}>
       <Input
@@ -46,10 +54,11 @@ export const AuthTextField = <TFieldValues extends FieldValues>({
       />
       <FloatingLabel htmlFor={id} label={label} required={required} />
       <ValidCheck show={showValid} />
-      {fieldState.error?.message !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
+      <ValidationFieldError message={fieldState.error?.message} namespace={AUTH_VALIDATION_NAMESPACE} params={AUTH_VALIDATION_PARAMS} />
     </Field>
   )
 }
+
 export const AuthPasswordField = <TFieldValues extends FieldValues>({
   className,
   control,
@@ -63,12 +72,14 @@ export const AuthPasswordField = <TFieldValues extends FieldValues>({
     control,
     name,
   })
+
   const [show, setShow] = useState(false)
   const valueStr = toStringValue(field.value)
   const showValid = isFieldValid(fieldState, valueStr)
   const toggle = useCallback(() => {
     setShow((prev) => !prev)
   }, [])
+
   return (
     <Field className="relative" data-invalid={fieldState.invalid}>
       <InputGroup className={cn(showValid && "border-success focus-within:border-success")}>
@@ -93,10 +104,11 @@ export const AuthPasswordField = <TFieldValues extends FieldValues>({
           <PasswordToggle show={show} onToggle={toggle} />
         </InputGroupAddon>
       </InputGroup>
-      {fieldState.error?.message !== undefined && <FieldError>{fieldState.error.message}</FieldError>}
+      <ValidationFieldError message={fieldState.error?.message} namespace={AUTH_VALIDATION_NAMESPACE} params={AUTH_VALIDATION_PARAMS} />
     </Field>
   )
 }
+
 interface AuthTextFieldProps<TFieldValues extends FieldValues> extends Omit<ComponentProps<typeof Input>, "name"> {
   readonly control: Control<TFieldValues>
   readonly id: string
@@ -104,6 +116,7 @@ interface AuthTextFieldProps<TFieldValues extends FieldValues> extends Omit<Comp
   readonly name: FieldPath<TFieldValues>
   readonly required?: boolean
 }
+
 interface AuthPasswordFieldProps<TFieldValues extends FieldValues> extends Omit<ComponentProps<typeof InputGroupInput>, "name" | "type"> {
   readonly control: Control<TFieldValues>
   readonly id: string

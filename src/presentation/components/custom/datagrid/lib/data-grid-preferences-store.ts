@@ -48,12 +48,14 @@ export const createDataGridPreferencesStore = (config: DataGridPreferencesStoreC
           sizing: snapshot.columnSizing,
         })
       }
+
       for (const listener of listeners) {
         listener()
       }
     },
     subscribe: (listener: Listener) => {
       listeners.add(listener)
+
       return () => {
         listeners.delete(listener)
       }
@@ -61,7 +63,6 @@ export const createDataGridPreferencesStore = (config: DataGridPreferencesStoreC
   }
 }
 
-/** Re-applies every saved datagrid width from localStorage (client-only safety net). */
 export const bootstrapAllDataGridColumnSizingFromStorage = (): void => {
   if (typeof document === "undefined" || typeof localStorage === "undefined") {
     return

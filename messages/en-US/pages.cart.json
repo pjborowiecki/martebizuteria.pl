@@ -1,0 +1,51 @@
+{
+  "title": "Cart",
+  "description": "Your cart will appear here.",
+  "goHome": "Go to home page",
+  "emptyTitle": "Your cart is empty",
+  "emptySubtitle": "You don't have any items in your cart yet. Start by exploring our pieces.",
+  "exploreCta": "Browse products",
+  "itemCount": "{count, plural, =0 {No items} =1 {1 item} other {# items}}",
+  "continueShopping": "Continue shopping",
+  "removeItem": "Remove item",
+  "decreaseQty": "Decrease quantity",
+  "increaseQty": "Increase quantity",
+  "availability": {
+    "banner": "Some items in your cart are no longer available. Update your cart before checkout.",
+    "itemUnavailable": "No longer available",
+    "itemLimited": "Only {available} left in stock"
+  },
+  "summary": {
+    "title": "Order summary",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "shippingValue": "Calculated at checkout",
+    "total": "Total",
+    "checkout": "Proceed to Checkout",
+    "note": "Shipping & taxes calculated at checkout."
+  },
+  "trust": {
+    "securePayment": "Secure payment",
+    "returns": "14-day right of withdrawal"
+  },
+  "items": {
+    "item1": {
+      "name": "Aura Hoop I",
+      "material": "925 silver / mirror finish",
+      "size": "One Size",
+      "price": "340 PLN"
+    },
+    "item2": {
+      "name": "Lune Drop",
+      "material": "Gold-plated silver",
+      "size": "One Size",
+      "price": "420 PLN"
+    },
+    "item3": {
+      "name": "Contour Stud",
+      "material": "925 silver / textured",
+      "size": "One Size",
+      "price": "280 PLN"
+    }
+  }
+}

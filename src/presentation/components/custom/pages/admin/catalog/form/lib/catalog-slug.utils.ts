@@ -1,4 +1,3 @@
-/** Live slug field — keeps a trailing hyphen while the user is still typing. */
 export const normalizeSlugInput = (value: string): string =>
   value
     .toLowerCase()

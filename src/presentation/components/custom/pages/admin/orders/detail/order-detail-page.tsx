@@ -10,6 +10,7 @@ import { OrderPaymentCard } from "~/src/presentation/components/custom/pages/adm
 import { OrderShippingCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-shipping-card"
 import { OrderTagsCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-tags-card"
 import { OrderTimelineCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-timeline-card"
+
 export const OrderDetailPage = (): JSX.Element => (
   <div className="min-h-0 flex-1 overflow-y-auto p-8">
     <div className="grid gap-8 xl:grid-cols-[1fr_340px]">

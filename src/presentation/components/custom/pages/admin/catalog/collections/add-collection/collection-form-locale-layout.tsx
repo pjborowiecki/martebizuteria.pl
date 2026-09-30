@@ -1,13 +1,14 @@
 import { type JSX, type ReactNode, useEffect, useMemo } from "react"
 
 import { useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { localeFillMap } from "~/src/modules/product-attribute/product-attribute.utils"
 
 import { useCollectionForm } from "~/src/presentation/components/custom/pages/admin/catalog/collections/add-collection/collection-form-provider"
 import { useCatalogFormLocaleControls } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-locale-controls"
 import { CatalogLocalePickerLayout } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-locale-picker"
+
 export const CollectionFormLocaleLayout = ({
   children,
 }: Readonly<{
@@ -20,12 +21,14 @@ export const CollectionFormLocaleLayout = ({
     control,
     name: "titles",
   })
+
   const fills = useMemo(() => localeFillMap(titles), [titles])
   useEffect(() => {
-    if (localeSubmitError && fills.pl && fills.en) {
+    if (localeSubmitError && fills["pl-PL"] && fills["en-US"]) {
       clearLocaleSubmitError()
     }
-  }, [clearLocaleSubmitError, fills.en, fills.pl, localeSubmitError])
+  }, [clearLocaleSubmitError, fills, localeSubmitError])
+
   return (
     <CatalogLocalePickerLayout
       activeLocale={activeLocale}

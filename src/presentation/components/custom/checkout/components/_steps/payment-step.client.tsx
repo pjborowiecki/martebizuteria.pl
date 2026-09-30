@@ -9,11 +9,12 @@ import { useTheme } from "@wrksz/themes/client"
 import { cn } from "cn"
 import { AlertCircle, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
 import {
   buildCheckoutLinesFingerprint,
+  buildCheckoutValuesFingerprint,
   confirmCheckoutSession,
   ensureCheckoutSession,
   resetCheckoutSession,
@@ -22,8 +23,9 @@ import { getStripe } from "~/src/integrations/stripe/stripe.client"
 import { CHECKOUT_PAYMENT_METHOD_ORDER } from "~/src/integrations/stripe/stripe.constants"
 import { getCheckoutErrorKey } from "~/src/integrations/stripe/stripe.errors"
 
+import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
-import { deliveryMethodsQueryOptions } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
+import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
@@ -35,7 +37,7 @@ import { CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
-import { useCartStore } from "~/src/stores/cart.store"
+
 const isCheckoutComplete = (values: CheckoutFormSchema): boolean =>
   Boolean(
     values.email &&
@@ -47,6 +49,7 @@ const isCheckoutComplete = (values: CheckoutFormSchema): boolean =>
     values.postalCode &&
     values.deliveryMethod,
   )
+
 const PaymentSkeleton = (): JSX.Element => (
   <div className="space-y-4">
     <Skeleton className="h-12 w-full rounded-none" />
@@ -54,12 +57,14 @@ const PaymentSkeleton = (): JSX.Element => (
     <Skeleton className="h-12 w-2/3 rounded-none" />
   </div>
 )
+
 const PaymentError = ({
   onRetry,
 }: Readonly<{
   onRetry: () => void
 }>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
+
   return (
     <div className="flex flex-col items-center gap-4 border border-destructive/30 bg-destructive/5 px-6 py-10 text-center">
       <AlertCircle aria-hidden className="size-7 text-destructive" strokeWidth={1.3} />
@@ -86,6 +91,7 @@ const PaymentError = ({
     </div>
   )
 }
+
 const PaymentForm = ({
   checkoutBlocked,
   onReset,
@@ -104,6 +110,7 @@ const PaymentForm = ({
   const handleReady = useCallback(() => {
     setIsReady(true)
   }, [])
+
   const checkout = checkoutState.type === "success" ? checkoutState.checkout : undefined
   const handlePay = useCallback(async () => {
     if (checkout === undefined) {
@@ -115,18 +122,18 @@ const PaymentForm = ({
         checkout,
         values: getValues(),
       })
+
       if (outcome.status === "error") {
-        // Rebuild abandoned sessions that cannot be confirmed again; keep ordinary declines on the current session.
         if (outcome.recoverable) {
           await onReset()
           toast.error(t("errors.paymentSessionStale"))
         } else {
           toast.error(outcome.message === "" ? t("validation.paymentFailed") : outcome.message)
         }
+
         return
       }
 
-      // CheckoutSuccess clears the cart after navigation; clearing it here would trigger CheckoutGuard.
       await navigate({
         search: (prev) => ({
           ...prev,
@@ -140,6 +147,7 @@ const PaymentForm = ({
       setIsProcessing(false)
     }
   }, [checkout, getValues, navigate, onReset, t])
+
   const onFormSubmit = useCallback(
     (event: BaseSyntheticEvent) => {
       event.preventDefault()
@@ -147,9 +155,11 @@ const PaymentForm = ({
     },
     [handlePay],
   )
+
   if (checkoutState.type === "error") {
     return <PaymentError onRetry={onRetry} />
   }
+
   return (
     <form onSubmit={onFormSubmit} className="flex flex-col gap-6">
       {!isReady && <PaymentSkeleton />}
@@ -176,6 +186,7 @@ const PaymentForm = ({
     </form>
   )
 }
+
 const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const { theme } = useTheme()
@@ -185,17 +196,21 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
   const deliveryMethodId = getValues("deliveryMethod")
   const [loadError, setLoadError] = useState(false)
   const [retryToken, setRetryToken] = useState(0)
-  const { data: deliveryMethods, isLoading } = useQuery(deliveryMethodsQueryOptions())
+  const { data: deliveryMethods, isLoading } = useQuery(listDeliveryMethodsQuery())
   const deliveryCost = deliveryMethods?.find((m) => m.id === deliveryMethodId)?.price ?? 0
   const amountCents = cartTotal() + deliveryCost
   const linesFingerprint = buildCheckoutLinesFingerprint(items)
+  const valuesFingerprint = buildCheckoutValuesFingerprint(getValues())
+  const sessionMatches =
+    checkoutSession?.amount === amountCents &&
+    checkoutSession.linesFingerprint === linesFingerprint &&
+    checkoutSession.valuesFingerprint === valuesFingerprint
   const inFlightRef = useRef(false)
   const retry = useCallback(() => {
     setLoadError(false)
     setRetryToken((token) => token + 1)
   }, [])
 
-  // A new client secret remounts Stripe Elements after an abandoned payment attempt.
   const resetSession = useCallback(async () => {
     if (checkoutSession === undefined || inFlightRef.current) {
       return
@@ -220,17 +235,17 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
     if (isLoading) {
       return
     }
+
     if (!isCheckoutComplete(getValues())) {
       onEdit(CHECKOUT_STEP_ID.CONTACT)
+
       return
     }
-    if (
-      amountCents <= 0 ||
-      inFlightRef.current ||
-      (checkoutSession?.amount === amountCents && checkoutSession.linesFingerprint === linesFingerprint)
-    ) {
+
+    if (amountCents <= 0 || inFlightRef.current || sessionMatches) {
       return
     }
+
     const run = async () => {
       inFlightRef.current = true
       setLoadError(false)
@@ -250,11 +265,25 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
       }
     }
     void run()
-  }, [amountCents, isLoading, checkoutSession, getValues, items, linesFingerprint, onEdit, setCheckoutSession, t, retryToken])
+  }, [
+    amountCents,
+    isLoading,
+    checkoutSession,
+    getValues,
+    items,
+    onEdit,
+    setCheckoutSession,
+    t,
+    retryToken,
+    sessionMatches,
+    valuesFingerprint,
+  ])
+
   const options = useMemo<StripeCheckoutElementsSdkOptions | undefined>(() => {
-    if (checkoutSession === undefined) {
+    if (checkoutSession === undefined || !sessionMatches) {
       return
     }
+
     return {
       clientSecret: checkoutSession.clientSecret,
       elementsOptions: {
@@ -266,7 +295,8 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
         ],
       },
     }
-  }, [checkoutSession, theme])
+  }, [checkoutSession, sessionMatches, theme])
+
   return {
     isLoading,
     loadError,
@@ -276,6 +306,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
     sessionId: checkoutSession?.sessionId,
   }
 }
+
 export const PaymentStep = (): JSX.Element => {
   const locale = useLocale()
   const t = useTranslations("pages.checkout.checkoutForm")
@@ -286,14 +317,15 @@ export const PaymentStep = (): JSX.Element => {
   if (loadError && options === undefined) {
     return <PaymentError onRetry={retry} />
   }
+
   if (isLoading || options === undefined) {
     return <PaymentSkeleton />
   }
+
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm text-muted-foreground">{t("paymentMethodsIntro")}</p>
       <div className="mt-4">
-        {/* Changing the client secret remounts Stripe Elements. */}
         <CheckoutElementsProvider key={sessionId} stripe={stripePromise} options={options}>
           <PaymentForm checkoutBlocked={checkoutBlocked} onReset={resetSession} onRetry={retry} />
         </CheckoutElementsProvider>
@@ -301,7 +333,9 @@ export const PaymentStep = (): JSX.Element => {
     </div>
   )
 }
+
 const FONT_CSS_SRC = "https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&display=swap"
+
 const PAYMENT_ELEMENT_OPTIONS: StripeCheckoutPaymentElementOptions = {
   fields: {
     billingDetails: "never",
@@ -318,16 +352,19 @@ const PAYMENT_ELEMENT_OPTIONS: StripeCheckoutPaymentElementOptions = {
     link: "never",
   },
 }
+
 const renderTermsLink = (chunks: ReactNode): JSX.Element => (
   <LocalizedLink to={ROUTES.TERMS_OF_SERVICE} className="underline underline-offset-4 hover:text-foreground">
     {chunks}
   </LocalizedLink>
 )
+
 const renderPrivacyLink = (chunks: ReactNode): JSX.Element => (
   <LocalizedLink to={ROUTES.PRIVACY_POLICY} className="underline underline-offset-4 hover:text-foreground">
     {chunks}
   </LocalizedLink>
 )
+
 interface CheckoutSessionLoader {
   isLoading: boolean
   loadError: boolean

@@ -2,6 +2,7 @@ import { type ComponentProps, type JSX } from "react"
 
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
 import { cn } from "cn"
+
 const Popover = ({ ...props }: Readonly<PopoverPrimitive.Root.Props>): JSX.Element => (
   <PopoverPrimitive.Root data-slot="popover" {...props} />
 )
@@ -49,7 +50,10 @@ const PopoverDescription = ({ className, ...props }: Readonly<PopoverPrimitive.D
 )
 
 const DEFAULT_ALIGN_OFFSET = 0
+
 const DEFAULT_SIDE_OFFSET = 4
+
 interface PopoverContentProps
   extends PopoverPrimitive.Popup.Props, Pick<PopoverPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset"> {}
+
 export { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger }

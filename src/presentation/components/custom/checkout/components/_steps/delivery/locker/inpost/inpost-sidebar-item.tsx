@@ -10,18 +10,20 @@ import { DialogClose } from "~/src/presentation/components/shadcn/dialog"
 
 import { PointDetails } from "~/src/presentation/components/custom/checkout/components/_steps/delivery/locker/inpost/inpost-point-details"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+
 export const InpostSidebarItem = ({ point }: InpostSidebarItemProps): JSX.Element => {
   const { control, setValue } = useCheckoutForm()
   const selectedId = useWatch({
     control,
     name: "lockerId",
   })
+
   const isSelected = selectedId === point.name
   const handleSelect = useCallback(() => {
-    // Save the city so reopening restores the locker search.
     setValue("lockerId", point.name)
     setValue("lockerCity", point.address_details.city)
   }, [setValue, point.name, point.address_details.city])
+
   const renderButton = useMemo(
     () => (
       <button
@@ -36,6 +38,7 @@ export const InpostSidebarItem = ({ point }: InpostSidebarItemProps): JSX.Elemen
     ),
     [handleSelect, isSelected, point.name],
   )
+
   return (
     <DialogClose render={renderButton}>
       <Package className={cn("mt-0.5 size-4 shrink-0", isSelected ? "text-foreground" : "text-muted-foreground")} strokeWidth={1.5} />
@@ -43,6 +46,7 @@ export const InpostSidebarItem = ({ point }: InpostSidebarItemProps): JSX.Elemen
     </DialogClose>
   )
 }
-export interface InpostSidebarItemProps {
+
+interface InpostSidebarItemProps {
   readonly point: InpostPointParsed
 }

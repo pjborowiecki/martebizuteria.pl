@@ -12,6 +12,7 @@ import { DialogClose } from "~/src/presentation/components/shadcn/dialog"
 
 import { useInpost } from "~/src/presentation/components/custom/checkout/components/_steps/delivery/locker/inpost/inpost-provider"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+
 export const InpostMarker = ({ point }: InpostMarkerProps): JSX.Element => {
   const { control, setValue } = useCheckoutForm()
   const { setHoveredPointId } = useInpost()
@@ -19,6 +20,7 @@ export const InpostMarker = ({ point }: InpostMarkerProps): JSX.Element => {
     control,
     name: "lockerId",
   })
+
   const isSelected = selectedPointId === point.name
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -27,12 +29,15 @@ export const InpostMarker = ({ point }: InpostMarkerProps): JSX.Element => {
     },
     [setValue, point.name],
   )
+
   const handleMouseEnter = useCallback(() => {
     setHoveredPointId(point.name)
   }, [setHoveredPointId, point.name])
+
   const handleMouseLeave = useCallback(() => {
     setHoveredPointId(undefined)
   }, [setHoveredPointId])
+
   const renderButton = useMemo(
     () => (
       <Button
@@ -52,6 +57,7 @@ export const InpostMarker = ({ point }: InpostMarkerProps): JSX.Element => {
     ),
     [handleClick, handleMouseEnter, handleMouseLeave, isSelected],
   )
+
   return (
     <Marker anchor="bottom" latitude={point.location.latitude} longitude={point.location.longitude}>
       <DialogClose render={renderButton}>
@@ -60,6 +66,7 @@ export const InpostMarker = ({ point }: InpostMarkerProps): JSX.Element => {
     </Marker>
   )
 }
-export interface InpostMarkerProps {
+
+interface InpostMarkerProps {
   readonly point: InpostPointParsed
 }

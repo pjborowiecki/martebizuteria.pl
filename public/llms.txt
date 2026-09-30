@@ -1,0 +1,29 @@
+# M'Arte
+
+> Handmade artistic jewellery from a Polish studio — sterling silver 925, raw minerals and sculptural forms, made in small runs rather than mass-produced.
+
+Polish is the default language and is served without a prefix. English is served under the `/en-US/` prefix, so every path below also exists as `/en-US<path>`.
+
+## Store
+
+- [Home](/): The current collection, new arrivals and the studio's approach to materials and craft.
+- [All products](/products): The full catalogue, filterable by category, collection and attribute.
+- [Categories](/categories): Browse by type — earrings, necklaces, chokers, rings and bracelets.
+- [Collections](/collections): Curated editions grouped by theme rather than by product type.
+
+## Guide
+
+- [M'Arte Guide](/blog): Care, styling and material notes — how to look after silver, and how pieces layer together.
+
+## Policies
+
+- [Exchanges and returns](/exchanges-and-returns): Return window, condition requirements and how to start an exchange.
+- [Terms of service](/terms-of-service): Ordering, delivery and contract terms.
+- [Privacy policy](/privacy-policy): What personal data the store processes and on what basis.
+
+## Optional
+
+- [About](/about): The studio behind the pieces.
+- [FAQ](/faq): Common questions about sizing, materials and shipping.
+
+The account area, checkout and the admin console are not part of the public site. They are disallowed in robots.txt and carry a `noindex, nofollow` robots meta tag.

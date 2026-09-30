@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { Eye, EyeOff } from "lucide-react"
 
 import { InputGroupButton } from "~/src/presentation/components/shadcn/input-group"
+
 export const PasswordToggle = ({ onToggle, show }: Readonly<PasswordToggleProps>): JSX.Element => (
   <InputGroupButton
     size="icon-sm"

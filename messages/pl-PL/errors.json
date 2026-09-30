@@ -1,0 +1,12 @@
+{
+  "action": {
+    "AUTH_API_ERROR": "Uwierzytelnianie nie powiodło się. Spróbuj ponownie.",
+    "CONFLICT": "To już istnieje.",
+    "FORBIDDEN": "Nie masz uprawnień do wykonania tej operacji.",
+    "INTERNAL_ERROR": "Coś poszło nie tak. Spróbuj ponownie.",
+    "NOT_FOUND": "Nie znaleziono.",
+    "TOO_MANY_REQUESTS": "Zbyt wiele prób. Spróbuj ponownie za chwilę.",
+    "UNAUTHORIZED": "Musisz się zalogować, aby kontynuować.",
+    "VALIDATION": "Sprawdź formularz i spróbuj ponownie."
+  }
+}

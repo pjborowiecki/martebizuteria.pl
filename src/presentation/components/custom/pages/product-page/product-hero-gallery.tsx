@@ -8,6 +8,7 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 import { Carousel, type CarouselApi, CarouselContent, CarouselItem } from "~/src/presentation/components/shadcn/carousel"
 
 import { Image } from "~/src/presentation/components/custom/image"
+
 const ProductHeroImage = ({
   alt,
   priority,
@@ -44,6 +45,7 @@ const ProductHeroCarouselDot = ({
   const handleDotClick = useCallback(() => {
     api?.scrollTo(index)
   }, [api, index])
+
   return (
     <button
       type="button"
@@ -54,6 +56,7 @@ const ProductHeroCarouselDot = ({
     />
   )
 }
+
 const ProductHeroCarouselDots = ({
   api,
   count,
@@ -66,20 +69,24 @@ const ProductHeroCarouselDots = ({
     if (api === undefined) {
       return
     }
+
     const handleSelect = (): void => {
       setSelectedIndex(api.selectedScrollSnap())
     }
     handleSelect()
     api.on("select", handleSelect)
     api.on("reInit", handleSelect)
+
     return function unsubscribeFromCarouselSelection() {
       api.off("select", handleSelect)
       api.off("reInit", handleSelect)
     }
   }, [api])
+
   if (count <= 1) {
     return undefined
   }
+
   return (
     <div className="mt-4 flex items-center justify-center gap-2">
       {Array.from(
@@ -93,17 +100,21 @@ const ProductHeroCarouselDots = ({
     </div>
   )
 }
+
 const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGalleryProps>): JSX.Element => {
   const [api, setApi] = useState<CarouselApi | undefined>()
   const handleSetApi = useCallback((carouselApi: CarouselApi) => {
     setApi(carouselApi)
   }, [])
+
   const scrollPrev = useCallback(() => {
     api?.scrollPrev()
   }, [api])
+
   const scrollNext = useCallback(() => {
     api?.scrollNext()
   }, [api])
+
   const carouselOpts = useMemo(() => CAROUSEL_LOOP_OPTS, [])
   const [firstImage] = images
   if (images.length === 1 && firstImage !== undefined) {
@@ -113,6 +124,7 @@ const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGaller
       </div>
     )
   }
+
   return (
     <div className="reveal lg:hidden">
       <Carousel className="relative" opts={carouselOpts} setApi={handleSetApi}>
@@ -148,6 +160,7 @@ const ProductHeroMobileCarousel = ({ images, title }: Readonly<ProductHeroGaller
     </div>
   )
 }
+
 export const ProductHeroGallery = ({ images, title }: Readonly<ProductHeroGalleryProps>): JSX.Element => (
   <div className="min-w-0">
     <ProductHeroMobileCarousel images={images} title={title} />
@@ -161,9 +174,11 @@ export const ProductHeroGallery = ({ images, title }: Readonly<ProductHeroGaller
 )
 
 const PRODUCT_IMAGE_ASPECT_RATIO = 0.8
+
 const CAROUSEL_LOOP_OPTS = {
   loop: true,
 } as const
+
 interface ProductHeroGalleryProps {
   readonly images: readonly string[]
   readonly title: string

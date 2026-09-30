@@ -1,9 +1,9 @@
 import { CheckCircle2, Layers, type LucideIcon, Package, PencilLine } from "lucide-react"
 
 import { COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants"
-import { type Collection } from "~/src/modules/product-collection/product-collection.types"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 
-export type CollectionStatKey = keyof Collection["stats"]
+export type CollectionStatKey = keyof ProductCollection["stats"]
 
 export interface CollectionStatCardConfig {
   readonly filterStatus?: (typeof COLLECTION_STATUS)[keyof typeof COLLECTION_STATUS]

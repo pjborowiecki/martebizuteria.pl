@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
+
 const Button = ({
   className,
   size = "default",
@@ -61,4 +62,5 @@ const buttonVariants = cva(
     },
   },
 )
+
 export { Button, buttonVariants }

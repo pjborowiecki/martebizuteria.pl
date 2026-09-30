@@ -1,18 +1,20 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
+import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { getAdminOrdersPage as orderGetAdminOrdersPage } from "~/src/modules/order/order.accessors"
-import { type AdminOrdersPageInput } from "~/src/modules/order/order.admin-list.types"
-import { ADMIN_ORDERS_PAGE_SIZE, ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS, isAdminOrderTab } from "~/src/modules/order/order.constants"
+import { ADMIN_ORDERS_PAGE_SIZE, ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
 import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
+import { type Order } from "~/src/modules/order/order.types"
+import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
-import { normalizeAdminSearchTerm } from "~/src/lib/admin-search.server"
-import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/lib/list-pagination"
-const buildAdminOrdersListParams = (input: AdminOrdersPageInput) => {
+const buildAdminOrdersListParams = (input: zod.output<typeof orderZodSchemas.adminOrdersPageInput>) => {
   const pageSize = input.pageSize ?? ADMIN_ORDERS_PAGE_SIZE
-  const tab = input.tab !== undefined && isAdminOrderTab(input.tab) ? input.tab : undefined
+
   return {
     ...listPaginationParamsFromPage(input.page ?? LIST_PAGE_FIRST, pageSize),
     filters: {
@@ -24,27 +26,30 @@ const buildAdminOrdersListParams = (input: AdminOrdersPageInput) => {
     },
     search: normalizeAdminSearchTerm(input.search),
     statFilter: input.statFilter,
-    tab,
+    tab: input.tab,
   }
 }
-export const fetchAdminOrdersPageFn = createServerFn({
+
+export const getAdminOrdersPage = createServerFn({
   method: "GET",
 })
-  .validator((input: AdminOrdersPageInput) => input)
+  .middleware([authorized({ order: ["read"] })])
+  .validator((input: zod.input<typeof orderZodSchemas.adminOrdersPageInput>) => orderZodSchemas.adminOrdersPageInput.parse(input))
   .handler(async ({ data: input }) => {
-    await assertAdmin()
     const params = buildAdminOrdersListParams(input)
     const { rows, total } = await orderGetAdminOrdersPage(params)
     const items = rows.map((row) => toAdminOrderListItem(row))
+
     return buildListPaginationResult(items, total, params)
   })
-export const adminOrdersPageQueryOptions = (input: AdminOrdersPageInput) =>
+
+export const getAdminOrdersPageQuery = (input: Order["adminPageInput"]) =>
   queryOptions({
     queryFn: () =>
-      fetchAdminOrdersPageFn({
+      getAdminOrdersPage({
         data: input,
       }),
-    queryKey: [...ORDER_QUERY_KEYS.ADMIN.PAGE, input] as const,
+    queryKey: [...ORDER_QUERY_KEYS.ADMIN.PAGE, input],
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: ORDER_QUERY_STALE_MS,

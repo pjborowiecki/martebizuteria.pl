@@ -1,23 +1,35 @@
-import { type SQL, and, count, desc, eq, getTableColumns, inArray, max, sql } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, getTableColumns, gte, inArray, isNotNull, max, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { isoMonthKey } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
+import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
+import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
+import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
 import { address } from "~/src/modules/address/address.schema"
+import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
+import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
+import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
+import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
+import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
-import { type AdminCustomersListFilters, adminCustomersListFiltersNeedOrderRollup } from "~/src/modules/user/user.admin-list-filters"
+import { payment } from "~/src/modules/payment/payment.schema"
+import { productCategory } from "~/src/modules/product-category/product-category.schema"
+import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
+import { session } from "~/src/modules/session/session.schema"
 import {
   ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS,
+  ADMIN_CUSTOMER_DETAIL_ORDERS_LIMIT,
   ADMIN_CUSTOMER_MIN_REPEAT_ORDERS,
   ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES,
   ADMIN_CUSTOMER_STAT_FILTER,
   type AdminCustomerStatFilter,
 } from "~/src/modules/user/user.constants"
 import { user } from "~/src/modules/user/user.schema"
+import { type User } from "~/src/modules/user/user.types"
+import { adminCustomersListFiltersNeedOrderRollup } from "~/src/modules/user/user.utils"
 
-import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/lib/admin-column-filters.server"
-import { buildAdminSearchOrCondition } from "~/src/lib/admin-search.server"
-import { type ListPaginationParams } from "~/src/lib/list-pagination"
 const returningCustomerIdsSubquery = () =>
   db
     .select({
@@ -54,25 +66,32 @@ const buildAdminCustomersUserConditions = (params: Pick<AdminCustomersListParams
   if (searchCondition !== undefined) {
     conditions.push(searchCondition)
   }
+
   if (params.statFilter === ADMIN_CUSTOMER_STAT_FILTER.RETURNING) {
     conditions.push(inArray(user.id, returningCustomerIdsSubquery()))
   }
+
   if (filters.role !== undefined) {
     conditions.push(eq(user.role, filters.role))
   }
+
   if (filters.emailVerified !== undefined) {
     conditions.push(eq(user.emailVerified, filters.emailVerified))
   }
+
   if (filters.banned !== undefined) {
     conditions.push(eq(user.banned, filters.banned))
   }
+
   if (filters.createdAt !== undefined) {
     conditions.push(buildAdminDateFilterSql(sql`${user.createdAt}`, filters.createdAt))
   }
+
   return conditions
 }
+
 const buildAdminCustomersRollupConditions = (
-  filters: AdminCustomersListFilters,
+  filters: User["adminCustomersListFilters"],
   rollup: ReturnType<typeof customerOrderRollupSubquery>,
 ): SQL[] => {
   const conditions: SQL[] = []
@@ -81,14 +100,18 @@ const buildAdminCustomersRollupConditions = (
   if (filters.totalSpent !== undefined) {
     conditions.push(buildAdminNumericFilterSql(coalescedTotalSpent, filters.totalSpent))
   }
+
   if (filters.averageOrderValue !== undefined) {
     conditions.push(buildAdminNumericFilterSql(coalescedAverageOrderValue, filters.averageOrderValue))
   }
+
   if (filters.lastOrderAt !== undefined) {
     conditions.push(sql`${rollup.lastOrderAt} is not null`, buildAdminDateFilterSql(sql`${rollup.lastOrderAt}`, filters.lastOrderAt))
   }
+
   return conditions
 }
+
 const combineSqlConditions = (conditions: SQL[]): SQL | undefined => (conditions.length === 0 ? undefined : and(...conditions))
 
 const buildAdminCustomersQueryParts = (
@@ -107,19 +130,23 @@ const buildAdminCustomersQueryParts = (
       whereClause: combineSqlConditions(userConditions),
     }
   }
+
   const rollup = customerOrderRollupSubquery()
   const rollupConditions = buildAdminCustomersRollupConditions(filters, rollup)
+
   return {
     needsRollupJoin,
     rollup,
     whereClause: combineSqlConditions([...userConditions, ...rollupConditions]),
   }
 }
+
 export const getCustomerOrderStatsQuery = (userIds?: readonly string[]) => {
   const conditions = [sql`${order.userId} is not null`, inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])]
   if (userIds !== undefined && userIds.length > 0) {
     conditions.push(inArray(order.userId, [...userIds]))
   }
+
   return db
     .select({
       lastOrderAt: max(order.createdAt),
@@ -131,11 +158,13 @@ export const getCustomerOrderStatsQuery = (userIds?: readonly string[]) => {
     .where(and(...conditions))
     .groupBy(order.userId)
 }
+
 export const getDefaultCustomerAddressesQuery = (userIds?: readonly string[]) => {
   const conditions = [eq(address.isDefault, true)]
   if (userIds !== undefined && userIds.length > 0) {
     conditions.push(inArray(address.userId, [...userIds]))
   }
+
   return db
     .select({
       city: address.city,
@@ -146,6 +175,7 @@ export const getDefaultCustomerAddressesQuery = (userIds?: readonly string[]) =>
     .from(address)
     .where(and(...conditions))
 }
+
 const selectAdminCustomerRows = (
   params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters">,
   pagination?: Pick<ListPaginationParams, "limit" | "offset">,
@@ -162,14 +192,18 @@ const selectAdminCustomerRows = (
     if (pagination === undefined) {
       return baseQuery
     }
+
     return baseQuery.limit(pagination.limit).offset(pagination.offset)
   }
+
   const baseQuery = db.select(userColumns).from(user).where(whereClause).orderBy(desc(user.createdAt))
   if (pagination === undefined) {
     return baseQuery
   }
+
   return baseQuery.limit(pagination.limit).offset(pagination.offset)
 }
+
 const countAdminCustomerRows = async (params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters">) => {
   const { needsRollupJoin, rollup, whereClause } = buildAdminCustomersQueryParts(params)
   if (needsRollupJoin && rollup !== undefined) {
@@ -182,6 +216,7 @@ const countAdminCustomerRows = async (params: Pick<AdminCustomersListParams, "se
       .where(whereClause)
     return countRow?.count ?? 0
   }
+
   const [countRow] = await db
     .select({
       count: count(),
@@ -190,6 +225,7 @@ const countAdminCustomerRows = async (params: Pick<AdminCustomersListParams, "se
     .where(whereClause)
   return countRow?.count ?? 0
 }
+
 export const getAdminCustomersPage = async (params: AdminCustomersListParams) => {
   const [total, rows] = await Promise.all([
     countAdminCustomerRows(params),
@@ -198,6 +234,7 @@ export const getAdminCustomersPage = async (params: AdminCustomersListParams) =>
       offset: params.offset,
     }),
   ])
+
   if (rows.length === 0) {
     return {
       addresses: [],
@@ -206,8 +243,10 @@ export const getAdminCustomersPage = async (params: AdminCustomersListParams) =>
       total,
     }
   }
+
   const userIds = rows.map((row) => row.id)
   const [orderStats, addresses] = await Promise.all([getCustomerOrderStatsQuery(userIds), getDefaultCustomerAddressesQuery(userIds)])
+
   return {
     addresses,
     orderStats,
@@ -215,6 +254,7 @@ export const getAdminCustomersPage = async (params: AdminCustomersListParams) =>
     total,
   }
 }
+
 export const getAdminCustomersFilteredList = async (params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters">) => {
   const rows = await selectAdminCustomerRows(params)
   if (rows.length === 0) {
@@ -224,25 +264,28 @@ export const getAdminCustomersFilteredList = async (params: Pick<AdminCustomersL
       rows: [],
     }
   }
+
   const userIds = rows.map((row) => row.id)
   const [orderStats, addresses] = await Promise.all([getCustomerOrderStatsQuery(userIds), getDefaultCustomerAddressesQuery(userIds)])
+
   return {
     addresses,
     orderStats,
     rows,
   }
 }
+
 export const getUserById = (id: string) =>
   db.query.user.findFirst({
     where: eq(user.id, id),
   })
 
 export interface AdminCustomersListParams extends ListPaginationParams {
-  readonly filters?: AdminCustomersListFilters | undefined
+  readonly filters?: User["adminCustomersListFilters"] | undefined
   readonly search?: string | undefined
   readonly statFilter?: AdminCustomerStatFilter | undefined
 }
-/** Admin: all registered users (customers and admins), newest first — unpaginated export / legacy full load; paginated callers use `getAdminCustomersPage`. */
+
 export const getAdminCustomersQuery = db.query.user
   .findMany({
     orderBy: (customers, { desc: descFn }) => [descFn(customers.createdAt)],
@@ -292,3 +335,136 @@ export const getAdminCustomerOrderRollupStatsQuery = db
   })
   .from(customerOrderRollupStatsSubquery)
   .prepare()
+
+export const getDefaultCustomerAddressFullQuery = (userId: string) =>
+  db
+    .select({
+      address1: address.address1,
+      address2: address.address2,
+      city: address.city,
+      countryCode: address.countryCode,
+      postalCode: address.postalCode,
+      province: address.province,
+    })
+    .from(address)
+    .where(and(eq(address.userId, userId), eq(address.isDefault, true)))
+    .limit(1)
+
+export const getLatestSessionActivityQuery = (userId: string) =>
+  db
+    .select({
+      lastActiveAt: max(session.updatedAt),
+    })
+    .from(session)
+    .where(eq(session.userId, userId))
+
+export const getCustomerMonthlySpendingQuery = (userId: string, since: Date) =>
+  db
+    .select({
+      amount: sql<number>`coalesce(sum(${order.total}), 0)`,
+      monthKey: isoMonthKey(order.createdAt),
+    })
+    .from(order)
+    .where(and(eq(order.userId, userId), eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS), gte(order.createdAt, since)))
+    .groupBy(isoMonthKey(order.createdAt))
+    .orderBy(isoMonthKey(order.createdAt))
+
+export const getCustomerCategoryBreakdownQuery = (userId: string) =>
+  db
+    .select({
+      amount: sql<number>`coalesce(sum(${orderItem.total}), 0)`,
+      titles: productCategory.titles,
+    })
+    .from(orderItem)
+    .innerJoin(order, eq(orderItem.orderId, order.id))
+    .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
+    .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
+    .where(and(eq(order.userId, userId), eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS), isNotNull(productCategory.id)))
+    .groupBy(productCategory.id)
+    .orderBy(sql`coalesce(sum(${orderItem.total}), 0) desc`)
+    .limit(TOP_CATEGORY_LIMIT)
+
+export const getCustomerPreferredCategoryQuery = (userId: string) =>
+  db
+    .select({
+      amount: sql<number>`coalesce(sum(${orderItem.total}), 0)`,
+      titles: productCategory.titles,
+    })
+    .from(orderItem)
+    .innerJoin(order, eq(orderItem.orderId, order.id))
+    .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
+    .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
+    .where(and(eq(order.userId, userId), eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS), isNotNull(productCategory.id)))
+    .groupBy(productCategory.id)
+    .orderBy(sql`coalesce(sum(${orderItem.total}), 0) desc`)
+    .limit(1)
+
+export const getCustomerPreferredCollectionQuery = (userId: string) =>
+  db
+    .select({
+      amount: sql<number>`coalesce(sum(${orderItem.total}), 0)`,
+      titles: productCollection.titles,
+    })
+    .from(orderItem)
+    .innerJoin(order, eq(orderItem.orderId, order.id))
+    .innerJoin(collectionOnProduct, eq(collectionOnProduct.productId, orderItem.productId))
+    .innerJoin(productCollection, eq(productCollection.id, collectionOnProduct.collectionId))
+    .where(and(eq(order.userId, userId), eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS)))
+    .groupBy(productCollection.id)
+    .orderBy(sql`coalesce(sum(${orderItem.total}), 0) desc`)
+    .limit(1)
+
+export const getAdminCustomerOrderRowsQuery = (userId: string) =>
+  db
+    .select({
+      createdAt: order.createdAt,
+      currencyCode: order.currencyCode,
+      fulfillmentStatus: order.fulfillmentStatus,
+      id: order.id,
+      paymentStatus: sql<(typeof payment.$inferSelect)["status"] | null>`${payment.status}`.as("payment_status"),
+      status: order.status,
+      total: order.total,
+    })
+    .from(order)
+    .leftJoin(payment, eq(order.paymentId, payment.id))
+    .where(and(eq(order.userId, userId), inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
+    .orderBy(desc(order.createdAt))
+    .limit(ADMIN_CUSTOMER_DETAIL_ORDERS_LIMIT)
+
+export const getCustomerAuditTimelineQuery = (userId: string) =>
+  db
+    .select({
+      action: auditLog.action,
+      createdAt: auditLog.createdAt,
+      detail: auditLog.detail,
+      metadata: auditLog.metadata,
+    })
+    .from(auditLog)
+    .where(and(eq(auditLog.resourceId, userId), inArray(auditLog.action, [...CUSTOMER_AUDIT_TIMELINE_ACTIONS])))
+    .orderBy(desc(auditLog.createdAt))
+    .limit(CUSTOMER_AUDIT_TIMELINE_LIMIT)
+
+export const getOrderItemTitlesQuery = (orderIds: readonly string[]) => {
+  if (orderIds.length === 0) {
+    return Promise.resolve([])
+  }
+
+  return db
+    .select({
+      orderId: orderItem.orderId,
+      title: orderItem.title,
+    })
+    .from(orderItem)
+    .where(inArray(orderItem.orderId, [...orderIds]))
+    .orderBy(orderItem.title)
+}
+
+const TOP_CATEGORY_LIMIT = 5
+
+const CUSTOMER_AUDIT_TIMELINE_ACTIONS = [
+  AUDIT_LOG_ACTION.AUTH_LOGIN,
+  AUDIT_LOG_ACTION.AUTH_LOGOUT,
+  AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED,
+  AUDIT_LOG_ACTION.CUSTOMER_CART_ITEM_ADDED,
+  AUDIT_LOG_ACTION.CUSTOMER_PAGE_VIEWED,
+] as const

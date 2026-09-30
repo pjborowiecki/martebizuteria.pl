@@ -2,12 +2,11 @@ import { type DragEvent, type JSX, type KeyboardEvent, useCallback } from "react
 
 import { cn } from "cn"
 import { Star, X } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { Image } from "~/src/presentation/components/custom/image"
-import { POSITION_OFFSET } from "~/src/presentation/components/custom/image-upload/constants"
 import { type GalleryImage } from "~/src/presentation/components/custom/image-upload/lib/image-upload.types"
 
 export const GalleryItem = ({
@@ -28,12 +27,14 @@ export const GalleryItem = ({
   const handleDragStart = useCallback(() => {
     onDragStartItem(image.id)
   }, [onDragStartItem, image.id])
+
   const handleDragOver = useCallback(
     (event: DragEvent<HTMLElement>) => {
       onDragOverItem(event, image.id)
     },
     [onDragOverItem, image.id],
   )
+
   const handleDrop = useCallback(
     (event: DragEvent<HTMLElement>) => {
       event.preventDefault()
@@ -41,21 +42,26 @@ export const GalleryItem = ({
     },
     [onDragEndItem],
   )
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>) => {
       onKeyReorder(event, image.id)
     },
     [onKeyReorder, image.id],
   )
+
   const handleSetMain = useCallback(() => {
     onSetMain(image.id)
   }, [onSetMain, image.id])
+
   const handleRemove = useCallback(() => {
     onRemove(image.id)
   }, [onRemove, image.id])
+
   return (
     <li className="group/item relative aspect-square">
       <Button
+        disabled={disabled}
         draggable={!disabled}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
@@ -63,7 +69,7 @@ export const GalleryItem = ({
         onDrop={handleDrop}
         onKeyDown={handleKeyDown}
         aria-label={t("media.reorderAria", {
-          position: index + POSITION_OFFSET,
+          position: index + 1,
           total,
         })}
         className={cn(
@@ -111,7 +117,8 @@ export const GalleryItem = ({
     </li>
   )
 }
-export interface GalleryItemProps {
+
+interface GalleryItemProps {
   readonly disabled: boolean
   readonly image: GalleryImage
   readonly index: number

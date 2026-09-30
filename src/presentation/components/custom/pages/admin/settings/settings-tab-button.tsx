@@ -1,14 +1,16 @@
 import { type JSX, useCallback } from "react"
 
 import { cn } from "cn"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { type SettingsTab, type SettingsTabDefinition } from "~/src/data/settings-data"
+import { type SettingsTab, type SettingsTabDefinition } from "~/src/data/settings"
+
 export const SettingsTabButton = ({ isActive, onSelect, tab }: SettingsTabButtonProps): JSX.Element => {
   const t = useTranslations("pages.admin")
   const handleClick = useCallback(() => {
     onSelect(tab.key)
   }, [onSelect, tab.key])
+
   return (
     <button
       className={cn(
@@ -23,6 +25,7 @@ export const SettingsTabButton = ({ isActive, onSelect, tab }: SettingsTabButton
     </button>
   )
 }
+
 interface SettingsTabButtonProps {
   readonly isActive: boolean
   readonly onSelect: (key: SettingsTab) => void

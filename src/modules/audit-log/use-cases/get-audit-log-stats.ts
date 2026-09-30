@@ -1,20 +1,19 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 
-import { assertAdmin } from "~/src/integrations/better-auth/auth.assertions"
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { getAdminAuditLogStats as auditLogGetAdminAuditLogStats } from "~/src/modules/audit-log/audit-log.accessors"
 import { AUDIT_LOG_QUERY_KEYS, AUDIT_LOG_QUERY_STALE_MS } from "~/src/modules/audit-log/audit-log.constants"
 import { resolveStartOfToday } from "~/src/modules/audit-log/audit-log.utils"
 
-export const fetchAdminAuditLogStatsFn = createServerFn({ method: "GET" }).handler(async () => {
-  await assertAdmin()
-  return auditLogGetAdminAuditLogStats(resolveStartOfToday())
-})
+export const getAuditLogStats = createServerFn({ method: "GET" })
+  .middleware([authorized({ settings: ["manage"] })])
+  .handler(() => auditLogGetAdminAuditLogStats(resolveStartOfToday()))
 
-export const adminAuditLogStatsQueryOptions = () =>
+export const getAuditLogStatsQuery = () =>
   queryOptions({
-    queryFn: () => fetchAdminAuditLogStatsFn(),
+    queryFn: () => getAuditLogStats(),
     queryKey: AUDIT_LOG_QUERY_KEYS.ADMIN.STATS,
     refetchOnMount: false,
     refetchOnWindowFocus: false,

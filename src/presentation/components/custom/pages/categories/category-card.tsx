@@ -1,8 +1,8 @@
 import { type JSX, useMemo } from "react"
 
-import { useLocale, useTranslations } from "use-intl"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { type Category } from "~/src/modules/product-category/product-category.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 import {
   resolveCategoryDescription,
   resolveCategoryShortDescription,
@@ -17,6 +17,7 @@ import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
 import { ROUTES } from "~/src/routes"
+
 export const StorefrontCategoryCard = ({
   aspectRatioClass,
   category,
@@ -36,6 +37,7 @@ export const StorefrontCategoryCard = ({
     }),
     [category.handle],
   )
+
   return (
     <LocalizedLink className="group block" params={params} to={ROUTES.CATEGORY}>
       <AspectRatio className={`overflow-hidden bg-neutral-100 ${aspectRatioClass}`} ratio={ASPECT_RATIO_PORTRAIT}>
@@ -67,10 +69,12 @@ export const StorefrontCategoryCard = ({
     </LocalizedLink>
   )
 }
+
 const ASPECT_RATIO_PORTRAIT = 0.8
-export interface StorefrontCategoryCardProps {
+
+interface StorefrontCategoryCardProps {
   readonly aspectRatioClass: string
-  readonly category: Category["storefrontListItem"]
+  readonly category: ProductCategory["storefrontListItem"]
   readonly priority?: boolean
   readonly showDescription?: boolean
   readonly sizes: string

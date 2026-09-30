@@ -1,6 +1,6 @@
 import { type JSX, useMemo } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { DEFAULT_ADMIN_CUSTOMER_CURRENCY } from "~/src/modules/user/user.constants"
 
@@ -31,6 +31,7 @@ export const CustomersNumericColumnFilter = ({
     }),
     [t],
   )
+
   return (
     <AdminNumericColumnFilter
       ariaLabel={t(ariaLabelKey)}
@@ -42,6 +43,7 @@ export const CustomersNumericColumnFilter = ({
     />
   )
 }
+
 interface CustomersNumericColumnFilterProps {
   readonly ariaLabelKey: "filter.averageOrderValue" | "filter.totalSpent"
   readonly columnId: string

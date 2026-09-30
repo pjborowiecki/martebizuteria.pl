@@ -3,6 +3,7 @@ import { z } from "zod"
 import { checkoutSchema } from "~/src/modules/checkout/checkout.zod"
 
 const MIN_ITEMS_COUNT = 1
+
 const MIN_CART_FIELD_LENGTH = 1
 
 export const cartItemSchema = z.object({
@@ -29,4 +30,5 @@ export const updateCheckoutSessionInputSchema = z.object({
 })
 
 export type CreateCheckoutSessionInput = z.infer<typeof createCheckoutSessionInputSchema>
+
 export type UpdateCheckoutSessionInput = z.infer<typeof updateCheckoutSessionInputSchema>

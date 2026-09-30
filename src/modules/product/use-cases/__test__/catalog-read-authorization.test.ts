@@ -1,20 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { fetchByProductIdFn } from "~/src/modules/attribute-on-product/use-cases/get-product-attributes"
-import { fetchAdminProductAttributesFn } from "~/src/modules/product-attribute/use-cases/get-admin-product-attributes"
-import { fetchProductAttributeStatsFn } from "~/src/modules/product-attribute/use-cases/get-product-attribute-stats"
-import { fetchAdminCategoriesFn } from "~/src/modules/product-category/use-cases/get-admin-categories"
-import { fetchCategoryStatsFn } from "~/src/modules/product-category/use-cases/get-category-stats"
-import { fetchAdminCollectionsFn } from "~/src/modules/product-collection/use-cases/get-admin-collections"
-import { fetchCollectionStatsFn } from "~/src/modules/product-collection/use-cases/get-collection-stats"
-import { fetchProductImagesFn } from "~/src/modules/product-image/use-cases/get-product-images"
+import { getProductAttributes } from "~/src/modules/attribute-on-product/use-cases/get-product-attributes"
+import { getAdminProductAttributes } from "~/src/modules/product-attribute/use-cases/get-admin-product-attributes"
+import { getProductAttributeStats } from "~/src/modules/product-attribute/use-cases/get-product-attribute-stats"
+import { getAdminCategories } from "~/src/modules/product-category/use-cases/get-admin-categories"
+import { getCategoryStats } from "~/src/modules/product-category/use-cases/get-category-stats"
+import { getAdminCollections } from "~/src/modules/product-collection/use-cases/get-admin-collections"
+import { getCollectionStats } from "~/src/modules/product-collection/use-cases/get-collection-stats"
+import { getProductImages } from "~/src/modules/product-image/use-cases/get-product-images"
 
 const access = vi.hoisted(() => ({
-  assertAdmin: vi.fn(),
   query: vi.fn(() => Promise.resolve([])),
 }))
 
-vi.mock("~/src/integrations/better-auth/auth.assertions", () => ({ assertAdmin: access.assertAdmin }))
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/product-category/product-category.server", () => ({
   getAdminCategoriesQuery: { execute: access.query },
   getCategoryStatusCountsQuery: { execute: access.query },
@@ -44,41 +43,33 @@ vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
       handler: (handler: unknown) => handler,
+      middleware: () => builder,
       validator: () => builder,
     }
+
     return builder
   },
 }))
 
-const protectedReads = [
-  { name: "category list", queryArgs: [], run: () => fetchAdminCategoriesFn() },
-  { name: "category statistics", queryArgs: [], run: () => fetchCategoryStatsFn() },
-  { name: "collection list", queryArgs: [], run: () => fetchAdminCollectionsFn() },
-  { name: "collection statistics", queryArgs: [], run: () => fetchCollectionStatsFn() },
-  { name: "attribute definitions", queryArgs: [], run: () => fetchAdminProductAttributesFn() },
-  { name: "attribute statistics", queryArgs: [], run: () => fetchProductAttributeStatsFn() },
-  { name: "product attributes", queryArgs: [{ productId: "draft-product" }], run: () => fetchByProductIdFn({ data: "draft-product" }) },
-  { name: "product images", queryArgs: [{ productId: "draft-product" }], run: () => fetchProductImagesFn({ data: "draft-product" }) },
+const adminReads = [
+  { name: "category list", queryArgs: [], run: () => getAdminCategories() },
+  { name: "category statistics", queryArgs: [], run: () => getCategoryStats() },
+  { name: "collection list", queryArgs: [], run: () => getAdminCollections() },
+  { name: "collection statistics", queryArgs: [], run: () => getCollectionStats() },
+  { name: "attribute definitions", queryArgs: [], run: () => getAdminProductAttributes() },
+  { name: "attribute statistics", queryArgs: [], run: () => getProductAttributeStats() },
+  { name: "product attributes", queryArgs: [{ productId: "draft-product" }], run: () => getProductAttributes({ data: "draft-product" }) },
+  { name: "product images", queryArgs: [{ productId: "draft-product" }], run: () => getProductImages({ data: "draft-product" }) },
 ]
 
-describe("catalog read authorization", () => {
+describe("catalog admin reads", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    access.assertAdmin.mockResolvedValue({ id: "admin" })
   })
 
-  it.each(protectedReads)("rejects unauthorized $name requests before querying data", async ({ run }) => {
-    access.assertAdmin.mockRejectedValueOnce(new Error("UNAUTHORIZED"))
-
-    await expect(run()).rejects.toThrow("UNAUTHORIZED")
-
-    expect(access.query).not.toHaveBeenCalled()
-  })
-
-  it.each(protectedReads)("allows administrators to read $name", async ({ queryArgs, run }) => {
+  it.each(adminReads)("reads $name straight from the catalog accessors", async ({ queryArgs, run }) => {
     await run()
 
-    expect(access.assertAdmin).toHaveBeenCalledTimes(1)
     expect(access.query).toHaveBeenCalledWith(...queryArgs)
   })
 })

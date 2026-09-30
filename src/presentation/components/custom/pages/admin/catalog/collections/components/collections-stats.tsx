@@ -1,22 +1,22 @@
 import { type JSX, useCallback } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { type COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants"
-import { collectionStatsQueryOptions } from "~/src/modules/product-collection/use-cases/get-collection-stats"
+import { getCollectionStatsQuery } from "~/src/modules/product-collection/use-cases/get-collection-stats"
 
 import { COLLECTION_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/collections/collections-stats.config"
 import {
   CollectionStatCard,
   buildCollectionStatCaption,
-  formatCollectionStatDisplayValue,
+  formatCollectionStatValue,
 } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collection-stat-card"
 import { collectionsDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/collections/utils/collections-data-grid"
 
 export const CollectionsStats = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.collections")
-  const { data: resolvedStats, isFetching } = useSuspenseQuery(collectionStatsQueryOptions())
+  const { data: resolvedStats, isFetching } = useSuspenseQuery(getCollectionStatsQuery())
   const valuesPending = isFetching
   const { table } = collectionsDataGrid.useDataGrid()
   const statusColumn = table.getColumn("status")
@@ -29,6 +29,7 @@ export const CollectionsStats = (): JSX.Element => {
     },
     [statusColumn, table],
   )
+
   return (
     <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {COLLECTION_STAT_CARDS.map((config) => {
@@ -47,7 +48,7 @@ export const CollectionsStats = (): JSX.Element => {
             activeFilter={activeFilter}
             caption={caption}
             config={config}
-            displayValue={formatCollectionStatDisplayValue(config.key, value)}
+            displayValue={formatCollectionStatValue(config.key, value)}
             onFilter={applyStatusFilter}
             valuesPending={valuesPending}
           />

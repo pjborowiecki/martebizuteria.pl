@@ -1,41 +1,158 @@
 import { env } from "cloudflare:workers"
 
+import { createElement } from "react"
+
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { admin, anonymous, multiSession, twoFactor } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { eq } from "drizzle-orm"
+import { createTranslator } from "use-intl"
 import { v7 as uuidv7 } from "uuid"
 
-import { authActions } from "~/src/integrations/better-auth/auth.actions"
-import { scheduleBackgroundWork } from "~/src/integrations/better-auth/auth.background"
-import { ADMIN_PANEL_ROLES, DEFAULT_ROLE } from "~/src/integrations/better-auth/auth.constants"
-import { ROLES_CONFIG, ac } from "~/src/integrations/better-auth/auth.permissions"
+import { ADMIN_PANEL_ROLES, DEFAULT_ROLE, ROLES_CONFIG, ac } from "~/src/integrations/better-auth/auth.access"
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "~/src/integrations/better-auth/auth.constraints"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
+import { scheduleAdminCustomersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
+import { sendEmail } from "~/src/integrations/resend/resend.send"
+import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
+import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
+import { appHostsForMode, isLocalMode } from "~/src/modules/_core/constants/api"
 import { recordAuthLoginAudit, recordCustomerRegisteredAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
 import { user as userTable } from "~/src/modules/user/user.schema"
 
-import { scheduleAdminCustomersInvalidation } from "~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server"
+import { scheduleBackgroundWork } from "~/src/lib/background"
+import { IP_ADDRESS_HEADER } from "~/src/lib/rate-limit"
+import { buildLocalizedUrl } from "~/src/lib/seo"
 
-import { APP_NAME } from "~/src/presentation/branding/app"
+import { APP_NAME, APP_URL } from "~/src/presentation/branding/app"
 
+import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
+import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"
+import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.json"
+import type verifyEmailMessages from "~/messages/en-US/emails.verify-email.json"
+import { ACCOUNT_DELETED_NAMESPACE, AccountDeleted } from "~/src/presentation/emails/account-deleted"
+import { CHANGE_EMAIL_NAMESPACE, ChangeEmail } from "~/src/presentation/emails/change-email"
+import { RESET_PASSWORD_NAMESPACE, ResetPassword } from "~/src/presentation/emails/reset-password"
+import { VERIFY_EMAIL_NAMESPACE, VerifyEmail } from "~/src/presentation/emails/verify-email"
 import { ROUTES } from "~/src/routes"
 
 const MAX_FORGET_PASSWORD_ATTEMPTS = 3
+
 const MAX_LOGIN_ATTEMPTS = 5
+
 const MAX_RESET_PASSWORD_ATTEMPTS = 5
+
 const MAX_SIGNUP_ATTEMPTS = 3
 
 const MAX_CONCURRENT_SESSIONS = 5
 
 const RATE_LIMIT_MAX_REQUESTS = 100
+
 const RATE_LIMIT_WINDOW_IN_SECONDS = 60
+
 const COOKIE_CACHE_MAX_AGE_IN_SECONDS = 300
 
 const TRUSTED_AUTH_PROVIDERS = ["google", "github"]
-const TRUSTED_IP_HEADERS = ["cf-connecting-ip"]
+
+const resolveEmailVerificationCallbackUrl = (url: string, locale: SupportedLocale): string => {
+  try {
+    const parsed = new URL(url)
+    const callbackParam = parsed.searchParams.get("callbackURL")
+    if (callbackParam === null) {
+      return url
+    }
+
+    const callback = decodeURIComponent(callbackParam)
+    const storefrontHome = buildLocalizedUrl("", "/", locale)
+    const redirectsToStorefront = callback === "/" || callback === storefrontHome || callback.startsWith(`${storefrontHome}?`)
+    if (!redirectsToStorefront) {
+      return url
+    }
+
+    const accountCallback = buildLocalizedUrl("", `${ROUTES.ACCOUNT_OVERVIEW}?verified=true`, locale)
+    parsed.searchParams.set("callbackURL", accountCallback)
+
+    return parsed.toString()
+  } catch {
+    return url
+  }
+}
+
+const reportEmailFailure = (kind: string, recipient: string, failure: string | undefined): void => {
+  if (failure !== undefined) {
+    console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
+  }
+}
+
+export const sendVerificationEmail = async ({ user, url }: AuthEmailParams): Promise<void> => {
+  const locale = getCurrentLocale()
+  const verificationUrl = resolveEmailVerificationCallbackUrl(url, locale)
+  const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
+  const failure = await sendEmail({
+    react: createElement(VerifyEmail, {
+      locale,
+      messages,
+      name: user.name,
+      verificationUrl,
+    }),
+    subject: createTranslator({ locale, messages })("subject"),
+    to: user.email,
+  })
+  reportEmailFailure("verification", user.email, failure)
+}
+
+export const sendResetPassword = async ({ user, url }: AuthEmailParams): Promise<void> => {
+  const locale = getCurrentLocale()
+  const messages = await loadNamespace<typeof resetPasswordMessages>({ locale, namespace: RESET_PASSWORD_NAMESPACE })
+  const failure = await sendEmail({
+    react: createElement(ResetPassword, {
+      locale,
+      messages,
+      name: user.name,
+      resetPasswordUrl: url,
+    }),
+    subject: createTranslator({ locale, messages })("subject"),
+    to: user.email,
+  })
+  reportEmailFailure("reset-password", user.email, failure)
+}
+
+export const sendChangeEmailConfirmation = async ({ user, url }: AuthEmailParams): Promise<void> => {
+  const locale = getCurrentLocale()
+  const messages = await loadNamespace<typeof changeEmailMessages>({ locale, namespace: CHANGE_EMAIL_NAMESPACE })
+  const failure = await sendEmail({
+    react: createElement(ChangeEmail, {
+      locale,
+      messages,
+      name: user.name,
+      verificationUrl: url,
+    }),
+    subject: createTranslator({ locale, messages })("subject"),
+    to: user.email,
+  })
+  reportEmailFailure("change-email confirmation", user.email, failure)
+}
+
+export const sendAccountDeletedEmail = async ({ email, locale, name }: AccountDeletedEmailParams): Promise<void> => {
+  const resolvedLocale = locale ?? getCurrentLocale()
+  const storefrontUrl = `${APP_URL}/${resolvedLocale}`
+  const messages = await loadNamespace<typeof accountDeletedMessages>({ locale: resolvedLocale, namespace: ACCOUNT_DELETED_NAMESPACE })
+  const failure = await sendEmail({
+    react: createElement(AccountDeleted, {
+      locale: resolvedLocale,
+      messages,
+      name,
+      storefrontUrl,
+    }),
+    subject: createTranslator({ locale: resolvedLocale, messages })("subject"),
+    to: email,
+  })
+  reportEmailFailure("account-deleted", email, failure)
+}
 
 export const auth = betterAuth({
   account: {
@@ -43,16 +160,18 @@ export const auth = betterAuth({
       enabled: true,
       trustedProviders: TRUSTED_AUTH_PROVIDERS,
     },
+    encryptOAuthTokens: true,
   },
   advanced: {
     backgroundTasks: { handler: scheduleBackgroundWork },
     database: { generateId: () => uuidv7(), joins: true },
     ipAddress: {
-      ipAddressHeaders: TRUSTED_IP_HEADERS,
+      ipAddressHeaders: [IP_ADDRESS_HEADER],
     },
+    useSecureCookies: !isLocalMode(import.meta.env.MODE),
   },
   appName: APP_NAME,
-  baseURL: env.VITE_APP_URL,
+  baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) },
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
   databaseHooks: {
     session: {
@@ -61,6 +180,7 @@ export const auth = betterAuth({
           const sessionUser = await db.query.user.findFirst({
             where: eq(userTable.id, createdSession.userId),
           })
+
           if (sessionUser === undefined) {
             return
           }
@@ -97,13 +217,15 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    maxPasswordLength: PASSWORD_MAX_LENGTH,
+    minPasswordLength: PASSWORD_MIN_LENGTH,
     requireEmailVerification: true,
-    sendResetPassword: authActions.sendResetPassword,
+    sendResetPassword,
   },
   emailVerification: {
     autoSignInAfterVerification: true,
     sendOnSignUp: true,
-    sendVerificationEmail: authActions.sendVerificationEmail,
+    sendVerificationEmail,
   },
   plugins: [
     admin({
@@ -155,7 +277,6 @@ export const auth = betterAuth({
     google: { clientId: env.AUTH_GOOGLE_CLIENT_ID, clientSecret: env.AUTH_GOOGLE_CLIENT_SECRET },
   },
   telemetry: { enabled: false },
-  trustedOrigins: [env.VITE_APP_URL],
   user: {
     additionalFields: {
       timezone: {
@@ -166,8 +287,22 @@ export const auth = betterAuth({
     },
     changeEmail: {
       enabled: true,
-      sendChangeEmailConfirmation: authActions.sendChangeEmailConfirmation,
+      sendChangeEmailConfirmation,
     },
   },
-  verification: { storeInDatabase: true },
+  verification: { storeIdentifier: "hashed", storeInDatabase: true },
 })
+
+interface AuthEmailParams {
+  readonly url: string
+  readonly user: {
+    readonly email: string
+    readonly name: string
+  }
+}
+
+interface AccountDeletedEmailParams {
+  readonly email: string
+  readonly locale?: SupportedLocale
+  readonly name: string
+}

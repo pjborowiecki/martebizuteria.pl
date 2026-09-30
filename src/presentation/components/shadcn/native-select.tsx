@@ -2,6 +2,7 @@ import { type ComponentProps, type JSX } from "react"
 
 import { cn } from "cn"
 import { ChevronDownIcon } from "lucide-react"
+
 const NativeSelect = ({ className, size = "default", ...props }: Readonly<NativeSelectProps>): JSX.Element => (
   <div
     className={cn("group/native-select relative w-fit has-[select:disabled]:opacity-50", className)}
@@ -33,4 +34,5 @@ const NativeSelectOptGroup = ({ className, ...props }: Readonly<ComponentProps<"
 type NativeSelectProps = Omit<ComponentProps<"select">, "size"> & {
   size?: "sm" | "default"
 }
+
 export { NativeSelect, NativeSelectOptGroup, NativeSelectOption }

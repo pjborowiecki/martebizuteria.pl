@@ -1,13 +1,18 @@
 import { createIsomorphicFn } from "@tanstack/react-start"
 import { transformUrl } from "unpic"
 
-import { type ProductLocaleMap } from "~/src/modules/product/product.types"
+import { type Product } from "~/src/modules/product/product.types"
 
-import { getAssetURL, getBaseURL, isAssetCdnUrl, resolveAssetURL } from "~/src/lib/url"
+import { getAssetURL, isAssetCdnUrl, resolveAssetURL } from "~/src/lib/url"
+
+import { APP_URL } from "~/src/presentation/branding/app"
+
 const resolveImageCdnDomain = (): string => {
   const domain: unknown = import.meta.env["VITE_IMAGE_CDN_DOMAIN"]
-  return typeof domain === "string" && domain !== "" ? domain : new URL(getBaseURL()).hostname
+
+  return typeof domain === "string" && domain !== "" ? domain : new URL(APP_URL).hostname
 }
+
 export const getProductImageUrl = (src?: string | null): string =>
   src !== undefined && src !== null && src !== "" ? src : PLACEHOLDER_IMAGE
 
@@ -30,6 +35,7 @@ export const getOptimizedImageUrl = ({
         return resolvedSrc
       }
     }
+
     const optimized: unknown = transformUrl(
       {
         height,
@@ -50,30 +56,36 @@ export const getOptimizedImageUrl = ({
         },
       },
     )
+
     if (typeof optimized === "string") {
       return optimized
     }
+
     return resolvedSrc
   } catch {
     return resolvedSrc
   }
 }
+
 const preloadSingleImage = (image: Readonly<PrefetchImageConfig>, prefetchService: Readonly<ImagePrefetchService>): void => {
   if (prefetchService.isSeen(image.src)) {
     return
   }
+
   const img = new Image()
   img.decoding = "async"
   img.fetchPriority = "low"
   if (image.sizes !== undefined && image.sizes !== null) {
     img.sizes = image.sizes
   }
+
   if (image.srcset !== undefined && image.srcset !== null) {
     img.srcset = image.srcset
   }
   prefetchService.markSeen(image.src)
   img.src = image.src
 }
+
 export const executeDomPrefetch = (
   images: readonly PrefetchImageConfig[] | undefined,
   prefetchService: Readonly<ImagePrefetchService>,
@@ -81,14 +93,18 @@ export const executeDomPrefetch = (
   if (images === undefined || images.length === 0) {
     return
   }
+
   for (const image of images) {
     if (image.loading !== "lazy") {
       preloadSingleImage(image, prefetchService)
     }
   }
 }
+
 const DEFAULT_EAGER_COUNT = 6
+
 const MAX_CACHE_SIZE = 1000
+
 export const IMAGE_CONSTANTS = {
   DEFAULT_HEIGHT: 256,
   DEFAULT_QUALITY: 75,
@@ -100,7 +116,9 @@ export const IMAGE_CONSTANTS = {
   THUMBNAIL_HEIGHT: 256,
   THUMBNAIL_WIDTH: 256,
 }
+
 export const PLACEHOLDER_IMAGE = getAssetURL("placeholder.svg")
+
 export interface PrefetchImageConfig {
   readonly alt?: string | null
   readonly loading?: "eager" | "lazy"
@@ -110,11 +128,13 @@ export interface PrefetchImageConfig {
   readonly srcset?: string | null
   readonly width?: number
 }
+
 export interface PrefetchRawConfig {
   readonly height: number
   readonly quality?: number
   readonly width: number
 }
+
 export class ImagePrefetchService {
   private readonly maxSize: number
   private readonly seen: Set<string>
@@ -143,6 +163,7 @@ export class ImagePrefetchService {
     }
   }
 }
+
 export const prefetchProductThumbnails = createIsomorphicFn().client(
   (
     products: readonly Readonly<{
@@ -167,18 +188,20 @@ export const prefetchProductThumbnails = createIsomorphicFn().client(
         )
         count++
       }
+
       if (count === DEFAULT_EAGER_COUNT) {
         break
       }
     }
   },
 )
+
 export const prefetchSingleProductImage = createIsomorphicFn().client(
   (
     product: Readonly<{
       thumbnail: string | null
       title?: string
-      titles?: ProductLocaleMap | null
+      titles?: Product["localeMap"] | null
     }>,
     prefetchService: Readonly<ImagePrefetchService>,
   ) => {
@@ -198,6 +221,7 @@ export const prefetchSingleProductImage = createIsomorphicFn().client(
     }
   },
 )
+
 export const prefetchRawImageUrls = createIsomorphicFn().client(
   (imageUrls: readonly string[], prefetchService: Readonly<ImagePrefetchService>, config: Readonly<PrefetchRawConfig> | undefined) => {
     const {
@@ -205,6 +229,7 @@ export const prefetchRawImageUrls = createIsomorphicFn().client(
       quality = IMAGE_CONSTANTS.DEFAULT_QUALITY,
       width = IMAGE_CONSTANTS.DEFAULT_WIDTH,
     } = config ?? {}
+
     const images = imageUrls.slice(0, DEFAULT_EAGER_COUNT).map((src) => ({
       src: getOptimizedImageUrl({
         height,

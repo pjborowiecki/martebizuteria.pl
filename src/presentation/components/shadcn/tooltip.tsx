@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 import { cn } from "cn"
+
 const Tooltip = ({ ...props }: Readonly<TooltipPrimitive.Root.Props>): JSX.Element => (
   <TooltipPrimitive.Root data-slot="tooltip" {...props} />
 )
@@ -37,7 +38,10 @@ const TooltipContent = ({
 )
 
 const DEFAULT_SIDE_OFFSET = 4
+
 const DEFAULT_ALIGN_OFFSET = 0
+
 interface TooltipContentProps
   extends TooltipPrimitive.Popup.Props, Pick<TooltipPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset"> {}
+
 export { Tooltip, TooltipContent, TooltipTrigger }

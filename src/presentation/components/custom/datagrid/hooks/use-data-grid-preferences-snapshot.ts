@@ -7,6 +7,7 @@ import {
   type DataGridPreferencesSnapshot,
   defaultPreferencesSnapshot,
   loadDataGridPreferences,
+  sanitizeColumnVisibility,
 } from "~/src/presentation/components/custom/datagrid/lib/data-grid-preferences"
 import {
   type DataGridPreferencesStore,
@@ -29,7 +30,6 @@ export interface DataGridPreferencesSnapshotApi {
   readonly snapshot: DataGridPreferencesSnapshot
 }
 
-/** Subscribes to persisted layout prefs; hydrates from localStorage on first client read. */
 export const useDataGridPreferencesSnapshot = ({
   canonicalOrder,
   columnMaxSizes,
@@ -50,8 +50,13 @@ export const useDataGridPreferencesSnapshot = ({
   const storePersistenceKeyRef = useRef<string | null>(null)
 
   const serverSnapshot = useMemo(
-    () => defaultPreferencesSnapshot(canonicalOrder, defaultColumnVisibility, stableColumnPinning),
-    [canonicalOrder, defaultColumnVisibility, stableColumnPinning],
+    () =>
+      defaultPreferencesSnapshot(
+        canonicalOrder,
+        sanitizeColumnVisibility({ columnIds: canonicalOrder, defaults: defaultColumnVisibility, forcedHiddenColumnIds }),
+        stableColumnPinning,
+      ),
+    [canonicalOrder, defaultColumnVisibility, forcedHiddenColumnIds, stableColumnPinning],
   )
 
   const getStore = useCallback((): DataGridPreferencesStore => {
@@ -93,6 +98,7 @@ export const useDataGridPreferencesSnapshot = ({
       if (typeof document === "undefined") {
         return () => {}
       }
+
       return getStore().subscribe(onStoreChange)
     },
     getClientSnapshot,

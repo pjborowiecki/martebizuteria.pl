@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { ListFilter } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_ATTRIBUTE_TABLE_COLUMN_ID, PRODUCT_ATTRIBUTE_TYPES } from "~/src/modules/product-attribute/product-attribute.constants"
 
@@ -28,6 +28,7 @@ export const AttributesTypeFilter = (): JSX.Element => {
     ],
     [t],
   )
+
   const handleChange = useCallback(
     (value: string | null) => {
       if (value === null) {
@@ -38,6 +39,7 @@ export const AttributesTypeFilter = (): JSX.Element => {
     },
     [column, table],
   )
+
   return (
     <Select items={options} value={current} onValueChange={handleChange}>
       <SelectTrigger
@@ -58,4 +60,5 @@ export const AttributesTypeFilter = (): JSX.Element => {
     </Select>
   )
 }
+
 const ALL_VALUE = "all"

@@ -3,34 +3,35 @@ import {
   type OrderAccountCta,
   buildOrderAccountCta,
   formatEmailAddress,
+  resolveDeliveryMethodLabel,
 } from "~/src/integrations/resend/order-confirmation.utils"
-import { getEmailMessages } from "~/src/integrations/use-intl/i18n.emails"
-import { type Locale } from "~/src/integrations/use-intl/i18n.types"
+import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
+import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
 import { type OrderShippedDetails } from "~/src/presentation/emails/order-shipped"
-const resolveDeliveryMethodLabel = (context: CheckoutEmailContext | undefined, locale: Locale): string => {
-  const { unavailable } = getEmailMessages(locale).emails.orderConfirmation
-  const method = context?.deliveryMethod
-  if (method === null || method === undefined) {
-    return unavailable
-  }
-  const lockerId = context?.lockerId?.trim()
-  if (method.type === "locker" && lockerId !== undefined && lockerId !== "") {
-    return `${method.name} · ${lockerId}`
-  }
-  return method.name
-}
-const resolveEstimatedDelivery = (deliveryType: "courier" | "in_store" | "locker", locale: Locale): string =>
-  getEmailMessages(locale).emails.orderConfirmation.deliveryTiming[deliveryType].estimatedDelivery
 
-export const buildOrderShippedDetails = (context: CheckoutEmailContext | undefined, locale: Locale): OrderShippedDetails => {
-  const t = getEmailMessages(locale).emails.orderConfirmation
+export const buildOrderShippedDetails = (
+  context: CheckoutEmailContext | undefined,
+  messages: typeof orderShippedMessages,
+): OrderShippedDetails => {
   const deliveryType = context?.deliveryMethod?.type ?? "courier"
+
   return {
-    deliveryMethod: resolveDeliveryMethodLabel(context, locale),
-    estimatedDelivery: resolveEstimatedDelivery(deliveryType, locale),
-    shippingAddress: formatEmailAddress(context?.shippingAddress) ?? t.unavailable,
+    deliveryMethod: resolveDeliveryMethodLabel(context, messages.unavailable),
+    estimatedDelivery: messages.deliveryTiming[deliveryType].estimatedDelivery,
+    shippingAddress: formatEmailAddress(context?.shippingAddress) ?? messages.unavailable,
   }
 }
-export const buildOrderShippedAccountCta = (locale: Locale, orderId: string, userId: string | null | undefined): OrderAccountCta =>
-  buildOrderAccountCta(locale, orderId, userId === null || userId === undefined || userId === "")
+
+export const buildOrderShippedAccountCta = ({
+  locale,
+  messages,
+  orderId,
+  userId,
+}: Readonly<{
+  locale: SupportedLocale
+  messages: typeof orderShippedMessages
+  orderId: string
+  userId: string | null | undefined
+}>): OrderAccountCta =>
+  buildOrderAccountCta({ isGuest: userId === null || userId === undefined || userId === "", locale, messages, orderId })

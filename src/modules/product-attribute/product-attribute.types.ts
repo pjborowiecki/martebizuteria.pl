@@ -1,24 +1,26 @@
 import { type z } from "zod/v4"
 
-import { type Locale } from "~/src/integrations/use-intl/i18n.types"
+import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type productAttribute } from "~/src/modules/product-attribute/product-attribute.schema"
-import { type productAttributeFormSchema, type productAttributeZodSchemas } from "~/src/modules/product-attribute/product-attribute.zod"
+import { type productAttributeZodSchemas } from "~/src/modules/product-attribute/product-attribute.zod"
 
-export type ProductAttributeLocaleCode = Locale
+type LocaleCode = SupportedLocale
 
-export type ProductAttributeLocaleMap = Record<ProductAttributeLocaleCode, string>
+type LocaleMap = Record<LocaleCode, string>
 
-export interface ProductAttributeAllowedValue {
-  readonly labels: ProductAttributeLocaleMap
-  /** Stable key stored on `attribute_on_product.value` (matched in the storefront). */
+interface AllowedValue {
+  readonly labels: LocaleMap
   readonly value: string
 }
 
 export interface ProductAttribute {
   adminListItem: z.infer<(typeof productAttributeZodSchemas)["adminListItem"]>
-  formValues: z.infer<ReturnType<typeof productAttributeFormSchema>>
+  allowedValue: AllowedValue
+  formValues: z.infer<(typeof productAttributeZodSchemas)["createInput"]>
   insert: typeof productAttribute.$inferInsert
+  localeCode: LocaleCode
+  localeMap: LocaleMap
   select: typeof productAttribute.$inferSelect
   stats: z.infer<(typeof productAttributeZodSchemas)["stats"]>
 }

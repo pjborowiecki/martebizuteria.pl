@@ -1,4 +1,5 @@
 import { type categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
+
 export const resolvePrimaryCategoryId = (
   assignments: readonly {
     readonly categoryId: string
@@ -9,8 +10,10 @@ export const resolvePrimaryCategoryId = (
   if (primary !== undefined) {
     return primary.categoryId
   }
+
   return assignments[0]?.categoryId
 }
+
 export const resolveAdditionalCategoryIds = (
   assignments: readonly {
     readonly categoryId: string
@@ -18,14 +21,17 @@ export const resolveAdditionalCategoryIds = (
   }[],
 ): string[] => {
   const primaryId = resolvePrimaryCategoryId(assignments)
+
   return assignments.filter((row) => row.categoryId !== primaryId).map((row) => row.categoryId)
 }
+
 export const buildCategoryOnProductRows = (
   productId: string,
   primaryCategoryId: string,
   additionalCategoryIds: readonly string[],
 ): (typeof categoryOnProduct.$inferInsert)[] => {
   const additionalSet = new Set(additionalCategoryIds.filter((id) => id !== primaryCategoryId))
+
   return [
     {
       categoryId: primaryCategoryId,

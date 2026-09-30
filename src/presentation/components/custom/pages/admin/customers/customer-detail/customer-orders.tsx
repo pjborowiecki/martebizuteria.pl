@@ -2,8 +2,9 @@ import { type JSX, useCallback, useMemo } from "react"
 
 import { Link, useRouter } from "@tanstack/react-router"
 import { ArrowUpRight } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { type User } from "~/src/modules/user/user.types"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
@@ -17,9 +18,11 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.constants"
 
 import { ROUTES } from "~/src/routes"
+
 export const CustomerOrders = ({ customer }: CustomerOrdersProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
-  const ordersLink = useMemo(() => <Link to={`/{-$locale}${ROUTES.ADMIN_ORDERS}`} />, [])
+  const ordersLink = useMemo(() => <Link to={ROUTES.ADMIN_ORDERS} />, [])
+
   return (
     <Card className="shadow-none">
       <CardContent className="p-0">
@@ -67,15 +70,17 @@ export const CustomerOrders = ({ customer }: CustomerOrdersProps): JSX.Element =
     </Card>
   )
 }
+
 const CustomerOrderRow = ({ order }: { order: User["adminCustomerDetail"]["orders"][number] }): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
   const router = useRouter()
-  const itemsLabel = order.itemTitles.length === 0 ? "—" : order.itemTitles.join(", ")
+  const itemsLabel = order.itemTitles.length === 0 ? EMPTY_VALUE : order.itemTitles.join(", ")
   const handleOrderClick = useCallback(() => {
     void router.navigate({
-      to: `/{-$locale}/admin/orders/${order.id}`,
+      to: `/admin/orders/${order.id}`,
     })
   }, [order.id, router])
+
   return (
     <TableRow className="group cursor-pointer" onClick={handleOrderClick}>
       <TableCell className="pl-5 font-mono text-sm font-medium">{order.id}</TableCell>
@@ -95,6 +100,7 @@ const CustomerOrderRow = ({ order }: { order: User["adminCustomerDetail"]["order
     </TableRow>
   )
 }
+
 interface CustomerOrdersProps {
   readonly customer: User["adminCustomerDetail"]
 }

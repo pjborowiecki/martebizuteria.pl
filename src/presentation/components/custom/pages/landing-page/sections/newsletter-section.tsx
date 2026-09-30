@@ -1,11 +1,13 @@
 import { type JSX } from "react"
 
 import { ArrowRight } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Input } from "~/src/presentation/components/shadcn/input"
+
 export const NewsletterSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.newsletterSection")
+
   return (
     <section className="bg-secondary/40 py-20 lg:py-28">
       <div className="reveal mx-auto max-w-400 px-6 lg:px-12">

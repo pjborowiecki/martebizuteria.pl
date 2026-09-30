@@ -1,6 +1,7 @@
 import { createColumnHelper } from "@tanstack/react-table"
-import { type useTranslations } from "use-intl"
+import { type useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import {
   ACTOR_ROLE_COLORS,
   AUDIT_LOG_TABLE_COLUMN_ID,
@@ -19,8 +20,10 @@ import { AuditTableCell } from "~/src/presentation/components/custom/pages/admin
 import { AuditTargetCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-target-cell"
 import { AuditRowActions } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-row-actions"
 import { CATALOG_DATAGRID_MUTED_TEXT_CLASS } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
+
 const resolveAuditActionLabel = (t: BuildAuditColumnsOptions["t"], action: string): string => {
   const actionKey = action.replace(ACTION_DOT_REGEX, "_")
+
   return t(`audit.actions.${actionKey}`)
 }
 
@@ -30,6 +33,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
     columnHelper.accessor("severity", {
       cell: ({ getValue }) => {
         const severity = getValue()
+
         return (
           <AuditTableCell>
             <Badge className={`border-0 text-[10px] ${SEVERITY_BADGE_COLORS[severity]}`} variant="secondary">
@@ -159,8 +163,9 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
   ])
 
 const ACTION_DOT_REGEX = /\./gu
-const EMPTY_VALUE = "—"
+
 const columnHelper = createColumnHelper<DataGridFeatures, AuditLog["adminListItem"]>()
+
 interface BuildAuditColumnsOptions {
   readonly selectionLabels: {
     readonly all: string

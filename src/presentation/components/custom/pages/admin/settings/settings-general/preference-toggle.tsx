@@ -1,12 +1,14 @@
 import { type JSX } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { type ToggleSettingKey } from "~/src/data/settings-data"
+import { type ToggleSettingKey } from "~/src/data/settings"
 
 import { Switch } from "~/src/presentation/components/shadcn/switch"
+
 export const PreferenceToggle = ({ settingKey }: PreferenceToggleProps): JSX.Element => {
   const t = useTranslations("pages.admin")
+
   return (
     <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
       <div>
@@ -17,6 +19,7 @@ export const PreferenceToggle = ({ settingKey }: PreferenceToggleProps): JSX.Ele
     </div>
   )
 }
+
 interface PreferenceToggleProps {
   readonly settingKey: ToggleSettingKey
 }

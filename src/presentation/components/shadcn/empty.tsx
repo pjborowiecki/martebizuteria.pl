@@ -2,6 +2,7 @@ import { type ComponentProps, type JSX } from "react"
 
 import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
+
 const Empty = ({ className, ...props }: Readonly<ComponentProps<"div">>): JSX.Element => (
   <div className={cn("flex w-full flex-col items-center justify-center p-8 text-center", className)} data-slot="empty" {...props} />
 )
@@ -47,4 +48,5 @@ const emptyMediaVariants = cva("mb-2 flex shrink-0 items-center justify-center [
     },
   },
 })
+
 export { Empty, EmptyAction, EmptyDescription, EmptyMedia, emptyMediaVariants, EmptyTitle }

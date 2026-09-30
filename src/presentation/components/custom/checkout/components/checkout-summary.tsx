@@ -2,18 +2,18 @@ import { type JSX } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { useWatch } from "react-hook-form"
-import { useFormatter, useTranslations } from "use-intl"
+import { useFormatter, useTranslations } from "use-intl/react"
 
-import { deliveryMethodsQueryOptions } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
+import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
+import { useCartStore } from "~/src/modules/cart/cart.store"
+import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 
-import { getCartLineUnitPriceCents } from "~/src/lib/cart-line"
-import { centsToDisplayAmount } from "~/src/lib/currency"
 import { getProductImageUrl } from "~/src/lib/image"
 
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
 import { Image } from "~/src/presentation/components/custom/image"
 
-import { useCartStore } from "~/src/stores/cart.store"
 export const CheckoutSummary = (): JSX.Element => {
   const t = useTranslations("pages.checkout")
   const format = useFormatter()
@@ -23,7 +23,8 @@ export const CheckoutSummary = (): JSX.Element => {
     control,
     name: "deliveryMethod",
   })
-  const { data: deliveryMethods = [] } = useQuery(deliveryMethodsQueryOptions())
+
+  const { data: deliveryMethods = [] } = useQuery(listDeliveryMethodsQuery())
   const selectedDeliveryMethod = deliveryMethods.find((m) => m.id === deliveryMethodId)
   const deliveryCostCents = selectedDeliveryMethod?.price ?? 0
   const subtotalCents = cartTotal()
@@ -37,8 +38,10 @@ export const CheckoutSummary = (): JSX.Element => {
     if (selectedDeliveryMethod === undefined) {
       return t("checkoutSummary.deliveryCalculated")
     }
+
     return deliveryCostCents === 0 ? t("checkoutSummary.free") : money(deliveryCostCents)
   })()
+
   return (
     <aside className="sticky top-24 border border-border/50 bg-muted/40 p-6 text-card-foreground md:p-8">
       <div className="space-y-4 text-[12px]">

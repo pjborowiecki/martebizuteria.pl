@@ -1,13 +1,14 @@
 import { type JSX, useMemo } from "react"
 
 import { Info } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Label } from "~/src/presentation/components/shadcn/label"
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/presentation/components/shadcn/tooltip"
 
 import { buildCatalogFormFieldHint } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form-field-hint"
+
 const CatalogFormFieldHintTrigger = ({
   hint,
 }: Readonly<{
@@ -27,6 +28,7 @@ const CatalogFormFieldHintTrigger = ({
     ),
     [hint],
   )
+
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
@@ -46,9 +48,11 @@ export const CatalogFormFieldLabel = ({ counter, hint, label, required }: Readon
       {tooltipHint !== undefined && <CatalogFormFieldHintTrigger hint={tooltipHint} />}
     </div>
   )
+
   if (counter === undefined) {
     return labelNode
   }
+
   return (
     <div className="flex min-h-5 w-full items-center justify-between gap-3">
       {labelNode}
@@ -56,6 +60,7 @@ export const CatalogFormFieldLabel = ({ counter, hint, label, required }: Readon
     </div>
   )
 }
+
 interface CatalogFormFieldLabelProps {
   readonly counter?: string | undefined
   readonly hint?: string | undefined

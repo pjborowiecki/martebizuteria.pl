@@ -5,15 +5,9 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { normalizeProductAttributeLocaleMapForSave } from "~/src/modules/product-attribute/product-attribute.utils"
 import { collectSkusFromCatalogInput } from "~/src/modules/product/product-sku.validation.utils"
-import {
-  deleteProducts,
-  findTakenSkus,
-  getMaxRankQuery,
-  getProductByHandleQuery,
-  replaceProductCatalog,
-  replaceProductOrganization,
-} from "~/src/modules/product/product.accessors"
+import { getMaxRankQuery, getProductByHandleQuery } from "~/src/modules/product/product.accessors"
 import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
+import { deleteProducts, findTakenSkus, replaceProductCatalog, replaceProductOrganization } from "~/src/modules/product/product.mutations"
 import { product } from "~/src/modules/product/product.schema"
 import { type Product } from "~/src/modules/product/product.types"
 import {
@@ -24,8 +18,6 @@ import {
   toProductDbStatus,
 } from "~/src/modules/product/product.utils"
 import type { productZodSchemas } from "~/src/modules/product/product.zod"
-
-import { tryCatch } from "~/src/lib/try-catch"
 
 const NO_RANK = -1
 
@@ -50,18 +42,20 @@ export const assertCatalogSkusAvailable = async (
   }
 }
 
-/** Deletes failed create leftovers (product row without variants) so the same slug can be retried. */
 export const deleteOrphanProductByHandle = async (handle: string): Promise<boolean> => {
   const existing = await getProductByHandleQuery.execute({
     handle,
   })
+
   if (existing === undefined) {
     return false
   }
+
   if (existing.variants.length > 0) {
     return false
   }
   await deleteProducts([existing.id])
+
   return true
 }
 
@@ -80,14 +74,9 @@ export const insertProductWithCatalog = async (
   const [maxRank] = await getMaxRankQuery.execute()
   let nextRank = maxRank?.value ?? NO_RANK
   nextRank++
-  try {
-    await db.insert(product).values(toProductRow(data, id, nextRank))
-    await assertCatalogSkusAvailable(data, id)
-    await persistProductCatalog(id, data)
-  } catch (error) {
-    await tryCatch(deleteProducts([id]))
-    throw error
-  }
+  await db.insert(product).values(toProductRow(data, id, nextRank))
+  await assertCatalogSkusAvailable(data, id)
+  await persistProductCatalog(id, data)
 }
 
 export const updateProductWithCatalog = async (

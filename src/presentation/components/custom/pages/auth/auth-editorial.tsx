@@ -1,11 +1,12 @@
 import { type JSX } from "react"
 
 import { useLocation } from "@tanstack/react-router"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { getAssetURL } from "~/src/lib/url"
 
 import { Image } from "~/src/presentation/components/custom/image"
+
 export const AuthEditorial = (): JSX.Element => {
   const t = useTranslations("components.custom.authLayout")
   const location = useLocation()
@@ -13,6 +14,7 @@ export const AuthEditorial = (): JSX.Element => {
   const image = getAssetURL(isSignUp ? "marketing/about.webp" : "marketing/hero.webp")
   const width = isSignUp ? SIGN_UP_IMAGE_WIDTH : SIGN_IN_IMAGE_WIDTH
   const height = isSignUp ? SIGN_UP_IMAGE_HEIGHT : SIGN_IN_IMAGE_HEIGHT
+
   return (
     <div className="relative hidden overflow-hidden bg-secondary lg:block">
       <Image
@@ -33,7 +35,11 @@ export const AuthEditorial = (): JSX.Element => {
     </div>
   )
 }
+
 const SIGN_UP_IMAGE_WIDTH = 1600
+
 const SIGN_UP_IMAGE_HEIGHT = 1100
+
 const SIGN_IN_IMAGE_WIDTH = 1280
+
 const SIGN_IN_IMAGE_HEIGHT = 1600

@@ -1,4 +1,5 @@
 import { type ComponentProps, type JSX } from "react"
+
 export const GoogleIcon = (props: Readonly<ComponentProps<"svg">>): JSX.Element => (
   <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
     <title>Google</title>

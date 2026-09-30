@@ -1,11 +1,12 @@
 import { type DragEvent, type JSX, type KeyboardEvent, useCallback } from "react"
 
 import { GripVertical } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { attributesDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/utils/attributes-data-grid"
+
 export const AttributeReorderCell = ({ id }: AttributeReorderCellProps): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.attributes")
   const { rowReorder } = attributesDataGrid.useDataGrid()
@@ -18,6 +19,7 @@ export const AttributeReorderCell = ({ id }: AttributeReorderCellProps): JSX.Ele
     },
     [id, rowReorder],
   )
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>) => {
       if (event.key === "ArrowUp") {
@@ -30,6 +32,7 @@ export const AttributeReorderCell = ({ id }: AttributeReorderCellProps): JSX.Ele
     },
     [id, rowReorder],
   )
+
   return (
     <div className="flex justify-center">
       <Button
@@ -49,6 +52,7 @@ export const AttributeReorderCell = ({ id }: AttributeReorderCellProps): JSX.Ele
     </div>
   )
 }
+
 interface AttributeReorderCellProps {
   readonly id: string
 }

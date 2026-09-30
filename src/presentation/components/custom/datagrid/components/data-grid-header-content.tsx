@@ -31,9 +31,11 @@ export const buildDataGridHeaderCellContent = <TData extends RowData>({
   if (header.isPlaceholder) {
     return undefined
   }
+
   if (!column.getCanSort()) {
     return labelNode
   }
+
   return (
     <button type="button" onClick={onSort} aria-label={sortLabel} className={sortButtonClassName}>
       {labelNode}

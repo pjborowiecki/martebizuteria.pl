@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import {
   CATEGORY_STATUS,
@@ -9,8 +9,8 @@ import {
   CATEGORY_TABLE_COLUMN_PINNING,
   CATEGORY_TABLE_DEFAULT_COLUMN_VISIBILITY,
 } from "~/src/modules/product-category/product-category.constants"
-import { type Category } from "~/src/modules/product-category/product-category.types"
-import { adminCategoriesQueryOptions } from "~/src/modules/product-category/use-cases/get-admin-categories"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
+import { getAdminCategoriesQuery } from "~/src/modules/product-category/use-cases/get-admin-categories"
 
 import { useDataGridInstance } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-instance"
 import { createCatalogTableGlobalFilterFn } from "~/src/presentation/components/custom/datagrid/lib/catalog-table-global-filter"
@@ -22,9 +22,11 @@ import { useReorderCategories } from "~/src/presentation/components/custom/pages
 import { categoriesDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/categories/utils/categories-data-grid"
 import { getCategoryAdminSearchParts } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-table-search"
 
-export const useCategoriesDataGrid = ({ onRowClick }: UseCategoriesDataGridOptions): DataGridContextValue<Category["adminListItem"]> => {
+export const useCategoriesDataGrid = ({
+  onRowClick,
+}: UseCategoriesDataGridOptions): DataGridContextValue<ProductCategory["adminListItem"]> => {
   const t = useTranslations("pages.admin.catalog.categories")
-  const { data: categories, isFetching } = useSuspenseQuery(adminCategoriesQueryOptions())
+  const { data: categories, isFetching } = useSuspenseQuery(getAdminCategoriesQuery())
   const showSkeletonRows = isFetching
   const reorder = useReorderCategories()
   const ordering = useCategoryOrdering(categories, reorder)
@@ -32,12 +34,14 @@ export const useCategoriesDataGrid = ({ onRowClick }: UseCategoriesDataGridOptio
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns])
   const globalFilterFn = useMemo(
     () =>
-      createCatalogTableGlobalFilterFn<Category["adminListItem"]>((row) => {
+      createCatalogTableGlobalFilterFn<ProductCategory["adminListItem"]>((row) => {
         const statusLabel = t(row.status === CATEGORY_STATUS.ACTIVE ? CATEGORY_STATUS_LABEL_KEYS.active : CATEGORY_STATUS_LABEL_KEYS.draft)
+
         return getCategoryAdminSearchParts(row, statusLabel)
       }),
     [t],
   )
+
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
     columns,
     data: ordering.items,
@@ -48,6 +52,7 @@ export const useCategoriesDataGrid = ({ onRowClick }: UseCategoriesDataGridOptio
     initialColumnPinning: CATEGORY_TABLE_COLUMN_PINNING,
     persistenceKey: categoriesDataGrid.persistenceKey,
   })
+
   const columnFilters = table.atoms.columnFilters.get()
   const sorting = table.atoms.sorting.get()
   const search = String(table.atoms.globalFilter.get() ?? "").trim()
@@ -63,6 +68,7 @@ export const useCategoriesDataGrid = ({ onRowClick }: UseCategoriesDataGridOptio
     }),
     [naturalOrder, ordering],
   )
+
   return useMemo(
     () => ({
       columnReorder,
@@ -78,6 +84,7 @@ export const useCategoriesDataGrid = ({ onRowClick }: UseCategoriesDataGridOptio
     [columnReorder, hasPreferenceOverrides, onRowClick, resetPreferences, rowReorder, showSkeletonRows, t, table],
   )
 }
+
 interface UseCategoriesDataGridOptions {
-  readonly onRowClick?: (category: Category["adminListItem"]) => void
+  readonly onRowClick?: (category: ProductCategory["adminListItem"]) => void
 }

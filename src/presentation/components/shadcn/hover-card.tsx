@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { PreviewCard as PreviewCardPrimitive } from "@base-ui/react/preview-card"
 import { cn } from "cn"
+
 const HoverCard = ({ ...props }: Readonly<PreviewCardPrimitive.Root.Props>): JSX.Element => (
   <PreviewCardPrimitive.Root data-slot="hover-card" {...props} />
 )
@@ -33,11 +34,14 @@ const HoverCardContent = ({
 )
 
 const DEFAULT_ALIGN_OFFSET = 4
+
 const DEFAULT_SIDE_OFFSET = 4
+
 interface HoverCardContentProps extends PreviewCardPrimitive.Popup.Props {
   readonly align?: PreviewCardPrimitive.Positioner.Props["align"]
   readonly alignOffset?: PreviewCardPrimitive.Positioner.Props["alignOffset"]
   readonly side?: PreviewCardPrimitive.Positioner.Props["side"]
   readonly sideOffset?: PreviewCardPrimitive.Positioner.Props["sideOffset"]
 }
+
 export { HoverCard, HoverCardContent, HoverCardTrigger }

@@ -34,6 +34,7 @@ export const ValidCheck = ({ className, show }: Readonly<{ className?: string; s
   if (!show) {
     return undefined
   }
+
   return (
     <Check
       aria-hidden
@@ -45,6 +46,5 @@ export const ValidCheck = ({ className, show }: Readonly<{ className?: string; s
 
 export const toStringValue = (value: unknown): string => (typeof value === "string" ? value : "")
 
-// A field shows its "valid" affordance (green border + check) only once the user has touched and left it with a non-empty, valid value.
 export const isFieldValid = (fieldState: ControllerFieldState, value: string): boolean =>
   fieldState.isTouched && !fieldState.invalid && value !== ""

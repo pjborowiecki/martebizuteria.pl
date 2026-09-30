@@ -17,7 +17,6 @@ interface DataGridEmptyRowProps {
   readonly message: string
 }
 
-/** Same row count and cell min-heights as the loading skeleton so tbody height does not shift. */
 export const DataGridEmptyRow = ({ colSpan, message }: DataGridEmptyRowProps): JSX.Element => (
   <>
     {Array.from({ length: DATA_GRID_EMPTY_PLACEHOLDER_ROW_COUNT }, (_, rowIndex) => (

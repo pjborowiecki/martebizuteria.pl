@@ -1,0 +1,17 @@
+{
+  "subject": "Email address change — M'Arte",
+  "preview": "The final step to update the email on your M'Arte account.",
+  "heading": "Email address change",
+  "greeting": "Dear {name},",
+  "message": "We received a request to change the email address linked to your M'Arte account.",
+  "messageSecondary": "To complete the process and keep your account secure, please confirm your new email address using the button below.",
+  "messageTertiary": "Until confirmed, we will continue using your current email address.",
+  "highlightTitle": "Why we ask",
+  "highlightBody": "Email changes require confirmation so that no one else can take control of your account.",
+  "cta": "Confirm new email",
+  "expiry": "For your security, this link will expire in 60 minutes.",
+  "ignore": "If you did not request this change, please disregard this message — your account will remain secure.",
+  "signoff": "With warm regards,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}

@@ -17,6 +17,7 @@ import { OrdersStats } from "~/src/presentation/components/custom/pages/admin/or
 import { OrdersStatusFilter } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-status-filter"
 import { useOrdersDataGrid } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-orders-data-grid"
 import { ordersDataGrid } from "~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid"
+
 export const OrdersTableContent = (): JSX.Element => {
   const navigate = useNavigate()
   const handleRowClick = useCallback(
@@ -25,14 +26,16 @@ export const OrdersTableContent = (): JSX.Element => {
         params: {
           orderId: order.id,
         },
-        to: "/{-$locale}/admin/orders/$orderId",
+        to: "/admin/orders/$orderId",
       })
     },
     [navigate],
   )
+
   const grid = useOrdersDataGrid({
     onRowClick: handleRowClick,
   })
+
   return (
     <Provider value={grid}>
       <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>
@@ -67,6 +70,7 @@ export const OrdersTableContent = (): JSX.Element => {
     </Provider>
   )
 }
+
 export const OrdersTable = (): JSX.Element => <OrdersTableContent />
 
 const { Body, Pagination, Provider, Toolbar } = ordersDataGrid

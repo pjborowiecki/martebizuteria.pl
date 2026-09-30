@@ -19,6 +19,7 @@ import { useCustomersDataGrid } from "~/src/presentation/components/custom/pages
 import { customersDataGrid } from "~/src/presentation/components/custom/pages/admin/customers/utils/customers-data-grid"
 
 import { ROUTES } from "~/src/routes"
+
 export const CustomersTableContent = (): JSX.Element => {
   const navigate = useNavigate()
   const handleRowClick = useCallback(
@@ -27,14 +28,16 @@ export const CustomersTableContent = (): JSX.Element => {
         params: {
           id: customer.id,
         },
-        to: `/{-$locale}${ROUTES.ADMIN_CUSTOMER}`,
+        to: ROUTES.ADMIN_CUSTOMER,
       })
     },
     [navigate],
   )
+
   const grid = useCustomersDataGrid({
     onRowClick: handleRowClick,
   })
+
   return (
     <Provider value={grid}>
       <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>

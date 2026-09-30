@@ -1,7 +1,7 @@
 import { type JSX } from "react"
 
 import { CircleX } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -9,9 +9,11 @@ import { LocalizedLink } from "~/src/presentation/components/custom/localized-li
 import { useNavigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider"
 
 import { ROUTES } from "~/src/routes"
+
 export const MenuHeader = (): JSX.Element => {
   const { dismissMenuForRouteNavigation, handleClose } = useNavigation()
   const t = useTranslations("components.custom.navigation")
+
   return (
     <div data-menu-header className="flex h-20 shrink-0 items-center justify-between px-6 lg:px-12">
       <LocalizedLink

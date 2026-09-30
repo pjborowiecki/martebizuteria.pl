@@ -3,10 +3,10 @@ import { type JSX, type MouseEvent, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowRight, Package, Store, Truck } from "lucide-react"
 import { useWatch } from "react-hook-form"
-import { useFormatter, useTranslations } from "use-intl"
+import { useFormatter, useTranslations } from "use-intl/react"
 
 import { DELIVERY_METHOD, DELIVERY_METHODS, type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
-import { deliveryMethodsQueryOptions } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
+import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
@@ -19,6 +19,7 @@ import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/c
 import { CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
 
 type Formatter = ReturnType<typeof useFormatter>
+
 type Translator = ReturnType<typeof useTranslations>
 
 const CENTS_IN_ZLOTY = 100
@@ -39,30 +40,23 @@ const getDeliveryDescription = ({
   format,
   methods,
   t,
-  type,
 }: Readonly<{
   format: Formatter
   methods: readonly HelperMethod[]
   t: Translator
-  type: DeliveryMethodType
 }>): string | undefined => {
   if (methods.length === 0) {
     return undefined
   }
 
-  if (type === DELIVERY_METHOD.COURIER && methods.length > 1) {
-    const lowestPrice = Math.min(...methods.map((m) => m.price))
-    return `${t("deliverySubsteps.from")} ${format.number(lowestPrice / CENTS_IN_ZLOTY, { currency: "PLN", style: "currency" })}`
+  const lowestPrice = Math.min(...methods.map((m) => m.price))
+  if (lowestPrice === 0) {
+    return t("deliverySubsteps.free")
   }
 
-  const [firstMethod] = methods
-  if (firstMethod === undefined) {
-    return undefined
-  }
+  const price = format.number(lowestPrice / CENTS_IN_ZLOTY, { currency: "PLN", style: "currency" })
 
-  return firstMethod.price === 0
-    ? t("deliverySubsteps.free", { fallback: "Bezpłatnie" })
-    : format.number(firstMethod.price / CENTS_IN_ZLOTY, { currency: "PLN", style: "currency" })
+  return methods.length > 1 ? `${t("deliverySubsteps.from")} ${price}` : price
 }
 
 const DeliverySubstep = ({ type }: Readonly<{ type?: string | undefined }>): JSX.Element | undefined => {
@@ -100,7 +94,7 @@ export const DeliveryStep = (): JSX.Element => {
   const format = useFormatter()
   const { control, isPending, onNext, setValue } = useCheckoutForm()
 
-  const { data: deliveryMethods = [], isLoading: isLoadingMethods } = useQuery(deliveryMethodsQueryOptions())
+  const { data: deliveryMethods = [], isLoading: isLoadingMethods } = useQuery(listDeliveryMethodsQuery())
 
   const deliveryMethodType = useWatch({ control, name: "deliveryMethodType" })
 
@@ -148,8 +142,8 @@ export const DeliveryStep = (): JSX.Element => {
                 key={type}
                 value={type}
                 id={`checkout-delivery-type-${type}`}
-                label={t(`deliveryMethods.${type}`, { fallback: type })}
-                description={getDeliveryDescription({ format, methods, t, type })}
+                label={t(`deliveryMethods.${type}`)}
+                description={getDeliveryDescription({ format, methods, t })}
                 icon={DELIVERY_ICONS[type]}
               />,
             ]

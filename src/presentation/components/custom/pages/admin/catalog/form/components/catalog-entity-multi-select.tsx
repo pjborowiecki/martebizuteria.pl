@@ -2,13 +2,16 @@ import { type JSX, useCallback, useMemo, useState } from "react"
 
 import { cn } from "cn"
 import { ChevronsUpDown, XIcon } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
+
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "~/src/presentation/components/shadcn/command"
 import { Popover, PopoverContent, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"
 import { sheetSelectTriggerClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
+
 const buildTriggerLabel = (
   selectedOptions: readonly CatalogEntityMultiSelectOption[],
   placeholder: string,
@@ -17,11 +20,14 @@ const buildTriggerLabel = (
   if (selectedOptions.length === 0) {
     return placeholder
   }
+
   if (selectedOptions.length <= MAX_INLINE_LABELS) {
     return selectedOptions.map((option) => option.label).join(", ")
   }
+
   return selectedCountLabel(selectedOptions.length)
 }
+
 const CatalogEntityMultiSelectOptionItem = ({
   checked,
   label,
@@ -36,12 +42,14 @@ const CatalogEntityMultiSelectOptionItem = ({
   const handleSelect = useCallback(() => {
     onToggle(optionId)
   }, [onToggle, optionId])
+
   return (
     <CommandItem data-checked={checked ? true : undefined} value={label} onSelect={handleSelect}>
       {label}
     </CommandItem>
   )
 }
+
 const CatalogEntityMultiSelectBadge = ({
   disabled,
   label,
@@ -58,6 +66,7 @@ const CatalogEntityMultiSelectBadge = ({
   const handleRemove = useCallback(() => {
     onRemove(optionId)
   }, [onRemove, optionId])
+
   return (
     <Badge variant="secondary" className="gap-1 pr-1 font-normal">
       {label}
@@ -75,6 +84,7 @@ const CatalogEntityMultiSelectBadge = ({
     </Badge>
   )
 }
+
 export const CatalogEntityMultiSelect = ({
   ariaLabel,
   disabled = false,
@@ -92,10 +102,12 @@ export const CatalogEntityMultiSelect = ({
     () =>
       selectedIds.flatMap((id) => {
         const option = optionsById.get(id)
+
         return option === undefined ? [] : [option]
       }),
     [optionsById, selectedIds],
   )
+
   const triggerLabel = useMemo(
     () =>
       buildTriggerLabel(selectedOptions, placeholder, (count) =>
@@ -105,6 +117,7 @@ export const CatalogEntityMultiSelect = ({
       ),
     [placeholder, selectedOptions, t],
   )
+
   const handleToggle = useCallback(
     (id: string) => {
       const next = new Set(selectedIds)
@@ -117,15 +130,18 @@ export const CatalogEntityMultiSelect = ({
     },
     [onChange, selectedIds],
   )
+
   const handleRemove = useCallback(
     (id: string) => {
       onChange(selectedIds.filter((selectedId) => selectedId !== id))
     },
     [onChange, selectedIds],
   )
+
   if (options.length === 0) {
-    return <p className="text-sm text-muted-foreground/80">—</p>
+    return <p className="text-sm text-muted-foreground/80">{EMPTY_VALUE}</p>
   }
+
   return (
     <div className="flex flex-col gap-2">
       <Popover open={open} onOpenChange={setOpen}>
@@ -180,10 +196,12 @@ export const CatalogEntityMultiSelect = ({
     </div>
   )
 }
+
 export interface CatalogEntityMultiSelectOption {
   readonly id: string
   readonly label: string
 }
+
 interface CatalogEntityMultiSelectProps {
   readonly ariaLabel: string
   readonly disabled?: boolean
@@ -193,4 +211,5 @@ interface CatalogEntityMultiSelectProps {
   readonly selectedIds: readonly string[]
   readonly showSelectedBadges?: boolean
 }
+
 const MAX_INLINE_LABELS = 2

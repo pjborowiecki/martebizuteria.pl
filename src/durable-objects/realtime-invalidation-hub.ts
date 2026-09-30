@@ -6,11 +6,14 @@ import {
   REALTIME_INVALIDATION_MESSAGE,
   type RealtimeInvalidationPayload,
   serializeQueryKeyPrefix,
-} from "~/src/lib/realtime-invalidation/realtime-invalidation.protocol"
+} from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 import {
   REALTIME_INVALIDATION_HUB,
   type RealtimeInvalidationHubName,
-} from "~/src/lib/realtime-invalidation/realtime-invalidation.subscriptions"
+} from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
+
+import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
+
 export const toSerializedTopicPrefixes = (queryKeys: readonly QueryKey[]): string[] =>
   queryKeys.map((queryKey) => serializeQueryKeyPrefix(queryKey))
 
@@ -21,8 +24,10 @@ const resolveHubSockets = (ctx: DurableObjectState, hubName: string | undefined)
   if (hubName === undefined || !isRealtimeInvalidationHubName(hubName)) {
     return ctx.getWebSockets()
   }
+
   return ctx.getWebSockets(hubName)
 }
+
 const splitWebSocketPair = (
   pair: WebSocketPairEndpoints,
 ): {
@@ -32,29 +37,33 @@ const splitWebSocketPair = (
   client: pair[WEBSOCKET_PAIR_CLIENT_INDEX],
   server: pair[WEBSOCKET_PAIR_SERVER_INDEX],
 })
-const WEBSOCKET_UPGRADE_STATUS = 101
+
 const WEBSOCKET_INTERNAL_ERROR_CODE = 1011
+
 const WEBSOCKET_PAIR_CLIENT_INDEX = 0
+
 const WEBSOCKET_PAIR_SERVER_INDEX = 1
 
-/** One hibernatable hub per audience: admin or storefront. */
 export class RealtimeInvalidationHub extends DurableObject<Env> {
   fetch(request: Request): Response {
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected WebSocket", {
-        status: 426,
+        status: HTTP_STATUS.UPGRADE_REQUIRED,
       })
     }
+
     const hubName = this.ctx.id.name
     if (hubName === undefined) {
       return new Response("Hub name required", {
-        status: 400,
+        status: HTTP_STATUS.BAD_REQUEST,
       })
     }
+
     const { client, server } = splitWebSocketPair(new WebSocketPair())
     this.ctx.acceptWebSocket(server, [hubName])
+
     return new Response(undefined, {
-      status: WEBSOCKET_UPGRADE_STATUS,
+      status: HTTP_STATUS.SWITCHING_PROTOCOLS,
       webSocket: client,
     })
   }
@@ -63,18 +72,18 @@ export class RealtimeInvalidationHub extends DurableObject<Env> {
     if (topicPrefixes.length === emptyTopicCount) {
       return
     }
+
     const payload = JSON.stringify({
       topics: topicPrefixes,
       type: REALTIME_INVALIDATION_MESSAGE.INVALIDATE,
     } satisfies RealtimeInvalidationPayload)
+
     const hubName = this.ctx.id.name
     const sockets = resolveHubSockets(this.ctx, hubName)
     for (const socket of sockets) {
       try {
         socket.send(payload)
-      } catch {
-        // A closed socket must not interrupt delivery to the remaining connections.
-      }
+      } catch {}
     }
   }
   webSocketClose(ws: WebSocket, code: number, reason: string): void {
@@ -84,6 +93,7 @@ export class RealtimeInvalidationHub extends DurableObject<Env> {
     ws.close(WEBSOCKET_INTERNAL_ERROR_CODE, "WebSocket error")
   }
 }
+
 interface WebSocketPairEndpoints {
   readonly [WEBSOCKET_PAIR_CLIENT_INDEX]: WebSocket
   readonly [WEBSOCKET_PAIR_SERVER_INDEX]: WebSocket

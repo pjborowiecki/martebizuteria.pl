@@ -1,15 +1,15 @@
 import { type JSX, useMemo, useRef } from "react"
 
-import { useFormatter, useLocale, useTranslations } from "use-intl"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
+import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
-
-import { centsToDisplayAmount } from "~/src/lib/currency"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
 import { useProductAnimations } from "~/src/presentation/components/custom/pages/product-page/hooks/use-product-animations"
 import { ProductCard } from "~/src/presentation/components/custom/product-card"
+
 const RelatedProductCard = ({
   className,
   product,
@@ -24,6 +24,7 @@ const RelatedProductCard = ({
     }),
     [product.handle],
   )
+
   const { variantPrice, variantTitle: resolvedVariantTitle } = product
   const price =
     variantPrice === undefined
@@ -33,6 +34,7 @@ const RelatedProductCard = ({
           style: "currency",
         })
   const variantTitle = resolvedVariantTitle === DEFAULT_VARIANT_TITLE ? "" : (resolvedVariantTitle ?? "")
+
   return (
     <ProductCard
       className={className}
@@ -51,6 +53,7 @@ const RelatedProductCard = ({
     />
   )
 }
+
 export const ProductRelatedSection = ({ products }: ProductRelatedSectionProps): JSX.Element | undefined => {
   const t = useTranslations("pages.product.relatedSection")
   const locale = useLocale()
@@ -59,9 +62,11 @@ export const ProductRelatedSection = ({ products }: ProductRelatedSectionProps):
     dependencies: [locale, products],
     rootRef: sectionRef,
   })
+
   if (products.length === 0) {
     return undefined
   }
+
   return (
     <section className="mx-auto max-w-400 px-6 pb-20 lg:px-12 lg:pb-28" ref={sectionRef}>
       <div className="reveal mb-10 space-y-3">
@@ -77,6 +82,7 @@ export const ProductRelatedSection = ({ products }: ProductRelatedSectionProps):
     </section>
   )
 }
+
 export interface RelatedProductItem {
   readonly handle: string
   readonly id: string
@@ -87,6 +93,7 @@ export interface RelatedProductItem {
   readonly variantPrice?: number | undefined
   readonly variantTitle?: string | undefined
 }
-export interface ProductRelatedSectionProps {
+
+interface ProductRelatedSectionProps {
   readonly products: readonly RelatedProductItem[]
 }

@@ -1,8 +1,10 @@
 import { type ChangeEvent, type JSX, useCallback, useId } from "react"
 
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { type StorefrontProductsSearch } from "~/src/modules/product/product.storefront-catalog"
+
 export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsCatalogPriceFilterProps): JSX.Element => {
   const t = useTranslations("pages.products.filters")
   const minPriceId = useId()
@@ -16,6 +18,7 @@ export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsC
     },
     [onSearchChange],
   )
+
   const handleMaxPriceChange = useCallback(
     (value: string) => {
       const parsed = value.trim() === "" ? undefined : Number(value)
@@ -25,18 +28,21 @@ export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsC
     },
     [onSearchChange],
   )
+
   const handleMinPriceInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       handleMinPriceChange(event.target.value)
     },
     [handleMinPriceChange],
   )
+
   const handleMaxPriceInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       handleMaxPriceChange(event.target.value)
     },
     [handleMaxPriceChange],
   )
+
   return (
     <section className="space-y-4 border-t border-border/30 pt-8">
       <h3 className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("price")}</h3>
@@ -66,7 +72,7 @@ export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsC
             type="number"
             min={0}
             inputMode="numeric"
-            placeholder="—"
+            placeholder={EMPTY_VALUE}
             aria-label={t("maxPrice")}
             value={search.maxPrice ?? ""}
             onChange={handleMaxPriceInputChange}
@@ -78,6 +84,7 @@ export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsC
     </section>
   )
 }
+
 interface ProductsCatalogPriceFilterProps {
   readonly onSearchChange: (patch: Partial<StorefrontProductsSearch>) => void
   readonly search: StorefrontProductsSearch

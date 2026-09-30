@@ -1,7 +1,7 @@
 import { type JSX, useCallback } from "react"
 
 import { cn } from "cn"
-import { useFormatter, useTranslations } from "use-intl"
+import { useFormatter, useTranslations } from "use-intl/react"
 
 import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 
@@ -10,25 +10,16 @@ import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
 import {
   ADMIN_CARD_CLASS,
+  ADMIN_STAT_CAPTION_SLOT_CLASS,
   ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
+  ADMIN_STAT_LABEL_CLASS,
+  ADMIN_STAT_VALUE_CLASS,
+  ADMIN_STAT_VALUE_SLOT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { AdminStatCaption } from "~/src/presentation/components/custom/pages/admin/admin-stat-caption"
 import { type AuditStatCardConfig, type AuditStatKey } from "~/src/presentation/components/custom/pages/admin/audit/audit-stats.config"
-const renderStatCaptionSlot = ({
-  caption,
-  valuesPending,
-}: Readonly<{
-  caption?: string | undefined
-  valuesPending: boolean
-}>): JSX.Element | undefined => {
-  if (valuesPending) {
-    return <Skeleton className="h-3 w-28" />
-  }
-  if (caption === undefined) {
-    return undefined
-  }
-  return <p className={STAT_CAPTION_CLASS}>{caption}</p>
-}
+
 const resolveStatLabelKey = (
   key: AuditStatKey,
 ): "audit.stats.errors" | "audit.stats.today" | "audit.stats.totalEvents" | "audit.stats.warnings" => {
@@ -45,11 +36,9 @@ const resolveStatLabelKey = (
     case "warnings": {
       return "audit.stats.warnings"
     }
-    default: {
-      return "audit.stats.totalEvents"
-    }
   }
 }
+
 export const AuditStatCard = ({
   activeSeverityFilter,
   activeTodayFilter = false,
@@ -73,30 +62,40 @@ export const AuditStatCard = ({
   } else {
     isActive = filterSeverity !== undefined && activeSeverityFilter === filterSeverity
   }
+
   const handleFilterClick = useCallback(() => {
     if (valuesPending) {
       return
     }
+
     if (key === "today") {
       onTodayFilter?.()
+
       return
     }
+
     if (onFilter === undefined) {
       return
     }
+
     if (key === "total") {
       onFilter()
+
       return
     }
+
     if (filterSeverity === undefined) {
       return
     }
+
     if (isActive) {
       onFilter()
+
       return
     }
     onFilter(filterSeverity)
   }, [filterSeverity, isActive, key, onFilter, onTodayFilter, valuesPending])
+
   const cardClassName = cn(
     "h-full gap-0 py-0",
     ADMIN_CARD_CLASS,
@@ -105,18 +104,16 @@ export const AuditStatCard = ({
     isFilterable && !valuesPending && ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
     isFilterable && isActive && ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   )
+
   const content = (
     <CardContent className="flex h-full items-start justify-between gap-4 p-5">
       <div className="min-w-0 flex-1 space-y-2">
-        <p className={STAT_LABEL_CLASS}>{t(resolveStatLabelKey(key))}</p>
-        <div className={STAT_VALUE_SLOT_CLASS}>
-          {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={STAT_VALUE_CLASS}>{format.number(displayValue ?? 0)}</p>}
+        <p className={ADMIN_STAT_LABEL_CLASS}>{t(resolveStatLabelKey(key))}</p>
+        <div className={ADMIN_STAT_VALUE_SLOT_CLASS}>
+          {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={ADMIN_STAT_VALUE_CLASS}>{format.number(displayValue ?? 0)}</p>}
         </div>
-        <div className={STAT_CAPTION_SLOT_CLASS}>
-          {renderStatCaptionSlot({
-            caption,
-            valuesPending,
-          })}
+        <div className={ADMIN_STAT_CAPTION_SLOT_CLASS}>
+          <AdminStatCaption caption={caption} valuesPending={valuesPending} />
         </div>
       </div>
       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary shadow-none">
@@ -124,9 +121,11 @@ export const AuditStatCard = ({
       </div>
     </CardContent>
   )
+
   if (!isFilterable) {
     return <Card className={cardClassName}>{content}</Card>
   }
+
   return (
     <Card className={cardClassName}>
       <button
@@ -142,11 +141,7 @@ export const AuditStatCard = ({
     </Card>
   )
 }
-const STAT_LABEL_CLASS = "text-[13px] leading-5 text-muted-foreground"
-const STAT_VALUE_CLASS = "text-3xl leading-9 font-semibold tracking-tight tabular-nums"
-const STAT_VALUE_SLOT_CLASS = "flex min-h-9 items-center"
-const STAT_CAPTION_SLOT_CLASS = "flex min-h-4 items-center"
-const STAT_CAPTION_CLASS = "text-xs text-muted-foreground/80"
+
 interface AuditStatCardProps {
   readonly activeSeverityFilter?: AuditLogSeverity | undefined
   readonly activeTodayFilter?: boolean | undefined

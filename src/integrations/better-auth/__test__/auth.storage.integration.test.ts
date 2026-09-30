@@ -5,6 +5,7 @@ import { auth } from "~/src/integrations/better-auth/auth.server"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
+
   return { sqlite: new DatabaseSync(":memory:") }
 })
 
@@ -20,22 +21,17 @@ vi.mock("cloudflare:workers", () => ({
     AUTH_GOOGLE_CLIENT_ID: "test-google-client",
     AUTH_GOOGLE_CLIENT_SECRET: "test-google-secret",
     AUTH_SECRET: "local-test-auth-secret-with-at-least-thirty-two-characters",
-    VITE_APP_URL: "https://auth.example.test",
   },
 }))
-vi.mock("~/src/integrations/better-auth/auth.actions", () => ({
-  authActions: {
-    sendChangeEmailConfirmation: vi.fn(),
-    sendResetPassword: vi.fn(),
-    sendVerificationEmail: vi.fn(),
-  },
+vi.mock("~/src/integrations/resend/resend.send", () => ({
+  sendEmail: vi.fn(() => Promise.resolve(undefined)),
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordAuthLoginAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
   resolveAuthAuditActor: vi.fn(),
 }))
-vi.mock("~/src/lib/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
+vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: vi.fn(),
 }))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
@@ -43,6 +39,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
 
   const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
+
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
@@ -118,7 +115,7 @@ describe("better Auth database storage", () => {
     const attempts = await Promise.all(
       Array.from({ length: 8 }, () =>
         auth.handler(
-          new Request("https://auth.example.test/api/auth/sign-in/email", {
+          new Request("http://localhost:3000/api/auth/sign-in/email", {
             body: JSON.stringify({}),
             headers: { "Content-Type": "application/json", "cf-connecting-ip": "192.0.2.1" },
             method: "POST",

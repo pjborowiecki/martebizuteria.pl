@@ -9,12 +9,12 @@ import {
   CATEGORY_STATUSES,
   DEFAULT_CATEGORY_STATUS,
 } from "~/src/modules/product-category/product-category.constants"
-import { type CategoryLocaleMap } from "~/src/modules/product-category/product-category.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 
 export const productCategory = sqliteTable(
   "product_category",
   {
-    descriptions: text("descriptions", { mode: "json" }).$type<CategoryLocaleMap | null>(),
+    descriptions: text("descriptions", { mode: "json" }).$type<ProductCategory["localeMap"] | null>(),
     handle: text("handle", { length: 255 }).notNull().unique(),
     id: text("id", { length: 36 }).primaryKey(),
     image: text("image", { length: 2048 }),
@@ -23,10 +23,10 @@ export const productCategory = sqliteTable(
       onDelete: "set null",
     }),
     rank: integer("rank").notNull().default(CATEGORY_DEFAULT_RANK),
-    shortDescriptions: text("short_descriptions", { mode: "json" }).$type<CategoryLocaleMap | null>(),
+    shortDescriptions: text("short_descriptions", { mode: "json" }).$type<ProductCategory["localeMap"] | null>(),
     status: text("status", { enum: CATEGORY_STATUSES }).notNull().default(DEFAULT_CATEGORY_STATUS),
-    subtitles: text("subtitles", { mode: "json" }).$type<CategoryLocaleMap | null>(),
-    titles: text("titles", { mode: "json" }).$type<CategoryLocaleMap>().notNull(),
+    subtitles: text("subtitles", { mode: "json" }).$type<ProductCategory["localeMap"] | null>(),
+    titles: text("titles", { mode: "json" }).$type<ProductCategory["localeMap"]>().notNull(),
     ...timestamps(),
   },
   (table) => [

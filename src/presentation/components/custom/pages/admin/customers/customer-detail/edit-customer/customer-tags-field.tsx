@@ -2,7 +2,7 @@ import { type ChangeEvent, type JSX, type KeyboardEvent, useCallback, useEffect,
 
 import { X } from "lucide-react"
 import { useWatch } from "react-hook-form"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
 import { ADMIN_CUSTOMER_FORM_FIELD_MAX } from "~/src/modules/user/user.constants"
 
@@ -17,6 +17,7 @@ import {
   CATALOG_SHEET_FIELD_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
 import { useCustomerForm } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-form-provider"
+
 export const CustomerTagsField = (): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail.form")
   const tDetail = useTranslations("pages.admin.customerDetail")
@@ -26,12 +27,14 @@ export const CustomerTagsField = (): JSX.Element => {
     defaultValue: [],
     name: "customTags",
   })
+
   const [draft, setDraft] = useState("")
   const commitDraft = useCallback(() => {
     const trimmed = draft.trim()
     if (trimmed === "") {
       return
     }
+
     const parts = trimmed
       .split(TAG_SEPARATOR_PATTERN)
       .map((part) => part.trim())
@@ -39,16 +42,19 @@ export const CustomerTagsField = (): JSX.Element => {
     if (parts.length === 0) {
       return
     }
+
     const current = getValues("customTags")
     const next = [...current]
     for (const part of parts) {
       if (next.length >= ADMIN_CUSTOMER_FORM_FIELD_MAX.CUSTOM_TAGS_COUNT) {
         break
       }
+
       if (!next.includes(part)) {
         next.push(part)
       }
     }
+
     if (next.length !== current.length) {
       setValue("customTags", next, {
         shouldDirty: true,
@@ -60,12 +66,15 @@ export const CustomerTagsField = (): JSX.Element => {
   useEffect(() => {
     registerCommitPendingTag(commitDraft)
   }, [commitDraft, registerCommitPendingTag])
+
   const handleAddClick = useCallback(() => {
     commitDraft()
   }, [commitDraft])
+
   const handleDraftChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setDraft(event.target.value)
   }, [])
+
   const handleDraftKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
@@ -75,6 +84,7 @@ export const CustomerTagsField = (): JSX.Element => {
     },
     [commitDraft],
   )
+
   const handleRemoveTag = useCallback(
     (tag: string) => {
       const current = getValues("customTags")
@@ -89,7 +99,9 @@ export const CustomerTagsField = (): JSX.Element => {
     },
     [getValues, setValue],
   )
+
   const atTagLimit = customTags.length >= ADMIN_CUSTOMER_FORM_FIELD_MAX.CUSTOM_TAGS_COUNT
+
   return (
     <div className="space-y-4">
       {customer.tags.length > 0 && (
@@ -145,6 +157,7 @@ export const CustomerTagsField = (): JSX.Element => {
     </div>
   )
 }
+
 const CustomerCustomTagBadge = ({
   disabled,
   onRemove,
@@ -158,6 +171,7 @@ const CustomerCustomTagBadge = ({
   const handleRemoveClick = useCallback(() => {
     onRemove(tag)
   }, [onRemove, tag])
+
   return (
     <Badge variant="outline" className="gap-1 rounded-md pr-1 text-[11px] font-normal">
       {tag}
@@ -175,4 +189,5 @@ const CustomerCustomTagBadge = ({
     </Badge>
   )
 }
+
 const TAG_SEPARATOR_PATTERN = /[,;]/u

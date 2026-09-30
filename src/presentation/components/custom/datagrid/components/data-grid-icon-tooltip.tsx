@@ -7,7 +7,6 @@ interface DataGridIconTooltipProps {
   readonly trigger: ReactElement
 }
 
-/** Hover label for icon-only datagrid toolbar controls. */
 export const DataGridIconTooltip = ({ label, trigger }: DataGridIconTooltipProps): JSX.Element => (
   <Tooltip>
     <TooltipTrigger render={trigger} />

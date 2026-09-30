@@ -7,7 +7,7 @@ import { optionOnVariant } from "~/src/modules/option-on-variant/option-on-varia
 import { productOptionValue } from "~/src/modules/product-option-value/product-option-value.schema"
 import { PRODUCT_OPTION_COLUMN_LENGTH } from "~/src/modules/product-option/product-option.constants"
 import { product } from "~/src/modules/product/product.schema"
-import { type ProductLocaleMap } from "~/src/modules/product/product.types"
+import { type Product } from "~/src/modules/product/product.types"
 
 export const productOption = sqliteTable(
   "product_option",
@@ -18,7 +18,7 @@ export const productOption = sqliteTable(
     productId: text("product_id", { length: PRODUCT_OPTION_COLUMN_LENGTH.productId })
       .notNull()
       .references(() => product.id, { onDelete: "cascade" }),
-    titles: text("titles", { mode: "json" }).$type<ProductLocaleMap>().notNull(),
+    titles: text("titles", { mode: "json" }).$type<Product["localeMap"]>().notNull(),
     ...timestamps(),
   },
   (table) => [index("product_option_productId_idx").on(table.productId)],

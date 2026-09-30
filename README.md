@@ -1,106 +1,255 @@
-# M’Arte Jewellery
+# M'Arte Jewellery
 
-A jewellery storefront and admin application built with TanStack Start, React, TypeScript, and Cloudflare Workers. Drizzle uses D1 for the catalog, customers, checkout, and orders; Better Auth uses D1 for sessions, verification, and rate limits; product images use R2. Payments run through Stripe Checkout, email through Resend, and parcel lockers through InPost.
+A full-stack e-commerce platform — storefront, checkout, and admin dashboard — running entirely on Cloudflare Workers. Built with TanStack Start, React 19, TypeScript, Drizzle, and D1.
 
-## Development
+The interesting part of this codebase is not that it sells jewellery. It is that it does so on a runtime with no filesystem, no Node server, no multi-statement database transactions, and a hard limit on how long a request may live. Most of the decisions below exist because of those constraints.
 
-Use Bun and the project-local Vite+ toolchain.
+---
+
+## Status
+
+This is a working application under active development, not a finished product. Being precise about the boundary matters more than the headline:
+
+**Live and wired end to end** — storefront catalog (products, variants, categories, collections, attributes, search, filtering, pagination), cart, the four-step checkout, Stripe payment with webhook-driven fulfilment, inventory reservation and compensation, order placement, customer accounts (orders, addresses, sessions, login history), transactional email, the audit log, realtime cache invalidation, and admin management of products, categories, collections, attributes, customers, orders and audit.
+
+**Scaffolded, not finished** — two-factor auth (plugin and columns provisioned; no enrolment flow), in-app password change, discounts and coupons (table and column exist, no code path), InPost (parcel-locker _discovery_ only — no shipment creation or labels), and the admin order detail page, `/admin/coupons` and `/admin/content`, which still render from fixtures in `src/data/`.
+
+**Not present** — end-to-end tests, scheduled/cron jobs, a dead-letter queue, and error reporting (Sentry env vars are declared but nothing is wired).
+
+See [Known gaps](#known-gaps) for the specifics.
+
+---
+
+## Architecture
+
+```
+                    Cloudflare Worker  (src/server.ts)
+                              │
+      ┌───────────────┬───────┴────────┬──────────────────┐
+      │               │                │                  │
+  /sitemap.xml   WebSocket         locale 301      TanStack Start
+                  upgrade          middleware      (wrapped in ALS
+                      │                             carrying waitUntil)
+                      ▼                                  │
+             Durable Object                    ┌─────────┴─────────┐
+          (invalidation fan-out)               │                   │
+                      ▲                    route loaders     server functions
+                      │                        │             (the trust boundary
+                      └──── notifyInvalidation ┘              — assertAdmin here)
+                                                             │
+                                    ┌────────────────────────┼──────────────┐
+                                    ▼                        ▼              ▼
+                                D1 (Drizzle)              R2 media      Stripe / Resend
+                                    │
+                              Queue → audit log
+```
+
+Requests enter one Worker. Four paths short-circuit before the React framework is reached — the sitemap, both WebSocket upgrades, and the locale redirect — because none of them need an SSR render.
+
+### Layering
+
+```
+src/
+  routes/               61 locale-free file routes + api/; loaders, guards, HTTP handlers
+  modules/{feature}/    36 domain modules — schema, Zod, types, constants, helpers
+    *.accessors.ts        unauthenticated data access (reads and writes)
+    use-cases/*.ts        createServerFn + validation + assertAdmin + query options
+  integrations/{vendor}/ 8 providers: better-auth, stripe, drizzle-orm, resend,
+                           cloudflare-r2, inpost, use-intl, realtime-invalidation
+  presentation/         603 files — shadcn layer, feature UI, emails, styles, theme
+  durable-objects/      WebSocket invalidation hub
+  platform/testing/     shared test infrastructure
+```
+
+The split that does the most work is **`accessors` vs `use-cases`**. Accessors are plain data access with no notion of who is asking. Use cases wrap them in `createServerFn`, validate input, assert authorization, and export the TanStack Query options next to the operation they fetch. That means a loader and the component that later refetches share one query key and one fetcher by construction, and it means there is exactly one layer where authorization can be forgotten — which is the layer the tests target.
+
+---
+
+## Problems worth talking about
+
+### Consistency without transactions
+
+D1 has no interactive transactions. `db.batch()` is atomic, but anything that must read, decide, then write cannot be one statement — so the usual "wrap it in a transaction" answer is unavailable.
+
+**Inventory reservation uses optimistic concurrency.** The reserve path issues a compare-and-set `UPDATE` guarded on both the row `version` read during validation and `quantityAvailable >= qty`, using `.returning()` length as the success signal. Overselling is prevented by that `gte` predicate rather than by locking. Multi-line carts reserve concurrently and compensate: if any line fails its guard, the already-succeeded reservations are released before the error propagates.
+
+The compensation is **best-effort and deliberately documented as such** — its own failure is caught and logged, so a failed rollback leaves stock reserved. The honest version of this design is a saga with a known hole, not a distributed transaction.
+
+**Checkout idempotency is layered, because the application guard alone cannot be atomic.** `resolvePendingCheckout` refuses to act unless the checkout row still reads `pending`, which collapses Stripe's _sequential_ retries. That read and the fulfil batch are separate round-trips, so two genuinely concurrent deliveries can both pass it — necessary, but not sufficient.
+
+The constraint that actually holds is in the database: `order.checkout_id` and `payment.transaction_id` are unique. A batch is atomic on D1, so the losing delivery's `INSERT` violates the index and the whole batch rolls back, leaving exactly one order. The status flip additionally carries a `WHERE status = 'pending'` predicate. The integration suite drives two deliveries that both observe `pending` and asserts one order results; removing the unique index makes that test fail.
+
+### Authorization lives at the RPC boundary
+
+A server function is a public HTTP endpoint. It is reachable whether or not the route that normally calls it was ever loaded, so a route guard cannot protect it.
+
+Route `beforeLoad` guards exist here and are honest about their job: they redirect, for navigation UX, and they also run client-side. The actual boundary is `assertAdmin()` at the top of 55 server functions, before any database access, and **ownership predicates compiled into the SQL** for customer-facing reads — `eq(order.userId, session.user.id)` in the `WHERE` clause rather than a fetch-then-filter. A foreign order id returns no row, which makes IDOR structurally absent rather than conventionally avoided.
+
+The authorization tests compile the Drizzle condition with `SQLiteSyncDialect` and assert the exact generated SQL and bound parameters. A refactor that drops an ownership predicate fails the suite instead of silently widening access. Eight catalog read endpoints are table-driven to assert they reject _before_ their query mock is touched.
+
+### Session freshness versus per-request cost
+
+Better Auth is configured with a 300-second signed cookie cache, and every server-side session read then passes `disableCookieCache: true` and hits D1 anyway. That looks contradictory; it is a deliberate trade.
+
+The cost is one D1 read per HTTP request. The benefit is that a banned or signed-out user cannot ride a cached cookie for five minutes. To stop that becoming N reads, the lookup is memoized per `Request` in a `WeakMap` — keyed on the request object, not a module global, which is what makes it safe in a Worker isolate serving many requests. Concurrent loaders and server functions in one request share a lookup; a new request always revalidates.
+
+Note the asymmetry: the bypass is server-side only. The client's `useSession()` goes through `/api/auth/get-session`, which _does_ consult the cookie cache, so a revoked user's browser chrome can render as signed-in for up to five minutes even though every server read revalidates.
+
+D1 is the sole auth store — no `secondaryStorage` is configured. KV was rejected for sessions, verification tokens and rate-limit counters because it is eventually consistent and cannot do the atomic consume-and-increment those need. That choice is pinned by a test asserting the option is absent.
+
+### Background work on a runtime that kills floating promises
+
+A promise still pending when a Worker returns its response is terminated. Better Auth's background hooks and the domain layer's audit recorders have no access to the `ExecutionContext`, and threading `ctx` through every call site would be invasive.
+
+`src/server.ts` enters an `AsyncLocalStorage` carrying `waitUntil` around the framework handler, and `scheduleBackgroundWork` pulls it back out at arbitrary depth. When no store exists — the queue consumer, unit tests, the paths that short-circuit before the ALS — it degrades to a fire-and-forget with a `catch`, so failures are observed rather than silently dropped.
+
+Audit events are enqueued to a Cloudflare Queue rather than written inline, with ids and timestamps minted at enqueue time so ordering survives batching. 31 typed recorder functions cover 5 of the 6 declared categories across a 33-entry action catalogue.
+
+### Realtime cache invalidation
+
+Admin dashboards go stale the moment a second person is working. Polling is the usual answer and it is wasteful.
+
+A Durable Object acts as a connection fan-out hub — one object per audience, addressed by name. The upgrade handshake reaches it via `fetch` (a WebSocket upgrade has no choice), but invalidations use a **native RPC method**, `hub.notifyInvalidation(prefixes)`, avoiding Request/Response construction on the hot path. The hub holds no durable state; it is a broadcaster, not a store.
+
+Matching is a **symmetric prefix overlap** — deliberately broader than TanStack Query's one-directional prefix match — so a narrowly-scoped publish still invalidates the coarser prefix a tab subscribed to. Clients subscribe to a fixed prefix list (12 admin, 10 storefront); the hub broadcasts to the audience and each tab discards what does not overlap. A `BroadcastChannel` mirrors invalidations across tabs in the same browser without a second socket.
+
+Admin upgrades are role-checked **in the Worker, before the Durable Object is addressed** — a DO `fetch` has no cookie or session context of its own, so checking after `getByName()` would already have let an unauthenticated client open the object.
+
+### Catalog modelling
+
+Products carry localized content as typed JSON maps (`titles` non-null, `subtitles`/`descriptions`/`tags` nullable) rather than a translations table, so a product reads in one query. Search is a `LIKE` across those JSON columns, which queries every locale at once without an FTS table.
+
+Variants, options, attributes and the category/collection junctions are replaced as a **single `db.batch`**, so a product edit is atomic across nine tables. Point reads — by handle, by id, stats, the `json_each` aggregates — are prepared once at module load; list queries are built per request because the variant-stats join, filters and sort change shape and a prepared statement cannot.
+
+Reordering is one `UPDATE` with a generated `CASE WHEN` over an `IN` list rather than N round-trips. The attribute path chunks at 30 rows against D1's bind limit; the product, category and collection paths do not yet.
+
+### Locale-first routing
+
+Route files carry no locale segment. The router rewrites instead — `rewrite.input` de-localizes the URL before matching and `rewrite.output` re-applies the prefix when generating links, so `blog.$slug.tsx` serves both `/en-US/blog/x` and the bare Polish path. Locales are BCP-47 (`pl-PL` default, `en-US`); the default collapses to no prefix, and a redundant `/pl-PL/...` URL is 301'd to the bare path at the Worker before the router runs.
+
+One consequence worth knowing: because the router only ever sees the de-localized path, anything deriving locale from router location silently yields the default. `getCurrentLocale()` reads the real request URL and is the single derivation used everywhere.
+
+Message catalogues are split by namespace, so a page ships the four always-on root namespaces plus what its route and layout ancestors declare — not the whole catalogue. A test asserts file-by-file that Polish contains every key English does.
+
+### First paint
+
+Fonts are 12 self-hosted `woff2` files served `immutable`, with critical `@font-face` rules inlined into `<head>` ahead of `<HeadContent />` on storefront routes, plus one sans and one serif preload chosen by locale subset (`pl-PL` → latin-ext, `en-US` → latin). The admin shell skips that entirely and inlines its own critical chrome CSS instead — different route, different critical path.
+
+The admin data grid emits `width: max(var(--marte-dg-<slug>-<column>, <default>px), <min>px)` in SSR'd markup, and a blocking head script fills those variables from `localStorage` before first paint — so a resized column paints at its saved width on the first frame, with no React render and no layout shift.
+
+Stylesheets are split three ways: `globals.css` at the root, `storefront.css` and `admin.css` from their respective layouts.
+
+---
+
+## Engineering standards
+
+The linter runs with **six of Oxlint's seven categories set to `error`, including `nursery`**, with type-aware rules and type checking enabled. Warnings fail. Unused suppression directives fail.
+
+```jsonc
+// tsconfig.json — the flags that actually change how code is written
+"exactOptionalPropertyTypes":        true,  // `{k: undefined}` ≠ omitted
+"noUncheckedIndexedAccess":          true,  // arr[i] is T | undefined
+"noPropertyAccessFromIndexSignature": true, // obj["k"] for index signatures
+"noImplicitReturns":                 true,
+"noFallthroughCasesInSwitch":        true,
+"erasableSyntaxOnly":                true,
+"strict":                            true
+```
+
+Hard structural limits: **800 lines per file, 150 lines per function, 20 statements per function.**
+
+The result worth quoting: across roughly **77,800 hand-written lines**, the source carries exactly **two** inline lint suppressions — both `typescript/no-unsafe-type-assertion`, both with a written justification. Exceptions are narrow, file-scoped overrides (tests, mocks, presentation return types, route key order) rather than repo-wide rule removals.
+
+Formatting, linting, testing and the dev/build pipeline are one toolchain (Vite+), configured in a single `vite.config.ts`. 17 custom import groups give every file a layer-named import order applied automatically by the formatter.
+
+### Testing
+
+Deliberately stated plainly: **coverage is low** — 236 cases in 23 files, around 8.6% of lines. There are no end-to-end or browser tests, and large areas of the UI are untested.
+
+Coverage thresholds are configured as a ratchet rather than a target: they sit just under the current numbers, so any regression fails CI, and they are raised deliberately as each area is covered.
+
+What exists is aimed at the places where a silent regression is expensive rather than at a coverage number:
+
+- **Authorization** — assert the compiled SQL predicate and bound parameters, so dropping an ownership filter breaks the build
+- **Rate limiting** — fire 8 concurrent sign-ins against the real Better Auth limiter over in-memory SQLite and assert exactly 5 pass, 3 are rejected, counter at 5
+- **Session cache** — shared pending lookup, revalidation on a new `Request`, anonymous/authenticated isolation, and that a rejection does not poison the next request
+- **i18n** — every English key exists in Polish, file by file
+
+Integration suites run against `node:sqlite` behind a hand-written D1-shaped transport. It emulates batch atomicity but not D1's parameter ceiling, so concurrency results are SQLite's, not proof against D1 under production load.
+
+### Delivery
+
+Three GitHub Actions workflows share one composite setup action. CI runs `check` → `test:coverage` → `build:preview` and uploads coverage. Both deploy workflows re-run the full check before building.
+
+Deploys are gated by scripts that fail the build rather than warn: `verify-bindings.ts` reads the same JSONC wrangler uses and rejects placeholder D1/KV ids; `verify-build.ts` rejects a client bundle still carrying an unbundled `cloudflare:workers` or `node:*` import; `prepare-deploy-secrets.ts` uploads only the declared application secrets, keeping Cloudflare management credentials out of the Worker.
+
+---
+
+## Getting started
 
 ```sh
 vp install
-cp .env.example .env.development
-cp .env.example .env.preview
-cp .env.example .env.production
-# Configure each environment's values before using it.
+cp .env.example .env.development     # then fill in real values
 bun run dev
 ```
 
-The `development` Wrangler environment shares preview resources. Vite and Wrangler load the matching environment file; Bun's automatic loading is disabled in `bunfig.toml`, and Drizzle commands load their file explicitly. `VITE_*` values are browser-visible. Declare private Worker bindings in `wrangler.jsonc`.
+`bun run dev` uses **remote bindings** — it talks to the real development D1, R2 and KV, so migrations must be applied before first run:
 
 ```sh
-bun run check                # Formatting, lint, and types
-bun run check:fix            # Apply formatter and lint fixes
-bun run lint                 # Lint and types without formatting
-bun run test                 # All local regression tests
-bun run test:unit            # Node test project
-bun run test:integration     # In-memory database test project
-bun run test:coverage        # Application coverage report
-bun run build:preview        # Preview Worker build and artifact validation
-bun run build:production     # Production Worker build and artifact validation
-bun run typegen              # Regenerate ignored Worker declarations
-bun run skills:sync          # Restore skills-lock.json into vendor groups
-bun run skills:update        # Explicitly update skills, then restore their layout
+bun run db:migrate:development
 ```
 
-Use `bun run start` to preview the built Worker. Install regenerates Worker types; these declarations are not checked into Git. Formatting, lint, test projects, and coverage live in `vite.config.ts`; `tsconfig.json` enables strict checking for application code and scripts.
+| Command                                               | Purpose                                             |
+| ----------------------------------------------------- | --------------------------------------------------- |
+| `bun run check`                                       | Format, lint, and type check — the gate CI runs     |
+| `bun run test` / `test:unit` / `test:integration`     | Test suites                                         |
+| `bun run test:coverage`                               | Coverage report                                     |
+| `bun run build:preview` / `build:production`          | Build and verify the Worker artifact                |
+| `bun run db:generate`                                 | Generate a migration from schema changes            |
+| `bun run db:migrate:{development,preview,production}` | Apply migrations                                    |
+| `bun run db:studio`                                   | Drizzle Studio                                      |
+| `bun run typegen`                                     | Regenerate Worker type declarations (not committed) |
+| `bun run deploy:preview` / `deploy:production`        | Verify, build, and deploy                           |
 
-Lint uses the React Projects and SaaSyLand baseline: correctness, nursery, pedantic, performance, style, and suspicious categories are errors, with type-aware rules and type checking. Functions are limited to 150 lines and 20 statements; files to 800 lines. SaaSyLand's scoped exceptions cover tests, test mocks, UI return types, route option ordering, and config length. Keep exceptions local to a documented framework or test requirement; fix application code instead of weakening the shared rules. Warnings and unused suppression comments fail checks.
+Three environments — `development`, `preview`, `production` — each with a matching `.env` file, Wrangler environment and Vite mode. `VITE_`-prefixed values are browser-visible; everything else is a Worker secret declared in `wrangler.jsonc`. Bun's automatic env loading is disabled in `bunfig.toml` so the environment is always explicit.
 
-Database commands use explicit suffixes: `db:migrate:development`, `db:migrate:preview`, `db:migrate:production`, `db:studio:preview`, and `db:introspect:production`. Migration and seed commands with `--remote` change the selected database; `db:migrate:local` uses local D1.
+Migrations are applied by `wrangler d1 migrations apply` in filename order — 54 files across 31 tables. Drizzle's `meta/_journal.json` lists 51 and is no longer authoritative.
 
-Deployment commands are `bun run deploy:preview` and `bun run deploy:production`. They validate bindings, build, verify the emitted Worker, and deploy with only declared application secrets. Cloudflare management credentials are excluded from the uploaded secret file. Ordinary builds, checks, and tests do not deploy or mutate remote databases.
+---
 
-The Better Auth upgrade requires the additive `20260920212415_auth_database_storage.sql` migration before deployment. Existing KV sessions and pending verification records are not transferred; users must sign in again and restart pending password-reset, OAuth, or two-factor flows. See [auth migration notes](src/integrations/better-auth/MIGRATION.md).
+## Known gaps
 
-The historical migration files cannot currently bootstrap an empty database in Wrangler's filename order: `20260604232955_curved_wallow.sql` assumes a later table rename has already run. Preserve the deployed migration history; use the current schema snapshot for isolated test databases until the initial migration sequence is repaired.
+Kept here rather than hidden, because an accurate map is more useful than a flattering one.
 
-## Organization
+**Correctness**
 
-```text
-messages/{en,pl}/                  Translation catalogs
-public/                           Fonts, images, and other static assets
-scripts/                          Skills, commit messages, build and deployment checks
-.github/actions/setup/            Shared CI/deployment toolchain setup
-.vite-hooks/                      Staged checks and conventional commit messages
-src/
-  routes/                         Flat TanStack file routes, loaders, guards, HTTP handlers
-  routes.ts                       Route constants
-  router.tsx                      Per-request QueryClient and SSR integration
-  server.ts                       Worker entry, locale handling, WebSockets, audit queue
-  integrations/{vendor}/          Provider setup, configuration, and shared adapters
-  modules/{feature}/              Schema, validation, types, constants, and domain helpers
-    use-cases/{verb-noun}.ts       Server functions and their native query options
-  modules/_core/constants/        Shared currency and cache-key roots
-  presentation/
-    branding/                     Application identity and social links
-    components/shadcn/            UI primitives
-    components/custom/            Shared and feature UI, with local hooks/types/helpers
-    emails/                       Email templates
-    styles/                       Shared theme, route CSS, and critical font declarations
-    theme/                        Theme and sidebar preferences and startup scripts
-  providers/                      Application-wide React providers
-  hooks/                          Shared hooks
-  stores/                         Persisted cart state
-  data/                           Marketing content and existing admin demo data
-  lib/                            Shared utilities, imported directly
-  platform/testing/               Shared local test infrastructure
-  durable-objects/                WebSocket invalidation hub
-```
+- Inventory compensation is best-effort — a failed rollback leaves stock reserved, with no alert
+- The confirmation email is attempted at most once and never retried — a failed send is recorded as an audit event, with no outbox
+- `order.status` is never written as `completed`, so admin revenue and average-order-value cards compute from an empty set
+- `fulfillmentStatus: delivered`, `trackingNumber` and `trackingUrl` have no write path
+- Partial refunds never restock and are not idempotent
+- `isAdminPathname` uses `includes("/admin")`, so a storefront URL containing that substring is misclassified
 
-Routes coordinate loading and rendering. Feature use cases export `createServerFn` functions directly, with query options beside the operation they fetch. Shared database helpers remain where several operations need the same query or write workflow. Authorization and input validation run inside the server boundary; page guards provide navigation behavior.
+**Missing infrastructure**
 
-Query keys are readonly tuples in the owning feature’s `*.constants.ts`; integration-owned keys stay with the integration. Preserve key values when reorganizing code. Reuse query options for cache reads and prefetching, and invalidate the affected feature after mutations. The query client belongs to a router instance, so SSR requests do not share private data.
+- No cron or reconciliation job — stale reservations are reclaimed only when Stripe emits `checkout.session.expired`
+- No dead-letter queue; an audit batch failing three times is dropped
+- No expiry sweep for `session`, `verification` or `rate_limit` rows
+- Sentry is declared in env types but never initialised
 
-Routes declare their translation namespaces in `staticData.namespaces`. The root preloads the matched namespaces into the query cache, and the translation provider combines only the active route messages. Polish uses unprefixed URLs; English uses `/en`. Email translations load separately on the server. Add catalog files and their types in `i18n.types.ts`, then declare each namespace on the route that needs it.
+**Security hardening**
 
-Protected server operations use `getRequestSession()`, which shares a pending lookup within one HTTP request and checks stored sessions again on the next request. Route guards and server functions share this lookup without sharing sessions between requests.
+- `getSessionFn` returns Better Auth's session object verbatim to the browser, including `session.token` — it should project a user shape
+- `assertAdmin()` throws a bare `Error("UNAUTHORIZED")` with no status, so denials surface as generic 500-shaped RPC errors
+- Rate limiting is per-IP with no per-account lockout
+- Audit-log IP resolution falls back to `x-forwarded-for`, which is client-spoofable (rate limiting is unaffected — it reads only `cf-connecting-ip`)
 
-Import utilities and operations from their defining files. Add a helper when it owns reusable behavior, rather than wrapping a single function call. Keep feature-specific UI and hooks together. Use `src/lib/cn.ts` for class merging.
+**Dead or unused**
 
-`globals.css` owns Tailwind, theme tokens, and shared controls. Admin and storefront routes link their own stylesheets; critical font declarations remain inline in the document head.
+- `order_address` table, `CACHE` KV binding, the `anonymous()` plugin, the declared access-control statement matrix (application authorization is the binary `hasAdminAccess` check), and several fixture-backed admin pages
 
-`skills:sync` restores `skills-lock.json` into vendor groups under `.agents/skills` and links them from `.claude/skills`; both directories are ignored. Use `bun run skills:sync --local` to regroup installed skills without downloads.
+---
 
-Inventory reservations use version guards and compensating releases because D1 lacks interactive transactions. Durable Object WebSockets and BroadcastChannel invalidate query caches after writes. Audit events use the Worker queue and request execution context for background persistence.
+## Licence
 
-Some marketing, content, coupon, and settings views use fixtures from `src/data/`.
-
-## Verification
-
-Tests live in local `__test__` directories. Separate `node` and `integration` projects run the existing suites; integration tests execute real SQL against in-memory SQLite through the shared D1 test adapter. External providers are mocked. Coverage includes application TypeScript, excluding generated files, shadcn primitives, and test infrastructure; reports go to `coverage/`. Browser tests and numeric coverage gates are not configured.
-
-Vite+ loads only the React plugin during tests. Worker and Start plugins are used for application builds. Database migrations and checked-in SQL remain under `src/integrations/drizzle-orm/`.
-
-CI uses the shared setup action and dummy `.env.test` values, then runs the same check, coverage, and preview-build scripts as local development. Both deployment workflows run `bun run check` before building or deploying, reuse setup, and supply values through GitHub environments. The pre-commit hook runs staged checks; the prepare-commit-message hook applies the references' conventional commit format.
-
-See [AGENTS.md](./AGENTS.md) for contributor instructions and [LICENSE.md](./LICENSE.md) for licensing.
+See [LICENSE.md](LICENSE.md).

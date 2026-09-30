@@ -3,10 +3,10 @@ import { type ChangeEvent, type JSX, useCallback } from "react"
 import { cn } from "cn"
 import { type Control, type FieldPath, type UseControllerReturn, useController } from "react-hook-form"
 
-import { type Locale } from "~/src/integrations/use-intl/i18n.types"
+import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { type Category } from "~/src/modules/product-category/product-category.types"
-import { type Collection } from "~/src/modules/product-collection/product-collection.types"
+import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
+import { type ProductCollection } from "~/src/modules/product-collection/product-collection.types"
 import { type Product } from "~/src/modules/product/product.types"
 
 import { Field } from "~/src/presentation/components/shadcn/field"
@@ -21,21 +21,22 @@ import {
   CATALOG_SHEET_TEXTAREA_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
+
 const useCategoryLocaleMapField = (
-  control: Control<Category["formValues"]>,
+  control: Control<ProductCategory["formValues"]>,
   name: CategoryLocaleMapFieldName,
-  locale: Locale,
-): UseControllerReturn<Category["formValues"], FieldPath<Category["formValues"]>> =>
+  locale: SupportedLocale,
+): UseControllerReturn<ProductCategory["formValues"], FieldPath<ProductCategory["formValues"]>> =>
   useController({
     control,
     name: LOCALE_MAP_FIELD_PATHS[name][locale],
   })
 
 const useCollectionLocaleMapField = (
-  control: Control<Collection["formValues"]>,
+  control: Control<ProductCollection["formValues"]>,
   name: CollectionLocaleMapFieldName,
-  locale: Locale,
-): UseControllerReturn<Collection["formValues"], FieldPath<Collection["formValues"]>> =>
+  locale: SupportedLocale,
+): UseControllerReturn<ProductCollection["formValues"], FieldPath<ProductCollection["formValues"]>> =>
   useController({
     control,
     name: LOCALE_MAP_FIELD_PATHS[name][locale],
@@ -44,7 +45,7 @@ const useCollectionLocaleMapField = (
 const useProductLocaleMapField = (
   control: Control<Product["formValues"]>,
   name: ProductLocaleMapFieldName,
-  locale: Locale,
+  locale: SupportedLocale,
 ): UseControllerReturn<Product["formValues"], FieldPath<Product["formValues"]>> =>
   useController({
     control,
@@ -72,6 +73,7 @@ export const CategoryCatalogLocaleFormField = ({
     },
     [field, onDefaultLocaleChange],
   )
+
   return (
     <Field className="gap-2" data-invalid={fieldState.invalid}>
       <CatalogFormFieldLabel
@@ -94,6 +96,7 @@ export const CategoryCatalogLocaleFormField = ({
     </Field>
   )
 }
+
 export const CollectionCatalogLocaleFormField = ({
   control,
   copy,
@@ -115,6 +118,7 @@ export const CollectionCatalogLocaleFormField = ({
     },
     [field, onDefaultLocaleChange],
   )
+
   return (
     <Field className="gap-2" data-invalid={fieldState.invalid}>
       <CatalogFormFieldLabel
@@ -137,6 +141,7 @@ export const CollectionCatalogLocaleFormField = ({
     </Field>
   )
 }
+
 export const CategoryCatalogLocaleTextareaFormField = ({
   control,
   copy,
@@ -151,6 +156,7 @@ export const CategoryCatalogLocaleTextareaFormField = ({
   const activeLocale = useCatalogActiveLocale()
   const { field, fieldState } = useCategoryLocaleMapField(control, name, activeLocale)
   const value = catalogFieldStringValue(field.value)
+
   return (
     <Field className="gap-2" data-invalid={fieldState.invalid}>
       <CatalogFormFieldLabel
@@ -173,6 +179,7 @@ export const CategoryCatalogLocaleTextareaFormField = ({
     </Field>
   )
 }
+
 export const CollectionCatalogLocaleTextareaFormField = ({
   control,
   copy,
@@ -187,6 +194,7 @@ export const CollectionCatalogLocaleTextareaFormField = ({
   const activeLocale = useCatalogActiveLocale()
   const { field, fieldState } = useCollectionLocaleMapField(control, name, activeLocale)
   const value = catalogFieldStringValue(field.value)
+
   return (
     <Field className="gap-2" data-invalid={fieldState.invalid}>
       <CatalogFormFieldLabel
@@ -209,6 +217,7 @@ export const CollectionCatalogLocaleTextareaFormField = ({
     </Field>
   )
 }
+
 export const ProductCatalogLocaleFormField = ({
   control,
   copy,
@@ -230,6 +239,7 @@ export const ProductCatalogLocaleFormField = ({
     },
     [field, onDefaultLocaleChange],
   )
+
   return (
     <Field className="gap-2" data-invalid={fieldState.invalid}>
       <CatalogFormFieldLabel
@@ -252,6 +262,7 @@ export const ProductCatalogLocaleFormField = ({
     </Field>
   )
 }
+
 export const ProductCatalogLocaleTextareaFormField = ({
   control,
   copy,
@@ -267,6 +278,7 @@ export const ProductCatalogLocaleTextareaFormField = ({
   const activeLocale = useCatalogActiveLocale()
   const { field, fieldState } = useProductLocaleMapField(control, name, activeLocale)
   const value = catalogFieldStringValue(field.value)
+
   return (
     <Field className={cn("gap-2", fillHeight && "flex min-h-0 flex-1 flex-col")} data-invalid={fieldState.invalid}>
       <CatalogFormFieldLabel
@@ -293,36 +305,44 @@ export const ProductCatalogLocaleTextareaFormField = ({
     </Field>
   )
 }
+
 const DEFAULT_TEXTAREA_ROWS = 4
-type CatalogLocaleFormValues = Category["formValues"] | Collection["formValues"] | Product["formValues"]
+
+type CatalogLocaleFormValues = ProductCategory["formValues"] | ProductCollection["formValues"] | Product["formValues"]
+
 const LOCALE_MAP_FIELD_PATHS = {
   descriptions: {
-    en: "descriptions.en",
-    pl: "descriptions.pl",
+    "en-US": "descriptions.en-US",
+    "pl-PL": "descriptions.pl-PL",
   },
   shortDescriptions: {
-    en: "shortDescriptions.en",
-    pl: "shortDescriptions.pl",
+    "en-US": "shortDescriptions.en-US",
+    "pl-PL": "shortDescriptions.pl-PL",
   },
   subtitles: {
-    en: "subtitles.en",
-    pl: "subtitles.pl",
+    "en-US": "subtitles.en-US",
+    "pl-PL": "subtitles.pl-PL",
   },
   titles: {
-    en: "titles.en",
-    pl: "titles.pl",
+    "en-US": "titles.en-US",
+    "pl-PL": "titles.pl-PL",
   },
-} as const satisfies Record<string, Record<Locale, FieldPath<CatalogLocaleFormValues>>>
+} as const satisfies Record<string, Record<SupportedLocale, FieldPath<CatalogLocaleFormValues>>>
+
 type CategoryLocaleMapFieldName = "titles" | "subtitles" | "shortDescriptions" | "descriptions"
+
 type CollectionLocaleMapFieldName = "titles" | "descriptions"
+
 type ProductLocaleMapFieldName = "titles" | "subtitles" | "descriptions"
+
 export interface CatalogLocaleFieldsCopy {
-  readonly hint: (locale: Locale) => string
-  readonly label: (locale: Locale) => string
-  readonly placeholder: (locale: Locale) => string
+  readonly hint: (locale: SupportedLocale) => string
+  readonly label: (locale: SupportedLocale) => string
+  readonly placeholder: (locale: SupportedLocale) => string
 }
+
 interface CategoryCatalogLocaleFormFieldProps {
-  readonly control: Control<Category["formValues"]>
+  readonly control: Control<ProductCategory["formValues"]>
   readonly copy: CatalogLocaleFieldsCopy
   readonly disabled?: boolean
   readonly maxLength: number
@@ -332,8 +352,9 @@ interface CategoryCatalogLocaleFormFieldProps {
   readonly translateValidation?: (key: string) => string
   readonly validationKeySet?: ReadonlySet<string>
 }
+
 interface CollectionCatalogLocaleFormFieldProps {
-  readonly control: Control<Collection["formValues"]>
+  readonly control: Control<ProductCollection["formValues"]>
   readonly copy: CatalogLocaleFieldsCopy
   readonly disabled?: boolean
   readonly maxLength: number
@@ -343,8 +364,9 @@ interface CollectionCatalogLocaleFormFieldProps {
   readonly translateValidation?: (key: string) => string
   readonly validationKeySet?: ReadonlySet<string>
 }
+
 interface CategoryCatalogLocaleTextareaFormFieldProps {
-  readonly control: Control<Category["formValues"]>
+  readonly control: Control<ProductCategory["formValues"]>
   readonly copy: CatalogLocaleFieldsCopy
   readonly disabled?: boolean
   readonly maxLength: number
@@ -354,8 +376,9 @@ interface CategoryCatalogLocaleTextareaFormFieldProps {
   readonly translateValidation?: (key: string) => string
   readonly validationKeySet?: ReadonlySet<string>
 }
+
 interface CollectionCatalogLocaleTextareaFormFieldProps {
-  readonly control: Control<Collection["formValues"]>
+  readonly control: Control<ProductCollection["formValues"]>
   readonly copy: CatalogLocaleFieldsCopy
   readonly disabled?: boolean
   readonly maxLength: number
@@ -365,6 +388,7 @@ interface CollectionCatalogLocaleTextareaFormFieldProps {
   readonly translateValidation?: (key: string) => string
   readonly validationKeySet?: ReadonlySet<string>
 }
+
 interface ProductCatalogLocaleFormFieldProps {
   readonly control: Control<Product["formValues"]>
   readonly copy: CatalogLocaleFieldsCopy
@@ -376,6 +400,7 @@ interface ProductCatalogLocaleFormFieldProps {
   readonly translateValidation?: (key: string) => string
   readonly validationKeySet?: ReadonlySet<string>
 }
+
 interface ProductCatalogLocaleTextareaFormFieldProps {
   readonly control: Control<Product["formValues"]>
   readonly copy: CatalogLocaleFieldsCopy

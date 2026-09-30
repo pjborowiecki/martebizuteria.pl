@@ -1,7 +1,9 @@
 import { type JSX } from "react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { type User } from "~/src/modules/user/user.types"
-const EmptyDash = (): JSX.Element => <span className="text-sm text-muted-foreground/50">—</span>
+
+const EmptyDash = (): JSX.Element => <span className="text-sm text-muted-foreground/50">{EMPTY_VALUE}</span>
 
 export const CustomerStripeCustomerIdCell = ({
   stripeCustomerId,
@@ -11,8 +13,10 @@ export const CustomerStripeCustomerIdCell = ({
   if (stripeCustomerId === null || stripeCustomerId === "") {
     return <EmptyDash />
   }
+
   return <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{stripeCustomerId}</span>
 }
+
 export const CustomerPhoneCell = ({
   phone,
 }: Readonly<{
@@ -21,5 +25,6 @@ export const CustomerPhoneCell = ({
   if (phone === null || phone === "") {
     return <EmptyDash />
   }
+
   return <span className="font-mono text-sm tabular-nums">{phone}</span>
 }

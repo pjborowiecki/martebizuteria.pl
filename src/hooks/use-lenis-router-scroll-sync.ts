@@ -2,9 +2,11 @@ import { useEffect, useRef } from "react"
 
 import { useRouter, useRouterState } from "@tanstack/react-router"
 
-import { catalogDebugLog } from "~/src/lib/dev/catalog-debug-log"
-import { ScrollTrigger } from "~/src/lib/gsap"
-import { getLenisInstance, syncLenisToWindowScroll } from "~/src/lib/lenis/lenis-instance"
+import { ScrollTrigger } from "~/src/integrations/gsap/gsap.config"
+import { getLenisInstance, syncLenisToWindowScroll } from "~/src/integrations/lenis/lenis.instance"
+
+import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
+
 const cleanupDetachedScrollTriggers = (): void => {
   ScrollTrigger.getAll().forEach((trigger) => {
     const element = trigger.trigger
@@ -13,12 +15,13 @@ const cleanupDetachedScrollTriggers = (): void => {
     }
   })
 }
-// Router restores native scroll; Lenis must also reset its animated position.
+
 export const useLenisRouterScrollSync = (): void => {
   const router = useRouter()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+
   const pathnameRef = useRef(pathname)
   pathnameRef.current = pathname
   useEffect(() => {
@@ -28,6 +31,7 @@ export const useLenisRouterScrollSync = (): void => {
       if (fromPathname === toPathname) {
         return
       }
+
       const lenis = getLenisInstance()
       if (lenis === undefined) {
         return
@@ -43,6 +47,7 @@ export const useLenisRouterScrollSync = (): void => {
       })
       lenis.stop()
     })
+
     const unsubscribeRendered = router.subscribe("onRendered", (event) => {
       const fromPathname = event.fromLocation?.pathname
       const toPathname = event.toLocation.pathname
@@ -51,6 +56,7 @@ export const useLenisRouterScrollSync = (): void => {
       if (lenis === undefined) {
         return
       }
+
       if (lenis.isStopped) {
         lenis.start()
       }
@@ -67,6 +73,7 @@ export const useLenisRouterScrollSync = (): void => {
         ScrollTrigger.refresh()
       })
     })
+
     return () => {
       unsubscribeBeforeLoad()
       unsubscribeRendered()

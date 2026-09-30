@@ -3,32 +3,36 @@ import { type JSX, useCallback, useMemo } from "react"
 import { useIsFetching, useQueryClient } from "@tanstack/react-query"
 import { cn } from "cn"
 import { RefreshCw } from "lucide-react"
-import { useTranslations } from "use-intl"
+import { useTranslations } from "use-intl/react"
 
-import { adminCollectionsQueryOptions } from "~/src/modules/product-collection/use-cases/get-admin-collections"
-import { collectionStatsQueryOptions } from "~/src/modules/product-collection/use-cases/get-collection-stats"
+import { getAdminCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-admin-collections"
+import { getCollectionStatsQuery } from "~/src/modules/product-collection/use-cases/get-collection-stats"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { DataGridIconTooltip } from "~/src/presentation/components/custom/datagrid/components/data-grid-icon-tooltip"
+
 export const CollectionsRefreshAction = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.collections")
   const queryClient = useQueryClient()
   const collectionsFetching = useIsFetching({
-    queryKey: adminCollectionsQueryOptions().queryKey,
+    queryKey: getAdminCollectionsQuery().queryKey,
   })
+
   const statsFetching = useIsFetching({
-    queryKey: collectionStatsQueryOptions().queryKey,
+    queryKey: getCollectionStatsQuery().queryKey,
   })
+
   const isRefreshing = collectionsFetching > 0 || statsFetching > 0
   const handleRefresh = useCallback(() => {
     void queryClient.invalidateQueries({
-      queryKey: adminCollectionsQueryOptions().queryKey,
+      queryKey: getAdminCollectionsQuery().queryKey,
     })
     void queryClient.invalidateQueries({
-      queryKey: collectionStatsQueryOptions().queryKey,
+      queryKey: getCollectionStatsQuery().queryKey,
     })
   }, [queryClient])
+
   const button = useMemo(
     () => (
       <Button
@@ -44,5 +48,6 @@ export const CollectionsRefreshAction = (): JSX.Element => {
     ),
     [handleRefresh, isRefreshing, t],
   )
+
   return <DataGridIconTooltip label={t("actions.refresh")} trigger={button} />
 }
