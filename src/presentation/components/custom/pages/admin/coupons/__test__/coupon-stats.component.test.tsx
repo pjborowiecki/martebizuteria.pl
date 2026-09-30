@@ -1,60 +1,57 @@
 import { cleanup, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+
+const { getDiscountStats } = vi.hoisted(() => ({ getDiscountStats: vi.fn() }))
+
+vi.mock("~/src/modules/discount/use-cases/get-admin-discount-stats", async () => {
+  const { queryOptions } = await import("@tanstack/react-query")
+
+  return {
+    getDiscountStatsQuery: () => queryOptions({ queryFn: getDiscountStats, queryKey: ["admin", "discounts", "stats"] }),
+  }
+})
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { COUPON_STATS } from "~/src/data/coupons"
-
+import { buildStats } from "~/src/presentation/components/custom/pages/admin/coupons/__test__/coupon.fixture"
 import { CouponStats } from "~/src/presentation/components/custom/pages/admin/coupons/coupon-stats"
 
-afterEach(() => {
-  cleanup()
+beforeEach(() => {
+  vi.clearAllMocks()
+  getDiscountStats.mockResolvedValue(buildStats())
 })
 
+afterEach(cleanup)
+
 describe("CouponStats", () => {
-  it("renders one card per coupon statistic", () => {
-    const { container } = renderWithProviders(<CouponStats />)
-
-    expect(container.querySelectorAll("[data-slot='card']")).toHaveLength(COUPON_STATS.length)
-  })
-
-  it("translates every card label from the admin namespace", () => {
+  it("labels each figure", async () => {
     renderWithProviders(<CouponStats />)
 
-    expect(screen.getByText("Active Coupons")).toBeInTheDocument()
-    expect(screen.getByText("Total Redemptions")).toBeInTheDocument()
-    expect(screen.getByText("Revenue Saved")).toBeInTheDocument()
-    expect(screen.getByText("Avg Discount")).toBeInTheDocument()
-  })
-
-  it("shows the translated value beside each label", () => {
-    renderWithProviders(<CouponStats />)
-
-    expect(screen.getByText("18")).toBeInTheDocument()
-    expect(screen.getByText("1,492")).toBeInTheDocument()
-    expect(screen.getByText("$12,450")).toBeInTheDocument()
-    expect(screen.getByText("18%")).toBeInTheDocument()
-  })
-
-  it("prints the trend of every statistic", () => {
-    renderWithProviders(<CouponStats />)
-
-    for (const stat of COUPON_STATS) {
-      expect(screen.getByText(stat.trend)).toBeInTheDocument()
+    expect(await screen.findByText("Active coupons")).toBeInTheDocument()
+    for (const label of ["Total coupons", "Redemptions", "Given away"]) {
+      expect(screen.getByText(label)).toBeInTheDocument()
     }
   })
 
-  it("colours a rising trend green and a falling trend red", () => {
+  it("reports the counts the database returned", async () => {
     renderWithProviders(<CouponStats />)
 
-    expect(screen.getByText("+12.5%")).toHaveClass("text-emerald-600")
-    expect(screen.getByText("-1.5%")).toHaveClass("text-red-500")
+    expect(await screen.findByText("3")).toBeInTheDocument()
+    expect(screen.getByText("7")).toBeInTheDocument()
+    expect(screen.getByText("42")).toBeInTheDocument()
   })
 
-  it("gives each sparkline its own gradient id, so the charts never share a fill", () => {
-    const { container } = renderWithProviders(<CouponStats />)
-    const gradientIds = [...container.querySelectorAll("linearGradient")].map((gradient) => gradient.id)
+  it("formats the money given away as currency", async () => {
+    renderWithProviders(<CouponStats />)
 
-    expect(gradientIds).toStrictEqual(COUPON_STATS.map((stat) => `cpn-grad-${stat.key}`))
+    expect(await screen.findByText("PLN 1,245.00")).toBeInTheDocument()
+  })
+
+  it("shows zeroes rather than blanks for a store with no coupons", async () => {
+    getDiscountStats.mockResolvedValue(buildStats({ active: 0, redeemedTotalMinorUnits: 0, redemptions: 0, total: 0 }))
+    renderWithProviders(<CouponStats />)
+
+    expect(await screen.findByText("Active coupons")).toBeInTheDocument()
+    expect(screen.getAllByText("0")).toHaveLength(3)
   })
 })

@@ -23,6 +23,8 @@ vi.mock("~/src/presentation/components/custom/pages/admin/admin-header", () => (
     </header>
   ),
 }))
+vi.mock("~/src/modules/discount/use-cases/get-admin-discounts-page", () => ({ getAdminDiscountsPageQuery: () => ({ queryKey: ["page"] }) }))
+vi.mock("~/src/modules/discount/use-cases/get-admin-discount-stats", () => ({ getDiscountStatsQuery: () => ({ queryKey: ["stats"] }) }))
 vi.mock("~/src/presentation/components/custom/pages/admin/coupons/coupon-stats", () => ({
   CouponStats: (): JSX.Element => <section data-testid="coupon-stats" />,
 }))
@@ -59,16 +61,10 @@ describe("the admin coupons page", () => {
     expect(screen.getByLabelText("breadcrumbs")).toHaveTextContent("Dashboard:/admin")
   })
 
-  it("offers to create a coupon from the header", () => {
+  it("leaves the header free of actions, because creating a coupon belongs with the list", () => {
     renderCouponsPage()
 
-    expect(screen.getByRole("button", { name: /Create Coupon/u })).toBeInTheDocument()
-  })
-
-  it("keeps both header actions out of the page body", () => {
-    renderCouponsPage()
-
-    expect(screen.getByTestId("actions").querySelectorAll("button")).toHaveLength(2)
+    expect(screen.getByTestId("actions").querySelectorAll("button")).toHaveLength(0)
   })
 
   it("shows the coupon stats above the coupon list", () => {

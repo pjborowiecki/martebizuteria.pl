@@ -1,77 +1,53 @@
 import { type JSX } from "react"
 
-import { ArrowDownRight, ArrowUpRight } from "lucide-react"
-import { Area, AreaChart, ResponsiveContainer } from "recharts"
-import { useTranslations } from "use-intl/react"
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { BadgePercent, Tag, TicketCheck, Wallet } from "lucide-react"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { COUPON_STATS } from "~/src/data/coupons"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
+import { getDiscountStatsQuery } from "~/src/modules/discount/use-cases/get-admin-discount-stats"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
-export const CouponStats = (): JSX.Element => (
-  <div className="mb-5 grid shrink-0 gap-5 sm:grid-cols-4">
-    {COUPON_STATS.map((stat) => (
-      <CouponStatCard key={stat.key} stat={stat} />
-    ))}
-  </div>
-)
-
-const CouponStatCard = ({ stat }: { stat: (typeof COUPON_STATS)[number] }): JSX.Element => {
-  const t = useTranslations("pages.admin")
+export const CouponStats = (): JSX.Element => {
+  const t = useTranslations("pages.admin.coupons.stats")
+  const locale = useLocale()
+  const { data: stats } = useSuspenseQuery(getDiscountStatsQuery())
 
   return (
-    <Card className="overflow-hidden shadow-none">
-      <CardContent className="relative p-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[13px] text-muted-foreground">{t(`coupons.stats.${stat.key}.label`)}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">{t(`coupons.stats.${stat.key}.value`)}</p>
-            <div className="mt-2 flex items-center gap-1.5">
-              <StatTrend trend={stat.trend} up={stat.up} />
-              <span className="text-[11px] text-muted-foreground/50">{t("dashboard.stats.vsPrevious")}</span>
-            </div>
-          </div>
-          <CouponStatSparkline stat={stat} />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="mb-5 grid shrink-0 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <CouponStatCard icon={<BadgePercent className={ICON_CLASS} strokeWidth={1.5} />} label={t("activeCoupons")} value={stats.active} />
+      <CouponStatCard icon={<Tag className={ICON_CLASS} strokeWidth={1.5} />} label={t("totalCoupons")} value={stats.total} />
+      <CouponStatCard
+        icon={<TicketCheck className={ICON_CLASS} strokeWidth={1.5} />}
+        label={t("totalRedemptions")}
+        value={stats.redemptions}
+      />
+      <CouponStatCard
+        icon={<Wallet className={ICON_CLASS} strokeWidth={1.5} />}
+        label={t("revenueGivenAway")}
+        value={formatPrice(stats.redeemedTotalMinorUnits, stats.currencyCode, locale)}
+      />
+    </div>
   )
 }
 
-const StatGradient = ({ color, id }: { readonly color: string; readonly id: string }): JSX.Element => (
-  <defs>
-    <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stopColor={color} stopOpacity={0.2} />
-      <stop offset="100%" stopColor={color} stopOpacity={0} />
-    </linearGradient>
-  </defs>
+const CouponStatCard = ({ icon, label, value }: Readonly<CouponStatCardProps>): JSX.Element => (
+  <Card className="overflow-hidden shadow-none">
+    <CardContent className="flex items-start justify-between p-5">
+      <div>
+        <p className="text-[13px] text-muted-foreground">{label}</p>
+        <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
+      </div>
+      {icon}
+    </CardContent>
+  </Card>
 )
 
-const CouponStatSparkline = ({ stat }: { readonly stat: (typeof COUPON_STATS)[number] }): JSX.Element => (
-  <div className="h-12 w-24 min-w-0 shrink-0">
-    <ResponsiveContainer width={96} height={48}>
-      <AreaChart data={stat.spark}>
-        <StatGradient id={`cpn-grad-${stat.key}`} color={stat.color} />
-        <Area type="monotone" dataKey="v" stroke={stat.color} strokeWidth={1.5} fill={`url(#cpn-grad-${stat.key})`} dot={false} />
-      </AreaChart>
-    </ResponsiveContainer>
-  </div>
-)
+const ICON_CLASS = "size-5 text-muted-foreground/40"
 
-const StatTrend = ({ trend, up }: { readonly trend: string; readonly up: boolean }): JSX.Element => {
-  if (up) {
-    return (
-      <span className="flex items-center gap-0.5 text-[12px] text-emerald-600">
-        <ArrowUpRight className="size-3.5" strokeWidth={2} />
-        {trend}
-      </span>
-    )
-  }
-
-  return (
-    <span className="flex items-center gap-0.5 text-[12px] text-red-500">
-      <ArrowDownRight className="size-3.5" strokeWidth={2} />
-      {trend}
-    </span>
-  )
+interface CouponStatCardProps {
+  readonly icon: JSX.Element
+  readonly label: string
+  readonly value: number | string
 }
