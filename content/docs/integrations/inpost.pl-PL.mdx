@@ -1,0 +1,128 @@
+---
+title: "InPost"
+description: "Wyszukiwanie paczkomatów w kroku dostawy podczas składania zamówienia."
+---
+
+Polscy klienci oczekują możliwości wyboru paczkomatu InPost. Adapter `src/integrations/inpost/` zapewnia dokładnie to i nic więcej: wyszukiwanie punktów odbioru po mieście tylko do odczytu, buforowane w TanStack Query, zasilające wybierak z mapą i listą w kroku dostawy.
+
+## Czym ta integracja nie jest
+
+Warto powiedzieć to wprost, bo zakres jest znacznie węższy, niż sugeruje platforma InPost:
+
+- Nie ma **żadnego klucza API ani uwierzytelniania**. Punkt końcowy z punktami odbioru jest publiczny.
+- Aplikacja **nie** tworzy przesyłek, nie kupuje etykiet i nie wywołuje InPost ShipX. Nic w repozytorium nie rozmawia z API wysyłkowym.
+- Numery przesyłek nie są pobierane z InPostu. Powiadomienie o wysłaniu zamówienia wywoływane jest z panelu administracyjnego, a nie przez wywołanie zwrotne kuriera.
+
+Na zamówieniu zapisany jest wybrany przez klienta paczkomat, jako `checkout.lockerId`.
+
+## Wyszukiwanie
+
+Plik `inpost.api.ts` ma 28 linii i wywołuje jeden publiczny punkt końcowy:
+
+```ts
+const url = `${INPOST_API_BASE}?city=${encodeURIComponent(capitalizeCity(trimmed))}&per_page=1000`
+const response = await fetch(url)
+if (!response.ok) {
+  throw new Error(`InPost API error: ${String(response.status)}`)
+}
+```
+
+`INPOST_API_BASE` to `https://api-pl-points.easypack24.net/v1/points`. Liczą się trzy szczegóły:
+
+- **`capitalizeCity`** zamienia wejście na małe litery, a następnie podnosi pierwszą literę każdego wyrazu, także po łączniku, przy pomocy wyrażenia regularnego świadomego Unicode — `"jelenia-góra"` staje się `"Jelenia-Góra"`. Punkt końcowy jest wrażliwy na wielkość liter w nazwach miast, więc bez tego wyszukiwanie po cichu nic nie zwraca.
+- **Mniej niż trzy znaki zwraca pustą tablicę** bez żadnego żądania (`MIN_CITY_LENGTH = 3`).
+- **Odpowiedź, która nie przejdzie walidacji schematu, zwraca pustą tablicę**, a nie błąd. Wyjątek rzuca wyłącznie status HTTP inny niż OK. Oznacza to, że zmiana kształtu danych po stronie InPostu degraduje się do „nie znaleziono paczkomatów", a nie do zepsutego zamówienia — co jest właściwym kompromisem, ale też sprawia, że taka awaria jest cicha. Jeśli wybierak nic nie pokazuje dla miasta, w którym z pewnością są paczkomaty, sprawdź najpierw wynik parsowania.
+
+## Schematy
+
+Plik `inpost.zod.ts` zachowuje własne nazwy pól InPostu w `snake_case`, zamiast ich zmieniać, aby kształty można było porównywać bezpośrednio z odpowiedzią dostawcy:
+
+```ts
+export const inpostPointSchema = z.object({
+  address_details: inpostAddressDetailsSchema,
+  location: inpostLocationSchema,
+  location_description: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => val ?? ""),
+  location_type: z.string().optional(),
+  name: z.string(),
+  opening_hours: z.string().optional(),
+  payment_available: z.boolean().optional(),
+  status: z.string().optional(),
+})
+```
+
+`address_details` wymaga `city`, `post_code`, `province` i `street`, a pozwala, by `building_number` było `null`, a `flat_number` w ogóle nie występowało. `location` wymaga `latitude` i `longitude` jako liczb — to one ustawiają znacznik na mapie. Wszystko, bez czego interfejs sobie poradzi, jest opcjonalne, a `location_description` normalizowane jest z `null | undefined` do `""`, więc komponent nigdy nie musi tego rozgałęziać.
+
+`inpostApiResponseSchema` owija `{ count, items }`, a `fetchPointsByCity` zwraca `parsed.data.items`.
+
+## Buforowanie
+
+Plik `inpost.queries.ts` jest jedynym miejscem, w którym zdefiniowane jest zapytanie:
+
+```ts
+export const inpostPointsByCityQueryOptions = (city: string) =>
+  queryOptions({
+    enabled: city.trim().length >= MIN_CITY_LENGTH,
+    gcTime: TWO_DAYS_IN_MS,
+    queryFn: () => fetchPointsByCity(city),
+    queryKey: [...INPOST_QUERY_KEYS.BY_CITY, city.trim().toLowerCase()],
+    staleTime: ONE_DAY_IN_MS,
+  })
+```
+
+`INPOST_QUERY_KEYS.BY_CITY` to `["inpost-points", "city"]` z `inpost.constants.ts`. Dzień świeżości i dwa dni czasu przed usunięciem z pamięci są świadomym wyborem: sieć paczkomatów prawie się nie zmienia, a klient może otwierać i zamykać wybierak wielokrotnie podczas wypełniania formularza. Klucz jest obcięty i zamieniony na małe litery, więc `"Kraków"`, `"kraków "` i `"KRAKÓW"` dzielą jeden wpis cache, mimo że samo żądanie wysyła formę z wielkimi literami.
+
+Zwróć uwagę, że `MIN_CITY_LENGTH` zadeklarowane jest dwukrotnie — eksportowane z `inpost.queries.ts` i zadeklarowane prywatnie w `inpost.api.ts`. Obie wartości to `3`; jeśli zmienisz jedną, zmień też drugą.
+
+## Wybierak
+
+Interfejs mieszka w `src/presentation/components/custom/checkout/components/_steps/delivery/locker/`:
+
+| Plik                                                    | Rola                                                                                 |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `delivery-locker.tsx`                                   | Pole formularza. Wiąże `lockerId` przez `useController` i pokazuje wybrany paczkomat |
+| `inpost/inpost-selector.tsx`                            | Okno dialogowe: mapa MapLibre obok listy w panelu bocznym                            |
+| `inpost/inpost-provider.tsx`                            | Odpowiada za pole miasta, opóźnia je i uruchamia zapytanie                           |
+| `inpost/inpost-sidebar.tsx` i `inpost-sidebar-item.tsx` | Przewijalna lista wyników                                                            |
+| `inpost/inpost-marker.tsx`                              | Znacznik `Marker` z `react-map-gl/maplibre` dla każdego punktu                       |
+| `inpost/inpost-popup.tsx`                               | Okienko po najechaniu kursorem                                                       |
+| `inpost/inpost-map-updater.tsx`                         | Przesuwa widok, gdy zmieni się zbiór wyników                                         |
+| `inpost/inpost-point-details.tsx`                       | Renderuje adres i godziny otwarcia jednego punktu                                    |
+
+`InpostProvider` jest jedynym konsumentem zapytania. Opóźnia wpisywane miasto o 400 ms do osobnego stanu `searchQuery`, zanim zapytanie je zobaczy, i udostępnia `{ cityInput, hoveredPointId, isLoading, points, setCityInput, setHoveredPointId }` przez kontekst:
+
+```ts
+const { data: points, isLoading } = useQuery(inpostPointsByCityQueryOptions(searchQuery))
+```
+
+Mapa to `react-map-gl/maplibre` nad `maplibre-gl`, z darmową podkładką CARTO Voyager pod adresem `https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json`, wyłączoną atrybucją i `maxBounds` ograniczonym do prostokąta wielkości Polski. Kliknięcie tła mapy czyści `lockerId`; kliknięcie znacznika lub wiersza na liście go ustawia. `point.name` — kod paczkomatu InPostu, na przykład `KRA010` — jest zarazem kluczem Reacta i zapisywaną wartością, dlatego panel wybranego paczkomatu po prostu wypisuje `field.value`.
+
+## Jak to trafia na zamówienie
+
+Wiersze `delivery_method` niosą `type` z `DELIVERY_METHOD` w `src/modules/delivery-method/delivery-method.constants.ts`:
+
+```ts
+export const DELIVERY_METHOD = { COURIER: "courier", IN_STORE: "in_store", LOCKER: "locker" } as const
+```
+
+Plik `checkout.zod.ts` czyni `lockerId` i `lockerCity` ogólnie opcjonalnymi, ale wymaganymi, gdy wybraną metodą jest paczkomat:
+
+```ts
+if (data.deliveryMethodType === "locker" && (typeof data.lockerId !== "string" || data.lockerId.trim().length === 0)) {
+  // problem w ścieżce ["lockerId"] z komunikatem "validation.lockerIdRequired"
+}
+```
+
+Dalej `lockerId` zapisywany jest w wierszu `checkout`, kopiowany na zamówienie przy realizacji i odczytywany przez e-maile potwierdzające oraz o wysyłce przez `getCheckoutEmailContext`, gdzie `resolveDeliveryMethodLabel` składa etykietę widzianą przez klienta. Zobacz [Resend](/docs/integrations/resend) oraz [Zamówienia i płatności](/docs/features/checkout).
+
+## Testy
+
+Katalog `src/integrations/inpost/__test__/` zawiera trzy pliki. `inpost.api.test.ts` obejmuje adres żądania, wielkie litery w wieloczłonowych i dzielonych łącznikiem nazwach miast, rzucenie wyjątku przy statusie innym niż OK oraz zwrócenie pustej tablicy zarówno dla błędnego kształtu odpowiedzi, jak i dla jednego zniekształconego punktu. `inpost.queries.test.ts` obejmuje obcięty, zapisany małymi literami klucz, prefiks przestrzeni nazw oraz czasy cache jednego i dwóch dni. `inpost.zod.test.ts` obejmuje pełny punkt, punkt ograniczony do pól wymaganych oraz odrzucenie, gdy brakuje współrzędnych, miasta lub nazwy.
+
+## Powiązane strony
+
+- [Zamówienia i płatności](/docs/features/checkout)
+- [Zamówienia](/docs/features/orders)

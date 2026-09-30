@@ -1,0 +1,49 @@
+---
+title: "Introduction"
+description: "How the UI is organized: Base UI primitives, application components, styles, theme, branding and email templates."
+---
+
+Everything visual lives under `src/presentation`. Nothing else in the repository owns colour, type, spacing or markup: routes place components, modules return data, and the presentation layer decides how it looks.
+
+| Path                                  | Contents                                                                                                                                                                                                           |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/presentation/components/shadcn/` | 57 generated shadcn/ui primitives, `base-lyra` style, built on Base UI                                                                                                                                             |
+| `src/presentation/components/custom/` | Application components: flat shared files (`image.tsx`, `product-card.tsx`, `localized-link.tsx`, `icons.tsx`, …), the `datagrid/`, `checkout/` and `image-upload/` kits, and one folder per screen under `pages/` |
+| `src/presentation/styles/`            | `globals.css` (Tailwind, tokens, base layer), `fonts.css`, `critical-fonts.css`, `admin.css`, `storefront.css`                                                                                                     |
+| `src/presentation/theme/`             | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                                                                                                                                               |
+| `src/presentation/branding/`          | `app.ts`, `business.ts`, `socials.ts`                                                                                                                                                                              |
+| `src/presentation/emails/`            | React Email templates and `email-styles.ts`                                                                                                                                                                        |
+| `src/presentation/document-assets.ts` | `getCriticalFontPreloads(locale)`                                                                                                                                                                                  |
+| `src/providers/`                      | `ThemesProvider`, `TranslationsProvider`                                                                                                                                                                           |
+
+## Two shells, one token set
+
+The application renders two visually different shells from the same token definitions.
+
+- **Storefront look**: serif display type, generous spacing, Lenis smooth scrolling, light and dark token sets. `src/routes/_storefront.tsx` is the layout for the public pages and wraps them with `Navigation` and `Footer`; `account.tsx`, `auth.tsx`, `checkout.tsx` and `docs.tsx` are separate top-level layouts that use the same tokens, and `docs.tsx` reuses the same `Navigation` and `Footer`.
+- **Admin look** (`/admin/**`): a dense console. `src/routes/admin.tsx` forces light tokens inside `[data-admin-main]`, paints the page chrome with the dark sidebar colour and skips smooth scrolling.
+
+The root route (`src/routes/__root.tsx`) decides which one it is with `isAdminPathname(...)` and sets `data-admin-shell` on `html` accordingly. See [Theme](/docs/ui/theme) for the inline scripts that make this happen before first paint.
+
+## Screen folders
+
+`src/presentation/components/custom/pages/` has one folder per area: `account`, `admin`, `auth`, `cart-page`, `categories`, `collections`, `docs`, `landing-page`, `product-page`, `products-catalog`. Larger areas subdivide further — the admin orders screen, for example, is `orders/components/`, `orders/hooks/`, `orders/lib/`, `orders/detail/` and `orders/utils/`.
+
+Every folder keeps its tests beside it in `__test__/`, named `<file>.component.test.tsx`. Run them with:
+
+```bash
+bun run test:component
+```
+
+## In this chapter
+
+- [Theme](/docs/ui/theme): the token sets, the pre-paint init scripts, the admin override and the persisted preferences.
+- [Fonts & branding](/docs/ui/fonts-and-branding): Manrope and Cormorant Garamond, locale-aware preloads, and the brand and business constants.
+- [shadcn components](/docs/ui/shadcn-components): the Base UI primitives and the prop conventions that differ from Radix.
+- [Data grid](/docs/ui/data-table): the admin table kit — features, persistence, columns, filters and server paging.
+- [Composition patterns](/docs/ui/composition-patterns): how routes, screens and components fit together, and the rules that keep them consistent.
+
+## Related pages
+
+- [Presentation layer](/docs/architecture/presentation-layer)
+- [Conventions](/docs/reference/conventions)

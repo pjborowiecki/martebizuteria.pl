@@ -1,0 +1,86 @@
+---
+title: "Request lifecycle"
+description: "The steps a page request, a server function call and a webhook go through, from the Worker to the rendered result."
+---
+
+## Page request
+
+1. **Four short-circuits.** `src/server.ts` checks the pathname first. `/sitemap.xml` and `/robots.txt` are generated from `src/lib/seo.ts`. `ROUTES.API_REALTIME.ADMIN_WS` and `ROUTES.API_REALTIME.STOREFRONT_WS` are handed to `handleRealtimeInvalidationWebSocket`. None of these loads React.
+2. **Locale canonicalization.** `resolveLocale` runs for `GET` and `HEAD` document requests — decided by `sec-fetch-dest`, falling back to the `Accept` header — outside `/api`, `/rpc`, `/_serverFn` and `/assets`. A language-only or redundant default-locale prefix is redirected with `301` to its canonical form: `/pl/products` and `/pl-PL/products` both become `/products`. When the URL locale differs from the `marte_locale` cookie, the cookie is queued for the response instead.
+3. **The execution context is captured.** The Start handler is invoked inside `executionContextStorage.run({ waitUntil }, …)` and receives `{ env, passThroughOnException, waitUntil }` as its request context, plus `responseLinkHeader: true`.
+4. **Routing.** `getRouter` creates a new router and a new `QueryClient`. The router's `rewrite.input` de-localizes the URL before matching, so `/en-US/products` matches the `/_storefront/products` route, and `rewrite.output` re-applies the prefix when generating links.
+5. **Root `beforeLoad`.** `__root.tsx` resolves the locale with `getCurrentLocale()`, collects the namespaces of every matched route with `getRouteNamespaces(matches)` and preloads them into the request's `QueryClient`. It returns `{ internalPathname, locale }` as the root route context.
+6. **Guards.** Layout `beforeLoad` functions run next: `requireAdmin()` on `/admin`, `requireCustomer()` on `/account`. They load the session and throw a `redirect` when access is not allowed.
+7. **Loaders** run in parallel. A typical loader resolves its page metadata namespace and its data queries together, marking the data query `staleTime: "static"` so it is not refetched during the same render:
+
+   ```ts
+   const [data, messages] = await Promise.all([
+     context.queryClient.query({ ...getProductQuery(params.handle, locale), staleTime: "static" }),
+     context.queryClient.query(messagesQueryOptions<typeof productMessages>({ locale, namespace: "pages.product" })),
+   ])
+   ```
+
+   Loaders return `{ title, description }` — `satisfies PageMeta` — which `pageHead` from `src/lib/seo.ts` turns into the page's `<title>`, description and Open Graph tags. Secondary data can be deferred with `defer()` and awaited in the component with `<Await>`, as the product page does for related products.
+
+8. **Rendering.** `RootDocument` renders `<html lang={locale}>`, inlines the theme, sidebar and data-grid init scripts, adds the storefront critical fonts on non-admin routes, then `<HeadContent />`. The body is wrapped in `TranslationsProvider` and `ThemesProvider`. `setupRouterSsrQueryIntegration` serializes the server query cache into the HTML.
+9. **Response headers.** `responseLinkHeader: true` makes the Start handler emit a `Link` preload header for the assets it knows about. If `resolveLocale` asked for a cookie, `src/server.ts` clones the response and appends `Set-Cookie`.
+10. **Hydration.** The browser hydrates with the serialized cache. `TranslationsProvider` writes the locale cookie from the client as well, so a locale reached by a client-side navigation stays sticky. Later navigations run guards and loaders in the browser and fetch through server functions.
+
+```text
+GET /en-US/products/pierscionek-z-perla
+  src/server.ts          sitemap? robots? ws? → no; resolveLocale → canonical
+  executionContextStorage.run({ waitUntil })
+  router rewrite.input   /products/pierscionek-z-perla
+  __root beforeLoad      getCurrentLocale, preloadNamespaces(root + route)
+  _storefront            no guard, loads storefront.css
+  route loader           getProductQuery (staleTime: "static") + pages.product messages
+                         defer(getRelatedProductsQuery)
+  SSR                    HTML + serialized query cache + Link header
+```
+
+## Server function call
+
+1. The build replaced the browser-side call with an RPC request. `shouldIgnorePath` matches `/_serverFn`, so `resolveLocale` skips it and `getCurrentLocale()` falls back to the `marte_locale` cookie instead of the URL.
+2. Middleware runs in declared order. `withRequest` captures `getRequest().headers` into context and wraps the rest in a `.catch(handleRequestError)`. `withRateLimit(kind, limit)` counts the attempt. `authorized(permission?)` loads the session and checks the permission.
+3. The validator parses the input with the module's Zod schema.
+4. The handler queries D1 or calls a provider, schedules any audit and email work in the background, and returns plain data.
+5. Errors are normalized on the way out. `handleRequestError` re-throws an `AppError` with its code, maps a Better Auth API error to `AUTH_API_ERROR` with a translation key, maps a `ZodError` to `VALIDATION`, and turns anything else into `INTERNAL_ERROR` after logging the original.
+6. The component receives the data, or an error whose message is a code. `useActionError()` turns that code into a translated string.
+
+```text
+POST /_serverFn/…  (shipOrder)
+  withRequest      capture headers, install the error normalizer
+  authorized({ order: ["update"] })
+                   getRequestSession → hasPermission → context.auth
+  validator        orderZodSchemas.adminOrderIdInput.parse
+  handler          assertOrderActionState → UPDATE order
+                   recordOrderShippedAudit      → AUDIT_LOG_QUEUE (waitUntil)
+                   scheduleBackgroundWork(notifyOrderShipped)  (waitUntil)
+  response         { ok: true, orderId }  or  AppError code
+```
+
+## Webhook request
+
+`POST /api/webhooks/stripe` is a TanStack Start HTTP handler, not a server function:
+
+1. The handler requires a `stripe-signature` header and `env.STRIPE_WEBHOOK_SECRET`; a missing either is a `400`.
+2. `stripe.webhooks.constructEventAsync` verifies the signature. A failure is logged and answered `400`.
+3. The event type is looked up in `webhookHandlers`. An unhandled type is logged with `console.info` and acknowledged `{ received: true }`, so Stripe stops retrying it.
+4. A handler that throws is logged and answered `500`, which makes Stripe retry.
+
+`GET|POST /api/auth/$` is the other handler. It delegates to `handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts`, which wraps `auth.handler(request)`: before the call it clones the body to read the sign-in email and resolves the session that is about to be destroyed; after it, a failed `POST /sign-in/email` becomes an `auth.login_failed` event and a successful `POST /sign-out` becomes an `auth.logout` event. The successful-login event comes from a different place — Better Auth's `databaseHooks.session.create.after` in `auth.server.ts`.
+
+## Queue message
+
+The audit log is written by the queue consumer, not by the request that produced the event:
+
+1. A recorder calls `scheduleAuditLog` or `scheduleAuditLogFromRequest`, which mints the row id with `uuidv7()` and stamps `createdAt` with `Date.now()` at enqueue time, so ordering survives batching.
+2. `scheduleBackgroundWork` hands the `env.AUDIT_LOG_QUEUE.send(...)` promise to `waitUntil`.
+3. Cloudflare delivers a batch of up to 50 messages to the `queue` export in `src/server.ts`.
+4. `processAuditLogQueueBatch` inserts the whole batch with `insertAuditLogs`, acks each message, then publishes a realtime invalidation for `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` and `.STATS`. If the insert throws, every message is retried; after three attempts the batch is dropped, because no dead-letter queue is configured.
+
+## Related pages
+
+- [Layering](/docs/architecture/layering)
+- [Caching and SSR](/docs/architecture/caching-and-ssr)
+- [Security model](/docs/architecture/security-model)

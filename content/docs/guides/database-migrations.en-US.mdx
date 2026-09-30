@@ -1,0 +1,152 @@
+---
+title: "Database migrations"
+description: "Change the D1 schema safely: generate, review, apply and hand-write migrations, and what to do about SQLite's limits."
+---
+
+The database is Cloudflare D1 (SQLite). The schema is defined in TypeScript across 31 module schema files, re-exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`, and applied as plain SQL files in `src/integrations/drizzle-orm/migrations/`.
+
+Two tools share that directory, and knowing which does what saves a lot of confusion:
+
+- **drizzle-kit** _generates_ migrations by diffing your TypeScript schema against the last snapshot in `migrations/meta/`.
+- **Wrangler** _applies_ them, in filename order, tracking what it has run in D1's own `d1_migrations` table. It never reads the drizzle journal.
+
+## Environments
+
+There are two physical databases, and three Wrangler environments pointing at them:
+
+| Environment   | D1 database name         | Used by                                           |
+| ------------- | ------------------------ | ------------------------------------------------- |
+| `development` | `martebizuteria-preview` | `bun run dev` (with `remoteBindings: true`)       |
+| `preview`     | `martebizuteria-preview` | `bun run build:preview`, `bun run deploy:preview` |
+| `production`  | `martebizuteria`         | `bun run deploy:production`                       |
+
+**`development` and `preview` are the same database.** Local development runs against the remote preview D1 instance — `vite.config.ts` sets `remoteBindings: process.env["CLOUDFLARE_ENV"] === "development"`, so there is no local SQLite file to play in. Anything you write while developing is visible to the preview deployment, and anything you drop is really dropped.
+
+## Generating a migration
+
+After changing a schema file and exporting it from `drizzle.schemas.ts`:
+
+```sh
+bun run db:generate
+```
+
+That runs `drizzle-kit generate` with `src/integrations/drizzle-orm/drizzle.config.ts`, which is configured as:
+
+```ts
+export default defineConfig({
+  dialect: "sqlite",
+  driver: "d1-http",
+  migrations: {
+    prefix: "timestamp",
+    schema: "public",
+    table: "__drizzle_migrations__",
+  },
+  out: "./src/integrations/drizzle-orm/migrations",
+  schema: "./src/integrations/drizzle-orm/drizzle.schemas.ts",
+  strict: true,
+  verbose: true,
+})
+```
+
+`prefix: "timestamp"` is why files are named `20260612120000_product_variants_enhanced.sql`. The timestamp determines apply order, so never rename a migration that has been applied anywhere.
+
+**Read the generated SQL before you apply it.** In particular, check for a table rebuild: SQLite cannot change a column's type or add a `NOT NULL` column with no default, so drizzle-kit emits a create-copy-drop-rename sequence. On a table with real rows that is a data migration, not a schema migration, and it needs thought about foreign keys and indexes.
+
+## Applying a migration
+
+```sh
+bun run db:migrate:local         # wrangler d1 migrations apply DB --env development --local
+bun run db:migrate:development   # --env development --remote
+bun run db:migrate:preview       # --env preview --remote   (bun run db:migrate is an alias for this)
+bun run db:migrate:production    # --env production --remote
+```
+
+Check what is pending or applied first:
+
+```sh
+bun run db:migrations:preview
+bun run db:migrations:production
+```
+
+The normal sequence is: generate, read, apply to preview, exercise the app, then apply to production. Do not deploy code that assumes a column production does not have yet.
+
+## Hand-written migrations
+
+Six of the 57 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260606120000_rename_attribute_to_product_attribute.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql` and others. Hand-writing is the right call for:
+
+- **Renames.** drizzle-kit sees a rename as a drop plus an add, which loses the data.
+- **Index name alignment.** `20260604232955_curved_wallow.sql` is a good short example:
+
+```sql
+-- Align index names with product_attribute (table/columns already migrated in 20260605120000 + 20260606120000).
+DROP INDEX IF EXISTS `attribute_handle_unique`;
+DROP INDEX IF EXISTS `attribute_rank_idx`;
+CREATE UNIQUE INDEX IF NOT EXISTS `product_attribute_handle_unique` ON `product_attribute` (`handle`);
+CREATE INDEX IF NOT EXISTS `product_attribute_rank_idx` ON `product_attribute` (`rank`);
+```
+
+- **Data repair.** `20260927120000_fix_silver_collection_handle.sql` fixes one typo in one row:
+
+```sql
+UPDATE product_collection
+SET handle = 'srebro-925',
+    titles = json_set(titles, '$."pl-PL"', 'Srebro 925'),
+    updated_at = unixepoch() * 1000
+WHERE handle = 'serbro-925';
+```
+
+Two habits worth copying from these files: a leading `--` comment stating intent (migration SQL is the one place in this repository where comments are expected, since the file is the only record of _why_), and `IF EXISTS` / `IF NOT EXISTS` everywhere, so re-running a migration against a partially-migrated database does not fail.
+
+To hand-write one, create `src/integrations/drizzle-orm/migrations/<YYYYMMDDHHMMSS>_<description>.sql`. Wrangler picks it up by filename; there is nothing to register.
+
+### A caveat about the drizzle journal
+
+`migrations/meta/_journal.json` currently lists 51 tags while the directory holds 57 `.sql` files, and `meta/` holds 36 snapshots. The hand-written migrations were never added to the journal, and several generated ones have no snapshot. Wrangler does not care — it tracks its own state in D1. But **drizzle-kit does**: `bun run db:generate` diffs against the newest snapshot, which is older than the live schema, so it can emit SQL for changes that are already applied.
+
+Before trusting a generated migration, either compare it against the current live schema with `bun run db:introspect:preview` (which writes `schema.ts` and `relations.ts` into the migrations folder), or read it line by line. Both `schema.ts` and `relations.ts` in `src/integrations/drizzle-orm/migrations/` are introspection output, not hand-maintained code.
+
+## Inspecting the live schema
+
+```sh
+bun run db:introspect:development   # or :preview, :production
+bun run db:pull                     # alias for :development
+bun run db:pull:production
+bun run db:studio                   # Drizzle Studio against development
+```
+
+These read credentials from `.env.<environment>` via `bun --env-file`, and need `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` and `CLOUDFLARE_ACCESS_TOKEN` — the `d1-http` driver talks to the Cloudflare API, not to a binding.
+
+## `db:push` — what it is for
+
+```sh
+bun run db:push:development
+```
+
+`drizzle-kit push` applies the TypeScript schema straight to the database without writing a migration file. It is useful for a throwaway experiment and dangerous otherwise: it leaves no record, so the next environment will not get the change, and against the shared preview database it can drop a column that production still relies on. Prefer `db:generate` plus `db:migrate`.
+
+## Writing schema that migrates well
+
+- Give every column a length: `text("handle", { length: 255 })`. The lengths come from the module's `*_COLUMN_LENGTH` constant, so the Zod schema and the column agree.
+- Put timestamps in with `...timestamps()`, so `created_at` and `updated_at` are always `integer(..., { mode: "timestamp_ms" })` defaulting to `(unixepoch() * 1000)`.
+- Add a new column as nullable, or with a default. A `NOT NULL` column without a default forces a table rebuild.
+- Name indexes `<table>_<column>_idx`, uniques `<table>_<column>_unique`. Several migrations exist purely to fix index names that did not follow this.
+- Declare `.references(..., { onDelete: "cascade" })` so deletes clean up. SQLite enforces foreign keys only when the pragma is on — D1 has it on — so a missing cascade shows up as orphan rows, not as an error.
+- Store translated text as a JSON map keyed by BCP 47 locale (`json_object('pl-PL', …, 'en-US', …)`), which is what `titles`, `subtitles`, `descriptions` and `short_descriptions` do on products, categories and collections. `20260925000000_locale_maps_bcp47.sql` migrated those keys from bare language codes to full tags.
+- Store money as integer minor units. Delivery methods carry `price` as `1499`, meaning 14,99 zł.
+
+## Migration checklist
+
+- [ ] The table is exported from `drizzle.schemas.ts`.
+- [ ] `bun run db:generate` ran, and you have read every line of the output.
+- [ ] Nothing in it rebuilds a populated table by accident.
+- [ ] Index and constraint names follow the convention.
+- [ ] Applied to preview with `bun run db:migrate:preview` and `bun run db:migrations:preview` confirms it.
+- [ ] The app was exercised against preview before production.
+- [ ] `bun run db:migrate:production` ran **before** the code that needs the column was deployed.
+- [ ] `bun run check` and `bun run test` pass — `vite.config.ts` excludes the migrations directory from both lint and test, so a broken `.sql` file will not be caught for you.
+
+## Related guides
+
+- [Add a module](/docs/guides/add-a-module)
+- [Seeding data](/docs/guides/seeding-data)
+- [Local debugging](/docs/guides/local-debugging)

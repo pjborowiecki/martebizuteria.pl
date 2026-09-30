@@ -1,0 +1,108 @@
+---
+title: "Umiejętności agentów"
+description: "skills-lock.json, scripts/sync-skills.ts, grupy dostawców i pliki z instrukcjami dla agentów w tym repozytorium."
+---
+
+Repozytorium przypina zestaw umiejętności (skills) z dokumentacją dostawców, przeznaczonych dla agentów kodujących. Plik blokady jest w repozytorium, zainstalowane umiejętności nie — `.gitignore` wyłącza w całości `.agents/`, `.claude/`, `.codex/` i `.cursor/`, z komentarzem „Skills are restored from `skills-lock.json` with `bun run skills:sync`”.
+
+```sh
+bun run skills:sync    # odtwórz dokładnie to, co przypina plik blokady
+bun run skills:update  # zaktualizuj plik blokady, a potem zsynchronizuj
+```
+
+`skills:update` to `bunx --bun skills update --project --yes && bun run skills:sync`. Aktualizacja jest czynnością jawną: nic nie aktualizuje umiejętności przy instalacji.
+
+## skills-lock.json
+
+52 umiejętności z siedmiu źródeł. Każdy wpis zapisuje repozytorium źródłowe, typ źródła, ścieżkę do `SKILL.md` wewnątrz źródeł typu monorepo oraz skrót treści:
+
+```json
+"tanstack-start": {
+  "source": "tanstack-skills/tanstack-skills",
+  "sourceType": "github",
+  "skillPath": "plugins/tanstack-start/skills/tanstack-start/SKILL.md",
+  "computedHash": "e9d8355fe3e47b118e739081f1123c52aa0ecde57da840722177e1ad5caf9908"
+}
+```
+
+| Źródło                            | Grupa        | Umiejętności | Zakres                                                                                          |
+| --------------------------------- | ------------ | ------------ | ----------------------------------------------------------------------------------------------- |
+| `tanstack-skills/tanstack-skills` | `tanstack`   | 14           | Router, Start, Query, Table, Form, Store, Virtual, DB, Pacer, Ranger, CLI, config, devtools, AI |
+| `medusajs/medusa-agent-skills`    | `medusa`     | 15           | Wzorce domeny e-commerce, praktyki storefrontowe, Medusa Cloud                                  |
+| `greensock/gsap-skills`           | `gsap`       | 8            | Core, timeline, ScrollTrigger, wtyczki, React, frameworki, wydajność, narzędzia                 |
+| `cloudflare/skills`               | `cloudflare` | 6            | Praktyki Workers, Wrangler, Durable Objects, e-mail, wydajność webowa                           |
+| `resend/resend-skills`            | `resend`     | 5            | API Resend, React Email, CLI, agent skrzynki, praktyki e-mailowe                                |
+| `stripe/ai`                       | `stripe`     | 3            | Praktyki Stripe, wzorce projektowe, aktualizacje wersji                                         |
+| `antfu/skills`                    | `antfu`      | 1            | Wytyczne projektowania stron                                                                    |
+
+Zestawy Medusa i GSAP są materiałem referencyjnym dotyczącym wzorców, a nie zależnościami: M'Arte nie działa na Medusie, a umiejętności GSAP stoją za pracą animacyjną w `src/integrations/gsap/` i kodem ruchu w storefroncie.
+
+## Jak działa synchronizacja
+
+`scripts/sync-skills.ts` mapuje każde źródło na grupę dostawcy:
+
+```ts
+const GROUPS: Record<string, string> = {
+  "antfu/skills": "antfu",
+  "cloudflare/skills": "cloudflare",
+  "greensock/gsap-skills": "gsap",
+  "medusajs/medusa-agent-skills": "medusa",
+  "resend/resend-skills": "resend",
+  "stripe/ai": "stripe",
+  "tanstack-skills/tanstack-skills": "tanstack",
+}
+```
+
+Źródło bez mapowania to twardy błąd: `Add a vendor group for <source> before syncing <name>.` Dodanie nowego źródła oznacza więc edycję tego obiektu, a nie tylko pliku blokady.
+
+Źródła, które dostarczają umiejętności w katalogach wtyczek, dostają drugi segment ścieżki. Skrypt wyciąga nazwę wtyczki z `skillPath` wyrażeniem `/^plugins\/([^/]+)\//` i usuwa z niej przedrostek grupy, więc `plugins/tanstack-start/…` staje się grupą `tanstack/start`, a `plugins/medusa-cloud/…` grupą `medusa/cloud`. Nazwa wtyczki, która nie zaczyna się od nazwy grupy, zostaje w całości — dlatego `plugins/learn-medusa/…` trafia do `medusa/learn-medusa`.
+
+Dalej skrypt wykonuje pracę w katalogu tymczasowym i podmienia zainstalowane drzewo tylko wtedy, gdy cały zamiennik został zbudowany i sprawdzony:
+
+1. Utwórz katalog przygotowawczy w katalogu tymczasowym systemu.
+2. Skopiuj do niego `skills-lock.json` i uruchom tam `bun x --bun skills experimental_install`. Niezerowy kod wyjścia przerywa pracę komunikatem „Skill restore failed; the existing installation has been preserved.”
+3. Dla każdej przypiętej umiejętności skopiuj ją do `staging/grouped/<grupa>/<nazwa>`. Brakujący `SKILL.md` przerywa pracę w ten sam sposób, przed usunięciem czegokolwiek.
+4. Usuń `.agents/skills`, skopiuj przygotowane drzewo, usuń `.claude/skills`, odtwórz je i utwórz dowiązanie symboliczne dla każdej grupy najwyższego poziomu: `.claude/skills/<grupa> → ../../.agents/skills/<grupa>`.
+
+Wynikiem jest siedem dowiązań i pogrupowane drzewo:
+
+```
+.agents/skills/
+  antfu/web-design-guidelines/
+  cloudflare/{cloudflare,cloudflare-email-service,durable-objects,web-perf,workers-best-practices,wrangler}/
+  gsap/gsap-core/ … gsap/gsap-utils/
+  medusa/{cloud,dev,ecommerce-storefront,learn-medusa}/
+  resend/{agent-email-inbox,email-best-practices,react-email,resend,resend-cli}/
+  stripe/{stripe-best-practices,stripe-projects,upgrade-stripe}/
+  tanstack/{router,start,query,table,form,store,virtual,db,pacer,ranger,cli,config,devtools,ai}/
+```
+
+Synchronizacja **podmienia oba katalogi w całości**, więc cokolwiek wstawisz ręcznie do `.agents/skills` albo `.claude/skills`, zostanie usunięte przy następnym uruchomieniu. Własne umiejętności trzymaj poza tymi dwoma drzewami.
+
+`scripts/sync-skills.ts` przyjmuje też `--local`:
+
+```sh
+bun scripts/sync-skills.ts --local
+```
+
+Pomija to instalację sieciową i przegrupowuje to, co już znajduje się w `.agents/skills`, szukając każdej umiejętności najpierw płasko w `.agents/skills/<nazwa>`, a w razie potrzeby w jej lokalizacji pogrupowanej. Używaj tego do naprawy grupowania albo odtworzenia dowiązań `.claude/skills` bez ponownego pobierania czegokolwiek.
+
+## Korzystanie z umiejętności
+
+Przed zmianą kodu dotykającego TanStack Start, Routera, Query albo Table, Stripe, Resend, React Email, Cloudflare Workers, Wranglera, Durable Objects czy GSAP przeczytaj najpierw odpowiednią umiejętność. Umiejętności opisują aktualne API dostawcy; nie mówią nic o konwencjach tego repozytorium.
+
+Te żyją w trzech innych miejscach:
+
+| Plik                 | Zawartość                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `AGENTS.md`          | Konwencje projektu: użycie Vite+, lista kontrolna przeglądu, zasady warstw i nazewnictwa |
+| `rules/viteplus.mdc` | Plik reguł Vite+ w formacie reguł edytora                                                |
+| `content/docs/`      | Te strony                                                                                |
+
+Gdy umiejętność dostawcy i `AGENTS.md` nie zgadzają się co do tego, jak dana rzecz jest robiona w tym repozytorium, rozstrzyga `AGENTS.md`.
+
+## Powiązane strony
+
+- [Vite+](/docs/tooling/vite-plus)
+- [Skrypty projektu](/docs/tooling/scripts)
+- [Projekt](/docs/project/about)

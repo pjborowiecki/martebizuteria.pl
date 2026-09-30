@@ -1,0 +1,137 @@
+---
+title: "Testing architecture"
+description: "The three Vitest projects, the in-process server-function bridge, the D1 transport over node:sqlite, and the CI pipeline."
+---
+
+## Three Vitest projects
+
+`vp test run` runs Vitest through Vite+ with three projects defined in `vite.config.ts`. Tests live in a `__test__` folder next to the code they cover and import their test APIs from `vite-plus/test`.
+
+| Project       | Environment | Files                                | Count |
+| ------------- | ----------- | ------------------------------------ | ----- |
+| `node`        | Node        | `*.test.ts`, excluding the two below | 364   |
+| `integration` | Node        | `*.integration.test.ts`              | 30    |
+| `component`   | jsdom       | `*.component.test.tsx`               | 479   |
+
+873 test files in total. Only the `component` project loads `src/platform/testing/setup.ts`; node and integration tests import what they need explicitly.
+
+```sh
+bun run test              # all three projects
+bun run test:unit         # node
+bun run test:integration  # integration
+bun run test:component    # component
+bun run test:watch
+bun run test:changed
+bun run test:coverage
+```
+
+The base config sets `environment: "node"`, `isolate: true`, `pool: "threads"`, `maxWorkers: "50%"` and `passWithNoTests: false`, loads `.env.test` through `loadEnv("test", …)`, and excludes `node_modules`, `opensrc`, `dist`, `scripts`, `e2e` and the generated `drizzle-orm/migrations` folder.
+
+When `VITEST` is `true` the plugin list in `vite.config.ts` narrows to React and `fumadocs-mdx` only — no Cloudflare plugin, no TanStack Start plugin, no Tailwind — so a test run never needs a Worker runtime or a Cloudflare account.
+
+## Server functions run in-process
+
+`setup.ts` proxies `createServerFn` so a server function executes locally through its **real** middleware chain and validator, rather than being mocked out:
+
+```ts
+vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
+  const actual = await importOriginal()
+  const { withTestRpc } = await import("~/src/platform/testing/lib/server-function")
+
+  return {
+    ...actual,
+    createServerFn: new Proxy(actual.createServerFn, {
+      apply: (target, thisArg, args: unknown[]) => withTestRpc(Reflect.apply(target, thisArg, args)),
+    }),
+  }
+})
+```
+
+`withTestRpc` wraps the builder, intercepts `.handler()` and runs the compiled function inside `runWithStartContext`, supplying a `request` from the mocked `getRequest()` — a plain `Request` for `http://127.0.0.1:3000/`. Its fake context deliberately throws if anything asks for `getRouter`, so a test that accidentally triggers route rendering fails loudly.
+
+The practical effect: a test for `shipOrder` really passes through `withRequest`, `authorized({ order: ["update"] })` and the Zod validator. Authorization cannot be tested away.
+
+## D1 over `node:sqlite`
+
+`src/platform/testing/mocks/d1.ts` exports `createTestD1Database(sqlite, onQuery?)`, a hand-written transport that presents the D1 `prepare/bind/all/run/raw/batch` surface over a `node:sqlite` `DatabaseSync`. `batch` wraps the statements in `begin`/`commit` with a `rollback` on failure, so batch atomicity is emulated. The optional `onQuery` callback records `{ sql, params }`, which lets a test assert the SQL a query compiles to.
+
+An integration test wires it in by mocking the database module:
+
+```ts
+vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
+  const { drizzle } = await import("drizzle-orm/d1")
+  const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
+  const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
+
+  return { db: drizzle(createTestD1Database(sqlite), { schema }) }
+})
+```
+
+**What this does not emulate:** D1's parameter ceiling, its network latency and its concurrency characteristics. A concurrency result from the integration suite is SQLite's behaviour, not proof about D1 under production load.
+
+## Component tests
+
+`renderWithProviders` from `src/platform/testing/lib/render.tsx` wraps the tree in use-intl's `IntlProvider` (with `TEST_LOCALE`, `TEST_MESSAGES` and `I18N.DEFAULT_TIMEZONE`), a real `QueryClientProvider` with retries disabled, and a `RouterContextProvider` over a memory-history router. `setup.ts` also stubs `IntersectionObserver`, `ResizeObserver` and `matchMedia`, which the GSAP and Lenis code paths need in jsdom.
+
+## What the suites are aimed at
+
+Coverage is broad, but the suites that earn their keep are the ones where a silent regression is expensive:
+
+- **Checkout idempotency** — `checkout-idempotency.integration.test.ts` drives two deliveries that both observe a `pending` checkout and asserts exactly one order results. The application guard in `resolvePendingCheckout` collapses Stripe's _sequential_ retries; the constraint that holds for genuinely concurrent deliveries is the database's, because `order.checkout_id` and `payment.transaction_id` are unique indexes and a D1 batch is atomic, so the losing insert rolls its whole batch back.
+- **Inventory** — `inventory-reservation.integration.test.ts` and `inventory-release.integration.test.ts` exercise the compare-and-set reserve and the `min`/`max`-clamped release.
+- **Rate limiting** — `rate-limit.integration.test.ts` fires concurrent attempts at the real limiter over in-memory SQLite and asserts the admitted and rejected counts.
+- **Auth storage** — `auth.storage.integration.test.ts` pins the Better Auth configuration, including the absence of `secondaryStorage`.
+- **Checkout batches** — `checkout-batches.integration.test.ts` records the compiled SQL through `onQuery` and asserts the statement shape of the create, update-delivery and release batches.
+- **Accessors** — one integration suite per data-access module: product (five files), order, user (two), address, checkout (three), category-on-product, delivery-method, product-image (two), product-category, product-collection, admin-dashboard (two), storefront-search.
+
+## Coverage
+
+```sh
+bun run test:coverage
+```
+
+The v8 provider reports `text`, `html` and `json-summary` into `coverage/`, over `src/**/*.{ts,tsx}` and excluding tests, `__test__` folders, `*.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` and `src/platform/testing/**`.
+
+Thresholds are configured as a **ratchet, not a target**: they sit below the current numbers so any regression fails CI, and they are raised deliberately as each area is covered.
+
+| Metric     | Threshold in `vite.config.ts` |
+| ---------- | ----------------------------- |
+| Lines      | 71                            |
+| Statements | 72                            |
+| Functions  | 68                            |
+| Branches   | 69                            |
+
+`autoUpdate` is `false`, so the thresholds only move when someone edits them.
+
+## No browser tests
+
+There is no Playwright suite and no `e2e/` directory — `vite.config.ts` and `tsconfig.json` still exclude the path, but nothing is there. Flows that cross the browser, Stripe and the webhook (a real card payment, a real verification link) are not covered automatically.
+
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`, with concurrency cancellation and a 15-minute timeout. It uses the shared composite action `.github/actions/setup`, which installs Bun 1.4.0, sets up Vite+ with Node 24, runs `bun install --frozen-lockfile --ignore-scripts`, copies `.env.test` over `.env.development` and `.env.preview`, and runs `bun run typegen`.
+
+Then, in order:
+
+1. `bun run check` — format, lint and type check
+2. `bun run test:coverage`
+3. `bun run build:preview`
+4. Upload `coverage/` as an artifact
+
+`.github/workflows/deploy-preview.yml` and `deploy-production.yml` use the same setup action and re-run the full check before building, so nothing is deployed that CI would have rejected.
+
+## Local gate
+
+```sh
+bun run check       # vp check: format, lint, type check
+bun run check:fix   # the same, applying fixes
+bun run check:staged
+```
+
+`bun run check` is the same gate CI runs. Lint is strict: six Oxlint categories set to `error` including `nursery`, `typeAware` and `typeCheck` on, `denyWarnings: true` and `reportUnusedDisableDirectives: "error"`, with an 800-line file limit, a 150-line function limit and a 20-statement function limit. Overrides are narrow and file-scoped: tests and mocks relax `no-magic-numbers` and a few others, `src/presentation` and `src/hooks` relax `typescript/consistent-return`, `src/routes/**` relaxes `sort-keys`, and `vite.config.ts` relaxes `max-lines`.
+
+## Related pages
+
+- [Platform layer](/docs/architecture/platform-layer)
+- [Layering](/docs/architecture/layering)
+- [Caching and SSR](/docs/architecture/caching-and-ssr)

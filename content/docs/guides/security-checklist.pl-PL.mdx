@@ -1,0 +1,113 @@
+---
+title: "Lista kontrolna bezpieczeństwa"
+description: "Co sprawdzić przed scaleniem zmiany dotykającej tras, funkcji serwerowych, danych, przesyłania plików, webhooków albo sekretów."
+---
+
+Przejdź przez sekcje, które dotyczą Twojej zmiany. Każdy punkt wskazuje plik, który go wymusza, żebyś mógł sprawdzić aktualne zachowanie, a nie zawierzyć tej stronie.
+
+## Dostęp
+
+- [ ] Strony prywatne siedzą pod strzeżonym układem. `/admin` używa `requireAdmin()` w `beforeLoad`; `/account` używa `requireUser()` albo `requireCustomer()`. Wszystkie trzy są w `src/integrations/better-auth/auth.routes.ts`.
+- [ ] **Każda chroniona funkcja serwerowa niesie własne `authorized(...)`.** Strażnik trasy powstrzymuje renderowanie strony; nie chroni punktu końcowego RPC, który jest osiągalny bezpośrednio.
+- [ ] `authorized()` dla dowolnego zalogowanego użytkownika, `authorized({ resource: ["action"] })` gdy potrzebne jest uprawnienie.
+- [ ] Operacje na własnych danych wywołującego czytają użytkownika z `context.auth.user.id`, nigdy z wejścia. Porównaj `createUserAddress` i `setDefaultUserAddress` w `src/modules/address/use-cases/`.
+- [ ] Nowe uprawnienie dopisano do `PERMISSIONS_STATEMENTS` w `auth.access.ts` i przyznano w `ROLES_CONFIG` wyłącznie rolom, które go potrzebują. Zasoby to `order`, `product`, `settings`, `user`; akcje to `create`, `read`, `update`, `delete`, `publish`, `refund`, `manage`. Rola `customer` nie przyznaje niczego.
+- [ ] Testy pokrywają `UNAUTHORIZED` i `FORBIDDEN`.
+
+## Wejście
+
+- [ ] Każda funkcja serwerowa ma `.validator` parsujący schemat Zod z `.zod.ts` modułu. Handler czytający `data` bez walidatora to niewalidowane wejście.
+- [ ] Liczbowe i logiczne parametry zapytania są konwertowane (`z.coerce.number()`, `z.preprocess`), a wartości wyliczeniowe to `z.enum(...)` po krotce z modułu — dzięki temu wartość spoza zakresu jest odrzucana, a nie przekazywana do SQL-a.
+- [ ] Tekst wyszukiwania w panelu przechodzi przez `buildAdminSearchOrCondition` w `src/modules/_core/utils/search-conditions.server.ts`, które eskejpuje znaki wieloznaczne `LIKE`. Jego test integracyjny podaje `100%`, `%_\` i `x' OR 1=1 --` i sprawdza, że dopasowują się jako dosłowny tekst.
+- [ ] Celami przekierowań są stałe tras z `src/routes.ts`, a nie wartości z żądania. `resolveEmailVerificationCallbackUrl` w `auth.server.ts` przepisuje `callbackURL` tylko wtedy, gdy ten już wskazuje na stronę główną sklepu, a w pozostałych przypadkach zwraca oryginalny adres.
+
+## Nadużycia
+
+- [ ] Operacje publiczne albo kosztowne niosą `withRateLimit(kind, RATE_LIMITS.…)` przed strażnikiem. Gotowe zestawy to `SENSITIVE` (3/min), `TOKEN` (5/min) i `CHECKOUT` (10/min).
+- [ ] Napis `kind` jest unikalny dla operacji, bo klucz licznika to `` `${kind}:${clientAddress(headers)}` ``.
+- [ ] `withinRateLimit` w `src/lib/rate-limit.ts` przy awarii **odmawia** — jeśli zapis do D1 rzuci wyjątek, funkcja loguje błąd i zwraca `false`. Nie zmieniaj tego na zachowanie przepuszczające.
+- [ ] Adres IP klienta pochodzi z `cf-connecting-ip`, skonfigurowanego raz w `IP_ADDRESS_HEADER` i przekazanego do Better Auth jako `advanced.ipAddress.ipAddressHeaders`. Nigdy nie czytaj `x-forwarded-for` bezpośrednio.
+- [ ] Własny ogranicznik Better Auth jest włączony (`rateLimit.enabled: true`, `storage: "database"`, domyślnie 100/min) z regułami dla logowania (5), rejestracji (3), żądania resetu hasła (3) i resetu hasła (5). Zachowaj je, jeśli dotykasz tej konfiguracji.
+
+## Błędy
+
+- [ ] Oczekiwane niepowodzenia rzucają `AppError` z kodem z `ERROR_CODES`.
+- [ ] Nic innego nie dociera do klienta. `withRequest` w `auth.middleware.ts` loguje nieznany błąd przez `console.error` i zamienia go na `INTERNAL_ERROR` — bez treści, bez stosu wywołań, bez SQL-a.
+- [ ] Komponenty renderują błędy przez `useActionError` (`src/hooks/use-action-error.ts`) albo `ValidationFieldError`, nigdy przez `error.message`.
+- [ ] Szczegół specyficzny dla modułu, taki jak `CATEGORY_ERROR_CODES.DUPLICATE_HANDLE`, można bezpiecznie przekazać jako drugi argument `AppError`, bo jest ustalonym identyfikatorem, a nie danymi.
+
+## Sesje i ciasteczka
+
+Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli zmieniasz konfigurację:
+
+- [ ] `emailAndPassword.requireEmailVerification: true`.
+- [ ] `advanced.useSecureCookies: !isLocalMode(import.meta.env.MODE)` — bezpieczne ciasteczka wszędzie poza `development` i `test`.
+- [ ] `baseURL.allowedHosts: appHostsForMode(import.meta.env.MODE)`. Lista dozwolonych hostów jest w `src/modules/_core/constants/api.ts` i zależy od trybu: produkcja dopuszcza `martebizuteria.pl` oraz nazwę `workers.dev`, preview dopuszcza swoją parę, a tryb lokalny wyłącznie `localhost:3000` i `127.0.0.1:3000`.
+- [ ] `account.encryptOAuthTokens: true` i `verification.storeIdentifier: "hashed"`.
+- [ ] `multiSession({ maximumSessions: 5 })` i `session.storeSessionInDatabase: true`.
+- [ ] `telemetry.enabled: false`.
+- [ ] Dane sesji wysyłane do przeglądarki przechodzą przez `getCurrentSession` w `auth.session.ts`, gdzie `toClientSession` usuwa `session.token`. Nie zwracaj surowej sesji Better Auth z funkcji serwerowej.
+- [ ] Odczyty sesji po stronie serwera używają `getRequestSession`, które jest `createServerOnlyFn` i memoizuje wynik per `Request` w `WeakMap` — więc kilka middleware w jednym żądaniu kosztuje jedno odpytanie — a także przekazuje `disableCookieCache: true`, żeby unieważniona sesja nie została podana z cache'u ciasteczka.
+
+## Przesyłanie plików
+
+`src/integrations/cloudflare-r2/media.mutations.ts` i `media.zod.ts`:
+
+- [ ] `uploadImageFn` jest strzeżone przez `authorized({ product: ["update"] })`.
+- [ ] Typ MIME jest sprawdzany względem `ACCEPTED_IMAGE_MIME_TYPES` — `image/jpeg`, `image/png`, `image/webp`, `image/avif` — i nic innego nie jest zapisywane.
+- [ ] Rozmiar jest sprawdzany względem `MAX_IMAGE_BYTES` (5 MiB), a pliki zerobajtowe są odrzucane.
+- [ ] Katalog docelowy jest walidowany względem `MEDIA_FOLDERS` (`collections`, `products`, `categories`, `uploads`), a w razie niezgodności używany jest `uploads`. **Klient nigdy nie wybiera klucza.**
+- [ ] Kluczem obiektu jest SHA-256 treści pliku plus rozszerzenie wynikające z typu MIME, więc nazwa pliku od klienta nie może przejść po katalogach ani spowodować kolizji. `head(key)` pomija zapis, jeśli obiekt już istnieje.
+- [ ] Obiekty zapisujemy z `cacheControl: "public, max-age=31536000, immutable"`, co jest bezpieczne właśnie dlatego, że klucz jest adresowany treścią.
+
+## Webhooki
+
+`src/routes/api/webhooks.stripe.ts`:
+
+- [ ] Podpis jest weryfikowany przez `stripe.webhooks.constructEventAsync(await request.text(), signature, env.STRIPE_WEBHOOK_SECRET)` **przed** użyciem ładunku. Brak podpisu albo brak sekretu zwraca 400.
+- [ ] Nieudana weryfikacja zwraca 400 i loguje; nigdy nie przechodzi dalej do handlerów.
+- [ ] Nieobsługiwany `event.type` jest potwierdzany przez `{ received: true }`, a nie błędem — żeby Stripe nie ponawiał w nieskończoność.
+- [ ] Handler, który rzuci wyjątek, zwraca 500, więc Stripe **ponawia**. Oznacza to, że każdy handler w `src/integrations/stripe/stripe.webhooks.tsx` musi być idempotentny — `20260924120000_checkout_idempotency_constraints.sql` istnieje dokładnie z tego powodu.
+
+## Sekrety i kod wyłącznie serwerowy
+
+- [ ] Sekrety czytamy z `env` w `cloudflare:workers`, wyłącznie w modułach zaczynających się od `import "@tanstack/react-start/server-only"`.
+- [ ] Żadna prywatna wartość nie ma prefiksu `VITE_`. `VITE_R2_URL` i `VITE_STRIPE_PUBLISHABLE_KEY` są publiczne z założenia; wszystko pozostałe nie może nim być.
+- [ ] Nowy sekret dopisano do `env.<environment>.secrets.required` w `wrangler.jsonc` dla wszystkich trzech środowisk oraz do `.env.development`, `.env.preview`, `.env.production` i `.env.test` (w pliku testowym z wartością atrapy).
+- [ ] Obecny wymagany zestaw to `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `VITE_R2_URL`.
+- [ ] Dane dostępowe **do zarządzania** Cloudflare — `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, `CLOUDFLARE_ACCESS_TOKEN` — zostają lokalnie. `scripts/prepare-deploy-secrets.ts` wysyła tylko nazwy wymienione w `secrets.required`, zapisując `.wrangler/secrets.<env>.json` z uprawnieniami `0o600`, i rzuca wyjątek, gdy brakuje któregoś wymaganego sekretu.
+- [ ] Żaden plik `.env.*` poza `.env.example` i `.env.test` nie jest nigdy commitowany.
+
+## Ślad audytowy
+
+- [ ] Zapisy administracyjne rejestrują zdarzenie przez funkcję z `src/modules/audit-log/audit-log.events.server.ts`, jak `createCategory` przez `recordCatalogCategoryCreatedAudit(data.handle)`.
+- [ ] Wywołanie **nie** jest oczekiwane. `scheduleAuditLogFromRequest` przechodzi przez `scheduleBackgroundWork`, które przekazuje je do `waitUntil` Workera i przechwytuje awarie, więc audyt nie może zepsuć żądania.
+- [ ] Wykonawcę ustala z sesji `resolveRequestAuditActor`, a w razie braku używany jest `SYSTEM_AUDIT_ACTOR`. Nie przyjmuj wykonawcy od klienta.
+- [ ] Zdarzenia uwierzytelniania są już pokryte: `databaseHooks.session.create.after` rejestruje logowanie, `databaseHooks.user.create.after` rejestruje rejestrację, a `/api/auth/$` przechodzi przez `handleAuthRequestWithAudit`.
+
+## Wyjście i indeksowanie
+
+- [ ] Ścieżki prywatne nie trafiają do wyszukiwarek. `isNoIndexPathname` w `src/lib/seo.ts` obejmuje `/account`, `/admin` i `/checkout`, a `__root.tsx` emituje dla nich `noindex, nofollow` — oraz dla **każdej** ścieżki, gdy `import.meta.env.MODE` nie jest `production`.
+- [ ] `generateRobotsTxt` zwraca całkowite `Disallow: /` dla każdego nieprodukcyjnego `APP_ENV`, a na produkcji zabrania `/api/`, `/admin`, `/account` i `/checkout`.
+- [ ] `generateSitemapXml` jest budowane z `STATIC_PAGES` w `src/data/static-pages.ts` (obecnie `/`, `/about`, `/blog`). Nowa strona publiczna należy tam; prywatna nie.
+
+## Powierzchnie tylko dla środowiska deweloperskiego
+
+- [ ] `/dev/emails` sam się pilnuje przez `if (!import.meta.env.DEV) { return notFound() }` jako pierwszą instrukcję handlera. Każda nowa trasa `dev.*` musi robić to samo.
+- [ ] `catalogDebugLog` w `src/lib/catalog-debug-log.ts` wychodzi od razu, jeśli nie jest ustawione `import.meta.env.DEV`. Używaj jego, a nie zwykłego `console.info`.
+- [ ] React Query Devtools renderują się wyłącznie pod `import.meta.env.DEV` w `src/router.tsx`.
+
+## Przed scaleniem
+
+```sh
+bun run check
+bun run test
+```
+
+`bun run check` uruchamia Oxfmt, Oxlint i kontrolę typów. Wszystkie sześć kategorii lintera, w tym `nursery`, to błędy, `typeAware` i `typeCheck` są włączone, obowiązuje `denyWarnings: true` oraz `reportUnusedDisableDirectives: "error"` — więc nie da się wyciszyć znalezienia, a przeterminowanej dyrektywy wyciszającej też nie da się zostawić.
+
+## Powiązane przewodniki
+
+- [Funkcje serwerowe](/docs/guides/server-functions)
+- [Dodawanie przypadku użycia](/docs/guides/add-a-use-case)
+- [Debugowanie lokalne](/docs/guides/local-debugging)

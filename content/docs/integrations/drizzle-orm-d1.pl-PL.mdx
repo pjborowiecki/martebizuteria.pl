@@ -1,0 +1,206 @@
+---
+title: "Drizzle ORM i D1"
+description: "Klient D1, zbiorczy eksport schematów, pomocniki kolumn, wsady i proces migracji."
+---
+
+Wszystkie trwałe dane mieszkają w jednej bazie Cloudflare D1, do której sięgamy przez Drizzle ORM. Adapter w `src/integrations/drizzle-orm/` jest celowo mały: tworzy klienta, ponownie eksportuje definicje tabel żyjące w modułach funkcjonalnych, dostarcza kilka pomocników kolumn oraz przechowuje konfigurację drizzle-kit i pliki migracji.
+
+## Klient
+
+```ts
+import "@tanstack/react-start/server-only"
+
+import { env } from "cloudflare:workers"
+
+import { drizzle } from "drizzle-orm/d1"
+
+import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
+
+export const db = drizzle(env.DB, { schema })
+```
+
+To cała treść `drizzle.database.ts`. Import `server-only` zamienia każdy import po stronie klienta w błąd budowania. `env.DB` to powiązanie D1 deklarowane osobno dla każdego środowiska w `wrangler.jsonc`. Ponieważ schemat jest przekazywany do klienta, zapytania relacyjne `db.query.<table>` działają wszędzie.
+
+## Gdzie naprawdę mieszkają schematy
+
+`drizzle.schemas.ts` jest zbiorczym eksportem i nie zawiera żadnych definicji tabel. Każda tabela definiowana jest w module, który jest jej właścicielem, jako `src/modules/{feature}/{feature}.schema.ts`, i eksportowana tutaj ponownie wraz z relacjami:
+
+```ts
+export { product, productRelations } from "~/src/modules/product/product.schema"
+export { productVariant, productVariantRelations } from "~/src/modules/product-variant/product-variant.schema"
+export { inventory, inventoryRelations } from "~/src/modules/inventory/inventory.schema"
+```
+
+Zbiorczy eksport udostępnia 31 tabel. Drizzle potrzebuje jednego grafu obiektów do rozwiązania relacji, a drizzle-kit jednego punktu wejścia — dlatego ten plik istnieje, mimo ogólnej zasady projektu, by nie tworzyć zbiorczych eksportów.
+
+| Obszar              | Tabele                                                                                                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tożsamość           | `user`, `session`, `account`, `verification`, `two_factor`, `rate_limit`                                                                                                    |
+| Katalog             | `product`, `product_variant`, `product_image`, `product_option`, `product_option_value`, `option_on_variant`, `product_category`, `product_collection`, `product_attribute` |
+| Powiązania katalogu | `category_on_product`, `collection_on_product`, `attribute_on_product`                                                                                                      |
+| Sprzedaż            | `cart`, `cart_item`, `checkout`, `payment`, `order`, `order_item`, `order_address`, `inventory`, `discount`                                                                 |
+| Realizacja dostaw   | `delivery_method`, `courier`                                                                                                                                                |
+| Dane klienta        | `address`                                                                                                                                                                   |
+| Operacje            | `audit_log`                                                                                                                                                                 |
+
+Definicja tabeli wygląda tak, a długości kolumn, wartości domyślne i indeksy pochodzą ze stałych własnego modułu:
+
+```ts
+export const product = sqliteTable(
+  "product",
+  {
+    descriptions: text("descriptions", { mode: "json" }).$type<Product["localeMap"] | null>(),
+    handle: text("handle", { length: PRODUCT_COLUMN_LENGTH.handle }).notNull().unique(),
+    id: text("id", { length: PRODUCT_COLUMN_LENGTH.id }).primaryKey(),
+    rank: integer("rank").notNull().default(PRODUCT_DEFAULT_RANK),
+    status: text("status", { enum: PRODUCT_STATUSES }).default(DEFAULT_PRODUCT_STATUS).notNull(),
+    titles: text("titles", { mode: "json" }).$type<Product["localeMap"]>().notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    index("product_primary_category_id_idx").on(table.primaryCategoryId),
+    index("product_status_rank_idx").on(table.status, table.rank),
+  ],
+)
+```
+
+Pola tłumaczone przechowywane są jako mapy językowe w JSON (`titles`, `subtitles`, `descriptions`, `tags`), a nie jako osobne wiersze tłumaczeń. Sposób ich odczytu opisuje strona [Internacjonalizacja](/docs/architecture/i18n-architecture).
+
+## Pomocniki kolumn
+
+`drizzle.utils.ts` trzyma konwencje w jednym miejscu:
+
+| Eksport               | Działanie                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| `UUID_STRING_LENGTH`  | `36`, długość używana przez każdą kolumnę identyfikatora                                            |
+| `timestamp(name)`     | Kolumna `integer` z `{ mode: "timestamp_ms" }`                                                      |
+| `timestampNow(name)`  | To samo, z domyślną wartością `(unixepoch() * 1000)` w SQL i `new Date()` w JS, `notNull`           |
+| `timestamps()`        | Rozwija `createdAt` i `updatedAt`, gdzie `updatedAt` nosi dodatkowo `$onUpdateFn(() => new Date())` |
+| `isoDayKey(column)`   | `strftime('%Y-%m-%d', column / 1000, 'unixepoch')` do grupowania po dniach                          |
+| `isoMonthKey(column)` | To samo dla `'%Y-%m'`                                                                               |
+
+Znaczniki czasu to milisekundy od epoki przechowywane jako liczby całkowite, więc każde surowe SQL pisane przeciwko nim musi dzielić przez 1000 przed `strftime` — dokładnie to robią dwa powyższe pomocniki. Klucze główne to łańcuchy UUIDv7 generowane przez `v7 as uuidv7` z paczki `uuid`, zarówno w przypadkach użycia, jak i w `advanced.database.generateId` w Better Auth.
+
+## Wsady
+
+D1 obsługuje łączenie kilku instrukcji w jedno okrążenie sieciowe. `drizzle.batch.ts` owija tę funkcję, aby wywołujący nie musieli obsługiwać pustego przypadku:
+
+```ts
+export const runDrizzleBatch = async (statements: readonly DrizzleBatchStatement[]): Promise<void> => {
+  if (statements.length === 0) {
+    return
+  }
+
+  const [first, ...rest] = statements
+  if (first === undefined) {
+    return
+  }
+  await db.batch([first, ...rest])
+}
+```
+
+`DrizzleBatchStatement` to `BatchItem<"sqlite">`. Wsad D1 wykonywany jest jako jedna niejawna transakcja, co czyni `runDrizzleBatch` narzędziem atomowości w tej bazie kodu. Nic w `src/` nie wywołuje `db.transaction()`: sterownik D1 realizuje tę metodę przez wysłanie osobnych instrukcji `begin` i `commit`, a D1 nie udostępnia transakcji interaktywnych rozciągniętych na osobne instrukcje. Zapisy wieloetapowe albo trafiają więc do jednego wsadu, albo jawnie kompensują błąd — tak jak proces zamówienia zwalnia zarezerwowany stan magazynowy.
+
+## Instrukcje przygotowane
+
+Gorące ścieżki odczytu prekompilują swoje SQL przez `.prepare()` i `sql.placeholder()`. Plik `src/modules/product/product.accessors.ts` jest najgęstszym przykładem:
+
+```ts
+export const getProductVariantStatsQuery = db
+  .select({
+    minPrice: sql<number | null>`min(${productVariant.price})`,
+    productId: productVariant.productId,
+    totalStock: sql<number>`coalesce(sum(${inventory.quantityAvailable}), 0)`,
+    variantCount: sql<number>`count(${productVariant.id})`,
+  })
+  .from(productVariant)
+  .leftJoin(inventory, eq(inventory.variantId, productVariant.id))
+  .where(sql`${productVariant.productId} in (select value from json_each(${sql.placeholder("productIds")}))`)
+  .groupBy(productVariant.productId)
+  .prepare()
+```
+
+Przygotowane zapytania wywołuje się przez `.execute({ productIds: … })`. Sztuczka z `json_each` pozwala trzymać listę `IN` o zmiennej długości wewnątrz instrukcji przygotowanej, czego zwykłe `inArray` nie potrafi.
+
+## Powiązania w poszczególnych środowiskach
+
+| Środowisko Wrangler | Nazwa bazy w `DB`        | Identyfikator bazy                     |
+| ------------------- | ------------------------ | -------------------------------------- |
+| `development`       | `martebizuteria-preview` | `1660d0df-fff9-463b-bbc6-dec65f754302` |
+| `preview`           | `martebizuteria-preview` | `1660d0df-fff9-463b-bbc6-dec65f754302` |
+| `production`        | `martebizuteria`         | `2bf4f35e-0a01-43c0-8a10-df5cc84ceb89` |
+
+Środowiska `development` i `preview` wskazują na **tę samą zdalną bazę**, a wszystkie trzy powiązania mają `"remote": true`. W normalnym trybie pracy nie ma lokalnego pliku SQLite: `bun run dev` rozmawia z prawdziwą bazą preview. Traktuj dane preview jako stan współdzielony.
+
+## Konfiguracja drizzle-kit
+
+`drizzle.config.ts` korzysta ze sterownika HTTP, więc drizzle-kit dosięga D1 z Twojej maszyny bez Wranglera:
+
+```ts
+export default defineConfig({
+  dbCredentials: {
+    accountId: process.env["CLOUDFLARE_ACCOUNT_ID"] ?? "",
+    databaseId: process.env["CLOUDFLARE_DATABASE_ID"] ?? "",
+    token: process.env["CLOUDFLARE_ACCESS_TOKEN"] ?? "",
+  },
+  dialect: "sqlite",
+  driver: "d1-http",
+  migrations: { prefix: "timestamp", schema: "public", table: "__drizzle_migrations__" },
+  out: "./src/integrations/drizzle-orm/migrations",
+  schema: "./src/integrations/drizzle-orm/drizzle.schemas.ts",
+  strict: true,
+  verbose: true,
+})
+```
+
+Te trzy zmienne pochodzą z pliku środowiska — dlatego skrypty `db:*` przekazują `--env-file=.env.development`, `.env.preview` lub `.env.production`. Są to dane uwierzytelniające do zarządzania i żyją wyłącznie w lokalnym oprzyrządowaniu; nie są sekretami Workera.
+
+## Skrypty
+
+| Skrypt                          | Działanie                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------- |
+| `bun run db:generate`           | `drizzle-kit generate` — zapisuje nową migrację SQL wraz ze zrzutem stanu ze schematu |
+| `bun run db:migrate:local`      | `wrangler d1 migrations apply DB --env development --local`                           |
+| `bun run db:migrate:preview`    | To samo z `--remote` na bazie preview (jest to również domyślne `db:migrate`)         |
+| `bun run db:migrate:production` | To samo na bazie produkcyjnej                                                         |
+| `bun run db:migrations:<env>`   | `wrangler d1 migrations list` — pokazuje, czego jeszcze nie zastosowano               |
+| `bun run db:push:<env>`         | `drizzle-kit push` — wypycha schemat bez pliku migracji                               |
+| `bun run db:introspect:<env>`   | `drizzle-kit introspect` — odtwarza `migrations/schema.ts` i `relations.ts`           |
+| `bun run db:studio:<env>`       | `drizzle-kit studio`                                                                  |
+
+Pliki `migrations/schema.ts` i `migrations/relations.ts` są wynikiem introspekcji, nie źródłami pisanymi ręcznie. Ścieżka `src/integrations/**/migrations/**` jest wyłączona z formattera, lintera i uruchomienia testów w `vite.config.ts`.
+
+## Katalog migracji
+
+`src/integrations/drizzle-orm/migrations/` zawiera 57 plików `.sql`. Wrangler stosuje je w kolejności nazw plików i zapisuje zastosowane migracje we własnej tabeli `d1_migrations`; plik `meta/_journal.json` Drizzle czytany jest wyłącznie przez `drizzle-kit generate` przy obliczaniu kolejnej różnicy.
+
+Te dwa widoki się rozjechały. Dziennik wymienia 51 wpisów, więc sześciu plików z katalogu w nim nie ma:
+
+```
+20260604143000_product_status_updated_at_idx
+20260605112240_wealthy_pepper_potts
+20260608120000_product_locale_maps
+20260924120000_checkout_idempotency_constraints
+20260925000000_locale_maps_bcp47
+20260927120000_fix_silver_collection_handle
+```
+
+Migracje pisane ręcznie, takie jak `20260927120000_fix_silver_collection_handle.sql`, są w tym repozytorium normalne — naprawy danych i zmiany dotyczące wyłącznie indeksów pisze się bezpośrednio i stosuje Wranglerem. Dziennikowi brakuje jednak także całego indeksu 38 (numeracja biegnie 0–51 z luką), co oznacza, że `drizzle-kit generate` liczy różnicę ze zrzutu, który nie obejmuje wszystkiego, co faktycznie jest w bazie. Po `db:generate` przeczytaj wygenerowane SQL przed zastosowaniem i usuń wszystko, co ponownie tworzy już istniejący obiekt.
+
+## Dane początkowe
+
+Katalog `seeds/` zawiera jedenaście plików `.sql`, a skrypty `db:seed:preview` i `db:seed:production` stosują je w kolejności zależności. **Te pliki są przestarzałe wobec działających baz i nadpisałyby prawdziwe dane katalogu.** Nie uruchamiaj ich.
+
+## Dodawanie migracji
+
+1. Zmień lub dodaj tabelę w `src/modules/{feature}/{feature}.schema.ts` i ponownie wyeksportuj ją z `drizzle.schemas.ts`, jeśli jest nowa.
+2. Uruchom `bun run db:generate`.
+3. Przeczytaj wygenerowane SQL. SQLite nie potrafi usuwać ani zmieniać większości ograniczeń w miejscu, więc drizzle-kit czasem emituje przebudowę tabeli — sprawdź, czy zachowuje Twoje dane.
+4. Zastosuj przez `bun run db:migrate:preview`, zweryfikuj na bazie preview, a następnie wykonaj `bun run db:migrate:production`.
+5. Uruchom `bun run check` i `bun run test`.
+
+## Powiązane strony
+
+- [Schemat bazy danych](/docs/integrations/drizzle-orm-d1)
+- [Moduły i przypadki użycia](/docs/architecture/modules-and-use-cases)
+- [Better Auth](/docs/integrations/better-auth)

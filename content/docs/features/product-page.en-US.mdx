@@ -1,0 +1,140 @@
+---
+title: "Product page"
+description: "/products/$handle: the deferred related-products query, variant selection, stock-aware add to cart, and the specification list."
+---
+
+## Route
+
+`src/routes/_storefront.products.$handle.tsx`. The loader does four things:
+
+```ts
+loader: async ({ context, params }) => {
+  const { locale } = context
+  const [data, messages] = await Promise.all([
+    context.queryClient.query({ ...getProductQuery(params.handle, locale), staleTime: "static" }),
+    context.queryClient.query(messagesQueryOptions<typeof productMessages>({ locale, namespace: "pages.product" })),
+  ])
+
+  if (data === false) {
+    throw notFound()
+  }
+  prefetchSingleProductImage(data, context.imagePrefetchService)
+  const deferredRelated = defer(context.queryClient.query(getRelatedProductsQuery(data.categoryId, data.id, locale)))
+
+  return { deferredRelated, description: data.description, title: messages.metaTitle.replace("{title}", data.title) }
+}
+```
+
+The related-products query is **deferred**: the hero renders as soon as the product resolves, and `<Await promise={deferredRelated}>` streams the related grid in behind a `Suspense` fallback that shows `pages.product.loadingRelated`.
+
+`head: pageHead` from `src/lib/seo.ts` turns the returned `PageMeta` into the title and description tags.
+
+## Loading the product
+
+`getProduct` (`src/modules/product/use-cases/get-product.ts`) is public:
+
+```ts
+const prod = await getPublishedProductByHandleQuery.execute({ handle })
+
+if (prod === undefined || !isProductInStock(prod.variants)) {
+  return false
+}
+
+return mapPublishedProductForStorefront(prod, locale)
+```
+
+Note the return type. **A missing product and an out-of-stock product are both `false`**, and the route turns `false` into `notFound()`. There is no separate "sold out" page: a product whose variants all sit at zero available is a 404 on the storefront. `isProductInStock` lives in `src/modules/inventory/inventory.availability.utils.ts`.
+
+`getPublishedProductByHandleQuery` is a prepared Drizzle relational query in `product.accessors.ts` that loads the product with its variants, images, options and option values, categories, collections and attribute values in one round trip.
+
+## The storefront shape
+
+`mapPublishedProductForStorefront` in `src/modules/product/product.utils.ts` flattens the row into `Product["storefront"]`. The rules worth knowing:
+
+| Field                                      | How it is derived                                                                                      |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `title`, `subtitle`, `description`, `tags` | `resolveProductTitle` / `Subtitle` / `Description` / `Tags` pick the locale out of the JSON locale map |
+| `categoryId`                               | `product.primary_category_id`, or `resolvePrimaryCategoryId(categoryRows)` when the column is null     |
+| `sharedImageUrls`                          | images with `variant_id IS NULL` (`isProductLevelImage`)                                               |
+| `variants[].imageUrls`                     | the variant's own images, falling back to `sharedImageUrls`                                            |
+| `variants[].specifications`                | the variant's attribute values, falling back to the product-level ones                                 |
+| `imageUrls`                                | the first variant's images, else `sharedImageUrls`, else every image row                               |
+| `hasVariants`                              | `inferHasVariants(options, variants.length)`                                                           |
+| `options`                                  | `{ id, title, values: [{ id, label }] }` with labels resolved for the locale                           |
+| `variants[].optionValueIds`                | `resolveVariantOptionValueIds` — a `Record<optionId, valueId>` built from `option_on_variant`          |
+
+## Variant selection
+
+`use-selected-product-variant.ts` holds the selection as a `Record<optionId, valueId>`:
+
+- The initial selection is taken from the first variant with `quantityAvailable >= 1`, falling back to `variants[0]`.
+- `selectOptionValue(optionId, valueId)` computes the next selection and **only commits it if a variant matches**, so the picker cannot land on a combination that does not exist.
+- `selectedVariant` is `undefined` only when the product has no variants at all.
+
+`product-variant-picker.tsx` renders the option groups; `product-hero-gallery.tsx` swaps its images when the selected variant changes, because `ProductHeroSection` recomputes `images` from `selectedVariant?.imageUrls`.
+
+## Add to cart
+
+`use-product-hero-cart.ts` is the only place the product page writes to the basket. It is stock-aware:
+
+- `availableQuantity = getVariantQuantityAvailable(selectedVariant)`
+- `isOutOfStock` is `availableQuantity < 1`
+- `canPurchase = isVariantPurchasable(selectedVariant, quantity)`
+- if the chosen quantity exceeds what is available, an effect clamps it down
+- changing the variant resets the quantity to 1
+
+On click it pushes one line into the zustand store and fires activity tracking:
+
+```ts
+addItem({
+  id: selectedVariant.id,
+  image: getProductImageUrl(heroImage),
+  price,
+  qty: addQuantity,
+  rawPrice: variantPrice,
+  slug: product.handle,
+  title: product.title,
+  variantId: selectedVariant.id,
+  variantTitle,
+})
+trackCartItemAdded({ productTitle: product.title, quantity: addQuantity, variantId: selectedVariant.id, variantTitle })
+```
+
+`price` is the already formatted string and `rawPrice` the minor units; the cart prefers `rawPrice` and only falls back to parsing `price`. `variantTitle` is blanked when it equals `DEFAULT_VARIANT_TITLE` (`product-variant.utils.ts`), so single-variant products do not show a meaningless variant label. `isAdded` flips true for 2000 ms to drive the button's confirmation state.
+
+Tracking goes to `src/modules/customer-activity` and is recorded only for signed-in users. See [Audit log](/docs/features/audit-log).
+
+## Price display
+
+`product-hero-info.tsx` formats the selected variant's `price` with `useFormatter().number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" })`. When no variant is selected it shows `EMPTY_VALUE` from `src/modules/_core/constants/placeholder.ts`. The currency is written literally as `"PLN"` here rather than read from `STORE_CURRENCY_CODE`.
+
+## Specifications and details
+
+`product-hero-details.tsx` renders the description and the specification list. `product-hero-detail-line.ts` exports `resolveProductHeroDetailLine(subtitle, specifications, locale)`, which produces the single summary line under the title from the subtitle or, failing that, the specifications.
+
+Specifications come from the product attribute system: `attribute_on_product` rows mapped by `mapAttributeRowsToSpecifications`. See [Admin catalog](/docs/features/admin-catalog) for how attributes are defined.
+
+## Mobile buy bar
+
+`product-mobile-buy-bar.tsx` is a fixed bottom bar. `ProductHeroInfo` shows it with an `IntersectionObserver` on the purchase row, guarded by `matchMedia("(max-width: 1023px)")` — so it only appears on small screens once the real add-to-cart row has scrolled out of view.
+
+## Related products
+
+`getRelatedProducts` takes `{ categoryId, excludeProductId, locale }` and returns `[]` when `categoryId` is null or undefined. Otherwise `getPublishedRelatedProducts` in `product.accessors.ts` selects up to `RELATED_PRODUCTS_LIMIT = 3` products from the same category, excluding the current one, behind `publishedInStockWhere`, ordered by `rank` then `createdAt`:
+
+```ts
+where: publishedInStockWhere(ne(product.id, excludeProductId), inArray(product.id, productIdsInCategory)),
+```
+
+The route maps the rows into the shape `ProductRelatedSection` needs, resolving titles for the locale and taking the first variant's `id`, `price` and `title`.
+
+## Animation
+
+`hooks/use-product-animations.ts` is called with the page root and `dependencies: [handle]`, so the reveal animations replay when the visitor navigates from one product to another.
+
+## Related pages
+
+- [Cart](/docs/features/cart) for what happens to the line after add-to-cart
+- [Inventory](/docs/features/inventory)
+- [Catalog and search](/docs/features/catalog-and-search)
+- [Admin catalog](/docs/features/admin-catalog) for variants, images and attributes

@@ -1,0 +1,49 @@
+---
+title: "Przegląd"
+description: "Od świeżego klonu repozytorium M'Arte do działającego sklepu i wdrożonego Workera."
+---
+
+M'Arte to jedna aplikacja TanStack Start, która z pojedynczego Workera Cloudflare obsługuje sklep, panel klienta, panel administracyjny i tę dokumentację. Wszystko, czego aplikacja potrzebuje w czasie działania, to bindingi Cloudflare: D1 na dane, R2 na zdjęcia produktów, KV jako pamięć podręczna, kolejka na dziennik audytu oraz Durable Object do unieważniania pamięci podręcznej w czasie rzeczywistym.
+
+Ma to jedną konsekwencję, o której warto wiedzieć przed rozpoczęciem pracy: **nie ma w pełni offline'owego trybu pracy**. `bun run dev` ustawia `CLOUDFLARE_ENV=development`, a `vite.config.ts` włącza zdalne bindingi wtyczki Cloudflare dokładnie dla tej wartości:
+
+```ts
+...cloudflare({
+  inspectorPort: false,
+  remoteBindings: process.env["CLOUDFLARE_ENV"] === "development",
+  viteEnvironment: { name: "ssr" },
+}),
+```
+
+Serwer deweloperski rozmawia więc z prawdziwą bazą D1 środowiska preview, z prawdziwym zasobnikiem R2 `martebizuteria` i z prawdziwą przestrzenią nazw KV. Środowiska `development` i `preview` w `wrangler.jsonc` deklarują ten sam `database_id` i ten sam zasobnik, co oznacza, że **zapisy wykonane w trybie deweloperskim trafiają do bazy preview**. Traktuj ją jak bazę współdzieloną, nie jak brudnopis.
+
+Drugi sposób uruchomienia aplikacji to `bun run start`, który serwuje gotowy build z `CLOUDFLARE_ENV=preview`. Skoro ta wartość nie jest równa `development`, zdalne bindingi są wyłączone i używane są lokalne, symulowane D1, R2 i KV z katalogu `.wrangler/state/`. To najbliższa dostępna wersja odizolowanego uruchomienia lokalnego — startuje jednak z pustą bazą danych.
+
+## Kolejność tych stron
+
+1. [Wymagania wstępne](/docs/getting-started/prerequisites) — globalne CLI `vp`, Bun, Node.js oraz konta potrzebne poszczególnym częściom aplikacji.
+2. [Instalacja](/docs/getting-started/installation) — instalacja zależności i generowanych plików, od których zależą kontrola typów i strona dokumentacji.
+3. [Zmienne środowiskowe](/docs/getting-started/environment-variables) — cztery pliki `.env`, wartości docierające do przeglądarki i sekrety Workera.
+4. [Pierwsze uruchomienie](/docs/getting-started/first-run) — migracje, start serwera deweloperskiego, rejestracja i nadanie sobie roli administratora.
+5. [Skrypty projektu](/docs/getting-started/project-scripts) — polecenia używane codziennie i to, co faktycznie uruchamiają.
+6. [Wdrożenie podglądu](/docs/getting-started/deploy-preview) — przygotowanie zasobów Cloudflare i wdrożenie Workera preview.
+
+## Najkrótsza wersja
+
+Jeśli masz już CLI `vp`, konto Cloudflare z przygotowanymi bindingami i dane uwierzytelniające pod ręką:
+
+```sh
+git clone https://github.com/pjborowiecki/martebizuteria.pl.git
+cd martebizuteria.pl
+vp install
+cp .env.example .env.development   # następnie wpisz prawdziwe wartości
+bunx wrangler login
+bun run db:migrate:development
+bun run dev
+```
+
+Sklep jest wtedy pod adresem `http://localhost:3000` po polsku i `http://localhost:3000/en-US` po angielsku. `pl-PL` to lokalizacja domyślna i nie ma prefiksu w adresie URL.
+
+## Co dalej
+
+Kiedy aplikacja już działa, rozdział [Architektura](/docs/architecture) wyjaśnia, gdzie leży kod i dlaczego, a [Narzędzia](/docs/tooling) omawiają cały łańcuch narzędzi dokładniej niż strony w tym rozdziale.

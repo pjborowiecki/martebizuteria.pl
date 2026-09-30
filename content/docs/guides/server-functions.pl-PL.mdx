@@ -1,0 +1,198 @@
+---
+title: "Funkcje serwerowe"
+description: "Elementy wspólne dla każdej operacji: createServerFn, trzy middleware, AppError, praca w tle i klient D1."
+---
+
+Każda operacja serwerowa w M'Arte to funkcja serwerowa TanStack Start utworzona przez `createServerFn` z `@tanstack/react-start`. Dla danych aplikacji nie ma warstwy REST — istnieją tylko dwie prawdziwe trasy HTTP (`src/routes/api/auth.$.ts` i `src/routes/api/webhooks.stripe.ts`), a poza nimi ścieżki WebSocket, sitemap i robots obsługiwane bezpośrednio w `src/server.ts`. Wszystko inne to wywołanie RPC z przeglądarki do funkcji serwerowej.
+
+## Łańcuch budowniczego
+
+```ts
+export const setDefaultUserAddress = createServerFn({ method: "POST" })
+  .middleware([authorized()])
+  .validator((input: zod.input<typeof addressIdInputSchema>) => addressIdInputSchema.parse(input))
+  .handler(async ({ context, data }) => {
+    // context.auth, context.requestHeaders, sparsowane data
+  })
+```
+
+`method` to `"GET"` dla odczytów i `"POST"` dla zapisów. `.middleware([...])` wykonuje się przed handlerem i dokłada dane do `context`. `.validator(...)` parsuje wejście, a jego wartość zwracana staje się `data`. `.handler(...)` wykonuje pracę i zwraca wartość, którą da się zserializować.
+
+## Trzy middleware
+
+Wszystkie mieszkają w `src/integrations/better-auth/auth.middleware.ts`.
+
+### `withRequest`
+
+Middleware bazowe. Umieszcza nagłówki żądania w kontekście i owija cały łańcuch w jeden tłumacz błędów:
+
+```ts
+export const withRequest = createMiddleware({ type: "function" }).server(({ next }) =>
+  next({ context: { requestHeaders: getRequest().headers } }).catch(handleRequestError),
+)
+```
+
+`handleRequestError` normalizuje to, co rzucił handler:
+
+| Rzucone                  | Wysłane do klienta                                               |
+| ------------------------ | ---------------------------------------------------------------- |
+| `AppError`               | Nowy `AppError` niosący wyłącznie kod                            |
+| `APIError` z Better Auth | `AppError(AUTH_API_ERROR, authErrorKey(error))`                  |
+| `ZodError`               | `AppError(VALIDATION)`                                           |
+| Cokolwiek innego         | Zapisane przez `console.error`, potem `AppError(INTERNAL_ERROR)` |
+
+Ostatni wiersz jest najważniejszy: nieoczekiwany błąd nigdy nie wypuszcza do przeglądarki swojej treści, stosu wywołań ani SQL-a.
+
+Rzadko wymienia się `withRequest` samodzielnie. Oba poniższe middleware już je zawierają.
+
+### `authorized(permission?)`
+
+Ładuje sesję i opcjonalnie sprawdza uprawnienie:
+
+```ts
+export const authorized = (permission?: Permission) =>
+  createMiddleware({ type: "function" })
+    .middleware([withRequest])
+    .server(async ({ next }) => {
+      const session = await getRequestSession()
+      if (session === null) {
+        throw new AppError(ERROR_CODES.UNAUTHORIZED)
+      }
+
+      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+        throw new AppError(ERROR_CODES.FORBIDDEN)
+      }
+
+      return next({ context: { auth: session } })
+    })
+```
+
+- `authorized()` — dowolny zalogowany użytkownik. Tego używa wszystko pod `/account`.
+- `authorized({ product: ["read"] })` — zalogowany użytkownik, którego rola przyznaje tę akcję.
+
+Słownik uprawnień definiuje `src/integrations/better-auth/auth.access.ts`. Zasoby to `order`, `product`, `settings` i `user`; akcje to `create`, `read`, `update`, `delete`, `publish`, `refund` i `manage`. `ROLES_CONFIG` przyznaje roli `admin` uprawnienia `order: [read, update, refund]`, `product: [create, read, update, delete, publish]`, `settings: [manage]` oraz własne `adminAc.statements` z Better Auth, a roli `customer` nie przyznaje niczego.
+
+**Strażnik trasy nie jest autoryzacją.** `requireAdmin()` w `beforeLoad` trasy jedynie powstrzymuje przeglądarkę od wyrenderowania strony; punkt końcowy RPC pozostaje osiągalny. Każda chroniona funkcja serwerowa musi nieść własne `authorized(...)`.
+
+### `withRateLimit(kind, limits)`
+
+```ts
+.middleware([withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE), authorized()])
+```
+
+Trzy gotowe zestawy, wszystkie w oknie 60 sekund:
+
+| Zestaw      | Maks. żądań | Stosowany do                           |
+| ----------- | ----------- | -------------------------------------- |
+| `SENSITIVE` | 3           | Zapisy adresów, operacje tokenopodobne |
+| `TOKEN`     | 5           | Zużywanie tokenów                      |
+| `CHECKOUT`  | 10          | Operacje w procesie zamówienia         |
+
+Kluczem licznika jest `` `${kind}:${clientAddress(context.requestHeaders)}` ``, gdzie `clientAddress` czyta nagłówek `cf-connecting-ip` przez `getIP` z Better Auth, a w razie braku zwraca literał `"unknown"`. Liczniki żyją w tabeli D1 `rate_limit`; `withinRateLimit` w `src/lib/rate-limit.ts` realizuje okno jednym `INSERT ... ON CONFLICT DO UPDATE` z klauzulą `setWhere`, więc wystarcza jedno odwołanie do bazy. Jeśli ten zapis rzuci wyjątek, funkcja zapisuje błąd w logu i zwraca `false` — czyli domyślnie odmawia.
+
+Better Auth stosuje własny ogranicznik do `/api/auth/*` z `storage: "database"` i regułami: logowanie 5, rejestracja 3, żądanie resetu hasła 3 oraz reset hasła 5 na minutę.
+
+## Błędy
+
+`src/modules/_core/constants/errors.ts` zawiera cały słownik błędów:
+
+```ts
+export const ERROR_CODES = {
+  AUTH_API_ERROR: "AUTH_API_ERROR",
+  CONFLICT: "CONFLICT",
+  FORBIDDEN: "FORBIDDEN",
+  INTERNAL_ERROR: "INTERNAL_ERROR",
+  NOT_FOUND: "NOT_FOUND",
+  TOO_MANY_REQUESTS: "TOO_MANY_REQUESTS",
+  UNAUTHORIZED: "UNAUTHORIZED",
+  VALIDATION: "VALIDATION",
+} as const
+
+export class AppError extends Error {
+  readonly code: ErrorCode
+
+  constructor(code: ErrorCode, message: string = code) {
+    super(message)
+    this.name = "AppError"
+    this.code = code
+  }
+}
+```
+
+Opcjonalny drugi argument to szczegół specyficzny dla modułu, na przykład `CATEGORY_ERROR_CODES.DUPLICATE_HANDLE`. Staje się on `message` błędu i przetrwa serializację — właśnie w ten sposób formularze przypinają konflikt do pola `handle`. `errorCode(error)` z tego samego pliku odczytuje właściwość `code` z nieznanej wartości i tego używa kod klienta do rozgałęziania:
+
+```ts
+const code = errorCode(error)
+if (code === ERROR_CODES.CONFLICT) {
+  setError("handle", { message: t("toast.duplicateHandle"), type: "manual" })
+}
+```
+
+Każdy kod ma tłumaczenie pod `errors.action.<CODE>` w `messages/{locale}/errors.json`. `useActionError` wybiera właściwe.
+
+## Klient bazy danych
+
+`src/integrations/drizzle-orm/drizzle.database.ts` ma cztery linie:
+
+```ts
+import "@tanstack/react-start/server-only"
+
+import { env } from "cloudflare:workers"
+
+import { drizzle } from "drizzle-orm/d1"
+
+import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
+
+export const db = drizzle(env.DB, { schema })
+```
+
+Import `@tanstack/react-start/server-only` to zabezpieczenie na etapie budowania: żaden moduł, który sięga do tego pliku bezpośrednio lub pośrednio, nie może trafić do paczki klienckiej. `src/lib/rate-limit.ts`, `src/lib/background.ts` i każdy plik `*.server.ts` niosą ten sam import z tego samego powodu.
+
+D1 nie ma transakcji interaktywnych. Kiedy kilka instrukcji musi zostać wykonanych razem, użyj `runDrizzleBatch` z `src/integrations/drizzle-orm/drizzle.batch.ts` — tak robi `createCheckout` w `src/modules/checkout/use-cases/create-checkout.server.ts`:
+
+```ts
+export const createCheckout = async (checkoutValues: CheckoutFormSchema, userId: string | undefined, userEmail: string) => {
+  const { checkoutId, statements } = prepareCreateCheckoutBatch(checkoutValues, userId, userEmail)
+  await runDrizzleBatch(statements)
+
+  return checkoutId
+}
+```
+
+Zapytania przygotowane — budowane przez `.prepare()` Drizzle i wywoływane przez `.execute()` — mieszkają w plikach `*.server.ts`, na przykład `getCategoryByHandleQuery` i `getNextRankForParent` w `src/modules/product-category/product-category.server.ts`.
+
+## Praca w tle
+
+`scheduleBackgroundWork` w `src/lib/background.ts` przekazuje obietnicę do `waitUntil` Workera, żeby nie wstrzymywać odpowiedzi:
+
+```ts
+export const scheduleBackgroundWork = (task: Promise<unknown> | PromiseLike<unknown>): void => {
+  const store = executionContextStorage.getStore()
+
+  if (store === undefined) {
+    void runSafely(task)
+
+    return
+  }
+  store.waitUntil(runSafely(task))
+}
+```
+
+`executionContextStorage` to `AsyncLocalStorage` wypełniane raz na żądanie w `src/server.ts`. `runSafely` przechwytuje i loguje awarie, więc praca w tle nigdy nie może ujawnić się jako błąd żądania. To mechanizm stojący za logowaniem audytowym i unieważnianiem w czasie rzeczywistym. Better Auth również jest w niego wpięte, przez `advanced.backgroundTasks.handler`.
+
+## Punkt wejścia Workera
+
+`src/server.ts` wykonuje się przed handlerem TanStack Start i odpowiada za cztery rzeczy, których router nigdy nie widzi:
+
+- `/sitemap.xml` i `/robots.txt`, generowane przez `src/lib/seo.ts` i cache'owane na dobę.
+- Dwie ścieżki uaktualnienia połączenia do WebSocket z `ROUTES.API_REALTIME`, przekazywane do Durable Object `RealtimeInvalidationHub`.
+- Ustalenie języka — `resolveLocale(request)` z `src/integrations/use-intl/i18n.middleware.ts` może zwrócić przekierowanie albo ciasteczko do dołączenia do odpowiedzi.
+- Handler `queue`, który opróżnia partie z `AUDIT_LOG_QUEUE` przez `processAuditLogQueueBatch`.
+
+Plik ponownie eksportuje też klasę Durable Object i deklaruje interfejs `RequestContext`, którego używa typ `Register` z TanStack Start.
+
+## Powiązane przewodniki
+
+- [Dodawanie przypadku użycia](/docs/guides/add-a-use-case)
+- [Lista kontrolna bezpieczeństwa](/docs/guides/security-checklist)
+- [Pisanie testów](/docs/guides/writing-tests)

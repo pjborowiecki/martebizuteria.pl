@@ -1,0 +1,139 @@
+---
+title: "Środowisko i powiązania"
+description: "Pliki środowiskowe, zmienne, sekrety i powiązania Cloudflare dla każdego środowiska Wranglera."
+---
+
+Istnieją trzy prawdziwe środowiska — `development`, `preview` i `production` — oraz zestaw atrap w `test`. Każde prawdziwe środowisko ma odpowiadający mu tryb Vite, plik `.env.<nazwa>` i blok `env` w `wrangler.jsonc`. Nie ma środowiska `test` w Wranglerze; testy pobierają swoje wartości z `.env.test` przez Vitest.
+
+Automatyczne ładowanie zmiennych przez Buna jest wyłączone w `bunfig.toml`:
+
+```toml
+# Let Vite and Wrangler choose the requested mode. Drizzle scripts opt in with --env-file.
+env = false
+```
+
+więc nic nie wczytuje się niejawnie. Vite i Wrangler wybierają plik na podstawie żądanego trybu, a skrypty Drizzle Kit włączają go wprost przez `bun --env-file=.env.<środowisko>`.
+
+## Pliki środowiskowe
+
+| Plik               | W repozytorium | Używany przez                                                                                      |
+| ------------------ | -------------- | -------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Tak            | Szablon; wymienia każdą zmienną z wartością zastępczą lub pustą                                    |
+| `.env.development` | Nie            | `bun run dev`, `db:push:development`, `db:studio:development`, `db:introspect:development`         |
+| `.env.preview`     | Nie            | `build:preview`, `deploy:preview` (przez `prepare-deploy-secrets.ts`), skrypty Drizzle `:preview`  |
+| `.env.production`  | Nie            | `build:production`, `deploy:production`, skrypty Drizzle `:production`                             |
+| `.env.test`        | Tak            | Vitest, przez `env: loadEnv("test", import.meta.dirname, "")` w `vite.config.ts`; wyłącznie atrapy |
+
+Zacznij od szablonu:
+
+```sh
+cp .env.example .env.development
+```
+
+## Zmienne
+
+| Zmienna                       | Czytana przez                                                                                                | Sekret Workera |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------- |
+| `AUTH_SECRET`                 | Podpisywanie i szyfrowanie w Better Auth                                                                     | Tak            |
+| `AUTH_GOOGLE_CLIENT_ID`       | OAuth Google                                                                                                 | Tak            |
+| `AUTH_GOOGLE_CLIENT_SECRET`   | OAuth Google                                                                                                 | Tak            |
+| `AUTH_GITHUB_CLIENT_ID`       | OAuth GitHub                                                                                                 | Tak            |
+| `AUTH_GITHUB_CLIENT_SECRET`   | OAuth GitHub                                                                                                 | Tak            |
+| `RESEND_API_KEY`              | Klient Resend: `new Resend(env.RESEND_API_KEY)` w `src/integrations/resend/resend.config.ts`                 | Tak            |
+| `RESEND_EMAIL_FROM`           | Domyślny nadawca wychodzącej poczty                                                                          | Tak            |
+| `STRIPE_SECRET_KEY`           | Serwerowy klient Stripe w `src/integrations/stripe/stripe.server.ts`                                         | Tak            |
+| `STRIPE_WEBHOOK_SECRET`       | Weryfikacja podpisu w `src/routes/api/webhooks.stripe.ts`                                                    | Tak            |
+| `VITE_R2_URL`                 | Publiczny adres bazowy R2, czytany jako `import.meta.env["VITE_R2_URL"]` w `src/lib/url.ts`                  | Tak            |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, wstrzykiwany do bundla klienta w czasie budowania                | Nie            |
+| `CLOUDFLARE_ACCOUNT_ID`       | Sterownik HTTP D1 w Drizzle Kit, `src/integrations/drizzle-orm/drizzle.config.ts`                            | Nie            |
+| `CLOUDFLARE_DATABASE_ID`      | Sterownik HTTP D1 w Drizzle Kit                                                                              | Nie            |
+| `CLOUDFLARE_ACCESS_TOKEN`     | Sterownik HTTP D1 w Drizzle Kit                                                                              | Nie            |
+| `SENTRY_AUTH_TOKEN`           | Na razie przez nic — zadeklarowana w `.env.example` z wyprzedzeniem, raportowanie błędów nie jest podłączone | Nie            |
+
+Przy wdrożeniu wysyłane są wyłącznie zmienne wymienione w `secrets.required` w `wrangler.jsonc`. Wszystkie trzy środowiska deklarują te same dziesięć nazw. Trzy zmienne `CLOUDFLARE_*` to poświadczenia Drizzle Kit i zostają na maszynie uruchamiającej CLI; `prepare-deploy-secrets.ts` zapisuje wyłącznie zadeklarowany zbiór do `.wrangler/secrets.<środowisko>.json` z uprawnieniami `0600` i głośno przerywa, jeśli któraś wartość jest pusta:
+
+```
+Missing STRIPE_SECRET_KEY in .env.preview or the process environment
+```
+
+### Wartości widoczne w przeglądarce
+
+Tylko nazwy z prefiksem `VITE_` trafiają do bundla klienta. `src/types/vite-env.d.ts` deklaruje na `ImportMetaEnv` dokładnie jedną z nich:
+
+```ts
+interface ImportMetaEnv {
+  readonly VITE_STRIPE_PUBLISHABLE_KEY: string | undefined
+}
+```
+
+`VITE_R2_URL` czytany jest formą indeksową `import.meta.env["VITE_R2_URL"]`, dlatego nie wymaga deklaracji. `src/lib/image.ts` czyta też `import.meta.env["VITE_IMAGE_CDN_DOMAIN"]`, której nie ma ani w `.env.example`, ani w `.env.test`, ani w `wrangler.jsonc` — ta ścieżka jest nieaktywna, dopóki ktoś nie ustawi zmiennej ręcznie.
+
+## Powiązania
+
+`wrangler.jsonc` daje każdemu środowisku te same pięć powiązań, plus `ASSETS`, zadeklarowane raz na najwyższym poziomie. Różnią się tylko zasoby pod spodem.
+
+| Powiązanie                  | Typ               | `development`                      | `preview`                          | `production`               |
+| --------------------------- | ----------------- | ---------------------------------- | ---------------------------------- | -------------------------- |
+| `DB`                        | D1                | `martebizuteria-preview`, zdalna   | `martebizuteria-preview`, zdalna   | `martebizuteria`, zdalna   |
+| `CACHE`                     | KV                | `d6727c71…`, zdalna                | `d6727c71…`, zdalna                | `4126270a…`, zdalna        |
+| `IMAGES`                    | R2                | bucket `martebizuteria`, zdalny    | bucket `martebizuteria`, zdalny    | bucket `martebizuteria`    |
+| `AUDIT_LOG_QUEUE`           | Producent kolejki | `martebizuteria-audit-log-preview` | `martebizuteria-audit-log-preview` | `martebizuteria-audit-log` |
+| `REALTIME_INVALIDATION_HUB` | Durable Object    | klasa `RealtimeInvalidationHub`    | ta sama                            | ta sama                    |
+| `ASSETS`                    | Zasoby statyczne  | `./public`, na najwyższym poziomie | to samo                            | to samo                    |
+
+`development` i `preview` wskazują na **tę samą** bazę D1, tę samą przestrzeń KV i tę samą kolejkę. `bun run dev` zapisuje więc do bazy preview, a `vite.config.ts` włącza zdalne powiązania tylko dla tego trybu:
+
+```ts
+remoteBindings: process.env["CLOUDFLARE_ENV"] === "development"
+```
+
+Każde środowisko deklaruje też jedną zwykłą zmienną, `vars.APP_ENV`, ustawioną na własną nazwę. `src/server.ts` przekazuje ją do `generateRobotsTxt`, więc tylko produkcja serwuje indeksowalny `robots.txt`.
+
+Konsument kolejki Workera jest zadeklarowany obok producenta z `max_batch_size: 50`, `max_batch_timeout: 5` i `max_retries: 3`, a obsługuje go eksport `queue` w `src/server.ts`. Klasę Durable Object tworzy migracja o tagu `v1` (`new_sqlite_classes: ["RealtimeInvalidationHub"]`).
+
+Inne ustawienia najwyższego poziomu warte zapamiętania: `compatibility_date` to `2026-04-18` z flagą `nodejs_compat`, `keep_vars` jest włączone, obserwowalność jest włączona, a `placement.mode` ma wartość `smart`.
+
+## Typy
+
+Typ `Env` jest generowany, nie pisany ręcznie. `bun run cf-typegen` uruchamia `wrangler types --env development` do `src/types/worker-configuration.d.ts`, który jest w `.gitignore` i regenerowany przez `postinstall` za pośrednictwem `bun run typegen` (które uruchamia także `bun run content`). Po zmianie powiązania lub sekretu w `wrangler.jsonc`:
+
+```sh
+bun run typegen
+```
+
+Kod Workera czyta powiązania i sekrety z `env` z modułu `cloudflare:workers`. Wygenerowana deklaracja rozszerza też `ProcessEnv` nazwami sekretów, więc `process.env` jest typowany w tych kilku miejscach, które z niego korzystają.
+
+## Kontrole przy wdrożeniu
+
+Oba skrypty wdrożeniowe uruchamiają trzy bramki wokół budowania i każda z nich rzuca wyjątkiem zamiast ostrzegać.
+
+| Skrypt                              | Co sprawdza                                                                                                                                                                                                                      |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/verify-bindings.ts`        | Czyta `wrangler.jsonc` loaderem samego Wranglera i odrzuca brakujący lub zastępczy identyfikator `DB`, identyfikator `CACHE`, bucket `IMAGES`, parę producent/konsument `AUDIT_LOG_QUEUE` albo klasę `REALTIME_INVALIDATION_HUB` |
+| `scripts/verify-build.ts`           | Potwierdza, że `dist/server/wrangler.json` celuje we właściwe środowisko i nazwę Workera, że `dist/client` zawiera JS, CSS i fonty oraz że żaden zasób klienta nie importuje `cloudflare:workers` ani `node:*`                   |
+| `scripts/prepare-deploy-secrets.ts` | Zapisuje tylko zadeklarowane sekrety do `.wrangler/secrets.<środowisko>.json` i przerywa przy pustej wartości                                                                                                                    |
+
+Całą sekwencję widać w `package.json`:
+
+```sh
+bun run deploy:preview
+# verify-bindings.ts → build:preview → prepare-deploy-secrets.ts → wrangler deploy
+```
+
+Krok wdrożenia przekazuje `--config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json` i najpierw usuwa `CLOUDFLARE_ENV`, bo zbudowana konfiguracja już zawiera środowisko.
+
+## Lokalne webhooki Stripe
+
+`bun run stripe:listen` przekierowuje testowe zdarzenia na lokalnego Workera:
+
+```sh
+stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe
+```
+
+Sekret podpisu, który wypisze CLI, trzeba wstawić do `STRIPE_WEBHOOK_SECRET` w `.env.development`.
+
+## Powiązane strony
+
+- [Zmienne środowiskowe](/docs/getting-started/environment-variables)
+- [Wdrożenie](/docs/getting-started/deploy-preview)
+- [Rozwiązywanie problemów](/docs/reference/troubleshooting)

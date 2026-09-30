@@ -1,0 +1,156 @@
+---
+title: "Trasy"
+description: "Każda ścieżka w aplikacji, jej stała w ROUTES, plik trasy i strażnik."
+---
+
+Każdy literał ścieżki w aplikacji leży w `ROUTES` w `src/routes.ts`. Komponenty linkują przez stałą — `<Link to={ROUTES.CART}>` — a router dokłada prefiks lokalizacji na wyjściu.
+
+Pliki tras w `src/routes` **nie zawierają segmentu lokalizacji**. `src/router.tsx` instaluje przepisywanie adresów:
+
+```ts
+rewrite: {
+  input: ({ url }) => deLocalizeUrl(url),
+  output: ({ url }) => localizeUrl(url),
+}
+```
+
+dzięki czemu `_storefront.products.$handle.tsx` obsługuje zarówno `/products/kolczyki` (polski, lokalizacja domyślna, bez prefiksu), jak i `/en-US/products/kolczyki`. Nadmiarowy adres `/pl-PL/...` jest przekierowywany kodem 301 w `src/server.ts`, jeszcze przed uruchomieniem routera, przez `resolveLocale` z `src/integrations/use-intl/i18n.middleware.ts`.
+
+## Sklep
+
+Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, który dostarcza `Navigation`, `Footer`, banner dostępności koszyka, tracker aktywności klienta, subskrypcję realtime dla sklepu oraz `storefront.css`. Żadna z nich nie ma strażnika.
+
+| Ścieżka                  | Stała w `ROUTES`        | Plik trasy                              |
+| ------------------------ | ----------------------- | --------------------------------------- |
+| `/`                      | `HOME`                  | `_storefront.index.tsx`                 |
+| `/products`              | `PRODUCTS`              | `_storefront.products.index.tsx`        |
+| `/products/$handle`      | `PRODUCT`               | `_storefront.products.$handle.tsx`      |
+| `/categories`            | `CATEGORIES`            | `_storefront.categories.index.tsx`      |
+| `/categories/$handle`    | `CATEGORY`              | `_storefront.categories.$handle.tsx`    |
+| `/collections`           | `COLLECTIONS`           | `_storefront.collections.index.tsx`     |
+| `/collections/$handle`   | `COLLECTION`            | `_storefront.collections.$handle.tsx`   |
+| `/cart`                  | `CART`                  | `_storefront.cart.tsx`                  |
+| `/about`                 | `ABOUT`                 | `_storefront.about.tsx`                 |
+| `/faq`                   | `FAQ`                   | `_storefront.faq.tsx`                   |
+| `/exchanges-and-returns` | `EXCHANGES_AND_RETURNS` | `_storefront.exchanges-and-returns.tsx` |
+| `/privacy-policy`        | `PRIVACY_POLICY`        | `_storefront.privacy-policy.tsx`        |
+| `/terms-of-service`      | `TERMS_OF_SERVICE`      | `_storefront.terms-of-service.tsx`      |
+| `/blog`                  | `BLOG`                  | `_storefront.blog.index.tsx`            |
+| `/blog/$slug`            | `BLOG_POST`             | `_storefront.blog.$slug.tsx`            |
+
+`/privacy-policy` i `/exchanges-and-returns` renderują MDX z `content/legal` przez kolekcję prawną Fumadocs (`loadLegalPage` i `LEGAL_DOCUMENT_SLUGS`); blog czyta wpisy z `src/data/blog-posts.ts`.
+
+## Proces zamówienia
+
+| Ścieżka     | Stała w `ROUTES` | Plik trasy                           | Uwagi                                                                          |
+| ----------- | ---------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
+| `/checkout` | `CHECKOUT`       | `checkout.tsx`, `checkout.index.tsx` | Własny layout, bez chromu sklepu; brak strażnika — zamówienie działa dla gości |
+
+`checkout.tsx` waliduje dwa parametry wyszukiwania: `step`, liczbę całkowitą ograniczoną do zakresu 1–4, oraz `success`, opcjonalną wartość logiczną. Numer kroku żyje w adresie URL, więc odświeżenie strony zachowuje miejsce, w którym był klient.
+
+## Uwierzytelnianie
+
+Layoutem `/auth` jest `auth.tsx`, a jego `beforeLoad` uruchamia `redirectAuthenticated`, który odsyła już zalogowaną osobę do `/admin` albo `/account/overview`, zależnie od roli.
+
+| Ścieżka                 | Stała w `ROUTES`       | Plik trasy                 |
+| ----------------------- | ---------------------- | -------------------------- |
+| `/auth/sign-in`         | `AUTH_SIGN_IN`         | `auth.sign-in.tsx`         |
+| `/auth/sign-up`         | `AUTH_SIGN_UP`         | `auth.sign-up.tsx`         |
+| `/auth/forgot-password` | `AUTH_FORGOT_PASSWORD` | `auth.forgot-password.tsx` |
+| `/auth/reset-password`  | `AUTH_RESET_PASSWORD`  | `auth.reset-password.tsx`  |
+
+`ROUTES.AUTH_EMAIL_VERIFICATION` (`/auth/email-verification`) jest zadeklarowana, ale nie ma pliku trasy i nic się do niej nie odwołuje, więc ta ścieżka zwraca obecnie 404.
+
+`ROUTES.API_AUTH` to zagnieżdżony obiekt ze ścieżkami endpointów Better Auth względem `/api/auth` — `/sign-in/email`, `/sign-up/email`, `/sign-out`, `/request-password-reset`, `/reset-password`. Służą do konfigurowania limitów zapytań per endpoint, a nie do budowania odnośników.
+
+## Konto klienta
+
+Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCustomer`, który przekierowuje anonimowego gościa do `/auth/sign-in`, a administratora do `/admin`. `account.index.tsx` natychmiast przekierowuje `/account` na `/account/overview`.
+
+| Ścieżka               | Stała w `ROUTES`    | Plik trasy                                                   |
+| --------------------- | ------------------- | ------------------------------------------------------------ |
+| `/account`            | `ACCOUNT`           | `account.tsx` (layout), `account.index.tsx` (przekierowanie) |
+| `/account/overview`   | `ACCOUNT_OVERVIEW`  | `account.overview.tsx`                                       |
+| `/account/orders`     | `ACCOUNT_ORDERS`    | `account.orders.index.tsx`                                   |
+| `/account/orders/$id` | `ACCOUNT_ORDER`     | `account.orders.$id.tsx`                                     |
+| `/account/addresses`  | `ACCOUNT_ADDRESSES` | `account.addresses.tsx`                                      |
+| `/account/profile`    | `ACCOUNT_PROFILE`   | `account.profile.tsx`                                        |
+| `/account/sessions`   | `ACCOUNT_SESSIONS`  | `account.sessions.tsx`                                       |
+| `/account/payment`    | `ACCOUNT_PAYMENT`   | `account.payment.tsx`                                        |
+| `/account/wishlist`   | `ACCOUNT_WISHLIST`  | `account.wishlist.tsx`                                       |
+
+## Panel administracyjny
+
+Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`; ponadto ładuje `admin.css`, wymusza jasny motyw, renderuje sidebar panelu i otwiera administracyjny WebSocket realtime przez `useRealtimeQuerySync`. `admin.index.tsx` przekierowuje `/admin` na `/admin/overview`, a `admin.catalog.index.tsx` przekierowuje `/admin/catalog` na `/admin/catalog/products`.
+
+| Ścieżka                              | Stała w `ROUTES`    | Plik trasy                                                               |
+| ------------------------------------ | ------------------- | ------------------------------------------------------------------------ |
+| `/admin`                             | `ADMIN`             | `admin.tsx` (layout), `admin.index.tsx` (przekierowanie)                 |
+| `/admin/overview`                    | `ADMIN_OVERVIEW`    | `admin.overview.tsx`                                                     |
+| `/admin/catalog`                     | `ADMIN_CATALOG`     | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (przekierowanie) |
+| `/admin/catalog/products`            | `ADMIN_PRODUCTS`    | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`         |
+| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`  | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`     |
+| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`    | `admin.catalog.categories.$handle.tsx`                                   |
+| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS` | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx`   |
+| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`  | `admin.catalog.collections.$handle.tsx`                                  |
+| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`  | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`     |
+| `/admin/orders`                      | `ADMIN_ORDERS`      | `admin.orders.index.tsx`                                                 |
+| `/admin/orders/$orderId`             | brak                | `admin.orders.$orderId.tsx`                                              |
+| `/admin/customers`                   | `ADMIN_CUSTOMERS`   | `admin.customers.index.tsx`                                              |
+| `/admin/customers/$id`               | `ADMIN_CUSTOMER`    | `admin.customers.$id.tsx`                                                |
+| `/admin/audit`                       | `ADMIN_AUDIT`       | `admin.audit.tsx`                                                        |
+| `/admin/coupons`                     | `ADMIN_COUPONS`     | `admin.coupons.tsx`                                                      |
+| `/admin/content`                     | `ADMIN_CONTENT`     | `admin.content.tsx`                                                      |
+| `/admin/marketing`                   | `ADMIN_MARKETING`   | `admin.marketing.tsx`                                                    |
+| `/admin/settings`                    | `ADMIN_SETTINGS`    | `admin.settings.tsx`                                                     |
+
+Szczegóły zamówienia w panelu to jedyna strona bez stałej w `ROUTES`; nawigacja do niej zapisana jest jako literał `"/admin/orders/$orderId"` w `src/presentation/components/custom/pages/admin/orders/`. Strony `/admin/coupons`, `/admin/content`, `/admin/marketing`, `/admin/settings` oraz część strony szczegółów zamówienia nadal renderują dane z fikstur w `src/data/` — `coupons.ts`, `content.ts`, `marketing.ts`, `settings.ts` i `order-detail.ts`.
+
+## Dokumentacja
+
+| Ścieżka   | Stała w `ROUTES` | Plik trasy                            |
+| --------- | ---------------- | ------------------------------------- |
+| `/docs`   | `DOCS`           | `docs.tsx` (layout), `docs.index.tsx` |
+| `/docs/*` | `DOCS_PAGE`      | `docs.$.tsx`                          |
+
+`docs.tsx` ładuje sidebar z `buildDocsNavigation`, które przechodzi po drzewie stron Fumadocs dla lokalizacji czytelnika i zamienia każdy katalog najwyższego poziomu w `content/docs` na sekcję. `docs.$.tsx` rozwiązuje splat na stronę przez `loadDocsPage` i rzuca `notFound()`, gdy żadna strona nie pasuje.
+
+## Tylko dla developerów
+
+| Ścieżka       | Stała w `ROUTES` | Plik trasy       | Uwagi                                                                                             |
+| ------------- | ---------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
+| `/dev/emails` | brak             | `dev.emails.tsx` | Podglądy szablonów e-mail; komponent nic nie renderuje, jeśli `import.meta.env.DEV` jest fałszywe |
+
+## API i ścieżki obsługiwane na poziomie Workera
+
+Ścieżki API nigdy nie są lokalizowane — `shouldIgnorePath` w `src/integrations/use-intl/i18n.paths.ts` wyłącza `/api`, `/rpc`, `/_serverFn` i `/assets` z obsługi lokalizacji.
+
+| Ścieżka                       | Obsługiwana przez                                     | Uwagi                                                                           |
+| ----------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `/api/auth/*`                 | `src/routes/api/auth.$.ts`                            | Własny handler Better Auth                                                      |
+| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                   | Zdarzenia Stripe z weryfikacją podpisu                                          |
+| `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`      | Upgrade WebSocket, rola sprawdzana w Workerze przed adresowaniem Durable Object |
+| `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS` | Upgrade WebSocket, otwarty dla wszystkich                                       |
+| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                | Cache na jeden dzień                                                            |
+| `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                 | Treść zależy od `env.APP_ENV`                                                   |
+
+Cztery ostatnie ścieżki są sprawdzane w `src/server.ts`, zanim zapytanie dotrze do TanStack Start, więc żadna z nich nie płaci za render SSR. `/api/auth/*` oraz `/api/webhooks/stripe` to trasy serwerowe TanStack Start w `src/routes/api/`, więc przechodzą przez router, ale nigdy nie renderują strony.
+
+## Strażnicy
+
+Wszyscy czterej strażnicy leżą w `src/integrations/better-auth/auth.routes.ts`.
+
+| Strażnik                | Zachowanie                                                                                                                | Używany przez           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `requireUser`           | Przekierowuje do `/auth/sign-in`, gdy nie ma sesji                                                                        | Przez dwóch pozostałych |
+| `requireAdmin`          | `requireUser`, a potem przekierowuje osobę bez roli admina do `/account/overview`                                         | `admin.tsx`             |
+| `requireCustomer`       | `requireUser`, a potem przekierowuje administratora do `/admin`                                                           | `account.tsx`           |
+| `redirectAuthenticated` | Odsyła zalogowaną osobę do `postAuthRouteFor(user)` — `/admin` dla administratora, w przeciwnym razie `/account/overview` | `auth.tsx`              |
+
+Strażnicy działają w `beforeLoad`, co oznacza, że uruchamiają się również w przeglądarce podczas nawigacji po stronie klienta. **Są elementem doświadczenia nawigacji, nie autoryzacją.** Funkcja serwerowa jest publicznym endpointem HTTP niezależnie od tego, czy jej trasa została załadowana, dlatego autoryzację wymusza middleware `authorized` wewnątrz każdego przypadku użycia — zobacz [Uprawnienia](/docs/reference/permissions).
+
+## Powiązane strony
+
+- [Routing i cykl życia zapytania](/docs/architecture/request-lifecycle)
+- [Internacjonalizacja](/docs/architecture/i18n-architecture)
+- [Uprawnienia](/docs/reference/permissions)

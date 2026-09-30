@@ -1,0 +1,178 @@
+---
+title: "Zamówienia"
+description: "Tabele order i order_item, lista w panelu z filtrami i akcjami, historia zamówień klienta oraz makieta ekranu szczegółów."
+---
+
+Zamówienie tworzy webhook Stripe, nigdy formularz. Drogę od opłaconej sesji do wiersza opisują [Płatności](/docs/features/payments).
+
+## Tabele
+
+`order` (`src/modules/order/order.schema.ts`) ma dwie niezależne kolumny statusu:
+
+| Kolumna              | Wartości                                                                                                             |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `status`             | `pending \| processing \| completed \| cancelled \| refunded` (domyślnie `pending`)                                  |
+| `fulfillment_status` | `not_fulfilled \| partially_fulfilled \| fulfilled \| shipped \| delivered \| cancelled` (domyślnie `not_fulfilled`) |
+
+Kolumny kwotowe, wszystkie jako całkowite jednostki podrzędne: `subtotal`, `shipping_total`, `tax_total`, `discount_total`, `total`. `currency_code` ma 3 znaki i domyślnie `"PLN"`.
+
+Znaczniki czasu poza `created_at`/`updated_at`: `shipped_at`, `delivered_at`, `canceled_at` (zwróć uwagę na jedno `l`).
+
+Powiązania: `checkout_id` (z indeksem **unikalnym**, więc jeden checkout odpowiada najwyżej jednemu zamówieniu), `payment_id`, `delivery_method_id`, `user_id` (`null` dla gościa), `discount_id`. Oraz `email`, `customer_note`, `locker_id`, `tracking_number`, `tracking_url` i `metadata` (napis JSON).
+
+Indeksy: `order_userId_idx`, `order_userId_status_idx`, `order_status_idx`, `order_createdAt_idx`, `order_checkoutId_unique`.
+
+`order_item` (`src/modules/order-item/order-item.schema.ts`) przechowuje `order_id`, `variant_id`, `product_id`, `title`, `variant_title`, `thumbnail`, `quantity`, `unit_price`, `subtotal`, `total`, `metadata`.
+
+**Co jest naprawdę zapisywane.** `prepareFulfillCheckoutBatch` wstawia tylko `orderId`, `quantity`, `subtotal`, `title`, `total`, `unitPrice` i `variantId`. `product_id`, `variant_title` i `thumbnail` zostają puste, mimo że szczegóły zamówienia klienta wybierają `thumbnail` i `variantTitle`. `tax_total` i `discount_total` są zawsze `0` — nie ma silnika podatkowego ani rabatowego.
+
+`order_address` jest zadeklarowana w `src/modules/order-address/order-address.schema.ts` z kolumną `type` o wartościach `shipping | billing`, ale nic do niej nie zapisuje. Adresy zamówienia są odczytywane przez `order.checkout → checkout.shippingAddress / billingAddress`.
+
+## Lista w panelu
+
+`/admin/orders` to `src/routes/admin.orders.index.tsx`. Jego loader wstępnie wczytuje dwa zapytania z `staleTime: "static"`:
+
+```ts
+await Promise.all([
+  context.queryClient.query({ ...getAdminOrdersPageQuery({ page: 1, pageSize: ADMIN_ORDERS_PAGE_SIZE }), staleTime: "static" }),
+  context.queryClient.query({ ...getAdminOrderStatsQuery(), staleTime: "static" }),
+])
+```
+
+`ADMIN_ORDERS_PAGE_SIZE` to 25, a `ORDER_QUERY_STALE_MS` to 60 000.
+
+`getAdminOrdersPage` wymaga uprawnienia `order: ["read"]` przez `authorized({ order: ["read"] })`. Przyjmuje stronę, rozmiar strony, frazę wyszukiwania, `tab`, `statFilter` i pięć filtrów kolumn (`createdAt`, `fulfillment`, `payment`, `status`, `total`), a zwraca `buildListPaginationResult`.
+
+Zakładki to `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Filtry statystyk to `ADMIN_ORDER_STAT_FILTER` — `total` i `pending`, więc kliknięcie karty statystyki zawęża tabelę.
+
+## Dwa wyprowadzane klucze interfejsu
+
+Tabela nie pokazuje surowych wartości kolumn. `order.display.utils.ts` je wyprowadza:
+
+```ts
+export const resolveAdminOrderPaymentUiKey = (paymentStatus: string | null | undefined): AdminOrderPaymentUiKey => {
+  if (paymentStatus === "succeeded") {
+    return ADMIN_ORDER_PAYMENT_UI_KEY.PAID
+  }
+  if (paymentStatus === "refunded") {
+    return ADMIN_ORDER_PAYMENT_UI_KEY.REFUNDED
+  }
+
+  return ADMIN_ORDER_PAYMENT_UI_KEY.AUTHORIZED
+}
+```
+
+`authorized` jest więc etykietą zapasową dla każdej płatności, która nie jest `succeeded` ani `refunded` — w tym `pending` i `failed`.
+
+`resolveAdminOrderFulfillmentUiKey(orderStatus, fulfillmentStatus)` zwraca `pending`, kiedy status **zamówienia** to `pending`, niezależnie od realizacji; potem mapuje `shipped`, `delivered`, `cancelled → returned`, a domyślnie `unfulfilled`.
+
+`toAdminOrderListItem` składa wiersz: `customerName` ma fallback na `email`, `initials` pochodzą z `resolveAdminCustomerInitials`, a `itemCount` domyślnie wynosi `0`.
+
+Mapy stylów dla tego wszystkiego leżą w `order.constants.ts`: `ORDER_STATUS_BADGE_STYLES`, `PAYMENT_BADGE_STYLES`, `FULFILLMENT_DOT_COLORS`, a także mapy kluczy etykiet `ADMIN_ORDER_STATUS_LABEL_KEYS`, `ADMIN_ORDER_PAYMENT_LABEL_KEYS` i `ADMIN_ORDER_FULFILLMENT_LABEL_KEYS`.
+
+## Statystyki
+
+`getAdminOrderStats` wykonuje jeden `db.batch` z pięcioma agregatami:
+
+| Wartość              | Zapytanie                                                                       |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `totalOrders`        | `count()` dla statusów z `ADMIN_ORDER_COUNTABLE_STATUSES`                       |
+| `pending`            | `count()` dla statusu `pending`                                                 |
+| `revenueMinorUnits`  | `sum(total)` dla statusu `completed`                                            |
+| `avgValueMinorUnits` | zaokrąglone `sum(total) / count(*)` po zamówieniach `completed`                 |
+| `currencyCode`       | `max(currency_code)` po zamówieniach `completed`, inaczej `STORE_CURRENCY_CODE` |
+
+`ADMIN_ORDER_COUNTABLE_STATUSES` to `["completed", "processing", "pending", "cancelled", "refunded"]` — czyli wszystkie statusy, więc `totalOrders` jest w praktyce pełną liczbą zamówień.
+
+## Akcje w panelu
+
+Trzy funkcje serwerowe, wszystkie z `authorized({ order: ["update"] })`, wszystkie zabezpieczone tym samym wzorcem:
+
+```ts
+assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
+  canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
+)
+```
+
+`assertOrderActionState` rzuca `ERROR_CODES.NOT_FOUND` z `ORDER_NOT_FOUND`, gdy wiersz nie istnieje, oraz `ERROR_CODES.CONFLICT` z `ORDER_INVALID_STATE`, gdy predykat zawiedzie — reguły przejść są więc wymuszane po stronie serwera, a nie tylko w interfejsie.
+
+| Use case                     | Predykat                   | Zapisuje                                                                        |
+| ---------------------------- | -------------------------- | ------------------------------------------------------------------------------- |
+| `use-cases/fulfill-order.ts` | `canFulfillAdminOrder`     | `fulfillment_status = "fulfilled"`; `status` przechodzi `pending → processing`  |
+| `use-cases/ship-order.ts`    | `canMarkAdminOrderShipped` | `fulfillment_status = "shipped"`, `shipped_at = now`                            |
+| `use-cases/cancel-order.ts`  | `canCancelAdminOrder`      | `status = "cancelled"`, `fulfillment_status = "cancelled"`, `canceled_at = now` |
+
+Reguły leżą w `order.admin-actions.utils.ts`:
+
+- `canFulfillAdminOrder` — nie `cancelled`/`refunded`, a realizacja to `not_fulfilled` albo `partially_fulfilled`.
+- `canMarkAdminOrderShipped` — nie `cancelled`/`refunded`, realizacja nie jest już `shipped`/`delivered`/`cancelled` i jest `fulfilled` albo `partially_fulfilled`. Nie da się wysłać przed zrealizowaniem.
+- `canCancelAdminOrder` — status to `pending` albo `processing`.
+- `canRefundAdminOrder` i `canPrintAdminOrderInvoice` są eksportowane, ale żadna funkcja serwerowa ich nie wywołuje.
+
+Wszyscy trzej wywołujący przekazują `paymentUiKey: "paid"` dosłownie, więc część predykatu dotycząca płatności nie jest w istocie sprawdzana wobec wiersza.
+
+Każda akcja zapisuje zdarzenie audytu (`recordOrderFulfillmentStartedAudit`, `recordOrderShippedAudit`, `recordOrderCancelledAudit`) i udostępnia opcje mutacji z kluczami ze `ORDER_MUTATION_KEYS`. `shipOrder` dodatkowo kolejkuje powiadomienie o wysyłce:
+
+```ts
+recordOrderShippedAudit(orderId)
+scheduleBackgroundWork(notifyOrderShipped(orderId))
+```
+
+`scheduleBackgroundWork` (`src/lib/background.ts`) przekazuje obietnicę do `waitUntil` Workera, więc odpowiedź nie czeka na Resend.
+
+Nie ma funkcji serwerowej, która ustawiałaby `delivered`, `tracking_number` czy `tracking_url`, więc `delivered_at` i kolumny śledzenia nigdy nie są wypełniane przez aplikację.
+
+## Eksport
+
+`exportAdminOrders` (`use-cases/export-admin-orders.ts`) wymaga `order: ["read"]`, przyjmuje te same filtry co lista, ale bez stronicowania, i zwraca wszystkie pasujące wiersze zmapowane przez `toAdminOrderListItem`. Plik CSV powstaje w przeglądarce w `orders-export-action.tsx`.
+
+## Komponenty panelu
+
+`src/presentation/components/custom/pages/admin/orders/`:
+
+- `components/orders-table.tsx` — `OrdersTableContent`, siatka danych
+- `components/orders-columns.tsx` — definicje kolumn; identyfikatory, szerokości i przypięcia pochodzą z `ADMIN_ORDER_TABLE_COLUMN_ID`, `ADMIN_ORDER_TABLE_COLUMN_SIZE` i `ADMIN_ORDER_TABLE_COLUMN_PINNING`
+- `components/orders-status-filter.tsx`, `orders-payment-filter.tsx`, `orders-fulfillment-filter.tsx`, `orders-date-column-filter.tsx`, `orders-numeric-column-filter.tsx`
+- `components/orders-row-actions.tsx` — menu wiersza wywołujące trzy mutacje
+- `components/orders-stats.tsx` wraz z `orders-stats.config.ts`
+- `components/orders-export-action.tsx`, `orders-refresh-action.tsx`
+
+`order.admin-list-filters.ts` tłumaczy `ColumnFiltersState` z TanStack Table na obiekt filtrów serwera, po jednym handlerze na identyfikator kolumny, z predykatami typów (`isAdminOrderStatus`, `isAdminOrderPaymentUiKey`, `isAdminOrderFulfillmentUiKey`, `isNumericColumnFilterValue`, `isDateColumnFilterValue`) — nierozpoznany filtr jest odrzucany, a nie przepuszczany dalej.
+
+## Ekran szczegółów zamówienia to makieta
+
+`/admin/orders/$orderId` (`src/routes/admin.orders.$orderId.tsx`) renderuje `OrderDetailPage`, którego karty importują wszystko z `src/data/order-detail.ts`:
+
+| Komponent                       | Stała                        |
+| ------------------------------- | ---------------------------- |
+| `order-meta-strip.tsx`          | `DEMO_ORDER`, `DEMO_SUMMARY` |
+| `order-customer-card.tsx`       | `DEMO_CUSTOMER`              |
+| `order-billing-card.tsx`        | `DEMO_BILLING`               |
+| `order-timeline-card.tsx`       | `DEMO_TIMELINE`              |
+| `order-fulfillment-tracker.tsx` | `DEMO_FULFILLMENT_STEPS`     |
+| `order-payment-card.tsx`        | `DEMO_ORDER`                 |
+| `order-notes-card.tsx`          | `DEMO_ORDER`                 |
+
+Trasa czyta `orderId` z parametrów tylko po to, żeby wypisać `#${orderId}` w nagłówku. Przyciski Drukuj, Zwrot i Realizuj nie mają obsługi zdarzeń. Wszystko, czego potrzebuje prawdziwy ekran szczegółów, istnieje już po stronie serwera — `getAdminOrdersPage` dla wiersza, `getCustomerOrder` dla kształtu złączeń pozycji i adresów — więc podłączenie to praca w warstwie prezentacji plus jeden nowy use case.
+
+## Historia zamówień klienta
+
+`/account/orders` (`src/routes/account.orders.index.tsx`) czyta `listCustomerOrdersQuery()`. `listCustomerOrders` ma `authorized()` (dowolny zalogowany użytkownik) i zawęża do `context.auth.user.id`: wczytuje wiersze zamówień, potem jednym zapytaniem pozycje dla tych identyfikatorów, grupuje je w `Map` i mapuje każdy wiersz przez `mapCustomerOrderSummaryRow`. `CUSTOMER_ACCOUNT_ORDERS_LIMIT` to 50.
+
+`/account/orders/$id` czyta `getCustomerOrderQuery(id)`. `getCustomerOrder` filtruje po `and(eq(order.id, orderId), eq(order.userId, context.auth.user.id))`, więc **jeden klient nie może odczytać zamówienia innego, nawet znając identyfikator**. Wczytuje checkout z oboma adresami i wiersz płatności, a potem mapuje przez `mapCustomerOrderDetail`.
+
+`formatCustomerOrderDisplayId` (`customer-account.utils.ts`) skraca UUID na potrzeby wyświetlania. Zakładki filtrów to `CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "delivered", "shipped", "processing", "cancelled"]`.
+
+Zamówienia gości mają `user_id = null` i nie pojawiają się w żadnym koncie. Przycisk w e-mailu potwierdzającym kieruje wtedy gościa na `/auth/sign-up` — zobacz `buildOrderAccountCta` w `src/integrations/resend/order-confirmation.utils.ts`.
+
+## Język zamówienia
+
+`order.metadata` przechowuje `{ "locale": "pl-PL" }`, gdy sesja checkoutu niosła język. `resolveOrderLocale(metadata)` odczytuje go z powrotem, żeby e-mail o wysyłce trafił w języku, w którym klient kupował, z fallbackiem na `I18N.DEFAULT_LOCALE`.
+
+## Powiązane strony
+
+- [Płatności](/docs/features/payments)
+- [Stany magazynowe](/docs/features/inventory)
+- [E-maile transakcyjne](/docs/features/email)
+- [Dziennik audytu](/docs/features/audit-log)
+- [Konto](/docs/features/account)

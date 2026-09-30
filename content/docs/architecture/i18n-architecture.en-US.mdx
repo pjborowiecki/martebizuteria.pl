@@ -1,0 +1,114 @@
+---
+title: "Internationalization"
+description: "How locales appear in URLs, how translation namespaces are loaded, and why route files carry no locale segment."
+---
+
+M'Arte serves two locales: **`pl-PL` (default)** and **`en-US`**. Both are BCP-47 tags — there is no bare `pl` or `en`. The default locale has no URL prefix, so `/products` (Polish) and `/en-US/products` (English) are the same route. Path segments themselves are not translated — `ROUTES` in `src/routes.ts` holds one English path per page, and only the prefix changes with the locale.
+
+## Configuration
+
+`src/integrations/use-intl/i18n.config.ts` is the single source:
+
+```ts
+export const I18N = {
+  COOKIE_NAME: "marte_locale",
+  DEFAULT_LOCALE: "pl-PL",
+  DEFAULT_TIMEZONE: "Europe/Warsaw",
+  SUPPORTED_LOCALES: ["pl-PL", "en-US"],
+  TIME_ZONES: ["UTC", "America/New_York", "Europe/Warsaw"],
+} as const
+```
+
+`SupportedLocale` is derived from `SUPPORTED_LOCALES`, so adding a locale is a one-line change followed by a new `messages/<locale>` folder and a new `.mdx` file for every page in `content/`.
+
+## URLs
+
+| File                 | Exports                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `i18n.paths.ts`      | `localizePathname`, `deLocalizePathname`, `canonicalizePathname`, `extractLocaleFromPath`, `isSupportedLocale`, `shouldIgnorePath`, `localeLinks` |
+| `i18n.utils.ts`      | `getCurrentLocale`, `getCurrentPathname`, `localizeUrl`, `deLocalizeUrl`, `parseLocaleCookie`                                                     |
+| `i18n.middleware.ts` | `resolveLocale`, used by the Worker for the redirect and the cookie                                                                               |
+| `i18n.messages.ts`   | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`                         |
+
+`shouldIgnorePath` excludes `/api`, `/rpc`, `/_serverFn` and `/assets` from all locale handling.
+
+`canonicalizePathname` collapses a language-only alias and the redundant default prefix: `/pl/products` and `/pl-PL/products` both canonicalize to `/products`, and the Worker answers with a `301`. `localeLinks` builds the `rel="canonical"` link, one `rel="alternate"` per locale and an `x-default` alternate, which `__root.tsx` and `buildPageHead` both emit.
+
+## Route files carry no locale
+
+The router does the translation, in `src/router.tsx`:
+
+```ts
+rewrite: {
+  input: ({ url }) => deLocalizeUrl(url),
+  output: ({ url }) => localizeUrl(url),
+},
+```
+
+`rewrite.input` strips the prefix before matching, so `_storefront.products.$handle.tsx` serves both `/products/<handle>` and `/en-US/products/<handle>`. `rewrite.output` re-applies the current locale when the router generates a href, so `<Link to={ROUTES.PRODUCT}>` needs no locale handling at all.
+
+**The consequence worth knowing:** because the router only ever sees the de-localized path, anything that derives the locale from the router's location silently yields the default. `getCurrentLocale()` is the single derivation used everywhere. It is an isomorphic function: on the server it reads the real request URL (or the cookie for ignored paths), and in the browser it reads `location.pathname` (or `document.cookie`).
+
+`localizePathname` is only for raw URLs that bypass the router — Better Auth `callbackURL` values, links inside emails and hand-built `<a href>` elements. `src/presentation/components/custom/mdx.tsx` applies it to every internal link in an MDX page, which is why the links in these docs are written without a prefix.
+
+## The cookie
+
+`marte_locale` is written from two places: `resolveLocale` appends a `Set-Cookie` when the URL locale differs from the cookie, and `TranslationsProvider` writes `document.cookie` in an effect whenever the active locale changes. The cookie only matters for requests where the URL has no locale to read — `/api/*` and server function calls.
+
+Server functions that return localized content take the locale as an explicit input rather than relying on the cookie. `localeField` in `src/modules/_core/utils/zod-fields.ts` is the shared validator:
+
+```ts
+export const localeField = zod.enum(I18N.SUPPORTED_LOCALES)
+```
+
+`getProductQuery(handle, locale)` and `getDocsPage({ locale, slugs })` both follow that pattern, and the locale is part of the query key so switching language does not serve a cached translation.
+
+## Messages
+
+Translations live in `messages/<locale>/<namespace>.json` — 48 files per locale. The file name **is** the namespace, and dots are nesting: `pages.admin.catalog.products.json` is read by `useTranslations("pages.admin.catalog.products")`. `buildMessageTree` expands each dotted namespace back into a nested object and merges them, so the provider sees one message tree.
+
+Namespace families:
+
+| Prefix         | Examples                                                                                  |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| `common`       | Shared labels                                                                             |
+| `errors`       | `errors.action.<ERROR_CODE>` for `useActionError`                                         |
+| `components.*` | `components.custom`, `components.shadcn`, `components.datagrid`, `components.defaults`    |
+| `pages.*`      | One per page or area, e.g. `pages.product`, `pages.checkout`, `pages.admin`, `pages.docs` |
+| `emails.*`     | One per template, e.g. `emails.order-confirmation`                                        |
+
+Page namespaces carry their own `metadata.title` and `metadata.description`, which the loader reads for the head tags.
+
+## Loading
+
+- **Root namespaces** are discovered by `import.meta.glob` in `i18n.messages.ts` and exported as `ROOT_NAMESPACES`: `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors` and `pages.auth.toast`. They are always loaded.
+- **Every route declares its own** in `staticData.namespaces`, for example `["pages.product"]` on the product page, `["pages.admin", "components.datagrid"]` on the admin layout, `["pages.checkout", "pages.cart"]` on the checkout layout.
+- **`__root.tsx`'s `beforeLoad`** calls `getRouteNamespaces(matches)`, which unions `ROOT_NAMESPACES` with every matched route's declaration, then `preloadNamespaces` resolves them all into the request's `QueryClient` in parallel.
+- **`TranslationsProvider`** re-reads the same list with `useMatches` and `useSuspenseQueries`, builds the tree and passes it to use-intl's `IntlProvider` together with `I18N.DEFAULT_TIMEZONE`. Because it wraps the document body in the root shell, even error and not-found screens are translated.
+- **Emails** load their namespace on the server with `loadNamespace` in the code that sends them, and translate with `createTranslator`.
+
+A page therefore ships the six root namespaces plus what its own route and its layout ancestors declared — not the whole catalogue.
+
+## Documentation and legal content
+
+Fumadocs is configured with the same locale list in `src/integrations/fumadocs/fumadocs.i18n.ts`:
+
+```ts
+export const i18n = defineI18n({
+  defaultLanguage: I18N.DEFAULT_LOCALE,
+  fallbackLanguage: I18N.DEFAULT_LOCALE,
+  hideLocale: "always",
+  languages: [...I18N.SUPPORTED_LOCALES],
+  parser: "dot",
+})
+```
+
+`parser: "dot"` is what makes `<page>.<locale>.mdx` and `meta.<locale>.json` work, and `hideLocale: "always"` keeps the locale out of the Fumadocs URLs because the router prefix already carries it. `docsSource.getPage(slugs, locale)` and `docsSource.getPageTree(locale)` are both called with the locale from `getCurrentLocale()`.
+
+Both locales must list the same slugs in `meta.<locale>.json`: a page added in English has to be added in Polish too, or the sidebar differs between languages.
+
+## Related pages
+
+- [Request lifecycle](/docs/architecture/request-lifecycle)
+- [Presentation layer](/docs/architecture/presentation-layer)
+- [Caching and SSR](/docs/architecture/caching-and-ssr)

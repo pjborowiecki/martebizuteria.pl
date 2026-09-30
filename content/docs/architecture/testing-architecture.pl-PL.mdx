@@ -1,0 +1,137 @@
+---
+title: "Architektura testów"
+description: "Trzy projekty Vitest, uruchamianie funkcji serwerowych w procesie, transport D1 nad node:sqlite i pipeline CI."
+---
+
+## Trzy projekty Vitest
+
+`vp test run` uruchamia Vitest przez Vite+ z trzema projektami zdefiniowanymi w `vite.config.ts`. Testy leżą w katalogu `__test__` obok kodu, który pokrywają, i importują API testowe z `vite-plus/test`.
+
+| Projekt       | Środowisko | Pliki                                  | Liczba |
+| ------------- | ---------- | -------------------------------------- | ------ |
+| `node`        | Node       | `*.test.ts`, z wyłączeniem dwóch niżej | 364    |
+| `integration` | Node       | `*.integration.test.ts`                | 30     |
+| `component`   | jsdom      | `*.component.test.tsx`                 | 479    |
+
+Łącznie 873 pliki testowe. Tylko projekt `component` ładuje `src/platform/testing/setup.ts`; testy node i integracyjne importują to, czego potrzebują, jawnie.
+
+```sh
+bun run test              # wszystkie trzy projekty
+bun run test:unit         # node
+bun run test:integration  # integration
+bun run test:component    # component
+bun run test:watch
+bun run test:changed
+bun run test:coverage
+```
+
+Konfiguracja bazowa ustawia `environment: "node"`, `isolate: true`, `pool: "threads"`, `maxWorkers: "50%"` i `passWithNoTests: false`, ładuje `.env.test` przez `loadEnv("test", …)` i wyklucza `node_modules`, `opensrc`, `dist`, `scripts`, `e2e` oraz generowany katalog `drizzle-orm/migrations`.
+
+Gdy `VITEST` ma wartość `true`, lista pluginów w `vite.config.ts` zawęża się do Reacta i `fumadocs-mdx` — bez pluginu Cloudflare, bez pluginu TanStack Start, bez Tailwinda — więc uruchomienie testów nigdy nie potrzebuje runtime'u Workera ani konta Cloudflare.
+
+## Funkcje serwerowe działają w procesie
+
+`setup.ts` proxy'uje `createServerFn`, żeby funkcja serwerowa wykonywała się lokalnie przez swój **prawdziwy** łańcuch middleware i walidator, a nie była zamockowana:
+
+```ts
+vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
+  const actual = await importOriginal()
+  const { withTestRpc } = await import("~/src/platform/testing/lib/server-function")
+
+  return {
+    ...actual,
+    createServerFn: new Proxy(actual.createServerFn, {
+      apply: (target, thisArg, args: unknown[]) => withTestRpc(Reflect.apply(target, thisArg, args)),
+    }),
+  }
+})
+```
+
+`withTestRpc` opakowuje builder, przechwytuje `.handler()` i uruchamia skompilowaną funkcję wewnątrz `runWithStartContext`, dostarczając `request` z zamockowanego `getRequest()` — zwykłe `Request` dla `http://127.0.0.1:3000/`. Jego sztuczny kontekst celowo rzuca wyjątek, gdy cokolwiek poprosi o `getRouter`, więc test, który przypadkiem wywoła renderowanie trasy, kończy się głośnym błędem.
+
+Praktyczny skutek: test dla `shipOrder` naprawdę przechodzi przez `withRequest`, `authorized({ order: ["update"] })` i walidator Zod. Autoryzacji nie da się odtestować na boku.
+
+## D1 nad `node:sqlite`
+
+`src/platform/testing/mocks/d1.ts` eksportuje `createTestD1Database(sqlite, onQuery?)` — napisany ręcznie transport, który prezentuje powierzchnię D1 `prepare/bind/all/run/raw/batch` nad `DatabaseSync` z `node:sqlite`. `batch` owija instrukcje w `begin`/`commit` z `rollback` przy błędzie, więc atomowość batcha jest emulowana. Opcjonalny callback `onQuery` zapisuje `{ sql, params }`, co pozwala testowi sprawdzić SQL, do którego kompiluje się zapytanie.
+
+Test integracyjny podłącza go, mockując moduł bazy danych:
+
+```ts
+vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
+  const { drizzle } = await import("drizzle-orm/d1")
+  const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
+  const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
+
+  return { db: drizzle(createTestD1Database(sqlite), { schema }) }
+})
+```
+
+**Czego to nie emuluje:** limitu parametrów D1, jego opóźnień sieciowych i charakterystyki współbieżności. Wynik dotyczący współbieżności z pakietu integracyjnego jest zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
+
+## Testy komponentów
+
+`renderWithProviders` z `src/platform/testing/lib/render.tsx` owija drzewo w `IntlProvider` z use-intl (z `TEST_LOCALE`, `TEST_MESSAGES` i `I18N.DEFAULT_TIMEZONE`), prawdziwy `QueryClientProvider` z wyłączonymi ponowieniami oraz `RouterContextProvider` nad routerem z historią pamięciową. `setup.ts` stubuje dodatkowo `IntersectionObserver`, `ResizeObserver` i `matchMedia`, których ścieżki kodu GSAP i Lenis potrzebują w jsdom.
+
+## W co celują pakiety testów
+
+Pokrycie jest szerokie, ale pakietami, które naprawdę zarabiają na siebie, są te dotyczące miejsc, gdzie cicha regresja jest kosztowna:
+
+- **Idempotencja checkoutu** — `checkout-idempotency.integration.test.ts` odtwarza dwie dostawy webhooka, które obie widzą checkout w stanie `pending`, i sprawdza, że powstaje dokładnie jedno zamówienie. Guard aplikacyjny w `resolvePendingCheckout` zwija _sekwencyjne_ ponowienia Stripe'a; ograniczeniem, które trzyma przy naprawdę współbieżnych dostawach, jest ograniczenie bazy, bo `order.checkout_id` i `payment.transaction_id` mają unikalne indeksy, a batch D1 jest atomowy, więc przegrywający `INSERT` wycofuje cały swój batch.
+- **Stan magazynowy** — `inventory-reservation.integration.test.ts` i `inventory-release.integration.test.ts` sprawdzają compare-and-set rezerwacji oraz zwolnienie ograniczone funkcjami `min`/`max`.
+- **Limity żądań** — `rate-limit.integration.test.ts` wysyła współbieżne próby do prawdziwego limitera nad SQLite w pamięci i sprawdza liczby dopuszczonych i odrzuconych.
+- **Magazyn uwierzytelniania** — `auth.storage.integration.test.ts` przypina konfigurację Better Auth, w tym brak `secondaryStorage`.
+- **Batche checkoutu** — `checkout-batches.integration.test.ts` zapisuje skompilowany SQL przez `onQuery` i sprawdza kształt instrukcji batchy tworzenia, aktualizacji dostawy i zwolnienia.
+- **Akcesory** — po jednym pakiecie integracyjnym na moduł dostępu do danych: produkt (pięć plików), zamówienie, użytkownik (dwa), adres, checkout (trzy), category-on-product, delivery-method, product-image (dwa), product-category, product-collection, admin-dashboard (dwa), storefront-search.
+
+## Pokrycie
+
+```sh
+bun run test:coverage
+```
+
+Provider v8 raportuje `text`, `html` i `json-summary` do `coverage/`, nad `src/**/*.{ts,tsx}`, z wyłączeniem testów, katalogów `__test__`, `*.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` i `src/platform/testing/**`.
+
+Progi są skonfigurowane jako **zapadka, nie cel**: leżą poniżej bieżących wartości, więc każda regresja przerywa CI, a podnosi się je świadomie w miarę pokrywania kolejnych obszarów.
+
+| Metryka    | Próg w `vite.config.ts` |
+| ---------- | ----------------------- |
+| Linie      | 71                      |
+| Instrukcje | 72                      |
+| Funkcje    | 68                      |
+| Gałęzie    | 69                      |
+
+`autoUpdate` ma wartość `false`, więc progi zmieniają się wyłącznie wtedy, gdy ktoś je edytuje.
+
+## Brak testów przeglądarkowych
+
+Nie ma pakietu Playwright ani katalogu `e2e/` — `vite.config.ts` i `tsconfig.json` nadal wykluczają tę ścieżkę, ale nic tam nie ma. Przepływy przechodzące przez przeglądarkę, Stripe'a i webhook (prawdziwa płatność kartą, prawdziwy link weryfikacyjny) nie są pokryte automatycznie.
+
+## CI
+
+`.github/workflows/ci.yml` działa dla każdego pull requesta i dla pushy do `main`, z anulowaniem współbieżnych uruchomień i limitem 15 minut. Korzysta ze współdzielonej akcji złożonej `.github/actions/setup`, która instaluje Bun 1.4.0, konfiguruje Vite+ z Node 24, uruchamia `bun install --frozen-lockfile --ignore-scripts`, kopiuje `.env.test` na `.env.development` i `.env.preview` oraz uruchamia `bun run typegen`.
+
+Następnie, po kolei:
+
+1. `bun run check` — formatowanie, lint i sprawdzenie typów
+2. `bun run test:coverage`
+3. `bun run build:preview`
+4. Upload `coverage/` jako artefaktu
+
+`.github/workflows/deploy-preview.yml` i `deploy-production.yml` używają tej samej akcji setup i ponownie uruchamiają pełny `check` przed buildem, więc nie zostanie wdrożone nic, co CI by odrzuciło.
+
+## Lokalna bramka
+
+```sh
+bun run check       # vp check: formatowanie, lint, sprawdzenie typów
+bun run check:fix   # to samo, z automatycznymi poprawkami
+bun run check:staged
+```
+
+`bun run check` to ta sama bramka, którą uruchamia CI. Lint jest surowy: sześć kategorii Oxlint ustawionych na `error`, w tym `nursery`, włączone `typeAware` i `typeCheck`, `denyWarnings: true` i `reportUnusedDisableDirectives: "error"`, z limitem 800 linii na plik, 150 linii na funkcję i 20 instrukcji na funkcję. Nadpisania są wąskie i ograniczone do plików: testy i mocki rozluźniają `no-magic-numbers` i kilka innych reguł, `src/presentation` i `src/hooks` rozluźniają `typescript/consistent-return`, `src/routes/**` rozluźnia `sort-keys`, a `vite.config.ts` rozluźnia `max-lines`.
+
+## Powiązane strony
+
+- [Warstwa platformy](/docs/architecture/platform-layer)
+- [Warstwy](/docs/architecture/layering)
+- [Cache i SSR](/docs/architecture/caching-and-ssr)

@@ -1,0 +1,19 @@
+{
+  "title": "Architektura",
+  "pages": [
+    "index",
+    "directory-structure",
+    "layering",
+    "dependency-rules",
+    "modules-and-use-cases",
+    "presentation-layer",
+    "integrations-layer",
+    "platform-layer",
+    "request-lifecycle",
+    "caching-and-ssr",
+    "i18n-architecture",
+    "security-model",
+    "realtime-invalidation",
+    "testing-architecture"
+  ]
+}

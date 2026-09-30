@@ -1,0 +1,127 @@
+---
+title: "Vite+"
+description: "The vp toolchain: dev server, builds, tests, lint, format, staged checks and Git hooks, all configured in vite.config.ts."
+---
+
+Vite+ (package `vite-plus`, command `vp`) bundles Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt and Vite Task behind one CLI. One file — `vite.config.ts` — configures all of them: the build, the formatter, the linter, the plugin stack, the dev server, the staged-file rules and the test projects.
+
+`package.json` pins the toolchain in three places:
+
+```json
+"devDependencies": { "vite-plus": "1.0.0-rc.0" },
+"overrides": {
+  "vite": "npm:@voidzero-dev/vite-plus-core@1.0.0-rc.0",
+  "vitest": "5.0.1"
+}
+```
+
+The `vp` binary on your machine is a thin global launcher; it resolves the project's pinned `vite-plus` package. Run `vp toolchain` to print the versions and their relationships, `vp toolchain --global` to ignore the local package, and `vp why <package>` to see the dependency graph. If setup, runtime or package-manager behaviour looks wrong, `vp env doctor` is the first thing to run and the first thing to paste when asking for help.
+
+## Built-in commands versus scripts
+
+`vp <name>` runs a built-in Vite+ command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot shadow built-ins, so `vp dev` and `vp run dev` are different things — the second one is the repository's own `dev` script, which also regenerates the docs collections and sets `CLOUDFLARE_ENV`. Prefer `bun run <script>` for anything the repository defines.
+
+| Command      | Scripts that use it                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------- |
+| `vp dev`     | `dev`                                                                                                    |
+| `vp build`   | `build:preview`, `build:production`                                                                      |
+| `vp preview` | `start` (and `preview`, which is an alias for `start`)                                                   |
+| `vp test`    | `test`, `test:unit`, `test:integration`, `test:component`, `test:changed`, `test:coverage`, `test:watch` |
+| `vp check`   | `check`, `check:fix`                                                                                     |
+| `vp lint`    | `lint`                                                                                                   |
+| `vp fmt`     | `format`, `format:check`                                                                                 |
+| `vp staged`  | `check:pre-commit`, `check:staged`, `lint:staged`                                                        |
+| `vp config`  | `prepare`, which installs the Git hooks on every `bun install`                                           |
+| `vp exec`    | `cf-typegen`, every `db:*` Wrangler script, `deploy:preview`, `deploy:production`                        |
+
+`vp exec <command>` runs a binary from local `node_modules/.bin`. That is how `wrangler` and `drizzle-kit` are invoked, so the repository always uses the versions in `bun.lock` rather than whatever is installed globally.
+
+## vite.config.ts
+
+The file exports `defineConfig({ … })` from `vite-plus` and is organised as follows.
+
+| Section   | Purpose                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------- |
+| `build`   | `target: "esnext"`                                                                                                  |
+| `fmt`     | oxfmt: quoting, width, import groups, Tailwind class sorting — see [Lint and format](/docs/tooling/lint-and-format) |
+| `lint`    | oxlint: categories, rules, overrides, type-aware checking — same page                                               |
+| `plugins` | The lazily loaded plugin stack, described below                                                                     |
+| `resolve` | `tsconfigPaths: true`                                                                                               |
+| `server`  | `port: 3000`, `strictPort: true`, ignores `**/coverage/**` in the watcher                                           |
+| `staged`  | `{ "*": ["vp check --fix"] }`                                                                                       |
+| `test`    | Coverage, environment, the three Vitest projects — see [Testing](/docs/tooling/testing)                             |
+
+A single `ignorePatterns` array declared at the top of the file is reused by both `fmt` and `lint`. It covers generated and vendored trees: `.source`, `node_modules`, `dist`, `coverage`, `opensrc`, `scripts`, `.tanstack`, `.wrangler`, `.vite-hooks`, `.vscode`, `.agents`, `.claude`, `.codex`, `bun.lock`, `**/*.d.ts`, `**/*.tsbuildinfo`, `src/routeTree.gen.ts` and `src/integrations/**/migrations/**`.
+
+`resolve.tsconfigPaths` makes the two aliases from `tsconfig.json` work everywhere: `~/*` resolves from the repository root (so imports read `~/src/modules/order/order.schema`) and `collections/*` resolves to `./.source/*`, which is where Fumadocs writes the compiled docs and legal collections.
+
+## The plugin stack
+
+Plugins are wrapped in `lazyPlugins(async () => …)` so nothing loads until it is needed, and the stack differs between a normal run and a test run:
+
+```ts
+if (process.env["VITEST"] === "true") {
+  return [...react(), ...fumadocs]
+}
+```
+
+Under Vitest only `@vitejs/plugin-react` and `fumadocs-mdx/vite` load. That is deliberate: the Cloudflare plugin would try to boot a Worker runtime, and TanStack Start's plugin would rewrite server functions, neither of which the unit and component suites want.
+
+Outside Vitest the order is:
+
+1. **`@cloudflare/vite-plugin`** — `cloudflare({ inspectorPort: false, remoteBindings: process.env["CLOUDFLARE_ENV"] === "development", viteEnvironment: { name: "ssr" } })`. The Worker runs in the SSR environment; the dev inspector is off; and **remote bindings are enabled only for the `development` environment**, which is why `bun run dev` reads and writes real preview D1, KV and R2.
+2. **`fumadocs-mdx/vite`** — `fumadocsMdx({ configPath: "./src/integrations/fumadocs/fumadocs.config.ts" })`, compiling `content/docs` and `content/legal`.
+3. **`@tailwindcss/vite`** — Tailwind CSS 4, driven by `src/presentation/styles/globals.css`.
+4. **`tanstackStart`** — routing and code splitting. `codeSplittingOptions.defaultBehavior` splits `component`, `loader`, `errorComponent` and `notFoundComponent` into separate chunks, and `routeFileIgnorePattern: "__test__"` keeps the colocated test folders inside `src/routes/` out of the generated route tree.
+5. **`@vitejs/plugin-react`**.
+
+## Dev server
+
+```sh
+bun run dev
+```
+
+That script is `bun run content && CLOUDFLARE_ENV=development vp dev --mode development`. It compiles the MDX collections first, because `.source/` is gitignored and the `collections/*` alias will not resolve without it, then starts Vite+ in Vite mode `development` with the `development` Cloudflare environment.
+
+`server.strictPort` is `true`, so the dev server fails instead of hopping to another port when 3000 is taken. Stripe's CLI forwarder in `bun run stripe:listen` targets `localhost:3000/api/webhooks/stripe`, so the fixed port matters.
+
+## Builds and preview
+
+```sh
+bun run build:preview
+bun run start
+```
+
+`build:preview` removes `dist`, regenerates the content collections, runs `CLOUDFLARE_ENV=preview vp build --mode preview`, and then runs `bun scripts/verify-build.ts preview` over the output. `build:production` is the same with `production` in both places. `bun run start` serves the last build with `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`.
+
+`bunfig.toml` contains a single setting:
+
+```toml
+env = false
+```
+
+Bun would otherwise auto-load `.env` files into every script it runs, which would fight Vite's own `--mode` handling and Wrangler's per-environment loading. With `env = false` the Vite and Wrangler commands choose their own mode, and the drizzle-kit scripts opt in explicitly with `bun --env-file=.env.development` and friends.
+
+## Git hooks
+
+`bun install` runs `prepare`, which is `vp config --no-agent`. That installs the Vite+ hook dispatcher into `.vite-hooks/_` and points `core.hooksPath` at it; `--no-agent` skips the agent-integration part of `vp config`. The two project-owned hooks are one line each:
+
+```sh
+# .vite-hooks/pre-commit
+bun run check:pre-commit
+```
+
+```sh
+# .vite-hooks/prepare-commit-msg
+bun scripts/commit-msg.ts "$1" "$2"
+```
+
+`check:pre-commit` is `vp staged`, which applies the `staged` block — `vp check --fix` on every staged file — and `scripts/commit-msg.ts` validates and decorates the commit subject, as described in [Conventional commits](/docs/tooling/conventional-commits).
+
+Use `vp hooks status` to see whether the dispatcher is active in a clone, and `vp hooks enable` / `vp hooks disable` to turn it on and off. Disabling is persisted in local Git config, so a later `bun install` will not silently reinstall the hooks.
+
+## Related pages
+
+- [Project scripts](/docs/tooling/scripts)
+- [Lint and format](/docs/tooling/lint-and-format)
+- [Testing](/docs/tooling/testing)

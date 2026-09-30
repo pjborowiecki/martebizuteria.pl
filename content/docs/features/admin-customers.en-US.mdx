@@ -1,0 +1,218 @@
+---
+title: "Admin customers"
+description: "The customers grid and its stats, the per-customer detail screen with spending charts and an audit timeline, and the two mutations."
+---
+
+The `user` table is shared with Better Auth, so "customers" is a view over authentication data joined to order aggregates. The module is `src/modules/user`.
+
+## The user table
+
+`src/modules/user/user.schema.ts` extends Better Auth's base user with M'Arte's own columns:
+
+| Column                                | Notes                                                                |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `email`                               | 320 characters, unique, not null                                     |
+| `name`                                | 256 characters, not null                                             |
+| `email_verified`                      | Boolean, default `false`, not null                                   |
+| `role`                                | `admin \| customer`, default `DEFAULT_ROLE` (`customer`)             |
+| `banned`, `ban_reason`, `ban_expires` | Better Auth admin plugin fields                                      |
+| `is_anonymous`                        | Boolean, default `false`                                             |
+| `two_factor_enabled`                  | Boolean, default `false`                                             |
+| `phone`                               | 32 characters; written by `updateCustomerPhone` and `updateCustomer` |
+| `timezone`                            | 64 characters                                                        |
+| `image`                               | 2048 characters                                                      |
+| `stripe_customer_id`                  | Declared but never written                                           |
+| `metadata`                            | A JSON string holding admin notes and tags                           |
+
+One index: `user_createdAt_idx`.
+
+## Routes
+
+| Route                  | File                        | Permission       |
+| ---------------------- | --------------------------- | ---------------- |
+| `/admin/customers`     | `admin.customers.index.tsx` | `user: ["list"]` |
+| `/admin/customers/$id` | `admin.customers.$id.tsx`   | `user: ["list"]` |
+
+The index loader prefetches `getAdminCustomersPageQuery({ page: 1, pageSize: ADMIN_CUSTOMER_PAGE_SIZE })` and `getAdminCustomerStatsQuery()`, both with `staleTime: "static"`. `ADMIN_CUSTOMER_PAGE_SIZE` is 25 and `ADMIN_CUSTOMER_QUERY_STALE_MS` is 60 000. Both routes declare `staticData.namespaces: ["pages.admin.customers"]`.
+
+## The grid
+
+`getAdminCustomersPage` (`use-cases/get-admin-customers-page.ts`) is `authorized({ user: ["list"] })`. It supports a search term, a `statFilter` and seven column filters:
+
+```ts
+filters: {
+  averageOrderValue: input.averageOrderValue,
+  banned: input.banned,
+  createdAt: input.createdAt,
+  emailVerified: input.emailVerified,
+  lastOrderAt: input.lastOrderAt,
+  role: input.role,
+  totalSpent: input.totalSpent,
+}
+```
+
+The accessor returns four things — `rows`, `orderStats`, `addresses` and `total` — and the use case stitches them together client-side of the database:
+
+```ts
+const statsByUserId = mapCustomerOrderStats(orderStats)
+const addressByUserId = new Map(
+  addresses
+    .filter((row) => row.userId !== null)
+    .map((row) => [row.userId!, { city: row.city, countryCode: row.countryCode, province: row.province }]),
+)
+
+const items = rows.map((row) => toAdminCustomerListItem(row, statsByUserId.get(row.id), addressByUserId.get(row.id)))
+```
+
+So the location column shows the customer's **default address** city, province and country, not a billing address from an order.
+
+Order statistics are computed over `ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES = ["completed", "processing", "pending"]`, and `ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS` is `"completed"`. Cancelled and refunded orders do not count toward a customer's totals.
+
+The column ids, widths, default visibility and pinning are all in `user.constants.ts` under `ADMIN_CUSTOMER_TABLE_COLUMN_ID`, `ADMIN_CUSTOMER_TABLE_COLUMN_SIZE`, `ADMIN_CUSTOMER_TABLE_DEFAULT_COLUMN_VISIBILITY` and the pinning object. Columns include `customer`, `recordId`, `email`, `phone`, `role`, `banned`, `emailVerified`, `location`, `orderCount`, `totalSpent`, `averageOrderValue`, `lastOrderAt`, `stripeCustomerId`, `createdAt` and `actions`.
+
+Components are in `.../admin/customers/components/`: `customers-table.tsx`, `customers-columns.tsx`, the filters (`customers-role-filter`, `customers-banned-filter`, `customers-email-verified-filter`, `customers-date-column-filter` with `customers-date-filter-form`, `customers-numeric-column-filter`), the badges (`customer-role-badge`, `customer-banned-badge`, `customer-email-verified-badge`), `customer-name-cell`, `customer-table-cells`, `customers-row-actions`, `customers-stats` with `customers-stats.config.ts`, and the export and refresh actions.
+
+## Stats
+
+`getAdminCustomerStats` runs three prepared queries in parallel and derives the cards in a pure function:
+
+```ts
+const [[totalRow], [rollupRow], [averageProductsPerOrderRow]] = await Promise.all([
+  getAdminCustomerTotalCountQuery.execute(),
+  getAdminCustomerOrderRollupStatsQuery.execute(),
+  getAverageProductsPerOrderQuery.execute(),
+])
+
+return computeAdminCustomerStatsFromAggregates({
+  averageLtv: rollupRow?.averageLtv ?? 0,
+  averageProductsPerOrder: averageProductsPerOrderRow?.value ?? 0,
+  customersWithOrders: rollupRow?.customersWithOrders ?? 0,
+  repeatCustomers: rollupRow?.repeatCustomers ?? 0,
+  total: totalRow?.count ?? 0,
+})
+```
+
+`computeAdminCustomerStatsFromAggregates` and `resolveAdminCustomerReturningRate` are in `user.utils.ts`, which keeps the arithmetic unit-testable. The stat filters are declared in `ADMIN_CUSTOMER_STAT_FILTER`, so clicking a card narrows the grid.
+
+## Detail screen
+
+`/admin/customers/$id` reads `getAdminCustomerQuery(id, locale)` with `useSuspenseQuery` and throws `notFound()` through `ensureAdminCustomerDetail` when the row is missing.
+
+`getAdminCustomer` is the widest read in the codebase — eleven accessors from `user.accessors.ts`:
+
+| Accessor                              | Feeds                                                     |
+| ------------------------------------- | --------------------------------------------------------- |
+| `getUserById`                         | Identity, role, verification, ban state, metadata         |
+| `getCustomerOrderStatsQuery`          | Order count, total spent                                  |
+| `getAdminCustomerOrderRowsQuery`      | The order list, `ADMIN_CUSTOMER_DETAIL_ORDERS_LIMIT = 10` |
+| `getOrderItemTitlesQuery`             | Item titles per order, grouped by `groupOrderItemTitles`  |
+| `getCustomerMonthlySpendingQuery`     | The spending chart, `ADMIN_CUSTOMER_DETAIL_MONTHS = 12`   |
+| `getCustomerCategoryBreakdownQuery`   | The category breakdown chart                              |
+| `getCustomerPreferredCategoryQuery`   | The preferred-category line                               |
+| `getCustomerPreferredCollectionQuery` | The preferred-collection line                             |
+| `getDefaultCustomerAddressFullQuery`  | `formatAdminCustomerFullAddress`                          |
+| `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                           |
+| `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                              |
+
+Order rows are formatted with the **same** helpers the orders grid uses — `formatAdminOrderDate`, `resolveAdminOrderPaymentUiKey`, `resolveAdminOrderFulfillmentUiKey` — so the badges on a customer's orders match the badges in `/admin/orders`.
+
+Tags are derived, not stored:
+
+```ts
+export const resolveAdminCustomerTags = (row: User["select"], orderCount: number): AdminCustomerDetailTag[] => {
+  const tags: AdminCustomerDetailTag[] = []
+  if (row.role === ROLES.ADMIN) {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.ADMIN)
+  } else {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.CUSTOMER)
+  }
+  if (orderCount >= ADMIN_CUSTOMER_MIN_REPEAT_ORDERS) {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.RETURNING)
+  }
+  if (row.emailVerified) {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.VERIFIED)
+  }
+  if (row.banned === true) {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.BANNED)
+  }
+
+  return tags
+}
+```
+
+Custom tags added by an admin come from the metadata column and are merged in separately.
+
+The timeline is a view over `audit_log` for that user, with `CUSTOMER_AUDIT_TIMELINE_LIMIT = 50` (`customer-activity.constants.ts`). See [Audit log](/docs/features/audit-log).
+
+The UI is `.../admin/customers/customer-detail/`: `customer-kpis.tsx`, `customer-charts.tsx`, `customer-orders.tsx`, `customer-sidebar.tsx` and the `edit-customer/customer-sheet.tsx` editor.
+
+## Notes and tags in `metadata`
+
+There is no notes or tags table. Both live in `user.metadata` as JSON, with a tolerant parser:
+
+```ts
+export const parseAdminUserMetadata = (raw: string | null | undefined): User["adminUserMetadata"] => {
+  const trimmed = raw?.trim()
+  if (trimmed === undefined || trimmed === "") {
+    return {}
+  }
+
+  const record = tryParseJsonRecord(trimmed)
+  const structured =
+    record === undefined || !("notes" in record || "tags" in record) ? undefined : userZodSchemas.adminUserMetadata.safeParse(record).data
+  if (structured === undefined) {
+    return { notes: trimmed }
+  }
+
+  const notes = structured.notes?.trim()
+
+  return { notes: notes === "" ? undefined : notes, tags: normalizeTags(structured.tags) }
+}
+```
+
+A column that holds plain text rather than JSON is treated as notes, so a legacy value is never lost. `serializeAdminUserMetadata` returns `undefined` when both fields are empty, and `updateCustomer` then writes a SQL `null` rather than the string `"{}"`.
+
+## The two mutations
+
+`updateCustomer` (`use-cases/update-customer.ts`), `authorized({ user: ["update"] })`:
+
+- 404s with `USER_ERROR_CODES.NOT_FOUND` when the user is missing
+- writes `phone` (clearing to `NULL` on an empty string) and the serialized `metadata`
+- upserts the default address through `upsertDefaultAddressForUser`, but only when `hasAddressInput` passes — `address1` and `city` must both be non-blank
+- when the submitted `countryCode` is blank it reuses the existing default address's country rather than writing an empty string, and skips the address write entirely if there is still no country
+
+It does **not** change email, name, role or ban state; those are Better Auth operations.
+
+`deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, has three guards:
+
+| Condition                                | Error                                                  |
+| ---------------------------------------- | ------------------------------------------------------ |
+| User not found                           | `ERROR_CODES.NOT_FOUND` / `USER_ERROR_CODES.NOT_FOUND` |
+| `targetUser.id === context.auth.user.id` | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
+| `targetUser.role === ROLES.ADMIN`        | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
+
+It captures the email, name and current locale **before** deleting, hands the deletion to `auth.api.removeUser`, and then queues the goodbye email:
+
+```ts
+await auth.api.removeUser({ body: { userId }, headers: getRequestHeaders() })
+
+scheduleBackgroundWork(sendAccountDeletedEmail(goodbyeEmail))
+```
+
+Because deletion goes through Better Auth, the cascades on `session`, `account` and `address` apply, while `order.user_id` and `checkout.user_id` are `onDelete: "set null"` — so the orders survive as guest orders.
+
+## Export
+
+`exportAdminCustomers` (`use-cases/export-admin-customers.ts`) requires `user: ["list"]` and returns every matching row for the CSV built in `customers-export-action.tsx`.
+
+## Realtime
+
+`USER_QUERY_KEYS.ADMIN.CUSTOMERS` is in `ADMIN_REALTIME_QUERY_PREFIXES`, and `scheduleAdminCustomersInvalidation()` pushes both `CUSTOMERS` and `CUSTOMERS_PAGE`. Customer registration audit events also invalidate the audit-log keys, so a new sign-up shows up in an open console without a reload.
+
+## Related pages
+
+- [Account](/docs/features/account) — the customer's own view of the same data
+- [Orders](/docs/features/orders)
+- [Audit log](/docs/features/audit-log)
+- [Transactional email](/docs/features/email)
+- [Integrations: Better Auth](/docs/integrations/better-auth)

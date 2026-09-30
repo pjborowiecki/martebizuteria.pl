@@ -1,0 +1,140 @@
+---
+title: "Karta produktu"
+description: "/products/$handle: odroczone zapytanie o produkty powiązane, wybór wariantu, dodanie do koszyka z uwzględnieniem stanu i lista specyfikacji."
+---
+
+## Trasa
+
+`src/routes/_storefront.products.$handle.tsx`. Loader robi cztery rzeczy:
+
+```ts
+loader: async ({ context, params }) => {
+  const { locale } = context
+  const [data, messages] = await Promise.all([
+    context.queryClient.query({ ...getProductQuery(params.handle, locale), staleTime: "static" }),
+    context.queryClient.query(messagesQueryOptions<typeof productMessages>({ locale, namespace: "pages.product" })),
+  ])
+
+  if (data === false) {
+    throw notFound()
+  }
+  prefetchSingleProductImage(data, context.imagePrefetchService)
+  const deferredRelated = defer(context.queryClient.query(getRelatedProductsQuery(data.categoryId, data.id, locale)))
+
+  return { deferredRelated, description: data.description, title: messages.metaTitle.replace("{title}", data.title) }
+}
+```
+
+Zapytanie o produkty powiązane jest **odroczone**: sekcja hero renderuje się natychmiast po rozwiązaniu produktu, a `<Await promise={deferredRelated}>` strumieniuje siatkę powiązanych za nią, z fallbackiem `Suspense` pokazującym `pages.product.loadingRelated`.
+
+`head: pageHead` z `src/lib/seo.ts` zamienia zwrócone `PageMeta` w znaczniki tytułu i opisu.
+
+## Wczytanie produktu
+
+`getProduct` (`src/modules/product/use-cases/get-product.ts`) jest publiczne:
+
+```ts
+const prod = await getPublishedProductByHandleQuery.execute({ handle })
+
+if (prod === undefined || !isProductInStock(prod.variants)) {
+  return false
+}
+
+return mapPublishedProductForStorefront(prod, locale)
+```
+
+Zwróć uwagę na typ zwracany. **Brak produktu i brak stanu magazynowego to oba `false`**, a trasa zamienia `false` w `notFound()`. Nie ma osobnej strony „wyprzedane”: produkt, którego wszystkie warianty mają zero dostępnych sztuk, jest w witrynie błędem 404. `isProductInStock` leży w `src/modules/inventory/inventory.availability.utils.ts`.
+
+`getPublishedProductByHandleQuery` to przygotowane relacyjne zapytanie Drizzle w `product.accessors.ts`, które wczytuje produkt z wariantami, zdjęciami, opcjami i ich wartościami, kategoriami, kolekcjami oraz wartościami atrybutów w jednym przebiegu.
+
+## Kształt danych dla witryny
+
+`mapPublishedProductForStorefront` w `src/modules/product/product.utils.ts` spłaszcza wiersz do `Product["storefront"]`. Reguły warte zapamiętania:
+
+| Pole                                       | Jak jest wyznaczane                                                                                   |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `title`, `subtitle`, `description`, `tags` | `resolveProductTitle` / `Subtitle` / `Description` / `Tags` wybierają język z mapy lokalizacji w JSON |
+| `categoryId`                               | `product.primary_category_id`, a gdy kolumna jest `null` — `resolvePrimaryCategoryId(categoryRows)`   |
+| `sharedImageUrls`                          | zdjęcia z `variant_id IS NULL` (`isProductLevelImage`)                                                |
+| `variants[].imageUrls`                     | własne zdjęcia wariantu, z fallbackiem na `sharedImageUrls`                                           |
+| `variants[].specifications`                | wartości atrybutów wariantu, z fallbackiem na wartości na poziomie produktu                           |
+| `imageUrls`                                | zdjęcia pierwszego wariantu, potem `sharedImageUrls`, a na końcu wszystkie wiersze zdjęć              |
+| `hasVariants`                              | `inferHasVariants(options, variants.length)`                                                          |
+| `options`                                  | `{ id, title, values: [{ id, label }] }` z etykietami rozwiązanymi dla języka                         |
+| `variants[].optionValueIds`                | `resolveVariantOptionValueIds` — `Record<optionId, valueId>` zbudowany z `option_on_variant`          |
+
+## Wybór wariantu
+
+`use-selected-product-variant.ts` trzyma wybór jako `Record<optionId, valueId>`:
+
+- Początkowy wybór pochodzi z pierwszego wariantu, który ma `quantityAvailable >= 1`, z fallbackiem na `variants[0]`.
+- `selectOptionValue(optionId, valueId)` wylicza kolejny wybór i **zatwierdza go tylko wtedy, gdy istnieje pasujący wariant**, więc selektor nie może trafić w nieistniejącą kombinację.
+- `selectedVariant` jest `undefined` wyłącznie wtedy, gdy produkt w ogóle nie ma wariantów.
+
+`product-variant-picker.tsx` renderuje grupy opcji; `product-hero-gallery.tsx` podmienia zdjęcia przy zmianie wariantu, bo `ProductHeroSection` przelicza `images` z `selectedVariant?.imageUrls`.
+
+## Dodanie do koszyka
+
+`use-product-hero-cart.ts` to jedyne miejsce, w którym karta produktu zapisuje do koszyka. Uwzględnia stan magazynowy:
+
+- `availableQuantity = getVariantQuantityAvailable(selectedVariant)`
+- `isOutOfStock` to `availableQuantity < 1`
+- `canPurchase = isVariantPurchasable(selectedVariant, quantity)`
+- jeśli wybrana ilość przekracza dostępną, efekt ją obniża
+- zmiana wariantu resetuje ilość do 1
+
+Po kliknięciu wpycha jedną linię do store'a zustand i wysyła zdarzenie aktywności:
+
+```ts
+addItem({
+  id: selectedVariant.id,
+  image: getProductImageUrl(heroImage),
+  price,
+  qty: addQuantity,
+  rawPrice: variantPrice,
+  slug: product.handle,
+  title: product.title,
+  variantId: selectedVariant.id,
+  variantTitle,
+})
+trackCartItemAdded({ productTitle: product.title, quantity: addQuantity, variantId: selectedVariant.id, variantTitle })
+```
+
+`price` to już sformatowany napis, a `rawPrice` to jednostki podrzędne; koszyk preferuje `rawPrice` i tylko awaryjnie parsuje `price`. `variantTitle` jest czyszczone, gdy równa się `DEFAULT_VARIANT_TITLE` (`product-variant.utils.ts`), żeby produkty jednowariantowe nie pokazywały bezsensownej etykiety wariantu. `isAdded` przechodzi w `true` na 2000 ms, co napędza stan potwierdzenia na przycisku.
+
+Śledzenie trafia do `src/modules/customer-activity` i jest zapisywane wyłącznie dla zalogowanych użytkowników. Zobacz [Dziennik audytu](/docs/features/audit-log).
+
+## Wyświetlanie ceny
+
+`product-hero-info.tsx` formatuje `price` wybranego wariantu przez `useFormatter().number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" })`. Gdy żaden wariant nie jest wybrany, pokazuje `EMPTY_VALUE` z `src/modules/_core/constants/placeholder.ts`. Waluta jest tu zapisana wprost jako `"PLN"`, a nie odczytana ze `STORE_CURRENCY_CODE`.
+
+## Specyfikacje i szczegóły
+
+`product-hero-details.tsx` renderuje opis i listę specyfikacji. `product-hero-detail-line.ts` eksportuje `resolveProductHeroDetailLine(subtitle, specifications, locale)`, które składa jedną linię podsumowania pod tytułem — z podtytułu, a gdy go brak, ze specyfikacji.
+
+Specyfikacje pochodzą z systemu atrybutów produktu: wiersze `attribute_on_product` mapowane przez `mapAttributeRowsToSpecifications`. Sposób definiowania atrybutów opisuje [Panel katalogu](/docs/features/admin-catalog).
+
+## Pasek zakupu na mobile
+
+`product-mobile-buy-bar.tsx` to przypięty pasek dolny. `ProductHeroInfo` pokazuje go przez `IntersectionObserver` na wierszu zakupu, zabezpieczony przez `matchMedia("(max-width: 1023px)")` — pojawia się więc tylko na małych ekranach i tylko wtedy, gdy prawdziwy wiersz dodania do koszyka wyjechał poza widok.
+
+## Produkty powiązane
+
+`getRelatedProducts` przyjmuje `{ categoryId, excludeProductId, locale }` i zwraca `[]`, gdy `categoryId` jest `null` albo `undefined`. W przeciwnym razie `getPublishedRelatedProducts` w `product.accessors.ts` wybiera do `RELATED_PRODUCTS_LIMIT = 3` produktów z tej samej kategorii, z wykluczeniem bieżącego, za bramką `publishedInStockWhere`, uporządkowanych po `rank`, a potem `createdAt`:
+
+```ts
+where: publishedInStockWhere(ne(product.id, excludeProductId), inArray(product.id, productIdsInCategory)),
+```
+
+Trasa mapuje wiersze na kształt wymagany przez `ProductRelatedSection`, rozwiązując tytuły dla języka i biorąc `id`, `price` i `title` pierwszego wariantu.
+
+## Animacja
+
+`hooks/use-product-animations.ts` jest wywoływany z korzeniem strony i `dependencies: [handle]`, więc animacje odsłaniania odtwarzają się ponownie przy przejściu z jednego produktu na drugi.
+
+## Powiązane strony
+
+- [Koszyk](/docs/features/cart) — co dzieje się z linią po dodaniu do koszyka
+- [Stany magazynowe](/docs/features/inventory)
+- [Katalog i wyszukiwanie](/docs/features/catalog-and-search)
+- [Panel katalogu](/docs/features/admin-catalog) — warianty, zdjęcia i atrybuty

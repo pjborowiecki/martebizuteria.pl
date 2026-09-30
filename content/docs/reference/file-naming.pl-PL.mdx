@@ -1,0 +1,127 @@
+---
+title: "Nazewnictwo plików"
+description: "Każdy sufiks pliku i konwencja katalogów używane w src, messages, content i migracjach, z prawdziwymi przykładami."
+---
+
+Każdy plik i katalog w tym repozytorium używa kebab-case. Wyjątkiem jest tylko `src/routes`, gdzie kropki są separatorami ścieżki wymaganymi przez TanStack Start, oraz `src/routeTree.gen.ts`, który jest generowany.
+
+Nazwy są złożone, a nie zagnieżdżone: pliki modułu leżą płasko obok siebie, a sufiks mówi, do czego plik służy. `src/modules/order/order.accessors.ts`, a nie `src/modules/order/accessors/index.ts`.
+
+## Pliki modułu
+
+Moduł w `src/modules/<feature>/` nosi nazwę swojej funkcjonalności, a każdy plik w nim powtarza tę nazwę jako prefiks.
+
+| Wzorzec                                        | Zawiera                                                                | Przykład                                          |
+| ---------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| `<feature>.schema.ts`                          | Tabelę Drizzle i jej `relations`                                       | `order/order.schema.ts`                           |
+| `<feature>.types.ts`                           | Typy wyprowadzone z tabeli, zwykle jeden interfejs z `select`/`insert` | `address/address.types.ts`                        |
+| `<feature>.zod.ts`                             | Schematy Zod, głównie budowane przez `drizzle-zod`                     | `product/product.zod.ts`                          |
+| `<feature>.constants.ts`                       | Długości kolumn, enumy statusów, kody błędów, klucze zapytań i mutacji | `product-category/product-category.constants.ts`  |
+| `<feature>.utils.ts`                           | Czyste helpery bez operacji wejścia/wyjścia                            | `inventory/inventory.utils.ts`                    |
+| `<feature>.accessors.ts`                       | Dostęp do danych bez autoryzacji: odczyty i zapisy do `db`             | `payment/payment.accessors.ts`                    |
+| `<feature>.server.ts`                          | Helpery wyłącznie serwerowe, zwykle przygotowane zapytania             | `product-collection/product-collection.server.ts` |
+| `use-cases/<czasownik>-<rzeczownik>.ts`        | Jedną operację, eksportującą funkcję serwerową i opcje zapytania       | `order/use-cases/ship-order.ts`                   |
+| `use-cases/<czasownik>-<rzeczownik>.server.ts` | Jedną operację bez endpointu RPC, wywoływaną tylko z kodu serwerowego  | `checkout/use-cases/fulfill-checkout.server.ts`   |
+
+Niektóre moduły potrzebują drugiej osi i łączą dwa sufiksy. Przedostatni segment zawęża zakres:
+
+| Plik                                              | Przeznaczenie                                                  |
+| ------------------------------------------------- | -------------------------------------------------------------- |
+| `audit-log/audit-log.diff.utils.ts`               | Helpery porównujące migawki „przed" i „po" w dzienniku audytu  |
+| `audit-log/audit-log.queue.server.ts`             | Producent i konsument kolejki Cloudflare                       |
+| `audit-log/audit-log.events.server.ts`            | Typowane funkcje rejestrujące, które wywołuje warstwa domenowa |
+| `inventory/inventory.availability.utils.ts`       | Arytmetyka dostępności, oddzielona od mapowania wierszy        |
+| `product/product.admin-list.server.ts`            | Zapytanie listy w panelu, osobno od zapytania sklepu           |
+| `product/product.storefront-catalog.accessors.ts` | Odczyty katalogu dla sklepu                                    |
+| `product-image/product-image.persist.utils.ts`    | Helpery utrwalania obrazów                                     |
+| `order/order.settled.server.ts`                   | Wyszukiwanie zamówień, które już zostały rozliczone            |
+
+## Trasy
+
+`src/routes` używa płaskiej konwencji tras plikowych TanStack Start. Kropka jest separatorem ścieżki, więc nazwa pliku czyta się jak adres URL.
+
+| Wzorzec                              | Znaczenie                                                   | Przykład                                  |
+| ------------------------------------ | ----------------------------------------------------------- | ----------------------------------------- |
+| `<segment>.<segment>.tsx`            | Zagnieżdżona ścieżka                                        | `admin.catalog.categories.tsx`            |
+| `_<nazwa>.tsx`                       | Layout bez ścieżki: otacza dzieci, nie dodając segmentu URL | `_storefront.tsx`                         |
+| `<ścieżka>.index.tsx`                | Trasa indeksowa dla tej ścieżki                             | `admin.catalog.products.index.tsx`        |
+| `$<parametr>`                        | Parametr dynamiczny                                         | `_storefront.products.$handle.tsx`        |
+| `$.tsx`                              | Trasa typu splat; wartość przychodzi jako `params._splat`   | `docs.$.tsx`                              |
+| `__root.tsx`                         | Trasa korzeniowa                                            | `__root.tsx`                              |
+| `api/<nazwa>.ts`, `api/<nazwa>.$.ts` | Handlery HTTP, a nie strony                                 | `api/webhooks.stripe.ts`, `api/auth.$.ts` |
+
+Pliki tras nigdy nie zawierają segmentu lokalizacji. `src/routeTree.gen.ts` generuje wtyczka TanStack Start i nie wolno go edytować ręcznie.
+
+## Warstwa prezentacji
+
+| Wzorzec                                        | Zawiera                                                                              | Przykład                                                              |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `components/shadcn/<primitive>.tsx`            | Primitywę shadcn, generowaną i nietykaną                                             | `components/shadcn/sidebar.tsx`                                       |
+| `components/custom/<nazwa>.tsx`                | Komponent aplikacji wspólny dla wielu obszarów                                       | `components/custom/product-card.tsx`                                  |
+| `components/custom/pages/<obszar>/<nazwa>.tsx` | Komponent należący do jednej strony lub obszaru                                      | `components/custom/pages/admin/admin-sidebar.tsx`                     |
+| `<nazwa>.styles.ts`                            | Stałe z nazwami klas wyciągnięte z komponentu                                        | `components/custom/pages/admin/admin-layout.styles.ts`                |
+| `<nazwa>.loader.ts`                            | Helpery prefetch wywoływane przez loader trasy                                       | `components/custom/pages/products-catalog/products-catalog.loader.ts` |
+| `emails/<nazwa>.tsx`                           | Szablon React Email                                                                  | `emails/order-confirmation.tsx`                                       |
+| `styles/<warstwa>.css`                         | Jeden arkusz na powłokę: `globals`, `storefront`, `admin`, `fonts`, `critical-fonts` | `styles/admin.css`                                                    |
+| `branding/<zakres>.ts`                         | Stałe marki: `app`, `business`, `socials`                                            | `branding/app.ts`                                                     |
+
+## Integracje
+
+| Wzorzec                          | Przykład                                                       |
+| -------------------------------- | -------------------------------------------------------------- |
+| `<vendor>/<prefiks>.<zakres>.ts` | `better-auth/auth.middleware.ts`, `stripe/stripe.webhooks.tsx` |
+| `<vendor>/<prefiks>.config.ts`   | `use-intl/i18n.config.ts`, `drizzle-orm/drizzle.config.ts`     |
+| `<vendor>/<prefiks>.client.ts`   | `better-auth/auth.client.ts`, `stripe/stripe.client.ts`        |
+| `<vendor>/<prefiks>.server.ts`   | `better-auth/auth.server.ts`, `stripe/stripe.server.ts`        |
+
+Prefiks to krótka nazwa dostawcy, nie nazwa katalogu — dlatego katalog `use-intl` zawiera pliki `i18n.*`, a katalog `cloudflare-r2` pliki `media.*`.
+
+## Hooki i providery
+
+| Wzorzec                              | Przykład                                  |
+| ------------------------------------ | ----------------------------------------- |
+| `src/hooks/use-<nazwa>.ts`           | `src/hooks/use-realtime-query-sync.ts`    |
+| `src/providers/<nazwa>-provider.tsx` | `src/providers/translations-provider.tsx` |
+
+## Testy
+
+Testy leżą w katalogu `__test__` obok kodu, który pokrywają — takich katalogów jest 174. Sufiks wybiera projekt Vitest.
+
+| Wzorzec                                | Projekt Vitest | Środowisko                                 |
+| -------------------------------------- | -------------- | ------------------------------------------ |
+| `__test__/<nazwa>.test.ts`             | `node`         | `node`                                     |
+| `__test__/<nazwa>.integration.test.ts` | `integration`  | `node`, przeciwko `node:sqlite`            |
+| `__test__/<nazwa>.component.test.tsx`  | `component`    | `jsdom`, z `src/platform/testing/setup.ts` |
+
+Plik testu nosi nazwę pliku, który pokrywa: `src/modules/address/__test__/` zawiera `address.schema.test.ts`, `address.constants.test.ts` i `address.accessors.integration.test.ts`. Testy tras zamieniają `$` z segmentu dynamicznego na zwykłe słowo, bo `$` jest niewygodny w wierszu poleceń: `_storefront.categories.handle.component.test.tsx` pokrywa `_storefront.categories.$handle.tsx`.
+
+Ustawienie `routeFileIgnorePattern: "__test__"` w `vite.config.ts` powstrzymuje generator tras od traktowania `src/routes/__test__` jako tras.
+
+## Treści i tłumaczenia
+
+| Wzorzec                                        | Znaczenie                                                                   |
+| ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `content/docs/<ścieżka>/<strona>.<locale>.mdx` | Jedna strona dokumentacji w jednej lokalizacji                              |
+| `content/docs/<ścieżka>/meta.<locale>.json`    | Kolejność nawigacji i tytuł tego katalogu, per lokalizacja                  |
+| `content/legal/<strona>.<locale>.mdx`          | Dokument prawny renderowany przez sklep                                     |
+| `messages/<locale>/<namespace>.json`           | Jedna przestrzeń nazw tłumaczeń, nazwana jak ona: `pages.admin.orders.json` |
+
+Sufiks lokalizacji parsuje Fumadocs z ustawieniami `parser: "dot"` i `hideLocale: "always"`, skonfigurowanymi w `src/integrations/fumadocs/fumadocs.i18n.ts`. Obie lokalizacje muszą mieć te same slugi.
+
+## Baza danych
+
+| Wzorzec                                                           | Znaczenie                                          |
+| ----------------------------------------------------------------- | -------------------------------------------------- |
+| `src/integrations/drizzle-orm/migrations/<timestamp>_<nazwa>.sql` | Jedna migracja, stosowana w kolejności nazw plików |
+| `src/integrations/drizzle-orm/migrations/meta/`                   | Dziennik i migawki Drizzle Kit                     |
+| `src/integrations/drizzle-orm/seeds/<tabela>.sql`                 | Dane startowe dla jednej tabeli                    |
+
+## Skrypty
+
+`scripts/<czasownik>-<rzeczownik>.ts`, uruchamiane przez `bun scripts/<nazwa>.ts`: `commit-msg.ts`, `prepare-deploy-secrets.ts`, `sync-skills.ts`, `verify-bindings.ts`, `verify-build.ts`.
+
+## Powiązane strony
+
+- [Konwencje](/docs/reference/conventions)
+- [Katalog modułów](/docs/reference/modules)
+- [Struktura katalogów](/docs/architecture/directory-structure)

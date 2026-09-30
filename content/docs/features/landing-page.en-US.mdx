@@ -1,0 +1,143 @@
+---
+title: "Landing page"
+description: "The fifteen sections of /, the data they load, the GSAP scroll choreography and the parts that are still copy only."
+---
+
+## Route
+
+`src/routes/_storefront.index.tsx` is the whole page. It renders fifteen sections from `src/presentation/components/custom/pages/landing-page/sections`, in this order:
+
+```tsx
+<main ref={rootRef} className="bg-background text-foreground" data-landing-page>
+  <HeroSection />
+  <VideoExperienceSection />
+  <ValuesSection />
+  <ManifestoSection />
+  <NewArrivalsSection />
+  <MobileCategoriesSection />
+  <DesktopCategoriesSection />
+  <ArchiveSection />
+  <BreakerSection />
+  <ShopCategoriesSection />
+  <PhilosophySection />
+  <SilverPremiumSection />
+  <MaisonHeritageSection />
+  <ShopCollectionsSection />
+  <NewsletterSection />
+</main>
+```
+
+All copy comes from the `pages.landing` namespace (`messages/{locale}/pages.landing.json`). The route declares `staticData.namespaces: ["pages.landing", "pages.categories"]`, so both catalogues are preloaded before the page renders.
+
+The `_storefront` layout in `src/routes/_storefront.tsx` supplies the navigation, the cart availability banner and the footer.
+
+## What the loader fetches
+
+The loader runs three queries in parallel and returns the page metadata:
+
+| Query                   | Use case                                                   | Used by                                               |
+| ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| `messagesQueryOptions`  | `src/integrations/use-intl/i18n.messages.ts`               | `head` title and description                          |
+| `getNewArrivalsQuery()` | `src/modules/product/use-cases/get-new-arrivals.ts`        | `NewArrivalsSection`                                  |
+| `getCategoriesQuery()`  | `src/modules/product-category/use-cases/get-categories.ts` | `MobileCategoriesSection`, `DesktopCategoriesSection` |
+
+Both catalog queries are fetched with `staleTime: "static"`, so the server render never refetches them. After the queries resolve, `prefetchProductThumbnails(newArrivals, context.imagePrefetchService)` from `src/lib/image.ts` warms the thumbnails of the new-arrival products.
+
+## New arrivals
+
+`getNewArrivals` is a `GET` server function with the `withRequest` middleware only — it is public. It resolves a single collection by handle and lists its published, in-stock products:
+
+```ts
+const collection = await getStorefrontCollectionByHandleQuery.execute({
+  handle: LANDING_NEW_ARRIVALS_COLLECTION_HANDLE,
+})
+
+if (collection === undefined) {
+  return []
+}
+
+const { items } = await getPublishedProductsByCollectionId(collection.id, {
+  limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
+  offset: 0,
+})
+```
+
+Both constants live in `src/modules/product/product.constants.ts`:
+
+- `LANDING_NEW_ARRIVALS_COLLECTION_HANDLE = "nowosci"`
+- `LANDING_NEW_ARRIVALS_PRODUCT_LIMIT = 9`
+
+**The section is driven entirely by that collection handle.** If no collection with the handle `nowosci` is active, the grid renders empty and no error is raised. To change which products appear, change the collection's members in [the admin catalog](/docs/features/admin-catalog) — not the code.
+
+The query key is `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`, which is one of the keys `scheduleProductCatalogInvalidation()` and `scheduleCollectionCatalogInvalidation()` push over the storefront realtime hub, so publishing a product or editing the collection refreshes open landing pages.
+
+## Categories
+
+`MobileCategoriesSection` and `DesktopCategoriesSection` both read `getCategoriesQuery()` with `useSuspenseQuery`. The desktop variant pins the section and scrolls the category panels horizontally; the helpers for that live in `landing-category-horizontal-scroll.ts` and the shared copy resolution in `landing-category-panel.utils.ts` (`resolveLandingCategoryPanelCopy`).
+
+## Static marketing assets
+
+`src/data/landing.ts` holds the asset URLs and the three collection tiles of `ShopCollectionsSection`:
+
+```ts
+export const LANDING_HERO_IMG = getAssetURL("marketing/hero.webp")
+export const LANDING_VIDEO_POSTER = getAssetURL("placeholder.svg")
+export const LANDING_VIDEO_SRC = getAssetURL("marketing/landing-video.mp4")
+
+export const LANDING_SHOP_COLLECTIONS = [
+  {
+    descKey: "items.newArrivals.description",
+    image: getAssetURL("collections/new_arrivals.webp"),
+    nameKey: "items.newArrivals.name",
+    slug: "nowosci",
+  },
+  {
+    descKey: "items.silver.description",
+    image: getAssetURL("collections/silver925.webp"),
+    nameKey: "items.silver.name",
+    slug: "srebro-925",
+  },
+  { descKey: "items.gold.description", image: getAssetURL("collections/gold585.webp"), nameKey: "items.gold.name", slug: "zloto-585" },
+] as const
+```
+
+Those three slugs are hard-coded collection handles. `getAssetURL` (`src/lib/url.ts`) resolves them against the R2 public URL.
+
+## Scroll animation
+
+`src/hooks/use-landing-animations.ts` is called once from the page component with a ref to `<main>`. It reads GSAP and `ScrollTrigger` from `src/integrations/gsap/gsap.config.ts` and wires three effects by class name:
+
+| Class            | Effect                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------- |
+| `.reveal`        | Fade and rise once, batched through `ScrollTrigger.batch`; elements already in view animate immediately |
+| `.line-reveal`   | Horizontal rule scales in from the left, once                                                           |
+| `.parallax-wrap` | The `.parallax-img` inside it translates as the wrapper scrolls                                         |
+
+So a new section joins the choreography by adding `reveal` to its outer element — there is nothing to register.
+
+Smooth scrolling itself is Lenis, mounted by `src/presentation/components/custom/smooth-scroll.tsx` and kept in step with the router by `src/hooks/use-lenis-router-scroll-sync.ts`.
+
+## Newsletter section is copy only
+
+`newsletter-section.tsx` renders a shadcn `Input` and a `<button type="button">` with no `onClick`, no form element and no server function:
+
+```tsx
+<Input placeholder={t("placeholder")} aria-label={t("placeholder")} className="..." />
+<button type="button" className="...">
+  {t("cta")}
+  <ArrowRight className="size-4" />
+</button>
+```
+
+There is no newsletter table, no subscribe use case and no confirmation email. Submitting it does nothing. Wiring it up means adding a module (for example `src/modules/newsletter`) with a rate-limited `createServerFn`, a table, and a template under `src/presentation/emails`.
+
+## Section anchors
+
+`NewArrivalsSection` is the only section with an `id`: `id="nowosci"`. Links elsewhere that need to reach it use that hash. The other sections are not addressable.
+
+## Related pages
+
+- [Catalog and search](/docs/features/catalog-and-search) for the `/products` and `/categories` pages the CTAs lead to
+- [Admin catalog](/docs/features/admin-catalog) for editing the `nowosci` collection
+- [Integrations: GSAP and Lenis](/docs/integrations/gsap-and-lenis)
+- [UI system: design tokens](/docs/ui/theme)

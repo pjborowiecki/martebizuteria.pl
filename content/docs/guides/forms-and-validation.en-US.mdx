@@ -1,0 +1,269 @@
+---
+title: "Forms and validation"
+description: "React Hook Form with a Zod resolver, translated field errors, message keys as error messages, and mapping server error codes onto fields."
+---
+
+Every form in M'Arte is React Hook Form driven by a Zod resolver. The Zod schema lives with the data it validates — in the module's `{feature}.zod.ts`, or in `src/integrations/better-auth/auth.zod.ts` for the auth forms — never inside the component.
+
+The one rule that shapes everything else: **a Zod message is a translation key, not a sentence.** The schema says `"passwordMinLength"`; the field component turns that into text in the reader's language.
+
+## The auth form pattern
+
+`src/presentation/components/custom/pages/auth/sign-in-with-password-form.tsx` is the simplest complete example:
+
+```tsx
+const form = useForm<SignInFormValues>({
+  defaultValues: {
+    email: "",
+    password: "",
+  },
+  mode: "onTouched",
+  resolver: zodResolver(signInWithPasswordSchema),
+})
+```
+
+Its schema, in `auth.zod.ts`, carries keys rather than prose:
+
+```ts
+export const emailSchema = z.email({ message: "invalidEmail" }).max(EMAIL_MAX_LENGTH, { message: "emailMaxLength" })
+
+export const strictPasswordSchema = signInPasswordSchema
+  .min(PASSWORD_MIN_LENGTH, { message: "passwordMinLength" })
+  .max(PASSWORD_MAX_LENGTH, { message: "passwordMaxLength" })
+  .refine((value) => PASSWORD_UPPERCASE_PATTERN.test(value), { message: "passwordUppercase" })
+  .refine((value) => PASSWORD_SPECIAL_CHAR_PATTERN.test(value), { message: "passwordSpecialCharacter" })
+```
+
+The limits come from `src/integrations/better-auth/auth.constraints.ts`, which the Better Auth server configuration reads as well, so the client and the server can never disagree about a minimum password length.
+
+Submission is always wrapped so the promise is not returned from the DOM handler:
+
+```tsx
+const handleFormSubmit = useCallback(
+  (event: SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void form.handleSubmit(onSubmit)(event)
+  },
+  [form, onSubmit],
+)
+```
+
+## Rendering a field
+
+Fields are built on `useController`, not on `register`, so the field knows its own validity. `AuthTextField` in `src/presentation/components/custom/pages/auth/auth-fields.tsx` composes four pieces:
+
+```tsx
+<Field className="relative" data-invalid={fieldState.invalid}>
+  <Input
+    {...rest}
+    {...field}
+    value={valueStr}
+    id={id}
+    variant="floating"
+    placeholder=" "
+    aria-invalid={fieldState.invalid}
+    aria-required={required}
+    className={cn("peer", showValid && VALID_INPUT_CLASS, className)}
+  />
+  <FloatingLabel htmlFor={id} label={label} required={required} />
+  <ValidCheck show={showValid} />
+  <ValidationFieldError message={fieldState.error?.message} namespace={AUTH_VALIDATION_NAMESPACE} params={AUTH_VALIDATION_PARAMS} />
+</Field>
+```
+
+- `Field` is the shadcn wrapper in `src/presentation/components/shadcn/field.tsx`.
+- `FloatingLabel`, `VALID_INPUT_CLASS`, `ValidCheck`, `isFieldValid` and `toStringValue` come from `src/presentation/components/custom/floating-field.tsx`. The floating-label effect is pure CSS driven by the `peer` class and `placeholder=" "`; do not replace the placeholder with real text or the label will not lift.
+- `ValidationFieldError` resolves the key.
+
+## Translating a field error
+
+`src/presentation/components/custom/validation-field-error.tsx` is short enough to quote whole:
+
+```tsx
+export const ValidationFieldError = ({ message, namespace, params }: ValidationFieldErrorProps): JSX.Element | undefined => {
+  const t = useTranslations()
+
+  if (message === undefined || message === "") {
+    return undefined
+  }
+
+  const key = `${namespace}.${message}`
+
+  return <FieldError>{t.has(key) ? t(key, params?.[message]) : t(`errors.action.${ERROR_CODES.VALIDATION}`)}</FieldError>
+}
+```
+
+It looks up `<namespace>.<message>` and, if that key does not exist, falls back to the generic `errors.action.VALIDATION` message. So a schema message must have a matching entry in the namespace's catalogue — for the auth forms, `messages/pl-PL/pages.auth.validations.json` and `messages/en-US/pages.auth.validations.json`.
+
+`params` lets a message interpolate a number. `AUTH_VALIDATION_PARAMS` in `auth.constraints.ts` maps a message key to the values its ICU placeholders need, which is how `passwordMinLength` can render "at least 8 characters" without hard-coding 8 in the catalogue.
+
+## The admin catalog form pattern
+
+Admin forms are larger: they are multi-locale, they live in a sheet, they upload images, and they share state across several section components. `src/presentation/components/custom/pages/admin/catalog/categories/add-category/` is the reference implementation, and the same structure repeats for collections, attributes and products.
+
+| File                              | Role                                                                     |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| `category-sheet.tsx`              | The sheet shell, opened by the table's row click or its Add button       |
+| `category-form-provider.tsx`      | `useForm`, the create/update mutation, the context that sections consume |
+| `category-form-section.tsx`       | The section wrapper used by each `_sections/*` file                      |
+| `_sections/*.tsx`                 | Basic details, parent category, media, status                            |
+| `category-form.utils.ts`          | `adminListItemToFormValues`, `createDefaultCategoryFormValues`           |
+| `category-form-locale.utils.ts`   | `localesWithIncompleteCategoryFormValues`                                |
+| `category-form-locale-layout.tsx` | The per-locale layout for translated fields                              |
+
+The provider owns the form and hands only what sections need down the context:
+
+```tsx
+const resolver = useMemo(() => zodResolver(productCategoryZodSchemas.formValues), [])
+const form = useForm<ProductCategory["formValues"]>({
+  defaultValues: initialValues,
+  mode: "onSubmit",
+  reValidateMode: "onSubmit",
+  resolver,
+})
+```
+
+Note `mode: "onSubmit"` here versus `mode: "onTouched"` in the auth forms. A long multi-locale form should not light up in red while you are still filling the second language.
+
+`defaultValues` come from one of two pure functions in `category-form.utils.ts` — `createDefaultCategoryFormValues()` for create, `adminListItemToFormValues(category)` for edit — so the edit form is always populated from the same row type the grid holds.
+
+### Multi-locale fields
+
+Translated columns are stored as JSON maps keyed by BCP 47 locale. The schema builds them from `I18N.SUPPORTED_LOCALES` so adding a locale cannot leave a field unvalidated:
+
+```ts
+const categoryLocaleMapSchema = (maxLength: number, tooLongMessage?: string) =>
+  zod.object(Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, zod.string().trim().max(maxLength, tooLongMessage)])))
+
+const categoryLocaleMapRequiredSchema = (maxLength: number) =>
+  categoryLocaleMapSchema(maxLength).superRefine((map, context) => {
+    for (const locale of I18N.SUPPORTED_LOCALES) {
+      if (map[locale].trim() === "") {
+        context.addIssue({
+          code: "custom",
+          message: CATEGORY_FORM_VALIDATION_KEYS.localeTitleRequired,
+          path: [locale],
+        })
+      }
+    }
+  })
+```
+
+`CATEGORY_FORM_VALIDATION_KEYS` in `product-category.constants.ts` is the single list of keys the form can emit, each pointing at a path inside `pages.admin.catalog.categories`:
+
+```ts
+export const CATEGORY_FORM_VALIDATION_KEYS = {
+  descriptionTooLong: "form.validation.descriptionTooLong",
+  localeTitleRequired: "form.validation.LOCALE_TITLE_REQUIRED",
+  shortDescriptionTooLong: "form.validation.shortDescriptionTooLong",
+  slugInvalid: "form.validation.slugInvalid",
+  slugRequired: "form.validation.slugRequired",
+  subtitleTooLong: "form.validation.subtitleTooLong",
+  titleRequired: "form.validation.titleRequired",
+  titleTooLong: "form.validation.titleTooLong",
+} as const
+```
+
+When a submit fails validation, the invalid handler works out which languages are incomplete and says so, instead of leaving the user to hunt through collapsed locale tabs:
+
+```tsx
+const onSubmitInvalid = useCallback(
+  (_errors: FieldErrors<ProductCategory["formValues"]>) => {
+    const values = form.getValues()
+    const incompleteLocales = localesWithIncompleteCategoryFormValues(values)
+    if (incompleteLocales.length > 0) {
+      focusIncompleteLocales(incompleteLocales)
+      toast.error(tLocale("incompleteToastTitle"), {
+        description: tLocale("incompleteToastDescription", {
+          locales: formatCatalogLocaleList(incompleteLocales, (locale) => tLocale(`localeNames.${locale}`)),
+        }),
+      })
+
+      return
+    }
+    toast.error(t("form.validation.submitBlockedTitle"), {
+      description: t("form.validation.submitBlockedDescription"),
+    })
+  },
+  [focusIncompleteLocales, form, t, tLocale],
+)
+```
+
+## Mapping a server error onto a field
+
+The server validates again, and its failures are codes, not messages. `useCategoryMutation` inside the provider translates them and attaches them to the field that caused them:
+
+```tsx
+const handleError = useCallback(
+  (error: unknown) => {
+    const code = errorCode(error)
+
+    if (code === ERROR_CODES.CONFLICT) {
+      setError("handle", {
+        message: t("toast.duplicateHandle"),
+        type: "manual",
+      })
+      toast.error(t("toast.errorTitle"), { description: t("toast.duplicateHandle") })
+
+      return
+    }
+
+    if (code === ERROR_CODES.VALIDATION) {
+      setError("parentId", {
+        message: t("toast.invalidParent"),
+        type: "manual",
+      })
+      toast.error(t("toast.errorTitle"), { description: t("toast.invalidParent") })
+
+      return
+    }
+    toast.error(t("toast.errorTitle"), { description: t("toast.errorDescription") })
+  },
+  [setError, t],
+)
+```
+
+For forms with nothing field-specific to say, `useActionError` from `src/hooks/use-action-error.ts` produces the right sentence from any error in one call. Use that unless you can genuinely point at a field.
+
+## On success
+
+The mutation invalidates every query key the write affects, shows a toast and resets the form:
+
+```tsx
+const invalidate = useCallback(async () => {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.ALL }),
+    queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.ADMIN.ALL }),
+    queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.ADMIN.STATS }),
+  ])
+}, [queryClient])
+```
+
+This is the local half of the story. The server function has already scheduled a realtime invalidation for the same prefixes, so other open tabs refetch too — see [Add a use case](/docs/guides/add-a-use-case).
+
+The provider also resets the form whenever the sheet closes, so reopening it never shows the previous record's values:
+
+```tsx
+useEffect(() => {
+  if (!open) {
+    resetFormState(initialValues)
+  }
+}, [initialValues, open, resetFormState])
+```
+
+## Checklist for a new form
+
+- The Zod schema lives in the module's `.zod.ts` (or `auth.zod.ts`), with message **keys**, and limits imported from the constants file.
+- Both message catalogues have an entry for every key the schema can emit.
+- Fields use `useController` and render `ValidationFieldError` with the right namespace.
+- `mode` is `"onTouched"` for a short form, `"onSubmit"` for a long multi-locale one.
+- Submit handlers `void` the promise and never return it to the DOM.
+- The error handler maps `errorCode(error)` onto a field where it can, and falls back to `useActionError`.
+- Success invalidates every affected query key.
+- The form resets when its container closes.
+
+## Related guides
+
+- [i18n messages](/docs/guides/i18n-messages)
+- [Add a use case](/docs/guides/add-a-use-case)
+- [Add a data table](/docs/guides/add-a-data-table)

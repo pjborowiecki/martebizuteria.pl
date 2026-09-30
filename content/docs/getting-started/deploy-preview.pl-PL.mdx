@@ -1,0 +1,140 @@
+---
+title: "Wdrożenie podglądu"
+description: "Przygotowanie zasobów Cloudflare, a potem zbudowanie, weryfikacja i wdrożenie Workera preview."
+---
+
+Środowisko `preview` wdraża Workera o nazwie `martebizuteria-preview`, którego Cloudflare udostępnia pod adresem `https://martebizuteria-preview.pjborowiecki.workers.dev` — to właśnie ten adres workflow podglądu publikuje w komentarzu przy każdym pull requeście. Produkcja wdraża Workera `martebizuteria`.
+
+`wrangler.jsonc` nie deklaruje ani `routes`, ani `custom_domain`, więc oba Workery są dostępne wyłącznie pod swoimi subdomenami `workers.dev`. `APP_DOMAIN` w `src/presentation/branding/app.ts` to `martebizuteria.pl`, a `HOSTS_BY_MODE` wymienia `preview.martebizuteria.pl` jako akceptowany host uwierzytelniania, ale nic w konfiguracji Wranglera nie podłącza tych nazw. Jeśli potrzebujesz domeny własnej, jej dodanie jest zmianą w konfiguracji Wranglera, a nie w kodzie.
+
+## Przygotowanie zasobów
+
+`bun run deploy:preview` zaczyna od `scripts/verify-bindings.ts`, który czyta ten sam plik JSONC co Wrangler i przerywa pracę, jeśli którykolwiek z pięciu bindingów się nie rozwiąże. Zasoby trzeba więc utworzyć najpierw:
+
+```sh
+bunx wrangler login
+bunx wrangler d1 create martebizuteria-preview
+bunx wrangler kv namespace create martebizuteria-cache-preview
+bunx wrangler r2 bucket create martebizuteria
+bunx wrangler queues create martebizuteria-audit-log-preview
+```
+
+Następnie wpisz identyfikatory do `wrangler.jsonc` — pod `development` i `preview`, jeśli mają współdzielić zasoby tak, jak robi to konfiguracja w repozytorium:
+
+| Pole                           | Gdzie                                         |
+| ------------------------------ | --------------------------------------------- |
+| `d1_databases[].database_id`   | `env.development` i `env.preview`             |
+| `d1_databases[].database_name` | Te same dwa                                   |
+| `kv_namespaces[].id`           | Te same dwa                                   |
+| `r2_buckets[].bucket_name`     | Te same dwa                                   |
+| `queues.producers[].queue`     | Musi zgadzać się z `queues.consumers[].queue` |
+
+Zostaw nazwy bindingów dokładnie takie, jakie są — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `REALTIME_INVALIDATION_HUB` — i nie ruszaj `migrations_dir`, który wskazuje na `./src/integrations/drizzle-orm/migrations`. Z nazw bindingów generowany jest `src/types/worker-configuration.d.ts` i względem nich typowana jest cała warstwa serwerowa.
+
+Durable Object nie wymaga przygotowania. Tworzy go migracja już obecna w pliku:
+
+```jsonc
+"migrations": [
+  {
+    "tag": "v1",
+    "new_sqlite_classes": ["RealtimeInvalidationHub"],
+  },
+],
+```
+
+Oto dokładnie to, czego wymaga `verify-bindings.ts`, żebyś wiedział, kiedy skończyłeś:
+
+```ts
+if (
+  !database?.database_id ||
+  /^[0-]+$/u.test(database.database_id) ||
+  !cache?.id ||
+  /^[0-]+$/u.test(cache.id) ||
+  !images?.bucket_name ||
+  !audit?.queue ||
+  !config.queues.consumers.some(({ queue }) => queue === audit.queue) ||
+  realtime?.class_name !== "RealtimeInvalidationHub"
+) {
+  throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)
+}
+```
+
+Zwróć uwagę na kontrolę wartości zastępczych: identyfikator złożony wyłącznie z zer i myślników jest odrzucany — to właśnie ta reguła nie pozwala wdrożyć skopiowanego szablonu.
+
+### Jeśli zmieniasz nazwę hosta
+
+Idą z tym dwie zmiany w kodzie:
+
+- `APP_DOMAIN` w `src/presentation/branding/app.ts`, z którego wyprowadzane są `APP_URL`, mapa witryny, znaczniki OG i linki w wiadomościach e-mail.
+- `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts`. Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`, więc host nieobecny na tej liście ma odrzucane żądania uwierzytelniania, a logowanie na nowej domenie po prostu nie działa, bez wyraźnego błędu.
+
+## Wdrożenie
+
+```sh
+bun run db:migrate:preview
+bun run deploy:preview
+```
+
+Migracji nigdy nie nakłada ani build, ani wdrożenie. Uruchom `db:migrate:preview` zawsze, gdy wdrażasz kod wymagający nowego schematu — w przeciwnym razie Worker wdroży się i dopiero w czasie działania wywali się na brakującej kolumnie.
+
+`deploy:preview` to cztery kroki połączone operatorem `&&`:
+
+```sh
+bun scripts/verify-bindings.ts preview \
+  && bun run build:preview \
+  && bun scripts/prepare-deploy-secrets.ts preview \
+  && env -u CLOUDFLARE_ENV vp exec wrangler deploy \
+       --config dist/server/wrangler.json \
+       --secrets-file .wrangler/secrets.preview.json
+```
+
+1. **`verify-bindings.ts preview`** — opisana wyżej kontrola bindingów. Przerywa wdrożenie, a nie tylko ostrzega.
+2. **`build:preview`** — `rm -rf dist`, ponowne wygenerowanie `.source/`, `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `verify-build.ts preview`.
+3. **`prepare-deploy-secrets.ts preview`** — czyta `secrets.required` z `wrangler.jsonc`, bierze każdą wartość ze środowiska procesu lub z `.env.preview` i zapisuje `.wrangler/secrets.preview.json` z uprawnieniami `0600`. Brakująca lub pusta wartość powoduje wyjątek `Missing <NAZWA> in .env.preview or the process environment`. Zapisywane są wyłącznie zadeklarowane sekrety — tak `CLOUDFLARE_ACCESS_TOKEN` i pozostałe dane zarządcze nie trafiają do Workera.
+4. **`wrangler deploy`** — wdraża wygenerowany `dist/server/wrangler.json` i w tym samym wywołaniu wysyła plik sekretów. Wygenerowana konfiguracja jest płaska: ma już `"name": "martebizuteria-preview"` i `"vars": { "APP_ENV": "preview" }` na najwyższym poziomie, bez sekcji `env` — i właśnie dlatego polecenie najpierw usuwa zmienną `CLOUDFLARE_ENV`. Z nią ustawioną Wrangler szukałby sekcji środowiska, której w wygenerowanym pliku nie ma.
+
+### Co wychwytuje weryfikacja buildu
+
+`scripts/verify-build.ts` czyta `.wrangler/deploy/config.json`, rozwiązuje ścieżkę do konfiguracji, na którą ten plik wskazuje, i nie przepuszcza buildu, jeśli:
+
+- rozwiązana ścieżka to nie dokładnie `dist/server/wrangler.json`;
+- `vars.APP_ENV` nie jest równe żądanemu środowisku;
+- nazwa Workera się nie zgadza — `martebizuteria` dla produkcji, `martebizuteria-preview` w pozostałych przypadkach;
+- brakuje pliku wejściowego albo katalogu `dist/client/fonts`;
+- `assets.directory` nie wskazuje na `dist/client`;
+- `dist/client/assets` nie zawiera przynajmniej jednego pliku `.js` i jednego `.css`;
+- którykolwiek kliencki plik `.js` importuje `cloudflare:workers` albo wbudowany moduł `node:`.
+
+Ta ostatnia kontrola jest najciekawsza. Skanuje każdy bundle kliencki przy użyciu `Bun.Transpiler` i przerywa build przy imporcie tylko serwerowym, który przeciekł do grafu przeglądarki — czyli przy klasie błędów objawiającej się na produkcji pustą stroną.
+
+## Wdrożenia automatyczne
+
+| Workflow                | Wyzwalacz                          | Środowisko   |
+| ----------------------- | ---------------------------------- | ------------ |
+| `ci.yml`                | Pull requesty oraz pushe do `main` | brak         |
+| `deploy-preview.yml`    | Pull requesty do `main`            | `preview`    |
+| `deploy-production.yml` | Pushe do `main`                    | `production` |
+
+Oba workflow wdrożeniowe korzystają z `.github/actions/setup`, ponownie uruchamiają `bun run check`, a potem wykonują `touch .env.<env>` i uruchamiają skrypt wdrożeniowy z wszystkimi wartościami podanymi przez środowisko zadania. `prepare-deploy-secrets.ts` woli `process.env` od pliku, więc pusty plik jest celowy — istnieje tylko po to, żeby wywołanie `readFile` się udało.
+
+Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull requeście z adresem podglądu. Współbieżność jest kluczowana per pull request dla preview i globalnie dla produkcji, z `cancel-in-progress: false` na produkcji, żeby dwa pushe do `main` nie wyścigowały się ze sobą.
+
+### Wymagana konfiguracja w GitHubie
+
+**Sekrety** repozytorium:
+
+`CLOUDFLARE_ACCESS_TOKEN` (przekazywany Wranglerowi jako `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+
+**Zmienne** repozytorium:
+
+`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY` i `VITE_APP_URL`. Dwie pierwsze są wstawiane do bundle'a klienckiego na etapie budowania, więc muszą być zmiennymi, nie sekretami. `VITE_APP_URL` jest przekazywany przez oba workflow, ale nie jest odczytywany nigdzie w `src/` i nie jest zadeklarowanym sekretem Workera — zobacz [Zmienne środowiskowe](/docs/getting-started/environment-variables).
+
+## Po wdrożeniu
+
+Zarejestruj adresy zwrotne dostawców dla nowego hosta, zgodnie z listą w [Zmiennych środowiskowych](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` oraz punkt końcowy Stripe pod `/api/webhooks/stripe`. Stripe wydaje osobny sekret podpisu dla każdego punktu końcowego, więc wartości `STRIPE_WEBHOOK_SECRET` dla preview i produkcji się różnią.
+
+## Powiązane
+
+- [Skrypty projektu](/docs/getting-started/project-scripts)
+- [Narzędzia](/docs/tooling) — Wrangler, środowiska i workflow szczegółowo
+- [Integracje](/docs/integrations) — adaptery Cloudflare, Stripe, Resend i Better Auth

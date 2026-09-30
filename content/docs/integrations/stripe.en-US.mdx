@@ -1,0 +1,194 @@
+---
+title: "Stripe"
+description: "Checkout Sessions, embedded Elements, inventory compensation and webhook fulfilment."
+---
+
+Stripe is the only payment provider. The store charges in PLN, and payment happens inside the storefront using Stripe's embedded Checkout Elements — the customer never leaves `/checkout`. An order row is created only when Stripe confirms payment via webhook; until then the data lives in a `checkout` row plus a `payment` row in the `pending` state, with inventory reserved.
+
+## Server client
+
+```ts
+export const stripe = new StripeServer(env.STRIPE_SECRET_KEY, {
+  apiVersion: STRIPE_API_VERSION,
+  appInfo: { name: APP_NAME },
+  httpClient: StripeServer.createFetchHttpClient(),
+})
+```
+
+`createFetchHttpClient()` is required: the Node HTTP client does not exist on Workers. `STRIPE_API_VERSION` is pinned in `stripe.constants.ts` to `"2026-08-26.dahlia"` — changing it means re-reading every webhook payload shape.
+
+## Constants
+
+```ts
+export const CHECKOUT_PAYMENT_METHOD_ORDER = ["card", "blik", "p24"] as const
+
+const STRIPE_CURRENCY_BY_CODE = { PLN: "pln" } as const satisfies Record<SupportedCurrencyCode, string>
+
+export const STRIPE_CURRENCY = STRIPE_CURRENCY_BY_CODE[STORE_CURRENCY_CODE]
+```
+
+BLIK and Przelewy24 sit next to card because they are what Polish customers expect; the `satisfies` clause means adding a currency to `SupportedCurrencyCode` in `src/modules/_core/constants/currency.ts` without adding a Stripe code here is a type error. `STRIPE_WEBHOOK_EVENTS` enumerates the eight events the application handles.
+
+## Browser client
+
+`stripe.client.ts` lazily loads Stripe.js once per page and maps the application locale onto Stripe's own:
+
+```ts
+const STRIPE_LOCALES = { "en-US": "en", "pl-PL": "pl" } as const satisfies Record<SupportedLocale, StripeElementLocale>
+```
+
+It reads `import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY`, warns to the console if it is missing, and memoizes the `loadStripe` promise in a module-level `stripeRef` so a locale change does not reload the script.
+
+## The two server functions
+
+`stripe.actions.ts` exposes exactly two entry points, both rate-limited at ten calls per 60 seconds and both lazily importing the heavy server module:
+
+```ts
+export const createCheckoutSessionFn = createServerFn({ method: "POST" })
+  .middleware([withRateLimit("checkout-create", RATE_LIMITS.CHECKOUT)])
+  .validator((data: unknown) => createCheckoutSessionInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { handleCreateCheckoutSession } = await import("~/src/integrations/stripe/stripe.actions.server")
+
+    return handleCreateCheckoutSession(data)
+  })
+```
+
+`stripe.actions.schemas.ts` defines the payload: `{ checkoutValues: checkoutSchema, items: cartItemSchema[] }` with at least one item, plus `sessionId` for the update variant. `checkoutSchema` comes from `src/modules/checkout/checkout.zod.ts`, so the address, delivery and billing rules are validated in exactly one place.
+
+## Creating a session
+
+`handleCreateCheckoutSession` in `stripe.actions.server.ts` runs this sequence:
+
+1. `validateAndCalculateItems(items)` loads the products with their inventory by handle, resolves each variant, and **re-reads the price from the database** — the client's `rawPrice` is never trusted. It rejects with `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (via `isSellPriceCentsValid`) or `INSUFFICIENT_INVENTORY`, and returns each line enriched with `inventoryId` and `currentVersion`.
+2. `resolveShippingCost(deliveryMethodId)` reads the price from `delivery_method`, or zero when no method is chosen.
+3. `reserveInventoryForItems(validatedItems)` takes the stock, using the optimistic `version` column.
+4. `createCheckout(values, userId, email)` writes the `checkout` row.
+5. `createStripeSession(...)` creates the Stripe Checkout Session.
+6. `createPendingPayment(...)` writes the `payment` row with `provider: "stripe"`, `currency: "PLN"` and `transactionId` set to the Stripe session id.
+7. `scheduleProductCatalogInvalidation()` pushes the new availability to connected storefronts.
+
+If anything after step 3 throws, the handler releases the reservation with `releaseInventoryForItems(validatedItems)` and rethrows. That compensation is the reason a failed payment attempt does not leave stock locked.
+
+The session itself:
+
+```ts
+const session = await stripe.checkout.sessions.create({
+  customer_email: email,
+  line_items: toLineItems(lines, shippingCost),
+  metadata,
+  mode: "payment",
+  payment_intent_data: { metadata, receipt_email: email },
+  return_url: returnUrl,
+  ui_mode: "elements",
+})
+```
+
+`ui_mode: "elements"` is what gives the embedded experience. `return_url` is `${origin}/checkout?success=true`, where `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL`. Shipping is added as an extra line item named `Shipping` rather than as a Stripe shipping rate.
+
+### Metadata is the fulfilment contract
+
+`metadata` carries `checkoutId`, `locale`, `userId` and the cart itself, and the same object is copied onto the PaymentIntent. Because a Stripe metadata value is capped at 500 characters, `toCheckoutSessionItemsMetadata` in `src/modules/checkout/checkout-metadata.zod.ts` splits the JSON into `items0`, `items1`, … and `readCheckoutSessionItemsJson` reassembles them, still accepting a single legacy `items` key. The webhook reads nothing else to know what was bought, so anything the confirmation e-mail or the order lines need has to be in there.
+
+## Updating a session
+
+When the cart or the form changes, the client does not create a second session — it updates the existing one. `stripe.checkout.ts` decides this with two fingerprints:
+
+```ts
+export const buildCheckoutLinesFingerprint = (items: readonly { qty: number; variantId: string }[]): string =>
+  items
+    .map((item) => `${item.variantId}:${item.qty}`)
+    .toSorted((left, right) => left.localeCompare(right))
+    .join("|")
+
+export const buildCheckoutValuesFingerprint = (values: CheckoutFormSchema): string =>
+  JSON.stringify(Object.fromEntries(Object.entries(values).toSorted(([left], [right]) => left.localeCompare(right))))
+```
+
+`ensureCheckoutSession` creates a session when there is none and calls `updateCheckoutSessionFn` when the amount or either fingerprint has moved; otherwise it returns the session unchanged. `resetCheckoutSession` forces the update, which the UI uses after a declined payment.
+
+Server-side, `handleUpdateCheckoutSession` is the most delicate function in the codebase:
+
+1. `getPaymentContextByTransactionId(sessionId)` resolves the `checkout` and owning `userId`; a session that belongs to a signed-in user can only be updated by that user, otherwise `FORBIDDEN`.
+2. The old Stripe session is retrieved and its `items*` metadata parsed into release lines.
+3. `swapCheckoutInventory` releases the old reservation, validates and reserves the new one, and **restores the old reservation if the new one fails**.
+4. `persistCheckoutSessionUpdate` updates the checkout's delivery, creates the replacement Stripe session, calls `repointPayment({ amount, newTransactionId, oldTransactionId })`, and expires the old Stripe session with `stripe.checkout.sessions.expire(...)` — a failure to expire is logged, not thrown.
+5. On any failure it releases the new reservation and restores the old one.
+
+Preserve this ordering when you touch it. The `payment` row is repointed rather than recreated because `20260924120000_checkout_idempotency_constraints.sql` puts a unique index on `payment.transaction_id` (and on `order.checkout_id`); inserting a second payment row for the replacement session would violate it.
+
+## Confirming in the browser
+
+`confirmCheckoutSession` wraps `checkout.confirm({ billingAddress, redirect: "if_required" })` and classifies the outcome:
+
+```ts
+export type ConfirmOutcome = { status: "success" } | { status: "error"; message: string; recoverable: boolean }
+```
+
+An error is `recoverable` unless its code is `paymentFailed`, which is how the UI decides between letting the customer retry in place and resetting the session. `buildCheckoutContact(values)` picks the billing address when `sameAsShipping === false` and the shipping address otherwise.
+
+`PaymentStep` in `src/presentation/components/custom/checkout/components/_steps/payment-step.client.tsx` mounts `CheckoutElementsProvider` keyed by `sessionId`, passes `getStripeAppearance(theme)` and the Manrope font, and renders the Payment Element as an accordion with wallets and Link disabled and `paymentMethodOrder` taken from `CHECKOUT_PAYMENT_METHOD_ORDER`.
+
+`stripe.appearance.ts` exports `getStripeAppearance("light" | "dark")`, a full Elements `Appearance` with the storefront's flat, square, border-first visual language. Its colours are literal hex values matching the design tokens, so when a token changes the values here have to be changed with it.
+
+## Webhooks
+
+`src/routes/api/webhooks.stripe.ts` verifies the signature before anything else:
+
+```ts
+const event = await verifiedStripeEvent(request, signature, env.STRIPE_WEBHOOK_SECRET)
+```
+
+A missing `stripe-signature` header or a missing `STRIPE_WEBHOOK_SECRET` returns 400; a failed `constructEventAsync` returns 400; an unknown event type is logged and answered `{ received: true }`; a handler that throws returns 500 so Stripe retries. Handlers live in `stripe.webhooks.tsx` as a plain map:
+
+| Event                                      | Handler behaviour                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `checkout.session.completed`               | `handleFulfillCheckoutSession` — only if `payment_status` is `paid` or `no_payment_required`, otherwise logs and waits for the async event |
+| `checkout.session.async_payment_succeeded` | The same fulfilment path (BLIK and P24 settle asynchronously)                                                                              |
+| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` — releases the reservation and audits `orderReleased`                                                       |
+| `checkout.session.expired`                 | The same release path                                                                                                                      |
+| `payment_intent.payment_failed`            | Audits `orderPaymentFailed` with `last_payment_error.message`; no state change                                                             |
+| `charge.refunded`                          | `refundOrder({ fullyRefunded, refundedAmount, restock: true, transactionId })`                                                             |
+| `charge.dispute.created`                   | `flagOrderDispute(...)` — freezes the order and audits `orderDisputeOpened`                                                                |
+| `charge.dispute.closed`                    | If `status === "lost"`, refunds with `restock: false`; otherwise `clearOrderDispute(...)`                                                  |
+
+Fulfilment parses the metadata lines, calls `fulfillCheckout({ amount, currency, lines, locale, transactionId })`, and — only if that returned a new `orderId`, which makes the handler idempotent against Stripe's retries — records `orderPlaced` and `orderPaymentCaptured` audits, schedules admin-orders and product-catalog invalidation, and sends the confirmation e-mail.
+
+`charge.refunded` and the dispute handlers only receive a PaymentIntent, so `resolveTransactionId` lists Checkout Sessions filtered by `payment_intent` with `limit: 1` to recover the session id the `payment` row is keyed by. If no session is found the handler logs and returns rather than failing.
+
+Note the deliberate asymmetry: a lost dispute refunds with `restock: false` and logs `review inventory manually`, because the goods are gone.
+
+## Local development
+
+```bash
+bun run stripe:listen
+# stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe
+```
+
+The `STRIPE_WEBHOOK_SECRET` printed by that command is the one your local environment file needs. Without it the webhook route answers 400 and nothing is fulfilled.
+
+## Errors
+
+`stripe.errors.ts` maps the internal codes onto message keys:
+
+```ts
+export const CHECKOUT_ERROR_CODES = {
+  INSUFFICIENT_INVENTORY: "INSUFFICIENT_INVENTORY",
+  INVALID_PRICE: "INVALID_PRICE",
+  PRODUCT_NOT_FOUND: "PRODUCT_NOT_FOUND",
+  UNKNOWN_ERROR: "UNKNOWN_ERROR",
+  VARIANT_NOT_FOUND: "VARIANT_NOT_FOUND",
+} as const
+```
+
+`getCheckoutErrorKey(error)` returns `errors.<key>` for the checkout message namespace, defaulting to `unknownError`.
+
+## Secrets
+
+`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are Worker secrets listed in `wrangler.jsonc`; `VITE_STRIPE_PUBLISHABLE_KEY` is a browser variable in the environment files.
+
+## Related pages
+
+- [Checkout and payments](/docs/features/checkout)
+- [Orders](/docs/features/orders)
+- [Inventory](/docs/features/inventory)

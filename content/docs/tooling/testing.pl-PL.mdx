@@ -1,0 +1,161 @@
+---
+title: "Testy"
+description: "Trzy projekty Vitest, wspólna infrastruktura w src/platform/testing i progi pokrycia wymuszane przez CI."
+---
+
+Vite+ uruchamia Vitest 5 z konfiguracją z bloku `test` w `vite.config.ts`. Testy leżą w katalogu `__test__` obok kodu, który sprawdzają, i importują swoje API z `vite-plus/test`, nigdy z `vitest`:
+
+```ts
+import { describe, expect, it, vi } from "vite-plus/test"
+```
+
+Uruchamiaj je przez `bun run test`, a nie `bun test`. Własny runner Buna ignoruje projekty Vitest, środowisko jsdom i plik setup, więc duża część zestawu po cichu by się wysypała albo została pominięta.
+
+## Trzy projekty
+
+Zestaw jest dzielony po nazwie pliku, a każdy podział dostaje własne środowisko.
+
+| Projekt       | Pliki                                                       | Środowisko | Plik setup                      |
+| ------------- | ----------------------------------------------------------- | ---------- | ------------------------------- |
+| `node`        | `src/**/*.{test,spec}.{ts,tsx}` poza dwoma wzorcami poniżej | `node`     | brak                            |
+| `integration` | `src/**/*.integration.test.{ts,tsx}`                        | `node`     | brak                            |
+| `component`   | `src/**/*.component.test.{ts,tsx}`                          | `jsdom`    | `src/platform/testing/setup.ts` |
+
+```sh
+bun run test              # vp test run — wszystkie trzy projekty
+bun run test:unit         # vp test run --project node
+bun run test:integration  # vp test run --project integration
+bun run test:component    # vp test run --project component
+bun run test:changed      # vp test run --changed
+bun run test:coverage     # vp test run --coverage
+```
+
+W chwili pisania repozytorium ma około 870 plików testowych: około 480 testów komponentowych, 30 testów integracyjnych, a pozostałe to testy jednostkowe w projekcie `node`.
+
+> `bun run test:watch` odwzorowuje się na `vp test` bez podkomendy. Zgodnie z `vp test --help` `vp test` „uruchamia testy raz domyślnie”, a tryb obserwowania to osobna podkomenda `vp test watch` — ten skrypt jest więc drugim jednorazowym przebiegiem, a nie obserwatorem. Gdy chcesz trybu obserwowania, użyj `vp test watch` (albo `vp test --watch`).
+
+## Wspólna konfiguracja testów
+
+Wszystko, co projekty mają ze sobą wspólne, leży w bloku `test` na najwyższym poziomie i jest dziedziczone przez `extends: true`:
+
+| Ustawienie        | Wartość                                                                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `environment`     | `"node"` (projekt `component` nadpisuje to na `"jsdom"`)                                                                           |
+| `env`             | `loadEnv("test", import.meta.dirname, "")` — wczytuje `.env.test`, który jest w repozytorium i zawiera wyłącznie wartości atrapowe |
+| `pool`            | `"threads"`                                                                                                                        |
+| `maxWorkers`      | `"50%"`                                                                                                                            |
+| `isolate`         | `true`                                                                                                                             |
+| `passWithNoTests` | `false`                                                                                                                            |
+| `exclude`         | `node_modules/**`, `opensrc/**`, `dist/**`, `scripts/**`, `e2e/**`, `src/integrations/drizzle-orm/migrations/**`                   |
+
+Ponieważ `test.env` wczytuje `.env.test`, żaden test nie potrzebuje prawdziwych danych uwierzytelniających. `scripts/` jest wykluczony z zestawu, więc `scripts/commit-msg.ts`, `scripts/verify-build.ts` i pozostałe nie są pokryte testami.
+
+## Infrastruktura testowa
+
+`src/platform/testing/` zawiera wspólną infrastrukturę. Wszystko poza nią jest współlokowane z kodem, który sprawdza.
+
+| Plik                             | Co dostarcza                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `setup.ts`                       | Matchery jest-dom, atrapy obserwatorów DOM, `matchMedia` oraz proxy na `createServerFn`           |
+| `vitest-env.d.ts`                | Referencję `vite-plus/test/globals` i typy matcherów jest-dom na interfejsie `Matchers` Vitesta   |
+| `mocks/d1.ts`                    | `createTestD1Database(sqlite, onQuery?)` — `D1Database` oparty na `node:sqlite`                   |
+| `mocks/intersection-observer.ts` | `StubIntersectionObserver` — puste `observe`, `unobserve`, `disconnect`, `takeRecords`            |
+| `mocks/resize-observer.ts`       | `StubResizeObserver` — przy `observe` zgłasza stały prostokąt 1024 × 768                          |
+| `lib/render.tsx`                 | `renderWithProviders`, `TestProviders`, `createTestRouter`                                        |
+| `lib/messages.ts`                | `TEST_LOCALE` (`en-US`) i `TEST_MESSAGES`, zbudowane z prawdziwych plików `messages/en-US/*.json` |
+| `lib/server-function.ts`         | `withTestRpc` — przepuszcza funkcje serwerowe przez ich prawdziwy łańcuch middleware i walidacji  |
+
+### setup.ts
+
+Plik setup projektu `component` robi cztery rzeczy. Rozszerza `expect` matcherami jest-dom, podstawia atrapy `IntersectionObserver`, `ResizeObserver` i `matchMedia` (których jsdom nie implementuje, a których oczekują komponenty oparte na GSAP i Lenis), a następnie łata TanStack Start:
+
+```ts
+vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
+  const actual = await importOriginal()
+  const { withTestRpc } = await import("~/src/platform/testing/lib/server-function")
+
+  return {
+    ...actual,
+    createServerFn: new Proxy(actual.createServerFn, {
+      apply: (target, thisArg, args: unknown[]) => withTestRpc(Reflect.apply(target, thisArg, args)),
+    }),
+  }
+})
+```
+
+Podmienia też `getRequest` z `@tanstack/react-start/server` na atrapę zwracającą `new Request("http://127.0.0.1:3000/")`.
+
+### Testowanie funkcji serwerowych
+
+`withTestRpc` owija builder `createServerFn` w proxy. Przepuszcza `inputValidator`, `middleware` i `validator` bez zmian, a przechwytuje `.handler()`, tak aby skompilowana funkcja serwerowa była wywoływana przez `runWithStartContext` ze sztucznym kontekstem startowym i prawdziwym wejściem `__executeServer`. Praktyczny skutek jest taki, że test wywołujący przypadek użycia faktycznie wykonuje jego walidatory i middleware `assertAdmin` — infrastruktura testowa nie obchodzi kontroli autoryzacji, i o to właśnie chodzi, bo warstwa przypadków użycia jest miejscem, w którym autoryzacja żyje.
+
+### Testowanie komponentów
+
+`renderWithProviders` renderuje komponent wewnątrz tych samych trzech dostawców, których używa aplikacja — `IntlProvider` z prawdziwymi komunikatami angielskimi i `I18N.DEFAULT_TIMEZONE`, `QueryClientProvider` z wyłączonymi ponowieniami oraz `RouterContextProvider` nad routerem z historią w pamięci — i zwraca wynik Testing Library wraz z utworzonymi `queryClient` i `router`, więc test może sprawdzać stan cache'u albo nawigację:
+
+```ts
+const { queryClient, router } = renderWithProviders(<ProductCard product={product} />)
+```
+
+`createTestRouter(path)` buduje router w pamięci; przekaż ścieżkę, gdy komponent zależy od bieżącej lokalizacji.
+
+Komunikaty nie są danymi testowymi. `lib/messages.ts` zaciąga `messages/en-US/*.json` przez `import.meta.glob` z opcją `eager` i przepuszcza je przez własne funkcje aplikacji `buildMessageTree` i `toNamespace`, więc brakujący albo zmieniony klucz tłumaczenia wysypuje test komponentowy.
+
+### Testowanie kodu bazodanowego
+
+Nie ma globalnego mocka D1. Każdy test integracyjny buduje własną bazę w pamięci i podmienia instancję Drizzle:
+
+```ts
+const { sqlite } = await vi.hoisted(async () => {
+  const { DatabaseSync } = await import("node:sqlite")
+
+  return { sqlite: new DatabaseSync(":memory:") }
+})
+
+vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
+  const { drizzle } = await import("drizzle-orm/d1")
+  const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
+
+  return { db: drizzle(createTestD1Database(sqlite)) }
+})
+```
+
+`createTestD1Database` implementuje tyle powierzchni `D1Database`, ile potrzebuje Drizzle: `prepare`, `bind`, `all`, `raw`, `run` i `batch`. `batch` owija instrukcje w `begin` / `commit` i wycofuje je przy błędzie — i to właśnie czyni testy idempotencji checkoutu sensownymi, bo atomowa partia D1 jest ograniczeniem, na którym te testy się opierają. Opcjonalne wywołanie `onQuery` otrzymuje każdą parę `{ sql, params }`. `src/modules/product/__test__/product.accessors.integration.test.ts` zbiera je i sprawdza dokładnie, ile instrukcji wykonuje odczyt katalogu (`expect(queries).toHaveLength(3)`) oraz że żadna instrukcja nie wiąże więcej niż 100 parametrów — tak wyłapywane są regresje typu N+1 i przekroczenia limitu parametrów D1.
+
+Same tabele tworzy test przez `sqlite.exec(...)`, odwzorowując kolumny, które produkują migracje. Nic nie nakłada plików migracji automatycznie, więc zmiana schematu oznacza aktualizację zarówno migracji, jak i instrukcji `create table` w testach dotykających tej tabeli.
+
+Niezależnie od tego każdy moduł ma w projekcie `node` plik `*.schema.test.ts`, który czyta metadane tabeli Drizzle przez `getTableConfig` i sprawdza nazwę tabeli, pełną uporządkowaną listę kolumn, klucze obce razem z zachowaniem `onDelete` oraz zadeklarowane relacje. Te testy są powodem, dla którego zmiana nazwy kolumny nie może przejść niezauważona.
+
+## Pokrycie
+
+```sh
+bun run test:coverage
+```
+
+Dostawca `v8`, raportery `text`, `html` i `json-summary`, wynik w `coverage/`, czyszczonym przy każdym przebiegu.
+
+| Metryka    | Próg |
+| ---------- | ---- |
+| Instrukcje | 72   |
+| Linie      | 71   |
+| Funkcje    | 68   |
+| Gałęzie    | 69   |
+
+`thresholds.autoUpdate` ma wartość `false`, więc liczby nie rosną same z siebie — ich podniesienie to świadoma zmiana w `vite.config.ts`.
+
+Pokrycie obejmuje `src/**/*.{ts,tsx}` i wyklucza testy, katalogi `__test__`, `*.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` (vendorowane prymitywy) oraz `src/platform/testing/**`.
+
+Testuj rzeczywiste zachowanie. Jeśli jakaś gałąź jest nieosiągalna, usuń gałąź, zamiast podstawiać atrapę globalnej wartości, żeby do niej dotrzeć.
+
+## Konwencje
+
+- Jeden katalog `__test__/` na funkcjonalność, obok kodu: `src/modules/order/__test__/order.accessors.integration.test.ts`.
+- Zestawy bazodanowe kończą się na `*.integration.test.ts`; wszystko, co renderuje Reacta, na `*.component.test.tsx`; pozostałe to zwykłe `*.test.ts`.
+- Mockuj zewnętrznych dostawców. Stripe, Resend, InPost i R2 nigdy nie są wywoływane z testu.
+- Dane testowe są lokalne dla pliku testu albo dla katalogu `__test__` funkcjonalności. Do `src/platform/testing/` należy wyłącznie wspólna infrastruktura.
+
+## Powiązane strony
+
+- [Vite+](/docs/tooling/vite-plus)
+- [Baza danych](/docs/tooling/database)
+- [CI/CD](/docs/tooling/ci-cd)

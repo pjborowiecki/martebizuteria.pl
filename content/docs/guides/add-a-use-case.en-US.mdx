@@ -1,0 +1,209 @@
+---
+title: "Add a use case"
+description: "Add one operation: a server function with its middleware, validator, query or mutation options, audit trail and cache invalidation."
+---
+
+A use case is one operation on one module. It lives in `src/modules/{feature}/use-cases/{verb-noun}.ts` and exports two things: the server function, and the TanStack Query options that route loaders and components use to call it. Nothing else in the repository builds its own `queryOptions` for a module's data — the module owns them.
+
+Read [Server functions](/docs/guides/server-functions) for the middleware, error and context details this page uses.
+
+## Write a query
+
+`src/modules/address/use-cases/list-user-addresses.ts` is the minimum:
+
+```ts
+import { queryOptions } from "@tanstack/react-query"
+import { createServerFn } from "@tanstack/react-start"
+import { eq } from "drizzle-orm"
+
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+
+import { ADDRESS_QUERY_KEYS } from "~/src/modules/address/address.constants"
+import { address } from "~/src/modules/address/address.schema"
+
+export const listUserAddresses = createServerFn({ method: "GET" })
+  .middleware([authorized()])
+  .handler(({ context }) => db.query.address.findMany({ where: eq(address.userId, context.auth.user.id) }))
+
+export const listUserAddressesQuery = () =>
+  queryOptions({
+    queryFn: () => listUserAddresses(),
+    queryKey: ADDRESS_QUERY_KEYS.ALL,
+  })
+```
+
+Points that generalise:
+
+- Reads use `method: "GET"`, writes `method: "POST"`.
+- The handler reads the caller from `context.auth.user.id`. It never takes a user id from the input.
+- The query options are exported as a **function**, even when they take no arguments. Callers write `listUserAddressesQuery()`.
+
+Admin queries add the permission, a stale time and the refetch policy, as in `src/modules/product-category/use-cases/get-admin-categories.ts`:
+
+```ts
+export const getAdminCategories = createServerFn({ method: "GET" })
+  .middleware([authorized({ product: ["read"] })])
+  .handler(async () => {
+    const [categories, counts] = await Promise.all([productCategoryGetAdminCategoriesQuery.execute(), getProductCountsQuery.execute()])
+    const countByCategoryId = new Map(counts.map((entry) => [entry.categoryId, entry.count]))
+    const titlesById = new Map(categories.map((row) => [row.id, coerceCategoryLocaleMap(row.titles)]))
+
+    return categories.map((row) => toAdminCategoryListItem(row, countByCategoryId.get(row.id) ?? 0, titlesById))
+  })
+
+export const getAdminCategoriesQuery = () =>
+  queryOptions({
+    queryFn: () => getAdminCategories(),
+    queryKey: CATEGORY_QUERY_KEYS.ADMIN.ALL,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: CATEGORY_QUERY_STALE_MS,
+  })
+```
+
+The handler shapes the rows for its consumer — `toAdminCategoryListItem` lives in `product-category.utils.ts`, and the prepared statements live in `product-category.server.ts`. Keep the handler itself a short sequence of named calls; the 20-statement limit will tell you when it is no longer short.
+
+### Paginated queries
+
+When the input varies, the key has to vary with it. `src/modules/product/use-cases/get-admin-products-page.ts` puts the parsed input in the key:
+
+```ts
+export const getAdminProductsPageQuery = (input: Product["adminProductsPageInput"]) =>
+  queryOptions({
+    queryFn: () => getAdminProductsPage({ data: input }),
+    queryKey: [...PRODUCT_QUERY_KEYS.ADMIN.PAGE, input],
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: PRODUCT_QUERY_STALE_MS,
+  })
+```
+
+Its handler turns the page number into offset/limit with `listPaginationParamsFromPage` and wraps the result with `buildListPaginationResult`, both from `src/modules/_core/utils/pagination.ts`. The result carries `items`, `total`, `limit`, `offset` and `hasMore`, which is what the data grid's manual pagination expects.
+
+## Write a mutation
+
+`src/modules/address/use-cases/set-default-user-address.ts` shows the full shape of a write:
+
+```ts
+import { mutationOptions } from "@tanstack/react-query"
+import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
+
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { setDefaultUserAddress as addressSetDefaultUserAddress } from "~/src/modules/address/address.accessors"
+import { ADDRESS_MUTATION_KEYS } from "~/src/modules/address/address.constants"
+import { addressIdInputSchema } from "~/src/modules/address/address.zod"
+
+export const setDefaultUserAddress = createServerFn({ method: "POST" })
+  .middleware([authorized()])
+  .validator((input: zod.input<typeof addressIdInputSchema>) => addressIdInputSchema.parse(input))
+  .handler(async ({ context, data: { addressId } }) => {
+    const updated = await addressSetDefaultUserAddress(context.auth.user.id, addressId)
+    if (!updated) {
+      throw new AppError(ERROR_CODES.NOT_FOUND)
+    }
+
+    return { ok: true as const }
+  })
+
+export const setDefaultUserAddressMutation = mutationOptions({
+  mutationFn: (data: Parameters<typeof setDefaultUserAddress>[0]["data"]) => setDefaultUserAddress({ data }),
+  mutationKey: ADDRESS_MUTATION_KEYS.SET_DEFAULT,
+})
+```
+
+- The validator's parameter is typed `zod.input<typeof schema>` — imported as `import type * as zod from "zod"` — and its body calls `schema.parse(input)`. The handler then receives the parsed output.
+- The accessor returns a boolean; the use case turns a miss into `AppError(ERROR_CODES.NOT_FOUND)`.
+- `mutationOptions` is exported as a plain object (not a function), and its `mutationFn` type is derived with `Parameters<typeof fn>[0]["data"]` rather than restated.
+- Public or expensive operations add rate limiting in front of the guard: `createUserAddress` uses `.middleware([withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE), authorized()])`.
+
+### Side effects a write owes
+
+`src/modules/product-category/use-cases/create-category.ts` shows what a catalog write is responsible for beyond the insert:
+
+```ts
+const nextRank = await getNextRankForParent(parentId)
+const id = uuidv7()
+await db.insert(productCategory).values(toCategoryRow(data, id, nextRank))
+scheduleCategoryCatalogInvalidation()
+recordCatalogCategoryCreatedAudit(data.handle)
+
+return { handle: data.handle, id }
+```
+
+Three obligations:
+
+1. **Uniqueness and referential checks first.** A duplicate handle throws `AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)`; a missing parent throws `AppError(ERROR_CODES.VALIDATION, CATEGORY_ERROR_CODES.INVALID_PARENT)`. The second argument is a module-specific code the form uses to attach the error to the right field.
+2. **Realtime invalidation.** `scheduleCategoryCatalogInvalidation()` from `src/integrations/realtime-invalidation/realtime-invalidation.catalog.server.ts` publishes the admin and storefront query-key prefixes to the `RealtimeInvalidationHub` Durable Object, so every other open tab refetches. The other helpers in that file are `scheduleProductCatalogInvalidation`, `scheduleCollectionCatalogInvalidation`, `scheduleProductAttributeCatalogInvalidation`, `scheduleAdminCustomersInvalidation` and `scheduleAdminOrdersInvalidation`.
+3. **Audit trail.** `recordCatalogCategoryCreatedAudit(...)` from `src/modules/audit-log/audit-log.events.server.ts` enqueues a message on the `AUDIT_LOG_QUEUE` binding through `scheduleBackgroundWork`, which hands it to the Worker's `waitUntil`. Neither call is awaited, and neither can fail the request.
+
+Both are fire-and-forget by design. Do not `await` them and do not wrap them in `try`.
+
+## Use it in a component
+
+Spread the exported options. A query in a component uses `useSuspenseQuery` when the route loader has already prefetched it:
+
+```tsx
+const { data: categories, isFetching } = useSuspenseQuery(getAdminCategoriesQuery())
+```
+
+A mutation spreads `mutationOptions`, translates the error and invalidates only what changed:
+
+```tsx
+const queryClient = useQueryClient()
+const actionError = useActionError()
+
+const setDefault = useMutation({
+  ...setDefaultUserAddressMutation,
+  onError: (error) => {
+    toast.error(actionError(error))
+  },
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({ queryKey: ADDRESS_QUERY_KEYS.ALL })
+  },
+})
+```
+
+`useActionError` in `src/hooks/use-action-error.ts` maps an `ERROR_CODES` value to `errors.action.<CODE>`, a Better Auth error key to `pages.auth.errors.<key>`, a Zod or validation error to `errors.action.VALIDATION`, and anything unrecognised to `errors.action.INTERNAL_ERROR`. Never show `error.message` directly.
+
+## Prefetch it in the route loader
+
+Route loaders call `context.queryClient.query(...)` with the same options object:
+
+```ts
+const prefetchCategoriesQueries = async (context: { queryClient: QueryClient }): Promise<void> => {
+  await Promise.all([
+    context.queryClient.query({ ...getAdminCategoriesQuery(), staleTime: "static" }),
+    context.queryClient.query({ ...getCategoryStatsQuery(), staleTime: "static" }),
+  ])
+}
+```
+
+`staleTime: "static"` tells the loader not to refetch during navigation; the component's own stale time takes over afterwards. Prefetch every query the first paint needs, in one `Promise.all`.
+
+## Test it
+
+Add a test under `use-cases/__test__/`. The pattern in `src/modules/address/use-cases/__test__/address-use-cases.test.ts` mocks the middleware module, the database module and the accessors module, and replaces `createServerFn` with a builder that injects a fixed `context.auth.user.id`:
+
+```ts
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
+  RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
+  authorized: () => ({}),
+  withRateLimit: (...args: unknown[]) => {
+    middleware.rateLimitCalls.push(args)
+
+    return {}
+  },
+}))
+```
+
+Cover the happy path, every code the handler throws, the fact that the caller's id comes from the session rather than the input, and — as that file does — that the rate limiter was configured with the expected kind and limits. See [Writing tests](/docs/guides/writing-tests).
+
+## Related guides
+
+- [Server functions](/docs/guides/server-functions)
+- [Add a module](/docs/guides/add-a-module)
+- [Forms and validation](/docs/guides/forms-and-validation)

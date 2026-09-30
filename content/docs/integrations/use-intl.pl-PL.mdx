@@ -1,0 +1,194 @@
+---
+title: "use-intl"
+description: "Języki, prefiksy adresów, przestrzenie nazw komunikatów i sposób, w jaki strona otrzymuje tłumaczenia."
+---
+
+Sklep jest polski w pierwszej kolejności, a angielski w drugiej. `pl-PL` jest domyślnym językiem i serwowany jest bez prefiksu, więc `/products` jest po polsku, a `/en-US/products` po angielsku. Katalog `src/integrations/use-intl/` zawiera pięć plików, które wspólnie definiują języki, przepisują adresy, ładują przestrzenie nazw komunikatów i przechowują wybór w ciasteczku.
+
+## Konfiguracja
+
+Plik `i18n.config.ts` zawiera całą definicję języków:
+
+```ts
+const COOKIE_NAME = "marte_locale"
+
+const SUPPORTED_LOCALES = ["pl-PL", "en-US"] as const
+
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
+
+const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
+
+const DEFAULT_TIMEZONE = "Europe/Warsaw"
+
+const TIME_ZONES = ["UTC", "America/New_York", "Europe/Warsaw"] as const
+
+export const I18N = { COOKIE_NAME, DEFAULT_LOCALE, DEFAULT_TIMEZONE, SUPPORTED_LOCALES, TIME_ZONES } as const
+```
+
+Typ `SupportedLocale` wyprowadzany jest z krotki, więc dodanie tu języka sprawia, że system typów domaga się reszty: języka Stripe w `stripe.client.ts`, języka `react-day-picker` w `react-day-picker.locale.ts`, pliku JSON na każdą przestrzeń nazw w `messages/<locale>/` oraz drugiego pliku MDX dla każdej strony w `content/docs` i `content/legal`.
+
+## Kształt adresów
+
+Plik `i18n.paths.ts` implementuje reguły prefiksów. Wzorzec ignorowanych ścieżek to istotny punkt wyjścia:
+
+```ts
+const IGNORED_PATHS_REGEX = /^\/(?:api|rpc|_serverFn|assets)(?:\/|$)/u
+```
+
+Te prefiksy nigdy nie otrzymują segmentu języka, ponieważ są punktami końcowymi dla maszyn.
+
+| Eksport                                  | Zachowanie                                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `isSupportedLocale(locale)`              | Predykat typu wobec zbioru wspieranych języków                                                       |
+| `shouldIgnorePath(pathname)`             | Wzorzec powyżej                                                                                      |
+| `extractLocaleFromPath(pathname)`        | Język z prefiksu albo `undefined` — **także wtedy, gdy prefiksem jest `pl-PL`**                      |
+| `deLocalizePathname(pathname)`           | Usuwa dowolny wspierany prefiks, zwracając `/`, gdy nic nie zostaje                                  |
+| `localizePathname({ locale, pathname })` | Dodaje prefiks, z wyjątkiem języka domyślnego oraz ścieżek ignorowanych i względnych wobec protokołu |
+| `canonicalizePathname(pathname)`         | Przepisuje alias językowy lub zbędny prefiks domyślny na ścieżkę kanoniczną                          |
+| `localeLinks({ origin, pathname })`      | Odnośnik `canonical` oraz po jednym `alternate` na język i jeden `x-default`                         |
+
+Dwie subtelności decydują o większości zachowania:
+
+- `extractLocaleFromPath` zwraca `undefined` dla prefiksu `pl-PL`, traktując `/pl-PL/products` jako „brak języka w adresie". `canonicalizePathname` przepisuje to następnie na `/products`, więc polski prefiks nigdy nie może stać się drugim, zdublowanym adresem tej samej strony.
+- `LANGUAGE_ALIASES` mapuje sam podtag języka na pełny kod (`pl` → `pl-PL`, `en` → `en-US`), a `canonicalizePathname` z tego korzysta, więc `/en/products` przekierowuje na `/en-US/products`.
+
+## Middleware
+
+Plik `i18n.middleware.ts` działa w `src/server.ts` przed handlerem Start. `resolveLocale(request)` zwraca co najwyżej jedno z dwojga: przekierowanie albo ciasteczko:
+
+```ts
+if ((request.method !== "GET" && request.method !== "HEAD") || !isDocumentRequest(request) || shouldIgnorePath(pathname)) {
+  return {}
+}
+
+const canonical = canonicalizePathname(pathname)
+
+if (canonical !== pathname) {
+  url.pathname = canonical
+
+  return { redirect: Response.redirect(url.href, HTTP_MOVED_PERMANENTLY) }
+}
+```
+
+Działa wyłącznie na żądaniach dokumentów `GET` i `HEAD`. `isDocumentRequest` preferuje nagłówek `sec-fetch-dest` (`document`, `frame`, `iframe`), a w jego braku dopasowuje `text/html` lub `application/xhtml+xml` w `accept`, traktując brak `accept` jako dokument. Ścieżka niekanoniczna otrzymuje **301**, co ma znaczenie dla SEO: `/pl-PL/products` i `/en/products` trwale zwijają się do swoich form kanonicznych.
+
+Gdy ścieżka jest już kanoniczna, ale język z adresu i ciasteczko `marte_locale` się nie zgadzają, middleware zwraca `{ setCookie }`, a `src/server.ts` dołącza je do odpowiedzi. Adres zawsze wygrywa z ciasteczkiem.
+
+## Odczyt bieżącego języka
+
+Plik `i18n.utils.ts` udostępnia język izomorficznie, przez `createIsomorphicFn`, więc to samo wywołanie działa w loaderze i w komponencie:
+
+```ts
+export const getCurrentLocale = createIsomorphicFn()
+  .server((): SupportedLocale => {
+    const request = getRequest()
+    const { pathname } = new URL(request.url)
+
+    if (shouldIgnorePath(pathname)) {
+      return parseLocaleCookie(request.headers.get("cookie")) ?? I18N.DEFAULT_LOCALE
+    }
+
+    return extractLocaleFromPath(pathname) ?? I18N.DEFAULT_LOCALE
+  })
+  .client(/* to samo, z globalThis.location i document.cookie */)
+```
+
+Ciasteczko jest czytane wyłącznie dla ścieżek ignorowanych — i to jest właśnie przypadek, który ma znaczenie, ponieważ funkcja serwerowa wysyła żądanie na `/_serverFn/...` i nie ma języka w swoim adresie. Dlatego funkcja serwerowa taka jak `createCheckoutSessionFn` może wywołać `getCurrentLocale()` i wciąż wpisać język klienta do metadanych sesji Stripe. `getCurrentPathname`, `localizeUrl` i `deLocalizeUrl` to odpowiedniki działające na adresach; dwie ostatnie przekazuje `src/router.tsx` do opcji `rewrite` routera.
+
+## Komunikaty
+
+`messages/<locale>/<namespace>.json` — 48 przestrzeni nazw na język, o identycznych nazwach plików w obu. Przestrzeń nazw _jest_ nazwą pliku, z kropkami jako zagnieżdżeniem: `pages.admin.catalog.products.json` to `pages.admin.catalog.products`.
+
+Plik `i18n.messages.ts` robi cztery rzeczy.
+
+**Odnajduje pliki w czasie budowania.** `import.meta.glob("../../../messages/*/*.json", { import: "default" })` tworzy leniwy loader dla każdego pliku, więc przestrzeń nazw to jeden osobny fragment kodu. `loadNamespace` odnajduje ścieżkę i rzuca precyzyjny błąd, gdy jej brakuje:
+
+```ts
+const load = messageModules[modulePath({ locale, namespace })]
+
+if (load === undefined) {
+  throw new Error(`Missing translation namespace: messages/${locale}/${namespace}.json`)
+}
+```
+
+**Definiuje przestrzenie nazw korzenia** — sześć, których potrzebuje każda strona, wypisanych jako jawny glob, aby zbiór był sprawdzany wobec systemu plików, a nie utrzymywany ręcznie:
+
+```ts
+const rootMessagePaths = Object.keys(
+  import.meta.glob([
+    "../../../messages/*/common.json",
+    "../../../messages/*/components.custom.json",
+    "../../../messages/*/components.shadcn.json",
+    "../../../messages/*/errors.json",
+    "../../../messages/*/pages.auth.errors.json",
+    "../../../messages/*/pages.auth.toast.json",
+  ]),
+)
+
+export const ROOT_NAMESPACES = [...new Set(rootMessagePaths.map((path) => toNamespace(path)))]
+```
+
+**Zamienia płaskie przestrzenie nazw w zagnieżdżone drzewo.** `buildMessageTree` dzieli każdą przestrzeń nazw po `.`, owija komunikaty w tę ścieżkę i głęboko scala gałęzie, więc `pages.admin.json` i `pages.admin.catalog.json` współistnieją w jednym obiekcie `pages.admin`.
+
+**Udostępnia opcje zapytania.** `messagesQueryOptions({ locale, namespace })` z `staleTime` i `gcTime` równymi `Infinity` oraz `preloadNamespaces({ locale, namespaces, queryClient })`, które rozwiązuje je wszystkie równolegle.
+
+`getRouteNamespaces(matches)` jest klejem: przyjmuje dopasowane trasy i zwraca `ROOT_NAMESPACES` wraz z każdym wpisem `staticData.namespaces`, bez duplikatów.
+
+## Jak strona otrzymuje tłumaczenia
+
+1. Trasa deklaruje, czego potrzebuje: `staticData: { namespaces: ["pages.products"] }`.
+2. `beforeLoad` w `__root.tsx` wywołuje `preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient })`, więc wszystko jest w cache zapytań przed wyrenderowaniem jakiegokolwiek komponentu.
+3. `TranslationsProvider` w `src/providers/translations-provider.tsx` czyta te same przestrzenie nazw przez `useSuspenseQueries`, scala je `buildMessageTree` i renderuje dostawcę z `use-intl`:
+
+```tsx
+<IntlProvider locale={locale} messages={messages} timeZone={I18N.DEFAULT_TIMEZONE}>
+  {children}
+</IntlProvider>
+```
+
+Zapisuje też język z powrotem do ciasteczka `marte_locale` w efekcie, więc bezpośrednie wejście na `/en-US/...` jest pamiętane.
+
+4. Komponent wywołuje `useTranslations("pages.products")` i otrzymuje `t("title")`.
+
+Loader trasy często potrzebuje też komunikatu do swojego `head`, który uzyskuje, czekając na te same opcje zapytania — dzięki cache jest to darmowe:
+
+```ts
+const [messages] = await Promise.all([
+  context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
+  prefetchProductsCatalogPage(/* … */),
+])
+```
+
+Zwróć uwagę na argument typu `<typeof productsMessages>`, pobrany z importu wyłącznie typu z angielskiego pliku JSON. To projektowa konwencja typowanego dostępu do komunikatów poza kontekstem Reacta i dlatego klucz obecny po angielsku, a brakujący po polsku, jest błędem typowania.
+
+## Poza Reactem
+
+E-maile i webhooki renderują się na Workerze bez dostawcy, więc używają `createTranslator({ locale, messages })` z `use-intl` bezpośrednio. Zobacz [Resend](/docs/integrations/resend).
+
+## Inne adaptery świadome języka
+
+| Adapter                                                        | Co mapuje                                                                |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `src/integrations/stripe/stripe.client.ts`                     | `pl-PL` → `pl`, `en-US` → `en` dla Stripe Elements                       |
+| `src/integrations/react-day-picker/react-day-picker.locale.ts` | `pl-PL` → `pl`, `en-US` → `enUS` dla kalendarza                          |
+| `src/integrations/fumadocs/fumadocs.i18n.ts`                   | Przekazuje `I18N.SUPPORTED_LOCALES` do Fumadocs z `hideLocale: "always"` |
+
+Wszystkie trzy używają `satisfies Record<SupportedLocale, …>` albo jawnego `Record<SupportedLocale, …>`, więc nowy język psuje budowanie do momentu wypełnienia każdego mapowania.
+
+## Treści tłumaczone w bazie danych
+
+Teksty katalogu nie znajdują się w plikach komunikatów. `product.titles`, `product.subtitles`, `product.descriptions` i `product.tags` to kolumny JSON przechowujące mapę językową kluczowaną znacznikiem BCP 47, podobnie jak ich odpowiedniki w `product_category`, `product_collection` i `product_attribute`. Migracja `20260925000000_locale_maps_bcp47.sql` przeniosła te klucze na pełne znaczniki. Formularze katalogu w panelu edytują oba języki obok siebie — `catalog-locale-picker.tsx` i `product-form-locale-layout.tsx` iterują `I18N.SUPPORTED_LOCALES` i pokazują, ile jest wypełnionych.
+
+## Nie ma przełącznika języka
+
+Warto to wiedzieć, zanim zaczniesz go szukać: sklep nie ma kontrolki zmiany języka. Nic w `src/presentation` nie wywołuje `localizePathname`, aby zbudować przełącznik, a nawigacja i stopka go nie oferują. Odwiedzający trafia na wersję angielską adresem, a ciasteczko następnie ją pamięta. Odnośniki `hreflang` emitowane z `__root.tsx` informują wyszukiwarki o wersji angielskiej. Jeśli przełącznik będzie potrzebny, `localizePathname` i `getCurrentPathname` to dwie funkcje, z których należy go zbudować.
+
+## Testy
+
+Katalog `src/integrations/use-intl/__test__/` zawiera sześć plików obejmujących ustalanie języka na serwerze, ustalanie języka na kliencie, ustalanie ścieżki na kliencie, reguły routingu i kanonizacji, pomocniki nawigacji oraz drzewo komunikatów.
+
+## Powiązane strony
+
+- [Internacjonalizacja](/docs/architecture/i18n-architecture)
+- [Katalogi komunikatów](/docs/guides/i18n-messages)
+- [Fumadocs](/docs/integrations/fumadocs)

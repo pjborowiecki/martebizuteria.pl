@@ -1,0 +1,159 @@
+---
+title: "Motyw"
+description: "Zestawy tokenów w globals.css, skrypty uruchamiane przed pierwszym renderem, nadpisanie dla panelu i preferencje zapisywane w przeglądarce."
+---
+
+## Gdzie mieszkają tokeny
+
+`src/presentation/styles/globals.css` to jedyny punkt wejścia Tailwinda. Importuje fonty, uruchamia Tailwind na całym repozytorium i deklaruje każdy token projektowy dwukrotnie — raz w `:root`, raz w `.dark`:
+
+```css
+@import "./fonts.css";
+
+@import "tailwindcss" source("../../");
+
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "lenis/dist/lenis.css";
+
+@plugin "@tailwindcss/typography" {
+  classname: wysiwyg;
+}
+
+@custom-variant dark (&:is(.dark *));
+```
+
+W `:root` obok siebie stoją dwie rodziny zmiennych.
+
+**Paleta M'Arte** nazywa własne kolory sklepu i jest używana bezpośrednio w CSS oraz w wartościach dowolnych Tailwinda:
+
+| Zmienna                                       | Jasny motyw                     | Znaczenie                                  |
+| --------------------------------------------- | ------------------------------- | ------------------------------------------ |
+| `--sea-ink`, `--sea-ink-soft`                 | `#173a40`, `#416166`            | Głębokie tony atramentu dla tekstu         |
+| `--lagoon`, `--lagoon-deep`                   | `#4fb8b2`, `#328f97`            | Turkusowa para akcentowa                   |
+| `--palm`                                      | `#2f6a4a`                       | Akcent zielony, także podstawa `--kicker`  |
+| `--sand`, `--foam`, `--bg-base`               | `#e7f0e8`, `#f3faf5`, `#e7f3ec` | Tła stron i paneli                         |
+| `--surface`, `--surface-strong`               | półprzezroczysta biel           | Wypełnienia kart z efektem mrożonego szkła |
+| `--line`, `--chip-line`, `--inset-glint`      | półprzezroczyste                | Włosowe linie i wewnętrzne rozbłyski       |
+| `--header-bg`, `--chip-bg`, `--link-bg-hover` | półprzezroczyste                | Tła nawigacji i pigułek                    |
+| `--hero-a`, `--hero-b`                        | półprzezroczyste                | Punkty gradientu w sekcji hero             |
+
+**Tokeny shadcn** są zapisane w OKLCH i zasilają prymitywy: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive`, `success`, `border`, `input`, `ring`, `chart-1` … `chart-5`, osiem tokenów `sidebar-*` oraz `--radius`.
+
+Dwa szczegóły warto znać:
+
+- `--radius` to `0.25rem`. Skala zaokrągleń wywodzi się z niego, więc `rounded-md` i `rounded-lg` dają to samo `0.25rem`, a dopiero `rounded-xl` idzie wyżej.
+- `--sidebar` w `:root` ma _ciemną_ wartość `oklch(0.141 0.005 285.823)`. Panel boczny administratora jest ciemny, mimo że reszta konsoli jest jasna — dlatego tak zdefiniowano go w jasnym zestawie.
+
+`@theme inline` mapuje zmienne na narzędzia Tailwinda i dodaje własne wpisy skali projektu:
+
+```css
+@theme inline {
+  --font-sans: "Manrope", "Manrope Fallback", system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", "Cormorant Garamond Fallback", "Times New Roman", serif;
+  /* … mapowania kolorów … */
+  --radius-sm: max(0px, calc(var(--radius) - 2px));
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+  --max-width-400: min(100rem, calc(100% - 1.5rem));
+  --spacing-18: 4.5rem;
+  --spacing-54: 13.5rem;
+}
+```
+
+`max-w-400` to standardowy kontener strony: ogranicza szerokość do `100rem`, a poza tym zostawia `0.75rem` marginesu z każdej strony. Używaj go zamiast ręcznego `mx-auto max-w-[...] px-6`.
+
+## Jasny i ciemny motyw
+
+`.dark` redefiniuje obie rodziny. `@custom-variant dark (&:is(.dark *))` oznacza, że prefiks `dark:` podąża za klasą, a nie za ustawieniem systemu — motyw jest więc klasą na elemencie `html`.
+
+Klasa ustawiana jest w dwóch miejscach:
+
+1. **Przed pierwszym renderem.** `THEME_INIT_SCRIPT` w `src/presentation/theme/theme-init.ts` jest wstrzykiwany jako wbudowany `<script>` w sekcji `head` dokumentu głównego. Odczytuje zapisany motyw i dodaje `dark` do `documentElement` — chyba że ścieżka zawiera `/admin`, wtedy usuwa `dark`, ustawia `data-admin-shell` i maluje `html` oraz `body` kolorem `ADMIN_SHELL_CHROME_BG`, żeby konsola nigdy nie mrugnęła na biało.
+2. **Po hydratacji.** `src/providers/themes-provider.tsx` opakowuje ciało dokumentu pakietem `@wrksz/themes`:
+
+```tsx
+<WrkszThemeProvider
+  attribute="class"
+  enableSystem={false}
+  themes={THEMES}
+  defaultTheme="light"
+  storage="localStorage"
+  storageKey={THEME_STORAGE_KEY}
+  disableTransitionOnChange
+>
+```
+
+`THEME_STORAGE_KEY` to `` `${APP_NAME}-theme` ``, czyli dosłownie `M'Arte-theme` w `localStorage`. `enableSystem` jest wyłączone, więc nie ma motywu `system`: tylko `light` i `dark`, z domyślnym `light`.
+
+W interfejsie **nie ma obecnie przełącznika motywu.** Nic w `src/presentation` nie wywołuje `setTheme`; jedynymi konsumentami `useTheme` są `shadcn/sonner.tsx` (kolorystyka powiadomień) oraz krok płatności Stripe (wybór wyglądu Stripe Elements). Ciemny zestaw tokenów jest kompletny i mechanizm działa, ale dopóki nie pojawi się przełącznik, sklep renderuje się jasno — chyba że ktoś ręcznie ustawi `M'Arte-theme` na `dark`.
+
+## Nadpisanie dla panelu
+
+`src/presentation/styles/admin.css` to niewielki arkusz stylów dołączany przez trasę `/admin` jako link `?url`. Zaczyna się od `@reference "./globals.css"`, co pozwala Tailwindowi rozwiązać motyw bez ponownego emitowania frameworka, a potem nadpisuje tokeny zwykłym CSS — nie ma tu `@apply` ani drugiego builda narzędzi:
+
+```css
+@layer base {
+  html[data-admin-shell],
+  html[data-admin-shell] body {
+    background-color: var(--sidebar);
+    color-scheme: light;
+  }
+
+  [data-admin-main] {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.141 0.005 285.823);
+    /* … card, popover, muted, secondary, accent, border, input, ring … */
+    color-scheme: light;
+  }
+}
+```
+
+Konsola jest więc zawsze jasna, niezależnie od zapisanego motywu. Współdziałają tu trzy elementy:
+
+| Element                                             | Zadanie                                                               |
+| --------------------------------------------------- | --------------------------------------------------------------------- |
+| `THEME_INIT_SCRIPT`                                 | Zdejmuje `dark` i maluje chrom przed pierwszym renderem               |
+| `adminShellCriticalStyle(pathname)`                 | Emituje to samo tło jako wbudowany `<style>` w `head`                 |
+| `useAdminLightTheme()` (`use-admin-light-theme.ts`) | Usuwa `dark` przy montowaniu i przywraca je przy opuszczaniu `/admin` |
+
+`admin.css` stylizuje też paski przewijania tabel danych i przemalowuje powiadomienia Sonner wewnątrz powłoki panelu, tak aby korzystały z palety panelu bocznego. `admin-layout.styles.ts` przechowuje współdzielone łańcuchy klas — `ADMIN_LAYOUT_BG_CLASS` (`bg-zinc-100`), `ADMIN_CARD_CLASS`, zestaw `ADMIN_STAT_*` oraz dwie klasy stron katalogu.
+
+Arkusz sklepu, `storefront.css`, jest znacznie mniejszy: ustawia stan początkowy animacji `.reveal` i `.line-reveal` w obrębie `[data-landing-page]` i spłaszcza oba przy `prefers-reduced-motion: reduce`.
+
+## Preferencje zapisywane w przeglądarce
+
+W sekcji `head` uruchamiają się trzy wbudowane skrypty, w tej kolejności, z `src/routes/__root.tsx`:
+
+| Skrypt                       | Źródło                                        | Magazyn                                                                           |
+| ---------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `THEME_INIT_SCRIPT`          | `theme/theme-init.ts`                         | `localStorage`, klucz `M'Arte-theme`                                              |
+| `SIDEBAR_INIT_SCRIPT`        | `theme/sidebar-preference.ts`                 | `localStorage`, klucz `sidebar_state`, kopiowany do ciasteczka o tej samej nazwie |
+| `DATAGRID_PREFS_INIT_SCRIPT` | `components/custom/datagrid/datagrid-init.ts` | `localStorage`, klucze z prefiksem `marte:datagrid:v1:`                           |
+
+Skrypt panelu bocznego działa tylko na ścieżkach `/admin`. Kopiuje `sidebar_state` z `localStorage` do rocznego ciasteczka `Path=/`, żeby serwer mógł je odczytać, i ustawia `data-sidebar-collapsed` na `html`, gdy wartość to `0`. `adminSidebarCollapsedCriticalStyle(pathname)` emituje wtedy wbudowany CSS przypinający szczelinę i kontener panelu do `4rem`, co usuwa przeskok „rozwiń, potem zwiń" przy pełnym odświeżeniu. Na serwerze `getAdminSidebarDefaultOpen()` — `createIsomorphicFn`, który czyta ciasteczko żądania na serwerze i `localStorage` w przeglądarce — zasila prop `defaultOpen` w `SidebarProvider`.
+
+Skrypt tabel danych przepisuje zapisane szerokości kolumn na właściwości niestandardowe CSS o nazwach `--marte-dg-<slug-klucza>-<id-kolumny>` na `documentElement`, żeby zmieniona szerokość przetrwała SSR. Zobacz [Tabela danych](/docs/ui/data-table).
+
+## Powiadomienia
+
+`Toaster` (`shadcn/sonner.tsx`) przyjmuje `variant` o wartości `"default"` albo `"admin"`. Trasa główna wybiera go na podstawie ścieżki:
+
+```tsx
+<Toaster variant={isAdmin ? "admin" : "default"} />
+```
+
+Wariant domyślny mapuje zmienne CSS Sonnera na `--popover`, `--border` i `--popover-foreground` oraz podąża za `useTheme()`. Wariant panelu wymusza `theme="dark"` i mapuje każdy stan — zwykły, sukces, błąd, ostrzeżenie, informacja — na tokeny `--sidebar-*`, dlatego powiadomienia w panelu pasują do panelu bocznego, a nie do treści strony.
+
+## Zmiana koloru
+
+1. Zmień zmienną w `:root` w `globals.css` oraz jej odpowiednik w `.dark`.
+2. Jeśli konsola administratora nie ma podążać za tą zmianą, dodaj jasną wartość do bloku `[data-admin-main]` w `admin.css`.
+3. Jeśli zmiana dotyczy chromu przeglądarki, zaktualizuj `THEME_COLOR` w `src/presentation/branding/app.ts` (meta `theme-color`) oraz `ADMIN_SHELL_CHROME_BG` w `admin-layout.styles.ts` (tło panelu przed pierwszym renderem, które jest dosłownym łańcuchem OKLCH, nie `var()`).
+4. Uruchom `bun run check`.
+
+## Powiązane strony
+
+- [Fonty i branding](/docs/ui/fonts-and-branding)
+- [Komponenty shadcn](/docs/ui/shadcn-components)

@@ -1,0 +1,87 @@
+---
+title: "Cache i SSR"
+description: "Gdzie cache'owane są dane: cache zapytań na żądanie, prepared statements, magazyn przeglądarki — i co świadomie nie jest cache'owane."
+---
+
+## Cache zapytań
+
+`getRouter` w `src/router.tsx` tworzy nowy `QueryClient` dla każdego żądania, więc dane nie wyciekają między użytkownikami na serwerze:
+
+| Ustawienie                        | Wartość                                       |
+| --------------------------------- | --------------------------------------------- |
+| `staleTime` zapytań               | 1 minuta                                      |
+| `gcTime` zapytań                  | 5 minut                                       |
+| `defaultStaleTime` routera        | 1 minuta                                      |
+| `defaultPreloadStaleTime` routera | 0                                             |
+| Wstępne ładowanie                 | `"intent"`, opóźnienie 100 ms, zasięg 1000 px |
+| Komponent ładowania               | po 200 ms, pokazywany co najmniej 300 ms      |
+| Structural sharing                | włączone                                      |
+| Przywracanie pozycji przewijania  | włączone, `"instant"`                         |
+
+`setupRouterSsrQueryIntegration({ queryClient, router })` serializuje serwerowy cache do HTML-a i hydratuje go w przeglądarce, więc strona wyrenderowana na serwerze nie pobiera ponownie tego, co już ma.
+
+Loadery zapełniają cache przez `context.queryClient.query({ ...options, staleTime: "static" })`, a komponenty czytają te same klucze przez `useSuspenseQuery(options)`. Ponieważ opcje zapytania pochodzą z tego samego pliku modułu, loader i komponent nie mogą się rozjechać.
+
+`defaultPreloadStaleTime: 0` jest celowe: najechanie na link naprawdę uruchamia loader, zamiast korzystać z zapisanego wyniku, i właśnie to czyni wstępne pobieranie obrazów w sklepie użytecznym. `ImagePrefetchService` z `src/lib/image.ts` jest tworzony raz na router i przekazywany w kontekście routera, a loadery wołają `prefetchSingleProductImage(data, context.imagePrefetchService)`.
+
+## Nadpisania dla poszczególnych zapytań
+
+| Zapytanie                                     | Zachowanie                                                                    |
+| --------------------------------------------- | ----------------------------------------------------------------------------- |
+| `messagesQueryOptions({ locale, namespace })` | `staleTime: Infinity`, `gcTime: Infinity` — przestrzeń nazw ładowana raz      |
+| `getCurrentSessionQuery`                      | `staleTime` 60 s, `retry: false`, brak odświeżania na focus i reconnect       |
+| Zapytania list administracyjnych              | `*_QUERY_STALE_MS` modułu, `refetchOnMount: false`, brak odświeżania na focus |
+| Publiczne zapytania katalogu                  | Domyślne routera; unieważniane przez hub realtime, nie odpytywane cyklicznie  |
+
+Listy administracyjne świadomie nie odświeżają się przy montowaniu ani przy powrocie do okna. Świeżość zapewnia hub Durable Object — zobacz [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation) — więc zmiana drugiego administratora przychodzi jako push, a nie jako odpytywanie.
+
+## Prepared statements
+
+Odczyty punktowe są przygotowywane raz przy ładowaniu modułu, poza jakimkolwiek żądaniem, i wykonywane z podstawionymi parametrami:
+
+```ts
+const reserveInventoryStmt = db
+  .update(inventory)
+  .set({/* … */})
+  .where(
+    and(
+      eq(inventory.id, inventoryIdPlaceholder),
+      eq(inventory.version, currentVersionPlaceholder),
+      gte(inventory.quantityAvailable, qtyPlaceholder),
+    ),
+  )
+  .returning()
+  .prepare()
+```
+
+`inventory.accessors.ts` i `product.accessors.ts` korzystają z tego wzorca: rezerwacja, zwolnienie i odczyty po `handle` są przygotowane, natomiast zapytania listowe są budowane per żądanie, bo ich filtry, sortowanie i join ze statystykami wariantów zmieniają kształt instrukcji, a prepared statement tego nie umie.
+
+## Nie ma prerenderingu
+
+Nic w `vite.config.ts` nie włącza prerenderingu TanStack Start i żadna trasa nie ma opcji `prerender`. Każda odpowiedź HTML jest renderowana na serwerze per żądanie. Konsekwencje warte zapamiętania:
+
+- Strony sklepu odzwierciedlają katalog w momencie żądania, bez kroku czyszczenia cache'u.
+- Przed aplikacją nie ma fallbacku ze statycznych zasobów; `ASSETS` serwuje wyłącznie `public/`.
+- Cache-control dla HTML-a pozostawiono domyślnym ustawieniom platformy, więc przy zmianie produktu nie ma czego unieważniać.
+
+Dwie odpowiedzi, które jawnie ustawiają `Cache-Control`, to `/sitemap.xml` i `/robots.txt` — obie `public, max-age=86400` — oraz obiekty uploadowane do R2, zapisywane z `public, max-age=31536000, immutable`.
+
+## Stan po stronie przeglądarki
+
+- **`localStorage`** przechowuje motyw (`@wrksz/themes`, klucz z `theme-init.ts`), preferencję panelu bocznego panelu administracyjnego i szerokości kolumn każdej siatki danych. Wszystkie trzy są czytane przez blokujące skrypty w `<head>` przed pierwszym renderem.
+- **Zustand z `persist`** przechowuje koszyk w `src/modules/cart/cart.store.ts`, z `CART_PERSIST_VERSION` równym 2 i type guardem per pozycja, więc nieaktualny kształt jest odrzucany, a nie rehydratowany.
+- **`BroadcastChannel`** (`marte-query-invalidation` w `query.sync.ts`) lustrzy unieważnienia do innych kart tej samej przeglądarki, bez otwierania drugiego WebSocketu.
+
+Żadne z tych miejsc nie jest źródłem prawdy. Koszyk jest ponownie walidowany po stronie serwera przez `check-cart-availability.ts`, a potem jeszcze raz w `handleCreateCheckoutSession`, które ponownie czyta ceny i stany magazynowe z D1 i odrzuca checkout, jeśli cokolwiek się zmieniło.
+
+## Co nie jest cache'owane
+
+- **Sesje.** Better Auth jest skonfigurowane z podpisanym cache'em cookie na 300 sekund, ale `getRequestSession` przekazuje `disableCookieCache: true` i przy każdym serwerowym sprawdzeniu czyta D1. Kosztem jest jeden odczyt D1 na żądanie; korzyścią to, że zbanowany lub wylogowany użytkownik nie przejedzie na zapisanym cookie. Żeby nie zamieniło się to w N odczytów, wynik jest memoizowany w `WeakMap` kluczowanej obiektem `Request` — nie globalną zmienną modułu — więc współbieżne loadery i funkcje serwerowe jednego żądania dzielą jedno wyszukanie, a nowe żądanie zawsze rewaliduje. Warto zauważyć asymetrię: przeglądarkowe `useSession()` idzie przez `/api/auth/get-session`, które cache cookie już uwzględnia.
+- **Uprawnienia.** `hasPermission` jest wyliczane z roli w sesji przy każdym wywołaniu. Żadna decyzja nie jest podejmowana na podstawie cache'owanych danych.
+- **KV.** Namespace `CACHE` jest zbindowany we wszystkich trzech środowiskach i weryfikowany przez `scripts/verify-bindings.ts`, ale dziś żaden kod aplikacji go nie czyta ani nie zapisuje.
+
+## Powiązane strony
+
+- [Cykl życia żądania](/docs/architecture/request-lifecycle)
+- [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation)
+- [Model bezpieczeństwa](/docs/architecture/security-model)

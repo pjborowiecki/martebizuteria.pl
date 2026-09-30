@@ -1,0 +1,145 @@
+---
+title: "Cart"
+description: "The basket is a persisted zustand store in the browser; the server only answers the availability question."
+---
+
+M'Arte has no server-side cart. The basket lives in `localStorage` under the key `marte-cart` and the database's `cart` and `cart_item` tables are unused. The only server round trip is a stock check.
+
+## The store
+
+`src/modules/cart/cart.store.ts` creates `useCartStore` with zustand's `persist` middleware:
+
+```ts
+{
+  migrate: (persisted) => { /* keeps only rows that pass isPersistedCartItem */ },
+  name: "marte-cart",
+  version: CART_PERSIST_VERSION,
+}
+```
+
+`CART_PERSIST_VERSION` is `2`. The `migrate` function does not transform old shapes — it re-validates every row with the `isPersistedCartItem` type guard and drops anything that does not match, so a stored basket from an older build degrades to an empty or partial basket rather than crashing the page.
+
+A line is:
+
+```ts
+export interface CartItem {
+  readonly id: string
+  readonly variantId: string
+  readonly slug: string
+  readonly title: string
+  readonly variantTitle: string
+  readonly image: string
+  readonly price: string
+  readonly rawPrice: number
+  qty: number
+}
+```
+
+`id` is always set to `variantId` by `addItem`, so **the variant is the line identity**: adding the same variant twice increments `qty` instead of creating a second line. `price` is the pre-formatted display string and `rawPrice` the minor units.
+
+Actions: `addItem`, `removeItem(id)`, `updateQuantity(id, qty)` (clamped to a minimum of 1), `clearCart`, `itemCount()` and `cartTotal()`.
+
+`useCartHydrated()` is exported alongside the store. It subscribes to `useCartStore.persist.onFinishHydration` and returns `false` until rehydration completes — every consumer that must not act on an empty pre-hydration basket uses it, most importantly the checkout guard.
+
+## Pricing
+
+`src/modules/cart/cart.pricing.ts` holds the two functions the store and the UI share:
+
+```ts
+export const getCartLineUnitPriceCents = (item: { readonly price: string; readonly rawPrice: number }): number => {
+  if (Number.isFinite(item.rawPrice) && item.rawPrice >= MIN_PRICE_CENTS) {
+    return item.rawPrice
+  }
+
+  return parseMoneyInputToMinorUnits(item.price, STORE_CURRENCY_CODE) ?? 0
+}
+
+export const getCartLineTotalCents = (item: { readonly price: string; readonly qty: number; readonly rawPrice: number }): number =>
+  getCartLineUnitPriceCents(item) * item.qty
+```
+
+`rawPrice` wins; the string parse is a fallback for baskets persisted before `rawPrice` existed. `MIN_PRICE_CENTS` and `parseMoneyInputToMinorUnits` come from `src/modules/_core/utils/currency.ts`.
+
+**Prices in the basket are a snapshot.** They are not revalidated while the basket sits in the browser. The authoritative price is read again server-side in `validateAndCalculateItems` when the Stripe session is created — see [Checkout](/docs/features/checkout).
+
+## Availability check
+
+`src/modules/cart/use-cases/check-cart-availability.ts` is the only server function in the module. It is public (`withRequest`), takes `{ lines: [{ variantId, qty }] }` and answers per line:
+
+```ts
+const availabilityByVariantId = await getAvailabilityByVariantIds(lines.map((line) => line.variantId))
+
+const issues = lines.flatMap((line) => {
+  const available = availabilityByVariantId.get(line.variantId) ?? 0
+  if (available >= line.qty) {
+    return []
+  }
+
+  return [{ available, qty: line.qty, variantId: line.variantId }]
+})
+
+return { hasUnavailableItems: issues.length > 0, issues }
+```
+
+A variant with no `inventory` row counts as `0` available.
+
+`checkCartAvailabilityQuery(lines)` is `enabled` only when there is at least one line and uses `staleTime: 0`, so the check is fresh on every mount. Its key is `[...CART_QUERY_KEYS.AVAILABILITY, lines]` — the lines are part of the key, so changing a quantity refetches. `CART_QUERY_KEYS.AVAILABILITY` is `["cart", "availability"]` and is in `STOREFRONT_REALTIME_QUERY_PREFIXES`, so a stock change pushed from the admin console re-runs the check in open tabs.
+
+`src/hooks/use-cart-availability.ts` wraps it and returns `{ hasUnavailableItems, isChecking, issues, issuesByVariantId }`. `isChecking` is true while `isPending || isFetching` and there is at least one line.
+
+## Pages and components
+
+| File                                                                     | Role                                                               |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `src/routes/_storefront.cart.tsx`                                        | `/cart`; renders `EmptyCart` when there are no lines               |
+| `.../custom/pages/cart-page/cart-item-card.tsx`                          | One line: image, titles, quantity control, remove                  |
+| `.../custom/pages/cart-page/cart-summary.tsx`                            | Totals and the checkout link                                       |
+| `.../custom/cart-availability-banner.tsx`                                | Store-wide banner, rendered by the `_storefront` layout            |
+| `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | The header badge, `items.reduce((sum, item) => sum + item.qty, 0)` |
+
+The cart page formats its own totals rather than going through `useFormatter`:
+
+```ts
+const CENTS_IN_ZLOTY = 100
+const total = cartTotal() / CENTS_IN_ZLOTY
+const subtotal = new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" }).format(total)
+```
+
+**That format is hard-coded to `pl-PL`**, so the English cart still shows Polish number formatting.
+
+## The summary is a subtotal only
+
+`cart-summary.tsx` renders three rows — subtotal, shipping and total — but shipping is the message `pages.cart.summary.shippingValue` and the total row prints the same `subtotal` value:
+
+```tsx
+<div className="flex justify-between">
+  <span className="font-medium">{t("summary.total")}</span>
+  <span className="font-medium">{subtotal}</span>
+</div>
+```
+
+Delivery cost is not known until a delivery method is chosen, which happens in checkout. The real total including shipping is computed by Stripe from the session line items.
+
+When `checkoutDisabled` is true the checkout link is replaced by a non-interactive `<span aria-disabled="true">`, so there is no clickable-but-dead button.
+
+## Blocking a bad basket
+
+Two guards use the availability result:
+
+- `/cart` disables the checkout link while `hasUnavailableItems || isChecking`.
+- `CartAvailabilityBanner` renders an `role="alert"` strip with `pages.cart.availability.banner` when lines are unavailable.
+- `/checkout` redirects back to `/cart` when the hydrated basket is empty or has stock issues. See [Checkout](/docs/features/checkout).
+
+## Abandonment tracking
+
+`src/presentation/components/custom/customer-activity-tracker.tsx` watches the store. For a signed-in visitor, when `document.visibilityState` becomes `hidden` and the basket is not empty, it calls `trackCartAbandoned({ itemCount, lineCount })` once per session (guarded by the `sessionStorage` key `customer-activity:cart-abandoned-sent`). Emptying the basket clears that flag through `resetCartAbandonedTracking()`.
+
+## The unused tables
+
+`cart` and `cart_item` exist in `src/modules/cart/cart.schema.ts` and `src/modules/cart-item/cart-item.schema.ts`, with `discount_id`, `expires_at`, `session_id` and `user_id` columns and the usual indexes, and they are exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`. Nothing reads or writes them. They are the schema for a server-side cart that has not been built; `checkout.cart_id` references `cart.id` but is never populated.
+
+## Related pages
+
+- [Checkout](/docs/features/checkout)
+- [Inventory](/docs/features/inventory)
+- [Product page](/docs/features/product-page)

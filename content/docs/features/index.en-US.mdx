@@ -1,0 +1,63 @@
+---
+title: "Introduction"
+description: "What each part of the shop does today, where its code lives, and which admin screens are still demo screens."
+---
+
+Every page in this chapter describes the code as it is in the repository, not as it is planned. A feature is **live** when it reads or writes real data through a module use case, Better Auth or Stripe. A **demo screen** renders constants from `src/data` and stores nothing. A **placeholder** renders copy from a message catalogue and has no data behind it at all.
+
+Each page names the concrete files: the route in `src/routes`, the use cases in `src/modules/{feature}/use-cases`, the tables in `src/modules/{feature}/*.schema.ts` and the components in `src/presentation/components/custom`.
+
+## Live
+
+| Area          | Pages                                                                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Storefront    | [Landing page](/docs/features/landing-page), [Catalog and search](/docs/features/catalog-and-search), [Product page](/docs/features/product-page)                        |
+| Buying        | [Cart](/docs/features/cart), [Checkout](/docs/features/checkout), [Payments](/docs/features/payments), [Shipping and delivery](/docs/features/shipping-and-delivery)     |
+| Fulfilment    | [Orders](/docs/features/orders), [Inventory](/docs/features/inventory)                                                                                                   |
+| Customers     | [Account](/docs/features/account)                                                                                                                                        |
+| Admin console | [Dashboard](/docs/features/admin-dashboard), [Catalog](/docs/features/admin-catalog), [Customers](/docs/features/admin-customers), [Audit log](/docs/features/audit-log) |
+| Platform      | [Transactional email](/docs/features/email), [Internationalization](/docs/features/internationalization), [Legal pages](/docs/features/legal-pages)                      |
+
+## Demo screens
+
+These routes exist, render fully and are covered by component tests, but their rows come from `src/data`:
+
+| Route                    | Data module                | Described in                                      |
+| ------------------------ | -------------------------- | ------------------------------------------------- |
+| `/admin/coupons`         | `src/data/coupons.ts`      | [Discounts](/docs/features/discounts)             |
+| `/admin/orders/$orderId` | `src/data/order-detail.ts` | [Orders](/docs/features/orders)                   |
+| `/admin/marketing`       | `src/data/marketing.ts`    | [Admin dashboard](/docs/features/admin-dashboard) |
+| `/admin/content`         | `src/data/content.ts`      | [Admin dashboard](/docs/features/admin-dashboard) |
+| `/admin/settings`        | `src/data/settings.ts`     | [Admin dashboard](/docs/features/admin-dashboard) |
+
+## Placeholders
+
+- `/account/wishlist` and `/account/payment` render an empty state with a hard-coded count of `0`. See [Account](/docs/features/account).
+- `/terms-of-service` renders a title, one paragraph and a link home from `messages/{locale}/pages.terms-of-service.json`. The two real legal documents are MDX. See [Legal pages](/docs/features/legal-pages).
+- The newsletter form in `newsletter-section.tsx` is an `Input` and a `type="button"` with no handler. See [Landing page](/docs/features/landing-page).
+
+## Schema without behaviour
+
+Some tables are declared in `src/modules/*/`, exported from `src/integrations/drizzle-orm/drizzle.schemas.ts` and created by the migrations, but nothing reads or writes them yet:
+
+| Table               | Module                                      | Why it is unused                                                                                   |
+| ------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `discount`          | `src/modules/discount`                      | No code references it. See [Discounts](/docs/features/discounts).                                  |
+| `cart`, `cart_item` | `src/modules/cart`, `src/modules/cart-item` | The basket lives in the browser. See [Cart](/docs/features/cart).                                  |
+| `order_address`     | `src/modules/order-address`                 | Order addresses are read back through `checkout` → `address`. See [Orders](/docs/features/orders). |
+
+## How to read a feature page
+
+Every page follows the same shape:
+
+1. **Routes** — the files under `src/routes` and the guards in their `beforeLoad`.
+2. **Server functions** — the `createServerFn` exports in `use-cases/`, their middleware and their query or mutation options.
+3. **Data** — the tables and columns the feature touches.
+4. **Components** — the UI under `src/presentation/components/custom`.
+5. **Related pages** — links onward.
+
+## Related pages
+
+- [Architecture: modules and use cases](/docs/architecture/modules-and-use-cases)
+- [Architecture: routing](/docs/architecture/request-lifecycle)
+- [Reference: database schema](/docs/integrations/drizzle-orm-d1)

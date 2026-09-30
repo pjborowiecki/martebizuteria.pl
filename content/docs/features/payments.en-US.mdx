@@ -1,0 +1,204 @@
+---
+title: "Payments"
+description: "Stripe Checkout Sessions in elements mode, the eight webhook events, the payment table and how a paid session becomes an order."
+---
+
+Stripe is the only payment provider. There is no other adapter and `payment.provider` is typed as the literal `"stripe"`.
+
+## Clients
+
+| File                                           | What it is                                                                                                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/integrations/stripe/stripe.server.ts`     | The server SDK: `new StripeServer(env.STRIPE_SECRET_KEY, { apiVersion, appInfo: { name: APP_NAME }, httpClient: StripeServer.createFetchHttpClient() })` |
+| `src/integrations/stripe/stripe.client.ts`     | `getStripe(locale)` — a memoised `loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)`                                                               |
+| `src/integrations/stripe/stripe.appearance.ts` | `getStripeAppearance("light" \| "dark")` for the Elements theme                                                                                          |
+
+`createFetchHttpClient()` matters: the Node HTTP client does not work inside a Cloudflare Worker.
+
+The pinned API version is in `stripe.constants.ts`:
+
+```ts
+export const STRIPE_API_VERSION = "2026-08-26.dahlia" as const
+```
+
+`getStripe` maps the app locale to a Stripe Elements locale (`pl-PL → pl`, `en-US → en`, anything else `auto`) and warns to the console when the publishable key is missing rather than throwing, so a misconfigured dev environment still renders.
+
+## Currency and methods
+
+```ts
+const STRIPE_CURRENCY_BY_CODE = { PLN: "pln" } as const satisfies Record<SupportedCurrencyCode, string>
+export const STRIPE_CURRENCY = STRIPE_CURRENCY_BY_CODE[STORE_CURRENCY_CODE]
+export const CHECKOUT_PAYMENT_METHOD_ORDER = ["card", "blik", "p24"] as const
+```
+
+`STORE_CURRENCY_CODE` is `"PLN"` (`src/modules/_core/constants/currency.ts`) and `SUPPORTED_CURRENCY_CODES` contains only `PLN`, so the `satisfies` constraint forces a new currency to be added in both places at once. BLIK and Przelewy24 are the two Polish methods offered alongside cards; wallets and Link are disabled in `PAYMENT_ELEMENT_OPTIONS`.
+
+## The session
+
+Sessions are created with `ui_mode: "elements"`, which means the card form is embedded in `/checkout` rather than redirecting to a Stripe-hosted page:
+
+```ts
+const session = await stripe.checkout.sessions.create({
+  customer_email: email,
+  line_items: toLineItems(lines, shippingCost),
+  metadata,
+  mode: "payment",
+  payment_intent_data: { metadata, receipt_email: email },
+  return_url: returnUrl,
+  ui_mode: "elements",
+})
+```
+
+`returnUrl` is `${resolveOrigin()}/checkout?success=true`, where `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL` from `src/presentation/branding/app.ts`.
+
+The same `metadata` object is attached to the session and to the payment intent, so a webhook that only has the intent can still find the checkout. It carries `checkoutId`, `locale` (from `getCurrentLocale()`), `userId` (empty string for a guest) and the chunked `items0…N` list.
+
+Line items are built from the server-validated prices, plus a literal `"Shipping"` line when the delivery method costs more than zero. The line-item names come from `lineTitle`, which is `"<product title> — <variant title>"` unless the variant title is empty.
+
+## The payment row
+
+`payment` (`src/modules/payment/payment.schema.ts`):
+
+| Column            | Notes                                                              |
+| ----------------- | ------------------------------------------------------------------ |
+| `checkout_id`     | `references(() => checkout.id, { onDelete: "cascade" })`, not null |
+| `amount`          | Minor units, not null                                              |
+| `currency`        | 3 characters, default `"PLN"`                                      |
+| `provider`        | Not null; the only value written is `"stripe"`                     |
+| `transaction_id`  | The Stripe **Checkout Session id**, with a unique index            |
+| `status`          | `pending \| succeeded \| failed \| refunded`, default `pending`    |
+| `refunded_amount` | Minor units, default `0`                                           |
+| `refunded_at`     | Nullable timestamp                                                 |
+
+`transaction_id` holding the session id — not the payment intent id — is why several webhook handlers call `resolveTransactionId(paymentIntent)`, which lists sessions filtered by `payment_intent` and takes the first one.
+
+Accessors in `payment.accessors.ts`: `createPendingPayment`, `getPaymentByTransactionId`, `getPaymentContextByTransactionId` (joins through to the checkout's `email` and `userId`) and `repointPayment` (moves a row from an expired session id to a new one, updating the amount).
+
+## The webhook endpoint
+
+`src/routes/api/webhooks.stripe.ts` — a `POST` route handler, not a server function:
+
+```ts
+const signature = request.headers.get("stripe-signature")
+
+if (signature === null || !env.STRIPE_WEBHOOK_SECRET) {
+  return new Response("Missing signature or webhook secret", { status: HTTP_STATUS.BAD_REQUEST })
+}
+
+const event = await verifiedStripeEvent(request, signature, env.STRIPE_WEBHOOK_SECRET)
+```
+
+`verifiedStripeEvent` uses `stripe.webhooks.constructEventAsync` — the async variant is required on Workers, where the crypto API is promise-based. A failed verification logs and returns 400.
+
+An event type with no handler logs `[Stripe] Safely ignoring unhandled event` and returns `200`, so Stripe does not retry events the shop does not care about. A handler that throws returns `500`, so Stripe **does** retry.
+
+## The eight handled events
+
+`webhookHandlers` in `src/integrations/stripe/stripe.webhooks.tsx` (a `.tsx` file because it builds the confirmation email element):
+
+| Event                                      | Handler                        | Effect                                                                    |
+| ------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------- |
+| `checkout.session.completed`               | `handleFulfillCheckoutSession` | Creates the order                                                         |
+| `checkout.session.async_payment_succeeded` | `handleFulfillCheckoutSession` | Same, for BLIK/P24 settling later                                         |
+| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` | Releases the reservation, marks payment and checkout `failed`             |
+| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | Same                                                                      |
+| `payment_intent.payment_failed`            | `handlePaymentIntentFailed`    | Audit entry and a warning log only — no state change                      |
+| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` with `restock: true`                                        |
+| `charge.dispute.created`                   | `handleChargeDisputeCreated`   | `flagOrderDispute`, audit entry, admin-orders invalidation                |
+| `charge.dispute.closed`                    | `handleChargeDisputeClosed`    | Lost → `refundOrder` with `restock: false`; otherwise `clearOrderDispute` |
+
+The keys come from `STRIPE_WEBHOOK_EVENTS` in `stripe.constants.ts`, so the constant is the list of events to register in the Stripe dashboard.
+
+## Fulfilment
+
+`handleFulfillCheckoutSession` first filters on payment status:
+
+```ts
+const FULFILLABLE_PAYMENT_STATUSES = new Set<StripeType.Checkout.Session["payment_status"]>(["no_payment_required", "paid"])
+```
+
+A `checkout.session.completed` with `payment_status: "unpaid"` — normal for BLIK and P24 — logs and returns, and the order is created later by `async_payment_succeeded`.
+
+Then it parses the item lines out of the metadata, calls `fulfillCheckout` and, if an order id comes back:
+
+1. `recordOrderPlacedAudit(orderId, …)` and `recordOrderPaymentCapturedAudit(orderId, …)` with the formatted amount.
+2. `scheduleAdminOrdersInvalidation()` and `scheduleProductCatalogInvalidation()`.
+3. `notifyOrderConfirmed(session, { currency, lines, orderId })`.
+
+`fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) resolves the pending checkout from the transaction id and runs one D1 batch built by `prepareFulfillCheckoutBatch`:
+
+```ts
+statements: [
+  db.update(payment).set({ status: "succeeded" }).where(eq(payment.transactionId, transactionId)),
+  db
+    .update(checkout)
+    .set({ status: "completed" })
+    .where(and(eq(checkout.id, context.checkoutId), eq(checkout.status, "pending"))),
+  db.insert(order).values({/* … */}),
+  ...tail, // orderItem insert + one inventory update per line
+]
+```
+
+The `checkout` update is conditional on `status = "pending"`, which makes the whole webhook **idempotent**: a redelivered event finds the checkout already `completed`, `resolvePendingCheckout` returns `undefined` and `fulfillCheckout` returns without writing anything.
+
+The order totals are derived, not taken from the client: `itemsSubtotal` is the sum of `price * qty` over the metadata lines and `shippingTotal = Math.max(amount - itemsSubtotal, 0)`, where `amount` is `session.amount_total`.
+
+The reservation is converted, not released: each line runs `quantityReserved = quantityReserved - qty`, leaving `quantityAvailable` as it was after the reservation. See [Inventory](/docs/features/inventory).
+
+## Release
+
+`prepareReleaseCheckoutBatch` sets the payment to `failed`, the checkout to `failed`, and gives the stock back:
+
+```ts
+db.update(inventory)
+  .set({
+    quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${line.qty})`,
+    quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${line.qty})`,
+  })
+  .where(eq(inventory.variantId, line.variantId))
+```
+
+The `min`/`max` clamps mean a double release cannot inflate available stock beyond what was actually reserved.
+
+Release lines are parsed with `checkoutReleaseLinesSchema`, which is `.loose()` — it accepts the full fulfilment line shape and only requires `variantId` and `qty`.
+
+## Refunds and disputes
+
+`handleChargeRefunded` resolves the session from the charge's payment intent and calls `refundOrder({ fullyRefunded: charge.amount_refunded >= charge.amount, refundedAmount: charge.amount_refunded, restock: true, transactionId })`.
+
+`refundOrder` (`src/modules/order/use-cases/refund-order.ts`) is **not** a server function — it is a plain async function callable only from the webhook. It returns early when the payment is already `refunded`, so a redelivered refund event is a no-op. Restocking only happens for a full refund:
+
+```ts
+if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
+  const lines = await getRestockLinesForOrder(settled.orderId)
+  ...
+}
+```
+
+`prepareRefundBatch` writes `refundedAmount`, `refundedAt` and `status` (`refunded` when fully refunded, otherwise back to `succeeded`), sets the order to `refunded` on a full refund, and adds `quantityAvailable + quantity` per restock line.
+
+Disputes are stored in `order.metadata` rather than in columns: `flagOrderDispute` merges `{ id, reason, status, amount }` into the JSON with `mergeDisputeMetadata` (`order.display.utils.ts`). A lost dispute is treated as a full refund with `restock: false` and logs `review inventory manually` — the goods are gone, so the stock is not returned.
+
+## Local testing
+
+```bash
+bun run stripe:listen
+```
+
+runs `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`. Put the signing secret that command prints into `STRIPE_WEBHOOK_SECRET`.
+
+## Secrets
+
+`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are declared in the `secrets.required` list of every environment in `wrangler.jsonc`. `VITE_STRIPE_PUBLISHABLE_KEY` is a browser variable and must be present at build time, since it is inlined by Vite.
+
+## No admin refund button
+
+`/admin/orders/$orderId` shows Print, Refund and Fulfill buttons, but that screen is a demo built on `src/data/order-detail.ts` and none of the buttons are wired. Refunds happen in the Stripe dashboard and reach M'Arte as `charge.refunded`. `canRefundAdminOrder` exists in `order.admin-actions.utils.ts` and the `order: ["refund"]` permission exists in `auth.access.ts`, but no server function uses them.
+
+## Related pages
+
+- [Checkout](/docs/features/checkout)
+- [Orders](/docs/features/orders)
+- [Inventory](/docs/features/inventory)
+- [Transactional email](/docs/features/email)
+- [Integrations: Stripe](/docs/integrations/stripe)

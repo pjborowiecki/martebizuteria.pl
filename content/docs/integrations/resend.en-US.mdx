@@ -1,0 +1,158 @@
+---
+title: "Resend"
+description: "The six transactional e-mails, how they are composed, and how to preview them."
+---
+
+Every e-mail the shop sends goes out through Resend. The adapter in `src/integrations/resend/` holds the client, one `sendEmail` helper, the builders that turn order rows into e-mail props, and the developer preview renderer. The React Email templates themselves live in `src/presentation/emails/`, because they are presentation.
+
+## The client and the send helper
+
+```ts
+import { env } from "cloudflare:workers"
+
+import { Resend } from "resend"
+
+export const resend = new Resend(env.RESEND_API_KEY)
+```
+
+`resend.send.ts` is the only thing that calls it, and it never throws:
+
+```ts
+export const sendEmail = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  try {
+    const { error } = await resend.emails.send({
+      from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
+      react,
+      subject,
+      to,
+    })
+
+    return error?.message
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
+}
+```
+
+It returns `undefined` on success and the failure message otherwise. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`.
+
+## The six e-mails
+
+| E-mail             | Template                                         | Namespace                   | Sent from                                                                               |
+| ------------------ | ------------------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------- |
+| Verify e-mail      | `src/presentation/emails/verify-email.tsx`       | `emails.verify-email`       | `sendVerificationEmail` in `auth.server.ts`, on sign-up                                 |
+| Reset password     | `src/presentation/emails/reset-password.tsx`     | `emails.reset-password`     | `sendResetPassword` in `auth.server.ts`                                                 |
+| Change e-mail      | `src/presentation/emails/change-email.tsx`       | `emails.change-email`       | `sendChangeEmailConfirmation` in `auth.server.ts`                                       |
+| Account deleted    | `src/presentation/emails/account-deleted.tsx`    | `emails.account-deleted`    | `sendAccountDeletedEmail`, scheduled by `src/modules/user/use-cases/delete-customer.ts` |
+| Order confirmation | `src/presentation/emails/order-confirmation.tsx` | `emails.order-confirmation` | `stripe.webhooks.tsx` after a checkout session is fulfilled                             |
+| Order shipped      | `src/presentation/emails/order-shipped.tsx`      | `emails.order-shipped`      | `notifyOrderShipped`, scheduled by `src/modules/order/use-cases/ship-order.ts`          |
+
+The first four are described in [Better Auth](/docs/integrations/better-auth); the last two are the ones this adapter builds.
+
+Each template exports its own namespace constant beside the component, so the caller cannot drift from the messages it renders:
+
+```ts
+export const ORDER_SHIPPED_NAMESPACE = "emails.order-shipped"
+```
+
+## Composition, and why messages are passed in
+
+An e-mail is rendered on the Worker, outside React context, so there is no `IntlProvider` to read. Every template therefore takes `locale` and `messages` as props, and the subject is produced with `createTranslator`:
+
+```ts
+const messages = await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })
+const failure = await sendEmail({
+  react: createElement(OrderShipped, { accountCta, details, locale, messages, orderId: orderRow.id }),
+  subject: createTranslator({ locale, messages })("subject"),
+  to: orderRow.email,
+})
+```
+
+The `typeof orderShippedMessages` import is a _type-only_ import of the English JSON file (`import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"`), so the template's message object is fully typed and a missing Polish key is a type error rather than a runtime blank.
+
+`src/presentation/emails/email-layout.tsx` wraps every template: the `M'ARTE` wordmark, a gold rule, a translated tagline, the body and a footer, inside `react-email`'s `Tailwind` with an inline config from `email-styles.ts`. It forces `color-scheme: light only`, because mail clients' dark-mode inversion destroys the design.
+
+## Order e-mail builders
+
+`order-confirmation.utils.ts` turns database rows into template props:
+
+| Export                                                         | Purpose                                                                                 |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `formatEmailAddress(addressRow)`                               | One multi-line postal address string, or `undefined`                                    |
+| `resolveDeliveryMethodLabel(context, unavailable)`             | The customer-facing delivery label, falling back to the translated "unavailable" text   |
+| `buildOrderConfirmationDetails(...)`                           | The whole details block: addresses, delivery method, payment method, customer note      |
+| `buildOrderConfirmationItems(lines, locale)`                   | The item rows, with formatted prices and product URLs                                   |
+| `buildOrderAccountCta({ isGuest, locale, messages, orderId })` | Either "create an account and track this order" or a link into `/account/orders/<id>`   |
+| `resolveStripePaymentMethodLabel(session, messages)`           | Reads the PaymentIntent to name the method the customer actually used (card, BLIK, P24) |
+
+`order-shipped.utils.ts` reuses them for the shipped e-mail: `buildOrderShippedDetails` picks the delivery timing string by the method's `type` (`courier`, `locker` or `in_store`), and `buildOrderShippedAccountCta` delegates to `buildOrderAccountCta`.
+
+`order-shipped.notification.server.ts` is the whole shipped-e-mail flow. `notifyOrderShipped(orderId)` loads the order with `getOrderForShippedEmail`, returns silently if there is no e-mail address, resolves the locale from `order.metadata` with `resolveOrderLocale`, loads the checkout context when there is a `checkoutId`, renders, sends, and records the outcome:
+
+```ts
+recordOrderEmailOutcome({ failure, label: `Order shipped → ${orderRow.email}`, orderId: orderRow.id })
+```
+
+The locale comes from the order rather than from the current request, so a customer who ordered in Polish is written to in Polish even when an English-speaking admin clicks the button.
+
+## Backgrounding
+
+Neither order e-mail blocks its caller. `ship-order.ts` schedules it:
+
+```ts
+recordOrderShippedAudit(orderId)
+scheduleBackgroundWork(notifyOrderShipped(orderId))
+
+return { ok: true, orderId }
+```
+
+`scheduleBackgroundWork` puts the promise on `ctx.waitUntil` through the `AsyncLocalStorage` store set up in `src/server.ts`, and swallows and logs a rejection. The admin's request returns as soon as the database is updated.
+
+## Audit trail
+
+Sends are recorded, not just logged. `recordOrderEmailOutcome({ failure, label, orderId })` in `src/modules/audit-log/audit-log.events.server.ts` writes a success or failure entry, and the confirmation flow additionally calls `recordEmailFailedAudit(orderId, …)` when the payload could not even be _prepared_ — a missing customer e-mail, an unparseable metadata block. Both appear in `/admin/audit`.
+
+## Previewing templates
+
+`email-previews.tsx` declares one entry per template:
+
+```ts
+export const EMAIL_PREVIEWS = {
+  "account-deleted": { element: async (locale) => <AccountDeleted … />, label: "Account deleted" },
+  "change-email": { … },
+  "order-confirmation": { … },
+  "order-shipped": { … },
+  "reset-password": { … },
+  "verify-email": { … },
+} satisfies Record<string, EmailPreview>
+```
+
+Each `element` loads the real message namespace for the requested locale and fills the props with fixtures — `PREVIEW_NAME`, `PREVIEW_ORDER_ID`, a Polish `PREVIEW_ADDRESS`, two order items priced in grosze. `renderEmailPreview(slug, locale, plainText)` renders through `react-email`'s `render`, so you see what the recipient sees, including the plain-text alternative.
+
+`src/routes/dev.emails.tsx` serves them:
+
+```bash
+bun run dev
+# http://localhost:3000/dev/emails
+# http://localhost:3000/dev/emails?template=order-confirmation&locale=pl-PL
+# http://localhost:3000/dev/emails?template=order-confirmation&locale=pl-PL&format=text
+```
+
+With no `template` parameter it renders an index linking every template in both locales, in HTML and in plain text. The handler returns 404 unless `import.meta.env.DEV`, so the route is inert in preview and production. Nothing is sent — this is a renderer, not a test send.
+
+## Changing a template
+
+1. Edit the component in `src/presentation/emails/`.
+2. Add or change keys in **both** `messages/en-US/emails.<name>.json` and `messages/pl-PL/emails.<name>.json`. A key missing from Polish is a type error, because the props are typed off the English file.
+3. Check both locales and both formats at `/dev/emails`.
+4. If props changed, update the fixture in `email-previews.tsx`. `src/integrations/resend/__test__/email-previews.test.ts` asserts the exact slug-and-label list, renders previews to plain text and checks them against the real copy in `messages/en-US/emails.*.json` and `messages/pl-PL/emails.verify-email.json`, so a broken template or a renamed key fails the test run.
+
+## Secrets
+
+`RESEND_API_KEY` and `RESEND_EMAIL_FROM`, both in `secrets.required` for all three environments in `wrangler.jsonc`.
+
+## Related pages
+
+- [Better Auth](/docs/integrations/better-auth)
+- [E-mail templates](/docs/features/email)
+- [Audit log](/docs/features/audit-log)

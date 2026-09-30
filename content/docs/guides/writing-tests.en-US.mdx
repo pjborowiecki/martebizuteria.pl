@@ -1,0 +1,260 @@
+---
+title: "Writing tests"
+description: "The three Vitest projects, where tests live, the shared helpers, the mocking patterns for server functions and routes, and the coverage gates."
+---
+
+There are 873 test files in `src/`. Tests live beside the code they cover, in a `__test__/` folder, named after the source file. They run through `vite-plus/test` — always import `describe`, `it`, `expect` and `vi` from there, never from `vitest` directly.
+
+## The three projects
+
+`vite.config.ts` defines three Vitest projects, distinguished by filename:
+
+| Project       | Files                                           | Environment | Setup                           | Count |
+| ------------- | ----------------------------------------------- | ----------- | ------------------------------- | ----- |
+| `node`        | `*.test.ts` / `*.test.tsx`, minus the other two | `node`      | none                            | ~330  |
+| `integration` | `*.integration.test.ts`                         | `node`      | none                            | 30    |
+| `component`   | `*.component.test.tsx`                          | `jsdom`     | `src/platform/testing/setup.ts` | 511   |
+
+```sh
+bun run test              # all three
+bun run test:unit         # node only
+bun run test:integration  # integration only
+bun run test:component    # component only
+bun run test:watch        # watch mode
+bun run test:changed      # only tests affected by your changes
+bun run test:coverage     # all three, with coverage
+```
+
+`passWithNoTests: false` is set, so a project that matches nothing is a failure. `env: loadEnv("test", ...)` loads `.env.test`, which holds dummy values for every secret — so the auth and Stripe modules can be imported without real credentials.
+
+## Naming a test file
+
+| Source                                          | Test                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------ |
+| `src/modules/_core/utils/csv.ts`                | `src/modules/_core/utils/__test__/csv.test.ts`                           |
+| `src/modules/address/use-cases/*.ts`            | `src/modules/address/use-cases/__test__/address-use-cases.test.ts`       |
+| `src/routes/admin.catalog.categories.index.tsx` | `src/routes/__test__/admin.catalog.categories.index.component.test.tsx`  |
+| A loader, tested apart from its component       | `src/routes/__test__/account.addresses.loader.test.ts`                   |
+| A query that needs real SQL                     | `src/modules/_core/utils/__test__/search-conditions.integration.test.ts` |
+
+Small modules put every operation in one file; large ones split by concern, as the `_core/utils` tests do (`currency.test.ts`, `currency.configuration.test.ts`, `currency.zero-decimal.test.ts`).
+
+Test files get a relaxed lint override in `vite.config.ts` — `no-await-in-loop`, `no-magic-numbers` and `unicorn/no-null` are off — but everything else still applies, including the ban on `any` and on suppressions.
+
+## A unit test
+
+Plain functions need no ceremony. `src/modules/_core/utils/__test__/csv.test.ts`:
+
+```ts
+import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+
+import { downloadCsvFile, escapeCsvField } from "~/src/modules/_core/utils/csv"
+
+describe("escapeCsvField", () => {
+  it("doubles embedded quotes so the field survives a round trip", () => {
+    expect(escapeCsvField('Ring "Aurora"')).toBe('Ring ""Aurora""')
+  })
+})
+```
+
+Two things to copy. First, the `it` description states the **behaviour and why it matters**, not the mechanics — "doubles embedded quotes so the field survives a round trip", not "escapes quotes". Second, browser globals are stubbed with `vi.stubGlobal` and released in `afterEach` with `vi.unstubAllGlobals()`:
+
+```ts
+vi.stubGlobal("URL", { createObjectURL, revokeObjectURL })
+vi.stubGlobal("document", { createElement: vi.fn(() => anchor) })
+```
+
+## Testing a server function
+
+Use-case tests mock three things: the middleware module, the database module, and the accessors module. Then they replace `createServerFn` with a fake builder that injects a known session. From `src/modules/address/use-cases/__test__/address-use-cases.test.ts`:
+
+```ts
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
+  RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
+  authorized: () => ({}),
+  withRateLimit: (...args: unknown[]) => {
+    middleware.rateLimitCalls.push(args)
+
+    return {}
+  },
+}))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
+  db: { query: { address: { findMany: database.findMany } } },
+}))
+vi.mock("~/src/modules/address/address.accessors", () => ({
+  createUserAddress: accessors.create,
+  deleteUserAddress: accessors.delete,
+  setDefaultUserAddress: accessors.setDefault,
+  updateUserAddress: accessors.update,
+}))
+vi.mock("@tanstack/react-start", () => ({
+  createServerFn: () => {
+    const builder = {
+      handler: (handler: (options: { context: unknown; data: unknown }) => unknown) => (options?: { data?: unknown }) =>
+        handler({ context: { auth: { user: { id: USER_ID } } }, data: options?.data }),
+      middleware: () => builder,
+      validator: (validate: (input: unknown) => unknown) => {
+        const validating = {
+          handler: (handler: (options: { context: unknown; data: unknown }) => unknown) => (options?: { data?: unknown }) =>
+            handler({ context: { auth: { user: { id: USER_ID } } }, data: validate(options?.data) }),
+          middleware: () => validating,
+          validator: () => validating,
+        }
+
+        return validating
+      },
+    }
+
+    return builder
+  },
+}))
+```
+
+The fake builder still runs the **real validator**, so schema failures are exercised. The mocks are declared with `vi.hoisted` so they exist before the module factories run:
+
+```ts
+const accessors = vi.hoisted(() => ({
+  create: vi.fn(),
+  delete: vi.fn(),
+  setDefault: vi.fn(),
+  update: vi.fn(),
+}))
+```
+
+What such a test should cover:
+
+- **The session, not the input, supplies the user.** `expect(accessors.create).toHaveBeenCalledExactlyOnceWith({ ...fields, userId: USER_ID })`.
+- **Optional fields survive.** Pass `phone` and `postalCode` and assert they reach the accessor.
+- **The rate limiter is configured.** `expect(middleware.rateLimitCalls).toContainEqual(["create-user-address", { limit: 5, windowSeconds: 60 }])`.
+- **Invalid input is rejected**, with `it.each` over the bad cases.
+- **Every code the handler throws.** A missing row must produce `NOT_FOUND`, a duplicate handle `CONFLICT`, and so on.
+
+## Testing with real SQL
+
+For a query whose correctness _is_ the SQL — escaping, `LIKE` semantics, index-dependent ordering — write an integration test against a real SQLite database in memory:
+
+```ts
+import { drizzle } from "drizzle-orm/d1"
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+import { DatabaseSync } from "node:sqlite"
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test"
+
+import { createTestD1Database } from "~/src/platform/testing/mocks/d1"
+
+import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
+
+const sqlite = new DatabaseSync(":memory:")
+
+const database = drizzle(createTestD1Database(sqlite))
+```
+
+`createTestD1Database` in `src/platform/testing/mocks/d1.ts` adapts Node's `node:sqlite` to the `D1Database` surface — `prepare`, `bind`, `all`, `run`, `raw` and a `batch` that wraps the statements in a real `begin`/`commit`/`rollback`. It also takes an optional `onQuery` callback, so a test can assert on the SQL that was actually issued.
+
+Declare the table locally rather than importing the production schema when you only need a few columns, create it in `beforeAll`, and `sqlite.close()` in `afterAll`. That search test is a good example of what integration tests are _for_: it feeds in `100%`, `ring_1`, `path\`, `%_\` and `x' OR 1=1 --` and asserts each one matches as literal text.
+
+## Testing a component
+
+`renderWithProviders` in `src/platform/testing/lib/render.tsx` wraps the tree in `IntlProvider`, `QueryClientProvider` and `RouterContextProvider`:
+
+```tsx
+const { queryClient, router } = renderWithProviders(<CategoriesTable />)
+```
+
+The defaults are a fresh `QueryClient` with retries off, and a memory-history router at `/`. Pass `queryClient` or `router` to override, and `createTestRouter("/some/path")` for a different starting path.
+
+Messages come from `src/platform/testing/lib/messages.ts`, which eagerly globs **every** file in `messages/en-US/` and builds the whole tree with `buildMessageTree`. The test locale is therefore always `en-US`. The practical consequence: a component that uses a key missing from the English catalogue fails in its component test, which is the repository's main guard against untranslated strings.
+
+`src/platform/testing/setup.ts` runs before every component test and stubs what jsdom lacks: `IntersectionObserver`, `ResizeObserver` (the stub reports a fixed 1024×768, which the data grid's column measurement needs) and `matchMedia` (always `matches: false`). It also installs two global mocks:
+
+```ts
+vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
+  const actual = await importOriginal()
+  const { withTestRpc } = await import("~/src/platform/testing/lib/server-function")
+
+  return {
+    ...actual,
+    createServerFn: new Proxy(actual.createServerFn, {
+      apply: (target, thisArg, args: unknown[]) => withTestRpc(Reflect.apply(target, thisArg, args)),
+    }),
+  }
+})
+```
+
+`withTestRpc` in `src/platform/testing/lib/server-function.ts` wraps every server function so calling it runs the handler in-process inside `runWithStartContext`, rather than attempting an HTTP round trip. `getRequest` is also mocked to return a fixed `Request` for `http://127.0.0.1:3000/`. So in a component test a server function **runs for real, through its real middleware and validator** — mock the module if you want it not to.
+
+## Testing a route
+
+Routes are tested by intercepting `createFileRoute` and capturing the options object:
+
+```tsx
+const captured: { current: CategoriesRouteDefinition | undefined } = { current: undefined }
+
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof ReactRouter>()
+
+  return {
+    ...actual,
+    createFileRoute: () => (options: CategoriesRouteDefinition) => {
+      captured.current = options
+
+      return { options }
+    },
+  }
+})
+
+await import("~/src/routes/admin.catalog.categories.index")
+
+const route = captured.current
+```
+
+Note the `await import(...)` **after** the mocks — the route module must be loaded once the interception is in place, which is why these files have imports below their `vi.mock` calls. That inverted order is deliberate, not an oversight.
+
+With the options in hand you can assert on `staleTime`, `shouldReload` and `staticData.namespaces`, call `loader({ context: { queryClient } })` and check that the right queries were warmed, and render `component` through `renderWithProviders`. Heavy child components are usually stubbed:
+
+```tsx
+vi.mock("~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-table", async () => {
+  const { useCategoriesSheet } =
+    await import("~/src/presentation/components/custom/pages/admin/catalog/categories/hooks/use-categories-sheet")
+
+  return {
+    CategoriesTableContent: (): JSX.Element => {
+      const { mode, open } = useCategoriesSheet()
+
+      return <p>{`${mode}|${String(open)}`}</p>
+    },
+  }
+})
+```
+
+That stub renders the state under test as text, so the assertion is a single `screen.getByText("create|true")`.
+
+## Coverage
+
+`bun run test:coverage` uses the v8 provider and enforces thresholds:
+
+```ts
+thresholds: {
+  autoUpdate: false,
+  branches: 69,
+  functions: 68,
+  lines: 71,
+  statements: 72,
+}
+```
+
+Excluded from coverage: test files, `__test__/` folders, `.d.ts` files, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` (vendored primitives) and `src/platform/testing/**`. `autoUpdate: false` means the numbers do not creep down on their own — if your change drops coverage below a threshold, add tests rather than lowering the gate.
+
+CI (`.github/workflows/ci.yml`) runs `bun run check`, then `bun run test:coverage`, then `bun run build:preview`, and uploads the coverage report as an artifact.
+
+## Assertions worth knowing
+
+- `toHaveBeenCalledExactlyOnceWith(...)` — used throughout, and stronger than a `toHaveBeenCalledWith` plus a call-count check.
+- `toStrictEqual` rather than `toEqual`, so a stray `undefined` property fails.
+- `it.each([...])("refuses the incomplete address %j", (data) => ...)` for table-driven cases.
+- jsdom matchers from `@testing-library/jest-dom` are extended in the setup file and typed through `src/platform/testing/vitest-env.d.ts`, so `toBeInTheDocument()` and friends work in component tests.
+
+## Related guides
+
+- [Add a use case](/docs/guides/add-a-use-case)
+- [Add a data table](/docs/guides/add-a-data-table)
+- [Local debugging](/docs/guides/local-debugging)

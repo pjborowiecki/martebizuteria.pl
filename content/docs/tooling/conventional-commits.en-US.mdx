@@ -1,0 +1,109 @@
+---
+title: "Conventional commits"
+description: "The commit subject format, the emoji prefix the hook adds, and what makes a commit fail."
+---
+
+Commit subjects follow the Conventional Commits shape:
+
+```
+<type>(<scope>): <description>
+```
+
+The scope is optional and a `!` before the colon marks a breaking change. Write the subject **without** an emoji — the hook adds it:
+
+```sh
+git commit -m "fix(checkout): keep the reserved quantity when a card is declined"
+```
+
+That commit lands as:
+
+```
+🐛 fix(checkout): keep the reserved quantity when a card is declined
+```
+
+## The hook
+
+`.vite-hooks/prepare-commit-msg` is one line:
+
+```sh
+bun scripts/commit-msg.ts "$1" "$2"
+```
+
+Git passes the message file path as `$1` and the message source as `$2`. `scripts/commit-msg.ts` reads the file, finds the first line that is neither blank nor a `#` comment, and decides what to do with it.
+
+| Type       | Emoji |
+| ---------- | ----- |
+| `build`    | 🛠️    |
+| `chore`    | ♻️    |
+| `ci`       | ⚙️    |
+| `docs`     | 📚    |
+| `feat`     | ✨    |
+| `fix`      | 🐛    |
+| `perf`     | 🚀    |
+| `refactor` | 📦    |
+| `revert`   | 🗑️    |
+| `style`    | 💎    |
+| `test`     | 🚨    |
+
+Eleven types, and nothing else. The hook prefixes the matching emoji to the subject line and leaves the body untouched.
+
+## What fails
+
+Two things abort the commit with exit code 1.
+
+**A subject that does not match the conventional pattern** — the hook tests against `/^([a-z]+)(?:\([^)]*\))?!?:\s/`, so the type must be lower-case letters, the scope must be parenthesised if present, and a space must follow the colon:
+
+```
+❌  Commit message does not follow conventional format.
+   Expected: <type>(<scope>): <description>
+   Allowed types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test
+```
+
+**A well-formed subject with an unknown type** — `wip: …` or `feature: …`:
+
+```
+❌  Unknown commit type: "feature"
+   Allowed types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test
+```
+
+## What is left alone
+
+The hook returns without touching the message in five cases:
+
+- the message source is `squash`, `merge` or `template`;
+- the message is empty, or has no non-comment line;
+- the subject already starts with an emoji, tested with `/^\p{Emoji_Presentation}/u` — so amending a commit the hook already decorated is idempotent;
+- the subject matches `/^(?:Merge |Revert "|fixup! |squash! )/`, which covers the subjects Git generates itself;
+- no message file path was passed.
+
+If the script throws for any other reason it prints `❌  Failed to process commit message:` and exits 1, so a broken hook fails loudly rather than letting a malformed subject through.
+
+## Before the message hook
+
+`.vite-hooks/pre-commit` runs first:
+
+```sh
+bun run check:pre-commit
+```
+
+That is `vp staged`, which applies the `staged` block from `vite.config.ts` — `vp check --fix` over every staged file. A commit therefore cannot be created unless the staged files format, lint and type check.
+
+Do not bypass the hooks with `--no-verify`. The deploy workflows run `bun run check` again, so a commit that skipped the hook fails later and more expensively.
+
+Both hooks are installed by `vp config --no-agent`, which `bun install` runs through the `prepare` script. `vp hooks status` shows whether they are active in your clone.
+
+## Scopes in practice
+
+Scopes are not validated, but the repository has a de facto vocabulary drawn from the directory structure — `app`, `ui`, `admin/orders`, `admin/catalog/products`, `checkout`, `auth`, `docs`. Use the module or route area the change belongs to, and use a nested scope when the change is narrower than a whole area:
+
+```sh
+git commit -m "feat(admin/catalog/products): allow bulk status changes"
+git commit -m "refactor(app): move rate limiting into src/lib"
+git commit -m "docs(tooling): document the deploy secret pipeline"
+```
+
+## Related pages
+
+- [Lint and format](/docs/tooling/lint-and-format)
+- [Vite+](/docs/tooling/vite-plus)
+- [Project](/docs/project/about)

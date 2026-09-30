@@ -1,0 +1,4 @@
+{
+  "title": "Pierwsze kroki",
+  "pages": ["index", "prerequisites", "installation", "environment-variables", "first-run", "project-scripts", "deploy-preview"]
+}

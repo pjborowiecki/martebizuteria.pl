@@ -1,0 +1,4 @@
+{
+  "title": "UI system",
+  "pages": ["index", "theme", "fonts-and-branding", "shadcn-components", "data-table", "composition-patterns"]
+}

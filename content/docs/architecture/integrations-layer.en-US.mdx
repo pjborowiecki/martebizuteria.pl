@@ -1,0 +1,62 @@
+---
+title: "Integrations layer"
+description: "The 13 vendor folders under src/integrations, what each one configures, and what stays out of them."
+---
+
+Every third party that needs setup owns one folder under `src/integrations`. Files are named `<prefix>.<concern>.ts`, where the prefix is the vendor's short name — `auth.*`, `drizzle.*`, `stripe.*`, `i18n.*`, `fumadocs.*`, `inpost.*`, `media.*`.
+
+| Folder                  | Files                                                                                                                                                                                                 | Responsibility                                                                                         |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `better-auth`           | `auth.server`, `auth.client`, `auth.access`, `auth.middleware`, `auth.routes`, `auth.session`, `auth.errors`, `auth.zod`, `auth.constraints`                                                          | Auth configuration, roles and permissions, server-function middleware, route guards, the session query |
+| `drizzle-orm`           | `drizzle.config`, `drizzle.database`, `drizzle.schemas`, `drizzle.batch`, `drizzle.utils`, `migrations/`, `seeds/`                                                                                    | The D1 client, the schema registry, the atomic batch runner, shared column helpers, SQL migrations     |
+| `stripe`                | `stripe.server`, `stripe.client`, `stripe.constants`, `stripe.checkout`, `stripe.actions`, `stripe.actions.server`, `stripe.actions.schemas`, `stripe.webhooks`, `stripe.appearance`, `stripe.errors` | The Stripe SDK, the Elements-mode Checkout Session, and the webhook handler table                      |
+| `resend`                | `resend.config`, `resend.send`, `order-confirmation.utils`, `order-shipped.utils`, `order-shipped.notification.server`, `email-previews`                                                              | The Resend client, `sendEmail`, and the builders that turn an order into email content                 |
+| `cloudflare-r2`         | `media.mutations`, `media.zod`                                                                                                                                                                        | Product image upload and deletion against the `IMAGES` bucket                                          |
+| `use-intl`              | `i18n.config`, `i18n.messages`, `i18n.middleware`, `i18n.paths`, `i18n.utils`                                                                                                                         | Locales, namespace loading, the locale redirect, locale URLs and the cookie                            |
+| `fumadocs`              | `fumadocs.config`, `fumadocs.docs`, `fumadocs.source`, `fumadocs.i18n`, `fumadocs.schema`, `fumadocs.legal`                                                                                           | The `docs` and `legal` MDX collections, page loading, the docs page tree                               |
+| `realtime-invalidation` | `realtime-invalidation.subscriptions`, `.protocol`, `.publish.server`, `.catalog.server`, `.ws.server`                                                                                                | Query-key topics, the wire protocol, publishing to the hub, the upgrade handshake                      |
+| `tanstack-query`        | `query.sync`                                                                                                                                                                                          | The `BroadcastChannel` that mirrors invalidations across tabs                                          |
+| `inpost`                | `inpost.api`, `inpost.queries`, `inpost.constants`, `inpost.zod`                                                                                                                                      | Parcel-locker discovery against `api-pl-points.easypack24.net`                                         |
+| `gsap`                  | `gsap.config`                                                                                                                                                                                         | Plugin registration and shared easing for the storefront animations                                    |
+| `lenis`                 | `lenis.instance`, `lenis.scroll`                                                                                                                                                                      | The smooth-scroll instance and the scroll helpers                                                      |
+| `react-day-picker`      | `react-day-picker.locale`                                                                                                                                                                             | The date-picker locale objects for `pl-PL` and `en-US`                                                 |
+
+## What is not an integration
+
+- **Cloudflare bindings need no adapter.** Server code reads `DB`, `IMAGES`, `CACHE`, `ASSETS`, `REALTIME_INVALIDATION_HUB` and `AUDIT_LOG_QUEUE` from `env` in `cloudflare:workers`.
+- **Rate limiting** is `src/lib/rate-limit.ts`, backed by the `rate_limit` table, and is reached through the `withRateLimit` middleware rather than a vendor folder.
+- **The Durable Object class** lives in `src/durable-objects/realtime-invalidation-hub.ts`, not in the integration folder, because Wrangler binds the class from the Worker entry.
+- **SEO, sitemap and robots** are `src/lib/seo.ts`.
+
+## Business logic stays in modules
+
+An integration configures a vendor and hands the decision back:
+
+- `src/routes/api/webhooks.stripe.ts` verifies the signature with `STRIPE_WEBHOOK_SECRET` and looks the event type up in `webhookHandlers`. An unknown type is logged and acknowledged with `{ received: true }`; a handler that throws returns 500 so Stripe retries.
+- `stripe.webhooks.tsx` then calls the checkout and order use cases: `fulfillCheckout`, `releaseCheckout`, `refundOrder`, `flagOrderDispute`, `clearOrderDispute`. It owns none of that logic.
+- `auth.server.ts` wires Better Auth's `databaseHooks` to the audit recorders and `scheduleAdminCustomersInvalidation`, and its email callbacks to the templates in `src/presentation/emails`.
+- The pattern for sending email is always: resolve the locale, load the template's namespace, render, send.
+
+```ts
+const locale = getCurrentLocale()
+const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
+const failure = await sendEmail({
+  react: createElement(VerifyEmail, { locale, messages, name: user.name, verificationUrl }),
+  subject: createTranslator({ locale, messages })("subject"),
+  to: user.email,
+})
+```
+
+`sendEmail` returns a failure string rather than throwing, so the caller decides whether a failed send is an audit event (`recordOrderEmailOutcome`) or a log line (`reportEmailFailure`).
+
+## Integration scope worth knowing
+
+- **InPost is discovery only.** `fetchPointsByCity` reads the public points API; there is no shipment creation, no label generation and no API key. The checkout locker picker is built on top of it in `components/custom/checkout/components/_steps/delivery/locker/inpost`.
+- **Stripe runs in Elements mode.** `stripe.checkout.sessions.create` is called with `ui_mode: "elements"` and a `return_url`, and the client secret is handed to `@stripe/react-stripe-js`. There is no redirect to Stripe-hosted Checkout.
+- **R2 is served over a public bucket URL.** `VITE_R2_URL` (with `DEFAULT_R2_PUBLIC_URL` as the fallback in `branding/app.ts`) is resolved by `src/lib/url.ts`, and uploads are written with `Cache-Control: public, max-age=31536000, immutable`.
+
+## Related pages
+
+- [Dependency rules](/docs/architecture/dependency-rules)
+- [Platform layer](/docs/architecture/platform-layer)
+- [Realtime invalidation](/docs/architecture/realtime-invalidation)

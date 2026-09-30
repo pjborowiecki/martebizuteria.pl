@@ -1,0 +1,217 @@
+---
+title: "Add an admin page"
+description: "Add a route to the admin console: the file route, the guard, the header, the sidebar entry, message namespaces and query prefetching."
+---
+
+The admin console lives under `/admin` and is a separate visual shell from the storefront: light theme only, a dark sidebar, its own stylesheet and its own realtime subscription. `src/routes/admin.tsx` is the layout every admin page inherits; everything you add slots into it.
+
+## What the layout already does
+
+```ts
+export const Route = createFileRoute("/admin")({
+  beforeLoad: async () => ({
+    user: await requireAdmin(),
+  }),
+  component: AdminLayoutRoute,
+  head: () => ({
+    links: [{ href: adminCss, rel: "stylesheet" }],
+  }),
+  loader: () => ({
+    sidebarDefaultOpen: getAdminSidebarDefaultOpen(),
+  }),
+  shouldReload: false,
+  staleTime: ROUTE_STALE_MS,
+  staticData: {
+    namespaces: ["pages.admin", "components.datagrid"],
+  },
+})
+```
+
+Inherited for free by every child route:
+
+- **The guard.** `requireAdmin()` from `src/integrations/better-auth/auth.routes.ts` loads the session, redirects to `/auth/sign-in` when there is none and to `/account/overview` when the user is not an admin. This protects the _page_, not the data — see [Server functions](/docs/guides/server-functions).
+- **The stylesheet.** `src/presentation/styles/admin.css`, loaded as a route `link`.
+- **The light theme.** `useAdminLightTheme()` removes the `dark` class on mount and restores the visitor's storefront preference on unmount.
+- **The realtime subscription.** `useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })` opens the admin WebSocket and invalidates any query whose key prefix appears in a published message.
+- **The sidebar.** `AdminSidebar`, with its open/closed state restored from the `sidebar_state` cookie before hydration.
+- **The message namespaces.** `pages.admin` and `components.datagrid`, so `t("nav.orders")` works anywhere inside.
+- **The frame.** A `div[data-admin-main]` that is `h-svh`, `flex flex-col` and `overflow-hidden`. Your page owns the scrolling inside it.
+
+## 1. Create the route file
+
+Route files are flat and dot-separated: `admin.coupons.tsx` is `/admin/coupons`, `admin.catalog.categories.index.tsx` is `/admin/catalog/categories/`. `src/routeTree.gen.ts` is generated — never edit it; `bun run dev` and `bun run build` regenerate it.
+
+A single page with no children, from `src/routes/admin.overview.tsx`:
+
+```tsx
+const AdminOverviewPage = (): JSX.Element => {
+  const t = useTranslations("pages.admin")
+
+  return (
+    <>
+      <AdminHeader title={t("dashboard.title")} description={t("dashboard.description")} />
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-8">
+        <DashboardOverviewContent />
+      </div>
+    </>
+  )
+}
+
+export const Route = createFileRoute("/admin/overview")({
+  component: AdminOverviewPage,
+  loader: ({ context }) =>
+    context.queryClient.query({
+      ...getDashboardSnapshotQuery({ locale: context.locale }),
+      staleTime: "static",
+    }),
+  shouldReload: false,
+  staleTime: ADMIN_DASHBOARD_QUERY_STALE_MS,
+})
+```
+
+The `<div className="min-h-0 flex-1 overflow-y-auto p-8">` is the pattern: the header is sticky, the body scrolls. `min-h-0` is required — without it the flex child refuses to shrink and the page scrolls as a whole.
+
+`shouldReload: false` with a `staleTime` stops the loader from re-running on every navigation back to the page. Use the module's own stale-time constant rather than a literal.
+
+## 2. Add the route path to `src/routes.ts`
+
+Every path the code links to comes from the `ROUTES` object, sorted alphabetically:
+
+```ts
+ADMIN_COUPONS: "/admin/coupons",
+```
+
+Nothing hard-codes a URL string. Links use `LocalizedLink`, whose `to` is typed as `FileRouteTypes["to"]` from the generated route tree, so a path that does not exist will not type check.
+
+## 3. Add the header
+
+`AdminHeader` from `src/presentation/components/custom/pages/admin/admin-header.tsx` renders the sticky 64px bar. Its props:
+
+| Prop          | Effect                                                                  |
+| ------------- | ----------------------------------------------------------------------- |
+| `title`       | The page heading. A string, or a node for a composed title              |
+| `description` | A second line under the title                                           |
+| `breadcrumbs` | `{ href?, label }[]`, rendered before the title on `sm` and up          |
+| `actions`     | Buttons on the right of the bar                                         |
+| `backHref`    | Replaces the sidebar trigger with a back arrow — use it on detail pages |
+| `tabs`        | A node rendered in a second row under the bar                           |
+
+`src/routes/admin.coupons.tsx` shows breadcrumbs and actions:
+
+```tsx
+const bcList = useMemo(
+  () => [
+    {
+      href: ROUTES.ADMIN,
+      label: t("nav.dashboard"),
+    } satisfies {
+      href: LocalizedTo
+      label: string
+    },
+  ],
+  [t],
+)
+```
+
+Memoise `actions`, `tabs` and `breadcrumbs` — they are nodes and arrays passed on every render.
+
+## 4. Add a layout route if the section has several pages
+
+When a section needs a shared header, tabs or namespaces, add a layout file next to the index. The catalog does this twice.
+
+`src/routes/admin.catalog.tsx` contributes only namespaces:
+
+```tsx
+export const Route = createFileRoute("/admin/catalog")({
+  component: () => <Outlet />,
+  staticData: { namespaces: ["pages.admin.catalog", "pages.admin.catalog.localePicker"] },
+})
+```
+
+`src/routes/admin.catalog.categories.tsx` contributes the header and the tab strip, and its `index` child renders only the table:
+
+```tsx
+const CategoriesSectionLayoutRoute = (): JSX.Element => {
+  const t = useTranslations("pages.admin.catalog.categories")
+  const tabs = useMemo(() => <CatalogTabs active="categories" />, [])
+
+  return (
+    <>
+      <AdminHeader title={t("title")} description={t("description")} tabs={tabs} />
+
+      <div className={ADMIN_CATALOG_PAGE_BODY_CLASS}>
+        <Outlet />
+      </div>
+    </>
+  )
+}
+```
+
+`CatalogTabs` in `src/presentation/components/custom/pages/admin/catalog/catalog-tabs.tsx` takes `active: "products" | "categories" | "collections" | "attributes"`. Adding a fifth catalog section means adding a `TabLink` there and widening that union.
+
+## 5. Prefetch the queries
+
+The index route's loader prefetches everything the first paint needs, in one `Promise.all`, so the component can use `useSuspenseQuery` without a spinner. From `src/routes/admin.catalog.categories.index.tsx`:
+
+```ts
+const prefetchCategoriesQueries = async (context: { queryClient: QueryClient }): Promise<void> => {
+  await Promise.all([
+    context.queryClient.query({ ...getAdminCategoriesQuery(), staleTime: "static" }),
+    context.queryClient.query({ ...getCategoryStatsQuery(), staleTime: "static" }),
+  ])
+}
+
+export const Route = createFileRoute("/admin/catalog/categories/")({
+  component: CategoriesIndexRoute,
+  loader: ({ context }) => prefetchCategoriesQueries(context),
+  shouldReload: false,
+  staleTime: CATEGORY_QUERY_STALE_MS,
+})
+```
+
+The router context is created in `src/router.tsx` and carries `queryClient` and `imagePrefetchService`; the root route's `beforeLoad` adds `locale` and `internalPathname`.
+
+## 6. Declare the message namespaces
+
+A route lists the namespaces its subtree needs in `staticData.namespaces`. `getRouteNamespaces` in `src/integrations/use-intl/i18n.messages.ts` unions them across all matched routes and adds the root namespaces, and `TranslationsProvider` loads exactly that set. A namespace you forget to declare makes `useTranslations` throw at render time, not at build time. See [i18n messages](/docs/guides/i18n-messages).
+
+## 7. Add the sidebar entry
+
+`src/presentation/components/custom/pages/admin/admin-sidebar.tsx` holds four arrays at the bottom of the file:
+
+| Array         | Contents                                                             |
+| ------------- | -------------------------------------------------------------------- |
+| `SIMPLE_NAV`  | Dashboard, Orders, Customers                                         |
+| `CATALOG_SUB` | Products, Categories, Collections, Attributes — nested under Catalog |
+| `TOOLS_NAV`   | Marketing, Coupons, Content — all `disabled: true`                   |
+| `SYSTEM_NAV`  | Audit, Settings — Settings is `disabled: true`                       |
+
+A `NavItem` is `{ href: LocalizedTo, icon, labelKey, disabled? }`. The icon is a `lucide-react` component, and `labelKey` resolves inside `pages.admin`, so `nav.coupons` reads from `messages/{locale}/pages.admin.json`. Set `disabled: true` for a page that exists as a placeholder but is not ready — `/admin/marketing`, `/admin/coupons`, `/admin/content` and `/admin/settings` are all in that state today.
+
+## 8. Test the route
+
+Route tests live in `src/routes/__test__/`, named `<route>.component.test.tsx` for a rendering test or `<route>.loader.test.ts` for a loader test. They intercept `createFileRoute` to capture the options object:
+
+```tsx
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof ReactRouter>()
+
+  return {
+    ...actual,
+    createFileRoute: () => (options: CategoriesRouteDefinition) => {
+      captured.current = options
+
+      return { options }
+    },
+  }
+})
+```
+
+The test then asserts on `captured.current.staleTime`, `shouldReload` and `loader`, mocks the module's query options, and renders `captured.current.component` through `renderWithProviders`. `src/routes/__test__/admin.catalog.categories.index.component.test.tsx` is the model. See [Writing tests](/docs/guides/writing-tests).
+
+## Related guides
+
+- [Add a data table](/docs/guides/add-a-data-table)
+- [i18n messages](/docs/guides/i18n-messages)
+- [Theming and branding](/docs/guides/theming-and-branding)

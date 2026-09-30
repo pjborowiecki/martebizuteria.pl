@@ -1,0 +1,152 @@
+---
+title: "Migracje bazy danych"
+description: "Bezpieczna zmiana schematu D1: generowanie, przegląd, stosowanie i ręczne pisanie migracji oraz radzenie sobie z ograniczeniami SQLite."
+---
+
+Bazą danych jest Cloudflare D1 (SQLite). Schemat jest zdefiniowany w TypeScripcie w 31 plikach schematów modułów, ponownie eksportowanych z `src/integrations/drizzle-orm/drizzle.schemas.ts`, i stosowany jako zwykłe pliki SQL w `src/integrations/drizzle-orm/migrations/`.
+
+Ten katalog dzielą dwa narzędzia, a wiedza, które co robi, oszczędza wiele nieporozumień:
+
+- **drizzle-kit** _generuje_ migracje, porównując Twój schemat TypeScript z ostatnim snapshotem w `migrations/meta/`.
+- **Wrangler** _stosuje_ je, w kolejności nazw plików, zapisując stan w tabeli `d1_migrations` w D1. Nigdy nie czyta dziennika drizzle.
+
+## Środowiska
+
+Istnieją dwie fizyczne bazy danych i trzy środowiska Wranglera, które na nie wskazują:
+
+| Środowisko    | Nazwa bazy D1            | Używane przez                                     |
+| ------------- | ------------------------ | ------------------------------------------------- |
+| `development` | `martebizuteria-preview` | `bun run dev` (z `remoteBindings: true`)          |
+| `preview`     | `martebizuteria-preview` | `bun run build:preview`, `bun run deploy:preview` |
+| `production`  | `martebizuteria`         | `bun run deploy:production`                       |
+
+**`development` i `preview` to ta sama baza.** Praca lokalna działa na zdalnej instancji preview D1 — `vite.config.ts` ustawia `remoteBindings: process.env["CLOUDFLARE_ENV"] === "development"`, więc nie ma lokalnego pliku SQLite do zabawy. Wszystko, co zapiszesz podczas pracy, jest widoczne dla wdrożenia preview, a wszystko, co usuniesz, jest usunięte naprawdę.
+
+## Generowanie migracji
+
+Po zmianie pliku schematu i wyeksportowaniu go z `drizzle.schemas.ts`:
+
+```sh
+bun run db:generate
+```
+
+To uruchamia `drizzle-kit generate` z `src/integrations/drizzle-orm/drizzle.config.ts`, skonfigurowanym tak:
+
+```ts
+export default defineConfig({
+  dialect: "sqlite",
+  driver: "d1-http",
+  migrations: {
+    prefix: "timestamp",
+    schema: "public",
+    table: "__drizzle_migrations__",
+  },
+  out: "./src/integrations/drizzle-orm/migrations",
+  schema: "./src/integrations/drizzle-orm/drizzle.schemas.ts",
+  strict: true,
+  verbose: true,
+})
+```
+
+`prefix: "timestamp"` jest przyczyną nazw w postaci `20260612120000_product_variants_enhanced.sql`. Znacznik czasu wyznacza kolejność stosowania, więc nigdy nie zmieniaj nazwy migracji, która została gdziekolwiek zastosowana.
+
+**Przeczytaj wygenerowany SQL przed zastosowaniem.** Zwróć szczególną uwagę na przebudowę tabeli: SQLite nie potrafi zmienić typu kolumny ani dodać kolumny `NOT NULL` bez wartości domyślnej, więc drizzle-kit generuje sekwencję utwórz-skopiuj-usuń-zmień nazwę. Na tabeli z prawdziwymi wierszami to migracja danych, nie schematu, i wymaga przemyślenia kluczy obcych oraz indeksów.
+
+## Stosowanie migracji
+
+```sh
+bun run db:migrate:local         # wrangler d1 migrations apply DB --env development --local
+bun run db:migrate:development   # --env development --remote
+bun run db:migrate:preview       # --env preview --remote   (bun run db:migrate to jego alias)
+bun run db:migrate:production    # --env production --remote
+```
+
+Najpierw sprawdź, co czeka i co jest już zastosowane:
+
+```sh
+bun run db:migrations:preview
+bun run db:migrations:production
+```
+
+Normalna kolejność jest taka: wygeneruj, przeczytaj, zastosuj na preview, przetestuj aplikację, potem zastosuj na produkcji. Nie wdrażaj kodu, który zakłada istnienie kolumny nieobecnej jeszcze na produkcji.
+
+## Migracje pisane ręcznie
+
+Sześć z 57 migracji w katalogu napisano ręcznie, a nie wygenerowano, i ich nazwy mówią, co robią, zamiast nieść kryptonim nadany przez drizzle: `20260604120000_catalog_indexes_and_integrity.sql`, `20260606120000_rename_attribute_to_product_attribute.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql` i inne. Pisanie ręczne jest właściwym wyborem dla:
+
+- **Zmian nazw.** drizzle-kit widzi zmianę nazwy jako usunięcie plus dodanie, co niszczy dane.
+- **Uporządkowania nazw indeksów.** `20260604232955_curved_wallow.sql` to dobry, krótki przykład:
+
+```sql
+-- Align index names with product_attribute (table/columns already migrated in 20260605120000 + 20260606120000).
+DROP INDEX IF EXISTS `attribute_handle_unique`;
+DROP INDEX IF EXISTS `attribute_rank_idx`;
+CREATE UNIQUE INDEX IF NOT EXISTS `product_attribute_handle_unique` ON `product_attribute` (`handle`);
+CREATE INDEX IF NOT EXISTS `product_attribute_rank_idx` ON `product_attribute` (`rank`);
+```
+
+- **Naprawy danych.** `20260927120000_fix_silver_collection_handle.sql` poprawia jedną literówkę w jednym wierszu:
+
+```sql
+UPDATE product_collection
+SET handle = 'srebro-925',
+    titles = json_set(titles, '$."pl-PL"', 'Srebro 925'),
+    updated_at = unixepoch() * 1000
+WHERE handle = 'serbro-925';
+```
+
+Dwa nawyki z tych plików warte skopiowania: komentarz `--` na początku, wyjaśniający intencję (SQL migracji jest jedynym miejscem w tym repozytorium, gdzie komentarze są oczekiwane, bo plik jest jedynym zapisem _dlaczego_), oraz `IF EXISTS` i `IF NOT EXISTS` wszędzie, żeby ponowne uruchomienie migracji na częściowo zmigrowanej bazie nie zawiodło.
+
+Żeby napisać migrację ręcznie, utwórz `src/integrations/drizzle-orm/migrations/<RRRRMMDDGGMMSS>_<opis>.sql`. Wrangler podnosi ją po nazwie pliku; nie ma nic do rejestrowania.
+
+### Uwaga o dzienniku drizzle
+
+`migrations/meta/_journal.json` wymienia obecnie 51 znaczników, podczas gdy w katalogu jest 57 plików `.sql`, a w `meta/` 36 snapshotów. Migracje pisane ręcznie nigdy nie zostały dopisane do dziennika, a kilka generowanych nie ma snapshotu. Wranglerowi to nie przeszkadza — trzyma własny stan w D1. Ale **drizzle-kit to obchodzi**: `bun run db:generate` porównuje z najnowszym snapshotem, który jest starszy niż schemat produkcyjny, więc może wygenerować SQL dla zmian już zastosowanych.
+
+Przed zaufaniem wygenerowanej migracji albo porównaj ją z aktualnym schematem przez `bun run db:introspect:preview` (co zapisuje `schema.ts` i `relations.ts` do katalogu migracji), albo przeczytaj ją linia po linii. Zarówno `schema.ts`, jak i `relations.ts` w `src/integrations/drizzle-orm/migrations/` są wynikiem introspekcji, a nie kodem utrzymywanym ręcznie.
+
+## Podglądanie schematu produkcyjnego
+
+```sh
+bun run db:introspect:development   # albo :preview, :production
+bun run db:pull                     # alias dla :development
+bun run db:pull:production
+bun run db:studio                   # Drizzle Studio na środowisku development
+```
+
+Te komendy czytają dane uwierzytelniające z `.env.<environment>` przez `bun --env-file` i potrzebują `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` oraz `CLOUDFLARE_ACCESS_TOKEN` — sterownik `d1-http` rozmawia z API Cloudflare, a nie z bindingiem.
+
+## `db:push` — do czego służy
+
+```sh
+bun run db:push:development
+```
+
+`drizzle-kit push` stosuje schemat TypeScript wprost do bazy, bez zapisania pliku migracji. Jest przydatny do jednorazowego eksperymentu, a w pozostałych przypadkach niebezpieczny: nie pozostawia zapisu, więc następne środowisko nie dostanie zmiany, a na wspólnej bazie preview może usunąć kolumnę, na której wciąż opiera się produkcja. Wybieraj `db:generate` plus `db:migrate`.
+
+## Jak pisać schemat, który dobrze się migruje
+
+- Nadaj każdej kolumnie długość: `text("handle", { length: 255 })`. Długości pochodzą ze stałej `*_COLUMN_LENGTH` modułu, więc schemat Zod i kolumna się zgadzają.
+- Dodawaj znaczniki czasu przez `...timestamps()`, żeby `created_at` i `updated_at` były zawsze `integer(..., { mode: "timestamp_ms" })` z wartością domyślną `(unixepoch() * 1000)`.
+- Dodawaj nową kolumnę jako dopuszczającą `NULL` albo z wartością domyślną. Kolumna `NOT NULL` bez domyślnej wymusza przebudowę tabeli.
+- Nazywaj indeksy `<table>_<column>_idx`, a unikalne `<table>_<column>_unique`. Kilka migracji istnieje wyłącznie po to, żeby naprawić nazwy indeksów, które tego nie przestrzegały.
+- Deklaruj `.references(..., { onDelete: "cascade" })`, żeby usunięcia porządkowały dane. SQLite wymusza klucze obce tylko przy włączonej pragmie — w D1 jest włączona — więc brak kaskady objawia się osieroconymi wierszami, a nie błędem.
+- Przechowuj tłumaczony tekst jako mapę JSON kluczowaną językiem w formacie BCP 47 (`json_object('pl-PL', …, 'en-US', …)`), co robią `titles`, `subtitles`, `descriptions` i `short_descriptions` na produktach, kategoriach i kolekcjach. `20260925000000_locale_maps_bcp47.sql` zmigrowało te klucze z samych kodów języka na pełne znaczniki.
+- Przechowuj pieniądze jako całkowite jednostki podrzędne. Metody dostawy mają `price` równe `1499`, co oznacza 14,99 zł.
+
+## Lista kontrolna migracji
+
+- [ ] Tabela jest wyeksportowana z `drizzle.schemas.ts`.
+- [ ] `bun run db:generate` się wykonało i przeczytałeś każdą linię wyniku.
+- [ ] Nic w nim nie przebudowuje przypadkiem wypełnionej tabeli.
+- [ ] Nazwy indeksów i ograniczeń zgadzają się z konwencją.
+- [ ] Zastosowano na preview przez `bun run db:migrate:preview`, a `bun run db:migrations:preview` to potwierdza.
+- [ ] Aplikacja została przetestowana na preview przed produkcją.
+- [ ] `bun run db:migrate:production` wykonało się **przed** wdrożeniem kodu, który potrzebuje nowej kolumny.
+- [ ] `bun run check` i `bun run test` przechodzą — `vite.config.ts` wyłącza katalog migracji z lintu i testów, więc zepsuty plik `.sql` nie zostanie za Ciebie wychwycony.
+
+## Powiązane przewodniki
+
+- [Dodawanie modułu](/docs/guides/add-a-module)
+- [Dane startowe](/docs/guides/seeding-data)
+- [Debugowanie lokalne](/docs/guides/local-debugging)

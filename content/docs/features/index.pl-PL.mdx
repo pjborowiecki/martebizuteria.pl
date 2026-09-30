@@ -1,0 +1,63 @@
+---
+title: "Wprowadzenie"
+description: "Co każda część sklepu robi dzisiaj, gdzie leży jej kod i które ekrany panelu są jeszcze makietami."
+---
+
+Każda strona w tym rozdziale opisuje kod w takim stanie, w jakim jest w repozytorium, a nie w takim, jaki jest planowany. Funkcja jest **działająca**, gdy czyta lub zapisuje prawdziwe dane przez use case modułu, Better Auth albo Stripe. **Makieta** renderuje stałe z `src/data` i nic nie zapisuje. **Placeholder** renderuje treść z katalogu komunikatów i nie ma za sobą żadnych danych.
+
+Każda strona wskazuje konkretne pliki: trasę w `src/routes`, use case'y w `src/modules/{feature}/use-cases`, tabele w `src/modules/{feature}/*.schema.ts` oraz komponenty w `src/presentation/components/custom`.
+
+## Działające
+
+| Obszar       | Strony                                                                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Witryna      | [Strona główna](/docs/features/landing-page), [Katalog i wyszukiwanie](/docs/features/catalog-and-search), [Karta produktu](/docs/features/product-page)                  |
+| Zakup        | [Koszyk](/docs/features/cart), [Kasa](/docs/features/checkout), [Płatności](/docs/features/payments), [Wysyłka i dostawa](/docs/features/shipping-and-delivery)           |
+| Realizacja   | [Zamówienia](/docs/features/orders), [Stany magazynowe](/docs/features/inventory)                                                                                         |
+| Klienci      | [Konto](/docs/features/account)                                                                                                                                           |
+| Panel admina | [Pulpit](/docs/features/admin-dashboard), [Katalog](/docs/features/admin-catalog), [Klienci](/docs/features/admin-customers), [Dziennik audytu](/docs/features/audit-log) |
+| Platforma    | [E-maile transakcyjne](/docs/features/email), [Internacjonalizacja](/docs/features/internationalization), [Strony prawne](/docs/features/legal-pages)                     |
+
+## Makiety
+
+Te trasy istnieją, renderują się w całości i są objęte testami komponentów, ale ich wiersze pochodzą z `src/data`:
+
+| Trasa                    | Moduł danych               | Opisana w                                       |
+| ------------------------ | -------------------------- | ----------------------------------------------- |
+| `/admin/coupons`         | `src/data/coupons.ts`      | [Rabaty](/docs/features/discounts)              |
+| `/admin/orders/$orderId` | `src/data/order-detail.ts` | [Zamówienia](/docs/features/orders)             |
+| `/admin/marketing`       | `src/data/marketing.ts`    | [Pulpit admina](/docs/features/admin-dashboard) |
+| `/admin/content`         | `src/data/content.ts`      | [Pulpit admina](/docs/features/admin-dashboard) |
+| `/admin/settings`        | `src/data/settings.ts`     | [Pulpit admina](/docs/features/admin-dashboard) |
+
+## Placeholdery
+
+- `/account/wishlist` i `/account/payment` renderują stan pusty z licznikiem zapisanym na stałe jako `0`. Zobacz [Konto](/docs/features/account).
+- `/terms-of-service` renderuje tytuł, jeden akapit i odnośnik do strony głównej z `messages/{locale}/pages.terms-of-service.json`. Dwa prawdziwe dokumenty prawne są plikami MDX. Zobacz [Strony prawne](/docs/features/legal-pages).
+- Formularz newslettera w `newsletter-section.tsx` to `Input` i `type="button"` bez żadnej obsługi zdarzenia. Zobacz [Strona główna](/docs/features/landing-page).
+
+## Schemat bez zachowania
+
+Część tabel jest zadeklarowana w `src/modules/*/`, wyeksportowana z `src/integrations/drizzle-orm/drizzle.schemas.ts` i tworzona przez migracje, ale nic ich jeszcze nie czyta ani nie zapisuje:
+
+| Tabela              | Moduł                                       | Dlaczego nieużywana                                                                                        |
+| ------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `discount`          | `src/modules/discount`                      | Żaden kod się do niej nie odwołuje. Zobacz [Rabaty](/docs/features/discounts).                             |
+| `cart`, `cart_item` | `src/modules/cart`, `src/modules/cart-item` | Koszyk żyje w przeglądarce. Zobacz [Koszyk](/docs/features/cart).                                          |
+| `order_address`     | `src/modules/order-address`                 | Adresy zamówienia odczytywane są przez `checkout` → `address`. Zobacz [Zamówienia](/docs/features/orders). |
+
+## Jak czytać stronę funkcji
+
+Każda strona ma ten sam układ:
+
+1. **Trasy** — pliki w `src/routes` i strażnicy w ich `beforeLoad`.
+2. **Funkcje serwerowe** — eksporty `createServerFn` w `use-cases/`, ich middleware oraz opcje zapytań i mutacji.
+3. **Dane** — tabele i kolumny, których dotyka funkcja.
+4. **Komponenty** — interfejs w `src/presentation/components/custom`.
+5. **Powiązane strony** — odnośniki dalej.
+
+## Powiązane strony
+
+- [Architektura: moduły i use case'y](/docs/architecture/modules-and-use-cases)
+- [Architektura: routing](/docs/architecture/request-lifecycle)
+- [Dokumentacja: schemat bazy danych](/docs/integrations/drizzle-orm-d1)

@@ -1,0 +1,178 @@
+---
+title: "Orders"
+description: "The order and order_item tables, the admin list with its filters and actions, the customer's own order history, and the demo detail screen."
+---
+
+An order is created by a Stripe webhook, never by a form. See [Payments](/docs/features/payments) for how a paid session becomes a row.
+
+## The tables
+
+`order` (`src/modules/order/order.schema.ts`) carries two independent status columns:
+
+| Column               | Values                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `status`             | `pending \| processing \| completed \| cancelled \| refunded` (default `pending`)                                  |
+| `fulfillment_status` | `not_fulfilled \| partially_fulfilled \| fulfilled \| shipped \| delivered \| cancelled` (default `not_fulfilled`) |
+
+Money columns, all integer minor units: `subtotal`, `shipping_total`, `tax_total`, `discount_total`, `total`. `currency_code` is 3 characters, default `"PLN"`.
+
+Timestamps beyond `created_at`/`updated_at`: `shipped_at`, `delivered_at`, `canceled_at` (note the single `l`).
+
+Links: `checkout_id` (with a **unique** index, so one checkout maps to at most one order), `payment_id`, `delivery_method_id`, `user_id` (null for a guest), `discount_id`. Plus `email`, `customer_note`, `locker_id`, `tracking_number`, `tracking_url` and `metadata` (a JSON string).
+
+Indexes: `order_userId_idx`, `order_userId_status_idx`, `order_status_idx`, `order_createdAt_idx`, `order_checkoutId_unique`.
+
+`order_item` (`src/modules/order-item/order-item.schema.ts`) stores `order_id`, `variant_id`, `product_id`, `title`, `variant_title`, `thumbnail`, `quantity`, `unit_price`, `subtotal`, `total`, `metadata`.
+
+**What actually gets written.** `prepareFulfillCheckoutBatch` inserts only `orderId`, `quantity`, `subtotal`, `title`, `total`, `unitPrice` and `variantId`. `product_id`, `variant_title` and `thumbnail` are left null, even though the customer order detail selects `thumbnail` and `variantTitle`. `tax_total` and `discount_total` are always `0` — there is no tax engine and no discount engine.
+
+`order_address` is declared in `src/modules/order-address/order-address.schema.ts` with a `type` of `shipping | billing`, but nothing writes to it. Order addresses are read back through `order.checkout → checkout.shippingAddress / billingAddress`.
+
+## Admin list
+
+`/admin/orders` is `src/routes/admin.orders.index.tsx`. Its loader prefetches two queries with `staleTime: "static"`:
+
+```ts
+await Promise.all([
+  context.queryClient.query({ ...getAdminOrdersPageQuery({ page: 1, pageSize: ADMIN_ORDERS_PAGE_SIZE }), staleTime: "static" }),
+  context.queryClient.query({ ...getAdminOrderStatsQuery(), staleTime: "static" }),
+])
+```
+
+`ADMIN_ORDERS_PAGE_SIZE` is 25 and `ORDER_QUERY_STALE_MS` is 60 000.
+
+`getAdminOrdersPage` requires the `order: ["read"]` permission via `authorized({ order: ["read"] })`. It accepts a page, a page size, a search term, a `tab`, a `statFilter` and five column filters (`createdAt`, `fulfillment`, `payment`, `status`, `total`), and returns a `buildListPaginationResult`.
+
+Tabs are `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Stat filters are `ADMIN_ORDER_STAT_FILTER` — `total` and `pending`, so clicking a stat card narrows the table.
+
+## Two derived UI keys
+
+The table does not show raw column values. `order.display.utils.ts` derives them:
+
+```ts
+export const resolveAdminOrderPaymentUiKey = (paymentStatus: string | null | undefined): AdminOrderPaymentUiKey => {
+  if (paymentStatus === "succeeded") {
+    return ADMIN_ORDER_PAYMENT_UI_KEY.PAID
+  }
+  if (paymentStatus === "refunded") {
+    return ADMIN_ORDER_PAYMENT_UI_KEY.REFUNDED
+  }
+
+  return ADMIN_ORDER_PAYMENT_UI_KEY.AUTHORIZED
+}
+```
+
+So `authorized` is the fallback label for any payment that is not succeeded or refunded — including `pending` and `failed`.
+
+`resolveAdminOrderFulfillmentUiKey(orderStatus, fulfillmentStatus)` returns `pending` whenever the **order** status is `pending`, regardless of fulfilment; then maps `shipped`, `delivered`, `cancelled → returned`, and falls back to `unfulfilled`.
+
+`toAdminOrderListItem` assembles the row: `customerName` falls back to `email`, `initials` come from `resolveAdminCustomerInitials`, `itemCount` defaults to `0`.
+
+The badge styling maps for all of this are in `order.constants.ts`: `ORDER_STATUS_BADGE_STYLES`, `PAYMENT_BADGE_STYLES`, `FULFILLMENT_DOT_COLORS`, plus the label-key maps `ADMIN_ORDER_STATUS_LABEL_KEYS`, `ADMIN_ORDER_PAYMENT_LABEL_KEYS` and `ADMIN_ORDER_FULFILLMENT_LABEL_KEYS`.
+
+## Stats
+
+`getAdminOrderStats` runs one `db.batch` of five aggregates:
+
+| Value                | Query                                                                    |
+| -------------------- | ------------------------------------------------------------------------ |
+| `totalOrders`        | `count()` where status is in `ADMIN_ORDER_COUNTABLE_STATUSES`            |
+| `pending`            | `count()` where status is `pending`                                      |
+| `revenueMinorUnits`  | `sum(total)` where status is `completed`                                 |
+| `avgValueMinorUnits` | rounded `sum(total) / count(*)` over `completed` orders                  |
+| `currencyCode`       | `max(currency_code)` over `completed` orders, else `STORE_CURRENCY_CODE` |
+
+`ADMIN_ORDER_COUNTABLE_STATUSES` is `["completed", "processing", "pending", "cancelled", "refunded"]` — every status, so `totalOrders` is effectively the full count.
+
+## Admin actions
+
+Three server functions, all `authorized({ order: ["update"] })`, all guarded by the same pattern:
+
+```ts
+assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
+  canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
+)
+```
+
+`assertOrderActionState` throws `ERROR_CODES.NOT_FOUND` with `ORDER_NOT_FOUND` when the row is missing and `ERROR_CODES.CONFLICT` with `ORDER_INVALID_STATE` when the predicate fails, so the transition rules are enforced server-side and not only in the UI.
+
+| Use case                     | Predicate                  | Writes                                                                          |
+| ---------------------------- | -------------------------- | ------------------------------------------------------------------------------- |
+| `use-cases/fulfill-order.ts` | `canFulfillAdminOrder`     | `fulfillment_status = "fulfilled"`; `status` moves `pending → processing`       |
+| `use-cases/ship-order.ts`    | `canMarkAdminOrderShipped` | `fulfillment_status = "shipped"`, `shipped_at = now`                            |
+| `use-cases/cancel-order.ts`  | `canCancelAdminOrder`      | `status = "cancelled"`, `fulfillment_status = "cancelled"`, `canceled_at = now` |
+
+The rules live in `order.admin-actions.utils.ts`:
+
+- `canFulfillAdminOrder` — not `cancelled`/`refunded`, and fulfilment is `not_fulfilled` or `partially_fulfilled`.
+- `canMarkAdminOrderShipped` — not `cancelled`/`refunded`, fulfilment is not already `shipped`/`delivered`/`cancelled`, and is `fulfilled` or `partially_fulfilled`. You must fulfil before you can ship.
+- `canCancelAdminOrder` — status is `pending` or `processing`.
+- `canRefundAdminOrder` and `canPrintAdminOrderInvoice` are exported but no server function calls them.
+
+The three callers pass `paymentUiKey: "paid"` literally, so the payment part of the predicate is not actually checked against the row.
+
+Each action records an audit event (`recordOrderFulfillmentStartedAudit`, `recordOrderShippedAudit`, `recordOrderCancelledAudit`) and exposes mutation options keyed by `ORDER_MUTATION_KEYS`. `shipOrder` additionally queues the shipping notification:
+
+```ts
+recordOrderShippedAudit(orderId)
+scheduleBackgroundWork(notifyOrderShipped(orderId))
+```
+
+`scheduleBackgroundWork` (`src/lib/background.ts`) hands the promise to the Worker's `waitUntil`, so the response does not wait for Resend.
+
+There is no server function that sets `delivered`, `tracking_number` or `tracking_url`, so `delivered_at` and the tracking columns are never populated by the app.
+
+## Export
+
+`exportAdminOrders` (`use-cases/export-admin-orders.ts`) requires `order: ["read"]`, takes the same filters as the list without pagination, and returns every matching row mapped through `toAdminOrderListItem`. The CSV is produced in the browser by `orders-export-action.tsx`.
+
+## Admin components
+
+`src/presentation/components/custom/pages/admin/orders/`:
+
+- `components/orders-table.tsx` — `OrdersTableContent`, the data grid
+- `components/orders-columns.tsx` — column definitions; ids, widths and pinning come from `ADMIN_ORDER_TABLE_COLUMN_ID`, `ADMIN_ORDER_TABLE_COLUMN_SIZE` and `ADMIN_ORDER_TABLE_COLUMN_PINNING`
+- `components/orders-status-filter.tsx`, `orders-payment-filter.tsx`, `orders-fulfillment-filter.tsx`, `orders-date-column-filter.tsx`, `orders-numeric-column-filter.tsx`
+- `components/orders-row-actions.tsx` — the per-row menu that calls the three mutations
+- `components/orders-stats.tsx` with `orders-stats.config.ts`
+- `components/orders-export-action.tsx`, `orders-refresh-action.tsx`
+
+`order.admin-list-filters.ts` translates TanStack Table's `ColumnFiltersState` into the server's filter object, with one handler per column id and type guards (`isAdminOrderStatus`, `isAdminOrderPaymentUiKey`, `isAdminOrderFulfillmentUiKey`, `isNumericColumnFilterValue`, `isDateColumnFilterValue`), so an unrecognised filter is dropped rather than passed through.
+
+## The order detail screen is a demo
+
+`/admin/orders/$orderId` (`src/routes/admin.orders.$orderId.tsx`) renders `OrderDetailPage`, whose cards all import from `src/data/order-detail.ts`:
+
+| Component                       | Constant                     |
+| ------------------------------- | ---------------------------- |
+| `order-meta-strip.tsx`          | `DEMO_ORDER`, `DEMO_SUMMARY` |
+| `order-customer-card.tsx`       | `DEMO_CUSTOMER`              |
+| `order-billing-card.tsx`        | `DEMO_BILLING`               |
+| `order-timeline-card.tsx`       | `DEMO_TIMELINE`              |
+| `order-fulfillment-tracker.tsx` | `DEMO_FULFILLMENT_STEPS`     |
+| `order-payment-card.tsx`        | `DEMO_ORDER`                 |
+| `order-notes-card.tsx`          | `DEMO_ORDER`                 |
+
+The route reads `orderId` from the params only to render `#${orderId}` in the header. The Print, Refund and Fulfill buttons have no handlers. Everything a real detail screen needs already exists server-side — `getAdminOrdersPage` for the row, `getCustomerOrder` for the shape of the item and address joins — so wiring it up is a presentation job plus one new use case.
+
+## Customer order history
+
+`/account/orders` (`src/routes/account.orders.index.tsx`) reads `listCustomerOrdersQuery()`. `listCustomerOrders` is `authorized()` (any signed-in user) and scopes to `context.auth.user.id`: it loads the order rows, then the items for those ids in one query, groups them into a `Map` and maps each row through `mapCustomerOrderSummaryRow`. `CUSTOMER_ACCOUNT_ORDERS_LIMIT` is 50.
+
+`/account/orders/$id` reads `getCustomerOrderQuery(id)`. `getCustomerOrder` filters on `and(eq(order.id, orderId), eq(order.userId, context.auth.user.id))`, so **one customer cannot read another's order even with the id**. It loads the checkout with both addresses and the payment row, then maps with `mapCustomerOrderDetail`.
+
+`formatCustomerOrderDisplayId` (`customer-account.utils.ts`) shortens the UUID for display. The filter tabs are `CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "delivered", "shipped", "processing", "cancelled"]`.
+
+Guest orders have `user_id = null` and therefore appear in no account. The confirmation email's CTA points a guest at `/auth/sign-up` instead — see `buildOrderAccountCta` in `src/integrations/resend/order-confirmation.utils.ts`.
+
+## Locale on an order
+
+`order.metadata` stores `{ "locale": "pl-PL" }` when the checkout session carried a locale. `resolveOrderLocale(metadata)` reads it back so the shipping email is sent in the language the customer bought in, falling back to `I18N.DEFAULT_LOCALE`.
+
+## Related pages
+
+- [Payments](/docs/features/payments)
+- [Inventory](/docs/features/inventory)
+- [Transactional email](/docs/features/email)
+- [Audit log](/docs/features/audit-log)
+- [Account](/docs/features/account)

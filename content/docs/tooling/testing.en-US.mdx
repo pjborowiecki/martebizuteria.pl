@@ -1,0 +1,161 @@
+---
+title: "Testing"
+description: "Three Vitest projects, the shared test platform in src/platform/testing, and the coverage thresholds that CI enforces."
+---
+
+Vite+ runs Vitest 5 with the configuration in the `test` block of `vite.config.ts`. Tests live in a `__test__` folder next to the code they cover and import their API from `vite-plus/test`, never from `vitest`:
+
+```ts
+import { describe, expect, it, vi } from "vite-plus/test"
+```
+
+Run them with `bun run test`, not `bun test`. Bun's own runner ignores the Vitest projects, the jsdom environment and the setup file, so a large part of the suite would silently fail or be skipped.
+
+## The three projects
+
+The suite is split by filename, and each split gets its own environment.
+
+| Project       | Files                                                         | Environment | Setup file                      |
+| ------------- | ------------------------------------------------------------- | ----------- | ------------------------------- |
+| `node`        | `src/**/*.{test,spec}.{ts,tsx}` except the two patterns below | `node`      | none                            |
+| `integration` | `src/**/*.integration.test.{ts,tsx}`                          | `node`      | none                            |
+| `component`   | `src/**/*.component.test.{ts,tsx}`                            | `jsdom`     | `src/platform/testing/setup.ts` |
+
+```sh
+bun run test              # vp test run — all three projects
+bun run test:unit         # vp test run --project node
+bun run test:integration  # vp test run --project integration
+bun run test:component    # vp test run --project component
+bun run test:changed      # vp test run --changed
+bun run test:coverage     # vp test run --coverage
+```
+
+At the time of writing the repository holds roughly 870 test files: about 480 component tests, 30 integration tests and the rest unit tests in the `node` project.
+
+> `bun run test:watch` maps to `vp test` with no subcommand. Per `vp test --help`, `vp test` "runs tests once by default" and watch mode is the separate `vp test watch` subcommand, so this script is a second single-shot run rather than a watcher. Use `vp test watch` (or `vp test --watch`) when you want watch mode.
+
+## Shared test configuration
+
+Everything the projects have in common lives in the top-level `test` block and is inherited through `extends: true`:
+
+| Setting           | Value                                                                                                             |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `environment`     | `"node"` (the `component` project overrides it to `"jsdom"`)                                                      |
+| `env`             | `loadEnv("test", import.meta.dirname, "")` — loads `.env.test`, which is committed and contains dummy values only |
+| `pool`            | `"threads"`                                                                                                       |
+| `maxWorkers`      | `"50%"`                                                                                                           |
+| `isolate`         | `true`                                                                                                            |
+| `passWithNoTests` | `false`                                                                                                           |
+| `exclude`         | `node_modules/**`, `opensrc/**`, `dist/**`, `scripts/**`, `e2e/**`, `src/integrations/drizzle-orm/migrations/**`  |
+
+Because `test.env` loads `.env.test`, no test needs real credentials. `scripts/` is excluded from the suite, so `scripts/commit-msg.ts`, `scripts/verify-build.ts` and friends are not covered by tests.
+
+## The test platform
+
+`src/platform/testing/` holds the shared infrastructure. Everything else is colocated with the code it exercises.
+
+| File                             | What it provides                                                                                   |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `setup.ts`                       | jest-dom matchers, DOM observer stubs, `matchMedia`, and the `createServerFn` proxy                |
+| `vitest-env.d.ts`                | `vite-plus/test/globals` reference and the jest-dom matcher types on Vitest's `Matchers` interface |
+| `mocks/d1.ts`                    | `createTestD1Database(sqlite, onQuery?)` — a `D1Database` backed by `node:sqlite`                  |
+| `mocks/intersection-observer.ts` | `StubIntersectionObserver` — no-op `observe`, `unobserve`, `disconnect`, `takeRecords`             |
+| `mocks/resize-observer.ts`       | `StubResizeObserver` — reports a fixed 1024 × 768 content rect on `observe`                        |
+| `lib/render.tsx`                 | `renderWithProviders`, `TestProviders`, `createTestRouter`                                         |
+| `lib/messages.ts`                | `TEST_LOCALE` (`en-US`) and `TEST_MESSAGES`, built from the real `messages/en-US/*.json` files     |
+| `lib/server-function.ts`         | `withTestRpc` — drives server functions through their real middleware and validation pipeline      |
+
+### setup.ts
+
+The `component` project's setup file does four things. It extends `expect` with the jest-dom matchers, stubs `IntersectionObserver`, `ResizeObserver` and `matchMedia` (which jsdom does not implement and which the GSAP and Lenis-driven components ask for), and then patches TanStack Start:
+
+```ts
+vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
+  const actual = await importOriginal()
+  const { withTestRpc } = await import("~/src/platform/testing/lib/server-function")
+
+  return {
+    ...actual,
+    createServerFn: new Proxy(actual.createServerFn, {
+      apply: (target, thisArg, args: unknown[]) => withTestRpc(Reflect.apply(target, thisArg, args)),
+    }),
+  }
+})
+```
+
+It also replaces `getRequest` from `@tanstack/react-start/server` with a stub returning `new Request("http://127.0.0.1:3000/")`.
+
+### Testing server functions
+
+`withTestRpc` wraps the `createServerFn` builder in a proxy. It passes `inputValidator`, `middleware` and `validator` through untouched, and intercepts `.handler()` so the compiled server function is invoked through `runWithStartContext` with a synthetic start context and the real `__executeServer` entry point. The practical consequence is that a test calling a use case exercises its validators and its `assertAdmin` middleware for real — the authorization checks are not bypassed by the test harness, which is the whole point, since the use-case layer is where authorization lives.
+
+### Testing components
+
+`renderWithProviders` renders a component inside the same three providers the application uses — `IntlProvider` with the real English messages and `I18N.DEFAULT_TIMEZONE`, a `QueryClientProvider` with retries disabled, and a `RouterContextProvider` over a memory-history router — and returns the Testing Library result plus the `queryClient` and `router` it created, so a test can assert on cache state or navigation:
+
+```ts
+const { queryClient, router } = renderWithProviders(<ProductCard product={product} />)
+```
+
+`createTestRouter(path)` builds the memory router; pass a path when the component depends on the current location.
+
+Messages are not fixtures. `lib/messages.ts` globs `messages/en-US/*.json` eagerly and feeds them through the application's own `buildMessageTree` and `toNamespace`, so a missing or renamed translation key fails a component test.
+
+### Testing database code
+
+There is no global D1 mock. Each integration test builds its own in-memory database and swaps out the Drizzle instance:
+
+```ts
+const { sqlite } = await vi.hoisted(async () => {
+  const { DatabaseSync } = await import("node:sqlite")
+
+  return { sqlite: new DatabaseSync(":memory:") }
+})
+
+vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
+  const { drizzle } = await import("drizzle-orm/d1")
+  const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
+
+  return { db: drizzle(createTestD1Database(sqlite)) }
+})
+```
+
+`createTestD1Database` implements enough of the `D1Database` surface for Drizzle: `prepare`, `bind`, `all`, `raw`, `run` and `batch`. `batch` wraps the statements in `begin` / `commit` and rolls back on failure, which is what makes the checkout idempotency tests meaningful — D1's atomic batch is the constraint those tests rely on. The optional `onQuery` callback receives every `{ sql, params }` pair. `src/modules/product/__test__/product.accessors.integration.test.ts` collects them and asserts exactly how many statements a catalog read issues (`expect(queries).toHaveLength(3)`) and that no statement binds more than 100 parameters — that is how the N+1 and D1 parameter-limit regressions are caught.
+
+The tables themselves are created by the test with `sqlite.exec(...)`, matching the columns the migrations produce. Nothing applies the migration files automatically, so a schema change means updating both the migration and the `create table` statements in the tests that touch it.
+
+Separately, every module has a `*.schema.test.ts` in the `node` project that reads the Drizzle table metadata with `getTableConfig` and asserts the table name, the full ordered column list, the foreign keys with their `onDelete` behaviour and the declared relations. Those tests are the reason a column rename cannot land silently.
+
+## Coverage
+
+```sh
+bun run test:coverage
+```
+
+Provider `v8`, reporters `text`, `html` and `json-summary`, output in `coverage/`, which is cleaned on each run.
+
+| Metric     | Threshold |
+| ---------- | --------- |
+| Statements | 72        |
+| Lines      | 71        |
+| Functions  | 68        |
+| Branches   | 69        |
+
+`thresholds.autoUpdate` is `false`, so the numbers do not drift upward on their own — raising them is a deliberate edit to `vite.config.ts`.
+
+Coverage includes `src/**/*.{ts,tsx}` and excludes tests, `__test__` folders, `*.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` (vendored primitives) and `src/platform/testing/**`.
+
+Cover real behaviour. If a branch cannot be reached, delete the branch rather than stubbing a global to reach it.
+
+## Conventions
+
+- One `__test__/` folder per feature, beside the code: `src/modules/order/__test__/order.accessors.integration.test.ts`.
+- Database suites end in `*.integration.test.ts`; anything rendering React ends in `*.component.test.tsx`; everything else is a plain `*.test.ts`.
+- Mock external providers. Stripe, Resend, InPost and R2 are never called from a test.
+- Fixtures are local to the test file or the feature's `__test__` folder. Shared infrastructure — and only infrastructure — belongs in `src/platform/testing/`.
+
+## Related pages
+
+- [Vite+](/docs/tooling/vite-plus)
+- [Database](/docs/tooling/database)
+- [CI/CD](/docs/tooling/ci-cd)

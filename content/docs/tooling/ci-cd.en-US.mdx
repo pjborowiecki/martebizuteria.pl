@@ -1,0 +1,138 @@
+---
+title: "CI/CD"
+description: "Three GitHub Actions workflows, one shared setup action, and how a deploy assembles its Worker secrets."
+---
+
+`.github/workflows/` holds three workflows. All three install the toolchain through the composite action `.github/actions/setup`, and all three run `bun run check`. Only one of them runs the tests.
+
+| Workflow                | Trigger                                                 | What it does                                                            |
+| ----------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `ci.yml`                | Every pull request; pushes to `main`                    | `check`, `test:coverage`, `build:preview`, uploads the coverage report  |
+| `deploy-preview.yml`    | Pull requests to `main` (opened, synchronize, reopened) | `check`, then `deploy:preview`, then comments the preview URL on the PR |
+| `deploy-production.yml` | Pushes to `main`                                        | `check`, then `deploy:production`                                       |
+
+## The setup action
+
+`.github/actions/setup/action.yml` is four steps and one input:
+
+```yaml
+- uses: oven-sh/setup-bun@v2
+  with:
+    bun-version: "1.4.0"
+- uses: voidzero-dev/setup-vp@v1.20.0
+  with:
+    node-version: "24"
+    cache: true
+    run-install: false
+- run: bun install --frozen-lockfile --ignore-scripts
+- run: bun run typegen # when test-environment == 'true', preceded by the .env.test copies
+```
+
+Two details matter:
+
+- **`--ignore-scripts`** means the `prepare` and `postinstall` lifecycle scripts do not run, so no Git hooks are installed on the runner and `typegen` is invoked explicitly as its own step. `typegen` is `bun run cf-typegen && bun run content`, which writes `src/types/worker-configuration.d.ts` and `.source/`. Both are gitignored, and `bun run check` cannot type check without them.
+- **`test-environment`** (default `"false"`) copies `.env.test` over `.env.development` and `.env.preview` when set to `"true"`. `ci.yml` sets it; the two deploy workflows do not, because they inject the real values as environment variables instead.
+
+## ci.yml
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+```
+
+One job, `verify`, with a 15-minute timeout, running on `ubuntu-latest` with `persist-credentials: false` on the checkout. The steps are `bun run check`, `bun run test:coverage`, `bun run build:preview`, and an upload of `coverage/` as the `coverage` artifact with a seven-day retention (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
+
+The build step runs against the dummy `.env.preview` the setup action copied from `.env.test`, which is enough because `scripts/verify-build.ts` checks the shape of the output — the deployment config, the Worker name, the `APP_ENV` var, the presence of fonts, client JS and CSS, and the absence of `cloudflare:workers` or `node:` imports in any client asset — not the values of any credential.
+
+## The deploy workflows
+
+Both deploy workflows share the same shape: `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` at workflow level, a GitHub `environment` (`preview` or `production`), the setup action, `bun run check`, and then a single step that creates an empty env file and runs the deploy script:
+
+```yaml
+run: |
+  touch .env.preview
+  bun run deploy:preview
+```
+
+The `touch` exists because `scripts/prepare-deploy-secrets.ts` reads the file unconditionally; the values themselves come from the step's `env:` block, which the script prefers over the file:
+
+```ts
+const value = process.env[name] ?? values[name]
+```
+
+Concurrency differs on purpose. Preview groups by pull request number and cancels in-progress runs (`preview-${{ github.event.pull_request.number }}`, `cancel-in-progress: true`), so pushing again to a branch replaces its preview. Production uses the fixed group `production` with `cancel-in-progress: false`, so pushes to `main` queue rather than interrupt each other mid-deploy.
+
+`deploy-preview.yml` additionally takes `pull-requests: write` and finishes with an `actions/github-script@v7` step that posts — or updates, by searching existing comments for the string `Preview Deployment` — a comment linking to `https://martebizuteria-preview.pjborowiecki.workers.dev`.
+
+> The deploy workflows run `bun run check` but **not** `bun run test:coverage`. Tests run only in `ci.yml`, which is a separate workflow with no gating relationship to the deploys. A push to `main` with failing tests will still deploy to production as long as format, lint and types pass. If you want a hard gate, that is the thing to change.
+
+Preview is a single shared deployment: every pull request deploys to the same Worker (`martebizuteria-preview`) backed by the same preview D1 database, KV namespace and R2 bucket, so the most recent preview deploy is the one that is live.
+
+## What a deploy actually runs
+
+```json
+"deploy:preview": "bun scripts/verify-bindings.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json"
+```
+
+Four stages.
+
+### 1. verify-bindings.ts
+
+Reads `wrangler.jsonc` for the target environment with `unstable_readConfig` and refuses to continue unless every binding is present and real:
+
+- a `DB` D1 binding with a `database_id` that is not all zeroes or dashes,
+- a `CACHE` KV binding with a real `id`,
+- an `IMAGES` R2 binding with a `bucket_name`,
+- an `AUDIT_LOG_QUEUE` producer **and** a consumer for the same queue,
+- a `REALTIME_INVALIDATION_HUB` Durable Object binding whose `class_name` is `RealtimeInvalidationHub`.
+
+This is the check that catches a placeholder id copied between environments.
+
+### 2. build
+
+`bun run build:preview` removes `dist`, regenerates `.source/`, runs `CLOUDFLARE_ENV=preview vp build --mode preview`, and then `bun scripts/verify-build.ts preview`. `verify-build.ts` reads `.wrangler/deploy/config.json`, follows its `configPath`, and asserts it resolves to exactly `dist/server/wrangler.json`; that the built config's `vars.APP_ENV` matches the target and its `name` is `martebizuteria-preview` (or `martebizuteria` for production); that `main` and `dist/client` exist; that `dist/client/fonts` exists; that `dist/client/assets` contains at least one `.js` and one `.css`; and finally it scans every client `.js` file with `new Bun.Transpiler({ loader: "js" })` and fails on any import of `cloudflare:workers` or a `node:` module.
+
+### 3. prepare-deploy-secrets.ts
+
+Reads `secrets.required` from the environment's `wrangler.jsonc` block, resolves each name from `process.env` first and `.env.<environment>` second, throws on the first missing or blank value, and writes `.wrangler/secrets.<environment>.json` with mode `0o600`.
+
+Only the names declared in `wrangler.jsonc` are written. `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` and `CLOUDFLARE_ACCESS_TOKEN` are deliberately not in that list: they are management credentials for drizzle-kit and Wrangler, not Worker runtime secrets, and uploading them to the Worker would be a privilege leak.
+
+### 4. wrangler deploy
+
+```sh
+env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json
+```
+
+`CLOUDFLARE_ENV` is unset for this command because the built `dist/server/wrangler.json` is already flattened to one environment — leaving the variable set would have Wrangler look for an environment section inside a config that no longer has one. The secrets file is uploaded with the deploy, so the ten declared secrets are set atomically with the new version.
+
+## Repository configuration
+
+| Kind                | Names                                                                                                                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Actions **secrets** | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| Actions **vars**    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                                                                       |
+
+`CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
+
+`VITE_R2_URL` is listed in `secrets.required` in `wrangler.jsonc` but supplied from Actions **vars**, not secrets — it is a public bucket URL and also needs to be visible to the client bundle through its `VITE_` prefix. `prepare-deploy-secrets.ts` reads it from `process.env`, so this works.
+
+## Migrations and CI
+
+No workflow applies a D1 migration. Before merging a pull request whose code needs a new column, apply it yourself:
+
+```sh
+bun run db:migrate:preview     # before the preview deploy matters
+bun run db:migrate:production  # before merging to main
+```
+
+See [Database](/docs/tooling/database).
+
+## Related pages
+
+- [Project scripts](/docs/tooling/scripts)
+- [Database](/docs/tooling/database)
+- [Testing](/docs/tooling/testing)

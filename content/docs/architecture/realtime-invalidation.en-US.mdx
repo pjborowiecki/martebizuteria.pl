@@ -1,0 +1,107 @@
+---
+title: "Realtime invalidation"
+description: "How a change made by one admin reaches every other open tab: the Durable Object hub, the query-key protocol and the client hook."
+---
+
+Admin dashboards go stale the moment a second person is working, and the admin list queries deliberately do not refetch on mount or on focus. Freshness is pushed instead of polled.
+
+## The pieces
+
+| File                                               | Role                                                             |
+| -------------------------------------------------- | ---------------------------------------------------------------- |
+| `src/durable-objects/realtime-invalidation-hub.ts` | `RealtimeInvalidationHub` — the connection fan-out object        |
+| `realtime-invalidation.subscriptions.ts`           | Hub names and the fixed prefix lists each audience subscribes to |
+| `realtime-invalidation.protocol.ts`                | Topic serialization and the prefix-overlap test                  |
+| `realtime-invalidation.publish.server.ts`          | `publishRealtimeInvalidation`, `scheduleRealtimeInvalidation`    |
+| `realtime-invalidation.catalog.server.ts`          | Six named publishers the domain layer actually calls             |
+| `realtime-invalidation.ws.server.ts`               | The upgrade handshake and the admin role check                   |
+| `src/hooks/use-realtime-query-sync.ts`             | The client subscription, matching and reconnect                  |
+| `src/integrations/tanstack-query/query.sync.ts`    | The `BroadcastChannel` mirror across tabs                        |
+
+## Two audiences, one object each
+
+`REALTIME_INVALIDATION_HUB` has two names, `admin` and `storefront`, and the object is addressed by name with `env.REALTIME_INVALIDATION_HUB.getByName(hubName)`. The hub holds no durable state — it is a broadcaster, not a store — and it accepts sockets with a tag equal to its own name so `ctx.getWebSockets(hubName)` can resolve exactly its audience.
+
+The upgrade handshake has to go through `fetch`, because a WebSocket upgrade has no alternative. Invalidations do not: they use a **native RPC method** on the Durable Object stub, which avoids constructing a `Request` and a `Response` on the hot path.
+
+```ts
+const hub = env.REALTIME_INVALIDATION_HUB.getByName(hubName)
+await hub.notifyInvalidation(toSerializedTopicPrefixes(queryKeys))
+```
+
+`notifyInvalidation` serializes one payload, iterates its sockets and swallows a per-socket send failure so one dead connection cannot abort the broadcast.
+
+## The topic is a serialized query key
+
+A topic is just `JSON.stringify(queryKey)`, so the wire format and the cache keys can never drift:
+
+```ts
+export const serializeQueryKeyPrefix = (queryKey: QueryKey): string => JSON.stringify(queryKey)
+```
+
+Matching is a **symmetric prefix overlap** — deliberately broader than TanStack Query's one-directional prefix match:
+
+```ts
+export const queryKeyPrefixesOverlap = (left: QueryKey, right: QueryKey): boolean => {
+  const length = Math.min(left.length, right.length)
+  for (let index = 0; index < length; index++) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+
+  return true
+}
+```
+
+Because it compares only the shared length, a narrow publish (`["admin", "products", "page"]`) still invalidates a coarser subscription (`["admin", "products"]`), and vice versa. The hub broadcasts to the whole audience and each tab discards what does not overlap its own list.
+
+## Subscriptions
+
+`ADMIN_REALTIME_QUERY_PREFIXES` has 12 entries: the audit log page and stats, admin orders, admin customers, and the `ALL`/`STATS` pair for categories, collections, products and product attributes. `STOREFRONT_REALTIME_QUERY_PREFIXES` has 10: the product keys (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), cart availability, and the category and collection `ALL`/`BY_HANDLE` pairs.
+
+Both lists are built from the modules' own `*_QUERY_KEYS` constants and typed `as const satisfies readonly QueryKey[]`, so a renamed key is a type error rather than a silently dead subscription.
+
+## Publishing
+
+`realtime-invalidation.catalog.server.ts` exposes the six publishers the domain layer calls, each naming the audiences it affects:
+
+| Publisher                                     | Admin keys                                     | Storefront keys                                     |
+| --------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| `scheduleProductCatalogInvalidation`          | product `ADMIN.ALL`, `ADMIN.STATS`             | the five product keys plus cart availability        |
+| `scheduleCategoryCatalogInvalidation`         | category `ADMIN.ALL`, `ADMIN.STATS`            | category `ALL`, `BY_HANDLE`                         |
+| `scheduleCollectionCatalogInvalidation`       | collection `ADMIN.ALL`, `ADMIN.STATS`          | collection `ALL`, `BY_HANDLE`, product new arrivals |
+| `scheduleProductAttributeCatalogInvalidation` | attribute `ADMIN.ALL`, `ADMIN.STATS`           | —                                                   |
+| `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                   |
+| `scheduleAdminOrdersInvalidation`             | order `ADMIN.ORDERS`                           | —                                                   |
+
+The `schedule*` form hands the publish to `scheduleBackgroundWork`, so it runs under `waitUntil` and never delays the response. `publishRealtimeInvalidation` is the awaited form, used where there is no request to return from — the audit-log queue consumer awaits it after a successful batch insert.
+
+Callers worth knowing: the Stripe webhook handlers (`scheduleAdminOrdersInvalidation` and `scheduleProductCatalogInvalidation` after a fulfil, refund or dispute), `handleCreateCheckoutSession` and `handleUpdateCheckoutSession` (product catalog, because inventory moved), Better Auth's user create/update/delete hooks (`scheduleAdminCustomersInvalidation`), and the admin catalog mutations.
+
+## The client side
+
+`useRealtimeQuerySync({ hub, subscriptions })` is mounted exactly twice: in `admin.tsx` with the admin prefixes and in `_storefront.tsx` with the storefront prefixes.
+
+```ts
+useRealtimeQuerySync({
+  hub: REALTIME_INVALIDATION_HUB.ADMIN,
+  subscriptions: ADMIN_REALTIME_QUERY_PREFIXES,
+})
+```
+
+The hook opens `wss://<host>/api/realtime/{admin,storefront}/ws`, validates each message with `isRealtimeInvalidationPayload`, parses the topics back into query keys, keeps the subscriptions that overlap, and calls `syncQueryInvalidation(queryClient, prefix)` for each. Reconnect is exponential backoff from 1 s, doubling, capped at 30 s, reset to zero on a successful `open`, and the cleanup function closes the socket and clears any pending timer.
+
+`syncQueryInvalidation` does two things: it invalidates locally with `refetchType: "all"`, and it posts the key to the `marte-query-invalidation` `BroadcastChannel`. `setupQueryClientInvalidationBroadcast` — wired in `getRouter` for the browser only — listens on that channel and invalidates the same key, so other tabs of the same browser stay in sync without a second WebSocket. Both sides are guarded with try/catch and a `WeakSet` so the listener is installed once per `QueryClient`.
+
+## Operational notes
+
+- The hub is declared as a SQLite Durable Object class in `wrangler.jsonc` (`tag: "v1"`) even though it stores nothing. That is the migration contract, not a hint that state exists.
+- There is no delivery guarantee and no replay. A tab that was disconnected when a publish happened will not learn about it on reconnect; it recovers on its next navigation or manual refetch.
+- The storefront hub accepts any client. It only ever carries query-key prefixes, never row data.
+
+## Related pages
+
+- [Caching and SSR](/docs/architecture/caching-and-ssr)
+- [Security model](/docs/architecture/security-model)
+- [Platform layer](/docs/architecture/platform-layer)

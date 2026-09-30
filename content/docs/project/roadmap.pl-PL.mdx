@@ -1,0 +1,141 @@
+---
+title: "Plan rozwoju"
+description: "Co w M'Arte jest niedokończone, w kolejności, w jakiej warto to naprawiać, z plikiem potwierdzającym każdy punkt."
+---
+
+Ta strona wynika z kodu, nie z planu produktowego. Każdy punkt poniżej został znaleziony przez czytanie repozytorium i każdy wskazuje plik, który go potwierdza. Nic tutaj nie jest obietnicą co do terminów.
+
+Czytaj ją razem z [O projekcie](/docs/project/about), które rysuje tę samą granicę z drugiej strony — co już działa.
+
+## Priorytet 1 — poprawność cyklu życia zamówienia
+
+Te rzeczy zmieniają to, co widzą klienci i właściciel sklepu. Są pierwsze, bo sklep działa na produkcji.
+
+### Nic nigdy nie zapisuje `order.status = 'completed'`
+
+Wyliczenie `order.status` to `["pending", "processing", "completed", "cancelled", "refunded"]` (`src/modules/order/order.schema.ts`), a `fulfillOrder` przenosi `pending` w `processing`. Żadna ścieżka kodu nie zapisuje `completed`.
+
+Każdy wskaźnik przychodu w panelu filtruje dokładnie po tej wartości:
+
+| Wskaźnik                                                         | Gdzie                                                      |
+| ---------------------------------------------------------------- | ---------------------------------------------------------- |
+| Przychód na pulpicie, wykres przychodu w czasie                  | `src/modules/admin-dashboard/admin-dashboard.accessors.ts` |
+| Kafelki statystyk zamówień                                       | `src/modules/order/order.accessors.ts`, trzy zapytania     |
+| Wartość klienta, średnia wartość zamówienia, najlepsze kategorie | `src/modules/user/user.accessors.ts`, sześć zapytań        |
+
+Każdy z nich liczy więc na pustym zbiorze. Naprawą jest dodanie przejścia statusu — najnaturalniej w momencie, gdy `fulfillmentStatus` osiągnie `delivered` — oraz migracja uzupełniająca dla zamówień już wysłanych. Do tego czasu traktuj każdą liczbę przychodu w panelu jako zero wynikające z konstrukcji, a nie jako dane.
+
+### `fulfillmentStatus: 'delivered'` nie ma ścieżki zapisu
+
+`shipOrder` (`src/modules/order/use-cases/ship-order.ts`) zapisuje `shipped` i `shippedAt` oraz wysyła e-mail o wysyłce. Nic nie zapisuje `delivered`, mimo że:
+
+- `ORDER_TABS` w `src/modules/order/order.constants.ts` zawiera zakładkę `delivered`, która jest zatem zawsze pusta
+- `src/modules/order/order.accessors.ts` buduje dla niej filtr `eq(order.fulfillmentStatus, "delivered")`
+- `src/modules/customer-account/customer-account.utils.ts` potrafi wyemitować zdarzenie `delivered` na osi czasu, którego klient nigdy nie zobaczy
+- kolumna `order.deliveredAt` jest zadeklarowana i nigdy nie ustawiana
+
+### Numery przesyłek są renderowane, ale nigdy nie zapisywane
+
+`order.trackingNumber` i `order.trackingUrl` istnieją w tabeli, są pobierane w `src/modules/order/order.accessors.ts`, mapowane na szczegóły zamówienia klienta w `src/modules/customer-account/customer-account.utils.ts` i renderowane przez `TrackingNumberRow` w `src/routes/account.orders.$id.tsx` — który na stałe pokazuje stan „brak numeru przesyłki”, bo żaden kod nie zapisuje tych kolumn. Punkt naturalnie łączy się z pracami nad InPostem poniżej.
+
+### Kompensacja stanów magazynowych działa „najlepszym staraniem”
+
+`reserveInventoryForItems` w `src/modules/inventory/inventory.utils.ts` rezerwuje wszystkie pozycje koszyka współbieżnie, warunkowym `UPDATE`, a jeśli któraś pozycja nie przejdzie swojego warunku, zwalnia te, które się udały:
+
+```ts
+await releaseInventoryForItems(reserved).catch((error: unknown) => {
+  console.error("Failed to roll back partial inventory reservation:", error)
+})
+```
+
+Błąd samego wycofania jest przechwytywany i zapisywany do logu. Nieudane wycofanie zostawia więc rezerwację bez pokrycia, bez alertu i bez przebiegu uzgadniającego, który by ją znalazł. To saga ze znaną dziurą, a jej zamknięcie wymaga albo dziennika kompensacji, albo zadania uzgadniającego opisanego niżej.
+
+### Częściowe zwroty nie przywracają stanu magazynowego
+
+`refundOrder` w `src/modules/order/use-cases/refund-order.ts` zbiera pozycje do przywrócenia tylko wtedy, gdy `input.restock && input.fullyRefunded` jest prawdą. `handleChargeRefunded` w `src/integrations/stripe/stripe.webhooks.tsx` zawsze przekazuje `restock: true`, a `fullyRefunded` wyznacza z `charge.amount_refunded >= charge.amount` — częściowy zwrot zapisuje więc pieniądze i zostawia obniżony stan magazynowy.
+
+### E-mail potwierdzający wysyłany jest raz
+
+`notifyOrderConfirmed` w `src/integrations/stripe/stripe.webhooks.tsx` wysyła potwierdzenie i przekazuje wynik do `recordOrderEmailOutcome`, które przy błędzie zapisuje zdarzenie audytowe. Nie ma skrzynki wyjściowej (outbox) ani ponowień, więc awaria Resend w momencie zakupu oznacza, że klient ma zamówienie i nie ma e-maila — a dowiedzieć się o tym można tylko z dziennika audytu.
+
+### `isAdminPathname` dopasowuje zbyt szeroko
+
+```ts
+export const isAdminPathname = (pathname: string): boolean => pathname.includes(ROUTES.ADMIN)
+```
+
+`src/presentation/components/custom/pages/admin/lib/admin-route.ts` używa `includes`, nie `startsWith`, więc każdy adres storefrontu zawierający podciąg `/admin` — uchwyt produktu, slug wpisu na blogu — jest traktowany jako trasa panelu. Konsumują to dwa miejsca: komponent stanu ładowania w `src/presentation/components/custom/defaults/default-pending-component.tsx` i `src/presentation/theme/theme-init.ts`, więc objawem jest zła obudowa stanu ładowania i zła inicjalizacja motywu, a nie dziura w bezpieczeństwie. Poprawka na jedną linię, a istniejący plik testowy już pokrywa ten kształt.
+
+## Priorytet 2 — brakująca infrastruktura
+
+### Brak pracy zaplanowanej
+
+`wrangler.jsonc` nie deklaruje `crons`, a `src/server.ts` nie eksportuje handlera `scheduled`. Potrzebują go cztery rzeczy:
+
+| Zadanie                              | Dlaczego                                                                                                                                                                      |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Uzgadnianie rezerwacji               | przestarzałe rezerwacje zwalniane są tylko wtedy, gdy Stripe wyemituje `checkout.session.expired`; rezerwacja osierocona przez nieudaną kompensację nigdy nie wraca do obiegu |
+| Wygasanie `session` i `verification` | nic nie usuwa wygasłych wierszy                                                                                                                                               |
+| Wygasanie `rate_limit`               | liczniki odkładają wiersze bez końca                                                                                                                                          |
+| Zamykanie zamówień                   | jeśli zamknięcie ma być oparte na czasie, a nie na zdarzeniu, potrzebuje przebiegu planowanego                                                                                |
+
+### Brak kolejki martwych listów
+
+`wrangler.jsonc` ustawia `max_retries: 3` na konsumencie `AUDIT_LOG_QUEUE` i nie deklaruje `dead_letter_queue`. Partia audytowa, która trzy razy się nie uda, jest po cichu tracona. Dziennik audytu jest zapisem tego, kto co zmienił, więc utrata partii jest poważniejsza, niż wygląda.
+
+### Brak raportowania błędów
+
+`.env.example` deklaruje `SENTRY_AUTH_TOKEN`, ale nic w `src/` nie inicjalizuje klienta, a `wrangler.jsonc` tej zmiennej nie deklaruje. Każda ścieżka błędu kończy się dziś na `console.error`, czyli w strumieniu logów Workera i nigdzie trwale. Albo podłącz raportowanie, albo usuń zmienną, żeby przestała sugerować, że coś takiego istnieje.
+
+### Zadeklarowane, ale nieużywane
+
+| Element                | Stan                                                                                                                                                                                                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Przestrzeń KV `CACHE`  | powiązana we wszystkich trzech środowiskach w `wrangler.jsonc`; żaden kod aplikacji jej nie używa                                                                                                                                                                |
+| Tabela `order_address` | zdefiniowana w `src/modules/order-address/order-address.schema.ts` i reeksportowana z `src/integrations/drizzle-orm/drizzle.schemas.ts`; żaden akcesor, przypadek użycia ani zapytanie jej nie dotyka. Z tych trzech ma to największe konsekwencje — patrz niżej |
+| Wtyczka `anonymous()`  | zarejestrowana w `src/integrations/better-auth/auth.server.ts`; żaden przepływ nie tworzy sesji anonimowej                                                                                                                                                       |
+
+Każdy z nich czeka na decyzję: użyć albo usunąć, żeby następny czytający nie zakładał, że coś jest nośne.
+
+`order_address` zasługuje na osobną uwagę, bo jej nieużywanie ma widoczne konsekwencje. Zamówienie nie ma własnych kolumn adresowych; dochodzi do adresu przez `order.checkout_id` → `checkout.shipping_address_id` → wiersz `address` klienta. Ten wiersz można edytować i usuwać z `/account/addresses`, a klucz obcy jest zadeklarowany jako `onDelete: "set null"`. Klient, który edytuje adres, zmienia więc to, co historyczne zamówienie mówi o adresie dostawy, a klient, który adres usunie, odcina zamówienie od jakiegokolwiek adresu. `order_address` istnieje dokładnie po to, by być niezmiennym zrzutem z momentu złożenia zamówienia, z polem `type` o wartości `shipping` lub `billing`. Zapisywanie jej podczas realizacji zamówienia jest naprawą.
+
+### Panel nie potrafi wykonać zwrotu płatności
+
+`orders-row-actions.tsx` udostępnia pozycję menu „Zwrot”, warunkowaną przez `canRefundAdminOrder`, a `handleRefund` w `use-orders-row-action-handlers.ts` po prostu nawiguje do `/admin/orders/$orderId`. Nie ma funkcji serwerowej zwrotu: `src/modules/order/use-cases/refund-order.ts` eksportuje zwykłą funkcję asynchroniczną, a jej jedynym wywołującym jest `handleChargeRefunded` w `src/integrations/stripe/stripe.webhooks.tsx`. Zwroty trzeba więc wykonywać w Stripe, a webhook je potem zapisuje. To projekt do obrony, ale pozycja menu sugeruje inaczej, a uprawnienie `order: ["refund"]` zadeklarowane w `auth.access.ts` nie jest nigdzie sprawdzane.
+
+## Priorytet 3 — funkcjonalności zaczęte
+
+Każda z nich ma już tabelę, kolumnę albo wtyczkę na miejscu, co czyni je tańszymi, niż wyglądają.
+
+| Funkcjonalność                          | Co istnieje                                                                                                               | Czego brakuje                                                                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Rabaty i kody promocyjne                | tabela `discount`; kolumna `discount_id` w `cart`, `checkout` i `order`; interfejs `/admin/coupons` na danych zastępczych | każda ścieżka kodu. Nic nie czyta ani nie zapisuje tych kolumn                                                                         |
+| Uwierzytelnianie dwuskładnikowe         | skonfigurowana wtyczka `twoFactor()`, tabela `two_factor` z `backup_codes`                                                | interfejs włączenia i weryfikacji, ścieżka odzyskiwania                                                                                |
+| Przesyłki InPost                        | `fetchPointsByCity` w `src/integrations/inpost/inpost.api.ts` — wyszukiwanie paczkomatów po mieście, minimum trzy znaki   | tworzenie przesyłek, generowanie etykiet, zapisywanie numerów śledzenia                                                                |
+| Lista życzeń                            | trasa `/account/wishlist` i jej przestrzeń nazw komunikatów                                                               | tabela, przypadki użycia i cokolwiek poza zaszytym pustym stanem                                                                       |
+| Zapisane metody płatności               | trasa `/account/payment`                                                                                                  | zapis klienta i metody płatności w Stripe                                                                                              |
+| Szczegóły zamówienia w panelu           | prawdziwe akcje — realizacja, wysyłka, anulowanie, eksport, wydruk faktury                                                | karty osi czasu, notatek, tagów, danych do faktury i dostawy nadal czytają `src/data/order-detail.ts`; zwrot nawiguje, zamiast zwracać |
+| Treści, marketing i ustawienia w panelu | kompletny interfejs                                                                                                       | każde z nich czyta dane zastępcze z `src/data/`                                                                                        |
+
+`src/data/` jest uczciwym znacznikiem całej tej kategorii: osiem plików z danymi zastępczymi, a każdy ekran importujący jeden z nich to ekran, który wygląda na skończony i nie jest. [Rabaty](/docs/features/discounts) i [Wysyłka i dostawa](/docs/features/shipping-and-delivery) opisują dwa największe.
+
+## Priorytet 4 — testy
+
+Istnieje 873 plików testowych: 322 jednostkowe, 30 integracyjnych, 511 komponentowych. Naprawy wymaga rozkład, nie liczba.
+
+- **Brak testów end-to-end i przeglądarkowych.** `vite.config.ts` już wyklucza katalog `e2e` i cache `playwright/`, które nie istnieją, więc intencja była. Dla procesu zamówienia to najistotniejsza luka.
+- **Proporcje są odwrotne do ryzyka.** Testy komponentowe głównie sprawdzają render; poprawność handlowa mieszka w procesie zamówienia, kompensacji stanów magazynowych i zwrotach, które pokrywa 30 zestawów integracyjnych. Więcej pokrycia integracyjnego na ścieżkach pieniędzy jest warte więcej niż więcej testów komponentowych.
+- **Zestawy integracyjne działają na `node:sqlite`.** Transport w `src/platform/testing/mocks/d1.ts` odwzorowuje atomowość partii w D1, ale nie jego limit parametrów, więc wyniki dotyczące współbieżności są zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
+- **Zapadka pokrycia czeka na przekręcenie.** Progi stoją na 72 instrukcjach, 71 liniach, 68 funkcjach i 69 rozgałęzieniach, z `autoUpdate: false`. To podłoga do podnoszenia, nie osiągnięty cel.
+
+## Priorytet 5 — porządki
+
+- **`README.md` rozjechał się z kodem.** Cztery konkrety: opisuje pomocnik `assertAdmin()`, który już nie istnieje, bo autoryzacja przeniosła się do middleware `authorized(permission)` i macierzy ról w `src/integrations/better-auth/auth.access.ts`; nazywa tę macierz martwą, choć `hasPermission` sprawdza ją dziś przy każdym chronionym wywołaniu; podaje 236 testów i 8,6% pokrycia, czyli stan z czasów przed obecnym zestawem 873 plików; i wymienia jako otwarte dwie luki, które są zamknięte — `getCurrentSession` usuwa dziś `session.token` przez `toClientSession` w `src/integrations/better-auth/auth.session.ts`, a `shipOrder` faktycznie zapisuje `fulfillmentStatus: "shipped"` i `shippedAt`. Te strony dokumentacji są aktualne; README jest następne.
+- **Dzielenie parametrów dla D1 jest niespójne.** `src/modules/product-attribute/product-attribute.server.ts` ustawia `RANK_UPDATE_CHUNK_SIZE = 30` i iteruje; `setProductRanks` w `src/modules/product/product.mutations.ts` buduje jeden `UPDATE` z generowanym `case … when` nad `inArray`, wiążąc dwa parametry na wiersz plus listę identyfikatorów, i nie dzieli na partie. Ścieżki zmiany kolejności kategorii i kolekcji idą wzorem produktów. Przy obecnej wielkości katalogu jest to w porządku i w porządku nie zostanie.
+- **Historia gita nie odpowiada kodowi.** 43 commity, część dotyka ponad dwóch tysięcy plików. Retroaktywnie nie ma tu czego naprawiać, ale warto tego nie powtarzać — zobacz [Współtworzenie](/docs/project/contributing).
+
+## Jak utrzymać tę stronę w uczciwości
+
+Zamykając którykolwiek z punktów, usuń wpis, a nie oznaczaj go jako zrobiony, i zaktualizuj odpowiadający akapit w [O projekcie](/docs/project/about). Gdy znajdziesz nowy, dopisz go tutaj razem z plikiem, który go potwierdza. Plan rozwoju wymieniający rzeczy już naprawione jest dokładnie tak samo mylący jak ten, który pomija rzeczy zepsute.
+
+Wkład jest mile widziany przez zgłoszenia i pull requesty na [github.com/pjborowiecki/martebizuteria.pl](https://github.com/pjborowiecki/martebizuteria.pl).

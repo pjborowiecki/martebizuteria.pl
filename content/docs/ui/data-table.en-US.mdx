@@ -1,0 +1,252 @@
+---
+title: "Data grid"
+description: "The admin table kit: the createDataGrid factory, the TanStack Table feature set, persisted column layout, columns, filters and server paging."
+---
+
+There are two layers with similar names. Keep them apart:
+
+| Layer                                               | What it is                                                                                                                                      |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/presentation/components/shadcn/data-table.tsx` | Three tiny primitives: `DataTable` (a `table-fixed` `border-separate` table), `DataTableContainer` (the scroll box) and `dataTableContentStyle` |
+| `src/presentation/components/custom/datagrid/`      | The actual kit: a factory, a table hook, the preference store and 18 components                                                                 |
+
+Nothing but the data grid uses the primitives. Every admin list screen uses the kit.
+
+## The factory
+
+`createDataGrid` (`datagrid/components/create-data-grid.tsx`) builds one grid per screen. It creates a private React context and returns the four compound components bound to it:
+
+```ts
+export const ORDERS_DATA_GRID_KEY = "admin.orders"
+
+export const ordersDataGrid = createDataGrid<Order["adminListItem"]>({
+  persistenceKey: ORDERS_DATA_GRID_KEY,
+})
+```
+
+```ts
+interface DataGrid<TData extends RowData> {
+  readonly persistenceKey: string
+  readonly Body: () => JSX.Element
+  readonly Pagination: () => JSX.Element
+  readonly Provider: (props: Readonly<{ children: ReactNode; value: DataGridContextValue<TData> }>) => JSX.Element
+  readonly Toolbar: (props: Readonly<{ actions?: ReactNode; children?: ReactNode; filters?: ReactNode }>) => JSX.Element
+  readonly useDataGrid: () => DataGridContextValue<TData>
+}
+```
+
+Seven grids exist, each in `pages/admin/<area>/utils/<area>-data-grid.ts`:
+
+| Grid                  | `persistenceKey`              | Mode                                                                         |
+| --------------------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| `ordersDataGrid`      | `admin.orders`                | Server: manual filtering and pagination                                      |
+| `customersDataGrid`   | `admin.customers`             | Server: manual filtering and pagination                                      |
+| `auditDataGrid`       | `admin.audit:v3`              | Server: manual filtering and pagination                                      |
+| `productsDataGrid`    | `admin.catalog.products:v2`   | Server when a list query is present, otherwise in memory; manual sorting too |
+| `categoriesDataGrid`  | `admin.catalog.categories`    | In memory, custom global filter, row reorder                                 |
+| `collectionsDataGrid` | `admin.catalog.collections`   | In memory, custom global filter, row reorder                                 |
+| `attributesDataGrid`  | `admin.catalog.attributes:v6` | In memory, custom global filter, row reorder                                 |
+
+The `:v2`, `:v3` and `:v6` suffixes are cache busters. Bump the suffix when you change a grid's columns in a way that makes saved layouts meaningless — every visitor then starts from the defaults instead of restoring a stale width or order.
+
+## Assembling a screen
+
+A screen is three files: the grid object, a hook that produces the context value, and a component that lays out the parts. From `pages/admin/orders/components/orders-table.tsx`:
+
+```tsx
+const grid = useOrdersDataGrid({ onRowClick: handleRowClick })
+
+return (
+  <Provider value={grid}>
+    <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>
+      <OrdersStats />
+      <DataGridShell>
+        <Toolbar
+          filters={
+            <>
+              <OrdersStatusFilter />
+              <OrdersPaymentFilter />
+              <OrdersFulfillmentFilter />…
+            </>
+          }
+        >
+          <OrdersRefreshAction />
+          <OrdersExportAction />
+        </Toolbar>
+        <Body />
+        <Pagination />
+      </DataGridShell>
+    </div>
+  </Provider>
+)
+```
+
+`const { Body, Pagination, Provider, Toolbar } = ordersDataGrid` sits at the bottom of the file. `DataGridShell` is a `Card` with `grid-rows-[auto_minmax(0,1fr)_auto]`, so toolbar and pagination stay put and only the body scrolls.
+
+`Toolbar` always renders the search box, the column-visibility menu and the reset-layout button. Its `filters` slot is the second row, its `children` sit next to the built-in controls, and its `actions` slot is right-aligned.
+
+## The feature set
+
+`datagrid/lib/data-grid.features.ts` declares the TanStack Table v9 feature set once with `tableFeatures`, and every grid shares it:
+
+- **Columns**: filtering, ordering, pinning, resizing, sizing, visibility, plus a `metaHelper<DataGridColumnMeta>()`.
+- **Rows**: pagination, selection, sorting; filtered, paginated and sorted row models.
+- **Filter functions**: `arrIncludes`, `equals`, `equalsString`, `inDateRange`, `inNumberRange`, `includesString`, `weakEquals`.
+- **Sort functions**: `alphanumeric`, `basic`, `datetime`, `text`.
+- **Global filtering**.
+
+`DataGridFeatures` is the exported type; every `Table`, `Row`, `Column` and `createColumnHelper` in the codebase is parameterised with it.
+
+## The table hook
+
+`useDataGridInstance` (`datagrid/hooks/use-data-grid-instance.ts`) wires `useTable` to the preference store. Its options:
+
+| Option                                                           | Purpose                                                     |
+| ---------------------------------------------------------------- | ----------------------------------------------------------- |
+| `columns`, `data`, `getRowId`                                    | The usual TanStack inputs; `getRowId` is required           |
+| `persistenceKey`                                                 | Where layout preferences are stored                         |
+| `initialColumnOrder`                                             | The canonical order — `getDataGridColumnIds(columns)`       |
+| `initialColumnPinning`                                           | `{ start: [...], end: [...] }`                              |
+| `defaultColumnVisibility`                                        | Columns hidden until the user shows them                    |
+| `forcedHiddenColumnIds`                                          | Columns that stay hidden whatever the saved preference says |
+| `defaultPageSize`                                                | Normalised to the allowed page sizes                        |
+| `enableRowSelection`                                             | Defaults to `true`                                          |
+| `globalFilterFn`                                                 | Defaults to `includesString`                                |
+| `manualFiltering`, `manualPagination`, `manualSorting`           | Hand the work to the server                                 |
+| `pagination`, `sorting`, `pageCount`, `rowCount`                 | Controlled state for server mode                            |
+| `onPaginationChange`, `onSortingChange`, `onColumnFiltersChange` | Callbacks that keep the query input in sync                 |
+
+It always sets `columnResizeMode: "onChange"`, `enableColumnPinning`, `enableColumnResizing` and `defaultColumn: { minSize: 36 }`, and returns `{ table, columnReorder, hasPreferenceOverrides, resetPreferences }`.
+
+## Persisted layout
+
+Column order, width and visibility survive reloads. `datagrid/lib/data-grid-preferences.ts` stores them under `marte:datagrid:v1:<persistenceKey>` in `localStorage`, as `{ columnOrder, columnSizing, columnVisibility }`.
+
+Three things keep that from flashing or drifting:
+
+1. **Pre-paint restore.** `DATAGRID_PREFS_INIT_SCRIPT` (`datagrid/datagrid-init.ts`) runs as an inline script in the document head. It walks every `marte:datagrid:v1:` key and writes each saved width to a CSS custom property `--marte-dg-<slug>-<columnId>` on `documentElement`, where `<slug>` is the persistence key with `.` and `:` replaced by `-`. The fixed columns `select`, `drag`, `image` and `actions` are skipped. Columns then render at their saved width on the very first paint.
+2. **Debounced writes.** `useDataGridPersistEffects` writes 300ms after the last change and also flushes on `beforeunload` and `pagehide`.
+3. **Sanitising on read.** `sanitizeColumnOrder`, `sanitizeColumnSizing` and `sanitizeColumnVisibility` drop unknown column ids, clamp widths to each column's `minSize`/`maxSize`, ignore sizes for non-resizable columns and re-apply pinning order. Two legacy key migrations are built in: a saved `id` becomes `recordId`, and a saved `handle` becomes `title` — each only when the grid's canonical order actually contains the new id, which is how the renamed catalog and attribute columns keep older saved layouts working.
+
+`hasPreferenceOverrides` drives the enabled state of the reset button in the toolbar; `resetPreferences` clears the stored entry and the CSS variables and returns to the canonical order.
+
+## Columns
+
+Column definitions are built by a plain function, and a thin hook supplies translations and locale, memoised. The orders, customers and audit screens keep the builder in `lib/<area>-column-defs.tsx` and the hook in `components/<area>-columns.tsx`; the four catalog screens keep both in `components/<area>-columns.tsx`.
+
+```tsx
+export const useOrderColumns = () => {
+  const t = useTranslations("pages.admin.orders")
+  const tAdmin = useTranslations("pages.admin")
+  const locale = useLocale()
+
+  return useMemo(() => buildOrderColumns({ locale, t, tAdmin }), [locale, t, tAdmin])
+}
+```
+
+Column ids are never string literals at the call site — they come from a module constant such as `ADMIN_ORDER_TABLE_COLUMN_ID`, and widths from `ADMIN_ORDER_TABLE_COLUMN_SIZE`, both in `src/modules/order/order.constants.ts`. That way the column ids used by the grid, the pinning config, the filters and the server's sort mapping cannot disagree.
+
+```tsx
+columnHelper.accessor("createdAt", {
+  cell: ({ row }) => (
+    <span className="text-sm whitespace-nowrap text-muted-foreground">{formatAdminOrderDate(row.original.createdAt, locale)}</span>
+  ),
+  enableSorting: false,
+  filterFn: "auto",
+  header: t("columns.date"),
+  id: ADMIN_ORDER_TABLE_COLUMN_ID.createdAt,
+  maxSize: DATE_COLUMN_MAX_SIZE,
+  meta: { skeletonVariant: "text" },
+  size: ADMIN_ORDER_TABLE_COLUMN_SIZE.createdAt,
+})
+```
+
+### Column meta
+
+`DataGridColumnMeta` (`datagrid/lib/data-grid.types.ts`) is how a column tells the grid how to behave:
+
+| Field                            | Effect                                                                             |
+| -------------------------------- | ---------------------------------------------------------------------------------- |
+| `cellClassName`, `headClassName` | Extra classes on the cell and header                                               |
+| `fillsRemainingWidth`            | This column grows to fill the container                                            |
+| `absorbsTrailingSlack`           | This column takes leftover pixels after layout                                     |
+| `filterOnly`                     | The column stays in the table for filtering but is left out of the rendered layout |
+| `preventRowClick`                | Clicks in this cell do not trigger `onRowClick`                                    |
+| `skeletonVariant`                | Which placeholder to draw while loading                                            |
+
+The skeleton variants are `badge`, `checkbox`, `date`, `icon`, `iconEnd`, `number`, `recordId`, `text`, `thumbnail` and `title`; `renderDataGridSkeletonContent` maps each to a `Skeleton` shape, and an undefined variant falls back to a `h-4 w-full max-w-[80%]` bar.
+
+### Fixed and utility columns
+
+`fixedDataGridColumnWidth(size)` returns `{ enableResizing: false, minSize: size, maxSize: size, size }` — spread it into a column that must not move. `selectionColumn(columnHelper, labels)` builds the checkbox column (id `select`, width 40, `preventRowClick`, `skeletonVariant: "checkbox"`), taking the two accessible labels as arguments so the caller supplies translations. `DATAGRID_UTILITY_COLUMN_IDS` is `["actions", "drag", "image", "select"]`; these are excluded from resizing and from the saved sizing map.
+
+Row actions are a `display` column with `enableHiding: false`, a screen-reader-only header, `meta.preventRowClick` and a component cell such as `OrdersRowActions`.
+
+## Filters
+
+Filters are per-screen components that write into the table's `columnFilters` state; the shared toolbar has no filter abstraction. The orders screen supplies `OrdersStatusFilter`, `OrdersPaymentFilter`, `OrdersFulfillmentFilter`, `OrdersNumericColumnFilter` and `OrdersDateColumnFilter`. `datagrid/lib/` provides the reusable parsing halves: `data-grid-date-filter.ts` and `data-grid-numeric-filter.ts`.
+
+Search is separate. `DataGridSearch` writes to the table's global filter; `useAdminDebouncedTableSearch(table)` returns a debounced copy that server-mode screens feed into their query input. The in-memory catalog grids instead pass a `globalFilterFn` built by `createCatalogTableGlobalFilterFn`, which joins a row's searchable parts into one lowercased haystack:
+
+```ts
+export const createCatalogTableGlobalFilterFn =
+  <TData extends RowData>(getSearchableParts: (row: TData) => CatalogTableSearchPart[]): FilterFn<DataGridFeatures, TData> =>
+  (row, _columnId, filterValue) =>
+    rowMatchesCatalogTableSearch(getSearchableParts(row.original), filterValue)
+```
+
+## Server mode
+
+A server-mode hook owns the query input and hands controlled state to `useDataGridInstance`. The orders hook is the canonical example:
+
+- Local state for `pagination`, `columnFilters`, the debounced search and the active stat filter.
+- `parseAdminOrdersListFilters(columnFilters)` turns the table's filter state into typed list filters.
+- `buildAdminOrdersPageInput({ … })` assembles `Order["adminPageInput"]`, converting the zero-based `pageIndex` with `LIST_PAGE_STEP`.
+- `useQuery({ ...getAdminOrdersPageQuery(pageInput), placeholderData: keepPreviousData })`, so the previous page stays visible while the next loads.
+- `isLoading: isFetching || isPending`, which makes `Body` draw skeleton rows instead of blanking the table.
+- `pageCount: Math.ceil(data.total / pagination.pageSize)` and `rowCount: data.total`.
+- Effects that reset `pageIndex` to 0 whenever the search text or the column filters change.
+
+Sorting in server mode is opt-in: only the products grid sets `manualSorting`. The orders, customers and audit grids set `enableSorting: false` on their columns, so the server's ordering is authoritative.
+
+The context value may be widened per screen. `OrdersDataGridValue` extends `DataGridContextValue` with `activeStatFilter`, `applyOrderStatFilter` and `exportListInput`, and `useOrdersDataGridContext()` narrows the base context back to it with a type guard that throws a clear error outside the right `Provider`.
+
+## Pagination
+
+`DataGridPagination` renders the rows-per-page select, a range counter, a page indicator and first/previous/next/last buttons. The allowed page sizes are fixed in `data-grid-pagination.constants.ts` as `DATA_GRID_PAGE_SIZE_OPTIONS`, which resolves to `[10, 25, 50, 100, 250]`.
+
+`DATA_GRID_DEFAULT_PAGE_SIZE` is 10; `normalizeDataGridPageSize` rounds any other number up to the next allowed size, and an effect in the component corrects a page size that is not in the list. Screens override it — orders use `ADMIN_ORDERS_PAGE_SIZE` (25), customers `ADMIN_CUSTOMER_PAGE_SIZE`, audit `ADMIN_AUDIT_LOG_PAGE_SIZE`.
+
+In manual mode the total comes from `table.options.rowCount`; otherwise from the filtered row model.
+
+All of the text lives in the `components.datagrid` namespace: `view.label`, `view.columns`, `view.reset`, `sortBy`, `reorderColumn`, `resizeColumn` and `pagination.*`. The `/admin` route preloads that namespace via `staticData.namespaces`.
+
+## Layout, resizing and reordering
+
+`DataGridTable` measures its scroll container with a `ResizeObserver` (`useDatagridContainerWidth`) and resolves a layout from the column sizing, the pinning state and `fillsRemainingWidth`/`absorbsTrailingSlack`. Column widths are applied as CSS variables rather than inline styles, which is what lets the head script restore them before React runs.
+
+Column reordering is drag and drop via `useColumnReorder` and the `ColumnReorderApi` on the context. Row reordering is opt-in: the four catalog grids provide a `RowReorderApi` (`onRowDragStart`, `onRowDragEnter`, `onRowDrop`, `onRowMove`, `draggingId`, `enabled`), and the others pass `rowReorder: undefined`.
+
+Row clicks have one subtlety. `DataGridRow` marks cells whose column sets `meta.preventRowClick` with `data-prevent-row-click`, and before firing `onRowClick` it checks `consumeDataGridRowClickSuppression()`. Code that closes a dialog or a menu over the grid calls `suppressNextDataGridRowClick()` (300ms) or `suppressDataGridRowClickAfterDialogDismiss()` (500ms) from `lib/data-grid-row-click.ts`, so dismissing an overlay does not also open the row underneath.
+
+## Tests
+
+Every component and hook in `datagrid/` has a sibling test under `__test__/`, including `use-data-grid-preferences-snapshot.ssr.test.tsx` for the SSR path and `data-grid-harness.tsx` as the shared fixture. Screens add their own harness — `pages/admin/orders/components/__test__/orders-grid-harness.tsx`.
+
+```bash
+bun run test:component
+```
+
+## Adding a grid
+
+1. Add `pages/admin/<area>/utils/<area>-data-grid.ts` with a `<AREA>_DATA_GRID_KEY` and `createDataGrid<Row>({ persistenceKey })`.
+2. Put column ids, sizes, pinning and default visibility in the owning module's `*.constants.ts`.
+3. Write the column definitions with `createColumnHelper<DataGridFeatures, Row>()` and a `use<Area>Columns()` hook for translations.
+4. Write `hooks/use-<area>-data-grid.ts` returning a `DataGridContextValue`.
+5. Compose `components/<area>-table.tsx` from `Provider`, `DataGridShell`, `Toolbar`, `Body` and `Pagination`.
+6. Add the `components.datagrid` keys you need in both locales, and tests beside each file.
+
+## Related pages
+
+- [shadcn components](/docs/ui/shadcn-components)
+- [Composition patterns](/docs/ui/composition-patterns)

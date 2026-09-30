@@ -1,0 +1,175 @@
+---
+title: "Lint and format"
+description: "oxfmt and oxlint through Vite+: the exact settings, the six error categories, the size limits and the narrow overrides."
+---
+
+Formatting and linting are both Vite+ built-ins, configured in the `fmt` and `lint` blocks of `vite.config.ts`. There is no `.prettierrc`, no `eslint.config.js` and no separate `tsc --noEmit` step: `vp check` runs oxfmt, oxlint and the TypeScript type check in one pass.
+
+```sh
+bun run check        # vp check — format, lint, type check
+bun run check:fix    # vp check --fix — same, applying fixes
+bun run lint         # vp lint
+bun run format       # vp fmt
+bun run format:check # vp fmt --check
+```
+
+`bun run check` is the gate. CI runs it in all three workflows, and the pre-commit hook runs the staged-file equivalent.
+
+## Formatting
+
+The `fmt` block is explicit about every setting that matters:
+
+| Setting          | Value      |
+| ---------------- | ---------- |
+| `semi`           | `false`    |
+| `singleQuote`    | `false`    |
+| `jsxSingleQuote` | `false`    |
+| `printWidth`     | `140`      |
+| `tabWidth`       | `2`        |
+| `useTabs`        | `false`    |
+| `trailingComma`  | `"all"`    |
+| `arrowParens`    | `"always"` |
+| `bracketSpacing` | `true`     |
+| `endOfLine`      | `"lf"`     |
+
+No semicolons, double quotes, trailing commas everywhere, two-space indentation and a 140-column print width. Do not fight this by hand; run the formatter.
+
+### Import groups
+
+`fmt.sortImports` defines named groups by module pattern and then an explicit group order. The order is:
+
+1. `server-only` — `@tanstack/react-start/server-only`
+2. `cloudflare` — `cloudflare:workers`
+3. `react` — `react`, `react/**`, `react-dom`, `react-dom/**`
+4. `builtin` and `external` (one combined group)
+5. `platform` — `~/src/platform/**`
+6. `providers` — `~/src/providers/**`
+7. `integrations` — `~/src/integrations/**`
+8. `modules` — `~/src/modules/**`
+9. `routes` — `~/src/routes/**`
+10. `hooks` — `~/src/hooks/**`
+11. `constants` — `~/src/data/**` and `~/src/presentation/theme/**`
+12. `types` — `~/src/types/**`
+13. `lib` — `~/src/lib/**`
+14. `branding` — `~/src/presentation/branding/**`
+15. `components-shadcn` — `~/src/presentation/components/shadcn/**`
+16. `components-custom` — `~/src/presentation/components/custom/**`
+17. `components-other` — the rest of `~/src/presentation/components/**`
+18. `styles` — `~/src/presentation/styles/**`
+19. `internal`, `parent`, `sibling`, `index` (one combined group)
+20. `unknown`
+
+`newlinesBetween: true` puts a blank line between groups, `ignoreCase: true` sorts case-insensitively, and `sortSideEffects: true` sorts bare side-effect imports too. This is why the top of a server-side module reads `import "@tanstack/react-start/server-only"`, then `cloudflare:workers`, then packages, then `~/src/...` in layer order — it mirrors the dependency direction described in [Architecture](/docs/architecture).
+
+### Tailwind class sorting
+
+```ts
+sortTailwindcss: {
+  attributes: ["className", "classList"],
+  functions: ["cn", "cva", "tw"],
+  stylesheet: "./src/presentation/styles/globals.css",
+}
+```
+
+Classes are sorted inside `className` and `classList` attributes and inside `cn`, `cva` and `tw` calls. The formatter reads the project stylesheet, so custom theme utilities defined in `globals.css` sort correctly rather than being treated as unknown.
+
+## Linting
+
+All six oxlint categories are errors:
+
+```ts
+categories: {
+  correctness: "error",
+  nursery: "error",
+  pedantic: "error",
+  perf: "error",
+  style: "error",
+  suspicious: "error",
+}
+```
+
+`nursery` included as an error is unusual and intentional — it is part of the baseline this repository shares with its reference projects, and it must not be downgraded.
+
+```ts
+options: {
+  denyWarnings: true,
+  reportUnusedDisableDirectives: "error",
+  typeAware: true,
+  typeCheck: true,
+}
+```
+
+- `denyWarnings` means a warning fails the run. There is no such thing as a tolerated warning here.
+- `reportUnusedDisableDirectives: "error"` means a suppression comment that no longer suppresses anything is itself an error.
+- `typeAware` enables the rules that need type information; `typeCheck` makes `vp check` perform the TypeScript check as part of the same pass.
+
+`lint.env` declares `browser`, `es2024`, `node` and `worker`, and `lint.globals` adds the three Workers globals the type definitions do not cover as ambient values: `HTMLRewriter`, `WebSocketPair` and `caches`, all `readonly`.
+
+### Configured rules
+
+| Rule                                         | Configuration                                                                    |
+| -------------------------------------------- | -------------------------------------------------------------------------------- |
+| `max-lines`                                  | `800` per file                                                                   |
+| `max-lines-per-function`                     | `150`                                                                            |
+| `max-statements`                             | `20`                                                                             |
+| `id-length`                                  | At least two characters; `_`, `m` and `t` are exempt, properties are not checked |
+| `no-magic-numbers`                           | `-1`, `0` and `1` allowed; array indexes, default values and type indexes exempt |
+| `no-underscore-dangle`                       | Only `_splat` and `__executeServer` allowed                                      |
+| `one-var`                                    | `"never"`                                                                        |
+| `new-cap`                                    | `properties: false`                                                              |
+| `sort-imports`                               | `ignoreDeclarationSort: true` (oxfmt owns declaration order)                     |
+| `no-ternary`                                 | `"off"`                                                                          |
+| `typescript/only-throw-error`                | Allows `NotFoundError` and `Redirect` from `@tanstack/router-core`               |
+| `typescript/prefer-readonly-parameter-types` | `"off"`                                                                          |
+| `unicorn/no-useless-undefined`               | `checkArguments: false`                                                          |
+
+The three size limits shape the codebase more than anything else: a use case that needs more than 20 statements is telling you it is doing two things, and the 150-line function limit is what keeps route components from absorbing their own data logic.
+
+The `only-throw-error` exception exists because TanStack Router signals a 404 and a redirect by throwing `notFound()` and `redirect()`, whose thrown values are not `Error` instances.
+
+`no-underscore-dangle` allows exactly two names: `_splat`, the TanStack Router catch-all route parameter (used by `src/routes/docs.$.tsx`), and `__executeServer`, the internal server-function entry point that `src/platform/testing/lib/server-function.ts` has to reach in order to drive server functions through their real middleware pipeline in tests.
+
+### Overrides
+
+Five narrow overrides relax specific rules for specific trees. Nothing else is exempt.
+
+| Files                                                                     | Rules turned off                                                                   |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `src/**/*.test.{ts,tsx}`, `src/**/__test__/**`, `src/platform/testing/**` | `no-await-in-loop`, `no-magic-numbers`, `unicorn/no-null`                          |
+| `src/presentation/**`, `src/hooks/**`                                     | `typescript/consistent-return`                                                     |
+| `src/platform/testing/mocks/**`                                           | `require-await`, `typescript/require-await`, `typescript/no-unsafe-type-assertion` |
+| `src/routes/**`                                                           | `sort-keys`                                                                        |
+| `vite.config.ts`                                                          | `max-lines`                                                                        |
+
+Tests need literal numbers and `null` fixtures and sequential awaits. Component code returns `undefined` from some branches by design. The Cloudflare mocks assert their shape once, at the boundary (`createTestD1Database` ends with `client as unknown as D1Database`), which is the only place that assertion is allowed. Route files are ordered by TanStack's own option conventions rather than alphabetically. And `vite.config.ts` is itself over 800 lines' worth of configuration.
+
+## The rule about suppressions
+
+Fix the cause. Do not add `// oxlint-disable`, `@ts-expect-error`, `@ts-nocheck`, `any`, `as never` or `as unknown as` to get past a rule. `reportUnusedDisableDirectives` is an error precisely so that suppressions cannot accumulate quietly, and `denyWarnings` means there is no gradual-adoption path to hide behind. If a rule genuinely does not apply to a whole tree, add a documented override to `vite.config.ts` instead of a comment in a file.
+
+The same applies to comments in general: this repository has no explanatory comments in TypeScript or TSX. Intent is carried by names and types.
+
+## Staged checks
+
+The `staged` block is:
+
+```ts
+staged: { "*": ["vp check --fix"] }
+```
+
+The `*` pattern means every staged file, not just TypeScript. `bun run check:pre-commit` runs `vp staged`, which is what `.vite-hooks/pre-commit` calls.
+
+`bun run check:fix` runs `vp check --fix` across the whole repository. It will happily reformat files you never touched, so read its diff before committing. To fix only what you changed, pass paths to `vp` directly:
+
+```sh
+vp fmt src/modules/order/use-cases/create-order.ts
+vp lint --fix src/modules/order/use-cases/create-order.ts
+```
+
+> `bun run check:staged` and `bun run lint:staged` are both `vp staged --no-fmt`, but `--no-fmt` is not an option of `vp staged` (it belongs to `vp check`). Running either script fails immediately with `error: unexpected argument '--no-fmt' found`. Use `bun run check:pre-commit`, which is plain `vp staged`.
+
+## Related pages
+
+- [Vite+](/docs/tooling/vite-plus)
+- [Conventional commits](/docs/tooling/conventional-commits)
+- [Reference](/docs/reference)

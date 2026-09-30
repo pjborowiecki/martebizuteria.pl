@@ -1,0 +1,152 @@
+---
+title: "Admin dashboard"
+description: "The /admin layout and guard, the overview snapshot built from one D1 batch, and the four tool screens that are disabled demos."
+---
+
+## Layout
+
+`src/routes/admin.tsx` is the console shell.
+
+```ts
+beforeLoad: async () => ({
+  user: await requireAdmin(),
+}),
+```
+
+`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) requires a session whose role passes `hasAdminAccess`, which checks membership of `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`).
+
+Three things the layout does that nothing else does:
+
+1. **Its own stylesheet.** `head` links `src/presentation/styles/admin.css?url`, so the admin CSS is not loaded on the storefront.
+2. **Forces light mode.** `useAdminLightTheme()` (`src/presentation/theme/use-admin-light-theme.ts`) removes the `dark` class on mount and restores the storefront preference from `localStorage` on unmount.
+3. **Subscribes to realtime invalidation.**
+
+```ts
+useRealtimeQuerySync({
+  hub: REALTIME_INVALIDATION_HUB.ADMIN,
+  subscriptions: ADMIN_REALTIME_QUERY_PREFIXES,
+})
+```
+
+`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) lists twelve key prefixes — audit log page and stats, admin orders, admin customers, and the admin all/stats keys for categories, collections, products and product attributes. A mutation anywhere in the console refreshes every other open console tab.
+
+The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` from the `sidebar_state` cookie (`src/presentation/theme/sidebar-preference.ts`), and an inline `SIDEBAR_INIT_SCRIPT` copies the `localStorage` value into that cookie before hydration so the sidebar does not flash.
+
+`/admin` redirects to `/admin/overview`, and the layout declares `staticData.namespaces: ["pages.admin", "components.datagrid"]`.
+
+## Navigation
+
+`admin-sidebar.tsx` defines four groups:
+
+| Group  | Items                                                                                           |
+| ------ | ----------------------------------------------------------------------------------------------- |
+| (top)  | Dashboard (`/admin/overview`)                                                                   |
+| Main   | Orders, Customers, and a collapsible Catalog with Products, Categories, Collections, Attributes |
+| Tools  | Marketing, Coupons, Content — all three with `disabled: true`                                   |
+| System | Audit, Settings — Settings has `disabled: true`                                                 |
+
+A disabled item renders as a non-interactive `SidebarMenuButton disabled` with `cursor-not-allowed opacity-50`, so the four demo screens are not reachable from the UI at all — only by typing the URL.
+
+## Overview
+
+`/admin/overview` (`src/routes/admin.overview.tsx`) prefetches one query and renders `DashboardOverviewContent`, which is a single `Suspense` around four components:
+
+```tsx
+<Suspense fallback={dashboardOverviewFallback}>
+  <div className="space-y-6">
+    <DashboardStats />
+    <DashboardCharts />
+    <div className="grid gap-5 xl:grid-cols-4">
+      <DashboardRecentOrders />
+      <DashboardTopProducts />
+    </div>
+  </div>
+</Suspense>
+```
+
+## The snapshot
+
+`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) is guarded by `authorized({ settings: ["manage"] })` — the same permission as the audit log, not an `order` or `product` permission. It takes a `locale` so the chart labels can be formatted server-side, and runs **fifteen queries in one `db.batch`**.
+
+The comparison window comes from `resolveAdminDashboardComparisonPeriod(now)` with `ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS = 30`, so every KPI is "the last 30 days versus the 30 before that".
+
+| KPI                 | Accessor                          | Source                                                           |
+| ------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| `revenue`           | `completedRevenueSumQuery`        | `sum(order.total)` where status is `completed`                   |
+| `orders`            | `countableOrdersQuery`            | `count()` over the countable statuses                            |
+| `customers`         | `newCustomersQuery`               | `count()` of `user` rows by `created_at`                         |
+| `pageViews`         | `pageViewsQuery`                  | `count()` of `audit_log` rows with action `customer.page_viewed` |
+| `averageOrderValue` | `averageCompletedOrderValueQuery` | Rounded mean of `order.total` over `completed`                   |
+
+**Page views come from the audit log**, written by `trackPageViewed` in `src/modules/customer-activity`. Because that tracker only fires for signed-in users and de-duplicates per session via `sessionStorage`, the figure is "unique pages viewed by logged-in customers", not total traffic.
+
+`buildAdminDashboardKpiStat(current, previous)` computes the `trendPercent` with `ADMIN_DASHBOARD_TREND_PERCENT_SCALE = 100`.
+
+## Charts
+
+Three series are precomputed in the same snapshot:
+
+- `chartPoints30d` — `buildAdminDashboardDailyChartPoints` over `dailyOrderAggregatesQuery(chartStart)`, with `ADMIN_DASHBOARD_CHART_DAYS_30 = 30`
+- `chartPoints7d` — `chartPoints30d.slice(-7)`, so no extra query
+- `chartPoints1y` — `buildAdminDashboardMonthlyChartPoints` over `monthlyOrderAggregatesQuery`, with `ADMIN_DASHBOARD_CHART_MONTHS_1Y = 12`
+
+`yearToDateRevenueMinorUnits` is a separate `completedRevenueSumQuery(resolveAdminDashboardYearStart(now))`.
+
+A custom range is a second server function. `getDashboardChartRange` takes `{ startDate, endDate, locale }` as ISO dates, returns `[]` when `isAdminDashboardCustomChartRangeValid` rejects the pair, and otherwise re-runs `dailyOrderAggregatesQuery` between `parseIsoDateToStartMs(startDate)` and `parseIsoDateToEndMs(endDate)`. Its query is `enabled` only for a valid range. The controls are `dashboard/components/dashboard-chart-range-controls.tsx` driven by `dashboard/hooks/use-dashboard-chart-range.ts`, using `react-day-picker`.
+
+## Stat cards
+
+`dashboard-stats.tsx` renders four cards from a local `STAT_CARDS` constant keyed `revenue`, `orders`, `customers` and `views`, each with a lucide icon and a Tailwind gradient. Labels come from `pages.admin.dashboard.stats.<key>.label` and the comparison caption from `dashboard.stats.vsPrevious`. `dashboard/dashboard-trend-badge.tsx` renders the up/down badge.
+
+## Recent orders
+
+`recentOrdersQuery` selects the latest `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` orders, left-joining `user` for the customer name and `payment` for the status, and the snapshot maps each row through `toAdminOrderListItem` — the same mapper the orders grid uses, so the badges match. Note it passes `itemCount: 0`, so the recent-orders list never shows an item count.
+
+## Top products is always empty
+
+`topProductsQuery` groups `order_item` by `product_id`:
+
+```ts
+.from(orderItem)
+.innerJoin(order, eq(orderItem.orderId, order.id))
+.leftJoin(product, eq(product.id, orderItem.productId))
+.leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
+.leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
+.where(eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS))
+.groupBy(orderItem.productId)
+```
+
+and the snapshot then drops rows with a null id:
+
+```ts
+const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
+```
+
+But `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) never writes `order_item.product_id` — it inserts only `orderId`, `quantity`, `subtotal`, `title`, `total`, `unitPrice` and `variantId`. Every order item therefore has `product_id = NULL`, every grouped row is filtered out, and **`DashboardTopProducts` renders its empty state no matter how much has been sold**. The same applies to `orderItem.thumbnail`, which the query reads with `max(...)`.
+
+`ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` is 4. `resolveTopProductName` and `resolveTopProductCategoryLabel` pick the locale out of the JSON title maps, falling back to the stored `order_item.title`.
+
+## Weekly orders
+
+`buildAdminDashboardWeeklyOrderPoints` reuses the same `dailyAggregateRows` to produce `{ dateKey, dayLabel, orders }` points, again with no extra query.
+
+## The four disabled screens
+
+| Route              | File                  | Components                                                                                | Data                                                                                              |
+| ------------------ | --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `/admin/marketing` | `admin.marketing.tsx` | `MarketingStats`, `MarketingEngagementChart`, `MarketingCampaignsTable`                   | `src/data/marketing.ts` (`MARKETING_STATS`, `ENGAGEMENT_DATA`, `CAMPAIGNS`)                       |
+| `/admin/content`   | `admin.content.tsx`   | `ContentTypeCards`, `ContentListTable`                                                    | `src/data/content.ts` (`CONTENT_TYPES`, `PAGES`)                                                  |
+| `/admin/coupons`   | `admin.coupons.tsx`   | `CouponStats`, `CouponListTable`                                                          | `src/data/coupons.ts` — see [Discounts](/docs/features/discounts)                                 |
+| `/admin/settings`  | `admin.settings.tsx`  | `SettingsPage` with `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`) |
+
+None of these routes has a loader, a query or a mutation. Their Export and Create buttons have no handlers. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only; the other tabs render `settings-placeholder.tsx`.
+
+`/admin/orders/$orderId` is a fifth demo screen — see [Orders](/docs/features/orders).
+
+## Related pages
+
+- [Orders](/docs/features/orders)
+- [Admin catalog](/docs/features/admin-catalog)
+- [Admin customers](/docs/features/admin-customers)
+- [Audit log](/docs/features/audit-log)
+- [Integrations: realtime invalidation](/docs/integrations/realtime-invalidation)

@@ -1,0 +1,103 @@
+---
+title: "Prerequisites"
+description: "The tools, runtimes and third-party accounts needed to run and deploy M'Arte."
+---
+
+## Tools
+
+| Tool             | Version            | Why                                                                                                         |
+| ---------------- | ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Vite+ (`vp` CLI) | any recent release | Every script goes through `vp`. `vp check`, `vp test`, `vp dev`, `vp build`, `vp fmt`, `vp lint`, `vp exec` |
+| Bun              | 1.4.0              | Package manager and script runner; pinned by `packageManager` in `package.json` and by CI                   |
+| Node.js          | 24.x               | `vite-plus` declares `^22.18.0 \|\| ^24.11.0 \|\| >=26.0.0`; CI pins Node 24 in `.github/actions/setup`     |
+| Git              | any recent version | The install step registers the hook dispatcher for `.vite-hooks/`                                           |
+
+Install the global `vp` CLI first, because the `prepare` lifecycle script calls it during `bun install`:
+
+```sh
+curl -fsSL https://vite.plus | bash
+```
+
+On Windows use `irm https://vite.plus/ps1 | iex`. Then open a new shell and check the installation with `vp help`. The global CLI also manages the Node.js runtime and the package manager, so you do not have to install Node or Bun separately.
+
+Vite+ ships two CLIs: the global `vp` and the project-local `vite-plus` package (pinned here to `1.0.0-rc.0` in `devDependencies`). `vp` in this repository resolves to the local package, which is why `bun run check` and `vp check` behave identically.
+
+`wrangler`, `drizzle-kit`, `shadcn`, `jsdom` and the Vitest coverage provider are all `devDependencies`. Run them through the package scripts, or directly with `vp exec wrangler …` / `bunx wrangler …` — never a globally installed copy, because the version would differ from the one CI uses.
+
+### Optional
+
+| Tool           | Why                                                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Stripe CLI     | `bun run stripe:listen` forwards live test webhooks to `localhost:3000/api/webhooks/stripe` during development    |
+| Drizzle Studio | Started by `bun run db:studio`; needs the three `CLOUDFLARE_*` values in your `.env` file, not a separate install |
+
+## Accounts
+
+### Cloudflare — required
+
+The application cannot start without its bindings. `wrangler.jsonc` declares five for every environment:
+
+| Binding                     | Resource                   | Used for                                          |
+| --------------------------- | -------------------------- | ------------------------------------------------- |
+| `DB`                        | D1 database                | All application data — 31 tables                  |
+| `IMAGES`                    | R2 bucket `martebizuteria` | Product image uploads                             |
+| `CACHE`                     | KV namespace               | Declared, currently unused by application code    |
+| `AUDIT_LOG_QUEUE`           | Cloudflare Queue           | Audit events, written by the queue consumer       |
+| `REALTIME_INVALIDATION_HUB` | Durable Object             | WebSocket fan-out for realtime cache invalidation |
+
+Two caveats worth knowing before you provision anything:
+
+- Cloudflare Queues is not available on every Workers plan. If your account cannot create a queue, a deploy will fail at `scripts/verify-bindings.ts`, which requires both a producer and a matching consumer for `AUDIT_LOG_QUEUE`.
+- `placement: { mode: "smart" }` in `wrangler.jsonc` is also a paid-plan feature. It is a hint, not a requirement, so it is safe to remove locally if your account rejects it.
+
+The Durable Object needs no provisioning step. It is created by the `v1` migration in `wrangler.jsonc`, which declares `RealtimeInvalidationHub` under `new_sqlite_classes`.
+
+### Google and GitHub OAuth — required for social sign-in
+
+`src/integrations/better-auth/auth.server.ts` configures both providers unconditionally:
+
+```ts
+socialProviders: {
+  github: { clientId: env.AUTH_GITHUB_CLIENT_ID, clientSecret: env.AUTH_GITHUB_CLIENT_SECRET },
+  google: { clientId: env.AUTH_GOOGLE_CLIENT_ID, clientSecret: env.AUTH_GOOGLE_CLIENT_SECRET },
+},
+```
+
+Both client ids and secrets are listed under `secrets.required` in every `wrangler.jsonc` environment, so `scripts/prepare-deploy-secrets.ts` refuses to deploy without them. The redirect URI is `https://<host>/api/auth/callback/google` and `https://<host>/api/auth/callback/github`, matching the Better Auth handler mounted at `src/routes/api/auth.$.ts`.
+
+### Resend — required to create any account
+
+Email and password sign-in is enabled with verification enforced:
+
+```ts
+emailAndPassword: {
+  enabled: true,
+  requireEmailVerification: true,
+  sendResetPassword,
+},
+emailVerification: {
+  autoSignInAfterVerification: true,
+  sendOnSignUp: true,
+  sendVerificationEmail,
+},
+```
+
+Without a working `RESEND_API_KEY` and a verified `RESEND_EMAIL_FROM` sender, the verification email never arrives and the account can never sign in. There is no seeded admin account and no way to skip verification from the UI, so this is a hard prerequisite for reaching `/admin` — see [First run](/docs/getting-started/first-run).
+
+### Stripe — required for checkout
+
+You need a test-mode secret key, the matching publishable key, and a webhook signing secret. Payment succeeds in the browser but the order is only created by the webhook handler at `/api/webhooks/stripe`, which verifies the signature with `STRIPE_WEBHOOK_SECRET` and rejects anything it cannot verify.
+
+### InPost — no account needed
+
+The parcel-locker picker calls the public points API directly from `src/integrations/inpost/inpost.api.ts`:
+
+```ts
+const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
+```
+
+There are no InPost credentials, no shipment creation and no label generation in the codebase — only point discovery by city.
+
+## Next
+
+Continue with [Installation](/docs/getting-started/installation).

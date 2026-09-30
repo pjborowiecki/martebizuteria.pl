@@ -1,0 +1,209 @@
+---
+title: "Dodawanie przypadku użycia"
+description: "Dodaj jedną operację: funkcję serwerową z middleware, walidatorem, opcjami zapytania lub mutacji, śladem audytowym i unieważnianiem cache'u."
+---
+
+Przypadek użycia to jedna operacja w jednym module. Mieszka w `src/modules/{feature}/use-cases/{verb-noun}.ts` i eksportuje dwie rzeczy: funkcję serwerową oraz opcje TanStack Query, których loadery tras i komponenty używają, żeby ją wywołać. Nic innego w repozytorium nie buduje własnych `queryOptions` dla danych modułu — moduł jest ich właścicielem.
+
+Szczegóły middleware, błędów i kontekstu, których używa ta strona, opisują [Funkcje serwerowe](/docs/guides/server-functions).
+
+## Napisz zapytanie
+
+`src/modules/address/use-cases/list-user-addresses.ts` to absolutne minimum:
+
+```ts
+import { queryOptions } from "@tanstack/react-query"
+import { createServerFn } from "@tanstack/react-start"
+import { eq } from "drizzle-orm"
+
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+
+import { ADDRESS_QUERY_KEYS } from "~/src/modules/address/address.constants"
+import { address } from "~/src/modules/address/address.schema"
+
+export const listUserAddresses = createServerFn({ method: "GET" })
+  .middleware([authorized()])
+  .handler(({ context }) => db.query.address.findMany({ where: eq(address.userId, context.auth.user.id) }))
+
+export const listUserAddressesQuery = () =>
+  queryOptions({
+    queryFn: () => listUserAddresses(),
+    queryKey: ADDRESS_QUERY_KEYS.ALL,
+  })
+```
+
+Zasady, które obowiązują ogólnie:
+
+- Odczyty używają `method: "GET"`, zapisy `method: "POST"`.
+- Handler pobiera wywołującego z `context.auth.user.id`. Nigdy nie bierze identyfikatora użytkownika z wejścia.
+- Opcje zapytania eksportujemy jako **funkcję**, nawet gdy nie przyjmuje argumentów. Wywołania wyglądają tak: `listUserAddressesQuery()`.
+
+Zapytania panelu dodają uprawnienie, czas świeżości i politykę ponownego pobierania, jak w `src/modules/product-category/use-cases/get-admin-categories.ts`:
+
+```ts
+export const getAdminCategories = createServerFn({ method: "GET" })
+  .middleware([authorized({ product: ["read"] })])
+  .handler(async () => {
+    const [categories, counts] = await Promise.all([productCategoryGetAdminCategoriesQuery.execute(), getProductCountsQuery.execute()])
+    const countByCategoryId = new Map(counts.map((entry) => [entry.categoryId, entry.count]))
+    const titlesById = new Map(categories.map((row) => [row.id, coerceCategoryLocaleMap(row.titles)]))
+
+    return categories.map((row) => toAdminCategoryListItem(row, countByCategoryId.get(row.id) ?? 0, titlesById))
+  })
+
+export const getAdminCategoriesQuery = () =>
+  queryOptions({
+    queryFn: () => getAdminCategories(),
+    queryKey: CATEGORY_QUERY_KEYS.ADMIN.ALL,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: CATEGORY_QUERY_STALE_MS,
+  })
+```
+
+Handler kształtuje wiersze pod swojego konsumenta — `toAdminCategoryListItem` leży w `product-category.utils.ts`, a zapytania przygotowane w `product-category.server.ts`. Sam handler powinien być krótkim ciągiem nazwanych wywołań; limit 20 instrukcji powie Ci, kiedy przestał być krótki.
+
+### Zapytania stronicowane
+
+Kiedy wejście się zmienia, klucz musi zmieniać się razem z nim. `src/modules/product/use-cases/get-admin-products-page.ts` wkłada sparsowane wejście do klucza:
+
+```ts
+export const getAdminProductsPageQuery = (input: Product["adminProductsPageInput"]) =>
+  queryOptions({
+    queryFn: () => getAdminProductsPage({ data: input }),
+    queryKey: [...PRODUCT_QUERY_KEYS.ADMIN.PAGE, input],
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: PRODUCT_QUERY_STALE_MS,
+  })
+```
+
+Jego handler zamienia numer strony na offset i limit przy pomocy `listPaginationParamsFromPage`, a wynik owija w `buildListPaginationResult` — obie funkcje pochodzą z `src/modules/_core/utils/pagination.ts`. Wynik zawiera `items`, `total`, `limit`, `offset` i `hasMore`, czyli dokładnie to, czego oczekuje ręczne stronicowanie tabeli danych.
+
+## Napisz mutację
+
+`src/modules/address/use-cases/set-default-user-address.ts` pokazuje pełny kształt zapisu:
+
+```ts
+import { mutationOptions } from "@tanstack/react-query"
+import { createServerFn } from "@tanstack/react-start"
+import type * as zod from "zod"
+
+import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { setDefaultUserAddress as addressSetDefaultUserAddress } from "~/src/modules/address/address.accessors"
+import { ADDRESS_MUTATION_KEYS } from "~/src/modules/address/address.constants"
+import { addressIdInputSchema } from "~/src/modules/address/address.zod"
+
+export const setDefaultUserAddress = createServerFn({ method: "POST" })
+  .middleware([authorized()])
+  .validator((input: zod.input<typeof addressIdInputSchema>) => addressIdInputSchema.parse(input))
+  .handler(async ({ context, data: { addressId } }) => {
+    const updated = await addressSetDefaultUserAddress(context.auth.user.id, addressId)
+    if (!updated) {
+      throw new AppError(ERROR_CODES.NOT_FOUND)
+    }
+
+    return { ok: true as const }
+  })
+
+export const setDefaultUserAddressMutation = mutationOptions({
+  mutationFn: (data: Parameters<typeof setDefaultUserAddress>[0]["data"]) => setDefaultUserAddress({ data }),
+  mutationKey: ADDRESS_MUTATION_KEYS.SET_DEFAULT,
+})
+```
+
+- Parametr walidatora ma typ `zod.input<typeof schema>` — importowany jako `import type * as zod from "zod"` — a jego ciało wywołuje `schema.parse(input)`. Handler dostaje już sparsowane wyjście.
+- Akcesor zwraca wartość logiczną; przypadek użycia zamienia brak trafienia w `AppError(ERROR_CODES.NOT_FOUND)`.
+- `mutationOptions` eksportujemy jako zwykły obiekt (nie funkcję), a typ jego `mutationFn` wyprowadzamy przez `Parameters<typeof fn>[0]["data"]`, zamiast powtarzać go ręcznie.
+- Operacje publiczne albo kosztowne dokładają ograniczanie liczby żądań przed strażnikiem: `createUserAddress` używa `.middleware([withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE), authorized()])`.
+
+### Efekty uboczne, które zapis musi wykonać
+
+`src/modules/product-category/use-cases/create-category.ts` pokazuje, za co odpowiada zapis w katalogu poza samym wstawieniem wiersza:
+
+```ts
+const nextRank = await getNextRankForParent(parentId)
+const id = uuidv7()
+await db.insert(productCategory).values(toCategoryRow(data, id, nextRank))
+scheduleCategoryCatalogInvalidation()
+recordCatalogCategoryCreatedAudit(data.handle)
+
+return { handle: data.handle, id }
+```
+
+Trzy obowiązki:
+
+1. **Najpierw sprawdzenie unikalności i spójności odwołań.** Zduplikowany handle rzuca `AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)`; brakujący rodzic rzuca `AppError(ERROR_CODES.VALIDATION, CATEGORY_ERROR_CODES.INVALID_PARENT)`. Drugi argument to kod specyficzny dla modułu, którego formularz używa, żeby przypiąć błąd do właściwego pola.
+2. **Unieważnianie w czasie rzeczywistym.** `scheduleCategoryCatalogInvalidation()` z `src/integrations/realtime-invalidation/realtime-invalidation.catalog.server.ts` publikuje prefiksy kluczy zapytań panelu i witryny do Durable Object `RealtimeInvalidationHub`, żeby każda inna otwarta karta pobrała dane ponownie. Pozostałe funkcje w tym pliku to `scheduleProductCatalogInvalidation`, `scheduleCollectionCatalogInvalidation`, `scheduleProductAttributeCatalogInvalidation`, `scheduleAdminCustomersInvalidation` i `scheduleAdminOrdersInvalidation`.
+3. **Ślad audytowy.** `recordCatalogCategoryCreatedAudit(...)` z `src/modules/audit-log/audit-log.events.server.ts` wstawia wiadomość do kolejki `AUDIT_LOG_QUEUE` przez `scheduleBackgroundWork`, które przekazuje ją do `waitUntil` Workera. Żadne z tych wywołań nie jest oczekiwane i żadne nie może zepsuć żądania.
+
+Oba są celowo w trybie „wyślij i zapomnij”. Nie dodawaj do nich `await` ani nie owijaj ich w `try`.
+
+## Użyj w komponencie
+
+Rozwiń wyeksportowane opcje operatorem spread. Zapytanie w komponencie używa `useSuspenseQuery`, jeśli loader trasy pobrał je już wcześniej:
+
+```tsx
+const { data: categories, isFetching } = useSuspenseQuery(getAdminCategoriesQuery())
+```
+
+Mutacja rozwija `mutationOptions`, tłumaczy błąd i unieważnia tylko to, co się zmieniło:
+
+```tsx
+const queryClient = useQueryClient()
+const actionError = useActionError()
+
+const setDefault = useMutation({
+  ...setDefaultUserAddressMutation,
+  onError: (error) => {
+    toast.error(actionError(error))
+  },
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({ queryKey: ADDRESS_QUERY_KEYS.ALL })
+  },
+})
+```
+
+`useActionError` w `src/hooks/use-action-error.ts` mapuje wartość z `ERROR_CODES` na `errors.action.<CODE>`, klucz błędu Better Auth na `pages.auth.errors.<key>`, błąd Zoda lub walidacji na `errors.action.VALIDATION`, a wszystko nierozpoznane na `errors.action.INTERNAL_ERROR`. Nigdy nie pokazuj `error.message` bezpośrednio.
+
+## Pobierz z wyprzedzeniem w loaderze trasy
+
+Loadery tras wywołują `context.queryClient.query(...)` z tym samym obiektem opcji:
+
+```ts
+const prefetchCategoriesQueries = async (context: { queryClient: QueryClient }): Promise<void> => {
+  await Promise.all([
+    context.queryClient.query({ ...getAdminCategoriesQuery(), staleTime: "static" }),
+    context.queryClient.query({ ...getCategoryStatsQuery(), staleTime: "static" }),
+  ])
+}
+```
+
+`staleTime: "static"` mówi loaderowi, żeby nie pobierał danych ponownie podczas nawigacji; potem przejmuje to czas świeżości ustawiony w komponencie. Pobierz z wyprzedzeniem każde zapytanie potrzebne do pierwszego renderowania, w jednym `Promise.all`.
+
+## Przetestuj
+
+Dodaj test w `use-cases/__test__/`. Wzorzec z `src/modules/address/use-cases/__test__/address-use-cases.test.ts` mockuje moduł middleware, moduł bazy danych i moduł akcesorów, a `createServerFn` zastępuje budowniczym, który wstrzykuje ustalone `context.auth.user.id`:
+
+```ts
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
+  RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
+  authorized: () => ({}),
+  withRateLimit: (...args: unknown[]) => {
+    middleware.rateLimitCalls.push(args)
+
+    return {}
+  },
+}))
+```
+
+Pokryj ścieżkę powodzenia, każdy kod rzucany przez handler, fakt, że identyfikator wywołującego pochodzi z sesji, a nie z wejścia, oraz — jak robi to ten plik — że ogranicznik żądań został skonfigurowany z oczekiwanym rodzajem i limitami. Zobacz [Pisanie testów](/docs/guides/writing-tests).
+
+## Powiązane przewodniki
+
+- [Funkcje serwerowe](/docs/guides/server-functions)
+- [Dodawanie modułu](/docs/guides/add-a-module)
+- [Formularze i walidacja](/docs/guides/forms-and-validation)

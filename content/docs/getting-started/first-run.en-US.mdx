@@ -1,0 +1,122 @@
+---
+title: "First run"
+description: "Start the dev server against Cloudflare, sign up, and promote yourself to admin."
+---
+
+## Development with remote bindings
+
+```sh
+bunx wrangler login
+bun run db:migrate:development
+bun run dev
+```
+
+1. **Sign in to Cloudflare.** `bun run dev` uses remote bindings, so Wrangler needs an authenticated session (or `CLOUDFLARE_API_TOKEN` in the environment).
+2. **Apply migrations.** `db:migrate:development` runs `wrangler d1 migrations apply DB --env development --remote` against the database named `martebizuteria-preview`. If you are working on the existing project rather than your own Cloudflare account, the migrations are already applied and the command is a no-op; `bun run db:migrations:development` lists what is on the database.
+3. **Start the server.** `bun run dev` runs `bun run content` first, then `CLOUDFLARE_ENV=development vp dev --mode development`. The port is fixed in `vite.config.ts` with `strictPort: true`, so a busy port 3000 is an error rather than a silent move to 3001.
+
+The shop is then at:
+
+| URL                                  | What                                        |
+| ------------------------------------ | ------------------------------------------- |
+| `http://localhost:3000`              | Storefront in Polish (`pl-PL`, the default) |
+| `http://localhost:3000/en-US`        | Storefront in English                       |
+| `http://localhost:3000/auth/sign-up` | Registration                                |
+| `http://localhost:3000/admin`        | Admin console — requires the `admin` role   |
+| `http://localhost:3000/docs`         | These pages                                 |
+| `http://localhost:3000/dev/emails`   | Email template previews, development only   |
+
+Route files carry no locale segment. The router de-localizes the URL before matching and re-applies the prefix when generating links, so `/en-US/products/x` and `/products/x` are served by the same `_storefront.products.$handle.tsx`. A redundant `/pl-PL/...` URL is redirected to the bare path by `resolveLocale` in `src/server.ts`, before the router ever runs.
+
+### Development writes to the preview database
+
+Worth repeating, because it surprises people: the `development` and `preview` environments in `wrangler.jsonc` declare the same `database_id` (`1660d0df-…`), the same R2 bucket (`martebizuteria`) and the same KV namespace. Anything you create while developing is visible in the preview deployment, and vice versa. There is no separate development database.
+
+Two related warnings:
+
+- **Do not run `bun run db:seed:preview` or `db:seed:production` against a database that holds real data.** Both scripts execute `wrangler d1 execute … --remote` against the live database. The SQL files in `src/integrations/drizzle-orm/seeds/` use `INSERT OR IGNORE`, so they will not overwrite rows with matching ids, but they are not maintained in step with the live catalogue and running them is not a read-only operation.
+- `bun run db:push:*` applies schema changes directly without a migration file. Use `bun run db:generate` and the migrate scripts instead for anything you intend to keep.
+
+## Creating an account
+
+There is no seeded user. Sign up at `/auth/sign-up` with an email address you can read, because verification is mandatory:
+
+```ts
+emailAndPassword: {
+  enabled: true,
+  requireEmailVerification: true,
+  sendResetPassword,
+},
+emailVerification: {
+  autoSignInAfterVerification: true,
+  sendOnSignUp: true,
+  sendVerificationEmail,
+},
+```
+
+With `sendOnSignUp: true` the verification email is sent immediately, and `autoSignInAfterVerification: true` means clicking the link both verifies the address and signs you in. If `RESEND_API_KEY` is wrong or the sender is not verified in Resend, nothing arrives and the account is stranded — the row exists in `user` with `email_verified` still `0`, and sign-in is refused.
+
+Google and GitHub sign-in bypass the verification email, so a working OAuth app is the faster route if your Resend sender is not ready.
+
+### Promoting yourself to admin
+
+New accounts get the default role. From `src/integrations/better-auth/auth.access.ts`:
+
+```ts
+export const ROLES = {
+  ADMIN: "admin",
+  CUSTOMER: "customer",
+} as const
+
+export const DEFAULT_ROLE = ROLES.CUSTOMER
+```
+
+The `user` table's `role` column is a text enum defaulting to that value. To gain admin access, change it to `admin`:
+
+```sh
+bun run db:studio:development
+```
+
+Open the `user` table, find your row, set `role` to `admin`, then sign out and back in. `/admin` is guarded by `requireAdmin()` in `src/integrations/better-auth/auth.routes.ts`, which calls `hasAdminAccess(user.role)`; a customer hitting `/admin` is redirected to `/account/overview` rather than shown an error.
+
+Drizzle Studio connects over the D1 HTTP API using `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` and `CLOUDFLARE_ACCESS_TOKEN` from `.env.development`. If those are missing, Studio opens but every query fails.
+
+## Stripe webhooks in development
+
+Card payment completes in the browser, but the order is created by the webhook. Forward events to your local server in a second terminal:
+
+```sh
+bun run stripe:listen
+```
+
+That runs `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`. The Stripe CLI prints a `whsec_…` value for the session — put it in `.env.development` as `STRIPE_WEBHOOK_SECRET` and restart the dev server, otherwise `constructEventAsync` fails signature verification and the handler answers `400 Webhook Error: Invalid Signature` for every event.
+
+Without the listener the checkout flow appears to hang at the payment step: Stripe accepted the payment, but nothing ever calls back to create the order.
+
+## Previewing transactional emails
+
+`/dev/emails` renders the six React Email templates without sending anything. The index lists each template with HTML and plain-text links for both locales:
+
+```
+/dev/emails?template=order-confirmation&locale=pl-PL
+/dev/emails?template=order-confirmation&locale=pl-PL&format=text
+```
+
+The available slugs are `account-deleted`, `change-email`, `order-confirmation`, `order-shipped`, `reset-password` and `verify-email`. The handler returns 404 unless `import.meta.env.DEV` is true, so the route does not exist in a built Worker.
+
+## Running a production-shaped build locally
+
+```sh
+bun run build:preview
+bun run start
+```
+
+`start` serves the build with `CLOUDFLARE_ENV=preview` on `http://127.0.0.1:3000`. Because `remoteBindings` in `vite.config.ts` is enabled only for `CLOUDFLARE_ENV=development`, this run uses Wrangler's local simulated D1, R2 and KV under `.wrangler/state/` instead of the remote resources. That gives you an isolated environment, but it starts empty; `bun run db:migrate:local` applies the migrations to the local D1 store.
+
+This is also the only local way to exercise the built artifact — `bun run build:preview` ends with `scripts/verify-build.ts`, which is the same check CI runs.
+
+## Related
+
+- [Project scripts](/docs/getting-started/project-scripts)
+- [Deploy a preview](/docs/getting-started/deploy-preview)
+- [Reference](/docs/reference) — the full route table

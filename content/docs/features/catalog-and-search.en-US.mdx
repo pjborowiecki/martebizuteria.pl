@@ -1,0 +1,148 @@
+---
+title: "Catalog and search"
+description: "The /products, /categories and /collections pages, the URL-driven filter state, the SQL behind the listing, and the search overlay."
+---
+
+Four storefront routes share one catalog component. `/products` is the unscoped listing; `/categories/$handle` and `/collections/$handle` are the same listing with a fixed scope; `/categories` and `/collections` are index grids.
+
+## Routes
+
+| Route                  | File                                             | What it renders                                        |
+| ---------------------- | ------------------------------------------------ | ------------------------------------------------------ |
+| `/products`            | `src/routes/_storefront.products.index.tsx`      | `ProductsCatalogPage` with no scope                    |
+| `/categories`          | `src/routes/_storefront.categories.index.tsx`    | `CategoriesIndexGrid`                                  |
+| `/categories/$handle`  | `src/routes/_storefront.categories.$handle.tsx`  | `ProductsCatalogPage` scoped to `{ categoryHandle }`   |
+| `/collections`         | `src/routes/_storefront.collections.index.tsx`   | Collection index grid                                  |
+| `/collections/$handle` | `src/routes/_storefront.collections.$handle.tsx` | `ProductsCatalogPage` scoped to `{ collectionHandle }` |
+
+The paths themselves come from `ROUTES.PRODUCTS`, `ROUTES.CATEGORIES`, `ROUTES.CATEGORY`, `ROUTES.COLLECTIONS` and `ROUTES.COLLECTION` in `src/routes.ts`.
+
+## Filter state lives in the URL
+
+`src/modules/product/product.storefront-catalog.ts` owns the search-param contract. It is the single place to change if you add a filter.
+
+```ts
+export const storefrontProductsSearchSchema = z.object({
+  category: z.string().trim().nonempty().optional(),
+  collection: z.string().trim().nonempty().optional(),
+  maxPrice: z.coerce.number().nonnegative().optional(),
+  minPrice: z.coerce.number().nonnegative().optional(),
+  q: z.string().trim().nonempty().optional(),
+  sort: z.enum(STOREFRONT_PRODUCTS_SORTS).optional(),
+})
+```
+
+The scoped pages use derived schemas that drop the parameter their route already fixes: `storefrontScopedCategoryCatalogSearchSchema` omits `category`, `storefrontScopedCollectionCatalogSearchSchema` omits `collection`.
+
+The four sort values are `rank` (the default), `newest`, `price_asc` and `price_desc`.
+
+Alongside the schema the module exports the helpers the pages use:
+
+| Helper                                   | Purpose                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------- |
+| `normalizeStorefrontProductsSearch`      | Drops `undefined` keys so the query key is stable                         |
+| `buildEffectiveStorefrontProductsSearch` | Merges the route scope into the search params                             |
+| `applyStorefrontProductsSearchPatch`     | Applies one filter change, or clears everything with `{ clearAll: true }` |
+| `countActiveStorefrontProductFilters`    | Drives the filter-count badge; `sort: "rank"` does not count              |
+| `storefrontCatalogFilterOptions`         | Tells the counter to ignore the parameter the scope already fixes         |
+
+Each route passes a `handleSearchChange` callback that navigates with `replace: true`, so filtering does not fill the history stack.
+
+## Listing query
+
+`getStorefrontProductsPage` (`src/modules/product/use-cases/get-storefront-products-page.ts`) is a public `GET` server function with `withRequest`. It is exposed as an **infinite** query through `getStorefrontProductsPageQuery(search, scope)`.
+
+Page size depends on whether any filter is active, using the constants in `product.constants.ts`:
+
+| Situation      | Page size                                   | Paging                                              |
+| -------------- | ------------------------------------------- | --------------------------------------------------- |
+| No filters     | `PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE` (12) | `getNextPageParam` advances, so the grid loads more |
+| Any filter set | `PRODUCT_STOREFRONT_FILTERED_MAX` (100)     | `getNextPageParam` returns `undefined` — one page   |
+
+Before hitting the product table the handler resolves the scope handles into ids:
+
+- `resolveStorefrontCategoryIdsForSearch` loads the category by handle, then `collectDescendantCategoryIds(category.id, hierarchy)` from `product-category.utils.ts`, so **a category filter includes its whole subtree**. An unknown handle yields `[]`, and the handler short-circuits to an empty result.
+- `resolveStorefrontCollectionIdForSearch` resolves the collection handle to one id.
+- `minPrice` and `maxPrice` arrive in złoty and are multiplied by 100 into minor units.
+
+`catalogDebugLog` (`src/lib/catalog-debug-log.ts`) traces `storefrontProductsPage.start`, `.emptyCategory` and `.done` with the elapsed milliseconds.
+
+## The SQL
+
+`src/modules/product/product.storefront-catalog.accessors.ts` builds the statement. Two pieces are worth knowing.
+
+**Only published products with stock are ever listed.** `publishedInStockWhere` in `src/modules/product/product.stock.server.ts` is the shared gate:
+
+```ts
+export const publishedInStockWhere = (...extraConditions: (SQL | undefined)[]): SQL => {
+  const conditions = [eq(product.status, PRODUCT_STATUS.PUBLISHED), sql`(${totalStockSubquery()}) > ${0}`, ...extraConditions].filter(
+    (condition): condition is SQL => condition !== undefined,
+  )
+
+  return and(...conditions)!
+}
+```
+
+`totalStockSubquery()` sums `inventory.quantity_available` across the product's variants. A published product whose variants are all at zero disappears from `/products`, from category and collection pages, from search and from the product page.
+
+**The variant-stats join is conditional.** `productVariantStatsSubquery()` groups `product_variant` joined to `inventory` by `product_id` and exposes `min_price`, `total_stock` and `variant_count`. It is only joined when a price filter or a price sort is in play (`storefrontProductsNeedsVariantStatsJoin`), and price ordering uses `coalesce(min_price, 0)`. The default order is `rank` ascending then `createdAt` descending.
+
+Scope filters are `inArray(product.id, <subquery>)` against `category_on_product` and `collection_on_product`.
+
+## Product search term
+
+The `q` parameter reuses the admin product search condition, `buildAdminProductSearchCondition` in `src/modules/product/product.admin-list-search.server.ts`. It matches a case-insensitive `LIKE` against `product.handle`, `product.id`, and the JSON columns `titles`, `subtitles` and `descriptions`, **or** any variant whose `sku` matches. Because the locale maps are stored as JSON text, the `LIKE` matches every locale at once.
+
+The pattern is escaped by `buildAdminLikePattern` in `src/modules/_core/utils/search-conditions.server.ts`, which escapes `\`, `%` and `_` and emits `... like ? escape '\'`.
+
+## Components
+
+`src/presentation/components/custom/pages/products-catalog/`:
+
+| File                                  | Role                                                                 |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `products-catalog-page.tsx`           | Composes header, filters and grid; reads the infinite query          |
+| `products-catalog-filters.tsx`        | Desktop sidebar: sort, category tree, collection list, price         |
+| `products-catalog-mobile-filters.tsx` | The same filters in a sheet                                          |
+| `products-catalog-price-filter.tsx`   | Min/max price inputs                                                 |
+| `products-catalog-grid.tsx`           | Product grid and the load-more behaviour                             |
+| `products-catalog.loader.ts`          | `prefetchProductsCatalogPage`, called from every route loader        |
+| `products-catalog.utils.ts`           | `flattenStorefrontCategoryFilters`, `mapStorefrontCollectionFilters` |
+
+`useCatalogFilterSources` hides the category filter on a category page and the collection filter on a collection page, and skips the corresponding query entirely, so a scoped page makes one query fewer.
+
+`prefetchProductsCatalogPage` runs the infinite query and the two filter-source queries in parallel, then calls `prefetchProductThumbnails` on the first page's items.
+
+## Search overlay
+
+The header search is a separate feature backed by `src/modules/storefront-search`.
+
+`searchStorefront` (`use-cases/search-storefront.ts`) is public, takes `{ locale, query }` and fans out to three accessors in `storefront-search.server.ts`:
+
+| Accessor                      | Table                | Matched columns                                                        |
+| ----------------------------- | -------------------- | ---------------------------------------------------------------------- |
+| `searchStorefrontProducts`    | `product`            | via `buildAdminProductSearchCondition`, behind `publishedInStockWhere` |
+| `searchStorefrontCategories`  | `product_category`   | `handle`, `titles`, `subtitles`, `shortDescriptions`, status active    |
+| `searchStorefrontCollections` | `product_collection` | `handle`, `titles`, `descriptions`, status active                      |
+
+Constants in `storefront-search.constants.ts`:
+
+- `STOREFRONT_SEARCH_MIN_LENGTH = 2` — the query is `enabled` only at two characters
+- `STOREFRONT_SEARCH_DEBOUNCE_MS = 300`
+- `STOREFRONT_SEARCH_LIMIT_PER_GROUP = 6`
+- `STOREFRONT_SEARCH_TRENDING_LIMIT = 5`
+
+`getTrendingSearches` fills the empty state: it takes the top active categories and collections by `rank` then `createdAt`, `Math.ceil(5 / 2) = 3` of each, and slices the combined list to five.
+
+The UI is `search-overlay.tsx` under `.../landing-page/navigation/components/search/`, with its logic in `.../navigation/hooks/use-search-overlay-logic.ts`. That hook also matches three hard-coded static pages from `src/data/static-pages.ts` (`/`, `/about`, `/blog`) against the query, using an accent-stripping `normalize` so that "o nas" matches regardless of diacritics. Open/close state is the zustand store in `.../navigation/store/navigation-store.ts`; the overlay is animated with GSAP.
+
+## Realtime refresh
+
+`STOREFRONT_REALTIME_QUERY_PREFIXES` in `src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts` includes `PRODUCT_QUERY_KEYS.STOREFRONT_PAGE`, `CATEGORY_QUERY_KEYS.ALL`, `CATEGORY_QUERY_KEYS.BY_HANDLE`, `COLLECTION_QUERY_KEYS.ALL` and `COLLECTION_QUERY_KEYS.BY_HANDLE`. Admin catalog mutations call `scheduleProductCatalogInvalidation()`, `scheduleCategoryCatalogInvalidation()` or `scheduleCollectionCatalogInvalidation()`, so an open catalog page refetches without a reload.
+
+## Related pages
+
+- [Product page](/docs/features/product-page)
+- [Inventory](/docs/features/inventory) for why stock decides visibility
+- [Admin catalog](/docs/features/admin-catalog)
+- [Integrations: realtime invalidation](/docs/integrations/realtime-invalidation)

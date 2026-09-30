@@ -1,0 +1,216 @@
+---
+title: "Add a module"
+description: "Create a feature module: the Drizzle table, Zod schemas, constants, types, accessors and use cases."
+---
+
+A module is one feature built around one database table. It lives in `src/modules/{feature}/` and owns everything that is true about that table: its columns, its validation rules, its query keys, its row types and its operations. `src/modules/` currently holds 36 modules. The smallest complete one to read first is `src/modules/address`; the richest is `src/modules/product`.
+
+Server logic that belongs to no table does not get a module. Request-scoped helpers go in `src/lib/`, vendor adapters go in `src/integrations/{vendor}/`, and shared primitives that several modules need go in `src/modules/_core/`.
+
+## The files
+
+| File                       | Contents                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
+| `{feature}.schema.ts`      | The Drizzle `sqliteTable`, its indexes, and its `relations(...)`                            |
+| `{feature}.zod.ts`         | `drizzle-zod` insert/select/update schemas plus one hand-written input schema per operation |
+| `{feature}.constants.ts`   | Query-key and mutation-key tuples, column length limits, enum tuples, stale times           |
+| `{feature}.types.ts`       | Row types inferred from the table, exported as one interface per module                     |
+| `{feature}.utils.ts`       | Pure functions — row mapping, normalisation, label resolution                               |
+| `{feature}.accessors.ts`   | Reusable database reads and writes that carry real behaviour                                |
+| `{feature}.*.server.ts`    | Server-only helpers: prepared queries, filter builders, aggregate loaders                   |
+| `use-cases/{verb-noun}.ts` | One server function per file, with its query or mutation options                            |
+| `__test__/`                | Tests named after the source file                                                           |
+
+Not every module needs every file. `src/modules/payment` has only `payment.schema.ts` and `payment.accessors.ts`, because nothing else is true about it yet.
+
+## 1. Define the table
+
+`src/modules/address/address.schema.ts` is the whole pattern in one screen:
+
+```ts
+import { relations } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+
+import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
+
+import { user } from "~/src/modules/user/user.schema"
+
+export const address = sqliteTable(
+  "address",
+  {
+    address1: text("address1", { length: 512 }).notNull(),
+    address2: text("address2", { length: 512 }),
+    city: text("city", { length: 256 }).notNull(),
+    countryCode: text("country_code", { length: 2 }).notNull(),
+    id: text("id").primaryKey(),
+    isDefault: integer("is_default", { mode: "boolean" }).default(false).notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    ...timestamps(),
+  },
+  (table) => [index("address_userId_idx").on(table.userId), index("address_userId_isDefault_idx").on(table.userId, table.isDefault)],
+)
+
+export const addressRelations = relations(address, ({ one }) => ({
+  user: one(user, {
+    fields: [address.userId],
+    references: [user.id],
+  }),
+}))
+```
+
+Conventions the whole schema follows:
+
+- Column names are snake_case; the TypeScript properties are camelCase. Properties are sorted alphabetically, with `...timestamps()` last — Oxfmt's `sort-keys` rule enforces the ordering.
+- `id` is a `text` primary key filled with `v7()` from `uuid` (imported as `v7 as uuidv7` in most files). Never let SQLite generate it.
+- `createdAt` and `updatedAt` come from `timestamps()` in `src/integrations/drizzle-orm/drizzle.utils.ts`. Both are `integer(..., { mode: "timestamp_ms" })` defaulting to `(unixepoch() * 1000)`, and `updatedAt` carries `$onUpdateFn(() => new Date())`.
+- Booleans are `integer(..., { mode: "boolean" })`.
+- Foreign keys use `.references(() => other.id, { onDelete: "cascade" })`, and `relations(...)` declares the joins that `db.query.<table>` can follow.
+- Index names follow `<table>_<column>_idx`, and composite ones list every column: `address_userId_isDefault_idx`.
+
+## 2. Register the table
+
+`src/integrations/drizzle-orm/drizzle.schemas.ts` is the single file the Drizzle client and drizzle-kit read. Export the table and its relations there:
+
+```ts
+export { address, addressRelations } from "~/src/modules/address/address.schema"
+```
+
+The order in that file is dependency order — `user` before `address`, `product` before `productVariant` — so append your export next to the tables it references. Without this line the table is invisible to `db.query`, to `bun run db:generate` and to `bun run db:push`.
+
+## 3. Write the Zod schemas
+
+`{feature}.zod.ts` imports `zod/v4` (not bare `zod`) and builds the generated schemas through `createSchemaFactory`, so the generated shapes and the hand-written ones come from the same Zod instance:
+
+```ts
+import { createSchemaFactory } from "drizzle-zod"
+import zod from "zod/v4"
+
+import { address } from "~/src/modules/address/address.schema"
+
+export const COUNTRY_CODE_LENGTH = 2
+
+const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
+  zodInstance: zod,
+})
+
+export const addressZodSchemas = {
+  insert: createInsertSchema(address),
+  select: createSelectSchema(address),
+  update: createUpdateSchema(address),
+}
+
+export const addressFieldsSchema = zod.object({
+  address1: zod.string().min(1),
+  city: zod.string().min(1),
+  countryCode: zod.string().length(COUNTRY_CODE_LENGTH),
+  isDefault: zod.boolean().optional(),
+})
+
+export const addressIdInputSchema = zod.object({ addressId: zod.string().min(1) })
+```
+
+Reusable field builders live in `src/modules/_core/utils/zod-fields.ts`: `idField`, `uuidField`, `handleField`, `localeField`, `searchTermField`, `pageField`, `pageSizeField`, `dateColumnFilterField`, `numericColumnFilterField` and `dateTimeColumnFilterField`. Use them instead of repeating the same `zod.string().trim().min(1)`.
+
+Larger modules group everything under one exported object — `productCategoryZodSchemas` in `src/modules/product-category/product-category.zod.ts` exposes `createInput`, `updateInput`, `formValues` and more — and drive their length limits from the constants file so the schema and the column can never drift:
+
+```ts
+const categoryCreateInputSchema = zod.object({
+  handle: zod.string().trim().min(CATEGORY_MIN_LENGTH).regex(CATEGORY_HANDLE_PATTERN),
+  status: zod.enum(CATEGORY_STATUSES),
+  titles: categoryTitlesSchema,
+})
+```
+
+## 4. Declare the constants
+
+`{feature}.constants.ts` holds the values other layers need to agree on. Nothing in it may import from `src/presentation` except type-free constants — `product-category.constants.ts` does import `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX`, which is the exception, not the pattern.
+
+```ts
+export const ADDRESS_QUERY_KEYS = {
+  ALL: ["userAddresses"] as const,
+} as const
+
+export const ADDRESS_MUTATION_KEYS = {
+  DELETE: ["address", "deleteUserAddress"] as const,
+  SET_DEFAULT: ["address", "setDefaultUserAddress"] as const,
+} as const
+```
+
+Modules with an admin surface nest an `ADMIN` group, because the admin and storefront caches are invalidated separately:
+
+```ts
+export const CATEGORY_QUERY_KEYS = {
+  ADMIN: {
+    ALL: ["admin", "categories"] as const,
+    STATS: ["admin", "categories", "stats"] as const,
+  },
+  ALL: ["categories"] as const,
+  BY_HANDLE: ["category"] as const,
+} as const
+```
+
+Query keys are the module's public contract. `src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts` lists them to decide what a WebSocket message invalidates, so keep the tuple values stable when you move code. Also keep enum tuples (`CATEGORY_STATUSES`), column limits (`CATEGORY_COLUMN_LENGTH`), patterns (`CATEGORY_HANDLE_PATTERN`) and stale times (`CATEGORY_QUERY_STALE_MS`) here.
+
+## 5. Infer the types
+
+`{feature}.types.ts` exports one interface per module and derives every member from the table or from a schema. There are no hand-written row shapes:
+
+```ts
+import { type address } from "~/src/modules/address/address.schema"
+
+export interface Address {
+  insert: typeof address.$inferInsert
+  select: typeof address.$inferSelect
+}
+```
+
+Consumers then write `Address["select"]`. Richer modules add derived members — `ProductCategory["adminListItem"]` and `ProductCategory["formValues"]` are what the admin grid and the admin form pass around.
+
+## 6. Add accessors, if they carry behaviour
+
+`{feature}.accessors.ts` is for database work that more than one caller needs, or that is too involved to sit inline in a handler. `src/modules/address/address.accessors.ts` is a good example: `setDefaultUserAddress` has to clear the previous default before setting a new one, and `updateUserAddress` has to scope both the read and the write by `userId`:
+
+```ts
+export const setDefaultUserAddress = async (userId: string, addressId: string): Promise<boolean> => {
+  const existing = await db
+    .select()
+    .from(address)
+    .where(and(eq(address.id, addressId), eq(address.userId, userId)))
+    .limit(1)
+  if (existing[0] === undefined) {
+    return false
+  }
+  await clearDefaultAddressesForUser(userId)
+  await db
+    .update(address)
+    .set({ isDefault: true })
+    .where(and(eq(address.id, addressId), eq(address.userId, userId)))
+  return true
+}
+```
+
+Accessors return domain values — a row, `undefined`, a boolean — and do not throw `AppError`. Turning `false` into `NOT_FOUND` is the use case's job. A single-statement read that only one use case needs does not deserve an accessor; put it in the handler.
+
+## 7. Write the use cases
+
+One operation per file in `use-cases/`, named `{verb-noun}.ts`: `create-user-address.ts`, `list-user-addresses.ts`, `set-default-user-address.ts`. See [Add a use case](/docs/guides/add-a-use-case) for the full recipe.
+
+## 8. Generate the migration
+
+Once the table is in `drizzle.schemas.ts`:
+
+```sh
+bun run db:generate
+```
+
+That writes a new SQL file into `src/integrations/drizzle-orm/migrations/` and a snapshot into `migrations/meta/`. Read the generated SQL before applying it — SQLite cannot alter most column definitions in place, and D1 has its own limits. [Database migrations](/docs/guides/database-migrations) covers applying and hand-writing them.
+
+## 9. Test it
+
+Add `__test__/{feature}.schema.test.ts` and `__test__/{feature}.zod.test.ts` for the module surface, and `use-cases/__test__/` for the operations. `src/modules/address/use-cases/__test__/address-use-cases.test.ts` covers all five address operations in one file, which is the convention for small modules. [Writing tests](/docs/guides/writing-tests) explains the three Vitest projects and the mocking helpers.
+
+## Related guides
+
+- [Add a use case](/docs/guides/add-a-use-case)
+- [Server functions](/docs/guides/server-functions)
+- [Database migrations](/docs/guides/database-migrations)

@@ -1,0 +1,127 @@
+---
+title: "Cloudflare R2"
+description: "Image upload to the IMAGES bucket, content-addressed keys and asset URLs."
+---
+
+Product photography, category and collection imagery and the marketing assets all live in one R2 bucket named `martebizuteria`, bound to the Worker as `IMAGES`. The adapter in `src/integrations/cloudflare-r2/` has exactly one job: accept an image from the admin console, validate it, and put it in the bucket under a content-addressed key. Reading is not its job — the bucket is served publicly and read through the URL helpers in `src/lib/url.ts`.
+
+## The binding
+
+`wrangler.jsonc` declares the same bucket in all three environments:
+
+```jsonc
+"r2_buckets": [
+  { "binding": "IMAGES", "bucket_name": "martebizuteria", "remote": true }
+]
+```
+
+All three point at one bucket, and `"remote": true` means even `bun run dev` writes to the real bucket. Content-addressed keys are what make that safe: a re-upload of the same bytes is a no-op rather than an overwrite.
+
+## Upload
+
+`media.mutations.ts` exports one server function:
+
+```ts
+export const uploadImageFn = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["update"] })])
+  .validator((data: FormData) => data)
+  .handler(async ({ data }) => {
+    /* … */
+  })
+```
+
+Authorization is the `product: ["update"]` permission, so only the admin role can upload. The validator passes the `FormData` through — the shape cannot be described by a Zod object, so the handler does the checking itself, in this order:
+
+1. `data.get("file")` must be a `File`, else `TypeError(INVALID_FILE)`.
+2. `isAcceptedImageMime(file.type)` must hold, else `INVALID_TYPE`.
+3. The size must be greater than zero and at most `MAX_IMAGE_BYTES`, else `TOO_LARGE`.
+4. `data.get("folder")` is used when `isMediaFolder` accepts it, otherwise it silently falls back to `"uploads"`.
+
+Then the key is derived from the bytes:
+
+```ts
+const buffer = await file.arrayBuffer()
+const digest = await crypto.subtle.digest("SHA-256", buffer)
+const key = `${folder}/${bufferToHex(digest)}.${MIME_EXTENSION[file.type]}`
+if ((await env.IMAGES.head(key)) === null) {
+  await env.IMAGES.put(key, buffer, {
+    httpMetadata: {
+      cacheControl: IMMUTABLE_CACHE_CONTROL,
+      contentType: file.type,
+    },
+  })
+}
+
+return { key, url: getAssetURL(key) }
+```
+
+Three consequences worth internalizing:
+
+- **The key is the SHA-256 of the file contents**, hex-encoded, plus the extension. Uploading the same photograph twice produces the same key.
+- **The `head` check makes the write idempotent.** An existing object is not rewritten, so the upload costs one cheap metadata request.
+- **`Cache-Control: public, max-age=31536000, immutable`** is set at upload time. This is only correct because the key changes whenever the bytes change. Never write a mutable key into this bucket.
+
+## Rules
+
+`media.zod.ts` holds the constraints. Despite the file name it contains no Zod schema — only constants and two type predicates:
+
+| Export                                 | Value                                                        |
+| -------------------------------------- | ------------------------------------------------------------ |
+| `ACCEPTED_IMAGE_MIME_TYPES`            | `image/jpeg`, `image/png`, `image/webp`, `image/avif`        |
+| `ACCEPTED_IMAGE_ACCEPT_ATTR`           | The same list joined with commas, for the `accept` attribute |
+| `MAX_IMAGE_BYTES`                      | 5 MiB (`5 * 1024 * 1024`)                                    |
+| `MEDIA_FOLDERS`                        | `collections`, `products`, `categories`, `uploads`           |
+| `MIME_EXTENSION`                       | The MIME-to-extension map (`image/jpeg` → `jpg`)             |
+| `MEDIA_ERROR_CODES`                    | `INVALID_FILE`, `INVALID_TYPE`, `TOO_LARGE`, `UNAUTHORIZED`  |
+| `isMediaFolder`, `isAcceptedImageMime` | The predicates the handler and the UI share                  |
+
+## The admin-side upload flow
+
+`src/presentation/components/custom/image-upload/` owns the UI. `hooks/use-image-upload.ts` takes a `MediaFolder`, re-runs the **same** `isAcceptedImageMime` and `MAX_IMAGE_BYTES` checks in the browser so the user gets a toast before a wasted round trip, and then uploads with `Promise.allSettled` so one bad file does not lose the others:
+
+```ts
+const formData = new FormData()
+formData.append("file", file)
+formData.append("folder", folder)
+
+return uploadImageFn({ data: formData })
+```
+
+The successful `url` values are collected and the failures counted into a single toast. `components/image-upload.tsx` and `components/gallery-add-tile.tsx` set `accept={ACCEPTED_IMAGE_ACCEPT_ATTR}` on their file inputs. The resulting URL is what gets written to `product.thumbnail` or a `product_image` row.
+
+## Reading assets
+
+`src/lib/url.ts` resolves a stored key or URL into something a browser can fetch:
+
+| Export                       | Behaviour                                                                                                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getAssetCdnBase()`          | An isomorphic function: reads `env.VITE_R2_URL` on the server and `import.meta.env.VITE_R2_URL` in the browser, strips a trailing slash, and falls back to `DEFAULT_R2_PUBLIC_URL` |
+| `getAssetURL(path)`          | Returns `path` unchanged if it is already absolute, otherwise `${base}/${path}` with any leading slash removed                                                                     |
+| `resolveAssetURL(pathOrUrl)` | The same, tolerant of a stored value that may be either a key or a full URL                                                                                                        |
+| `isAssetCdnUrl(url)`         | True for any `*.r2.dev` host or for the configured base's host                                                                                                                     |
+
+`DEFAULT_R2_PUBLIC_URL` in `src/presentation/branding/app.ts` is the bucket's own public endpoint, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`. `isConfiguredAssetCdnBase` additionally rejects a base containing the placeholder host `your-production-cdn-domain.com`, so a half-filled environment file falls back to the working default rather than producing dead image URLs.
+
+`VITE_R2_URL` appears in both `secrets.required` in `wrangler.jsonc` and the `VITE_`-prefixed browser variables, because both sides need it.
+
+### Why `isAssetCdnUrl` exists
+
+`getOptimizedImageUrl` in `src/lib/image.ts` normally rewrites an image URL through `unpic`'s Cloudflare Images transform. It deliberately skips that for Unsplash hosts and for anything `isAssetCdnUrl` recognizes, returning the R2 URL untouched. So R2-hosted images are served as uploaded, at their original dimensions, and `<Image>` (`src/presentation/components/custom/image.tsx`, built on `@unpic/react`) handles only `loading`, `decoding`, `fetchPriority`, `sizes` and the blur background. If you want resizing for R2 assets, that is the function to change.
+
+`PLACEHOLDER_IMAGE` is `getAssetURL("placeholder.svg")`, and `src/data/landing.ts` pulls the landing hero, the video and its poster from the same bucket.
+
+## What is missing on purpose
+
+There is **no delete path**. Nothing in the repository calls `env.IMAGES.delete`. Removing a product image removes the `product_image` row and leaves the object in the bucket. Because keys are content hashes this is safe — another product may reference the same bytes — but it does mean the bucket only grows, and pruning is a manual operation against R2.
+
+There is also no signed-URL or private-object handling: every object in this bucket is public.
+
+## Tests
+
+`src/integrations/cloudflare-r2/__test__/media.mutations.test.ts` and `media.zod.test.ts` cover the validation branches, the `folder` fallback, the hashed key, and the `head`-before-`put` skip.
+
+## Related pages
+
+- [Images and media](/docs/ui)
+- [Admin console](/docs/features/admin-dashboard)
+- [Environment variables](/docs/reference/environment)

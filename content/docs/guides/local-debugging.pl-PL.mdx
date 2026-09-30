@@ -1,0 +1,188 @@
+---
+title: "Debugowanie lokalne"
+description: "Uruchamianie aplikacji, podglądanie zapytań, odtwarzanie webhooków Stripe, podglądanie e-maili, czytanie bazy i diagnozowanie zepsutego toolchainu."
+---
+
+## Uruchomienie aplikacji
+
+```sh
+bun install       # postinstall uruchamia bun run typegen
+bun run dev       # http://127.0.0.1:3000
+```
+
+`bun run dev` to `bun run content && CLOUDFLARE_ENV=development vp dev --mode development`. Przed startem Vite dzieją się dwie rzeczy:
+
+1. `bun run content` uruchamia `fumadocs-mdx` na `src/integrations/fumadocs/fumadocs.config.ts` i zapisuje `.source/`. Bez tego importy `collections/browser` i `collections/server`, na których opierają się `/docs` i strony prawne, nie rozwiążą się.
+2. `CLOUDFLARE_ENV=development` wybiera blok `development` w `wrangler.jsonc`, a `vite.config.ts` włącza `remoteBindings` dokładnie dla tej wartości.
+
+Port jest ustalony: `server: { port: 3000, strictPort: true }`. Jeśli 3000 jest zajęty, serwer deweloperski odmawia startu, zamiast wybrać inny port — zarówno przekierowywanie webhooków Stripe, jak i lista dozwolonych hostów Better Auth zakładają 3000.
+
+### Pracujesz na prawdziwej bazie preview
+
+`remoteBindings: true` oznacza, że `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE` i `REALTIME_INVALIDATION_HUB` wskazują na prawdziwe zasoby Cloudflare środowiska `development` — a bazą D1 tego środowiska jest `martebizuteria-preview`, ta sama, której używa wdrożenie preview. Nie ma lokalnego pliku SQLite ani lokalnego R2. Produkt usunięty podczas pracy jest usunięty naprawdę. Powody, dla których skrypty seed są zabronione, opisują [Dane startowe](/docs/guides/seeding-data).
+
+### Pliki środowiskowe
+
+`bun run dev` czyta `.env.development`. Skopiuj `.env.example` i wypełnij; plik jest w `.gitignore`. Część prywatna potrzebuje `AUTH_SECRET`, par OAuth dla Google i GitHuba, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` oraz trzech wartości `CLOUDFLARE_*` wymaganych przez CLI Drizzle. Część publiczna to `VITE_R2_URL` i `VITE_STRIPE_PUBLISHABLE_KEY`.
+
+`.env.test` przechowuje atrapy wszystkich sekretów i jest commitowany — dzięki temu buildy w CI i zestaw testów działają bez danych dostępowych. `.github/actions/setup` dosłownie kopiuje go na `.env.development` i `.env.preview`.
+
+### Regenerowanie typów
+
+```sh
+bun run typegen     # cf-typegen + content
+bun run cf-typegen  # wrangler types --env development src/types/worker-configuration.d.ts
+bun run content     # .source/ z kolekcji Fumadocs
+```
+
+`src/types/worker-configuration.d.ts` jest generowany i nie wolno go edytować ani commitować — jest w `.gitignore` oraz w skrypcie `clean`. Uruchom `bun run typegen` po zmianie bindingu w `wrangler.jsonc`, inaczej `Env` nie będzie miało Twojej nowej właściwości.
+
+## Podglądanie zapytań
+
+React Query Devtools są montowane w `src/router.tsx` za warunkiem `import.meta.env.DEV`:
+
+```tsx
+{
+  import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />
+}
+```
+
+Używaj ich, żeby sprawdzić, czy klucz zapytania jest taki, jakiego oczekujesz, czy loader faktycznie pobrał dane z wyprzedzeniem i czy unieważnienie dotarło do wpisu, o którym myślałeś. Wszystkie krotki kluczy zapytań pochodzą ze stałej `*_QUERY_KEYS` modułu, więc panel i plik stałych powinny czytać się identycznie.
+
+Wartości domyślne, również w `src/router.tsx`: `staleTime` 60 s, `gcTime` 5 min, `defaultPreload: "intent"` z opóźnieniem 100 ms i bliskością 1000 px, oraz `defaultPendingMs: 200` i `defaultPendingMinMs: 300` dla komponentu oczekiwania. Pytanie „dlaczego to się ponownie pobiera” zwykle rozstrzyga porównanie tych wartości z `staleTime` i `shouldReload` samej trasy.
+
+## Logowanie w katalogu
+
+`src/lib/catalog-debug-log.ts`:
+
+```ts
+export const catalogDebugLog = (label: string, data?: unknown): void => {
+  if (!import.meta.env.DEV) {
+    return
+  }
+
+  if (data === undefined) {
+    console.info(`[catalog] ${label}`)
+
+    return
+  }
+  console.info(`[catalog] ${label}`, data)
+}
+```
+
+Poza środowiskiem deweloperskim nie robi nic, więc tymczasowe wywołanie nie może wyciec na produkcję. Dla czegokolwiek związanego z katalogiem wybieraj tę funkcję, a nie zwykłe `console.info` — prefiks `[catalog]` pozwala filtrować konsolę przeglądarki.
+
+## Odtwarzanie webhooka Stripe
+
+```sh
+bun run stripe:listen
+```
+
+To `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`. Na starcie wypisuje sekret podpisujący; wpisz tę wartość do `.env.development` jako `STRIPE_WEBHOOK_SECRET` i zrestartuj serwer deweloperski, inaczej `constructEventAsync` odrzuci każde zdarzenie, a trasa odpowie 400 z `Webhook Error: Invalid Signature`.
+
+Lektura handlera w `src/routes/api/webhooks.stripe.ts` mówi, jak interpretować to, co widzisz:
+
+- 400 `Missing signature or webhook secret` — brakuje nagłówka albo wartości ze środowiska.
+- 400 `Webhook Error: Invalid Signature` — sekret nie pasuje do sekretu nasłuchu.
+- 200 z `[Stripe] Safely ignoring unhandled event: <type>` w logu — ten typ zdarzenia nie ma wpisu w `webhookHandlers`.
+- 500 `Internal Server Error` z `[Stripe] Domain logic failed for <type>` — Twój handler rzucił wyjątek. Stripe ponowi, więc handler musi być idempotentny.
+
+## Podglądanie wiadomości e-mail
+
+```
+http://127.0.0.1:3000/dev/emails
+```
+
+`src/routes/dev.emails.tsx` zwraca `notFound()`, jeśli nie jest ustawione `import.meta.env.DEV`. Bez parametrów zapytania renderuje indeks wszystkich szablonów z `EMAIL_PREVIEWS`, po cztery odnośniki na każdy: HTML i tekst czysty, po polsku i po angielsku. Adresy bezpośrednie:
+
+```
+/dev/emails?template=<slug>&locale=pl-PL
+/dev/emails?template=<slug>&locale=en-US&format=text
+```
+
+Sześć szablonów to `account-deleted`, `change-email`, `order-confirmation`, `order-shipped`, `reset-password` i `verify-email`. Renderuje się tu prawdziwy komponent z prawdziwym katalogiem tłumaczeń, więc wychwycisz brakujący klucz albo zepsuty układ bez wysyłania czegokolwiek.
+
+## Czytanie bazy danych
+
+```sh
+bun run db:studio                 # Drizzle Studio na środowisku development
+bun run db:migrations:preview     # które migracje zostały zastosowane
+bun run db:introspect:preview     # zrzut schematu produkcyjnego do schema.ts / relations.ts
+```
+
+Dla jednorazowego zapytania użyj Wranglera i jawnie wskaż środowisko:
+
+```sh
+vp exec wrangler d1 execute DB --env preview --remote --command "select handle, status from product limit 10"
+```
+
+Do odczytów używaj `--command`. `--file` uruchamia cały plik SQL — tak działają skrypty seed, i dlatego trzeba z tym uważać.
+
+## Obserwowanie Workera we wdrożonym środowisku
+
+```sh
+vp exec wrangler tail --env preview
+```
+
+`observability.enabled: true` w `wrangler.jsonc` oznacza, że logi są też zachowywane w panelu Cloudflare. Warte poznania linie logu, wszystkie z kodu cytowanego w innych przewodnikach:
+
+| Prefiks                          | Źródło                                                  |
+| -------------------------------- | ------------------------------------------------------- |
+| `Server function failed`         | `withRequest` przechwyciło nieoczekiwany błąd           |
+| `Rate-limit storage unavailable` | `withinRateLimit` nie mogło zapisać do D1               |
+| `[Background Work Failed]:`      | `runSafely` w `src/lib/background.ts`                   |
+| `[Stripe] …`                     | Trasa webhooka                                          |
+| `[Auth] Failed to send … email`  | `reportEmailFailure` w `auth.server.ts`                 |
+| `[catalog] …`                    | `catalogDebugLog`, wyłącznie w środowisku deweloperskim |
+
+## Uruchomienie buildu produkcyjnego lokalnie
+
+```sh
+bun run build:preview   # rm -rf dist, content, vp build --mode preview, verify-build
+bun run start           # vp preview --mode preview --host 127.0.0.1 --port 3000
+```
+
+`bun run preview` jest aliasem `start`. `scripts/verify-build.ts` wykonuje się w ramach buildu i przerywa go, jeśli `.wrangler/deploy/config.json` nie wskazuje na `dist/server/wrangler.json`, jeśli zbudowany Worker nie celuje we właściwe `APP_ENV` i nazwę, jeśli katalog zasobów nie jest `dist/client`, jeśli nie istnieje `dist/client/fonts` albo jeśli `dist/client/assets` nie zawiera zarówno JS, jak i CSS. Dzięki temu build, który „się udał”, naprawdę wyprodukował Workera zdatnego do serwowania.
+
+`scripts/verify-bindings.ts` uruchamia się przed wdrożeniem i sprawdza, czy `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE` oraz Durable Object `RealtimeInvalidationHub` są skonfigurowane dla środowiska docelowego, przy czym kolejka audytu musi mieć pasującego konsumenta. Identyfikator-zaślepka złożony z zer jest odrzucany.
+
+## Kiedy toolchain zachowuje się dziwnie
+
+```sh
+vp env doctor          # diagnoza stanu środowiska uruchomieniowego, menedżera pakietów i narzędzi
+vp toolchain           # wersje i zależności w aktywnym wydaniu Vite+
+vp why <package>       # graf zależności jednego pakietu
+```
+
+Dołączaj wynik `vp env doctor`, prosząc o pomoc — `AGENTS.md` wprost o to prosi.
+
+Rosnące poziomy porządkowania:
+
+```sh
+bun run clean          # .source .output .tanstack .wrangler .bun-cache dist coverage … oraz wygenerowane typy Workera
+bun run clean:deep     # clean + node_modules
+bun run clean:hardcore # clean:deep + bun.lock + opensrc
+```
+
+Po każdym z nich `bun install` (którego `postinstall` ponownie uruchamia `typegen`) przywraca stan pracy.
+
+Objawy i pierwsze ruchy:
+
+- **`collections/browser` albo `collections/server` się nie rozwiązuje** — uruchom `bun run content`.
+- **`Env` nie ma właściwości dla Twojego nowego bindingu** — uruchom `bun run typegen`.
+- **Trasa nie istnieje albo `FileRouteTypes["to"]` odrzuca poprawną ścieżkę** — `src/routeTree.gen.ts` jest przeterminowany; zrestartuj `bun run dev`, co go zregeneruje. Nigdy nie edytuj go ręcznie.
+- **`useTranslations` zgłasza brakujący komunikat** — przestrzeni nazw nie ma w `staticData.namespaces` żadnej dopasowanej trasy. Zobacz [Tłumaczenia](/docs/guides/i18n-messages).
+- **Port 3000 jest zajęty** — zwolnij go; `strictPort: true` nie przejdzie na inny.
+- **Błąd lintera, którego przyczyny nie widzisz** — `bun run check:fix` stosuje to, co da się naprawić automatycznie. Nie pozwoli Ci wyciszyć reszty: obowiązują `denyWarnings: true` i `reportUnusedDisableDirectives: "error"`.
+
+## Hooki gita
+
+`.vite-hooks/pre-commit` uruchamia `bun run check:pre-commit`, czyli `vp staged` — `vite.config.ts` mapuje `staged: { "*": ["vp check --fix"] }`, więc pliki w staging area są formatowane, lintowane i sprawdzane typowo przy commicie. `.vite-hooks/prepare-commit-msg` uruchamia `bun scripts/commit-msg.ts`.
+
+Jeśli commit zostanie odrzucony, uruchom `bun run check`, żeby zobaczyć pełny wynik, a nie tylko podzbiór z staging area.
+
+## Powiązane przewodniki
+
+- [Migracje bazy danych](/docs/guides/database-migrations)
+- [Dane startowe](/docs/guides/seeding-data)
+- [Pisanie testów](/docs/guides/writing-tests)

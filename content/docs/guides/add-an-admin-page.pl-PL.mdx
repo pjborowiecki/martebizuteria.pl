@@ -1,0 +1,217 @@
+---
+title: "Dodawanie strony panelu"
+description: "Dodaj trasę do panelu administracyjnego: plik trasy, strażnika, nagłówek, wpis w menu bocznym, przestrzenie nazw tłumaczeń i wstępne pobieranie zapytań."
+---
+
+Panel administracyjny mieszka pod `/admin` i jest osobną powłoką wizualną niż witryna sklepowa: wyłącznie jasny motyw, ciemne menu boczne, własny arkusz stylów i własna subskrypcja czasu rzeczywistego. `src/routes/admin.tsx` to układ, który dziedziczy każda strona panelu; wszystko, co dodasz, wpasowuje się w niego.
+
+## Co układ już robi
+
+```ts
+export const Route = createFileRoute("/admin")({
+  beforeLoad: async () => ({
+    user: await requireAdmin(),
+  }),
+  component: AdminLayoutRoute,
+  head: () => ({
+    links: [{ href: adminCss, rel: "stylesheet" }],
+  }),
+  loader: () => ({
+    sidebarDefaultOpen: getAdminSidebarDefaultOpen(),
+  }),
+  shouldReload: false,
+  staleTime: ROUTE_STALE_MS,
+  staticData: {
+    namespaces: ["pages.admin", "components.datagrid"],
+  },
+})
+```
+
+Każda trasa potomna dostaje to za darmo:
+
+- **Strażnik.** `requireAdmin()` z `src/integrations/better-auth/auth.routes.ts` ładuje sesję, przekierowuje na `/auth/sign-in`, gdy jej nie ma, oraz na `/account/overview`, gdy użytkownik nie jest administratorem. To chroni _stronę_, nie dane — zobacz [Funkcje serwerowe](/docs/guides/server-functions).
+- **Arkusz stylów.** `src/presentation/styles/admin.css`, ładowany jako `link` trasy.
+- **Jasny motyw.** `useAdminLightTheme()` usuwa klasę `dark` przy montowaniu i przywraca preferencję gościa dla witryny sklepowej przy odmontowaniu.
+- **Subskrypcja czasu rzeczywistego.** `useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })` otwiera WebSocket panelu i unieważnia każde zapytanie, którego prefiks klucza pojawi się w opublikowanej wiadomości.
+- **Menu boczne.** `AdminSidebar`, ze stanem otwarcia odtworzonym z ciasteczka `sidebar_state` jeszcze przed hydratacją.
+- **Przestrzenie nazw tłumaczeń.** `pages.admin` i `components.datagrid`, więc `t("nav.orders")` działa w dowolnym miejscu wewnątrz.
+- **Rama.** `div[data-admin-main]` z `h-svh`, `flex flex-col` i `overflow-hidden`. Za przewijanie wewnątrz odpowiada Twoja strona.
+
+## 1. Utwórz plik trasy
+
+Pliki tras są płaskie i rozdzielone kropkami: `admin.coupons.tsx` to `/admin/coupons`, a `admin.catalog.categories.index.tsx` to `/admin/catalog/categories/`. `src/routeTree.gen.ts` jest generowany — nigdy go nie edytuj; `bun run dev` i `bun run build` generują go ponownie.
+
+Pojedyncza strona bez tras potomnych, z `src/routes/admin.overview.tsx`:
+
+```tsx
+const AdminOverviewPage = (): JSX.Element => {
+  const t = useTranslations("pages.admin")
+
+  return (
+    <>
+      <AdminHeader title={t("dashboard.title")} description={t("dashboard.description")} />
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-8">
+        <DashboardOverviewContent />
+      </div>
+    </>
+  )
+}
+
+export const Route = createFileRoute("/admin/overview")({
+  component: AdminOverviewPage,
+  loader: ({ context }) =>
+    context.queryClient.query({
+      ...getDashboardSnapshotQuery({ locale: context.locale }),
+      staleTime: "static",
+    }),
+  shouldReload: false,
+  staleTime: ADMIN_DASHBOARD_QUERY_STALE_MS,
+})
+```
+
+`<div className="min-h-0 flex-1 overflow-y-auto p-8">` to obowiązujący wzorzec: nagłówek jest przyklejony, a treść się przewija. `min-h-0` jest konieczne — bez niego element flex nie chce się zmniejszyć i przewija się cała strona.
+
+`shouldReload: false` razem z `staleTime` sprawia, że loader nie uruchamia się ponownie przy każdym powrocie na stronę. Użyj stałej czasu świeżości z modułu, a nie literału.
+
+## 2. Dodaj ścieżkę trasy do `src/routes.ts`
+
+Każda ścieżka, do której kod się odwołuje, pochodzi z obiektu `ROUTES`, posortowanego alfabetycznie:
+
+```ts
+ADMIN_COUPONS: "/admin/coupons",
+```
+
+Nigdzie nie wpisujemy adresu URL na sztywno. Odnośniki używają `LocalizedLink`, którego `to` ma typ `FileRouteTypes["to"]` z wygenerowanego drzewa tras, więc nieistniejąca ścieżka nie przejdzie kontroli typów.
+
+## 3. Dodaj nagłówek
+
+`AdminHeader` z `src/presentation/components/custom/pages/admin/admin-header.tsx` renderuje przyklejony pasek o wysokości 64 px. Jego właściwości:
+
+| Właściwość    | Działanie                                                                           |
+| ------------- | ----------------------------------------------------------------------------------- |
+| `title`       | Nagłówek strony. Napis albo węzeł dla złożonego tytułu                              |
+| `description` | Druga linia pod tytułem                                                             |
+| `breadcrumbs` | `{ href?, label }[]`, renderowane przed tytułem od szerokości `sm` w górę           |
+| `actions`     | Przyciski po prawej stronie paska                                                   |
+| `backHref`    | Zamienia przycisk menu bocznego na strzałkę powrotu — używaj na stronach szczegółów |
+| `tabs`        | Węzeł renderowany w drugim rzędzie pod paskiem                                      |
+
+`src/routes/admin.coupons.tsx` pokazuje okruszki i akcje:
+
+```tsx
+const bcList = useMemo(
+  () => [
+    {
+      href: ROUTES.ADMIN,
+      label: t("nav.dashboard"),
+    } satisfies {
+      href: LocalizedTo
+      label: string
+    },
+  ],
+  [t],
+)
+```
+
+Memoizuj `actions`, `tabs` i `breadcrumbs` — to węzły i tablice przekazywane przy każdym renderowaniu.
+
+## 4. Dodaj trasę układu, jeśli sekcja ma kilka stron
+
+Kiedy sekcja potrzebuje wspólnego nagłówka, zakładek albo przestrzeni nazw, dodaj plik układu obok indeksu. Katalog robi to dwukrotnie.
+
+`src/routes/admin.catalog.tsx` dostarcza tylko przestrzenie nazw:
+
+```tsx
+export const Route = createFileRoute("/admin/catalog")({
+  component: () => <Outlet />,
+  staticData: { namespaces: ["pages.admin.catalog", "pages.admin.catalog.localePicker"] },
+})
+```
+
+`src/routes/admin.catalog.categories.tsx` dostarcza nagłówek i pasek zakładek, a jego trasa `index` renderuje wyłącznie tabelę:
+
+```tsx
+const CategoriesSectionLayoutRoute = (): JSX.Element => {
+  const t = useTranslations("pages.admin.catalog.categories")
+  const tabs = useMemo(() => <CatalogTabs active="categories" />, [])
+
+  return (
+    <>
+      <AdminHeader title={t("title")} description={t("description")} tabs={tabs} />
+
+      <div className={ADMIN_CATALOG_PAGE_BODY_CLASS}>
+        <Outlet />
+      </div>
+    </>
+  )
+}
+```
+
+`CatalogTabs` w `src/presentation/components/custom/pages/admin/catalog/catalog-tabs.tsx` przyjmuje `active: "products" | "categories" | "collections" | "attributes"`. Dodanie piątej sekcji katalogu oznacza dopisanie tam `TabLink` i rozszerzenie tej unii.
+
+## 5. Pobierz zapytania z wyprzedzeniem
+
+Loader trasy indeksowej pobiera z wyprzedzeniem wszystko, czego potrzebuje pierwsze renderowanie, w jednym `Promise.all`, żeby komponent mógł użyć `useSuspenseQuery` bez wskaźnika ładowania. Z `src/routes/admin.catalog.categories.index.tsx`:
+
+```ts
+const prefetchCategoriesQueries = async (context: { queryClient: QueryClient }): Promise<void> => {
+  await Promise.all([
+    context.queryClient.query({ ...getAdminCategoriesQuery(), staleTime: "static" }),
+    context.queryClient.query({ ...getCategoryStatsQuery(), staleTime: "static" }),
+  ])
+}
+
+export const Route = createFileRoute("/admin/catalog/categories/")({
+  component: CategoriesIndexRoute,
+  loader: ({ context }) => prefetchCategoriesQueries(context),
+  shouldReload: false,
+  staleTime: CATEGORY_QUERY_STALE_MS,
+})
+```
+
+Kontekst routera tworzy `src/router.tsx` i niesie on `queryClient` oraz `imagePrefetchService`; `beforeLoad` trasy głównej dokłada `locale` i `internalPathname`.
+
+## 6. Zadeklaruj przestrzenie nazw tłumaczeń
+
+Trasa wymienia przestrzenie nazw potrzebne jej poddrzewu w `staticData.namespaces`. `getRouteNamespaces` w `src/integrations/use-intl/i18n.messages.ts` łączy je ze wszystkich dopasowanych tras i dokłada przestrzenie główne, a `TranslationsProvider` ładuje dokładnie ten zbiór. Zapomniana przestrzeń nazw sprawia, że `useTranslations` rzuca wyjątek przy renderowaniu, a nie przy budowaniu. Zobacz [Tłumaczenia](/docs/guides/i18n-messages).
+
+## 7. Dodaj wpis do menu bocznego
+
+`src/presentation/components/custom/pages/admin/admin-sidebar.tsx` przechowuje cztery tablice na końcu pliku:
+
+| Tablica       | Zawartość                                                             |
+| ------------- | --------------------------------------------------------------------- |
+| `SIMPLE_NAV`  | Pulpit, Zamówienia, Klienci                                           |
+| `CATALOG_SUB` | Produkty, Kategorie, Kolekcje, Atrybuty — zagnieżdżone pod Katalogiem |
+| `TOOLS_NAV`   | Marketing, Kupony, Treści — wszystkie z `disabled: true`              |
+| `SYSTEM_NAV`  | Audyt, Ustawienia — Ustawienia mają `disabled: true`                  |
+
+`NavItem` to `{ href: LocalizedTo, icon, labelKey, disabled? }`. Ikona jest komponentem z `lucide-react`, a `labelKey` rozwiązuje się wewnątrz `pages.admin`, więc `nav.coupons` czyta z `messages/{locale}/pages.admin.json`. Ustaw `disabled: true` dla strony, która istnieje jako zaślepka, ale nie jest gotowa — `/admin/marketing`, `/admin/coupons`, `/admin/content` i `/admin/settings` są dziś właśnie w tym stanie.
+
+## 8. Przetestuj trasę
+
+Testy tras leżą w `src/routes/__test__/` i nazywają się `<route>.component.test.tsx` dla testu renderowania albo `<route>.loader.test.ts` dla testu loadera. Przechwytują `createFileRoute`, żeby uchwycić obiekt opcji:
+
+```tsx
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof ReactRouter>()
+
+  return {
+    ...actual,
+    createFileRoute: () => (options: CategoriesRouteDefinition) => {
+      captured.current = options
+
+      return { options }
+    },
+  }
+})
+```
+
+Test sprawdza potem `captured.current.staleTime`, `shouldReload` i `loader`, mockuje opcje zapytań modułu i renderuje `captured.current.component` przez `renderWithProviders`. Wzorcem jest `src/routes/__test__/admin.catalog.categories.index.component.test.tsx`. Zobacz [Pisanie testów](/docs/guides/writing-tests).
+
+## Powiązane przewodniki
+
+- [Dodawanie tabeli danych](/docs/guides/add-a-data-table)
+- [Tłumaczenia](/docs/guides/i18n-messages)
+- [Motyw i branding](/docs/guides/theming-and-branding)

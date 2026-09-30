@@ -1,0 +1,202 @@
+---
+title: "Transactional email"
+description: "Six React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales."
+---
+
+## Sending
+
+One function sends every email — `src/integrations/resend/resend.send.ts`:
+
+```ts
+export const sendEmail = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  try {
+    const { error } = await resend.emails.send({
+      from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
+      react,
+      subject,
+      to,
+    })
+
+    return error?.message
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
+}
+```
+
+Note the contract: **it never throws.** It returns `undefined` on success and the failure message as a string otherwise. Every caller is therefore written as `const failure = await sendEmail(...)` followed by a decision about what to do with `failure` — a mail outage cannot roll back an order or a deletion.
+
+The client is `src/integrations/resend/resend.config.ts`, a one-line `new Resend(env.RESEND_API_KEY)`. The default `from` is `APP_NAME <RESEND_EMAIL_FROM>`. Both `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in the `secrets.required` list of every environment in `wrangler.jsonc`.
+
+## The six templates
+
+All under `src/presentation/emails/`, built with `react-email` and rendered server-side inside the Worker:
+
+| Template                 | Namespace constant             | Sent by                                               |
+| ------------------------ | ------------------------------ | ----------------------------------------------------- |
+| `verify-email.tsx`       | `VERIFY_EMAIL_NAMESPACE`       | `sendVerificationEmail` (Better Auth)                 |
+| `reset-password.tsx`     | `RESET_PASSWORD_NAMESPACE`     | `sendResetPassword` (Better Auth)                     |
+| `change-email.tsx`       | `CHANGE_EMAIL_NAMESPACE`       | `sendChangeEmailConfirmation` (Better Auth)           |
+| `account-deleted.tsx`    | `ACCOUNT_DELETED_NAMESPACE`    | `sendAccountDeletedEmail`, queued by `deleteCustomer` |
+| `order-confirmation.tsx` | `ORDER_CONFIRMATION_NAMESPACE` | `notifyOrderConfirmed`, from the Stripe webhook       |
+| `order-shipped.tsx`      | `ORDER_SHIPPED_NAMESPACE`      | `notifyOrderShipped`, queued by `shipOrder`           |
+
+Each template **exports its own namespace constant** next to the component, for example `export const ORDER_CONFIRMATION_NAMESPACE = "emails.order-confirmation"`. That is the convention: the template owns the name of its message catalogue, so there is no separate mapping to keep in step.
+
+Shared pieces: `email-layout.tsx` (the wordmark, the gold rule, the tagline and the footer), `email-highlight-box.tsx` (`EmailBodyText`, `EmailBorderedSection` and the CTA class names) and `email-styles.ts` (the inline `CSSProperties` objects).
+
+## Localisation
+
+An email is never rendered with a React hook. Messages are loaded explicitly and passed in as a prop, and the subject is produced by a standalone translator:
+
+```ts
+const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
+const failure = await sendEmail({
+  react: createElement(VerifyEmail, { locale, messages, name: user.name, verificationUrl }),
+  subject: createTranslator({ locale, messages })("subject"),
+  to: user.email,
+})
+```
+
+`loadNamespace` is from `src/integrations/use-intl/i18n.messages.ts` and `createTranslator` from `use-intl` — the non-React entry point, which is what makes this work inside a webhook handler with no request context.
+
+Where the locale comes from differs by trigger:
+
+| Trigger                   | Locale source                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| Better Auth emails        | `getCurrentLocale()` — the request the user is making                           |
+| `sendAccountDeletedEmail` | The `locale` captured before the deletion, falling back to `getCurrentLocale()` |
+| Order confirmation        | `resolveLocale(session)` from the Stripe session metadata                       |
+| Order shipped             | `resolveOrderLocale(orderRow.metadata)` from the order's stored JSON            |
+
+The last two matter: a webhook has no browser, so the locale must have been persisted at checkout time. `createStripeSession` puts `locale: getCurrentLocale()` in the session metadata and `prepareFulfillCheckoutBatch` copies it into `order.metadata`, which is why a Polish customer's shipping notice arrives in Polish days later.
+
+## Styling
+
+`email-layout.tsx` wraps everything in react-email's `<Tailwind config={EMAIL_TAILWIND_CONFIG}>` with a small palette:
+
+```ts
+colors: {
+  cream: "#f3f0ea",
+  gold: "#b39b6d",
+  ink: "#16140f",
+  ...
+}
+```
+
+and two web-safe font stacks, `SERIF_STACK` (Georgia, Cambria, Times New Roman, Times, serif) and `SANS_STACK` (Helvetica Neue, Helvetica, Arial, sans-serif), because web fonts are unreliable in mail clients.
+
+The layout also forces light rendering:
+
+```tsx
+<Head>
+  <meta content="light only" name="color-scheme" />
+  <meta content="light only" name="supported-color-schemes" />
+</Head>
+```
+
+`email-styles.ts` holds the values that must be inline rather than classes — `EMAIL_BODY_STYLE`, `EMAIL_CONTAINER_STYLE` (max width 560px, 1px `#e2ddd4` border), `EMAIL_HIGHLIGHT_BOX_STYLE` and `EMAIL_PRODUCT_IMAGE_STYLE`.
+
+## Order confirmation in detail
+
+This is the most involved template. `stripe.webhooks.tsx` builds it in `buildOrderConfirmationEmailPayload`:
+
+1. The recipient is `session.customer_email ?? session.customer_details?.email`; the whole payload is abandoned if there is none.
+2. `getCheckoutEmailContext(checkoutId)` loads the addresses, the delivery method, the locker id and the customer note.
+3. `resolveStripePaymentMethodLabel(session, messages)` turns the Stripe payment method into a translated label.
+4. `buildOrderConfirmationDetails(...)` assembles the details block.
+5. `buildOrderConfirmationItems(order.lines, locale)` formats the line items.
+6. `buildOrderAccountCta({ isGuest, locale, messages, orderId })` chooses the button: a signed-in customer gets a link to `/account/orders/<id>`, a guest gets `/auth/sign-up`. `isGuest` is derived from an empty `userId` in the session metadata.
+7. Totals: `itemsSubtotal` from the metadata lines and `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
+
+The helpers are in `src/integrations/resend/order-confirmation.utils.ts`, and `resolveDeliveryMethodLabel` there appends the locker id for a locker delivery.
+
+Delivery promises are copy, not data — see [Shipping and delivery](/docs/features/shipping-and-delivery):
+
+```ts
+const deliveryType = context?.deliveryMethod?.type ?? "courier"
+const { estimatedDelivery, fulfillmentTime } = messages.deliveryTiming[deliveryType]
+```
+
+## Auditing
+
+Order emails record their outcome in the audit log:
+
+```ts
+export const recordOrderEmailOutcome = ({
+  failure,
+  label,
+  orderId,
+}: Readonly<{ failure: string | undefined; label: string; orderId: string }>): void => {
+  if (failure === undefined) {
+    recordEmailSentAudit(orderId, { detail: label, resourceId: orderId })
+
+    return
+  }
+  console.error(`${label} failed for order ${orderId}: ${failure}`)
+  recordEmailFailedAudit(orderId, { detail: `${label} — ${failure}`, resourceId: orderId })
+}
+```
+
+The `label` is a human string such as `Order confirmation → jane@example.com`. If building the payload throws before a send is even attempted, `notifyOrderConfirmed` catches it and records `recordEmailFailedAudit` with the error message instead. So the audit log's `email` category is the place to look when a customer says they got nothing.
+
+Better Auth's four emails are **not** audited. They only log:
+
+```ts
+const reportEmailFailure = (kind: string, recipient: string, failure: string | undefined): void => {
+  if (failure !== undefined) {
+    console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
+  }
+}
+```
+
+`AUDIT_LOG_ACTION.EMAIL_DEFERRED` exists but nothing emits it.
+
+## Background delivery
+
+Two senders are deliberately not awaited by the request:
+
+- `shipOrder` — `scheduleBackgroundWork(notifyOrderShipped(orderId))`
+- `deleteCustomer` — `scheduleBackgroundWork(sendAccountDeletedEmail(goodbyeEmail))`
+
+`scheduleBackgroundWork` (`src/lib/background.ts`) uses the Worker's `waitUntil`, so the admin's click returns immediately.
+
+The Stripe webhook, by contrast, **awaits** `notifyOrderConfirmed`. An unhandled throw there would make the handler return 500 and Stripe would redeliver a webhook whose order has already been created — which is why `notifyOrderConfirmed` wraps everything in `try`/`catch` and swallows the error after recording it.
+
+## Previewing
+
+```bash
+bun run dev
+open http://localhost:3000/dev/emails
+```
+
+`src/routes/dev.emails.tsx` is a `GET` handler, not a React page. It is guarded by the build mode:
+
+```ts
+if (!import.meta.env.DEV) {
+  return notFound()
+}
+```
+
+so the route does not exist in a preview or production build. With no `?template=` it renders an index of cards; with `?template=<slug>&locale=<locale>` it renders that template, and adding `&format=text` returns the plain-text rendering instead of HTML.
+
+`src/integrations/resend/email-previews.tsx` is the registry. `EMAIL_PREVIEWS` maps each slug to `{ element: async (locale) => …, label }`, and `renderEmailPreview(slug, locale, plainText)` calls react-email's `render`. The fixtures are realistic Polish data — `PREVIEW_ORDER_ITEMS` uses "Bransoletka Aurora" at 24 900 minor units and "Kolczyki Luna" ×2 at 18 900, `PREVIEW_ADDRESS` is a Warsaw address, and there are two CTA fixtures, `PREVIEW_GUEST_CTA` and `PREVIEW_CUSTOMER_CTA`, so both branches of `buildOrderAccountCta` can be seen.
+
+Every template is listed in both `pl-PL` and `en-US`, in HTML and plain text — eight links per template — which makes the index the fastest way to check a translation change.
+
+Adding a template means: the component plus its namespace constant under `src/presentation/emails/`, the two message files under `messages/{locale}/`, an `EMAIL_PREVIEWS` entry, and a caller that loads the namespace and calls `sendEmail`.
+
+## What is not there
+
+- No newsletter. The landing-page form is unwired and there is no subscriber table — see [Landing page](/docs/features/landing-page).
+- No abandoned-cart email. The event is recorded in the audit log but nothing sends anything.
+- No delivered or refund notification. Only confirmation and shipped exist.
+- No retry or dead-letter queue for email; a failure is logged and, for order emails, audited.
+
+## Related pages
+
+- [Orders](/docs/features/orders)
+- [Payments](/docs/features/payments)
+- [Audit log](/docs/features/audit-log)
+- [Internationalization](/docs/features/internationalization)
+- [Integrations: Resend](/docs/integrations/resend)

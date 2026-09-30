@@ -1,0 +1,128 @@
+---
+title: "InPost"
+description: "Parcel-locker lookup for the checkout delivery step."
+---
+
+Polish customers expect to choose an InPost _paczkomat_. The `src/integrations/inpost/` adapter provides exactly that and nothing more: a read-only lookup of pickup points by city, cached in TanStack Query, feeding a map-and-list picker in the checkout delivery step.
+
+## What this integration is not
+
+It is worth being explicit, because the scope is much narrower than InPost's platform suggests:
+
+- There is **no API key and no authentication**. The points endpoint is public.
+- The application does **not** create shipments, buy labels, or call InPost ShipX. Nothing in the repository talks to a shipping API.
+- Tracking numbers are not fetched from InPost. The order-shipped notification is triggered from the admin console, not by a courier callback.
+
+What is stored on the order is the locker the customer picked, as `checkout.lockerId`.
+
+## The lookup
+
+`inpost.api.ts` is 28 lines and calls one public endpoint:
+
+```ts
+const url = `${INPOST_API_BASE}?city=${encodeURIComponent(capitalizeCity(trimmed))}&per_page=1000`
+const response = await fetch(url)
+if (!response.ok) {
+  throw new Error(`InPost API error: ${String(response.status)}`)
+}
+```
+
+`INPOST_API_BASE` is `https://api-pl-points.easypack24.net/v1/points`. Three details matter:
+
+- **`capitalizeCity`** lowercases the input and then upper-cases the first letter of every word, including after a hyphen, with a Unicode-aware regex — `"jelenia-góra"` becomes `"Jelenia-Góra"`. The endpoint is case-sensitive about city names, so without this the search silently returns nothing.
+- **Fewer than three characters returns an empty array** without a request (`MIN_CITY_LENGTH = 3`).
+- **A response that fails schema validation returns an empty array**, not an error. Only a non-OK HTTP status throws. This means a change in the upstream payload shape degrades to "no lockers found" rather than a broken checkout — which is the right trade-off, but it also means such a break is silent. If the picker shows nothing for a city you know has lockers, check the parse result first.
+
+## The schemas
+
+`inpost.zod.ts` keeps InPost's own `snake_case` field names rather than renaming them, so the shapes can be compared against the upstream response directly:
+
+```ts
+export const inpostPointSchema = z.object({
+  address_details: inpostAddressDetailsSchema,
+  location: inpostLocationSchema,
+  location_description: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => val ?? ""),
+  location_type: z.string().optional(),
+  name: z.string(),
+  opening_hours: z.string().optional(),
+  payment_available: z.boolean().optional(),
+  status: z.string().optional(),
+})
+```
+
+`address_details` requires `city`, `post_code`, `province` and `street`, and allows `building_number` to be `null` and `flat_number` to be absent. `location` requires `latitude` and `longitude` as numbers — those are what place the marker. Everything the UI can live without is optional, and `location_description` is normalized from `null | undefined` to `""` so the component never has to branch.
+
+`inpostApiResponseSchema` wraps `{ count, items }`, and `fetchPointsByCity` returns `parsed.data.items`.
+
+## Caching
+
+`inpost.queries.ts` is the only place a query is defined:
+
+```ts
+export const inpostPointsByCityQueryOptions = (city: string) =>
+  queryOptions({
+    enabled: city.trim().length >= MIN_CITY_LENGTH,
+    gcTime: TWO_DAYS_IN_MS,
+    queryFn: () => fetchPointsByCity(city),
+    queryKey: [...INPOST_QUERY_KEYS.BY_CITY, city.trim().toLowerCase()],
+    staleTime: ONE_DAY_IN_MS,
+  })
+```
+
+`INPOST_QUERY_KEYS.BY_CITY` is `["inpost-points", "city"]` from `inpost.constants.ts`. A day of staleness and two days of garbage-collection time are deliberate: the locker network barely moves, and the customer may open and close the picker several times while filling the form. The key is lower-cased and trimmed so `"Kraków"`, `"kraków "` and `"KRAKÓW"` share one cache entry even though the request itself sends the capitalized form.
+
+Note that `MIN_CITY_LENGTH` is declared twice — exported from `inpost.queries.ts` and declared privately in `inpost.api.ts`. Both are `3`; keep them in step if you change one.
+
+## The picker
+
+The UI lives under `src/presentation/components/custom/checkout/components/_steps/delivery/locker/`:
+
+| File                                                      | Role                                                                              |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `delivery-locker.tsx`                                     | The form field. Binds `lockerId` with `useController` and shows the chosen locker |
+| `inpost/inpost-selector.tsx`                              | The dialog: a MapLibre map beside the sidebar list                                |
+| `inpost/inpost-provider.tsx`                              | Owns the city input, debounces it and runs the query                              |
+| `inpost/inpost-sidebar.tsx` and `inpost-sidebar-item.tsx` | The scrollable result list                                                        |
+| `inpost/inpost-marker.tsx`                                | A `Marker` from `react-map-gl/maplibre` per point                                 |
+| `inpost/inpost-popup.tsx`                                 | The hover popup                                                                   |
+| `inpost/inpost-map-updater.tsx`                           | Moves the viewport when the result set changes                                    |
+| `inpost/inpost-point-details.tsx`                         | Renders one point's address and opening hours                                     |
+
+`InpostProvider` is the only consumer of the query. It debounces the typed city by 400 ms into a separate `searchQuery` state before the query sees it, and exposes `{ cityInput, hoveredPointId, isLoading, points, setCityInput, setHoveredPointId }` through context:
+
+```ts
+const { data: points, isLoading } = useQuery(inpostPointsByCityQueryOptions(searchQuery))
+```
+
+The map is `react-map-gl/maplibre` over `maplibre-gl`, with a free CARTO Voyager basemap at `https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json`, attribution disabled, and `maxBounds` clamped to a Poland-sized box. Clicking the map background clears `lockerId`; clicking a marker or a sidebar row sets it. `point.name` — InPost's locker code, such as `KRA010` — is both the React key and the stored value, which is why the selected-locker panel simply prints `field.value`.
+
+## How it reaches the order
+
+`delivery_method` rows carry a `type` from `DELIVERY_METHOD` in `src/modules/delivery-method/delivery-method.constants.ts`:
+
+```ts
+export const DELIVERY_METHOD = { COURIER: "courier", IN_STORE: "in_store", LOCKER: "locker" } as const
+```
+
+`checkout.zod.ts` makes `lockerId` and `lockerCity` optional in general but required when the chosen method is a locker:
+
+```ts
+if (data.deliveryMethodType === "locker" && (typeof data.lockerId !== "string" || data.lockerId.trim().length === 0)) {
+  // issue at path ["lockerId"] with message "validation.lockerIdRequired"
+}
+```
+
+From there `lockerId` is persisted on the `checkout` row, copied onto the order at fulfilment, and read back by the confirmation and shipped e-mails through `getCheckoutEmailContext`, where `resolveDeliveryMethodLabel` composes the label the customer sees. See [Resend](/docs/integrations/resend) and [Checkout and payments](/docs/features/checkout).
+
+## Tests
+
+`src/integrations/inpost/__test__/` holds three files. `inpost.api.test.ts` covers the request URL, capitalization of multi-part and hyphenated city names, the throw on a non-OK status, and the empty-array fallback for both a wrong response shape and a single malformed point. `inpost.queries.test.ts` covers the trimmed lower-cased key, the namespace prefix and the one-day / two-day cache times. `inpost.zod.test.ts` covers a full point, a point stripped to its required fields, and rejection when coordinates, city or name are missing.
+
+## Related pages
+
+- [Checkout and payments](/docs/features/checkout)
+- [Orders](/docs/features/orders)

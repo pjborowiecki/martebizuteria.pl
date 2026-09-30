@@ -1,0 +1,102 @@
+---
+title: "Rabaty"
+description: "Tabela discount istnieje, ekran kuponów w panelu jest makietą, a żadna ścieżka kodu nie nakłada rabatu na koszyk ani na zamówienie."
+---
+
+Rabaty to największy świadomie nieskończony obszar sklepu. Schemat bazy jest gotowy, ekran w panelu jest zaprojektowany i renderowany, a nic ich nie łączy.
+
+## Co istnieje
+
+`discount` (`src/modules/discount/discount.schema.ts`):
+
+```ts
+export const discount = sqliteTable(
+  "discount",
+  {
+    code: text("code").notNull().unique(),
+    endsAt: timestamp("ends_at"),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+    startsAt: timestamp("starts_at"),
+    type: text("type", { enum: ["percentage", "fixed_amount", "free_shipping"] }).notNull(),
+    usageCount: integer("usage_count").default(0).notNull(),
+    usageLimit: integer("usage_limit"),
+    value: integer("value").notNull(),
+    ...timestamps(),
+  },
+  (table) => [index("discount_code_idx").on(table.code)],
+)
+```
+
+Trzy typy to `percentage`, `fixed_amount` i `free_shipping`. `value` to jedna liczba całkowita, więc rabat procentowy i kwota stała w jednostkach podrzędnych dzielą jedną kolumnę. `usage_limit` jest nullowalna — `null` oznacza brak limitu.
+
+`discountRelations` deklaruje `many(cart)`, `many(checkout)` i `many(order)`, a każda z tych trzech tabel ma kolumnę `discount_id`. `order` ma dodatkowo `discount_total`.
+
+## Czego brakuje
+
+Moduł to plik schematu i nic więcej — nie ma `*.constants.ts`, `*.zod.ts` ani `use-cases/`:
+
+```
+src/modules/discount/
+└── discount.schema.ts
+```
+
+Wyszukanie `discount` w całym repozytorium, poza plikami schematów i migracjami, znajduje wyłącznie dane makiety i sam ekran makiety. Konkretnie:
+
+| Kolumna                | Zapisywana przez                        | Czytana przez                                   |
+| ---------------------- | --------------------------------------- | ----------------------------------------------- |
+| `cart.discount_id`     | nic                                     | nic                                             |
+| `checkout.discount_id` | nic                                     | nic                                             |
+| `order.discount_id`    | nic                                     | nic                                             |
+| `order.discount_total` | nic — zostaje na wartości domyślnej `0` | jest w wierszu, ale nigdzie nie jest pokazywana |
+| `discount.usage_count` | nic                                     | nic                                             |
+
+W formularzu kasy nie ma pola kuponu: `checkoutSchema` w `src/modules/checkout/checkout.zod.ts` nie ma wejścia na rabat, a `createStripeSession` jest wywoływane bez `discounts`, więc kody promocyjne samego Stripe również nie są włączone.
+
+`prepareFulfillCheckoutBatch` wylicza kwoty zamówienia wyłącznie z kwoty sesji Stripe i linii z metadanych, więc nie ma miejsca, w którym rabat mógłby dziś obniżyć sumę.
+
+## Ekran kuponów w panelu to makieta
+
+`/admin/coupons` to `src/routes/admin.coupons.tsx`. Renderuje `CouponStats` i `CouponListTable`, a oba czytają `src/data/coupons.ts`.
+
+`COUPONS` to cztery dosłowne wiersze o kształcie przygotowanym do wyświetlenia, a nie do bazy:
+
+```ts
+{
+  code: "WELCOME20",
+  discount: "20%",
+  expires: "Dec 31, 2023",
+  id: "coupon-001",
+  minOrder: "$100",
+  status: "active",
+  type: "Percentage",
+  usage: "142 / 500",
+}
+```
+
+Zwróć uwagę, że ten kształt nie odpowiada tabeli: kwoty to gotowe napisy w **dolarach**, daty to angielskie napisy, `usage` to tekst `"142 / 500"`, a `minOrder` nie ma żadnej odpowiadającej kolumny. `status` ma wartości `active` i `scheduled`, podczas gdy tabela ma boolean `is_active` oraz `starts_at`/`ends_at`.
+
+`COUPON_STATS` to cztery karty z zapisanymi na stałe tablicami wykresów przebiegu i napisami trendu; wyświetlane liczby pochodzą z katalogu komunikatów (`pages.admin.coupons.stats.<key>.value`), a nie z danych.
+
+Przyciski Eksport i Utwórz kupon w `admin.coupons.tsx` nie mają `onClick`. Pole wyszukiwania w `coupon-list-table.tsx` ma zapisany na stałe angielski `placeholder="Search coupons..."` i żadnego stanu. Pozycje menu wiersza Kopiuj, Podgląd i Usuń nie są podłączone.
+
+## Czego wymagałaby prawdziwa implementacja
+
+To nie rekomendacja produktowa — to lista szwów, które obecny kod już zostawia otwarte:
+
+1. **Moduł.** `src/modules/discount/` z `discount.constants.ts` (klucze zapytań, unia typów, mapa kodów błędów), `discount.zod.ts`, `discount.accessors.ts` i `use-cases/`.
+2. **Walidacja na serwerze.** Use case, który przyjmuje kod i linie koszyka, sprawdza `is_active`, okno `starts_at`/`ends_at` oraz `usage_count < usage_limit`, i zwraca wyliczoną obniżkę — nigdy nie ufając kwocie z klienta, tak samo jak `validateAndCalculateItems` ponownie czyta ceny.
+3. **Pole w kasie.** Pole `discountCode` w `checkoutSchema`, walidowane w kroku kontaktu albo dostawy i zapisywane do `checkout.discount_id`.
+4. **Nałożenie przy tworzeniu sesji.** Albo ujemna korekta w `toLineItems`, albo kupony Stripe utworzone z wierszy `discount` i przekazane jako `discounts` w sesji. Typ `free_shipping` wchodzi w interakcję z `resolveShippingCost`.
+5. **Zapis przy realizacji.** `prepareFulfillCheckoutBatch` musiałby skopiować `discount_id` na zamówienie, ustawić `discount_total` i zwiększyć `discount.usage_count` w tym samym wsadzie D1 — a ponieważ wsad realizacji jest punktem idempotencji, inkrementacja musi być jego częścią, a nie osobnym zapisem.
+6. **CRUD w panelu.** Funkcje serwerowe zabezpieczone przez `authorized({ settings: ["manage"] })` albo nowy zasób `discount` w `src/integrations/better-auth/auth.access.ts`, plus zdarzenia audytu w `AUDIT_LOG_ACTION` — obecnie nie ma tam żadnej akcji dotyczącej rabatów.
+7. **Unieważnianie w czasie rzeczywistym.** Wpis `DISCOUNT_QUERY_KEYS` w `ADMIN_REALTIME_QUERY_PREFIXES` i pomocnik `scheduleDiscountInvalidation()` obok istniejących w `realtime-invalidation.catalog.server.ts`.
+
+## Powiązane strony
+
+- [Kasa](/docs/features/checkout)
+- [Płatności](/docs/features/payments)
+- [Zamówienia](/docs/features/orders)
+- [Przewodniki: dodawanie modułu](/docs/guides/add-a-module)

@@ -1,0 +1,182 @@
+---
+title: "Fonty i branding"
+description: "Samodzielnie hostowane Manrope i Cormorant Garamond, krytyczne preloady zależne od języka oraz stałe marki i firmy."
+---
+
+## Dwa kroje pisma
+
+M'Arte używa dokładnie dwóch rodzin, obie hostowane samodzielnie z `public/fonts` jako podzbiory WOFF2:
+
+| Rodzina                | Rola                                     | Tailwind     | Pliki                                                 |
+| ---------------------- | ---------------------------------------- | ------------ | ----------------------------------------------------- |
+| **Manrope**            | Tekst, interfejs, nawigacja, panel       | `font-sans`  | Jeden plik zmienny na podzbiór, oś grubości `200 800` |
+| **Cormorant Garamond** | Nagłówki ekspozycyjne, treści redakcyjne | `font-serif` | Kroje statyczne 400, 500 i 600; kursywy 400 i 500     |
+
+W `public/fonts` leży dwanaście plików. Każda rodzina ma wariant `latin` i `latin-ext` każdego kroju, bo polszczyzna potrzebuje zakresu rozszerzonego:
+
+```
+manrope-latin-wght-normal.woff2
+manrope-latin-ext-wght-normal.woff2
+cormorant-garamond-latin-400-normal.woff2
+cormorant-garamond-latin-ext-400-normal.woff2
+cormorant-garamond-latin-400-italic.woff2
+cormorant-garamond-latin-ext-400-italic.woff2
+cormorant-garamond-latin-500-normal.woff2
+cormorant-garamond-latin-ext-500-normal.woff2
+cormorant-garamond-latin-500-italic.woff2
+cormorant-garamond-latin-ext-500-italic.woff2
+cormorant-garamond-latin-600-normal.woff2
+cormorant-garamond-latin-ext-600-normal.woff2
+```
+
+`public/_headers` serwuje `/fonts/*` z nagłówkiem `Cache-Control: public, max-age=31536000, immutable`. Nazwy nie zawierają skrótu treści, więc po podmianie pliku stare bajty mogą zostać w cache nawet rok — zmieniając zawartość, zmień też nazwę pliku.
+
+## Kroje krytyczne i odroczone
+
+CSS fontów jest świadomie podzielony na dwie części.
+
+**`src/presentation/styles/critical-fonts.css`** zawiera tylko to, czego potrzebuje pierwszy ekran: dwa kroje zastępcze dopasowane metrycznie, Cormorant Garamond 400 normal (latin i latin-ext), zmienny Manrope (latin i latin-ext) oraz definicje `--font-sans` i `--font-serif` w `:root`. Jest wklejany do sekcji `head` jako znacznik `<style>`, więc żadne żądanie arkusza nie blokuje pierwszego renderu:
+
+```tsx
+import criticalFontsCss from "~/src/presentation/styles/critical-fonts.css?raw"
+
+export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriticalFontsHeadProps>): JSX.Element => (
+  <>
+    {getCriticalFontPreloads(locale).map((link) => (
+      <link key={link.href} {...link} />
+    ))}
+    <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
+  </>
+)
+```
+
+Trasa główna renderuje go wyłącznie poza konsolą administratora:
+
+```tsx
+{
+  !isAdmin && <StorefrontCriticalFontsHead locale={locale} />
+}
+```
+
+**`src/presentation/styles/fonts.css`** zawiera pozostałe osiem krojów Cormorant — 400 kursywa, 500 normal, 500 kursywa i 600 normal, każdy w obu podzbiorach. Jest importowany na początku `globals.css`, więc te kroje przychodzą razem z głównym arkuszem, nie blokując sekcji `head`.
+
+Kroje zastępcze unikają przeskoku układu, dopasowując metryki:
+
+```css
+@font-face {
+  font-family: "Manrope Fallback";
+  src: local("Arial");
+  size-adjust: 98.16%;
+  ascent-override: 106.6%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+```
+
+`globals.css` ustawia też `font-synthesis: none` na `body`, więc brakująca grubość ani kursywa nigdy nie zostaną podrobione przez przeglądarkę.
+
+## Preloady zależne od języka
+
+`src/presentation/document-assets.ts` eksportuje jedną funkcję. Preloaduje dokładnie dwa pliki — jeden font tekstowy i jeden ekspozycyjny — i przełącza podzbiór zależnie od języka:
+
+```ts
+export const getCriticalFontPreloads = (locale: SupportedLocale) => {
+  const useLatinExt = locale === "pl-PL"
+
+  return [
+    {
+      ...FONT_PRELOAD_BASE,
+      href: useLatinExt ? "/fonts/manrope-latin-ext-wght-normal.woff2" : "/fonts/manrope-latin-wght-normal.woff2",
+    },
+    {
+      ...FONT_PRELOAD_BASE,
+      href: useLatinExt ? "/fonts/cormorant-garamond-latin-ext-400-normal.woff2" : "/fonts/cormorant-garamond-latin-400-normal.woff2",
+    },
+  ] as const
+}
+```
+
+`FONT_PRELOAD_BASE` to `{ as: "font", crossOrigin: "anonymous", rel: "preload", type: "font/woff2" }`. Plik `src/presentation/__test__/document-assets.test.ts` przypina to wszystko: dokładne adresy dla każdego języka, cztery atrybuty i fakt, że wpisów jest dokładnie dwa.
+
+Dodając język, rozszerz warunek. Dodając trzeci krój krytyczny, dopisz go do `critical-fonts.css` _oraz_ do tej funkcji, inaczej zostanie pobrany za późno.
+
+## Stałe marki
+
+`src/presentation/branding/app.ts` jest jedynym źródłem prawdy o marce:
+
+```ts
+export const APP_DOMAIN = "martebizuteria.pl"
+export const APP_URL = `https://${APP_DOMAIN}`
+export const APP_GITHUB_OWNER = "pjborowiecki"
+export const APP_GITHUB_REPO = APP_DOMAIN
+export const APP_ICON = "/favicon.svg"
+export const APP_NAME = "M'Arte"
+export const DEFAULT_R2_PUBLIC_URL = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev"
+export const OG_IMAGE_HEIGHT = "630"
+export const OG_IMAGE_PATH = "/og.png"
+export const OG_IMAGE_WIDTH = "1200"
+export const THEME_COLOR = "#e7f3ec"
+```
+
+Zasilają one znacznie więcej niż chrom strony:
+
+| Stała                   | Czytana przez                                                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_NAME`              | `theme-init.ts` (klucz motywu w `localStorage`), Better Auth, Stripe, Resend, meta `og:site_name` i `title`, nagłówki logowania i kasy |
+| `APP_URL`, `APP_DOMAIN` | Adresy kanoniczne, linki hreflang, dane strukturalne (`src/lib/seo.ts`), bezwzględne adresy zasobów (`src/lib/url.ts`)                 |
+| `APP_ICON`              | Linki `icon` i `apple-touch-icon` w trasie głównej                                                                                     |
+| `OG_IMAGE_*`            | Meta Open Graph i karty Twittera w trasie głównej                                                                                      |
+| `THEME_COLOR`           | Znacznik meta `theme-color`                                                                                                            |
+| `DEFAULT_R2_PUBLIC_URL` | Zapasowa publiczna baza zasobów R2 w `src/lib/image.ts`                                                                                |
+
+Ponieważ `THEME_STORAGE_KEY` wywodzi się z `APP_NAME`, zmiana nazwy aplikacji zmienia klucz w `localStorage` i po cichu resetuje zapisany motyw każdemu odwiedzającemu. Dziś to nieszkodliwe (nie ma przełącznika), ale warto o tym pamiętać.
+
+## Dane firmy
+
+`src/presentation/branding/business.ts` przechowuje tożsamość prawną sklepu:
+
+```ts
+export const BUSINESS = {
+  CITY: "Bochnia",
+  COUNTRY_CODE: "PL",
+  EMAIL: "kontakt@martebizuteria.pl",
+  LEGAL_NAME: "Pyciak Mariusz Firma Jubilerska",
+  NIP: "8681772646",
+  OPENING_HOURS_CLOSE: "17:00",
+  OPENING_HOURS_OPEN: "09:00",
+  PHONE: "+48 663 150 820",
+  POSTAL_CODE: "32-700",
+  REGON: "384616568",
+  STREET: "ul. Wąska 11",
+} as const
+
+export const BUSINESS_POSTAL_ADDRESS_LINES = [BUSINESS.LEGAL_NAME, BUSINESS.STREET, `${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY}`] as const
+```
+
+Żaden komponent tego nie importuje. Zadaniem tego pliku jest być stroną asercji w teście: `src/presentation/branding/__test__/business.test.ts` czyta `content/legal/privacy-policy.<locale>.mdx` i `content/legal/exchanges-and-returns.<locale>.mdx` dla każdego obsługiwanego języka i zawodzi, jeśli nazwa prawna, NIP, wiersze adresu pocztowego albo adres `mailto:` w treści rozjadą się z tymi stałymi.
+
+Gdy więc dane firmy się zmienią, najpierw popraw `business.ts`, a potem treść prawną w obu językach, aż `bun run test:unit` znów przejdzie.
+
+`src/presentation/branding/socials.ts` przechowuje dwa aktywne profile:
+
+```ts
+export const SOCIALS = {
+  FACEBOOK: "https://www.facebook.com/p/MArte-Bi%C5%BCuteria-61567757976697/",
+  INSTAGRAM: "https://www.instagram.com/m_arte.bizuteria/",
+} as const
+```
+
+Czytają je `src/lib/seo.ts` (wpisy `sameAs` w danych strukturalnych), stopka oraz stopka menu pełnoekranowego.
+
+## Logo, ikony i multimedia
+
+- Favikona to `public/favicon.svg`, podłączona przez `APP_ICON`. Nie ma pliku `.ico`.
+- `public/og.png` to karta społecznościowa 1200×630.
+- `src/presentation/components/custom/icons.tsx` przechowuje trzy wbudowane SVG marek, których nie pokrywa Lucide: `GoogleIcon`, `FacebookIcon` i `GithubIcon`. Wszystko pozostałe pochodzi z `lucide-react`.
+- `public/video/landing-video.mp4` to materiał wideo strony głównej; `public/screenshots` zawiera osiem zrzutów do README, a `public/forms` dwa polskie formularze PDF zwrotu i reklamacji.
+- `public/icons.svg` to sprite SVG z symbolami `bluesky`, `discord`, `documentation`, `github`, `social` i `x`. Nic w `src` się do niego nie odwołuje — traktuj go jako pozostałość, nie jako API.
+
+## Powiązane strony
+
+- [Motyw](/docs/ui/theme)
+- [Wzorce kompozycji](/docs/ui/composition-patterns)

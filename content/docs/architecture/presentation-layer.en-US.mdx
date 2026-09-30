@@ -1,0 +1,81 @@
+---
+title: "Presentation layer"
+description: "Where components, styles, theme, branding and email templates live, and the rules every component follows."
+---
+
+`src/presentation` holds 573 files and is the largest folder in the repository. Nothing in it reads a database or a secret.
+
+## Folders
+
+| Folder               | Contents                                                                                |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `components/shadcn`  | 57 shadcn/ui primitives plus `sheet-control.styles.ts` — regenerate, do not hand-edit   |
+| `components/custom`  | 494 application components                                                              |
+| `emails`             | React Email templates, `email-layout.tsx`, `email-highlight-box.tsx`, `email-styles.ts` |
+| `styles`             | `globals.css`, `storefront.css`, `admin.css`, `fonts.css`, `critical-fonts.css`         |
+| `theme`              | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                    |
+| `branding`           | `app.ts`, `business.ts`, `socials.ts`                                                   |
+| `document-assets.ts` | `getCriticalFontPreloads(locale)`                                                       |
+
+## Organizing components
+
+- **Shared components are flat files** in `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `legal-content.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`.
+- **Cross-cutting widgets get a folder** when they are a system rather than a component: `datagrid/`, `image-upload/`, `checkout/`, `defaults/`.
+- **Page and area components live under `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `auth/`, `account/`, `admin/`.
+- **Admin pages get their own folder** under `pages/admin`: `orders/`, `customers/`, `catalog/products/`, `catalog/categories/`, `catalog/collections/`, `catalog/attributes/`, `audit/`, `dashboard/`, `settings/`, `content/`, `coupons/`, `marketing/`.
+
+Larger areas nest further, into `components/`, `hooks/`, `lib/`, `utils/`, `sections/` and `_sections/` subfolders — for example `pages/admin/audit/{audit-table,components,hooks,lib,utils}` and `pages/landing-page/navigation/{components,constants,hooks,store}`. This is a deliberate divergence from the flatter reference layout: the admin console is large enough that a flat folder stopped being navigable.
+
+## Component rules
+
+- A component reads its own translations and data. It calls `useTranslations` once, names the translator `t`, and fetches with `useSuspenseQuery` on the module's exported query options or with `Route.useLoaderData()`. It does not take label or data props a parent could have read itself.
+- Route files only compose. A widget, dialog, form or column definition is one file.
+- Components never import `db`, `auth` from `auth.server.ts` or the Stripe server client. They call the query and mutation options exported by the use cases.
+- Conditional classes use `cn` from the `cn` package. Tailwind class order is applied by `bun run format`, configured in `vite.config.ts` under `fmt.sortTailwindcss` against `src/presentation/styles/globals.css`.
+- Forms use react-hook-form with `zodResolver` and the module's Zod schema. This is an intentional divergence from the reference projects, which use TanStack Form.
+
+## Styles
+
+Stylesheets are split three ways and loaded by the route that needs them:
+
+| File                 | Loaded by                                | Holds                                                            |
+| -------------------- | ---------------------------------------- | ---------------------------------------------------------------- |
+| `globals.css`        | `__root.tsx`                             | The single Tailwind build, the design tokens, the `dark` variant |
+| `storefront.css`     | `_storefront.tsx`                        | Landing-page reveal animations and reduced-motion fallbacks      |
+| `admin.css`          | `admin.tsx`                              | The admin shell's own token set under `[data-admin-main]`        |
+| `fonts.css`          | imported by `globals.css`                | `@font-face` rules for the self-hosted woff2 files               |
+| `critical-fonts.css` | inlined by `StorefrontCriticalFontsHead` | The `@font-face` rules needed for first paint                    |
+
+`globals.css` narrows Tailwind's source scan with `@source not` directives for tests, `src/platform/testing` and the unused shadcn primitives, so those files do not inflate the generated CSS.
+
+## Theme and first paint
+
+`src/presentation/theme/theme-init.ts` exports `THEME_INIT_SCRIPT` and `adminShellCriticalStyle`; `sidebar-preference.ts` exports `SIDEBAR_INIT_SCRIPT`, `adminSidebarCollapsedCriticalStyle` and `getAdminSidebarDefaultOpen`; `datagrid/datagrid-init.ts` exports `DATAGRID_PREFS_INIT_SCRIPT`. `__root.tsx` inlines all three as blocking `<script>` tags ahead of `<HeadContent />`, so the stored theme, the sidebar state and the saved data-grid column widths are applied before the first frame rather than after hydration.
+
+`ThemesProvider` wraps `@wrksz/themes` with `themes={["light", "dark"]}`, `enableSystem={false}` and `localStorage` storage. The admin shell forces light through `useAdminLightTheme()`.
+
+On storefront routes `StorefrontCriticalFontsHead` inlines the critical `@font-face` rules and `document-assets.ts` picks the preloads by locale: `pl-PL` gets the `latin-ext` subsets of Manrope and Cormorant Garamond, `en-US` gets `latin`. The admin shell skips fonts entirely and inlines its own critical chrome CSS instead.
+
+## Branding
+
+`branding/app.ts` holds `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR` and the Open Graph image constants; `business.ts` holds the shop's legal and contact details; `socials.ts` holds `SOCIALS`. `src/lib/seo.ts` and `_core/constants/api.ts` both read from them, which is why the allowed-host list per build mode follows `APP_DOMAIN`.
+
+## Emails
+
+An email template in `presentation/emails` contains markup only and exports its namespace beside the component:
+
+```ts
+export const VERIFY_EMAIL_NAMESPACE = "emails.verify-email"
+```
+
+It translates with use-intl's `createTranslator`, receiving `locale` and `messages` as props. The caller — `auth.server.ts` for the account emails, `stripe.webhooks.tsx` for the order confirmation, `order-shipped.notification.server.ts` for the shipping notice — loads the namespace with `loadNamespace` and renders the element. Templates: `verify-email`, `reset-password`, `change-email`, `account-deleted`, `order-confirmation`, `order-shipped`. `src/routes/dev.emails.tsx` previews them, backed by `src/integrations/resend/email-previews.tsx`.
+
+## The admin data grid
+
+`components/custom/datagrid` is the shared table system behind every admin list: `create-data-grid.tsx` composes the shell, toolbar, header cells, rows, pagination, view options and skeletons on top of `@tanstack/react-table`. Column widths are emitted into the SSR'd markup as `width: max(var(--marte-dg-<slug>-<column>, <default>px), <min>px)`, and `DATAGRID_PREFS_INIT_SCRIPT` fills those variables from `localStorage` before paint, so a resized column paints at its saved width with no layout shift.
+
+## Related pages
+
+- [Directory structure](/docs/architecture/directory-structure)
+- [Internationalization](/docs/architecture/i18n-architecture)
+- [Caching and SSR](/docs/architecture/caching-and-ssr)

@@ -1,0 +1,213 @@
+---
+title: "Współtworzenie"
+description: "Jak przygotować środowisko, prowadzić gałęzie, sprawdzać kod, testować, commitować i otwierać pull requesty w repozytorium M'Arte."
+---
+
+W repozytorium nie ma pliku `CONTRIBUTING.md` ani szablonów zgłoszeń i pull requestów w katalogu `.github/`. Tą stroną jest cały proces.
+
+Bramki są mechaniczne, nie społeczne. `bun run check` i `bun run test` decydują, czy zmiana ma dopuszczalny kształt, hook pre-commit uruchamia pierwszą z nich na plikach w przechowalni (staging), a trzy przepływy GitHub Actions przepuszczają wszystko ponownie, zanim cokolwiek zostanie wdrożone. Recenzja dotyczy zachowania i intencji; resztę sprawdziła już maszyna.
+
+## Zanim zaczniesz
+
+| Przeczytaj                                                                                                | Dlaczego                                          |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| [Warstwy](/docs/architecture/layering)                                                                    | do której warstwy należy twoja zmiana             |
+| [Reguły zależności](/docs/architecture/dependency-rules)                                                  | w którą stronę mogą wskazywać importy             |
+| [Konwencje](/docs/reference/conventions)                                                                  | nazewnictwo, kształt plików, sposób eksportowania |
+| [Dodawanie modułu](/docs/guides/add-a-module) i [Dodawanie przypadku użycia](/docs/guides/add-a-use-case) | dwa kształty, jakie przyjmuje większość zmian     |
+| `AGENTS.md` w katalogu głównym repozytorium                                                               | krótka, rozstrzygająca lista konwencji projektu   |
+
+`AGENTS.md` jest źródłem prawdy, gdy dokumentacja i kod się rozjeżdżają. Trzy z jego reguł warto tu powtórzyć, bo najczęściej łamie się je przez nieuwagę:
+
+- Chronione funkcje serwerowe same wymuszają autoryzację. Strażnik trasy służy wygodzie nawigacji, nigdy autoryzacji.
+- Klucze zapytań należą do funkcjonalności, która jest ich właścicielem. Przenosząc kod, zachowaj wartości krotek.
+- Importuj z pliku definiującego. Nie dodawaj plików zbiorczych (barrel) ani obiektów, które tylko zbierają niepowiązane funkcje.
+
+## Przygotowanie środowiska
+
+1. Zainstaluj globalne CLI Vite+, bo skrypt cyklu życia `prepare` wywołuje je podczas instalacji:
+
+   ```sh
+   curl -fsSL https://vite.plus | bash
+   ```
+
+2. Zainstaluj zależności. `prepare` uruchamia `vp config --no-agent`, co ustawia `core.hooksPath` na `.vite-hooks/_`, a `postinstall` uruchamia `bun run typegen`:
+
+   ```sh
+   vp install
+   ```
+
+3. Utwórz pliki środowiskowe na podstawie przykładu. Development, preview i produkcja mają własne:
+
+   ```sh
+   cp .env.example .env.development
+   ```
+
+4. Zastosuj migracje przed pierwszym uruchomieniem, bo `bun run dev` korzysta ze zdalnych powiązań i rozmawia z prawdziwą deweloperską bazą D1:
+
+   ```sh
+   bun run db:migrate:development
+   bun run dev
+   ```
+
+[Instalacja](/docs/getting-started/installation) i [Zmienne środowiskowe](/docs/getting-started/environment-variables) opisują to w całości, w tym które wartości mają prefiks `VITE_` i dzięki temu są widoczne w przeglądarce.
+
+## Gałęzie
+
+Odgałęziaj się od `main`. Nigdy nie pushuj bezpośrednio do `main`: `.github/workflows/deploy-production.yml` uruchamia się przy każdym pushu do `main` i wdraża produkcyjnego Workera, z `concurrency: production` i `cancel-in-progress: false`.
+
+Pull request otwieraj do `main`. Dostajesz wtedy dwie rzeczy:
+
+- `ci.yml` uruchamia `bun run check`, potem `bun run test:coverage`, potem `bun run build:preview`, i wysyła raport pokrycia jako artefakt.
+- `deploy-preview.yml` uruchamia `bun run check`, wdraża środowisko preview i komentuje adres podglądu w pull requeście, aktualizując ten sam komentarz przy każdym pushu.
+
+Oba przepływy wdrożeniowe przepuszczają pełny `check` ponownie przed budowaniem, więc jeśli zmiana przechodzi lokalnie, a wywala się w CI, to twoje lokalne drzewo nie jest czyste.
+
+## Pętla pracy
+
+| Komenda                 | Co robi                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| `bun run dev`           | `vp dev --mode development` ze zdalnymi powiązaniami, na porcie 3000 (ściśle)   |
+| `bun run check`         | `vp check` — formatowanie, lint i sprawdzenie typów. Bramka, którą uruchamia CI |
+| `bun run check:fix`     | to samo, z zastosowaniem każdej możliwej poprawki                               |
+| `bun run test`          | wszystkie trzy projekty Vitest                                                  |
+| `bun run test:watch`    | tryb obserwowania                                                               |
+| `bun run test:changed`  | tylko zestawy dotknięte zmianami w drzewie roboczym                             |
+| `bun run test:coverage` | raport pokrycia i progi, których pilnuje CI                                     |
+| `bun run build:preview` | buduje Workera preview i uruchamia `scripts/verify-build.ts`                    |
+| `bun run stripe:listen` | przekazuje testowe webhooki Stripe na `localhost:3000/api/webhooks/stripe`      |
+
+Uruchamiaj `bun run check` i `bun run test` przed każdym commitem. Hook pre-commit uruchamia `bun run check:pre-commit`, czyli `vp staged` — a `vite.config.ts` konfiguruje `staged: { "*": ["vp check --fix"] }`, więc hook formatuje, lintuje i sprawdza typy plików z przechowalni i przepisuje je na miejscu. To siatka bezpieczeństwa, nie zamiennik: widzi tylko to, co dodałeś do przechowalni.
+
+Awaryjne pominięcie hooków: `VP_GIT_HOOKS=0`. Nie rób z tego nawyku, bo CI i tak nie przepuści zmiany.
+
+## Czego naprawdę pilnuje `check`
+
+`vite.config.ts` jest całą konfiguracją. Sześć kategorii Oxlint ustawiono na `error` — `correctness`, `nursery`, `pedantic`, `perf`, `style`, `suspicious` — wraz z `typeAware: true`, `typeCheck: true`, `denyWarnings: true` i `reportUnusedDisableDirectives: "error"`. Ostrzeżenie przerywa build. Nieużyte wyłączenie reguły również.
+
+Reguły, które najczęściej kogoś zatrzymują:
+
+| Reguła                        | Limit                                                                 |
+| ----------------------------- | --------------------------------------------------------------------- |
+| `max-lines`                   | 800 na plik                                                           |
+| `max-lines-per-function`      | 150                                                                   |
+| `max-statements`              | 20 na funkcję                                                         |
+| `no-magic-numbers`            | wolne są tylko `-1`, `0` i `1`; resztę nazwij stałą                   |
+| `id-length`                   | minimum dwa znaki, z wyjątkami `_`, `m` i `t`                         |
+| `sort-keys`                   | klucze obiektów alfabetycznie, wyłączone tylko w `src/routes/`        |
+| `one-var`                     | jedna deklaracja na instrukcję                                        |
+| `typescript/only-throw-error` | tylko podklasy `Error`, plus `NotFoundError` i `Redirect` z TanStacka |
+
+Istnieje pięć wąskich wyjątków (`overrides`) i są to jedyne odstępstwa w repozytorium:
+
+| Pliki                                                              | Co jest rozluźnione                                                                |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `src/**/*.test.*`, `src/**/__test__/**`, `src/platform/testing/**` | `no-await-in-loop`, `no-magic-numbers`, `unicorn/no-null`                          |
+| `src/presentation/**`, `src/hooks/**`                              | `typescript/consistent-return`                                                     |
+| `src/platform/testing/mocks/**`                                    | `require-await`, `typescript/require-await`, `typescript/no-unsafe-type-assertion` |
+| `src/routes/**`                                                    | `sort-keys`                                                                        |
+| `vite.config.ts`                                                   | `max-lines`                                                                        |
+
+Nie dodawaj szóstego wyjątku i nie dodawaj wyłączeń wstawianych w kodzie. Poza plikami generowanymi — `src/routeTree.gen.ts` i `src/types/worker-configuration.d.ts`, które linter pomija — repozytorium zawiera **zero** wyłączeń reguł i dokładnie jedno rzutowanie `as unknown as`, w atrapie D1 w `src/platform/testing/mocks/d1.ts:60`, i właśnie dlatego ten wyjątek istnieje. Jeśli reguła naprawdę blokuje poprawny kod, podziel funkcję albo nazwij wartość — prawie zawsze to jest właściwa poprawka.
+
+Ta sama zasada dotyczy komentarzy. W całym `src/` są trzy, każdy opisuje ograniczenie, którego typy nie przeniosą — na przykład w `src/modules/checkout/checkout.utils.ts`, gdzie `INSERT ... SELECT` zależy od fizycznej kolejności kolumn w tabeli. Narrację kodu, banery sekcji i powtórzenia nazwy usuwa recenzja.
+
+Kolejność importów też nie jest kwestią gustu: `vite.config.ts` deklaruje 17 własnych grup importów, uporządkowanych warstwami, a formatter je stosuje. Nigdy nie sortuj importów ręcznie — uruchom `bun run check:fix`.
+
+## Testy
+
+Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, nazwane od pliku źródłowego. `vite.config.ts` definiuje trzy projekty wybierane na podstawie nazwy pliku:
+
+| Projekt       | Pliki                                       | Środowisko | Skrypt                     |
+| ------------- | ------------------------------------------- | ---------- | -------------------------- |
+| `node`        | `*.test.ts(x)`, z wyłączeniem dwóch poniżej | `node`     | `bun run test:unit`        |
+| `integration` | `*.integration.test.ts`                     | `node`     | `bun run test:integration` |
+| `component`   | `*.component.test.tsx`                      | `jsdom`    | `bun run test:component`   |
+
+Importuj z `vite-plus/test`, nie z `vitest`. Testy komponentowe ładują `src/platform/testing/setup.ts`. Zestawy bazodanowe działają na `node:sqlite` za transportem w kształcie D1 z `src/platform/testing/mocks/d1.ts`; zewnętrznych dostawców atrapuj i używaj lokalnych fikstur, żeby żaden test nie potrzebował sieci ani zdalnej bazy.
+
+Progi pokrycia działają jak zapadka, z `autoUpdate: false`:
+
+| Metryka       | Próg |
+| ------------- | ---- |
+| Instrukcje    | 72   |
+| Linie         | 71   |
+| Funkcje       | 68   |
+| Rozgałęzienia | 69   |
+
+Ponieważ nigdy nie przesuwają się same, zmiana obniżająca pokrycie wywali `bun run test:coverage`. Gdy podnosisz pokrycie w jakimś obszarze, podnieś też liczbę w `vite.config.ts` w tym samym pull requeście. Z pomiaru wyłączone są `src/presentation/components/shadcn/**`, `src/platform/testing/**`, `src/routeTree.gen.ts` i same pliki testowe.
+
+[Architektura testów](/docs/architecture/testing-architecture) wyjaśnia, w co celują poszczególne zestawy; [Testowanie](/docs/tooling/testing) opisuje ich uruchamianie.
+
+## Zawsze oba języki
+
+Dwa równoległe zbiory plików muszą iść w parze.
+
+**Teksty interfejsu** leżą w `messages/en-US/` i `messages/pl-PL/`, po 48 plików przestrzeni nazw. `src/integrations/use-intl/__test__/i18n.messages.test.ts` przechodzi po każdym pliku angielskim i sprawdza, że plik polski o tej samej nazwie istnieje i zawiera każdy klucz:
+
+```ts
+it.each(Object.entries(localeMessages).filter(([path]) => path.includes("/en-US/")))(
+  "provides Polish messages for every key in %s",
+  (path, english) => {
+    const polish = localeMessages[path.replace("/en-US/", "/pl-PL/")]
+    expect(polish).toBeDefined()
+    expect(messageKeys(polish ?? {})).toStrictEqual(expect.arrayContaining(messageKeys(english)))
+  },
+)
+```
+
+Dodanie angielskiego klucza bez polskiego odpowiednika wywali `bun run test`. Zobacz [Komunikaty i18n](/docs/guides/i18n-messages).
+
+**Dokumentacja** leży w `content/docs/` jako `<slug>.<locale>.mdx`, po jednym pliku na język, a każdy katalog wymienia swoje strony w `meta.<locale>.json`. Oba pliki meta wymieniają te same slugi. Zapomniana strona polska nie wywali builda — po prostu polskiej treści nie będzie — więc ta odpowiedzialność jest po twojej stronie.
+
+Mapa komponentów MDX dla stron dokumentacji to `src/presentation/components/custom/docs-mdx.tsx`. Mapuje wyłącznie zwykłe elementy HTML: nagłówki, akapity, listy, tabele, `pre`, `code`, `blockquote`, `hr` i odnośniki. Nie ma komponentów `Callout`, `Cards`, `Steps` ani `Tabs`, więc pisz czysty Markdown, a strukturę buduj tabelami i blokami kodu.
+
+Po edycji dokumentacji uruchom `bun run content`, żeby przegenerować `.source/`; `bun run dev` robi to za ciebie.
+
+## Komunikaty commitów
+
+`.vite-hooks/prepare-commit-msg` uruchamia `scripts/commit-msg.ts`, który wymusza format konwencjonalny `<type>(<scope>): <opis>` i dokleja emoji na początku tematu. Nieznany typ albo brak konwencjonalnego prefiksu kończy się kodem błędu i przerwaniem commita.
+
+| Typ     | Emoji | Typ        | Emoji |
+| ------- | ----- | ---------- | ----- |
+| `feat`  | ✨    | `perf`     | 🚀    |
+| `fix`   | 🐛    | `refactor` | 📦    |
+| `docs`  | 📚    | `revert`   | 🗑️    |
+| `test`  | 🚨    | `style`    | 💎    |
+| `build` | 🛠️    | `chore`    | ♻️    |
+| `ci`    | ⚙️    |            |       |
+
+Skrypt zostawia temat w spokoju, jeśli już zaczyna się emoji, jeśli źródłem commita jest `squash`, `merge` lub `template`, albo jeśli temat wygenerował sam git (`Merge …`, `Revert "…`, `fixup! …`, `squash! …`).
+
+Czyli `docs(project): document the licence and roadmap` zamienia się w `📚 docs(project): document the licence and roadmap`. Zobacz [Commity konwencjonalne](/docs/tooling/conventional-commits).
+
+## Pull requesty
+
+Tytuł konwencjonalny, bo to on trafia do historii. W opisie ujmij cztery rzeczy:
+
+1. **Co zmieniło się w zachowaniu**, w kategoriach, które rozpozna użytkownik sklepu albo panelu.
+2. **Jak to sprawdziłeś** — które zestawy testów, które strony przeszedłeś ręcznie, czy odtworzyłeś webhook Stripe przez `bun run stripe:listen`.
+3. **Co pozostało niedokończone**, w tym każdy ekran nadal renderowany z fikstur w `src/data/`.
+4. **Migracje**, jeśli zmiana dotyka schematu: w których środowiskach je zastosowałeś i czy zmiana jest odwracalna.
+
+Trzymaj diff w ryzach. W istniejącej historii są commity dotykające dwóch tysięcy plików i właśnie to czyni je nierecenzowalnymi — nie dodawaj kolejnych.
+
+## Pliki generowane
+
+| Plik lub katalog                                | Generowany przez                                      | W repozytorium       |
+| ----------------------------------------------- | ----------------------------------------------------- | -------------------- |
+| `src/routeTree.gen.ts`                          | wtyczka Vite dla TanStack Start                       | tak                  |
+| `src/types/worker-configuration.d.ts`           | `bun run cf-typegen`                                  | nie — w `.gitignore` |
+| `.source/`                                      | `bun run content`                                     | nie                  |
+| `src/integrations/drizzle-orm/migrations/*.sql` | `bun run db:generate`                                 | tak                  |
+| `.agents/skills`, `.claude/skills`              | `bun run skills:sync` na podstawie `skills-lock.json` | nie                  |
+| `coverage/`, `dist/`                            | uruchomienia testów i builda                          | nie                  |
+
+Nigdy nie edytuj pliku generowanego ręcznie. Przegeneruj go. Migracje są wyjątkiem w obie strony: SQL jest generowany, ale wersjonowany i potem niezmienny — błąd poprawia się nową migracją, nigdy edycją już zastosowanej. Zobacz [Baza danych](/docs/tooling/database).
+
+## Rzeczy, które już raz poszły źle
+
+- **Nie uruchamiaj `bun run db:seed:preview` ani `db:seed:production`.** Pliki zasilające w `src/integrations/drizzle-orm/seeds/` są przestarzałe wobec żywych baz, a ich uruchomienie nadpisuje prawdziwe dane katalogu. Istnieją do zasilenia pustej bazy i do niczego więcej. Zobacz [Bazę danych](/docs/tooling/database).
+- **Nie uruchamiaj zmiany nazw wyrażeniem regularnym ani `sed` przez wiele plików.** To już dwa razy uszkodziło repozytorium. Zmieniaj nazwy w każdym miejscu użycia osobno i pozwól, żeby brakujące znalazł kontroler typów.
+- **Nie kieruj lokalnych narzędzi na produkcję.** `bun run db:studio` domyślnie wskazuje środowisko deweloperskie właśnie z tego powodu; warianty `:production` istnieją, ale ich użycie jest świadomą decyzją.
+- **Nie commituj plików `.env`.** `.gitignore` przepuszcza tylko `.env.example` i `.env.test`, a `.env.test` zawiera atrapy wartości, którymi CI nadpisuje `.env.development` i `.env.preview`.

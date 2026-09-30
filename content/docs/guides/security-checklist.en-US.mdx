@@ -1,0 +1,113 @@
+---
+title: "Security checklist"
+description: "What to verify before merging a change that touches routes, server functions, data, uploads, webhooks or secrets."
+---
+
+Go through the sections that apply to your change. Each item names the file that enforces it, so you can check the current behaviour rather than trust this page.
+
+## Access
+
+- [ ] Private pages sit under a guarded layout. `/admin` uses `requireAdmin()` in `beforeLoad`; `/account` uses `requireUser()` or `requireCustomer()`. All three are in `src/integrations/better-auth/auth.routes.ts`.
+- [ ] **Every protected server function carries its own `authorized(...)`.** A route guard stops a page from rendering; it does not protect the RPC endpoint, which is reachable directly.
+- [ ] `authorized()` for any signed-in user, `authorized({ resource: ["action"] })` when a permission is needed.
+- [ ] Operations on the caller's own data read the user from `context.auth.user.id`, never from the input. Compare `createUserAddress` and `setDefaultUserAddress` in `src/modules/address/use-cases/`.
+- [ ] A new permission is added to `PERMISSIONS_STATEMENTS` in `auth.access.ts` and granted in `ROLES_CONFIG` only to the roles that need it. The resources are `order`, `product`, `settings`, `user`; the actions are `create`, `read`, `update`, `delete`, `publish`, `refund`, `manage`. The `customer` role grants nothing.
+- [ ] Tests cover `UNAUTHORIZED` and `FORBIDDEN`.
+
+## Input
+
+- [ ] Every server function has a `.validator` that parses a Zod schema from the module's `.zod.ts`. A handler that reads `data` without a validator is unvalidated input.
+- [ ] Numeric and boolean search params coerce (`z.coerce.number()`, `z.preprocess`) and enums are `z.enum(...)` over the module's tuple, so an out-of-range value is rejected rather than passed to SQL.
+- [ ] Admin search text goes through `buildAdminSearchOrCondition` in `src/modules/_core/utils/search-conditions.server.ts`, which escapes `LIKE` wildcards. Its integration test feeds it `100%`, `%_\` and `x' OR 1=1 --` and asserts they match as literal text.
+- [ ] Redirect targets are internal route constants from `src/routes.ts`, not values from the request. `resolveEmailVerificationCallbackUrl` in `auth.server.ts` rewrites a `callbackURL` only when it already points at the storefront home, and returns the original URL otherwise.
+
+## Abuse
+
+- [ ] Public or costly operations carry `withRateLimit(kind, RATE_LIMITS.…)` in front of the guard. The presets are `SENSITIVE` (3/min), `TOKEN` (5/min) and `CHECKOUT` (10/min).
+- [ ] The `kind` string is unique to the operation, since the counter key is `` `${kind}:${clientAddress(headers)}` ``.
+- [ ] `withinRateLimit` in `src/lib/rate-limit.ts` fails **closed** — if the D1 write throws, it logs and returns `false`. Do not change that to fail open.
+- [ ] The client IP comes from `cf-connecting-ip`, configured once in `IP_ADDRESS_HEADER` and passed to Better Auth as `advanced.ipAddress.ipAddressHeaders`. Never read `x-forwarded-for` directly.
+- [ ] Better Auth's own limiter is on (`rateLimit.enabled: true`, `storage: "database"`, 100/min default) with custom rules for sign-in (5), sign-up (3), password-reset request (3) and password reset (5). Keep them if you touch that configuration.
+
+## Errors
+
+- [ ] Expected failures throw `AppError` with an `ERROR_CODES` code.
+- [ ] Nothing else reaches the client. `withRequest` in `auth.middleware.ts` logs an unknown error with `console.error` and replaces it with `INTERNAL_ERROR` — no message, no stack, no SQL.
+- [ ] Components render errors through `useActionError` (`src/hooks/use-action-error.ts`) or `ValidationFieldError`, never `error.message`.
+- [ ] A module-specific detail such as `CATEGORY_ERROR_CODES.DUPLICATE_HANDLE` is safe to send as the second `AppError` argument, because it is a fixed identifier rather than data.
+
+## Sessions and cookies
+
+Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change the configuration:
+
+- [ ] `emailAndPassword.requireEmailVerification: true`.
+- [ ] `advanced.useSecureCookies: !isLocalMode(import.meta.env.MODE)` — secure cookies everywhere except `development` and `test`.
+- [ ] `baseURL.allowedHosts: appHostsForMode(import.meta.env.MODE)`. The host allow-list is in `src/modules/_core/constants/api.ts` and is per mode: production allows `martebizuteria.pl` and the `workers.dev` name, preview allows the preview pair, and local allows only `localhost:3000` and `127.0.0.1:3000`.
+- [ ] `account.encryptOAuthTokens: true` and `verification.storeIdentifier: "hashed"`.
+- [ ] `multiSession({ maximumSessions: 5 })` and `session.storeSessionInDatabase: true`.
+- [ ] `telemetry.enabled: false`.
+- [ ] Session data sent to the browser goes through `getCurrentSession` in `auth.session.ts`, whose `toClientSession` strips `session.token`. Do not return a raw Better Auth session from a server function.
+- [ ] Server-side session reads use `getRequestSession`, which is `createServerOnlyFn` and memoises per `Request` in a `WeakMap` — so several middlewares in one request cost one lookup, and it passes `disableCookieCache: true` so a revoked session is not served from the cookie cache.
+
+## Uploads
+
+`src/integrations/cloudflare-r2/media.mutations.ts` and `media.zod.ts`:
+
+- [ ] `uploadImageFn` is guarded by `authorized({ product: ["update"] })`.
+- [ ] The MIME type is checked against `ACCEPTED_IMAGE_MIME_TYPES` — `image/jpeg`, `image/png`, `image/webp`, `image/avif` — and nothing else is stored.
+- [ ] The size is checked against `MAX_IMAGE_BYTES` (5 MiB) and zero-byte files are rejected.
+- [ ] The destination folder is validated against `MEDIA_FOLDERS` (`collections`, `products`, `categories`, `uploads`) and falls back to `uploads`. **The client never chooses the key.**
+- [ ] The object key is the SHA-256 of the file contents plus the extension the MIME type maps to, so a filename from the client cannot traverse paths or collide. `head(key)` skips the write when the object already exists.
+- [ ] Objects are stored with `cacheControl: "public, max-age=31536000, immutable"`, which is safe precisely because the key is content-addressed.
+
+## Webhooks
+
+`src/routes/api/webhooks.stripe.ts`:
+
+- [ ] The signature is verified with `stripe.webhooks.constructEventAsync(await request.text(), signature, env.STRIPE_WEBHOOK_SECRET)` **before** the payload is used. A missing signature or missing secret returns 400.
+- [ ] Verification failure returns 400 and logs; it never falls through to the handlers.
+- [ ] An unhandled `event.type` is acknowledged with `{ received: true }` rather than erroring, so Stripe does not retry forever.
+- [ ] A handler that throws returns 500, so Stripe **does** retry. That means every handler in `src/integrations/stripe/stripe.webhooks.tsx` must be idempotent — `20260924120000_checkout_idempotency_constraints.sql` exists for exactly this.
+
+## Secrets and server-only code
+
+- [ ] Secrets are read from `env` in `cloudflare:workers`, only in modules that begin with `import "@tanstack/react-start/server-only"`.
+- [ ] No private value carries a `VITE_` prefix. `VITE_R2_URL` and `VITE_STRIPE_PUBLISHABLE_KEY` are public by design; everything else must not be.
+- [ ] A new secret is added to `env.<environment>.secrets.required` in `wrangler.jsonc` for all three environments, and to `.env.development`, `.env.preview`, `.env.production` and `.env.test` (with a dummy value in the test file).
+- [ ] The current required set is `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `VITE_R2_URL`.
+- [ ] Cloudflare **management** credentials — `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, `CLOUDFLARE_ACCESS_TOKEN` — stay local. `scripts/prepare-deploy-secrets.ts` uploads only the names listed in `secrets.required`, writing `.wrangler/secrets.<env>.json` with mode `0o600`, and throws if any required secret is missing.
+- [ ] No `.env.*` file other than `.env.example` and `.env.test` is ever committed.
+
+## Audit trail
+
+- [ ] Administrative writes record an event through a helper in `src/modules/audit-log/audit-log.events.server.ts`, as `createCategory` does with `recordCatalogCategoryCreatedAudit(data.handle)`.
+- [ ] The call is **not** awaited. `scheduleAuditLogFromRequest` goes through `scheduleBackgroundWork`, which hands it to the Worker's `waitUntil` and swallows failures, so auditing cannot break the request.
+- [ ] The actor is resolved from the session by `resolveRequestAuditActor`, and falls back to `SYSTEM_AUDIT_ACTOR`. Do not pass an actor from the client.
+- [ ] Auth events are already covered: `databaseHooks.session.create.after` records a login and `databaseHooks.user.create.after` records a registration, and `/api/auth/$` routes through `handleAuthRequestWithAudit`.
+
+## Output and indexing
+
+- [ ] Private paths stay out of search engines. `isNoIndexPathname` in `src/lib/seo.ts` covers `/account`, `/admin` and `/checkout`, and `__root.tsx` emits `noindex, nofollow` for them — and for **every** path when `import.meta.env.MODE` is not `production`.
+- [ ] `generateRobotsTxt` returns a blanket `Disallow: /` for any non-production `APP_ENV`, and in production disallows `/api/`, `/admin`, `/account` and `/checkout`.
+- [ ] `generateSitemapXml` is built from `STATIC_PAGES` in `src/data/static-pages.ts` (currently `/`, `/about`, `/blog`). A new public page belongs there; a private one does not.
+
+## Development-only surfaces
+
+- [ ] `/dev/emails` guards itself with `if (!import.meta.env.DEV) { return notFound() }` as the first statement of its handler. Any new `dev.*` route must do the same.
+- [ ] `catalogDebugLog` in `src/lib/catalog-debug-log.ts` returns early unless `import.meta.env.DEV`. Use it rather than a bare `console.info`.
+- [ ] React Query Devtools are rendered only under `import.meta.env.DEV` in `src/router.tsx`.
+
+## Before merging
+
+```sh
+bun run check
+bun run test
+```
+
+`bun run check` runs Oxfmt, Oxlint and the type checker. All six lint categories including `nursery` are errors, `typeAware` and `typeCheck` are on, `denyWarnings: true`, and `reportUnusedDisableDirectives: "error"` — so you cannot silence a finding, and you cannot leave a stale suppression behind either.
+
+## Related guides
+
+- [Server functions](/docs/guides/server-functions)
+- [Add a use case](/docs/guides/add-a-use-case)
+- [Local debugging](/docs/guides/local-debugging)

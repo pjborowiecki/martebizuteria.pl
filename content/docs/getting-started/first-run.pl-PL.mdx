@@ -1,0 +1,122 @@
+---
+title: "Pierwsze uruchomienie"
+description: "Start serwera deweloperskiego na zasobach Cloudflare, rejestracja i nadanie sobie roli administratora."
+---
+
+## Tryb deweloperski ze zdalnymi bindingami
+
+```sh
+bunx wrangler login
+bun run db:migrate:development
+bun run dev
+```
+
+1. **Zaloguj się do Cloudflare.** `bun run dev` korzysta ze zdalnych bindingów, więc Wrangler potrzebuje uwierzytelnionej sesji (albo zmiennej `CLOUDFLARE_API_TOKEN` w środowisku).
+2. **Zastosuj migracje.** `db:migrate:development` uruchamia `wrangler d1 migrations apply DB --env development --remote` na bazie o nazwie `martebizuteria-preview`. Jeśli pracujesz na istniejącym projekcie, a nie na własnym koncie Cloudflare, migracje są już zastosowane i polecenie nic nie zmieni; `bun run db:migrations:development` pokazuje, co jest na bazie.
+3. **Uruchom serwer.** `bun run dev` najpierw wykonuje `bun run content`, a potem `CLOUDFLARE_ENV=development vp dev --mode development`. Port jest ustalony w `vite.config.ts` wraz z `strictPort: true`, więc zajęty port 3000 kończy się błędem, a nie cichym przeskokiem na 3001.
+
+Sklep jest wtedy dostępny pod adresami:
+
+| URL                                  | Co                                              |
+| ------------------------------------ | ----------------------------------------------- |
+| `http://localhost:3000`              | Sklep po polsku (`pl-PL`, lokalizacja domyślna) |
+| `http://localhost:3000/en-US`        | Sklep po angielsku                              |
+| `http://localhost:3000/auth/sign-up` | Rejestracja                                     |
+| `http://localhost:3000/admin`        | Panel administracyjny — wymaga roli `admin`     |
+| `http://localhost:3000/docs`         | Te strony                                       |
+| `http://localhost:3000/dev/emails`   | Podglądy szablonów e-mail, tylko w trybie dev   |
+
+Pliki tras nie zawierają segmentu lokalizacji. Router usuwa prefiks lokalizacji z adresu przed dopasowaniem trasy i dokłada go ponownie przy generowaniu linków, więc `/en-US/products/x` i `/products/x` obsługuje ten sam plik `_storefront.products.$handle.tsx`. Zbędny adres `/pl-PL/...` jest przekierowywany na wersję bez prefiksu przez `resolveLocale` w `src/server.ts`, jeszcze przed uruchomieniem routera.
+
+### Tryb deweloperski zapisuje do bazy preview
+
+Warto to powtórzyć, bo zaskakuje: środowiska `development` i `preview` w `wrangler.jsonc` deklarują ten sam `database_id` (`1660d0df-…`), ten sam zasobnik R2 (`martebizuteria`) i tę samą przestrzeń nazw KV. Wszystko, co utworzysz podczas pracy deweloperskiej, jest widoczne we wdrożeniu preview i odwrotnie. Nie ma osobnej bazy deweloperskiej.
+
+Dwa ostrzeżenia z tym związane:
+
+- **Nie uruchamiaj `bun run db:seed:preview` ani `db:seed:production` na bazie z prawdziwymi danymi.** Oba skrypty wykonują `wrangler d1 execute … --remote` na bazie produkcyjnej lub preview. Pliki SQL w `src/integrations/drizzle-orm/seeds/` używają `INSERT OR IGNORE`, więc nie nadpiszą wierszy o tych samych identyfikatorach, ale nie są utrzymywane w zgodzie z żywym katalogiem i ich uruchomienie nie jest operacją tylko do odczytu.
+- `bun run db:push:*` nakłada zmiany schematu bezpośrednio, bez pliku migracji. Do wszystkiego, co ma zostać w repozytorium, użyj `bun run db:generate` i skryptów migracyjnych.
+
+## Tworzenie konta
+
+Nie ma konta tworzonego przez seed. Zarejestruj się pod `/auth/sign-up`, używając adresu e-mail, do którego masz dostęp, bo weryfikacja jest obowiązkowa:
+
+```ts
+emailAndPassword: {
+  enabled: true,
+  requireEmailVerification: true,
+  sendResetPassword,
+},
+emailVerification: {
+  autoSignInAfterVerification: true,
+  sendOnSignUp: true,
+  sendVerificationEmail,
+},
+```
+
+Przy `sendOnSignUp: true` wiadomość weryfikacyjna wychodzi natychmiast, a `autoSignInAfterVerification: true` oznacza, że kliknięcie linku jednocześnie potwierdza adres i loguje użytkownika. Jeśli `RESEND_API_KEY` jest nieprawidłowy albo nadawca nie jest zweryfikowany w Resend, nic nie dotrze, a konto zostaje zawieszone — wiersz istnieje w tabeli `user` z `email_verified` nadal równym `0`, a logowanie jest odrzucane.
+
+Logowanie przez Google i GitHub pomija wiadomość weryfikacyjną, więc działająca aplikacja OAuth to szybsza droga, jeśli nadawca w Resend nie jest jeszcze gotowy.
+
+### Nadanie sobie roli administratora
+
+Nowe konta otrzymują rolę domyślną. Z pliku `src/integrations/better-auth/auth.access.ts`:
+
+```ts
+export const ROLES = {
+  ADMIN: "admin",
+  CUSTOMER: "customer",
+} as const
+
+export const DEFAULT_ROLE = ROLES.CUSTOMER
+```
+
+Kolumna `role` w tabeli `user` jest tekstowym typem wyliczeniowym z tą wartością domyślną. Aby uzyskać dostęp administracyjny, zmień ją na `admin`:
+
+```sh
+bun run db:studio:development
+```
+
+Otwórz tabelę `user`, znajdź swój wiersz, ustaw `role` na `admin`, a potem wyloguj się i zaloguj ponownie. Trasa `/admin` jest chroniona przez `requireAdmin()` z `src/integrations/better-auth/auth.routes.ts`, które wywołuje `hasAdminAccess(user.role)`; klient wchodzący na `/admin` jest przekierowywany na `/account/overview`, a nie widzi błędu.
+
+Drizzle Studio łączy się przez API HTTP D1 z użyciem `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` i `CLOUDFLARE_ACCESS_TOKEN` z pliku `.env.development`. Jeśli ich brakuje, Studio się otworzy, ale każde zapytanie zakończy się błędem.
+
+## Webhooki Stripe w trybie deweloperskim
+
+Płatność kartą kończy się w przeglądarce, ale zamówienie tworzy webhook. Przekieruj zdarzenia na swój lokalny serwer w drugim terminalu:
+
+```sh
+bun run stripe:listen
+```
+
+To uruchamia `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`. Stripe CLI wypisuje wartość `whsec_…` dla tej sesji — wpisz ją do `.env.development` jako `STRIPE_WEBHOOK_SECRET` i zrestartuj serwer deweloperski, inaczej `constructEventAsync` nie zweryfikuje podpisu, a handler odpowie `400 Webhook Error: Invalid Signature` na każde zdarzenie.
+
+Bez nasłuchu proces zakupu wygląda tak, jakby zawieszał się na kroku płatności: Stripe przyjął płatność, ale nic nigdy nie wywołało zwrotnie tworzenia zamówienia.
+
+## Podglądanie wiadomości transakcyjnych
+
+`/dev/emails` renderuje sześć szablonów React Email bez wysyłania czegokolwiek. Strona główna wypisuje każdy szablon z linkami do wersji HTML i tekstowej w obu lokalizacjach:
+
+```
+/dev/emails?template=order-confirmation&locale=pl-PL
+/dev/emails?template=order-confirmation&locale=pl-PL&format=text
+```
+
+Dostępne identyfikatory to `account-deleted`, `change-email`, `order-confirmation`, `order-shipped`, `reset-password` i `verify-email`. Handler zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdziwe, więc w zbudowanym Workerze ta trasa nie istnieje.
+
+## Lokalne uruchomienie buildu produkcyjnego
+
+```sh
+bun run build:preview
+bun run start
+```
+
+`start` serwuje build z `CLOUDFLARE_ENV=preview` pod adresem `http://127.0.0.1:3000`. Ponieważ `remoteBindings` w `vite.config.ts` włącza się wyłącznie dla `CLOUDFLARE_ENV=development`, to uruchomienie korzysta z lokalnych, symulowanych D1, R2 i KV z katalogu `.wrangler/state/` zamiast z zasobów zdalnych. Daje to odizolowane środowisko, ale startuje ono puste; `bun run db:migrate:local` nakłada migracje na lokalną bazę D1.
+
+To także jedyny lokalny sposób sprawdzenia zbudowanego artefaktu — `bun run build:preview` kończy się uruchomieniem `scripts/verify-build.ts`, czyli tej samej kontroli, którą wykonuje CI.
+
+## Powiązane
+
+- [Skrypty projektu](/docs/getting-started/project-scripts)
+- [Wdrożenie podglądu](/docs/getting-started/deploy-preview)
+- [Informacje referencyjne](/docs/reference) — pełna tabela tras

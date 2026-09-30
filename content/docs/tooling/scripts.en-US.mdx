@@ -1,0 +1,140 @@
+---
+title: "Project scripts"
+description: "Every package.json script in the repository and exactly what it runs."
+---
+
+Run everything from the repository root with `bun run <script>`. Scripts are the supported entry points: they set `CLOUDFLARE_ENV`, regenerate the content collections and pick the pinned tool versions, none of which happens if you call `vp` or `wrangler` directly.
+
+## Lifecycle
+
+| Script        | Runs                   | When                                                                        |
+| ------------- | ---------------------- | --------------------------------------------------------------------------- |
+| `prepare`     | `vp config --no-agent` | Every `bun install` — installs the Git hook dispatcher into `.vite-hooks/_` |
+| `postinstall` | `bun run typegen`      | Every `bun install` — regenerates Worker types and `.source/`               |
+
+CI installs with `--ignore-scripts` and then calls `typegen` itself, so no hooks are installed on the runner.
+
+## Development, build and serve
+
+| Script             | Runs                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `dev`              | `bun run content`, then `CLOUDFLARE_ENV=development vp dev --mode development` on http://localhost:3000                   |
+| `build`            | Alias for `build:preview`                                                                                                 |
+| `build:preview`    | `rm -rf dist`, `bun run content`, `CLOUDFLARE_ENV=preview vp build --mode preview`, `bun scripts/verify-build.ts preview` |
+| `build:production` | The same three stages with `production` in each place                                                                     |
+| `start`            | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                                           |
+| `preview`          | Alias for `start`                                                                                                         |
+| `stripe:listen`    | `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`                                                  |
+
+`stripe:listen` needs the Stripe CLI installed and authenticated on your machine; it is not a project dependency. Run it in a second terminal beside `bun run dev` when working on payments, and put the `whsec_…` it prints into `STRIPE_WEBHOOK_SECRET` in `.env.development`.
+
+## Deploy
+
+| Script              | Runs                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `deploy:preview`    | `verify-bindings.ts preview` → `build:preview` → `prepare-deploy-secrets.ts preview` → `wrangler deploy` with `dist/server/wrangler.json` and `.wrangler/secrets.preview.json` |
+| `deploy:production` | The same chain for `production`                                                                                                                                                |
+
+Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](/docs/tooling/ci-cd) for what each stage checks.
+
+## Checks
+
+| Script             | Runs                                           |
+| ------------------ | ---------------------------------------------- |
+| `check`            | `vp check` — format, lint and type check       |
+| `check:fix`        | `vp check --fix`                               |
+| `check:pre-commit` | `vp staged` — used by `.vite-hooks/pre-commit` |
+| `check:staged`     | `vp staged --no-fmt`                           |
+| `lint`             | `vp lint`                                      |
+| `lint:staged`      | `vp staged --no-fmt`                           |
+| `format`           | `vp fmt`                                       |
+| `format:check`     | `vp fmt --check`                               |
+
+> `check:staged` and `lint:staged` both pass `--no-fmt`, which `vp staged` does not accept. They fail immediately with `error: unexpected argument '--no-fmt' found`. Use `check:pre-commit`.
+
+## Tests
+
+| Script             | Runs                                |
+| ------------------ | ----------------------------------- |
+| `test`             | `vp test run` — all three projects  |
+| `test:unit`        | `vp test run --project node`        |
+| `test:integration` | `vp test run --project integration` |
+| `test:component`   | `vp test run --project component`   |
+| `test:changed`     | `vp test run --changed`             |
+| `test:coverage`    | `vp test run --coverage`            |
+| `test:watch`       | `vp test`                           |
+
+`test:watch` does not watch — `vp test` with no subcommand runs once. Use `vp test watch`. See [Testing](/docs/tooling/testing).
+
+## Database
+
+Every `db:*` script targets a named environment. The unsuffixed aliases are not always the safe choice, so they are called out below.
+
+| Script                      | Runs                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------- |
+| `db:generate`               | `drizzle-kit generate` — writes a new migration and snapshot; offline, no credentials |
+| `db:migrate`                | Alias for `db:migrate:preview` — **remote**                                           |
+| `db:migrate:local`          | `wrangler d1 migrations apply DB --env development --local`                           |
+| `db:migrate:development`    | The same, `--remote` (the preview database)                                           |
+| `db:migrate:preview`        | The same for `--env preview --remote`                                                 |
+| `db:migrate:production`     | The same for `--env production --remote`                                              |
+| `db:migrations:development` | `wrangler d1 migrations list DB --env development --remote`                           |
+| `db:migrations:preview`     | The same for `preview`                                                                |
+| `db:migrations:production`  | The same for `production`                                                             |
+| `db:push`                   | Alias for `db:push:development`                                                       |
+| `db:push:development`       | `drizzle-kit push` with `.env.development` — hits the preview database                |
+| `db:push:preview`           | `drizzle-kit push` with `.env.preview`                                                |
+| `db:push:production`        | `drizzle-kit push` with `.env.production`                                             |
+| `db:pull`                   | Alias for `db:introspect:development`                                                 |
+| `db:pull:production`        | Alias for `db:introspect:production`                                                  |
+| `db:introspect:development` | `drizzle-kit introspect` with `.env.development`                                      |
+| `db:introspect:preview`     | The same with `.env.preview`                                                          |
+| `db:introspect:production`  | The same with `.env.production`                                                       |
+| `db:studio`                 | Alias for `db:studio:development`                                                     |
+| `db:studio:development`     | `drizzle-kit studio` with `.env.development`                                          |
+| `db:studio:preview`         | The same with `.env.preview`                                                          |
+| `db:studio:production`      | The same with `.env.production`                                                       |
+| `db:seed`                   | Alias for `db:seed:preview`                                                           |
+| `db:seed:preview`           | Eleven chained `wrangler d1 execute DB --env preview --remote --file=…` calls         |
+| `db:seed:production`        | The same against production                                                           |
+
+The drizzle-kit scripts run through `bun --env-file=.env.<environment>` because `bunfig.toml` sets `env = false`; the Wrangler scripts run through `vp exec` and read `wrangler.jsonc` instead.
+
+> Do not run `db:seed`, `db:seed:preview` or `db:seed:production`. The seed files are stale against the live catalog and would reintroduce removed fixture rows.
+
+## Generation
+
+| Script       | Runs                                                                                                                                |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `content`    | `fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source` — compiles `content/docs` and `content/legal` into `.source/` |
+| `cf-typegen` | `vp exec wrangler types --env development src/types/worker-configuration.d.ts`                                                      |
+| `typegen`    | `cf-typegen`, then `content`                                                                                                        |
+
+Both outputs are gitignored. `src/types/worker-configuration.d.ts` is what gives `env.DB`, `env.CACHE`, `env.IMAGES`, `env.AUDIT_LOG_QUEUE` and `env.REALTIME_INVALIDATION_HUB` their types, so run `bun run cf-typegen` after changing any binding in `wrangler.jsonc`. Never edit or commit it. `.source/` is what the `collections/*` import alias resolves to, so `bun run content` after adding or renaming an MDX file.
+
+## Agent skills
+
+| Script          | Runs                                                                             |
+| --------------- | -------------------------------------------------------------------------------- |
+| `skills:sync`   | `bun scripts/sync-skills.ts` — restores `.agents/skills` from `skills-lock.json` |
+| `skills:update` | `bunx --bun skills update --project --yes`, then `skills:sync`                   |
+
+See [Agent skills](/docs/tooling/agent-skills).
+
+## Cleaning
+
+| Script           | Removes                                                                                                                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clean`          | `.source`, `.output`, `.tanstack`, `.wrangler`, `.bun-cache`, `dist`, `dist-ssr`, `coverage`, `playwright-report`, `test-results`, `blob-report`, `playwright/.cache`, `*.tsbuildinfo`, `src/types/worker-configuration.d.ts` |
+| `clean:deep`     | `clean` plus `node_modules`                                                                                                                                                                                                   |
+| `clean:hardcore` | `clean:deep` plus `bun.lock` and `opensrc`                                                                                                                                                                                    |
+
+`clean` deletes `.wrangler`, which holds the local D1 database used by `db:migrate:local` as well as the generated `secrets.*.json` files. After any `clean` you need `bun install` (or at least `bun run typegen`) before `bun run check` will pass, because it removes both generated type sources.
+
+`clean:hardcore` removes `opensrc/`, the vendored dependency sources described in `AGENTS.md`. Restore them with `npx opensrc <package>`.
+
+## Related pages
+
+- [Vite+](/docs/tooling/vite-plus)
+- [Database](/docs/tooling/database)
+- [CI/CD](/docs/tooling/ci-cd)

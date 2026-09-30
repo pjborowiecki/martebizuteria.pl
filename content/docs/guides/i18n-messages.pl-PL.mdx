@@ -1,0 +1,186 @@
+---
+title: "Tłumaczenia"
+description: "Dodawanie i zmiana tekstów widocznych dla użytkownika: pliki przestrzeni nazw, deklaracje na trasach, potok ładowania, formatowanie i ustalanie języka."
+---
+
+M'Arte jest dwujęzyczne: polski (`pl-PL`) jest domyślny, a angielski (`en-US`) drugorzędny. Tłumaczenia są podzielone na 48 plików przestrzeni nazw na język, w katalogach `messages/pl-PL/` i `messages/en-US/`, ładowanych per trasa i dostarczanych przez `use-intl`.
+
+`src/integrations/use-intl/i18n.config.ts` to cała konfiguracja:
+
+```ts
+const COOKIE_NAME = "marte_locale"
+
+const SUPPORTED_LOCALES = ["pl-PL", "en-US"] as const
+
+const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
+
+const DEFAULT_TIMEZONE = "Europe/Warsaw"
+
+const TIME_ZONES = ["UTC", "America/New_York", "Europe/Warsaw"] as const
+```
+
+## Przestrzenie nazw
+
+Przestrzeń nazw to jeden plik JSON, a jego nazwa _jest_ jego ścieżką z kropkami. `messages/pl-PL/pages.admin.catalog.categories.json` to przestrzeń `pages.admin.catalog.categories`, dostępna jako `useTranslations("pages.admin.catalog.categories")`.
+
+Te 48 plików dzieli się na pięć grup:
+
+| Prefiks       | Przykłady                                                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common`      | `common.json` — tak, nie, potwierdź, anuluj, ładowanie                                                                                                                     |
+| `components.` | `components.custom`, `components.datagrid`, `components.defaults`, `components.shadcn`                                                                                     |
+| `emails.`     | `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.change-email`, `emails.account-deleted`                       |
+| `errors`      | `errors.json` — zdania pod `action.<CODE>`                                                                                                                                 |
+| `pages.`      | Po jednym na stronę albo jej sekcję: `pages.home`, `pages.product`, `pages.checkout`, `pages.admin`, `pages.admin.catalog.products`, `pages.auth.sign-in`, `pages.docs`, … |
+
+Oba katalogi językowe zawsze trzymają dokładnie ten sam zestaw nazw plików. Dodanie pliku tylko do jednego oznacza, że `loadNamespace` rzuci wyjątek dla brakującego języka:
+
+```ts
+if (load === undefined) {
+  throw new Error(`Missing translation namespace: messages/${locale}/${namespace}.json`)
+}
+```
+
+## Przestrzenie główne
+
+Sześć przestrzeni nazw ładuje się na każdej stronie, bo wszędzie może pojawić się powiadomienie albo błąd. `i18n.messages.ts` wymienia je globem:
+
+```ts
+const rootMessagePaths = Object.keys(
+  import.meta.glob([
+    "../../../messages/*/common.json",
+    "../../../messages/*/components.custom.json",
+    "../../../messages/*/components.shadcn.json",
+    "../../../messages/*/errors.json",
+    "../../../messages/*/pages.auth.errors.json",
+    "../../../messages/*/pages.auth.toast.json",
+  ]),
+)
+
+export const ROOT_NAMESPACES = [...new Set(rootMessagePaths.map((path) => toNamespace(path)))]
+```
+
+Wszystko pozostałe deklaruje się per trasa.
+
+## Deklarowanie przestrzeni nazw na trasie
+
+Trasa wymienia to, czego potrzebuje jej poddrzewo, w `staticData.namespaces`:
+
+```ts
+export const Route = createFileRoute("/admin/catalog/categories")({
+  component: CategoriesSectionLayoutRoute,
+  staticData: {
+    namespaces: ["pages.admin.catalog.categories", "pages.admin.catalog.products", "pages.admin.catalog.products.catalogList"],
+  },
+})
+```
+
+`getRouteNamespaces(matches)` łączy deklaracje wszystkich dopasowanych tras z `ROOT_NAMESPACES`, więc strona dziedziczy przestrzenie swoich układów. `/admin/catalog/categories` dostaje sześć przestrzeni głównych, plus `pages.admin` i `components.datagrid` z `admin.tsx`, plus `pages.admin.catalog` i `pages.admin.catalog.localePicker` z `admin.catalog.tsx`, plus własne trzy.
+
+**Zapomniana deklaracja przestrzeni nazw zawodzi przy renderowaniu, nie przy budowaniu.** Jeśli `t("cokolwiek")` zgłasza brak komunikatu, deklaracja przestrzeni nazw jest pierwszą rzeczą do sprawdzenia.
+
+## Jak tłumaczenia docierają do komponentu
+
+1. `beforeLoad` trasy głównej wywołuje `preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient })`, które rozgrzewa po jednym zapytaniu na przestrzeń nazw.
+2. Każda przestrzeń to wpis TanStack Query z `gcTime: Infinity` i `staleTime: Infinity`, kluczowany `["messages", locale, namespace]`. Przestrzeń pobiera się raz na język na sesję.
+3. `TranslationsProvider` w `src/providers/translations-provider.tsx` odczytuje dopasowane przestrzenie przy każdej nawigacji i składa je razem:
+
+```tsx
+const messages = useSuspenseQueries({
+  combine: (results) => buildMessageTree(results.map((result) => result.data)),
+  queries: namespaces.map((namespace) =>
+    Object.assign(messagesQueryOptions({ locale, namespace }), {
+      select: (data: AbstractIntlMessages): NamespaceEntry => [namespace, data],
+    }),
+  ),
+})
+```
+
+4. `buildMessageTree` zamienia płaską listę par `["pages.admin.catalog.categories", {...}]` w zagnieżdżony obiekt, jakiego oczekuje `use-intl`, dzieląc każdą przestrzeń po kropkach, zagnieżdżając od środka i scalając głęboko.
+5. `IntlProvider` otrzymuje to drzewo, język i `I18N.DEFAULT_TIMEZONE`.
+
+Ponieważ właściwy JSON ładuje się przez `import.meta.glob`, każda przestrzeń nazw jest osobnym fragmentem paczki. Gość witryny sklepowej nigdy nie pobiera napisów katalogu w panelu.
+
+## Używanie tłumaczenia
+
+```tsx
+const t = useTranslations("pages.admin.catalog.categories")
+
+t("title")
+t("columns.createdAt")
+t("form.validation.titleTooLong")
+```
+
+`useTranslations()` bez argumentu zwraca tłumacza głównego przyjmującego pełne ścieżki — tego używają `useActionError` i `ValidationFieldError`, żeby dostać się do `errors.action.*` i `pages.auth.validations.*` z dowolnego miejsca.
+
+`t.has(key)` sprawdza istnienie klucza przed użyciem — `ValidationFieldError` opiera się na tym, żeby sięgnąć po komunikat ogólny, zamiast rzucić wyjątek.
+
+Placeholdery ICU działają normalnie:
+
+```tsx
+tLocale("incompleteToastDescription", {
+  locales: formatCatalogLocaleList(incompleteLocales, (locale) => tLocale(`localeNames.${locale}`)),
+})
+```
+
+## Formatowanie liczb, dat i pieniędzy
+
+Nigdy nie wywołuj `Intl` bezpośrednio w komponencie. `useFormatter()` z `use-intl/react` uwzględnia język i strefę czasową:
+
+```tsx
+const format = useFormatter()
+
+format.dateTime(new Date(getValue()), { dateStyle: "medium" })
+```
+
+Dla pieniędzy używaj funkcji z `src/modules/_core/utils/currency.ts` razem ze stałymi z `src/modules/_core/constants/currency.ts`, gdzie `CURRENCIES` przechowuje kod numeryczny i wykładnik ISO każdej waluty. Ceny są zapisywane jako całkowite jednostki podrzędne — `1499` to 14,99 zł — więc formatowanie jest przeliczeniem, nie rzutowaniem. `src/hooks/use-date-formatter.ts` opakowuje najczęstsze przypadki daty.
+
+## Typowanie pliku tłumaczeń
+
+Kiedy loader potrzebuje wartości komunikatu, a nie tłumacza w komponencie, zaimportuj plik angielski jako **typ** i przekaż go do `messagesQueryOptions`:
+
+```ts
+import type productsMessages from "~/messages/en-US/pages.products.json"
+
+const [messages] = await Promise.all([
+  context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
+])
+
+return { description: messages.description, title: messages.title }
+```
+
+Plik angielski jest źródłem typów dla obu języków, co jest kolejnym powodem, żeby oba katalogi pozostały strukturalnie identyczne. W ten sposób tłumaczą się tytuły stron i opisy meta — zobacz `src/routes/_storefront.products.index.tsx`.
+
+## Ustalanie języka
+
+Język wynika ze ścieżki, nie z nagłówka ani parametru zapytania. `getCurrentLocale` w `src/integrations/use-intl/i18n.utils.ts` jest funkcją izomorficzną: na serwerze czyta URL żądania, na kliencie `location.pathname`, a w obu przypadkach sięga po ciasteczko `marte_locale` dla ścieżek bez języka (`/api`, `/rpc`, `/_serverFn`, `/assets`).
+
+`resolveLocale(request)` w `i18n.middleware.ts` wykonuje się w punkcie wejścia Workera, przed routerem, i robi dwie rzeczy, wyłącznie dla żądań dokumentów:
+
+- **Kanonizuje ścieżkę.** Jeśli `canonicalizePathname` ją zmieni — `/pl/products` na `/products`, `/en/products` na `/en-US/products` — zwraca odpowiedź 301.
+- **Synchronizuje ciasteczko.** Kiedy język z adresu różni się od ciasteczka, zwraca `Set-Cookie` z językiem z adresu, które `src/server.ts` dokłada do odpowiedzi.
+
+W interfejsie witryny sklepowej nie ma obecnie przełącznika języka; gość zmienia język, odwiedzając adres z prefiksem, a `TranslationsProvider` zapisuje potem ciasteczko w efekcie.
+
+## Wiadomości e-mail
+
+Szablony e-mail w `src/presentation/emails/` eksportują stałą z nazwą przestrzeni i przyjmują tłumaczenia jako właściwość, bo renderują się poza drzewem providerów React:
+
+```ts
+const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
+```
+
+`auth.server.ts` wywołuje `loadNamespace` bezpośrednio i przekazuje do szablonu zarówno `locale`, jak i `messages`, używając po stronie serwera `createTranslator` z `use-intl`. Oba języki każdego szablonu podejrzysz pod `/dev/emails` — zobacz [Debugowanie lokalne](/docs/guides/local-debugging).
+
+## Dodawanie przestrzeni nazw: lista kontrolna
+
+1. Utwórz `messages/pl-PL/<namespace>.json` i `messages/en-US/<namespace>.json` z tymi samymi kluczami.
+2. Dodaj przestrzeń nazw do `staticData.namespaces` na trasie, która jej potrzebuje — na trasie układu, jeśli dzieli ją kilka stron.
+3. Użyj `useTranslations("<namespace>")` w komponencie.
+4. Uruchom `bun run test`. Testy i18n w `src/integrations/use-intl/__test__/` pokrywają potok ładowania, a testy komponentów budują swoje drzewo tłumaczeń ze wszystkich plików w `messages/en-US/` przez `src/platform/testing/lib/messages.ts` — więc klucz używany przez komponent, którego brakuje w katalogu, tam zawiedzie.
+
+## Powiązane przewodniki
+
+- [Formularze i walidacja](/docs/guides/forms-and-validation)
+- [Dodawanie strony panelu](/docs/guides/add-an-admin-page)
+- [Stan w adresie URL](/docs/guides/url-state)

@@ -1,0 +1,5 @@
+{
+  "defaultOpen": true,
+  "pages": ["index", "project", "getting-started", "architecture", "features", "guides", "integrations", "ui", "tooling", "reference"],
+  "title": "Documentation"
+}

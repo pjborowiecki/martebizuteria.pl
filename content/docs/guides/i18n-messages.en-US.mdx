@@ -1,0 +1,186 @@
+---
+title: "i18n messages"
+description: "Add or change user-visible text: namespace files, route declarations, the loading pipeline, formatting and locale resolution."
+---
+
+M'Arte is bilingual: Polish (`pl-PL`) is the default and English (`en-US`) is secondary. Translations are split into 48 namespace files per locale under `messages/pl-PL/` and `messages/en-US/`, loaded per route and delivered through `use-intl`.
+
+`src/integrations/use-intl/i18n.config.ts` is the whole configuration:
+
+```ts
+const COOKIE_NAME = "marte_locale"
+
+const SUPPORTED_LOCALES = ["pl-PL", "en-US"] as const
+
+const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
+
+const DEFAULT_TIMEZONE = "Europe/Warsaw"
+
+const TIME_ZONES = ["UTC", "America/New_York", "Europe/Warsaw"] as const
+```
+
+## Namespaces
+
+A namespace is one JSON file, and its filename _is_ its dotted namespace path. `messages/pl-PL/pages.admin.catalog.categories.json` is the namespace `pages.admin.catalog.categories`, reached as `useTranslations("pages.admin.catalog.categories")`.
+
+The 48 files fall into five groups:
+
+| Prefix        | Examples                                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common`      | `common.json` — yes, no, confirm, cancel, loading                                                                                                                   |
+| `components.` | `components.custom`, `components.datagrid`, `components.defaults`, `components.shadcn`                                                                              |
+| `emails.`     | `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.change-email`, `emails.account-deleted`                |
+| `errors`      | `errors.json` — the `action.<CODE>` sentences                                                                                                                       |
+| `pages.`      | One per page or page section: `pages.home`, `pages.product`, `pages.checkout`, `pages.admin`, `pages.admin.catalog.products`, `pages.auth.sign-in`, `pages.docs`, … |
+
+Both locale folders always hold exactly the same set of filenames. Adding a file to one and not the other means `loadNamespace` throws for the missing locale:
+
+```ts
+if (load === undefined) {
+  throw new Error(`Missing translation namespace: messages/${locale}/${namespace}.json`)
+}
+```
+
+## Root namespaces
+
+Six namespaces are loaded on every page, because anything can show a toast or an error. `i18n.messages.ts` lists them by glob:
+
+```ts
+const rootMessagePaths = Object.keys(
+  import.meta.glob([
+    "../../../messages/*/common.json",
+    "../../../messages/*/components.custom.json",
+    "../../../messages/*/components.shadcn.json",
+    "../../../messages/*/errors.json",
+    "../../../messages/*/pages.auth.errors.json",
+    "../../../messages/*/pages.auth.toast.json",
+  ]),
+)
+
+export const ROOT_NAMESPACES = [...new Set(rootMessagePaths.map((path) => toNamespace(path)))]
+```
+
+Everything else is opt-in per route.
+
+## Declaring a namespace on a route
+
+A route lists what its subtree needs in `staticData.namespaces`:
+
+```ts
+export const Route = createFileRoute("/admin/catalog/categories")({
+  component: CategoriesSectionLayoutRoute,
+  staticData: {
+    namespaces: ["pages.admin.catalog.categories", "pages.admin.catalog.products", "pages.admin.catalog.products.catalogList"],
+  },
+})
+```
+
+`getRouteNamespaces(matches)` unions the declarations of every matched route with `ROOT_NAMESPACES`, so a page inherits its layouts' namespaces. `/admin/catalog/categories` ends up with the root six, plus `pages.admin` and `components.datagrid` from `admin.tsx`, plus `pages.admin.catalog` and `pages.admin.catalog.localePicker` from `admin.catalog.tsx`, plus its own three.
+
+**A namespace you forget to declare fails at render time, not at build time.** If `t("something")` throws about a missing message, the namespace declaration is the first thing to check.
+
+## How messages reach the component
+
+1. The root route's `beforeLoad` calls `preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient })`, which warms one query per namespace.
+2. Each namespace is a TanStack Query entry with `gcTime: Infinity` and `staleTime: Infinity`, keyed `["messages", locale, namespace]`. A namespace is fetched once per locale per session.
+3. `TranslationsProvider` in `src/providers/translations-provider.tsx` re-reads the matched namespaces on every navigation and combines them:
+
+```tsx
+const messages = useSuspenseQueries({
+  combine: (results) => buildMessageTree(results.map((result) => result.data)),
+  queries: namespaces.map((namespace) =>
+    Object.assign(messagesQueryOptions({ locale, namespace }), {
+      select: (data: AbstractIntlMessages): NamespaceEntry => [namespace, data],
+    }),
+  ),
+})
+```
+
+4. `buildMessageTree` turns the flat list of `["pages.admin.catalog.categories", {...}]` pairs into the nested object `use-intl` expects, by splitting each namespace on `.` and nesting from the inside out, then deep-merging.
+5. `IntlProvider` receives that tree, the locale and `I18N.DEFAULT_TIMEZONE`.
+
+Because the actual JSON is loaded through `import.meta.glob`, each namespace is a separate chunk. A visitor to the storefront never downloads the admin catalog strings.
+
+## Using a message
+
+```tsx
+const t = useTranslations("pages.admin.catalog.categories")
+
+t("title")
+t("columns.createdAt")
+t("form.validation.titleTooLong")
+```
+
+`useTranslations()` with no argument returns a root translator that takes full paths, which is what `useActionError` and `ValidationFieldError` use so they can reach `errors.action.*` and `pages.auth.validations.*` from anywhere.
+
+`t.has(key)` tests for a key before using it — `ValidationFieldError` relies on it to fall back to a generic message rather than throw.
+
+ICU placeholders work as usual:
+
+```tsx
+tLocale("incompleteToastDescription", {
+  locales: formatCatalogLocaleList(incompleteLocales, (locale) => tLocale(`localeNames.${locale}`)),
+})
+```
+
+## Formatting numbers, dates and money
+
+Never call `Intl` directly in a component. `useFormatter()` from `use-intl/react` is locale- and timezone-aware:
+
+```tsx
+const format = useFormatter()
+
+format.dateTime(new Date(getValue()), { dateStyle: "medium" })
+```
+
+For money, use the currency helpers in `src/modules/_core/utils/currency.ts` with the constants in `src/modules/_core/constants/currency.ts`. Prices are stored as integer minor units — `1499` is 14,99 zł — so formatting is a conversion, not a cast. `src/hooks/use-date-formatter.ts` wraps the common date cases.
+
+## Typing a message file
+
+When a loader needs a message's value rather than a component's translator, import the English file as a **type** and hand it to `messagesQueryOptions`:
+
+```ts
+import type productsMessages from "~/messages/en-US/pages.products.json"
+
+const [messages] = await Promise.all([
+  context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
+])
+
+return { description: messages.description, title: messages.title }
+```
+
+The English file is the type source for both locales, which is another reason the two folders must stay structurally identical. This is how page titles and meta descriptions get translated — see `src/routes/_storefront.products.index.tsx`.
+
+## Locale resolution
+
+The locale is derived from the path, not from a header or a query parameter. `getCurrentLocale` in `src/integrations/use-intl/i18n.utils.ts` is an isomorphic function: on the server it reads the request URL, on the client `location.pathname`, and in both cases falls back to the `marte_locale` cookie for paths that carry no locale (`/api`, `/rpc`, `/_serverFn`, `/assets`).
+
+`resolveLocale(request)` in `i18n.middleware.ts` runs in the Worker entry point, before the router, and does two things for document requests only:
+
+- **Canonicalises the path.** If `canonicalizePathname` changes it — `/pl/products` to `/products`, `/en/products` to `/en-US/products` — it returns a 301.
+- **Syncs the cookie.** When the URL's locale differs from the cookie, it returns a `Set-Cookie` for the URL's locale, which `src/server.ts` appends to the response.
+
+There is currently no locale-switcher control in the storefront UI; a visitor changes language by visiting the prefixed URL, and `TranslationsProvider` then writes the cookie in an effect.
+
+## Emails
+
+Email templates in `src/presentation/emails/` each export a namespace constant and take their messages as a prop, because they render outside React's provider tree:
+
+```ts
+const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
+```
+
+`auth.server.ts` calls `loadNamespace` directly and passes both `locale` and `messages` into the template, using `createTranslator` from `use-intl` on the server side. Preview both locales of every template at `/dev/emails` — see [Local debugging](/docs/guides/local-debugging).
+
+## Adding a namespace: the checklist
+
+1. Create `messages/pl-PL/<namespace>.json` and `messages/en-US/<namespace>.json` with the same keys.
+2. Add the namespace to `staticData.namespaces` on the route that needs it — the layout route if several pages share it.
+3. Use `useTranslations("<namespace>")` in the component.
+4. Run `bun run test`. The i18n tests under `src/integrations/use-intl/__test__/` cover the loading pipeline, and the component tests build their message tree from every file in `messages/en-US/` through `src/platform/testing/lib/messages.ts` — so a key a component uses but the catalogue lacks will fail there.
+
+## Related guides
+
+- [Forms and validation](/docs/guides/forms-and-validation)
+- [Add an admin page](/docs/guides/add-an-admin-page)
+- [URL state](/docs/guides/url-state)

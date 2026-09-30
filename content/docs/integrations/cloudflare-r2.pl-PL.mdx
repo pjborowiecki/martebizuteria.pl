@@ -1,0 +1,127 @@
+---
+title: "Cloudflare R2"
+description: "Wysyłka obrazów do bucketu IMAGES, klucze adresowane treścią i adresy zasobów."
+---
+
+Zdjęcia produktów, grafiki kategorii i kolekcji oraz materiały marketingowe mieszkają w jednym buckecie R2 o nazwie `martebizuteria`, powiązanym z Workerem jako `IMAGES`. Adapter w `src/integrations/cloudflare-r2/` ma dokładnie jedno zadanie: przyjąć obraz z panelu administracyjnego, zwalidować go i umieścić w buckecie pod kluczem adresowanym treścią. Odczyt nie jest jego zadaniem — bucket udostępniany jest publicznie i czytany przez pomocniki adresów w `src/lib/url.ts`.
+
+## Powiązanie
+
+`wrangler.jsonc` deklaruje ten sam bucket we wszystkich trzech środowiskach:
+
+```jsonc
+"r2_buckets": [
+  { "binding": "IMAGES", "bucket_name": "martebizuteria", "remote": true }
+]
+```
+
+Wszystkie trzy wskazują na jeden bucket, a `"remote": true` oznacza, że nawet `bun run dev` zapisuje do prawdziwego bucketu. Bezpieczne czynią to klucze adresowane treścią: ponowna wysyłka tych samych bajtów jest operacją bez efektu, a nie nadpisaniem.
+
+## Wysyłka
+
+Plik `media.mutations.ts` eksportuje jedną funkcję serwerową:
+
+```ts
+export const uploadImageFn = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["update"] })])
+  .validator((data: FormData) => data)
+  .handler(async ({ data }) => {
+    /* … */
+  })
+```
+
+Autoryzacja to uprawnienie `product: ["update"]`, więc wysyłać może wyłącznie rola administratora. Walidator przepuszcza `FormData` — tego kształtu nie da się opisać obiektem Zod, więc handler sam wykonuje sprawdzenia, w tej kolejności:
+
+1. `data.get("file")` musi być typu `File`, w przeciwnym razie `TypeError(INVALID_FILE)`.
+2. `isAcceptedImageMime(file.type)` musi być spełnione, w przeciwnym razie `INVALID_TYPE`.
+3. Rozmiar musi być większy od zera i nie większy niż `MAX_IMAGE_BYTES`, w przeciwnym razie `TOO_LARGE`.
+4. `data.get("folder")` używane jest, gdy `isMediaFolder` je przyjmie; w przeciwnym razie po cichu przyjmowana jest wartość `"uploads"`.
+
+Następnie klucz wyprowadzany jest z bajtów:
+
+```ts
+const buffer = await file.arrayBuffer()
+const digest = await crypto.subtle.digest("SHA-256", buffer)
+const key = `${folder}/${bufferToHex(digest)}.${MIME_EXTENSION[file.type]}`
+if ((await env.IMAGES.head(key)) === null) {
+  await env.IMAGES.put(key, buffer, {
+    httpMetadata: {
+      cacheControl: IMMUTABLE_CACHE_CONTROL,
+      contentType: file.type,
+    },
+  })
+}
+
+return { key, url: getAssetURL(key) }
+```
+
+Trzy konsekwencje warte zapamiętania:
+
+- **Klucz to SHA-256 treści pliku**, zapisane szesnastkowo, wraz z rozszerzeniem. Dwukrotna wysyłka tego samego zdjęcia daje ten sam klucz.
+- **Sprawdzenie `head` czyni zapis idempotentnym.** Istniejący obiekt nie jest zapisywany ponownie, więc wysyłka kosztuje jedno tanie żądanie o metadane.
+- **`Cache-Control: public, max-age=31536000, immutable`** ustawiane jest w momencie wysyłki. Jest to poprawne tylko dlatego, że klucz zmienia się wraz ze zmianą bajtów. Nigdy nie zapisuj do tego bucketu klucza zmiennego.
+
+## Reguły
+
+Plik `media.zod.ts` trzyma ograniczenia. Wbrew nazwie nie zawiera żadnego schematu Zod — tylko stałe i dwa predykaty typu:
+
+| Eksport                                | Wartość                                                            |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| `ACCEPTED_IMAGE_MIME_TYPES`            | `image/jpeg`, `image/png`, `image/webp`, `image/avif`              |
+| `ACCEPTED_IMAGE_ACCEPT_ATTR`           | Ta sama lista połączona przecinkami, na potrzeby atrybutu `accept` |
+| `MAX_IMAGE_BYTES`                      | 5 MiB (`5 * 1024 * 1024`)                                          |
+| `MEDIA_FOLDERS`                        | `collections`, `products`, `categories`, `uploads`                 |
+| `MIME_EXTENSION`                       | Mapa typu MIME na rozszerzenie (`image/jpeg` → `jpg`)              |
+| `MEDIA_ERROR_CODES`                    | `INVALID_FILE`, `INVALID_TYPE`, `TOO_LARGE`, `UNAUTHORIZED`        |
+| `isMediaFolder`, `isAcceptedImageMime` | Predykaty współdzielone przez handler i interfejs                  |
+
+## Przepływ wysyłki po stronie panelu
+
+Interfejsem zajmuje się `src/presentation/components/custom/image-upload/`. Hook `hooks/use-image-upload.ts` przyjmuje `MediaFolder`, powtarza w przeglądarce **te same** sprawdzenia `isAcceptedImageMime` i `MAX_IMAGE_BYTES`, aby użytkownik zobaczył komunikat przed zmarnowanym okrążeniem sieciowym, a następnie wysyła pliki przez `Promise.allSettled`, więc jeden zły plik nie unieważnia pozostałych:
+
+```ts
+const formData = new FormData()
+formData.append("file", file)
+formData.append("folder", folder)
+
+return uploadImageFn({ data: formData })
+```
+
+Udane wartości `url` są zbierane, a niepowodzenia zliczane do jednego komunikatu. Komponenty `components/image-upload.tsx` i `components/gallery-add-tile.tsx` ustawiają `accept={ACCEPTED_IMAGE_ACCEPT_ATTR}` na swoich polach plików. Powstały adres zapisywany jest w `product.thumbnail` lub w wierszu `product_image`.
+
+## Czytanie zasobów
+
+Plik `src/lib/url.ts` zamienia zapisany klucz lub adres na coś, co przeglądarka może pobrać:
+
+| Eksport                      | Zachowanie                                                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `getAssetCdnBase()`          | Funkcja izomorficzna: czyta `env.VITE_R2_URL` na serwerze i `import.meta.env.VITE_R2_URL` w przeglądarce, usuwa końcowy ukośnik i wraca do `DEFAULT_R2_PUBLIC_URL` |
+| `getAssetURL(path)`          | Zwraca `path` bez zmian, jeśli jest już bezwzględny, w przeciwnym razie `${base}/${path}` bez wiodącego ukośnika                                                   |
+| `resolveAssetURL(pathOrUrl)` | To samo, tolerancyjne wobec zapisanej wartości, która może być kluczem albo pełnym adresem                                                                         |
+| `isAssetCdnUrl(url)`         | Prawda dla każdego hosta `*.r2.dev` oraz dla hosta skonfigurowanej bazy                                                                                            |
+
+`DEFAULT_R2_PUBLIC_URL` w `src/presentation/branding/app.ts` to własny publiczny punkt końcowy bucketu, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`. Funkcja `isConfiguredAssetCdnBase` dodatkowo odrzuca bazę zawierającą zastępczy host `your-production-cdn-domain.com`, więc niedokończony plik środowiska cofa się do działającej wartości domyślnej, a nie generuje martwych adresów obrazów.
+
+`VITE_R2_URL` występuje zarówno w `secrets.required` w `wrangler.jsonc`, jak i wśród zmiennych przeglądarkowych z prefiksem `VITE_`, ponieważ potrzebują go obie strony.
+
+### Dlaczego istnieje `isAssetCdnUrl`
+
+Funkcja `getOptimizedImageUrl` w `src/lib/image.ts` normalnie przepisuje adres obrazu przez transformację Cloudflare Images z biblioteki `unpic`. Świadomie pomija to dla hostów Unsplash i dla wszystkiego, co rozpozna `isAssetCdnUrl`, zwracając adres R2 nietknięty. Obrazy hostowane w R2 serwowane są więc dokładnie tak, jak je wysłano, w oryginalnych wymiarach, a komponent `<Image>` (`src/presentation/components/custom/image.tsx`, zbudowany na `@unpic/react`) zajmuje się tylko `loading`, `decoding`, `fetchPriority`, `sizes` i tłem rozmycia. Jeśli chcesz skalowania dla zasobów R2, to właśnie tę funkcję należy zmienić.
+
+`PLACEHOLDER_IMAGE` to `getAssetURL("placeholder.svg")`, a `src/data/landing.ts` pobiera z tego samego bucketu główną grafikę strony startowej, wideo i jego poster.
+
+## Czego świadomie brakuje
+
+**Nie ma ścieżki usuwania.** Nic w repozytorium nie wywołuje `env.IMAGES.delete`. Usunięcie zdjęcia produktu usuwa wiersz `product_image` i pozostawia obiekt w buckecie. Ponieważ klucze są skrótami treści, jest to bezpieczne — inny produkt może odwoływać się do tych samych bajtów — ale oznacza też, że bucket wyłącznie rośnie, a porządkowanie jest operacją ręczną wykonywaną na R2.
+
+Nie ma również obsługi podpisanych adresów ani obiektów prywatnych: każdy obiekt w tym buckecie jest publiczny.
+
+## Testy
+
+Pliki `src/integrations/cloudflare-r2/__test__/media.mutations.test.ts` i `media.zod.test.ts` pokrywają gałęzie walidacji, wartość zapasową `folder`, klucz ze skrótu oraz pominięcie zapisu po `head`.
+
+## Powiązane strony
+
+- [Obrazy i media](/docs/ui)
+- [Panel administracyjny](/docs/features/admin-dashboard)
+- [Zmienne środowiskowe](/docs/reference/environment)

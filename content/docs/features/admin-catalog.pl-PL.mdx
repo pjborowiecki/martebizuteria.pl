@@ -1,0 +1,205 @@
+---
+title: "Panel katalogu"
+description: "Produkty, kategorie, kolekcje i atrybuty: cztery zakładki, cztery moduły, edytory w arkuszach bocznych, zmiana kolejności przeciąganiem i wysyłka zdjęć do R2."
+---
+
+## Układ tras
+
+`/admin/catalog` to layout przepustowy (`src/routes/admin.catalog.tsx`), który deklaruje tylko przestrzenie nazw `pages.admin.catalog` i `pages.admin.catalog.localePicker`, a `/admin/catalog/` przekierowuje na `ROUTES.ADMIN_PRODUCTS`.
+
+Cztery zakładki renderowane przez `catalog/catalog-tabs.tsx` ze stałych `ROUTES.ADMIN_CATALOG`, `ADMIN_CATEGORIES`, `ADMIN_COLLECTIONS` i `ADMIN_ATTRIBUTES`:
+
+| Zakładka  | Ścieżka                      | Trasa indeksu                         | Moduł                            |
+| --------- | ---------------------------- | ------------------------------------- | -------------------------------- |
+| Produkty  | `/admin/catalog/products`    | `admin.catalog.products.index.tsx`    | `src/modules/product`            |
+| Kategorie | `/admin/catalog/categories`  | `admin.catalog.categories.index.tsx`  | `src/modules/product-category`   |
+| Kolekcje  | `/admin/catalog/collections` | `admin.catalog.collections.index.tsx` | `src/modules/product-collection` |
+| Atrybuty  | `/admin/catalog/attributes`  | `admin.catalog.attributes.index.tsx`  | `src/modules/product-attribute`  |
+
+Kategorie i kolekcje mają też trasę szczegółów: `admin.catalog.categories.$handle.tsx` i `admin.catalog.collections.$handle.tsx`.
+
+Loader trasy produktów wczytuje wstępnie pięć zapytań równolegle, bo edytor potrzebuje list wyboru:
+
+```ts
+await Promise.all([
+  context.queryClient.query({ ...getAdminProductsQuery(), staleTime: "static" }),
+  context.queryClient.query({ ...getProductStatsQuery(), staleTime: "static" }),
+  context.queryClient.query({ ...getAdminCategoriesQuery(), staleTime: "static" }),
+  context.queryClient.query({ ...getAdminCollectionsQuery(), staleTime: "static" }),
+  context.queryClient.query({ ...getAdminProductAttributesQuery(), staleTime: "static" }),
+])
+```
+
+## Tabele
+
+Katalog to jedenaście tabel. Wszystkie kolumny tytułowe są **mapami lokalizacji w JSON**, a nie zwykłym tekstem: `titles`, `subtitles`, `descriptions`, `tags`, `labels`.
+
+| Tabela                 | Kluczowe kolumny                                                                                                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product`              | `handle` (unikalny), `titles`, `subtitles`, `descriptions`, `tags`, `thumbnail`, `status`, `rank`, `primary_category_id`, `metadata`           |
+| `product_variant`      | `product_id`, `title`, `sku` (unikalny), `barcode`, `price`, `compare_at_price`, `manage_inventory`                                            |
+| `inventory`            | `variant_id` (unikalny), `quantity_available`, `quantity_reserved`, `version`                                                                  |
+| `product_image`        | `product_id`, `variant_id` (nullowalny), `url`, `alt`, `rank`                                                                                  |
+| `product_option`       | `product_id`, `titles`                                                                                                                         |
+| `product_option_value` | `option_id`, `labels`, `rank`                                                                                                                  |
+| `option_on_variant`    | `variant_id`, `option_id`, `value_id`; unikalny na (`variant_id`, `option_id`)                                                                 |
+| `product_category`     | `handle` (unikalny), `parent_id` (odwołanie do siebie), `titles`, `subtitles`, `short_descriptions`, `descriptions`, `image`, `status`, `rank` |
+| `product_collection`   | `handle` (unikalny), `titles`, `descriptions`, `image`, `status`, `rank`                                                                       |
+| `product_attribute`    | `handle` (unikalny), `titles`, `type`, `unit`, `allowed_values` (JSON), `rank`                                                                 |
+| `attribute_on_product` | tabela łącząca; wiersz może być zawężony do wariantu                                                                                           |
+
+Do tego `category_on_product` (z `is_primary`) i `collection_on_product`.
+
+`product.status` to `draft | published | archived` z `DEFAULT_PRODUCT_STATUS = draft`. Kategorie i kolekcje używają innego, dwuwartościowego statusu `draft | active`, również domyślnie `draft`.
+
+Handle są walidowane tym samym wzorcem w każdym module, na przykład `PRODUCT_HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u`.
+
+## Produkty
+
+### Odczyt
+
+| Use case                     | Uprawnienie         | Zwraca                                                |
+| ---------------------------- | ------------------- | ----------------------------------------------------- |
+| `get-admin-products-page.ts` | `product: ["read"]` | stronicowane wiersze, `ADMIN_PRODUCTS_PAGE_SIZE = 25` |
+| `get-admin-products.ts`      | `product: ["read"]` | pełną listę, z której startuje siatka                 |
+| `get-admin-product.ts`       | `product: ["read"]` | jeden produkt ze wszystkim, czego potrzebuje edytor   |
+| `get-product-stats.ts`       | `product: ["read"]` | karty statystyk, w tym licznik niskiego stanu         |
+| `export-admin-products.ts`   | `product: ["read"]` | wszystkie pasujące wiersze na potrzeby CSV            |
+| `validate-product-skus.ts`   | `product: ["read"]` | `{ takenSkus }` z `findTakenSkus(skus, productId)`    |
+
+Filtry listy składają `product.admin-list-filters.ts`, `product.admin-list-variant-filters.server.ts`, `product.admin-list-search.server.ts` i `product.admin-list-sort.ts`, a wykonuje `product.admin-list.server.ts`. Tak jak w witrynie, złączenie ze statystykami wariantów jest warunkowe: `adminProductsListNeedsVariantStatsJoin` jest prawdziwe tylko wtedy, gdy w grze jest poziom stanu, rodzaj wariantów albo sortowanie zależne od ceny.
+
+`PRODUCT_VARIANT_KIND` to `{ MULTI: "multi", SINGLE: "single" }` z `PRODUCT_MULTI_VARIANT_COUNT_THRESHOLD = 1`, co napędza `products-variant-kind-filter.tsx`.
+
+### Zapis
+
+| Use case                     | Uprawnienie           | Uwagi                                                                                          |
+| ---------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
+| `create-complete-product.ts` | `product: ["create"]` | jedno wywołanie tworzy produkt, opcje, wartości, warianty, stany, zdjęcia i wartości atrybutów |
+| `update-complete-product.ts` | `product: ["update"]` | to samo, z podmianą zdjęć i atrybutów                                                          |
+| `delete-products.ts`         | `product: ["delete"]` | usunięcie zbiorcze po tablicy identyfikatorów                                                  |
+| `reorder-products.ts`        | `product: ["update"]` | `orderedIds.map((id, index) => ({ id, rank: index }))`                                         |
+
+`createCompleteProduct` ostrożnie obchodzi się z częściową porażką:
+
+```ts
+await deleteOrphanProductByHandle(data.handle)
+
+const id = uuidv7()
+
+try {
+  await persistProduct(id, data)
+} catch (error) {
+  await deleteProducts([id]).catch((cleanupError: unknown) => {
+    console.error(`Failed to roll back partially created product ${id}:`, cleanupError)
+  })
+
+  return rethrowProductMutationError(error)
+}
+```
+
+`rethrowProductMutationError` (`product.mutation-errors.ts`) mapuje naruszenie unikalności w D1 na `PRODUCT_ERROR_CODES.DUPLICATE_HANDLE` albo `DUPLICATE_SKU`, żeby formularz mógł pokazać błąd przy właściwym polu.
+
+`updateCompleteProduct` dodatkowo odrzuca handle zajęty przez inny produkt (`ERROR_CODES.CONFLICT` z `DUPLICATE_HANDLE`), wywołuje `assertCatalogSkusAvailable` i buduje różnicę do audytu, czytając produkt przed i po zapisie (`extractProductAuditSnapshot` i `buildProductAuditChange` w `product-audit.utils.ts`).
+
+Każdy zapis kończy się `scheduleProductCatalogInvalidation()` i wywołaniem `recordCatalogProduct*Audit`.
+
+### Formularz
+
+`product.zod.ts` to największy plik `*.zod.ts` w repozytorium — 472 linie. `productFormSchemaDefinition` rozszerza wspólny `catalogUpsertBaseSchema` o mapy lokalizacji i pola mediów oraz dodaje trzy uściślenia:
+
+- `refineDuplicateSkusInForm`
+- `refineDuplicateProductAttributes`
+- `refineCatalogUpsert`, które wymaga co najmniej jednego wariantu, a dla produktu aktywnego wariantu dla **każdej** kombinacji opcji (`buildVariantCombinations`) oraz poprawnych cen (`refineActiveProductPricing`)
+
+Wszystkie komunikaty to klucze z `PRODUCT_FORM_VALIDATION_KEYS`.
+
+`parseCatalogUpsertInput(values)` odcina pola mediów i atrybutów, parsuje resztę, a potem wymusza śledzenie stanów:
+
+```ts
+const withInventoryAlwaysTracked = (input: CatalogUpsertInput): CatalogUpsertInput => ({
+  ...input,
+  simpleVariant: input.simpleVariant === undefined ? undefined : { ...input.simpleVariant, manageInventory: true },
+  variants: input.variants.map((row) => ({ ...row, manageInventory: true })),
+})
+```
+
+Interfejs edytora to arkusz boczny, a nie strona. `catalog/product-editor/` zawiera 26 plików: `product-sheet.tsx` z `product-form-provider.tsx`, sekcje `product-editor-basic`, `-pricing`, `-media`, `-organization`, `-status`, `-tags`, `-attributes`, `-variants-section`, `-variant-list`, `-variant-mode`, a także `product-form-locale-layout.tsx` dla pól per język oraz pomocniki `product-form.utils.ts` / `product-variant-form.utils.ts` / `product-image-form.utils.ts`. `useProductsSheetState` / `ProductsSheetProvider` (`catalog/products/hooks/use-products-sheet.ts`) trzymają stan otwarcia — dlatego trasa indeksu owija tabelę w ten provider.
+
+## Kategorie
+
+`product_category.parent_id` odwołuje się do samej tabeli, więc kategorie tworzą drzewo. `collectDescendantCategoryIds` sprawia, że filtr kategorii w witrynie obejmuje również dzieci.
+
+| Use case                     | Uprawnienie               | Uwagi                                                          |
+| ---------------------------- | ------------------------- | -------------------------------------------------------------- |
+| `get-categories.ts`          | publiczne (`withRequest`) | lista dla witryny                                              |
+| `get-storefront-category.ts` | publiczne                 | jedna kategoria po handle                                      |
+| `get-admin-categories.ts`    | `product: ["read"]`       | drzewo w panelu                                                |
+| `get-category-stats.ts`      | `product: ["read"]`       | karty statystyk                                                |
+| `create-category.ts`         | `product: ["create"]`     | odrzuca zduplikowany handle i nieistniejącego rodzica          |
+| `update-category.ts`         | `product: ["update"]`     |                                                                |
+| `delete-categories.ts`       | `product: ["delete"]`     | `CATEGORY_ERROR_CODES` zawiera `HAS_CHILDREN` i `HAS_PRODUCTS` |
+| `reorder-categories.ts`      | `product: ["update"]`     | ranga wewnątrz rodzica                                         |
+
+`createCategory` pokazuje kształt, który powtarzają wszystkie cztery moduły:
+
+```ts
+const nextRank = await getNextRankForParent(parentId)
+const id = uuidv7()
+await db.insert(productCategory).values(toCategoryRow(data, id, nextRank))
+scheduleCategoryCatalogInvalidation()
+recordCatalogCategoryCreatedAudit(data.handle)
+```
+
+Rangi przydziela serwer przez `getNextRankForParent` i nigdy nie są przysyłane z klienta.
+
+## Kolekcje
+
+Te same osiem use case'ów, tylko bez drzewa: `get-collections`, `get-storefront-collection`, `get-admin-collections`, `get-collection-stats`, `create-collection`, `update-collection`, `delete-collections`, `reorder-collections`. `COLLECTION_ERROR_CODES` ma `DUPLICATE_HANDLE` i `HAS_PRODUCTS`.
+
+Kolekcje mają znaczenie poza katalogiem: kolekcja `nowosci` napędza nowości na stronie głównej oraz rekomendacje w przeglądzie konta, dlatego `scheduleCollectionCatalogInvalidation()` unieważnia również `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`.
+
+## Atrybuty
+
+Atrybut to definicja specyfikacji do wielokrotnego użycia. `PRODUCT_ATTRIBUTE_TYPE` to `text`, `number`, `boolean`, `select` i `multiselect`; `productAttributeTypeUsesAllowedValues(type)` decyduje, czy `allowed_values` zostanie zapisane. `PRODUCT_ATTRIBUTE_UNIT_PRESETS` to `["mm", "cm", "m", "km", "mg", "g", "kg", "ml", "l", "szt.", "par", "%"]`, a `PRODUCT_ATTRIBUTE_UNIT_CUSTOM_SELECT_VALUE = "__custom__"` służy jednostce wpisywanej ręcznie.
+
+Use case'y: `get-admin-product-attributes`, `get-product-attribute-stats`, `create-product-attribute`, `update-product-attribute`, `delete-product-attributes`, `reorder-product-attributes`. Wywołują `scheduleProductAttributeCatalogInvalidation()`, które unieważnia tylko klucze panelu — atrybuty są czytane w witrynie jako część zapytania o produkt, a nie osobno.
+
+Wartości są dowiązywane przez `src/modules/attribute-on-product`: `get-product-attributes` i `set-all-product-attributes`, z `replaceAttributesForProduct` i `replaceAllAttributesForProduct` wykonującymi podmianę. Wiersz może być zawężony do wariantu — właśnie dzięki temu `mapPublishedProductForStorefront` nadaje wariantowi własne specyfikacje z fallbackiem na te z poziomu produktu.
+
+## Zdjęcia i R2
+
+`uploadImageFn` (`src/integrations/cloudflare-r2/media.mutations.ts`) jest zabezpieczone przez `authorized({ product: ["update"] })` i walidowane względem `media.zod.ts`:
+
+- akceptowane typy MIME: `image/jpeg`, `image/png`, `image/webp`, `image/avif`
+- maksymalny rozmiar: `MAX_IMAGE_BYTES` = 5 MiB
+- katalogi: `collections`, `products`, `categories`, `uploads` (wartość zapasowa)
+
+Klucz jest **adresowany treścią**, co czyni ponowną wysyłkę tego samego pliku darmową:
+
+```ts
+const buffer = await file.arrayBuffer()
+const digest = await crypto.subtle.digest("SHA-256", buffer)
+const key = `${folder}/${bufferToHex(digest)}.${MIME_EXTENSION[file.type]}`
+if ((await env.IMAGES.head(key)) === null) {
+  await env.IMAGES.put(key, buffer, { httpMetadata: { cacheControl: IMMUTABLE_CACHE_CONTROL, contentType: file.type } })
+}
+```
+
+`IMMUTABLE_CACHE_CONTROL` to `public, max-age=31536000, immutable`, co jest bezpieczne właśnie dlatego, że kluczem jest skrót. Bindingiem jest `IMAGES` w `wrangler.jsonc`, a `getAssetURL` / `resolveAssetURL` w `src/lib/url.ts` zamieniają klucz w publiczny adres na podstawie `VITE_R2_URL`.
+
+`product-image.persist.utils.ts` (`replaceProductImages`) przepisuje wiersze zdjęć produktu, a `product-image.server.ts` utrzymuje `product.thumbnail` w zgodzie przez `getFirstImageUrl` i `updateProductThumbnail`. Widżety wysyłki leżą w `src/presentation/components/custom/image-upload/`.
+
+## Wspólna infrastruktura siatek
+
+`catalog/table/`, `catalog/toolbar/`, `catalog/form/`, `catalog/dialog/` i `catalog/lib/` przechowują elementy współdzielone przez cztery zakładki, w tym `catalog-admin-datagrid.constants.ts` — stąd pochodzi `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX`, importowana nawet przez `order.constants.ts` i `user.constants.ts`, żeby kolumna identyfikatora w każdej siatce miała tę samą szerokość. Sama generyczna siatka danych to `src/presentation/components/custom/datagrid/`, tłumaczona przez przestrzeń nazw `components.datagrid`.
+
+Edycję per język w każdej zakładce wspiera `pages.admin.catalog.localePicker` oraz `product-form-locale.utils.ts`.
+
+## Powiązane strony
+
+- [Katalog i wyszukiwanie](/docs/features/catalog-and-search)
+- [Karta produktu](/docs/features/product-page)
+- [Stany magazynowe](/docs/features/inventory)
+- [Internacjonalizacja](/docs/features/internationalization) — konwencja map lokalizacji
+- [Dziennik audytu](/docs/features/audit-log)

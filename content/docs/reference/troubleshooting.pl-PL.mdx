@@ -1,0 +1,129 @@
+---
+title: "Rozwiązywanie problemów"
+description: "Konkretne awarie w dev, check, test, skryptach bazodanowych i potoku wdrożeniowym oraz sposoby ich naprawy."
+---
+
+Każdy wpis nazywa objaw tak, jak faktycznie go zobaczysz, a potem podaje rozwiązanie. Tam, gdzie komunikat jest zacytowany, jest to dokładny łańcuch znaków rzucany przez kod.
+
+## Serwer developerski
+
+**Serwer developerski nie startuje.** `vite.config.ts` ustawia `server: { port: 3000, strictPort: true }`, więc Vite nie przechodzi na inny port. Coś innego zajmuje port 3000 — zatrzymaj to. Port ma znaczenie wykraczające poza wygodę: `appHostsForMode` w `src/modules/_core/constants/api.ts` dopuszcza dla trybów lokalnych tylko `localhost:3000` i `127.0.0.1:3000`, a Better Auth jest budowany z tą listą, więc na innym porcie uwierzytelnianie przestaje działać.
+
+**`bun run dev` nie łączy się z bazą, R2 ani KV.** Środowisko Wranglera `development` używa **zdalnych** powiązań (`remote: true` na każdym zasobie, a `remoteBindings` jest włączone dla tego trybu w `vite.config.ts`). Musisz być uwierzytelniony wobec konta Cloudflare:
+
+```sh
+vp exec wrangler login
+```
+
+Nie ma podłączonego w pełni lokalnego trybu dla `dev` — lokalny plik D1 dostaje migracje wyłącznie przez `bun run db:migrate:local`, który celuje w środowisko `development` z flagą `--local`.
+
+**`Cannot find module 'collections/server'` albo `'collections/browser'`.** Katalog `.source/` nie został wygenerowany. `tsconfig.json` mapuje `collections/*` na `./.source/*`, a Fumadocs zapisuje ten katalog:
+
+```sh
+bun run content
+```
+
+`bun run dev`, `bun run build:*` i `bun run typegen` uruchamiają to za ciebie, więc zwykle oznacza to `bun run clean` bez kroku następującego po nim.
+
+## Baza danych
+
+**`no such table` w czasie działania.** Migracje nie zostały zastosowane do bazy, na którą wskazuje bieżące środowisko. `development` i `preview` dzielą `martebizuteria-preview`:
+
+```sh
+bun run db:migrate:development   # zdalna baza preview
+bun run db:migrate:local         # lokalna kopia w .wrangler
+bun run db:migrate:production    # produkcja
+```
+
+`bun run db:migrations:development` wypisuje, co zostało zastosowane, a co nie.
+
+**Zmiana schematu nie jest widoczna nigdzie.** Edycja pliku `*.schema.ts` zmienia typy, a nie bazę danych. Wygeneruj migrację i ją zastosuj:
+
+```sh
+bun run db:generate
+bun run db:migrate:development
+```
+
+`db:push:*` istnieje dla tego samego schematu, ale wypycha zmiany bez pliku migracji; preferuj `db:generate`, żeby zmiana została zapisana w `src/integrations/drizzle-orm/migrations/`.
+
+**Drizzle Kit nie może się połączyć.** `src/integrations/drizzle-orm/drizzle.config.ts` używa sterownika HTTP D1 i czyta `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` oraz `CLOUDFLARE_ACCESS_TOKEN` z `process.env`. Ponieważ `bunfig.toml` wyłącza automatyczne ładowanie zmiennych, wartości pochodzą wyłącznie z `--env-file=.env.<środowisko>`, które przekazuje każdy skrypt `db:studio:*`, `db:push:*` i `db:introspect:*`. Pusta wartość degraduje się do `""` i zapytanie się nie udaje — uzupełnij plik.
+
+**Nigdy nie uruchamiaj skryptów seed przeciwko żywej bazie.** `db:seed:preview` i `db:seed:production` wykonują pliki SQL z `src/integrations/drizzle-orm/seeds/` na zdalnej bazie przez `wrangler d1 execute --remote`. Te pliki są nieaktualne względem rzeczywistego katalogu, więc ich uruchomienie nadpisuje prawdziwe dane. Są odpowiednie tylko dla bazy, którą świadomie opróżniono.
+
+**Liczba migracji nie zgadza się z dziennikiem Drizzle.** `wrangler d1 migrations apply` przechodzi po plikach `.sql` w `src/integrations/drizzle-orm/migrations` w kolejności nazw; `meta/_journal.json` Drizzle Kit śledzi tylko te, które sam wygenerował. Dla tego, co zostało zastosowane, wiążący jest katalog.
+
+## Testy
+
+**Test integracyjny pada z `no such table` albo `no such column`.** Zestawy integracyjne nie odtwarzają katalogu migracji. Każdy z nich tworzy potrzebne tabele ręcznie przez `sqlite.exec` na bazie `node:sqlite` w pamięci — zobacz blok `create table` w `src/modules/checkout/__test__/checkout-idempotency.integration.test.ts`. Po zmianie schematu zaktualizuj DDL w dotkniętym teście.
+
+**Test komponentu pada na `IntersectionObserver`, `ResizeObserver` albo `matchMedia`.** Te obiekty są podstawiane w `src/platform/testing/setup.ts`, który ładuje wyłącznie projekt `component`. Test, który ich potrzebuje, musi nazywać się `*.component.test.tsx`, w przeciwnym razie trafi do projektu `node`.
+
+**Funkcja serwerowa zwraca w teście coś nieoczekiwanego.** `src/platform/testing/setup.ts` przepuszcza `createServerFn` przez `withTestRpc` i podstawia `getRequest`, tak by zwracał `new Request("http://127.0.0.1:3000/")`. Testy zależne od nagłówków, cookies lub sesji muszą same nadpisać `getRequest`.
+
+**`test:coverage` pada na progach.** `vite.config.ts` ustawia je nieco poniżej aktualnych wartości — branches 69, functions 68, lines 71, statements 72 — więc działają jak zapadka: regresja psuje build, a wartości podnosi się świadomie w miarę wzrostu pokrycia. Otwórz `coverage/index.html`, żeby zobaczyć, co spadło. `autoUpdate` jest `false`, więc wartości nigdy nie zmieniają się same.
+
+**`passWithNoTests` wywala uruchomienie.** Jest ustawione na `false`, więc projekt niedopasowany do żadnego pliku to błąd. Sprawdź sufiks nazwy pliku względem wzorców projektu.
+
+## Kontrole i typy
+
+**`bun run check` zgłasza ostrzeżenie i kończy się kodem niezerowym.** `denyWarnings: true`. W tym repozytorium nie ma poziomu „ostrzeżenie” — albo naprawiasz, albo nie trafia do gałęzi głównej.
+
+**Awaria typu „nieużywana dyrektywa wyciszająca”.** `reportUnusedDisableDirectives: "error"`. Wyciszenie, które już niczego nie wycisza, trzeba usunąć.
+
+**Pada `max-lines`, `max-lines-per-function` albo `max-statements`.** Limity to 800 linii na plik, 150 linii na funkcję i 20 instrukcji na funkcję. Podziel plik albo wydziel funkcję; nie dodawaj wyjątku. Wąskie wyjątki, które istnieją, są wymienione w [Konwencjach](/docs/reference/conventions).
+
+**Typom Workera brakuje powiązania albo sekretu.** `src/types/worker-configuration.d.ts` jest generowany i wpisany do `.gitignore`. Po edycji `wrangler.jsonc`:
+
+```sh
+bun run typegen
+```
+
+co uruchamia `cf-typegen` (`wrangler types --env development`), a potem `content`.
+
+**`noUncheckedIndexedAccess` albo `exactOptionalPropertyTypes` protestuje przy kodzie, który wygląda poprawnie.** Obie flagi są włączone. Dostęp do elementu tablicy ma typ `T | undefined`, a `{ key: undefined }` to nie to samo co pominięcie klucza — dlatego kod buduje opcjonalne payloady przypisaniem warunkowym, a nie rozwijaniem `undefined`, jak w `address.accessors.ts`.
+
+## Tłumaczenia
+
+**`Missing translation namespace: messages/pl-PL/pages.x.json`.** Rzucane przez `loadNamespace` w `src/integrations/use-intl/i18n.messages.ts`. Trasa zadeklarowała przestrzeń nazw w `staticData.namespaces`, ale plik dla tej lokalizacji nie istnieje. Utwórz go w **obu** katalogach: `messages/en-US/` i `messages/pl-PL/`.
+
+**Klucz renderuje się jako własna ścieżka.** Klucza brakuje w aktywnej lokalizacji albo komponent czyta poza zasięgiem swojego wywołania `useTranslations`. `src/integrations/use-intl/__test__/i18n.messages.test.ts` sprawdza, że polski zawiera każdy angielski klucz, więc uruchom testy, żeby znaleźć lukę.
+
+**Tekst pojawia się w niewłaściwym języku na ścieżce API.** `shouldIgnorePath` wyłącza `/api`, `/rpc`, `/_serverFn` i `/assets` z rozwiązywania lokalizacji, a `getCurrentLocale` sięga dla tych ścieżek do cookie `marte_locale`. Cokolwiek wyprowadza lokalizację z lokalizacji routera, zobaczy ścieżkę bez prefiksu, a więc lokalizację domyślną — używaj `getCurrentLocale()`.
+
+## Dokumentacja
+
+**Strona dokumentacji zwraca 404.** Muszą być spełnione trzy warunki: plik nazywa się `<slug>.<locale>.mdx` w `content/docs/`, slug występuje w tablicy `pages` pliku `meta.<locale>.json` tego katalogu, a `.source/` zostało odtworzone przez `bun run content`. `docs.$.tsx` rzuca `notFound()`, gdy `docsSource.getPage` niczego nie znajdzie.
+
+**Strona istnieje, ale nie pojawia się w sidebarze.** `buildDocsNavigation` w `src/integrations/fumadocs/fumadocs.docs.ts` zamienia na sekcje wyłącznie **katalogi najwyższego poziomu** w `content/docs`, a wewnątrz katalogu tylko jego stronę `index` i bezpośrednie strony potomne. Strona zagnieżdżona dwa katalogi głębiej rozwiąże się po adresie URL, ale nie zostanie wypisana.
+
+**Strona renderuje się, ale nagłówek jest zdublowany.** `src/presentation/components/custom/docs-content.tsx` renderuje `frontmatter.title` jako `h1` nad treścią MDX. Nie dodawaj własnego nagłówka `#` na początku strony.
+
+**Znacznik JSX z wielkiej litery w MDX psuje stronę.** Renderer dokumentacji mapuje wyłącznie zwykłe elementy HTML — `src/presentation/components/custom/docs-mdx.tsx` rozszerza `mdxComponents` o `a`, `h1`–`h4`, `p`, `ul`, `ol`, `li`, `strong`, `blockquote`, `code`, `pre`, `table`, `th`, `td` i `hr`. Nie ma rejestru komponentów, więc `<Callout>` czy `<Tabs>` nie ma do czego się odwołać. Używaj Markdown.
+
+## Uwierzytelnianie i płatności
+
+**Logowanie nie działa lokalnie.** Sprawdź `AUTH_SECRET` i poświadczenia OAuth w `.env.development` oraz to, czy adres zwrotny dostawcy wskazuje na `/api/auth/callback/<provider>` na hoście, który Better Auth akceptuje — lokalnie tylko `localhost:3000` i `127.0.0.1:3000`.
+
+**`TOO_MANY_REQUESTS` podczas testowania ręcznego.** W grze są dwa limitery. Better Auth dopuszcza 5 logowań, 3 rejestracje, 3 żądania resetu hasła i 5 resetów hasła na 60 sekund, plus globalne 100 na 60 sekund. Middleware aplikacji dopuszcza 3 wywołania na 60 sekund dla `create-user-address`, `update-customer-phone` i `revoke-other-customer-sessions` oraz 10 dla akcji koszyka. Liczniki leżą w tabeli `rate_limit`, kluczowane przez `cf-connecting-ip`; nie ma mechanizmu czyszczącego, więc stare wiersze po prostu wypadają z okna.
+
+**Webhooki Stripe są odrzucane.** `src/routes/api/webhooks.stripe.ts` odpowiada `400 Missing signature or webhook secret`, gdy brakuje nagłówka `stripe-signature` albo `STRIPE_WEBHOOK_SECRET` jest puste, oraz `400 Webhook Error: Invalid Signature`, gdy `constructEventAsync` odrzuci payload. Lokalnie uruchom `bun run stripe:listen` i wklej wypisany sekret podpisu do `.env.development`. Typ zdarzenia bez wpisu w `webhookHandlers` jest logowany i potwierdzany jako `{ received: true }`, a nie traktowany jako błąd.
+
+**Zamówienie jest opłacone, ale nic się nie stało.** Realizację napędza wyłącznie ścieżka webhooka: `fulfill-checkout.server.ts` dla `checkout.session.completed` i `release-checkout.server.ts` dla `checkout.session.expired`. Jeśli przekierowanie zdarzeń nie działało, wiersz `checkout` zostaje w stanie `pending` i zamówienie nie istnieje. `fulfillCheckout` kończy też działanie wcześnie, gdy `findPendingCheckoutByTransaction` niczego nie znajdzie — to właśnie czyni sekwencyjne ponowienia Stripe idempotentnymi.
+
+## Budowanie i wdrożenie
+
+**`Missing database, cache, images, audit, or realtime binding for preview`.** Ze `scripts/verify-bindings.ts`. Docelowemu środowisku w `wrangler.jsonc` brakuje powiązania albo nadal ma identyfikator zastępczy (kontrola odrzuca identyfikatory złożone wyłącznie z `0` i `-`). Utwórz zasób w Cloudflare i wklej prawdziwy identyfikator.
+
+**`Missing STRIPE_SECRET_KEY in .env.preview or the process environment`.** Ze `scripts/prepare-deploy-secrets.ts`. Każda nazwa z `secrets.required` dla tego środowiska musi mieć niepustą wartość w odpowiadającym pliku `.env` albo w środowisku procesu.
+
+**`Server-only import in client asset: <plik>.js`.** Ze `scripts/verify-build.ts`. Bundle klienta zaimportował `cloudflare:workers` albo moduł `node:*`, co znaczy, że z komponentu udało się dojść do modułu wyłącznie serwerowego. Przejdź łańcuch importów od wskazanego zasobu; zwykłą przyczyną jest import z pliku `*.server.ts` albo z `drizzle.database.ts` w komponencie, zamiast przejścia przez przypadek użycia.
+
+**`Worker build does not target preview`** albo **`Worker deployment points outside the current server build`.** Również ze `verify-build.ts`. Wynik budowania w `dist/` nie odpowiada wdrażanemu środowisku — zwykle bo `CLOUDFLARE_ENV` przeciekło z powłoki albo użyto nieaktualnego `dist/`. `build:preview` i `build:production` zaczynają się od `rm -rf dist`; uruchamiaj właściwy skrypt, a nie `wrangler deploy` ręcznie.
+
+**`Missing client JavaScript` / `Missing client CSS`.** W `dist/client/assets` nie ma pliku `.js` ani `.css`. Budowanie klienta padło wcześniej w potoku — przewiń wyjście budowania w górę.
+
+## Powiązane strony
+
+- [Często zadawane pytania](/docs/reference/faq)
+- [Środowisko i powiązania](/docs/reference/environment)
+- [Testowanie](/docs/tooling/testing)

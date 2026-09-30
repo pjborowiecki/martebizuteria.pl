@@ -1,0 +1,172 @@
+---
+title: "TanStack Start"
+description: "Router, punkt wejścia Workera, trasy plikowe, funkcje serwerowe i handlery HTTP."
+---
+
+Aplikacja to jedna aplikacja TanStack Start, którą Cloudflare uruchamia jako pojedynczy Worker. Opisują ją trzy pliki: `src/router.tsx` buduje router, `src/server.ts` jest `ExportedHandler` Workera, a `vite.config.ts` łączy wtyczkę Start z wtyczką Cloudflare.
+
+## Router
+
+Funkcja `getRouter()` w `src/router.tsx` tworzy świeży `QueryClient` oraz świeży `ImagePrefetchService` dla każdego żądania, umieszcza oba w kontekście routera i rejestruje integrację zapytań z SSR:
+
+```tsx
+const router = createRouter({
+  context: { imagePrefetchService, queryClient },
+  defaultErrorComponent: DefaultErrorComponent,
+  defaultNotFoundComponent: DefaultNotFoundComponent,
+  defaultPendingComponent: DefaultPendingComponent,
+  defaultPendingMinMs: PENDING_MIN_DISPLAY_MS,
+  defaultPendingMs: PENDING_SHOW_DELAY_MS,
+  defaultPreload: "intent",
+  defaultPreloadDelay: 100,
+  defaultPreloadIntentProximity: 1000,
+  defaultPreloadStaleTime: 0,
+  defaultStaleTime: ONE_MIN_IN_MS,
+  defaultStructuralSharing: true,
+  rewrite: {
+    input: ({ url }) => deLocalizeUrl(url),
+    output: ({ url }) => localizeUrl(url),
+  },
+  routeTree,
+  scrollRestoration: true,
+  scrollRestorationBehavior: "instant",
+})
+setupRouterSsrQueryIntegration({ queryClient, router })
+```
+
+Para `rewrite` sprawia, że prefiksy językowe są niewidoczne dla drzewa tras: przychodzące `/en-US/products` zostaje pozbawione prefiksu i dopasowane jako `/products`, a każdy generowany adres otrzymuje prefiks ponownie po drodze na zewnątrz. Opis `deLocalizeUrl` i `localizeUrl` znajduje się na stronie [use-intl](/docs/integrations/use-intl).
+
+Komponenty stanu oczekiwania, błędu i braku strony to globalne domyślne wartości z `src/presentation/components/custom/defaults/`. Komponent oczekiwania pojawia się dopiero po 200 ms i pozostaje co najmniej 300 ms, więc szybkie nawigacje nigdy nie migają. `ReactQueryDevtools` montowane jest przez `Wrap`, ale wyłącznie pod `import.meta.env.DEV`.
+
+## Punkt wejścia Workera
+
+`wrangler.jsonc` wskazuje `main` na `./src/server.ts`. Ten plik obsługuje cztery rzeczy, zanim handler Start w ogóle zobaczy żądanie:
+
+| Ścieżka                       | Zachowanie                                                                       |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| `/sitemap.xml`                | `generateSitemapXml(origin)` z `src/lib/seo.ts`, cache na dobę                   |
+| `/robots.txt`                 | `generateRobotsTxt(origin, env.APP_ENV)`, cache na dobę                          |
+| `/api/realtime/admin/ws`      | Podniesienie połączenia WebSocket do huba unieważniania panelu administracyjnego |
+| `/api/realtime/storefront/ws` | Podniesienie połączenia WebSocket do huba unieważniania sklepu                   |
+
+Wszystko inne przechodzi przez `resolveLocale(request)`, które może zwrócić przekierowanie 301 na kanoniczną ścieżkę języka albo nagłówek `Set-Cookie` do dołączenia do odpowiedzi, a następnie trafia do `handler.fetch` wewnątrz `executionContextStorage.run({ waitUntil }, …)`. Ten magazyn `AsyncLocalStorage` pozwala funkcji `scheduleBackgroundWork` z `src/lib/background.ts` dotrzeć do `ctx.waitUntil` z głębi przypadku użycia — polegają na tym dziennik audytu, e-maile transakcyjne oraz [unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation).
+
+Ten sam plik eksportuje klasę Durable Object oraz handler `queue`:
+
+```ts
+export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub"
+
+async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  await processAuditLogQueueBatch(batch)
+}
+```
+
+Typ `RequestContext` jest deklarowany do modułu `@tanstack/react-start` w tym samym pliku, więc `env`, `waitUntil` i `passThroughOnException` są typowane wszędzie tam, gdzie funkcja serwerowa czyta kontekst żądania.
+
+## Trasy plikowe
+
+Katalog `src/routes/` zawiera płaskie trasy plikowe. `admin.catalog.products.tsx` obsługuje `/admin/catalog/products`, `_storefront.tsx` to układ bez segmentu ścieżki, który otacza strony publiczne, `docs.$.tsx` to trasa typu splat, a `api/webhooks.stripe.ts` to trasa złożona wyłącznie z handlera. Ustawienie `routeFileIgnorePattern: "__test__"` w `vite.config.ts` trzyma katalogi testowe poza drzewem tras, a `src/routeTree.gen.ts` jest generowany — nigdy nie edytuj go ręcznie.
+
+Dzielenie kodu jest skonfigurowane jawnie:
+
+```ts
+codeSplittingOptions: {
+  defaultBehavior: [["component"], ["loader"], ["errorComponent"], ["notFoundComponent"]],
+}
+```
+
+`src/routes.ts` eksportuje `ROUTES`, jedyną tabelę stałych ze ścieżkami. Odnośniki, strażnicy tras, znaczniki `head`, mapa witryny i ścieżki WebSocket czytają z niej, więc ścieżka zapisana jest raz:
+
+```ts
+export const ROUTES = {
+  ACCOUNT_ORDER: "/account/orders/$id",
+  ADMIN_PRODUCTS: "/admin/catalog/products",
+  API_REALTIME: {
+    ADMIN_WS: "/api/realtime/admin/ws",
+    STOREFRONT_WS: "/api/realtime/storefront/ws",
+  },
+  DOCS_PAGE: "/docs/$",
+  PRODUCT: "/products/$handle",
+} as const
+```
+
+## Co należy do pliku trasy
+
+Plik trasy komponuje stronę i nic więcej. Deklaruje swój komponent, `staticData.namespaces`, loader uruchamiający ładowanie komunikatów i wstępne pobieranie danych w jednym `Promise.all` oraz `head`. Plik `src/routes/_storefront.products.index.tsx` jest reprezentatywny:
+
+```ts
+loader: async ({ context, deps }) => {
+  const [messages] = await Promise.all([
+    context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
+    prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
+  ])
+
+  return { description: messages.description, title: messages.title }
+},
+loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
+staticData: { namespaces: ["pages.products"] },
+validateSearch: storefrontProductsSearchSchema,
+```
+
+Widgety, okna dialogowe, formularze i kolumny tabel mieszkają w `src/presentation/components/custom/` i same czytają swoje tłumaczenia oraz swoje zapytania. Prostsze trasy używają `head: pageHead` z `src/lib/seo.ts`, które zamienia `{ title, description }` z loadera w `<title>`, `description` i dwa odpowiadające im znaczniki Open Graph.
+
+Plik `src/routes/__root.tsx` odpowiada za powłokę dokumentu: `beforeLoad` ustala język i wstępnie ładuje każdą przestrzeń nazw wymaganą przez dopasowane trasy, `shellComponent` renderuje `<html lang>` wraz ze skryptami inicjującymi motyw, panel boczny i preferencje tabel, a `head` składa odnośniki kanoniczne i `hreflang` z `localeLinks`. Strony sklepu owinięte są w `SmoothScroll`; strony panelu administracyjnego nie.
+
+## Funkcje serwerowe
+
+Mutacje i odczyty po stronie serwera to natywne funkcje `createServerFn` eksportowane z przypadków użycia modułów, więc aplikacja nie udostępnia dla nich żadnego interfejsu REST. Przypadek użycia sam deklaruje swoją autoryzację i walidację:
+
+```ts
+export const createCompleteProduct = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["create"] })])
+  .validator((input: zod.input<typeof productZodSchemas.createCompleteInput>) => productZodSchemas.createCompleteInput.parse(input))
+  .handler(async ({ data }) => {
+    /* … */
+  })
+```
+
+Strażnicy tras w `beforeLoad` decydują jedynie o tym, co wyrenderować; nigdy nie zastępują autoryzacji. Opis `authorized`, `withRequest` i `withRateLimit` znajduje się na stronie [Better Auth](/docs/integrations/better-auth).
+
+Tam, gdzie handler wciągnąłby ciężki kod serwerowy do grafu klienta, moduł dzieli się na `x.ts` i `x.server.ts` i importuje leniwie. Plik `src/integrations/stripe/stripe.actions.ts` robi dokładnie to:
+
+```ts
+.handler(async ({ data }) => {
+  const { handleCreateCheckoutSession } = await import("~/src/integrations/stripe/stripe.actions.server")
+
+  return handleCreateCheckoutSession(data)
+})
+```
+
+## Handlery HTTP
+
+Tylko trzy trasy deklarują `server.handlers`:
+
+| Trasa                  | Plik                                | Handler                                                                             |
+| ---------------------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
+| `/api/auth/$`          | `src/routes/api/auth.$.ts`          | `handleAuthRequestWithAudit(request)` dla `GET` i `POST`                            |
+| `/api/webhooks/stripe` | `src/routes/api/webhooks.stripe.ts` | Tylko `POST`; weryfikuje `stripe-signature`, następnie kieruje do `webhookHandlers` |
+| `/dev/emails`          | `src/routes/dev.emails.tsx`         | `GET`; zwraca 404, jeśli nie jest ustawione `import.meta.env.DEV`                   |
+
+```ts
+export const Route = createFileRoute("/api/auth/$")({
+  server: {
+    handlers: {
+      GET: ({ request }) => handleAuthRequestWithAudit(request),
+      POST: ({ request }) => handleAuthRequestWithAudit(request),
+    },
+  },
+})
+```
+
+Punkty końcowe WebSocket dla unieważniania świadomie _nie_ są trasami plikowymi — dopasowuje je `src/server.ts` przed handlerem Start, ponieważ na podniesienie połączenia WebSocket musi odpowiedzieć sam Durable Object.
+
+## Brak prerenderowania
+
+`vite.config.ts` nie włącza prerenderowania i żaden skrypt nie prerenderuje stron. Każda strona, włącznie ze sklepem i tymi stronami dokumentacji, renderowana jest na Workerze przy każdym żądaniu. Buforowanie pochodzi więc z warstwy zapytań oraz z nagłówków cache HTTP, a nie ze zrzutu HTML z czasu budowania.
+
+## Powiązane strony
+
+- [Cykl życia żądania](/docs/architecture/request-lifecycle)
+- [Routing](/docs/architecture/request-lifecycle)
+- [TanStack Query](/docs/integrations/tanstack-query)
+- [Poradniki](/docs/guides)

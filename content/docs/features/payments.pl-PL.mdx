@@ -1,0 +1,204 @@
+---
+title: "Płatności"
+description: "Sesje Stripe Checkout w trybie elements, osiem obsługiwanych zdarzeń webhook, tabela payment i droga od opłaconej sesji do zamówienia."
+---
+
+Stripe jest jedynym dostawcą płatności. Nie ma innego adaptera, a `payment.provider` jest typowany jako literał `"stripe"`.
+
+## Klienci
+
+| Plik                                           | Czym jest                                                                                                                                               |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/integrations/stripe/stripe.server.ts`     | serwerowe SDK: `new StripeServer(env.STRIPE_SECRET_KEY, { apiVersion, appInfo: { name: APP_NAME }, httpClient: StripeServer.createFetchHttpClient() })` |
+| `src/integrations/stripe/stripe.client.ts`     | `getStripe(locale)` — zapamiętane `loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)`                                                             |
+| `src/integrations/stripe/stripe.appearance.ts` | `getStripeAppearance("light" \| "dark")` dla motywu Elements                                                                                            |
+
+`createFetchHttpClient()` ma znaczenie: klient HTTP z Node'a nie działa wewnątrz Cloudflare Workera.
+
+Przypięta wersja API leży w `stripe.constants.ts`:
+
+```ts
+export const STRIPE_API_VERSION = "2026-08-26.dahlia" as const
+```
+
+`getStripe` mapuje język aplikacji na język Stripe Elements (`pl-PL → pl`, `en-US → en`, pozostałe `auto`) i przy braku klucza publicznego ostrzega w konsoli, zamiast rzucać wyjątek — źle skonfigurowane środowisko deweloperskie wciąż się renderuje.
+
+## Waluta i metody
+
+```ts
+const STRIPE_CURRENCY_BY_CODE = { PLN: "pln" } as const satisfies Record<SupportedCurrencyCode, string>
+export const STRIPE_CURRENCY = STRIPE_CURRENCY_BY_CODE[STORE_CURRENCY_CODE]
+export const CHECKOUT_PAYMENT_METHOD_ORDER = ["card", "blik", "p24"] as const
+```
+
+`STORE_CURRENCY_CODE` to `"PLN"` (`src/modules/_core/constants/currency.ts`), a `SUPPORTED_CURRENCY_CODES` zawiera tylko `PLN`, więc ograniczenie `satisfies` wymusza dodanie nowej waluty w obu miejscach naraz. BLIK i Przelewy24 to dwie polskie metody oferowane obok kart; portfele i Link są wyłączone w `PAYMENT_ELEMENT_OPTIONS`.
+
+## Sesja
+
+Sesje są tworzone z `ui_mode: "elements"`, co oznacza, że formularz płatności jest wbudowany w `/checkout`, a nie przekierowuje na stronę hostowaną przez Stripe:
+
+```ts
+const session = await stripe.checkout.sessions.create({
+  customer_email: email,
+  line_items: toLineItems(lines, shippingCost),
+  metadata,
+  mode: "payment",
+  payment_intent_data: { metadata, receipt_email: email },
+  return_url: returnUrl,
+  ui_mode: "elements",
+})
+```
+
+`returnUrl` to `${resolveOrigin()}/checkout?success=true`, gdzie `resolveOrigin()` preferuje nagłówek `origin`, następnie origin z `referer`, a na końcu `APP_URL` z `src/presentation/branding/app.ts`.
+
+Ten sam obiekt `metadata` jest dołączany do sesji i do payment intentu, więc webhook, który ma tylko intent, wciąż znajdzie checkout. Metadane zawierają `checkoutId`, `locale` (z `getCurrentLocale()`), `userId` (pusty napis dla gościa) i pociętą listę `items0…N`.
+
+Pozycje sesji są budowane z cen zwalidowanych na serwerze, plus dosłowna linia `"Shipping"`, gdy metoda dostawy kosztuje więcej niż zero. Nazwy pozycji pochodzą z `lineTitle`, czyli `"<tytuł produktu> — <tytuł wariantu>"`, chyba że tytuł wariantu jest pusty.
+
+## Wiersz płatności
+
+`payment` (`src/modules/payment/payment.schema.ts`):
+
+| Kolumna           | Uwagi                                                              |
+| ----------------- | ------------------------------------------------------------------ |
+| `checkout_id`     | `references(() => checkout.id, { onDelete: "cascade" })`, not null |
+| `amount`          | jednostki podrzędne, not null                                      |
+| `currency`        | 3 znaki, domyślnie `"PLN"`                                         |
+| `provider`        | not null; jedyna zapisywana wartość to `"stripe"`                  |
+| `transaction_id`  | identyfikator **sesji Checkout** Stripe, z unikalnym indeksem      |
+| `status`          | `pending \| succeeded \| failed \| refunded`, domyślnie `pending`  |
+| `refunded_amount` | jednostki podrzędne, domyślnie `0`                                 |
+| `refunded_at`     | nullowalny znacznik czasu                                          |
+
+To, że `transaction_id` trzyma identyfikator sesji, a nie payment intentu, jest powodem, dla którego kilka handlerów webhooka wywołuje `resolveTransactionId(paymentIntent)` — funkcja listuje sesje filtrowane po `payment_intent` i bierze pierwszą.
+
+Akcesory w `payment.accessors.ts`: `createPendingPayment`, `getPaymentByTransactionId`, `getPaymentContextByTransactionId` (dołącza `email` i `userId` z checkoutu) oraz `repointPayment` (przenosi wiersz z identyfikatora wygasłej sesji na nowy i aktualizuje kwotę).
+
+## Punkt końcowy webhooka
+
+`src/routes/api/webhooks.stripe.ts` — handler trasy `POST`, a nie funkcja serwerowa:
+
+```ts
+const signature = request.headers.get("stripe-signature")
+
+if (signature === null || !env.STRIPE_WEBHOOK_SECRET) {
+  return new Response("Missing signature or webhook secret", { status: HTTP_STATUS.BAD_REQUEST })
+}
+
+const event = await verifiedStripeEvent(request, signature, env.STRIPE_WEBHOOK_SECRET)
+```
+
+`verifiedStripeEvent` używa `stripe.webhooks.constructEventAsync` — wariant asynchroniczny jest wymagany na Workers, gdzie API kryptograficzne opiera się na obietnicach. Nieudana weryfikacja loguje błąd i zwraca 400.
+
+Typ zdarzenia bez handlera loguje `[Stripe] Safely ignoring unhandled event` i zwraca `200`, więc Stripe nie ponawia zdarzeń, które sklepu nie interesują. Handler, który rzuci wyjątek, zwraca `500`, więc Stripe **ponawia** takie zdarzenie.
+
+## Osiem obsługiwanych zdarzeń
+
+`webhookHandlers` w `src/integrations/stripe/stripe.webhooks.tsx` (plik `.tsx`, bo buduje element e-maila potwierdzającego):
+
+| Zdarzenie                                  | Handler                        | Skutek                                                                    |
+| ------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------- |
+| `checkout.session.completed`               | `handleFulfillCheckoutSession` | tworzy zamówienie                                                         |
+| `checkout.session.async_payment_succeeded` | `handleFulfillCheckoutSession` | to samo, dla BLIK/P24 rozliczanych później                                |
+| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` | zwalnia rezerwację, ustawia płatność i checkout na `failed`               |
+| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | to samo                                                                   |
+| `payment_intent.payment_failed`            | `handlePaymentIntentFailed`    | tylko wpis do audytu i ostrzeżenie w logach — bez zmiany stanu            |
+| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` z `restock: true`                                           |
+| `charge.dispute.created`                   | `handleChargeDisputeCreated`   | `flagOrderDispute`, wpis do audytu, unieważnienie listy zamówień w panelu |
+| `charge.dispute.closed`                    | `handleChargeDisputeClosed`    | przegrany → `refundOrder` z `restock: false`; inaczej `clearOrderDispute` |
+
+Klucze pochodzą ze `STRIPE_WEBHOOK_EVENTS` w `stripe.constants.ts`, więc ta stała jest listą zdarzeń do zarejestrowania w panelu Stripe.
+
+## Realizacja
+
+`handleFulfillCheckoutSession` najpierw filtruje po statusie płatności:
+
+```ts
+const FULFILLABLE_PAYMENT_STATUSES = new Set<StripeType.Checkout.Session["payment_status"]>(["no_payment_required", "paid"])
+```
+
+Zdarzenie `checkout.session.completed` z `payment_status: "unpaid"` — normalne dla BLIK i P24 — loguje informację i wraca, a zamówienie powstaje później z `async_payment_succeeded`.
+
+Następnie parsuje linie pozycji z metadanych, wywołuje `fulfillCheckout`, a jeśli wróci identyfikator zamówienia:
+
+1. `recordOrderPlacedAudit(orderId, …)` i `recordOrderPaymentCapturedAudit(orderId, …)` ze sformatowaną kwotą.
+2. `scheduleAdminOrdersInvalidation()` i `scheduleProductCatalogInvalidation()`.
+3. `notifyOrderConfirmed(session, { currency, lines, orderId })`.
+
+`fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) rozwiązuje oczekujący checkout po identyfikatorze transakcji i uruchamia jeden wsad D1 zbudowany przez `prepareFulfillCheckoutBatch`:
+
+```ts
+statements: [
+  db.update(payment).set({ status: "succeeded" }).where(eq(payment.transactionId, transactionId)),
+  db
+    .update(checkout)
+    .set({ status: "completed" })
+    .where(and(eq(checkout.id, context.checkoutId), eq(checkout.status, "pending"))),
+  db.insert(order).values({/* … */}),
+  ...tail, // insert do orderItem + jedna aktualizacja inventory na linię
+]
+```
+
+Aktualizacja `checkout` jest warunkowana przez `status = "pending"`, co czyni cały webhook **idempotentnym**: ponownie dostarczone zdarzenie znajduje checkout już w stanie `completed`, `resolvePendingCheckout` zwraca `undefined`, a `fulfillCheckout` wraca bez żadnego zapisu.
+
+Kwoty zamówienia są wyliczane, a nie brane od klienta: `itemsSubtotal` to suma `price * qty` po liniach z metadanych, a `shippingTotal = Math.max(amount - itemsSubtotal, 0)`, gdzie `amount` to `session.amount_total`.
+
+Rezerwacja jest przekształcana, a nie zwalniana: każda linia wykonuje `quantityReserved = quantityReserved - qty`, zostawiając `quantityAvailable` w stanie po rezerwacji. Zobacz [Stany magazynowe](/docs/features/inventory).
+
+## Zwolnienie
+
+`prepareReleaseCheckoutBatch` ustawia płatność na `failed`, checkout na `failed` i zwraca stan magazynowy:
+
+```ts
+db.update(inventory)
+  .set({
+    quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${line.qty})`,
+    quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${line.qty})`,
+  })
+  .where(eq(inventory.variantId, line.variantId))
+```
+
+Ograniczenia `min`/`max` sprawiają, że podwójne zwolnienie nie może zawyżyć dostępnego stanu powyżej tego, co faktycznie zarezerwowano.
+
+Linie do zwolnienia są parsowane przez `checkoutReleaseLinesSchema`, które jest `.loose()` — przyjmuje pełny kształt linii realizacji i wymaga tylko `variantId` oraz `qty`.
+
+## Zwroty i spory
+
+`handleChargeRefunded` rozwiązuje sesję z payment intentu obciążenia i wywołuje `refundOrder({ fullyRefunded: charge.amount_refunded >= charge.amount, refundedAmount: charge.amount_refunded, restock: true, transactionId })`.
+
+`refundOrder` (`src/modules/order/use-cases/refund-order.ts`) **nie** jest funkcją serwerową — to zwykła funkcja asynchroniczna wywoływana wyłącznie z webhooka. Wraca wcześnie, gdy płatność ma już status `refunded`, więc ponownie dostarczone zdarzenie zwrotu nic nie robi. Zwrot do magazynu następuje tylko przy pełnym zwrocie pieniędzy:
+
+```ts
+if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
+  const lines = await getRestockLinesForOrder(settled.orderId)
+  ...
+}
+```
+
+`prepareRefundBatch` zapisuje `refundedAmount`, `refundedAt` i `status` (`refunded` przy pełnym zwrocie, w przeciwnym razie powrót do `succeeded`), przy pełnym zwrocie ustawia zamówienie na `refunded` i dodaje `quantityAvailable + quantity` dla każdej linii zwracanej do magazynu.
+
+Spory są zapisywane w `order.metadata`, a nie w kolumnach: `flagOrderDispute` scala `{ id, reason, status, amount }` do JSON-a przez `mergeDisputeMetadata` (`order.display.utils.ts`). Przegrany spór jest traktowany jak pełny zwrot z `restock: false` i loguje `review inventory manually` — towar przepadł, więc stan nie jest przywracany.
+
+## Testy lokalne
+
+```bash
+bun run stripe:listen
+```
+
+uruchamia `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`. Sekret podpisu, który ta komenda wypisze, wstaw do `STRIPE_WEBHOOK_SECRET`.
+
+## Sekrety
+
+`STRIPE_SECRET_KEY` i `STRIPE_WEBHOOK_SECRET` są zadeklarowane na liście `secrets.required` każdego środowiska w `wrangler.jsonc`. `VITE_STRIPE_PUBLISHABLE_KEY` jest zmienną przeglądarki i musi być dostępna w czasie budowania, bo Vite wstawia ją do pakietu.
+
+## Brak przycisku zwrotu w panelu
+
+`/admin/orders/$orderId` pokazuje przyciski Drukuj, Zwrot i Realizuj, ale ten ekran to makieta zbudowana na `src/data/order-detail.ts` i żaden z przycisków nie jest podłączony. Zwroty wykonuje się w panelu Stripe i docierają do M'Arte jako `charge.refunded`. `canRefundAdminOrder` istnieje w `order.admin-actions.utils.ts`, a uprawnienie `order: ["refund"]` w `auth.access.ts`, ale żadna funkcja serwerowa ich nie używa.
+
+## Powiązane strony
+
+- [Kasa](/docs/features/checkout)
+- [Zamówienia](/docs/features/orders)
+- [Stany magazynowe](/docs/features/inventory)
+- [E-maile transakcyjne](/docs/features/email)
+- [Integracje: Stripe](/docs/integrations/stripe)

@@ -1,0 +1,213 @@
+---
+title: "Contributing"
+description: "How to set up, branch, check, test, commit and open a pull request against the M'Arte repository."
+---
+
+There is no `CONTRIBUTING.md` in the repository, and no issue or pull-request templates under `.github/`. This page is the process.
+
+The gates are mechanical rather than social. `bun run check` and `bun run test` decide whether a change is acceptable in shape, the pre-commit hook runs the first of those on your staged files, and the three GitHub Actions workflows re-run everything before anything is deployed. Review is for behaviour and intent; the machine already checked the rest.
+
+## Before you start
+
+| Read                                                                                        | Why                                                  |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [Layering](/docs/architecture/layering)                                                     | Which layer your change belongs in                   |
+| [Dependency rules](/docs/architecture/dependency-rules)                                     | Which direction imports may point                    |
+| [Conventions](/docs/reference/conventions)                                                  | Naming, file shape, export style                     |
+| [Add a module](/docs/guides/add-a-module) and [Add a use case](/docs/guides/add-a-use-case) | The two shapes most changes take                     |
+| `AGENTS.md` at the repository root                                                          | The short, authoritative list of project conventions |
+
+`AGENTS.md` is the source of truth when a documentation page and the code disagree. Three of its rules are worth repeating here because they are the ones most often broken by accident:
+
+- Protected server functions enforce authorization themselves. A route guard is navigation UX, never authorization.
+- Query keys belong to the feature that owns them. When you move code, preserve the tuple values.
+- Import from the defining file. Do not add barrel files or objects that merely collect unrelated functions.
+
+## Set up
+
+1. Install the global Vite+ CLI, because the `prepare` lifecycle script calls it during install:
+
+   ```sh
+   curl -fsSL https://vite.plus | bash
+   ```
+
+2. Install dependencies. `prepare` runs `vp config --no-agent`, which points `core.hooksPath` at `.vite-hooks/_`, and `postinstall` runs `bun run typegen`:
+
+   ```sh
+   vp install
+   ```
+
+3. Create your environment files from the example. Development, preview and production each need their own:
+
+   ```sh
+   cp .env.example .env.development
+   ```
+
+4. Apply migrations before the first run, because `bun run dev` uses remote bindings and talks to the real development D1:
+
+   ```sh
+   bun run db:migrate:development
+   bun run dev
+   ```
+
+[Installation](/docs/getting-started/installation) and [Environment variables](/docs/getting-started/environment-variables) cover this in full, including which values are `VITE_`-prefixed and therefore browser-visible.
+
+## Branching
+
+Branch from `main`. Never push to `main` directly: `.github/workflows/deploy-production.yml` triggers on every push to `main` and deploys the production Worker, with `concurrency: production` and `cancel-in-progress: false`.
+
+Open the pull request against `main`. That gives you two things:
+
+- `ci.yml` runs `bun run check`, then `bun run test:coverage`, then `bun run build:preview`, and uploads the coverage report as an artifact.
+- `deploy-preview.yml` runs `bun run check`, deploys to the preview environment and comments the preview URL on the pull request, updating the same comment on each push.
+
+Both deploy workflows re-run the full check before building, so a change that passes locally and fails in CI means your local tree is not clean.
+
+## The loop
+
+| Command                 | What it does                                                               |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `bun run dev`           | `vp dev --mode development` with remote bindings, on port 3000 (strict)    |
+| `bun run check`         | `vp check` — format, lint and type check. The gate CI runs                 |
+| `bun run check:fix`     | The same, applying every fix it can                                        |
+| `bun run test`          | All three Vitest projects                                                  |
+| `bun run test:watch`    | Watch mode                                                                 |
+| `bun run test:changed`  | Only the suites affected by your working tree                              |
+| `bun run test:coverage` | Coverage report, and the thresholds that CI enforces                       |
+| `bun run build:preview` | Builds the preview Worker and runs `scripts/verify-build.ts`               |
+| `bun run stripe:listen` | Forwards live Stripe test webhooks to `localhost:3000/api/webhooks/stripe` |
+
+Run `bun run check` and `bun run test` before every commit. The pre-commit hook runs `bun run check:pre-commit`, which is `vp staged` — and `vite.config.ts` configures `staged: { "*": ["vp check --fix"] }`, so the hook formats, lints and type checks the staged files and rewrites them in place. It is a safety net, not a substitute: it sees only what you staged.
+
+To bypass the hooks in an emergency, set `VP_GIT_HOOKS=0`. Do not make that a habit, because CI will not let the change through anyway.
+
+## What the check actually enforces
+
+`vite.config.ts` is the whole configuration. Six Oxlint categories are set to `error` — `correctness`, `nursery`, `pedantic`, `perf`, `style`, `suspicious` — with `typeAware: true`, `typeCheck: true`, `denyWarnings: true` and `reportUnusedDisableDirectives: "error"`. A warning fails. An unused suppression fails.
+
+The rules that stop people most often:
+
+| Rule                          | Limit                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `max-lines`                   | 800 per file                                                            |
+| `max-lines-per-function`      | 150                                                                     |
+| `max-statements`              | 20 per function                                                         |
+| `no-magic-numbers`            | Only `-1`, `0` and `1` are free; name the rest as a constant            |
+| `id-length`                   | Two characters minimum, with `_`, `m` and `t` exempted                  |
+| `sort-keys`                   | Object keys sorted alphabetically, disabled only under `src/routes/`    |
+| `one-var`                     | One declaration per statement                                           |
+| `typescript/only-throw-error` | Only `Error` subclasses, plus TanStack's `NotFoundError` and `Redirect` |
+
+Five narrow overrides exist, and they are the only exceptions in the repository:
+
+| Files                                                              | Relaxed                                                                            |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `src/**/*.test.*`, `src/**/__test__/**`, `src/platform/testing/**` | `no-await-in-loop`, `no-magic-numbers`, `unicorn/no-null`                          |
+| `src/presentation/**`, `src/hooks/**`                              | `typescript/consistent-return`                                                     |
+| `src/platform/testing/mocks/**`                                    | `require-await`, `typescript/require-await`, `typescript/no-unsafe-type-assertion` |
+| `src/routes/**`                                                    | `sort-keys`                                                                        |
+| `vite.config.ts`                                                   | `max-lines`                                                                        |
+
+Do not add a sixth override, and do not add an inline suppression. Outside generated files — `src/routeTree.gen.ts` and `src/types/worker-configuration.d.ts`, both of which the linter ignores — the repository contains **zero** suppressions, and exactly one `as unknown as` cast, in the D1 test mock at `src/platform/testing/mocks/d1.ts:60`, which is why that override exists. If a rule genuinely blocks correct code, split the function or name the value; that is almost always the actual fix.
+
+The same principle applies to comments. There are three in the whole of `src/`, each stating a constraint the types cannot carry — for example in `src/modules/checkout/checkout.utils.ts`, where an `INSERT ... SELECT` depends on the table's physical column order. Code narration, section banners and restatements of a name are removed by review.
+
+Import order is not a matter of taste either: `vite.config.ts` declares 17 custom import groups, ordered by layer, and the formatter applies them. Never hand-sort imports; run `bun run check:fix`.
+
+## Tests
+
+Tests live beside the code they cover, in a `__test__/` directory, named after the source file. `vite.config.ts` defines three projects, selected by filename:
+
+| Project       | Files                                   | Environment | Script                     |
+| ------------- | --------------------------------------- | ----------- | -------------------------- |
+| `node`        | `*.test.ts(x)`, excluding the two below | `node`      | `bun run test:unit`        |
+| `integration` | `*.integration.test.ts`                 | `node`      | `bun run test:integration` |
+| `component`   | `*.component.test.tsx`                  | `jsdom`     | `bun run test:component`   |
+
+Import from `vite-plus/test`, not from `vitest`. Component tests load `src/platform/testing/setup.ts`. Database suites run against `node:sqlite` behind the D1-shaped transport in `src/platform/testing/mocks/d1.ts`; mock external providers and use local fixtures, so that no test needs network access or a remote database.
+
+Coverage thresholds are a ratchet, configured with `autoUpdate: false`:
+
+| Metric     | Threshold |
+| ---------- | --------- |
+| Statements | 72        |
+| Lines      | 71        |
+| Functions  | 68        |
+| Branches   | 69        |
+
+Because they never move on their own, a change that lowers coverage fails `bun run test:coverage`. When you raise coverage in an area, raise the number in `vite.config.ts` in the same pull request. `src/presentation/components/shadcn/**`, `src/platform/testing/**`, `src/routeTree.gen.ts` and the test files themselves are excluded from the measurement.
+
+[Testing architecture](/docs/architecture/testing-architecture) explains what the suites are aimed at; [Testing](/docs/tooling/testing) covers running them.
+
+## Both locales, always
+
+Two parallel sets of files must stay in step.
+
+**UI strings** live in `messages/en-US/` and `messages/pl-PL/`, 48 namespace files each. `src/integrations/use-intl/__test__/i18n.messages.test.ts` iterates over every English file and asserts that the Polish file with the same name exists and contains every key:
+
+```ts
+it.each(Object.entries(localeMessages).filter(([path]) => path.includes("/en-US/")))(
+  "provides Polish messages for every key in %s",
+  (path, english) => {
+    const polish = localeMessages[path.replace("/en-US/", "/pl-PL/")]
+    expect(polish).toBeDefined()
+    expect(messageKeys(polish ?? {})).toStrictEqual(expect.arrayContaining(messageKeys(english)))
+  },
+)
+```
+
+Adding an English key without its Polish counterpart fails `bun run test`. See [i18n messages](/docs/guides/i18n-messages).
+
+**Documentation** lives in `content/docs/` as `<slug>.<locale>.mdx`, one file per locale, with each folder listing its pages in `meta.<locale>.json`. Both locale meta files list the same slugs. Nothing fails the build if you forget the Polish page — it simply falls back to Polish content being absent — so this one is on you.
+
+The MDX component map for docs pages is `src/presentation/components/custom/docs-mdx.tsx`. It maps plain HTML elements only: headings, paragraphs, lists, tables, `pre`, `code`, `blockquote`, `hr` and links. There are no `Callout`, `Cards`, `Steps` or `Tabs` components, so write plain Markdown and use tables and fenced code blocks for structure.
+
+Run `bun run content` after editing docs to regenerate `.source/`; `bun run dev` does it for you.
+
+## Commit messages
+
+`.vite-hooks/prepare-commit-msg` runs `scripts/commit-msg.ts`, which enforces the conventional format `<type>(<scope>): <description>` and prepends an emoji to the subject line. An unrecognised type, or no conventional prefix at all, exits non-zero and aborts the commit.
+
+| Type    | Emoji | Type       | Emoji |
+| ------- | ----- | ---------- | ----- |
+| `feat`  | ✨    | `perf`     | 🚀    |
+| `fix`   | 🐛    | `refactor` | 📦    |
+| `docs`  | 📚    | `revert`   | 🗑️    |
+| `test`  | 🚨    | `style`    | 💎    |
+| `build` | 🛠️    | `chore`    | ♻️    |
+| `ci`    | ⚙️    |            |       |
+
+The script leaves a subject alone if it already starts with an emoji, if the commit source is `squash`, `merge` or `template`, or if the subject is one git generates itself (`Merge …`, `Revert "…`, `fixup! …`, `squash! …`).
+
+So `docs(project): document the licence and roadmap` becomes `📚 docs(project): document the licence and roadmap`. See [Conventional commits](/docs/tooling/conventional-commits).
+
+## Pull requests
+
+Use a conventional title, because it is what ends up in the history. In the description, cover four things:
+
+1. **What behaviour changed**, in the terms a user of the shop or the admin console would recognise.
+2. **How you verified it** — which suites, which pages you clicked through, whether you replayed a Stripe webhook with `bun run stripe:listen`.
+3. **Anything left unfinished**, including any screen still rendering fixtures from `src/data/`.
+4. **Migrations**, if the change touches the schema: which environments you applied them to, and whether the change is reversible.
+
+Keep the diff scoped. The existing history contains several commits touching two thousand files, and that is exactly what makes them impossible to review — do not add more.
+
+## Generated files
+
+| File or directory                               | Generated by                                  | Committed       |
+| ----------------------------------------------- | --------------------------------------------- | --------------- |
+| `src/routeTree.gen.ts`                          | TanStack Start's Vite plugin                  | Yes             |
+| `src/types/worker-configuration.d.ts`           | `bun run cf-typegen`                          | No — gitignored |
+| `.source/`                                      | `bun run content`                             | No              |
+| `src/integrations/drizzle-orm/migrations/*.sql` | `bun run db:generate`                         | Yes             |
+| `.agents/skills`, `.claude/skills`              | `bun run skills:sync` from `skills-lock.json` | No              |
+| `coverage/`, `dist/`                            | test and build runs                           | No              |
+
+Never hand-edit a generated file. Regenerate it. Migrations are the exception in both directions: the SQL is generated but committed and then immutable — a mistake is corrected by a new migration, never by editing an applied one. See [Database](/docs/tooling/database).
+
+## Things that have gone wrong before
+
+- **Do not run `bun run db:seed:preview` or `db:seed:production`.** The seed files in `src/integrations/drizzle-orm/seeds/` are stale against the live databases, and running them overwrites real catalog data. They exist for bootstrapping an empty database and nothing else. See [Database](/docs/tooling/database).
+- **Do not run a regex or `sed` rename across multiple files.** This has corrupted the repository twice. Rename per call site, and let the type checker find what you missed.
+- **Do not point local tooling at production.** `bun run db:studio` defaults to the development environment for that reason; the `:production` variants exist but are a deliberate act.
+- **Do not commit an `.env` file.** `.gitignore` allows only `.env.example` and `.env.test`, and `.env.test` holds dummy values that CI copies over `.env.development` and `.env.preview`.

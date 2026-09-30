@@ -1,0 +1,185 @@
+---
+title: "Wysyłka i dostawa"
+description: "Tabele courier i delivery_method, trzy typy dostawy, wybór punktu InPost na mapie MapLibre i droga dostawy do zamówienia."
+---
+
+## Dwie tabele
+
+`courier` (`src/modules/courier/courier.schema.ts`) to przewoźnik:
+
+| Kolumna         | Uwagi                             |
+| --------------- | --------------------------------- |
+| `internal_code` | unikalna, not null (np. `inpost`) |
+| `name`          | not null                          |
+| `logo`          | nullowalna, do 2048 znaków        |
+| `is_active`     | boolean, domyślnie `true`         |
+
+`delivery_method` (`src/modules/delivery-method/delivery-method.schema.ts`) to to, co wybiera klient:
+
+| Kolumna            | Uwagi                                                                      |
+| ------------------ | -------------------------------------------------------------------------- |
+| `courier_id`       | `references(() => courier.id, { onDelete: "cascade" })`, not null          |
+| `name`             | not null; pokazywana dosłownie w kasie, więc **nie** jest tłumaczona       |
+| `description`      | nullowalna                                                                 |
+| `price`            | całkowite jednostki podrzędne, not null; `0` oznacza darmową dostawę       |
+| `type`             | `locker \| courier \| in_store`, not null                                  |
+| `api_service_code` | not null; identyfikator usługi przewoźnika, obecnie wyłącznie informacyjny |
+| `is_active`        | boolean, domyślnie `true`                                                  |
+
+`api_service_code` jest zapisywany, ale nigdy nie czytany — nic nie generuje etykiet ani nie zamawia przesyłek w API przewoźnika.
+
+## Trzy typy
+
+`delivery-method.constants.ts`:
+
+```ts
+export const DELIVERY_METHOD = { COURIER: "courier", IN_STORE: "in_store", LOCKER: "locker" } as const
+export const DELIVERY_METHODS = [DELIVERY_METHOD.COURIER, DELIVERY_METHOD.LOCKER, DELIVERY_METHOD.IN_STORE] as const
+export const DELIVERY_METHOD_QUERY_KEYS = { ALL: ["deliveryMethods"] as const } as const
+```
+
+`DELIVERY_METHODS` ustala kolejność wyświetlania w kroku kasy: kurier, potem paczkomat, potem odbiór osobisty.
+
+## Listowanie metod
+
+`listDeliveryMethods` (`use-cases/list-delivery-methods.ts`) jest publiczne (`withRequest`) i zwraca tylko te wiersze, w których aktywna jest **i** metoda, **i** przewoźnik:
+
+```ts
+const rows = await db
+  .select({ courier, deliveryMethod })
+  .from(deliveryMethod)
+  .innerJoin(courier, eq(deliveryMethod.courierId, courier.id))
+  .where(and(eq(deliveryMethod.isActive, true), eq(courier.isActive, true)))
+
+return rows.map((row) => Object.assign(row.deliveryMethod, { courier: row.courier }))
+```
+
+Dezaktywacja przewoźnika ukrywa więc od razu wszystkie jego metody.
+
+`listDeliveryMethodsQuery()` nie ma `staleTime`, więc podlega domyślnym ustawieniom klienta. Czytają je krok dostawy, podkrok kuriera i krok płatności (który potrzebuje ceny do wyliczenia kwoty dla Stripe).
+
+`getActiveDeliveryMethodByIdQuery(id)` w `delivery-method.accessors.ts` to odczyt po stronie serwera używany przez `resolveShippingCost`; również filtruje po `isActive`, więc metoda zdezaktywowana w trakcie checkoutu daje koszt dostawy `0`, a nie błąd.
+
+## Dane startowe
+
+`src/integrations/drizzle-orm/seeds/delivery-methods.sql` wstawia dwóch przewoźników (`inpost` i `marte-atelier`) oraz trzy metody:
+
+| Metoda           | Typ        | Cena (jednostki podrzędne) | `api_service_code`        |
+| ---------------- | ---------- | -------------------------- | ------------------------- |
+| Paczkomat InPost | `locker`   | 1499                       | `inpost_locker_standard`  |
+| Kurier InPost    | `courier`  | 1999                       | `inpost_courier_standard` |
+| Odbiór w atelier | `in_store` | 0                          | `marte_atelier_pickup`    |
+
+Seed używa `INSERT OR IGNORE` ze stałymi identyfikatorami UUIDv7. Nie uruchamiaj `bun run db:seed:preview` na żywej bazie — pliki seedów są starsze niż dane produkcyjne.
+
+## Krok dostawy
+
+`_steps/delivery-step.tsx` renderuje jedną kartę `OptionCard` na każdy **typ**, który ma co najmniej jedną aktywną metodę, używając `DELIVERY_ICONS` (`Truck`, `Package`, `Store` z lucide). Opis karty pokazuje najtańszą cenę w grupie:
+
+```ts
+const lowestPrice = Math.min(...methods.map((m) => m.price))
+if (lowestPrice === 0) {
+  return t("deliverySubsteps.free")
+}
+
+const price = format.number(lowestPrice / CENTS_IN_ZLOTY, { currency: "PLN", style: "currency" })
+
+return methods.length > 1 ? `${t("deliverySubsteps.from")} ${price}` : price
+```
+
+Wybór typu zapisuje `deliveryMethodType` i albo automatycznie wybiera jedyną metodę, albo czyści `deliveryMethod`, żeby wybór nastąpił w podkroku.
+
+### Kurier
+
+`delivery/courier/delivery-courier.tsx` renderuje grupę radiową metod typu `courier` ze sformatowanymi cenami oraz pole tekstowe `deliveryNotes`. To pole jest utrwalane jako `checkout.customer_note` i kopiowane na `order.customer_note`. Komponent zwraca `undefined`, gdy nie ma metod kurierskich.
+
+### Odbiór osobisty
+
+`delivery/store/delivery-in-store.tsx` to sama treść: dwa akapity z `deliverySubsteps.inStoreTitle` i `deliverySubsteps.inStoreText`. Nie ma wyboru salonu; pole `storeLocation` istnieje w `checkoutSchema`, ale nic go nie zapisuje.
+
+### Paczkomat
+
+`delivery/locker/delivery-locker.tsx` pokazuje aktualnie wybrany identyfikator paczkomatu i osadza `InpostSelector`. Pole `lockerId` jest wymagane przez `superRefine` w `checkoutSchema`, ilekroć `deliveryMethodType === "locker"`.
+
+## Wybór punktu InPost
+
+Integracja to cztery małe pliki w `src/integrations/inpost`:
+
+```ts
+const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
+const MIN_CITY_LENGTH = 3
+
+export const fetchPointsByCity = async (city: string): Promise<InpostPointParsed[]> => {
+  const trimmed = city.trim()
+  if (trimmed.length < MIN_CITY_LENGTH) {
+    return []
+  }
+
+  const url = `${INPOST_API_BASE}?city=${encodeURIComponent(capitalizeCity(trimmed))}&per_page=1000`
+  ...
+}
+```
+
+Rzeczy warte uwagi:
+
+- Wywołanie idzie **wprost z przeglądarki** do publicznego API punktów InPost. Nie ma funkcji serwerowej, nie ma proxy i nie ma klucza API.
+- `capitalizeCity` zamienia pierwszą literę każdego słowa na wielką, czego API oczekuje.
+- Odpowiedź inna niż OK rzuca wyjątek; odpowiedź, która nie przejdzie `inpostApiResponseSchema.safeParse`, zwraca `[]` zamiast rzucać — zmiana schematu po stronie InPostu degraduje się więc do „nie znaleziono punktów”.
+- `inpostPointsByCityQueryOptions(city)` cache'uje agresywnie: `staleTime` jeden dzień, `gcTime` dwa dni, klucz po przyciętej nazwie miasta w małych literach i `enabled` dopiero od trzech znaków.
+
+`inpost.zod.ts` parsuje każdy punkt do `{ address_details, location, location_description, location_type, name, opening_hours, payment_available, status }`. `location_description` jest przekształcane z `null` na `""`.
+
+Interfejs leży w `.../delivery/locker/inpost/`:
+
+| Plik                                            | Rola                                                               |
+| ----------------------------------------------- | ------------------------------------------------------------------ |
+| `inpost-provider.tsx`                           | `InpostProvider` / `useInpost`; opóźnia wpisywanie miasta o 400 ms |
+| `inpost-selector.tsx`                           | okno dialogowe z mapą MapLibre i panelem bocznym                   |
+| `inpost-map-updater.tsx`                        | ponownie centruje mapę przy zmianie zbioru punktów                 |
+| `inpost-marker.tsx`                             | jeden znacznik na punkt                                            |
+| `inpost-popup.tsx`                              | `HoveredPointPopup` dla znacznika pod kursorem                     |
+| `inpost-sidebar.tsx`, `inpost-sidebar-item.tsx` | przewijana lista punktów                                           |
+| `inpost-point-details.tsx`                      | adres i godziny otwarcia wybranego punktu                          |
+
+Mapa to `react-map-gl/maplibre` z podkładem Carto Voyager (`https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json`) i `maxBounds` ograniczonym do Polski. Kliknięcie tła mapy czyści `lockerId`. Do formularza trafia `name` wybranego punktu, więc `checkout.locker_id` i `order.locker_id` trzymają nazwę punktu InPost, na przykład `KRA01A`.
+
+## Jak dostawa trafia do zamówienia
+
+1. `deliveryMethod` (identyfikator metody) jest wysyłany razem z formularzem kasy.
+2. `prepareCreateCheckoutBatch` zapisuje go do `checkout.delivery_method_id`, a `lockerId` do `checkout.locker_id`.
+3. `resolveShippingCost` odczytuje `price` metody, a `createStripeSession` dodaje dla niej pozycję `"Shipping"`, gdy cena jest większa od zera.
+4. `prepareFulfillCheckoutBatch` kopiuje `deliveryMethodId`, `lockerId` i `customerNote` z migawki checkoutu na nowy wiersz `order` i wylicza `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
+
+## Dostawa w e-mailach
+
+`src/integrations/resend/order-confirmation.utils.ts` renderuje blok dostawy. `resolveDeliveryMethodLabel` dokleja identyfikator paczkomatu dla metody typu `locker`:
+
+```ts
+if (method.type === "locker" && lockerId !== undefined && lockerId !== "") {
+  return `${method.name} · ${lockerId}`
+}
+```
+
+Przewidywany czas dostawy i czas realizacji **nie** są nigdzie przechowywane — to treść wyszukiwana po typie dostawy:
+
+```ts
+const deliveryType = context?.deliveryMethod?.type ?? "courier"
+const { estimatedDelivery, fulfillmentTime } = messages.deliveryTiming[deliveryType]
+```
+
+Plik `messages/{locale}/emails.order-confirmation.json` ma więc obiekt `deliveryTiming` z kluczami `courier`, `locker` i `in_store`. Zmiana obiecywanego terminu to edycja katalogu komunikatów.
+
+## Czego nie ma
+
+- Nie ma generowania etykiet, zamawiania przesyłek ani żadnego wywołania API przewoźnika poza publicznym wyszukiwaniem punktów.
+- Nie ma ścieżki zapisu śledzenia: `order.tracking_number` i `order.tracking_url` nigdy nie są ustawiane przez aplikację.
+- Nie ma reguł wysyłki: cena to płaska kwota na metodę, bez logiki wagi, rozmiaru, wartości koszyka ani miejsca dostawy.
+- Nie ma tabeli lokalizacji sklepów dla `in_store`.
+- Nie ma ekranu panelu dla przewoźników ani metod dostawy — wiersze zarządza się bezpośrednio w D1.
+
+## Powiązane strony
+
+- [Kasa](/docs/features/checkout)
+- [Zamówienia](/docs/features/orders)
+- [E-maile transakcyjne](/docs/features/email)
+- [Integracje: InPost](/docs/integrations/inpost)

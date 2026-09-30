@@ -1,0 +1,140 @@
+---
+title: "Skrypty projektu"
+description: "Każdy skrypt z package.json w tym repozytorium i dokładnie to, co uruchamia."
+---
+
+Wszystko uruchamiaj z katalogu głównego repozytorium przez `bun run <skrypt>`. Skrypty są wspieranymi punktami wejścia: ustawiają `CLOUDFLARE_ENV`, odtwarzają kolekcje treści i wybierają przypięte wersje narzędzi — nic z tego nie stanie się, jeśli wywołasz `vp` albo `wrangler` bezpośrednio.
+
+## Cykl życia
+
+| Skrypt        | Uruchamia              | Kiedy                                                                          |
+| ------------- | ---------------------- | ------------------------------------------------------------------------------ |
+| `prepare`     | `vp config --no-agent` | Przy każdym `bun install` — instaluje dyspozytor hooków Gita w `.vite-hooks/_` |
+| `postinstall` | `bun run typegen`      | Przy każdym `bun install` — odtwarza typy Workera i `.source/`                 |
+
+CI instaluje z `--ignore-scripts`, a potem samo wywołuje `typegen`, więc na runnerze nie instalują się żadne hooki.
+
+## Rozwój, kompilacja i serwowanie
+
+| Skrypt             | Uruchamia                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `dev`              | `bun run content`, potem `CLOUDFLARE_ENV=development vp dev --mode development` na http://localhost:3000                  |
+| `build`            | Alias `build:preview`                                                                                                     |
+| `build:preview`    | `rm -rf dist`, `bun run content`, `CLOUDFLARE_ENV=preview vp build --mode preview`, `bun scripts/verify-build.ts preview` |
+| `build:production` | Te same trzy etapy z `production` w każdym miejscu                                                                        |
+| `start`            | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                                           |
+| `preview`          | Alias `start`                                                                                                             |
+| `stripe:listen`    | `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`                                                  |
+
+`stripe:listen` wymaga zainstalowanego i zalogowanego Stripe CLI na Twojej maszynie; nie jest to zależność projektu. Uruchom go w drugim terminalu obok `bun run dev`, gdy pracujesz nad płatnościami, i wstaw wypisany `whsec_…` do `STRIPE_WEBHOOK_SECRET` w `.env.development`.
+
+## Wdrożenie
+
+| Skrypt              | Uruchamia                                                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deploy:preview`    | `verify-bindings.ts preview` → `build:preview` → `prepare-deploy-secrets.ts preview` → `wrangler deploy` z `dist/server/wrangler.json` i `.wrangler/secrets.preview.json` |
+| `deploy:production` | Ten sam łańcuch dla `production`                                                                                                                                          |
+
+Oba uruchamiają `wrangler deploy` przez `env -u CLOUDFLARE_ENV vp exec`. Co sprawdza każdy etap, opisuje [CI/CD](/docs/tooling/ci-cd).
+
+## Kontrole
+
+| Skrypt             | Uruchamia                                            |
+| ------------------ | ---------------------------------------------------- |
+| `check`            | `vp check` — formatowanie, lint, kontrola typów      |
+| `check:fix`        | `vp check --fix`                                     |
+| `check:pre-commit` | `vp staged` — używany przez `.vite-hooks/pre-commit` |
+| `check:staged`     | `vp staged --no-fmt`                                 |
+| `lint`             | `vp lint`                                            |
+| `lint:staged`      | `vp staged --no-fmt`                                 |
+| `format`           | `vp fmt`                                             |
+| `format:check`     | `vp fmt --check`                                     |
+
+> `check:staged` i `lint:staged` przekazują `--no-fmt`, którego `vp staged` nie przyjmuje. Kończą się natychmiast błędem `error: unexpected argument '--no-fmt' found`. Używaj `check:pre-commit`.
+
+## Testy
+
+| Skrypt             | Uruchamia                               |
+| ------------------ | --------------------------------------- |
+| `test`             | `vp test run` — wszystkie trzy projekty |
+| `test:unit`        | `vp test run --project node`            |
+| `test:integration` | `vp test run --project integration`     |
+| `test:component`   | `vp test run --project component`       |
+| `test:changed`     | `vp test run --changed`                 |
+| `test:coverage`    | `vp test run --coverage`                |
+| `test:watch`       | `vp test`                               |
+
+`test:watch` nie obserwuje — `vp test` bez podkomendy wykonuje jeden przebieg. Użyj `vp test watch`. Zobacz [Testy](/docs/tooling/testing).
+
+## Baza danych
+
+Każdy skrypt `db:*` celuje w konkretne środowisko. Aliasy bez sufiksu nie zawsze są bezpiecznym wyborem, więc są niżej oznaczone.
+
+| Skrypt                      | Uruchamia                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `db:generate`               | `drizzle-kit generate` — zapisuje nową migrację i zrzut; offline, bez danych uwierzytelniających |
+| `db:migrate`                | Alias `db:migrate:preview` — **zdalnie**                                                         |
+| `db:migrate:local`          | `wrangler d1 migrations apply DB --env development --local`                                      |
+| `db:migrate:development`    | To samo z `--remote` (baza preview)                                                              |
+| `db:migrate:preview`        | To samo dla `--env preview --remote`                                                             |
+| `db:migrate:production`     | To samo dla `--env production --remote`                                                          |
+| `db:migrations:development` | `wrangler d1 migrations list DB --env development --remote`                                      |
+| `db:migrations:preview`     | To samo dla `preview`                                                                            |
+| `db:migrations:production`  | To samo dla `production`                                                                         |
+| `db:push`                   | Alias `db:push:development`                                                                      |
+| `db:push:development`       | `drizzle-kit push` z `.env.development` — trafia w bazę preview                                  |
+| `db:push:preview`           | `drizzle-kit push` z `.env.preview`                                                              |
+| `db:push:production`        | `drizzle-kit push` z `.env.production`                                                           |
+| `db:pull`                   | Alias `db:introspect:development`                                                                |
+| `db:pull:production`        | Alias `db:introspect:production`                                                                 |
+| `db:introspect:development` | `drizzle-kit introspect` z `.env.development`                                                    |
+| `db:introspect:preview`     | To samo z `.env.preview`                                                                         |
+| `db:introspect:production`  | To samo z `.env.production`                                                                      |
+| `db:studio`                 | Alias `db:studio:development`                                                                    |
+| `db:studio:development`     | `drizzle-kit studio` z `.env.development`                                                        |
+| `db:studio:preview`         | To samo z `.env.preview`                                                                         |
+| `db:studio:production`      | To samo z `.env.production`                                                                      |
+| `db:seed`                   | Alias `db:seed:preview`                                                                          |
+| `db:seed:preview`           | Jedenaście połączonych wywołań `wrangler d1 execute DB --env preview --remote --file=…`          |
+| `db:seed:production`        | To samo na produkcji                                                                             |
+
+Skrypty drizzle-kita działają przez `bun --env-file=.env.<środowisko>`, bo `bunfig.toml` ustawia `env = false`; skrypty Wranglera działają przez `vp exec` i czytają `wrangler.jsonc`.
+
+> Nie uruchamiaj `db:seed`, `db:seed:preview` ani `db:seed:production`. Pliki seedów są przestarzałe względem żywego katalogu i przywróciłyby usunięte wiersze testowe.
+
+## Generowanie
+
+| Skrypt       | Uruchamia                                                                                                                        |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `content`    | `fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source` — kompiluje `content/docs` i `content/legal` do `.source/` |
+| `cf-typegen` | `vp exec wrangler types --env development src/types/worker-configuration.d.ts`                                                   |
+| `typegen`    | `cf-typegen`, a potem `content`                                                                                                  |
+
+Oba wyniki są w `.gitignore`. `src/types/worker-configuration.d.ts` jest tym, co nadaje typy `env.DB`, `env.CACHE`, `env.IMAGES`, `env.AUDIT_LOG_QUEUE` i `env.REALTIME_INVALIDATION_HUB`, więc uruchom `bun run cf-typegen` po każdej zmianie bindingu w `wrangler.jsonc`. Nigdy go nie edytuj i nie commituj. `.source/` jest tym, na co rozwiązuje się alias importów `collections/*`, więc uruchom `bun run content` po dodaniu albo zmianie nazwy pliku MDX.
+
+## Umiejętności agentów
+
+| Skrypt          | Uruchamia                                                                     |
+| --------------- | ----------------------------------------------------------------------------- |
+| `skills:sync`   | `bun scripts/sync-skills.ts` — odtwarza `.agents/skills` z `skills-lock.json` |
+| `skills:update` | `bunx --bun skills update --project --yes`, a potem `skills:sync`             |
+
+Zobacz [Umiejętności agentów](/docs/tooling/agent-skills).
+
+## Czyszczenie
+
+| Skrypt           | Usuwa                                                                                                                                                                                                                         |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clean`          | `.source`, `.output`, `.tanstack`, `.wrangler`, `.bun-cache`, `dist`, `dist-ssr`, `coverage`, `playwright-report`, `test-results`, `blob-report`, `playwright/.cache`, `*.tsbuildinfo`, `src/types/worker-configuration.d.ts` |
+| `clean:deep`     | `clean` oraz `node_modules`                                                                                                                                                                                                   |
+| `clean:hardcore` | `clean:deep` oraz `bun.lock` i `opensrc`                                                                                                                                                                                      |
+
+`clean` usuwa `.wrangler`, w którym leży lokalna baza D1 używana przez `db:migrate:local`, a także wygenerowane pliki `secrets.*.json`. Po każdym `clean` potrzebujesz `bun install` (albo co najmniej `bun run typegen`), zanim `bun run check` przejdzie, bo usuwa on oba generowane źródła typów.
+
+`clean:hardcore` usuwa `opensrc/`, czyli vendorowane źródła zależności opisane w `AGENTS.md`. Przywrócisz je przez `npx opensrc <package>`.
+
+## Powiązane strony
+
+- [Vite+](/docs/tooling/vite-plus)
+- [Baza danych](/docs/tooling/database)
+- [CI/CD](/docs/tooling/ci-cd)

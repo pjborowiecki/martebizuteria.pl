@@ -1,0 +1,204 @@
+---
+title: "Theming and branding"
+description: "Change colours, typography, fonts and the shop's identity: the token layers, the two shells, the theme bootstrap and the branding constants."
+---
+
+Everything visual lives under `src/presentation/`. Styles are in `styles/`, theme mechanics in `theme/`, identity constants in `branding/`, and email styling in `emails/`. Nothing outside `src/presentation` declares a colour, a font or a business fact.
+
+## The three stylesheets
+
+| File                 | Lines | Loaded by                                      | Scope                                 |
+| -------------------- | ----- | ---------------------------------------------- | ------------------------------------- |
+| `globals.css`        | 233   | `src/routes/__root.tsx` as a route `link`      | Tokens, base layer, shared components |
+| `admin.css`          | 84    | `src/routes/admin.tsx` as a route `link`       | The admin shell only                  |
+| `storefront.css`     | 20    | `src/routes/_storefront.tsx` as a route `link` | Landing-page reveal animations        |
+| `fonts.css`          | 84    | `@import` at the top of `globals.css`          | Non-critical `@font-face` rules       |
+| `critical-fonts.css` | 60    | Inlined into `<head>` with `?raw`              | The two fonts above the fold          |
+
+Keep the split. A rule that only the admin console needs belongs in `admin.css`; a rule that only the landing page needs belongs in `storefront.css`. `globals.css` is for what both shells share.
+
+## The token layers
+
+`globals.css` declares tokens three times over.
+
+**The M'Arte palette** — the storefront's own named colours, in `:root` and redefined in `.dark`:
+
+```css
+:root {
+  --sea-ink: #173a40;
+  --lagoon: #4fb8b2;
+  --palm: #2f6a4a;
+  --sand: #e7f0e8;
+  --foam: #f3faf5;
+  --bg-base: #e7f3ec;
+  --header-bg: rgba(251, 255, 248, 0.84);
+  /* surface, line, chip, hero gradients … */
+}
+```
+
+These are hand-picked hex and `rgba` values used by the storefront's bespoke sections.
+
+**The shadcn semantic tokens** — `--background`, `--foreground`, `--card`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--success`, `--border`, `--input`, `--ring`, `--chart-1` to `--chart-5`, `--radius` and the eight `--sidebar-*` tokens. These are in `oklch(...)` and are what every shadcn primitive reads.
+
+**The Tailwind theme** — `@theme inline` maps each semantic token to a Tailwind utility, so `bg-card` resolves to `var(--card)`:
+
+```css
+@theme inline {
+  --font-sans: "Manrope", "Manrope Fallback", system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", "Cormorant Garamond Fallback", "Times New Roman", serif;
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --radius-sm: max(0px, calc(var(--radius) - 2px));
+  --radius-md: var(--radius);
+  --max-width-400: min(100rem, calc(100% - 1.5rem));
+  --spacing-18: 4.5rem;
+  --spacing-54: 13.5rem;
+}
+```
+
+Note `--radius: 0.25rem` — the whole product uses a tight radius, and `--radius-md` and `--radius-lg` are deliberately equal to it. Three custom scale entries exist: `max-w-400` for the site container, and `spacing-18` and `spacing-54`.
+
+**To change a colour**, change the token in `:root` and in `.dark`. Never write a literal colour in a component's `className`.
+
+## Dark mode
+
+`@custom-variant dark (&:is(.dark *))` — dark mode is class-based, applied to `<html>`. `src/providers/themes-provider.tsx` wraps `@wrksz/themes`:
+
+```tsx
+<WrkszThemeProvider
+  attribute="class"
+  enableSystem={false}
+  themes={THEMES}
+  defaultTheme="light"
+  storage="localStorage"
+  storageKey={THEME_STORAGE_KEY}
+  disableTransitionOnChange
+>
+```
+
+`enableSystem={false}` and `defaultTheme="light"` are deliberate: light is the brand's default and the system preference is not followed. `THEME_STORAGE_KEY` is `` `${APP_NAME}-theme` `` — that is, `M'Arte-theme`.
+
+## The two shells
+
+The admin console is always light, even for a visitor whose storefront preference is dark. Three mechanisms make that work without a flash.
+
+**1. The bootstrap script.** `THEME_INIT_SCRIPT` in `src/presentation/theme/theme-init.ts` is injected into `<head>` by `__root.tsx` before anything else. It reads the stored theme, checks whether the path contains `/admin`, and either sets `data-admin-shell` plus the chrome background on `<html>` and `<body>`, or adds the `dark` class:
+
+```ts
+export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var t=localStorage.getItem(k);var d=t==="dark";var p=location.pathname;var a=p.indexOf("/admin")!==-1;var c=${ADMIN_CHROME_BG_JSON};if(a){document.documentElement.classList.remove("dark");document.documentElement.dataset.adminShell="";document.documentElement.style.backgroundColor=c;document.body.style.backgroundColor=c}else if(d){document.documentElement.classList.add("dark")}}catch(e){}})();`
+```
+
+`__root.tsx` also sets `data-admin-shell` server-side on the `<html>` element and emits `adminShellCriticalStyle(path)` inline, so the dark chrome is painted before any stylesheet loads.
+
+**2. `admin.css` redeclares the tokens.** Inside `[data-admin-main]` it resets `--background`, `--foreground`, `--card`, `--muted`, `--border`, `--input`, `--ring` and the radii to their light values and sets `color-scheme: light`. `html[data-admin-shell]` gets `background-color: var(--sidebar)` — the dark chrome the sidebar sits on.
+
+**3. `useAdminLightTheme`.** The hook in `src/presentation/theme/use-admin-light-theme.ts` removes the `dark` class on mount and, in its cleanup, restores the visitor's stored preference:
+
+```ts
+useEffect(() => {
+  document.documentElement.classList.remove("dark")
+
+  return function restoreStorefrontTheme() {
+    if (typeof localStorage === "undefined") {
+      return
+    }
+
+    try {
+      if (globalThis.localStorage.getItem(THEME_STORAGE_KEY) === "dark") {
+        document.documentElement.classList.add("dark")
+      }
+    } catch {}
+  }
+}, [])
+```
+
+`admin.css` also styles the Sonner toasts inside `html[data-admin-shell]` to match the dark sidebar, and gives the data-grid scroll container thin custom scrollbars. `src/presentation/components/custom/pages/admin/admin-layout.styles.ts` holds the reusable admin class strings — `ADMIN_LAYOUT_BG_CLASS`, `ADMIN_CARD_CLASS`, the `ADMIN_STAT_*` set — so a page never repeats them.
+
+## Typography
+
+Two typefaces, both self-hosted from `public/fonts/`:
+
+- **Manrope** for `font-sans` — variable weight.
+- **Cormorant Garamond** for `font-serif` — used for every heading.
+
+`critical-fonts.css` is inlined, not linked. It contains the metric-adjusted fallbacks (`Manrope Fallback` from Arial, `Cormorant Garamond Fallback` from Times New Roman, with `size-adjust`, `ascent-override`, `descent-override` and `line-gap-override`) plus the two `@font-face` rules the first paint needs. `fonts.css` carries the remaining weights and the italics and is imported normally.
+
+`StorefrontCriticalFontsHead` emits the preloads and inlines that CSS with `?raw`:
+
+```tsx
+export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriticalFontsHeadProps>): JSX.Element => (
+  <>
+    {getCriticalFontPreloads(locale).map((link) => (
+      <link key={link.href} {...link} />
+    ))}
+    <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
+  </>
+)
+```
+
+`getCriticalFontPreloads` in `src/presentation/document-assets.ts` picks the subset by locale: Polish gets `latin-ext` (it needs ą, ć, ę, ł, ń, ó, ś, ź, ż), English gets plain `latin`. `__root.tsx` renders this component only when the path is not under `/admin`, since the admin console does not use the serif.
+
+**Changing a font** means adding the `.woff2` files to `public/fonts/`, adding `@font-face` rules with the right `unicode-range` (critical weights in `critical-fonts.css`, the rest in `fonts.css`), computing new fallback metrics, and updating `--font-sans` or `--font-serif` in the `@theme inline` block. Keep the two-file split — moving everything into `fonts.css` regresses first-paint text.
+
+## Branding constants
+
+`src/presentation/branding/` holds three files and is the only place these facts appear.
+
+`app.ts` — the product identity:
+
+```ts
+export const APP_DOMAIN = "martebizuteria.pl"
+export const APP_URL = `https://${APP_DOMAIN}`
+export const APP_NAME = "M'Arte"
+export const APP_ICON = "/favicon.svg"
+export const THEME_COLOR = "#e7f3ec"
+export const OG_IMAGE_PATH = "/og.png"
+export const OG_IMAGE_WIDTH = "1200"
+export const OG_IMAGE_HEIGHT = "630"
+export const DEFAULT_R2_PUBLIC_URL = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev"
+export const APP_GITHUB_OWNER = "pjborowiecki"
+export const APP_GITHUB_REPO = APP_DOMAIN
+```
+
+`APP_NAME` feeds the document title, the Better Auth `appName`, the two-factor issuer and the theme storage key. `THEME_COLOR` is the `theme-color` meta tag and matches `--bg-base`. `APP_DOMAIN` feeds `appHostsForMode` in `src/modules/_core/constants/api.ts`, which is Better Auth's `baseURL.allowedHosts` — so changing the domain changes the auth host allow-list too.
+
+`business.ts` — the legal entity, used by the footer, the legal pages and structured data:
+
+```ts
+export const BUSINESS = {
+  CITY: "Bochnia",
+  COUNTRY_CODE: "PL",
+  EMAIL: "kontakt@martebizuteria.pl",
+  LEGAL_NAME: "Pyciak Mariusz Firma Jubilerska",
+  NIP: "8681772646",
+  OPENING_HOURS_CLOSE: "17:00",
+  OPENING_HOURS_OPEN: "09:00",
+  PHONE: "+48 663 150 820",
+  POSTAL_CODE: "32-700",
+  REGON: "384616568",
+  STREET: "ul. Wąska 11",
+} as const
+```
+
+`BUSINESS_POSTAL_ADDRESS_LINES` in the same file composes the three-line postal address.
+
+`socials.ts` — the Facebook and Instagram URLs.
+
+## Emails
+
+Email styling is separate: no Tailwind, no CSS variables, because mail clients support neither reliably. `src/presentation/emails/email-styles.ts` holds inline style objects, `email-layout.tsx` is the shared shell and `email-highlight-box.tsx` the one shared block. The six templates are `account-deleted`, `change-email`, `order-confirmation`, `order-shipped`, `reset-password` and `verify-email`. Each takes its `locale` and `messages` as props. Preview them at `/dev/emails`.
+
+## Checklist for a visual change
+
+- A colour changes in `:root` **and** `.dark` in `globals.css`, never in a component.
+- An admin-only rule goes in `admin.css`, scoped to `[data-admin-main]` or `html[data-admin-shell]`.
+- A repeated admin class string goes in `admin-layout.styles.ts`.
+- A shop fact goes in `branding/`, and the component imports it from there.
+- Font changes keep the critical/non-critical split and update the fallback metrics.
+- `bun run format` sorts your Tailwind classes — `vite.config.ts` points the sorter at `globals.css`, so a custom utility you add there is understood.
+
+## Related guides
+
+- [Add an admin page](/docs/guides/add-an-admin-page)
+- [i18n messages](/docs/guides/i18n-messages)
+- [Local debugging](/docs/guides/local-debugging)

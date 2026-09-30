@@ -1,0 +1,56 @@
+---
+title: "Dokumentacja"
+description: "Architektura, poradniki, funkcje i informacje referencyjne sklepu M'Arte i jego panelu administracyjnego."
+---
+
+M'Arte to kod źródłowy serwisu martebizuteria.pl: jedna aplikacja TanStack Start, która z jednego Cloudflare Workera obsługuje publiczny sklep, strefę konta klienta i panel administracyjny, wspierana przez D1, KV, R2, Durable Objects, Better Auth, Stripe, InPost, Resend, use-intl i Fumadocs.
+
+Te strony dokumentują całe repozytorium: gdzie znajduje się każdy fragment kodu, jak przebiega przez niego żądanie, jak zachowuje się sklep i co zmienić, gdy trzeba coś dodać lub poprawić. Każda strona istnieje po polsku i po angielsku jako `<slug>.<locale>.mdx`, a polski jest językiem domyślnym, więc `/docs` podaje wersję polską, a `/en-US/docs` angielską.
+
+## Od czego zacząć
+
+| Jeśli chcesz                                      | Przeczytaj                  |
+| ------------------------------------------------- | --------------------------- |
+| Zrozumieć, czym jest projekt i kto nim zarządza   | **Projekt**                 |
+| Uruchomić aplikację na swoim komputerze           | **Rozpoczęcie pracy**       |
+| Dowiedzieć się, gdzie znajduje się kod i dlaczego | **Architektura**            |
+| Poznać zachowanie konkretnej części sklepu        | **Funkcje**                 |
+| Wykonać konkretne zadanie krok po kroku           | **Poradniki**               |
+| Skonfigurować lub zdiagnozować adapter dostawcy   | **Integracje**              |
+| Ostylować stronę lub użyć gotowego komponentu     | **System UI**               |
+| Uruchomić kontrole, testy, budowanie i wdrożenie  | **Narzędzia**               |
+| Szybko coś sprawdzić                              | **Informacje referencyjne** |
+
+## Rozdziały
+
+| Rozdział                | Zawartość                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Projekt                 | O sklepie, układ repozytorium, konwencje, współtworzenie, licencja                                           |
+| Rozpoczęcie pracy       | Wymagania wstępne, instalacja, pliki środowiskowe, pierwsze uruchomienie, codzienne skrypty                  |
+| Architektura            | Trasy, moduły i przypadki użycia, integracje, warstwa prezentacji, cykl życia żądania, i18n, bezpieczeństwo  |
+| Funkcje                 | Katalog, koszyk, zamówienia i płatności, magazyn, konta, panel administracyjny, audyt, aktualizacje na żywo  |
+| Poradniki               | Dodawanie modułu i przypadku użycia, strony panelu, tabele danych, formularze, e-maile, komunikaty, migracje |
+| Integracje              | TanStack Start, Better Auth, Drizzle i D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, GSAP             |
+| System UI               | Tokeny projektowe, prymitywy shadcn, komponenty własne, style, czcionki, branding, e-maile                   |
+| Narzędzia               | Vite+, środowiska, Wrangler, projekty Vitest, pokrycie, hooki gita, procesy CI i wdrożenia                   |
+| Informacje referencyjne | Tabela tras, zmienne środowiskowe, katalogi komunikatów, schemat bazy, skrypty, słownik pojęć                |
+
+## Jak zorganizowana jest aplikacja
+
+`src/routes` zawiera trasy plikowe TanStack Start: układ `_storefront` i jego strony, strefę `account`, panel `admin`, `auth`, `checkout`, ten serwis `docs` oraz procedury obsługi `api`. `src/routes.ts` to jedna tabela ścieżek, z której korzysta pozostały kod.
+
+`src/modules/{feature}` zawiera logikę funkcji. Każda funkcja trzyma swoje operacje w `use-cases/{verb-noun}.ts` i eksportuje funkcję serwerową razem z opcjami zapytania używanymi przez loadery i komponenty. `src/modules/_core` zawiera wspólne prymitywy, na których opierają się te przypadki użycia.
+
+`src/integrations/{vendor}` ukrywa każdą usługę zewnętrzną za niewielkim adapterem: Better Auth, Drizzle ORM nad D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, Fumadocs, GSAP, Lenis oraz hub unieważniania w czasie rzeczywistym.
+
+`src/presentation` odpowiada za całą warstwę wizualną: prymitywy `components/shadcn`, komponenty aplikacji `components/custom`, `styles` z warstwami Tailwind, `theme`, `branding`, `emails` oraz zasoby dokumentu. `src/platform/testing` zawiera wspólną infrastrukturę testów, `src/lib` niewielkie pomocniki w zasięgu żądania, `src/durable-objects` obiekty czasu rzeczywistego i limitowania zapytań, a `src/providers` dostawców kontekstu React.
+
+Treść znajduje się poza `src`: `content/legal` zawiera dokumenty prawne, `content/docs` te strony, a `messages/{locale}` katalogi komunikatów interfejsu.
+
+## Edycja tej dokumentacji
+
+Strony znajdują się w `content/docs` jako `<slug>.<locale>.mdx`, po jednym pliku na język, a każdy folder wymienia swoje strony w kolejności w `meta.<locale>.json`. Oba języki wymieniają te same slugi, więc stronę dodaną po polsku trzeba dodać również po angielsku.
+
+`bun run content` ponownie generuje `.source/` z kolekcji Fumadocs, a `bun run dev` robi to automatycznie. Po edycji `bun run format` i `bun run check` utrzymują porządek w repozytorium, a `bun run test` obejmuje źródło dokumentacji razem z resztą kodu.
+
+Linki wewnętrzne, takie jak `/docs/architecture/routing`, automatycznie otrzymują prefiks języka czytelnika, więc zawsze pisz je bez niego.

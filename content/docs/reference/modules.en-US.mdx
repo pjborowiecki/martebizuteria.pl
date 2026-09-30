@@ -1,0 +1,112 @@
+---
+title: "Module catalog"
+description: "All 36 modules in src/modules, the database table each one owns, and every use case it exports."
+---
+
+`src/modules` holds 36 folders. Thirty-one own a database table; five own no table and exist because they group operations that read across several of them. Together they export 82 use cases, of which 75 are `createServerFn` endpoints and 7 are plain server-side functions.
+
+Every table is re-exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`, which is what makes it part of the Drizzle schema and therefore part of the relational query API (`db.query.<table>`). A table that is not listed there does not exist for Drizzle.
+
+## Catalog
+
+| Module                  | Table                   | Use cases                                                                                                                                                                                                                                                                                                                           |
+| ----------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_core`                 | none                    | none — shared constants and utilities, described below                                                                                                                                                                                                                                                                              |
+| `account`               | `account`               | none — Better Auth owns every write to this table                                                                                                                                                                                                                                                                                   |
+| `address`               | `address`               | `create-user-address`, `update-user-address`, `delete-user-address`, `list-user-addresses`, `set-default-user-address`                                                                                                                                                                                                              |
+| `admin-dashboard`       | none                    | `get-dashboard-snapshot`, `get-dashboard-chart-range`                                                                                                                                                                                                                                                                               |
+| `attribute-on-product`  | `attribute_on_product`  | `get-product-attributes`, `set-all-product-attributes`                                                                                                                                                                                                                                                                              |
+| `audit-log`             | `audit_log`             | `list-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`                                                                                                                                                                                                                                                                       |
+| `cart`                  | `cart`                  | `check-cart-availability`                                                                                                                                                                                                                                                                                                           |
+| `cart-item`             | `cart_item`             | none                                                                                                                                                                                                                                                                                                                                |
+| `category-on-product`   | `category_on_product`   | none — written as part of the product batch                                                                                                                                                                                                                                                                                         |
+| `checkout`              | `checkout`              | `create-checkout.server`, `update-checkout-delivery.server`, `fulfill-checkout.server`, `release-checkout.server`                                                                                                                                                                                                                   |
+| `collection-on-product` | `collection_on_product` | none — written as part of the product batch                                                                                                                                                                                                                                                                                         |
+| `courier`               | `courier`               | none                                                                                                                                                                                                                                                                                                                                |
+| `customer-account`      | none                    | `get-customer-overview`, `get-customer-profile`, `update-customer-phone`, `list-customer-orders`, `get-customer-order`, `list-customer-sessions`, `revoke-customer-session`, `revoke-other-customer-sessions`, `list-customer-login-history`                                                                                        |
+| `customer-activity`     | none                    | `record-customer-activity`                                                                                                                                                                                                                                                                                                          |
+| `delivery-method`       | `delivery_method`       | `list-delivery-methods`                                                                                                                                                                                                                                                                                                             |
+| `discount`              | `discount`              | none — the table exists, no code path writes it                                                                                                                                                                                                                                                                                     |
+| `inventory`             | `inventory`             | none — reserved and released by the checkout batches                                                                                                                                                                                                                                                                                |
+| `option-on-variant`     | `option_on_variant`     | none — written as part of the product batch                                                                                                                                                                                                                                                                                         |
+| `order`                 | `order`                 | `get-admin-orders-page`, `get-admin-order-stats`, `export-admin-orders`, `ship-order`, `fulfill-order`, `cancel-order`, `flag-order-dispute`, `clear-order-dispute`, `refund-order`                                                                                                                                                 |
+| `order-address`         | `order_address`         | none — the table is registered in the Drizzle schema but no code reads or writes it                                                                                                                                                                                                                                                 |
+| `order-item`            | `order_item`            | none — written as part of the fulfilment batch                                                                                                                                                                                                                                                                                      |
+| `payment`               | `payment`               | none — written by the Stripe webhook path                                                                                                                                                                                                                                                                                           |
+| `product`               | `product`               | `get-storefront-products-page`, `get-product`, `get-related-products`, `get-new-arrivals`, `get-admin-products`, `get-admin-products-page`, `get-admin-product`, `get-product-stats`, `create-complete-product`, `update-complete-product`, `delete-products`, `reorder-products`, `export-admin-products`, `validate-product-skus` |
+| `product-attribute`     | `product_attribute`     | `get-admin-product-attributes`, `get-product-attribute-stats`, `create-product-attribute`, `update-product-attribute`, `delete-product-attributes`, `reorder-product-attributes`                                                                                                                                                    |
+| `product-category`      | `product_category`      | `get-categories`, `get-storefront-category`, `get-admin-categories`, `get-category-stats`, `create-category`, `update-category`, `delete-categories`, `reorder-categories`                                                                                                                                                          |
+| `product-collection`    | `product_collection`    | `get-collections`, `get-storefront-collection`, `get-admin-collections`, `get-collection-stats`, `create-collection`, `update-collection`, `delete-collections`, `reorder-collections`                                                                                                                                              |
+| `product-image`         | `product_image`         | `get-product-images`                                                                                                                                                                                                                                                                                                                |
+| `product-option`        | `product_option`        | none — written as part of the product batch                                                                                                                                                                                                                                                                                         |
+| `product-option-value`  | `product_option_value`  | none — written as part of the product batch                                                                                                                                                                                                                                                                                         |
+| `product-variant`       | `product_variant`       | none — written as part of the product batch                                                                                                                                                                                                                                                                                         |
+| `rate-limit`            | `rate_limit`            | none — the table is driven by `src/lib/rate-limit.ts`                                                                                                                                                                                                                                                                               |
+| `session`               | `session`               | none — Better Auth owns the table; the customer-facing operations live in `customer-account`                                                                                                                                                                                                                                        |
+| `storefront-search`     | none                    | `search-storefront`, `get-trending-searches`                                                                                                                                                                                                                                                                                        |
+| `two-factor`            | `two_factor`            | none — the Better Auth plugin and its columns are provisioned, but no enrolment flow exists yet                                                                                                                                                                                                                                     |
+| `user`                  | `user`                  | `get-admin-customers-page`, `get-admin-customer`, `get-admin-customer-stats`, `update-customer`, `delete-customer`, `export-admin-customers`                                                                                                                                                                                        |
+| `verification`          | `verification`          | none — Better Auth owns every write to this table                                                                                                                                                                                                                                                                                   |
+
+## Modules with no table
+
+Five modules exist for operations rather than for rows.
+
+| Module              | Why it has no table                                                                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `_core`             | Shared kernel: error codes, currency and country catalogs, CSV, pagination, column filters, datetime helpers            |
+| `admin-dashboard`   | Aggregates over `order`, `payment`, `product` and `user` for the admin overview cards and charts                        |
+| `customer-account`  | The customer-facing view of `user`, `order`, `session` and `address`, always scoped to the signed-in user               |
+| `customer-activity` | Records browsing activity; state lives in `src/modules/customer-activity/customer-activity.tracking.ts`, not in a table |
+| `storefront-search` | Search across the catalog's JSON columns, plus a trending-searches read                                                 |
+
+## Inside `_core`
+
+`_core` is the only module allowed to be generic, and it is deliberately small.
+
+`_core/constants/`:
+
+| File             | Exports                                                                                        |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| `errors.ts`      | `ERROR_CODES`, the `AppError` class and `errorCode`                                            |
+| `api.ts`         | `HTTP_STATUS`, `isLocalMode`, `appHostsForMode` — the host allowlist Better Auth is built with |
+| `currency.ts`    | `CURRENCIES`, the ISO 4217 table with numeric codes and exponents                              |
+| `country.ts`     | The ISO country reference table                                                                |
+| `timezone.ts`    | The IANA timezone reference table                                                              |
+| `placeholder.ts` | Placeholder image data                                                                         |
+
+`country.ts` and `timezone.ts` are reference data kept intentionally even where nothing imports them yet.
+
+`_core/utils/` holds `column-filters.ts` and `column-filters.server.ts`, `datetime-column-filter.ts` and its `.server` twin, `search-conditions.server.ts`, `pagination.ts`, `csv.ts`, `currency.ts`, `datetime.ts`, `iso-date.ts`, `iso-datetime.ts`, `json.ts` and `zod-fields.ts`. The `.server` halves build SQL; the plain halves are shared with the browser.
+
+## Use cases without an RPC endpoint
+
+Seven use-case files export a plain `async` function rather than a `createServerFn`. They are called from the Stripe webhook handler or from other server code, and they are not reachable over HTTP:
+
+| File                                                    | Called from                              |
+| ------------------------------------------------------- | ---------------------------------------- |
+| `checkout/use-cases/create-checkout.server.ts`          | The checkout flow's server actions       |
+| `checkout/use-cases/update-checkout-delivery.server.ts` | The checkout flow's server actions       |
+| `checkout/use-cases/fulfill-checkout.server.ts`         | `checkout.session.completed` from Stripe |
+| `checkout/use-cases/release-checkout.server.ts`         | `checkout.session.expired` from Stripe   |
+| `order/use-cases/refund-order.ts`                       | Refund events from Stripe                |
+| `order/use-cases/flag-order-dispute.ts`                 | Dispute events from Stripe               |
+| `order/use-cases/clear-order-dispute.ts`                | Dispute-closed events from Stripe        |
+
+A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` walks every file under `src/modules/*/use-cases/` and skips the ones without `createServerFn`, which is why these need no authorization middleware.
+
+## Tables written from outside their own module
+
+Several tables have no use cases of their own because they are only ever written as part of an atomic `db.batch`:
+
+- `product_option`, `product_option_value`, `product_variant`, `option_on_variant`, `product_image`, `category_on_product`, `collection_on_product` and `attribute_on_product` are replaced wholesale by `product/use-cases/create-complete-product.ts` and `update-complete-product.ts`.
+- `order`, `order_item` and `payment` are written by `checkout/use-cases/fulfill-checkout.server.ts`, which delegates statement building to `prepareFulfillCheckoutBatch` and runs them through `runDrizzleBatch`.
+- `inventory` is reserved, consumed and released by the batches built in `checkout/checkout.utils.ts` (`prepareCreateCheckoutBatch`, `prepareFulfillCheckoutBatch`, `prepareReleaseCheckoutBatch`) and restocked by `prepareRefundBatch` in `order/order.utils.ts`.
+- `account`, `session`, `verification` and `two_factor` are Better Auth's tables. Application code reads them but never writes them directly.
+
+## Related pages
+
+- [Server functions and use cases](/docs/architecture/modules-and-use-cases)
+- [Database schema](/docs/integrations/drizzle-orm-d1)
+- [Permissions](/docs/reference/permissions)
+- [Add a module](/docs/guides/add-a-module)

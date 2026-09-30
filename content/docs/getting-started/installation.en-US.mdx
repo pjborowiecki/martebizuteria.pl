@@ -1,0 +1,100 @@
+---
+title: "Installation"
+description: "Install dependencies and the generated files the type checker and the docs site depend on."
+---
+
+Clone the repository and install from its root:
+
+```sh
+git clone https://github.com/pjborowiecki/martebizuteria.pl.git
+cd martebizuteria.pl
+vp install
+```
+
+`vp install` delegates to Bun, the package manager pinned by `"packageManager": "bun@1.4.0"`. `bun install --frozen-lockfile` is equivalent and is what you want whenever you must not touch `bun.lock`.
+
+## What the lifecycle scripts do
+
+Two scripts in `package.json` run automatically and both matter:
+
+```json
+"postinstall": "bun run typegen",
+"prepare": "vp config --no-agent",
+```
+
+| Script        | Runs                   | Effect                                                                                                  |
+| ------------- | ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `prepare`     | `vp config --no-agent` | Registers the Git hook dispatcher so `.vite-hooks/pre-commit` and `.vite-hooks/prepare-commit-msg` fire |
+| `postinstall` | `bun run typegen`      | Runs `cf-typegen` and `content`, the two generation steps below                                         |
+
+### `cf-typegen` — Worker binding types
+
+```sh
+vp exec wrangler types --env development src/types/worker-configuration.d.ts
+```
+
+This reads `wrangler.jsonc` and writes the `Env` interface that the whole server layer is typed against:
+
+```ts
+interface __BaseEnv_Env {
+  CACHE: KVNamespace
+  IMAGES: R2Bucket
+  DB: D1Database
+  AUDIT_LOG_QUEUE: Queue
+  APP_ENV: "development"
+  AUTH_GITHUB_CLIENT_ID: string
+  // …the rest of secrets.required…
+  REALTIME_INVALIDATION_HUB: DurableObjectNamespace<import("../server").RealtimeInvalidationHub>
+}
+```
+
+The file is generated, not committed, and `bun run clean` deletes it. Never edit it by hand — add the binding or secret to `wrangler.jsonc` and run `bun run typegen` again. Because the command passes `--env development`, `APP_ENV` is typed as the literal `"development"`; that is expected and does not affect the preview or production builds.
+
+### `content` — Fumadocs collections
+
+```sh
+fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source
+```
+
+This compiles the two MDX collections declared in `src/integrations/fumadocs/fumadocs.config.ts` — `content/docs` and `content/legal` — into `.source/browser.ts`, `.source/server.ts` and `.source/dynamic.ts`. Those are the modules `src/presentation/components/custom/docs-content.tsx` and `src/integrations/fumadocs/fumadocs.docs.ts` import as `collections/browser` and `collections/server`.
+
+Without `.source/`, type checking fails and the `/docs` and `/privacy-policy` routes cannot resolve their content. `bun run dev` and both build scripts run `bun run content` first, so in normal use you do not have to think about it.
+
+## Installing the way CI does
+
+`.github/actions/setup` deliberately skips the lifecycle scripts and then runs the generation step explicitly:
+
+```yaml
+- name: Install dependencies
+  shell: bash
+  run: bun install --frozen-lockfile --ignore-scripts
+- name: Generate binding types
+  shell: bash
+  run: bun run typegen
+```
+
+Do the same locally if you want to install without touching your Git hooks. If you ever install with `--ignore-scripts` and forget `bun run typegen`, the first symptom is thousands of type errors about a missing `Env`.
+
+## Optional extras
+
+```sh
+bun run skills:sync
+```
+
+Restores the vendored agent skills into `.agents/skills` and `.claude/skills` from `skills-lock.json` using `scripts/sync-skills.ts`. Both directories are generated vendor groups — `bun run skills:update` is the only intended way to change their contents.
+
+## Cleaning up
+
+Three levels, from `package.json`:
+
+| Command                  | Removes                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `bun run clean`          | `.source`, `.output`, `.tanstack`, `.wrangler`, `.bun-cache`, `dist`, `coverage`, test reports, `*.tsbuildinfo`, `src/types/worker-configuration.d.ts` |
+| `bun run clean:deep`     | The above plus `node_modules`                                                                                                                          |
+| `bun run clean:hardcore` | The above plus `bun.lock` and `opensrc`                                                                                                                |
+
+Note that `bun run clean` removes `.wrangler`, which is where the local simulated D1, R2 and KV state lives. After a clean, a local run starts from an empty database again.
+
+## Next
+
+Fill in your [environment variables](/docs/getting-started/environment-variables).

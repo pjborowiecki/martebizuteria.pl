@@ -1,0 +1,156 @@
+---
+title: "Routes"
+description: "Every path in the application, its ROUTES constant, its route file and its guard."
+---
+
+Every path literal in the application lives in `ROUTES` in `src/routes.ts`. Components link with the constant — `<Link to={ROUTES.CART}>` — and the router adds the locale prefix on the way out.
+
+Route files in `src/routes` carry **no locale segment**. `src/router.tsx` installs a rewrite:
+
+```ts
+rewrite: {
+  input: ({ url }) => deLocalizeUrl(url),
+  output: ({ url }) => localizeUrl(url),
+}
+```
+
+so `_storefront.products.$handle.tsx` serves both `/products/kolczyki` (Polish, the default locale, no prefix) and `/en-US/products/kolczyki`. A redundant `/pl-PL/...` URL is redirected with a 301 in `src/server.ts` before the router ever runs, by `resolveLocale` in `src/integrations/use-intl/i18n.middleware.ts`.
+
+## Storefront
+
+All storefront pages sit under the pathless layout `_storefront.tsx`, which supplies `Navigation`, `Footer`, the cart-availability banner, the customer-activity tracker, the storefront realtime subscription and `storefront.css`. None of them has a guard.
+
+| Path                     | `ROUTES` constant       | Route file                              |
+| ------------------------ | ----------------------- | --------------------------------------- |
+| `/`                      | `HOME`                  | `_storefront.index.tsx`                 |
+| `/products`              | `PRODUCTS`              | `_storefront.products.index.tsx`        |
+| `/products/$handle`      | `PRODUCT`               | `_storefront.products.$handle.tsx`      |
+| `/categories`            | `CATEGORIES`            | `_storefront.categories.index.tsx`      |
+| `/categories/$handle`    | `CATEGORY`              | `_storefront.categories.$handle.tsx`    |
+| `/collections`           | `COLLECTIONS`           | `_storefront.collections.index.tsx`     |
+| `/collections/$handle`   | `COLLECTION`            | `_storefront.collections.$handle.tsx`   |
+| `/cart`                  | `CART`                  | `_storefront.cart.tsx`                  |
+| `/about`                 | `ABOUT`                 | `_storefront.about.tsx`                 |
+| `/faq`                   | `FAQ`                   | `_storefront.faq.tsx`                   |
+| `/exchanges-and-returns` | `EXCHANGES_AND_RETURNS` | `_storefront.exchanges-and-returns.tsx` |
+| `/privacy-policy`        | `PRIVACY_POLICY`        | `_storefront.privacy-policy.tsx`        |
+| `/terms-of-service`      | `TERMS_OF_SERVICE`      | `_storefront.terms-of-service.tsx`      |
+| `/blog`                  | `BLOG`                  | `_storefront.blog.index.tsx`            |
+| `/blog/$slug`            | `BLOG_POST`             | `_storefront.blog.$slug.tsx`            |
+
+`/privacy-policy` and `/exchanges-and-returns` render MDX from `content/legal` through the Fumadocs legal collection; the blog reads its posts from `src/data/blog-posts.ts`.
+
+## Checkout
+
+| Path        | `ROUTES` constant | Route file                           | Notes                                                                        |
+| ----------- | ----------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
+| `/checkout` | `CHECKOUT`        | `checkout.tsx`, `checkout.index.tsx` | Own layout, no storefront chrome; no route guard — checkout works for guests |
+
+`checkout.tsx` validates two search parameters: `step`, an integer clamped to 1–4, and `success`, an optional boolean. The step lives in the URL so a reload keeps the customer where they were.
+
+## Authentication
+
+The `/auth` layout is `auth.tsx` and its `beforeLoad` runs `redirectAuthenticated`, which sends an already signed-in visitor to `/admin` or `/account/overview` depending on their role.
+
+| Path                    | `ROUTES` constant      | Route file                 |
+| ----------------------- | ---------------------- | -------------------------- |
+| `/auth/sign-in`         | `AUTH_SIGN_IN`         | `auth.sign-in.tsx`         |
+| `/auth/sign-up`         | `AUTH_SIGN_UP`         | `auth.sign-up.tsx`         |
+| `/auth/forgot-password` | `AUTH_FORGOT_PASSWORD` | `auth.forgot-password.tsx` |
+| `/auth/reset-password`  | `AUTH_RESET_PASSWORD`  | `auth.reset-password.tsx`  |
+
+`ROUTES.AUTH_EMAIL_VERIFICATION` (`/auth/email-verification`) is declared but has no route file and nothing references it, so that path currently 404s.
+
+`ROUTES.API_AUTH` is a nested object of Better Auth endpoint paths relative to `/api/auth` — `/sign-in/email`, `/sign-up/email`, `/sign-out`, `/request-password-reset`, `/reset-password`. They are used to configure per-endpoint rate limiting rather than to build links.
+
+## Customer account
+
+The `/account` layout is `account.tsx` and its `beforeLoad` runs `requireCustomer`, which redirects an anonymous visitor to `/auth/sign-in` and an admin to `/admin`. `account.index.tsx` immediately redirects `/account` to `/account/overview`.
+
+| Path                  | `ROUTES` constant   | Route file                                             |
+| --------------------- | ------------------- | ------------------------------------------------------ |
+| `/account`            | `ACCOUNT`           | `account.tsx` (layout), `account.index.tsx` (redirect) |
+| `/account/overview`   | `ACCOUNT_OVERVIEW`  | `account.overview.tsx`                                 |
+| `/account/orders`     | `ACCOUNT_ORDERS`    | `account.orders.index.tsx`                             |
+| `/account/orders/$id` | `ACCOUNT_ORDER`     | `account.orders.$id.tsx`                               |
+| `/account/addresses`  | `ACCOUNT_ADDRESSES` | `account.addresses.tsx`                                |
+| `/account/profile`    | `ACCOUNT_PROFILE`   | `account.profile.tsx`                                  |
+| `/account/sessions`   | `ACCOUNT_SESSIONS`  | `account.sessions.tsx`                                 |
+| `/account/payment`    | `ACCOUNT_PAYMENT`   | `account.payment.tsx`                                  |
+| `/account/wishlist`   | `ACCOUNT_WISHLIST`  | `account.wishlist.tsx`                                 |
+
+## Admin
+
+The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`; it also loads `admin.css`, forces the light theme, renders the admin sidebar and opens the admin realtime WebSocket through `useRealtimeQuerySync`. `admin.index.tsx` redirects `/admin` to `/admin/overview`, and `admin.catalog.index.tsx` redirects `/admin/catalog` to `/admin/catalog/products`.
+
+| Path                                 | `ROUTES` constant   | Route file                                                             |
+| ------------------------------------ | ------------------- | ---------------------------------------------------------------------- |
+| `/admin`                             | `ADMIN`             | `admin.tsx` (layout), `admin.index.tsx` (redirect)                     |
+| `/admin/overview`                    | `ADMIN_OVERVIEW`    | `admin.overview.tsx`                                                   |
+| `/admin/catalog`                     | `ADMIN_CATALOG`     | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (redirect)     |
+| `/admin/catalog/products`            | `ADMIN_PRODUCTS`    | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`       |
+| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`  | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`   |
+| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`    | `admin.catalog.categories.$handle.tsx`                                 |
+| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS` | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx` |
+| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`  | `admin.catalog.collections.$handle.tsx`                                |
+| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`  | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`   |
+| `/admin/orders`                      | `ADMIN_ORDERS`      | `admin.orders.index.tsx`                                               |
+| `/admin/orders/$orderId`             | none                | `admin.orders.$orderId.tsx`                                            |
+| `/admin/customers`                   | `ADMIN_CUSTOMERS`   | `admin.customers.index.tsx`                                            |
+| `/admin/customers/$id`               | `ADMIN_CUSTOMER`    | `admin.customers.$id.tsx`                                              |
+| `/admin/audit`                       | `ADMIN_AUDIT`       | `admin.audit.tsx`                                                      |
+| `/admin/coupons`                     | `ADMIN_COUPONS`     | `admin.coupons.tsx`                                                    |
+| `/admin/content`                     | `ADMIN_CONTENT`     | `admin.content.tsx`                                                    |
+| `/admin/marketing`                   | `ADMIN_MARKETING`   | `admin.marketing.tsx`                                                  |
+| `/admin/settings`                    | `ADMIN_SETTINGS`    | `admin.settings.tsx`                                                   |
+
+The admin order detail route is the one page with no `ROUTES` constant; navigation to it is written as the literal `"/admin/orders/$orderId"` in `src/presentation/components/custom/pages/admin/orders/`. `/admin/coupons`, `/admin/content`, `/admin/marketing`, `/admin/settings` and parts of the order detail page still render from fixtures in `src/data/` — `coupons.ts`, `content.ts`, `marketing.ts`, `settings.ts` and `order-detail.ts`.
+
+## Documentation
+
+| Path      | `ROUTES` constant | Route file                            |
+| --------- | ----------------- | ------------------------------------- |
+| `/docs`   | `DOCS`            | `docs.tsx` (layout), `docs.index.tsx` |
+| `/docs/*` | `DOCS_PAGE`       | `docs.$.tsx`                          |
+
+`docs.tsx` loads the sidebar from `buildDocsNavigation`, which walks the Fumadocs page tree for the reader's locale and turns each top-level folder in `content/docs` into a section. `docs.$.tsx` resolves the splat to a page with `loadDocsPage` and throws `notFound()` when no page matches.
+
+## Developer-only
+
+| Path          | `ROUTES` constant | Route file       | Notes                                                                         |
+| ------------- | ----------------- | ---------------- | ----------------------------------------------------------------------------- |
+| `/dev/emails` | none              | `dev.emails.tsx` | Email template previews; the component bails out unless `import.meta.env.DEV` |
+
+## API and Worker-level paths
+
+API paths are never localized — `shouldIgnorePath` in `src/integrations/use-intl/i18n.paths.ts` exempts `/api`, `/rpc`, `/_serverFn` and `/assets` from locale handling.
+
+| Path                          | Handled by                                            | Notes                                                                   |
+| ----------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| `/api/auth/*`                 | `src/routes/api/auth.$.ts`                            | Better Auth's own handler                                               |
+| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                   | Signature-verified Stripe events                                        |
+| `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`      | WebSocket upgrade, role-checked in the Worker before the Durable Object |
+| `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS` | WebSocket upgrade, open to anyone                                       |
+| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                | Cached for a day                                                        |
+| `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                 | Content depends on `env.APP_ENV`                                        |
+
+The last four are checked in `src/server.ts` before the request reaches TanStack Start, so none of them pays for an SSR render. `/api/auth/*` and `/api/webhooks/stripe` are TanStack Start server routes under `src/routes/api/`, so they go through the router but never render a page.
+
+## Guards
+
+All four guards live in `src/integrations/better-auth/auth.routes.ts`.
+
+| Guard                   | Behaviour                                                                                                    | Used by           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------- |
+| `requireUser`           | Redirects to `/auth/sign-in` when there is no session                                                        | Via the other two |
+| `requireAdmin`          | `requireUser`, then redirects a non-admin to `/account/overview`                                             | `admin.tsx`       |
+| `requireCustomer`       | `requireUser`, then redirects an admin to `/admin`                                                           | `account.tsx`     |
+| `redirectAuthenticated` | Sends a signed-in visitor to `postAuthRouteFor(user)` — `/admin` for an admin, `/account/overview` otherwise | `auth.tsx`        |
+
+Guards run in `beforeLoad`, which means they also run in the browser during client-side navigation. **They are navigation UX, not authorization.** A server function is a public HTTP endpoint whether or not its route was loaded, so authorization is enforced by the `authorized` middleware inside each use case — see [Permissions](/docs/reference/permissions).
+
+## Related pages
+
+- [Routing and the request lifecycle](/docs/architecture/request-lifecycle)
+- [Internationalization](/docs/architecture/i18n-architecture)
+- [Permissions](/docs/reference/permissions)

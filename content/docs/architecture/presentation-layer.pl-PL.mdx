@@ -1,0 +1,81 @@
+---
+title: "Warstwa prezentacji"
+description: "Gdzie mieszkają komponenty, style, motyw, branding i szablony e-mail oraz jakie zasady obowiązują każdy komponent."
+---
+
+`src/presentation` zawiera 573 pliki i jest największym katalogiem w repozytorium. Nic w nim nie czyta bazy danych ani sekretu.
+
+## Katalogi
+
+| Katalog              | Zawiera                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| `components/shadcn`  | 57 prymitywów shadcn/ui plus `sheet-control.styles.ts` — regeneruj, nie edytuj ręcznie |
+| `components/custom`  | 494 komponenty aplikacji                                                               |
+| `emails`             | Szablony React Email, `email-layout.tsx`, `email-highlight-box.tsx`, `email-styles.ts` |
+| `styles`             | `globals.css`, `storefront.css`, `admin.css`, `fonts.css`, `critical-fonts.css`        |
+| `theme`              | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                   |
+| `branding`           | `app.ts`, `business.ts`, `socials.ts`                                                  |
+| `document-assets.ts` | `getCriticalFontPreloads(locale)`                                                      |
+
+## Organizacja komponentów
+
+- **Komponenty współdzielone to płaskie pliki** w `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `legal-content.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`.
+- **Przekrojowe widżety dostają katalog**, gdy są systemem, a nie komponentem: `datagrid/`, `image-upload/`, `checkout/`, `defaults/`.
+- **Komponenty stron i obszarów leżą w `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `auth/`, `account/`, `admin/`.
+- **Każda strona administracyjna ma własny katalog** w `pages/admin`: `orders/`, `customers/`, `catalog/products/`, `catalog/categories/`, `catalog/collections/`, `catalog/attributes/`, `audit/`, `dashboard/`, `settings/`, `content/`, `coupons/`, `marketing/`.
+
+Większe obszary zagnieżdżają się dalej, w podkatalogi `components/`, `hooks/`, `lib/`, `utils/`, `sections/` i `_sections/` — na przykład `pages/admin/audit/{audit-table,components,hooks,lib,utils}` oraz `pages/landing-page/navigation/{components,constants,hooks,store}`. To świadome odejście od bardziej płaskiego układu projektów referencyjnych: panel administracyjny jest na tyle duży, że płaski katalog przestał być czytelny.
+
+## Zasady dotyczące komponentów
+
+- Komponent sam odczytuje swoje tłumaczenia i dane. Woła `useTranslations` raz, nazywa translator `t` i pobiera dane przez `useSuspenseQuery` na wyeksportowanych opcjach zapytania modułu albo przez `Route.useLoaderData()`. Nie przyjmuje propsów z etykietami ani danymi, które rodzic mógł odczytać sam.
+- Pliki tras tylko komponują. Widżet, dialog, formularz albo definicja kolumn to jeden plik.
+- Komponenty nigdy nie importują `db`, `auth` z `auth.server.ts` ani serwerowego klienta Stripe. Wołają opcje zapytań i mutacji wyeksportowane przez przypadki użycia.
+- Warunkowe klasy używają `cn` z paczki `cn`. Kolejność klas Tailwind ustawia `bun run format`, skonfigurowany w `vite.config.ts` w `fmt.sortTailwindcss` względem `src/presentation/styles/globals.css`.
+- Formularze używają react-hook-form z `zodResolver` i schematem Zod modułu. To świadome odejście od projektów referencyjnych, które używają TanStack Form.
+
+## Style
+
+Arkusze stylów są podzielone na trzy części i ładowane przez trasę, która ich potrzebuje:
+
+| Plik                 | Ładowany przez                                | Zawiera                                                       |
+| -------------------- | --------------------------------------------- | ------------------------------------------------------------- |
+| `globals.css`        | `__root.tsx`                                  | Jedyny build Tailwind, tokeny designu, wariant `dark`         |
+| `storefront.css`     | `_storefront.tsx`                             | Animacje odsłaniania na landingu i fallbacki reduced-motion   |
+| `admin.css`          | `admin.tsx`                                   | Własny zestaw tokenów panelu pod `[data-admin-main]`          |
+| `fonts.css`          | importowany przez `globals.css`               | Reguły `@font-face` dla samodzielnie hostowanych plików woff2 |
+| `critical-fonts.css` | wstawiany przez `StorefrontCriticalFontsHead` | Reguły `@font-face` potrzebne do pierwszego renderu           |
+
+`globals.css` zawęża skanowanie źródeł przez Tailwind dyrektywami `@source not` dla testów, `src/platform/testing` i nieużywanych prymitywów shadcn, żeby te pliki nie rozdmuchiwały generowanego CSS.
+
+## Motyw i pierwszy render
+
+`src/presentation/theme/theme-init.ts` eksportuje `THEME_INIT_SCRIPT` i `adminShellCriticalStyle`; `sidebar-preference.ts` eksportuje `SIDEBAR_INIT_SCRIPT`, `adminSidebarCollapsedCriticalStyle` i `getAdminSidebarDefaultOpen`; `datagrid/datagrid-init.ts` eksportuje `DATAGRID_PREFS_INIT_SCRIPT`. `__root.tsx` wstawia wszystkie trzy jako blokujące tagi `<script>` przed `<HeadContent />`, więc zapisany motyw, stan panelu bocznego i zapamiętane szerokości kolumn siatki są zastosowane przed pierwszą klatką, a nie po hydratacji.
+
+`ThemesProvider` opakowuje `@wrksz/themes` z `themes={["light", "dark"]}`, `enableSystem={false}` i magazynem `localStorage`. Panel administracyjny wymusza tryb jasny przez `useAdminLightTheme()`.
+
+Na trasach sklepu `StorefrontCriticalFontsHead` wstawia krytyczne reguły `@font-face`, a `document-assets.ts` wybiera preloady według locale: `pl-PL` otrzymuje subsety `latin-ext` fontów Manrope i Cormorant Garamond, `en-US` — `latin`. Panel administracyjny pomija fonty całkowicie i wstawia zamiast tego własny krytyczny CSS swojego chrome'u.
+
+## Branding
+
+`branding/app.ts` zawiera `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR` i stałe obrazu Open Graph; `business.ts` — dane prawne i kontaktowe sklepu; `socials.ts` — `SOCIALS`. Zarówno `src/lib/seo.ts`, jak i `_core/constants/api.ts` czytają z nich, dlatego lista dozwolonych hostów dla każdego trybu builda wynika z `APP_DOMAIN`.
+
+## E-maile
+
+Szablon w `presentation/emails` zawiera wyłącznie markup i eksportuje swoją przestrzeń nazw obok komponentu:
+
+```ts
+export const VERIFY_EMAIL_NAMESPACE = "emails.verify-email"
+```
+
+Tłumaczy przez `createTranslator` z use-intl, otrzymując `locale` i `messages` jako propsy. Wywołujący — `auth.server.ts` dla e-maili kontowych, `stripe.webhooks.tsx` dla potwierdzenia zamówienia, `order-shipped.notification.server.ts` dla powiadomienia o wysyłce — ładuje przestrzeń nazw przez `loadNamespace` i renderuje element. Szablony: `verify-email`, `reset-password`, `change-email`, `account-deleted`, `order-confirmation`, `order-shipped`. `src/routes/dev.emails.tsx` pokazuje ich podglądy na podstawie `src/integrations/resend/email-previews.tsx`.
+
+## Siatka danych panelu administracyjnego
+
+`components/custom/datagrid` to współdzielony system tabel stojący za każdą listą administracyjną: `create-data-grid.tsx` komponuje shell, toolbar, komórki nagłówka, wiersze, paginację, opcje widoku i szkielety na bazie `@tanstack/react-table`. Szerokości kolumn są wypisywane do markupu SSR jako `width: max(var(--marte-dg-<slug>-<column>, <default>px), <min>px)`, a `DATAGRID_PREFS_INIT_SCRIPT` wypełnia te zmienne z `localStorage` przed renderem, więc zmieniona szerokość kolumny maluje się od pierwszej klatki, bez przeskoku układu.
+
+## Powiązane strony
+
+- [Struktura katalogów](/docs/architecture/directory-structure)
+- [Internacjonalizacja](/docs/architecture/i18n-architecture)
+- [Cache i SSR](/docs/architecture/caching-and-ssr)

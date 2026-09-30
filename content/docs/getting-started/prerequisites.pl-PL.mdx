@@ -1,0 +1,103 @@
+---
+title: "Wymagania wstępne"
+description: "Narzędzia, środowiska uruchomieniowe i konta zewnętrzne potrzebne do uruchomienia i wdrożenia M'Arte."
+---
+
+## Narzędzia
+
+| Narzędzie        | Wersja                  | Do czego                                                                                                        |
+| ---------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Vite+ (CLI `vp`) | dowolna aktualna wersja | Każdy skrypt przechodzi przez `vp`: `vp check`, `vp test`, `vp dev`, `vp build`, `vp fmt`, `vp lint`, `vp exec` |
+| Bun              | 1.4.0                   | Menedżer pakietów i uruchamianie skryptów; wersję przypinają `packageManager` w `package.json` oraz CI          |
+| Node.js          | 24.x                    | `vite-plus` deklaruje `^22.18.0 \|\| ^24.11.0 \|\| >=26.0.0`; CI przypina Node 24 w `.github/actions/setup`     |
+| Git              | dowolna aktualna wersja | Krok instalacji rejestruje dyspozytor hooków dla katalogu `.vite-hooks/`                                        |
+
+Najpierw zainstaluj globalne CLI `vp`, ponieważ skrypt cyklu życia `prepare` wywołuje je w trakcie `bun install`:
+
+```sh
+curl -fsSL https://vite.plus | bash
+```
+
+W systemie Windows użyj `irm https://vite.plus/ps1 | iex`. Następnie otwórz nową powłokę i sprawdź instalację poleceniem `vp help`. Globalne CLI zarządza też środowiskiem Node.js i menedżerem pakietów, więc nie musisz instalować Node ani Buna osobno.
+
+Vite+ dostarcza dwa CLI: globalne `vp` oraz lokalny pakiet `vite-plus` (tu przypięty do wersji `1.0.0-rc.0` w `devDependencies`). W tym repozytorium `vp` korzysta z lokalnego pakietu — dlatego `bun run check` i `vp check` działają identycznie.
+
+`wrangler`, `drizzle-kit`, `shadcn`, `jsdom` i dostawca pokrycia dla Vitest są zależnościami deweloperskimi. Uruchamiaj je przez skrypty pakietu albo bezpośrednio przez `vp exec wrangler …` / `bunx wrangler …` — nigdy przez kopię zainstalowaną globalnie, bo jej wersja różniłaby się od tej używanej przez CI.
+
+### Opcjonalnie
+
+| Narzędzie      | Do czego                                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Stripe CLI     | `bun run stripe:listen` przekazuje testowe webhooki na `localhost:3000/api/webhooks/stripe` podczas pracy deweloperskiej |
+| Drizzle Studio | Uruchamiane przez `bun run db:studio`; wymaga trzech wartości `CLOUDFLARE_*` w pliku `.env`, a nie osobnej instalacji    |
+
+## Konta
+
+### Cloudflare — wymagane
+
+Aplikacja nie uruchomi się bez swoich bindingów. `wrangler.jsonc` deklaruje pięć dla każdego środowiska:
+
+| Binding                     | Zasób                        | Do czego                                                    |
+| --------------------------- | ---------------------------- | ----------------------------------------------------------- |
+| `DB`                        | baza D1                      | Wszystkie dane aplikacji — 31 tabel                         |
+| `IMAGES`                    | zasobnik R2 `martebizuteria` | Wysyłanie zdjęć produktów                                   |
+| `CACHE`                     | przestrzeń nazw KV           | Zadeklarowana, obecnie nieużywana przez kod aplikacji       |
+| `AUDIT_LOG_QUEUE`           | kolejka Cloudflare Queues    | Zdarzenia audytu, zapisywane przez konsumenta kolejki       |
+| `REALTIME_INVALIDATION_HUB` | Durable Object               | Rozgłaszanie unieważnień pamięci podręcznej przez WebSocket |
+
+Dwie rzeczy warte uwagi, zanim zaczniesz tworzyć zasoby:
+
+- Cloudflare Queues nie jest dostępne w każdym planie Workers. Jeśli Twoje konto nie może utworzyć kolejki, wdrożenie zatrzyma się na `scripts/verify-bindings.ts`, który wymaga zarówno producenta, jak i pasującego konsumenta dla `AUDIT_LOG_QUEUE`.
+- `placement: { mode: "smart" }` w `wrangler.jsonc` to również funkcja planu płatnego. Jest to wskazówka, a nie wymóg, więc lokalnie można ją bezpiecznie usunąć, jeśli konto ją odrzuca.
+
+Durable Object nie wymaga osobnego kroku przygotowania. Tworzy go migracja `v1` w `wrangler.jsonc`, która deklaruje `RealtimeInvalidationHub` w `new_sqlite_classes`.
+
+### Google i GitHub OAuth — wymagane do logowania społecznościowego
+
+`src/integrations/better-auth/auth.server.ts` konfiguruje oba dostawców bezwarunkowo:
+
+```ts
+socialProviders: {
+  github: { clientId: env.AUTH_GITHUB_CLIENT_ID, clientSecret: env.AUTH_GITHUB_CLIENT_SECRET },
+  google: { clientId: env.AUTH_GOOGLE_CLIENT_ID, clientSecret: env.AUTH_GOOGLE_CLIENT_SECRET },
+},
+```
+
+Oba identyfikatory klienta i oba sekrety znajdują się na liście `secrets.required` w każdym środowisku w `wrangler.jsonc`, więc `scripts/prepare-deploy-secrets.ts` odmawia wdrożenia bez nich. Adres powrotny to `https://<host>/api/auth/callback/google` oraz `https://<host>/api/auth/callback/github` — zgodnie z handlerem Better Auth zamontowanym w `src/routes/api/auth.$.ts`.
+
+### Resend — wymagane do utworzenia jakiegokolwiek konta
+
+Logowanie e-mailem i hasłem jest włączone z wymuszoną weryfikacją adresu:
+
+```ts
+emailAndPassword: {
+  enabled: true,
+  requireEmailVerification: true,
+  sendResetPassword,
+},
+emailVerification: {
+  autoSignInAfterVerification: true,
+  sendOnSignUp: true,
+  sendVerificationEmail,
+},
+```
+
+Bez działającego `RESEND_API_KEY` i zweryfikowanego nadawcy `RESEND_EMAIL_FROM` wiadomość weryfikacyjna nigdy nie dotrze, a konto nigdy nie będzie mogło się zalogować. Nie ma konta administratora tworzonego przez seed ani sposobu pominięcia weryfikacji z interfejsu, więc to twarde wymaganie, by dostać się do `/admin` — zobacz [Pierwsze uruchomienie](/docs/getting-started/first-run).
+
+### Stripe — wymagane do zamówień
+
+Potrzebujesz testowego klucza tajnego, pasującego klucza publicznego i sekretu podpisu webhooka. Płatność kończy się sukcesem w przeglądarce, ale zamówienie tworzy dopiero handler webhooka pod `/api/webhooks/stripe`, który weryfikuje podpis za pomocą `STRIPE_WEBHOOK_SECRET` i odrzuca wszystko, czego nie potrafi zweryfikować.
+
+### InPost — konto niepotrzebne
+
+Wybór paczkomatu odpytuje publiczne API punktów bezpośrednio z `src/integrations/inpost/inpost.api.ts`:
+
+```ts
+const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
+```
+
+W kodzie nie ma żadnych danych uwierzytelniających InPost, nie ma tworzenia przesyłek ani generowania etykiet — wyłącznie wyszukiwanie punktów po mieście.
+
+## Dalej
+
+Przejdź do [Instalacji](/docs/getting-started/installation).

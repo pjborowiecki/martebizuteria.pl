@@ -1,0 +1,218 @@
+---
+title: "Klienci w panelu"
+description: "Siatka klientów i jej statystyki, ekran szczegółów z wykresami wydatków i osią czasu audytu oraz dwie mutacje."
+---
+
+Tabela `user` jest współdzielona z Better Auth, więc „klienci” to widok na dane uwierzytelniania złączone z agregatami zamówień. Moduł to `src/modules/user`.
+
+## Tabela user
+
+`src/modules/user/user.schema.ts` rozszerza bazowego użytkownika Better Auth o własne kolumny M'Arte:
+
+| Kolumna                               | Uwagi                                                               |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `email`                               | 320 znaków, unikalny, not null                                      |
+| `name`                                | 256 znaków, not null                                                |
+| `email_verified`                      | boolean, domyślnie `false`, not null                                |
+| `role`                                | `admin \| customer`, domyślnie `DEFAULT_ROLE` (`customer`)          |
+| `banned`, `ban_reason`, `ban_expires` | pola wtyczki admin z Better Auth                                    |
+| `is_anonymous`                        | boolean, domyślnie `false`                                          |
+| `two_factor_enabled`                  | boolean, domyślnie `false`                                          |
+| `phone`                               | 32 znaki; zapisywane przez `updateCustomerPhone` i `updateCustomer` |
+| `timezone`                            | 64 znaki                                                            |
+| `image`                               | 2048 znaków                                                         |
+| `stripe_customer_id`                  | zadeklarowana, ale nigdy nie zapisywana                             |
+| `metadata`                            | napis JSON z notatkami i tagami administratora                      |
+
+Jeden indeks: `user_createdAt_idx`.
+
+## Trasy
+
+| Trasa                  | Plik                        | Uprawnienie      |
+| ---------------------- | --------------------------- | ---------------- |
+| `/admin/customers`     | `admin.customers.index.tsx` | `user: ["list"]` |
+| `/admin/customers/$id` | `admin.customers.$id.tsx`   | `user: ["list"]` |
+
+Loader indeksu wczytuje wstępnie `getAdminCustomersPageQuery({ page: 1, pageSize: ADMIN_CUSTOMER_PAGE_SIZE })` i `getAdminCustomerStatsQuery()`, oba z `staleTime: "static"`. `ADMIN_CUSTOMER_PAGE_SIZE` to 25, a `ADMIN_CUSTOMER_QUERY_STALE_MS` to 60 000. Obie trasy deklarują `staticData.namespaces: ["pages.admin.customers"]`.
+
+## Siatka
+
+`getAdminCustomersPage` (`use-cases/get-admin-customers-page.ts`) ma `authorized({ user: ["list"] })`. Obsługuje frazę wyszukiwania, `statFilter` i siedem filtrów kolumn:
+
+```ts
+filters: {
+  averageOrderValue: input.averageOrderValue,
+  banned: input.banned,
+  createdAt: input.createdAt,
+  emailVerified: input.emailVerified,
+  lastOrderAt: input.lastOrderAt,
+  role: input.role,
+  totalSpent: input.totalSpent,
+}
+```
+
+Akcesor zwraca cztery rzeczy — `rows`, `orderStats`, `addresses` i `total` — a use case zszywa je po stronie aplikacji:
+
+```ts
+const statsByUserId = mapCustomerOrderStats(orderStats)
+const addressByUserId = new Map(
+  addresses
+    .filter((row) => row.userId !== null)
+    .map((row) => [row.userId!, { city: row.city, countryCode: row.countryCode, province: row.province }]),
+)
+
+const items = rows.map((row) => toAdminCustomerListItem(row, statsByUserId.get(row.id), addressByUserId.get(row.id)))
+```
+
+Kolumna lokalizacji pokazuje więc miasto, województwo i kraj z **domyślnego adresu** klienta, a nie adres rozliczeniowy z zamówienia.
+
+Statystyki zamówień są liczone po `ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES = ["completed", "processing", "pending"]`, a `ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS` to `"completed"`. Zamówienia anulowane i zwrócone nie wchodzą do sum klienta.
+
+Identyfikatory kolumn, szerokości, domyślna widoczność i przypięcia leżą w `user.constants.ts` pod `ADMIN_CUSTOMER_TABLE_COLUMN_ID`, `ADMIN_CUSTOMER_TABLE_COLUMN_SIZE`, `ADMIN_CUSTOMER_TABLE_DEFAULT_COLUMN_VISIBILITY` i obiektem przypięć. Kolumny to m.in. `customer`, `recordId`, `email`, `phone`, `role`, `banned`, `emailVerified`, `location`, `orderCount`, `totalSpent`, `averageOrderValue`, `lastOrderAt`, `stripeCustomerId`, `createdAt` i `actions`.
+
+Komponenty leżą w `.../admin/customers/components/`: `customers-table.tsx`, `customers-columns.tsx`, filtry (`customers-role-filter`, `customers-banned-filter`, `customers-email-verified-filter`, `customers-date-column-filter` wraz z `customers-date-filter-form`, `customers-numeric-column-filter`), plakietki (`customer-role-badge`, `customer-banned-badge`, `customer-email-verified-badge`), `customer-name-cell`, `customer-table-cells`, `customers-row-actions`, `customers-stats` z `customers-stats.config.ts` oraz akcje eksportu i odświeżenia.
+
+## Statystyki
+
+`getAdminCustomerStats` uruchamia równolegle trzy przygotowane zapytania i wyprowadza karty w czystej funkcji:
+
+```ts
+const [[totalRow], [rollupRow], [averageProductsPerOrderRow]] = await Promise.all([
+  getAdminCustomerTotalCountQuery.execute(),
+  getAdminCustomerOrderRollupStatsQuery.execute(),
+  getAverageProductsPerOrderQuery.execute(),
+])
+
+return computeAdminCustomerStatsFromAggregates({
+  averageLtv: rollupRow?.averageLtv ?? 0,
+  averageProductsPerOrder: averageProductsPerOrderRow?.value ?? 0,
+  customersWithOrders: rollupRow?.customersWithOrders ?? 0,
+  repeatCustomers: rollupRow?.repeatCustomers ?? 0,
+  total: totalRow?.count ?? 0,
+})
+```
+
+`computeAdminCustomerStatsFromAggregates` i `resolveAdminCustomerReturningRate` leżą w `user.utils.ts`, co utrzymuje arytmetykę testowalną jednostkowo. Filtry statystyk zadeklarowane są w `ADMIN_CUSTOMER_STAT_FILTER` (`total` i `returning`), więc kliknięcie karty zawęża siatkę.
+
+## Ekran szczegółów
+
+`/admin/customers/$id` czyta `getAdminCustomerQuery(id, locale)` przez `useSuspenseQuery` i rzuca `notFound()` przez `ensureAdminCustomerDetail`, gdy wiersza brak.
+
+`getAdminCustomer` to najszerszy odczyt w całym kodzie — jedenaście akcesorów z `user.accessors.ts`:
+
+| Akcesor                               | Zasila                                                                |
+| ------------------------------------- | --------------------------------------------------------------------- |
+| `getUserById`                         | tożsamość, rolę, weryfikację, stan bana, metadane                     |
+| `getCustomerOrderStatsQuery`          | liczbę zamówień i sumę wydatków                                       |
+| `getAdminCustomerOrderRowsQuery`      | listę zamówień, `ADMIN_CUSTOMER_DETAIL_ORDERS_LIMIT = 10`             |
+| `getOrderItemTitlesQuery`             | tytuły pozycji per zamówienie, grupowane przez `groupOrderItemTitles` |
+| `getCustomerMonthlySpendingQuery`     | wykres wydatków, `ADMIN_CUSTOMER_DETAIL_MONTHS = 12`                  |
+| `getCustomerCategoryBreakdownQuery`   | wykres podziału na kategorie                                          |
+| `getCustomerPreferredCategoryQuery`   | wiersz preferowanej kategorii                                         |
+| `getCustomerPreferredCollectionQuery` | wiersz preferowanej kolekcji                                          |
+| `getDefaultCustomerAddressFullQuery`  | `formatAdminCustomerFullAddress`                                      |
+| `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                                       |
+| `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                                          |
+
+Wiersze zamówień są formatowane **tymi samymi** pomocnikami, których używa siatka zamówień — `formatAdminOrderDate`, `resolveAdminOrderPaymentUiKey`, `resolveAdminOrderFulfillmentUiKey` — więc plakietki przy zamówieniach klienta zgadzają się z tymi w `/admin/orders`.
+
+Tagi są wyprowadzane, a nie przechowywane:
+
+```ts
+export const resolveAdminCustomerTags = (row: User["select"], orderCount: number): AdminCustomerDetailTag[] => {
+  const tags: AdminCustomerDetailTag[] = []
+  if (row.role === ROLES.ADMIN) {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.ADMIN)
+  } else {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.CUSTOMER)
+  }
+  if (orderCount >= ADMIN_CUSTOMER_MIN_REPEAT_ORDERS) {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.RETURNING)
+  }
+  if (row.emailVerified) {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.VERIFIED)
+  }
+  if (row.banned === true) {
+    tags.push(ADMIN_CUSTOMER_DETAIL_TAGS.BANNED)
+  }
+
+  return tags
+}
+```
+
+`ADMIN_CUSTOMER_MIN_REPEAT_ORDERS` to 2. Tagi własne dodane przez administratora pochodzą z kolumny metadanych i są scalane osobno.
+
+Oś czasu to widok na `audit_log` dla danego użytkownika, z `CUSTOMER_AUDIT_TIMELINE_LIMIT = 50` (`customer-activity.constants.ts`). Zobacz [Dziennik audytu](/docs/features/audit-log).
+
+Interfejs leży w `.../admin/customers/customer-detail/`: `customer-kpis.tsx`, `customer-charts.tsx`, `customer-orders.tsx`, `customer-sidebar.tsx` i edytor `edit-customer/customer-sheet.tsx`.
+
+## Notatki i tagi w `metadata`
+
+Nie ma tabeli notatek ani tagów. Oba żyją w `user.metadata` jako JSON, z tolerancyjnym parserem:
+
+```ts
+export const parseAdminUserMetadata = (raw: string | null | undefined): User["adminUserMetadata"] => {
+  const trimmed = raw?.trim()
+  if (trimmed === undefined || trimmed === "") {
+    return {}
+  }
+
+  const record = tryParseJsonRecord(trimmed)
+  const structured =
+    record === undefined || !("notes" in record || "tags" in record) ? undefined : userZodSchemas.adminUserMetadata.safeParse(record).data
+  if (structured === undefined) {
+    return { notes: trimmed }
+  }
+
+  const notes = structured.notes?.trim()
+
+  return { notes: notes === "" ? undefined : notes, tags: normalizeTags(structured.tags) }
+}
+```
+
+Kolumna zawierająca zwykły tekst, a nie JSON, jest traktowana jako notatka, więc stara wartość nigdy nie ginie. `serializeAdminUserMetadata` zwraca `undefined`, gdy oba pola są puste, a `updateCustomer` zapisuje wtedy SQL-owy `null`, a nie napis `"{}"`.
+
+## Dwie mutacje
+
+`updateCustomer` (`use-cases/update-customer.ts`), `authorized({ user: ["update"] })`:
+
+- zwraca 404 z `USER_ERROR_CODES.NOT_FOUND`, gdy użytkownika nie ma
+- zapisuje `phone` (czyszcząc do `NULL` przy pustym napisie) oraz zserializowane `metadata`
+- upsertuje domyślny adres przez `upsertDefaultAddressForUser`, ale tylko gdy przejdzie `hasAddressInput` — `address1` i `city` muszą być niepuste
+- gdy przysłany `countryCode` jest pusty, używa kraju z istniejącego domyślnego adresu, a nie zapisuje pustego napisu, i całkowicie pomija zapis adresu, jeśli kraju wciąż nie ma
+
+**Nie** zmienia adresu e-mail, nazwy, roli ani stanu bana; to operacje Better Auth.
+
+`deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, ma trzy zabezpieczenia:
+
+| Warunek                                  | Błąd                                                   |
+| ---------------------------------------- | ------------------------------------------------------ |
+| użytkownik nie istnieje                  | `ERROR_CODES.NOT_FOUND` / `USER_ERROR_CODES.NOT_FOUND` |
+| `targetUser.id === context.auth.user.id` | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
+| `targetUser.role === ROLES.ADMIN`        | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
+
+Zapamiętuje adres e-mail, nazwę i bieżący język **przed** usunięciem, przekazuje usunięcie do `auth.api.removeUser`, a potem kolejkuje e-mail pożegnalny:
+
+```ts
+await auth.api.removeUser({ body: { userId }, headers: getRequestHeaders() })
+
+scheduleBackgroundWork(sendAccountDeletedEmail(goodbyeEmail))
+```
+
+Ponieważ usunięcie idzie przez Better Auth, działają kaskady na `session`, `account` i `address`, natomiast `order.user_id` i `checkout.user_id` mają `onDelete: "set null"` — zamówienia przeżywają więc jako zamówienia gościa.
+
+## Eksport
+
+`exportAdminCustomers` (`use-cases/export-admin-customers.ts`) wymaga `user: ["list"]` i zwraca wszystkie pasujące wiersze na potrzeby pliku CSV budowanego w `customers-export-action.tsx`.
+
+## Czas rzeczywisty
+
+`USER_QUERY_KEYS.ADMIN.CUSTOMERS` występuje w `ADMIN_REALTIME_QUERY_PREFIXES`, a `scheduleAdminCustomersInvalidation()` wypycha zarówno `CUSTOMERS`, jak i `CUSTOMERS_PAGE`. Zdarzenia audytu rejestracji klienta unieważniają też klucze dziennika audytu, więc nowa rejestracja pojawia się w otwartym panelu bez przeładowania.
+
+## Powiązane strony
+
+- [Konto](/docs/features/account) — widok klienta na te same dane
+- [Zamówienia](/docs/features/orders)
+- [Dziennik audytu](/docs/features/audit-log)
+- [E-maile transakcyjne](/docs/features/email)
+- [Integracje: Better Auth](/docs/integrations/better-auth)

@@ -1,0 +1,252 @@
+---
+title: "Tabela danych"
+description: "Zestaw tabel panelu: fabryka createDataGrid, zestaw funkcji TanStack Table, trwały układ kolumn, kolumny, filtry i paginacja po stronie serwera."
+---
+
+Istnieją dwie warstwy o podobnych nazwach. Nie mieszaj ich:
+
+| Warstwa                                             | Czym jest                                                                                                                                            |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/presentation/components/shadcn/data-table.tsx` | Trzy drobne prymitywy: `DataTable` (tabela `table-fixed` z `border-separate`), `DataTableContainer` (kontener przewijania) i `dataTableContentStyle` |
+| `src/presentation/components/custom/datagrid/`      | Właściwy zestaw: fabryka, hook tabeli, magazyn preferencji i 18 komponentów                                                                          |
+
+Prymitywów nie używa nic poza tabelą danych. Każdy ekran z listą w panelu używa tego zestawu.
+
+## Fabryka
+
+`createDataGrid` (`datagrid/components/create-data-grid.tsx`) buduje jedną tabelę na ekran. Tworzy prywatny kontekst Reacta i zwraca cztery komponenty złożone powiązane z tym kontekstem:
+
+```ts
+export const ORDERS_DATA_GRID_KEY = "admin.orders"
+
+export const ordersDataGrid = createDataGrid<Order["adminListItem"]>({
+  persistenceKey: ORDERS_DATA_GRID_KEY,
+})
+```
+
+```ts
+interface DataGrid<TData extends RowData> {
+  readonly persistenceKey: string
+  readonly Body: () => JSX.Element
+  readonly Pagination: () => JSX.Element
+  readonly Provider: (props: Readonly<{ children: ReactNode; value: DataGridContextValue<TData> }>) => JSX.Element
+  readonly Toolbar: (props: Readonly<{ actions?: ReactNode; children?: ReactNode; filters?: ReactNode }>) => JSX.Element
+  readonly useDataGrid: () => DataGridContextValue<TData>
+}
+```
+
+Istnieje siedem tabel, każda w `pages/admin/<obszar>/utils/<obszar>-data-grid.ts`:
+
+| Tabela                | `persistenceKey`              | Tryb                                                                             |
+| --------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
+| `ordersDataGrid`      | `admin.orders`                | Serwer: ręczne filtrowanie i paginacja                                           |
+| `customersDataGrid`   | `admin.customers`             | Serwer: ręczne filtrowanie i paginacja                                           |
+| `auditDataGrid`       | `admin.audit:v3`              | Serwer: ręczne filtrowanie i paginacja                                           |
+| `productsDataGrid`    | `admin.catalog.products:v2`   | Serwer, gdy jest zapytanie listy, inaczej w pamięci; dodatkowo ręczne sortowanie |
+| `categoriesDataGrid`  | `admin.catalog.categories`    | W pamięci, własny filtr globalny, zmiana kolejności wierszy                      |
+| `collectionsDataGrid` | `admin.catalog.collections`   | W pamięci, własny filtr globalny, zmiana kolejności wierszy                      |
+| `attributesDataGrid`  | `admin.catalog.attributes:v6` | W pamięci, własny filtr globalny, zmiana kolejności wierszy                      |
+
+Sufiksy `:v2`, `:v3` i `:v6` unieważniają cache. Podnieś sufiks, gdy zmieniasz kolumny tabeli tak, że zapisane układy tracą sens — każdy odwiedzający zacznie wtedy od wartości domyślnych, a nie od nieaktualnej szerokości czy kolejności.
+
+## Składanie ekranu
+
+Ekran to trzy pliki: obiekt tabeli, hook produkujący wartość kontekstu i komponent rozkładający części. Z `pages/admin/orders/components/orders-table.tsx`:
+
+```tsx
+const grid = useOrdersDataGrid({ onRowClick: handleRowClick })
+
+return (
+  <Provider value={grid}>
+    <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>
+      <OrdersStats />
+      <DataGridShell>
+        <Toolbar
+          filters={
+            <>
+              <OrdersStatusFilter />
+              <OrdersPaymentFilter />
+              <OrdersFulfillmentFilter />…
+            </>
+          }
+        >
+          <OrdersRefreshAction />
+          <OrdersExportAction />
+        </Toolbar>
+        <Body />
+        <Pagination />
+      </DataGridShell>
+    </div>
+  </Provider>
+)
+```
+
+`const { Body, Pagination, Provider, Toolbar } = ordersDataGrid` znajduje się na końcu pliku. `DataGridShell` to `Card` z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i paginacja zostają na miejscu, a przewija się tylko treść.
+
+`Toolbar` zawsze renderuje pole wyszukiwania, menu widoczności kolumn i przycisk resetowania układu. Slot `filters` to drugi wiersz, `children` sąsiadują z wbudowanymi kontrolkami, a slot `actions` jest wyrównany do prawej.
+
+## Zestaw funkcji
+
+`datagrid/lib/data-grid.features.ts` deklaruje zestaw funkcji TanStack Table v9 raz, przez `tableFeatures`, i wszystkie tabele go współdzielą:
+
+- **Kolumny**: filtrowanie, kolejność, przypinanie, zmiana rozmiaru, rozmiary, widoczność oraz `metaHelper<DataGridColumnMeta>()`.
+- **Wiersze**: paginacja, zaznaczanie, sortowanie; modele wierszy filtrowane, paginowane i sortowane.
+- **Funkcje filtrujące**: `arrIncludes`, `equals`, `equalsString`, `inDateRange`, `inNumberRange`, `includesString`, `weakEquals`.
+- **Funkcje sortujące**: `alphanumeric`, `basic`, `datetime`, `text`.
+- **Filtrowanie globalne**.
+
+`DataGridFeatures` to eksportowany typ; każdy `Table`, `Row`, `Column` i `createColumnHelper` w repozytorium jest nim sparametryzowany.
+
+## Hook tabeli
+
+`useDataGridInstance` (`datagrid/hooks/use-data-grid-instance.ts`) łączy `useTable` z magazynem preferencji. Jego opcje:
+
+| Opcja                                                            | Przeznaczenie                                                         |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `columns`, `data`, `getRowId`                                    | Zwykłe wejścia TanStack; `getRowId` jest wymagany                     |
+| `persistenceKey`                                                 | Gdzie zapisywane są preferencje układu                                |
+| `initialColumnOrder`                                             | Kolejność kanoniczna — `getDataGridColumnIds(columns)`                |
+| `initialColumnPinning`                                           | `{ start: [...], end: [...] }`                                        |
+| `defaultColumnVisibility`                                        | Kolumny ukryte, dopóki użytkownik ich nie pokaże                      |
+| `forcedHiddenColumnIds`                                          | Kolumny, które pozostają ukryte niezależnie od zapisanych preferencji |
+| `defaultPageSize`                                                | Normalizowany do dozwolonych rozmiarów strony                         |
+| `enableRowSelection`                                             | Domyślnie `true`                                                      |
+| `globalFilterFn`                                                 | Domyślnie `includesString`                                            |
+| `manualFiltering`, `manualPagination`, `manualSorting`           | Przekazują pracę na serwer                                            |
+| `pagination`, `sorting`, `pageCount`, `rowCount`                 | Stan sterowany dla trybu serwerowego                                  |
+| `onPaginationChange`, `onSortingChange`, `onColumnFiltersChange` | Wywołania zwrotne utrzymujące wejście zapytania w zgodzie             |
+
+Zawsze ustawia `columnResizeMode: "onChange"`, `enableColumnPinning`, `enableColumnResizing` i `defaultColumn: { minSize: 36 }`, a zwraca `{ table, columnReorder, hasPreferenceOverrides, resetPreferences }`.
+
+## Trwały układ
+
+Kolejność, szerokość i widoczność kolumn przetrwają odświeżenie. `datagrid/lib/data-grid-preferences.ts` zapisuje je pod kluczem `marte:datagrid:v1:<persistenceKey>` w `localStorage`, w formie `{ columnOrder, columnSizing, columnVisibility }`.
+
+Trzy mechanizmy chronią to od mrugania i rozjeżdżania się:
+
+1. **Przywracanie przed pierwszym renderem.** `DATAGRID_PREFS_INIT_SCRIPT` (`datagrid/datagrid-init.ts`) działa jako wbudowany skrypt w sekcji `head`. Przechodzi po wszystkich kluczach `marte:datagrid:v1:` i zapisuje każdą zachowaną szerokość do właściwości niestandardowej CSS `--marte-dg-<slug>-<columnId>` na `documentElement`, gdzie `<slug>` to klucz trwałości z `.` i `:` zamienionymi na `-`. Kolumny stałe `select`, `drag`, `image` i `actions` są pomijane. Kolumny renderują się więc od razu w zapisanej szerokości.
+2. **Zapisy z opóźnieniem.** `useDataGridPersistEffects` zapisuje 300 ms po ostatniej zmianie, a dodatkowo wymusza zapis na zdarzeniach `beforeunload` i `pagehide`.
+3. **Sanityzacja przy czytaniu.** `sanitizeColumnOrder`, `sanitizeColumnSizing` i `sanitizeColumnVisibility` odrzucają nieznane identyfikatory kolumn, ograniczają szerokości do `minSize`/`maxSize` każdej kolumny, ignorują rozmiary kolumn nieskalowalnych i ponownie nakładają kolejność przypięcia. Wbudowane są dwie migracje starych kluczy: zapisane `id` staje się `recordId`, a zapisane `handle` staje się `title` — każda tylko wtedy, gdy kolejność kanoniczna tabeli faktycznie zawiera nowy identyfikator, dzięki czemu przemianowane kolumny katalogu i atrybutów nie psują starszych zapisanych układów.
+
+`hasPreferenceOverrides` decyduje, czy przycisk resetu w pasku narzędzi jest aktywny; `resetPreferences` czyści zapisany wpis oraz zmienne CSS i wraca do kolejności kanonicznej.
+
+## Kolumny
+
+Definicje kolumn buduje zwykła funkcja, a cienki hook dostarcza tłumaczenia i język, z memoizacją. Ekrany zamówień, klientów i audytu trzymają builder w `lib/<obszar>-column-defs.tsx`, a hook w `components/<obszar>-columns.tsx`; cztery ekrany katalogu trzymają jedno i drugie w `components/<obszar>-columns.tsx`.
+
+```tsx
+export const useOrderColumns = () => {
+  const t = useTranslations("pages.admin.orders")
+  const tAdmin = useTranslations("pages.admin")
+  const locale = useLocale()
+
+  return useMemo(() => buildOrderColumns({ locale, t, tAdmin }), [locale, t, tAdmin])
+}
+```
+
+Identyfikatory kolumn nigdy nie są literałami w miejscu użycia — pochodzą ze stałej modułu, na przykład `ADMIN_ORDER_TABLE_COLUMN_ID`, a szerokości z `ADMIN_ORDER_TABLE_COLUMN_SIZE`, obie w `src/modules/order/order.constants.ts`. Dzięki temu identyfikatory używane przez tabelę, konfigurację przypięcia, filtry i mapowanie sortowania na serwerze nie mogą się rozjechać.
+
+```tsx
+columnHelper.accessor("createdAt", {
+  cell: ({ row }) => (
+    <span className="text-sm whitespace-nowrap text-muted-foreground">{formatAdminOrderDate(row.original.createdAt, locale)}</span>
+  ),
+  enableSorting: false,
+  filterFn: "auto",
+  header: t("columns.date"),
+  id: ADMIN_ORDER_TABLE_COLUMN_ID.createdAt,
+  maxSize: DATE_COLUMN_MAX_SIZE,
+  meta: { skeletonVariant: "text" },
+  size: ADMIN_ORDER_TABLE_COLUMN_SIZE.createdAt,
+})
+```
+
+### Meta kolumny
+
+`DataGridColumnMeta` (`datagrid/lib/data-grid.types.ts`) to sposób, w jaki kolumna mówi tabeli, jak ma się zachować:
+
+| Pole                             | Efekt                                                                              |
+| -------------------------------- | ---------------------------------------------------------------------------------- |
+| `cellClassName`, `headClassName` | Dodatkowe klasy na komórce i nagłówku                                              |
+| `fillsRemainingWidth`            | Ta kolumna rozciąga się, wypełniając kontener                                      |
+| `absorbsTrailingSlack`           | Ta kolumna wchłania piksele pozostałe po rozłożeniu układu                         |
+| `filterOnly`                     | Kolumna zostaje w tabeli do filtrowania, ale jest pomijana w renderowanym układzie |
+| `preventRowClick`                | Kliknięcia w tej komórce nie wywołują `onRowClick`                                 |
+| `skeletonVariant`                | Jaki placeholder rysować w czasie ładowania                                        |
+
+Warianty szkieletu to `badge`, `checkbox`, `date`, `icon`, `iconEnd`, `number`, `recordId`, `text`, `thumbnail` i `title`; `renderDataGridSkeletonContent` mapuje każdy na odpowiedni kształt `Skeleton`, a brak wariantu daje pasek `h-4 w-full max-w-[80%]`.
+
+### Kolumny stałe i pomocnicze
+
+`fixedDataGridColumnWidth(size)` zwraca `{ enableResizing: false, minSize: size, maxSize: size, size }` — rozwiń to w kolumnie, która nie może się ruszać. `selectionColumn(columnHelper, labels)` buduje kolumnę z checkboxem (identyfikator `select`, szerokość 40, `preventRowClick`, `skeletonVariant: "checkbox"`) i przyjmuje dwie etykiety dostępności jako argumenty, żeby tłumaczenia dostarczał wywołujący. `DATAGRID_UTILITY_COLUMN_IDS` to `["actions", "drag", "image", "select"]`; te kolumny są wyłączone ze zmiany rozmiaru i z zapisywanej mapy rozmiarów.
+
+Akcje wiersza to kolumna `display` z `enableHiding: false`, nagłówkiem tylko dla czytników ekranu, `meta.preventRowClick` i komponentem w komórce, takim jak `OrdersRowActions`.
+
+## Filtry
+
+Filtry to komponenty konkretnego ekranu, które zapisują do stanu `columnFilters` tabeli; współdzielony pasek narzędzi nie ma żadnej abstrakcji filtra. Ekran zamówień dostarcza `OrdersStatusFilter`, `OrdersPaymentFilter`, `OrdersFulfillmentFilter`, `OrdersNumericColumnFilter` i `OrdersDateColumnFilter`. `datagrid/lib/` dostarcza części wielokrotnego użytku odpowiedzialne za parsowanie: `data-grid-date-filter.ts` i `data-grid-numeric-filter.ts`.
+
+Wyszukiwanie jest osobne. `DataGridSearch` zapisuje do filtra globalnego tabeli; `useAdminDebouncedTableSearch(table)` zwraca jego opóźnioną kopię, którą ekrany w trybie serwerowym wstawiają do wejścia zapytania. Tabele katalogu działające w pamięci przekazują zamiast tego `globalFilterFn` zbudowany przez `createCatalogTableGlobalFilterFn`, który scala wyszukiwalne części wiersza w jeden ciąg zapisany małymi literami:
+
+```ts
+export const createCatalogTableGlobalFilterFn =
+  <TData extends RowData>(getSearchableParts: (row: TData) => CatalogTableSearchPart[]): FilterFn<DataGridFeatures, TData> =>
+  (row, _columnId, filterValue) =>
+    rowMatchesCatalogTableSearch(getSearchableParts(row.original), filterValue)
+```
+
+## Tryb serwerowy
+
+Hook w trybie serwerowym jest właścicielem wejścia zapytania i przekazuje sterowany stan do `useDataGridInstance`. Hook zamówień jest wzorcowym przykładem:
+
+- Lokalny stan dla `pagination`, `columnFilters`, opóźnionego wyszukiwania i aktywnego filtra ze statystyk.
+- `parseAdminOrdersListFilters(columnFilters)` zamienia stan filtrów tabeli w typowane filtry listy.
+- `buildAdminOrdersPageInput({ … })` składa `Order["adminPageInput"]`, przeliczając liczony od zera `pageIndex` przez `LIST_PAGE_STEP`.
+- `useQuery({ ...getAdminOrdersPageQuery(pageInput), placeholderData: keepPreviousData })`, żeby poprzednia strona była widoczna w czasie ładowania następnej.
+- `isLoading: isFetching || isPending`, dzięki czemu `Body` rysuje wiersze szkieletu, a nie pustą tabelę.
+- `pageCount: Math.ceil(data.total / pagination.pageSize)` oraz `rowCount: data.total`.
+- Efekty, które przy każdej zmianie tekstu wyszukiwania albo filtrów kolumn ustawiają `pageIndex` na 0.
+
+Sortowanie w trybie serwerowym jest opcjonalne: `manualSorting` ustawia tylko tabela produktów. Tabele zamówień, klientów i dziennika audytu ustawiają na swoich kolumnach `enableSorting: false`, więc rozstrzygające jest sortowanie serwera.
+
+Wartość kontekstu można rozszerzyć dla konkretnego ekranu. `OrdersDataGridValue` rozszerza `DataGridContextValue` o `activeStatFilter`, `applyOrderStatFilter` i `exportListInput`, a `useOrdersDataGridContext()` zawęża bazowy kontekst z powrotem do tego typu, używając strażnika typu, który poza właściwym `Provider` rzuca czytelny błąd.
+
+## Paginacja
+
+`DataGridPagination` renderuje wybór liczby wierszy na stronę, licznik zakresu, wskaźnik strony oraz przyciski pierwsza/poprzednia/następna/ostatnia. Dozwolone rozmiary strony są ustalone w `data-grid-pagination.constants.ts` jako `DATA_GRID_PAGE_SIZE_OPTIONS`, co daje `[10, 25, 50, 100, 250]`.
+
+`DATA_GRID_DEFAULT_PAGE_SIZE` to 10; `normalizeDataGridPageSize` zaokrągla każdą inną liczbę w górę do najbliższego dozwolonego rozmiaru, a efekt w komponencie poprawia rozmiar strony, którego nie ma na liście. Ekrany nadpisują wartość domyślną — zamówienia używają `ADMIN_ORDERS_PAGE_SIZE` (25), klienci `ADMIN_CUSTOMER_PAGE_SIZE`, audyt `ADMIN_AUDIT_LOG_PAGE_SIZE`.
+
+W trybie ręcznym suma wierszy pochodzi z `table.options.rowCount`; w przeciwnym razie z modelu wierszy po filtrowaniu.
+
+Wszystkie teksty leżą w przestrzeni nazw `components.datagrid`: `view.label`, `view.columns`, `view.reset`, `sortBy`, `reorderColumn`, `resizeColumn` i `pagination.*`. Trasa `/admin` wczytuje tę przestrzeń z wyprzedzeniem przez `staticData.namespaces`.
+
+## Układ, zmiana rozmiaru i kolejności
+
+`DataGridTable` mierzy swój kontener przewijania przez `ResizeObserver` (`useDatagridContainerWidth`) i wyznacza układ na podstawie rozmiarów kolumn, stanu przypięcia oraz `fillsRemainingWidth`/`absorbsTrailingSlack`. Szerokości kolumn są podawane jako zmienne CSS, nie jako style inline — właśnie dlatego skrypt z sekcji `head` może je przywrócić, zanim uruchomi się React.
+
+Zmiana kolejności kolumn odbywa się przez przeciąganie, za pomocą `useColumnReorder` i `ColumnReorderApi` w kontekście. Zmiana kolejności wierszy jest opcjonalna: cztery tabele katalogu dostarczają `RowReorderApi` (`onRowDragStart`, `onRowDragEnter`, `onRowDrop`, `onRowMove`, `draggingId`, `enabled`), a pozostałe przekazują `rowReorder: undefined`.
+
+Kliknięcia wiersza mają jeden niuans. `DataGridRow` oznacza komórki kolumn z `meta.preventRowClick` atrybutem `data-prevent-row-click`, a przed wywołaniem `onRowClick` sprawdza `consumeDataGridRowClickSuppression()`. Kod zamykający dialog albo menu nad tabelą wywołuje `suppressNextDataGridRowClick()` (300 ms) lub `suppressDataGridRowClickAfterDialogDismiss()` (500 ms) z `lib/data-grid-row-click.ts`, więc zamknięcie nakładki nie otwiera jednocześnie wiersza pod nią.
+
+## Testy
+
+Każdy komponent i hook w `datagrid/` ma siostrzany test w `__test__/`, w tym `use-data-grid-preferences-snapshot.ssr.test.tsx` dla ścieżki SSR oraz `data-grid-harness.tsx` jako współdzieloną obudowę testową. Ekrany dodają własną — `pages/admin/orders/components/__test__/orders-grid-harness.tsx`.
+
+```bash
+bun run test:component
+```
+
+## Dodawanie nowej tabeli
+
+1. Dodaj `pages/admin/<obszar>/utils/<obszar>-data-grid.ts` ze stałą `<OBSZAR>_DATA_GRID_KEY` i `createDataGrid<Row>({ persistenceKey })`.
+2. Umieść identyfikatory kolumn, rozmiary, przypięcie i domyślną widoczność w pliku `*.constants.ts` modułu, do którego należy encja.
+3. Napisz definicje kolumn z `createColumnHelper<DataGridFeatures, Row>()` i hook `use<Obszar>Columns()` dla tłumaczeń.
+4. Napisz `hooks/use-<obszar>-data-grid.ts` zwracający `DataGridContextValue`.
+5. Złóż `components/<obszar>-table.tsx` z `Provider`, `DataGridShell`, `Toolbar`, `Body` i `Pagination`.
+6. Dodaj potrzebne klucze `components.datagrid` w obu językach oraz testy obok każdego pliku.
+
+## Powiązane strony
+
+- [Komponenty shadcn](/docs/ui/shadcn-components)
+- [Wzorce kompozycji](/docs/ui/composition-patterns)

@@ -1,0 +1,139 @@
+---
+title: "Environment and bindings"
+description: "Environment files, variables, secrets and Cloudflare bindings for every Wrangler environment."
+---
+
+There are three real environments — `development`, `preview` and `production` — plus a `test` set of dummy values. Each real environment has a matching Vite mode, a matching `.env.<name>` file and a matching `env` block in `wrangler.jsonc`. There is no Wrangler `test` environment; tests get their values from `.env.test` through Vitest.
+
+Bun's automatic env loading is switched off in `bunfig.toml`:
+
+```toml
+# Let Vite and Wrangler choose the requested mode. Drizzle scripts opt in with --env-file.
+env = false
+```
+
+so nothing is ever loaded implicitly. Vite and Wrangler pick the file from the requested mode, and the Drizzle Kit scripts opt in explicitly with `bun --env-file=.env.<environment>`.
+
+## Environment files
+
+| File               | Committed | Used by                                                                                                 |
+| ------------------ | --------- | ------------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Yes       | The template; lists every variable with a placeholder or empty value                                    |
+| `.env.development` | No        | `bun run dev`, `db:push:development`, `db:studio:development`, `db:introspect:development`              |
+| `.env.preview`     | No        | `build:preview`, `deploy:preview` (through `prepare-deploy-secrets.ts`), the `:preview` Drizzle scripts |
+| `.env.production`  | No        | `build:production`, `deploy:production`, the `:production` Drizzle scripts                              |
+| `.env.test`        | Yes       | Vitest, via `env: loadEnv("test", import.meta.dirname, "")` in `vite.config.ts`; dummy values only      |
+
+Start from the template:
+
+```sh
+cp .env.example .env.development
+```
+
+## Variables
+
+| Variable                      | Read by                                                                                  | Worker secret |
+| ----------------------------- | ---------------------------------------------------------------------------------------- | ------------- |
+| `AUTH_SECRET`                 | Better Auth signing and encryption                                                       | Yes           |
+| `AUTH_GOOGLE_CLIENT_ID`       | Google OAuth                                                                             | Yes           |
+| `AUTH_GOOGLE_CLIENT_SECRET`   | Google OAuth                                                                             | Yes           |
+| `AUTH_GITHUB_CLIENT_ID`       | GitHub OAuth                                                                             | Yes           |
+| `AUTH_GITHUB_CLIENT_SECRET`   | GitHub OAuth                                                                             | Yes           |
+| `RESEND_API_KEY`              | The Resend client in `src/integrations/resend/resend.config.ts`                          | Yes           |
+| `RESEND_EMAIL_FROM`           | The default sender for outgoing email                                                    | Yes           |
+| `STRIPE_SECRET_KEY`           | The Stripe server client in `src/integrations/stripe/stripe.server.ts`                   | Yes           |
+| `STRIPE_WEBHOOK_SECRET`       | Signature verification in `src/routes/api/webhooks.stripe.ts`                            | Yes           |
+| `VITE_R2_URL`                 | Public R2 base URL, read as `import.meta.env["VITE_R2_URL"]` in `src/lib/url.ts`         | Yes           |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, inlined into the client bundle at build time | No            |
+| `CLOUDFLARE_ACCOUNT_ID`       | Drizzle Kit's D1 HTTP driver in `src/integrations/drizzle-orm/drizzle.config.ts`         | No            |
+| `CLOUDFLARE_DATABASE_ID`      | Drizzle Kit's D1 HTTP driver                                                             | No            |
+| `CLOUDFLARE_ACCESS_TOKEN`     | Drizzle Kit's D1 HTTP driver                                                             | No            |
+| `SENTRY_AUTH_TOKEN`           | Nothing yet — declared in `.env.example` ahead of error reporting being wired up         | No            |
+
+Only variables listed under `secrets.required` in `wrangler.jsonc` are uploaded on deploy. All three environments declare the same ten names. The three `CLOUDFLARE_*` variables are Drizzle Kit credentials and stay on the machine that runs the CLI; `prepare-deploy-secrets.ts` writes only the declared set into `.wrangler/secrets.<environment>.json` with mode `0600` and fails loudly if one is blank:
+
+```
+Missing STRIPE_SECRET_KEY in .env.preview or the process environment
+```
+
+### Browser-visible values
+
+Only `VITE_`-prefixed names reach the client bundle. `src/types/vite-env.d.ts` declares exactly one of them on `ImportMetaEnv`:
+
+```ts
+interface ImportMetaEnv {
+  readonly VITE_STRIPE_PUBLISHABLE_KEY: string | undefined
+}
+```
+
+`VITE_R2_URL` is read through the index form `import.meta.env["VITE_R2_URL"]`, which is why it does not need a declaration. `src/lib/image.ts` also reads `import.meta.env["VITE_IMAGE_CDN_DOMAIN"]`, which is not declared in `.env.example`, `.env.test` or `wrangler.jsonc` — that path is inert unless someone sets the variable by hand.
+
+## Bindings
+
+`wrangler.jsonc` gives every environment the same five bindings, plus `ASSETS`, which is declared once at the top level. Only the underlying resources differ.
+
+| Binding                     | Type           | `development`                         | `preview`                          | `production`               |
+| --------------------------- | -------------- | ------------------------------------- | ---------------------------------- | -------------------------- |
+| `DB`                        | D1             | `martebizuteria-preview`, remote      | `martebizuteria-preview`, remote   | `martebizuteria`, remote   |
+| `CACHE`                     | KV             | `d6727c71…`, remote                   | `d6727c71…`, remote                | `4126270a…`, remote        |
+| `IMAGES`                    | R2             | bucket `martebizuteria`, remote       | bucket `martebizuteria`, remote    | bucket `martebizuteria`    |
+| `AUDIT_LOG_QUEUE`           | Queue producer | `martebizuteria-audit-log-preview`    | `martebizuteria-audit-log-preview` | `martebizuteria-audit-log` |
+| `REALTIME_INVALIDATION_HUB` | Durable Object | class `RealtimeInvalidationHub`       | same                               | same                       |
+| `ASSETS`                    | Static assets  | `./public`, declared at the top level | same                               | same                       |
+
+`development` and `preview` point at the **same** D1 database, KV namespace and Queue. `bun run dev` therefore writes to the preview database, and `vite.config.ts` turns remote bindings on only for that mode:
+
+```ts
+remoteBindings: process.env["CLOUDFLARE_ENV"] === "development"
+```
+
+Each environment also declares one plain variable, `vars.APP_ENV`, set to its own name. `src/server.ts` passes it to `generateRobotsTxt`, so only production serves an indexable `robots.txt`.
+
+The Worker's queue consumer is declared alongside the producer with `max_batch_size: 50`, `max_batch_timeout: 5` and `max_retries: 3`, and handled by the `queue` export in `src/server.ts`. The Durable Object class is created by migration tag `v1` (`new_sqlite_classes: ["RealtimeInvalidationHub"]`).
+
+Other top-level settings worth knowing: `compatibility_date` is `2026-04-18` with the `nodejs_compat` flag, `keep_vars` is on, observability is enabled and `placement.mode` is `smart`.
+
+## Types
+
+`Env` is generated, not written. `bun run cf-typegen` runs `wrangler types --env development` into `src/types/worker-configuration.d.ts`, which is gitignored and regenerated by `postinstall` through `bun run typegen` (which also runs `bun run content`). After changing a binding or a secret in `wrangler.jsonc`:
+
+```sh
+bun run typegen
+```
+
+Worker code reads bindings and secrets from `env` in `cloudflare:workers`. The generated declaration also extends `ProcessEnv` with the secret names, so `process.env` is typed for the few places that use it.
+
+## Deploy-time checks
+
+Both deploy scripts run three gates around the build, and each one throws rather than warning.
+
+| Script                              | Checks                                                                                                                                                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/verify-bindings.ts`        | Reads `wrangler.jsonc` with Wrangler's own loader and rejects a missing or placeholder `DB` id, `CACHE` id, `IMAGES` bucket, `AUDIT_LOG_QUEUE` producer/consumer pair or `REALTIME_INVALIDATION_HUB` class |
+| `scripts/verify-build.ts`           | Confirms `dist/server/wrangler.json` targets the right environment and Worker name, that `dist/client` holds JS, CSS and fonts, and that no client asset imports `cloudflare:workers` or `node:*`          |
+| `scripts/prepare-deploy-secrets.ts` | Writes only the declared secrets to `.wrangler/secrets.<environment>.json` and fails on any blank value                                                                                                    |
+
+The full sequence is visible in `package.json`:
+
+```sh
+bun run deploy:preview
+# verify-bindings.ts → build:preview → prepare-deploy-secrets.ts → wrangler deploy
+```
+
+The deploy step passes `--config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json` and unsets `CLOUDFLARE_ENV` first, because the built config already carries the environment.
+
+## Local Stripe webhooks
+
+`bun run stripe:listen` forwards live test events to the local Worker:
+
+```sh
+stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe
+```
+
+The signing secret the CLI prints must go into `STRIPE_WEBHOOK_SECRET` in `.env.development`.
+
+## Related pages
+
+- [Environment variables](/docs/getting-started/environment-variables)
+- [Deployment](/docs/getting-started/deploy-preview)
+- [Troubleshooting](/docs/reference/troubleshooting)

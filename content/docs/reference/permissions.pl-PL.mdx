@@ -1,0 +1,175 @@
+---
+title: "Uprawnienia"
+description: "Role, deklaracje uprawnień, middleware authorized, lista publicznych endpointów i wszystkie limity zapytań."
+---
+
+Kontrola dostępu jest zdefiniowana raz, w `src/integrations/better-auth/auth.access.ts`, przy użyciu wtyczki kontroli dostępu Better Auth. Z tych samych definicji korzystają middleware serwerowe, strażnicy tras i klient Better Auth.
+
+Najważniejszy fakt strukturalny: **funkcja serwerowa jest publicznym endpointem HTTP.** Jest osiągalna niezależnie od tego, czy trasa, która zwykle ją wywołuje, została kiedykolwiek załadowana — dlatego strażnik trasy nie może jej chronić. Autoryzację wymusza middleware `authorized` na początku każdego przypadku użycia, przed jakimkolwiek dostępem do bazy.
+
+## Role
+
+```ts
+export const ROLES = {
+  ADMIN: "admin",
+  CUSTOMER: "customer",
+} as const
+
+export const DEFAULT_ROLE = ROLES.CUSTOMER
+
+export const ADMIN_PANEL_ROLES = [ROLES.ADMIN] as const
+```
+
+| Rola   | Kod        | Otrzymuje                                                                                         |
+| ------ | ---------- | ------------------------------------------------------------------------------------------------- |
+| Admin  | `admin`    | Wszystkie deklaracje aplikacyjne oraz deklaracje `adminAc` Better Auth dla `user` i `session`     |
+| Klient | `customer` | Żadnych deklaracji. Klient może wywoływać wyłącznie endpointy wymagające sesji, a nie uprawnienia |
+
+Nowe konta dostają rolę `customer` przez `DEFAULT_ROLE`. `hasAdminAccess(role)` to wąski predykat używany tam, gdzie liczy się tylko „czy to odbiorca panelu administracyjnego" — w strażnikach tras i w uzgadnianiu administracyjnego WebSocketa.
+
+## Deklaracje uprawnień
+
+Deklaracje aplikacyjne pochodzą z `PERMISSIONS_STATEMENTS`, które rozwija `defaultStatements` wtyczki admin Better Auth i dodaje trzy zasoby:
+
+| Zasób      | Akcje                                           |
+| ---------- | ----------------------------------------------- |
+| `order`    | `read`, `update`, `refund`                      |
+| `product`  | `create`, `read`, `update`, `delete`, `publish` |
+| `settings` | `manage`                                        |
+
+Własne deklaracje Better Auth, przyznane roli `admin` przez `...adminAc.statements`:
+
+| Zasób     | Akcje                                                                                                      |
+| --------- | ---------------------------------------------------------------------------------------------------------- |
+| `user`    | `create`, `list`, `set-role`, `ban`, `impersonate`, `delete`, `set-password`, `set-email`, `get`, `update` |
+| `session` | `list`, `revoke`, `delete`                                                                                 |
+
+Zwróć uwagę, że `product` obejmuje cały katalog, nie tylko tabelę `product`: kategorie, kolekcje, atrybuty i zdjęcia produktów są bramkowane akcjami `product`. Nie ma osobnego zasobu `category` ani `collection`.
+
+## Gdzie sprawdzane jest każde uprawnienie
+
+Z 75 funkcji serwerowych w `src/modules/*/use-cases/` 48 wymaga uprawnienia, 14 wymaga tylko sesji, a 13 jest publicznych.
+
+| Uprawnienie            | Sprawdzane przez                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product: ["read"]`    | `get-admin-products`, `get-admin-products-page`, `get-admin-product`, `get-product-stats`, `export-admin-products`, `validate-product-skus`, `get-product-images`, `get-product-attributes`, `get-admin-product-attributes`, `get-product-attribute-stats`, `get-admin-categories`, `get-category-stats`, `get-admin-collections`, `get-collection-stats` |
+| `product: ["create"]`  | `create-complete-product`, `create-product-attribute`, `create-category`, `create-collection`                                                                                                                                                                                                                                                             |
+| `product: ["update"]`  | `update-complete-product`, `reorder-products`, `update-product-attribute`, `reorder-product-attributes`, `set-all-product-attributes`, `update-category`, `reorder-categories`, `update-collection`, `reorder-collections`, a także mutacje uploadu mediów w `src/integrations/cloudflare-r2/media.mutations.ts`                                          |
+| `product: ["delete"]`  | `delete-products`, `delete-product-attributes`, `delete-categories`, `delete-collections`                                                                                                                                                                                                                                                                 |
+| `order: ["read"]`      | `get-admin-orders-page`, `get-admin-order-stats`, `export-admin-orders`                                                                                                                                                                                                                                                                                   |
+| `order: ["update"]`    | `ship-order`, `fulfill-order`, `cancel-order`                                                                                                                                                                                                                                                                                                             |
+| `settings: ["manage"]` | `get-dashboard-snapshot`, `get-dashboard-chart-range`, `list-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`                                                                                                                                                                                                                                      |
+| `user: ["list"]`       | `get-admin-customers-page`, `get-admin-customer-stats`, `export-admin-customers`                                                                                                                                                                                                                                                                          |
+| `user: ["get"]`        | `get-admin-customer`                                                                                                                                                                                                                                                                                                                                      |
+| `user: ["update"]`     | `update-customer`                                                                                                                                                                                                                                                                                                                                         |
+| `user: ["delete"]`     | `delete-customer`                                                                                                                                                                                                                                                                                                                                         |
+| Sesja, bez uprawnienia | Wszystkie dziewięć przypadków użycia `customer-account` i wszystkie pięć z `address`                                                                                                                                                                                                                                                                      |
+
+`order: ["refund"]` i `product: ["publish"]` są zadeklarowane, ale nie są sprawdzane przez żadną funkcję serwerową. Zwroty płatności przychodzą ze Stripe i obsługuje je `order/use-cases/refund-order.ts` — zwykła funkcja bez endpointu RPC, więc nie ma kogo autoryzować.
+
+## Publiczne endpointy
+
+Trzynaście przypadków użycia świadomie nie ma middleware `authorized`, bo sklep musi obsługiwać anonimowych odwiedzających. Ta lista nie jest domyślna — jest zapisana w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` jako `PUBLIC_USE_CASES`:
+
+| Przypadek użycia                                            |
+| ----------------------------------------------------------- |
+| `cart/use-cases/check-cart-availability.ts`                 |
+| `customer-activity/use-cases/record-customer-activity.ts`   |
+| `delivery-method/use-cases/list-delivery-methods.ts`        |
+| `product/use-cases/get-storefront-products-page.ts`         |
+| `product/use-cases/get-product.ts`                          |
+| `product/use-cases/get-related-products.ts`                 |
+| `product/use-cases/get-new-arrivals.ts`                     |
+| `product-category/use-cases/get-categories.ts`              |
+| `product-category/use-cases/get-storefront-category.ts`     |
+| `product-collection/use-cases/get-collections.ts`           |
+| `product-collection/use-cases/get-storefront-collection.ts` |
+| `storefront-search/use-cases/search-storefront.ts`          |
+| `storefront-search/use-cases/get-trending-searches.ts`      |
+
+Ten test wylicza każdy plik w `src/modules/*/use-cases/` i sprawdza trzy rzeczy: plik zawierający `createServerFn` i nieobecny na liście **musi** zawierać `authorized(`; plik z listy **nie może**; a każdy wpis z listy musi nadal istnieć. Dodanie przypadku użycia bez autoryzacji wywala więc testy, zamiast trafić na produkcję.
+
+## Jak sprawdza się uprawnienie
+
+Funkcje serwerowe korzystają z middleware:
+
+```ts
+export const createCategory = createServerFn({ method: "POST" })
+  .middleware([authorized({ product: ["create"] })])
+  .validator((input) => productCategoryZodSchemas.createInput.parse(input))
+  .handler(async ({ data }) => {
+    /* ... */
+  })
+```
+
+`authorized` zbudowane jest na `withRequest`, więc normalizuje też błędy. Odczytuje sesję przez `getRequestSession()`, rzuca `AppError(ERROR_CODES.UNAUTHORIZED)`, gdy sesji nie ma, rzuca `AppError(ERROR_CODES.FORBIDDEN)`, gdy rola nie ma uprawnienia, a w pozostałych przypadkach umieszcza sesję w `context.auth`:
+
+```ts
+export const authorized = (permission?: Permission) =>
+  createMiddleware({ type: "function" })
+    .middleware([withRequest])
+    .server(async ({ next }) => {
+      const session = await getRequestSession()
+      if (session === null) {
+        throw new AppError(ERROR_CODES.UNAUTHORIZED)
+      }
+      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+        throw new AppError(ERROR_CODES.FORBIDDEN)
+      }
+      return next({ context: { auth: session } })
+    })
+```
+
+Wywołanie `authorized()` bez argumentu znaczy „dowolny zalogowany użytkownik". Tak robią przypadki użycia w `customer-account` i `address`; zawężają one dostęp tożsamością w SQL, a nie rolą.
+
+Kod poza ścieżką middleware wywołuje `hasPermission({ permission, role })` albo `hasAdminAccess(role)` bezpośrednio. `hasPermission` dla nieznanej roli zwraca `false`, a nie rzuca wyjątkiem.
+
+## Własność, nie tylko rola
+
+Odczyty dostępne dla klienta nie pobierają wiersza, żeby potem porównać jego właściciela. Predykat własności jest wkompilowany w zapytanie, więc obce `id` nie zwraca żadnego wiersza. Wzorcem jest `customer-account/use-cases/get-customer-order.ts`:
+
+```ts
+const orderRow = await db.query.order.findFirst({
+  where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
+  with: { checkout: { with: { billingAddress: true, shippingAddress: true } }, payment: true },
+})
+```
+
+Dlatego wywołania `authorized()` w `customer-account` i `address` nie noszą uprawnienia: autoryzacją jest SQL. Podanie cudzego identyfikatora zamówienia zwraca `undefined`, a opcje zapytania zamieniają to na `notFound()`.
+
+## Obsługa sesji
+
+`getRequestSession` w `src/integrations/better-auth/auth.session.ts` zapamiętuje wynik odczytu sesji per `Request` w `WeakMap` i przekazuje `disableCookieCache: true`, więc każdy odczyt serwerowy weryfikuje sesję w D1, a równoległe loadery w jednym zapytaniu dzielą jedno wyszukanie.
+
+Better Auth jest skonfigurowany w `auth.server.ts` z 300-sekundowym podpisanym cache cookie (`cookieCache.maxAge`), `storeSessionInDatabase: true` i najwyżej pięcioma równoległymi sesjami na użytkownika (`multiSession({ maximumSessions: 5 })`). Przeglądarkowe `useSession()` przechodzi przez `/api/auth/get-session`, które cache cookie już uwzględnia, więc klient może na krótko wyrenderować nieaktualny stan zalogowania, mimo że każdy odczyt serwerowy jest świeży.
+
+`getCurrentSession` usuwa token sesji przed zwróceniem danych do przeglądarki — `toClientSession` odcina pole `token` — więc klient nigdy go nie otrzymuje.
+
+## Limity zapytań
+
+Dwie warstwy, obie zapisujące do tabeli `rate_limit`.
+
+**Własny limiter Better Auth**, skonfigurowany z `storage: "database"`, globalnym limitem 100 zapytań na 60 sekund i czterema regułami per endpoint:
+
+| Endpoint                           | Maks. na 60 s |
+| ---------------------------------- | ------------- |
+| `/api/auth/sign-in/email`          | 5             |
+| `/api/auth/sign-up/email`          | 3             |
+| `/api/auth/request-password-reset` | 3             |
+| `/api/auth/reset-password`         | 5             |
+
+**Middleware aplikacji `withRateLimit`**, z trzema nazwanymi budżetami w `auth.middleware.ts`, wszystkie w oknie 60 sekund:
+
+| Budżet      | Maks. | Zastosowany do                                                                         |
+| ----------- | ----- | -------------------------------------------------------------------------------------- |
+| `CHECKOUT`  | 10    | `checkout-create` i `checkout-update` w `src/integrations/stripe/stripe.actions.ts`    |
+| `SENSITIVE` | 3     | `create-user-address`, `update-customer-phone`, `revoke-other-customer-sessions`       |
+| `TOKEN`     | 5     | Na razie do niczego; sprawdzany tylko względem `SENSITIVE` w `auth.middleware.test.ts` |
+
+Obie warstwy kluczują po adresie IP klienta. `clientAddress` w `src/lib/rate-limit.ts` czyta wyłącznie nagłówek `cf-connecting-ip`, który ustawia brzeg sieci i którego klient nie podrobi. Sam licznik to jedno `INSERT ... ON CONFLICT DO UPDATE` ze strażnikiem `setWhere`, więc reset okna i inkrementacja są jedną atomową instrukcją. Jeśli tabela jest niedostępna, helper loguje `Rate-limit storage unavailable` i zwraca `false`, więc middleware rzuca `TOO_MANY_REQUESTS` — zawodzi w stronę zamkniętą.
+
+## Powiązane strony
+
+- [Model bezpieczeństwa](/docs/architecture/security-model)
+- [Katalog modułów](/docs/reference/modules)
+- [Trasy](/docs/reference/routes)

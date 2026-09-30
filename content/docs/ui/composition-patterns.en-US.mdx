@@ -1,0 +1,225 @@
+---
+title: "Composition patterns"
+description: "How routes, screens and components fit together in this codebase, and the rules that keep them consistent."
+---
+
+## Routes compose, components decide
+
+A route file owns four things and nothing else: the component that places the screen, the `loader` that warms the cache, the `head` that produces meta, and `staticData.namespaces` that lists the message namespaces the screen needs. The markup itself lives in `src/presentation/components/custom/pages/<area>/`.
+
+`src/routes/_storefront.index.tsx` is the clearest example — the component is a list of sections and nothing more:
+
+```tsx
+const HomePage = (): JSX.Element => {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useLandingAnimations({ rootRef })
+
+  return (
+    <main ref={rootRef} className="bg-background text-foreground" data-landing-page>
+      <HeroSection />
+      <VideoExperienceSection />
+      <ValuesSection />
+      …
+      <NewsletterSection />
+    </main>
+  )
+}
+```
+
+A layout route does the same for chrome. `src/routes/_storefront.tsx` mounts `Navigation`, `Footer`, the cart banner and the activity tracker, subscribes to realtime invalidation, and attaches its route stylesheet:
+
+```tsx
+export const Route = createFileRoute("/_storefront")({
+  component: StorefrontLayout,
+  head: () => ({ links: [{ href: storefrontCss, rel: "stylesheet" }] }),
+  staticData: { namespaces: ["pages.cart"] },
+})
+```
+
+Route stylesheets are imported with `?url` and linked from `head`. They hold plain CSS and, where they need theme values, borrow them with `@reference "./globals.css"` rather than emitting Tailwind's utilities again. `globals.css` is the only Tailwind entry point, linked from the root route.
+
+## Components read their own data
+
+A component fetches what it needs rather than receiving it. In practice that means:
+
+- **Text** with `useTranslations("<namespace>")` from `use-intl/react`, and formatting with `useLocale()` or the module's own formatter such as `formatAdminOrderDate`.
+- **Query data** with `useQuery` / `useSuspenseQuery` against the same query options the route loader already primed — for example `getAdminOrdersPageQuery(pageInput)` from `src/modules/order/use-cases/get-admin-orders-page.ts`.
+- **Route data** with `Route.useLoaderData()` inside the route file, or `getRouteApi("…")` elsewhere.
+
+```tsx
+export const NewArrivalsSection = (): JSX.Element => {
+  const t = useTranslations("pages.landing.newArrivalsSection")
+
+  return (
+    <section id="nowosci" className="mx-auto max-w-400 space-y-10 px-6 pt-20 pb-20 lg:px-12 lg:pt-28 lg:pb-28">
+      …
+      <Suspense fallback={NEW_ARRIVALS_GRID_SUSPENSE_FALLBACK}>
+        <NewArrivalsProductGrid />
+      </Suspense>
+    </section>
+  )
+}
+```
+
+Props carry only what the parent alone knows: an entity (`order` on `OrdersRowActions`), controlled dialog state (`open` with `onOpenChange`), or a callback (`onRowClick`). There are no label props, no prop drilling, and no wrapper components that merely rename props or forward children.
+
+## Folder shape
+
+Small areas are flat files. Larger ones subdivide, and the subdivision is consistent:
+
+| Subfolder     | Contents                                                                 |
+| ------------- | ------------------------------------------------------------------------ |
+| `components/` | The rendered pieces — one widget, cell, badge, filter or dialog per file |
+| `hooks/`      | Screen state and data wiring, one hook per file                          |
+| `lib/`        | Pure helpers and column definitions for that screen                      |
+| `utils/`      | Screen-level singletons, such as the `createDataGrid` object             |
+| `detail/`     | A detail page's parts, where a list and a detail share the area          |
+| `sections/`   | Landing-page and product-page sections                                   |
+| `__test__/`   | One test per sibling file, plus shared harnesses                         |
+
+`pages/admin/orders/` uses all of them; `pages/cart-page/` is just `cart-item-card.tsx`, `cart-summary.tsx` and `__test__/`. Start flat and split only when the area grows.
+
+Shared components that more than one area uses sit directly in `custom/`: `image.tsx`, `product-card.tsx`, `localized-link.tsx`, `icons.tsx`, `mdx.tsx`, `legal-content.tsx`, `floating-field.tsx`, `validation-field-error.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`.
+
+## No comments
+
+There are no comments in the TypeScript and TSX sources, and that is deliberate: intent is expressed through names and types. Two consequences for composition:
+
+- Name the thing rather than annotate it. `closeMenuAndRequestDeleteConfirm`, `suppressDataGridRowClickAfterDialogDismiss` and `ADMIN_CATALOG_DATAGRID_PAGE_CLASS` all read as sentences.
+- When behaviour genuinely needs explaining, it goes in these docs or in a test name, not above the code. The only comments in the repository are in CSS, where a rule cannot name itself — for example the autofill block in `globals.css`.
+
+## Module-level constants, not render-time objects
+
+Anything that is a stable object or element is defined once at module scope, below the component that uses it. This is a lint-enforced habit as much as a performance one:
+
+```tsx
+const NEW_ARRIVALS_GRID_SUSPENSE_FALLBACK = <NewArrivalsProductGridSkeleton />
+```
+
+```tsx
+const THEME_INIT_SCRIPT_HTML = { __html: THEME_INIT_SCRIPT }
+```
+
+```tsx
+const ITEM_CLASS = "…"
+const WHITE_CHECKBOX = "border-input bg-background data-[state=checked]:border-foreground …"
+```
+
+Elements passed to a Base UI `render` prop are memoised instead, because they usually close over handlers:
+
+```tsx
+const button = useMemo(
+  () => (
+    <Button variant="outline" size="icon-lg" aria-label={t("view.label")}>
+      <Settings2 className="size-4" strokeWidth={1.5} />
+    </Button>
+  ),
+  [t],
+)
+```
+
+A constant used by one file stays in that file. Only genuinely shared values move — and then into the owning module's `*.constants.ts` or the presentation-level style files such as `admin-layout.styles.ts` and `sheet-control.styles.ts`. There are no barrel files and no objects that only collect unrelated helpers; always import from the file that defines the thing.
+
+## Class names
+
+`cn` comes from the `cn` package, never from a local wrapper:
+
+```tsx
+className={cn("relative", className)}
+```
+
+```tsx
+className={cn("peer", showValid && VALID_INPUT_CLASS)}
+```
+
+Long class strings that are reused live in a `*.styles.ts` file next to their screen. `vite.config.ts` configures the formatter to sort Tailwind classes inside `className`, `classList` and the `cn`, `cva` and `tw` functions against `globals.css`, so class order is not a matter of taste — run `bun run format` and it settles.
+
+Component variants belong in `cva`, in the primitive, not in a conditional at the call site. If three screens need the same button shape, add a variant to `button.tsx`.
+
+## Links and routes
+
+Never write a route path as a literal. `src/routes.ts` exports `ROUTES`, a flat table of every path in the application, and `LocalizedLink` wraps TanStack Router's `Link` so that route params default to `true` and the locale prefix is applied by the router's rewrite:
+
+```tsx
+<LocalizedLink to={ROUTES.PRODUCTS} className="…">
+  {t("cta")}
+</LocalizedLink>
+```
+
+`LocalizedTo` is derived from `FileRouteTypes["to"]` in the generated route tree, so a wrong path is a type error. In MDX and legal content, internal links are written without a locale prefix and `custom/mdx.tsx` localises them at render time with `localizePathname`.
+
+## Images
+
+Use `custom/image.tsx`, not a bare `<img>`. It wraps `@unpic/react` and takes `alt`, `width`, `height`, `src`, plus:
+
+| Prop          | Effect                                                                        |
+| ------------- | ----------------------------------------------------------------------------- |
+| `priority`    | `loading="eager"`, `decoding="sync"`, `fetchPriority="high"`, higher quality  |
+| `optimize`    | Defaults to `true`; `false` resolves the raw asset URL with `resolveAssetURL` |
+| `quality`     | Overrides the default and priority quality from `IMAGE_CONSTANTS`             |
+| `blurDataURL` | Passed to unpic as `background`                                               |
+| `sizes`       | The responsive `sizes` attribute                                              |
+
+`width` and `height` are required, which keeps the layout stable.
+
+## Providers
+
+Only two providers exist, and both are mounted once in `src/routes/__root.tsx`, around the document body:
+
+```tsx
+<body>
+  <TranslationsProvider locale={locale}>
+    <ThemesProvider>{children}</ThemesProvider>
+  </TranslationsProvider>
+  <Scripts />
+</body>
+```
+
+`Tooltip.Provider` from Base UI wraps the outlet in `RootComponent`, and `SmoothScroll` wraps it only outside `/admin`:
+
+```tsx
+{
+  isAdmin ? (
+    <Outlet />
+  ) : (
+    <SmoothScroll>
+      <Outlet />
+    </SmoothScroll>
+  )
+}
+```
+
+Everything else is state, not context: the cart is a Zustand store (`src/modules/cart/cart.store.ts`), the data grid's context is created privately by `createDataGrid`, and the checkout form uses its own `CheckoutFormProvider`. Do not add a global provider for something one screen needs.
+
+## Loading, error and empty states
+
+The router registers three defaults in `src/router.tsx`: `DefaultPendingComponent`, `DefaultErrorComponent` and `DefaultNotFoundComponent`, all in `custom/defaults/`. They are locale-aware without hooks — `default-messages.ts` imports both message catalogues statically and picks one by locale, because these components can render before `TranslationsProvider` is useful. `DefaultPendingComponent` renders an empty `min-h-0` div inside `/admin` and a full-height shell elsewhere, so the console does not flash.
+
+Within a screen, prefer a `Suspense` boundary with a purpose-built skeleton (`NewArrivalsProductGridSkeleton`, `CheckoutFormSkeleton`, `DataGridSkeleton`) over a spinner.
+
+## Import order
+
+`vite.config.ts` defines the groups and the formatter enforces them, with a blank line between groups. The order is:
+
+```
+server-only  cloudflare  react  builtin+external  platform  providers  integrations
+modules  routes  hooks  constants  types  lib  branding
+components-shadcn  components-custom  components-other  styles  relative  unknown
+```
+
+`constants` covers `~/src/data/**` and `~/src/presentation/theme/**`. You do not maintain any of this by hand — `bun run format` does. But the order is also the dependency direction: presentation imports from modules and integrations, never the reverse.
+
+## Checks
+
+```bash
+bun run check    # oxfmt + oxlint (six categories, including nursery, as errors) + type check
+bun run test:component
+```
+
+The lint budget applies to components too: 800 lines per file, 150 lines per function, 20 statements per function. A component that hits those limits is a component that should have been split — usually into a hook plus a presentational piece, which is exactly how the data-grid screens are organised.
+
+## Related pages
+
+- [Presentation layer](/docs/architecture/presentation-layer)
+- [shadcn components](/docs/ui/shadcn-components)
+- [Data grid](/docs/ui/data-table)

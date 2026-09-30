@@ -1,0 +1,56 @@
+---
+title: "Architecture"
+description: "How M'Arte is organized: one Worker, locale-free routes, feature modules that own their tables, and adapters around every vendor."
+---
+
+M'Arte is a single TanStack Start application deployed as one Cloudflare Worker. The same Worker serves the public storefront, the customer account area, the admin console, this documentation site and the two HTTP handlers under `/api`. There is no separate backend.
+
+The code is split by responsibility, not by page:
+
+- **Routes** (`src/routes`) compose pages. A route file declares its translation namespaces, its guard, its loader and its `head` tags, then renders components. Route files carry no locale segment — the router rewrites the URL instead.
+- **Modules** (`src/modules/{feature}`) own domain logic. 36 feature folders hold the Drizzle table, Zod schemas, constants, types, helpers, plain data **accessors** and the **use cases** that wrap them in a server function.
+- **Integrations** (`src/integrations/{vendor}`) configure third parties: Better Auth, Drizzle against D1, Cloudflare R2, Stripe, Resend, InPost, use-intl, Fumadocs, GSAP, Lenis, react-day-picker, TanStack Query and the realtime invalidation hub.
+- **Presentation** (`src/presentation`) owns everything visual: the shadcn primitives, the application components, the React Email templates, the Tailwind layers, the theme and the branding constants.
+- **Platform** (`src/platform/testing`) holds shared test infrastructure, and `src/durable-objects` holds the WebSocket invalidation hub.
+
+```text
+src/
+├── routes/              Locale-free TanStack file routes, plus api/ handlers
+├── routes.ts            The ROUTES path table
+├── router.tsx           getRouter: router, per-request QueryClient, locale rewrite
+├── server.ts            Cloudflare Worker entry and queue consumer
+├── modules/             36 feature folders, plus _core
+├── integrations/        13 vendor folders
+├── presentation/        Components, emails, styles, theme, branding
+├── providers/           TranslationsProvider, ThemesProvider
+├── data/                Static data and fixtures shared by several files
+├── lib/                 Small request-scoped helpers
+├── hooks/               Shared React hooks
+├── durable-objects/     RealtimeInvalidationHub
+├── platform/testing/    Test setup, D1 transport, render helpers
+└── types/               Bindings, router and generated Worker declarations
+```
+
+## Rules that shape the code
+
+- **Accessors do not know who is asking; use cases do.** `*.accessors.ts` is plain data access. `use-cases/*.ts` wraps it in `createServerFn`, validates input with the module's Zod schema, applies the `authorized()` middleware and exports the TanStack Query options next to the operation. Authorization can only be forgotten in one layer.
+- **A server function is a public endpoint.** Route `beforeLoad` guards redirect for navigation only. The real boundary is the middleware on the server function.
+- **Query options live with the operation.** `getProductQuery`, `getAdminOrdersPageQuery` and `shipOrderMutation` are exported from the same file as the server function, so a loader and the component that later refetches share one key and one fetcher by construction.
+- **No comments in TypeScript source.** Intent is expressed through names and types. The prose in these `.mdx` files is the documentation.
+- **Import from the defining file.** There is no dependency-injection container, no barrel files and no wrapper layer.
+
+## In this section
+
+- [Directory structure](/docs/architecture/directory-structure): every folder and what belongs in it.
+- [Layering](/docs/architecture/layering): the accessor/use-case split and what each layer may decide.
+- [Dependency rules](/docs/architecture/dependency-rules): allowed imports and server-only boundaries.
+- [Modules and use cases](/docs/architecture/modules-and-use-cases): module file naming and the use-case pattern.
+- [Presentation layer](/docs/architecture/presentation-layer): components, styles, theme, branding and emails.
+- [Integrations layer](/docs/architecture/integrations-layer): the 13 vendor folders and what stays out of them.
+- [Platform layer](/docs/architecture/platform-layer): bindings, environments, generated types and test wiring.
+- [Request lifecycle](/docs/architecture/request-lifecycle): what happens between the Worker and the rendered page.
+- [Caching and SSR](/docs/architecture/caching-and-ssr): the per-request query cache, prepared statements and what is not cached.
+- [Internationalization](/docs/architecture/i18n-architecture): locale URLs, namespaces and message loading.
+- [Security model](/docs/architecture/security-model): guards, permissions, rate limits and error masking.
+- [Realtime invalidation](/docs/architecture/realtime-invalidation): the Durable Object hub and the query-key protocol.
+- [Testing architecture](/docs/architecture/testing-architecture): the three Vitest projects, the D1 transport and CI.

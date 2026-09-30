@@ -1,0 +1,209 @@
+---
+title: "URL state"
+description: "Put filters, sorting, steps and tokens in the query string with TanStack Router's validateSearch, loaderDeps and typed navigation."
+---
+
+M'Arte keeps shareable state in the URL and ephemeral state in React. The URL is validated by a Zod schema on the route, typed end to end, and used as a loader dependency so a filter change refetches exactly once.
+
+There is no separate query-state library in play. `nuqs` appears in `package.json` but nothing in `src/` imports it; all URL state goes through TanStack Router's `validateSearch`.
+
+## The five routes that own search params
+
+| Route                                 | Schema                                          | Params                                                        |
+| ------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------- |
+| `_storefront.products.index.tsx`      | `storefrontProductsSearchSchema`                | `category`, `collection`, `minPrice`, `maxPrice`, `q`, `sort` |
+| `_storefront.categories.$handle.tsx`  | `storefrontScopedCategoryCatalogSearchSchema`   | The same, minus `category`                                    |
+| `_storefront.collections.$handle.tsx` | `storefrontScopedCollectionCatalogSearchSchema` | The same, minus `collection`                                  |
+| `checkout.tsx`                        | Inline `checkoutSearchSchema`                   | `step`, `success`                                             |
+| `auth.reset-password.tsx`             | Inline `resetPasswordSearchSchema`              | `token`                                                       |
+| `admin.catalog.attributes.index.tsx`  | Inline `attributesIndexSearchSchema`            | `create`                                                      |
+
+Storefront catalog schemas are shared, so they live in the module: `src/modules/product/product.storefront-catalog.ts`. Single-purpose schemas stay inline in the route file.
+
+## Declaring the schema
+
+The catalog schema coerces, trims and drops empties, so an empty parameter never becomes an empty string in the URL:
+
+```ts
+export const storefrontProductsSearchSchema = z.object({
+  category: z.string().trim().nonempty().optional(),
+  collection: z.string().trim().nonempty().optional(),
+  maxPrice: z.coerce.number().nonnegative().optional(),
+  minPrice: z.coerce.number().nonnegative().optional(),
+  q: z.string().trim().nonempty().optional(),
+  sort: z.enum(STOREFRONT_PRODUCTS_SORTS).optional(),
+})
+
+export type StorefrontProductsSearch = z.infer<typeof storefrontProductsSearchSchema>
+```
+
+`z.coerce.number()` matters: a query string is always text, so a numeric parameter must coerce or every price filter arrives as a string. The `sort` enum comes from `STOREFRONT_PRODUCTS_SORTS`, which is `["rank", "newest", "price_asc", "price_desc"]`, so a hand-typed `?sort=cheapest` is rejected rather than passed to the database.
+
+The category and collection pages reuse the same schema with the parameter that the path already fixes removed:
+
+```ts
+export const storefrontScopedCollectionCatalogSearchSchema = storefrontProductsSearchSchema.omit({
+  collection: true,
+})
+```
+
+Parameters that need preprocessing before validation use `z.preprocess`, as the checkout does:
+
+```ts
+const coerceStep = (value: unknown): number => {
+  if (typeof value === "number" && Number.isInteger(value) && value >= MIN_STEP && value <= MAX_STEP) {
+    return value
+  }
+
+  return DEFAULT_STEP
+}
+
+const coerceSuccess = (value: unknown): boolean | undefined => (value === true || value === "true" ? true : undefined)
+
+const checkoutSearchSchema = z.object({
+  step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
+  success: z.preprocess(coerceSuccess, z.boolean().optional()),
+})
+```
+
+`step` falls back to 1 for anything out of range, so `?step=99` cannot break the checkout flow.
+
+## Wiring the route
+
+```ts
+export const Route = createFileRoute("/_storefront/products/")({
+  component: ProductsPage,
+  loader: async ({ context, deps }) => {
+    const [messages] = await Promise.all([
+      context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
+      prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
+    ])
+
+    return { description: messages.description, title: messages.title }
+  },
+  loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
+  staticData: { namespaces: ["pages.products"] },
+  validateSearch: storefrontProductsSearchSchema,
+})
+```
+
+`loaderDeps` is the important line. It decides when the loader re-runs, and it runs the search through `normalizeStorefrontProductsSearch` first, which rebuilds the object with its keys in a fixed order and omits every `undefined`:
+
+```ts
+export const normalizeStorefrontProductsSearch = (search: StorefrontProductsSearch): StorefrontProductsSearch => {
+  const normalized: StorefrontProductsSearch = {}
+  if (search.category !== undefined) {
+    normalized.category = search.category
+  }
+  // ... collection, minPrice, maxPrice, q, sort
+  return normalized
+}
+```
+
+Without that normalisation, `{ q: "ring", sort: undefined }` and `{ sort: undefined, q: "ring" }` would be different dependency values and the loader would fire twice for the same visible state.
+
+## Reading it in the component
+
+```tsx
+const search = Route.useSearch()
+const navigate = Route.useNavigate()
+```
+
+`Route.useSearch()` is typed from the schema, so `search.sort` narrows to the enum. `Route.useNavigate()` is scoped to the route, so `search` updaters are typed too.
+
+## Updating it
+
+Catalog pages never build a search object by hand. They call a patch function and let it normalise:
+
+```tsx
+const handleSearchChange = useCallback(
+  (patch: Partial<StorefrontProductsSearch>, options?: { readonly clearAll?: boolean }) => {
+    void navigate({
+      replace: true,
+      search: (current) => applyStorefrontProductsSearchPatch(current, patch, options),
+    })
+  },
+  [navigate],
+)
+```
+
+`applyStorefrontProductsSearchPatch` in `product.storefront-catalog.ts` has one behaviour worth knowing: it distinguishes a key that is **absent** from the patch from a key that is present with the value `undefined`.
+
+```ts
+if ("category" in patch) {
+  if (patch.category === undefined) {
+    delete next.category
+  } else {
+    next.category = patch.category
+  }
+}
+```
+
+So `{ category: undefined }` clears the filter, while `{}` leaves it alone. `{ clearAll: true }` returns `{}` and drops every filter. The result always goes through `normalizeStorefrontProductsSearch` before it reaches the URL.
+
+`replace: true` is deliberate: adjusting a filter should not add a history entry, so the browser Back button leaves the catalog rather than stepping through every slider nudge.
+
+## Counting active filters
+
+The same file exports the helpers the filter UI needs:
+
+- `countActiveStorefrontProductFilters(search, options)` — how many filters are on. It treats `sort: "rank"` as not-a-filter, since that is the default order.
+- `hasActiveStorefrontProductFilters(search, options)` — the same as a boolean, for enabling a "clear all" control.
+- `storefrontCatalogFilterOptions(scope)` — returns `{ ignoreCategory, ignoreCollection }` for a scoped page, so the category page does not count the category it _is_ as a user-applied filter.
+- `buildEffectiveStorefrontProductsSearch(search, scope)` — merges the path-derived scope into the search before it is handed to the query, which is how `/categories/rings?q=silver` becomes a query for silver rings in the rings category.
+- `isStorefrontProductsSort(value)` — a type guard for a sort value coming from outside.
+
+## Opening a sheet from the URL
+
+The admin attributes page accepts `?create=1` so a link can land the user directly on the create form. The route declares it:
+
+```ts
+const attributesIndexSearchSchema = z.object({
+  create: z.literal("1").optional(),
+})
+```
+
+and the table opens the sheet in an effect:
+
+```tsx
+const { create } = useSearch({
+  from: "/admin/catalog/attributes/",
+})
+
+useEffect(() => {
+  if (create === "1") {
+    sheet.openCreate()
+  }
+}, [create, sheet])
+```
+
+Note that this is one-way: the sheet's own open/closed state lives in `useAttributesSheetState` (plain `useState`), and closing the sheet does not remove `create=1` from the URL. That is the deliberate split — a deep link _into_ a sheet is shareable state, but the sheet's subsequent open/closed state is not.
+
+`useSearch({ from: "..." })` is the form to use when a component sits below the route that owns the parameter; `Route.useSearch()` only works in the route file itself.
+
+## What does not go in the URL
+
+- Data-grid column order, widths and visibility — persisted in `localStorage` under `marte:datagrid:v1:<persistenceKey>`.
+- Sidebar open/closed — the `sidebar_state` cookie, so the server can render the right width.
+- Theme — `localStorage` under `` `${APP_NAME}-theme` ``.
+- Admin grid sorting, filtering and pagination — React state inside the grid hooks, even for the server-paginated products grid.
+- Form values — React Hook Form.
+
+## Locale and the URL
+
+Locale is _not_ a search parameter. Polish is the default and serves unprefixed paths; English is served under `/en-US/...`. `src/router.tsx` installs a rewrite so the router only ever sees unprefixed paths:
+
+```ts
+rewrite: {
+  input: ({ url }) => deLocalizeUrl(url),
+  output: ({ url }) => localizeUrl(url),
+},
+```
+
+This is why you always write `to={ROUTES.PRODUCTS}` and never `to="/en-US/products"` — the prefix is added on the way out. `src/integrations/use-intl/i18n.paths.ts` holds the whole implementation, including `localizePathname`, `deLocalizePathname`, `canonicalizePathname` (which also resolves a bare `/pl` or `/en` to the full tag) and `localeLinks` for the canonical and `hreflang` tags.
+
+## Related guides
+
+- [Add a data table](/docs/guides/add-a-data-table)
+- [i18n messages](/docs/guides/i18n-messages)
+- [Add an admin page](/docs/guides/add-an-admin-page)

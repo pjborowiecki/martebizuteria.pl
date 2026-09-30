@@ -1,0 +1,189 @@
+---
+title: "Legal pages"
+description: "Two GDPR and consumer-rights documents written as MDX and served through Fumadocs, plus the three storefront pages that are still message-only."
+---
+
+M'Arte has two real legal documents. They are MDX files under `content/legal`, compiled by Fumadocs and rendered by a route that is almost entirely loader.
+
+## The documents
+
+```
+content/legal/
+├── exchanges-and-returns.en-US.mdx
+├── exchanges-and-returns.pl-PL.mdx
+├── meta.en-US.json
+├── meta.pl-PL.json
+├── privacy-policy.en-US.mdx
+└── privacy-policy.pl-PL.mdx
+```
+
+One file per locale, named `<slug>.<locale>.mdx`, and a `meta.<locale>.json` listing the slugs in order:
+
+```json
+{
+  "pages": ["privacy-policy", "exchanges-and-returns"],
+  "title": "Legal"
+}
+```
+
+Their frontmatter carries a third field that the docs do not:
+
+```mdx
+---
+title: "Wymiana i zwroty"
+description: "14-dniowe prawo odstąpienia od umowy, zwrot zamówienia M'Arte i zgłoszenie reklamacji."
+updated: 2026-09-29
+---
+```
+
+`updated` is required, and validated as an ISO date:
+
+```ts
+export const legalSchema = pageSchema.extend({
+  updated: zod.iso.date(),
+})
+```
+
+That schema is in `src/integrations/fumadocs/fumadocs.schema.ts` and applied in `fumadocs.config.ts`:
+
+```ts
+export const legal = defineDocs({
+  dir: "./content/legal",
+  docs: { schema: legalSchema },
+})
+```
+
+**Editing a legal document is editing an MDX file.** There is no admin editor, no database row and no publishing workflow. A change is a commit and a deploy, and `updated` must be bumped by hand — nothing does it automatically.
+
+The Polish documents are the authoritative ones; they cite Polish statute directly (the 14-day right of withdrawal, art. 556⁴ of the Civil Code, the GDPR article for each processing purpose) and name the data controller. Keep the English versions in step as translations, not as separate texts.
+
+## The Fumadocs source
+
+`src/integrations/fumadocs/fumadocs.source.ts` builds the loader:
+
+```ts
+export const legalSource = loader({
+  baseUrl: "/",
+  i18n,
+  source: legal.toFumadocsSource(),
+})
+```
+
+`baseUrl: "/"` is why the pages live at `/privacy-policy` rather than under a `/legal` prefix. The shared `i18n` object (`fumadocs.i18n.ts`) sets `defaultLanguage` and `fallbackLanguage` to `pl-PL`, `hideLocale: "always"` and `parser: "dot"` — the dot parser is what makes `<slug>.<locale>.mdx` work as a naming convention.
+
+## Loading a document
+
+`fumadocs.legal.ts` holds the slug map and the loader:
+
+```ts
+export const LEGAL_DOCUMENT_SLUGS = {
+  exchangesAndReturns: "exchanges-and-returns",
+  privacyPolicy: "privacy-policy",
+} as const
+```
+
+`getLegalPage` is a `GET` server function validated with `zod.object({ locale: localeField, slug: handleField })` from `src/modules/_core/utils/zod-fields.ts`. It throws `notFound()` when the page does not exist and otherwise returns `{ description, path, title, updated }`.
+
+`loadLegalPage(slug)` runs the server function and preloads the compiled component in parallel:
+
+```ts
+export const loadLegalPage = async (slug: LegalDocumentSlug) => {
+  const [{ legalContent }, page] = await Promise.all([
+    import("~/src/presentation/components/custom/legal-content"),
+    getLegalPage({ data: { locale: getCurrentLocale(), slug } }),
+  ])
+  await legalContent.preload(page.path)
+
+  return page
+}
+```
+
+## The routes
+
+Both routes are four lines of component:
+
+```tsx
+const PrivacyPolicyPage = (): ReactNode => legalContent.useContent(Route.useLoaderData().path)
+
+export const Route = createFileRoute("/_storefront/privacy-policy")({
+  component: PrivacyPolicyPage,
+  head: pageHead,
+  loader: async () => {
+    const page = await loadLegalPage(LEGAL_DOCUMENT_SLUGS.privacyPolicy)
+
+    return { description: page.description, path: page.path, title: page.title } satisfies PageMeta & { path: string }
+  },
+  wrapInSuspense: false,
+})
+```
+
+`src/routes/_storefront.exchanges-and-returns.tsx` is the same with the other slug. Both set `wrapInSuspense: false`, because the content is already preloaded in the loader — there is nothing left to suspend on.
+
+Adding a third document means: two MDX files, both `meta.<locale>.json` files, a slug in `LEGAL_DOCUMENT_SLUGS`, a `ROUTES` entry and a route file copied from one of these two.
+
+## Rendering
+
+`src/presentation/components/custom/legal-content.tsx` is the client loader:
+
+```tsx
+export const legalContent = browserCollections.legal.createClientLoader({
+  component: ({ default: Mdx, frontmatter }) => (
+    <article className="container mx-auto max-w-3xl px-4 py-16 md:py-24">
+      <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl">{frontmatter.title}</h1>
+      <Mdx components={mdxComponents} />
+    </article>
+  ),
+  id: "legal",
+})
+```
+
+The `<h1>` comes from the frontmatter, so a legal MDX file must **not** start with its own `#` heading — top-level sections are `##`.
+
+`mdxComponents` (`src/presentation/components/custom/mdx.tsx`) maps a deliberately small set of elements: `a`, `h1`, `h2`, `h3`, `p`, `ul`, `ol`, `li`, `strong`. Anything else falls through to an unstyled default. The docs site extends this map in `docs-mdx.tsx` with `pre`, `code`, `table`, `th`, `td`, `blockquote`, `hr` and `h4` — **so a table, a code block or a blockquote will render unstyled in a legal document but correctly in the docs.** Neither map provides Fumadocs UI components such as `Callout` or `Tabs`; using one in MDX here would fail at render time.
+
+`MdxLink` localises internal hrefs automatically:
+
+```tsx
+const isLocalizablePath = (href: string | undefined): href is string =>
+  href !== undefined && href.startsWith("/") && !ASSET_PATH_PATTERN.test(href)
+```
+
+So write `/exchanges-and-returns` in a legal document and the reader's locale prefix is added for them. A path ending in a file extension is left alone.
+
+Both routes live under `_storefront`, so they get the navigation, the cart availability banner and the footer.
+
+## Message-only storefront pages
+
+Three other pages in the footer's information column are not MDX and have no long-form content:
+
+| Route               | File                               | What it renders                                                    |
+| ------------------- | ---------------------------------- | ------------------------------------------------------------------ |
+| `/terms-of-service` | `_storefront.terms-of-service.tsx` | `t("title")`, one `t("description")` paragraph, a link home        |
+| `/faq`              | `_storefront.faq.tsx`              | The same three-element shape                                       |
+| `/about`            | `_storefront.about.tsx`            | An eyebrow, a title, a lead and four paragraphs from `pages.about` |
+
+`/about` is finished copy — it is simply authored in `messages/{locale}/pages.about.json` rather than in MDX. `/terms-of-service` and `/faq` are placeholders: their copy says as much, and both render a centred "go home" link.
+
+If terms of service should become a real document, the cheapest path is to move it to `content/legal` alongside the other two rather than growing the message catalogue: add the MDX files, the slug, the meta entries and replace the route body with `legalContent.useContent(...)`.
+
+## Two orphaned message files
+
+`messages/en-US/pages.privacyPolicy.json`, `messages/pl-PL/pages.privacyPolicy.json`, `messages/en-US/pages.exchanges-and-returns.json` and `messages/pl-PL/pages.exchanges-and-returns.json` exist, but nothing references those namespaces — the two pages get their title and description from the MDX frontmatter instead. They are leftovers from before the documents moved to MDX.
+
+## Footer links
+
+`src/presentation/components/custom/pages/landing-page/footer/footer.tsx` is where these pages are linked:
+
+```tsx
+<FooterLink to={ROUTES.TERMS_OF_SERVICE}>{t("terms")}</FooterLink>
+<FooterLink to={ROUTES.PRIVACY_POLICY}>{t("privacy")}</FooterLink>
+<FooterLink to={ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
+```
+
+The checkout payment step also links the terms and privacy pages through `t.rich("termsAgreement", { privacy, terms })` — see [Checkout](/docs/features/checkout).
+
+## Related pages
+
+- [Internationalization](/docs/features/internationalization)
+- [Checkout](/docs/features/checkout)
+- [Integrations: Fumadocs](/docs/integrations/fumadocs)

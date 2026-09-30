@@ -1,0 +1,170 @@
+---
+title: "Conventions"
+description: "Code, formatting, route, module, component, translation, test and commit conventions enforced in this repository."
+---
+
+Almost every rule on this page is enforced by a tool, not by review. `bun run check` runs the formatter, the linter and the type checker in one pass, and it is the same command CI runs. If a convention below is not machine-checked, it says so.
+
+## Code
+
+- **Comments are for non-obvious constraints only.** Intent is carried by names and types; there is no code narration, no decorative separators and no comment that restates what a name already says. In practice `src` contains three comments in total, each pinning a constraint the code cannot express — for example that `INSERT ... SELECT` in `checkout/checkout.utils.ts` must follow the table's column order. Prose belongs in `.mdx` files like this one.
+- **No escape hatches.** No `any`, no `as never`, no `as unknown as`, no `@ts-nocheck`, no `@ts-expect-error` and no lint suppressions added to make a rule pass. Fix the cause instead. `reportUnusedDisableDirectives: "error"` means even a stale suppression fails the build.
+- **No barrels.** Import from the file that defines the symbol. There is no `index.ts` re-export layer, and no object whose only job is to collect unrelated functions.
+- **No forwarding layers.** A component that only passes its props through, a function that only calls one other function, or an alias for a plain `0` or `1` all get rejected in review and usually by `max-lines` pressure anyway.
+- **Magic numbers become named constants.** `no-magic-numbers` allows only `-1`, `0` and `1`, plus array indexes, default values and type indexes. That is why files carry constants such as `MS_PER_SECOND`, `SINGLE_REQUEST` and `UUID_STRING_LENGTH`.
+- **One declaration per statement.** `one-var: ["error", "never"]`.
+- **Identifiers are words.** `id-length` permits exactly three short names: `_`, `m` and `t` — `t` being the translator returned by `useTranslations`.
+
+### Linting
+
+`vite.config.ts` sets six Oxlint categories to `error`, including `nursery`:
+
+```ts
+lint: {
+  categories: {
+    correctness: "error",
+    nursery: "error",
+    pedantic: "error",
+    perf: "error",
+    style: "error",
+    suspicious: "error",
+  },
+  options: {
+    denyWarnings: true,
+    reportUnusedDisableDirectives: "error",
+    typeAware: true,
+    typeCheck: true,
+  },
+}
+```
+
+Hard structural limits, also from `vite.config.ts`:
+
+| Limit                   | Value | Rule                     |
+| ----------------------- | ----- | ------------------------ |
+| Lines per file          | 800   | `max-lines`              |
+| Lines per function      | 150   | `max-lines-per-function` |
+| Statements per function | 20    | `max-statements`         |
+
+Overrides are narrow and file-scoped rather than repo-wide. Tests and `src/platform/testing/**` relax `no-await-in-loop`, `no-magic-numbers` and `unicorn/no-null`; `src/presentation/**` and `src/hooks/**` relax `typescript/consistent-return`; the mock folder relaxes `require-await` and `typescript/no-unsafe-type-assertion`; `src/routes/**` disables `sort-keys` because route option order follows TanStack Start's own shape; `vite.config.ts` is exempt from `max-lines`.
+
+### Type checking
+
+`tsconfig.json` turns on the strict flags that actually change how code has to be written:
+
+| Flag                                   | Consequence                                               |
+| -------------------------------------- | --------------------------------------------------------- |
+| `strict`                               | The usual strict family                                   |
+| `exactOptionalPropertyTypes`           | `{ k: undefined }` is not the same as omitting `k`        |
+| `noUncheckedIndexedAccess`             | `arr[i]` is `T \| undefined`                              |
+| `noPropertyAccessFromIndexSignature`   | Index signatures are read as `obj["k"]`, never `obj.k`    |
+| `noImplicitReturns`                    | Every code path returns                                   |
+| `noFallthroughCasesInSwitch`           | No implicit `switch` fallthrough                          |
+| `erasableSyntaxOnly`                   | No enums, no parameter properties, no runtime-only syntax |
+| `noUnusedLocals`, `noUnusedParameters` | Dead bindings fail the build                              |
+
+Two path aliases exist: `~/*` maps to the repository root (so imports read `~/src/modules/...` and `~/messages/...`), and `collections/*` maps to `./.source/*`, the generated Fumadocs collections.
+
+## Formatting
+
+`vp fmt` (wrapped by `bun run format`) applies a single configuration from `vite.config.ts`: `printWidth: 140`, no semicolons, double quotes, trailing commas everywhere, LF endings, two-space indentation, always-parenthesised arrow parameters.
+
+Two things the formatter does beyond whitespace:
+
+**Import order.** `sortImports` declares seventeen custom groups so that every file's imports read as a list of layers, in this order: `@tanstack/react-start/server-only`, `cloudflare:workers`, React, builtins and external packages, `src/platform`, `src/providers`, `src/integrations`, `src/modules`, `src/routes`, `src/hooks`, constants (`src/data`, `src/presentation/theme`), `src/types`, `src/lib`, `src/presentation/branding`, shadcn components, custom components, remaining presentation components, styles, then relative imports. You never write this order by hand; run the formatter.
+
+**Tailwind class order.** `sortTailwindcss` sorts the `className` and `classList` attributes and the `cn`, `cva` and `tw` call arguments against `src/presentation/styles/globals.css`.
+
+## Routes
+
+A page route in `src/routes` follows one shape. From `src/routes/_storefront.products.index.tsx`:
+
+```ts
+export const Route = createFileRoute("/_storefront/products/")({
+  component: ProductsPage,
+  head: ({ loaderData }) => ({ meta: [...] }),
+  loader: async ({ context, deps }) => {
+    const [messages] = await Promise.all([
+      context.queryClient.query(messagesQueryOptions({ locale: context.locale, namespace: "pages.products" })),
+      prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
+    ])
+    return { description: messages.description, title: messages.title }
+  },
+  staticData: { namespaces: ["pages.products"] },
+  validateSearch: storefrontProductsSearchSchema,
+})
+```
+
+- The component is a local `const` named `<Name>Page` for a page and `<Name>Layout` for a layout, returning `JSX.Element` or `ReactNode`.
+- `staticData.namespaces` lists the translation namespaces the route needs. The router preloads them; a namespace listed here must exist as `messages/<locale>/<namespace>.json` in **both** locales.
+- Loaders do their work in one `Promise.all`. Message loading goes through `messagesQueryOptions` on `context.queryClient`; data loading goes through the query options exported next to the use case.
+- `head` is either the shared `pageHead` from `src/lib/seo.ts` or an inline function that builds `meta` from `loaderData`.
+- Search parameters are validated with a Zod schema in `validateSearch`, and `loaderDeps` normalises them so the loader key is stable.
+- Paths come from `ROUTES` in `src/routes.ts`. Route files carry **no locale segment** — the router rewrites the URL with `deLocalizeUrl` on input and `localizeUrl` on output, so one file serves both locales.
+- Route guards go in `beforeLoad` and come from `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireCustomer`, `requireUser`, `redirectAuthenticated`. They exist for navigation, not for authorization — see [Permissions](/docs/reference/permissions).
+
+## Modules
+
+A module owns one Drizzle table and everything derived from it. Inside a module:
+
+- `*.schema.ts` defines the table and its relations, and nothing else.
+- `*.accessors.ts` holds plain data access. Accessors have no notion of who is asking; they take arguments and talk to `db`.
+- `*.server.ts` holds server-only helpers, usually prepared statements.
+- `use-cases/<verb>-<noun>.ts` holds one operation. It exports the `createServerFn` server function, plus the `queryOptions` or mutation key that callers use. Loaders, components and cache invalidation all import the same options object, so they share one query key by construction.
+- Constants — column lengths, status enums, error codes, query keys, mutation keys, table column ids — live in `*.constants.ts` as `SCREAMING_SNAKE_CASE` objects prefixed by the entity, for example `CATEGORY_QUERY_KEYS` and `CATEGORY_ERROR_CODES`.
+- `*.zod.ts` builds Zod schemas, usually from `drizzle-zod`'s `createSchemaFactory`, and exports them as a single `<entity>ZodSchemas` object plus named input schemas.
+- `*.types.ts` derives types from the table rather than restating them:
+
+```ts
+export interface Address {
+  insert: typeof address.$inferInsert
+  select: typeof address.$inferSelect
+}
+```
+
+### Errors
+
+Server code throws `AppError` from `src/modules/_core/constants/errors.ts` with one of eight `ERROR_CODES`: `AUTH_API_ERROR`, `CONFLICT`, `FORBIDDEN`, `INTERNAL_ERROR`, `NOT_FOUND`, `TOO_MANY_REQUESTS`, `UNAUTHORIZED`, `VALIDATION`. A second argument carries a module-specific reason, which is why `create-category.ts` throws `new AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)`. The `withRequest` middleware converts Better Auth API errors and `ZodError` into `AppError` so the browser always sees the same shape.
+
+## Components
+
+- One widget, dialog, form or column definition per file, under `src/presentation/components/custom`. Shared primitives stay in `src/presentation/components/shadcn` and are not edited by hand.
+- A component reads its own translations and its own data. There are no `label`, `title` or `data` props that the component could fetch itself.
+- Exactly one `useTranslations` call per component, with the result named `t`.
+- Conditional classes use `cn` with object syntax rather than a ternary chain.
+- Forms use `react-hook-form` with `zodResolver` from `@hookform/resolvers/zod` and the module's own Zod schema — see `src/presentation/components/custom/checkout/components/checkout-form-provider.tsx`.
+- Admin tables use the generic data grid in `src/presentation/components/custom/datagrid`, configured by a column definition file and the `*_TABLE_COLUMN_*` constants in the owning module.
+
+## Translations
+
+Message files are one JSON file per namespace under `messages/<locale>/`, named after the namespace: `pages.admin.catalog.products.json` is the namespace `pages.admin.catalog.products`. There are 48 namespaces and both locales carry all of them.
+
+The root namespaces — `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors`, `pages.auth.toast` — are preloaded for every route. Everything else is declared per route in `staticData.namespaces`. A test in `src/integrations/use-intl/__test__/i18n.messages.test.ts` asserts that Polish contains every key English has, and that no `emails.*` namespace leaks into the root set.
+
+## Commits
+
+Commit messages follow Conventional Commits: `<type>(<scope>): <description>`. The `prepare-commit-msg` hook runs `bun scripts/commit-msg.ts`, which rejects unknown types and prefixes the subject with the type's emoji:
+
+| Type       | Emoji |
+| ---------- | ----- |
+| `feat`     | ✨    |
+| `fix`      | 🐛    |
+| `perf`     | 🚀    |
+| `refactor` | 📦    |
+| `docs`     | 📚    |
+| `test`     | 🚨    |
+| `build`    | 🛠️    |
+| `ci`       | ⚙️    |
+| `chore`    | ♻️    |
+| `style`    | 💎    |
+| `revert`   | 🗑️    |
+
+Merge, revert, `fixup!`, `squash!` and template-sourced messages are skipped, and a subject that already starts with an emoji is left alone.
+
+The `pre-commit` hook runs `bun run check:pre-commit`, which is `vp staged`; `vite.config.ts` configures staged to run `vp check --fix` over changed files. On a pull request the CI workflow runs `bun run check`, then `bun run test:coverage`, then `bun run build:preview`.
+
+## Related pages
+
+- [File naming](/docs/reference/file-naming)
+- [Module catalog](/docs/reference/modules)
+- [Directory structure](/docs/architecture/directory-structure)

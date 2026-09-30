@@ -1,0 +1,182 @@
+---
+title: "Fonts & branding"
+description: "Self-hosted Manrope and Cormorant Garamond, locale-aware critical preloads, and the brand and business constants."
+---
+
+## Two typefaces
+
+M'Arte uses exactly two families, both self-hosted from `public/fonts` as subsetted WOFF2:
+
+| Family                 | Role                        | Tailwind     | Files                                                    |
+| ---------------------- | --------------------------- | ------------ | -------------------------------------------------------- |
+| **Manrope**            | Body, UI, navigation, admin | `font-sans`  | One variable file per subset, weight axis `200 800`      |
+| **Cormorant Garamond** | Display headings, editorial | `font-serif` | Static faces at 400, 500 and 600; italics at 400 and 500 |
+
+`public/fonts` holds twelve files. Each family has a `latin` and a `latin-ext` variant of every face, because Polish needs the extended range:
+
+```
+manrope-latin-wght-normal.woff2
+manrope-latin-ext-wght-normal.woff2
+cormorant-garamond-latin-400-normal.woff2
+cormorant-garamond-latin-ext-400-normal.woff2
+cormorant-garamond-latin-400-italic.woff2
+cormorant-garamond-latin-ext-400-italic.woff2
+cormorant-garamond-latin-500-normal.woff2
+cormorant-garamond-latin-ext-500-normal.woff2
+cormorant-garamond-latin-500-italic.woff2
+cormorant-garamond-latin-ext-500-italic.woff2
+cormorant-garamond-latin-600-normal.woff2
+cormorant-garamond-latin-ext-600-normal.woff2
+```
+
+`public/_headers` serves `/fonts/*` with `Cache-Control: public, max-age=31536000, immutable`. The names carry no content hash, so replacing a font file means the old bytes may stay cached for a year — rename the file when you change its contents.
+
+## Critical and deferred faces
+
+The font CSS is deliberately split in two.
+
+**`src/presentation/styles/critical-fonts.css`** carries only what the first screen needs: the two metric-matched fallback faces, Cormorant Garamond 400 normal (latin and latin-ext) and Manrope variable (latin and latin-ext), plus the `--font-sans` and `--font-serif` definitions on `:root`. It is inlined into the document head as a `<style>` tag, so no stylesheet request blocks the first paint:
+
+```tsx
+import criticalFontsCss from "~/src/presentation/styles/critical-fonts.css?raw"
+
+export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriticalFontsHeadProps>): JSX.Element => (
+  <>
+    {getCriticalFontPreloads(locale).map((link) => (
+      <link key={link.href} {...link} />
+    ))}
+    <style dangerouslySetInnerHTML={CRITICAL_FONTS_STYLE_HTML} />
+  </>
+)
+```
+
+The root route renders it only outside the admin console:
+
+```tsx
+{
+  !isAdmin && <StorefrontCriticalFontsHead locale={locale} />
+}
+```
+
+**`src/presentation/styles/fonts.css`** carries the remaining eight Cormorant faces — 400 italic, 500 normal, 500 italic and 600 normal, each in both subsets. It is imported at the top of `globals.css`, so those faces arrive with the main stylesheet rather than blocking the head.
+
+The fallback faces avoid layout shift by matching metrics:
+
+```css
+@font-face {
+  font-family: "Manrope Fallback";
+  src: local("Arial");
+  size-adjust: 98.16%;
+  ascent-override: 106.6%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+```
+
+`globals.css` also sets `font-synthesis: none` on `body`, so a missing weight or italic is never faked by the browser.
+
+## Locale-aware preloads
+
+`src/presentation/document-assets.ts` exports one function. It preloads exactly two files — one body font, one display font — and switches subset on the locale:
+
+```ts
+export const getCriticalFontPreloads = (locale: SupportedLocale) => {
+  const useLatinExt = locale === "pl-PL"
+
+  return [
+    {
+      ...FONT_PRELOAD_BASE,
+      href: useLatinExt ? "/fonts/manrope-latin-ext-wght-normal.woff2" : "/fonts/manrope-latin-wght-normal.woff2",
+    },
+    {
+      ...FONT_PRELOAD_BASE,
+      href: useLatinExt ? "/fonts/cormorant-garamond-latin-ext-400-normal.woff2" : "/fonts/cormorant-garamond-latin-400-normal.woff2",
+    },
+  ] as const
+}
+```
+
+`FONT_PRELOAD_BASE` is `{ as: "font", crossOrigin: "anonymous", rel: "preload", type: "font/woff2" }`. `src/presentation/__test__/document-assets.test.ts` pins all of this: the exact hrefs per locale, the four attributes, and the fact that there are exactly two entries.
+
+If you add a locale, extend the branch. If you add a third critical face, add it to `critical-fonts.css` _and_ to this function, or it will be fetched late.
+
+## Brand constants
+
+`src/presentation/branding/app.ts` is the single source of the brand:
+
+```ts
+export const APP_DOMAIN = "martebizuteria.pl"
+export const APP_URL = `https://${APP_DOMAIN}`
+export const APP_GITHUB_OWNER = "pjborowiecki"
+export const APP_GITHUB_REPO = APP_DOMAIN
+export const APP_ICON = "/favicon.svg"
+export const APP_NAME = "M'Arte"
+export const DEFAULT_R2_PUBLIC_URL = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev"
+export const OG_IMAGE_HEIGHT = "630"
+export const OG_IMAGE_PATH = "/og.png"
+export const OG_IMAGE_WIDTH = "1200"
+export const THEME_COLOR = "#e7f3ec"
+```
+
+These feed more than the chrome:
+
+| Constant                | Read by                                                                                                                                         |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_NAME`              | `theme-init.ts` (the `localStorage` theme key), Better Auth, Stripe, Resend, the `og:site_name` and `title` meta, the auth and checkout headers |
+| `APP_URL`, `APP_DOMAIN` | Canonical URLs, hreflang links, structured data (`src/lib/seo.ts`), absolute asset URLs (`src/lib/url.ts`)                                      |
+| `APP_ICON`              | The `icon` and `apple-touch-icon` links in the root route                                                                                       |
+| `OG_IMAGE_*`            | The Open Graph and Twitter card meta in the root route                                                                                          |
+| `THEME_COLOR`           | The `theme-color` meta tag                                                                                                                      |
+| `DEFAULT_R2_PUBLIC_URL` | The fallback public base for R2 assets in `src/lib/image.ts`                                                                                    |
+
+Because `THEME_STORAGE_KEY` is derived from `APP_NAME`, renaming the app changes the `localStorage` key and silently resets every visitor's stored theme. That is acceptable today (there is no switcher) but worth remembering.
+
+## Business identity
+
+`src/presentation/branding/business.ts` holds the legal identity of the shop:
+
+```ts
+export const BUSINESS = {
+  CITY: "Bochnia",
+  COUNTRY_CODE: "PL",
+  EMAIL: "kontakt@martebizuteria.pl",
+  LEGAL_NAME: "Pyciak Mariusz Firma Jubilerska",
+  NIP: "8681772646",
+  OPENING_HOURS_CLOSE: "17:00",
+  OPENING_HOURS_OPEN: "09:00",
+  PHONE: "+48 663 150 820",
+  POSTAL_CODE: "32-700",
+  REGON: "384616568",
+  STREET: "ul. Wąska 11",
+} as const
+
+export const BUSINESS_POSTAL_ADDRESS_LINES = [BUSINESS.LEGAL_NAME, BUSINESS.STREET, `${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY}`] as const
+```
+
+No component imports it. Its job is to be the assertion side of a test: `src/presentation/branding/__test__/business.test.ts` reads `content/legal/privacy-policy.<locale>.mdx` and `content/legal/exchanges-and-returns.<locale>.mdx` for every supported locale and fails if the legal name, NIP, postal address lines or `mailto:` address in the prose drift from these constants.
+
+So when the business details change, edit `business.ts` first, then fix the legal MDX in both locales until `bun run test:unit` is green again.
+
+`src/presentation/branding/socials.ts` holds the two live profiles:
+
+```ts
+export const SOCIALS = {
+  FACEBOOK: "https://www.facebook.com/p/MArte-Bi%C5%BCuteria-61567757976697/",
+  INSTAGRAM: "https://www.instagram.com/m_arte.bizuteria/",
+} as const
+```
+
+They are read by `src/lib/seo.ts` (the `sameAs` entries in structured data), the footer, and the fullscreen menu footer.
+
+## Logo, icons and media
+
+- The favicon is `public/favicon.svg`, wired through `APP_ICON`. There is no `.ico`.
+- `public/og.png` is the 1200×630 social card.
+- `src/presentation/components/custom/icons.tsx` holds three inline brand SVGs that Lucide does not cover: `GoogleIcon`, `FacebookIcon` and `GithubIcon`. Everything else comes from `lucide-react`.
+- `public/video/landing-video.mp4` is the landing-page footage; `public/screenshots` holds eight README stills; `public/forms` holds the two Polish returns and complaints PDFs.
+- `public/icons.svg` is an SVG sprite with `bluesky`, `discord`, `documentation`, `github`, `social` and `x` symbols. Nothing in `src` references it; treat it as dead weight rather than an API.
+
+## Related pages
+
+- [Theme](/docs/ui/theme)
+- [Composition patterns](/docs/ui/composition-patterns)

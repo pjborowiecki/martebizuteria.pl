@@ -1,0 +1,244 @@
+---
+title: "Better Auth"
+description: "Sessions, OAuth, roles and permissions, server-function middleware and route guards."
+---
+
+Better Auth owns identity: e-mail and password sign-in, Google and GitHub OAuth, e-mail verification, password reset, e-mail change, two-factor, anonymous sessions, multi-session and the admin role model. It stores everything in D1 through the Drizzle adapter, and it is the source of the `authorized()` middleware that every protected server function declares.
+
+## The instance
+
+`src/integrations/better-auth/auth.server.ts` configures one `betterAuth(...)` instance. The pieces worth knowing:
+
+| Option                         | Value                                                                                           |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `database`                     | `drizzleAdapter(db, { provider: "sqlite", schema })`                                            |
+| `advanced.database.generateId` | `() => uuidv7()`, with `joins: true`                                                            |
+| `advanced.ipAddress`           | Reads `cf-connecting-ip` (`IP_ADDRESS_HEADER` from `src/lib/rate-limit.ts`)                     |
+| `advanced.useSecureCookies`    | `!isLocalMode(import.meta.env.MODE)`                                                            |
+| `advanced.backgroundTasks`     | `{ handler: scheduleBackgroundWork }`, so Better Auth's own async work rides on `ctx.waitUntil` |
+| `baseURL.allowedHosts`         | `appHostsForMode(import.meta.env.MODE)` from `src/modules/_core/constants/api.ts`               |
+| `emailAndPassword`             | Enabled, `requireEmailVerification: true`, min 8 / max 1024 characters                          |
+| `emailVerification`            | `sendOnSignUp: true`, `autoSignInAfterVerification: true`                                       |
+| `session`                      | `storeSessionInDatabase: true`, cookie cache enabled with `maxAge` 300 s and `version: "2"`     |
+| `verification`                 | `storeIdentifier: "hashed"`, `storeInDatabase: true`                                            |
+| `socialProviders`              | `google` and `github`, with `account.accountLinking.trustedProviders` covering both             |
+| `account.encryptOAuthTokens`   | `true`                                                                                          |
+| `telemetry`                    | Disabled                                                                                        |
+| `user.additionalFields`        | `timezone` (string, optional, accepted as input)                                                |
+| `user.changeEmail`             | Enabled, with `sendChangeEmailConfirmation`                                                     |
+
+Plugins: `admin({ ac, adminRoles, defaultRole, roles })`, `anonymous()`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })` and `tanstackStartCookies()`. The last one is what makes Better Auth's cookies work with TanStack Start's response handling, and it must stay last in the array.
+
+### Built-in rate limiting
+
+Better Auth's own limiter is enabled with `storage: "database"`, a global 100 requests per 60 seconds, plus per-endpoint rules keyed off `ROUTES.API_AUTH`:
+
+| Endpoint                  | Limit per 60 s |
+| ------------------------- | -------------- |
+| `/sign-in/email`          | 5              |
+| `/sign-up/email`          | 3              |
+| `/request-password-reset` | 3              |
+| `/reset-password`         | 5              |
+
+This is separate from the application's own `withRateLimit` middleware described below; both write to the `rate_limit` table.
+
+### Database hooks
+
+`databaseHooks` is where identity events reach the rest of the application:
+
+- `session.create.after` looks the user up and calls `recordAuthLoginAudit(...)`.
+- `user.create.after` calls `scheduleAdminCustomersInvalidation()` and `recordCustomerRegisteredAudit(...)`.
+- `user.update.after` and `user.delete.after` both call `scheduleAdminCustomersInvalidation()`, so the admin customer list refreshes without a poll.
+
+### Transactional e-mail
+
+Four of the six application e-mails are sent from this file: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` and `sendAccountDeletedEmail`. Each loads its own message namespace, renders its React Email component and hands it to `sendEmail`; failures are logged through `reportEmailFailure` rather than thrown, so a mail outage never breaks a sign-up. `resolveEmailVerificationCallbackUrl` additionally rewrites a verification link that would land on the storefront home so it lands on `/account/overview?verified=true` instead. See [Resend](/docs/integrations/resend).
+
+## Roles and permissions
+
+`auth.access.ts` builds the access-control model with Better Auth's `createAccessControl`:
+
+```ts
+export const ROLES = { ADMIN: "admin", CUSTOMER: "customer" } as const
+
+export const RESOURCES = { ORDER: "order", PRODUCT: "product", SETTINGS: "settings", USER: "user" } as const
+
+export const ACTIONS = {
+  CREATE: "create",
+  DELETE: "delete",
+  MANAGE: "manage",
+  PUBLISH: "publish",
+  READ: "read",
+  REFUND: "refund",
+  UPDATE: "update",
+} as const
+
+export const PERMISSIONS_STATEMENTS = {
+  ...defaultStatements,
+  [RESOURCES.ORDER]: [ACTIONS.READ, ACTIONS.UPDATE, ACTIONS.REFUND],
+  [RESOURCES.PRODUCT]: [ACTIONS.CREATE, ACTIONS.READ, ACTIONS.UPDATE, ACTIONS.DELETE, ACTIONS.PUBLISH],
+  [RESOURCES.SETTINGS]: [ACTIONS.MANAGE],
+} as const
+```
+
+`ROLES_CONFIG.admin` receives all of those plus `adminAc.statements` (Better Auth's own `user` and `session` management statements). `ROLES_CONFIG.customer` receives empty arrays for every resource — a customer holds no administrative permission at all. `DEFAULT_ROLE` is `customer` and `ADMIN_PANEL_ROLES` is `["admin"]`.
+
+Two predicates are exported and used everywhere:
+
+```ts
+export const hasAdminAccess = (role: string | null | undefined): role is Role =>
+  typeof role === "string" && (ADMIN_PANEL_ROLES as readonly string[]).includes(role)
+
+export const hasPermission = ({ permission, role }: { permission: Permission; role: string | null | undefined }): boolean =>
+  isKnownRole(role) && ROLES_CONFIG[role].authorize(permission).success
+```
+
+## Server-function middleware
+
+`auth.middleware.ts` exports the three middlewares every server function composes from.
+
+`withRequest` puts the request headers into context and funnels every thrown error through one translator:
+
+```ts
+export const withRequest = createMiddleware({ type: "function" }).server(({ next }) =>
+  next({ context: { requestHeaders: getRequest().headers } }).catch(handleRequestError),
+)
+```
+
+`handleRequestError` maps an `AppError` to itself, a Better Auth `APIError` to `AppError(AUTH_API_ERROR, authErrorKey(error))`, a `ZodError` to `AppError(VALIDATION)` and everything else to `AppError(INTERNAL_ERROR)` after logging it. The client never sees a raw stack trace or a vendor error string.
+
+`authorized(permission?)` builds on `withRequest`, loads the session and either rejects or puts it into context:
+
+```ts
+export const authorized = (permission?: Permission) =>
+  createMiddleware({ type: "function" })
+    .middleware([withRequest])
+    .server(async ({ next }) => {
+      const session = await getRequestSession()
+      if (session === null) {
+        throw new AppError(ERROR_CODES.UNAUTHORIZED)
+      }
+
+      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+        throw new AppError(ERROR_CODES.FORBIDDEN)
+      }
+
+      return next({ context: { auth: session } })
+    })
+```
+
+Called without an argument it only requires a signed-in user; called as `authorized({ product: ["create"] })` it also requires that permission. A use case therefore declares its own authorization in its signature:
+
+```ts
+export const createCompleteProduct = createServerFn({ method: "POST" }).middleware([authorized({ product: ["create"] })])
+```
+
+`withRateLimit(kind, { max, window })` also builds on `withRequest` and applies the application's own limiter, keyed by `kind` plus the client address:
+
+```ts
+export const RATE_LIMITS = {
+  CHECKOUT: { max: 10, window: RATE_LIMIT_WINDOW_SECONDS },
+  SENSITIVE: { max: 3, window: RATE_LIMIT_WINDOW_SECONDS },
+  TOKEN: { max: 5, window: RATE_LIMIT_WINDOW_SECONDS },
+} as const
+```
+
+The window is 60 seconds. `withinRateLimit` in `src/lib/rate-limit.ts` implements it as a single conditional upsert into the `rate_limit` table with `onConflictDoUpdate` and a `setWhere`, so the counter and the window roll over in one statement. If the table is unreachable, the helper returns `false` — the limiter fails closed.
+
+### This is enforced by a test
+
+`src/integrations/better-auth/__test__/use-case-authorization.test.ts` walks every file under `src/modules/**/use-cases/`, and for each one that contains `createServerFn` asserts that it also contains `authorized(` — unless it is on an explicit allowlist of 13 deliberately public use cases (`get-product.ts`, `search-storefront.ts`, `check-cart-availability.ts` and so on). It also asserts that no use case asserts authorization inside its handler, and that every entry on the allowlist still exists. Adding a protected use case without middleware fails the test suite.
+
+## Route guards
+
+`auth.routes.ts` holds the _navigation_ guards, used from `beforeLoad`. They decide what to render, never whether an operation is allowed:
+
+| Export                    | Behaviour                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| `requireUser()`           | Returns the session user, or redirects to `/auth/sign-in`                        |
+| `requireAdmin()`          | Returns the user if `hasAdminAccess`, otherwise redirects to `/account/overview` |
+| `requireCustomer()`       | Returns the user unless they are an admin, who is redirected to `/admin`         |
+| `redirectAuthenticated()` | Used on the auth pages; sends a signed-in visitor to their home                  |
+| `postAuthRouteFor(user)`  | `/admin` for an admin, `/account/overview` for a customer                        |
+| `authEntryRouteFor(user)` | `/auth/sign-in` when there is no user, otherwise `postAuthRouteFor`              |
+
+## Reading the session
+
+`auth.session.ts` avoids asking Better Auth for the same session twice in one request by memoizing on the `Request` object:
+
+```ts
+const requestSessions = new WeakMap<Request, ReturnType<typeof auth.api.getSession>>()
+
+export const getRequestSession = createServerOnlyFn((request: Request = getRequest()) => {
+  const cached = requestSessions.get(request)
+  if (cached) {
+    return cached
+  }
+
+  const session = auth.api.getSession({ headers: request.headers, query: { disableCookieCache: true } })
+  requestSessions.set(request, session)
+
+  return session
+})
+```
+
+`disableCookieCache: true` means server-side authorization always reads the database rather than trusting the signed cookie cache; the 300-second cookie cache exists for the client's benefit. `getCurrentSession` is the server function wrapper, and it strips `session.token` before returning — the token never reaches the browser payload. `getCurrentSessionQuery` is the matching query options object, described in [TanStack Query](/docs/integrations/tanstack-query).
+
+## The client
+
+`auth.client.ts` mirrors the server plugins and re-exports only what the UI needs:
+
+```ts
+export const authClient = createAuthClient({
+  plugins: [
+    adminClient({ ac, roles: ROLES_CONFIG }),
+    anonymousClient(),
+    inferAdditionalFields<typeof auth>(),
+    multiSessionClient(),
+    twoFactorClient(),
+  ],
+})
+
+export const { signIn, signOut, signUp, useSession, resetPassword } = authClient
+```
+
+`inferAdditionalFields<typeof auth>()` is what gives the client the `timezone` field without a second declaration.
+
+## Validation and errors
+
+`auth.constraints.ts` holds the raw limits (`EMAIL_MAX_LENGTH` 64, `NAME_MAX_LENGTH` 32, `PASSWORD_MIN_LENGTH` 8, `PASSWORD_MAX_LENGTH` 1024, and the uppercase and special-character patterns) plus `AUTH_VALIDATION_PARAMS`, which feeds the numbers into the translated messages.
+
+`auth.zod.ts` builds the form schemas from them: `signInWithPasswordSchema`, `signUpWithPasswordSchema`, `forgotPasswordSchema` and `resetPasswordSchema`. Every `message` is a _translation key_, not English prose — `"passwordMinLength"`, `"passwordsMustMatch"`, `"invalidEmail"` — which the form layer resolves against `messages/{locale}/pages.auth.*.json`. Sign-in uses the permissive `signInPasswordSchema` (non-empty) while sign-up and reset use `strictPasswordSchema`, so an existing weak password can still be used to log in.
+
+`auth.errors.ts` maps Better Auth's error codes onto the same kind of message keys through `AUTH_ERRORS`, and `authErrorKey(error)` parses either `{ code }` or `{ body: { code } }` and falls back to `unknownError`.
+
+## The HTTP endpoint
+
+`src/routes/api/auth.$.ts` is a handler-only route that does not call `auth.handler` directly but wraps it:
+
+```ts
+export const Route = createFileRoute("/api/auth/$")({
+  server: {
+    handlers: {
+      GET: ({ request }) => handleAuthRequestWithAudit(request),
+      POST: ({ request }) => handleAuthRequestWithAudit(request),
+    },
+  },
+})
+```
+
+`handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts` inspects the path before delegating: for `POST /sign-in/email` it clones the request to read the e-mail, and records a failed-login audit entry if the response is not OK; for `POST /sign-out` it captures the session first and records a logout entry if the response is OK. Successful logins are audited from the `session.create.after` hook instead.
+
+## Tables
+
+`user`, `session`, `account`, `verification`, `two_factor` and `rate_limit`. Each is defined in its own module (`src/modules/user/user.schema.ts` and so on) and re-exported from `drizzle.schemas.ts`. `user` carries the application's additions beyond Better Auth's own columns: `role` (enumerated `admin` / `customer`), `phone`, `timezone`, `stripe_customer_id`, `metadata`, and the ban and two-factor flags. `session.token` is a 16 KiB unique text column and `session.user_id` cascades on delete.
+
+## Secrets
+
+`AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID` and `AUTH_GITHUB_CLIENT_SECRET`, all listed under `secrets.required` for each environment in `wrangler.jsonc`.
+
+## Related pages
+
+- [Security](/docs/architecture/security-model)
+- [Accounts](/docs/features/account)
+- [Audit log](/docs/features/audit-log)

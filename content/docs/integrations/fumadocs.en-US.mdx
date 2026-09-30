@@ -1,0 +1,212 @@
+---
+title: "Fumadocs"
+description: "The docs and legal MDX collections, localized sources, and how these pages are rendered."
+---
+
+Fumadocs turns MDX files into two things in this application: the legal documents at `/privacy-policy` and `/exchanges-and-returns`, and the documentation site you are reading. Both use the same pattern — a collection defined in `src/integrations/fumadocs/`, a localized `loader`, a server function that resolves a page, and a client loader that renders the compiled MDX.
+
+## Collections
+
+`fumadocs.config.ts` declares two:
+
+```ts
+export const docs = defineDocs({
+  dir: "./content/docs",
+})
+
+export const legal = defineDocs({
+  dir: "./content/legal",
+  docs: {
+    schema: legalSchema,
+  },
+})
+
+export default defineConfig()
+```
+
+`legalSchema` in `fumadocs.schema.ts` extends Fumadocs' own page schema with a required date, so a legal document cannot be published without stating when it was last revised:
+
+```ts
+export const legalSchema = pageSchema.extend({
+  updated: zod.iso.date(),
+})
+```
+
+Documentation pages use the default schema: `title` is required, `description` is optional.
+
+## Localization
+
+`fumadocs.i18n.ts` is four lines of configuration that carry a lot of behaviour:
+
+```ts
+export const i18n = defineI18n({
+  defaultLanguage: I18N.DEFAULT_LOCALE,
+  fallbackLanguage: I18N.DEFAULT_LOCALE,
+  hideLocale: "always",
+  languages: [...I18N.SUPPORTED_LOCALES],
+  parser: "dot",
+})
+```
+
+- **`parser: "dot"`** is why files are named `page.pl-PL.mdx` rather than living in `pl-PL/page.mdx`. Both locales of a page sit next to each other in the same directory.
+- **`hideLocale: "always"`** means Fumadocs never puts a locale into the URLs it generates. The locale prefix is entirely the application's business — see [use-intl](/docs/integrations/use-intl).
+- **`fallbackLanguage`** is `pl-PL`, so an English page that has not been written yet resolves to the Polish one rather than 404ing. This is convenient and also a trap: a missing English translation looks like a working page. Both locale files are expected for every page.
+- **`languages`** is spread from `I18N.SUPPORTED_LOCALES`, so the locale list has exactly one source of truth.
+
+## The sources
+
+`fumadocs.source.ts` builds the legal source, mounted at the site root because the legal routes are top-level paths:
+
+```ts
+export const legalSource = loader({
+  baseUrl: "/",
+  i18n,
+  source: legal.toFumadocsSource(),
+})
+```
+
+`fumadocs.docs.ts` builds the docs source at `ROUTES.DOCS`:
+
+```ts
+export const docsSource = loader({
+  baseUrl: ROUTES.DOCS,
+  i18n,
+  source: docs.toFumadocsSource(),
+})
+```
+
+Both import `docs` and `legal` from `collections/server`, which is a `tsconfig.json` path alias pointing at `./.source/*` — the directory `fumadocs-mdx` generates.
+
+## Generated output
+
+```bash
+bun run content
+# fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source
+```
+
+That writes `.source/server.ts`, `.source/browser.ts` and `.source/dynamic.ts`. `bun run dev`, `bun run typegen` and both build scripts run it first, so you rarely call it by hand — but if TypeScript cannot resolve `collections/server`, that is the command. `.source` is listed in `.gitignore` and on the formatter's and linter's `ignorePatterns` list, and `bun run clean` deletes it.
+
+The Vite side is a lazy plugin in `vite.config.ts`:
+
+```ts
+const { fumadocsMdx } = await import("fumadocs-mdx/vite")
+const fumadocs = fumadocsMdx({ configPath: "./src/integrations/fumadocs/fumadocs.config.ts" })
+```
+
+It is included in both the normal plugin list and the Vitest-only list, which is what lets the component tests render real MDX pages.
+
+## Resolving a documentation page
+
+`fumadocs.docs.ts` exposes two server functions behind two thin wrappers.
+
+`loadDocsPage(splat)` resolves the page and preloads its compiled module in parallel:
+
+```ts
+export const loadDocsPage = async (splat?: string) => {
+  const [{ docsContent }, page] = await Promise.all([
+    import("~/src/presentation/components/custom/docs-content"),
+    getDocsPage({ data: { locale: getCurrentLocale(), slugs: docsSlugsOf(splat) } }),
+  ])
+  await docsContent.preload(page.path)
+
+  return page
+}
+```
+
+`getDocsPage` throws `notFound()` when the slug does not exist and otherwise returns only `{ description, path, title }` — the page _content_ is never serialized into the SSR payload, because the client loader imports the compiled module itself. `docsSlugsOf` converts a splat into slug segments (`undefined` or `""` becomes `[]`, the root page), and `docsSplatOf` does the reverse for links.
+
+`loadDocsNavigation()` builds the sidebar. `buildDocsNavigation(locale)` walks the page tree, keeps only folders, and turns each into a section whose first link is the folder's own index page:
+
+```ts
+const folderPages = (folder: Folder): Item[] => [
+  ...(folder.index === undefined ? [] : [folder.index]),
+  ...folder.children.filter(isPageNode),
+]
+```
+
+This is why `index` must **not** be listed in a folder's `meta.<locale>.json` `pages` array — Fumadocs already treats it as the folder index, and listing it would place it twice.
+
+## The routes
+
+| Route     | File                        | What it does                                                                    |
+| --------- | --------------------------- | ------------------------------------------------------------------------------- |
+| `/docs`   | `src/routes/docs.tsx`       | The layout: navigation, `DocsSidebar`, footer; loader is `loadDocsNavigation()` |
+| `/docs`   | `src/routes/docs.index.tsx` | The root page, `loadDocsPage()` with no splat                                   |
+| `/docs/$` | `src/routes/docs.$.tsx`     | Every other page, `loadDocsPage(params._splat)`                                 |
+
+The layout declares `staticData: { namespaces: ["pages.docs"] }`, which is where the sidebar's own labels come from (`messages/{locale}/pages.docs.json`: `navigation.title`, `navigation.label`, `navigation.overview`). The page routes both set `head: pageHead` and `wrapInSuspense: false`.
+
+`DocsSidebar` in `src/presentation/components/custom/pages/docs/docs-sidebar.tsx` renders an "Overview" link to `ROUTES.DOCS` followed by one group per section, using `LocalizedLink` with `activeOptions={{ exact: true }}`.
+
+## Rendering MDX
+
+`src/presentation/components/custom/docs-content.tsx` is the client loader:
+
+```tsx
+export const docsContent = browserCollections.docs.createClientLoader({
+  component: ({ default: Mdx, frontmatter }) => (
+    <article className="min-w-0 pb-16">
+      <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl">{frontmatter.title}</h1>
+      <Mdx components={docsMdxComponents} />
+    </article>
+  ),
+  id: "docs",
+})
+```
+
+The `<h1>` comes from the frontmatter `title`, which is why a page body should start at `##`.
+
+### What components are available in a page
+
+This is the most important constraint to know before writing a page. `docsMdxComponents` in `docs-mdx.tsx` spreads `mdxComponents` from `mdx.tsx` and adds a few more, and the whole map contains **only HTML element overrides**:
+
+`a`, `h1`, `h2`, `h3`, `h4`, `p`, `ul`, `ol`, `li`, `strong`, `blockquote`, `code`, `pre`, `hr`, `table`, `th`, `td`.
+
+There is **no `Callout`, `Cards`, `Steps`, `Tabs`, `Accordion` or `File`** component registered. Fumadocs' UI component library is not a dependency of this project — only `fumadocs-core` and `fumadocs-mdx` are. Writing `<Callout>` in a page would not render a callout. Documentation pages are therefore plain Markdown: headings, paragraphs, lists, tables, fenced code blocks and blockquotes, all styled by the map above.
+
+`MdxLink` is the one component with behaviour. It localizes any href that starts with `/` and does not look like a file:
+
+```ts
+const ASSET_PATH_PATTERN = /\.[a-z0-9]+$/iu
+
+href={isLocalizablePath(href) ? localizePathname({ locale: getCurrentLocale(), pathname: href }) : href}
+```
+
+So always write internal links without a locale — `/docs/integrations/stripe`, not `/en-US/docs/integrations/stripe` — and the reader's prefix is added for them. An external URL or a path ending in an extension (`/forms/formularz_zwrotu.pdf`) is left alone.
+
+`legalContent` in `legal-content.tsx` is the same idea with the narrower `mdxComponents` map and a centered prose container.
+
+## Legal documents
+
+`fumadocs.legal.ts` names the documents rather than accepting an arbitrary slug:
+
+```ts
+export const LEGAL_DOCUMENT_SLUGS = {
+  exchangesAndReturns: "exchanges-and-returns",
+  privacyPolicy: "privacy-policy",
+} as const
+```
+
+`loadLegalPage(slug)` mirrors `loadDocsPage` and additionally returns `updated` from the frontmatter. `src/routes/_storefront.privacy-policy.tsx` and `_storefront.exchanges-and-returns.tsx` each call it with one constant, so there is no way to reach an unintended document.
+
+## Adding a documentation page
+
+1. Create `content/docs/<section>/<slug>.en-US.mdx` **and** `<slug>.pl-PL.mdx`. Frontmatter is `title` and `description`.
+2. Add `"<slug>"` to the `pages` array in **both** `content/docs/<section>/meta.en-US.json` and `meta.pl-PL.json`, in reading order. Do not list `index`.
+3. Write plain Markdown. Start the body at `##`. Write internal links without a locale prefix.
+4. Run `bun run content` (or restart `bun run dev`) so `.source` picks the files up.
+5. Run `bun run format`, `bun run check` and `bun run test`.
+
+## No search
+
+The application has no `/api/search` route and does not use `fumadocs-core/search`. The documentation is navigated by the sidebar only. Adding search would mean a new handler route plus a client search component.
+
+## Tests
+
+`src/integrations/fumadocs/__test__/` holds five files. `fumadocs.config.test.ts` checks the collection directories and the legal frontmatter schema, including that `updated` is a valid date. `fumadocs.docs.source.component.test.ts` checks that every page is served under the docs route, that the page tree turns each folder into a section with its index first, and the `docsSplatOf` / `docsSlugsOf` round trip — and it asserts that an unprefixed URL resolves the **Polish** page while an English URL resolves the English one. `fumadocs.docs.component.test.tsx` renders a real page and checks the body is rendered inside one `<article>`. The two `fumadocs.legal.*` files do the same for the legal documents, down to asserting that the privacy policy names the data controller with its Bochnia address and tax number.
+
+## Related pages
+
+- [use-intl](/docs/integrations/use-intl)
+- [UI system](/docs/ui)
+- [Guides](/docs/guides)

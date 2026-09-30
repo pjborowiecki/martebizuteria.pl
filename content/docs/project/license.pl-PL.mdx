@@ -1,0 +1,93 @@
+---
+title: "Licencja"
+description: "Kod źródłowy M'Arte jest udostępniony na licencji CC BY-NC 4.0. Co ona pozwala, czego nie pozwala i jak traktowane są nazwy marek oraz zasoby stron trzecich."
+---
+
+Rozstrzygającym tekstem jest plik `LICENSE.md` w katalogu głównym repozytorium. `package.json` zapisuje `"license": "SEE LICENSE IN LICENSE.md"`, a nie identyfikator SPDX, właśnie dlatego, że licencja zawiera warunek niekomercyjny i kilka zastrzeżeń, których sam identyfikator nie przekazałby. Ta strona streszcza tamten plik; w razie rozbieżności obowiązuje `LICENSE.md`.
+
+## Wersja krótka
+
+Kod źródłowy projektu jest udostępniony na licencji **Creative Commons Uznanie autorstwa – Użycie niekomercyjne 4.0 Międzynarodowe** (CC BY-NC 4.0), w celach edukacyjnych.
+
+| Możesz                                               | Nie możesz                                                                            |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| używać kodu do własnej nauki i celów edukacyjnych    | używać go komercyjnie bez odrębnej licencji                                           |
+| forkować i modyfikować w celach niekomercyjnych      | sprzedawać go ani włączać do produktu płatnego                                        |
+| udostępniać dalej, z właściwym oznaczeniem autorstwa | usuwać oznaczeń autorstwa ani not licencyjnych                                        |
+| używać jako projektu do portfolio                    | udzielać na niego dalszych licencji komercyjnych                                      |
+| powoływać się na niego we wpisach i tutorialach      | stosować środków prawnych ani technicznych ograniczających to, na co licencja pozwala |
+
+Licencjodawca nie może odebrać tych swobód, dopóki przestrzegasz warunków licencji.
+
+## Uznanie autorstwa
+
+Właściwe oznaczenie autorstwa to trzy rzeczy: wskazanie źródła, odnośnik do licencji i informacja, czy wprowadzono zmiany. Możesz to zrobić w dowolny rozsądny sposób, ale nie w taki, który sugeruje, że licencjodawca popiera ciebie lub twoje zastosowanie.
+
+Minimalna nota spełniająca wszystkie trzy warunki:
+
+```
+Based on M'Arte (https://github.com/pjborowiecki/martebizuteria.pl)
+by Piotr Borowiecki, licensed under CC BY-NC 4.0.
+Modified.
+```
+
+## Użycie niekomercyjne
+
+Licencja nie rysuje ostrej granicy tego, co jest „komercyjne”, i ta strona jej nie wymyśli. Konkretnie, przypadki wskazane w `LICENSE.md` jako wykluczone to sprzedaż kodu, włączenie go do produktu płatnego i udzielanie dalszych licencji komercyjnych. Uruchomienie tego projektu jako własnego działającego sklepu albo w ramach zlecenia dla klienta należy traktować jako przypadek wymagający odrębnej licencji, nie jako objęty tą.
+
+Jeśli chcesz użyć kodu komercyjnie, skontaktuj się z autorem w sprawie odrębnych ustaleń. Zobacz [Licencjonowanie komercyjne](#licencjonowanie-komercyjne).
+
+## Nazwy marek i znaki towarowe
+
+Obowiązują dwa odrębne zastrzeżenia i oba prowadzą do tego samego wniosku: nic tutaj nie przyznaje ci praw do marki.
+
+**„M'Arte”** to nazwa prawdziwej firmy jubilerskiej, dla której zbudowano ten projekt. Autor nie rości sobie żadnych praw ochronnych ani innych praw własności intelektualnej do tej nazwy, logotypów ani identyfikacji wizualnej użytych w projekcie — ale licencja też ich na ciebie nie przenosi. Ponowne użycie kodu nie uprawnia cię do przedstawiania swojego wdrożenia jako M'Arte, a `LICENSE.md` stwierdza, że projekt nie jest powiązany z żadną inną platformą ani firmą jubilerską, ani przez nią wspierany.
+
+Powierzchnia marki, którą trzeba by wymienić, jest niewielka i celowo skupiona w `src/presentation/branding/`, z tokenami wizualnymi w `src/presentation/theme/` i `src/presentation/styles/globals.css`. Zobacz [Motyw i identyfikacja](/docs/guides/theming-and-branding).
+
+**Nazwy, logotypy i znaki towarowe stron trzecich** — Stripe, Resend, Cloudflare, React, Tailwind CSS, TypeScript, shadcn/ui i pozostałe — należą do ich właścicieli. Pojawiają się w tym repozytorium i w tej dokumentacji wyłącznie w celu opisania użytych technologii.
+
+## Zasoby, które nie są kodem źródłowym
+
+Udzielenie licencji CC BY-NC w `LICENSE.md` dotyczy kodu źródłowego projektu. Kilka rzeczy dostarczanych obok kodu ma własne warunki, które trzeba sprawdzić osobno przed dalszym rozpowszechnianiem:
+
+| Zasób                               | Gdzie                                                               | Uwaga                                                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Fonty                               | 12 plików `woff2` w `public/fonts/`                                 | Manrope i Cormorant Garamond, samodzielnie hostowane podzbiory. Przed rozpowszechnianiem sprawdź ich licencje u źródła |
+| Zdjęcia i wideo produktowe          | kubełek R2 `martebizuteria` oraz `public/video/`                    | materiał marki, nieobjęty licencją na kod                                                                              |
+| Logotypy, favicon, obraz Open Graph | `public/favicon.svg`, `public/og.png`, `src/presentation/branding/` | materiał marki                                                                                                         |
+| Zależności npm                      | `package.json`                                                      | każda na własnej licencji, której warunki tego projektu nie zmieniają                                                  |
+
+`LICENSE.md` zauważa też, że nie musisz przestrzegać licencji w odniesieniu do materiałów w domenie publicznej ani tam, gdzie twoje użycie mieści się w obowiązującym wyjątku lub ograniczeniu.
+
+## Brak gwarancji
+
+Projekt jest dostarczany „w stanie, w jakim jest”, bez żadnych gwarancji, wyraźnych ani domniemanych, w tym gwarancji przydatności handlowej, przydatności do określonego celu i nienaruszania praw. Autorzy nie ponoszą odpowiedzialności za jakiekolwiek roszczenia, szkody ani inną odpowiedzialność wynikającą z użycia projektu.
+
+To zastrzeżenie nie jest tu formułką. [O projekcie](/docs/project/about) i [Plan rozwoju](/docs/project/roadmap) wymieniają części niedokończone, a niektóre z nich — kompensacja stanów magazynowych działająca „najlepszym staraniem”, status zamówienia, którego nic nigdy nie zapisuje — miałyby znaczenie w działającym sklepie. Przeczytaj te strony, zanim zbliżysz ten kod do prawdziwych pieniędzy.
+
+## Licencjonowanie komercyjne
+
+W sprawie użycia komercyjnego skontaktuj się z autorem:
+
+|              |                                                                                                |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| Autor        | Piotr Borowiecki                                                                               |
+| E-mail       | `hello@pjborowiecki.com`                                                                       |
+| Strona       | [pjborowiecki.com](https://pjborowiecki.com)                                                   |
+| Repozytorium | [github.com/pjborowiecki/martebizuteria.pl](https://github.com/pjborowiecki/martebizuteria.pl) |
+
+## To nie to samo co strony prawne sklepu
+
+Ta strona dotyczy licencji na kod. Własne dokumenty prawne sklepu to odrębna treść, pisana dla klientów i renderowana z `content/legal/`:
+
+| Dokument             | Plik                                               | Trasa                    |
+| -------------------- | -------------------------------------------------- | ------------------------ |
+| Polityka prywatności | `content/legal/privacy-policy.<locale>.mdx`        | `/privacy-policy`        |
+| Wymiana i zwroty     | `content/legal/exchanges-and-returns.<locale>.mdx` | `/exchanges-and-returns` |
+
+Te pliki mają w nagłówku (frontmatter) datę `updated`, wymuszaną przez `legalSchema` w `src/integrations/fumadocs/fumadocs.schema.ts`, więc zmiany w dokumencie prawnym skierowanym do klienta nie da się opublikować bez opatrzenia datą. Trasa `/terms-of-service` też istnieje, ale `src/routes/_storefront.terms-of-service.tsx` renderuje obecnie krótki tekst zastępczy z przestrzeni nazw `pages.terms-of-service`, a nie dokument z `content/legal/`.
+
+## Pełny tekst
+
+Pełny tekst prawny CC BY-NC 4.0 znajduje się pod adresem [creativecommons.org/licenses/by-nc/4.0/legalcode](https://creativecommons.org/licenses/by-nc/4.0/legalcode).

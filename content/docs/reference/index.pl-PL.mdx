@@ -1,0 +1,46 @@
+---
+title: "Wprowadzenie"
+description: "Tabele referencyjne: trasy, moduły, uprawnienia, zmienne środowiskowe, nazwy plików i konwencje projektu."
+---
+
+Ten rozdział służy do sprawdzania faktów. Odpowiada na pytania „jak dokładnie się to nazywa", „gdzie to leży" i „które środowisko ma to powiązanie", bez narracji wokół. Instrukcje krok po kroku znajdziesz w [poradnikach](/docs/guides), a opis tego, jak elementy łączą się w całość — w rozdziale [Architektura](/docs/architecture).
+
+Wszystko tutaj pochodzi wprost z repozytorium. Jeśli tabela podaje ścieżkę, skrypt, kolumnę lub eksport, ta nazwa istnieje w kodzie w takiej postaci. Jeśli strona pisze, że coś jest zadeklarowane, ale nieużywane, to świadome stwierdzenie o obecnym stanie kodu, a nie luka w dokumentacji.
+
+## W tym rozdziale
+
+| Strona                                                     | Na co odpowiada                                                                    |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [Konwencje](/docs/reference/conventions)                   | Jak powinny wyglądać kod, trasy, moduły, komponenty, commity i testy               |
+| [Nazewnictwo plików](/docs/reference/file-naming)          | Co znaczy każdy sufiks pliku, od `.accessors.ts` do `.component.test.tsx`          |
+| [Katalog modułów](/docs/reference/modules)                 | Wszystkie 36 modułów w `src/modules`, ich tabele i przypadki użycia                |
+| [Trasy](/docs/reference/routes)                            | Każda ścieżka, jej stała w `ROUTES`, plik trasy i strażnik                         |
+| [Środowisko i powiązania](/docs/reference/environment)     | Pliki środowiskowe, sekrety, powiązania Cloudflare w każdym środowisku Wranglera   |
+| [Uprawnienia](/docs/reference/permissions)                 | Role, deklaracje uprawnień, middleware `authorized` i lista publicznych endpointów |
+| [Słownik](/docs/reference/glossary)                        | Słownictwo używane w tej dokumentacji i w kodzie                                   |
+| [Rozwiązywanie problemów](/docs/reference/troubleshooting) | Konkretne błędy z `dev`, `check`, `test`, `db:*` i skryptów wdrożeniowych          |
+| [Często zadawane pytania](/docs/reference/faq)             | Krótkie odpowiedzi na pytania, które faktycznie zadają nowe osoby w projekcie      |
+
+## Kształt repozytorium w jednej tabeli
+
+| Katalog                      | Za co odpowiada                                                                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| `src/routes`                 | Trasy plikowe TanStack Start, handlery HTTP w `api/`, strażnicy tras i loadery                     |
+| `src/routes.ts`              | `ROUTES` — jedna tabela literałów ścieżek, którą importuje reszta kodu                             |
+| `src/modules/{feature}`      | Logika domenowa: tabele Drizzle, schematy Zod, stałe, akcesory i `use-cases/`                      |
+| `src/modules/_core`          | Wspólne elementy bez własnej tabeli: `AppError`, waluta, CSV, paginacja                            |
+| `src/integrations/{vendor}`  | Jeden katalog na dostawcę: Better Auth, Stripe, Drizzle, R2, Resend, InPost, use-intl              |
+| `src/presentation`           | Całe UI: `components/shadcn`, `components/custom`, `styles`, `theme`, `branding`, `emails`         |
+| `src/platform/testing`       | Wspólna infrastruktura testowa: mock D1, helpery renderujące, plik setup dla Vitest                |
+| `src/lib`                    | Małe helpery w zasięgu zapytania: cookies, rate limiting, SEO, adresy obrazów, `waitUntil`         |
+| `src/durable-objects`        | `RealtimeInvalidationHub` — obiekt rozgłaszający zdarzenia po WebSocketach                         |
+| `src/hooks`, `src/providers` | Wspólne hooki React i dwa providery aplikacji                                                      |
+| `src/data`                   | Statyczne fikstury, na których wciąż opiera się kilka niedokończonych stron panelu                 |
+| `src/server.ts`              | Wejście Workera: sitemap, robots, upgrade WebSocket, przekierowanie lokalizacji, konsument kolejki |
+| `content/`, `messages/`      | Treści MDX (`docs`, `legal`) i katalogi tłumaczeń podzielone na przestrzenie nazw                  |
+
+## Konwencje tych stron
+
+Ścieżki zawsze zapisujemy od katalogu głównego repozytorium, więc `src/modules/order/use-cases/ship-order.ts` można wkleić bezpośrednio do edytora. Komendy zapisujemy jako `bun run <skrypt>`, bo tak oczekuje ich `package.json`; `vp <komenda>` to leżące pod spodem CLI Vite+ i pojawia się tylko tam, gdzie żaden skrypt tego nie opakowuje.
+
+Odnośniki między stronami dokumentacji zapisujemy bez prefiksu lokalizacji, na przykład `/docs/reference/routes`. Komponent odnośnika w MDX sam dodaje prefiks czytelnika, więc polski czytelnik trafi na polską stronę.
