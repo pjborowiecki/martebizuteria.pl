@@ -567,7 +567,9 @@
         "errorTitle": "Nie udało się zaktualizować zamówienia",
         "errorDescription": "Spróbuj ponownie za chwilę.",
         "notFoundDescription": "To zamówienie już nie istnieje.",
-        "invalidStateDescription": "Ta akcja nie jest dostępna w bieżącym stanie zamówienia."
+        "invalidStateDescription": "Ta akcja nie jest dostępna w bieżącym stanie zamówienia.",
+        "markDeliveredSuccessDescription": "Zamówienie oznaczone jako dostarczone.",
+        "refundSuccessDescription": "Zwrot zlecony w Stripe. Zamówienie zaktualizuje się po potwierdzeniu przez Stripe."
       }
     }
   },
@@ -575,36 +577,44 @@
     "actions": {
       "print": "Drukuj",
       "refund": "Zwrot",
-      "fulfill": "Realizuj"
+      "cancel": "Anuluj zamówienie",
+      "fulfill": "Realizuj",
+      "ship": "Oznacz jako wysłane",
+      "markDelivered": "Oznacz jako dostarczone"
     },
     "meta": {
       "date": "Data",
       "status": "Status",
+      "fulfillment": "Realizacja",
       "payment": "Płatność",
-      "channel": "Kanał",
       "total": "Suma"
+    },
+    "orderStatus": {
+      "pending": "Oczekujące",
+      "processing": "W realizacji",
+      "completed": "Zakończone",
+      "cancelled": "Anulowane",
+      "refunded": "Zwrócone"
     },
     "status": {
       "shipped": "Wysłano",
       "delivered": "Dostarczono",
       "pending": "Oczekujące",
       "unfulfilled": "Niezrealizowane",
-      "returned": "Zwrócone",
-      "cancelled": "Anulowane"
+      "returned": "Zwrócone"
     },
     "payment": {
       "paid": "Opłacone",
       "authorized": "Autoryzowane",
-      "refunded": "Zwrócone",
-      "pending": "Oczekujące"
+      "refunded": "Zwrócone"
     },
     "fulfillment": {
       "title": "Realizacja",
+      "cancelledAt": "Zamówienie anulowane {date}",
       "steps": {
         "confirmed": "Potwierdzone",
         "processing": "Przetwarzanie",
         "shipped": "Wysłane",
-        "outForDelivery": "W drodze",
         "delivered": "Dostarczone"
       }
     },
@@ -620,41 +630,99 @@
     },
     "summary": {
       "subtotal": "Produkty",
+      "discount": "Rabat",
       "shipping": "Wysyłka",
       "tax": "Podatek",
       "total": "Suma"
     },
     "timeline": {
       "title": "Aktywność",
+      "empty": "Brak zarejestrowanej aktywności dla tego zamówienia.",
+      "actions": {
+        "placed": "Zamówienie złożone",
+        "paymentCaptured": "Płatność zaksięgowana",
+        "paymentFailed": "Płatność nieudana",
+        "fulfillmentStarted": "Rozpoczęto realizację",
+        "shipped": "Zamówienie wysłane",
+        "released": "Zamówienie dostarczone",
+        "cancelled": "Zamówienie anulowane",
+        "refundInitiated": "Zarejestrowano zwrot",
+        "disputeOpened": "Otwarto spór",
+        "disputeClosed": "Zamknięto spór",
+        "emailSent": "Wysłano e-mail",
+        "emailFailed": "Błąd wysyłki e-maila",
+        "emailDeferred": "E-mail opóźniony"
+      },
       "emailStatus": {
-        "delivered": "Dostarczono",
+        "sent": "Wysłano",
         "failed": "Niepowodzenie",
-        "bounced": "Odrzucono",
         "deferred": "Opóźniono"
       }
     },
     "customer": {
       "title": "Klient",
+      "guest": "Zamówienie bez konta",
       "ordersCount": "{count} zamówień",
       "viewProfile": "Zobacz profil"
     },
     "shipping": {
       "title": "Adres wysyłki",
-      "estimatedDelivery": "Planowana dostawa"
+      "copy": "Kopiuj adres wysyłki",
+      "copied": "Skopiowano adres wysyłki",
+      "missing": "Brak zapisanego adresu wysyłki.",
+      "openTracking": "Otwórz stronę śledzenia"
     },
     "billing": {
       "title": "Adres rozliczeniowy",
-      "sameAsShipping": "Taki sam jak wysyłki"
+      "sameAsShipping": "Taki sam jak wysyłki",
+      "missing": "Brak zapisanego adresu rozliczeniowego."
     },
     "paymentDetails": {
-      "title": "Płatność"
+      "title": "Płatność",
+      "copy": "Kopiuj identyfikator transakcji",
+      "copied": "Skopiowano identyfikator transakcji",
+      "missing": "Brak zarejestrowanej płatności dla tego zamówienia.",
+      "refunded": "Zwrócono"
     },
     "tags": {
-      "title": "Tagi"
+      "title": "Tagi",
+      "empty": "Brak tagów.",
+      "labels": {
+        "guest": "Bez konta",
+        "returning": "Klient powracający",
+        "locker": "Dostawa do paczkomatu",
+        "inStore": "Odbiór w sklepie",
+        "disputed": "Sporne",
+        "refunded": "Zwrócone",
+        "partiallyRefunded": "Częściowo zwrócone",
+        "note": "Z notatką"
+      }
     },
     "notes": {
-      "title": "Notatki wewnętrzne",
-      "edit": "Edytuj"
+      "title": "Notatka klienta",
+      "empty": "Klient nie zostawił notatki."
+    },
+    "shipDialog": {
+      "title": "Oznaczyć zamówienie jako wysłane?",
+      "description": "Dodaj dane śledzenia, które klient zobaczy na swoim koncie i w e-mailu o wysyłce. Oba pola są opcjonalne.",
+      "trackingNumberLabel": "Numer przesyłki",
+      "trackingNumberPlaceholder": "np. 00259007123456789012",
+      "trackingUrlLabel": "Link do śledzenia",
+      "trackingUrlPlaceholder": "https://inpost.pl/sledzenie-przesylek?number=...",
+      "cancel": "Anuluj",
+      "confirm": "Oznacz jako wysłane"
+    },
+    "refundDialog": {
+      "title": "Zwrócić to zamówienie?",
+      "description": "Spowoduje to pełny zwrot za zamówienie {id} przez Stripe. Stan magazynowy zostanie przywrócony automatycznie po potwierdzeniu zwrotu przez Stripe.",
+      "cancel": "Zachowaj zamówienie",
+      "confirm": "Zwróć zamówienie"
+    },
+    "cancelDialog": {
+      "title": "Anulować to zamówienie?",
+      "description": "Zamówienie {id} zostanie oznaczone jako anulowane. Nie powoduje to zwrotu płatności.",
+      "cancel": "Zachowaj zamówienie",
+      "confirm": "Anuluj zamówienie"
     }
   },
   "marketing": {

@@ -11,6 +11,8 @@ const details: OrderShippedDetails = {
   deliveryMethod: "DPD courier",
   estimatedDelivery: englishCopy.deliveryTiming.courier.estimatedDelivery,
   shippingAddress: "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa",
+  trackingNumber: undefined,
+  trackingUrl: undefined,
 }
 
 const customerCta = { href: "https://martebizuteria.pl/account/orders/abc", isGuest: false, label: englishCopy.viewOrderCta }
@@ -20,6 +22,20 @@ const asHtmlText = (copy: string): string => copy.replaceAll("'", "&#x27;")
 const renderShipped = (plainText = true): Promise<string> =>
   render(
     <OrderShipped accountCta={customerCta} details={details} locale="en-US" messages={englishCopy} orderId={ORDER_ID} />,
+    plainText ? { plainText: true } : { plainText: false },
+  )
+
+const TRACKING_URL = "https://inpost.pl/sledzenie-przesylek?number=00259007123456789012"
+
+const renderTracked = (plainText = true): Promise<string> =>
+  render(
+    <OrderShipped
+      accountCta={customerCta}
+      details={{ ...details, trackingNumber: "00259007123456789012", trackingUrl: TRACKING_URL }}
+      locale="en-US"
+      messages={englishCopy}
+      orderId={ORDER_ID}
+    />,
     plainText ? { plainText: true } : { plainText: false },
   )
 
@@ -58,6 +74,26 @@ describe("OrderShipped", () => {
     const text = await renderShipped()
 
     expect(text).not.toContain("Dear")
+  })
+
+  it("omits the tracking row when no parcel number was captured", async () => {
+    const text = await renderShipped()
+
+    expect(text).not.toContain(englishCopy.trackingNumberLabel)
+  })
+
+  it("lists the tracking number once the shipment is registered", async () => {
+    const text = await renderTracked()
+
+    expect(text).toContain(`${englishCopy.trackingNumberLabel}\n\n00259007123456789012`)
+  })
+
+  it("sends the button to the carrier when a tracking link exists", async () => {
+    const html = await renderTracked(false)
+
+    expect(html).toContain(`href="${TRACKING_URL}"`)
+    expect(html).toContain(englishCopy.trackingCta)
+    expect(html).not.toContain(englishCopy.viewOrderCta)
   })
 
   it("points the button at the order the shopper can view", async () => {

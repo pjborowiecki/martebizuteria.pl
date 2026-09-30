@@ -1,6 +1,6 @@
 import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
@@ -16,10 +16,16 @@ import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 
+const trimmedOrNull = (value: string | undefined) => {
+  const trimmed = value?.trim()
+
+  return trimmed === undefined || trimmed === "" ? sql`null` : trimmed
+}
+
 export const shipOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
-  .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
-  .handler(async ({ data: { orderId } }) => {
+  .validator((input: zod.input<typeof orderZodSchemas.adminShipOrderInput>) => orderZodSchemas.adminShipOrderInput.parse(input))
+  .handler(async ({ data: { orderId, trackingNumber, trackingUrl } }) => {
     assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
       canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
     )
@@ -29,11 +35,15 @@ export const shipOrder = createServerFn({ method: "POST" })
       .set({
         fulfillmentStatus: "shipped",
         shippedAt: new Date(),
+        trackingNumber: trimmedOrNull(trackingNumber),
+        trackingUrl: trimmedOrNull(trackingUrl),
         updatedAt: new Date(),
       })
       .where(eq(order.id, orderId))
 
-    recordOrderShippedAudit(orderId)
+    recordOrderShippedAudit(orderId, {
+      detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+    })
     scheduleBackgroundWork(notifyOrderShipped(orderId))
 
     return { ok: true, orderId }

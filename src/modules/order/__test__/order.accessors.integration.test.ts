@@ -16,6 +16,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 import { DATE_COLUMN_FILTER_OPERATOR, NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
 import {
+  getAdminOrderCustomerStats,
+  getAdminOrderRefundTarget,
   getAdminOrderStats,
   getAdminOrdersExport,
   getAdminOrdersPage,
@@ -52,12 +54,12 @@ beforeEach(() => {
     drop table if exists user;
 
     create table user (id text primary key, name text not null, email text not null, created_at integer not null, updated_at integer not null);
-    create table payment (id text primary key, status text, created_at integer not null, updated_at integer not null);
+    create table payment (id text primary key, status text, transaction_id text, created_at integer not null, updated_at integer not null);
     create table "order" (
       id text primary key, checkout_id text, payment_id text, user_id text, email text not null,
       currency_code text not null default 'PLN', status text not null default 'pending',
       fulfillment_status text not null default 'not_fulfilled', total integer not null default 0,
-      metadata text, tracking_number text, created_at integer not null, updated_at integer not null
+      metadata text, tracking_number text, tracking_url text, created_at integer not null, updated_at integer not null
     );
     create table order_item (
       id text primary key, order_id text, variant_id text, quantity integer not null default 1,
@@ -66,10 +68,10 @@ beforeEach(() => {
 
     insert into user (id, name, email, created_at, updated_at) values ('u-anna', 'Anna Kowalska', 'anna@example.com', ${JANUARY}, ${JANUARY});
 
-    insert into payment (id, status, created_at, updated_at) values
-      ('pay-paid', 'succeeded', ${JANUARY}, ${JANUARY}),
-      ('pay-refunded', 'refunded', ${JUNE}, ${JUNE}),
-      ('pay-pending', 'pending', ${JUNE}, ${JUNE});
+    insert into payment (id, status, transaction_id, created_at, updated_at) values
+      ('pay-paid', 'succeeded', 'pi_paid', ${JANUARY}, ${JANUARY}),
+      ('pay-refunded', 'refunded', 'pi_refunded', ${JUNE}, ${JUNE}),
+      ('pay-pending', 'pending', null, ${JUNE}, ${JUNE});
 
     insert into "order" (id, checkout_id, payment_id, user_id, email, status, fulfillment_status, total, metadata, tracking_number, created_at, updated_at) values
       ('o-pending', 'chk-1', 'pay-pending', 'u-anna', 'anna@example.com', 'pending', 'not_fulfilled', 10000, '{"locale":"en-US"}', null, ${JANUARY}, ${JANUARY}),
@@ -326,8 +328,44 @@ describe("single order lookups", () => {
       email: "anna@example.com",
       id: "o-pending",
       metadata: '{"locale":"en-US"}',
+      trackingNumber: null,
+      trackingUrl: null,
       userId: "u-anna",
     })
+  })
+
+  it("carries the captured tracking details into the shipped email lookup", async () => {
+    const shipped = await getOrderForShippedEmail("o-shipped")
+
+    expect(shipped?.trackingNumber).toBe("TRK-9")
+  })
+
+  it("counts a customer's live orders but only banks revenue from completed ones", async () => {
+    expect(await getAdminOrderCustomerStats("u-anna")).toStrictEqual({ orderCount: 2, totalSpent: 0 })
+  })
+
+  it("reports an empty history for a customer with no orders", async () => {
+    expect(await getAdminOrderCustomerStats("u-nobody")).toStrictEqual({ orderCount: 0, totalSpent: 0 })
+  })
+
+  it("resolves the payment intent an admin refund would target", async () => {
+    expect(await getAdminOrderRefundTarget("o-unfulfilled")).toStrictEqual({
+      paymentStatus: "succeeded",
+      status: "processing",
+      transactionId: "pi_paid",
+    })
+  })
+
+  it("reports an unpayable order rather than inventing a payment intent", async () => {
+    expect(await getAdminOrderRefundTarget("o-cancelled")).toStrictEqual({
+      paymentStatus: null,
+      status: "cancelled",
+      transactionId: null,
+    })
+  })
+
+  it("resolves nothing for an order that does not exist", async () => {
+    expect(await getAdminOrderRefundTarget("o-missing")).toBeUndefined()
   })
 
   it("lists the lines to restock for an order", async () => {

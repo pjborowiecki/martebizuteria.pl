@@ -3,47 +3,61 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_SHIPPING } from "~/src/data/order-detail"
-
+import { buildAdminOrderDetail } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderShippingCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-shipping-card"
+
+const order = buildAdminOrderDetail()
+
+const renderCard = (detail = order) =>
+  renderWithProviders(
+    <OrderShippingCard
+      delivery={detail.delivery}
+      shippingAddress={detail.shippingAddress}
+      trackingNumber={detail.trackingNumber}
+      trackingUrl={detail.trackingUrl}
+    />,
+  )
 
 afterEach(() => {
   cleanup()
 })
 
 describe("OrderShippingCard", () => {
-  it("titles the card with the shipping address heading", () => {
-    renderWithProviders(<OrderShippingCard />)
+  it("prints the recipient address", () => {
+    renderCard()
 
     expect(screen.getByText("Shipping Address")).toBeInTheDocument()
+    expect(screen.getByText("Anna Kowalska")).toBeInTheDocument()
+    expect(screen.getByText("ul. Mokotowska 12/4")).toBeInTheDocument()
+    expect(screen.getByText("00-640 Warszawa")).toBeInTheDocument()
   })
 
-  it("prints the address over separate lines with city and postcode together", () => {
-    renderWithProviders(<OrderShippingCard />)
+  it("names the courier and its delivery method", () => {
+    renderCard()
 
-    expect(screen.getByText(DEMO_SHIPPING.name)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_SHIPPING.line1)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_SHIPPING.line2)).toBeInTheDocument()
-    expect(screen.getByText(`${DEMO_SHIPPING.city}, ${DEMO_SHIPPING.postcode}`)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_SHIPPING.country)).toBeInTheDocument()
+    expect(screen.getByText("InPost — Paczkomat 24/7")).toBeInTheDocument()
   })
 
-  it("shows the carrier and the tracking number", () => {
-    renderWithProviders(<OrderShippingCard />)
+  it("shows the locker and tracking number with a tracking link", () => {
+    renderCard()
 
-    expect(screen.getByText(DEMO_SHIPPING.method)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_SHIPPING.tracking)).toBeInTheDocument()
+    expect(screen.getByText("WAW01A")).toBeInTheDocument()
+    expect(screen.getByText("00259007123456789012")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Open tracking page" })).toHaveAttribute("href", order.trackingUrl ?? "")
   })
 
-  it("labels the estimated delivery date", () => {
-    renderWithProviders(<OrderShippingCard />)
+  it("states when no address was captured", () => {
+    renderCard(
+      buildAdminOrderDetail({ delivery: undefined, shippingAddress: undefined, trackingNumber: undefined, trackingUrl: undefined }),
+    )
 
-    expect(screen.getByText("Est. delivery", { exact: false }).textContent).toBe(`Est. delivery: ${DEMO_SHIPPING.estimatedDelivery}`)
+    expect(screen.getByText("No shipping address recorded.")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Copy shipping address" })).not.toBeInTheDocument()
   })
 
-  it("offers a copy action and a link out to the carrier", () => {
-    renderWithProviders(<OrderShippingCard />)
+  it("omits the tracking row until a parcel is registered", () => {
+    renderCard(buildAdminOrderDetail({ trackingNumber: undefined, trackingUrl: undefined }))
 
-    expect(screen.getAllByRole("button")).toHaveLength(2)
+    expect(screen.queryByText("00259007123456789012")).not.toBeInTheDocument()
   })
 })

@@ -15,6 +15,8 @@ import {
   ADMIN_ORDER_STATUSES,
   ADMIN_ORDER_STAT_FILTER,
   ORDER_TABS,
+  ORDER_TRACKING_NUMBER_MAX_LENGTH,
+  ORDER_TRACKING_URL_MAX_LENGTH,
 } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"
 
@@ -38,12 +40,25 @@ const adminOrdersPageInput = adminOrdersExportInput.extend({
   pageSize: pageSizeField.optional(),
 })
 
+const disputeMetadata = zod.object({
+  amount: zod.number(),
+  id: zod.string(),
+  reason: zod.string(),
+  status: zod.string(),
+})
+
 export const orderZodSchemas = {
   adminOrderIdInput: zod.object({
     orderId: uuidField,
   }),
   adminOrdersExportInput,
   adminOrdersPageInput,
+  adminShipOrderInput: zod.object({
+    orderId: uuidField,
+    trackingNumber: zod.string().trim().max(ORDER_TRACKING_NUMBER_MAX_LENGTH).optional(),
+    trackingUrl: zod.url().max(ORDER_TRACKING_URL_MAX_LENGTH).optional().or(zod.literal("")),
+  }),
+  disputeMetadata,
   insert: createInsertSchema(order),
   metadata: zod.record(zod.string(), zod.unknown()),
   select: createSelectSchema(order),

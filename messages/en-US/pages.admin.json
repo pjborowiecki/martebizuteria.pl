@@ -567,7 +567,9 @@
         "errorTitle": "Could not update order",
         "errorDescription": "Please try again in a moment.",
         "notFoundDescription": "This order no longer exists.",
-        "invalidStateDescription": "This action is not available for the order's current state."
+        "invalidStateDescription": "This action is not available for the order's current state.",
+        "markDeliveredSuccessDescription": "Order marked as delivered.",
+        "refundSuccessDescription": "Refund submitted to Stripe. The order updates once Stripe confirms it."
       }
     }
   },
@@ -575,36 +577,44 @@
     "actions": {
       "print": "Print",
       "refund": "Refund",
-      "fulfill": "Fulfill"
+      "cancel": "Cancel order",
+      "fulfill": "Fulfill",
+      "ship": "Mark shipped",
+      "markDelivered": "Mark delivered"
     },
     "meta": {
       "date": "Date",
       "status": "Status",
+      "fulfillment": "Fulfillment",
       "payment": "Payment",
-      "channel": "Channel",
       "total": "Total"
+    },
+    "orderStatus": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
     },
     "status": {
       "shipped": "Shipped",
       "delivered": "Delivered",
       "pending": "Pending",
       "unfulfilled": "Unfulfilled",
-      "returned": "Returned",
-      "cancelled": "Cancelled"
+      "returned": "Returned"
     },
     "payment": {
       "paid": "Paid",
       "authorized": "Authorized",
-      "refunded": "Refunded",
-      "pending": "Pending"
+      "refunded": "Refunded"
     },
     "fulfillment": {
       "title": "Fulfillment",
+      "cancelledAt": "Order cancelled on {date}",
       "steps": {
         "confirmed": "Confirmed",
         "processing": "Processing",
         "shipped": "Shipped",
-        "outForDelivery": "Out for Delivery",
         "delivered": "Delivered"
       }
     },
@@ -620,41 +630,99 @@
     },
     "summary": {
       "subtotal": "Subtotal",
+      "discount": "Discount",
       "shipping": "Shipping",
       "tax": "Tax",
       "total": "Total"
     },
     "timeline": {
       "title": "Activity",
+      "empty": "No recorded activity for this order yet.",
+      "actions": {
+        "placed": "Order placed",
+        "paymentCaptured": "Payment captured",
+        "paymentFailed": "Payment failed",
+        "fulfillmentStarted": "Fulfillment started",
+        "shipped": "Order shipped",
+        "released": "Order delivered",
+        "cancelled": "Order cancelled",
+        "refundInitiated": "Refund recorded",
+        "disputeOpened": "Dispute opened",
+        "disputeClosed": "Dispute closed",
+        "emailSent": "Email sent",
+        "emailFailed": "Email failed",
+        "emailDeferred": "Email deferred"
+      },
       "emailStatus": {
-        "delivered": "Delivered",
+        "sent": "Sent",
         "failed": "Failed",
-        "bounced": "Bounced",
         "deferred": "Deferred"
       }
     },
     "customer": {
       "title": "Customer",
+      "guest": "Guest checkout",
       "ordersCount": "{count} orders",
       "viewProfile": "View profile"
     },
     "shipping": {
       "title": "Shipping Address",
-      "estimatedDelivery": "Est. delivery"
+      "copy": "Copy shipping address",
+      "copied": "Shipping address copied",
+      "missing": "No shipping address recorded.",
+      "openTracking": "Open tracking page"
     },
     "billing": {
       "title": "Billing Address",
-      "sameAsShipping": "Same as shipping"
+      "sameAsShipping": "Same as shipping",
+      "missing": "No billing address recorded."
     },
     "paymentDetails": {
-      "title": "Payment"
+      "title": "Payment",
+      "copy": "Copy transaction id",
+      "copied": "Transaction id copied",
+      "missing": "No payment recorded for this order.",
+      "refunded": "Refunded"
     },
     "tags": {
-      "title": "Tags"
+      "title": "Tags",
+      "empty": "No tags.",
+      "labels": {
+        "guest": "Guest",
+        "returning": "Returning customer",
+        "locker": "Locker delivery",
+        "inStore": "In-store pickup",
+        "disputed": "Disputed",
+        "refunded": "Refunded",
+        "partiallyRefunded": "Partially refunded",
+        "note": "Has note"
+      }
     },
     "notes": {
-      "title": "Internal Notes",
-      "edit": "Edit"
+      "title": "Customer Note",
+      "empty": "The customer did not leave a note."
+    },
+    "shipDialog": {
+      "title": "Mark order as shipped",
+      "description": "Add the tracking details the customer will see in their account and shipping email. Both fields are optional.",
+      "trackingNumberLabel": "Tracking number",
+      "trackingNumberPlaceholder": "e.g. 00259007123456789012",
+      "trackingUrlLabel": "Tracking URL",
+      "trackingUrlPlaceholder": "https://inpost.pl/sledzenie-przesylek?number=...",
+      "cancel": "Cancel",
+      "confirm": "Mark shipped"
+    },
+    "refundDialog": {
+      "title": "Refund this order?",
+      "description": "This issues a full refund for order {id} through Stripe. Stock is returned automatically once Stripe confirms the refund.",
+      "cancel": "Keep order",
+      "confirm": "Refund order"
+    },
+    "cancelDialog": {
+      "title": "Cancel this order?",
+      "description": "Order {id} will be marked cancelled. This does not refund the payment.",
+      "cancel": "Keep order",
+      "confirm": "Cancel order"
     }
   },
   "marketing": {

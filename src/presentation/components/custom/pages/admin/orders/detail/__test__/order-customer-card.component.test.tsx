@@ -3,9 +3,10 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_CUSTOMER } from "~/src/data/order-detail"
-
+import { buildAdminOrderDetail } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderCustomerCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-customer-card"
+
+const order = buildAdminOrderDetail()
 
 afterEach(() => {
   cleanup()
@@ -13,36 +14,39 @@ afterEach(() => {
 
 describe("OrderCustomerCard", () => {
   it("titles the card and names the customer", () => {
-    renderWithProviders(<OrderCustomerCard />)
+    renderWithProviders(<OrderCustomerCard currencyCode={order.currencyCode} customer={order.customer} />)
 
     expect(screen.getByText("Customer")).toBeInTheDocument()
-    expect(screen.getByText(DEMO_CUSTOMER.name)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_CUSTOMER.initials)).toBeInTheDocument()
+    expect(screen.getByText("Anna Kowalska")).toBeInTheDocument()
+    expect(screen.getByText("AK")).toBeInTheDocument()
   })
 
   it("pluralises the order count through the translation", () => {
-    renderWithProviders(<OrderCustomerCard />)
+    renderWithProviders(<OrderCustomerCard currencyCode={order.currencyCode} customer={order.customer} />)
 
-    expect(screen.getByText(`${DEMO_CUSTOMER.orders} orders`)).toBeInTheDocument()
-  })
-
-  it("shows the customer number next to the order count", () => {
-    renderWithProviders(<OrderCustomerCard />)
-
-    expect(screen.getByText(DEMO_CUSTOMER.number)).toBeInTheDocument()
+    expect(screen.getByText("3 orders")).toBeInTheDocument()
   })
 
   it("lists the contact details the support team needs", () => {
-    renderWithProviders(<OrderCustomerCard />)
+    renderWithProviders(<OrderCustomerCard currencyCode={order.currencyCode} customer={order.customer} />)
 
-    expect(screen.getByText(DEMO_CUSTOMER.email)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_CUSTOMER.phone)).toBeInTheDocument()
+    expect(screen.getByText("anna@example.com")).toBeInTheDocument()
+    expect(screen.getByText("+48 600 123 456")).toBeInTheDocument()
   })
 
-  it("badges the loyalty tier and offers the profile link", () => {
-    renderWithProviders(<OrderCustomerCard />)
+  it("links to the customer profile for registered customers", () => {
+    renderWithProviders(<OrderCustomerCard currencyCode={order.currencyCode} customer={order.customer} />)
 
-    expect(screen.getByText(DEMO_CUSTOMER.tier)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "View profile" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /View profile/u })).toBeInTheDocument()
+  })
+
+  it("marks guest checkouts and hides the profile link", () => {
+    const guest = buildAdminOrderDetail({
+      customer: { ...order.customer, orderCount: 0, totalSpentMinorUnits: 0, userId: undefined },
+    })
+    renderWithProviders(<OrderCustomerCard currencyCode={guest.currencyCode} customer={guest.customer} />)
+
+    expect(screen.getByText("Guest checkout")).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: /View profile/u })).not.toBeInTheDocument()
   })
 })

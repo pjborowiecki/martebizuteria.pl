@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { SHIPPED_AT } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { FulfillmentStepItem } from "~/src/presentation/components/custom/pages/admin/orders/detail/fulfillment-step-item"
 
 afterEach(() => {
@@ -10,53 +11,33 @@ afterEach(() => {
 })
 
 describe("FulfillmentStepItem", () => {
-  it("translates the step key into its English label", () => {
-    renderWithProviders(<FulfillmentStepItem index={3} step={{ date: undefined, done: false, key: "outForDelivery" }} />)
+  it("translates the step key", () => {
+    renderWithProviders(<FulfillmentStepItem index={2} step={{ at: SHIPPED_AT, done: true, key: "shipped" }} />)
 
-    expect(screen.getByText("Out for Delivery")).toBeInTheDocument()
+    expect(screen.getByText("Shipped")).toBeInTheDocument()
   })
 
-  it("shows the timestamp of a step that already happened", () => {
-    renderWithProviders(<FulfillmentStepItem index={0} step={{ date: "Oct 24, 14:32", done: true, key: "confirmed" }} />)
+  it("dates a completed step", () => {
+    renderWithProviders(<FulfillmentStepItem index={2} step={{ at: SHIPPED_AT, done: true, key: "shipped" }} />)
 
-    expect(screen.getByText("Oct 24, 14:32")).toBeInTheDocument()
+    expect(screen.getByText(/Mar 6/u)).toBeInTheDocument()
   })
 
-  it("emphasises a completed step and marks it with a tick", () => {
-    const { container } = renderWithProviders(
-      <FulfillmentStepItem index={1} step={{ date: "Oct 24, 15:10", done: true, key: "processing" }} />,
-    )
+  it("leaves an upcoming step undated", () => {
+    const { container } = renderWithProviders(<FulfillmentStepItem index={3} step={{ at: undefined, done: false, key: "delivered" }} />)
 
-    expect(screen.getByText("Processing").className).toContain("font-medium")
-    expect(container.querySelector("svg")).toBeInTheDocument()
+    expect(container.querySelectorAll("p")).toHaveLength(1)
   })
 
-  it("mutes a step that has not happened and shows no tick", () => {
-    const { container } = renderWithProviders(<FulfillmentStepItem index={4} step={{ date: undefined, done: false, key: "delivered" }} />)
+  it("draws the connector for every step after the first", () => {
+    const { container } = renderWithProviders(<FulfillmentStepItem index={1} step={{ at: undefined, done: true, key: "processing" }} />)
 
-    expect(screen.getByText("Delivered").className).toContain("text-muted-foreground/50")
-    expect(container.querySelector("svg")).toBeNull()
+    expect(container.querySelector(String.raw`.absolute.right-1\/2`)).toBeInTheDocument()
   })
 
-  it("draws no connector before the first step", () => {
-    const { container } = renderWithProviders(<FulfillmentStepItem index={0} step={{ date: undefined, done: true, key: "confirmed" }} />)
+  it("omits the connector on the first step", () => {
+    const { container } = renderWithProviders(<FulfillmentStepItem index={0} step={{ at: undefined, done: true, key: "confirmed" }} />)
 
-    expect(container.querySelector(String.raw`.absolute.right-1\/2`)).toBeNull()
-  })
-
-  it("draws a solid connector into a completed later step", () => {
-    const { container } = renderWithProviders(
-      <FulfillmentStepItem index={2} step={{ date: "Oct 25, 09:45", done: true, key: "shipped" }} />,
-    )
-    const connector = container.querySelector(String.raw`.absolute.right-1\/2`)
-
-    expect(connector).toBeInTheDocument()
-    expect(connector?.className).toContain("bg-foreground")
-  })
-
-  it("draws a faint connector into a pending later step", () => {
-    const { container } = renderWithProviders(<FulfillmentStepItem index={4} step={{ date: undefined, done: false, key: "delivered" }} />)
-
-    expect(container.querySelector(String.raw`.absolute.right-1\/2`)?.className).toContain("bg-border")
+    expect(container.querySelector(String.raw`.absolute.right-1\/2`)).not.toBeInTheDocument()
   })
 })

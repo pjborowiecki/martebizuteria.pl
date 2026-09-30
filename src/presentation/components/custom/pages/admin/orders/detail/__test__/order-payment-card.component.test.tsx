@@ -3,37 +3,51 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_ORDER } from "~/src/data/order-detail"
-
+import { buildAdminOrderDetail } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderPaymentCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-payment-card"
+
+const order = buildAdminOrderDetail()
 
 afterEach(() => {
   cleanup()
 })
 
 describe("OrderPaymentCard", () => {
-  it("titles the card with the payment heading", () => {
-    renderWithProviders(<OrderPaymentCard />)
+  it("shows the provider, amount and transaction id", () => {
+    renderWithProviders(<OrderPaymentCard currencyCode={order.currencyCode} payment={order.payment} />)
 
     expect(screen.getByText("Payment")).toBeInTheDocument()
+    expect(screen.getByText("stripe")).toBeInTheDocument()
+    expect(screen.getByText("pi_3Ns8wK2eZvKY")).toBeInTheDocument()
+    expect(screen.getByText(/389[.,]00/u)).toBeInTheDocument()
   })
 
-  it("shows the masked card and the transaction reference", () => {
-    renderWithProviders(<OrderPaymentCard />)
+  it("offers a copy control for the transaction id", () => {
+    renderWithProviders(<OrderPaymentCard currencyCode={order.currencyCode} payment={order.payment} />)
 
-    expect(screen.getByText(DEMO_ORDER.paymentMethod)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_ORDER.transactionId)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Copy transaction id" })).toBeInTheDocument()
   })
 
-  it("offers a single copy action for the transaction id", () => {
-    renderWithProviders(<OrderPaymentCard />)
+  it("surfaces a recorded refund", () => {
+    const refunded = buildAdminOrderDetail({
+      payment: {
+        amountMinorUnits: 38_900,
+        provider: "stripe",
+        refundedAmountMinorUnits: 38_900,
+        refundedAt: new Date("2026-03-10T10:00:00.000Z"),
+        status: "refunded",
+        transactionId: "pi_3Ns8wK2eZvKY",
+      },
+    })
+    renderWithProviders(<OrderPaymentCard currencyCode={refunded.currencyCode} payment={refunded.payment} />)
 
-    expect(screen.getAllByRole("button")).toHaveLength(1)
+    expect(screen.getByText(/Refunded/u)).toBeInTheDocument()
+    expect(screen.getByText(/^−/u)).toBeInTheDocument()
   })
 
-  it("renders the transaction id in a monospaced run so it can be read digit by digit", () => {
-    renderWithProviders(<OrderPaymentCard />)
+  it("states when no payment was recorded", () => {
+    renderWithProviders(<OrderPaymentCard currencyCode={order.currencyCode} payment={undefined} />)
 
-    expect(screen.getByText(DEMO_ORDER.transactionId).className).toContain("font-mono")
+    expect(screen.getByText("No payment recorded for this order.")).toBeInTheDocument()
   })
 })

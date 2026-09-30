@@ -1,21 +1,53 @@
 import { type JSX } from "react"
 
+import type * as TanStackQuery from "@tanstack/react-query"
 import type * as TanStackRouter from "@tanstack/react-router"
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { type Order } from "~/src/modules/order/order.types"
+
+import { buildAdminOrderDetail } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
+
+const { getAdminOrderQuery, orderState, stubMutation } = vi.hoisted(() => ({
+  getAdminOrderQuery: vi.fn((orderId: string) => ({
+    queryFn: () => Promise.resolve(orderState.current),
+    queryKey: ["admin", "orders", "detail", orderId],
+  })),
+  orderState: { current: undefined as Order["adminOrderDetail"] | undefined },
+  stubMutation: () => ({ isPending: false, mutate: vi.fn() }),
+}))
+
 vi.mock("@tanstack/react-router", async () => {
   const actual = await vi.importActual<typeof TanStackRouter>("@tanstack/react-router")
 
-  return { ...actual, createFileRoute: () => (options: unknown) => ({ options, useParams: () => ({ orderId: "ORDER-42" }) }) }
+  return {
+    ...actual,
+    createFileRoute: () => (options: unknown) => ({ options, useParams: () => ({ orderId: ORDER_ID }) }),
+  }
 })
+vi.mock("~/src/modules/order/use-cases/get-admin-order", () => ({ getAdminOrderQuery }))
+vi.mock("@tanstack/react-query", async () => {
+  const actual = await vi.importActual<typeof TanStackQuery>("@tanstack/react-query")
+
+  return { ...actual, useSuspenseQuery: () => ({ data: orderState.current }) }
+})
+vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions", () => ({
+  useCancelOrder: stubMutation,
+  useFulfillOrder: stubMutation,
+  useMarkOrderDelivered: stubMutation,
+  useMarkOrderShipped: stubMutation,
+  useRefundOrder: stubMutation,
+}))
 vi.mock("~/src/presentation/components/custom/pages/admin/orders/detail/order-detail-page", () => ({
   OrderDetailPage: (): JSX.Element => <p>order detail body</p>,
 }))
 
 import { Route } from "~/src/routes/admin.orders.$orderId"
+
+const ORDER_ID = "a1b2c3d4-0000-0000-0000-000000000000"
 
 const AdminOrderDetailRoute = (): JSX.Element => {
   const Page = Route.options.component
@@ -26,33 +58,67 @@ const AdminOrderDetailRoute = (): JSX.Element => {
   return <Page />
 }
 
+const renderRoute = (overrides: Partial<Order["adminOrderDetail"]> = {}) => {
+  orderState.current = buildAdminOrderDetail(overrides)
+
+  return renderWithProviders(<AdminOrderDetailRoute />)
+}
+
 afterEach(cleanup)
 
 describe("admin order detail route", () => {
-  it("titles the header with the order reference from the url", () => {
-    renderWithProviders(<AdminOrderDetailRoute />)
+  it("titles the header with the order reference from the loaded order", () => {
+    renderRoute()
 
-    expect(screen.getByRole("heading", { level: 1, name: "#ORDER-42" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: "#A1B2C3D4" })).toBeInTheDocument()
   })
 
   it("breadcrumbs back through the dashboard and the order list", () => {
-    renderWithProviders(<AdminOrderDetailRoute />)
+    renderRoute()
 
     expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/admin")
     expect(screen.getByRole("link", { name: "Orders" })).toHaveAttribute("href", "/admin/orders")
   })
 
-  it("offers the fulfilment actions of an order", () => {
-    renderWithProviders(<AdminOrderDetailRoute />)
+  it("loads the order through the admin order query for the route param", () => {
+    renderRoute()
 
-    expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Refund" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Fulfill" })).toBeInTheDocument()
+    expect(getAdminOrderQuery).toHaveBeenCalledWith(ORDER_ID)
   })
 
   it("renders the order detail body under the header", () => {
-    renderWithProviders(<AdminOrderDetailRoute />)
+    renderRoute()
 
     expect(screen.getByText("order detail body")).toBeInTheDocument()
+  })
+
+  it("offers refund, cancel and ship for a paid order already in fulfillment", () => {
+    renderRoute()
+
+    expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Refund" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Cancel order" })).toBeInTheDocument()
+  })
+
+  it("offers fulfillment only while the order is unfulfilled", () => {
+    renderRoute({ fulfillmentStatus: "not_fulfilled", fulfillmentUiKey: "unfulfilled" })
+
+    expect(screen.getByRole("button", { name: "Fulfill" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Mark delivered" })).not.toBeInTheDocument()
+  })
+
+  it("offers the delivery hand-off once the parcel has shipped", () => {
+    renderRoute({ fulfillmentStatus: "shipped" })
+
+    expect(screen.getByRole("button", { name: "Mark delivered" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Fulfill" })).not.toBeInTheDocument()
+  })
+
+  it("withholds every state-changing action from a cancelled order", () => {
+    renderRoute({ canceledAt: new Date("2026-03-08T08:00:00.000Z"), fulfillmentStatus: "cancelled", status: "cancelled" })
+
+    expect(screen.queryByRole("button", { name: "Refund" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Fulfill" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument()
   })
 })

@@ -3,36 +3,29 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_FULFILLMENT_STEPS } from "~/src/data/order-detail"
-
+import { buildAdminOrderDetail } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderFulfillmentTracker } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-fulfillment-tracker"
+
+const order = buildAdminOrderDetail()
 
 afterEach(() => {
   cleanup()
 })
 
 describe("OrderFulfillmentTracker", () => {
-  it("titles the card and lists every fulfillment step in order", () => {
-    renderWithProviders(<OrderFulfillmentTracker />)
+  it("titles the tracker and renders one item per step", () => {
+    renderWithProviders(<OrderFulfillmentTracker canceledAt={undefined} steps={order.fulfillmentSteps} />)
 
     expect(screen.getByText("Fulfillment")).toBeInTheDocument()
-    expect(screen.getAllByText(/Confirmed|Processing|Shipped|Out for Delivery|Delivered/u)).toHaveLength(DEMO_FULFILLMENT_STEPS.length)
-  })
-
-  it("shows a timestamp only for the steps that already happened", () => {
-    renderWithProviders(<OrderFulfillmentTracker />)
-    const dated = DEMO_FULFILLMENT_STEPS.filter((step) => step.date !== undefined)
-
-    for (const step of dated) {
-      expect(screen.getByText(step.date ?? "")).toBeInTheDocument()
+    for (const label of ["Confirmed", "Processing", "Shipped", "Delivered"]) {
+      expect(screen.getByText(label)).toBeInTheDocument()
     }
-    expect(dated).toHaveLength(3)
   })
 
-  it("renders the steps in the order the shipment progresses", () => {
-    const { container } = renderWithProviders(<OrderFulfillmentTracker />)
-    const labels = [...container.querySelectorAll("p.mt-2")].map((node) => node.textContent)
+  it("replaces the steps with a cancellation notice for cancelled orders", () => {
+    renderWithProviders(<OrderFulfillmentTracker canceledAt={new Date("2026-03-08T08:00:00.000Z")} steps={[]} />)
 
-    expect(labels).toStrictEqual(["Confirmed", "Processing", "Shipped", "Out for Delivery", "Delivered"])
+    expect(screen.getByText(/Order cancelled on/u)).toBeInTheDocument()
+    expect(screen.queryByText("Confirmed")).not.toBeInTheDocument()
   })
 })

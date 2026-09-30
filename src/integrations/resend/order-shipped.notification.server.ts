@@ -45,7 +45,10 @@ export const notifyOrderShipped = async (orderId: string): Promise<void> => {
       ? undefined
       : mapCheckoutEmailContext(await getCheckoutEmailContext(orderRow.checkoutId))
   const messages = await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })
-  const details = buildOrderShippedDetails(checkoutContext, messages)
+  const details = buildOrderShippedDetails(checkoutContext, messages, {
+    trackingNumber: orderRow.trackingNumber,
+    trackingUrl: orderRow.trackingUrl,
+  })
   const accountCta = buildOrderShippedAccountCta({ locale, messages, orderId: orderRow.id, userId: orderRow.userId })
   const failure = await sendEmail({
     react: createElement(OrderShipped, {

@@ -26,6 +26,8 @@ const PREVIEW_IMAGE = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/place
 
 const PREVIEW_ADDRESS = "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa\nPL\n+48 600 123 456"
 
+const PREVIEW_TRACKING_NUMBER = "00259007123456789012"
+
 const PREVIEW_ORDER_CONFIRMATION_DETAILS = {
   billingAddress: "Tak jak adres dostawy",
   deliveryMethod: "Kurier DPD · dostawa do domu",
@@ -112,6 +114,8 @@ export const EMAIL_PREVIEWS = {
           deliveryMethod: PREVIEW_ORDER_CONFIRMATION_DETAILS.deliveryMethod,
           estimatedDelivery: PREVIEW_ORDER_CONFIRMATION_DETAILS.estimatedDelivery,
           shippingAddress: PREVIEW_ADDRESS,
+          trackingNumber: PREVIEW_TRACKING_NUMBER,
+          trackingUrl: undefined,
         }}
         locale={locale}
         messages={await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })}

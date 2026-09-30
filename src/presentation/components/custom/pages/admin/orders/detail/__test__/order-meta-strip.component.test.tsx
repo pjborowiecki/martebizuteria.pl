@@ -3,8 +3,7 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { DEMO_ORDER, DEMO_SUMMARY, ORDER_PAYMENT_STYLES, ORDER_STATUS_STYLES } from "~/src/data/order-detail"
-
+import { buildAdminOrderDetail } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderMetaStrip } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-meta-strip"
 
 afterEach(() => {
@@ -12,45 +11,37 @@ afterEach(() => {
 })
 
 describe("OrderMetaStrip", () => {
-  it("labels every meta field in English", () => {
-    renderWithProviders(<OrderMetaStrip />)
+  it("labels every meta column", () => {
+    renderWithProviders(<OrderMetaStrip order={buildAdminOrderDetail()} />)
 
-    for (const label of ["Date", "Status", "Payment", "Channel", "Total"]) {
+    for (const label of ["Date", "Status", "Fulfillment", "Payment", "Total"]) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
   })
 
-  it("shows the order date and time together", () => {
-    renderWithProviders(<OrderMetaStrip />)
+  it("renders the order, fulfillment and payment states from the order", () => {
+    renderWithProviders(<OrderMetaStrip order={buildAdminOrderDetail()} />)
 
-    expect(screen.getByText(`${DEMO_ORDER.date}, ${DEMO_ORDER.time}`)).toBeInTheDocument()
-  })
-
-  it("translates the order status rather than printing the raw code", () => {
-    renderWithProviders(<OrderMetaStrip />)
-
+    expect(screen.getByText("Processing")).toBeInTheDocument()
     expect(screen.getByText("Shipped")).toBeInTheDocument()
-    expect(screen.queryByText(DEMO_ORDER.status)).not.toBeInTheDocument()
+    expect(screen.getByText("Paid")).toBeInTheDocument()
   })
 
-  it("tints the status badge with the style mapped to that status", () => {
-    renderWithProviders(<OrderMetaStrip />)
-    const badge = screen.getByText("Shipped")
+  it("formats the total in the order currency", () => {
+    renderWithProviders(<OrderMetaStrip order={buildAdminOrderDetail()} />)
 
-    expect(badge.className).toContain(ORDER_STATUS_STYLES[DEMO_ORDER.status])
+    expect(screen.getByText(/389[.,]00/u)).toBeInTheDocument()
   })
 
-  it("translates the payment state and tints its badge", () => {
-    renderWithProviders(<OrderMetaStrip />)
-    const badge = screen.getByText("Paid")
+  it("renders the placement date", () => {
+    renderWithProviders(<OrderMetaStrip order={buildAdminOrderDetail()} />)
 
-    expect(badge.className).toContain(ORDER_PAYMENT_STYLES[DEMO_ORDER.payment])
+    expect(screen.getByText(/Mar 4, 2026/u)).toBeInTheDocument()
   })
 
-  it("shows the sales channel and the order total", () => {
-    renderWithProviders(<OrderMetaStrip />)
+  it("reflects a refunded order rather than a fixed status", () => {
+    renderWithProviders(<OrderMetaStrip order={buildAdminOrderDetail({ paymentUiKey: "refunded", status: "refunded" })} />)
 
-    expect(screen.getByText(DEMO_ORDER.channel)).toBeInTheDocument()
-    expect(screen.getByText(DEMO_SUMMARY.total)).toBeInTheDocument()
+    expect(screen.getAllByText("Refunded")).toHaveLength(2)
   })
 })

@@ -1,3 +1,4 @@
+import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants"
@@ -60,6 +61,8 @@ export const ADMIN_ORDER_COMPLETED_STATUS = "completed" as const
 
 export const ADMIN_ORDER_COUNTABLE_STATUSES = ["completed", "processing", "pending", "cancelled", "refunded"] as const
 
+export const ADMIN_ORDER_CUSTOMER_COUNTABLE_STATUSES = ["completed", "processing", "pending"] as const
+
 export const ADMIN_ORDER_TABLE_A11Y_KEYS = {
   selectAll: "a11y.selectAll",
   selectRow: "a11y.selectRow",
@@ -99,6 +102,104 @@ export const ADMIN_ORDER_TABLE_COLUMN_PINNING = {
   end: [ADMIN_ORDER_TABLE_COLUMN_ID.status, ADMIN_ORDER_TABLE_COLUMN_ID.payment, ADMIN_ORDER_TABLE_COLUMN_ID.actions],
   start: [ADMIN_ORDER_TABLE_COLUMN_ID.select, ADMIN_ORDER_TABLE_COLUMN_ID.orderId, ADMIN_ORDER_TABLE_COLUMN_ID.createdAt],
 }
+
+export const ADMIN_ORDER_FULFILLMENT_STEPS = ["confirmed", "processing", "shipped", "delivered"] as const
+
+export type AdminOrderFulfillmentStepKey = (typeof ADMIN_ORDER_FULFILLMENT_STEPS)[number]
+
+export const ADMIN_ORDER_TIMELINE_KIND = {
+  DISPUTE: "dispute",
+  EMAIL: "email",
+  FULFILLMENT: "fulfillment",
+  ORDER: "order",
+  PAYMENT: "payment",
+  SHIPPING: "shipping",
+} as const
+
+export type AdminOrderTimelineKind = (typeof ADMIN_ORDER_TIMELINE_KIND)[keyof typeof ADMIN_ORDER_TIMELINE_KIND]
+
+export const ADMIN_ORDER_EMAIL_STATUS = {
+  DEFERRED: "deferred",
+  FAILED: "failed",
+  SENT: "sent",
+} as const
+
+export type AdminOrderEmailStatus = (typeof ADMIN_ORDER_EMAIL_STATUS)[keyof typeof ADMIN_ORDER_EMAIL_STATUS]
+
+export const ADMIN_ORDER_TIMELINE_ACTIONS = [
+  AUDIT_LOG_ACTION.EMAIL_DEFERRED,
+  AUDIT_LOG_ACTION.EMAIL_FAILED,
+  AUDIT_LOG_ACTION.EMAIL_SENT,
+  AUDIT_LOG_ACTION.ORDER_CANCELLED,
+  AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED,
+  AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED,
+  AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,
+  AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED,
+  AUDIT_LOG_ACTION.ORDER_PAYMENT_FAILED,
+  AUDIT_LOG_ACTION.ORDER_PLACED,
+  AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED,
+  AUDIT_LOG_ACTION.ORDER_RELEASED,
+  AUDIT_LOG_ACTION.ORDER_SHIPPED,
+] as const
+
+export const ADMIN_ORDER_TIMELINE_KIND_BY_ACTION: Record<string, AdminOrderTimelineKind> = {
+  [AUDIT_LOG_ACTION.EMAIL_DEFERRED]: ADMIN_ORDER_TIMELINE_KIND.EMAIL,
+  [AUDIT_LOG_ACTION.EMAIL_FAILED]: ADMIN_ORDER_TIMELINE_KIND.EMAIL,
+  [AUDIT_LOG_ACTION.EMAIL_SENT]: ADMIN_ORDER_TIMELINE_KIND.EMAIL,
+  [AUDIT_LOG_ACTION.ORDER_CANCELLED]: ADMIN_ORDER_TIMELINE_KIND.ORDER,
+  [AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED]: ADMIN_ORDER_TIMELINE_KIND.DISPUTE,
+  [AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED]: ADMIN_ORDER_TIMELINE_KIND.DISPUTE,
+  [AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED]: ADMIN_ORDER_TIMELINE_KIND.FULFILLMENT,
+  [AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED]: ADMIN_ORDER_TIMELINE_KIND.PAYMENT,
+  [AUDIT_LOG_ACTION.ORDER_PAYMENT_FAILED]: ADMIN_ORDER_TIMELINE_KIND.PAYMENT,
+  [AUDIT_LOG_ACTION.ORDER_PLACED]: ADMIN_ORDER_TIMELINE_KIND.ORDER,
+  [AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED]: ADMIN_ORDER_TIMELINE_KIND.PAYMENT,
+  [AUDIT_LOG_ACTION.ORDER_RELEASED]: ADMIN_ORDER_TIMELINE_KIND.ORDER,
+  [AUDIT_LOG_ACTION.ORDER_SHIPPED]: ADMIN_ORDER_TIMELINE_KIND.SHIPPING,
+}
+
+export const ADMIN_ORDER_TIMELINE_EMAIL_STATUS_BY_ACTION: Record<string, AdminOrderEmailStatus> = {
+  [AUDIT_LOG_ACTION.EMAIL_DEFERRED]: ADMIN_ORDER_EMAIL_STATUS.DEFERRED,
+  [AUDIT_LOG_ACTION.EMAIL_FAILED]: ADMIN_ORDER_EMAIL_STATUS.FAILED,
+  [AUDIT_LOG_ACTION.EMAIL_SENT]: ADMIN_ORDER_EMAIL_STATUS.SENT,
+}
+
+export const ADMIN_ORDER_TIMELINE_LABEL_KEY_BY_ACTION: Record<string, string> = {
+  [AUDIT_LOG_ACTION.EMAIL_DEFERRED]: "emailDeferred",
+  [AUDIT_LOG_ACTION.EMAIL_FAILED]: "emailFailed",
+  [AUDIT_LOG_ACTION.EMAIL_SENT]: "emailSent",
+  [AUDIT_LOG_ACTION.ORDER_CANCELLED]: "cancelled",
+  [AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED]: "disputeClosed",
+  [AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED]: "disputeOpened",
+  [AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED]: "fulfillmentStarted",
+  [AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED]: "paymentCaptured",
+  [AUDIT_LOG_ACTION.ORDER_PAYMENT_FAILED]: "paymentFailed",
+  [AUDIT_LOG_ACTION.ORDER_PLACED]: "placed",
+  [AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED]: "refundInitiated",
+  [AUDIT_LOG_ACTION.ORDER_RELEASED]: "released",
+  [AUDIT_LOG_ACTION.ORDER_SHIPPED]: "shipped",
+}
+
+export const ADMIN_ORDER_DETAIL_TAG = {
+  DISPUTED: "disputed",
+  GUEST: "guest",
+  IN_STORE: "inStore",
+  LOCKER: "locker",
+  NOTE: "note",
+  PARTIALLY_REFUNDED: "partiallyRefunded",
+  REFUNDED: "refunded",
+  RETURNING: "returning",
+} as const
+
+export type AdminOrderDetailTag = (typeof ADMIN_ORDER_DETAIL_TAG)[keyof typeof ADMIN_ORDER_DETAIL_TAG]
+
+export const ADMIN_ORDER_DETAIL_DISPLAY_ID_LENGTH = 8
+
+export const ORDER_TRACKING_NUMBER_MAX_LENGTH = 128
+
+export const ORDER_TRACKING_URL_MAX_LENGTH = 2048
+
+export const ADMIN_ORDER_DETAIL_RETURNING_MIN_ORDERS = 2
 
 export const ORDER_ERROR_CODES = {
   INVALID_STATE: "ORDER_INVALID_STATE",
@@ -190,6 +291,7 @@ export const FULFILLMENT_DOT_COLORS: Record<string, string> = {
 export const ORDER_QUERY_KEYS = {
   ADMIN: {
     ORDERS: ["admin", "orders"] as const,
+    ORDER_BY_ID: ["admin", "orders", "detail"] as const,
     PAGE: ["admin", "orders", "page"] as const,
     STATS: ["admin", "orders", "stats"] as const,
   },
@@ -198,5 +300,7 @@ export const ORDER_QUERY_KEYS = {
 export const ORDER_MUTATION_KEYS = {
   CANCEL: ["order", "cancelOrder"] as const,
   FULFILL: ["order", "fulfillOrder"] as const,
+  MARK_DELIVERED: ["order", "markOrderDelivered"] as const,
+  REFUND: ["order", "refundAdminOrder"] as const,
   SHIP: ["order", "shipOrder"] as const,
 } as const

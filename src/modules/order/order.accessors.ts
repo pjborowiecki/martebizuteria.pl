@@ -6,20 +6,25 @@ import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
+import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import {
   ADMIN_ORDER_COMPLETED_STATUS,
   ADMIN_ORDER_COUNTABLE_STATUSES,
+  ADMIN_ORDER_CUSTOMER_COUNTABLE_STATUSES,
   ADMIN_ORDER_FULFILLMENT_UI_KEY,
   ADMIN_ORDER_PAYMENT_UI_KEY,
   ADMIN_ORDER_STAT_FILTER,
   ADMIN_ORDER_TAB,
+  ADMIN_ORDER_TIMELINE_ACTIONS,
   type AdminOrderStatFilter,
   type AdminOrderTab,
 } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"
 import { type Order } from "~/src/modules/order/order.types"
 import { payment } from "~/src/modules/payment/payment.schema"
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
+import { product } from "~/src/modules/product/product.schema"
 import { user } from "~/src/modules/user/user.schema"
 
 const buildAdminOrderFulfillmentUiCondition = (
@@ -265,6 +270,114 @@ export const getAdminOrderStats = async (): Promise<Order["adminStats"]> => {
   }
 }
 
+export const getAdminOrderDetailRow = (orderId: string) =>
+  db.query.order.findFirst({
+    where: eq(order.id, orderId),
+    with: {
+      checkout: {
+        columns: {
+          billingAddressId: true,
+          shippingAddressId: true,
+        },
+        with: {
+          billingAddress: true,
+          shippingAddress: true,
+        },
+      },
+      deliveryMethod: {
+        with: {
+          courier: {
+            columns: {
+              name: true,
+            },
+          },
+        },
+      },
+      payment: true,
+      user: {
+        columns: {
+          id: true,
+          name: true,
+          phone: true,
+        },
+      },
+    },
+  })
+
+export const getAdminOrderItemRows = (orderId: string) =>
+  db
+    .select({
+      id: orderItem.id,
+      productHandle: product.handle,
+      quantity: orderItem.quantity,
+      sku: productVariant.sku,
+      thumbnail: sql<string | null>`coalesce(${orderItem.thumbnail}, ${product.thumbnail})`.as("thumbnail"),
+      title: orderItem.title,
+      total: orderItem.total,
+      unitPrice: orderItem.unitPrice,
+      variantTitle: sql<string | null>`coalesce(${orderItem.variantTitle}, ${productVariant.title})`.as("variant_title"),
+    })
+    .from(orderItem)
+    .leftJoin(productVariant, eq(orderItem.variantId, productVariant.id))
+    .leftJoin(product, eq(productVariant.productId, product.id))
+    .where(eq(orderItem.orderId, orderId))
+    .orderBy(orderItem.createdAt)
+
+export const getAdminOrderTimelineRows = (orderId: string) =>
+  db
+    .select({
+      action: auditLog.action,
+      actorName: auditLog.actorName,
+      createdAt: auditLog.createdAt,
+      detail: auditLog.detail,
+      id: auditLog.id,
+      severity: auditLog.severity,
+    })
+    .from(auditLog)
+    .where(and(eq(auditLog.resourceId, orderId), inArray(auditLog.action, [...ADMIN_ORDER_TIMELINE_ACTIONS])))
+    .orderBy(desc(auditLog.createdAt))
+
+export const getAdminOrderCustomerStats = async (userId: string): Promise<AdminOrderCustomerStats> => {
+  const [row] = await db
+    .select({
+      orderCount: count(),
+      totalSpent: sql<number>`coalesce(sum(case when ${order.status} = ${ADMIN_ORDER_COMPLETED_STATUS} then ${order.total} else ${0} end), ${0})`,
+    })
+    .from(order)
+    .where(and(eq(order.userId, userId), inArray(order.status, [...ADMIN_ORDER_CUSTOMER_COUNTABLE_STATUSES])))
+
+  return {
+    orderCount: row?.orderCount ?? 0,
+    totalSpent: row?.totalSpent ?? 0,
+  }
+}
+
+export const getAdminOrderRefundTarget = async (orderId: string): Promise<AdminOrderRefundTarget | undefined> => {
+  const [row] = await db
+    .select({
+      paymentStatus: payment.status,
+      status: order.status,
+      transactionId: payment.transactionId,
+    })
+    .from(order)
+    .leftJoin(payment, eq(order.paymentId, payment.id))
+    .where(eq(order.id, orderId))
+    .limit(1)
+
+  return row
+}
+
+export interface AdminOrderRefundTarget {
+  readonly paymentStatus: (typeof payment.$inferSelect)["status"] | null
+  readonly status: Order["select"]["status"]
+  readonly transactionId: string | null
+}
+
+export interface AdminOrderCustomerStats {
+  readonly orderCount: number
+  readonly totalSpent: number
+}
+
 export const getOrderByCheckoutId = (checkoutId: string) =>
   db.query.order.findFirst({
     columns: {
@@ -289,6 +402,8 @@ export const getOrderForShippedEmail = (orderId: string) =>
       email: true,
       id: true,
       metadata: true,
+      trackingNumber: true,
+      trackingUrl: true,
       userId: true,
     },
     where: eq(order.id, orderId),
