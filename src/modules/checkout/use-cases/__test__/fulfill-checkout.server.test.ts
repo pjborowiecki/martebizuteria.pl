@@ -2,30 +2,46 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 interface PendingContext {
   checkoutId: string
+  email: string
   paymentId: string
+  userId: string | null
 }
 
-const { allocateOrderNumber, findPendingCheckoutByTransaction, getCheckoutForFulfillment, prepareFulfillCheckoutBatch, runDrizzleBatch } =
-  vi.hoisted(() => ({
-    allocateOrderNumber: vi.fn<() => Promise<string>>(),
-    findPendingCheckoutByTransaction: vi.fn<(transactionId: string) => Promise<PendingContext | undefined>>(),
-    getCheckoutForFulfillment: vi.fn<(checkoutId: string) => Promise<Record<string, unknown> | undefined>>(),
-    prepareFulfillCheckoutBatch:
-      vi.fn<
-        (
-          context: PendingContext,
-          input: { orderNumber: string; totals: Record<string, number> },
-          snapshot: Record<string, unknown>,
-        ) => { orderId: string; statements: string[] }
-      >(),
-    runDrizzleBatch: vi.fn<(statements: readonly string[]) => Promise<void>>(),
-  }))
+const {
+  allocateOrderNumber,
+  findPendingCheckoutByTransaction,
+  getCheckoutForFulfillment,
+  prepareFulfillCheckoutBatch,
+  recordDiscountRedeemedAudit,
+  recordDiscountRedemption,
+  runDrizzleBatch,
+  scheduleBackgroundWork,
+} = vi.hoisted(() => ({
+  allocateOrderNumber: vi.fn<() => Promise<string>>(),
+  findPendingCheckoutByTransaction: vi.fn<(transactionId: string) => Promise<PendingContext | undefined>>(),
+  getCheckoutForFulfillment: vi.fn<(checkoutId: string) => Promise<Record<string, unknown> | undefined>>(),
+  prepareFulfillCheckoutBatch:
+    vi.fn<
+      (
+        context: PendingContext,
+        input: { orderNumber: string; totals: Record<string, number> },
+        snapshot: Record<string, unknown>,
+      ) => { orderId: string; statements: string[] }
+    >(),
+  recordDiscountRedeemedAudit: vi.fn(),
+  recordDiscountRedemption: vi.fn<() => Promise<boolean>>(),
+  runDrizzleBatch: vi.fn<(statements: readonly string[]) => Promise<void>>(),
+  scheduleBackgroundWork: vi.fn(),
+}))
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch }))
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutForFulfillment }))
 vi.mock("~/src/modules/checkout/checkout.pending.server", () => ({ findPendingCheckoutByTransaction }))
 vi.mock("~/src/modules/checkout/checkout.utils", () => ({ prepareFulfillCheckoutBatch }))
 vi.mock("~/src/modules/order/order.number.server", () => ({ allocateOrderNumber }))
+vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDiscountRedeemedAudit }))
+vi.mock("~/src/modules/discount/discount.redeem.server", () => ({ recordDiscountRedemption }))
 
 import { type FulfillCheckoutFromSessionInput, fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 
@@ -37,7 +53,7 @@ const input: FulfillCheckoutFromSessionInput = {
   transactionId: "pi_123",
 }
 
-const context: PendingContext = { checkoutId: "chk-1", paymentId: "pay-1" }
+const context: PendingContext = { checkoutId: "chk-1", email: "buyer@example.com", paymentId: "pay-1", userId: null }
 
 const checkoutRow = {
   billingCompanyName: null,
@@ -45,6 +61,7 @@ const checkoutRow = {
   customerNote: "Gift wrap it",
   deliveryMethod: { price: 1500 },
   deliveryMethodId: "dm-courier",
+  discount: null,
   discountId: null,
   lockerId: null,
 }
@@ -56,6 +73,7 @@ beforeEach(() => {
   findPendingCheckoutByTransaction.mockResolvedValue(context)
   getCheckoutForFulfillment.mockResolvedValue(checkoutRow)
   allocateOrderNumber.mockResolvedValue("MRT-2026-00042")
+  recordDiscountRedemption.mockResolvedValue(true)
   prepareFulfillCheckoutBatch.mockReturnValue({ orderId: "order-1", statements: ["stmt-a", "stmt-b"] })
   runDrizzleBatch.mockResolvedValue(undefined)
 })
@@ -129,6 +147,31 @@ describe("fulfillCheckout", () => {
       discountId: undefined,
       lockerId: undefined,
     })
+  })
+
+  it("applies a discount attached to the checkout and spends it once", async () => {
+    getCheckoutForFulfillment.mockResolvedValue({
+      ...checkoutRow,
+      discount: { id: "disc-1", maxDiscountAmount: null, type: "percentage", value: 10 },
+      discountId: "disc-1",
+    })
+    await fulfillCheckout({ ...input, paidAmount: 19_500 })
+
+    expect(batchInput()?.totals).toMatchObject({ discountTotal: 2000, total: 19_500 })
+    expect(recordDiscountRedemption).toHaveBeenCalledWith({
+      amount: 2000,
+      discountId: "disc-1",
+      email: "buyer@example.com",
+      orderId: "order-1",
+      userId: null,
+    })
+  })
+
+  it("does not spend a code when the checkout carries none", async () => {
+    await fulfillCheckout(input)
+
+    expect(recordDiscountRedemption).not.toHaveBeenCalled()
+    expect(batchInput()?.totals).toMatchObject({ discountTotal: 0 })
   })
 
   it("reports a total that disagrees with what Stripe charged", async () => {

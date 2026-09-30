@@ -16,9 +16,13 @@ describe("discount table", () => {
     expect(config.columns.map((column) => column.name).toSorted()).toStrictEqual([
       "code",
       "created_at",
+      "description",
       "ends_at",
       "id",
       "is_active",
+      "max_discount_amount",
+      "min_order_total",
+      "per_customer_limit",
       "starts_at",
       "type",
       "updated_at",
@@ -94,6 +98,9 @@ describe("discount table", () => {
       unique: entry.config.unique,
     }))
 
-    expect(indexes).toStrictEqual([{ columns: ["code"], name: "discount_code_idx", unique: false }])
+    expect(indexes).toStrictEqual([
+      { columns: ["code"], name: "discount_code_idx", unique: false },
+      { columns: ["is_active"], name: "discount_isActive_idx", unique: false },
+    ])
   })
 })

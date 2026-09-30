@@ -4,7 +4,9 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsCreate: vi.fn<(params: { metadata: Record<string, string> }) => Promise<unknown>>(),
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
-  createCheckout: vi.fn(),
+  couponsCreate: vi.fn<(params: object) => Promise<{ id: string }>>(),
+  createCheckout:
+    vi.fn<(input: { checkoutValues: { email: string }; discountId?: string; userEmail: string; userId?: string }) => Promise<string>>(),
   createPendingPayment: vi.fn(),
   getActiveDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
@@ -16,6 +18,7 @@ const mocked = vi.hoisted(() => ({
   repointPayment: vi.fn(),
   reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
+  resolveCheckoutDiscount: vi.fn<() => Promise<{ amountMinorUnits: number; code: string; discountId: string } | undefined>>(),
   scheduleProductCatalogInvalidation: vi.fn(),
   updateCheckoutDelivery: vi.fn(),
 }))
@@ -34,6 +37,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
         retrieve: mocked.checkoutSessionsRetrieve,
       },
     },
+    coupons: { create: mocked.couponsCreate },
   },
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
@@ -41,6 +45,7 @@ vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ crea
 vi.mock("~/src/modules/checkout/use-cases/update-checkout-delivery.server", () => ({
   updateCheckoutDelivery: mocked.updateCheckoutDelivery,
 }))
+vi.mock("~/src/modules/discount/discount.checkout.server", () => ({ resolveCheckoutDiscount: mocked.resolveCheckoutDiscount }))
 vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
   getActiveDeliveryMethodByIdQuery: mocked.getActiveDeliveryMethodByIdQuery,
 }))
@@ -165,6 +170,8 @@ beforeEach(() => {
   mocked.checkoutSessionsExpire.mockResolvedValue({})
   mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: { items: JSON.stringify([{ qty: 1, variantId: "variant-old" }]) } })
   mocked.getPaymentContextByTransactionId.mockResolvedValue({ checkoutId: "checkout-1", email: "anna@example.com", userId: "user-1" })
+  mocked.resolveCheckoutDiscount.mockResolvedValue(undefined)
+  mocked.couponsCreate.mockResolvedValue({ id: "coupon_1" })
 })
 
 afterEach(() => {
@@ -258,7 +265,14 @@ describe("handleCreateCheckoutSession", () => {
   it("carries the checkout id, catalogue line snapshot, locale and user id in the session metadata", async () => {
     await handleCreateCheckoutSession(createInput())
 
-    const metadata = { checkoutId: "checkout-1", locale: "pl-PL", userId: "user-1", ...EXPECTED_META_ITEMS }
+    const metadata = {
+      checkoutId: "checkout-1",
+      discountCode: "",
+      discountTotal: "0",
+      locale: "pl-PL",
+      userId: "user-1",
+      ...EXPECTED_META_ITEMS,
+    }
 
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -273,13 +287,12 @@ describe("handleCreateCheckoutSession", () => {
 
     await handleCreateCheckoutSession(createInput())
 
-    const metadata = { checkoutId: "checkout-1", locale: "pl-PL", userId: "", ...EXPECTED_META_ITEMS }
+    const metadata = { checkoutId: "checkout-1", discountCode: "", discountTotal: "0", locale: "pl-PL", userId: "", ...EXPECTED_META_ITEMS }
 
-    expect(mocked.createCheckout).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "anna@example.com" }),
-      undefined,
-      "anna@example.com",
-    )
+    const createArgs = mocked.createCheckout.mock.calls[0]?.[0]
+
+    expect(createArgs).toMatchObject({ userEmail: "anna@example.com", userId: undefined })
+    expect(createArgs?.checkoutValues).toMatchObject({ email: "anna@example.com" })
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ metadata }))
   })
 
@@ -501,6 +514,37 @@ describe("handleUpdateCheckoutSession authorization", () => {
   })
 })
 
+describe("checkout session discounts", () => {
+  it("expresses an applied discount as a one-shot Stripe coupon", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.couponsCreate).toHaveBeenCalledWith({
+      amount_off: 2000,
+      currency: "pln",
+      duration: "once",
+      name: "SPRING",
+    })
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ discounts: [{ coupon: "coupon_1" }] }))
+  })
+
+  it("stores the applied code against the checkout so fulfilment can spend it", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.createCheckout).toHaveBeenCalledWith(expect.objectContaining({ discountId: "disc-1" }))
+  })
+
+  it("creates no coupon and attaches no discount when no code applies", async () => {
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.couponsCreate).not.toHaveBeenCalled()
+    expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).not.toHaveProperty("discounts")
+  })
+})
+
 describe("handleUpdateCheckoutSession", () => {
   it("uses the edited checkout email for both the new session and its payment receipt", async () => {
     const input = updateInput({ email: "updated@example.com" })
@@ -511,7 +555,7 @@ describe("handleUpdateCheckoutSession", () => {
       customer_email: "updated@example.com",
       payment_intent_data: { receipt_email: "updated@example.com" },
     })
-    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", input.checkoutValues)
+    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", input.checkoutValues, undefined)
   })
 
   it("swaps the previous reservation for the new cart before creating a session", async () => {
@@ -533,7 +577,11 @@ describe("handleUpdateCheckoutSession", () => {
   it("persists the delivery change, repoints the payment and expires the old session", async () => {
     const result = await handleUpdateCheckoutSession(updateInput())
 
-    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", expect.objectContaining({ deliveryMethod: "dpd-courier" }))
+    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith(
+      "checkout-1",
+      expect.objectContaining({ deliveryMethod: "dpd-courier" }),
+      undefined,
+    )
     expect(mocked.repointPayment).toHaveBeenCalledWith({ amount: 51_300, newTransactionId: "cs_new", oldTransactionId: "cs_old" })
     expect(mocked.checkoutSessionsExpire).toHaveBeenCalledWith("cs_old")
     expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()

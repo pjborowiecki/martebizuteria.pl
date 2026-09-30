@@ -6,13 +6,15 @@
   },
   "checkoutSummary": {
     "subtotal": "Subtotal",
+    "discount": "Discount",
     "delivery": "Delivery",
     "deliveryCalculated": "Calculated at next step",
     "total": "Total",
     "edit": "Edit",
     "free": "Free",
     "itemsCount": "Products ({count})",
-    "title": "Your order"
+    "title": "Your order",
+    "vatIncluded": "Includes VAT ({rate}%)"
   },
   "checkoutSuccess": {
     "title": "Order Confirmed",
@@ -179,5 +181,21 @@
     "phoneInvalid": "Please enter a valid phone number.",
     "postCodeInvalid": "Please enter a valid postal code (00-000).",
     "postCodeRequired": "Postal code is required."
+  },
+  "discount": {
+    "label": "Discount code",
+    "placeholder": "Enter code",
+    "apply": "Apply",
+    "remove": "Remove discount code",
+    "rejection": {
+      "notFound": "We do not recognise that code.",
+      "inactive": "That code is no longer active.",
+      "notStarted": "That code is not valid yet.",
+      "expired": "That code has expired.",
+      "exhausted": "That code has been fully redeemed.",
+      "alreadyUsed": "You have already used that code.",
+      "minOrderNotMet": "Your basket does not reach the minimum for that code.",
+      "error": "We could not check that code. Please try again."
+    }
   }
 }

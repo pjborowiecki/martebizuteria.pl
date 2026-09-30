@@ -7,12 +7,14 @@
   "checkoutSummary": {
     "title": "Twoje zamówienie",
     "subtotal": "Produkty",
+    "discount": "Rabat",
     "delivery": "Dostawa",
     "deliveryCalculated": "Wyliczane w kolejnym kroku",
     "total": "Razem",
     "edit": "Edytuj",
     "free": "Za darmo",
-    "itemsCount": "Produkty ({count})"
+    "itemsCount": "Produkty ({count})",
+    "vatIncluded": "W tym VAT ({rate}%)"
   },
   "checkoutSuccess": {
     "title": "Zamówienie potwierdzone",
@@ -179,5 +181,21 @@
     "phoneInvalid": "Podaj prawidłowy numer telefonu.",
     "postCodeInvalid": "Podaj prawidłowy kod pocztowy (00-000).",
     "postCodeRequired": "Kod pocztowy jest wymagany."
+  },
+  "discount": {
+    "label": "Kod rabatowy",
+    "placeholder": "Wpisz kod",
+    "apply": "Zastosuj",
+    "remove": "Usuń kod rabatowy",
+    "rejection": {
+      "notFound": "Nie rozpoznajemy tego kodu.",
+      "inactive": "Ten kod nie jest już aktywny.",
+      "notStarted": "Ten kod jeszcze nie obowiązuje.",
+      "expired": "Ten kod wygasł.",
+      "exhausted": "Ten kod został już w pełni wykorzystany.",
+      "alreadyUsed": "Już korzystałeś z tego kodu.",
+      "minOrderNotMet": "Twój koszyk nie osiąga minimalnej kwoty dla tego kodu.",
+      "error": "Nie udało się sprawdzić kodu. Spróbuj ponownie."
+    }
   }
 }

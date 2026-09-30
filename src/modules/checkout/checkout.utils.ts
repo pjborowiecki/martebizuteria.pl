@@ -12,6 +12,13 @@ import { order } from "~/src/modules/order/order.schema"
 import { type OrderTotals } from "~/src/modules/order/order.totals"
 import { payment } from "~/src/modules/payment/payment.schema"
 
+export interface PrepareCreateCheckoutInput {
+  readonly checkoutValues: CheckoutFormSchema
+  readonly discountId?: string | undefined
+  readonly userEmail: string
+  readonly userId: string | undefined
+}
+
 export interface PendingCheckout {
   checkoutId: string
   email: string
@@ -56,11 +63,12 @@ export interface ReleaseCheckoutInput {
   transactionId: string
 }
 
-export const prepareCreateCheckoutBatch = (
-  checkoutValues: CheckoutFormSchema,
-  userId: string | undefined,
-  userEmail: string,
-): { checkoutId: string; statements: BatchItem<"sqlite">[] } => {
+export const prepareCreateCheckoutBatch = ({
+  checkoutValues,
+  discountId,
+  userEmail,
+  userId,
+}: PrepareCreateCheckoutInput): { checkoutId: string; statements: BatchItem<"sqlite">[] } => {
   const checkoutId = crypto.randomUUID()
   const shippingAddressId = crypto.randomUUID()
   const billingAddressId = checkoutValues.sameAsShipping === true ? shippingAddressId : crypto.randomUUID()
@@ -82,8 +90,11 @@ export const prepareCreateCheckoutBatch = (
 
   const checkoutInsert = db.insert(checkout).values({
     billingAddressId,
+    billingCompanyName: checkoutValues.billingCompanyName,
+    billingNip: checkoutValues.billingNip,
     customerNote: checkoutValues.deliveryNotes,
     deliveryMethodId: checkoutValues.deliveryMethod,
+    discountId,
     email: userEmail,
     id: checkoutId,
     lockerId: checkoutValues.lockerId,
@@ -171,6 +182,7 @@ const preparePendingCheckoutAddressUpsert = (checkoutId: string, values: typeof 
 export const prepareUpdateCheckoutDeliveryBatch = (
   context: Pick<typeof checkout.$inferSelect, "id" | "shippingAddressId" | "billingAddressId" | "userId">,
   checkoutValues: CheckoutFormSchema,
+  discountId?: string,
 ): [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] => {
   const pendingCheckout = and(eq(checkout.id, context.id), eq(checkout.status, "pending"))
   const shippingAddressId = context.shippingAddressId ?? crypto.randomUUID()
@@ -216,8 +228,11 @@ export const prepareUpdateCheckoutDeliveryBatch = (
       .update(checkout)
       .set({
         billingAddressId,
+        billingCompanyName: checkoutValues.billingCompanyName ?? sql`NULL`,
+        billingNip: checkoutValues.billingNip ?? sql`NULL`,
         customerNote: checkoutValues.deliveryNotes,
         deliveryMethodId: checkoutValues.deliveryMethod,
+        discountId: discountId ?? sql`NULL`,
         email: checkoutValues.email,
         lockerId: checkoutValues.lockerId ?? sql`NULL`,
         shippingAddressId,

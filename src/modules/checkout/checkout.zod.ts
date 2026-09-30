@@ -4,6 +4,7 @@ import zod from "zod/v4"
 
 import { address } from "~/src/modules/address/address.schema"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
+import { DISCOUNT_CODE_MAX_LENGTH } from "~/src/modules/discount/discount.constants"
 
 const isValidPostalCode = (countryCode: string, postalCode: string): boolean => {
   const pattern = POSTAL_CODE_PATTERNS[countryCode]
@@ -22,6 +23,8 @@ const isValidCheckoutPhone = (value: string): boolean => {
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
   zodInstance: zod,
 })
+
+const COMPANY_NAME_MAX_LENGTH = 256
 
 const DEFAULT_COUNTRY = "PL"
 
@@ -53,13 +56,21 @@ export const checkoutSchema = baseAddressSchema
   .extend({
     billingAddress1: zod.string().optional(),
     billingCity: zod.string().optional(),
+    billingCompanyName: zod.string().trim().max(COMPANY_NAME_MAX_LENGTH).optional(),
     billingCountryCode: zod.string().optional(),
     billingFirstName: zod.string().optional(),
     billingLastName: zod.string().optional(),
+    billingNip: zod
+      .string()
+      .trim()
+      .regex(/^\d{10}$/u, "validation.nipInvalid")
+      .optional()
+      .or(zod.literal("")),
     billingPostalCode: zod.string().optional(),
     deliveryMethod: zod.string().min(1, "validation.deliveryRequired"),
     deliveryMethodType: zod.string().optional(),
     deliveryNotes: zod.string().optional(),
+    discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional(),
     email: zod.email({
       message: "validation.emailInvalid",
     }),

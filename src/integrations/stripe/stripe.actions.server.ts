@@ -1,4 +1,5 @@
 import { getRequestHeader } from "@tanstack/react-start/server"
+import type StripeType from "stripe"
 import { type z } from "zod"
 
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
@@ -25,8 +26,11 @@ import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { createCheckout } from "~/src/modules/checkout/use-cases/create-checkout.server"
 import { updateCheckoutDelivery } from "~/src/modules/checkout/use-cases/update-checkout-delivery.server"
 import { getActiveDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
+import { resolveCheckoutDiscount } from "~/src/modules/discount/discount.checkout.server"
+import { type Discount } from "~/src/modules/discount/discount.types"
 import { releaseInventoryByVariantLines, releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
 import { reserveInventoryByVariantLines, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
+import { sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 import { createPendingPayment, getPaymentContextByTransactionId, repointPayment } from "~/src/modules/payment/payment.accessors"
 import { getProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 
@@ -169,24 +173,49 @@ const resolveOrigin = (): string => {
 
 interface CreateSessionArgs {
   checkoutId: string
+  discount: Discount["applied"] | undefined
   email: string
   lines: OrderLine[]
   shippingCost: number
   userId: string | undefined
 }
 
-const createStripeSession = async ({ checkoutId, email, lines, shippingCost, userId }: CreateSessionArgs) => {
+/**
+ * Stripe has no negative line item, so a discount is expressed as a one-shot
+ * coupon created for this session alone. The amount has already been validated
+ * server side by resolveCheckoutDiscount.
+ */
+const toSessionDiscounts = async (
+  discount: Discount["applied"] | undefined,
+): Promise<StripeType.Checkout.SessionCreateParams.Discount[]> => {
+  if (discount === undefined) {
+    return []
+  }
+
+  const coupon = await stripe.coupons.create({
+    amount_off: discount.amountMinorUnits,
+    currency: STRIPE_CURRENCY,
+    duration: "once",
+    name: discount.code,
+  })
+
+  return [{ coupon: coupon.id }]
+}
+
+const createStripeSession = async ({ checkoutId, discount, email, lines, shippingCost, userId }: CreateSessionArgs) => {
   // Stripe substitutes the session id, which is how the confirmation page finds
-  // The order for a guest who has no session to scope a lookup by.
+  // An order placed by a guest who has no session to scope a lookup by.
   const returnUrl = `${resolveOrigin()}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`
   const metadata = {
     checkoutId,
+    discountCode: discount?.code ?? "",
+    discountTotal: String(discount?.amountMinorUnits ?? NO_COST),
     locale: getCurrentLocale(),
     userId: userId ?? "",
     ...toMetaItems(lines),
   }
 
-  const session = await stripe.checkout.sessions.create({
+  const params: StripeType.Checkout.SessionCreateParams = {
     customer_email: email,
     line_items: toLineItems(lines, shippingCost),
     metadata,
@@ -194,7 +223,13 @@ const createStripeSession = async ({ checkoutId, email, lines, shippingCost, use
     payment_intent_data: { metadata, receipt_email: email },
     return_url: returnUrl,
     ui_mode: "elements",
-  })
+  }
+  const discounts = await toSessionDiscounts(discount)
+  if (discounts.length > NO_COST) {
+    params.discounts = discounts
+  }
+
+  const session = await stripe.checkout.sessions.create(params)
 
   if (typeof session.client_secret !== "string") {
     throw new TypeError(CLIENT_SECRET_MISSING)
@@ -237,6 +272,7 @@ const swapCheckoutInventory = async (oldReservedLines: CheckoutReleaseLine[], it
 interface PersistCheckoutSessionUpdateArgs {
   checkoutId: string
   checkoutValues: CheckoutFormSchema
+  discount: Discount["applied"] | undefined
   email: string
   lines: OrderLine[]
   oldReservedLines: CheckoutReleaseLine[]
@@ -249,6 +285,7 @@ interface PersistCheckoutSessionUpdateArgs {
 const persistCheckoutSessionUpdate = async ({
   checkoutId,
   checkoutValues,
+  discount,
   email,
   lines,
   oldReservedLines,
@@ -258,9 +295,9 @@ const persistCheckoutSessionUpdate = async ({
   validatedItems,
 }: PersistCheckoutSessionUpdateArgs) => {
   try {
-    await updateCheckoutDelivery(checkoutId, checkoutValues)
+    await updateCheckoutDelivery(checkoutId, checkoutValues, discount?.discountId)
 
-    const result = await createStripeSession({ checkoutId, email, lines, shippingCost, userId })
+    const result = await createStripeSession({ checkoutId, discount, email, lines, shippingCost, userId })
 
     await repointPayment({
       amount: result.amount,
@@ -296,13 +333,24 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
   const validatedItems = await validateAndCalculateItems(data.items)
   const lines = toOrderLines(validatedItems)
   const shippingCost = await resolveShippingCost(data.checkoutValues.deliveryMethod)
+  const discount = await resolveCheckoutDiscount({
+    code: data.checkoutValues.discountCode,
+    email,
+    itemsSubtotal: sumOrderLineSubtotal(lines.map((line) => ({ price: line.priceCents, qty: line.qty }))),
+    shippingTotal: shippingCost,
+  })
 
   await reserveInventoryForItems(validatedItems)
 
   try {
-    const checkoutId = await createCheckout(data.checkoutValues, userId, email)
+    const checkoutId = await createCheckout({
+      checkoutValues: data.checkoutValues,
+      discountId: discount?.discountId,
+      userEmail: email,
+      userId,
+    })
 
-    const result = await createStripeSession({ checkoutId, email, lines, shippingCost, userId })
+    const result = await createStripeSession({ checkoutId, discount, email, lines, shippingCost, userId })
 
     await createPendingPayment({
       amount: result.amount,
@@ -343,10 +391,17 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   const validatedItems = await swapCheckoutInventory(oldReservedLines, data.items)
   const lines = toOrderLines(validatedItems)
   const shippingCost = await resolveShippingCost(data.checkoutValues.deliveryMethod)
+  const discount = await resolveCheckoutDiscount({
+    code: data.checkoutValues.discountCode,
+    email: data.checkoutValues.email,
+    itemsSubtotal: sumOrderLineSubtotal(lines.map((line) => ({ price: line.priceCents, qty: line.qty }))),
+    shippingTotal: shippingCost,
+  })
 
   return persistCheckoutSessionUpdate({
     checkoutId: context.checkoutId,
     checkoutValues: data.checkoutValues,
+    discount,
     email: data.checkoutValues.email,
     lines,
     oldReservedLines,

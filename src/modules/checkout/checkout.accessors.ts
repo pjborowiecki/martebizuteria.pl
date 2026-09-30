@@ -26,6 +26,7 @@ export const getCheckoutForFulfillment = (checkoutId: string) =>
           price: true,
         },
       },
+      discount: true,
     },
   })
 

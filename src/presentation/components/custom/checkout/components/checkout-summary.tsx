@@ -1,16 +1,20 @@
-import { type JSX } from "react"
+import { type JSX, useCallback, useState } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { useWatch } from "react-hook-form"
 import { useFormatter, useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
+import { type Discount } from "~/src/modules/discount/discount.types"
+import { computeOrderTotals } from "~/src/modules/order/order.totals"
 
 import { getProductImageUrl } from "~/src/lib/image"
 
+import { CheckoutDiscountField } from "~/src/presentation/components/custom/checkout/components/checkout-discount-field"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
 import { Image } from "~/src/presentation/components/custom/image"
 
@@ -18,17 +22,38 @@ export const CheckoutSummary = (): JSX.Element => {
   const t = useTranslations("pages.checkout")
   const format = useFormatter()
   const { items, cartTotal, itemCount } = useCartStore()
-  const { control } = useCheckoutForm()
+  const { control, setValue } = useCheckoutForm()
   const deliveryMethodId = useWatch({
     control,
     name: "deliveryMethod",
   })
+  const email = useWatch({
+    control,
+    name: "email",
+  })
+  const [applied, setApplied] = useState<Discount["applied"] | undefined>(undefined)
+  const handleDiscountApplied = useCallback(
+    (next: Discount["applied"]) => {
+      setApplied(next)
+      setValue("discountCode", next.code, { shouldDirty: true })
+    },
+    [setValue],
+  )
+  const handleDiscountCleared = useCallback(() => {
+    setApplied(undefined)
+    setValue("discountCode", "", { shouldDirty: true })
+  }, [setValue])
 
   const { data: deliveryMethods = [] } = useQuery(listDeliveryMethodsQuery())
   const selectedDeliveryMethod = deliveryMethods.find((m) => m.id === deliveryMethodId)
   const deliveryCostCents = selectedDeliveryMethod?.price ?? 0
   const subtotalCents = cartTotal()
-  const totalCents = subtotalCents + deliveryCostCents
+  const totals = computeOrderTotals({
+    discountTotal: applied?.amountMinorUnits,
+    itemsSubtotal: subtotalCents,
+    shippingTotal: deliveryCostCents,
+  })
+  const totalCents = totals.total
   const money = (cents: number) =>
     format.number(centsToDisplayAmount(cents), {
       currency: "PLN",
@@ -53,6 +78,12 @@ export const CheckoutSummary = (): JSX.Element => {
           </span>
           <span className="font-light tracking-wider text-foreground tabular-nums">{money(subtotalCents)}</span>
         </div>
+        {applied !== undefined && (
+          <div className="flex justify-between gap-4 text-emerald-600">
+            <span className="font-medium tracking-[0.18em] uppercase">{t("checkoutSummary.discount")}</span>
+            <span className="font-light tracking-wider tabular-nums">−{money(totals.discountTotal)}</span>
+          </div>
+        )}
         <div className="flex justify-between gap-4 text-muted-foreground">
           <span className="font-medium tracking-[0.18em] uppercase">{t("checkoutSummary.delivery")}</span>
           <span className="font-light tracking-wider tabular-nums">{deliveryLabel}</span>
@@ -61,6 +92,20 @@ export const CheckoutSummary = (): JSX.Element => {
           <span className="text-[14px] font-medium tracking-[0.18em] text-foreground uppercase">{t("checkoutSummary.total")}</span>
           <span className="text-[14px] font-medium tracking-wider text-foreground tabular-nums">{money(totalCents)}</span>
         </div>
+        <p className="text-right text-[11px] text-muted-foreground">
+          {t("checkoutSummary.vatIncluded", { rate: formatVatRatePercent(totals.vatBasisPoints) })} {money(totals.taxTotal)}
+        </p>
+      </div>
+
+      <div className="mt-6 border-t border-border/30 pt-6">
+        <CheckoutDiscountField
+          applied={applied}
+          email={email}
+          itemsSubtotal={subtotalCents}
+          onApplied={handleDiscountApplied}
+          onCleared={handleDiscountCleared}
+          shippingTotal={deliveryCostCents}
+        />
       </div>
 
       <div className="mt-8 space-y-6 border-t border-foreground/20 pt-8">
