@@ -2,10 +2,12 @@ import { Fragment, type JSX, useMemo } from "react"
 
 import { createFileRoute } from "@tanstack/react-router"
 import { ArrowRight, ShoppingBag } from "lucide-react"
-import { useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
+import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
@@ -23,6 +25,7 @@ import { ROUTES } from "~/src/routes"
 
 const CartPage = (): JSX.Element => {
   const t = useTranslations("pages.cart")
+  const locale = useLocale()
   const { items, cartTotal } = useCartStore()
   const { hasUnavailableItems, isChecking } = useCartAvailability()
   const checkoutDisabled = hasUnavailableItems || isChecking
@@ -34,12 +37,7 @@ const CartPage = (): JSX.Element => {
     [itemCount],
   )
 
-  const CENTS_IN_ZLOTY = 100
-  const total = cartTotal() / CENTS_IN_ZLOTY
-  const subtotal = new Intl.NumberFormat("pl-PL", {
-    currency: "PLN",
-    style: "currency",
-  }).format(total)
+  const subtotal = formatPrice(cartTotal(), STORE_CURRENCY_CODE, locale)
 
   if (items.length <= 0) {
     return <EmptyCart />

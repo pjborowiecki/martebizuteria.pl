@@ -6,10 +6,10 @@ import { ArrowRight, Heart, Package, Sparkles } from "lucide-react"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+import { formatRelativeFromNow } from "~/src/modules/_core/utils/datetime"
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
 import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import { formatCustomerAccountRelativeTime } from "~/src/modules/customer-account/customer-account.utils"
 import { getCustomerOverviewQuery } from "~/src/modules/customer-account/use-cases/get-customer-overview"
 
 import { Route as AccountRoute } from "~/src/routes/account"
@@ -92,7 +92,7 @@ const ActivityFeed = ({
                 </div>
                 <p className="min-w-0 flex-1 text-[13px] text-foreground/80">{t(`activityItems.${item.actionKey}`, item.params)}</p>
                 <span className="shrink-0 text-[11px] text-muted-foreground/50 tabular-nums">
-                  {formatCustomerAccountRelativeTime(item.createdAt, locale)}
+                  {formatRelativeFromNow(item.createdAt, locale)}
                 </span>
               </div>
             )
