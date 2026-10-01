@@ -12,6 +12,11 @@ import { ProductHeroInfo } from "~/src/presentation/components/custom/pages/prod
 import { storefrontProduct, storefrontVariant } from "./storefront-product-fixture"
 
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) => `cdn/${path ?? "placeholder"}` }))
+const wishlist = vi.hoisted(() => ({ saved: new Set<string>(), toggle: vi.fn<(productId: string) => void>() }))
+
+vi.mock("~/src/hooks/use-wishlist", () => ({
+  useWishlist: () => ({ isWishlisted: (productId: string) => wishlist.saved.has(productId), signedIn: true, toggle: wishlist.toggle }),
+}))
 vi.mock("~/src/modules/customer-activity/customer-activity.tracking", () => ({ trackCartItemAdded: vi.fn() }))
 
 class ObserverStub {
@@ -56,6 +61,8 @@ const renderInfo = (product: Product["storefront"], selectedVariant: Product["st
 describe("ProductHeroInfo", () => {
   beforeEach(() => {
     useCartStore.setState({ items: [] })
+    wishlist.saved.clear()
+    wishlist.toggle.mockClear()
     vi.stubGlobal("IntersectionObserver", ObserverStub)
     vi.stubGlobal("matchMedia", matchMediaStub)
   })
@@ -124,6 +131,19 @@ describe("ProductHeroInfo", () => {
     renderInfo(storefrontProduct())
 
     expect(screen.queryByText(/SKU:/u)).toBeNull()
+  })
+})
+
+describe("ProductHeroInfo purchase row", () => {
+  beforeEach(() => {
+    useCartStore.setState({ items: [] })
+    vi.stubGlobal("IntersectionObserver", ObserverStub)
+    vi.stubGlobal("matchMedia", matchMediaStub)
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
   })
 
   it("offers the quantity picker and the add button while the variant is in stock", () => {
@@ -201,5 +221,49 @@ describe("ProductHeroInfo", () => {
     renderInfo(storefrontProduct())
 
     expect(screen.queryByText("Gallery, specifications, and price update when you change the finish.")).toBeNull()
+  })
+
+  it("saves nothing to the cart without a sellable variant", () => {
+    const product = storefrontProduct()
+
+    renderInfo({ ...product, variants: [] }, undefined)
+
+    expect(screen.queryByRole("button", { name: "Add to Cart" })).toBeNull()
+  })
+})
+
+describe("ProductHeroInfo wishlist", () => {
+  beforeEach(() => {
+    wishlist.saved.clear()
+    wishlist.toggle.mockClear()
+    vi.stubGlobal("IntersectionObserver", ObserverStub)
+    vi.stubGlobal("matchMedia", matchMediaStub)
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it("offers to save the product for later", async () => {
+    const user = userEvent.setup()
+    renderInfo(storefrontProduct({ id: "product-a" }))
+    await user.click(screen.getByRole("button", { name: "Add to Wishlist" }))
+
+    expect(wishlist.toggle).toHaveBeenCalledWith("product-a")
+  })
+
+  it("labels the control from the wishlist the account already holds", () => {
+    wishlist.saved.add("product-a")
+    renderInfo(storefrontProduct({ id: "product-a" }))
+
+    expect(screen.getByRole("button", { name: "Remove from Wishlist" })).toBeInTheDocument()
+  })
+
+  it("still lets a sold-out product be saved", () => {
+    const soldOut = storefrontProduct({ id: "product-a" })
+    renderInfo({ ...soldOut, variants: [storefrontVariant({ quantityAvailable: 0 })] })
+
+    expect(screen.getByRole("button", { name: "Add to Wishlist" })).toBeInTheDocument()
   })
 })

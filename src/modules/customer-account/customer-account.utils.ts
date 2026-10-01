@@ -216,12 +216,14 @@ export const mapAuditLogToActivityItem = (
     readonly createdAt: Date
     readonly detail: string | null
     readonly metadata: string | null
+    readonly resourceId?: string | null | undefined
   },
   orderNumberByOrderId: ReadonlyMap<string, string> = new Map(),
 ): CustomerAccount["activityItem"] | undefined => {
   const metadata = parseActivityMetadata(row.metadata)
   const metadataOrderId = typeof metadata["orderId"] === "string" ? metadata["orderId"].trim() : ""
-  const orderId = metadataOrderId === "" ? undefined : orderNumberByOrderId.get(metadataOrderId)
+  const referencedOrderId = metadataOrderId === "" ? (row.resourceId ?? "") : metadataOrderId
+  const orderId = referencedOrderId === "" ? undefined : orderNumberByOrderId.get(referencedOrderId)
   switch (row.action) {
     case AUDIT_LOG_ACTION.AUTH_LOGIN: {
       return {

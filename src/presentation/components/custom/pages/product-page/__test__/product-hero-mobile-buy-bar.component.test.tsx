@@ -11,6 +11,9 @@ import { ProductHeroInfo } from "~/src/presentation/components/custom/pages/prod
 import { storefrontProduct, storefrontVariant } from "./storefront-product-fixture"
 
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) => `cdn/${path ?? "placeholder"}` }))
+vi.mock("~/src/hooks/use-wishlist", () => ({
+  useWishlist: () => ({ isWishlisted: () => false, signedIn: false, toggle: vi.fn() }),
+}))
 vi.mock("~/src/modules/customer-activity/customer-activity.tracking", () => ({ trackCartItemAdded: vi.fn() }))
 
 type VisibilityCallback = (entries: readonly { readonly isIntersecting: boolean }[]) => void

@@ -136,23 +136,16 @@
   "payment": {
     "eyebrow": "Wallet",
     "title": "Payment Methods",
-    "subtitle": "Manage your saved payment methods for faster checkout.",
+    "subtitle": "Cards you chose to save at checkout appear here.",
     "saved": "Saved Cards",
-    "addNew": "Add New",
-    "default": "Default",
     "expires": "Expires",
-    "makeDefault": "Make Default",
+    "expired": "Expired",
+    "remove": "Remove card",
+    "removed": "Card removed",
+    "removeError": "We could not remove that card. Please try again.",
+    "empty": "No saved cards yet. Choose to save your card when you pay and it will appear here.",
     "securityNote": "Security",
-    "empty": "No saved payment methods. Cards are entered securely at checkout.",
-    "securityDesc": "Your payment information is securely encrypted. We do not store full credit card numbers on our servers.",
-    "form": {
-      "cardNumber": "Card Number",
-      "name": "Name on Card",
-      "expiry": "Expiry",
-      "cvv": "CVV",
-      "save": "Save Card",
-      "cancel": "Cancel"
-    }
+    "securityDesc": "Cards are stored by Stripe, never on our servers. We only keep a reference so you can reuse them."
   },
   "wishlist": {
     "eyebrow": "Favorites",
@@ -160,7 +153,13 @@
     "subtitle": "You have {count} saved items in your wishlist.",
     "empty": "Your wishlist is empty",
     "browseProducts": "Browse Products",
-    "outOfStock": "Out of Stock"
+    "outOfStock": "Out of Stock",
+    "unavailable": "Unavailable",
+    "remove": "Remove from wishlist",
+    "addToCart": "Add to cart",
+    "addedAt": "Saved {date}",
+    "removed": "Removed from your wishlist",
+    "removeError": "We could not remove that item. Please try again."
   },
   "sessions": {
     "eyebrow": "Security",

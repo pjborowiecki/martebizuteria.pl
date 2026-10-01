@@ -10,6 +10,7 @@ import {
   type cartItemSchema,
 } from "~/src/integrations/stripe/stripe.actions.schemas"
 import { STRIPE_CURRENCY } from "~/src/integrations/stripe/stripe.constants"
+import { ensureStripeCustomer, getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
@@ -173,6 +174,7 @@ const resolveOrigin = (): string => {
 
 interface CreateSessionArgs {
   checkoutId: string
+  customerId: string | undefined
   discount: Discount["applied"] | undefined
   email: string
   lines: OrderLine[]
@@ -197,7 +199,7 @@ const toSessionDiscounts = async (
   return [{ coupon: coupon.id }]
 }
 
-const createStripeSession = async ({ checkoutId, discount, email, lines, shippingCost, userId }: CreateSessionArgs) => {
+const createStripeSession = async ({ checkoutId, customerId, discount, email, lines, shippingCost, userId }: CreateSessionArgs) => {
   const returnUrl = `${resolveOrigin()}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`
   const metadata = {
     checkoutId,
@@ -209,13 +211,15 @@ const createStripeSession = async ({ checkoutId, discount, email, lines, shippin
   }
 
   const params: StripeType.Checkout.SessionCreateParams = {
-    customer_email: email,
     line_items: toLineItems(lines, shippingCost),
     metadata,
     mode: "payment",
     payment_intent_data: { metadata, receipt_email: email },
     return_url: returnUrl,
     ui_mode: "elements",
+    ...(customerId === undefined
+      ? { customer_email: email }
+      : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
   }
   const discounts = await toSessionDiscounts(discount)
   if (discounts.length > NO_COST) {
@@ -265,6 +269,7 @@ const swapCheckoutInventory = async (oldReservedLines: CheckoutReleaseLine[], it
 interface PersistCheckoutSessionUpdateArgs {
   checkoutId: string
   checkoutValues: CheckoutFormSchema
+  customerId: string | undefined
   discount: Discount["applied"] | undefined
   email: string
   lines: OrderLine[]
@@ -278,6 +283,7 @@ interface PersistCheckoutSessionUpdateArgs {
 const persistCheckoutSessionUpdate = async ({
   checkoutId,
   checkoutValues,
+  customerId,
   discount,
   email,
   lines,
@@ -290,7 +296,15 @@ const persistCheckoutSessionUpdate = async ({
   try {
     await updateCheckoutDelivery(checkoutId, checkoutValues, discount?.discountId)
 
-    const result = await createStripeSession({ checkoutId, discount, email, lines, shippingCost, userId })
+    const result = await createStripeSession({
+      checkoutId,
+      customerId,
+      discount,
+      email,
+      lines,
+      shippingCost,
+      userId,
+    })
 
     await repointPayment({
       amount: result.amount,
@@ -322,6 +336,8 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
   const session = await getRequestSession()
   const userId = session?.user.id
   const { email } = data.checkoutValues
+  const customerId =
+    session?.user === undefined ? undefined : await ensureStripeCustomer({ email, name: session.user.name, userId: session.user.id })
 
   const validatedItems = await validateAndCalculateItems(data.items)
   const lines = toOrderLines(validatedItems)
@@ -343,7 +359,15 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
       userId,
     })
 
-    const result = await createStripeSession({ checkoutId, discount, email, lines, shippingCost, userId })
+    const result = await createStripeSession({
+      checkoutId,
+      customerId,
+      discount,
+      email,
+      lines,
+      shippingCost,
+      userId,
+    })
 
     await createPendingPayment({
       amount: result.amount,
@@ -391,9 +415,12 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
     shippingTotal: shippingCost,
   })
 
+  const customerId = context.userId === undefined ? undefined : await getStripeCustomerId(context.userId)
+
   return persistCheckoutSessionUpdate({
     checkoutId: context.checkoutId,
     checkoutValues: data.checkoutValues,
+    customerId,
     discount,
     email: data.checkoutValues.email,
     lines,

@@ -5,7 +5,16 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 const trackCartItemAdded = vi.hoisted(() => vi.fn<(input: { readonly variantTitle: string }) => void>())
 
+const wishlist = vi.hoisted(() => ({ toggle: vi.fn<(productId: string) => void>(), wishlistedIds: new Set<string>() }))
+
 vi.mock("~/src/modules/customer-activity/customer-activity.tracking", () => ({ trackCartItemAdded }))
+vi.mock("~/src/hooks/use-wishlist", () => ({
+  useWishlist: () => ({
+    isWishlisted: (productId: string) => wishlist.wishlistedIds.has(productId),
+    signedIn: true,
+    toggle: wishlist.toggle,
+  }),
+}))
 vi.mock("~/src/presentation/components/custom/image", () => ({
   Image: ({ alt, src }: { readonly alt: string; readonly src: string }) => <img alt={alt} src={src} />,
 }))
@@ -21,6 +30,7 @@ const BASE_PROPS = {
   name: "Aurora ring",
   params: { handle: "aurora-ring" },
   price: "PLN 249.00",
+  productId: "product-1",
   rawPrice: 24_900,
   slug: "aurora-ring",
   variantId: "variant-1",
@@ -36,6 +46,7 @@ const cartItems = () => useCartStore.getState().items
 
 beforeEach(() => {
   vi.clearAllMocks()
+  wishlist.wishlistedIds.clear()
   useCartStore.setState({ items: [] })
 })
 
@@ -106,32 +117,25 @@ describe("ProductCard wishlist toggle", () => {
     expect(screen.getByRole("button", { name: "Add to Wishlist" })).toBeInTheDocument()
   })
 
-  it("flips to the remove label once toggled", () => {
+  it("labels the control from the saved wishlist rather than from a local toggle", () => {
     renderCard()
     fireEvent.click(screen.getByRole("button", { name: "Add to Wishlist" }))
 
-    expect(screen.getByRole("button", { name: "Remove from Wishlist" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Add to Wishlist" })).toBeInTheDocument()
   })
 
-  it("tells the caller the wishlist changed", () => {
-    const onWishlistToggle = vi.fn<() => void>()
-    renderCard({ onWishlistToggle })
+  it("saves the product against the account", () => {
+    renderCard()
     fireEvent.click(screen.getByRole("button", { name: "Add to Wishlist" }))
 
-    expect(onWishlistToggle).toHaveBeenCalledTimes(1)
+    expect(wishlist.toggle).toHaveBeenCalledWith("product-1")
   })
 
   it("starts on the remove label for a product already wishlisted", () => {
-    renderCard({ wishlisted: true })
+    wishlist.wishlistedIds.add("product-1")
+    renderCard()
 
     expect(screen.getByRole("button", { name: "Remove from Wishlist" })).toBeInTheDocument()
-  })
-
-  it("toggles back off again", () => {
-    renderCard({ wishlisted: true })
-    fireEvent.click(screen.getByRole("button", { name: "Remove from Wishlist" }))
-
-    expect(screen.getByRole("button", { name: "Add to Wishlist" })).toBeInTheDocument()
   })
 })
 

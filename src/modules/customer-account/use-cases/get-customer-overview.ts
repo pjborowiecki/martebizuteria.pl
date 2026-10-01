@@ -8,6 +8,7 @@ import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
   getCustomerActivityAuditRows,
+  getCustomerOrderNumbers,
   getCustomerOrderRows,
   getOrderItemsForOrders,
 } from "~/src/modules/customer-account/customer-account.accessors.server"
@@ -24,6 +25,7 @@ import { getPublishedProductsByCollectionId } from "~/src/modules/product/produc
 import { LANDING_NEW_ARRIVALS_COLLECTION_HANDLE } from "~/src/modules/product/product.constants"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"
 import { getCustomerOrderStatsQuery, getUserById } from "~/src/modules/user/user.accessors"
+import { countWishlistItems } from "~/src/modules/wishlist/wishlist.accessors"
 
 import { getProductImageUrl } from "~/src/lib/image"
 
@@ -65,11 +67,16 @@ export const getCustomerOverview = createServerFn({ method: "GET" })
   .handler(async ({ context, data }): Promise<CustomerAccount["overview"] | undefined> => {
     const locale = data.locale ?? I18N.DEFAULT_LOCALE
     const userId = context.auth.user.id
-    const [orderStatsRows, orderRows, auditRows, userRow, collection] = await Promise.all([
-      getCustomerOrderStatsQuery([userId]),
+    const orderNumberRows = await getCustomerOrderNumbers(userId)
+    const [orderRows, orderStatsRows, auditRows, userRow, wishlistCount, collection] = await Promise.all([
       getCustomerOrderRows(userId, CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT),
-      getCustomerActivityAuditRows(userId),
+      getCustomerOrderStatsQuery([userId]),
+      getCustomerActivityAuditRows(
+        userId,
+        orderNumberRows.map((row) => row.id),
+      ),
       getUserById(userId),
+      countWishlistItems(userId),
       db.query.productCollection.findFirst({
         where: (collections, { eq: eqOp }) => eqOp(collections.handle, LANDING_NEW_ARRIVALS_COLLECTION_HANDLE),
       }),
@@ -90,7 +97,7 @@ export const getCustomerOverview = createServerFn({ method: "GET" })
       totalSpent: 0,
     }
 
-    const orderNumberByOrderId = new Map(orderRows.map((row) => [row.id, row.orderNumber]))
+    const orderNumberByOrderId = new Map(orderNumberRows.map((row) => [row.id, row.orderNumber]))
     const activity = auditRows
       .map((row) => mapAuditLogToActivityItem(row, orderNumberByOrderId))
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
@@ -107,7 +114,7 @@ export const getCustomerOverview = createServerFn({ method: "GET" })
         memberSinceYear: String(memberSince.getFullYear()),
         totalOrders: statsRow.orderCount,
         totalSpentMinorUnits: statsRow.totalSpent,
-        wishlistCount: 0,
+        wishlistCount,
       },
     }
   })

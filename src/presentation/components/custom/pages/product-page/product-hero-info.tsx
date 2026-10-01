@@ -14,6 +14,7 @@ import { resolveProductHeroDetailLine } from "~/src/presentation/components/cust
 import { ProductHeroDetails } from "~/src/presentation/components/custom/pages/product-page/product-hero-details"
 import { ProductMobileBuyBar } from "~/src/presentation/components/custom/pages/product-page/product-mobile-buy-bar"
 import { ProductVariantPicker } from "~/src/presentation/components/custom/pages/product-page/product-variant-picker"
+import { ProductWishlistButton } from "~/src/presentation/components/custom/pages/product-page/product-wishlist-button"
 import { QuantityPicker } from "~/src/presentation/components/custom/pages/product-page/quantity-picker"
 import { useProductHeroCart } from "~/src/presentation/components/custom/pages/product-page/use-product-hero-cart"
 
@@ -128,6 +129,8 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
           </Button>
         </div>
       )}
+
+      <ProductWishlistButton productId={product.id} />
 
       <Separator className="bg-border" />
 

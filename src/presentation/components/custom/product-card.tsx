@@ -10,6 +10,7 @@ import { trackCartItemAdded } from "~/src/modules/customer-activity/customer-act
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 
 import { useProductCardImageHover } from "~/src/hooks/use-product-card-image-hover"
+import { useWishlist } from "~/src/hooks/use-wishlist"
 
 import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
@@ -17,20 +18,20 @@ import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/c
 const useProductCardLogic = ({
   href,
   image,
-  initialWishlisted,
   name,
   onAddToCart,
-  onWishlistToggle,
   price,
+  productId,
   rawPrice,
   slug,
   variantId,
   variantTitle,
 }: ProductCardLogicInput) => {
-  const [wishlisted, setWishlisted] = useState(initialWishlisted)
   const [justAdded, setJustAdded] = useState(false)
   const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(globalThis.undefined)
   const { addItem } = useCartStore()
+  const { isWishlisted, toggle: toggleWishlist } = useWishlist()
+  const wishlisted = isWishlisted(productId)
   const stop = useCallback((event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
@@ -39,12 +40,9 @@ const useProductCardLogic = ({
   const handleWishlist = useCallback(
     (event: MouseEvent) => {
       stop(event)
-      setWishlisted((currentWishlisted) => !currentWishlisted)
-      if (onWishlistToggle !== undefined) {
-        onWishlistToggle()
-      }
+      toggleWishlist(productId)
     },
-    [stop, onWishlistToggle],
+    [productId, stop, toggleWishlist],
   )
 
   const handleAddToCart = useCallback(
@@ -125,16 +123,15 @@ export const ProductCard = ({
   image,
   name,
   onAddToCart,
-  onWishlistToggle,
   parallax = false,
   priority = false,
   price,
+  productId,
   rawPrice,
   sizes = "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw",
   slug,
   variantId,
   variantTitle,
-  wishlisted: initialWishlisted = false,
 }: Readonly<ProductCardProps>): JSX.Element => {
   const t = useTranslations("components.custom.productCard")
   const router = useRouter()
@@ -144,11 +141,10 @@ export const ProductCard = ({
   const { handleAddToCart, handleShare, handleWishlist, justAdded, wishlisted } = useProductCardLogic({
     href: productHref,
     image,
-    initialWishlisted,
     name,
     onAddToCart,
-    onWishlistToggle,
     price,
+    productId,
     rawPrice,
     slug,
     variantId,
@@ -236,10 +232,9 @@ const DEFAULT_ADD_QUANTITY = 1
 
 type ProductCardLogicInput = Pick<
   ProductCardProps,
-  "image" | "name" | "onAddToCart" | "onWishlistToggle" | "price" | "rawPrice" | "slug" | "variantId" | "variantTitle"
+  "image" | "name" | "onAddToCart" | "price" | "productId" | "rawPrice" | "slug" | "variantId" | "variantTitle"
 > & {
   readonly href: string
-  readonly initialWishlisted: boolean
 }
 
 interface ProductCardProps {
@@ -252,14 +247,13 @@ interface ProductCardProps {
   readonly image: string
   readonly name: string
   readonly onAddToCart?: (() => void) | undefined
-  readonly onWishlistToggle?: (() => void) | undefined
   readonly parallax?: boolean | undefined
   readonly priority?: boolean | undefined
   readonly price?: string | undefined
+  readonly productId: string
   readonly rawPrice?: number | undefined
   readonly sizes?: string | undefined
   readonly slug?: string | undefined
   readonly variantId?: string | undefined
   readonly variantTitle?: string | undefined
-  readonly wishlisted?: boolean | undefined
 }

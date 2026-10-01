@@ -45,6 +45,7 @@ const RelatedProductCard = ({
       params={params}
       parallax
       price={price}
+      productId={product.id}
       rawPrice={variantPrice}
       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
       slug={product.handle}

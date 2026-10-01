@@ -1,18 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const mocked = vi.hoisted(() => ({
-  checkoutSessionsCreate: vi.fn<(params: { metadata: Record<string, string> }) => Promise<unknown>>(),
+  checkoutSessionsCreate:
+    vi.fn<(params: { metadata: Record<string, string>; payment_intent_data?: { setup_future_usage?: string } }) => Promise<unknown>>(),
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
   couponsCreate: vi.fn<(params: object) => Promise<{ id: string }>>(),
   createCheckout:
     vi.fn<(input: { checkoutValues: { email: string }; discountId?: string; userEmail: string; userId?: string }) => Promise<string>>(),
   createPendingPayment: vi.fn(),
+  ensureStripeCustomer: vi.fn<() => Promise<string>>(),
   getActiveDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getProductsWithInventoryByHandles: vi.fn(),
   getRequestHeader: vi.fn(),
   getRequestSession: vi.fn(),
+  getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
   releaseInventoryByVariantLines: vi.fn(),
   releaseInventoryForItems: vi.fn(),
   repointPayment: vi.fn(),
@@ -39,6 +42,10 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
     },
     coupons: { create: mocked.couponsCreate },
   },
+}))
+vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
+  ensureStripeCustomer: mocked.ensureStripeCustomer,
+  getStripeCustomerId: mocked.getStripeCustomerId,
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ createCheckout: mocked.createCheckout }))
@@ -155,7 +162,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, "error").mockImplementation(() => {})
   mocked.getRequestHeader.mockImplementation((name: string) => (name === "origin" ? "https://store.test" : undefined))
-  mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1" } })
+  signInCustomerWithStripeAccount()
   mocked.releaseInventoryByVariantLines.mockResolvedValue(undefined)
   mocked.releaseInventoryForItems.mockResolvedValue(undefined)
   mocked.reserveInventoryByVariantLines.mockResolvedValue(undefined)
@@ -197,6 +204,12 @@ const stubCatalogueForCart = (cartItems: ReturnType<typeof multiItemCart>): void
   )
 }
 
+const signInCustomerWithStripeAccount = (): void => {
+  mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1", name: "Anna Kowalska" } })
+  mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
+  mocked.getStripeCustomerId.mockResolvedValue("cus_1")
+}
+
 const createdSessionMetadata = (): Record<string, string> => mocked.checkoutSessionsCreate.mock.lastCall?.[0].metadata ?? {}
 
 describe("handleCreateCheckoutSession", () => {
@@ -213,7 +226,7 @@ describe("handleCreateCheckoutSession", () => {
 
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        customer_email: "anna@example.com",
+        customer: "cus_1",
         line_items: [
           {
             price_data: { currency: "pln", product_data: { name: "Bransoletka Aurora — Rozmiar M" }, unit_amount: 24_900 },
@@ -514,6 +527,63 @@ describe("handleUpdateCheckoutSession authorization", () => {
   })
 })
 
+describe("checkout session saved cards", () => {
+  it("attaches the signed-in customer and lets them choose to save the card", async () => {
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.ensureStripeCustomer).toHaveBeenCalledWith({
+      email: "anna@example.com",
+      name: "Anna Kowalska",
+      userId: "user-1",
+    })
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer: "cus_1",
+        saved_payment_method_options: { payment_method_save: "enabled" },
+      }),
+    )
+  })
+
+  it("never saves a card without the buyer asking for it", async () => {
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0].payment_intent_data).not.toHaveProperty("setup_future_usage")
+  })
+
+  it("offers a guest no card storage, and creates no customer for them", async () => {
+    mocked.getRequestSession.mockResolvedValue(undefined)
+
+    await handleCreateCheckoutSession(createInput())
+
+    const params = mocked.checkoutSessionsCreate.mock.calls[0]?.[0]
+
+    expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
+    expect(params).toMatchObject({ customer_email: "anna@example.com" })
+    expect(params).not.toHaveProperty("customer")
+    expect(params).not.toHaveProperty("saved_payment_method_options")
+  })
+
+  it("keeps the card offer on the replacement session when the checkout is edited", async () => {
+    await handleUpdateCheckoutSession(updateInput())
+
+    expect(mocked.getStripeCustomerId).toHaveBeenCalledWith("user-1")
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ customer: "cus_1", saved_payment_method_options: { payment_method_save: "enabled" } }),
+    )
+  })
+
+  it("leaves an owner who never reached Stripe without a customer on the session", async () => {
+    mocked.getStripeCustomerId.mockResolvedValue(undefined)
+
+    await handleUpdateCheckoutSession(updateInput())
+
+    const params = mocked.checkoutSessionsCreate.mock.calls[0]?.[0]
+
+    expect(params).toMatchObject({ customer_email: "anna@example.com" })
+    expect(params).not.toHaveProperty("saved_payment_method_options")
+  })
+})
+
 describe("checkout session discounts", () => {
   it("expresses an applied discount as a one-shot Stripe coupon", async () => {
     mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
@@ -552,7 +622,7 @@ describe("handleUpdateCheckoutSession", () => {
     await handleUpdateCheckoutSession(input)
 
     expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).toMatchObject({
-      customer_email: "updated@example.com",
+      customer: "cus_1",
       payment_intent_data: { receipt_email: "updated@example.com" },
     })
     expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", input.checkoutValues, undefined)

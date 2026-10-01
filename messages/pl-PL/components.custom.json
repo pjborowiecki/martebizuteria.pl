@@ -95,7 +95,14 @@
     "addToWishlist": "Dodaj do Ulubionych",
     "removeFromWishlist": "Usuń z Ulubionych",
     "share": "Udostępnij",
-    "quickView": "Szybki Podgląd"
+    "quickView": "Szybki Podgląd",
+    "wishlistAdded": "Zapisano na liście życzeń",
+    "wishlistRemoved": "Usunięto z listy życzeń",
+    "wishlistError": "Nie udało się zaktualizować listy życzeń. Spróbuj ponownie.",
+    "wishlistFull": "Twoja lista życzeń jest pełna (maksymalnie {limit} produktów). Usuń jeden, aby dodać kolejny.",
+    "wishlistSignInTitle": "Zaloguj się, aby zapisywać",
+    "wishlistSignInDescription": "Lista życzeń jest powiązana z Twoim kontem.",
+    "wishlistSignInAction": "Zaloguj się"
   },
   "authLayout": {
     "imageAlt": "Edytorialna kompozycja biżuterii na kamiennej fakturze",

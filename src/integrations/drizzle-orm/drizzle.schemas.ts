@@ -11,6 +11,7 @@ export { twoFactor, twoFactorRelations } from "~/src/modules/two-factor/two-fact
 export { user, userRelations } from "~/src/modules/user/user.schema"
 
 export { verification } from "~/src/modules/verification/verification.schema"
+export { wishlistItem, wishlistItemRelations } from "~/src/modules/wishlist/wishlist.schema"
 
 export { address, addressRelations } from "~/src/modules/address/address.schema"
 
