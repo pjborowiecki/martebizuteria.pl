@@ -147,7 +147,12 @@
     "description": "Bądź na bieżąco z nowymi produktami i odbieraj prywatne kody zniżkowe dostępne tylko dla subskrybentów.",
     "placeholder": "Adres e-mail",
     "cta": "Dołącz do nas",
-    "note": "Zapisując się wyrażasz zgodę na przetwarzanie danych w celach marketingowych, zgodnie z Regulaminem i Polityką Prywatności."
+    "note": "Zapisując się wyrażasz zgodę na przetwarzanie danych w celach marketingowych, zgodnie z Regulaminem i Polityką Prywatności.",
+    "success": "Już prawie — sprawdź skrzynkę i potwierdź subskrypcję.",
+    "alreadySubscribed": "Jesteś już na liście.",
+    "invalidEmail": "Podaj prawidłowy adres e-mail.",
+    "error": "Nie udało się teraz zapisać. Spróbuj ponownie.",
+    "submitting": "Zapisujemy..."
   },
   "shopCategoriesSection": {
     "eyebrow": "Przeglądaj według typu",

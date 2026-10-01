@@ -1,0 +1,30 @@
+{
+  "confirm": {
+    "metadata": {
+      "title": "Confirm subscription",
+      "description": "Confirm your M'Arte newsletter subscription."
+    },
+    "pendingTitle": "Confirming your subscription",
+    "okTitle": "You are on the list",
+    "okDescription": "Thank you for confirming {email}. Letters from the atelier will arrive from time to time, never often.",
+    "alreadyTitle": "Already confirmed",
+    "alreadyDescription": "{email} is already on the list, so there is nothing more to do.",
+    "invalidTitle": "This link is no longer valid",
+    "invalidDescription": "The link may have been used already or replaced by a newer one. Subscribe again from the home page and we will send a fresh link.",
+    "continueShopping": "Return to store"
+  },
+  "unsubscribe": {
+    "metadata": {
+      "title": "Unsubscribe",
+      "description": "Leave the M'Arte newsletter."
+    },
+    "pendingTitle": "Removing you from the list",
+    "okTitle": "You have left the list",
+    "okDescription": "{email} will receive no further letters. You are welcome back whenever you like.",
+    "alreadyTitle": "Already unsubscribed",
+    "alreadyDescription": "{email} had already left the list, so nothing changed.",
+    "invalidTitle": "This link is no longer valid",
+    "invalidDescription": "We could not match this link to a subscription. If you keep receiving letters, reply to one and we will remove you by hand.",
+    "continueShopping": "Return to store"
+  }
+}

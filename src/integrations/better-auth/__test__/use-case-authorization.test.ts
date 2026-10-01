@@ -14,6 +14,11 @@ const PUBLIC_USE_CASES = new Set([
   // Reached straight after payment by guests, who have no session to scope it
   // By; the Stripe checkout session id is the capability instead.
   "order/use-cases/get-order-confirmation.ts",
+  // Followed from an email client with no session; the emailed token is the
+  // Proof of consent, and leaving the list must not be harder than joining it.
+  "newsletter/use-cases/confirm-newsletter-subscription.ts",
+  "newsletter/use-cases/subscribe-to-newsletter.ts",
+  "newsletter/use-cases/unsubscribe-from-newsletter.ts",
   "product-category/use-cases/get-categories.ts",
   "product-category/use-cases/get-storefront-category.ts",
   "product-collection/use-cases/get-collections.ts",

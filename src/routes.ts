@@ -55,6 +55,8 @@ export const ROUTES = {
   EXCHANGES_AND_RETURNS: "/exchanges-and-returns",
   FAQ: "/faq",
   HOME: "/",
+  NEWSLETTER_CONFIRM: "/newsletter/confirm",
+  NEWSLETTER_UNSUBSCRIBE: "/newsletter/unsubscribe",
   PRIVACY_POLICY: "/privacy-policy",
   PRODUCT: "/products/$handle",
   PRODUCTS: "/products",

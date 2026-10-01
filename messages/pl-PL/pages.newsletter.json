@@ -1,0 +1,30 @@
+{
+  "confirm": {
+    "metadata": {
+      "title": "Potwierdź subskrypcję",
+      "description": "Potwierdź subskrypcję newslettera M'Arte."
+    },
+    "pendingTitle": "Potwierdzamy subskrypcję",
+    "okTitle": "Jesteś na liście",
+    "okDescription": "Dziękujemy za potwierdzenie {email}. Listy z pracowni będą przychodzić od czasu do czasu, nigdy za często.",
+    "alreadyTitle": "Już potwierdzone",
+    "alreadyDescription": "{email} jest już na liście, więc nie trzeba nic więcej robić.",
+    "invalidTitle": "Ten link jest już nieaktualny",
+    "invalidDescription": "Link mógł zostać już użyty lub zastąpiony nowszym. Zapisz się ponownie na stronie głównej, a wyślemy świeży link.",
+    "continueShopping": "Wróć do sklepu"
+  },
+  "unsubscribe": {
+    "metadata": {
+      "title": "Rezygnacja",
+      "description": "Zrezygnuj z newslettera M'Arte."
+    },
+    "pendingTitle": "Usuwamy Cię z listy",
+    "okTitle": "Zrezygnowano z subskrypcji",
+    "okDescription": "{email} nie otrzyma już żadnych listów. Zawsze możesz wrócić.",
+    "alreadyTitle": "Już zrezygnowano",
+    "alreadyDescription": "{email} nie było już na liście, więc nic się nie zmieniło.",
+    "invalidTitle": "Ten link jest już nieaktualny",
+    "invalidDescription": "Nie udało się dopasować tego linku do subskrypcji. Jeśli nadal otrzymujesz listy, odpowiedz na któryś, a usuniemy Cię ręcznie.",
+    "continueShopping": "Wróć do sklepu"
+  }
+}

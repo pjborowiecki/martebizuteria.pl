@@ -51,6 +51,8 @@ import { Route as StorefrontCategoriesIndexRouteImport } from './routes/_storefr
 import { Route as StorefrontCategoriesHandleRouteImport } from './routes/_storefront.categories.$handle'
 import { Route as StorefrontCollectionsIndexRouteImport } from './routes/_storefront.collections.index'
 import { Route as StorefrontCollectionsHandleRouteImport } from './routes/_storefront.collections.$handle'
+import { Route as StorefrontNewsletterConfirmRouteImport } from './routes/_storefront.newsletter.confirm'
+import { Route as StorefrontNewsletterUnsubscribeRouteImport } from './routes/_storefront.newsletter.unsubscribe'
 import { Route as StorefrontProductsIndexRouteImport } from './routes/_storefront.products.index'
 import { Route as StorefrontProductsHandleRouteImport } from './routes/_storefront.products.$handle'
 import { Route as AccountOrdersIndexRouteImport } from './routes/account.orders.index'
@@ -288,6 +290,18 @@ const StorefrontCollectionsHandleRoute =
     path: '/collections/$handle',
     getParentRoute: () => StorefrontRoute,
   } as any)
+const StorefrontNewsletterConfirmRoute =
+  StorefrontNewsletterConfirmRouteImport.update({
+    id: '/newsletter/confirm',
+    path: '/newsletter/confirm',
+    getParentRoute: () => StorefrontRoute,
+  } as any)
+const StorefrontNewsletterUnsubscribeRoute =
+  StorefrontNewsletterUnsubscribeRouteImport.update({
+    id: '/newsletter/unsubscribe',
+    path: '/newsletter/unsubscribe',
+    getParentRoute: () => StorefrontRoute,
+  } as any)
 const StorefrontProductsIndexRoute = StorefrontProductsIndexRouteImport.update({
   id: '/products/',
   path: '/products/',
@@ -440,6 +454,8 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof StorefrontBlogSlugRoute
   '/categories/$handle': typeof StorefrontCategoriesHandleRoute
   '/collections/$handle': typeof StorefrontCollectionsHandleRoute
+  '/newsletter/confirm': typeof StorefrontNewsletterConfirmRoute
+  '/newsletter/unsubscribe': typeof StorefrontNewsletterUnsubscribeRoute
   '/products/$handle': typeof StorefrontProductsHandleRoute
   '/account/orders/$id': typeof AccountOrdersIdRoute
   '/admin/catalog/attributes': typeof AdminCatalogAttributesRouteWithChildren
@@ -499,6 +515,8 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof StorefrontBlogSlugRoute
   '/categories/$handle': typeof StorefrontCategoriesHandleRoute
   '/collections/$handle': typeof StorefrontCollectionsHandleRoute
+  '/newsletter/confirm': typeof StorefrontNewsletterConfirmRoute
+  '/newsletter/unsubscribe': typeof StorefrontNewsletterUnsubscribeRoute
   '/products/$handle': typeof StorefrontProductsHandleRoute
   '/account/orders/$id': typeof AccountOrdersIdRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
@@ -561,6 +579,8 @@ export interface FileRoutesById {
   '/_storefront/blog/$slug': typeof StorefrontBlogSlugRoute
   '/_storefront/categories/$handle': typeof StorefrontCategoriesHandleRoute
   '/_storefront/collections/$handle': typeof StorefrontCollectionsHandleRoute
+  '/_storefront/newsletter/confirm': typeof StorefrontNewsletterConfirmRoute
+  '/_storefront/newsletter/unsubscribe': typeof StorefrontNewsletterUnsubscribeRoute
   '/_storefront/products/$handle': typeof StorefrontProductsHandleRoute
   '/account/orders/$id': typeof AccountOrdersIdRoute
   '/admin/catalog/attributes': typeof AdminCatalogAttributesRouteWithChildren
@@ -627,6 +647,8 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/categories/$handle'
     | '/collections/$handle'
+    | '/newsletter/confirm'
+    | '/newsletter/unsubscribe'
     | '/products/$handle'
     | '/account/orders/$id'
     | '/admin/catalog/attributes'
@@ -686,6 +708,8 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/categories/$handle'
     | '/collections/$handle'
+    | '/newsletter/confirm'
+    | '/newsletter/unsubscribe'
     | '/products/$handle'
     | '/account/orders/$id'
     | '/admin/customers/$id'
@@ -747,6 +771,8 @@ export interface FileRouteTypes {
     | '/_storefront/blog/$slug'
     | '/_storefront/categories/$handle'
     | '/_storefront/collections/$handle'
+    | '/_storefront/newsletter/confirm'
+    | '/_storefront/newsletter/unsubscribe'
     | '/_storefront/products/$handle'
     | '/account/orders/$id'
     | '/admin/catalog/attributes'
@@ -1081,6 +1107,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StorefrontCollectionsHandleRouteImport
       parentRoute: typeof StorefrontRoute
     }
+    '/_storefront/newsletter/confirm': {
+      id: '/_storefront/newsletter/confirm'
+      path: '/newsletter/confirm'
+      fullPath: '/newsletter/confirm'
+      preLoaderRoute: typeof StorefrontNewsletterConfirmRouteImport
+      parentRoute: typeof StorefrontRoute
+    }
+    '/_storefront/newsletter/unsubscribe': {
+      id: '/_storefront/newsletter/unsubscribe'
+      path: '/newsletter/unsubscribe'
+      fullPath: '/newsletter/unsubscribe'
+      preLoaderRoute: typeof StorefrontNewsletterUnsubscribeRouteImport
+      parentRoute: typeof StorefrontRoute
+    }
     '/_storefront/products/': {
       id: '/_storefront/products/'
       path: '/products'
@@ -1242,6 +1282,8 @@ interface StorefrontRouteChildren {
   StorefrontBlogSlugRoute: typeof StorefrontBlogSlugRoute
   StorefrontCategoriesHandleRoute: typeof StorefrontCategoriesHandleRoute
   StorefrontCollectionsHandleRoute: typeof StorefrontCollectionsHandleRoute
+  StorefrontNewsletterConfirmRoute: typeof StorefrontNewsletterConfirmRoute
+  StorefrontNewsletterUnsubscribeRoute: typeof StorefrontNewsletterUnsubscribeRoute
   StorefrontProductsHandleRoute: typeof StorefrontProductsHandleRoute
   StorefrontBlogIndexRoute: typeof StorefrontBlogIndexRoute
   StorefrontCategoriesIndexRoute: typeof StorefrontCategoriesIndexRoute
@@ -1260,6 +1302,8 @@ const StorefrontRouteChildren: StorefrontRouteChildren = {
   StorefrontBlogSlugRoute: StorefrontBlogSlugRoute,
   StorefrontCategoriesHandleRoute: StorefrontCategoriesHandleRoute,
   StorefrontCollectionsHandleRoute: StorefrontCollectionsHandleRoute,
+  StorefrontNewsletterConfirmRoute: StorefrontNewsletterConfirmRoute,
+  StorefrontNewsletterUnsubscribeRoute: StorefrontNewsletterUnsubscribeRoute,
   StorefrontProductsHandleRoute: StorefrontProductsHandleRoute,
   StorefrontBlogIndexRoute: StorefrontBlogIndexRoute,
   StorefrontCategoriesIndexRoute: StorefrontCategoriesIndexRoute,
