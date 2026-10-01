@@ -46,12 +46,14 @@ export const NEWSLETTER_QUERY_KEYS = {
     PAGE: ["admin", "newsletter", "page"] as const,
     STATS: ["admin", "newsletter", "stats"] as const,
   },
+  OWN_SUBSCRIPTION: ["newsletter", "ownSubscription"] as const,
 } as const
 
 export const NEWSLETTER_MUTATION_KEYS = {
   CONFIRM: ["newsletter", "confirmSubscription"] as const,
   SUBSCRIBE: ["newsletter", "subscribe"] as const,
   UNSUBSCRIBE: ["newsletter", "unsubscribe"] as const,
+  UNSUBSCRIBE_OWN: ["newsletter", "unsubscribeOwn"] as const,
 } as const
 
 export const NEWSLETTER_STATUS_BADGE_STYLES: Record<NewsletterStatus, NewsletterBadgeStyle> = {

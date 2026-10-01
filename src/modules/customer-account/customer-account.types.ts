@@ -110,6 +110,8 @@ interface CustomerAccountOverview {
 interface CustomerAccountProfile {
   readonly createdAt: Date
   readonly email: string
+  readonly emailVerified: boolean
+  readonly hasPassword: boolean
   readonly name: string
   readonly phone?: string | undefined
   readonly timezone?: string | undefined

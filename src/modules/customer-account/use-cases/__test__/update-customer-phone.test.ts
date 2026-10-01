@@ -80,10 +80,16 @@ describe("updateCustomerPhone", () => {
     expect(whereConditions.mock.calls[0]?.[0]).toBeInstanceOf(SQL)
   })
 
-  it("keeps the whitespace the customer typed, since only the length is constrained", async () => {
+  it("stores the number without the padding the customer typed around it", async () => {
     await updateCustomerPhone({ data: { phone: "  +48 600 123 456  " } })
 
-    expect(setValues).toHaveBeenCalledWith({ phone: "  +48 600 123 456  " })
+    expect(setValues).toHaveBeenCalledWith({ phone: "+48 600 123 456" })
+  })
+
+  it("clears the column for a number that was only whitespace", async () => {
+    await updateCustomerPhone({ data: { phone: "   " } })
+
+    expect(setValues.mock.calls[0]?.[0]["phone"]).toBeInstanceOf(SQL)
   })
 
   it("rejects a phone number longer than the column allows", async () => {

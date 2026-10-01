@@ -34,6 +34,8 @@ const nth = (elements: readonly HTMLElement[], index: number): HTMLElement => {
 const profile: CustomerAccount["profile"] = {
   createdAt: new Date("2024-01-10T00:00:00.000Z"),
   email: "anna@example.com",
+  emailVerified: true,
+  hasPassword: true,
   name: "Anna Kowalska",
   phone: "+48600123456",
 }
@@ -49,13 +51,6 @@ afterEach(() => {
 })
 
 describe("PersonalInfoSection layout", () => {
-  it("reports the failure copy instead of the form when the profile could not be read", () => {
-    renderWithProviders(<PersonalInfoSection profile={undefined} />)
-
-    expect(screen.getByText("Could not update profile.")).toBeInTheDocument()
-    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument()
-  })
-
   it("heads the section with the translated personal information title", () => {
     renderWithProviders(<PersonalInfoSection profile={profile} />)
 
@@ -78,12 +73,31 @@ describe("PersonalInfoSection layout", () => {
     expect(screen.getByText("Phone Number")).toBeInTheDocument()
   })
 
-  it("starts with every field read only and no way to edit the email", () => {
+  it("starts with every field read only and offers to edit the name and the phone", () => {
     renderWithProviders(<PersonalInfoSection profile={profile} />)
 
     expect(screen.getByDisplayValue("Anna Kowalska")).toHaveAttribute("readonly")
     expect(screen.getByDisplayValue("anna@example.com")).toHaveAttribute("readonly")
-    expect(screen.getAllByRole("button")).toHaveLength(2)
+    expect(screen.getByRole("button", { name: "Edit Full name" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Edit Phone Number" })).toBeInTheDocument()
+  })
+
+  it("offers to change the email address rather than leaving it read only forever", () => {
+    renderWithProviders(<PersonalInfoSection profile={profile} />)
+
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument()
+  })
+
+  it("says when the address on file has not been confirmed", () => {
+    renderWithProviders(<PersonalInfoSection profile={{ ...profile, emailVerified: false }} />)
+
+    expect(screen.getByText("This address is not confirmed yet.")).toBeInTheDocument()
+  })
+
+  it("stays quiet about verification once the address is confirmed", () => {
+    renderWithProviders(<PersonalInfoSection profile={profile} />)
+
+    expect(screen.queryByText("This address is not confirmed yet.")).toBeNull()
   })
 
   it("leaves a profile without a phone number empty", () => {
@@ -98,23 +112,24 @@ describe("PersonalInfoSection editing", () => {
   it("opens one field at a time for editing", async () => {
     renderWithProviders(<PersonalInfoSection profile={profile} />)
 
-    await userEvent.click(nth(screen.getAllByRole("button"), 0))
+    await userEvent.click(screen.getByRole("button", { name: "Edit Full name" }))
 
     expect(screen.getByDisplayValue("Anna Kowalska")).not.toHaveAttribute("readonly")
     expect(screen.getByDisplayValue("+48600123456")).toHaveAttribute("readonly")
-    expect(screen.getAllByRole("button")).toHaveLength(3)
+    expect(screen.getByRole("button", { name: "Save Full name" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Edit Phone Number" })).toBeInTheDocument()
   })
 
   it("restores the stored value when the shopper cancels", async () => {
     renderWithProviders(<PersonalInfoSection profile={profile} />)
-    await userEvent.click(nth(screen.getAllByRole("button"), 0))
+    await userEvent.click(screen.getByRole("button", { name: "Edit Full name" }))
     await userEvent.clear(screen.getByDisplayValue("Anna Kowalska"))
     await userEvent.type(nth(screen.getAllByRole("textbox"), 0), "Anna Nowak")
 
-    await userEvent.click(nth(screen.getAllByRole("button"), 1))
+    await userEvent.click(screen.getByRole("button", { name: "Cancel editing Full name" }))
 
     expect(screen.getByDisplayValue("Anna Kowalska")).toBeInTheDocument()
-    expect(screen.getAllByRole("button")).toHaveLength(2)
+    expect(screen.getByRole("button", { name: "Edit Full name" })).toBeInTheDocument()
     expect(updateUser).not.toHaveBeenCalled()
   })
 
@@ -166,11 +181,11 @@ describe("PersonalInfoSection phone", () => {
   it("saves the phone number through its own mutation and refreshes the profile", async () => {
     const { queryClient } = renderWithProviders(<PersonalInfoSection profile={profile} />)
     const invalidate = vi.spyOn(queryClient, "invalidateQueries")
-    await userEvent.click(nth(screen.getAllByRole("button"), 1))
+    await userEvent.click(screen.getByRole("button", { name: "Edit Phone Number" }))
     await userEvent.clear(screen.getByDisplayValue("+48600123456"))
     await userEvent.type(nth(screen.getAllByRole("textbox"), 2), "+48600999888")
 
-    await userEvent.click(nth(screen.getAllByRole("button"), 1))
+    await userEvent.click(screen.getByRole("button", { name: "Save Phone Number" }))
 
     await waitFor(() => {
       expect(updatePhone.mock.calls[0]?.[0]).toStrictEqual({ phone: "+48600999888" })
@@ -181,10 +196,10 @@ describe("PersonalInfoSection phone", () => {
 
   it("keeps an emptied phone number allowed by the schema", async () => {
     renderWithProviders(<PersonalInfoSection profile={profile} />)
-    await userEvent.click(nth(screen.getAllByRole("button"), 1))
+    await userEvent.click(screen.getByRole("button", { name: "Edit Phone Number" }))
     await userEvent.clear(screen.getByDisplayValue("+48600123456"))
 
-    await userEvent.click(nth(screen.getAllByRole("button"), 1))
+    await userEvent.click(screen.getByRole("button", { name: "Save Phone Number" }))
 
     await waitFor(() => {
       expect(updatePhone.mock.calls[0]?.[0]).toStrictEqual({ phone: "" })
@@ -196,9 +211,9 @@ describe("PersonalInfoSection phone failures", () => {
   it("reports a phone number the server refused and keeps the field open", async () => {
     updatePhone.mockRejectedValue(new Error("phone rejected"))
     renderWithProviders(<PersonalInfoSection profile={profile} />)
-    await userEvent.click(nth(screen.getAllByRole("button"), 1))
+    await userEvent.click(screen.getByRole("button", { name: "Edit Phone Number" }))
 
-    await userEvent.click(nth(screen.getAllByRole("button"), 1))
+    await userEvent.click(screen.getByRole("button", { name: "Save Phone Number" }))
 
     await waitFor(() => {
       expect(toastError).toHaveBeenCalledWith("Could not update profile.")

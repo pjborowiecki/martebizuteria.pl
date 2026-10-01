@@ -19,20 +19,18 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({ authClient: { updateUser: mocks.updateUser } }))
-vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getCurrentSessionQuery: { queryKey: mocks.sessionKey } }))
+vi.mock("~/src/modules/session/session.constants", () => ({ SESSION_QUERY_KEYS: { CURRENT: mocks.sessionKey } }))
 vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: mocks.toastSuccess } }))
+
+import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 
 import { TimezoneField } from "~/src/presentation/components/custom/pages/account/profile/timezone-field"
 
 const renderField = (timezone?: string) => {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
-  if (timezone !== undefined) {
-    queryClient.setQueryData(mocks.sessionKey, { user: { timezone } })
-  }
+  const rendered = renderWithProviders(<TimezoneField timezone={timezone} />, { queryClient })
 
-  renderWithProviders(<TimezoneField />, { queryClient })
-
-  return screen.getByRole("combobox")
+  return { queryClient, rendered, trigger: screen.getByRole("combobox") }
 }
 
 const pick = async (trigger: HTMLElement, label: string) => {
@@ -52,18 +50,18 @@ describe("TimezoneField", () => {
   })
 
   it("labels the field and falls back to the store timezone", () => {
-    const trigger = renderField()
+    const { trigger } = renderField()
 
-    expect(screen.getByText("Timezone")).toBeInTheDocument()
+    expect(screen.getByLabelText("Timezone")).toBe(trigger)
     expect(trigger).toHaveTextContent("Europe/Warsaw")
   })
 
-  it("shows the timezone stored on the session", () => {
-    expect(renderField("America/New_York")).toHaveTextContent("America/New_York")
+  it("shows the timezone the server loaded with the profile", () => {
+    expect(renderField("America/New_York").trigger).toHaveTextContent("America/New_York")
   })
 
   it("saves the timezone the shopper picked and confirms it", async () => {
-    const trigger = renderField("Europe/Warsaw")
+    const { trigger } = renderField("Europe/Warsaw")
 
     await pick(trigger, "America/New_York")
 
@@ -75,8 +73,20 @@ describe("TimezoneField", () => {
     })
   })
 
+  it("refreshes the profile and the session so the control shows what was saved", async () => {
+    const { queryClient, trigger } = renderField("Europe/Warsaw")
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries")
+
+    await pick(trigger, "America/New_York")
+
+    await waitFor(() => {
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+    })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: mocks.sessionKey })
+  })
+
   it("does not save again when the shopper reselects the current timezone", async () => {
-    const trigger = renderField("Europe/Warsaw")
+    const { trigger } = renderField("Europe/Warsaw")
 
     await pick(trigger, "Europe/Warsaw")
 
@@ -85,7 +95,7 @@ describe("TimezoneField", () => {
 
   it.each([{ message: "nope" }, {}])("reports a failed save with error %j", async (error) => {
     mocks.updateUser.mockResolvedValue({ error })
-    const trigger = renderField("Europe/Warsaw")
+    const { trigger } = renderField("Europe/Warsaw")
 
     await pick(trigger, "America/New_York")
 

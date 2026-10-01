@@ -31,13 +31,13 @@ const ProfilePage = (): JSX.Element => {
       <PersonalInfoSection profile={profile} />
       <Separator className="my-10" />
 
-      <PreferencesSection />
+      <PreferencesSection email={profile.email} timezone={profile.timezone} />
       <Separator className="my-10" />
 
       <SecuritySection />
       <Separator className="my-10" />
 
-      <CloseAccountSection />
+      <CloseAccountSection hasPassword={profile.hasPassword} />
     </div>
   )
 }

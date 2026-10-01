@@ -297,6 +297,12 @@ export const auth = betterAuth({
       enabled: true,
       sendChangeEmailConfirmation,
     },
+    deleteUser: {
+      afterDelete: async (deleted) => {
+        await sendAccountDeletedEmail({ email: deleted.email, name: deleted.name })
+      },
+      enabled: true,
+    },
   },
   verification: { storeIdentifier: "hashed", storeInDatabase: true },
 })

@@ -80,6 +80,12 @@ export const signUpWithPasswordSchema = withMatchingPasswords(
   }),
 )
 
+export const changeEmailSchema = z.object({
+  email: emailSchema,
+})
+
+export type ChangeEmailFormValues = z.infer<typeof changeEmailSchema>
+
 export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>
 
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>

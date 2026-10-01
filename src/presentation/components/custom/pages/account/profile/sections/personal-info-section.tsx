@@ -14,27 +14,34 @@ import { type CustomerAccount } from "~/src/modules/customer-account/customer-ac
 import { customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
 import { updateCustomerPhoneMutation } from "~/src/modules/customer-account/use-cases/update-customer-phone"
 
+import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
 import { ProfileField } from "~/src/presentation/components/custom/pages/account/profile/profile-field"
 import { type EditableField } from "~/src/presentation/components/custom/pages/account/profile/profile-form.types"
 import { ReadOnlyField } from "~/src/presentation/components/custom/pages/account/profile/read-only-field"
+import { ChangeEmailDialog } from "~/src/presentation/components/custom/pages/account/profile/sections/change-email-dialog"
 
 const updateUser = createClientOnlyFn((input: Parameters<typeof authClient.updateUser>[0]) => authClient.updateUser(input))
 
 export const PersonalInfoSection = ({
   profile,
 }: Readonly<{
-  profile: CustomerAccount["profile"] | undefined
+  profile: CustomerAccount["profile"]
 }>): JSX.Element => {
   const t = useTranslations("pages.account.profile")
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<EditableField | undefined>()
+  const [changingEmail, setChangingEmail] = useState(false)
+
+  const openEmailDialog = useCallback(() => {
+    setChangingEmail(true)
+  }, [])
 
   const form = useForm<CustomerAccount["profileForm"]>({
     defaultValues: {
-      name: profile?.name ?? "",
-      phone: profile?.phone ?? "",
+      name: profile.name,
+      phone: profile.phone ?? "",
     },
     resolver: zodResolver(customerAccountZodSchemas.profileForm),
   })
@@ -66,7 +73,7 @@ export const PersonalInfoSection = ({
         return
       }
 
-      const value = form.getValues(field)
+      const value = form.getValues(field).trim()
 
       if (field === "phone") {
         try {
@@ -84,6 +91,10 @@ export const PersonalInfoSection = ({
 
           return
         }
+
+        await queryClient.invalidateQueries({
+          queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE,
+        })
         toast.success(t("saved"))
       }
 
@@ -92,12 +103,8 @@ export const PersonalInfoSection = ({
       })
       setEditing(undefined)
     },
-    [form, t, updatePhoneMutation],
+    [form, queryClient, t, updatePhoneMutation],
   )
-
-  if (profile === undefined) {
-    return <p className="text-sm text-muted-foreground">{t("saveError")}</p>
-  }
 
   return (
     <section>
@@ -114,7 +121,16 @@ export const PersonalInfoSection = ({
           onSave={saveField}
           type="text"
         />
-        <ReadOnlyField label={t("email")} value={profile.email} />
+        <ReadOnlyField
+          action={
+            <Button onClick={openEmailDialog} size="account-sm" variant="account-ghost">
+              {t("changeEmailAction")}
+            </Button>
+          }
+          hint={profile.emailVerified ? undefined : <p className="mt-1.5 text-[12px] text-muted-foreground">{t("emailUnverified")}</p>}
+          label={t("email")}
+          value={profile.email}
+        />
         <ProfileField
           control={form.control}
           editing={editing === "phone"}
@@ -126,6 +142,8 @@ export const PersonalInfoSection = ({
           type="tel"
         />
       </div>
+
+      <ChangeEmailDialog currentEmail={profile.email} onOpenChange={setChangingEmail} open={changingEmail} />
     </section>
   )
 }
