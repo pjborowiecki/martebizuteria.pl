@@ -251,15 +251,17 @@ describe("mapAuditLogToActivityItem", () => {
     expect(mapAuditLogToActivityItem({ ...auditRow, action: AUDIT_LOG_ACTION.PRODUCT_CREATED })).toBeUndefined()
   })
 
-  it("names the cart item from the metadata, falling back to the detail column", () => {
+  it("names the cart item from the metadata the recorder writes", () => {
     expect(
       mapAuditLogToActivityItem({
         ...auditRow,
         action: AUDIT_LOG_ACTION.CUSTOMER_CART_ITEM_ADDED,
-        metadata: JSON.stringify({ title: "Silver ring" }),
+        metadata: JSON.stringify({ productTitle: "Silver ring", quantity: 2 }),
       }),
     ).toMatchObject({ actionKey: "cartItemAdded", params: { item: "Silver ring" } })
+  })
 
+  it("falls back to the detail column for a row written without metadata", () => {
     expect(
       mapAuditLogToActivityItem({ ...auditRow, action: AUDIT_LOG_ACTION.CUSTOMER_CART_ITEM_ADDED, detail: "Gold ring" }),
     ).toMatchObject({ params: { item: "Gold ring" } })

@@ -104,6 +104,7 @@ interface CustomerAccountOverview {
   readonly activity: readonly CustomerAccountActivityItem[]
   readonly recentOrders: readonly CustomerAccountOrderSummary[]
   readonly recommendations: readonly CustomerAccountRecommendation[]
+  readonly recommendationsSource: "newArrivals" | "orders"
   readonly stats: CustomerAccountOverviewStats
 }
 

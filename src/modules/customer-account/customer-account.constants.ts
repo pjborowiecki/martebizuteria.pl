@@ -10,6 +10,8 @@ export const CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5
 
 export const CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3
 
+export const CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2
+
 export const CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3
 
 export const CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "processing", "shipped", "delivered", "cancelled", "refunded"] as const

@@ -35,7 +35,10 @@ const access = vi.hoisted(() => ({
   orderNumbers: vi.fn(),
   orderRows: vi.fn(),
   publishedProducts: vi.fn(),
-  stats: vi.fn(),
+  publishedProductsByCategories: vi.fn(),
+  purchasedCategoryIds: vi.fn(),
+  purchasedProductIds: vi.fn(),
+  spendStats: vi.fn(),
   userById: vi.fn(),
   wishlistCount: vi.fn(),
 }))
@@ -49,11 +52,17 @@ vi.mock("~/src/modules/customer-account/customer-account.accessors.server", () =
   getCustomerActivityAuditRows: access.auditRows,
   getCustomerOrderNumbers: access.orderNumbers,
   getCustomerOrderRows: access.orderRows,
+  getCustomerPurchasedCategoryIds: access.purchasedCategoryIds,
+  getCustomerPurchasedProductIds: access.purchasedProductIds,
+  getCustomerSpendStats: access.spendStats,
   getOrderItemsForOrders: access.orderItems,
 }))
 vi.mock("~/src/modules/wishlist/wishlist.accessors", () => ({ countWishlistItems: access.wishlistCount }))
-vi.mock("~/src/modules/product/product.accessors", () => ({ getPublishedProductsByCollectionId: access.publishedProducts }))
-vi.mock("~/src/modules/user/user.accessors", () => ({ getCustomerOrderStatsQuery: access.stats, getUserById: access.userById }))
+vi.mock("~/src/modules/product/product.accessors", () => ({
+  getPublishedProductsByCategoryIds: access.publishedProductsByCategories,
+  getPublishedProductsByCollectionId: access.publishedProducts,
+}))
+vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById: access.userById }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -102,14 +111,17 @@ describe("getCustomerOverview", () => {
     access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([])
     access.publishedProducts.mockResolvedValue({ items: [] })
-    access.stats.mockResolvedValue([])
+    access.spendStats.mockResolvedValue({ orderCount: 0, totalSpent: 0 })
+    access.purchasedCategoryIds.mockResolvedValue([])
+    access.purchasedProductIds.mockResolvedValue([])
+    access.publishedProductsByCategories.mockResolvedValue({ items: [] })
     access.userById.mockResolvedValue(undefined)
   })
 
   it("reads everything for the authenticated customer only", async () => {
     await overview()
 
-    expect(access.stats).toHaveBeenCalledWith(["customer-1"])
+    expect(access.spendStats).toHaveBeenCalledWith("customer-1")
     expect(access.orderRows).toHaveBeenCalledWith("customer-1", { limit: 3 })
     expect(access.auditRows).toHaveBeenCalledWith("customer-1", [])
     expect(access.userById).toHaveBeenCalledWith("customer-1")
@@ -121,7 +133,7 @@ describe("getCustomerOverview", () => {
 
     const result = await overview()
 
-    expect(result?.stats.wishlistCount).toBe(7)
+    expect(result.stats.wishlistCount).toBe(7)
   })
 
   it("looks for order activity across every order the customer has, not just the three on the page", async () => {
@@ -141,13 +153,13 @@ describe("getCustomerOverview", () => {
 
     const result = await overview()
 
-    expect(result?.activity.map((item) => [item.actionKey, item.params])).toStrictEqual([["orderPlaced", { id: "MRT-2026-00009" }]])
+    expect(result.activity.map((item) => [item.actionKey, item.params])).toStrictEqual([["orderPlaced", { id: "MRT-2026-00009" }]])
   })
 
   it("starts a brand new customer at zero without a stats row", async () => {
     const result = await overview()
 
-    expect(result?.stats).toStrictEqual({
+    expect(result.stats).toStrictEqual({
       memberSinceYear: "2024",
       totalOrders: 0,
       totalSpentMinorUnits: 0,
@@ -155,16 +167,13 @@ describe("getCustomerOverview", () => {
     })
   })
 
-  it("reports the stats row that belongs to the caller", async () => {
-    access.stats.mockResolvedValue([
-      { orderCount: 9, totalSpent: 90_000, userId: "someone-else" },
-      { orderCount: 4, totalSpent: 48_000, userId: "customer-1" },
-    ])
+  it("counts the orders the customer paid for and the money they actually spent on them", async () => {
+    access.spendStats.mockResolvedValue({ orderCount: 4, totalSpent: 48_000 })
 
     const result = await overview()
 
-    expect(result?.stats.totalOrders).toBe(4)
-    expect(result?.stats.totalSpentMinorUnits).toBe(48_000)
+    expect(result.stats.totalOrders).toBe(4)
+    expect(result.stats.totalSpentMinorUnits).toBe(48_000)
   })
 
   it("prefers the stored account creation year over the session copy", async () => {
@@ -172,7 +181,7 @@ describe("getCustomerOverview", () => {
 
     const result = await overview()
 
-    expect(result?.stats.memberSinceYear).toBe("2022")
+    expect(result.stats.memberSinceYear).toBe("2022")
   })
 
   it("attaches the order items to their own order", async () => {
@@ -184,7 +193,7 @@ describe("getCustomerOverview", () => {
 
     const result = await overview()
 
-    expect(result?.recentOrders.map((order) => [order.id, order.items.map((item) => item.name)])).toStrictEqual([
+    expect(result.recentOrders.map((order) => [order.id, order.items.map((item) => item.name)])).toStrictEqual([
       ["order-1", ["Ring"]],
       ["order-2", ["Bracelet"]],
     ])
@@ -195,7 +204,7 @@ describe("getCustomerOverview", () => {
 
     const result = await overview()
 
-    expect(result?.activity).toHaveLength(5)
+    expect(result.activity).toHaveLength(5)
   })
 
   it("drops audit rows that carry no readable activity", async () => {
@@ -203,7 +212,7 @@ describe("getCustomerOverview", () => {
 
     const result = await overview()
 
-    expect(result?.activity.map((item) => item.actionKey)).toStrictEqual(["loginSuccess"])
+    expect(result.activity.map((item) => item.actionKey)).toStrictEqual(["loginSuccess"])
   })
 })
 
@@ -217,14 +226,83 @@ describe("getCustomerOverview recommendations", () => {
     access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([])
     access.publishedProducts.mockResolvedValue({ items: [] })
-    access.stats.mockResolvedValue([])
+    access.spendStats.mockResolvedValue({ orderCount: 0, totalSpent: 0 })
+    access.purchasedCategoryIds.mockResolvedValue([])
+    access.purchasedProductIds.mockResolvedValue([])
+    access.publishedProductsByCategories.mockResolvedValue({ items: [] })
     access.userById.mockResolvedValue(undefined)
+  })
+
+  it("recommends from the categories the customer has bought from, and says so", async () => {
+    access.purchasedCategoryIds.mockResolvedValue(["category-rings"])
+    access.publishedProductsByCategories.mockResolvedValue({
+      items: [
+        {
+          handle: "silver-ring",
+          id: "product-1",
+          thumbnail: null,
+          titles: { "en-US": "Silver ring", "pl-PL": "Srebrny" },
+          variants: [{ price: 120_000 }],
+        },
+      ],
+    })
+
+    const result = await overview()
+
+    expect(access.publishedProductsByCategories).toHaveBeenCalledWith(["category-rings"], { limit: 3, offset: 0 })
+    expect(result.recommendationsSource).toBe("orders")
+    expect(result.recommendations.map((item) => item.handle)).toStrictEqual(["silver-ring"])
+    expect(access.publishedProducts).not.toHaveBeenCalled()
+  })
+
+  it("leaves out a product the customer already owns", async () => {
+    access.purchasedCategoryIds.mockResolvedValue(["category-rings"])
+    access.purchasedProductIds.mockResolvedValue(["product-1"])
+    access.publishedProductsByCategories.mockResolvedValue({
+      items: [
+        { handle: "silver-ring", id: "product-1", thumbnail: null, titles: { "en-US": "Owned" }, variants: [] },
+        { handle: "gold-ring", id: "product-2", thumbnail: null, titles: { "en-US": "New" }, variants: [] },
+      ],
+    })
+
+    const result = await overview()
+
+    expect(result.recommendations.map((item) => item.handle)).toStrictEqual(["gold-ring"])
+  })
+
+  it("falls back to new arrivals when every product in those categories is already owned", async () => {
+    access.purchasedCategoryIds.mockResolvedValue(["category-rings"])
+    access.purchasedProductIds.mockResolvedValue(["product-1"])
+    access.publishedProductsByCategories.mockResolvedValue({
+      items: [{ handle: "silver-ring", id: "product-1", thumbnail: null, titles: { "en-US": "Owned" }, variants: [] }],
+    })
+    access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
+    access.publishedProducts.mockResolvedValue({
+      items: [{ handle: "new-arrival", id: "product-9", thumbnail: null, titles: { "en-US": "New arrival" }, variants: [] }],
+    })
+
+    const result = await overview()
+
+    expect(result.recommendationsSource).toBe("newArrivals")
+    expect(result.recommendations.map((item) => item.handle)).toStrictEqual(["new-arrival"])
+  })
+
+  it("falls back to new arrivals for a customer who has never ordered", async () => {
+    access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
+    access.publishedProducts.mockResolvedValue({
+      items: [{ handle: "new-arrival", id: "product-9", thumbnail: null, titles: { "en-US": "New arrival" }, variants: [] }],
+    })
+
+    const result = await overview()
+
+    expect(result.recommendationsSource).toBe("newArrivals")
+    expect(access.publishedProductsByCategories).not.toHaveBeenCalled()
   })
 
   it("recommends nothing while the new arrivals collection is missing", async () => {
     const result = await overview()
 
-    expect(result?.recommendations).toStrictEqual([])
+    expect(result.recommendations).toStrictEqual([])
     expect(access.publishedProducts).not.toHaveBeenCalled()
   })
 
@@ -245,7 +323,7 @@ describe("getCustomerOverview recommendations", () => {
     const result = await overview()
 
     expect(access.publishedProducts).toHaveBeenCalledWith("collection-1", { limit: 3, offset: 0 })
-    expect(result?.recommendations).toStrictEqual([
+    expect(result.recommendations).toStrictEqual([
       {
         handle: "silver-ring",
         image: "cdn/products/ring.webp",
@@ -266,7 +344,7 @@ describe("getCustomerOverview recommendations", () => {
 
     const result = await overview()
 
-    expect(result?.recommendations[0]?.priceMinorUnits).toBeUndefined()
+    expect(result.recommendations[0]?.priceMinorUnits).toBeUndefined()
   })
 
   it("names the recommendation in the requested locale", async () => {
@@ -285,7 +363,7 @@ describe("getCustomerOverview recommendations", () => {
 
     const result = await getCustomerOverview({ data: { locale: "pl-PL" } })
 
-    expect(result?.recommendations[0]?.name).toBe("Srebrny pierscionek")
+    expect(result.recommendations[0]?.name).toBe("Srebrny pierscionek")
   })
 })
 
@@ -298,7 +376,10 @@ describe("getCustomerOverview recommendation collection", () => {
     access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([])
     access.publishedProducts.mockResolvedValue({ items: [] })
-    access.stats.mockResolvedValue([])
+    access.spendStats.mockResolvedValue({ orderCount: 0, totalSpent: 0 })
+    access.purchasedCategoryIds.mockResolvedValue([])
+    access.purchasedProductIds.mockResolvedValue([])
+    access.publishedProductsByCategories.mockResolvedValue({ items: [] })
     access.userById.mockResolvedValue(undefined)
   })
 
@@ -344,21 +425,24 @@ describe("getCustomerOverview partial account data", () => {
     access.publishedProducts.mockResolvedValue({
       items: [{ handle: "ring", id: "product-1", thumbnail: null, titles: { "en-US": "Ring", "pl-PL": "Pierścionek" }, variants: [] }],
     })
-    access.stats.mockResolvedValue([])
+    access.spendStats.mockResolvedValue({ orderCount: 0, totalSpent: 0 })
+    access.purchasedCategoryIds.mockResolvedValue([])
+    access.purchasedProductIds.mockResolvedValue([])
+    access.publishedProductsByCategories.mockResolvedValue({ items: [] })
     access.userById.mockResolvedValue(undefined)
   })
 
   it("uses the default locale when the caller does not choose one", async () => {
     const result = await getCustomerOverview({ data: {} })
 
-    expect(result?.recommendations[0]?.name).toBe("Pierścionek")
+    expect(result.recommendations[0]?.name).toBe("Pierścionek")
   })
 
   it("keeps a historical order visible when its item rows are no longer available", async () => {
     const result = await overview()
 
-    expect(result?.recentOrders).toHaveLength(1)
-    expect(result?.recentOrders[0]).toMatchObject({ id: "order-1", items: [] })
+    expect(result.recentOrders).toHaveLength(1)
+    expect(result.recentOrders[0]).toMatchObject({ id: "order-1", items: [] })
   })
 })
 
@@ -395,7 +479,7 @@ describe("getCustomerOverviewQuery fetching", () => {
         },
       ],
     })
-    access.stats.mockResolvedValue([{ orderCount: 2, totalSpent: 24_000, userId: "customer-1" }])
+    access.spendStats.mockResolvedValue({ orderCount: 2, totalSpent: 24_000 })
     access.userById.mockResolvedValue(undefined)
   })
 
@@ -405,7 +489,7 @@ describe("getCustomerOverviewQuery fetching", () => {
 
     const result = await queryClient.query(overviewForLocale)
 
-    expect(result?.stats.totalOrders).toBe(2)
+    expect(result.stats.totalOrders).toBe(2)
     expect(queryClient.getQueryData(overviewForLocale.queryKey)).toBe(result)
   })
 
@@ -414,6 +498,6 @@ describe("getCustomerOverviewQuery fetching", () => {
 
     const result = await queryClient.query(getCustomerOverviewQuery("pl-PL"))
 
-    expect(result?.recommendations[0]?.name).toBe("Srebrny pierscionek")
+    expect(result.recommendations[0]?.name).toBe("Srebrny pierscionek")
   })
 })
