@@ -14,6 +14,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
+import { createStorefrontSearchIndex } from "~/src/platform/testing/mocks/storefront-search-index"
+
 import { STOREFRONT_PRODUCTS_SORT } from "~/src/modules/product/product.storefront-catalog"
 import {
   type StorefrontPublishedProductsParams,
@@ -43,6 +45,9 @@ beforeEach(() => {
     drop table if exists inventory;
     drop table if exists category_on_product;
     drop table if exists collection_on_product;
+    drop table if exists product_category;
+    drop table if exists product_collection;
+    drop table if exists storefront_search;
 
     create table product (
       descriptions text, handle text not null, id text primary key, metadata text,
@@ -59,7 +64,19 @@ beforeEach(() => {
     create table inventory (variant_id text primary key, quantity_available integer not null default 0);
     create table category_on_product (category_id text, product_id text);
     create table collection_on_product (collection_id text, product_id text);
-
+    create table product_category (
+      descriptions text, handle text not null, id text primary key, image text, metadata text, parent_id text,
+      rank integer not null default 0, short_descriptions text, status text not null default 'draft', subtitles text,
+      titles text not null, created_at integer not null default 0, updated_at integer not null default 0
+    );
+    create table product_collection (
+      descriptions text, handle text not null, id text primary key, image text, metadata text, rank integer not null default 0,
+      short_descriptions text, status text not null default 'draft', titles text not null,
+      created_at integer not null default 0, updated_at integer not null default 0
+    );
+  `)
+  createStorefrontSearchIndex(sqlite)
+  sqlite.exec(`
     insert into product (handle, id, rank, status, subtitles, titles, created_at, updated_at) values
       ('cheap-ring', 'cheap', 1, 'published', null, '${titles("Cheap Ring")}', ${JANUARY}, ${JANUARY}),
       ('mid-necklace', 'mid', 2, 'published', '${titles("Silver chain")}', '${titles("Mid Necklace")}', ${JUNE}, ${JUNE}),

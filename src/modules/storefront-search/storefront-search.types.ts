@@ -1,4 +1,6 @@
-type StorefrontSearchResultType = "category" | "collection" | "page" | "product"
+type StorefrontSearchIndexedType = "category" | "collection" | "product"
+
+type StorefrontSearchResultType = StorefrontSearchIndexedType | "page"
 
 type StorefrontSearchTrendingType = "category" | "collection"
 
@@ -24,6 +26,7 @@ interface StorefrontSearchTrendingItem {
 }
 
 export interface StorefrontSearch {
+  indexedType: StorefrontSearchIndexedType
   resultItem: StorefrontSearchResultItem
   resultType: StorefrontSearchResultType
   results: StorefrontSearchResults
