@@ -2,7 +2,9 @@ import { auth } from "~/src/integrations/better-auth/auth.server"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
 import { recordAuthLoginFailedAudit, recordAuthLogoutAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
+import { getUserIdByEmail } from "~/src/modules/user/user.accessors"
 
+import { scheduleBackgroundWork } from "~/src/lib/background"
 import { resolveRequestIp } from "~/src/lib/request"
 
 import { ROUTES } from "~/src/routes"
@@ -32,6 +34,18 @@ const parseSignInEmail = async (request: Request): Promise<string | undefined> =
   }
 }
 
+const recordFailedSignIn = async (email: string, ip: string | undefined): Promise<void> => {
+  const userId = await getUserIdByEmail(email)
+
+  recordAuthLoginFailedAudit(email, {
+    ip,
+    metadata: {
+      email,
+    },
+    resourceId: userId,
+  })
+}
+
 export const handleAuthRequestWithAudit = async (request: Request): Promise<Response> => {
   const authPath = resolveAuthPathname(request)
   const shouldAuditFailedLogin = isEmailSignInAttempt(authPath, request.method)
@@ -41,13 +55,7 @@ export const handleAuthRequestWithAudit = async (request: Request): Promise<Resp
   const sessionBeforeSignOut = shouldAuditLogout ? await getRequestSession(request) : undefined
   const response = await auth.handler(request)
   if (shouldAuditFailedLogin && !response.ok && signInEmail !== undefined) {
-    recordAuthLoginFailedAudit(signInEmail, {
-      detail: signInEmail,
-      ip,
-      metadata: {
-        email: signInEmail,
-      },
-    })
+    scheduleBackgroundWork(recordFailedSignIn(signInEmail, ip))
   }
 
   if (shouldAuditLogout && response.ok && sessionBeforeSignOut?.user !== undefined) {

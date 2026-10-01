@@ -200,7 +200,10 @@
     "closeAccount": "Close Account",
     "closeAccountTitle": "Permanently delete account",
     "closeAccountDesc": "Once your account is deleted, all your data will be permanently erased.",
-    "closeAccountAction": "Delete Account"
+    "closeAccountAction": "Delete Account",
+    "revokeDevice": "Sign out {device}",
+    "loginFrom": "from {ip}",
+    "unknownLocation": "Address not recorded"
   },
   "profile": {
     "eyebrow": "Account Settings",

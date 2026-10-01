@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
-import { desc, eq } from "drizzle-orm"
+import { and, desc, eq, gt } from "drizzle-orm"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -13,7 +13,12 @@ import { session } from "~/src/modules/session/session.schema"
 export const listCustomerSessions = createServerFn({ method: "GET" })
   .middleware([authorized()])
   .handler(async ({ context }): Promise<readonly CustomerAccount["session"][]> => {
-    const rows = await db.select().from(session).where(eq(session.userId, context.auth.user.id)).orderBy(desc(session.updatedAt))
+    const now = new Date()
+    const rows = await db
+      .select()
+      .from(session)
+      .where(and(eq(session.userId, context.auth.user.id), gt(session.expiresAt, now)))
+      .orderBy(desc(session.updatedAt))
 
     return rows.map((row) => {
       const parsed = parseUserAgent(row.userAgent)

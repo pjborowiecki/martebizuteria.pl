@@ -4,7 +4,11 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
-import { CUSTOMER_ACCOUNT_ORDERS_LIMIT, type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
+import {
+  CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT,
+  CUSTOMER_ACCOUNT_ORDERS_LIMIT,
+  type CustomerAccountOrderFilter,
+} from "~/src/modules/customer-account/customer-account.constants"
 import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
 
 const NO_OFFSET = 0
@@ -84,6 +88,20 @@ export const countCustomerOrders = async (userId: string, filter: CustomerAccoun
 
   return row?.total ?? NO_OFFSET
 }
+
+export const getCustomerLoginAuditRows = (userId: string) =>
+  db
+    .select({
+      action: auditLog.action,
+      createdAt: auditLog.createdAt,
+      ip: auditLog.ip,
+    })
+    .from(auditLog)
+    .where(
+      and(eq(auditLog.resourceId, userId), inArray(auditLog.action, [AUDIT_LOG_ACTION.AUTH_LOGIN, AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED])),
+    )
+    .orderBy(desc(auditLog.createdAt))
+    .limit(CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT)
 
 export const getCustomerOrderNumbers = (userId: string) =>
   db
