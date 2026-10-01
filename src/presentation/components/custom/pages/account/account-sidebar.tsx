@@ -1,5 +1,6 @@
-import { type JSX, useCallback, useState } from "react"
+import { type JSX } from "react"
 
+import { useMutation } from "@tanstack/react-query"
 import { useRouter } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { CreditCard, Heart, LayoutDashboard, Loader2, LogOut, MapPin, Package, Shield, User } from "lucide-react"
@@ -20,24 +21,28 @@ const signOutRequest = createClientOnlyFn((input: Parameters<typeof signOut>[0])
 export const AccountSidebar = (): JSX.Element => {
   const t = useTranslations("pages.account.sidebar")
   const router = useRouter()
-  const [signingOut, setSigningOut] = useState(false)
+  const signOutMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await signOutRequest({})
 
-  const onSignOutClick = useCallback(() => {
-    setSigningOut(true)
-    void signOutRequest({
-      fetchOptions: {
-        onError: () => {
-          setSigningOut(false)
-          toast.error(t("signOutError"))
-        },
-        onSuccess: () => {
-          globalThis.location.href = router.buildLocation({
-            to: "/",
-          }).publicHref
-        },
-      },
-    })
-  }, [router, t])
+      if (error) {
+        throw new Error(error.message ?? "Failed to sign out")
+      }
+    },
+    onError: () => {
+      toast.error(t("signOutError"))
+    },
+    onSuccess: () => {
+      globalThis.location.href = router.buildLocation({
+        to: "/",
+      }).publicHref
+    },
+  })
+
+  const SignOutIcon = signOutMutation.isPending ? Loader2 : LogOut
+  const onSignOutClick = (): void => {
+    signOutMutation.mutate()
+  }
 
   return (
     <aside className="lg:sticky lg:top-28 lg:w-[220px] lg:shrink-0 lg:self-start">
@@ -73,15 +78,15 @@ export const AccountSidebar = (): JSX.Element => {
 
         <Button
           className="flex w-full cursor-pointer items-center justify-start gap-3 rounded-md px-3 py-2 text-[13px] tracking-[0.02em] text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-          disabled={signingOut}
+          disabled={signOutMutation.isPending}
           onClick={onSignOutClick}
           variant="ghost"
         >
-          {signingOut ? (
-            <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" strokeWidth={1.5} />
-          ) : (
-            <LogOut className="size-4 shrink-0" strokeWidth={1.5} />
-          )}
+          <SignOutIcon
+            aria-hidden
+            className={signOutMutation.isPending ? "size-4 shrink-0 animate-spin" : "size-4 shrink-0"}
+            strokeWidth={1.5}
+          />
           {t("signOut")}
         </Button>
       </div>

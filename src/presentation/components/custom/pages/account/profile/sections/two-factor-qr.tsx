@@ -1,28 +1,16 @@
-import { type JSX, useEffect, useState } from "react"
+import { type JSX } from "react"
 
+import { useQuery } from "@tanstack/react-query"
 import QRCode from "qrcode"
 
 const QR_WIDTH = 192
 
 export const TwoFactorQr = ({ uri }: Readonly<TwoFactorQrProps>): JSX.Element => {
-  const [svg, setSvg] = useState<string | undefined>(undefined)
-
-  useEffect(() => {
-    let active = true
-    QRCode.toString(uri, { errorCorrectionLevel: "M", margin: 1, type: "svg", width: QR_WIDTH })
-      .then((markup) => {
-        if (active) {
-          setSvg(markup)
-        }
-      })
-      .catch((error: unknown) => {
-        console.error("Failed to render the two-factor QR code:", error)
-      })
-
-    return () => {
-      active = false
-    }
-  }, [uri])
+  const { data: svg } = useQuery({
+    queryFn: () => QRCode.toString(uri, { errorCorrectionLevel: "M", margin: 1, type: "svg", width: QR_WIDTH }),
+    queryKey: ["two-factor-qr", uri],
+    staleTime: Infinity,
+  })
 
   return (
     <div

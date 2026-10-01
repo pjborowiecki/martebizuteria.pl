@@ -13,7 +13,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   return { ...actual, useRouter: () => ({ invalidate }) }
 })
 
-import { AccountErrorState, AccountNotFoundState } from "~/src/presentation/components/custom/pages/account/account-error-state"
+import { AccountErrorState } from "~/src/presentation/components/custom/pages/account/account-error-state"
+import { AccountNotFoundState } from "~/src/presentation/components/custom/pages/account/account-not-found-state"
 
 beforeEach(() => {
   vi.clearAllMocks()

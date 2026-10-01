@@ -40,6 +40,14 @@ const typePassword = (value: string) => {
   fireEvent.change(screen.getByLabelText("Password"), { target: { value } })
 }
 
+const submit = async (name: string): Promise<void> => {
+  const button = await screen.findByRole("button", { name })
+  await waitFor(() => {
+    expect(button).toBeEnabled()
+  })
+  fireEvent.click(button)
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   sessionState.twoFactorEnabled = false
@@ -174,7 +182,7 @@ describe("SecuritySection two-factor enrolment", () => {
     await screen.findByLabelText("Password")
 
     typePassword("OldPassword1!")
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    await submit("Continue")
 
     expect(await screen.findByRole("heading", { name: "Scan this with your authenticator app" })).toBeInTheDocument()
     expect(screen.getByLabelText("Setup key")).toHaveValue("JBSWY3DPEHPK3PXP")
@@ -188,7 +196,7 @@ describe("SecuritySection two-factor enrolment", () => {
     await screen.findByLabelText("Password")
 
     typePassword("WrongPassword1!")
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    await submit("Continue")
 
     await waitFor(() => {
       expect(enableTwoFactor).toHaveBeenCalledOnce()
@@ -201,11 +209,11 @@ describe("SecuritySection two-factor enrolment", () => {
     openTwoFactor()
     await screen.findByLabelText("Password")
     typePassword("OldPassword1!")
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    await submit("Continue")
     await screen.findByLabelText("Six-digit code")
 
     fireEvent.change(screen.getByLabelText("Six-digit code"), { target: { value: "123456" } })
-    fireEvent.click(screen.getByRole("button", { name: "Verify and enable" }))
+    await submit("Verify and enable")
 
     expect(await screen.findByRole("heading", { name: "Save your recovery codes" })).toBeInTheDocument()
     expect(screen.getByText("AAAA-1111")).toBeInTheDocument()
@@ -218,11 +226,11 @@ describe("SecuritySection two-factor enrolment", () => {
     openTwoFactor()
     await screen.findByLabelText("Password")
     typePassword("OldPassword1!")
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    await submit("Continue")
     await screen.findByLabelText("Six-digit code")
 
     fireEvent.change(screen.getByLabelText("Six-digit code"), { target: { value: "000000" } })
-    fireEvent.click(screen.getByRole("button", { name: "Verify and enable" }))
+    await submit("Verify and enable")
 
     await waitFor(() => {
       expect(verifyTotp).toHaveBeenCalledOnce()
@@ -235,12 +243,12 @@ describe("SecuritySection two-factor enrolment", () => {
     openTwoFactor()
     await screen.findByLabelText("Password")
     typePassword("OldPassword1!")
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    await submit("Continue")
     const codeField = await screen.findByLabelText("Six-digit code")
 
     fireEvent.change(codeField, { target: { value: "12ab34" } })
 
-    expect(codeField).toHaveValue("1234")
+    expect(await screen.findByText("Enter the six digits from your authenticator app.")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Verify and enable" })).toBeDisabled()
   })
 
@@ -249,10 +257,10 @@ describe("SecuritySection two-factor enrolment", () => {
     openTwoFactor()
     await screen.findByLabelText("Password")
     typePassword("OldPassword1!")
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }))
+    await submit("Continue")
     await screen.findByLabelText("Six-digit code")
     fireEvent.change(screen.getByLabelText("Six-digit code"), { target: { value: "123456" } })
-    fireEvent.click(screen.getByRole("button", { name: "Verify and enable" }))
+    await submit("Verify and enable")
     fireEvent.click(await screen.findByRole("button", { name: "I have saved these codes" }))
 
     expect(await screen.findByText("On")).toBeInTheDocument()
@@ -278,7 +286,7 @@ describe("SecuritySection two-factor removal", () => {
     await screen.findByLabelText("Password")
 
     typePassword("OldPassword1!")
-    fireEvent.click(screen.getByRole("button", { name: "Turn off 2FA" }))
+    await submit("Turn off 2FA")
 
     await waitFor(() => {
       expect(disableTwoFactor).toHaveBeenCalledWith({ password: "OldPassword1!" })
@@ -294,7 +302,7 @@ describe("SecuritySection two-factor removal", () => {
     await screen.findByLabelText("Password")
 
     typePassword("WrongPassword1!")
-    fireEvent.click(screen.getByRole("button", { name: "Turn off 2FA" }))
+    await submit("Turn off 2FA")
 
     await waitFor(() => {
       expect(disableTwoFactor).toHaveBeenCalledOnce()

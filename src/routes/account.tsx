@@ -7,7 +7,8 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
-import { AccountErrorState, AccountNotFoundState } from "~/src/presentation/components/custom/pages/account/account-error-state"
+import { AccountErrorState } from "~/src/presentation/components/custom/pages/account/account-error-state"
+import { AccountNotFoundState } from "~/src/presentation/components/custom/pages/account/account-not-found-state"
 import { AccountSidebar } from "~/src/presentation/components/custom/pages/account/account-sidebar"
 import { Footer } from "~/src/presentation/components/custom/pages/landing-page/footer/footer"
 import { Navigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation"

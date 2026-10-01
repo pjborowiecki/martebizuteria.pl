@@ -25,20 +25,16 @@ export const useTwoFactorSetup = ({ onEnabled }: Readonly<{ onEnabled: () => voi
   const [step, setStep] = useState<TwoFactorStep>(TWO_FACTOR_STEP.PASSWORD)
   const [totpUri, setTotpUri] = useState<string | undefined>(undefined)
   const [backupCodes, setBackupCodes] = useState<readonly string[]>([])
-  const [pending, setPending] = useState(false)
 
   const reset = useCallback(() => {
     setStep(TWO_FACTOR_STEP.PASSWORD)
     setTotpUri(undefined)
     setBackupCodes([])
-    setPending(false)
   }, [])
 
   const submitPassword = useCallback(
     async (password: string) => {
-      setPending(true)
       const { data, error } = await enableTwoFactor(password)
-      setPending(false)
 
       if (error !== null || data.method !== "totp") {
         toast.error(t("errorTitle"), { description: t("wrongPassword") })
@@ -55,9 +51,7 @@ export const useTwoFactorSetup = ({ onEnabled }: Readonly<{ onEnabled: () => voi
 
   const submitCode = useCallback(
     async (code: string) => {
-      setPending(true)
       const { error } = await verifyTotp(code)
-      setPending(false)
 
       if (error !== null) {
         toast.error(t("errorTitle"), { description: t("wrongCode") })
@@ -74,9 +68,7 @@ export const useTwoFactorSetup = ({ onEnabled }: Readonly<{ onEnabled: () => voi
 
   const submitDisable = useCallback(
     async (password: string) => {
-      setPending(true)
       const { error } = await disableTwoFactor(password)
-      setPending(false)
 
       if (error !== null) {
         toast.error(t("errorTitle"), { description: t("wrongPassword") })
@@ -91,12 +83,11 @@ export const useTwoFactorSetup = ({ onEnabled }: Readonly<{ onEnabled: () => voi
     [t],
   )
 
-  return { backupCodes, pending, reset, step, submitCode, submitDisable, submitPassword, totpUri }
+  return { backupCodes, reset, step, submitCode, submitDisable, submitPassword, totpUri }
 }
 
 interface UseTwoFactorSetupResult {
   readonly backupCodes: readonly string[]
-  readonly pending: boolean
   readonly reset: () => void
   readonly step: TwoFactorStep
   readonly submitCode: (code: string) => Promise<void>

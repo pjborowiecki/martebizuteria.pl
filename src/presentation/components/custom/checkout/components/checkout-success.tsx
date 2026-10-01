@@ -35,17 +35,29 @@ const SummaryRow = ({ label, value }: Readonly<{ label: string; value: string }>
   </div>
 )
 
+const ConfirmationItemImage = ({ imageUrl, title }: Readonly<{ imageUrl?: string | undefined; title: string }>): JSX.Element => {
+  if (imageUrl === undefined) {
+    return <Package className="size-5 text-muted-foreground/40" strokeWidth={1.5} />
+  }
+
+  return <Image alt={title} className="size-14 object-cover" height={56} src={imageUrl} width={56} />
+}
+
+const ConfirmationStatusIcon = ({ loading }: Readonly<{ loading: boolean }>): JSX.Element => {
+  if (loading) {
+    return <Loader2 aria-hidden className="size-12 animate-spin text-muted-foreground/40" strokeWidth={1} />
+  }
+
+  return <CheckCircle2 className="size-16 text-success md:size-20" strokeWidth={1} />
+}
+
 const ConfirmationItem = ({ currencyCode, item }: Readonly<ConfirmationItemProps>): JSX.Element => {
   const locale = useLocale()
 
   return (
     <div className="flex items-center gap-4 py-3">
       <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden bg-secondary">
-        {item.imageUrl === undefined ? (
-          <Package className="size-5 text-muted-foreground/40" strokeWidth={1.5} />
-        ) : (
-          <Image alt={item.title} className="size-14 object-cover" height={56} src={item.imageUrl} width={56} />
-        )}
+        <ConfirmationItemImage imageUrl={item.imageUrl} title={item.title} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm">{item.title}</p>
@@ -172,11 +184,7 @@ export const CheckoutSuccess = ({ sessionId }: Readonly<CheckoutSuccessProps>): 
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 py-12 text-center md:py-20">
-      {isPending && sessionId !== "" ? (
-        <Loader2 aria-hidden className="size-12 animate-spin text-muted-foreground/40" strokeWidth={1} />
-      ) : (
-        <CheckCircle2 className="size-16 text-success md:size-20" strokeWidth={1} />
-      )}
+      <ConfirmationStatusIcon loading={isPending && sessionId !== ""} />
 
       <div className="space-y-2">
         <h2 className="font-serif text-3xl md:text-4xl">{resolveTitle({ isPending, order, sessionId, t })}</h2>

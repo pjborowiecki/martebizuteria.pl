@@ -1,8 +1,12 @@
 import { type JSX, type SyntheticEvent, useCallback } from "react"
 
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Copy, Loader2 } from "lucide-react"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
+
+import { type TotpCodeFormValues, totpCodeSchema } from "~/src/integrations/better-auth/auth.zod"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/src/presentation/components/shadcn/dialog"
@@ -10,6 +14,7 @@ import { Input } from "~/src/presentation/components/shadcn/input"
 import { Label } from "~/src/presentation/components/shadcn/label"
 
 import { TwoFactorQr } from "~/src/presentation/components/custom/pages/account/profile/sections/two-factor-qr"
+import { AuthTextField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
 export const TOTP_CODE_LENGTH = 6
 
@@ -21,23 +26,25 @@ export const readSetupKey = (uri: string): string => {
   }
 }
 
-export const TwoFactorScanStep = ({
-  code,
-  onCancel,
-  onChange,
-  onSubmit,
-  pending,
-  totpUri,
-}: Readonly<TwoFactorScanStepProps>): JSX.Element => {
+export const TwoFactorScanStep = ({ onCancel, onSubmit, totpUri }: Readonly<TwoFactorScanStepProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.twoFactorDialog")
   const setupKey = readSetupKey(totpUri)
+  const form = useForm<TotpCodeFormValues>({
+    defaultValues: { code: "" },
+    mode: "onChange",
+    resolver: zodResolver(totpCodeSchema),
+  })
+
   const handleSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault()
-      onSubmit()
+      void form.handleSubmit(async (values) => {
+        await onSubmit(values.code)
+      })(event)
     },
-    [onSubmit],
+    [form, onSubmit],
   )
+
   const copySetupKey = useCallback(() => {
     void navigator.clipboard.writeText(setupKey)
     toast.success(t("keyCopied"))
@@ -64,27 +71,25 @@ export const TwoFactorScanStep = ({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="two-factor-code">{t("codeLabel")}</Label>
-          <Input
+          <AuthTextField
             autoComplete="one-time-code"
+            control={form.control}
             id="two-factor-code"
             inputMode="numeric"
+            label={t("codeLabel")}
             maxLength={TOTP_CODE_LENGTH}
-            onChange={(event) => {
-              onChange(event.target.value.replaceAll(/\D/gu, ""))
-            }}
-            value={code}
+            name="code"
           />
           <p className="text-[11px] text-muted-foreground">{t("codeDescription")}</p>
         </div>
       </div>
 
       <DialogFooter>
-        <Button disabled={pending} onClick={onCancel} type="button" variant="outline">
+        <Button disabled={form.formState.isSubmitting} onClick={onCancel} type="button" variant="outline">
           {t("cancel")}
         </Button>
-        <Button className="gap-1.5" disabled={pending || code.length !== TOTP_CODE_LENGTH} type="submit">
-          {pending && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
+        <Button className="gap-1.5" disabled={!form.formState.isValid || form.formState.isSubmitting} type="submit">
+          {form.formState.isSubmitting && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
           {t("verify")}
         </Button>
       </DialogFooter>
@@ -93,10 +98,7 @@ export const TwoFactorScanStep = ({
 }
 
 interface TwoFactorScanStepProps {
-  readonly code: string
   readonly onCancel: () => void
-  readonly onChange: (code: string) => void
-  readonly onSubmit: () => void
-  readonly pending: boolean
+  readonly onSubmit: (code: string) => Promise<void>
   readonly totpUri: string
 }

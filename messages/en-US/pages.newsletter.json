@@ -4,7 +4,6 @@
       "title": "Confirm subscription",
       "description": "Confirm your M'Arte newsletter subscription."
     },
-    "pendingTitle": "Confirming your subscription",
     "okTitle": "You are on the list",
     "okDescription": "Thank you for confirming {email}. Letters from the atelier will arrive from time to time, never often.",
     "alreadyTitle": "Already confirmed",
@@ -18,7 +17,6 @@
       "title": "Unsubscribe",
       "description": "Leave the M'Arte newsletter."
     },
-    "pendingTitle": "Removing you from the list",
     "okTitle": "You have left the list",
     "okDescription": "{email} will receive no further letters. You are welcome back whenever you like.",
     "alreadyTitle": "Already unsubscribed",
