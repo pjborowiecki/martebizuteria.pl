@@ -64,6 +64,7 @@ const overview = (overrides: Partial<CustomerAccount["overview"]> = {}): Custome
   activity: [],
   recentOrders: [],
   recommendations: [],
+  recommendationsSource: "orders",
   stats: { memberSinceYear: "2021", totalOrders: 4, totalSpentMinorUnits: 129_900, wishlistCount: 7 },
   ...overrides,
 })
@@ -175,12 +176,21 @@ describe("account overview recent orders", () => {
 })
 
 describe("account overview recommendations", () => {
-  it("introduces the recommendations section", async () => {
+  it("claims the recommendations come from past orders only when they do", async () => {
     await renderOverview()
 
     expect(screen.getByText("Recommended for You")).toBeInTheDocument()
     expect(screen.getByText("Based on your recent orders")).toBeInTheDocument()
-    expect(screen.getByText("View").closest("a")).toHaveAttribute("href", "/products")
+    expect(screen.getByText("View all").closest("a")).toHaveAttribute("href", "/products")
+  })
+
+  it("calls the fallback picks new arrivals instead of pretending they follow an order", async () => {
+    overviewRef.current = overview({ recommendationsSource: "newArrivals" })
+    await renderOverview()
+
+    expect(screen.getByText("New Arrivals")).toBeInTheDocument()
+    expect(screen.getByText("The latest pieces from the atelier")).toBeInTheDocument()
+    expect(screen.queryByText("Based on your recent orders")).toBeNull()
   })
 
   it("renders a priced recommendation card with its image and product link", async () => {

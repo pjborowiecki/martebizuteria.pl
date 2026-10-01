@@ -7,6 +7,7 @@ import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import {
   CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT,
   CUSTOMER_ACCOUNT_ORDERS_LIMIT,
+  CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT,
   type CustomerAccountOrderFilter,
 } from "~/src/modules/customer-account/customer-account.constants"
 import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
@@ -18,6 +19,7 @@ interface CustomerOrderRowsOptions {
   readonly limit?: number
   readonly offset?: number
 }
+import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
@@ -87,6 +89,46 @@ export const countCustomerOrders = async (userId: string, filter: CustomerAccoun
   const [row] = await db.select({ total: count() }).from(order).where(customerOrderFilterWhere(userId, filter))
 
   return row?.total ?? NO_OFFSET
+}
+
+const CUSTOMER_PAID_ORDER_STATUSES = ["processing", "completed"] as const
+
+export const getCustomerSpendStats = async (userId: string): Promise<{ orderCount: number; totalSpent: number }> => {
+  const [row] = await db
+    .select({
+      orderCount: count(),
+      totalSpent: sql<number>`coalesce(sum(${order.total}), 0)`,
+    })
+    .from(order)
+    .where(and(eq(order.userId, userId), inArray(order.status, [...CUSTOMER_PAID_ORDER_STATUSES])))
+
+  return { orderCount: row?.orderCount ?? NO_OFFSET, totalSpent: row?.totalSpent ?? NO_OFFSET }
+}
+
+export const getCustomerPurchasedCategoryIds = async (userId: string): Promise<string[]> => {
+  const rows = await db
+    .select({ categoryId: categoryOnProduct.categoryId })
+    .from(orderItem)
+    .innerJoin(order, eq(orderItem.orderId, order.id))
+    .innerJoin(productVariant, eq(orderItem.variantId, productVariant.id))
+    .innerJoin(categoryOnProduct, eq(categoryOnProduct.productId, productVariant.productId))
+    .where(and(eq(order.userId, userId), inArray(order.status, [...CUSTOMER_PAID_ORDER_STATUSES])))
+    .groupBy(categoryOnProduct.categoryId)
+    .orderBy(desc(count()))
+    .limit(CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT)
+
+  return rows.map((row) => row.categoryId)
+}
+
+export const getCustomerPurchasedProductIds = async (userId: string): Promise<string[]> => {
+  const rows = await db
+    .selectDistinct({ productId: productVariant.productId })
+    .from(orderItem)
+    .innerJoin(order, eq(orderItem.orderId, order.id))
+    .innerJoin(productVariant, eq(orderItem.variantId, productVariant.id))
+    .where(eq(order.userId, userId))
+
+  return rows.map((row) => row.productId)
 }
 
 export const getCustomerLoginAuditRows = (userId: string) =>

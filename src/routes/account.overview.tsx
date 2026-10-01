@@ -237,6 +237,7 @@ const RecommendationCard = ({
 
 const Recommendations = ({
   recommendations,
+  source,
 }: Readonly<{
   recommendations: readonly {
     handle: string
@@ -244,6 +245,7 @@ const Recommendations = ({
     name: string
     priceMinorUnits?: number | undefined
   }[]
+  source: "newArrivals" | "orders"
 }>): JSX.Element => {
   const t = useTranslations("pages.account.overview")
   const format = useFormatter()
@@ -252,14 +254,16 @@ const Recommendations = ({
     <section>
       <div className="flex items-baseline justify-between">
         <div>
-          <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("recommendations")}</h2>
-          <p className="mt-1 text-[12px] text-muted-foreground/60">{t("recommendationsDesc")}</p>
+          <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+            {t(source === "orders" ? "recommendations" : "newArrivals")}
+          </h2>
+          <p className="mt-1 text-[12px] text-muted-foreground/60">{t(source === "orders" ? "recommendationsDesc" : "newArrivalsDesc")}</p>
         </div>
         <LocalizedLink
           to={ROUTES.PRODUCTS}
           className="flex items-center gap-1.5 text-[11px] tracking-[0.15em] text-muted-foreground uppercase transition-colors hover:text-foreground"
         >
-          {t("viewProduct")}
+          {t("viewAllProducts")}
           <ArrowRight className="size-3" strokeWidth={1.5} />
         </LocalizedLink>
       </div>
@@ -295,18 +299,7 @@ const AccountOverviewPage = (): JSX.Element => {
   const locale = useLocale()
   const format = useFormatter()
   const { user } = AccountRoute.useRouteContext()
-  const { data: overviewData } = useSuspenseQuery(getCustomerOverviewQuery(locale))
-  const overview = overviewData ?? {
-    activity: [],
-    recentOrders: [],
-    recommendations: [],
-    stats: {
-      memberSinceYear: String(new Date().getFullYear()),
-      totalOrders: 0,
-      totalSpentMinorUnits: 0,
-      wishlistCount: 0,
-    },
-  }
+  const { data: overview } = useSuspenseQuery(getCustomerOverviewQuery(locale))
 
   const firstName = user.name.split(" ")[0] ?? user.name
   const totalSpentLabel = format.number(centsToDisplayAmount(overview.stats.totalSpentMinorUnits), {
@@ -341,7 +334,7 @@ const AccountOverviewPage = (): JSX.Element => {
 
       <Separator className="my-10" />
 
-      <Recommendations recommendations={overview.recommendations} />
+      <Recommendations recommendations={overview.recommendations} source={overview.recommendationsSource} />
     </div>
   )
 }

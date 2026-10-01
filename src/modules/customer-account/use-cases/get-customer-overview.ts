@@ -10,6 +10,9 @@ import {
   getCustomerActivityAuditRows,
   getCustomerOrderNumbers,
   getCustomerOrderRows,
+  getCustomerPurchasedCategoryIds,
+  getCustomerPurchasedProductIds,
+  getCustomerSpendStats,
   getOrderItemsForOrders,
 } from "~/src/modules/customer-account/customer-account.accessors.server"
 import {
@@ -21,13 +24,15 @@ import {
 } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { mapAuditLogToActivityItem, mapCustomerOrderSummaryRow } from "~/src/modules/customer-account/customer-account.utils"
-import { getPublishedProductsByCollectionId } from "~/src/modules/product/product.accessors"
+import { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionId } from "~/src/modules/product/product.accessors"
 import { LANDING_NEW_ARRIVALS_COLLECTION_HANDLE } from "~/src/modules/product/product.constants"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"
-import { getCustomerOrderStatsQuery, getUserById } from "~/src/modules/user/user.accessors"
+import { getUserById } from "~/src/modules/user/user.accessors"
 import { countWishlistItems } from "~/src/modules/wishlist/wishlist.accessors"
 
 import { getProductImageUrl } from "~/src/lib/image"
+
+const NO_CATEGORIES = 0
 
 const localeInputSchema = zod
   .object({
@@ -35,20 +40,10 @@ const localeInputSchema = zod
   })
   .default({})
 
-const buildCustomerRecommendations = async (
-  collection: { readonly id: string } | undefined,
-  locale: string,
-): Promise<CustomerAccount["overview"]["recommendations"]> => {
-  if (collection === undefined) {
-    return []
-  }
+type RecommendedProducts = Awaited<ReturnType<typeof getPublishedProductsByCollectionId>>["items"]
 
-  const { items } = await getPublishedProductsByCollectionId(collection.id, {
-    limit: CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT,
-    offset: 0,
-  })
-
-  return items.map((productRow) => {
+const toRecommendations = (items: RecommendedProducts, locale: string): CustomerAccount["overview"]["recommendations"] =>
+  items.map((productRow) => {
     const [variant] = productRow.variants
 
     return {
@@ -59,18 +54,51 @@ const buildCustomerRecommendations = async (
       productId: productRow.id,
     }
   })
+
+const buildCustomerRecommendations = async (
+  userId: string,
+  collection: { readonly id: string } | undefined,
+  locale: string,
+): Promise<{ recommendations: CustomerAccount["overview"]["recommendations"]; source: "newArrivals" | "orders" }> => {
+  const [categoryIds, purchasedProductIds] = await Promise.all([
+    getCustomerPurchasedCategoryIds(userId),
+    getCustomerPurchasedProductIds(userId),
+  ])
+
+  if (categoryIds.length > NO_CATEGORIES) {
+    const { items } = await getPublishedProductsByCategoryIds(categoryIds, {
+      limit: CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT + purchasedProductIds.length,
+      offset: 0,
+    })
+    const unseen = items.filter((productRow) => !purchasedProductIds.includes(productRow.id))
+
+    if (unseen.length > NO_CATEGORIES) {
+      return { recommendations: toRecommendations(unseen.slice(0, CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT), locale), source: "orders" }
+    }
+  }
+
+  if (collection === undefined) {
+    return { recommendations: [], source: "newArrivals" }
+  }
+
+  const { items } = await getPublishedProductsByCollectionId(collection.id, {
+    limit: CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT,
+    offset: 0,
+  })
+
+  return { recommendations: toRecommendations(items, locale), source: "newArrivals" }
 }
 
 export const getCustomerOverview = createServerFn({ method: "GET" })
   .middleware([authorized()])
   .validator((input: zod.input<typeof localeInputSchema>) => localeInputSchema.parse(input))
-  .handler(async ({ context, data }): Promise<CustomerAccount["overview"] | undefined> => {
+  .handler(async ({ context, data }): Promise<CustomerAccount["overview"]> => {
     const locale = data.locale ?? I18N.DEFAULT_LOCALE
     const userId = context.auth.user.id
     const orderNumberRows = await getCustomerOrderNumbers(userId)
-    const [orderRows, orderStatsRows, auditRows, userRow, wishlistCount, collection] = await Promise.all([
+    const [orderRows, spendStats, auditRows, userRow, wishlistCount, collection] = await Promise.all([
       getCustomerOrderRows(userId, { limit: CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT }),
-      getCustomerOrderStatsQuery([userId]),
+      getCustomerSpendStats(userId),
       getCustomerActivityAuditRows(
         userId,
         orderNumberRows.map((row) => row.id),
@@ -92,28 +120,24 @@ export const getCustomerOverview = createServerFn({ method: "GET" })
       itemsByOrderId.set(itemRow.orderId, current)
     }
 
-    const statsRow = orderStatsRows.find((row) => row.userId === userId) ?? {
-      orderCount: 0,
-      totalSpent: 0,
-    }
-
     const orderNumberByOrderId = new Map(orderNumberRows.map((row) => [row.id, row.orderNumber]))
     const activity = auditRows
       .map((row) => mapAuditLogToActivityItem(row, orderNumberByOrderId))
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
       .slice(0, CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT)
 
-    const recommendations = await buildCustomerRecommendations(collection, locale)
+    const { recommendations, source } = await buildCustomerRecommendations(userId, collection, locale)
     const memberSince = userRow?.createdAt ?? context.auth.user.createdAt
 
     return {
       activity,
       recentOrders: orderRows.map((row) => mapCustomerOrderSummaryRow(row, itemsByOrderId.get(row.id) ?? [])),
       recommendations,
+      recommendationsSource: source,
       stats: {
         memberSinceYear: String(memberSince.getFullYear()),
-        totalOrders: statsRow.orderCount,
-        totalSpentMinorUnits: statsRow.totalSpent,
+        totalOrders: spendStats.orderCount,
+        totalSpentMinorUnits: spendStats.totalSpent,
         wishlistCount,
       },
     }

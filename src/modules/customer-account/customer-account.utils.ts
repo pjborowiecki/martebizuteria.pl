@@ -318,7 +318,7 @@ export const mapAuditLogToActivityItem = (
       }
     }
     case AUDIT_LOG_ACTION.CUSTOMER_CART_ITEM_ADDED: {
-      const item = typeof metadata["title"] === "string" ? metadata["title"] : (row.detail ?? "")
+      const item = typeof metadata["productTitle"] === "string" ? metadata["productTitle"] : (row.detail ?? "")
 
       return item === ""
         ? undefined

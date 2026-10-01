@@ -37,13 +37,15 @@
     "noRecentOrders": "You have not placed any orders yet.",
     "recommendations": "Recommended for You",
     "recommendationsDesc": "Based on your recent orders",
-    "viewProduct": "View",
     "loyalty": "Loyalty Program",
     "loyaltyTier": "{tier} Tier",
     "loyaltyPoints": "{points} points",
     "loyaltyNext": "{points} pts to {tier} tier",
     "tierGold": "Gold",
-    "tierPlatinum": "Platinum"
+    "tierPlatinum": "Platinum",
+    "newArrivals": "New Arrivals",
+    "newArrivalsDesc": "The latest pieces from the atelier",
+    "viewAllProducts": "View all"
   },
   "orders": {
     "eyebrow": "Your Collection",
