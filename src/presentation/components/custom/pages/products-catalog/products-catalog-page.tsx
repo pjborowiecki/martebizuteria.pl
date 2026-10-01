@@ -21,6 +21,7 @@ import { getStorefrontProductsPageQuery } from "~/src/modules/product/use-cases/
 import { ProductsCatalogFilters } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-filters"
 import { ProductsCatalogGrid } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-grid"
 import { ProductsCatalogMobileFilters } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-mobile-filters"
+import { ProductsCatalogSearchClear } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-search-clear"
 
 const useCatalogFilterSources = (scope: StorefrontCatalogScope | undefined): CatalogFilterSources => {
   const showCategoryFilter = scope?.categoryHandle === undefined
@@ -77,11 +78,16 @@ export const ProductsCatalogPage = ({
     )
   }, [onSearchChange])
 
+  const handleClearSearch = useCallback(() => {
+    onSearchChange({ q: undefined })
+  }, [onSearchChange])
+
   return (
     <main className="mx-auto max-w-400 px-6 pt-8 pb-24 lg:px-12 lg:pt-10 lg:pb-32">
       <header className="mb-8 space-y-3 lg:mb-10">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{header.eyebrow}</p>
         <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl">{header.title}</h1>
+        {normalizedSearch.q !== undefined && <ProductsCatalogSearchClear onClear={handleClearSearch} />}
       </header>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-4 lg:gap-x-12 xl:gap-x-16">

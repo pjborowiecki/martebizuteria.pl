@@ -1,6 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { createFileRoute } from "@tanstack/react-router"
+import { createTranslator } from "use-intl"
 import { useTranslations } from "use-intl/react"
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
@@ -14,22 +15,25 @@ import {
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 
-import { ProductsCatalogPage } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-page"
+import {
+  ProductsCatalogPage,
+  type StorefrontCatalogHeader,
+} from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-page"
 import { prefetchProductsCatalogPage } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog.loader"
 
 import type productsMessages from "~/messages/en-US/pages.products.json"
+
+const resolveProductsHeader = (
+  query: string | undefined,
+  t: ReturnType<typeof useTranslations<"pages.products">>,
+): StorefrontCatalogHeader =>
+  query === undefined ? { eyebrow: t("eyebrow"), title: t("title") } : { eyebrow: t("search.eyebrow"), title: t("search.title", { query }) }
 
 const ProductsPage = (): JSX.Element => {
   const t = useTranslations("pages.products")
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
-  const header = useMemo(
-    () => ({
-      eyebrow: t("eyebrow"),
-      title: t("title"),
-    }),
-    [t],
-  )
+  const header = useMemo(() => resolveProductsHeader(search.q, t), [search.q, t])
 
   const handleSearchChange = useCallback(
     (
@@ -79,9 +83,11 @@ export const Route = createFileRoute("/_storefront/products/")({
       }),
     ])
 
+    const t = createTranslator({ locale: context.locale, messages })
+
     return {
       description: messages.description,
-      title: messages.title,
+      title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
     }
   },
   loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),

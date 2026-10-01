@@ -4,6 +4,12 @@
   "description": "Browse our complete collection of exquisite jewelry.",
   "noProductsFound": "No products found.",
   "resultsCount": "{count, plural, =0 {No products} one {# product} other {# products}}",
+  "search": {
+    "eyebrow": "Search",
+    "title": "Results for “{query}”",
+    "pageTitle": "Search: {query}",
+    "clear": "Clear search"
+  },
   "filters": {
     "eyebrow": "Filters",
     "title": "Refine your selection",

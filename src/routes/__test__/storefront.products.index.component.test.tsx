@@ -192,6 +192,23 @@ describe("storefront products route data", () => {
     })
   })
 
+  it("heads a search with the query instead of the catalogue title", () => {
+    searchState.current = { q: "pierścionek" }
+    renderWithProviders(<ProductsPage />)
+
+    expect(screen.getByTestId("eyebrow")).toHaveTextContent("Search")
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Results for “pierścionek”")
+  })
+
+  it("titles the tab after the query while a search is active", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const imagePrefetchService = { prefetch: vi.fn() }
+
+    await expect(
+      route.loader?.({ context: { imagePrefetchService, locale: "en-US", queryClient }, deps: { q: "pierścionek" } }),
+    ).resolves.toMatchObject({ title: "Search: pierścionek" })
+  })
+
   it("returns the page title and description from the message catalogue", async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const imagePrefetchService = { prefetch: vi.fn() }
