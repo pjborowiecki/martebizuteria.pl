@@ -1,32 +1,35 @@
 import { type JSX } from "react"
 
+import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { CreditCard } from "lucide-react"
 import { useTranslations } from "use-intl/react"
+
+import { listSavedPaymentMethodsQuery } from "~/src/modules/payment/use-cases/list-saved-payment-methods"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
+import { SavedCardList } from "~/src/presentation/components/custom/pages/account/payment/saved-card-list"
+
 const PaymentPage = (): JSX.Element => {
   const t = useTranslations("pages.account.payment")
+  const { data: methods } = useSuspenseQuery(listSavedPaymentMethodsQuery())
 
   return (
     <div>
       <div className="mb-10 space-y-3">
         <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{t("eyebrow")}</p>
         <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("title")}</h1>
+        <p className="max-w-lg text-[14px] leading-relaxed text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       <div className="flex items-baseline justify-between">
         <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
-          {t("saved")} ({0})
+          {t("saved")} ({methods.length})
         </h2>
       </div>
       <Separator className="mt-3 mb-0" />
 
-      <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <CreditCard className="size-8 text-muted-foreground/30" strokeWidth={1} />
-        <p className="max-w-md text-sm text-muted-foreground">{t("empty")}</p>
-      </div>
+      <SavedCardList methods={methods} />
 
       <Separator className="my-10" />
 
@@ -40,4 +43,7 @@ const PaymentPage = (): JSX.Element => {
 
 export const Route = createFileRoute("/account/payment")({
   component: PaymentPage,
+  loader: async ({ context }) => {
+    await context.queryClient.query({ ...listSavedPaymentMethodsQuery(), staleTime: "static" })
+  },
 })

@@ -26,6 +26,9 @@ vi.mock("~/src/lib/url", () => ({
   resolveAssetURL: (pathOrUrl: string) => pathOrUrl,
 }))
 
+vi.mock("~/src/hooks/use-wishlist", () => ({
+  useWishlist: () => ({ isWishlisted: () => false, signedIn: false, toggle: vi.fn() }),
+}))
 vi.mock("~/src/modules/customer-activity/use-cases/record-customer-activity", () => ({
   recordCustomerActivity: () => Promise.resolve({ ok: true, recorded: false }),
 }))

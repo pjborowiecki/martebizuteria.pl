@@ -10,16 +10,17 @@ import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
 import { ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES } from "~/src/modules/user/user.constants"
 
-export const getCustomerActivityAuditRows = (userId: string) =>
+export const getCustomerActivityAuditRows = (userId: string, orderIds: readonly string[] = []) =>
   db
     .select({
       action: auditLog.action,
       createdAt: auditLog.createdAt,
       detail: auditLog.detail,
       metadata: auditLog.metadata,
+      resourceId: auditLog.resourceId,
     })
     .from(auditLog)
-    .where(and(eq(auditLog.resourceId, userId), inArray(auditLog.action, [...CUSTOMER_ACCOUNT_ACTIVITY_ACTIONS])))
+    .where(and(inArray(auditLog.resourceId, [userId, ...orderIds]), inArray(auditLog.action, [...CUSTOMER_ACCOUNT_ACTIVITY_ACTIONS])))
     .orderBy(desc(auditLog.createdAt))
     .limit(CUSTOMER_AUDIT_TIMELINE_LIMIT)
 
@@ -38,6 +39,14 @@ export const getCustomerOrderRows = (userId: string, limit = CUSTOMER_ACCOUNT_OR
     .where(and(eq(order.userId, userId), inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
     .orderBy(desc(order.createdAt))
     .limit(limit)
+
+export const getCustomerOrderNumbers = (userId: string) =>
+  db
+    .select({ id: order.id, orderNumber: order.orderNumber })
+    .from(order)
+    .where(eq(order.userId, userId))
+    .orderBy(desc(order.createdAt))
+    .limit(CUSTOMER_ACCOUNT_ORDERS_LIMIT)
 
 export const getOrderItemsForOrders = (orderIds: readonly string[]) => {
   if (orderIds.length === 0) {

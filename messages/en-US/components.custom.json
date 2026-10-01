@@ -95,7 +95,14 @@
     "addToWishlist": "Add to Wishlist",
     "removeFromWishlist": "Remove from Wishlist",
     "share": "Share",
-    "quickView": "Quick View"
+    "quickView": "Quick View",
+    "wishlistAdded": "Saved to your wishlist",
+    "wishlistRemoved": "Removed from your wishlist",
+    "wishlistError": "We could not update your wishlist. Please try again.",
+    "wishlistFull": "Your wishlist holds the most we can keep ({limit} pieces). Remove one to save another.",
+    "wishlistSignInTitle": "Sign in to save pieces",
+    "wishlistSignInDescription": "Your wishlist is kept with your account.",
+    "wishlistSignInAction": "Sign in"
   },
   "authLayout": {
     "imageAlt": "Editorial jewelry composition on textured stone",

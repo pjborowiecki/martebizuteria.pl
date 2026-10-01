@@ -56,6 +56,7 @@ const SuggestedProductCard = ({
       params={params}
       priority={index < PRIORITY_IMAGE_COUNT}
       price={price}
+      productId={product.id}
       rawPrice={variantPrice}
       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 30vw"
       slug={product.handle}

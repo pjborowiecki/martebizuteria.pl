@@ -10,6 +10,7 @@ interface AuditRow {
   readonly createdAt: Date
   readonly detail: string | null
   readonly metadata: string | null
+  readonly resourceId: string | null
 }
 
 interface OrderRow {
@@ -31,10 +32,12 @@ const access = vi.hoisted(() => ({
   auditRows: vi.fn(),
   collectionFindFirst: vi.fn(),
   orderItems: vi.fn(),
+  orderNumbers: vi.fn(),
   orderRows: vi.fn(),
   publishedProducts: vi.fn(),
   stats: vi.fn(),
   userById: vi.fn(),
+  wishlistCount: vi.fn(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
@@ -44,9 +47,11 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) => `cdn/${path ?? "placeholder"}` }))
 vi.mock("~/src/modules/customer-account/customer-account.accessors.server", () => ({
   getCustomerActivityAuditRows: access.auditRows,
+  getCustomerOrderNumbers: access.orderNumbers,
   getCustomerOrderRows: access.orderRows,
   getOrderItemsForOrders: access.orderItems,
 }))
+vi.mock("~/src/modules/wishlist/wishlist.accessors", () => ({ countWishlistItems: access.wishlistCount }))
 vi.mock("~/src/modules/product/product.accessors", () => ({ getPublishedProductsByCollectionId: access.publishedProducts }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getCustomerOrderStatsQuery: access.stats, getUserById: access.userById }))
 vi.mock("@tanstack/react-start", () => ({
@@ -71,6 +76,7 @@ const auditRow = (overrides: Partial<AuditRow> = {}): AuditRow => ({
   createdAt: new Date("2026-03-01T10:00:00.000Z"),
   detail: null,
   metadata: null,
+  resourceId: "customer-1",
   ...overrides,
 })
 
@@ -92,6 +98,8 @@ describe("getCustomerOverview", () => {
     access.auditRows.mockResolvedValue([])
     access.collectionFindFirst.mockResolvedValue(undefined)
     access.orderItems.mockResolvedValue([])
+    access.orderNumbers.mockResolvedValue([])
+    access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([])
     access.publishedProducts.mockResolvedValue({ items: [] })
     access.stats.mockResolvedValue([])
@@ -103,8 +111,37 @@ describe("getCustomerOverview", () => {
 
     expect(access.stats).toHaveBeenCalledWith(["customer-1"])
     expect(access.orderRows).toHaveBeenCalledWith("customer-1", 3)
-    expect(access.auditRows).toHaveBeenCalledWith("customer-1")
+    expect(access.auditRows).toHaveBeenCalledWith("customer-1", [])
     expect(access.userById).toHaveBeenCalledWith("customer-1")
+    expect(access.wishlistCount).toHaveBeenCalledWith("customer-1")
+  })
+
+  it("counts the saved wishlist items the customer holds", async () => {
+    access.wishlistCount.mockResolvedValue(7)
+
+    const result = await overview()
+
+    expect(result?.stats.wishlistCount).toBe(7)
+  })
+
+  it("looks for order activity across every order the customer has, not just the three on the page", async () => {
+    access.orderNumbers.mockResolvedValue([
+      { id: "order-1", orderNumber: "MRT-2026-00001" },
+      { id: "order-9", orderNumber: "MRT-2026-00009" },
+    ])
+
+    await overview()
+
+    expect(access.auditRows).toHaveBeenCalledWith("customer-1", ["order-1", "order-9"])
+  })
+
+  it("names an order event after the order it belongs to even when that order is off the page", async () => {
+    access.orderNumbers.mockResolvedValue([{ id: "order-9", orderNumber: "MRT-2026-00009" }])
+    access.auditRows.mockResolvedValue([auditRow({ action: "order.placed", resourceId: "order-9" })])
+
+    const result = await overview()
+
+    expect(result?.activity.map((item) => [item.actionKey, item.params])).toStrictEqual([["orderPlaced", { id: "MRT-2026-00009" }]])
   })
 
   it("starts a brand new customer at zero without a stats row", async () => {
@@ -167,6 +204,21 @@ describe("getCustomerOverview", () => {
     const result = await overview()
 
     expect(result?.activity.map((item) => item.actionKey)).toStrictEqual(["loginSuccess"])
+  })
+})
+
+describe("getCustomerOverview recommendations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    access.auditRows.mockResolvedValue([])
+    access.collectionFindFirst.mockResolvedValue(undefined)
+    access.orderItems.mockResolvedValue([])
+    access.orderNumbers.mockResolvedValue([])
+    access.wishlistCount.mockResolvedValue(0)
+    access.orderRows.mockResolvedValue([])
+    access.publishedProducts.mockResolvedValue({ items: [] })
+    access.stats.mockResolvedValue([])
+    access.userById.mockResolvedValue(undefined)
   })
 
   it("recommends nothing while the new arrivals collection is missing", async () => {
@@ -242,6 +294,8 @@ describe("getCustomerOverview recommendation collection", () => {
     vi.clearAllMocks()
     access.auditRows.mockResolvedValue([])
     access.orderItems.mockResolvedValue([])
+    access.orderNumbers.mockResolvedValue([])
+    access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([])
     access.publishedProducts.mockResolvedValue({ items: [] })
     access.stats.mockResolvedValue([])
@@ -284,6 +338,8 @@ describe("getCustomerOverview partial account data", () => {
     access.auditRows.mockResolvedValue([])
     access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
     access.orderItems.mockResolvedValue([])
+    access.orderNumbers.mockResolvedValue([])
+    access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([orderRow()])
     access.publishedProducts.mockResolvedValue({
       items: [{ handle: "ring", id: "product-1", thumbnail: null, titles: { "en-US": "Ring", "pl-PL": "Pierścionek" }, variants: [] }],
@@ -325,6 +381,8 @@ describe("getCustomerOverviewQuery fetching", () => {
     access.auditRows.mockResolvedValue([])
     access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
     access.orderItems.mockResolvedValue([])
+    access.orderNumbers.mockResolvedValue([])
+    access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([])
     access.publishedProducts.mockResolvedValue({
       items: [

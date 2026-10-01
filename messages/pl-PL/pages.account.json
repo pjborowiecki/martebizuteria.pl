@@ -135,24 +135,17 @@
   },
   "payment": {
     "eyebrow": "Portfel",
-    "title": "Płatności",
-    "subtitle": "Zarządzaj swoimi zapisanymi metodami płatności dla szybszej realizacji zamówienia.",
+    "title": "Metody płatności",
+    "subtitle": "Tutaj znajdziesz karty, które zapisałeś przy składaniu zamówienia.",
     "saved": "Zapisane karty",
-    "addNew": "Dodaj nową",
-    "default": "Domyślna",
     "expires": "Wygasa",
-    "makeDefault": "Ustaw jako domyślną",
+    "expired": "Wygasła",
+    "remove": "Usuń kartę",
+    "removed": "Karta usunięta",
+    "removeError": "Nie udało się usunąć karty. Spróbuj ponownie.",
+    "empty": "Brak zapisanych kart. Wybierz zapisanie karty podczas płatności, a pojawi się tutaj.",
     "securityNote": "Bezpieczeństwo",
-    "empty": "Brak zapisanych metod płatności. Karty są wprowadzane bezpiecznie przy realizacji zamówienia.",
-    "securityDesc": "Twoje dane płatnicze są bezpiecznie zaszyfrowane. Nie przechowujemy pełnych numerów kart kredytowych na naszych serwerach.",
-    "form": {
-      "cardNumber": "Numer karty",
-      "name": "Imię i nazwisko na karcie",
-      "expiry": "Ważność",
-      "cvv": "CVV",
-      "save": "Zapisz kartę",
-      "cancel": "Anuluj"
-    }
+    "securityDesc": "Karty przechowuje Stripe, nigdy nasze serwery. Zapisujemy wyłącznie referencję, aby można ich było użyć ponownie."
   },
   "wishlist": {
     "eyebrow": "Ulubione",
@@ -160,7 +153,13 @@
     "subtitle": "Masz {count} zapisanych produktów na swojej liście życzeń.",
     "empty": "Twoja lista życzeń jest pusta",
     "browseProducts": "Przeglądaj produkty",
-    "outOfStock": "Brak w magazynie"
+    "outOfStock": "Brak w magazynie",
+    "unavailable": "Niedostępny",
+    "remove": "Usuń z listy życzeń",
+    "addToCart": "Dodaj do koszyka",
+    "addedAt": "Zapisano {date}",
+    "removed": "Usunięto z listy życzeń",
+    "removeError": "Nie udało się usunąć tej pozycji. Spróbuj ponownie."
   },
   "sessions": {
     "eyebrow": "Bezpieczeństwo",
