@@ -121,6 +121,14 @@ describe("ProductsCatalogPage header", () => {
     expect(heading.parentElement?.tagName).toBe("HEADER")
     expect(heading.parentElement?.children).toHaveLength(2)
   })
+
+  it("offers to clear the search while a query is active", async () => {
+    const onSearchChange = renderPage({ search: { q: "pierścionek" } })
+
+    await userEvent.click(await screen.findByRole("button", { name: "Clear search" }))
+
+    expect(onSearchChange).toHaveBeenCalledExactlyOnceWith({ q: undefined })
+  })
 })
 
 describe("ProductsCatalogPage filters", () => {
