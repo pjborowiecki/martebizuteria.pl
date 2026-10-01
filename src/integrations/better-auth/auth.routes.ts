@@ -17,25 +17,37 @@ const redirectTo = (to: GuardRoute): never => {
   })
 }
 
+const redirectToSignIn = (intended: string | undefined): never => {
+  const safe = resolveSafeRedirect(intended)
+
+  throw redirect({
+    search: safe === undefined ? {} : { redirect: safe },
+    to: ROUTES.AUTH_SIGN_IN,
+  })
+}
+
+export const resolveSafeRedirect = (value: string | undefined): string | undefined =>
+  value !== undefined && value.startsWith("/") && !value.startsWith("//") ? value : undefined
+
 export const postAuthRouteFor = (user: SessionUser): GuardRoute => (hasAdminAccess(user.role) ? ROUTES.ADMIN : ROUTES.ACCOUNT_OVERVIEW)
 
 export const authEntryRouteFor = (user: SessionUser | undefined | null): GuardRoute =>
   user === undefined || user === null ? ROUTES.AUTH_SIGN_IN : postAuthRouteFor(user)
 
-export const requireUser = async (): Promise<SessionUser> => {
+export const requireUser = async (intended?: string): Promise<SessionUser> => {
   const session = await getCurrentSession()
 
-  return session?.user ?? redirectTo(ROUTES.AUTH_SIGN_IN)
+  return session?.user ?? redirectToSignIn(intended)
 }
 
-export const requireAdmin = async (): Promise<SessionUser> => {
-  const user = await requireUser()
+export const requireAdmin = async (intended?: string): Promise<SessionUser> => {
+  const user = await requireUser(intended)
 
   return hasAdminAccess(user.role) ? user : redirectTo(ROUTES.ACCOUNT_OVERVIEW)
 }
 
-export const requireCustomer = async (): Promise<SessionUser> => {
-  const user = await requireUser()
+export const requireCustomer = async (intended?: string): Promise<SessionUser> => {
+  const user = await requireUser(intended)
 
   return hasAdminAccess(user.role) ? redirectTo(ROUTES.ADMIN) : user
 }

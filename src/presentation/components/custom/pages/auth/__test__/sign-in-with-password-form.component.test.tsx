@@ -41,6 +41,8 @@ const auth = vi.hoisted(() => {
 
 const navigation = vi.hoisted(() => ({ navigate: vi.fn<(options: { to: string }) => void>() }))
 
+const search = vi.hoisted(() => ({ current: {} as Record<string, unknown> }))
+
 const toasts = vi.hoisted(() => ({
   error: vi.fn<(title: string, options: { description: string }) => void>(),
   success: vi.fn<(title: string, options: { description: string }) => void>(),
@@ -52,7 +54,11 @@ vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getCurrentSessio
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>()
 
-  return { ...actual, useNavigate: () => navigation.navigate }
+  return {
+    ...actual,
+    useNavigate: () => navigation.navigate,
+    useSearch: ({ select }: { select: (search: Record<string, unknown>) => unknown }) => select(search.current),
+  }
 })
 
 import { SignInWithPasswordForm } from "~/src/presentation/components/custom/pages/auth/sign-in-with-password-form"
@@ -73,6 +79,7 @@ const signInAs = async (email = "ada@example.test", password = "Str0ng!Pass") =>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  search.current = {}
   auth.requests.length = 0
   auth.outcome.current = { kind: "success" }
   auth.inFlight.release = undefined
@@ -175,6 +182,28 @@ describe("SignInWithPasswordForm submission", () => {
   })
 
   it("sends a customer on to their account overview", async () => {
+    renderWithProviders(<SignInWithPasswordForm />)
+
+    await signInAs()
+
+    await waitFor(() => {
+      expect(navigation.navigate).toHaveBeenCalledWith({ to: ROUTES.ACCOUNT_OVERVIEW })
+    })
+  })
+
+  it("returns the customer to the account page they originally asked for", async () => {
+    search.current = { redirect: "/account/orders/order-7" }
+    renderWithProviders(<SignInWithPasswordForm />)
+
+    await signInAs()
+
+    await waitFor(() => {
+      expect(navigation.navigate).toHaveBeenCalledWith({ to: "/account/orders/order-7" })
+    })
+  })
+
+  it("refuses to follow a destination that points off the site", async () => {
+    search.current = { redirect: "https://evil.test/steal" }
     renderWithProviders(<SignInWithPasswordForm />)
 
     await signInAs()

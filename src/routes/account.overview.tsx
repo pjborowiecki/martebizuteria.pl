@@ -7,11 +7,14 @@ import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { formatCustomerAccountRelativeTime } from "~/src/modules/customer-account/customer-account.utils"
 import { getCustomerOverviewQuery } from "~/src/modules/customer-account/use-cases/get-customer-overview"
 
 import { Route as AccountRoute } from "~/src/routes/account"
+
+import { pageHead } from "~/src/lib/seo"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
@@ -345,11 +348,15 @@ const AccountOverviewPage = (): JSX.Element => {
 
 export const Route = createFileRoute("/account/overview")({
   component: AccountOverviewPage,
-  loader: ({ context }) =>
-    context.queryClient.query({
+  head: pageHead,
+  loader: async ({ context }) => {
+    await context.queryClient.query({
       ...getCustomerOverviewQuery(context.locale),
       staleTime: "static",
-    }),
+    })
+
+    return accountPageMeta(context.queryClient, context.locale, "overview")
+  },
   staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
 })
 

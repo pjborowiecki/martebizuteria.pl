@@ -10,7 +10,7 @@ interface LoaderContext {
 }
 
 interface RouteDefinition {
-  readonly beforeLoad?: () => Promise<{ user: unknown }>
+  readonly beforeLoad?: (args: { location: { href: string } }) => Promise<{ user: unknown }>
   readonly loader?: (args: { context: LoaderContext }) => Promise<PageMeta>
 }
 
@@ -31,7 +31,12 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   }
 })
 vi.mock("~/src/integrations/better-auth/auth.routes", () => guard)
+vi.mock("~/src/presentation/components/custom/pages/account/account-error-state", () => ({
+  AccountErrorState: () => null,
+  AccountNotFoundState: () => null,
+}))
 vi.mock("~/src/presentation/components/custom/pages/account/account-sidebar", () => ({ AccountSidebar: () => null }))
+vi.mock("~/src/presentation/components/custom/pages/landing-page/footer/footer", () => ({ Footer: () => null }))
 vi.mock("~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation", () => ({
   Navigation: () => null,
 }))
@@ -51,25 +56,35 @@ describe("account route guard", () => {
   it("hands the signed-in customer to every child route", async () => {
     guard.requireCustomer.mockResolvedValue({ email: "ada@example.test", id: "user-7" })
 
-    await expect(route.beforeLoad?.()).resolves.toStrictEqual({ user: { email: "ada@example.test", id: "user-7" } })
+    await expect(route.beforeLoad?.({ location: { href: "/account/overview" } })).resolves.toStrictEqual({
+      user: { email: "ada@example.test", id: "user-7" },
+    })
+  })
+
+  it("tells the guard which account page was asked for", async () => {
+    guard.requireCustomer.mockResolvedValue({ id: "user-7" })
+
+    await route.beforeLoad?.({ location: { href: "/account/orders/order-1" } })
+
+    expect(guard.requireCustomer).toHaveBeenCalledWith("/account/orders/order-1")
   })
 
   it("lets the guard reject a visitor who is not signed in", async () => {
     guard.requireCustomer.mockRejectedValue(new Error("Unauthorized"))
 
-    await expect(route.beforeLoad?.()).rejects.toThrow("Unauthorized")
+    await expect(route.beforeLoad?.({ location: { href: "/account/overview" } })).rejects.toThrow("Unauthorized")
   })
 })
 
 describe("account route metadata", () => {
   it("titles the account area from the English catalogue", async () => {
     await expect(loadMeta("en-US")).resolves.toStrictEqual({
-      description: "Sign in and order history will appear here.",
-      title: "Account",
+      description: "Your orders, addresses, saved pieces and account settings.",
+      title: "Your Account | M'Arte",
     })
   })
 
   it("titles the account area from the Polish catalogue", async () => {
-    await expect(loadMeta("pl-PL")).resolves.toMatchObject({ title: "Konto" })
+    await expect(loadMeta("pl-PL")).resolves.toMatchObject({ title: "Twoje konto | M'Arte" })
   })
 })

@@ -10,10 +10,12 @@ import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { getCustomerOrderQuery } from "~/src/modules/customer-account/use-cases/get-customer-order"
 
 import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
+import { pageHead } from "~/src/lib/seo"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
@@ -407,11 +409,14 @@ const OrderNoteBlock = ({ note }: Readonly<{ note?: string | undefined }>): JSX.
 
 export const Route = createFileRoute("/account/orders/$id")({
   component: OrderDetailPage,
+  head: pageHead,
   loader: async ({ context, params }) => {
     await context.queryClient.query({
       ...getCustomerOrderQuery(params.id),
       staleTime: "static",
     })
+
+    return accountPageMeta(context.queryClient, context.locale, "orders")
   },
   staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
 })

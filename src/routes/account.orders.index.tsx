@@ -13,10 +13,12 @@ import {
   CUSTOMER_ACCOUNT_QUERY_STALE_MS,
   type CustomerAccountOrderFilter,
 } from "~/src/modules/customer-account/customer-account.constants"
+import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { listCustomerOrdersQuery } from "~/src/modules/customer-account/use-cases/list-customer-orders"
 
 import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
+import { pageHead } from "~/src/lib/seo"
 
 import { buttonVariants } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
@@ -347,11 +349,15 @@ const OrderRowItem = ({
 
 export const Route = createFileRoute("/account/orders/")({
   component: OrdersPage,
-  loader: ({ context, deps }) =>
-    context.queryClient.query({
+  head: pageHead,
+  loader: async ({ context, deps }) => {
+    await context.queryClient.query({
       ...listCustomerOrdersQuery(deps),
       staleTime: "static",
-    }),
+    })
+
+    return accountPageMeta(context.queryClient, context.locale, "orders")
+  },
   loaderDeps: ({ search }: { search: OrdersSearch }) => ({ filter: search.filter, page: search.page }),
   staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
   validateSearch: ordersSearchSchema,

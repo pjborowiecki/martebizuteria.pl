@@ -1,13 +1,15 @@
-import { cleanup, screen } from "@testing-library/react"
+import { act, cleanup, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { createTestRouter, renderWithProviders } from "~/src/platform/testing/lib/render"
 
-const { signOut } = vi.hoisted(() => ({
-  signOut: vi.fn<(input: { fetchOptions: { onSuccess: () => void } }) => Promise<void>>(),
+const { signOut, toastError } = vi.hoisted(() => ({
+  signOut: vi.fn<(input: { fetchOptions: { onError: () => void; onSuccess: () => void } }) => Promise<void>>(),
+  toastError: vi.fn<(message: string) => void>(),
 }))
 
+vi.mock("sonner", () => ({ toast: { error: toastError } }))
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({ signOut }))
 
 import { AccountSidebar } from "~/src/presentation/components/custom/pages/account/account-sidebar"
@@ -52,10 +54,19 @@ describe("AccountSidebar", () => {
     ])
   })
 
-  it("renders the links inside a navigation landmark", () => {
+  it("renders the links inside a navigation landmark a screen reader can name", () => {
     renderWithProviders(<AccountSidebar />)
 
-    expect(screen.getByRole("navigation")).toContainElement(screen.getByRole("link", { name: "Orders" }))
+    expect(screen.getByRole("navigation", { name: "Your Account" })).toContainElement(screen.getByRole("link", { name: "Orders" }))
+  })
+
+  it("keeps the navigation and the sign out reachable on a phone", () => {
+    renderWithProviders(<AccountSidebar />)
+
+    const aside = screen.getByRole("navigation").closest("aside")
+
+    expect(aside?.className).not.toContain("hidden")
+    expect(screen.getByRole("button", { name: "Sign Out" })).toBeVisible()
   })
 
   it("styles a link the shopper is not on as inactive", () => {
@@ -78,6 +89,26 @@ describe("AccountSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign Out" }))
 
     expect(signOut).toHaveBeenCalledOnce()
+  })
+
+  it("says so when signing out failed, and lets the customer try again", async () => {
+    renderWithProviders(<AccountSidebar />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Sign Out" }))
+    act(() => {
+      signOut.mock.calls[0]?.[0].fetchOptions.onError()
+    })
+
+    expect(toastError).toHaveBeenCalledWith("We could not sign you out. Please try again.")
+    expect(screen.getByRole("button", { name: "Sign Out" })).toBeEnabled()
+  })
+
+  it("stops a second sign out while the first is still running", async () => {
+    renderWithProviders(<AccountSidebar />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Sign Out" }))
+
+    expect(screen.getByRole("button", { name: "Sign Out" })).toBeDisabled()
   })
 
   it("sends the signed out customer to the storefront home page", async () => {

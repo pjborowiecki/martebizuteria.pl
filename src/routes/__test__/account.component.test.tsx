@@ -16,6 +16,9 @@ vi.mock("~/src/presentation/components/custom/pages/account/account-sidebar", ()
 vi.mock("~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation", () => ({
   Navigation: (): JSX.Element => <header data-testid="storefront-navigation" />,
 }))
+vi.mock("~/src/presentation/components/custom/pages/landing-page/footer/footer", () => ({
+  Footer: (): JSX.Element => <footer data-testid="storefront-footer" />,
+}))
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
@@ -47,6 +50,24 @@ describe("account layout", () => {
     expect(screen.getByTestId("account-sidebar")).toBeInTheDocument()
     expect(screen.getByTestId("outlet")).toBeInTheDocument()
     expect(screen.getByRole("main")).toBeInTheDocument()
+  })
+})
+
+describe("account layout surroundings", () => {
+  it("keeps the storefront footer under the account area", () => {
+    renderLayout()
+
+    expect(screen.getByTestId("storefront-footer")).toBeInTheDocument()
+  })
+})
+
+describe("account failure handling", () => {
+  it("shows a recoverable error state instead of a dead end", () => {
+    expect(Route.options.errorComponent).toBeTypeOf("function")
+  })
+
+  it("answers a missing account page with its own not-found state", () => {
+    expect(Route.options.notFoundComponent).toBeTypeOf("function")
   })
 })
 

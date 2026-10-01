@@ -1,7 +1,7 @@
 import { type JSX, type SyntheticEvent, useCallback, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, useSearch } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { signIn } from "~/src/integrations/better-auth/auth.client"
-import { postAuthRouteFor } from "~/src/integrations/better-auth/auth.routes"
+import { postAuthRouteFor, resolveSafeRedirect } from "~/src/integrations/better-auth/auth.routes"
 import { getCurrentSession } from "~/src/integrations/better-auth/auth.session"
 import { type SignInFormValues, signInWithPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
 
@@ -25,11 +25,15 @@ import { ROUTES } from "~/src/routes"
 
 const signInEmail = createClientOnlyFn((input: Parameters<typeof signIn.email>[0]) => signIn.email(input))
 
+const selectRedirect = (search: Record<string, unknown>): string | undefined =>
+  typeof search["redirect"] === "string" ? search["redirect"] : undefined
+
 const isTwoFactorRequired = (data: unknown): boolean =>
   typeof data === "object" && data !== null && "twoFactorRedirect" in data && data.twoFactorRedirect === true
 
 export const SignInWithPasswordForm = (): JSX.Element => {
   const navigate = useNavigate()
+  const intended = resolveSafeRedirect(useSearch({ select: selectRedirect, strict: false }))
   const [twoFactorRequired, setTwoFactorRequired] = useState(false)
   const t = useTranslations()
   const actionError = useActionError()
@@ -65,7 +69,7 @@ export const SignInWithPasswordForm = (): JSX.Element => {
             const session = await getCurrentSession()
             if (session?.user) {
               void navigate({
-                to: postAuthRouteFor(session.user),
+                to: intended ?? postAuthRouteFor(session.user),
               })
             }
           },
@@ -73,7 +77,7 @@ export const SignInWithPasswordForm = (): JSX.Element => {
         password: data.password,
       })
     },
-    [navigate, t],
+    [intended, navigate, t],
   )
 
   const handleFormSubmit = useCallback(
@@ -92,7 +96,7 @@ export const SignInWithPasswordForm = (): JSX.Element => {
   const { isSubmitting } = form.formState
 
   if (twoFactorRequired) {
-    return <TwoFactorChallengeForm onCancel={leaveTwoFactor} />
+    return <TwoFactorChallengeForm intended={intended} onCancel={leaveTwoFactor} />
   }
 
   return (

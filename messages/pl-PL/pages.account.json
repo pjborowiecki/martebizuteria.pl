@@ -8,7 +8,8 @@
     "sessions": "Sesje",
     "signOut": "Wyloguj się",
     "title": "Moje Konto",
-    "profile": "Profil"
+    "profile": "Profil",
+    "signOutError": "Nie udało się wylogować. Spróbuj ponownie."
   },
   "overview": {
     "greeting": "Witaj ponownie",
@@ -286,5 +287,14 @@
       "wrongPassword": "To hasło jest nieprawidłowe.",
       "wrongCode": "Ten kod jest nieprawidłowy. Sprawdź aplikację i spróbuj ponownie."
     }
+  },
+  "errorState": {
+    "title": "Nie udało się załadować tej strony",
+    "description": "Coś poszło nie tak po naszej stronie. Twoje konto i zamówienia są bezpieczne — spróbuj ponownie za chwilę.",
+    "retry": "Spróbuj ponownie",
+    "backToAccount": "Wróć do konta",
+    "notFoundTitle": "Nie znaleziono",
+    "notFoundDescription": "Strona lub zamówienie, o które pytasz, nie istnieje albo nie należy do tego konta.",
+    "backToOrders": "Twoje zamówienia"
   }
 }

@@ -5,7 +5,10 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useTranslations } from "use-intl/react"
 
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { getCustomerProfileQuery } from "~/src/modules/customer-account/use-cases/get-customer-profile"
+
+import { pageHead } from "~/src/lib/seo"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
@@ -41,10 +44,14 @@ const ProfilePage = (): JSX.Element => {
 
 export const Route = createFileRoute("/account/profile")({
   component: ProfilePage,
-  loader: ({ context }) =>
-    context.queryClient.query({
+  head: pageHead,
+  loader: async ({ context }) => {
+    await context.queryClient.query({
       ...getCustomerProfileQuery(),
       staleTime: "static",
-    }),
+    })
+
+    return accountPageMeta(context.queryClient, context.locale, "profile")
+  },
   staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
 })

@@ -7,12 +7,15 @@ import { toast } from "sonner"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { CUSTOMER_ACCOUNT_QUERY_KEYS, CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { formatCustomerAccountRelativeTime } from "~/src/modules/customer-account/customer-account.utils"
 import { listCustomerLoginHistoryQuery } from "~/src/modules/customer-account/use-cases/list-customer-login-history"
 import { listCustomerSessionsQuery } from "~/src/modules/customer-account/use-cases/list-customer-sessions"
 import { revokeCustomerSessionMutation } from "~/src/modules/customer-account/use-cases/revoke-customer-session"
 import { revokeOtherCustomerSessionsMutation } from "~/src/modules/customer-account/use-cases/revoke-other-customer-sessions"
+
+import { pageHead } from "~/src/lib/seo"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
@@ -236,8 +239,9 @@ const LoginHistoryItem = ({
 
 export const Route = createFileRoute("/account/sessions")({
   component: SessionsPage,
-  loader: ({ context }) =>
-    Promise.all([
+  head: pageHead,
+  loader: async ({ context }) => {
+    await Promise.all([
       context.queryClient.query({
         ...listCustomerSessionsQuery(),
         staleTime: "static",
@@ -246,7 +250,10 @@ export const Route = createFileRoute("/account/sessions")({
         ...listCustomerLoginHistoryQuery(),
         staleTime: "static",
       }),
-    ]),
+    ])
+
+    return accountPageMeta(context.queryClient, context.locale, "sessions")
+  },
   staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
 })
 

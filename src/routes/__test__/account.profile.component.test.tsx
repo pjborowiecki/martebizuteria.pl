@@ -16,7 +16,10 @@ interface PrefetchedQuery {
 interface RouteDefinition {
   readonly component?: () => JSX.Element
   readonly loader?: (args: {
-    readonly context: { readonly queryClient: { readonly query: (options: PrefetchedQuery) => Promise<unknown> } }
+    readonly context: {
+      readonly locale: string
+      readonly queryClient: { readonly query: (options: PrefetchedQuery) => Promise<unknown> }
+    }
   }) => Promise<unknown>
   readonly staleTime?: number
 }
@@ -93,11 +96,14 @@ const runLoader = async (): Promise<PrefetchedQuery[]> => {
   const queried: PrefetchedQuery[] = []
   await route.loader?.({
     context: {
+      locale: "en-US",
       queryClient: {
         query: (options: PrefetchedQuery) => {
           queried.push(options)
 
-          return Promise.resolve(profile)
+          return Promise.resolve(
+            options.queryKey[0] === "messages" ? { description: "", sidebar: { profile: "Profile" }, title: "" } : profile,
+          )
         },
       },
     },
@@ -139,8 +145,10 @@ describe("account profile route wiring", () => {
   it("prefetches the profile as already fresh", async () => {
     const queried = await runLoader()
 
-    expect(queried.map((options) => options.queryKey)).toStrictEqual([["customer-account", "profile"]])
-    expect(queried.map((options) => options.staleTime)).toStrictEqual(["static"])
+    const pageQueries = queried.filter((options) => options.queryKey[0] !== "messages")
+
+    expect(pageQueries.map((options) => options.queryKey)).toStrictEqual([["customer-account", "profile"]])
+    expect(pageQueries.map((options) => options.staleTime)).toStrictEqual(["static"])
   })
 
   it("keeps the prefetched profile for as long as the account queries stay fresh", () => {

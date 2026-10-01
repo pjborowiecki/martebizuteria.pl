@@ -1,8 +1,9 @@
-import { type JSX, useCallback } from "react"
+import { type JSX, useCallback, useState } from "react"
 
 import { useRouter } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
-import { CreditCard, Heart, LayoutDashboard, LogOut, MapPin, Package, Shield, User } from "lucide-react"
+import { CreditCard, Heart, LayoutDashboard, Loader2, LogOut, MapPin, Package, Shield, User } from "lucide-react"
+import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { signOut } from "~/src/integrations/better-auth/auth.client"
@@ -19,9 +20,16 @@ const signOutRequest = createClientOnlyFn((input: Parameters<typeof signOut>[0])
 export const AccountSidebar = (): JSX.Element => {
   const t = useTranslations("pages.account.sidebar")
   const router = useRouter()
-  const handleSignOut = useCallback(async () => {
-    await signOutRequest({
+  const [signingOut, setSigningOut] = useState(false)
+
+  const onSignOutClick = useCallback(() => {
+    setSigningOut(true)
+    void signOutRequest({
       fetchOptions: {
+        onError: () => {
+          setSigningOut(false)
+          toast.error(t("signOutError"))
+        },
         onSuccess: () => {
           globalThis.location.href = router.buildLocation({
             to: "/",
@@ -29,30 +37,29 @@ export const AccountSidebar = (): JSX.Element => {
         },
       },
     })
-  }, [router])
-
-  const onSignOutClick = useCallback(() => {
-    void handleSignOut()
-  }, [handleSignOut])
+  }, [router, t])
 
   return (
-    <aside className="hidden lg:sticky lg:top-28 lg:block lg:w-[220px] lg:shrink-0 lg:self-start">
+    <aside className="lg:sticky lg:top-28 lg:w-[220px] lg:shrink-0 lg:self-start">
       <div className="flex flex-col space-y-1">
-        <div className="mb-4 px-2">
+        <div className="mb-4 hidden px-2 lg:block">
           <h2 className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground uppercase">{t("title")}</h2>
           <Separator className="mt-4" />
         </div>
 
-        <nav className="flex flex-col space-y-1">
+        <nav
+          aria-label={t("title")}
+          className="-mx-6 flex snap-x gap-1 overflow-x-auto px-6 pb-2 sm:-mx-12 sm:px-12 lg:mx-0 lg:flex-col lg:gap-0 lg:space-y-1 lg:overflow-visible lg:px-0 lg:pb-0"
+        >
           {SIDEBAR_LINKS.map((link) => (
             <LocalizedLink
-              key={link.key}
-              to={link.href}
-              activeProps={ACTIVE_PROPS}
-              inactiveProps={INACTIVE_PROPS}
               activeOptions={link.key === "overview" ? EXACT_MATCH : PREFIX_MATCH}
+              activeProps={ACTIVE_PROPS}
+              className="relative flex shrink-0 snap-start items-center gap-3 rounded-md px-3 py-2 text-[13px] tracking-[0.02em] transition-colors"
+              inactiveProps={INACTIVE_PROPS}
+              key={link.key}
               resetScroll={false}
-              className="relative flex items-center gap-3 rounded-md px-3 py-2 text-[13px] tracking-[0.02em] transition-colors"
+              to={link.href}
             >
               <link.icon className="size-4 shrink-0" strokeWidth={1.5} />
               {t(link.key)}
@@ -65,11 +72,16 @@ export const AccountSidebar = (): JSX.Element => {
         </div>
 
         <Button
+          className="flex w-full cursor-pointer items-center justify-start gap-3 rounded-md px-3 py-2 text-[13px] tracking-[0.02em] text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+          disabled={signingOut}
           onClick={onSignOutClick}
           variant="ghost"
-          className="flex w-full cursor-pointer items-center justify-start gap-3 rounded-md px-3 py-2 text-[13px] tracking-[0.02em] text-muted-foreground hover:bg-muted/30 hover:text-foreground"
         >
-          <LogOut className="size-4 shrink-0" strokeWidth={1.5} />
+          {signingOut ? (
+            <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" strokeWidth={1.5} />
+          ) : (
+            <LogOut className="size-4 shrink-0" strokeWidth={1.5} />
+          )}
           {t("signOut")}
         </Button>
       </div>
@@ -117,7 +129,7 @@ const SIDEBAR_LINKS = [
 
 const ACTIVE_PROPS = {
   className:
-    "bg-muted/50 font-medium text-foreground before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-r-md before:bg-foreground",
+    "bg-muted/50 font-medium text-foreground lg:before:absolute lg:before:inset-y-1 lg:before:left-0 lg:before:w-0.5 lg:before:rounded-r-md lg:before:bg-foreground",
 }
 
 const INACTIVE_PROPS = {

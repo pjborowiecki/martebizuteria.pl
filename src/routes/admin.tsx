@@ -44,8 +44,8 @@ const AdminLayoutRoute = (): JSX.Element => {
 const ROUTE_STALE_MS = 60_000
 
 export const Route = createFileRoute("/admin")({
-  beforeLoad: async () => ({
-    user: await requireAdmin(),
+  beforeLoad: async ({ location }) => ({
+    user: await requireAdmin(location.href),
   }),
   component: AdminLayoutRoute,
   head: () => ({

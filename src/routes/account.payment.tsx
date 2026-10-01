@@ -4,7 +4,10 @@ import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useTranslations } from "use-intl/react"
 
+import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { listSavedPaymentMethodsQuery } from "~/src/modules/payment/use-cases/list-saved-payment-methods"
+
+import { pageHead } from "~/src/lib/seo"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
@@ -43,7 +46,10 @@ const PaymentPage = (): JSX.Element => {
 
 export const Route = createFileRoute("/account/payment")({
   component: PaymentPage,
+  head: pageHead,
   loader: async ({ context }) => {
     await context.queryClient.query({ ...listSavedPaymentMethodsQuery(), staleTime: "static" })
+
+    return accountPageMeta(context.queryClient, context.locale, "payment")
   },
 })

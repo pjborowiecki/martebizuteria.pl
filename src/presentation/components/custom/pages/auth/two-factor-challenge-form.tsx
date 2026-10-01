@@ -23,7 +23,7 @@ const verifyBackupCode = createClientOnlyFn((code: string, trustDevice: boolean)
   authClient.twoFactor.verifyBackupCode({ code, trustDevice }),
 )
 
-export const TwoFactorChallengeForm = ({ onCancel }: Readonly<TwoFactorChallengeFormProps>): JSX.Element => {
+export const TwoFactorChallengeForm = ({ intended, onCancel }: Readonly<TwoFactorChallengeFormProps>): JSX.Element => {
   const t = useTranslations("pages.auth.sign-in.twoFactor")
   const navigate = useNavigate()
   const [code, setCode] = useState("")
@@ -45,9 +45,9 @@ export const TwoFactorChallengeForm = ({ onCancel }: Readonly<TwoFactorChallenge
 
     const session = await getCurrentSession()
     if (session?.user) {
-      void navigate({ to: postAuthRouteFor(session.user) })
+      void navigate({ to: intended ?? postAuthRouteFor(session.user) })
     }
-  }, [code, navigate, t, trustDevice, useBackup])
+  }, [code, intended, navigate, t, trustDevice, useBackup])
 
   const handleSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
@@ -116,5 +116,6 @@ export const TwoFactorChallengeForm = ({ onCancel }: Readonly<TwoFactorChallenge
 }
 
 interface TwoFactorChallengeFormProps {
+  readonly intended?: string | undefined
   readonly onCancel: () => void
 }
