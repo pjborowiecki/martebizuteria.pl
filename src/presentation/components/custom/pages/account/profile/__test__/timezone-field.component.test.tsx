@@ -5,18 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-const mocks = vi.hoisted(() => {
-  const zones = ["Europe/Warsaw", "America/New_York", "Asia/Tokyo"]
-  Intl.supportedValuesOf = (key: string) => (key === "timeZone" ? zones : [])
-
-  return {
-    sessionKey: ["session", "current"] as const,
-    toastError: vi.fn<(message: string) => void>(),
-    toastSuccess: vi.fn<(message: string) => void>(),
-    updateUser: vi.fn<(input: { timezone: string }) => Promise<{ error?: { message?: string } }>>(),
-    zones,
-  }
-})
+const mocks = vi.hoisted(() => ({
+  sessionKey: ["session", "current"] as const,
+  toastError: vi.fn<(message: string) => void>(),
+  toastSuccess: vi.fn<(message: string) => void>(),
+  updateUser: vi.fn<(input: { timezone: string }) => Promise<{ error?: { message?: string } }>>(),
+}))
 
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({ authClient: { updateUser: mocks.updateUser } }))
 vi.mock("~/src/modules/session/session.constants", () => ({ SESSION_QUERY_KEYS: { CURRENT: mocks.sessionKey } }))

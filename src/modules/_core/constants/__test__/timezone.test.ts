@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test"
 
 import { COUNTRIES } from "~/src/modules/_core/constants/country"
-import { DEFAULT_TIMEZONE_CODE, TIMEZONES } from "~/src/modules/_core/constants/timezone"
+import { DEFAULT_TIMEZONE_CODE, TIMEZONES, isTimezoneCode, resolveTimezoneCode } from "~/src/modules/_core/constants/timezone"
 
 const countryCodes = new Set(COUNTRIES.map((country) => country.alpha2))
 
@@ -49,5 +49,25 @@ describe("DEFAULT_TIMEZONE_CODE", () => {
 
   it("is the store home zone", () => {
     expect(DEFAULT_TIMEZONE_CODE).toBe("Europe/Warsaw")
+  })
+})
+
+describe("isTimezoneCode", () => {
+  it("recognises a zone from the table", () => {
+    expect(isTimezoneCode("Asia/Tokyo")).toBe(true)
+  })
+
+  it("rejects a zone the table does not carry", () => {
+    expect(isTimezoneCode("Mars/Olympus_Mons")).toBe(false)
+  })
+})
+
+describe("resolveTimezoneCode", () => {
+  it("keeps a zone the customer saved from the table", () => {
+    expect(resolveTimezoneCode("Pacific/Honolulu")).toBe("Pacific/Honolulu")
+  })
+
+  it.each([null, undefined, "", "Mars/Olympus_Mons"])("falls back to the store zone for %j", (value) => {
+    expect(resolveTimezoneCode(value)).toBe(DEFAULT_TIMEZONE_CODE)
   })
 })

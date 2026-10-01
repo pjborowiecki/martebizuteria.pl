@@ -8,6 +8,8 @@ import { listSavedPaymentMethods, listSavedPaymentMethodsQuery } from "../list-s
 
 const USER_ID = "user-1"
 
+const caller = vi.hoisted(() => ({ timezone: undefined as string | undefined }))
+
 const stripeCalls = vi.hoisted(() => ({
   detach: vi.fn<(id: string) => Promise<unknown>>(),
   getCustomerId: vi.fn<() => Promise<string | undefined>>(),
@@ -28,12 +30,14 @@ vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
       handler: (handler: (options: { context: unknown; data: unknown }) => unknown) => (options?: { data?: unknown }) =>
-        handler({ context: { auth: { user: { id: USER_ID } } }, data: options?.data }),
+        handler({ context: { auth: { user: { id: USER_ID, timezone: caller.timezone } } }, data: options?.data }),
       middleware: () => builder,
       validator: (validate: (input: unknown) => unknown) => {
         const validating = {
           handler: (handler: (options: { context: unknown; data: unknown }) => unknown) => (options?: { data?: unknown }) =>
-            Promise.resolve(options?.data).then((data) => handler({ context: { auth: { user: { id: USER_ID } } }, data: validate(data) })),
+            Promise.resolve(options?.data).then((data) =>
+              handler({ context: { auth: { user: { id: USER_ID, timezone: caller.timezone } } }, data: validate(data) }),
+            ),
           middleware: () => validating,
           validator: () => validating,
         }
@@ -54,6 +58,7 @@ const cardMethod = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  caller.timezone = undefined
   vi.useFakeTimers()
   vi.setSystemTime(new Date("2026-10-01T00:00:00.000Z"))
   stripeCalls.getCustomerId.mockResolvedValue("cus_1")
@@ -111,6 +116,25 @@ describe("listSavedPaymentMethods", () => {
     const [method] = await listSavedPaymentMethods()
 
     expect(method?.isExpired).toBe(false)
+  })
+
+  it("keeps a card usable while its expiry month is still running in the customer's own calendar", async () => {
+    caller.timezone = "Pacific/Honolulu"
+    vi.setSystemTime(new Date("2026-10-01T00:30:00.000Z"))
+    stripeCalls.list.mockResolvedValue({ data: [cardMethod({ card: { brand: "visa", exp_month: 9, exp_year: 2026, last4: "4242" } })] })
+
+    const [method] = await listSavedPaymentMethods()
+
+    expect(method?.isExpired).toBe(false)
+  })
+
+  it("falls back to the store calendar for a customer who saved no time zone", async () => {
+    vi.setSystemTime(new Date("2026-09-30T23:30:00.000Z"))
+    stripeCalls.list.mockResolvedValue({ data: [cardMethod({ card: { brand: "visa", exp_month: 9, exp_year: 2026, last4: "4242" } })] })
+
+    const [method] = await listSavedPaymentMethods()
+
+    expect(method?.isExpired).toBe(true)
   })
 
   it("skips a payment method that carries no card", async () => {
