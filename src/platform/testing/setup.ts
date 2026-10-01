@@ -37,6 +37,21 @@ afterAll(() => {
 
 vi.stubGlobal("IntersectionObserver", StubIntersectionObserver)
 vi.stubGlobal("ResizeObserver", StubResizeObserver)
+Object.defineProperties(HTMLDialogElement.prototype, {
+  close: {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.removeAttribute("open")
+      this.dispatchEvent(new Event("close"))
+    },
+  },
+  showModal: {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.setAttribute("open", "")
+    },
+  },
+})
 vi.stubGlobal("matchMedia", (query: string) => ({
   addEventListener: () => {},
   addListener: () => {},
