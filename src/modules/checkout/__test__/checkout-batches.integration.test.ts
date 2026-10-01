@@ -171,7 +171,6 @@ describe("prepareCreateCheckoutBatch", () => {
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
-    expect(statements).toHaveLength(2)
     await runDrizzleBatch(statements)
 
     const row = readCheckout(checkoutId)
@@ -180,13 +179,44 @@ describe("prepareCreateCheckoutBatch", () => {
     expect(row.billing_address_id).toBe(row.shipping_address_id)
   })
 
+  it("keeps an address the shopper declined to save out of their address book", async () => {
+    const { checkoutId, statements } = prepareCreateCheckoutBatch({
+      checkoutValues: { ...shippingForm, saveShippingAddress: false },
+      userEmail: "buyer@example.com",
+      userId: USER_ID,
+    })
+    await runDrizzleBatch(statements)
+
+    const shipping = readAddress(readCheckout(checkoutId).shipping_address_id ?? "")
+
+    expect(shipping.user_id).toBeNull()
+    expect(shipping.address1).toBe("Krucza 1")
+  })
+
+  it("leaves one default address behind after the shopper saves a new one", async () => {
+    sqlite
+      .prepare(`insert into address (id, address1, city, country_code, user_id, is_default) values (?, ?, ?, ?, ?, 1)`)
+      .run("addr_old", "Stara 1", "Gdansk", "PL", USER_ID)
+
+    const { checkoutId, statements } = prepareCreateCheckoutBatch({
+      checkoutValues: shippingForm,
+      userEmail: "buyer@example.com",
+      userId: USER_ID,
+    })
+    await runDrizzleBatch(statements)
+
+    const defaults = sqlite.prepare(`select id from address where user_id = ? and is_default = 1`).all(USER_ID)
+
+    expect(defaults).toHaveLength(1)
+    expect(readAddress(readCheckout(checkoutId).shipping_address_id ?? "").is_default).toBe(1)
+  })
+
   it("writes a second address when the shopper entered a separate billing address", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: separateBillingForm,
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
-    expect(statements).toHaveLength(3)
     await runDrizzleBatch(statements)
 
     const row = readCheckout(checkoutId)
@@ -195,6 +225,10 @@ describe("prepareCreateCheckoutBatch", () => {
     expect(row.billing_address_id).not.toBe(row.shipping_address_id)
     expect(readAddress(row.billing_address_id ?? "").city).toBe("Kraków")
   })
+})
+
+describe("prepareCreateCheckoutBatch billing details", () => {
+  beforeEach(resetSchema)
 
   it("writes empty strings rather than nulls for billing fields a caller left out", async () => {
     const withoutBillingDetails: CheckoutFormSchema = {

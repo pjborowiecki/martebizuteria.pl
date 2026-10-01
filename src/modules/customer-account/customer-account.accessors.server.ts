@@ -1,14 +1,23 @@
-import { and, desc, eq, inArray } from "drizzle-orm"
+import { and, asc, count, desc, eq, inArray, ne, notInArray, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
-import { CUSTOMER_ACCOUNT_ORDERS_LIMIT } from "~/src/modules/customer-account/customer-account.constants"
+import { CUSTOMER_ACCOUNT_ORDERS_LIMIT, type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
 import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
+
+const NO_OFFSET = 0
+
+interface CustomerOrderRowsOptions {
+  readonly filter?: CustomerAccountOrderFilter
+  readonly limit?: number
+  readonly offset?: number
+}
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
-import { ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES } from "~/src/modules/user/user.constants"
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
+import { product } from "~/src/modules/product/product.schema"
 
 export const getCustomerActivityAuditRows = (userId: string, orderIds: readonly string[] = []) =>
   db
@@ -24,7 +33,36 @@ export const getCustomerActivityAuditRows = (userId: string, orderIds: readonly 
     .orderBy(desc(auditLog.createdAt))
     .limit(CUSTOMER_AUDIT_TIMELINE_LIMIT)
 
-export const getCustomerOrderRows = (userId: string, limit = CUSTOMER_ACCOUNT_ORDERS_LIMIT) =>
+const customerOrderFilterWhere = (userId: string, filter: CustomerAccountOrderFilter) => {
+  const owned = eq(order.userId, userId)
+
+  if (filter === "all") {
+    return owned
+  }
+
+  if (filter === "cancelled") {
+    return and(owned, or(eq(order.status, "cancelled"), eq(order.fulfillmentStatus, "cancelled")))
+  }
+
+  if (filter === "refunded") {
+    return and(owned, eq(order.status, "refunded"))
+  }
+
+  if (filter === "delivered" || filter === "shipped") {
+    return and(owned, ne(order.status, "refunded"), eq(order.fulfillmentStatus, filter))
+  }
+
+  return and(
+    owned,
+    notInArray(order.status, ["cancelled", "refunded"]),
+    notInArray(order.fulfillmentStatus, ["cancelled", "delivered", "shipped"]),
+  )
+}
+
+export const getCustomerOrderRows = (
+  userId: string,
+  { filter = "all", limit = CUSTOMER_ACCOUNT_ORDERS_LIMIT, offset = NO_OFFSET }: CustomerOrderRowsOptions = {},
+) =>
   db
     .select({
       createdAt: order.createdAt,
@@ -36,9 +74,16 @@ export const getCustomerOrderRows = (userId: string, limit = CUSTOMER_ACCOUNT_OR
       total: order.total,
     })
     .from(order)
-    .where(and(eq(order.userId, userId), inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
+    .where(customerOrderFilterWhere(userId, filter))
     .orderBy(desc(order.createdAt))
     .limit(limit)
+    .offset(offset)
+
+export const countCustomerOrders = async (userId: string, filter: CustomerAccountOrderFilter = "all"): Promise<number> => {
+  const [row] = await db.select({ total: count() }).from(order).where(customerOrderFilterWhere(userId, filter))
+
+  return row?.total ?? NO_OFFSET
+}
 
 export const getCustomerOrderNumbers = (userId: string) =>
   db
@@ -55,16 +100,28 @@ export const getOrderItemsForOrders = (orderIds: readonly string[]) => {
 
   return db
     .select({
+      handle: product.handle,
+      id: orderItem.id,
       orderId: orderItem.orderId,
       quantity: orderItem.quantity,
-      thumbnail: orderItem.thumbnail,
+      thumbnail: customerOrderItemThumbnail,
       title: orderItem.title,
       total: orderItem.total,
-      variantTitle: orderItem.variantTitle,
+      unitPrice: orderItem.unitPrice,
+      variantTitle: customerOrderItemVariantTitle,
     })
     .from(orderItem)
+    .leftJoin(productVariant, eq(orderItem.variantId, productVariant.id))
+    .leftJoin(product, eq(productVariant.productId, product.id))
     .where(inArray(orderItem.orderId, [...orderIds]))
+    .orderBy(asc(orderItem.createdAt))
 }
+
+export const customerOrderItemThumbnail = sql<string | null>`coalesce(${orderItem.thumbnail}, ${product.thumbnail})`.as("thumbnail")
+
+export const customerOrderItemVariantTitle = sql<string | null>`coalesce(${orderItem.variantTitle}, ${productVariant.title})`.as(
+  "variant_title",
+)
 
 const CUSTOMER_ACCOUNT_ACTIVITY_ACTIONS = [
   AUDIT_LOG_ACTION.AUTH_LOGIN,

@@ -7,6 +7,7 @@ import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { deliveryMethod } from "~/src/modules/delivery-method/delivery-method.schema"
 import { discount } from "~/src/modules/discount/discount.schema"
+import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { user } from "~/src/modules/user/user.schema"
 
@@ -67,7 +68,8 @@ export const orderNumberSequence = sqliteTable("order_number_sequence", {
   period: text("period").primaryKey(),
 })
 
-export const orderRelations = relations(order, ({ one }) => ({
+export const orderRelations = relations(order, ({ many, one }) => ({
+  addresses: many(orderAddress),
   checkout: one(checkout, {
     fields: [order.checkoutId],
     references: [checkout.id],

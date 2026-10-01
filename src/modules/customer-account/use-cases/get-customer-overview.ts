@@ -69,7 +69,7 @@ export const getCustomerOverview = createServerFn({ method: "GET" })
     const userId = context.auth.user.id
     const orderNumberRows = await getCustomerOrderNumbers(userId)
     const [orderRows, orderStatsRows, auditRows, userRow, wishlistCount, collection] = await Promise.all([
-      getCustomerOrderRows(userId, CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT),
+      getCustomerOrderRows(userId, { limit: CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT }),
       getCustomerOrderStatsQuery([userId]),
       getCustomerActivityAuditRows(
         userId,

@@ -2,13 +2,15 @@ export const CUSTOMER_ACCOUNT_QUERY_STALE_MS = 60_000
 
 export const CUSTOMER_ACCOUNT_ORDERS_LIMIT = 50
 
+export const CUSTOMER_ACCOUNT_ORDERS_PAGE_SIZE = 10
+
 export const CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5
 
 export const CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3
 
 export const CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3
 
-export const CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "delivered", "shipped", "processing", "cancelled"] as const
+export const CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "processing", "shipped", "delivered", "cancelled", "refunded"] as const
 
 export type CustomerAccountOrderFilter = (typeof CUSTOMER_ACCOUNT_ORDER_FILTERS)[number]
 

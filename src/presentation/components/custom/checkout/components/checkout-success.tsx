@@ -1,12 +1,13 @@
 import { type JSX, useEffect } from "react"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, Loader2, Package } from "lucide-react"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { useCartStore } from "~/src/modules/cart/cart.store"
+import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { resetCartAbandonedTracking } from "~/src/modules/customer-activity/customer-activity.tracking"
 import { type Order } from "~/src/modules/order/order.types"
 import { getOrderConfirmationQuery } from "~/src/modules/order/use-cases/get-order-confirmation"
@@ -158,13 +159,16 @@ const ConfirmationActions = ({ order }: Readonly<{ order: Order["confirmation"] 
 export const CheckoutSuccess = ({ sessionId }: Readonly<CheckoutSuccessProps>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutSuccess")
   const clearCart = useCartStore((state) => state.clearCart)
+  const queryClient = useQueryClient()
   const { data: order, isPending } = useQuery(getOrderConfirmationQuery(sessionId))
 
   useEffect(() => {
     clearCart()
     clearCheckoutDraft()
     resetCartAbandonedTracking()
-  }, [clearCart])
+    void queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.ORDERS })
+    void queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.OVERVIEW })
+  }, [clearCart, queryClient])
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 py-12 text-center md:py-20">

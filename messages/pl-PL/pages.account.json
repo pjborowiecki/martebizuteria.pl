@@ -47,60 +47,73 @@
   "orders": {
     "eyebrow": "Twoja kolekcja",
     "title": "Zamówienia",
-    "empty": "Nie znaleziono zamówień.",
-    "qty": "Ilość",
     "viewDetails": "Zobacz szczegóły",
-    "trackOrder": "Śledź zamówienie",
-    "returnItems": "Zwróć przedmioty",
     "filter": {
       "all": "Wszystkie",
       "delivered": "Dostarczono",
       "shipped": "Wysłano",
       "processing": "W realizacji",
-      "cancelled": "Anulowano"
+      "cancelled": "Anulowano",
+      "refunded": "Zwrócone"
     },
     "status": {
       "delivered": "Dostarczono",
       "shipped": "Wysłano",
       "processing": "W realizacji",
       "cancelled": "Anulowano",
-      "pending": "Oczekuje"
-    }
+      "refunded": "Zwrócone"
+    },
+    "emptyAll": "Nie złożyłeś jeszcze żadnego zamówienia.",
+    "emptyFiltered": "Brak zamówień: {filter}.",
+    "showAll": "Pokaż wszystkie zamówienia",
+    "browseProducts": "Przeglądaj produkty",
+    "moreItems": "+{count}",
+    "qtyAtPrice": "Ilość: {qty} · {price} za szt.",
+    "pagination": "Strony zamówień",
+    "previousPage": "Poprzednia",
+    "nextPage": "Następna",
+    "pageOf": "Strona {page} z {total}"
   },
   "orderDetail": {
     "backToOrders": "Wróć do zamówień",
     "eyebrow": "Szczegóły zamówienia",
     "items": "Przedmioty",
-    "qty": "Ilość",
     "subtotal": "Produkty",
     "shipping": "Dostawa",
-    "tax": "Podatek",
     "total": "Suma",
     "free": "Bezpłatnie",
     "shippingAddress": "Adres dostawy",
     "paymentInfo": "Płatność",
     "timeline": "Oś czasu",
-    "returnItems": "Zwróć przedmioty",
-    "downloadInvoice": "Pobierz fakturę",
     "needHelp": "Potrzebujesz pomocy?",
     "deliveredOn": "Dostarczono {date}",
     "notFound": "Nie znaleziono zamówienia.",
-    "trackingUnavailable": "Śledzenie nie jest jeszcze dostępne.",
     "status": {
       "delivered": "Dostarczono",
       "shipped": "Wysłano",
       "processing": "W realizacji",
       "cancelled": "Anulowano",
-      "pending": "Oczekuje"
+      "refunded": "Zwrócone"
     },
     "events": {
       "delivered": "Dostarczono",
-      "outForDelivery": "W doręczeniu",
-      "inTransit": "W transporcie",
       "shipped": "Wysłano",
       "confirmed": "Zamówienie potwierdzone",
-      "placed": "Zamówienie złożone"
-    }
+      "placed": "Zamówienie złożone",
+      "cancelled": "Zamówienie anulowane",
+      "refunded": "Zwrócono"
+    },
+    "discount": "Rabat",
+    "vatIncluded": "W tym VAT ({rate}%):",
+    "refunded": "Zwrócono",
+    "refundedOn": "Zwrócono {date}",
+    "qtyAtPrice": "Ilość: {qty} · {price} za szt.",
+    "pickupPoint": "Punkt odbioru",
+    "paidByCard": "Zapłacono online",
+    "nip": "NIP {nip}",
+    "note": "Twoja uwaga",
+    "shippedOn": "Wysłano {date}",
+    "inTransitSince": "W drodze od {date}"
   },
   "addresses": {
     "eyebrow": "Książka adresowa",

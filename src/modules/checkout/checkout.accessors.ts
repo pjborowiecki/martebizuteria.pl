@@ -21,12 +21,14 @@ export const getCheckoutForFulfillment = (checkoutId: string) =>
     },
     where: eq(checkout.id, checkoutId),
     with: {
+      billingAddress: true,
       deliveryMethod: {
         columns: {
           price: true,
         },
       },
       discount: true,
+      shippingAddress: true,
     },
   })
 
