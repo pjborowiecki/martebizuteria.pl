@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { createFileRoute } from "@tanstack/react-router"
 import { useTranslations } from "use-intl/react"
+import zod from "zod/v4"
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
@@ -59,4 +60,5 @@ export const Route = createFileRoute("/auth/sign-in")({
   staticData: {
     namespaces: ["pages.auth.sign-in"],
   },
+  validateSearch: zod.object({ redirect: zod.string().optional() }),
 })

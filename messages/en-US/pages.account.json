@@ -8,7 +8,8 @@
     "sessions": "Sessions",
     "signOut": "Sign Out",
     "title": "Your Account",
-    "profile": "Profile"
+    "profile": "Profile",
+    "signOutError": "We could not sign you out. Please try again."
   },
   "overview": {
     "greeting": "Welcome back",
@@ -286,5 +287,14 @@
       "wrongPassword": "That password is not correct.",
       "wrongCode": "That code is not correct. Check your app and try again."
     }
+  },
+  "errorState": {
+    "title": "We could not load this page",
+    "description": "Something went wrong on our side. Your account and your orders are safe — try again in a moment.",
+    "retry": "Try again",
+    "backToAccount": "Back to your account",
+    "notFoundTitle": "We could not find that",
+    "notFoundDescription": "The page or order you asked for does not exist, or it does not belong to this account.",
+    "backToOrders": "Your orders"
   }
 }

@@ -60,8 +60,26 @@ describe("route guards", () => {
   it("redirects an anonymous visitor to sign in", async () => {
     stubs.getCurrentSession.mockResolvedValue(null)
 
-    await expect(requireUser()).rejects.toStrictEqual({ to: ROUTES.AUTH_SIGN_IN })
+    await expect(requireUser()).rejects.toStrictEqual({ search: {}, to: ROUTES.AUTH_SIGN_IN })
   })
+
+  it("keeps the page the visitor asked for so sign-in can return them to it", async () => {
+    stubs.getCurrentSession.mockResolvedValue(null)
+
+    await expect(requireUser("/account/orders/order-1")).rejects.toStrictEqual({
+      search: { redirect: "/account/orders/order-1" },
+      to: ROUTES.AUTH_SIGN_IN,
+    })
+  })
+
+  it.each([["https://evil.test/steal"], ["//evil.test/steal"], ["mailto:thief@evil.test"], ["account/orders"]])(
+    "refuses to carry %s off to another site after sign-in",
+    async (intended) => {
+      stubs.getCurrentSession.mockResolvedValue(null)
+
+      await expect(requireUser(intended)).rejects.toStrictEqual({ search: {}, to: ROUTES.AUTH_SIGN_IN })
+    },
+  )
 
   it("returns the signed-in user", async () => {
     signedInAs(ROLES.CUSTOMER)

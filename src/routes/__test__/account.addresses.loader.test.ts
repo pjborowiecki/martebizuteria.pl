@@ -8,7 +8,7 @@ interface QueryRequest {
 
 interface AddressesRouteDefinition {
   readonly loader?: (
-    args: Readonly<{ context: { queryClient: { query: (options: QueryRequest) => Promise<unknown> } } }>,
+    args: Readonly<{ context: { locale: string; queryClient: { query: (options: QueryRequest) => Promise<unknown> } } }>,
   ) => Promise<unknown>
 }
 
@@ -52,17 +52,22 @@ describe("the addresses route loader", () => {
 
     await loader({
       context: {
+        locale: "en-US",
         queryClient: {
           query: (options: QueryRequest) => {
             queried.push(options)
 
-            return Promise.resolve([])
+            return Promise.resolve(
+              options.queryKey[2] === "pages.account" ? { sidebar: { addresses: "Addresses" } } : { description: "", title: "" },
+            )
           },
         },
       },
     })
 
-    expect(queried.map((options) => options.queryKey)).toStrictEqual([ADDRESS_QUERY_KEYS.ALL])
-    expect(queried.map((options) => options.staleTime)).toStrictEqual(["static"])
+    const pageQueries = queried.filter((options) => options.queryKey[0] !== "messages")
+
+    expect(pageQueries.map((options) => options.queryKey)).toStrictEqual([ADDRESS_QUERY_KEYS.ALL])
+    expect(pageQueries.map((options) => options.staleTime)).toStrictEqual(["static"])
   })
 })

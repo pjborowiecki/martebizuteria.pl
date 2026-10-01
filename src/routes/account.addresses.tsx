@@ -15,7 +15,10 @@ import { listUserAddressesQuery } from "~/src/modules/address/use-cases/list-use
 import { setDefaultUserAddressMutation } from "~/src/modules/address/use-cases/set-default-user-address"
 import { updateUserAddress } from "~/src/modules/address/use-cases/update-user-address"
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+
+import { pageHead } from "~/src/lib/seo"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Input } from "~/src/presentation/components/shadcn/input"
@@ -355,11 +358,15 @@ const AddressCard = ({
 
 export const Route = createFileRoute("/account/addresses")({
   component: AddressesPage,
-  loader: ({ context }) =>
-    context.queryClient.query({
+  head: pageHead,
+  loader: async ({ context }) => {
+    await context.queryClient.query({
       ...listUserAddressesQuery(),
       staleTime: "static",
-    }),
+    })
+
+    return accountPageMeta(context.queryClient, context.locale, "addresses")
+  },
   staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
 })
 

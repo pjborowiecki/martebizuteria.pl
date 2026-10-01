@@ -54,6 +54,16 @@ await import("~/src/routes/account.sessions")
 
 const query = vi.fn<(request: QueryRequest) => Promise<unknown>>()
 
+const isMessagesRequest = (request: QueryRequest): boolean => request.queryKey[0] === "messages"
+
+const messagesFor = (request: QueryRequest): unknown =>
+  request.queryKey[2] === "pages.account.meta"
+    ? { description: "Account description", title: "Your Account" }
+    : { sidebar: { orders: "Orders", overview: "Overview", sessions: "Sessions" } }
+
+const pageQueries = (): readonly QueryRequest[] =>
+  query.mock.calls.map(([request]) => request).filter((request) => !isMessagesRequest(request))
+
 const load = (path: string) => {
   const loader = captured.get(path)?.loader
   if (loader === undefined) {
@@ -64,7 +74,7 @@ const load = (path: string) => {
 }
 
 beforeEach(() => {
-  query.mockReset().mockResolvedValue([])
+  query.mockReset().mockImplementation((request: QueryRequest) => Promise.resolve(isMessagesRequest(request) ? messagesFor(request) : []))
 })
 
 describe("account page loaders", () => {
@@ -75,7 +85,16 @@ describe("account page loaders", () => {
   ])("preloads the page query for $path with its route parameters", async ({ key, path }) => {
     await load(path)
 
-    expect(query).toHaveBeenCalledExactlyOnceWith({ queryKey: key, staleTime: "static" })
+    expect(pageQueries()).toStrictEqual([{ queryKey: key, staleTime: "static" }])
+  })
+
+  it.each([
+    { path: "/account/overview", title: "Overview | M'Arte" },
+    { path: "/account/orders/", title: "Orders | M'Arte" },
+    { path: "/account/orders/$id", title: "Orders | M'Arte" },
+    { path: "/account/sessions", title: "Sessions | M'Arte" },
+  ])("titles $path after the section it shows", async ({ path, title }) => {
+    await expect(load(path)).resolves.toMatchObject({ title })
   })
 
   it("starts sessions and login history together and waits for both", async () => {
@@ -89,7 +108,7 @@ describe("account page loaders", () => {
     sessions.resolve(["session"])
     history.resolve(["login"])
 
-    await expect(loaded).resolves.toStrictEqual([["session"], ["login"]])
+    await expect(loaded).resolves.toMatchObject({ title: "Sessions | M'Arte" })
   })
 
   it.each(["/account/overview", "/account/orders/", "/account/orders/$id", "/account/sessions"])(
