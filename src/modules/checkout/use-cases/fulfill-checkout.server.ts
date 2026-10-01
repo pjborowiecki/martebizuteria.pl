@@ -56,12 +56,14 @@ export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): P
       transactionId: input.transactionId,
     },
     {
+      billingAddress: checkoutRow?.billingAddress,
       billingCompanyName: checkoutRow?.billingCompanyName,
       billingNip: checkoutRow?.billingNip,
       customerNote: checkoutRow?.customerNote,
       deliveryMethodId: checkoutRow?.deliveryMethodId,
       discountId: checkoutRow?.discountId,
       lockerId: checkoutRow?.lockerId,
+      shippingAddress: checkoutRow?.shippingAddress,
     },
   )
   await runDrizzleBatch(statements)

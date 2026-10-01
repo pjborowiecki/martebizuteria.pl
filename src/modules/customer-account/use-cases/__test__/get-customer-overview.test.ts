@@ -110,7 +110,7 @@ describe("getCustomerOverview", () => {
     await overview()
 
     expect(access.stats).toHaveBeenCalledWith(["customer-1"])
-    expect(access.orderRows).toHaveBeenCalledWith("customer-1", 3)
+    expect(access.orderRows).toHaveBeenCalledWith("customer-1", { limit: 3 })
     expect(access.auditRows).toHaveBeenCalledWith("customer-1", [])
     expect(access.userById).toHaveBeenCalledWith("customer-1")
     expect(access.wishlistCount).toHaveBeenCalledWith("customer-1")

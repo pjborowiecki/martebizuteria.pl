@@ -170,8 +170,8 @@ describe("order table", () => {
 })
 
 describe("order relations", () => {
-  it("relates an order to the checkout, delivery, discount, payment and customer behind it", () => {
-    expect(relationEntries.map(([name]) => name)).toStrictEqual(["checkout", "deliveryMethod", "discount", "payment", "user"])
+  it("relates an order to its address snapshots, the checkout, delivery, discount, payment and customer behind it", () => {
+    expect(relationEntries.map(([name]) => name)).toStrictEqual(["addresses", "checkout", "deliveryMethod", "discount", "payment", "user"])
   })
 
   it.each([

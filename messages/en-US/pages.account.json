@@ -47,60 +47,73 @@
   "orders": {
     "eyebrow": "Your Collection",
     "title": "Orders",
-    "empty": "No orders found.",
-    "qty": "Qty",
     "viewDetails": "View Details",
-    "trackOrder": "Track Order",
-    "returnItems": "Return Items",
     "filter": {
       "all": "All",
       "delivered": "Delivered",
       "shipped": "Shipped",
       "processing": "Processing",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
     },
     "status": {
       "delivered": "Delivered",
       "shipped": "Shipped",
       "processing": "Processing",
       "cancelled": "Cancelled",
-      "pending": "Pending"
-    }
+      "refunded": "Refunded"
+    },
+    "emptyAll": "You have not placed an order yet.",
+    "emptyFiltered": "No {filter} orders.",
+    "showAll": "Show all orders",
+    "browseProducts": "Browse Products",
+    "moreItems": "+{count}",
+    "qtyAtPrice": "Qty: {qty} · {price} each",
+    "pagination": "Order pages",
+    "previousPage": "Previous",
+    "nextPage": "Next",
+    "pageOf": "Page {page} of {total}"
   },
   "orderDetail": {
     "backToOrders": "Back to Orders",
     "eyebrow": "Order Details",
     "items": "Items",
-    "qty": "Qty",
     "subtotal": "Subtotal",
     "shipping": "Shipping",
-    "tax": "Tax",
     "total": "Total",
     "free": "Free",
     "shippingAddress": "Shipping Address",
     "paymentInfo": "Payment",
     "timeline": "Timeline",
-    "returnItems": "Return Items",
-    "downloadInvoice": "Download Invoice",
     "needHelp": "Need Help?",
     "deliveredOn": "Delivered on {date}",
     "notFound": "Order not found.",
-    "trackingUnavailable": "Tracking not available yet.",
     "status": {
       "delivered": "Delivered",
       "shipped": "Shipped",
       "processing": "Processing",
       "cancelled": "Cancelled",
-      "pending": "Pending"
+      "refunded": "Refunded"
     },
     "events": {
       "delivered": "Delivered",
-      "outForDelivery": "Out for Delivery",
-      "inTransit": "In Transit",
       "shipped": "Shipped",
       "confirmed": "Order Confirmed",
-      "placed": "Order Placed"
-    }
+      "placed": "Order Placed",
+      "cancelled": "Order Cancelled",
+      "refunded": "Refunded"
+    },
+    "discount": "Discount",
+    "vatIncluded": "Includes VAT ({rate}%):",
+    "refunded": "Refunded",
+    "refundedOn": "Refunded on {date}",
+    "qtyAtPrice": "Qty: {qty} · {price} each",
+    "pickupPoint": "Pickup Point",
+    "paidByCard": "Paid online",
+    "nip": "NIP {nip}",
+    "note": "Your Note",
+    "shippedOn": "Shipped on {date}",
+    "inTransitSince": "On its way since {date}"
   },
   "addresses": {
     "eyebrow": "Address Book",

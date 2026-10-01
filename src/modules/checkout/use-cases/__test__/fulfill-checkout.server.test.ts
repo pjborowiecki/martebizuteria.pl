@@ -55,7 +55,20 @@ const input: FulfillCheckoutFromSessionInput = {
 
 const context: PendingContext = { checkoutId: "chk-1", email: "buyer@example.com", paymentId: "pay-1", userId: null }
 
+const shippingAddressRow = {
+  address1: "Krucza 12/4",
+  address2: null,
+  city: "Warszawa",
+  countryCode: "PL",
+  firstName: "Ada",
+  lastName: "Kowalska",
+  phone: "+48512345678",
+  postalCode: "00-548",
+  province: null,
+}
+
 const checkoutRow = {
+  billingAddress: shippingAddressRow,
   billingCompanyName: null,
   billingNip: null,
   customerNote: "Gift wrap it",
@@ -64,6 +77,7 @@ const checkoutRow = {
   discount: null,
   discountId: null,
   lockerId: null,
+  shippingAddress: shippingAddressRow,
 }
 
 const batchInput = () => prepareFulfillCheckoutBatch.mock.calls[0]?.[1]
@@ -120,12 +134,14 @@ describe("fulfillCheckout", () => {
     await fulfillCheckout(input)
 
     expect(prepareFulfillCheckoutBatch.mock.calls[0]?.[2]).toStrictEqual({
+      billingAddress: shippingAddressRow,
       billingCompanyName: null,
       billingNip: null,
       customerNote: "Gift wrap it",
       deliveryMethodId: "dm-courier",
       discountId: null,
       lockerId: null,
+      shippingAddress: shippingAddressRow,
     })
   })
 
@@ -140,12 +156,14 @@ describe("fulfillCheckout", () => {
     await fulfillCheckout(input)
 
     expect(prepareFulfillCheckoutBatch.mock.calls[0]?.[2]).toStrictEqual({
+      billingAddress: undefined,
       billingCompanyName: undefined,
       billingNip: undefined,
       customerNote: undefined,
       deliveryMethodId: undefined,
       discountId: undefined,
       lockerId: undefined,
+      shippingAddress: undefined,
     })
   })
 

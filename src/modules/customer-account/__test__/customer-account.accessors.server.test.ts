@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
+  countCustomerOrders,
   getCustomerActivityAuditRows,
   getCustomerOrderRows,
   getOrderItemsForOrders,
@@ -9,14 +10,30 @@ import { CUSTOMER_ACCOUNT_ORDERS_LIMIT } from "~/src/modules/customer-account/cu
 import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
 
 const database = vi.hoisted(() => {
-  const state: { limits: number[]; rows: unknown[]; tables: string[] } = { limits: [], rows: [], tables: [] }
+  const state: { joins: number; limits: number[]; offsets: number[]; rows: unknown[]; tables: string[] } = {
+    joins: 0,
+    limits: [],
+    offsets: [],
+    rows: [],
+    tables: [],
+  }
 
   const makeChain = (): unknown =>
     Object.assign(Promise.resolve(state.rows), {
+      leftJoin: () => {
+        state.joins += 1
+
+        return makeChain()
+      },
       limit: (value: number) => {
         state.limits.push(value)
 
-        return Promise.resolve(state.rows)
+        return makeChain()
+      },
+      offset: (value: number) => {
+        state.offsets.push(value)
+
+        return makeChain()
       },
       orderBy: () => makeChain(),
       where: () => makeChain(),
@@ -43,7 +60,9 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", async () => {
 
 describe("getCustomerActivityAuditRows", () => {
   beforeEach(() => {
+    database.state.joins = 0
     database.state.limits = []
+    database.state.offsets = []
     database.state.rows = []
     database.state.tables = []
   })
@@ -59,28 +78,61 @@ describe("getCustomerActivityAuditRows", () => {
 
 describe("getCustomerOrderRows", () => {
   beforeEach(() => {
+    database.state.joins = 0
     database.state.limits = []
+    database.state.offsets = []
     database.state.rows = []
     database.state.tables = []
   })
 
-  it("reads the order table with the account page's default limit", async () => {
+  it("reads the order table with the account page's default limit and no offset", async () => {
     await getCustomerOrderRows("user-1")
 
     expect(database.state.tables).toStrictEqual(["order"])
     expect(database.state.limits).toStrictEqual([CUSTOMER_ACCOUNT_ORDERS_LIMIT])
+    expect(database.state.offsets).toStrictEqual([0])
   })
 
   it("honours an explicit limit so a summary can ask for fewer orders", async () => {
-    await getCustomerOrderRows("user-1", 3)
+    await getCustomerOrderRows("user-1", { limit: 3 })
 
     expect(database.state.limits).toStrictEqual([3])
+  })
+
+  it("skips the orders already shown when a later page is asked for", async () => {
+    await getCustomerOrderRows("user-1", { limit: 10, offset: 20 })
+
+    expect(database.state.offsets).toStrictEqual([20])
+  })
+})
+
+describe("countCustomerOrders", () => {
+  beforeEach(() => {
+    database.state.joins = 0
+    database.state.limits = []
+    database.state.offsets = []
+    database.state.rows = []
+    database.state.tables = []
+  })
+
+  it("counts every order the filter matches, not just the page on screen", async () => {
+    database.state.rows = [{ total: 37 }]
+
+    await expect(countCustomerOrders("user-1")).resolves.toBe(37)
+    expect(database.state.tables).toStrictEqual(["order"])
+    expect(database.state.limits).toStrictEqual([])
+  })
+
+  it("reports no orders when the count comes back empty", async () => {
+    await expect(countCustomerOrders("user-1", "cancelled")).resolves.toBe(0)
   })
 })
 
 describe("getOrderItemsForOrders", () => {
   beforeEach(() => {
+    database.state.joins = 0
     database.state.limits = []
+    database.state.offsets = []
     database.state.rows = []
     database.state.tables = []
   })
@@ -95,6 +147,12 @@ describe("getOrderItemsForOrders", () => {
 
     await expect(getOrderItemsForOrders(["order-1", "order-2"])).resolves.toStrictEqual([{ orderId: "order-1", quantity: 2 }])
     expect(database.state.tables).toStrictEqual(["order_item"])
+  })
+
+  it("joins the variant and the product behind each line so a stored line can still show its picture", async () => {
+    await getOrderItemsForOrders(["order-1"])
+
+    expect(database.state.joins).toBe(2)
   })
 
   it("does not limit the line items, so no order loses a line", async () => {

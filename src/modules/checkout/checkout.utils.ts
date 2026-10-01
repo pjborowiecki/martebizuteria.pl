@@ -7,6 +7,7 @@ import { address } from "~/src/modules/address/address.schema"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
+import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
 import { type OrderTotals } from "~/src/modules/order/order.totals"
@@ -49,13 +50,29 @@ export interface FulfillCheckoutInput {
   transactionId: string
 }
 
+const UNKNOWN_NAME = ""
+
+export interface CheckoutAddressSnapshot {
+  readonly address1: string
+  readonly address2?: string | null | undefined
+  readonly city: string
+  readonly countryCode: string
+  readonly firstName?: string | null | undefined
+  readonly lastName?: string | null | undefined
+  readonly phone?: string | null | undefined
+  readonly postalCode?: string | null | undefined
+  readonly province?: string | null | undefined
+}
+
 export interface CheckoutFulfillmentSnapshot {
+  readonly billingAddress?: CheckoutAddressSnapshot | null | undefined
   readonly billingCompanyName?: string | null | undefined
   readonly billingNip?: string | null | undefined
   readonly customerNote?: string | null | undefined
   readonly deliveryMethodId?: string | null | undefined
   readonly discountId?: string | null | undefined
   readonly lockerId?: string | null | undefined
+  readonly shippingAddress?: CheckoutAddressSnapshot | null | undefined
 }
 
 export interface ReleaseCheckoutInput {
@@ -85,7 +102,7 @@ export const prepareCreateCheckoutBatch = ({
     phone: checkoutValues.phone,
     postalCode: checkoutValues.postalCode,
     province: checkoutValues.province,
-    userId,
+    userId: checkoutValues.saveShippingAddress === true ? userId : undefined,
   })
 
   const checkoutInsert = db.insert(checkout).values({
@@ -116,12 +133,22 @@ export const prepareCreateCheckoutBatch = ({
           lastName: checkoutValues.billingLastName ?? "",
           phone: checkoutValues.phone,
           postalCode: checkoutValues.billingPostalCode ?? "",
-          userId,
+          userId: checkoutValues.saveBillingAddress === true ? userId : undefined,
         })
 
-  const statements = billingInsert === undefined ? [shippingInsert, checkoutInsert] : [shippingInsert, billingInsert, checkoutInsert]
+  const savesAddress = checkoutValues.saveShippingAddress === true || checkoutValues.saveBillingAddress === true
+  const clearDefaults =
+    savesAddress && userId !== undefined
+      ? [
+          db
+            .update(address)
+            .set({ isDefault: false })
+            .where(and(eq(address.userId, userId), eq(address.isDefault, true))),
+        ]
+      : []
+  const addressInserts = billingInsert === undefined ? [shippingInsert] : [shippingInsert, billingInsert]
 
-  return { checkoutId, statements }
+  return { checkoutId, statements: [...clearDefaults, ...addressInserts, checkoutInsert] }
 }
 
 export const resolvePendingCheckout = (
@@ -244,6 +271,35 @@ export const prepareUpdateCheckoutDeliveryBatch = (
   return statements
 }
 
+const toOrderAddressValues = (
+  orderId: string,
+  checkoutSnapshot: CheckoutFulfillmentSnapshot | undefined,
+): (typeof orderAddress.$inferInsert)[] =>
+  (
+    [
+      { source: checkoutSnapshot?.shippingAddress, type: "shipping" },
+      { source: checkoutSnapshot?.billingAddress, type: "billing" },
+    ] as const
+  ).flatMap(({ source, type }) =>
+    source === null || source === undefined
+      ? []
+      : [
+          {
+            address1: source.address1,
+            address2: source.address2 ?? undefined,
+            city: source.city,
+            countryCode: source.countryCode,
+            firstName: source.firstName ?? UNKNOWN_NAME,
+            lastName: source.lastName ?? UNKNOWN_NAME,
+            orderId,
+            phone: source.phone ?? undefined,
+            postalCode: source.postalCode ?? undefined,
+            province: source.province ?? undefined,
+            type,
+          },
+        ],
+  )
+
 export const prepareFulfillCheckoutBatch = (
   context: PendingCheckout,
   { currency, lines, locale, orderNumber, totals, transactionId }: FulfillCheckoutInput,
@@ -251,6 +307,7 @@ export const prepareFulfillCheckoutBatch = (
 ): { orderId: string; statements: BatchItem<"sqlite">[] } => {
   const orderId = crypto.randomUUID()
 
+  const addressSnapshots = toOrderAddressValues(orderId, checkoutSnapshot)
   const tail =
     lines.length > 0
       ? [
@@ -259,6 +316,7 @@ export const prepareFulfillCheckoutBatch = (
               orderId,
               quantity: line.qty,
               subtotal: line.price * line.qty,
+              thumbnail: line.imageUrl,
               title: line.title,
               total: line.price * line.qty,
               unitPrice: line.price,
@@ -305,6 +363,7 @@ export const prepareFulfillCheckoutBatch = (
         total: totals.total,
         userId: context.userId,
       }),
+      ...(addressSnapshots.length > 0 ? [db.insert(orderAddress).values(addressSnapshots)] : []),
       ...tail,
     ],
   }

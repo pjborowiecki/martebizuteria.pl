@@ -4,8 +4,6 @@ import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
   formatCustomerAccountRelativeTime,
-  groupOrderItemsByOrderId,
-  hasCustomerOrderItems,
   mapAuditLogToActivityItem,
   mapCustomerAccountAddressRow,
   mapCustomerOrderDetail,
@@ -31,26 +29,43 @@ const FILTER_BUCKET_CASES: [Order["select"]["fulfillmentStatus"], string][] = [
 const ORDER_ID = "0195b6f4-1111-7000-8000-000000000001"
 
 const itemRow = {
+  handle: "silver-ring",
+  id: "item-1",
   orderId: ORDER_ID,
   quantity: 2,
   thumbnail: "products/ring.jpg",
   title: "Silver ring",
   total: 24_000,
+  unitPrice: 12_000,
   variantTitle: "Size S",
 }
 
+const paymentRow = {
+  provider: "stripe",
+  refundedAmount: 0,
+  refundedAt: null,
+  status: "succeeded" as const,
+  updatedAt: new Date(2024, 4, 1, 12, 5),
+}
+
 const orderRow = {
+  billingCompanyName: null,
+  billingNip: null,
   canceledAt: null,
   createdAt: new Date(2024, 4, 1),
   currencyCode: "PLN",
+  customerNote: null,
   deliveredAt: null,
+  discountTotal: 0,
   fulfillmentStatus: "not_fulfilled" as const,
   id: ORDER_ID,
+  lockerId: null,
   orderNumber: "MRT-2026-00001",
   shippedAt: null,
   shippingTotal: 1500,
   status: "processing" as const,
   subtotal: 24_000,
+  taxBasisPoints: 2300,
   taxTotal: 0,
   total: 25_500,
   trackingNumber: null,
@@ -87,7 +102,16 @@ describe("mapCustomerOrderSummaryRow", () => {
 
     expect(summary).toMatchObject({ filterStatus: "processing", id: ORDER_ID, totalMinorUnits: 25_500 })
     expect(summary.items).toStrictEqual([
-      { image: "products/ring.jpg", name: "Silver ring", priceMinorUnits: 24_000, qty: 2, variantTitle: "Size S" },
+      {
+        handle: "silver-ring",
+        id: "item-1",
+        image: "products/ring.jpg",
+        lineTotalMinorUnits: 24_000,
+        name: "Silver ring",
+        qty: 2,
+        unitPriceMinorUnits: 12_000,
+        variantTitle: "Size S",
+      },
     ])
   })
 
@@ -145,14 +169,28 @@ describe("mapCustomerAccountAddressRow", () => {
 
 describe("mapCustomerOrderDetail", () => {
   it("adds the money breakdown and the supplied addresses to the summary", () => {
-    const detail = mapCustomerOrderDetail(orderRow, [itemRow], { paymentProvider: "stripe" })
+    const detail = mapCustomerOrderDetail(orderRow, [itemRow], { payment: paymentRow })
 
     expect(detail).toMatchObject({
+      discountMinorUnits: 0,
       paymentProvider: "stripe",
       shippingMinorUnits: 1500,
       subtotalMinorUnits: 24_000,
+      taxBasisPoints: 2300,
       taxMinorUnits: 0,
     })
+  })
+
+  it("counts the pieces an order holds, not just its lines", () => {
+    const detail = mapCustomerOrderDetail(orderRow, [itemRow, { ...itemRow, id: "item-2", quantity: 3 }], {})
+
+    expect(detail.itemCount).toBe(5)
+  })
+
+  it("derives a unit price for a historical line that stored none", () => {
+    const detail = mapCustomerOrderDetail(orderRow, [{ ...itemRow, unitPrice: undefined }], {})
+
+    expect(detail.items[0]?.unitPriceMinorUnits).toBe(12_000)
   })
 
   it("starts the timeline at the order being placed", () => {
@@ -161,20 +199,24 @@ describe("mapCustomerOrderDetail", () => {
     expect(detail.timeline).toStrictEqual([{ date: orderRow.createdAt, event: "placed" }])
   })
 
-  it("confirms an order the moment it leaves the pending state", () => {
-    const detail = mapCustomerOrderDetail(orderRow, [itemRow], {})
+  it("confirms an order from the payment that went through", () => {
+    const detail = mapCustomerOrderDetail(orderRow, [itemRow], { payment: paymentRow })
 
-    expect(detail.timeline.map((entry) => entry.event)).toStrictEqual(["placed", "confirmed"])
+    expect(detail.timeline.map((entry) => entry.event)).toStrictEqual(["confirmed", "placed"])
+  })
+
+  it("leaves an order with no successful payment unconfirmed", () => {
+    const detail = mapCustomerOrderDetail(orderRow, [itemRow], { payment: { ...paymentRow, status: "pending" } })
+
+    expect(detail.timeline.map((entry) => entry.event)).toStrictEqual(["placed"])
   })
 
   it("lists the newest timeline entry first", () => {
-    const detail = mapCustomerOrderDetail(
-      { ...orderRow, deliveredAt: new Date(2024, 4, 5), shippedAt: new Date(2024, 4, 3) },
-      [itemRow],
-      {},
-    )
+    const detail = mapCustomerOrderDetail({ ...orderRow, deliveredAt: new Date(2024, 4, 5), shippedAt: new Date(2024, 4, 3) }, [itemRow], {
+      payment: paymentRow,
+    })
 
-    expect(detail.timeline.map((entry) => entry.event)).toStrictEqual(["delivered", "shipped", "placed", "confirmed"])
+    expect(detail.timeline.map((entry) => entry.event)).toStrictEqual(["delivered", "shipped", "confirmed", "placed"])
   })
 
   it("records a cancellation on the timeline", () => {
@@ -297,30 +339,6 @@ describe("parseUserAgent", () => {
 
   it("falls back to generic labels for an agent it does not recognise", () => {
     expect(parseUserAgent("curl/8.0")).toStrictEqual({ browser: "Browser", device: "Device", deviceType: "desktop" })
-  })
-})
-
-describe("groupOrderItemsByOrderId", () => {
-  it("groups the lines of each order together in row order", () => {
-    const grouped = groupOrderItemsByOrderId([
-      itemRow,
-      { ...itemRow, title: "Gold ring" },
-      { ...itemRow, orderId: "order-2", title: "Bracelet" },
-    ])
-
-    expect(grouped.get(ORDER_ID)?.map((item) => item.name)).toStrictEqual(["Silver ring", "Gold ring"])
-    expect(grouped.get("order-2")).toHaveLength(1)
-  })
-
-  it("is empty when there are no lines", () => {
-    expect(groupOrderItemsByOrderId([]).size).toBe(0)
-  })
-})
-
-describe("hasCustomerOrderItems", () => {
-  it("distinguishes an order with lines from one without", () => {
-    expect(hasCustomerOrderItems([{ name: "Silver ring", priceMinorUnits: 1, qty: 1 }])).toBe(true)
-    expect(hasCustomerOrderItems([])).toBe(false)
   })
 })
 

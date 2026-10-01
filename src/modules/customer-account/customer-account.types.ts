@@ -6,15 +6,19 @@ import { type customerAccountZodSchemas } from "~/src/modules/customer-account/c
 import { type Order } from "~/src/modules/order/order.types"
 
 interface CustomerAccountOrderItem {
+  readonly handle?: string | undefined
+  readonly id: string
   readonly image?: string | undefined
+  readonly lineTotalMinorUnits: number
   readonly name: string
-  readonly priceMinorUnits: number
   readonly qty: number
+  readonly unitPriceMinorUnits: number
   readonly variantTitle?: string | undefined
 }
 
 interface CustomerAccountOrderSummary {
   readonly createdAt: Date
+  readonly itemCount: number
   readonly currencyCode: string
   readonly filterStatus: CustomerAccountOrderFilter
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
@@ -23,6 +27,13 @@ interface CustomerAccountOrderSummary {
   readonly orderNumber: string
   readonly status: Order["select"]["status"]
   readonly totalMinorUnits: number
+}
+
+interface CustomerAccountOrdersPage {
+  readonly orders: readonly CustomerAccountOrderSummary[]
+  readonly page: number
+  readonly pageSize: number
+  readonly total: number
 }
 
 interface CustomerAccountOrderAddress {
@@ -38,17 +49,30 @@ interface CustomerAccountOrderAddress {
 
 interface CustomerAccountOrderTimelineEntry {
   readonly date: Date
-  readonly event: "cancelled" | "confirmed" | "delivered" | "placed" | "shipped"
+  readonly event: "cancelled" | "confirmed" | "delivered" | "placed" | "refunded" | "shipped"
+}
+
+interface CustomerAccountOrderRefund {
+  readonly amountMinorUnits: number
+  readonly refundedAt?: Date | undefined
 }
 
 interface CustomerAccountOrderDetail extends CustomerAccountOrderSummary {
   readonly billingAddress?: CustomerAccountOrderAddress | undefined
+  readonly billingCompanyName?: string | undefined
+  readonly billingNip?: string | undefined
+  readonly customerNote?: string | undefined
   readonly deliveredAt?: Date | undefined
+  readonly deliveryMethodName?: string | undefined
+  readonly discountMinorUnits: number
+  readonly lockerId?: string | undefined
   readonly paymentProvider?: string | undefined
+  readonly refund?: CustomerAccountOrderRefund | undefined
   readonly shippedAt?: Date | undefined
   readonly shippingAddress?: CustomerAccountOrderAddress | undefined
   readonly shippingMinorUnits: number
   readonly subtotalMinorUnits: number
+  readonly taxBasisPoints: number
   readonly taxMinorUnits: number
   readonly timeline: readonly CustomerAccountOrderTimelineEntry[]
   readonly trackingNumber?: string | undefined
@@ -115,7 +139,9 @@ export interface CustomerAccount {
   orderAddress: CustomerAccountOrderAddress
   orderDetail: CustomerAccountOrderDetail
   orderItem: CustomerAccountOrderItem
+  orderRefund: CustomerAccountOrderRefund
   orderSummary: CustomerAccountOrderSummary
+  ordersPage: CustomerAccountOrdersPage
   orderTimelineEntry: CustomerAccountOrderTimelineEntry
   overview: CustomerAccountOverview
   overviewStats: CustomerAccountOverviewStats

@@ -19,7 +19,13 @@ vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) =>
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: {
     query: { order: { findFirst: access.findFirst } },
-    select: () => ({ from: () => ({ where: access.selectWhere }) }),
+    select: () => ({
+      from: () => ({
+        leftJoin: () => ({
+          leftJoin: () => ({ where: () => ({ orderBy: access.selectWhere }) }),
+        }),
+      }),
+    }),
   },
 }))
 vi.mock("@tanstack/react-start", () => ({
@@ -52,19 +58,37 @@ const address = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
+const payment = (overrides: Record<string, unknown> = {}) => ({
+  provider: "stripe",
+  refundedAmount: 0,
+  refundedAt: null,
+  status: "succeeded",
+  updatedAt: new Date("2026-02-01T10:05:00.000Z"),
+  ...overrides,
+})
+
 const orderRow = (overrides: Record<string, unknown> = {}) => ({
+  addresses: [],
+  billingCompanyName: null,
+  billingNip: null,
   canceledAt: null,
   checkout: { billingAddress: null, shippingAddress: address() },
   createdAt: new Date("2026-02-01T10:00:00.000Z"),
   currencyCode: "PLN",
+  customerNote: null,
   deliveredAt: null,
+  deliveryMethod: { courier: { name: "InPost" }, name: "Kurier InPost", type: "courier" },
+  discountTotal: 0,
   fulfillmentStatus: "shipped",
   id: "order-1",
-  payment: { provider: "stripe" },
+  lockerId: null,
+  orderNumber: "MRT-2026-00001",
+  payment: payment(),
   shippedAt: new Date("2026-02-03T10:00:00.000Z"),
   shippingTotal: 1500,
   status: "paid",
   subtotal: 10_000,
+  taxBasisPoints: 2300,
   taxTotal: 500,
   total: 12_000,
   trackingNumber: "PL123",
@@ -155,21 +179,115 @@ describe("getCustomerOrder", () => {
     expect(detail?.billingAddress).toBeUndefined()
     expect(detail?.shippingAddress).toBeUndefined()
   })
+})
+
+describe("getCustomerOrder timeline and refunds", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    access.selectWhere.mockResolvedValue([])
+  })
 
   it("builds the timeline newest first from the order milestones", async () => {
     access.findFirst.mockResolvedValue(orderRow())
 
     const detail = await fetchOrder()
 
-    expect(detail?.timeline.map((entry) => entry.event)).toStrictEqual(["shipped", "placed", "confirmed"])
+    expect(detail?.timeline.map((entry) => entry.event)).toStrictEqual(["shipped", "confirmed", "placed"])
   })
 
-  it("keeps a pending order at the placed milestone alone", async () => {
-    access.findFirst.mockResolvedValue(orderRow({ shippedAt: null, status: "pending" }))
+  it("dates the confirmation from the payment rather than repeating the placement time", async () => {
+    access.findFirst.mockResolvedValue(orderRow())
+
+    const detail = await fetchOrder()
+
+    expect(detail?.timeline.find((entry) => entry.event === "confirmed")?.date).toStrictEqual(new Date("2026-02-01T10:05:00.000Z"))
+  })
+
+  it("keeps an unpaid order at the placed milestone alone", async () => {
+    access.findFirst.mockResolvedValue(orderRow({ payment: payment({ status: "pending" }), shippedAt: null, status: "pending" }))
 
     const detail = await fetchOrder()
 
     expect(detail?.timeline.map((entry) => entry.event)).toStrictEqual(["placed"])
+  })
+
+  it("records a refund on the timeline and against the total", async () => {
+    const refundedAt = new Date("2026-02-10T10:00:00.000Z")
+    const refundedPayment = payment({ refundedAmount: 12_000, refundedAt, status: "refunded" })
+    access.findFirst.mockResolvedValue(orderRow({ payment: refundedPayment, status: "refunded" }))
+
+    const detail = await fetchOrder()
+
+    expect(detail?.timeline[0]?.event).toBe("refunded")
+    expect(detail?.refund).toStrictEqual({ amountMinorUnits: 12_000, refundedAt })
+    expect(detail?.filterStatus).toBe("refunded")
+  })
+
+  it("keeps a fully paid order free of refund information", async () => {
+    access.findFirst.mockResolvedValue(orderRow())
+
+    const detail = await fetchOrder()
+
+    expect(detail?.refund).toBeUndefined()
+  })
+})
+
+describe("getCustomerOrder destination and invoice", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    access.selectWhere.mockResolvedValue([])
+  })
+
+  it("prefers the order's own address snapshot over the editable address book row", async () => {
+    access.findFirst.mockResolvedValue(
+      orderRow({
+        addresses: [{ ...address({ address1: "Snapshot 9", firstName: "Ada", lastName: "Nowak" }), type: "shipping" }],
+      }),
+    )
+
+    const detail = await fetchOrder()
+
+    expect(detail?.shippingAddress).toMatchObject({ line1: "Snapshot 9", name: "Ada Nowak" })
+  })
+
+  it("names the delivery method and hides a locker for a courier order", async () => {
+    access.findFirst.mockResolvedValue(orderRow({ lockerId: "WAW01A" }))
+
+    const detail = await fetchOrder()
+
+    expect(detail?.deliveryMethodName).toBe("Kurier InPost")
+    expect(detail?.lockerId).toBeUndefined()
+  })
+
+  it("shows the parcel locker as the destination of a locker order", async () => {
+    access.findFirst.mockResolvedValue(orderRow({ deliveryMethod: { name: "Paczkomat InPost", type: "locker" }, lockerId: "WAW01A" }))
+
+    const detail = await fetchOrder()
+
+    expect(detail?.lockerId).toBe("WAW01A")
+  })
+
+  it("carries the invoice details and the customer's note", async () => {
+    access.findFirst.mockResolvedValue(
+      orderRow({ billingCompanyName: "MARTE sp. z o.o.", billingNip: "1234567890", customerNote: "Gift wrap it" }),
+    )
+
+    const detail = await fetchOrder()
+
+    expect(detail).toMatchObject({
+      billingCompanyName: "MARTE sp. z o.o.",
+      billingNip: "1234567890",
+      customerNote: "Gift wrap it",
+    })
+  })
+
+  it("carries the discount and the VAT rate the order was charged at", async () => {
+    access.findFirst.mockResolvedValue(orderRow({ discountTotal: 2000 }))
+
+    const detail = await fetchOrder()
+
+    expect(detail?.discountMinorUnits).toBe(2000)
+    expect(detail?.taxBasisPoints).toBe(2300)
   })
 
   it("records a cancellation on the timeline", async () => {
@@ -181,27 +299,48 @@ describe("getCustomerOrder", () => {
     expect(detail?.filterStatus).toBe("cancelled")
   })
 
-  it("maps the order items with their image and variant", async () => {
+  it("maps the order items with their image, variant and unit price", async () => {
     access.findFirst.mockResolvedValue(orderRow())
     access.selectWhere.mockResolvedValue([
-      { quantity: 2, thumbnail: "products/ring.webp", title: "Silver ring", total: 8000, variantTitle: "Size 12" },
+      {
+        handle: "silver-ring",
+        id: "item-1",
+        quantity: 2,
+        thumbnail: "products/ring.webp",
+        title: "Silver ring",
+        total: 8000,
+        unitPrice: 4000,
+        variantTitle: "Size 12",
+      },
     ])
 
     const detail = await fetchOrder()
 
     expect(detail?.items).toStrictEqual([
-      { image: "cdn/products/ring.webp", name: "Silver ring", priceMinorUnits: 8000, qty: 2, variantTitle: "Size 12" },
+      {
+        handle: "silver-ring",
+        id: "item-1",
+        image: "cdn/products/ring.webp",
+        lineTotalMinorUnits: 8000,
+        name: "Silver ring",
+        qty: 2,
+        unitPriceMinorUnits: 4000,
+        variantTitle: "Size 12",
+      },
     ])
   })
 
   it("leaves the image out for an item without a thumbnail", async () => {
     access.findFirst.mockResolvedValue(orderRow())
-    access.selectWhere.mockResolvedValue([{ quantity: 1, thumbnail: "", title: "Silver ring", total: 8000, variantTitle: null }])
+    access.selectWhere.mockResolvedValue([
+      { handle: null, id: "item-1", quantity: 1, thumbnail: "", title: "Silver ring", total: 8000, unitPrice: 8000, variantTitle: null },
+    ])
 
     const detail = await fetchOrder()
 
     expect(detail?.items[0]?.image).toBeUndefined()
     expect(detail?.items[0]?.variantTitle).toBeUndefined()
+    expect(detail?.items[0]?.handle).toBeUndefined()
   })
 })
 
