@@ -200,7 +200,10 @@
     "closeAccount": "Usunięcie konta",
     "closeAccountTitle": "Trwale usuń konto",
     "closeAccountDesc": "Po usunięciu konta wszystkie twoje dane zostaną bezpowrotnie skasowane.",
-    "closeAccountAction": "Usuń konto"
+    "closeAccountAction": "Usuń konto",
+    "revokeDevice": "Wyloguj: {device}",
+    "loginFrom": "z {ip}",
+    "unknownLocation": "Adres nie został zapisany"
   },
   "profile": {
     "eyebrow": "Ustawienia Konta",

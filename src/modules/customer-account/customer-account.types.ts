@@ -130,7 +130,7 @@ interface CustomerAccountSession {
 
 interface CustomerAccountLoginHistoryItem {
   readonly createdAt: Date
-  readonly detail?: string | undefined
+  readonly ipAddress?: string | undefined
   readonly status: "blocked" | "success"
 }
 

@@ -4,6 +4,7 @@ import { ROUTES } from "~/src/routes"
 
 const stubs = vi.hoisted(() => ({
   getRequestSession: vi.fn(),
+  getUserIdByEmail: vi.fn<(email: string) => Promise<string | undefined>>(),
   handler: vi.fn<(request: Request) => Promise<Response>>(),
   recordAuthLoginFailedAudit: vi.fn(),
   recordAuthLogoutAudit: vi.fn(),
@@ -13,6 +14,10 @@ const stubs = vi.hoisted(() => ({
 vi.mock("~/src/integrations/better-auth/auth.server", () => ({ auth: { handler: stubs.handler } }))
 
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: stubs.getRequestSession }))
+
+vi.mock("~/src/modules/user/user.accessors", () => ({ getUserIdByEmail: stubs.getUserIdByEmail }))
+
+vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork: (work: Promise<unknown>) => work }))
 
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordAuthLoginFailedAudit: stubs.recordAuthLoginFailedAudit,
@@ -37,18 +42,33 @@ beforeEach(() => {
   vi.resetAllMocks()
   stubs.handler.mockResolvedValue(new Response(null, { status: 200 }))
   stubs.resolveAuthAuditActor.mockReturnValue("customer-actor")
+  stubs.getUserIdByEmail.mockResolvedValue("user-1")
 })
 
 describe("audited auth handler", () => {
-  it("records the attempted email when a password sign-in is refused", async () => {
+  it("records a refused sign-in against the account it targeted, so the customer can see it", async () => {
     stubs.handler.mockResolvedValue(new Response(null, { status: FAILED }))
 
     await handleAuthRequestWithAudit(authRequest(ROUTES.API_AUTH.SIGN_IN_EMAIL, { email: "shopper@marte.test" }))
 
+    expect(stubs.getUserIdByEmail).toHaveBeenCalledWith("shopper@marte.test")
     expect(stubs.recordAuthLoginFailedAudit).toHaveBeenCalledWith("shopper@marte.test", {
-      detail: "shopper@marte.test",
       ip: CLIENT_IP,
       metadata: { email: "shopper@marte.test" },
+      resourceId: "user-1",
+    })
+  })
+
+  it("still records a refused sign-in for an email that belongs to no account", async () => {
+    stubs.handler.mockResolvedValue(new Response(null, { status: FAILED }))
+    stubs.getUserIdByEmail.mockResolvedValue(undefined)
+
+    await handleAuthRequestWithAudit(authRequest(ROUTES.API_AUTH.SIGN_IN_EMAIL, { email: "nobody@marte.test" }))
+
+    expect(stubs.recordAuthLoginFailedAudit).toHaveBeenCalledWith("nobody@marte.test", {
+      ip: CLIENT_IP,
+      metadata: { email: "nobody@marte.test" },
+      resourceId: undefined,
     })
   })
 

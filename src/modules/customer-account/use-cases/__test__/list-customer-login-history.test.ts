@@ -11,13 +11,13 @@ import {
 interface AuditRow {
   readonly action: string
   readonly createdAt: Date
-  readonly detail: string | null
+  readonly ip: string | null
 }
 
 const CALLER_CONTEXT = { auth: { session: { id: "session-current" }, user: { id: "customer-1" } } }
 
 const accessors = vi.hoisted(() => ({
-  getCustomerActivityAuditRows: vi.fn(),
+  getCustomerLoginAuditRows: vi.fn(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
@@ -37,12 +37,12 @@ vi.mock("@tanstack/react-start", () => ({
 const auditRow = (overrides: Partial<AuditRow> = {}): AuditRow => ({
   action: AUDIT_LOG_ACTION.AUTH_LOGIN,
   createdAt: new Date("2026-03-01T12:00:00.000Z"),
-  detail: "Warsaw, PL",
+  ip: "198.51.100.7",
   ...overrides,
 })
 
 const withAuditRows = (rows: readonly AuditRow[]) => {
-  accessors.getCustomerActivityAuditRows.mockResolvedValue([...rows])
+  accessors.getCustomerLoginAuditRows.mockResolvedValue([...rows])
 }
 
 describe("listCustomerLoginHistory", () => {
@@ -50,40 +50,27 @@ describe("listCustomerLoginHistory", () => {
     vi.clearAllMocks()
   })
 
-  it("reads the audit trail of the authenticated customer only", async () => {
+  it("asks for the sign-in trail of the authenticated customer only", async () => {
     withAuditRows([])
 
     await expect(listCustomerLoginHistory()).resolves.toStrictEqual([])
-    expect(accessors.getCustomerActivityAuditRows).toHaveBeenCalledWith("customer-1")
+    expect(accessors.getCustomerLoginAuditRows).toHaveBeenCalledWith("customer-1")
   })
 
-  it("reports a successful sign in with its detail", async () => {
+  it("reports a successful sign in with the address it came from", async () => {
     withAuditRows([auditRow()])
 
     await expect(listCustomerLoginHistory()).resolves.toStrictEqual([
-      { createdAt: new Date("2026-03-01T12:00:00.000Z"), detail: "Warsaw, PL", status: "success" },
+      { createdAt: new Date("2026-03-01T12:00:00.000Z"), ipAddress: "198.51.100.7", status: "success" },
     ])
   })
 
-  it("reports a rejected sign in as blocked", async () => {
+  it("reports a rejected sign in as blocked, so a guessed password is visible", async () => {
     withAuditRows([auditRow({ action: AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED })])
 
     const history = await listCustomerLoginHistory()
 
     expect(history[0]?.status).toBe("blocked")
-  })
-
-  it("drops audit entries that are not sign in attempts", async () => {
-    withAuditRows([
-      auditRow({ action: AUDIT_LOG_ACTION.AUTH_LOGOUT }),
-      auditRow({ action: AUDIT_LOG_ACTION.ORDER_PLACED }),
-      auditRow({ action: AUDIT_LOG_ACTION.AUTH_LOGIN }),
-    ])
-
-    const history = await listCustomerLoginHistory()
-
-    expect(history).toHaveLength(1)
-    expect(history[0]?.status).toBe("success")
   })
 
   it("keeps the order the audit trail returned", async () => {
@@ -100,12 +87,12 @@ describe("listCustomerLoginHistory", () => {
     ])
   })
 
-  it("leaves the detail out when the audit row has none", async () => {
-    withAuditRows([auditRow({ detail: null })])
+  it("leaves the address out when the audit row recorded none", async () => {
+    withAuditRows([auditRow({ ip: null })])
 
     const history = await listCustomerLoginHistory()
 
-    expect(history[0]?.detail).toBeUndefined()
+    expect(history[0]?.ipAddress).toBeUndefined()
   })
 })
 
@@ -116,12 +103,13 @@ describe("listCustomerLoginHistoryQuery", () => {
     expect(options.queryKey).toStrictEqual(CUSTOMER_ACCOUNT_QUERY_KEYS.LOGIN_HISTORY)
     expect(options.staleTime).toBe(CUSTOMER_ACCOUNT_QUERY_STALE_MS)
   })
-})
 
-it("loads the authenticated customer's history through the cache query", async () => {
-  withAuditRows([auditRow()])
-  await expect(new QueryClient().query(listCustomerLoginHistoryQuery())).resolves.toStrictEqual([
-    { createdAt: new Date("2026-03-01T12:00:00.000Z"), detail: "Warsaw, PL", status: "success" },
-  ])
-  expect(accessors.getCustomerActivityAuditRows).toHaveBeenLastCalledWith("customer-1")
+  it("loads the authenticated customer's history through the cache query", async () => {
+    withAuditRows([auditRow()])
+
+    await expect(new QueryClient().query(listCustomerLoginHistoryQuery())).resolves.toStrictEqual([
+      { createdAt: new Date("2026-03-01T12:00:00.000Z"), ipAddress: "198.51.100.7", status: "success" },
+    ])
+    expect(accessors.getCustomerLoginAuditRows).toHaveBeenLastCalledWith("customer-1")
+  })
 })

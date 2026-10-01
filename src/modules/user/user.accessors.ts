@@ -280,6 +280,15 @@ export const getUserById = (id: string) =>
     where: eq(user.id, id),
   })
 
+export const getUserIdByEmail = async (email: string): Promise<string | undefined> => {
+  const row = await db.query.user.findFirst({
+    columns: { id: true },
+    where: eq(user.email, email.trim().toLowerCase()),
+  })
+
+  return row?.id
+}
+
 export interface AdminCustomersListParams extends ListPaginationParams {
   readonly filters?: User["adminCustomersListFilters"] | undefined
   readonly search?: string | undefined

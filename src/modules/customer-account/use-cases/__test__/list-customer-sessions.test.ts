@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query"
+import { Column, SQL } from "drizzle-orm"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { CUSTOMER_ACCOUNT_QUERY_KEYS, CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
@@ -15,13 +16,24 @@ interface SessionRow {
 const CALLER_CONTEXT = { auth: { session: { id: "session-current" }, user: { id: "customer-1" } } }
 
 const access = vi.hoisted(() => ({
+  conditions: [] as unknown[],
   orderBy: vi.fn<() => Promise<unknown[]>>(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string) => path }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
-  db: { select: () => ({ from: () => ({ where: () => ({ orderBy: access.orderBy }) }) }) },
+  db: {
+    select: () => ({
+      from: () => ({
+        where: (condition: unknown) => {
+          access.conditions.push(condition)
+
+          return { orderBy: access.orderBy }
+        },
+      }),
+    }),
+  },
 }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
@@ -48,15 +60,39 @@ const withSessions = (rows: readonly SessionRow[]) => {
   access.orderBy.mockResolvedValue([...rows])
 }
 
+const columnsIn = (condition: unknown): readonly string[] => {
+  const chunks = condition instanceof SQL ? condition.queryChunks : []
+
+  return chunks.flatMap((chunk) => {
+    if (chunk instanceof SQL) {
+      return columnsIn(chunk)
+    }
+
+    const name: unknown = chunk instanceof Column ? chunk.name : undefined
+
+    return typeof name === "string" ? [name] : []
+  })
+}
+
 describe("listCustomerSessions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    access.conditions = []
   })
 
   it("returns nothing when the customer has no stored sessions", async () => {
     withSessions([])
 
     await expect(listCustomerSessions()).resolves.toStrictEqual([])
+  })
+
+  it("asks the database to leave expired sessions out, so dead devices are not listed", async () => {
+    withSessions([])
+
+    await listCustomerSessions()
+
+    expect(access.conditions).toHaveLength(1)
+    expect(columnsIn(access.conditions[0])).toContain("expires_at")
   })
 
   it("marks the caller's own session as current and every other one as not", async () => {
@@ -94,8 +130,8 @@ describe("listCustomerSessions", () => {
     ["mobile safari iphone", { browser: "Safari", device: "iPhone", deviceType: "mobile" }],
     ["ipad safari", { browser: "Safari", device: "iPad", deviceType: "tablet" }],
     ["firefox android mobile", { browser: "Firefox", device: "Android", deviceType: "mobile" }],
-    ["edg macintosh", { browser: "Edge", device: "Mac", deviceType: "desktop" }],
-    ["opera linux", { browser: "Browser", device: "Device", deviceType: "desktop" }],
+    ["macintosh edg/124", { browser: "Edge", device: "Mac", deviceType: "desktop" }],
+    ["linux opr/110", { browser: "Opera", device: "Linux", deviceType: "desktop" }],
   ])("describes the %s session from its user agent", async (userAgent, expected) => {
     withSessions([sessionRow({ userAgent })])
 

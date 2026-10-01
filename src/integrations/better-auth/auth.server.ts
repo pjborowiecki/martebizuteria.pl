@@ -58,6 +58,8 @@ const RATE_LIMIT_WINDOW_IN_SECONDS = 60
 
 const COOKIE_CACHE_MAX_AGE_IN_SECONDS = 300
 
+const SESSION_UPDATE_AGE_IN_SECONDS = 300
+
 const TRUSTED_AUTH_PROVIDERS = ["google", "github"]
 
 const resolveEmailVerificationCallbackUrl = (url: string, locale: SupportedLocale): string => {
@@ -279,6 +281,7 @@ export const auth = betterAuth({
   session: {
     cookieCache: { enabled: true, maxAge: COOKIE_CACHE_MAX_AGE_IN_SECONDS, version: "2" },
     storeSessionInDatabase: true,
+    updateAge: SESSION_UPDATE_AGE_IN_SECONDS,
   },
   socialProviders: {
     github: { clientId: env.AUTH_GITHUB_CLIENT_ID, clientSecret: env.AUTH_GITHUB_CLIENT_SECRET },

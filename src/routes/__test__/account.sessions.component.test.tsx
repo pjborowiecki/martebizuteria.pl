@@ -158,6 +158,17 @@ describe("account sessions page", () => {
 })
 
 describe("account sessions revoking", () => {
+  it("names the device each revoke control signs out, without hiding it behind a hover", async () => {
+    state.sessions = [session(), session({ device: "iPhone", deviceType: "mobile", id: "session-2", isCurrent: false })]
+    renderPage()
+    await screen.findByText("iPhone")
+
+    const revoke = screen.getByRole("button", { name: "Sign out iPhone" })
+
+    expect(revoke).toBeVisible()
+    expect(revoke.className).not.toContain("opacity-0")
+  })
+
   it("enables revoke all once another device is signed in", async () => {
     state.sessions = [session(), session({ id: "session-2", isCurrent: false })]
     renderPage()
@@ -217,16 +228,23 @@ describe("account sessions revoking", () => {
 })
 
 describe("account sessions login history", () => {
-  it("shows the stored detail of a login", async () => {
-    state.history = [{ createdAt: new Date("2026-02-01T10:00:00.000Z"), detail: "Signed in from Warsaw", status: "success" }]
+  it("describes a sign in by its outcome and the address it came from", async () => {
+    state.history = [{ createdAt: new Date("2026-02-01T10:00:00.000Z"), ipAddress: "198.51.100.7", status: "success" }]
     renderPage()
 
-    expect(await screen.findByText("Signed in from Warsaw")).toBeInTheDocument()
-    expect(screen.getByText("Success")).toBeInTheDocument()
+    expect(await screen.findByText("from 198.51.100.7")).toBeInTheDocument()
+    expect(screen.getAllByText("Success")).toHaveLength(2)
   })
 
-  it("falls back to the status when a login carries no detail", async () => {
-    state.history = [{ createdAt: new Date("2026-02-01T10:00:00.000Z"), status: "blocked" }]
+  it("says so when the address behind a sign in was not recorded", async () => {
+    state.history = [{ createdAt: new Date("2026-02-01T10:00:00.000Z"), status: "success" }]
+    renderPage()
+
+    expect(await screen.findByText("Address not recorded")).toBeInTheDocument()
+  })
+
+  it("marks a refused sign in as blocked", async () => {
+    state.history = [{ createdAt: new Date("2026-02-01T10:00:00.000Z"), ipAddress: "198.51.100.7", status: "blocked" }]
     renderPage()
 
     expect(await screen.findAllByText("Blocked")).toHaveLength(2)

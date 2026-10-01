@@ -386,48 +386,34 @@ const parseActivityMetadata = (raw: string | null): Record<string, unknown> => {
   }
 }
 
-const resolveBrowserName = (agent: string): string => {
-  if (/chrome|crios/u.test(agent)) {
-    return "Chrome"
+const BROWSER_PATTERNS = [
+  ["Edge", /edg(?:e|a|ios)?\//u],
+  ["Opera", /opr\/|opera/u],
+  ["Samsung Internet", /samsungbrowser/u],
+  ["Chrome", /chrome|crios|chromium/u],
+  ["Firefox", /firefox|fxios/u],
+  ["Safari", /safari/u],
+] as const
+
+const DEVICE_PATTERNS = [
+  ["iPhone", /iphone/u],
+  ["iPad", /ipad/u],
+  ["Android", /android/u],
+  ["Mac", /macintosh|mac os x/u],
+  ["Windows", /windows/u],
+  ["Linux", /linux|cros/u],
+] as const
+
+const resolveBrowserName = (agent: string): string => BROWSER_PATTERNS.find(([, pattern]) => pattern.test(agent))?.[0] ?? "Browser"
+
+const resolveDeviceName = (agent: string): string => DEVICE_PATTERNS.find(([, pattern]) => pattern.test(agent))?.[0] ?? "Device"
+
+const resolveDeviceType = (agent: string): "desktop" | "mobile" | "tablet" => {
+  if (/ipad|tablet|(?:android(?!.*mobile))/u.test(agent)) {
+    return "tablet"
   }
 
-  if (/safari/u.test(agent)) {
-    return "Safari"
-  }
-
-  if (/firefox/u.test(agent)) {
-    return "Firefox"
-  }
-
-  if (/edg/u.test(agent)) {
-    return "Edge"
-  }
-
-  return "Browser"
-}
-
-const resolveDeviceName = (agent: string): string => {
-  if (/iphone/u.test(agent)) {
-    return "iPhone"
-  }
-
-  if (/ipad/u.test(agent)) {
-    return "iPad"
-  }
-
-  if (/android/u.test(agent)) {
-    return "Android"
-  }
-
-  if (/macintosh|mac os x/u.test(agent)) {
-    return "Mac"
-  }
-
-  if (/windows/u.test(agent)) {
-    return "Windows"
-  }
-
-  return "Device"
+  return /mobile|iphone|android|iemobile/u.test(agent) ? "mobile" : "desktop"
 }
 
 export const parseUserAgent = (
@@ -445,17 +431,12 @@ export const parseUserAgent = (
     }
   }
 
-  let deviceType: "desktop" | "mobile" | "tablet" = "desktop"
-  if (/ipad|tablet/u.test(userAgent)) {
-    deviceType = "tablet"
-  } else if (/mobile|iphone|android/u.test(userAgent)) {
-    deviceType = "mobile"
-  }
+  const agent = userAgent.toLowerCase()
 
   return {
-    browser: resolveBrowserName(userAgent),
-    device: resolveDeviceName(userAgent),
-    deviceType,
+    browser: resolveBrowserName(agent),
+    device: resolveDeviceName(agent),
+    deviceType: resolveDeviceType(agent),
   }
 }
 
