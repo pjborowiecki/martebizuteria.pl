@@ -1,4 +1,4 @@
-import { formatCustomerAccountRelativeTime } from "~/src/modules/customer-account/customer-account.utils"
+import { formatRelativeFromNow } from "~/src/modules/_core/utils/datetime"
 
 const ACTIVE_NOW_MINUTES = 5
 
@@ -11,5 +11,5 @@ export const formatSessionLastActive = (lastActiveAt: Date, locale: string, acti
     return activeNowLabel
   }
 
-  return formatCustomerAccountRelativeTime(lastActiveAt, locale)
+  return formatRelativeFromNow(lastActiveAt, locale)
 }

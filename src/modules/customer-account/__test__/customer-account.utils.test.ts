@@ -1,9 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { describe, expect, it, vi } from "vite-plus/test"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
-  formatCustomerAccountRelativeTime,
   mapAuditLogToActivityItem,
   mapCustomerAccountAddressRow,
   mapCustomerOrderDetail,
@@ -16,8 +15,6 @@ import {
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (src?: string | null) => src ?? "placeholder.svg" }))
 
 import { type Order } from "~/src/modules/order/order.types"
-
-const NOW = new Date(2024, 5, 15, 12, 0, 0)
 
 const FILTER_BUCKET_CASES: [Order["select"]["fulfillmentStatus"], string][] = [
   ["delivered", "delivered"],
@@ -363,33 +360,5 @@ describe("parseUserAgent", () => {
 
   it("falls back to generic labels for an agent it does not recognise", () => {
     expect(parseUserAgent("curl/8.0")).toStrictEqual({ browser: "Browser", device: "Device", deviceType: "desktop" })
-  })
-})
-
-describe("formatCustomerAccountRelativeTime", () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(NOW)
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it.each([
-    [30_000, "now"],
-    [5 * 60_000, "5 minutes ago"],
-    [3 * 3_600_000, "3 hours ago"],
-    [2 * 86_400_000, "2 days ago"],
-  ])("describes %i ms ago as %s", (diffMs, expected) => {
-    const at = new Date(NOW.getTime() - diffMs)
-
-    expect(formatCustomerAccountRelativeTime(at, "en-US")).toBe(expected)
-  })
-
-  it("switches to an absolute date beyond a week", () => {
-    const at = new Date(NOW.getTime() - 8 * 86_400_000)
-
-    expect(formatCustomerAccountRelativeTime(at, "en-US")).toBe("Jun 7, 2024")
   })
 })

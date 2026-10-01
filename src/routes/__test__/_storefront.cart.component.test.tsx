@@ -4,7 +4,12 @@ import type * as ReactRouter from "@tanstack/react-router"
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { TEST_LOCALE } from "~/src/platform/testing/lib/messages"
+
 import type * as I18nMessages from "~/src/integrations/use-intl/i18n.messages"
+
+import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 
 interface MetaEntry {
   readonly content?: string
@@ -116,7 +121,7 @@ const fillCart = (lines: CartItem[]) => {
   useCartStore.setState({ items: lines })
 }
 
-const zloty = (major: number) => new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" }).format(major)
+const zloty = (minor: number) => formatPrice(minor, STORE_CURRENCY_CODE, TEST_LOCALE)
 
 beforeEach(() => {
   availability.hasUnavailableItems = false
@@ -180,7 +185,7 @@ describe("cart page with items", () => {
 
     renderCart()
 
-    expect(screen.getByTestId("cart-summary").textContent).toBe(zloty(498))
+    expect(screen.getByTestId("cart-summary").textContent).toBe(zloty(49_800))
   })
 
   it("sums every line into the subtotal", () => {
@@ -188,7 +193,7 @@ describe("cart page with items", () => {
 
     renderCart()
 
-    expect(screen.getByTestId("cart-summary").textContent).toBe(zloty(598))
+    expect(screen.getByTestId("cart-summary").textContent).toBe(zloty(59_800))
   })
 
   it("keeps checkout open while every item is available", () => {
