@@ -4,12 +4,6 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { discount, discountRedemption } from "~/src/modules/discount/discount.schema"
 
-/**
- * Spending the code is deliberately separate from creating the order and is
- * keyed by order id, so a replayed Stripe webhook cannot bump the counter
- * twice. A failure here must not fail the order: the customer has paid, and an
- * uncounted redemption is a smaller problem than a lost order.
- */
 export const recordDiscountRedemption = async ({
   amount,
   discountId,

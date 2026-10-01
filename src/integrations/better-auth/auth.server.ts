@@ -201,8 +201,6 @@ export const auth = betterAuth({
           scheduleAdminCustomersInvalidation()
           recordCustomerRegisteredAudit(user.email, { detail: user.name, resourceId: user.id })
 
-          // A trusted OAuth provider has already verified the address, so the
-          // Account starts out owning any guest orders placed with it.
           if (user.emailVerified) {
             await Promise.all([claimGuestOrdersForUser({ email: user.email, userId: user.id }), linkSubscriberToUser(user.email, user.id)])
           }

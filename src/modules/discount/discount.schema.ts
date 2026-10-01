@@ -19,9 +19,7 @@ export const discount = sqliteTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
-    /** Caps what a percentage code can take off; ignored by the other types. */
     maxDiscountAmount: integer("max_discount_amount"),
-    /** Order subtotal a basket must reach before the code applies. */
     minOrderTotal: integer("min_order_total"),
     perCustomerLimit: integer("per_customer_limit"),
     startsAt: timestamp("starts_at"),
@@ -34,10 +32,6 @@ export const discount = sqliteTable(
   (table) => [index("discount_code_idx").on(table.code), index("discount_isActive_idx").on(table.isActive)],
 )
 
-/**
- * One row per code actually spent. The usage counter alone cannot answer "has
- * this customer used it before", and it cannot be audited or reversed.
- */
 export const discountRedemption = sqliteTable(
   "discount_redemption",
   {

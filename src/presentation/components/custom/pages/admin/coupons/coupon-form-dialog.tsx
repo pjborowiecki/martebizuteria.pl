@@ -193,7 +193,6 @@ const toOptionalNumber = (value: unknown): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-/** Datetime-local gives a local wall-clock string; the schema wants an offset. */
 const toIsoOrUndefined = (value: unknown): string | undefined => {
   if (typeof value !== "string" || value.trim() === "") {
     return undefined

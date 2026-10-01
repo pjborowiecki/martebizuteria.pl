@@ -10,5 +10,8 @@
   "passwordMaxLength": "Hasło może mieć maksymalnie {max} znaków.",
   "passwordUppercase": "Co najmniej jedna wielka litera",
   "passwordSpecialCharacter": "Co najmniej jeden znak specjalny",
-  "passwordsMustMatch": "Hasła muszą się zgadzać."
+  "passwordsMustMatch": "Hasła muszą się zgadzać.",
+  "passwordUnchanged": "Wybierz hasło inne niż obecne.",
+  "totpCodeInvalid": "Wpisz sześć cyfr z aplikacji uwierzytelniającej.",
+  "totpCodeRequired": "Wpisz kod, aby kontynuować."
 }

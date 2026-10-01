@@ -1,12 +1,31 @@
-import { type JSX } from "react"
+import { type JSX, useCallback, useState } from "react"
 
+import { useQuery } from "@tanstack/react-query"
 import { useTranslations } from "use-intl/react"
 
+import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
+
+import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
+import { ChangePasswordDialog } from "~/src/presentation/components/custom/pages/account/profile/sections/change-password-dialog"
+import { TwoFactorDialog } from "~/src/presentation/components/custom/pages/account/profile/sections/two-factor-dialog"
+
 export const SecuritySection = (): JSX.Element => {
   const t = useTranslations("pages.account.profile")
+  const { data: session } = useQuery(getCurrentSessionQuery)
+  const [passwordOpen, setPasswordOpen] = useState(false)
+  const [twoFactorOpen, setTwoFactorOpen] = useState(false)
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(session?.user.twoFactorEnabled === true)
+
+  const openPassword = useCallback(() => {
+    setPasswordOpen(true)
+  }, [])
+
+  const openTwoFactor = useCallback(() => {
+    setTwoFactorOpen(true)
+  }, [])
 
   return (
     <section>
@@ -18,16 +37,34 @@ export const SecuritySection = (): JSX.Element => {
             <p className="text-[14px]">{t("changePassword")}</p>
             <p className="mt-0.5 text-[12px] text-muted-foreground">{t("changePasswordDesc")}</p>
           </div>
-          <Button variant="account-ghost">{t("update")}</Button>
+          <Button onClick={openPassword} variant="account-ghost">
+            {t("update")}
+          </Button>
         </div>
         <div className="flex items-center justify-between py-4">
           <div>
-            <p className="text-[14px]">{t("twoFactor")}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[14px]">{t("twoFactor")}</p>
+              <Badge className="text-[10px]" variant={twoFactorEnabled ? "default" : "secondary"}>
+                {twoFactorEnabled ? t("twoFactorOn") : t("twoFactorOff")}
+              </Badge>
+            </div>
             <p className="mt-0.5 text-[12px] text-muted-foreground">{t("twoFactorDesc")}</p>
           </div>
-          <Button variant="account-ghost">{t("enable")}</Button>
+          <Button onClick={openTwoFactor} variant="account-ghost">
+            {twoFactorEnabled ? t("disable") : t("enable")}
+          </Button>
         </div>
       </div>
+
+      <ChangePasswordDialog onOpenChange={setPasswordOpen} open={passwordOpen} />
+      <TwoFactorDialog
+        enabled={twoFactorEnabled}
+        key={twoFactorOpen ? "open" : "closed"}
+        onEnabledChange={setTwoFactorEnabled}
+        onOpenChange={setTwoFactorOpen}
+        open={twoFactorOpen}
+      />
     </section>
   )
 }

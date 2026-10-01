@@ -10,13 +10,6 @@ import { mapAdminOrderDetailAddress, mapAdminOrderDetailItem } from "~/src/modul
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
-/**
- * Reached straight after payment, by guests as well as signed-in customers, so
- * it cannot be gated on a session. The Stripe checkout session id is the
- * capability: it is opaque, single-purpose, and only ever handed to the buyer
- * who completed that payment. Nothing here exposes more than the buyer's own
- * receipt, and `isOwnOrder` tells the page whether to offer the account link.
- */
 export const getOrderConfirmation = createServerFn({ method: "GET" })
   .validator((input: zod.input<typeof orderZodSchemas.orderConfirmationInput>) => orderZodSchemas.orderConfirmationInput.parse(input))
   .handler(async ({ data: { sessionId } }): Promise<Order["confirmation"] | undefined> => {
@@ -57,10 +50,6 @@ export const getOrderConfirmationQuery = (sessionId: string) =>
     staleTime: ORDER_QUERY_STALE_MS,
   })
 
-/**
- * The buyer can land here before Stripe's webhook has created the order, so a
- * miss is retried rather than reported as an error.
- */
 const CONFIRMATION_RETRIES = 5
 
 const CONFIRMATION_RETRY_DELAY_MS = 1500

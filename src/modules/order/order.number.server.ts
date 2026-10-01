@@ -10,10 +10,6 @@ export const formatOrderNumber = (period: string, value: number): string =>
 
 export const currentOrderNumberPeriod = (now: Date = new Date()): string => String(now.getUTCFullYear())
 
-/**
- * One upsert with RETURNING keeps the counter atomic under concurrent
- * checkouts; reading then writing would hand two orders the same number.
- */
 export const allocateOrderNumber = async (now: Date = new Date()): Promise<string> => {
   const period = currentOrderNumberPeriod(now)
   const [row] = await db

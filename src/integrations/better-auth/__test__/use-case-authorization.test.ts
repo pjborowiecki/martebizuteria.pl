@@ -8,14 +8,8 @@ const PUBLIC_USE_CASES = new Set([
   "cart/use-cases/check-cart-availability.ts",
   "customer-activity/use-cases/record-customer-activity.ts",
   "delivery-method/use-cases/list-delivery-methods.ts",
-  // A guest must be able to try a code before signing in; it reports only
-  // Whether that one code applies, and the amount is recomputed server side.
   "discount/use-cases/validate-discount-code.ts",
-  // Reached straight after payment by guests, who have no session to scope it
-  // By; the Stripe checkout session id is the capability instead.
   "order/use-cases/get-order-confirmation.ts",
-  // Followed from an email client with no session; the emailed token is the
-  // Proof of consent, and leaving the list must not be harder than joining it.
   "newsletter/use-cases/confirm-newsletter-subscription.ts",
   "newsletter/use-cases/subscribe-to-newsletter.ts",
   "newsletter/use-cases/unsubscribe-from-newsletter.ts",

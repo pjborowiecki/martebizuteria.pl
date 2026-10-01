@@ -9,5 +9,18 @@
   "submit": "Sign in",
   "submitting": "Signing in…",
   "noAccount": "Don't have an account?",
-  "createAccount": "Create one"
+  "createAccount": "Create one",
+  "twoFactor": {
+    "title": "Two-step verification",
+    "description": "Enter the six-digit code from your authenticator app.",
+    "codeLabel": "Authentication code",
+    "backupLabel": "Recovery code",
+    "useBackup": "Use a recovery code instead",
+    "useAuthenticator": "Use my authenticator app instead",
+    "trustDevice": "Trust this device for 60 days",
+    "verify": "Verify",
+    "backToSignIn": "Back to sign in",
+    "wrongCode": "That code is not correct. Check your app and try again.",
+    "wrongBackupCode": "That recovery code is not valid. Each one works only once."
+  }
 }

@@ -1,4 +1,4 @@
-import { type JSX, type SyntheticEvent, useCallback } from "react"
+import { type JSX, type SyntheticEvent, useCallback, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigate } from "@tanstack/react-router"
@@ -19,13 +19,18 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { AuthPasswordField, AuthTextField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
+import { TwoFactorChallengeForm } from "~/src/presentation/components/custom/pages/auth/two-factor-challenge-form"
 
 import { ROUTES } from "~/src/routes"
 
 const signInEmail = createClientOnlyFn((input: Parameters<typeof signIn.email>[0]) => signIn.email(input))
 
+const isTwoFactorRequired = (data: unknown): boolean =>
+  typeof data === "object" && data !== null && "twoFactorRedirect" in data && data.twoFactorRedirect === true
+
 export const SignInWithPasswordForm = (): JSX.Element => {
   const navigate = useNavigate()
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false)
   const t = useTranslations()
   const actionError = useActionError()
   const form = useForm<SignInFormValues>({
@@ -47,7 +52,12 @@ export const SignInWithPasswordForm = (): JSX.Element => {
               description: actionError(ctx.error),
             })
           },
-          onSuccess: async () => {
+          onSuccess: async (ctx) => {
+            if (isTwoFactorRequired(ctx.data)) {
+              setTwoFactorRequired(true)
+
+              return
+            }
             toast.success(t("pages.auth.toast.signInTitle"), {
               description: t("pages.auth.toast.signInDescription"),
             })
@@ -74,7 +84,16 @@ export const SignInWithPasswordForm = (): JSX.Element => {
     [form, onSubmit],
   )
 
+  const leaveTwoFactor = useCallback(() => {
+    setTwoFactorRequired(false)
+    form.reset()
+  }, [form])
+
   const { isSubmitting } = form.formState
+
+  if (twoFactorRequired) {
+    return <TwoFactorChallengeForm onCancel={leaveTwoFactor} />
+  }
 
   return (
     <form id="sign-in-form" onSubmit={handleFormSubmit} className="space-y-5">

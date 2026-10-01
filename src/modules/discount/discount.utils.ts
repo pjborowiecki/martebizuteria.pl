@@ -12,11 +12,6 @@ const NO_AMOUNT = 0
 
 export const normalizeDiscountCode = (code: string): string => code.trim().toUpperCase()
 
-/**
- * A free-shipping code takes the shipping line off, the other two come off the
- * item subtotal. Percentage codes honour an optional cap, and nothing may ever
- * take off more than the amount it applies to.
- */
 export const calculateDiscountAmount = ({ itemsSubtotal, row, shippingTotal }: CalculateDiscountAmountInput): number => {
   if (row.type === DISCOUNT_TYPE.FREE_SHIPPING) {
     return shippingTotal

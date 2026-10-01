@@ -37,11 +37,6 @@ export const resolveSettledOrder = (
   }
 }
 
-/**
- * An order only exists once payment succeeded, and fulfilment already drew the
- * lines down from both available and reserved stock. Cancelling therefore has
- * to hand the quantities back, exactly as a full refund does.
- */
 export const prepareCancelOrderBatch = (
   orderId: string,
   restockLines: readonly {

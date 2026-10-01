@@ -9,5 +9,18 @@
   "submit": "Zaloguj się",
   "submitting": "Logowanie…",
   "noAccount": "Nie masz konta?",
-  "createAccount": "Utwórz konto"
+  "createAccount": "Utwórz konto",
+  "twoFactor": {
+    "title": "Weryfikacja dwuetapowa",
+    "description": "Wpisz sześciocyfrowy kod z aplikacji uwierzytelniającej.",
+    "codeLabel": "Kod uwierzytelniający",
+    "backupLabel": "Kod odzyskiwania",
+    "useBackup": "Użyj kodu odzyskiwania",
+    "useAuthenticator": "Użyj aplikacji uwierzytelniającej",
+    "trustDevice": "Zaufaj temu urządzeniu na 60 dni",
+    "verify": "Potwierdź",
+    "backToSignIn": "Powrót do logowania",
+    "wrongCode": "Ten kod jest nieprawidłowy. Sprawdź aplikację i spróbuj ponownie.",
+    "wrongBackupCode": "Ten kod odzyskiwania jest nieprawidłowy. Każdy działa tylko raz."
+  }
 }
