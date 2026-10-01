@@ -147,7 +147,12 @@
     "description": "Stay up to date with new products and receive private discount codes available only for subscribers.",
     "placeholder": "Email address",
     "cta": "Join us",
-    "note": "By subscribing, you agree to the processing of data for marketing purposes, in accordance with the Terms and Privacy Policy."
+    "note": "By subscribing, you agree to the processing of data for marketing purposes, in accordance with the Terms and Privacy Policy.",
+    "success": "Almost there — check your inbox and confirm your subscription.",
+    "alreadySubscribed": "You are already on the list.",
+    "invalidEmail": "Enter a valid email address.",
+    "error": "We could not sign you up just now. Please try again.",
+    "submitting": "Signing you up..."
   },
   "shopCategoriesSection": {
     "eyebrow": "Browse by type",

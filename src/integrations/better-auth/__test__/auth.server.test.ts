@@ -21,6 +21,7 @@ const stubs = vi.hoisted(() => ({
   claimGuestOrdersForUser: vi.fn<(input: { email: string; userId: string }) => Promise<number>>(),
   findFirst: vi.fn(),
   getCurrentLocale: vi.fn<() => string>(),
+  linkSubscriberToUser: vi.fn<(email: string, userId: string) => Promise<void>>(),
   recordAuthLoginAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
   resolveAuthAuditActor: vi.fn(),
@@ -42,6 +43,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { query: { user: { findFirst: stubs.findFirst } } },
 }))
 
+vi.mock("~/src/modules/newsletter/newsletter.accessors", () => ({ linkSubscriberToUser: stubs.linkSubscriberToUser }))
 vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: stubs.claimGuestOrdersForUser }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: stubs.scheduleAdminCustomersInvalidation,
@@ -184,6 +186,12 @@ describe("customer list invalidation hooks", () => {
     await auth.options.emailVerification.afterEmailVerification(createdUser)
 
     expect(stubs.claimGuestOrdersForUser).toHaveBeenCalledWith({ email: createdUser.email, userId: createdUser.id })
+  })
+
+  it("links a newsletter subscription on that address to the verified account", async () => {
+    await auth.options.emailVerification.afterEmailVerification(createdUser)
+
+    expect(stubs.linkSubscriberToUser).toHaveBeenCalledWith(createdUser.email, createdUser.id)
   })
 
   it("refreshes the admin customer list after an update", async () => {

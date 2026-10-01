@@ -11,8 +11,8 @@
   "i18n-ally.localesPaths": [
     "./messages"
   ],
-  "i18n-ally.sourceLanguage": "pl",
-  "i18n-ally.displayLanguage": "pl",
+  "i18n-ally.sourceLanguage": "pl-PL",
+  "i18n-ally.displayLanguage": "pl-PL",
   "i18n-ally.keystyle": "nested",
   "i18n-ally.enabledFrameworks": [
     "next-intl"

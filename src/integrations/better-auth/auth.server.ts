@@ -22,6 +22,7 @@ import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { appHostsForMode, isLocalMode } from "~/src/modules/_core/constants/api"
 import { recordAuthLoginAudit, recordCustomerRegisteredAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
+import { linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
 import { user as userTable } from "~/src/modules/user/user.schema"
 
@@ -203,7 +204,7 @@ export const auth = betterAuth({
           // A trusted OAuth provider has already verified the address, so the
           // Account starts out owning any guest orders placed with it.
           if (user.emailVerified) {
-            await claimGuestOrdersForUser({ email: user.email, userId: user.id })
+            await Promise.all([claimGuestOrdersForUser({ email: user.email, userId: user.id }), linkSubscriberToUser(user.email, user.id)])
           }
         },
       },
@@ -230,7 +231,7 @@ export const auth = betterAuth({
   },
   emailVerification: {
     afterEmailVerification: async (user) => {
-      await claimGuestOrdersForUser({ email: user.email, userId: user.id })
+      await Promise.all([claimGuestOrdersForUser({ email: user.email, userId: user.id }), linkSubscriberToUser(user.email, user.id)])
     },
     autoSignInAfterVerification: true,
     sendOnSignUp: true,
