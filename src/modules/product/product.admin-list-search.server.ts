@@ -5,6 +5,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import {
   buildAdminLikePattern,
   buildAdminSearchOrCondition,
+  localizedTextColumns,
   normalizeAdminSearchTerm,
 } from "~/src/modules/_core/utils/search-conditions.server"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
@@ -20,9 +21,9 @@ export const buildAdminProductSearchCondition = (search: string | undefined): SQ
   const textMatch = buildAdminSearchOrCondition(normalized, [
     product.handle,
     product.id,
-    product.titles,
-    product.subtitles,
-    product.descriptions,
+    ...localizedTextColumns(product.titles),
+    ...localizedTextColumns(product.subtitles),
+    ...localizedTextColumns(product.descriptions),
   ])
 
   const skuMatch = inArray(

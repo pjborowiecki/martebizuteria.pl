@@ -1,6 +1,8 @@
 import { type SQL, or, sql } from "drizzle-orm"
 import { type SQLiteColumn } from "drizzle-orm/sqlite-core"
 
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
+
 export const normalizeAdminSearchTerm = (search: string | undefined): string | undefined => {
   const trimmed = search?.trim() ?? ""
 
@@ -12,6 +14,9 @@ const escapeLikePattern = (term: string): string =>
     .replaceAll("\\", String.raw`\\`)
     .replaceAll("%", String.raw`\%`)
     .replaceAll("_", String.raw`\_`)
+
+export const localizedTextColumns = (column: SQLiteColumn): SQL[] =>
+  I18N.SUPPORTED_LOCALES.map((locale) => sql`json_extract(${column}, ${`$."${locale}"`})`)
 
 export const buildAdminLikePattern = (term: string): string => `%${escapeLikePattern(term)}%`
 
