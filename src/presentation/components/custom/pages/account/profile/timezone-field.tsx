@@ -8,6 +8,7 @@ import { useTranslations } from "use-intl/react"
 import { authClient } from "~/src/integrations/better-auth/auth.client"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
+import { TIMEZONES } from "~/src/modules/_core/constants/timezone"
 import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 
@@ -18,9 +19,6 @@ const updateUser = createClientOnlyFn((input: Parameters<typeof authClient.updat
 
 const PREF_SELECT_TRIGGER_CLASS =
   "mt-1.5 flex h-auto w-full items-center justify-between rounded-none border-0 border-b border-border bg-transparent p-0 pb-2 text-[14px] shadow-none transition-colors outline-none hover:bg-transparent focus:border-foreground focus:ring-0 focus-visible:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-foreground"
-
-const TIMEZONE_OPTIONS: readonly string[] =
-  typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : I18N.TIME_ZONES
 
 export const TimezoneField = ({ timezone }: Readonly<{ timezone?: string | undefined }>): JSX.Element => {
   const t = useTranslations("pages.account.profile")
@@ -68,9 +66,9 @@ export const TimezoneField = ({ timezone }: Readonly<{ timezone?: string | undef
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {TIMEZONE_OPTIONS.map((zone) => (
-            <SelectItem key={zone} value={zone}>
-              {zone}
+          {TIMEZONES.map((zone) => (
+            <SelectItem key={zone.iana} value={zone.iana}>
+              {zone.iana}
             </SelectItem>
           ))}
         </SelectContent>

@@ -18,6 +18,14 @@ const SHORT_DATE_PARTS: Intl.DateTimeFormatOptions = {
   year: "numeric",
 }
 
+const CALENDAR_PARTS: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  month: "numeric",
+  year: "numeric",
+}
+
+const CALENDAR_PARTS_LOCALE = "en-US"
+
 const TIMESTAMP_PARTS: Intl.DateTimeFormatOptions = {
   day: "numeric",
   hour: "2-digit",
@@ -28,6 +36,19 @@ const TIMESTAMP_PARTS: Intl.DateTimeFormatOptions = {
 }
 
 const toDate = (value: DateInput): Date => (value instanceof Date ? value : new Date(value))
+
+export interface CalendarDate {
+  readonly day: number
+  readonly month: number
+  readonly year: number
+}
+
+export const toCalendarDate = (value: DateInput, timeZone: string): CalendarDate => {
+  const parts = new Intl.DateTimeFormat(CALENDAR_PARTS_LOCALE, { ...CALENDAR_PARTS, timeZone }).formatToParts(toDate(value))
+  const numberOf = (type: Intl.DateTimeFormatPartTypes): number => Number(parts.find((part) => part.type === type)?.value)
+
+  return { day: numberOf("day"), month: numberOf("month"), year: numberOf("year") }
+}
 
 export const formatShortDate = (value: DateInput, locale: string = I18N.DEFAULT_LOCALE): string =>
   toDate(value).toLocaleDateString(locale, SHORT_DATE_PARTS)

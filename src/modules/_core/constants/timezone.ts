@@ -208,3 +208,11 @@ export const TIMEZONES = [
 export type TimezoneCode = (typeof TIMEZONES)[number]["iana"]
 
 export const DEFAULT_TIMEZONE_CODE: TimezoneCode = "Europe/Warsaw"
+
+const TIMEZONE_CODES: ReadonlySet<string> = new Set(TIMEZONES.map((zone) => zone.iana))
+
+export const isTimezoneCode = (value: string | null | undefined): value is TimezoneCode =>
+  typeof value === "string" && TIMEZONE_CODES.has(value)
+
+export const resolveTimezoneCode = (value: string | null | undefined): TimezoneCode =>
+  isTimezoneCode(value) ? value : DEFAULT_TIMEZONE_CODE

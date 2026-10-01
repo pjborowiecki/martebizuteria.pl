@@ -5,17 +5,10 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 
+import { resolveTimezoneCode } from "~/src/modules/_core/constants/timezone"
 import { PAYMENT_METHOD_QUERY_KEYS, PAYMENT_METHOD_QUERY_STALE_MS } from "~/src/modules/payment/payment.constants"
 import { type Payment } from "~/src/modules/payment/payment.types"
-
-const FIRST_MONTH = 1
-
-const isCardExpired = (expMonth: number, expYear: number, now: Date): boolean => {
-  const currentYear = now.getUTCFullYear()
-  const currentMonth = now.getUTCMonth() + FIRST_MONTH
-
-  return expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)
-}
+import { isCardExpired } from "~/src/modules/payment/payment.utils"
 
 export const listSavedPaymentMethods = createServerFn({ method: "GET" })
   .middleware([authorized()])
@@ -26,7 +19,7 @@ export const listSavedPaymentMethods = createServerFn({ method: "GET" })
     }
 
     const methods = await stripe.paymentMethods.list({ customer: customerId, type: "card" })
-    const now = new Date()
+    const timeZone = resolveTimezoneCode(context.auth.user.timezone)
 
     return methods.data.flatMap((method) => {
       const { card } = method
@@ -40,7 +33,7 @@ export const listSavedPaymentMethods = createServerFn({ method: "GET" })
           expMonth: card.exp_month,
           expYear: card.exp_year,
           id: method.id,
-          isExpired: isCardExpired(card.exp_month, card.exp_year, now),
+          isExpired: isCardExpired(card.exp_month, card.exp_year, timeZone),
           last4: card.last4,
         },
       ]
