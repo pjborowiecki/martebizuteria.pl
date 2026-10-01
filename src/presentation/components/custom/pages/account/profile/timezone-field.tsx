@@ -1,13 +1,15 @@
-import { type JSX, useCallback } from "react"
+import { type JSX, useCallback, useId } from "react"
 
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
-import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
+
+import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 
 import { Label } from "~/src/presentation/components/shadcn/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
@@ -20,14 +22,15 @@ const PREF_SELECT_TRIGGER_CLASS =
 const TIMEZONE_OPTIONS: readonly string[] =
   typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : I18N.TIME_ZONES
 
-export const TimezoneField = (): JSX.Element => {
+export const TimezoneField = ({ timezone }: Readonly<{ timezone?: string | undefined }>): JSX.Element => {
   const t = useTranslations("pages.account.profile")
-  const { data: session } = useQuery(getCurrentSessionQuery)
-  const current = session?.user.timezone ?? I18N.DEFAULT_TIMEZONE
+  const fieldId = useId()
+  const queryClient = useQueryClient()
+  const current = timezone ?? I18N.DEFAULT_TIMEZONE
   const mutation = useMutation({
-    mutationFn: async (timezone: string) => {
+    mutationFn: async (nextTimezone: string) => {
       const { error } = await updateUser({
-        timezone,
+        timezone: nextTimezone,
       })
 
       if (error) {
@@ -37,15 +40,19 @@ export const TimezoneField = (): JSX.Element => {
     onError: () => {
       toast.error(t("timezoneError"))
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE }),
+        queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CURRENT }),
+      ])
       toast.success(t("timezoneSaved"))
     },
   })
 
   const handleChange = useCallback(
-    (val: string | null) => {
-      if (val !== null && val !== current) {
-        mutation.mutate(val)
+    (value: string | null) => {
+      if (value !== null && value !== current) {
+        mutation.mutate(value)
       }
     },
     [current, mutation],
@@ -53,15 +60,17 @@ export const TimezoneField = (): JSX.Element => {
 
   return (
     <div className="py-4">
-      <Label className="text-[11px] tracking-widest text-muted-foreground uppercase">{t("timezone")}</Label>
-      <Select value={current} onValueChange={handleChange} disabled={mutation.isPending}>
-        <SelectTrigger className={PREF_SELECT_TRIGGER_CLASS}>
+      <Label className="text-[11px] tracking-widest text-muted-foreground uppercase" htmlFor={fieldId}>
+        {t("timezone")}
+      </Label>
+      <Select disabled={mutation.isPending} onValueChange={handleChange} value={current}>
+        <SelectTrigger className={PREF_SELECT_TRIGGER_CLASS} id={fieldId}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {TIMEZONE_OPTIONS.map((tz) => (
-            <SelectItem key={tz} value={tz}>
-              {tz}
+          {TIMEZONE_OPTIONS.map((zone) => (
+            <SelectItem key={zone} value={zone}>
+              {zone}
             </SelectItem>
           ))}
         </SelectContent>

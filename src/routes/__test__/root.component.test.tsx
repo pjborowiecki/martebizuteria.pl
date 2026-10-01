@@ -17,6 +17,10 @@ vi.mock(import("~/src/integrations/use-intl/i18n.messages"), async (importOrigin
   getRouteNamespaces: () => [],
   preloadNamespaces: () => Promise.resolve(),
 }))
+vi.mock("~/src/integrations/better-auth/auth.session", () => ({
+  getCurrentSession: () => Promise.resolve(undefined),
+  getCurrentSessionQuery: { queryFn: () => Promise.resolve(undefined), queryKey: ["session", "current"] },
+}))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({
   getCurrentLocale: () => intl.locale,
   getCurrentPathname: () => intl.pathname,

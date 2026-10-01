@@ -10,6 +10,10 @@ vi.mock("~/src/lib/url", () => ({
   isAssetCdnUrl: () => false,
   resolveAssetURL: (path: string) => path,
 }))
+vi.mock("~/src/integrations/better-auth/auth.session", () => ({
+  getCurrentSession: () => Promise.resolve(undefined),
+  getCurrentSessionQuery: { queryKey: ["session", "current"] },
+}))
 vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({
   getRouteNamespaces: () => [],
   preloadNamespaces,

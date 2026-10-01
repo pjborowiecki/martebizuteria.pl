@@ -7,6 +7,7 @@ import { getCustomerProfile, getCustomerProfileQuery } from "~/src/modules/custo
 interface UserRow {
   readonly createdAt: Date
   readonly email: string
+  readonly emailVerified: boolean
   readonly name: string
   readonly phone: string | null
   readonly timezone: string | null
@@ -16,10 +17,12 @@ const CALLER_CONTEXT = { auth: { session: { id: "session-current" }, user: { id:
 
 const accessors = vi.hoisted(() => ({
   getUserById: vi.fn<(userId: string) => Promise<UserRow | undefined>>(),
+  hasCredentialAccount: vi.fn<(userId: string) => Promise<boolean>>(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/modules/user/user.accessors", () => accessors)
+vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById: accessors.getUserById }))
+vi.mock("~/src/modules/account/account.accessors", () => ({ hasCredentialAccount: accessors.hasCredentialAccount }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -35,6 +38,7 @@ vi.mock("@tanstack/react-start", () => ({
 const userRow = (overrides: Partial<UserRow> = {}): UserRow => ({
   createdAt: new Date("2025-06-01T00:00:00.000Z"),
   email: "shopper@example.com",
+  emailVerified: true,
   name: "Anna Kowalska",
   phone: "+48123456789",
   timezone: "Europe/Warsaw",
@@ -44,6 +48,7 @@ const userRow = (overrides: Partial<UserRow> = {}): UserRow => ({
 describe("getCustomerProfile", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    accessors.hasCredentialAccount.mockResolvedValue(true)
   })
 
   it("looks the profile up by the authenticated customer id", async () => {
@@ -60,10 +65,29 @@ describe("getCustomerProfile", () => {
     await expect(getCustomerProfile()).resolves.toStrictEqual({
       createdAt: new Date("2025-06-01T00:00:00.000Z"),
       email: "shopper@example.com",
+      emailVerified: true,
+      hasPassword: true,
       name: "Anna Kowalska",
       phone: "+48123456789",
       timezone: "Europe/Warsaw",
     })
+  })
+
+  it("says the account has no password when it signs in through a provider", async () => {
+    accessors.getUserById.mockResolvedValue(userRow())
+    accessors.hasCredentialAccount.mockResolvedValue(false)
+
+    const profile = await getCustomerProfile()
+
+    expect(profile?.hasPassword).toBe(false)
+  })
+
+  it("reports an unconfirmed email address as such", async () => {
+    accessors.getUserById.mockResolvedValue(userRow({ emailVerified: false }))
+
+    const profile = await getCustomerProfile()
+
+    expect(profile?.emailVerified).toBe(false)
   })
 
   it("reports an unset phone and timezone as absent rather than null", async () => {
@@ -91,14 +115,19 @@ describe("getCustomerProfileQuery", () => {
   })
 
   it("reads the caller's own profile when the cache runs the query", async () => {
+    accessors.hasCredentialAccount.mockResolvedValue(true)
     accessors.getUserById.mockResolvedValue(userRow())
 
-    await expect(new QueryClient().query(getCustomerProfileQuery())).resolves.toStrictEqual({
-      createdAt: new Date("2025-06-01T00:00:00.000Z"),
+    await expect(new QueryClient().query(getCustomerProfileQuery())).resolves.toMatchObject({
       email: "shopper@example.com",
       name: "Anna Kowalska",
-      phone: "+48123456789",
-      timezone: "Europe/Warsaw",
     })
+  })
+
+  it("refuses to hand the page a missing profile, so the account shows its not-found state", async () => {
+    accessors.hasCredentialAccount.mockResolvedValue(true)
+    accessors.getUserById.mockResolvedValue(undefined)
+
+    await expect(new QueryClient({ defaultOptions: { queries: { retry: false } } }).query(getCustomerProfileQuery())).rejects.toBeDefined()
   })
 })
