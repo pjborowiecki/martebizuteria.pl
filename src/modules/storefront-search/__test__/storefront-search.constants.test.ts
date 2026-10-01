@@ -3,7 +3,6 @@ import { describe, expect, it } from "vite-plus/test"
 import {
   STOREFRONT_SEARCH_DEBOUNCE_MS,
   STOREFRONT_SEARCH_LIMIT_PER_GROUP,
-  STOREFRONT_SEARCH_LOCALE_MIN_LENGTH,
   STOREFRONT_SEARCH_MIN_LENGTH,
   STOREFRONT_SEARCH_QUERY_KEYS,
   STOREFRONT_SEARCH_QUERY_STALE_MS,
@@ -37,9 +36,5 @@ describe("storefront search thresholds", () => {
   it("blends two sources into the trending list", () => {
     expect(STOREFRONT_SEARCH_TRENDING_SOURCE_COUNT).toBe(2)
     expect(STOREFRONT_SEARCH_TRENDING_LIMIT).toBeGreaterThanOrEqual(STOREFRONT_SEARCH_TRENDING_SOURCE_COUNT)
-  })
-
-  it("accepts a single character of locale before resolving copy", () => {
-    expect(STOREFRONT_SEARCH_LOCALE_MIN_LENGTH).toBe(1)
   })
 })

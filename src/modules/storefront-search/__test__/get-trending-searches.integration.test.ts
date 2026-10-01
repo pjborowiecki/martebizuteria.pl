@@ -127,14 +127,8 @@ describe("getTrendingSearches", () => {
     ])
   })
 
-  it("falls back to the default locale for an unsupported one", async () => {
-    await expect(trendingLabels("de-DE")).resolves.toStrictEqual([
-      "Pierścionki",
-      "Naszyjniki",
-      "Bransoletki",
-      "Kolekcja Ślubna",
-      "Kolekcja Letnia",
-    ])
+  it("rejects a locale the storefront does not serve", async () => {
+    await expect(trendingLabels("de-DE")).rejects.toThrow()
   })
 
   it("defaults the locale when the caller sends none", async () => {

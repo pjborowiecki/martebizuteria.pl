@@ -1,43 +1,33 @@
-import { type SQL, and, asc, desc, eq, inArray } from "drizzle-orm"
+import { asc, eq, inArray } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
 import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
 import { COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants"
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
-import { buildAdminProductSearchCondition } from "~/src/modules/product/product.admin-list-search.server"
 import { product } from "~/src/modules/product/product.schema"
 import { publishedInStockWhere } from "~/src/modules/product/product.stock.server"
 import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils"
+import { storefrontSearchMatches } from "~/src/modules/storefront-search/storefront-search.accessors.server"
 import { type StorefrontSearch } from "~/src/modules/storefront-search/storefront-search.types"
+import { buildStorefrontSearchExpression } from "~/src/modules/storefront-search/storefront-search.utils"
 
 import { getProductImageUrl } from "~/src/lib/image"
-
-export const buildCategorySearchCondition = (term: string): SQL | undefined =>
-  buildAdminSearchOrCondition(term, [
-    productCategory.handle,
-    productCategory.titles,
-    productCategory.subtitles,
-    productCategory.shortDescriptions,
-  ])
-
-export const buildCollectionSearchCondition = (term: string): SQL | undefined =>
-  buildAdminSearchOrCondition(term, [productCollection.handle, productCollection.titles, productCollection.descriptions])
 
 export const searchStorefrontProducts = async (
   term: string,
   locale: string,
   limit: number,
 ): Promise<readonly StorefrontSearch["resultItem"][]> => {
-  const searchCondition = buildAdminProductSearchCondition(term)
-  if (searchCondition === undefined) {
+  const expression = buildStorefrontSearchExpression(term)
+  if (expression === undefined) {
     return []
   }
 
+  const matches = storefrontSearchMatches("product", expression)
   const rows = await db
     .select({
       handle: product.handle,
@@ -47,8 +37,9 @@ export const searchStorefrontProducts = async (
       titles: product.titles,
     })
     .from(product)
-    .where(publishedInStockWhere(searchCondition))
-    .orderBy(asc(product.rank), desc(product.createdAt))
+    .innerJoin(matches, eq(matches.entityId, product.id))
+    .where(publishedInStockWhere())
+    .orderBy(asc(matches.score), asc(product.rank))
     .limit(limit)
   if (rows.length === 0) {
     return []
@@ -89,11 +80,12 @@ export const searchStorefrontCategories = async (
   locale: string,
   limit: number,
 ): Promise<readonly StorefrontSearch["resultItem"][]> => {
-  const searchCondition = buildCategorySearchCondition(term)
-  if (searchCondition === undefined) {
+  const expression = buildStorefrontSearchExpression(term)
+  if (expression === undefined) {
     return []
   }
 
+  const matches = storefrontSearchMatches("category", expression)
   const rows = await db
     .select({
       handle: productCategory.handle,
@@ -101,9 +93,11 @@ export const searchStorefrontCategories = async (
       titles: productCategory.titles,
     })
     .from(productCategory)
-    .where(and(eq(productCategory.status, CATEGORY_STATUS.ACTIVE), searchCondition))
-    .orderBy(asc(productCategory.rank), desc(productCategory.createdAt))
+    .innerJoin(matches, eq(matches.entityId, productCategory.id))
+    .where(eq(productCategory.status, CATEGORY_STATUS.ACTIVE))
+    .orderBy(asc(matches.score), asc(productCategory.rank))
     .limit(limit)
+
   return rows.map(
     (row) =>
       ({
@@ -120,11 +114,12 @@ export const searchStorefrontCollections = async (
   locale: string,
   limit: number,
 ): Promise<readonly StorefrontSearch["resultItem"][]> => {
-  const searchCondition = buildCollectionSearchCondition(term)
-  if (searchCondition === undefined) {
+  const expression = buildStorefrontSearchExpression(term)
+  if (expression === undefined) {
     return []
   }
 
+  const matches = storefrontSearchMatches("collection", expression)
   const rows = await db
     .select({
       handle: productCollection.handle,
@@ -132,9 +127,11 @@ export const searchStorefrontCollections = async (
       titles: productCollection.titles,
     })
     .from(productCollection)
-    .where(and(eq(productCollection.status, COLLECTION_STATUS.ACTIVE), searchCondition))
-    .orderBy(asc(productCollection.rank), desc(productCollection.createdAt))
+    .innerJoin(matches, eq(matches.entityId, productCollection.id))
+    .where(eq(productCollection.status, COLLECTION_STATUS.ACTIVE))
+    .orderBy(asc(matches.score), asc(productCollection.rank))
     .limit(limit)
+
   return rows.map(
     (row) =>
       ({

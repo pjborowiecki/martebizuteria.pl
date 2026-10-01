@@ -14,7 +14,6 @@ import { COLLECTION_STATUS } from "~/src/modules/product-collection/product-coll
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 import {
-  STOREFRONT_SEARCH_LOCALE_MIN_LENGTH,
   STOREFRONT_SEARCH_QUERY_KEYS,
   STOREFRONT_SEARCH_QUERY_STALE_MS,
   STOREFRONT_SEARCH_TRENDING_LIMIT,
@@ -24,13 +23,17 @@ import { type StorefrontSearch } from "~/src/modules/storefront-search/storefron
 
 import { getProductImageUrl } from "~/src/lib/image"
 
+interface StorefrontSearchTrendingInput {
+  readonly locale?: string
+}
+
 const storefrontSearchTrendingInputSchema = zod.object({
-  locale: zod.string().min(STOREFRONT_SEARCH_LOCALE_MIN_LENGTH).default(I18N.DEFAULT_LOCALE),
+  locale: zod.enum(I18N.SUPPORTED_LOCALES).default(I18N.DEFAULT_LOCALE),
 })
 
 export const getTrendingSearches = createServerFn({ method: "GET" })
   .middleware([withRequest])
-  .validator((input: zod.input<typeof storefrontSearchTrendingInputSchema>) => storefrontSearchTrendingInputSchema.parse(input))
+  .validator((input: StorefrontSearchTrendingInput) => storefrontSearchTrendingInputSchema.parse(input))
   .handler(async ({ data: { locale } }): Promise<readonly StorefrontSearch["trendingItem"][]> => {
     const perSourceLimit = Math.ceil(STOREFRONT_SEARCH_TRENDING_LIMIT / STOREFRONT_SEARCH_TRENDING_SOURCE_COUNT)
 

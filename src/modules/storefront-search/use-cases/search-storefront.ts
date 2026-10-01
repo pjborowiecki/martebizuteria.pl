@@ -8,7 +8,6 @@ import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import {
   STOREFRONT_SEARCH_LIMIT_PER_GROUP,
-  STOREFRONT_SEARCH_LOCALE_MIN_LENGTH,
   STOREFRONT_SEARCH_MIN_LENGTH,
   STOREFRONT_SEARCH_QUERY_KEYS,
   STOREFRONT_SEARCH_QUERY_STALE_MS,
@@ -20,14 +19,19 @@ import {
 } from "~/src/modules/storefront-search/storefront-search.server"
 import { type StorefrontSearch } from "~/src/modules/storefront-search/storefront-search.types"
 
+interface StorefrontSearchInput {
+  readonly locale?: string
+  readonly query: string
+}
+
 const storefrontSearchInputSchema = zod.object({
-  locale: zod.string().min(STOREFRONT_SEARCH_LOCALE_MIN_LENGTH).default(I18N.DEFAULT_LOCALE),
+  locale: zod.enum(I18N.SUPPORTED_LOCALES).default(I18N.DEFAULT_LOCALE),
   query: zod.string().trim().min(STOREFRONT_SEARCH_MIN_LENGTH),
 })
 
 export const searchStorefront = createServerFn({ method: "GET" })
   .middleware([withRequest])
-  .validator((input: zod.input<typeof storefrontSearchInputSchema>) => storefrontSearchInputSchema.parse(input))
+  .validator((input: StorefrontSearchInput) => storefrontSearchInputSchema.parse(input))
   .handler(async ({ data: { query, locale } }): Promise<StorefrontSearch["results"]> => {
     const limit = STOREFRONT_SEARCH_LIMIT_PER_GROUP
     const term = normalizeAdminSearchTerm(query)

@@ -10,8 +10,6 @@ export const STOREFRONT_SEARCH_TRENDING_LIMIT = 5
 
 export const STOREFRONT_SEARCH_TRENDING_SOURCE_COUNT = 2
 
-export const STOREFRONT_SEARCH_LOCALE_MIN_LENGTH = 1
-
 export const STOREFRONT_SEARCH_QUERY_KEYS = {
   RESULTS: ["storefront-search"] as const,
   TRENDING: ["storefront-search", "trending"] as const,
