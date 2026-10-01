@@ -19,9 +19,6 @@ const trimmedOrUndefined = (value: string | undefined): string | undefined => {
   return trimmed === undefined || trimmed === "" ? undefined : trimmed
 }
 
-/**
- * On insert an absent limit is simply omitted, so the column takes its default.
- */
 export const toDiscountInsertValues = (values: Discount["adminFormValues"]): Omit<Discount["insert"], "id"> => ({
   code: normalizeDiscountCode(values.code),
   description: trimmedOrUndefined(values.description),
@@ -36,10 +33,6 @@ export const toDiscountInsertValues = (values: Discount["adminFormValues"]): Omi
   value: values.value,
 })
 
-/**
- * On update an absent limit has to be cleared explicitly, otherwise editing a
- * code could never remove a restriction it was saved with.
- */
 export const toDiscountUpdateValues = (values: Discount["adminFormValues"]): DiscountUpdateValues => ({
   code: normalizeDiscountCode(values.code),
   description: trimmedOrUndefined(values.description) ?? CLEARED,

@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
@@ -8,14 +8,14 @@ interface SignInRequest {
   readonly email: string
   readonly fetchOptions: {
     readonly onError: (context: { error: unknown }) => void
-    readonly onSuccess: () => Promise<void> | void
+    readonly onSuccess: (context: { data: unknown }) => Promise<void> | void
   }
   readonly password: string
 }
 
 const auth = vi.hoisted(() => {
   const requests: SignInRequest[] = []
-  const outcome: { current: { error?: unknown; kind: "error" | "pending" | "success" } } = { current: { kind: "success" } }
+  const outcome: { current: { data?: unknown; error?: unknown; kind: "error" | "pending" | "success" } } = { current: { kind: "success" } }
   const inFlight: { release: (() => void) | undefined } = { release: undefined }
 
   return {
@@ -31,7 +31,7 @@ const auth = vi.hoisted(() => {
           inFlight.release = resolve
         })
       } else if (outcome.current.kind === "success") {
-        await input.fetchOptions.onSuccess()
+        await input.fetchOptions.onSuccess({ data: outcome.current.data ?? {} })
       } else {
         input.fetchOptions.onError({ error: outcome.current.error })
       }
@@ -105,6 +105,30 @@ describe("SignInWithPasswordForm fields", () => {
     renderWithProviders(<SignInWithPasswordForm />)
 
     expect(screen.getByRole("link", { name: "Forgot password?" })).toHaveAttribute("href", ROUTES.AUTH_FORGOT_PASSWORD)
+  })
+})
+
+describe("SignInWithPasswordForm two-factor challenge", () => {
+  it("asks for a code instead of signing in when the account has 2FA", async () => {
+    auth.outcome.current = { data: { twoFactorRedirect: true }, kind: "success" }
+    renderWithProviders(<SignInWithPasswordForm />)
+
+    await signInAs()
+
+    expect(await screen.findByRole("heading", { name: "Two-step verification" })).toBeInTheDocument()
+    expect(navigation.navigate).not.toHaveBeenCalled()
+    expect(toasts.success).not.toHaveBeenCalled()
+  })
+
+  it("returns to the password form when the shopper backs out of the challenge", async () => {
+    auth.outcome.current = { data: { twoFactorRedirect: true }, kind: "success" }
+    renderWithProviders(<SignInWithPasswordForm />)
+    await signInAs()
+    await screen.findByRole("heading", { name: "Two-step verification" })
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to sign in" }))
+
+    expect(emailField()).toBeInTheDocument()
   })
 })
 

@@ -4,14 +4,6 @@ import { calculateDiscountAmount, normalizeDiscountCode, resolveDiscountRejectio
 
 const NO_AMOUNT = 0
 
-/**
- * The authority on what a code is worth. The storefront's validation response
- * is only ever a preview: this runs again while the payment session is built,
- * so a client that edited the amount, or a code that lapsed or ran out between
- * the two calls, cannot change what is charged. A code that no longer applies
- * is dropped rather than failing the checkout — the buyer still pays full price
- * and keeps their basket.
- */
 export const resolveCheckoutDiscount = async ({
   code,
   email,

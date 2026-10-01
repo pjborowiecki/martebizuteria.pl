@@ -6,11 +6,6 @@ const NO_AMOUNT = 0
 export const sumOrderLineSubtotal = (lines: readonly OrderTotalsLine[]): number =>
   lines.reduce((sum, line) => sum + line.price * line.qty, NO_AMOUNT)
 
-/**
- * Catalogue prices are gross, so VAT is carved out of the payable total rather
- * than added on top. Every amount here is authoritative: nothing downstream may
- * infer one component by subtracting the others.
- */
 export const computeOrderTotals = ({
   discountTotal = NO_AMOUNT,
   itemsSubtotal,

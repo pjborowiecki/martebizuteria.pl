@@ -10,12 +10,6 @@ import { type Discount } from "~/src/modules/discount/discount.types"
 import { calculateDiscountAmount, normalizeDiscountCode, resolveDiscountRejection } from "~/src/modules/discount/discount.utils"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
 
-/**
- * Public because a guest must be able to try a code before signing in. It only
- * ever reports whether a code applies and for how much, never the code list,
- * and the amount is recomputed server side when the payment session is built,
- * so a tampered response cannot change what is charged.
- */
 export const validateDiscountCode = createServerFn({ method: "POST" })
   .validator((input: zod.input<typeof discountZodSchemas.validateDiscountInput>) => discountZodSchemas.validateDiscountInput.parse(input))
   .handler(async ({ data }): Promise<Discount["validation"]> => {

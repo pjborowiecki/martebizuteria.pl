@@ -46,6 +46,32 @@ export const signInWithPasswordSchema = z.object({
 
 export const resetPasswordSchema = withMatchingPasswords(passwordConfirmationSchema)
 
+export const changePasswordSchema = withMatchingPasswords(
+  passwordConfirmationSchema.extend({
+    currentPassword: signInPasswordSchema,
+    revokeOtherSessions: z.boolean(),
+  }),
+).refine((data) => data.currentPassword !== data.password, {
+  message: "passwordUnchanged",
+  path: ["password"],
+})
+
+export const passwordConfirmSchema = z.object({
+  password: signInPasswordSchema,
+})
+
+export const totpCodeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/u, { message: "totpCodeInvalid" }),
+})
+
+export const twoFactorChallengeSchema = z.object({
+  code: z.string().trim().min(MIN_FIELD_LENGTH, { message: "totpCodeRequired" }),
+  trustDevice: z.boolean(),
+})
+
 export const signUpWithPasswordSchema = withMatchingPasswords(
   passwordConfirmationSchema.extend({
     email: emailSchema,
@@ -54,7 +80,15 @@ export const signUpWithPasswordSchema = withMatchingPasswords(
   }),
 )
 
+export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>
+
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
+
+export type PasswordConfirmFormValues = z.infer<typeof passwordConfirmSchema>
+
+export type TotpCodeFormValues = z.infer<typeof totpCodeSchema>
+
+export type TwoFactorChallengeFormValues = z.infer<typeof twoFactorChallengeSchema>
 
 export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>
 

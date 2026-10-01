@@ -8,7 +8,6 @@ export const DISCOUNT_TYPE = {
   PERCENTAGE: "percentage",
 } as const satisfies Record<string, DiscountType>
 
-/** Percentage codes are stored as whole percent, so 15 means 15% off. */
 export const DISCOUNT_PERCENTAGE_MAX = 100
 
 export const DISCOUNT_CODE_MIN_LENGTH = 3
@@ -21,10 +20,6 @@ export const ADMIN_DISCOUNTS_PAGE_SIZE = 25
 
 export const DISCOUNT_QUERY_STALE_MS = 60_000
 
-/**
- * Why a code was turned down. The storefront maps these to copy; keeping them
- * as codes means the reason survives translation and can be asserted on.
- */
 export const DISCOUNT_REJECTION = {
   ALREADY_USED: "alreadyUsed",
   EXHAUSTED: "exhausted",

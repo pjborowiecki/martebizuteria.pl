@@ -180,11 +180,6 @@ interface CreateSessionArgs {
   userId: string | undefined
 }
 
-/**
- * Stripe has no negative line item, so a discount is expressed as a one-shot
- * coupon created for this session alone. The amount has already been validated
- * server side by resolveCheckoutDiscount.
- */
 const toSessionDiscounts = async (
   discount: Discount["applied"] | undefined,
 ): Promise<StripeType.Checkout.SessionCreateParams.Discount[]> => {
@@ -203,8 +198,6 @@ const toSessionDiscounts = async (
 }
 
 const createStripeSession = async ({ checkoutId, discount, email, lines, shippingCost, userId }: CreateSessionArgs) => {
-  // Stripe substitutes the session id, which is how the confirmation page finds
-  // An order placed by a guest who has no session to scope a lookup by.
   const returnUrl = `${resolveOrigin()}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`
   const metadata = {
     checkoutId,

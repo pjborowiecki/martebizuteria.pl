@@ -13,12 +13,6 @@ import { scheduleBackgroundWork } from "~/src/lib/background"
 
 const NO_AMOUNT = 0
 
-/**
- * Stripe's amount_total is the source of truth for what the customer paid, but
- * it cannot say which part was shipping, discount or tax. Those come from the
- * checkout the session was built from; a mismatch means the session drifted
- * from the checkout and is worth surfacing rather than silently absorbing.
- */
 const reconcileTotals = (totals: OrderTotals, paidAmount: number, transactionId: string): void => {
   if (totals.total !== paidAmount) {
     console.error(

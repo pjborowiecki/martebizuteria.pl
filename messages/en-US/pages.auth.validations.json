@@ -10,5 +10,8 @@
   "passwordMaxLength": "Password must be at most {max} characters.",
   "passwordUppercase": "At least one uppercase letter",
   "passwordSpecialCharacter": "At least one special character",
-  "passwordsMustMatch": "Passwords do not match."
+  "passwordsMustMatch": "Passwords do not match.",
+  "passwordUnchanged": "Choose a password different from your current one.",
+  "totpCodeInvalid": "Enter the six digits from your authenticator app.",
+  "totpCodeRequired": "Enter a code to continue."
 }
