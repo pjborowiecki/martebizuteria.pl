@@ -1,11 +1,11 @@
-import { act, cleanup, screen } from "@testing-library/react"
+import { cleanup, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { createTestRouter, renderWithProviders } from "~/src/platform/testing/lib/render"
 
 const { signOut, toastError } = vi.hoisted(() => ({
-  signOut: vi.fn<(input: { fetchOptions: { onError: () => void; onSuccess: () => void } }) => Promise<void>>(),
+  signOut: vi.fn<() => Promise<{ error?: { message: string } }>>(),
   toastError: vi.fn<(message: string) => void>(),
 }))
 
@@ -16,7 +16,7 @@ import { AccountSidebar } from "~/src/presentation/components/custom/pages/accou
 
 beforeEach(() => {
   vi.clearAllMocks()
-  signOut.mockResolvedValue()
+  signOut.mockResolvedValue({})
 })
 
 afterEach(() => {
@@ -92,23 +92,30 @@ describe("AccountSidebar", () => {
   })
 
   it("says so when signing out failed, and lets the customer try again", async () => {
+    signOut.mockResolvedValue({ error: { message: "offline" } })
     renderWithProviders(<AccountSidebar />)
 
     await userEvent.click(screen.getByRole("button", { name: "Sign Out" }))
-    act(() => {
-      signOut.mock.calls[0]?.[0].fetchOptions.onError()
-    })
 
-    expect(toastError).toHaveBeenCalledWith("We could not sign you out. Please try again.")
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith("We could not sign you out. Please try again.")
+    })
     expect(screen.getByRole("button", { name: "Sign Out" })).toBeEnabled()
   })
 
   it("stops a second sign out while the first is still running", async () => {
+    const inFlight = Promise.withResolvers<{ error?: { message: string } }>()
+    signOut.mockReturnValue(inFlight.promise)
     renderWithProviders(<AccountSidebar />)
 
     await userEvent.click(screen.getByRole("button", { name: "Sign Out" }))
 
     expect(screen.getByRole("button", { name: "Sign Out" })).toBeDisabled()
+
+    inFlight.resolve({})
+    await waitFor(() => {
+      expect(signOut).toHaveBeenCalledOnce()
+    })
   })
 
   it("sends the signed out customer to the storefront home page", async () => {
@@ -117,9 +124,10 @@ describe("AccountSidebar", () => {
     renderWithProviders(<AccountSidebar />)
 
     await userEvent.click(screen.getByRole("button", { name: "Sign Out" }))
-    signOut.mock.calls[0]?.[0].fetchOptions.onSuccess()
 
-    expect(location.href).toBe("/")
+    await waitFor(() => {
+      expect(location.href).toBe("/")
+    })
     vi.unstubAllGlobals()
   })
 })

@@ -1,28 +1,33 @@
 import { type JSX, type SyntheticEvent, useCallback } from "react"
 
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
+import { useForm } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
+
+import { type PasswordConfirmFormValues, passwordConfirmSchema } from "~/src/integrations/better-auth/auth.zod"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/src/presentation/components/shadcn/dialog"
-import { Input } from "~/src/presentation/components/shadcn/input"
-import { Label } from "~/src/presentation/components/shadcn/label"
 
-export const TwoFactorPasswordStep = ({
-  disabling,
-  onCancel,
-  onChange,
-  onSubmit,
-  password,
-  pending,
-}: Readonly<TwoFactorPasswordStepProps>): JSX.Element => {
+import { AuthPasswordField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
+
+export const TwoFactorPasswordStep = ({ disabling, onCancel, onSubmit }: Readonly<TwoFactorPasswordStepProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.twoFactorDialog")
+  const form = useForm<PasswordConfirmFormValues>({
+    defaultValues: { password: "" },
+    mode: "onChange",
+    resolver: zodResolver(passwordConfirmSchema),
+  })
+
   const handleSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault()
-      onSubmit()
+      void form.handleSubmit(async (values) => {
+        await onSubmit(values.password)
+      })(event)
     },
-    [onSubmit],
+    [form, onSubmit],
   )
 
   return (
@@ -32,26 +37,28 @@ export const TwoFactorPasswordStep = ({
         <DialogDescription>{disabling ? t("disableDescription") : t("enableDescription")}</DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-2 py-4">
-        <Label htmlFor="two-factor-password">{t("password")}</Label>
-        <Input
+      <div className="py-4">
+        <AuthPasswordField
           autoComplete="current-password"
           autoFocus
+          control={form.control}
           id="two-factor-password"
-          onChange={(event) => {
-            onChange(event.target.value)
-          }}
-          type="password"
-          value={password}
+          label={t("password")}
+          name="password"
         />
       </div>
 
       <DialogFooter>
-        <Button disabled={pending} onClick={onCancel} type="button" variant="outline">
+        <Button disabled={form.formState.isSubmitting} onClick={onCancel} type="button" variant="outline">
           {t("cancel")}
         </Button>
-        <Button className="gap-1.5" disabled={pending || password === ""} type="submit" variant={disabling ? "destructive" : "default"}>
-          {pending && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
+        <Button
+          className="gap-1.5"
+          disabled={!form.formState.isValid || form.formState.isSubmitting}
+          type="submit"
+          variant={disabling ? "destructive" : "default"}
+        >
+          {form.formState.isSubmitting && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
           {disabling ? t("confirmDisable") : t("continue")}
         </Button>
       </DialogFooter>
@@ -62,8 +69,5 @@ export const TwoFactorPasswordStep = ({
 interface TwoFactorPasswordStepProps {
   readonly disabling: boolean
   readonly onCancel: () => void
-  readonly onChange: (password: string) => void
-  readonly onSubmit: () => void
-  readonly password: string
-  readonly pending: boolean
+  readonly onSubmit: (password: string) => Promise<void>
 }

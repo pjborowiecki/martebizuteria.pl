@@ -29,6 +29,7 @@ export const AuthTextField = <TFieldValues extends FieldValues>({
   label,
   name,
   required,
+  validationNamespace = AUTH_VALIDATION_NAMESPACE,
   ...rest
 }: AuthTextFieldProps<TFieldValues>): JSX.Element => {
   const { field, fieldState } = useController({
@@ -54,7 +55,7 @@ export const AuthTextField = <TFieldValues extends FieldValues>({
       />
       <FloatingLabel htmlFor={id} label={label} required={required} />
       <ValidCheck show={showValid} />
-      <ValidationFieldError message={fieldState.error?.message} namespace={AUTH_VALIDATION_NAMESPACE} params={AUTH_VALIDATION_PARAMS} />
+      <ValidationFieldError message={fieldState.error?.message} namespace={validationNamespace} params={AUTH_VALIDATION_PARAMS} />
     </Field>
   )
 }
@@ -66,6 +67,7 @@ export const AuthPasswordField = <TFieldValues extends FieldValues>({
   label,
   name,
   required,
+  validationNamespace = AUTH_VALIDATION_NAMESPACE,
   ...rest
 }: AuthPasswordFieldProps<TFieldValues>): JSX.Element => {
   const { field, fieldState } = useController({
@@ -104,7 +106,7 @@ export const AuthPasswordField = <TFieldValues extends FieldValues>({
           <PasswordToggle show={show} onToggle={toggle} />
         </InputGroupAddon>
       </InputGroup>
-      <ValidationFieldError message={fieldState.error?.message} namespace={AUTH_VALIDATION_NAMESPACE} params={AUTH_VALIDATION_PARAMS} />
+      <ValidationFieldError message={fieldState.error?.message} namespace={validationNamespace} params={AUTH_VALIDATION_PARAMS} />
     </Field>
   )
 }
@@ -115,6 +117,7 @@ interface AuthTextFieldProps<TFieldValues extends FieldValues> extends Omit<Comp
   readonly label: string
   readonly name: FieldPath<TFieldValues>
   readonly required?: boolean
+  readonly validationNamespace?: string
 }
 
 interface AuthPasswordFieldProps<TFieldValues extends FieldValues> extends Omit<ComponentProps<typeof InputGroupInput>, "name" | "type"> {
@@ -123,4 +126,5 @@ interface AuthPasswordFieldProps<TFieldValues extends FieldValues> extends Omit<
   readonly label: string
   readonly name: FieldPath<TFieldValues>
   readonly required?: boolean
+  readonly validationNamespace?: string
 }

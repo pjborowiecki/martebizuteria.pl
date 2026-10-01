@@ -4,7 +4,6 @@
       "title": "Potwierdź subskrypcję",
       "description": "Potwierdź subskrypcję newslettera M'Arte."
     },
-    "pendingTitle": "Potwierdzamy subskrypcję",
     "okTitle": "Jesteś na liście",
     "okDescription": "Dziękujemy za potwierdzenie {email}. Listy z pracowni będą przychodzić od czasu do czasu, nigdy za często.",
     "alreadyTitle": "Już potwierdzone",
@@ -18,7 +17,6 @@
       "title": "Rezygnacja",
       "description": "Zrezygnuj z newslettera M'Arte."
     },
-    "pendingTitle": "Usuwamy Cię z listy",
     "okTitle": "Zrezygnowano z subskrypcji",
     "okDescription": "{email} nie otrzyma już żadnych listów. Zawsze możesz wrócić.",
     "alreadyTitle": "Już zrezygnowano",
