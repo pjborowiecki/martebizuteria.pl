@@ -167,6 +167,8 @@ Realizacja parsuje pozycje z metadanych, wywołuje `fulfillCheckout({ currency, 
 
 Zdarzenie `charge.refunded` i handlery sporów otrzymują tylko PaymentIntent, więc `resolveTransactionId` listuje sesje Checkout filtrowane po `payment_intent` z `limit: 1`, aby odzyskać identyfikator sesji, którym kluczowany jest wiersz `payment`. Jeśli nie znajdzie sesji, handler loguje i kończy, zamiast zawodzić.
 
+Stripe przysyła powiązany obiekt albo jako jego identyfikator, albo, po rozwinięciu, jako sam obiekt. `resolveStripeObjectId` w `stripe.utils.ts` zwraca identyfikator w obu przypadkach, a dla `null` zwraca `undefined`. Używa go `resolveTransactionId` dla PaymentIntent, e-mail potwierdzający zamówienie dla PaymentIntent sesji, usuwanie zapisanej karty dla klienta karty oraz zwrot z panelu w `refund-admin-order.ts` dla PaymentIntent sesji Checkout, którą pobiera na podstawie `payment.transaction_id`, ponieważ Stripe zwraca PaymentIntent, a nie sesję. Zobacz [Płatności](/docs/features/payments).
+
 Zwróć uwagę na świadomą asymetrię: przegrany spór skutkuje zwrotem z `restock: false` i logiem `review inventory manually`, ponieważ towaru już nie ma.
 
 ## Praca lokalna

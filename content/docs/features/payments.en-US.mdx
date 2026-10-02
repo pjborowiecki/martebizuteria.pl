@@ -80,7 +80,7 @@ Line items are built from the server-validated prices, plus a literal `"Shipping
 | `refunded_amount` | Minor units, default `0`                                           |
 | `refunded_at`     | Nullable timestamp                                                 |
 
-`transaction_id` holding the session id — not the payment intent id — is why several webhook handlers call `resolveTransactionId(paymentIntent)`, which lists sessions filtered by `payment_intent` and takes the first one.
+`transaction_id` holding the session id — not the payment intent id — is why several webhook handlers call `resolveTransactionId(paymentIntent)`, which lists sessions filtered by `payment_intent` and takes the first one. The admin refund needs the opposite lookup: it retrieves the session to find the PaymentIntent that Stripe can refund (see [Admin refunds](#admin-refunds)).
 
 Accessors in `payment.accessors.ts`: `createPendingPayment`, `getPaymentByTransactionId`, `getPaymentContextByTransactionId` (joins through to the checkout's `email` and `userId`) and `repointPayment` (moves a row from an expired session id to a new one, updating the amount).
 
@@ -206,7 +206,9 @@ runs `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`. P
 
 ## Admin refunds
 
-`/admin/orders/$orderId` loads the order through `getAdminOrderQuery`, and its header shows Print, Refund, Cancel order, Fulfill, Mark shipped and Mark delivered as each one applies; the Refund item in the `/admin/orders` row menu opens that page. Refund asks for confirmation and calls `refundAdminOrder` (`src/modules/order/use-cases/refund-admin-order.ts`), a server function guarded by `authorized({ order: ["update"] })`. It checks `canRefundAdminOrder` from `order.admin-actions.utils.ts` (paid, and neither refunded nor cancelled), then calls `stripe.refunds.create({ metadata: { orderId }, payment_intent: transactionId })` with the payment row's `transaction_id`, which holds the Checkout Session id described above.
+`/admin/orders/$orderId` loads the order through `getAdminOrderQuery`, and its header shows Print, Refund, Cancel order, Fulfill, Mark shipped and Mark delivered as each one applies; the Refund item in the `/admin/orders` row menu opens that page. Refund asks for confirmation and calls `refundAdminOrder` (`src/modules/order/use-cases/refund-admin-order.ts`), a server function guarded by `authorized({ order: ["update"] })`. It checks `canRefundAdminOrder` from `order.admin-actions.utils.ts` (paid, and neither refunded nor cancelled) and that the payment row has a `transaction_id`. That column holds the Checkout Session id described above, which Stripe does not accept as a `payment_intent`, so the function retrieves the session with `stripe.checkout.sessions.retrieve(transactionId)` and reads its `payment_intent` through `resolveStripeObjectId` (`src/integrations/stripe/stripe.utils.ts`), which returns the id whether Stripe sent it as a string or as an expanded object. A session without a PaymentIntent, such as a `no_payment_required` checkout, is refused. Otherwise it calls `stripe.refunds.create({ metadata: { orderId }, payment_intent: paymentIntentId })`, which refunds the full amount.
+
+A missing order throws `ERROR_CODES.NOT_FOUND` with `ORDER_NOT_FOUND`. Every refused refund throws `ERROR_CODES.CONFLICT` with `ORDER_INVALID_STATE` without requesting a refund.
 
 `refundAdminOrder` writes nothing to the database. The payment and order statuses, the audit entry and the restock arrive with the resulting `charge.refunded` event, through the same `refundOrder` path as a refund made in the Stripe dashboard. The `order: ["refund"]` permission in `auth.access.ts` is still not used by any server function.
 

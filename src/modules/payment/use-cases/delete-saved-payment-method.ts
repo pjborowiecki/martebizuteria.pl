@@ -5,6 +5,7 @@ import zod from "zod/v4"
 import { RATE_LIMITS, authorized, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
+import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { PAYMENT_METHOD_MUTATION_KEYS } from "~/src/modules/payment/payment.constants"
@@ -25,8 +26,7 @@ export const deleteSavedPaymentMethod = createServerFn({ method: "POST" })
     }
 
     const method = await stripe.paymentMethods.retrieve(paymentMethodId)
-    const owner = typeof method.customer === "string" ? method.customer : method.customer?.id
-    if (owner !== customerId) {
+    if (resolveStripeObjectId(method.customer) !== customerId) {
       throw new AppError(ERROR_CODES.FORBIDDEN)
     }
 

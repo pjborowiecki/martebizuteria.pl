@@ -17,6 +17,7 @@ import {
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { STRIPE_CURRENCY, STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/stripe/stripe.constants"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
+import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
@@ -56,16 +57,8 @@ const SINGLE_RESULT = 1
 
 const DISPUTE_LOST = "lost"
 
-const refId = (ref: string | { id: string } | null): string | undefined => {
-  if (ref === null) {
-    return undefined
-  }
-
-  return typeof ref === "string" ? ref : ref.id
-}
-
 const resolveTransactionId = async (paymentIntent: string | { id: string } | null): Promise<string | undefined> => {
-  const paymentIntentId = refId(paymentIntent)
+  const paymentIntentId = resolveStripeObjectId(paymentIntent)
   if (paymentIntentId === undefined) {
     return undefined
   }
