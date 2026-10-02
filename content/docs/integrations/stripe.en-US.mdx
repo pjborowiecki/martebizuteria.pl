@@ -62,18 +62,19 @@ export const createCheckoutSessionFn = createServerFn({ method: "POST" })
 
 1. `validateAndCalculateItems(items)` loads the products with their inventory by handle, resolves each variant, and **re-reads the price from the database** — the client's `rawPrice` is never trusted. It rejects with `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (via `isSellPriceCentsValid`) or `INSUFFICIENT_INVENTORY`, and returns each line enriched with `inventoryId` and `currentVersion`.
 2. `resolveShippingCost(deliveryMethodId)` reads the price from `delivery_method`, or zero when no method is chosen.
-3. `reserveInventoryForItems(validatedItems)` takes the stock, using the optimistic `version` column.
-4. `createCheckout(values, userId, email)` writes the `checkout` row.
-5. `createStripeSession(...)` creates the Stripe Checkout Session.
-6. `createPendingPayment(...)` writes the `payment` row with `provider: "stripe"`, `currency: "PLN"` and `transactionId` set to the Stripe session id.
-7. `scheduleProductCatalogInvalidation()` pushes the new availability to connected storefronts.
+3. `resolveCheckoutDiscount(...)` checks `checkoutValues.discountCode` again against the subtotal of the database prices and the shipping cost; a code that does not apply is dropped. See [Discounts](/docs/features/discounts).
+4. `reserveInventoryForItems(validatedItems)` takes the stock, using the optimistic `version` column.
+5. `createCheckout({ checkoutValues, discountId, userEmail, userId })` writes the address rows and the `checkout` row, including `discount_id`.
+6. `createStripeSession(...)` creates the Stripe Checkout Session, with a one-time coupon when a discount applies.
+7. `createPendingPayment(...)` writes the `payment` row with `provider: "stripe"`, `currency: "PLN"` and `transactionId` set to the Stripe session id.
+8. `scheduleProductCatalogInvalidation()` pushes the new availability to connected storefronts.
 
-If anything after step 3 throws, the handler releases the reservation with `releaseInventoryForItems(validatedItems)` and rethrows. That compensation is the reason a failed payment attempt does not leave stock locked.
+If anything after step 4 throws, the handler releases the reservation with `releaseInventoryForItems(validatedItems)` and rethrows. That compensation is the reason a failed payment attempt does not leave stock locked.
 
 The session itself:
 
 ```ts
-const session = await stripe.checkout.sessions.create({
+const params: StripeType.Checkout.SessionCreateParams = {
   line_items: toLineItems(lines, shippingCost),
   metadata,
   mode: "payment",
@@ -83,16 +84,22 @@ const session = await stripe.checkout.sessions.create({
   ...(customerId === undefined
     ? { customer_email: email }
     : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
-})
+}
+const discounts = await toSessionDiscounts(discount)
+if (discounts.length > NO_COST) {
+  params.discounts = discounts
+}
+
+const session = await stripe.checkout.sessions.create(params)
 ```
 
 `customerId` is set only for a signed-in shopper: before step 1, `handleCreateCheckoutSession` calls `ensureStripeCustomer` (`stripe.customer.server.ts`), which creates a Stripe customer on first use and stores its id in `user.stripe_customer_id`. The session then belongs to that Stripe customer and lets the shopper save the card, which `/account/payment` lists afterwards. A guest's session carries `customer_email` instead. See [Account](/docs/features/account).
 
-`ui_mode: "elements"` is what gives the embedded experience. `return_url` is `${origin}/checkout?success=true`, where `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL`. Shipping is added as an extra line item named `Shipping` rather than as a Stripe shipping rate.
+`ui_mode: "elements"` is what gives the embedded experience. `return_url` is `${origin}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, where Stripe fills in the session id and `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL`. The success page uses `session_id` to load the order through `getOrderConfirmationQuery`. Shipping is added as an extra line item named `Shipping` rather than as a Stripe shipping rate. A discount goes into `discounts`: for every session that carries one, `toSessionDiscounts` calls `stripe.coupons.create` with `amount_off: discount.amountMinorUnits`, `currency: STRIPE_CURRENCY`, `duration: "once"` and `name: discount.code`.
 
 ### Metadata is the fulfilment contract
 
-`metadata` carries `checkoutId`, `locale`, `userId` and the cart itself, and the same object is copied onto the PaymentIntent. Because a Stripe metadata value is capped at 500 characters, `toCheckoutSessionItemsMetadata` in `src/modules/checkout/checkout-metadata.zod.ts` splits the JSON into `items0`, `items1`, … and `readCheckoutSessionItemsJson` reassembles them, still accepting a single legacy `items` key. The webhook reads nothing else to know what was bought, so anything the confirmation e-mail or the order lines need has to be in there.
+`metadata` carries `checkoutId`, `discountCode`, `discountTotal`, `locale`, `userId` and the cart itself, and the same object is copied onto the PaymentIntent. Because a Stripe metadata value is capped at 500 characters, `toCheckoutSessionItemsMetadata` in `src/modules/checkout/checkout-metadata.zod.ts` splits the JSON into `items0`, `items1`, … and `readCheckoutSessionItemsJson` reassembles them, still accepting a single legacy `items` key. The webhook reads nothing else to know what was bought, so anything the confirmation e-mail or the order lines need has to be in there. `discountCode` and `discountTotal` are not read back: fulfilment recalculates the discount from the checkout's `discount_id`.
 
 ## Updating a session
 
@@ -116,7 +123,7 @@ Server-side, `handleUpdateCheckoutSession` is the most delicate function in the 
 1. `getPaymentContextByTransactionId(sessionId)` resolves the `checkout` and owning `userId`; a session that belongs to a signed-in user can only be updated by that user, otherwise `FORBIDDEN`.
 2. The old Stripe session is retrieved and its `items*` metadata parsed into release lines.
 3. `swapCheckoutInventory` releases the old reservation, validates and reserves the new one, and **restores the old reservation if the new one fails**.
-4. `persistCheckoutSessionUpdate` updates the checkout's delivery, creates the replacement Stripe session, calls `repointPayment({ amount, newTransactionId, oldTransactionId })`, and expires the old Stripe session with `stripe.checkout.sessions.expire(...)` — a failure to expire is logged, not thrown.
+4. After the shipping cost and the discount are resolved again, `persistCheckoutSessionUpdate` updates the checkout's delivery and `discount_id`, creates the replacement Stripe session, calls `repointPayment({ amount, newTransactionId, oldTransactionId })`, and expires the old Stripe session with `stripe.checkout.sessions.expire(...)` — a failure to expire is logged, not thrown.
 5. On any failure it releases the new reservation and restores the old one.
 
 Preserve this ordering when you touch it. The `payment` row is repointed rather than recreated because `20260924120000_checkout_idempotency_constraints.sql` puts a unique index on `payment.transaction_id` (and on `order.checkout_id`); inserting a second payment row for the replacement session would violate it.
@@ -156,7 +163,7 @@ A missing `stripe-signature` header or a missing `STRIPE_WEBHOOK_SECRET` returns
 | `charge.dispute.created`                   | `flagOrderDispute(...)` — freezes the order and audits `orderDisputeOpened`                                                                |
 | `charge.dispute.closed`                    | If `status === "lost"`, refunds with `restock: false`; otherwise `clearOrderDispute(...)`                                                  |
 
-Fulfilment parses the metadata lines, calls `fulfillCheckout({ amount, currency, lines, locale, transactionId })`, and — only if that returned a new `orderId`, which makes the handler idempotent against Stripe's retries — records `orderPlaced` and `orderPaymentCaptured` audits, schedules admin-orders and product-catalog invalidation, and sends the confirmation e-mail.
+Fulfilment parses the metadata lines, calls `fulfillCheckout({ currency, lines, locale, paidAmount, transactionId })` with `paidAmount` set to `session.amount_total`, and — only if that returned a new `orderId`, which makes the handler idempotent against Stripe's retries — records `orderPlaced` and `orderPaymentCaptured` audits, schedules admin-orders and product-catalog invalidation, and sends the confirmation e-mail. For a discounted order, `fulfillCheckout` itself schedules the `discount_redemption` write.
 
 `charge.refunded` and the dispute handlers only receive a PaymentIntent, so `resolveTransactionId` lists Checkout Sessions filtered by `payment_intent` with `limit: 1` to recover the session id the `payment` row is keyed by. If no session is found the handler logs and returns rather than failing.
 

@@ -15,10 +15,10 @@ Plik `realtime-invalidation.subscriptions.ts` nazywa je i wypisuje, co każdy z 
 export const REALTIME_INVALIDATION_HUB = { ADMIN: "admin", STOREFRONT: "storefront" } as const
 ```
 
-| Hub          | Subskrybowane prefiksy                                                                                                                                                                                    |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — strona i statystyki dziennika audytu, zamówienia panelu, klienci panelu oraz klucze `ALL` i `STATS` kategorii, kolekcji, produktów i atrybutów produktów                |
-| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY` oraz kategorie i kolekcje `ALL` / `BY_HANDLE` |
+| Hub          | Subskrybowane prefiksy                                                                                                                                                                                                                          |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — strona i statystyki dziennika audytu, zamówienia panelu, klienci panelu, klucze `ALL` i `STATS` kategorii, kolekcji, produktów i atrybutów produktów oraz klucze `ADMIN.ALL` i `ADMIN.BY_HANDLE` stron treści |
+| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY`, kategorie i kolekcje `ALL` / `BY_HANDLE` oraz strony treści `BY_HANDLE`            |
 
 Obie listy to `as const satisfies readonly QueryKey[]`, więc zmiana nazwy stałej klucza jest błędem typowania, a nie cicho martwą subskrypcją. Podział ma znaczenie zarówno dla prywatności, jak i dla ograniczenia szumu: hub sklepu nigdy nie niesie prefiksu `["admin", …]`, więc przeglądarka klienta nie dowiaduje się niczego o działaniach administratora.
 
@@ -86,6 +86,7 @@ Kod serwerowy prawie nigdy nie wywołuje żadnej z tych funkcji bezpośrednio. P
 | `scheduleProductCatalogInvalidation()`          | produkty `ALL`, `STATS`                   | produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY` |
 | `scheduleCategoryCatalogInvalidation()`         | kategorie `ALL`, `STATS`                  | kategorie `ALL`, `BY_HANDLE`                                                                                         |
 | `scheduleCollectionCatalogInvalidation()`       | kolekcje `ALL`, `STATS`                   | kolekcje `ALL`, `BY_HANDLE`, produkty `LANDING_NEW_ARRIVALS`                                                         |
+| `scheduleContentPageInvalidation()`             | strony treści `ALL`, `BY_HANDLE`          | strony treści `BY_HANDLE`                                                                                            |
 | `scheduleProductAttributeCatalogInvalidation()` | atrybuty produktów `ALL`, `STATS`         | —                                                                                                                    |
 | `scheduleAdminCustomersInvalidation()`          | użytkownicy `CUSTOMERS`, `CUSTOMERS_PAGE` | —                                                                                                                    |
 | `scheduleAdminOrdersInvalidation()`             | zamówienia `ORDERS`                       | —                                                                                                                    |
@@ -98,6 +99,7 @@ Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także s
 - **Zamówienie.** `stripe.actions.server.ts` wywołuje `scheduleProductCatalogInvalidation()` przy tworzeniu i aktualizacji sesji, ponieważ rezerwacja towaru zmienia dostępność.
 - **Webhooki.** `stripe.webhooks.tsx` wywołuje `scheduleAdminOrdersInvalidation()` i `scheduleProductCatalogInvalidation()` przy realizacji, zwolnieniu, zwrocie i sporze.
 - **Tożsamość.** `auth.server.ts` wywołuje `scheduleAdminCustomersInvalidation()` z hooków tworzenia, aktualizacji i usuwania użytkownika.
+- **Strony treści.** `update-content-page.ts` wywołuje `scheduleContentPageInvalidation()` po zapisie.
 - **Audyt.** `audit-log.queue.server.ts` i `delete-audit-logs.ts`.
 
 ## Durable Object

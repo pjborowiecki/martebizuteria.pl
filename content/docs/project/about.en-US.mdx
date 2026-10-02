@@ -16,7 +16,7 @@ The codebase exists for two reasons at once. It runs a real jewellery brand's sh
 | Currency            | `PLN` only — `STORE_CURRENCY_CODE` in `src/modules/_core/constants/currency.ts`                     |
 | Payment             | Stripe, card and Stripe-hosted methods, webhook-driven fulfilment                                   |
 | Delivery            | Courier and InPost parcel lockers, seeded into the `delivery_method` table                          |
-| Transactional email | Resend, six React Email templates in `src/presentation/emails/`                                     |
+| Transactional email | Resend, seven React Email templates in `src/presentation/emails/`                                   |
 | Worker name         | `martebizuteria` in production, `martebizuteria-preview`, `martebizuteria-development`              |
 
 `wrangler.jsonc` declares no `routes` block and no custom domain, so each environment is served on its `*.workers.dev` hostname. The production URL recorded in `package.json` is `https://martebizuteria.pjborowiecki.workers.dev`.
@@ -27,15 +27,15 @@ Route files live flat in `src/routes/` and carry no locale segment. The router d
 
 | Prefix              | Files                             | What it serves                                                 |
 | ------------------- | --------------------------------- | -------------------------------------------------------------- |
-| `_storefront.*.tsx` | 16 files                          | Landing page, catalog, product pages, cart, blog, legal pages  |
+| `_storefront.*.tsx` | 18 files                          | Landing page, catalog, product pages, cart, blog, legal pages  |
 | `checkout.*.tsx`    | 2 files                           | The four-step checkout flow                                    |
 | `account.*.tsx`     | 10 files                          | Signed-in customer area — orders, addresses, sessions, profile |
-| `admin.*.tsx`       | 24 files                          | Admin console — catalog, orders, customers, audit, settings    |
+| `admin.*.tsx`       | 25 files                          | Admin console — catalog, orders, customers, audit, settings    |
 | `auth.*.tsx`        | 5 files                           | Sign in, sign up, forgot and reset password                    |
 | `docs.*.tsx`        | 3 files                           | These documentation pages                                      |
 | `api/`              | `auth.$.ts`, `webhooks.stripe.ts` | Better Auth handler and the Stripe webhook endpoint            |
 
-`__root.tsx` and `dev.emails.tsx` complete the 62 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
+`__root.tsx` and `dev.emails.tsx` complete the 67 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
 
 Four request paths short-circuit inside `src/server.ts` before the React framework is reached — `/sitemap.xml`, `/robots.txt`, the two WebSocket upgrades — plus the locale redirect, because none of them need an SSR render.
 
@@ -45,7 +45,7 @@ Four request paths short-circuit inside `src/server.ts` before the React framewo
 
 | Binding                     | Resource         | Used for                                                        |
 | --------------------------- | ---------------- | --------------------------------------------------------------- |
-| `DB`                        | D1 database      | Every table — 31 of them                                        |
+| `DB`                        | D1 database      | Every table — 37, including the `storefront_search` FTS5 index  |
 | `IMAGES`                    | R2 bucket        | Product image uploads                                           |
 | `CACHE`                     | KV namespace     | Declared but not referenced by any application code             |
 | `AUDIT_LOG_QUEUE`           | Cloudflare Queue | Audit events, drained by the `queue` handler in `src/server.ts` |
@@ -75,17 +75,17 @@ Counted against the working tree, not aspirational:
 
 | Thing                                     | Count                                                                                                 |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Feature modules                           | 36 in `src/modules/`                                                                                  |
-| Database tables                           | 31, one `*.schema.ts` each                                                                            |
-| D1 migrations                             | 57 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
-| Use cases                                 | 82 files under `src/modules/*/use-cases/`                                                             |
-| Server functions                          | 83 `createServerFn(...)` call sites                                                                   |
-| Integrations                              | 13 vendor adapters in `src/integrations/`                                                             |
-| Route files                               | 62 in `src/routes/`                                                                                   |
-| Presentation files                        | 568 non-test files under `src/presentation/`, of which 57 shadcn primitives and 366 custom components |
+| Feature modules                           | 39 in `src/modules/`, including `_core`                                                               |
+| Database tables                           | 36 exported from `drizzle.schemas.ts`, plus the `storefront_search` FTS5 table                        |
+| D1 migrations                             | 66 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
+| Use cases                                 | 108 files under `src/modules/*/use-cases/`                                                            |
+| Server functions                          | 107 `createServerFn(...)` call sites                                                                  |
+| Integrations                              | 14 vendor adapters in `src/integrations/`                                                             |
+| Route files                               | 67 in `src/routes/`                                                                                   |
+| Presentation files                        | 650 non-test files under `src/presentation/`, of which 57 shadcn primitives and 430 custom components |
 | Message namespaces                        | 48 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |
-| Test files                                | 873 — 322 unit, 30 integration, 511 component                                                         |
-| Comments in hand-written source           | 3                                                                                                     |
+| Test files                                | 889 — 339 unit, 35 integration, 515 component                                                         |
+| Comments in hand-written source           | 5: three in TypeScript, two in CSS                                                                    |
 | Lint suppressions outside generated files | 0                                                                                                     |
 
 ## What works, and what does not
@@ -94,17 +94,14 @@ Being precise about the boundary is more useful than a feature list.
 
 ### Wired end to end
 
-Catalog (products, variants, options, attributes, categories, collections, search, filtering, pagination), cart, the four-step checkout, Stripe payment with webhook-driven fulfilment, inventory reservation with compensation, order placement, order fulfilment and shipping from the admin console, refunds with optional restock, customer accounts (orders, addresses, sessions, profile, two-factor sign-in with backup codes), a wishlist kept in the `wishlist_item` table, saved cards attached at checkout to the customer's Stripe customer and removable from `/account/payment`, transactional email in both locales, the audit log behind a Cloudflare Queue, realtime cache invalidation over WebSockets, and admin management of products, categories, collections, attributes, customers, orders and audit.
+Catalog (products, variants, options, attributes, categories, collections, search, filtering, pagination), cart, the four-step checkout, discount codes (percentage, fixed amount or free shipping) checked at checkout, recomputed on the server, applied to the Stripe session as a one-off coupon and recorded in `discount_redemption`, Stripe payment with webhook-driven fulfilment, inventory reservation with compensation, order placement, order fulfilment, shipping with an optional tracking number and delivery from the admin console, refunds issued from the admin console or in Stripe with optional restock, customer accounts (orders, addresses, sessions, profile, two-factor sign-in with backup codes), a wishlist kept in the `wishlist_item` table, saved cards attached at checkout to the customer's Stripe customer and removable from `/account/payment`, transactional email in both locales, the audit log behind a Cloudflare Queue, realtime cache invalidation over WebSockets, and admin management of products, categories, collections, attributes, customers, orders, discount codes, the privacy and returns pages, and audit.
 
 ### Scaffolded, not finished
 
-| Area                                        | State                                                                                                                            |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Discounts, coupons                          | `discount` table plus `discount_id` columns on `cart`, `checkout` and `order`; nothing reads or writes them                      |
-| InPost                                      | Parcel-locker _discovery_ only — `fetchPointsByCity` in `src/integrations/inpost/inpost.api.ts`. No shipment creation, no labels |
-| Admin order detail                          | `/admin/orders/$orderId` mixes real actions with fixture cards from `src/data/order-detail.ts`                                   |
-| Admin coupons, content, marketing, settings | Render from fixtures in `src/data/`                                                                                              |
-| Order completion                            | Nothing ever writes `order.status = 'completed'`, which every revenue figure filters on                                          |
+| Area                      | State                                                                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| InPost                    | Parcel-locker _discovery_ only — `fetchPointsByCity` in `src/integrations/inpost/inpost.api.ts`. No shipment creation, no labels |
+| Admin marketing, settings | Render from fixtures in `src/data/`                                                                                              |
 
 ### Absent
 
@@ -117,9 +114,9 @@ No end-to-end or browser tests. No cron triggers or reconciliation job — `wran
 Four conventions are visible within the first file you open, and all four are enforced by `bun run check` rather than by review:
 
 - **Modules own tables.** `src/modules/{feature}/` holds the Drizzle table, the Zod schemas, the query-key tuples, the inferred types, the pure helpers and the accessors for exactly one table. One operation per file under `use-cases/`, named `{verb-noun}.ts`, exporting a server function next to the TanStack Query options that fetch it.
-- **Authorization lives on the server function.** A server function is a public HTTP endpoint, so route guards cannot protect it. The `authorized(permission)` middleware in `src/integrations/better-auth/auth.middleware.ts` is applied at 63 call sites — 14 of them as bare `authorized()`, which only requires a valid session, and 49 with a permission such as `authorized({ order: ["update"] })`, checked against the role matrix in `auth.access.ts`.
+- **Authorization lives on the server function.** A server function is a public HTTP endpoint, so route guards cannot protect it. The `authorized(permission)` middleware in `src/integrations/better-auth/auth.middleware.ts` is applied at 83 call sites — 21 of them as bare `authorized()`, which only requires a valid session, and 62 with a permission such as `authorized({ order: ["update"] })`, checked against the role matrix in `auth.access.ts`.
 - **The presentation layer never touches the database.** Everything under `src/presentation/` imports use cases, never `db`.
-- **The code carries no narration.** Three comments exist in the whole of `src/`, each explaining a constraint that the types cannot express. Intent goes in names and types.
+- **The code carries no narration.** Five comments exist in the whole of `src/`, three in TypeScript and two in CSS, each explaining a constraint that names and types cannot express. Intent goes in names and types.
 
 The lint baseline is six Oxlint categories as errors — including `nursery` — with type-aware linting and type checking on, warnings failing the build, and hard limits of 800 lines per file, 150 lines per function and 20 statements per function. See [Conventions](/docs/reference/conventions) and [Vite+](/docs/tooling/vite-plus).
 
@@ -130,7 +127,7 @@ The lint baseline is six Oxlint categories as errors — including `nursery` —
 | Author     | Piotr Borowiecki — `hello@pjborowiecki.com`, [pjborowiecki.com](https://pjborowiecki.com)                    |
 | Repository | [github.com/pjborowiecki/martebizuteria.pl](https://github.com/pjborowiecki/martebizuteria.pl)               |
 | Issues     | [github.com/pjborowiecki/martebizuteria.pl/issues](https://github.com/pjborowiecki/martebizuteria.pl/issues) |
-| History    | 43 commits between 2026-04-24 and 2026-09-30, several of them very large refactors                           |
+| History    | Commits since 2026-04-24, several of them very large refactors                                               |
 | Licence    | CC BY-NC 4.0 — see [Licence](/docs/project/license)                                                          |
 
 The brand name "M'Arte" belongs to the jewellery business this shop was built for. No trademark claim is made over it here.

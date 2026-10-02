@@ -100,7 +100,7 @@ Nothing hard-codes a URL string. Links use `LocalizedLink`, whose `to` is typed 
 | `backHref`    | Replaces the sidebar trigger with a back arrow — use it on detail pages |
 | `tabs`        | A node rendered in a second row under the bar                           |
 
-`src/routes/admin.coupons.tsx` shows breadcrumbs and actions:
+`src/routes/admin.coupons.tsx` shows breadcrumbs:
 
 ```tsx
 const bcList = useMemo(
@@ -187,10 +187,10 @@ A route lists the namespaces its subtree needs in `staticData.namespaces`. `getR
 | ------------- | -------------------------------------------------------------------- |
 | `SIMPLE_NAV`  | Dashboard, Orders, Customers                                         |
 | `CATALOG_SUB` | Products, Categories, Collections, Attributes — nested under Catalog |
-| `TOOLS_NAV`   | Marketing, Coupons, Content — all `disabled: true`                   |
+| `TOOLS_NAV`   | Marketing and Coupons (`disabled: true`), Content                    |
 | `SYSTEM_NAV`  | Audit, Settings — Settings is `disabled: true`                       |
 
-A `NavItem` is `{ href: LocalizedTo, icon, labelKey, disabled? }`. The icon is a `lucide-react` component, and `labelKey` resolves inside `pages.admin`, so `nav.coupons` reads from `messages/{locale}/pages.admin.json`. Set `disabled: true` for a page that exists as a placeholder but is not ready — `/admin/marketing`, `/admin/coupons`, `/admin/content` and `/admin/settings` are all in that state today.
+A `NavItem` is `{ href: LocalizedTo, icon, labelKey, disabled? }`. The icon is a `lucide-react` component, and `labelKey` resolves inside `pages.admin`, so `nav.coupons` reads from `messages/{locale}/pages.admin.json`. Set `disabled: true` for a page that exists as a placeholder but is not ready. `/admin/marketing` and `/admin/settings` are in that state today; `/admin/coupons` manages real discount codes, but its entry still carries `disabled: true`.
 
 ## 8. Test the route
 

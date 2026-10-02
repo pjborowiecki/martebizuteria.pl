@@ -20,23 +20,25 @@ dzięki czemu `_storefront.products.$handle.tsx` obsługuje zarówno `/products/
 
 Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, który dostarcza `Navigation`, `Footer`, banner dostępności koszyka, tracker aktywności klienta, subskrypcję realtime dla sklepu oraz `storefront.css`. Żadna z nich nie ma strażnika.
 
-| Ścieżka                  | Stała w `ROUTES`        | Plik trasy                              |
-| ------------------------ | ----------------------- | --------------------------------------- |
-| `/`                      | `HOME`                  | `_storefront.index.tsx`                 |
-| `/products`              | `PRODUCTS`              | `_storefront.products.index.tsx`        |
-| `/products/$handle`      | `PRODUCT`               | `_storefront.products.$handle.tsx`      |
-| `/categories`            | `CATEGORIES`            | `_storefront.categories.index.tsx`      |
-| `/categories/$handle`    | `CATEGORY`              | `_storefront.categories.$handle.tsx`    |
-| `/collections`           | `COLLECTIONS`           | `_storefront.collections.index.tsx`     |
-| `/collections/$handle`   | `COLLECTION`            | `_storefront.collections.$handle.tsx`   |
-| `/cart`                  | `CART`                  | `_storefront.cart.tsx`                  |
-| `/about`                 | `ABOUT`                 | `_storefront.about.tsx`                 |
-| `/faq`                   | `FAQ`                   | `_storefront.faq.tsx`                   |
-| `/exchanges-and-returns` | `EXCHANGES_AND_RETURNS` | `_storefront.exchanges-and-returns.tsx` |
-| `/privacy-policy`        | `PRIVACY_POLICY`        | `_storefront.privacy-policy.tsx`        |
-| `/terms-of-service`      | `TERMS_OF_SERVICE`      | `_storefront.terms-of-service.tsx`      |
-| `/blog`                  | `BLOG`                  | `_storefront.blog.index.tsx`            |
-| `/blog/$slug`            | `BLOG_POST`             | `_storefront.blog.$slug.tsx`            |
+| Ścieżka                   | Stała w `ROUTES`         | Plik trasy                               |
+| ------------------------- | ------------------------ | ---------------------------------------- |
+| `/`                       | `HOME`                   | `_storefront.index.tsx`                  |
+| `/products`               | `PRODUCTS`               | `_storefront.products.index.tsx`         |
+| `/products/$handle`       | `PRODUCT`                | `_storefront.products.$handle.tsx`       |
+| `/categories`             | `CATEGORIES`             | `_storefront.categories.index.tsx`       |
+| `/categories/$handle`     | `CATEGORY`               | `_storefront.categories.$handle.tsx`     |
+| `/collections`            | `COLLECTIONS`            | `_storefront.collections.index.tsx`      |
+| `/collections/$handle`    | `COLLECTION`             | `_storefront.collections.$handle.tsx`    |
+| `/cart`                   | `CART`                   | `_storefront.cart.tsx`                   |
+| `/about`                  | `ABOUT`                  | `_storefront.about.tsx`                  |
+| `/faq`                    | `FAQ`                    | `_storefront.faq.tsx`                    |
+| `/exchanges-and-returns`  | `EXCHANGES_AND_RETURNS`  | `_storefront.exchanges-and-returns.tsx`  |
+| `/privacy-policy`         | `PRIVACY_POLICY`         | `_storefront.privacy-policy.tsx`         |
+| `/terms-of-service`       | `TERMS_OF_SERVICE`       | `_storefront.terms-of-service.tsx`       |
+| `/blog`                   | `BLOG`                   | `_storefront.blog.index.tsx`             |
+| `/blog/$slug`             | `BLOG_POST`              | `_storefront.blog.$slug.tsx`             |
+| `/newsletter/confirm`     | `NEWSLETTER_CONFIRM`     | `_storefront.newsletter.confirm.tsx`     |
+| `/newsletter/unsubscribe` | `NEWSLETTER_UNSUBSCRIBE` | `_storefront.newsletter.unsubscribe.tsx` |
 
 `/privacy-policy` i `/exchanges-and-returns` ładują swój Markdown z tabeli D1 `content_page` przez `getContentPageQuery` i renderują go przez `ContentPageArticle`; administratorzy edytują go w `/admin/content`. Blog czyta wpisy z `src/data/blog-posts.ts`.
 
@@ -46,7 +48,7 @@ Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, kt�
 | ----------- | ---------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
 | `/checkout` | `CHECKOUT`       | `checkout.tsx`, `checkout.index.tsx` | Własny layout, bez chromu sklepu; brak strażnika — zamówienie działa dla gości |
 
-`checkout.tsx` waliduje dwa parametry wyszukiwania: `step`, liczbę całkowitą ograniczoną do zakresu 1–4, oraz `success`, opcjonalną wartość logiczną. Numer kroku żyje w adresie URL, więc odświeżenie strony zachowuje miejsce, w którym był klient.
+`checkout.tsx` waliduje trzy parametry wyszukiwania: `step`, liczbę całkowitą ograniczoną do zakresu 1–4, `success`, opcjonalną wartość logiczną, oraz `session_id`, identyfikator sesji Checkout, który Stripe dopisuje do `return_url` sesji, o długości co najwyżej 255 znaków. Numer kroku żyje w adresie URL, więc odświeżenie strony zachowuje miejsce, w którym był klient.
 
 ## Uwierzytelnianie
 
@@ -109,7 +111,7 @@ Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`; 
 | `/admin/marketing`                   | `ADMIN_MARKETING`    | `admin.marketing.tsx`                                                    |
 | `/admin/settings`                    | `ADMIN_SETTINGS`     | `admin.settings.tsx`                                                     |
 
-Szczegóły zamówienia w panelu to jedyna strona bez stałej w `ROUTES`; nawigacja do niej zapisana jest jako literał `"/admin/orders/$orderId"` w `src/presentation/components/custom/pages/admin/orders/`. Strony `/admin/coupons`, `/admin/marketing`, `/admin/settings` oraz część strony szczegółów zamówienia nadal renderują dane z fikstur w `src/data/` — `coupons.ts`, `marketing.ts`, `settings.ts` i `order-detail.ts`.
+Szczegóły zamówienia w panelu to jedyna strona bez stałej w `ROUTES`; nawigacja do niej zapisana jest jako literał `"/admin/orders/$orderId"` w `src/presentation/components/custom/pages/admin/orders/`. Strony `/admin/marketing` i `/admin/settings` nadal renderują dane z fikstur w `src/data/`: `marketing.ts` i `settings.ts`.
 
 ## Dokumentacja
 

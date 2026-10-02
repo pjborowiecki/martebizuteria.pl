@@ -9,7 +9,7 @@ description: "The Cloudflare runtime: the Worker entry, its bindings, the three 
 
 | Binding                     | Type           | Used for                                                                |
 | --------------------------- | -------------- | ----------------------------------------------------------------------- |
-| `DB`                        | D1 database    | All 31 tables, including sessions, verification and rate-limit counters |
+| `DB`                        | D1 database    | All 37 tables, including sessions, verification and rate-limit counters |
 | `IMAGES`                    | R2 bucket      | Product images uploaded through `src/integrations/cloudflare-r2`        |
 | `CACHE`                     | KV namespace   | Declared but not read by any code today                                 |
 | `ASSETS`                    | Static assets  | Everything in `public/`, including the self-hosted fonts                |

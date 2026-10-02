@@ -20,23 +20,25 @@ so `_storefront.products.$handle.tsx` serves both `/products/kolczyki` (Polish, 
 
 All storefront pages sit under the pathless layout `_storefront.tsx`, which supplies `Navigation`, `Footer`, the cart-availability banner, the customer-activity tracker, the storefront realtime subscription and `storefront.css`. None of them has a guard.
 
-| Path                     | `ROUTES` constant       | Route file                              |
-| ------------------------ | ----------------------- | --------------------------------------- |
-| `/`                      | `HOME`                  | `_storefront.index.tsx`                 |
-| `/products`              | `PRODUCTS`              | `_storefront.products.index.tsx`        |
-| `/products/$handle`      | `PRODUCT`               | `_storefront.products.$handle.tsx`      |
-| `/categories`            | `CATEGORIES`            | `_storefront.categories.index.tsx`      |
-| `/categories/$handle`    | `CATEGORY`              | `_storefront.categories.$handle.tsx`    |
-| `/collections`           | `COLLECTIONS`           | `_storefront.collections.index.tsx`     |
-| `/collections/$handle`   | `COLLECTION`            | `_storefront.collections.$handle.tsx`   |
-| `/cart`                  | `CART`                  | `_storefront.cart.tsx`                  |
-| `/about`                 | `ABOUT`                 | `_storefront.about.tsx`                 |
-| `/faq`                   | `FAQ`                   | `_storefront.faq.tsx`                   |
-| `/exchanges-and-returns` | `EXCHANGES_AND_RETURNS` | `_storefront.exchanges-and-returns.tsx` |
-| `/privacy-policy`        | `PRIVACY_POLICY`        | `_storefront.privacy-policy.tsx`        |
-| `/terms-of-service`      | `TERMS_OF_SERVICE`      | `_storefront.terms-of-service.tsx`      |
-| `/blog`                  | `BLOG`                  | `_storefront.blog.index.tsx`            |
-| `/blog/$slug`            | `BLOG_POST`             | `_storefront.blog.$slug.tsx`            |
+| Path                      | `ROUTES` constant        | Route file                               |
+| ------------------------- | ------------------------ | ---------------------------------------- |
+| `/`                       | `HOME`                   | `_storefront.index.tsx`                  |
+| `/products`               | `PRODUCTS`               | `_storefront.products.index.tsx`         |
+| `/products/$handle`       | `PRODUCT`                | `_storefront.products.$handle.tsx`       |
+| `/categories`             | `CATEGORIES`             | `_storefront.categories.index.tsx`       |
+| `/categories/$handle`     | `CATEGORY`               | `_storefront.categories.$handle.tsx`     |
+| `/collections`            | `COLLECTIONS`            | `_storefront.collections.index.tsx`      |
+| `/collections/$handle`    | `COLLECTION`             | `_storefront.collections.$handle.tsx`    |
+| `/cart`                   | `CART`                   | `_storefront.cart.tsx`                   |
+| `/about`                  | `ABOUT`                  | `_storefront.about.tsx`                  |
+| `/faq`                    | `FAQ`                    | `_storefront.faq.tsx`                    |
+| `/exchanges-and-returns`  | `EXCHANGES_AND_RETURNS`  | `_storefront.exchanges-and-returns.tsx`  |
+| `/privacy-policy`         | `PRIVACY_POLICY`         | `_storefront.privacy-policy.tsx`         |
+| `/terms-of-service`       | `TERMS_OF_SERVICE`       | `_storefront.terms-of-service.tsx`       |
+| `/blog`                   | `BLOG`                   | `_storefront.blog.index.tsx`             |
+| `/blog/$slug`             | `BLOG_POST`              | `_storefront.blog.$slug.tsx`             |
+| `/newsletter/confirm`     | `NEWSLETTER_CONFIRM`     | `_storefront.newsletter.confirm.tsx`     |
+| `/newsletter/unsubscribe` | `NEWSLETTER_UNSUBSCRIBE` | `_storefront.newsletter.unsubscribe.tsx` |
 
 `/privacy-policy` and `/exchanges-and-returns` load their Markdown from the D1 `content_page` table with `getContentPageQuery` and render it through `ContentPageArticle`; admins edit it at `/admin/content`. The blog reads its posts from `src/data/blog-posts.ts`.
 
@@ -46,7 +48,7 @@ All storefront pages sit under the pathless layout `_storefront.tsx`, which supp
 | ----------- | ----------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
 | `/checkout` | `CHECKOUT`        | `checkout.tsx`, `checkout.index.tsx` | Own layout, no storefront chrome; no route guard — checkout works for guests |
 
-`checkout.tsx` validates two search parameters: `step`, an integer clamped to 1–4, and `success`, an optional boolean. The step lives in the URL so a reload keeps the customer where they were.
+`checkout.tsx` validates three search parameters: `step`, an integer clamped to 1–4, `success`, an optional boolean, and `session_id`, the Checkout Session id that Stripe adds to the session's `return_url`, at most 255 characters. The step lives in the URL so a reload keeps the customer where they were.
 
 ## Authentication
 
@@ -109,7 +111,7 @@ The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`; it als
 | `/admin/marketing`                   | `ADMIN_MARKETING`    | `admin.marketing.tsx`                                                  |
 | `/admin/settings`                    | `ADMIN_SETTINGS`     | `admin.settings.tsx`                                                   |
 
-The admin order detail route is the one page with no `ROUTES` constant; navigation to it is written as the literal `"/admin/orders/$orderId"` in `src/presentation/components/custom/pages/admin/orders/`. `/admin/coupons`, `/admin/marketing`, `/admin/settings` and parts of the order detail page still render from fixtures in `src/data/` — `coupons.ts`, `marketing.ts`, `settings.ts` and `order-detail.ts`.
+The admin order detail route is the one page with no `ROUTES` constant; navigation to it is written as the literal `"/admin/orders/$orderId"` in `src/presentation/components/custom/pages/admin/orders/`. `/admin/marketing` and `/admin/settings` still render from fixtures in `src/data/`: `marketing.ts` and `settings.ts`.
 
 ## Documentation
 

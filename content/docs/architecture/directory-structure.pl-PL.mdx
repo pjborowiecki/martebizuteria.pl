@@ -27,10 +27,11 @@ src/
 ├── server.ts                          Handlery fetch i queue Workera
 ├── modules/
 │   ├── _core/
-│   │   ├── constants/                 api, currency, errors, placeholder, country, timezone
+│   │   ├── constants/                 api, currency, errors, placeholder, country, timezone,
+│   │   │                              tax
 │   │   └── utils/                     pagination, zod-fields, csv, currency, datetime,
 │   │                                  iso-date, iso-datetime, json, column-filters,
-│   │                                  search-conditions
+│   │                                  search-conditions, tax
 │   └── <feature>/
 │       ├── <feature>.schema.ts        Tabela Drizzle i relacje
 │       ├── <feature>.zod.ts           Schematy wejścia wspólne dla formularzy i funkcji serwerowych
@@ -71,9 +72,9 @@ src/
 
 - **Pliki i katalogi używają kebab-case.** Testy leżą w siostrzanym katalogu `__test__` i noszą nazwy `*.test.ts`, `*.integration.test.ts` lub `*.component.test.tsx`.
 - **Trasy tylko komponują.** Plik trasy definiuje komponent strony lub layoutu, swoje `staticData.namespaces`, guard `beforeLoad`, `loader` i `head`. Widżety, dialogi, formularze i definicje kolumn należą do `src/presentation/components/custom`.
-- **Moduł to funkcjonalność, nie zawsze tabela.** Większość z 39 modułów jest właścicielem jednej tabeli Drizzle, ale `admin-dashboard`, `customer-account`, `customer-activity` i `storefront-search` są modelami odczytu obejmującymi kilka tabel i nie mają własnego pliku schematu.
+- **Moduł to funkcjonalność, nie zawsze tabela.** Większość z 39 modułów jest właścicielem jednej tabeli Drizzle, ale `admin-dashboard`, `customer-account` i `customer-activity` są modelami odczytu obejmującymi kilka tabel i nie mają własnego pliku schematu. `storefront-search` deklaruje tylko indeks FTS5 `storefront_search`, który tworzy ręcznie napisana migracja.
 - **`_core` to współdzielone jądro.** Znajdują się tam `AppError` i `ERROR_CODES`, helpery paginacji, wielokrotnie używane pola Zod, formatery walut i buildery filtrów kolumn. `_core/constants/timezone.ts` dostarcza `TIMEZONES`, listę stref czasowych, z której wybierają klienci. `_core/constants/country.ts` to tablica referencyjna ISO utrzymywana świadomie na potrzeby planowanych prac — nie ma importerów i nie wolno jej usuwać jako martwego kodu.
-- **`src/data` zawiera dane, nie logikę.** `landing.ts`, `blog-posts.ts` i `static-pages.ts` zasilają prawdziwe strony; `coupons.ts`, `marketing.ts`, `order-detail.ts` i `settings.ts` to fixture'y stojące za stronami administracyjnymi, które są jeszcze szkieletem.
+- **`src/data` zawiera dane, nie logikę.** `landing.ts`, `blog-posts.ts` i `static-pages.ts` zasilają prawdziwe strony; `marketing.ts` i `settings.ts` to fixture'y stojące za stronami administracyjnymi, które są jeszcze szkieletem.
 - **`src/lib` zawiera małe helpery w zakresie żądania**, a nie funkcjonalności: `background.ts` (magazyn `waitUntil`), `cookie.ts`, `image.ts`, `rate-limit.ts`, `request.ts`, `seo.ts` i `url.ts`.
 - **Plików generowanych nie edytuje się ręcznie.** Plugin routera zapisuje `src/routeTree.gen.ts`, `bun run cf-typegen` zapisuje `src/types/worker-configuration.d.ts` (poza repozytorium), a `bun run content` zapisuje `.source/`, które `tsconfig.json` mapuje na prefiks importu `collections/*`.
 

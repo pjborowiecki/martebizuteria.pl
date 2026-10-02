@@ -11,33 +11,6 @@ Read it together with [About](/docs/project/about), which draws the same boundar
 
 These change what customers and the shop owner see. They are first because the shop is live.
 
-### Nothing ever writes `order.status = 'completed'`
-
-The `order.status` enum is `["pending", "processing", "completed", "cancelled", "refunded"]` (`src/modules/order/order.schema.ts`), and `fulfillOrder` moves `pending` to `processing`. No code path writes `completed`.
-
-Every revenue figure in the admin console filters on exactly that value:
-
-| Figure                                                       | Where                                                      |
-| ------------------------------------------------------------ | ---------------------------------------------------------- |
-| Dashboard revenue, revenue-over-time chart                   | `src/modules/admin-dashboard/admin-dashboard.accessors.ts` |
-| Order stats cards                                            | `src/modules/order/order.accessors.ts`, three queries      |
-| Customer lifetime value, average order value, top categories | `src/modules/user/user.accessors.ts`, six queries          |
-
-So each of them computes over an empty set. The fix is a transition — most naturally when `fulfillmentStatus` reaches `delivered` — plus a backfill migration for orders already shipped. Until then, treat every revenue number in the admin console as zero by construction rather than as data.
-
-### `fulfillmentStatus: 'delivered'` has no write path
-
-`shipOrder` (`src/modules/order/use-cases/ship-order.ts`) writes `shipped` and `shippedAt` and sends the shipped email. Nothing writes `delivered`, although:
-
-- `ORDER_TABS` in `src/modules/order/order.constants.ts` includes a `delivered` tab, which is therefore always empty
-- `src/modules/order/order.accessors.ts` builds a `eq(order.fulfillmentStatus, "delivered")` filter for it
-- `src/modules/customer-account/customer-account.utils.ts` can emit a `delivered` timeline event the customer will never see
-- `order.deliveredAt` is declared on the table and never set
-
-### Tracking numbers are rendered but never stored
-
-`order.trackingNumber` and `order.trackingUrl` exist on the table, are selected in `src/modules/order/order.accessors.ts`, are mapped into the customer order detail in `src/modules/customer-account/customer-account.utils.ts`, and are rendered by `TrackingNumberRow` in `src/routes/account.orders.$id.tsx` — which falls back to a "no tracking yet" state, permanently, because no code writes either column. This pairs naturally with the InPost work below.
-
 ### Inventory compensation is best-effort
 
 `reserveInventoryForItems` in `src/modules/inventory/inventory.utils.ts` reserves every cart line concurrently with a compare-and-set `UPDATE`, and if any line fails its guard it releases the ones that succeeded:
@@ -70,14 +43,13 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 ### No scheduled work
 
-`wrangler.jsonc` declares no `crons` and `src/server.ts` exports no `scheduled` handler. Four things need one:
+`wrangler.jsonc` declares no `crons` and `src/server.ts` exports no `scheduled` handler. Three things need one:
 
 | Job                                 | Why                                                                                                                                                   |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Reservation reconciliation          | Stale reservations are released only when Stripe emits `checkout.session.expired`; a reservation orphaned by a failed compensation is never reclaimed |
 | `session` and `verification` expiry | Nothing deletes expired rows                                                                                                                          |
 | `rate_limit` expiry                 | Counters accumulate rows forever                                                                                                                      |
-| Order completion                    | If completion is time-based rather than event-based, it needs a scheduled pass                                                                        |
 
 ### No dead-letter queue
 
@@ -89,47 +61,45 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 ### Declared but unused
 
-| Thing                 | State                                                                                                                                                                                                                                     |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CACHE` KV namespace  | Bound in all three environments in `wrangler.jsonc`; no application code references it                                                                                                                                                    |
-| `order_address` table | Defined in `src/modules/order-address/order-address.schema.ts` and re-exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`; no accessor, use case or query touches it. This is the most consequential of the three — see below |
-| `anonymous()` plugin  | Registered in `src/integrations/better-auth/auth.server.ts`; no flow creates an anonymous session                                                                                                                                         |
+| Thing                | State                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------- |
+| `CACHE` KV namespace | Bound in all three environments in `wrangler.jsonc`; no application code references it            |
+| `anonymous()` plugin | Registered in `src/integrations/better-auth/auth.server.ts`; no flow creates an anonymous session |
 
 Each is a decision waiting to be made: use it, or remove it so the next reader does not assume it is load-bearing.
 
-`order_address` deserves its own note, because its absence has a visible consequence. An order has no address columns of its own; it reaches one through `order.checkout_id` → `checkout.shipping_address_id` → the customer's `address` row. That row is editable and deletable from `/account/addresses`, and the foreign key is declared `onDelete: "set null"`. So a customer who edits an address changes what a historical order says it was shipped to, and a customer who deletes one detaches the order from any address at all. `order_address` exists precisely to be the immutable snapshot taken at order time, with a `type` of `shipping` or `billing`. Writing it during fulfilment is the fix.
+### The admin order detail reads live addresses
 
-### The admin console cannot issue a refund
+`order_address` is now written and read on the customer side. `prepareFulfillCheckoutBatch` in `src/modules/checkout/checkout.utils.ts` inserts a `shipping` and a `billing` snapshot in the batch that creates the order, and `getCustomerOrder` in `src/modules/customer-account/use-cases/get-customer-order.ts` prefers them over the checkout's addresses. The admin order detail does not read them. `getAdminOrderDetailRow` in `src/modules/order/order.accessors.ts` still reaches an address through `order.checkout_id` → `checkout.shipping_address_id` → the `address` row, and when the customer chose to save the address at checkout, that row belongs to their account. It is editable and deletable from `/account/addresses`, and the foreign key is declared `onDelete: "set null"`. So a customer who edits a saved address changes what `/admin/orders/$orderId` says the order was shipped to, and a customer who deletes one leaves that page with no address at all. Reading the snapshot there, as the customer's order page already does, is the fix.
 
-`orders-row-actions.tsx` offers a Refund menu item, gated by `canRefundAdminOrder`, and `handleRefund` in `use-orders-row-action-handlers.ts` simply navigates to `/admin/orders/$orderId`. There is no refund server function: `src/modules/order/use-cases/refund-order.ts` exports a plain async function, and its only caller is `handleChargeRefunded` in `src/integrations/stripe/stripe.webhooks.tsx`. Refunds therefore have to be issued in Stripe, after which the webhook records them. That is a defensible design, but the menu item implies otherwise, and the `order: ["refund"]` permission declared in `auth.access.ts` is never checked anywhere.
+### The `refund` permission is never checked
+
+The admin console now issues refunds. The Refund button on `/admin/orders/$orderId` calls `refundAdminOrder` in `src/modules/order/use-cases/refund-admin-order.ts`, which asks Stripe for a full refund with `stripe.refunds.create`, and the `charge.refunded` webhook then records it through `handleChargeRefunded` in `src/integrations/stripe/stripe.webhooks.tsx`, exactly as it does for a refund issued in Stripe. `refundAdminOrder` is guarded by `authorized({ order: ["update"] })`, so the `order: ["refund"]` permission declared in `auth.access.ts` is still never checked anywhere. Either check it there or remove it.
 
 ## Priority 3 — features that are scaffolded
 
-Each of these already has some of its groundwork in place (a table and its columns, an integration function, real actions or a complete UI), which makes them cheaper than they look.
+Each of these already has some of its groundwork in place (an integration function or a complete UI), which makes them cheaper than they look.
 
-| Feature                            | What exists                                                                                                                | What is missing                                                                                                                     |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Discounts and coupons              | `discount` table; `discount_id` on `cart`, `checkout` and `order`; `/admin/coupons` UI on fixtures                         | Every code path. Nothing reads or writes those columns                                                                              |
-| InPost shipments                   | `fetchPointsByCity` in `src/integrations/inpost/inpost.api.ts` — parcel-locker discovery by city, minimum three characters | Shipment creation, label generation, tracking write-back                                                                            |
-| Admin order detail                 | Real actions — fulfil, ship, cancel, export, print invoice                                                                 | The timeline, notes, tags, billing and shipping cards still read `src/data/order-detail.ts`; refund navigates rather than refunding |
-| Admin content, marketing, settings | Complete UI                                                                                                                | Every one of them reads fixtures from `src/data/`                                                                                   |
+| Feature                   | What exists                                                                                                                | What is missing                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| InPost shipments          | `fetchPointsByCity` in `src/integrations/inpost/inpost.api.ts` — parcel-locker discovery by city, minimum three characters | Shipment creation, label generation, tracking write-back |
+| Admin marketing, settings | Complete UI                                                                                                                | Both read fixtures from `src/data/`                      |
 
-`src/data/` is the honest marker for this whole category: eight fixture files, and every screen importing one is a screen that looks finished and is not. [Discounts](/docs/features/discounts) and [Shipping and delivery](/docs/features/shipping-and-delivery) cover the two largest.
+`src/data/` is the honest marker for this whole category: five fixture files, and every screen importing one is a screen that looks finished and is not. [Shipping and delivery](/docs/features/shipping-and-delivery) covers the InPost work.
 
 ## Priority 4 — testing
 
-873 test files exist: 322 unit, 30 integration, 511 component. The distribution is the thing to fix rather than the count.
+889 test files exist: 339 unit, 35 integration, 515 component. The distribution is the thing to fix rather than the count.
 
 - **No end-to-end or browser tests.** `vite.config.ts` already excludes an `e2e` directory and a `playwright/` cache that do not exist, so the intent was there. For a checkout flow this is the gap that matters most.
-- **The ratio is inverted relative to the risk.** Component tests mostly assert rendering; commerce correctness lives in checkout, inventory compensation and refunds, which the 30 integration suites cover. More integration coverage of the money paths is worth more than more component coverage.
+- **The ratio is inverted relative to the risk.** Component tests mostly assert rendering; commerce correctness lives in checkout, inventory compensation and refunds, which the 35 integration suites cover. More integration coverage of the money paths is worth more than more component coverage.
 - **Integration suites run on `node:sqlite`.** The transport in `src/platform/testing/mocks/d1.ts` emulates D1's batch atomicity but not its bound-parameter ceiling, so concurrency results are SQLite's behaviour, not proof against D1 under production load.
 - **The coverage ratchet needs turning.** Thresholds sit at 72 statements, 71 lines, 68 functions, 69 branches with `autoUpdate: false`. They are a floor to raise, not a target that has been met.
 
 ## Priority 5 — housekeeping
 
-- **`README.md` has drifted from the code.** Four specifics: it describes an `assertAdmin()` helper that no longer exists, authorization having moved to the `authorized(permission)` middleware and the role matrix in `src/integrations/better-auth/auth.access.ts`; it calls that role matrix dead, when `hasPermission` now checks it on every guarded call; it reports 236 tests and 8.6% coverage from before the current 873-file suite landed; and it lists as open two gaps that are closed — `getCurrentSession` now strips `session.token` through `toClientSession` in `src/integrations/better-auth/auth.session.ts`, and `shipOrder` does write `fulfillmentStatus: "shipped"` and `shippedAt`. These documentation pages are current; the README is next.
 - **D1 parameter chunking is inconsistent.** `src/modules/product-attribute/product-attribute.server.ts` sets `RANK_UPDATE_CHUNK_SIZE = 30` and loops; `setProductRanks` in `src/modules/product/product.mutations.ts` builds one `UPDATE` with a generated `case … when` over an `inArray`, binding two parameters per row plus the id list, and never chunks. The category and collection reorder paths follow the product shape. That is fine at the current catalog size and will not stay fine.
-- **The git history does not match the code.** 43 commits, several touching over two thousand files. Nothing to fix retroactively, but worth not repeating — see [Contributing](/docs/project/contributing).
+- **The git history does not match the code.** Several commits touch over two thousand files. Nothing to fix retroactively, but worth not repeating — see [Contributing](/docs/project/contributing).
 
 ## How to keep this page honest
 

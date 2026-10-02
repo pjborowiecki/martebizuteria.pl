@@ -1,6 +1,6 @@
 ---
 title: "E-maile transakcyjne"
-description: "Sześć szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
+description: "Siedem szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
 ---
 
 ## Wysyłka
@@ -28,18 +28,19 @@ Zwróć uwagę na kontrakt: **nigdy nie rzuca wyjątku.** Zwraca `undefined` prz
 
 Klientem jest `src/integrations/resend/resend.config.ts`, jednolinijkowe `new Resend(env.RESEND_API_KEY)`. Domyślne `from` to `APP_NAME <RESEND_EMAIL_FROM>`. Zarówno `RESEND_API_KEY`, jak i `RESEND_EMAIL_FROM` są na liście `secrets.required` każdego środowiska w `wrangler.jsonc`.
 
-## Sześć szablonów
+## Siedem szablonów
 
 Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane po stronie serwera wewnątrz Workera:
 
-| Szablon                  | Stała przestrzeni nazw         | Wysyłany przez                                                |
-| ------------------------ | ------------------------------ | ------------------------------------------------------------- |
-| `verify-email.tsx`       | `VERIFY_EMAIL_NAMESPACE`       | `sendVerificationEmail` (Better Auth)                         |
-| `reset-password.tsx`     | `RESET_PASSWORD_NAMESPACE`     | `sendResetPassword` (Better Auth)                             |
-| `change-email.tsx`       | `CHANGE_EMAIL_NAMESPACE`       | `sendChangeEmailConfirmation` (Better Auth)                   |
-| `account-deleted.tsx`    | `ACCOUNT_DELETED_NAMESPACE`    | `sendAccountDeletedEmail`, kolejkowany przez `deleteCustomer` |
-| `order-confirmation.tsx` | `ORDER_CONFIRMATION_NAMESPACE` | `notifyOrderConfirmed`, z webhooka Stripe                     |
-| `order-shipped.tsx`      | `ORDER_SHIPPED_NAMESPACE`      | `notifyOrderShipped`, kolejkowany przez `shipOrder`           |
+| Szablon                       | Stała przestrzeni nazw              | Wysyłany przez                                                          |
+| ----------------------------- | ----------------------------------- | ----------------------------------------------------------------------- |
+| `verify-email.tsx`            | `VERIFY_EMAIL_NAMESPACE`            | `sendVerificationEmail` (Better Auth)                                   |
+| `reset-password.tsx`          | `RESET_PASSWORD_NAMESPACE`          | `sendResetPassword` (Better Auth)                                       |
+| `change-email.tsx`            | `CHANGE_EMAIL_NAMESPACE`            | `sendChangeEmailConfirmation` (Better Auth)                             |
+| `account-deleted.tsx`         | `ACCOUNT_DELETED_NAMESPACE`         | `sendAccountDeletedEmail`, kolejkowany przez `deleteCustomer`           |
+| `order-confirmation.tsx`      | `ORDER_CONFIRMATION_NAMESPACE`      | `notifyOrderConfirmed`, z webhooka Stripe                               |
+| `order-shipped.tsx`           | `ORDER_SHIPPED_NAMESPACE`           | `notifyOrderShipped`, kolejkowany przez `shipOrder`                     |
+| `newsletter-confirmation.tsx` | `NEWSLETTER_CONFIRMATION_NAMESPACE` | `sendNewsletterConfirmation`, kolejkowany przez `subscribeToNewsletter` |
 
 Każdy szablon **eksportuje własną stałą przestrzeni nazw** obok komponentu, na przykład `export const ORDER_CONFIRMATION_NAMESPACE = "emails.order-confirmation"`. Taka jest konwencja: szablon jest właścicielem nazwy swojego katalogu komunikatów, więc nie ma osobnego mapowania, które trzeba utrzymywać w zgodzie.
 
@@ -66,6 +67,7 @@ const failure = await sendEmail({
 | ------------------------- | ---------------------------------------------------------------------------- |
 | e-maile Better Auth       | `getCurrentLocale()` — z żądania wykonywanego przez użytkownika              |
 | `sendAccountDeletedEmail` | `locale` zapamiętany przed usunięciem, z fallbackiem na `getCurrentLocale()` |
+| potwierdzenie newslettera | `locale` przesłany z zapisem, z fallbackiem na `getCurrentLocale()`          |
 | potwierdzenie zamówienia  | `resolveLocale(session)` z metadanych sesji Stripe                           |
 | wysyłka zamówienia        | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia       |
 
@@ -154,12 +156,13 @@ const reportEmailFailure = (kind: string, recipient: string, failure: string | u
 
 ## Wysyłka w tle
 
-Dwie wysyłki są świadomie nieoczekiwane przez żądanie:
+Trzy wysyłki są świadomie nieoczekiwane przez żądanie:
 
 - `shipOrder` — `scheduleBackgroundWork(notifyOrderShipped(orderId))`
 - `deleteCustomer` — `scheduleBackgroundWork(sendAccountDeletedEmail(goodbyeEmail))`
+- `subscribeToNewsletter`: `scheduleBackgroundWork(sendNewsletterConfirmation({ email, locale, token }))`
 
-`scheduleBackgroundWork` (`src/lib/background.ts`) korzysta z `waitUntil` Workera, więc kliknięcie administratora wraca natychmiast.
+`scheduleBackgroundWork` (`src/lib/background.ts`) korzysta z `waitUntil` Workera, więc żądanie wraca natychmiast. `sendNewsletterConfirmation` loguje nieudaną wysyłkę i nie zapisuje jej w audycie.
 
 Webhook Stripe natomiast **czeka** na `notifyOrderConfirmed`. Nieobsłużony wyjątek sprawiłby, że handler zwróci 500, a Stripe ponownie dostarczy webhook, którego zamówienie już powstało — dlatego `notifyOrderConfirmed` owija wszystko w `try`/`catch` i pochłania błąd po jego zapisaniu.
 
@@ -182,13 +185,12 @@ więc trasa nie istnieje w buildzie preview ani produkcyjnym. Bez `?template=` r
 
 `src/integrations/resend/email-previews.tsx` to rejestr. `EMAIL_PREVIEWS` mapuje każdy slug na `{ element: async (locale) => …, label }`, a `renderEmailPreview(slug, locale, plainText)` wywołuje `render` z react-email. Dane testowe są realistyczne i polskie — `PREVIEW_ORDER_ITEMS` używa „Bransoletka Aurora” za 24 900 jednostek podrzędnych oraz „Kolczyki Luna” ×2 za 18 900, `PREVIEW_ADDRESS` to adres warszawski, a dwa zestawy CTA, `PREVIEW_GUEST_CTA` i `PREVIEW_CUSTOMER_CTA`, pozwalają zobaczyć oba warianty `buildOrderAccountCta`.
 
-Każdy szablon jest wymieniony w `pl-PL` i `en-US`, w HTML i w wersji tekstowej — osiem odnośników na szablon — co czyni ten indeks najszybszym sposobem sprawdzenia zmiany w tłumaczeniu.
+Każdy szablon poza `newsletter-confirmation` jest wymieniony w `pl-PL` i `en-US`, w HTML i w wersji tekstowej — osiem odnośników na szablon — co czyni ten indeks najszybszym sposobem sprawdzenia zmiany w tłumaczeniu.
 
 Dodanie szablonu oznacza: komponent wraz ze stałą przestrzeni nazw w `src/presentation/emails/`, dwa pliki komunikatów w `messages/{locale}/`, wpis w `EMAIL_PREVIEWS` i wywołującego, który wczyta przestrzeń nazw i wywoła `sendEmail`.
 
 ## Czego nie ma
 
-- Nie ma newslettera. Formularz na stronie głównej nie jest podłączony i nie ma tabeli subskrybentów — zobacz [Strona główna](/docs/features/landing-page).
 - Nie ma e-maila o porzuconym koszyku. Zdarzenie jest zapisywane w audycie, ale nic nie wysyła wiadomości.
 - Nie ma powiadomienia o dostarczeniu ani o zwrocie. Istnieją tylko potwierdzenie i wysyłka.
 - Nie ma ponawiania ani kolejki martwych listów dla poczty; porażka jest logowana, a dla e-maili zamówień zapisywana w audycie.

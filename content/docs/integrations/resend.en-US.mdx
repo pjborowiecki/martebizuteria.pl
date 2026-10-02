@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "The six transactional e-mails, how they are composed, and how to preview them."
+description: "The seven transactional e-mails, how they are composed, and how to preview them."
 ---
 
 Every e-mail the shop sends goes out through Resend. The adapter in `src/integrations/resend/` holds the client, one `sendEmail` helper, the builders that turn order rows into e-mail props, and the developer preview renderer. The React Email templates themselves live in `src/presentation/emails/`, because they are presentation.
@@ -36,18 +36,19 @@ export const sendEmail = async ({ from, react, subject, to }: Readonly<SendEmail
 
 It returns `undefined` on success and the failure message otherwise. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`.
 
-## The six e-mails
+## The seven e-mails
 
-| E-mail             | Template                                         | Namespace                   | Sent from                                                                               |
-| ------------------ | ------------------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------- |
-| Verify e-mail      | `src/presentation/emails/verify-email.tsx`       | `emails.verify-email`       | `sendVerificationEmail` in `auth.server.ts`, on sign-up                                 |
-| Reset password     | `src/presentation/emails/reset-password.tsx`     | `emails.reset-password`     | `sendResetPassword` in `auth.server.ts`                                                 |
-| Change e-mail      | `src/presentation/emails/change-email.tsx`       | `emails.change-email`       | `sendChangeEmailConfirmation` in `auth.server.ts`                                       |
-| Account deleted    | `src/presentation/emails/account-deleted.tsx`    | `emails.account-deleted`    | `sendAccountDeletedEmail`, scheduled by `src/modules/user/use-cases/delete-customer.ts` |
-| Order confirmation | `src/presentation/emails/order-confirmation.tsx` | `emails.order-confirmation` | `stripe.webhooks.tsx` after a checkout session is fulfilled                             |
-| Order shipped      | `src/presentation/emails/order-shipped.tsx`      | `emails.order-shipped`      | `notifyOrderShipped`, scheduled by `src/modules/order/use-cases/ship-order.ts`          |
+| E-mail                  | Template                                              | Namespace                        | Sent from                                                                                                                                       |
+| ----------------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verify e-mail           | `src/presentation/emails/verify-email.tsx`            | `emails.verify-email`            | `sendVerificationEmail` in `auth.server.ts`, on sign-up                                                                                         |
+| Reset password          | `src/presentation/emails/reset-password.tsx`          | `emails.reset-password`          | `sendResetPassword` in `auth.server.ts`                                                                                                         |
+| Change e-mail           | `src/presentation/emails/change-email.tsx`            | `emails.change-email`            | `sendChangeEmailConfirmation` in `auth.server.ts`                                                                                               |
+| Account deleted         | `src/presentation/emails/account-deleted.tsx`         | `emails.account-deleted`         | `sendAccountDeletedEmail`, scheduled by `src/modules/user/use-cases/delete-customer.ts`                                                         |
+| Order confirmation      | `src/presentation/emails/order-confirmation.tsx`      | `emails.order-confirmation`      | `stripe.webhooks.tsx` after a checkout session is fulfilled                                                                                     |
+| Order shipped           | `src/presentation/emails/order-shipped.tsx`           | `emails.order-shipped`           | `notifyOrderShipped`, scheduled by `src/modules/order/use-cases/ship-order.ts`                                                                  |
+| Newsletter confirmation | `src/presentation/emails/newsletter-confirmation.tsx` | `emails.newsletter-confirmation` | `sendNewsletterConfirmation` in `newsletter-confirmation.server.ts`, scheduled by `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` |
 
-The first four are described in [Better Auth](/docs/integrations/better-auth); the last two are the ones this adapter builds.
+The first four are described in [Better Auth](/docs/integrations/better-auth); the last three are the ones this adapter builds.
 
 Each template exports its own namespace constant beside the component, so the caller cannot drift from the messages it renders:
 
@@ -62,7 +63,13 @@ An e-mail is rendered on the Worker, outside React context, so there is no `Intl
 ```ts
 const messages = await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })
 const failure = await sendEmail({
-  react: createElement(OrderShipped, { accountCta, details, locale, messages, orderId: orderRow.id }),
+  react: createElement(OrderShipped, {
+    accountCta,
+    details,
+    locale,
+    messages,
+    orderNumber: orderRow.orderNumber,
+  }),
   subject: createTranslator({ locale, messages })("subject"),
   to: orderRow.email,
 })
@@ -100,7 +107,9 @@ The locale comes from the order rather than from the current request, so a custo
 Neither order e-mail blocks its caller. `ship-order.ts` schedules it:
 
 ```ts
-recordOrderShippedAudit(orderId)
+recordOrderShippedAudit(orderId, {
+  detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+})
 scheduleBackgroundWork(notifyOrderShipped(orderId))
 
 return { ok: true, orderId }
@@ -114,7 +123,7 @@ Sends are recorded, not just logged. `recordOrderEmailOutcome({ failure, label, 
 
 ## Previewing templates
 
-`email-previews.tsx` declares one entry per template:
+`email-previews.tsx` declares one entry per template except `newsletter-confirmation`:
 
 ```ts
 export const EMAIL_PREVIEWS = {
@@ -138,7 +147,7 @@ bun run dev
 # http://localhost:3000/dev/emails?template=order-confirmation&locale=pl-PL&format=text
 ```
 
-With no `template` parameter it renders an index linking every template in both locales, in HTML and in plain text. The handler returns 404 unless `import.meta.env.DEV`, so the route is inert in preview and production. Nothing is sent — this is a renderer, not a test send.
+With no `template` parameter it renders an index linking every previewed template in both locales, in HTML and in plain text. The handler returns 404 unless `import.meta.env.DEV`, so the route is inert in preview and production. Nothing is sent — this is a renderer, not a test send.
 
 ## Changing a template
 

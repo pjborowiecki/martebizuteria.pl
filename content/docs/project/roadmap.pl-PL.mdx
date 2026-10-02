@@ -11,33 +11,6 @@ Czytaj ją razem z [O projekcie](/docs/project/about), które rysuje tę samą g
 
 Te rzeczy zmieniają to, co widzą klienci i właściciel sklepu. Są pierwsze, bo sklep działa na produkcji.
 
-### Nic nigdy nie zapisuje `order.status = 'completed'`
-
-Wyliczenie `order.status` to `["pending", "processing", "completed", "cancelled", "refunded"]` (`src/modules/order/order.schema.ts`), a `fulfillOrder` przenosi `pending` w `processing`. Żadna ścieżka kodu nie zapisuje `completed`.
-
-Każdy wskaźnik przychodu w panelu filtruje dokładnie po tej wartości:
-
-| Wskaźnik                                                         | Gdzie                                                      |
-| ---------------------------------------------------------------- | ---------------------------------------------------------- |
-| Przychód na pulpicie, wykres przychodu w czasie                  | `src/modules/admin-dashboard/admin-dashboard.accessors.ts` |
-| Kafelki statystyk zamówień                                       | `src/modules/order/order.accessors.ts`, trzy zapytania     |
-| Wartość klienta, średnia wartość zamówienia, najlepsze kategorie | `src/modules/user/user.accessors.ts`, sześć zapytań        |
-
-Każdy z nich liczy więc na pustym zbiorze. Naprawą jest dodanie przejścia statusu — najnaturalniej w momencie, gdy `fulfillmentStatus` osiągnie `delivered` — oraz migracja uzupełniająca dla zamówień już wysłanych. Do tego czasu traktuj każdą liczbę przychodu w panelu jako zero wynikające z konstrukcji, a nie jako dane.
-
-### `fulfillmentStatus: 'delivered'` nie ma ścieżki zapisu
-
-`shipOrder` (`src/modules/order/use-cases/ship-order.ts`) zapisuje `shipped` i `shippedAt` oraz wysyła e-mail o wysyłce. Nic nie zapisuje `delivered`, mimo że:
-
-- `ORDER_TABS` w `src/modules/order/order.constants.ts` zawiera zakładkę `delivered`, która jest zatem zawsze pusta
-- `src/modules/order/order.accessors.ts` buduje dla niej filtr `eq(order.fulfillmentStatus, "delivered")`
-- `src/modules/customer-account/customer-account.utils.ts` potrafi wyemitować zdarzenie `delivered` na osi czasu, którego klient nigdy nie zobaczy
-- kolumna `order.deliveredAt` jest zadeklarowana i nigdy nie ustawiana
-
-### Numery przesyłek są renderowane, ale nigdy nie zapisywane
-
-`order.trackingNumber` i `order.trackingUrl` istnieją w tabeli, są pobierane w `src/modules/order/order.accessors.ts`, mapowane na szczegóły zamówienia klienta w `src/modules/customer-account/customer-account.utils.ts` i renderowane przez `TrackingNumberRow` w `src/routes/account.orders.$id.tsx` — który na stałe pokazuje stan „brak numeru przesyłki”, bo żaden kod nie zapisuje tych kolumn. Punkt naturalnie łączy się z pracami nad InPostem poniżej.
-
 ### Kompensacja stanów magazynowych działa „najlepszym staraniem”
 
 `reserveInventoryForItems` w `src/modules/inventory/inventory.utils.ts` rezerwuje wszystkie pozycje koszyka współbieżnie, warunkowym `UPDATE`, a jeśli któraś pozycja nie przejdzie swojego warunku, zwalnia te, które się udały:
@@ -70,14 +43,13 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 ### Brak pracy zaplanowanej
 
-`wrangler.jsonc` nie deklaruje `crons`, a `src/server.ts` nie eksportuje handlera `scheduled`. Potrzebują go cztery rzeczy:
+`wrangler.jsonc` nie deklaruje `crons`, a `src/server.ts` nie eksportuje handlera `scheduled`. Potrzebują go trzy rzeczy:
 
 | Zadanie                              | Dlaczego                                                                                                                                                                      |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Uzgadnianie rezerwacji               | przestarzałe rezerwacje zwalniane są tylko wtedy, gdy Stripe wyemituje `checkout.session.expired`; rezerwacja osierocona przez nieudaną kompensację nigdy nie wraca do obiegu |
 | Wygasanie `session` i `verification` | nic nie usuwa wygasłych wierszy                                                                                                                                               |
 | Wygasanie `rate_limit`               | liczniki odkładają wiersze bez końca                                                                                                                                          |
-| Zamykanie zamówień                   | jeśli zamknięcie ma być oparte na czasie, a nie na zdarzeniu, potrzebuje przebiegu planowanego                                                                                |
 
 ### Brak kolejki martwych listów
 
@@ -89,47 +61,45 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 ### Zadeklarowane, ale nieużywane
 
-| Element                | Stan                                                                                                                                                                                                                                                             |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Przestrzeń KV `CACHE`  | powiązana we wszystkich trzech środowiskach w `wrangler.jsonc`; żaden kod aplikacji jej nie używa                                                                                                                                                                |
-| Tabela `order_address` | zdefiniowana w `src/modules/order-address/order-address.schema.ts` i reeksportowana z `src/integrations/drizzle-orm/drizzle.schemas.ts`; żaden akcesor, przypadek użycia ani zapytanie jej nie dotyka. Z tych trzech ma to największe konsekwencje — patrz niżej |
-| Wtyczka `anonymous()`  | zarejestrowana w `src/integrations/better-auth/auth.server.ts`; żaden przepływ nie tworzy sesji anonimowej                                                                                                                                                       |
+| Element               | Stan                                                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Przestrzeń KV `CACHE` | powiązana we wszystkich trzech środowiskach w `wrangler.jsonc`; żaden kod aplikacji jej nie używa          |
+| Wtyczka `anonymous()` | zarejestrowana w `src/integrations/better-auth/auth.server.ts`; żaden przepływ nie tworzy sesji anonimowej |
 
 Każdy z nich czeka na decyzję: użyć albo usunąć, żeby następny czytający nie zakładał, że coś jest nośne.
 
-`order_address` zasługuje na osobną uwagę, bo jej nieużywanie ma widoczne konsekwencje. Zamówienie nie ma własnych kolumn adresowych; dochodzi do adresu przez `order.checkout_id` → `checkout.shipping_address_id` → wiersz `address` klienta. Ten wiersz można edytować i usuwać z `/account/addresses`, a klucz obcy jest zadeklarowany jako `onDelete: "set null"`. Klient, który edytuje adres, zmienia więc to, co historyczne zamówienie mówi o adresie dostawy, a klient, który adres usunie, odcina zamówienie od jakiegokolwiek adresu. `order_address` istnieje dokładnie po to, by być niezmiennym zrzutem z momentu złożenia zamówienia, z polem `type` o wartości `shipping` lub `billing`. Zapisywanie jej podczas realizacji zamówienia jest naprawą.
+### Szczegóły zamówienia w panelu czytają bieżące adresy
 
-### Panel nie potrafi wykonać zwrotu płatności
+`order_address` jest już zapisywana i czytana po stronie klienta. `prepareFulfillCheckoutBatch` w `src/modules/checkout/checkout.utils.ts` wstawia zrzut `shipping` i zrzut `billing` w partii, która tworzy zamówienie, a `getCustomerOrder` w `src/modules/customer-account/use-cases/get-customer-order.ts` przedkłada je nad adresy wiersza `checkout`. Szczegóły zamówienia w panelu ich nie czytają. `getAdminOrderDetailRow` w `src/modules/order/order.accessors.ts` nadal dochodzi do adresu przez `order.checkout_id` → `checkout.shipping_address_id` → wiersz `address`, a gdy klient zdecydował się zapisać adres podczas zamówienia, ten wiersz należy do jego konta. Można go edytować i usuwać z `/account/addresses`, a klucz obcy jest zadeklarowany jako `onDelete: "set null"`. Klient, który edytuje zapisany adres, zmienia więc to, co `/admin/orders/$orderId` mówi o adresie dostawy zamówienia, a klient, który go usunie, zostawia tę stronę bez żadnego adresu. Naprawą jest czytanie tam zrzutu, tak jak robi to już strona zamówienia klienta.
 
-`orders-row-actions.tsx` udostępnia pozycję menu „Zwrot”, warunkowaną przez `canRefundAdminOrder`, a `handleRefund` w `use-orders-row-action-handlers.ts` po prostu nawiguje do `/admin/orders/$orderId`. Nie ma funkcji serwerowej zwrotu: `src/modules/order/use-cases/refund-order.ts` eksportuje zwykłą funkcję asynchroniczną, a jej jedynym wywołującym jest `handleChargeRefunded` w `src/integrations/stripe/stripe.webhooks.tsx`. Zwroty trzeba więc wykonywać w Stripe, a webhook je potem zapisuje. To projekt do obrony, ale pozycja menu sugeruje inaczej, a uprawnienie `order: ["refund"]` zadeklarowane w `auth.access.ts` nie jest nigdzie sprawdzane.
+### Uprawnienie `refund` nie jest nigdzie sprawdzane
+
+Panel wykonuje już zwroty płatności. Przycisk „Zwrot” na `/admin/orders/$orderId` wywołuje `refundAdminOrder` z `src/modules/order/use-cases/refund-admin-order.ts`, które prosi Stripe o pełny zwrot przez `stripe.refunds.create`, a webhook `charge.refunded` zapisuje go potem przez `handleChargeRefunded` w `src/integrations/stripe/stripe.webhooks.tsx`, dokładnie tak samo jak zwrot wykonany w Stripe. `refundAdminOrder` jest chronione przez `authorized({ order: ["update"] })`, więc uprawnienie `order: ["refund"]` zadeklarowane w `auth.access.ts` nadal nie jest nigdzie sprawdzane. Albo sprawdzaj je tam, albo je usuń.
 
 ## Priorytet 3 — funkcjonalności zaczęte
 
-Każda z nich ma już na miejscu część podstaw (tabelę i jej kolumny, funkcję integracji, prawdziwe akcje albo kompletny interfejs), co czyni je tańszymi, niż wyglądają.
+Każda z nich ma już na miejscu część podstaw (funkcję integracji albo kompletny interfejs), co czyni je tańszymi, niż wyglądają.
 
-| Funkcjonalność                          | Co istnieje                                                                                                               | Czego brakuje                                                                                                                          |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Rabaty i kody promocyjne                | tabela `discount`; kolumna `discount_id` w `cart`, `checkout` i `order`; interfejs `/admin/coupons` na danych zastępczych | każda ścieżka kodu. Nic nie czyta ani nie zapisuje tych kolumn                                                                         |
-| Przesyłki InPost                        | `fetchPointsByCity` w `src/integrations/inpost/inpost.api.ts` — wyszukiwanie paczkomatów po mieście, minimum trzy znaki   | tworzenie przesyłek, generowanie etykiet, zapisywanie numerów śledzenia                                                                |
-| Szczegóły zamówienia w panelu           | prawdziwe akcje — realizacja, wysyłka, anulowanie, eksport, wydruk faktury                                                | karty osi czasu, notatek, tagów, danych do faktury i dostawy nadal czytają `src/data/order-detail.ts`; zwrot nawiguje, zamiast zwracać |
-| Treści, marketing i ustawienia w panelu | kompletny interfejs                                                                                                       | każde z nich czyta dane zastępcze z `src/data/`                                                                                        |
+| Funkcjonalność                  | Co istnieje                                                                                                             | Czego brakuje                                                           |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Przesyłki InPost                | `fetchPointsByCity` w `src/integrations/inpost/inpost.api.ts` — wyszukiwanie paczkomatów po mieście, minimum trzy znaki | tworzenie przesyłek, generowanie etykiet, zapisywanie numerów śledzenia |
+| Marketing i ustawienia w panelu | kompletny interfejs                                                                                                     | oba ekrany czytają dane zastępcze z `src/data/`                         |
 
-`src/data/` jest uczciwym znacznikiem całej tej kategorii: osiem plików z danymi zastępczymi, a każdy ekran importujący jeden z nich to ekran, który wygląda na skończony i nie jest. [Rabaty](/docs/features/discounts) i [Wysyłka i dostawa](/docs/features/shipping-and-delivery) opisują dwa największe.
+`src/data/` jest uczciwym znacznikiem całej tej kategorii: pięć plików z danymi zastępczymi, a każdy ekran importujący jeden z nich to ekran, który wygląda na skończony i nie jest. [Wysyłka i dostawa](/docs/features/shipping-and-delivery) opisuje prace nad InPostem.
 
 ## Priorytet 4 — testy
 
-Istnieje 873 plików testowych: 322 jednostkowe, 30 integracyjnych, 511 komponentowych. Naprawy wymaga rozkład, nie liczba.
+Istnieje 889 plików testowych: 339 jednostkowych, 35 integracyjnych, 515 komponentowych. Naprawy wymaga rozkład, nie liczba.
 
 - **Brak testów end-to-end i przeglądarkowych.** `vite.config.ts` już wyklucza katalog `e2e` i cache `playwright/`, które nie istnieją, więc intencja była. Dla procesu zamówienia to najistotniejsza luka.
-- **Proporcje są odwrotne do ryzyka.** Testy komponentowe głównie sprawdzają render; poprawność handlowa mieszka w procesie zamówienia, kompensacji stanów magazynowych i zwrotach, które pokrywa 30 zestawów integracyjnych. Więcej pokrycia integracyjnego na ścieżkach pieniędzy jest warte więcej niż więcej testów komponentowych.
+- **Proporcje są odwrotne do ryzyka.** Testy komponentowe głównie sprawdzają render; poprawność handlowa mieszka w procesie zamówienia, kompensacji stanów magazynowych i zwrotach, które pokrywa 35 zestawów integracyjnych. Więcej pokrycia integracyjnego na ścieżkach pieniędzy jest warte więcej niż więcej testów komponentowych.
 - **Zestawy integracyjne działają na `node:sqlite`.** Transport w `src/platform/testing/mocks/d1.ts` odwzorowuje atomowość partii w D1, ale nie jego limit parametrów, więc wyniki dotyczące współbieżności są zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
 - **Zapadka pokrycia czeka na przekręcenie.** Progi stoją na 72 instrukcjach, 71 liniach, 68 funkcjach i 69 rozgałęzieniach, z `autoUpdate: false`. To podłoga do podnoszenia, nie osiągnięty cel.
 
 ## Priorytet 5 — porządki
 
-- **`README.md` rozjechał się z kodem.** Cztery konkrety: opisuje pomocnik `assertAdmin()`, który już nie istnieje, bo autoryzacja przeniosła się do middleware `authorized(permission)` i macierzy ról w `src/integrations/better-auth/auth.access.ts`; nazywa tę macierz martwą, choć `hasPermission` sprawdza ją dziś przy każdym chronionym wywołaniu; podaje 236 testów i 8,6% pokrycia, czyli stan z czasów przed obecnym zestawem 873 plików; i wymienia jako otwarte dwie luki, które są zamknięte — `getCurrentSession` usuwa dziś `session.token` przez `toClientSession` w `src/integrations/better-auth/auth.session.ts`, a `shipOrder` faktycznie zapisuje `fulfillmentStatus: "shipped"` i `shippedAt`. Te strony dokumentacji są aktualne; README jest następne.
 - **Dzielenie parametrów dla D1 jest niespójne.** `src/modules/product-attribute/product-attribute.server.ts` ustawia `RANK_UPDATE_CHUNK_SIZE = 30` i iteruje; `setProductRanks` w `src/modules/product/product.mutations.ts` buduje jeden `UPDATE` z generowanym `case … when` nad `inArray`, wiążąc dwa parametry na wiersz plus listę identyfikatorów, i nie dzieli na partie. Ścieżki zmiany kolejności kategorii i kolekcji idą wzorem produktów. Przy obecnej wielkości katalogu jest to w porządku i w porządku nie zostanie.
-- **Historia gita nie odpowiada kodowi.** 43 commity, część dotyka ponad dwóch tysięcy plików. Retroaktywnie nie ma tu czego naprawiać, ale warto tego nie powtarzać — zobacz [Współtworzenie](/docs/project/contributing).
+- **Historia gita nie odpowiada kodowi.** Część commitów dotyka ponad dwóch tysięcy plików. Retroaktywnie nie ma tu czego naprawiać, ale warto tego nie powtarzać — zobacz [Współtworzenie](/docs/project/contributing).
 
 ## Jak utrzymać tę stronę w uczciwości
 

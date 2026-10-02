@@ -9,40 +9,35 @@ Każda strona wskazuje konkretne pliki: trasę w `src/routes`, use case'y w `src
 
 ## Działające
 
-| Obszar       | Strony                                                                                                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Witryna      | [Strona główna](/docs/features/landing-page), [Katalog i wyszukiwanie](/docs/features/catalog-and-search), [Karta produktu](/docs/features/product-page)                  |
-| Zakup        | [Koszyk](/docs/features/cart), [Kasa](/docs/features/checkout), [Płatności](/docs/features/payments), [Wysyłka i dostawa](/docs/features/shipping-and-delivery)           |
-| Realizacja   | [Zamówienia](/docs/features/orders), [Stany magazynowe](/docs/features/inventory)                                                                                         |
-| Klienci      | [Konto](/docs/features/account)                                                                                                                                           |
-| Panel admina | [Pulpit](/docs/features/admin-dashboard), [Katalog](/docs/features/admin-catalog), [Klienci](/docs/features/admin-customers), [Dziennik audytu](/docs/features/audit-log) |
-| Platforma    | [E-maile transakcyjne](/docs/features/email), [Internacjonalizacja](/docs/features/internationalization), [Strony prawne](/docs/features/legal-pages)                     |
+| Obszar       | Strony                                                                                                                                                                                              |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Witryna      | [Strona główna](/docs/features/landing-page), [Katalog i wyszukiwanie](/docs/features/catalog-and-search), [Karta produktu](/docs/features/product-page)                                            |
+| Zakup        | [Koszyk](/docs/features/cart), [Kasa](/docs/features/checkout), [Płatności](/docs/features/payments), [Wysyłka i dostawa](/docs/features/shipping-and-delivery), [Rabaty](/docs/features/discounts) |
+| Realizacja   | [Zamówienia](/docs/features/orders), [Stany magazynowe](/docs/features/inventory)                                                                                                                   |
+| Klienci      | [Konto](/docs/features/account)                                                                                                                                                                     |
+| Panel admina | [Pulpit](/docs/features/admin-dashboard), [Katalog](/docs/features/admin-catalog), [Klienci](/docs/features/admin-customers), [Dziennik audytu](/docs/features/audit-log)                           |
+| Platforma    | [E-maile transakcyjne](/docs/features/email), [Internacjonalizacja](/docs/features/internationalization), [Strony prawne](/docs/features/legal-pages)                                               |
 
 ## Makiety
 
 Te trasy istnieją, renderują się w całości i są objęte testami komponentów, ale ich wiersze pochodzą z `src/data`:
 
-| Trasa                    | Moduł danych               | Opisana w                                       |
-| ------------------------ | -------------------------- | ----------------------------------------------- |
-| `/admin/coupons`         | `src/data/coupons.ts`      | [Rabaty](/docs/features/discounts)              |
-| `/admin/orders/$orderId` | `src/data/order-detail.ts` | [Zamówienia](/docs/features/orders)             |
-| `/admin/marketing`       | `src/data/marketing.ts`    | [Pulpit admina](/docs/features/admin-dashboard) |
-| `/admin/settings`        | `src/data/settings.ts`     | [Pulpit admina](/docs/features/admin-dashboard) |
+| Trasa              | Moduł danych            | Opisana w                                       |
+| ------------------ | ----------------------- | ----------------------------------------------- |
+| `/admin/marketing` | `src/data/marketing.ts` | [Pulpit admina](/docs/features/admin-dashboard) |
+| `/admin/settings`  | `src/data/settings.ts`  | [Pulpit admina](/docs/features/admin-dashboard) |
 
 ## Placeholdery
 
 - `/terms-of-service` renderuje tytuł, jeden akapit i odnośnik do strony głównej z `messages/{locale}/pages.terms-of-service.json`. Dwa prawdziwe dokumenty prawne to edytowalne wiersze w D1. Zobacz [Strony prawne](/docs/features/legal-pages).
-- Formularz newslettera w `newsletter-section.tsx` to `Input` i `type="button"` bez żadnej obsługi zdarzenia. Zobacz [Strona główna](/docs/features/landing-page).
 
 ## Schemat bez zachowania
 
 Część tabel jest zadeklarowana w `src/modules/*/`, wyeksportowana z `src/integrations/drizzle-orm/drizzle.schemas.ts` i tworzona przez migracje, ale nic ich jeszcze nie czyta ani nie zapisuje:
 
-| Tabela              | Moduł                                       | Dlaczego nieużywana                                                                                        |
-| ------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `discount`          | `src/modules/discount`                      | Żaden kod się do niej nie odwołuje. Zobacz [Rabaty](/docs/features/discounts).                             |
-| `cart`, `cart_item` | `src/modules/cart`, `src/modules/cart-item` | Koszyk żyje w przeglądarce. Zobacz [Koszyk](/docs/features/cart).                                          |
-| `order_address`     | `src/modules/order-address`                 | Adresy zamówienia odczytywane są przez `checkout` → `address`. Zobacz [Zamówienia](/docs/features/orders). |
+| Tabela              | Moduł                                       | Dlaczego nieużywana                                               |
+| ------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
+| `cart`, `cart_item` | `src/modules/cart`, `src/modules/cart-item` | Koszyk żyje w przeglądarce. Zobacz [Koszyk](/docs/features/cart). |
 
 ## Jak czytać stronę funkcji
 

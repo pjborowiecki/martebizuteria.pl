@@ -3,24 +3,25 @@ title: "Modules and use cases"
 description: "How a feature module is laid out, what each file suffix means, and the shape every use case follows."
 ---
 
-## The 36 modules
+## The 39 modules
 
 ```text
-_core                   address                 admin-dashboard
-account                 attribute-on-product    audit-log
+_core                   account                 address
+admin-dashboard         attribute-on-product    audit-log
 cart                    cart-item               category-on-product
-checkout                collection-on-product   courier
-customer-account        customer-activity       delivery-method
-discount                inventory               option-on-variant
-order                   order-address           order-item
-payment                 product                 product-attribute
-product-category        product-collection      product-image
-product-option          product-option-value    product-variant
-rate-limit              session                 storefront-search
-two-factor              user                    verification
+checkout                collection-on-product   content-page
+courier                 customer-account        customer-activity
+delivery-method         discount                inventory
+newsletter              option-on-variant       order
+order-address           order-item              payment
+product                 product-attribute       product-category
+product-collection      product-image           product-option
+product-option-value    product-variant         rate-limit
+session                 storefront-search       two-factor
+user                    verification            wishlist
 ```
 
-31 of them export a Drizzle table, and `src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports all 31 so that the Drizzle client, the Better Auth adapter and `drizzle-kit` see one schema registry. `admin-dashboard`, `customer-account`, `customer-activity` and `storefront-search` are read models over other modules' tables and have no schema of their own; `_core` is the shared kernel.
+34 of them export Drizzle tables, 36 in all, and `src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports every one so that the Drizzle client, the Better Auth adapter and `drizzle-kit` see one schema registry. `storefront-search` declares the FTS5 virtual table `storefront_search`, which a hand-written migration creates and which stays out of that registry. `admin-dashboard`, `customer-account` and `customer-activity` are read models over other modules' tables and have no schema of their own; `_core` is the shared kernel.
 
 ## File suffixes
 
@@ -35,22 +36,39 @@ two-factor              user                    verification
 | `<feature>.*.server.ts`    | Server-only helpers that are not RPC endpoints                             |
 | `use-cases/<verb-noun>.ts` | One `createServerFn` plus the query or mutation options that call it       |
 
-`order` is a good module to read end to end: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.display.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.settled.server.ts`, `order.audit.utils.ts`, `order.admin-list-filters.ts` and nine files under `use-cases/`.
+`order` is a good module to read end to end: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` and thirteen files under `use-cases/`.
 
 ## A mutation use case
 
 ```ts
+const trimmedOrNull = (value: string | undefined) => {
+  const trimmed = value?.trim()
+
+  return trimmed === undefined || trimmed === "" ? sql`null` : trimmed
+}
+
 export const shipOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
-  .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
-  .handler(async ({ data: { orderId } }) => {
+  .validator((input: zod.input<typeof orderZodSchemas.adminShipOrderInput>) => orderZodSchemas.adminShipOrderInput.parse(input))
+  .handler(async ({ data: { orderId, trackingNumber, trackingUrl } }) => {
     assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
       canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
     )
 
-    await db.update(order).set({ fulfillmentStatus: "shipped", shippedAt: new Date(), updatedAt: new Date() }).where(eq(order.id, orderId))
+    await db
+      .update(order)
+      .set({
+        fulfillmentStatus: "shipped",
+        shippedAt: new Date(),
+        trackingNumber: trimmedOrNull(trackingNumber),
+        trackingUrl: trimmedOrNull(trackingUrl),
+        updatedAt: new Date(),
+      })
+      .where(eq(order.id, orderId))
 
-    recordOrderShippedAudit(orderId)
+    recordOrderShippedAudit(orderId, {
+      detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+    })
     scheduleBackgroundWork(notifyOrderShipped(orderId))
 
     return { ok: true, orderId }
@@ -128,7 +146,7 @@ Preserve the tuple values when you move code. The same constants are used by loa
 
 ## Server functions without an RPC boundary
 
-Not every operation is a server function. `createCheckout`, `fulfillCheckout` and `releaseCheckout` in `src/modules/checkout/use-cases/*.server.ts` are plain async functions: they are only ever called from the Stripe webhook handler, which is already authenticated by signature verification, so exposing them as endpoints would only widen the surface.
+Not every operation is a server function. The four files in `src/modules/checkout/use-cases/*.server.ts` export plain async functions. `fulfillCheckout` and `releaseCheckout` are only ever called from the Stripe webhook handler, which is already authenticated by signature verification. `createCheckout` and `updateCheckoutDelivery` are called from `src/integrations/stripe/stripe.actions.server.ts`, behind the rate-limited `createCheckoutSessionFn` and `updateCheckoutSessionFn`. Exposing any of them as its own endpoint would only widen the surface.
 
 ## Calling a use case from a component
 

@@ -9,42 +9,43 @@ Dziennik audytu to historia zdarzeń sklepu, która pełni jednocześnie rolę m
 
 `audit_log` (`src/modules/audit-log/audit-log.schema.ts`):
 
-| Kolumna       | Uwagi                                                                    |
-| ------------- | ------------------------------------------------------------------------ |
-| `id`          | klucz główny; UUIDv7, więc sam identyfikator sortuje się chronologicznie |
-| `created_at`  | `timestampNow("created_at")`                                             |
-| `action`      | not null; jedna z `AUDIT_LOG_ACTION`                                     |
-| `category`    | enum `orders \| email \| customers \| catalog \| settings \| auth`       |
-| `severity`    | enum `info \| success \| warning \| error`                               |
-| `actor_role`  | enum `admin \| customer \| system \| unknown`                            |
-| `actor_id`    | nullowalna                                                               |
-| `actor_name`  | not null                                                                 |
-| `target`      | not null; czytelny dla człowieka podmiot zdarzenia                       |
-| `resource_id` | nullowalna; identyfikator maszynowy, domyślnie równy `target`            |
-| `detail`      | nullowalny tekst swobodny                                                |
-| `metadata`    | nullowalny napis JSON                                                    |
-| `ip`          | nullowalna                                                               |
+| Kolumna       | Uwagi                                                                         |
+| ------------- | ----------------------------------------------------------------------------- |
+| `id`          | klucz główny; UUIDv7, więc sam identyfikator sortuje się chronologicznie      |
+| `created_at`  | `timestampNow("created_at")`                                                  |
+| `action`      | not null; jedna z `AUDIT_LOG_ACTION`                                          |
+| `category`    | enum `orders \| email \| customers \| catalog \| content \| settings \| auth` |
+| `severity`    | enum `info \| success \| warning \| error`                                    |
+| `actor_role`  | enum `admin \| customer \| system \| unknown`                                 |
+| `actor_id`    | nullowalna                                                                    |
+| `actor_name`  | not null                                                                      |
+| `target`      | not null; czytelny dla człowieka podmiot zdarzenia                            |
+| `resource_id` | nullowalna; identyfikator maszynowy, domyślnie równy `target`                 |
+| `detail`      | nullowalny tekst swobodny                                                     |
+| `metadata`    | nullowalny napis JSON                                                         |
+| `ip`          | nullowalna                                                                    |
 
 Pięć indeksów: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` oraz złożony `audit_log_resource_idx` na (`category`, `resource_id`) — właśnie on sprawia, że pytanie „co się stało z tym zamówieniem” jest tanie.
 
-## 33 akcje
+## 38 akcji
 
 `AUDIT_LOG_ACTION` w `audit-log.constants.ts`:
 
-| Kategoria   | Akcje                                                                                                                                                                                                                         |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`                                                                              |
-| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_initiated`, `order.released`, `order.dispute_opened`, `order.dispute_closed` |
-| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                              |
-| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`                                                                                                                          |
-| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                |
-| `settings`  | `settings.updated`                                                                                                                                                                                                            |
+| Kategoria   | Akcje                                                                                                                                                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`                                                                                                   |
+| `content`   | `content_page.updated`                                                                                                                                                                                                                             |
+| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_initiated`, `order.released`, `order.dispute_opened`, `order.dispute_closed`, `discount.redeemed` |
+| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                                                   |
+| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`                                                                                                                                               |
+| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                                     |
+| `settings`  | `settings.updated`, `discount.created/updated/deleted`                                                                                                                                                                                             |
 
 `email.deferred` i `settings.updated` są zadeklarowane, ale nic ich nie emituje.
 
 ## Zapis zdarzenia
 
-Nigdy nie zapisuj do `audit_log` bezpośrednio. `audit-log.events.server.ts` eksportuje nazwany rejestrator na każdą akcję: 32 eksportowane funkcje `record*`, czyli 31 rejestratorów akcji plus wrapper `recordOrderEmailOutcome`. Każdy rejestrator uzupełnia akcję, kategorię i poziom ważności, a następnie deleguje do jednego z trzech schedulerów w `audit-log.record.server.ts`:
+Nigdy nie zapisuj do `audit_log` bezpośrednio. `audit-log.events.server.ts` eksportuje nazwany rejestrator na każdą akcję: 37 eksportowanych funkcji `record*`, czyli 36 rejestratorów akcji plus wrapper `recordOrderEmailOutcome`. Każdy rejestrator uzupełnia akcję, kategorię i poziom ważności, a następnie deleguje do jednego z trzech schedulerów w `audit-log.record.server.ts`:
 
 | Scheduler                     | Rozwiązywanie aktora                                                                                        |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |

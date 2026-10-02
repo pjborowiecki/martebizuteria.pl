@@ -14,12 +14,13 @@ Schemat parametrów toleruje śmieci:
 
 ```ts
 const checkoutSearchSchema = z.object({
+  session_id: z.string().trim().max(STRIPE_SESSION_ID_MAX_LENGTH).optional(),
   step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
   success: z.preprocess(coerceSuccess, z.boolean().optional()),
 })
 ```
 
-`coerceStep` zwraca `DEFAULT_STEP` (1) dla wszystkiego, co nie jest liczbą całkowitą od 1 do 4; `coerceSuccess` przyjmuje `true` i napis `"true"`. Adres `/checkout?step=banana` ląduje więc na kroku 1, a nie w błędzie.
+`coerceStep` zwraca `DEFAULT_STEP` (1) dla wszystkiego, co nie jest liczbą całkowitą od 1 do 4; `coerceSuccess` przyjmuje `true` i napis `"true"`. Adres `/checkout?step=banana` ląduje więc na kroku 1, a nie w błędzie. `session_id` to identyfikator sesji Checkout, który Stripe wstawia do `return_url` sesji, ograniczony do `STRIPE_SESSION_ID_MAX_LENGTH` (255) znaków.
 
 Nie ma wymogu zalogowania. Zakup jako gość to ścieżka domyślna; zalogowaną sesję przechwytuje po stronie serwera `getRequestSession()` przy tworzeniu sesji Stripe.
 
@@ -108,15 +109,16 @@ Podkrok zależy od typu: `DeliveryCourier`, `DeliveryLocker` (z mapą InPost) al
 - `amountCents = cartTotal() + deliveryCost`, gdzie `deliveryCost` to `price` wybranej metody z `listDeliveryMethodsQuery()`.
 - Wylicza dwa odciski z `src/integrations/stripe/stripe.checkout.ts`: `buildCheckoutLinesFingerprint(items)` (posortowane pary `variantId:qty`) i `buildCheckoutValuesFingerprint(values)` (wartości formularza jako posortowany JSON).
 - `sessionMatches` jest prawdziwe, gdy kwota i oba odciski są równe tym z zapisanej sesji. Gdy nie są, `ensureCheckoutSession` albo tworzy sesję, albo aktualizuje istniejącą.
+- `amountCents` nie uwzględnia rabatu. Kod wpisany w `CheckoutSummary` to wartość formularza `discountCode`, więc jego zastosowanie lub usunięcie zmienia odcisk wartości i sesja jest aktualizowana. Zobacz [Rabaty](/docs/features/discounts).
 - Jeśli `isCheckoutComplete(getValues())` jest fałszywe, wywołuje `onEdit(CHECKOUT_STEP_ID.CONTACT)` i odsyła odwiedzającego na krok 1.
 - `inFlightRef` zapobiega równoległym wywołaniom sesji.
 - Przy błędzie pokazuje `PaymentError` i toast `t(getCheckoutErrorKey(error))`, który mapuje `INSUFFICIENT_INVENTORY`, `INVALID_PRICE`, `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND` i `UNKNOWN_ERROR` na klucze pod `errors.` (`src/integrations/stripe/stripe.errors.ts`).
 
 `PaymentElement` jest skonfigurowany w `PAYMENT_ELEMENT_OPTIONS`: układ akordeonowy, `billingDetails: "never"` (M'Arte sam zbiera adres), wyłączone portfele i Link oraz `paymentMethodOrder` ze `CHECKOUT_PAYMENT_METHOD_ORDER` — `["card", "blik", "p24"]`.
 
-Potwierdzenie wywołuje `confirmCheckoutSession`, które uruchamia `checkout.confirm({ billingAddress: buildCheckoutContact(values), redirect: "if_required" })`. Każdy błąd inny niż kod `paymentFailed` jest traktowany jako naprawialny: sesja jest resetowana, a odwiedzający proszony o ponowną próbę. Po sukcesie strona nawiguje do `?success=true`.
+Potwierdzenie wywołuje `confirmCheckoutSession`, które uruchamia `checkout.confirm({ billingAddress: buildCheckoutContact(values), redirect: "if_required" })`. Każdy błąd inny niż kod `paymentFailed` jest traktowany jako naprawialny: sesja jest resetowana, a odwiedzający proszony o ponowną próbę. Po sukcesie strona nawiguje do `?success=true`. Płatność, która opuszcza stronę na przekierowanie, wraca przez `return_url` sesji, który niesie też `session_id`.
 
-`CheckoutSuccess` czyści wtedy w jednym efekcie koszyk, kopię roboczą i flagę porzucenia.
+`CheckoutSuccess` czyści wtedy w jednym efekcie koszyk, kopię roboczą i flagę porzucenia. Z `session_id` wczytuje zamówienie przez `getOrderConfirmationQuery`; bez niego pokazuje ogólne potwierdzenie.
 
 ## Strona serwera
 
@@ -126,15 +128,16 @@ Potwierdzenie wywołuje `confirmCheckoutSession`, które uruchamia `checkout.con
 
 1. `validateAndCalculateItems(data.items)` — wczytuje produkty po handle razem ze stanem, a potem dla każdej linii rozwiązuje wariant i rzuca `AppError` z kodem z `CHECKOUT_ERROR_CODES`, gdy brak produktu albo wariantu, gdy cena nie przechodzi `isSellPriceCentsValid` albo gdy `inventory.quantityAvailable < qty`. **Od tego momentu używana jest cena `variant.price` z bazy, a nie z koszyka.**
 2. `resolveShippingCost(deliveryMethod)` — `getActiveDeliveryMethodByIdQuery(id)?.price ?? 0`.
-3. `reserveInventoryForItems(validatedItems)` — rezerwacja optymistyczna, zobacz [Stany magazynowe](/docs/features/inventory).
-4. `createCheckout(...)` — wstawia wiersze `address` i wiersz `checkout` w jednym wsadzie D1.
-5. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, pozycje sesji plus linia `"Shipping"`, gdy koszt jest większy od zera, oraz metadane z `checkoutId`, `locale`, `userId` i pociętą listą pozycji.
-6. `createPendingPayment(...)` — wiersz `payment` ze `status: "pending"` i `transaction_id` równym identyfikatorowi sesji Stripe.
-7. `scheduleProductCatalogInvalidation()`.
+3. `resolveCheckoutDiscount(...)` sprawdza `checkoutValues.discountCode` względem sumy cen z bazy i kosztu dostawy, a gdy kod nie obowiązuje, nic nie zwraca. Zobacz [Rabaty](/docs/features/discounts).
+4. `reserveInventoryForItems(validatedItems)` — rezerwacja optymistyczna, zobacz [Stany magazynowe](/docs/features/inventory).
+5. `createCheckout(...)` — wstawia wiersze `address` i wiersz `checkout`, z `discount_id` z kroku 3, w jednym wsadzie D1.
+6. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, pozycje sesji plus linia `"Shipping"`, gdy koszt jest większy od zera, metadane z `checkoutId`, `discountCode`, `discountTotal`, `locale`, `userId` i pociętą listą pozycji oraz, gdy rabat obowiązuje, jednorazowy kupon Stripe w `discounts`.
+7. `createPendingPayment(...)` — wiersz `payment` ze `status: "pending"` i `transaction_id` równym identyfikatorowi sesji Stripe.
+8. `scheduleProductCatalogInvalidation()`.
 
-Jeśli cokolwiek po kroku 3 rzuci wyjątek, `releaseInventoryForItems` zwraca rezerwację przed propagacją błędu.
+Jeśli cokolwiek po kroku 4 rzuci wyjątek, `releaseInventoryForItems` zwraca rezerwację przed propagacją błędu.
 
-`handleUpdateCheckoutSession` dodatkowo weryfikuje własność (`context.userId` musi zgadzać się z bieżącą sesją, gdy checkout należy do użytkownika), odczytuje zarezerwowane linie starej sesji z jej metadanych, wymienia rezerwację przez `swapCheckoutInventory` (zwalniając stare linie, walidując i rezerwując nowe, a przy porażce przywracając stare), aktualizuje wiersz checkoutu, tworzy nową sesję Stripe, przekierowuje wiersz `payment` na nowy identyfikator sesji przez `repointPayment` i wygasza starą sesję.
+`handleUpdateCheckoutSession` dodatkowo weryfikuje własność (`context.userId` musi zgadzać się z bieżącą sesją, gdy checkout należy do użytkownika), odczytuje zarezerwowane linie starej sesji z jej metadanych, wymienia rezerwację przez `swapCheckoutInventory` (zwalniając stare linie, walidując i rezerwując nowe, a przy porażce przywracając stare), ponownie ustala koszt dostawy i rabat, aktualizuje wiersz checkoutu razem z `discount_id`, tworzy nową sesję Stripe, przekierowuje wiersz `payment` na nowy identyfikator sesji przez `repointPayment` i wygasza starą sesję.
 
 ## Cięcie metadanych
 
@@ -158,6 +161,8 @@ Pojedynczy klucz `items` jest wciąż czytany dla sesji utworzonych przed wprowa
 `checkout` (`src/modules/checkout/checkout.schema.ts`) trzyma `email`, `customer_note`, `locker_id`, `delivery_method_id`, `shipping_address_id`, `billing_address_id`, `cart_id`, `discount_id`, `user_id` oraz `status` o wartościach `pending | processing | completed | failed | abandoned`. W praktyce kod używa `pending`, `completed` (zrealizowane) i `failed` (zwolnione); `processing` i `abandoned` nigdy nie są zapisywane.
 
 Gdy `sameAsShipping` jest prawdziwe, `prepareCreateCheckoutBatch` wskazuje oba identyfikatory adresu na **ten sam** wiersz `address`, zamiast go duplikować.
+
+`discount_id` wskazuje kod, który `resolveCheckoutDiscount` zaakceptował na serwerze. `prepareCreateCheckoutBatch` go zapisuje, a `prepareUpdateCheckoutDeliveryBatch` nadpisuje przy każdej aktualizacji sesji i ustawia na `NULL`, gdy żaden kod nie obowiązuje. Realizacja odczytuje go przez `getCheckoutForFulfillment`.
 
 `prepareUpdateCheckoutDeliveryBatch` korzysta z `INSERT … SELECT … ON CONFLICT DO UPDATE`, którego wierszem źródłowym jest checkout w stanie `pending` — upsert adresu po prostu nic nie robi, jeśli checkout nie jest już oczekujący. `updateCheckoutDelivery` sprawdza potem `returning()` ostatniej instrukcji i rzuca `ERROR_CODES.CONFLICT`, gdy żaden wiersz nie został zaktualizowany.
 

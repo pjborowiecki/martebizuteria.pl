@@ -1,6 +1,6 @@
 ---
 title: "Admin dashboard"
-description: "The /admin layout and guard, the overview snapshot built from one D1 batch, and the three tool screens that are disabled demos."
+description: "The /admin layout and guard, the overview snapshot built from one D1 batch, and the three tool screens disabled in the sidebar."
 ---
 
 ## Layout
@@ -26,7 +26,7 @@ useRealtimeQuerySync({
 })
 ```
 
-`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) lists twelve key prefixes — audit log page and stats, admin orders, admin customers, and the admin all/stats keys for categories, collections, products and product attributes. A mutation anywhere in the console refreshes every other open console tab.
+`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) lists fourteen key prefixes — audit log page and stats, admin orders, admin customers, the admin all/stats keys for categories, collections, products and product attributes, and the admin all/by-handle keys for content pages. A mutation anywhere in the console refreshes every other open console tab.
 
 The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` from the `sidebar_state` cookie (`src/presentation/theme/sidebar-preference.ts`), and an inline `SIDEBAR_INIT_SCRIPT` copies the `localStorage` value into that cookie before hydration so the sidebar does not flash.
 
@@ -43,7 +43,7 @@ The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` f
 | Tools  | Marketing and Coupons with `disabled: true`, and Content                                        |
 | System | Audit, Settings — Settings has `disabled: true`                                                 |
 
-A disabled item renders as a non-interactive `SidebarMenuButton disabled` with `cursor-not-allowed opacity-50`, so the three demo screens are not reachable from the UI at all — only by typing the URL.
+A disabled item renders as a non-interactive `SidebarMenuButton disabled` with `cursor-not-allowed opacity-50`, so the three disabled screens are not reachable from the UI at all — only by typing the URL.
 
 The sidebar footer's sign-out button calls `signOut` and then does a full page load of `/auth/sign-in`, which discards the query cache.
 
@@ -122,7 +122,7 @@ and the snapshot then drops rows with a null id:
 const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
 ```
 
-But `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) never writes `order_item.product_id` — it inserts only `orderId`, `quantity`, `subtotal`, `title`, `total`, `unitPrice` and `variantId`. Every order item therefore has `product_id = NULL`, every grouped row is filtered out, and **`DashboardTopProducts` renders its empty state no matter how much has been sold**. The same applies to `orderItem.thumbnail`, which the query reads with `max(...)`.
+But `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) never writes `order_item.product_id` — it inserts only `orderId`, `quantity`, `subtotal`, `thumbnail`, `title`, `total`, `unitPrice` and `variantId`. Every order item therefore has `product_id = NULL`, every grouped row is filtered out, and **`DashboardTopProducts` renders its empty state no matter how much has been sold**. Fulfilment does write `orderItem.thumbnail`, which the query reads with `max(...)`, but the row that would carry it is filtered out first.
 
 `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` is 4. `resolveTopProductName` and `resolveTopProductCategoryLabel` pick the locale out of the JSON title maps, falling back to the stored `order_item.title`.
 
@@ -135,12 +135,14 @@ But `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) nev
 | Route              | File                  | Components                                                                                | Data                                                                                              |
 | ------------------ | --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `/admin/marketing` | `admin.marketing.tsx` | `MarketingStats`, `MarketingEngagementChart`, `MarketingCampaignsTable`                   | `src/data/marketing.ts` (`MARKETING_STATS`, `ENGAGEMENT_DATA`, `CAMPAIGNS`)                       |
-| `/admin/coupons`   | `admin.coupons.tsx`   | `CouponStats`, `CouponListTable`                                                          | `src/data/coupons.ts` — see [Discounts](/docs/features/discounts)                                 |
+| `/admin/coupons`   | `admin.coupons.tsx`   | `CouponStats`, `CouponListTable` with `CouponFormDialog`                                  | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; see [Discounts](/docs/features/discounts)  |
 | `/admin/settings`  | `admin.settings.tsx`  | `SettingsPage` with `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`) |
 
-None of these routes has a loader, a query or a mutation. Their Export and Create buttons have no handlers. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only; the other tabs render `settings-placeholder.tsx`.
+Marketing and settings have no loader, query or mutation, and the marketing Export and Create buttons have no handlers. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only; the other tabs render `settings-placeholder.tsx`.
 
-`/admin/orders/$orderId` is a fourth demo screen. See [Orders](/docs/features/orders).
+Coupons is a working screen: its loader prefetches `getAdminDiscountsPageQuery({})` and `getDiscountStatsQuery()`, and `use-coupon-actions.ts` calls `createDiscount`, `updateDiscount` and `deleteDiscounts`. Only its sidebar entry still carries `disabled: true`.
+
+`/admin/orders/$orderId` is a working screen that loads one order through `getAdminOrder`. See [Orders](/docs/features/orders).
 
 Content is a working screen that edits the legal pages. See [Legal pages](/docs/features/legal-pages).
 

@@ -58,19 +58,20 @@ Because it compares only the shared length, a narrow publish (`["admin", "produc
 
 ## Subscriptions
 
-`ADMIN_REALTIME_QUERY_PREFIXES` has 12 entries: the audit log page and stats, admin orders, admin customers, and the `ALL`/`STATS` pair for categories, collections, products and product attributes. `STOREFRONT_REALTIME_QUERY_PREFIXES` has 10: the product keys (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), cart availability, and the category and collection `ALL`/`BY_HANDLE` pairs.
+`ADMIN_REALTIME_QUERY_PREFIXES` has 14 entries: the audit log page and stats, admin orders, admin customers, the `ALL`/`STATS` pair for categories, collections, products and product attributes, and the content page `ADMIN.ALL`/`ADMIN.BY_HANDLE` pair. `STOREFRONT_REALTIME_QUERY_PREFIXES` has 11: the product keys (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), cart availability, the category and collection `ALL`/`BY_HANDLE` pairs, and the content page `BY_HANDLE`.
 
 Both lists are built from the modules' own `*_QUERY_KEYS` constants and typed `as const satisfies readonly QueryKey[]`, so a renamed key is a type error rather than a silently dead subscription.
 
 ## Publishing
 
-`realtime-invalidation.catalog.server.ts` exposes the six publishers the domain layer calls, each naming the audiences it affects:
+`realtime-invalidation.catalog.server.ts` exposes the seven publishers the domain layer calls, each naming the audiences it affects:
 
 | Publisher                                     | Admin keys                                     | Storefront keys                                     |
 | --------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
 | `scheduleProductCatalogInvalidation`          | product `ADMIN.ALL`, `ADMIN.STATS`             | the five product keys plus cart availability        |
 | `scheduleCategoryCatalogInvalidation`         | category `ADMIN.ALL`, `ADMIN.STATS`            | category `ALL`, `BY_HANDLE`                         |
 | `scheduleCollectionCatalogInvalidation`       | collection `ADMIN.ALL`, `ADMIN.STATS`          | collection `ALL`, `BY_HANDLE`, product new arrivals |
+| `scheduleContentPageInvalidation`             | content page `ADMIN.ALL`, `ADMIN.BY_HANDLE`    | content page `BY_HANDLE`                            |
 | `scheduleProductAttributeCatalogInvalidation` | attribute `ADMIN.ALL`, `ADMIN.STATS`           | —                                                   |
 | `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                   |
 | `scheduleAdminOrdersInvalidation`             | order `ADMIN.ORDERS`                           | —                                                   |

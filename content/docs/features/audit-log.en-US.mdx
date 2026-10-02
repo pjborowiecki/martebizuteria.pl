@@ -9,42 +9,43 @@ The audit log is the shop's event history and doubles as its analytics store. It
 
 `audit_log` (`src/modules/audit-log/audit-log.schema.ts`):
 
-| Column        | Notes                                                              |
-| ------------- | ------------------------------------------------------------------ |
-| `id`          | Primary key; a UUIDv7, so the id itself sorts chronologically      |
-| `created_at`  | `timestampNow("created_at")`                                       |
-| `action`      | Not null; one of `AUDIT_LOG_ACTION`                                |
-| `category`    | Enum `orders \| email \| customers \| catalog \| settings \| auth` |
-| `severity`    | Enum `info \| success \| warning \| error`                         |
-| `actor_role`  | Enum `admin \| customer \| system \| unknown`                      |
-| `actor_id`    | Nullable                                                           |
-| `actor_name`  | Not null                                                           |
-| `target`      | Not null; the human-readable subject                               |
-| `resource_id` | Nullable; the machine id, defaulting to `target`                   |
-| `detail`      | Nullable free text                                                 |
-| `metadata`    | Nullable JSON string                                               |
-| `ip`          | Nullable                                                           |
+| Column        | Notes                                                                         |
+| ------------- | ----------------------------------------------------------------------------- |
+| `id`          | Primary key; a UUIDv7, so the id itself sorts chronologically                 |
+| `created_at`  | `timestampNow("created_at")`                                                  |
+| `action`      | Not null; one of `AUDIT_LOG_ACTION`                                           |
+| `category`    | Enum `orders \| email \| customers \| catalog \| content \| settings \| auth` |
+| `severity`    | Enum `info \| success \| warning \| error`                                    |
+| `actor_role`  | Enum `admin \| customer \| system \| unknown`                                 |
+| `actor_id`    | Nullable                                                                      |
+| `actor_name`  | Not null                                                                      |
+| `target`      | Not null; the human-readable subject                                          |
+| `resource_id` | Nullable; the machine id, defaulting to `target`                              |
+| `detail`      | Nullable free text                                                            |
+| `metadata`    | Nullable JSON string                                                          |
+| `ip`          | Nullable                                                                      |
 
 Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` and the composite `audit_log_resource_idx` on (`category`, `resource_id`) — which is what makes "everything that happened to this order" cheap.
 
-## The 33 actions
+## The 38 actions
 
 `AUDIT_LOG_ACTION` in `audit-log.constants.ts`:
 
-| Category    | Actions                                                                                                                                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`                                                                              |
-| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_initiated`, `order.released`, `order.dispute_opened`, `order.dispute_closed` |
-| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                              |
-| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`                                                                                                                          |
-| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                |
-| `settings`  | `settings.updated`                                                                                                                                                                                                            |
+| Category    | Actions                                                                                                                                                                                                                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`                                                                                                   |
+| `content`   | `content_page.updated`                                                                                                                                                                                                                             |
+| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_initiated`, `order.released`, `order.dispute_opened`, `order.dispute_closed`, `discount.redeemed` |
+| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                                                   |
+| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`                                                                                                                                               |
+| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                                     |
+| `settings`  | `settings.updated`, `discount.created/updated/deleted`                                                                                                                                                                                             |
 
 `email.deferred` and `settings.updated` are declared but nothing emits them.
 
 ## Writing an event
 
-Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 32 exported `record*` functions, which is 31 action recorders plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
+Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 37 exported `record*` functions, which is 36 action recorders plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
 
 | Scheduler                     | Actor resolution                                                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |

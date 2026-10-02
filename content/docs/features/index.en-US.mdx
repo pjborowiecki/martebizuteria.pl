@@ -9,40 +9,35 @@ Each page names the concrete files: the route in `src/routes`, the use cases in 
 
 ## Live
 
-| Area          | Pages                                                                                                                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Storefront    | [Landing page](/docs/features/landing-page), [Catalog and search](/docs/features/catalog-and-search), [Product page](/docs/features/product-page)                        |
-| Buying        | [Cart](/docs/features/cart), [Checkout](/docs/features/checkout), [Payments](/docs/features/payments), [Shipping and delivery](/docs/features/shipping-and-delivery)     |
-| Fulfilment    | [Orders](/docs/features/orders), [Inventory](/docs/features/inventory)                                                                                                   |
-| Customers     | [Account](/docs/features/account)                                                                                                                                        |
-| Admin console | [Dashboard](/docs/features/admin-dashboard), [Catalog](/docs/features/admin-catalog), [Customers](/docs/features/admin-customers), [Audit log](/docs/features/audit-log) |
-| Platform      | [Transactional email](/docs/features/email), [Internationalization](/docs/features/internationalization), [Legal pages](/docs/features/legal-pages)                      |
+| Area          | Pages                                                                                                                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storefront    | [Landing page](/docs/features/landing-page), [Catalog and search](/docs/features/catalog-and-search), [Product page](/docs/features/product-page)                                                           |
+| Buying        | [Cart](/docs/features/cart), [Checkout](/docs/features/checkout), [Payments](/docs/features/payments), [Shipping and delivery](/docs/features/shipping-and-delivery), [Discounts](/docs/features/discounts) |
+| Fulfilment    | [Orders](/docs/features/orders), [Inventory](/docs/features/inventory)                                                                                                                                      |
+| Customers     | [Account](/docs/features/account)                                                                                                                                                                           |
+| Admin console | [Dashboard](/docs/features/admin-dashboard), [Catalog](/docs/features/admin-catalog), [Customers](/docs/features/admin-customers), [Audit log](/docs/features/audit-log)                                    |
+| Platform      | [Transactional email](/docs/features/email), [Internationalization](/docs/features/internationalization), [Legal pages](/docs/features/legal-pages)                                                         |
 
 ## Demo screens
 
 These routes exist, render fully and are covered by component tests, but their rows come from `src/data`:
 
-| Route                    | Data module                | Described in                                      |
-| ------------------------ | -------------------------- | ------------------------------------------------- |
-| `/admin/coupons`         | `src/data/coupons.ts`      | [Discounts](/docs/features/discounts)             |
-| `/admin/orders/$orderId` | `src/data/order-detail.ts` | [Orders](/docs/features/orders)                   |
-| `/admin/marketing`       | `src/data/marketing.ts`    | [Admin dashboard](/docs/features/admin-dashboard) |
-| `/admin/settings`        | `src/data/settings.ts`     | [Admin dashboard](/docs/features/admin-dashboard) |
+| Route              | Data module             | Described in                                      |
+| ------------------ | ----------------------- | ------------------------------------------------- |
+| `/admin/marketing` | `src/data/marketing.ts` | [Admin dashboard](/docs/features/admin-dashboard) |
+| `/admin/settings`  | `src/data/settings.ts`  | [Admin dashboard](/docs/features/admin-dashboard) |
 
 ## Placeholders
 
 - `/terms-of-service` renders a title, one paragraph and a link home from `messages/{locale}/pages.terms-of-service.json`. The two real legal documents are editable rows in D1. See [Legal pages](/docs/features/legal-pages).
-- The newsletter form in `newsletter-section.tsx` is an `Input` and a `type="button"` with no handler. See [Landing page](/docs/features/landing-page).
 
 ## Schema without behaviour
 
 Some tables are declared in `src/modules/*/`, exported from `src/integrations/drizzle-orm/drizzle.schemas.ts` and created by the migrations, but nothing reads or writes them yet:
 
-| Table               | Module                                      | Why it is unused                                                                                   |
-| ------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `discount`          | `src/modules/discount`                      | No code references it. See [Discounts](/docs/features/discounts).                                  |
-| `cart`, `cart_item` | `src/modules/cart`, `src/modules/cart-item` | The basket lives in the browser. See [Cart](/docs/features/cart).                                  |
-| `order_address`     | `src/modules/order-address`                 | Order addresses are read back through `checkout` → `address`. See [Orders](/docs/features/orders). |
+| Table               | Module                                      | Why it is unused                                                  |
+| ------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
+| `cart`, `cart_item` | `src/modules/cart`, `src/modules/cart-item` | The basket lives in the browser. See [Cart](/docs/features/cart). |
 
 ## How to read a feature page
 

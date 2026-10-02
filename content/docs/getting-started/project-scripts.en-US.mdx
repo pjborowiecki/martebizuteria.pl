@@ -72,7 +72,7 @@ Bare aliases: `db:migrate` → preview, `db:studio` → development, `db:push` �
 
 The seed scripts run eleven `wrangler d1 execute … --remote` calls in sequence against the live database — couriers and delivery methods, then categories, collections, attributes, products, variants, inventory, images and the three junction tables. They are not synchronised with the live catalogue. Do not run them against a database that holds real data.
 
-Migrations are applied by `wrangler d1 migrations apply` in filename order. There are currently 57 `.sql` files in `migrations/`, while Drizzle's own `meta/_journal.json` lists 51 entries — the journal is no longer authoritative, and the filename order is what actually runs.
+Migrations are applied by `wrangler d1 migrations apply` in filename order. There are currently 66 `.sql` files in `migrations/`, while Drizzle's own `meta/_journal.json` lists 52 entries — the journal is no longer authoritative, and the filename order is what actually runs.
 
 ## Build, preview and deploy
 

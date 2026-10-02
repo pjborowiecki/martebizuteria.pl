@@ -1,6 +1,6 @@
 ---
 title: "Landing page"
-description: "The fifteen sections of /, the data they load, the GSAP scroll choreography and the parts that are still copy only."
+description: "The fifteen sections of /, the data they load, the GSAP scroll choreography and the newsletter sign-up."
 ---
 
 ## Route
@@ -117,19 +117,19 @@ So a new section joins the choreography by adding `reveal` to its outer element 
 
 Smooth scrolling itself is Lenis, mounted by `src/presentation/components/custom/smooth-scroll.tsx` and kept in step with the router by `src/hooks/use-lenis-router-scroll-sync.ts`.
 
-## Newsletter section is copy only
+## Newsletter section
 
-`newsletter-section.tsx` renders a shadcn `Input` and a `<button type="button">` with no `onClick`, no form element and no server function:
+`newsletter-section.tsx` renders a form. On submit it checks the address against `EMAIL_PATTERN` and calls the `subscribeToNewsletter` mutation from `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`:
 
 ```tsx
-<Input placeholder={t("placeholder")} aria-label={t("placeholder")} className="..." />
-<button type="button" className="...">
-  {t("cta")}
-  <ArrowRight className="size-4" />
-</button>
+subscribe.mutate({
+  email: candidate,
+  locale: isSupportedLocale(locale) ? locale : undefined,
+  source: NEWSLETTER_SOURCE.LANDING,
+})
 ```
 
-There is no newsletter table, no subscribe use case and no confirmation email. Submitting it does nothing. Wiring it up means adding a module (for example `src/modules/newsletter`) with a rate-limited `createServerFn`, a table, and a template under `src/presentation/emails`.
+The server function needs no session and is rate-limited with `withRateLimit("newsletter-subscribe", RATE_LIMITS.SENSITIVE)`. It saves the address in `newsletter_subscriber` as `pending` with a new token and queues `sendNewsletterConfirmation`, whose link opens `/newsletter/confirm`. An address that is already confirmed gets `alreadyConfirmed` only when it belongs to the signed-in visitor; anyone else sees the same success message as a new subscriber.
 
 ## Section anchors
 

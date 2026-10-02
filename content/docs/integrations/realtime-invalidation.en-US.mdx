@@ -15,10 +15,10 @@ It is deliberately _not_ a data channel. Nothing but query keys crosses the wire
 export const REALTIME_INVALIDATION_HUB = { ADMIN: "admin", STOREFRONT: "storefront" } as const
 ```
 
-| Hub          | Subscribed prefixes                                                                                                                                                                                       |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — the audit log page and stats, admin orders, admin customers, and the `ALL` and `STATS` keys of categories, collections, products and product attributes                 |
-| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY`, and category and collection `ALL` / `BY_HANDLE` |
+| Hub          | Subscribed prefixes                                                                                                                                                                                                                                |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — the audit log page and stats, admin orders, admin customers, the `ALL` and `STATS` keys of categories, collections, products and product attributes, and the content page `ADMIN.ALL` and `ADMIN.BY_HANDLE` keys |
+| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY`, category and collection `ALL` / `BY_HANDLE`, and content page `BY_HANDLE`                |
 
 Both are `as const satisfies readonly QueryKey[]`, so a renamed key constant is a type error rather than a silently dead subscription. The split matters for privacy as well as noise: the storefront hub never carries an `["admin", …]` prefix, so a customer's browser learns nothing about admin activity.
 
@@ -86,6 +86,7 @@ Server code almost never calls either of these directly. `realtime-invalidation.
 | `scheduleProductCatalogInvalidation()`          | product `ALL`, `STATS`             | product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY` |
 | `scheduleCategoryCatalogInvalidation()`         | category `ALL`, `STATS`            | category `ALL`, `BY_HANDLE`                                                                                       |
 | `scheduleCollectionCatalogInvalidation()`       | collection `ALL`, `STATS`          | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`                                                     |
+| `scheduleContentPageInvalidation()`             | content-page `ALL`, `BY_HANDLE`    | content-page `BY_HANDLE`                                                                                          |
 | `scheduleProductAttributeCatalogInvalidation()` | product-attribute `ALL`, `STATS`   | —                                                                                                                 |
 | `scheduleAdminCustomersInvalidation()`          | user `CUSTOMERS`, `CUSTOMERS_PAGE` | —                                                                                                                 |
 | `scheduleAdminOrdersInvalidation()`             | order `ORDERS`                     | —                                                                                                                 |
@@ -98,6 +99,7 @@ Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefron
 - **Checkout.** `stripe.actions.server.ts` calls `scheduleProductCatalogInvalidation()` when a session is created or updated, because reserving stock changes availability.
 - **Webhooks.** `stripe.webhooks.tsx` calls `scheduleAdminOrdersInvalidation()` and `scheduleProductCatalogInvalidation()` on fulfilment, release, refund and dispute.
 - **Identity.** `auth.server.ts` calls `scheduleAdminCustomersInvalidation()` from the `user` create, update and delete hooks.
+- **Content pages.** `update-content-page.ts` calls `scheduleContentPageInvalidation()` after a save.
 - **Audit.** `audit-log.queue.server.ts` and `delete-audit-logs.ts`.
 
 ## The Durable Object

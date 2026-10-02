@@ -74,7 +74,7 @@ export const authorized = (permission?: Permission) =>
     })
 ```
 
-W `src/modules` i `src/integrations` `authorized()` występuje 62 razy: 14 razy bez argumentu (wystarcza sesja), a pozostałe z uprawnieniem — `product: ["read"]` ×14, `product: ["update"]` ×9, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×5, `order: ["read"]` ×3, `order: ["update"]` ×3 oraz statementy administracyjne Better Auth `user: ["list" | "get" | "update" | "delete"]`.
+W `src/modules` i `src/integrations` `authorized()` występuje 83 razy: 21 razy bez argumentu (wystarcza sesja), a pozostałe z uprawnieniem — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×5, `order: ["read"]` ×6, `order: ["update"]` ×8, `content: ["read"]` ×2, `content: ["update"]` ×1 oraz statementy administracyjne Better Auth `user: ["list" | "get" | "update" | "delete"]`.
 
 ## Role i uprawnienia
 

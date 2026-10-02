@@ -14,12 +14,13 @@ The search schema tolerates junk:
 
 ```ts
 const checkoutSearchSchema = z.object({
+  session_id: z.string().trim().max(STRIPE_SESSION_ID_MAX_LENGTH).optional(),
   step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
   success: z.preprocess(coerceSuccess, z.boolean().optional()),
 })
 ```
 
-`coerceStep` returns `DEFAULT_STEP` (1) for anything that is not an integer between 1 and 4; `coerceSuccess` accepts `true` and the string `"true"`. So `/checkout?step=banana` lands on step 1 instead of erroring.
+`coerceStep` returns `DEFAULT_STEP` (1) for anything that is not an integer between 1 and 4; `coerceSuccess` accepts `true` and the string `"true"`. So `/checkout?step=banana` lands on step 1 instead of erroring. `session_id` is the Checkout Session id that Stripe puts into the session's `return_url`, capped at `STRIPE_SESSION_ID_MAX_LENGTH` (255) characters.
 
 There is no sign-in requirement. Guest checkout is the default path; a signed-in session is picked up server-side by `getRequestSession()` when the Stripe session is created.
 
@@ -108,15 +109,16 @@ The sub-step depends on the type: `DeliveryCourier`, `DeliveryLocker` (with the 
 - `amountCents = cartTotal() + deliveryCost`, where `deliveryCost` is the selected method's `price` from `listDeliveryMethodsQuery()`.
 - It computes two fingerprints from `src/integrations/stripe/stripe.checkout.ts`: `buildCheckoutLinesFingerprint(items)` (sorted `variantId:qty` pairs) and `buildCheckoutValuesFingerprint(values)` (the form values as sorted JSON).
 - `sessionMatches` is true when the amount and both fingerprints equal the stored session's. When they do not, `ensureCheckoutSession` either creates a session or updates the existing one.
+- `amountCents` does not include a discount. The code entered in `CheckoutSummary` is the form value `discountCode`, so applying or removing it changes the values fingerprint and the session is updated. See [Discounts](/docs/features/discounts).
 - If `isCheckoutComplete(getValues())` is false it calls `onEdit(CHECKOUT_STEP_ID.CONTACT)` and sends the visitor back to step 1.
 - `inFlightRef` prevents concurrent session calls.
 - On error it shows `PaymentError` and toasts `t(getCheckoutErrorKey(error))`, which maps `INSUFFICIENT_INVENTORY`, `INVALID_PRICE`, `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND` and `UNKNOWN_ERROR` to keys under `errors.` (`src/integrations/stripe/stripe.errors.ts`).
 
 The `PaymentElement` is configured in `PAYMENT_ELEMENT_OPTIONS`: accordion layout, `billingDetails: "never"` (M'Arte collects the address itself), wallets and Link disabled, and `paymentMethodOrder` from `CHECKOUT_PAYMENT_METHOD_ORDER` — `["card", "blik", "p24"]`.
 
-Confirming calls `confirmCheckoutSession`, which runs `checkout.confirm({ billingAddress: buildCheckoutContact(values), redirect: "if_required" })`. Any error other than code `paymentFailed` is treated as recoverable: the session is reset and the visitor is asked to retry. On success the page navigates to `?success=true`.
+Confirming calls `confirmCheckoutSession`, which runs `checkout.confirm({ billingAddress: buildCheckoutContact(values), redirect: "if_required" })`. Any error other than code `paymentFailed` is treated as recoverable: the session is reset and the visitor is asked to retry. On success the page navigates to `?success=true`. A payment that leaves the page for a redirect comes back through the session's `return_url`, which also carries `session_id`.
 
-`CheckoutSuccess` then clears the basket, the draft and the abandonment flag in one effect.
+`CheckoutSuccess` then clears the basket, the draft and the abandonment flag in one effect. With a `session_id` it loads the order through `getOrderConfirmationQuery`; without one it shows the generic confirmation.
 
 ## Server side
 
@@ -126,15 +128,16 @@ Confirming calls `confirmCheckoutSession`, which runs `checkout.confirm({ billin
 
 1. `validateAndCalculateItems(data.items)` — loads the products by handle with inventory, then for each line resolves the variant and throws an `AppError` with a `CHECKOUT_ERROR_CODES` code when the product or variant is missing, the price fails `isSellPriceCentsValid`, or `inventory.quantityAvailable < qty`. **The price used from here on is `variant.price` from the database, not the basket's.**
 2. `resolveShippingCost(deliveryMethod)` — `getActiveDeliveryMethodByIdQuery(id)?.price ?? 0`.
-3. `reserveInventoryForItems(validatedItems)` — optimistic reservation, see [Inventory](/docs/features/inventory).
-4. `createCheckout(...)` — inserts the `address` rows and the `checkout` row in one D1 batch.
-5. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, line items plus a `"Shipping"` line when the cost is above zero, and metadata carrying `checkoutId`, `locale`, `userId` and the chunked item list.
-6. `createPendingPayment(...)` — a `payment` row with `status: "pending"` and `transaction_id` set to the Stripe session id.
-7. `scheduleProductCatalogInvalidation()`.
+3. `resolveCheckoutDiscount(...)` checks `checkoutValues.discountCode` against the subtotal of the database prices and the shipping cost, and returns nothing when the code does not apply. See [Discounts](/docs/features/discounts).
+4. `reserveInventoryForItems(validatedItems)` — optimistic reservation, see [Inventory](/docs/features/inventory).
+5. `createCheckout(...)` — inserts the `address` rows and the `checkout` row, with `discount_id` from step 3, in one D1 batch.
+6. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, line items plus a `"Shipping"` line when the cost is above zero, metadata carrying `checkoutId`, `discountCode`, `discountTotal`, `locale`, `userId` and the chunked item list, and, when a discount applies, a one-time Stripe coupon in `discounts`.
+7. `createPendingPayment(...)` — a `payment` row with `status: "pending"` and `transaction_id` set to the Stripe session id.
+8. `scheduleProductCatalogInvalidation()`.
 
-If anything after step 3 throws, `releaseInventoryForItems` gives the reservation back before the error propagates.
+If anything after step 4 throws, `releaseInventoryForItems` gives the reservation back before the error propagates.
 
-`handleUpdateCheckoutSession` additionally verifies ownership (`context.userId` must match the current session when the checkout belongs to a user), reads the old session's reserved lines out of its metadata, swaps the reservation with `swapCheckoutInventory` (releasing the old lines, validating and reserving the new ones, and restoring the old ones if that fails), updates the checkout row, creates a new Stripe session, `repointPayment`s the `payment` row onto the new session id, and expires the old session.
+`handleUpdateCheckoutSession` additionally verifies ownership (`context.userId` must match the current session when the checkout belongs to a user), reads the old session's reserved lines out of its metadata, swaps the reservation with `swapCheckoutInventory` (releasing the old lines, validating and reserving the new ones, and restoring the old ones if that fails), resolves the shipping cost and the discount again, updates the checkout row including `discount_id`, creates a new Stripe session, `repointPayment`s the `payment` row onto the new session id, and expires the old session.
 
 ## Metadata chunking
 
@@ -158,6 +161,8 @@ A single `items` key is still read for sessions created before the chunking, and
 `checkout` (`src/modules/checkout/checkout.schema.ts`) holds `email`, `customer_note`, `locker_id`, `delivery_method_id`, `shipping_address_id`, `billing_address_id`, `cart_id`, `discount_id`, `user_id` and a `status` of `pending | processing | completed | failed | abandoned`. In practice the code uses `pending`, `completed` (fulfilled) and `failed` (released); `processing` and `abandoned` are never written.
 
 When `sameAsShipping` is true, `prepareCreateCheckoutBatch` points both address columns at the **same** `address` row rather than duplicating it.
+
+`discount_id` holds the code that `resolveCheckoutDiscount` accepted on the server. `prepareCreateCheckoutBatch` writes it, and `prepareUpdateCheckoutDeliveryBatch` rewrites it on every session update, setting it to `NULL` when no code applies. Fulfilment reads it back through `getCheckoutForFulfillment`.
 
 `prepareUpdateCheckoutDeliveryBatch` uses an `INSERT … SELECT … ON CONFLICT DO UPDATE` whose source row is the pending checkout, so an address upsert simply does nothing if the checkout is no longer pending. `updateCheckoutDelivery` then inspects the last statement's `returning()` and throws `ERROR_CODES.CONFLICT` when no row was updated.
 
