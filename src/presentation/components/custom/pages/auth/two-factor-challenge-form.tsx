@@ -1,11 +1,14 @@
 import { type JSX, type SyntheticEvent, useCallback, useState } from "react"
 
+import { zodResolver } from "@hookform/resolvers/zod"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { ArrowRight, Loader2 } from "lucide-react"
+import { Controller, useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
+import { type TwoFactorChallengeFormValues, twoFactorChallengeSchema } from "~/src/integrations/better-auth/auth.zod"
 
 import { usePostAuthRedirect } from "~/src/hooks/use-post-auth-redirect"
 
@@ -25,38 +28,40 @@ const verifyBackupCode = createClientOnlyFn((code: string, trustDevice: boolean)
 export const TwoFactorChallengeForm = ({ onCancel }: Readonly<TwoFactorChallengeFormProps>): JSX.Element => {
   const t = useTranslations("pages.auth.sign-in.twoFactor")
   const redirectAfterAuth = usePostAuthRedirect()
-  const [code, setCode] = useState("")
-  const [trustDevice, setTrustDevice] = useState(false)
   const [useBackup, setUseBackup] = useState(false)
-  const [pending, setPending] = useState(false)
+  const form = useForm<TwoFactorChallengeFormValues>({
+    defaultValues: { code: "", trustDevice: false },
+    resolver: zodResolver(twoFactorChallengeSchema),
+  })
+  const code = useWatch({ control: form.control, name: "code" })
+  const { isSubmitting } = form.formState
 
-  const verify = useCallback(async () => {
-    setPending(true)
-    const { error } = useBackup ? await verifyBackupCode(code, trustDevice) : await verifyTotp(code, trustDevice)
-    if (error !== null) {
-      setPending(false)
-      toast.error(t(useBackup ? "wrongBackupCode" : "wrongCode"))
-      setCode("")
+  const verify = useCallback(
+    async ({ code: submitted, trustDevice }: TwoFactorChallengeFormValues) => {
+      const { error } = useBackup ? await verifyBackupCode(submitted, trustDevice) : await verifyTotp(submitted, trustDevice)
+      if (error !== null) {
+        toast.error(t(useBackup ? "wrongBackupCode" : "wrongCode"))
+        form.setValue("code", "")
 
-      return
-    }
+        return
+      }
 
-    await redirectAfterAuth()
-    setPending(false)
-  }, [code, redirectAfterAuth, t, trustDevice, useBackup])
+      await redirectAfterAuth()
+    },
+    [form, redirectAfterAuth, t, useBackup],
+  )
 
   const handleSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      void verify()
+      void form.handleSubmit(verify)(event)
     },
-    [verify],
+    [form, verify],
   )
 
   const toggleBackup = useCallback(() => {
     setUseBackup((previous) => !previous)
-    setCode("")
-  }, [])
+    form.setValue("code", "")
+  }, [form])
 
   const canSubmit = useBackup ? code.trim() !== "" : code.length === TOTP_CODE_LENGTH
 
@@ -69,34 +74,49 @@ export const TwoFactorChallengeForm = ({ onCancel }: Readonly<TwoFactorChallenge
 
       <div className="space-y-1.5">
         <Label htmlFor="two-factor-challenge-code">{useBackup ? t("backupLabel") : t("codeLabel")}</Label>
-        <Input
-          autoComplete="one-time-code"
-          autoFocus
-          id="two-factor-challenge-code"
-          inputMode={useBackup ? "text" : "numeric"}
-          maxLength={useBackup ? undefined : TOTP_CODE_LENGTH}
-          onChange={(event) => {
-            setCode(useBackup ? event.target.value : event.target.value.replaceAll(/\D/gu, ""))
-          }}
-          value={code}
+        <Controller
+          control={form.control}
+          name="code"
+          render={({ field }) => (
+            <Input
+              autoComplete="one-time-code"
+              autoFocus
+              id="two-factor-challenge-code"
+              inputMode={useBackup ? "text" : "numeric"}
+              maxLength={useBackup ? undefined : TOTP_CODE_LENGTH}
+              name={field.name}
+              onBlur={field.onBlur}
+              onChange={(event) => {
+                field.onChange(useBackup ? event.target.value : event.target.value.replaceAll(/\D/gu, ""))
+              }}
+              ref={field.ref}
+              value={field.value}
+            />
+          )}
         />
       </div>
 
       <div className="flex items-center gap-3">
-        <Checkbox
-          checked={trustDevice}
-          id="two-factor-trust-device"
-          onCheckedChange={(checked) => {
-            setTrustDevice(checked)
-          }}
+        <Controller
+          control={form.control}
+          name="trustDevice"
+          render={({ field }) => (
+            <Checkbox
+              checked={field.value}
+              id="two-factor-trust-device"
+              onCheckedChange={(checked) => {
+                field.onChange(checked)
+              }}
+            />
+          )}
         />
         <Label htmlFor="two-factor-trust-device">{t("trustDevice")}</Label>
       </div>
 
-      <Button className="w-full gap-2" disabled={pending || !canSubmit} type="submit">
-        {pending && <Loader2 aria-hidden className="size-4 animate-spin" />}
+      <Button className="w-full gap-2" disabled={isSubmitting || !canSubmit} type="submit">
+        {isSubmitting && <Loader2 aria-hidden className="size-4 animate-spin" />}
         {t("verify")}
-        {!pending && <ArrowRight aria-hidden className="size-4" />}
+        {!isSubmitting && <ArrowRight aria-hidden className="size-4" />}
       </Button>
 
       <div className="flex flex-col gap-2 text-center text-[13px]">
