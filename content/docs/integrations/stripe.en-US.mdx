@@ -65,7 +65,7 @@ export const createCheckoutSessionFn = createServerFn({ method: "POST" })
 3. `resolveCheckoutDiscount(...)` checks `checkoutValues.discountCode` again against the subtotal of the database prices and the shipping cost; a code that does not apply is dropped. See [Discounts](/docs/features/discounts).
 4. `reserveInventoryForItems(validatedItems)` takes the stock, using the optimistic `version` column.
 5. `createCheckout({ checkoutValues, discountId, userEmail, userId })` writes the address rows and the `checkout` row, including `discount_id`.
-6. `createStripeSession(...)` creates the Stripe Checkout Session, with a one-time coupon when a discount applies.
+6. `createStripeSession(...)` creates the Stripe Checkout Session, with a one-time coupon when a discount applies. If Stripe refuses the session, the coupon is deleted again before the error propagates.
 7. `createPendingPayment(...)` writes the `payment` row with `provider: "stripe"`, `currency: "PLN"` and `transactionId` set to the Stripe session id.
 8. `scheduleProductCatalogInvalidation()` pushes the new availability to connected storefronts.
 
@@ -85,17 +85,20 @@ const params: StripeType.Checkout.SessionCreateParams = {
     ? { customer_email: email }
     : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 }
-const discounts = await toSessionDiscounts(discount)
+const discounts = await toSessionDiscounts({ checkoutId, discount })
 if (discounts.length > NO_COST) {
   params.discounts = discounts
 }
 
-const session = await stripe.checkout.sessions.create(params)
+const session = await stripe.checkout.sessions.create(params).catch(async (error: unknown) => {
+  await deleteCheckoutCoupons({ checkoutId, discounts })
+  throw error
+})
 ```
 
 `customerId` is set only for a signed-in shopper: before step 1, `handleCreateCheckoutSession` calls `ensureStripeCustomer` (`stripe.customer.server.ts`), which creates a Stripe customer on first use and stores its id in `user.stripe_customer_id`. The session then belongs to that Stripe customer and lets the shopper save the card, which `/account/payment` lists afterwards. A guest's session carries `customer_email` instead. See [Account](/docs/features/account).
 
-`ui_mode: "elements"` is what gives the embedded experience. `return_url` is `${origin}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, where Stripe fills in the session id and `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL`. The success page uses `session_id` to load the order through `getOrderConfirmationQuery`. Shipping is added as an extra line item named `Shipping` rather than as a Stripe shipping rate. A discount goes into `discounts`: for every session that carries one, `toSessionDiscounts` calls `stripe.coupons.create` with `amount_off: discount.amountMinorUnits`, `currency: STRIPE_CURRENCY`, `duration: "once"` and `name: discount.code`.
+`ui_mode: "elements"` is what gives the embedded experience. `return_url` is `${origin}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, where Stripe fills in the session id and `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL`. The success page uses `session_id` to load the order through `getOrderConfirmationQuery`. Shipping is added as an extra line item named `Shipping` rather than as a Stripe shipping rate. A discount goes into `discounts`: for every session that carries one, `toSessionDiscounts` (`stripe.coupons.server.ts`) calls `stripe.coupons.create` with `amount_off: discount.amountMinorUnits`, `currency: STRIPE_CURRENCY`, `duration: "once"`, `metadata: { checkoutId, source: STRIPE_COUPON_SOURCE }` and `name: discount.code`. That metadata is how `deleteCheckoutCoupons` recognises the coupons it may delete: it deletes a session's coupon only when the coupon carries `source: "marte_checkout"` and the session's own `checkoutId`, and leaves every other coupon in the account alone. See [Discounts](/docs/features/discounts) for when it runs.
 
 ### Metadata is the fulfilment contract
 
@@ -152,16 +155,16 @@ const event = await verifiedStripeEvent(request, signature, env.STRIPE_WEBHOOK_S
 
 A missing `stripe-signature` header or a missing `STRIPE_WEBHOOK_SECRET` returns 400; a failed `constructEventAsync` returns 400; an unknown event type is logged and answered `{ received: true }`; a handler that throws returns 500 so Stripe retries. Handlers live in `stripe.webhooks.tsx` as a plain map:
 
-| Event                                      | Handler behaviour                                                                                                                          |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `checkout.session.completed`               | `handleFulfillCheckoutSession` — only if `payment_status` is `paid` or `no_payment_required`, otherwise logs and waits for the async event |
-| `checkout.session.async_payment_succeeded` | The same fulfilment path (BLIK and P24 settle asynchronously)                                                                              |
-| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` — releases the reservation and audits `orderReleased`                                                       |
-| `checkout.session.expired`                 | The same release path                                                                                                                      |
-| `payment_intent.payment_failed`            | Audits `orderPaymentFailed` with `last_payment_error.message`; no state change                                                             |
-| `charge.refunded`                          | `refundOrder({ fullyRefunded, refundedAmount, restock: true, transactionId })`                                                             |
-| `charge.dispute.created`                   | `flagOrderDispute(...)` — freezes the order and audits `orderDisputeOpened`                                                                |
-| `charge.dispute.closed`                    | If `status === "lost"`, refunds with `restock: false`; otherwise `clearOrderDispute(...)`                                                  |
+| Event                                      | Handler behaviour                                                                                                                                                                                                       |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkout.session.completed`               | `handleFulfillCheckoutSession` — only if `payment_status` is `paid` or `no_payment_required`, otherwise logs and waits for the async event; then `deleteCheckoutCoupons` deletes the session's tagged coupon either way |
+| `checkout.session.async_payment_succeeded` | The same fulfilment path (BLIK and P24 settle asynchronously)                                                                                                                                                           |
+| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` — releases the reservation and audits `orderReleased`                                                                                                                                    |
+| `checkout.session.expired`                 | The same release path, then `deleteCheckoutCoupons` deletes the session's tagged coupon                                                                                                                                 |
+| `payment_intent.payment_failed`            | Audits `orderPaymentFailed` with `last_payment_error.message`; no state change                                                                                                                                          |
+| `charge.refunded`                          | `refundOrder({ fullyRefunded, refundedAmount, restock: true, transactionId })`                                                                                                                                          |
+| `charge.dispute.created`                   | `flagOrderDispute(...)` — freezes the order and audits `orderDisputeOpened`                                                                                                                                             |
+| `charge.dispute.closed`                    | If `status === "lost"`, refunds with `restock: false`; otherwise `clearOrderDispute(...)`                                                                                                                               |
 
 Fulfilment parses the metadata lines, calls `fulfillCheckout({ currency, lines, locale, paidAmount, transactionId })` with `paidAmount` set to `session.amount_total`, and — only if that returned a new `orderId`, which makes the handler idempotent against Stripe's retries — records `orderPlaced` and `orderPaymentCaptured` audits, schedules admin-orders and product-catalog invalidation, and sends the confirmation e-mail. For a discounted order, `fulfillCheckout` itself schedules the `discount_redemption` write.
 

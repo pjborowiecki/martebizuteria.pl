@@ -6,6 +6,10 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
   couponsCreate: vi.fn<(params: object) => Promise<{ id: string }>>(),
+  couponsDel: vi.fn((couponId: string) => Promise.resolve({ deleted: true, id: couponId })),
+  couponsRetrieve: vi.fn((couponId: string) =>
+    Promise.resolve({ id: couponId, metadata: { checkoutId: "checkout-1", source: "marte_checkout" } }),
+  ),
   createCheckout:
     vi.fn<(input: { checkoutValues: { email: string }; discountId?: string; userEmail: string; userId?: string }) => Promise<string>>(),
   createPendingPayment: vi.fn(),
@@ -40,7 +44,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
         retrieve: mocked.checkoutSessionsRetrieve,
       },
     },
-    coupons: { create: mocked.couponsCreate },
+    coupons: { create: mocked.couponsCreate, del: mocked.couponsDel, retrieve: mocked.couponsRetrieve },
   },
 }))
 vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
@@ -585,7 +589,7 @@ describe("checkout session saved cards", () => {
 })
 
 describe("checkout session discounts", () => {
-  it("expresses an applied discount as a one-shot Stripe coupon", async () => {
+  it("expresses an applied discount as a one-shot Stripe coupon tagged with its checkout", async () => {
     mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
 
     await handleCreateCheckoutSession(createInput())
@@ -594,9 +598,11 @@ describe("checkout session discounts", () => {
       amount_off: 2000,
       currency: "pln",
       duration: "once",
+      metadata: { checkoutId: "checkout-1", source: "marte_checkout" },
       name: "SPRING",
     })
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ discounts: [{ coupon: "coupon_1" }] }))
+    expect(mocked.couponsDel).not.toHaveBeenCalled()
   })
 
   it("stores the applied code against the checkout so fulfilment can spend it", async () => {
@@ -612,6 +618,23 @@ describe("checkout session discounts", () => {
 
     expect(mocked.couponsCreate).not.toHaveBeenCalled()
     expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).not.toHaveProperty("discounts")
+  })
+
+  it("deletes the coupon it just made when Stripe refuses the session", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    mocked.checkoutSessionsCreate.mockRejectedValue(new Error("The Checkout Session's total amount due must add up to at least zł2.00"))
+
+    await expect(handleCreateCheckoutSession(createInput())).rejects.toThrow("at least zł2.00")
+    expect(mocked.couponsDel).toHaveBeenCalledExactlyOnceWith("coupon_1")
+  })
+
+  it("deletes the coupon made for a replacement session that Stripe refuses", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    mocked.checkoutSessionsCreate.mockRejectedValue(new Error("Stripe is unavailable"))
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toThrow("Stripe is unavailable")
+    expect(mocked.couponsDel).toHaveBeenCalledExactlyOnceWith("coupon_1")
+    expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
   })
 })
 

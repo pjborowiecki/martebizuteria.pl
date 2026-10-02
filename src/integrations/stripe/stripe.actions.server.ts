@@ -10,6 +10,7 @@ import {
   type cartItemSchema,
 } from "~/src/integrations/stripe/stripe.actions.schemas"
 import { STRIPE_CURRENCY } from "~/src/integrations/stripe/stripe.constants"
+import { deleteCheckoutCoupons, toSessionDiscounts } from "~/src/integrations/stripe/stripe.coupons.server"
 import { ensureStripeCustomer, getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
@@ -182,23 +183,6 @@ interface CreateSessionArgs {
   userId: string | undefined
 }
 
-const toSessionDiscounts = async (
-  discount: Discount["applied"] | undefined,
-): Promise<StripeType.Checkout.SessionCreateParams.Discount[]> => {
-  if (discount === undefined) {
-    return []
-  }
-
-  const coupon = await stripe.coupons.create({
-    amount_off: discount.amountMinorUnits,
-    currency: STRIPE_CURRENCY,
-    duration: "once",
-    name: discount.code,
-  })
-
-  return [{ coupon: coupon.id }]
-}
-
 const createStripeSession = async ({ checkoutId, customerId, discount, email, lines, shippingCost, userId }: CreateSessionArgs) => {
   const returnUrl = `${resolveOrigin()}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`
   const metadata = {
@@ -221,12 +205,15 @@ const createStripeSession = async ({ checkoutId, customerId, discount, email, li
       ? { customer_email: email }
       : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
   }
-  const discounts = await toSessionDiscounts(discount)
+  const discounts = await toSessionDiscounts({ checkoutId, discount })
   if (discounts.length > NO_COST) {
     params.discounts = discounts
   }
 
-  const session = await stripe.checkout.sessions.create(params)
+  const session = await stripe.checkout.sessions.create(params).catch(async (error: unknown) => {
+    await deleteCheckoutCoupons({ checkoutId, discounts })
+    throw error
+  })
 
   if (typeof session.client_secret !== "string") {
     throw new TypeError(CLIENT_SECRET_MISSING)

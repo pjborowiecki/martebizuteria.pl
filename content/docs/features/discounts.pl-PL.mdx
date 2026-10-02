@@ -125,20 +125,32 @@ Odpowiedź walidacji to tylko podgląd. `handleCreateCheckoutSession` i `handleU
 
 ## W sesji Stripe
 
-Stripe nie ma ujemnych pozycji, więc `toSessionDiscounts` w `src/integrations/stripe/stripe.actions.server.ts` tworzy jednorazowy kupon na wyliczoną kwotę, a `createStripeSession` ustawia go jako `params.discounts`:
+Stripe nie ma ujemnych pozycji, więc `toSessionDiscounts` w `src/integrations/stripe/stripe.coupons.server.ts` tworzy jednorazowy kupon na wyliczoną kwotę, a `createStripeSession` ustawia go jako `params.discounts`:
 
 ```ts
 const coupon = await stripe.coupons.create({
   amount_off: discount.amountMinorUnits,
   currency: STRIPE_CURRENCY,
   duration: "once",
+  metadata: { checkoutId, source: STRIPE_COUPON_SOURCE },
   name: discount.code,
 })
 
 return [{ coupon: coupon.id }]
 ```
 
-Kod `free_shipping` staje się więc `amount_off` równym kosztowi dostawy, a pozycja `"Shipping"` zostaje w sesji. Każda sesja utworzona lub zastąpiona z kodem dostaje nowy kupon i żaden nie jest usuwany. Metadane sesji niosą też `discountCode` i `discountTotal`, których webhook nie czyta. Kody promocyjne samego Stripe nie są włączone.
+Kod `free_shipping` staje się więc `amount_off` równym kosztowi dostawy, a pozycja `"Shipping"` zostaje w sesji. Metadane sesji niosą też `discountCode` i `discountTotal`, których webhook nie czyta. Kody promocyjne samego Stripe nie są włączone.
+
+Każda sesja utworzona lub zastąpiona z kodem dostaje własny kupon, oznaczony w metadanych kuponu identyfikatorem checkoutu i `source: STRIPE_COUPON_SOURCE` (`"marte_checkout"`). `deleteCheckoutCoupons` z tego samego pliku usuwa go, gdy żadna sesja nie może już z niego skorzystać:
+
+| Moment                                                                | Wywołujący                                 | Kupon sesji                                                                     |
+| --------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| Stripe odmawia utworzenia sesji                                       | `createStripeSession`                      | Usuwany od razu, bo żadne zdarzenie go nie wskaże                               |
+| `checkout.session.completed`                                          | Webhook, po `handleFulfillCheckoutSession` | Usuwany, także gdy płatność jeszcze się rozlicza                                |
+| `checkout.session.expired`                                            | Webhook, po `handleReleaseCheckoutSession` | Usuwany; zastąpienie sesji wygasza starą, więc obejmuje to też sesje zastąpione |
+| `checkout.session.async_payment_succeeded` lub `async_payment_failed` | Webhook                                    | Nietknięty, bo zdarzenie completed już go usunęło                               |
+
+`deleteCheckoutCoupons` czyta `session.discounts` i traktuje brakującą lub `null` listę jak brak kuponów. Kupon podany jako identyfikator jest najpierw pobierany, a usuwany jest tylko kupon, którego metadane niosą `source: "marte_checkout"` i `checkoutId` tej samej sesji, więc kupon utworzony ręcznie w panelu Stripe nigdy nie jest ruszany. Nieudane pobranie lub usunięcie jest logowane i nigdy nie przerywa webhooka. Gdy realizacja rzuci wyjątek, kupon zostaje, więc ponowienie zdarzenia przez Stripe nadal może go usunąć. Usunięcie kuponu nie zmienia kwoty, którą Stripe już zastosował, więc ukończona sesja jest obciążana i zwracana jak wcześniej.
 
 ## Przy realizacji
 

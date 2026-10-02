@@ -125,20 +125,32 @@ The validation response is only a preview. `handleCreateCheckoutSession` and `ha
 
 ## In the Stripe session
 
-Stripe has no negative line item, so `toSessionDiscounts` in `src/integrations/stripe/stripe.actions.server.ts` creates a one-time coupon for the computed amount, and `createStripeSession` sets it as `params.discounts`:
+Stripe has no negative line item, so `toSessionDiscounts` in `src/integrations/stripe/stripe.coupons.server.ts` creates a one-time coupon for the computed amount, and `createStripeSession` sets it as `params.discounts`:
 
 ```ts
 const coupon = await stripe.coupons.create({
   amount_off: discount.amountMinorUnits,
   currency: STRIPE_CURRENCY,
   duration: "once",
+  metadata: { checkoutId, source: STRIPE_COUPON_SOURCE },
   name: discount.code,
 })
 
 return [{ coupon: coupon.id }]
 ```
 
-A `free_shipping` code therefore becomes an `amount_off` equal to the shipping cost, and the `"Shipping"` line item stays on the session. Every session created or replaced with a code gets a new coupon, and none is deleted. The session metadata also carries `discountCode` and `discountTotal`, which the webhook does not read. Stripe's own promotion codes are not enabled.
+A `free_shipping` code therefore becomes an `amount_off` equal to the shipping cost, and the `"Shipping"` line item stays on the session. The session metadata also carries `discountCode` and `discountTotal`, which the webhook does not read. Stripe's own promotion codes are not enabled.
+
+Every session created or replaced with a code gets its own coupon, tagged in the coupon's metadata with the checkout id and `source: STRIPE_COUPON_SOURCE` (`"marte_checkout"`). `deleteCheckoutCoupons`, in the same file, deletes it once no session can use it any more:
+
+| Moment                                                               | Caller                                            | The session's coupon                                                                   |
+| -------------------------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Stripe refuses to create the session                                 | `createStripeSession`                             | Deleted at once, since no event will ever name it                                      |
+| `checkout.session.completed`                                         | The webhook, after `handleFulfillCheckoutSession` | Deleted, also while the payment is still settling                                      |
+| `checkout.session.expired`                                           | The webhook, after `handleReleaseCheckoutSession` | Deleted; replacing a session expires the old one, so this covers replaced sessions too |
+| `checkout.session.async_payment_succeeded` or `async_payment_failed` | The webhook                                       | Left alone, because the completed event already deleted it                             |
+
+`deleteCheckoutCoupons` reads `session.discounts` and treats a missing or `null` list as no coupons. A coupon given as an id is retrieved first, and only a coupon whose metadata carries `source: "marte_checkout"` and the session's own `checkoutId` is deleted, so a coupon made by hand in the Stripe dashboard is never touched. A failed retrieve or delete is logged and never fails the webhook. When fulfilment throws, the coupon is kept, so Stripe's retry of the event can still delete it. Deleting a coupon does not change an amount Stripe has already applied, so a completed session is charged and refunded as before.
 
 ## On fulfilment
 

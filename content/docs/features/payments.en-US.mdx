@@ -49,12 +49,15 @@ const params: StripeType.Checkout.SessionCreateParams = {
     ? { customer_email: email }
     : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 }
-const discounts = await toSessionDiscounts(discount)
+const discounts = await toSessionDiscounts({ checkoutId, discount })
 if (discounts.length > NO_COST) {
   params.discounts = discounts
 }
 
-const session = await stripe.checkout.sessions.create(params)
+const session = await stripe.checkout.sessions.create(params).catch(async (error: unknown) => {
+  await deleteCheckoutCoupons({ checkoutId, discounts })
+  throw error
+})
 ```
 
 `customerId` is set only for a signed-in shopper. `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) gets it from `ensureStripeCustomer`, which creates a Stripe customer on first use and stores its id in `user.stripe_customer_id`; `handleUpdateCheckoutSession` reads the stored id through `getStripeCustomerId`. Such a session belongs to that Stripe customer and lets the shopper save the card, which then appears on `/account/payment`. A guest's session carries `customer_email` instead. See [Account](/docs/features/account).
@@ -63,7 +66,7 @@ const session = await stripe.checkout.sessions.create(params)
 
 The same `metadata` object is attached to the session and to the payment intent, so a webhook that only has the intent can still find the checkout. It carries `checkoutId`, `discountCode` and `discountTotal` (an empty string and `"0"` without a discount), `locale` (from `getCurrentLocale()`), `userId` (empty string for a guest) and the chunked `items0…N` list.
 
-Line items are built from the server-validated prices, plus a literal `"Shipping"` line when the delivery method costs more than zero. The line-item names come from `lineTitle`, which is `"<product title> — <variant title>"` unless the variant title is empty. A discount is not a line item: `toSessionDiscounts` creates a one-time Stripe coupon for the amount `resolveCheckoutDiscount` computed, and the session receives it in `discounts`. See [Discounts](/docs/features/discounts).
+Line items are built from the server-validated prices, plus a literal `"Shipping"` line when the delivery method costs more than zero. The line-item names come from `lineTitle`, which is `"<product title> — <variant title>"` unless the variant title is empty. A discount is not a line item: `toSessionDiscounts` (`src/integrations/stripe/stripe.coupons.server.ts`) creates a one-time Stripe coupon for the amount `resolveCheckoutDiscount` computed, tagged with the checkout id and `source: "marte_checkout"`, and the session receives it in `discounts`. `createStripeSession` deletes that coupon at once when Stripe refuses the session, and the webhook deletes it once the session completes or expires. See [Discounts](/docs/features/discounts).
 
 ## The payment row
 
@@ -106,16 +109,16 @@ An event type with no handler logs `[Stripe] Safely ignoring unhandled event` an
 
 `webhookHandlers` in `src/integrations/stripe/stripe.webhooks.tsx` (a `.tsx` file because it builds the confirmation email element):
 
-| Event                                      | Handler                        | Effect                                                                    |
-| ------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------- |
-| `checkout.session.completed`               | `handleFulfillCheckoutSession` | Creates the order                                                         |
-| `checkout.session.async_payment_succeeded` | `handleFulfillCheckoutSession` | Same, for BLIK/P24 settling later                                         |
-| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` | Releases the reservation, marks payment and checkout `failed`             |
-| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | Same                                                                      |
-| `payment_intent.payment_failed`            | `handlePaymentIntentFailed`    | Audit entry and a warning log only — no state change                      |
-| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` with `restock: true`                                        |
-| `charge.dispute.created`                   | `handleChargeDisputeCreated`   | `flagOrderDispute`, audit entry, admin-orders invalidation                |
-| `charge.dispute.closed`                    | `handleChargeDisputeClosed`    | Lost → `refundOrder` with `restock: false`; otherwise `clearOrderDispute` |
+| Event                                      | Handler                        | Effect                                                                              |
+| ------------------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------- |
+| `checkout.session.completed`               | `handleFulfillCheckoutSession` | Creates the order, then `deleteCheckoutCoupons` deletes the session's tagged coupon |
+| `checkout.session.async_payment_succeeded` | `handleFulfillCheckoutSession` | Same, for BLIK/P24 settling later                                                   |
+| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` | Releases the reservation, marks payment and checkout `failed`                       |
+| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | Same, then `deleteCheckoutCoupons` deletes the session's tagged coupon              |
+| `payment_intent.payment_failed`            | `handlePaymentIntentFailed`    | Audit entry and a warning log only — no state change                                |
+| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` with `restock: true`                                                  |
+| `charge.dispute.created`                   | `handleChargeDisputeCreated`   | `flagOrderDispute`, audit entry, admin-orders invalidation                          |
+| `charge.dispute.closed`                    | `handleChargeDisputeClosed`    | Lost → `refundOrder` with `restock: false`; otherwise `clearOrderDispute`           |
 
 The keys come from `STRIPE_WEBHOOK_EVENTS` in `stripe.constants.ts`, so the constant is the list of events to register in the Stripe dashboard.
 
@@ -127,7 +130,7 @@ The keys come from `STRIPE_WEBHOOK_EVENTS` in `stripe.constants.ts`, so the cons
 const FULFILLABLE_PAYMENT_STATUSES = new Set<StripeType.Checkout.Session["payment_status"]>(["no_payment_required", "paid"])
 ```
 
-A `checkout.session.completed` with `payment_status: "unpaid"` — normal for BLIK and P24 — logs and returns, and the order is created later by `async_payment_succeeded`.
+A `checkout.session.completed` with `payment_status: "unpaid"` — normal for BLIK and P24 — logs and returns, and the order is created later by `async_payment_succeeded`. The session's coupon is still deleted on `completed`, because deleting it does not change the amount Stripe has already applied to the session.
 
 Then it parses the item lines out of the metadata, calls `fulfillCheckout` and, if an order id comes back:
 

@@ -16,6 +16,7 @@ import {
 } from "~/src/integrations/resend/order-confirmation.utils"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { STRIPE_CURRENCY, STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/stripe/stripe.constants"
+import { deleteCheckoutCoupons } from "~/src/integrations/stripe/stripe.coupons.server"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
@@ -314,10 +315,14 @@ export const webhookHandlers: Record<string, (event: StripeType.Event) => Promis
     await handleFulfillCheckoutSession(z.custom<StripeType.Checkout.Session>().parse(event.data.object))
   },
   [STRIPE_WEBHOOK_EVENTS.CHECKOUT_SESSION_COMPLETED]: async (event) => {
-    await handleFulfillCheckoutSession(z.custom<StripeType.Checkout.Session>().parse(event.data.object))
+    const session = z.custom<StripeType.Checkout.Session>().parse(event.data.object)
+    await handleFulfillCheckoutSession(session)
+    await deleteCheckoutCoupons({ checkoutId: session.metadata?.["checkoutId"], discounts: session.discounts })
   },
   [STRIPE_WEBHOOK_EVENTS.CHECKOUT_SESSION_EXPIRED]: async (event) => {
-    await handleReleaseCheckoutSession(z.custom<StripeType.Checkout.Session>().parse(event.data.object))
+    const session = z.custom<StripeType.Checkout.Session>().parse(event.data.object)
+    await handleReleaseCheckoutSession(session)
+    await deleteCheckoutCoupons({ checkoutId: session.metadata?.["checkoutId"], discounts: session.discounts })
   },
   [STRIPE_WEBHOOK_EVENTS.PAYMENT_INTENT_PAYMENT_FAILED]: async (event) => {
     await handlePaymentIntentFailed(z.custom<StripeType.PaymentIntent>().parse(event.data.object))

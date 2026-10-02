@@ -19,6 +19,7 @@ export const checkoutSession = ({
   currency = "pln",
   customerDetails = null,
   customerEmail = null,
+  discounts = null,
   id = "cs_test_1",
   metadata = null,
   paymentIntent = null,
@@ -28,6 +29,7 @@ export const checkoutSession = ({
   currency?: string | null
   customerDetails?: Stripe.Checkout.Session.CustomerDetails | null
   customerEmail?: string | null
+  discounts?: Stripe.Checkout.Session.Discount[] | null
   id?: string
   metadata?: Stripe.Metadata | null
   paymentIntent?: string | null
@@ -56,7 +58,7 @@ export const checkoutSession = ({
   customer_creation: null,
   customer_details: customerDetails,
   customer_email: customerEmail,
-  discounts: null,
+  discounts,
   expires_at: EVENT_CREATED_AT,
   id,
   integration_identifier: null,
