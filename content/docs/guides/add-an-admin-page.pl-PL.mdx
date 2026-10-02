@@ -187,10 +187,10 @@ Trasa wymienia przestrzenie nazw potrzebne jej poddrzewu w `staticData.namespace
 | ------------- | --------------------------------------------------------------------- |
 | `SIMPLE_NAV`  | Pulpit, Zamówienia, Klienci                                           |
 | `CATALOG_SUB` | Produkty, Kategorie, Kolekcje, Atrybuty — zagnieżdżone pod Katalogiem |
-| `TOOLS_NAV`   | Marketing i Kupony (`disabled: true`), Treści                         |
+| `TOOLS_NAV`   | Marketing (`disabled: true`), Kupony, Treści                          |
 | `SYSTEM_NAV`  | Audyt, Ustawienia — Ustawienia mają `disabled: true`                  |
 
-`NavItem` to `{ href: LocalizedTo, icon, labelKey, disabled? }`. Ikona jest komponentem z `lucide-react`, a `labelKey` rozwiązuje się wewnątrz `pages.admin`, więc `nav.coupons` czyta z `messages/{locale}/pages.admin.json`. Ustaw `disabled: true` dla strony, która istnieje jako zaślepka, ale nie jest gotowa. `/admin/marketing` i `/admin/settings` są dziś właśnie w tym stanie; `/admin/coupons` zarządza prawdziwymi kodami rabatowymi, ale jej pozycja nadal ma `disabled: true`.
+`NavItem` to `{ href: LocalizedTo, icon, labelKey, disabled? }`. Ikona jest komponentem z `lucide-react`, a `labelKey` rozwiązuje się wewnątrz `pages.admin`, więc `nav.coupons` czyta z `messages/{locale}/pages.admin.json`. Ustaw `disabled: true` dla strony, która istnieje jako zaślepka, ale nie jest gotowa. `/admin/marketing` i `/admin/settings` są dziś właśnie w tym stanie.
 
 ## 8. Przetestuj trasę
 

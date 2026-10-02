@@ -374,7 +374,6 @@ const TOOLS_NAV: readonly NavItem[] = [
     labelKey: "nav.marketing",
   },
   {
-    disabled: true,
     href: ROUTES.ADMIN_COUPONS,
     icon: Tag,
     labelKey: "nav.coupons",

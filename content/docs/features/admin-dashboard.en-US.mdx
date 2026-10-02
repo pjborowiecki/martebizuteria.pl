@@ -1,6 +1,6 @@
 ---
 title: "Admin dashboard"
-description: "The /admin layout and guard, the overview snapshot built from one D1 batch, and the three tool screens disabled in the sidebar."
+description: "The /admin layout and guard, the overview snapshot built from one D1 batch, and the two tool screens disabled in the sidebar."
 ---
 
 ## Layout
@@ -40,10 +40,10 @@ The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` f
 | ------ | ----------------------------------------------------------------------------------------------- |
 | (top)  | Dashboard (`/admin/overview`)                                                                   |
 | Main   | Orders, Customers, and a collapsible Catalog with Products, Categories, Collections, Attributes |
-| Tools  | Marketing and Coupons with `disabled: true`, and Content                                        |
+| Tools  | Marketing with `disabled: true`, Coupons, and Content                                           |
 | System | Audit, Settings — Settings has `disabled: true`                                                 |
 
-A disabled item renders as a non-interactive `SidebarMenuButton disabled` with `cursor-not-allowed opacity-50`, so the three disabled screens are not reachable from the UI at all — only by typing the URL.
+A disabled item renders as a non-interactive `SidebarMenuButton disabled` with `cursor-not-allowed opacity-50`, so the two disabled screens are not reachable from the UI at all — only by typing the URL.
 
 The sidebar footer's sign-out button calls `signOut` and then does a full page load of `/auth/sign-in`, which discards the query cache.
 
@@ -130,7 +130,7 @@ But `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) nev
 
 `buildAdminDashboardWeeklyOrderPoints` reuses the same `dailyAggregateRows` to produce `{ dateKey, dayLabel, orders }` points, again with no extra query.
 
-## The three disabled screens
+## Marketing, coupons and settings
 
 | Route              | File                  | Components                                                                                | Data                                                                                              |
 | ------------------ | --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -140,7 +140,7 @@ But `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) nev
 
 Marketing and settings have no loader, query or mutation, and the marketing Export and Create buttons have no handlers. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only; the other tabs render `settings-placeholder.tsx`.
 
-Coupons is a working screen: its loader prefetches `getAdminDiscountsPageQuery({})` and `getDiscountStatsQuery()`, and `use-coupon-actions.ts` calls `createDiscount`, `updateDiscount` and `deleteDiscounts`. Only its sidebar entry still carries `disabled: true`.
+Coupons is a working screen: its loader prefetches `getAdminDiscountsPageQuery({})` and `getDiscountStatsQuery()`, and `use-coupon-actions.ts` calls `createDiscount`, `updateDiscount` and `deleteDiscounts`.
 
 `/admin/orders/$orderId` is a working screen that loads one order through `getAdminOrder`. See [Orders](/docs/features/orders).
 
