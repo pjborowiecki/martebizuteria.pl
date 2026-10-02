@@ -7,6 +7,7 @@ import {
   ROOT_NAMESPACES,
   buildMessageTree,
   getRouteNamespaces,
+  isMessagesQuery,
   loadNamespace,
   messagesQueryOptions,
   preloadNamespaces,
@@ -166,5 +167,15 @@ describe("translation namespaces", () => {
 
   it.each(["en-US", "pl-PL"] as const)("rejects an unknown %s namespace", (locale) => {
     expect(() => loadNamespace({ locale, namespace: "pages.does-not-exist" })).toThrow("Missing translation namespace")
+  })
+})
+
+describe("isMessagesQuery", () => {
+  it("recognises a message catalogue query", () => {
+    expect(isMessagesQuery({ queryKey: messagesQueryOptions({ locale: "pl-PL", namespace: "common" }).queryKey })).toBe(true)
+  })
+
+  it("leaves every other query alone", () => {
+    expect(isMessagesQuery({ queryKey: ["session", "current"] })).toBe(false)
   })
 })

@@ -1,12 +1,13 @@
+import { type JSX } from "react"
+
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { SESSION_KEY, changePassword, disableTwoFactor, enableTwoFactor, sessionState, verifyTotp } = vi.hoisted(() => ({
-  SESSION_KEY: ["session", "current"] as const,
+const { accountState, changePassword, disableTwoFactor, enableTwoFactor, verifyTotp } = vi.hoisted(() => ({
+  accountState: { twoFactorEnabled: false },
   changePassword: vi.fn<(input: { fetchOptions: { onSuccess: () => void } }) => Promise<unknown>>(),
   disableTwoFactor: vi.fn<(input: { password: string }) => Promise<{ error: unknown }>>(),
   enableTwoFactor: vi.fn<(input: { password: string }) => Promise<{ data: unknown; error: unknown }>>(),
-  sessionState: { twoFactorEnabled: false },
   verifyTotp: vi.fn<(input: { code: string }) => Promise<{ error: unknown }>>(),
 }))
 
@@ -16,17 +17,14 @@ vi.mock("~/src/integrations/better-auth/auth.client", () => ({
     twoFactor: { disable: disableTwoFactor, enable: enableTwoFactor, verifyTotp },
   },
 }))
-vi.mock("~/src/integrations/better-auth/auth.session", () => ({
-  getCurrentSessionQuery: {
-    queryFn: () => Promise.resolve({ user: { twoFactorEnabled: sessionState.twoFactorEnabled } }),
-    queryKey: SESSION_KEY,
-  },
-}))
 vi.mock("qrcode", () => ({ default: { toString: () => Promise.resolve("<svg role='img' aria-label='qr'></svg>") } }))
 
-import { QueryClient } from "@tanstack/react-query"
+import { QueryClient, useQuery } from "@tanstack/react-query"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+
+import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 
 import { SecuritySection } from "~/src/presentation/components/custom/pages/account/profile/sections/security-section"
 
@@ -50,7 +48,7 @@ const submit = async (name: string): Promise<void> => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  sessionState.twoFactorEnabled = false
+  accountState.twoFactorEnabled = false
   enableTwoFactor.mockResolvedValue({
     data: { backupCodes: ["AAAA-1111", "BBBB-2222"], method: "totp", totpURI: TOTP_URI },
     error: null,
@@ -68,9 +66,15 @@ afterEach(cleanup)
 
 const renderSection = () => {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
-  queryClient.setQueryData(SESSION_KEY, { user: { twoFactorEnabled: sessionState.twoFactorEnabled } })
+  const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
+  renderWithProviders(<SecuritySection twoFactorEnabled={accountState.twoFactorEnabled} />, { queryClient })
 
-  return renderWithProviders(<SecuritySection />, { queryClient })
+  return { invalidateQueries }
+}
+
+const expectAccountReloaded = (invalidateQueries: ReturnType<typeof renderSection>["invalidateQueries"]): void => {
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: SESSION_QUERY_KEYS.CURRENT })
 }
 
 describe("SecuritySection", () => {
@@ -95,7 +99,7 @@ describe("SecuritySection", () => {
   })
 
   it("reports two-factor as on and offers to turn it off", () => {
-    sessionState.twoFactorEnabled = true
+    accountState.twoFactorEnabled = true
     renderSection()
 
     expect(screen.getByText("On")).toBeInTheDocument()
@@ -252,8 +256,91 @@ describe("SecuritySection two-factor enrolment", () => {
     expect(screen.getByRole("button", { name: "Verify and enable" })).toBeDisabled()
   })
 
-  it("marks the row as on once enrolment finishes", async () => {
+  it("reloads the account and its session once enrolment finishes", async () => {
+    const { invalidateQueries } = renderSection()
+    openTwoFactor()
+    await screen.findByLabelText("Password")
+    typePassword("OldPassword1!")
+    await submit("Continue")
+    await screen.findByLabelText("Six-digit code")
+    fireEvent.change(screen.getByLabelText("Six-digit code"), { target: { value: "123456" } })
+    await submit("Verify and enable")
+
+    await waitFor(() => {
+      expectAccountReloaded(invalidateQueries)
+    })
+  })
+})
+
+describe("SecuritySection two-factor removal", () => {
+  it("asks for the password and warns what is being given up", async () => {
+    accountState.twoFactorEnabled = true
     renderSection()
+    openTwoFactor()
+
+    const dialog = await screen.findByRole("dialog")
+
+    expect(within(dialog).getByRole("heading", { name: "Turn off two-factor authentication" })).toBeInTheDocument()
+    expect(within(dialog).getByText(/protected by your password alone/u)).toBeInTheDocument()
+  })
+
+  it("turns two-factor off and reloads the account and its session", async () => {
+    accountState.twoFactorEnabled = true
+    const { invalidateQueries } = renderSection()
+    openTwoFactor()
+    await screen.findByLabelText("Password")
+
+    typePassword("OldPassword1!")
+    await submit("Turn off 2FA")
+
+    await waitFor(() => {
+      expect(disableTwoFactor).toHaveBeenCalledWith({ password: "OldPassword1!" })
+    })
+    expectAccountReloaded(invalidateQueries)
+  })
+
+  it("leaves two-factor on when the password is wrong", async () => {
+    accountState.twoFactorEnabled = true
+    disableTwoFactor.mockResolvedValue({ error: { message: "INVALID_PASSWORD" } })
+    const { invalidateQueries } = renderSection()
+    openTwoFactor()
+    await screen.findByLabelText("Password")
+
+    typePassword("WrongPassword1!")
+    await submit("Turn off 2FA")
+
+    await waitFor(() => {
+      expect(disableTwoFactor).toHaveBeenCalledOnce()
+    })
+    expect(screen.getByText("On")).toBeInTheDocument()
+    expect(invalidateQueries).not.toHaveBeenCalled()
+  })
+})
+
+const AccountSecurity = (): JSX.Element => {
+  const { data } = useQuery({
+    queryFn: () => Promise.resolve({ twoFactorEnabled: accountState.twoFactorEnabled }),
+    queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE,
+  })
+
+  return <SecuritySection twoFactorEnabled={data?.twoFactorEnabled === true} />
+}
+
+const renderAccountSecurity = () => {
+  const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
+  queryClient.setQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE, { twoFactorEnabled: accountState.twoFactorEnabled })
+
+  return renderWithProviders(<AccountSecurity />, { queryClient })
+}
+
+describe("SecuritySection status after a change", () => {
+  it("shows two-factor as on once the server confirms the enrolment", async () => {
+    verifyTotp.mockImplementation(() => {
+      accountState.twoFactorEnabled = true
+
+      return Promise.resolve({ error: null })
+    })
+    renderAccountSecurity()
     openTwoFactor()
     await screen.findByLabelText("Password")
     typePassword("OldPassword1!")
@@ -265,48 +352,20 @@ describe("SecuritySection two-factor enrolment", () => {
 
     expect(await screen.findByText("On")).toBeInTheDocument()
   })
-})
 
-describe("SecuritySection two-factor removal", () => {
-  it("asks for the password and warns what is being given up", async () => {
-    sessionState.twoFactorEnabled = true
-    renderSection()
-    openTwoFactor()
+  it("shows two-factor as off once the server confirms the removal", async () => {
+    accountState.twoFactorEnabled = true
+    disableTwoFactor.mockImplementation(() => {
+      accountState.twoFactorEnabled = false
 
-    const dialog = await screen.findByRole("dialog")
-
-    expect(within(dialog).getByRole("heading", { name: "Turn off two-factor authentication" })).toBeInTheDocument()
-    expect(within(dialog).getByText(/protected by your password alone/u)).toBeInTheDocument()
-  })
-
-  it("turns two-factor off and reports the row as off", async () => {
-    sessionState.twoFactorEnabled = true
-    renderSection()
+      return Promise.resolve({ error: null })
+    })
+    renderAccountSecurity()
     openTwoFactor()
     await screen.findByLabelText("Password")
-
     typePassword("OldPassword1!")
     await submit("Turn off 2FA")
 
-    await waitFor(() => {
-      expect(disableTwoFactor).toHaveBeenCalledWith({ password: "OldPassword1!" })
-    })
     expect(await screen.findByText("Off")).toBeInTheDocument()
-  })
-
-  it("leaves two-factor on when the password is wrong", async () => {
-    sessionState.twoFactorEnabled = true
-    disableTwoFactor.mockResolvedValue({ error: { message: "INVALID_PASSWORD" } })
-    renderSection()
-    openTwoFactor()
-    await screen.findByLabelText("Password")
-
-    typePassword("WrongPassword1!")
-    await submit("Turn off 2FA")
-
-    await waitFor(() => {
-      expect(disableTwoFactor).toHaveBeenCalledOnce()
-    })
-    expect(screen.getByText("On")).toBeInTheDocument()
   })
 })

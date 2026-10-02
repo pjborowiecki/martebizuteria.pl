@@ -1,12 +1,15 @@
-import { queryOptions } from "@tanstack/react-query"
+import { type QueryClient, hashKey, queryOptions } from "@tanstack/react-query"
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 
 import { auth } from "~/src/integrations/better-auth/auth.server"
+import { isMessagesQuery } from "~/src/integrations/use-intl/i18n.messages"
 
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 
 const SESSION_STALE_TIME_MS = 60_000
+
+const SESSION_QUERY_HASH = hashKey(SESSION_QUERY_KEYS.CURRENT)
 
 const requestSessions = new WeakMap<Request, ReturnType<typeof auth.api.getSession>>()
 
@@ -40,3 +43,19 @@ export const getCurrentSessionQuery = queryOptions({
   retry: false,
   staleTime: SESSION_STALE_TIME_MS,
 })
+
+export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) => {
+  const seen: { session?: Awaited<ReturnType<typeof getCurrentSession>> } = {}
+
+  return queryClient.getQueryCache().subscribe(({ query }) => {
+    const session = query.queryHash === SESSION_QUERY_HASH ? queryClient.getQueryData(getCurrentSessionQuery.queryKey) : undefined
+    if (session === undefined) {
+      return
+    }
+
+    if ("session" in seen && seen.session?.user.id !== session?.user.id) {
+      queryClient.removeQueries({ predicate: (cached) => cached.queryHash !== SESSION_QUERY_HASH && !isMessagesQuery(cached) })
+    }
+    seen.session = session
+  })
+}

@@ -1,8 +1,15 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { getCurrentSession, getCurrentSessionQuery, getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import {
+  clearCacheOnUserChange,
+  getCurrentSession,
+  getCurrentSessionQuery,
+  getRequestSession,
+} from "~/src/integrations/better-auth/auth.session"
+import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
+import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 
 interface SessionLookupResult {
@@ -102,5 +109,107 @@ describe("current session handed to the browser", () => {
 
     await expect(queryClient.query(getCurrentSessionQuery)).resolves.toStrictEqual(clientSession)
     expect(queryClient.getQueryData(SESSION_QUERY_KEYS.CURRENT)).toStrictEqual(clientSession)
+  })
+})
+
+const MESSAGES_KEY = messagesQueryOptions({ locale: "en-US", namespace: "common" }).queryKey
+
+const sessionFor = (userId: string, sessionId = `session-${userId}`) => ({
+  session: { id: sessionId, userId },
+  user: { id: userId, role: "customer" },
+})
+
+const watchedClient = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const stopWatching = clearCacheOnUserChange(queryClient)
+  queryClient.setQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE, { email: "ada@store.test" })
+  queryClient.setQueryData(MESSAGES_KEY, { title: "M'Arte" })
+
+  return { queryClient, stopWatching }
+}
+
+describe("clearing the cache when the signed-in user changes", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    currentRequest.mockReturnValue(new Request("https://store.test/account"))
+  })
+
+  it("keeps everything the first time it learns who is signed in", () => {
+    const { queryClient } = watchedClient()
+
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+
+    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toStrictEqual({ email: "ada@store.test" })
+  })
+
+  it("forgets the previous user's data when someone else signs in, keeping the new session and the message catalogues", () => {
+    const { queryClient } = watchedClient()
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-2"))
+
+    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toBeUndefined()
+    expect(queryClient.getQueryData(MESSAGES_KEY)).toStrictEqual({ title: "M'Arte" })
+    expect(queryClient.getQueryData(SESSION_QUERY_KEYS.CURRENT)).toStrictEqual(sessionFor("customer-2"))
+  })
+
+  it("forgets what was cached while signed out once someone signs in", () => {
+    const { queryClient } = watchedClient()
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, null)
+
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+
+    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toBeUndefined()
+  })
+
+  it("forgets a user's data once their session has ended", () => {
+    const { queryClient } = watchedClient()
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, null)
+
+    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toBeUndefined()
+  })
+
+  it("keeps the data when the same user's session is renewed", () => {
+    const { queryClient } = watchedClient()
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1", "session-renewed"))
+
+    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toStrictEqual({ email: "ada@store.test" })
+  })
+
+  it("notices the change however the session was fetched, not only in route guards", async () => {
+    const { queryClient } = watchedClient()
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+    getSession.mockResolvedValue({
+      session: { id: "session-customer-2", token: "secret-token", userId: "customer-2" },
+      user: { id: "customer-2", role: "customer" },
+    })
+
+    await queryClient.query({ ...getCurrentSessionQuery, staleTime: 0 })
+
+    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toBeUndefined()
+  })
+
+  it("does not mistake a dropped session entry for a different user", () => {
+    const { queryClient } = watchedClient()
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+
+    queryClient.removeQueries({ queryKey: SESSION_QUERY_KEYS.CURRENT })
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+
+    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toStrictEqual({ email: "ada@store.test" })
+  })
+
+  it("stops clearing once it is unsubscribed", () => {
+    const { queryClient, stopWatching } = watchedClient()
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+
+    stopWatching()
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-2"))
+
+    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toStrictEqual({ email: "ada@store.test" })
   })
 })

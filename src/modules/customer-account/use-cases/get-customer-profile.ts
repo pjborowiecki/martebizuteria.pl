@@ -26,6 +26,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
       name: userRow.name,
       phone: userRow.phone ?? undefined,
       timezone: userRow.timezone ?? undefined,
+      twoFactorEnabled: userRow.twoFactorEnabled === true,
     }
   })
 

@@ -1,7 +1,8 @@
 import { type UseMutationResult, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useLocation } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { toast } from "sonner"
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
 import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
@@ -9,10 +10,6 @@ import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.s
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { useActionError } from "~/src/hooks/use-action-error"
-
-import { buildLocalizedUrl } from "~/src/lib/seo"
-
-import { ROUTES } from "~/src/routes"
 
 const signInSocial = createClientOnlyFn((input: Parameters<typeof authClient.signIn.social>[0]) => authClient.signIn.social(input))
 
@@ -22,12 +19,12 @@ export const useOAuthSignIn = (): UseMutationResult<void, unknown, OAuthProvider
   const queryClient = useQueryClient()
   const t = useTranslations()
   const actionError = useActionError()
-  const locale = useLocale()
+  const currentPage = useLocation({ select: (location) => location.publicHref })
 
   return useMutation({
     mutationFn: async (provider: OAuthProvider) => {
       const { error } = await signInSocial({
-        callbackURL: buildLocalizedUrl("", ROUTES.ACCOUNT_OVERVIEW, locale),
+        callbackURL: currentPage,
         provider,
       })
 

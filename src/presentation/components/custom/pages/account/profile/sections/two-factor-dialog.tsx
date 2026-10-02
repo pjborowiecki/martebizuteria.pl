@@ -11,11 +11,7 @@ import {
 } from "~/src/presentation/components/custom/pages/account/profile/sections/use-two-factor-setup"
 
 export const TwoFactorDialog = ({ enabled, onEnabledChange, onOpenChange, open }: Readonly<TwoFactorDialogProps>): JSX.Element => {
-  const setup = useTwoFactorSetup({
-    onEnabled: () => {
-      onEnabledChange(true)
-    },
-  })
+  const setup = useTwoFactorSetup({ onEnabled: onEnabledChange })
 
   const close = useCallback(() => {
     setup.reset()
@@ -44,7 +40,7 @@ export const TwoFactorDialog = ({ enabled, onEnabledChange, onOpenChange, open }
 
       const disabled = await setup.submitDisable(password)
       if (disabled) {
-        onEnabledChange(false)
+        onEnabledChange()
         close()
       }
     },
@@ -70,7 +66,7 @@ export const TwoFactorDialog = ({ enabled, onEnabledChange, onOpenChange, open }
 
 interface TwoFactorDialogProps {
   readonly enabled: boolean
-  readonly onEnabledChange: (enabled: boolean) => void
+  readonly onEnabledChange: () => void
   readonly onOpenChange: (open: boolean) => void
   readonly open: boolean
 }

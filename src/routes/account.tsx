@@ -64,9 +64,7 @@ const AccountLayout = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/account")({
-  beforeLoad: async ({ location }) => ({
-    user: await requireCustomer(location.href),
-  }),
+  beforeLoad: requireCustomer,
   component: AccountLayout,
   errorComponent: AccountErrorState,
   head: pageHead,

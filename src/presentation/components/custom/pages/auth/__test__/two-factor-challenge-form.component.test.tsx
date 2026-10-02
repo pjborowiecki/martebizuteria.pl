@@ -1,9 +1,8 @@
-import type * as TanStackRouter from "@tanstack/react-router"
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { navigate, verifyBackupCode, verifyTotp } = vi.hoisted(() => ({
-  navigate: vi.fn(),
+const { redirectAfterAuth, verifyBackupCode, verifyTotp } = vi.hoisted(() => ({
+  redirectAfterAuth: vi.fn<() => Promise<void>>(),
   verifyBackupCode: vi.fn<(input: { code: string; trustDevice: boolean }) => Promise<{ error: unknown }>>(),
   verifyTotp: vi.fn<(input: { code: string; trustDevice: boolean }) => Promise<{ error: unknown }>>(),
 }))
@@ -11,14 +10,7 @@ const { navigate, verifyBackupCode, verifyTotp } = vi.hoisted(() => ({
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({
   authClient: { twoFactor: { verifyBackupCode, verifyTotp } },
 }))
-vi.mock("~/src/integrations/better-auth/auth.session", () => ({
-  getCurrentSession: () => Promise.resolve({ user: { id: "user-1", role: "customer" } }),
-}))
-vi.mock("@tanstack/react-router", async () => {
-  const actual = await vi.importActual<typeof TanStackRouter>("@tanstack/react-router")
-
-  return { ...actual, useNavigate: () => navigate }
-})
+vi.mock("~/src/hooks/use-post-auth-redirect", () => ({ usePostAuthRedirect: () => redirectAfterAuth }))
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
@@ -42,7 +34,7 @@ describe("TwoFactorChallengeForm", () => {
     expect(screen.getByLabelText("Authentication code")).toBeInTheDocument()
   })
 
-  it("verifies a six-digit code and lands the customer in their account", async () => {
+  it("verifies a six-digit code and hands the customer to the post-sign-in redirect", async () => {
     renderWithProviders(<TwoFactorChallengeForm onCancel={onCancel} />)
 
     fireEvent.change(screen.getByLabelText("Authentication code"), { target: { value: "123456" } })
@@ -52,7 +44,7 @@ describe("TwoFactorChallengeForm", () => {
       expect(verifyTotp).toHaveBeenCalledWith({ code: "123456", trustDevice: false })
     })
     await waitFor(() => {
-      expect(navigate).toHaveBeenCalledOnce()
+      expect(redirectAfterAuth).toHaveBeenCalledOnce()
     })
   })
 
@@ -106,6 +98,22 @@ describe("TwoFactorChallengeForm", () => {
       expect(verifyBackupCode).toHaveBeenCalledWith({ code: "AAAA-1111", trustDevice: false })
     })
     expect(verifyTotp).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(redirectAfterAuth).toHaveBeenCalledOnce()
+    })
+  })
+
+  it("keeps Verify locked while the accepted code is taking the customer onwards", async () => {
+    redirectAfterAuth.mockReturnValue(new Promise<void>(() => {}))
+    renderWithProviders(<TwoFactorChallengeForm onCancel={onCancel} />)
+
+    fireEvent.change(screen.getByLabelText("Authentication code"), { target: { value: "123456" } })
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }))
+
+    await waitFor(() => {
+      expect(redirectAfterAuth).toHaveBeenCalledOnce()
+    })
+    expect(screen.getByRole("button", { name: /Verify/u })).toBeDisabled()
   })
 
   it("clears the field and stays put when the code is rejected", async () => {
@@ -118,7 +126,7 @@ describe("TwoFactorChallengeForm", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Authentication code")).toHaveValue("")
     })
-    expect(navigate).not.toHaveBeenCalled()
+    expect(redirectAfterAuth).not.toHaveBeenCalled()
   })
 
   it("lets the customer go back to the password form", () => {

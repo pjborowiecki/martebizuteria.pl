@@ -1,14 +1,13 @@
 import { type JSX, type SyntheticEvent, useCallback, useState } from "react"
 
-import { useNavigate } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
-import { postAuthRouteFor } from "~/src/integrations/better-auth/auth.routes"
-import { getCurrentSession } from "~/src/integrations/better-auth/auth.session"
+
+import { usePostAuthRedirect } from "~/src/hooks/use-post-auth-redirect"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Checkbox } from "~/src/presentation/components/shadcn/checkbox"
@@ -23,9 +22,9 @@ const verifyBackupCode = createClientOnlyFn((code: string, trustDevice: boolean)
   authClient.twoFactor.verifyBackupCode({ code, trustDevice }),
 )
 
-export const TwoFactorChallengeForm = ({ intended, onCancel }: Readonly<TwoFactorChallengeFormProps>): JSX.Element => {
+export const TwoFactorChallengeForm = ({ onCancel }: Readonly<TwoFactorChallengeFormProps>): JSX.Element => {
   const t = useTranslations("pages.auth.sign-in.twoFactor")
-  const navigate = useNavigate()
+  const redirectAfterAuth = usePostAuthRedirect()
   const [code, setCode] = useState("")
   const [trustDevice, setTrustDevice] = useState(false)
   const [useBackup, setUseBackup] = useState(false)
@@ -34,20 +33,17 @@ export const TwoFactorChallengeForm = ({ intended, onCancel }: Readonly<TwoFacto
   const verify = useCallback(async () => {
     setPending(true)
     const { error } = useBackup ? await verifyBackupCode(code, trustDevice) : await verifyTotp(code, trustDevice)
-    setPending(false)
-
     if (error !== null) {
+      setPending(false)
       toast.error(t(useBackup ? "wrongBackupCode" : "wrongCode"))
       setCode("")
 
       return
     }
 
-    const session = await getCurrentSession()
-    if (session?.user) {
-      void navigate({ to: intended ?? postAuthRouteFor(session.user) })
-    }
-  }, [code, intended, navigate, t, trustDevice, useBackup])
+    await redirectAfterAuth()
+    setPending(false)
+  }, [code, redirectAfterAuth, t, trustDevice, useBackup])
 
   const handleSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
@@ -116,6 +112,5 @@ export const TwoFactorChallengeForm = ({ intended, onCancel }: Readonly<TwoFacto
 }
 
 interface TwoFactorChallengeFormProps {
-  readonly intended?: string | undefined
   readonly onCancel: () => void
 }

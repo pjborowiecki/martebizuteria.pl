@@ -38,6 +38,7 @@ const profile: CustomerAccount["profile"] = {
   hasPassword: true,
   name: "Anna Kowalska",
   phone: "+48600123456",
+  twoFactorEnabled: false,
 }
 
 beforeEach(() => {

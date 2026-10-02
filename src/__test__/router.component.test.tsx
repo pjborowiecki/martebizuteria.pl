@@ -5,9 +5,10 @@ import type * as StartServer from "@tanstack/react-start/server"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { currentRequest, devtools, sync } = vi.hoisted(() => ({
+const { currentRequest, devtools, session, sync } = vi.hoisted(() => ({
   currentRequest: vi.fn<() => Request>(() => new Request("https://marte.test/cart")),
   devtools: vi.fn(() => null),
+  session: { clearCacheOnUserChange: vi.fn() },
   sync: { setupQueryClientInvalidationBroadcast: vi.fn() },
 }))
 
@@ -23,6 +24,7 @@ vi.mock("~/src/lib/url", () => ({
   resolveAssetURL: (path: string) => path,
 }))
 vi.mock("~/src/integrations/tanstack-query/query.sync", () => sync)
+vi.mock("~/src/integrations/better-auth/auth.session", () => session)
 vi.mock("@tanstack/react-query-devtools", () => ({ ReactQueryDevtools: devtools }))
 vi.mock("~/src/routeTree.gen", async () => {
   const { createRootRoute } = await import("@tanstack/react-router")
@@ -125,6 +127,19 @@ describe("router cache", () => {
 
     expect(context.queryClient).toBeDefined()
     expect(sync.setupQueryClientInvalidationBroadcast).not.toHaveBeenCalled()
+  })
+
+  it("forgets the previous visitor's data in the browser whenever a different user signs in", () => {
+    const { context } = getRouter().options
+
+    expect(session.clearCacheOnUserChange).toHaveBeenCalledWith(context.queryClient)
+  })
+
+  it("leaves a server render's cache alone, since each request already starts empty", () => {
+    vi.stubEnv("SSR", true)
+    getRouter()
+
+    expect(session.clearCacheOnUserChange).not.toHaveBeenCalled()
   })
 })
 
