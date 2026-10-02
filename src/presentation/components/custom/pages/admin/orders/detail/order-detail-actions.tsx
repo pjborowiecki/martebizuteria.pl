@@ -1,6 +1,6 @@
 import { type JSX, useCallback } from "react"
 
-import { CheckCheck, Loader2, Package, Printer, RotateCcw, Truck, XCircle } from "lucide-react"
+import { CheckCheck, Loader2, Package, Printer, Truck, XCircle } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { type Order } from "~/src/modules/order/order.types"
@@ -12,6 +12,7 @@ import {
   ADMIN_HEADER_SECONDARY_BUTTON_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
+import { OrderRefundButton } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-refund-button"
 import { OrderShipDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-ship-dialog"
 import { useOrderDetailActions } from "~/src/presentation/components/custom/pages/admin/orders/detail/use-order-detail-actions"
 
@@ -43,16 +44,7 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
       </Button>
 
       {actions.canRefund && (
-        <Button
-          className={ADMIN_HEADER_SECONDARY_BUTTON_CLASS}
-          disabled={actions.isPending}
-          onClick={handleOpenRefundDialog}
-          size="sm"
-          variant="outline"
-        >
-          <RotateCcw className="size-3.5" strokeWidth={1.5} />
-          {t("actions.refund")}
-        </Button>
+        <OrderRefundButton blocker={actions.refundBlocker} isPending={actions.isPending} onClick={handleOpenRefundDialog} />
       )}
 
       {actions.canCancel && (

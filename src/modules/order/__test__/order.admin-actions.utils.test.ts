@@ -6,8 +6,9 @@ import {
   canMarkAdminOrderShipped,
   canPrintAdminOrderInvoice,
   canRefundAdminOrder,
+  resolveAdminOrderRefundBlocker,
 } from "~/src/modules/order/order.admin-actions.utils"
-import { type AdminOrderPaymentUiKey } from "~/src/modules/order/order.constants"
+import { ADMIN_ORDER_REFUND_BLOCKER, type AdminOrderPaymentUiKey } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 type FulfillmentStatus = Order["select"]["fulfillmentStatus"]
@@ -84,6 +85,20 @@ describe("canRefundAdminOrder", () => {
 
   it.each(CLOSED_STATUSES)("refuses to refund a %s order twice", (status) => {
     expect(canRefundAdminOrder({ paymentUiKey: "paid", status })).toBe(false)
+  })
+})
+
+describe("resolveAdminOrderRefundBlocker", () => {
+  it("lets Stripe refund a paid order without a dispute", () => {
+    expect(resolveAdminOrderRefundBlocker({ hasOpenDispute: false, totalMinorUnits: 12_900 })).toBeUndefined()
+  })
+
+  it("blocks a free order, which Stripe never charged", () => {
+    expect(resolveAdminOrderRefundBlocker({ hasOpenDispute: false, totalMinorUnits: 0 })).toBe(ADMIN_ORDER_REFUND_BLOCKER.NO_STRIPE_PAYMENT)
+  })
+
+  it("blocks an order while its dispute is open", () => {
+    expect(resolveAdminOrderRefundBlocker({ hasOpenDispute: true, totalMinorUnits: 12_900 })).toBe(ADMIN_ORDER_REFUND_BLOCKER.OPEN_DISPUTE)
   })
 })
 

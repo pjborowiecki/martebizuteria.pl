@@ -354,16 +354,29 @@ describe("single order lookups", () => {
 
   it("resolves the Checkout Session an admin refund would target", async () => {
     expect(await getAdminOrderRefundTarget("o-unfulfilled")).toStrictEqual({
+      metadata: null,
       paymentStatus: "succeeded",
       status: "processing",
+      total: 20_000,
       transactionId: "cs_paid",
     })
   })
 
+  it("carries the metadata a dispute flag lives in, so the refund can refuse a disputed order", async () => {
+    const disputed = '{"dispute":{"amount":20000,"id":"dp_1","reason":"fraudulent","status":"needs_response"}}'
+    await updateOrderMetadata("o-unfulfilled", disputed)
+
+    const target = await getAdminOrderRefundTarget("o-unfulfilled")
+
+    expect(target?.metadata).toBe(disputed)
+  })
+
   it("reports an unpayable order rather than inventing a payment intent", async () => {
     expect(await getAdminOrderRefundTarget("o-cancelled")).toStrictEqual({
+      metadata: null,
       paymentStatus: null,
       status: "cancelled",
+      total: 50_000,
       transactionId: null,
     })
   })

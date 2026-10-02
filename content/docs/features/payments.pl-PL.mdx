@@ -190,7 +190,7 @@ if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
 
 `prepareRefundBatch` zapisuje `refundedAmount`, `refundedAt` i `status` (`refunded` przy pełnym zwrocie, w przeciwnym razie powrót do `succeeded`), przy pełnym zwrocie ustawia zamówienie na `refunded` i dodaje `quantityAvailable + quantity` dla każdej linii zwracanej do magazynu.
 
-Spory są zapisywane w `order.metadata`, a nie w kolumnach: `flagOrderDispute` scala `{ id, reason, status, amount }` do JSON-a przez `mergeDisputeMetadata` (`order.display.utils.ts`). Przegrany spór jest traktowany jak pełny zwrot z `restock: false` i loguje `review inventory manually` — towar przepadł, więc stan nie jest przywracany.
+Spory są zapisywane w `order.metadata`, a nie w kolumnach: `flagOrderDispute` scala `{ id, reason, status, amount }` do JSON-a przez `mergeDisputeMetadata` (`order.display.utils.ts`). Przegrany spór jest traktowany jak pełny zwrot z `restock: false` i loguje `review inventory manually` — towar przepadł, więc stan nie jest przywracany. `clearOrderDispute` usuwa flagę, gdy spór zamyka się w inny sposób, a dopóki flaga istnieje, zwrot z panelu jest odrzucany (zobacz [Zwroty z panelu](#zwroty-z-panelu)).
 
 ## Testy lokalne
 
@@ -206,9 +206,24 @@ uruchamia `stripe listen --latest --forward-to localhost:3000/api/webhooks/strip
 
 ## Zwroty z panelu
 
-`/admin/orders/$orderId` wczytuje zamówienie przez `getAdminOrderQuery`, a jego nagłówek pokazuje Drukuj, Zwrot, Anuluj zamówienie, Realizuj, Oznacz jako wysłane i Oznacz jako dostarczone, o ile dana akcja ma zastosowanie; pozycja Zwrot w menu wiersza na `/admin/orders` otwiera tę stronę. Zwrot prosi o potwierdzenie i wywołuje `refundAdminOrder` (`src/modules/order/use-cases/refund-admin-order.ts`), funkcję serwerową zabezpieczoną przez `authorized({ order: ["update"] })`. Sprawdza ona `canRefundAdminOrder` z `order.admin-actions.utils.ts` (opłacone, ani zwrócone, ani anulowane) oraz to, czy wiersz płatności ma `transaction_id`. Ta kolumna trzyma opisany wyżej identyfikator sesji Checkout, którego Stripe nie przyjmuje jako `payment_intent`, więc funkcja pobiera sesję przez `stripe.checkout.sessions.retrieve(transactionId)` i odczytuje jej `payment_intent` przez `resolveStripeObjectId` (`src/integrations/stripe/stripe.utils.ts`), które zwraca identyfikator niezależnie od tego, czy Stripe przysłał go jako tekst, czy jako rozwinięty obiekt. Sesja bez PaymentIntent, na przykład checkout z `no_payment_required`, jest odrzucana. W przeciwnym razie funkcja wywołuje `stripe.refunds.create({ metadata: { orderId }, payment_intent: paymentIntentId })`, co zwraca całą kwotę.
+`/admin/orders/$orderId` wczytuje zamówienie przez `getAdminOrderQuery`, a jego nagłówek pokazuje Drukuj, Zwrot, Anuluj zamówienie, Realizuj, Oznacz jako wysłane i Oznacz jako dostarczone, o ile dana akcja ma zastosowanie; pozycja Zwrot w menu wiersza na `/admin/orders` otwiera tę stronę. Zwrot prosi o potwierdzenie i wywołuje `refundAdminOrder` (`src/modules/order/use-cases/refund-admin-order.ts`), funkcję serwerową zabezpieczoną przez `authorized({ order: ["update"] })`. Sprawdza ona `canRefundAdminOrder` z `order.admin-actions.utils.ts` (opłacone, ani zwrócone, ani anulowane), a potem `resolveAdminOrderRefundBlocker` z tego samego pliku, które nazywa powód, dla którego Stripe nie może zwrócić płatności za zamówienie:
 
-Brak zamówienia rzuca `ERROR_CODES.NOT_FOUND` z `ORDER_NOT_FOUND`. Każdy odrzucony zwrot rzuca `ERROR_CODES.CONFLICT` z `ORDER_INVALID_STATE` bez zlecania zwrotu w Stripe.
+| Blokada           | Kiedy                                                                | Dlaczego                                                                                                                    |
+| ----------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `noStripePayment` | `order.total` wynosi 0                                               | Bezpłatny checkout kończy się jako `no_payment_required`, więc Stripe nie pobrał płatności i nie ma PaymentIntent do zwrotu |
+| `openDispute`     | `order.metadata` zawiera `dispute` zapisane przez `flagOrderDispute` | O losie płatności decyduje spór, dopóki `clearOrderDispute` nie usunie flagi                                                |
+
+Wymaga też `transaction_id` w wierszu płatności. Ta kolumna trzyma opisany wyżej identyfikator sesji Checkout, którego Stripe nie przyjmuje jako `payment_intent`, więc funkcja pobiera sesję przez `stripe.checkout.sessions.retrieve(transactionId)` i odczytuje jej `payment_intent` przez `resolveStripeObjectId` (`src/integrations/stripe/stripe.utils.ts`), które zwraca identyfikator niezależnie od tego, czy Stripe przysłał go jako tekst, czy jako rozwinięty obiekt. Sesja z `payment_status` równym `no_payment_required` albo bez PaymentIntent również jest odrzucana. W przeciwnym razie funkcja wywołuje:
+
+```ts
+await stripe.refunds.create({ metadata: { orderId }, payment_intent: paymentIntentId }, { idempotencyKey: `admin-order-refund-${orderId}` })
+```
+
+co zwraca całą kwotę. Klucz idempotencji jest taki sam dla każdego żądania dotyczącego jednego zamówienia, więc podwójne kliknięcie, druga karta albo drugi administrator wysyłają do Stripe żądanie, które Stripe już zna, a Stripe odpowiada pierwszym wynikiem albo odrzuca powtórzenie, dopóki pierwsze żądanie wciąż trwa, zamiast próbować kolejnego zwrotu. Stripe przechowuje wynik dla klucza, łącznie z błędami, przez co najmniej 24 godziny, więc ponowienie zwrotu, który Stripe odrzucił, zwraca ten sam błąd, dopóki klucz nie wygaśnie.
+
+Brak zamówienia rzuca `ERROR_CODES.NOT_FOUND` z `ORDER_NOT_FOUND`. Każdy odrzucony zwrot rzuca `ERROR_CODES.CONFLICT` z `ORDER_INVALID_STATE` bez zlecania zwrotu w Stripe. Te sprawdzenia działają na serwerze przy każdym wywołaniu, niezależnie od tego, co pokazuje strona.
+
+Strona uruchamia te same predykaty na wczytanym zamówieniu. Zwrot pojawia się, gdy pozwala na to `canRefundAdminOrder`. Gdy `resolveAdminOrderRefundBlocker` zwraca blokadę, `order-refund-button.tsx` pozostawia przycisk widoczny, ale wyłączony i nadal osiągalny klawiaturą, a jego podpowiedź wyjaśnia blokadę komunikatami z `pages.admin.orderDetail.refundBlocked`.
 
 `refundAdminOrder` niczego nie zapisuje w bazie. Statusy płatności i zamówienia, wpis audytu i zwrot do magazynu przychodzą z wynikowym zdarzeniem `charge.refunded`, tą samą ścieżką `refundOrder` co zwrot wykonany w panelu Stripe. Uprawnienie `order: ["refund"]` w `auth.access.ts` wciąż nie jest używane przez żadną funkcję serwerową.
 

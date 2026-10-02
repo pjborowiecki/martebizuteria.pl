@@ -7,7 +7,9 @@ import {
   canMarkAdminOrderShipped,
   canPrintAdminOrderInvoice,
   canRefundAdminOrder,
+  resolveAdminOrderRefundBlocker,
 } from "~/src/modules/order/order.admin-actions.utils"
+import { type AdminOrderRefundBlocker } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 import {
@@ -101,6 +103,10 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
     handleMarkDelivered,
     handlePrint,
     isPending,
+    refundBlocker: resolveAdminOrderRefundBlocker({
+      hasOpenDispute: order.dispute !== undefined,
+      totalMinorUnits: order.totalMinorUnits,
+    }),
     refundDialogOpen,
     setCancelDialogOpen,
     setRefundDialogOpen,
@@ -124,6 +130,7 @@ interface UseOrderDetailActionsResult {
   readonly handleMarkDelivered: () => void
   readonly handlePrint: () => void
   readonly isPending: boolean
+  readonly refundBlocker: AdminOrderRefundBlocker | undefined
   readonly refundDialogOpen: boolean
   readonly setCancelDialogOpen: (open: boolean) => void
   readonly setRefundDialogOpen: (open: boolean) => void
