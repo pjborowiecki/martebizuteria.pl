@@ -20,13 +20,15 @@ export const RATE_LIMITS = {
   TOKEN: { max: 5, window: RATE_LIMIT_WINDOW_SECONDS },
 } as const
 
+const ERROR_REASON_PATTERN = /^[A-Z][A-Z\d_]*$/u
+
 const handleRequestError = (error: unknown): never => {
   if (isNotFound(error)) {
     throw error
   }
 
   if (error instanceof AppError) {
-    throw new AppError(error.code)
+    throw new AppError(error.code, ERROR_REASON_PATTERN.test(error.message) ? error.message : error.code)
   }
 
   if (isAPIError(error)) {
