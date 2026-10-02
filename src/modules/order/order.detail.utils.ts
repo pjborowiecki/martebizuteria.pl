@@ -42,6 +42,34 @@ export const mapAdminOrderDetailAddress = (row: AdminOrderAddressRow | null | un
   }
 }
 
+const isSameAdminOrderAddress = (left: AdminOrderAddressRow, right: AdminOrderAddressRow): boolean =>
+  left.address1 === right.address1 &&
+  left.address2 === right.address2 &&
+  left.city === right.city &&
+  left.countryCode === right.countryCode &&
+  left.firstName === right.firstName &&
+  left.lastName === right.lastName &&
+  left.phone === right.phone &&
+  left.postalCode === right.postalCode &&
+  left.province === right.province
+
+export const resolveAdminOrderDetailAddresses = ({
+  addresses,
+  checkout,
+}: AdminOrderAddressSources): Pick<Order["adminOrderDetail"], "billingAddress" | "billingSameAsShipping" | "shippingAddress"> => {
+  const billingSnapshot = addresses.find((row) => row.type === "billing")
+  const shippingSnapshot = addresses.find((row) => row.type === "shipping")
+  const placedBeforeSnapshots = addresses.length === 0
+
+  return {
+    billingAddress: mapAdminOrderDetailAddress(billingSnapshot ?? checkout?.billingAddress),
+    billingSameAsShipping: placedBeforeSnapshots
+      ? checkout !== null && checkout.billingAddressId !== null && checkout.billingAddressId === checkout.shippingAddressId
+      : billingSnapshot !== undefined && shippingSnapshot !== undefined && isSameAdminOrderAddress(billingSnapshot, shippingSnapshot),
+    shippingAddress: mapAdminOrderDetailAddress(shippingSnapshot ?? checkout?.shippingAddress),
+  }
+}
+
 export const mapAdminOrderDetailItem = (row: AdminOrderItemRow): Order["adminOrderDetailItem"] => ({
   id: row.id,
   imageUrl: row.thumbnail === null || row.thumbnail === "" ? undefined : row.thumbnail,
@@ -172,6 +200,22 @@ interface AdminOrderAddressRow {
   readonly phone: string | null
   readonly postalCode: string | null
   readonly province: string | null
+}
+
+interface AdminOrderAddressSnapshotRow extends AdminOrderAddressRow {
+  readonly type: "billing" | "shipping"
+}
+
+interface AdminOrderCheckoutAddresses {
+  readonly billingAddress: AdminOrderAddressRow | null
+  readonly billingAddressId: string | null
+  readonly shippingAddress: AdminOrderAddressRow | null
+  readonly shippingAddressId: string | null
+}
+
+interface AdminOrderAddressSources {
+  readonly addresses: readonly AdminOrderAddressSnapshotRow[]
+  readonly checkout: AdminOrderCheckoutAddresses | null
 }
 
 interface AdminOrderItemRow {

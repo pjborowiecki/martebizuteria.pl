@@ -68,10 +68,6 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 Each is a decision waiting to be made: use it, or remove it so the next reader does not assume it is load-bearing.
 
-### The admin order detail reads live addresses
-
-`order_address` is now written and read on the customer side. `prepareFulfillCheckoutBatch` in `src/modules/checkout/checkout.utils.ts` inserts a `shipping` and a `billing` snapshot in the batch that creates the order, and `getCustomerOrder` in `src/modules/customer-account/use-cases/get-customer-order.ts` prefers them over the checkout's addresses. The admin order detail does not read them. `getAdminOrderDetailRow` in `src/modules/order/order.accessors.ts` still reaches an address through `order.checkout_id` → `checkout.shipping_address_id` → the `address` row, and when the customer chose to save the address at checkout, that row belongs to their account. It is editable and deletable from `/account/addresses`, and the foreign key is declared `onDelete: "set null"`. So a customer who edits a saved address changes what `/admin/orders/$orderId` says the order was shipped to, and a customer who deletes one leaves that page with no address at all. Reading the snapshot there, as the customer's order page already does, is the fix.
-
 ### The `refund` permission is never checked
 
 The admin console now issues refunds. The Refund button on `/admin/orders/$orderId` calls `refundAdminOrder` in `src/modules/order/use-cases/refund-admin-order.ts`, which asks Stripe for a full refund with `stripe.refunds.create`, and the `charge.refunded` webhook then records it through `handleChargeRefunded` in `src/integrations/stripe/stripe.webhooks.tsx`, exactly as it does for a refund issued in Stripe. `refundAdminOrder` is guarded by `authorized({ order: ["update"] })`, so the `order: ["refund"]` permission declared in `auth.access.ts` is still never checked anywhere. Either check it there or remove it.

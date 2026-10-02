@@ -17,9 +17,9 @@ import { ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/orde
 import {
   buildAdminOrderDetailCustomer,
   buildAdminOrderFulfillmentSteps,
-  mapAdminOrderDetailAddress,
   mapAdminOrderDetailItem,
   mapAdminOrderTimeline,
+  resolveAdminOrderDetailAddresses,
   resolveAdminOrderDetailTags,
   resolveAdminOrderDispute,
 } from "~/src/modules/order/order.detail.utils"
@@ -49,11 +49,11 @@ const buildAdminOrderDetail = ({
   const customerNote = orderRow.customerNote?.trim()
   const { deliveryMethod } = orderRow
   const paymentRow = orderRow.payment
-  const billingAddressId = orderRow.checkout?.billingAddressId ?? undefined
+  const { billingAddress, billingSameAsShipping, shippingAddress } = resolveAdminOrderDetailAddresses(orderRow)
 
   return {
-    billingAddress: mapAdminOrderDetailAddress(orderRow.checkout?.billingAddress),
-    billingSameAsShipping: billingAddressId !== undefined && billingAddressId === orderRow.checkout?.shippingAddressId,
+    billingAddress,
+    billingSameAsShipping,
     canceledAt: orderRow.canceledAt ?? undefined,
     createdAt: orderRow.createdAt,
     currencyCode: orderRow.currencyCode,
@@ -104,7 +104,7 @@ const buildAdminOrderDetail = ({
           },
     paymentUiKey: resolveAdminOrderPaymentUiKey(paymentRow?.status),
     shippedAt: orderRow.shippedAt ?? undefined,
-    shippingAddress: mapAdminOrderDetailAddress(orderRow.checkout?.shippingAddress),
+    shippingAddress,
     shippingTotalMinorUnits: orderRow.shippingTotal,
     status: orderRow.status,
     subtotalMinorUnits: orderRow.subtotal,

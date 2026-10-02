@@ -68,10 +68,6 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 Każdy z nich czeka na decyzję: użyć albo usunąć, żeby następny czytający nie zakładał, że coś jest nośne.
 
-### Szczegóły zamówienia w panelu czytają bieżące adresy
-
-`order_address` jest już zapisywana i czytana po stronie klienta. `prepareFulfillCheckoutBatch` w `src/modules/checkout/checkout.utils.ts` wstawia zrzut `shipping` i zrzut `billing` w partii, która tworzy zamówienie, a `getCustomerOrder` w `src/modules/customer-account/use-cases/get-customer-order.ts` przedkłada je nad adresy wiersza `checkout`. Szczegóły zamówienia w panelu ich nie czytają. `getAdminOrderDetailRow` w `src/modules/order/order.accessors.ts` nadal dochodzi do adresu przez `order.checkout_id` → `checkout.shipping_address_id` → wiersz `address`, a gdy klient zdecydował się zapisać adres podczas zamówienia, ten wiersz należy do jego konta. Można go edytować i usuwać z `/account/addresses`, a klucz obcy jest zadeklarowany jako `onDelete: "set null"`. Klient, który edytuje zapisany adres, zmienia więc to, co `/admin/orders/$orderId` mówi o adresie dostawy zamówienia, a klient, który go usunie, zostawia tę stronę bez żadnego adresu. Naprawą jest czytanie tam zrzutu, tak jak robi to już strona zamówienia klienta.
-
 ### Uprawnienie `refund` nie jest nigdzie sprawdzane
 
 Panel wykonuje już zwroty płatności. Przycisk „Zwrot” na `/admin/orders/$orderId` wywołuje `refundAdminOrder` z `src/modules/order/use-cases/refund-admin-order.ts`, które prosi Stripe o pełny zwrot przez `stripe.refunds.create`, a webhook `charge.refunded` zapisuje go potem przez `handleChargeRefunded` w `src/integrations/stripe/stripe.webhooks.tsx`, dokładnie tak samo jak zwrot wykonany w Stripe. `refundAdminOrder` jest chronione przez `authorized({ order: ["update"] })`, więc uprawnienie `order: ["refund"]` zadeklarowane w `auth.access.ts` nadal nie jest nigdzie sprawdzane. Albo sprawdzaj je tam, albo je usuń.

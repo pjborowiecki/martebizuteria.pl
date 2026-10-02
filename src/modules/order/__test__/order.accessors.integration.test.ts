@@ -17,6 +17,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 import { DATE_COLUMN_FILTER_OPERATOR, NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
 import {
   getAdminOrderCustomerStats,
+  getAdminOrderDetailRow,
   getAdminOrderRefundTarget,
   getAdminOrderStats,
   getAdminOrdersExport,
@@ -408,5 +409,75 @@ describe("single order lookups", () => {
     await updateOrderMetadata("o-shipped", '{"locale":"pl-PL"}')
 
     expect(await getOrderMetadata("o-pending")).toStrictEqual({ metadata: '{"locale":"en-US"}' })
+  })
+})
+
+describe("getAdminOrderDetailRow", () => {
+  beforeEach(() => {
+    sqlite.exec(`
+      drop table if exists "order";
+      drop table if exists payment;
+      drop table if exists user;
+      drop table if exists checkout;
+      drop table if exists address;
+      drop table if exists order_address;
+      drop table if exists delivery_method;
+      drop table if exists courier;
+
+      create table user (id text primary key, name text not null, phone text);
+      create table payment (
+        id text primary key, amount integer not null, checkout_id text not null, currency text not null default 'PLN',
+        provider text not null, refunded_amount integer not null default 0, refunded_at integer,
+        status text not null default 'pending', transaction_id text, created_at integer not null, updated_at integer not null
+      );
+      create table courier (id text primary key, name text not null);
+      create table delivery_method (
+        id text primary key, api_service_code text not null, courier_id text not null, description text,
+        is_active integer not null default 1, name text not null, price integer not null, type text not null,
+        created_at integer not null, updated_at integer not null
+      );
+      create table address (
+        id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
+        first_name text, is_default integer not null default 0, last_name text, phone text, postal_code text,
+        province text, user_id text, created_at integer not null, updated_at integer not null
+      );
+      create table checkout (id text primary key, billing_address_id text, shipping_address_id text);
+      create table "order" (
+        id text primary key, billing_company_name text, billing_nip text, canceled_at integer, checkout_id text,
+        currency_code text not null default 'PLN', customer_note text, delivered_at integer, delivery_method_id text,
+        discount_id text, discount_total integer not null default 0, email text not null,
+        fulfillment_status text not null default 'not_fulfilled', locker_id text, metadata text, order_number text not null,
+        payment_id text, shipped_at integer, shipping_total integer not null default 0, status text not null default 'pending',
+        subtotal integer not null default 0, tax_basis_points integer not null default 2300, tax_total integer not null default 0,
+        total integer not null default 0, tracking_number text, tracking_url text, user_id text,
+        created_at integer not null, updated_at integer not null
+      );
+      create table order_address (
+        id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
+        first_name text not null, last_name text not null, order_id text not null, phone text, postal_code text,
+        province text, type text not null, created_at integer not null, updated_at integer not null
+      );
+
+      insert into user (id, name) values ('u-anna', 'Anna Kowalska');
+      insert into address (id, address1, city, country_code, first_name, last_name, user_id, created_at, updated_at) values
+        ('addr-anna', 'ul. Edited 1', 'Gdansk', 'PL', 'Anna', 'Kowalska', 'u-anna', ${JUNE}, ${JUNE});
+      insert into checkout (id, billing_address_id, shipping_address_id) values ('chk-1', 'addr-anna', 'addr-anna');
+      insert into "order" (id, checkout_id, email, order_number, user_id, created_at, updated_at) values
+        ('o-placed', 'chk-1', 'anna@example.com', 'MRT-2024-00001', 'u-anna', ${JANUARY}, ${JANUARY});
+      insert into order_address (id, address1, city, country_code, first_name, last_name, order_id, type, created_at, updated_at) values
+        ('oa-ship', 'ul. Mokotowska 12', 'Warszawa', 'PL', 'Anna', 'Kowalska', 'o-placed', 'shipping', ${JANUARY}, ${JANUARY}),
+        ('oa-bill', 'ul. Firmowa 1', 'Krakow', 'PL', 'Anna', 'Kowalska', 'o-placed', 'billing', ${JANUARY}, ${JANUARY});
+    `)
+  })
+
+  it("reads the address snapshots written when the order was placed alongside the editable checkout rows", async () => {
+    const row = await getAdminOrderDetailRow("o-placed")
+    const snapshots = row?.addresses.map(({ address1, type }) => ({ address1, type }))
+
+    expect(snapshots?.toSorted((left, right) => left.type.localeCompare(right.type))).toStrictEqual([
+      { address1: "ul. Firmowa 1", type: "billing" },
+      { address1: "ul. Mokotowska 12", type: "shipping" },
+    ])
+    expect(row?.checkout?.shippingAddress?.address1).toBe("ul. Edited 1")
   })
 })
