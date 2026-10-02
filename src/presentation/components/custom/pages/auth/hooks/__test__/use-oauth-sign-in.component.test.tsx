@@ -22,10 +22,12 @@ import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { useOAuthSignIn } from "~/src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in"
 
+const SIGN_IN_PAGE = "/auth/sign-in?redirect=%2Fen-US%2Faccount%2Forders"
+
 const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => (
   <TestProviders
     queryClient={new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })}
-    router={createTestRouter()}
+    router={createTestRouter(SIGN_IN_PAGE)}
   >
     {children}
   </TestProviders>
@@ -50,13 +52,13 @@ describe("useOAuthSignIn", () => {
     expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), USER_QUERY_KEYS.ADMIN.CUSTOMERS)
   })
 
-  it("sends the shopper to the provider with a localized callback url", async () => {
+  it("brings the shopper back to the sign-in page they started from, so its guard can send them on", async () => {
     signInSocial.mockResolvedValue({ error: null })
     const { result } = renderSignIn()
 
     await result.current.mutateAsync("google")
 
-    expect(signInSocial).toHaveBeenCalledWith({ callbackURL: "/en-US/account/overview", provider: "google" })
+    expect(signInSocial).toHaveBeenCalledWith({ callbackURL: SIGN_IN_PAGE, provider: "google" })
   })
 
   it("passes the provider the caller chose", async () => {
@@ -65,7 +67,7 @@ describe("useOAuthSignIn", () => {
 
     await result.current.mutateAsync("github")
 
-    expect(signInSocial).toHaveBeenCalledWith({ callbackURL: "/en-US/account/overview", provider: "github" })
+    expect(signInSocial).toHaveBeenCalledWith({ callbackURL: SIGN_IN_PAGE, provider: "github" })
   })
 
   it("welcomes the shopper back when the provider accepts the sign in", async () => {

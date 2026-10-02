@@ -2,7 +2,7 @@ import { type JSX } from "react"
 
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 
-import { redirectAuthenticated } from "~/src/integrations/better-auth/auth.routes"
+import { redirectIfSignedIn } from "~/src/integrations/better-auth/auth.routes"
 
 import { AuthEditorial } from "~/src/presentation/components/custom/pages/auth/auth-editorial"
 import { Navigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation"
@@ -25,7 +25,7 @@ const AuthLayoutRoute = (): JSX.Element => (
 )
 
 export const Route = createFileRoute("/auth")({
-  beforeLoad: () => redirectAuthenticated(),
+  beforeLoad: redirectIfSignedIn,
   component: AuthLayoutRoute,
   staticData: {
     namespaces: ["pages.auth.errors", "pages.auth.validations", "pages.auth.oauth"],

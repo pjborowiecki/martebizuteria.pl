@@ -11,6 +11,7 @@ interface UserRow {
   readonly name: string
   readonly phone: string | null
   readonly timezone: string | null
+  readonly twoFactorEnabled: boolean | null
 }
 
 const CALLER_CONTEXT = { auth: { session: { id: "session-current" }, user: { id: "customer-1" } } }
@@ -42,6 +43,7 @@ const userRow = (overrides: Partial<UserRow> = {}): UserRow => ({
   name: "Anna Kowalska",
   phone: "+48123456789",
   timezone: "Europe/Warsaw",
+  twoFactorEnabled: false,
   ...overrides,
 })
 
@@ -70,6 +72,7 @@ describe("getCustomerProfile", () => {
       name: "Anna Kowalska",
       phone: "+48123456789",
       timezone: "Europe/Warsaw",
+      twoFactorEnabled: false,
     })
   })
 
@@ -97,6 +100,22 @@ describe("getCustomerProfile", () => {
 
     expect(profile?.phone).toBeUndefined()
     expect(profile?.timezone).toBeUndefined()
+  })
+
+  it("reports two-factor as on for an account that enabled it", async () => {
+    accessors.getUserById.mockResolvedValue(userRow({ twoFactorEnabled: true }))
+
+    const profile = await getCustomerProfile()
+
+    expect(profile?.twoFactorEnabled).toBe(true)
+  })
+
+  it("reports two-factor as off when the account never set it", async () => {
+    accessors.getUserById.mockResolvedValue(userRow({ twoFactorEnabled: null }))
+
+    const profile = await getCustomerProfile()
+
+    expect(profile?.twoFactorEnabled).toBe(false)
   })
 
   it("returns nothing when the account row has gone", async () => {

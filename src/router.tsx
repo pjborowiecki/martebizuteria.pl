@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { createRouter } from "@tanstack/react-router"
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query"
 
+import { clearCacheOnUserChange } from "~/src/integrations/better-auth/auth.session"
 import { setupQueryClientInvalidationBroadcast } from "~/src/integrations/tanstack-query/query.sync"
 import { deLocalizeUrl, localizeUrl } from "~/src/integrations/use-intl/i18n.utils"
 
@@ -29,6 +30,7 @@ export const getRouter = () => {
   const imagePrefetchService = new ImagePrefetchService()
   if (!import.meta.env.SSR) {
     setupQueryClientInvalidationBroadcast(queryClient)
+    clearCacheOnUserChange(queryClient)
   }
 
   const router = createRouter({

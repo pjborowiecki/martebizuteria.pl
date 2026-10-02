@@ -116,6 +116,7 @@ interface CustomerAccountProfile {
   readonly name: string
   readonly phone?: string | undefined
   readonly timezone?: string | undefined
+  readonly twoFactorEnabled: boolean
 }
 
 interface CustomerAccountSession {

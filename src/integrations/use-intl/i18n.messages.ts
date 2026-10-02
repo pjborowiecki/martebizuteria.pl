@@ -1,4 +1,4 @@
-import { type QueryClient, queryOptions } from "@tanstack/react-query"
+import { type Query, type QueryClient, queryOptions } from "@tanstack/react-query"
 import { type AbstractIntlMessages } from "use-intl"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
@@ -83,6 +83,8 @@ export const getRouteNamespaces = (
     }
   }[],
 ): string[] => [...new Set([...ROOT_NAMESPACES, ...matches.flatMap((match) => match.staticData.namespaces ?? [])])]
+
+export const isMessagesQuery = ({ queryKey }: Pick<Query, "queryKey">): boolean => queryKey[0] === MESSAGES_QUERY_KEY
 
 export const messagesQueryOptions = <TMessages extends AbstractIntlMessages = AbstractIntlMessages>({
   locale,

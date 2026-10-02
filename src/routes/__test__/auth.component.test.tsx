@@ -5,8 +5,8 @@ import { cleanup, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 const guarded = vi.hoisted(() => ({
-  beforeLoad: undefined as (() => Promise<void>) | undefined,
-  redirectAuthenticated: vi.fn<() => Promise<void>>(),
+  beforeLoad: undefined as unknown,
+  redirectIfSignedIn: vi.fn<() => Promise<void>>(),
 }))
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -14,7 +14,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 
   return {
     ...actual,
-    createFileRoute: () => (options: { beforeLoad: () => Promise<void> }) => {
+    createFileRoute: () => (options: { beforeLoad: unknown }) => {
       guarded.beforeLoad = options.beforeLoad
 
       return { options }
@@ -22,7 +22,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     Outlet: (): JSX.Element => <form data-testid="outlet" />,
   }
 })
-vi.mock("~/src/integrations/better-auth/auth.routes", () => ({ redirectAuthenticated: guarded.redirectAuthenticated }))
+vi.mock("~/src/integrations/better-auth/auth.routes", () => ({ redirectIfSignedIn: guarded.redirectIfSignedIn }))
 vi.mock("~/src/presentation/components/custom/pages/auth/auth-editorial", () => ({
   AuthEditorial: (): JSX.Element => <aside data-testid="auth-editorial" />,
 }))
@@ -71,16 +71,8 @@ describe("auth layout route", () => {
     expect(editorial.compareDocumentPosition(outlet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it("guards the layout before it loads", () => {
-    expect(Route.options.beforeLoad).toBeTypeOf("function")
-  })
-
-  it("runs the authenticated-visitor guard and preserves its redirect", async () => {
-    const redirect = new Error("Redirect to account")
-    guarded.redirectAuthenticated.mockRejectedValueOnce(redirect)
-
-    await expect(guarded.beforeLoad?.()).rejects.toBe(redirect)
-    expect(guarded.redirectAuthenticated).toHaveBeenCalledOnce()
+  it("sends a visitor who is already signed in on before the auth pages load", () => {
+    expect(guarded.beforeLoad).toBe(guarded.redirectIfSignedIn)
   })
 
   it("declares the auth message namespaces the nested pages need", () => {

@@ -53,7 +53,9 @@ vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/pre
   PreferencesSection: (): JSX.Element => <section>preferences</section>,
 }))
 vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/security-section", () => ({
-  SecuritySection: (): JSX.Element => <section>security</section>,
+  SecuritySection: ({ twoFactorEnabled }: Readonly<{ twoFactorEnabled: boolean }>): JSX.Element => (
+    <section>security with two-factor {twoFactorEnabled ? "on" : "off"}</section>
+  ),
 }))
 vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/close-account-section", () => ({
   CloseAccountSection: (): JSX.Element => <section>close account</section>,
@@ -85,6 +87,7 @@ const profile: CustomerAccount["profile"] = {
   hasPassword: true,
   name: "Anna Kowalska",
   phone: "+48600123456",
+  twoFactorEnabled: true,
 }
 
 const renderPage = () =>
@@ -138,8 +141,23 @@ describe("account profile page", () => {
     renderPage()
     await screen.findByText("preferences")
 
-    expect(screen.getByText("security")).toBeInTheDocument()
+    expect(screen.getByText(/^security/u)).toBeInTheDocument()
     expect(screen.getByText("close account")).toBeInTheDocument()
+  })
+})
+
+describe("account profile two-factor status", () => {
+  it("tells the security section the account has two-factor on", async () => {
+    renderPage()
+
+    expect(await screen.findByText("security with two-factor on")).toBeInTheDocument()
+  })
+
+  it("tells the security section the account has two-factor off", async () => {
+    state.profile = { ...profile, twoFactorEnabled: false }
+    renderPage()
+
+    expect(await screen.findByText("security with two-factor off")).toBeInTheDocument()
   })
 })
 

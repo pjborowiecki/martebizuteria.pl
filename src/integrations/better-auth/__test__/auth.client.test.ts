@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { authClient, resetPassword, signIn, signOut, signUp, useSession } from "~/src/integrations/better-auth/auth.client"
+import { authClient, resetPassword, signIn, signOut, signUp } from "~/src/integrations/better-auth/auth.client"
 
 describe("auth client", () => {
   it("points at the app URL the browser build is given", () => {
@@ -10,7 +10,6 @@ describe("auth client", () => {
   it.each([
     ["resetPassword", resetPassword],
     ["signOut", signOut],
-    ["useSession", useSession],
   ])("exposes %s as a callable flow", (_name, flow) => {
     expect(flow).toBeTypeOf("function")
   })

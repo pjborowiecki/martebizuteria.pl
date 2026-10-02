@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import type * as SidebarPreference from "~/src/presentation/theme/sidebar-preference"
 
 interface AdminRouteDefinition {
-  readonly beforeLoad?: (args: { readonly location: { readonly href: string } }) => Promise<{ readonly user: unknown }>
+  readonly beforeLoad?: unknown
   readonly component?: () => JSX.Element
   readonly head?: () => { readonly links: readonly { readonly href: string; readonly rel: string }[] }
   readonly loader?: () => { readonly sidebarDefaultOpen: boolean }
@@ -19,7 +19,7 @@ interface AdminRouteDefinition {
 
 const preference = vi.hoisted(() => ({ open: true }))
 
-const guard = vi.hoisted(() => ({ requireAdmin: vi.fn(() => Promise.resolve({ id: "admin-1", role: "admin" })) }))
+const guard = vi.hoisted(() => ({ requireAdmin: vi.fn() }))
 
 const realtime = vi.hoisted(() => ({
   useRealtimeQuerySync: vi.fn<(options: { hub: string; subscriptions: readonly QueryKey[] }) => void>(),
@@ -134,11 +134,8 @@ describe("admin layout", () => {
 })
 
 describe("admin layout route wiring", () => {
-  it("refuses the dashboard to anyone the admin guard rejects", async () => {
-    await expect(route.beforeLoad?.({ location: { href: "/admin/orders" } })).resolves.toStrictEqual({
-      user: { id: "admin-1", role: "admin" },
-    })
-    expect(guard.requireAdmin).toHaveBeenCalledWith("/admin/orders")
+  it("lets only an administrator into the dashboard", () => {
+    expect(route.beforeLoad).toBe(guard.requireAdmin)
   })
 
   it("carries the persisted sidebar preference into the layout", () => {

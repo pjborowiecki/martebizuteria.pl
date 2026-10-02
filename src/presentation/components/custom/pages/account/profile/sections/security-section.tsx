@@ -1,9 +1,10 @@
 import { type JSX, useCallback, useState } from "react"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTranslations } from "use-intl/react"
 
-import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
+import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
+import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -12,12 +13,11 @@ import { Separator } from "~/src/presentation/components/shadcn/separator"
 import { ChangePasswordDialog } from "~/src/presentation/components/custom/pages/account/profile/sections/change-password-dialog"
 import { TwoFactorDialog } from "~/src/presentation/components/custom/pages/account/profile/sections/two-factor-dialog"
 
-export const SecuritySection = (): JSX.Element => {
+export const SecuritySection = ({ twoFactorEnabled }: Readonly<{ twoFactorEnabled: boolean }>): JSX.Element => {
   const t = useTranslations("pages.account.profile")
-  const { data: session } = useQuery(getCurrentSessionQuery)
+  const queryClient = useQueryClient()
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [twoFactorOpen, setTwoFactorOpen] = useState(false)
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(session?.user.twoFactorEnabled === true)
 
   const openPassword = useCallback(() => {
     setPasswordOpen(true)
@@ -26,6 +26,13 @@ export const SecuritySection = (): JSX.Element => {
   const openTwoFactor = useCallback(() => {
     setTwoFactorOpen(true)
   }, [])
+
+  const refreshTwoFactor = useCallback(() => {
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE }),
+      queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CURRENT }),
+    ])
+  }, [queryClient])
 
   return (
     <section>
@@ -61,7 +68,7 @@ export const SecuritySection = (): JSX.Element => {
       <TwoFactorDialog
         enabled={twoFactorEnabled}
         key={twoFactorOpen ? "open" : "closed"}
-        onEnabledChange={setTwoFactorEnabled}
+        onEnabledChange={refreshTwoFactor}
         onOpenChange={setTwoFactorOpen}
         open={twoFactorOpen}
       />

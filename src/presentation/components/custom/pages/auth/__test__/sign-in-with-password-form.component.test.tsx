@@ -22,7 +22,6 @@ const auth = vi.hoisted(() => {
     inFlight,
     outcome,
     requests,
-    session: { current: undefined as { user?: { role?: string } } | undefined },
     signInEmail: vi.fn(async (input: SignInRequest): Promise<void> => {
       requests.push(input)
 
@@ -39,9 +38,7 @@ const auth = vi.hoisted(() => {
   }
 })
 
-const navigation = vi.hoisted(() => ({ navigate: vi.fn<(options: { to: string }) => void>() }))
-
-const search = vi.hoisted(() => ({ current: {} as Record<string, unknown> }))
+const postAuth = vi.hoisted(() => ({ redirect: vi.fn<() => Promise<void>>() }))
 
 const toasts = vi.hoisted(() => ({
   error: vi.fn<(title: string, options: { description: string }) => void>(),
@@ -50,16 +47,7 @@ const toasts = vi.hoisted(() => ({
 
 vi.mock("sonner", () => ({ toast: { error: toasts.error, success: toasts.success } }))
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({ signIn: { email: auth.signInEmail } }))
-vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getCurrentSession: () => Promise.resolve(auth.session.current) }))
-vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>()
-
-  return {
-    ...actual,
-    useNavigate: () => navigation.navigate,
-    useSearch: ({ select }: { select: (search: Record<string, unknown>) => unknown }) => select(search.current),
-  }
-})
+vi.mock("~/src/hooks/use-post-auth-redirect", () => ({ usePostAuthRedirect: () => postAuth.redirect }))
 
 import { SignInWithPasswordForm } from "~/src/presentation/components/custom/pages/auth/sign-in-with-password-form"
 
@@ -79,11 +67,9 @@ const signInAs = async (email = "ada@example.test", password = "Str0ng!Pass") =>
 
 beforeEach(() => {
   vi.clearAllMocks()
-  search.current = {}
   auth.requests.length = 0
   auth.outcome.current = { kind: "success" }
   auth.inFlight.release = undefined
-  auth.session.current = { user: { role: "user" } }
 })
 
 afterEach(() => {
@@ -123,7 +109,7 @@ describe("SignInWithPasswordForm two-factor challenge", () => {
     await signInAs()
 
     expect(await screen.findByRole("heading", { name: "Two-step verification" })).toBeInTheDocument()
-    expect(navigation.navigate).not.toHaveBeenCalled()
+    expect(postAuth.redirect).not.toHaveBeenCalled()
     expect(toasts.success).not.toHaveBeenCalled()
   })
 
@@ -181,59 +167,14 @@ describe("SignInWithPasswordForm submission", () => {
     })
   })
 
-  it("sends a customer on to their account overview", async () => {
+  it("hands the signed-in shopper to the post-sign-in redirect", async () => {
     renderWithProviders(<SignInWithPasswordForm />)
 
     await signInAs()
 
     await waitFor(() => {
-      expect(navigation.navigate).toHaveBeenCalledWith({ to: ROUTES.ACCOUNT_OVERVIEW })
+      expect(postAuth.redirect).toHaveBeenCalledOnce()
     })
-  })
-
-  it("returns the customer to the account page they originally asked for", async () => {
-    search.current = { redirect: "/account/orders/order-7" }
-    renderWithProviders(<SignInWithPasswordForm />)
-
-    await signInAs()
-
-    await waitFor(() => {
-      expect(navigation.navigate).toHaveBeenCalledWith({ to: "/account/orders/order-7" })
-    })
-  })
-
-  it("refuses to follow a destination that points off the site", async () => {
-    search.current = { redirect: "https://evil.test/steal" }
-    renderWithProviders(<SignInWithPasswordForm />)
-
-    await signInAs()
-
-    await waitFor(() => {
-      expect(navigation.navigate).toHaveBeenCalledWith({ to: ROUTES.ACCOUNT_OVERVIEW })
-    })
-  })
-
-  it("sends an administrator straight to the dashboard", async () => {
-    auth.session.current = { user: { role: "admin" } }
-    renderWithProviders(<SignInWithPasswordForm />)
-
-    await signInAs()
-
-    await waitFor(() => {
-      expect(navigation.navigate).toHaveBeenCalledWith({ to: ROUTES.ADMIN })
-    })
-  })
-
-  it("stays put when the accepted sign in left no session behind", async () => {
-    auth.session.current = undefined
-    renderWithProviders(<SignInWithPasswordForm />)
-
-    await signInAs()
-
-    await waitFor(() => {
-      expect(toasts.success).toHaveBeenCalledTimes(1)
-    })
-    expect(navigation.navigate).not.toHaveBeenCalled()
   })
 
   it("explains a rejected password without navigating away", async () => {
@@ -245,7 +186,7 @@ describe("SignInWithPasswordForm submission", () => {
     await waitFor(() => {
       expect(toasts.error).toHaveBeenCalledWith("Something went wrong", { description: "Invalid email or password." })
     })
-    expect(navigation.navigate).not.toHaveBeenCalled()
+    expect(postAuth.redirect).not.toHaveBeenCalled()
   })
 
   it("falls back to the generic message for an error nobody mapped", async () => {
