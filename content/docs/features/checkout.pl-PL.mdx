@@ -139,7 +139,7 @@ Potwierdzenie wywołuje `confirmCheckoutSession`, które uruchamia `checkout.con
 3. `resolveCheckoutDiscount(...)` sprawdza `checkoutValues.discountCode` względem sumy cen z bazy i kosztu dostawy, a gdy kod nie obowiązuje, nic nie zwraca. Zobacz [Rabaty](/docs/features/discounts).
 4. `reserveInventoryForItems(validatedItems)` — rezerwacja optymistyczna, zobacz [Stany magazynowe](/docs/features/inventory).
 5. `createCheckout(...)` — wstawia wiersze `address` i wiersz `checkout`, z `discount_id` z kroku 3, w jednym wsadzie D1.
-6. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, pozycje sesji plus linia `"Shipping"`, gdy koszt jest większy od zera, metadane z `checkoutId`, `discountCode`, `discountTotal`, `locale`, `userId` i pociętą listą pozycji oraz, gdy rabat obowiązuje, jednorazowy kupon Stripe w `discounts`.
+6. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, pozycje sesji plus linia `"Shipping"`, gdy koszt jest większy od zera, metadane z `checkoutId`, `discountCode`, `discountTotal`, `locale`, `userId` i pociętą listą pozycji oraz, gdy rabat obowiązuje, jednorazowy kupon Stripe w `discounts`, oznaczony identyfikatorem checkoutu i usuwany, jeśli Stripe odmówi utworzenia sesji.
 7. `createPendingPayment(...)` — wiersz `payment` ze `status: "pending"` i `transaction_id` równym identyfikatorowi sesji Stripe.
 8. `scheduleProductCatalogInvalidation()`.
 

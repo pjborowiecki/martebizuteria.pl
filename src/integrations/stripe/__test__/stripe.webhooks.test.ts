@@ -7,6 +7,8 @@ type OrderConfirmationElement = ReactElement<ComponentProps<typeof OrderConfirma
 
 const {
   clearOrderDispute,
+  couponsDel,
+  couponsRetrieve,
   flagOrderDispute,
   fulfillCheckout,
   getCheckoutEmailContext,
@@ -28,6 +30,8 @@ const {
   sessionsList,
 } = vi.hoisted(() => ({
   clearOrderDispute: vi.fn<(transactionId: string) => Promise<void>>(),
+  couponsDel: vi.fn<(couponId: string) => Promise<{ deleted: true; id: string }>>(),
+  couponsRetrieve: vi.fn<(couponId: string) => Promise<Pick<Stripe.Coupon, "id" | "metadata">>>(),
   flagOrderDispute: vi.fn<(transactionId: string, dispute: object) => Promise<void>>(),
   fulfillCheckout: vi.fn<(input: object) => Promise<string | undefined>>(),
   getCheckoutEmailContext: vi.fn<(checkoutId: string) => Promise<object | undefined>>(),
@@ -51,7 +55,11 @@ const {
 
 vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
-  stripe: { checkout: { sessions: { list: sessionsList } }, paymentIntents: { retrieve: paymentIntentsRetrieve } },
+  stripe: {
+    checkout: { sessions: { list: sessionsList } },
+    coupons: { del: couponsDel, retrieve: couponsRetrieve },
+    paymentIntents: { retrieve: paymentIntentsRetrieve },
+  },
 }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
@@ -163,6 +171,10 @@ beforeEach(() => {
   clearOrderDispute.mockResolvedValue(undefined)
   sendEmail.mockResolvedValue(undefined)
   sessionsList.mockResolvedValue({ data: [{ id: "cs_resolved_1" }] })
+  couponsDel.mockImplementation((couponId) => Promise.resolve({ deleted: true, id: couponId }))
+  couponsRetrieve.mockImplementation((couponId) =>
+    Promise.resolve({ id: couponId, metadata: { checkoutId: "chk-1", source: "marte_checkout" } }),
+  )
 })
 
 describe("checkout session fulfillment", () => {
@@ -538,6 +550,85 @@ describe("checkout session release", () => {
     await dispatch(checkoutSessionExpiredEvent(checkoutSession({})))
 
     expect(releaseCheckout).toHaveBeenCalledWith({ lines: [], transactionId: "cs_test_1" })
+  })
+})
+
+const discountedSession = (overrides: Parameters<typeof checkoutSession>[0] = {}): Stripe.Checkout.Session =>
+  checkoutSession({
+    amountTotal: AMOUNT_TOTAL,
+    discounts: [{ coupon: "coupon_spring", promotion_code: null }],
+    metadata: { checkoutId: "chk-1", items: itemsMetadata },
+    ...overrides,
+  })
+
+describe("checkout session discount coupon", () => {
+  it("deletes the coupon it minted for the checkout once its session is paid and fulfilled", async () => {
+    await dispatch(checkoutSessionCompletedEvent(discountedSession()))
+
+    expect(fulfillCheckout).toHaveBeenCalledOnce()
+    expect(couponsRetrieve).toHaveBeenCalledExactlyOnceWith("coupon_spring")
+    expect(couponsDel).toHaveBeenCalledExactlyOnceWith("coupon_spring")
+    expect(couponsDel).toHaveBeenCalledAfter(fulfillCheckout)
+  })
+
+  it("deletes the coupon of a completed session whose payment is still settling", async () => {
+    await dispatch(checkoutSessionCompletedEvent(discountedSession({ paymentStatus: "unpaid" })))
+
+    expect(fulfillCheckout).not.toHaveBeenCalled()
+    expect(couponsDel).toHaveBeenCalledExactlyOnceWith("coupon_spring")
+  })
+
+  it("deletes the coupon of a session that expired or was replaced by a newer one, after releasing its stock", async () => {
+    await dispatch(checkoutSessionExpiredEvent(discountedSession()))
+
+    expect(releaseCheckout).toHaveBeenCalledOnce()
+    expect(couponsDel).toHaveBeenCalledExactlyOnceWith("coupon_spring")
+    expect(couponsDel).toHaveBeenCalledAfter(releaseCheckout)
+  })
+
+  it("leaves Stripe coupons alone for a session whose discounts are null, empty or missing", async () => {
+    const withoutDiscounts = discountedSession()
+    Reflect.deleteProperty(withoutDiscounts, "discounts")
+
+    await dispatch(checkoutSessionCompletedEvent(discountedSession({ discounts: null })))
+    await dispatch(checkoutSessionExpiredEvent(discountedSession({ discounts: [] })))
+    await dispatch(checkoutSessionExpiredEvent(withoutDiscounts))
+
+    expect(releaseCheckout).toHaveBeenCalledTimes(2)
+    expect(couponsRetrieve).not.toHaveBeenCalled()
+    expect(couponsDel).not.toHaveBeenCalled()
+  })
+
+  it("leaves alone a coupon on the session that MARTE did not mint for this checkout", async () => {
+    couponsRetrieve.mockResolvedValue({ id: "coupon_spring", metadata: {} })
+
+    await dispatch(checkoutSessionExpiredEvent(discountedSession()))
+
+    expect(releaseCheckout).toHaveBeenCalledOnce()
+    expect(couponsDel).not.toHaveBeenCalled()
+  })
+
+  it("leaves the settlement events to a coupon the completed event already deleted", async () => {
+    await dispatch(checkoutSessionAsyncPaymentSucceededEvent(discountedSession()))
+    await dispatch(checkoutSessionAsyncPaymentFailedEvent(discountedSession()))
+
+    expect(couponsDel).not.toHaveBeenCalled()
+  })
+
+  it("keeps the coupon while fulfilment fails so the retried event can still delete it", async () => {
+    fulfillCheckout.mockRejectedValue(new Error("D1 unavailable"))
+    const event = checkoutSessionCompletedEvent(discountedSession())
+
+    await expect(dispatch(event)).rejects.toThrow("D1 unavailable")
+    expect(couponsDel).not.toHaveBeenCalled()
+  })
+
+  it("acknowledges the event when the coupon is already gone", async () => {
+    couponsRetrieve.mockRejectedValue(new Error("No such coupon: 'coupon_spring'"))
+    const event = checkoutSessionExpiredEvent(discountedSession())
+
+    await expect(dispatch(event)).resolves.toBeUndefined()
+    expect(consoleError).toHaveBeenCalledWith("Failed to delete Stripe coupon coupon_spring:", expect.any(Error))
   })
 })
 

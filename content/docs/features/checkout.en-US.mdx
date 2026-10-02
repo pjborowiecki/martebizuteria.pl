@@ -139,7 +139,7 @@ Confirming calls `confirmCheckoutSession`, which runs `checkout.confirm({ billin
 3. `resolveCheckoutDiscount(...)` checks `checkoutValues.discountCode` against the subtotal of the database prices and the shipping cost, and returns nothing when the code does not apply. See [Discounts](/docs/features/discounts).
 4. `reserveInventoryForItems(validatedItems)` — optimistic reservation, see [Inventory](/docs/features/inventory).
 5. `createCheckout(...)` — inserts the `address` rows and the `checkout` row, with `discount_id` from step 3, in one D1 batch.
-6. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, line items plus a `"Shipping"` line when the cost is above zero, metadata carrying `checkoutId`, `discountCode`, `discountTotal`, `locale`, `userId` and the chunked item list, and, when a discount applies, a one-time Stripe coupon in `discounts`.
+6. `createStripeSession(...)` — `ui_mode: "elements"`, `mode: "payment"`, line items plus a `"Shipping"` line when the cost is above zero, metadata carrying `checkoutId`, `discountCode`, `discountTotal`, `locale`, `userId` and the chunked item list, and, when a discount applies, a one-time Stripe coupon in `discounts`, tagged with the checkout id and deleted again if Stripe refuses the session.
 7. `createPendingPayment(...)` — a `payment` row with `status: "pending"` and `transaction_id` set to the Stripe session id.
 8. `scheduleProductCatalogInvalidation()`.
 

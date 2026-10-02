@@ -49,12 +49,15 @@ const params: StripeType.Checkout.SessionCreateParams = {
     ? { customer_email: email }
     : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 }
-const discounts = await toSessionDiscounts(discount)
+const discounts = await toSessionDiscounts({ checkoutId, discount })
 if (discounts.length > NO_COST) {
   params.discounts = discounts
 }
 
-const session = await stripe.checkout.sessions.create(params)
+const session = await stripe.checkout.sessions.create(params).catch(async (error: unknown) => {
+  await deleteCheckoutCoupons({ checkoutId, discounts })
+  throw error
+})
 ```
 
 `customerId` jest ustawiane tylko dla zalogowanego kupującego. `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) bierze je z `ensureStripeCustomer`, które przy pierwszym użyciu tworzy klienta Stripe i zapisuje jego identyfikator w `user.stripe_customer_id`; `handleUpdateCheckoutSession` odczytuje zapisany identyfikator przez `getStripeCustomerId`. Taka sesja należy do tego klienta Stripe i pozwala kupującemu zapisać kartę, która potem pojawia się na `/account/payment`. Sesja gościa dostaje zamiast tego `customer_email`. Zobacz [Konto](/docs/features/account).
@@ -63,7 +66,7 @@ const session = await stripe.checkout.sessions.create(params)
 
 Ten sam obiekt `metadata` jest dołączany do sesji i do payment intentu, więc webhook, który ma tylko intent, wciąż znajdzie checkout. Metadane zawierają `checkoutId`, `discountCode` i `discountTotal` (pusty napis i `"0"`, gdy nie ma rabatu), `locale` (z `getCurrentLocale()`), `userId` (pusty napis dla gościa) i pociętą listę `items0…N`.
 
-Pozycje sesji są budowane z cen zwalidowanych na serwerze, plus dosłowna linia `"Shipping"`, gdy metoda dostawy kosztuje więcej niż zero. Nazwy pozycji pochodzą z `lineTitle`, czyli `"<tytuł produktu> — <tytuł wariantu>"`, chyba że tytuł wariantu jest pusty. Rabat nie jest pozycją: `toSessionDiscounts` tworzy jednorazowy kupon Stripe na kwotę wyliczoną przez `resolveCheckoutDiscount`, a sesja dostaje go w `discounts`. Zobacz [Rabaty](/docs/features/discounts).
+Pozycje sesji są budowane z cen zwalidowanych na serwerze, plus dosłowna linia `"Shipping"`, gdy metoda dostawy kosztuje więcej niż zero. Nazwy pozycji pochodzą z `lineTitle`, czyli `"<tytuł produktu> — <tytuł wariantu>"`, chyba że tytuł wariantu jest pusty. Rabat nie jest pozycją: `toSessionDiscounts` (`src/integrations/stripe/stripe.coupons.server.ts`) tworzy jednorazowy kupon Stripe na kwotę wyliczoną przez `resolveCheckoutDiscount`, oznaczony identyfikatorem checkoutu i `source: "marte_checkout"`, a sesja dostaje go w `discounts`. `createStripeSession` usuwa ten kupon od razu, gdy Stripe odmówi utworzenia sesji, a webhook usuwa go, gdy sesja zostanie ukończona lub wygaśnie. Zobacz [Rabaty](/docs/features/discounts).
 
 ## Wiersz płatności
 
@@ -106,16 +109,16 @@ Typ zdarzenia bez handlera loguje `[Stripe] Safely ignoring unhandled event` i z
 
 `webhookHandlers` w `src/integrations/stripe/stripe.webhooks.tsx` (plik `.tsx`, bo buduje element e-maila potwierdzającego):
 
-| Zdarzenie                                  | Handler                        | Skutek                                                                    |
-| ------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------- |
-| `checkout.session.completed`               | `handleFulfillCheckoutSession` | tworzy zamówienie                                                         |
-| `checkout.session.async_payment_succeeded` | `handleFulfillCheckoutSession` | to samo, dla BLIK/P24 rozliczanych później                                |
-| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` | zwalnia rezerwację, ustawia płatność i checkout na `failed`               |
-| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | to samo                                                                   |
-| `payment_intent.payment_failed`            | `handlePaymentIntentFailed`    | tylko wpis do audytu i ostrzeżenie w logach — bez zmiany stanu            |
-| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` z `restock: true`                                           |
-| `charge.dispute.created`                   | `handleChargeDisputeCreated`   | `flagOrderDispute`, wpis do audytu, unieważnienie listy zamówień w panelu |
-| `charge.dispute.closed`                    | `handleChargeDisputeClosed`    | przegrany → `refundOrder` z `restock: false`; inaczej `clearOrderDispute` |
+| Zdarzenie                                  | Handler                        | Skutek                                                                       |
+| ------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------------- |
+| `checkout.session.completed`               | `handleFulfillCheckoutSession` | tworzy zamówienie, potem `deleteCheckoutCoupons` usuwa oznaczony kupon sesji |
+| `checkout.session.async_payment_succeeded` | `handleFulfillCheckoutSession` | to samo, dla BLIK/P24 rozliczanych później                                   |
+| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` | zwalnia rezerwację, ustawia płatność i checkout na `failed`                  |
+| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | to samo, potem `deleteCheckoutCoupons` usuwa oznaczony kupon sesji           |
+| `payment_intent.payment_failed`            | `handlePaymentIntentFailed`    | tylko wpis do audytu i ostrzeżenie w logach — bez zmiany stanu               |
+| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` z `restock: true`                                              |
+| `charge.dispute.created`                   | `handleChargeDisputeCreated`   | `flagOrderDispute`, wpis do audytu, unieważnienie listy zamówień w panelu    |
+| `charge.dispute.closed`                    | `handleChargeDisputeClosed`    | przegrany → `refundOrder` z `restock: false`; inaczej `clearOrderDispute`    |
 
 Klucze pochodzą ze `STRIPE_WEBHOOK_EVENTS` w `stripe.constants.ts`, więc ta stała jest listą zdarzeń do zarejestrowania w panelu Stripe.
 
@@ -127,7 +130,7 @@ Klucze pochodzą ze `STRIPE_WEBHOOK_EVENTS` w `stripe.constants.ts`, więc ta st
 const FULFILLABLE_PAYMENT_STATUSES = new Set<StripeType.Checkout.Session["payment_status"]>(["no_payment_required", "paid"])
 ```
 
-Zdarzenie `checkout.session.completed` z `payment_status: "unpaid"` — normalne dla BLIK i P24 — loguje informację i wraca, a zamówienie powstaje później z `async_payment_succeeded`.
+Zdarzenie `checkout.session.completed` z `payment_status: "unpaid"` — normalne dla BLIK i P24 — loguje informację i wraca, a zamówienie powstaje później z `async_payment_succeeded`. Kupon sesji i tak jest usuwany przy `completed`, bo jego usunięcie nie zmienia kwoty, którą Stripe już zastosował do sesji.
 
 Następnie parsuje linie pozycji z metadanych, wywołuje `fulfillCheckout`, a jeśli wróci identyfikator zamówienia:
 
