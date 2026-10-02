@@ -102,6 +102,14 @@ Numery telefonów są walidowane przez `isValidPhoneNumber(value, "PL")` z `libp
 
 Podkrok zależy od typu: `DeliveryCourier`, `DeliveryLocker` (z mapą InPost) albo `DeliveryInStore` (sama treść). Zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery).
 
+## Podsumowanie
+
+`CheckoutSummary` (`checkout-summary.tsx`) leży obok kroków. Wypisuje pozycje koszyka i pokazuje sumę pozycji z `cartTotal()`, cenę wybranej metody dostawy (`checkoutSummary.deliveryCalculated`, dopóki żadna nie jest wybrana) oraz sumę i VAT z `computeOrderTotals`.
+
+Rabat pochodzi z formularza, a nie ze stanu komponentu. Podsumowanie czyta `discountCode` i pyta serwer, ile kod odejmuje od bieżącego koszyka, przez `validateDiscountCodeQuery` z kluczem złożonym z kodu, sumy pozycji, kosztu dostawy i adresu e-mail. Adres e-mail trafia do sprawdzenia dopiero po ukończeniu kroku kontaktu, więc jego wpisywanie nigdy nie wysyła zapytania. Dzięki temu kod przywrócony z kopii roboczej jest po przeładowaniu sprawdzany i pokazywany ponownie, a wybór innej metody dostawy sprawdza go jeszcze raz. Kod, który już nie obowiązuje, zostaje na ekranie z powodem i nie jest odejmowany.
+
+Suma jest pokazywana tylko wtedy, gdy sprawdzenie dla bieżącego koszyka dało odpowiedź. Dopóki trwa albo gdy się nie udało, w miejscu sumy stoi `checkoutSummary.totalAwaitingCode`, a linia VAT jest ukryta, bo podsumowanie nie wie, czy serwer zastosuje kod; nieudane sprawdzenie pozwala też spróbować ponownie. Zobacz [Rabaty](/docs/features/discounts).
+
 ## Krok płatności
 
 `_steps/payment-step.client.tsx` obsługuje kasę Stripe Elements. Najciekawszy jest `useCheckoutSessionLoader`:

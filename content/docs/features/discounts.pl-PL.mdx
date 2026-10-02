@@ -66,7 +66,8 @@ Trzy typy to `percentage`, `fixed_amount` i `free_shipping` (`DISCOUNT_TYPES` w 
 src/modules/discount/
 ├── __test__/
 │   ├── discount.schema.test.ts
-│   └── discount.utils.test.ts
+│   ├── discount.utils.test.ts
+│   └── discount.zod.test.ts
 ├── discount.accessors.ts
 ├── discount.checkout.server.ts
 ├── discount.constants.ts
@@ -98,9 +99,27 @@ Siódmy kod odrzucenia, `notFound`, pochodzi z walidatora, gdy żaden wiersz nie
 
 ## W kasie
 
-`CheckoutDiscountField` (`src/presentation/components/custom/checkout/components/checkout-discount-field.tsx`) leży w `CheckoutSummary`, pod sumami. Wysłanie pola wywołuje `validateDiscountCode` (`use-cases/validate-discount-code.ts`) z kodem, adresem e-mail, sumą pozycji i kosztem dostawy. Ta funkcja nie ma middleware `authorized`, więc gość może wypróbować kod, a `use-case-authorization.test.ts` wymienia ją wśród publicznych use case'ów. Odpowiada albo `applied` (kod, `discountId`, typ i kwota), albo `rejection`, i niczym więcej. Sprawdzenie limitu na klienta używa adresu e-mail z formularza, a gdy formularz go nie ma, adresu zalogowanego użytkownika.
+`validateDiscountCode` (`use-cases/validate-discount-code.ts`) sprawdza kod względem koszyka: przyjmuje kod, opcjonalny adres e-mail, sumę pozycji i koszt dostawy. Ta funkcja nie ma middleware `authorized`, więc gość może wypróbować kod, a `use-case-authorization.test.ts` wymienia ją wśród publicznych use case'ów. Odpowiada albo `applied` (kod, `discountId`, typ i kwota), albo `rejection`, i niczym więcej. Sprawdzenie limitu na klienta używa przesłanego adresu e-mail, a gdy żadnego nie przesłano, adresu zalogowanego użytkownika; pusty adres liczy się jako brak adresu, a błędny nie przechodzi walidacji.
 
-Gdy kod pasuje, `CheckoutSummary` trzyma wynik w stanie, pokazuje linię rabatu w sumach wyliczonych przez `computeOrderTotals` i wpisuje kod do pola formularza `discountCode`; usunięcie kodu czyści to pole. `checkoutSchema` deklaruje `discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional()`, a żaden krok go nie waliduje.
+Ten sam plik eksportuje dwa sposoby, w jakie kasa ją wywołuje:
+
+- `validateDiscountCodeMutation` obsługuje przycisk „Zastosuj”. Jego `mutationFn` zawsze pyta serwer, nigdy nie bierze odpowiedzi z pamięci podręcznej, a potem zapisuje odpowiedź przez `setQueryData` pod kluczem `validateDiscountCodeQuery` dla tych samych danych.
+- `validateDiscountCodeQuery({ code, email, itemsSubtotal, shippingTotal })` to zapytanie podsumowania. Jego klucz to `DISCOUNT_QUERY_KEYS.VALIDATION` (`["discount", "validate"]`) z tymi danymi, a `staleTime` to `DISCOUNT_QUERY_STALE_MS` (minuta), więc podsumowanie pokazuje odpowiedź zapisaną przez „Zastosuj” bez ponownego pytania. Bez kodu zapytanie jest pomijane (`skipToken`).
+
+`CheckoutDiscountField` (`src/presentation/components/custom/checkout/components/checkout-discount-field.tsx`) leży w `CheckoutSummary`, pod sumami, dopóki formularz nie ma kodu. To formularz `react-hook-form` walidowany przez `discountZodSchemas.checkoutCodeFormValues`. Odrzucony kod zostaje w polu razem z powodem, nieudane zapytanie pokazuje `pages.checkout.discount.rejection.error`, a pisanie czyści oba komunikaty. Przyjęty kod trafia do pola `discountCode` formularza kasy, które szkic przechowuje w `sessionStorage`.
+
+`CheckoutSummary` nie trzyma kopii wyniku. Czyta `discountCode` z formularza i uruchamia `validateDiscountCodeQuery` z bieżącą sumą pozycji i kosztem dostawy, więc kod przywrócony po przeładowaniu jest sprawdzany i pokazywany ponownie, a wybór innej metody dostawy sprawdza go jeszcze raz. Adres e-mail trafia do sprawdzenia dopiero po ukończeniu kroku kontaktu (`activeStepIndex` jest za nim). Dopóki klient jest na kroku kontaktu, sprawdzenie idzie bez adresu, więc serwer używa adresu zalogowanego konta, a wpisywanie adresu nigdy nie wysyła zapytania; przejście dalej sprawdza kod ponownie z potwierdzonym adresem.
+
+Gdy formularz ma kod, `CheckoutDiscountCode` (`checkout-discount-code.tsx`) pokazuje go zamiast pola, razem z wynikiem sprawdzenia:
+
+| Sprawdzenie             | Wiersz kodu                                                                      | Linia rabatu | Suma                                                     |
+| ----------------------- | -------------------------------------------------------------------------------- | ------------ | -------------------------------------------------------- |
+| W toku                  | Kod i wskaźnik ładowania                                                         | Brak         | `checkoutSummary.totalAwaitingCode`, bez linii VAT       |
+| `applied`               | Kod i kwota, którą odejmuje                                                      | Kwota        | Pozycje plus dostawa minus rabat, z `computeOrderTotals` |
+| `rejection`             | Przekreślony kod z `discount.rejection.<code>` pod spodem                        | Brak         | Pozycje plus dostawa                                     |
+| Zapytanie się nie udało | Kod, `discount.checkFailed` i przycisk `discount.retry`, który ponawia zapytanie | Brak         | `checkoutSummary.totalAwaitingCode`, bez linii VAT       |
+
+Kod, który już nie obowiązuje, zostaje w formularzu i szkicu z powodem na ekranie, a serwer pomija go przy budowaniu sesji (niżej), więc pokazana suma to ta pobrana. Gdy sprawdzenie się nie uda, podsumowanie nie wie, jaką sumę naliczy serwer, więc nie pokazuje żadnej, dopóki ponowna próba nie da odpowiedzi. Usunięcie kodu czyści `discountCode`. `checkoutSchema` deklaruje `discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional()`, a żaden krok go nie waliduje.
 
 Odpowiedź walidacji to tylko podgląd. `handleCreateCheckoutSession` i `handleUpdateCheckoutSession` wywołują `resolveCheckoutDiscount` (`discount.checkout.server.ts`) z `checkoutValues.discountCode`, sumą pozycji wyliczoną z cen z bazy i kosztem dostawy. Funkcja ponownie stosuje te same reguły. Kod, który już nie obowiązuje, jest logowany i pomijany, a kod, który nic by nie odjął, jest pomijany, zamiast przerywać zakup. Wynikowy `discountId` jest zapisywany do `checkout.discount_id`.
 

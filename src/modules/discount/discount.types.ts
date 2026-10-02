@@ -38,6 +38,10 @@ interface AdminDiscountStats {
   readonly total: number
 }
 
+interface CheckoutDiscountCodeFormValues {
+  readonly code: string
+}
+
 interface AdminDiscountFormValues {
   readonly code: string
   readonly description?: string | undefined
@@ -57,6 +61,7 @@ export interface Discount {
   adminListItem: AdminDiscountListItem
   adminStats: AdminDiscountStats
   applied: AppliedDiscount
+  checkoutCodeFormValues: CheckoutDiscountCodeFormValues
   insert: typeof discount.$inferInsert
   redemptionInsert: typeof discountRedemption.$inferInsert
   select: typeof discount.$inferSelect

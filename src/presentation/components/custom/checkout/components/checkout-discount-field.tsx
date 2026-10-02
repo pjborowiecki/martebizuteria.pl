@@ -1,89 +1,56 @@
-import { type JSX, type SubmitEventHandler, useCallback, useState } from "react"
+import { type JSX, type SyntheticEvent, useCallback } from "react"
 
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
-import { Loader2, Tag, X } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { Loader2 } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { useTranslations } from "use-intl/react"
 
-import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
-import { DISCOUNT_CODE_MAX_LENGTH, type DiscountRejection } from "~/src/modules/discount/discount.constants"
+import { DISCOUNT_CODE_MAX_LENGTH } from "~/src/modules/discount/discount.constants"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { normalizeDiscountCode } from "~/src/modules/discount/discount.utils"
+import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
 import { validateDiscountCodeMutation } from "~/src/modules/discount/use-cases/validate-discount-code"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Input } from "~/src/presentation/components/shadcn/input"
 
 export const CheckoutDiscountField = ({
-  applied,
   email,
   itemsSubtotal,
   onApplied,
-  onCleared,
   shippingTotal,
 }: Readonly<CheckoutDiscountFieldProps>): JSX.Element => {
   const t = useTranslations("pages.checkout.discount")
-  const format = useFormatter()
-  const [code, setCode] = useState("")
-  const [rejection, setRejection] = useState<DiscountRejection | undefined>(undefined)
+  const form = useForm<Discount["checkoutCodeFormValues"]>({
+    defaultValues: { code: "" },
+    resolver: zodResolver(discountZodSchemas.checkoutCodeFormValues),
+  })
   const validate = useMutation(validateDiscountCodeMutation)
+  const rejection = validate.data?.rejection
 
-  const handleSubmit = useCallback<SubmitEventHandler<HTMLFormElement>>(
-    (event) => {
-      event.preventDefault()
-      const candidate = normalizeDiscountCode(code)
-      if (candidate === "") {
-        return
-      }
-
-      setRejection(undefined)
+  const applyCode = useCallback(
+    ({ code }: Discount["checkoutCodeFormValues"]) => {
       validate.mutate(
-        { code: candidate, email, itemsSubtotal, shippingTotal },
+        { code: normalizeDiscountCode(code), email, itemsSubtotal, shippingTotal },
         {
           onSuccess: (result) => {
-            if (result.applied === undefined) {
-              setRejection(result.rejection)
-
-              return
+            if (result.applied !== undefined) {
+              onApplied(result.applied.code)
             }
-            setCode("")
-            onApplied(result.applied)
           },
         },
       )
     },
-    [code, email, itemsSubtotal, onApplied, shippingTotal, validate],
+    [email, itemsSubtotal, onApplied, shippingTotal, validate],
   )
 
-  const handleRemove = useCallback(() => {
-    setRejection(undefined)
-    onCleared()
-  }, [onCleared])
-
-  if (applied !== undefined) {
-    return (
-      <div className="flex items-center gap-2 border border-emerald-600/30 bg-emerald-500/5 px-3 py-2.5">
-        <Tag className="size-3.5 shrink-0 text-emerald-600" strokeWidth={1.5} />
-        <span className="min-w-0 flex-1 truncate text-[11px] font-medium tracking-[0.12em] uppercase">{applied.code}</span>
-        <span className="text-[12px] tabular-nums">
-          −
-          {format.number(centsToDisplayAmount(applied.amountMinorUnits), {
-            currency: "PLN",
-            style: "currency",
-          })}
-        </span>
-        <Button
-          aria-label={t("remove")}
-          className="size-6 shrink-0 text-muted-foreground"
-          onClick={handleRemove}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <X className="size-3.5" strokeWidth={1.5} />
-        </Button>
-      </div>
-    )
-  }
+  const handleSubmit = useCallback(
+    (event: SyntheticEvent<HTMLFormElement>) => {
+      void form.handleSubmit(applyCode)(event)
+    },
+    [applyCode, form],
+  )
 
   return (
     <form className="space-y-2" onSubmit={handleSubmit}>
@@ -96,12 +63,8 @@ export const CheckoutDiscountField = ({
           className="h-10 rounded-none text-[12px] tracking-[0.1em] uppercase"
           id="discount-code"
           maxLength={DISCOUNT_CODE_MAX_LENGTH}
-          onChange={(event) => {
-            setCode(event.target.value)
-            setRejection(undefined)
-          }}
           placeholder={t("placeholder")}
-          value={code}
+          {...form.register("code", { onChange: validate.reset })}
         />
         <Button
           className="h-10 shrink-0 rounded-none px-5 text-[11px] tracking-[0.15em] uppercase"
@@ -118,10 +81,8 @@ export const CheckoutDiscountField = ({
 }
 
 interface CheckoutDiscountFieldProps {
-  readonly applied: Discount["applied"] | undefined
   readonly email: string | undefined
   readonly itemsSubtotal: number
-  readonly onApplied: (applied: Discount["applied"]) => void
-  readonly onCleared: () => void
+  readonly onApplied: (code: string) => void
   readonly shippingTotal: number
 }

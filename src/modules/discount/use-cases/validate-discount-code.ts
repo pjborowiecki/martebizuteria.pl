@@ -1,17 +1,22 @@
-import { mutationOptions } from "@tanstack/react-query"
+import { mutationOptions, queryOptions, skipToken } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
 import { countCustomerRedemptions, getDiscountByCode } from "~/src/modules/discount/discount.accessors"
-import { DISCOUNT_MUTATION_KEYS, DISCOUNT_REJECTION } from "~/src/modules/discount/discount.constants"
+import {
+  DISCOUNT_MUTATION_KEYS,
+  DISCOUNT_QUERY_KEYS,
+  DISCOUNT_QUERY_STALE_MS,
+  DISCOUNT_REJECTION,
+} from "~/src/modules/discount/discount.constants"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { calculateDiscountAmount, normalizeDiscountCode, resolveDiscountRejection } from "~/src/modules/discount/discount.utils"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
 
 export const validateDiscountCode = createServerFn({ method: "POST" })
-  .validator((input: zod.input<typeof discountZodSchemas.validateDiscountInput>) => discountZodSchemas.validateDiscountInput.parse(input))
+  .validator((input: ValidateDiscountInput) => discountZodSchemas.validateDiscountInput.parse(input))
   .handler(async ({ data }): Promise<Discount["validation"]> => {
     const code = normalizeDiscountCode(data.code)
     const row = await getDiscountByCode(code)
@@ -46,7 +51,25 @@ export const validateDiscountCode = createServerFn({ method: "POST" })
     }
   })
 
+export const validateDiscountCodeQuery = ({ code, ...basket }: ValidateDiscountCodeQueryInput) =>
+  queryOptions({
+    queryFn: code === undefined || code === "" ? skipToken : () => validateDiscountCode({ data: { ...basket, code } }),
+    queryKey: [...DISCOUNT_QUERY_KEYS.VALIDATION, { ...basket, code }],
+    staleTime: DISCOUNT_QUERY_STALE_MS,
+  })
+
 export const validateDiscountCodeMutation = mutationOptions({
-  mutationFn: (data: Parameters<typeof validateDiscountCode>[0]["data"]) => validateDiscountCode({ data }),
+  mutationFn: async (data: ValidateDiscountInput, { client }) => {
+    const result = await validateDiscountCode({ data })
+    client.setQueryData(validateDiscountCodeQuery(data).queryKey, result)
+
+    return result
+  },
   mutationKey: DISCOUNT_MUTATION_KEYS.VALIDATE,
 })
+
+type ValidateDiscountInput = zod.input<typeof discountZodSchemas.validateDiscountInput>
+
+interface ValidateDiscountCodeQueryInput extends Omit<ValidateDiscountInput, "code"> {
+  readonly code: string | undefined
+}
