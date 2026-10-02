@@ -274,6 +274,7 @@ export const getAdminOrderDetailRow = (orderId: string) =>
   db.query.order.findFirst({
     where: eq(order.id, orderId),
     with: {
+      addresses: true,
       checkout: {
         columns: {
           billingAddressId: true,

@@ -9,6 +9,7 @@ import {
   mapAdminOrderDetailItem,
   mapAdminOrderTimeline,
   resolveAdminOrderCustomerName,
+  resolveAdminOrderDetailAddresses,
   resolveAdminOrderDetailTags,
   resolveAdminOrderDispute,
 } from "~/src/modules/order/order.detail.utils"
@@ -96,6 +97,79 @@ describe("mapAdminOrderDetailAddress", () => {
   it("maps a missing address to nothing", () => {
     expect(mapAdminOrderDetailAddress(null)).toBeUndefined()
     expect(mapAdminOrderDetailAddress(undefined)).toBeUndefined()
+  })
+})
+
+describe("resolveAdminOrderDetailAddresses", () => {
+  const editedRow = { ...addressRow, address1: "ul. Edited 1" }
+  const billingRow = { ...addressRow, address1: "ul. Firmowa 3", city: "Krakow", postalCode: "30-001" }
+  const sharedCheckout = { billingAddress: editedRow, billingAddressId: "addr-1", shippingAddress: editedRow, shippingAddressId: "addr-1" }
+  const deletedCheckout = { billingAddress: null, billingAddressId: null, shippingAddress: null, shippingAddressId: null }
+
+  it("reads both addresses from the snapshots instead of the checkout's editable rows", () => {
+    const resolved = resolveAdminOrderDetailAddresses({
+      addresses: [
+        { ...addressRow, type: "shipping" },
+        { ...billingRow, type: "billing" },
+      ],
+      checkout: sharedCheckout,
+    })
+
+    expect(resolved.shippingAddress?.line1).toBe("ul. Mokotowska 12/4")
+    expect(resolved.billingAddress?.line1).toBe("ul. Firmowa 3")
+  })
+
+  it("marks billing as the shipping address when both snapshots hold the same address", () => {
+    const resolved = resolveAdminOrderDetailAddresses({
+      addresses: [
+        { ...addressRow, type: "shipping" },
+        { ...addressRow, type: "billing" },
+      ],
+      checkout: deletedCheckout,
+    })
+
+    expect(resolved.billingSameAsShipping).toBe(true)
+  })
+
+  it("keeps billing separate when the snapshots differ even if the checkout points both at one row", () => {
+    const resolved = resolveAdminOrderDetailAddresses({
+      addresses: [
+        { ...addressRow, type: "shipping" },
+        { ...addressRow, province: "mazowieckie", type: "billing" },
+      ],
+      checkout: sharedCheckout,
+    })
+
+    expect(resolved.billingSameAsShipping).toBe(false)
+  })
+
+  it("keeps billing separate when the order has no billing snapshot", () => {
+    const resolved = resolveAdminOrderDetailAddresses({ addresses: [{ ...addressRow, type: "shipping" }], checkout: sharedCheckout })
+
+    expect(resolved.billingSameAsShipping).toBe(false)
+  })
+
+  it("compares the checkout's address ids for an order placed before snapshots were written", () => {
+    expect(resolveAdminOrderDetailAddresses({ addresses: [], checkout: sharedCheckout })).toStrictEqual({
+      billingAddress: mapAdminOrderDetailAddress(editedRow),
+      billingSameAsShipping: true,
+      shippingAddress: mapAdminOrderDetailAddress(editedRow),
+    })
+    expect(
+      resolveAdminOrderDetailAddresses({
+        addresses: [],
+        checkout: { billingAddress: billingRow, billingAddressId: "addr-2", shippingAddress: addressRow, shippingAddressId: "addr-1" },
+      }).billingSameAsShipping,
+    ).toBe(false)
+  })
+
+  it("leaves everything out when the order has neither snapshots nor checkout addresses", () => {
+    expect(resolveAdminOrderDetailAddresses({ addresses: [], checkout: deletedCheckout })).toStrictEqual({
+      billingAddress: undefined,
+      billingSameAsShipping: false,
+      shippingAddress: undefined,
+    })
+    expect(resolveAdminOrderDetailAddresses({ addresses: [], checkout: null }).billingSameAsShipping).toBe(false)
   })
 })
 

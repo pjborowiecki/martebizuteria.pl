@@ -5,6 +5,7 @@ import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { exportAdminOrders } from "../export-admin-orders"
+import { getAdminOrder } from "../get-admin-order"
 import { getAdminOrderStats, getAdminOrderStatsQuery } from "../get-admin-order-stats"
 import { getAdminOrdersPage, getAdminOrdersPageQuery } from "../get-admin-orders-page"
 
@@ -45,7 +46,11 @@ const accessors = vi.hoisted(() => {
 
   return {
     exportParams,
+    getAdminOrderCustomerStats: vi.fn(() => Promise.resolve({ orderCount: 1, totalSpent: 0 })),
+    getAdminOrderDetailRow: vi.fn(),
+    getAdminOrderItemRows: vi.fn(() => Promise.resolve([])),
     getAdminOrderStats: vi.fn(() => Promise.resolve({ pending: 2, total: 9 })),
+    getAdminOrderTimelineRows: vi.fn(() => Promise.resolve([])),
     getAdminOrdersExport: vi.fn((params: unknown) => {
       exportParams.push(params)
 
@@ -64,7 +69,11 @@ const accessors = vi.hoisted(() => {
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/order/order.accessors", () => ({
+  getAdminOrderCustomerStats: accessors.getAdminOrderCustomerStats,
+  getAdminOrderDetailRow: accessors.getAdminOrderDetailRow,
+  getAdminOrderItemRows: accessors.getAdminOrderItemRows,
   getAdminOrderStats: accessors.getAdminOrderStats,
+  getAdminOrderTimelineRows: accessors.getAdminOrderTimelineRows,
   getAdminOrdersExport: accessors.getAdminOrdersExport,
   getAdminOrdersPage: accessors.getAdminOrdersPage,
 }))
@@ -234,4 +243,162 @@ describe("getAdminOrderStats", () => {
 it("loads the requested order page through its cache query", async () => {
   await expect(new QueryClient().query(getAdminOrdersPageQuery({ page: 2, pageSize: 10 }))).resolves.toMatchObject({ total: 1 })
   expect(accessors.pageParams[0]).toMatchObject({ limit: 10, offset: 10 })
+})
+
+const DETAIL_ORDER_ID = "6f1c2a9e-4b7d-4e3a-9c51-2d8f0b7a6e14"
+
+const detailAddress = (overrides: Record<string, unknown> = {}) => ({
+  address1: "ul. Dluga 1",
+  address2: null,
+  city: "Krakow",
+  countryCode: "PL",
+  firstName: "Anna",
+  lastName: "Kowalska",
+  phone: null,
+  postalCode: "30-001",
+  province: null,
+  ...overrides,
+})
+
+const detailRow = (overrides: Record<string, unknown> = {}) => ({
+  addresses: [],
+  canceledAt: null,
+  checkout: {
+    billingAddress: detailAddress({ address1: "ul. Firmowa 2" }),
+    billingAddressId: "addr-bill",
+    shippingAddress: detailAddress(),
+    shippingAddressId: "addr-ship",
+  },
+  createdAt: CREATED_AT,
+  currencyCode: "PLN",
+  customerNote: null,
+  deliveredAt: null,
+  deliveryMethod: null,
+  discountTotal: 0,
+  email: "ada@example.test",
+  fulfillmentStatus: "not_fulfilled",
+  id: DETAIL_ORDER_ID,
+  lockerId: null,
+  metadata: null,
+  orderNumber: "MRT-2026-00001",
+  payment: null,
+  shippedAt: null,
+  shippingTotal: 1500,
+  status: "processing",
+  subtotal: 10_000,
+  taxTotal: 2100,
+  total: 11_500,
+  trackingNumber: null,
+  trackingUrl: null,
+  user: { id: "user-1", name: "Ada Lovelace", phone: null },
+  userId: "user-1",
+  ...overrides,
+})
+
+const fetchAdminOrder = () => getAdminOrder({ data: { orderId: DETAIL_ORDER_ID } })
+
+describe("getAdminOrder addresses", () => {
+  it("shows the addresses the order was placed with after the customer edits their address book", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(
+      detailRow({
+        addresses: [
+          { ...detailAddress({ address1: "ul. Snapshot 9", firstName: "Ada", lastName: "Nowak" }), type: "shipping" },
+          { ...detailAddress({ address1: "ul. Faktura 3" }), type: "billing" },
+        ],
+        checkout: {
+          billingAddress: detailAddress({ address1: "ul. Edited 1" }),
+          billingAddressId: "addr-bill",
+          shippingAddress: detailAddress({ address1: "ul. Edited 1" }),
+          shippingAddressId: "addr-ship",
+        },
+      }),
+    )
+
+    const detail = await fetchAdminOrder()
+
+    expect(detail?.shippingAddress).toStrictEqual({
+      city: "Krakow",
+      countryCode: "PL",
+      line1: "ul. Snapshot 9",
+      line2: undefined,
+      name: "Ada Nowak",
+      phone: undefined,
+      postalCode: "30-001",
+      province: undefined,
+    })
+    expect(detail?.billingAddress?.line1).toBe("ul. Faktura 3")
+    expect(detail?.billingSameAsShipping).toBe(false)
+  })
+
+  it("keeps the order's addresses and their match after the customer deletes them from their address book", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(
+      detailRow({
+        addresses: [
+          { ...detailAddress({ address1: "ul. Snapshot 9" }), type: "shipping" },
+          { ...detailAddress({ address1: "ul. Snapshot 9" }), type: "billing" },
+        ],
+        checkout: { billingAddress: null, billingAddressId: null, shippingAddress: null, shippingAddressId: null },
+      }),
+    )
+
+    const detail = await fetchAdminOrder()
+
+    expect(detail?.shippingAddress?.line1).toBe("ul. Snapshot 9")
+    expect(detail?.billingAddress?.line1).toBe("ul. Snapshot 9")
+    expect(detail?.billingSameAsShipping).toBe(true)
+  })
+
+  it("compares the snapshots rather than the checkout's address ids once the order has them", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(
+      detailRow({
+        addresses: [
+          { ...detailAddress(), type: "shipping" },
+          { ...detailAddress({ address1: "ul. Faktura 3" }), type: "billing" },
+        ],
+        checkout: {
+          billingAddress: detailAddress({ address1: "ul. Edited 1" }),
+          billingAddressId: "addr-ship",
+          shippingAddress: detailAddress({ address1: "ul. Edited 1" }),
+          shippingAddressId: "addr-ship",
+        },
+      }),
+    )
+
+    await expect(fetchAdminOrder()).resolves.toMatchObject({ billingSameAsShipping: false })
+  })
+
+  it("falls back to the checkout's address rows for an order placed before snapshots were written", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow())
+
+    const detail = await fetchAdminOrder()
+
+    expect(detail?.shippingAddress?.line1).toBe("ul. Dluga 1")
+    expect(detail?.billingAddress?.line1).toBe("ul. Firmowa 2")
+    expect(detail?.billingSameAsShipping).toBe(false)
+  })
+
+  it("falls back to the checkout's address ids for an order placed before snapshots were written", async () => {
+    const sharedAddress = detailAddress()
+    accessors.getAdminOrderDetailRow.mockResolvedValue(
+      detailRow({
+        checkout: {
+          billingAddress: sharedAddress,
+          billingAddressId: "addr-ship",
+          shippingAddress: sharedAddress,
+          shippingAddressId: "addr-ship",
+        },
+      }),
+    )
+
+    await expect(fetchAdminOrder()).resolves.toMatchObject({ billingSameAsShipping: true })
+  })
+
+  it("leaves both addresses out when neither a snapshot nor a checkout address exists", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow({ checkout: null }))
+
+    const detail = await fetchAdminOrder()
+
+    expect(detail?.shippingAddress).toBeUndefined()
+    expect(detail?.billingAddress).toBeUndefined()
+  })
 })
