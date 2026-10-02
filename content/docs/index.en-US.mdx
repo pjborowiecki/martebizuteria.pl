@@ -41,16 +41,16 @@ These pages document the whole repository: where each piece of code lives, how a
 
 `src/modules/{feature}` holds feature logic. Each feature keeps its operations in `use-cases/{verb-noun}.ts`, exporting a server function together with the query options that loaders and components use. `src/modules/_core` holds the shared primitives those use cases build on.
 
-`src/integrations/{vendor}` wraps every third party behind a small adapter: Better Auth, Drizzle ORM against D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, Fumadocs, GSAP, Lenis and the realtime invalidation hub.
+`src/integrations/{vendor}` wraps every third party behind a small adapter: Better Auth, Drizzle ORM against D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, Fumadocs, MDXEditor, GSAP, Lenis and the realtime invalidation hub.
 
 `src/presentation` owns everything visual: `components/shadcn` primitives, `components/custom` application components, `styles` with the Tailwind layers, `theme`, `branding`, `emails` and the document assets. `src/platform/testing` holds shared test infrastructure, `src/lib` holds small request-scoped helpers, `src/durable-objects` holds the realtime and rate-limit objects, and `src/providers` holds the React context providers.
 
-Content lives outside `src`: `content/legal` holds the legal documents, `content/docs` holds these pages and `messages/{locale}` holds the UI message catalogues.
+Content lives outside `src`: `content/docs` holds these pages and `messages/{locale}` holds the UI message catalogues. The customer legal pages are not files: they are rows in the D1 `content_page` table, edited at `/admin/content`.
 
 ## Editing these docs
 
 Pages live in `content/docs` as `<slug>.<locale>.mdx`, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. Both locales list the same slugs, so a page added in Polish must be added in English too.
 
-`bun run content` regenerates `.source/` from the Fumadocs collections, and `bun run dev` runs it for you. After editing, `bun run format` and `bun run check` keep the repository clean and `bun run test` covers the docs source alongside everything else.
+`bun run content` regenerates `.source/` from the `content/docs` collection, and `bun run dev` runs it for you. After editing, `bun run format` and `bun run check` keep the repository clean and `bun run test` covers the docs source alongside everything else.
 
 Internal links such as `/docs/architecture/routing` pick up the reader's locale prefix automatically, so always write them without one.

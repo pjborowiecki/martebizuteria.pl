@@ -79,14 +79,14 @@ W sprawie użycia komercyjnego skontaktuj się z autorem:
 
 ## To nie to samo co strony prawne sklepu
 
-Ta strona dotyczy licencji na kod. Własne dokumenty prawne sklepu to odrębna treść, pisana dla klientów i renderowana z `content/legal/`:
+Ta strona dotyczy licencji na kod. Własne dokumenty prawne sklepu to odrębna treść, pisana dla klientów i przechowywana jako Markdown w tabeli D1 `content_page`, po jednym wierszu na dokument:
 
-| Dokument             | Plik                                               | Trasa                    |
-| -------------------- | -------------------------------------------------- | ------------------------ |
-| Polityka prywatności | `content/legal/privacy-policy.<locale>.mdx`        | `/privacy-policy`        |
-| Wymiana i zwroty     | `content/legal/exchanges-and-returns.<locale>.mdx` | `/exchanges-and-returns` |
+| Dokument             | Handle                  | Trasa                    |
+| -------------------- | ----------------------- | ------------------------ |
+| Polityka prywatności | `privacy-policy`        | `/privacy-policy`        |
+| Wymiana i zwroty     | `exchanges-and-returns` | `/exchanges-and-returns` |
 
-Te pliki mają w nagłówku (frontmatter) datę `updated`, wymuszaną przez `legalSchema` w `src/integrations/fumadocs/fumadocs.schema.ts`, więc zmiany w dokumencie prawnym skierowanym do klienta nie da się opublikować bez opatrzenia datą. Trasa `/terms-of-service` też istnieje, ale `src/routes/_storefront.terms-of-service.tsx` renderuje obecnie krótki tekst zastępczy z przestrzeni nazw `pages.terms-of-service`, a nie dokument z `content/legal/`.
+Administratorzy edytują je w `/admin/content`, a zapis od razu je publikuje. Zapis, który zmienia tytuł lub treść w danym języku, przesuwa datę „Ostatnia aktualizacja” tego języka, więc zmiany w dokumencie prawnym skierowanym do klienta nie da się opublikować bez opatrzenia datą. Trasa `/terms-of-service` też istnieje, ale `src/routes/_storefront.terms-of-service.tsx` renderuje obecnie krótki tekst zastępczy z przestrzeni nazw `pages.terms-of-service`, a nie wiersz z `content_page`.
 
 ## Pełny tekst
 

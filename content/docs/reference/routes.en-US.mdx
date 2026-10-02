@@ -38,7 +38,7 @@ All storefront pages sit under the pathless layout `_storefront.tsx`, which supp
 | `/blog`                  | `BLOG`                  | `_storefront.blog.index.tsx`            |
 | `/blog/$slug`            | `BLOG_POST`             | `_storefront.blog.$slug.tsx`            |
 
-`/privacy-policy` and `/exchanges-and-returns` render MDX from `content/legal` through the Fumadocs legal collection; the blog reads its posts from `src/data/blog-posts.ts`.
+`/privacy-policy` and `/exchanges-and-returns` load their Markdown from the D1 `content_page` table with `getContentPageQuery` and render it through `ContentPageArticle`; admins edit it at `/admin/content`. The blog reads its posts from `src/data/blog-posts.ts`.
 
 ## Checkout
 
@@ -50,7 +50,11 @@ All storefront pages sit under the pathless layout `_storefront.tsx`, which supp
 
 ## Authentication
 
-The `/auth` layout is `auth.tsx` and its `beforeLoad` runs `redirectAuthenticated`, which sends an already signed-in visitor to `/admin` or `/account/overview` depending on their role.
+The `/auth` layout is `auth.tsx` and its `beforeLoad` runs `redirectIfSignedIn`, which sends an already signed-in visitor to the `?redirect` search parameter when it is a safe same-site path, and otherwise to `/admin` or `/account/overview` depending on their role. `auth.sign-in.tsx` declares that parameter in `validateSearch`.
+
+After a successful password sign-in or two-factor challenge, the form calls `usePostAuthRedirect` from `src/hooks/use-post-auth-redirect.ts`. It removes the cached session entry only, clears the router's cached matches and invalidates the router. The `/auth` layout guard then runs again, fetches the fresh session and redirects, so the forms never choose a destination themselves. When the fresh session arrives, `clearCacheOnUserChange`, described under Guards below, forgets what was cached while signed out.
+
+Google and GitHub sign-in go through `useOAuthSignIn` in `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`. Its `callbackURL` is the page the button was clicked on (`location.publicHref` from `useLocation`), for example `/en-US/auth/sign-in?redirect=...`. After the provider round trip the browser lands back on that auth page, and `redirectIfSignedIn` sends the user on exactly as after a password sign-in.
 
 | Path                    | `ROUTES` constant      | Route file                 |
 | ----------------------- | ---------------------- | -------------------------- |
@@ -65,7 +69,7 @@ The `/auth` layout is `auth.tsx` and its `beforeLoad` runs `redirectAuthenticate
 
 ## Customer account
 
-The `/account` layout is `account.tsx` and its `beforeLoad` runs `requireCustomer`, which redirects an anonymous visitor to `/auth/sign-in` and an admin to `/admin`. `account.index.tsx` immediately redirects `/account` to `/account/overview`.
+The `/account` layout is `account.tsx` and its `beforeLoad` runs `requireCustomer`, which redirects an anonymous visitor to `/auth/sign-in` with the requested path in `?redirect`, and an admin to `/admin`. `account.index.tsx` immediately redirects `/account` to `/account/overview`.
 
 | Path                  | `ROUTES` constant   | Route file                                             |
 | --------------------- | ------------------- | ------------------------------------------------------ |
@@ -83,28 +87,29 @@ The `/account` layout is `account.tsx` and its `beforeLoad` runs `requireCustome
 
 The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`; it also loads `admin.css`, forces the light theme, renders the admin sidebar and opens the admin realtime WebSocket through `useRealtimeQuerySync`. `admin.index.tsx` redirects `/admin` to `/admin/overview`, and `admin.catalog.index.tsx` redirects `/admin/catalog` to `/admin/catalog/products`.
 
-| Path                                 | `ROUTES` constant   | Route file                                                             |
-| ------------------------------------ | ------------------- | ---------------------------------------------------------------------- |
-| `/admin`                             | `ADMIN`             | `admin.tsx` (layout), `admin.index.tsx` (redirect)                     |
-| `/admin/overview`                    | `ADMIN_OVERVIEW`    | `admin.overview.tsx`                                                   |
-| `/admin/catalog`                     | `ADMIN_CATALOG`     | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (redirect)     |
-| `/admin/catalog/products`            | `ADMIN_PRODUCTS`    | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`       |
-| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`  | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`   |
-| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`    | `admin.catalog.categories.$handle.tsx`                                 |
-| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS` | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx` |
-| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`  | `admin.catalog.collections.$handle.tsx`                                |
-| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`  | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`   |
-| `/admin/orders`                      | `ADMIN_ORDERS`      | `admin.orders.index.tsx`                                               |
-| `/admin/orders/$orderId`             | none                | `admin.orders.$orderId.tsx`                                            |
-| `/admin/customers`                   | `ADMIN_CUSTOMERS`   | `admin.customers.index.tsx`                                            |
-| `/admin/customers/$id`               | `ADMIN_CUSTOMER`    | `admin.customers.$id.tsx`                                              |
-| `/admin/audit`                       | `ADMIN_AUDIT`       | `admin.audit.tsx`                                                      |
-| `/admin/coupons`                     | `ADMIN_COUPONS`     | `admin.coupons.tsx`                                                    |
-| `/admin/content`                     | `ADMIN_CONTENT`     | `admin.content.tsx`                                                    |
-| `/admin/marketing`                   | `ADMIN_MARKETING`   | `admin.marketing.tsx`                                                  |
-| `/admin/settings`                    | `ADMIN_SETTINGS`    | `admin.settings.tsx`                                                   |
+| Path                                 | `ROUTES` constant    | Route file                                                             |
+| ------------------------------------ | -------------------- | ---------------------------------------------------------------------- |
+| `/admin`                             | `ADMIN`              | `admin.tsx` (layout), `admin.index.tsx` (redirect)                     |
+| `/admin/overview`                    | `ADMIN_OVERVIEW`     | `admin.overview.tsx`                                                   |
+| `/admin/catalog`                     | `ADMIN_CATALOG`      | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (redirect)     |
+| `/admin/catalog/products`            | `ADMIN_PRODUCTS`     | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`       |
+| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`   | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`   |
+| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`     | `admin.catalog.categories.$handle.tsx`                                 |
+| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`  | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx` |
+| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`   | `admin.catalog.collections.$handle.tsx`                                |
+| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`   | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`   |
+| `/admin/orders`                      | `ADMIN_ORDERS`       | `admin.orders.index.tsx`                                               |
+| `/admin/orders/$orderId`             | none                 | `admin.orders.$orderId.tsx`                                            |
+| `/admin/customers`                   | `ADMIN_CUSTOMERS`    | `admin.customers.index.tsx`                                            |
+| `/admin/customers/$id`               | `ADMIN_CUSTOMER`     | `admin.customers.$id.tsx`                                              |
+| `/admin/audit`                       | `ADMIN_AUDIT`        | `admin.audit.tsx`                                                      |
+| `/admin/coupons`                     | `ADMIN_COUPONS`      | `admin.coupons.tsx`                                                    |
+| `/admin/content`                     | `ADMIN_CONTENT`      | `admin.content.index.tsx`                                              |
+| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE` | `admin.content.$handle.tsx`                                            |
+| `/admin/marketing`                   | `ADMIN_MARKETING`    | `admin.marketing.tsx`                                                  |
+| `/admin/settings`                    | `ADMIN_SETTINGS`     | `admin.settings.tsx`                                                   |
 
-The admin order detail route is the one page with no `ROUTES` constant; navigation to it is written as the literal `"/admin/orders/$orderId"` in `src/presentation/components/custom/pages/admin/orders/`. `/admin/coupons`, `/admin/content`, `/admin/marketing`, `/admin/settings` and parts of the order detail page still render from fixtures in `src/data/` — `coupons.ts`, `content.ts`, `marketing.ts`, `settings.ts` and `order-detail.ts`.
+The admin order detail route is the one page with no `ROUTES` constant; navigation to it is written as the literal `"/admin/orders/$orderId"` in `src/presentation/components/custom/pages/admin/orders/`. `/admin/coupons`, `/admin/marketing`, `/admin/settings` and parts of the order detail page still render from fixtures in `src/data/` — `coupons.ts`, `marketing.ts`, `settings.ts` and `order-detail.ts`.
 
 ## Documentation
 
@@ -138,14 +143,24 @@ The last four are checked in `src/server.ts` before the request reaches TanStack
 
 ## Guards
 
-All four guards live in `src/integrations/better-auth/auth.routes.ts`.
+All four guards live in `src/integrations/better-auth/auth.routes.ts`. A layout route passes the guard itself, as in `beforeLoad: requireAdmin`.
 
-| Guard                   | Behaviour                                                                                                    | Used by           |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------- |
-| `requireUser`           | Redirects to `/auth/sign-in` when there is no session                                                        | Via the other two |
-| `requireAdmin`          | `requireUser`, then redirects a non-admin to `/account/overview`                                             | `admin.tsx`       |
-| `requireCustomer`       | `requireUser`, then redirects an admin to `/admin`                                                           | `account.tsx`     |
-| `redirectAuthenticated` | Sends a signed-in visitor to `postAuthRouteFor(user)` — `/admin` for an admin, `/account/overview` otherwise | `auth.tsx`        |
+| Guard                | Behaviour                                                                                                                                    | Used by           |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `requireSignedIn`    | Redirects to `/auth/sign-in` with the requested path in `?redirect` when there is no session                                                 | Via the other two |
+| `requireAdmin`       | `requireSignedIn`, then redirects a non-admin to `/account/overview`                                                                         | `admin.tsx`       |
+| `requireCustomer`    | `requireSignedIn`, then redirects an admin to `/admin`                                                                                       | `account.tsx`     |
+| `redirectIfSignedIn` | Sends a signed-in visitor to the `?redirect` path, or else to `postAuthRouteFor(user)`: `/admin` for an admin, `/account/overview` otherwise | `auth.tsx`        |
+
+`requireSignedIn`, `requireAdmin` and `requireCustomer` take the `beforeLoad` options (`{ context, location, preload }`) and resolve to `{ user }`. That becomes route context, so a page under the layout reads the signed-in user with `Route.useRouteContext().user`.
+
+`requireSignedIn` puts `location.publicHref` in `?redirect`: the localized public path, such as `/en-US/account/orders/order-1`. The value is kept only when it is a string matching `SAME_SITE_PATH_PATTERN`, `/^\/(?![/\\])[!-[\]-~]*$/u`: printable ASCII only, a single leading slash and no backslash. An absolute URL, a protocol-relative `//`, a backslash, whitespace or a control character is dropped: `requireSignedIn` then redirects to `/auth/sign-in` without it, and `redirectIfSignedIn` falls back to `postAuthRouteFor(user)`. Otherwise `redirectIfSignedIn` sends the visitor there with `redirect({ href })`, so a server-rendered redirect keeps the visitor's language, and on the client the router re-localizes it to the current language.
+
+Guards only read the session, through `loadRouteSession`: `queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)`. `requireSignedIn`, `requireAdmin` and `requireCustomer` pass `recheck: true`, so a real navigation into `/account` or `/admin` re-checks the session with `staleTime: 0`; a link preload, and `redirectIfSignedIn` with `recheck: false`, reuse a cached session younger than 60 seconds. The session a guard loads stays in the TanStack Query cache, so the navigation's account link, the time zone in `TranslationsProvider`, the wishlist and the checkout prefill read the same value through `useQuery(getCurrentSessionQuery)`. A server render dehydrates it into the page, so guarded pages render signed-in on the server.
+
+A change of user is handled in one place, `clearCacheOnUserChange(queryClient)` in `src/integrations/better-auth/auth.session.ts`. `getRouter` in `src/router.tsx` installs it in the browser only, next to `setupQueryClientInvalidationBroadcast`; server rendering skips it because every request starts with an empty `QueryClient`. It subscribes to the query cache, and whenever the session query's data switches to a different user id, including signed out to signed in and back, it removes every cached query except the session itself and the translation message catalogues (`isMessagesQuery` from `src/integrations/use-intl/i18n.messages.ts`). It ignores the first session it sees and the session entry being removed. Because it watches the cache, it catches a change whoever fetched the session: a guard, a component, a refetch after invalidation, or hydration.
+
+Sign-out is a full page load that discards the whole cache: the account sidebar goes to `/`, the admin sidebar to `/auth/sign-in`.
 
 Guards run in `beforeLoad`, which means they also run in the browser during client-side navigation. **They are navigation UX, not authorization.** A server function is a public HTTP endpoint whether or not its route was loaded, so authorization is enforced by the `authorized` middleware inside each use case — see [Permissions](/docs/reference/permissions).
 

@@ -77,7 +77,7 @@ Kolumna `role` w tabeli `user` jest tekstowym typem wyliczeniowym z tą wartośc
 bun run db:studio:development
 ```
 
-Otwórz tabelę `user`, znajdź swój wiersz, ustaw `role` na `admin`, a potem wyloguj się i zaloguj ponownie. Trasa `/admin` jest chroniona przez `requireAdmin()` z `src/integrations/better-auth/auth.routes.ts`, które wywołuje `hasAdminAccess(user.role)`; klient wchodzący na `/admin` jest przekierowywany na `/account/overview`, a nie widzi błędu.
+Otwórz tabelę `user`, znajdź swój wiersz, ustaw `role` na `admin`, a potem wyloguj się i zaloguj ponownie. Po zalogowaniu strażnik `/auth` odsyła administratora na `/admin`. Layout `/admin` używa `requireAdmin` z `src/integrations/better-auth/auth.routes.ts` jako swojego `beforeLoad`, a ten strażnik wywołuje `hasAdminAccess(user.role)`; klient wchodzący na `/admin` jest przekierowywany na `/account/overview`, a nie widzi błędu.
 
 Drizzle Studio łączy się przez API HTTP D1 z użyciem `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` i `CLOUDFLARE_ACCESS_TOKEN` z pliku `.env.development`. Jeśli ich brakuje, Studio się otworzy, ale każde zapytanie zakończy się błędem.
 

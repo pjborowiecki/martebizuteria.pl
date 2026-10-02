@@ -38,7 +38,7 @@ Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, kt�
 | `/blog`                  | `BLOG`                  | `_storefront.blog.index.tsx`            |
 | `/blog/$slug`            | `BLOG_POST`             | `_storefront.blog.$slug.tsx`            |
 
-`/privacy-policy` i `/exchanges-and-returns` renderują MDX z `content/legal` przez kolekcję prawną Fumadocs (`loadLegalPage` i `LEGAL_DOCUMENT_SLUGS`); blog czyta wpisy z `src/data/blog-posts.ts`.
+`/privacy-policy` i `/exchanges-and-returns` ładują swój Markdown z tabeli D1 `content_page` przez `getContentPageQuery` i renderują go przez `ContentPageArticle`; administratorzy edytują go w `/admin/content`. Blog czyta wpisy z `src/data/blog-posts.ts`.
 
 ## Proces zamówienia
 
@@ -50,7 +50,11 @@ Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, kt�
 
 ## Uwierzytelnianie
 
-Layoutem `/auth` jest `auth.tsx`, a jego `beforeLoad` uruchamia `redirectAuthenticated`, który odsyła już zalogowaną osobę do `/admin` albo `/account/overview`, zależnie od roli.
+Layoutem `/auth` jest `auth.tsx`, a jego `beforeLoad` uruchamia `redirectIfSignedIn`, który odsyła już zalogowaną osobę na ścieżkę z parametru wyszukiwania `?redirect`, jeśli jest bezpieczną ścieżką w obrębie tej samej witryny, a w przeciwnym razie do `/admin` albo `/account/overview`, zależnie od roli. `auth.sign-in.tsx` deklaruje ten parametr w `validateSearch`.
+
+Po udanym logowaniu hasłem albo udanej weryfikacji dwuskładnikowej formularz wywołuje `usePostAuthRedirect` z `src/hooks/use-post-auth-redirect.ts`. Ten hook usuwa z cache wyłącznie wpis sesji, czyści dopasowania zapisane w routerze i unieważnia router. Strażnik layoutu `/auth` uruchamia się wtedy ponownie, pobiera świeżą sesję i przekierowuje, więc formularze nigdy same nie wybierają celu. Gdy świeża sesja dotrze, `clearCacheOnUserChange`, opisane niżej w sekcji Strażnicy, zapomina to, co trafiło do cache przed zalogowaniem.
+
+Logowanie przez Google i GitHub przechodzi przez `useOAuthSignIn` z `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`. Jego `callbackURL` to strona, na której kliknięto przycisk (`location.publicHref` z `useLocation`), na przykład `/en-US/auth/sign-in?redirect=...`. Po powrocie od dostawcy przeglądarka ląduje z powrotem na tej stronie uwierzytelniania, a `redirectIfSignedIn` przekierowuje użytkownika dalej dokładnie tak jak po logowaniu hasłem.
 
 | Ścieżka                 | Stała w `ROUTES`       | Plik trasy                 |
 | ----------------------- | ---------------------- | -------------------------- |
@@ -65,7 +69,7 @@ Layoutem `/auth` jest `auth.tsx`, a jego `beforeLoad` uruchamia `redirectAuthent
 
 ## Konto klienta
 
-Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCustomer`, który przekierowuje anonimowego gościa do `/auth/sign-in`, a administratora do `/admin`. `account.index.tsx` natychmiast przekierowuje `/account` na `/account/overview`.
+Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCustomer`, który przekierowuje anonimowego gościa do `/auth/sign-in` z żądaną ścieżką w `?redirect`, a administratora do `/admin`. `account.index.tsx` natychmiast przekierowuje `/account` na `/account/overview`.
 
 | Ścieżka               | Stała w `ROUTES`    | Plik trasy                                                   |
 | --------------------- | ------------------- | ------------------------------------------------------------ |
@@ -83,28 +87,29 @@ Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCu
 
 Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`; ponadto ładuje `admin.css`, wymusza jasny motyw, renderuje sidebar panelu i otwiera administracyjny WebSocket realtime przez `useRealtimeQuerySync`. `admin.index.tsx` przekierowuje `/admin` na `/admin/overview`, a `admin.catalog.index.tsx` przekierowuje `/admin/catalog` na `/admin/catalog/products`.
 
-| Ścieżka                              | Stała w `ROUTES`    | Plik trasy                                                               |
-| ------------------------------------ | ------------------- | ------------------------------------------------------------------------ |
-| `/admin`                             | `ADMIN`             | `admin.tsx` (layout), `admin.index.tsx` (przekierowanie)                 |
-| `/admin/overview`                    | `ADMIN_OVERVIEW`    | `admin.overview.tsx`                                                     |
-| `/admin/catalog`                     | `ADMIN_CATALOG`     | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (przekierowanie) |
-| `/admin/catalog/products`            | `ADMIN_PRODUCTS`    | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`         |
-| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`  | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`     |
-| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`    | `admin.catalog.categories.$handle.tsx`                                   |
-| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS` | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx`   |
-| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`  | `admin.catalog.collections.$handle.tsx`                                  |
-| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`  | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`     |
-| `/admin/orders`                      | `ADMIN_ORDERS`      | `admin.orders.index.tsx`                                                 |
-| `/admin/orders/$orderId`             | brak                | `admin.orders.$orderId.tsx`                                              |
-| `/admin/customers`                   | `ADMIN_CUSTOMERS`   | `admin.customers.index.tsx`                                              |
-| `/admin/customers/$id`               | `ADMIN_CUSTOMER`    | `admin.customers.$id.tsx`                                                |
-| `/admin/audit`                       | `ADMIN_AUDIT`       | `admin.audit.tsx`                                                        |
-| `/admin/coupons`                     | `ADMIN_COUPONS`     | `admin.coupons.tsx`                                                      |
-| `/admin/content`                     | `ADMIN_CONTENT`     | `admin.content.tsx`                                                      |
-| `/admin/marketing`                   | `ADMIN_MARKETING`   | `admin.marketing.tsx`                                                    |
-| `/admin/settings`                    | `ADMIN_SETTINGS`    | `admin.settings.tsx`                                                     |
+| Ścieżka                              | Stała w `ROUTES`     | Plik trasy                                                               |
+| ------------------------------------ | -------------------- | ------------------------------------------------------------------------ |
+| `/admin`                             | `ADMIN`              | `admin.tsx` (layout), `admin.index.tsx` (przekierowanie)                 |
+| `/admin/overview`                    | `ADMIN_OVERVIEW`     | `admin.overview.tsx`                                                     |
+| `/admin/catalog`                     | `ADMIN_CATALOG`      | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (przekierowanie) |
+| `/admin/catalog/products`            | `ADMIN_PRODUCTS`     | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`         |
+| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`   | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`     |
+| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`     | `admin.catalog.categories.$handle.tsx`                                   |
+| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`  | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx`   |
+| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`   | `admin.catalog.collections.$handle.tsx`                                  |
+| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`   | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`     |
+| `/admin/orders`                      | `ADMIN_ORDERS`       | `admin.orders.index.tsx`                                                 |
+| `/admin/orders/$orderId`             | brak                 | `admin.orders.$orderId.tsx`                                              |
+| `/admin/customers`                   | `ADMIN_CUSTOMERS`    | `admin.customers.index.tsx`                                              |
+| `/admin/customers/$id`               | `ADMIN_CUSTOMER`     | `admin.customers.$id.tsx`                                                |
+| `/admin/audit`                       | `ADMIN_AUDIT`        | `admin.audit.tsx`                                                        |
+| `/admin/coupons`                     | `ADMIN_COUPONS`      | `admin.coupons.tsx`                                                      |
+| `/admin/content`                     | `ADMIN_CONTENT`      | `admin.content.index.tsx`                                                |
+| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE` | `admin.content.$handle.tsx`                                              |
+| `/admin/marketing`                   | `ADMIN_MARKETING`    | `admin.marketing.tsx`                                                    |
+| `/admin/settings`                    | `ADMIN_SETTINGS`     | `admin.settings.tsx`                                                     |
 
-Szczegóły zamówienia w panelu to jedyna strona bez stałej w `ROUTES`; nawigacja do niej zapisana jest jako literał `"/admin/orders/$orderId"` w `src/presentation/components/custom/pages/admin/orders/`. Strony `/admin/coupons`, `/admin/content`, `/admin/marketing`, `/admin/settings` oraz część strony szczegółów zamówienia nadal renderują dane z fikstur w `src/data/` — `coupons.ts`, `content.ts`, `marketing.ts`, `settings.ts` i `order-detail.ts`.
+Szczegóły zamówienia w panelu to jedyna strona bez stałej w `ROUTES`; nawigacja do niej zapisana jest jako literał `"/admin/orders/$orderId"` w `src/presentation/components/custom/pages/admin/orders/`. Strony `/admin/coupons`, `/admin/marketing`, `/admin/settings` oraz część strony szczegółów zamówienia nadal renderują dane z fikstur w `src/data/` — `coupons.ts`, `marketing.ts`, `settings.ts` i `order-detail.ts`.
 
 ## Dokumentacja
 
@@ -138,14 +143,24 @@ Cztery ostatnie ścieżki są sprawdzane w `src/server.ts`, zanim zapytanie dotr
 
 ## Strażnicy
 
-Wszyscy czterej strażnicy leżą w `src/integrations/better-auth/auth.routes.ts`.
+Wszyscy czterej strażnicy leżą w `src/integrations/better-auth/auth.routes.ts`. Trasa layoutu przekazuje samego strażnika, jak w `beforeLoad: requireAdmin`.
 
-| Strażnik                | Zachowanie                                                                                                                | Używany przez           |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `requireUser`           | Przekierowuje do `/auth/sign-in`, gdy nie ma sesji                                                                        | Przez dwóch pozostałych |
-| `requireAdmin`          | `requireUser`, a potem przekierowuje osobę bez roli admina do `/account/overview`                                         | `admin.tsx`             |
-| `requireCustomer`       | `requireUser`, a potem przekierowuje administratora do `/admin`                                                           | `account.tsx`           |
-| `redirectAuthenticated` | Odsyła zalogowaną osobę do `postAuthRouteFor(user)` — `/admin` dla administratora, w przeciwnym razie `/account/overview` | `auth.tsx`              |
+| Strażnik             | Zachowanie                                                                                                                                                                     | Używany przez           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| `requireSignedIn`    | Przekierowuje do `/auth/sign-in` z żądaną ścieżką w `?redirect`, gdy nie ma sesji                                                                                              | Przez dwóch pozostałych |
+| `requireAdmin`       | `requireSignedIn`, a potem przekierowuje osobę bez roli admina do `/account/overview`                                                                                          | `admin.tsx`             |
+| `requireCustomer`    | `requireSignedIn`, a potem przekierowuje administratora do `/admin`                                                                                                            | `account.tsx`           |
+| `redirectIfSignedIn` | Odsyła zalogowaną osobę na ścieżkę z `?redirect`, a w przeciwnym razie do `postAuthRouteFor(user)`: `/admin` dla administratora, w pozostałych przypadkach `/account/overview` | `auth.tsx`              |
+
+`requireSignedIn`, `requireAdmin` i `requireCustomer` przyjmują opcje `beforeLoad` (`{ context, location, preload }`) i zwracają `{ user }`. To staje się kontekstem trasy, więc strona pod layoutem odczytuje zalogowanego użytkownika przez `Route.useRouteContext().user`.
+
+`requireSignedIn` umieszcza w `?redirect` wartość `location.publicHref`: zlokalizowaną ścieżkę publiczną, na przykład `/en-US/account/orders/order-1`. Wartość zostaje zachowana tylko wtedy, gdy jest napisem pasującym do `SAME_SITE_PATH_PATTERN`, `/^\/(?![/\\])[!-[\]-~]*$/u`: wyłącznie drukowalne znaki ASCII, jeden ukośnik na początku i brak ukośnika wstecznego. Adres bezwzględny, `//` bez protokołu, ukośnik wsteczny, biały znak albo znak sterujący powodują jej odrzucenie: `requireSignedIn` przekierowuje wtedy do `/auth/sign-in` bez niej, a `redirectIfSignedIn` wraca do `postAuthRouteFor(user)`. W przeciwnym razie `redirectIfSignedIn` odsyła tam osobę przez `redirect({ href })`, więc przekierowanie wyrenderowane na serwerze zachowuje język odwiedzającego, a po stronie klienta router ponownie lokalizuje adres na bieżący język.
+
+Strażnicy wyłącznie czytają sesję, przez `loadRouteSession`: `queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)`. `requireSignedIn`, `requireAdmin` i `requireCustomer` przekazują `recheck: true`, więc rzeczywista nawigacja do `/account` albo `/admin` sprawdza sesję ponownie z `staleTime: 0`; wstępne ładowanie odnośnika oraz `redirectIfSignedIn` z `recheck: false` używają sesji z cache, jeśli ma mniej niż 60 sekund. Sesja załadowana przez strażnika zostaje w cache TanStack Query, więc odnośnik do konta w nawigacji, strefa czasowa w `TranslationsProvider`, lista życzeń i wstępne wypełnienie procesu zamówienia czytają tę samą wartość przez `useQuery(getCurrentSessionQuery)`. Render serwerowy dehydratuje ją do strony, więc strony za strażnikiem renderują się na serwerze jako zalogowane.
+
+Zmiana użytkownika jest obsługiwana w jednym miejscu, przez `clearCacheOnUserChange(queryClient)` z `src/integrations/better-auth/auth.session.ts`. `getRouter` w `src/router.tsx` instaluje je wyłącznie w przeglądarce, obok `setupQueryClientInvalidationBroadcast`; render serwerowy je pomija, bo każde żądanie zaczyna od pustego `QueryClient`. Funkcja subskrybuje cache zapytań i za każdym razem, gdy dane zapytania o sesję przełączą się na inny identyfikator użytkownika, również z wylogowanego na zalogowanego i z powrotem, usuwa z cache każde zapytanie poza samą sesją i katalogami tłumaczeń (`isMessagesQuery` z `src/integrations/use-intl/i18n.messages.ts`). Ignoruje pierwszą sesję, którą zobaczy, oraz usunięcie wpisu sesji. Ponieważ obserwuje cache, wychwytuje zmianę niezależnie od tego, kto pobrał sesję: strażnik, komponent, ponowne pobranie po unieważnieniu albo hydratacja.
+
+Wylogowanie to pełne przeładowanie strony, które odrzuca cały cache: sidebar konta prowadzi do `/`, a sidebar panelu do `/auth/sign-in`.
 
 Strażnicy działają w `beforeLoad`, co oznacza, że uruchamiają się również w przeglądarce podczas nawigacji po stronie klienta. **Są elementem doświadczenia nawigacji, nie autoryzacją.** Funkcja serwerowa jest publicznym endpointem HTTP niezależnie od tego, czy jej trasa została załadowana, dlatego autoryzację wymusza middleware `authorized` wewnątrz każdego przypadku użycia — zobacz [Uprawnienia](/docs/reference/permissions).
 

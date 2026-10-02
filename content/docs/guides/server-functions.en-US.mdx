@@ -36,12 +36,13 @@ export const withRequest = createMiddleware({ type: "function" }).server(({ next
 
 | Thrown                   | Sent to the client                                           |
 | ------------------------ | ------------------------------------------------------------ |
+| A TanStack `notFound()`  | Rethrown unchanged (`isNotFound`)                            |
 | `AppError`               | A new `AppError` carrying only the code                      |
 | A Better Auth `APIError` | `AppError(AUTH_API_ERROR, authErrorKey(error))`              |
 | A `ZodError`             | `AppError(VALIDATION)`                                       |
 | Anything else            | Logged with `console.error`, then `AppError(INTERNAL_ERROR)` |
 
-That last row is the important one: an unexpected error never leaks its message, stack or SQL to the browser.
+That last row is the important one: an unexpected error never leaks its message, stack or SQL to the browser. The `isNotFound` check runs first, so a route whose server function throws `notFound()` answers 404 instead of a 500.
 
 You rarely list `withRequest` yourself. Both middlewares below already include it.
 
@@ -72,7 +73,7 @@ export const authorized = (permission?: Permission) =>
 
 The permission vocabulary is defined in `src/integrations/better-auth/auth.access.ts`. Resources are `order`, `product`, `settings` and `user`; actions are `create`, `read`, `update`, `delete`, `publish`, `refund` and `manage`. `ROLES_CONFIG` grants the `admin` role `order: [read, update, refund]`, `product: [create, read, update, delete, publish]`, `settings: [manage]` plus Better Auth's own `adminAc.statements`, and grants the `customer` role nothing.
 
-**A route guard is not authorization.** `requireAdmin()` in a route's `beforeLoad` only stops a browser from rendering the page; the RPC endpoint is still reachable. Every protected server function must carry its own `authorized(...)`.
+**A route guard is not authorization.** `beforeLoad: requireAdmin` on a layout route only stops a browser from rendering the page; the RPC endpoint is still reachable. Every protected server function must carry its own `authorized(...)`.
 
 ### `withRateLimit(kind, limits)`
 

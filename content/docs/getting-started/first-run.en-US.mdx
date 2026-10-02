@@ -77,7 +77,7 @@ The `user` table's `role` column is a text enum defaulting to that value. To gai
 bun run db:studio:development
 ```
 
-Open the `user` table, find your row, set `role` to `admin`, then sign out and back in. `/admin` is guarded by `requireAdmin()` in `src/integrations/better-auth/auth.routes.ts`, which calls `hasAdminAccess(user.role)`; a customer hitting `/admin` is redirected to `/account/overview` rather than shown an error.
+Open the `user` table, find your row, set `role` to `admin`, then sign out and back in. After sign-in the `/auth` guard sends an admin to `/admin`. The `/admin` layout uses `requireAdmin` from `src/integrations/better-auth/auth.routes.ts` as its `beforeLoad`, and the guard calls `hasAdminAccess(user.role)`; a customer hitting `/admin` is redirected to `/account/overview` rather than shown an error.
 
 Drizzle Studio connects over the D1 HTTP API using `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` and `CLOUDFLARE_ACCESS_TOKEN` from `.env.development`. If those are missing, Studio opens but every query fails.
 

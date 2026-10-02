@@ -73,7 +73,7 @@ Run the dev server and open `/dev/emails`. The route is defined in `src/routes/d
 
 ## What is scaffolded but not finished?
 
-Two-factor authentication has the Better Auth plugin and the `two_factor` table but no enrolment flow. Discounts and coupons have a `discount` table that no code path writes. InPost covers parcel-locker discovery only — `fetchPointsByCity` against the public `api-pl-points.easypack24.net` endpoint — with no shipment creation or labels. `order_address` is registered in the Drizzle schema but unused. `/admin/coupons`, `/admin/content`, `/admin/marketing` and `/admin/settings` render from fixtures in `src/data/`. `SENTRY_AUTH_TOKEN` is declared in `.env.example` but nothing reads it.
+Discounts and coupons have a `discount` table that no code path writes. InPost covers parcel-locker discovery only — `fetchPointsByCity` against the public `api-pl-points.easypack24.net` endpoint — with no shipment creation or labels. `order_address` is registered in the Drizzle schema but unused. `/admin/coupons`, `/admin/marketing` and `/admin/settings` render from fixtures in `src/data/`. `SENTRY_AUTH_TOKEN` is declared in `.env.example` but nothing reads it.
 
 ## How are the docs themselves organized?
 

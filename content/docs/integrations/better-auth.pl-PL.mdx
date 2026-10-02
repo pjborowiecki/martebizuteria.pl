@@ -105,7 +105,7 @@ export const withRequest = createMiddleware({ type: "function" }).server(({ next
 )
 ```
 
-`handleRequestError` mapuje `AppError` na siebie samego, `APIError` z Better Auth na `AppError(AUTH_API_ERROR, authErrorKey(error))`, `ZodError` na `AppError(VALIDATION)`, a wszystko inne na `AppError(INTERNAL_ERROR)` po zalogowaniu. Klient nigdy nie widzi surowego stosu wywołań ani komunikatu dostawcy.
+`handleRequestError` najpierw rzuca dalej bez zmian `notFound()` z TanStack (`isNotFound`), więc trasa odpowiada kodem 404 zamiast 500. Następnie mapuje `AppError` na siebie samego, `APIError` z Better Auth na `AppError(AUTH_API_ERROR, authErrorKey(error))`, `ZodError` na `AppError(VALIDATION)`, a wszystko inne na `AppError(INTERNAL_ERROR)` po zalogowaniu. Klient nigdy nie widzi surowego stosu wywołań ani komunikatu dostawcy.
 
 `authorized(permission?)` nadbudowuje `withRequest`, ładuje sesję i albo ją odrzuca, albo umieszcza w kontekście:
 
@@ -151,16 +151,58 @@ Plik `src/integrations/better-auth/__test__/use-case-authorization.test.ts` prze
 
 ## Strażnicy tras
 
-Plik `auth.routes.ts` zawiera strażników _nawigacji_, używanych z `beforeLoad`. Decydują o tym, co wyrenderować, nigdy o tym, czy operacja jest dozwolona:
+Plik `auth.routes.ts` zawiera strażników _nawigacji_. Decydują o tym, co wyrenderować, nigdy o tym, czy operacja jest dozwolona; chronione funkcje serwerowe autoryzują się same przez `authorized()`. Każda trasa układu przekazuje swojego strażnika bezpośrednio jako `beforeLoad`: `/account` ma `beforeLoad: requireCustomer`, `/admin` ma `beforeLoad: requireAdmin`, a `/auth` ma `beforeLoad: redirectIfSignedIn`.
 
-| Eksport                   | Zachowanie                                                                                          |
-| ------------------------- | --------------------------------------------------------------------------------------------------- |
-| `requireUser()`           | Zwraca użytkownika sesji lub przekierowuje na `/auth/sign-in`                                       |
-| `requireAdmin()`          | Zwraca użytkownika, jeśli `hasAdminAccess`, w przeciwnym razie przekierowuje na `/account/overview` |
-| `requireCustomer()`       | Zwraca użytkownika, o ile nie jest administratorem — tego przekierowuje na `/admin`                 |
-| `redirectAuthenticated()` | Używane na stronach uwierzytelniania; odsyła zalogowanego gościa do jego strony startowej           |
-| `postAuthRouteFor(user)`  | `/admin` dla administratora, `/account/overview` dla klienta                                        |
-| `authEntryRouteFor(user)` | `/auth/sign-in`, gdy nie ma użytkownika, w przeciwnym razie `postAuthRouteFor`                      |
+| Eksport                     | Zachowanie                                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `requireSignedIn(route)`    | Zwraca `{ user }` lub przekierowuje na `/auth/sign-in`                                                       |
+| `requireAdmin(route)`       | Zwraca `{ user }`, jeśli `hasAdminAccess`, w przeciwnym razie przekierowuje na `/account/overview`           |
+| `requireCustomer(route)`    | Zwraca `{ user }`, o ile użytkownik nie jest administratorem; administratora przekierowuje na `/admin`       |
+| `redirectIfSignedIn(route)` | Używane na stronach uwierzytelniania; odsyła zalogowanego gościa pod `?redirect` lub na jego stronę startową |
+| `postAuthRouteFor(user)`    | `/admin` dla administratora, `/account/overview` dla klienta                                                 |
+| `authEntryRouteFor(user)`   | `/auth/sign-in`, gdy nie ma użytkownika, w przeciwnym razie `postAuthRouteFor`                               |
+
+`route` to argument `beforeLoad`, czyli `{ context, location, preload }`. Obiekt `{ user }` zwracany przez strażnika staje się kontekstem trasy, więc strona odczytuje użytkownika typu `SessionUser` przez `Route.useRouteContext().user`.
+
+Strażnicy czytają sesję przez `context.queryClient.query(getCurrentSessionQuery)`:
+
+```ts
+const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContext, { recheck }: { readonly recheck: boolean }) =>
+  queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)
+```
+
+`requireSignedIn`, `requireAdmin` i `requireCustomer` przekazują `recheck: true`, więc prawdziwa nawigacja do `/account` lub `/admin` sprawdza sesję ponownie ze `staleTime: 0`. Wstępne ładowanie linku oraz `redirectIfSignedIn` na `/auth` z `recheck: false` korzystają z sesji z cache, jeśli ma ona mniej niż 60 sekund. Sesja załadowana przez strażnika zostaje w cache TanStack Query, więc komponenty, które ją czytają, widzą tę samą wartość, a przy renderowaniu na serwerze jest serializowana do strony, więc chronione strony renderują się na serwerze jako zalogowane. Strażnicy jedynie czytają sesję. Zmianę użytkownika obsługuje jedno miejsce, `clearCacheOnUserChange` w `auth.session.ts`: gdy sesja w cache przełącza się na innego użytkownika, niezależnie od tego, kto ją pobrał, funkcja usuwa z cache wszystkie pozostałe zapytania poza katalogami komunikatów tłumaczeń. Opisuje ją strona [TanStack Query](/docs/integrations/tanstack-query).
+
+### Przekierowania po zalogowaniu
+
+Anonimowy gość wchodzący na `/account` lub `/admin` jest przekierowywany na `/auth/sign-in?redirect=<ścieżka>`. `requireSignedIn` przekazuje `route.location.publicHref`, czyli zlokalizowaną ścieżkę publiczną, taką jak `/en-US/account/orders/order-1`. Jest ona zachowywana tylko wtedy, gdy jest łańcuchem pasującym do `SAME_SITE_PATH_PATTERN`:
+
+```ts
+const SAME_SITE_PATH_PATTERN = /^\/(?![/\\])[!-[\]-~]*$/u
+```
+
+Wzorzec dopuszcza wyłącznie drukowalne znaki ASCII (bez spacji), jeden ukośnik na początku i żadnego ukośnika wstecznego, więc bezwzględne URL-e, `//` bez protokołu, ukośniki wsteczne, białe znaki i znaki sterujące są odrzucane, a gość trafia na `/auth/sign-in` bez parametru. `redirectIfSignedIn` sprawdza parametr w ten sam sposób i odsyła zalogowanego gościa pod tę wartość przez `redirect({ href })`, w przeciwnym razie na `postAuthRouteFor(user)`. Ponieważ wartością jest ścieżka publiczna, przekierowanie wyrenderowane na serwerze zachowuje język gościa, a na kliencie router ponownie lokalizuje ją do bieżącego języka.
+
+Po udanym logowaniu hasłem lub weryfikacji dwuskładnikowej formularz wywołuje `usePostAuthRedirect` z `src/hooks/use-post-auth-redirect.ts`:
+
+```ts
+export const usePostAuthRedirect = (): (() => Promise<void>) => {
+  const queryClient = useQueryClient()
+  const router = useRouter()
+
+  return useCallback(async () => {
+    queryClient.removeQueries({ exact: true, queryKey: getCurrentSessionQuery.queryKey })
+    router.clearCache()
+    await router.invalidate()
+  }, [queryClient, router])
+}
+```
+
+Hook usuwa z cache wyłącznie wpis sesji, a następnie czyści zapamiętane dopasowania routera i unieważnia router. Strażnik układu `/auth` uruchamia się ponownie, pobiera świeżą sesję i przekierowuje pod `?redirect`, jeśli jest to bezpieczna ścieżka w obrębie tej samej witryny, a w przeciwnym razie na `postAuthRouteFor(user)`. Gdy nadejdzie świeża sesja, `clearCacheOnUserChange` zapomina to, co trafiło do cache przed zalogowaniem. Formularze nigdy same nie wybierają celu.
+
+Logowanie przez Google i GitHub kończy się tak samo. `useOAuthSignIn` w `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts` przekazuje jako `callbackURL` stronę, na której kliknięto przycisk, odczytaną przez `useLocation` jako `location.publicHref`, na przykład `/en-US/auth/sign-in?redirect=...`. Po powrocie od dostawcy przeglądarka trafia na tę stronę uwierzytelniania, a `redirectIfSignedIn` kieruje użytkownika dalej dokładnie tak, jak po logowaniu hasłem.
+
+Wylogowanie to pełne przeładowanie strony, które odrzuca cache: pasek boczny konta prowadzi na `/`, a pasek boczny panelu administracyjnego na `/auth/sign-in`.
 
 ## Czytanie sesji
 
@@ -182,7 +224,7 @@ export const getRequestSession = createServerOnlyFn((request: Request = getReque
 })
 ```
 
-`disableCookieCache: true` oznacza, że autoryzacja po stronie serwera zawsze czyta bazę, a nie ufa podpisanemu cache w ciasteczku; 300-sekundowy cache w ciasteczku istnieje dla wygody klienta. `getCurrentSession` to opakowanie w funkcję serwerową, które przed zwróceniem usuwa `session.token` — token nigdy nie trafia do danych przesyłanych do przeglądarki. `getCurrentSessionQuery` to odpowiadający mu obiekt opcji zapytania, opisany na stronie [TanStack Query](/docs/integrations/tanstack-query).
+`disableCookieCache: true` oznacza, że autoryzacja po stronie serwera zawsze czyta bazę, a nie ufa podpisanemu cache w ciasteczku; 300-sekundowy cache w ciasteczku służy wyłącznie własnym punktom końcowym Better Auth. `getCurrentSession` to opakowanie w funkcję serwerową, które przed zwróceniem usuwa `session.token` — token nigdy nie trafia do danych przesyłanych do przeglądarki. `getCurrentSessionQuery` to odpowiadający mu obiekt opcji zapytania i jedyna droga, którą trasy i komponenty czytają sesję: ładują ją strażnicy tras, a komponenty czytają ją przez `useQuery(getCurrentSessionQuery)`. Opisuje go strona [TanStack Query](/docs/integrations/tanstack-query).
 
 ## Klient
 
@@ -199,10 +241,12 @@ export const authClient = createAuthClient({
   ],
 })
 
-export const { signIn, signOut, signUp, useSession, resetPassword } = authClient
+export const { signIn, signOut, signUp, resetPassword } = authClient
 ```
 
 `inferAdditionalFields<typeof auth>()` daje klientowi pole `timezone` bez drugiej deklaracji.
+
+Hook `useSession` z Better Auth celowo nie jest eksportowany: uruchamiałby się podczas renderowania na serwerze, czego ochrona importów TanStack Start zabrania plikom `*.client.*` w buildzie serwerowym, i dodawałby drugie żądanie o sesję. Komponenty czytają sesję przez `useQuery(getCurrentSessionQuery)`.
 
 ## Walidacja i błędy
 

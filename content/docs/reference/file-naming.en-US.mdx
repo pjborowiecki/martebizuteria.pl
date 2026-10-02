@@ -85,7 +85,7 @@ The prefix is the vendor's short name rather than the folder name, which is why 
 
 ## Tests
 
-Tests live in a `__test__` folder beside the code they cover — there are 174 such folders. The suffix picks the Vitest project.
+Tests live in a `__test__` folder beside the code they cover — there are 184 such folders. The suffix picks the Vitest project.
 
 | Pattern                               | Vitest project | Environment                                   |
 | ------------------------------------- | -------------- | --------------------------------------------- |
@@ -103,10 +103,9 @@ A test file is named after the file it covers: `src/modules/address/__test__/` h
 | ----------------------------------------- | -------------------------------------------------------------------- |
 | `content/docs/<path>/<page>.<locale>.mdx` | One documentation page in one locale                                 |
 | `content/docs/<path>/meta.<locale>.json`  | Navigation order and title for that folder, per locale               |
-| `content/legal/<page>.<locale>.mdx`       | A legal document rendered by the storefront                          |
 | `messages/<locale>/<namespace>.json`      | One translation namespace, named after it: `pages.admin.orders.json` |
 
-The locale suffix is parsed by Fumadocs with `parser: "dot"` and `hideLocale: "always"`, configured in `src/integrations/fumadocs/fumadocs.i18n.ts`. Both locales must carry the same slugs.
+The locale suffix is parsed by Fumadocs with `parser: "dot"` and `hideLocale: "always"`, configured in `src/integrations/fumadocs/fumadocs.i18n.ts`. Both locales must carry the same slugs. The privacy policy and the exchanges-and-returns page are not files: they are rows in the `content_page` table, edited at `/admin/content`.
 
 ## Database
 

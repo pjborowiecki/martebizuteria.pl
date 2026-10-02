@@ -9,12 +9,15 @@ Panel administracyjny mieszka pod `/admin` i jest osobną powłoką wizualną ni
 
 ```ts
 export const Route = createFileRoute("/admin")({
-  beforeLoad: async () => ({
-    user: await requireAdmin(),
-  }),
+  beforeLoad: requireAdmin,
   component: AdminLayoutRoute,
   head: () => ({
-    links: [{ href: adminCss, rel: "stylesheet" }],
+    links: [
+      {
+        href: adminCss,
+        rel: "stylesheet",
+      },
+    ],
   }),
   loader: () => ({
     sidebarDefaultOpen: getAdminSidebarDefaultOpen(),
@@ -29,7 +32,7 @@ export const Route = createFileRoute("/admin")({
 
 Każda trasa potomna dostaje to za darmo:
 
-- **Strażnik.** `requireAdmin()` z `src/integrations/better-auth/auth.routes.ts` ładuje sesję, przekierowuje na `/auth/sign-in`, gdy jej nie ma, oraz na `/account/overview`, gdy użytkownik nie jest administratorem. To chroni _stronę_, nie dane — zobacz [Funkcje serwerowe](/docs/guides/server-functions).
+- **Strażnik.** `requireAdmin` z `src/integrations/better-auth/auth.routes.ts` czyta sesję przez `context.queryClient.query(getCurrentSessionQuery)` i sprawdza ją ponownie przy każdej rzeczywistej nawigacji do `/admin`. Przekierowuje na `/auth/sign-in` (z żądaną ścieżką w `?redirect`), gdy sesji nie ma, oraz na `/account/overview`, gdy użytkownik nie jest administratorem. Zwraca `{ user }`, które staje się kontekstem trasy, więc strona odczytuje zalogowanego administratora przez `Route.useRouteContext().user`. To chroni _stronę_, nie dane — zobacz [Funkcje serwerowe](/docs/guides/server-functions).
 - **Arkusz stylów.** `src/presentation/styles/admin.css`, ładowany jako `link` trasy.
 - **Jasny motyw.** `useAdminLightTheme()` usuwa klasę `dark` przy montowaniu i przywraca preferencję gościa dla witryny sklepowej przy odmontowaniu.
 - **Subskrypcja czasu rzeczywistego.** `useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })` otwiera WebSocket panelu i unieważnia każde zapytanie, którego prefiks klucza pojawi się w opublikowanej wiadomości.

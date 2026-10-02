@@ -41,16 +41,16 @@ Te strony dokumentują całe repozytorium: gdzie znajduje się każdy fragment k
 
 `src/modules/{feature}` zawiera logikę funkcji. Każda funkcja trzyma swoje operacje w `use-cases/{verb-noun}.ts` i eksportuje funkcję serwerową razem z opcjami zapytania używanymi przez loadery i komponenty. `src/modules/_core` zawiera wspólne prymitywy, na których opierają się te przypadki użycia.
 
-`src/integrations/{vendor}` ukrywa każdą usługę zewnętrzną za niewielkim adapterem: Better Auth, Drizzle ORM nad D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, Fumadocs, GSAP, Lenis oraz hub unieważniania w czasie rzeczywistym.
+`src/integrations/{vendor}` ukrywa każdą usługę zewnętrzną za niewielkim adapterem: Better Auth, Drizzle ORM nad D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, Fumadocs, MDXEditor, GSAP, Lenis oraz hub unieważniania w czasie rzeczywistym.
 
 `src/presentation` odpowiada za całą warstwę wizualną: prymitywy `components/shadcn`, komponenty aplikacji `components/custom`, `styles` z warstwami Tailwind, `theme`, `branding`, `emails` oraz zasoby dokumentu. `src/platform/testing` zawiera wspólną infrastrukturę testów, `src/lib` niewielkie pomocniki w zasięgu żądania, `src/durable-objects` obiekty czasu rzeczywistego i limitowania zapytań, a `src/providers` dostawców kontekstu React.
 
-Treść znajduje się poza `src`: `content/legal` zawiera dokumenty prawne, `content/docs` te strony, a `messages/{locale}` katalogi komunikatów interfejsu.
+Treść znajduje się poza `src`: `content/docs` zawiera te strony, a `messages/{locale}` katalogi komunikatów interfejsu. Strony prawne dla klientów nie są plikami: to wiersze tabeli D1 `content_page`, edytowane w `/admin/content`.
 
 ## Edycja tej dokumentacji
 
 Strony znajdują się w `content/docs` jako `<slug>.<locale>.mdx`, po jednym pliku na język, a każdy folder wymienia swoje strony w kolejności w `meta.<locale>.json`. Oba języki wymieniają te same slugi, więc stronę dodaną po polsku trzeba dodać również po angielsku.
 
-`bun run content` ponownie generuje `.source/` z kolekcji Fumadocs, a `bun run dev` robi to automatycznie. Po edycji `bun run format` i `bun run check` utrzymują porządek w repozytorium, a `bun run test` obejmuje źródło dokumentacji razem z resztą kodu.
+`bun run content` ponownie generuje `.source/` z kolekcji `content/docs`, a `bun run dev` robi to automatycznie. Po edycji `bun run format` i `bun run check` utrzymują porządek w repozytorium, a `bun run test` obejmuje źródło dokumentacji razem z resztą kodu.
 
 Linki wewnętrzne, takie jak `/docs/architecture/routing`, automatycznie otrzymują prefiks języka czytelnika, więc zawsze pisz je bez niego.

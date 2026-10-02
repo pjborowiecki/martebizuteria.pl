@@ -73,7 +73,7 @@ Uruchom serwer developerski i otwórz `/dev/emails`. Trasa jest zdefiniowana w `
 
 ## Co jest zaczęte, ale niedokończone?
 
-Uwierzytelnianie dwuskładnikowe ma wtyczkę Better Auth i tabelę `two_factor`, ale nie ma procesu rejestracji drugiego czynnika. Rabaty i kupony mają tabelę `discount`, której żadna ścieżka kodu nie zapisuje. InPost obejmuje wyłącznie wyszukiwanie paczkomatów — `fetchPointsByCity` przeciwko publicznemu endpointowi `api-pl-points.easypack24.net` — bez tworzenia przesyłek i etykiet. `order_address` jest zarejestrowana w schemacie Drizzle, ale nieużywana. Strony `/admin/coupons`, `/admin/content`, `/admin/marketing` i `/admin/settings` renderują dane z fikstur w `src/data/`. `SENTRY_AUTH_TOKEN` jest zadeklarowany w `.env.example`, ale nic go nie czyta.
+Rabaty i kupony mają tabelę `discount`, której żadna ścieżka kodu nie zapisuje. InPost obejmuje wyłącznie wyszukiwanie paczkomatów — `fetchPointsByCity` przeciwko publicznemu endpointowi `api-pl-points.easypack24.net` — bez tworzenia przesyłek i etykiet. `order_address` jest zarejestrowana w schemacie Drizzle, ale nieużywana. Strony `/admin/coupons`, `/admin/marketing` i `/admin/settings` renderują dane z fikstur w `src/data/`. `SENTRY_AUTH_TOKEN` jest zadeklarowany w `.env.example`, ale nic go nie czyta.
 
 ## Jak zorganizowana jest sama dokumentacja?
 

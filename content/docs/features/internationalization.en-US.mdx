@@ -15,8 +15,6 @@ const SUPPORTED_LOCALES = ["pl-PL", "en-US"] as const
 const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
 
 const DEFAULT_TIMEZONE = "Europe/Warsaw"
-
-const TIME_ZONES = ["UTC", "America/New_York", "Europe/Warsaw"] as const
 ```
 
 Polish is the default and English the secondary locale. `SupportedLocale` is derived from the tuple, so adding a locale to that array is what makes the type system demand the rest of the work.
@@ -159,14 +157,14 @@ beforeLoad: async ({ context, location, matches }): Promise<RootRouteContext> =>
 `TranslationsProvider` (`src/providers/translations-provider.tsx`) then reads the same queries with `useSuspenseQueries`, combines them with `buildMessageTree` and renders `use-intl`'s provider:
 
 ```tsx
-<IntlProvider locale={locale} messages={messages} timeZone={I18N.DEFAULT_TIMEZONE}>
+<IntlProvider locale={locale} messages={messages} timeZone={timeZone}>
   {children}
 </IntlProvider>
 ```
 
 It also writes the locale cookie in an effect, so a client-side navigation into `/en-US` updates the cookie without a request.
 
-`timeZone` is fixed to `Europe/Warsaw` for everyone. `user.timezone` exists as a column and `I18N.TIME_ZONES` lists three zones, but nothing feeds either into the provider.
+`timeZone` is the signed-in customer's `user.timezone`, read from the session query, and `I18N.DEFAULT_TIMEZONE` (`Europe/Warsaw`) for guests and for customers who have not picked one. Customers pick it on `/account/profile` from the IANA zones listed in `TIMEZONES` (`src/modules/_core/constants/timezone.ts`).
 
 **Forgetting a namespace is a runtime error**, not a silent fallback: `useTranslations` on a missing namespace throws. Adding a page means adding its namespace to the route's `staticData`.
 
@@ -204,7 +202,7 @@ descriptions: text("descriptions", { mode: "json" }).$type<Product["localeMap"] 
 tags: text("tags", { mode: "json" }).$type<Product["tagsLocaleMap"] | null>(),
 ```
 
-The same shape appears on `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`) and `product_attribute` (`titles`, and the labels inside `allowed_values`).
+The same shape appears on `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles`, and the labels inside `allowed_values`) and `content_page` (`titles`, `descriptions` and `bodies`, where `bodies` holds the Markdown of `/privacy-policy` and `/exchanges-and-returns`).
 
 Reading falls back three times. `resolveLocalizedString` in `src/modules/product-attribute/product-attribute.utils.ts` is the shared implementation:
 
@@ -238,7 +236,7 @@ Writing goes the other way: `normalizeProductAttributeLocaleMapForSave` fills ev
 
 Because the maps are stored as JSON text, a `LIKE` search against `titles` searches **all** locales at once — see [Catalog and search](/docs/features/catalog-and-search).
 
-The admin editors expose this per-locale. `catalog/form/components/catalog-locale-picker.tsx` iterates `I18N.SUPPORTED_LOCALES`, shows a filled/empty count per locale, and `product-form-locale-layout.tsx` renders the field set for the selected one. The attribute CSV export writes one `Title <LOCALE>` column per locale.
+The admin editors expose this per-locale. `catalog/form/components/catalog-locale-picker.tsx` iterates `I18N.SUPPORTED_LOCALES`, shows a filled/empty count per locale, and `product-form-locale-layout.tsx` renders the field set for the selected one. The attribute CSV export writes one `Title <LOCALE>` column per locale. The content-page editor at `/admin/content/$handle` does the same with one tab per locale in `content/content-page-locale-tabs.tsx`, and marks a tab whose fields fail validation.
 
 ## SEO
 
@@ -271,17 +269,18 @@ The Stripe Elements form is localised separately, by mapping the app locale to a
 ## What is missing
 
 - **No locale switcher in the UI.** Nothing in the navigation, the footer or the account area changes language; a visitor has to edit the URL. The mechanism is complete — the control is not.
-- No per-user locale preference. `user.timezone` is stored and surfaced on `/account/profile`, but neither it nor a language preference affects rendering.
+- No per-user locale preference. `user.timezone` is stored on `/account/profile` and sets the provider's time zone, but no language preference is stored anywhere.
 - No message-catalogue parity check. The two directories currently hold the same 48 filenames, but nothing in `bun run check` verifies that the keys inside them match.
 
 ## Adding a locale
 
 1. Add the code to `SUPPORTED_LOCALES` in `i18n.config.ts`.
 2. Create `messages/<locale>/` with all 48 files. `loadNamespace` throws on a missing one, so this is not optional.
-3. Add the locale to every `*.<locale>.mdx` set in `content/legal` and `content/docs`, and to each `meta.<locale>.json`.
-4. Backfill the JSON locale maps in D1; `coerceProductLocaleMap` keeps existing rows readable in the meantime, and `resolveLocalizedString` falls back to Polish.
-5. Add a Stripe Elements locale in `STRIPE_LOCALES` (`stripe.client.ts`) — it is `satisfies Record<SupportedLocale, StripeElementLocale>`, so the type checker will point at it.
-6. Check `POSTAL_CODE_PATTERNS` and the `libphonenumber-js` country in `checkout.zod.ts` if the new locale implies a new shipping country.
+3. Add the locale to every `*.<locale>.mdx` set in `content/docs`, and to each `meta.<locale>.json`.
+4. Add the new locale to the `titles`, `descriptions`, `bodies` and `revised_ats` maps of both `content_page` rows in a migration, starting from the Polish text. Then translate both pages in the editor at `/admin/content`, which will not save a page until every locale has all three fields.
+5. Backfill the JSON locale maps in D1; `coerceProductLocaleMap` keeps existing rows readable in the meantime, and `resolveLocalizedString` falls back to Polish.
+6. Add a Stripe Elements locale in `STRIPE_LOCALES` (`stripe.client.ts`) — it is `satisfies Record<SupportedLocale, StripeElementLocale>`, so the type checker will point at it.
+7. Check `POSTAL_CODE_PATTERNS` and the `libphonenumber-js` country in `checkout.zod.ts` if the new locale implies a new shipping country.
 
 ## Related pages
 

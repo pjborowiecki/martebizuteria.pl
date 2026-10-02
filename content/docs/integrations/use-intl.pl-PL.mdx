@@ -20,12 +20,12 @@ const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
 
 const DEFAULT_TIMEZONE = "Europe/Warsaw"
 
-const TIME_ZONES = ["UTC", "America/New_York", "Europe/Warsaw"] as const
-
-export const I18N = { COOKIE_NAME, DEFAULT_LOCALE, DEFAULT_TIMEZONE, SUPPORTED_LOCALES, TIME_ZONES } as const
+export const I18N = { COOKIE_NAME, DEFAULT_LOCALE, DEFAULT_TIMEZONE, SUPPORTED_LOCALES } as const
 ```
 
-Typ `SupportedLocale` wyprowadzany jest z krotki, więc dodanie tu języka sprawia, że system typów domaga się reszty: języka Stripe w `stripe.client.ts`, języka `react-day-picker` w `react-day-picker.locale.ts`, pliku JSON na każdą przestrzeń nazw w `messages/<locale>/` oraz drugiego pliku MDX dla każdej strony w `content/docs` i `content/legal`.
+Typ `SupportedLocale` wyprowadzany jest z krotki, więc dodanie tu języka sprawia, że system typów domaga się reszty: języka Stripe w `stripe.client.ts`, języka `react-day-picker` w `react-day-picker.locale.ts`, pliku JSON na każdą przestrzeń nazw w `messages/<locale>/`, drugiego pliku MDX dla każdej strony w `content/docs` oraz tytułu, opisu i treści w tym języku dla każdego wiersza `content_page`, wpisywanych w edytorze pod `/admin/content`.
+
+`DEFAULT_TIMEZONE` to jedyna strefa czasowa zdefiniowana w tym pliku. Lista, z której klienci wybierają w `/account/profile`, to `TIMEZONES` w `src/modules/_core/constants/timezone.ts`.
 
 ## Kształt adresów
 
@@ -141,10 +141,12 @@ export const ROOT_NAMESPACES = [...new Set(rootMessagePaths.map((path) => toName
 3. `TranslationsProvider` w `src/providers/translations-provider.tsx` czyta te same przestrzenie nazw przez `useSuspenseQueries`, scala je `buildMessageTree` i renderuje dostawcę z `use-intl`:
 
 ```tsx
-<IntlProvider locale={locale} messages={messages} timeZone={I18N.DEFAULT_TIMEZONE}>
+<IntlProvider locale={locale} messages={messages} timeZone={timeZone}>
   {children}
 </IntlProvider>
 ```
+
+`timeZone` to `user.timezone` zalogowanego klienta z zapytania o sesję albo `I18N.DEFAULT_TIMEZONE` dla gości i klientów, którzy jej nie wybrali.
 
 Zapisuje też język z powrotem do ciasteczka `marte_locale` w efekcie, więc bezpośrednie wejście na `/en-US/...` jest pamiętane.
 
@@ -177,7 +179,7 @@ Wszystkie trzy używają `satisfies Record<SupportedLocale, …>` albo jawnego `
 
 ## Treści tłumaczone w bazie danych
 
-Teksty katalogu nie znajdują się w plikach komunikatów. `product.titles`, `product.subtitles`, `product.descriptions` i `product.tags` to kolumny JSON przechowujące mapę językową kluczowaną znacznikiem BCP 47, podobnie jak ich odpowiedniki w `product_category`, `product_collection` i `product_attribute`. Migracja `20260925000000_locale_maps_bcp47.sql` przeniosła te klucze na pełne znaczniki. Formularze katalogu w panelu edytują oba języki obok siebie — `catalog-locale-picker.tsx` i `product-form-locale-layout.tsx` iterują `I18N.SUPPORTED_LOCALES` i pokazują, ile jest wypełnionych.
+Teksty katalogu nie znajdują się w plikach komunikatów. `product.titles`, `product.subtitles`, `product.descriptions` i `product.tags` to kolumny JSON przechowujące mapę językową kluczowaną znacznikiem BCP 47, podobnie jak ich odpowiedniki w `product_category`, `product_collection` i `product_attribute`. Migracja `20260925000000_locale_maps_bcp47.sql` przeniosła te klucze na pełne znaczniki. Formularze katalogu w panelu edytują oba języki obok siebie — `catalog-locale-picker.tsx` i `product-form-locale-layout.tsx` iterują `I18N.SUPPORTED_LOCALES` i pokazują, ile jest wypełnionych. Dwie strony informacyjne dla klientów działają tak samo: każdy wiersz `content_page` trzyma `titles`, `descriptions` i `bodies` w Markdownie jako mapy językowe, a `/admin/content/$handle` edytuje je w osobnej zakładce dla każdego języka.
 
 ## Nie ma przełącznika języka
 

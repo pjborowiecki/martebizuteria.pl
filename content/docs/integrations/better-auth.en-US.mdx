@@ -105,7 +105,7 @@ export const withRequest = createMiddleware({ type: "function" }).server(({ next
 )
 ```
 
-`handleRequestError` maps an `AppError` to itself, a Better Auth `APIError` to `AppError(AUTH_API_ERROR, authErrorKey(error))`, a `ZodError` to `AppError(VALIDATION)` and everything else to `AppError(INTERNAL_ERROR)` after logging it. The client never sees a raw stack trace or a vendor error string.
+`handleRequestError` first rethrows a TanStack `notFound()` unchanged (`isNotFound`), so a route answers 404 instead of a 500. It then maps an `AppError` to itself, a Better Auth `APIError` to `AppError(AUTH_API_ERROR, authErrorKey(error))`, a `ZodError` to `AppError(VALIDATION)` and everything else to `AppError(INTERNAL_ERROR)` after logging it. The client never sees a raw stack trace or a vendor error string.
 
 `authorized(permission?)` builds on `withRequest`, loads the session and either rejects or puts it into context:
 
@@ -151,16 +151,58 @@ The window is 60 seconds. `withinRateLimit` in `src/lib/rate-limit.ts` implement
 
 ## Route guards
 
-`auth.routes.ts` holds the _navigation_ guards, used from `beforeLoad`. They decide what to render, never whether an operation is allowed:
+`auth.routes.ts` holds the _navigation_ guards. They decide what to render, never whether an operation is allowed; protected server functions authorize themselves through `authorized()`. Each layout route passes its guard as `beforeLoad` directly: `/account` has `beforeLoad: requireCustomer`, `/admin` has `beforeLoad: requireAdmin` and `/auth` has `beforeLoad: redirectIfSignedIn`.
 
-| Export                    | Behaviour                                                                        |
-| ------------------------- | -------------------------------------------------------------------------------- |
-| `requireUser()`           | Returns the session user, or redirects to `/auth/sign-in`                        |
-| `requireAdmin()`          | Returns the user if `hasAdminAccess`, otherwise redirects to `/account/overview` |
-| `requireCustomer()`       | Returns the user unless they are an admin, who is redirected to `/admin`         |
-| `redirectAuthenticated()` | Used on the auth pages; sends a signed-in visitor to their home                  |
-| `postAuthRouteFor(user)`  | `/admin` for an admin, `/account/overview` for a customer                        |
-| `authEntryRouteFor(user)` | `/auth/sign-in` when there is no user, otherwise `postAuthRouteFor`              |
+| Export                      | Behaviour                                                                              |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| `requireSignedIn(route)`    | Resolves to `{ user }`, or redirects to `/auth/sign-in`                                |
+| `requireAdmin(route)`       | Resolves to `{ user }` if `hasAdminAccess`, otherwise redirects to `/account/overview` |
+| `requireCustomer(route)`    | Resolves to `{ user }` unless they are an admin, who is redirected to `/admin`         |
+| `redirectIfSignedIn(route)` | Used on the auth pages; sends a signed-in visitor to `?redirect` or to their home      |
+| `postAuthRouteFor(user)`    | `/admin` for an admin, `/account/overview` for a customer                              |
+| `authEntryRouteFor(user)`   | `/auth/sign-in` when there is no user, otherwise `postAuthRouteFor`                    |
+
+`route` is the `beforeLoad` argument, `{ context, location, preload }`. The `{ user }` a guard resolves to becomes route context, so a page reads the `SessionUser` with `Route.useRouteContext().user`.
+
+The guards read the session through `context.queryClient.query(getCurrentSessionQuery)`:
+
+```ts
+const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContext, { recheck }: { readonly recheck: boolean }) =>
+  queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)
+```
+
+`requireSignedIn`, `requireAdmin` and `requireCustomer` pass `recheck: true`, so a real navigation into `/account` or `/admin` re-checks with `staleTime: 0`. A link preload, and `redirectIfSignedIn` on `/auth` with `recheck: false`, reuse a cached session younger than 60 seconds. The session a guard loads stays in the TanStack Query cache, so the components that read it see the same value, and on a server render it is dehydrated into the page, so guarded pages render signed-in on the server. The guards only read the session. A change of user is handled in one place, `clearCacheOnUserChange` in `auth.session.ts`: whenever the cached session switches to a different user, whoever fetched it, it removes every other cached query except the translation message catalogues. It is described in [TanStack Query](/docs/integrations/tanstack-query).
+
+### Sign-in redirects
+
+An anonymous visitor to `/account` or `/admin` is redirected to `/auth/sign-in?redirect=<path>`. `requireSignedIn` passes `route.location.publicHref`, the localized public path such as `/en-US/account/orders/order-1`. It is only kept when it is a string matching `SAME_SITE_PATH_PATTERN`:
+
+```ts
+const SAME_SITE_PATH_PATTERN = /^\/(?![/\\])[!-[\]-~]*$/u
+```
+
+The pattern allows printable ASCII only (no spaces), a single leading slash and no backslash, so absolute URLs, protocol-relative `//`, backslashes, whitespace and control characters are dropped, and the visitor lands on `/auth/sign-in` without the parameter. `redirectIfSignedIn` checks the parameter the same way and sends a signed-in visitor to it with `redirect({ href })`, otherwise to `postAuthRouteFor(user)`. Because the value is the public path, a server-rendered redirect keeps the visitor's language, and on the client the router re-localizes it to the current language.
+
+After a successful password sign-in or two-factor challenge, the form calls `usePostAuthRedirect` from `src/hooks/use-post-auth-redirect.ts`:
+
+```ts
+export const usePostAuthRedirect = (): (() => Promise<void>) => {
+  const queryClient = useQueryClient()
+  const router = useRouter()
+
+  return useCallback(async () => {
+    queryClient.removeQueries({ exact: true, queryKey: getCurrentSessionQuery.queryKey })
+    router.clearCache()
+    await router.invalidate()
+  }, [queryClient, router])
+}
+```
+
+It removes the cached session entry only, then clears the router's cached matches and invalidates the router. The `/auth` layout guard runs again, fetches the fresh session and redirects to `?redirect` when it is a safe same-site path, otherwise to `postAuthRouteFor(user)`. When the fresh session arrives, `clearCacheOnUserChange` forgets what was cached while signed out. The forms never choose a destination themselves.
+
+Google and GitHub sign-in end the same way. `useOAuthSignIn` in `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts` passes the page the button was clicked on as `callbackURL`, read with `useLocation` as `location.publicHref`, for example `/en-US/auth/sign-in?redirect=...`. After the provider round trip the browser lands on that auth page, and `redirectIfSignedIn` sends the user on exactly as after a password sign-in.
+
+Sign-out is a full page load that discards the cache: the account sidebar goes to `/`, the admin sidebar to `/auth/sign-in`.
 
 ## Reading the session
 
@@ -182,7 +224,7 @@ export const getRequestSession = createServerOnlyFn((request: Request = getReque
 })
 ```
 
-`disableCookieCache: true` means server-side authorization always reads the database rather than trusting the signed cookie cache; the 300-second cookie cache exists for the client's benefit. `getCurrentSession` is the server function wrapper, and it strips `session.token` before returning — the token never reaches the browser payload. `getCurrentSessionQuery` is the matching query options object, described in [TanStack Query](/docs/integrations/tanstack-query).
+`disableCookieCache: true` means server-side authorization always reads the database rather than trusting the signed cookie cache; the 300-second cookie cache only serves Better Auth's own endpoints. `getCurrentSession` is the server function wrapper, and it strips `session.token` before returning — the token never reaches the browser payload. `getCurrentSessionQuery` is the matching query options object and the only way routes and components read the session: the route guards load it, and components read it with `useQuery(getCurrentSessionQuery)`. It is described in [TanStack Query](/docs/integrations/tanstack-query).
 
 ## The client
 
@@ -199,10 +241,12 @@ export const authClient = createAuthClient({
   ],
 })
 
-export const { signIn, signOut, signUp, useSession, resetPassword } = authClient
+export const { signIn, signOut, signUp, resetPassword } = authClient
 ```
 
 `inferAdditionalFields<typeof auth>()` is what gives the client the `timezone` field without a second declaration.
+
+Better Auth's `useSession` hook is deliberately not exported: it would run during server rendering, which TanStack Start's import protection rejects for `*.client.*` files in the server build, and it would add a second session request. Components read the session with `useQuery(getCurrentSessionQuery)` instead.
 
 ## Validation and errors
 

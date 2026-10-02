@@ -3,14 +3,14 @@ title: "Warstwa prezentacji"
 description: "Gdzie mieszkają komponenty, style, motyw, branding i szablony e-mail oraz jakie zasady obowiązują każdy komponent."
 ---
 
-`src/presentation` zawiera 573 pliki i jest największym katalogiem w repozytorium. Nic w nim nie czyta bazy danych ani sekretu.
+`src/presentation` zawiera 651 plików i jest największym katalogiem w repozytorium. Nic w nim nie czyta bazy danych ani sekretu.
 
 ## Katalogi
 
 | Katalog              | Zawiera                                                                                |
 | -------------------- | -------------------------------------------------------------------------------------- |
 | `components/shadcn`  | 57 prymitywów shadcn/ui plus `sheet-control.styles.ts` — regeneruj, nie edytuj ręcznie |
-| `components/custom`  | 494 komponenty aplikacji                                                               |
+| `components/custom`  | 571 komponentów aplikacji                                                              |
 | `emails`             | Szablony React Email, `email-layout.tsx`, `email-highlight-box.tsx`, `email-styles.ts` |
 | `styles`             | `globals.css`, `storefront.css`, `admin.css`, `fonts.css`, `critical-fonts.css`        |
 | `theme`              | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                   |
@@ -19,9 +19,9 @@ description: "Gdzie mieszkają komponenty, style, motyw, branding i szablony e-m
 
 ## Organizacja komponentów
 
-- **Komponenty współdzielone to płaskie pliki** w `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `legal-content.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`.
+- **Komponenty współdzielone to płaskie pliki** w `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`.
 - **Przekrojowe widżety dostają katalog**, gdy są systemem, a nie komponentem: `datagrid/`, `image-upload/`, `checkout/`, `defaults/`.
-- **Komponenty stron i obszarów leżą w `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `auth/`, `account/`, `admin/`.
+- **Komponenty stron i obszarów leżą w `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `content-page/`, `auth/`, `account/`, `admin/`.
 - **Każda strona administracyjna ma własny katalog** w `pages/admin`: `orders/`, `customers/`, `catalog/products/`, `catalog/categories/`, `catalog/collections/`, `catalog/attributes/`, `audit/`, `dashboard/`, `settings/`, `content/`, `coupons/`, `marketing/`.
 
 Większe obszary zagnieżdżają się dalej, w podkatalogi `components/`, `hooks/`, `lib/`, `utils/`, `sections/` i `_sections/` — na przykład `pages/admin/audit/{audit-table,components,hooks,lib,utils}` oraz `pages/landing-page/navigation/{components,constants,hooks,store}`. To świadome odejście od bardziej płaskiego układu projektów referencyjnych: panel administracyjny jest na tyle duży, że płaski katalog przestał być czytelny.

@@ -5,14 +5,52 @@ description: "How access is enforced on routes, server functions and WebSockets,
 
 ## Two layers, only one of which is a boundary
 
-**Route guards** in `src/integrations/better-auth/auth.routes.ts` run in `beforeLoad` and redirect:
+**Route guards** in `src/integrations/better-auth/auth.routes.ts` run in `beforeLoad` and redirect. Each layout passes the guard itself, as in `beforeLoad: requireAdmin`:
 
-| Guard                     | Used by                          | Behaviour                                                           |
-| ------------------------- | -------------------------------- | ------------------------------------------------------------------- |
-| `requireUser()`           | Building block for the other two | Redirects to `/auth/sign-in` without a session                      |
-| `requireAdmin()`          | `admin.tsx`                      | Also requires `hasAdminAccess(role)`, otherwise `/account/overview` |
-| `requireCustomer()`       | `account.tsx`                    | Sends an admin to `/admin` instead                                  |
-| `redirectAuthenticated()` | The auth pages                   | Sends a signed-in user to `postAuthRouteFor(user)`                  |
+| Guard                | Used by                          | Behaviour                                                                                |
+| -------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
+| `requireSignedIn`    | Building block for the other two | Redirects to `/auth/sign-in` without a session                                           |
+| `requireAdmin`       | `admin.tsx`                      | Also requires `hasAdminAccess(role)`, otherwise `/account/overview`                      |
+| `requireCustomer`    | `account.tsx`                    | Sends an admin to `/admin` instead                                                       |
+| `redirectIfSignedIn` | `auth.tsx`                       | Sends a signed-in user to a safe `?redirect` path, otherwise to `postAuthRouteFor(user)` |
+
+`requireSignedIn`, `requireAdmin` and `requireCustomer` resolve to `{ user }`, which becomes route context; `account.overview.tsx` reads it with `AccountRoute.useRouteContext()`. The guards only read the session, through `loadRouteSession`:
+
+```ts
+const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContext, { recheck }: { readonly recheck: boolean }) =>
+  queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)
+```
+
+`requireSignedIn`, and through it `requireAdmin` and `requireCustomer`, passes `recheck: true`, so a navigation into `/account` or `/admin` fetches the session again. A link preload and `redirectIfSignedIn`, which passes `recheck: false`, reuse a cached session younger than 60 seconds. The session a guard loads stays in the TanStack Query cache for components to read and, on a server render, is serialized into the page. A change of user is handled in one place, `clearCacheOnUserChange` in `auth.session.ts`: when the session switches to a different user, it removes every cached query except the session itself and the translation message catalogues. See [Caching and SSR](/docs/architecture/caching-and-ssr) for the details.
+
+An anonymous visitor to `/account` or `/admin` is sent to `/auth/sign-in` with `?redirect=` set to `route.location.publicHref`, the localized public path they asked for, such as `/en-US/account/orders/order-1`. `resolveSafeRedirect`, internal to the module, checks the value both when the sign-in link is built and before the `/auth` guard follows it. It keeps the value only when it is a string matching `SAME_SITE_PATH_PATTERN`: printable ASCII only, a single leading slash and no backslash. Absolute URLs, protocol-relative `//` values, whitespace, control characters and non-ASCII characters are dropped, so the parameter cannot become an open redirect:
+
+```ts
+const SAME_SITE_PATH_PATTERN = /^\/(?![/\\])[!-[\]-~]*$/u
+```
+
+`redirectIfSignedIn` sends a signed-in visitor to that value with `redirect({ href })`, otherwise to `postAuthRouteFor(user)`: `/admin` for an admin, `/account/overview` for a customer. A server-rendered redirect therefore keeps the visitor's language, and on the client the router re-localizes it to the current language.
+
+After a successful password sign-in or two-factor challenge, the form calls `usePostAuthRedirect` from `src/hooks/use-post-auth-redirect.ts`:
+
+```ts
+export const usePostAuthRedirect = (): (() => Promise<void>) => {
+  const queryClient = useQueryClient()
+  const router = useRouter()
+
+  return useCallback(async () => {
+    queryClient.removeQueries({ exact: true, queryKey: getCurrentSessionQuery.queryKey })
+    router.clearCache()
+    await router.invalidate()
+  }, [queryClient, router])
+}
+```
+
+It removes the cached session entry only, then clears the router's cached matches and invalidates the router. The `/auth` layout guard runs again, fetches the fresh session and redirects as described above. When the fresh session arrives, `clearCacheOnUserChange` forgets what was cached while signed out. The forms never choose a destination themselves.
+
+Google and GitHub sign-in, in `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`, pass the page the button was clicked on as the `callbackURL`: `location.publicHref` from `useLocation`, for example `/en-US/auth/sign-in?redirect=…`. After the provider round trip the browser lands on that auth page, and `redirectIfSignedIn` sends the user on exactly as after a password sign-in.
+
+Signing out is a full page load that discards the cache: the account sidebar goes to `/`, the admin sidebar to `/auth/sign-in`.
 
 Guards decide what a user _sees_. They also run in the browser, so they are navigation UX, not protection.
 
@@ -67,7 +105,7 @@ The same pattern appears in `list-customer-orders.ts`, `list-customer-sessions.t
 - `useSecureCookies` is on outside `development` and `test` (`isLocalMode(import.meta.env.MODE)`).
 - Allowed hosts are fixed per build mode by `appHostsForMode` in `_core/constants/api.ts`: `martebizuteria.pl` in production, `preview.martebizuteria.pl` in preview, `localhost:3000` and `127.0.0.1:3000` locally, plus the matching `workers.dev` hostnames.
 - `getRequestSession` bypasses the cookie cache (`disableCookieCache: true`) and memoizes the result in a `WeakMap` keyed on the `Request`.
-- `getCurrentSession` — the server function the browser calls — projects the session before returning it, dropping `session.token`:
+- `getCurrentSession`, the server function behind `getCurrentSessionQuery`, projects the session before returning it, dropping `session.token`:
 
   ```ts
   const toClientSession = ({ session: { token: _token, ...session }, user }: RequestSession) => ({ session, user })
@@ -136,6 +174,7 @@ Checking after `getByName()` would already have let an unauthenticated client op
 
 | Thrown                 | Reaches the client as                         |
 | ---------------------- | --------------------------------------------- |
+| TanStack `notFound()`  | Unchanged, so the route answers 404           |
 | `AppError`             | Its own code                                  |
 | Better Auth `APIError` | `AUTH_API_ERROR` plus a translation key       |
 | `ZodError`             | `VALIDATION`                                  |

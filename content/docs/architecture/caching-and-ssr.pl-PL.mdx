@@ -35,6 +35,32 @@ Loadery zapełniają cache przez `context.queryClient.query({ ...options, staleT
 
 Listy administracyjne świadomie nie odświeżają się przy montowaniu ani przy powrocie do okna. Świeżość zapewnia hub Durable Object — zobacz [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation) — więc zmiana drugiego administratora przychodzi jako push, a nie jako odpytywanie.
 
+Guardy tras i komponenty dzielą zapytanie o sesję. Guardy `/account` i `/admin` ładują je przez `context.queryClient.query`, nadpisując przy nawigacji `staleTime` na 0; wstępne ładowanie linku i guard `/auth` korzystają z sesji młodszej niż 60 sekund. Wpis zostaje w cache'u, więc render na serwerze serializuje go do strony, a strony `/account` i `/admin` renderują się jako zalogowane. Link konta w nawigacji, strefa czasowa tłumaczeń, lista życzeń i wstępne wypełnienie checkoutu czytają tę samą wartość przez `useQuery(getCurrentSessionQuery)`.
+
+Guardy jedynie czytają sesję. Zmianę użytkownika obsługuje jedno miejsce, `clearCacheOnUserChange(queryClient)` w `src/integrations/better-auth/auth.session.ts`. `getRouter` instaluje je wyłącznie w przeglądarce, obok `setupQueryClientInvalidationBroadcast`; renderowanie na serwerze je pomija, bo każde żądanie zaczyna od pustego `QueryClient`. Subskrybuje ono cache zapytań:
+
+```ts
+export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) => {
+  const seen: { session?: Awaited<ReturnType<typeof getCurrentSession>> } = {}
+
+  return queryClient.getQueryCache().subscribe(({ query }) => {
+    const session = query.queryHash === SESSION_QUERY_HASH ? queryClient.getQueryData(getCurrentSessionQuery.queryKey) : undefined
+    if (session === undefined) {
+      return
+    }
+
+    if ("session" in seen && seen.session?.user.id !== session?.user.id) {
+      queryClient.removeQueries({ predicate: (cached) => cached.queryHash !== SESSION_QUERY_HASH && !isMessagesQuery(cached) })
+    }
+    seen.session = session
+  })
+}
+```
+
+Za każdym razem, gdy dane zapytania o sesję przełączą się na inny identyfikator użytkownika, także z niezalogowanego na zalogowanego i z powrotem, usuwa z cache'u wszystkie zapytania poza samą sesją i katalogami komunikatów tłumaczeń, rozpoznawanymi przez `isMessagesQuery` w `src/integrations/use-intl/i18n.messages.ts`. Pomija pierwszą sesję, jaką zobaczy, oraz usunięcie wpisu sesji. Ponieważ obserwuje cache, a nie konkretnego wywołującego, wychwytuje zmianę niezależnie od tego, kto pobrał sesję: guard, komponent, ponowne pobranie po unieważnieniu czy hydratacja.
+
+Po zalogowaniu `usePostAuthRedirect` usuwa wyłącznie wpis sesji, więc guard `/auth` pobiera świeżą sesję, a `clearCacheOnUserChange` zapomina to, co trafiło do cache'u przed zalogowaniem. Wylogowanie wykonuje pełne przeładowanie strony, które porzuca cache.
+
 ## Prepared statements
 
 Odczyty punktowe są przygotowywane raz przy ładowaniu modułu, poza jakimkolwiek żądaniem, i wykonywane z podstawionymi parametrami:
@@ -76,7 +102,7 @@ Dwie odpowiedzi, które jawnie ustawiają `Cache-Control`, to `/sitemap.xml` i `
 
 ## Co nie jest cache'owane
 
-- **Sesje.** Better Auth jest skonfigurowane z podpisanym cache'em cookie na 300 sekund, ale `getRequestSession` przekazuje `disableCookieCache: true` i przy każdym serwerowym sprawdzeniu czyta D1. Kosztem jest jeden odczyt D1 na żądanie; korzyścią to, że zbanowany lub wylogowany użytkownik nie przejedzie na zapisanym cookie. Żeby nie zamieniło się to w N odczytów, wynik jest memoizowany w `WeakMap` kluczowanej obiektem `Request` — nie globalną zmienną modułu — więc współbieżne loadery i funkcje serwerowe jednego żądania dzielą jedno wyszukanie, a nowe żądanie zawsze rewaliduje. Warto zauważyć asymetrię: przeglądarkowe `useSession()` idzie przez `/api/auth/get-session`, które cache cookie już uwzględnia.
+- **Sesje.** Better Auth jest skonfigurowane z podpisanym cache'em cookie na 300 sekund, ale `getRequestSession` przekazuje `disableCookieCache: true` i przy każdym serwerowym sprawdzeniu czyta D1. Kosztem jest jeden odczyt D1 na żądanie; korzyścią to, że zbanowany lub wylogowany użytkownik nie przejedzie na zapisanym cookie. Żeby nie zamieniło się to w N odczytów, wynik jest memoizowany w `WeakMap` kluczowanej obiektem `Request` — nie globalną zmienną modułu — więc współbieżne loadery i funkcje serwerowe jednego żądania dzielą jedno wyszukanie, a nowe żądanie zawsze rewaliduje. Przeglądarka czyta sesję tak samo: komponenty używają `useQuery(getCurrentSessionQuery)`, którego `getCurrentSession` przechodzi przez `getRequestSession` i pomija cache cookie. Przeglądarka przechowuje jedynie wynik tego zapytania, według opisanych wyżej zasad. `auth.client.ts` nie eksportuje już `useSession` z Better Auth: uruchamiało się ono podczas renderowania na serwerze, czego ochrona importów TanStack Start zabrania plikom `*.client.*` w buildzie serwerowym, i wysyłało drugie żądanie o sesję.
 - **Uprawnienia.** `hasPermission` jest wyliczane z roli w sesji przy każdym wywołaniu. Żadna decyzja nie jest podejmowana na podstawie cache'owanych danych.
 - **KV.** Namespace `CACHE` jest zbindowany we wszystkich trzech środowiskach i weryfikowany przez `scripts/verify-bindings.ts`, ale dziś żaden kod aplikacji go nie czyta ani nie zapisuje.
 

@@ -20,12 +20,12 @@ const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
 
 const DEFAULT_TIMEZONE = "Europe/Warsaw"
 
-const TIME_ZONES = ["UTC", "America/New_York", "Europe/Warsaw"] as const
-
-export const I18N = { COOKIE_NAME, DEFAULT_LOCALE, DEFAULT_TIMEZONE, SUPPORTED_LOCALES, TIME_ZONES } as const
+export const I18N = { COOKIE_NAME, DEFAULT_LOCALE, DEFAULT_TIMEZONE, SUPPORTED_LOCALES } as const
 ```
 
-`SupportedLocale` is derived from the tuple, so adding a locale here is what makes the type system demand the rest: a Stripe locale in `stripe.client.ts`, a `react-day-picker` locale in `react-day-picker.locale.ts`, a JSON file per namespace under `messages/<locale>/`, and a second MDX file for every page in `content/docs` and `content/legal`.
+`SupportedLocale` is derived from the tuple, so adding a locale here is what makes the type system demand the rest: a Stripe locale in `stripe.client.ts`, a `react-day-picker` locale in `react-day-picker.locale.ts`, a JSON file per namespace under `messages/<locale>/`, a second MDX file for every page in `content/docs`, and a title, description and body in that locale for every `content_page` row, entered in the editor at `/admin/content`.
+
+`DEFAULT_TIMEZONE` is the only time zone defined here. The list customers choose from on `/account/profile` is `TIMEZONES` in `src/modules/_core/constants/timezone.ts`.
 
 ## URL shape
 
@@ -141,10 +141,12 @@ export const ROOT_NAMESPACES = [...new Set(rootMessagePaths.map((path) => toName
 3. `TranslationsProvider` in `src/providers/translations-provider.tsx` reads the same namespaces with `useSuspenseQueries`, combines them with `buildMessageTree`, and renders `use-intl`'s provider:
 
 ```tsx
-<IntlProvider locale={locale} messages={messages} timeZone={I18N.DEFAULT_TIMEZONE}>
+<IntlProvider locale={locale} messages={messages} timeZone={timeZone}>
   {children}
 </IntlProvider>
 ```
+
+`timeZone` is the signed-in customer's `user.timezone` from the session query, or `I18N.DEFAULT_TIMEZONE` for guests and customers who have not picked one.
 
 It also writes the locale back into the `marte_locale` cookie from an effect, so a direct visit to `/en-US/...` is remembered.
 
@@ -177,7 +179,7 @@ All three use `satisfies Record<SupportedLocale, …>` or an explicit `Record<Su
 
 ## Translated content in the database
 
-Catalogue text is not in the message files. `product.titles`, `product.subtitles`, `product.descriptions` and `product.tags` are JSON columns holding a locale map keyed by the BCP 47 tag, as are the equivalents on `product_category`, `product_collection` and `product_attribute`. The `20260925000000_locale_maps_bcp47.sql` migration is what moved those keys to full tags. The admin catalogue forms edit both locales side by side — `catalog-locale-picker.tsx` and `product-form-locale-layout.tsx` iterate `I18N.SUPPORTED_LOCALES` and show how many are filled.
+Catalogue text is not in the message files. `product.titles`, `product.subtitles`, `product.descriptions` and `product.tags` are JSON columns holding a locale map keyed by the BCP 47 tag, as are the equivalents on `product_category`, `product_collection` and `product_attribute`. The `20260925000000_locale_maps_bcp47.sql` migration is what moved those keys to full tags. The admin catalogue forms edit both locales side by side — `catalog-locale-picker.tsx` and `product-form-locale-layout.tsx` iterate `I18N.SUPPORTED_LOCALES` and show how many are filled. The two customer information pages work the same way: each `content_page` row keeps `titles`, `descriptions` and Markdown `bodies` as locale maps, and `/admin/content/$handle` edits them one locale tab at a time.
 
 ## There is no locale switcher
 

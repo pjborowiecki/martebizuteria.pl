@@ -5,14 +5,52 @@ description: "Jak wymuszany jest dostęp na trasach, funkcjach serwerowych i Web
 
 ## Dwie warstwy, ale tylko jedna jest granicą
 
-**Guardy tras** w `src/integrations/better-auth/auth.routes.ts` działają w `beforeLoad` i przekierowują:
+**Guardy tras** w `src/integrations/better-auth/auth.routes.ts` działają w `beforeLoad` i przekierowują. Każdy layout przekazuje sam guard, jak w `beforeLoad: requireAdmin`:
 
-| Guard                     | Używany przez                  | Zachowanie                                                           |
-| ------------------------- | ------------------------------ | -------------------------------------------------------------------- |
-| `requireUser()`           | Podstawa dla dwóch pozostałych | Bez sesji przekierowuje na `/auth/sign-in`                           |
-| `requireAdmin()`          | `admin.tsx`                    | Wymaga dodatkowo `hasAdminAccess(role)`, inaczej `/account/overview` |
-| `requireCustomer()`       | `account.tsx`                  | Administratora wysyła zamiast tego na `/admin`                       |
-| `redirectAuthenticated()` | Strony uwierzytelniania        | Zalogowanego wysyła na `postAuthRouteFor(user)`                      |
+| Guard                | Używany przez                  | Zachowanie                                                                                   |
+| -------------------- | ------------------------------ | -------------------------------------------------------------------------------------------- |
+| `requireSignedIn`    | Podstawa dla dwóch pozostałych | Bez sesji przekierowuje na `/auth/sign-in`                                                   |
+| `requireAdmin`       | `admin.tsx`                    | Wymaga dodatkowo `hasAdminAccess(role)`, inaczej `/account/overview`                         |
+| `requireCustomer`    | `account.tsx`                  | Administratora wysyła zamiast tego na `/admin`                                               |
+| `redirectIfSignedIn` | `auth.tsx`                     | Zalogowanego wysyła na bezpieczną ścieżkę z `?redirect`, inaczej na `postAuthRouteFor(user)` |
+
+`requireSignedIn`, `requireAdmin` i `requireCustomer` zwracają `{ user }`, które staje się kontekstem trasy; `account.overview.tsx` czyta go przez `AccountRoute.useRouteContext()`. Guardy jedynie czytają sesję, przez `loadRouteSession`:
+
+```ts
+const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContext, { recheck }: { readonly recheck: boolean }) =>
+  queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)
+```
+
+`requireSignedIn`, a przez nie także `requireAdmin` i `requireCustomer`, przekazuje `recheck: true`, więc nawigacja do `/account` lub `/admin` pobiera sesję ponownie. Wstępne ładowanie linku i `redirectIfSignedIn`, które przekazuje `recheck: false`, korzystają z sesji w cache'u młodszej niż 60 sekund. Sesja załadowana przez guard zostaje w cache'u TanStack Query, skąd czytają ją komponenty, a przy renderowaniu na serwerze jest serializowana do strony. Zmianę użytkownika obsługuje jedno miejsce, `clearCacheOnUserChange` w `auth.session.ts`: gdy sesja przełączy się na innego użytkownika, usuwa z cache'u wszystkie zapytania poza samą sesją i katalogami komunikatów tłumaczeń. Szczegóły opisuje strona [Cache i SSR](/docs/architecture/caching-and-ssr).
+
+Anonimowy gość wchodzący na `/account` lub `/admin` trafia na `/auth/sign-in` z `?redirect=` ustawionym na `route.location.publicHref`, czyli zlokalizowaną publiczną ścieżkę, o którą prosił, na przykład `/en-US/account/orders/order-1`. Wewnętrzna dla modułu funkcja `resolveSafeRedirect` sprawdza tę wartość zarówno przy budowaniu linku do logowania, jak i zanim guard `/auth` za nią podąży. Zachowuje ją tylko wtedy, gdy jest napisem pasującym do `SAME_SITE_PATH_PATTERN`: wyłącznie drukowalne znaki ASCII, jeden ukośnik na początku i żadnego ukośnika wstecznego. Bezwzględne URL-e, wartości `//` względne wobec protokołu, białe znaki, znaki sterujące i znaki spoza ASCII są odrzucane, więc parametru nie da się zamienić w otwarte przekierowanie:
+
+```ts
+const SAME_SITE_PATH_PATTERN = /^\/(?![/\\])[!-[\]-~]*$/u
+```
+
+`redirectIfSignedIn` wysyła zalogowanego gościa pod tę wartość przez `redirect({ href })`, a w przeciwnym razie na `postAuthRouteFor(user)`: `/admin` dla administratora, `/account/overview` dla klienta. Przekierowanie wyrenderowane na serwerze zachowuje więc język gościa, a po stronie klienta router lokalizuje je ponownie do bieżącego języka.
+
+Po udanym logowaniu hasłem lub udanym wyzwaniu dwuskładnikowym formularz woła `usePostAuthRedirect` z `src/hooks/use-post-auth-redirect.ts`:
+
+```ts
+export const usePostAuthRedirect = (): (() => Promise<void>) => {
+  const queryClient = useQueryClient()
+  const router = useRouter()
+
+  return useCallback(async () => {
+    queryClient.removeQueries({ exact: true, queryKey: getCurrentSessionQuery.queryKey })
+    router.clearCache()
+    await router.invalidate()
+  }, [queryClient, router])
+}
+```
+
+Hook usuwa wyłącznie wpis sesji z cache'u, a następnie czyści zapisane w routerze dopasowania i unieważnia router. Guard layoutu `/auth` uruchamia się ponownie, pobiera świeżą sesję i przekierowuje tak, jak opisano wyżej. Gdy świeża sesja dotrze, `clearCacheOnUserChange` zapomina to, co trafiło do cache'u przed zalogowaniem. Formularze nigdy same nie wybierają celu.
+
+Logowanie przez Google i GitHub, w `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`, przekazuje jako `callbackURL` stronę, na której kliknięto przycisk: `location.publicHref` z `useLocation`, na przykład `/en-US/auth/sign-in?redirect=…`. Po powrocie od dostawcy przeglądarka trafia na tę stronę uwierzytelniania, a `redirectIfSignedIn` przekierowuje użytkownika dalej dokładnie tak, jak po logowaniu hasłem.
+
+Wylogowanie to pełne przeładowanie strony, które porzuca cache: panel boczny konta prowadzi na `/`, a panel boczny administracyjny na `/auth/sign-in`.
 
 Guardy decydują o tym, co użytkownik _widzi_. Działają również w przeglądarce, więc są elementem UX nawigacji, a nie zabezpieczeniem.
 
@@ -67,7 +105,7 @@ Ten sam wzorzec występuje w `list-customer-orders.ts`, `list-customer-sessions.
 - `useSecureCookies` jest włączone poza `development` i `test` (`isLocalMode(import.meta.env.MODE)`).
 - Dozwolone hosty są ustalone dla każdego trybu builda przez `appHostsForMode` w `_core/constants/api.ts`: `martebizuteria.pl` na produkcji, `preview.martebizuteria.pl` na preview, `localhost:3000` i `127.0.0.1:3000` lokalnie, plus odpowiadające im hosty `workers.dev`.
 - `getRequestSession` omija cache cookie (`disableCookieCache: true`) i memoizuje wynik w `WeakMap` kluczowanej obiektem `Request`.
-- `getCurrentSession` — funkcja serwerowa wołana przez przeglądarkę — rzutuje sesję przed zwróceniem, usuwając `session.token`:
+- `getCurrentSession`, funkcja serwerowa stojąca za `getCurrentSessionQuery`, rzutuje sesję przed zwróceniem, usuwając `session.token`:
 
   ```ts
   const toClientSession = ({ session: { token: _token, ...session }, user }: RequestSession) => ({ session, user })
@@ -136,6 +174,7 @@ Sprawdzanie po `getByName()` pozwoliłoby już nieuwierzytelnionemu klientowi ot
 
 | Rzucone                | Dociera do klienta jako                           |
 | ---------------------- | ------------------------------------------------- |
+| `notFound()` TanStack  | Bez zmian, więc trasa odpowiada kodem 404         |
 | `AppError`             | Własny kod                                        |
 | `APIError` Better Auth | `AUTH_API_ERROR` plus klucz tłumaczenia           |
 | `ZodError`             | `VALIDATION`                                      |

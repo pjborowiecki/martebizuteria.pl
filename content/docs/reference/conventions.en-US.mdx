@@ -101,7 +101,7 @@ export const Route = createFileRoute("/_storefront/products/")({
 - `head` is either the shared `pageHead` from `src/lib/seo.ts` or an inline function that builds `meta` from `loaderData`.
 - Search parameters are validated with a Zod schema in `validateSearch`, and `loaderDeps` normalises them so the loader key is stable.
 - Paths come from `ROUTES` in `src/routes.ts`. Route files carry **no locale segment** — the router rewrites the URL with `deLocalizeUrl` on input and `localizeUrl` on output, so one file serves both locales.
-- Route guards go in `beforeLoad` and come from `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireCustomer`, `requireUser`, `redirectAuthenticated`. They exist for navigation, not for authorization — see [Permissions](/docs/reference/permissions).
+- Route guards come from `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireCustomer`, `requireSignedIn`, `redirectIfSignedIn`. A layout passes the guard itself, as in `beforeLoad: requireAdmin`, and the pages under it read the signed-in user it resolves with `Route.useRouteContext().user`. They exist for navigation, not for authorization — see [Permissions](/docs/reference/permissions).
 
 ## Modules
 
@@ -130,6 +130,7 @@ Server code throws `AppError` from `src/modules/_core/constants/errors.ts` with 
 
 - One widget, dialog, form or column definition per file, under `src/presentation/components/custom`. Shared primitives stay in `src/presentation/components/shadcn` and are not edited by hand.
 - A component reads its own translations and its own data. There are no `label`, `title` or `data` props that the component could fetch itself.
+- Components read the session with `useQuery(getCurrentSessionQuery)` from `src/integrations/better-auth/auth.session.ts`, the same cache entry the route guards read. `auth.client.ts` does not export Better Auth's `useSession`.
 - Exactly one `useTranslations` call per component, with the result named `t`.
 - Conditional classes use `cn` with object syntax rather than a ternary chain.
 - Forms use `react-hook-form` with `zodResolver` from `@hookform/resolvers/zod` and the module's own Zod schema — see `src/presentation/components/custom/checkout/components/checkout-form-provider.tsx`.

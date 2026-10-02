@@ -94,13 +94,12 @@ Being precise about the boundary is more useful than a feature list.
 
 ### Wired end to end
 
-Catalog (products, variants, options, attributes, categories, collections, search, filtering, pagination), cart, the four-step checkout, Stripe payment with webhook-driven fulfilment, inventory reservation with compensation, order placement, order fulfilment and shipping from the admin console, refunds with optional restock, customer accounts (orders, addresses, sessions, profile), transactional email in both locales, the audit log behind a Cloudflare Queue, realtime cache invalidation over WebSockets, and admin management of products, categories, collections, attributes, customers, orders and audit.
+Catalog (products, variants, options, attributes, categories, collections, search, filtering, pagination), cart, the four-step checkout, Stripe payment with webhook-driven fulfilment, inventory reservation with compensation, order placement, order fulfilment and shipping from the admin console, refunds with optional restock, customer accounts (orders, addresses, sessions, profile, two-factor sign-in with backup codes), transactional email in both locales, the audit log behind a Cloudflare Queue, realtime cache invalidation over WebSockets, and admin management of products, categories, collections, attributes, customers, orders and audit.
 
 ### Scaffolded, not finished
 
 | Area                                        | State                                                                                                                            |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Two-factor auth                             | `twoFactor()` plugin configured and the `two_factor` table exists; no enrolment UI                                               |
 | Discounts, coupons                          | `discount` table plus `discount_id` columns on `cart`, `checkout` and `order`; nothing reads or writes them                      |
 | InPost                                      | Parcel-locker _discovery_ only — `fetchPointsByCity` in `src/integrations/inpost/inpost.api.ts`. No shipment creation, no labels |
 | Wishlist                                    | `/account/wishlist` renders a hardcoded empty state; no table, no persistence                                                    |

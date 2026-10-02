@@ -10,7 +10,7 @@ description: "Kroki, przez które przechodzi żądanie strony, wywołanie funkcj
 3. **Przechwycenie kontekstu wykonania.** Handler Start jest wywoływany wewnątrz `executionContextStorage.run({ waitUntil }, …)` i otrzymuje `{ env, passThroughOnException, waitUntil }` jako kontekst żądania oraz `responseLinkHeader: true`.
 4. **Routing.** `getRouter` tworzy nowy router i nowy `QueryClient`. `rewrite.input` routera usuwa prefiks locale przed dopasowaniem, więc `/en-US/products` pasuje do trasy `/_storefront/products`, a `rewrite.output` przywraca prefiks przy generowaniu linków.
 5. **Root `beforeLoad`.** `__root.tsx` ustala locale przez `getCurrentLocale()`, zbiera przestrzenie nazw każdej dopasowanej trasy przez `getRouteNamespaces(matches)` i wstępnie ładuje je do `QueryClient` tego żądania. Zwraca `{ internalPathname, locale }` jako kontekst trasy root.
-6. **Guardy.** Następnie uruchamiają się funkcje `beforeLoad` layoutów: `requireAdmin()` na `/admin`, `requireCustomer()` na `/account`. Ładują sesję i rzucają `redirect`, gdy dostęp nie jest dozwolony.
+6. **Guardy.** Następnie uruchamiają się funkcje `beforeLoad` layoutów: `requireAdmin` na `/admin`, `requireCustomer` na `/account`, `redirectIfSignedIn` na `/auth`. Jedynie czytają sesję, przez `loadRouteSession`, które woła `context.queryClient.query` z `getCurrentSessionQuery`, i rzucają `redirect`, gdy dostęp nie jest dozwolony; w przeciwnym razie `requireAdmin` i `requireCustomer` zwracają `{ user }` jako kontekst trasy. Sesja zostaje w `QueryClient` tego żądania, więc jest serializowana razem z resztą cache'u, a strona `/account` lub `/admin` renderuje się na serwerze jako zalogowana.
 7. **Loadery** działają równolegle. Typowy loader rozwiązuje razem przestrzeń nazw metadanych strony i zapytania o dane, oznaczając zapytanie danymi jako `staleTime: "static"`, żeby nie było odświeżane w tym samym renderze:
 
    ```ts
@@ -24,7 +24,7 @@ description: "Kroki, przez które przechodzi żądanie strony, wywołanie funkcj
 
 8. **Renderowanie.** `RootDocument` renderuje `<html lang={locale}>`, wstawia skrypty inicjujące motyw, panel boczny i siatkę danych, dodaje krytyczne fonty sklepu na trasach nieadministracyjnych, a potem `<HeadContent />`. Body jest owinięte w `TranslationsProvider` i `ThemesProvider`. `setupRouterSsrQueryIntegration` serializuje serwerowy cache zapytań do HTML-a.
 9. **Nagłówki odpowiedzi.** `responseLinkHeader: true` sprawia, że handler Start emituje nagłówek `Link` z preloadami zasobów, o których wie. Jeśli `resolveLocale` poprosił o cookie, `src/server.ts` klonuje odpowiedź i dopisuje `Set-Cookie`.
-10. **Hydratacja.** Przeglądarka hydratuje z serializowanego cache'u. `TranslationsProvider` zapisuje cookie locale również po stronie klienta, więc locale osiągnięte nawigacją kliencką pozostaje utrwalone. Kolejne nawigacje uruchamiają guardy i loadery w przeglądarce i pobierają dane przez funkcje serwerowe.
+10. **Hydratacja.** Przeglądarka hydratuje z serializowanego cache'u. `TranslationsProvider` zapisuje cookie locale również po stronie klienta, więc locale osiągnięte nawigacją kliencką pozostaje utrwalone. W przeglądarce `getRouter` instaluje też `clearCacheOnUserChange`, które usuwa z cache'u wszystkie zapytania poza sesją i katalogami komunikatów, gdy sesja przełączy się na innego użytkownika; serwer je pomija, bo każde żądanie zaczyna od pustego `QueryClient`. Kolejne nawigacje uruchamiają guardy i loadery w przeglądarce i pobierają dane przez funkcje serwerowe.
 
 ```text
 GET /en-US/products/pierscionek-z-perla
@@ -44,7 +44,7 @@ GET /en-US/products/pierscionek-z-perla
 2. Middleware działa w zadeklarowanej kolejności. `withRequest` przechwytuje `getRequest().headers` do kontekstu i owija resztę w `.catch(handleRequestError)`. `withRateLimit(kind, limit)` liczy próbę. `authorized(permission?)` ładuje sesję i sprawdza uprawnienie.
 3. Walidator parsuje wejście schematem Zod modułu.
 4. Handler odpytuje D1 albo woła dostawcę, planuje pracę audytową i e-mailową w tle i zwraca zwykłe dane.
-5. Błędy są normalizowane po drodze na zewnątrz. `handleRequestError` ponownie rzuca `AppError` z jego kodem, mapuje błąd API Better Auth na `AUTH_API_ERROR` z kluczem tłumaczenia, mapuje `ZodError` na `VALIDATION`, a wszystko inne zamienia na `INTERNAL_ERROR` po zalogowaniu oryginału.
+5. Błędy są normalizowane po drodze na zewnątrz. `handleRequestError` najpierw rzuca dalej bez zmian `notFound()` TanStack (`isNotFound`), więc trasa odpowiada kodem 404 zamiast 500. Potem ponownie rzuca `AppError` z jego kodem, mapuje błąd API Better Auth na `AUTH_API_ERROR` z kluczem tłumaczenia, mapuje `ZodError` na `VALIDATION`, a wszystko inne zamienia na `INTERNAL_ERROR` po zalogowaniu oryginału.
 6. Komponent otrzymuje dane albo błąd, którego wiadomość jest kodem. `useActionError()` zamienia ten kod na przetłumaczony tekst.
 
 ```text

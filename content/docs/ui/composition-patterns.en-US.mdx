@@ -79,7 +79,7 @@ Small areas are flat files. Larger ones subdivide, and the subdivision is consis
 
 `pages/admin/orders/` uses all of them; `pages/cart-page/` is just `cart-item-card.tsx`, `cart-summary.tsx` and `__test__/`. Start flat and split only when the area grows.
 
-Shared components that more than one area uses sit directly in `custom/`: `image.tsx`, `product-card.tsx`, `localized-link.tsx`, `icons.tsx`, `mdx.tsx`, `legal-content.tsx`, `floating-field.tsx`, `validation-field-error.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`.
+Shared components that more than one area uses sit directly in `custom/`: `image.tsx`, `product-card.tsx`, `localized-link.tsx`, `icons.tsx`, `mdx.tsx`, `floating-field.tsx`, `validation-field-error.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`.
 
 ## No comments
 
@@ -146,7 +146,7 @@ Never write a route path as a literal. `src/routes.ts` exports `ROUTES`, a flat 
 </LocalizedLink>
 ```
 
-`LocalizedTo` is derived from `FileRouteTypes["to"]` in the generated route tree, so a wrong path is a type error. In MDX and legal content, internal links are written without a locale prefix and `custom/mdx.tsx` localises them at render time with `localizePathname`.
+`LocalizedTo` is derived from `FileRouteTypes["to"]` in the generated route tree, so a wrong path is a type error. In MDX and in the Markdown of the content pages, internal links are written without a locale prefix and the link component in `custom/mdx.tsx`, which `ContentPageArticle` reuses, localises them at render time with `localizePathname`.
 
 ## Images
 

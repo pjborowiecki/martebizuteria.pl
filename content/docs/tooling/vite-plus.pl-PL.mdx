@@ -53,7 +53,7 @@ Plik eksportuje `defineConfig({ … })` z `vite-plus` i jest podzielony następu
 
 Jedna tablica `ignorePatterns` zadeklarowana na początku pliku jest używana zarówno przez `fmt`, jak i `lint`. Obejmuje drzewa generowane i vendorowane: `.source`, `node_modules`, `dist`, `coverage`, `opensrc`, `scripts`, `.tanstack`, `.wrangler`, `.vite-hooks`, `.vscode`, `.agents`, `.claude`, `.codex`, `bun.lock`, `**/*.d.ts`, `**/*.tsbuildinfo`, `src/routeTree.gen.ts` oraz `src/integrations/**/migrations/**`.
 
-`resolve.tsconfigPaths` sprawia, że działają oba aliasy z `tsconfig.json`: `~/*` rozwiązuje się od katalogu głównego repozytorium (dlatego importy wyglądają jak `~/src/modules/order/order.schema`), a `collections/*` wskazuje na `./.source/*`, gdzie Fumadocs zapisuje skompilowane kolekcje dokumentacji i dokumentów prawnych.
+`resolve.tsconfigPaths` sprawia, że działają oba aliasy z `tsconfig.json`: `~/*` rozwiązuje się od katalogu głównego repozytorium (dlatego importy wyglądają jak `~/src/modules/order/order.schema`), a `collections/*` wskazuje na `./.source/*`, gdzie Fumadocs zapisuje skompilowaną kolekcję dokumentacji.
 
 ## Stos wtyczek
 
@@ -70,7 +70,7 @@ Pod Vitestem ładują się wyłącznie `@vitejs/plugin-react` i `fumadocs-mdx/vi
 Poza Vitestem kolejność jest taka:
 
 1. **`@cloudflare/vite-plugin`** — `cloudflare({ inspectorPort: false, remoteBindings: process.env["CLOUDFLARE_ENV"] === "development", viteEnvironment: { name: "ssr" } })`. Worker działa w środowisku SSR, inspektor jest wyłączony, a **zdalne bindingi są włączone tylko dla środowiska `development`** — dlatego `bun run dev` czyta i zapisuje prawdziwe D1, KV i R2 preview.
-2. **`fumadocs-mdx/vite`** — `fumadocsMdx({ configPath: "./src/integrations/fumadocs/fumadocs.config.ts" })`, kompiluje `content/docs` i `content/legal`.
+2. **`fumadocs-mdx/vite`** — `fumadocsMdx({ configPath: "./src/integrations/fumadocs/fumadocs.config.ts" })`, kompiluje `content/docs`.
 3. **`@tailwindcss/vite`** — Tailwind CSS 4, sterowany przez `src/presentation/styles/globals.css`.
 4. **`tanstackStart`** — routing i dzielenie kodu. `codeSplittingOptions.defaultBehavior` wydziela `component`, `loader`, `errorComponent` i `notFoundComponent` do osobnych fragmentów, a `routeFileIgnorePattern: "__test__"` trzyma współlokowane katalogi testów wewnątrz `src/routes/` poza wygenerowanym drzewem tras.
 5. **`@vitejs/plugin-react`**.
@@ -81,7 +81,7 @@ Poza Vitestem kolejność jest taka:
 bun run dev
 ```
 
-Ten skrypt to `bun run content && CLOUDFLARE_ENV=development vp dev --mode development`. Najpierw kompiluje kolekcje MDX, bo `.source/` jest w `.gitignore`, a bez niego alias `collections/*` się nie rozwiąże, a potem startuje Vite+ w trybie Vite `development` ze środowiskiem Cloudflare `development`.
+Ten skrypt to `bun run content && CLOUDFLARE_ENV=development vp dev --mode development`. Najpierw kompiluje kolekcję MDX z dokumentacją, bo `.source/` jest w `.gitignore`, a bez niego alias `collections/*` się nie rozwiąże, a potem startuje Vite+ w trybie Vite `development` ze środowiskiem Cloudflare `development`.
 
 `server.strictPort` ma wartość `true`, więc serwer deweloperski przerywa pracę, zamiast przeskoczyć na inny port, gdy 3000 jest zajęty. Przekierowanie webhooków Stripe w `bun run stripe:listen` celuje w `localhost:3000/api/webhooks/stripe`, więc stały port ma znaczenie.
 

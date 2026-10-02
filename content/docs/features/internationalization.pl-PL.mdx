@@ -15,8 +15,6 @@ const SUPPORTED_LOCALES = ["pl-PL", "en-US"] as const
 const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
 
 const DEFAULT_TIMEZONE = "Europe/Warsaw"
-
-const TIME_ZONES = ["UTC", "America/New_York", "Europe/Warsaw"] as const
 ```
 
 Polski jest domyślny, angielski drugorzędny. `SupportedLocale` jest wyprowadzany z tej krotki, więc dodanie języka do tej tablicy sprawia, że system typów zaczyna domagać się reszty pracy.
@@ -159,14 +157,14 @@ beforeLoad: async ({ context, location, matches }): Promise<RootRouteContext> =>
 `TranslationsProvider` (`src/providers/translations-provider.tsx`) czyta potem te same zapytania przez `useSuspenseQueries`, składa je `buildMessageTree` i renderuje provider z `use-intl`:
 
 ```tsx
-<IntlProvider locale={locale} messages={messages} timeZone={I18N.DEFAULT_TIMEZONE}>
+<IntlProvider locale={locale} messages={messages} timeZone={timeZone}>
   {children}
 </IntlProvider>
 ```
 
 Zapisuje też ciasteczko języka w efekcie, więc nawigacja po stronie klienta do `/en-US` aktualizuje ciasteczko bez żądania.
 
-`timeZone` jest na stałe ustawiona na `Europe/Warsaw` dla wszystkich. `user.timezone` istnieje jako kolumna, a `I18N.TIME_ZONES` wymienia trzy strefy, ale nic nie przekazuje żadnej z nich do providera.
+`timeZone` to `user.timezone` zalogowanego klienta, odczytywana z zapytania o sesję, a dla gości i klientów, którzy jej nie wybrali — `I18N.DEFAULT_TIMEZONE` (`Europe/Warsaw`). Klient wybiera ją w `/account/profile` spośród stref IANA wymienionych w `TIMEZONES` (`src/modules/_core/constants/timezone.ts`).
 
 **Zapomnienie przestrzeni nazw to błąd czasu wykonania**, a nie ciche zastępstwo: `useTranslations` na brakującej przestrzeni rzuca wyjątek. Dodanie strony oznacza dodanie jej przestrzeni nazw do `staticData` trasy.
 
@@ -204,7 +202,7 @@ descriptions: text("descriptions", { mode: "json" }).$type<Product["localeMap"] 
 tags: text("tags", { mode: "json" }).$type<Product["tagsLocaleMap"] | null>(),
 ```
 
-Ten sam kształt pojawia się w `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`) i `product_attribute` (`titles` oraz etykiety wewnątrz `allowed_values`).
+Ten sam kształt pojawia się w `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles` oraz etykiety wewnątrz `allowed_values`) i `content_page` (`titles`, `descriptions` i `bodies`, przy czym `bodies` zawiera Markdown stron `/privacy-policy` i `/exchanges-and-returns`).
 
 Odczyt ma trzy poziomy fallbacku. `resolveLocalizedString` w `src/modules/product-attribute/product-attribute.utils.ts` to wspólna implementacja:
 
@@ -238,7 +236,7 @@ Zapis idzie w drugą stronę: `normalizeProductAttributeLocaleMapForSave` wypeł
 
 Ponieważ mapy są przechowywane jako tekst JSON, wyszukiwanie `LIKE` po `titles` przeszukuje **wszystkie** języki naraz — zobacz [Katalog i wyszukiwanie](/docs/features/catalog-and-search).
 
-Edytory w panelu udostępniają to per język. `catalog/form/components/catalog-locale-picker.tsx` iteruje po `I18N.SUPPORTED_LOCALES`, pokazuje licznik wypełnionych i pustych języków, a `product-form-locale-layout.tsx` renderuje zestaw pól dla wybranego. Eksport atrybutów do CSV zapisuje po jednej kolumnie `Title <LOCALE>` na język.
+Edytory w panelu udostępniają to per język. `catalog/form/components/catalog-locale-picker.tsx` iteruje po `I18N.SUPPORTED_LOCALES`, pokazuje licznik wypełnionych i pustych języków, a `product-form-locale-layout.tsx` renderuje zestaw pól dla wybranego. Eksport atrybutów do CSV zapisuje po jednej kolumnie `Title <LOCALE>` na język. Edytor stron treści pod `/admin/content/$handle` robi to samo z jedną zakładką na język w `content/content-page-locale-tabs.tsx` i oznacza zakładkę, której pola nie przechodzą walidacji.
 
 ## SEO
 
@@ -271,17 +269,18 @@ Formularz Stripe Elements jest lokalizowany osobno, przez mapowanie języka apli
 ## Czego brakuje
 
 - **Nie ma przełącznika języka w interfejsie.** Nic w nawigacji, stopce ani strefie konta nie zmienia języka; odwiedzający musi edytować adres. Mechanizm jest kompletny — kontrolki nie ma.
-- Nie ma preferencji języka per użytkownik. `user.timezone` jest zapisywana i pokazywana w `/account/profile`, ale ani ona, ani preferencja języka nie wpływają na render.
+- Nie ma preferencji języka per użytkownik. `user.timezone` jest zapisywana w `/account/profile` i ustawia strefę czasową providera, ale preferencja języka nie jest nigdzie przechowywana.
 - Nie ma sprawdzania zgodności katalogów komunikatów. Oba katalogi mają obecnie te same 48 nazw plików, ale nic w `bun run check` nie weryfikuje, czy klucze w środku są zgodne.
 
 ## Dodanie języka
 
 1. Dodaj kod do `SUPPORTED_LOCALES` w `i18n.config.ts`.
 2. Utwórz `messages/<locale>/` ze wszystkimi 48 plikami. `loadNamespace` rzuca wyjątek przy brakującym, więc nie jest to opcjonalne.
-3. Dodaj język do każdego zestawu `*.<locale>.mdx` w `content/legal` i `content/docs` oraz do każdego `meta.<locale>.json`.
-4. Uzupełnij mapy lokalizacji w JSON w D1; `coerceProductLocaleMap` utrzymuje w tym czasie istniejące wiersze czytelnymi, a `resolveLocalizedString` wraca do polskiego.
-5. Dodaj język Stripe Elements w `STRIPE_LOCALES` (`stripe.client.ts`) — jest tam `satisfies Record<SupportedLocale, StripeElementLocale>`, więc kontroler typów sam wskaże to miejsce.
-6. Sprawdź `POSTAL_CODE_PATTERNS` i kraj dla `libphonenumber-js` w `checkout.zod.ts`, jeśli nowy język oznacza nowy kraj wysyłki.
+3. Dodaj język do każdego zestawu `*.<locale>.mdx` w `content/docs` oraz do każdego `meta.<locale>.json`.
+4. Dodaj nowy język do map `titles`, `descriptions`, `bodies` i `revised_ats` obu wierszy `content_page` w migracji, zaczynając od polskiego tekstu. Potem przetłumacz obie strony w edytorze pod `/admin/content`, który nie zapisze strony, dopóki każdy język nie ma wszystkich trzech pól.
+5. Uzupełnij mapy lokalizacji w JSON w D1; `coerceProductLocaleMap` utrzymuje w tym czasie istniejące wiersze czytelnymi, a `resolveLocalizedString` wraca do polskiego.
+6. Dodaj język Stripe Elements w `STRIPE_LOCALES` (`stripe.client.ts`) — jest tam `satisfies Record<SupportedLocale, StripeElementLocale>`, więc kontroler typów sam wskaże to miejsce.
+7. Sprawdź `POSTAL_CODE_PATTERNS` i kraj dla `libphonenumber-js` w `checkout.zod.ts`, jeśli nowy język oznacza nowy kraj wysyłki.
 
 ## Powiązane strony
 

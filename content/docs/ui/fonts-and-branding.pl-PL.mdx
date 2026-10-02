@@ -153,9 +153,9 @@ export const BUSINESS = {
 export const BUSINESS_POSTAL_ADDRESS_LINES = [BUSINESS.LEGAL_NAME, BUSINESS.STREET, `${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY}`] as const
 ```
 
-Żaden komponent tego nie importuje. Zadaniem tego pliku jest być stroną asercji w teście: `src/presentation/branding/__test__/business.test.ts` czyta `content/legal/privacy-policy.<locale>.mdx` i `content/legal/exchanges-and-returns.<locale>.mdx` dla każdego obsługiwanego języka i zawodzi, jeśli nazwa prawna, NIP, wiersze adresu pocztowego albo adres `mailto:` w treści rozjadą się z tymi stałymi.
+Żaden komponent tego nie importuje. Zadaniem tego pliku jest być stroną asercji w teście: `src/presentation/branding/__test__/business.test.ts` stosuje `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql` na bazie SQLite w pamięci i dla każdego obsługiwanego języka zawodzi, jeśli nazwa prawna, NIP, wiersze adresu pocztowego albo adres `mailto:` w treści stron `privacy-policy` i `exchanges-and-returns` wstawionych przez migrację rozjadą się z tymi stałymi.
 
-Gdy więc dane firmy się zmienią, najpierw popraw `business.ts`, a potem treść prawną w obu językach, aż `bun run test:unit` znów przejdzie.
+Gdy więc dane firmy się zmienią, najpierw popraw `business.ts`, a potem zaktualizuj obie strony we wszystkich językach w `/admin/content`, bo klienci czytają zapisane wiersze. Test widzi tylko treść wstawioną przez migrację, która nigdy nie nadpisuje zapisanej strony, więc zielony wynik `bun run test:unit` nie dowodzi, że opublikowany tekst się zgadza.
 
 `src/presentation/branding/socials.ts` przechowuje dwa aktywne profile:
 
