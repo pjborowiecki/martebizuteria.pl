@@ -190,7 +190,7 @@ if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
 
 `prepareRefundBatch` writes `refundedAmount`, `refundedAt` and `status` (`refunded` when fully refunded, otherwise back to `succeeded`), sets the order to `refunded` on a full refund, and adds `quantityAvailable + quantity` per restock line.
 
-Disputes are stored in `order.metadata` rather than in columns: `flagOrderDispute` merges `{ id, reason, status, amount }` into the JSON with `mergeDisputeMetadata` (`order.display.utils.ts`). A lost dispute is treated as a full refund with `restock: false` and logs `review inventory manually` — the goods are gone, so the stock is not returned.
+Disputes are stored in `order.metadata` rather than in columns: `flagOrderDispute` merges `{ id, reason, status, amount }` into the JSON with `mergeDisputeMetadata` (`order.display.utils.ts`). A lost dispute is treated as a full refund with `restock: false` and logs `review inventory manually` — the goods are gone, so the stock is not returned. `clearOrderDispute` removes the flag when a dispute closes any other way, and while the flag is present the admin refund is refused (see [Admin refunds](#admin-refunds)).
 
 ## Local testing
 
@@ -206,9 +206,24 @@ runs `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`. P
 
 ## Admin refunds
 
-`/admin/orders/$orderId` loads the order through `getAdminOrderQuery`, and its header shows Print, Refund, Cancel order, Fulfill, Mark shipped and Mark delivered as each one applies; the Refund item in the `/admin/orders` row menu opens that page. Refund asks for confirmation and calls `refundAdminOrder` (`src/modules/order/use-cases/refund-admin-order.ts`), a server function guarded by `authorized({ order: ["update"] })`. It checks `canRefundAdminOrder` from `order.admin-actions.utils.ts` (paid, and neither refunded nor cancelled) and that the payment row has a `transaction_id`. That column holds the Checkout Session id described above, which Stripe does not accept as a `payment_intent`, so the function retrieves the session with `stripe.checkout.sessions.retrieve(transactionId)` and reads its `payment_intent` through `resolveStripeObjectId` (`src/integrations/stripe/stripe.utils.ts`), which returns the id whether Stripe sent it as a string or as an expanded object. A session without a PaymentIntent, such as a `no_payment_required` checkout, is refused. Otherwise it calls `stripe.refunds.create({ metadata: { orderId }, payment_intent: paymentIntentId })`, which refunds the full amount.
+`/admin/orders/$orderId` loads the order through `getAdminOrderQuery`, and its header shows Print, Refund, Cancel order, Fulfill, Mark shipped and Mark delivered as each one applies; the Refund item in the `/admin/orders` row menu opens that page. Refund asks for confirmation and calls `refundAdminOrder` (`src/modules/order/use-cases/refund-admin-order.ts`), a server function guarded by `authorized({ order: ["update"] })`. It checks `canRefundAdminOrder` from `order.admin-actions.utils.ts` (paid, and neither refunded nor cancelled), then `resolveAdminOrderRefundBlocker` from the same file, which names the reason Stripe cannot refund an order:
 
-A missing order throws `ERROR_CODES.NOT_FOUND` with `ORDER_NOT_FOUND`. Every refused refund throws `ERROR_CODES.CONFLICT` with `ORDER_INVALID_STATE` without requesting a refund.
+| Blocker           | When                                                               | Why                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `noStripePayment` | `order.total` is 0                                                 | A free checkout completes as `no_payment_required`, so Stripe took no payment and there is no PaymentIntent to refund |
+| `openDispute`     | `order.metadata` carries the `dispute` that `flagOrderDispute` set | The dispute decides what happens to the payment until `clearOrderDispute` removes the flag                            |
+
+It also requires a `transaction_id` on the payment row. That column holds the Checkout Session id described above, which Stripe does not accept as a `payment_intent`, so the function retrieves the session with `stripe.checkout.sessions.retrieve(transactionId)` and reads its `payment_intent` through `resolveStripeObjectId` (`src/integrations/stripe/stripe.utils.ts`), which returns the id whether Stripe sent it as a string or as an expanded object. A session whose `payment_status` is `no_payment_required`, or that has no PaymentIntent, is refused as well. Otherwise it calls:
+
+```ts
+await stripe.refunds.create({ metadata: { orderId }, payment_intent: paymentIntentId }, { idempotencyKey: `admin-order-refund-${orderId}` })
+```
+
+which refunds the full amount. The idempotency key is the same for every request about one order, so a double click, a second tab or a second admin sends Stripe a request it has already seen, and Stripe answers with the first result, or refuses the repeat while the first is still in flight, instead of attempting another refund. Stripe keeps a key's result, errors included, for at least 24 hours, so retrying a refund that Stripe rejected returns the same error until the key expires.
+
+A missing order throws `ERROR_CODES.NOT_FOUND` with `ORDER_NOT_FOUND`. Every refused refund throws `ERROR_CODES.CONFLICT` with `ORDER_INVALID_STATE` without requesting a refund. These checks run on the server for every call, whatever the page shows.
+
+The page runs the same predicates on the loaded order. Refund appears when `canRefundAdminOrder` allows it. When `resolveAdminOrderRefundBlocker` returns a blocker, `order-refund-button.tsx` keeps the button visible but disabled and still focusable, and its tooltip explains the blocker with the `pages.admin.orderDetail.refundBlocked` messages.
 
 `refundAdminOrder` writes nothing to the database. The payment and order statuses, the audit entry and the restock arrive with the resulting `charge.refunded` event, through the same `refundOrder` path as a refund made in the Stripe dashboard. The `order: ["refund"]` permission in `auth.access.ts` is still not used by any server function.
 

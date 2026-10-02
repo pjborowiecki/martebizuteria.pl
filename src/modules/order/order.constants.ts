@@ -193,6 +193,13 @@ export const ADMIN_ORDER_DETAIL_TAG = {
 
 export type AdminOrderDetailTag = (typeof ADMIN_ORDER_DETAIL_TAG)[keyof typeof ADMIN_ORDER_DETAIL_TAG]
 
+export const ADMIN_ORDER_REFUND_BLOCKER = {
+  NO_STRIPE_PAYMENT: "noStripePayment",
+  OPEN_DISPUTE: "openDispute",
+} as const
+
+export type AdminOrderRefundBlocker = (typeof ADMIN_ORDER_REFUND_BLOCKER)[keyof typeof ADMIN_ORDER_REFUND_BLOCKER]
+
 export const ORDER_NUMBER_PREFIX = "MRT"
 
 export const ORDER_NUMBER_PADDING = 5

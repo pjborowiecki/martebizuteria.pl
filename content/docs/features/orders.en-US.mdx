@@ -103,7 +103,7 @@ assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
 | `use-cases/mark-order-delivered.ts` | `canMarkAdminOrderDelivered` | `fulfillment_status = "delivered"`, `status = "completed"`, `delivered_at = now`                                      |
 | `use-cases/cancel-order.ts`         | `canCancelAdminOrder`        | `status = "cancelled"`, `fulfillment_status = "cancelled"`, `canceled_at = now`; restocks the lines in the same batch |
 
-The fifth, `refundAdminOrder` (`use-cases/refund-admin-order.ts`), reads the order's status and payment through `getAdminOrderRefundTarget`, checks `canRefundAdminOrder` against the payment row's real status, retrieves the Checkout Session whose id `createPendingPayment` stored in `payment.transaction_id`, and calls `stripe.refunds.create` with `metadata: { orderId }` and that session's PaymentIntent as `payment_intent`. `payment.transaction_id` is not a PaymentIntent id, so it is never passed to Stripe as one. A missing order throws `ERROR_CODES.NOT_FOUND` with `ORDER_NOT_FOUND`; a failed predicate, an empty `transaction_id` or a session without a PaymentIntent throws `ERROR_CODES.CONFLICT` with `ORDER_INVALID_STATE` and requests no refund. It writes nothing itself: the `charge.refunded` webhook runs `refundOrder`, which records the refund on the payment and, for a full refund, marks the order `refunded` and restocks its lines, then writes the audit entry.
+The fifth, `refundAdminOrder` (`use-cases/refund-admin-order.ts`), reads the order's status, total and metadata and its payment through `getAdminOrderRefundTarget`, checks `canRefundAdminOrder` against the payment row's real status and `resolveAdminOrderRefundBlocker` against the total and the dispute flag, retrieves the Checkout Session whose id `createPendingPayment` stored in `payment.transaction_id`, and calls `stripe.refunds.create` with `metadata: { orderId }`, that session's PaymentIntent as `payment_intent` and the idempotency key `admin-order-refund-${orderId}`, so a repeated request for the same order cannot start a second refund. `payment.transaction_id` is not a PaymentIntent id, so it is never passed to Stripe as one. A missing order throws `ERROR_CODES.NOT_FOUND` with `ORDER_NOT_FOUND`; a failed predicate, a blocker, an empty `transaction_id`, or a session that is `no_payment_required` or has no PaymentIntent throws `ERROR_CODES.CONFLICT` with `ORDER_INVALID_STATE` and requests no refund. It writes nothing itself: the `charge.refunded` webhook runs `refundOrder`, which records the refund on the payment and, for a full refund, marks the order `refunded` and restocks its lines, then writes the audit entry.
 
 The rules live in `order.admin-actions.utils.ts`:
 
@@ -111,7 +111,9 @@ The rules live in `order.admin-actions.utils.ts`:
 - `canMarkAdminOrderShipped` — not `cancelled`/`refunded`, fulfilment is not already `shipped`/`delivered`/`cancelled`, and is `fulfilled` or `partially_fulfilled`. You must fulfil before you can ship.
 - `canMarkAdminOrderDelivered`: not `cancelled`/`refunded`, and fulfilment is `shipped`.
 - `canCancelAdminOrder` — status is `pending` or `processing`.
-- `canRefundAdminOrder`: payment key `paid`, and status is not `refunded` or `cancelled`. `canPrintAdminOrderInvoice` (status is not `cancelled`) only enables the Print buttons in the UI.
+- `canRefundAdminOrder`: payment key `paid`, and status is not `refunded` or `cancelled`.
+- `resolveAdminOrderRefundBlocker`: `noStripePayment` when the total is 0, `openDispute` when the order's metadata carries a dispute flag, otherwise nothing. An order that passes `canRefundAdminOrder` can still be blocked.
+- `canPrintAdminOrderInvoice` (status is not `cancelled`) only enables the Print buttons in the UI.
 
 `fulfillOrder` and `shipOrder` pass `paymentUiKey: "paid"` literally, and neither predicate reads it, so payment state is not checked against the row.
 
@@ -164,7 +166,7 @@ The tracking number and URL come from `order-ship-dialog.tsx`; `shipOrder` trims
 | `order-tags-card.tsx`           | `tags` from `resolveAdminOrderDetailTags`                                    |
 | `order-notes-card.tsx`          | `customerNote`                                                               |
 
-`OrderDetailActions` (`order-detail-actions.tsx` with `use-order-detail-actions.ts`) puts the actions in the header. Print calls `globalThis.print()` and is disabled for a cancelled order. Refund, Cancel order, Fulfill, Mark shipped and Mark delivered render only when their predicate allows; Mark shipped opens `order-ship-dialog.tsx` for the optional tracking number and URL, and Refund and Cancel order ask for confirmation first.
+`OrderDetailActions` (`order-detail-actions.tsx` with `use-order-detail-actions.ts`) puts the actions in the header. Print calls `globalThis.print()` and is disabled for a cancelled order. Refund, Cancel order, Fulfill, Mark shipped and Mark delivered render only when their predicate allows; Mark shipped opens `order-ship-dialog.tsx` for the optional tracking number and URL, and Refund and Cancel order ask for confirmation first. Refund is `order-refund-button.tsx`: when `resolveAdminOrderRefundBlocker` returns a blocker for the order's total and `dispute`, the button stays visible but disabled, remains focusable, and explains the blocker in a tooltip.
 
 ## Customer order history
 

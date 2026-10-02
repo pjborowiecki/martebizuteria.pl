@@ -103,7 +103,7 @@ assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
 | `use-cases/mark-order-delivered.ts` | `canMarkAdminOrderDelivered` | `fulfillment_status = "delivered"`, `status = "completed"`, `delivered_at = now`                                               |
 | `use-cases/cancel-order.ts`         | `canCancelAdminOrder`        | `status = "cancelled"`, `fulfillment_status = "cancelled"`, `canceled_at = now`; przywraca pozycje na stan w tym samym wsadzie |
 
-Piąta, `refundAdminOrder` (`use-cases/refund-admin-order.ts`), czyta status zamówienia i płatność przez `getAdminOrderRefundTarget`, sprawdza `canRefundAdminOrder` wobec prawdziwego statusu wiersza płatności, pobiera sesję Checkout, której identyfikator `createPendingPayment` zapisał w `payment.transaction_id`, i wywołuje `stripe.refunds.create` z `metadata: { orderId }` oraz PaymentIntentem tej sesji jako `payment_intent`. `payment.transaction_id` nie jest identyfikatorem PaymentIntent, więc nigdy nie trafia do Stripe w tej roli. Brak zamówienia rzuca `ERROR_CODES.NOT_FOUND` z `ORDER_NOT_FOUND`; niespełniony predykat, pusty `transaction_id` albo sesja bez PaymentIntent rzucają `ERROR_CODES.CONFLICT` z `ORDER_INVALID_STATE` i nie zlecają zwrotu. Sama niczego nie zapisuje: webhook `charge.refunded` uruchamia `refundOrder`, który zapisuje zwrot w płatności, a przy pełnym zwrocie oznacza zamówienie jako `refunded` i przywraca jego pozycje na stan, po czym zapisuje zdarzenie audytu.
+Piąta, `refundAdminOrder` (`use-cases/refund-admin-order.ts`), czyta status, sumę i metadane zamówienia oraz jego płatność przez `getAdminOrderRefundTarget`, sprawdza `canRefundAdminOrder` wobec prawdziwego statusu wiersza płatności i `resolveAdminOrderRefundBlocker` wobec sumy i flagi sporu, pobiera sesję Checkout, której identyfikator `createPendingPayment` zapisał w `payment.transaction_id`, i wywołuje `stripe.refunds.create` z `metadata: { orderId }`, PaymentIntentem tej sesji jako `payment_intent` i kluczem idempotencji `admin-order-refund-${orderId}`, więc powtórzone żądanie dla tego samego zamówienia nie może rozpocząć drugiego zwrotu. `payment.transaction_id` nie jest identyfikatorem PaymentIntent, więc nigdy nie trafia do Stripe w tej roli. Brak zamówienia rzuca `ERROR_CODES.NOT_FOUND` z `ORDER_NOT_FOUND`; niespełniony predykat, blokada, pusty `transaction_id` albo sesja z `no_payment_required` lub bez PaymentIntent rzucają `ERROR_CODES.CONFLICT` z `ORDER_INVALID_STATE` i nie zlecają zwrotu. Sama niczego nie zapisuje: webhook `charge.refunded` uruchamia `refundOrder`, który zapisuje zwrot w płatności, a przy pełnym zwrocie oznacza zamówienie jako `refunded` i przywraca jego pozycje na stan, po czym zapisuje zdarzenie audytu.
 
 Reguły leżą w `order.admin-actions.utils.ts`:
 
@@ -111,7 +111,9 @@ Reguły leżą w `order.admin-actions.utils.ts`:
 - `canMarkAdminOrderShipped` — nie `cancelled`/`refunded`, realizacja nie jest już `shipped`/`delivered`/`cancelled` i jest `fulfilled` albo `partially_fulfilled`. Nie da się wysłać przed zrealizowaniem.
 - `canMarkAdminOrderDelivered`: nie `cancelled`/`refunded`, a realizacja to `shipped`.
 - `canCancelAdminOrder` — status to `pending` albo `processing`.
-- `canRefundAdminOrder`: klucz płatności `paid`, a status inny niż `refunded` i `cancelled`. `canPrintAdminOrderInvoice` (status inny niż `cancelled`) jedynie włącza przyciski drukowania w interfejsie.
+- `canRefundAdminOrder`: klucz płatności `paid`, a status inny niż `refunded` i `cancelled`.
+- `resolveAdminOrderRefundBlocker`: `noStripePayment`, gdy suma wynosi 0, `openDispute`, gdy metadane zamówienia zawierają flagę sporu, a poza tym nic. Zamówienie, które przechodzi `canRefundAdminOrder`, nadal może zostać zablokowane.
+- `canPrintAdminOrderInvoice` (status inny niż `cancelled`) jedynie włącza przyciski drukowania w interfejsie.
 
 `fulfillOrder` i `shipOrder` przekazują `paymentUiKey: "paid"` dosłownie, a żaden z tych predykatów go nie czyta, więc stan płatności nie jest sprawdzany wobec wiersza.
 
@@ -164,7 +166,7 @@ Numer i adres śledzenia pochodzą z `order-ship-dialog.tsx`; `shipOrder` je prz
 | `order-tags-card.tsx`           | `tags` z `resolveAdminOrderDetailTags`                                       |
 | `order-notes-card.tsx`          | `customerNote`                                                               |
 
-`OrderDetailActions` (`order-detail-actions.tsx` z `use-order-detail-actions.ts`) umieszcza akcje w nagłówku. Drukuj wywołuje `globalThis.print()` i jest wyłączony dla anulowanego zamówienia. Zwrot, Anuluj zamówienie, Realizuj, Oznacz jako wysłane i Oznacz jako dostarczone renderują się tylko wtedy, gdy pozwala na to ich predykat; Oznacz jako wysłane otwiera `order-ship-dialog.tsx` z opcjonalnym numerem i adresem śledzenia, a Zwrot i Anuluj zamówienie najpierw proszą o potwierdzenie.
+`OrderDetailActions` (`order-detail-actions.tsx` z `use-order-detail-actions.ts`) umieszcza akcje w nagłówku. Drukuj wywołuje `globalThis.print()` i jest wyłączony dla anulowanego zamówienia. Zwrot, Anuluj zamówienie, Realizuj, Oznacz jako wysłane i Oznacz jako dostarczone renderują się tylko wtedy, gdy pozwala na to ich predykat; Oznacz jako wysłane otwiera `order-ship-dialog.tsx` z opcjonalnym numerem i adresem śledzenia, a Zwrot i Anuluj zamówienie najpierw proszą o potwierdzenie. Zwrot to `order-refund-button.tsx`: gdy `resolveAdminOrderRefundBlocker` zwraca blokadę dla sumy i `dispute` zamówienia, przycisk pozostaje widoczny, ale wyłączony, nadal osiągalny klawiaturą, i wyjaśnia blokadę w podpowiedzi.
 
 ## Historia zamówień klienta
 

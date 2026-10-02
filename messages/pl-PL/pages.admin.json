@@ -720,6 +720,10 @@
       "cancel": "Zachowaj zamówienie",
       "confirm": "Zwróć zamówienie"
     },
+    "refundBlocked": {
+      "noStripePayment": "Nie ma czego zwrócić: to zamówienie było bezpłatne, więc Stripe nie pobrał za nie płatności.",
+      "openDispute": "To zamówienie ma otwarty spór. O losie płatności decyduje spór, więc nie można jej zwrócić, dopóki się nie zakończy."
+    },
     "cancelDialog": {
       "title": "Anulować to zamówienie?",
       "description": "Zamówienie {id} zostanie oznaczone jako anulowane. Nie powoduje to zwrotu płatności.",

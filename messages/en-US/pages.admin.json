@@ -720,6 +720,10 @@
       "cancel": "Keep order",
       "confirm": "Refund order"
     },
+    "refundBlocked": {
+      "noStripePayment": "Nothing to refund: this order was free, so Stripe took no payment for it.",
+      "openDispute": "This order has an open dispute. The dispute decides what happens to the payment, so it cannot be refunded until the dispute closes."
+    },
     "cancelDialog": {
       "title": "Cancel this order?",
       "description": "Order {id} will be marked cancelled. This does not refund the payment.",
