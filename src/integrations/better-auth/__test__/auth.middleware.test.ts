@@ -180,12 +180,21 @@ describe("request error boundary", () => {
     expect(console.error).not.toHaveBeenCalled()
   })
 
-  it("keeps the code of an AppError and drops its message", async () => {
+  it("keeps the code of an AppError and drops a free-text message", async () => {
     const error = new AppError(ERROR_CODES.FORBIDDEN, "private details")
 
     await expect(runBoundary(Promise.reject(error))).rejects.toMatchObject({
       code: ERROR_CODES.FORBIDDEN,
       message: ERROR_CODES.FORBIDDEN,
+    })
+  })
+
+  it("keeps an AppError's reason code so the browser can say what went wrong", async () => {
+    const error = new AppError(ERROR_CODES.CONFLICT, "HAS_CHILDREN")
+
+    await expect(runBoundary(Promise.reject(error))).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: "HAS_CHILDREN",
     })
   })
 
