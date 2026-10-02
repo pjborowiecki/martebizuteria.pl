@@ -413,6 +413,7 @@ export const getOrderByTransactionId = (transactionId: string) =>
   db.query.order.findFirst({
     where: orderPaymentMatchesTransaction(transactionId),
     with: {
+      addresses: true,
       checkout: {
         with: {
           shippingAddress: true,
