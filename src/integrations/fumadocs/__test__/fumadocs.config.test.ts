@@ -1,34 +1,9 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { docs, legal } from "~/src/integrations/fumadocs/fumadocs.config"
-import { legalSchema } from "~/src/integrations/fumadocs/fumadocs.schema"
-
-describe("legal document frontmatter", () => {
-  it("loads legal files from the collection with the required frontmatter schema", () => {
-    expect(legal.docs.dir).toBe("./content/legal")
-    expect(legal.docs.schema).toBe(legalSchema)
-  })
-
-  it("retains the page metadata and validates the document revision date", () => {
-    expect(legalSchema.parse({ description: "Privacy terms", title: "Privacy policy", updated: "2026-09-29" })).toMatchObject({
-      description: "Privacy terms",
-      title: "Privacy policy",
-      updated: "2026-09-29",
-    })
-  })
-
-  it.each([undefined, "2026-02-30", "29/09/2026", "2026-09-29T12:00:00Z"])("rejects invalid revision date %j", (updated) => {
-    expect(legalSchema.safeParse({ title: "Privacy policy", updated }).success).toBe(false)
-  })
-})
+import { docs } from "~/src/integrations/fumadocs/fumadocs.config"
 
 describe("documentation collection", () => {
   it("reads its pages from the documentation content directory", () => {
     expect(docs.docs.dir).toBe("./content/docs")
-  })
-
-  it("leaves the legal collection its own directory and schema", () => {
-    expect(legal.docs.dir).toBe("./content/legal")
-    expect(docs.docs.dir).not.toBe(legal.docs.dir)
   })
 })

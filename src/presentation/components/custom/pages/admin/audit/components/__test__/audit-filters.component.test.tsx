@@ -82,6 +82,7 @@ describe("AuditCategoryFilter", () => {
       "Email",
       "Customers",
       "Catalog",
+      "Content",
       "Settings",
       "Auth",
     ])

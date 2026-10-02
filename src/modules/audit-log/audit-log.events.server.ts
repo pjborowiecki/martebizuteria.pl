@@ -176,6 +176,15 @@ export const recordCatalogAttributeDeletedAudit = (target: string, options?: Aud
   })
 }
 
+export const recordContentPageUpdatedAudit = (handle: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.CONTENT_PAGE_UPDATED,
+    category: "content",
+    severity: "info",
+    ...withResourceId(handle, options),
+  })
+}
+
 export const recordDiscountCreatedAudit = (code: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.DISCOUNT_CREATED,

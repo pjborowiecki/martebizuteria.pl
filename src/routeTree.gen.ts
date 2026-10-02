@@ -32,7 +32,6 @@ import { Route as AccountWishlistRouteImport } from './routes/account.wishlist'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminCatalogRouteImport } from './routes/admin.catalog'
-import { Route as AdminContentRouteImport } from './routes/admin.content'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminMarketingRouteImport } from './routes/admin.marketing'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
@@ -62,6 +61,8 @@ import { Route as AdminCatalogAttributesRouteImport } from './routes/admin.catal
 import { Route as AdminCatalogCategoriesRouteImport } from './routes/admin.catalog.categories'
 import { Route as AdminCatalogCollectionsRouteImport } from './routes/admin.catalog.collections'
 import { Route as AdminCatalogProductsRouteImport } from './routes/admin.catalog.products'
+import { Route as AdminContentIndexRouteImport } from './routes/admin.content.index'
+import { Route as AdminContentHandleRouteImport } from './routes/admin.content.$handle'
 import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customers.index'
 import { Route as AdminCustomersIdRouteImport } from './routes/admin.customers.$id'
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
@@ -189,11 +190,6 @@ const AdminAuditRoute = AdminAuditRouteImport.update({
 const AdminCatalogRoute = AdminCatalogRouteImport.update({
   id: '/catalog',
   path: '/catalog',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminContentRoute = AdminContentRouteImport.update({
-  id: '/content',
-  path: '/content',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCouponsRoute = AdminCouponsRouteImport.update({
@@ -348,6 +344,16 @@ const AdminCatalogProductsRoute = AdminCatalogProductsRouteImport.update({
   path: '/products',
   getParentRoute: () => AdminCatalogRoute,
 } as any)
+const AdminContentIndexRoute = AdminContentIndexRouteImport.update({
+  id: '/content/',
+  path: '/content/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminContentHandleRoute = AdminContentHandleRouteImport.update({
+  id: '/content/$handle',
+  path: '/content/$handle',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminCustomersIndexRoute = AdminCustomersIndexRouteImport.update({
   id: '/customers/',
   path: '/customers/',
@@ -436,7 +442,6 @@ export interface FileRoutesByFullPath {
   '/account/wishlist': typeof AccountWishlistRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/catalog': typeof AdminCatalogRouteWithChildren
-  '/admin/content': typeof AdminContentRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
@@ -462,6 +467,7 @@ export interface FileRoutesByFullPath {
   '/admin/catalog/categories': typeof AdminCatalogCategoriesRouteWithChildren
   '/admin/catalog/collections': typeof AdminCatalogCollectionsRouteWithChildren
   '/admin/catalog/products': typeof AdminCatalogProductsRouteWithChildren
+  '/admin/content/$handle': typeof AdminContentHandleRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -472,6 +478,7 @@ export interface FileRoutesByFullPath {
   '/products/': typeof StorefrontProductsIndexRoute
   '/account/orders/': typeof AccountOrdersIndexRoute
   '/admin/catalog/': typeof AdminCatalogIndexRoute
+  '/admin/content/': typeof AdminContentIndexRoute
   '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
@@ -496,7 +503,6 @@ export interface FileRoutesByTo {
   '/account/sessions': typeof AccountSessionsRoute
   '/account/wishlist': typeof AccountWishlistRoute
   '/admin/audit': typeof AdminAuditRoute
-  '/admin/content': typeof AdminContentRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
@@ -519,6 +525,7 @@ export interface FileRoutesByTo {
   '/newsletter/unsubscribe': typeof StorefrontNewsletterUnsubscribeRoute
   '/products/$handle': typeof StorefrontProductsHandleRoute
   '/account/orders/$id': typeof AccountOrdersIdRoute
+  '/admin/content/$handle': typeof AdminContentHandleRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -529,6 +536,7 @@ export interface FileRoutesByTo {
   '/products': typeof StorefrontProductsIndexRoute
   '/account/orders': typeof AccountOrdersIndexRoute
   '/admin/catalog': typeof AdminCatalogIndexRoute
+  '/admin/content': typeof AdminContentIndexRoute
   '/admin/customers': typeof AdminCustomersIndexRoute
   '/admin/orders': typeof AdminOrdersIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
@@ -560,7 +568,6 @@ export interface FileRoutesById {
   '/account/wishlist': typeof AccountWishlistRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/catalog': typeof AdminCatalogRouteWithChildren
-  '/admin/content': typeof AdminContentRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
@@ -587,6 +594,7 @@ export interface FileRoutesById {
   '/admin/catalog/categories': typeof AdminCatalogCategoriesRouteWithChildren
   '/admin/catalog/collections': typeof AdminCatalogCollectionsRouteWithChildren
   '/admin/catalog/products': typeof AdminCatalogProductsRouteWithChildren
+  '/admin/content/$handle': typeof AdminContentHandleRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -597,6 +605,7 @@ export interface FileRoutesById {
   '/_storefront/products/': typeof StorefrontProductsIndexRoute
   '/account/orders/': typeof AccountOrdersIndexRoute
   '/admin/catalog/': typeof AdminCatalogIndexRoute
+  '/admin/content/': typeof AdminContentIndexRoute
   '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
@@ -629,7 +638,6 @@ export interface FileRouteTypes {
     | '/account/wishlist'
     | '/admin/audit'
     | '/admin/catalog'
-    | '/admin/content'
     | '/admin/coupons'
     | '/admin/marketing'
     | '/admin/overview'
@@ -655,6 +663,7 @@ export interface FileRouteTypes {
     | '/admin/catalog/categories'
     | '/admin/catalog/collections'
     | '/admin/catalog/products'
+    | '/admin/content/$handle'
     | '/admin/customers/$id'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
@@ -665,6 +674,7 @@ export interface FileRouteTypes {
     | '/products/'
     | '/account/orders/'
     | '/admin/catalog/'
+    | '/admin/content/'
     | '/admin/customers/'
     | '/admin/orders/'
     | '/admin/catalog/categories/$handle'
@@ -689,7 +699,6 @@ export interface FileRouteTypes {
     | '/account/sessions'
     | '/account/wishlist'
     | '/admin/audit'
-    | '/admin/content'
     | '/admin/coupons'
     | '/admin/marketing'
     | '/admin/overview'
@@ -712,6 +721,7 @@ export interface FileRouteTypes {
     | '/newsletter/unsubscribe'
     | '/products/$handle'
     | '/account/orders/$id'
+    | '/admin/content/$handle'
     | '/admin/customers/$id'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
@@ -722,6 +732,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/account/orders'
     | '/admin/catalog'
+    | '/admin/content'
     | '/admin/customers'
     | '/admin/orders'
     | '/admin/catalog/categories/$handle'
@@ -752,7 +763,6 @@ export interface FileRouteTypes {
     | '/account/wishlist'
     | '/admin/audit'
     | '/admin/catalog'
-    | '/admin/content'
     | '/admin/coupons'
     | '/admin/marketing'
     | '/admin/overview'
@@ -779,6 +789,7 @@ export interface FileRouteTypes {
     | '/admin/catalog/categories'
     | '/admin/catalog/collections'
     | '/admin/catalog/products'
+    | '/admin/content/$handle'
     | '/admin/customers/$id'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
@@ -789,6 +800,7 @@ export interface FileRouteTypes {
     | '/_storefront/products/'
     | '/account/orders/'
     | '/admin/catalog/'
+    | '/admin/content/'
     | '/admin/customers/'
     | '/admin/orders/'
     | '/admin/catalog/categories/$handle'
@@ -972,13 +984,6 @@ declare module '@tanstack/react-router' {
       path: '/catalog'
       fullPath: '/admin/catalog'
       preLoaderRoute: typeof AdminCatalogRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/content': {
-      id: '/admin/content'
-      path: '/content'
-      fullPath: '/admin/content'
-      preLoaderRoute: typeof AdminContentRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/coupons': {
@@ -1183,6 +1188,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/catalog/products'
       preLoaderRoute: typeof AdminCatalogProductsRouteImport
       parentRoute: typeof AdminCatalogRoute
+    }
+    '/admin/content/': {
+      id: '/admin/content/'
+      path: '/content'
+      fullPath: '/admin/content/'
+      preLoaderRoute: typeof AdminContentIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/content/$handle': {
+      id: '/admin/content/$handle'
+      path: '/content/$handle'
+      fullPath: '/admin/content/$handle'
+      preLoaderRoute: typeof AdminContentHandleRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/customers/': {
       id: '/admin/customers/'
@@ -1422,14 +1441,15 @@ const AdminCatalogRouteWithChildren = AdminCatalogRoute._addFileChildren(
 interface AdminRouteChildren {
   AdminAuditRoute: typeof AdminAuditRoute
   AdminCatalogRoute: typeof AdminCatalogRouteWithChildren
-  AdminContentRoute: typeof AdminContentRoute
   AdminCouponsRoute: typeof AdminCouponsRoute
   AdminMarketingRoute: typeof AdminMarketingRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminContentHandleRoute: typeof AdminContentHandleRoute
   AdminCustomersIdRoute: typeof AdminCustomersIdRoute
   AdminOrdersOrderIdRoute: typeof AdminOrdersOrderIdRoute
+  AdminContentIndexRoute: typeof AdminContentIndexRoute
   AdminCustomersIndexRoute: typeof AdminCustomersIndexRoute
   AdminOrdersIndexRoute: typeof AdminOrdersIndexRoute
 }
@@ -1437,14 +1457,15 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAuditRoute: AdminAuditRoute,
   AdminCatalogRoute: AdminCatalogRouteWithChildren,
-  AdminContentRoute: AdminContentRoute,
   AdminCouponsRoute: AdminCouponsRoute,
   AdminMarketingRoute: AdminMarketingRoute,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminContentHandleRoute: AdminContentHandleRoute,
   AdminCustomersIdRoute: AdminCustomersIdRoute,
   AdminOrdersOrderIdRoute: AdminOrdersOrderIdRoute,
+  AdminContentIndexRoute: AdminContentIndexRoute,
   AdminCustomersIndexRoute: AdminCustomersIndexRoute,
   AdminOrdersIndexRoute: AdminOrdersIndexRoute,
 }

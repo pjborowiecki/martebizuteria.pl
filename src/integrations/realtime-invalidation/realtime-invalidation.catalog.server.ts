@@ -1,6 +1,7 @@
 import { scheduleRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
 
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
+import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
 import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
@@ -33,6 +34,13 @@ export const scheduleCollectionCatalogInvalidation = (): void => {
   scheduleRealtimeInvalidation({
     admin: [COLLECTION_QUERY_KEYS.ADMIN.ALL, COLLECTION_QUERY_KEYS.ADMIN.STATS],
     storefront: [COLLECTION_QUERY_KEYS.ALL, COLLECTION_QUERY_KEYS.BY_HANDLE, PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS],
+  })
+}
+
+export const scheduleContentPageInvalidation = (): void => {
+  scheduleRealtimeInvalidation({
+    admin: [CONTENT_PAGE_QUERY_KEYS.ADMIN.ALL, CONTENT_PAGE_QUERY_KEYS.ADMIN.BY_HANDLE],
+    storefront: [CONTENT_PAGE_QUERY_KEYS.BY_HANDLE],
   })
 }
 

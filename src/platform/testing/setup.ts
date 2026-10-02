@@ -52,6 +52,8 @@ Object.defineProperties(HTMLDialogElement.prototype, {
     },
   },
 })
+Object.defineProperty(Document.prototype, "elementFromPoint", { configurable: true, value: () => null })
+
 vi.stubGlobal("matchMedia", (query: string) => ({
   addEventListener: () => {},
   addListener: () => {},

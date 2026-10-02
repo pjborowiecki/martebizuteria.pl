@@ -292,6 +292,7 @@
       "email": "Email",
       "customers": "Customers",
       "catalog": "Catalog",
+      "content": "Content",
       "settings": "Settings",
       "auth": "Auth"
     },
@@ -389,6 +390,7 @@
       "category_deleted": "Category deleted",
       "collection_created": "Collection created",
       "collection_updated": "Collection updated",
+      "content_page_updated": "Page updated",
       "collection_deleted": "Collection deleted",
       "attribute_created": "Attribute created",
       "attribute_updated": "Attribute updated",
@@ -873,40 +875,106 @@
     }
   },
   "content": {
-    "title": "Content Management",
-    "description": "Manage your store's pages, articles, and promotional banners.",
-    "actions": {
-      "export": "Export",
-      "newPage": "New Page"
+    "title": "Content",
+    "description": "Edit the information pages of your store.",
+    "list": {
+      "updated": "Updated {date}"
     },
-    "types": {
-      "pages": {
-        "title": "Pages",
-        "description": "Static pages"
+    "editor": {
+      "language": "Language",
+      "localeNames": {
+        "pl-PL": "Polish",
+        "en-US": "English"
       },
-      "banners": {
-        "title": "Banners",
-        "description": "Promotional banners"
-      },
-      "articles": {
-        "title": "Articles",
-        "description": "Blog posts and articles"
-      }
-    },
-    "pagesTable": {
-      "title": "All Pages",
-      "columns": {
+      "localeHasErrors": "contains errors",
+      "fields": {
         "title": "Title",
-        "path": "Path",
-        "sections": "Sections",
-        "lastEdited": "Last Edited",
-        "status": "Status",
-        "actions": "Actions"
+        "description": "Search description",
+        "descriptionHint": "Shown by search engines and in link previews.",
+        "body": "Page content",
+        "bodyHint": "Shift+Enter starts a new line within a paragraph, as in a postal address."
+      },
+      "counter": "{count}/{max}",
+      "actions": {
+        "save": "Save",
+        "view": "View page"
+      },
+      "status": {
+        "saved": "Saved {date}",
+        "unsaved": "Unsaved changes",
+        "saving": "Saving…"
+      },
+      "toast": {
+        "savedTitle": "Page saved",
+        "savedDescription": "Customers see the new version straight away.",
+        "conflictTitle": "This page changed while you were editing",
+        "conflictDescription": "Someone else saved it first. Reload to see their version — your unsaved edits will be discarded.",
+        "reload": "Reload",
+        "errorTitle": "The page could not be saved",
+        "errorDescription": "Your edits are still here. Check your connection and try again.",
+        "invalidTitle": "Some fields need attention",
+        "invalidDescription": "Check: {locales}."
+      },
+      "leave": {
+        "title": "Leave without saving?",
+        "description": "Your changes to this page have not been saved and will be lost.",
+        "stay": "Keep editing",
+        "leave": "Discard changes"
+      },
+      "validation": {
+        "titleRequired": "Enter a title.",
+        "titleTooLong": "Keep the title to 120 characters.",
+        "descriptionRequired": "Enter a search description.",
+        "descriptionTooLong": "Keep the description to 300 characters.",
+        "bodyRequired": "The page needs some content.",
+        "bodyTooLong": "The page is too long to save.",
+        "bodyUnsupported": "The page contains an image or a link address that cannot be published."
+      },
+      "mdx": {
+        "toolbar": {
+          "undo": "Undo {shortcut}",
+          "redo": "Redo {shortcut}",
+          "blockTypeSelect": {
+            "placeholder": "Text style",
+            "selectBlockTypeTooltip": "Text style"
+          },
+          "blockTypes": {
+            "paragraph": "Paragraph",
+            "heading": "{level, select, 2 {Heading} 3 {Subheading} other {Heading {level}}}",
+            "quote": "Quote"
+          },
+          "bold": "Bold",
+          "removeBold": "Remove bold",
+          "italic": "Italic",
+          "removeItalic": "Remove italic",
+          "bulletedList": "Bulleted list",
+          "numberedList": "Numbered list",
+          "toggleGroup": "List type",
+          "link": "Link",
+          "thematicBreak": "Divider"
+        },
+        "createLink": {
+          "url": "Address",
+          "urlPlaceholder": "https://… · mailto:… · /page",
+          "text": "Link text",
+          "textTooltip": "The words customers click",
+          "saveTooltip": "Save link",
+          "cancelTooltip": "Cancel"
+        },
+        "linkPreview": {
+          "edit": "Edit link",
+          "remove": "Remove link",
+          "copyToClipboard": "Copy address",
+          "copied": "Copied"
+        },
+        "dialogControls": {
+          "save": "Save",
+          "cancel": "Cancel"
+        },
+        "dialog": {
+          "close": "Close"
+        }
       }
-    },
-    "status": {
-      "published": "Published",
-      "draft": "Draft"
     }
   }
 }
