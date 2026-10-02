@@ -18,6 +18,7 @@ export const ROUTES = {
   ADMIN_COLLECTION: "/admin/catalog/collections/$handle",
   ADMIN_COLLECTIONS: "/admin/catalog/collections",
   ADMIN_CONTENT: "/admin/content",
+  ADMIN_CONTENT_PAGE: "/admin/content/$handle",
   ADMIN_COUPONS: "/admin/coupons",
   ADMIN_CUSTOMER: "/admin/customers/$id",
   ADMIN_CUSTOMERS: "/admin/customers",

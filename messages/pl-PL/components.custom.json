@@ -1,4 +1,7 @@
 {
+  "contentPage": {
+    "updated": "Ostatnia aktualizacja: {date}"
+  },
   "footer": {
     "brand": "M'Arte",
     "description": "Ręcznie tworzona biżuteria z naturalnych kamieni i srebra próby 925. Każdy element to unikatowe dzieło sztuki.",

@@ -1,26 +1,22 @@
-import { type ReactNode } from "react"
+import { type JSX } from "react"
 
 import { createFileRoute } from "@tanstack/react-router"
 
-import { LEGAL_DOCUMENT_SLUGS, loadLegalPage } from "~/src/integrations/fumadocs/fumadocs.legal"
+import { CONTENT_PAGE_HANDLE } from "~/src/modules/content-page/content-page.constants"
+import { getContentPageQuery } from "~/src/modules/content-page/use-cases/get-content-page"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
-import { legalContent } from "~/src/presentation/components/custom/legal-content"
+import { ContentPageArticle } from "~/src/presentation/components/custom/pages/content-page/content-page-article"
 
-const ExchangesAndReturnsPage = (): ReactNode => legalContent.useContent(Route.useLoaderData().path)
+const ExchangesAndReturnsPage = (): JSX.Element => <ContentPageArticle handle={CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS} />
 
 export const Route = createFileRoute("/_storefront/exchanges-and-returns")({
   component: ExchangesAndReturnsPage,
   head: pageHead,
-  loader: async () => {
-    const page = await loadLegalPage(LEGAL_DOCUMENT_SLUGS.exchangesAndReturns)
+  loader: async ({ context }) => {
+    const page = await context.queryClient.query(getContentPageQuery(CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, context.locale))
 
-    return {
-      description: page.description,
-      path: page.path,
-      title: page.title,
-    } satisfies PageMeta & { path: string }
+    return { description: page.description, title: page.title } satisfies PageMeta
   },
-  wrapInSuspense: false,
 })

@@ -6,6 +6,7 @@ const USE_CASE_ROOT = "src/modules"
 
 const PUBLIC_USE_CASES = new Set([
   "cart/use-cases/check-cart-availability.ts",
+  "content-page/use-cases/get-content-page.ts",
   "customer-activity/use-cases/record-customer-activity.ts",
   "delivery-method/use-cases/list-delivery-methods.ts",
   "discount/use-cases/validate-discount-code.ts",

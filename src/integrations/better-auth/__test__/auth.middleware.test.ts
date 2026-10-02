@@ -124,6 +124,14 @@ describe("hasPermission", () => {
     expect(hasPermission({ permission: { [RESOURCES.ORDER]: [ACTIONS.REFUND] }, role: ROLES.ADMIN })).toBe(true)
   })
 
+  it("lets an admin read and edit the store's content pages", () => {
+    expect(hasPermission({ permission: { [RESOURCES.CONTENT]: [ACTIONS.READ, ACTIONS.UPDATE] }, role: ROLES.ADMIN })).toBe(true)
+  })
+
+  it("keeps customers out of the content editor", () => {
+    expect(hasPermission({ permission: { [RESOURCES.CONTENT]: [ACTIONS.READ] }, role: ROLES.CUSTOMER })).toBe(false)
+  })
+
   it("denies the customer role every product permission", () => {
     expect(hasPermission({ permission: { [RESOURCES.PRODUCT]: [ACTIONS.READ] }, role: ROLES.CUSTOMER })).toBe(false)
   })

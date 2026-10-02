@@ -1,38 +1,57 @@
+import { isValidElement } from "react"
+
+import { QueryClient } from "@tanstack/react-query"
 import type * as ReactRouter from "@tanstack/react-router"
+import type * as ReactStart from "@tanstack/react-start"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import type * as FumadocsLegal from "~/src/integrations/fumadocs/fumadocs.legal"
+import { CONTENT_PAGE_HANDLE } from "~/src/modules/content-page/content-page.constants"
+import { getContentPageQuery } from "~/src/modules/content-page/use-cases/get-content-page"
 
-interface LegalRouteDefinition {
+interface ContentRouteDefinition {
   readonly component?: () => unknown
   readonly head?: unknown
-  readonly loader?: () => Promise<PageMeta & { path: string }>
+  readonly loader?: (ctx: { context: { locale: string; queryClient: QueryClient } }) => Promise<PageMeta>
 }
 
-const captured = vi.hoisted(() => ({ path: "", routes: [] as LegalRouteDefinition[], useContent: vi.fn() }))
+const captured = vi.hoisted(() => ({ routes: [] as ContentRouteDefinition[] }))
 
-const { loadLegalPage } = vi.hoisted(() => ({
-  loadLegalPage: vi.fn(),
-}))
+const remote = vi.hoisted(() => ({ getContentPage: vi.fn<(handle: string, locale: string) => Promise<unknown>>() }))
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouter>()
 
   return {
     ...actual,
-    createFileRoute: () => (options: LegalRouteDefinition) => {
+    createFileRoute: () => (options: ContentRouteDefinition) => {
       captured.routes.push(options)
 
-      return { ...options, useLoaderData: () => ({ path: captured.path }) }
+      return options
     },
   }
 })
-vi.mock("~/src/integrations/fumadocs/fumadocs.legal", async (importOriginal) => {
-  const actual = await importOriginal<typeof FumadocsLegal>()
+vi.mock("@tanstack/react-start", async (importOriginal) => {
+  const actual = await importOriginal<typeof ReactStart>()
 
-  return { ...actual, loadLegalPage }
+  return {
+    ...actual,
+    createServerFn: () => {
+      const builder = {
+        handler: () => (options: { readonly data: { readonly handle: string; readonly locale: string } }) =>
+          remote.getContentPage(options.data.handle, options.data.locale),
+        middleware: () => builder,
+        validator: () => builder,
+      }
+
+      return builder
+    },
+  }
 })
-vi.mock("~/src/presentation/components/custom/legal-content", () => ({ legalContent: { useContent: captured.useContent } }))
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
+vi.mock("~/src/modules/content-page/content-page.accessors", () => ({ findContentPageByHandle: vi.fn() }))
+vi.mock("~/src/presentation/components/custom/pages/content-page/content-page-article", () => ({
+  ContentPageArticle: () => {},
+}))
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
@@ -42,46 +61,39 @@ await import("~/src/routes/_storefront.exchanges-and-returns")
 const [privacyRoute, exchangesRoute] = captured.routes
 
 if (privacyRoute === undefined || exchangesRoute === undefined) {
-  throw new Error("the legal routes did not register their options")
+  throw new Error("the content page routes did not register their options")
 }
 
-const DOCUMENTS = [
-  { route: privacyRoute, slug: "privacy-policy" },
-  { route: exchangesRoute, slug: "exchanges-and-returns" },
+const PAGES = [
+  { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY, route: privacyRoute },
+  { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, route: exchangesRoute },
 ] as const
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe("the legal routes", () => {
-  it.each(DOCUMENTS)("renders the loaded $slug document path", ({ route, slug }) => {
-    captured.path = `${slug}.en-US.mdx`
-    captured.useContent.mockReturnValue("Document body")
+describe("the content page routes", () => {
+  it.each(PAGES)("renders the $handle page through the shared article", ({ handle, route }) => {
+    const element = route.component?.()
 
-    expect(route.component?.()).toBe("Document body")
-    expect(captured.useContent).toHaveBeenCalledWith(captured.path)
+    expect(isValidElement(element)).toBe(true)
+    expect(isValidElement(element) ? element.props : undefined).toStrictEqual({ handle })
   })
 
-  it.each(DOCUMENTS)("registers the shared page head builder for $slug", ({ route }) => {
+  it.each(PAGES)("registers the shared page head builder for $handle", ({ route }) => {
     expect(route.head).toBe(pageHead)
   })
 
-  it.each(DOCUMENTS)("loads the $slug document and hands its title and description to the head", async ({ route, slug }) => {
-    loadLegalPage.mockResolvedValue({
-      description: "What we do with your data.",
-      path: `${slug}.en-US.mdx`,
-      title: "A legal document",
-      updated: "2026-09-29",
-    })
+  it.each(PAGES)("loads the $handle page in the request locale and heads the document with it", async ({ handle, route }) => {
+    remote.getContentPage.mockResolvedValue({ body: "## Body", description: "What we do.", revisedAt: new Date(0), title: "A page" })
+    const queryClient = new QueryClient()
 
-    const loaded = await route.loader?.()
-
-    expect(loadLegalPage).toHaveBeenCalledWith(slug)
-    expect(loaded).toStrictEqual({
-      description: "What we do with your data.",
-      path: `${slug}.en-US.mdx`,
-      title: "A legal document",
+    await expect(route.loader?.({ context: { locale: "en-US", queryClient } })).resolves.toStrictEqual({
+      description: "What we do.",
+      title: "A page",
     })
+    expect(remote.getContentPage).toHaveBeenCalledWith(handle, "en-US")
+    expect(queryClient.getQueryData(getContentPageQuery(handle, "en-US").queryKey)).toMatchObject({ title: "A page" })
   })
 })

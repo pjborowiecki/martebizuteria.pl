@@ -16,7 +16,7 @@ export const ADMIN_AUDIT_LOG_PAGE_SIZE = 100
 
 export const AUDIT_LOG_QUERY_STALE_MS = 30_000
 
-export const AUDIT_LOG_CATEGORIES = ["orders", "email", "customers", "catalog", "settings", "auth"] as const
+export const AUDIT_LOG_CATEGORIES = ["orders", "email", "customers", "catalog", "content", "settings", "auth"] as const
 
 export type AuditLogCategory = (typeof AUDIT_LOG_CATEGORIES)[number]
 
@@ -62,6 +62,7 @@ export const AUDIT_LOG_ACTION = {
   COLLECTION_CREATED: "collection.created",
   COLLECTION_DELETED: "collection.deleted",
   COLLECTION_UPDATED: "collection.updated",
+  CONTENT_PAGE_UPDATED: "content_page.updated",
   CUSTOMER_CART_ABANDONED: "customer.cart_abandoned",
   CUSTOMER_CART_ITEM_ADDED: "customer.cart_item_added",
   CUSTOMER_PAGE_VIEWED: "customer.page_viewed",

@@ -1,3 +1,5 @@
+@import "@mdxeditor/editor/style.css" layer(components);
+
 @reference "./globals.css";
 
 @layer base {
@@ -80,5 +82,55 @@
   html[data-admin-shell] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-cancel] {
     background: var(--sidebar-accent);
     color: var(--sidebar-foreground);
+  }
+}
+
+@layer components {
+  .content-editor,
+  .mdxeditor-popup-container {
+    --baseBase: var(--background);
+    --baseBgSubtle: var(--muted);
+    --baseBg: var(--muted);
+    --baseBgHover: var(--accent);
+    --baseBgActive: var(--accent);
+    --baseLine: var(--border);
+    --baseBorder: var(--border);
+    --baseBorderHover: var(--ring);
+    --baseSolid: var(--muted-foreground);
+    --baseSolidHover: var(--foreground);
+    --baseText: var(--muted-foreground);
+    --baseTextContrast: var(--foreground);
+    --accentBase: var(--background);
+    --accentBgSubtle: var(--muted);
+    --accentBg: var(--muted);
+    --accentBgHover: var(--accent);
+    --accentBgActive: var(--accent);
+    --accentLine: var(--border);
+    --accentBorder: var(--ring);
+    --accentBorderHover: var(--foreground);
+    --accentSolid: var(--foreground);
+    --accentSolidHover: var(--foreground);
+    --accentText: var(--foreground);
+    --accentTextContrast: var(--foreground);
+    --basePageBg: var(--background);
+    --font-body: inherit;
+  }
+
+  .content-editor {
+    overflow: hidden;
+    transition:
+      border-color 150ms,
+      box-shadow 150ms;
+  }
+
+  .content-editor:focus-within {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+  }
+
+  .content-editor [role="toolbar"] {
+    border-radius: 0;
+    border-bottom: 1px solid var(--border);
+    background-color: color-mix(in oklab, var(--background) 95%, transparent);
   }
 }

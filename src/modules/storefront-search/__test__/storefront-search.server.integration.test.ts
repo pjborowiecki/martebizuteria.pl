@@ -15,7 +15,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-import { createStorefrontSearchIndex } from "~/src/platform/testing/mocks/storefront-search-index"
+import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migrations"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
@@ -81,7 +81,7 @@ beforeEach(() => {
     create table category_on_product (category_id text not null, product_id text not null, created_at integer not null default 0, updated_at integer not null default 0);
     create table collection_on_product (collection_id text not null, product_id text not null, created_at integer not null default 0, updated_at integer not null default 0);
   `)
-  createStorefrontSearchIndex(sqlite)
+  applyMigration(sqlite, MIGRATION.STOREFRONT_SEARCH)
 
   sqlite.exec(`
     insert into product_category (id, handle, titles, status, rank) values
@@ -188,7 +188,7 @@ describe("storefront search index", () => {
       drop trigger storefront_search_product_collection_insert; drop trigger storefront_search_product_collection_update; drop trigger storefront_search_product_collection_delete;
       drop table storefront_search;
     `)
-    createStorefrontSearchIndex(sqlite)
+    applyMigration(sqlite, MIGRATION.STOREFRONT_SEARCH)
 
     await expect(productNames("lancuszek")).resolves.toStrictEqual(["Łańcuszek Luna"])
     await expect(searchStorefrontCategories("pierscionki", "pl-PL", LIMIT)).resolves.toHaveLength(1)
@@ -196,7 +196,7 @@ describe("storefront search index", () => {
   })
 
   it("does not duplicate rows when the migration is applied twice", async () => {
-    createStorefrontSearchIndex(sqlite)
+    applyMigration(sqlite, MIGRATION.STOREFRONT_SEARCH)
 
     await expect(productNames("lancuszek")).resolves.toStrictEqual(["Łańcuszek Luna"])
   })

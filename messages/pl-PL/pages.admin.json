@@ -292,6 +292,7 @@
       "email": "E-mail",
       "customers": "Klienci",
       "catalog": "Katalog",
+      "content": "Treści",
       "settings": "Ustawienia",
       "auth": "Autoryzacja"
     },
@@ -389,6 +390,7 @@
       "category_deleted": "Kategoria usunięta",
       "collection_created": "Kolekcja utworzona",
       "collection_updated": "Kolekcja zaktualizowana",
+      "content_page_updated": "Strona zaktualizowana",
       "collection_deleted": "Kolekcja usunięta",
       "attribute_created": "Atrybut utworzony",
       "attribute_updated": "Atrybut zaktualizowany",
@@ -873,40 +875,106 @@
     }
   },
   "content": {
-    "title": "Zarządzanie treścią",
-    "description": "Zarządzaj stronami, artykułami i banerami promocyjnymi w swoim sklepie.",
-    "actions": {
-      "export": "Eksportuj",
-      "newPage": "Nowa strona"
+    "title": "Treści",
+    "description": "Edytuj strony informacyjne sklepu.",
+    "list": {
+      "updated": "Zaktualizowano {date}"
     },
-    "types": {
-      "pages": {
-        "title": "Strony",
-        "description": "Strony statyczne"
+    "editor": {
+      "language": "Język",
+      "localeNames": {
+        "pl-PL": "Polski",
+        "en-US": "Angielski"
       },
-      "banners": {
-        "title": "Banery",
-        "description": "Banery promocyjne"
-      },
-      "articles": {
-        "title": "Artykuły",
-        "description": "Wpisy na blogu i artykuły"
-      }
-    },
-    "pagesTable": {
-      "title": "Wszystkie strony",
-      "columns": {
+      "localeHasErrors": "zawiera błędy",
+      "fields": {
         "title": "Tytuł",
-        "path": "Ścieżka",
-        "sections": "Sekcje",
-        "lastEdited": "Ostatnia edycja",
-        "status": "Status",
-        "actions": "Akcje"
+        "description": "Opis w wyszukiwarce",
+        "descriptionHint": "Wyświetlany przez wyszukiwarki i w podglądach linków.",
+        "body": "Treść strony",
+        "bodyHint": "Shift+Enter zaczyna nową linię w obrębie akapitu, np. w adresie pocztowym."
+      },
+      "counter": "{count}/{max}",
+      "actions": {
+        "save": "Zapisz",
+        "view": "Zobacz stronę"
+      },
+      "status": {
+        "saved": "Zapisano {date}",
+        "unsaved": "Niezapisane zmiany",
+        "saving": "Zapisywanie…"
+      },
+      "toast": {
+        "savedTitle": "Strona zapisana",
+        "savedDescription": "Klienci od razu widzą nową wersję.",
+        "conflictTitle": "Strona zmieniła się podczas edycji",
+        "conflictDescription": "Ktoś inny zapisał ją wcześniej. Wczytaj ponownie, aby zobaczyć jego wersję — Twoje niezapisane zmiany zostaną odrzucone.",
+        "reload": "Wczytaj ponownie",
+        "errorTitle": "Nie udało się zapisać strony",
+        "errorDescription": "Twoje zmiany nadal tu są. Sprawdź połączenie i spróbuj ponownie.",
+        "invalidTitle": "Niektóre pola wymagają poprawy",
+        "invalidDescription": "Sprawdź: {locales}."
+      },
+      "leave": {
+        "title": "Wyjść bez zapisywania?",
+        "description": "Zmiany na tej stronie nie zostały zapisane i zostaną utracone.",
+        "stay": "Edytuj dalej",
+        "leave": "Odrzuć zmiany"
+      },
+      "validation": {
+        "titleRequired": "Wpisz tytuł.",
+        "titleTooLong": "Tytuł może mieć najwyżej 120 znaków.",
+        "descriptionRequired": "Wpisz opis do wyszukiwarki.",
+        "descriptionTooLong": "Opis może mieć najwyżej 300 znaków.",
+        "bodyRequired": "Strona musi mieć treść.",
+        "bodyTooLong": "Strona jest zbyt długa, aby ją zapisać.",
+        "bodyUnsupported": "Strona zawiera obraz lub adres linku, którego nie można opublikować."
+      },
+      "mdx": {
+        "toolbar": {
+          "undo": "Cofnij {shortcut}",
+          "redo": "Ponów {shortcut}",
+          "blockTypeSelect": {
+            "placeholder": "Styl tekstu",
+            "selectBlockTypeTooltip": "Styl tekstu"
+          },
+          "blockTypes": {
+            "paragraph": "Akapit",
+            "heading": "{level, select, 2 {Nagłówek} 3 {Podtytuł} other {Nagłówek {level}}}",
+            "quote": "Cytat"
+          },
+          "bold": "Pogrubienie",
+          "removeBold": "Usuń pogrubienie",
+          "italic": "Kursywa",
+          "removeItalic": "Usuń kursywę",
+          "bulletedList": "Lista punktowana",
+          "numberedList": "Lista numerowana",
+          "toggleGroup": "Rodzaj listy",
+          "link": "Link",
+          "thematicBreak": "Linia oddzielająca"
+        },
+        "createLink": {
+          "url": "Adres",
+          "urlPlaceholder": "https://… · mailto:… · /strona",
+          "text": "Tekst linku",
+          "textTooltip": "Słowa, które klikają klienci",
+          "saveTooltip": "Zapisz link",
+          "cancelTooltip": "Anuluj"
+        },
+        "linkPreview": {
+          "edit": "Edytuj link",
+          "remove": "Usuń link",
+          "copyToClipboard": "Kopiuj adres",
+          "copied": "Skopiowano"
+        },
+        "dialogControls": {
+          "save": "Zapisz",
+          "cancel": "Anuluj"
+        },
+        "dialog": {
+          "close": "Zamknij"
+        }
       }
-    },
-    "status": {
-      "published": "Opublikowana",
-      "draft": "Szkic"
     }
   }
 }

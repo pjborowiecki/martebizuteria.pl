@@ -13,6 +13,7 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
+import { ADMIN_HEADER_SECONDARY_BUTTON_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CustomerCharts } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-charts"
 import { CustomerKpis } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-kpis"
 import { CustomerOrders } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-orders"
@@ -54,13 +55,7 @@ const AdminCustomerDetailRoute = (): JSX.Element => {
 
   const headerActions = useMemo(
     () => (
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-8 gap-1.5 border-sidebar-border bg-sidebar px-3 text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-        onClick={handleEditClick}
-      >
+      <Button type="button" variant="outline" size="sm" className={ADMIN_HEADER_SECONDARY_BUTTON_CLASS} onClick={handleEditClick}>
         <Pencil className="size-3.5" strokeWidth={1.5} />
         {t("actions.edit")}
       </Button>

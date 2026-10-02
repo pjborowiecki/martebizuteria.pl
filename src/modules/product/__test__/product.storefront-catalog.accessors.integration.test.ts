@@ -14,7 +14,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-import { createStorefrontSearchIndex } from "~/src/platform/testing/mocks/storefront-search-index"
+import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migrations"
 
 import { STOREFRONT_PRODUCTS_SORT } from "~/src/modules/product/product.storefront-catalog"
 import {
@@ -75,7 +75,7 @@ beforeEach(() => {
       created_at integer not null default 0, updated_at integer not null default 0
     );
   `)
-  createStorefrontSearchIndex(sqlite)
+  applyMigration(sqlite, MIGRATION.STOREFRONT_SEARCH)
   sqlite.exec(`
     insert into product (handle, id, rank, status, subtitles, titles, created_at, updated_at) values
       ('cheap-ring', 'cheap', 1, 'published', null, '${titles("Cheap Ring")}', ${JANUARY}, ${JANUARY}),
