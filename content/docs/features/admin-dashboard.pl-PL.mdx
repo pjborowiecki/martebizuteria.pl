@@ -1,6 +1,6 @@
 ---
 title: "Pulpit admina"
-description: "Layout i strażnik /admin, migawka przeglądu zbudowana z jednego wsadu D1 oraz trzy ekrany narzędziowe wyłączone w panelu bocznym."
+description: "Layout i strażnik /admin, migawka przeglądu zbudowana z jednego wsadu D1 oraz dwa ekrany narzędziowe wyłączone w panelu bocznym."
 ---
 
 ## Layout
@@ -40,10 +40,10 @@ Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefau
 | ------ | -------------------------------------------------------------------------------------------- |
 | (góra) | Pulpit (`/admin/overview`)                                                                   |
 | Main   | Zamówienia, Klienci oraz rozwijany Katalog z Produktami, Kategoriami, Kolekcjami, Atrybutami |
-| Tools  | Marketing i Kupony z `disabled: true` oraz Treść                                             |
+| Tools  | Marketing z `disabled: true`, Kupony oraz Treść                                              |
 | System | Audyt, Ustawienia — Ustawienia mają `disabled: true`                                         |
 
-Pozycja wyłączona renderuje się jako nieinteraktywny `SidebarMenuButton disabled` z `cursor-not-allowed opacity-50`, więc trzy wyłączone ekrany są w ogóle nieosiągalne z interfejsu — tylko po wpisaniu adresu.
+Pozycja wyłączona renderuje się jako nieinteraktywny `SidebarMenuButton disabled` z `cursor-not-allowed opacity-50`, więc dwa wyłączone ekrany są w ogóle nieosiągalne z interfejsu — tylko po wpisaniu adresu.
 
 Przycisk wylogowania w stopce panelu bocznego wywołuje `signOut`, a potem pełnym przeładowaniem strony wczytuje `/auth/sign-in`, co odrzuca cache zapytań.
 
@@ -130,7 +130,7 @@ Ale `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) nig
 
 `buildAdminDashboardWeeklyOrderPoints` korzysta z tych samych `dailyAggregateRows`, żeby wyprodukować punkty `{ dateKey, dayLabel, orders }`, również bez dodatkowego zapytania.
 
-## Trzy wyłączone ekrany
+## Marketing, kupony i ustawienia
 
 | Trasa              | Plik                  | Komponenty                                                                             | Dane                                                                                              |
 | ------------------ | --------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -140,7 +140,7 @@ Ale `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) nig
 
 Marketing i ustawienia nie mają loadera, zapytania ani mutacji, a przyciski eksportu i tworzenia w marketingu nie mają obsługi zdarzeń. Zakładka General w ustawieniach renderuje `STORE_INFO_DEFAULTS` do pól i `TOGGLE_SETTING_KEYS` do przełączników trzymających wyłącznie stan lokalny; pozostałe zakładki renderują `settings-placeholder.tsx`.
 
-Kupony to działający ekran: jego loader wczytuje wstępnie `getAdminDiscountsPageQuery({})` i `getDiscountStatsQuery()`, a `use-coupon-actions.ts` wywołuje `createDiscount`, `updateDiscount` i `deleteDiscounts`. Jedynie jego pozycja w panelu bocznym nadal ma `disabled: true`.
+Kupony to działający ekran: jego loader wczytuje wstępnie `getAdminDiscountsPageQuery({})` i `getDiscountStatsQuery()`, a `use-coupon-actions.ts` wywołuje `createDiscount`, `updateDiscount` i `deleteDiscounts`.
 
 `/admin/orders/$orderId` to działający ekran, który wczytuje jedno zamówienie przez `getAdminOrder`. Zobacz [Zamówienia](/docs/features/orders).
 
