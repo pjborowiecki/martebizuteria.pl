@@ -8,8 +8,8 @@ M'Arte to jedna aplikacja TanStack Start wdrożona jako pojedynczy Cloudflare Wo
 Kod jest podzielony według odpowiedzialności, nie według stron:
 
 - **Trasy** (`src/routes`) komponują strony. Plik trasy deklaruje swoje przestrzenie nazw tłumaczeń, guard, loader i tagi `head`, a następnie renderuje komponenty. Pliki tras nie zawierają segmentu locale — router przepisuje URL za nie.
-- **Moduły** (`src/modules/{feature}`) są właścicielami logiki domenowej. 36 katalogów funkcjonalnych zawiera tabelę Drizzle, schematy Zod, stałe, typy, helpery, zwykłe **akcesory** danych oraz **przypadki użycia**, które opakowują je w funkcję serwerową.
-- **Integracje** (`src/integrations/{vendor}`) konfigurują zewnętrzne usługi: Better Auth, Drizzle na D1, Cloudflare R2, Stripe, Resend, InPost, use-intl, Fumadocs, GSAP, Lenis, react-day-picker, TanStack Query i hub unieważniania w czasie rzeczywistym.
+- **Moduły** (`src/modules/{feature}`) są właścicielami logiki domenowej. 38 katalogów funkcjonalnych zawiera tabelę Drizzle, schematy Zod, stałe, typy, helpery, zwykłe **akcesory** danych oraz **przypadki użycia**, które opakowują je w funkcję serwerową.
+- **Integracje** (`src/integrations/{vendor}`) konfigurują zewnętrzne usługi: Better Auth, Drizzle na D1, Cloudflare R2, Stripe, Resend, InPost, use-intl, Fumadocs, GSAP, Lenis, react-day-picker, TanStack Query, MDXEditor i hub unieważniania w czasie rzeczywistym.
 - **Warstwa prezentacji** (`src/presentation`) odpowiada za wszystko, co widoczne: prymitywy shadcn, komponenty aplikacji, szablony React Email, warstwy Tailwind, motyw i stałe brandingowe.
 - **Platforma** (`src/platform/testing`) zawiera współdzieloną infrastrukturę testową, a `src/durable-objects` — hub unieważniania oparty na WebSocket.
 
@@ -19,8 +19,8 @@ src/
 ├── routes.ts            Tablica ścieżek ROUTES
 ├── router.tsx           getRouter: router, QueryClient na żądanie, rewrite locale
 ├── server.ts            Punkt wejścia Workera i konsument kolejki
-├── modules/             36 katalogów funkcjonalnych plus _core
-├── integrations/        13 katalogów dostawców
+├── modules/             38 katalogów funkcjonalnych plus _core
+├── integrations/        14 katalogów dostawców
 ├── presentation/        Komponenty, e-maile, style, motyw, branding
 ├── providers/           TranslationsProvider, ThemesProvider
 ├── data/                Dane statyczne i fixture'y współdzielone przez kilka plików
@@ -46,7 +46,7 @@ src/
 - [Reguły zależności](/docs/architecture/dependency-rules): dozwolone importy i granice kodu wyłącznie serwerowego.
 - [Moduły i przypadki użycia](/docs/architecture/modules-and-use-cases): nazewnictwo plików modułu i wzorzec przypadku użycia.
 - [Warstwa prezentacji](/docs/architecture/presentation-layer): komponenty, style, motyw, branding i e-maile.
-- [Warstwa integracji](/docs/architecture/integrations-layer): 13 katalogów dostawców i to, co do nich nie należy.
+- [Warstwa integracji](/docs/architecture/integrations-layer): 14 katalogów dostawców i to, co do nich nie należy.
 - [Warstwa platformy](/docs/architecture/platform-layer): bindingi, środowiska, wygenerowane typy i konfiguracja testów.
 - [Cykl życia żądania](/docs/architecture/request-lifecycle): co dzieje się między Workerem a wyrenderowaną stroną.
 - [Cache i SSR](/docs/architecture/caching-and-ssr): cache zapytań na żądanie, prepared statements i to, co nie jest cache'owane.

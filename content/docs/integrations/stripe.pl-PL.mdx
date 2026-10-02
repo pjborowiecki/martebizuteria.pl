@@ -62,18 +62,19 @@ Funkcja `handleCreateCheckoutSession` w `stripe.actions.server.ts` wykonuje nast
 
 1. `validateAndCalculateItems(items)` ładuje produkty wraz ze stanem magazynowym po identyfikatorze `handle`, rozwiązuje każdy wariant i **ponownie czyta cenę z bazy** — `rawPrice` od klienta nigdy nie jest zaufane. Odrzuca z błędem `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (przez `isSellPriceCentsValid`) lub `INSUFFICIENT_INVENTORY`, a zwraca każdą pozycję wzbogaconą o `inventoryId` i `currentVersion`.
 2. `resolveShippingCost(deliveryMethodId)` czyta cenę z `delivery_method` albo zero, gdy nie wybrano metody.
-3. `reserveInventoryForItems(validatedItems)` zajmuje stan magazynowy, korzystając z optymistycznej kolumny `version`.
-4. `createCheckout(values, userId, email)` zapisuje wiersz `checkout`.
-5. `createStripeSession(...)` tworzy sesję Stripe Checkout.
-6. `createPendingPayment(...)` zapisuje wiersz `payment` z `provider: "stripe"`, `currency: "PLN"` i `transactionId` ustawionym na identyfikator sesji Stripe.
-7. `scheduleProductCatalogInvalidation()` wypycha nową dostępność do podłączonych sklepów.
+3. `resolveCheckoutDiscount(...)` ponownie sprawdza `checkoutValues.discountCode` względem sumy cen z bazy i kosztu dostawy; kod, który nie obowiązuje, jest pomijany. Zobacz [Rabaty](/docs/features/discounts).
+4. `reserveInventoryForItems(validatedItems)` zajmuje stan magazynowy, korzystając z optymistycznej kolumny `version`.
+5. `createCheckout({ checkoutValues, discountId, userEmail, userId })` zapisuje wiersze adresów i wiersz `checkout` razem z `discount_id`.
+6. `createStripeSession(...)` tworzy sesję Stripe Checkout, z jednorazowym kuponem, gdy obowiązuje rabat.
+7. `createPendingPayment(...)` zapisuje wiersz `payment` z `provider: "stripe"`, `currency: "PLN"` i `transactionId` ustawionym na identyfikator sesji Stripe.
+8. `scheduleProductCatalogInvalidation()` wypycha nową dostępność do podłączonych sklepów.
 
-Jeśli cokolwiek po kroku 3 rzuci wyjątek, handler zwalnia rezerwację przez `releaseInventoryForItems(validatedItems)` i rzuca dalej. Ta kompensacja jest powodem, dla którego nieudana próba płatności nie zostawia zablokowanego towaru.
+Jeśli cokolwiek po kroku 4 rzuci wyjątek, handler zwalnia rezerwację przez `releaseInventoryForItems(validatedItems)` i rzuca dalej. Ta kompensacja jest powodem, dla którego nieudana próba płatności nie zostawia zablokowanego towaru.
 
 Sama sesja:
 
 ```ts
-const session = await stripe.checkout.sessions.create({
+const params: StripeType.Checkout.SessionCreateParams = {
   line_items: toLineItems(lines, shippingCost),
   metadata,
   mode: "payment",
@@ -83,16 +84,22 @@ const session = await stripe.checkout.sessions.create({
   ...(customerId === undefined
     ? { customer_email: email }
     : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
-})
+}
+const discounts = await toSessionDiscounts(discount)
+if (discounts.length > NO_COST) {
+  params.discounts = discounts
+}
+
+const session = await stripe.checkout.sessions.create(params)
 ```
 
 `customerId` jest ustawiane tylko dla zalogowanego kupującego: przed krokiem 1 `handleCreateCheckoutSession` wywołuje `ensureStripeCustomer` (`stripe.customer.server.ts`), które przy pierwszym użyciu tworzy klienta Stripe i zapisuje jego identyfikator w `user.stripe_customer_id`. Sesja należy wtedy do tego klienta Stripe i pozwala kupującemu zapisać kartę, którą potem wyświetla `/account/payment`. Sesja gościa dostaje zamiast tego `customer_email`. Zobacz [Konto](/docs/features/account).
 
-`ui_mode: "elements"` daje wbudowane doświadczenie płatności. `return_url` to `${origin}/checkout?success=true`, gdzie `resolveOrigin()` preferuje nagłówek `origin`, następnie pochodzenie z `referer`, a na końcu `APP_URL`. Koszt dostawy dodawany jest jako dodatkowa pozycja o nazwie `Shipping`, a nie jako stawka wysyłki Stripe.
+`ui_mode: "elements"` daje wbudowane doświadczenie płatności. `return_url` to `${origin}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, gdzie Stripe wstawia identyfikator sesji, a `resolveOrigin()` preferuje nagłówek `origin`, następnie pochodzenie z `referer`, a na końcu `APP_URL`. Strona sukcesu używa `session_id`, aby wczytać zamówienie przez `getOrderConfirmationQuery`. Koszt dostawy dodawany jest jako dodatkowa pozycja o nazwie `Shipping`, a nie jako stawka wysyłki Stripe. Rabat trafia do `discounts`: dla każdej sesji, która go ma, `toSessionDiscounts` wywołuje `stripe.coupons.create` z `amount_off: discount.amountMinorUnits`, `currency: STRIPE_CURRENCY`, `duration: "once"` i `name: discount.code`.
 
 ### Metadane są kontraktem realizacji zamówienia
 
-`metadata` niesie `checkoutId`, `locale`, `userId` oraz sam koszyk, a ten sam obiekt kopiowany jest na PaymentIntent. Ponieważ wartość metadanych Stripe ograniczona jest do 500 znaków, `toCheckoutSessionItemsMetadata` w `src/modules/checkout/checkout-metadata.zod.ts` dzieli JSON na `items0`, `items1`, …, a `readCheckoutSessionItemsJson` składa je ponownie, wciąż akceptując pojedynczy, starszy klucz `items`. Webhook nie czyta niczego innego, aby dowiedzieć się, co zostało kupione, więc wszystko, czego potrzebuje e-mail potwierdzający lub pozycje zamówienia, musi się tam znaleźć.
+`metadata` niesie `checkoutId`, `discountCode`, `discountTotal`, `locale`, `userId` oraz sam koszyk, a ten sam obiekt kopiowany jest na PaymentIntent. Ponieważ wartość metadanych Stripe ograniczona jest do 500 znaków, `toCheckoutSessionItemsMetadata` w `src/modules/checkout/checkout-metadata.zod.ts` dzieli JSON na `items0`, `items1`, …, a `readCheckoutSessionItemsJson` składa je ponownie, wciąż akceptując pojedynczy, starszy klucz `items`. Webhook nie czyta niczego innego, aby dowiedzieć się, co zostało kupione, więc wszystko, czego potrzebuje e-mail potwierdzający lub pozycje zamówienia, musi się tam znaleźć. `discountCode` i `discountTotal` nie są odczytywane z powrotem: realizacja wylicza rabat ponownie na podstawie `discount_id` checkoutu.
 
 ## Aktualizacja sesji
 
@@ -116,7 +123,7 @@ Po stronie serwera `handleUpdateCheckoutSession` jest najdelikatniejszą funkcj�
 1. `getPaymentContextByTransactionId(sessionId)` odnajduje `checkout` i właścicielski `userId`; sesja należąca do zalogowanego użytkownika może być aktualizowana tylko przez tego użytkownika, w przeciwnym razie `FORBIDDEN`.
 2. Stara sesja Stripe jest pobierana, a jej metadane `items*` parsowane na pozycje do zwolnienia.
 3. `swapCheckoutInventory` zwalnia starą rezerwację, waliduje i rezerwuje nową, a **przy niepowodzeniu nowej przywraca starą**.
-4. `persistCheckoutSessionUpdate` aktualizuje dostawę w zamówieniu, tworzy zastępczą sesję Stripe, wywołuje `repointPayment({ amount, newTransactionId, oldTransactionId })` i wygasza starą sesję Stripe przez `stripe.checkout.sessions.expire(...)` — nieudane wygaszenie jest logowane, a nie rzucane.
+4. Po ponownym ustaleniu kosztu dostawy i rabatu `persistCheckoutSessionUpdate` aktualizuje dostawę i `discount_id` checkoutu, tworzy zastępczą sesję Stripe, wywołuje `repointPayment({ amount, newTransactionId, oldTransactionId })` i wygasza starą sesję Stripe przez `stripe.checkout.sessions.expire(...)` — nieudane wygaszenie jest logowane, a nie rzucane.
 5. Przy każdym niepowodzeniu zwalnia nową rezerwację i przywraca starą.
 
 Zachowaj tę kolejność, gdy będziesz to zmieniać. Wiersz `payment` jest przekierowywany, a nie tworzony ponownie, ponieważ migracja `20260924120000_checkout_idempotency_constraints.sql` nakłada unikalny indeks na `payment.transaction_id` (oraz na `order.checkout_id`); wstawienie drugiego wiersza płatności dla zastępczej sesji naruszyłoby go.
@@ -156,7 +163,7 @@ Brak nagłówka `stripe-signature` lub brak `STRIPE_WEBHOOK_SECRET` zwraca 400; 
 | `charge.dispute.created`                   | `flagOrderDispute(...)` — zamraża zamówienie i zapisuje audyt `orderDisputeOpened`                                                                               |
 | `charge.dispute.closed`                    | Jeśli `status === "lost"`, wykonuje zwrot z `restock: false`; w przeciwnym razie `clearOrderDispute(...)`                                                        |
 
-Realizacja parsuje pozycje z metadanych, wywołuje `fulfillCheckout({ amount, currency, lines, locale, transactionId })`, a następnie — tylko jeśli funkcja zwróciła nowy `orderId`, co czyni handler idempotentnym wobec ponowień Stripe — zapisuje audyty `orderPlaced` i `orderPaymentCaptured`, planuje unieważnienie zamówień w panelu i katalogu produktów oraz wysyła e-mail potwierdzający.
+Realizacja parsuje pozycje z metadanych, wywołuje `fulfillCheckout({ currency, lines, locale, paidAmount, transactionId })` z `paidAmount` równym `session.amount_total`, a następnie — tylko jeśli funkcja zwróciła nowy `orderId`, co czyni handler idempotentnym wobec ponowień Stripe — zapisuje audyty `orderPlaced` i `orderPaymentCaptured`, planuje unieważnienie zamówień w panelu i katalogu produktów oraz wysyła e-mail potwierdzający. Dla zamówienia z rabatem `fulfillCheckout` sam planuje zapis `discount_redemption`.
 
 Zdarzenie `charge.refunded` i handlery sporów otrzymują tylko PaymentIntent, więc `resolveTransactionId` listuje sesje Checkout filtrowane po `payment_intent` z `limit: 1`, aby odzyskać identyfikator sesji, którym kluczowany jest wiersz `payment`. Jeśli nie znajdzie sesji, handler loguje i kończy, zamiast zawodzić.
 

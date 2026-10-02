@@ -16,7 +16,7 @@ Ten kod istnieje z dwóch powodów jednocześnie. Obsługuje sklep prawdziwej ma
 | Waluta              | wyłącznie `PLN` — `STORE_CURRENCY_CODE` w `src/modules/_core/constants/currency.ts`                    |
 | Płatności           | Stripe, karty i metody hostowane przez Stripe, realizacja zamówienia sterowana webhookiem              |
 | Dostawa             | kurier i paczkomaty InPost, zasilane do tabeli `delivery_method`                                       |
-| Poczta transakcyjna | Resend, sześć szablonów React Email w `src/presentation/emails/`                                       |
+| Poczta transakcyjna | Resend, siedem szablonów React Email w `src/presentation/emails/`                                      |
 | Nazwa Workera       | `martebizuteria` na produkcji, `martebizuteria-preview`, `martebizuteria-development`                  |
 
 `wrangler.jsonc` nie deklaruje bloku `routes` ani własnej domeny, więc każde środowisko jest obsługiwane pod swoim adresem `*.workers.dev`. Produkcyjny adres zapisany w `package.json` to `https://martebizuteria.pjborowiecki.workers.dev`.
@@ -27,15 +27,15 @@ Pliki tras leżą płasko w `src/routes/` i nie zawierają segmentu języka. Rou
 
 | Prefiks             | Pliki                             | Co obsługuje                                                            |
 | ------------------- | --------------------------------- | ----------------------------------------------------------------------- |
-| `_storefront.*.tsx` | 16 plików                         | strona główna, katalog, karty produktów, koszyk, blog, strony prawne    |
+| `_storefront.*.tsx` | 18 plików                         | strona główna, katalog, karty produktów, koszyk, blog, strony prawne    |
 | `checkout.*.tsx`    | 2 pliki                           | czterokrokowy proces zamówienia                                         |
 | `account.*.tsx`     | 10 plików                         | strefa zalogowanego klienta — zamówienia, adresy, sesje, profil         |
-| `admin.*.tsx`       | 24 pliki                          | panel administracyjny — katalog, zamówienia, klienci, audyt, ustawienia |
+| `admin.*.tsx`       | 25 plików                         | panel administracyjny — katalog, zamówienia, klienci, audyt, ustawienia |
 | `auth.*.tsx`        | 5 plików                          | logowanie, rejestracja, odzyskiwanie i zmiana hasła                     |
 | `docs.*.tsx`        | 3 pliki                           | ta dokumentacja                                                         |
 | `api/`              | `auth.$.ts`, `webhooks.stripe.ts` | handler Better Auth i endpoint webhooka Stripe                          |
 
-`__root.tsx` i `dev.emails.tsx` dopełniają 62 plików; `dev.emails.tsx` to podgląd e-maili dostępny tylko w trybie deweloperskim — zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdą.
+`__root.tsx` i `dev.emails.tsx` dopełniają 67 plików; `dev.emails.tsx` to podgląd e-maili dostępny tylko w trybie deweloperskim — zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdą.
 
 Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed wejściem we framework Reacta — `/sitemap.xml`, `/robots.txt` i dwa uaktualnienia do WebSocketu — a dodatkowo przekierowanie językowe, bo żadna z nich nie potrzebuje renderu SSR.
 
@@ -45,7 +45,7 @@ Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed
 
 | Powiązanie                  | Zasób              | Do czego służy                                                          |
 | --------------------------- | ------------------ | ----------------------------------------------------------------------- |
-| `DB`                        | baza D1            | wszystkie tabele — jest ich 31                                          |
+| `DB`                        | baza D1            | wszystkie tabele — 37, wraz z indeksem FTS5 `storefront_search`         |
 | `IMAGES`                    | kubełek R2         | wgrywanie zdjęć produktów                                               |
 | `CACHE`                     | przestrzeń KV      | zadeklarowana, ale nieużywana przez kod aplikacji                       |
 | `AUDIT_LOG_QUEUE`           | kolejka Cloudflare | zdarzenia audytowe, konsumowane przez handler `queue` w `src/server.ts` |
@@ -75,17 +75,17 @@ Liczby policzone na drzewie roboczym, nie życzeniowe:
 
 | Element                                            | Liczba                                                                                                |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Moduły funkcjonalne                                | 36 w `src/modules/`                                                                                   |
-| Tabele w bazie                                     | 31, każda z własnym plikiem `*.schema.ts`                                                             |
-| Migracje D1                                        | 57 plików SQL w `src/integrations/drizzle-orm/migrations/`                                            |
-| Przypadki użycia                                   | 82 pliki w `src/modules/*/use-cases/`                                                                 |
-| Funkcje serwerowe                                  | 83 wywołania `createServerFn(...)`                                                                    |
-| Integracje                                         | 13 adapterów dostawców w `src/integrations/`                                                          |
-| Pliki tras                                         | 62 w `src/routes/`                                                                                    |
-| Pliki warstwy prezentacji                          | 568 plików nietestowych w `src/presentation/`, w tym 57 komponentów shadcn i 366 komponentów własnych |
+| Moduły funkcjonalne                                | 39 w `src/modules/`, łącznie z `_core`                                                                |
+| Tabele w bazie                                     | 36 eksportowanych z `drizzle.schemas.ts` oraz tabela FTS5 `storefront_search`                         |
+| Migracje D1                                        | 66 plików SQL w `src/integrations/drizzle-orm/migrations/`                                            |
+| Przypadki użycia                                   | 108 plików w `src/modules/*/use-cases/`                                                               |
+| Funkcje serwerowe                                  | 107 wywołań `createServerFn(...)`                                                                     |
+| Integracje                                         | 14 adapterów dostawców w `src/integrations/`                                                          |
+| Pliki tras                                         | 67 w `src/routes/`                                                                                    |
+| Pliki warstwy prezentacji                          | 650 plików nietestowych w `src/presentation/`, w tym 57 komponentów shadcn i 430 komponentów własnych |
 | Przestrzenie nazw tłumaczeń                        | 48 plików JSON na język w `messages/en-US/` i `messages/pl-PL/`                                       |
-| Pliki testowe                                      | 873 — 322 jednostkowe, 30 integracyjnych, 511 komponentowych                                          |
-| Komentarze w kodzie pisanym ręcznie                | 3                                                                                                     |
+| Pliki testowe                                      | 889 — 339 jednostkowych, 35 integracyjnych, 515 komponentowych                                        |
+| Komentarze w kodzie pisanym ręcznie                | 5: trzy w TypeScripcie, dwa w CSS                                                                     |
 | Wyłączenia reguł lintera poza plikami generowanymi | 0                                                                                                     |
 
 ## Co działa, a co nie
@@ -94,17 +94,14 @@ Precyzyjne wskazanie granicy jest bardziej przydatne niż lista funkcji.
 
 ### Podłączone od początku do końca
 
-Katalog (produkty, warianty, opcje, atrybuty, kategorie, kolekcje, wyszukiwanie, filtrowanie, paginacja), koszyk, czterokrokowy proces zamówienia, płatność Stripe z realizacją sterowaną webhookiem, rezerwacja stanów magazynowych z kompensacją, składanie zamówienia, kompletowanie i wysyłka zamówienia z panelu, zwroty płatności z opcjonalnym przywróceniem stanu magazynowego, konta klientów (zamówienia, adresy, sesje, profil, logowanie dwuskładnikowe z kodami zapasowymi), lista życzeń przechowywana w tabeli `wishlist_item`, zapisane karty przypisywane podczas zamówienia do klienta w Stripe i usuwalne z `/account/payment`, poczta transakcyjna w obu językach, dziennik audytu za kolejką Cloudflare, unieważnianie cache w czasie rzeczywistym po WebSocketach oraz zarządzanie produktami, kategoriami, kolekcjami, atrybutami, klientami, zamówieniami i audytem w panelu.
+Katalog (produkty, warianty, opcje, atrybuty, kategorie, kolekcje, wyszukiwanie, filtrowanie, paginacja), koszyk, czterokrokowy proces zamówienia, kody rabatowe (procentowe, kwotowe lub na darmową dostawę) sprawdzane podczas zamówienia, przeliczane na serwerze, nakładane na sesję Stripe jako jednorazowy kupon i zapisywane w `discount_redemption`, płatność Stripe z realizacją sterowaną webhookiem, rezerwacja stanów magazynowych z kompensacją, składanie zamówienia, kompletowanie zamówienia, jego wysyłka z opcjonalnym numerem przesyłki i oznaczanie dostarczenia z panelu, zwroty płatności zlecane z panelu lub w Stripe z opcjonalnym przywróceniem stanu magazynowego, konta klientów (zamówienia, adresy, sesje, profil, logowanie dwuskładnikowe z kodami zapasowymi), lista życzeń przechowywana w tabeli `wishlist_item`, zapisane karty przypisywane podczas zamówienia do klienta w Stripe i usuwalne z `/account/payment`, poczta transakcyjna w obu językach, dziennik audytu za kolejką Cloudflare, unieważnianie cache w czasie rzeczywistym po WebSocketach oraz zarządzanie produktami, kategoriami, kolekcjami, atrybutami, klientami, zamówieniami, kodami rabatowymi, stronami polityki prywatności i zwrotów oraz audytem w panelu.
 
 ### Zaczęte, ale niedokończone
 
-| Obszar                                                   | Stan                                                                                                                                     |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Rabaty i kody promocyjne                                 | tabela `discount` oraz kolumny `discount_id` w `cart`, `checkout` i `order`; nic ich nie czyta ani nie zapisuje                          |
-| InPost                                                   | wyłącznie _wyszukiwanie_ paczkomatów — `fetchPointsByCity` w `src/integrations/inpost/inpost.api.ts`. Brak tworzenia przesyłek i etykiet |
-| Szczegóły zamówienia w panelu                            | `/admin/orders/$orderId` łączy prawdziwe akcje z kartami opartymi na danych z `src/data/order-detail.ts`                                 |
-| Kody promocyjne, treści, marketing i ustawienia w panelu | renderowane z danych zastępczych w `src/data/`                                                                                           |
-| Zamknięcie zamówienia                                    | nic nigdy nie zapisuje `order.status = 'completed'`, a po tej wartości filtrują wszystkie wskaźniki przychodu                            |
+| Obszar                          | Stan                                                                                                                                     |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| InPost                          | wyłącznie _wyszukiwanie_ paczkomatów — `fetchPointsByCity` w `src/integrations/inpost/inpost.api.ts`. Brak tworzenia przesyłek i etykiet |
+| Marketing i ustawienia w panelu | renderowane z danych zastępczych w `src/data/`                                                                                           |
 
 ### Nieobecne
 
@@ -117,9 +114,9 @@ Brak testów end-to-end i przeglądarkowych. Brak triggerów cron i zadania uzga
 Cztery konwencje widać już w pierwszym otwartym pliku i wszystkie cztery wymusza `bun run check`, a nie recenzja:
 
 - **Moduł jest właścicielem tabeli.** `src/modules/{feature}/` zawiera tabelę Drizzle, schematy Zod, krotki kluczy zapytań, wywnioskowane typy, czyste funkcje pomocnicze i akcesory dokładnie jednej tabeli. Jedna operacja na plik w `use-cases/`, nazwana `{verb-noun}.ts`, eksportująca funkcję serwerową obok opcji zapytania TanStack Query, które ją pobierają.
-- **Autoryzacja mieszka na funkcji serwerowej.** Funkcja serwerowa jest publicznym endpointem HTTP, więc strażnicy tras nie mogą jej chronić. Middleware `authorized(permission)` z `src/integrations/better-auth/auth.middleware.ts` jest użyte w 63 miejscach — 14 razy jako gołe `authorized()`, które wymaga tylko poprawnej sesji, i 49 razy z uprawnieniem, na przykład `authorized({ order: ["update"] })`, sprawdzanym wobec macierzy ról w `auth.access.ts`.
+- **Autoryzacja mieszka na funkcji serwerowej.** Funkcja serwerowa jest publicznym endpointem HTTP, więc strażnicy tras nie mogą jej chronić. Middleware `authorized(permission)` z `src/integrations/better-auth/auth.middleware.ts` jest użyte w 83 miejscach — 21 razy jako gołe `authorized()`, które wymaga tylko poprawnej sesji, i 62 razy z uprawnieniem, na przykład `authorized({ order: ["update"] })`, sprawdzanym wobec macierzy ról w `auth.access.ts`.
 - **Warstwa prezentacji nigdy nie dotyka bazy.** Wszystko w `src/presentation/` importuje przypadki użycia, nigdy `db`.
-- **Kod nie zawiera narracji.** W całym `src/` istnieją trzy komentarze, każdy opisujący ograniczenie, którego nie da się wyrazić typami. Intencja idzie w nazwy i typy.
+- **Kod nie zawiera narracji.** W całym `src/` istnieje pięć komentarzy, trzy w TypeScripcie i dwa w CSS, każdy opisujący ograniczenie, którego nie da się wyrazić nazwami ani typami. Intencja idzie w nazwy i typy.
 
 Bazowa konfiguracja lintera to sześć kategorii Oxlint ustawionych na błąd — włącznie z `nursery` — z lintowaniem świadomym typów i sprawdzaniem typów, z ostrzeżeniami przerywającymi build oraz twardymi limitami 800 linii na plik, 150 linii na funkcję i 20 instrukcji na funkcję. Zobacz [Konwencje](/docs/reference/conventions) i [Vite+](/docs/tooling/vite-plus).
 
@@ -130,7 +127,7 @@ Bazowa konfiguracja lintera to sześć kategorii Oxlint ustawionych na błąd �
 | Autor        | Piotr Borowiecki — `hello@pjborowiecki.com`, [pjborowiecki.com](https://pjborowiecki.com)                    |
 | Repozytorium | [github.com/pjborowiecki/martebizuteria.pl](https://github.com/pjborowiecki/martebizuteria.pl)               |
 | Zgłoszenia   | [github.com/pjborowiecki/martebizuteria.pl/issues](https://github.com/pjborowiecki/martebizuteria.pl/issues) |
-| Historia     | 43 commity między 2026-04-24 a 2026-09-30, część z nich to bardzo duże refaktoryzacje                        |
+| Historia     | Commity od 2026-04-24, część z nich to bardzo duże refaktoryzacje                                            |
 | Licencja     | CC BY-NC 4.0 — zobacz [Licencję](/docs/project/license)                                                      |
 
 Nazwa marki „M'Arte” należy do firmy jubilerskiej, dla której ten sklep został zbudowany. Nie rości się tu do niej żadnych praw ochronnych.

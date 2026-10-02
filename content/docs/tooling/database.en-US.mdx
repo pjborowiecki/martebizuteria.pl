@@ -47,20 +47,22 @@ The `server-only` import is what makes a client bundle that reaches for `db` fai
 
 ### The tables
 
-Thirty-one tables, all declared in module schema files:
+Thirty-seven tables, all declared in module schema files:
 
 | Area            | Tables                                                                                                       |
 | --------------- | ------------------------------------------------------------------------------------------------------------ |
 | Identity        | `user`, `account`, `session`, `verification`, `two_factor`                                                   |
-| Customer data   | `address`, `rate_limit`, `audit_log`                                                                         |
+| Customer data   | `address`, `rate_limit`, `audit_log`, `wishlist_item`, `newsletter_subscriber`                               |
 | Catalog         | `product`, `product_variant`, `product_image`, `product_category`, `product_collection`, `product_attribute` |
 | Catalog joins   | `category_on_product`, `collection_on_product`, `attribute_on_product`, `option_on_variant`                  |
 | Variant options | `product_option`, `product_option_value`                                                                     |
 | Stock           | `inventory`                                                                                                  |
 | Cart            | `cart`, `cart_item`                                                                                          |
-| Checkout        | `checkout`, `payment`, `discount`                                                                            |
-| Orders          | `order`, `order_item`, `order_address`                                                                       |
+| Checkout        | `checkout`, `payment`, `discount`, `discount_redemption`                                                     |
+| Orders          | `order`, `order_item`, `order_address`, `order_number_sequence`                                              |
 | Delivery        | `courier`, `delivery_method`                                                                                 |
+| Content         | `content_page`                                                                                               |
+| Search          | `storefront_search`                                                                                          |
 
 Wrangler adds one more, `d1_migrations`, which is bookkeeping and not part of the Drizzle schema.
 
@@ -128,7 +130,7 @@ export default defineConfig({
 
 Generated file names look like `20260612120000_product_variants_enhanced.sql`. Many migrations in the tree are hand-named instead (`20260604120000_catalog_indexes_and_integrity.sql`, `20260925000000_locale_maps_bcp47.sql`, `20260927120000_fix_silver_collection_handle.sql`) because they were written by hand for index work or data repair that a schema diff cannot express. Wrangler applies both kinds identically — it simply runs the files in the directory in name order.
 
-> The drizzle-kit bookkeeping has drifted from the directory. At the time of writing `migrations/` holds 57 `.sql` files, `meta/_journal.json` lists 51 entries, and `meta/` contains 36 snapshots. Six files are absent from the journal, including everything after `20260920212415_auth_database_storage`. That means `db:generate` diffs against the newest _snapshot_, not against what the directory actually contains, so it can emit SQL for a change that a later hand-written migration already made. Read every generated migration and delete statements that describe work already applied.
+> The drizzle-kit bookkeeping has drifted from the directory. At the time of writing `migrations/` holds 66 `.sql` files, `meta/_journal.json` lists 52 entries, and `meta/` contains 37 snapshots. Fourteen files are absent from the journal, including everything after `20260930151544_collection_short_descriptions`. That means `db:generate` diffs against the newest _snapshot_, not against what the directory actually contains, so it can emit SQL for a change that a later hand-written migration already made. Read every generated migration and delete statements that describe work already applied.
 
 Always read the generated SQL before committing it for a second reason too: SQLite cannot drop or alter a column in place, so drizzle-kit rewrites the whole table. On a live database that is the step most likely to lose data.
 

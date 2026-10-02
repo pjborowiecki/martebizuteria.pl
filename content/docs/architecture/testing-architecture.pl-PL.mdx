@@ -7,13 +7,13 @@ description: "Trzy projekty Vitest, uruchamianie funkcji serwerowych w procesie,
 
 `vp test run` uruchamia Vitest przez Vite+ z trzema projektami zdefiniowanymi w `vite.config.ts`. Testy leżą w katalogu `__test__` obok kodu, który pokrywają, i importują API testowe z `vite-plus/test`.
 
-| Projekt       | Środowisko | Pliki                                  | Liczba |
-| ------------- | ---------- | -------------------------------------- | ------ |
-| `node`        | Node       | `*.test.ts`, z wyłączeniem dwóch niżej | 364    |
-| `integration` | Node       | `*.integration.test.ts`                | 30     |
-| `component`   | jsdom      | `*.component.test.tsx`                 | 479    |
+| Projekt       | Środowisko | Pliki                                        | Liczba |
+| ------------- | ---------- | -------------------------------------------- | ------ |
+| `node`        | Node       | `*.test.{ts,tsx}`, z wyłączeniem dwóch niżej | 339    |
+| `integration` | Node       | `*.integration.test.ts`                      | 35     |
+| `component`   | jsdom      | `*.component.test.{ts,tsx}`                  | 515    |
 
-Łącznie 873 pliki testowe. Tylko projekt `component` ładuje `src/platform/testing/setup.ts`; testy node i integracyjne importują to, czego potrzebują, jawnie.
+Łącznie 889 plików testowych. Tylko projekt `component` ładuje `src/platform/testing/setup.ts`; testy node i integracyjne importują to, czego potrzebują, jawnie.
 
 ```sh
 bun run test              # wszystkie trzy projekty

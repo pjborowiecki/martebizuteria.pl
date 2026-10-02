@@ -3,7 +3,7 @@ title: "Writing tests"
 description: "The three Vitest projects, where tests live, the shared helpers, the mocking patterns for server functions and routes, and the coverage gates."
 ---
 
-There are 873 test files in `src/`. Tests live beside the code they cover, in a `__test__/` folder, named after the source file. They run through `vite-plus/test` — always import `describe`, `it`, `expect` and `vi` from there, never from `vitest` directly.
+There are 889 test files in `src/`. Tests live beside the code they cover, in a `__test__/` folder, named after the source file. They run through `vite-plus/test` — always import `describe`, `it`, `expect` and `vi` from there, never from `vitest` directly.
 
 ## The three projects
 
@@ -11,9 +11,9 @@ There are 873 test files in `src/`. Tests live beside the code they cover, in a 
 
 | Project       | Files                                           | Environment | Setup                           | Count |
 | ------------- | ----------------------------------------------- | ----------- | ------------------------------- | ----- |
-| `node`        | `*.test.ts` / `*.test.tsx`, minus the other two | `node`      | none                            | ~330  |
-| `integration` | `*.integration.test.ts`                         | `node`      | none                            | 30    |
-| `component`   | `*.component.test.tsx`                          | `jsdom`     | `src/platform/testing/setup.ts` | 511   |
+| `node`        | `*.test.ts` / `*.test.tsx`, minus the other two | `node`      | none                            | 339   |
+| `integration` | `*.integration.test.ts`                         | `node`      | none                            | 35    |
+| `component`   | `*.component.test.ts` / `*.component.test.tsx`  | `jsdom`     | `src/platform/testing/setup.ts` | 515   |
 
 ```sh
 bun run test              # all three

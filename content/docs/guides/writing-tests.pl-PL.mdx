@@ -3,7 +3,7 @@ title: "Pisanie testów"
 description: "Trzy projekty Vitest, gdzie leżą testy, wspólne funkcje pomocnicze, wzorce mockowania funkcji serwerowych i tras oraz progi pokrycia."
 ---
 
-W `src/` jest 873 plików testowych. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`.
+W `src/` jest 889 plików testowych. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`.
 
 ## Trzy projekty
 
@@ -11,9 +11,9 @@ W `src/` jest 873 plików testowych. Testy leżą obok kodu, który pokrywają, 
 
 | Projekt       | Pliki                                              | Środowisko | Plik konfiguracyjny             | Liczba |
 | ------------- | -------------------------------------------------- | ---------- | ------------------------------- | ------ |
-| `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | ~330   |
-| `integration` | `*.integration.test.ts`                            | `node`     | brak                            | 30     |
-| `component`   | `*.component.test.tsx`                             | `jsdom`    | `src/platform/testing/setup.ts` | 511    |
+| `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | 339    |
+| `integration` | `*.integration.test.ts`                            | `node`     | brak                            | 35     |
+| `component`   | `*.component.test.ts` / `*.component.test.tsx`     | `jsdom`    | `src/platform/testing/setup.ts` | 515    |
 
 ```sh
 bun run test              # wszystkie trzy

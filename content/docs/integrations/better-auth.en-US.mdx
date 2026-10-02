@@ -52,7 +52,7 @@ This is separate from the application's own `withRateLimit` middleware described
 
 ### Transactional e-mail
 
-Four of the six application e-mails are sent from this file: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` and `sendAccountDeletedEmail`. Each loads its own message namespace, renders its React Email component and hands it to `sendEmail`; failures are logged through `reportEmailFailure` rather than thrown, so a mail outage never breaks a sign-up. `resolveEmailVerificationCallbackUrl` additionally rewrites a verification link that would land on the storefront home so it lands on `/account/overview?verified=true` instead. See [Resend](/docs/integrations/resend).
+Four of the seven application e-mails are sent from this file: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` and `sendAccountDeletedEmail`. Each loads its own message namespace, renders its React Email component and hands it to `sendEmail`; failures are logged through `reportEmailFailure` rather than thrown, so a mail outage never breaks a sign-up. `resolveEmailVerificationCallbackUrl` additionally rewrites a verification link that would land on the storefront home so it lands on `/account/overview?verified=true` instead. See [Resend](/docs/integrations/resend).
 
 ## Roles and permissions
 
@@ -147,7 +147,7 @@ The window is 60 seconds. `withinRateLimit` in `src/lib/rate-limit.ts` implement
 
 ### This is enforced by a test
 
-`src/integrations/better-auth/__test__/use-case-authorization.test.ts` walks every file under `src/modules/**/use-cases/`, and for each one that contains `createServerFn` asserts that it also contains `authorized(` — unless it is on an explicit allowlist of 13 deliberately public use cases (`get-product.ts`, `search-storefront.ts`, `check-cart-availability.ts` and so on). It also asserts that no use case asserts authorization inside its handler, and that every entry on the allowlist still exists. Adding a protected use case without middleware fails the test suite.
+`src/integrations/better-auth/__test__/use-case-authorization.test.ts` walks every file under `src/modules/**/use-cases/`, and for each one that contains `createServerFn` asserts that it also contains `authorized(` — unless it is on an explicit allowlist of 19 deliberately public use cases (`get-product.ts`, `search-storefront.ts`, `check-cart-availability.ts` and so on). It also asserts that no use case asserts authorization inside its handler, and that every entry on the allowlist still exists. Adding a protected use case without middleware fails the test suite.
 
 ## Route guards
 

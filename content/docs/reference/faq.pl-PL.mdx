@@ -31,7 +31,7 @@ Jeśli nie dotyka żadnej tabeli i potrzebuje go tylko jedna trasa, zdefiniuj to
 
 ## Kiedy tworzę nowy moduł?
 
-Zwykle tylko wtedy, gdy dodajesz tabelę w bazie danych. Pięć modułów istnieje bez tabeli — `_core`, `admin-dashboard`, `customer-account`, `customer-activity`, `storefront-search` — i każdy z nich zasługuje na to, grupując operacje czytające z kilku tabel. Nowy moduł bez tabeli wymaga takiego samego uzasadnienia.
+Zwykle tylko wtedy, gdy dodajesz tabelę w bazie danych. Cztery moduły istnieją bez tabeli — `_core`, `admin-dashboard`, `customer-account`, `customer-activity` — i każdy z nich zasługuje na to, grupując operacje czytające z kilku tabel. `storefront-search` jest właścicielem wirtualnej tabeli FTS5 `storefront_search`, którą tworzy jego migracja, a której `drizzle.schemas.ts` nie eksportuje. Nowy moduł bez tabeli wymaga takiego samego uzasadnienia.
 
 ## Gdzie trafia nowy komponent?
 
@@ -53,7 +53,7 @@ Better Auth jest skonfigurowany z 300-sekundowym cache cookie, ale `getRequestSe
 
 Bo funkcja serwerowa jest publicznym endpointem HTTP. Można ją wywołać bezpośrednio, bez załadowania trasy, która zwykle ją wywołuje — więc strażnik w `beforeLoad` nie może jej chronić, a dodatkowo strażnicy działają też w przeglądarce. Middleware `authorized` działa na serwerze, przed jakimkolwiek dostępem do bazy. Strażnicy tras istnieją wyłącznie dla nawigacji.
 
-Test w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` to wymusza: każdy przypadek użycia z `createServerFn` musi zawierać `authorized(`, o ile nie jest na trzynastoelementowej liście publicznej.
+Test w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` to wymusza: każdy przypadek użycia z `createServerFn` musi zawierać `authorized(`, o ile nie jest na dziewiętnastoelementowej liście publicznej.
 
 ## Dlaczego nie ma transakcji bazodanowych?
 
@@ -65,7 +65,7 @@ Jako liczby całkowite w jednostce podrzędnej waluty. `product_variant.price` i
 
 ## Jak zmiana w jednej karcie przeglądarki dociera na ekran innego administratora?
 
-Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 12 dla panelu, 10 dla sklepu — i odrzucają komunikaty, które się nie pokrywają.
+Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 14 dla panelu, 11 dla sklepu — i odrzucają komunikaty, które się nie pokrywają.
 
 ## Jak podejrzeć e-mail transakcyjny?
 
@@ -73,7 +73,7 @@ Uruchom serwer developerski i otwórz `/dev/emails`. Trasa jest zdefiniowana w `
 
 ## Co jest zaczęte, ale niedokończone?
 
-Rabaty i kupony mają tabelę `discount`, której żadna ścieżka kodu nie zapisuje. InPost obejmuje wyłącznie wyszukiwanie paczkomatów — `fetchPointsByCity` przeciwko publicznemu endpointowi `api-pl-points.easypack24.net` — bez tworzenia przesyłek i etykiet. `order_address` jest zarejestrowana w schemacie Drizzle, ale nieużywana. Strony `/admin/coupons`, `/admin/marketing` i `/admin/settings` renderują dane z fikstur w `src/data/`. `SENTRY_AUTH_TOKEN` jest zadeklarowany w `.env.example`, ale nic go nie czyta.
+InPost obejmuje wyłącznie wyszukiwanie paczkomatów — `fetchPointsByCity` przeciwko publicznemu endpointowi `api-pl-points.easypack24.net` — bez tworzenia przesyłek i etykiet. `cart` i `cart_item` są zarejestrowane w schemacie Drizzle, ale nieużywane. Strony `/admin/marketing` i `/admin/settings` renderują dane z fikstur w `src/data/`. `SENTRY_AUTH_TOKEN` jest zadeklarowany w `.env.example`, ale nic go nie czyta.
 
 ## Jak zorganizowana jest sama dokumentacja?
 

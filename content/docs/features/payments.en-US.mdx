@@ -38,7 +38,7 @@ export const CHECKOUT_PAYMENT_METHOD_ORDER = ["card", "blik", "p24"] as const
 Sessions are created with `ui_mode: "elements"`, which means the card form is embedded in `/checkout` rather than redirecting to a Stripe-hosted page:
 
 ```ts
-const session = await stripe.checkout.sessions.create({
+const params: StripeType.Checkout.SessionCreateParams = {
   line_items: toLineItems(lines, shippingCost),
   metadata,
   mode: "payment",
@@ -48,16 +48,22 @@ const session = await stripe.checkout.sessions.create({
   ...(customerId === undefined
     ? { customer_email: email }
     : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
-})
+}
+const discounts = await toSessionDiscounts(discount)
+if (discounts.length > NO_COST) {
+  params.discounts = discounts
+}
+
+const session = await stripe.checkout.sessions.create(params)
 ```
 
 `customerId` is set only for a signed-in shopper. `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) gets it from `ensureStripeCustomer`, which creates a Stripe customer on first use and stores its id in `user.stripe_customer_id`; `handleUpdateCheckoutSession` reads the stored id through `getStripeCustomerId`. Such a session belongs to that Stripe customer and lets the shopper save the card, which then appears on `/account/payment`. A guest's session carries `customer_email` instead. See [Account](/docs/features/account).
 
-`returnUrl` is `${resolveOrigin()}/checkout?success=true`, where `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL` from `src/presentation/branding/app.ts`.
+`returnUrl` is `${resolveOrigin()}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, where Stripe fills in the session id and `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL` from `src/presentation/branding/app.ts`.
 
-The same `metadata` object is attached to the session and to the payment intent, so a webhook that only has the intent can still find the checkout. It carries `checkoutId`, `locale` (from `getCurrentLocale()`), `userId` (empty string for a guest) and the chunked `items0…N` list.
+The same `metadata` object is attached to the session and to the payment intent, so a webhook that only has the intent can still find the checkout. It carries `checkoutId`, `discountCode` and `discountTotal` (an empty string and `"0"` without a discount), `locale` (from `getCurrentLocale()`), `userId` (empty string for a guest) and the chunked `items0…N` list.
 
-Line items are built from the server-validated prices, plus a literal `"Shipping"` line when the delivery method costs more than zero. The line-item names come from `lineTitle`, which is `"<product title> — <variant title>"` unless the variant title is empty.
+Line items are built from the server-validated prices, plus a literal `"Shipping"` line when the delivery method costs more than zero. The line-item names come from `lineTitle`, which is `"<product title> — <variant title>"` unless the variant title is empty. A discount is not a line item: `toSessionDiscounts` creates a one-time Stripe coupon for the amount `resolveCheckoutDiscount` computed, and the session receives it in `discounts`. See [Discounts](/docs/features/discounts).
 
 ## The payment row
 
@@ -129,7 +135,7 @@ Then it parses the item lines out of the metadata, calls `fulfillCheckout` and, 
 2. `scheduleAdminOrdersInvalidation()` and `scheduleProductCatalogInvalidation()`.
 3. `notifyOrderConfirmed(session, { currency, lines, orderId })`.
 
-`fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) resolves the pending checkout from the transaction id and runs one D1 batch built by `prepareFulfillCheckoutBatch`:
+`fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) resolves the pending checkout from the transaction id, loads the checkout's delivery method and discount, computes the totals, allocates an order number and runs one D1 batch built by `prepareFulfillCheckoutBatch`:
 
 ```ts
 statements: [
@@ -139,13 +145,16 @@ statements: [
     .set({ status: "completed" })
     .where(and(eq(checkout.id, context.checkoutId), eq(checkout.status, "pending"))),
   db.insert(order).values({/* … */}),
+  ...(addressSnapshots.length > 0 ? [db.insert(orderAddress).values(addressSnapshots)] : []),
   ...tail, // orderItem insert + one inventory update per line
 ]
 ```
 
 The `checkout` update is conditional on `status = "pending"`, which makes the whole webhook **idempotent**: a redelivered event finds the checkout already `completed`, `resolvePendingCheckout` returns `undefined` and `fulfillCheckout` returns without writing anything.
 
-The order totals are derived, not taken from the client: `itemsSubtotal` is the sum of `price * qty` over the metadata lines and `shippingTotal = Math.max(amount - itemsSubtotal, 0)`, where `amount` is `session.amount_total`.
+The order totals are derived, not taken from the client: `itemsSubtotal` is the sum of `price * qty` over the metadata lines, `shippingTotal` is the price of the checkout's delivery method, and the discount is recalculated by `calculateDiscountAmount` from the checkout's `discount` row. `computeOrderTotals` (`src/modules/order/order.totals.ts`) caps the discount at items plus shipping and derives `total` and `taxTotal`. `reconcileTotals` compares that total with `session.amount_total`, passed in as `paidAmount`, and only logs an error when they differ.
+
+When the order has a discount, `fulfillCheckout` then schedules `recordDiscountRedemption` in the background, which writes a `discount_redemption` row and increments `discount.usage_count`. See [Discounts](/docs/features/discounts).
 
 The reservation is converted, not released: each line runs `quantityReserved = quantityReserved - qty`, leaving `quantityAvailable` as it was after the reservation. See [Inventory](/docs/features/inventory).
 
@@ -195,9 +204,11 @@ runs `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`. P
 
 `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are declared in the `secrets.required` list of every environment in `wrangler.jsonc`. `VITE_STRIPE_PUBLISHABLE_KEY` is a browser variable and must be present at build time, since it is inlined by Vite.
 
-## No admin refund button
+## Admin refunds
 
-`/admin/orders/$orderId` shows Print, Refund and Fulfill buttons, but that screen is a demo built on `src/data/order-detail.ts` and none of the buttons are wired. Refunds happen in the Stripe dashboard and reach M'Arte as `charge.refunded`. `canRefundAdminOrder` exists in `order.admin-actions.utils.ts` and the `order: ["refund"]` permission exists in `auth.access.ts`, but no server function uses them.
+`/admin/orders/$orderId` loads the order through `getAdminOrderQuery`, and its header shows Print, Refund, Cancel order, Fulfill, Mark shipped and Mark delivered as each one applies; the Refund item in the `/admin/orders` row menu opens that page. Refund asks for confirmation and calls `refundAdminOrder` (`src/modules/order/use-cases/refund-admin-order.ts`), a server function guarded by `authorized({ order: ["update"] })`. It checks `canRefundAdminOrder` from `order.admin-actions.utils.ts` (paid, and neither refunded nor cancelled), then calls `stripe.refunds.create({ metadata: { orderId }, payment_intent: transactionId })` with the payment row's `transaction_id`, which holds the Checkout Session id described above.
+
+`refundAdminOrder` writes nothing to the database. The payment and order statuses, the audit entry and the restock arrive with the resulting `charge.refunded` event, through the same `refundOrder` path as a refund made in the Stripe dashboard. The `order: ["refund"]` permission in `auth.access.ts` is still not used by any server function.
 
 ## Related pages
 

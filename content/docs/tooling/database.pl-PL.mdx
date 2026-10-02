@@ -47,20 +47,22 @@ Import `server-only` sprawia, że pakiet klienta, który sięgnąłby po `db`, w
 
 ### Tabele
 
-Trzydzieści jedna tabel, wszystkie zadeklarowane w plikach schematów modułów:
+Trzydzieści siedem tabel, wszystkie zadeklarowane w plikach schematów modułów:
 
 | Obszar             | Tabele                                                                                                       |
 | ------------------ | ------------------------------------------------------------------------------------------------------------ |
 | Tożsamość          | `user`, `account`, `session`, `verification`, `two_factor`                                                   |
-| Dane klienta       | `address`, `rate_limit`, `audit_log`                                                                         |
+| Dane klienta       | `address`, `rate_limit`, `audit_log`, `wishlist_item`, `newsletter_subscriber`                               |
 | Katalog            | `product`, `product_variant`, `product_image`, `product_category`, `product_collection`, `product_attribute` |
 | Złączenia katalogu | `category_on_product`, `collection_on_product`, `attribute_on_product`, `option_on_variant`                  |
 | Opcje wariantów    | `product_option`, `product_option_value`                                                                     |
 | Stany magazynowe   | `inventory`                                                                                                  |
 | Koszyk             | `cart`, `cart_item`                                                                                          |
-| Checkout           | `checkout`, `payment`, `discount`                                                                            |
-| Zamówienia         | `order`, `order_item`, `order_address`                                                                       |
+| Checkout           | `checkout`, `payment`, `discount`, `discount_redemption`                                                     |
+| Zamówienia         | `order`, `order_item`, `order_address`, `order_number_sequence`                                              |
 | Dostawa            | `courier`, `delivery_method`                                                                                 |
+| Treści             | `content_page`                                                                                               |
+| Wyszukiwanie       | `storefront_search`                                                                                          |
 
 Wrangler dodaje jeszcze jedną, `d1_migrations`, która jest jego własną księgowością i nie należy do schematu Drizzle.
 
@@ -128,7 +130,7 @@ export default defineConfig({
 
 Wygenerowane nazwy plików wyglądają jak `20260612120000_product_variants_enhanced.sql`. Wiele migracji w drzewie ma nazwy nadane ręcznie (`20260604120000_catalog_indexes_and_integrity.sql`, `20260925000000_locale_maps_bcp47.sql`, `20260927120000_fix_silver_collection_handle.sql`), bo powstały ręcznie na potrzeby indeksów albo naprawy danych, czego różnica schematów nie wyrazi. Wrangler nakłada oba rodzaje identycznie — po prostu uruchamia pliki z katalogu w kolejności nazw.
 
-> Księgowość drizzle-kit rozjechała się z katalogiem. W chwili pisania `migrations/` zawiera 57 plików `.sql`, `meta/_journal.json` wymienia 51 wpisów, a `meta/` zawiera 36 zrzutów. Sześciu plików brakuje w dzienniku, w tym wszystkich po `20260920212415_auth_database_storage`. Oznacza to, że `db:generate` porównuje schemat z najnowszym _zrzutem_, a nie z faktyczną zawartością katalogu, i może wygenerować SQL dla zmiany, którą późniejsza ręczna migracja już wprowadziła. Czytaj każdą wygenerowaną migrację i usuwaj instrukcje opisujące pracę już wykonaną.
+> Księgowość drizzle-kit rozjechała się z katalogiem. W chwili pisania `migrations/` zawiera 66 plików `.sql`, `meta/_journal.json` wymienia 52 wpisy, a `meta/` zawiera 37 zrzutów. Czternastu plików brakuje w dzienniku, w tym wszystkich po `20260930151544_collection_short_descriptions`. Oznacza to, że `db:generate` porównuje schemat z najnowszym _zrzutem_, a nie z faktyczną zawartością katalogu, i może wygenerować SQL dla zmiany, którą późniejsza ręczna migracja już wprowadziła. Czytaj każdą wygenerowaną migrację i usuwaj instrukcje opisujące pracę już wykonaną.
 
 Wygenerowany SQL czytaj przed commitem także z drugiego powodu: SQLite nie umie usunąć ani zmienić kolumny w miejscu, więc drizzle-kit przepisuje całą tabelę. Na żywej bazie to właśnie ten krok najłatwiej prowadzi do utraty danych.
 

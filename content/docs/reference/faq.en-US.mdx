@@ -31,7 +31,7 @@ If it touches no table and only one route needs it, define it in that route file
 
 ## When do I create a new module?
 
-Normally only when you add a database table. Five modules exist without one — `_core`, `admin-dashboard`, `customer-account`, `customer-activity`, `storefront-search` — and each earns that by grouping operations that read across several tables. A new table-less module needs the same justification.
+Normally only when you add a database table. Four modules exist without one — `_core`, `admin-dashboard`, `customer-account`, `customer-activity` — and each earns that by grouping operations that read across several tables. `storefront-search` owns the `storefront_search` FTS5 virtual table, which its migration creates and `drizzle.schemas.ts` does not export. A new table-less module needs the same justification.
 
 ## Where does a new component go?
 
@@ -53,7 +53,7 @@ Better Auth is configured with a 300-second cookie cache, but `getRequestSession
 
 Because a server function is a public HTTP endpoint. It can be called directly, without the route that normally calls it ever being loaded, so a `beforeLoad` guard cannot protect it — and guards also run in the browser. The `authorized` middleware runs on the server, before any database access. Route guards exist for navigation only.
 
-A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` enforces this: every use case with a `createServerFn` must contain `authorized(` unless it is on the 13-entry public allowlist.
+A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` enforces this: every use case with a `createServerFn` must contain `authorized(` unless it is on the 19-entry public allowlist.
 
 ## Why are there no database transactions?
 
@@ -65,7 +65,7 @@ As integers in the currency's minor unit. `product_variant.price` and `compare_a
 
 ## How does a change in one browser tab reach another admin's screen?
 
-Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 12 for admin, 10 for storefront — and discard messages that do not overlap.
+Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 14 for admin, 11 for storefront — and discard messages that do not overlap.
 
 ## How do I preview a transactional email?
 
@@ -73,7 +73,7 @@ Run the dev server and open `/dev/emails`. The route is defined in `src/routes/d
 
 ## What is scaffolded but not finished?
 
-Discounts and coupons have a `discount` table that no code path writes. InPost covers parcel-locker discovery only — `fetchPointsByCity` against the public `api-pl-points.easypack24.net` endpoint — with no shipment creation or labels. `order_address` is registered in the Drizzle schema but unused. `/admin/coupons`, `/admin/marketing` and `/admin/settings` render from fixtures in `src/data/`. `SENTRY_AUTH_TOKEN` is declared in `.env.example` but nothing reads it.
+InPost covers parcel-locker discovery only — `fetchPointsByCity` against the public `api-pl-points.easypack24.net` endpoint — with no shipment creation or labels. `cart` and `cart_item` are registered in the Drizzle schema but unused. `/admin/marketing` and `/admin/settings` render from fixtures in `src/data/`. `SENTRY_AUTH_TOKEN` is declared in `.env.example` but nothing reads it.
 
 ## How are the docs themselves organized?
 

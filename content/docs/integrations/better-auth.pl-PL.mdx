@@ -52,7 +52,7 @@ Jest to mechanizm odrębny od własnego middleware `withRateLimit` opisanego pon
 
 ### E-maile transakcyjne
 
-Cztery z sześciu e-maili aplikacji wysyłane są z tego pliku: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` i `sendAccountDeletedEmail`. Każda z tych funkcji ładuje własną przestrzeń nazw komunikatów, renderuje swój komponent React Email i przekazuje go do `sendEmail`; błędy są logowane przez `reportEmailFailure`, a nie rzucane, więc awaria poczty nigdy nie psuje rejestracji. Dodatkowo `resolveEmailVerificationCallbackUrl` przepisuje link weryfikacyjny, który prowadziłby na stronę główną sklepu, tak aby prowadził na `/account/overview?verified=true`. Zobacz [Resend](/docs/integrations/resend).
+Cztery z siedmiu e-maili aplikacji wysyłane są z tego pliku: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` i `sendAccountDeletedEmail`. Każda z tych funkcji ładuje własną przestrzeń nazw komunikatów, renderuje swój komponent React Email i przekazuje go do `sendEmail`; błędy są logowane przez `reportEmailFailure`, a nie rzucane, więc awaria poczty nigdy nie psuje rejestracji. Dodatkowo `resolveEmailVerificationCallbackUrl` przepisuje link weryfikacyjny, który prowadziłby na stronę główną sklepu, tak aby prowadził na `/account/overview?verified=true`. Zobacz [Resend](/docs/integrations/resend).
 
 ## Role i uprawnienia
 
@@ -147,7 +147,7 @@ Okno wynosi 60 sekund. Funkcja `withinRateLimit` w `src/lib/rate-limit.ts` reali
 
 ### Wymusza to test
 
-Plik `src/integrations/better-auth/__test__/use-case-authorization.test.ts` przechodzi przez każdy plik w `src/modules/**/use-cases/` i dla każdego zawierającego `createServerFn` sprawdza, czy zawiera również `authorized(` — chyba że znajduje się na jawnej liście 13 świadomie publicznych przypadków użycia (`get-product.ts`, `search-storefront.ts`, `check-cart-availability.ts` i podobne). Test sprawdza także, że żaden przypadek użycia nie weryfikuje autoryzacji wewnątrz handlera oraz że każdy wpis z listy dozwolonych wciąż istnieje. Dodanie chronionego przypadku użycia bez middleware powoduje niepowodzenie testów.
+Plik `src/integrations/better-auth/__test__/use-case-authorization.test.ts` przechodzi przez każdy plik w `src/modules/**/use-cases/` i dla każdego zawierającego `createServerFn` sprawdza, czy zawiera również `authorized(` — chyba że znajduje się na jawnej liście 19 świadomie publicznych przypadków użycia (`get-product.ts`, `search-storefront.ts`, `check-cart-availability.ts` i podobne). Test sprawdza także, że żaden przypadek użycia nie weryfikuje autoryzacji wewnątrz handlera oraz że każdy wpis z listy dozwolonych wciąż istnieje. Dodanie chronionego przypadku użycia bez middleware powoduje niepowodzenie testów.
 
 ## Strażnicy tras
 

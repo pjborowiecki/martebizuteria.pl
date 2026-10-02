@@ -1,6 +1,6 @@
 ---
 title: "Orders"
-description: "The order and order_item tables, the admin list with its filters and actions, the customer's own order history, and the demo detail screen."
+description: "The order and order_item tables, the admin list with its filters and actions, the customer's own order history, and the admin detail screen."
 ---
 
 An order is created by a Stripe webhook, never by a form. See [Payments](/docs/features/payments) for how a paid session becomes a row.
@@ -18,15 +18,15 @@ Money columns, all integer minor units: `subtotal`, `shipping_total`, `tax_total
 
 Timestamps beyond `created_at`/`updated_at`: `shipped_at`, `delivered_at`, `canceled_at` (note the single `l`).
 
-Links: `checkout_id` (with a **unique** index, so one checkout maps to at most one order), `payment_id`, `delivery_method_id`, `user_id` (null for a guest), `discount_id`. Plus `email`, `customer_note`, `locker_id`, `tracking_number`, `tracking_url` and `metadata` (a JSON string).
+Links: `checkout_id` (with a **unique** index, so one checkout maps to at most one order), `payment_id`, `delivery_method_id`, `user_id` (null for a guest), `discount_id`. Plus `order_number`, `email`, `customer_note`, `locker_id`, `billing_company_name`, `billing_nip`, `tax_basis_points`, `tracking_number`, `tracking_url` and `metadata` (a JSON string). `order_number` reads like `MRT-2026-00042`: `allocateOrderNumber` (`order.number.server.ts`) bumps the per-year counter in `order_number_sequence` with a single upsert.
 
-Indexes: `order_userId_idx`, `order_userId_status_idx`, `order_status_idx`, `order_createdAt_idx`, `order_checkoutId_unique`.
+Indexes: `order_userId_idx`, `order_userId_status_idx`, `order_status_idx`, `order_createdAt_idx`, `order_checkoutId_unique`, `order_orderNumber_unique`.
 
 `order_item` (`src/modules/order-item/order-item.schema.ts`) stores `order_id`, `variant_id`, `product_id`, `title`, `variant_title`, `thumbnail`, `quantity`, `unit_price`, `subtotal`, `total`, `metadata`.
 
-**What actually gets written.** `prepareFulfillCheckoutBatch` inserts only `orderId`, `quantity`, `subtotal`, `title`, `total`, `unitPrice` and `variantId`. `product_id`, `variant_title` and `thumbnail` are left null, even though the customer order detail selects `thumbnail` and `variantTitle`. `tax_total` and `discount_total` are always `0` — there is no tax engine and no discount engine.
+**What actually gets written.** `prepareFulfillCheckoutBatch` inserts `orderId`, `quantity`, `subtotal`, `thumbnail`, `title`, `total`, `unitPrice` and `variantId`. `product_id` and `variant_title` are left null; the admin and customer order queries recover the variant title, and a missing thumbnail, through the variant and product behind the line. The order row is inserted as `processing`, with totals from `computeOrderTotals` (`order.totals.ts`): `discount_total` is the checkout's discount from `calculateDiscountAmount`, capped at subtotal plus shipping, and `tax_total` is the VAT contained in the gross total at `tax_basis_points` (`STANDARD_VAT_BASIS_POINTS = 2300`). See [Discounts](/docs/features/discounts).
 
-`order_address` is declared in `src/modules/order-address/order-address.schema.ts` with a `type` of `shipping | billing`, but nothing writes to it. Order addresses are read back through `order.checkout → checkout.shippingAddress / billingAddress`.
+`order_address` is declared in `src/modules/order-address/order-address.schema.ts` with a `type` of `shipping | billing`. `prepareFulfillCheckoutBatch` snapshots the checkout's shipping and billing addresses into it, and the customer order detail prefers that snapshot over `order.checkout → checkout.shippingAddress / billingAddress`. The admin detail still reads the checkout addresses.
 
 ## Admin list
 
@@ -86,7 +86,7 @@ The badge styling maps for all of this are in `order.constants.ts`: `ORDER_STATU
 
 ## Admin actions
 
-Three server functions, all `authorized({ order: ["update"] })`, all guarded by the same pattern:
+Five server functions, all `authorized({ order: ["update"] })`. Four are guarded by the same pattern:
 
 ```ts
 assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
@@ -96,31 +96,37 @@ assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
 
 `assertOrderActionState` throws `ERROR_CODES.NOT_FOUND` with `ORDER_NOT_FOUND` when the row is missing and `ERROR_CODES.CONFLICT` with `ORDER_INVALID_STATE` when the predicate fails, so the transition rules are enforced server-side and not only in the UI.
 
-| Use case                     | Predicate                  | Writes                                                                          |
-| ---------------------------- | -------------------------- | ------------------------------------------------------------------------------- |
-| `use-cases/fulfill-order.ts` | `canFulfillAdminOrder`     | `fulfillment_status = "fulfilled"`; `status` moves `pending → processing`       |
-| `use-cases/ship-order.ts`    | `canMarkAdminOrderShipped` | `fulfillment_status = "shipped"`, `shipped_at = now`                            |
-| `use-cases/cancel-order.ts`  | `canCancelAdminOrder`      | `status = "cancelled"`, `fulfillment_status = "cancelled"`, `canceled_at = now` |
+| Use case                            | Predicate                    | Writes                                                                                                                |
+| ----------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `use-cases/fulfill-order.ts`        | `canFulfillAdminOrder`       | `fulfillment_status = "fulfilled"`; `status` moves `pending → processing`                                             |
+| `use-cases/ship-order.ts`           | `canMarkAdminOrderShipped`   | `fulfillment_status = "shipped"`, `shipped_at = now`, `tracking_number`, `tracking_url`                               |
+| `use-cases/mark-order-delivered.ts` | `canMarkAdminOrderDelivered` | `fulfillment_status = "delivered"`, `status = "completed"`, `delivered_at = now`                                      |
+| `use-cases/cancel-order.ts`         | `canCancelAdminOrder`        | `status = "cancelled"`, `fulfillment_status = "cancelled"`, `canceled_at = now`; restocks the lines in the same batch |
+
+The fifth, `refundAdminOrder` (`use-cases/refund-admin-order.ts`), reads the order's status and payment through `getAdminOrderRefundTarget`, checks `canRefundAdminOrder` against the payment row's real status, and calls `stripe.refunds.create` with `metadata: { orderId }` and the payment row's `transaction_id` as `payment_intent`. It writes nothing itself: the `charge.refunded` webhook runs `refundOrder`, which records the refund on the payment and, for a full refund, marks the order `refunded` and restocks its lines, then writes the audit entry. Note that `payment.transaction_id` holds the Checkout Session id stored by `createPendingPayment`, not a PaymentIntent id.
 
 The rules live in `order.admin-actions.utils.ts`:
 
 - `canFulfillAdminOrder` — not `cancelled`/`refunded`, and fulfilment is `not_fulfilled` or `partially_fulfilled`.
 - `canMarkAdminOrderShipped` — not `cancelled`/`refunded`, fulfilment is not already `shipped`/`delivered`/`cancelled`, and is `fulfilled` or `partially_fulfilled`. You must fulfil before you can ship.
+- `canMarkAdminOrderDelivered`: not `cancelled`/`refunded`, and fulfilment is `shipped`.
 - `canCancelAdminOrder` — status is `pending` or `processing`.
-- `canRefundAdminOrder` and `canPrintAdminOrderInvoice` are exported but no server function calls them.
+- `canRefundAdminOrder`: payment key `paid`, and status is not `refunded` or `cancelled`. `canPrintAdminOrderInvoice` (status is not `cancelled`) only enables the Print buttons in the UI.
 
-The three callers pass `paymentUiKey: "paid"` literally, so the payment part of the predicate is not actually checked against the row.
+`fulfillOrder` and `shipOrder` pass `paymentUiKey: "paid"` literally, and neither predicate reads it, so payment state is not checked against the row.
 
-Each action records an audit event (`recordOrderFulfillmentStartedAudit`, `recordOrderShippedAudit`, `recordOrderCancelledAudit`) and exposes mutation options keyed by `ORDER_MUTATION_KEYS`. `shipOrder` additionally queues the shipping notification:
+The four guarded actions record an audit event (`recordOrderFulfillmentStartedAudit`, `recordOrderShippedAudit`, `recordOrderReleasedAudit`, `recordOrderCancelledAudit`), and all five expose mutation options keyed by `ORDER_MUTATION_KEYS`. `shipOrder` additionally queues the shipping notification:
 
 ```ts
-recordOrderShippedAudit(orderId)
+recordOrderShippedAudit(orderId, {
+  detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+})
 scheduleBackgroundWork(notifyOrderShipped(orderId))
 ```
 
 `scheduleBackgroundWork` (`src/lib/background.ts`) hands the promise to the Worker's `waitUntil`, so the response does not wait for Resend.
 
-There is no server function that sets `delivered`, `tracking_number` or `tracking_url`, so `delivered_at` and the tracking columns are never populated by the app.
+The tracking number and URL come from `order-ship-dialog.tsx`; `shipOrder` trims them and stores `null` for an empty value, and the shipped email shows the number and points its button at the tracking URL when there is one. `markOrderDelivered` is the only writer of `delivered_at`.
 
 ## Export
 
@@ -133,37 +139,42 @@ There is no server function that sets `delivered`, `tracking_number` or `trackin
 - `components/orders-table.tsx` — `OrdersTableContent`, the data grid
 - `components/orders-columns.tsx` — column definitions; ids, widths and pinning come from `ADMIN_ORDER_TABLE_COLUMN_ID`, `ADMIN_ORDER_TABLE_COLUMN_SIZE` and `ADMIN_ORDER_TABLE_COLUMN_PINNING`
 - `components/orders-status-filter.tsx`, `orders-payment-filter.tsx`, `orders-fulfillment-filter.tsx`, `orders-date-column-filter.tsx`, `orders-numeric-column-filter.tsx`
-- `components/orders-row-actions.tsx` — the per-row menu that calls the three mutations
+- `components/orders-row-actions.tsx` — the per-row menu that calls `fulfillOrder`, `shipOrder` (without tracking) and `cancelOrder`
 - `components/orders-stats.tsx` with `orders-stats.config.ts`
 - `components/orders-export-action.tsx`, `orders-refresh-action.tsx`
 
 `order.admin-list-filters.ts` translates TanStack Table's `ColumnFiltersState` into the server's filter object, with one handler per column id and type guards (`isAdminOrderStatus`, `isAdminOrderPaymentUiKey`, `isAdminOrderFulfillmentUiKey`, `isNumericColumnFilterValue`, `isDateColumnFilterValue`), so an unrecognised filter is dropped rather than passed through.
 
-## The order detail screen is a demo
+## The order detail screen
 
-`/admin/orders/$orderId` (`src/routes/admin.orders.$orderId.tsx`) renders `OrderDetailPage`, whose cards all import from `src/data/order-detail.ts`:
+`/admin/orders/$orderId` (`src/routes/admin.orders.$orderId.tsx`) prefetches `getAdminOrderQuery(orderId)` with `staleTime: "static"`, titles the `AdminHeader` with the order number and renders `OrderDetailPage`.
 
-| Component                       | Constant                     |
-| ------------------------------- | ---------------------------- |
-| `order-meta-strip.tsx`          | `DEMO_ORDER`, `DEMO_SUMMARY` |
-| `order-customer-card.tsx`       | `DEMO_CUSTOMER`              |
-| `order-billing-card.tsx`        | `DEMO_BILLING`               |
-| `order-timeline-card.tsx`       | `DEMO_TIMELINE`              |
-| `order-fulfillment-tracker.tsx` | `DEMO_FULFILLMENT_STEPS`     |
-| `order-payment-card.tsx`        | `DEMO_ORDER`                 |
-| `order-notes-card.tsx`          | `DEMO_ORDER`                 |
+`getAdminOrder` (`use-cases/get-admin-order.ts`) requires `order: ["read"]`. `getAdminOrderDetailRow` loads the order with its checkout addresses, delivery method and courier, payment and user; then three reads run in parallel: `getAdminOrderItemRows` (lines joined to their variant and product for SKU, handle and thumbnail), `getAdminOrderTimelineRows` (the order's `audit_log` rows) and, when the order has a `user_id`, `getAdminOrderCustomerStats`. When the order does not exist, `getAdminOrderQuery` throws `notFound()`.
 
-The route reads `orderId` from the params only to render `#${orderId}` in the header. The Print, Refund and Fulfill buttons have no handlers. Everything a real detail screen needs already exists server-side — `getAdminOrdersPage` for the row, `getCustomerOrder` for the shape of the item and address joins — so wiring it up is a presentation job plus one new use case.
+| Component                       | Reads from the detail                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| `order-meta-strip.tsx`          | `status`, `paymentUiKey`, `fulfillmentUiKey`, `createdAt`, `totalMinorUnits` |
+| `order-fulfillment-tracker.tsx` | `fulfillmentSteps` from `buildAdminOrderFulfillmentSteps`, `canceledAt`      |
+| `order-line-items-card.tsx`     | `items`, `delivery` and the five `*MinorUnits` totals                        |
+| `order-timeline-card.tsx`       | `timeline` from `mapAdminOrderTimeline`                                      |
+| `order-customer-card.tsx`       | `customer` from `buildAdminOrderDetailCustomer`                              |
+| `order-shipping-card.tsx`       | `delivery`, `shippingAddress`, `trackingNumber`, `trackingUrl`               |
+| `order-billing-card.tsx`        | `billingAddress`, `billingSameAsShipping`                                    |
+| `order-payment-card.tsx`        | `payment`, including the refunded amount and date                            |
+| `order-tags-card.tsx`           | `tags` from `resolveAdminOrderDetailTags`                                    |
+| `order-notes-card.tsx`          | `customerNote`                                                               |
+
+`OrderDetailActions` (`order-detail-actions.tsx` with `use-order-detail-actions.ts`) puts the actions in the header. Print calls `globalThis.print()` and is disabled for a cancelled order. Refund, Cancel order, Fulfill, Mark shipped and Mark delivered render only when their predicate allows; Mark shipped opens `order-ship-dialog.tsx` for the optional tracking number and URL, and Refund and Cancel order ask for confirmation first.
 
 ## Customer order history
 
-`/account/orders` (`src/routes/account.orders.index.tsx`) reads `listCustomerOrdersQuery()`. `listCustomerOrders` is `authorized()` (any signed-in user) and scopes to `context.auth.user.id`: it loads the order rows, then the items for those ids in one query, groups them into a `Map` and maps each row through `mapCustomerOrderSummaryRow`. `CUSTOMER_ACCOUNT_ORDERS_LIMIT` is 50.
+`/account/orders` (`src/routes/account.orders.index.tsx`) reads `listCustomerOrdersQuery({ filter, page })`, with the filter and page kept in the URL. `listCustomerOrders` is `authorized()` (any signed-in user) and scopes to `context.auth.user.id`: it loads one page of order rows and the matching count, then the items for those ids in one query, groups them into a `Map` and maps each row through `mapCustomerOrderSummaryRow`. `CUSTOMER_ACCOUNT_ORDERS_PAGE_SIZE` is 10.
 
-`/account/orders/$id` reads `getCustomerOrderQuery(id)`. `getCustomerOrder` filters on `and(eq(order.id, orderId), eq(order.userId, context.auth.user.id))`, so **one customer cannot read another's order even with the id**. It loads the checkout with both addresses and the payment row, then maps with `mapCustomerOrderDetail`.
+`/account/orders/$id` reads `getCustomerOrderQuery(id)`. `getCustomerOrder` filters on `and(eq(order.id, orderId), eq(order.userId, context.auth.user.id))`, so **one customer cannot read another's order even with the id**. It loads the `order_address` snapshots, the checkout with both addresses, the delivery method and the payment row, then maps with `mapCustomerOrderDetail`, preferring the snapshot to the checkout address.
 
-`formatCustomerOrderDisplayId` (`customer-account.utils.ts`) shortens the UUID for display. The filter tabs are `CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "delivered", "shipped", "processing", "cancelled"]`.
+Both pages show `order_number`. The filter tabs are `CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "processing", "shipped", "delivered", "cancelled", "refunded"]`.
 
-Guest orders have `user_id = null` and therefore appear in no account. The confirmation email's CTA points a guest at `/auth/sign-up` instead — see `buildOrderAccountCta` in `src/integrations/resend/order-confirmation.utils.ts`.
+Guest orders have `user_id = null` and appear in no account until one claims them: `claimGuestOrdersForUser` (`order.claim.server.ts`) sets `user_id` on every guest order with the same email, ignoring case, when a user is created with a verified email or verifies it. The confirmation email's CTA points a guest at `/auth/sign-up` instead — see `buildOrderAccountCta` in `src/integrations/resend/order-confirmation.utils.ts`.
 
 ## Locale on an order
 

@@ -32,18 +32,19 @@ This is a working application under active development, not a finished product. 
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Storefront catalog       | Products, variants, options, categories, collections and attributes from D1. Localized search, faceted filtering, sorting and pagination. Product, category and collection detail pages by handle.                             |
 | Cart                     | Server-backed cart and cart items, availability re-checks against live inventory, and a cross-tab availability banner.                                                                                                         |
-| Checkout                 | Four steps (contact, billing address, delivery, payment) with lazily loaded step components, a persisted draft, Stripe Payment Element, and webhook-driven fulfilment.                                                         |
-| Payments and fulfilment  | Stripe intents, `/api/webhooks/stripe` with signature verification, idempotent order placement, inventory reservation with compensation, refunds with restock on full refund.                                                  |
+| Checkout                 | Four steps (contact, billing address, delivery, payment) with lazily loaded step components, a persisted draft, a discount code field, Stripe Payment Element, and webhook-driven fulfilment.                                  |
+| Payments and fulfilment  | Stripe Checkout Sessions, `/api/webhooks/stripe` with signature verification, idempotent order placement, inventory reservation with compensation, refunds with restock on full refund.                                        |
 | Customer accounts        | Better Auth email/password with required verification, GitHub and Google sign-in, two-factor auth with backup codes, password change and recovery, multi-session, order history, addresses, active sessions and login history. |
 | Transactional email      | Resend with React Email templates: verify email, change email, reset password, account deleted, order confirmation, order shipped. Previewable at `/dev/emails`.                                                               |
 | Admin catalog            | Products, variants, categories, collections and attributes: permission-checked CRUD, reordering, localized content editing, R2 image upload, stats cards, product CSV export.                                                  |
-| Admin orders             | Database-backed list with tabs, filters, stats and CSV export, plus fulfil, ship, cancel, refund and dispute actions with audit trail and shipment email.                                                                      |
+| Admin orders             | Database-backed list and detail page with tabs, filters, stats and CSV export, plus fulfil, ship with tracking, mark delivered, cancel and refund actions, webhook-flagged disputes, audit trail and shipment email.           |
+| Discounts                | Percentage, fixed-amount and free-shipping codes with date, usage, per-customer and minimum-order limits, applied to the Stripe Checkout Session as a one-off coupon and managed at `/admin/coupons`.                          |
 | Admin customers          | Database-backed customer list and detail, order counts and spend aggregates.                                                                                                                                                   |
-| Audit log                | Cloudflare Queue producer/consumer, 32 typed recorder functions over a 34-entry action catalogue, admin list with category and date filters.                                                                                   |
+| Audit log                | Cloudflare Queue producer/consumer, 37 typed recorder functions over a 38-entry action catalogue, admin list with category and date filters.                                                                                   |
 | Realtime invalidation    | Durable Object fan-out hub per audience, WebSocket subscriptions for 14 admin and 11 storefront query prefixes, `BroadcastChannel` mirroring across tabs.                                                                      |
 | Documentation and legal  | Fumadocs-backed `/docs` with 98 pages per locale. The privacy policy and exchanges-and-returns pages are Markdown in the D1 `content_page` table, edited with MDXEditor at `/admin/content`.                                   |
-| Scaffolded, not finished | Discounts and coupons (schema only), InPost parcel-locker discovery only (no shipments or labels).                                                                                                                             |
-| Fixture-backed screens   | The admin order **detail** page, `/admin/coupons`, `/admin/marketing`, `/admin/settings` and the blog render from `src/data/`, not the database.                                                                               |
+| Scaffolded, not finished | InPost parcel-locker discovery only (no shipments or labels).                                                                                                                                                                  |
+| Fixture-backed screens   | `/admin/marketing`, `/admin/settings` and the blog render from `src/data/`, not the database.                                                                                                                                  |
 | Not present              | End-to-end/browser tests, scheduled or cron jobs, a dead-letter queue, and error reporting.                                                                                                                                    |
 
 The built-in roles are `admin` and `customer`; new accounts receive `customer`. See [Known gaps](#known-gaps) for the specifics behind the last three rows.
@@ -205,14 +206,14 @@ src/
   server.ts                   Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, queue consumer
   router.tsx                  Per-request QueryClient, SSR integration, locale rewrite, default components
   routes.ts                   Route constants shared by links, guards and head metadata
-  routes/                     62 locale-free file routes + 2 API handlers
-  modules/{feature}/          36 domain modules — schema, Zod, types, constants, utils
-    *.accessors.ts              unauthenticated data access (reads and writes), 13 files
-    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 82 files
+  routes/                     65 locale-free file routes + 2 API handlers
+  modules/{feature}/          39 domain modules — schema, Zod, types, constants, utils
+    *.accessors.ts              unauthenticated data access (reads and writes), 18 files
+    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 108 files
   modules/_core/              Shared error codes, HTTP statuses, currency, pagination, CSV, column filters
   integrations/{vendor}/      14 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, inpost, use-intl,
                                 fumadocs, mdxeditor, tanstack-query, realtime-invalidation, gsap, lenis, react-day-picker
-  presentation/               1088 files — shadcn baseline (58), feature UI, data grid, emails, styles, theme, branding
+  presentation/               1170 files — shadcn baseline (58), feature UI, data grid, emails, styles, theme, branding
   durable-objects/            RealtimeInvalidationHub
   providers/                  Theme and translation providers
   hooks/                      Shared React hooks
@@ -265,7 +266,7 @@ The constraint that actually holds is in the database. [`20260924120000_checkout
 
 A server function is a public HTTP endpoint. It is reachable whether or not the route that normally calls it was ever loaded, so a route guard cannot protect it.
 
-Route `beforeLoad` guards exist here and are honest about their job: `requireSignedIn`, `requireAdmin` and `requireCustomer` redirect, for navigation UX, and they also run client-side. The actual boundary is the `authorized()` middleware, applied to **62 server functions**. It resolves the session, throws `AppError(UNAUTHORIZED)` when there is none, and — for the 48 calls that pass a permission — throws `AppError(FORBIDDEN)` unless the role's compiled Better Auth access-control role authorizes that statement. The remaining 14 require only an authenticated session. The statement matrix in `auth.access.ts` is the real authorization source, not decoration: `product` splits `create`/`read`/`update`/`delete`/`publish`, `order` splits `read`/`update`/`refund`, `content` splits `read`/`update`, `settings` has `manage`, and `user` inherits Better Auth's admin statements.
+Route `beforeLoad` guards exist here and are honest about their job: `requireSignedIn`, `requireAdmin` and `requireCustomer` redirect, for navigation UX, and they also run client-side. The actual boundary is the `authorized()` middleware, applied to **83 server functions**. It resolves the session, throws `AppError(UNAUTHORIZED)` when there is none, and — for the 62 calls that pass a permission — throws `AppError(FORBIDDEN)` unless the role's compiled Better Auth access-control role authorizes that statement. The remaining 21 require only an authenticated session. The statement matrix in `auth.access.ts` is the real authorization source, not decoration: `product` splits `create`/`read`/`update`/`delete`/`publish`, `order` splits `read`/`update`/`refund`, `content` splits `read`/`update`, `settings` has `manage`, and `user` inherits Better Auth's admin statements.
 
 Customer-facing reads take a different route: **ownership predicates compiled into the SQL**, `eq(order.userId, session.user.id)` in the `WHERE` clause rather than a fetch-then-filter. A foreign order id returns no row, which makes IDOR structurally absent rather than conventionally avoided.
 
@@ -289,7 +290,7 @@ A promise still pending when a Worker returns its response is terminated. Better
 
 [`src/server.ts`](src/server.ts) enters an `AsyncLocalStorage` carrying `waitUntil` around the framework handler, and `scheduleBackgroundWork` pulls it back out at arbitrary depth. When no store exists — the queue consumer, unit tests, the paths that short-circuit before the ALS — it degrades to a fire-and-forget wrapped in a `catch`, so failures are logged rather than silently dropped.
 
-Audit events are enqueued to `AUDIT_LOG_QUEUE` rather than written inline, with ids and timestamps minted at enqueue time so ordering survives batching (`max_batch_size: 50`, `max_batch_timeout: 5`, `max_retries: 3`). 32 typed recorder functions cover a 34-entry action catalogue across five of the six declared categories — `settings` is declared but has no recorder yet.
+Audit events are enqueued to `AUDIT_LOG_QUEUE` rather than written inline, with ids and timestamps minted at enqueue time so ordering survives batching (`max_batch_size: 50`, `max_batch_timeout: 5`, `max_retries: 3`). 37 typed recorder functions cover a 38-entry action catalogue across all seven declared categories.
 
 ### Realtime cache invalidation
 
@@ -303,7 +304,7 @@ Admin upgrades are role-checked **in the Worker, before the Durable Object is ad
 
 ### Catalog modelling
 
-Products carry localized content as typed JSON maps — `titles` non-null, `subtitles`/`descriptions`/`tags` nullable — rather than a translations table, so a product reads in one query. Search is a `lower(cast(column as text)) like ? escape '\'` across those JSON columns, which queries every locale at once without an FTS table.
+Products carry localized content as typed JSON maps — `titles` non-null, `subtitles`/`descriptions`/`tags` nullable — rather than a translations table, so a product reads in one query. Storefront search runs against `storefront_search`, an FTS5 index of the Polish and English text that triggers on `product`, `product_category` and `product_collection` keep current, ranked by `bm25`. Admin product search is a `lower(cast(column as text)) like ? escape '\'` over each locale's `json_extract` from those JSON columns.
 
 Variants, options, attributes and the category/collection junctions are replaced as a **single `db.batch`** through `runDrizzleBatch`, so a product edit is atomic across nine tables. Point reads — by handle, by id, stats, the `json_each` aggregates — are prepared once at module load (eight prepared statements in the product accessors alone); list queries are built per request because the variant-stats join, filters and sort change shape and a prepared statement cannot.
 
@@ -334,7 +335,7 @@ The linter runs with **six of Oxlint's categories set to `error`, including `nur
 
 Hard structural limits: **800 lines per file, 150 lines per function, 20 statements per function.** `no-magic-numbers` allows only `-1`, `0` and `1`; `id-length` allows `_`, `m` and `t`; `one-var` forbids grouped declarations; `only-throw-error` permits only TanStack's `Redirect` and `NotFoundError` as non-`Error` throws.
 
-Across roughly **79,400 hand-written lines** of application source, there are **no inline lint suppressions** outside generated declaration files. Exceptions are narrow, file-scoped overrides declared in `vite.config.ts` — relaxed magic numbers and loop awaits in tests, `consistent-return` off in presentation and hooks, unsafe assertions allowed only in `src/platform/testing/mocks/**`, key ordering off in `src/routes/**`, and `max-lines` off for `vite.config.ts` itself — rather than repo-wide rule removals.
+Across roughly **88,100 hand-written lines** of application source, there are **no inline lint suppressions** outside generated declaration files. Exceptions are narrow, file-scoped overrides declared in `vite.config.ts` — relaxed magic numbers and loop awaits in tests, `consistent-return` off in presentation and hooks, unsafe assertions allowed only in `src/platform/testing/mocks/**`, key ordering off in `src/routes/**`, and `max-lines` off for `vite.config.ts` itself — rather than repo-wide rule removals.
 
 Formatting, linting, testing and the dev/build pipeline are one toolchain (Vite+), configured in a single [`vite.config.ts`](vite.config.ts). The formatter runs at 140 columns without semicolons, sorts Tailwind classes against `globals.css` for `cn`/`cva`/`tw`, and applies the 17 custom import groups. Git hooks in [`.vite-hooks/`](.vite-hooks) run `vp check --fix` on staged files and validate commit messages.
 
@@ -390,7 +391,7 @@ Current measured coverage, from `coverage/coverage-summary.json`:
 | Functions  | 4 521 / 4 623   | 97.79%  | 68              |
 | Lines      | 15 702 / 15 884 | 98.85%  | 71              |
 
-873 test files hold roughly 8 349 cases, 371 of them table-driven, across about 117 000 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree and declaration files, and the shadcn primitives.
+889 test files hold roughly 8 707 cases, 379 of them table-driven, across about 123 000 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree and declaration files, and the shadcn primitives.
 
 The configured thresholds are a **ratchet, not a target**, and they are currently well below the measured result — they were last raised when coverage was in the seventies. Raise them deliberately; `autoUpdate` is off so they never move on their own.
 
@@ -433,7 +434,7 @@ Then replace `database_id`, the KV `id` and both queue names under `env.developm
 
 ### Migrations
 
-Module schemas are collected by [`drizzle.schemas.ts`](src/integrations/drizzle-orm/drizzle.schemas.ts) — 31 tables, one export pair (table plus relations) per module. Generate a migration with:
+Module schemas are collected by [`drizzle.schemas.ts`](src/integrations/drizzle-orm/drizzle.schemas.ts): 36 tables from 34 modules, each exported with its relations where it has any. The FTS5 search index `storefront_search` is declared in its module but left out of that file, because a hand-written migration creates it. Generate a migration with:
 
 ```sh
 bun run db:generate
@@ -441,7 +442,7 @@ bun run db:generate
 
 Review and commit the SQL under `src/integrations/drizzle-orm/migrations/` together with the schema change, then apply it before deploying code that depends on it.
 
-Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **57 `.sql` files**, while Drizzle's `meta/_journal.json` lists 51, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
+Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **66 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
 
 | Command                          | Database affected                                              |
 | -------------------------------- | -------------------------------------------------------------- |
@@ -547,8 +548,7 @@ Kept here rather than hidden, because an accurate map is more useful than a flat
 
 - Inventory compensation is best-effort. A failed rollback leaves stock reserved, and nothing alerts.
 - The order confirmation email is attempted at most once and never retried. A failed send is recorded as an audit event; there is no outbox.
-- `order.status` is never written as `completed` — only `processing`, `cancelled` and `refunded`. The admin revenue and average-order-value cards filter on `eq(order.status, "completed")`, so they compute over an empty set.
-- `fulfillmentStatus: "delivered"`, `deliveredAt`, `trackingNumber` and `trackingUrl` are read and rendered but have no write path.
+- `order.status` becomes `completed` only when an admin marks the order delivered through `mark-order-delivered`. The admin revenue and average-order-value cards filter on `eq(order.status, "completed")`, so paid orders that have not been marked delivered are left out of them.
 - Partial refunds never restock: the restock branch requires both `input.restock` and `input.fullyRefunded`.
 - `isAdminPathname` uses `pathname.includes(ROUTES.ADMIN)`, so a storefront URL containing that substring is misclassified — which changes the theme, the pending component and the sidebar preference.
 
@@ -569,11 +569,10 @@ Kept here rather than hidden, because an accurate map is more useful than a flat
 
 **Unfinished or fixture-backed**
 
-- Discounts and coupons exist as a `discount` table and `discount_id` columns on `cart`, `checkout` and `order`. No code path reads or writes them; `/admin/coupons` renders from `src/data/coupons.ts`.
 - InPost is parcel-locker _discovery_ only — `fetchPointsByCity` against the public points API. No shipment creation, no labels, no tracking.
-- The admin order **detail** page, `/admin/marketing` and `/admin/settings` render from `src/data/`. The admin order **list** is fully database-backed, as are its fulfil, ship, cancel, refund and dispute actions.
+- `/admin/marketing` and `/admin/settings` render from `src/data/`. The admin order list and detail page are fully database-backed, as are their fulfil, ship, mark-delivered, cancel and refund actions.
 - The blog reads `src/data/blog-posts.ts` rather than MDX or the database.
-- `order_address` is declared and migrated but only read through customer-account types; nothing writes it. The `CACHE` KV binding is declared and verified at deploy time but never read. The `anonymous()` Better Auth plugin is registered with no flow that uses it. The `settings` audit category has no recorder.
+- The `CACHE` KV binding is declared and verified at deploy time but never read. The `anonymous()` Better Auth plugin is registered with no flow that uses it.
 
 ## Contributing
 

@@ -3,24 +3,25 @@ title: "Moduły i przypadki użycia"
 description: "Jak zbudowany jest moduł funkcjonalny, co oznacza każdy sufiks pliku i jaki kształt ma każdy przypadek użycia."
 ---
 
-## 36 modułów
+## 39 modułów
 
 ```text
-_core                   address                 admin-dashboard
-account                 attribute-on-product    audit-log
+_core                   account                 address
+admin-dashboard         attribute-on-product    audit-log
 cart                    cart-item               category-on-product
-checkout                collection-on-product   courier
-customer-account        customer-activity       delivery-method
-discount                inventory               option-on-variant
-order                   order-address           order-item
-payment                 product                 product-attribute
-product-category        product-collection      product-image
-product-option          product-option-value    product-variant
-rate-limit              session                 storefront-search
-two-factor              user                    verification
+checkout                collection-on-product   content-page
+courier                 customer-account        customer-activity
+delivery-method         discount                inventory
+newsletter              option-on-variant       order
+order-address           order-item              payment
+product                 product-attribute       product-category
+product-collection      product-image           product-option
+product-option-value    product-variant         rate-limit
+session                 storefront-search       two-factor
+user                    verification            wishlist
 ```
 
-31 z nich eksportuje tabelę Drizzle, a `src/integrations/drizzle-orm/drizzle.schemas.ts` re-eksportuje wszystkie 31, żeby klient Drizzle, adapter Better Auth i `drizzle-kit` widziały jeden rejestr schematu. `admin-dashboard`, `customer-account`, `customer-activity` i `storefront-search` to modele odczytu nad tabelami innych modułów i nie mają własnego schematu; `_core` jest współdzielonym jądrem.
+34 z nich eksportuje tabele Drizzle, łącznie 36, a `src/integrations/drizzle-orm/drizzle.schemas.ts` re-eksportuje każdą z nich, żeby klient Drizzle, adapter Better Auth i `drizzle-kit` widziały jeden rejestr schematu. `storefront-search` deklaruje wirtualną tabelę FTS5 `storefront_search`, którą tworzy ręcznie napisana migracja i która pozostaje poza tym rejestrem. `admin-dashboard`, `customer-account` i `customer-activity` to modele odczytu nad tabelami innych modułów i nie mają własnego schematu; `_core` jest współdzielonym jądrem.
 
 ## Sufiksy plików
 
@@ -35,22 +36,39 @@ two-factor              user                    verification
 | `<feature>.*.server.ts`    | Helpery wyłącznie serwerowe, które nie są endpointami RPC                      |
 | `use-cases/<verb-noun>.ts` | Jedno `createServerFn` plus opcje zapytania lub mutacji, które je wołają       |
 
-`order` to dobry moduł do przeczytania od początku do końca: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.display.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.settled.server.ts`, `order.audit.utils.ts`, `order.admin-list-filters.ts` i dziewięć plików w `use-cases/`.
+`order` to dobry moduł do przeczytania od początku do końca: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` i trzynaście plików w `use-cases/`.
 
 ## Przypadek użycia mutujący
 
 ```ts
+const trimmedOrNull = (value: string | undefined) => {
+  const trimmed = value?.trim()
+
+  return trimmed === undefined || trimmed === "" ? sql`null` : trimmed
+}
+
 export const shipOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
-  .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
-  .handler(async ({ data: { orderId } }) => {
+  .validator((input: zod.input<typeof orderZodSchemas.adminShipOrderInput>) => orderZodSchemas.adminShipOrderInput.parse(input))
+  .handler(async ({ data: { orderId, trackingNumber, trackingUrl } }) => {
     assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
       canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
     )
 
-    await db.update(order).set({ fulfillmentStatus: "shipped", shippedAt: new Date(), updatedAt: new Date() }).where(eq(order.id, orderId))
+    await db
+      .update(order)
+      .set({
+        fulfillmentStatus: "shipped",
+        shippedAt: new Date(),
+        trackingNumber: trimmedOrNull(trackingNumber),
+        trackingUrl: trimmedOrNull(trackingUrl),
+        updatedAt: new Date(),
+      })
+      .where(eq(order.id, orderId))
 
-    recordOrderShippedAudit(orderId)
+    recordOrderShippedAudit(orderId, {
+      detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+    })
     scheduleBackgroundWork(notifyOrderShipped(orderId))
 
     return { ok: true, orderId }
@@ -128,7 +146,7 @@ Przy przenoszeniu kodu zachowuj wartości krotek. Z tych samych stałych korzyst
 
 ## Funkcje serwerowe bez granicy RPC
 
-Nie każda operacja jest funkcją serwerową. `createCheckout`, `fulfillCheckout` i `releaseCheckout` w `src/modules/checkout/use-cases/*.server.ts` to zwykłe funkcje asynchroniczne: wołane są wyłącznie z handlera webhooka Stripe, który jest już uwierzytelniony weryfikacją podpisu, więc wystawienie ich jako endpointów tylko poszerzyłoby powierzchnię ataku.
+Nie każda operacja jest funkcją serwerową. Cztery pliki w `src/modules/checkout/use-cases/*.server.ts` eksportują zwykłe funkcje asynchroniczne. `fulfillCheckout` i `releaseCheckout` wołane są wyłącznie z handlera webhooka Stripe, który jest już uwierzytelniony weryfikacją podpisu. `createCheckout` i `updateCheckoutDelivery` wołane są z `src/integrations/stripe/stripe.actions.server.ts`, za objętymi limitem żądań `createCheckoutSessionFn` i `updateCheckoutSessionFn`. Wystawienie którejkolwiek z nich jako osobnego endpointu tylko poszerzyłoby powierzchnię ataku.
 
 ## Wywołanie przypadku użycia z komponentu
 

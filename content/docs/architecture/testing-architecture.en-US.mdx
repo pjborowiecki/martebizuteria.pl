@@ -7,13 +7,13 @@ description: "The three Vitest projects, the in-process server-function bridge, 
 
 `vp test run` runs Vitest through Vite+ with three projects defined in `vite.config.ts`. Tests live in a `__test__` folder next to the code they cover and import their test APIs from `vite-plus/test`.
 
-| Project       | Environment | Files                                | Count |
-| ------------- | ----------- | ------------------------------------ | ----- |
-| `node`        | Node        | `*.test.ts`, excluding the two below | 364   |
-| `integration` | Node        | `*.integration.test.ts`              | 30    |
-| `component`   | jsdom       | `*.component.test.tsx`               | 479   |
+| Project       | Environment | Files                                      | Count |
+| ------------- | ----------- | ------------------------------------------ | ----- |
+| `node`        | Node        | `*.test.{ts,tsx}`, excluding the two below | 339   |
+| `integration` | Node        | `*.integration.test.ts`                    | 35    |
+| `component`   | jsdom       | `*.component.test.{ts,tsx}`                | 515   |
 
-873 test files in total. Only the `component` project loads `src/platform/testing/setup.ts`; node and integration tests import what they need explicitly.
+889 test files in total. Only the `component` project loads `src/platform/testing/setup.ts`; node and integration tests import what they need explicitly.
 
 ```sh
 bun run test              # all three projects

@@ -172,7 +172,7 @@ So `messages/{locale}/emails.order-confirmation.json` has a `deliveryTiming` obj
 ## What is not there
 
 - No label generation, no shipment booking, no carrier API call besides the public points lookup.
-- No tracking write path: `order.tracking_number` and `order.tracking_url` are never set by the app.
+- No carrier tracking: `order.tracking_number` and `order.tracking_url` are typed in by an admin in the ship dialog on `/admin/orders/$orderId`, and nothing fetches or updates them from a carrier.
 - No shipping rules: the price is a flat per-method amount with no weight, size, basket-value or destination logic.
 - No store locations table for `in_store`.
 - No admin screen for couriers or delivery methods — rows are managed directly in D1.

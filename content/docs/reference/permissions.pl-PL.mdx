@@ -29,10 +29,11 @@ Nowe konta dostają rolę `customer` przez `DEFAULT_ROLE`. `hasAdminAccess(role)
 
 ## Deklaracje uprawnień
 
-Deklaracje aplikacyjne pochodzą z `PERMISSIONS_STATEMENTS`, które rozwija `defaultStatements` wtyczki admin Better Auth i dodaje trzy zasoby:
+Deklaracje aplikacyjne pochodzą z `PERMISSIONS_STATEMENTS`, które rozwija `defaultStatements` wtyczki admin Better Auth i dodaje cztery zasoby:
 
 | Zasób      | Akcje                                           |
 | ---------- | ----------------------------------------------- |
+| `content`  | `read`, `update`                                |
 | `order`    | `read`, `update`, `refund`                      |
 | `product`  | `create`, `read`, `update`, `delete`, `publish` |
 | `settings` | `manage`                                        |
@@ -48,7 +49,7 @@ Zwróć uwagę, że `product` obejmuje cały katalog, nie tylko tabelę `product
 
 ## Gdzie sprawdzane jest każde uprawnienie
 
-Z 75 funkcji serwerowych w `src/modules/*/use-cases/` 48 wymaga uprawnienia, 14 wymaga tylko sesji, a 13 jest publicznych.
+Ze 101 funkcji serwerowych w `src/modules/*/use-cases/` 61 wymaga uprawnienia, 21 wymaga tylko sesji, a 19 jest publicznych.
 
 | Uprawnienie            | Sprawdzane przez                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -56,36 +57,44 @@ Z 75 funkcji serwerowych w `src/modules/*/use-cases/` 48 wymaga uprawnienia, 14 
 | `product: ["create"]`  | `create-complete-product`, `create-product-attribute`, `create-category`, `create-collection`                                                                                                                                                                                                                                                             |
 | `product: ["update"]`  | `update-complete-product`, `reorder-products`, `update-product-attribute`, `reorder-product-attributes`, `set-all-product-attributes`, `update-category`, `reorder-categories`, `update-collection`, `reorder-collections`, a także mutacje uploadu mediów w `src/integrations/cloudflare-r2/media.mutations.ts`                                          |
 | `product: ["delete"]`  | `delete-products`, `delete-product-attributes`, `delete-categories`, `delete-collections`                                                                                                                                                                                                                                                                 |
-| `order: ["read"]`      | `get-admin-orders-page`, `get-admin-order-stats`, `export-admin-orders`                                                                                                                                                                                                                                                                                   |
-| `order: ["update"]`    | `ship-order`, `fulfill-order`, `cancel-order`                                                                                                                                                                                                                                                                                                             |
+| `order: ["read"]`      | `get-admin-orders-page`, `get-admin-order-stats`, `get-admin-order`, `export-admin-orders`, `get-admin-discounts-page`, `get-admin-discount-stats`                                                                                                                                                                                                        |
+| `order: ["update"]`    | `ship-order`, `fulfill-order`, `mark-order-delivered`, `cancel-order`, `refund-admin-order`, `create-discount`, `update-discount`, `delete-discounts`                                                                                                                                                                                                     |
+| `content: ["read"]`    | `get-admin-content-pages`, `get-admin-content-page`                                                                                                                                                                                                                                                                                                       |
+| `content: ["update"]`  | `update-content-page`                                                                                                                                                                                                                                                                                                                                     |
 | `settings: ["manage"]` | `get-dashboard-snapshot`, `get-dashboard-chart-range`, `list-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`                                                                                                                                                                                                                                      |
-| `user: ["list"]`       | `get-admin-customers-page`, `get-admin-customer-stats`, `export-admin-customers`                                                                                                                                                                                                                                                                          |
+| `user: ["list"]`       | `get-admin-customers-page`, `get-admin-customer-stats`, `export-admin-customers`, `get-admin-newsletter-page`, `get-newsletter-stats`                                                                                                                                                                                                                     |
 | `user: ["get"]`        | `get-admin-customer`                                                                                                                                                                                                                                                                                                                                      |
 | `user: ["update"]`     | `update-customer`                                                                                                                                                                                                                                                                                                                                         |
 | `user: ["delete"]`     | `delete-customer`                                                                                                                                                                                                                                                                                                                                         |
-| Sesja, bez uprawnienia | Wszystkie dziewięć przypadków użycia `customer-account` i wszystkie pięć z `address`                                                                                                                                                                                                                                                                      |
+| Sesja, bez uprawnienia | Wszystkie dziewięć przypadków użycia `customer-account`, wszystkie pięć z `address`, wszystkie trzy z `wishlist`, oba z `payment` oraz `get-own-newsletter-subscription` i `unsubscribe-own-newsletter` z `newsletter`                                                                                                                                    |
 
-`order: ["refund"]` i `product: ["publish"]` są zadeklarowane, ale nie są sprawdzane przez żadną funkcję serwerową. Zwroty płatności przychodzą ze Stripe i obsługuje je `order/use-cases/refund-order.ts` — zwykła funkcja bez endpointu RPC, więc nie ma kogo autoryzować.
+`order: ["refund"]` i `product: ["publish"]` są zadeklarowane, ale nie są sprawdzane przez żadną funkcję serwerową. Przycisk Zwrot w panelu wywołuje `refund-admin-order`, który sprawdza `order: ["update"]`. Sam zwrot zapisuje `order/use-cases/refund-order.ts`, zwykła funkcja wywoływana przez webhook `charge.refunded`, która nie ma endpointu RPC do autoryzowania.
 
 ## Publiczne endpointy
 
-Trzynaście przypadków użycia świadomie nie ma middleware `authorized`, bo sklep musi obsługiwać anonimowych odwiedzających. Ta lista nie jest domyślna — jest zapisana w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` jako `PUBLIC_USE_CASES`:
+Dziewiętnaście przypadków użycia świadomie nie ma middleware `authorized`, bo sklep musi obsługiwać anonimowych odwiedzających. Ta lista nie jest domyślna — jest zapisana w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` jako `PUBLIC_USE_CASES`:
 
 | Przypadek użycia                                            |
 | ----------------------------------------------------------- |
 | `cart/use-cases/check-cart-availability.ts`                 |
+| `content-page/use-cases/get-content-page.ts`                |
 | `customer-activity/use-cases/record-customer-activity.ts`   |
 | `delivery-method/use-cases/list-delivery-methods.ts`        |
-| `product/use-cases/get-storefront-products-page.ts`         |
-| `product/use-cases/get-product.ts`                          |
-| `product/use-cases/get-related-products.ts`                 |
-| `product/use-cases/get-new-arrivals.ts`                     |
+| `discount/use-cases/validate-discount-code.ts`              |
+| `order/use-cases/get-order-confirmation.ts`                 |
+| `newsletter/use-cases/confirm-newsletter-subscription.ts`   |
+| `newsletter/use-cases/subscribe-to-newsletter.ts`           |
+| `newsletter/use-cases/unsubscribe-from-newsletter.ts`       |
 | `product-category/use-cases/get-categories.ts`              |
 | `product-category/use-cases/get-storefront-category.ts`     |
 | `product-collection/use-cases/get-collections.ts`           |
 | `product-collection/use-cases/get-storefront-collection.ts` |
-| `storefront-search/use-cases/search-storefront.ts`          |
+| `product/use-cases/get-new-arrivals.ts`                     |
+| `product/use-cases/get-product.ts`                          |
+| `product/use-cases/get-related-products.ts`                 |
+| `product/use-cases/get-storefront-products-page.ts`         |
 | `storefront-search/use-cases/get-trending-searches.ts`      |
+| `storefront-search/use-cases/search-storefront.ts`          |
 
 Ten test wylicza każdy plik w `src/modules/*/use-cases/` i sprawdza trzy rzeczy: plik zawierający `createServerFn` i nieobecny na liście **musi** zawierać `authorized(`; plik z listy **nie może**; a każdy wpis z listy musi nadal istnieć. Dodanie przypadku użycia bez autoryzacji wywala więc testy, zamiast trafić na produkcję.
 

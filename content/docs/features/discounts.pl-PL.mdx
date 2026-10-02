@@ -1,98 +1,168 @@
 ---
 title: "Rabaty"
-description: "Tabela discount istnieje, ekran kuponów w panelu jest makietą, a żadna ścieżka kodu nie nakłada rabatu na koszyk ani na zamówienie."
+description: "Kody rabatowe od strony kuponów w panelu, przez pole w kasie i kupon Stripe, po wykorzystanie zapisywane po płatności."
 ---
 
-Rabaty to największy świadomie nieskończony obszar sklepu. Schemat bazy jest gotowy, ekran w panelu jest zaprojektowany i renderowany, a nic ich nie łączy.
+Kody rabatowe działają od początku do końca. Administrator tworzy je na `/admin/coupons`, kupujący wpisuje kod w podsumowaniu kasy, serwer sprawdza go ponownie podczas budowania sesji Stripe, a realizacja zapisuje wykorzystanie kodu. Implementacja znajduje się w `src/modules/discount/`.
 
-## Co istnieje
+## Tabele
 
-`discount` (`src/modules/discount/discount.schema.ts`):
+`discount` i `discount_redemption` (`src/modules/discount/discount.schema.ts`):
 
 ```ts
 export const discount = sqliteTable(
   "discount",
   {
     code: text("code").notNull().unique(),
+    description: text("description", { length: 512 }),
     endsAt: timestamp("ends_at"),
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+    maxDiscountAmount: integer("max_discount_amount"),
+    minOrderTotal: integer("min_order_total"),
+    perCustomerLimit: integer("per_customer_limit"),
     startsAt: timestamp("starts_at"),
-    type: text("type", { enum: ["percentage", "fixed_amount", "free_shipping"] }).notNull(),
+    type: text("type", { enum: DISCOUNT_TYPES }).notNull(),
     usageCount: integer("usage_count").default(0).notNull(),
     usageLimit: integer("usage_limit"),
     value: integer("value").notNull(),
     ...timestamps(),
   },
-  (table) => [index("discount_code_idx").on(table.code)],
+  (table) => [index("discount_code_idx").on(table.code), index("discount_isActive_idx").on(table.isActive)],
+)
+
+export const discountRedemption = sqliteTable(
+  "discount_redemption",
+  {
+    amount: integer("amount").notNull(),
+    discountId: text("discount_id")
+      .references(() => discount.id, { onDelete: "cascade" })
+      .notNull(),
+    email: text("email", { length: 320 }).notNull(),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    orderId: text("order_id").references(() => order.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps(),
+  },
+  (table) => [
+    index("discount_redemption_discountId_idx").on(table.discountId),
+    index("discount_redemption_discountId_email_idx").on(table.discountId, table.email),
+    uniqueIndex("discount_redemption_orderId_unique").on(table.orderId),
+  ],
 )
 ```
 
-Trzy typy to `percentage`, `fixed_amount` i `free_shipping`. `value` to jedna liczba całkowita, więc rabat procentowy i kwota stała w jednostkach podrzędnych dzielą jedną kolumnę. `usage_limit` jest nullowalna — `null` oznacza brak limitu.
+Trzy typy to `percentage`, `fixed_amount` i `free_shipping` (`DISCOUNT_TYPES` w `discount.constants.ts`). `value` to jedna liczba całkowita: cały procent dla `percentage`, kwota w jednostkach podrzędnych dla `fixed_amount`, a dla `free_shipping` jest ignorowana. Kolumny limitów są nullowalne, a `null` oznacza brak limitu: `usage_limit` ogranicza łączną liczbę wykorzystań, `per_customer_limit` ogranicza ją dla jednego adresu e-mail, `min_order_total` to minimalna suma pozycji w jednostkach podrzędnych, a `max_discount_amount` ogranicza, ile może odjąć rabat procentowy.
 
-`discountRelations` deklaruje `many(cart)`, `many(checkout)` i `many(order)`, a każda z tych trzech tabel ma kolumnę `discount_id`. `order` ma dodatkowo `discount_total`.
+`discountRelations` deklaruje `many(cart)`, `many(checkout)`, `many(order)` i `many(discountRedemption)`. Każda z tabel `cart`, `checkout` i `order` ma kolumnę `discount_id`, a `order` ma dodatkowo `discount_total`. Kolumna `description`, trzy kolumny reguł, indeks `is_active` i tabela `discount_redemption` pochodzą z `20260930200000_discount_rules_and_redemptions.sql`.
 
-## Czego brakuje
-
-Moduł to plik schematu i nic więcej — nie ma `*.constants.ts`, `*.zod.ts` ani `use-cases/`:
+## Moduł
 
 ```
 src/modules/discount/
-└── discount.schema.ts
+├── __test__/
+│   ├── discount.schema.test.ts
+│   └── discount.utils.test.ts
+├── discount.accessors.ts
+├── discount.checkout.server.ts
+├── discount.constants.ts
+├── discount.persist.utils.ts
+├── discount.redeem.server.ts
+├── discount.schema.ts
+├── discount.types.ts
+├── discount.utils.ts
+├── discount.zod.ts
+└── use-cases/
+    ├── create-discount.ts
+    ├── delete-discounts.ts
+    ├── get-admin-discount-stats.ts
+    ├── get-admin-discounts-page.ts
+    ├── update-discount.ts
+    └── validate-discount-code.ts
 ```
 
-Wyszukanie `discount` w całym repozytorium, poza plikami schematów i migracjami, znajduje wyłącznie dane makiety i sam ekran makiety. Konkretnie:
+Każdy z sześciu use case'ów to jedno `createServerFn`. `validate-discount-code.ts` obsługuje sklep; pozostałe pięć obsługuje `/admin/coupons`.
 
-| Kolumna                | Zapisywana przez                        | Czytana przez                                   |
-| ---------------------- | --------------------------------------- | ----------------------------------------------- |
-| `cart.discount_id`     | nic                                     | nic                                             |
-| `checkout.discount_id` | nic                                     | nic                                             |
-| `order.discount_id`    | nic                                     | nic                                             |
-| `order.discount_total` | nic — zostaje na wartości domyślnej `0` | jest w wierszu, ale nigdzie nie jest pokazywana |
-| `discount.usage_count` | nic                                     | nic                                             |
+## Reguły
 
-W formularzu kasy nie ma pola kuponu: `checkoutSchema` w `src/modules/checkout/checkout.zod.ts` nie ma wejścia na rabat, a `createStripeSession` jest wywoływane bez `discounts`, więc kody promocyjne samego Stripe również nie są włączone.
+`discount.utils.ts` zawiera dwie czyste funkcje, z których korzysta zarówno sprawdzenie w sklepie, jak i serwer:
 
-`prepareFulfillCheckoutBatch` wylicza kwoty zamówienia wyłącznie z kwoty sesji Stripe i linii z metadanych, więc nie ma miejsca, w którym rabat mógłby dziś obniżyć sumę.
+- `resolveDiscountRejection` sprawdza po kolei `is_active`, `starts_at`, `ends_at`, `usage_count` względem `usage_limit`, wcześniejsze wykorzystania klienta względem `per_customer_limit` oraz sumę pozycji względem `min_order_total`. Zwraca pierwszą porażkę jako kod `DISCOUNT_REJECTION` (`inactive`, `notStarted`, `expired`, `exhausted`, `alreadyUsed` albo `minOrderNotMet`) albo `undefined`.
+- `calculateDiscountAmount` zwraca koszt dostawy dla `free_shipping`, `min(value, itemsSubtotal)` dla `fixed_amount`, a dla `percentage` zaokrągloną część sumy pozycji, ograniczoną przez `max_discount_amount` i przez samą sumę.
 
-## Ekran kuponów w panelu to makieta
+Siódmy kod odrzucenia, `notFound`, pochodzi z walidatora, gdy żaden wiersz nie pasuje. Kody są porównywane po `normalizeDiscountCode`, które przycina je i zamienia na wielkie litery. Odrzucenie to kod, a nie zdanie, a kasa renderuje je z `pages.checkout.discount.rejection.<code>`.
 
-`/admin/coupons` to `src/routes/admin.coupons.tsx`. Renderuje `CouponStats` i `CouponListTable`, a oba czytają `src/data/coupons.ts`.
+## W kasie
 
-`COUPONS` to cztery dosłowne wiersze o kształcie przygotowanym do wyświetlenia, a nie do bazy:
+`CheckoutDiscountField` (`src/presentation/components/custom/checkout/components/checkout-discount-field.tsx`) leży w `CheckoutSummary`, pod sumami. Wysłanie pola wywołuje `validateDiscountCode` (`use-cases/validate-discount-code.ts`) z kodem, adresem e-mail, sumą pozycji i kosztem dostawy. Ta funkcja nie ma middleware `authorized`, więc gość może wypróbować kod, a `use-case-authorization.test.ts` wymienia ją wśród publicznych use case'ów. Odpowiada albo `applied` (kod, `discountId`, typ i kwota), albo `rejection`, i niczym więcej. Sprawdzenie limitu na klienta używa adresu e-mail z formularza, a gdy formularz go nie ma, adresu zalogowanego użytkownika.
+
+Gdy kod pasuje, `CheckoutSummary` trzyma wynik w stanie, pokazuje linię rabatu w sumach wyliczonych przez `computeOrderTotals` i wpisuje kod do pola formularza `discountCode`; usunięcie kodu czyści to pole. `checkoutSchema` deklaruje `discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional()`, a żaden krok go nie waliduje.
+
+Odpowiedź walidacji to tylko podgląd. `handleCreateCheckoutSession` i `handleUpdateCheckoutSession` wywołują `resolveCheckoutDiscount` (`discount.checkout.server.ts`) z `checkoutValues.discountCode`, sumą pozycji wyliczoną z cen z bazy i kosztem dostawy. Funkcja ponownie stosuje te same reguły. Kod, który już nie obowiązuje, jest logowany i pomijany, a kod, który nic by nie odjął, jest pomijany, zamiast przerywać zakup. Wynikowy `discountId` jest zapisywany do `checkout.discount_id`.
+
+## W sesji Stripe
+
+Stripe nie ma ujemnych pozycji, więc `toSessionDiscounts` w `src/integrations/stripe/stripe.actions.server.ts` tworzy jednorazowy kupon na wyliczoną kwotę, a `createStripeSession` ustawia go jako `params.discounts`:
 
 ```ts
-{
-  code: "WELCOME20",
-  discount: "20%",
-  expires: "Dec 31, 2023",
-  id: "coupon-001",
-  minOrder: "$100",
-  status: "active",
-  type: "Percentage",
-  usage: "142 / 500",
-}
+const coupon = await stripe.coupons.create({
+  amount_off: discount.amountMinorUnits,
+  currency: STRIPE_CURRENCY,
+  duration: "once",
+  name: discount.code,
+})
+
+return [{ coupon: coupon.id }]
 ```
 
-Zwróć uwagę, że ten kształt nie odpowiada tabeli: kwoty to gotowe napisy w **dolarach**, daty to angielskie napisy, `usage` to tekst `"142 / 500"`, a `minOrder` nie ma żadnej odpowiadającej kolumny. `status` ma wartości `active` i `scheduled`, podczas gdy tabela ma boolean `is_active` oraz `starts_at`/`ends_at`.
+Kod `free_shipping` staje się więc `amount_off` równym kosztowi dostawy, a pozycja `"Shipping"` zostaje w sesji. Każda sesja utworzona lub zastąpiona z kodem dostaje nowy kupon i żaden nie jest usuwany. Metadane sesji niosą też `discountCode` i `discountTotal`, których webhook nie czyta. Kody promocyjne samego Stripe nie są włączone.
 
-`COUPON_STATS` to cztery karty z zapisanymi na stałe tablicami wykresów przebiegu i napisami trendu; wyświetlane liczby pochodzą z katalogu komunikatów (`pages.admin.coupons.stats.<key>.value`), a nie z danych.
+## Przy realizacji
 
-Przyciski Eksport i Utwórz kupon w `admin.coupons.tsx` nie mają `onClick`. Pole wyszukiwania w `coupon-list-table.tsx` ma zapisany na stałe angielski `placeholder="Search coupons..."` i żadnego stanu. Pozycje menu wiersza Kopiuj, Podgląd i Usuń nie są podłączone.
+`fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) wczytuje checkout razem z wierszem `discount`, ponownie wylicza kwotę przez `calculateDiscountAmount` z linii z metadanych i ceny metody dostawy, a następnie przekazuje ją do `computeOrderTotals`, które ogranicza rabat do sumy pozycji i dostawy. `prepareFulfillCheckoutBatch` kopiuje `discount_id` na zamówienie i zapisuje `discount_total`. Reguły nie są w tym miejscu sprawdzane ponownie, bo klient już zapłacił.
 
-## Czego wymagałaby prawdziwa implementacja
+Po wsadzie `fulfillCheckout` przekazuje `recordDiscountRedemption` (`discount.redeem.server.ts`) do `scheduleBackgroundWork`. Funkcja wstawia wiersz `discount_redemption` z `onConflictDoNothing` na `order_id` i zwiększa `discount.usage_count` tylko wtedy, gdy to wstawienie zapisało wiersz. Gdy zgłosi sukces, `fulfillCheckout` zapisuje wpis audytu `discount.redeemed`. Błąd jest logowany i połykany: zapis wykorzystania jest oddzielony od wsadu zamówienia, żeby nigdy nie mógł kosztować zamówienia.
 
-To nie rekomendacja produktowa — to lista szwów, które obecny kod już zostawia otwarte:
+| Kolumna lub tabela     | Zapisywana przez                                                   | Czytana przez                                                                                        |
+| ---------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `cart.discount_id`     | nic                                                                | nic                                                                                                  |
+| `checkout.discount_id` | `prepareCreateCheckoutBatch`, `prepareUpdateCheckoutDeliveryBatch` | `getCheckoutForFulfillment`                                                                          |
+| `order.discount_id`    | `prepareFulfillCheckoutBatch`                                      | nic                                                                                                  |
+| `order.discount_total` | `prepareFulfillCheckoutBatch`                                      | potwierdzenie w kasie, strona zamówienia na koncie, strona zamówienia w panelu, e-mail z zamówieniem |
+| `discount.usage_count` | `recordDiscountRedemption`                                         | `resolveDiscountRejection`, `resolveDiscountStatus`, `getAdminDiscountStats`                         |
+| `discount_redemption`  | `recordDiscountRedemption`                                         | `countCustomerRedemptions`, `getAdminDiscountStats`                                                  |
 
-1. **Moduł.** `src/modules/discount/` z `discount.constants.ts` (klucze zapytań, unia typów, mapa kodów błędów), `discount.zod.ts`, `discount.accessors.ts` i `use-cases/`.
-2. **Walidacja na serwerze.** Use case, który przyjmuje kod i linie koszyka, sprawdza `is_active`, okno `starts_at`/`ends_at` oraz `usage_count < usage_limit`, i zwraca wyliczoną obniżkę — nigdy nie ufając kwocie z klienta, tak samo jak `validateAndCalculateItems` ponownie czyta ceny.
-3. **Pole w kasie.** Pole `discountCode` w `checkoutSchema`, walidowane w kroku kontaktu albo dostawy i zapisywane do `checkout.discount_id`.
-4. **Nałożenie przy tworzeniu sesji.** Albo ujemna korekta w `toLineItems`, albo kupony Stripe utworzone z wierszy `discount` i przekazane jako `discounts` w sesji. Typ `free_shipping` wchodzi w interakcję z `resolveShippingCost`.
-5. **Zapis przy realizacji.** `prepareFulfillCheckoutBatch` musiałby skopiować `discount_id` na zamówienie, ustawić `discount_total` i zwiększyć `discount.usage_count` w tym samym wsadzie D1 — a ponieważ wsad realizacji jest punktem idempotencji, inkrementacja musi być jego częścią, a nie osobnym zapisem.
-6. **CRUD w panelu.** Funkcje serwerowe zabezpieczone przez `authorized({ settings: ["manage"] })` albo nowy zasób `discount` w `src/integrations/better-auth/auth.access.ts`, plus zdarzenia audytu w `AUDIT_LOG_ACTION` — obecnie nie ma tam żadnej akcji dotyczącej rabatów.
-7. **Unieważnianie w czasie rzeczywistym.** Wpis `DISCOUNT_QUERY_KEYS` w `ADMIN_REALTIME_QUERY_PREFIXES` i pomocnik `scheduleDiscountInvalidation()` obok istniejących w `realtime-invalidation.catalog.server.ts`.
+## Strona kuponów w panelu
+
+`/admin/coupons` to `src/routes/admin.coupons.tsx`. Jej loader wstępnie wczytuje `getAdminDiscountsPageQuery({})` i `getDiscountStatsQuery()`, a strona renderuje `CouponStats` i `CouponListTable` z `src/presentation/components/custom/pages/admin/coupons/`.
+
+- `CouponStats` pokazuje cztery karty z `getAdminDiscountStats`: kody, których można użyć teraz, wszystkie kody, wykorzystania i łączną kwotę udzielonych rabatów.
+- `CouponListTable` wyświetla kody od najnowszych, z wyszukiwaniem po `code` i `description`. Każdy wiersz pokazuje typ, wartość, minimalne zamówienie, wykorzystanie względem limitu, datę wygaśnięcia i status z `resolveDiscountStatus`: `active`, `scheduled`, `expired`, `exhausted` albo `disabled`. Menu wiersza pozwala edytować albo usunąć kod.
+- `CouponFormDialog` waliduje przez `discountZodSchemas.adminDiscountFormValues`, czyli schemat, który parsują funkcje serwerowe, i pokazuje tylko pola pasujące do wybranego typu. Kwoty wpisuje się w jednostkach podrzędnych.
+
+| Use case                      | Zabezpieczenie                      | Skutek                                                                                        |
+| ----------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------- |
+| `get-admin-discounts-page.ts` | `authorized({ order: ["read"] })`   | Strona kodów z wyszukiwaniem, domyślnie `ADMIN_DISCOUNTS_PAGE_SIZE` (25)                      |
+| `get-admin-discount-stats.ts` | `authorized({ order: ["read"] })`   | Wartości czterech kart                                                                        |
+| `create-discount.ts`          | `authorized({ order: ["update"] })` | Wstawia wiersz; zajęty kod rzuca `CONFLICT` z `DISCOUNT_CODE_TAKEN`; audyt `discount.created` |
+| `update-discount.ts`          | `authorized({ order: ["update"] })` | Aktualizuje wiersz i ustawia opróżnione pola na `null`; audyt `discount.updated`              |
+| `delete-discounts.ts`         | `authorized({ order: ["update"] })` | Usuwa po identyfikatorze; audyt `discount.deleted`                                            |
+
+Po mutacji `useCouponActions` odświeża `DISCOUNT_QUERY_KEYS.ADMIN.ALL` przez `syncQueryInvalidation`, które powiadamia też inne karty tej samej przeglądarki.
+
+## Co wciąż jest otwarte
+
+To szwy, które zostawia obecny kod, a nie rekomendacje produktowe:
+
+1. **Kolumna koszyka.** `cart.discount_id` nie jest ani zapisywana, ani czytana; zastosowany kod żyje tylko w formularzu kasy.
+2. **Uprawnienia.** W `src/integrations/better-auth/auth.access.ts` nie ma zasobu `discount`, więc funkcje kuponów korzystają z uprawnień `order` do odczytu i aktualizacji.
+3. **Unieważnianie w czasie rzeczywistym.** `ADMIN_REALTIME_QUERY_PREFIXES` nie ma wpisu `DISCOUNT_QUERY_KEYS`, a w `realtime-invalidation.catalog.server.ts` nie ma `scheduleDiscountInvalidation()`, więc zmiana wprowadzona w innej przeglądarce nie dociera do już otwartej strony kuponów.
+4. **Stronicowanie.** `CouponListTable` pobiera tylko pierwszą stronę i nie ma przełącznika stron, więc pokazuje najwyżej 25 kodów.
+5. **Usuwanie.** Usunięcie kodu usuwa też jego wiersze `discount_redemption` (`onDelete: "cascade"`). `checkout.discount_id` i `order.discount_id` nie mają klucza obcego i zachowują stary identyfikator, a oczekujący checkout, którego kod usunięto, zostaje zrealizowany bez rabatu w sumach, co `reconcileTotals` loguje jako niezgodność z kwotą pobraną przez Stripe.
 
 ## Powiązane strony
 

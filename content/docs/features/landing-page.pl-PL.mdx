@@ -1,6 +1,6 @@
 ---
 title: "Strona główna"
-description: "Piętnaście sekcji strony /, dane które wczytują, choreografia przewijania w GSAP i te elementy, które są wciąż tylko treścią."
+description: "Piętnaście sekcji strony /, dane które wczytują, choreografia przewijania w GSAP i zapis do newslettera."
 ---
 
 ## Trasa
@@ -117,19 +117,19 @@ Nowa sekcja dołącza do tej choreografii przez dodanie klasy `reveal` na swoim 
 
 Samo płynne przewijanie to Lenis, montowany przez `src/presentation/components/custom/smooth-scroll.tsx` i synchronizowany z routerem przez `src/hooks/use-lenis-router-scroll-sync.ts`.
 
-## Sekcja newslettera to tylko treść
+## Sekcja newslettera
 
-`newsletter-section.tsx` renderuje `Input` z shadcn i `<button type="button">` bez `onClick`, bez elementu formularza i bez funkcji serwerowej:
+`newsletter-section.tsx` renderuje formularz. Po wysłaniu sprawdza adres wzorcem `EMAIL_PATTERN` i wywołuje mutację `subscribeToNewsletter` z `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`:
 
 ```tsx
-<Input placeholder={t("placeholder")} aria-label={t("placeholder")} className="..." />
-<button type="button" className="...">
-  {t("cta")}
-  <ArrowRight className="size-4" />
-</button>
+subscribe.mutate({
+  email: candidate,
+  locale: isSupportedLocale(locale) ? locale : undefined,
+  source: NEWSLETTER_SOURCE.LANDING,
+})
 ```
 
-Nie ma tabeli newslettera, nie ma use case'a zapisu i nie ma e-maila potwierdzającego. Wysłanie formularza nie robi nic. Podłączenie go oznacza dodanie modułu (na przykład `src/modules/newsletter`) z funkcją `createServerFn` objętą limitem żądań, tabelą i szablonem w `src/presentation/emails`.
+Funkcja serwerowa nie wymaga sesji i ma limit żądań `withRateLimit("newsletter-subscribe", RATE_LIMITS.SENSITIVE)`. Zapisuje adres w `newsletter_subscriber` ze statusem `pending` i nowym tokenem, a następnie kolejkuje `sendNewsletterConfirmation`, którego link otwiera `/newsletter/confirm`. Adres już potwierdzony dostaje `alreadyConfirmed` tylko wtedy, gdy należy do zalogowanego odwiedzającego; każdy inny widzi ten sam komunikat sukcesu co nowy subskrybent.
 
 ## Zakotwiczenia sekcji
 

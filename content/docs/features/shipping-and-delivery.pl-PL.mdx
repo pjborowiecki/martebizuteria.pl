@@ -172,7 +172,7 @@ Plik `messages/{locale}/emails.order-confirmation.json` ma więc obiekt `deliver
 ## Czego nie ma
 
 - Nie ma generowania etykiet, zamawiania przesyłek ani żadnego wywołania API przewoźnika poza publicznym wyszukiwaniem punktów.
-- Nie ma ścieżki zapisu śledzenia: `order.tracking_number` i `order.tracking_url` nigdy nie są ustawiane przez aplikację.
+- Nie ma śledzenia u przewoźnika: `order.tracking_number` i `order.tracking_url` wpisuje administrator w oknie wysyłki na `/admin/orders/$orderId`, a nic nie pobiera ani nie aktualizuje ich od przewoźnika.
 - Nie ma reguł wysyłki: cena to płaska kwota na metodę, bez logiki wagi, rozmiaru, wartości koszyka ani miejsca dostawy.
 - Nie ma tabeli lokalizacji sklepów dla `in_store`.
 - Nie ma ekranu panelu dla przewoźników ani metod dostawy — wiersze zarządza się bezpośrednio w D1.

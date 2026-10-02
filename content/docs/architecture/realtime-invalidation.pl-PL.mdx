@@ -58,19 +58,20 @@ Ponieważ porównywana jest tylko wspólna długość, wąska publikacja (`["adm
 
 ## Subskrypcje
 
-`ADMIN_REALTIME_QUERY_PREFIXES` ma 12 wpisów: strona i statystyki dziennika audytu, zamówienia administracyjne, klienci administracyjni oraz pary `ALL`/`STATS` dla kategorii, kolekcji, produktów i atrybutów produktów. `STOREFRONT_REALTIME_QUERY_PREFIXES` ma 10: klucze produktów (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), dostępność koszyka oraz pary `ALL`/`BY_HANDLE` kategorii i kolekcji.
+`ADMIN_REALTIME_QUERY_PREFIXES` ma 14 wpisów: strona i statystyki dziennika audytu, zamówienia administracyjne, klienci administracyjni, pary `ALL`/`STATS` dla kategorii, kolekcji, produktów i atrybutów produktów oraz para `ADMIN.ALL`/`ADMIN.BY_HANDLE` stron treści. `STOREFRONT_REALTIME_QUERY_PREFIXES` ma 11: klucze produktów (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), dostępność koszyka, pary `ALL`/`BY_HANDLE` kategorii i kolekcji oraz `BY_HANDLE` stron treści.
 
 Obie listy są zbudowane ze stałych `*_QUERY_KEYS` samych modułów i typowane jako `as const satisfies readonly QueryKey[]`, więc zmiana nazwy klucza jest błędem typu, a nie po cichu martwą subskrypcją.
 
 ## Publikowanie
 
-`realtime-invalidation.catalog.server.ts` udostępnia sześć publikatorów, z których korzysta warstwa domenowa; każdy nazywa odbiorców, których dotyczy:
+`realtime-invalidation.catalog.server.ts` udostępnia siedem publikatorów, z których korzysta warstwa domenowa; każdy nazywa odbiorców, których dotyczy:
 
 | Publikator                                    | Klucze administracyjne                         | Klucze sklepu                                   |
 | --------------------------------------------- | ---------------------------------------------- | ----------------------------------------------- |
 | `scheduleProductCatalogInvalidation`          | produkt `ADMIN.ALL`, `ADMIN.STATS`             | pięć kluczy produktu plus dostępność koszyka    |
 | `scheduleCategoryCatalogInvalidation`         | kategoria `ADMIN.ALL`, `ADMIN.STATS`           | kategoria `ALL`, `BY_HANDLE`                    |
 | `scheduleCollectionCatalogInvalidation`       | kolekcja `ADMIN.ALL`, `ADMIN.STATS`            | kolekcja `ALL`, `BY_HANDLE`, nowości produktowe |
+| `scheduleContentPageInvalidation`             | strona treści `ADMIN.ALL`, `ADMIN.BY_HANDLE`   | strona treści `BY_HANDLE`                       |
 | `scheduleProductAttributeCatalogInvalidation` | atrybut `ADMIN.ALL`, `ADMIN.STATS`             | —                                               |
 | `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                               |
 | `scheduleAdminOrdersInvalidation`             | zamówienie `ADMIN.ORDERS`                      | —                                               |

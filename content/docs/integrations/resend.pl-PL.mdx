@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "Sześć e-maili transakcyjnych, sposób ich składania i podglądania."
+description: "Siedem e-maili transakcyjnych, sposób ich składania i podglądania."
 ---
 
 Każdy e-mail wysyłany przez sklep przechodzi przez Resend. Adapter w `src/integrations/resend/` zawiera klienta, jeden pomocnik `sendEmail`, budowniki zamieniające wiersze zamówień na właściwości szablonów oraz renderer podglądów dla programisty. Same szablony React Email mieszkają w `src/presentation/emails/`, ponieważ należą do warstwy prezentacji.
@@ -36,18 +36,19 @@ export const sendEmail = async ({ from, react, subject, to }: Readonly<SendEmail
 
 Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. Ta sygnatura niesie ciężar projektowy: awaria poczty nigdy nie może wycofać rejestracji ani zamówienia. Wywołujący logują komunikat albo zapisują go w dzienniku audytu i idą dalej. Domyślne `from` to `M'Arte <${env.RESEND_EMAIL_FROM}>`, zbudowane z `APP_NAME` w `src/presentation/branding/app.ts`.
 
-## Sześć e-maili
+## Siedem e-maili
 
-| E-mail                   | Szablon                                          | Przestrzeń nazw             | Wysyłany z                                                                                 |
-| ------------------------ | ------------------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------ |
-| Weryfikacja adresu       | `src/presentation/emails/verify-email.tsx`       | `emails.verify-email`       | `sendVerificationEmail` w `auth.server.ts`, przy rejestracji                               |
-| Reset hasła              | `src/presentation/emails/reset-password.tsx`     | `emails.reset-password`     | `sendResetPassword` w `auth.server.ts`                                                     |
-| Zmiana adresu e-mail     | `src/presentation/emails/change-email.tsx`       | `emails.change-email`       | `sendChangeEmailConfirmation` w `auth.server.ts`                                           |
-| Konto usunięte           | `src/presentation/emails/account-deleted.tsx`    | `emails.account-deleted`    | `sendAccountDeletedEmail`, planowane przez `src/modules/user/use-cases/delete-customer.ts` |
-| Potwierdzenie zamówienia | `src/presentation/emails/order-confirmation.tsx` | `emails.order-confirmation` | `stripe.webhooks.tsx` po zrealizowaniu sesji Checkout                                      |
-| Zamówienie wysłane       | `src/presentation/emails/order-shipped.tsx`      | `emails.order-shipped`      | `notifyOrderShipped`, planowane przez `src/modules/order/use-cases/ship-order.ts`          |
+| E-mail                    | Szablon                                               | Przestrzeń nazw                  | Wysyłany z                                                                                                                                        |
+| ------------------------- | ----------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Weryfikacja adresu        | `src/presentation/emails/verify-email.tsx`            | `emails.verify-email`            | `sendVerificationEmail` w `auth.server.ts`, przy rejestracji                                                                                      |
+| Reset hasła               | `src/presentation/emails/reset-password.tsx`          | `emails.reset-password`          | `sendResetPassword` w `auth.server.ts`                                                                                                            |
+| Zmiana adresu e-mail      | `src/presentation/emails/change-email.tsx`            | `emails.change-email`            | `sendChangeEmailConfirmation` w `auth.server.ts`                                                                                                  |
+| Konto usunięte            | `src/presentation/emails/account-deleted.tsx`         | `emails.account-deleted`         | `sendAccountDeletedEmail`, planowane przez `src/modules/user/use-cases/delete-customer.ts`                                                        |
+| Potwierdzenie zamówienia  | `src/presentation/emails/order-confirmation.tsx`      | `emails.order-confirmation`      | `stripe.webhooks.tsx` po zrealizowaniu sesji Checkout                                                                                             |
+| Zamówienie wysłane        | `src/presentation/emails/order-shipped.tsx`           | `emails.order-shipped`           | `notifyOrderShipped`, planowane przez `src/modules/order/use-cases/ship-order.ts`                                                                 |
+| Potwierdzenie newslettera | `src/presentation/emails/newsletter-confirmation.tsx` | `emails.newsletter-confirmation` | `sendNewsletterConfirmation` w `newsletter-confirmation.server.ts`, planowane przez `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` |
 
-Pierwsze cztery opisuje strona [Better Auth](/docs/integrations/better-auth); dwa ostatnie buduje ten adapter.
+Pierwsze cztery opisuje strona [Better Auth](/docs/integrations/better-auth); trzy ostatnie buduje ten adapter.
 
 Każdy szablon eksportuje własną stałą przestrzeni nazw obok komponentu, więc wywołujący nie może rozjechać się z komunikatami, które renderuje:
 
@@ -62,7 +63,13 @@ E-mail renderowany jest na Workerze, poza kontekstem Reacta, więc nie ma `IntlP
 ```ts
 const messages = await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })
 const failure = await sendEmail({
-  react: createElement(OrderShipped, { accountCta, details, locale, messages, orderId: orderRow.id }),
+  react: createElement(OrderShipped, {
+    accountCta,
+    details,
+    locale,
+    messages,
+    orderNumber: orderRow.orderNumber,
+  }),
   subject: createTranslator({ locale, messages })("subject"),
   to: orderRow.email,
 })
@@ -100,7 +107,9 @@ Język pochodzi z zamówienia, a nie z bieżącego żądania, więc klient, któ
 Żaden z e-maili o zamówieniu nie blokuje swojego wywołującego. `ship-order.ts` planuje wysyłkę:
 
 ```ts
-recordOrderShippedAudit(orderId)
+recordOrderShippedAudit(orderId, {
+  detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+})
 scheduleBackgroundWork(notifyOrderShipped(orderId))
 
 return { ok: true, orderId }
@@ -114,7 +123,7 @@ Wysyłki są zapisywane, a nie tylko logowane. `recordOrderEmailOutcome({ failur
 
 ## Podglądanie szablonów
 
-Plik `email-previews.tsx` deklaruje po jednym wpisie na szablon:
+Plik `email-previews.tsx` deklaruje po jednym wpisie na szablon, z wyjątkiem `newsletter-confirmation`:
 
 ```ts
 export const EMAIL_PREVIEWS = {
@@ -138,7 +147,7 @@ bun run dev
 # http://localhost:3000/dev/emails?template=order-confirmation&locale=pl-PL&format=text
 ```
 
-Bez parametru `template` renderowany jest indeks z odnośnikami do każdego szablonu w obu językach, w HTML i jako czysty tekst. Handler zwraca 404, o ile nie jest ustawione `import.meta.env.DEV`, więc trasa jest martwa w środowisku preview i na produkcji. Nic nie jest wysyłane — to renderer, nie wysyłka testowa.
+Bez parametru `template` renderowany jest indeks z odnośnikami do każdego szablonu z podglądem w obu językach, w HTML i jako czysty tekst. Handler zwraca 404, o ile nie jest ustawione `import.meta.env.DEV`, więc trasa jest martwa w środowisku preview i na produkcji. Nic nie jest wysyłane — to renderer, nie wysyłka testowa.
 
 ## Zmiana szablonu
 
