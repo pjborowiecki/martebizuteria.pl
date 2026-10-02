@@ -31,7 +31,9 @@ export const getOrderConfirmation = createServerFn({ method: "GET" })
       isOwnOrder: orderRow.userId !== null && orderRow.userId === session?.user.id,
       items: itemRows.map((row) => mapAdminOrderDetailItem(row)),
       orderNumber: orderRow.orderNumber,
-      shippingAddress: mapAdminOrderDetailAddress(orderRow.checkout?.shippingAddress),
+      shippingAddress: mapAdminOrderDetailAddress(
+        orderRow.addresses.find((row) => row.type === "shipping") ?? orderRow.checkout?.shippingAddress,
+      ),
       shippingTotalMinorUnits: orderRow.shippingTotal,
       subtotalMinorUnits: orderRow.subtotal,
       taxBasisPoints: orderRow.taxBasisPoints,
