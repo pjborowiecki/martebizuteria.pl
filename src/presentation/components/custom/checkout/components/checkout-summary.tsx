@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useState } from "react"
+import { type JSX, useCallback } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { useWatch } from "react-hook-form"
@@ -9,38 +9,33 @@ import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
-import { type Discount } from "~/src/modules/discount/discount.types"
+import { validateDiscountCodeQuery } from "~/src/modules/discount/use-cases/validate-discount-code"
 import { computeOrderTotals } from "~/src/modules/order/order.totals"
 
 import { getProductImageUrl } from "~/src/lib/image"
 
+import { CheckoutDiscountCode } from "~/src/presentation/components/custom/checkout/components/checkout-discount-code"
 import { CheckoutDiscountField } from "~/src/presentation/components/custom/checkout/components/checkout-discount-field"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+import { CHECKOUT_STEP_DEFINITIONS, CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
 import { Image } from "~/src/presentation/components/custom/image"
 
 export const CheckoutSummary = (): JSX.Element => {
   const t = useTranslations("pages.checkout")
   const format = useFormatter()
   const { items, cartTotal, itemCount } = useCartStore()
-  const { control, setValue } = useCheckoutForm()
-  const deliveryMethodId = useWatch({
+  const { activeStepIndex, control, setValue } = useCheckoutForm()
+  const [deliveryMethodId, email, discountCode] = useWatch({
     control,
-    name: "deliveryMethod",
+    name: ["deliveryMethod", "email", "discountCode"],
   })
-  const email = useWatch({
-    control,
-    name: "email",
-  })
-  const [applied, setApplied] = useState<Discount["applied"] | undefined>(undefined)
   const handleDiscountApplied = useCallback(
-    (next: Discount["applied"]) => {
-      setApplied(next)
-      setValue("discountCode", next.code, { shouldDirty: true })
+    (code: string) => {
+      setValue("discountCode", code, { shouldDirty: true })
     },
     [setValue],
   )
   const handleDiscountCleared = useCallback(() => {
-    setApplied(undefined)
     setValue("discountCode", "", { shouldDirty: true })
   }, [setValue])
 
@@ -48,12 +43,23 @@ export const CheckoutSummary = (): JSX.Element => {
   const selectedDeliveryMethod = deliveryMethods.find((m) => m.id === deliveryMethodId)
   const deliveryCostCents = selectedDeliveryMethod?.price ?? 0
   const subtotalCents = cartTotal()
+  const redemptionEmail = activeStepIndex > CONTACT_STEP_INDEX ? email : undefined
+  const discountCheck = useQuery(
+    validateDiscountCodeQuery({
+      code: discountCode,
+      email: redemptionEmail,
+      itemsSubtotal: subtotalCents,
+      shippingTotal: deliveryCostCents,
+    }),
+  )
+  const hasDiscountCode = discountCode !== undefined && discountCode !== ""
+  const isTotalFinal = !hasDiscountCode || discountCheck.isSuccess
+  const applied = discountCheck.isSuccess ? discountCheck.data.applied : undefined
   const totals = computeOrderTotals({
     discountTotal: applied?.amountMinorUnits,
     itemsSubtotal: subtotalCents,
     shippingTotal: deliveryCostCents,
   })
-  const totalCents = totals.total
   const money = (cents: number) =>
     format.number(centsToDisplayAmount(cents), {
       currency: "PLN",
@@ -90,22 +96,28 @@ export const CheckoutSummary = (): JSX.Element => {
         </div>
         <div className="mt-2 flex justify-between gap-4 border-t border-border/30 pt-6">
           <span className="text-[14px] font-medium tracking-[0.18em] text-foreground uppercase">{t("checkoutSummary.total")}</span>
-          <span className="text-[14px] font-medium tracking-wider text-foreground tabular-nums">{money(totalCents)}</span>
+          {isTotalFinal && (
+            <span className="text-[14px] font-medium tracking-wider text-foreground tabular-nums">{money(totals.total)}</span>
+          )}
+          {!isTotalFinal && <span className="text-right text-[12px] text-muted-foreground">{t("checkoutSummary.totalAwaitingCode")}</span>}
         </div>
-        <p className="text-right text-[11px] text-muted-foreground">
-          {t("checkoutSummary.vatIncluded", { rate: formatVatRatePercent(totals.vatBasisPoints) })} {money(totals.taxTotal)}
-        </p>
+        {isTotalFinal && (
+          <p className="text-right text-[11px] text-muted-foreground">
+            {t("checkoutSummary.vatIncluded", { rate: formatVatRatePercent(totals.vatBasisPoints) })} {money(totals.taxTotal)}
+          </p>
+        )}
       </div>
 
       <div className="mt-6 border-t border-border/30 pt-6">
-        <CheckoutDiscountField
-          applied={applied}
-          email={email}
-          itemsSubtotal={subtotalCents}
-          onApplied={handleDiscountApplied}
-          onCleared={handleDiscountCleared}
-          shippingTotal={deliveryCostCents}
-        />
+        {hasDiscountCode && <CheckoutDiscountCode check={discountCheck} code={discountCode} onRemove={handleDiscountCleared} />}
+        {!hasDiscountCode && (
+          <CheckoutDiscountField
+            email={redemptionEmail}
+            itemsSubtotal={subtotalCents}
+            onApplied={handleDiscountApplied}
+            shippingTotal={deliveryCostCents}
+          />
+        )}
       </div>
 
       <div className="mt-8 space-y-6 border-t border-foreground/20 pt-8">
@@ -127,3 +139,5 @@ export const CheckoutSummary = (): JSX.Element => {
     </aside>
   )
 }
+
+const CONTACT_STEP_INDEX = CHECKOUT_STEP_DEFINITIONS.findIndex((step) => step.id === CHECKOUT_STEP_ID.CONTACT)

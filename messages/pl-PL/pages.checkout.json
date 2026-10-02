@@ -11,6 +11,7 @@
     "delivery": "Dostawa",
     "deliveryCalculated": "Wyliczane w kolejnym kroku",
     "total": "Razem",
+    "totalAwaitingCode": "Czeka na sprawdzenie kodu",
     "edit": "Edytuj",
     "free": "Za darmo",
     "itemsCount": "Produkty ({count})",
@@ -186,6 +187,9 @@
     "placeholder": "Wpisz kod",
     "apply": "Zastosuj",
     "remove": "Usuń kod rabatowy",
+    "checking": "Sprawdzamy kod",
+    "checkFailed": "Nie udało się sprawdzić kodu, więc suma nie jest jeszcze ostateczna.",
+    "retry": "Spróbuj ponownie",
     "rejection": {
       "notFound": "Nie rozpoznajemy tego kodu.",
       "inactive": "Ten kod nie jest już aktywny.",

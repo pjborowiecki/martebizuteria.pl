@@ -66,7 +66,8 @@ The three types are `percentage`, `fixed_amount` and `free_shipping` (`DISCOUNT_
 src/modules/discount/
 ├── __test__/
 │   ├── discount.schema.test.ts
-│   └── discount.utils.test.ts
+│   ├── discount.utils.test.ts
+│   └── discount.zod.test.ts
 ├── discount.accessors.ts
 ├── discount.checkout.server.ts
 ├── discount.constants.ts
@@ -98,9 +99,27 @@ The seventh rejection code, `notFound`, comes from the validator when no row mat
 
 ## At checkout
 
-`CheckoutDiscountField` (`src/presentation/components/custom/checkout/components/checkout-discount-field.tsx`) sits in `CheckoutSummary`, below the totals. Submitting it calls `validateDiscountCode` (`use-cases/validate-discount-code.ts`) with the code, the e-mail, the item subtotal and the shipping cost. The function has no `authorized` middleware, so a guest can try a code, and `use-case-authorization.test.ts` lists it among the public use cases. It answers with `applied` (code, `discountId`, type and amount) or with a `rejection`, and nothing more. The per-customer check uses the e-mail from the form, or the signed-in user's when the form has none.
+`validateDiscountCode` (`use-cases/validate-discount-code.ts`) checks a code against a basket: it takes the code, an optional e-mail, the item subtotal and the shipping cost. The function has no `authorized` middleware, so a guest can try a code, and `use-case-authorization.test.ts` lists it among the public use cases. It answers with `applied` (code, `discountId`, type and amount) or with a `rejection`, and nothing more. The per-customer check uses the e-mail it is sent, or the signed-in user's when none is sent; an empty e-mail counts as none, and a malformed one fails validation.
 
-When a code applies, `CheckoutSummary` keeps the result in state, shows a discount line in totals computed by `computeOrderTotals`, and writes the code into the form's `discountCode` field; removing the code clears the field. `checkoutSchema` declares `discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional()`, and no step validates it.
+The same file exports the two ways the checkout calls it:
+
+- `validateDiscountCodeMutation` backs the Apply button. Its `mutationFn` always calls the server, never a cached answer, and then stores the answer with `setQueryData` under the key of `validateDiscountCodeQuery` for the same input.
+- `validateDiscountCodeQuery({ code, email, itemsSubtotal, shippingTotal })` is the summary's query. Its key is `DISCOUNT_QUERY_KEYS.VALIDATION` (`["discount", "validate"]`) followed by that input, and `staleTime` is `DISCOUNT_QUERY_STALE_MS` (one minute), so the summary shows the answer Apply just stored without asking again. With no code the query is skipped (`skipToken`).
+
+`CheckoutDiscountField` (`src/presentation/components/custom/checkout/components/checkout-discount-field.tsx`) sits in `CheckoutSummary`, below the totals, while the form has no code. It is a `react-hook-form` form validated by `discountZodSchemas.checkoutCodeFormValues`. A rejected code stays in the field with its reason, a failed request shows `pages.checkout.discount.rejection.error`, and typing clears either message. An accepted code is written into the checkout form's `discountCode` field, which the draft keeps in `sessionStorage`.
+
+`CheckoutSummary` keeps no copy of the result. It reads `discountCode` from the form and runs `validateDiscountCodeQuery` with the current item subtotal and delivery cost, so a code restored after a reload is checked and shown again, and choosing another delivery method checks it again. The e-mail goes into the check only once the contact step is complete (`activeStepIndex` is past it). While the shopper is on the contact step the check goes without it, so the server falls back to the signed-in account's address and typing an address never sends a request; moving on checks the code again with the confirmed address.
+
+While the form has a code, `CheckoutDiscountCode` (`checkout-discount-code.tsx`) shows it in place of the field, with what the check said:
+
+| Check              | Code row                                                                      | Discount line | Total                                                             |
+| ------------------ | ----------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------- |
+| In flight          | The code and a spinner                                                        | None          | `checkoutSummary.totalAwaitingCode`, no VAT line                  |
+| `applied`          | The code and the amount it takes off                                          | The amount    | Items plus delivery, less the discount, from `computeOrderTotals` |
+| `rejection`        | The code struck through, with `discount.rejection.<code>` below it            | None          | Items plus delivery                                               |
+| The request failed | The code, `discount.checkFailed` and a `discount.retry` button that refetches | None          | `checkoutSummary.totalAwaitingCode`, no VAT line                  |
+
+A code that no longer applies stays in the form and the draft with its reason on screen, and the server drops it when it builds the session (below), so the total shown is the one charged. When the check fails the summary cannot know which total the server will charge, so it shows none until a retry answers. Removing the code clears `discountCode`. `checkoutSchema` declares `discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional()`, and no step validates it.
 
 The validation response is only a preview. `handleCreateCheckoutSession` and `handleUpdateCheckoutSession` call `resolveCheckoutDiscount` (`discount.checkout.server.ts`) with `checkoutValues.discountCode`, the item subtotal computed from database prices, and the shipping cost. It applies the same rules again. A code that no longer applies is logged and dropped, and one that would take nothing off is dropped, instead of failing the checkout. The resulting `discountId` is written to `checkout.discount_id`.
 

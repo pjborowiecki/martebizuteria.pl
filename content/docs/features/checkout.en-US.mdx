@@ -102,6 +102,14 @@ Phone numbers are validated with `libphonenumber-js/mobile`'s `isValidPhoneNumbe
 
 The sub-step depends on the type: `DeliveryCourier`, `DeliveryLocker` (with the InPost map) or `DeliveryInStore` (copy only). See [Shipping and delivery](/docs/features/shipping-and-delivery).
 
+## The summary
+
+`CheckoutSummary` (`checkout-summary.tsx`) sits beside the steps. It lists the basket lines and shows the item subtotal from `cartTotal()`, the price of the chosen delivery method (`checkoutSummary.deliveryCalculated` until one is chosen), and the total and VAT from `computeOrderTotals`.
+
+The discount comes from the form, not from component state. The summary reads `discountCode` and asks the server what the code takes off the current basket through `validateDiscountCodeQuery`, keyed by the code, the item subtotal, the delivery cost and the e-mail. The e-mail joins the check only once the contact step is complete, so typing it never sends a request. A code restored from the draft is therefore checked and shown again after a reload, and choosing another delivery method checks it again. A code that no longer applies stays on screen with its reason and is not taken off.
+
+The total is shown only when the check for the current basket has answered. While it is in flight, or after it failed, the total reads `checkoutSummary.totalAwaitingCode` and the VAT line is hidden, because the summary cannot know whether the server will apply the code; a failed check also offers a retry. See [Discounts](/docs/features/discounts).
+
 ## Payment step
 
 `_steps/payment-step.client.tsx` drives the Stripe Elements checkout. `useCheckoutSessionLoader` is the interesting part:

@@ -69,6 +69,7 @@ export const discountZodSchemas = {
     pageSize: pageSizeField.optional(),
     search: searchTermField.optional(),
   }),
+  checkoutCodeFormValues: zod.object({ code: zod.string().trim().min(MIN_FIELD_LENGTH).max(DISCOUNT_CODE_MAX_LENGTH) }),
   createDiscountInput: zod.object({ values: adminDiscountFormValues }),
   deleteDiscountsInput: zod.object({ ids: zod.array(uuidField).min(MIN_FIELD_LENGTH) }),
   insert: createInsertSchema(discount),

@@ -10,6 +10,7 @@
     "delivery": "Delivery",
     "deliveryCalculated": "Calculated at next step",
     "total": "Total",
+    "totalAwaitingCode": "Awaiting code check",
     "edit": "Edit",
     "free": "Free",
     "itemsCount": "Products ({count})",
@@ -186,6 +187,9 @@
     "placeholder": "Enter code",
     "apply": "Apply",
     "remove": "Remove discount code",
+    "checking": "Checking the code",
+    "checkFailed": "We could not check that code, so the total is not final yet.",
+    "retry": "Try again",
     "rejection": {
       "notFound": "We do not recognise that code.",
       "inactive": "That code is no longer active.",
