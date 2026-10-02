@@ -27,6 +27,11 @@ const optionalDateField = zod.iso.datetime({ offset: true }).optional().or(zod.l
 
 const optionalPositiveAmount = zod.number().int().positive().optional()
 
+const optionalEmailField = zod
+  .union([zod.email(), zod.literal("")])
+  .optional()
+  .transform((email) => (email === "" ? undefined : email))
+
 const adminDiscountFormValues = zod
   .object({
     code: codeField,
@@ -72,7 +77,7 @@ export const discountZodSchemas = {
   updateDiscountInput: zod.object({ id: uuidField, values: adminDiscountFormValues }),
   validateDiscountInput: zod.object({
     code: codeField,
-    email: zod.email().optional(),
+    email: optionalEmailField,
     itemsSubtotal: zod.number().int().min(0),
     shippingTotal: zod.number().int().min(0),
   }),
