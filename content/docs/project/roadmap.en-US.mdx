@@ -105,14 +105,12 @@ Each is a decision waiting to be made: use it, or remove it so the next reader d
 
 ## Priority 3 — features that are scaffolded
 
-Each of these has a table, a column or a plugin already in place, which makes them cheaper than they look.
+Each of these already has some of its groundwork in place (a table and its columns, an integration function, real actions or a complete UI), which makes them cheaper than they look.
 
 | Feature                            | What exists                                                                                                                | What is missing                                                                                                                     |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Discounts and coupons              | `discount` table; `discount_id` on `cart`, `checkout` and `order`; `/admin/coupons` UI on fixtures                         | Every code path. Nothing reads or writes those columns                                                                              |
 | InPost shipments                   | `fetchPointsByCity` in `src/integrations/inpost/inpost.api.ts` — parcel-locker discovery by city, minimum three characters | Shipment creation, label generation, tracking write-back                                                                            |
-| Wishlist                           | `/account/wishlist` route and its message namespace                                                                        | A table, use cases, and anything other than the hardcoded empty state                                                               |
-| Saved payment methods              | `/account/payment` route                                                                                                   | Stripe customer and payment-method persistence                                                                                      |
 | Admin order detail                 | Real actions — fulfil, ship, cancel, export, print invoice                                                                 | The timeline, notes, tags, billing and shipping cards still read `src/data/order-detail.ts`; refund navigates rather than refunding |
 | Admin content, marketing, settings | Complete UI                                                                                                                | Every one of them reads fixtures from `src/data/`                                                                                   |
 

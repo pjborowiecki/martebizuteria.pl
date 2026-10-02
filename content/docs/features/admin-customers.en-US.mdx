@@ -21,7 +21,7 @@ The `user` table is shared with Better Auth, so "customers" is a view over authe
 | `phone`                               | 32 characters; written by `updateCustomerPhone` and `updateCustomer` |
 | `timezone`                            | 64 characters                                                        |
 | `image`                               | 2048 characters                                                      |
-| `stripe_customer_id`                  | Declared but never written                                           |
+| `stripe_customer_id`                  | Written by `ensureStripeCustomer` at checkout                        |
 | `metadata`                            | A JSON string holding admin notes and tags                           |
 
 One index: `user_createdAt_idx`.

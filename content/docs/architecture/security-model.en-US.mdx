@@ -175,7 +175,7 @@ Checking after `getByName()` would already have let an unauthenticated client op
 | Thrown                 | Reaches the client as                         |
 | ---------------------- | --------------------------------------------- |
 | TanStack `notFound()`  | Unchanged, so the route answers 404           |
-| `AppError`             | Its own code                                  |
+| `AppError`             | Its code, plus a reason code message          |
 | Better Auth `APIError` | `AUTH_API_ERROR` plus a translation key       |
 | `ZodError`             | `VALIDATION`                                  |
 | Anything else          | `INTERNAL_ERROR`, original logged server-side |

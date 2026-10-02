@@ -44,7 +44,7 @@ GET /en-US/products/pierscionek-z-perla
 2. Middleware działa w zadeklarowanej kolejności. `withRequest` przechwytuje `getRequest().headers` do kontekstu i owija resztę w `.catch(handleRequestError)`. `withRateLimit(kind, limit)` liczy próbę. `authorized(permission?)` ładuje sesję i sprawdza uprawnienie.
 3. Walidator parsuje wejście schematem Zod modułu.
 4. Handler odpytuje D1 albo woła dostawcę, planuje pracę audytową i e-mailową w tle i zwraca zwykłe dane.
-5. Błędy są normalizowane po drodze na zewnątrz. `handleRequestError` najpierw rzuca dalej bez zmian `notFound()` TanStack (`isNotFound`), więc trasa odpowiada kodem 404 zamiast 500. Potem ponownie rzuca `AppError` z jego kodem, mapuje błąd API Better Auth na `AUTH_API_ERROR` z kluczem tłumaczenia, mapuje `ZodError` na `VALIDATION`, a wszystko inne zamienia na `INTERNAL_ERROR` po zalogowaniu oryginału.
+5. Błędy są normalizowane po drodze na zewnątrz. `handleRequestError` najpierw rzuca dalej bez zmian `notFound()` TanStack (`isNotFound`), więc trasa odpowiada kodem 404 zamiast 500. Potem ponownie rzuca `AppError` z jego kodem oraz, gdy komunikat jest kodem przyczyny, takim jak `WISHLIST_FULL`, z tą przyczyną, mapuje błąd API Better Auth na `AUTH_API_ERROR` z kluczem tłumaczenia, mapuje `ZodError` na `VALIDATION`, a wszystko inne zamienia na `INTERNAL_ERROR` po zalogowaniu oryginału.
 6. Komponent otrzymuje dane albo błąd, którego wiadomość jest kodem. `useActionError()` zamienia ten kod na przetłumaczony tekst.
 
 ```text

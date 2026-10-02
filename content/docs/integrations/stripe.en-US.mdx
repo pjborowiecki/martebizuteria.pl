@@ -74,15 +74,19 @@ The session itself:
 
 ```ts
 const session = await stripe.checkout.sessions.create({
-  customer_email: email,
   line_items: toLineItems(lines, shippingCost),
   metadata,
   mode: "payment",
   payment_intent_data: { metadata, receipt_email: email },
   return_url: returnUrl,
   ui_mode: "elements",
+  ...(customerId === undefined
+    ? { customer_email: email }
+    : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 })
 ```
+
+`customerId` is set only for a signed-in shopper: before step 1, `handleCreateCheckoutSession` calls `ensureStripeCustomer` (`stripe.customer.server.ts`), which creates a Stripe customer on first use and stores its id in `user.stripe_customer_id`. The session then belongs to that Stripe customer and lets the shopper save the card, which `/account/payment` lists afterwards. A guest's session carries `customer_email` instead. See [Account](/docs/features/account).
 
 `ui_mode: "elements"` is what gives the embedded experience. `return_url` is `${origin}/checkout?success=true`, where `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL`. Shipping is added as an extra line item named `Shipping` rather than as a Stripe shipping rate.
 

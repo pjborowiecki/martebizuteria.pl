@@ -39,15 +39,19 @@ Sessions are created with `ui_mode: "elements"`, which means the card form is em
 
 ```ts
 const session = await stripe.checkout.sessions.create({
-  customer_email: email,
   line_items: toLineItems(lines, shippingCost),
   metadata,
   mode: "payment",
   payment_intent_data: { metadata, receipt_email: email },
   return_url: returnUrl,
   ui_mode: "elements",
+  ...(customerId === undefined
+    ? { customer_email: email }
+    : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 })
 ```
+
+`customerId` is set only for a signed-in shopper. `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) gets it from `ensureStripeCustomer`, which creates a Stripe customer on first use and stores its id in `user.stripe_customer_id`; `handleUpdateCheckoutSession` reads the stored id through `getStripeCustomerId`. Such a session belongs to that Stripe customer and lets the shopper save the card, which then appears on `/account/payment`. A guest's session carries `customer_email` instead. See [Account](/docs/features/account).
 
 `returnUrl` is `${resolveOrigin()}/checkout?success=true`, where `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL` from `src/presentation/branding/app.ts`.
 
