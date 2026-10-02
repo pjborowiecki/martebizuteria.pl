@@ -85,7 +85,7 @@ Prefiks to krótka nazwa dostawcy, nie nazwa katalogu — dlatego katalog `use-i
 
 ## Testy
 
-Testy leżą w katalogu `__test__` obok kodu, który pokrywają — takich katalogów jest 174. Sufiks wybiera projekt Vitest.
+Testy leżą w katalogu `__test__` obok kodu, który pokrywają — takich katalogów jest 184. Sufiks wybiera projekt Vitest.
 
 | Wzorzec                                | Projekt Vitest | Środowisko                                 |
 | -------------------------------------- | -------------- | ------------------------------------------ |
@@ -103,10 +103,9 @@ Ustawienie `routeFileIgnorePattern: "__test__"` w `vite.config.ts` powstrzymuje 
 | ---------------------------------------------- | --------------------------------------------------------------------------- |
 | `content/docs/<ścieżka>/<strona>.<locale>.mdx` | Jedna strona dokumentacji w jednej lokalizacji                              |
 | `content/docs/<ścieżka>/meta.<locale>.json`    | Kolejność nawigacji i tytuł tego katalogu, per lokalizacja                  |
-| `content/legal/<strona>.<locale>.mdx`          | Dokument prawny renderowany przez sklep                                     |
 | `messages/<locale>/<namespace>.json`           | Jedna przestrzeń nazw tłumaczeń, nazwana jak ona: `pages.admin.orders.json` |
 
-Sufiks lokalizacji parsuje Fumadocs z ustawieniami `parser: "dot"` i `hideLocale: "always"`, skonfigurowanymi w `src/integrations/fumadocs/fumadocs.i18n.ts`. Obie lokalizacje muszą mieć te same slugi.
+Sufiks lokalizacji parsuje Fumadocs z ustawieniami `parser: "dot"` i `hideLocale: "always"`, skonfigurowanymi w `src/integrations/fumadocs/fumadocs.i18n.ts`. Obie lokalizacje muszą mieć te same slugi. Polityka prywatności i strona „Wymiana i zwroty” nie są plikami: to wiersze tabeli `content_page`, edytowane w `/admin/content`.
 
 ## Baza danych
 

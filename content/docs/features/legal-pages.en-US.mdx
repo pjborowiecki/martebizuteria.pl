@@ -1,160 +1,123 @@
 ---
 title: "Legal pages"
-description: "Two GDPR and consumer-rights documents written as MDX and served through Fumadocs, plus the three storefront pages that are still message-only."
+description: "The privacy policy and the exchanges-and-returns page: Markdown rows in D1, edited in the admin panel with MDXEditor and rendered on the storefront."
 ---
 
-M'Arte has two real legal documents. They are MDX files under `content/legal`, compiled by Fumadocs and rendered by a route that is almost entirely loader.
+M'Arte has two real legal documents, the privacy policy at `/privacy-policy` and the returns policy at `/exchanges-and-returns`. Each one is a row in the D1 `content_page` table. Admins edit them at `/admin/content` in a rich-text editor that writes Markdown, and the storefront renders that Markdown with the same typography the editor shows.
 
-## The documents
+## The table
 
-```
-content/legal/
-├── exchanges-and-returns.en-US.mdx
-├── exchanges-and-returns.pl-PL.mdx
-├── meta.en-US.json
-├── meta.pl-PL.json
-├── privacy-policy.en-US.mdx
-└── privacy-policy.pl-PL.mdx
-```
+`src/modules/content-page/content-page.schema.ts` defines one row per page:
 
-One file per locale, named `<slug>.<locale>.mdx`, and a `meta.<locale>.json` listing the slugs in order:
+| Column         | Holds                                                                    |
+| -------------- | ------------------------------------------------------------------------ |
+| `handle`       | `privacy-policy` or `exchanges-and-returns`, unique                      |
+| `titles`       | A JSON map from locale to the page title                                 |
+| `descriptions` | A JSON map from locale to the meta description                           |
+| `bodies`       | A JSON map from locale to the Markdown body                              |
+| `revised_ats`  | A JSON map from locale to the epoch milliseconds of the last real change |
+| `updated_at`   | The last save of any kind, used to detect conflicting saves              |
 
-```json
-{
-  "pages": ["privacy-policy", "exchanges-and-returns"],
-  "title": "Legal"
-}
-```
+The handle column is an enum over `CONTENT_PAGE_HANDLES` in `content-page.constants.ts`, so a page the code does not know about cannot be stored or requested.
 
-Their frontmatter carries a third field that the docs do not:
+The migration `20261002120000_content_pages.sql` creates the table and seeds both pages with the text that used to live in `content/legal`. It inserts with `ON CONFLICT(handle) DO NOTHING`, so running it again never overwrites text an admin has already edited.
 
-```mdx
----
-title: "Wymiana i zwroty"
-description: "14-dniowe prawo odstąpienia od umowy, zwrot zamówienia M'Arte i zgłoszenie reklamacji."
-updated: 2026-09-29
----
-```
+The Polish documents are the authoritative ones. They cite Polish statute directly, such as the 14-day right of withdrawal, art. 556⁴ of the Civil Code and the GDPR article for each processing purpose, and they name the data controller. Keep the English versions in step as translations, not as separate texts.
 
-`updated` is required, and validated as an ISO date:
+## The storefront pages
 
-```ts
-export const legalSchema = pageSchema.extend({
-  updated: zod.iso.date(),
-})
-```
-
-That schema is in `src/integrations/fumadocs/fumadocs.schema.ts` and applied in `fumadocs.config.ts`:
-
-```ts
-export const legal = defineDocs({
-  dir: "./content/legal",
-  docs: { schema: legalSchema },
-})
-```
-
-**Editing a legal document is editing an MDX file.** There is no admin editor, no database row and no publishing workflow. A change is a commit and a deploy, and `updated` must be bumped by hand — nothing does it automatically.
-
-The Polish documents are the authoritative ones; they cite Polish statute directly (the 14-day right of withdrawal, art. 556⁴ of the Civil Code, the GDPR article for each processing purpose) and name the data controller. Keep the English versions in step as translations, not as separate texts.
-
-## The Fumadocs source
-
-`src/integrations/fumadocs/fumadocs.source.ts` builds the loader:
-
-```ts
-export const legalSource = loader({
-  baseUrl: "/",
-  i18n,
-  source: legal.toFumadocsSource(),
-})
-```
-
-`baseUrl: "/"` is why the pages live at `/privacy-policy` rather than under a `/legal` prefix. The shared `i18n` object (`fumadocs.i18n.ts`) sets `defaultLanguage` and `fallbackLanguage` to `pl-PL`, `hideLocale: "always"` and `parser: "dot"` — the dot parser is what makes `<slug>.<locale>.mdx` work as a naming convention.
-
-## Loading a document
-
-`fumadocs.legal.ts` holds the slug map and the loader:
-
-```ts
-export const LEGAL_DOCUMENT_SLUGS = {
-  exchangesAndReturns: "exchanges-and-returns",
-  privacyPolicy: "privacy-policy",
-} as const
-```
-
-`getLegalPage` is a `GET` server function validated with `zod.object({ locale: localeField, slug: handleField })` from `src/modules/_core/utils/zod-fields.ts`. It throws `notFound()` when the page does not exist and otherwise returns `{ description, path, title, updated }`.
-
-`loadLegalPage(slug)` runs the server function and preloads the compiled component in parallel:
-
-```ts
-export const loadLegalPage = async (slug: LegalDocumentSlug) => {
-  const [{ legalContent }, page] = await Promise.all([
-    import("~/src/presentation/components/custom/legal-content"),
-    getLegalPage({ data: { locale: getCurrentLocale(), slug } }),
-  ])
-  await legalContent.preload(page.path)
-
-  return page
-}
-```
-
-## The routes
-
-Both routes are four lines of component:
+Both routes load the page through one query and hand rendering to a shared article:
 
 ```tsx
-const PrivacyPolicyPage = (): ReactNode => legalContent.useContent(Route.useLoaderData().path)
+const PrivacyPolicyPage = (): JSX.Element => <ContentPageArticle handle={CONTENT_PAGE_HANDLE.PRIVACY_POLICY} />
 
 export const Route = createFileRoute("/_storefront/privacy-policy")({
   component: PrivacyPolicyPage,
   head: pageHead,
-  loader: async () => {
-    const page = await loadLegalPage(LEGAL_DOCUMENT_SLUGS.privacyPolicy)
+  loader: async ({ context }) => {
+    const page = await context.queryClient.query(getContentPageQuery(CONTENT_PAGE_HANDLE.PRIVACY_POLICY, context.locale))
 
-    return { description: page.description, path: page.path, title: page.title } satisfies PageMeta & { path: string }
+    return { description: page.description, title: page.title } satisfies PageMeta
   },
-  wrapInSuspense: false,
 })
 ```
 
-`src/routes/_storefront.exchanges-and-returns.tsx` is the same with the other slug. Both set `wrapInSuspense: false`, because the content is already preloaded in the loader — there is nothing left to suspend on.
+`getContentPage` in `src/modules/content-page/use-cases/get-content-page.ts` is a public `GET` server function. It resolves the title, description and body for the requested locale, falling back to Polish, and throws `notFound()` for an unknown handle. It also returns `revisedAt`, the revision date for that locale.
 
-Adding a third document means: two MDX files, both `meta.<locale>.json` files, a slug in `LEGAL_DOCUMENT_SLUGS`, a `ROUTES` entry and a route file copied from one of these two.
-
-## Rendering
-
-`src/presentation/components/custom/legal-content.tsx` is the client loader:
+`ContentPageArticle` reads the same query with `useSuspenseQuery`, so the loader's fetch is reused rather than repeated. It renders the title as the only `<h1>`, a "Last updated" line formatted with use-intl, and the body:
 
 ```tsx
-export const legalContent = browserCollections.legal.createClientLoader({
-  component: ({ default: Mdx, frontmatter }) => (
-    <article className="container mx-auto max-w-3xl px-4 py-16 md:py-24">
-      <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl">{frontmatter.title}</h1>
-      <Mdx components={mdxComponents} />
-    </article>
-  ),
-  id: "legal",
-})
+const { Markdown } = createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkHeading] })
+
+<Markdown components={MARKDOWN_COMPONENTS}>{page.body}</Markdown>
 ```
 
-The `<h1>` comes from the frontmatter, so a legal MDX file must **not** start with its own `#` heading — top-level sections are `##`.
+`createMarkdownRenderer` comes from `fumadocs-core` and compiles Markdown at render time, not at build time. Raw HTML in a body is dropped rather than rendered. `remarkHeading` gives every heading a slug `id`, so a link such as `/exchanges-and-returns#returning-goods` lands on its section. The only component override is the link, which adds the reader's locale prefix to store paths and leaves files such as `/forms/formularz_zwrotu.pdf` alone.
 
-`mdxComponents` (`src/presentation/components/custom/mdx.tsx`) maps a deliberately small set of elements: `a`, `h1`, `h2`, `h3`, `p`, `ul`, `ol`, `li`, `strong`. Anything else falls through to an unstyled default. The docs site extends this map in `docs-mdx.tsx` with `pre`, `code`, `table`, `th`, `td`, `blockquote`, `hr` and `h4` — **so a table, a code block or a blockquote will render unstyled in a legal document but correctly in the docs.** Neither map provides Fumadocs UI components such as `Callout` or `Tabs`; using one in MDX here would fail at render time.
+The typography lives in `CONTENT_PROSE_CLASS` in `content-page.styles.ts`. The admin editor applies the same class to its editable area, so what an admin sees while typing is what customers see.
 
-`MdxLink` localises internal hrefs automatically:
+Both routes sit under `_storefront`, so they get the navigation, the cart availability banner and the footer.
 
-```tsx
-const isLocalizablePath = (href: string | undefined): href is string =>
-  href !== undefined && href.startsWith("/") && !ASSET_PATH_PATTERN.test(href)
+## Editing in the admin panel
+
+The **Content** item in the admin sidebar opens `/admin/content`, which lists both pages with their last save. Each one opens `/admin/content/$handle`. The route rejects any handle outside `CONTENT_PAGE_HANDLES` with a 404.
+
+The editor page has one tab per locale. Each tab holds three fields:
+
+- **Title**, up to 120 characters, shown as the page heading and in the browser tab.
+- **Description**, up to 300 characters with a live counter, used for search results and link previews.
+- **Content**, the rich-text body.
+
+The body field is [MDXEditor](https://mdxeditor.dev), which is built on Lexical. `src/integrations/mdxeditor/mdxeditor.plugins.ts` enables only what the storefront can show:
+
+| Toolbar control | Markdown written                          |
+| --------------- | ----------------------------------------- |
+| Text style      | Paragraph, `##` heading, `###` subheading |
+| Bold, Italic    | `**bold**`, `*italic*`                    |
+| Lists           | `- item` and `1. item`                    |
+| Link            | `[text](href)`                            |
+| Divider         | `---`                                     |
+
+Quotes are available through Markdown shortcuts, such as typing `> ` at the start of a line. Shift+Enter starts a new line inside a paragraph, which is how a postal address stays on separate lines. The editor writes it as a trailing backslash, and a custom export visitor keeps two consecutive line breaks as a paragraph break instead.
+
+MDXEditor serialises through `mdast-util-to-markdown`, so text that would otherwise read as Markdown is escaped. A line that starts with `1.` or `-`, a trailing `#` in a heading and emphasis next to punctuation all survive a save unchanged. The editor tests load both seeded pages in both locales into the real editor and check that they come back byte-identical.
+
+The editor's own labels, such as the link dialog and the heading names, come from `pages.admin.content.editor.mdx` in the admin message files through `useContentEditorTranslation`. The editable area takes its accessible name from the field label.
+
+## Saving
+
+**Save** is enabled once something has changed. Ctrl+S or ⌘+S saves too. Leaving the page with unsaved changes asks for confirmation, and closing the tab triggers the browser's own warning.
+
+The form is validated with `contentPageZodSchemas.formValues` before anything is sent. Every locale needs a title, a description and a body. A body may not contain an image, and every link must be an `https://`, `http://`, `mailto:` or `tel:` address or a path on this site. When a locale fails, the editor switches to that tab and marks it, and the toast lists every locale with errors.
+
+`updateContentPage` requires the `content: ["update"]` permission, which only admins have. It saves with optimistic concurrency:
+
+```ts
+.where(and(eq(contentPage.handle, handle), eq(contentPage.updatedAt, expectedUpdatedAt)))
 ```
 
-So write `/exchanges-and-returns` in a legal document and the reader's locale prefix is added for them. A path ending in a file extension is left alone.
+If another admin saved the page after this one opened it, nothing is written and the editor shows a conflict toast with a **Reload** action. Reload fetches the latest version and replaces the form.
 
-Both routes live under `_storefront`, so they get the navigation, the cart availability banner and the footer.
+A save publishes immediately. It also:
+
+- moves the "Last updated" date only for the locales whose title or body changed, so fixing a typo in a description does not change the date;
+- schedules a realtime invalidation, so open storefront and admin tabs refetch the page;
+- records a `content_page_updated` entry under the Content category of the [audit log](/docs/features/audit-log).
+
+Edits typed while a save is in flight are kept after it completes.
+
+## Adding another page
+
+1. Add the handle to `CONTENT_PAGE_HANDLE` and `CONTENT_PAGE_HANDLES`, and its route to `ROUTES` and `CONTENT_PAGE_PATHS`.
+2. Write a migration that inserts the row with every locale's title, description and body, using `ON CONFLICT(handle) DO NOTHING`.
+3. Copy one of the two storefront routes and change the handle.
+4. Link the page from the footer if customers should find it there.
+
+The admin list and editor pick the new page up without changes.
 
 ## Message-only storefront pages
 
-Three other pages in the footer's information column are not MDX and have no long-form content:
+Three other pages in the footer's information column are not content pages and have no long-form text:
 
 | Route               | File                               | What it renders                                                    |
 | ------------------- | ---------------------------------- | ------------------------------------------------------------------ |
@@ -162,17 +125,11 @@ Three other pages in the footer's information column are not MDX and have no lon
 | `/faq`              | `_storefront.faq.tsx`              | The same three-element shape                                       |
 | `/about`            | `_storefront.about.tsx`            | An eyebrow, a title, a lead and four paragraphs from `pages.about` |
 
-`/about` is finished copy — it is simply authored in `messages/{locale}/pages.about.json` rather than in MDX. `/terms-of-service` and `/faq` are placeholders: their copy says as much, and both render a centred "go home" link.
-
-If terms of service should become a real document, the cheapest path is to move it to `content/legal` alongside the other two rather than growing the message catalogue: add the MDX files, the slug, the meta entries and replace the route body with `legalContent.useContent(...)`.
-
-## Two orphaned message files
-
-`messages/en-US/pages.privacyPolicy.json`, `messages/pl-PL/pages.privacyPolicy.json`, `messages/en-US/pages.exchanges-and-returns.json` and `messages/pl-PL/pages.exchanges-and-returns.json` exist, but nothing references those namespaces — the two pages get their title and description from the MDX frontmatter instead. They are leftovers from before the documents moved to MDX.
+`/about` is finished copy authored in `messages/{locale}/pages.about.json`. `/terms-of-service` and `/faq` are placeholders, and both render a centred "go home" link. Terms of service can become an editable document by following the steps above.
 
 ## Footer links
 
-`src/presentation/components/custom/pages/landing-page/footer/footer.tsx` is where these pages are linked:
+`src/presentation/components/custom/pages/landing-page/footer/footer.tsx` links these pages:
 
 ```tsx
 <FooterLink to={ROUTES.TERMS_OF_SERVICE}>{t("terms")}</FooterLink>
@@ -180,10 +137,18 @@ If terms of service should become a real document, the cheapest path is to move 
 <FooterLink to={ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
 ```
 
-The checkout payment step also links the terms and privacy pages through `t.rich("termsAgreement", { privacy, terms })` — see [Checkout](/docs/features/checkout).
+The checkout payment step also links the terms and privacy pages through `t.rich("termsAgreement", { privacy, terms })`. See [Checkout](/docs/features/checkout).
+
+## Tests
+
+- `content-page.integration.test.ts` runs the migration against SQLite and covers reading with the Polish fallback, the admin reads, trimming, conflicting saves, per-locale revision dates and the link and image rules.
+- `mdxeditor.plugins.component.test.tsx` round-trips both seeded pages through the real editor, plus the escaping and line-break cases.
+- The admin component tests cover saving, validation, conflicts, edits during a save, the save shortcut and the leave dialog.
+- `content-page-article.component.test.tsx` covers the storefront rendering, heading anchors, localised links and dropped HTML.
 
 ## Related pages
 
+- [Admin catalog](/docs/features/admin-catalog)
+- [Audit log](/docs/features/audit-log)
 - [Internationalization](/docs/features/internationalization)
 - [Checkout](/docs/features/checkout)
-- [Integrations: Fumadocs](/docs/integrations/fumadocs)

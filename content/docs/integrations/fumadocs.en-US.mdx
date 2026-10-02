@@ -1,35 +1,22 @@
 ---
 title: "Fumadocs"
-description: "The docs and legal MDX collections, localized sources, and how these pages are rendered."
+description: "The docs MDX collection, its localized source, how these pages are rendered, and the Markdown renderer the legal pages share."
 ---
 
-Fumadocs turns MDX files into two things in this application: the legal documents at `/privacy-policy` and `/exchanges-and-returns`, and the documentation site you are reading. Both use the same pattern — a collection defined in `src/integrations/fumadocs/`, a localized `loader`, a server function that resolves a page, and a client loader that renders the compiled MDX.
+Fumadocs turns the MDX files under `content/docs` into the documentation site you are reading. The pattern is a collection defined in `src/integrations/fumadocs/`, a localized `loader`, a server function that resolves a page, and a client loader that renders the compiled MDX.
+
+The legal pages at `/privacy-policy` and `/exchanges-and-returns` are not MDX files. Their Markdown is stored in D1 and edited in the admin panel, and the storefront renders it with `createMarkdownRenderer` from `fumadocs-core`. See [Legal pages](/docs/features/legal-pages).
 
 ## Collections
 
-`fumadocs.config.ts` declares two:
+`fumadocs.config.ts` declares one:
 
 ```ts
 export const docs = defineDocs({
   dir: "./content/docs",
 })
 
-export const legal = defineDocs({
-  dir: "./content/legal",
-  docs: {
-    schema: legalSchema,
-  },
-})
-
 export default defineConfig()
-```
-
-`legalSchema` in `fumadocs.schema.ts` extends Fumadocs' own page schema with a required date, so a legal document cannot be published without stating when it was last revised:
-
-```ts
-export const legalSchema = pageSchema.extend({
-  updated: zod.iso.date(),
-})
 ```
 
 Documentation pages use the default schema: `title` is required, `description` is optional.
@@ -53,17 +40,7 @@ export const i18n = defineI18n({
 - **`fallbackLanguage`** is `pl-PL`, so an English page that has not been written yet resolves to the Polish one rather than 404ing. This is convenient and also a trap: a missing English translation looks like a working page. Both locale files are expected for every page.
 - **`languages`** is spread from `I18N.SUPPORTED_LOCALES`, so the locale list has exactly one source of truth.
 
-## The sources
-
-`fumadocs.source.ts` builds the legal source, mounted at the site root because the legal routes are top-level paths:
-
-```ts
-export const legalSource = loader({
-  baseUrl: "/",
-  i18n,
-  source: legal.toFumadocsSource(),
-})
-```
+## The source
 
 `fumadocs.docs.ts` builds the docs source at `ROUTES.DOCS`:
 
@@ -75,7 +52,7 @@ export const docsSource = loader({
 })
 ```
 
-Both import `docs` and `legal` from `collections/server`, which is a `tsconfig.json` path alias pointing at `./.source/*` — the directory `fumadocs-mdx` generates.
+It imports `docs` from `collections/server`, which is a `tsconfig.json` path alias pointing at `./.source/*` — the directory `fumadocs-mdx` generates.
 
 ## Generated output
 
@@ -174,20 +151,11 @@ href={isLocalizablePath(href) ? localizePathname({ locale: getCurrentLocale(), p
 
 So always write internal links without a locale — `/docs/integrations/stripe`, not `/en-US/docs/integrations/stripe` — and the reader's prefix is added for them. An external URL or a path ending in an extension (`/forms/formularz_zwrotu.pdf`) is left alone.
 
-`legalContent` in `legal-content.tsx` is the same idea with the narrower `mdxComponents` map and a centered prose container.
+The legal pages reuse only the link from `mdxComponents`. Their article passes `{ a: mdxComponents.a }` to the Markdown renderer, so store paths in a legal page are localized the same way.
 
-## Legal documents
+## Markdown at render time
 
-`fumadocs.legal.ts` names the documents rather than accepting an arbitrary slug:
-
-```ts
-export const LEGAL_DOCUMENT_SLUGS = {
-  exchangesAndReturns: "exchanges-and-returns",
-  privacyPolicy: "privacy-policy",
-} as const
-```
-
-`loadLegalPage(slug)` mirrors `loadDocsPage` and additionally returns `updated` from the frontmatter. `src/routes/_storefront.privacy-policy.tsx` and `_storefront.exchanges-and-returns.tsx` each call it with one constant, so there is no way to reach an unintended document.
+`createMarkdownRenderer` from `fumadocs-core/content/md` compiles a Markdown string on render instead of at build time. `ContentPageArticle` creates one with `remarkGfm` and `remarkHeading`, which gives every heading a slug `id`. Raw HTML in the string is dropped. It is the right tool for text that lives in the database, while `fumadocs-mdx` remains the tool for files in the repository.
 
 ## Adding a documentation page
 
@@ -203,10 +171,11 @@ The application has no `/api/search` route and does not use `fumadocs-core/searc
 
 ## Tests
 
-`src/integrations/fumadocs/__test__/` holds five files. `fumadocs.config.test.ts` checks the collection directories and the legal frontmatter schema, including that `updated` is a valid date. `fumadocs.docs.source.component.test.ts` checks that every page is served under the docs route, that the page tree turns each folder into a section with its index first, and the `docsSplatOf` / `docsSlugsOf` round trip — and it asserts that an unprefixed URL resolves the **Polish** page while an English URL resolves the English one. `fumadocs.docs.component.test.tsx` renders a real page and checks the body is rendered inside one `<article>`. The two `fumadocs.legal.*` files do the same for the legal documents, down to asserting that the privacy policy names the data controller with its Bochnia address and tax number.
+`src/integrations/fumadocs/__test__/` holds three files. `fumadocs.config.test.ts` checks the collection directory. `fumadocs.docs.source.component.test.ts` checks that every page is served under the docs route, that the page tree turns each folder into a section with its index first, and the `docsSplatOf` / `docsSlugsOf` round trip — and it asserts that an unprefixed URL resolves the **Polish** page while an English URL resolves the English one. `fumadocs.docs.component.test.tsx` renders a real page and checks the body is rendered inside one `<article>`.
 
 ## Related pages
 
+- [Legal pages](/docs/features/legal-pages)
 - [use-intl](/docs/integrations/use-intl)
 - [UI system](/docs/ui)
 - [Guides](/docs/guides)

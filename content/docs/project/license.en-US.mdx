@@ -79,14 +79,14 @@ For commercial use, contact the author:
 
 ## Not the same as the shop's legal pages
 
-This page is about the licence on the code. The shop's own legal documents are separate content, written for customers and rendered from `content/legal/`:
+This page is about the licence on the code. The shop's own legal documents are separate content, written for customers and stored as Markdown in the D1 `content_page` table, one row per document:
 
-| Document              | File                                               | Route                    |
-| --------------------- | -------------------------------------------------- | ------------------------ |
-| Privacy policy        | `content/legal/privacy-policy.<locale>.mdx`        | `/privacy-policy`        |
-| Exchanges and returns | `content/legal/exchanges-and-returns.<locale>.mdx` | `/exchanges-and-returns` |
+| Document              | Handle                  | Route                    |
+| --------------------- | ----------------------- | ------------------------ |
+| Privacy policy        | `privacy-policy`        | `/privacy-policy`        |
+| Exchanges and returns | `exchanges-and-returns` | `/exchanges-and-returns` |
 
-Those files carry an `updated` date in their frontmatter, enforced by `legalSchema` in `src/integrations/fumadocs/fumadocs.schema.ts`, so a change to a customer-facing legal document cannot be published without dating it. `/terms-of-service` is also routed, but `src/routes/_storefront.terms-of-service.tsx` currently renders a short placeholder from the `pages.terms-of-service` message namespace rather than a document in `content/legal/`.
+Admins edit them at `/admin/content`, and a save publishes immediately. A save that changes a locale's title or body moves that locale's "Last updated" date, so a change to a customer-facing legal document cannot be published without dating it. `/terms-of-service` is also routed, but `src/routes/_storefront.terms-of-service.tsx` currently renders a short placeholder from the `pages.terms-of-service` message namespace rather than a `content_page` row.
 
 ## Full text
 

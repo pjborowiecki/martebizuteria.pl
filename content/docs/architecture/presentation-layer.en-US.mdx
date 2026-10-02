@@ -3,14 +3,14 @@ title: "Presentation layer"
 description: "Where components, styles, theme, branding and email templates live, and the rules every component follows."
 ---
 
-`src/presentation` holds 573 files and is the largest folder in the repository. Nothing in it reads a database or a secret.
+`src/presentation` holds 651 files and is the largest folder in the repository. Nothing in it reads a database or a secret.
 
 ## Folders
 
 | Folder               | Contents                                                                                |
 | -------------------- | --------------------------------------------------------------------------------------- |
 | `components/shadcn`  | 57 shadcn/ui primitives plus `sheet-control.styles.ts` — regenerate, do not hand-edit   |
-| `components/custom`  | 494 application components                                                              |
+| `components/custom`  | 571 application components                                                              |
 | `emails`             | React Email templates, `email-layout.tsx`, `email-highlight-box.tsx`, `email-styles.ts` |
 | `styles`             | `globals.css`, `storefront.css`, `admin.css`, `fonts.css`, `critical-fonts.css`         |
 | `theme`              | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                    |
@@ -19,9 +19,9 @@ description: "Where components, styles, theme, branding and email templates live
 
 ## Organizing components
 
-- **Shared components are flat files** in `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `legal-content.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`.
+- **Shared components are flat files** in `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`.
 - **Cross-cutting widgets get a folder** when they are a system rather than a component: `datagrid/`, `image-upload/`, `checkout/`, `defaults/`.
-- **Page and area components live under `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `auth/`, `account/`, `admin/`.
+- **Page and area components live under `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `content-page/`, `auth/`, `account/`, `admin/`.
 - **Admin pages get their own folder** under `pages/admin`: `orders/`, `customers/`, `catalog/products/`, `catalog/categories/`, `catalog/collections/`, `catalog/attributes/`, `audit/`, `dashboard/`, `settings/`, `content/`, `coupons/`, `marketing/`.
 
 Larger areas nest further, into `components/`, `hooks/`, `lib/`, `utils/`, `sections/` and `_sections/` subfolders — for example `pages/admin/audit/{audit-table,components,hooks,lib,utils}` and `pages/landing-page/navigation/{components,constants,hooks,store}`. This is a deliberate divergence from the flatter reference layout: the admin console is large enough that a flat folder stopped being navigable.

@@ -113,9 +113,11 @@ export const authorized = (permission?: Permission) =>
       if (session === null) {
         throw new AppError(ERROR_CODES.UNAUTHORIZED)
       }
+
       if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
         throw new AppError(ERROR_CODES.FORBIDDEN)
       }
+
       return next({ context: { auth: session } })
     })
 ```
@@ -141,7 +143,7 @@ That is why the `authorized()` calls in `customer-account` and `address` carry n
 
 `getRequestSession` in `src/integrations/better-auth/auth.session.ts` memoizes the session lookup per `Request` in a `WeakMap`, and passes `disableCookieCache: true`, so every server-side read revalidates against D1 while concurrent loaders in one request share a single lookup.
 
-Better Auth is configured in `auth.server.ts` with a 300-second signed cookie cache (`cookieCache.maxAge`), `storeSessionInDatabase: true` and at most five concurrent sessions per user (`multiSession({ maximumSessions: 5 })`). The browser's own `useSession()` goes through `/api/auth/get-session`, which does consult the cookie cache, so the client can briefly render a stale signed-in state even though every server read is fresh.
+Better Auth is configured in `auth.server.ts` with a 300-second signed cookie cache (`cookieCache.maxAge`), `storeSessionInDatabase: true` and at most five concurrent sessions per user (`multiSession({ maximumSessions: 5 })`). Route guards and components read the session through `getCurrentSessionQuery`, whose `getCurrentSession` server function also goes through `getRequestSession`, so the browser's session skips the cookie cache too. TanStack Query keeps that result fresh for 60 seconds and does not refetch it on window focus, so a component can still render a signed-in state the server has already ended. A real navigation into `/account` or `/admin` re-checks the session with `staleTime: 0`, and every protected server function reads its own session through `authorized()`, so a stale cache entry never grants access.
 
 `getCurrentSession` strips the session token before returning to the browser — `toClientSession` destructures `token` away — so the client never receives it.
 

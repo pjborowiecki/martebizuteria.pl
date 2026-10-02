@@ -10,7 +10,7 @@ description: "The steps a page request, a server function call and a webhook go 
 3. **The execution context is captured.** The Start handler is invoked inside `executionContextStorage.run({ waitUntil }, …)` and receives `{ env, passThroughOnException, waitUntil }` as its request context, plus `responseLinkHeader: true`.
 4. **Routing.** `getRouter` creates a new router and a new `QueryClient`. The router's `rewrite.input` de-localizes the URL before matching, so `/en-US/products` matches the `/_storefront/products` route, and `rewrite.output` re-applies the prefix when generating links.
 5. **Root `beforeLoad`.** `__root.tsx` resolves the locale with `getCurrentLocale()`, collects the namespaces of every matched route with `getRouteNamespaces(matches)` and preloads them into the request's `QueryClient`. It returns `{ internalPathname, locale }` as the root route context.
-6. **Guards.** Layout `beforeLoad` functions run next: `requireAdmin()` on `/admin`, `requireCustomer()` on `/account`. They load the session and throw a `redirect` when access is not allowed.
+6. **Guards.** Layout `beforeLoad` functions run next: `requireAdmin` on `/admin`, `requireCustomer` on `/account`, `redirectIfSignedIn` on `/auth`. They only read the session, through `loadRouteSession`, which calls `context.queryClient.query` with `getCurrentSessionQuery`, and throw a `redirect` when access is not allowed; otherwise `requireAdmin` and `requireCustomer` return `{ user }` as route context. The session stays in the request's `QueryClient`, so it is serialized with the rest of the cache and an `/account` or `/admin` page renders signed-in on the server.
 7. **Loaders** run in parallel. A typical loader resolves its page metadata namespace and its data queries together, marking the data query `staleTime: "static"` so it is not refetched during the same render:
 
    ```ts
@@ -24,7 +24,7 @@ description: "The steps a page request, a server function call and a webhook go 
 
 8. **Rendering.** `RootDocument` renders `<html lang={locale}>`, inlines the theme, sidebar and data-grid init scripts, adds the storefront critical fonts on non-admin routes, then `<HeadContent />`. The body is wrapped in `TranslationsProvider` and `ThemesProvider`. `setupRouterSsrQueryIntegration` serializes the server query cache into the HTML.
 9. **Response headers.** `responseLinkHeader: true` makes the Start handler emit a `Link` preload header for the assets it knows about. If `resolveLocale` asked for a cookie, `src/server.ts` clones the response and appends `Set-Cookie`.
-10. **Hydration.** The browser hydrates with the serialized cache. `TranslationsProvider` writes the locale cookie from the client as well, so a locale reached by a client-side navigation stays sticky. Later navigations run guards and loaders in the browser and fetch through server functions.
+10. **Hydration.** The browser hydrates with the serialized cache. `TranslationsProvider` writes the locale cookie from the client as well, so a locale reached by a client-side navigation stays sticky. In the browser, `getRouter` also installs `clearCacheOnUserChange`, which removes every cached query except the session and the message catalogues when the session switches to a different user; the server skips it because every request starts with an empty `QueryClient`. Later navigations run guards and loaders in the browser and fetch through server functions.
 
 ```text
 GET /en-US/products/pierscionek-z-perla
@@ -44,7 +44,7 @@ GET /en-US/products/pierscionek-z-perla
 2. Middleware runs in declared order. `withRequest` captures `getRequest().headers` into context and wraps the rest in a `.catch(handleRequestError)`. `withRateLimit(kind, limit)` counts the attempt. `authorized(permission?)` loads the session and checks the permission.
 3. The validator parses the input with the module's Zod schema.
 4. The handler queries D1 or calls a provider, schedules any audit and email work in the background, and returns plain data.
-5. Errors are normalized on the way out. `handleRequestError` re-throws an `AppError` with its code, maps a Better Auth API error to `AUTH_API_ERROR` with a translation key, maps a `ZodError` to `VALIDATION`, and turns anything else into `INTERNAL_ERROR` after logging the original.
+5. Errors are normalized on the way out. `handleRequestError` first re-throws a TanStack `notFound()` unchanged (`isNotFound`), so a route answers 404 instead of a 500. It then re-throws an `AppError` with its code, maps a Better Auth API error to `AUTH_API_ERROR` with a translation key, maps a `ZodError` to `VALIDATION`, and turns anything else into `INTERNAL_ERROR` after logging the original.
 6. The component receives the data, or an error whose message is a code. `useActionError()` turns that code into a translated string.
 
 ```text

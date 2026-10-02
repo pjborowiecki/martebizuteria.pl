@@ -116,6 +116,32 @@ export const getCurrentSessionQuery = queryOptions({
 })
 ```
 
+It is the only way routes and components read the session. The route guards in `src/integrations/better-auth/auth.routes.ts` load it with `context.queryClient.query(getCurrentSessionQuery)`: a real navigation into `/account` or `/admin` re-checks with `staleTime: 0`, while a link preload and the `/auth` guard reuse a cached session younger than 60 seconds. On a server render the session is dehydrated into the page with the loaders' data, so guarded pages render signed-in on the server. Components read the same entry with `useQuery(getCurrentSessionQuery)`; the navigation link, the translations time zone, the wishlist and the checkout prefill all do.
+
+The guards only read the session. A change of user is handled in one place: `clearCacheOnUserChange(queryClient)`, also exported from `auth.session.ts`, subscribes to the query cache. Whenever the session query's data switches to a different user id, including signed out to signed in and back, it removes every cached query except the session itself and the translation message catalogues, matched by `isMessagesQuery` from `src/integrations/use-intl/i18n.messages.ts`. It ignores the first session it sees and the session entry being removed:
+
+```ts
+export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) => {
+  const seen: { session?: Awaited<ReturnType<typeof getCurrentSession>> } = {}
+
+  return queryClient.getQueryCache().subscribe(({ query }) => {
+    const session = query.queryHash === SESSION_QUERY_HASH ? queryClient.getQueryData(getCurrentSessionQuery.queryKey) : undefined
+    if (session === undefined) {
+      return
+    }
+
+    if ("session" in seen && seen.session?.user.id !== session?.user.id) {
+      queryClient.removeQueries({ predicate: (cached) => cached.queryHash !== SESSION_QUERY_HASH && !isMessagesQuery(cached) })
+    }
+    seen.session = session
+  })
+}
+```
+
+Because it watches the cache, it catches a change whoever fetched the session: a guard, a component such as the navigation link, the wishlist or the translations time zone, a refetch after invalidation, or hydration. `getRouter` in `src/router.tsx` installs it in the browser only, next to `setupQueryClientInvalidationBroadcast`. Server rendering skips it, because every request starts with an empty `QueryClient`.
+
+After a password sign-in or a two-factor challenge, `usePostAuthRedirect` removes only the cached session entry, then clears the router's cached matches and invalidates the router. The `/auth` guard fetches the fresh session, and `clearCacheOnUserChange` forgets what was cached while signed out. Sign-out is a full page load, which discards the whole cache. The guards and the redirect flow are described in [Better Auth](/docs/integrations/better-auth).
+
 ## Cross-tab invalidation
 
 `src/integrations/tanstack-query/query.sync.ts` is the only file in the `tanstack-query` folder. It mirrors invalidations across browser tabs of the same origin over a `BroadcastChannel` named `marte-query-invalidation`:

@@ -15,11 +15,10 @@ export const I18N = {
   DEFAULT_LOCALE: "pl-PL",
   DEFAULT_TIMEZONE: "Europe/Warsaw",
   SUPPORTED_LOCALES: ["pl-PL", "en-US"],
-  TIME_ZONES: ["UTC", "America/New_York", "Europe/Warsaw"],
 } as const
 ```
 
-`SupportedLocale` is derived from `SUPPORTED_LOCALES`, so adding a locale is a one-line change followed by a new `messages/<locale>` folder and a new `.mdx` file for every page in `content/`.
+`SupportedLocale` is derived from `SUPPORTED_LOCALES`, so adding a locale is a one-line change followed by a new `messages/<locale>` folder, a new `.mdx` file for every page in `content/docs`, and a value for the new locale in every `content_page` row.
 
 ## URLs
 
@@ -28,7 +27,7 @@ export const I18N = {
 | `i18n.paths.ts`      | `localizePathname`, `deLocalizePathname`, `canonicalizePathname`, `extractLocaleFromPath`, `isSupportedLocale`, `shouldIgnorePath`, `localeLinks` |
 | `i18n.utils.ts`      | `getCurrentLocale`, `getCurrentPathname`, `localizeUrl`, `deLocalizeUrl`, `parseLocaleCookie`                                                     |
 | `i18n.middleware.ts` | `resolveLocale`, used by the Worker for the redirect and the cookie                                                                               |
-| `i18n.messages.ts`   | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`                         |
+| `i18n.messages.ts`   | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`, `isMessagesQuery`      |
 
 `shouldIgnorePath` excludes `/api`, `/rpc`, `/_serverFn` and `/assets` from all locale handling.
 
@@ -49,7 +48,7 @@ rewrite: {
 
 **The consequence worth knowing:** because the router only ever sees the de-localized path, anything that derives the locale from the router's location silently yields the default. `getCurrentLocale()` is the single derivation used everywhere. It is an isomorphic function: on the server it reads the real request URL (or the cookie for ignored paths), and in the browser it reads `location.pathname` (or `document.cookie`).
 
-`localizePathname` is only for raw URLs that bypass the router — Better Auth `callbackURL` values, links inside emails and hand-built `<a href>` elements. `src/presentation/components/custom/mdx.tsx` applies it to every internal link in an MDX page, which is why the links in these docs are written without a prefix.
+`localizePathname` is for raw paths that bypass the router, such as canonical links and hand-built `<a href>` elements. `src/presentation/components/custom/mdx.tsx` applies it to every internal link in an MDX page, which is why the links in these docs are written without a prefix. Links inside emails and the sign-up `callbackURL` are built with `buildLocalizedUrl` from `src/lib/seo.ts`. The sign-in `?redirect` value and the Google and GitHub `callbackURL` start from the router's `location.publicHref` instead, which is already the localized public path, such as `/en-US/account/orders/order-1`. A server-rendered redirect to it therefore keeps the visitor's language, and on the client the router re-localizes it to the current language; see [Security model](/docs/architecture/security-model).
 
 ## The cookie
 
@@ -84,10 +83,12 @@ Page namespaces carry their own `metadata.title` and `metadata.description`, whi
 - **Root namespaces** are discovered by `import.meta.glob` in `i18n.messages.ts` and exported as `ROOT_NAMESPACES`: `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors` and `pages.auth.toast`. They are always loaded.
 - **Every route declares its own** in `staticData.namespaces`, for example `["pages.product"]` on the product page, `["pages.admin", "components.datagrid"]` on the admin layout, `["pages.checkout", "pages.cart"]` on the checkout layout.
 - **`__root.tsx`'s `beforeLoad`** calls `getRouteNamespaces(matches)`, which unions `ROOT_NAMESPACES` with every matched route's declaration, then `preloadNamespaces` resolves them all into the request's `QueryClient` in parallel.
-- **`TranslationsProvider`** re-reads the same list with `useMatches` and `useSuspenseQueries`, builds the tree and passes it to use-intl's `IntlProvider` together with `I18N.DEFAULT_TIMEZONE`. Because it wraps the document body in the root shell, even error and not-found screens are translated.
+- **`TranslationsProvider`** re-reads the same list with `useMatches` and `useSuspenseQueries`, builds the tree and passes it to use-intl's `IntlProvider` together with a time zone: the signed-in user's, read with `useQuery(getCurrentSessionQuery)`, or `I18N.DEFAULT_TIMEZONE` when there is none. Because it wraps the document body in the root shell, even error and not-found screens are translated.
 - **Emails** load their namespace on the server with `loadNamespace` in the code that sends them, and translate with `createTranslator`.
 
 A page therefore ships the six root namespaces plus what its own route and its layout ancestors declared — not the whole catalogue.
+
+The catalogues also survive a change of user. When the session switches to a different user, `clearCacheOnUserChange` removes every cached query except the session and the queries matched by `isMessagesQuery`, so the translations do not load again; see [Caching and SSR](/docs/architecture/caching-and-ssr).
 
 ## Documentation and legal content
 

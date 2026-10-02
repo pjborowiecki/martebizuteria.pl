@@ -5,25 +5,38 @@ description: "The seven /account pages, the customer-account and address modules
 
 ## Layout and guard
 
-`src/routes/account.tsx` is the layout. Its `beforeLoad` runs the guard and puts the user in the route context:
+`src/routes/account.tsx` is the layout. Its `beforeLoad` is the guard itself, and the `{ user }` the guard resolves to becomes route context:
 
 ```ts
-beforeLoad: async () => ({
-  user: await requireCustomer(),
-}),
+beforeLoad: requireCustomer,
 ```
 
 `requireCustomer` (`src/integrations/better-auth/auth.routes.ts`) requires a session and then **redirects admins away**:
 
 ```ts
-export const requireCustomer = async (): Promise<SessionUser> => {
-  const user = await requireUser()
+export const requireCustomer = async (route: AuthRouteContext): Promise<{ user: SessionUser }> => {
+  const { user } = await requireSignedIn(route)
 
-  return hasAdminAccess(user.role) ? redirectTo(ROUTES.ADMIN) : user
+  return hasAdminAccess(user.role) ? redirectTo(ROUTES.ADMIN) : { user }
 }
 ```
 
-So an admin cannot browse the customer area; they land on `/admin`. The layout renders the storefront `Navigation`, the `AccountSidebar` and the outlet, each wrapped in `Suspense` with its own skeleton. It preloads four namespaces: `pages.account`, `pages.account.meta`, `pages.auth.errors` and `pages.auth.validations`.
+So an admin cannot browse the customer area; they land on `/admin`. `/account/overview` reads the user for its greeting with `AccountRoute.useRouteContext()`.
+
+`requireSignedIn` only reads the session, through `loadRouteSession`:
+
+```ts
+const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContext, { recheck }: { readonly recheck: boolean }) =>
+  queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)
+```
+
+It passes `recheck: true`, so a real navigation into `/account` re-checks the session with `staleTime: 0`; a link preload reuses a cached session younger than 60 seconds. The session stays in the TanStack Query cache and a server render dehydrates it into the page, so the account pages render signed-in on the server.
+
+A change of user is handled in one place: `clearCacheOnUserChange` (`src/integrations/better-auth/auth.session.ts`), which `getRouter` installs in the browser only. It watches the query cache, and whenever the session switches to a different user, signing in or out included, it removes every cached query except the session itself and the translation catalogues, so nothing cached for the previous user is shown.
+
+An anonymous visitor is redirected to `/auth/sign-in?redirect=<path>`, where `<path>` is the localized public path, such as `/en-US/account/orders/order-1`. It is kept only when it matches `SAME_SITE_PATH_PATTERN`: visible ASCII characters only, a single leading slash and no backslash. After a password, two-factor, Google or GitHub sign-in, the `/auth` guard sends the visitor back to it. See [Integrations: Better Auth](/docs/integrations/better-auth).
+
+The layout renders the storefront `Navigation`, a two-column grid and the storefront `Footer`. Only the two grid cells are wrapped in `Suspense`: the `AccountSidebar` with the `AccountSidebarFallback` skeleton, and the outlet with the `AccountMainFallback` skeleton. It preloads four namespaces: `pages.account`, `pages.account.meta`, `pages.auth.errors` and `pages.auth.validations`.
 
 `/account` itself only redirects:
 
@@ -46,7 +59,7 @@ beforeLoad: () => {
 | `/account/payment`    | `account.payment.tsx`      | none                                                             | Placeholder |
 | `/account/wishlist`   | `account.wishlist.tsx`     | none                                                             | Placeholder |
 
-The sidebar order is `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`).
+The sidebar order is `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`). The sidebar's sign-out button calls `signOut` and then does a full page load of `/`, which discards the query cache.
 
 Every route loader prefetches with `staleTime: "static"` and sets the route's `staleTime` to `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
 
@@ -77,7 +90,9 @@ The activity feed is built from the audit log: `getCustomerActivityAuditRows` re
 
 ## Profile
 
-`getCustomerProfile` returns `{ createdAt, email, name, phone, timezone }` from the `user` row.
+`getCustomerProfile` returns `{ createdAt, email, emailVerified, hasPassword, name, phone, timezone, twoFactorEnabled }` from the `user` row, with `hasPassword` from `hasCredentialAccount`.
+
+`account.profile.tsx` passes `profile.twoFactorEnabled` to `SecuritySection` as a prop, so the two-factor status comes from the query the page loader already prefetched. Enabling or disabling two-factor invalidates both the profile query and the session query.
 
 `updateCustomerPhone` is the only field a customer can change here:
 

@@ -7,7 +7,7 @@ Go through the sections that apply to your change. Each item names the file that
 
 ## Access
 
-- [ ] Private pages sit under a guarded layout. `/admin` uses `requireAdmin()` in `beforeLoad`; `/account` uses `requireUser()` or `requireCustomer()`. All three are in `src/integrations/better-auth/auth.routes.ts`.
+- [ ] Private pages sit under a guarded layout. `admin.tsx` has `beforeLoad: requireAdmin` and `account.tsx` has `beforeLoad: requireCustomer`; each calls `requireSignedIn` first. All three are in `src/integrations/better-auth/auth.routes.ts`.
 - [ ] **Every protected server function carries its own `authorized(...)`.** A route guard stops a page from rendering; it does not protect the RPC endpoint, which is reachable directly.
 - [ ] `authorized()` for any signed-in user, `authorized({ resource: ["action"] })` when a permission is needed.
 - [ ] Operations on the caller's own data read the user from `context.auth.user.id`, never from the input. Compare `createUserAddress` and `setDefaultUserAddress` in `src/modules/address/use-cases/`.
@@ -19,7 +19,7 @@ Go through the sections that apply to your change. Each item names the file that
 - [ ] Every server function has a `.validator` that parses a Zod schema from the module's `.zod.ts`. A handler that reads `data` without a validator is unvalidated input.
 - [ ] Numeric and boolean search params coerce (`z.coerce.number()`, `z.preprocess`) and enums are `z.enum(...)` over the module's tuple, so an out-of-range value is rejected rather than passed to SQL.
 - [ ] Admin search text goes through `buildAdminSearchOrCondition` in `src/modules/_core/utils/search-conditions.server.ts`, which escapes `LIKE` wildcards. Its integration test feeds it `100%`, `%_\` and `x' OR 1=1 --` and asserts they match as literal text.
-- [ ] Redirect targets are internal route constants from `src/routes.ts`, not values from the request. `resolveEmailVerificationCallbackUrl` in `auth.server.ts` rewrites a `callbackURL` only when it already points at the storefront home, and returns the original URL otherwise.
+- [ ] Redirect targets are internal route constants from `src/routes.ts`, not values from the request. The sign-in `?redirect` parameter is the one request value a guard follows, and only when it matches `SAME_SITE_PATH_PATTERN` in `auth.routes.ts` (printable ASCII only, a single leading slash, no backslash): an absolute URL, a protocol-relative `//`, a backslash, whitespace or a control character drops it. Google and GitHub sign-in pass the current page (`location.publicHref`) as `callbackURL`, so the provider returns the browser to the auth page and the same `?redirect` check applies. `resolveEmailVerificationCallbackUrl` in `auth.server.ts` rewrites a `callbackURL` only when it already points at the storefront home, and returns the original URL otherwise.
 
 ## Abuse
 
@@ -32,7 +32,7 @@ Go through the sections that apply to your change. Each item names the file that
 ## Errors
 
 - [ ] Expected failures throw `AppError` with an `ERROR_CODES` code.
-- [ ] Nothing else reaches the client. `withRequest` in `auth.middleware.ts` logs an unknown error with `console.error` and replaces it with `INTERNAL_ERROR` — no message, no stack, no SQL.
+- [ ] Nothing else reaches the client. `withRequest` in `auth.middleware.ts` rethrows a TanStack `notFound()` unchanged, so the route answers 404, and logs any other unknown error with `console.error` and replaces it with `INTERNAL_ERROR` — no message, no stack, no SQL.
 - [ ] Components render errors through `useActionError` (`src/hooks/use-action-error.ts`) or `ValidationFieldError`, never `error.message`.
 - [ ] A module-specific detail such as `CATEGORY_ERROR_CODES.DUPLICATE_HANDLE` is safe to send as the second `AppError` argument, because it is a fixed identifier rather than data.
 
@@ -48,6 +48,7 @@ Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change t
 - [ ] `telemetry.enabled: false`.
 - [ ] Session data sent to the browser goes through `getCurrentSession` in `auth.session.ts`, whose `toClientSession` strips `session.token`. Do not return a raw Better Auth session from a server function.
 - [ ] Server-side session reads use `getRequestSession`, which is `createServerOnlyFn` and memoises per `Request` in a `WeakMap` — so several middlewares in one request cost one lookup, and it passes `disableCookieCache: true` so a revoked session is not served from the cookie cache.
+- [ ] Per-user data cached in TanStack Query does not outlive its user. `clearCacheOnUserChange` in `auth.session.ts`, which `getRouter` installs in the browser, watches the query cache and, whenever the session query's data switches to a different user id (someone else signed in, the session ended, or a visitor signed in), removes every cached query except the session itself and the message catalogues. Guards only read the session, `usePostAuthRedirect` removes only the cached session entry so the fresh session triggers the clear, and sign-out does a full page load.
 
 ## Uploads
 

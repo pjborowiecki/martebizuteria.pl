@@ -1,6 +1,6 @@
 ---
 title: "Pulpit admina"
-description: "Layout i strażnik /admin, migawka przeglądu zbudowana z jednego wsadu D1 oraz cztery ekrany narzędziowe będące wyłączonymi makietami."
+description: "Layout i strażnik /admin, migawka przeglądu zbudowana z jednego wsadu D1 oraz trzy ekrany narzędziowe będące wyłączonymi makietami."
 ---
 
 ## Layout
@@ -8,12 +8,10 @@ description: "Layout i strażnik /admin, migawka przeglądu zbudowana z jednego 
 `src/routes/admin.tsx` to powłoka panelu.
 
 ```ts
-beforeLoad: async () => ({
-  user: await requireAdmin(),
-}),
+beforeLoad: requireAdmin,
 ```
 
-`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) wymaga sesji, której rola przechodzi `hasAdminAccess`, czyli należy do `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`).
+`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) wymaga sesji, której rola przechodzi `hasAdminAccess`, czyli należy do `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`). Zalogowany klient jest przekierowywany na `/account/overview`, a anonimowy gość na `/auth/sign-in?redirect=<path>`. Strażnik sprawdza sesję ponownie przy każdej prawdziwej nawigacji do `/admin`, zostawia ją w cache'u TanStack Query i zwraca `{ user }`, które trafia do kontekstu trasy. Zobacz [Integracje: Better Auth](/docs/integrations/better-auth).
 
 Trzy rzeczy, które robi ten layout i których nie robi nic innego:
 
@@ -42,10 +40,12 @@ Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefau
 | ------ | -------------------------------------------------------------------------------------------- |
 | (góra) | Pulpit (`/admin/overview`)                                                                   |
 | Main   | Zamówienia, Klienci oraz rozwijany Katalog z Produktami, Kategoriami, Kolekcjami, Atrybutami |
-| Tools  | Marketing, Kupony, Treści — wszystkie trzy z `disabled: true`                                |
+| Tools  | Marketing i Kupony z `disabled: true` oraz Treść                                             |
 | System | Audyt, Ustawienia — Ustawienia mają `disabled: true`                                         |
 
-Pozycja wyłączona renderuje się jako nieinteraktywny `SidebarMenuButton disabled` z `cursor-not-allowed opacity-50`, więc cztery ekrany makiet są w ogóle nieosiągalne z interfejsu — tylko po wpisaniu adresu.
+Pozycja wyłączona renderuje się jako nieinteraktywny `SidebarMenuButton disabled` z `cursor-not-allowed opacity-50`, więc trzy ekrany makiet są w ogóle nieosiągalne z interfejsu — tylko po wpisaniu adresu.
+
+Przycisk wylogowania w stopce panelu bocznego wywołuje `signOut`, a potem pełnym przeładowaniem strony wczytuje `/auth/sign-in`, co odrzuca cache zapytań.
 
 ## Przegląd
 
@@ -130,18 +130,19 @@ Ale `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) nig
 
 `buildAdminDashboardWeeklyOrderPoints` korzysta z tych samych `dailyAggregateRows`, żeby wyprodukować punkty `{ dateKey, dayLabel, orders }`, również bez dodatkowego zapytania.
 
-## Cztery wyłączone ekrany
+## Trzy wyłączone ekrany
 
 | Trasa              | Plik                  | Komponenty                                                                             | Dane                                                                                              |
 | ------------------ | --------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `/admin/marketing` | `admin.marketing.tsx` | `MarketingStats`, `MarketingEngagementChart`, `MarketingCampaignsTable`                | `src/data/marketing.ts` (`MARKETING_STATS`, `ENGAGEMENT_DATA`, `CAMPAIGNS`)                       |
-| `/admin/content`   | `admin.content.tsx`   | `ContentTypeCards`, `ContentListTable`                                                 | `src/data/content.ts` (`CONTENT_TYPES`, `PAGES`)                                                  |
 | `/admin/coupons`   | `admin.coupons.tsx`   | `CouponStats`, `CouponListTable`                                                       | `src/data/coupons.ts` — zobacz [Rabaty](/docs/features/discounts)                                 |
 | `/admin/settings`  | `admin.settings.tsx`  | `SettingsPage` z `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`) |
 
 Żadna z tych tras nie ma loadera, zapytania ani mutacji. Ich przyciski eksportu i tworzenia nie mają obsługi zdarzeń. Zakładka General w ustawieniach renderuje `STORE_INFO_DEFAULTS` do pól i `TOGGLE_SETTING_KEYS` do przełączników trzymających wyłącznie stan lokalny; pozostałe zakładki renderują `settings-placeholder.tsx`.
 
-`/admin/orders/$orderId` to piąty ekran makiety — zobacz [Zamówienia](/docs/features/orders).
+`/admin/orders/$orderId` to czwarty ekran makiety. Zobacz [Zamówienia](/docs/features/orders).
+
+Treść to działający ekran, który edytuje strony prawne. Zobacz [Strony prawne](/docs/features/legal-pages).
 
 ## Powiązane strony
 

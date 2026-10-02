@@ -5,25 +5,38 @@ description: "Siedem stron w /account, moduły customer-account i address oraz d
 
 ## Layout i strażnik
 
-`src/routes/account.tsx` to layout. Jego `beforeLoad` uruchamia strażnika i wkłada użytkownika do kontekstu trasy:
+`src/routes/account.tsx` to layout. Jego `beforeLoad` to sam strażnik, a `{ user }` zwracane przez strażnika trafia do kontekstu trasy:
 
 ```ts
-beforeLoad: async () => ({
-  user: await requireCustomer(),
-}),
+beforeLoad: requireCustomer,
 ```
 
 `requireCustomer` (`src/integrations/better-auth/auth.routes.ts`) wymaga sesji, a następnie **odsyła administratorów**:
 
 ```ts
-export const requireCustomer = async (): Promise<SessionUser> => {
-  const user = await requireUser()
+export const requireCustomer = async (route: AuthRouteContext): Promise<{ user: SessionUser }> => {
+  const { user } = await requireSignedIn(route)
 
-  return hasAdminAccess(user.role) ? redirectTo(ROUTES.ADMIN) : user
+  return hasAdminAccess(user.role) ? redirectTo(ROUTES.ADMIN) : { user }
 }
 ```
 
-Administrator nie może więc przeglądać strefy klienta; trafia na `/admin`. Layout renderuje `Navigation` z witryny, `AccountSidebar` i outlet, każde owinięte w `Suspense` z własnym szkieletem. Wstępnie wczytuje cztery przestrzenie nazw: `pages.account`, `pages.account.meta`, `pages.auth.errors` i `pages.auth.validations`.
+Administrator nie może więc przeglądać strefy klienta; trafia na `/admin`. `/account/overview` odczytuje użytkownika do powitania przez `AccountRoute.useRouteContext()`.
+
+`requireSignedIn` tylko odczytuje sesję, przez `loadRouteSession`:
+
+```ts
+const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContext, { recheck }: { readonly recheck: boolean }) =>
+  queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)
+```
+
+Przekazuje `recheck: true`, więc prawdziwa nawigacja do `/account` sprawdza sesję ponownie z `staleTime: 0`; preload linku korzysta z sesji z cache'u, jeśli ma ona mniej niż 60 sekund. Sesja zostaje w cache'u TanStack Query, a render serwerowy dehydratuje ją do strony, więc strony konta renderują się na serwerze jako zalogowane.
+
+Zmiana użytkownika jest obsługiwana w jednym miejscu: w `clearCacheOnUserChange` (`src/integrations/better-auth/auth.session.ts`), które `getRouter` instaluje wyłącznie w przeglądarce. Obserwuje ono cache zapytań i za każdym razem, gdy sesja przełącza się na innego użytkownika, łącznie z zalogowaniem i wylogowaniem, usuwa z cache'u wszystkie zapytania poza samą sesją i katalogami tłumaczeń, więc nic, co zapisano dla poprzedniego użytkownika, nie zostanie pokazane.
+
+Anonimowy gość jest przekierowywany na `/auth/sign-in?redirect=<path>`, gdzie `<path>` to zlokalizowana ścieżka publiczna, na przykład `/en-US/account/orders/order-1`. Zostaje ona zachowana tylko wtedy, gdy pasuje do `SAME_SITE_PATH_PATTERN`: wyłącznie widoczne znaki ASCII, jeden ukośnik na początku i brak ukośnika wstecznego. Po zalogowaniu hasłem, kodem dwuskładnikowym, przez Google albo przez GitHub strażnik `/auth` odsyła gościa z powrotem pod ten adres. Zobacz [Integracje: Better Auth](/docs/integrations/better-auth).
+
+Layout renderuje `Navigation` z witryny, dwukolumnową siatkę i `Footer` z witryny. W `Suspense` owinięte są tylko dwie komórki siatki: `AccountSidebar` ze szkieletem `AccountSidebarFallback` oraz outlet ze szkieletem `AccountMainFallback`. Wstępnie wczytuje cztery przestrzenie nazw: `pages.account`, `pages.account.meta`, `pages.auth.errors` i `pages.auth.validations`.
 
 Samo `/account` tylko przekierowuje:
 
@@ -46,7 +59,7 @@ beforeLoad: () => {
 | `/account/payment`    | `account.payment.tsx`      | brak                                                             | placeholder |
 | `/account/wishlist`   | `account.wishlist.tsx`     | brak                                                             | placeholder |
 
-Kolejność w panelu bocznym to `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`).
+Kolejność w panelu bocznym to `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`). Przycisk wylogowania w panelu bocznym wywołuje `signOut`, a potem pełnym przeładowaniem strony wczytuje `/`, co odrzuca cache zapytań.
 
 Każdy loader trasy wczytuje dane wstępnie z `staleTime: "static"` i ustawia `staleTime` trasy na `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
 
@@ -77,7 +90,9 @@ Strumień aktywności jest budowany z dziennika audytu: `getCustomerActivityAudi
 
 ## Profil
 
-`getCustomerProfile` zwraca `{ createdAt, email, name, phone, timezone }` z wiersza `user`.
+`getCustomerProfile` zwraca `{ createdAt, email, emailVerified, hasPassword, name, phone, timezone, twoFactorEnabled }` z wiersza `user`, przy czym `hasPassword` pochodzi z `hasCredentialAccount`.
+
+`account.profile.tsx` przekazuje `profile.twoFactorEnabled` do `SecuritySection` jako prop, więc stan uwierzytelniania dwuskładnikowego pochodzi z zapytania, które loader strony już wczytał wstępnie. Włączenie lub wyłączenie uwierzytelniania dwuskładnikowego unieważnia zarówno zapytanie profilu, jak i zapytanie sesji.
 
 `updateCustomerPhone` to jedyne pole, które klient może tu zmienić:
 

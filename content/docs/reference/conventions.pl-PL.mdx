@@ -101,7 +101,7 @@ export const Route = createFileRoute("/_storefront/products/")({
 - `head` to albo wspólny `pageHead` z `src/lib/seo.ts`, albo funkcja inline budująca `meta` z `loaderData`.
 - Parametry wyszukiwania walidujemy schematem Zod w `validateSearch`, a `loaderDeps` je normalizuje, żeby klucz loadera był stabilny.
 - Ścieżki pochodzą ze `ROUTES` w `src/routes.ts`. Pliki tras **nie zawierają segmentu lokalizacji** — router przepisuje adres przez `deLocalizeUrl` na wejściu i `localizeUrl` na wyjściu, więc jeden plik obsługuje obie lokalizacje.
-- Strażnicy tras trafiają do `beforeLoad` i pochodzą z `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireCustomer`, `requireUser`, `redirectAuthenticated`. Istnieją dla nawigacji, nie dla autoryzacji — zobacz [Uprawnienia](/docs/reference/permissions).
+- Strażnicy tras pochodzą z `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireCustomer`, `requireSignedIn`, `redirectIfSignedIn`. Layout przekazuje samego strażnika, jak w `beforeLoad: requireAdmin`, a strony pod nim odczytują zalogowanego użytkownika, którego strażnik zwraca, przez `Route.useRouteContext().user`. Istnieją dla nawigacji, nie dla autoryzacji — zobacz [Uprawnienia](/docs/reference/permissions).
 
 ## Moduły
 
@@ -130,6 +130,7 @@ Kod serwerowy rzuca `AppError` z `src/modules/_core/constants/errors.ts` z jedny
 
 - Jeden widget, dialog, formularz albo definicja kolumn na plik, w `src/presentation/components/custom`. Wspólne primitywy zostają w `src/presentation/components/shadcn` i nie są edytowane ręcznie.
 - Komponent sam czyta swoje tłumaczenia i swoje dane. Nie ma propsów `label`, `title` czy `data`, które komponent mógłby pobrać samodzielnie.
+- Komponenty czytają sesję przez `useQuery(getCurrentSessionQuery)` z `src/integrations/better-auth/auth.session.ts`, czyli ten sam wpis cache, z którego czytają strażnicy tras. `auth.client.ts` nie eksportuje `useSession` z Better Auth.
 - Dokładnie jedno wywołanie `useTranslations` na komponent, a wynik nazywa się `t`.
 - Klasy warunkowe zapisujemy przez `cn` ze składnią obiektową, nie łańcuchem operatorów trójargumentowych.
 - Formularze używają `react-hook-form` z `zodResolver` z `@hookform/resolvers/zod` i własnego schematu Zod modułu — zobacz `src/presentation/components/custom/checkout/components/checkout-form-provider.tsx`.

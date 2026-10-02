@@ -36,12 +36,13 @@ export const withRequest = createMiddleware({ type: "function" }).server(({ next
 
 | Rzucone                  | Wysłane do klienta                                               |
 | ------------------------ | ---------------------------------------------------------------- |
+| `notFound()` z TanStack  | Rzucone ponownie bez zmian (`isNotFound`)                        |
 | `AppError`               | Nowy `AppError` niosący wyłącznie kod                            |
 | `APIError` z Better Auth | `AppError(AUTH_API_ERROR, authErrorKey(error))`                  |
 | `ZodError`               | `AppError(VALIDATION)`                                           |
 | Cokolwiek innego         | Zapisane przez `console.error`, potem `AppError(INTERNAL_ERROR)` |
 
-Ostatni wiersz jest najważniejszy: nieoczekiwany błąd nigdy nie wypuszcza do przeglądarki swojej treści, stosu wywołań ani SQL-a.
+Ostatni wiersz jest najważniejszy: nieoczekiwany błąd nigdy nie wypuszcza do przeglądarki swojej treści, stosu wywołań ani SQL-a. Sprawdzenie `isNotFound` wykonuje się jako pierwsze, więc trasa, której funkcja serwerowa rzuci `notFound()`, odpowiada 404 zamiast 500.
 
 Rzadko wymienia się `withRequest` samodzielnie. Oba poniższe middleware już je zawierają.
 
@@ -72,7 +73,7 @@ export const authorized = (permission?: Permission) =>
 
 Słownik uprawnień definiuje `src/integrations/better-auth/auth.access.ts`. Zasoby to `order`, `product`, `settings` i `user`; akcje to `create`, `read`, `update`, `delete`, `publish`, `refund` i `manage`. `ROLES_CONFIG` przyznaje roli `admin` uprawnienia `order: [read, update, refund]`, `product: [create, read, update, delete, publish]`, `settings: [manage]` oraz własne `adminAc.statements` z Better Auth, a roli `customer` nie przyznaje niczego.
 
-**Strażnik trasy nie jest autoryzacją.** `requireAdmin()` w `beforeLoad` trasy jedynie powstrzymuje przeglądarkę od wyrenderowania strony; punkt końcowy RPC pozostaje osiągalny. Każda chroniona funkcja serwerowa musi nieść własne `authorized(...)`.
+**Strażnik trasy nie jest autoryzacją.** `beforeLoad: requireAdmin` w trasie układu jedynie powstrzymuje przeglądarkę od wyrenderowania strony; punkt końcowy RPC pozostaje osiągalny. Każda chroniona funkcja serwerowa musi nieść własne `authorized(...)`.
 
 ### `withRateLimit(kind, limits)`
 

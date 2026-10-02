@@ -153,9 +153,9 @@ export const BUSINESS = {
 export const BUSINESS_POSTAL_ADDRESS_LINES = [BUSINESS.LEGAL_NAME, BUSINESS.STREET, `${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY}`] as const
 ```
 
-No component imports it. Its job is to be the assertion side of a test: `src/presentation/branding/__test__/business.test.ts` reads `content/legal/privacy-policy.<locale>.mdx` and `content/legal/exchanges-and-returns.<locale>.mdx` for every supported locale and fails if the legal name, NIP, postal address lines or `mailto:` address in the prose drift from these constants.
+No component imports it. Its job is to be the assertion side of a test: `src/presentation/branding/__test__/business.test.ts` applies `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql` to an in-memory SQLite database and, for every supported locale, fails if the legal name, NIP, postal address lines or `mailto:` address in the seeded `privacy-policy` and `exchanges-and-returns` bodies drift from these constants.
 
-So when the business details change, edit `business.ts` first, then fix the legal MDX in both locales until `bun run test:unit` is green again.
+So when the business details change, edit `business.ts` first, then update both pages in every locale at `/admin/content`, because the saved rows are what customers read. The test only sees the rows that migration inserts, which never overwrite a saved page, so a green `bun run test:unit` does not prove the published text matches.
 
 `src/presentation/branding/socials.ts` holds the two live profiles:
 

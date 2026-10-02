@@ -50,15 +50,15 @@ interface __BaseEnv_Env {
 
 The file is generated, not committed, and `bun run clean` deletes it. Never edit it by hand — add the binding or secret to `wrangler.jsonc` and run `bun run typegen` again. Because the command passes `--env development`, `APP_ENV` is typed as the literal `"development"`; that is expected and does not affect the preview or production builds.
 
-### `content` — Fumadocs collections
+### `content` — Fumadocs collection
 
 ```sh
 fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source
 ```
 
-This compiles the two MDX collections declared in `src/integrations/fumadocs/fumadocs.config.ts` — `content/docs` and `content/legal` — into `.source/browser.ts`, `.source/server.ts` and `.source/dynamic.ts`. Those are the modules `src/presentation/components/custom/docs-content.tsx` and `src/integrations/fumadocs/fumadocs.docs.ts` import as `collections/browser` and `collections/server`.
+This compiles `content/docs`, the only MDX collection declared in `src/integrations/fumadocs/fumadocs.config.ts`, into `.source/browser.ts`, `.source/server.ts` and `.source/dynamic.ts`. Those are the modules `src/presentation/components/custom/docs-content.tsx` and `src/integrations/fumadocs/fumadocs.docs.ts` import as `collections/browser` and `collections/server`.
 
-Without `.source/`, type checking fails and the `/docs` and `/privacy-policy` routes cannot resolve their content. `bun run dev` and both build scripts run `bun run content` first, so in normal use you do not have to think about it.
+Without `.source/`, type checking fails and the `/docs` routes cannot resolve their content. `/privacy-policy` and `/exchanges-and-returns` do not depend on it: their content lives in the D1 `content_page` table. `bun run dev` and both build scripts run `bun run content` first, so in normal use you do not have to think about it.
 
 ## Installing the way CI does
 

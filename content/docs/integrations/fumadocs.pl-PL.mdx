@@ -1,35 +1,22 @@
 ---
 title: "Fumadocs"
-description: "Kolekcje MDX docs i legal, źródła z lokalizacją oraz sposób renderowania tych stron."
+description: "Kolekcja MDX docs, jej źródło z lokalizacją, sposób renderowania tych stron i renderer Markdownu współdzielony ze stronami prawnymi."
 ---
 
-Fumadocs zamienia pliki MDX w tej aplikacji w dwie rzeczy: dokumenty prawne pod `/privacy-policy` i `/exchanges-and-returns` oraz stronę dokumentacji, którą właśnie czytasz. Oba korzystają z tego samego wzorca — kolekcja zdefiniowana w `src/integrations/fumadocs/`, `loader` z lokalizacją, funkcja serwerowa rozwiązująca stronę i loader po stronie klienta renderujący skompilowany MDX.
+Fumadocs zamienia pliki MDX z `content/docs` w stronę dokumentacji, którą właśnie czytasz. Wzorzec to kolekcja zdefiniowana w `src/integrations/fumadocs/`, `loader` z lokalizacją, funkcja serwerowa rozwiązująca stronę i loader po stronie klienta renderujący skompilowany MDX.
+
+Strony prawne pod `/privacy-policy` i `/exchanges-and-returns` nie są plikami MDX. Ich Markdown jest przechowywany w D1 i edytowany w panelu, a sklep renderuje go przez `createMarkdownRenderer` z `fumadocs-core`. Zobacz [Strony prawne](/docs/features/legal-pages).
 
 ## Kolekcje
 
-Plik `fumadocs.config.ts` deklaruje dwie:
+Plik `fumadocs.config.ts` deklaruje jedną:
 
 ```ts
 export const docs = defineDocs({
   dir: "./content/docs",
 })
 
-export const legal = defineDocs({
-  dir: "./content/legal",
-  docs: {
-    schema: legalSchema,
-  },
-})
-
 export default defineConfig()
-```
-
-`legalSchema` w `fumadocs.schema.ts` rozszerza własny schemat stron Fumadocs o wymaganą datę, więc dokumentu prawnego nie da się opublikować bez podania, kiedy był ostatnio zmieniany:
-
-```ts
-export const legalSchema = pageSchema.extend({
-  updated: zod.iso.date(),
-})
 ```
 
 Strony dokumentacji używają schematu domyślnego: `title` jest wymagane, `description` opcjonalne.
@@ -53,17 +40,7 @@ export const i18n = defineI18n({
 - **`fallbackLanguage`** to `pl-PL`, więc angielska strona, której jeszcze nie napisano, rozwiązuje się do polskiej, a nie zwraca 404. Jest to wygodne, a jednocześnie jest pułapką: brakujące tłumaczenie angielskie wygląda jak działająca strona. Dla każdej strony oczekiwane są oba pliki językowe.
 - **`languages`** rozwijane jest z `I18N.SUPPORTED_LOCALES`, więc lista języków ma dokładnie jedno źródło prawdy.
 
-## Źródła
-
-Plik `fumadocs.source.ts` buduje źródło dokumentów prawnych, zamontowane w korzeniu serwisu, ponieważ trasy prawne to ścieżki najwyższego poziomu:
-
-```ts
-export const legalSource = loader({
-  baseUrl: "/",
-  i18n,
-  source: legal.toFumadocsSource(),
-})
-```
+## Źródło
 
 Plik `fumadocs.docs.ts` buduje źródło dokumentacji pod `ROUTES.DOCS`:
 
@@ -75,7 +52,7 @@ export const docsSource = loader({
 })
 ```
 
-Oba importują `docs` i `legal` z `collections/server`, czyli aliasu ścieżki z `tsconfig.json` wskazującego na `./.source/*` — katalog generowany przez `fumadocs-mdx`.
+Importuje `docs` z `collections/server`, czyli aliasu ścieżki z `tsconfig.json` wskazującego na `./.source/*` — katalog generowany przez `fumadocs-mdx`.
 
 ## Generowane wyjście
 
@@ -174,20 +151,11 @@ href={isLocalizablePath(href) ? localizePathname({ locale: getCurrentLocale(), p
 
 Zawsze zapisuj więc odnośniki wewnętrzne bez języka — `/docs/integrations/stripe`, a nie `/en-US/docs/integrations/stripe` — a prefiks czytelnika zostanie dodany za Ciebie. Adres zewnętrzny lub ścieżka kończąca się rozszerzeniem (`/forms/formularz_zwrotu.pdf`) pozostaje nietknięta.
 
-`legalContent` w `legal-content.tsx` to ten sam pomysł z węższą mapą `mdxComponents` i wyśrodkowanym kontenerem tekstu.
+Strony prawne używają z `mdxComponents` tylko odnośnika. Ich artykuł przekazuje rendererowi Markdownu `{ a: mdxComponents.a }`, więc ścieżki sklepu na stronie prawnej są lokalizowane tak samo.
 
-## Dokumenty prawne
+## Markdown w czasie renderowania
 
-Plik `fumadocs.legal.ts` nazywa dokumenty, zamiast przyjmować dowolny identyfikator:
-
-```ts
-export const LEGAL_DOCUMENT_SLUGS = {
-  exchangesAndReturns: "exchanges-and-returns",
-  privacyPolicy: "privacy-policy",
-} as const
-```
-
-`loadLegalPage(slug)` odzwierciedla `loadDocsPage` i dodatkowo zwraca `updated` z frontmattera. Pliki `src/routes/_storefront.privacy-policy.tsx` i `_storefront.exchanges-and-returns.tsx` wywołują je z jedną stałą każdy, więc nie da się dosięgnąć niezamierzonego dokumentu.
+`createMarkdownRenderer` z `fumadocs-core/content/md` kompiluje ciąg Markdown podczas renderowania, a nie budowania. `ContentPageArticle` tworzy go z `remarkGfm` i `remarkHeading`, który nadaje każdemu nagłówkowi `id` ze slugiem. Surowy HTML w ciągu jest pomijany. To właściwe narzędzie dla tekstu z bazy danych, a `fumadocs-mdx` pozostaje narzędziem dla plików w repozytorium.
 
 ## Dodawanie strony dokumentacji
 
@@ -203,10 +171,11 @@ Aplikacja nie ma trasy `/api/search` i nie używa `fumadocs-core/search`. Po dok
 
 ## Testy
 
-Katalog `src/integrations/fumadocs/__test__/` zawiera pięć plików. `fumadocs.config.test.ts` sprawdza katalogi kolekcji i schemat frontmattera dokumentów prawnych, w tym że `updated` jest poprawną datą. `fumadocs.docs.source.component.test.ts` sprawdza, że każda strona serwowana jest pod trasą dokumentacji, że drzewo stron zamienia każdy katalog w sekcję z indeksem na początku oraz że `docsSplatOf` i `docsSlugsOf` działają w obie strony — a także, że adres bez prefiksu rozwiązuje stronę **polską**, a adres angielski stronę angielską. `fumadocs.docs.component.test.tsx` renderuje prawdziwą stronę i sprawdza, że treść jest renderowana wewnątrz jednego `<article>`. Dwa pliki `fumadocs.legal.*` robią to samo dla dokumentów prawnych, aż po sprawdzenie, że polityka prywatności podaje administratora danych wraz z adresem w Bochni i numerem NIP.
+Katalog `src/integrations/fumadocs/__test__/` zawiera trzy pliki. `fumadocs.config.test.ts` sprawdza katalog kolekcji. `fumadocs.docs.source.component.test.ts` sprawdza, że każda strona serwowana jest pod trasą dokumentacji, że drzewo stron zamienia każdy katalog w sekcję z indeksem na początku oraz że `docsSplatOf` i `docsSlugsOf` działają w obie strony — a także, że adres bez prefiksu rozwiązuje stronę **polską**, a adres angielski stronę angielską. `fumadocs.docs.component.test.tsx` renderuje prawdziwą stronę i sprawdza, że treść jest renderowana wewnątrz jednego `<article>`.
 
 ## Powiązane strony
 
+- [Strony prawne](/docs/features/legal-pages)
 - [use-intl](/docs/integrations/use-intl)
 - [System interfejsu](/docs/ui)
 - [Poradniki](/docs/guides)

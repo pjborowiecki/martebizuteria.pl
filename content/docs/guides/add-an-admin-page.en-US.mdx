@@ -9,12 +9,15 @@ The admin console lives under `/admin` and is a separate visual shell from the s
 
 ```ts
 export const Route = createFileRoute("/admin")({
-  beforeLoad: async () => ({
-    user: await requireAdmin(),
-  }),
+  beforeLoad: requireAdmin,
   component: AdminLayoutRoute,
   head: () => ({
-    links: [{ href: adminCss, rel: "stylesheet" }],
+    links: [
+      {
+        href: adminCss,
+        rel: "stylesheet",
+      },
+    ],
   }),
   loader: () => ({
     sidebarDefaultOpen: getAdminSidebarDefaultOpen(),
@@ -29,7 +32,7 @@ export const Route = createFileRoute("/admin")({
 
 Inherited for free by every child route:
 
-- **The guard.** `requireAdmin()` from `src/integrations/better-auth/auth.routes.ts` loads the session, redirects to `/auth/sign-in` when there is none and to `/account/overview` when the user is not an admin. This protects the _page_, not the data — see [Server functions](/docs/guides/server-functions).
+- **The guard.** `requireAdmin` from `src/integrations/better-auth/auth.routes.ts` reads the session with `context.queryClient.query(getCurrentSessionQuery)`, re-checking it on every real navigation into `/admin`. It redirects to `/auth/sign-in` (with the requested path in `?redirect`) when there is no session and to `/account/overview` when the user is not an admin. It resolves to `{ user }`, which becomes route context, so a page reads the signed-in admin with `Route.useRouteContext().user`. This protects the _page_, not the data — see [Server functions](/docs/guides/server-functions).
 - **The stylesheet.** `src/presentation/styles/admin.css`, loaded as a route `link`.
 - **The light theme.** `useAdminLightTheme()` removes the `dark` class on mount and restores the visitor's storefront preference on unmount.
 - **The realtime subscription.** `useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })` opens the admin WebSocket and invalidates any query whose key prefix appears in a published message.

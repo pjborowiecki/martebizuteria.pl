@@ -79,7 +79,7 @@ Małe obszary to płaskie pliki. Większe dzielą się dalej, i podział jest ko
 
 `pages/admin/orders/` używa wszystkich z nich; `pages/cart-page/` to po prostu `cart-item-card.tsx`, `cart-summary.tsx` i `__test__/`. Zaczynaj płasko i dziel tylko wtedy, gdy obszar naprawdę rośnie.
 
-Komponenty współdzielone przez więcej niż jeden obszar leżą bezpośrednio w `custom/`: `image.tsx`, `product-card.tsx`, `localized-link.tsx`, `icons.tsx`, `mdx.tsx`, `legal-content.tsx`, `floating-field.tsx`, `validation-field-error.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`.
+Komponenty współdzielone przez więcej niż jeden obszar leżą bezpośrednio w `custom/`: `image.tsx`, `product-card.tsx`, `localized-link.tsx`, `icons.tsx`, `mdx.tsx`, `floating-field.tsx`, `validation-field-error.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `storefront-critical-fonts-head.tsx`.
 
 ## Bez komentarzy
 
@@ -146,7 +146,7 @@ Nigdy nie zapisuj ścieżki trasy jako literału. `src/routes.ts` eksportuje `RO
 </LocalizedLink>
 ```
 
-`LocalizedTo` wywodzi się z `FileRouteTypes["to"]` w wygenerowanym drzewie tras, więc błędna ścieżka jest błędem typów. W MDX i treściach prawnych linki wewnętrzne zapisuje się bez prefiksu języka, a `custom/mdx.tsx` lokalizuje je przy renderowaniu przez `localizePathname`.
+`LocalizedTo` wywodzi się z `FileRouteTypes["to"]` w wygenerowanym drzewie tras, więc błędna ścieżka jest błędem typów. W MDX i w Markdownie stron treści linki wewnętrzne zapisuje się bez prefiksu języka, a komponent linku z `custom/mdx.tsx`, którego używa też `ContentPageArticle`, lokalizuje je przy renderowaniu przez `localizePathname`.
 
 ## Obrazy
 

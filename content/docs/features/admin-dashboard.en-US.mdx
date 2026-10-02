@@ -1,6 +1,6 @@
 ---
 title: "Admin dashboard"
-description: "The /admin layout and guard, the overview snapshot built from one D1 batch, and the four tool screens that are disabled demos."
+description: "The /admin layout and guard, the overview snapshot built from one D1 batch, and the three tool screens that are disabled demos."
 ---
 
 ## Layout
@@ -8,12 +8,10 @@ description: "The /admin layout and guard, the overview snapshot built from one 
 `src/routes/admin.tsx` is the console shell.
 
 ```ts
-beforeLoad: async () => ({
-  user: await requireAdmin(),
-}),
+beforeLoad: requireAdmin,
 ```
 
-`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) requires a session whose role passes `hasAdminAccess`, which checks membership of `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`).
+`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) requires a session whose role passes `hasAdminAccess`, which checks membership of `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`). A signed-in customer is redirected to `/account/overview`, and an anonymous visitor to `/auth/sign-in?redirect=<path>`. The guard re-checks the session on every real navigation into `/admin`, leaves it in the TanStack Query cache, and resolves to `{ user }`, which becomes route context. See [Integrations: Better Auth](/docs/integrations/better-auth).
 
 Three things the layout does that nothing else does:
 
@@ -42,10 +40,12 @@ The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` f
 | ------ | ----------------------------------------------------------------------------------------------- |
 | (top)  | Dashboard (`/admin/overview`)                                                                   |
 | Main   | Orders, Customers, and a collapsible Catalog with Products, Categories, Collections, Attributes |
-| Tools  | Marketing, Coupons, Content — all three with `disabled: true`                                   |
+| Tools  | Marketing and Coupons with `disabled: true`, and Content                                        |
 | System | Audit, Settings — Settings has `disabled: true`                                                 |
 
-A disabled item renders as a non-interactive `SidebarMenuButton disabled` with `cursor-not-allowed opacity-50`, so the four demo screens are not reachable from the UI at all — only by typing the URL.
+A disabled item renders as a non-interactive `SidebarMenuButton disabled` with `cursor-not-allowed opacity-50`, so the three demo screens are not reachable from the UI at all — only by typing the URL.
+
+The sidebar footer's sign-out button calls `signOut` and then does a full page load of `/auth/sign-in`, which discards the query cache.
 
 ## Overview
 
@@ -130,18 +130,19 @@ But `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) nev
 
 `buildAdminDashboardWeeklyOrderPoints` reuses the same `dailyAggregateRows` to produce `{ dateKey, dayLabel, orders }` points, again with no extra query.
 
-## The four disabled screens
+## The three disabled screens
 
 | Route              | File                  | Components                                                                                | Data                                                                                              |
 | ------------------ | --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `/admin/marketing` | `admin.marketing.tsx` | `MarketingStats`, `MarketingEngagementChart`, `MarketingCampaignsTable`                   | `src/data/marketing.ts` (`MARKETING_STATS`, `ENGAGEMENT_DATA`, `CAMPAIGNS`)                       |
-| `/admin/content`   | `admin.content.tsx`   | `ContentTypeCards`, `ContentListTable`                                                    | `src/data/content.ts` (`CONTENT_TYPES`, `PAGES`)                                                  |
 | `/admin/coupons`   | `admin.coupons.tsx`   | `CouponStats`, `CouponListTable`                                                          | `src/data/coupons.ts` — see [Discounts](/docs/features/discounts)                                 |
 | `/admin/settings`  | `admin.settings.tsx`  | `SettingsPage` with `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`) |
 
 None of these routes has a loader, a query or a mutation. Their Export and Create buttons have no handlers. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only; the other tabs render `settings-placeholder.tsx`.
 
-`/admin/orders/$orderId` is a fifth demo screen — see [Orders](/docs/features/orders).
+`/admin/orders/$orderId` is a fourth demo screen. See [Orders](/docs/features/orders).
+
+Content is a working screen that edits the legal pages. See [Legal pages](/docs/features/legal-pages).
 
 ## Related pages
 

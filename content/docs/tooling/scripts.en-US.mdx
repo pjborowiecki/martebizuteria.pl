@@ -3,7 +3,7 @@ title: "Project scripts"
 description: "Every package.json script in the repository and exactly what it runs."
 ---
 
-Run everything from the repository root with `bun run <script>`. Scripts are the supported entry points: they set `CLOUDFLARE_ENV`, regenerate the content collections and pick the pinned tool versions, none of which happens if you call `vp` or `wrangler` directly.
+Run everything from the repository root with `bun run <script>`. Scripts are the supported entry points: they set `CLOUDFLARE_ENV`, regenerate the docs collection and pick the pinned tool versions, none of which happens if you call `vp` or `wrangler` directly.
 
 ## Lifecycle
 
@@ -104,11 +104,11 @@ The drizzle-kit scripts run through `bun --env-file=.env.<environment>` because 
 
 ## Generation
 
-| Script       | Runs                                                                                                                                |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `content`    | `fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source` — compiles `content/docs` and `content/legal` into `.source/` |
-| `cf-typegen` | `vp exec wrangler types --env development src/types/worker-configuration.d.ts`                                                      |
-| `typegen`    | `cf-typegen`, then `content`                                                                                                        |
+| Script       | Runs                                                                                                            |
+| ------------ | --------------------------------------------------------------------------------------------------------------- |
+| `content`    | `fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source` — compiles `content/docs` into `.source/` |
+| `cf-typegen` | `vp exec wrangler types --env development src/types/worker-configuration.d.ts`                                  |
+| `typegen`    | `cf-typegen`, then `content`                                                                                    |
 
 Both outputs are gitignored. `src/types/worker-configuration.d.ts` is what gives `env.DB`, `env.CACHE`, `env.IMAGES`, `env.AUDIT_LOG_QUEUE` and `env.REALTIME_INVALIDATION_HUB` their types, so run `bun run cf-typegen` after changing any binding in `wrangler.jsonc`. Never edit or commit it. `.source/` is what the `collections/*` import alias resolves to, so `bun run content` after adding or renaming an MDX file.
 

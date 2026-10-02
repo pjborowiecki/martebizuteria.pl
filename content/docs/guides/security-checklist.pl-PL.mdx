@@ -7,7 +7,7 @@ Przejdź przez sekcje, które dotyczą Twojej zmiany. Każdy punkt wskazuje plik
 
 ## Dostęp
 
-- [ ] Strony prywatne siedzą pod strzeżonym układem. `/admin` używa `requireAdmin()` w `beforeLoad`; `/account` używa `requireUser()` albo `requireCustomer()`. Wszystkie trzy są w `src/integrations/better-auth/auth.routes.ts`.
+- [ ] Strony prywatne siedzą pod strzeżonym układem. `admin.tsx` ma `beforeLoad: requireAdmin`, a `account.tsx` ma `beforeLoad: requireCustomer`; każdy z tych strażników najpierw wywołuje `requireSignedIn`. Wszystkie trzy są w `src/integrations/better-auth/auth.routes.ts`.
 - [ ] **Każda chroniona funkcja serwerowa niesie własne `authorized(...)`.** Strażnik trasy powstrzymuje renderowanie strony; nie chroni punktu końcowego RPC, który jest osiągalny bezpośrednio.
 - [ ] `authorized()` dla dowolnego zalogowanego użytkownika, `authorized({ resource: ["action"] })` gdy potrzebne jest uprawnienie.
 - [ ] Operacje na własnych danych wywołującego czytają użytkownika z `context.auth.user.id`, nigdy z wejścia. Porównaj `createUserAddress` i `setDefaultUserAddress` w `src/modules/address/use-cases/`.
@@ -19,7 +19,7 @@ Przejdź przez sekcje, które dotyczą Twojej zmiany. Każdy punkt wskazuje plik
 - [ ] Każda funkcja serwerowa ma `.validator` parsujący schemat Zod z `.zod.ts` modułu. Handler czytający `data` bez walidatora to niewalidowane wejście.
 - [ ] Liczbowe i logiczne parametry zapytania są konwertowane (`z.coerce.number()`, `z.preprocess`), a wartości wyliczeniowe to `z.enum(...)` po krotce z modułu — dzięki temu wartość spoza zakresu jest odrzucana, a nie przekazywana do SQL-a.
 - [ ] Tekst wyszukiwania w panelu przechodzi przez `buildAdminSearchOrCondition` w `src/modules/_core/utils/search-conditions.server.ts`, które eskejpuje znaki wieloznaczne `LIKE`. Jego test integracyjny podaje `100%`, `%_\` i `x' OR 1=1 --` i sprawdza, że dopasowują się jako dosłowny tekst.
-- [ ] Celami przekierowań są stałe tras z `src/routes.ts`, a nie wartości z żądania. `resolveEmailVerificationCallbackUrl` w `auth.server.ts` przepisuje `callbackURL` tylko wtedy, gdy ten już wskazuje na stronę główną sklepu, a w pozostałych przypadkach zwraca oryginalny adres.
+- [ ] Celami przekierowań są stałe tras z `src/routes.ts`, a nie wartości z żądania. Parametr `?redirect` strony logowania to jedyna wartość z żądania, za którą podąża strażnik, i to tylko wtedy, gdy pasuje do `SAME_SITE_PATH_PATTERN` z `auth.routes.ts` (wyłącznie drukowalne znaki ASCII, jeden ukośnik na początku, brak ukośnika wstecznego): adres bezwzględny, `//` bez protokołu, ukośnik wsteczny, biały znak albo znak sterujący powodują jego odrzucenie. Logowanie przez Google i GitHub przekazuje bieżącą stronę (`location.publicHref`) jako `callbackURL`, więc dostawca odsyła przeglądarkę na stronę uwierzytelniania i obowiązuje ta sama kontrola `?redirect`. `resolveEmailVerificationCallbackUrl` w `auth.server.ts` przepisuje `callbackURL` tylko wtedy, gdy ten już wskazuje na stronę główną sklepu, a w pozostałych przypadkach zwraca oryginalny adres.
 
 ## Nadużycia
 
@@ -32,7 +32,7 @@ Przejdź przez sekcje, które dotyczą Twojej zmiany. Każdy punkt wskazuje plik
 ## Błędy
 
 - [ ] Oczekiwane niepowodzenia rzucają `AppError` z kodem z `ERROR_CODES`.
-- [ ] Nic innego nie dociera do klienta. `withRequest` w `auth.middleware.ts` loguje nieznany błąd przez `console.error` i zamienia go na `INTERNAL_ERROR` — bez treści, bez stosu wywołań, bez SQL-a.
+- [ ] Nic innego nie dociera do klienta. `withRequest` w `auth.middleware.ts` rzuca ponownie bez zmian `notFound()` z TanStack, więc trasa odpowiada 404, a każdy inny nieznany błąd loguje przez `console.error` i zamienia na `INTERNAL_ERROR` — bez treści, bez stosu wywołań, bez SQL-a.
 - [ ] Komponenty renderują błędy przez `useActionError` (`src/hooks/use-action-error.ts`) albo `ValidationFieldError`, nigdy przez `error.message`.
 - [ ] Szczegół specyficzny dla modułu, taki jak `CATEGORY_ERROR_CODES.DUPLICATE_HANDLE`, można bezpiecznie przekazać jako drugi argument `AppError`, bo jest ustalonym identyfikatorem, a nie danymi.
 
@@ -48,6 +48,7 @@ Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli z
 - [ ] `telemetry.enabled: false`.
 - [ ] Dane sesji wysyłane do przeglądarki przechodzą przez `getCurrentSession` w `auth.session.ts`, gdzie `toClientSession` usuwa `session.token`. Nie zwracaj surowej sesji Better Auth z funkcji serwerowej.
 - [ ] Odczyty sesji po stronie serwera używają `getRequestSession`, które jest `createServerOnlyFn` i memoizuje wynik per `Request` w `WeakMap` — więc kilka middleware w jednym żądaniu kosztuje jedno odpytanie — a także przekazuje `disableCookieCache: true`, żeby unieważniona sesja nie została podana z cache'u ciasteczka.
+- [ ] Dane użytkownika zapisane w cache TanStack Query nie przeżywają tego użytkownika. `clearCacheOnUserChange` z `auth.session.ts`, które `getRouter` instaluje w przeglądarce, obserwuje cache zapytań i za każdym razem, gdy dane zapytania o sesję przełączą się na inny identyfikator użytkownika (zalogował się ktoś inny, sesja się zakończyła albo gość się zalogował), usuwa z cache każde zapytanie poza samą sesją i katalogami tłumaczeń. Strażnicy wyłącznie czytają sesję, `usePostAuthRedirect` usuwa z cache tylko wpis sesji, więc to świeża sesja uruchamia czyszczenie, a wylogowanie wykonuje pełne przeładowanie strony.
 
 ## Przesyłanie plików
 

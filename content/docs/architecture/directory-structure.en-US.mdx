@@ -5,8 +5,7 @@ description: "Every top-level folder in the M'Arte repository and the rules for 
 
 ```text
 content/
-├── docs/                              <page>.<locale>.mdx and meta.<locale>.json
-└── legal/                             Legal documents, validated by fumadocs.schema.ts
+└── docs/                              <page>.<locale>.mdx and meta.<locale>.json
 messages/<locale>/<namespace>.json     One file per translation namespace
 public/                                Fonts, images and other static assets
 scripts/                               verify-bindings, verify-build, prepare-deploy-secrets,
@@ -72,15 +71,15 @@ src/
 
 - **Files and folders use kebab-case.** Tests live in a sibling `__test__` folder and are named `*.test.ts`, `*.integration.test.ts` or `*.component.test.tsx`.
 - **Routes only compose.** A route file defines the page or layout component, its `staticData.namespaces`, its `beforeLoad` guard, its `loader` and its `head`. Widgets, dialogs, forms and column definitions live in `src/presentation/components/custom`.
-- **A module is a feature, not strictly a table.** Most of the 36 modules own one Drizzle table, but `admin-dashboard`, `customer-account`, `customer-activity` and `storefront-search` own read models that span several tables and have no schema file of their own.
-- **`_core` is the shared kernel.** `AppError` and `ERROR_CODES`, the pagination helpers, the reusable Zod fields, the currency formatters and the column-filter builders live there. `_core/constants/country.ts` and `_core/constants/timezone.ts` are ISO reference tables kept deliberately for planned work — they have no importers and must not be deleted as dead code.
-- **`src/data` holds data, not logic.** `landing.ts`, `blog-posts.ts` and `static-pages.ts` feed real pages; `coupons.ts`, `marketing.ts`, `order-detail.ts`, `content.ts` and `settings.ts` are fixtures behind the admin pages that are still scaffolding.
+- **A module is a feature, not strictly a table.** Most of the 39 modules own one Drizzle table, but `admin-dashboard`, `customer-account`, `customer-activity` and `storefront-search` own read models that span several tables and have no schema file of their own.
+- **`_core` is the shared kernel.** `AppError` and `ERROR_CODES`, the pagination helpers, the reusable Zod fields, the currency formatters and the column-filter builders live there. `_core/constants/timezone.ts` supplies `TIMEZONES`, the time-zone list customers pick from. `_core/constants/country.ts` is an ISO reference table kept deliberately for planned work — it has no importers and must not be deleted as dead code.
+- **`src/data` holds data, not logic.** `landing.ts`, `blog-posts.ts` and `static-pages.ts` feed real pages; `coupons.ts`, `marketing.ts`, `order-detail.ts` and `settings.ts` are fixtures behind the admin pages that are still scaffolding.
 - **`src/lib` holds small request-scoped helpers**, not features: `background.ts` (the `waitUntil` store), `cookie.ts`, `image.ts`, `rate-limit.ts`, `request.ts`, `seo.ts` and `url.ts`.
 - **Generated files are never edited by hand.** The router plugin writes `src/routeTree.gen.ts`, `bun run cf-typegen` writes `src/types/worker-configuration.d.ts` (gitignored), and `bun run content` writes `.source/`, which `tsconfig.json` maps to the `collections/*` import prefix.
 
 ## Content and messages live outside `src`
 
-`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. `content/legal` holds the legal documents that `src/integrations/fumadocs/fumadocs.source.ts` loads. `messages/{en-US,pl-PL}` holds 48 namespace files each.
+`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. The privacy policy and the exchanges-and-returns page are not files: their Markdown lives in the D1 `content_page` table, seeded by `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql` and edited at `/admin/content`. `messages/{en-US,pl-PL}` holds 48 namespace files each.
 
 ## Related pages
 

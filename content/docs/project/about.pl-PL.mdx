@@ -94,13 +94,12 @@ Precyzyjne wskazanie granicy jest bardziej przydatne niż lista funkcji.
 
 ### Podłączone od początku do końca
 
-Katalog (produkty, warianty, opcje, atrybuty, kategorie, kolekcje, wyszukiwanie, filtrowanie, paginacja), koszyk, czterokrokowy proces zamówienia, płatność Stripe z realizacją sterowaną webhookiem, rezerwacja stanów magazynowych z kompensacją, składanie zamówienia, kompletowanie i wysyłka zamówienia z panelu, zwroty płatności z opcjonalnym przywróceniem stanu magazynowego, konta klientów (zamówienia, adresy, sesje, profil), poczta transakcyjna w obu językach, dziennik audytu za kolejką Cloudflare, unieważnianie cache w czasie rzeczywistym po WebSocketach oraz zarządzanie produktami, kategoriami, kolekcjami, atrybutami, klientami, zamówieniami i audytem w panelu.
+Katalog (produkty, warianty, opcje, atrybuty, kategorie, kolekcje, wyszukiwanie, filtrowanie, paginacja), koszyk, czterokrokowy proces zamówienia, płatność Stripe z realizacją sterowaną webhookiem, rezerwacja stanów magazynowych z kompensacją, składanie zamówienia, kompletowanie i wysyłka zamówienia z panelu, zwroty płatności z opcjonalnym przywróceniem stanu magazynowego, konta klientów (zamówienia, adresy, sesje, profil, logowanie dwuskładnikowe z kodami zapasowymi), poczta transakcyjna w obu językach, dziennik audytu za kolejką Cloudflare, unieważnianie cache w czasie rzeczywistym po WebSocketach oraz zarządzanie produktami, kategoriami, kolekcjami, atrybutami, klientami, zamówieniami i audytem w panelu.
 
 ### Zaczęte, ale niedokończone
 
 | Obszar                                                   | Stan                                                                                                                                     |
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Uwierzytelnianie dwuskładnikowe                          | wtyczka `twoFactor()` skonfigurowana, tabela `two_factor` istnieje; brak interfejsu do włączenia                                         |
 | Rabaty i kody promocyjne                                 | tabela `discount` oraz kolumny `discount_id` w `cart`, `checkout` i `order`; nic ich nie czyta ani nie zapisuje                          |
 | InPost                                                   | wyłącznie _wyszukiwanie_ paczkomatów — `fetchPointsByCity` w `src/integrations/inpost/inpost.api.ts`. Brak tworzenia przesyłek i etykiet |
 | Lista życzeń                                             | `/account/wishlist` renderuje zaszyty pusty stan; brak tabeli i zapisu                                                                   |

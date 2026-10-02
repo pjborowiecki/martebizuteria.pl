@@ -28,23 +28,23 @@ Everything deeper than this file lives in the documentation site at [`/docs`](#d
 
 This is a working application under active development, not a finished product. A rendered admin screen does not necessarily have a persistent backend workflow, so the table states which is which.
 
-| Area                     | Current implementation                                                                                                                                                                                     |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Storefront catalog       | Products, variants, options, categories, collections and attributes from D1. Localized search, faceted filtering, sorting and pagination. Product, category and collection detail pages by handle.         |
-| Cart                     | Server-backed cart and cart items, availability re-checks against live inventory, and a cross-tab availability banner.                                                                                     |
-| Checkout                 | Four steps (contact, billing address, delivery, payment) with lazily loaded step components, a persisted draft, Stripe Payment Element, and webhook-driven fulfilment.                                     |
-| Payments and fulfilment  | Stripe intents, `/api/webhooks/stripe` with signature verification, idempotent order placement, inventory reservation with compensation, refunds with restock on full refund.                              |
-| Customer accounts        | Better Auth email/password with required verification, GitHub and Google sign-in, password recovery, multi-session, order history, addresses, active sessions and login history.                           |
-| Transactional email      | Resend with React Email templates: verify email, change email, reset password, account deleted, order confirmation, order shipped. Previewable at `/dev/emails`.                                           |
-| Admin catalog            | Products, variants, categories, collections and attributes: permission-checked CRUD, reordering, localized content editing, R2 image upload, stats cards, product CSV export.                              |
-| Admin orders             | Database-backed list with tabs, filters, stats and CSV export, plus fulfil, ship, cancel, refund and dispute actions with audit trail and shipment email.                                                  |
-| Admin customers          | Database-backed customer list and detail, order counts and spend aggregates.                                                                                                                               |
-| Audit log                | Cloudflare Queue producer/consumer, 32 typed recorder functions over a 34-entry action catalogue, admin list with category and date filters.                                                               |
-| Realtime invalidation    | Durable Object fan-out hub per audience, WebSocket subscriptions for 12 admin and 10 storefront query prefixes, `BroadcastChannel` mirroring across tabs.                                                  |
-| Documentation and legal  | Fumadocs-backed `/docs` with 98 pages per locale, plus MDX legal pages under `content/legal`.                                                                                                              |
-| Scaffolded, not finished | Two-factor auth (plugin and `two_factor` table provisioned, no enrolment flow), in-app password change, discounts and coupons (schema only), InPost parcel-locker discovery only (no shipments or labels). |
-| Fixture-backed screens   | The admin order **detail** page, `/admin/coupons`, `/admin/content`, `/admin/marketing`, `/admin/settings` and the blog render from `src/data/`, not the database.                                         |
-| Not present              | End-to-end/browser tests, scheduled or cron jobs, a dead-letter queue, and error reporting.                                                                                                                |
+| Area                     | Current implementation                                                                                                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Storefront catalog       | Products, variants, options, categories, collections and attributes from D1. Localized search, faceted filtering, sorting and pagination. Product, category and collection detail pages by handle.                             |
+| Cart                     | Server-backed cart and cart items, availability re-checks against live inventory, and a cross-tab availability banner.                                                                                                         |
+| Checkout                 | Four steps (contact, billing address, delivery, payment) with lazily loaded step components, a persisted draft, Stripe Payment Element, and webhook-driven fulfilment.                                                         |
+| Payments and fulfilment  | Stripe intents, `/api/webhooks/stripe` with signature verification, idempotent order placement, inventory reservation with compensation, refunds with restock on full refund.                                                  |
+| Customer accounts        | Better Auth email/password with required verification, GitHub and Google sign-in, two-factor auth with backup codes, password change and recovery, multi-session, order history, addresses, active sessions and login history. |
+| Transactional email      | Resend with React Email templates: verify email, change email, reset password, account deleted, order confirmation, order shipped. Previewable at `/dev/emails`.                                                               |
+| Admin catalog            | Products, variants, categories, collections and attributes: permission-checked CRUD, reordering, localized content editing, R2 image upload, stats cards, product CSV export.                                                  |
+| Admin orders             | Database-backed list with tabs, filters, stats and CSV export, plus fulfil, ship, cancel, refund and dispute actions with audit trail and shipment email.                                                                      |
+| Admin customers          | Database-backed customer list and detail, order counts and spend aggregates.                                                                                                                                                   |
+| Audit log                | Cloudflare Queue producer/consumer, 32 typed recorder functions over a 34-entry action catalogue, admin list with category and date filters.                                                                                   |
+| Realtime invalidation    | Durable Object fan-out hub per audience, WebSocket subscriptions for 14 admin and 11 storefront query prefixes, `BroadcastChannel` mirroring across tabs.                                                                      |
+| Documentation and legal  | Fumadocs-backed `/docs` with 98 pages per locale. The privacy policy and exchanges-and-returns pages are Markdown in the D1 `content_page` table, edited with MDXEditor at `/admin/content`.                                   |
+| Scaffolded, not finished | Discounts and coupons (schema only), InPost parcel-locker discovery only (no shipments or labels).                                                                                                                             |
+| Fixture-backed screens   | The admin order **detail** page, `/admin/coupons`, `/admin/marketing`, `/admin/settings` and the blog render from `src/data/`, not the database.                                                                               |
+| Not present              | End-to-end/browser tests, scheduled or cron jobs, a dead-letter queue, and error reporting.                                                                                                                                    |
 
 The built-in roles are `admin` and `customer`; new accounts receive `customer`. See [Known gaps](#known-gaps) for the specifics behind the last three rows.
 
@@ -80,7 +80,7 @@ This README is the operational summary. The docs site is the reference; when the
 | Data and forms           | TanStack Query and Table, React Hook Form with Zod resolvers, `nuqs` for URL state, Zustand           |
 | UI                       | Tailwind CSS 4, shadcn-styled components over Base UI, Lucide icons, Recharts, Embla, Vaul, Sonner    |
 | Motion and scrolling     | GSAP with `@gsap/react`, Lenis smooth scroll synchronized with the router                             |
-| Localization and content | `use-intl` with ICU messages split by namespace, Fumadocs and MDX for docs and legal pages            |
+| Localization and content | `use-intl` with ICU messages split by namespace, Fumadocs and MDX for docs, MDXEditor for legal pages |
 | External services        | Stripe for payments, Resend for email, InPost for parcel-locker lookup, MapLibre for locker maps      |
 | Verification             | Vite+/Vitest with node, integration and jsdom component projects; Testing Library                     |
 
@@ -145,7 +145,7 @@ There is no admin seed. Sign up through `/auth/sign-up`, verify the email (Resen
 bun run db:studio:development
 ```
 
-Route guards send an `admin` user to `/admin` and a `customer` to `/account/overview` after sign-in.
+After sign-in, the `/auth` route guard sends an `admin` user to `/admin` and a `customer` to `/account/overview`, unless the sign-in URL carries a same-site `?redirect` path.
 
 ## Configuration and integrations
 
@@ -198,7 +198,6 @@ The canonical URL is configured in source, not in an environment file. Rebuild a
 ```text
 content/
   docs/                       Localized MDX documentation (98 pages per locale) and meta.{locale}.json
-  legal/                      Localized MDX legal pages with their own frontmatter schema
 messages/{locale}/            48 JSON namespace files per locale
 public/                       Fonts, favicon, OG image, llms.txt, _headers, screenshots, video
 scripts/                      verify-bindings, verify-build, prepare-deploy-secrets, sync-skills, commit-msg
@@ -211,8 +210,8 @@ src/
     *.accessors.ts              unauthenticated data access (reads and writes), 13 files
     use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 82 files
   modules/_core/              Shared error codes, HTTP statuses, currency, pagination, CSV, column filters
-  integrations/{vendor}/      13 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, inpost,
-                                use-intl, fumadocs, tanstack-query, realtime-invalidation, gsap, lenis, react-day-picker
+  integrations/{vendor}/      14 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, inpost, use-intl,
+                                fumadocs, mdxeditor, tanstack-query, realtime-invalidation, gsap, lenis, react-day-picker
   presentation/               1088 files — shadcn baseline (58), feature UI, data grid, emails, styles, theme, branding
   durable-objects/            RealtimeInvalidationHub
   providers/                  Theme and translation providers
@@ -242,8 +241,8 @@ Authentication and authorization entry points are in [`src/integrations/better-a
 | `auth.server.ts`      | Better Auth configuration: adapter, providers, plugins, rate-limit rules, database hooks, email sends. |
 | `auth.access.ts`      | Roles, the permission statement matrix, `hasAdminAccess` and `hasPermission`.                          |
 | `auth.middleware.ts`  | `withRequest`, `authorized(permission?)`, `withRateLimit` — the server-function trust boundary.        |
-| `auth.session.ts`     | Per-request session memoization and the client session query options.                                  |
-| `auth.routes.ts`      | `requireUser`, `requireAdmin`, `requireCustomer` and post-auth redirects for route guards.             |
+| `auth.session.ts`     | Per-request session memoization, the client session query options and `clearCacheOnUserChange`.        |
+| `auth.routes.ts`      | `requireSignedIn`, `requireAdmin`, `requireCustomer`, `redirectIfSignedIn` and post-auth redirects.    |
 | `auth.client.ts`      | Browser auth client with the matching plugin set.                                                      |
 | `auth.constraints.ts` | Password length bounds shared by the server config and the Zod schemas.                                |
 | `auth.errors.ts`      | Maps Better Auth API error codes to translation keys.                                                  |
@@ -266,7 +265,7 @@ The constraint that actually holds is in the database. [`20260924120000_checkout
 
 A server function is a public HTTP endpoint. It is reachable whether or not the route that normally calls it was ever loaded, so a route guard cannot protect it.
 
-Route `beforeLoad` guards exist here and are honest about their job: `requireUser`, `requireAdmin` and `requireCustomer` redirect, for navigation UX, and they also run client-side. The actual boundary is the `authorized()` middleware, applied to **62 server functions**. It resolves the session, throws `AppError(UNAUTHORIZED)` when there is none, and — for the 48 calls that pass a permission — throws `AppError(FORBIDDEN)` unless the role's compiled Better Auth access-control role authorizes that statement. The remaining 14 require only an authenticated session. The statement matrix in `auth.access.ts` is the real authorization source, not decoration: `product` splits `create`/`read`/`update`/`delete`/`publish`, `order` splits `read`/`update`/`refund`, `settings` has `manage`, and `user` inherits Better Auth's admin statements.
+Route `beforeLoad` guards exist here and are honest about their job: `requireSignedIn`, `requireAdmin` and `requireCustomer` redirect, for navigation UX, and they also run client-side. The actual boundary is the `authorized()` middleware, applied to **62 server functions**. It resolves the session, throws `AppError(UNAUTHORIZED)` when there is none, and — for the 48 calls that pass a permission — throws `AppError(FORBIDDEN)` unless the role's compiled Better Auth access-control role authorizes that statement. The remaining 14 require only an authenticated session. The statement matrix in `auth.access.ts` is the real authorization source, not decoration: `product` splits `create`/`read`/`update`/`delete`/`publish`, `order` splits `read`/`update`/`refund`, `content` splits `read`/`update`, `settings` has `manage`, and `user` inherits Better Auth's admin statements.
 
 Customer-facing reads take a different route: **ownership predicates compiled into the SQL**, `eq(order.userId, session.user.id)` in the `WHERE` clause rather than a fetch-then-filter. A foreign order id returns no row, which makes IDOR structurally absent rather than conventionally avoided.
 
@@ -278,7 +277,7 @@ Better Auth is configured with a 300-second signed cookie cache, and every serve
 
 The cost is one D1 read per HTTP request. The benefit is that a banned or signed-out user cannot ride a cached cookie for five minutes. To stop that becoming N reads, `getRequestSession` memoizes the in-flight promise in a `WeakMap` keyed on the `Request` object — not a module global, which is what makes it safe in a Worker isolate serving many requests concurrently. Loaders, middleware and server functions within one request share a lookup; a new request always revalidates.
 
-Note the asymmetry: the bypass is server-side only. The client's session query goes through `/api/auth/get-session`, which _does_ consult the cookie cache, so a revoked user's browser chrome can render as signed-in for up to five minutes even though every server read revalidates. What reaches the browser is projected — `toClientSession` destructures `session.token` away before returning.
+The browser's copy is revalidated the same way. Route guards and components share one TanStack Query entry, `getCurrentSessionQuery`, filled by the `getCurrentSession` server function through `getRequestSession` rather than by Better Auth's `useSession` and its `/api/auth/get-session` endpoint, and the server render of a guarded page dehydrates it into the HTML. What can lag is that cached copy: it stays fresh for 60 seconds and does not refetch on window focus or reconnect, so open storefront chrome can show a revoked session as signed-in until something refetches it. A navigation into `/account` or `/admin` always re-checks. A change of user is handled in one place: `clearCacheOnUserChange`, which `getRouter` installs in the browser only, watches the query cache and, whenever the session switches to a different user, removes every cached query except the session itself and the translation catalogues. Sign-out is a full page load, which discards the cache. What reaches the browser is projected — `toClientSession` destructures `session.token` away before returning.
 
 D1 is the sole auth store: `storeSessionInDatabase`, `storage: "database"` for rate limiting, and `storeInDatabase` with hashed identifiers for verification tokens. No `secondaryStorage` is configured. KV was rejected for sessions, verification tokens and rate-limit counters because it is eventually consistent and cannot do the atomic consume-and-increment those need. That choice is pinned by a test asserting the option is absent.
 
@@ -298,7 +297,7 @@ Admin dashboards go stale the moment a second person is working. Polling is the 
 
 A Durable Object acts as a connection fan-out hub — one object per audience, addressed by name (`admin`, `storefront`). The upgrade handshake reaches it via `fetch`, because a WebSocket upgrade has no choice, but invalidations use a **native RPC method**, `hub.notifyInvalidation(prefixes)`, avoiding Request/Response construction on the hot path. The hub holds no durable state; it is a broadcaster, not a store.
 
-Matching is a **symmetric prefix overlap** — deliberately broader than TanStack Query's one-directional prefix match — so a narrowly-scoped publish still invalidates the coarser prefix a tab subscribed to. Clients subscribe to a fixed prefix list (12 admin keys, 10 storefront keys, both declared in `realtime-invalidation.subscriptions.ts` and `satisfies readonly QueryKey[]`); the hub broadcasts to the audience and each tab discards what does not overlap. A `BroadcastChannel` mirrors invalidations across tabs in the same browser without opening a second socket.
+Matching is a **symmetric prefix overlap** — deliberately broader than TanStack Query's one-directional prefix match — so a narrowly-scoped publish still invalidates the coarser prefix a tab subscribed to. Clients subscribe to a fixed prefix list (14 admin keys, 11 storefront keys, both declared in `realtime-invalidation.subscriptions.ts` and `satisfies readonly QueryKey[]`); the hub broadcasts to the audience and each tab discards what does not overlap. A `BroadcastChannel` mirrors invalidations across tabs in the same browser without opening a second socket.
 
 Admin upgrades are role-checked **in the Worker, before the Durable Object is addressed**. A DO `fetch` has no cookie or session context of its own, so checking after `getByName()` would already have let an unauthenticated client open the object.
 
@@ -347,7 +346,7 @@ Use `bun run test`, not `bun test` — the latter bypasses the configured Vitest
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | `bun run dev`                                               | Compile content, then start the dev server with **remote** development bindings.      |
 | `bun run typegen`                                           | Regenerate `worker-configuration.d.ts` and Fumadocs `.source/`. Neither is committed. |
-| `bun run content`                                           | Compile MDX collections only.                                                         |
+| `bun run content`                                           | Compile the `content/docs` MDX only.                                                  |
 | `bun run check`                                             | Format, lint and type check — the gate CI runs.                                       |
 | `bun run check:fix`                                         | The same, applying supported fixes.                                                   |
 | `bun run check:staged`                                      | Lint and type check staged files without reformatting.                                |
@@ -517,15 +516,16 @@ Only then does `wrangler deploy` run, against the generated `dist/server/wrangle
 
 ## Localization and content
 
-Supported locales are `pl-PL` (default) and `en-US`, declared in [`i18n.config.ts`](src/integrations/use-intl/i18n.config.ts) together with the `marte_locale` cookie name, the `Europe/Warsaw` default time zone, and the offered time zones.
+Supported locales are `pl-PL` (default) and `en-US`, declared in [`i18n.config.ts`](src/integrations/use-intl/i18n.config.ts) together with the `marte_locale` cookie name and the `Europe/Warsaw` default time zone. The time zones customers pick from are `TIMEZONES` in [`timezone.ts`](src/modules/_core/constants/timezone.ts).
 
 Polish uses unprefixed paths, because it is the default. English uses the full BCP-47 tag — `/en-US/products`. A redundant `/pl-PL/...` URL is 301'd to the bare path in the Worker, and bare language aliases (`/pl`, `/en`) canonicalize to the full tag.
 
 - **UI messages** live in `messages/{locale}/` as 48 dotted-namespace JSON files, using the same keys, ICU arguments and rich-text tags across locales. A test asserts Polish parity with English file by file.
 - **Route namespaces** are declared in `staticData.namespaces`; a page loads the always-on root namespaces plus what its route and layout ancestors ask for. Loaders fetch messages and data in one `Promise.all`.
-- **Documentation** lives in `content/docs/` as `slug.{locale}.mdx` with `meta.{locale}.json` for navigation. **Legal pages** live in `content/legal/` with their own frontmatter schema. Both compile through Fumadocs into `.source/`, which is generated — edit the MDX, never the output.
+- **Documentation** lives in `content/docs/` as `slug.{locale}.mdx` with `meta.{locale}.json` for navigation. It compiles through Fumadocs into `.source/`, which is generated — edit the MDX, never the output.
+- **Legal pages** — `/privacy-policy` and `/exchanges-and-returns` — are rows in the D1 `content_page` table, with titles, descriptions and Markdown bodies as per-locale JSON maps. The [`20261002120000_content_pages.sql`](src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql) migration creates and seeds them without overwriting existing rows. Admins edit them with MDXEditor at `/admin/content`, styled with the same prose class as the storefront page. A save publishes immediately, is refused if someone else saved the page after it was opened, and moves the "Last updated" date of each locale whose title or body changed. A new locale needs a migration that adds it to every row's maps before it can be translated in the editor.
 - **Emails** load their `emails.*` namespace in the sending use case and pass `locale` and `messages` into the template. Email templates contain markup only, and never call a browser-side hook.
-- **Links** use `LocalizedLink` or `ROUTES.*`; the router's `rewrite.output` adds the prefix. Use `localizePathname` only for raw URLs such as OAuth callbacks and email links.
+- **Links** use `LocalizedLink` or `ROUTES.*`; the router's `rewrite.output` adds the prefix. Raw URLs outside the router, such as email links and the email-verification and password-reset callbacks, are built with `buildLocalizedUrl`. The Google and GitHub sign-in `callbackURL` is the current page's `location.publicHref`, which is already localized.
 - **Locale derivation** is `getCurrentLocale()`, which reads the real request URL. Do not derive it from router location — the router only ever sees the de-localized path.
 - `localeLinks` emits the canonical link plus one `alternate` per locale and an `x-default`, used by `pageHead`.
 
@@ -565,15 +565,13 @@ Kept here rather than hidden, because an accurate map is more useful than a flat
 - `AppError` carries a typed code but no HTTP status, so a denial surfaces to the client as a generic RPC failure that the UI maps by code string rather than by status.
 - Rate limiting is per-IP only, with no per-account lockout. A distributed credential-stuffing attempt is not slowed by it.
 - Audit-log IP resolution falls back to `x-forwarded-for`, which a client can spoof. Rate limiting is unaffected — it reads only `cf-connecting-ip`.
-- The client session query still consults Better Auth's 300-second cookie cache, so revoked browser chrome can lag by up to five minutes. Every server-side read revalidates.
+- The browser's cached session stays fresh for 60 seconds and does not refetch on window focus or reconnect, so storefront chrome such as the navigation link and the wishlist can show a revoked or ended session, including a sign-out in another tab, until something refetches it. Navigating into `/account` or `/admin` re-checks, and every server-side read revalidates.
 
 **Unfinished or fixture-backed**
 
-- Two-factor auth: the plugin, the client plugin and the `two_factor` table are provisioned, and the account security panel renders the row, but there is no enrolment, verification or backup-code flow.
-- In-app password change renders as a row in the security panel with no wired action. Password reset by email works.
 - Discounts and coupons exist as a `discount` table and `discount_id` columns on `cart`, `checkout` and `order`. No code path reads or writes them; `/admin/coupons` renders from `src/data/coupons.ts`.
 - InPost is parcel-locker _discovery_ only — `fetchPointsByCity` against the public points API. No shipment creation, no labels, no tracking.
-- The admin order **detail** page, `/admin/content`, `/admin/marketing` and `/admin/settings` render from `src/data/`. The admin order **list** is fully database-backed, as are its fulfil, ship, cancel, refund and dispute actions.
+- The admin order **detail** page, `/admin/marketing` and `/admin/settings` render from `src/data/`. The admin order **list** is fully database-backed, as are its fulfil, ship, cancel, refund and dispute actions.
 - The blog reads `src/data/blog-posts.ts` rather than MDX or the database.
 - `order_address` is declared and migrated but only read through customer-account types; nothing writes it. The `CACHE` KV binding is declared and verified at deploy time but never read. The `anonymous()` Better Auth plugin is registered with no flow that uses it. The `settings` audit category has no recorder.
 

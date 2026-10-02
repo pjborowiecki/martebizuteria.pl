@@ -116,6 +116,32 @@ export const getCurrentSessionQuery = queryOptions({
 })
 ```
 
+To jedyna droga, którą trasy i komponenty czytają sesję. Strażnicy tras w `src/integrations/better-auth/auth.routes.ts` ładują ją przez `context.queryClient.query(getCurrentSessionQuery)`: prawdziwa nawigacja do `/account` lub `/admin` sprawdza ją ponownie ze `staleTime: 0`, a wstępne ładowanie linku i strażnik `/auth` korzystają z sesji z cache, jeśli ma ona mniej niż 60 sekund. Przy renderowaniu na serwerze sesja jest serializowana do strony razem z danymi loaderów, więc chronione strony renderują się na serwerze jako zalogowane. Komponenty czytają ten sam wpis przez `useQuery(getCurrentSessionQuery)`; tak robią link w nawigacji, strefa czasowa tłumaczeń, lista życzeń i wstępne wypełnianie checkoutu.
+
+Strażnicy jedynie czytają sesję. Zmianę użytkownika obsługuje jedno miejsce: `clearCacheOnUserChange(queryClient)`, eksportowana również z `auth.session.ts`, subskrybuje cache zapytań. Za każdym razem, gdy dane zapytania o sesję przełączają się na inny identyfikator użytkownika, także z wylogowanego na zalogowanego i z powrotem, funkcja usuwa z cache każde zapytanie poza samą sesją i katalogami komunikatów tłumaczeń, rozpoznawanymi przez `isMessagesQuery` z `src/integrations/use-intl/i18n.messages.ts`. Pomija pierwszą sesję, którą zobaczy, oraz usunięcie wpisu sesji:
+
+```ts
+export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) => {
+  const seen: { session?: Awaited<ReturnType<typeof getCurrentSession>> } = {}
+
+  return queryClient.getQueryCache().subscribe(({ query }) => {
+    const session = query.queryHash === SESSION_QUERY_HASH ? queryClient.getQueryData(getCurrentSessionQuery.queryKey) : undefined
+    if (session === undefined) {
+      return
+    }
+
+    if ("session" in seen && seen.session?.user.id !== session?.user.id) {
+      queryClient.removeQueries({ predicate: (cached) => cached.queryHash !== SESSION_QUERY_HASH && !isMessagesQuery(cached) })
+    }
+    seen.session = session
+  })
+}
+```
+
+Ponieważ funkcja obserwuje cache, wychwytuje zmianę bez względu na to, kto pobrał sesję: strażnik, komponent, taki jak link w nawigacji, lista życzeń czy strefa czasowa tłumaczeń, ponowne pobranie po unieważnieniu albo hydracja. `getRouter` w `src/router.tsx` instaluje ją wyłącznie w przeglądarce, obok `setupQueryClientInvalidationBroadcast`. Renderowanie na serwerze ją pomija, ponieważ każde żądanie zaczyna od pustego `QueryClient`.
+
+Po logowaniu hasłem lub weryfikacji dwuskładnikowej `usePostAuthRedirect` usuwa z cache wyłącznie wpis sesji, a następnie czyści zapamiętane dopasowania routera i unieważnia router. Strażnik `/auth` pobiera świeżą sesję, a `clearCacheOnUserChange` zapomina to, co trafiło do cache przed zalogowaniem. Wylogowanie to pełne przeładowanie strony, które odrzuca cały cache. Strażników i przebieg przekierowań opisuje strona [Better Auth](/docs/integrations/better-auth).
+
 ## Unieważnianie między kartami
 
 `src/integrations/tanstack-query/query.sync.ts` jest jedynym plikiem w katalogu `tanstack-query`. Powiela unieważnienia między kartami przeglądarki tego samego pochodzenia przez `BroadcastChannel` o nazwie `marte-query-invalidation`:

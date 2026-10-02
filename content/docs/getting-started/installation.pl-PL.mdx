@@ -50,15 +50,15 @@ interface __BaseEnv_Env {
 
 Plik jest generowany, nie jest wersjonowany, a `bun run clean` go usuwa. Nigdy nie edytuj go ręcznie — dodaj binding lub sekret do `wrangler.jsonc` i uruchom `bun run typegen` ponownie. Ponieważ polecenie przekazuje `--env development`, `APP_ENV` jest typowany jako literał `"development"`; tak ma być i nie wpływa to na buildy preview ani produkcyjne.
 
-### `content` — kolekcje Fumadocs
+### `content` — kolekcja Fumadocs
 
 ```sh
 fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source
 ```
 
-To polecenie kompiluje dwie kolekcje MDX zadeklarowane w `src/integrations/fumadocs/fumadocs.config.ts` — `content/docs` i `content/legal` — do plików `.source/browser.ts`, `.source/server.ts` i `.source/dynamic.ts`. To właśnie te moduły importują `src/presentation/components/custom/docs-content.tsx` oraz `src/integrations/fumadocs/fumadocs.docs.ts` jako `collections/browser` i `collections/server`.
+To polecenie kompiluje `content/docs`, jedyną kolekcję MDX zadeklarowaną w `src/integrations/fumadocs/fumadocs.config.ts`, do plików `.source/browser.ts`, `.source/server.ts` i `.source/dynamic.ts`. To właśnie te moduły importują `src/presentation/components/custom/docs-content.tsx` oraz `src/integrations/fumadocs/fumadocs.docs.ts` jako `collections/browser` i `collections/server`.
 
-Bez katalogu `.source/` kontrola typów kończy się błędem, a trasy `/docs` i `/privacy-policy` nie mogą znaleźć swojej treści. `bun run dev` i oba skrypty budujące uruchamiają `bun run content` jako pierwszy krok, więc przy normalnej pracy nie musisz o tym pamiętać.
+Bez katalogu `.source/` kontrola typów kończy się błędem, a trasy `/docs` nie mogą znaleźć swojej treści. `/privacy-policy` i `/exchanges-and-returns` od niego nie zależą: ich treść leży w tabeli D1 `content_page`. `bun run dev` i oba skrypty budujące uruchamiają `bun run content` jako pierwszy krok, więc przy normalnej pracy nie musisz o tym pamiętać.
 
 ## Instalacja tak, jak robi to CI
 

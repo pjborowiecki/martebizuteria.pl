@@ -1,160 +1,123 @@
 ---
 title: "Strony prawne"
-description: "Dwa dokumenty o RODO i prawach konsumenta napisane w MDX i serwowane przez Fumadocs oraz trzy strony witryny, które wciąż są tylko komunikatami."
+description: "Polityka prywatności i strona o wymianach i zwrotach: wiersze Markdown w D1, edytowane w panelu przez MDXEditor i renderowane w sklepie."
 ---
 
-M'Arte ma dwa prawdziwe dokumenty prawne. To pliki MDX w katalogu `content/legal`, kompilowane przez Fumadocs i renderowane przez trasę, która jest niemal w całości loaderem.
+M'Arte ma dwa prawdziwe dokumenty prawne: politykę prywatności pod `/privacy-policy` i zasady zwrotów pod `/exchanges-and-returns`. Każdy z nich to wiersz w tabeli D1 `content_page`. Administratorzy edytują je pod `/admin/content` w edytorze tekstu sformatowanego, który zapisuje Markdown, a sklep renderuje ten Markdown z tą samą typografią, którą pokazuje edytor.
 
-## Dokumenty
+## Tabela
 
-```
-content/legal/
-├── exchanges-and-returns.en-US.mdx
-├── exchanges-and-returns.pl-PL.mdx
-├── meta.en-US.json
-├── meta.pl-PL.json
-├── privacy-policy.en-US.mdx
-└── privacy-policy.pl-PL.mdx
-```
+`src/modules/content-page/content-page.schema.ts` definiuje jeden wiersz na stronę:
 
-Po jednym pliku na język, nazwanym `<slug>.<locale>.mdx`, oraz `meta.<locale>.json` wymieniający slugi w kolejności:
+| Kolumna        | Zawiera                                                                        |
+| -------------- | ------------------------------------------------------------------------------ |
+| `handle`       | `privacy-policy` lub `exchanges-and-returns`, unikalny                         |
+| `titles`       | Mapę JSON z języka na tytuł strony                                             |
+| `descriptions` | Mapę JSON z języka na opis meta                                                |
+| `bodies`       | Mapę JSON z języka na treść w Markdownie                                       |
+| `revised_ats`  | Mapę JSON z języka na milisekundy epoki ostatniej rzeczywistej zmiany          |
+| `updated_at`   | Ostatni zapis dowolnego rodzaju, używany do wykrywania konfliktujących zapisów |
 
-```json
-{
-  "pages": ["privacy-policy", "exchanges-and-returns"],
-  "title": "Informacje prawne"
-}
-```
+Kolumna `handle` jest enumem nad `CONTENT_PAGE_HANDLES` z `content-page.constants.ts`, więc strony, której kod nie zna, nie da się zapisać ani pobrać.
 
-Ich frontmatter zawiera trzecie pole, którego nie ma dokumentacja:
+Migracja `20261002120000_content_pages.sql` tworzy tabelę i wypełnia obie strony tekstem, który wcześniej leżał w `content/legal`. Wstawia wiersze z `ON CONFLICT(handle) DO NOTHING`, więc ponowne uruchomienie nigdy nie nadpisze tekstu, który administrator już zmienił.
 
-```mdx
----
-title: "Wymiana i zwroty"
-description: "14-dniowe prawo odstąpienia od umowy, zwrot zamówienia M'Arte i zgłoszenie reklamacji."
-updated: 2026-09-29
----
-```
+Wiążące są dokumenty polskie. Powołują się wprost na polskie przepisy, takie jak 14-dniowe prawo odstąpienia, art. 556⁴ Kodeksu cywilnego i artykuł RODO dla każdego celu przetwarzania, oraz wskazują administratora danych. Wersje angielskie utrzymuj jako tłumaczenia, a nie osobne teksty.
 
-`updated` jest wymagane i walidowane jako data ISO:
+## Strony w sklepie
 
-```ts
-export const legalSchema = pageSchema.extend({
-  updated: zod.iso.date(),
-})
-```
-
-Ten schemat leży w `src/integrations/fumadocs/fumadocs.schema.ts` i jest podłączony w `fumadocs.config.ts`:
-
-```ts
-export const legal = defineDocs({
-  dir: "./content/legal",
-  docs: { schema: legalSchema },
-})
-```
-
-**Edycja dokumentu prawnego to edycja pliku MDX.** Nie ma edytora w panelu, nie ma wiersza w bazie i nie ma procesu publikacji. Zmiana to commit i wdrożenie, a `updated` trzeba podbić ręcznie — nic nie robi tego automatycznie.
-
-Wersje polskie są wiążące; cytują wprost polskie przepisy (14-dniowe prawo odstąpienia, art. 556(4) Kodeksu cywilnego, artykuł RODO dla każdego celu przetwarzania) i wskazują administratora danych. Wersje angielskie utrzymuj jako tłumaczenia, a nie jako odrębne teksty.
-
-## Źródło Fumadocs
-
-`src/integrations/fumadocs/fumadocs.source.ts` buduje loader:
-
-```ts
-export const legalSource = loader({
-  baseUrl: "/",
-  i18n,
-  source: legal.toFumadocsSource(),
-})
-```
-
-`baseUrl: "/"` sprawia, że strony żyją pod `/privacy-policy`, a nie pod prefiksem `/legal`. Wspólny obiekt `i18n` (`fumadocs.i18n.ts`) ustawia `defaultLanguage` i `fallbackLanguage` na `pl-PL`, `hideLocale: "always"` oraz `parser: "dot"` — to właśnie parser kropkowy pozwala używać `<slug>.<locale>.mdx` jako konwencji nazw.
-
-## Wczytanie dokumentu
-
-`fumadocs.legal.ts` zawiera mapę slugów i loader:
-
-```ts
-export const LEGAL_DOCUMENT_SLUGS = {
-  exchangesAndReturns: "exchanges-and-returns",
-  privacyPolicy: "privacy-policy",
-} as const
-```
-
-`getLegalPage` to funkcja serwerowa `GET` walidowana przez `zod.object({ locale: localeField, slug: handleField })` z `src/modules/_core/utils/zod-fields.ts`. Rzuca `notFound()`, gdy strona nie istnieje, a w przeciwnym razie zwraca `{ description, path, title, updated }`.
-
-`loadLegalPage(slug)` uruchamia funkcję serwerową i równolegle wstępnie wczytuje skompilowany komponent:
-
-```ts
-export const loadLegalPage = async (slug: LegalDocumentSlug) => {
-  const [{ legalContent }, page] = await Promise.all([
-    import("~/src/presentation/components/custom/legal-content"),
-    getLegalPage({ data: { locale: getCurrentLocale(), slug } }),
-  ])
-  await legalContent.preload(page.path)
-
-  return page
-}
-```
-
-## Trasy
-
-Obie trasy mają czterowierszowy komponent:
+Obie trasy pobierają stronę jednym zapytaniem i oddają renderowanie wspólnemu artykułowi:
 
 ```tsx
-const PrivacyPolicyPage = (): ReactNode => legalContent.useContent(Route.useLoaderData().path)
+const PrivacyPolicyPage = (): JSX.Element => <ContentPageArticle handle={CONTENT_PAGE_HANDLE.PRIVACY_POLICY} />
 
 export const Route = createFileRoute("/_storefront/privacy-policy")({
   component: PrivacyPolicyPage,
   head: pageHead,
-  loader: async () => {
-    const page = await loadLegalPage(LEGAL_DOCUMENT_SLUGS.privacyPolicy)
+  loader: async ({ context }) => {
+    const page = await context.queryClient.query(getContentPageQuery(CONTENT_PAGE_HANDLE.PRIVACY_POLICY, context.locale))
 
-    return { description: page.description, path: page.path, title: page.title } satisfies PageMeta & { path: string }
+    return { description: page.description, title: page.title } satisfies PageMeta
   },
-  wrapInSuspense: false,
 })
 ```
 
-`src/routes/_storefront.exchanges-and-returns.tsx` jest identyczna z drugim slugiem. Obie ustawiają `wrapInSuspense: false`, bo treść jest już wczytana w loaderze — nie ma na co czekać.
+`getContentPage` w `src/modules/content-page/use-cases/get-content-page.ts` to publiczna funkcja serwerowa `GET`. Zwraca tytuł, opis i treść w żądanym języku, z polskim jako zapasowym, a dla nieznanego `handle` rzuca `notFound()`. Zwraca też `revisedAt`, datę rewizji dla tego języka.
 
-Dodanie trzeciego dokumentu oznacza: dwa pliki MDX, oba pliki `meta.<locale>.json`, slug w `LEGAL_DOCUMENT_SLUGS`, wpis w `ROUTES` i plik trasy skopiowany z jednej z tych dwóch.
-
-## Renderowanie
-
-`src/presentation/components/custom/legal-content.tsx` to loader kliencki:
+`ContentPageArticle` czyta to samo zapytanie przez `useSuspenseQuery`, więc dane z loadera są użyte ponownie, a nie pobierane drugi raz. Renderuje tytuł jako jedyny `<h1>`, wiersz „Ostatnia aktualizacja” sformatowany przez use-intl oraz treść:
 
 ```tsx
-export const legalContent = browserCollections.legal.createClientLoader({
-  component: ({ default: Mdx, frontmatter }) => (
-    <article className="container mx-auto max-w-3xl px-4 py-16 md:py-24">
-      <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl">{frontmatter.title}</h1>
-      <Mdx components={mdxComponents} />
-    </article>
-  ),
-  id: "legal",
-})
+const { Markdown } = createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkHeading] })
+
+<Markdown components={MARKDOWN_COMPONENTS}>{page.body}</Markdown>
 ```
 
-`<h1>` pochodzi z frontmattera, więc plik MDX dokumentu prawnego **nie może** zaczynać się własnym nagłówkiem `#` — sekcje najwyższego poziomu to `##`.
+`createMarkdownRenderer` pochodzi z `fumadocs-core` i kompiluje Markdown w czasie renderowania, a nie budowania. Surowy HTML w treści jest pomijany, a nie renderowany. `remarkHeading` nadaje każdemu nagłówkowi `id` ze slugiem, więc odnośnik w rodzaju `/exchanges-and-returns#returning-goods` trafia do właściwej sekcji. Jedynym nadpisanym komponentem jest odnośnik, który dodaje prefiks języka czytelnika do ścieżek sklepu i zostawia w spokoju pliki takie jak `/forms/formularz_zwrotu.pdf`.
 
-`mdxComponents` (`src/presentation/components/custom/mdx.tsx`) mapuje świadomie niewielki zbiór elementów: `a`, `h1`, `h2`, `h3`, `p`, `ul`, `ol`, `li`, `strong`. Wszystko inne trafia na nieostylowany domyślny element. Dokumentacja rozszerza tę mapę w `docs-mdx.tsx` o `pre`, `code`, `table`, `th`, `td`, `blockquote`, `hr` i `h4` — **tabela, blok kodu albo cytat wyrenderują się więc bez stylów w dokumencie prawnym, a poprawnie w dokumentacji.** Żadna z map nie dostarcza komponentów Fumadocs UI, takich jak `Callout` czy `Tabs`; użycie ich w MDX zakończyłoby się błędem renderowania.
-
-`MdxLink` automatycznie lokalizuje wewnętrzne adresy:
-
-```tsx
-const isLocalizablePath = (href: string | undefined): href is string =>
-  href !== undefined && href.startsWith("/") && !ASSET_PATH_PATTERN.test(href)
-```
-
-Wpisz więc `/exchanges-and-returns` w dokumencie prawnym, a prefiks języka czytelnika zostanie dodany za Ciebie. Ścieżka kończąca się rozszerzeniem pliku zostaje nietknięta.
+Typografia leży w `CONTENT_PROSE_CLASS` w `content-page.styles.ts`. Edytor w panelu nakłada tę samą klasę na obszar edycji, więc administrator widzi podczas pisania to, co zobaczą klienci.
 
 Obie trasy leżą pod `_storefront`, więc mają nawigację, banner dostępności koszyka i stopkę.
 
+## Edycja w panelu
+
+Pozycja **Treść** w bocznym menu panelu otwiera `/admin/content`, gdzie obie strony są wypisane z datą ostatniego zapisu. Każda z nich otwiera `/admin/content/$handle`. Trasa odrzuca każdy `handle` spoza `CONTENT_PAGE_HANDLES` błędem 404.
+
+Strona edytora ma jedną kartę na język. Każda karta zawiera trzy pola:
+
+- **Tytuł**, do 120 znaków, wyświetlany jako nagłówek strony i w karcie przeglądarki.
+- **Opis**, do 300 znaków z licznikiem na żywo, używany w wynikach wyszukiwania i podglądach linków.
+- **Treść**, czyli sformatowane ciało strony.
+
+Pole treści to [MDXEditor](https://mdxeditor.dev), zbudowany na Lexicalu. `src/integrations/mdxeditor/mdxeditor.plugins.ts` włącza tylko to, co sklep potrafi pokazać:
+
+| Kontrolka paska      | Zapisany Markdown                     |
+| -------------------- | ------------------------------------- |
+| Styl tekstu          | Akapit, nagłówek `##`, podtytuł `###` |
+| Pogrubienie, kursywa | `**pogrubienie**`, `*kursywa*`        |
+| Listy                | `- punkt` i `1. punkt`                |
+| Odnośnik             | `[tekst](href)`                       |
+| Separator            | `---`                                 |
+
+Cytaty są dostępne przez skróty Markdown, na przykład wpisanie `> ` na początku wiersza. Shift+Enter zaczyna nowy wiersz wewnątrz akapitu i tak adres pocztowy zostaje w osobnych liniach. Edytor zapisuje go jako ukośnik wsteczny na końcu wiersza, a własny wizytor eksportu zamienia dwa kolejne złamania wiersza w podział akapitu.
+
+MDXEditor serializuje przez `mdast-util-to-markdown`, więc tekst, który inaczej zostałby odczytany jako Markdown, jest escapowany. Wiersz zaczynający się od `1.` lub `-`, końcowy `#` w nagłówku i wyróżnienie przy znaku interpunkcyjnym przechodzą przez zapis bez zmian. Testy edytora wczytują obie zasiane strony w obu językach do prawdziwego edytora i sprawdzają, że wracają identyczne co do bajtu.
+
+Etykiety samego edytora, na przykład okno odnośnika i nazwy nagłówków, pochodzą z `pages.admin.content.editor.mdx` w plikach komunikatów panelu przez `useContentEditorTranslation`. Obszar edycji bierze nazwę dostępną z etykiety pola.
+
+## Zapisywanie
+
+**Zapisz** staje się aktywne, gdy coś się zmieni. Ctrl+S lub ⌘+S też zapisuje. Opuszczenie strony z niezapisanymi zmianami wymaga potwierdzenia, a zamknięcie karty wywołuje ostrzeżenie przeglądarki.
+
+Formularz jest walidowany przez `contentPageZodSchemas.formValues`, zanim cokolwiek zostanie wysłane. Każdy język potrzebuje tytułu, opisu i treści. Treść nie może zawierać obrazu, a każdy odnośnik musi być adresem `https://`, `http://`, `mailto:` lub `tel:` albo ścieżką w tym sklepie. Gdy któryś język nie przejdzie walidacji, edytor przełącza się na jego kartę i ją oznacza, a powiadomienie wymienia wszystkie języki z błędami.
+
+`updateContentPage` wymaga uprawnienia `content: ["update"]`, które mają tylko administratorzy. Zapis używa optymistycznej współbieżności:
+
+```ts
+.where(and(eq(contentPage.handle, handle), eq(contentPage.updatedAt, expectedUpdatedAt)))
+```
+
+Jeśli inny administrator zapisał stronę po jej otwarciu, nic nie zostaje zapisane, a edytor pokazuje powiadomienie o konflikcie z akcją **Wczytaj ponownie**. Ta akcja pobiera najnowszą wersję i podmienia formularz.
+
+Zapis publikuje od razu. Ponadto:
+
+- przesuwa datę „Ostatnia aktualizacja” tylko w językach, w których zmienił się tytuł lub treść, więc poprawka literówki w opisie nie zmienia daty;
+- planuje unieważnienie w czasie rzeczywistym, więc otwarte karty sklepu i panelu pobierają stronę ponownie;
+- zapisuje wpis `content_page_updated` w kategorii Treści [dziennika audytu](/docs/features/audit-log).
+
+Zmiany wpisane w trakcie trwającego zapisu zostają zachowane po jego zakończeniu.
+
+## Dodawanie kolejnej strony
+
+1. Dodaj `handle` do `CONTENT_PAGE_HANDLE` i `CONTENT_PAGE_HANDLES`, a jego trasę do `ROUTES` i `CONTENT_PAGE_PATHS`.
+2. Napisz migrację, która wstawia wiersz z tytułem, opisem i treścią w każdym języku, z `ON CONFLICT(handle) DO NOTHING`.
+3. Skopiuj jedną z dwóch tras sklepu i zmień `handle`.
+4. Podlinkuj stronę w stopce, jeśli klienci mają ją tam znaleźć.
+
+Lista i edytor w panelu obsłużą nową stronę bez zmian.
+
 ## Strony oparte tylko na komunikatach
 
-Trzy inne strony z kolumny informacyjnej w stopce nie są plikami MDX i nie mają rozbudowanej treści:
+Trzy inne strony z kolumny informacyjnej w stopce nie są stronami treści i nie mają rozbudowanego tekstu:
 
 | Trasa               | Plik                               | Co renderuje                                                              |
 | ------------------- | ---------------------------------- | ------------------------------------------------------------------------- |
@@ -162,17 +125,11 @@ Trzy inne strony z kolumny informacyjnej w stopce nie są plikami MDX i nie maj�
 | `/faq`              | `_storefront.faq.tsx`              | ten sam trzyelementowy układ                                              |
 | `/about`            | `_storefront.about.tsx`            | nadtytuł, tytuł, lead i cztery akapity z `pages.about`                    |
 
-`/about` to gotowa treść — po prostu napisana w `messages/{locale}/pages.about.json`, a nie w MDX. `/terms-of-service` i `/faq` są placeholderami: ich treść to wprost mówi, a obie renderują wyśrodkowany odnośnik do strony głównej.
-
-Jeśli regulamin ma stać się prawdziwym dokumentem, najtańszą drogą jest przeniesienie go do `content/legal` obok dwóch pozostałych, a nie rozbudowa katalogu komunikatów: dodaj pliki MDX, slug, wpisy w plikach meta i zastąp ciało trasy przez `legalContent.useContent(...)`.
-
-## Dwa osierocone pliki komunikatów
-
-`messages/en-US/pages.privacyPolicy.json`, `messages/pl-PL/pages.privacyPolicy.json`, `messages/en-US/pages.exchanges-and-returns.json` i `messages/pl-PL/pages.exchanges-and-returns.json` istnieją, ale nic nie odwołuje się do tych przestrzeni nazw — obie strony biorą tytuł i opis z frontmattera MDX. To pozostałość po czasach przed przeniesieniem dokumentów do MDX.
+`/about` to gotowa treść napisana w `messages/{locale}/pages.about.json`. `/terms-of-service` i `/faq` są placeholderami i obie renderują wyśrodkowany odnośnik do strony głównej. Regulamin może stać się edytowalnym dokumentem według kroków powyżej.
 
 ## Odnośniki w stopce
 
-`src/presentation/components/custom/pages/landing-page/footer/footer.tsx` to miejsce, w którym te strony są linkowane:
+`src/presentation/components/custom/pages/landing-page/footer/footer.tsx` linkuje te strony:
 
 ```tsx
 <FooterLink to={ROUTES.TERMS_OF_SERVICE}>{t("terms")}</FooterLink>
@@ -180,10 +137,18 @@ Jeśli regulamin ma stać się prawdziwym dokumentem, najtańszą drogą jest pr
 <FooterLink to={ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
 ```
 
-Krok płatności w kasie również linkuje regulamin i politykę prywatności przez `t.rich("termsAgreement", { privacy, terms })` — zobacz [Kasa](/docs/features/checkout).
+Krok płatności w kasie również linkuje regulamin i politykę prywatności przez `t.rich("termsAgreement", { privacy, terms })`. Zobacz [Kasa](/docs/features/checkout).
+
+## Testy
+
+- `content-page.integration.test.ts` uruchamia migrację na SQLite i sprawdza odczyt z polskim zapasowym językiem, odczyty w panelu, przycinanie, konfliktujące zapisy, daty rewizji per język oraz reguły odnośników i obrazów.
+- `mdxeditor.plugins.component.test.tsx` przepuszcza obie zasiane strony przez prawdziwy edytor w obie strony, razem z przypadkami escapowania i złamań wiersza.
+- Testy komponentów panelu sprawdzają zapis, walidację, konflikty, zmiany w trakcie zapisu, skrót klawiszowy i okno opuszczania strony.
+- `content-page-article.component.test.tsx` sprawdza renderowanie w sklepie, kotwice nagłówków, lokalizowane odnośniki i pomijany HTML.
 
 ## Powiązane strony
 
+- [Panel katalogu](/docs/features/admin-catalog)
+- [Dziennik audytu](/docs/features/audit-log)
 - [Internacjonalizacja](/docs/features/internationalization)
 - [Kasa](/docs/features/checkout)
-- [Integracje: Fumadocs](/docs/integrations/fumadocs)
