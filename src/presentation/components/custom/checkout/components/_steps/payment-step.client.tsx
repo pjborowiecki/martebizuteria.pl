@@ -103,7 +103,7 @@ const PaymentForm = ({
 }>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const navigate = useNavigate()
-  const { getValues } = useCheckoutForm()
+  const { checkoutSession, getValues } = useCheckoutForm()
   const checkoutState = useCheckoutElements()
   const [isReady, setIsReady] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -113,7 +113,7 @@ const PaymentForm = ({
 
   const checkout = checkoutState.type === "success" ? checkoutState.checkout : undefined
   const handlePay = useCallback(async () => {
-    if (checkout === undefined) {
+    if (checkout === undefined || checkoutSession === undefined) {
       return
     }
     setIsProcessing(true)
@@ -137,6 +137,7 @@ const PaymentForm = ({
       await navigate({
         search: (prev) => ({
           ...prev,
+          session_id: checkoutSession.sessionId,
           success: true,
         }),
         to: ".",
@@ -146,7 +147,7 @@ const PaymentForm = ({
     } finally {
       setIsProcessing(false)
     }
-  }, [checkout, getValues, navigate, onReset, t])
+  }, [checkout, checkoutSession, getValues, navigate, onReset, t])
 
   const onFormSubmit = useCallback(
     (event: BaseSyntheticEvent) => {

@@ -48,7 +48,7 @@ Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, kt�
 | ----------- | ---------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
 | `/checkout` | `CHECKOUT`       | `checkout.tsx`, `checkout.index.tsx` | Własny layout, bez chromu sklepu; brak strażnika — zamówienie działa dla gości |
 
-`checkout.tsx` waliduje trzy parametry wyszukiwania: `step`, liczbę całkowitą ograniczoną do zakresu 1–4, `success`, opcjonalną wartość logiczną, oraz `session_id`, identyfikator sesji Checkout, który Stripe dopisuje do `return_url` sesji, o długości co najwyżej 255 znaków. Numer kroku żyje w adresie URL, więc odświeżenie strony zachowuje miejsce, w którym był klient.
+`checkout.tsx` waliduje trzy parametry wyszukiwania: `step`, liczbę całkowitą ograniczoną do zakresu 1–4, `success`, opcjonalną wartość logiczną, oraz `session_id`, identyfikator sesji Checkout, który Stripe dopisuje do `return_url` sesji, a krok płatności dopisuje po płatności potwierdzonej na stronie, o długości co najwyżej 255 znaków. Numer kroku żyje w adresie URL, więc odświeżenie strony zachowuje miejsce, w którym był klient.
 
 ## Uwierzytelnianie
 

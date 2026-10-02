@@ -458,7 +458,7 @@ describe("PaymentStep payment form", () => {
 })
 
 describe("PaymentStep confirmation", () => {
-  it("confirms the session and moves to the success view when payment succeeds", async () => {
+  it("confirms the session and opens the confirmation of the order it paid for", async () => {
     formState.session = session
     renderWithProviders(<PaymentStep />)
     await clickPay()
@@ -471,7 +471,7 @@ describe("PaymentStep confirmation", () => {
     const options = navigate.mock.calls[0]?.[0]
 
     expect(options?.to).toBe(".")
-    expect(options?.search({ step: 4 })).toStrictEqual({ step: 4, success: true })
+    expect(options?.search({ step: 4 })).toStrictEqual({ session_id: "cs_test_1", step: 4, success: true })
   })
 
   it("surfaces an unrecoverable failure message without resetting the session", async () => {

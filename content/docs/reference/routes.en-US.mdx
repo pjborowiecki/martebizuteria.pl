@@ -48,7 +48,7 @@ All storefront pages sit under the pathless layout `_storefront.tsx`, which supp
 | ----------- | ----------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
 | `/checkout` | `CHECKOUT`        | `checkout.tsx`, `checkout.index.tsx` | Own layout, no storefront chrome; no route guard — checkout works for guests |
 
-`checkout.tsx` validates three search parameters: `step`, an integer clamped to 1–4, `success`, an optional boolean, and `session_id`, the Checkout Session id that Stripe adds to the session's `return_url`, at most 255 characters. The step lives in the URL so a reload keeps the customer where they were.
+`checkout.tsx` validates three search parameters: `step`, an integer clamped to 1–4, `success`, an optional boolean, and `session_id`, the Checkout Session id that Stripe adds to the session's `return_url` and the payment step adds after a payment confirmed on the page, at most 255 characters. The step lives in the URL so a reload keeps the customer where they were.
 
 ## Authentication
 
