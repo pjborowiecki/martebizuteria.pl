@@ -1,3 +1,4 @@
+import { isNotFound } from "@tanstack/react-router"
 import { createMiddleware } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import { isAPIError } from "better-auth/api"
@@ -20,6 +21,10 @@ export const RATE_LIMITS = {
 } as const
 
 const handleRequestError = (error: unknown): never => {
+  if (isNotFound(error)) {
+    throw error
+  }
+
   if (error instanceof AppError) {
     throw new AppError(error.code)
   }

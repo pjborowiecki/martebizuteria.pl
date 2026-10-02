@@ -1,3 +1,4 @@
+import { notFound } from "@tanstack/react-router"
 import { APIError } from "better-auth/api"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod/v4"
@@ -158,6 +159,17 @@ describe("request error boundary", () => {
       code: ERROR_CODES.INTERNAL_ERROR,
       message: ERROR_CODES.INTERNAL_ERROR,
     })
+  })
+
+  it("lets a not-found signal through untouched so the route answers 404", async () => {
+    const missing = notFound()
+
+    const failing = Promise.resolve().then(() => {
+      throw missing
+    })
+
+    await expect(runBoundary(failing)).rejects.toBe(missing)
+    expect(console.error).not.toHaveBeenCalled()
   })
 
   it("keeps the code of an AppError and drops its message", async () => {
