@@ -1,6 +1,6 @@
 ---
 title: "Konto"
-description: "Siedem stron w /account, moduły customer-account i address oraz dwa ekrany, które są jeszcze placeholderami."
+description: "Siedem stron w /account, moduły customer-account i address, zapisane metody płatności i lista życzeń."
 ---
 
 ## Layout i strażnik
@@ -48,20 +48,20 @@ beforeLoad: () => {
 
 ## Siedem stron
 
-| Trasa                 | Plik                       | Zapytanie                                                        | Stan        |
-| --------------------- | -------------------------- | ---------------------------------------------------------------- | ----------- |
-| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                               | działa      |
-| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`                                      | działa      |
-| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery()`                                      | działa      |
-| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                      | działa      |
-| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                       | działa      |
-| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()` | działa      |
-| `/account/payment`    | `account.payment.tsx`      | brak                                                             | placeholder |
-| `/account/wishlist`   | `account.wishlist.tsx`     | brak                                                             | placeholder |
+| Trasa                 | Plik                       | Zapytanie                                                        | Stan   |
+| --------------------- | -------------------------- | ---------------------------------------------------------------- | ------ |
+| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                               | działa |
+| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`                                      | działa |
+| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                      | działa |
+| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                      | działa |
+| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                       | działa |
+| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()` | działa |
+| `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                 | działa |
+| `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                 | działa |
 
 Kolejność w panelu bocznym to `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`). Przycisk wylogowania w panelu bocznym wywołuje `signOut`, a potem pełnym przeładowaniem strony wczytuje `/`, co odrzuca cache zapytań.
 
-Każdy loader trasy wczytuje dane wstępnie z `staleTime: "static"` i ustawia `staleTime` trasy na `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
+Każdy loader trasy wczytuje dane wstępnie z `staleTime: "static"`. `account.payment.tsx` i `account.wishlist.tsx` zostawiają `staleTime` trasy domyślnemu `defaultStaleTime` routera, również 60 000; pozostałe sześć plików tras ustawia je na `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
 
 ## Wzorzec autoryzacji
 
@@ -69,24 +69,28 @@ Każdy use case w `src/modules/customer-account/use-cases/` używa `authorized()
 
 ## Przegląd
 
-`getCustomerOverview` rozsyła równolegle pięć zapytań, a potem szóste po pozycje zamówień:
+`getCustomerOverview` najpierw odczytuje identyfikatory i numery ostatnich zamówień klienta, potem rozsyła równolegle sześć zapytań, następnie odczytuje pozycje ostatnich zamówień, a na końcu buduje rekomendacje:
 
-| Źródło                                 | Zasila                                |
-| -------------------------------------- | ------------------------------------- |
-| `getCustomerOrderStatsQuery([userId])` | `totalOrders`, `totalSpentMinorUnits` |
-| `getCustomerOrderRows(userId, 3)`      | listę ostatnich zamówień              |
-| `getCustomerActivityAuditRows(userId)` | strumień aktywności                   |
-| `getUserById(userId)`                  | `memberSinceYear` z `createdAt`       |
-| kolekcja `nowosci`                     | siatkę rekomendacji                   |
+| Źródło                                                     | Zasila                                             |
+| ---------------------------------------------------------- | -------------------------------------------------- |
+| `getCustomerOrderNumbers(userId)`                          | identyfikatory i numery ostatnich zamówień         |
+| `getCustomerOrderRows(userId, { limit: 3 })`               | listę ostatnich zamówień                           |
+| `getCustomerSpendStats(userId)`                            | `totalOrders`, `totalSpentMinorUnits`              |
+| `getCustomerActivityAuditRows(userId, orderIds)`           | strumień aktywności                                |
+| `getUserById(userId)`                                      | `memberSinceYear` z `createdAt`                    |
+| `countWishlistItems(userId)`                               | `wishlistCount`                                    |
+| kolekcja `nowosci`                                         | zapasowe rekomendacje z nowości                    |
+| `getOrderItemsForOrders(recentOrderIds)`                   | pozycje pokazywane przy każdym ostatnim zamówieniu |
+| `buildCustomerRecommendations(userId, collection, locale)` | `recommendations`, `recommendationsSource`         |
 
-Limity leżą w `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`.
+`getCustomerSpendStats` liczy i sumuje wyłącznie zamówienia o statusie `processing` lub `completed`. Limity leżą w `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_ORDERS_LIMIT = 50` dla numerów zamówień, `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`, `CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2`.
 
 Dwie rzeczy warto wiedzieć:
 
-- **Rekomendacje nie są personalizowane.** To pierwsze trzy opublikowane produkty kolekcji `nowosci`, tej samej, z której korzystają nowości na stronie głównej (`LANDING_NEW_ARRIVALS_COLLECTION_HANDLE`).
-- **`wishlistCount` jest zapisane na stałe jako `0`** w zwracanych statystykach, bo nie ma tabeli listy życzeń.
+- **Rekomendacje wynikają z zamówień klienta.** `buildCustomerRecommendations` bierze dwie kategorie, które najczęściej występują w zamówieniach klienta o statusie `processing` i `completed`, odczytuje z nich opublikowane produkty i odrzuca każdy produkt, który klient już zamówił. Jeśli coś zostanie, pierwsze trzy wracają z `recommendationsSource: "orders"`. W przeciwnym razie sięga po pierwsze trzy opublikowane produkty kolekcji `nowosci`, tej samej, z której korzystają nowości na stronie głównej (`LANDING_NEW_ARRIVALS_COLLECTION_HANDLE`), z `recommendationsSource: "newArrivals"`, albo zwraca pustą listę, gdy ta kolekcja nie istnieje. Strona dobiera nagłówek i opis siatki do tego źródła.
+- **`wishlistCount` jest prawdziwe.** `countWishlistItems` liczy wiersze `wishlist_item` klienta, te same, które wyświetla `/account/wishlist`, więc produkt, który nie jest już opublikowany, nadal się liczy.
 
-Strumień aktywności jest budowany z dziennika audytu: `getCustomerActivityAuditRows` czyta wiersze `audit_log` dla użytkownika, a `mapAuditLogToActivityItem` zamienia każdą rozpoznaną akcję w `{ actionKey, params, createdAt }`, odrzucając to, czego nie rozpoznaje. Strona mapuje `actionKey` na ikonę przez lokalną mapę `ACTIVITY_ICONS` i formatuje znacznik czasu przez `formatCustomerAccountRelativeTime`.
+Strumień aktywności jest budowany z dziennika audytu: `getCustomerActivityAuditRows` czyta wiersze `audit_log`, których `resourceId` to użytkownik albo jedno z zamówień z `getCustomerOrderNumbers`, ograniczone do `auth.login`, `auth.login_failed`, `auth.logout`, `customer.cart_item_added`, `order.placed`, `order.shipped` i `order.released`. `mapAuditLogToActivityItem` zamienia każdy wiersz w `{ actionKey, params, createdAt }`, wstawiając numer zamówienia do `params` przy akcjach zamówień i odrzucając każdy wiersz, którego nie potrafi zmapować. Strona mapuje `actionKey` na ikonę przez lokalną mapę `ACTIVITY_ICONS` i formatuje znacznik czasu przez `formatRelativeFromNow`.
 
 ## Profil
 
@@ -158,19 +162,41 @@ Dwie mutacje unieważniające:
 
 `listCustomerLoginHistory` korzysta z tych samych wierszy audytu i zachowuje tylko `auth.login` oraz `auth.login_failed`, mapując niepowodzenie na `status: "blocked"`. Historia logowań jest więc widokiem na [dziennik audytu](/docs/features/audit-log), a nie osobną tabelą.
 
-## Dwa placeholdery
+## Zapisane metody płatności
 
-`/account/payment` renderuje ikonę `CreditCard`, komunikat `pages.account.payment.empty` i licznik zapisany na stałe:
+Karty są zapisywane w kasie, a nie na stronie konta. Dla zalogowanego klienta `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) wywołuje `ensureStripeCustomer` (`stripe.customer.server.ts`), które zwraca `stripe_customer_id` użytkownika albo tworzy klienta Stripe i zapisuje jego identyfikator w tej kolumnie. Sesja Checkout powstaje następnie dla tego klienta z włączonym `payment_method_save`, które pozwala klientowi wybrać, czy zapisać kartę:
 
-```tsx
-<h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
-  {t("saved")} ({0})
-</h2>
+```ts
+...(customerId === undefined
+  ? { customer_email: email }
+  : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 ```
 
-Nie ma tabeli zapisanych kart ani odnośnika do portalu klienta Stripe. `user.stripe_customer_id` istnieje jako kolumna, ale nic go nie zapisuje.
+Gość dostaje zamiast tego `customer_email` i nie ma klienta Stripe, do którego można by zapisać kartę. `handleUpdateCheckoutSession` korzysta z istniejącego klienta przez `getStripeCustomerId` i nigdy go nie tworzy. Zobacz [Płatności](/docs/features/payments).
 
-`/account/wishlist` renderuje stan pusty z `t("subtitle", { count: 0 })`. Nie ma tabeli listy życzeń, nie ma use case'a i nie ma nigdzie w witrynie kontrolki dodania do listy życzeń.
+Nie ma tabeli zapisanych kart. `listSavedPaymentMethods` (`src/modules/payment/use-cases/list-saved-payment-methods.ts`) używa `authorized()` i pyta Stripe o metody płatności klienta typu `card` albo zwraca pustą listę, gdy użytkownik nie ma klienta Stripe. Każda karta staje się `{ brand, expMonth, expYear, id, isExpired, last4 }`. `isExpired` pochodzi z `isCardExpired` (`payment.utils.ts`), które porównuje datę ważności z dzisiejszą datą we własnej strefie czasowej klienta: `timezone` użytkownika przez `resolveTimezoneCode`, które w razie braku przyjmuje `Europe/Warsaw`.
+
+`/account/payment` wczytuje wstępnie `listSavedPaymentMethodsQuery()` i renderuje `SavedCardList`. Bez kart pokazuje ikonę `CreditCard` i `pages.account.payment.empty`; w przeciwnym razie po jednym wierszu na kartę z marką, czterema ostatnimi cyframi, datą ważności w formacie `MM/YYYY`, plakietką wygaśnięcia, gdy ustawione jest `isExpired`, i przyciskiem usuwania. Licznik w nagłówku to `methods.length`.
+
+Usunięcie karty wywołuje `deleteSavedPaymentMethod` (`delete-saved-payment-method.ts`), chronione przez `withRateLimit("delete-saved-payment-method", RATE_LIMITS.SENSITIVE)` i `authorized()`. Rzuca ono `ERROR_CODES.NOT_FOUND`, gdy użytkownik nie ma klienta Stripe, oraz `ERROR_CODES.FORBIDDEN`, chyba że metoda płatności należy do tego klienta, i dopiero wtedy odłącza ją w Stripe. Po powodzeniu lista unieważnia `PAYMENT_METHOD_QUERY_KEYS.SAVED`.
+
+## Lista życzeń
+
+`wishlist_item` (`src/modules/wishlist/wishlist.schema.ts`) przechowuje jeden wiersz na klienta i produkt. `user_id` i `product_id` są usuwane kaskadowo; `wishlist_item_userId_productId_unique` pilnuje unikalności pary, a `wishlist_item_userId_createdAt_idx` obsługuje listę od najnowszych.
+
+Wszystkie trzy use case'y używają `authorized()` i są zawężone do bieżącego użytkownika:
+
+| Use case                       | Uwagi                                                                                                                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list-wishlist-items.ts`       | `listWishlistItemsQuery(locale)`: od najnowszych, najwyżej `WISHLIST_MAX_ITEMS`, każdy z tytułem w danym języku, najtańszym wariantem, stanem magazynowym i statusem publikacji    |
+| `list-wishlist-product-ids.ts` | `listWishlistProductIdsQuery()`: identyfikatory zapisanych produktów, z których korzystają serduszka                                                                               |
+| `toggle-wishlist-item.ts`      | `toggleWishlistItemMutation`: usuwa istniejący wiersz, a w przeciwnym razie wstawia nowy dla opublikowanego produktu, dopóki lista ma mniej niż `WISHLIST_MAX_ITEMS` (200) pozycji |
+
+Nieopublikowany produkt rzuca `ERROR_CODES.NOT_FOUND`, a pełna lista rzuca `ERROR_CODES.VALIDATION` z komunikatem `WISHLIST_FULL`.
+
+Serduszko na kafelkach produktów (`product-card.tsx`) i przycisk na karcie produktu (`product-wishlist-button.tsx`) korzystają z `useWishlist` (`src/hooks/use-wishlist.ts`). Hook odczytuje sesję z `getCurrentSessionQuery` i pobiera identyfikatory produktów tylko wtedy, gdy ktoś jest zalogowany. Niezalogowany kupujący dostaje toast, którego akcja otwiera stronę logowania. Dla zalogowanego klienta hook wywołuje `toggleWishlistItem` i pokazuje toast z wynikiem. Udane przełączenie unieważnia `WISHLIST_QUERY_KEYS.ROOT`, co odświeża oba zapytania listy życzeń. Pełna lista pokazuje toast `wishlistFull`, który podaje limit `WISHLIST_MAX_ITEMS`: `handleRequestError` przekazuje do przeglądarki kod przyczyny `WISHLIST_FULL` (zobacz [Integracje: Better Auth](/docs/integrations/better-auth)). Każde inne niepowodzenie pokazuje `wishlistError`.
+
+`/account/wishlist` wczytuje wstępnie `listWishlistItemsQuery(locale)` i renderuje `WishlistGrid`. Pusta lista życzeń pokazuje odnośnik do produktów. W przeciwnym razie każdy kafelek pokazuje cenę, datę dodania produktu i etykietę braku w magazynie albo niedostępności, z przyciskiem dodania do koszyka dla najtańszego wariantu i przyciskiem usuwania, który wywołuje to samo `toggleWishlistItem`. Produkt, który nie jest już opublikowany, zostaje na liście oznaczony jako niedostępny i nie da się go dodać do koszyka. Licznik w podtytule to `items.length`.
 
 ## Śledzenie aktywności
 

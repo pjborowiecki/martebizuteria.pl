@@ -31,7 +31,7 @@ Przejdź przez sekcje, które dotyczą Twojej zmiany. Każdy punkt wskazuje plik
 
 ## Błędy
 
-- [ ] Oczekiwane niepowodzenia rzucają `AppError` z kodem z `ERROR_CODES`.
+- [ ] Oczekiwane niepowodzenia rzucają `AppError` z kodem z `ERROR_CODES` i co najwyżej kodem przyczyny, takim jak `WISHLIST_FULL`, jako komunikatem. Komunikat w postaci zwykłego tekstu nigdy nie dociera do przeglądarki.
 - [ ] Nic innego nie dociera do klienta. `withRequest` w `auth.middleware.ts` rzuca ponownie bez zmian `notFound()` z TanStack, więc trasa odpowiada 404, a każdy inny nieznany błąd loguje przez `console.error` i zamienia na `INTERNAL_ERROR` — bez treści, bez stosu wywołań, bez SQL-a.
 - [ ] Komponenty renderują błędy przez `useActionError` (`src/hooks/use-action-error.ts`) albo `ValidationFieldError`, nigdy przez `error.message`.
 - [ ] Szczegół specyficzny dla modułu, taki jak `CATEGORY_ERROR_CODES.DUPLICATE_HANDLE`, można bezpiecznie przekazać jako drugi argument `AppError`, bo jest ustalonym identyfikatorem, a nie danymi.

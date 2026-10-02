@@ -31,7 +31,7 @@ Go through the sections that apply to your change. Each item names the file that
 
 ## Errors
 
-- [ ] Expected failures throw `AppError` with an `ERROR_CODES` code.
+- [ ] Expected failures throw `AppError` with an `ERROR_CODES` code, and at most a reason code such as `WISHLIST_FULL` as the message. A free-text message never reaches the browser.
 - [ ] Nothing else reaches the client. `withRequest` in `auth.middleware.ts` rethrows a TanStack `notFound()` unchanged, so the route answers 404, and logs any other unknown error with `console.error` and replaces it with `INTERNAL_ERROR` — no message, no stack, no SQL.
 - [ ] Components render errors through `useActionError` (`src/hooks/use-action-error.ts`) or `ValidationFieldError`, never `error.message`.
 - [ ] A module-specific detail such as `CATEGORY_ERROR_CODES.DUPLICATE_HANDLE` is safe to send as the second `AppError` argument, because it is a fixed identifier rather than data.

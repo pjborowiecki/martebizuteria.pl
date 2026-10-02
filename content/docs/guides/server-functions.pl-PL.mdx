@@ -37,7 +37,7 @@ export const withRequest = createMiddleware({ type: "function" }).server(({ next
 | Rzucone                  | Wysłane do klienta                                               |
 | ------------------------ | ---------------------------------------------------------------- |
 | `notFound()` z TanStack  | Rzucone ponownie bez zmian (`isNotFound`)                        |
-| `AppError`               | Nowy `AppError` niosący wyłącznie kod                            |
+| `AppError`               | Jego kod oraz komunikat, jeśli jest kodem przyczyny              |
 | `APIError` z Better Auth | `AppError(AUTH_API_ERROR, authErrorKey(error))`                  |
 | `ZodError`               | `AppError(VALIDATION)`                                           |
 | Cokolwiek innego         | Zapisane przez `console.error`, potem `AppError(INTERNAL_ERROR)` |

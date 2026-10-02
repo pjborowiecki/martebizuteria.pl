@@ -105,7 +105,7 @@ export const withRequest = createMiddleware({ type: "function" }).server(({ next
 )
 ```
 
-`handleRequestError` najpierw rzuca dalej bez zmian `notFound()` z TanStack (`isNotFound`), więc trasa odpowiada kodem 404 zamiast 500. Następnie mapuje `AppError` na siebie samego, `APIError` z Better Auth na `AppError(AUTH_API_ERROR, authErrorKey(error))`, `ZodError` na `AppError(VALIDATION)`, a wszystko inne na `AppError(INTERNAL_ERROR)` po zalogowaniu. Klient nigdy nie widzi surowego stosu wywołań ani komunikatu dostawcy.
+`handleRequestError` najpierw rzuca dalej bez zmian `notFound()` z TanStack (`isNotFound`), więc trasa odpowiada kodem 404 zamiast 500. Następnie odtwarza `AppError` z jego kodu i zachowuje komunikat tylko wtedy, gdy jest on kodem przyczyny zapisanym wielkimi literami z podkreśleniami, na przykład `WISHLIST_FULL` lub `HAS_CHILDREN`, aby przeglądarka mogła wyjaśnić niepowodzenie. Każdy komunikat w postaci zwykłego tekstu zostaje zastąpiony kodem. `APIError` z Better Auth mapuje na `AppError(AUTH_API_ERROR, authErrorKey(error))`, `ZodError` na `AppError(VALIDATION)`, a wszystko inne na `AppError(INTERNAL_ERROR)` po zalogowaniu. Klient nigdy nie widzi surowego stosu wywołań ani komunikatu dostawcy.
 
 `authorized(permission?)` nadbudowuje `withRequest`, ładuje sesję i albo ją odrzuca, albo umieszcza w kontekście:
 

@@ -157,7 +157,7 @@ Ranks are assigned server-side by `getNextRankForParent`, never sent from the cl
 
 The same eight use cases without the tree: `get-collections`, `get-storefront-collection`, `get-admin-collections`, `get-collection-stats`, `create-collection`, `update-collection`, `delete-collections`, `reorder-collections`. `COLLECTION_ERROR_CODES` has `DUPLICATE_HANDLE` and `HAS_PRODUCTS`.
 
-Collections matter beyond the catalog: the `nowosci` collection drives the landing page's new arrivals and the account overview's recommendations, and `scheduleCollectionCatalogInvalidation()` therefore also invalidates `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`.
+Collections matter beyond the catalog: the `nowosci` collection drives the landing page's new arrivals and the account overview's fallback recommendations, and `scheduleCollectionCatalogInvalidation()` therefore also invalidates `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`.
 
 ## Attributes
 

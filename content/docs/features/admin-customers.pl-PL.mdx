@@ -21,7 +21,7 @@ Tabela `user` jest współdzielona z Better Auth, więc „klienci” to widok n
 | `phone`                               | 32 znaki; zapisywane przez `updateCustomerPhone` i `updateCustomer` |
 | `timezone`                            | 64 znaki                                                            |
 | `image`                               | 2048 znaków                                                         |
-| `stripe_customer_id`                  | zadeklarowana, ale nigdy nie zapisywana                             |
+| `stripe_customer_id`                  | zapisywana przez `ensureStripeCustomer` w kasie                     |
 | `metadata`                            | napis JSON z notatkami i tagami administratora                      |
 
 Jeden indeks: `user_createdAt_idx`.

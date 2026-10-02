@@ -105,7 +105,7 @@ export const withRequest = createMiddleware({ type: "function" }).server(({ next
 )
 ```
 
-`handleRequestError` first rethrows a TanStack `notFound()` unchanged (`isNotFound`), so a route answers 404 instead of a 500. It then maps an `AppError` to itself, a Better Auth `APIError` to `AppError(AUTH_API_ERROR, authErrorKey(error))`, a `ZodError` to `AppError(VALIDATION)` and everything else to `AppError(INTERNAL_ERROR)` after logging it. The client never sees a raw stack trace or a vendor error string.
+`handleRequestError` first rethrows a TanStack `notFound()` unchanged (`isNotFound`), so a route answers 404 instead of a 500. It then rebuilds an `AppError` from its code, and keeps its message only when that message is a reason code in upper snake case, such as `WISHLIST_FULL` or `HAS_CHILDREN`, so the browser can explain the failure. Any free-text message is replaced by the code. It maps a Better Auth `APIError` to `AppError(AUTH_API_ERROR, authErrorKey(error))`, a `ZodError` to `AppError(VALIDATION)` and everything else to `AppError(INTERNAL_ERROR)` after logging it. The client never sees a raw stack trace or a vendor error string.
 
 `authorized(permission?)` builds on `withRequest`, loads the session and either rejects or puts it into context:
 

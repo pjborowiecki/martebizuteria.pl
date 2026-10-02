@@ -175,7 +175,7 @@ Sprawdzanie po `getByName()` pozwoliłoby już nieuwierzytelnionemu klientowi ot
 | Rzucone                | Dociera do klienta jako                           |
 | ---------------------- | ------------------------------------------------- |
 | `notFound()` TanStack  | Bez zmian, więc trasa odpowiada kodem 404         |
-| `AppError`             | Własny kod                                        |
+| `AppError`             | Własny kod oraz kod przyczyny                     |
 | `APIError` Better Auth | `AUTH_API_ERROR` plus klucz tłumaczenia           |
 | `ZodError`             | `VALIDATION`                                      |
 | Cokolwiek innego       | `INTERNAL_ERROR`, oryginał zalogowany na serwerze |

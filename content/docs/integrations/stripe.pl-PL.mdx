@@ -74,15 +74,19 @@ Sama sesja:
 
 ```ts
 const session = await stripe.checkout.sessions.create({
-  customer_email: email,
   line_items: toLineItems(lines, shippingCost),
   metadata,
   mode: "payment",
   payment_intent_data: { metadata, receipt_email: email },
   return_url: returnUrl,
   ui_mode: "elements",
+  ...(customerId === undefined
+    ? { customer_email: email }
+    : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 })
 ```
+
+`customerId` jest ustawiane tylko dla zalogowanego kupującego: przed krokiem 1 `handleCreateCheckoutSession` wywołuje `ensureStripeCustomer` (`stripe.customer.server.ts`), które przy pierwszym użyciu tworzy klienta Stripe i zapisuje jego identyfikator w `user.stripe_customer_id`. Sesja należy wtedy do tego klienta Stripe i pozwala kupującemu zapisać kartę, którą potem wyświetla `/account/payment`. Sesja gościa dostaje zamiast tego `customer_email`. Zobacz [Konto](/docs/features/account).
 
 `ui_mode: "elements"` daje wbudowane doświadczenie płatności. `return_url` to `${origin}/checkout?success=true`, gdzie `resolveOrigin()` preferuje nagłówek `origin`, następnie pochodzenie z `referer`, a na końcu `APP_URL`. Koszt dostawy dodawany jest jako dodatkowa pozycja o nazwie `Shipping`, a nie jako stawka wysyłki Stripe.
 

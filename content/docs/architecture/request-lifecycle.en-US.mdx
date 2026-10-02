@@ -44,7 +44,7 @@ GET /en-US/products/pierscionek-z-perla
 2. Middleware runs in declared order. `withRequest` captures `getRequest().headers` into context and wraps the rest in a `.catch(handleRequestError)`. `withRateLimit(kind, limit)` counts the attempt. `authorized(permission?)` loads the session and checks the permission.
 3. The validator parses the input with the module's Zod schema.
 4. The handler queries D1 or calls a provider, schedules any audit and email work in the background, and returns plain data.
-5. Errors are normalized on the way out. `handleRequestError` first re-throws a TanStack `notFound()` unchanged (`isNotFound`), so a route answers 404 instead of a 500. It then re-throws an `AppError` with its code, maps a Better Auth API error to `AUTH_API_ERROR` with a translation key, maps a `ZodError` to `VALIDATION`, and turns anything else into `INTERNAL_ERROR` after logging the original.
+5. Errors are normalized on the way out. `handleRequestError` first re-throws a TanStack `notFound()` unchanged (`isNotFound`), so a route answers 404 instead of a 500. It then re-throws an `AppError` with its code and, when its message is a reason code such as `WISHLIST_FULL`, that reason, maps a Better Auth API error to `AUTH_API_ERROR` with a translation key, maps a `ZodError` to `VALIDATION`, and turns anything else into `INTERNAL_ERROR` after logging the original.
 6. The component receives the data, or an error whose message is a code. `useActionError()` turns that code into a translated string.
 
 ```text
