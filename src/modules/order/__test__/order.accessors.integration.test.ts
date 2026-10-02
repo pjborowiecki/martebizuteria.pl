@@ -72,7 +72,7 @@ beforeEach(() => {
     insert into user (id, name, email, created_at, updated_at) values ('u-anna', 'Anna Kowalska', 'anna@example.com', ${JANUARY}, ${JANUARY});
 
     insert into payment (id, status, transaction_id, created_at, updated_at) values
-      ('pay-paid', 'succeeded', 'pi_paid', ${JANUARY}, ${JANUARY}),
+      ('pay-paid', 'succeeded', 'cs_paid', ${JANUARY}, ${JANUARY}),
       ('pay-refunded', 'refunded', 'pi_refunded', ${JUNE}, ${JUNE}),
       ('pay-pending', 'pending', null, ${JUNE}, ${JUNE});
 
@@ -352,11 +352,11 @@ describe("single order lookups", () => {
     expect(await getAdminOrderCustomerStats("u-nobody")).toStrictEqual({ orderCount: 0, totalSpent: 0 })
   })
 
-  it("resolves the payment intent an admin refund would target", async () => {
+  it("resolves the Checkout Session an admin refund would target", async () => {
     expect(await getAdminOrderRefundTarget("o-unfulfilled")).toStrictEqual({
       paymentStatus: "succeeded",
       status: "processing",
-      transactionId: "pi_paid",
+      transactionId: "cs_paid",
     })
   })
 

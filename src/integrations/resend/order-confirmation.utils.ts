@@ -1,6 +1,7 @@
 import type Stripe from "stripe"
 
 import { stripe } from "~/src/integrations/stripe/stripe.server"
+import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
@@ -14,22 +15,6 @@ import { APP_URL } from "~/src/presentation/branding/app"
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import { type OrderConfirmationDetails, type OrderConfirmationItem } from "~/src/presentation/emails/order-confirmation"
 import { ROUTES } from "~/src/routes"
-
-const refId = (
-  ref:
-    | string
-    | {
-        id: string
-      }
-    | null
-    | undefined,
-): string | undefined => {
-  if (ref === null || ref === undefined) {
-    return undefined
-  }
-
-  return typeof ref === "string" ? ref : ref.id
-}
 
 export const formatEmailAddress = (addressRow: EmailAddressRow | null | undefined): string | undefined => {
   if (addressRow === null || addressRow === undefined) {
@@ -132,7 +117,7 @@ export const resolveStripePaymentMethodLabel = async (
 ): Promise<string> => {
   const labels = messages.paymentMethods
   const fallback = messages.paymentMethodUnknown
-  const paymentIntentId = refId(session.payment_intent)
+  const paymentIntentId = resolveStripeObjectId(session.payment_intent)
   if (paymentIntentId === undefined) {
     return fallback
   }

@@ -167,6 +167,8 @@ Fulfilment parses the metadata lines, calls `fulfillCheckout({ currency, lines, 
 
 `charge.refunded` and the dispute handlers only receive a PaymentIntent, so `resolveTransactionId` lists Checkout Sessions filtered by `payment_intent` with `limit: 1` to recover the session id the `payment` row is keyed by. If no session is found the handler logs and returns rather than failing.
 
+Stripe sends a related object either as its id or, when expanded, as the object itself. `resolveStripeObjectId` in `stripe.utils.ts` returns the id in both cases and `undefined` for `null`. `resolveTransactionId` uses it for the PaymentIntent, the order confirmation e-mail for the session's PaymentIntent, the saved card removal for the card's customer, and the admin refund in `refund-admin-order.ts` for the PaymentIntent of the Checkout Session it retrieves from `payment.transaction_id`, since Stripe refunds a PaymentIntent and not a session. See [Payments](/docs/features/payments).
+
 Note the deliberate asymmetry: a lost dispute refunds with `restock: false` and logs `review inventory manually`, because the goods are gone.
 
 ## Local development

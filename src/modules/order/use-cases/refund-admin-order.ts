@@ -4,6 +4,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
+import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getAdminOrderRefundTarget } from "~/src/modules/order/order.accessors"
@@ -31,11 +32,17 @@ export const refundAdminOrder = createServerFn({ method: "POST" })
       throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE)
     }
 
+    const session = await stripe.checkout.sessions.retrieve(transactionId)
+    const paymentIntentId = resolveStripeObjectId(session.payment_intent)
+    if (paymentIntentId === undefined) {
+      throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE)
+    }
+
     await stripe.refunds.create({
       metadata: {
         orderId,
       },
-      payment_intent: transactionId,
+      payment_intent: paymentIntentId,
     })
 
     return { ok: true, orderId }

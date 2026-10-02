@@ -80,7 +80,7 @@ Pozycje sesji są budowane z cen zwalidowanych na serwerze, plus dosłowna linia
 | `refunded_amount` | jednostki podrzędne, domyślnie `0`                                 |
 | `refunded_at`     | nullowalny znacznik czasu                                          |
 
-To, że `transaction_id` trzyma identyfikator sesji, a nie payment intentu, jest powodem, dla którego kilka handlerów webhooka wywołuje `resolveTransactionId(paymentIntent)` — funkcja listuje sesje filtrowane po `payment_intent` i bierze pierwszą.
+To, że `transaction_id` trzyma identyfikator sesji, a nie payment intentu, jest powodem, dla którego kilka handlerów webhooka wywołuje `resolveTransactionId(paymentIntent)` — funkcja listuje sesje filtrowane po `payment_intent` i bierze pierwszą. Zwrot z panelu potrzebuje odwrotnego odczytu: pobiera sesję, aby znaleźć PaymentIntent, który Stripe może zwrócić (zobacz [Zwroty z panelu](#zwroty-z-panelu)).
 
 Akcesory w `payment.accessors.ts`: `createPendingPayment`, `getPaymentByTransactionId`, `getPaymentContextByTransactionId` (dołącza `email` i `userId` z checkoutu) oraz `repointPayment` (przenosi wiersz z identyfikatora wygasłej sesji na nowy i aktualizuje kwotę).
 
@@ -206,7 +206,9 @@ uruchamia `stripe listen --latest --forward-to localhost:3000/api/webhooks/strip
 
 ## Zwroty z panelu
 
-`/admin/orders/$orderId` wczytuje zamówienie przez `getAdminOrderQuery`, a jego nagłówek pokazuje Drukuj, Zwrot, Anuluj zamówienie, Realizuj, Oznacz jako wysłane i Oznacz jako dostarczone, o ile dana akcja ma zastosowanie; pozycja Zwrot w menu wiersza na `/admin/orders` otwiera tę stronę. Zwrot prosi o potwierdzenie i wywołuje `refundAdminOrder` (`src/modules/order/use-cases/refund-admin-order.ts`), funkcję serwerową zabezpieczoną przez `authorized({ order: ["update"] })`. Sprawdza ona `canRefundAdminOrder` z `order.admin-actions.utils.ts` (opłacone, ani zwrócone, ani anulowane), a potem wywołuje `stripe.refunds.create({ metadata: { orderId }, payment_intent: transactionId })` z `transaction_id` wiersza płatności, który trzyma opisany wyżej identyfikator sesji Checkout.
+`/admin/orders/$orderId` wczytuje zamówienie przez `getAdminOrderQuery`, a jego nagłówek pokazuje Drukuj, Zwrot, Anuluj zamówienie, Realizuj, Oznacz jako wysłane i Oznacz jako dostarczone, o ile dana akcja ma zastosowanie; pozycja Zwrot w menu wiersza na `/admin/orders` otwiera tę stronę. Zwrot prosi o potwierdzenie i wywołuje `refundAdminOrder` (`src/modules/order/use-cases/refund-admin-order.ts`), funkcję serwerową zabezpieczoną przez `authorized({ order: ["update"] })`. Sprawdza ona `canRefundAdminOrder` z `order.admin-actions.utils.ts` (opłacone, ani zwrócone, ani anulowane) oraz to, czy wiersz płatności ma `transaction_id`. Ta kolumna trzyma opisany wyżej identyfikator sesji Checkout, którego Stripe nie przyjmuje jako `payment_intent`, więc funkcja pobiera sesję przez `stripe.checkout.sessions.retrieve(transactionId)` i odczytuje jej `payment_intent` przez `resolveStripeObjectId` (`src/integrations/stripe/stripe.utils.ts`), które zwraca identyfikator niezależnie od tego, czy Stripe przysłał go jako tekst, czy jako rozwinięty obiekt. Sesja bez PaymentIntent, na przykład checkout z `no_payment_required`, jest odrzucana. W przeciwnym razie funkcja wywołuje `stripe.refunds.create({ metadata: { orderId }, payment_intent: paymentIntentId })`, co zwraca całą kwotę.
+
+Brak zamówienia rzuca `ERROR_CODES.NOT_FOUND` z `ORDER_NOT_FOUND`. Każdy odrzucony zwrot rzuca `ERROR_CODES.CONFLICT` z `ORDER_INVALID_STATE` bez zlecania zwrotu w Stripe.
 
 `refundAdminOrder` niczego nie zapisuje w bazie. Statusy płatności i zamówienia, wpis audytu i zwrot do magazynu przychodzą z wynikowym zdarzeniem `charge.refunded`, tą samą ścieżką `refundOrder` co zwrot wykonany w panelu Stripe. Uprawnienie `order: ["refund"]` w `auth.access.ts` wciąż nie jest używane przez żadną funkcję serwerową.
 
