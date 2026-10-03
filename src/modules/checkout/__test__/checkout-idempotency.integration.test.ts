@@ -269,6 +269,34 @@ describe("fulfilment batch", () => {
     expect(readReservedQuantity(VARIANT_ID)).toBe(0)
   })
 
+  it("creates the order and releases every reservation for a cart of fifteen different pieces", async () => {
+    const context = resolvePendingCheckout(paymentRow, pendingCheckoutRow, TRANSACTION_ID)
+    if (context === undefined) {
+      throw new Error("expected a pending checkout")
+    }
+    const variantIds = Array.from({ length: 15 }, (_, index) => `var_many_${String(index)}`)
+    for (const variantId of variantIds) {
+      sqlite
+        .prepare("insert into inventory (id, variant_id, quantity_available, quantity_reserved, version) values (?, ?, 5, 1, 1)")
+        .run(`inv_${variantId}`, variantId)
+    }
+    const lines = variantIds.map((variantId) => ({ price: UNIT_PRICE, qty: 1, title: "Silver ring", variantId }))
+
+    const { orderId, statements } = prepareFulfillCheckoutBatch(context, {
+      ...fulfillInput,
+      lines,
+      totals: computeOrderTotals({ itemsSubtotal: UNIT_PRICE * lines.length, shippingTotal: 0 }),
+    })
+    await runDrizzleBatch(statements)
+
+    const itemCount = z
+      .object({ total: z.number() })
+      .parse(sqlite.prepare("select count(*) as total from order_item where order_id = ?").get(orderId)).total
+    expect(itemCount).toBe(15)
+    expect(variantIds.map((variantId) => readReservedQuantity(variantId))).toStrictEqual(variantIds.map(() => 0))
+    expect(readCheckoutStatus()).toBe("completed")
+  })
+
   it("creates only one order when two deliveries both pass the pending guard", async () => {
     const first = resolvePendingCheckout(paymentRow, pendingCheckoutRow, TRANSACTION_ID)
     const second = resolvePendingCheckout(paymentRow, pendingCheckoutRow, TRANSACTION_ID)

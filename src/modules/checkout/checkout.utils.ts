@@ -1,6 +1,7 @@
 import { and, eq, exists, notInArray, sql } from "drizzle-orm"
 import { type BatchItem } from "drizzle-orm/batch"
 
+import { insertRowChunks } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { address } from "~/src/modules/address/address.schema"
@@ -344,17 +345,19 @@ export const prepareFulfillCheckoutBatch = (
   const tail =
     lines.length > 0
       ? [
-          db.insert(orderItem).values(
-            lines.map((line) => ({
-              orderId,
-              quantity: line.qty,
-              subtotal: line.price * line.qty,
-              thumbnail: line.imageUrl,
-              title: line.title,
-              total: line.price * line.qty,
-              unitPrice: line.price,
-              variantId: line.variantId,
-            })),
+          ...insertRowChunks(orderItem, lines).map((chunk) =>
+            db.insert(orderItem).values(
+              chunk.map((line) => ({
+                orderId,
+                quantity: line.qty,
+                subtotal: line.price * line.qty,
+                thumbnail: line.imageUrl,
+                title: line.title,
+                total: line.price * line.qty,
+                unitPrice: line.price,
+                variantId: line.variantId,
+              })),
+            ),
           ),
           ...lines.map((line) =>
             db
