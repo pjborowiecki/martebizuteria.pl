@@ -3,6 +3,7 @@ import { Suspense } from "react"
 import { cleanup, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { CONTENT_PAGE_QUERY_STALE_MS } from "~/src/modules/content-page/content-page.constants"
 import { type ContentPage } from "~/src/modules/content-page/content-page.types"
 
 const remote = vi.hoisted(() => ({ page: undefined as ContentPage["view"] | undefined, requests: [] as string[] }))
@@ -16,6 +17,7 @@ vi.mock("~/src/modules/content-page/use-cases/get-content-page", () => ({
       return Promise.resolve(remote.page)
     },
     queryKey: ["content-page", handle, locale],
+    staleTime: CONTENT_PAGE_QUERY_STALE_MS,
   }),
 }))
 
