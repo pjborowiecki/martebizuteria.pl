@@ -211,6 +211,7 @@ export default defineConfig({
       return [
         ...cloudflare({
           inspectorPort: false,
+          persistState: process.env["CLOUDFLARE_ENV"] === "test" ? { path: ".wrangler/test" } : true,
           remoteBindings: process.env["CLOUDFLARE_ENV"] === "development",
           viteEnvironment: { name: "ssr" },
         }),

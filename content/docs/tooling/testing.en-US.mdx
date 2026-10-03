@@ -122,7 +122,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 `createTestD1Database` implements enough of the `D1Database` surface for Drizzle: `prepare`, `bind`, `all`, `raw`, `run` and `batch`. `batch` wraps the statements in `begin` / `commit` and rolls back on failure, which is what makes the checkout idempotency tests meaningful — D1's atomic batch is the constraint those tests rely on. The optional `onQuery` callback receives every `{ sql, params }` pair. `src/modules/product/__test__/product.accessors.integration.test.ts` collects them and asserts exactly how many statements a catalog read issues (`expect(queries).toHaveLength(3)`) and that no statement binds more than 100 parameters — that is how the N+1 and D1 parameter-limit regressions are caught.
 
-The tables themselves are created by the test with `sqlite.exec(...)`, matching the columns the migrations produce. Nothing applies the migration files automatically, so a schema change means updating both the migration and the `create table` statements in the tests that touch it.
+The tables themselves are created by the test with `sqlite.exec(...)`, matching the columns the migrations produce. The Vitest suites do not apply the migration files, so a schema change means updating both the migration and the `create table` statements in the tests that touch it. The end-to-end suite does apply the whole history to a fresh database on every run, which is what keeps it replayable.
 
 Separately, every module has a `*.schema.test.ts` in the `node` project that reads the Drizzle table metadata with `getTableConfig` and asserts the table name, the full ordered column list, the foreign keys with their `onDelete` behaviour and the declared relations. Those tests are the reason a column rename cannot land silently.
 
@@ -147,11 +147,48 @@ Coverage includes `src/**/*.{ts,tsx}` and excludes tests, `__test__` folders, `*
 
 Cover real behaviour. If a branch cannot be reached, delete the branch rather than stubbing a global to reach it.
 
+## End-to-end tests
+
+Playwright drives the built Worker in Chromium and WebKit. The suite lives in `e2e/` and is configured in `playwright.config.ts`:
+
+```sh
+bun run test:e2e:install  # once: the Chromium and WebKit browsers
+bun run test:e2e          # resets the test database, builds the test Worker, serves it and runs every spec
+bun run test:e2e:pr       # the same on Chromium only, as CI runs it on pull requests
+bun run test:e2e:smoke    # e2e/specs/smoke.spec.ts on Chromium
+bun run test:e2e:ui       # Playwright UI mode
+```
+
+Outside CI, Playwright's `webServer` runs `db:reset:test`, `build:test` and `start:test` itself and reuses a server already listening on port 3000; in CI the workflow prepares the database and the build, and Playwright only starts the server.
+
+### The test Worker
+
+`wrangler.jsonc` has a `test` environment whose `main` is `src/platform/testing/worker.ts` and whose D1, KV, R2, Durable Object and audit queue are all local (`remote: false`), persisted under `.wrangler/test`. `bun run build:test` builds it with `CLOUDFLARE_ENV=test` and `--mode test`, so every secret comes from the committed `.env.test`.
+
+The test Worker installs `src/platform/testing/mocks/providers.ts` before it loads the application, so nothing leaves the machine:
+
+- **Resend.** Requests to `api.resend.com` are captured instead of sent. `GET /__test/emails?to=<address>` returns the captured messages for a recipient.
+- **Stripe.** Requests to `api.stripe.com` reach an in-memory emulator of the calls the server makes: Checkout Sessions (create, retrieve, list, expire), coupons, customers, payment intents, payment methods and refunds. Any other Stripe call answers 400, so new Stripe usage fails a spec instead of passing silently. `GET /__test/stripe/checkout-sessions?email=<address>` lists the sessions opened for a shopper, and `POST /__test/stripe/checkout-sessions/<id>/complete` marks one paid and returns a `checkout.session.completed` event signed with `STRIPE_WEBHOOK_SECRET`.
+
+A spec posts that signed event to `/api/webhooks/stripe` like Stripe would, so the webhook route verifies the signature and fulfils the order through the real code. Only the card form itself, Stripe.js, is not exercised.
+
+### Data
+
+`bun run db:reset:test` deletes `.wrangler/test`, applies the whole migration history with `wrangler d1 migrations apply --local`, and runs `scripts/seed-test.ts`. The seed loads the same catalog files as `db:seed:preview` (two necklaces with stock, categories, collections, attributes and delivery methods) and two verified accounts from `e2e/data/accounts.ts`: `admin@marte.example.test` and `customer@marte.example.test`.
+
+### Writing specs
+
+- Import `test` and `expect` from `e2e/fixtures/test.ts`. Its automatic fixtures block every request that does not go to the local app (images get a 1×1 PNG, everything else is aborted) and fail a test whose pages log a missing or malformed translation.
+- Each test sends its own `cf-connecting-ip`, so the per-IP rate limits on sign-in, sign-up and checkout never couple tests together.
+- The `setup` project signs the seeded admin and customer in once and stores their sessions in `playwright/.auth/`; use them with `test.use({ storageState: STORAGE_STATE.admin })`. Never sign out or change the password of a seeded account in a spec, because every worker shares those sessions.
+- A spec that changes an account, an order or a coupon creates its own: `registerCustomer` signs up and verifies a new customer, `uniqueEmail` and `uniqueCode` name the data, and `placeOrder` buys a product and pays for it through the emulator. Specs run fully parallel and must not depend on counts other specs can change.
+- Wait for state with web-first assertions and `expect.poll`, never fixed timeouts. Page objects in `e2e/pages/` wait for hydration before a spec interacts with a page.
+
 ## Conventions
 
 - One `__test__/` folder per feature, beside the code: `src/modules/order/__test__/order.accessors.integration.test.ts`.
 - Database suites end in `*.integration.test.ts`; anything rendering React ends in `*.component.test.tsx`; everything else is a plain `*.test.ts`.
-- Mock external providers. Stripe, Resend, InPost and R2 are never called from a test.
+- Mock external providers. Stripe, Resend, InPost and R2 are never called from a test; the end-to-end suite talks to the emulators in the test Worker instead.
 - Fixtures are local to the test file or the feature's `__test__` folder. Shared infrastructure — and only infrastructure — belongs in `src/platform/testing/`.
 
 ## Related pages

@@ -103,9 +103,9 @@ Zestaw pokrywa każdą instrukcję, gałąź, funkcję i linię, a progi go przy
 
 `autoUpdate` ma wartość `false`, więc progi zmieniają się wyłącznie wtedy, gdy ktoś je edytuje.
 
-## Brak testów przeglądarkowych
+## Testy przeglądarkowe
 
-Nie ma pakietu Playwright ani katalogu `e2e/` — `vite.config.ts` i `tsconfig.json` nadal wykluczają tę ścieżkę, ale nic tam nie ma. Przepływy przechodzące przez przeglądarkę, Stripe'a i webhook (prawdziwa płatność kartą, prawdziwy link weryfikacyjny) nie są pokryte automatycznie.
+Zestaw Playwrighta w `e2e/` uruchamia zbudowanego Workera w Chromium i WebKicie na lokalnej bazie D1 utworzonej z całej historii migracji. Osobny testowy Worker, `src/platform/testing/worker.ts`, przechwytuje e-maile Resend, emuluje w pamięci API Stripe'a i podpisuje zdarzenia `checkout.session.completed` testowym sekretem webhooka, więc specyfikacja obejmuje cały zakup: cztery kroki checkoutu, rezerwację stanu, podpisany webhook, realizację, stronę i e-mail z potwierdzeniem, historię zamówień klienta i wysyłkę zamówienia przez administratora. Pokryte są też rejestracja z prawdziwym linkiem weryfikacyjnym, przekierowania z chronionych tras, kupony, wyszukiwarka, koszyk i oba języki. Poza zasięgiem zostaje tylko formularz karty samego Stripe'a. [Testowanie](/docs/tooling/testing#testy-end-to-end) opisuje zestaw i pisanie specyfikacji.
 
 ## CI
 
@@ -118,7 +118,9 @@ Następnie, po kolei:
 3. `bun run build:preview`
 4. Upload `coverage/` jako artefaktu
 
-`.github/workflows/deploy-preview.yml` i `deploy-production.yml` używają tej samej akcji setup i ponownie uruchamiają pełny `check` przed buildem, więc nie zostanie wdrożone nic, co CI by odrzuciło.
+Zadanie `e2e` tego samego przepływu uruchamia zestaw Playwrighta w Chromium przez `e2e-reusable.yml`, a `e2e-full.yml` uruchamia go w WebKicie po każdym pushu do `main` i w obu przeglądarkach w każdy poniedziałek.
+
+`.github/workflows/deploy-preview.yml` i `deploy-production.yml` używają tej samej akcji setup i ponownie uruchamiają pełny `check` przed buildem.
 
 ## Lokalna bramka
 

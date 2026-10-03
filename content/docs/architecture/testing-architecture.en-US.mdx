@@ -103,9 +103,9 @@ The suite covers every statement, branch, function and line, and the thresholds 
 
 `autoUpdate` is `false`, so the thresholds only move when someone edits them.
 
-## No browser tests
+## Browser tests
 
-There is no Playwright suite and no `e2e/` directory — `vite.config.ts` and `tsconfig.json` still exclude the path, but nothing is there. Flows that cross the browser, Stripe and the webhook (a real card payment, a real verification link) are not covered automatically.
+The Playwright suite in `e2e/` runs the built Worker in Chromium and WebKit against a local D1 database created from the full migration history. A dedicated test Worker, `src/platform/testing/worker.ts`, captures Resend email and emulates the Stripe API in memory, and signs `checkout.session.completed` events with the test webhook secret, so a spec covers a whole purchase: the four checkout steps, the stock reservation, the signed webhook, fulfilment, the confirmation page and email, the customer's order history and the admin's fulfilment. Sign-up with the real verification link, protected-route redirects, coupons, search, the cart and both locales are covered too. Only Stripe's own card form is outside it. [Testing](/docs/tooling/testing#end-to-end-tests) describes the harness and how to write specs.
 
 ## CI
 
@@ -118,7 +118,9 @@ Then, in order:
 3. `bun run build:preview`
 4. Upload `coverage/` as an artifact
 
-`.github/workflows/deploy-preview.yml` and `deploy-production.yml` use the same setup action and re-run the full check before building, so nothing is deployed that CI would have rejected.
+The same workflow's `e2e` job runs the Playwright suite on Chromium through `e2e-reusable.yml`, and `e2e-full.yml` runs it on WebKit after every push to `main` and on both browsers every Monday.
+
+`.github/workflows/deploy-preview.yml` and `deploy-production.yml` use the same setup action and re-run the full check before building.
 
 ## Local gate
 
