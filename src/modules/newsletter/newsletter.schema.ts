@@ -27,6 +27,8 @@ export const newsletterSubscriber = sqliteTable(
     uniqueIndex("newsletter_subscriber_email_unique").on(table.email),
     uniqueIndex("newsletter_subscriber_token_unique").on(table.token),
     index("newsletter_subscriber_status_idx").on(table.status),
+    index("newsletter_subscriber_createdAt_idx").on(table.createdAt),
+    index("newsletter_subscriber_userId_idx").on(table.userId),
   ],
 )
 

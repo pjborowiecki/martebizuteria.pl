@@ -113,11 +113,14 @@ describe("checkout table", () => {
     expect(columnByName.get("updated_at")?.onUpdateFn?.()).toBeInstanceOf(Date)
   })
 
-  it("indexes the three lookups a checkout is read by", () => {
+  it("indexes the lookups a checkout is read by and every key that points at an address or delivery method", () => {
     expect(config.indexes.map((index) => index.config.columns.map((column) => ("name" in column ? column.name : column)))).toStrictEqual([
       ["cart_id"],
       ["user_id"],
       ["status"],
+      ["shipping_address_id"],
+      ["billing_address_id"],
+      ["delivery_method_id"],
     ])
   })
 })

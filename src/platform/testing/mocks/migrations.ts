@@ -26,3 +26,12 @@ export const applyMigration = (sqlite: DatabaseSync, migration: (typeof MIGRATIO
     sqlite.exec(statement)
   }
 }
+
+export const applyMigrationHistory = (sqlite: DatabaseSync): void => {
+  const history = Object.entries(MIGRATION_SQL).toSorted(([left], [right]) => left.localeCompare(right))
+  for (const [, sql] of history) {
+    for (const statement of sql.split(STATEMENT_BREAKPOINT)) {
+      sqlite.exec(statement)
+    }
+  }
+}

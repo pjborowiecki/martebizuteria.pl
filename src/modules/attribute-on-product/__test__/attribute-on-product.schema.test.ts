@@ -1,5 +1,5 @@
 import { getTableName } from "drizzle-orm"
-import { getTableConfig } from "drizzle-orm/sqlite-core"
+import { SQLiteColumn, SQLiteSyncDialect, getTableConfig } from "drizzle-orm/sqlite-core"
 import { describe, expect, it } from "vite-plus/test"
 
 import { ATTRIBUTE_ON_PRODUCT_DEFAULT_RANK } from "~/src/modules/attribute-on-product/attribute-on-product.constants"
@@ -66,22 +66,28 @@ describe("attribute_on_product table", () => {
     ])
   })
 
-  it("allows one value per attribute within a scope", () => {
+  it("allows one value per attribute within a scope, counting a product-level value as its own scope", () => {
+    const dialect = new SQLiteSyncDialect()
     const unique = config.indexes.filter((entry) => entry.config.unique)
 
     expect(
       unique.map((entry) => ({
-        columns: entry.config.columns.map((column) => ("name" in column ? column.name : column)),
+        columns: entry.config.columns.map((column) => (column instanceof SQLiteColumn ? column.name : dialect.sqlToQuery(column).sql)),
         name: entry.config.name,
       })),
-    ).toStrictEqual([{ columns: ["product_id", "attribute_id", "variant_id"], name: "attribute_on_product_scope_attribute_uidx" }])
+    ).toStrictEqual([
+      {
+        columns: ["product_id", "attribute_id", `coalesce("attribute_on_product"."variant_id", '')`],
+        name: "attribute_on_product_scope_attribute_uidx",
+      },
+    ])
   })
 
-  it("indexes both scope lookups", () => {
+  it("indexes the lookups the scope index does not lead with", () => {
     const plain = config.indexes.filter((entry) => !entry.config.unique)
 
     expect(plain.map((entry) => entry.config.name)).toStrictEqual([
-      "attribute_on_product_productId_idx",
+      "attribute_on_product_attributeId_idx",
       "attribute_on_product_variantId_idx",
     ])
   })

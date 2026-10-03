@@ -139,8 +139,9 @@ describe("order table", () => {
         unique: index.config.unique,
       })),
     ).toStrictEqual([
-      { columns: ["user_id"], name: "order_userId_idx", unique: false },
       { columns: ["user_id", "status"], name: "order_userId_status_idx", unique: false },
+      { columns: ["payment_id"], name: "order_paymentId_idx", unique: false },
+      { columns: ["delivery_method_id"], name: "order_deliveryMethodId_idx", unique: false },
       { columns: ["status"], name: "order_status_idx", unique: false },
       { columns: ["created_at"], name: "order_createdAt_idx", unique: false },
       { columns: ["checkout_id"], name: "order_checkoutId_unique", unique: true },

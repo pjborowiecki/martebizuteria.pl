@@ -43,6 +43,9 @@ export const checkout = sqliteTable(
     index("checkout_cartId_idx").on(table.cartId),
     index("checkout_userId_idx").on(table.userId),
     index("checkout_status_idx").on(table.status),
+    index("checkout_shippingAddressId_idx").on(table.shippingAddressId),
+    index("checkout_billingAddressId_idx").on(table.billingAddressId),
+    index("checkout_deliveryMethodId_idx").on(table.deliveryMethodId),
   ],
 )
 

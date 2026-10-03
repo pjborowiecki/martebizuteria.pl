@@ -69,6 +69,7 @@ describe("wishlist_item table", () => {
     expect(indexes).toStrictEqual([
       { columns: ["user_id", "product_id"], name: "wishlist_item_userId_productId_unique", unique: true },
       { columns: ["user_id", "created_at"], name: "wishlist_item_userId_createdAt_idx", unique: false },
+      { columns: ["product_id"], name: "wishlist_item_productId_idx", unique: false },
     ])
   })
 })

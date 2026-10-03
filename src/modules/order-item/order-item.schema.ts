@@ -27,7 +27,7 @@ export const orderItem = sqliteTable(
     variantTitle: text("variant_title", { length: 512 }),
     ...timestamps(),
   },
-  (table) => [index("order_item_orderId_idx").on(table.orderId)],
+  (table) => [index("order_item_orderId_idx").on(table.orderId), index("order_item_variantId_idx").on(table.variantId)],
 )
 
 export const orderItemRelations = relations(orderItem, ({ one }) => ({

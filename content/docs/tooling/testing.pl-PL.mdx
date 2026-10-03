@@ -59,6 +59,7 @@ Ponieważ `test.env` wczytuje `.env.test`, żaden test nie potrzebuje prawdziwyc
 | `setup.ts`                       | Matchery jest-dom, atrapy obserwatorów DOM, `matchMedia` oraz proxy na `createServerFn`           |
 | `vitest-env.d.ts`                | Referencję `vite-plus/test/globals` i typy matcherów jest-dom na interfejsie `Matchers` Vitesta   |
 | `mocks/d1.ts`                    | `createTestD1Database(sqlite, onQuery?)` — `D1Database` oparty na `node:sqlite`                   |
+| `mocks/migrations.ts`            | `applyMigration` dla jednej migracji i `applyMigrationHistory`, które buduje schemat produkcyjny  |
 | `mocks/intersection-observer.ts` | `StubIntersectionObserver` — puste `observe`, `unobserve`, `disconnect`, `takeRecords`            |
 | `mocks/resize-observer.ts`       | `StubResizeObserver` — przy `observe` zgłasza stały prostokąt 1024 × 768                          |
 | `lib/render.tsx`                 | `renderWithProviders`, `TestProviders`, `createTestRouter`                                        |

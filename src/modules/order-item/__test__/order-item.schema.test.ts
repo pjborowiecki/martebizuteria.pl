@@ -87,14 +87,17 @@ describe("order_item table", () => {
     ])
   })
 
-  it("indexes the order so a detail page reads its lines in one lookup", () => {
+  it("indexes the order so a detail page reads its lines in one lookup, and the variant so removing one never scans every line", () => {
     const indexes = config.indexes.map((index) => ({
       columns: index.config.columns.map((column) => ("name" in column ? column.name : column)),
       name: index.config.name,
       unique: index.config.unique,
     }))
 
-    expect(indexes).toStrictEqual([{ columns: ["order_id"], name: "order_item_orderId_idx", unique: false }])
+    expect(indexes).toStrictEqual([
+      { columns: ["order_id"], name: "order_item_orderId_idx", unique: false },
+      { columns: ["variant_id"], name: "order_item_variantId_idx", unique: false },
+    ])
   })
 
   it("does not reference the product it was bought from, so deleting a product keeps history", () => {
