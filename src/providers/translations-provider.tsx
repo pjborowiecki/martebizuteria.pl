@@ -32,7 +32,11 @@ export const TranslationsProvider = ({
   })
 
   useEffect(() => {
-    document.cookie = serializeCookie({ name: I18N.COOKIE_NAME, value: locale })
+    document.cookie = serializeCookie({
+      name: I18N.COOKIE_NAME,
+      options: { secure: globalThis.location.protocol === "https:" },
+      value: locale,
+    })
   }, [locale])
 
   const namespaces = useMatches({

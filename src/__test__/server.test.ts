@@ -58,7 +58,7 @@ class TestEnv implements Env {
 
 const env = new TestEnv()
 
-const fetchPath = async (path: string) => {
+const fetchPath = async (path: string, origin = "https://marte.test") => {
   const context = new TestExecutionContext()
   const { fetch: handleFetch } = server
 
@@ -66,7 +66,7 @@ const fetchPath = async (path: string) => {
     throw new Error("the worker registered no fetch handler")
   }
 
-  const answer: unknown = await Reflect.apply(handleFetch, server, [new Request(`https://marte.test${path}`), env, context])
+  const answer: unknown = await Reflect.apply(handleFetch, server, [new Request(`${origin}${path}`), env, context])
 
   if (!(answer instanceof Response)) {
     throw new Error("the worker did not answer the request with a response")
@@ -149,6 +149,19 @@ describe("worker locale handling", () => {
 
     expect(response.headers.get("set-cookie")).toContain(`${I18N.COOKIE_NAME}=en-US`)
     expect(entry.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("marks the locale cookie Secure for a visit over HTTPS", async () => {
+    const { response } = await fetchPath("/en-US/about")
+
+    expect(response.headers.get("set-cookie")).toContain("Secure")
+  })
+
+  it("keeps the locale cookie usable over plain HTTP, where browsers drop Secure cookies", async () => {
+    const { response } = await fetchPath("/en-US/about", "http://127.0.0.1:3000")
+
+    expect(response.headers.get("set-cookie")).toContain(`${I18N.COOKIE_NAME}=en-US`)
+    expect(response.headers.get("set-cookie")).not.toContain("Secure")
   })
 
   it("keeps the rendered page intact while adding the locale cookie", async () => {

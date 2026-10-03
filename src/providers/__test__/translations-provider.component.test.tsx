@@ -123,6 +123,21 @@ describe("TranslationsProvider locale", () => {
     expect(document.cookie).toContain(`${I18N.COOKIE_NAME}=pl-PL`)
   })
 
+  it("only marks the locale cookie Secure on a page served over HTTPS", async () => {
+    const written: string[] = []
+    vi.spyOn(Document.prototype, "cookie", "set").mockImplementation((value: string) => {
+      written.push(value)
+    })
+    vi.stubGlobal("location", { pathname: "/en-US", protocol: "https:" })
+    renderProvider(<Probe messageKey="yes" namespace="common" />)
+    await screen.findByTestId("probe")
+
+    expect(written.at(-1)).toContain(`${I18N.COOKIE_NAME}=en-US`)
+    expect(written.at(-1)).toContain("Secure")
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
   it("formats times in the store timezone rather than the browser one", async () => {
     renderProvider(<ClockProbe />)
 
