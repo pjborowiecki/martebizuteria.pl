@@ -12,6 +12,7 @@ const MIGRATION_SQL = import.meta.glob<string>("../../../integrations/drizzle-or
 
 export const MIGRATION = {
   CONTENT_PAGES: "20261002120000_content_pages",
+  ORDER_ITEM_PRODUCT_BACKFILL: "20261003120000_order_item_product_backfill",
   STOREFRONT_SEARCH: "20261002100000_storefront_search",
 } as const
 

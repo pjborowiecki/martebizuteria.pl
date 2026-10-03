@@ -102,7 +102,7 @@ Zakres własny to druga funkcja serwerowa. `getDashboardChartRange` przyjmuje `{
 
 `recentOrdersQuery` wybiera najnowsze `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` zamówień, dołączając lewostronnie `user` dla nazwy klienta i `payment` dla statusu, a migawka mapuje każdy wiersz przez `toAdminOrderListItem` — ten sam mapper, którego używa siatka zamówień, więc plakietki są spójne. Zwróć uwagę, że przekazuje `itemCount: 0`, więc lista ostatnich zamówień nigdy nie pokazuje liczby pozycji.
 
-## Najlepsze produkty są zawsze puste
+## Najlepsze produkty
 
 `topProductsQuery` grupuje `order_item` po `product_id`:
 
@@ -116,13 +116,13 @@ Zakres własny to druga funkcja serwerowa. `getDashboardChartRange` przyjmuje `{
 .groupBy(orderItem.productId)
 ```
 
-a migawka odrzuca potem wiersze z pustym identyfikatorem:
+a migawka odrzuca wiersze z pustym identyfikatorem, który mają już tylko pozycje, których wariant później usunięto:
 
 ```ts
 const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
 ```
 
-Ale `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) nigdy nie zapisuje `order_item.product_id` — wstawia tylko `orderId`, `quantity`, `subtotal`, `thumbnail`, `title`, `total`, `unitPrice` i `variantId`. Każda pozycja zamówienia ma więc `product_id = NULL`, każdy zgrupowany wiersz jest odfiltrowany, a **`DashboardTopProducts` renderuje stan pusty niezależnie od tego, ile sprzedano**. Realizacja zapisuje wprawdzie `orderItem.thumbnail`, które zapytanie odczytuje przez `max(...)`, ale wiersz, który by je niósł, zostaje wcześniej odfiltrowany.
+`prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) zapisuje produkt każdej pozycji, odczytując go przez wariant pozycji w tym samym insercie, a migracja `20261003120000_order_item_product_backfill.sql` uzupełniła go w pozycjach zapisanych wcześniej, których wariant wciąż istniał. Miniaturę zapytanie odczytuje przez `max(...)` ze zgrupowanych pozycji.
 
 `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` to 4. `resolveTopProductName` i `resolveTopProductCategoryLabel` wybierają język z map tytułów w JSON, z fallbackiem na zapisane `order_item.title`.
 

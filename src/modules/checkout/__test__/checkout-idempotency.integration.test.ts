@@ -100,6 +100,7 @@ beforeEach(() => {
       drop table if exists payment;
       drop table if exists checkout;
       drop table if exists inventory;
+      drop table if exists product_variant;
 
       create table checkout (id text primary key, billing_company_name text, billing_nip text, status text not null, email text, user_id text, customer_note text, delivery_method_id text, locker_id text, created_at integer, updated_at integer);
       create table payment (id text primary key, checkout_id text, status text, transaction_id text unique, created_at integer, updated_at integer);
@@ -119,6 +120,7 @@ beforeEach(() => {
         thumbnail text, metadata text, quantity integer, unit_price integer, subtotal integer, total integer,
         created_at integer, updated_at integer
       );
+      create table product_variant (id text primary key, product_id text not null);
       create table inventory (
         id text primary key, variant_id text, quantity_available integer, quantity_reserved integer,
         version integer, created_at integer, updated_at integer
@@ -131,6 +133,7 @@ beforeEach(() => {
 
       insert into checkout (id, status, email) values ('${CHECKOUT_ID}', 'pending', 'buyer@example.com');
       insert into payment (id, checkout_id, status, transaction_id) values ('pay_1', '${CHECKOUT_ID}', 'pending', '${TRANSACTION_ID}');
+      insert into product_variant (id, product_id) values ('${VARIANT_ID}', 'prod_onyx');
       insert into inventory (id, variant_id, quantity_available, quantity_reserved, version)
         values ('inv_1', '${VARIANT_ID}', 8, ${RESERVED_QTY}, 1);
     `)
@@ -267,6 +270,21 @@ describe("fulfilment batch", () => {
     await runDrizzleBatch(prepareFulfillCheckoutBatch(context, fulfillInput).statements)
 
     expect(readReservedQuantity(VARIANT_ID)).toBe(0)
+  })
+
+  it("records which product each order line was bought from", async () => {
+    const context = resolvePendingCheckout(paymentRow, pendingCheckoutRow, TRANSACTION_ID)
+    if (context === undefined) {
+      throw new Error("expected a pending checkout")
+    }
+
+    const { orderId, statements } = prepareFulfillCheckoutBatch(context, fulfillInput)
+    await runDrizzleBatch(statements)
+
+    const lines = z
+      .array(z.object({ product_id: z.string().nullable(), variant_id: z.string() }))
+      .parse(sqlite.prepare("select product_id, variant_id from order_item where order_id = ?").all(orderId))
+    expect(lines).toStrictEqual([{ product_id: "prod_onyx", variant_id: VARIANT_ID }])
   })
 
   it("creates the order and releases every reservation for a cart of fifteen different pieces", async () => {

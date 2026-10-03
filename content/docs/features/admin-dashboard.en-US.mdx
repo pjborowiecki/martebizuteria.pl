@@ -102,7 +102,7 @@ A custom range is a second server function. `getDashboardChartRange` takes `{ st
 
 `recentOrdersQuery` selects the latest `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` orders, left-joining `user` for the customer name and `payment` for the status, and the snapshot maps each row through `toAdminOrderListItem` — the same mapper the orders grid uses, so the badges match. Note it passes `itemCount: 0`, so the recent-orders list never shows an item count.
 
-## Top products is always empty
+## Top products
 
 `topProductsQuery` groups `order_item` by `product_id`:
 
@@ -116,13 +116,13 @@ A custom range is a second server function. `getDashboardChartRange` takes `{ st
 .groupBy(orderItem.productId)
 ```
 
-and the snapshot then drops rows with a null id:
+and the snapshot drops rows with a null id, which only lines whose variant was later deleted still have:
 
 ```ts
 const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
 ```
 
-But `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) never writes `order_item.product_id` — it inserts only `orderId`, `quantity`, `subtotal`, `thumbnail`, `title`, `total`, `unitPrice` and `variantId`. Every order item therefore has `product_id = NULL`, every grouped row is filtered out, and **`DashboardTopProducts` renders its empty state no matter how much has been sold**. Fulfilment does write `orderItem.thumbnail`, which the query reads with `max(...)`, but the row that would carry it is filtered out first.
+`prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) records each line's product by looking it up through the line's variant in the same insert, and the migration `20261003120000_order_item_product_backfill.sql` filled in the lines written before that whose variant still existed. The thumbnail is read with `max(...)` from the grouped lines.
 
 `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` is 4. `resolveTopProductName` and `resolveTopProductCategoryLabel` pick the locale out of the JSON title maps, falling back to the stored `order_item.title`.
 
