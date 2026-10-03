@@ -222,8 +222,8 @@ describe("checkout update persistence boundaries", () => {
     await updateCheckoutDelivery(checkoutId, separateBilling)
 
     const updated = readCheckout(checkoutId)
-    expect(readAddress(updated.shipping_address_id)).toMatchObject({ address1: shipping.address1, user_id: "user-1" })
-    expect(readAddress(updated.billing_address_id)).toMatchObject({ address1: separateBilling.billingAddress1, user_id: "user-1" })
+    expect(readAddress(updated.shipping_address_id)).toMatchObject({ address1: shipping.address1, user_id: null })
+    expect(readAddress(updated.billing_address_id)).toMatchObject({ address1: separateBilling.billingAddress1, user_id: null })
     expect(countAddresses()).toBe(2)
   })
 

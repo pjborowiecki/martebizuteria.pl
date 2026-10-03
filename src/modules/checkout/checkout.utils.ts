@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, exists, notInArray, sql } from "drizzle-orm"
 import { type BatchItem } from "drizzle-orm/batch"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -201,7 +201,12 @@ const preparePendingCheckoutAddressUpsert = (checkoutId: string, values: typeof 
     .insert(address)
     .select(pendingAddress)
     .onConflictDoUpdate({
-      set: { ...values, address2: values.address2 ?? sql`NULL`, province: values.province ?? sql`NULL` },
+      set: {
+        ...values,
+        address2: values.address2 ?? sql`NULL`,
+        province: values.province ?? sql`NULL`,
+        userId: values.userId ?? sql`NULL`,
+      },
       target: address.id,
     })
 }
@@ -230,24 +235,37 @@ export const prepareUpdateCheckoutDeliveryBatch = (
     phone: checkoutValues.phone,
     postalCode: checkoutValues.postalCode,
     province: checkoutValues.province,
-    userId: context.userId,
+    userId: checkoutValues.saveShippingAddress === true ? context.userId : undefined,
   }
+  const billingValues =
+    billingAddressId === shippingAddressId
+      ? undefined
+      : {
+          address1: checkoutValues.billingAddress1 ?? "",
+          city: checkoutValues.billingCity ?? "",
+          countryCode: checkoutValues.billingCountryCode ?? "",
+          firstName: checkoutValues.billingFirstName ?? "",
+          id: billingAddressId,
+          isDefault: checkoutValues.saveBillingAddress ?? false,
+          lastName: checkoutValues.billingLastName ?? "",
+          phone: checkoutValues.phone,
+          postalCode: checkoutValues.billingPostalCode ?? "",
+          userId: checkoutValues.saveBillingAddress === true ? context.userId : undefined,
+        }
   const statements: [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] = [preparePendingCheckoutAddressUpsert(context.id, shippingValues)]
 
-  if (billingAddressId !== shippingAddressId) {
-    const billingValues = {
-      address1: checkoutValues.billingAddress1 ?? "",
-      city: checkoutValues.billingCity ?? "",
-      countryCode: checkoutValues.billingCountryCode ?? "",
-      firstName: checkoutValues.billingFirstName ?? "",
-      id: billingAddressId,
-      isDefault: checkoutValues.saveBillingAddress ?? false,
-      lastName: checkoutValues.billingLastName ?? "",
-      phone: checkoutValues.phone,
-      postalCode: checkoutValues.billingPostalCode ?? "",
-      userId: context.userId,
-    }
+  if (billingValues !== undefined) {
     statements.push(preparePendingCheckoutAddressUpsert(context.id, billingValues))
+  }
+
+  if (context.userId !== null && (shippingValues.isDefault || billingValues?.isDefault === true)) {
+    const otherDefaultAddresses = and(
+      eq(address.userId, context.userId),
+      eq(address.isDefault, true),
+      notInArray(address.id, [shippingAddressId, billingAddressId]),
+      exists(db.select({ id: checkout.id }).from(checkout).where(pendingCheckout)),
+    )
+    statements.push(db.update(address).set({ isDefault: false }).where(otherDefaultAddresses))
   }
 
   statements.push(
