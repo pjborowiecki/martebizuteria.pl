@@ -1,5 +1,5 @@
 import { getTableName } from "drizzle-orm"
-import { type SQLiteTable, getTableConfig } from "drizzle-orm/sqlite-core"
+import { SQLiteColumn, type SQLiteTable, getTableConfig } from "drizzle-orm/sqlite-core"
 import { type DatabaseSync } from "node:sqlite"
 
 const literal = (value: unknown): string | undefined => {
@@ -55,6 +55,22 @@ export const createTableStatement = (table: SQLiteTable): string => {
   return `create table "${getTableName(table)}" (${definitions.join(", ")})`
 }
 
+export const createUniqueIndexStatements = (table: SQLiteTable): string[] => {
+  const config = getTableConfig(table)
+  const tableName = getTableName(table)
+  const uniqueColumns = config.columns.filter((column) => column.isUnique).map((column) => [column.name])
+  const uniqueIndexes = config.indexes
+    .filter((index) => index.config.unique)
+    .map((index) => index.config.columns)
+    .filter((columns): columns is SQLiteColumn[] => columns.every((column) => column instanceof SQLiteColumn))
+    .map((columns) => columns.map((column) => column.name))
+
+  return [...uniqueColumns, ...uniqueIndexes].map(
+    (columns) =>
+      `create unique index "${tableName}_${columns.join("_")}_unique" on "${tableName}" (${columns.map((name) => `"${name}"`).join(", ")})`,
+  )
+}
+
 export const createTables = (sqlite: DatabaseSync, tables: readonly SQLiteTable[]): void => {
   sqlite.exec("pragma foreign_keys = off")
   for (const table of tables) {
@@ -63,6 +79,9 @@ export const createTables = (sqlite: DatabaseSync, tables: readonly SQLiteTable[
 
   for (const table of tables) {
     sqlite.exec(createTableStatement(table))
+    for (const statement of createUniqueIndexStatements(table)) {
+      sqlite.exec(statement)
+    }
   }
   sqlite.exec("pragma foreign_keys = on")
 }

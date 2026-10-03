@@ -1,7 +1,8 @@
 import { type SQL, and, eq, inArray, notInArray, sql } from "drizzle-orm"
 
-import { type DrizzleBatchStatement, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
+import { type DrizzleBatchStatement, insertRowChunks, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { notInJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { resolvePrimaryCategoryId } from "~/src/modules/category-on-product/category-on-product.utils"
@@ -75,32 +76,47 @@ export const findTakenSkus = async (skus: readonly string[], excludeProductId?: 
 
 export const replaceProductCatalog = async (productId: string, payload: ProductCatalogReplacePayload): Promise<void> => {
   const { inventoryRows, optionOnVariantRows, optionRows, optionValueRows, variantRows } = payload
+  const productVariants = eq(productVariant.productId, productId)
+  const keptVariantIds = variantRows.map((row) => row.id)
+  const droppedVariants = and(productVariants, notInJsonList(productVariant.id, keptVariantIds))
 
-  const statements: DrizzleBatchStatement[] = [
+  await runDrizzleBatch([
     db.delete(productOption).where(eq(productOption.productId, productId)),
-    db.delete(productVariant).where(eq(productVariant.productId, productId)),
-  ]
-
-  if (optionRows.length > 0) {
-    statements.push(db.insert(productOption).values(optionRows))
-  }
-
-  if (optionValueRows.length > 0) {
-    statements.push(db.insert(productOptionValue).values(optionValueRows))
-  }
-
-  if (variantRows.length > 0) {
-    statements.push(db.insert(productVariant).values(variantRows))
-  }
-
-  if (inventoryRows.length > 0) {
-    statements.push(db.insert(inventory).values(inventoryRows))
-  }
-
-  if (optionOnVariantRows.length > 0) {
-    statements.push(db.insert(optionOnVariant).values(optionOnVariantRows))
-  }
-  await runDrizzleBatch(statements)
+    db.delete(productVariant).where(droppedVariants),
+    db
+      .update(productVariant)
+      .set({ sku: sql`NULL` })
+      .where(productVariants),
+    ...insertRowChunks(productOption, optionRows).map((rows) => db.insert(productOption).values(rows)),
+    ...insertRowChunks(productOptionValue, optionValueRows).map((rows) => db.insert(productOptionValue).values(rows)),
+    ...insertRowChunks(productVariant, variantRows).map((rows) =>
+      db
+        .insert(productVariant)
+        .values(rows)
+        .onConflictDoUpdate({
+          set: {
+            compareAtPrice: sql`excluded.compare_at_price`,
+            manageInventory: sql`excluded.manage_inventory`,
+            price: sql`excluded.price`,
+            sku: sql`excluded.sku`,
+            title: sql`excluded.title`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+          target: productVariant.id,
+        }),
+    ),
+    ...insertRowChunks(inventory, inventoryRows).map((rows) =>
+      db
+        .insert(inventory)
+        .values(rows)
+        .onConflictDoUpdate({
+          set: { quantityAvailable: sql`excluded.quantity_available`, version: sql`${inventory.version} + 1` },
+          setWhere: sql`${inventory.quantityAvailable} <> excluded.quantity_available`,
+          target: inventory.variantId,
+        }),
+    ),
+    ...insertRowChunks(optionOnVariant, optionOnVariantRows).map((rows) => db.insert(optionOnVariant).values(rows)),
+  ])
 }
 
 export const replaceProductOrganization = async (productId: string, payload: ProductOrganizationReplacePayload): Promise<void> => {

@@ -204,6 +204,7 @@ describe("mapProductDetailToFormValues for a simple product", () => {
     expect(values.hasVariants).toBe(false)
     expect(values.simpleVariant).toStrictEqual({
       compareAtPrice: "150.00",
+      id: "var-1",
       manageInventory: true,
       price: "120.50",
       quantity: 7,
@@ -329,6 +330,7 @@ describe("mapProductDetailToFormValues for a variant product", () => {
 
     expect(mapProductDetailToFormValues(product).simpleVariant).toStrictEqual({
       compareAtPrice: "",
+      id: "var-m",
       manageInventory: true,
       price: "130.00",
       quantity: 2,

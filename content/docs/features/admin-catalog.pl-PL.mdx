@@ -102,6 +102,8 @@ try {
 
 `updateCompleteProduct` dodatkowo odrzuca handle zajęty przez inny produkt (`ERROR_CODES.CONFLICT` z `DUPLICATE_HANDLE`), wywołuje `assertCatalogSkusAvailable` i buduje różnicę do audytu, czytając produkt przed i po zapisie (`extractProductAuditSnapshot` i `buildProductAuditChange` w `product-audit.utils.ts`).
 
+Zapis zachowuje każdy wariant, który produkt już ma, pod jego identyfikatorem. `replaceProductCatalog` (`product.mutations.ts`) wykonuje jeden batch D1, który usuwa tylko warianty usunięte w formularzu, aktualizuje pozostałe po identyfikatorze (upsert) i robi upsert stanów magazynowych po identyfikatorze wariantu, zmieniając `quantityAvailable` i podbijając `version` tylko wtedy, gdy stan faktycznie się zmienił. Pozycje zamówień, pozycje koszyków i rezerwacje stanów zostają więc przypięte do swoich wariantów. Identyfikator wariantu jest użyty ponownie tylko wtedy, gdy `updateCompleteProduct` odczytał go z tego produktu, więc podrobiony identyfikator nigdy nie przejmie wariantu innego produktu. Każdy wielowierszowy insert jest dzielony przez `insertRowChunks`, żeby zmieścić się w limicie 100 parametrów na instrukcję w D1.
+
 Każdy zapis kończy się `scheduleProductCatalogInvalidation()` i wywołaniem `recordCatalogProduct*Audit`.
 
 ### Formularz
