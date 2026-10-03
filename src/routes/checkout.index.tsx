@@ -26,7 +26,7 @@ const CheckoutGuard = (): JSX.Element => {
   const navigate = useNavigate()
   const hydrated = useCartHydrated()
   const itemCount = useCartStore((state) => state.items.reduce((sum, item) => sum + item.qty, 0))
-  const { hasUnavailableItems, isChecking } = useCartAvailability()
+  const { hasUnavailableItems, isChecking, isFirstCheck } = useCartAvailability()
   const fallback = useMemo(() => <CheckoutFormSkeleton />, [])
   const isEmpty = hydrated && itemCount === 0
   const hasStockIssues = hydrated && !isChecking && hasUnavailableItems
@@ -40,7 +40,7 @@ const CheckoutGuard = (): JSX.Element => {
     }
   }, [hasStockIssues, isEmpty, navigate])
 
-  if (!hydrated || itemCount === 0 || isChecking || hasUnavailableItems) {
+  if (!hydrated || itemCount === 0 || isFirstCheck || hasUnavailableItems) {
     return fallback
   }
 

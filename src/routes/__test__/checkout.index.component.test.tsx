@@ -7,7 +7,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 const search = vi.hoisted(() => ({ success: undefined as boolean | undefined }))
 
-const availability = vi.hoisted(() => ({ hasUnavailableItems: false, isChecking: false }))
+const availability = vi.hoisted(() => ({ hasUnavailableItems: false, isChecking: false, isFirstCheck: false }))
 
 const navigation = vi.hoisted(() => ({
   navigate: vi.fn<(options: { readonly params?: (previous: Record<string, never>) => unknown; readonly to: string }) => Promise<void>>(),
@@ -27,6 +27,7 @@ vi.mock("~/src/hooks/use-cart-availability", () => ({
   useCartAvailability: () => ({
     hasUnavailableItems: availability.hasUnavailableItems,
     isChecking: availability.isChecking,
+    isFirstCheck: availability.isFirstCheck,
     issues: [],
     issuesByVariantId: new Map(),
   }),
@@ -74,6 +75,7 @@ beforeEach(() => {
   search.success = undefined
   availability.hasUnavailableItems = false
   availability.isChecking = false
+  availability.isFirstCheck = false
   navigation.navigate.mockReset()
   useCartStore.getState().clearCart()
 })
@@ -123,13 +125,23 @@ describe("checkout page guard", () => {
     expect(await screen.findByTestId("checkout-form")).toBeInTheDocument()
   })
 
-  it("waits behind the skeleton while availability is being checked", () => {
+  it("waits behind the skeleton until availability has been checked once", () => {
     useCartStore.setState({ items: [cartLine()] })
     availability.isChecking = true
+    availability.isFirstCheck = true
     renderCheckout()
 
     expect(screen.getByTestId("checkout-skeleton")).toBeInTheDocument()
     expect(screen.queryByTestId("checkout-form")).toBeNull()
+  })
+
+  it("keeps the form on screen while availability is checked again in the background", async () => {
+    useCartStore.setState({ items: [cartLine()] })
+    availability.isChecking = true
+    renderCheckout()
+
+    expect(await screen.findByTestId("checkout-form")).toBeInTheDocument()
+    expect(screen.queryByTestId("checkout-skeleton")).toBeNull()
   })
 
   it("does not redirect while availability is still being checked", () => {

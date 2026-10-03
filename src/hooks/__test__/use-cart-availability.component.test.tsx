@@ -1,7 +1,7 @@
 import { type ReactNode } from "react"
 
 import { QueryClient } from "@tanstack/react-query"
-import { cleanup, renderHook, waitFor } from "@testing-library/react"
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
@@ -42,7 +42,7 @@ const renderCartAvailability = () => {
     </TestProviders>
   )
 
-  return renderHook(() => useCartAvailability(), { wrapper })
+  return { ...renderHook(() => useCartAvailability(), { wrapper }), queryClient }
 }
 
 beforeEach(() => {
@@ -99,10 +99,29 @@ describe("useCartAvailability with a stocked cart", () => {
     })
   })
 
-  it("is checking while the request is in flight", () => {
+  it("is checking for the first time while the first answer is in flight", () => {
     const { result } = renderCartAvailability()
 
     expect(result.current.isChecking).toBe(true)
+    expect(result.current.isFirstCheck).toBe(true)
+  })
+
+  it("is checking again, but no longer for the first time, while an answer is refreshed", async () => {
+    const { queryClient, result } = renderCartAvailability()
+    await waitFor(() => {
+      expect(result.current.isChecking).toBe(false)
+    })
+    getAvailabilityByVariantIds.mockReturnValue(Promise.withResolvers<Map<string, number>>().promise)
+
+    act(() => {
+      void queryClient.invalidateQueries()
+    })
+
+    await waitFor(() => {
+      expect(result.current.isChecking).toBe(true)
+    })
+    expect(result.current.isFirstCheck).toBe(false)
+    expect(result.current.hasUnavailableItems).toBe(false)
   })
 })
 

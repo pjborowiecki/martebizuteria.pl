@@ -38,7 +38,7 @@ useEffect(() => {
 }, [hasStockIssues, isEmpty, navigate])
 ```
 
-Dopóki koszyk nie jest zhydratowany, sprawdzony i poprawny, renderowany jest `CheckoutFormSkeleton`. Sam formularz jest owinięty w `ClientOnly` i `Suspense`, bo `CheckoutForm` leży w `checkout-form.client.tsx` i importuje `@tanstack/react-start/client-only`.
+Dopóki koszyk nie jest zhydratowany, raz sprawdzony i poprawny, renderowany jest `CheckoutFormSkeleton`. Późniejsze sprawdzenia, na przykład to wywołane przez unieważnienie stanów w czasie rzeczywistym po zarezerwowaniu towaru przez sesję, nie odmontowują formularza (`isFirstCheck` jest wtedy fałszywe); czeka na nie tylko przycisk płatności przez `isChecking`. Sam formularz jest owinięty w `ClientOnly` i `Suspense`, bo `CheckoutForm` leży w `checkout-form.client.tsx` i importuje `@tanstack/react-start/client-only`.
 
 ## Cztery kroki
 
@@ -61,7 +61,7 @@ Każdy krok jest w osobnym pakiecie. `checkout-step-loaders.client.ts` mapuje ka
 
 ```ts
 const form = useForm<CheckoutFormSchema>({
-  defaultValues: {/* wszystkie pola, z countryCode i billingCountryCode ustawionymi na "PL" */},
+  defaultValues: { ...EMPTY_CHECKOUT_VALUES, ...draftValues },
   mode: "onTouched",
   resolver: zodResolver(checkoutSchema),
 })
@@ -80,7 +80,7 @@ interface CheckoutDraftEnvelope {
 }
 ```
 
-`SCHEMA_VERSION` wynosi `1`, a `isDraftEnvelope` odrzuca wszystko z innym `v`, więc stara kopia jest ignorowana, a nie scalana. Każdy dostęp jest owinięty w `try`/`catch` i zwraca `undefined`, gdy magazyn jest niedostępny — formularz działa więc również w oknie prywatnym. `useCheckoutDraftPersistence` przywraca kopię przy montowaniu i zapisuje przy każdej zmianie `watch`; `CheckoutSuccess` wywołuje `clearCheckoutDraft()`.
+`SCHEMA_VERSION` wynosi `1`, a `isDraftEnvelope` odrzuca wszystko z innym `v`, więc stara kopia jest ignorowana, a nie scalana. Każdy dostęp jest owinięty w `try`/`catch` i zwraca `undefined`, gdy magazyn jest niedostępny — formularz działa więc również w oknie prywatnym. Provider wczytuje kopię raz do wartości domyślnych formularza (`EMPTY_CHECKOUT_VALUES` ustawia oba kody kraju na `"PL"`), więc każdy krok od pierwszego renderu widzi dane kupującego i tylko krok, do którego może dotrzeć; `useCheckoutDraftPersistence` zapisuje przy każdej zmianie `watch`; `CheckoutSuccess` wywołuje `clearCheckoutDraft()`.
 
 Ponieważ to `sessionStorage`, kopia przeżywa odświeżenie, ale nie nową kartę — inaczej niż koszyk, który jest w `localStorage`.
 

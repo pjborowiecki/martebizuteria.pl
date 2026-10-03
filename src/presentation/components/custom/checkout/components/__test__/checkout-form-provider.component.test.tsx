@@ -1,4 +1,4 @@
-import { type JSX, type MouseEvent } from "react"
+import { type JSX, type MouseEvent, useEffect } from "react"
 
 import type * as TanStackRouter from "@tanstack/react-router"
 import { cleanup, screen, waitFor } from "@testing-library/react"
@@ -108,6 +108,20 @@ const Probe = (): JSX.Element => {
 
 const prevented = { value: false }
 
+interface FirstEffectState {
+  readonly activeStepIndex: number
+  readonly email: string
+}
+
+const FirstEffectProbe = ({ onFirstEffect }: Readonly<{ onFirstEffect: (state: FirstEffectState) => void }>): undefined => {
+  const { activeStepIndex, getValues } = useCheckoutForm()
+  useEffect(() => {
+    onFirstEffect({ activeStepIndex, email: getValues("email") })
+  }, [activeStepIndex, getValues, onFirstEffect])
+
+  return undefined
+}
+
 const renderProvider = () =>
   renderWithProviders(
     <CheckoutFormProvider>
@@ -189,6 +203,20 @@ describe("CheckoutFormProvider draft persistence", () => {
     await waitFor(() => {
       expect(screen.getByTestId("email")).toHaveTextContent("anna@example.com")
     })
+  })
+
+  it("gives a remounted step the saved draft and its reachable step from its first effect", () => {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(contactDraft))
+    searchState.step = 4
+    const onFirstEffect = vi.fn<(state: FirstEffectState) => void>()
+
+    renderWithProviders(
+      <CheckoutFormProvider>
+        <FirstEffectProbe onFirstEffect={onFirstEffect} />
+      </CheckoutFormProvider>,
+    )
+
+    expect(onFirstEffect).toHaveBeenNthCalledWith(1, { activeStepIndex: 1, email: "anna@example.com" })
   })
 
   it("ignores a draft written by an older schema version", async () => {
