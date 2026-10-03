@@ -49,52 +49,42 @@ A missing `inventory` row therefore reads as zero rather than as unknown.
 
 ## Optimistic reservation
 
-`reserveInventoryStmt` is a prepared statement whose `WHERE` is the concurrency control:
+`reserveInventoryRows` in `inventory.accessors.ts` builds one guarded `UPDATE` per line, and the `WHERE` is the concurrency control:
 
 ```ts
-const reserveInventoryStmt = db
-  .update(inventory)
+db.update(inventory)
   .set({
-    quantityAvailable: sql`${inventory.quantityAvailable} - ${qtyPlaceholder}`,
-    quantityReserved: sql`${inventory.quantityReserved} + ${qtyPlaceholder}`,
+    quantityAvailable: sql`${inventory.quantityAvailable} - ${item.qty}`,
+    quantityReserved: sql`${inventory.quantityReserved} + ${item.qty}`,
     version: sql`${inventory.version} + 1`,
   })
-  .where(
-    and(
-      eq(inventory.id, inventoryIdPlaceholder),
-      eq(inventory.version, currentVersionPlaceholder),
-      gte(inventory.quantityAvailable, qtyPlaceholder),
-    ),
-  )
-  .returning()
-  .prepare()
+  .where(and(eq(inventory.id, item.inventoryId), eq(inventory.version, item.currentVersion), gte(inventory.quantityAvailable, item.qty)))
+  .returning({ id: inventory.id })
 ```
 
-Three conditions must hold: the row exists, its `version` still equals the version the caller read, and there is enough available. `reserveInventory` returns `result.length > 0`, so a lost race returns `false` instead of overselling. Every successful write bumps `version`.
+Three conditions must hold: the row exists, its `version` still equals the version the caller read, and there is enough available. The statements for every line go to D1 in one `db.batch`, so a cart of any size costs one round trip, and the function returns the set of inventory ids whose update matched. A lost race leaves its id out of the set instead of overselling. Every successful write bumps `version`.
 
 The version the caller compares against is captured in `validateAndCalculateItems` (`src/integrations/stripe/stripe.actions.server.ts`), which returns `currentVersion: inv.version` and `inventoryId: inv.id` alongside the validated line.
 
 ## All-or-nothing across lines
 
-`reserveInventoryForItems` in `inventory.utils.ts` reserves every line in parallel and rolls back if any fails:
+`reserveInventoryForItems` in `inventory.utils.ts` first merges lines that point at the same inventory row, so two lines of one variant ask for their combined quantity instead of the second failing on the version the first just moved. It then reserves every line in one batch and rolls back if any guard failed:
 
 ```ts
-const failures = outcomes.filter((outcome) => !outcome.reserved)
-if (failures.length > 0) {
-  const reserved = outcomes.filter((outcome) => outcome.reserved).map((outcome) => outcome.item)
+const firstFailure = lines.find((line) => !reservedIds.has(line.inventoryId))
+if (firstFailure !== undefined) {
+  const reserved = lines.filter((line) => reservedIds.has(line.inventoryId))
   await releaseInventoryForItems(reserved).catch((error: unknown) => {
     console.error("Failed to roll back partial inventory reservation:", error)
   })
 
-  const [firstFailure] = failures
-
-  throw new Error(`Inventory reservation failed for ${firstFailure?.item.title ?? "item"}. Stock changed or unavailable.`)
+  throw new Error(`Inventory reservation failed for ${firstFailure.title}. Stock changed or unavailable.`)
 }
 ```
 
-These are separate D1 statements, not one transaction, so the window between them is closed by the compensating release rather than by the database.
+A guard that matches no row is not an error, so D1 commits the lines that did match; the compensating release, itself a single batch, closes that gap rather than the database.
 
-`reserveInventoryByVariantLines(lines)` is the variant-id-based variant used when restoring a previous reservation during a checkout update: it looks each inventory row up first to read its current `version`, then delegates to `reserveInventoryForItems`.
+`reserveInventoryByVariantLines(lines)` is the variant-id-based variant used when restoring a previous reservation during a checkout update: it reads every line's inventory row and current `version` in one query through `getInventoryByVariantIds`, then delegates to `reserveInventoryForItems`.
 
 ## Release is clamped
 
@@ -102,13 +92,13 @@ Both release statements use `min`/`max` so a duplicate release cannot invent sto
 
 ```ts
 .set({
-  quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qtyPlaceholder})`,
-  quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qtyPlaceholder})`,
+  quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qty})`,
+  quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qty})`,
   version: sql`${inventory.version} + 1`,
 })
 ```
 
-`releaseInventoryForItems(items)` keys on `inventoryId`; `releaseInventoryByVariantLines(lines)` keys on `variantId`. Unlike reservation, release is unconditional on `version` — it must always succeed.
+`releaseInventoryForItems(items)` keys on `inventoryId`; `releaseInventoryByVariantLines(lines)` keys on `variantId`. Each sends every line in one batch. Unlike reservation, release is unconditional on `version` — it must always succeed.
 
 ## The full cycle
 
@@ -121,7 +111,7 @@ Both release statements use `min`/`max` so a duplicate release cannot invent sto
 | Full refund with restock (`prepareRefundBatch`)                         | `available += quantity`, from `getRestockLinesForOrder(orderId)`       |
 | Lost dispute                                                            | Nothing — `refundOrder` is called with `restock: false`                |
 
-Note that the fulfilment and release batches update `inventory` **without** bumping `version`, because they run inside a D1 batch alongside the order writes rather than through the prepared statements.
+Note that the fulfilment and release batches update `inventory` **without** bumping `version`, because they run inside a D1 batch alongside the order writes rather than through `reserveInventoryRows` and the release helpers.
 
 Local error handling in `stripe.actions.server.ts` always compensates: a failure after reserving calls `releaseInventoryForItems`, and a failure during a checkout update additionally calls `reserveInventoryByVariantLines(oldReservedLines)` to put the previous reservation back.
 

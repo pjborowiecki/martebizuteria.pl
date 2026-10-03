@@ -13,7 +13,7 @@ These change what customers and the shop owner see. They are first because the s
 
 ### Inventory compensation is best-effort
 
-`reserveInventoryForItems` in `src/modules/inventory/inventory.utils.ts` reserves every cart line concurrently with a compare-and-set `UPDATE`, and if any line fails its guard it releases the ones that succeeded:
+`reserveInventoryForItems` in `src/modules/inventory/inventory.utils.ts` reserves every cart line in one batch of compare-and-set `UPDATE`s, and if any line fails its guard it releases the ones that succeeded:
 
 ```ts
 await releaseInventoryForItems(reserved).catch((error: unknown) => {

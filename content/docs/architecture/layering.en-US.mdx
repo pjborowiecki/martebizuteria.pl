@@ -20,10 +20,17 @@ Vendors sit beside these layers rather than inside them: `src/integrations/{vend
 An accessor is plain data access with no notion of who is asking:
 
 ```ts
-export const getInventoryByVariantId = (variantId: string) =>
-  db.query.inventory.findFirst({
-    where: eq(inventory.variantId, variantId),
-  })
+export const getAvailabilityByVariantIds = async (variantIds: readonly string[]): Promise<Map<string, number>> => {
+  if (variantIds.length === 0) {
+    return new Map()
+  }
+
+  const rows = await db
+    .select({ quantityAvailable: inventory.quantityAvailable, variantId: inventory.variantId })
+    .from(inventory)
+    .where(inJsonList(inventory.variantId, variantIds))
+  return new Map(rows.map((row) => [row.variantId, row.quantityAvailable]))
+}
 ```
 
 A use case wraps data access in an RPC endpoint and is the only place authorization is expressed:
@@ -77,9 +84,9 @@ With no store — the queue consumer, unit tests, the paths that short-circuit b
 
 ## Consistency without transactions
 
-D1 has no interactive transactions. `db.batch()` is atomic, so anything that must be all-or-nothing is assembled as an array of statements and handed to `runDrizzleBatch` from `src/integrations/drizzle-orm/drizzle.batch.ts`. Anything that must read, decide, then write uses optimistic concurrency instead: the inventory reserve statement in `src/modules/inventory/inventory.accessors.ts` is a compare-and-set guarded on both the row `version` observed during validation and `quantityAvailable >= qty`, and uses the length of `.returning()` as its success signal.
+D1 has no interactive transactions. `db.batch()` is atomic, so anything that must be all-or-nothing is assembled as an array of statements and handed to `runDrizzleBatch` from `src/integrations/drizzle-orm/drizzle.batch.ts`. Anything that must read, decide, then write uses optimistic concurrency instead: each inventory reserve statement in `src/modules/inventory/inventory.accessors.ts` is a compare-and-set guarded on both the row `version` observed during validation and `quantityAvailable >= qty`, and uses the length of `.returning()` as its success signal.
 
-Multi-line carts reserve concurrently and compensate. `reserveInventoryForItems` releases the reservations that already succeeded when any line fails its guard — and the compensation itself is wrapped in `.catch()` and only logged, so a failed rollback leaves stock reserved. That is a saga with a known hole, not a distributed transaction.
+Multi-line carts reserve in one batch and compensate. `reserveInventoryForItems` releases the reservations that already succeeded when any line fails its guard — and the compensation itself is wrapped in `.catch()` and only logged, so a failed rollback leaves stock reserved. That is a saga with a known hole, not a distributed transaction.
 
 ## Related pages
 

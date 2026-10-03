@@ -13,7 +13,7 @@ Te rzeczy zmieniają to, co widzą klienci i właściciel sklepu. Są pierwsze, 
 
 ### Kompensacja stanów magazynowych działa „najlepszym staraniem”
 
-`reserveInventoryForItems` w `src/modules/inventory/inventory.utils.ts` rezerwuje wszystkie pozycje koszyka współbieżnie, warunkowym `UPDATE`, a jeśli któraś pozycja nie przejdzie swojego warunku, zwalnia te, które się udały:
+`reserveInventoryForItems` w `src/modules/inventory/inventory.utils.ts` rezerwuje wszystkie pozycje koszyka jednym wsadem warunkowych `UPDATE`, a jeśli któraś pozycja nie przejdzie swojego warunku, zwalnia te, które się udały:
 
 ```ts
 await releaseInventoryForItems(reserved).catch((error: unknown) => {

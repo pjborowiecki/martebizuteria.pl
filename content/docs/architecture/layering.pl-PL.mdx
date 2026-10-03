@@ -20,10 +20,17 @@ Dostawcy stoją obok tych warstw, nie w nich: `src/integrations/{vendor}` konfig
 Akcesor to zwykły dostęp do danych bez pojęcia o tym, kto pyta:
 
 ```ts
-export const getInventoryByVariantId = (variantId: string) =>
-  db.query.inventory.findFirst({
-    where: eq(inventory.variantId, variantId),
-  })
+export const getAvailabilityByVariantIds = async (variantIds: readonly string[]): Promise<Map<string, number>> => {
+  if (variantIds.length === 0) {
+    return new Map()
+  }
+
+  const rows = await db
+    .select({ quantityAvailable: inventory.quantityAvailable, variantId: inventory.variantId })
+    .from(inventory)
+    .where(inJsonList(inventory.variantId, variantIds))
+  return new Map(rows.map((row) => [row.variantId, row.quantityAvailable]))
+}
 ```
 
 Przypadek użycia opakowuje dostęp do danych w endpoint RPC i jest jedynym miejscem, w którym wyrażana jest autoryzacja:
@@ -77,9 +84,9 @@ Bez magazynu — konsument kolejki, testy jednostkowe, ścieżki skracane przed 
 
 ## Spójność bez transakcji
 
-D1 nie ma transakcji interaktywnych. `db.batch()` jest atomowy, więc wszystko, co musi być „wszystko albo nic”, składa się w tablicę instrukcji i przekazuje do `runDrizzleBatch` z `src/integrations/drizzle-orm/drizzle.batch.ts`. Wszystko, co musi przeczytać, zdecydować, a potem zapisać, korzysta zamiast tego z optymistycznej współbieżności: instrukcja rezerwacji stanu magazynowego w `src/modules/inventory/inventory.accessors.ts` to compare-and-set zabezpieczone zarówno wersją wiersza (`version`) zaobserwowaną podczas walidacji, jak i warunkiem `quantityAvailable >= qty`, a sygnałem sukcesu jest długość `.returning()`.
+D1 nie ma transakcji interaktywnych. `db.batch()` jest atomowy, więc wszystko, co musi być „wszystko albo nic”, składa się w tablicę instrukcji i przekazuje do `runDrizzleBatch` z `src/integrations/drizzle-orm/drizzle.batch.ts`. Wszystko, co musi przeczytać, zdecydować, a potem zapisać, korzysta zamiast tego z optymistycznej współbieżności: każda instrukcja rezerwacji stanu magazynowego w `src/modules/inventory/inventory.accessors.ts` to compare-and-set zabezpieczone zarówno wersją wiersza (`version`) zaobserwowaną podczas walidacji, jak i warunkiem `quantityAvailable >= qty`, a sygnałem sukcesu jest długość `.returning()`.
 
-Koszyki z wieloma pozycjami rezerwują współbieżnie i kompensują. `reserveInventoryForItems` zwalnia rezerwacje, które już się udały, gdy którakolwiek pozycja nie przejdzie swojego warunku — a sama kompensacja jest owinięta w `.catch()` i tylko logowana, więc nieudane wycofanie zostawia towar zarezerwowany. To saga ze znaną dziurą, a nie transakcja rozproszona.
+Koszyki z wieloma pozycjami rezerwują jednym wsadem i kompensują. `reserveInventoryForItems` zwalnia rezerwacje, które już się udały, gdy którakolwiek pozycja nie przejdzie swojego warunku — a sama kompensacja jest owinięta w `.catch()` i tylko logowana, więc nieudane wycofanie zostawia towar zarezerwowany. To saga ze znaną dziurą, a nie transakcja rozproszona.
 
 ## Powiązane strony
 

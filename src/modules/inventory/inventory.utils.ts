@@ -1,4 +1,4 @@
-import { getInventoryByVariantId, releaseInventoryForItems, reserveInventory } from "~/src/modules/inventory/inventory.accessors"
+import { getInventoryByVariantIds, releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
 
 export interface ReserveInventoryItem {
   currentVersion: number
@@ -17,33 +17,35 @@ export interface ReserveInventoryVariantLine {
   variantId: string
 }
 
-export const reserveInventoryForItems = async (items: ReserveInventoryItem[]): Promise<void> => {
-  const outcomes = await Promise.all(
-    items.map(async (item) => {
-      const reserved = await reserveInventory(item)
+const mergeLinesByInventory = (items: readonly ReserveInventoryItem[]): ReserveInventoryItem[] => {
+  const merged = new Map<string, ReserveInventoryItem>()
+  for (const item of items) {
+    const existing = merged.get(item.inventoryId)
+    merged.set(item.inventoryId, existing === undefined ? item : { ...existing, qty: existing.qty + item.qty })
+  }
 
-      return {
-        item,
-        reserved,
-      }
-    }),
-  )
+  return [...merged.values()]
+}
 
-  const firstFailure = outcomes.find((outcome) => !outcome.reserved)
+export const reserveInventoryForItems = async (items: readonly ReserveInventoryItem[]): Promise<void> => {
+  const lines = mergeLinesByInventory(items)
+  const reservedIds = await reserveInventoryRows(lines)
+
+  const firstFailure = lines.find((line) => !reservedIds.has(line.inventoryId))
   if (firstFailure !== undefined) {
-    const reserved = outcomes.filter((outcome) => outcome.reserved).map((outcome) => outcome.item)
+    const reserved = lines.filter((line) => reservedIds.has(line.inventoryId))
     await releaseInventoryForItems(reserved).catch((error: unknown) => {
       console.error("Failed to roll back partial inventory reservation:", error)
     })
 
-    throw new Error(`Inventory reservation failed for ${firstFailure.item.title}. Stock changed or unavailable.`)
+    throw new Error(`Inventory reservation failed for ${firstFailure.title}. Stock changed or unavailable.`)
   }
 }
 
-export const reserveInventoryByVariantLines = async (lines: ReserveInventoryVariantLine[]): Promise<void> => {
-  const inventories = await Promise.all(lines.map((line) => getInventoryByVariantId(line.variantId)))
-  const items = lines.map((line, index) => {
-    const inv = inventories[index]
+export const reserveInventoryByVariantLines = async (lines: readonly ReserveInventoryVariantLine[]): Promise<void> => {
+  const inventories = await getInventoryByVariantIds(lines.map((line) => line.variantId))
+  const items = lines.map((line) => {
+    const inv = inventories.get(line.variantId)
     if (inv === undefined) {
       throw new Error(`Inventory not found for variant ${line.variantId}.`)
     }

@@ -53,7 +53,7 @@ The practical effect: a test for `shipOrder` really passes through `withRequest`
 
 ## D1 over `node:sqlite`
 
-`src/platform/testing/mocks/d1.ts` exports `createTestD1Database(sqlite, onQuery?)`, a hand-written transport that presents the D1 `prepare/bind/all/run/raw/batch` surface over a `node:sqlite` `DatabaseSync`. `batch` wraps the statements in `begin`/`commit` with a `rollback` on failure, so batch atomicity is emulated, and `bind` refuses more than 100 parameters, as D1 does. The optional `onQuery` callback records `{ sql, params }`, which lets a test assert the SQL a query compiles to.
+`src/platform/testing/mocks/d1.ts` exports `createTestD1Database(sqlite, onQuery?)`, a hand-written transport that presents the D1 `prepare/bind/all/run/raw/batch` surface over a `node:sqlite` `DatabaseSync`. `batch` runs one batch at a time and wraps the statements in `begin`/`commit` with a `rollback` on failure, so batch atomicity and ordering are emulated, and `bind` refuses more than 100 parameters, as D1 does. The optional `onQuery` callback records `{ sql, params }`, which lets a test assert the SQL a query compiles to.
 
 An integration test wires it in by mocking the database module:
 
