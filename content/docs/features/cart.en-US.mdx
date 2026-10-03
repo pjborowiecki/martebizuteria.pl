@@ -81,7 +81,7 @@ const issues = lines.flatMap((line) => {
 return { hasUnavailableItems: issues.length > 0, issues }
 ```
 
-A variant with no `inventory` row counts as `0` available.
+A variant with no `inventory` row counts as `0` available. The endpoint is public, so its input is bounded: at most `CART_LINES_MAX` lines, whole quantities of at least one, and variant ids no longer than a stored id.
 
 `checkCartAvailabilityQuery(lines)` is `enabled` only when there is at least one line and uses `staleTime: 0`, so the check is fresh on every mount. Its key is `[...CART_QUERY_KEYS.AVAILABILITY, lines]` — the lines are part of the key, so changing a quantity refetches. `CART_QUERY_KEYS.AVAILABILITY` is `["cart", "availability"]` and is in `STOREFRONT_REALTIME_QUERY_PREFIXES`, so a stock change pushed from the admin console re-runs the check in open tabs.
 

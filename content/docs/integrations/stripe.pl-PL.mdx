@@ -54,7 +54,7 @@ export const createCheckoutSessionFn = createServerFn({ method: "POST" })
   })
 ```
 
-Plik `stripe.actions.schemas.ts` definiuje ładunek: `{ checkoutValues: checkoutSchema, items: cartItemSchema[] }` z co najmniej jedną pozycją oraz `sessionId` w wariancie aktualizacji. `checkoutSchema` pochodzi z `src/modules/checkout/checkout.zod.ts`, więc reguły adresu, dostawy i danych do faktury walidowane są w dokładnie jednym miejscu.
+Plik `stripe.actions.schemas.ts` definiuje ładunek: `{ checkoutValues: checkoutSchema, items: cartItemSchema[] }` z co najmniej jedną i co najwyżej `CART_LINES_MAX` pozycjami (`src/modules/cart/cart.constants.ts`) oraz `sessionId` w wariancie aktualizacji. `CART_LINES_MAX` to `STRIPE_CHECKOUT_LINE_ITEMS_MAX` pomniejszone o linię wysyłki, bo Checkout Session w trybie płatności przyjmuje najwyżej 100 pozycji, a każda ilość musi być liczbą całkowitą. `checkoutSchema` pochodzi z `src/modules/checkout/checkout.zod.ts`, więc reguły adresu, dostawy i danych do faktury walidowane są w dokładnie jednym miejscu.
 
 ## Tworzenie sesji
 

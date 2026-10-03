@@ -12,6 +12,10 @@ export const STRIPE_CURRENCY = STRIPE_CURRENCY_BY_CODE[STORE_CURRENCY_CODE]
 
 export const STRIPE_COUPON_SOURCE = "marte_checkout"
 
+export const STRIPE_CHECKOUT_LINE_ITEMS_MAX = 100
+
+export const CHECKOUT_SHIPPING_LINE_ITEMS = 1
+
 export const STRIPE_WEBHOOK_EVENTS = {
   CHARGE_DISPUTE_CLOSED: "charge.dispute.closed",
   CHARGE_DISPUTE_CREATED: "charge.dispute.created",
