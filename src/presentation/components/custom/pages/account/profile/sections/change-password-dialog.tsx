@@ -4,7 +4,7 @@ import { type ErrorContext } from "@better-fetch/fetch"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { Loader2 } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
@@ -119,7 +119,19 @@ export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePass
               name="confirmPassword"
             />
             <div className="flex items-center gap-3">
-              <Checkbox defaultChecked id="revoke-other-sessions" {...form.register("revokeOtherSessions")} />
+              <Controller
+                control={form.control}
+                name="revokeOtherSessions"
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    id="revoke-other-sessions"
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked)
+                    }}
+                  />
+                )}
+              />
               <Label htmlFor="revoke-other-sessions">{t("revokeOtherSessions")}</Label>
             </div>
           </div>
