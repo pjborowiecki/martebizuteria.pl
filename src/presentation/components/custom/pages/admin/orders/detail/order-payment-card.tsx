@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react"
+import { type JSX } from "react"
 
 import { Copy, CreditCard, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
@@ -17,13 +17,6 @@ export const OrderPaymentCard = ({ currencyCode, payment }: Readonly<OrderPaymen
   const format = useFormatter()
   const locale = useLocale()
   const transactionId = payment?.transactionId
-  const handleCopyTransactionId = useCallback(() => {
-    if (transactionId === undefined) {
-      return
-    }
-    void navigator.clipboard.writeText(transactionId)
-    toast.success(t("orderDetail.paymentDetails.copied"))
-  }, [t, transactionId])
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
@@ -47,7 +40,10 @@ export const OrderPaymentCard = ({ currencyCode, payment }: Readonly<OrderPaymen
                 <Button
                   aria-label={t("orderDetail.paymentDetails.copy")}
                   className="ml-auto size-6 shrink-0 text-muted-foreground/40"
-                  onClick={handleCopyTransactionId}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(transactionId)
+                    toast.success(t("orderDetail.paymentDetails.copied"))
+                  }}
                   size="icon"
                   variant="ghost"
                 >

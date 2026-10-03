@@ -29,7 +29,6 @@ export const normalizeDataGridPageSize = (pageSize: number): DataGridPageSize =>
   }
 
   const nextLarger = DATA_GRID_PAGE_SIZE_OPTIONS.find((size) => size >= pageSize)
-  const fallback = DATA_GRID_PAGE_SIZE_OPTIONS.at(-1)
 
-  return nextLarger ?? fallback ?? DATA_GRID_DEFAULT_PAGE_SIZE
+  return nextLarger ?? DATA_GRID_PAGE_SIZE_XXL
 }

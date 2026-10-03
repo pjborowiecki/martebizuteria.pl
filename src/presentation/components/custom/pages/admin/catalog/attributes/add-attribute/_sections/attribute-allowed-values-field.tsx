@@ -45,18 +45,15 @@ const createEmptyAllowedValueRow = (existing: readonly ProductAttribute["allowed
   value: nextAllowedValueDraftKey(existing),
 })
 
-const resolvePrimaryLabelValueKey = (primaryLabel: string, rowIndex: number, rows: readonly ProductAttribute["allowedValue"][]): string => {
+const resolvePrimaryLabelValueKey = (
+  primaryLabel: string,
+  rowIndex: number,
+  rows: readonly ProductAttribute["allowedValue"][],
+): string | undefined => {
   const slug = slugify(primaryLabel)
-  if (slug === "") {
-    return rows[rowIndex]?.value ?? nextAllowedValueDraftKey(rows)
-  }
-
   const taken = rows.some((entry, index) => index !== rowIndex && entry.value === slug)
-  if (taken) {
-    return rows[rowIndex]?.value ?? nextAllowedValueDraftKey(rows)
-  }
 
-  return slug
+  return slug === "" || taken ? undefined : slug
 }
 
 export const AttributeAllowedValuesField = (): JSX.Element => {
@@ -143,7 +140,7 @@ const AllowedValueRow = ({
       if (activeLocale === I18N.DEFAULT_LOCALE) {
         const rows = getValues("allowedValues")
         const nextValueKey = resolvePrimaryLabelValueKey(nextLabel, index, rows)
-        if (rows[index]?.value !== nextValueKey) {
+        if (nextValueKey !== undefined && rows[index]?.value !== nextValueKey) {
           setValue(`allowedValues.${index}.value`, nextValueKey, {
             shouldDirty: true,
           })

@@ -15,16 +15,16 @@ export const ShipmentBanner = ({
   const t = useTranslations("pages.account.orderDetail")
   const format = useFormatter()
 
-  if (order.deliveredAt === undefined && order.shippedAt === undefined) {
+  const shipmentDate = order.deliveredAt ?? order.shippedAt
+  if (shipmentDate === undefined) {
     return undefined
   }
 
+  const date = format.dateTime(shipmentDate, { dateStyle: "medium" })
   const headline =
     order.deliveredAt === undefined
-      ? t(order.trackingNumber === undefined ? "shippedOn" : "inTransitSince", {
-          date: format.dateTime(order.shippedAt ?? order.createdAt, { dateStyle: "medium" }),
-        })
-      : t("deliveredOn", { date: format.dateTime(order.deliveredAt, { dateStyle: "medium" }) })
+      ? t(order.trackingNumber === undefined ? "shippedOn" : "inTransitSince", { date })
+      : t("deliveredOn", { date })
 
   return (
     <div className="mb-10 flex items-center gap-4 bg-muted/50 px-5 py-4">

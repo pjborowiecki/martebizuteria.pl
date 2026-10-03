@@ -101,7 +101,7 @@ export const buildProductAuditChange = (
   const variantDetail = hasVariantChange ? "Variants updated" : undefined
 
   return {
-    detail: [detailParts, variantDetail].filter((part) => part !== undefined && part !== "").join("; ") || undefined,
+    detail: [detailParts, variantDetail].filter((part) => part !== undefined && part !== "").join("; "),
     metadata: toAuditMetadataRecord(metadata),
   }
 }

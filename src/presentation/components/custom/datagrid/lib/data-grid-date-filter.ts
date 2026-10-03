@@ -70,9 +70,6 @@ const matchesOperator = (cellMs: number, filter: ValidatedDateColumnFilterValue)
 
       return cellMs >= rangeStart && cellMs <= rangeEnd
     }
-    default: {
-      return true
-    }
   }
 }
 

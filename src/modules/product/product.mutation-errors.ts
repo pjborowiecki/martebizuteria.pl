@@ -39,14 +39,7 @@ export const isDatabaseSchemaOutdatedMutationError = (error: unknown): boolean =
     (message) => message.includes("no such column") || (message.includes("Failed query") && message.includes('"titles"')),
   )
 
-export const resolveProductMutationErrorMessage = (error: unknown): string => {
-  const messages = collectErrorMessages(error)
-  if (messages.length === 0) {
-    return ""
-  }
-
-  return messages.pop() ?? ""
-}
+export const resolveProductMutationErrorMessage = (error: unknown): string => collectErrorMessages(error).at(-1) ?? ""
 
 export const rethrowProductMutationError = (error: unknown): never => {
   if (isDuplicateHandleMutationError(error)) {

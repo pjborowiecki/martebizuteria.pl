@@ -54,10 +54,6 @@ const matchRoute = (pathname: string, href: string): boolean => {
     return pathname.endsWith(ROUTES.ADMIN_OVERVIEW)
   }
 
-  if (href === ROUTES.ADMIN_CATALOG) {
-    return pathname.endsWith(ROUTES.ADMIN_CATALOG) || pathname.includes(`${ROUTES.ADMIN_CATALOG}/new`)
-  }
-
   return pathname.includes(href)
 }
 

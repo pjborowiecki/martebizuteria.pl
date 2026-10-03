@@ -121,11 +121,8 @@ const findInsertIndexForMissingColumn = (next: readonly string[], canonical: rea
   for (let probe = canonicalIndex - 1; probe >= 0; probe -= 1) {
     const anchorId = canonical[probe]
     if (anchorId !== undefined) {
-      const anchorIndex = next.indexOf(anchorId)
-      if (anchorIndex !== -1) {
-        insertAt = anchorIndex + 1
-        break
-      }
+      insertAt = next.indexOf(anchorId) + 1
+      break
     }
   }
 

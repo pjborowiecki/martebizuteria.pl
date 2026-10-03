@@ -95,9 +95,6 @@ const resolveStatValue = (
     case "warnings": {
       return stats.warningCount
     }
-    default: {
-      return 0
-    }
   }
 }
 

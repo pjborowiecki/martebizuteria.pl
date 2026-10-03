@@ -377,17 +377,9 @@ const buildInventoryLevelStockCondition = (level: ProductInventoryLevel, totalSt
   return or(ne(product.status, PRODUCT_STATUS.PUBLISHED), sql`${stock} > ${PRODUCT_LOW_STOCK_THRESHOLD}`)!
 }
 
-type AdminProductsFilterParams = Pick<
-  AdminProductsListParams,
-  "categoryId" | "collectionId" | "createdAt" | "inventoryLevel" | "search" | "status"
->
+type AdminProductsFilterParams = Pick<AdminProductsListParams, "categoryId" | "collectionId" | "createdAt" | "search" | "status">
 
-const buildAdminProductsWhere = (
-  params: AdminProductsFilterParams,
-  options?: {
-    readonly skipInventory?: boolean
-  },
-): SQL | undefined => {
+const buildAdminProductsWhere = (params: AdminProductsFilterParams): SQL | undefined => {
   const conditions: SQL[] = []
   const searchCondition = buildAdminProductSearchCondition(params.search)
   if (searchCondition !== undefined) {
@@ -400,10 +392,6 @@ const buildAdminProductsWhere = (
 
   if (params.createdAt !== undefined) {
     conditions.push(buildAdminDateFilterSql(sql`${product.createdAt}`, params.createdAt))
-  }
-
-  if (params.inventoryLevel !== undefined && options?.skipInventory !== true) {
-    conditions.push(buildInventoryLevelStockCondition(params.inventoryLevel, sql<number>`(${totalStockSubquery()})`))
   }
 
   if (params.categoryId !== undefined) {
@@ -466,9 +454,7 @@ const queryAdminProducts = async (
   const variantStats = productVariantStatsSubquery()
   const needsVariantStatsJoin =
     adminProductsListNeedsVariantStatsJoin(params) || params.minPrice !== undefined || params.totalStock !== undefined
-  const whereClause = buildAdminProductsWhere(params, {
-    skipInventory: needsVariantStatsJoin,
-  })
+  const whereClause = buildAdminProductsWhere(params)
 
   let combinedWhere = whereClause
   if (needsVariantStatsJoin) {

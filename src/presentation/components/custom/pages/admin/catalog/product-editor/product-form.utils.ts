@@ -15,7 +15,7 @@ import {
   buildVariantDisplayTitle,
   inferHasVariants,
 } from "~/src/modules/product-variant/product-variant.utils"
-import { PRODUCT_ADMIN_STATUS, PRODUCT_STATUSES, type ProductStatus } from "~/src/modules/product/product.constants"
+import { PRODUCT_ADMIN_STATUS } from "~/src/modules/product/product.constants"
 import {
   type AdminProductDetail,
   coerceProductLocaleMap,
@@ -27,8 +27,6 @@ import { type CatalogUpsertInput, type ProductFormValues } from "~/src/modules/p
 
 import { resolveMainImageId } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-image-form.utils"
 import { ensureImplicitVariantOptions } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-variant-form.utils"
-
-const isProductStatus = (value: string): value is ProductStatus => (PRODUCT_STATUSES as readonly string[]).includes(value)
 
 export const createEmptyProductFormValues = (): ProductFormValues => ({
   additionalCategoryIds: [],
@@ -156,19 +154,14 @@ const takeMatchingVariant = (
 
 const sortVariantsByOptionValueRank = (
   productVariants: readonly ProductDetailVariant[],
-  options: readonly ProductOptionDraft[],
+  option: ProductOptionDraft,
 ): ProductDetailVariant[] => {
-  const [option] = options
-  if (option === undefined) {
-    return [...productVariants]
-  }
-
-  const valueRankById = new Map(option.values.map((value, index) => [value.id ?? "", index] as const))
+  const valueRankById = new Map(option.values.map((value, index) => [value.id, index] as const))
   const maxRank = option.values.length
 
-  return [...productVariants].toSorted((left, right) => {
-    const leftRank = valueRankById.get(left.optionOnVariants[0]?.value.id ?? "") ?? maxRank
-    const rightRank = valueRankById.get(right.optionOnVariants[0]?.value.id ?? "") ?? maxRank
+  return productVariants.toSorted((left, right) => {
+    const leftRank = valueRankById.get(left.optionOnVariants[0]?.value.id) ?? maxRank
+    const rightRank = valueRankById.get(right.optionOnVariants[0]?.value.id) ?? maxRank
     if (leftRank !== rightRank) {
       return leftRank - rightRank
     }
@@ -209,7 +202,7 @@ const mapVariantsToFormRows = (
     return []
   }
 
-  const remainingVariants = new Set(sortVariantsByOptionValueRank(productVariants, options))
+  const remainingVariants = new Set(sortVariantsByOptionValueRank(productVariants, option))
   // Reserve explicit identities before legacy fallbacks so no stored variant can populate two rows.
   const linkedVariants = option.values.map((value) =>
     takeMatchingVariant(
@@ -296,11 +289,11 @@ export const mapProductDetailToFormValues = (product: AdminProductDetail): Produ
             quantity: firstVariant.inventory?.quantityAvailable ?? 0,
             sku: firstVariant.sku ?? "",
           },
-    status: isProductStatus(product.status) ? toProductAdminStatus(product.status) : PRODUCT_ADMIN_STATUS.DRAFT,
+    status: toProductAdminStatus(product.status),
     subtitles: coerceProductLocaleMap(product.subtitles),
     tags: coerceProductTagsLocaleMap(product.tags ?? EMPTY_TAGS),
     titles: coerceProductLocaleMap(product.titles),
-    variants: hasVariants ? mapVariantsToFormRows(productVariants, formOptions, product.images) : [],
+    variants: mapVariantsToFormRows(productVariants, formOptions, product.images),
   }
 }
 

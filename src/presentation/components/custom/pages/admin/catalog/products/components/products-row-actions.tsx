@@ -54,25 +54,26 @@ export const ProductsRowActions = ({ product }: Readonly<ProductsRowActionsProps
     openEdit(product)
   }, [openEdit, product])
 
-  const handleViewStorefront = useCallback(() => {
-    if (storefrontHref === undefined) {
-      return
-    }
-    globalThis.open(storefrontHref, "_blank", "noopener,noreferrer")
-  }, [storefrontHref])
-
   const handleCopyId = useCallback(() => {
     void navigator.clipboard.writeText(id)
     toast.success(t("rowActions.copyIdToast"))
   }, [id, t])
 
-  const handleCopyLink = useCallback(() => {
-    if (storefrontHref === undefined) {
-      return
-    }
-    void navigator.clipboard.writeText(`${globalThis.location.origin}${storefrontHref}`)
-    toast.success(t("rowActions.copyLinkToast"))
-  }, [storefrontHref, t])
+  const storefrontActions = useMemo(
+    () =>
+      storefrontHref === undefined
+        ? undefined
+        : {
+            copyLink: () => {
+              void navigator.clipboard.writeText(`${globalThis.location.origin}${storefrontHref}`)
+              toast.success(t("rowActions.copyLinkToast"))
+            },
+            view: () => {
+              globalThis.open(storefrontHref, "_blank", "noopener,noreferrer")
+            },
+          },
+    [storefrontHref, t],
+  )
 
   const handleDelete = useCallback(() => {
     closeMenuAndRequestDeleteConfirm()
@@ -118,8 +119,8 @@ export const ProductsRowActions = ({ product }: Readonly<ProductsRowActionsProps
             <Edit2 className="size-4" strokeWidth={1.5} />
             {t("rowActions.edit")}
           </DropdownMenuItem>
-          {storefrontHref !== undefined && (
-            <DropdownMenuItem className={ITEM_CLASS} onClick={runMenuAction(handleViewStorefront)}>
+          {storefrontActions !== undefined && (
+            <DropdownMenuItem className={ITEM_CLASS} onClick={runMenuAction(storefrontActions.view)}>
               <PackageSearch className="size-4" strokeWidth={1.5} />
               {t("rowActions.viewStorefront")}
             </DropdownMenuItem>
@@ -129,13 +130,13 @@ export const ProductsRowActions = ({ product }: Readonly<ProductsRowActionsProps
             {t("rowActions.copyId")}
           </DropdownMenuItem>
           <DropdownMenuSeparator className="my-1.5" />
-          {storefrontHref !== undefined && (
-            <DropdownMenuItem className={ITEM_CLASS} onClick={runMenuAction(handleCopyLink)}>
+          {storefrontActions !== undefined && (
+            <DropdownMenuItem className={ITEM_CLASS} onClick={runMenuAction(storefrontActions.copyLink)}>
               <Link2 className="size-4" strokeWidth={1.5} />
               {t("rowActions.copyLink")}
             </DropdownMenuItem>
           )}
-          {storefrontHref !== undefined && <DropdownMenuSeparator className="my-1.5" />}
+          {storefrontActions !== undefined && <DropdownMenuSeparator className="my-1.5" />}
           <DropdownMenuItem className={ITEM_CLASS} variant="destructive" onClick={runMenuAction(handleDelete)}>
             <Trash2 className="size-4" strokeWidth={1.5} />
             {t("rowActions.delete")}

@@ -171,19 +171,34 @@ export const resolvePendingCheckout = (
   return { checkoutId: paymentRow.checkoutId, email: checkoutRow.email, paymentId: paymentRow.id, userId: checkoutRow.userId }
 }
 
-const preparePendingCheckoutAddressUpsert = (checkoutId: string, values: typeof address.$inferInsert): BatchItem<"sqlite"> => {
+interface PendingCheckoutAddressValues {
+  readonly address1: string
+  readonly address2?: string | null | undefined
+  readonly city: string
+  readonly countryCode: string
+  readonly firstName: string
+  readonly id: string
+  readonly isDefault: boolean
+  readonly lastName: string
+  readonly phone: string
+  readonly postalCode: string
+  readonly province?: string | null | undefined
+  readonly userId: string | null | undefined
+}
+
+const preparePendingCheckoutAddressUpsert = (checkoutId: string, values: PendingCheckoutAddressValues): BatchItem<"sqlite"> => {
   // INSERT SELECT requires the table's column order, including the timestamps appended by its schema.
   const addressFields = {
     address1: sql<string>`${values.address1}`.as("address1"),
     address2: sql<string | null>`${values.address2 ?? sql`NULL`}`.as("address2"),
     city: sql<string>`${values.city}`.as("city"),
     countryCode: sql<string>`${values.countryCode}`.as("country_code"),
-    firstName: sql<string | null>`${values.firstName ?? sql`NULL`}`.as("first_name"),
+    firstName: sql<string>`${values.firstName}`.as("first_name"),
     id: sql<string>`${values.id}`.as("id"),
-    isDefault: sql<boolean>`${sql.param(values.isDefault ?? false, address.isDefault)}`.as("is_default"),
-    lastName: sql<string | null>`${values.lastName ?? sql`NULL`}`.as("last_name"),
-    phone: sql<string | null>`${values.phone ?? sql`NULL`}`.as("phone"),
-    postalCode: sql<string | null>`${values.postalCode ?? sql`NULL`}`.as("postal_code"),
+    isDefault: sql<boolean>`${sql.param(values.isDefault, address.isDefault)}`.as("is_default"),
+    lastName: sql<string>`${values.lastName}`.as("last_name"),
+    phone: sql<string>`${values.phone}`.as("phone"),
+    postalCode: sql<string>`${values.postalCode}`.as("postal_code"),
     province: sql<string | null>`${values.province ?? sql`NULL`}`.as("province"),
     userId: sql<string | null>`${values.userId ?? sql`NULL`}`.as("user_id"),
   }

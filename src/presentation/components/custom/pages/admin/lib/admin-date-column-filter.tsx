@@ -9,6 +9,7 @@ import {
   DATE_COLUMN_FILTER_OPERATORS,
   type DateColumnFilterOperator,
   type DateColumnFilterValue,
+  type ValidatedDateColumnFilterValue,
   isDateColumnFilterOperator,
   isDateColumnFilterValue,
 } from "~/src/modules/_core/utils/column-filters"
@@ -36,7 +37,7 @@ const emptyDraft = (): DateFilterDraft => ({
   startDate: "",
 })
 
-const toDraft = (filter: DateColumnFilterValue | undefined): DateFilterDraft => {
+const toDraft = (filter: ValidatedDateColumnFilterValue | undefined): DateFilterDraft => {
   if (filter === undefined) {
     return emptyDraft()
   }
@@ -44,14 +45,14 @@ const toDraft = (filter: DateColumnFilterValue | undefined): DateFilterDraft => 
   if (filter.operator === DATE_COLUMN_FILTER_OPERATOR.BETWEEN) {
     return {
       date: "",
-      endDate: filter.endDate ?? "",
+      endDate: filter.endDate,
       operator: filter.operator,
-      startDate: filter.startDate ?? "",
+      startDate: filter.startDate,
     }
   }
 
   return {
-    date: filter.date ?? "",
+    date: filter.date,
     endDate: "",
     operator: filter.operator,
     startDate: "",
@@ -156,9 +157,6 @@ export const AdminDateColumnFilter = <TData extends RowData>({
   }, [])
 
   const handleApply = useCallback(() => {
-    if (!isDraftValid(draft)) {
-      return
-    }
     column?.setFilterValue(toFilterValue(draft))
     table.setPageIndex(0)
     setOpen(false)

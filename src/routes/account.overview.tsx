@@ -301,7 +301,7 @@ const AccountOverviewPage = (): JSX.Element => {
   const { user } = AccountRoute.useRouteContext()
   const { data: overview } = useSuspenseQuery(getCustomerOverviewQuery(locale))
 
-  const firstName = user.name.split(" ")[0] ?? user.name
+  const firstName = user.name.replace(/ .*/su, "")
   const totalSpentLabel = format.number(centsToDisplayAmount(overview.stats.totalSpentMinorUnits), {
     currency: "PLN",
     style: "currency",

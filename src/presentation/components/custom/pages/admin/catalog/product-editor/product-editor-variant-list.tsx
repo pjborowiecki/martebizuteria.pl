@@ -87,15 +87,7 @@ export const ProductEditorVariantList = (): JSX.Element => {
       const nextOptions = [
         {
           ...firstOption,
-          values:
-            nextValues.length === 0
-              ? [
-                  {
-                    id: uuidv7(),
-                    labels: createEmptyProductAttributeLocaleMap(),
-                  },
-                ]
-              : nextValues,
+          values: nextValues,
         },
       ]
       setValue("options", nextOptions, {

@@ -29,9 +29,6 @@ const matchesOperator = (cellMinorUnits: number, filter: ValidatedNumericColumnF
     case NUMERIC_COLUMN_FILTER_OPERATOR.LTE: {
       return cellMinorUnits <= filter.amountMinorUnits
     }
-    default: {
-      return true
-    }
   }
 }
 

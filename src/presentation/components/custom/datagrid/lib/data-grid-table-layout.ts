@@ -192,15 +192,7 @@ export const getDataGridContentWidth = <TData extends RowData>(input: {
   readonly columnSizing: ColumnSizingState
   readonly columns: readonly Column<DataGridFeatures, TData>[]
   readonly tableClientWidth: number
-}): number => {
-  if (input.tableClientWidth <= 0) {
-    return getDataGridTableMinWidth(input.columns, input.columnSizing)
-  }
-
-  const layout = resolveDataGridTableLayout(input)
-
-  return layout?.tableWidth ?? getDataGridTableMinWidth(input.columns, input.columnSizing)
-}
+}): number => resolveDataGridTableLayout(input)?.tableWidth ?? getDataGridTableMinWidth(input.columns, input.columnSizing)
 
 export const getDataGridTableMinWidth = <TData extends RowData>(
   columns: readonly Column<DataGridFeatures, TData>[],

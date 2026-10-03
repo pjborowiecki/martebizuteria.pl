@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react"
+import { type JSX } from "react"
 
 import { Box, Copy, ExternalLink, Package, Truck } from "lucide-react"
 import { toast } from "sonner"
@@ -33,13 +33,6 @@ export const OrderShippingCard = ({
   trackingUrl,
 }: Readonly<OrderShippingCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
-  const handleCopyAddress = useCallback(() => {
-    if (shippingAddress === undefined) {
-      return
-    }
-    void navigator.clipboard.writeText(formatAddressForClipboard(shippingAddress))
-    toast.success(t("orderDetail.shipping.copied"))
-  }, [shippingAddress, t])
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
@@ -50,7 +43,10 @@ export const OrderShippingCard = ({
             <Button
               aria-label={t("orderDetail.shipping.copy")}
               className="size-7 text-muted-foreground"
-              onClick={handleCopyAddress}
+              onClick={() => {
+                void navigator.clipboard.writeText(formatAddressForClipboard(shippingAddress))
+                toast.success(t("orderDetail.shipping.copied"))
+              }}
               size="icon"
               variant="ghost"
             >
