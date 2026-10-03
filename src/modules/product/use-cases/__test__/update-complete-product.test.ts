@@ -14,29 +14,33 @@ const operations = vi.hoisted(() => ({
   attributes: vi.fn(),
   audit: vi.fn<(handle: string, payload: AuditPayload) => void>(),
   authorized: vi.fn(),
+  batch: vi.fn<(statements: readonly unknown[]) => Promise<void>>(),
   detailById: vi.fn<(input: { readonly id: string }) => Promise<unknown>>(),
   images: vi.fn(),
   invalidate: vi.fn(),
+  loadAttributes: vi.fn(),
   productByHandle: vi.fn(),
-  update: vi.fn<(id: string, input: Record<string, unknown>) => Promise<void>>(),
+  update: vi.fn<(id: string, input: Record<string, unknown>, ownedVariantIds: ReadonlySet<string>) => string[]>(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: operations.authorized }))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch: operations.batch }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: operations.invalidate,
 }))
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.utils", () => ({
-  replaceAllAttributesForProduct: operations.attributes,
+  loadAttributeOnProductRows: operations.loadAttributes,
+  prepareAttributeOnProductBatch: operations.attributes,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCatalogProductUpdatedAudit: operations.audit }))
-vi.mock("~/src/modules/product-image/product-image.persist.utils", () => ({ replaceProductImages: operations.images }))
+vi.mock("~/src/modules/product-image/product-image.persist.utils", () => ({ prepareProductImagesBatch: operations.images }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
   getAdminProductDetailByIdQuery: { execute: operations.detailById },
   getProductByHandleQuery: { execute: operations.productByHandle },
 }))
 vi.mock("~/src/modules/product/product.catalog.server", () => ({
   assertCatalogSkusAvailable: operations.assertSkus,
-  updateProductWithCatalog: operations.update,
+  prepareProductUpdateBatch: operations.update,
 }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
@@ -79,7 +83,7 @@ const productInput = productZodSchemas.updateCompleteInput.parse({
 
 const detail = (status: string, quantityAvailable: number) => ({
   status,
-  variants: [{ inventory: { quantityAvailable }, price: 12_000, sku: "SILVER-RING" }],
+  variants: [{ id: "variant-1", inventory: { quantityAvailable }, price: 12_000, sku: "SILVER-RING" }],
 })
 
 const auditPayload = (): AuditPayload | undefined => operations.audit.mock.calls[0]?.[1]
@@ -87,10 +91,12 @@ const auditPayload = (): AuditPayload | undefined => operations.audit.mock.calls
 beforeEach(() => {
   vi.resetAllMocks()
   operations.assertSkus.mockResolvedValue(undefined)
-  operations.attributes.mockResolvedValue(undefined)
-  operations.images.mockResolvedValue(undefined)
+  operations.attributes.mockReturnValue(["attribute statement"])
+  operations.batch.mockResolvedValue(undefined)
+  operations.images.mockReturnValue(["image statement"])
+  operations.loadAttributes.mockResolvedValue(["attribute row"])
   operations.productByHandle.mockResolvedValue(undefined)
-  operations.update.mockResolvedValue(undefined)
+  operations.update.mockReturnValue(["product statement"])
   operations.detailById.mockResolvedValue(detail("draft", 5))
 })
 
@@ -104,8 +110,20 @@ describe("complete product update", () => {
 
     await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("Sku taken")
 
-    expect(operations.update).not.toHaveBeenCalled()
-    expect(operations.images).not.toHaveBeenCalled()
+    expect(operations.batch).not.toHaveBeenCalled()
+  })
+
+  it("saves the product, its images and its attributes in one atomic batch", async () => {
+    await updateCompleteProduct({ data: productInput })
+
+    expect(operations.attributes).toHaveBeenCalledWith(PRODUCT_ID, ["attribute row"])
+    expect(operations.batch).toHaveBeenCalledExactlyOnceWith(["product statement", "image statement", "attribute statement"])
+  })
+
+  it("keeps the variant ids the product already owns", async () => {
+    await updateCompleteProduct({ data: productInput })
+
+    expect(operations.update.mock.calls[0]?.[2]).toStrictEqual(new Set(["variant-1"]))
   })
 
   it("writes the catalog row without the detail collections it handles separately", async () => {
@@ -130,7 +148,7 @@ describe("complete product update", () => {
   it("reshapes variant attribute groups into rows for the attribute writer", async () => {
     await updateCompleteProduct({ data: productInput })
 
-    expect(operations.attributes).toHaveBeenCalledWith(PRODUCT_ID, productInput.attributeValues, [
+    expect(operations.loadAttributes).toHaveBeenCalledWith(PRODUCT_ID, productInput.attributeValues, [
       { rows: [{ attributeId: "01965030-0000-7000-8000-000000000012", value: "54" }], variantId: "variant-1" },
     ])
   })
@@ -171,9 +189,10 @@ describe("complete product update auditing", () => {
   })
 
   it("mentions only the variants when just a price moved", async () => {
-    operations.detailById
-      .mockResolvedValueOnce(detail("draft", 5))
-      .mockResolvedValueOnce({ status: "draft", variants: [{ inventory: { quantityAvailable: 5 }, price: 15_000, sku: "SILVER-RING" }] })
+    operations.detailById.mockResolvedValueOnce(detail("draft", 5)).mockResolvedValueOnce({
+      status: "draft",
+      variants: [{ id: "variant-1", inventory: { quantityAvailable: 5 }, price: 15_000, sku: "SILVER-RING" }],
+    })
 
     await updateCompleteProduct({ data: productInput })
 
@@ -210,7 +229,7 @@ describe("complete product update failures", () => {
 
     await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("DUPLICATE_HANDLE")
 
-    expect(operations.update).not.toHaveBeenCalled()
+    expect(operations.batch).not.toHaveBeenCalled()
     expect(operations.audit).not.toHaveBeenCalled()
   })
 
@@ -220,31 +239,23 @@ describe("complete product update failures", () => {
     await expect(updateCompleteProduct({ data: productInput })).resolves.toStrictEqual({ handle: "silver-ring", id: PRODUCT_ID })
   })
 
-  it("neither audits nor invalidates when the image write fails", async () => {
-    operations.images.mockRejectedValueOnce(new Error("Image write failed"))
+  it("neither audits nor invalidates when the save batch fails", async () => {
+    operations.batch.mockRejectedValueOnce(new Error("D1_ERROR: FOREIGN KEY constraint failed"))
 
-    await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("Image write failed")
+    await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("FOREIGN KEY constraint failed")
 
     expect(operations.audit).not.toHaveBeenCalled()
     expect(operations.invalidate).not.toHaveBeenCalled()
   })
 
-  it("neither audits nor invalidates when the attribute write fails", async () => {
-    operations.attributes.mockRejectedValueOnce(new Error("Attribute write failed"))
-
-    await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("Attribute write failed")
-
-    expect(operations.audit).not.toHaveBeenCalled()
-  })
-
   it("translates a duplicate sku constraint into the product error code", async () => {
-    operations.update.mockRejectedValueOnce(new Error("UNIQUE constraint failed: product_variant.sku"))
+    operations.batch.mockRejectedValueOnce(new Error("UNIQUE constraint failed: product_variant.sku"))
 
     await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("DUPLICATE_SKU")
   })
 
   it("translates a duplicate handle constraint into the product error code", async () => {
-    operations.update.mockRejectedValueOnce(new Error("UNIQUE constraint failed: product.handle"))
+    operations.batch.mockRejectedValueOnce(new Error("UNIQUE constraint failed: product.handle"))
 
     await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("DUPLICATE_HANDLE")
   })

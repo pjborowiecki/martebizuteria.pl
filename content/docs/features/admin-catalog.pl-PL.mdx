@@ -80,29 +80,28 @@ Filtry listy składają `product.admin-list-filters.ts`, `product.admin-list-var
 | `delete-products.ts`         | `product: ["delete"]` | usunięcie zbiorcze po tablicy identyfikatorów                                                  |
 | `reorder-products.ts`        | `product: ["update"]` | `orderedIds.map((id, index) => ({ id, rank: index }))`                                         |
 
-`createCompleteProduct` ostrożnie obchodzi się z częściową porażką:
+Oba use case'y zapisują produkt jednym atomowym batchem D1, więc zapis albo wchodzi w całości, albo zostawia produkt dokładnie takim, jaki był. Najpierw równolegle czytają to, od czego zapis zależy, a potem wysyłają instrukcje razem:
 
 ```ts
-await deleteOrphanProductByHandle(data.handle)
-
-const id = uuidv7()
-
-try {
-  await persistProduct(id, data)
-} catch (error) {
-  await deleteProducts([id]).catch((cleanupError: unknown) => {
-    console.error(`Failed to roll back partially created product ${id}:`, cleanupError)
-  })
-
-  return rethrowProductMutationError(error)
-}
+const [rank, attributeRows] = await Promise.all([
+  getNextProductRank(),
+  loadAttributeOnProductRows(productId, data.attributeValues),
+  assertCatalogSkusAvailable(data),
+])
+await runDrizzleBatch([
+  ...prepareProductInsertBatch(productId, data, rank),
+  ...prepareProductImagesBatch(productId, data.images),
+  ...prepareAttributeOnProductBatch(productId, attributeRows),
+])
 ```
+
+`prepareProductInsertBatch` i `prepareProductUpdateBatch` (`product.catalog.server.ts`) zapisują wiersz produktu i dokładają `prepareProductOrganizationBatch` oraz `prepareProductCatalogBatch` z `product.mutations.ts`. `prepareProductImagesBatch` podmienia zdjęcia i w tym samym batchu ustawia `product.thumbnail` na zdjęcie o najniższej randze, a `prepareAttributeOnProductBatch` podmienia wartości atrybutów. `createCompleteProduct` nadal najpierw wywołuje `deleteOrphanProductByHandle(data.handle)`, które usuwa produkt pozostawiony bez wariantów przez starszy, nieatomowy zapis.
 
 `rethrowProductMutationError` (`product.mutation-errors.ts`) mapuje naruszenie unikalności w D1 na `PRODUCT_ERROR_CODES.DUPLICATE_HANDLE` albo `DUPLICATE_SKU`, żeby formularz mógł pokazać błąd przy właściwym polu.
 
-`updateCompleteProduct` dodatkowo odrzuca handle zajęty przez inny produkt (`ERROR_CODES.CONFLICT` z `DUPLICATE_HANDLE`), wywołuje `assertCatalogSkusAvailable` i buduje różnicę do audytu, czytając produkt przed i po zapisie (`extractProductAuditSnapshot` i `buildProductAuditChange` w `product-audit.utils.ts`).
+`updateCompleteProduct` równolegle czyta właściciela handle, bieżące szczegóły produktu i definicje atrybutów, odrzuca handle zajęty przez inny produkt (`ERROR_CODES.CONFLICT` z `DUPLICATE_HANDLE`), wywołuje `assertCatalogSkusAvailable` i buduje różnicę do audytu, czytając produkt przed i po zapisie (`extractProductAuditSnapshot` i `buildProductAuditChange` w `product-audit.utils.ts`).
 
-Zapis zachowuje każdy wariant, który produkt już ma, pod jego identyfikatorem. `replaceProductCatalog` (`product.mutations.ts`) wykonuje jeden batch D1, który usuwa tylko warianty usunięte w formularzu, aktualizuje pozostałe po identyfikatorze (upsert) i robi upsert stanów magazynowych po identyfikatorze wariantu, zmieniając `quantityAvailable` i podbijając `version` tylko wtedy, gdy stan faktycznie się zmienił. Pozycje zamówień, pozycje koszyków i rezerwacje stanów zostają więc przypięte do swoich wariantów. Identyfikator wariantu jest użyty ponownie tylko wtedy, gdy `updateCompleteProduct` odczytał go z tego produktu, więc podrobiony identyfikator nigdy nie przejmie wariantu innego produktu. Każdy wielowierszowy insert jest dzielony przez `insertRowChunks`, żeby zmieścić się w limicie 100 parametrów na instrukcję w D1.
+Zapis zachowuje każdy wariant, który produkt już ma, pod jego identyfikatorem. Instrukcje z `prepareProductCatalogBatch` usuwają tylko warianty usunięte w formularzu, aktualizują pozostałe po identyfikatorze (upsert) i robią upsert stanów magazynowych po identyfikatorze wariantu, zmieniając `quantityAvailable` i podbijając `version` tylko wtedy, gdy stan faktycznie się zmienił. Pozycje zamówień, pozycje koszyków i rezerwacje stanów zostają więc przypięte do swoich wariantów. Identyfikator wariantu jest użyty ponownie tylko wtedy, gdy `updateCompleteProduct` odczytał go z tego produktu, więc podrobiony identyfikator nigdy nie przejmie wariantu innego produktu. Każdy wielowierszowy insert, w tym zdjęcia, wartości atrybutów oraz powiązania z kategoriami i kolekcjami, jest dzielony przez `insertRowChunks`, żeby zmieścić się w limicie 100 parametrów na instrukcję w D1, więc duża galeria czy długa lista specyfikacji zapisuje się jak każda inna.
 
 Każdy zapis kończy się `scheduleProductCatalogInvalidation()` i wywołaniem `recordCatalogProduct*Audit`.
 
@@ -167,7 +166,7 @@ Atrybut to definicja specyfikacji do wielokrotnego użycia. `PRODUCT_ATTRIBUTE_T
 
 Use case'y: `get-admin-product-attributes`, `get-product-attribute-stats`, `create-product-attribute`, `update-product-attribute`, `delete-product-attributes`, `reorder-product-attributes`. Wywołują `scheduleProductAttributeCatalogInvalidation()`, które unieważnia tylko klucze panelu — atrybuty są czytane w witrynie jako część zapytania o produkt, a nie osobno.
 
-Wartości są dowiązywane przez `src/modules/attribute-on-product`: `get-product-attributes` i `set-all-product-attributes`, z `replaceAttributesForProduct` i `replaceAllAttributesForProduct` wykonującymi podmianę. Wiersz może być zawężony do wariantu — właśnie dzięki temu `mapPublishedProductForStorefront` nadaje wariantowi własne specyfikacje z fallbackiem na te z poziomu produktu.
+Wartości są dowiązywane przez `src/modules/attribute-on-product`: `get-product-attributes` i `set-all-product-attributes`, przy czym `loadAttributeOnProductRows` normalizuje wartości względem ich definicji, a `prepareAttributeOnProductBatch` podmienia je jednym batchem. Wiersz może być zawężony do wariantu — właśnie dzięki temu `mapPublishedProductForStorefront` nadaje wariantowi własne specyfikacje z fallbackiem na te z poziomu produktu.
 
 ## Zdjęcia i R2
 
@@ -190,7 +189,7 @@ if ((await env.IMAGES.head(key)) === null) {
 
 `IMMUTABLE_CACHE_CONTROL` to `public, max-age=31536000, immutable`, co jest bezpieczne właśnie dlatego, że kluczem jest skrót. Bindingiem jest `IMAGES` w `wrangler.jsonc`, a `getAssetURL` / `resolveAssetURL` w `src/lib/url.ts` zamieniają klucz w publiczny adres na podstawie `VITE_R2_URL`.
 
-`product-image.persist.utils.ts` (`replaceProductImages`) przepisuje wiersze zdjęć produktu, a `product-image.server.ts` utrzymuje `product.thumbnail` w zgodzie przez `getFirstImageUrl` i `updateProductThumbnail`. Widżety wysyłki leżą w `src/presentation/components/custom/image-upload/`.
+`product-image.persist.utils.ts` (`prepareProductImagesBatch`) przepisuje wiersze zdjęć produktu i w tym samym batchu utrzymuje `product.thumbnail` w zgodzie, a `product-image.server.ts` odczytuje je przez `getProductImagesQuery`. Widżety wysyłki leżą w `src/presentation/components/custom/image-upload/`.
 
 ## Wspólna infrastruktura siatek
 

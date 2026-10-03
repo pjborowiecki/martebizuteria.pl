@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { replaceAllAttributesForProduct } = vi.hoisted(() => ({
-  replaceAllAttributesForProduct: vi.fn<(productId: string, productRows: unknown, variantGroups: unknown) => Promise<void>>(),
+const { loadAttributeOnProductRows, prepareAttributeOnProductBatch, runDrizzleBatch } = vi.hoisted(() => ({
+  loadAttributeOnProductRows: vi.fn<(productId: string, productRows: unknown, variantGroups: unknown) => Promise<unknown[]>>(),
+  prepareAttributeOnProductBatch: vi.fn<(productId: string, rows: unknown[]) => unknown[]>(),
+  runDrizzleBatch: vi.fn<(statements: unknown[]) => Promise<void>>(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/modules/attribute-on-product/attribute-on-product.utils", () => ({ replaceAllAttributesForProduct }))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch }))
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.utils", () => ({
+  loadAttributeOnProductRows,
+  prepareAttributeOnProductBatch,
+}))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const state: { validator?: (input: unknown) => unknown } = {}
@@ -36,18 +42,27 @@ const input = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  replaceAllAttributesForProduct.mockResolvedValue()
+  loadAttributeOnProductRows.mockResolvedValue(["normalized row"])
+  prepareAttributeOnProductBatch.mockReturnValue(["delete statement", "insert statement"])
+  runDrizzleBatch.mockResolvedValue()
 })
 
 describe("setAllProductAttributes", () => {
   it("replaces the product attributes and renames each variant group to the persistence shape", async () => {
     await setAllProductAttributes({ data: input })
 
-    expect(replaceAllAttributesForProduct).toHaveBeenCalledWith(
+    expect(loadAttributeOnProductRows).toHaveBeenCalledWith(
       "product-1",
       [{ attributeId: "attr-material", value: "gold" }],
       [{ rows: [{ attributeId: "attr-size", value: "M" }], variantId: "variant-1" }],
     )
+  })
+
+  it("writes the normalized rows in one atomic batch", async () => {
+    await setAllProductAttributes({ data: input })
+
+    expect(prepareAttributeOnProductBatch).toHaveBeenCalledWith("product-1", ["normalized row"])
+    expect(runDrizzleBatch).toHaveBeenCalledExactlyOnceWith(["delete statement", "insert statement"])
   })
 
   it("confirms which product was written", async () => {
@@ -57,7 +72,7 @@ describe("setAllProductAttributes", () => {
   it("clears every attribute when both lists are empty", async () => {
     await setAllProductAttributes({ data: { productId: "product-1", productValues: [], variantValues: [] } })
 
-    expect(replaceAllAttributesForProduct).toHaveBeenCalledWith("product-1", [], [])
+    expect(loadAttributeOnProductRows).toHaveBeenCalledWith("product-1", [], [])
   })
 
   it("trims the values it was given before writing them", async () => {
@@ -65,7 +80,7 @@ describe("setAllProductAttributes", () => {
       data: { productId: "  product-1  ", productValues: [{ attributeId: "  attr-material  ", value: "  gold  " }], variantValues: [] },
     })
 
-    expect(replaceAllAttributesForProduct).toHaveBeenCalledWith("product-1", [{ attributeId: "attr-material", value: "gold" }], [])
+    expect(loadAttributeOnProductRows).toHaveBeenCalledWith("product-1", [{ attributeId: "attr-material", value: "gold" }], [])
   })
 
   it("keeps the rank an attribute row carries", async () => {
@@ -73,13 +88,13 @@ describe("setAllProductAttributes", () => {
       data: { productId: "product-1", productValues: [{ attributeId: "attr-material", rank: 2, value: "gold" }], variantValues: [] },
     })
 
-    expect(replaceAllAttributesForProduct).toHaveBeenCalledWith("product-1", [{ attributeId: "attr-material", rank: 2, value: "gold" }], [])
+    expect(loadAttributeOnProductRows).toHaveBeenCalledWith("product-1", [{ attributeId: "attr-material", rank: 2, value: "gold" }], [])
   })
 
   it("rejects an input without a product id", async () => {
     await expect(setAllProductAttributes({ data: { productId: "", productValues: [], variantValues: [] } })).rejects.toThrow()
 
-    expect(replaceAllAttributesForProduct).not.toHaveBeenCalled()
+    expect(runDrizzleBatch).not.toHaveBeenCalled()
   })
 
   it("rejects a variant group that names no variant", async () => {
@@ -89,11 +104,11 @@ describe("setAllProductAttributes", () => {
       }),
     ).rejects.toThrow()
 
-    expect(replaceAllAttributesForProduct).not.toHaveBeenCalled()
+    expect(runDrizzleBatch).not.toHaveBeenCalled()
   })
 
   it("lets a failed write surface to the caller", async () => {
-    replaceAllAttributesForProduct.mockRejectedValue(new Error("D1_ERROR: constraint failed"))
+    runDrizzleBatch.mockRejectedValue(new Error("D1_ERROR: constraint failed"))
 
     await expect(setAllProductAttributes({ data: input })).rejects.toThrow("D1_ERROR: constraint failed")
   })

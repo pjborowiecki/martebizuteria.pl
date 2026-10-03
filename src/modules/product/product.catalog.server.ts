@@ -1,13 +1,19 @@
 import { eq } from "drizzle-orm"
 import type { z } from "zod/v4"
 
+import { type DrizzleBatchStatement } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { normalizeProductAttributeLocaleMapForSave } from "~/src/modules/product-attribute/product-attribute.utils"
 import { collectSkusFromCatalogInput } from "~/src/modules/product/product-sku.validation.utils"
 import { getMaxRankQuery, getProductByHandleQuery } from "~/src/modules/product/product.accessors"
 import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
-import { deleteProducts, findTakenSkus, replaceProductCatalog, replaceProductOrganization } from "~/src/modules/product/product.mutations"
+import {
+  deleteProducts,
+  findTakenSkus,
+  prepareProductCatalogBatch,
+  prepareProductOrganizationBatch,
+} from "~/src/modules/product/product.mutations"
 import { product } from "~/src/modules/product/product.schema"
 import { type Product } from "~/src/modules/product/product.types"
 import {
@@ -59,36 +65,37 @@ export const deleteOrphanProductByHandle = async (handle: string): Promise<boole
   return true
 }
 
-const persistProductCatalog = async (
+const prepareProductDetailsBatch = (
   productId: string,
   data: z.infer<(typeof productZodSchemas)["catalogUpsertInput"]>,
   ownedVariantIds: ReadonlySet<string>,
-): Promise<void> => {
+): DrizzleBatchStatement[] => {
   const organizationPayload = prepareOrganizationReplacePayload(productId, data)
-  if (organizationPayload !== undefined) {
-    await replaceProductOrganization(productId, organizationPayload)
-  }
-  await replaceProductCatalog(productId, prepareCatalogReplacePayload(productId, data, ownedVariantIds))
+
+  return [
+    ...(organizationPayload === undefined ? [] : prepareProductOrganizationBatch(productId, organizationPayload)),
+    ...prepareProductCatalogBatch(productId, prepareCatalogReplacePayload(productId, data, ownedVariantIds)),
+  ]
 }
 
-export const insertProductWithCatalog = async (
-  data: z.infer<(typeof productZodSchemas)["catalogUpsertInput"]>,
-  id: string,
-): Promise<void> => {
+export const getNextProductRank = async (): Promise<number> => {
   const [maxRank] = await getMaxRankQuery.execute()
-  let nextRank = maxRank?.value ?? NO_RANK
-  nextRank++
-  await db.insert(product).values(toProductRow(data, id, nextRank))
-  await assertCatalogSkusAvailable(data, id)
-  await persistProductCatalog(id, data, new Set())
+
+  return (maxRank?.value ?? NO_RANK) + 1
 }
 
-export const updateProductWithCatalog = async (
+export const prepareProductInsertBatch = (
+  id: string,
+  data: z.infer<(typeof productZodSchemas)["catalogUpsertInput"]>,
+  rank: number,
+): DrizzleBatchStatement[] => [db.insert(product).values(toProductRow(data, id, rank)), ...prepareProductDetailsBatch(id, data, new Set())]
+
+export const prepareProductUpdateBatch = (
   id: string,
   catalogInput: z.infer<(typeof productZodSchemas)["catalogUpsertInput"]>,
   ownedVariantIds: ReadonlySet<string>,
-): Promise<void> => {
-  await db
+): DrizzleBatchStatement[] => [
+  db
     .update(product)
     .set({
       descriptions: normalizeOptionalProductLocaleMapForSave(catalogInput.descriptions),
@@ -98,6 +105,6 @@ export const updateProductWithCatalog = async (
       tags: normalizeProductTagsLocaleMapForSave(catalogInput.tags),
       titles: normalizeProductAttributeLocaleMapForSave(catalogInput.titles),
     })
-    .where(eq(product.id, id))
-  await persistProductCatalog(id, catalogInput, ownedVariantIds)
-}
+    .where(eq(product.id, id)),
+  ...prepareProductDetailsBatch(id, catalogInput, ownedVariantIds),
+]

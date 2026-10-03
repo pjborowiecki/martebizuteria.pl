@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
-import { type ProductCatalogReplacePayload } from "~/src/modules/product/product.utils"
+import { type ProductCatalogReplacePayload, type ProductOrganizationReplacePayload } from "~/src/modules/product/product.utils"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -28,7 +28,8 @@ const { productOptionValue } = await import("~/src/modules/product-option-value/
 const { productOption } = await import("~/src/modules/product-option/product-option.schema")
 const { productVariant } = await import("~/src/modules/product-variant/product-variant.schema")
 const { product } = await import("~/src/modules/product/product.schema")
-const { deleteProducts, findTakenSkus, replaceProductCatalog, replaceProductOrganization, setProductRanks } =
+const { runDrizzleBatch } = await import("~/src/integrations/drizzle-orm/drizzle.batch")
+const { deleteProducts, findTakenSkus, prepareProductCatalogBatch, prepareProductOrganizationBatch, setProductRanks } =
   await import("~/src/modules/product/product.mutations")
 
 const { createTables } = await import("./product-sqlite-schema")
@@ -86,6 +87,12 @@ const insertProducts = (total: number): string[] =>
 
     return id
   })
+
+const saveCatalog = (productId: string, payload: ProductCatalogReplacePayload): Promise<void> =>
+  runDrizzleBatch(prepareProductCatalogBatch(productId, payload))
+
+const saveOrganization = (productId: string, payload: ProductOrganizationReplacePayload): Promise<void> =>
+  runDrizzleBatch(prepareProductOrganizationBatch(productId, payload))
 
 const rows = (statement: string): Record<string, unknown>[] =>
   sqlite
@@ -251,12 +258,12 @@ describe("findTakenSkus", () => {
   })
 })
 
-describe("replaceProductCatalog", () => {
+describe("prepareProductCatalogBatch", () => {
   it("swaps the old options and variants for the new ones in one batch", async () => {
     insertProduct("p1", "one", 0)
     insertVariant("v-old", "p1", "OLD")
 
-    await replaceProductCatalog("p1", CATALOG_PAYLOAD)
+    await saveCatalog("p1", CATALOG_PAYLOAD)
 
     expect(column("select id from product_variant", "id")).toStrictEqual(["v-new"])
     expect(column("select id from product_option", "id")).toStrictEqual(["o1"])
@@ -269,7 +276,7 @@ describe("replaceProductCatalog", () => {
     insertProduct("p1", "one", 0)
     insertVariant("v-old", "p1", "OLD")
 
-    await replaceProductCatalog("p1", {
+    await saveCatalog("p1", {
       inventoryRows: [],
       optionOnVariantRows: [],
       optionRows: [],
@@ -286,7 +293,7 @@ describe("replaceProductCatalog", () => {
     insertProduct("p2", "two", 1)
     insertVariant("v-other", "p2", "OTHER")
 
-    await replaceProductCatalog("p1", CATALOG_PAYLOAD)
+    await saveCatalog("p1", CATALOG_PAYLOAD)
 
     expect(column("select id from product_variant order by id", "id")).toStrictEqual(["v-new", "v-other"])
   })
@@ -316,10 +323,10 @@ const simpleCatalog = (variants: readonly { id: string; quantity: number; sku?: 
   variantRows: variants.map(({ id, sku }) => variantRow(id, sku)),
 })
 
-describe("replaceProductCatalog on a product that has already sold", () => {
+describe("prepareProductCatalogBatch on a product that has already sold", () => {
   beforeEach(async () => {
     insertProduct("p1", "one", 0)
-    await replaceProductCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 5, sku: "SOLD" }]))
+    await saveCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 5, sku: "SOLD" }]))
     sqlite.prepare(`insert into "order" (id, email) values ('order-1', 'buyer@example.com')`).run()
     sqlite
       .prepare(
@@ -331,14 +338,14 @@ describe("replaceProductCatalog on a product that has already sold", () => {
   })
 
   it("keeps the order lines linked to the variant they bought", async () => {
-    await replaceProductCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 3, sku: "SOLD" }]))
+    await saveCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 3, sku: "SOLD" }]))
 
     expect(column("select variant_id from order_item", "variant_id")).toStrictEqual(["v-sold"])
     expect(column("select id from product_variant", "id")).toStrictEqual(["v-sold"])
   })
 
   it("keeps the stock that open checkouts have reserved and its lock version when nothing changed", async () => {
-    await replaceProductCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 3, sku: "SOLD" }]))
+    await saveCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 3, sku: "SOLD" }]))
 
     expect(rows("select quantity_available, quantity_reserved, version from inventory")).toStrictEqual([
       { quantity_available: 3, quantity_reserved: 2, version: 1 },
@@ -346,7 +353,7 @@ describe("replaceProductCatalog on a product that has already sold", () => {
   })
 
   it("applies new available stock without touching reservations and moves the lock version", async () => {
-    await replaceProductCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 10, sku: "SOLD" }]))
+    await saveCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 10, sku: "SOLD" }]))
 
     expect(rows("select quantity_available, quantity_reserved, version from inventory")).toStrictEqual([
       { quantity_available: 10, quantity_reserved: 2, version: 2 },
@@ -354,10 +361,10 @@ describe("replaceProductCatalog on a product that has already sold", () => {
   })
 })
 
-describe("replaceProductCatalog variant identity", () => {
+describe("prepareProductCatalogBatch variant identity", () => {
   it("lets two variants swap their SKUs in one save", async () => {
     insertProduct("p1", "one", 0)
-    await replaceProductCatalog(
+    await saveCatalog(
       "p1",
       simpleCatalog([
         { id: "v-a", quantity: 1, sku: "SKU-A" },
@@ -365,7 +372,7 @@ describe("replaceProductCatalog variant identity", () => {
       ]),
     )
 
-    await replaceProductCatalog(
+    await saveCatalog(
       "p1",
       simpleCatalog([
         { id: "v-a", quantity: 1, sku: "SKU-B" },
@@ -383,18 +390,18 @@ describe("replaceProductCatalog variant identity", () => {
     insertProduct("p1", "one", 0)
     const variants = Array.from({ length: 30 }, (_, index) => ({ id: `v-${String(index)}`, quantity: index, sku: `SKU-${String(index)}` }))
 
-    await replaceProductCatalog("p1", simpleCatalog(variants))
+    await saveCatalog("p1", simpleCatalog(variants))
 
     expect(column("select count(*) as total from product_variant", "total")).toStrictEqual([30])
     expect(column("select count(*) as total from inventory", "total")).toStrictEqual([30])
   })
 })
 
-describe("replaceProductOrganization", () => {
+describe("prepareProductOrganizationBatch", () => {
   it("stores the new links and promotes the primary category onto the product", async () => {
     insertProduct("p1", "one", 0)
 
-    await replaceProductOrganization("p1", {
+    await saveOrganization("p1", {
       categoryRows: [
         { categoryId: "cat-1", isPrimary: false, productId: "p1" },
         { categoryId: "cat-2", isPrimary: true, productId: "p1" },
@@ -410,7 +417,7 @@ describe("replaceProductOrganization", () => {
   it("falls back to the first category when none is marked primary", async () => {
     insertProduct("p1", "one", 0)
 
-    await replaceProductOrganization("p1", {
+    await saveOrganization("p1", {
       categoryRows: [
         { categoryId: "cat-1", productId: "p1" },
         { categoryId: "cat-2", productId: "p1" },
@@ -423,15 +430,35 @@ describe("replaceProductOrganization", () => {
 
   it("drops every link and clears the primary category when nothing is selected", async () => {
     insertProduct("p1", "one", 0)
-    await replaceProductOrganization("p1", {
+    await saveOrganization("p1", {
       categoryRows: [{ categoryId: "cat-1", isPrimary: true, productId: "p1" }],
       collectionRows: [{ collectionId: "col-1", productId: "p1", rank: 0 }],
     })
 
-    await replaceProductOrganization("p1", { categoryRows: [], collectionRows: [] })
+    await saveOrganization("p1", { categoryRows: [], collectionRows: [] })
 
     expect(rows("select category_id from category_on_product")).toStrictEqual([])
     expect(rows("select collection_id from collection_on_product")).toStrictEqual([])
     expect(column("select primary_category_id from product", "primary_category_id")).toStrictEqual([null])
+  })
+
+  it("links a product to more collections than one insert statement can carry", async () => {
+    insertProduct("p1", "one", 0)
+    const collectionIds = Array.from({ length: 60 }, (_, index) => `bulk-col-${String(index).padStart(2, "0")}`)
+    for (const id of collectionIds) {
+      sqlite
+        .prepare(
+          `insert into product_collection (id, handle, titles, status, rank, created_at, updated_at)
+           values (?, ?, '{"en-US":"Bulk"}', 'draft', 0, ?, ?)`,
+        )
+        .run(id, id, NOW, NOW)
+    }
+
+    await saveOrganization("p1", {
+      categoryRows: [{ categoryId: "cat-1", isPrimary: true, productId: "p1" }],
+      collectionRows: collectionIds.map((collectionId, rank) => ({ collectionId, productId: "p1", rank })),
+    })
+
+    expect(column("select collection_id from collection_on_product order by collection_id", "collection_id")).toStrictEqual(collectionIds)
   })
 })

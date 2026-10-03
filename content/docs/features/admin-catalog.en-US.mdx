@@ -80,29 +80,28 @@ The list filters are assembled by `product.admin-list-filters.ts`, `product.admi
 | `delete-products.ts`         | `product: ["delete"]` | Bulk delete by id array                                                                     |
 | `reorder-products.ts`        | `product: ["update"]` | `orderedIds.map((id, index) => ({ id, rank: index }))`                                      |
 
-`createCompleteProduct` is careful about partial failure:
+Both use cases write a product in one atomic D1 batch, so a save either lands completely or leaves the product exactly as it was. They first read what the save depends on in parallel, then send the statements together:
 
 ```ts
-await deleteOrphanProductByHandle(data.handle)
-
-const id = uuidv7()
-
-try {
-  await persistProduct(id, data)
-} catch (error) {
-  await deleteProducts([id]).catch((cleanupError: unknown) => {
-    console.error(`Failed to roll back partially created product ${id}:`, cleanupError)
-  })
-
-  return rethrowProductMutationError(error)
-}
+const [rank, attributeRows] = await Promise.all([
+  getNextProductRank(),
+  loadAttributeOnProductRows(productId, data.attributeValues),
+  assertCatalogSkusAvailable(data),
+])
+await runDrizzleBatch([
+  ...prepareProductInsertBatch(productId, data, rank),
+  ...prepareProductImagesBatch(productId, data.images),
+  ...prepareAttributeOnProductBatch(productId, attributeRows),
+])
 ```
+
+`prepareProductInsertBatch` and `prepareProductUpdateBatch` (`product.catalog.server.ts`) write the product row and append `prepareProductOrganizationBatch` and `prepareProductCatalogBatch` from `product.mutations.ts`. `prepareProductImagesBatch` replaces the images and sets `product.thumbnail` to the lowest ranked one in the same batch, and `prepareAttributeOnProductBatch` replaces the attribute values. `createCompleteProduct` still calls `deleteOrphanProductByHandle(data.handle)` first, which clears a product left without variants by an older, non-atomic save.
 
 `rethrowProductMutationError` (`product.mutation-errors.ts`) maps a D1 unique-constraint failure onto `PRODUCT_ERROR_CODES.DUPLICATE_HANDLE` or `DUPLICATE_SKU` so the form can show the right field error.
 
-`updateCompleteProduct` additionally rejects a handle already taken by a different product (`ERROR_CODES.CONFLICT` with `DUPLICATE_HANDLE`), calls `assertCatalogSkusAvailable`, and builds an audit diff by reading the product before and after (`extractProductAuditSnapshot` and `buildProductAuditChange` in `product-audit.utils.ts`).
+`updateCompleteProduct` reads the product's handle owner, its current detail and the attribute definitions in parallel, rejects a handle already taken by a different product (`ERROR_CODES.CONFLICT` with `DUPLICATE_HANDLE`), calls `assertCatalogSkusAvailable`, and builds an audit diff by reading the product before and after (`extractProductAuditSnapshot` and `buildProductAuditChange` in `product-audit.utils.ts`).
 
-Saving keeps every variant the product already owns under its id. `replaceProductCatalog` (`product.mutations.ts`) runs one D1 batch that deletes only the variants the form dropped, upserts the rest by id, and upserts inventory by variant id, changing `quantityAvailable` and bumping `version` only when the stock actually changed. Order lines, cart lines and stock reservations therefore stay attached to the variants they point at. A variant id is reused only when `updateCompleteProduct` read it from this product, so a forged id never takes over another product's variant. Every multi-row insert is split with `insertRowChunks` to stay within D1's 100 bound parameters per statement.
+Saving keeps every variant the product already owns under its id. The statements from `prepareProductCatalogBatch` delete only the variants the form dropped, upserts the rest by id, and upserts inventory by variant id, changing `quantityAvailable` and bumping `version` only when the stock actually changed. Order lines, cart lines and stock reservations therefore stay attached to the variants they point at. A variant id is reused only when `updateCompleteProduct` read it from this product, so a forged id never takes over another product's variant. Every multi-row insert, including images, attribute values and category and collection links, is split with `insertRowChunks` to stay within D1's 100 bound parameters per statement, so a large gallery or a long specification list saves like any other.
 
 Every write ends with `scheduleProductCatalogInvalidation()` and a `recordCatalogProduct*Audit` call.
 
@@ -167,7 +166,7 @@ An attribute is a reusable specification definition. `PRODUCT_ATTRIBUTE_TYPE` is
 
 Use cases: `get-admin-product-attributes`, `get-product-attribute-stats`, `create-product-attribute`, `update-product-attribute`, `delete-product-attributes`, `reorder-product-attributes`. They call `scheduleProductAttributeCatalogInvalidation()`, which invalidates only the admin keys — attributes are read on the storefront as part of the product query, not on their own.
 
-Values are attached through `src/modules/attribute-on-product`: `get-product-attributes` and `set-all-product-attributes`, with `replaceAttributesForProduct` and `replaceAllAttributesForProduct` doing the replace. A row can be scoped to a variant, which is how `mapPublishedProductForStorefront` gives a variant its own specifications with the product-level ones as a fallback.
+Values are attached through `src/modules/attribute-on-product`: `get-product-attributes` and `set-all-product-attributes`, with `loadAttributeOnProductRows` normalizing the values against their definitions and `prepareAttributeOnProductBatch` replacing them in one batch. A row can be scoped to a variant, which is how `mapPublishedProductForStorefront` gives a variant its own specifications with the product-level ones as a fallback.
 
 ## Images and R2
 
@@ -190,7 +189,7 @@ if ((await env.IMAGES.head(key)) === null) {
 
 `IMMUTABLE_CACHE_CONTROL` is `public, max-age=31536000, immutable`, which is safe precisely because the key is the hash. The binding is `IMAGES` in `wrangler.jsonc`, and `getAssetURL` / `resolveAssetURL` in `src/lib/url.ts` turn a key into a public URL using `VITE_R2_URL`.
 
-`product-image.persist.utils.ts` (`replaceProductImages`) rewrites a product's image rows, and `product-image.server.ts` keeps `product.thumbnail` in step through `getFirstImageUrl` and `updateProductThumbnail`. The upload widgets live in `src/presentation/components/custom/image-upload/`.
+`product-image.persist.utils.ts` (`prepareProductImagesBatch`) rewrites a product's image rows and keeps `product.thumbnail` in step in the same batch, and `product-image.server.ts` reads them back through `getProductImagesQuery`. The upload widgets live in `src/presentation/components/custom/image-upload/`.
 
 ## Shared grid infrastructure
 

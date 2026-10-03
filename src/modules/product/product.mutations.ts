@@ -54,13 +54,13 @@ export const findTakenSkus = async (skus: readonly string[], excludeProductId?: 
   return rows.map((row) => row.sku).filter((sku): sku is string => sku !== null && sku !== "")
 }
 
-export const replaceProductCatalog = async (productId: string, payload: ProductCatalogReplacePayload): Promise<void> => {
+export const prepareProductCatalogBatch = (productId: string, payload: ProductCatalogReplacePayload): DrizzleBatchStatement[] => {
   const { inventoryRows, optionOnVariantRows, optionRows, optionValueRows, variantRows } = payload
   const productVariants = eq(productVariant.productId, productId)
   const keptVariantIds = variantRows.map((row) => row.id)
   const droppedVariants = and(productVariants, notInJsonList(productVariant.id, keptVariantIds))
 
-  await runDrizzleBatch([
+  return [
     db.delete(productOption).where(eq(productOption.productId, productId)),
     db.delete(productVariant).where(droppedVariants),
     db
@@ -96,10 +96,10 @@ export const replaceProductCatalog = async (productId: string, payload: ProductC
         }),
     ),
     ...insertRowChunks(optionOnVariant, optionOnVariantRows).map((rows) => db.insert(optionOnVariant).values(rows)),
-  ])
+  ]
 }
 
-export const replaceProductOrganization = async (productId: string, payload: ProductOrganizationReplacePayload): Promise<void> => {
+export const prepareProductOrganizationBatch = (productId: string, payload: ProductOrganizationReplacePayload): DrizzleBatchStatement[] => {
   const { categoryRows, collectionRows } = payload
   const primaryCategoryId = resolvePrimaryCategoryId(
     categoryRows.map((row) => ({
@@ -108,25 +108,16 @@ export const replaceProductOrganization = async (productId: string, payload: Pro
     })),
   )
 
-  const statements: DrizzleBatchStatement[] = [
+  return [
     db.delete(categoryOnProduct).where(eq(categoryOnProduct.productId, productId)),
     db.delete(collectionOnProduct).where(eq(collectionOnProduct.productId, productId)),
-  ]
-
-  if (categoryRows.length > 0) {
-    statements.push(db.insert(categoryOnProduct).values(categoryRows))
-  }
-
-  if (collectionRows.length > 0) {
-    statements.push(db.insert(collectionOnProduct).values(collectionRows))
-  }
-  statements.push(
+    ...insertRowChunks(categoryOnProduct, categoryRows).map((rows) => db.insert(categoryOnProduct).values(rows)),
+    ...insertRowChunks(collectionOnProduct, collectionRows).map((rows) => db.insert(collectionOnProduct).values(rows)),
     db
       .update(product)
       .set({
         primaryCategoryId: primaryCategoryId ?? sql`null`,
       })
       .where(eq(product.id, productId)),
-  )
-  await runDrizzleBatch(statements)
+  ]
 }
