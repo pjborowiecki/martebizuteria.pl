@@ -76,6 +76,12 @@ describe("ContentPageArticle", () => {
     expect(screen.getByText("Last updated September 29, 2026")).toBeInTheDocument()
   })
 
+  it("places the article in the page's main landmark", async () => {
+    await renderArticle()
+
+    expect(within(screen.getByRole("main")).getByRole("article")).toContainElement(screen.getByRole("heading", { level: 1 }))
+  })
+
   it("renders every block the editor can produce", async () => {
     const { container } = await renderArticle()
 

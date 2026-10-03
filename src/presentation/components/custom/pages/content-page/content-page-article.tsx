@@ -23,16 +23,18 @@ export const ContentPageArticle = ({ handle }: Readonly<{ handle: ContentPageHan
   const { data: page } = useSuspenseQuery(getContentPageQuery(handle, locale))
 
   return (
-    <article className="container mx-auto max-w-3xl px-4 py-16 md:py-24">
-      <header>
-        <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl">{page.title}</h1>
-        <p className="mt-4 text-xs tracking-[0.12em] text-muted-foreground uppercase">
-          {t("updated", { date: format.dateTime(page.revisedAt, { dateStyle: "long" }) })}
-        </p>
-      </header>
-      <div className={`mt-14 ${CONTENT_PROSE_CLASS}`}>
-        <Markdown components={MARKDOWN_COMPONENTS}>{page.body}</Markdown>
-      </div>
-    </article>
+    <main className="container mx-auto max-w-3xl px-4 py-16 md:py-24">
+      <article>
+        <header>
+          <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl">{page.title}</h1>
+          <p className="mt-4 text-xs tracking-[0.12em] text-muted-foreground uppercase">
+            {t("updated", { date: format.dateTime(page.revisedAt, { dateStyle: "long" }) })}
+          </p>
+        </header>
+        <div className={`mt-14 ${CONTENT_PROSE_CLASS}`}>
+          <Markdown components={MARKDOWN_COMPONENTS}>{page.body}</Markdown>
+        </div>
+      </article>
+    </main>
   )
 }
