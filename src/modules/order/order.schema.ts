@@ -54,8 +54,9 @@ export const order = sqliteTable(
     ...timestamps(),
   },
   (table) => [
-    index("order_userId_idx").on(table.userId),
     index("order_userId_status_idx").on(table.userId, table.status),
+    index("order_paymentId_idx").on(table.paymentId),
+    index("order_deliveryMethodId_idx").on(table.deliveryMethodId),
     index("order_status_idx").on(table.status),
     index("order_createdAt_idx").on(table.createdAt),
     uniqueIndex("order_checkoutId_unique").on(table.checkoutId),

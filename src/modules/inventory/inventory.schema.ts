@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
@@ -20,7 +20,7 @@ export const inventory = sqliteTable(
     version: integer("version").default(INVENTORY_DEFAULT_VERSION).notNull(),
     ...timestamps(),
   },
-  (table) => [index("inventory_variantId_idx").on(table.variantId), uniqueIndex("inventory_variantId_unique").on(table.variantId)],
+  (table) => [uniqueIndex("inventory_variantId_unique").on(table.variantId)],
 )
 
 export const inventoryRelations = relations(inventory, ({ one }) => ({

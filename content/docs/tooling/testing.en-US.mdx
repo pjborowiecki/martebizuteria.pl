@@ -59,6 +59,7 @@ Because `test.env` loads `.env.test`, no test needs real credentials. `scripts/`
 | `setup.ts`                       | jest-dom matchers, DOM observer stubs, `matchMedia`, and the `createServerFn` proxy                |
 | `vitest-env.d.ts`                | `vite-plus/test/globals` reference and the jest-dom matcher types on Vitest's `Matchers` interface |
 | `mocks/d1.ts`                    | `createTestD1Database(sqlite, onQuery?)` — a `D1Database` backed by `node:sqlite`                  |
+| `mocks/migrations.ts`            | `applyMigration` for one migration and `applyMigrationHistory` to build the production schema      |
 | `mocks/intersection-observer.ts` | `StubIntersectionObserver` — no-op `observe`, `unobserve`, `disconnect`, `takeRecords`             |
 | `mocks/resize-observer.ts`       | `StubResizeObserver` — reports a fixed 1024 × 768 content rect on `observe`                        |
 | `lib/render.tsx`                 | `renderWithProviders`, `TestProviders`, `createTestRouter`                                         |

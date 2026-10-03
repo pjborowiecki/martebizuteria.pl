@@ -23,6 +23,7 @@ export const wishlistItem = sqliteTable(
   (table) => [
     uniqueIndex("wishlist_item_userId_productId_unique").on(table.userId, table.productId),
     index("wishlist_item_userId_createdAt_idx").on(table.userId, table.createdAt),
+    index("wishlist_item_productId_idx").on(table.productId),
   ],
 )
 

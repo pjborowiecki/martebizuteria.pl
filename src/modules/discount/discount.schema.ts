@@ -48,8 +48,8 @@ export const discountRedemption = sqliteTable(
     ...timestamps(),
   },
   (table) => [
-    index("discount_redemption_discountId_idx").on(table.discountId),
     index("discount_redemption_discountId_email_idx").on(table.discountId, table.email),
+    index("discount_redemption_userId_idx").on(table.userId),
     uniqueIndex("discount_redemption_orderId_unique").on(table.orderId),
   ],
 )

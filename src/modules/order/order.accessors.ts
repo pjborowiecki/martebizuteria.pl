@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, exists, inArray, ne, not, or, sql } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, inArray, ne, not, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -401,14 +401,8 @@ export const getOrderMetadata = (orderId: string) =>
     where: eq(order.id, orderId),
   })
 
-const orderPaymentMatchesTransaction = (transactionId: string) => {
-  const matchingPayment = db
-    .select({ one: sql`1` })
-    .from(payment)
-    .where(and(eq(payment.id, order.paymentId), eq(payment.transactionId, transactionId)))
-
-  return exists(matchingPayment)
-}
+const orderPaymentMatchesTransaction = (transactionId: string) =>
+  inArray(order.paymentId, db.select({ id: payment.id }).from(payment).where(eq(payment.transactionId, transactionId)))
 
 export const getOrderByTransactionId = (transactionId: string) =>
   db.query.order.findFirst({

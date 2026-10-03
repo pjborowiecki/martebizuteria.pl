@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm"
+import { relations, sql } from "drizzle-orm"
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -31,9 +31,9 @@ export const attributeOnProduct = sqliteTable(
     ...timestamps(),
   },
   (table) => [
-    index("attribute_on_product_productId_idx").on(table.productId),
+    index("attribute_on_product_attributeId_idx").on(table.attributeId),
     index("attribute_on_product_variantId_idx").on(table.variantId),
-    uniqueIndex("attribute_on_product_scope_attribute_uidx").on(table.productId, table.attributeId, table.variantId),
+    uniqueIndex("attribute_on_product_scope_attribute_uidx").on(table.productId, table.attributeId, sql`coalesce(${table.variantId}, '')`),
   ],
 )
 

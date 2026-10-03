@@ -184,9 +184,9 @@ Pliki `migrations/schema.ts` i `migrations/relations.ts` są wynikiem introspekc
 
 ## Katalog migracji
 
-`src/integrations/drizzle-orm/migrations/` zawiera 66 plików `.sql`. Wrangler stosuje je w kolejności nazw plików i zapisuje zastosowane migracje we własnej tabeli `d1_migrations`; plik `meta/_journal.json` Drizzle czytany jest wyłącznie przez `drizzle-kit generate` przy obliczaniu kolejnej różnicy.
+`src/integrations/drizzle-orm/migrations/` zawiera 68 plików `.sql`. Wrangler stosuje je w kolejności nazw plików i zapisuje zastosowane migracje we własnej tabeli `d1_migrations`; plik `meta/_journal.json` Drizzle czytany jest wyłącznie przez `drizzle-kit generate` przy obliczaniu kolejnej różnicy.
 
-Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc czternastu plików z katalogu w nim nie ma:
+Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc szesnastu plików z katalogu w nim nie ma:
 
 ```
 20260604143000_product_status_updated_at_idx
@@ -203,6 +203,8 @@ Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc czternastu pli
 20261001120000_wishlist_items
 20261002100000_storefront_search
 20261002120000_content_pages
+20261003120000_order_item_product_backfill
+20261003130000_query_indexes
 ```
 
 Migracje pisane ręcznie, takie jak `20260927120000_fix_silver_collection_handle.sql`, są w tym repozytorium normalne: naprawy danych, zmiany dotyczące wyłącznie indeksów i nowsze tabele, takie jak `order_number_sequence`, `discount_redemption`, `newsletter_subscriber`, `wishlist_item`, `storefront_search` i `content_page`, pisze się bezpośrednio i stosuje Wranglerem. Dziennikowi brakuje jednak także całego indeksu 38 (numeracja biegnie 0–52 z luką), a najnowszy zrzut, `meta/20260930151544_snapshot.json`, jest starszy od każdej z tych tabel, co oznacza, że `drizzle-kit generate` liczy różnicę ze zrzutu, który nie obejmuje wszystkiego, co faktycznie jest w bazie. Po `db:generate` przeczytaj wygenerowane SQL przed zastosowaniem i usuń wszystko, co ponownie tworzy już istniejący obiekt.
@@ -217,7 +219,7 @@ Katalog `seeds/` zawiera jedenaście plików `.sql`, a skrypty `db:seed:preview`
 2. Uruchom `bun run db:generate`.
 3. Przeczytaj wygenerowane SQL. SQLite nie potrafi usuwać ani zmieniać większości ograniczeń w miejscu, więc drizzle-kit czasem emituje przebudowę tabeli — sprawdź, czy zachowuje Twoje dane.
 4. Zastosuj przez `bun run db:migrate:preview`, zweryfikuj na bazie preview, a następnie wykonaj `bun run db:migrate:production`.
-5. Uruchom `bun run check` i `bun run test`.
+5. Uruchom `bun run check` i `bun run test`. `src/integrations/drizzle-orm/__test__/query-plans.integration.test.ts` odtwarza całą historię migracji przez `applyMigrationHistory` i zawodzi, gdy klucz obcy nie ma obsługującego go indeksu, gdy indeksu zadeklarowanego w schemacie brakuje w migracjach albo gdy gorący odczyt przestaje korzystać z indeksu, na którym polega.
 
 ## Powiązane strony
 

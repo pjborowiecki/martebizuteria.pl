@@ -71,17 +71,14 @@ describe("inventory table", () => {
     ])
   })
 
-  it("allows a single stock row per variant and indexes the lookup", () => {
+  it("allows a single stock row per variant, which also serves the lookup", () => {
     const indexes = config.indexes.map((entry) => ({
       columns: entry.config.columns.map((column) => ("name" in column ? column.name : column)),
       name: entry.config.name,
       unique: entry.config.unique,
     }))
 
-    expect(indexes).toStrictEqual([
-      { columns: ["variant_id"], name: "inventory_variantId_idx", unique: false },
-      { columns: ["variant_id"], name: "inventory_variantId_unique", unique: true },
-    ])
+    expect(indexes).toStrictEqual([{ columns: ["variant_id"], name: "inventory_variantId_unique", unique: true }])
   })
 })
 

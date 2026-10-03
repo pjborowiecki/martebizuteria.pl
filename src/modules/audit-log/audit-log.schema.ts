@@ -25,7 +25,7 @@ export const auditLog = sqliteTable(
     index("audit_log_createdAt_idx").on(table.createdAt),
     index("audit_log_category_idx").on(table.category),
     index("audit_log_severity_idx").on(table.severity),
-    index("audit_log_action_idx").on(table.action),
-    index("audit_log_resource_idx").on(table.category, table.resourceId),
+    index("audit_log_action_createdAt_idx").on(table.action, table.createdAt),
+    index("audit_log_resourceId_action_createdAt_idx").on(table.resourceId, table.action, table.createdAt),
   ],
 )

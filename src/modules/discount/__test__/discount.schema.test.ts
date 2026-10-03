@@ -161,8 +161,8 @@ describe("discount_redemption table", () => {
     }))
 
     expect(indexes).toStrictEqual([
-      { columns: ["discount_id"], name: "discount_redemption_discountId_idx", unique: false },
       { columns: ["discount_id", "email"], name: "discount_redemption_discountId_email_idx", unique: false },
+      { columns: ["user_id"], name: "discount_redemption_userId_idx", unique: false },
       { columns: ["order_id"], name: "discount_redemption_orderId_unique", unique: true },
     ])
   })
