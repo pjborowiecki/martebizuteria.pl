@@ -23,6 +23,7 @@ const mocked = vi.hoisted(() => ({
   releaseInventoryByVariantLines: vi.fn(),
   releaseInventoryForItems: vi.fn(),
   repointPayment: vi.fn(),
+  requestLocale: { value: "pl-PL" },
   reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
   resolveCheckoutDiscount: vi.fn<() => Promise<{ amountMinorUnits: number; code: string; discountId: string } | undefined>>(),
@@ -51,7 +52,7 @@ vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
   ensureStripeCustomer: mocked.ensureStripeCustomer,
   getStripeCustomerId: mocked.getStripeCustomerId,
 }))
-vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
+vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => mocked.requestLocale.value }))
 vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ createCheckout: mocked.createCheckout }))
 vi.mock("~/src/modules/checkout/use-cases/update-checkout-delivery.server", () => ({
   updateCheckoutDelivery: mocked.updateCheckoutDelivery,
@@ -187,6 +188,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  mocked.requestLocale.value = "pl-PL"
 })
 
 const multiItemCart = (size: number) =>
@@ -357,41 +359,41 @@ describe("handleCreateCheckoutSession", () => {
 })
 
 describe("checkout session return URL", () => {
-  it("returns to the origin the browser announced", async () => {
+  it.each([
+    {
+      expected: "https://store.test/checkout",
+      headers: { origin: "https://store.test" },
+      locale: "pl-PL",
+      to: "the origin the browser announced",
+    },
+    {
+      expected: "https://referer.test/checkout",
+      headers: { origin: "", referer: "https://referer.test/cart?step=2" },
+      locale: "pl-PL",
+      to: "the referer origin without an origin header",
+    },
+    {
+      expected: `${APP_URL}/checkout`,
+      headers: { referer: "not-a-url" },
+      locale: "pl-PL",
+      to: "the app URL when the referer is not a URL",
+    },
+    { expected: `${APP_URL}/checkout`, headers: {}, locale: "pl-PL", to: "the app URL when neither header is present" },
+    {
+      expected: "https://store.test/en-US/checkout",
+      headers: { origin: "https://store.test" },
+      locale: "en-US",
+      to: "the English confirmation for a shopper paying in English",
+    },
+  ])("returns to $to", async ({ expected, headers, locale }) => {
+    const requestHeaders: Readonly<Record<string, string>> = headers
+    mocked.requestLocale.value = locale
+    mocked.getRequestHeader.mockImplementation((name: string) => requestHeaders[name])
+
     await handleCreateCheckoutSession(createInput())
 
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ return_url: "https://store.test/checkout?success=true&session_id={CHECKOUT_SESSION_ID}" }),
-    )
-  })
-
-  it("falls back to the referer origin when no origin header is present", async () => {
-    mocked.getRequestHeader.mockImplementation((name: string) => (name === "referer" ? "https://referer.test/cart?step=2" : ""))
-
-    await handleCreateCheckoutSession(createInput())
-
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ return_url: "https://referer.test/checkout?success=true&session_id={CHECKOUT_SESSION_ID}" }),
-    )
-  })
-
-  it("falls back to the app URL when the referer is not a URL", async () => {
-    mocked.getRequestHeader.mockImplementation((name: string) => (name === "referer" ? "not-a-url" : undefined))
-
-    await handleCreateCheckoutSession(createInput())
-
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ return_url: `${APP_URL}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}` }),
-    )
-  })
-
-  it("falls back to the app URL when neither header is present", async () => {
-    mocked.getRequestHeader.mockReturnValue(undefined)
-
-    await handleCreateCheckoutSession(createInput())
-
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ return_url: `${APP_URL}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}` }),
+      expect.objectContaining({ return_url: `${expected}?success=true&session_id={CHECKOUT_SESSION_ID}` }),
     )
   })
 })
