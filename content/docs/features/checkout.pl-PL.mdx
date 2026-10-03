@@ -174,6 +174,8 @@ Gdy `sameAsShipping` jest prawdziwe, `prepareCreateCheckoutBatch` wskazuje oba i
 
 `prepareUpdateCheckoutDeliveryBatch` korzysta z `INSERT … SELECT … ON CONFLICT DO UPDATE`, którego wierszem źródłowym jest checkout w stanie `pending` — upsert adresu po prostu nic nie robi, jeśli checkout nie jest już oczekujący. `updateCheckoutDelivery` sprawdza potem `returning()` ostatniej instrukcji i rzuca `ERROR_CODES.CONFLICT`, gdy żaden wiersz nie został zaktualizowany.
 
+Adres trafia do książki adresowej klienta tylko wtedy, gdy zaznaczone jest jego pole `saveShippingAddress` lub `saveBillingAddress`: w przeciwnym razie obie instrukcje zostawiają `user_id` puste, a aktualizacja dostawy, która odznacza pole, ustawia je z powrotem na null. Gdy aktualizacja zapisuje adres, ta sama partia zdejmuje `is_default` z pozostałych adresów klienta, również tylko dla checkoutu w stanie `pending`, więc klient zachowuje jeden adres domyślny.
+
 ## Powiązane strony
 
 - [Płatności](/docs/features/payments) — webhooki zamieniające checkout w zamówienie

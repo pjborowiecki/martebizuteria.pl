@@ -516,3 +516,169 @@ describe("prepareUpdateCheckoutDeliveryBatch on a checkout that already billed s
     expect(row.billing_address_id).toBe(row.shipping_address_id)
   })
 })
+
+const readLinkedAddress = (addressId: string | null) => {
+  if (addressId === null) {
+    throw new Error("expected the checkout to point at an address")
+  }
+
+  return readAddress(addressId)
+}
+
+describe("prepareUpdateCheckoutDeliveryBatch filling in what the checkout or form leaves out", () => {
+  beforeEach(resetSchema)
+
+  it("gives a checkout that lost its shipping address a fresh one and bills to it", async () => {
+    const checkoutId = await createdCheckoutIdFrom(shippingForm)
+    sqlite.exec(`update checkout set shipping_address_id = null, billing_address_id = null`)
+
+    await runDrizzleBatch(prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), shippingForm))
+
+    const row = readCheckout(checkoutId)
+
+    expect(countAddresses()).toBe(2)
+    expect(row.billing_address_id).toBe(row.shipping_address_id)
+    expect(readLinkedAddress(row.shipping_address_id)).toMatchObject({ address1: "Krucza 1", city: "Warszawa", user_id: USER_ID })
+  })
+
+  it("drops the default flag when the resubmitted form no longer asks to save the address", async () => {
+    const checkoutId = await createdCheckoutIdFrom(shippingForm)
+
+    await runDrizzleBatch(
+      prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), { ...shippingForm, saveShippingAddress: undefined }),
+    )
+
+    expect(readLinkedAddress(readCheckout(checkoutId).shipping_address_id).is_default).toBe(0)
+  })
+
+  it("writes empty strings rather than nulls for billing details the form left out", async () => {
+    const checkoutId = await createdCheckoutIdFrom(shippingForm)
+
+    await runDrizzleBatch(
+      prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), {
+        ...shippingForm,
+        sameAsShipping: false,
+        saveBillingAddress: undefined,
+      }),
+    )
+
+    expect(readLinkedAddress(readCheckout(checkoutId).billing_address_id)).toMatchObject({
+      address1: "",
+      city: "",
+      country_code: "",
+      first_name: "",
+      is_default: 0,
+      last_name: "",
+      phone: "+48123456789",
+      postal_code: "",
+    })
+  })
+
+  it("keeps the addresses of a guest checkout out of every address book", async () => {
+    const { checkoutId, statements } = prepareCreateCheckoutBatch({
+      checkoutValues: shippingForm,
+      userEmail: "guest@example.com",
+      userId: undefined,
+    })
+    await runDrizzleBatch(statements)
+
+    await runDrizzleBatch(prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), separateBillingForm))
+
+    const row = readCheckout(checkoutId)
+
+    expect(readLinkedAddress(row.shipping_address_id).user_id).toBeNull()
+    expect(readLinkedAddress(row.billing_address_id).user_id).toBeNull()
+  })
+})
+
+const readDefaultAddressIds = (): string[] =>
+  z
+    .array(z.object({ id: z.string() }))
+    .parse(sqlite.prepare(`select id from address where user_id = ? and is_default = 1 order by id`).all(USER_ID))
+    .map(({ id }) => id)
+
+const insertDefaultAddress = (addressId: string): void => {
+  sqlite
+    .prepare(`insert into address (id, address1, city, country_code, user_id, is_default) values (?, ?, ?, ?, ?, 1)`)
+    .run(addressId, "Stara 1", "Gdańsk", "PL", USER_ID)
+}
+
+describe("prepareUpdateCheckoutDeliveryBatch and the shopper's address book", () => {
+  beforeEach(resetSchema)
+
+  it("keeps a shipping address the shopper still declines to save out of their address book", async () => {
+    const declined = { ...shippingForm, saveShippingAddress: false }
+    const checkoutId = await createdCheckoutIdFrom(declined)
+
+    await runDrizzleBatch(prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), { ...declined, city: "Kraków" }))
+
+    expect(readLinkedAddress(readCheckout(checkoutId).shipping_address_id)).toMatchObject({ city: "Kraków", user_id: null })
+  })
+
+  it("takes a shipping address back out of the address book once the shopper unticks saving it", async () => {
+    const checkoutId = await createdCheckoutIdFrom(shippingForm)
+
+    await runDrizzleBatch(
+      prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), { ...shippingForm, saveShippingAddress: false }),
+    )
+
+    expect(readLinkedAddress(readCheckout(checkoutId).shipping_address_id)).toMatchObject({ is_default: 0, user_id: null })
+  })
+
+  it("keeps a billing address the shopper declines to save out of their address book", async () => {
+    const checkoutId = await createdCheckoutIdFrom(shippingForm)
+
+    await runDrizzleBatch(
+      prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), { ...separateBillingForm, saveBillingAddress: false }),
+    )
+
+    const row = readCheckout(checkoutId)
+
+    expect(readLinkedAddress(row.billing_address_id)).toMatchObject({ is_default: 0, user_id: null })
+    expect(readLinkedAddress(row.shipping_address_id).user_id).toBe(USER_ID)
+  })
+
+  it("adds an address the shopper decides to save later to their address book", async () => {
+    const checkoutId = await createdCheckoutIdFrom({ ...shippingForm, saveShippingAddress: false })
+
+    await runDrizzleBatch(prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), shippingForm))
+
+    expect(readLinkedAddress(readCheckout(checkoutId).shipping_address_id)).toMatchObject({ is_default: 1, user_id: USER_ID })
+  })
+
+  it("leaves one default address behind after the shopper saves the checkout's address", async () => {
+    insertDefaultAddress("addr_old")
+    const checkoutId = await createdCheckoutIdFrom({ ...shippingForm, saveShippingAddress: false })
+
+    await runDrizzleBatch(prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), shippingForm))
+
+    expect(readDefaultAddressIds()).toStrictEqual([readCheckout(checkoutId).shipping_address_id])
+    expect(readAddress("addr_old")).toMatchObject({ is_default: 0, user_id: USER_ID })
+  })
+
+  it("keeps the saved default when the shopper saves nothing", async () => {
+    insertDefaultAddress("addr_old")
+    const checkoutId = await createdCheckoutIdFrom({ ...shippingForm, saveShippingAddress: false })
+
+    await runDrizzleBatch(
+      prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), {
+        ...separateBillingForm,
+        saveBillingAddress: false,
+        saveShippingAddress: false,
+      }),
+    )
+
+    expect(readDefaultAddressIds()).toStrictEqual(["addr_old"])
+  })
+
+  it("keeps the saved default when the checkout was already paid", async () => {
+    const checkoutId = await createdCheckoutIdFrom({ ...shippingForm, saveShippingAddress: false })
+    insertDefaultAddress("addr_old")
+    sqlite.prepare(`update checkout set status = 'completed' where id = ?`).run(checkoutId)
+
+    await runDrizzleBatch(prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), shippingForm))
+
+    expect(readDefaultAddressIds()).toStrictEqual(["addr_old"])
+    expect(readLinkedAddress(readCheckout(checkoutId).shipping_address_id).user_id).toBeNull()
+  })
+})
