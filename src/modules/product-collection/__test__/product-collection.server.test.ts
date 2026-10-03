@@ -24,11 +24,18 @@ const database = vi.hoisted(() => {
     return chain
   }
 
-  return { remove: vi.fn(makeChain), select: vi.fn(makeChain), state, update: vi.fn(makeChain) }
+  return {
+    batch: vi.fn((statements: readonly unknown[]) => Promise.resolve(statements)),
+    remove: vi.fn(makeChain),
+    select: vi.fn(makeChain),
+    state,
+    update: vi.fn(makeChain),
+  }
 })
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: {
+    batch: database.batch,
     delete: database.remove,
     query: {
       productCollection: {
@@ -54,16 +61,18 @@ describe("setCollectionRanks", () => {
     expect(database.update).not.toHaveBeenCalled()
   })
 
-  it("reorders in a single statement", async () => {
+  it("reorders a short list in a single statement", async () => {
     await setCollectionRanks(ranksFor(3))
 
     expect(database.update).toHaveBeenCalledTimes(1)
+    expect(database.batch).toHaveBeenCalledTimes(1)
   })
 
-  it("does not split large reorders into chunks", async () => {
+  it("splits a long reorder into statements D1 accepts, sent together in one batch", async () => {
     await setCollectionRanks(ranksFor(61))
 
-    expect(database.update).toHaveBeenCalledTimes(1)
+    expect(database.update).toHaveBeenCalledTimes(2)
+    expect(database.batch).toHaveBeenCalledTimes(1)
   })
 })
 

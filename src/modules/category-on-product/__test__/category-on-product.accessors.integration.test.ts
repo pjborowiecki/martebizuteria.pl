@@ -14,6 +14,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import {
   countProductsForCategories,
   getCategoryProductTotalQuery,
@@ -51,6 +52,16 @@ describe("countProductsForCategories", () => {
 
   it("adds the join rows of every requested category", async () => {
     await expect(countProductsForCategories(["cat-rings", "cat-chains"])).resolves.toBe(4)
+  })
+
+  it("adds the join rows of a full page of selected categories", async () => {
+    const bulkCategoryIds = Array.from({ length: LIST_PAGE_SIZE_MAX - 1 }, (_, index) => `cat-bulk-${String(index)}`)
+    const fileRing = sqlite.prepare("insert into category_on_product (category_id, product_id) values (?, 'p-ring')")
+    for (const categoryId of bulkCategoryIds) {
+      fileRing.run(categoryId)
+    }
+
+    await expect(countProductsForCategories(["cat-rings", ...bulkCategoryIds])).resolves.toBe(LIST_PAGE_SIZE_MAX + 1)
   })
 
   it("returns zero without querying for an empty request", async () => {

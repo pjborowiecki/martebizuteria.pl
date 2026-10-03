@@ -1,3 +1,5 @@
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
+
 const DATA_GRID_PAGE_SIZE_SM = 10
 
 const DATA_GRID_PAGE_SIZE_MD = 25
@@ -6,7 +8,7 @@ const DATA_GRID_PAGE_SIZE_LG = 50
 
 const DATA_GRID_PAGE_SIZE_XL = 100
 
-const DATA_GRID_PAGE_SIZE_XXL = 250
+const DATA_GRID_PAGE_SIZE_XXL = LIST_PAGE_SIZE_MAX
 
 export const DATA_GRID_PAGE_SIZE_OPTIONS = [
   DATA_GRID_PAGE_SIZE_SM,

@@ -1,5 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
+
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
@@ -230,6 +232,34 @@ describe("deleteCategories", () => {
 
   it("touches nothing for an empty selection", async () => {
     await deleteCategories([])
+
+    await expect(getCategoryHierarchyQuery.execute()).resolves.toHaveLength(4)
+  })
+})
+
+describe("a full admin page of categories", () => {
+  const ids = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${String(index).padStart(3, "0")}`)
+
+  beforeEach(() => {
+    for (const id of ids) {
+      insertCategory({ handle: id, id, parentId: "root-2" })
+    }
+  })
+
+  it("reorders every category in one save", async () => {
+    await setCategoryRanks(ids.map((id, index) => ({ id, rank: ids.length - index })))
+
+    const rows = await getCategoriesByIds(ids)
+
+    expect(idsOf(rows.toSorted((left, right) => left.rank - right.rank))).toStrictEqual(ids.toReversed())
+  })
+
+  it("counts the children of every selected parent", async () => {
+    await expect(countChildCategories([...ids, "root-2"])).resolves.toBe(LIST_PAGE_SIZE_MAX)
+  })
+
+  it("deletes every selected category", async () => {
+    await deleteCategories(ids)
 
     await expect(getCategoryHierarchyQuery.execute()).resolves.toHaveLength(4)
   })

@@ -1,6 +1,7 @@
-import { type SQL, asc, eq, inArray, sql } from "drizzle-orm"
+import { type SQL, asc, eq, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { productImage } from "~/src/modules/product-image/product-image.schema"
 import { product } from "~/src/modules/product/product.schema"
@@ -33,7 +34,7 @@ export const deleteByIds = async (ids: readonly string[]): Promise<void> => {
   if (ids.length === 0) {
     return
   }
-  await db.delete(productImage).where(inArray(productImage.id, [...ids]))
+  await db.delete(productImage).where(inJsonList(productImage.id, ids))
 }
 
 export const getProductIdsForImageIds = async (ids: readonly string[]): Promise<string[]> => {
@@ -46,7 +47,7 @@ export const getProductIdsForImageIds = async (ids: readonly string[]): Promise<
       productId: productImage.productId,
     })
     .from(productImage)
-    .where(inArray(productImage.id, [...ids]))
+    .where(inJsonList(productImage.id, ids))
   return [...new Set(rows.map((row) => row.productId))]
 }
 

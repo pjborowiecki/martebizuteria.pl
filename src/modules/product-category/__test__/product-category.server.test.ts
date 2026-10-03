@@ -11,6 +11,7 @@ import {
 } from "~/src/modules/product-category/product-category.server"
 
 const access = vi.hoisted(() => ({
+  batch: vi.fn<(statements: readonly unknown[]) => Promise<unknown[]>>(),
   deleteWhere: vi.fn<(condition: SQL | undefined) => Promise<void>>(),
   selectWhere: vi.fn<(condition: SQL | undefined) => Promise<Record<string, unknown>[]>>(),
   set: vi.fn<(values: { rank?: unknown }) => { where: (condition: SQL | undefined) => Promise<void> }>(),
@@ -19,6 +20,7 @@ const access = vi.hoisted(() => ({
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: {
+    batch: access.batch,
     delete: () => ({ where: access.deleteWhere }),
     query: {
       productCategory: {
@@ -110,8 +112,8 @@ describe("countChildCategories", () => {
     await countChildCategories(["category-1", "category-2"])
 
     expect(query(access.selectWhere.mock.calls[0]?.[0])).toMatchObject({
-      params: ["category-1", "category-2"],
-      sql: '"product_category"."parent_id" in (?, ?)',
+      params: ['["category-1","category-2"]'],
+      sql: '"product_category"."parent_id" in (select value from json_each(?))',
     })
   })
 })
@@ -131,8 +133,8 @@ describe("getCategoriesByIds", () => {
     await getCategoriesByIds(["category-1", "category-2"])
 
     expect(query(access.selectWhere.mock.calls[0]?.[0])).toMatchObject({
-      params: ["category-1", "category-2"],
-      sql: '"product_category"."id" in (?, ?)',
+      params: ['["category-1","category-2"]'],
+      sql: '"product_category"."id" in (select value from json_each(?))',
     })
   })
 })
@@ -142,6 +144,7 @@ describe("setCategoryRanks", () => {
     vi.clearAllMocks()
     access.updateWhere.mockResolvedValue()
     access.set.mockReturnValue({ where: access.updateWhere })
+    access.batch.mockResolvedValue([])
   })
 
   it("does nothing for an empty reorder", async () => {
@@ -174,9 +177,17 @@ describe("setCategoryRanks", () => {
     ])
 
     expect(query(access.updateWhere.mock.calls[0]?.[0])).toMatchObject({
-      params: ["category-1", "category-2"],
-      sql: '"product_category"."id" in (?, ?)',
+      params: ['["category-1","category-2"]'],
+      sql: '"product_category"."id" in (select value from json_each(?))',
     })
+  })
+
+  it("sends a long reorder as statements D1 accepts, together in one batch", async () => {
+    await setCategoryRanks(Array.from({ length: 120 }, (_, rank) => ({ id: `category-${String(rank)}`, rank })))
+
+    expect(access.set).toHaveBeenCalledTimes(3)
+    expect(access.batch).toHaveBeenCalledTimes(1)
+    expect(access.batch.mock.calls[0]?.[0]).toHaveLength(3)
   })
 })
 
@@ -196,8 +207,8 @@ describe("deleteCategories", () => {
     await deleteCategories(["category-1", "category-2"])
 
     expect(query(access.deleteWhere.mock.calls[0]?.[0])).toMatchObject({
-      params: ["category-1", "category-2"],
-      sql: '"product_category"."id" in (?, ?)',
+      params: ['["category-1","category-2"]'],
+      sql: '"product_category"."id" in (select value from json_each(?))',
     })
   })
 })

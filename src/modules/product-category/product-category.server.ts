@@ -1,6 +1,8 @@
-import { and, count, eq, inArray, isNull, max, sql } from "drizzle-orm"
+import { and, count, eq, isNull, max, sql } from "drizzle-orm"
 
+import { type RankUpdate, chunkRankUpdates, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
@@ -70,10 +72,7 @@ export const countChildCategories = async (parentIds: readonly string[]): Promis
     return 0
   }
 
-  const [row] = await db
-    .select({ value: count() })
-    .from(productCategory)
-    .where(inArray(productCategory.parentId, [...parentIds]))
+  const [row] = await db.select({ value: count() }).from(productCategory).where(inJsonList(productCategory.parentId, parentIds))
   return row?.value ?? 0
 }
 
@@ -82,38 +81,20 @@ export const getCategoriesByIds = (ids: readonly string[]): Promise<ProductCateg
     return Promise.resolve([])
   }
 
-  return db
-    .select()
-    .from(productCategory)
-    .where(inArray(productCategory.id, [...ids]))
+  return db.select().from(productCategory).where(inJsonList(productCategory.id, ids))
 }
 
-export const setCategoryRanks = async (
-  updates: readonly {
-    id: string
-    rank: number
-  }[],
-): Promise<void> => {
-  if (updates.length === 0) {
-    return
-  }
-
-  const cases = updates.map((entry) => sql`when ${productCategory.id} = ${entry.id} then ${entry.rank}`)
-  const rankExpression = sql`(case ${sql.join(cases, sql.raw(" "))} end)`
-  await db
-    .update(productCategory)
-    .set({ rank: rankExpression })
-    .where(
-      inArray(
-        productCategory.id,
-        updates.map((entry) => entry.id),
-      ),
-    )
+export const setCategoryRanks = async (updates: readonly RankUpdate[]): Promise<void> => {
+  await runDrizzleBatch(
+    chunkRankUpdates(productCategory.id, updates).map(({ ids, rank }) =>
+      db.update(productCategory).set({ rank }).where(inJsonList(productCategory.id, ids)),
+    ),
+  )
 }
 
 export const deleteCategories = async (ids: readonly string[]): Promise<void> => {
   if (ids.length === 0) {
     return
   }
-  await db.delete(productCategory).where(inArray(productCategory.id, [...ids]))
+  await db.delete(productCategory).where(inJsonList(productCategory.id, ids))
 }

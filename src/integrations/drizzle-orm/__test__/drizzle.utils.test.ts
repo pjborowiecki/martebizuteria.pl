@@ -1,7 +1,7 @@
 import { SQLiteSyncDialect, sqliteTable, text } from "drizzle-orm/sqlite-core"
 import { describe, expect, it } from "vite-plus/test"
 
-import { UUID_STRING_LENGTH, notInJsonList, timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
+import { UUID_STRING_LENGTH, inJsonList, notInJsonList, timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 const table = sqliteTable("drizzle_utils_probe", {
   id: text("id", { length: UUID_STRING_LENGTH }).primaryKey(),
@@ -55,6 +55,13 @@ describe("uuid column length", () => {
 describe("JSON id lists", () => {
   const dialect = new SQLiteSyncDialect()
   const ids = Array.from({ length: 250 }, (_, index) => `id-${String(index)}`)
+
+  it("matches a list of any length through a single parameter", () => {
+    const query = dialect.sqlToQuery(inJsonList(table.id, ids))
+
+    expect(query.sql).toBe('"drizzle_utils_probe"."id" in (select value from json_each(?))')
+    expect(query.params).toStrictEqual([JSON.stringify(ids)])
+  })
 
   it("excludes a list of any length through a single parameter", () => {
     const query = dialect.sqlToQuery(notInJsonList(table.id, ids))

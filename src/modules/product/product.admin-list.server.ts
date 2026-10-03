@@ -1,11 +1,8 @@
-import { asc, desc, inArray } from "drizzle-orm"
+import { asc, desc } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
-import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema"
-import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
-import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
 import {
   type AdminProductsExportListParams,
   getProductVariantSkuRowsQuery,
@@ -67,11 +64,9 @@ export const getAdminProductsCatalogList = async () => {
     return []
   }
 
-  const productIds = products.map((row) => row.id)
   const [attributeRows, categoryRows, collectionRows] = await Promise.all([
     db.query.attributeOnProduct.findMany({
       orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)],
-      where: inArray(attributeOnProduct.productId, productIds),
       with: {
         productAttribute: {
           columns: {
@@ -81,7 +76,6 @@ export const getAdminProductsCatalogList = async () => {
       },
     }),
     db.query.categoryOnProduct.findMany({
-      where: inArray(categoryOnProduct.productId, productIds),
       with: {
         productCategory: {
           columns: {
@@ -91,7 +85,6 @@ export const getAdminProductsCatalogList = async () => {
       },
     }),
     db.query.collectionOnProduct.findMany({
-      where: inArray(collectionOnProduct.productId, productIds),
       with: {
         productCollection: {
           columns: {

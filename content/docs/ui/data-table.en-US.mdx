@@ -213,7 +213,7 @@ The context value may be widened per screen. `OrdersDataGridValue` extends `Data
 
 ## Pagination
 
-`DataGridPagination` renders the rows-per-page select, a range counter, a page indicator and first/previous/next/last buttons. The allowed page sizes are fixed in `data-grid-pagination.constants.ts` as `DATA_GRID_PAGE_SIZE_OPTIONS`, which resolves to `[10, 25, 50, 100, 250]`.
+`DataGridPagination` renders the rows-per-page select, a range counter, a page indicator and first/previous/next/last buttons. The allowed page sizes are fixed in `data-grid-pagination.constants.ts` as `DATA_GRID_PAGE_SIZE_OPTIONS`, which resolves to `[10, 25, 50, 100, 250]`. The largest option is `LIST_PAGE_SIZE_MAX` from `src/modules/_core/utils/pagination.ts`, which `pageSizeField` also enforces on the server, so a list request cannot ask for a bigger page than the grid offers.
 
 `DATA_GRID_DEFAULT_PAGE_SIZE` is 10; `normalizeDataGridPageSize` rounds any other number up to the next allowed size, and an effect in the component corrects a page size that is not in the list. Screens override it — orders use `ADMIN_ORDERS_PAGE_SIZE` (25), customers `ADMIN_CUSTOMER_PAGE_SIZE`, audit `ADMIN_AUDIT_LOG_PAGE_SIZE`.
 

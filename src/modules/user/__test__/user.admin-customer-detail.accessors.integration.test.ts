@@ -334,3 +334,23 @@ describe("getOrderItemTitlesQuery", () => {
     await expect(getOrderItemTitlesQuery(["o-cancelled"])).resolves.toStrictEqual([])
   })
 })
+
+describe("getOrderItemTitlesQuery for a long order history", () => {
+  const orderIds = Array.from({ length: 150 }, (_, index) => `history-${String(index).padStart(3, "0")}`)
+
+  beforeEach(() => {
+    const insertLine = sqlite.prepare(
+      "insert into order_item (id, order_id, quantity, subtotal, title, total, unit_price, created_at, updated_at) values (?, ?, 1, 100, ?, 100, 100, ?, ?)",
+    )
+
+    for (const orderId of orderIds) {
+      insertLine.run(`line-${orderId}`, orderId, `Title ${orderId}`, MARCH, MARCH)
+    }
+  })
+
+  it("returns the line titles of every requested order", async () => {
+    const rows = await getOrderItemTitlesQuery(orderIds)
+
+    expect(rows).toStrictEqual(orderIds.map((orderId) => ({ orderId, title: `Title ${orderId}` })))
+  })
+})

@@ -15,6 +15,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 import { DATE_COLUMN_FILTER_OPERATOR, NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import {
   getAdminCustomersFilteredList,
   getAdminCustomersPage,
@@ -339,5 +340,46 @@ describe("getAdminCustomersFilteredList", () => {
     const result = await getAdminCustomersFilteredList({ search: "nobody" })
 
     expect(result).toStrictEqual({ addresses: [], orderStats: [], rows: [] })
+  })
+})
+
+describe("a full admin page of customers", () => {
+  const ids = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${String(index).padStart(3, "0")}`)
+
+  const totalSpentByCustomer = new Map(ids.map((id, index) => [id, index + 1]))
+
+  const cityByCustomer = new Map(ids.map((id) => [id, `City ${id}`]))
+
+  beforeEach(() => {
+    const insertUser = sqlite.prepare("insert into user (id, name, email, created_at, updated_at) values (?, ?, ?, ?, ?)")
+    const insertOrder = sqlite.prepare(
+      `insert into "order" (id, user_id, status, total, created_at, updated_at) values (?, ?, 'completed', ?, ?, ?)`,
+    )
+    const insertAddress = sqlite.prepare(
+      "insert into address (id, city, user_id, is_default, created_at, updated_at) values (?, ?, ?, 1, ?, ?)",
+    )
+
+    for (const [index, id] of ids.entries()) {
+      const createdAt = JUNE + index + 1
+      insertUser.run(id, `Bulk ${id}`, `${id}@example.com`, createdAt, createdAt)
+      insertOrder.run(`order-${id}`, id, index + 1, createdAt, createdAt)
+      insertAddress.run(`address-${id}`, `City ${id}`, id, createdAt, createdAt)
+    }
+  })
+
+  it("attaches the order rollup and default address of every customer on the page", async () => {
+    const result = await getAdminCustomersPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0 })
+
+    expect(result.rows.map((row) => row.id)).toStrictEqual(ids.toReversed())
+    expect(new Map(result.orderStats.map((row) => [row.userId, row.totalSpent]))).toStrictEqual(totalSpentByCustomer)
+    expect(new Map(result.addresses.map((row) => [row.userId, row.city]))).toStrictEqual(cityByCustomer)
+  })
+
+  it("exports the order rollup and default address of every matching customer", async () => {
+    const result = await getAdminCustomersFilteredList({ search: "bulk" })
+
+    expect(result.rows).toHaveLength(LIST_PAGE_SIZE_MAX)
+    expect(new Map(result.orderStats.map((row) => [row.userId, row.totalSpent]))).toStrictEqual(totalSpentByCustomer)
+    expect(new Map(result.addresses.map((row) => [row.userId, row.city]))).toStrictEqual(cityByCustomer)
   })
 })

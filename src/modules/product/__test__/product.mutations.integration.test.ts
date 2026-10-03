@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import { type ProductCatalogReplacePayload } from "~/src/modules/product/product.utils"
 
 const { sqlite } = await vi.hoisted(async () => {
@@ -78,6 +79,14 @@ const insertVariant = (id: string, productId: string, sku: string | null): void 
     .run(id, productId, sku, NOW, NOW)
 }
 
+const insertProducts = (total: number): string[] =>
+  Array.from({ length: total }, (_, index) => {
+    const id = `bulk-${String(index).padStart(3, "0")}`
+    insertProduct(id, id, index)
+
+    return id
+  })
+
 const rows = (statement: string): Record<string, unknown>[] =>
   sqlite
     .prepare(statement)
@@ -138,6 +147,15 @@ describe("deleteProducts", () => {
     expect(rows("select id from inventory")).toStrictEqual([])
   })
 
+  it("deletes a full admin page of selected products at once", async () => {
+    const ids = insertProducts(LIST_PAGE_SIZE_MAX)
+    insertProduct("kept", "kept", 0)
+
+    await deleteProducts(ids)
+
+    expect(column("select id from product", "id")).toStrictEqual(["kept"])
+  })
+
   it("touches nothing for an empty selection", async () => {
     insertProduct("p1", "one", 0)
 
@@ -178,6 +196,14 @@ describe("setProductRanks", () => {
     ])
   })
 
+  it("reorders a full admin page of products in one save", async () => {
+    const ids = insertProducts(LIST_PAGE_SIZE_MAX)
+
+    await setProductRanks(ids.toReversed().map((id, rank) => ({ id, rank })))
+
+    expect(column("select id from product order by rank", "id")).toStrictEqual(ids.toReversed())
+  })
+
   it("skips the database for an empty update", async () => {
     insertProduct("p1", "one", 3)
 
@@ -210,6 +236,12 @@ describe("findTakenSkus", () => {
 
   it("ignores the variants of the product being edited", async () => {
     await expect(findTakenSkus(["SKU-1", "SKU-2"], "p1")).resolves.toStrictEqual(["SKU-2"])
+  })
+
+  it("checks every SKU of a large variant matrix at once", async () => {
+    const skus = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `SKU-NEW-${String(index)}`)
+
+    await expect(findTakenSkus([...skus, "SKU-1", "SKU-2"], "p1")).resolves.toStrictEqual(["SKU-2"])
   })
 
   it("still reports foreign SKUs when the edited product has no variants", async () => {

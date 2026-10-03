@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { DATE_COLUMN_FILTER_OPERATOR, NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
-import { LIST_PAGE_FIRST } from "~/src/modules/_core/utils/pagination"
+import { LIST_PAGE_FIRST, LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import {
   dateColumnFilterField,
   dateTimeColumnFilterField,
@@ -72,6 +72,14 @@ describe("pagination fields", () => {
 
   it("accepts a page size of one", () => {
     expect(pageSizeField.parse(1)).toBe(1)
+  })
+
+  it("accepts the largest page the admin grids offer", () => {
+    expect(pageSizeField.parse(LIST_PAGE_SIZE_MAX)).toBe(LIST_PAGE_SIZE_MAX)
+  })
+
+  it("rejects a page larger than the admin grids offer", () => {
+    expect(pageSizeField.safeParse(LIST_PAGE_SIZE_MAX + 1).success).toBe(false)
   })
 
   it("rejects a numeric string page", () => {

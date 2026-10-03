@@ -1,6 +1,7 @@
-import { count, inArray, sql } from "drizzle-orm"
+import { count, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 
@@ -14,7 +15,7 @@ export const countProductsForCategories = async (categoryIds: readonly string[])
       value: count(),
     })
     .from(categoryOnProduct)
-    .where(inArray(categoryOnProduct.categoryId, [...categoryIds]))
+    .where(inJsonList(categoryOnProduct.categoryId, categoryIds))
   return row?.value ?? 0
 }
 

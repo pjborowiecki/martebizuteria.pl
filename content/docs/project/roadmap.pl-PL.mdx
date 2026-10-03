@@ -89,12 +89,11 @@ Istnieje 889 plików testowych: 339 jednostkowych, 35 integracyjnych, 515 kompon
 
 - **Brak testów end-to-end i przeglądarkowych.** `vite.config.ts` już wyklucza katalog `e2e` i cache `playwright/`, które nie istnieją, więc intencja była. Dla procesu zamówienia to najistotniejsza luka.
 - **Proporcje są odwrotne do ryzyka.** Testy komponentowe głównie sprawdzają render; poprawność handlowa mieszka w procesie zamówienia, kompensacji stanów magazynowych i zwrotach, które pokrywa 35 zestawów integracyjnych. Więcej pokrycia integracyjnego na ścieżkach pieniędzy jest warte więcej niż więcej testów komponentowych.
-- **Zestawy integracyjne działają na `node:sqlite`.** Transport w `src/platform/testing/mocks/d1.ts` odwzorowuje atomowość partii w D1, ale nie jego limit parametrów, więc wyniki dotyczące współbieżności są zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
+- **Zestawy integracyjne działają na `node:sqlite`.** Transport w `src/platform/testing/mocks/d1.ts` odwzorowuje atomowość partii w D1 i jego limit 100 parametrów, ale nie jego współbieżność, więc wyniki dotyczące współbieżności są zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
 - **Zapadka pokrycia czeka na przekręcenie.** Progi stoją na 72 instrukcjach, 71 liniach, 68 funkcjach i 69 rozgałęzieniach, z `autoUpdate: false`. To podłoga do podnoszenia, nie osiągnięty cel.
 
 ## Priorytet 5 — porządki
 
-- **Dzielenie parametrów dla D1 jest niespójne.** `src/modules/product-attribute/product-attribute.server.ts` ustawia `RANK_UPDATE_CHUNK_SIZE = 30` i iteruje; `setProductRanks` w `src/modules/product/product.mutations.ts` buduje jeden `UPDATE` z generowanym `case … when` nad `inArray`, wiążąc dwa parametry na wiersz plus listę identyfikatorów, i nie dzieli na partie. Ścieżki zmiany kolejności kategorii i kolekcji idą wzorem produktów. Przy obecnej wielkości katalogu jest to w porządku i w porządku nie zostanie.
 - **Historia gita nie odpowiada kodowi.** Część commitów dotyka ponad dwóch tysięcy plików. Retroaktywnie nie ma tu czego naprawiać, ale warto tego nie powtarzać — zobacz [Współtworzenie](/docs/project/contributing).
 
 ## Jak utrzymać tę stronę w uczciwości

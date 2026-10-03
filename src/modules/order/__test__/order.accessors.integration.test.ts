@@ -16,6 +16,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { DATE_COLUMN_FILTER_OPERATOR, NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
   getAdminOrderCustomerStats,
@@ -681,5 +682,34 @@ describe("order reads for the confirmation page and the emails", () => {
 
   it("reads no totals for an order that does not exist", async () => {
     expect(await getOrderTotalsForEmail("o-missing")).toBeUndefined()
+  })
+})
+
+describe("a full admin page of orders", () => {
+  const ids = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${String(index).padStart(3, "0")}`)
+
+  const newestFirstItemCounts = ids.map((id, index) => ({ id, itemCount: index + 1 })).toReversed()
+
+  beforeEach(() => {
+    const insertOrder = sqlite.prepare(`insert into "order" (id, email, created_at, updated_at) values (?, 'bulk@example.com', ?, ?)`)
+    const insertLine = sqlite.prepare("insert into order_item (id, order_id, quantity, created_at, updated_at) values (?, ?, ?, ?, ?)")
+
+    for (const [index, id] of ids.entries()) {
+      insertOrder.run(id, JUNE + index + 1, JUNE + index + 1)
+      insertLine.run(`line-${id}`, id, index + 1, JUNE, JUNE)
+    }
+  })
+
+  it("counts the items of every order on the page", async () => {
+    const result = await getAdminOrdersPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0 })
+
+    expect(result.total).toBe(LIST_PAGE_SIZE_MAX + 5)
+    expect(result.rows.map(({ id, itemCount }) => ({ id, itemCount }))).toStrictEqual(newestFirstItemCounts)
+  })
+
+  it("counts the items of every exported order", async () => {
+    const rows = await getAdminOrdersExport({ search: "bulk@example.com" })
+
+    expect(rows.map(({ id, itemCount }) => ({ id, itemCount }))).toStrictEqual(newestFirstItemCounts)
   })
 })

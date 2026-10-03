@@ -213,7 +213,7 @@ Wartość kontekstu można rozszerzyć dla konkretnego ekranu. `OrdersDataGridVa
 
 ## Paginacja
 
-`DataGridPagination` renderuje wybór liczby wierszy na stronę, licznik zakresu, wskaźnik strony oraz przyciski pierwsza/poprzednia/następna/ostatnia. Dozwolone rozmiary strony są ustalone w `data-grid-pagination.constants.ts` jako `DATA_GRID_PAGE_SIZE_OPTIONS`, co daje `[10, 25, 50, 100, 250]`.
+`DataGridPagination` renderuje wybór liczby wierszy na stronę, licznik zakresu, wskaźnik strony oraz przyciski pierwsza/poprzednia/następna/ostatnia. Dozwolone rozmiary strony są ustalone w `data-grid-pagination.constants.ts` jako `DATA_GRID_PAGE_SIZE_OPTIONS`, co daje `[10, 25, 50, 100, 250]`. Największa opcja to `LIST_PAGE_SIZE_MAX` z `src/modules/_core/utils/pagination.ts`, którą `pageSizeField` egzekwuje także na serwerze, więc żądanie listy nie może poprosić o większą stronę, niż oferuje siatka.
 
 `DATA_GRID_DEFAULT_PAGE_SIZE` to 10; `normalizeDataGridPageSize` zaokrągla każdą inną liczbę w górę do najbliższego dozwolonego rozmiaru, a efekt w komponencie poprawia rozmiar strony, którego nie ma na liście. Ekrany nadpisują wartość domyślną — zamówienia używają `ADMIN_ORDERS_PAGE_SIZE` (25), klienci `ADMIN_CUSTOMER_PAGE_SIZE`, audyt `ADMIN_AUDIT_LOG_PAGE_SIZE`.
 

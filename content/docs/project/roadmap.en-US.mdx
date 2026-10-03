@@ -89,12 +89,11 @@ Each of these already has some of its groundwork in place (an integration functi
 
 - **No end-to-end or browser tests.** `vite.config.ts` already excludes an `e2e` directory and a `playwright/` cache that do not exist, so the intent was there. For a checkout flow this is the gap that matters most.
 - **The ratio is inverted relative to the risk.** Component tests mostly assert rendering; commerce correctness lives in checkout, inventory compensation and refunds, which the 35 integration suites cover. More integration coverage of the money paths is worth more than more component coverage.
-- **Integration suites run on `node:sqlite`.** The transport in `src/platform/testing/mocks/d1.ts` emulates D1's batch atomicity but not its bound-parameter ceiling, so concurrency results are SQLite's behaviour, not proof against D1 under production load.
+- **Integration suites run on `node:sqlite`.** The transport in `src/platform/testing/mocks/d1.ts` emulates D1's batch atomicity and its 100-parameter ceiling but not its concurrency, so concurrency results are SQLite's behaviour, not proof against D1 under production load.
 - **The coverage ratchet needs turning.** Thresholds sit at 72 statements, 71 lines, 68 functions, 69 branches with `autoUpdate: false`. They are a floor to raise, not a target that has been met.
 
 ## Priority 5 — housekeeping
 
-- **D1 parameter chunking is inconsistent.** `src/modules/product-attribute/product-attribute.server.ts` sets `RANK_UPDATE_CHUNK_SIZE = 30` and loops; `setProductRanks` in `src/modules/product/product.mutations.ts` builds one `UPDATE` with a generated `case … when` over an `inArray`, binding two parameters per row plus the id list, and never chunks. The category and collection reorder paths follow the product shape. That is fine at the current catalog size and will not stay fine.
 - **The git history does not match the code.** Several commits touch over two thousand files. Nothing to fix retroactively, but worth not repeating — see [Contributing](/docs/project/contributing).
 
 ## How to keep this page honest

@@ -1,6 +1,7 @@
-import { and, eq, gte, inArray, sql } from "drizzle-orm"
+import { and, eq, gte, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 
@@ -117,6 +118,6 @@ export const getAvailabilityByVariantIds = async (variantIds: readonly string[])
       variantId: inventory.variantId,
     })
     .from(inventory)
-    .where(inArray(inventory.variantId, [...variantIds]))
+    .where(inJsonList(inventory.variantId, variantIds))
   return new Map(rows.map((row) => [row.variantId, row.quantityAvailable]))
 }

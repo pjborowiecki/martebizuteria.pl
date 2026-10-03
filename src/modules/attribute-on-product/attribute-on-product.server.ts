@@ -1,6 +1,7 @@
-import { count, eq, inArray, sql } from "drizzle-orm"
+import { count, eq, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema"
 
@@ -35,7 +36,7 @@ export const countForAttributeIds = async (ids: readonly string[]): Promise<numb
       value: count(),
     })
     .from(attributeOnProduct)
-    .where(inArray(attributeOnProduct.attributeId, [...ids]))
+    .where(inJsonList(attributeOnProduct.attributeId, ids))
   return row?.value ?? 0
 }
 

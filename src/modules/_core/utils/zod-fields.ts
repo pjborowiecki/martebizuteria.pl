@@ -10,7 +10,7 @@ import {
   isNumericColumnFilterValue,
 } from "~/src/modules/_core/utils/column-filters"
 import { type DateTimeColumnFilterValue } from "~/src/modules/_core/utils/datetime-column-filter"
-import { LIST_PAGE_FIRST } from "~/src/modules/_core/utils/pagination"
+import { LIST_PAGE_FIRST, LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 
 export const MIN_FIELD_LENGTH = 1
 
@@ -26,7 +26,7 @@ export const searchTermField = zod.string()
 
 export const pageField = zod.number().int().min(LIST_PAGE_FIRST)
 
-export const pageSizeField = zod.number().int().min(MIN_FIELD_LENGTH)
+export const pageSizeField = zod.number().int().min(MIN_FIELD_LENGTH).max(LIST_PAGE_SIZE_MAX)
 
 export const dateColumnFilterField = zod.custom<DateColumnFilterValue>(isDateColumnFilterValue)
 

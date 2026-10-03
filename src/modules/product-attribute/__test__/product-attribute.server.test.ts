@@ -53,7 +53,10 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   },
 }))
 
-vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch: batch.run }))
+vi.mock(import("~/src/integrations/drizzle-orm/drizzle.batch"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  runDrizzleBatch: batch.run,
+}))
 
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
   getProductCountsByAttributeId: counts.byAttributeId,
@@ -99,10 +102,10 @@ describe("setProductAttributeRanks", () => {
 
   it.each([
     [1, 1],
-    [30, 1],
-    [31, 2],
-    [60, 2],
-    [61, 3],
+    [49, 1],
+    [50, 2],
+    [98, 2],
+    [99, 3],
   ])("splits %i updates into %i statements", async (updateCount, statementCount) => {
     await setProductAttributeRanks(ranksFor(updateCount))
 

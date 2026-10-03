@@ -24,5 +24,8 @@ export const isoDayKey = (column: AnySQLiteColumn) => sql<string>`strftime('%Y-%
 
 export const isoMonthKey = (column: AnySQLiteColumn) => sql<string>`strftime('%Y-%m', ${column} / ${MS_PER_SECOND}, 'unixepoch')`
 
+export const inJsonList = (column: AnySQLiteColumn, values: readonly string[]): SQL =>
+  sql`${column} in (select value from json_each(${JSON.stringify(values)}))`
+
 export const notInJsonList = (column: AnySQLiteColumn, values: readonly string[]): SQL =>
   sql`${column} not in (select value from json_each(${JSON.stringify(values)}))`

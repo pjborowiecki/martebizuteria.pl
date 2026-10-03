@@ -41,6 +41,8 @@ const DECEMBER = Date.UTC(2024, 11, 1)
 
 const PAGE = { limit: 25, offset: 0 }
 
+const DESCENDANT_CATEGORY_COUNT = 150
+
 const titles = (value: string) => JSON.stringify({ "en-US": value, "pl-PL": value })
 
 const pageIds = async (params: Partial<StorefrontPublishedProductsParams> = {}): Promise<string[]> => {
@@ -156,6 +158,15 @@ describe("storefront published products page", () => {
 describe("storefront catalog scoping", () => {
   it("restricts the page to the requested categories", async () => {
     await expect(pageIds({ categoryIds: ["rings", "crowns"] })).resolves.toStrictEqual(["cheap", "pricey"])
+  })
+
+  it("restricts the page to a category tree with more descendants than D1 binds per statement", async () => {
+    const descendantIds = Array.from({ length: DESCENDANT_CATEGORY_COUNT }, (_, index) => `rings-${String(index)}`)
+    sqlite
+      .prepare("insert into category_on_product (category_id, product_id) values (?, 'mid')")
+      .run(`rings-${String(DESCENDANT_CATEGORY_COUNT - 1)}`)
+
+    await expect(pageIds({ categoryIds: ["rings", ...descendantIds] })).resolves.toStrictEqual(["cheap", "mid"])
   })
 
   it("ignores an empty category selection instead of returning nothing", async () => {
