@@ -136,14 +136,14 @@ Provider `v8`, reporters `text`, `html` and `json-summary`, output in `coverage/
 
 | Metric     | Threshold |
 | ---------- | --------- |
-| Statements | 72        |
-| Lines      | 71        |
-| Functions  | 68        |
-| Branches   | 69        |
+| Statements | 100       |
+| Lines      | 100       |
+| Functions  | 100       |
+| Branches   | 100       |
 
-`thresholds.autoUpdate` is `false`, so the numbers do not drift upward on their own — raising them is a deliberate edit to `vite.config.ts`.
+Every statement, branch, function and line is covered, so all four thresholds are 100 and any new code arrives with its tests. `thresholds.autoUpdate` is `false`.
 
-Coverage includes `src/**/*.{ts,tsx}` and excludes tests, `__test__` folders, `*.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` (vendored primitives) and `src/platform/testing/**`.
+Coverage includes `src/**/*.{ts,tsx}` and excludes tests, `__test__` folders, `*.d.ts`, `src/routeTree.gen.ts`, `src/integrations/**/migrations/**` (drizzle-kit introspection output, which lint and format ignore too), `src/presentation/components/shadcn/**` (vendored primitives) and `src/platform/testing/**`.
 
 Cover real behaviour. If a branch cannot be reached, delete the branch rather than stubbing a global to reach it.
 

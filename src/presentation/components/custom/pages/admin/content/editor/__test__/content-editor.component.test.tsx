@@ -1,5 +1,6 @@
-import { cleanup, screen, within } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react"
+import { userEvent } from "@testing-library/user-event"
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
@@ -21,6 +22,14 @@ const renderEditor = async (invalid = false) => {
 
   return { fieldRef, onChange, textbox, toolbar: screen.getByRole("toolbar") }
 }
+
+beforeAll(() => {
+  Object.defineProperty(Range.prototype, "getBoundingClientRect", { configurable: true, value: () => new DOMRect() })
+})
+
+afterAll(() => {
+  Reflect.deleteProperty(Range.prototype, "getBoundingClientRect")
+})
 
 afterEach(cleanup)
 
@@ -60,5 +69,30 @@ describe("ContentEditor", () => {
     const { fieldRef } = await renderEditor(true)
 
     expect(typeof fieldRef.mock.lastCall?.[0].focus).toBe("function")
+  })
+
+  it("places the caret at the end of the content when the form focuses the field", async () => {
+    const { fieldRef, textbox } = await renderEditor(true)
+
+    expect(document.getSelection()?.anchorNode).not.toBe(textbox.lastElementChild)
+
+    act(() => {
+      fieldRef.mock.lastCall?.[0].focus()
+    })
+
+    await waitFor(() => {
+      expect(document.getSelection()?.anchorNode).toBe(textbox.lastElementChild)
+    })
+  })
+
+  it("reports the edited Markdown without the trailing line break", async () => {
+    const { onChange, textbox } = await renderEditor()
+
+    await userEvent.click(textbox)
+    await userEvent.keyboard("Easy ")
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith("## Easy Returns\n\nYou have **14 days**.\n\n- keep the receipt")
+    })
   })
 })

@@ -7,7 +7,7 @@ import { APP_URL } from "~/src/presentation/branding/app"
 const { transformUrl } = vi.hoisted(() => ({ transformUrl: vi.fn<(...args: unknown[]) => string | undefined>() }))
 
 const { assetCdn } = vi.hoisted(() => {
-  const state: { hosted: boolean } = { hosted: false }
+  const state: { hosted: boolean; origin: string } = { hosted: false, origin: "https://assets.test" }
 
   return { assetCdn: state }
 })
@@ -25,7 +25,7 @@ vi.mock("~/src/lib/url", () => ({
   getAssetURL: (path: string) => `https://assets.test/${path}`,
   isAssetCdnUrl: () => assetCdn.hosted,
   resolveAssetURL: (pathOrUrl: string) =>
-    pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") ? pathOrUrl : `https://assets.test/${pathOrUrl}`,
+    pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") ? pathOrUrl : `${assetCdn.origin}/${pathOrUrl}`,
 }))
 
 afterEach(() => {
@@ -46,6 +46,7 @@ describe("getProductImageUrl", () => {
 describe("getOptimizedImageUrl", () => {
   beforeEach(() => {
     assetCdn.hosted = false
+    assetCdn.origin = "https://assets.test"
     transformUrl.mockReset()
     transformUrl.mockReturnValue(OPTIMIZED)
   })
@@ -102,6 +103,13 @@ describe("getOptimizedImageUrl", () => {
       "https://images.test/ring.jpg",
     )
     expect(transformUrl).not.toHaveBeenCalled()
+  })
+
+  it("still transforms an asset whose origin is configured as a path on the store itself", () => {
+    assetCdn.origin = "/media"
+
+    expect(getOptimizedImageUrl({ height: 256, quality: undefined, src: "products/ring.jpg", width: 256 })).toBe(OPTIMIZED)
+    expect(transformUrl.mock.calls[0]?.[0]).toMatchObject({ url: "/media/products/ring.jpg" })
   })
 
   it("falls back to the resolved source when the provider returns nothing usable", () => {

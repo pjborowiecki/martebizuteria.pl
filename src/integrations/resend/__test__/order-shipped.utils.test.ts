@@ -80,6 +80,33 @@ describe("buildOrderShippedDetails", () => {
   it("renders the Polish copy for a Polish shipment", () => {
     expect(buildOrderShippedDetails(undefined, polishCopy).deliveryMethod).toBe(polishCopy.unavailable)
   })
+
+  it("passes the tracking number and link through without the whitespace they were typed with", () => {
+    const details = buildOrderShippedDetails(context, englishCopy, {
+      trackingNumber: "  INP-0042  ",
+      trackingUrl: " https://inpost.pl/sledzenie?number=INP-0042 ",
+    })
+
+    expect(details.trackingNumber).toBe("INP-0042")
+    expect(details.trackingUrl).toBe("https://inpost.pl/sledzenie?number=INP-0042")
+  })
+
+  it.each([
+    ["blank", { trackingNumber: "   ", trackingUrl: "" }],
+    ["missing", { trackingNumber: null, trackingUrl: null }],
+  ])("leaves the tracking details out when they are %s", (_case, tracking) => {
+    const details = buildOrderShippedDetails(context, englishCopy, tracking)
+
+    expect(details.trackingNumber).toBeUndefined()
+    expect(details.trackingUrl).toBeUndefined()
+  })
+
+  it("leaves the tracking details out when the shipment carries no tracking at all", () => {
+    const details = buildOrderShippedDetails(context, englishCopy)
+
+    expect(details.trackingNumber).toBeUndefined()
+    expect(details.trackingUrl).toBeUndefined()
+  })
 })
 
 describe("buildOrderShippedAccountCta", () => {

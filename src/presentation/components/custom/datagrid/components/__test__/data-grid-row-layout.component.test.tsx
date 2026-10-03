@@ -101,6 +101,28 @@ describe("DataGridRow cell layout", () => {
     expect(cells[0]).not.toHaveAttribute("data-prevent-row-click")
     expect(cells.at(-1)).toHaveAttribute("data-prevent-row-click", "true")
   })
+
+  it("stays aligned with the header by leaving an empty cell for a column the row has no cell for", () => {
+    const { container } = renderWithProviders(
+      <DataGridHarness columns={COLUMNS}>
+        {(headerTable) => (
+          <DataGridHarness columns={COLUMNS.slice(0, -1)}>
+            {(rowTable) => (
+              <Table>
+                <TableBody>
+                  {rowTable.getRowModel().rows.map((row) => (
+                    <DataGridRow key={row.id} persistenceKey="test.products" row={row} rowReorder={undefined} table={headerTable} />
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DataGridHarness>
+        )}
+      </DataGridHarness>,
+    )
+
+    expect(firstRowCells(container).map((cell) => cell.textContent)).toStrictEqual(["Silver ring", "200", ""])
+  })
 })
 
 describe("DataGridRow drag targets", () => {

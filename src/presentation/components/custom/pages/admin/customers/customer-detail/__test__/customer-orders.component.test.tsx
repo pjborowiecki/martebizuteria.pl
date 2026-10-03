@@ -62,6 +62,7 @@ const detail = (orders: User["adminCustomerDetail"]["orders"]): User["adminCusto
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 describe("CustomerOrders", () => {
@@ -122,6 +123,26 @@ describe("CustomerOrders", () => {
     renderWithProviders(<CustomerOrders customer={detail([order({ payment: "authorized" })])} />)
 
     expect(screen.getByText("Authorized").className).toContain(CUSTOMER_DETAIL_PAYMENT_BADGE_STYLES["authorized"])
+  })
+
+  it("keeps a state the style maps do not know on a plain badge", () => {
+    const missingLabel = vi.spyOn(console, "error").mockImplementation(() => {})
+    renderWithProviders(<CustomerOrders customer={detail([order({ fulfillment: "on_hold", payment: "disputed" })])} />)
+    const badges = [
+      screen.getByText("pages.admin.customerDetail.orders.status.on_hold"),
+      screen.getByText("pages.admin.customerDetail.orders.payment.disputed"),
+    ]
+    const knownColours = [
+      ...Object.values(CUSTOMER_DETAIL_FULFILLMENT_BADGE_STYLES),
+      ...Object.values(CUSTOMER_DETAIL_PAYMENT_BADGE_STYLES),
+    ]
+
+    for (const badge of badges) {
+      expect(badge).toHaveClass("border-0", "text-[11px]")
+      expect(badge.className).not.toContain("undefined")
+      expect(knownColours.filter((colour) => badge.className.includes(colour))).toStrictEqual([])
+    }
+    expect(missingLabel).toHaveBeenCalled()
   })
 
   it("renders one row per order", () => {

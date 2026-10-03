@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query"
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod"
 
@@ -46,10 +47,23 @@ vi.mock("@tanstack/react-start", () => ({
   },
 }))
 
-import { NEWSLETTER_OUTCOME, NEWSLETTER_STATUS, NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
-import { confirmNewsletterSubscription } from "~/src/modules/newsletter/use-cases/confirm-newsletter-subscription"
-import { subscribeToNewsletter } from "~/src/modules/newsletter/use-cases/subscribe-to-newsletter"
-import { unsubscribeFromNewsletter } from "~/src/modules/newsletter/use-cases/unsubscribe-from-newsletter"
+import {
+  NEWSLETTER_MUTATION_KEYS,
+  NEWSLETTER_OUTCOME,
+  NEWSLETTER_STATUS,
+  NEWSLETTER_TOKEN_RESULT,
+} from "~/src/modules/newsletter/newsletter.constants"
+import {
+  confirmNewsletterSubscription,
+  confirmNewsletterSubscriptionMutation,
+} from "~/src/modules/newsletter/use-cases/confirm-newsletter-subscription"
+import { subscribeToNewsletter, subscribeToNewsletterMutation } from "~/src/modules/newsletter/use-cases/subscribe-to-newsletter"
+import {
+  unsubscribeFromNewsletter,
+  unsubscribeFromNewsletterMutation,
+} from "~/src/modules/newsletter/use-cases/unsubscribe-from-newsletter"
+
+const mutationContext = { client: new QueryClient(), meta: undefined }
 
 const subscriberRow = (email: string) =>
   z
@@ -249,5 +263,45 @@ describe("unsubscribeFromNewsletter", () => {
       email: undefined,
       result: NEWSLETTER_TOKEN_RESULT.INVALID,
     })
+  })
+})
+
+describe("newsletter mutation options", () => {
+  it("signs a visitor up through the mutation the signup forms run", async () => {
+    await expect(
+      subscribeToNewsletterMutation.mutationFn?.({ email: "anna@example.com", locale: "en-US", source: "checkout" }, mutationContext),
+    ).resolves.toStrictEqual({ outcome: NEWSLETTER_OUTCOME.CONFIRMATION_SENT })
+    expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.PENDING)
+    expect(sendNewsletterConfirmation).toHaveBeenCalledWith(expect.objectContaining({ email: "anna@example.com", locale: "en-US" }))
+  })
+
+  it("confirms the subscription through the mutation the confirmation page runs", async () => {
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    await expect(
+      confirmNewsletterSubscriptionMutation.mutationFn?.({ token: lastConfirmationToken() }, mutationContext),
+    ).resolves.toStrictEqual({
+      email: "anna@example.com",
+      result: NEWSLETTER_TOKEN_RESULT.OK,
+    })
+    expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.CONFIRMED)
+  })
+
+  it("unsubscribes through the mutation the unsubscribe page runs", async () => {
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    await expect(
+      unsubscribeFromNewsletterMutation.mutationFn?.({ token: lastConfirmationToken() }, mutationContext),
+    ).resolves.toStrictEqual({
+      email: "anna@example.com",
+      result: NEWSLETTER_TOKEN_RESULT.OK,
+    })
+    expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.UNSUBSCRIBED)
+  })
+
+  it("keys each mutation under the newsletter feature", () => {
+    expect(subscribeToNewsletterMutation.mutationKey).toStrictEqual(NEWSLETTER_MUTATION_KEYS.SUBSCRIBE)
+    expect(confirmNewsletterSubscriptionMutation.mutationKey).toStrictEqual(NEWSLETTER_MUTATION_KEYS.CONFIRM)
+    expect(unsubscribeFromNewsletterMutation.mutationKey).toStrictEqual(NEWSLETTER_MUTATION_KEYS.UNSUBSCRIBE)
   })
 })

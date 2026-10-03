@@ -311,6 +311,15 @@ describe("order confirmation email", () => {
     expect(props.orderNumber).toBe("order-1")
   })
 
+  it("reports a zero total when neither the order row nor the session carries one", async () => {
+    getOrderTotalsForEmail.mockResolvedValue(undefined)
+    await dispatch(
+      checkoutSessionCompletedEvent(checkoutSession({ customerEmail: "anna@example.com", metadata: { items: itemsMetadata } })),
+    )
+
+    expect(sentEmail().react.props.total).toBe(0)
+  })
+
   it("labels the payment method Stripe reports for the intent", async () => {
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
 

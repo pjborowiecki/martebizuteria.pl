@@ -8,6 +8,10 @@ import { createTestRouter, renderWithProviders } from "~/src/platform/testing/li
 
 import { type StorefrontSearch } from "~/src/modules/storefront-search/storefront-search.types"
 
+import {
+  DUR_QUICK,
+  MENU_MEDIA,
+} from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-constants"
 import { useSearchOverlayLogic } from "~/src/presentation/components/custom/pages/landing-page/navigation/hooks/use-search-overlay-logic"
 import { useNavigationStore } from "~/src/presentation/components/custom/pages/landing-page/navigation/store/navigation-store"
 
@@ -15,7 +19,28 @@ import { ROUTES } from "~/src/routes"
 
 const EMPTY_RESULTS: StorefrontSearch["results"] = { categories: [], collections: [], products: [] }
 
-const animation = vi.hoisted(() => ({ create: vi.fn(), play: vi.fn(), reverse: vi.fn(), set: vi.fn() }))
+interface TimelineOptions {
+  readonly onReverseComplete: () => void
+  readonly paused: boolean
+}
+
+interface TweenTarget {
+  readonly duration: number
+}
+
+interface TimelineStub {
+  readonly fromTo: (target: unknown, from: object, to: TweenTarget) => TimelineStub
+  readonly play: () => void
+  readonly reverse: () => void
+}
+
+const animation = vi.hoisted(() => ({
+  create: vi.fn<(options: TimelineOptions) => void>(),
+  fromTo: vi.fn<(target: unknown, from: object, to: TweenTarget) => void>(),
+  play: vi.fn<() => void>(),
+  reverse: vi.fn<() => void>(),
+  set: vi.fn<(target: string, vars: object) => void>(),
+}))
 
 const lenis = vi.hoisted(() => ({ start: vi.fn(), stop: vi.fn() }))
 
@@ -31,8 +56,12 @@ const remote = vi.hoisted(() => {
 
 vi.mock("~/src/integrations/gsap/gsap.config", async () => {
   const { useEffect } = await import("react")
-  const timeline = {
-    fromTo: () => timeline,
+  const timeline: TimelineStub = {
+    fromTo: (target, from, to) => {
+      animation.fromTo(target, from, to)
+
+      return timeline
+    },
     play: animation.play,
     reverse: animation.reverse,
   }
@@ -40,8 +69,8 @@ vi.mock("~/src/integrations/gsap/gsap.config", async () => {
   return {
     gsap: {
       set: animation.set,
-      timeline: () => {
-        animation.create()
+      timeline: (options: TimelineOptions) => {
+        animation.create(options)
 
         return timeline
       },
@@ -72,7 +101,10 @@ vi.mock("~/src/modules/storefront-search/use-cases/get-trending-searches", async
   }
 })
 
-const SearchHarness = ({ withOverlay = true }: Readonly<{ withOverlay?: boolean }>): JSX.Element => {
+const SearchHarness = ({
+  overlayOpen = false,
+  withOverlay = true,
+}: Readonly<{ overlayOpen?: boolean; withOverlay?: boolean }>): JSX.Element => {
   const overlayRef = useRef<HTMLDialogElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const logic = useSearchOverlayLogic(overlayRef, inputRef)
@@ -82,7 +114,7 @@ const SearchHarness = ({ withOverlay = true }: Readonly<{ withOverlay?: boolean 
 
   return (
     <div>
-      {withOverlay ? <dialog ref={overlayRef} /> : undefined}
+      {withOverlay ? <dialog open={overlayOpen} ref={overlayRef} /> : undefined}
       <form onSubmit={submit}>
         <input aria-label="Search field" onChange={logic.handleQueryChange} ref={inputRef} value={logic.query} />
       </form>
@@ -123,6 +155,8 @@ const resultItems = () => screen.getAllByRole("list").find((list) => list.getAtt
 
 const field = () => screen.getByLabelText("Search field")
 
+const revealDurations = () => animation.fromTo.mock.calls.map((call) => call[2].duration)
+
 beforeEach(() => {
   vi.clearAllMocks()
   remote.state.failSearch = false
@@ -133,6 +167,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 describe("search overlay results", () => {
@@ -232,6 +267,26 @@ describe("search overlay results", () => {
     await userEvent.type(field(), "MAISON!")
 
     expect(await screen.findByText("page · The Maison · /about · -")).toBeInTheDocument()
+  })
+
+  it("links a page the server found to its route without a handle", async () => {
+    remote.state.results = { categories: [], collections: [], products: [{ handle: "lookbook", name: "Lookbook", type: "page" }] }
+    renderWithProviders(<SearchHarness />)
+
+    await userEvent.type(field(), "look")
+
+    expect(await screen.findByText("page · Lookbook · /products · -")).toBeInTheDocument()
+  })
+
+  it("does not offer every static page for a term made only of punctuation", async () => {
+    renderWithProviders(<SearchHarness />)
+
+    await userEvent.type(field(), "?!")
+
+    await waitFor(() => {
+      expect(flags()).toContain("status:empty")
+    })
+    expect(resultItems()?.children).toHaveLength(0)
   })
 
   it("offers the help pages the menu links to", async () => {
@@ -348,6 +403,44 @@ describe("search overlay dialog", () => {
     expect(animation.reverse).toHaveBeenCalledOnce()
     expect(lenis.start).toHaveBeenCalledOnce()
     expect(animation.set).toHaveBeenCalledWith("html", { clearProps: "overflow" })
+  })
+
+  it("keeps the dialog open while the reveal plays backwards and closes it once the reverse completes", () => {
+    renderWithProviders(<SearchHarness />)
+    const options = animation.create.mock.calls[0]?.[0]
+
+    act(() => {
+      useNavigationStore.getState().setSearchOpen(false)
+    })
+
+    expect(screen.getByRole("dialog", { hidden: true })).toHaveAttribute("open")
+
+    options?.onReverseComplete()
+
+    expect(screen.getByRole("dialog", { hidden: true })).not.toHaveAttribute("open")
+  })
+
+  it("plays every step of the reveal at the quick duration when the shopper prefers reduced motion", () => {
+    const reducedMotion = Object.assign(globalThis.matchMedia(MENU_MEDIA.reduced), { matches: true })
+    vi.spyOn(globalThis, "matchMedia").mockReturnValue(reducedMotion)
+
+    renderWithProviders(<SearchHarness />)
+
+    expect(revealDurations()).toStrictEqual([DUR_QUICK, DUR_QUICK, DUR_QUICK])
+  })
+
+  it("plays the full reveal when the shopper has no motion preference", () => {
+    renderWithProviders(<SearchHarness />)
+
+    expect(revealDurations()).not.toContain(DUR_QUICK)
+  })
+
+  it("plays the reveal without reopening a dialog that is already showing", () => {
+    const showModal = vi.spyOn(HTMLDialogElement.prototype, "showModal")
+    renderWithProviders(<SearchHarness overlayOpen />)
+
+    expect(showModal).not.toHaveBeenCalled()
+    expect(animation.play).toHaveBeenCalledOnce()
   })
 
   it("closes when the router navigates away", async () => {

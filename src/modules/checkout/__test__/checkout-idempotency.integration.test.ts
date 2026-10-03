@@ -5,7 +5,13 @@ import { type TestD1Query } from "~/src/platform/testing/mocks/d1"
 
 import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
-import { type FulfillCheckoutInput, prepareFulfillCheckoutBatch, resolvePendingCheckout } from "~/src/modules/checkout/checkout.utils"
+import {
+  type CheckoutFulfillmentSnapshot,
+  type FulfillCheckoutInput,
+  type PendingCheckout,
+  prepareFulfillCheckoutBatch,
+  resolvePendingCheckout,
+} from "~/src/modules/checkout/checkout.utils"
 import { computeOrderTotals } from "~/src/modules/order/order.totals"
 
 const { queries, sqlite } = await vi.hoisted(async () => {
@@ -90,6 +96,7 @@ beforeEach(() => {
   sqlite.exec(`
       drop table if exists "order";
       drop table if exists order_item;
+      drop table if exists order_address;
       drop table if exists payment;
       drop table if exists checkout;
       drop table if exists inventory;
@@ -115,6 +122,11 @@ beforeEach(() => {
       create table inventory (
         id text primary key, variant_id text, quantity_available integer, quantity_reserved integer,
         version integer, created_at integer, updated_at integer
+      );
+      create table order_address (
+        id text primary key, order_id text not null, type text not null, address1 text not null, address2 text, city text not null,
+        country_code text not null, first_name text not null, last_name text not null, phone text, postal_code text, province text,
+        created_at integer, updated_at integer
       );
 
       insert into checkout (id, status, email) values ('${CHECKOUT_ID}', 'pending', 'buyer@example.com');
@@ -280,5 +292,124 @@ describe("fulfilment batch", () => {
     await runDrizzleBatch(prepareFulfillCheckoutBatch(context, fulfillInput).statements.filter((_statement, index) => index !== 2))
 
     expect(readCheckoutStatus()).toBe("cancelled")
+  })
+})
+
+const pendingContext = (): PendingCheckout => {
+  const context = resolvePendingCheckout(paymentRow, pendingCheckoutRow, TRANSACTION_ID)
+  if (context === undefined) {
+    throw new Error("expected a pending checkout")
+  }
+
+  return context
+}
+
+const businessSnapshot: CheckoutFulfillmentSnapshot = {
+  billingAddress: {
+    address1: "ul. Firmowa 1",
+    address2: "lok. 3",
+    city: "Kraków",
+    countryCode: "PL",
+    firstName: "Jan",
+    lastName: "Nowak",
+    phone: "+48512345678",
+    postalCode: "30-001",
+    province: "Małopolskie",
+  },
+  billingCompanyName: "Pracownia Złotnicza sp. z o.o.",
+  billingNip: "5260001246",
+  customerNote: "Invoice please",
+  deliveryMethodId: "dm-locker",
+  discountId: "disc-spring",
+  lockerId: "WAW01A",
+  shippingAddress: {
+    address1: "Paczkomat WAW01A",
+    address2: null,
+    city: "Warszawa",
+    countryCode: "PL",
+    firstName: null,
+    lastName: null,
+    phone: null,
+    postalCode: null,
+    province: null,
+  },
+}
+
+const readOrderAddresses = () =>
+  sqlite
+    .prepare(
+      "select type, address1, address2, city, country_code, first_name, last_name, phone, postal_code, province from order_address order by type",
+    )
+    .all()
+
+describe("fulfilment address snapshot", () => {
+  it("copies both checkout addresses onto the order so later edits cannot rewrite it", async () => {
+    await runDrizzleBatch(prepareFulfillCheckoutBatch(pendingContext(), fulfillInput, businessSnapshot).statements)
+
+    expect(readOrderAddresses()).toEqual([
+      {
+        address1: "ul. Firmowa 1",
+        address2: "lok. 3",
+        city: "Kraków",
+        country_code: "PL",
+        first_name: "Jan",
+        last_name: "Nowak",
+        phone: "+48512345678",
+        postal_code: "30-001",
+        province: "Małopolskie",
+        type: "billing",
+      },
+      {
+        address1: "Paczkomat WAW01A",
+        address2: null,
+        city: "Warszawa",
+        country_code: "PL",
+        first_name: "",
+        last_name: "",
+        phone: null,
+        postal_code: null,
+        province: null,
+        type: "shipping",
+      },
+    ])
+  })
+
+  it("links the copied addresses to the order it creates", async () => {
+    const { orderId, statements } = prepareFulfillCheckoutBatch(pendingContext(), fulfillInput, businessSnapshot)
+
+    await runDrizzleBatch(statements)
+
+    expect(sqlite.prepare("select distinct order_id from order_address").all()).toEqual([{ order_id: orderId }])
+  })
+
+  it("stamps the invoice details, note, locker and delivery choice on the order", async () => {
+    const { orderId, statements } = prepareFulfillCheckoutBatch(pendingContext(), fulfillInput, businessSnapshot)
+
+    await runDrizzleBatch(statements)
+
+    expect(
+      sqlite
+        .prepare(
+          `select billing_company_name, billing_nip, customer_note, delivery_method_id, discount_id, locker_id from "order" where id = ?`,
+        )
+        .get(orderId),
+    ).toEqual({
+      billing_company_name: "Pracownia Złotnicza sp. z o.o.",
+      billing_nip: "5260001246",
+      customer_note: "Invoice please",
+      delivery_method_id: "dm-locker",
+      discount_id: "disc-spring",
+      locker_id: "WAW01A",
+    })
+  })
+
+  it("writes no order address when the checkout kept none", async () => {
+    await runDrizzleBatch(
+      prepareFulfillCheckoutBatch(pendingContext(), fulfillInput, { ...businessSnapshot, billingAddress: null, shippingAddress: null })
+        .statements,
+    )
+
+    expect(readOrderAddresses()).toStrictEqual([])
+    expect(countOrders()).toBe(1)
   })
 })

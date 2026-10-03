@@ -1,10 +1,11 @@
+import { MutationObserver, QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { type AdminOrderRefundTarget } from "~/src/modules/order/order.accessors"
-import { ORDER_ERROR_CODES } from "~/src/modules/order/order.constants"
+import { ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
 
-import { refundAdminOrder } from "../refund-admin-order"
+import { refundAdminOrder, refundAdminOrderMutation } from "../refund-admin-order"
 
 const ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
 
@@ -155,5 +156,19 @@ describe("refundAdminOrder", () => {
     })
     expect(stripeApi.sessionsRetrieve).not.toHaveBeenCalled()
     expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
+  })
+})
+
+describe("refundAdminOrderMutation", () => {
+  it("keys its mutation by the shared refund key", () => {
+    expect(refundAdminOrderMutation.mutationKey).toStrictEqual(ORDER_MUTATION_KEYS.REFUND)
+  })
+
+  it("refunds the order the mutation was handed", async () => {
+    await expect(new MutationObserver(new QueryClient(), refundAdminOrderMutation).mutate({ orderId: ORDER_ID })).resolves.toStrictEqual({
+      ok: true,
+      orderId: ORDER_ID,
+    })
+    expect(stripeApi.refundsCreate).toHaveBeenCalledWith({ metadata: { orderId: ORDER_ID }, payment_intent: "pi_test_paid" }, IDEMPOTENCY)
   })
 })

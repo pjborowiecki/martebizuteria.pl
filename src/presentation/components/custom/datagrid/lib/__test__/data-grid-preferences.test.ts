@@ -79,6 +79,13 @@ describe("sanitizeColumnOrder", () => {
     ])
   })
 
+  it("anchors a newly added column on its nearest declared neighbour when the declaration has gaps", () => {
+    const declared = ["select", "title"]
+    declared[3] = "actions"
+
+    expect(sanitizeColumnOrder(["title", "select"], declared)).toStrictEqual(["title", "actions", "select"])
+  })
+
   it("de-duplicates a saved order that repeats a column", () => {
     expect(sanitizeColumnOrder(["title", "title", "select"], canonical).filter((id) => id === "title")).toHaveLength(1)
   })

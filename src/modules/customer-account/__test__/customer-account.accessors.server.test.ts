@@ -4,6 +4,7 @@ import {
   countCustomerOrders,
   getCustomerActivityAuditRows,
   getCustomerOrderRows,
+  getCustomerSpendStats,
   getOrderItemsForOrders,
 } from "~/src/modules/customer-account/customer-account.accessors.server"
 import { CUSTOMER_ACCOUNT_ORDERS_LIMIT } from "~/src/modules/customer-account/customer-account.constants"
@@ -125,6 +126,27 @@ describe("countCustomerOrders", () => {
 
   it("reports no orders when the count comes back empty", async () => {
     await expect(countCustomerOrders("user-1", "cancelled")).resolves.toBe(0)
+  })
+})
+
+describe("getCustomerSpendStats", () => {
+  beforeEach(() => {
+    database.state.joins = 0
+    database.state.limits = []
+    database.state.offsets = []
+    database.state.rows = []
+    database.state.tables = []
+  })
+
+  it("reads the spend from the order table in one aggregate", async () => {
+    database.state.rows = [{ orderCount: 3, totalSpent: 45_000 }]
+
+    await expect(getCustomerSpendStats("user-1")).resolves.toStrictEqual({ orderCount: 3, totalSpent: 45_000 })
+    expect(database.state.tables).toStrictEqual(["order"])
+  })
+
+  it("reports nothing spent when the aggregate comes back empty", async () => {
+    await expect(getCustomerSpendStats("user-1")).resolves.toStrictEqual({ orderCount: 0, totalSpent: 0 })
   })
 })
 

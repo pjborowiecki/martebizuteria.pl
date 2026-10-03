@@ -5,7 +5,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 import { order } from "~/src/modules/order/order.schema"
 import { type Order } from "~/src/modules/order/order.types"
-import { prepareRefundBatch, resolveSettledOrder } from "~/src/modules/order/order.utils"
+import { prepareCancelOrderBatch, prepareRefundBatch, resolveSettledOrder } from "~/src/modules/order/order.utils"
 import { payment } from "~/src/modules/payment/payment.schema"
 
 interface RecordedUpdate {
@@ -162,5 +162,51 @@ describe("prepareRefundBatch", () => {
 
     expect(query.sql).toBe('"payment"."id" = ?')
     expect(query.params).toStrictEqual(["payment-1"])
+  })
+})
+
+describe("prepareCancelOrderBatch", () => {
+  beforeEach(() => {
+    database.updates = []
+  })
+
+  it("cancels the order and its fulfilment and stamps when it happened", () => {
+    const statements = prepareCancelOrderBatch("order-1", [])
+
+    expect(statements).toHaveLength(1)
+    expect(updateAt(0).table).toBe(order)
+    expect(updateAt(0).values).toMatchObject({ fulfillmentStatus: "cancelled", status: "cancelled" })
+    expect(updateAt(0).values["canceledAt"]).toBeInstanceOf(Date)
+    expect(updateAt(0).values["updatedAt"]).toBeInstanceOf(Date)
+  })
+
+  it("targets only the cancelled order", () => {
+    prepareCancelOrderBatch("order-1", [])
+
+    const query = dialect.sqlToQuery(updateAt(0).where)
+
+    expect(query.sql).toBe('"order"."id" = ?')
+    expect(query.params).toStrictEqual(["order-1"])
+  })
+
+  it("returns each cancelled line to the stock of its own variant", () => {
+    const statements = prepareCancelOrderBatch("order-1", [
+      { quantity: 2, variantId: "variant-a" },
+      { quantity: 5, variantId: "variant-b" },
+    ])
+
+    expect(statements).toHaveLength(3)
+    expect(database.updates.slice(1).map((update) => update.table)).toStrictEqual([inventory, inventory])
+    expect(dialect.sqlToQuery(updateAt(1).where).params).toStrictEqual(["variant-a"])
+    expect(dialect.sqlToQuery(updateAt(2).where).params).toStrictEqual(["variant-b"])
+  })
+
+  it("adds the cancelled quantity to the stock already available", () => {
+    prepareCancelOrderBatch("order-1", [{ quantity: 5, variantId: "variant-b" }])
+
+    const increment = dialect.sqlToQuery(asSql(updateAt(1).values["quantityAvailable"]))
+
+    expect(increment.sql).toBe('"inventory"."quantity_available" + ?')
+    expect(increment.params).toStrictEqual([5])
   })
 })

@@ -90,16 +90,16 @@ Coverage is broad, but the suites that earn their keep are the ones where a sile
 bun run test:coverage
 ```
 
-The v8 provider reports `text`, `html` and `json-summary` into `coverage/`, over `src/**/*.{ts,tsx}` and excluding tests, `__test__` folders, `*.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` and `src/platform/testing/**`.
+The v8 provider reports `text`, `html` and `json-summary` into `coverage/`, over `src/**/*.{ts,tsx}` and excluding tests, `__test__` folders, `*.d.ts`, `src/routeTree.gen.ts`, the generated `src/integrations/**/migrations/**`, `src/presentation/components/shadcn/**` and `src/platform/testing/**`.
 
-Thresholds are configured as a **ratchet, not a target**: they sit below the current numbers so any regression fails CI, and they are raised deliberately as each area is covered.
+The suite covers every statement, branch, function and line, and the thresholds hold it there: any uncovered code fails CI. A branch that no input can reach is removed rather than covered with a contrived test.
 
 | Metric     | Threshold in `vite.config.ts` |
 | ---------- | ----------------------------- |
-| Lines      | 71                            |
-| Statements | 72                            |
-| Functions  | 68                            |
-| Branches   | 69                            |
+| Lines      | 100                           |
+| Statements | 100                           |
+| Functions  | 100                           |
+| Branches   | 100                           |
 
 `autoUpdate` is `false`, so the thresholds only move when someone edits them.
 

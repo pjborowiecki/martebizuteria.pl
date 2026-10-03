@@ -212,3 +212,76 @@ describe("CheckoutSuccess", () => {
     })
   })
 })
+
+describe("CheckoutSuccess order details", () => {
+  const [item] = confirmation().items
+
+  it("shows the product photo when the line kept one", async () => {
+    if (item === undefined) {
+      throw new Error("expected the confirmation fixture to carry a line")
+    }
+    getOrderConfirmation.mockResolvedValue(confirmation({ items: [{ ...item, imageUrl: "https://assets.test/products/aurora.webp" }] }))
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByRole("img", { name: "Bransoletka Aurora" })).toHaveAttribute(
+      "src",
+      "https://assets.test/products/aurora.webp",
+    )
+  })
+
+  it("shows a placeholder instead of a broken photo when the line has none", async () => {
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByText("Bransoletka Aurora")).toBeInTheDocument()
+    expect(screen.queryByRole("img", { name: "Bransoletka Aurora" })).not.toBeInTheDocument()
+  })
+
+  it("labels the delivery cost generically when the order kept no method name", async () => {
+    getOrderConfirmation.mockResolvedValue(confirmation({ deliveryMethodName: undefined }))
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByText("Shipping")).toBeInTheDocument()
+    expect(screen.queryByText("Paczkomat InPost")).not.toBeInTheDocument()
+  })
+
+  it("repeats the second address line and drops a postal code the address never had", async () => {
+    getOrderConfirmation.mockResolvedValue(
+      confirmation({
+        shippingAddress: {
+          city: "Dublin",
+          countryCode: "IE",
+          line1: "12 Grafton Street",
+          line2: "Apartment 4",
+          name: "Anna Kowalska",
+          phone: undefined,
+          postalCode: undefined,
+          province: undefined,
+        },
+      }),
+    )
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByText("Apartment 4")).toBeInTheDocument()
+    expect(screen.getByText("Dublin")).toBeInTheDocument()
+  })
+
+  it("leaves the shipping block out when the order kept no address", async () => {
+    getOrderConfirmation.mockResolvedValue(confirmation({ shippingAddress: undefined }))
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByText("MRT-2026-00042")).toBeInTheDocument()
+    expect(screen.queryByText("Shipping to")).not.toBeInTheDocument()
+  })
+})
+
+describe("CheckoutSuccess actions for someone else's order", () => {
+  it("offers only the way back to the store to a signed-in visitor who did not place the order", async () => {
+    getOrderConfirmation.mockResolvedValue(confirmation({ isGuestOrder: false, isOwnOrder: false }))
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByRole("link", { name: "Return to store" })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "View your order" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Create an account" })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Create an account with/u)).not.toBeInTheDocument()
+  })
+})

@@ -2,6 +2,7 @@ import { render } from "react-email"
 import { describe, expect, it } from "vite-plus/test"
 
 import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
+import { formatPrice } from "~/src/modules/_core/utils/currency"
 
 import englishCopy from "~/messages/en-US/emails.order-confirmation.json"
 import {
@@ -43,7 +44,11 @@ const guestCta = { href: "https://martebizuteria.pl/auth/sign-up", isGuest: true
 
 const customerCta = { href: "https://martebizuteria.pl/account/orders/abc", isGuest: false, label: "View your order" }
 
-const renderConfirmation = (accountCta: { href: string; isGuest: boolean; label: string }, plainText = true): Promise<string> =>
+const renderConfirmation = (
+  accountCta: { href: string; isGuest: boolean; label: string },
+  plainText = true,
+  discountTotal = 0,
+): Promise<string> =>
   render(
     <OrderConfirmation
       accountCta={accountCta}
@@ -52,7 +57,7 @@ const renderConfirmation = (accountCta: { href: string; isGuest: boolean; label:
       items={items}
       locale="en-US"
       messages={englishCopy}
-      discountTotal={0}
+      discountTotal={discountTotal}
       orderNumber={ORDER_NUMBER}
       shippingTotal={1900}
       subtotal={62_700}
@@ -87,6 +92,24 @@ describe("OrderConfirmation", () => {
     expect(text).toContain(`${englishCopy.subtotalLabel}: PLN 627.00`)
     expect(text).toContain(`${englishCopy.shippingLabel}: PLN 19.00`)
     expect(text).toContain(`${englishCopy.totalLabel}: PLN 646.00`)
+  })
+
+  it("subtracts the redeemed discount on its own line", async () => {
+    const text = await renderConfirmation(customerCta, true, 5000)
+
+    expect(text).toContain(`${englishCopy.discountLabel}: −${formatPrice(5000, "PLN", "en-US")}`)
+  })
+
+  it("leaves the discount line out of an order without one", async () => {
+    const text = await renderConfirmation(customerCta)
+
+    expect(text).not.toContain(englishCopy.discountLabel)
+  })
+
+  it("states the VAT contained in the total", async () => {
+    const text = await renderConfirmation(customerCta)
+
+    expect(text).toContain(`Includes VAT (23%): ${formatPrice(12_080, "PLN", "en-US")}`)
   })
 
   it("lists every item with its own product link", async () => {

@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
@@ -148,6 +149,19 @@ describe("listSavedPaymentMethods", () => {
   it("is cached under the saved-methods key", () => {
     expect(listSavedPaymentMethodsQuery().queryKey).toStrictEqual(PAYMENT_METHOD_QUERY_KEYS.SAVED)
   })
+
+  it("loads the wallet through the query the payment page reads", async () => {
+    stripeCalls.list.mockResolvedValue({ data: [cardMethod()] })
+
+    const methods = await listSavedPaymentMethodsQuery().queryFn?.({
+      client: new QueryClient(),
+      meta: undefined,
+      queryKey: PAYMENT_METHOD_QUERY_KEYS.SAVED,
+      signal: new AbortController().signal,
+    })
+
+    expect(methods).toStrictEqual([{ brand: "visa", expMonth: 4, expYear: 2030, id: "pm_visa", isExpired: false, last4: "4242" }])
+  })
 })
 
 describe("deleteSavedPaymentMethod", () => {
@@ -195,5 +209,12 @@ describe("deleteSavedPaymentMethod", () => {
 
   it("is keyed so the UI can track the removal", () => {
     expect(deleteSavedPaymentMethodMutation.mutationKey).toStrictEqual(PAYMENT_METHOD_MUTATION_KEYS.DELETE)
+  })
+
+  it("detaches the card the wallet page asked to remove", async () => {
+    await expect(
+      deleteSavedPaymentMethodMutation.mutationFn?.({ paymentMethodId: "pm_visa" }, { client: new QueryClient(), meta: undefined }),
+    ).resolves.toStrictEqual({ ok: true })
+    expect(stripeCalls.detach).toHaveBeenCalledWith("pm_visa")
   })
 })

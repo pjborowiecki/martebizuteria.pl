@@ -1,8 +1,9 @@
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { redirectAfterAuth, verifyBackupCode, verifyTotp } = vi.hoisted(() => ({
+const { redirectAfterAuth, toastError, verifyBackupCode, verifyTotp } = vi.hoisted(() => ({
   redirectAfterAuth: vi.fn<() => Promise<void>>(),
+  toastError: vi.fn<(message: string) => void>(),
   verifyBackupCode: vi.fn<(input: { code: string; trustDevice: boolean }) => Promise<{ error: unknown }>>(),
   verifyTotp: vi.fn<(input: { code: string; trustDevice: boolean }) => Promise<{ error: unknown }>>(),
 }))
@@ -11,10 +12,13 @@ vi.mock("~/src/integrations/better-auth/auth.client", () => ({
   authClient: { twoFactor: { verifyBackupCode, verifyTotp } },
 }))
 vi.mock("~/src/hooks/use-post-auth-redirect", () => ({ usePostAuthRedirect: () => redirectAfterAuth }))
+vi.mock("sonner", () => ({ toast: { error: toastError } }))
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { TwoFactorChallengeForm } from "~/src/presentation/components/custom/pages/auth/two-factor-challenge-form"
+
+import signInMessages from "~/messages/en-US/pages.auth.sign-in.json"
 
 const onCancel = vi.fn<() => void>()
 
@@ -126,6 +130,22 @@ describe("TwoFactorChallengeForm", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Authentication code")).toHaveValue("")
     })
+    expect(toastError).toHaveBeenCalledWith(signInMessages.twoFactor.wrongCode)
+    expect(redirectAfterAuth).not.toHaveBeenCalled()
+  })
+
+  it("explains that a rejected recovery code works only once and lets the customer try another", async () => {
+    verifyBackupCode.mockResolvedValue({ error: { message: "INVALID_BACKUP_CODE" } })
+    renderWithProviders(<TwoFactorChallengeForm onCancel={onCancel} />)
+    fireEvent.click(screen.getByRole("button", { name: "Use a recovery code instead" }))
+
+    fireEvent.change(screen.getByLabelText("Recovery code"), { target: { value: "AAAA-1111" } })
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith(signInMessages.twoFactor.wrongBackupCode)
+    })
+    expect(screen.getByLabelText("Recovery code")).toHaveValue("")
     expect(redirectAfterAuth).not.toHaveBeenCalled()
   })
 

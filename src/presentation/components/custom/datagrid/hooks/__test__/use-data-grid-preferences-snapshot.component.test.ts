@@ -1,5 +1,5 @@
 import { act, cleanup, renderHook } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { useDataGridPreferencesSnapshot } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-preferences-snapshot"
 import { dataGridPreferencesStorageKey } from "~/src/presentation/components/custom/datagrid/lib/data-grid-preferences"
@@ -95,6 +95,22 @@ describe("useDataGridPreferencesSnapshot", () => {
 
     expect(result.current.snapshot.columnOrder).toStrictEqual(["name", "select", "status", "createdAt"])
     expect(result.current.snapshot.columnSizing["name"]).toBe(300)
+  })
+
+  it("only listens to the store while a document is there to render into", () => {
+    const { rerender, result } = renderHook(() => useDataGridPreferencesSnapshot(baseOptions("grid:j")))
+    const store = result.current.getStore()
+    const renderedDocument = globalThis.document
+
+    vi.stubGlobal("document", undefined)
+    rerender()
+    vi.stubGlobal("document", renderedDocument)
+    act(() => {
+      store.setSnapshot({ columnOrder: ["name", "select", "status", "createdAt"], columnSizing: {}, columnVisibility: {} })
+    })
+
+    expect(store.getSnapshot().columnOrder).toStrictEqual(["name", "select", "status", "createdAt"])
+    expect(result.current.snapshot.columnOrder).toStrictEqual(CANONICAL_ORDER)
   })
 
   it("ignores unparsable stored preferences", () => {

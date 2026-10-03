@@ -90,16 +90,16 @@ Pokrycie jest szerokie, ale pakietami, które naprawdę zarabiają na siebie, s�
 bun run test:coverage
 ```
 
-Provider v8 raportuje `text`, `html` i `json-summary` do `coverage/`, nad `src/**/*.{ts,tsx}`, z wyłączeniem testów, katalogów `__test__`, `*.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` i `src/platform/testing/**`.
+Provider v8 raportuje `text`, `html` i `json-summary` do `coverage/`, nad `src/**/*.{ts,tsx}`, z wyłączeniem testów, katalogów `__test__`, `*.d.ts`, `src/routeTree.gen.ts`, generowanego `src/integrations/**/migrations/**`, `src/presentation/components/shadcn/**` i `src/platform/testing/**`.
 
-Progi są skonfigurowane jako **zapadka, nie cel**: leżą poniżej bieżących wartości, więc każda regresja przerywa CI, a podnosi się je świadomie w miarę pokrywania kolejnych obszarów.
+Zestaw pokrywa każdą instrukcję, gałąź, funkcję i linię, a progi go przy tym utrzymują: każdy niepokryty kod przerywa CI. Gałąź, do której nie prowadzi żadne wejście, jest usuwana, a nie pokrywana sztucznym testem.
 
 | Metryka    | Próg w `vite.config.ts` |
 | ---------- | ----------------------- |
-| Linie      | 71                      |
-| Instrukcje | 72                      |
-| Funkcje    | 68                      |
-| Gałęzie    | 69                      |
+| Linie      | 100                     |
+| Instrukcje | 100                     |
+| Funkcje    | 100                     |
+| Gałęzie    | 100                     |
 
 `autoUpdate` ma wartość `false`, więc progi zmieniają się wyłącznie wtedy, gdy ktoś je edytuje.
 

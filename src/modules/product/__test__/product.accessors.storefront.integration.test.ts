@@ -1,17 +1,28 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { sqlite } = await vi.hoisted(async () => {
+const { database, sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
-  return { sqlite: new DatabaseSync(":memory:") }
+  return { database: { dropsCountRows: false }, sqlite: new DatabaseSync(":memory:") }
 })
 
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
   const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
+  const client = new Proxy(createTestD1Database(sqlite), {
+    get: (target, property, receiver) => {
+      if (property === "prepare") {
+        return (query: string) =>
+          target.prepare(database.dropsCountRows && query.startsWith("select count(") ? `select * from (${query}) where 0` : query)
+      }
+      const value: unknown = Reflect.get(target, property, receiver)
 
-  return { db: drizzle(createTestD1Database(sqlite), { schema }) }
+      return value
+    },
+  })
+
+  return { db: drizzle(client, { schema }) }
 })
 
 const { attributeOnProduct } = await import("~/src/modules/attribute-on-product/attribute-on-product.schema")
@@ -143,6 +154,7 @@ const seed = (): void => {
 }
 
 beforeEach(() => {
+  database.dropsCountRows = false
   createTables(sqlite, TABLES)
   seed()
 })
@@ -368,5 +380,18 @@ describe("getPublishedRelatedProducts", () => {
     linkCategory("cat-1", "p1")
 
     await expect(getPublishedRelatedProducts("cat-1", "p1")).resolves.toStrictEqual([])
+  })
+})
+
+describe("published product pages without a count row", () => {
+  it("still lists the collection page and reports a zero total", async () => {
+    insertCollection("col-1", "sale")
+    linkCollection("col-1", "p1")
+    database.dropsCountRows = true
+
+    const page = await getPublishedProductsByCollectionId("col-1", PAGE)
+
+    expect(idsOf(page.items)).toStrictEqual(["p1"])
+    expect(page.total).toBe(0)
   })
 })

@@ -1,5 +1,6 @@
 import { type JSX } from "react"
 
+import { QueryClient } from "@tanstack/react-query"
 import type * as TanStackQuery from "@tanstack/react-query"
 import type * as TanStackRouter from "@tanstack/react-router"
 import { cleanup, screen } from "@testing-library/react"
@@ -10,6 +11,12 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { buildAdminOrderDetail } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
+
+interface OrderRouteOptions {
+  readonly loader?: (args: { context: { queryClient: QueryClient }; params: { orderId: string } }) => Promise<void>
+}
+
+const route = vi.hoisted(() => ({ options: undefined as OrderRouteOptions | undefined }))
 
 const { getAdminOrderQuery, orderState, stubMutation } = vi.hoisted(() => ({
   getAdminOrderQuery: vi.fn((orderId: string) => ({
@@ -25,7 +32,11 @@ vi.mock("@tanstack/react-router", async () => {
 
   return {
     ...actual,
-    createFileRoute: () => (options: unknown) => ({ options, useParams: () => ({ orderId: ORDER_ID }) }),
+    createFileRoute: () => (options: OrderRouteOptions) => {
+      route.options = options
+
+      return { options, useParams: () => ({ orderId: ORDER_ID }) }
+    },
   }
 })
 vi.mock("~/src/modules/order/use-cases/get-admin-order", () => ({ getAdminOrderQuery }))
@@ -120,5 +131,38 @@ describe("admin order detail route", () => {
     expect(screen.queryByRole("button", { name: "Refund" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Fulfill" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument()
+  })
+})
+
+const loadOrder = (queryClient: QueryClient) => {
+  const loader = route.options?.loader
+  if (loader === undefined) {
+    throw new Error("the admin order route registered no loader")
+  }
+
+  return loader({ context: { queryClient }, params: { orderId: ORDER_ID } })
+}
+
+const cachedOrder = (queryClient: QueryClient) => queryClient.getQueryCache().find({ queryKey: getAdminOrderQuery(ORDER_ID).queryKey })
+
+describe("admin order detail loader", () => {
+  it("preloads the order named by the route param", async () => {
+    orderState.current = buildAdminOrderDetail()
+    const queryClient = new QueryClient()
+
+    await loadOrder(queryClient)
+
+    expect(getAdminOrderQuery).toHaveBeenCalledWith(ORDER_ID)
+    expect(cachedOrder(queryClient)?.state.data).toBe(orderState.current)
+  })
+
+  it("serves a revisit from the order already in the cache", async () => {
+    orderState.current = buildAdminOrderDetail()
+    const queryClient = new QueryClient()
+
+    await loadOrder(queryClient)
+    await loadOrder(queryClient)
+
+    expect(cachedOrder(queryClient)?.state.dataUpdateCount).toBe(1)
   })
 })

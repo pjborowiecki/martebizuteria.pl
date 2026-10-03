@@ -1,3 +1,5 @@
+import { createElement } from "react"
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const { getRequest } = vi.hoisted(() => ({ getRequest: vi.fn(() => new Request("https://martebizuteria.pl/docs")) }))
@@ -8,7 +10,14 @@ vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
   return { ...actual, getRequest }
 })
 
-import { buildDocsNavigation, docsSlugsOf, docsSource, docsSplatOf, loadDocsPage } from "~/src/integrations/fumadocs/fumadocs.docs"
+import {
+  buildDocsNavigation,
+  docsSlugsOf,
+  docsSource,
+  docsSplatOf,
+  loadDocsNavigation,
+  loadDocsPage,
+} from "~/src/integrations/fumadocs/fumadocs.docs"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { ROUTES } from "~/src/routes"
@@ -78,6 +87,36 @@ describe("the documentation page tree", () => {
         title: "Architecture",
       },
     ])
+  })
+
+  it("leaves a title blank when the tree names a node with markup instead of text", () => {
+    vi.spyOn(docsSource, "getPageTree").mockReturnValue({
+      children: [
+        {
+          children: [{ name: createElement("strong", null, "Routing"), type: "page", url: `${ROUTES.DOCS}/architecture/routing` }],
+          name: createElement("em", null, "Architecture"),
+          type: "folder",
+        },
+      ],
+      name: "Documentation",
+    })
+
+    expect(buildDocsNavigation("en-US")).toStrictEqual([{ links: [{ splat: "architecture/routing", title: "" }], title: "" }])
+  })
+})
+
+describe("loadDocsNavigation", () => {
+  it("builds the sidebar for the locale of the request", async () => {
+    getRequest.mockReturnValue(new Request("https://martebizuteria.pl/en-US/docs"))
+
+    await expect(loadDocsNavigation()).resolves.toStrictEqual({ sections: buildDocsNavigation("en-US") })
+  })
+
+  it("builds the Polish sidebar for an unprefixed url, since Polish is the default locale", async () => {
+    const { sections } = await loadDocsNavigation()
+
+    expect(sections).toStrictEqual(buildDocsNavigation("pl-PL"))
+    expect(sections.map((section) => section.title)).not.toStrictEqual(buildDocsNavigation("en-US").map((section) => section.title))
   })
 })
 

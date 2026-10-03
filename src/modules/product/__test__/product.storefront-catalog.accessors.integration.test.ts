@@ -1,17 +1,28 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { sqlite } = await vi.hoisted(async () => {
+const { database, sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
-  return { sqlite: new DatabaseSync(":memory:") }
+  return { database: { dropsCountRows: false }, sqlite: new DatabaseSync(":memory:") }
 })
 
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
   const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
+  const client = new Proxy(createTestD1Database(sqlite), {
+    get: (target, property, receiver) => {
+      if (property === "prepare") {
+        return (query: string) =>
+          target.prepare(database.dropsCountRows && query.startsWith("select count(") ? `select * from (${query}) where 0` : query)
+      }
+      const value: unknown = Reflect.get(target, property, receiver)
 
-  return { db: drizzle(createTestD1Database(sqlite), { schema }) }
+      return value
+    },
+  })
+
+  return { db: drizzle(client, { schema }) }
 })
 
 import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migrations"
@@ -39,6 +50,7 @@ const pageIds = async (params: Partial<StorefrontPublishedProductsParams> = {}):
 }
 
 beforeEach(() => {
+  database.dropsCountRows = false
   sqlite.exec(`
     drop table if exists product;
     drop table if exists product_variant;
@@ -232,5 +244,46 @@ describe("storefront catalog search", () => {
 
   it("combines a search term with a price bound", async () => {
     await expect(pageIds({ minPriceCents: 40_000, searchTerm: "SKU-MID-A" })).resolves.toStrictEqual([])
+  })
+})
+
+describe("storefront catalog search ordering", () => {
+  beforeEach(() => {
+    sqlite.exec(`
+      insert into product (handle, id, rank, status, subtitles, titles, created_at, updated_at) values
+        ('silver-cuff', 'cuff', 5, 'published', null, '${titles("Silver Cuff")}', ${JANUARY}, ${JANUARY});
+      insert into product_variant (id, price, product_id, sku, title, created_at, updated_at) values
+        ('v-cuff', 15000, 'cuff', 'SKU-CUFF', 'One size', ${JANUARY}, ${JANUARY});
+      insert into inventory (variant_id, quantity_available) values ('v-cuff', 2);
+    `)
+  })
+
+  it("puts the closest match first under the default sort, ahead of the merchandising rank", async () => {
+    await expect(pageIds({ searchTerm: "silver" })).resolves.toStrictEqual(["cuff", "mid"])
+  })
+
+  it("keeps relevance first when the shopper picks the rank sort explicitly", async () => {
+    await expect(pageIds({ searchTerm: "silver", sort: STOREFRONT_PRODUCTS_SORT.RANK })).resolves.toStrictEqual(["cuff", "mid"])
+  })
+
+  it("lets an explicit newest sort override relevance", async () => {
+    await expect(pageIds({ searchTerm: "silver", sort: STOREFRONT_PRODUCTS_SORT.NEWEST })).resolves.toStrictEqual(["mid", "cuff"])
+  })
+})
+
+describe("storefront catalog without a count row", () => {
+  beforeEach(() => {
+    database.dropsCountRows = true
+  })
+
+  it("still lists the page and reports a zero total", async () => {
+    await expect(getStorefrontPublishedProductsPage({ limit: 2, offset: 0 })).resolves.toMatchObject({
+      items: [{ id: "cheap" }, { id: "pricey" }],
+      total: 0,
+    })
+  })
+
+  it("reports a zero total for an empty page too", async () => {
+    await expect(getStorefrontPublishedProductsPage({ limit: 2, offset: 10 })).resolves.toStrictEqual({ items: [], total: 0 })
   })
 })

@@ -89,6 +89,16 @@ describe("PersonalInfoSection layout", () => {
     expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument()
   })
 
+  it("opens the email change for the address on file", async () => {
+    renderWithProviders(<PersonalInfoSection profile={profile} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Change" }))
+
+    expect(await screen.findByRole("dialog", { name: "Change your email address" })).toHaveTextContent(
+      "We will send a confirmation link to anna@example.com.",
+    )
+  })
+
   it("says when the address on file has not been confirmed", () => {
     renderWithProviders(<PersonalInfoSection profile={{ ...profile, emailVerified: false }} />)
 

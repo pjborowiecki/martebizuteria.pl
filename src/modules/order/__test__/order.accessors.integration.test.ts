@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -14,17 +14,23 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
+import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { DATE_COLUMN_FILTER_OPERATOR, NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
+import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
   getAdminOrderCustomerStats,
   getAdminOrderDetailRow,
+  getAdminOrderItemRows,
   getAdminOrderRefundTarget,
   getAdminOrderStats,
+  getAdminOrderTimelineRows,
   getAdminOrdersExport,
   getAdminOrdersPage,
   getOrderByCheckoutId,
+  getOrderByTransactionId,
   getOrderForShippedEmail,
   getOrderMetadata,
+  getOrderTotalsForEmail,
   getRestockLinesForOrder,
   updateOrderMetadata,
 } from "~/src/modules/order/order.accessors"
@@ -412,52 +418,57 @@ describe("single order lookups", () => {
   })
 })
 
+const createPlacedOrderTables = (): void => {
+  sqlite.exec(`
+    drop table if exists "order";
+    drop table if exists payment;
+    drop table if exists user;
+    drop table if exists checkout;
+    drop table if exists address;
+    drop table if exists order_address;
+    drop table if exists delivery_method;
+    drop table if exists courier;
+
+    create table user (id text primary key, name text not null, phone text);
+    create table payment (
+      id text primary key, amount integer not null, checkout_id text not null, currency text not null default 'PLN',
+      provider text not null, refunded_amount integer not null default 0, refunded_at integer,
+      status text not null default 'pending', transaction_id text, created_at integer not null, updated_at integer not null
+    );
+    create table courier (id text primary key, name text not null);
+    create table delivery_method (
+      id text primary key, api_service_code text not null, courier_id text not null, description text,
+      is_active integer not null default 1, name text not null, price integer not null, type text not null,
+      created_at integer not null, updated_at integer not null
+    );
+    create table address (
+      id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
+      first_name text, is_default integer not null default 0, last_name text, phone text, postal_code text,
+      province text, user_id text, created_at integer not null, updated_at integer not null
+    );
+    create table checkout (id text primary key, billing_address_id text, shipping_address_id text);
+    create table "order" (
+      id text primary key, billing_company_name text, billing_nip text, canceled_at integer, checkout_id text,
+      currency_code text not null default 'PLN', customer_note text, delivered_at integer, delivery_method_id text,
+      discount_id text, discount_total integer not null default 0, email text not null,
+      fulfillment_status text not null default 'not_fulfilled', locker_id text, metadata text, order_number text not null,
+      payment_id text, shipped_at integer, shipping_total integer not null default 0, status text not null default 'pending',
+      subtotal integer not null default 0, tax_basis_points integer not null default 2300, tax_total integer not null default 0,
+      total integer not null default 0, tracking_number text, tracking_url text, user_id text,
+      created_at integer not null, updated_at integer not null
+    );
+    create table order_address (
+      id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
+      first_name text not null, last_name text not null, order_id text not null, phone text, postal_code text,
+      province text, type text not null, created_at integer not null, updated_at integer not null
+    );
+  `)
+}
+
 describe("getAdminOrderDetailRow", () => {
   beforeEach(() => {
+    createPlacedOrderTables()
     sqlite.exec(`
-      drop table if exists "order";
-      drop table if exists payment;
-      drop table if exists user;
-      drop table if exists checkout;
-      drop table if exists address;
-      drop table if exists order_address;
-      drop table if exists delivery_method;
-      drop table if exists courier;
-
-      create table user (id text primary key, name text not null, phone text);
-      create table payment (
-        id text primary key, amount integer not null, checkout_id text not null, currency text not null default 'PLN',
-        provider text not null, refunded_amount integer not null default 0, refunded_at integer,
-        status text not null default 'pending', transaction_id text, created_at integer not null, updated_at integer not null
-      );
-      create table courier (id text primary key, name text not null);
-      create table delivery_method (
-        id text primary key, api_service_code text not null, courier_id text not null, description text,
-        is_active integer not null default 1, name text not null, price integer not null, type text not null,
-        created_at integer not null, updated_at integer not null
-      );
-      create table address (
-        id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
-        first_name text, is_default integer not null default 0, last_name text, phone text, postal_code text,
-        province text, user_id text, created_at integer not null, updated_at integer not null
-      );
-      create table checkout (id text primary key, billing_address_id text, shipping_address_id text);
-      create table "order" (
-        id text primary key, billing_company_name text, billing_nip text, canceled_at integer, checkout_id text,
-        currency_code text not null default 'PLN', customer_note text, delivered_at integer, delivery_method_id text,
-        discount_id text, discount_total integer not null default 0, email text not null,
-        fulfillment_status text not null default 'not_fulfilled', locker_id text, metadata text, order_number text not null,
-        payment_id text, shipped_at integer, shipping_total integer not null default 0, status text not null default 'pending',
-        subtotal integer not null default 0, tax_basis_points integer not null default 2300, tax_total integer not null default 0,
-        total integer not null default 0, tracking_number text, tracking_url text, user_id text,
-        created_at integer not null, updated_at integer not null
-      );
-      create table order_address (
-        id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
-        first_name text not null, last_name text not null, order_id text not null, phone text, postal_code text,
-        province text, type text not null, created_at integer not null, updated_at integer not null
-      );
-
       insert into user (id, name) values ('u-anna', 'Anna Kowalska');
       insert into address (id, address1, city, country_code, first_name, last_name, user_id, created_at, updated_at) values
         ('addr-anna', 'ul. Edited 1', 'Gdansk', 'PL', 'Anna', 'Kowalska', 'u-anna', ${JUNE}, ${JUNE});
@@ -479,5 +490,196 @@ describe("getAdminOrderDetailRow", () => {
       { address1: "ul. Mokotowska 12", type: "shipping" },
     ])
     expect(row?.checkout?.shippingAddress?.address1).toBe("ul. Edited 1")
+  })
+})
+
+describe("aggregate reads when the database answers with no rows", () => {
+  beforeEach(() => {
+    const prepare = sqlite.prepare.bind(sqlite)
+    vi.spyOn(sqlite, "prepare").mockImplementation((query: string) => prepare(`select * from (${query}) where 0`))
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("reports an empty page with no total", async () => {
+    expect(await getAdminOrdersPage(page)).toStrictEqual({ rows: [], total: 0 })
+  })
+
+  it("reports zeroed stats in the store currency", async () => {
+    expect(await getAdminOrderStats()).toStrictEqual({
+      avgValueMinorUnits: 0,
+      currencyCode: STORE_CURRENCY_CODE,
+      pending: 0,
+      revenueMinorUnits: 0,
+      totalOrders: 0,
+    })
+  })
+
+  it("reports an empty customer history", async () => {
+    expect(await getAdminOrderCustomerStats("u-anna")).toStrictEqual({ orderCount: 0, totalSpent: 0 })
+  })
+})
+
+const seedPlacedOrderReads = (): void => {
+  createPlacedOrderTables()
+  sqlite.exec(`
+    drop table if exists checkout;
+    drop table if exists order_item;
+    drop table if exists product_variant;
+    drop table if exists product;
+    drop table if exists audit_log;
+
+    create table checkout (
+      id text primary key, billing_address_id text, billing_company_name text, billing_nip text, cart_id text,
+      customer_note text, delivery_method_id text, discount_id text, email text, locker_id text, shipping_address_id text,
+      status text, user_id text, created_at integer, updated_at integer
+    );
+    create table product (id text primary key, handle text not null, thumbnail text);
+    create table product_variant (id text primary key, product_id text not null, sku text, title text not null);
+    create table order_item (
+      id text primary key, order_id text not null, variant_id text, quantity integer not null, thumbnail text,
+      title text not null, total integer not null, unit_price integer not null, variant_title text,
+      created_at integer not null, updated_at integer not null
+    );
+    create table audit_log (
+      id text primary key, action text not null, actor_name text not null, detail text, resource_id text,
+      severity text not null, created_at integer not null
+    );
+
+    insert into courier (id, name) values ('courier-inpost', 'InPost');
+    insert into delivery_method (id, api_service_code, courier_id, name, price, type, created_at, updated_at) values
+      ('dm-locker', 'inpost_locker', 'courier-inpost', 'Paczkomat 24/7', 1500, 'locker', ${JANUARY}, ${JANUARY});
+    insert into address (id, address1, city, country_code, first_name, last_name, created_at, updated_at) values
+      ('addr-edited', 'ul. Edited 1', 'Gdansk', 'PL', 'Anna', 'Kowalska', ${JUNE}, ${JUNE});
+    insert into checkout (id, billing_address_id, shipping_address_id) values ('chk-placed', 'addr-edited', 'addr-edited');
+    insert into payment (id, amount, checkout_id, provider, status, transaction_id, created_at, updated_at) values
+      ('pay-placed', 12900, 'chk-placed', 'stripe', 'succeeded', 'cs_placed', ${JANUARY}, ${JANUARY}),
+      ('pay-other', 4900, 'chk-other', 'stripe', 'succeeded', 'cs_other', ${JANUARY}, ${JANUARY});
+    insert into "order" (
+      id, checkout_id, delivery_method_id, discount_total, email, order_number, payment_id, shipping_total,
+      subtotal, tax_total, total, created_at, updated_at
+    ) values
+      ('o-placed', 'chk-placed', 'dm-locker', 1000, 'anna@example.com', 'MRT-2024-00001', 'pay-placed', 1500, 12400, 2412, 12900, ${JANUARY}, ${JANUARY}),
+      ('o-other', 'chk-other', null, 0, 'guest@example.com', 'MRT-2024-00002', 'pay-other', 0, 4900, 916, 4900, ${JUNE}, ${JUNE});
+    insert into order_address (id, address1, city, country_code, first_name, last_name, order_id, type, created_at, updated_at) values
+      ('oa-ship', 'ul. Mokotowska 12', 'Warszawa', 'PL', 'Anna', 'Kowalska', 'o-placed', 'shipping', ${JANUARY}, ${JANUARY});
+
+    insert into product (id, handle, thumbnail) values ('p-aura', 'aura-hoop', 'products/aura.jpg');
+    insert into product_variant (id, product_id, sku, title) values ('v-gold', 'p-aura', 'AUR-HP-GD', 'Gold / Medium');
+    insert into order_item (id, order_id, variant_id, quantity, thumbnail, title, total, unit_price, variant_title, created_at, updated_at) values
+      ('oi-snapshot', 'o-placed', 'v-gold', 1, 'orders/aura-snapshot.jpg', 'Aura Hoop', 6200, 6200, 'Gold / Small', ${JANUARY}, ${JANUARY}),
+      ('oi-current', 'o-placed', 'v-gold', 2, null, 'Aura Hoop', 12400, 6200, null, ${JANUARY + 1}, ${JANUARY + 1}),
+      ('oi-deleted', 'o-placed', null, 1, null, 'Retired Ring', 3000, 3000, null, ${JANUARY + 2}, ${JANUARY + 2}),
+      ('oi-other', 'o-other', 'v-gold', 1, null, 'Aura Hoop', 4900, 4900, null, ${JUNE}, ${JUNE});
+
+    insert into audit_log (id, action, actor_name, detail, resource_id, severity, created_at) values
+      ('audit-placed', '${AUDIT_LOG_ACTION.ORDER_PLACED}', 'System', null, 'o-placed', 'success', ${JANUARY}),
+      ('audit-shipped', '${AUDIT_LOG_ACTION.ORDER_SHIPPED}', 'Admin', 'TRK-9', 'o-placed', 'success', ${JUNE}),
+      ('audit-product', '${AUDIT_LOG_ACTION.PRODUCT_UPDATED}', 'Admin', null, 'o-placed', 'info', ${JUNE}),
+      ('audit-other', '${AUDIT_LOG_ACTION.ORDER_PLACED}', 'System', null, 'o-other', 'success', ${JUNE});
+  `)
+}
+
+describe("order line and timeline reads for the admin detail", () => {
+  beforeEach(seedPlacedOrderReads)
+
+  it("lists an order's lines in the order they were bought", async () => {
+    const rows = await getAdminOrderItemRows("o-placed")
+
+    expect(rows.map((row) => row.id)).toStrictEqual(["oi-snapshot", "oi-current", "oi-deleted"])
+  })
+
+  it("keeps the thumbnail and variant title captured on the line", async () => {
+    const [snapshot] = await getAdminOrderItemRows("o-placed")
+
+    expect(snapshot).toStrictEqual({
+      id: "oi-snapshot",
+      productHandle: "aura-hoop",
+      quantity: 1,
+      sku: "AUR-HP-GD",
+      thumbnail: "orders/aura-snapshot.jpg",
+      title: "Aura Hoop",
+      total: 6200,
+      unitPrice: 6200,
+      variantTitle: "Gold / Small",
+    })
+  })
+
+  it("falls back to the product thumbnail and the variant's title for a line that captured neither", async () => {
+    const rows = await getAdminOrderItemRows("o-placed")
+
+    expect(rows[1]).toMatchObject({ thumbnail: "products/aura.jpg", variantTitle: "Gold / Medium" })
+  })
+
+  it("still lists a line whose variant has since been deleted", async () => {
+    const rows = await getAdminOrderItemRows("o-placed")
+
+    expect(rows[2]).toMatchObject({ productHandle: null, sku: null, thumbnail: null, title: "Retired Ring", variantTitle: null })
+  })
+
+  it("lists only the order's timeline events, newest first", async () => {
+    const rows = await getAdminOrderTimelineRows("o-placed")
+
+    expect(rows).toStrictEqual([
+      {
+        action: AUDIT_LOG_ACTION.ORDER_SHIPPED,
+        actorName: "Admin",
+        createdAt: new Date(JUNE),
+        detail: "TRK-9",
+        id: "audit-shipped",
+        severity: "success",
+      },
+      {
+        action: AUDIT_LOG_ACTION.ORDER_PLACED,
+        actorName: "System",
+        createdAt: new Date(JANUARY),
+        detail: null,
+        id: "audit-placed",
+        severity: "success",
+      },
+    ])
+  })
+})
+
+describe("order reads for the confirmation page and the emails", () => {
+  beforeEach(seedPlacedOrderReads)
+
+  it("finds the order a Checkout Session paid for, with its addresses and delivery", async () => {
+    const found = await getOrderByTransactionId("cs_placed")
+
+    expect(found?.id).toBe("o-placed")
+    expect(found?.addresses.map((row) => row.address1)).toStrictEqual(["ul. Mokotowska 12"])
+    expect(found?.checkout?.shippingAddress?.address1).toBe("ul. Edited 1")
+    expect(found?.deliveryMethod?.name).toBe("Paczkomat 24/7")
+    expect(found?.deliveryMethod?.courier).toStrictEqual({ name: "InPost" })
+  })
+
+  it("matches the transaction against each order's own payment", async () => {
+    const found = await getOrderByTransactionId("cs_other")
+
+    expect(found?.id).toBe("o-other")
+    expect(found?.deliveryMethod).toBeNull()
+  })
+
+  it("finds nothing for a Checkout Session no order was paid with", async () => {
+    expect(await getOrderByTransactionId("cs_unknown")).toBeUndefined()
+  })
+
+  it("reads only the totals the confirmation email prints", async () => {
+    expect(await getOrderTotalsForEmail("o-placed")).toStrictEqual({
+      discountTotal: 1000,
+      orderNumber: "MRT-2024-00001",
+      shippingTotal: 1500,
+      subtotal: 12_400,
+      taxBasisPoints: 2300,
+      taxTotal: 2412,
+      total: 12_900,
+    })
+  })
+
+  it("reads no totals for an order that does not exist", async () => {
+    expect(await getOrderTotalsForEmail("o-missing")).toBeUndefined()
   })
 })

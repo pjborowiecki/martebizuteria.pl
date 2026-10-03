@@ -71,6 +71,17 @@ describe("allocateOrderNumber", () => {
     await expect(allocateOrderNumber(JANUARY_2026)).resolves.toBe("MRT-2026-00003")
   })
 
+  it("starts at one when the database writes no sequence row back", async () => {
+    sqlite.exec(`
+      create trigger order_number_sequence_ignored before insert on order_number_sequence
+      begin
+        select raise(ignore);
+      end;
+    `)
+
+    await expect(allocateOrderNumber(JANUARY_2026)).resolves.toBe("MRT-2026-00001")
+  })
+
   it("never repeats a number across concurrent allocations", async () => {
     const allocated = await Promise.all(Array.from({ length: 25 }, () => allocateOrderNumber(JANUARY_2026)))
 

@@ -151,6 +151,13 @@ describe("toggleWishlistItem", () => {
   it("is keyed so the UI can track the toggle", () => {
     expect(toggleWishlistItemMutation.mutationKey).toStrictEqual(WISHLIST_MUTATION_KEYS.TOGGLE)
   })
+
+  it("toggles the product the heart button was pressed for", async () => {
+    await expect(
+      toggleWishlistItemMutation.mutationFn?.({ productId: PRODUCT_ID }, { client: new QueryClient(), meta: undefined }),
+    ).resolves.toStrictEqual({ wishlisted: true })
+    expect(accessors.insertItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID)
+  })
 })
 
 describe("listWishlistItems", () => {
@@ -207,6 +214,15 @@ describe("listWishlistItems", () => {
 
   it("keys the list by locale so a language switch refetches", () => {
     expect(listWishlistItemsQuery("pl-PL").queryKey).toStrictEqual([...WISHLIST_QUERY_KEYS.ITEMS, "pl-PL"])
+  })
+
+  it("loads the list in the locale the query was built for", async () => {
+    accessors.getRows.mockResolvedValue([wishlistRow()])
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    const items = await queryClient.query(listWishlistItemsQuery("en-US"))
+
+    expect(items.map((item) => item.title)).toStrictEqual(["Aurora ring"])
   })
 })
 

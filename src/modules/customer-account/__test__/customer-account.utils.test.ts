@@ -223,6 +223,37 @@ describe("mapCustomerOrderDetail", () => {
     expect(detail.filterStatus).toBe("cancelled")
   })
 
+  it("reports a refund with the date the provider recorded", () => {
+    const refundedAt = new Date(2024, 4, 9)
+    const detail = mapCustomerOrderDetail(orderRow, [itemRow], { payment: { ...paymentRow, refundedAmount: 5000, refundedAt } })
+
+    expect(detail.refund).toStrictEqual({ amountMinorUnits: 5000, refundedAt })
+  })
+
+  it("reports a refund the provider left undated without inventing a date", () => {
+    const detail = mapCustomerOrderDetail(orderRow, [itemRow], { payment: { ...paymentRow, refundedAmount: 5000 } })
+
+    expect(detail.refund).toStrictEqual({ amountMinorUnits: 5000, refundedAt: undefined })
+  })
+
+  it("shows the parcel locker an order is waiting in", () => {
+    const detail = mapCustomerOrderDetail({ ...orderRow, lockerId: "WAW01M" }, [itemRow], { deliveryMethodType: "locker" })
+
+    expect(detail.lockerId).toBe("WAW01M")
+  })
+
+  it("leaves the locker absent for a locker delivery that recorded no locker", () => {
+    const detail = mapCustomerOrderDetail(orderRow, [itemRow], { deliveryMethodType: "locker" })
+
+    expect(detail.lockerId).toBeUndefined()
+  })
+
+  it("hides a stale locker id once the order goes by courier", () => {
+    const detail = mapCustomerOrderDetail({ ...orderRow, lockerId: "WAW01M" }, [itemRow], { deliveryMethodType: "courier" })
+
+    expect(detail.lockerId).toBeUndefined()
+  })
+
   it("normalises the nullable tracking and date columns to absent", () => {
     const detail = mapCustomerOrderDetail(orderRow, [itemRow], {})
 
