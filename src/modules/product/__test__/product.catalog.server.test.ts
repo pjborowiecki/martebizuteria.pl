@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import {
   assertCatalogSkusAvailable,
   deleteOrphanProductByHandle,
-  insertProductWithCatalog,
-  updateProductWithCatalog,
+  getNextProductRank,
+  prepareProductInsertBatch,
+  prepareProductUpdateBatch,
 } from "~/src/modules/product/product.catalog.server"
 import { type ProductCatalogReplacePayload, type ProductOrganizationReplacePayload } from "~/src/modules/product/product.utils"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
@@ -22,17 +23,25 @@ const access = vi.hoisted(() => ({
 const mutations = vi.hoisted(() => ({
   deleteProducts: vi.fn<(ids: readonly string[]) => Promise<void>>(),
   findTakenSkus: vi.fn<(skus: readonly string[], productId?: string) => Promise<string[]>>(),
-  replaceCatalog: vi.fn<(productId: string, payload: ProductCatalogReplacePayload) => void>(),
-  replaceOrganization: vi.fn<(productId: string, payload: ProductOrganizationReplacePayload) => void>(),
+  prepareCatalog: vi.fn<(productId: string, payload: ProductCatalogReplacePayload) => string[]>(),
+  prepareOrganization: vi.fn<(productId: string, payload: ProductOrganizationReplacePayload) => string[]>(),
 }))
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: {
-    insert: () => ({ values: database.insert }),
+    insert: () => ({
+      values: (row: Record<string, unknown>) => {
+        database.insert(row)
+
+        return "insert product"
+      },
+    }),
     update: () => ({
       set: (values: Record<string, unknown>) => ({
         where: (condition: unknown) => {
           database.update(values, condition)
+
+          return "update product"
         },
       }),
     }),
@@ -47,8 +56,8 @@ vi.mock("~/src/modules/product/product.accessors", () => ({
 vi.mock("~/src/modules/product/product.mutations", () => ({
   deleteProducts: mutations.deleteProducts,
   findTakenSkus: mutations.findTakenSkus,
-  replaceProductCatalog: mutations.replaceCatalog,
-  replaceProductOrganization: mutations.replaceOrganization,
+  prepareProductCatalogBatch: mutations.prepareCatalog,
+  prepareProductOrganizationBatch: mutations.prepareOrganization,
 }))
 
 const CATEGORY_ID = "01965030-0000-7000-8000-000000000001"
@@ -75,6 +84,8 @@ beforeEach(() => {
   vi.resetAllMocks()
   mutations.findTakenSkus.mockResolvedValue([])
   access.maxRank.mockResolvedValue([{ value: 4 }])
+  mutations.prepareCatalog.mockReturnValue(["catalog statement"])
+  mutations.prepareOrganization.mockReturnValue(["organization statement"])
 })
 
 describe("assertCatalogSkusAvailable", () => {
@@ -119,9 +130,21 @@ describe("deleteOrphanProductByHandle", () => {
   })
 })
 
-describe("insertProductWithCatalog", () => {
-  it("writes the normalized product row after the highest rank", async () => {
-    await insertProductWithCatalog(catalogInput(), "product-1")
+describe("getNextProductRank", () => {
+  it("continues after the highest rank", async () => {
+    await expect(getNextProductRank()).resolves.toBe(5)
+  })
+
+  it("starts the ranking at zero for the first product", async () => {
+    access.maxRank.mockResolvedValue([])
+
+    await expect(getNextProductRank()).resolves.toBe(0)
+  })
+})
+
+describe("prepareProductInsertBatch", () => {
+  it("writes the normalized product row at the given rank", () => {
+    prepareProductInsertBatch("product-1", catalogInput(), 5)
 
     expect(database.insert).toHaveBeenCalledWith({
       descriptions: undefined,
@@ -135,55 +158,33 @@ describe("insertProductWithCatalog", () => {
     })
   })
 
-  it("starts the ranking at zero for the first product", async () => {
-    access.maxRank.mockResolvedValue([])
-
-    await insertProductWithCatalog(catalogInput(), "product-1")
-
-    expect(database.insert.mock.calls[0]?.[0]).toMatchObject({ rank: 0 })
-  })
-
-  it("maps an active product onto the published database status", async () => {
-    await insertProductWithCatalog(catalogInput({ status: "active" }), "product-1")
+  it("maps an active product onto the published database status", () => {
+    prepareProductInsertBatch("product-1", catalogInput({ status: "active" }), 5)
 
     expect(database.insert.mock.calls[0]?.[0]).toMatchObject({ status: "published" })
   })
 
-  it("replaces the organization rows before the catalog rows", async () => {
-    const order: string[] = []
-    mutations.replaceOrganization.mockImplementation(() => {
-      order.push("organization")
-    })
-    mutations.replaceCatalog.mockImplementation(() => {
-      order.push("catalog")
-    })
-
-    await insertProductWithCatalog(catalogInput(), "product-1")
-
-    expect(order).toStrictEqual(["organization", "catalog"])
-    expect(mutations.replaceOrganization.mock.calls[0]?.[0]).toBe("product-1")
+  it("inserts the product before its organization and catalog rows", () => {
+    expect(prepareProductInsertBatch("product-1", catalogInput(), 5)).toStrictEqual([
+      "insert product",
+      "organization statement",
+      "catalog statement",
+    ])
+    expect(mutations.prepareOrganization.mock.calls[0]?.[0]).toBe("product-1")
   })
 
-  it("skips the organization write when no primary category is chosen", async () => {
-    await insertProductWithCatalog({ ...catalogInput(), primaryCategoryId: "" }, "product-1")
-
-    expect(mutations.replaceOrganization).not.toHaveBeenCalled()
-    expect(mutations.replaceCatalog).toHaveBeenCalledTimes(1)
+  it("leaves the organization out when no primary category is chosen", () => {
+    expect(prepareProductInsertBatch("product-1", { ...catalogInput(), primaryCategoryId: "" }, 5)).toStrictEqual([
+      "insert product",
+      "catalog statement",
+    ])
+    expect(mutations.prepareOrganization).not.toHaveBeenCalled()
   })
 
-  it("stops before persisting the catalog when a sku is already taken", async () => {
-    mutations.findTakenSkus.mockResolvedValue(["SILVER-RING"])
+  it("persists the simple variant as a single catalog variant row", () => {
+    prepareProductInsertBatch("product-1", catalogInput(), 5)
 
-    await expect(insertProductWithCatalog(catalogInput(), "product-1")).rejects.toThrow("DUPLICATE_SKU")
-
-    expect(database.insert).toHaveBeenCalledTimes(1)
-    expect(mutations.replaceCatalog).not.toHaveBeenCalled()
-  })
-
-  it("persists the simple variant as a single catalog variant row", async () => {
-    await insertProductWithCatalog(catalogInput(), "product-1")
-
-    const payload = mutations.replaceCatalog.mock.calls[0]?.[1]
+    const payload = mutations.prepareCatalog.mock.calls[0]?.[1]
 
     expect(payload).toMatchObject({ optionRows: [], optionValueRows: [] })
     expect(payload?.variantRows).toHaveLength(1)
@@ -192,9 +193,9 @@ describe("insertProductWithCatalog", () => {
   })
 })
 
-describe("updateProductWithCatalog", () => {
-  it("updates only the catalog level columns of the product", async () => {
-    await updateProductWithCatalog("product-1", catalogInput(), new Set())
+describe("prepareProductUpdateBatch", () => {
+  it("updates only the catalog level columns of the product", () => {
+    prepareProductUpdateBatch("product-1", catalogInput(), new Set())
 
     expect(database.update.mock.calls[0]?.[0]).toStrictEqual({
       descriptions: undefined,
@@ -206,30 +207,31 @@ describe("updateProductWithCatalog", () => {
     })
   })
 
-  it("drops empty descriptions instead of storing blank locales", async () => {
-    await updateProductWithCatalog("product-1", catalogInput({ descriptions: { "en-US": "  ", "pl-PL": "" } }), new Set())
+  it("drops empty descriptions instead of storing blank locales", () => {
+    prepareProductUpdateBatch("product-1", catalogInput({ descriptions: { "en-US": "  ", "pl-PL": "" } }), new Set())
 
     expect(database.update.mock.calls[0]?.[0]).toMatchObject({ descriptions: undefined })
   })
 
-  it("keeps a description that has content in one locale", async () => {
-    await updateProductWithCatalog("product-1", catalogInput({ descriptions: { "en-US": " Sterling silver ", "pl-PL": "" } }), new Set())
+  it("keeps a description that has content in one locale", () => {
+    prepareProductUpdateBatch("product-1", catalogInput({ descriptions: { "en-US": " Sterling silver ", "pl-PL": "" } }), new Set())
 
     expect(database.update.mock.calls[0]?.[0]).toMatchObject({
       descriptions: { "en-US": "Sterling silver", "pl-PL": "" },
     })
   })
 
-  it("replaces the organization and the catalog rows of the edited product", async () => {
-    await updateProductWithCatalog("product-1", catalogInput(), new Set())
-
-    expect(mutations.replaceOrganization).toHaveBeenCalledTimes(1)
-    expect(mutations.replaceCatalog).toHaveBeenCalledTimes(1)
-    expect(mutations.replaceCatalog.mock.calls[0]?.[0]).toBe("product-1")
+  it("updates the product before replacing its organization and catalog rows", () => {
+    expect(prepareProductUpdateBatch("product-1", catalogInput(), new Set())).toStrictEqual([
+      "update product",
+      "organization statement",
+      "catalog statement",
+    ])
+    expect(mutations.prepareCatalog.mock.calls[0]?.[0]).toBe("product-1")
   })
 
-  it("does not re-check skus while updating", async () => {
-    await updateProductWithCatalog("product-1", catalogInput(), new Set())
+  it("does not re-check skus while preparing the update", () => {
+    prepareProductUpdateBatch("product-1", catalogInput(), new Set())
 
     expect(mutations.findTakenSkus).not.toHaveBeenCalled()
   })

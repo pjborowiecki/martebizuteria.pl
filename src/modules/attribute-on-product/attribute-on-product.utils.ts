@@ -2,10 +2,10 @@ import { eq } from "drizzle-orm"
 import { v7 as uuidv7 } from "uuid"
 import { type z } from "zod/v4"
 
+import { type DrizzleBatchStatement, insertRowChunks } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { attributeOnProduct } from "~/src/modules/attribute-on-product/attribute-on-product.schema"
-import { insertRows } from "~/src/modules/attribute-on-product/attribute-on-product.server"
 import { type attributeOnProductZodSchemas } from "~/src/modules/attribute-on-product/attribute-on-product.zod"
 import { getAdminProductAttributesQuery } from "~/src/modules/product-attribute/product-attribute.server"
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
@@ -16,7 +16,7 @@ type AttributeOnProductRow = z.infer<(typeof attributeOnProductZodSchemas)["row"
 interface NormalizeAttributeOnProductRowsInput {
   readonly productAttributes: readonly ProductAttribute["select"][]
   readonly productId: string
-  readonly rows: AttributeOnProductRow[]
+  readonly rows: readonly AttributeOnProductRow[]
   readonly variantId?: string
 }
 
@@ -41,57 +41,31 @@ export const normalizeAttributeOnProductRows = (
   })
 }
 
-export const replaceAttributesForProduct = async (productId: string, rows: readonly AttributeOnProductRow[]): Promise<void> => {
-  const productAttributes =
-    rows.length === 0
-      ? []
-      : await getAdminProductAttributesQuery
-          .execute()
-          .then((all) => all.filter((entry) => rows.some((row) => row.attributeId === entry.id)))
-  const normalized = normalizeAttributeOnProductRows({
-    productAttributes,
-    productId,
-    rows: [...rows],
-  })
-  await db.delete(attributeOnProduct).where(eq(attributeOnProduct.productId, productId))
-  await insertRows(normalized)
-}
-
-interface VariantAttributeReplaceGroup {
+interface VariantAttributeGroup {
   readonly rows: readonly AttributeOnProductRow[]
   readonly variantId: string
 }
 
-export const replaceAllAttributesForProduct = async (
+export const loadAttributeOnProductRows = async (
   productId: string,
   productLevelRows: readonly AttributeOnProductRow[],
-  variantGroups: readonly VariantAttributeReplaceGroup[],
-): Promise<void> => {
-  const variantRows = variantGroups.flatMap((group) => group.rows)
-  const allRows = [...productLevelRows, ...variantRows]
-  const productAttributes =
-    allRows.length === 0
-      ? []
-      : await getAdminProductAttributesQuery
-          .execute()
-          .then((all) => all.filter((entry) => allRows.some((row) => row.attributeId === entry.id)))
-  const normalized = [
-    ...normalizeAttributeOnProductRows({
-      productAttributes,
-      productId,
-      rows: [...productLevelRows],
-    }),
+  variantGroups: readonly VariantAttributeGroup[] = [],
+): Promise<(typeof attributeOnProduct.$inferInsert)[]> => {
+  const hasRows = productLevelRows.length > 0 || variantGroups.some((group) => group.rows.length > 0)
+  const productAttributes = hasRows ? await getAdminProductAttributesQuery.execute() : []
+
+  return [
+    ...normalizeAttributeOnProductRows({ productAttributes, productId, rows: productLevelRows }),
     ...variantGroups.flatMap((group) =>
-      normalizeAttributeOnProductRows({
-        productAttributes,
-        productId,
-        rows: [...group.rows],
-        variantId: group.variantId,
-      }),
+      normalizeAttributeOnProductRows({ productAttributes, productId, rows: group.rows, variantId: group.variantId }),
     ),
   ]
-  await db.delete(attributeOnProduct).where(eq(attributeOnProduct.productId, productId))
-  if (normalized.length > 0) {
-    await insertRows(normalized)
-  }
 }
+
+export const prepareAttributeOnProductBatch = (
+  productId: string,
+  rows: readonly (typeof attributeOnProduct.$inferInsert)[],
+): DrizzleBatchStatement[] => [
+  db.delete(attributeOnProduct).where(eq(attributeOnProduct.productId, productId)),
+  ...insertRowChunks(attributeOnProduct, rows).map((chunk) => db.insert(attributeOnProduct).values(chunk)),
+]

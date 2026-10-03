@@ -4,19 +4,16 @@ import {
   countForAttributeIds,
   getByProductIdQuery,
   getProductCountsByAttributeId,
-  insertRows,
 } from "~/src/modules/attribute-on-product/attribute-on-product.server"
 
 const operations = vi.hoisted(() => ({
   groupBy: vi.fn(),
-  insertValues: vi.fn(),
   prepared: vi.fn(),
   where: vi.fn(),
 }))
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: {
-    insert: () => ({ values: operations.insertValues }),
     query: {
       attributeOnProduct: {
         findMany: () => ({ prepare: () => ({ execute: operations.prepared }) }),
@@ -32,27 +29,6 @@ const row = (attributeId: string) => ({
   productId: "prod-1",
   rank: 0,
   value: "gold",
-})
-
-describe("insertRows", () => {
-  beforeEach(() => {
-    vi.resetAllMocks()
-    operations.insertValues.mockResolvedValue(undefined)
-  })
-
-  it("skips the write when there is nothing to insert", async () => {
-    await insertRows([])
-
-    expect(operations.insertValues).not.toHaveBeenCalled()
-  })
-
-  it("writes every row in one statement", async () => {
-    const rows = [row("attr-1"), row("attr-2")]
-
-    await insertRows(rows)
-
-    expect(operations.insertValues).toHaveBeenCalledExactlyOnceWith(rows)
-  })
 })
 
 describe("countForAttributeIds", () => {

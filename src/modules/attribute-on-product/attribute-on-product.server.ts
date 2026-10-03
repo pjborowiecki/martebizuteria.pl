@@ -39,10 +39,3 @@ export const countForAttributeIds = async (ids: readonly string[]): Promise<numb
     .where(inJsonList(attributeOnProduct.attributeId, ids))
   return row?.value ?? 0
 }
-
-export const insertRows = async (rows: (typeof attributeOnProduct.$inferInsert)[]): Promise<void> => {
-  if (rows.length === 0) {
-    return
-  }
-  await db.insert(attributeOnProduct).values(rows)
-}

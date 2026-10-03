@@ -2,15 +2,16 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { replaceAllAttributesForProduct } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
+import { loadAttributeOnProductRows, prepareAttributeOnProductBatch } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
 import { recordCatalogProductUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { replaceProductImages } from "~/src/modules/product-image/product-image.persist.utils"
+import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.persist.utils"
 import { buildProductAuditChange, extractProductAuditSnapshot } from "~/src/modules/product/product-audit.utils"
 import { getAdminProductDetailByIdQuery, getProductByHandleQuery } from "~/src/modules/product/product.accessors"
-import { assertCatalogSkusAvailable, updateProductWithCatalog } from "~/src/modules/product/product.catalog.server"
+import { assertCatalogSkusAvailable, prepareProductUpdateBatch } from "~/src/modules/product/product.catalog.server"
 import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
 import { rethrowProductMutationError } from "~/src/modules/product/product.mutation-errors"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
@@ -22,30 +23,36 @@ const updateProductRecord = async (
   id: string
 }> => {
   const { attributeValues, id, images, variantAttributeValues, ...catalogInput } = data
-  const existing = await getProductByHandleQuery.execute({
-    handle: catalogInput.handle,
-  })
+  const [existing, beforeProduct, attributeRows] = await Promise.all([
+    getProductByHandleQuery.execute({
+      handle: catalogInput.handle,
+    }),
+    getAdminProductDetailByIdQuery.execute({
+      id,
+    }),
+    loadAttributeOnProductRows(
+      id,
+      attributeValues,
+      variantAttributeValues.map((group) => ({
+        rows: group.values,
+        variantId: group.variantId,
+      })),
+    ),
+  ])
 
   if (existing !== undefined && existing.id !== id) {
     throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.DUPLICATE_HANDLE)
   }
 
-  const beforeProduct = await getAdminProductDetailByIdQuery.execute({
-    id,
-  })
-
   const beforeSnapshot = beforeProduct === undefined ? undefined : extractProductAuditSnapshot(beforeProduct)
   await assertCatalogSkusAvailable(catalogInput, id)
-  await updateProductWithCatalog(id, catalogInput, new Set(beforeProduct?.variants.map((variant) => variant.id)))
-  await replaceProductImages(id, images)
-  await replaceAllAttributesForProduct(
-    id,
-    attributeValues,
-    variantAttributeValues.map((group) => ({
-      rows: group.values,
-      variantId: group.variantId,
-    })),
-  )
+
+  const ownedVariantIds = new Set(beforeProduct?.variants.map((variant) => variant.id))
+  await runDrizzleBatch([
+    ...prepareProductUpdateBatch(id, catalogInput, ownedVariantIds),
+    ...prepareProductImagesBatch(id, images),
+    ...prepareAttributeOnProductBatch(id, attributeRows),
+  ])
 
   const afterProduct = await getAdminProductDetailByIdQuery.execute({
     id,
