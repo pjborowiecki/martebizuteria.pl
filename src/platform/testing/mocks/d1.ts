@@ -46,19 +46,31 @@ export const createTestD1Database = (sqlite: DatabaseSync, onQuery?: (query: Tes
     },
   })
 
+  const runBatch = async (statements: ReturnType<typeof prepare>[]) => {
+    sqlite.exec("begin")
+    try {
+      const results = await Promise.all(statements.map((statement) => statement.all()))
+      sqlite.exec("commit")
+
+      return results
+    } catch (error) {
+      sqlite.exec("rollback")
+
+      throw error
+    }
+  }
+
+  const pending = { batches: Promise.resolve() }
+
   const client = {
-    async batch(statements: ReturnType<typeof prepare>[]) {
-      sqlite.exec("begin")
-      try {
-        const results = await Promise.all(statements.map((statement) => statement.all()))
-        sqlite.exec("commit")
+    batch(statements: ReturnType<typeof prepare>[]) {
+      const results = pending.batches.then(() => runBatch(statements))
+      pending.batches = results.then(
+        () => {},
+        () => {},
+      )
 
-        return results
-      } catch (error) {
-        sqlite.exec("rollback")
-
-        throw error
-      }
+      return results
     },
     prepare,
   }

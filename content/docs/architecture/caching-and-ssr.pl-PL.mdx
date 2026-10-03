@@ -66,21 +66,15 @@ Po zalogowaniu `usePostAuthRedirect` usuwa wyłącznie wpis sesji, więc guard `
 Odczyty punktowe są przygotowywane raz przy ładowaniu modułu, poza jakimkolwiek żądaniem, i wykonywane z podstawionymi parametrami:
 
 ```ts
-const reserveInventoryStmt = db
-  .update(inventory)
-  .set({/* … */})
-  .where(
-    and(
-      eq(inventory.id, inventoryIdPlaceholder),
-      eq(inventory.version, currentVersionPlaceholder),
-      gte(inventory.quantityAvailable, qtyPlaceholder),
-    ),
-  )
-  .returning()
+export const getProductImagesQuery = db.query.productImage
+  .findMany({
+    orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)],
+    where: eq(productImage.productId, sql.placeholder("productId")),
+  })
   .prepare()
 ```
 
-`inventory.accessors.ts` i `product.accessors.ts` korzystają z tego wzorca: rezerwacja, zwolnienie i odczyty po `handle` są przygotowane, natomiast zapytania listowe są budowane per żądanie, bo ich filtry, sortowanie i join ze statystykami wariantów zmieniają kształt instrukcji, a prepared statement tego nie umie.
+`product.accessors.ts`, `product-image.server.ts` i pozostałe odczyty punktowe korzystają z tego wzorca: odczyty po `handle`, po identyfikatorze i dla jednego produktu są przygotowane, natomiast zapytania listowe są budowane per żądanie, bo ich filtry, sortowanie i join ze statystykami wariantów zmieniają kształt instrukcji, a prepared statement tego nie umie. Zapisy obejmujące wiele wierszy, takie jak rezerwacja stanów, są budowane przy każdym wywołaniu i wysyłane razem jednym `db.batch`.
 
 ## Nie ma prerenderingu
 

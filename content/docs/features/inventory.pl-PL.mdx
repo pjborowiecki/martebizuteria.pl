@@ -49,52 +49,42 @@ Brakujący wiersz `inventory` jest więc odczytywany jako zero, a nie jako warto
 
 ## Rezerwacja optymistyczna
 
-`reserveInventoryStmt` to przygotowana instrukcja, w której `WHERE` pełni rolę kontroli współbieżności:
+`reserveInventoryRows` w `inventory.accessors.ts` buduje jeden warunkowy `UPDATE` na linię, a jego `WHERE` pełni rolę kontroli współbieżności:
 
 ```ts
-const reserveInventoryStmt = db
-  .update(inventory)
+db.update(inventory)
   .set({
-    quantityAvailable: sql`${inventory.quantityAvailable} - ${qtyPlaceholder}`,
-    quantityReserved: sql`${inventory.quantityReserved} + ${qtyPlaceholder}`,
+    quantityAvailable: sql`${inventory.quantityAvailable} - ${item.qty}`,
+    quantityReserved: sql`${inventory.quantityReserved} + ${item.qty}`,
     version: sql`${inventory.version} + 1`,
   })
-  .where(
-    and(
-      eq(inventory.id, inventoryIdPlaceholder),
-      eq(inventory.version, currentVersionPlaceholder),
-      gte(inventory.quantityAvailable, qtyPlaceholder),
-    ),
-  )
-  .returning()
-  .prepare()
+  .where(and(eq(inventory.id, item.inventoryId), eq(inventory.version, item.currentVersion), gte(inventory.quantityAvailable, item.qty)))
+  .returning({ id: inventory.id })
 ```
 
-Muszą zajść trzy warunki: wiersz istnieje, jego `version` nadal równa się wersji odczytanej przez wywołującego i dostępnych sztuk jest dość. `reserveInventory` zwraca `result.length > 0`, więc przegrany wyścig zwraca `false`, a nie doprowadza do nadsprzedaży. Każdy udany zapis zwiększa `version`.
+Muszą zajść trzy warunki: wiersz istnieje, jego `version` nadal równa się wersji odczytanej przez wywołującego i dostępnych sztuk jest dość. Instrukcje wszystkich linii trafiają do D1 w jednym `db.batch`, więc koszyk dowolnej wielkości kosztuje jedną podróż do bazy, a funkcja zwraca zbiór identyfikatorów stanów, których aktualizacja trafiła w wiersz. Przegrany wyścig zostawia swój identyfikator poza zbiorem, zamiast doprowadzić do nadsprzedaży. Każdy udany zapis zwiększa `version`.
 
 Wersję, z którą porównuje wywołujący, przechwytuje `validateAndCalculateItems` (`src/integrations/stripe/stripe.actions.server.ts`), zwracając obok zwalidowanej linii `currentVersion: inv.version` oraz `inventoryId: inv.id`.
 
 ## Wszystko albo nic dla wielu linii
 
-`reserveInventoryForItems` w `inventory.utils.ts` rezerwuje każdą linię równolegle i wycofuje całość, gdy którakolwiek zawiedzie:
+`reserveInventoryForItems` w `inventory.utils.ts` najpierw scala linie wskazujące ten sam wiersz stanu, więc dwie linie jednego wariantu proszą o łączną ilość, zamiast żeby druga przegrała na wersji, którą właśnie przesunęła pierwsza. Potem rezerwuje wszystkie linie jednym wsadem i wycofuje całość, gdy którykolwiek warunek zawiódł:
 
 ```ts
-const failures = outcomes.filter((outcome) => !outcome.reserved)
-if (failures.length > 0) {
-  const reserved = outcomes.filter((outcome) => outcome.reserved).map((outcome) => outcome.item)
+const firstFailure = lines.find((line) => !reservedIds.has(line.inventoryId))
+if (firstFailure !== undefined) {
+  const reserved = lines.filter((line) => reservedIds.has(line.inventoryId))
   await releaseInventoryForItems(reserved).catch((error: unknown) => {
     console.error("Failed to roll back partial inventory reservation:", error)
   })
 
-  const [firstFailure] = failures
-
-  throw new Error(`Inventory reservation failed for ${firstFailure?.item.title ?? "item"}. Stock changed or unavailable.`)
+  throw new Error(`Inventory reservation failed for ${firstFailure.title}. Stock changed or unavailable.`)
 }
 ```
 
-To osobne instrukcje D1, a nie jedna transakcja, więc okno między nimi zamyka kompensujące zwolnienie, a nie baza danych.
+Warunek, który nie trafia w żaden wiersz, nie jest błędem, więc D1 zatwierdza linie, które trafiły; tę lukę zamyka kompensujące zwolnienie, samo będące jednym wsadem, a nie baza danych.
 
-`reserveInventoryByVariantLines(lines)` to wariant oparty na identyfikatorach wariantów, używany przy przywracaniu poprzedniej rezerwacji podczas aktualizacji checkoutu: najpierw wyszukuje każdy wiersz stanu, żeby odczytać jego aktualną `version`, a potem deleguje do `reserveInventoryForItems`.
+`reserveInventoryByVariantLines(lines)` to wariant oparty na identyfikatorach wariantów, używany przy przywracaniu poprzedniej rezerwacji podczas aktualizacji checkoutu: jednym zapytaniem przez `getInventoryByVariantIds` czyta wiersz stanu i aktualną `version` każdej linii, a potem deleguje do `reserveInventoryForItems`.
 
 ## Zwolnienie jest ograniczone
 
@@ -102,13 +92,13 @@ Obie instrukcje zwolnienia używają `min`/`max`, więc podwójne zwolnienie nie
 
 ```ts
 .set({
-  quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qtyPlaceholder})`,
-  quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qtyPlaceholder})`,
+  quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qty})`,
+  quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qty})`,
   version: sql`${inventory.version} + 1`,
 })
 ```
 
-`releaseInventoryForItems(items)` operuje po `inventoryId`, a `releaseInventoryByVariantLines(lines)` po `variantId`. W przeciwieństwie do rezerwacji zwolnienie nie jest warunkowane przez `version` — musi się zawsze udać.
+`releaseInventoryForItems(items)` operuje po `inventoryId`, a `releaseInventoryByVariantLines(lines)` po `variantId`. Każda wysyła wszystkie linie jednym wsadem. W przeciwieństwie do rezerwacji zwolnienie nie jest warunkowane przez `version` — musi się zawsze udać.
 
 ## Pełny cykl
 
@@ -121,7 +111,7 @@ Obie instrukcje zwolnienia używają `min`/`max`, więc podwójne zwolnienie nie
 | pełny zwrot z powrotem na magazyn (`prepareRefundBatch`)                            | `available += quantity`, z `getRestockLinesForOrder(orderId)`           |
 | przegrany spór                                                                      | nic — `refundOrder` jest wywoływane z `restock: false`                  |
 
-Zwróć uwagę, że wsady realizacji i zwolnienia aktualizują `inventory` **bez** zwiększania `version`, bo działają wewnątrz wsadu D1 razem z zapisami zamówienia, a nie przez przygotowane instrukcje.
+Zwróć uwagę, że wsady realizacji i zwolnienia aktualizują `inventory` **bez** zwiększania `version`, bo działają wewnątrz wsadu D1 razem z zapisami zamówienia, a nie przez `reserveInventoryRows` i funkcje zwalniające.
 
 Lokalna obsługa błędów w `stripe.actions.server.ts` zawsze kompensuje: porażka po rezerwacji wywołuje `releaseInventoryForItems`, a porażka podczas aktualizacji checkoutu dodatkowo wywołuje `reserveInventoryByVariantLines(oldReservedLines)`, żeby przywrócić poprzednią rezerwację.
 

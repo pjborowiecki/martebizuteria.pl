@@ -66,21 +66,15 @@ After a sign-in, `usePostAuthRedirect` removes only the session entry, so the `/
 Point reads are prepared once at module load, outside any request, and executed with bound parameters:
 
 ```ts
-const reserveInventoryStmt = db
-  .update(inventory)
-  .set({/* … */})
-  .where(
-    and(
-      eq(inventory.id, inventoryIdPlaceholder),
-      eq(inventory.version, currentVersionPlaceholder),
-      gte(inventory.quantityAvailable, qtyPlaceholder),
-    ),
-  )
-  .returning()
+export const getProductImagesQuery = db.query.productImage
+  .findMany({
+    orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)],
+    where: eq(productImage.productId, sql.placeholder("productId")),
+  })
   .prepare()
 ```
 
-`inventory.accessors.ts` and `product.accessors.ts` both use this: the reserve, release and by-handle reads are prepared, while list queries are built per request because their filters, sort and variant-stats join change the statement's shape and a prepared statement cannot.
+`product.accessors.ts`, `product-image.server.ts` and the other point reads use this: the by-handle, by-id and per-product reads are prepared, while list queries are built per request because their filters, sort and variant-stats join change the statement's shape and a prepared statement cannot. Writes that span several rows, such as the inventory reservation, are built per call and sent together in one `db.batch` instead.
 
 ## There is no prerendering
 

@@ -1,5 +1,6 @@
 import { and, eq, gte, sql } from "drizzle-orm"
 
+import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
@@ -21,91 +22,55 @@ interface ReserveInventoryInput {
   qty: number
 }
 
-const inventoryIdPlaceholder = sql.placeholder("inventoryId")
+const releaseValues = (qty: number) => ({
+  quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qty})`,
+  quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qty})`,
+  version: sql`${inventory.version} + 1`,
+})
 
-const currentVersionPlaceholder = sql.placeholder("currentVersion")
-
-const qtyPlaceholder = sql.placeholder("qty")
-
-const reserveInventoryStmt = db
-  .update(inventory)
-  .set({
-    quantityAvailable: sql`${inventory.quantityAvailable} - ${qtyPlaceholder}`,
-    quantityReserved: sql`${inventory.quantityReserved} + ${qtyPlaceholder}`,
-    version: sql`${inventory.version} + 1`,
-  })
-  .where(
-    and(
-      eq(inventory.id, inventoryIdPlaceholder),
-      eq(inventory.version, currentVersionPlaceholder),
-      gte(inventory.quantityAvailable, qtyPlaceholder),
-    ),
+export const reserveInventoryRows = async (items: readonly ReserveInventoryInput[]): Promise<ReadonlySet<string>> => {
+  const [first, ...rest] = items.map((item) =>
+    db
+      .update(inventory)
+      .set({
+        quantityAvailable: sql`${inventory.quantityAvailable} - ${item.qty}`,
+        quantityReserved: sql`${inventory.quantityReserved} + ${item.qty}`,
+        version: sql`${inventory.version} + 1`,
+      })
+      .where(
+        and(eq(inventory.id, item.inventoryId), eq(inventory.version, item.currentVersion), gte(inventory.quantityAvailable, item.qty)),
+      )
+      .returning({ id: inventory.id }),
   )
-  .returning()
-  .prepare()
-
-const releaseInventoryStmt = db
-  .update(inventory)
-  .set({
-    quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qtyPlaceholder})`,
-    quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qtyPlaceholder})`,
-    version: sql`${inventory.version} + 1`,
-  })
-  .where(eq(inventory.id, inventoryIdPlaceholder))
-  .prepare()
-
-export const reserveInventory = async (input: ReserveInventoryInput): Promise<boolean> => {
-  const result = await reserveInventoryStmt.execute({
-    currentVersion: input.currentVersion,
-    inventoryId: input.inventoryId,
-    qty: input.qty,
-  })
-
-  return result.length > 0
-}
-
-export const releaseInventoryForItems = async (items: ReleaseInventoryItem[]): Promise<void> => {
-  if (items.length === 0) {
-    return
+  if (first === undefined) {
+    return new Set()
   }
-  await Promise.all(
-    items.map((item) =>
-      releaseInventoryStmt.execute({
-        inventoryId: item.inventoryId,
-        qty: item.qty,
-      }),
-    ),
-  )
+
+  const results = await db.batch([first, ...rest])
+
+  return new Set(results.flat().map((row) => row.id))
 }
 
-const releaseInventoryByVariantStmt = db
-  .update(inventory)
-  .set({
-    quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qtyPlaceholder})`,
-    quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qtyPlaceholder})`,
-    version: sql`${inventory.version} + 1`,
-  })
-  .where(eq(inventory.variantId, sql.placeholder("variantId")))
-  .prepare()
+export const releaseInventoryForItems = (items: ReleaseInventoryItem[]): Promise<void> =>
+  runDrizzleBatch(items.map((item) => db.update(inventory).set(releaseValues(item.qty)).where(eq(inventory.id, item.inventoryId))))
 
-export const releaseInventoryByVariantLines = async (lines: ReleaseInventoryVariantLine[]): Promise<void> => {
-  if (lines.length === 0) {
-    return
+export const releaseInventoryByVariantLines = (lines: ReleaseInventoryVariantLine[]): Promise<void> =>
+  runDrizzleBatch(lines.map((line) => db.update(inventory).set(releaseValues(line.qty)).where(eq(inventory.variantId, line.variantId))))
+
+export const getInventoryByVariantIds = async (
+  variantIds: readonly string[],
+): Promise<ReadonlyMap<string, { readonly id: string; readonly version: number }>> => {
+  if (variantIds.length === 0) {
+    return new Map()
   }
-  await Promise.all(
-    lines.map((line) =>
-      releaseInventoryByVariantStmt.execute({
-        qty: line.qty,
-        variantId: line.variantId,
-      }),
-    ),
-  )
-}
 
-export const getInventoryByVariantId = (variantId: string) =>
-  db.query.inventory.findFirst({
-    where: eq(inventory.variantId, variantId),
-  })
+  const rows = await db
+    .select({ id: inventory.id, variantId: inventory.variantId, version: inventory.version })
+    .from(inventory)
+    .where(inJsonList(inventory.variantId, variantIds))
+
+  return new Map(rows.map((row) => [row.variantId, { id: row.id, version: row.version }]))
+}
 
 export const getAvailabilityByVariantIds = async (variantIds: readonly string[]): Promise<Map<string, number>> => {
   if (variantIds.length === 0) {
