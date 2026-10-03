@@ -1,5 +1,7 @@
 import { type DatabaseSync, type SQLInputValue } from "node:sqlite"
 
+const D1_MAX_BOUND_PARAMETERS = 100
+
 export const createTestD1Database = (sqlite: DatabaseSync, onQuery?: (query: TestD1Query) => void): D1Database => {
   const prepare = (sql: string, params: SQLInputValue[] = []) => ({
     all() {
@@ -14,6 +16,10 @@ export const createTestD1Database = (sqlite: DatabaseSync, onQuery?: (query: Tes
       })
     },
     bind(...values: SQLInputValue[]) {
+      if (values.length > D1_MAX_BOUND_PARAMETERS) {
+        throw new Error(`D1_ERROR: too many SQL variables: ${String(values.length)} bound, D1 allows ${String(D1_MAX_BOUND_PARAMETERS)}`)
+      }
+
       return prepare(sql, values)
     },
     raw() {

@@ -1,5 +1,6 @@
 import { type SQL, and, count, desc, eq, gte, inArray } from "drizzle-orm"
 
+import { insertRowChunks, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { type DateTimeColumnFilterValue } from "~/src/modules/_core/utils/datetime-column-filter"
@@ -142,26 +143,26 @@ export const getAdminAuditLogStats = async (sinceToday: Date): Promise<AuditLog[
 }
 
 export const insertAuditLogs = async (rows: readonly AuditLogInsertRow[]): Promise<void> => {
-  if (rows.length === 0) {
-    return
-  }
-
-  await db.insert(auditLog).values(
-    rows.map((row) => ({
-      action: row.action,
-      actorId: row.actorId,
-      actorName: row.actorName,
-      actorRole: row.actorRole,
-      category: row.category,
-      createdAt: new Date(row.createdAt),
-      detail: row.detail,
-      id: row.id,
-      ip: row.ip,
-      metadata: row.metadata,
-      resourceId: row.resourceId,
-      severity: row.severity,
-      target: row.target,
-    })),
+  await runDrizzleBatch(
+    insertRowChunks(auditLog, rows).map((chunk) =>
+      db.insert(auditLog).values(
+        chunk.map((row) => ({
+          action: row.action,
+          actorId: row.actorId,
+          actorName: row.actorName,
+          actorRole: row.actorRole,
+          category: row.category,
+          createdAt: new Date(row.createdAt),
+          detail: row.detail,
+          id: row.id,
+          ip: row.ip,
+          metadata: row.metadata,
+          resourceId: row.resourceId,
+          severity: row.severity,
+          target: row.target,
+        })),
+      ),
+    ),
   )
 }
 
