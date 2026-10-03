@@ -2,7 +2,7 @@ import { type JSX, type SyntheticEvent, useCallback } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2 } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
 
 import { DISCOUNT_PERCENTAGE_MAX, DISCOUNT_TYPE, DISCOUNT_TYPES } from "~/src/modules/discount/discount.constants"
@@ -42,7 +42,7 @@ const Field = ({ children, error, hint, htmlFor, label }: Readonly<FieldProps>):
 export const CouponFormDialog = ({ coupon, isPending, onOpenChange, onSubmit, open }: Readonly<CouponFormDialogProps>): JSX.Element => {
   const t = useTranslations("pages.admin.coupons.form")
   const tv = useTranslations("pages.admin.coupons")
-  const { formState, handleSubmit, register, watch } = useForm({
+  const { control, formState, handleSubmit, register, watch } = useForm({
     defaultValues: toDefaultValues(coupon),
     resolver: zodResolver(discountZodSchemas.adminDiscountFormValues),
   })
@@ -141,7 +141,19 @@ export const CouponFormDialog = ({ coupon, isPending, onOpenChange, onSubmit, op
             </div>
 
             <div className="flex items-start gap-3">
-              <Checkbox defaultChecked={coupon?.isActive ?? true} id="coupon-active" {...register("isActive")} />
+              <Controller
+                control={control}
+                name="isActive"
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    id="coupon-active"
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked)
+                    }}
+                  />
+                )}
+              />
               <div className="space-y-1">
                 <Label htmlFor="coupon-active">{t("isActive")}</Label>
                 <p className="text-[11px] text-muted-foreground">{t("isActiveHint")}</p>
@@ -184,13 +196,9 @@ const isCouponValidationKey = (value: string): value is (typeof COUPON_VALIDATIO
   COUPON_VALIDATION_KEYS.some((key) => key === value)
 
 const toOptionalNumber = (value: unknown): number | undefined => {
-  if (typeof value !== "string" || value.trim() === "") {
-    return undefined
-  }
+  const parsed = typeof value === "string" && value.trim() !== "" ? Number(value) : value
 
-  const parsed = Number(value)
-
-  return Number.isFinite(parsed) ? parsed : undefined
+  return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : undefined
 }
 
 const toIsoOrUndefined = (value: unknown): string | undefined => {
