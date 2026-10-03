@@ -14,6 +14,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import {
   buildAdminProductsFilterParams,
   getAdminProductsCatalogList,
@@ -25,6 +26,34 @@ const JANUARY = Date.UTC(2026, 0, 10)
 const FEBRUARY = Date.UTC(2026, 1, 10)
 
 const titles = (value: string): string => JSON.stringify({ "en-US": value, "pl-PL": value })
+
+const BULK_PRODUCT_IDS = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${index}`)
+
+const isLinkedBulkProduct = (index: number): boolean => index % 10 === 0
+
+const insertBulkCatalog = (): void => {
+  const insertProduct = sqlite.prepare(
+    "insert into product (id, handle, titles, rank, status, created_at, updated_at) values (?, ?, ?, ?, 'published', ?, ?)",
+  )
+  const insertVariant = sqlite.prepare("insert into product_variant values (?, ?, ?, ?)")
+  const insertStock = sqlite.prepare("insert into inventory values (?, ?)")
+  const insertAttributeLink = sqlite.prepare(
+    `insert into attribute_on_product (id, attribute_id, product_id, variant_id, value, rank, created_at, updated_at)
+     values (?, 'a-material', ?, null, ?, 0, ?, ?)`,
+  )
+  const insertCategoryLink = sqlite.prepare("insert into category_on_product values (?, 'c-rings', 0)")
+  const insertCollectionLink = sqlite.prepare("insert into collection_on_product values (?, 'col-bridal', 0)")
+  for (const [index, id] of BULK_PRODUCT_IDS.entries()) {
+    insertProduct.run(id, id, titles(id), 10 + index, JANUARY, JANUARY)
+    insertVariant.run(`v-${id}`, id, 1000 + index, `SKU-${index}`)
+    insertStock.run(`v-${id}`, index)
+    if (isLinkedBulkProduct(index)) {
+      insertAttributeLink.run(`aop-${id}`, id, `${id} silver`, JANUARY, JANUARY)
+      insertCategoryLink.run(id)
+      insertCollectionLink.run(id)
+    }
+  }
+}
 
 beforeEach(() => {
   sqlite.exec(`
@@ -204,5 +233,49 @@ describe("getAdminProductsCatalogList", () => {
     expect(cuff?.status).toBe("draft")
     expect(cuff?.titles).toStrictEqual({ "en-US": "Aurora Cuff", "pl-PL": "Aurora Cuff" })
     expect(cuff?.createdAt).toStrictEqual(new Date(FEBRUARY))
+  })
+})
+
+describe("loadAdminListAggregates for the largest admin page", () => {
+  it("summarises the variant price, stock, count and SKU of every listed product", async () => {
+    insertBulkCatalog()
+
+    const { skuSummaryByProductId, statsByProductId } = await loadAdminListAggregates(BULK_PRODUCT_IDS.map((id) => ({ id })))
+
+    expect(Object.fromEntries(statsByProductId)).toStrictEqual(
+      Object.fromEntries(BULK_PRODUCT_IDS.map((id, index) => [id, { minPrice: 1000 + index, totalStock: index, variantCount: 1 }])),
+    )
+    expect(Object.fromEntries(skuSummaryByProductId)).toStrictEqual(
+      Object.fromEntries(BULK_PRODUCT_IDS.map((id, index) => [id, `SKU-${index}`])),
+    )
+  })
+})
+
+describe("getAdminProductsCatalogList for a catalog larger than the largest admin page", () => {
+  beforeEach(insertBulkCatalog)
+
+  it("lists every product by rank", async () => {
+    const rows = await getAdminProductsCatalogList()
+
+    expect(rows.map((row) => row.id)).toStrictEqual(["p-cuff", "p-plain", "p-ring", ...BULK_PRODUCT_IDS])
+  })
+
+  it("attaches to every product only its own attributes, categories and collections", async () => {
+    const rows = await getAdminProductsCatalogList()
+
+    expect(
+      rows.slice(3).map((row) => ({
+        attributes: row.attributes.map((link) => link.value),
+        categories: row.categories.map((link) => [link.productId, link.categoryId]),
+        collections: row.collections.map((link) => [link.productId, link.collectionId]),
+        id: row.id,
+      })),
+    ).toStrictEqual(
+      BULK_PRODUCT_IDS.map((id, index) =>
+        isLinkedBulkProduct(index)
+          ? { attributes: [`${id} silver`], categories: [[id, "c-rings"]], collections: [[id, "col-bridal"]], id }
+          : { attributes: [], categories: [], collections: [], id },
+      ),
+    )
   })
 })

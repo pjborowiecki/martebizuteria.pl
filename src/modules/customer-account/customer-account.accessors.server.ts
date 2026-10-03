@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, inArray, ne, notInArray, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
@@ -35,7 +36,7 @@ export const getCustomerActivityAuditRows = (userId: string, orderIds: readonly 
       resourceId: auditLog.resourceId,
     })
     .from(auditLog)
-    .where(and(inArray(auditLog.resourceId, [userId, ...orderIds]), inArray(auditLog.action, [...CUSTOMER_ACCOUNT_ACTIVITY_ACTIONS])))
+    .where(and(inJsonList(auditLog.resourceId, [userId, ...orderIds]), inArray(auditLog.action, [...CUSTOMER_ACCOUNT_ACTIVITY_ACTIONS])))
     .orderBy(desc(auditLog.createdAt))
     .limit(CUSTOMER_AUDIT_TIMELINE_LIMIT)
 
@@ -173,7 +174,7 @@ export const getOrderItemsForOrders = (orderIds: readonly string[]) => {
     .from(orderItem)
     .leftJoin(productVariant, eq(orderItem.variantId, productVariant.id))
     .leftJoin(product, eq(productVariant.productId, product.id))
-    .where(inArray(orderItem.orderId, [...orderIds]))
+    .where(inJsonList(orderItem.orderId, orderIds))
     .orderBy(asc(orderItem.createdAt))
 }
 

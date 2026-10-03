@@ -1,6 +1,7 @@
 import { type SQL, and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { type ListPaginationParams, sortRowsByIdOrder } from "~/src/modules/_core/utils/pagination"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
@@ -46,7 +47,7 @@ const buildStorefrontProductsScopeConditions = (params: Pick<StorefrontPublished
         id: categoryOnProduct.productId,
       })
       .from(categoryOnProduct)
-      .where(inArray(categoryOnProduct.categoryId, [...params.categoryIds]))
+      .where(inJsonList(categoryOnProduct.categoryId, params.categoryIds))
     conditions.push(inArray(product.id, productIdsInCategories))
   }
 
@@ -191,7 +192,7 @@ export const getStorefrontPublishedProductsPage = async (params: StorefrontPubli
 
   const items = sortRowsByIdOrder(
     await db.query.product.findMany({
-      where: inArray(product.id, productIds),
+      where: inJsonList(product.id, productIds),
       with: {
         variants: {
           columns: storefrontListVariantColumns,

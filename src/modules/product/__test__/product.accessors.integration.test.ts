@@ -136,7 +136,7 @@ describe("catalog database queries", () => {
 
       const rows = sqlite.prepare("select id, rank from product_attribute").all()
       expect(rows).toMatchObject([...updates, { id: "unchanged", rank: 99 }])
-      expect(queries).toHaveLength(3)
+      expect(queries).toHaveLength(2)
       expect(Math.max(...queries.map((query) => query.params.length))).toBeLessThanOrEqual(100)
     })
 

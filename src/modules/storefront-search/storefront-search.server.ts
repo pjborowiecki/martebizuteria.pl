@@ -1,6 +1,7 @@
-import { asc, eq, inArray } from "drizzle-orm"
+import { asc, eq } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
@@ -54,7 +55,7 @@ export const searchStorefrontProducts = async (
         titles: productCategory.titles,
       })
       .from(productCategory)
-      .where(inArray(productCategory.id, categoryIds))
+      .where(inJsonList(productCategory.id, categoryIds))
     for (const categoryRow of categoryRows) {
       categoryTitleById.set(categoryRow.id, resolveCategoryTitle(categoryRow.titles, locale))
     }

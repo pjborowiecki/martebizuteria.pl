@@ -1,6 +1,7 @@
-import { type SQL, and, count, desc, eq, inArray, isNull, or, sql } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, isNull, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
@@ -87,10 +88,7 @@ export const updateDiscountById = async (id: string, values: DiscountUpdateSet):
 }
 
 export const deleteDiscountsByIds = async (ids: readonly string[]): Promise<number> => {
-  const deleted = await db
-    .delete(discount)
-    .where(inArray(discount.id, [...ids]))
-    .returning({ id: discount.id })
+  const deleted = await db.delete(discount).where(inJsonList(discount.id, ids)).returning({ id: discount.id })
 
   return deleted.length
 }

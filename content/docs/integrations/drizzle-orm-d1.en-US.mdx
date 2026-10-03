@@ -104,6 +104,15 @@ export const runDrizzleBatch = async (statements: readonly DrizzleBatchStatement
 
 `DrizzleBatchStatement` is `BatchItem<"sqlite">`. A D1 batch is applied as a single implicit transaction, which makes `runDrizzleBatch` the atomicity tool of this codebase. Nothing in `src/` calls `db.transaction()`: the D1 driver implements it by emitting separate `begin` and `commit` statements, and D1 does not offer interactive transactions across separate statements. Multi-step writes therefore either go into one batch, or compensate explicitly on failure the way the checkout flow releases reserved inventory.
 
+### Staying within 100 bound parameters
+
+D1 refuses a statement that binds more than 100 parameters, and the limit applies to every statement inside a batch. Two rules keep each statement under it, whatever the size of the shop:
+
+- A list of ids built at runtime is bound once, as JSON, through `inJsonList` or `notInJsonList` from `drizzle.utils.ts`. They compile to `column in (select value from json_each(?))`, which SQLite still answers with one index seek per id, so a page of 250 rows and a whole catalog cost the same single parameter. `inArray` stays for fixed lists such as order statuses and for subqueries.
+- Multi-row writes are split in `drizzle.batch.ts`: `insertRowChunks(table, rows)` sizes each insert by the table's column count, `chunkRankUpdates(idColumn, updates)` builds the `case … when` rank expression 49 rows at a time for the reorder use cases, and `chunkByBoundParameters` covers any other shape. The chunks go into one `runDrizzleBatch`, so the write stays atomic and still costs one round trip.
+
+The D1 test double enforces the same limit, so an integration test that uses a full page of rows fails the way D1 would.
+
 ## Prepared statements
 
 Hot read paths precompile their SQL with `.prepare()` and `sql.placeholder()`. `src/modules/product/product.accessors.ts` is the densest example:

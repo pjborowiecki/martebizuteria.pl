@@ -1,7 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod"
 
-import { type AuditLogInsertRow, insertAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
+import { type AuditLogInsertRow, deleteAuditLogs, insertAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -76,5 +77,17 @@ describe("insertAuditLogs on D1", () => {
     await expect(insertAuditLogs(events)).rejects.toThrow(/UNIQUE constraint failed/u)
 
     expect(storedIds()).toStrictEqual(["log-049"])
+  })
+})
+
+describe("deleteAuditLogs on D1", () => {
+  it("deletes a full page of selected events and reports how many it removed", async () => {
+    const events = Array.from({ length: LIST_PAGE_SIZE_MAX + 2 }, (_, index) => fullyDescribedEvent(index))
+    await insertAuditLogs(events)
+    const ids = events.map(({ id }) => id)
+
+    await expect(deleteAuditLogs(ids.slice(1, -1))).resolves.toBe(LIST_PAGE_SIZE_MAX)
+
+    expect(storedIds()).toStrictEqual([ids[0], ids.at(-1)])
   })
 })

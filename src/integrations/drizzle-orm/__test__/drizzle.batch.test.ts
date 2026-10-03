@@ -1,10 +1,11 @@
-import { sqliteTable, text } from "drizzle-orm/sqlite-core"
+import { SQLiteSyncDialect, sqliteTable, text } from "drizzle-orm/sqlite-core"
 import { drizzle } from "drizzle-orm/sqlite-proxy"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
   type DrizzleBatchStatement,
   chunkByBoundParameters,
+  chunkRankUpdates,
   insertRowChunks,
   runDrizzleBatch,
 } from "~/src/integrations/drizzle-orm/drizzle.batch"
@@ -91,5 +92,36 @@ describe("insertRowChunks", () => {
     const rows = Array.from({ length: 60 }, (_, index) => ({ id: String(index) }))
 
     expect(insertRowChunks(fourColumns, rows).map((chunk) => chunk.length)).toStrictEqual([25, 25, 10])
+  })
+})
+
+describe("chunkRankUpdates", () => {
+  const dialect = new SQLiteSyncDialect()
+  const updates = Array.from({ length: 120 }, (_, index) => ({ id: `row-${String(index)}`, rank: index }))
+
+  it("keeps every rank statement within 100 bound parameters, counting its id list", () => {
+    const chunks = chunkRankUpdates(rank.id, updates)
+
+    expect(chunks.map((chunk) => chunk.ids.length)).toStrictEqual([49, 49, 22])
+    expect(chunks.map((chunk) => dialect.sqlToQuery(chunk.rank).params.length + 1)).toStrictEqual([99, 99, 45])
+  })
+
+  it("maps every id onto its own rank", () => {
+    const chunks = chunkRankUpdates(rank.id, [
+      { id: "first", rank: 1 },
+      { id: "second", rank: 0 },
+    ])
+
+    expect(chunks.map((chunk) => chunk.ids)).toStrictEqual([["first", "second"]])
+    expect(chunks.map((chunk) => dialect.sqlToQuery(chunk.rank))).toMatchObject([
+      {
+        params: ["first", 1, "second", 0],
+        sql: '(case when "drizzle_batch_probe"."id" = ? then ? when "drizzle_batch_probe"."id" = ? then ? end)',
+      },
+    ])
+  })
+
+  it("produces no statements when nothing moved", () => {
+    expect(chunkRankUpdates(rank.id, [])).toStrictEqual([])
   })
 })

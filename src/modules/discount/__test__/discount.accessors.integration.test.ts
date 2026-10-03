@@ -22,6 +22,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import {
   countCustomerRedemptions,
   deleteDiscountsByIds,
@@ -352,6 +353,20 @@ describe("deleteDiscountsByIds", () => {
 
   it("counts only the discounts that still existed", async () => {
     await expect(deleteDiscountsByIds(["discount-1", "discount-missing"])).resolves.toBe(1)
+  })
+
+  it("deletes a full page of selected discounts at once", async () => {
+    const selectedIds = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${String(index)}`)
+    for (const id of selectedIds) {
+      seedDiscount({ code: id.toUpperCase(), id })
+    }
+
+    await expect(deleteDiscountsByIds(selectedIds)).resolves.toBe(LIST_PAGE_SIZE_MAX)
+
+    const remaining = await getAdminDiscountsPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0 })
+
+    expect(remaining.rows.map((row) => row.id).toSorted()).toStrictEqual(["discount-1", "discount-2", "discount-3"])
+    expect(remaining.total).toBe(3)
   })
 
   it("takes a deleted discount's redemptions with it", async () => {

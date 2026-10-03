@@ -1,7 +1,8 @@
-import { type SQL, and, count, desc, eq, gte, inArray } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, gte } from "drizzle-orm"
 
 import { insertRowChunks, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { type DateTimeColumnFilterValue } from "~/src/modules/_core/utils/datetime-column-filter"
 import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-column-filter.server"
@@ -171,7 +172,7 @@ export const deleteAuditLogs = async (ids: readonly string[]): Promise<number> =
     return 0
   }
 
-  await db.delete(auditLog).where(inArray(auditLog.id, [...ids]))
+  await db.delete(auditLog).where(inJsonList(auditLog.id, ids))
 
   return ids.length
 }

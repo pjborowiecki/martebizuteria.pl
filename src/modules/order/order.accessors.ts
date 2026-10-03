@@ -1,6 +1,7 @@
 import { type SQL, and, count, desc, eq, exists, inArray, ne, not, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
@@ -188,7 +189,7 @@ const attachItemCounts = async <
       orderId: orderItem.orderId,
     })
     .from(orderItem)
-    .where(inArray(orderItem.orderId, orderIds))
+    .where(inJsonList(orderItem.orderId, orderIds))
     .groupBy(orderItem.orderId)
   const itemCountByOrderId = new Map(itemCountRows.map((row) => [row.orderId, row.itemCount]))
 

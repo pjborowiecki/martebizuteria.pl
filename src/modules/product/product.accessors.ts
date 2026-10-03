@@ -2,6 +2,7 @@ import { type SQL, and, asc, desc, eq, inArray, max, ne, or, sql } from "drizzle
 import { type SQLiteColumn, type SQLiteTable } from "drizzle-orm/sqlite-core"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
 import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
@@ -84,7 +85,7 @@ export const getProductStatusCountsQuery = db
 
 export const getProductsWithInventoryByHandles = (handles: readonly string[]) =>
   db.query.product.findMany({
-    where: inArray(product.handle, [...handles]),
+    where: inJsonList(product.handle, handles),
     with: {
       variants: {
         with: {
@@ -328,7 +329,7 @@ const loadAdminProductRowsByIds = async (ids: readonly string[]) => {
   }
 
   const rows = await db.query.product.findMany({
-    where: inArray(product.id, ids),
+    where: inJsonList(product.id, ids),
     with: {
       attributes: {
         orderBy: (values, { asc: ascOrder }) => [ascOrder(values.rank), ascOrder(values.createdAt)],
@@ -562,7 +563,7 @@ const getPublishedProductsPageInRelation = async (
   return {
     items: sortRowsByIdOrder(
       await db.query.product.findMany({
-        where: inArray(product.id, productIds),
+        where: inJsonList(product.id, productIds),
         with: {
           variants: {
             columns: storefrontListVariantColumns,
@@ -589,7 +590,7 @@ export const getPublishedProductsByCategoryIds = (
           productId: categoryOnProduct.productId,
           table: categoryOnProduct,
         },
-        inArray(categoryOnProduct.categoryId, [...categoryIds]),
+        inJsonList(categoryOnProduct.categoryId, categoryIds),
         params,
       )
 

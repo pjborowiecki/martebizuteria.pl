@@ -175,8 +175,8 @@ describe("getAvailabilityByVariantIds", () => {
     await getAvailabilityByVariantIds(["variant-a", "variant-b"])
 
     expect(query(access.selectWhere.mock.calls[0]?.[0])).toMatchObject({
-      params: ["variant-a", "variant-b"],
-      sql: '"inventory"."variant_id" in (?, ?)',
+      params: ['["variant-a","variant-b"]'],
+      sql: '"inventory"."variant_id" in (select value from json_each(?))',
     })
   })
 

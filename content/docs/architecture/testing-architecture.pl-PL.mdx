@@ -53,7 +53,7 @@ Praktyczny skutek: test dla `shipOrder` naprawdę przechodzi przez `withRequest`
 
 ## D1 nad `node:sqlite`
 
-`src/platform/testing/mocks/d1.ts` eksportuje `createTestD1Database(sqlite, onQuery?)` — napisany ręcznie transport, który prezentuje powierzchnię D1 `prepare/bind/all/run/raw/batch` nad `DatabaseSync` z `node:sqlite`. `batch` owija instrukcje w `begin`/`commit` z `rollback` przy błędzie, więc atomowość batcha jest emulowana. Opcjonalny callback `onQuery` zapisuje `{ sql, params }`, co pozwala testowi sprawdzić SQL, do którego kompiluje się zapytanie.
+`src/platform/testing/mocks/d1.ts` eksportuje `createTestD1Database(sqlite, onQuery?)` — napisany ręcznie transport, który prezentuje powierzchnię D1 `prepare/bind/all/run/raw/batch` nad `DatabaseSync` z `node:sqlite`. `batch` owija instrukcje w `begin`/`commit` z `rollback` przy błędzie, więc atomowość batcha jest emulowana, a `bind`, tak jak D1, odrzuca więcej niż 100 parametrów. Opcjonalny callback `onQuery` zapisuje `{ sql, params }`, co pozwala testowi sprawdzić SQL, do którego kompiluje się zapytanie.
 
 Test integracyjny podłącza go, mockując moduł bazy danych:
 
@@ -67,7 +67,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 ```
 
-**Czego to nie emuluje:** limitu parametrów D1, jego opóźnień sieciowych i charakterystyki współbieżności. Wynik dotyczący współbieżności z pakietu integracyjnego jest zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
+**Czego to nie emuluje:** opóźnień sieciowych D1 i charakterystyki jego współbieżności. Wynik dotyczący współbieżności z pakietu integracyjnego jest zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
 
 ## Testy komponentów
 

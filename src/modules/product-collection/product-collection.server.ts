@@ -1,6 +1,8 @@
-import { and, eq, inArray, max, sql } from "drizzle-orm"
+import { and, eq, max, sql } from "drizzle-orm"
 
+import { type RankUpdate, chunkRankUpdates, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants"
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
@@ -48,30 +50,17 @@ export const getCollectionStatusCountsQuery = db
   .from(productCollection)
   .prepare()
 
-export const setCollectionRanks = async (
-  updates: readonly {
-    id: string
-    rank: number
-  }[],
-): Promise<void> => {
-  if (updates.length === 0) {
-    return
-  }
-
-  const ids = updates.map((entry) => entry.id)
-  const cases = updates.map((entry) => sql`when ${productCollection.id} = ${entry.id} then ${entry.rank}`)
-  const rankExpression = sql`(case ${sql.join(cases, sql.raw(" "))} end)`
-  await db
-    .update(productCollection)
-    .set({
-      rank: rankExpression,
-    })
-    .where(inArray(productCollection.id, ids))
+export const setCollectionRanks = async (updates: readonly RankUpdate[]): Promise<void> => {
+  await runDrizzleBatch(
+    chunkRankUpdates(productCollection.id, updates).map(({ ids, rank }) =>
+      db.update(productCollection).set({ rank }).where(inJsonList(productCollection.id, ids)),
+    ),
+  )
 }
 
 export const deleteCollections = async (ids: readonly string[]): Promise<void> => {
   if (ids.length === 0) {
     return
   }
-  await db.delete(productCollection).where(inArray(productCollection.id, [...ids]))
+  await db.delete(productCollection).where(inJsonList(productCollection.id, ids))
 }

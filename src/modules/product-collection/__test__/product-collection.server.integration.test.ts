@@ -1,5 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
+
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
@@ -143,5 +145,27 @@ describe("deleteCollections", () => {
     await deleteCollections([])
 
     await expect(getAdminCollectionsQuery.execute()).resolves.toHaveLength(3)
+  })
+})
+
+describe("a full admin page of collections", () => {
+  const ids = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${String(index).padStart(3, "0")}`)
+
+  beforeEach(() => {
+    for (const id of ids) {
+      insertCollection({ handle: id, id, rank: 3 })
+    }
+  })
+
+  it("reorders every collection in one save", async () => {
+    await setCollectionRanks(ids.map((id, index) => ({ id, rank: ids.length * 2 - index })))
+
+    await expect(getAdminCollectionsQuery.execute().then(idsOf)).resolves.toStrictEqual(["col-1", "col-2", "col-3", ...ids.toReversed()])
+  })
+
+  it("deletes every selected collection", async () => {
+    await deleteCollections(ids)
+
+    await expect(getAdminCollectionsQuery.execute().then(idsOf)).resolves.toStrictEqual(["col-1", "col-2", "col-3"])
   })
 })

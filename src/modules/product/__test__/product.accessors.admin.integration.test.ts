@@ -25,6 +25,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(client, { schema }) }
 })
 
+const { LIST_PAGE_SIZE_MAX } = await import("~/src/modules/_core/utils/pagination")
 const { attributeOnProduct } = await import("~/src/modules/attribute-on-product/attribute-on-product.schema")
 const { categoryOnProduct } = await import("~/src/modules/category-on-product/category-on-product.schema")
 const { collectionOnProduct } = await import("~/src/modules/collection-on-product/collection-on-product.schema")
@@ -154,6 +155,16 @@ const seedCatalog = (): void => {
 }
 
 const PAGE = { limit: 10, offset: 0 }
+
+const LARGEST_PAGE = { limit: LIST_PAGE_SIZE_MAX, offset: 0 }
+
+const BULK_PRODUCT_IDS = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${index}`)
+
+const insertBulkProducts = (): void => {
+  for (const [index, id] of BULK_PRODUCT_IDS.entries()) {
+    insertProduct({ handle: id, id, title: id, updatedAt: NOW + index + 1 })
+  }
+}
 
 beforeEach(() => {
   database.dropsCountRows = false
@@ -431,5 +442,38 @@ describe("getAdminProductsPage without a count row", () => {
 
     expect(idsOf(page.rows)).toStrictEqual(["p1", "p3", "p4", "p2"])
     expect(page.total).toBe(0)
+  })
+})
+
+describe("getAdminProductsPage at the largest page size", () => {
+  beforeEach(insertBulkProducts)
+
+  it("returns the full page newest-edited first with the total of the whole catalog", async () => {
+    const page = await getAdminProductsPage(LARGEST_PAGE)
+
+    expect(idsOf(page.rows)).toStrictEqual(BULK_PRODUCT_IDS.toReversed())
+    expect(page.total).toBe(LIST_PAGE_SIZE_MAX + 4)
+  })
+
+  it("attaches the category and collection of each product on the full page to that product only", async () => {
+    insertCategory("cat-1", "rings")
+    insertCollection("col-1", "sale")
+    linkCategory("cat-1", "bulk-0")
+    linkCollection("col-1", "bulk-120")
+
+    const page = await getAdminProductsPage(LARGEST_PAGE)
+
+    expect(page.rows.filter((row) => row.categories.length > 0).map((row) => row.id)).toStrictEqual(["bulk-0"])
+    expect(page.rows.filter((row) => row.collections.length > 0).map((row) => row.id)).toStrictEqual(["bulk-120"])
+  })
+
+  it("exports every product of a catalog larger than the largest page in the same order", async () => {
+    await expect(getAdminProductsFilteredList({}).then(idsOf)).resolves.toStrictEqual([
+      ...BULK_PRODUCT_IDS.toReversed(),
+      "p1",
+      "p3",
+      "p4",
+      "p2",
+    ])
   })
 })

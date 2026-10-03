@@ -243,8 +243,8 @@ describe("deleteAuditLogs", () => {
 
     const query = dialect.sqlToQuery(lastDelete())
 
-    expect(query.sql).toBe('"audit_log"."id" in (?, ?)')
-    expect(query.params).toStrictEqual(["log-1", "log-2"])
+    expect(query.sql).toBe('"audit_log"."id" in (select value from json_each(?))')
+    expect(query.params).toStrictEqual(['["log-1","log-2"]'])
   })
 })
 

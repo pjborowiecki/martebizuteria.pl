@@ -25,6 +25,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(client, { schema }) }
 })
 
+const { LIST_PAGE_SIZE_MAX } = await import("~/src/modules/_core/utils/pagination")
 const { attributeOnProduct } = await import("~/src/modules/attribute-on-product/attribute-on-product.schema")
 const { categoryOnProduct } = await import("~/src/modules/category-on-product/category-on-product.schema")
 const { collectionOnProduct } = await import("~/src/modules/collection-on-product/collection-on-product.schema")
@@ -142,6 +143,15 @@ const idsOf = (rows: readonly { readonly id: string }[]): string[] => rows.map((
 
 const PAGE = { limit: 10, offset: 0 }
 
+const BULK_PRODUCT_IDS = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${index}`)
+
+const insertBulkProducts = (): void => {
+  for (const [index, id] of BULK_PRODUCT_IDS.entries()) {
+    insertProduct({ handle: id, id, rank: 10 + index, title: id })
+    insertVariant({ id: `bulk-variant-${index}`, price: 1000 + index, productId: id, stock: index + 1 })
+  }
+}
+
 const seed = (): void => {
   insertProduct({ handle: "silver-ring", id: "p1", rank: 0, title: "Silver ring" })
   insertProduct({ handle: "gold-chain", id: "p2", rank: 1, title: "Gold chain" })
@@ -200,6 +210,16 @@ describe("getProductsWithInventoryByHandles", () => {
 
   it("returns nothing for handles that do not exist", async () => {
     await expect(getProductsWithInventoryByHandles(["missing"])).resolves.toStrictEqual([])
+  })
+
+  it("loads every handle of a cart larger than D1's SQL parameter limit with its own stock", async () => {
+    insertBulkProducts()
+
+    const rows = await getProductsWithInventoryByHandles(BULK_PRODUCT_IDS)
+
+    expect(
+      Object.fromEntries(rows.map((row) => [row.handle, row.variants.map((variant) => variant.inventory.quantityAvailable)])),
+    ).toStrictEqual(Object.fromEntries(BULK_PRODUCT_IDS.map((handle, index) => [handle, [index + 1]])))
   })
 })
 
@@ -321,6 +341,22 @@ describe("getPublishedProductsByCategoryIds", () => {
     const page = await getPublishedProductsByCategoryIds(["cat-1"], { limit: 5, offset: 5 })
 
     expect(page).toStrictEqual({ items: [], total: 1 })
+  })
+
+  it("returns a full page of products from more categories than D1's SQL parameter limit, by rank", async () => {
+    insertBulkProducts()
+    for (const [index, id] of BULK_PRODUCT_IDS.entries()) {
+      insertCategory(`cat-${id}`, `category-${index}`)
+      linkCategory(`cat-${id}`, id)
+    }
+
+    const page = await getPublishedProductsByCategoryIds(
+      BULK_PRODUCT_IDS.map((id) => `cat-${id}`),
+      { limit: LIST_PAGE_SIZE_MAX, offset: 0 },
+    )
+
+    expect(idsOf(page.items)).toStrictEqual(BULK_PRODUCT_IDS)
+    expect(page.total).toBe(LIST_PAGE_SIZE_MAX)
   })
 })
 

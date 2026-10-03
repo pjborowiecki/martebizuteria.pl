@@ -17,18 +17,21 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
   countCustomerOrders,
+  getCustomerActivityAuditRows,
   getCustomerLoginAuditRows,
   getCustomerOrderNumbers,
   getCustomerOrderRows,
   getCustomerPurchasedCategoryIds,
   getCustomerPurchasedProductIds,
   getCustomerSpendStats,
+  getOrderItemsForOrders,
 } from "~/src/modules/customer-account/customer-account.accessors.server"
 import {
   CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT,
   CUSTOMER_ACCOUNT_ORDERS_LIMIT,
   CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT,
 } from "~/src/modules/customer-account/customer-account.constants"
+import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
 
 const CUSTOMER = "user-1"
 
@@ -78,6 +81,7 @@ beforeEach(() => {
     drop table if exists "order";
     drop table if exists order_item;
     drop table if exists product_variant;
+    drop table if exists product;
     drop table if exists category_on_product;
     drop table if exists audit_log;
 
@@ -85,10 +89,17 @@ beforeEach(() => {
       id text primary key, user_id text, status text not null, fulfillment_status text not null, order_number text not null,
       total integer not null default 0, currency_code text not null default 'PLN', created_at integer not null, updated_at integer not null
     );
-    create table order_item (id text primary key, order_id text not null, variant_id text, created_at integer not null);
-    create table product_variant (id text primary key, product_id text not null);
+    create table order_item (
+      id text primary key, order_id text not null, variant_id text, quantity integer not null default 1, thumbnail text,
+      title text not null default '', total integer not null default 0, unit_price integer not null default 0,
+      variant_title text, created_at integer not null
+    );
+    create table product_variant (id text primary key, product_id text not null, title text);
+    create table product (id text primary key, handle text not null, thumbnail text);
     create table category_on_product (category_id text not null, product_id text not null, primary key (product_id, category_id));
-    create table audit_log (id text primary key, resource_id text, action text not null, created_at integer not null, ip text);
+    create table audit_log (
+      id text primary key, resource_id text, action text not null, created_at integer not null, ip text, detail text, metadata text
+    );
 
     insert into product_variant (id, product_id) values
       ('v-ring', 'p-ring'), ('v-necklace', 'p-necklace'), ('v-earring', 'p-earring');
@@ -257,5 +268,45 @@ describe("getCustomerOrderNumbers", () => {
     }
 
     await expect(getCustomerOrderNumbers("user-with-many-orders")).resolves.toHaveLength(CUSTOMER_ACCOUNT_ORDERS_LIMIT)
+  })
+})
+
+describe("a customer with a long order history", () => {
+  const LONG_HISTORY_CUSTOMER = "user-with-long-history"
+
+  const orderIds = Array.from({ length: 150 }, (_, index) => `history-${String(index).padStart(3, "0")}`)
+
+  beforeEach(() => {
+    for (const [index, id] of orderIds.entries()) {
+      insertOrder({ day: 10, fulfillmentStatus: "delivered", id, status: "completed", total: 1000, userId: LONG_HISTORY_CUSTOMER })
+      insertOrderItem(`line-${id}`, id, "v-ring")
+      insertAudit({ action: AUDIT_LOG_ACTION.ORDER_PLACED, createdAt: dayOf(10) + index, id: `audit-${id}`, ip: null, resourceId: id })
+    }
+  })
+
+  it("reads the newest activity across the customer's account and every one of their orders", async () => {
+    insertAudit({
+      action: AUDIT_LOG_ACTION.AUTH_LOGIN,
+      createdAt: dayOf(20),
+      id: "audit-login",
+      ip: null,
+      resourceId: LONG_HISTORY_CUSTOMER,
+    })
+    insertAudit({ action: AUDIT_LOG_ACTION.ORDER_SHIPPED, createdAt: dayOf(21), id: "audit-other", ip: null, resourceId: "someone-else" })
+
+    const rows = await getCustomerActivityAuditRows(LONG_HISTORY_CUSTOMER, orderIds)
+
+    expect(rows.map((row) => row.resourceId)).toStrictEqual([
+      LONG_HISTORY_CUSTOMER,
+      ...orderIds.toReversed().slice(0, CUSTOMER_AUDIT_TIMELINE_LIMIT - 1),
+    ])
+  })
+
+  it("lists the lines of every one of the customer's orders", async () => {
+    insertOrderItem("line-someone-else", "someone-else", "v-ring")
+
+    const rows = await getOrderItemsForOrders(orderIds)
+
+    expect(rows.map((row) => row.orderId).toSorted()).toStrictEqual(orderIds)
   })
 })

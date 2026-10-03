@@ -36,6 +36,8 @@ export const LIST_PAGE_FIRST = 1
 
 export const LIST_PAGE_STEP = 1
 
+export const LIST_PAGE_SIZE_MAX = 250
+
 export interface ListPaginationParams {
   readonly limit: number
   readonly offset: number

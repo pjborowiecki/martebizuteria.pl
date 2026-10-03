@@ -104,6 +104,15 @@ export const runDrizzleBatch = async (statements: readonly DrizzleBatchStatement
 
 `DrizzleBatchStatement` to `BatchItem<"sqlite">`. Wsad D1 wykonywany jest jako jedna niejawna transakcja, co czyni `runDrizzleBatch` narzędziem atomowości w tej bazie kodu. Nic w `src/` nie wywołuje `db.transaction()`: sterownik D1 realizuje tę metodę przez wysłanie osobnych instrukcji `begin` i `commit`, a D1 nie udostępnia transakcji interaktywnych rozciągniętych na osobne instrukcje. Zapisy wieloetapowe albo trafiają więc do jednego wsadu, albo jawnie kompensują błąd — tak jak proces zamówienia zwalnia zarezerwowany stan magazynowy.
 
+### Limit 100 parametrów
+
+D1 odrzuca instrukcję, która wiąże więcej niż 100 parametrów, a limit obowiązuje każdą instrukcję wewnątrz wsadu. Dwie zasady utrzymują każdą instrukcję poniżej niego, niezależnie od wielkości sklepu:
+
+- Lista identyfikatorów zbudowana w czasie działania jest wiązana raz, jako JSON, przez `inJsonList` albo `notInJsonList` z `drizzle.utils.ts`. Kompilują się do `column in (select value from json_each(?))`, na co SQLite nadal odpowiada jednym wyszukiwaniem w indeksie na identyfikator, więc strona 250 wierszy i cały katalog kosztują tak samo jeden parametr. `inArray` zostaje dla stałych list, takich jak statusy zamówień, i dla podzapytań.
+- Zapisy wielowierszowe są dzielone w `drizzle.batch.ts`: `insertRowChunks(table, rows)` dobiera wielkość każdego insertu do liczby kolumn tabeli, `chunkRankUpdates(idColumn, updates)` buduje wyrażenie rangi `case … when` po 49 wierszy dla use case'ów zmiany kolejności, a `chunkByBoundParameters` obsługuje każdy inny kształt. Fragmenty trafiają do jednego `runDrizzleBatch`, więc zapis pozostaje atomowy i nadal kosztuje jedną podróż do bazy.
+
+Testowy zamiennik D1 egzekwuje ten sam limit, więc test integracyjny na pełnej stronie wierszy zawodzi tak, jak zawiódłby D1.
+
 ## Instrukcje przygotowane
 
 Gorące ścieżki odczytu prekompilują swoje SQL przez `.prepare()` i `sql.placeholder()`. Plik `src/modules/product/product.accessors.ts` jest najgęstszym przykładem:

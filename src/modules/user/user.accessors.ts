@@ -1,7 +1,7 @@
 import { type SQL, and, count, desc, eq, getTableColumns, gte, inArray, isNotNull, max, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
-import { isoMonthKey } from "~/src/integrations/drizzle-orm/drizzle.utils"
+import { inJsonList, isoMonthKey } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
@@ -144,7 +144,7 @@ const buildAdminCustomersQueryParts = (
 export const getCustomerOrderStatsQuery = (userIds?: readonly string[]) => {
   const conditions = [sql`${order.userId} is not null`, inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])]
   if (userIds !== undefined && userIds.length > 0) {
-    conditions.push(inArray(order.userId, [...userIds]))
+    conditions.push(inJsonList(order.userId, userIds))
   }
 
   return db
@@ -162,7 +162,7 @@ export const getCustomerOrderStatsQuery = (userIds?: readonly string[]) => {
 export const getDefaultCustomerAddressesQuery = (userIds?: readonly string[]) => {
   const conditions = [eq(address.isDefault, true)]
   if (userIds !== undefined && userIds.length > 0) {
-    conditions.push(inArray(address.userId, [...userIds]))
+    conditions.push(inJsonList(address.userId, userIds))
   }
 
   return db
@@ -464,7 +464,7 @@ export const getOrderItemTitlesQuery = (orderIds: readonly string[]) => {
       title: orderItem.title,
     })
     .from(orderItem)
-    .where(inArray(orderItem.orderId, [...orderIds]))
+    .where(inJsonList(orderItem.orderId, orderIds))
     .orderBy(orderItem.title)
 }
 

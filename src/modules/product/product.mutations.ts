@@ -1,8 +1,14 @@
-import { type SQL, and, eq, inArray, notInArray, sql } from "drizzle-orm"
+import { and, eq, ne, sql } from "drizzle-orm"
 
-import { type DrizzleBatchStatement, insertRowChunks, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
+import {
+  type DrizzleBatchStatement,
+  type RankUpdate,
+  chunkRankUpdates,
+  insertRowChunks,
+  runDrizzleBatch,
+} from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
-import { notInJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
+import { inJsonList, notInJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { resolvePrimaryCategoryId } from "~/src/modules/category-on-product/category-on-product.utils"
@@ -19,28 +25,13 @@ export const deleteProducts = async (ids: readonly string[]): Promise<void> => {
   if (ids.length === 0) {
     return
   }
-  await db.delete(product).where(inArray(product.id, [...ids]))
+  await db.delete(product).where(inJsonList(product.id, ids))
 }
 
-export const setProductRanks = async (
-  updates: readonly {
-    id: string
-    rank: number
-  }[],
-): Promise<void> => {
-  if (updates.length === 0) {
-    return
-  }
-
-  const ids = updates.map((entry) => entry.id)
-  const cases = updates.map((entry) => sql`when ${product.id} = ${entry.id} then ${entry.rank}`)
-  const rankExpression = sql`(case ${sql.join(cases, sql.raw(" "))} end)`
-  await db
-    .update(product)
-    .set({
-      rank: rankExpression,
-    })
-    .where(inArray(product.id, ids))
+export const setProductRanks = async (updates: readonly RankUpdate[]): Promise<void> => {
+  await runDrizzleBatch(
+    chunkRankUpdates(product.id, updates).map(({ ids, rank }) => db.update(product).set({ rank }).where(inJsonList(product.id, ids))),
+  )
 }
 
 export const findTakenSkus = async (skus: readonly string[], excludeProductId?: string): Promise<string[]> => {
@@ -49,20 +40,9 @@ export const findTakenSkus = async (skus: readonly string[], excludeProductId?: 
     return []
   }
 
-  let excludeVariantIds: string[] = []
+  const whereConditions = [inJsonList(productVariant.sku, normalizedSkus)]
   if (excludeProductId !== undefined) {
-    const variantIdRows = await db
-      .select({
-        id: productVariant.id,
-      })
-      .from(productVariant)
-      .where(eq(productVariant.productId, excludeProductId))
-    excludeVariantIds = variantIdRows.map((row) => row.id)
-  }
-
-  const whereConditions: SQL[] = [inArray(productVariant.sku, normalizedSkus)]
-  if (excludeVariantIds.length > 0) {
-    whereConditions.push(notInArray(productVariant.id, excludeVariantIds))
+    whereConditions.push(ne(productVariant.productId, excludeProductId))
   }
 
   const rows = await db
