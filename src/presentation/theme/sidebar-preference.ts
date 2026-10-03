@@ -55,7 +55,11 @@ export const writeSidebarPreference = (open: boolean): void => {
     return
   }
 
-  globalThis.document.cookie = serializeCookie({ name: SIDEBAR_STORAGE_KEY, value })
+  globalThis.document.cookie = serializeCookie({
+    name: SIDEBAR_STORAGE_KEY,
+    options: { secure: globalThis.location.protocol === "https:" },
+    value,
+  })
   if (open) {
     delete globalThis.document.documentElement.dataset["sidebarCollapsed"]
   } else {

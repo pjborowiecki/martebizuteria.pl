@@ -46,7 +46,7 @@ declare module "@tanstack/react-start" {
 
 const server: ExportedHandler<Env, AuditLogQueueMessage> = {
   async fetch(request, env, ctx) {
-    const { origin, pathname } = new URL(request.url)
+    const { origin, pathname, protocol } = new URL(request.url)
     if (pathname === "/sitemap.xml") {
       return sitemapResponse(origin)
     }
@@ -89,7 +89,7 @@ const server: ExportedHandler<Env, AuditLogQueueMessage> = {
     }
 
     const newResponse = new Response(response.body, response)
-    newResponse.headers.append("Set-Cookie", serializeCookie(setCookie))
+    newResponse.headers.append("Set-Cookie", serializeCookie({ ...setCookie, options: { secure: protocol === "https:" } }))
 
     return newResponse
   },

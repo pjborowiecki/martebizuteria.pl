@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const { getRequest, runtime } = vi.hoisted(() => ({
   getRequest: vi.fn(() => new Request("https://store.test/admin")),
@@ -96,6 +96,10 @@ describe("readSidebarPreference", () => {
 })
 
 describe("writeSidebarPreference", () => {
+  beforeEach(() => {
+    vi.stubGlobal("location", { protocol: "http:" })
+  })
+
   afterEach(() => {
     vi.unstubAllGlobals()
   })
@@ -137,6 +141,20 @@ describe("writeSidebarPreference", () => {
     expect(documentStub.cookie).toContain(`${SIDEBAR_STORAGE_KEY}=0`)
     expect(dataset["sidebarCollapsed"]).toBe("")
     expect(dispatchEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it("only marks the cookie Secure on a page served over HTTPS", () => {
+    const documentStub = { cookie: "", documentElement: { dataset: {} as Record<string, string> } }
+    vi.stubGlobal("localStorage", undefined)
+    vi.stubGlobal("document", documentStub)
+    vi.stubGlobal("dispatchEvent", vi.fn())
+
+    writeSidebarPreference(false)
+    expect(documentStub.cookie).not.toContain("Secure")
+
+    vi.stubGlobal("location", { protocol: "https:" })
+    writeSidebarPreference(false)
+    expect(documentStub.cookie).toContain("Secure")
   })
 
   it("clears the collapsed attribute when the sidebar reopens", () => {
