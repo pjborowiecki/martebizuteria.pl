@@ -36,9 +36,12 @@ import { sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 import { createPendingPayment, getPaymentContextByTransactionId, repointPayment } from "~/src/modules/payment/payment.accessors"
 import { getProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 
+import { buildLocalizedUrl } from "~/src/lib/seo"
 import { resolveAssetURL } from "~/src/lib/url"
 
 import { APP_URL } from "~/src/presentation/branding/app"
+
+import { ROUTES } from "~/src/routes"
 
 const EMPTY_VARIANTS_COUNT = 0
 
@@ -184,12 +187,13 @@ interface CreateSessionArgs {
 }
 
 const createStripeSession = async ({ checkoutId, customerId, discount, email, lines, shippingCost, userId }: CreateSessionArgs) => {
-  const returnUrl = `${resolveOrigin()}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`
+  const locale = getCurrentLocale()
+  const returnUrl = `${buildLocalizedUrl(resolveOrigin(), ROUTES.CHECKOUT, locale)}?success=true&session_id={CHECKOUT_SESSION_ID}`
   const metadata = {
     checkoutId,
     discountCode: discount?.code ?? "",
     discountTotal: String(discount?.amountMinorUnits ?? NO_COST),
-    locale: getCurrentLocale(),
+    locale,
     userId: userId ?? "",
     ...toMetaItems(lines),
   }
