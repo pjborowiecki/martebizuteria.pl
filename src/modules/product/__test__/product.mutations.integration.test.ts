@@ -20,6 +20,7 @@ const { categoryOnProduct } = await import("~/src/modules/category-on-product/ca
 const { collectionOnProduct } = await import("~/src/modules/collection-on-product/collection-on-product.schema")
 const { inventory } = await import("~/src/modules/inventory/inventory.schema")
 const { optionOnVariant } = await import("~/src/modules/option-on-variant/option-on-variant.schema")
+const { orderItem } = await import("~/src/modules/order-item/order-item.schema")
 const { productCategory } = await import("~/src/modules/product-category/product-category.schema")
 const { productCollection } = await import("~/src/modules/product-collection/product-collection.schema")
 const { productOptionValue } = await import("~/src/modules/product-option-value/product-option-value.schema")
@@ -42,6 +43,7 @@ const TABLES = [
   optionOnVariant,
   categoryOnProduct,
   collectionOnProduct,
+  orderItem,
 ]
 
 const NOW = Date.now()
@@ -85,6 +87,7 @@ const rows = (statement: string): Record<string, unknown>[] =>
 const column = (statement: string, name: string): unknown[] => rows(statement).map((row) => row[name])
 
 const resetDatabase = (): void => {
+  sqlite.exec(`drop table if exists "order"; create table "order" (id text primary key, email text not null)`)
   createTables(sqlite, TABLES)
   sqlite
     .prepare(
@@ -254,6 +257,104 @@ describe("replaceProductCatalog", () => {
     await replaceProductCatalog("p1", CATALOG_PAYLOAD)
 
     expect(column("select id from product_variant order by id", "id")).toStrictEqual(["v-new", "v-other"])
+  })
+})
+
+const variantRow = (id: string, sku: string | undefined): ProductCatalogReplacePayload["variantRows"][number] => ({
+  id,
+  price: 2500,
+  productId: "p1",
+  sku,
+  title: id,
+})
+
+const stockRow = (variantId: string, quantityAvailable: number): ProductCatalogReplacePayload["inventoryRows"][number] => ({
+  id: `inventory-${variantId}`,
+  quantityAvailable,
+  quantityReserved: 0,
+  variantId,
+  version: 1,
+})
+
+const simpleCatalog = (variants: readonly { id: string; quantity: number; sku?: string }[]): ProductCatalogReplacePayload => ({
+  inventoryRows: variants.map(({ id, quantity }) => stockRow(id, quantity)),
+  optionOnVariantRows: [],
+  optionRows: [],
+  optionValueRows: [],
+  variantRows: variants.map(({ id, sku }) => variantRow(id, sku)),
+})
+
+describe("replaceProductCatalog on a product that has already sold", () => {
+  beforeEach(async () => {
+    insertProduct("p1", "one", 0)
+    await replaceProductCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 5, sku: "SOLD" }]))
+    sqlite.prepare(`insert into "order" (id, email) values ('order-1', 'buyer@example.com')`).run()
+    sqlite
+      .prepare(
+        `insert into order_item (id, order_id, variant_id, product_id, quantity, unit_price, subtotal, total, title, created_at, updated_at)
+         values ('line-1', 'order-1', 'v-sold', 'p1', 1, 2500, 2500, 2500, 'Sold piece', ?, ?)`,
+      )
+      .run(NOW, NOW)
+    sqlite.prepare("update inventory set quantity_available = 3, quantity_reserved = 2 where variant_id = 'v-sold'").run()
+  })
+
+  it("keeps the order lines linked to the variant they bought", async () => {
+    await replaceProductCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 3, sku: "SOLD" }]))
+
+    expect(column("select variant_id from order_item", "variant_id")).toStrictEqual(["v-sold"])
+    expect(column("select id from product_variant", "id")).toStrictEqual(["v-sold"])
+  })
+
+  it("keeps the stock that open checkouts have reserved and its lock version when nothing changed", async () => {
+    await replaceProductCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 3, sku: "SOLD" }]))
+
+    expect(rows("select quantity_available, quantity_reserved, version from inventory")).toStrictEqual([
+      { quantity_available: 3, quantity_reserved: 2, version: 1 },
+    ])
+  })
+
+  it("applies new available stock without touching reservations and moves the lock version", async () => {
+    await replaceProductCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 10, sku: "SOLD" }]))
+
+    expect(rows("select quantity_available, quantity_reserved, version from inventory")).toStrictEqual([
+      { quantity_available: 10, quantity_reserved: 2, version: 2 },
+    ])
+  })
+})
+
+describe("replaceProductCatalog variant identity", () => {
+  it("lets two variants swap their SKUs in one save", async () => {
+    insertProduct("p1", "one", 0)
+    await replaceProductCatalog(
+      "p1",
+      simpleCatalog([
+        { id: "v-a", quantity: 1, sku: "SKU-A" },
+        { id: "v-b", quantity: 1, sku: "SKU-B" },
+      ]),
+    )
+
+    await replaceProductCatalog(
+      "p1",
+      simpleCatalog([
+        { id: "v-a", quantity: 1, sku: "SKU-B" },
+        { id: "v-b", quantity: 1, sku: "SKU-A" },
+      ]),
+    )
+
+    expect(rows("select id, sku from product_variant order by id")).toStrictEqual([
+      { id: "v-a", sku: "SKU-B" },
+      { id: "v-b", sku: "SKU-A" },
+    ])
+  })
+
+  it("saves a product with thirty variants", async () => {
+    insertProduct("p1", "one", 0)
+    const variants = Array.from({ length: 30 }, (_, index) => ({ id: `v-${String(index)}`, quantity: index, sku: `SKU-${String(index)}` }))
+
+    await replaceProductCatalog("p1", simpleCatalog(variants))
+
+    expect(column("select count(*) as total from product_variant", "total")).toStrictEqual([30])
+    expect(column("select count(*) as total from inventory", "total")).toStrictEqual([30])
   })
 })
 

@@ -242,7 +242,7 @@ describe("prepareOrganizationReplacePayload", () => {
 
 describe("prepareCatalogReplacePayload for a simple product", () => {
   it("creates exactly one default variant with its inventory row", () => {
-    const payload = prepareCatalogReplacePayload("product-1", catalogInput())
+    const payload = prepareCatalogReplacePayload("product-1", catalogInput(), new Set())
 
     expect(payload.optionRows).toStrictEqual([])
     expect(payload.optionValueRows).toStrictEqual([])
@@ -251,8 +251,40 @@ describe("prepareCatalogReplacePayload for a simple product", () => {
     expect(payload.inventoryRows).toHaveLength(1)
   })
 
+  it("keeps the identity of the variant the product already sells", () => {
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      catalogInput({
+        simpleVariant: { compareAtPrice: "", id: "variant-1", manageInventory: true, price: "120.00", quantity: 5, sku: "SR-1" },
+      }),
+      new Set(["variant-1"]),
+    )
+
+    expect(payload.variantRows.map((row) => row.id)).toStrictEqual(["variant-1"])
+    expect(payload.inventoryRows.map((row) => row.variantId)).toStrictEqual(["variant-1"])
+  })
+
+  it("never adopts a variant id the product does not own", () => {
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      catalogInput({
+        simpleVariant: {
+          compareAtPrice: "",
+          id: "variant-of-another-product",
+          manageInventory: true,
+          price: "120.00",
+          quantity: 5,
+          sku: "SR-1",
+        },
+      }),
+      new Set(["variant-1"]),
+    )
+
+    expect(payload.variantRows[0]?.id).not.toBe("variant-of-another-product")
+  })
+
   it("stores the price in minor units and trims the SKU", () => {
-    const [variantRow] = prepareCatalogReplacePayload("product-1", catalogInput()).variantRows
+    const [variantRow] = prepareCatalogReplacePayload("product-1", catalogInput(), new Set()).variantRows
 
     expect(variantRow?.price).toBe(12_000)
     expect(variantRow?.sku).toBe("SR-1")
@@ -262,17 +294,17 @@ describe("prepareCatalogReplacePayload for a simple product", () => {
   it("drops an all-whitespace SKU instead of storing it", () => {
     const input = catalogInput({ simpleVariant: { compareAtPrice: "", manageInventory: true, price: "120.00", quantity: 0, sku: "  " } })
 
-    expect(prepareCatalogReplacePayload("product-1", input).variantRows[0]?.sku).toBeUndefined()
+    expect(prepareCatalogReplacePayload("product-1", input, new Set()).variantRows[0]?.sku).toBeUndefined()
   })
 
   it("opens the inventory row at the requested quantity with nothing reserved", () => {
-    const [inventoryRow] = prepareCatalogReplacePayload("product-1", catalogInput()).inventoryRows
+    const [inventoryRow] = prepareCatalogReplacePayload("product-1", catalogInput(), new Set()).inventoryRows
 
     expect(inventoryRow).toMatchObject({ quantityAvailable: 5, quantityReserved: 0, version: 1 })
   })
 
   it("links the inventory row to the variant it was created for", () => {
-    const payload = prepareCatalogReplacePayload("product-1", catalogInput())
+    const payload = prepareCatalogReplacePayload("product-1", catalogInput(), new Set())
 
     expect(payload.inventoryRows[0]?.variantId).toBe(payload.variantRows[0]?.id)
   })
@@ -280,11 +312,11 @@ describe("prepareCatalogReplacePayload for a simple product", () => {
   it("refuses to persist a price it cannot parse", () => {
     const input = catalogInput({ simpleVariant: { compareAtPrice: "", manageInventory: true, price: "abc", quantity: 1, sku: "" } })
 
-    expect(() => prepareCatalogReplacePayload("product-1", input)).toThrow("Invalid money input")
+    expect(() => prepareCatalogReplacePayload("product-1", input, new Set())).toThrow("Invalid money input")
   })
 
   it("still builds the default variant when no simple variant was submitted", () => {
-    const payload = prepareCatalogReplacePayload("product-1", catalogInput({ simpleVariant: undefined }))
+    const payload = prepareCatalogReplacePayload("product-1", catalogInput({ simpleVariant: undefined }), new Set())
     const [variantRow] = payload.variantRows
 
     expect(variantRow).toMatchObject({ compareAtPrice: undefined, price: 0, sku: undefined, title: "Default" })
@@ -296,28 +328,28 @@ describe("prepareCatalogReplacePayload for a simple product", () => {
       simpleVariant: { compareAtPrice: "150.00", manageInventory: true, price: "120.00", quantity: 1, sku: "" },
     })
 
-    expect(prepareCatalogReplacePayload("product-1", input).variantRows[0]?.compareAtPrice).toBe(15_000)
+    expect(prepareCatalogReplacePayload("product-1", input, new Set()).variantRows[0]?.compareAtPrice).toBe(15_000)
   })
 })
 
-describe("prepareCatalogReplacePayload for a variant product", () => {
-  const variantInput = catalogInput({
-    hasVariants: true,
-    options: [
-      {
-        titles: locales("Rozmiar", "Size"),
-        values: [{ labels: locales("Mały", "Small") }, { labels: locales("Duży", "Large") }],
-      },
-    ],
-    simpleVariant: undefined,
-    variants: [
-      { compareAtPrice: "", manageInventory: true, optionValues: { Rozmiar: "Mały" }, price: "100.00", quantity: 2, sku: "SR-S" },
-      { compareAtPrice: "", manageInventory: true, optionValues: { Rozmiar: "Duży" }, price: "130.00", quantity: 3, sku: "SR-L" },
-    ],
-  })
+const variantInput = catalogInput({
+  hasVariants: true,
+  options: [
+    {
+      titles: locales("Rozmiar", "Size"),
+      values: [{ labels: locales("Mały", "Small") }, { labels: locales("Duży", "Large") }],
+    },
+  ],
+  simpleVariant: undefined,
+  variants: [
+    { compareAtPrice: "", manageInventory: true, optionValues: { Rozmiar: "Mały" }, price: "100.00", quantity: 2, sku: "SR-S" },
+    { compareAtPrice: "", manageInventory: true, optionValues: { Rozmiar: "Duży" }, price: "130.00", quantity: 3, sku: "SR-L" },
+  ],
+})
 
+describe("prepareCatalogReplacePayload for a variant product", () => {
   it("persists one option with one row per value", () => {
-    const payload = prepareCatalogReplacePayload("product-1", variantInput)
+    const payload = prepareCatalogReplacePayload("product-1", variantInput, new Set())
 
     expect(payload.optionRows).toHaveLength(1)
     expect(payload.optionValueRows).toHaveLength(2)
@@ -325,14 +357,14 @@ describe("prepareCatalogReplacePayload for a variant product", () => {
   })
 
   it("creates one variant per option value combination", () => {
-    const payload = prepareCatalogReplacePayload("product-1", variantInput)
+    const payload = prepareCatalogReplacePayload("product-1", variantInput, new Set())
 
     expect(payload.variantRows).toHaveLength(2)
     expect(payload.inventoryRows.map((row) => row.quantityAvailable)).toStrictEqual([2, 3])
   })
 
   it("keeps unfilled draft combinations unpriced and out of stock", () => {
-    const payload = prepareCatalogReplacePayload("product-1", { ...variantInput, variants: variantInput.variants.slice(0, 1) })
+    const payload = prepareCatalogReplacePayload("product-1", { ...variantInput, variants: variantInput.variants.slice(0, 1) }, new Set())
 
     expect(payload.variantRows.map((row) => ({ price: row.price, sku: row.sku, title: row.title }))).toStrictEqual([
       { price: 10_000, sku: "SR-S", title: "Mały" },
@@ -343,17 +375,21 @@ describe("prepareCatalogReplacePayload for a variant product", () => {
   })
 
   it("matches each submitted row to its combination by option values", () => {
-    const payload = prepareCatalogReplacePayload("product-1", variantInput)
+    const payload = prepareCatalogReplacePayload("product-1", variantInput, new Set())
 
     expect(payload.variantRows.map((row) => row.price)).toStrictEqual([10_000, 13_000])
     expect(payload.variantRows.map((row) => row.sku)).toStrictEqual(["SR-S", "SR-L"])
   })
 
   it("keeps each variant's compare-at price and persisted identity", () => {
-    const payload = prepareCatalogReplacePayload("product-1", {
-      ...variantInput,
-      variants: variantInput.variants.map((row, index) => ({ ...row, compareAtPrice: "180.00", id: `existing-${index}` })),
-    })
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      {
+        ...variantInput,
+        variants: variantInput.variants.map((row, index) => ({ ...row, compareAtPrice: "180.00", id: `existing-${index}` })),
+      },
+      new Set(["existing-0", "existing-1"]),
+    )
 
     expect(payload.variantRows.map((row) => ({ compareAtPrice: row.compareAtPrice, id: row.id }))).toStrictEqual([
       { compareAtPrice: 18_000, id: "existing-0" },
@@ -361,24 +397,53 @@ describe("prepareCatalogReplacePayload for a variant product", () => {
     ])
   })
 
+  it("gives a variant a new identity when its submitted id belongs to no variant of this product", () => {
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      { ...variantInput, variants: variantInput.variants.map((row) => ({ ...row, id: "variant-of-another-product" })) },
+      new Set(["existing-0"]),
+    )
+
+    expect(payload.variantRows.map((row) => row.id)).not.toContain("variant-of-another-product")
+    expect(new Set(payload.variantRows.map((row) => row.id)).size).toBe(2)
+  })
+
   it("links every variant to the persisted option value row once the option carries its id", () => {
-    const payload = prepareCatalogReplacePayload("product-1", {
-      ...variantInput,
-      options: [
-        {
-          id: OPTION_ID,
-          titles: locales("Rozmiar", "Size"),
-          values: [
-            { id: SMALL_VALUE_ID, labels: locales("Mały", "Small") },
-            { id: LARGE_VALUE_ID, labels: locales("Duży", "Large") },
-          ],
-        },
-      ],
-      variants: [
-        { compareAtPrice: "", manageInventory: true, optionValues: { [OPTION_ID]: SMALL_VALUE_ID }, price: "100.00", quantity: 2, sku: "" },
-        { compareAtPrice: "", manageInventory: true, optionValues: { [OPTION_ID]: LARGE_VALUE_ID }, price: "130.00", quantity: 3, sku: "" },
-      ],
-    })
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      {
+        ...variantInput,
+        options: [
+          {
+            id: OPTION_ID,
+            titles: locales("Rozmiar", "Size"),
+            values: [
+              { id: SMALL_VALUE_ID, labels: locales("Mały", "Small") },
+              { id: LARGE_VALUE_ID, labels: locales("Duży", "Large") },
+            ],
+          },
+        ],
+        variants: [
+          {
+            compareAtPrice: "",
+            manageInventory: true,
+            optionValues: { [OPTION_ID]: SMALL_VALUE_ID },
+            price: "100.00",
+            quantity: 2,
+            sku: "",
+          },
+          {
+            compareAtPrice: "",
+            manageInventory: true,
+            optionValues: { [OPTION_ID]: LARGE_VALUE_ID },
+            price: "130.00",
+            quantity: 3,
+            sku: "",
+          },
+        ],
+      },
+      new Set(),
+    )
 
     const valueIds = new Set(payload.optionValueRows.map((row) => row.id))
 
@@ -388,45 +453,63 @@ describe("prepareCatalogReplacePayload for a variant product", () => {
   })
 
   it("writes no option_on_variant rows at all when the option has no persisted id, as on a first create", () => {
-    const payload = prepareCatalogReplacePayload("product-1", variantInput)
+    const payload = prepareCatalogReplacePayload("product-1", variantInput, new Set())
 
     expect(payload.variantRows).toHaveLength(2)
     expect(payload.optionValueRows).toHaveLength(2)
     expect(payload.optionOnVariantRows).toStrictEqual([])
   })
+})
 
+describe("prepareCatalogReplacePayload naming and matching variant rows", () => {
   it("names a variant after its combination when the submitted title is blank", () => {
-    const payload = prepareCatalogReplacePayload("product-1", {
-      ...variantInput,
-      variants: variantInput.variants.map((row) => ({ ...row, title: "  " })),
-    })
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      {
+        ...variantInput,
+        variants: variantInput.variants.map((row) => ({ ...row, title: "  " })),
+      },
+      new Set(),
+    )
 
     expect(payload.variantRows.map((row) => row.title)).toStrictEqual(["Mały", "Duży"])
   })
 
   it("keeps a submitted variant title", () => {
-    const payload = prepareCatalogReplacePayload("product-1", {
-      ...variantInput,
-      variants: variantInput.variants.map((row, index) => ({ ...row, title: `Wariant ${index}` })),
-    })
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      {
+        ...variantInput,
+        variants: variantInput.variants.map((row, index) => ({ ...row, title: `Wariant ${index}` })),
+      },
+      new Set(),
+    )
 
     expect(payload.variantRows.map((row) => row.title)).toStrictEqual(["Wariant 0", "Wariant 1"])
   })
 
   it("falls back to the row at the same index when no option values were submitted", () => {
-    const payload = prepareCatalogReplacePayload("product-1", {
-      ...variantInput,
-      variants: variantInput.variants.map((row) => ({ ...row, optionValues: {} })),
-    })
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      {
+        ...variantInput,
+        variants: variantInput.variants.map((row) => ({ ...row, optionValues: {} })),
+      },
+      new Set(),
+    )
 
     expect(payload.variantRows.map((row) => row.price)).toStrictEqual([10_000, 13_000])
   })
 
   it("ignores the submitted rows' own ids for options it had to normalise away", () => {
-    const payload = prepareCatalogReplacePayload("product-1", {
-      ...variantInput,
-      options: [{ titles: { "en-US": "", "pl-PL": "Rozmiar" }, values: [{ labels: locales("Mały") }] }],
-    })
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      {
+        ...variantInput,
+        options: [{ titles: { "en-US": "", "pl-PL": "Rozmiar" }, values: [{ labels: locales("Mały") }] }],
+      },
+      new Set(),
+    )
 
     expect(payload.optionRows).toStrictEqual([])
     expect(payload.variantRows).toHaveLength(1)

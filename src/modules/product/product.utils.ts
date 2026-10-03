@@ -444,10 +444,13 @@ const requireMoneyMinorUnits = (input: string): number => {
   return minor
 }
 
-const buildSimpleVariantRows = (simple: SimpleVariantInput): ProductVariantPersistRow[] => [
+const ownedVariantId = (id: string | undefined, ownedVariantIds: ReadonlySet<string>): string =>
+  id !== undefined && ownedVariantIds.has(id) ? id : uuidv7()
+
+const buildSimpleVariantRows = (simple: SimpleVariantInput, ownedVariantIds: ReadonlySet<string>): ProductVariantPersistRow[] => [
   {
     compareAtPrice: simple.compareAtPrice === "" ? undefined : requireMoneyMinorUnits(simple.compareAtPrice),
-    id: uuidv7(),
+    id: ownedVariantId(simple.id, ownedVariantIds),
     manageInventory: MANAGE_INVENTORY_ALWAYS,
     optionValues: {},
     price: requireMoneyMinorUnits(simple.price),
@@ -457,11 +460,17 @@ const buildSimpleVariantRows = (simple: SimpleVariantInput): ProductVariantPersi
   },
 ]
 
-const mergeVariantRows = (
-  combinations: ReturnType<typeof buildVariantCombinations>,
-  variants: readonly VariantRowInput[],
-  options: readonly ProductOptionDraft[],
-): ProductVariantPersistRow[] => {
+const mergeVariantRows = ({
+  combinations,
+  options,
+  ownedVariantIds,
+  variants,
+}: Readonly<{
+  combinations: ReturnType<typeof buildVariantCombinations>
+  options: readonly ProductOptionDraft[]
+  ownedVariantIds: ReadonlySet<string>
+  variants: readonly VariantRowInput[]
+}>): ProductVariantPersistRow[] => {
   const variantsByKey = new Map(variants.map((row) => [buildVariantCombinationKey(row.optionValues), row] as const))
   const variantsByTitle = new Map(variants.map((row) => [(row.title ?? "").trim(), row] as const))
 
@@ -477,7 +486,7 @@ const mergeVariantRows = (
         existing?.compareAtPrice === undefined || existing.compareAtPrice === ""
           ? undefined
           : requireMoneyMinorUnits(existing.compareAtPrice),
-      id: existing?.id ?? uuidv7(),
+      id: ownedVariantId(existing?.id, ownedVariantIds),
       manageInventory: MANAGE_INVENTORY_ALWAYS,
       optionValues: combination.optionValues,
       price: requireMoneyMinorUnits(existing?.price ?? ""),
@@ -491,16 +500,17 @@ const mergeVariantRows = (
 const buildMultiVariantRows = (
   options: readonly ProductOptionDraft[],
   variants: readonly VariantRowInput[],
+  ownedVariantIds: ReadonlySet<string>,
 ): ProductVariantPersistRow[] => {
   const normalizedOptions = normalizeOptionDrafts(options)
   const combinations = buildVariantCombinations(normalizedOptions)
 
-  return mergeVariantRows(combinations, variants, options)
+  return mergeVariantRows({ combinations, options, ownedVariantIds, variants })
 }
 
-const buildVariantPersistRows = (input: CatalogUpsertInput): ProductVariantPersistRow[] => {
+const buildVariantPersistRows = (input: CatalogUpsertInput, ownedVariantIds: ReadonlySet<string>): ProductVariantPersistRow[] => {
   if (input.hasVariants) {
-    return buildMultiVariantRows(input.options, input.variants)
+    return buildMultiVariantRows(input.options, input.variants, ownedVariantIds)
   }
 
   return buildSimpleVariantRows(
@@ -511,6 +521,7 @@ const buildVariantPersistRows = (input: CatalogUpsertInput): ProductVariantPersi
       quantity: 0,
       sku: "",
     },
+    ownedVariantIds,
   )
 }
 
@@ -534,8 +545,12 @@ const buildOptionValueRows = (
   return { optionValueRows, valueIdByOptionAndKey }
 }
 
-export const prepareCatalogReplacePayload = (productId: string, input: CatalogUpsertInput): ProductCatalogReplacePayload => {
-  const variantPersistRows = buildVariantPersistRows(input)
+export const prepareCatalogReplacePayload = (
+  productId: string,
+  input: CatalogUpsertInput,
+  ownedVariantIds: ReadonlySet<string>,
+): ProductCatalogReplacePayload => {
+  const variantPersistRows = buildVariantPersistRows(input, ownedVariantIds)
   const options = (input.hasVariants ? normalizeOptionDrafts(input.options) : []).map((option) => ({
     id: option.id ?? uuidv7(),
     titles: option.titles,

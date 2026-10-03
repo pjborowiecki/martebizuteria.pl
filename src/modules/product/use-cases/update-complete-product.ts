@@ -36,7 +36,7 @@ const updateProductRecord = async (
 
   const beforeSnapshot = beforeProduct === undefined ? undefined : extractProductAuditSnapshot(beforeProduct)
   await assertCatalogSkusAvailable(catalogInput, id)
-  await updateProductWithCatalog(id, catalogInput)
+  await updateProductWithCatalog(id, catalogInput, new Set(beforeProduct?.variants.map((variant) => variant.id)))
   await replaceProductImages(id, images)
   await replaceAllAttributesForProduct(
     id,

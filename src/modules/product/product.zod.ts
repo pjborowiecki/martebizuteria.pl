@@ -80,6 +80,7 @@ const plnMoneyInputSchema = zod
 
 const simpleVariantInputSchema = zod.object({
   compareAtPrice: plnMoneyInputSchema,
+  id: zod.string().optional(),
   manageInventory: zod.boolean(),
   price: plnMoneyInputSchema,
   quantity: zod.number().int().min(0),

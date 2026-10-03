@@ -194,7 +194,7 @@ describe("insertProductWithCatalog", () => {
 
 describe("updateProductWithCatalog", () => {
   it("updates only the catalog level columns of the product", async () => {
-    await updateProductWithCatalog("product-1", catalogInput())
+    await updateProductWithCatalog("product-1", catalogInput(), new Set())
 
     expect(database.update.mock.calls[0]?.[0]).toStrictEqual({
       descriptions: undefined,
@@ -207,13 +207,13 @@ describe("updateProductWithCatalog", () => {
   })
 
   it("drops empty descriptions instead of storing blank locales", async () => {
-    await updateProductWithCatalog("product-1", catalogInput({ descriptions: { "en-US": "  ", "pl-PL": "" } }))
+    await updateProductWithCatalog("product-1", catalogInput({ descriptions: { "en-US": "  ", "pl-PL": "" } }), new Set())
 
     expect(database.update.mock.calls[0]?.[0]).toMatchObject({ descriptions: undefined })
   })
 
   it("keeps a description that has content in one locale", async () => {
-    await updateProductWithCatalog("product-1", catalogInput({ descriptions: { "en-US": " Sterling silver ", "pl-PL": "" } }))
+    await updateProductWithCatalog("product-1", catalogInput({ descriptions: { "en-US": " Sterling silver ", "pl-PL": "" } }), new Set())
 
     expect(database.update.mock.calls[0]?.[0]).toMatchObject({
       descriptions: { "en-US": "Sterling silver", "pl-PL": "" },
@@ -221,7 +221,7 @@ describe("updateProductWithCatalog", () => {
   })
 
   it("replaces the organization and the catalog rows of the edited product", async () => {
-    await updateProductWithCatalog("product-1", catalogInput())
+    await updateProductWithCatalog("product-1", catalogInput(), new Set())
 
     expect(mutations.replaceOrganization).toHaveBeenCalledTimes(1)
     expect(mutations.replaceCatalog).toHaveBeenCalledTimes(1)
@@ -229,7 +229,7 @@ describe("updateProductWithCatalog", () => {
   })
 
   it("does not re-check skus while updating", async () => {
-    await updateProductWithCatalog("product-1", catalogInput())
+    await updateProductWithCatalog("product-1", catalogInput(), new Set())
 
     expect(mutations.findTakenSkus).not.toHaveBeenCalled()
   })

@@ -284,6 +284,7 @@ export const mapProductDetailToFormValues = (product: AdminProductDetail): Produ
         ? createEmptyProductFormValues().simpleVariant
         : {
             compareAtPrice: firstVariant.compareAtPrice === null ? "" : formatCentsToMoneyInput(firstVariant.compareAtPrice),
+            id: firstVariant.id,
             manageInventory: firstVariant.manageInventory,
             price: formatCentsToMoneyInput(firstVariant.price),
             quantity: firstVariant.inventory?.quantityAvailable ?? 0,

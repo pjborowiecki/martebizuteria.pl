@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm"
+import { type SQL, sql } from "drizzle-orm"
 import { type AnySQLiteColumn, integer } from "drizzle-orm/sqlite-core"
 
 export const UUID_STRING_LENGTH = 36
@@ -23,3 +23,6 @@ const MS_PER_SECOND = 1000
 export const isoDayKey = (column: AnySQLiteColumn) => sql<string>`strftime('%Y-%m-%d', ${column} / ${MS_PER_SECOND}, 'unixepoch')`
 
 export const isoMonthKey = (column: AnySQLiteColumn) => sql<string>`strftime('%Y-%m', ${column} / ${MS_PER_SECOND}, 'unixepoch')`
+
+export const notInJsonList = (column: AnySQLiteColumn, values: readonly string[]): SQL =>
+  sql`${column} not in (select value from json_each(${JSON.stringify(values)}))`

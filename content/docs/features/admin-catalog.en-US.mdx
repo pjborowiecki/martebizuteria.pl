@@ -102,6 +102,8 @@ try {
 
 `updateCompleteProduct` additionally rejects a handle already taken by a different product (`ERROR_CODES.CONFLICT` with `DUPLICATE_HANDLE`), calls `assertCatalogSkusAvailable`, and builds an audit diff by reading the product before and after (`extractProductAuditSnapshot` and `buildProductAuditChange` in `product-audit.utils.ts`).
 
+Saving keeps every variant the product already owns under its id. `replaceProductCatalog` (`product.mutations.ts`) runs one D1 batch that deletes only the variants the form dropped, upserts the rest by id, and upserts inventory by variant id, changing `quantityAvailable` and bumping `version` only when the stock actually changed. Order lines, cart lines and stock reservations therefore stay attached to the variants they point at. A variant id is reused only when `updateCompleteProduct` read it from this product, so a forged id never takes over another product's variant. Every multi-row insert is split with `insertRowChunks` to stay within D1's 100 bound parameters per statement.
+
 Every write ends with `scheduleProductCatalogInvalidation()` and a `recordCatalogProduct*Audit` call.
 
 ### The form

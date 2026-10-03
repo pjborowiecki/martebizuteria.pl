@@ -59,12 +59,16 @@ export const deleteOrphanProductByHandle = async (handle: string): Promise<boole
   return true
 }
 
-const persistProductCatalog = async (productId: string, data: z.infer<(typeof productZodSchemas)["catalogUpsertInput"]>): Promise<void> => {
+const persistProductCatalog = async (
+  productId: string,
+  data: z.infer<(typeof productZodSchemas)["catalogUpsertInput"]>,
+  ownedVariantIds: ReadonlySet<string>,
+): Promise<void> => {
   const organizationPayload = prepareOrganizationReplacePayload(productId, data)
   if (organizationPayload !== undefined) {
     await replaceProductOrganization(productId, organizationPayload)
   }
-  await replaceProductCatalog(productId, prepareCatalogReplacePayload(productId, data))
+  await replaceProductCatalog(productId, prepareCatalogReplacePayload(productId, data, ownedVariantIds))
 }
 
 export const insertProductWithCatalog = async (
@@ -76,12 +80,13 @@ export const insertProductWithCatalog = async (
   nextRank++
   await db.insert(product).values(toProductRow(data, id, nextRank))
   await assertCatalogSkusAvailable(data, id)
-  await persistProductCatalog(id, data)
+  await persistProductCatalog(id, data, new Set())
 }
 
 export const updateProductWithCatalog = async (
   id: string,
   catalogInput: z.infer<(typeof productZodSchemas)["catalogUpsertInput"]>,
+  ownedVariantIds: ReadonlySet<string>,
 ): Promise<void> => {
   await db
     .update(product)
@@ -94,5 +99,5 @@ export const updateProductWithCatalog = async (
       titles: normalizeProductAttributeLocaleMapForSave(catalogInput.titles),
     })
     .where(eq(product.id, id))
-  await persistProductCatalog(id, catalogInput)
+  await persistProductCatalog(id, catalogInput, ownedVariantIds)
 }
