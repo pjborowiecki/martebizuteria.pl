@@ -29,6 +29,7 @@ export const useCartAvailability = (): CartAvailabilityState => {
   return {
     hasUnavailableItems: data?.hasUnavailableItems === true,
     isChecking: lines.length > 0 && (isPending || isFetching),
+    isFirstCheck: lines.length > 0 && isPending,
     issues,
     issuesByVariantId,
   }
@@ -41,6 +42,7 @@ const EMPTY_ISSUES: CartAvailabilityIssue[] = []
 interface CartAvailabilityState {
   readonly hasUnavailableItems: boolean
   readonly isChecking: boolean
+  readonly isFirstCheck: boolean
   readonly issues: readonly CartAvailabilityIssue[]
   readonly issuesByVariantId: ReadonlyMap<string, CartAvailabilityIssue>
 }

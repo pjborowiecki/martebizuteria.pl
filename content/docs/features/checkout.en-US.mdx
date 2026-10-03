@@ -38,7 +38,7 @@ useEffect(() => {
 }, [hasStockIssues, isEmpty, navigate])
 ```
 
-Until the basket is hydrated, checked and valid it renders `CheckoutFormSkeleton`. The form itself is wrapped in `ClientOnly` and `Suspense`, because `CheckoutForm` lives in `checkout-form.client.tsx` and imports `@tanstack/react-start/client-only`.
+Until the basket is hydrated, checked once and valid it renders `CheckoutFormSkeleton`. Later re-checks, such as the one the realtime stock invalidation triggers after a session reserves stock, keep the form mounted (`isFirstCheck` is false then); only the pay button waits for them through `isChecking`. The form itself is wrapped in `ClientOnly` and `Suspense`, because `CheckoutForm` lives in `checkout-form.client.tsx` and imports `@tanstack/react-start/client-only`.
 
 ## The four steps
 
@@ -61,7 +61,7 @@ Each step is code-split. `checkout-step-loaders.client.ts` maps each `id` to a `
 
 ```ts
 const form = useForm<CheckoutFormSchema>({
-  defaultValues: {/* every field, with countryCode and billingCountryCode preset to "PL" */},
+  defaultValues: { ...EMPTY_CHECKOUT_VALUES, ...draftValues },
   mode: "onTouched",
   resolver: zodResolver(checkoutSchema),
 })
@@ -80,7 +80,7 @@ interface CheckoutDraftEnvelope {
 }
 ```
 
-`SCHEMA_VERSION` is `1` and `isDraftEnvelope` rejects anything with a different `v`, so an old draft is ignored rather than merged. Every accessor is wrapped in `try`/`catch` and returns `undefined` when storage is unavailable, so the form still works in a private window. `useCheckoutDraftPersistence` restores on mount and saves on every `watch` change; `CheckoutSuccess` calls `clearCheckoutDraft()`.
+`SCHEMA_VERSION` is `1` and `isDraftEnvelope` rejects anything with a different `v`, so an old draft is ignored rather than merged. Every accessor is wrapped in `try`/`catch` and returns `undefined` when storage is unavailable, so the form still works in a private window. The provider reads the draft once into the form's default values (`EMPTY_CHECKOUT_VALUES` presets both country codes to `"PL"`), so every step sees the shopper's details and only the step they can reach from its first render; `useCheckoutDraftPersistence` saves on every `watch` change; `CheckoutSuccess` calls `clearCheckoutDraft()`.
 
 Because it is `sessionStorage`, the draft survives a reload but not a new tab — unlike the basket, which is `localStorage`.
 

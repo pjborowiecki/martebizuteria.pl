@@ -57,7 +57,7 @@ const stepParamToIndex = (param: number): number => param - 1
 
 const stepIndexToParam = (index: number): number => index + 1
 
-const useCheckoutNavigation = (form: UseFormReturn<CheckoutFormSchema>, hydrated: boolean) => {
+const useCheckoutNavigation = (form: UseFormReturn<CheckoutFormSchema>) => {
   const { getValues, trigger } = form
   const search = useSearch({ from: "/checkout" })
   const navigate = useNavigate()
@@ -66,8 +66,7 @@ const useCheckoutNavigation = (form: UseFormReturn<CheckoutFormSchema>, hydrated
   const currentParam = (search as { step?: number }).step ?? 1
   const requestedIndex = Math.max(0, Math.min(stepParamToIndex(currentParam), LAST_STEP_INDEX))
 
-  const reachableIndex = getFurthestReachableStepIndex(getValues())
-  const activeStepIndex = hydrated ? Math.min(requestedIndex, reachableIndex) : requestedIndex
+  const activeStepIndex = Math.min(requestedIndex, getFurthestReachableStepIndex(getValues()))
 
   const onNext = useCallback(
     async (stepId: CheckoutStepId, event?: BaseSyntheticEvent) => {
@@ -115,18 +114,8 @@ const useCheckoutNavigation = (form: UseFormReturn<CheckoutFormSchema>, hydrated
   return { activeStepIndex, isPending, onEdit, onNext }
 }
 
-const useCheckoutDraftPersistence = (form: UseFormReturn<CheckoutFormSchema>): boolean => {
-  const [hydrated, setHydrated] = useState(false)
-  const { getValues, reset, watch } = form
-
+const useCheckoutDraftPersistence = ({ watch }: UseFormReturn<CheckoutFormSchema>): void => {
   useEffect(() => {
-    const draft = loadCheckoutDraft()
-    if (draft !== undefined) {
-      reset({ ...getValues(), ...draft }, { keepDefaultValues: true })
-    }
-
-    setHydrated(true)
-
     const subscription = watch((values) => {
       saveCheckoutDraft(values)
     })
@@ -134,41 +123,18 @@ const useCheckoutDraftPersistence = (form: UseFormReturn<CheckoutFormSchema>): b
     return () => {
       subscription.unsubscribe()
     }
-  }, [getValues, reset, watch])
-
-  return hydrated
+  }, [watch])
 }
 
 export const CheckoutFormProvider = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => {
+  const [draftValues] = useState(loadCheckoutDraft)
   const form = useForm<CheckoutFormSchema>({
-    defaultValues: {
-      address1: "",
-      billingAddress1: "",
-      billingCity: "",
-      billingCountryCode: "PL",
-      billingFirstName: "",
-      billingLastName: "",
-      billingPostalCode: "",
-      city: "",
-      countryCode: "PL",
-      deliveryMethod: "",
-      deliveryMethodType: "",
-      email: "",
-      firstName: "",
-      lastName: "",
-      lockerCity: "",
-      lockerId: "",
-      phone: "",
-      postalCode: "",
-      province: "",
-      sameAsShipping: true,
-      storeLocation: "",
-    },
+    defaultValues: { ...EMPTY_CHECKOUT_VALUES, ...draftValues },
     mode: "onTouched",
     resolver: zodResolver(checkoutSchema),
   })
 
-  const hydrated = useCheckoutDraftPersistence(form)
+  useCheckoutDraftPersistence(form)
 
   const {
     control,
@@ -178,7 +144,7 @@ export const CheckoutFormProvider = ({ children }: Readonly<{ children: ReactNod
     trigger,
   } = form
 
-  const { activeStepIndex, isPending, onEdit, onNext } = useCheckoutNavigation(form, hydrated)
+  const { activeStepIndex, isPending, onEdit, onNext } = useCheckoutNavigation(form)
   const [checkoutSession, setCheckoutSession] = useState<CheckoutSession>()
 
   const value = useMemo(
@@ -203,6 +169,30 @@ export const CheckoutFormProvider = ({ children }: Readonly<{ children: ReactNod
       <div className="flex flex-col gap-2 lg:gap-4">{children}</div>
     </CheckoutFormContext.Provider>
   )
+}
+
+const EMPTY_CHECKOUT_VALUES: CheckoutFormSchema = {
+  address1: "",
+  billingAddress1: "",
+  billingCity: "",
+  billingCountryCode: "PL",
+  billingFirstName: "",
+  billingLastName: "",
+  billingPostalCode: "",
+  city: "",
+  countryCode: "PL",
+  deliveryMethod: "",
+  deliveryMethodType: "",
+  email: "",
+  firstName: "",
+  lastName: "",
+  lockerCity: "",
+  lockerId: "",
+  phone: "",
+  postalCode: "",
+  province: "",
+  sameAsShipping: true,
+  storeLocation: "",
 }
 
 export const useCheckoutForm = (): CheckoutFormContextValue => {
