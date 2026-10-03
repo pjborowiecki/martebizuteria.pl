@@ -87,6 +87,8 @@ export interface ProductCatalogReplacePayload {
   readonly variantRows: (typeof productVariant.$inferInsert)[]
 }
 
+type ProductOptionWithId = ProductOptionDraft & { readonly id: string }
+
 export interface ProductOrganizationReplacePayload {
   readonly categoryRows: (typeof categoryOnProduct.$inferInsert)[]
   readonly collectionRows: (typeof collectionOnProduct.$inferInsert)[]
@@ -512,64 +514,39 @@ const buildVariantPersistRows = (input: CatalogUpsertInput): ProductVariantPersi
   )
 }
 
-const buildOptionValueIdLookup = (
-  normalizedOptions: readonly ProductOptionDraft[],
-  optionRows: readonly {
-    id: string
-  }[],
-  optionValueRows: readonly {
-    id: string
-    optionId: string
-    rank: number
-  }[],
-): Map<string, string> => {
+const buildOptionValueRows = (
+  options: readonly ProductOptionWithId[],
+): Pick<ProductCatalogReplacePayload, "optionValueRows"> & { readonly valueIdByOptionAndKey: Map<string, string> } => {
+  const optionValueRows: ProductCatalogReplacePayload["optionValueRows"] = []
   const valueIdByOptionAndKey = new Map<string, string>()
-  normalizedOptions.forEach((option, optionIndex) => {
-    const optionId = optionRows[optionIndex]?.id
-    if (optionId === undefined) {
-      return
-    }
-    option.values.forEach((value, valueIndex) => {
-      const valueId = optionValueRows.find((row) => row.optionId === optionId && row.rank === valueIndex)?.id
-      if (valueId === undefined) {
-        return
-      }
-
+  for (const option of options) {
+    for (const [rank, value] of option.values.entries()) {
+      const id = value.id ?? uuidv7()
+      optionValueRows.push({ id, labels: normalizeProductAttributeLocaleMapForSave(value.labels), optionId: option.id, rank })
       const labelKey = I18N.SUPPORTED_LOCALES.map((locale) => value.labels[locale].trim()).join("|")
-      valueIdByOptionAndKey.set(`${optionId}|${labelKey}`, valueId)
+      valueIdByOptionAndKey.set(`${option.id}|${labelKey}`, id)
       if (value.id !== undefined) {
-        valueIdByOptionAndKey.set(`${optionId}|${value.id}`, valueId)
+        valueIdByOptionAndKey.set(`${option.id}|${value.id}`, id)
       }
-    })
-  })
+    }
+  }
 
-  return valueIdByOptionAndKey
+  return { optionValueRows, valueIdByOptionAndKey }
 }
 
 export const prepareCatalogReplacePayload = (productId: string, input: CatalogUpsertInput): ProductCatalogReplacePayload => {
   const variantPersistRows = buildVariantPersistRows(input)
-  const normalizedOptions = input.hasVariants ? normalizeOptionDrafts(input.options) : []
-  const optionRows = normalizedOptions.map((option) => ({
+  const options = (input.hasVariants ? normalizeOptionDrafts(input.options) : []).map((option) => ({
     id: option.id ?? uuidv7(),
+    titles: option.titles,
+    values: option.values,
+  }))
+  const optionRows = options.map((option) => ({
+    id: option.id,
     productId,
     titles: normalizeProductAttributeLocaleMapForSave(option.titles),
   }))
-
-  const optionValueRows = normalizedOptions.flatMap((option, optionIndex) => {
-    const optionId = optionRows[optionIndex]?.id
-    if (optionId === undefined) {
-      return []
-    }
-
-    return option.values.map((value, valueIndex) => ({
-      id: value.id ?? uuidv7(),
-      labels: normalizeProductAttributeLocaleMapForSave(value.labels),
-      optionId,
-      rank: valueIndex,
-    }))
-  })
-
-  const valueIdByOptionAndKey = buildOptionValueIdLookup(normalizedOptions, optionRows, optionValueRows)
+  const { optionValueRows, valueIdByOptionAndKey } = buildOptionValueRows(options)
   const variantRows = variantPersistRows.map((variantRow) => ({
     compareAtPrice: variantRow.compareAtPrice,
     id: variantRow.id,

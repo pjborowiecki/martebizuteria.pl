@@ -48,15 +48,12 @@ export const DashboardChartCustomRangeFilter = ({
 
   const isDraftValid = isDateFilterRangeValid(startDate, endDate)
   const handleApply = useCallback(() => {
-    if (!isDraftValid) {
-      return
-    }
     onApply({
       endDate,
       startDate,
     })
     setOpen(false)
-  }, [endDate, isDraftValid, onApply, startDate])
+  }, [endDate, onApply, startDate])
 
   const handleClear = useCallback(() => {
     onClear()

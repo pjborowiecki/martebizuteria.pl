@@ -152,15 +152,17 @@ export class ImagePrefetchService {
     return this.seen.has(src)
   }
   public markSeen(src: string): void {
-    if (!this.seen.has(src)) {
-      this.seen.add(src)
-      if (this.seen.size > this.maxSize) {
-        const oldestEntry = this.seen.values().next().value
-        if (oldestEntry !== undefined) {
-          this.seen.delete(oldestEntry)
-        }
-      }
+    if (this.seen.has(src)) {
+      return
     }
+
+    for (const oldestEntry of this.seen) {
+      if (this.seen.size < this.maxSize) {
+        break
+      }
+      this.seen.delete(oldestEntry)
+    }
+    this.seen.add(src)
   }
 }
 

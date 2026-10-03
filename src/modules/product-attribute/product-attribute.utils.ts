@@ -38,15 +38,13 @@ export const coerceProductAttributeAllowedValues = (value: unknown): ProductAttr
 export const createEmptyProductAttributeLocaleMap = (): ProductAttribute["localeMap"] =>
   Object.fromEntries(I18N.SUPPORTED_LOCALES.map((locale) => [locale, ""]))
 
-const parseSerializedLocaleMap = (value: string): Record<string, unknown> | undefined => {
+const parseSerializedLocaleMap = (value: string): unknown => {
   if (!value.startsWith("{")) {
     return undefined
   }
 
   try {
-    const parsed = productAttributeZodSchemas.rawLocaleMap.safeParse(JSON.parse(value))
-
-    return parsed.success ? parsed.data : undefined
+    return JSON.parse(value)
   } catch {
     return undefined
   }

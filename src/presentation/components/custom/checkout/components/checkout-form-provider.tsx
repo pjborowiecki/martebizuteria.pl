@@ -76,10 +76,6 @@ const useCheckoutNavigation = (form: UseFormReturn<CheckoutFormSchema>, hydrated
       }
 
       const currentStepIndex = CHECKOUT_STEP_DEFINITIONS.findIndex((definition) => definition.id === stepId)
-      if (currentStepIndex === STEP_NOT_FOUND) {
-        return
-      }
-
       const config = CHECKOUT_STEP_DEFINITIONS[currentStepIndex]
       if (config === undefined) {
         return

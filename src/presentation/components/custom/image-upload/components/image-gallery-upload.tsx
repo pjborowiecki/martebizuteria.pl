@@ -72,10 +72,6 @@ export const ImageGalleryUpload = ({
   const moveByOffset = useCallback(
     (id: string, offset: number) => {
       const index = value.findIndex((image) => image.id === id)
-      if (index === -1) {
-        return
-      }
-
       const target = value[index + offset]
       if (target === undefined) {
         return

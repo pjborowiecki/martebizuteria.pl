@@ -29,9 +29,6 @@ const resolveStatValue = (
     case "views": {
       return snapshot.pageViews
     }
-    default: {
-      return snapshot.revenue
-    }
   }
 }
 

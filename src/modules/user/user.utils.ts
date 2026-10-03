@@ -33,18 +33,17 @@ export const resolveAdminCustomerInitials = (name: string): string => {
     .trim()
     .split(/\s+/u)
     .filter((part) => part.length > 0)
-  const [first] = parts
+  const [first, ...rest] = parts
   if (first === undefined) {
     return "?"
   }
 
-  if (parts.length === 1) {
+  const last = rest.at(LAST_NAME_PART_OFFSET)
+  if (last === undefined) {
     return first.slice(0, DOUBLE_INITIALS_LENGTH).toUpperCase()
   }
 
-  const last = parts.at(LAST_NAME_PART_OFFSET)?.slice(0, 1) ?? ""
-
-  return `${first.slice(0, 1)}${last}`.toUpperCase()
+  return `${first.slice(0, 1)}${last.slice(0, 1)}`.toUpperCase()
 }
 
 export const formatAdminCustomerLastActive = (lastActiveAt: DateInput | null | undefined, locale: string): string | undefined =>

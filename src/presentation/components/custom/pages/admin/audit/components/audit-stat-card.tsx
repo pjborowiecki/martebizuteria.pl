@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react"
+import { type JSX } from "react"
 
 import { cn } from "cn"
 import { useFormatter, useTranslations } from "use-intl/react"
@@ -39,6 +39,40 @@ const resolveStatLabelKey = (
   }
 }
 
+const resolveIsActive = ({ activeSeverityFilter, activeTodayFilter, config }: Readonly<IsActiveInput>): boolean => {
+  if (config.key === "total") {
+    return activeSeverityFilter === undefined && !activeTodayFilter
+  }
+
+  if (config.key === "today") {
+    return activeTodayFilter
+  }
+
+  return activeSeverityFilter === config.filterSeverity
+}
+
+const resolveFilterAction = ({ config, isActive, onFilter, onTodayFilter }: Readonly<FilterActionInput>): (() => void) | undefined => {
+  if (config.key === "today") {
+    return onTodayFilter
+  }
+
+  if (onFilter === undefined) {
+    return undefined
+  }
+
+  if (config.key === "total" || isActive) {
+    return () => {
+      onFilter()
+    }
+  }
+
+  const { filterSeverity } = config
+
+  return () => {
+    onFilter(filterSeverity)
+  }
+}
+
 export const AuditStatCard = ({
   activeSeverityFilter,
   activeTodayFilter = false,
@@ -51,50 +85,10 @@ export const AuditStatCard = ({
 }: Readonly<AuditStatCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
-  const { filterSeverity, gradient, icon: Icon, key } = config
-  const isFilterable =
-    (onFilter !== undefined && (filterSeverity !== undefined || key === "total")) || (onTodayFilter !== undefined && key === "today")
-  let isActive = false
-  if (key === "total") {
-    isActive = activeSeverityFilter === undefined && !activeTodayFilter
-  } else if (key === "today") {
-    isActive = activeTodayFilter
-  } else {
-    isActive = filterSeverity !== undefined && activeSeverityFilter === filterSeverity
-  }
-
-  const handleFilterClick = useCallback(() => {
-    if (valuesPending) {
-      return
-    }
-
-    if (key === "today") {
-      onTodayFilter?.()
-
-      return
-    }
-
-    if (onFilter === undefined) {
-      return
-    }
-
-    if (key === "total") {
-      onFilter()
-
-      return
-    }
-
-    if (filterSeverity === undefined) {
-      return
-    }
-
-    if (isActive) {
-      onFilter()
-
-      return
-    }
-    onFilter(filterSeverity)
-  }, [filterSeverity, isActive, key, onFilter, onTodayFilter, valuesPending])
+  const { gradient, icon: Icon, key } = config
+  const isActive = resolveIsActive({ activeSeverityFilter, activeTodayFilter, config })
+  const filterAction = resolveFilterAction({ config, isActive, onFilter, onTodayFilter })
+  const isFilterable = filterAction !== undefined
 
   const cardClassName = cn(
     "h-full gap-0 py-0",
@@ -134,12 +128,25 @@ export const AuditStatCard = ({
         aria-busy={valuesPending}
         disabled={valuesPending}
         className="block h-full w-full cursor-pointer border-0 bg-transparent p-0 text-left shadow-none outline-none focus:outline-none focus-visible:outline-none disabled:cursor-default"
-        onClick={handleFilterClick}
+        onClick={filterAction}
       >
         {content}
       </button>
     </Card>
   )
+}
+
+interface FilterActionInput {
+  readonly config: AuditStatCardConfig
+  readonly isActive: boolean
+  readonly onFilter: AuditStatCardProps["onFilter"]
+  readonly onTodayFilter: AuditStatCardProps["onTodayFilter"]
+}
+
+interface IsActiveInput {
+  readonly activeSeverityFilter: AuditLogSeverity | undefined
+  readonly activeTodayFilter: boolean
+  readonly config: AuditStatCardConfig
 }
 
 interface AuditStatCardProps {

@@ -118,12 +118,6 @@ const useProductMutationErrorHandler = (setError: UseFormSetError<ProductFormVal
           message: t("toast.duplicateHandle"),
           type: "manual",
         })
-      } else if (isDuplicateSkuMutationError(error)) {
-        toast.error(t("toast.errorTitle"), {
-          description: t("toast.duplicateSku"),
-        })
-
-        return
       }
       toast.error(t("toast.errorTitle"), {
         description: resolveProductMutationErrorDescription(error, t),

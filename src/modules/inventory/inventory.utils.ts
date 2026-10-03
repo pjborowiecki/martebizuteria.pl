@@ -29,16 +29,14 @@ export const reserveInventoryForItems = async (items: ReserveInventoryItem[]): P
     }),
   )
 
-  const failures = outcomes.filter((outcome) => !outcome.reserved)
-  if (failures.length > 0) {
+  const firstFailure = outcomes.find((outcome) => !outcome.reserved)
+  if (firstFailure !== undefined) {
     const reserved = outcomes.filter((outcome) => outcome.reserved).map((outcome) => outcome.item)
     await releaseInventoryForItems(reserved).catch((error: unknown) => {
       console.error("Failed to roll back partial inventory reservation:", error)
     })
 
-    const [firstFailure] = failures
-
-    throw new Error(`Inventory reservation failed for ${firstFailure?.item.title ?? "item"}. Stock changed or unavailable.`)
+    throw new Error(`Inventory reservation failed for ${firstFailure.item.title}. Stock changed or unavailable.`)
   }
 }
 

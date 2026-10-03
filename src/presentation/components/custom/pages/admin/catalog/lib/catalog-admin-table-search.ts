@@ -20,12 +20,7 @@ const appendCatalogLocaleMapSearchParts = (parts: string[], map: unknown): void 
   }
 }
 
-const appendDateSearchPart = (parts: string[], value: Date | string | number | null | undefined): void => {
-  if (value === null || value === undefined || value === "") {
-    return
-  }
-
-  const date = value instanceof Date ? value : new Date(value)
+const appendDateSearchPart = (parts: string[], date: Date): void => {
   if (Number.isNaN(date.getTime())) {
     return
   }

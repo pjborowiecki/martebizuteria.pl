@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react"
+import { type JSX, useCallback, useMemo } from "react"
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Heart, ShoppingBag, Trash2 } from "lucide-react"
@@ -69,21 +69,23 @@ const WishlistCard = ({ item }: Readonly<{ item: Wishlist["product"] }>): JSX.El
     )
   }, [item.productId, queryClient, remove, t])
 
-  const handleAddToCart = useCallback(() => {
-    if (item.variantId === undefined) {
-      return
-    }
+  const addToCart = useMemo(() => {
+    const { variantId } = item
 
-    addItem({
-      id: item.variantId,
-      image: item.thumbnail ?? "",
-      price,
-      rawPrice: item.priceMinorUnits,
-      slug: item.handle,
-      title: item.title,
-      variantId: item.variantId,
-      variantTitle: item.variantTitle ?? "",
-    })
+    return variantId === undefined || !item.available || !item.inStock
+      ? undefined
+      : () => {
+          addItem({
+            id: variantId,
+            image: item.thumbnail ?? "",
+            price,
+            rawPrice: item.priceMinorUnits,
+            slug: item.handle,
+            title: item.title,
+            variantId,
+            variantTitle: item.variantTitle ?? "",
+          })
+        }
   }, [addItem, item, price])
 
   return (
@@ -114,8 +116,8 @@ const WishlistCard = ({ item }: Readonly<{ item: Wishlist["product"] }>): JSX.El
       <div className="mt-3 flex gap-2">
         <Button
           className="h-9 flex-1 gap-2 text-[11px] tracking-[0.12em] uppercase"
-          disabled={!item.available || !item.inStock || item.variantId === undefined}
-          onClick={handleAddToCart}
+          disabled={addToCart === undefined}
+          onClick={addToCart}
           size="sm"
         >
           <ShoppingBag className="size-3.5" strokeWidth={1.5} />

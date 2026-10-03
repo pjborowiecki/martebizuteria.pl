@@ -47,7 +47,7 @@ export const OrderMetaStrip = ({ order }: Readonly<OrderMetaStripProps>): JSX.El
         </div>
         <div>
           <p className={LABEL_CLASS}>{t("orderDetail.meta.payment")}</p>
-          <Badge className={`mt-1 text-[11px] ${paymentStyle?.className ?? ""}`} variant={paymentStyle?.variant ?? "outline"}>
+          <Badge className={`mt-1 text-[11px] ${paymentStyle?.className ?? ""}`} variant={paymentStyle?.variant}>
             {t(`orderDetail.payment.${order.paymentUiKey}`)}
           </Badge>
         </div>

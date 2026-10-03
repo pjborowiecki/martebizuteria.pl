@@ -44,11 +44,7 @@ const getDeliveryDescription = ({
   format: Formatter
   methods: readonly HelperMethod[]
   t: Translator
-}>): string | undefined => {
-  if (methods.length === 0) {
-    return undefined
-  }
-
+}>): string => {
   const lowestPrice = Math.min(...methods.map((m) => m.price))
   if (lowestPrice === 0) {
     return t("deliverySubsteps.free")

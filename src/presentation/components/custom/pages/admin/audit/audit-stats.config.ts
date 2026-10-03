@@ -4,12 +4,17 @@ import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constan
 
 export type AuditStatKey = "errors" | "today" | "total" | "warnings"
 
-export interface AuditStatCardConfig {
-  readonly filterSeverity?: AuditLogSeverity
+interface AuditStatCardAppearance {
   readonly gradient: string
   readonly icon: LucideIcon
-  readonly key: AuditStatKey
 }
+
+export type AuditStatCardConfig = AuditStatCardAppearance &
+  (
+    | { readonly filterSeverity: AuditLogSeverity; readonly key: "errors" | "warnings" }
+    | { readonly filterSeverity?: never; readonly key: "today" }
+    | { readonly filterSeverity?: never; readonly key: "total" }
+  )
 
 export const AUDIT_STAT_CARDS: readonly AuditStatCardConfig[] = [
   {

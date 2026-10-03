@@ -28,10 +28,8 @@ export const OrderShipDialog = ({ isPending, onConfirm, onOpenChange, open }: Re
         return
       }
 
-      if (!nextOpen) {
-        setTrackingNumber("")
-        setTrackingUrl("")
-      }
+      setTrackingNumber("")
+      setTrackingUrl("")
       onOpenChange(nextOpen)
     },
     [isPending, onOpenChange],

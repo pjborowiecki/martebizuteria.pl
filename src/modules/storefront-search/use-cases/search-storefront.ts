@@ -5,7 +5,6 @@ import zod from "zod/v4"
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import {
   STOREFRONT_SEARCH_LIMIT_PER_GROUP,
   STOREFRONT_SEARCH_MIN_LENGTH,
@@ -34,15 +33,11 @@ export const searchStorefront = createServerFn({ method: "GET" })
   .validator((input: StorefrontSearchInput) => storefrontSearchInputSchema.parse(input))
   .handler(async ({ data: { query, locale } }): Promise<StorefrontSearch["results"]> => {
     const limit = STOREFRONT_SEARCH_LIMIT_PER_GROUP
-    const term = normalizeAdminSearchTerm(query)
-    if (term === undefined) {
-      return { categories: [], collections: [], products: [] }
-    }
 
     const [products, categories, collections] = await Promise.all([
-      searchStorefrontProducts(term, locale, limit),
-      searchStorefrontCategories(term, locale, limit),
-      searchStorefrontCollections(term, locale, limit),
+      searchStorefrontProducts(query, locale, limit),
+      searchStorefrontCategories(query, locale, limit),
+      searchStorefrontCollections(query, locale, limit),
     ])
 
     return { categories, collections, products }

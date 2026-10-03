@@ -162,10 +162,6 @@ const refineOrganizationRelations = (data: zod.infer<typeof catalogUpsertBaseSch
 }
 
 const refineSimpleProductPrice = (data: zod.infer<typeof catalogUpsertBaseSchema>, ctx: zod.RefinementCtx): void => {
-  if (data.hasVariants) {
-    return
-  }
-
   const simple = data.simpleVariant
   if (simple === undefined) {
     return

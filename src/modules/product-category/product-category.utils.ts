@@ -159,14 +159,11 @@ export const collectDescendantCategoryIds = (
 
   const ids: string[] = []
   const stack = [rootId]
-  while (stack.length > 0) {
-    const current = stack.pop()
-    if (current !== undefined) {
-      ids.push(current)
-      const children = childrenByParent.get(current)
-      if (children !== undefined) {
-        stack.push(...children)
-      }
+  for (let current = stack.pop(); current !== undefined; current = stack.pop()) {
+    ids.push(current)
+    const children = childrenByParent.get(current)
+    if (children !== undefined) {
+      stack.push(...children)
     }
   }
 

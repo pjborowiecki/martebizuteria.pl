@@ -36,9 +36,5 @@ export const buildAdminProductSearchCondition = (search: string | undefined): SQ
       .where(sql`${productVariant.sku} like ${pattern} escape '\\'`),
   )
 
-  if (textMatch === undefined) {
-    return skuMatch
-  }
-
   return or(textMatch, skuMatch)
 }

@@ -108,19 +108,12 @@ export const DataGridRow = <TData extends RowData>({
   const cellsByColumnId = row.getAllCellsByColumnId()
 
   const handleDragEnter = useCallback(() => {
-    if (reorderEnabled) {
-      rowReorder.onRowDragEnter(row.id)
-    }
-  }, [reorderEnabled, rowReorder, row.id])
+    rowReorder?.onRowDragEnter(row.id)
+  }, [rowReorder, row.id])
 
-  const handleDragOver = useCallback(
-    (event: DragEvent<HTMLTableRowElement>) => {
-      if (reorderEnabled) {
-        event.preventDefault()
-      }
-    },
-    [reorderEnabled],
-  )
+  const handleDragOver = useCallback((event: DragEvent<HTMLTableRowElement>) => {
+    event.preventDefault()
+  }, [])
 
   const handleDrop = useCallback(
     (event: DragEvent<HTMLTableRowElement>) => {

@@ -88,13 +88,11 @@ export const DataGridTable = <TData extends RowData>({
 
   const resolvedTableWidth = useMemo(() => {
     if (layoutColumnWidthsSum !== undefined) {
-      const measuredFloor = hasMeasuredContainer ? tableClientWidth : 0
-
-      return Math.max(tableMinWidth, layoutColumnWidthsSum, measuredFloor)
+      return Math.max(tableMinWidth, layoutColumnWidthsSum, tableClientWidth)
     }
 
     return Math.max(tableMinWidth, tableWidth)
-  }, [hasMeasuredContainer, layoutColumnWidthsSum, tableClientWidth, tableMinWidth, tableWidth])
+  }, [layoutColumnWidthsSum, tableClientWidth, tableMinWidth, tableWidth])
 
   const tableStyle = useMemo(
     () => dataTableContentStyle({ containerWidthPx: tableClientWidth, layoutWidthPx: resolvedTableWidth, minWidthPx: tableMinWidth }),
