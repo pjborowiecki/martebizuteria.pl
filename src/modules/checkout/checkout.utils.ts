@@ -13,6 +13,7 @@ import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
 import { type OrderTotals } from "~/src/modules/order/order.totals"
 import { payment } from "~/src/modules/payment/payment.schema"
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 
 export interface PrepareCreateCheckoutInput {
   readonly checkoutValues: CheckoutFormSchema
@@ -349,6 +350,7 @@ export const prepareFulfillCheckoutBatch = (
             db.insert(orderItem).values(
               chunk.map((line) => ({
                 orderId,
+                productId: sql<string>`(select ${productVariant.productId} from ${productVariant} where ${productVariant.id} = ${line.variantId})`,
                 quantity: line.qty,
                 subtotal: line.price * line.qty,
                 thumbnail: line.imageUrl,
