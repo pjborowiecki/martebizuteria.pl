@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { CART_LINES_MAX } from "~/src/modules/cart/cart.constants"
 import { checkoutSchema } from "~/src/modules/checkout/checkout.zod"
 
 const MIN_ITEMS_COUNT = 1
@@ -10,7 +11,7 @@ export const cartItemSchema = z.object({
   id: z.string().min(MIN_CART_FIELD_LENGTH),
   image: z.string(),
   price: z.string(),
-  qty: z.number().positive(),
+  qty: z.number().int().positive(),
   rawPrice: z.number().nonnegative(),
   slug: z.string().min(MIN_CART_FIELD_LENGTH),
   title: z.string(),
@@ -20,12 +21,12 @@ export const cartItemSchema = z.object({
 
 export const createCheckoutSessionInputSchema = z.object({
   checkoutValues: checkoutSchema,
-  items: z.array(cartItemSchema).min(MIN_ITEMS_COUNT),
+  items: z.array(cartItemSchema).min(MIN_ITEMS_COUNT).max(CART_LINES_MAX),
 })
 
 export const updateCheckoutSessionInputSchema = z.object({
   checkoutValues: checkoutSchema,
-  items: z.array(cartItemSchema).min(MIN_ITEMS_COUNT),
+  items: z.array(cartItemSchema).min(MIN_ITEMS_COUNT).max(CART_LINES_MAX),
   sessionId: z.string().min(MIN_ITEMS_COUNT),
 })
 

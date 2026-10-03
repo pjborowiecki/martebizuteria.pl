@@ -54,7 +54,7 @@ export const createCheckoutSessionFn = createServerFn({ method: "POST" })
   })
 ```
 
-`stripe.actions.schemas.ts` defines the payload: `{ checkoutValues: checkoutSchema, items: cartItemSchema[] }` with at least one item, plus `sessionId` for the update variant. `checkoutSchema` comes from `src/modules/checkout/checkout.zod.ts`, so the address, delivery and billing rules are validated in exactly one place.
+`stripe.actions.schemas.ts` defines the payload: `{ checkoutValues: checkoutSchema, items: cartItemSchema[] }` with at least one item and at most `CART_LINES_MAX` (`src/modules/cart/cart.constants.ts`), plus `sessionId` for the update variant. `CART_LINES_MAX` is `STRIPE_CHECKOUT_LINE_ITEMS_MAX` minus the shipping line, because a Checkout Session in payment mode takes at most 100 line items, and every quantity must be a whole number. `checkoutSchema` comes from `src/modules/checkout/checkout.zod.ts`, so the address, delivery and billing rules are validated in exactly one place.
 
 ## Creating a session
 

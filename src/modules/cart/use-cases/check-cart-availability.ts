@@ -4,16 +4,17 @@ import zod from "zod/v4"
 
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
-import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
+import { CART_LINES_MAX, CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { getAvailabilityByVariantIds } from "~/src/modules/inventory/inventory.accessors"
+import { PRODUCT_VARIANT_COLUMN_LENGTH } from "~/src/modules/product-variant/product-variant.constants"
 
 const cartAvailabilityLineSchema = zod.object({
   qty: zod.number().int().min(1),
-  variantId: zod.string().min(1),
+  variantId: zod.string().min(1).max(PRODUCT_VARIANT_COLUMN_LENGTH.id),
 })
 
 const cartAvailabilityInputSchema = zod.object({
-  lines: zod.array(cartAvailabilityLineSchema),
+  lines: zod.array(cartAvailabilityLineSchema).max(CART_LINES_MAX),
 })
 
 export type CartAvailabilityLine = zod.infer<typeof cartAvailabilityLineSchema>

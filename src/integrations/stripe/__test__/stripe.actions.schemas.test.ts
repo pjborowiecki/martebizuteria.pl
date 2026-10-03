@@ -6,6 +6,8 @@ import {
   updateCheckoutSessionInputSchema,
 } from "~/src/integrations/stripe/stripe.actions.schemas"
 
+import { CART_LINES_MAX } from "~/src/modules/cart/cart.constants"
+
 const checkoutValues = {
   address1: "ul. Mokotowska 12/4",
   city: "Warszawa",
@@ -29,6 +31,8 @@ const cartItem = {
   variantId: "variant-1",
   variantTitle: "Rozmiar M",
 }
+
+const cartLines = (count: number) => Array.from({ length: count }, (_, index) => ({ ...cartItem, id: `line-${String(index)}` }))
 
 const firstIssue = (result: { success: boolean; error?: { issues: readonly { message: string; path: readonly PropertyKey[] }[] } }) =>
   result.error?.issues[0]
@@ -63,6 +67,10 @@ describe("cartItemSchema", () => {
   it("rejects a quantity that is not a number", () => {
     expect(cartItemSchema.safeParse({ ...cartItem, qty: "2" }).success).toBe(false)
   })
+
+  it("rejects a fractional quantity, which no stock row or Stripe line can hold", () => {
+    expect(cartItemSchema.safeParse({ ...cartItem, qty: 1.5 }).success).toBe(false)
+  })
 })
 
 describe("createCheckoutSessionInputSchema", () => {
@@ -80,6 +88,14 @@ describe("createCheckoutSessionInputSchema", () => {
 
     expect(result.success).toBe(false)
     expect(firstIssue(result)?.path).toStrictEqual(["items"])
+  })
+
+  it("accepts the largest cart Stripe can carry beside the shipping line, and no more", () => {
+    const largest = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: cartLines(CART_LINES_MAX) })
+    const oversized = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: cartLines(CART_LINES_MAX + 1) })
+
+    expect(largest.success).toBe(true)
+    expect(firstIssue(oversized)?.path).toStrictEqual(["items"])
   })
 
   it("propagates a checkout validation key from the nested form schema", () => {

@@ -81,7 +81,7 @@ const issues = lines.flatMap((line) => {
 return { hasUnavailableItems: issues.length > 0, issues }
 ```
 
-Wariant bez wiersza w `inventory` liczy się jako `0` dostępnych sztuk.
+Wariant bez wiersza w `inventory` liczy się jako `0` dostępnych sztuk. Endpoint jest publiczny, więc jego wejście jest ograniczone: najwyżej `CART_LINES_MAX` linii, całkowite ilości od jednej sztuki i identyfikatory wariantów nie dłuższe niż zapisany identyfikator.
 
 `checkCartAvailabilityQuery(lines)` jest `enabled` tylko wtedy, gdy jest co najmniej jedna linia, i używa `staleTime: 0`, więc sprawdzenie jest świeże przy każdym montowaniu. Klucz to `[...CART_QUERY_KEYS.AVAILABILITY, lines]` — linie są częścią klucza, więc zmiana ilości wywołuje ponowne zapytanie. `CART_QUERY_KEYS.AVAILABILITY` to `["cart", "availability"]` i występuje w `STOREFRONT_REALTIME_QUERY_PREFIXES`, więc zmiana stanu wypchnięta z panelu ponawia sprawdzenie w otwartych kartach.
 

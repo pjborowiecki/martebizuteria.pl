@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
+import { CART_LINES_MAX, CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { checkCartAvailability, checkCartAvailabilityQuery } from "~/src/modules/cart/use-cases/check-cart-availability"
 
 const captured = vi.hoisted((): { validate?: (input: unknown) => unknown } => ({}))
@@ -128,6 +128,12 @@ describe("checkCartAvailability", () => {
 })
 
 describe("checkCartAvailability input validation", () => {
+  it("accepts the largest cart checkout can carry", () => {
+    const lines = Array.from({ length: CART_LINES_MAX }, (_, index) => ({ qty: 1, variantId: `variant-${String(index)}` }))
+
+    expect(captured.validate?.({ lines })).toStrictEqual({ lines })
+  })
+
   it("accepts well formed lines", () => {
     expect(captured.validate?.({ lines: [{ qty: 2, variantId: "variant-a" }] })).toStrictEqual({
       lines: [{ qty: 2, variantId: "variant-a" }],
@@ -139,6 +145,11 @@ describe("checkCartAvailability input validation", () => {
     ["a negative quantity", { lines: [{ qty: -1, variantId: "variant-a" }] }],
     ["a fractional quantity", { lines: [{ qty: 1.5, variantId: "variant-a" }] }],
     ["an empty variant id", { lines: [{ qty: 1, variantId: "" }] }],
+    ["a variant id longer than any stored id", { lines: [{ qty: 1, variantId: "v".repeat(37) }] }],
+    [
+      "more lines than checkout can carry",
+      { lines: Array.from({ length: CART_LINES_MAX + 1 }, (_, index) => ({ qty: 1, variantId: `variant-${String(index)}` })) },
+    ],
     ["a missing lines array", {}],
     ["lines that are not an array", { lines: "variant-a" }],
   ])("rejects %s", (_name, input) => {
