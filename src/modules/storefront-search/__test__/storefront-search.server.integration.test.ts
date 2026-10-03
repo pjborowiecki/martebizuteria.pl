@@ -237,6 +237,14 @@ describe("searchStorefrontCategories", () => {
     expect(results).toHaveLength(1)
     expect(results[0]).toMatchObject({ handle: "pierscionki", name: "Rings", type: "category" })
   })
+
+  it("leaves a draft category out", async () => {
+    await expect(searchStorefrontCategories("ukryte", "pl-PL", LIMIT)).resolves.toStrictEqual([])
+  })
+
+  it("has nothing to search for in pure punctuation", async () => {
+    await expect(searchStorefrontCategories("!!!", "pl-PL", LIMIT)).resolves.toStrictEqual([])
+  })
 })
 
 describe("searchStorefrontCollections", () => {
@@ -245,5 +253,13 @@ describe("searchStorefrontCollections", () => {
 
     expect(results).toHaveLength(1)
     expect(results[0]).toMatchObject({ handle: "zloto-585", name: "Złoto 585", type: "collection" })
+  })
+
+  it("leaves a draft collection out", async () => {
+    await expect(searchStorefrontCollections("archiwum", "pl-PL", LIMIT)).resolves.toStrictEqual([])
+  })
+
+  it("has nothing to search for in pure punctuation", async () => {
+    await expect(searchStorefrontCollections("...", "pl-PL", LIMIT)).resolves.toStrictEqual([])
   })
 })

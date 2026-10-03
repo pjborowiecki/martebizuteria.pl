@@ -18,10 +18,15 @@ import {
   recordCatalogProductCreatedAudit,
   recordCatalogProductDeletedAudit,
   recordCatalogProductUpdatedAudit,
+  recordContentPageUpdatedAudit,
   recordCustomerCartAbandonedAudit,
   recordCustomerCartItemAddedAudit,
   recordCustomerPageViewedAudit,
   recordCustomerRegisteredAudit,
+  recordDiscountCreatedAudit,
+  recordDiscountDeletedAudit,
+  recordDiscountRedeemedAudit,
+  recordDiscountUpdatedAudit,
   recordEmailFailedAudit,
   recordEmailSentAudit,
   recordOrderCancelledAudit,
@@ -503,6 +508,71 @@ describe("email delivery audit events", () => {
       resourceId: "ada@example.test",
       severity: "error",
       target: "ada@example.test",
+    })
+  })
+})
+
+describe("recordContentPageUpdatedAudit", () => {
+  it("files the edited page under content against the admin making the request", () => {
+    recordContentPageUpdatedAudit("privacy-policy")
+
+    expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.CONTENT_PAGE_UPDATED,
+      category: "content",
+      detail: undefined,
+      metadata: undefined,
+      resourceId: "privacy-policy",
+      severity: "info",
+      target: "privacy-policy",
+    })
+  })
+})
+
+const DISCOUNT_ADMIN_CASES: readonly TargetAuditCase[] = [
+  { action: AUDIT_LOG_ACTION.DISCOUNT_CREATED, name: "a new discount code", record: recordDiscountCreatedAudit, severity: "info" },
+  { action: AUDIT_LOG_ACTION.DISCOUNT_UPDATED, name: "an edited discount code", record: recordDiscountUpdatedAudit, severity: "info" },
+  { action: AUDIT_LOG_ACTION.DISCOUNT_DELETED, name: "a deleted discount code", record: recordDiscountDeletedAudit, severity: "warning" },
+]
+
+describe("discount administration audit events", () => {
+  it.each(DISCOUNT_ADMIN_CASES)("files $name under settings against the requesting admin", ({ action, record: recordAudit, severity }) => {
+    recordAudit("SPRING")
+
+    expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action,
+      category: "settings",
+      detail: undefined,
+      metadata: undefined,
+      resourceId: "SPRING",
+      severity,
+      target: "SPRING",
+    })
+  })
+
+  it.each(DISCOUNT_ADMIN_CASES)("keeps the discount id and detail handed to $name", ({ record: recordAudit }) => {
+    recordAudit("SPRING", { detail: "10% off", resourceId: "discount-1" })
+
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: "10% off", resourceId: "discount-1", target: "SPRING" }),
+    )
+  })
+})
+
+describe("recordDiscountRedeemedAudit", () => {
+  it("records the redemption against the order as the system, with the amount saved as detail", () => {
+    recordDiscountRedeemedAudit("order-9", { detail: "2000" })
+
+    expect(record.scheduleAuditLogFromRequest).not.toHaveBeenCalled()
+    expect(record.scheduleSystemAuditLog).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.DISCOUNT_REDEEMED,
+      category: "orders",
+      detail: "2000",
+      metadata: undefined,
+      resourceId: "order-9",
+      severity: "info",
+      target: "order-9",
     })
   })
 })

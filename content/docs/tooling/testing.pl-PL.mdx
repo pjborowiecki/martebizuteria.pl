@@ -136,14 +136,14 @@ Dostawca `v8`, raportery `text`, `html` i `json-summary`, wynik w `coverage/`, c
 
 | Metryka    | Próg |
 | ---------- | ---- |
-| Instrukcje | 72   |
-| Linie      | 71   |
-| Funkcje    | 68   |
-| Gałęzie    | 69   |
+| Instrukcje | 100  |
+| Linie      | 100  |
+| Funkcje    | 100  |
+| Gałęzie    | 100  |
 
-`thresholds.autoUpdate` ma wartość `false`, więc liczby nie rosną same z siebie — ich podniesienie to świadoma zmiana w `vite.config.ts`.
+Pokryta jest każda instrukcja, gałąź, funkcja i linia, więc wszystkie cztery progi wynoszą 100 i każdy nowy kod przychodzi razem ze swoimi testami. `thresholds.autoUpdate` ma wartość `false`.
 
-Pokrycie obejmuje `src/**/*.{ts,tsx}` i wyklucza testy, katalogi `__test__`, `*.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` (vendorowane prymitywy) oraz `src/platform/testing/**`.
+Pokrycie obejmuje `src/**/*.{ts,tsx}` i wyklucza testy, katalogi `__test__`, `*.d.ts`, `src/routeTree.gen.ts`, `src/integrations/**/migrations/**` (wynik introspekcji drizzle-kit, który pomijają też lint i formatowanie), `src/presentation/components/shadcn/**` (vendorowane prymitywy) oraz `src/platform/testing/**`.
 
 Testuj rzeczywiste zachowanie. Jeśli jakaś gałąź jest nieosiągalna, usuń gałąź, zamiast podstawiać atrapę globalnej wartości, żeby do niej dotrzeć.
 

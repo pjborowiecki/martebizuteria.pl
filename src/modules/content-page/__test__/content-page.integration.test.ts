@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query"
 import { isNotFound } from "@tanstack/react-router"
 import type * as ReactStart from "@tanstack/react-start"
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
@@ -51,12 +52,17 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migrations"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { CONTENT_PAGE_HANDLE } from "~/src/modules/content-page/content-page.constants"
+import {
+  CONTENT_PAGE_HANDLE,
+  CONTENT_PAGE_MUTATION_KEYS,
+  CONTENT_PAGE_QUERY_KEYS,
+  CONTENT_PAGE_QUERY_STALE_MS,
+} from "~/src/modules/content-page/content-page.constants"
 import { type ContentPage } from "~/src/modules/content-page/content-page.types"
-import { getAdminContentPage } from "~/src/modules/content-page/use-cases/get-admin-content-page"
-import { getAdminContentPages } from "~/src/modules/content-page/use-cases/get-admin-content-pages"
+import { getAdminContentPage, getAdminContentPageQuery } from "~/src/modules/content-page/use-cases/get-admin-content-page"
+import { getAdminContentPages, getAdminContentPagesQuery } from "~/src/modules/content-page/use-cases/get-admin-content-pages"
 import { getContentPage } from "~/src/modules/content-page/use-cases/get-content-page"
-import { updateContentPage } from "~/src/modules/content-page/use-cases/update-content-page"
+import { updateContentPage, updateContentPageMutation } from "~/src/modules/content-page/use-cases/update-content-page"
 
 const SEEDED_AT = new Date("2026-09-29T12:00:00.000Z")
 
@@ -191,5 +197,62 @@ describe("updateContentPage", () => {
   ])("rejects %s in any locale", async (_case, overrides) => {
     await expect(updateContentPage({ data: edit(overrides) })).rejects.toThrow()
     expect(effects.invalidate).not.toHaveBeenCalled()
+  })
+})
+
+describe("getAdminContentPage for a page with no row", () => {
+  it("answers not found so the editor shows its missing page state", async () => {
+    sqlite.exec("delete from content_page where handle = 'privacy-policy'")
+
+    await expect(getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY } })).rejects.toSatisfy(isNotFound)
+  })
+})
+
+describe("updateContentPage for a page with no row", () => {
+  it("reports a conflict and announces nothing", async () => {
+    sqlite.exec("delete from content_page where handle = 'exchanges-and-returns'")
+
+    await expect(updateContentPage({ data: edit() })).rejects.toMatchObject({ code: ERROR_CODES.CONFLICT })
+    expect(effects.invalidate).not.toHaveBeenCalled()
+    expect(effects.audit).not.toHaveBeenCalled()
+  })
+})
+
+describe("content page admin cache options", () => {
+  it("caches each page under its own handle key", () => {
+    const options = getAdminContentPageQuery(CONTENT_PAGE_HANDLE.PRIVACY_POLICY)
+
+    expect(options.queryKey).toStrictEqual([...CONTENT_PAGE_QUERY_KEYS.ADMIN.BY_HANDLE, CONTENT_PAGE_HANDLE.PRIVACY_POLICY])
+    expect(options.staleTime).toBe(CONTENT_PAGE_QUERY_STALE_MS)
+  })
+
+  it("loads the page the editor asked for through the cache", async () => {
+    const page = await new QueryClient().query(getAdminContentPageQuery(CONTENT_PAGE_HANDLE.PRIVACY_POLICY))
+
+    expect(page.handle).toBe(CONTENT_PAGE_HANDLE.PRIVACY_POLICY)
+    expect(page.titles).toStrictEqual(both("Polityka prywatności", "Privacy policy"))
+  })
+
+  it("caches the page list under the shared admin key", () => {
+    const options = getAdminContentPagesQuery()
+
+    expect(options.queryKey).toStrictEqual(CONTENT_PAGE_QUERY_KEYS.ADMIN.ALL)
+    expect(options.staleTime).toBe(CONTENT_PAGE_QUERY_STALE_MS)
+  })
+
+  it("loads every page for the list through the cache", async () => {
+    const pages = await new QueryClient().query(getAdminContentPagesQuery())
+
+    expect(pages.map((page) => page.handle)).toStrictEqual([CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, CONTENT_PAGE_HANDLE.PRIVACY_POLICY])
+  })
+
+  it("saves an edit through the mutation the editor runs", async () => {
+    expect(updateContentPageMutation.mutationKey).toStrictEqual(CONTENT_PAGE_MUTATION_KEYS.UPDATE)
+
+    await updateContentPageMutation.mutationFn?.(edit(), { client: new QueryClient(), meta: undefined })
+
+    const page = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS } })
+    expect(page.titles).toStrictEqual(both("Zwroty", "Returns"))
+    expect(effects.audit).toHaveBeenCalledExactlyOnceWith(CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS)
   })
 })

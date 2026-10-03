@@ -1,6 +1,6 @@
 import { constructTable, createColumnHelper, tableFeatures } from "@tanstack/react-table"
 import { storeReactivityBindings } from "@tanstack/table-core/store-reactivity-bindings"
-import { describe, expect, it } from "vite-plus/test"
+import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import {
@@ -46,6 +46,10 @@ const columnById = (table: ReturnType<typeof createGrid>, columnId: string) => {
   return column
 }
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 describe("getDataGridLayoutHeaders", () => {
   it("drops the filter-only column from the rendered header row", () => {
     expect(getDataGridLayoutHeaders(createGrid()).map((header) => header.column.id)).toStrictEqual(["select", "id", "title", "actions"])
@@ -61,6 +65,13 @@ describe("getDataGridLayoutHeaders", () => {
   it("renders no header row at all once every column is hidden", () => {
     const table = createGrid()
     table.setColumnVisibility({ actions: false, email: false, id: false, select: false, title: false })
+
+    expect(getDataGridLayoutHeaders(table)).toStrictEqual([])
+  })
+
+  it("renders no header row for a table that reports no header groups", () => {
+    const table = createGrid()
+    vi.spyOn(table, "getHeaderGroups").mockReturnValue([])
 
     expect(getDataGridLayoutHeaders(table)).toStrictEqual([])
   })
@@ -126,6 +137,22 @@ describe("getDataGridPinOffset", () => {
         tableLayout: undefined,
       }),
     ).toBe(248)
+  })
+
+  it("counts only the laid-out start-pinned columns for a pinned column that is not laid out itself", () => {
+    const table = createGrid({ start: ["select", "email"] })
+
+    expect(
+      getDataGridPinOffset({ column: columnById(table, "email"), columnSizing: {}, isPinned: "start", table, tableLayout: undefined }),
+    ).toBe(48)
+  })
+
+  it("counts only the laid-out end-pinned columns for a pinned column that is not laid out itself", () => {
+    const table = createGrid({ end: ["email", "actions"] })
+
+    expect(
+      getDataGridPinOffset({ column: columnById(table, "email"), columnSizing: {}, isPinned: "end", table, tableLayout: undefined }),
+    ).toBe(64)
   })
 
   it("leaves the last end-pinned column flush with the trailing edge", () => {

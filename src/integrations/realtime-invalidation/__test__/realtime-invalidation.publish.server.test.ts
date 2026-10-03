@@ -5,6 +5,7 @@ import {
   scheduleAdminOrdersInvalidation,
   scheduleCategoryCatalogInvalidation,
   scheduleCollectionCatalogInvalidation,
+  scheduleContentPageInvalidation,
   scheduleProductAttributeCatalogInvalidation,
   scheduleProductCatalogInvalidation,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
@@ -22,6 +23,7 @@ import {
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
+import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
 import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
@@ -139,6 +141,16 @@ describe("catalog invalidation scheduling", () => {
     )
   })
 
+  it("refreshes the edited page for admins and the storefront page readers alike", async () => {
+    scheduleContentPageInvalidation()
+    await Promise.all(background.scheduled)
+
+    expect(topicsFor("admin")).toStrictEqual(
+      serialized([[...CONTENT_PAGE_QUERY_KEYS.ADMIN.ALL], [...CONTENT_PAGE_QUERY_KEYS.ADMIN.BY_HANDLE]]),
+    )
+    expect(topicsFor("storefront")).toStrictEqual(serialized([[...CONTENT_PAGE_QUERY_KEYS.BY_HANDLE]]))
+  })
+
   it.each([
     [
       "attributes",
@@ -159,6 +171,7 @@ describe("catalog invalidation scheduling", () => {
     ["product", scheduleProductCatalogInvalidation],
     ["category", scheduleCategoryCatalogInvalidation],
     ["collection", scheduleCollectionCatalogInvalidation],
+    ["content page", scheduleContentPageInvalidation],
     ["attribute", scheduleProductAttributeCatalogInvalidation],
     ["customers", scheduleAdminCustomersInvalidation],
     ["orders", scheduleAdminOrdersInvalidation],

@@ -8,8 +8,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
+import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+
+import { CUSTOMER_ACCOUNT_QUERY_KEYS, type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+
+import { APP_NAME } from "~/src/presentation/branding/app"
+
+interface OrdersSearch {
+  readonly filter: CustomerAccountOrderFilter
+  readonly page: number
+}
+
+interface OrdersRouteOptions {
+  readonly loader?: (args: { context: { locale: SupportedLocale; queryClient: QueryClient }; deps: OrdersSearch }) => Promise<unknown>
+  readonly loaderDeps?: (args: { search: OrdersSearch }) => OrdersSearch
+}
+
+const route = vi.hoisted(() => ({ options: undefined as OrdersRouteOptions | undefined }))
+
+const listedOrdersQueries = vi.hoisted(() => [] as unknown[])
 
 const searchState: { current: { filter: string; page: number } } = { current: { filter: "all", page: 1 } }
 
@@ -23,12 +41,20 @@ vi.mock("@tanstack/react-router", async () => {
 
   return {
     ...actual,
-    createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => searchState.current }),
+    createFileRoute: () => (options: OrdersRouteOptions) => {
+      route.options = options
+
+      return { options, useSearch: () => searchState.current }
+    },
   }
 })
 vi.mock("~/src/modules/customer-account/use-cases/list-customer-orders", () => ({
-  listCustomerOrdersQuery: () => ({
-    queryFn: () => Promise.resolve(pageRef.current),
+  listCustomerOrdersQuery: (input: unknown) => ({
+    queryFn: () => {
+      listedOrdersQueries.push(input)
+
+      return Promise.resolve(pageRef.current)
+    },
     queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.ORDERS,
   }),
 }))
@@ -275,5 +301,40 @@ describe("account orders paging", () => {
 
     expect(screen.getByText("Page 3 of 3")).toBeInTheDocument()
     expect(screen.queryByRole("link", { name: "Next" })).toBeNull()
+  })
+})
+
+const routeOptions = () => {
+  const { loader, loaderDeps } = route.options ?? {}
+  if (loader === undefined || loaderDeps === undefined) {
+    throw new Error("the account orders route registered no loader and deps")
+  }
+
+  return { loader, loaderDeps }
+}
+
+describe("account orders loader", () => {
+  beforeEach(() => {
+    listedOrdersQueries.length = 0
+  })
+
+  it("reloads the page whenever the filter or the page in the url changes", () => {
+    expect(routeOptions().loaderDeps({ search: { filter: "shipped", page: 2 } })).toStrictEqual({ filter: "shipped", page: 2 })
+  })
+
+  it("preloads the page of orders the url asks for", async () => {
+    pageRef.current = ordersPage({ orders: [orderSummary()], page: 2, total: 11 })
+    const queryClient = new QueryClient()
+
+    await routeOptions().loader({ context: { locale: "en-US", queryClient }, deps: { filter: "shipped", page: 2 } })
+
+    expect(listedOrdersQueries).toStrictEqual([{ filter: "shipped", page: 2 }])
+    expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.ORDERS)).toStrictEqual(pageRef.current)
+  })
+
+  it("titles the page after the orders section of the account", async () => {
+    await expect(
+      routeOptions().loader({ context: { locale: "en-US", queryClient: new QueryClient() }, deps: { filter: "all", page: 1 } }),
+    ).resolves.toMatchObject({ title: `Orders | ${APP_NAME}` })
   })
 })

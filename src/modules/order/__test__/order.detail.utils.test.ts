@@ -90,6 +90,21 @@ describe("mapAdminOrderDetailAddress", () => {
     })
   })
 
+  it("carries the second line and province and leaves out the phone and postal code that were never captured", () => {
+    expect(
+      mapAdminOrderDetailAddress({ ...addressRow, address2: "lok. 4", phone: null, postalCode: null, province: "mazowieckie" }),
+    ).toStrictEqual({
+      city: "Warszawa",
+      countryCode: "PL",
+      line1: "ul. Mokotowska 12/4",
+      line2: "lok. 4",
+      name: "Anna Kowalska",
+      phone: undefined,
+      postalCode: undefined,
+      province: "mazowieckie",
+    })
+  })
+
   it("falls back to a placeholder when no name was captured", () => {
     expect(mapAdminOrderDetailAddress({ ...addressRow, firstName: null, lastName: null })?.name).toBe("—")
   })

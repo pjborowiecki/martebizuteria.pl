@@ -8,6 +8,7 @@ import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/rend
 
 import { ADMIN_AUDIT_LOG_PAGE_SIZE, AUDIT_LOG_TABLE_COLUMN_ID } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
+import { listAuditLogsQuery } from "~/src/modules/audit-log/use-cases/list-audit-logs"
 
 const { listFn } = vi.hoisted(() => ({ listFn: vi.fn<(input: unknown) => Promise<unknown>>() }))
 
@@ -164,6 +165,25 @@ describe("useAuditDataGrid page request", () => {
       expect(result.current.table.getRowModel().rows.map((row) => row.id)).toStrictEqual(["log-9"])
     })
     expect(result.current.table.getPageCount()).toBe(3)
+  })
+
+  it("shows the first page the route loader cached without a total and leaves the page count unknown", () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } } })
+    queryClient.setQueryData(
+      listAuditLogsQuery({ page: 1, pageSize: ADMIN_AUDIT_LOG_PAGE_SIZE }).queryKey,
+      pageWithoutTotal([auditRow({ id: "log-seeded" })]),
+    )
+    const { result } = renderHook(() => useAuditDataGrid(), {
+      wrapper: ({ children }: Readonly<{ children: ReactNode }>) => (
+        <TestProviders queryClient={queryClient} router={createTestRouter()}>
+          {children}
+        </TestProviders>
+      ),
+    })
+
+    expect(result.current.table.getRowModel().rows.map((row) => row.id)).toStrictEqual(["log-seeded"])
+    expect(result.current.table.getPageCount()).toBe(0)
+    expect(listFn).not.toHaveBeenCalled()
   })
 })
 

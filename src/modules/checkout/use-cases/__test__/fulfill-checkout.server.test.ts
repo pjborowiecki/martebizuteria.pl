@@ -28,10 +28,10 @@ const {
         snapshot: Record<string, unknown>,
       ) => { orderId: string; statements: string[] }
     >(),
-  recordDiscountRedeemedAudit: vi.fn(),
+  recordDiscountRedeemedAudit: vi.fn<(orderId: string, options: { detail: string }) => void>(),
   recordDiscountRedemption: vi.fn<() => Promise<boolean>>(),
   runDrizzleBatch: vi.fn<(statements: readonly string[]) => Promise<void>>(),
-  scheduleBackgroundWork: vi.fn(),
+  scheduleBackgroundWork: vi.fn<(work: Promise<unknown>) => void>(),
 }))
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch }))
@@ -80,7 +80,17 @@ const checkoutRow = {
   shippingAddress: shippingAddressRow,
 }
 
+const discountedCheckoutRow = {
+  ...checkoutRow,
+  discount: { id: "disc-1", maxDiscountAmount: null, type: "percentage", value: 10 },
+  discountId: "disc-1",
+}
+
 const batchInput = () => prepareFulfillCheckoutBatch.mock.calls[0]?.[1]
+
+const scheduledWork = async (): Promise<void> => {
+  await scheduleBackgroundWork.mock.calls[0]?.[0]
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -183,6 +193,26 @@ describe("fulfillCheckout", () => {
       orderId: "order-1",
       userId: null,
     })
+  })
+
+  it("audits the redemption with the amount saved once the code is spent", async () => {
+    getCheckoutForFulfillment.mockResolvedValue(discountedCheckoutRow)
+    await fulfillCheckout({ ...input, paidAmount: 19_500 })
+
+    await scheduledWork()
+
+    expect(recordDiscountRedeemedAudit).toHaveBeenCalledExactlyOnceWith("order-1", { detail: "2000" })
+  })
+
+  it("does not audit a redemption the discount ledger refused to record", async () => {
+    recordDiscountRedemption.mockResolvedValue(false)
+    getCheckoutForFulfillment.mockResolvedValue(discountedCheckoutRow)
+    await fulfillCheckout({ ...input, paidAmount: 19_500 })
+
+    await scheduledWork()
+
+    expect(recordDiscountRedemption).toHaveBeenCalledOnce()
+    expect(recordDiscountRedeemedAudit).not.toHaveBeenCalled()
   })
 
   it("does not spend a code when the checkout carries none", async () => {

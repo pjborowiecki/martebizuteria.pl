@@ -285,6 +285,14 @@ describe("account emails", () => {
     expect(sentEmail()?.subject).toBe(accountDeletedPolish.subject)
     expect(sentProp("storefrontUrl")).toBe(`${APP_URL}/${LOCALE}`)
   })
+
+  it("sends the goodbye note to the address of an account once it is deleted", async () => {
+    await auth.options.user.deleteUser.afterDelete(createdUser)
+
+    expect(sentEmail()?.to).toBe(createdUser.email)
+    expect(sentEmail()?.subject).toBe(accountDeletedPolish.subject)
+    expect(sentProp("name")).toBe(createdUser.name)
+  })
 })
 
 describe("delivery reporting", () => {

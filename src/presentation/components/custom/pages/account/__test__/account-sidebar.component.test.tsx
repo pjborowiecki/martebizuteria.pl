@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { createTestRouter, renderWithProviders } from "~/src/platform/testing/lib/render"
 
 const { signOut, toastError } = vi.hoisted(() => ({
-  signOut: vi.fn<() => Promise<{ error?: { message: string } }>>(),
+  signOut: vi.fn<() => Promise<{ error?: { message?: string } }>>(),
   toastError: vi.fn<(message: string) => void>(),
 }))
 
@@ -103,8 +103,19 @@ describe("AccountSidebar", () => {
     expect(screen.getByRole("button", { name: "Sign Out" })).toBeEnabled()
   })
 
+  it("still reports a failed sign out when the auth server gives no reason", async () => {
+    signOut.mockResolvedValue({ error: {} })
+    renderWithProviders(<AccountSidebar />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Sign Out" }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith("We could not sign you out. Please try again.")
+    })
+  })
+
   it("stops a second sign out while the first is still running", async () => {
-    const inFlight = Promise.withResolvers<{ error?: { message: string } }>()
+    const inFlight = Promise.withResolvers<{ error?: { message?: string } }>()
     signOut.mockReturnValue(inFlight.promise)
     renderWithProviders(<AccountSidebar />)
 

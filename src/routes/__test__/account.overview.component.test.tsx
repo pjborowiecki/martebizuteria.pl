@@ -86,7 +86,10 @@ const renderOverview = async () => {
   return rendered
 }
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 beforeEach(() => {
   overviewRef.current = overview()
@@ -148,6 +151,26 @@ describe("account overview activity feed", () => {
 
     expect(screen.getByText("Added Aurora to cart")).toBeInTheDocument()
     expect(screen.getByText("Signed in successfully")).toBeInTheDocument()
+  })
+})
+
+describe("account overview activity icons", () => {
+  it("falls back to the parcel icon for an activity kind it has no icon of its own for", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    overviewRef.current = overview({
+      activity: [
+        activityItem({ actionKey: "loginSuccess", params: {} }),
+        activityItem({ actionKey: "orderReleased", createdAt: new Date("2026-03-15T10:00:00.000Z") }),
+      ],
+    })
+    await renderOverview()
+
+    const feed = screen.getByText("Recent Activity").closest("section")
+    if (feed === null) {
+      throw new Error("the overview rendered no activity section")
+    }
+
+    expect(Array.from(feed.querySelectorAll("svg"), (icon) => icon.classList.contains("lucide-package"))).toStrictEqual([false, true])
   })
 })
 

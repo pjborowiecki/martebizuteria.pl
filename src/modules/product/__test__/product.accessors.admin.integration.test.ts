@@ -1,17 +1,28 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { sqlite } = await vi.hoisted(async () => {
+const { database, sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
-  return { sqlite: new DatabaseSync(":memory:") }
+  return { database: { dropsCountRows: false }, sqlite: new DatabaseSync(":memory:") }
 })
 
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
   const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
+  const client = new Proxy(createTestD1Database(sqlite), {
+    get: (target, property, receiver) => {
+      if (property === "prepare") {
+        return (query: string) =>
+          target.prepare(database.dropsCountRows && query.startsWith("select count(") ? `select * from (${query}) where 0` : query)
+      }
+      const value: unknown = Reflect.get(target, property, receiver)
 
-  return { db: drizzle(createTestD1Database(sqlite), { schema }) }
+      return value
+    },
+  })
+
+  return { db: drizzle(client, { schema }) }
 })
 
 const { attributeOnProduct } = await import("~/src/modules/attribute-on-product/attribute-on-product.schema")
@@ -145,6 +156,7 @@ const seedCatalog = (): void => {
 const PAGE = { limit: 10, offset: 0 }
 
 beforeEach(() => {
+  database.dropsCountRows = false
   createTables(sqlite, TABLES)
   seedCatalog()
 })
@@ -408,5 +420,16 @@ describe("getAdminProductsFilteredList", () => {
     expect(first?.categories.map((link) => link.productCategory.titles["en-US"])).toStrictEqual(["rings"])
     expect(first?.collections.map((link) => link.productCollection.titles["en-US"])).toStrictEqual(["sale"])
     expect(first?.attributes.map((link) => link.productAttribute.titles["en-US"])).toStrictEqual(["Material"])
+  })
+})
+
+describe("getAdminProductsPage without a count row", () => {
+  it("still lists the page and reports a zero total", async () => {
+    database.dropsCountRows = true
+
+    const page = await getAdminProductsPage(PAGE)
+
+    expect(idsOf(page.rows)).toStrictEqual(["p1", "p3", "p4", "p2"])
+    expect(page.total).toBe(0)
   })
 })

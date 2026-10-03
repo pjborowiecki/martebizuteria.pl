@@ -100,4 +100,26 @@ describe("newsletter unsubscribe loader", () => {
     await expect(load("/_storefront/newsletter/unsubscribe")).resolves.toMatchObject({ result: "invalid" })
     expect(calls.unsubscribe).not.toHaveBeenCalled()
   })
+
+  it("passes the unsubscribed address through for the page copy", async () => {
+    calls.unsubscribe.mockResolvedValue({ email: "anna@example.com", result: "alreadyDone" })
+
+    await expect(load("/_storefront/newsletter/unsubscribe", "token-456")).resolves.toMatchObject({
+      email: "anna@example.com",
+      result: "alreadyDone",
+    })
+  })
+
+  it("titles the page from the message catalogue", async () => {
+    await expect(load("/_storefront/newsletter/unsubscribe", "token-456")).resolves.toMatchObject({
+      description: "Unsubscribe description",
+      title: "M'Arte | Unsubscribe",
+    })
+  })
+
+  it("keys the loader on the token so a new link is spent on its own", () => {
+    expect(captured.get("/_storefront/newsletter/unsubscribe")?.loaderDeps?.({ search: { token: "token-9" } })).toStrictEqual({
+      token: "token-9",
+    })
+  })
 })

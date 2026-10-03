@@ -12,10 +12,14 @@ interface DocsPageMeta {
   readonly title: string
 }
 
+interface DocsLoaderContext {
+  readonly params: { readonly _splat?: string }
+}
+
 interface DocsRouteDefinition {
   readonly component?: () => JSX.Element
   readonly head?: unknown
-  readonly loader?: unknown
+  readonly loader?: (context: DocsLoaderContext) => Promise<DocsLoaderData>
   readonly staticData?: { readonly namespaces?: readonly string[] }
   readonly wrapInSuspense?: boolean
 }
@@ -32,6 +36,11 @@ const routing = vi.hoisted((): DocsRouting => ({
   loaderData: { current: { sections: [] } },
 }))
 
+const docs = vi.hoisted(() => ({
+  loadDocsNavigation: vi.fn<() => Promise<{ readonly sections: readonly DocsNavigationSection[] }>>(),
+  loadDocsPage: vi.fn<(splat?: string) => Promise<DocsPageMeta>>(),
+}))
+
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouter>()
 
@@ -45,6 +54,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     },
   }
 })
+vi.mock("~/src/integrations/fumadocs/fumadocs.docs", () => docs)
 vi.mock("~/src/presentation/components/custom/pages/docs/docs-sidebar", () => ({
   DocsSidebar: (): JSX.Element => <nav data-testid="docs-sidebar" />,
 }))
@@ -79,6 +89,15 @@ const routeAt = (path: string): DocsRouteDefinition => {
   return options
 }
 
+const loadAt = (path: string, params: DocsLoaderContext["params"] = {}): Promise<DocsLoaderData> => {
+  const { loader } = routeAt(path)
+  if (loader === undefined) {
+    throw new Error(`the route at ${path} registered no loader`)
+  }
+
+  return loader({ params })
+}
+
 const renderRoute = (path: string, loaderData: DocsLoaderData) => {
   const { component: Component } = routeAt(path)
   if (Component === undefined) {
@@ -89,7 +108,10 @@ const renderRoute = (path: string, loaderData: DocsLoaderData) => {
   return renderWithProviders(<Component />)
 }
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
 
 describe("documentation layout", () => {
   it("keeps the storefront navigation and footer around the documentation area", () => {
@@ -112,6 +134,35 @@ describe("documentation layout", () => {
 
     expect(route.loader).toBeTypeOf("function")
     expect(route.staticData).toStrictEqual({ namespaces: ["pages.docs"] })
+  })
+
+  it("hands the sidebar the sections of the documentation tree", async () => {
+    docs.loadDocsNavigation.mockResolvedValue({ sections: SECTIONS })
+
+    await expect(loadAt("/docs")).resolves.toStrictEqual({ sections: SECTIONS })
+  })
+})
+
+describe("documentation page loaders", () => {
+  it("loads the documentation root for the index route", async () => {
+    docs.loadDocsPage.mockResolvedValue(PAGE_META)
+
+    await expect(loadAt("/docs/")).resolves.toStrictEqual(PAGE_META)
+    expect(docs.loadDocsPage).toHaveBeenCalledExactlyOnceWith()
+  })
+
+  it("loads the page the splat names, with the title and description its head needs", async () => {
+    const theme: DocsPageMeta = { description: "Colour and type tokens", path: "ui/theme.en-US.mdx", title: "Theme" }
+    docs.loadDocsPage.mockResolvedValue(theme)
+
+    await expect(loadAt("/docs/$", { _splat: "ui/theme" })).resolves.toStrictEqual(theme)
+    expect(docs.loadDocsPage).toHaveBeenCalledExactlyOnceWith("ui/theme")
+  })
+
+  it("lets a missing page reject the load so the router can show not found", async () => {
+    docs.loadDocsPage.mockRejectedValue({ isNotFound: true })
+
+    await expect(loadAt("/docs/$", { _splat: "nowhere" })).rejects.toStrictEqual({ isNotFound: true })
   })
 })
 

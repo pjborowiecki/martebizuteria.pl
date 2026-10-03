@@ -75,6 +75,20 @@ describe("GalleryAddTile", () => {
     expect(input).toHaveValue("")
   })
 
+  it("reports nothing for a change that carries no file list", () => {
+    const onFiles = vi.fn<(files: readonly File[]) => void>()
+    const { container } = renderWithProviders(<GalleryAddTile disabled={false} isUploading={false} onFiles={onFiles} />)
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')
+    if (input === null) {
+      throw new Error("expected a hidden file input")
+    }
+
+    fireEvent.change(input, { target: { files: null } })
+
+    expect(onFiles).not.toHaveBeenCalled()
+    expect(input).toHaveValue("")
+  })
+
   it("reports files dropped onto the tile", () => {
     const onFiles = vi.fn<(files: readonly File[]) => void>()
     renderWithProviders(<GalleryAddTile disabled={false} isUploading={false} onFiles={onFiles} />)

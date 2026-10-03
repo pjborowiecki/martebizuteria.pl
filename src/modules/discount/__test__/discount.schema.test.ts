@@ -1,7 +1,9 @@
 import { getTableConfig } from "drizzle-orm/sqlite-core"
 import { describe, expect, it } from "vite-plus/test"
 
-import { discount } from "~/src/modules/discount/discount.schema"
+import { discount, discountRedemption } from "~/src/modules/discount/discount.schema"
+import { order } from "~/src/modules/order/order.schema"
+import { user } from "~/src/modules/user/user.schema"
 
 const config = getTableConfig(discount)
 
@@ -101,6 +103,67 @@ describe("discount table", () => {
     expect(indexes).toStrictEqual([
       { columns: ["code"], name: "discount_code_idx", unique: false },
       { columns: ["is_active"], name: "discount_isActive_idx", unique: false },
+    ])
+  })
+})
+
+const redemptionConfig = getTableConfig(discountRedemption)
+
+const redemptionColumnByName = new Map(redemptionConfig.columns.map((column) => [column.name, column]))
+
+describe("discount_redemption table", () => {
+  it("maps to the discount_redemption table name", () => {
+    expect(redemptionConfig.name).toBe("discount_redemption")
+  })
+
+  it("generates an id when the caller supplies none", () => {
+    const id = redemptionColumnByName.get("id")
+
+    expect(id?.primary).toBe(true)
+    expect(typeof id?.defaultFn?.()).toBe("string")
+  })
+
+  it("requires the discount, the shopper email and the amount taken off", () => {
+    expect(redemptionColumnByName.get("discount_id")?.notNull).toBe(true)
+    expect(redemptionColumnByName.get("email")?.notNull).toBe(true)
+    expect(redemptionColumnByName.get("amount")?.notNull).toBe(true)
+  })
+
+  it("lets a redemption outlive its order link and its account", () => {
+    expect(redemptionColumnByName.get("order_id")?.notNull).toBe(false)
+    expect(redemptionColumnByName.get("user_id")?.notNull).toBe(false)
+  })
+
+  it("removes redemptions with their discount or order but keeps them when the account goes", () => {
+    const references = redemptionConfig.foreignKeys.map((foreignKey) => {
+      const reference = foreignKey.reference()
+
+      return {
+        columns: reference.columns.map((column) => column.name),
+        foreignColumns: reference.foreignColumns.map((column) => column.name),
+        foreignTable: getTableConfig(reference.foreignTable).name,
+        onDelete: foreignKey.onDelete,
+      }
+    })
+
+    expect(references).toStrictEqual([
+      { columns: ["discount_id"], foreignColumns: ["id"], foreignTable: getTableConfig(discount).name, onDelete: "cascade" },
+      { columns: ["order_id"], foreignColumns: ["id"], foreignTable: getTableConfig(order).name, onDelete: "cascade" },
+      { columns: ["user_id"], foreignColumns: ["id"], foreignTable: getTableConfig(user).name, onDelete: "set null" },
+    ])
+  })
+
+  it("allows one redemption per order so a replayed webhook cannot spend a code twice", () => {
+    const indexes = redemptionConfig.indexes.map((entry) => ({
+      columns: entry.config.columns.map((column) => ("name" in column ? column.name : column)),
+      name: entry.config.name,
+      unique: entry.config.unique,
+    }))
+
+    expect(indexes).toStrictEqual([
+      { columns: ["discount_id"], name: "discount_redemption_discountId_idx", unique: false },
+      { columns: ["discount_id", "email"], name: "discount_redemption_discountId_email_idx", unique: false },
+      { columns: ["order_id"], name: "discount_redemption_orderId_unique", unique: true },
     ])
   })
 })

@@ -1,6 +1,7 @@
+import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { NEWSLETTER_MUTATION_KEYS, NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_MUTATION_KEYS, NEWSLETTER_QUERY_KEYS, NEWSLETTER_QUERY_STALE_MS } from "~/src/modules/newsletter/newsletter.constants"
 
 import { getOwnNewsletterSubscription, getOwnNewsletterSubscriptionQuery } from "../get-own-newsletter-subscription"
 import { unsubscribeOwnNewsletter, unsubscribeOwnNewsletterMutation } from "../unsubscribe-own-newsletter"
@@ -57,6 +58,24 @@ describe("getOwnNewsletterSubscription", () => {
   it("is cached under its own key", () => {
     expect(getOwnNewsletterSubscriptionQuery().queryKey).toStrictEqual(NEWSLETTER_QUERY_KEYS.OWN_SUBSCRIPTION)
   })
+
+  it("keeps the status fresh for the newsletter window", () => {
+    expect(getOwnNewsletterSubscriptionQuery().staleTime).toBe(NEWSLETTER_QUERY_STALE_MS)
+  })
+
+  it("fetches the caller's status through the server function", async () => {
+    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "pending" })
+
+    await expect(
+      getOwnNewsletterSubscriptionQuery().queryFn?.({
+        client: new QueryClient(),
+        meta: undefined,
+        queryKey: NEWSLETTER_QUERY_KEYS.OWN_SUBSCRIPTION,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toStrictEqual({ status: "pending" })
+    expect(accessors.getSubscriberByEmail).toHaveBeenCalledWith("anna@example.com")
+  })
 })
 
 describe("unsubscribeOwnNewsletter", () => {
@@ -90,5 +109,16 @@ describe("unsubscribeOwnNewsletter", () => {
 
   it("is keyed so the account page can track it", () => {
     expect(unsubscribeOwnNewsletterMutation.mutationKey).toStrictEqual(NEWSLETTER_MUTATION_KEYS.UNSUBSCRIBE_OWN)
+  })
+
+  it("unsubscribes the caller through the mutation the account page runs", async () => {
+    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "confirmed" })
+
+    await expect(
+      unsubscribeOwnNewsletterMutation.mutationFn?.(undefined, { client: new QueryClient(), meta: undefined }),
+    ).resolves.toStrictEqual({
+      unsubscribed: true,
+    })
+    expect(accessors.updateSubscriberById).toHaveBeenCalledWith("sub-1", expect.objectContaining({ status: "unsubscribed" }))
   })
 })

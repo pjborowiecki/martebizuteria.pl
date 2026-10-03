@@ -14,7 +14,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-import { getCheckoutById, getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
+import { getCheckoutById, getCheckoutEmailContext, getCheckoutForFulfillment } from "~/src/modules/checkout/checkout.accessors"
 
 const CREATED_AT = Date.UTC(2026, 0, 10)
 
@@ -23,6 +23,7 @@ beforeEach(() => {
     drop table if exists checkout;
     drop table if exists address;
     drop table if exists delivery_method;
+    drop table if exists discount;
 
     create table address (
       id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
@@ -32,6 +33,12 @@ beforeEach(() => {
     create table delivery_method (
       id text primary key, api_service_code text not null, courier_id text not null, description text,
       is_active integer not null default 1, name text not null, price integer not null, type text not null,
+      created_at integer not null, updated_at integer not null
+    );
+    create table discount (
+      id text primary key, code text not null, description text, ends_at integer, is_active integer not null default 1,
+      max_discount_amount integer, min_order_total integer, per_customer_limit integer, starts_at integer, type text not null,
+      usage_count integer not null default 0, usage_limit integer, value integer not null,
       created_at integer not null, updated_at integer not null
     );
     create table checkout (
@@ -50,6 +57,12 @@ beforeEach(() => {
     insert into checkout (id, billing_address_id, cart_id, customer_note, delivery_method_id, email, locker_id, shipping_address_id, status, user_id, created_at, updated_at) values
       ('chk-full', 'adr-bill', 'cart-1', 'Please gift wrap', 'dm-locker', 'anna@example.com', 'WAW01A', 'adr-ship', 'completed', 'user-1', ${CREATED_AT}, ${CREATED_AT}),
       ('chk-bare', null, null, null, null, 'guest@example.com', null, null, 'pending', null, ${CREATED_AT}, ${CREATED_AT});
+
+    insert into discount (id, code, type, value, created_at, updated_at) values
+      ('disc-spring', 'SPRING', 'percentage', 10, ${CREATED_AT}, ${CREATED_AT});
+
+    insert into checkout (id, billing_address_id, billing_company_name, billing_nip, customer_note, delivery_method_id, discount_id, email, locker_id, shipping_address_id, status, created_at, updated_at) values
+      ('chk-business', 'adr-bill', 'Pracownia Złotnicza sp. z o.o.', '5260001246', 'Invoice please', 'dm-locker', 'disc-spring', 'firma@example.com', 'WAW01A', 'adr-ship', 'pending', ${CREATED_AT}, ${CREATED_AT});
   `)
 })
 
@@ -120,5 +133,73 @@ describe("getCheckoutEmailContext", () => {
 
   it("returns nothing for a checkout that does not exist", async () => {
     await expect(getCheckoutEmailContext("chk-missing")).resolves.toBeUndefined()
+  })
+})
+
+describe("getCheckoutForFulfillment", () => {
+  it("returns only what the order snapshot copies from the checkout", async () => {
+    const snapshot = await getCheckoutForFulfillment("chk-business")
+
+    expect(Object.keys(snapshot ?? {}).toSorted()).toStrictEqual([
+      "billingAddress",
+      "billingCompanyName",
+      "billingNip",
+      "customerNote",
+      "deliveryMethod",
+      "deliveryMethodId",
+      "discount",
+      "discountId",
+      "lockerId",
+      "shippingAddress",
+    ])
+  })
+
+  it("carries the invoice details, the note and the locker the shopper entered", async () => {
+    await expect(getCheckoutForFulfillment("chk-business")).resolves.toMatchObject({
+      billingCompanyName: "Pracownia Złotnicza sp. z o.o.",
+      billingNip: "5260001246",
+      customerNote: "Invoice please",
+      deliveryMethodId: "dm-locker",
+      discountId: "disc-spring",
+      lockerId: "WAW01A",
+    })
+  })
+
+  it("joins only the delivery price, which the order total is computed from", async () => {
+    const snapshot = await getCheckoutForFulfillment("chk-business")
+
+    expect(snapshot?.deliveryMethod).toStrictEqual({ price: 1299 })
+  })
+
+  it("joins the discount the shopper applied so the order can spend it", async () => {
+    const snapshot = await getCheckoutForFulfillment("chk-business")
+
+    expect(snapshot?.discount).toMatchObject({ code: "SPRING", id: "disc-spring", isActive: true, type: "percentage", value: 10 })
+  })
+
+  it("joins the shipping and billing addresses the order will keep", async () => {
+    const snapshot = await getCheckoutForFulfillment("chk-business")
+
+    expect(snapshot?.shippingAddress).toMatchObject({ address1: "ul. Mokotowska 12/4", city: "Warszawa", postalCode: "00-640" })
+    expect(snapshot?.billingAddress).toMatchObject({ address1: "ul. Firmowa 1", city: "Kraków", postalCode: "30-001" })
+  })
+
+  it("leaves every join empty for a checkout that carries none of them", async () => {
+    await expect(getCheckoutForFulfillment("chk-bare")).resolves.toStrictEqual({
+      billingAddress: null,
+      billingCompanyName: null,
+      billingNip: null,
+      customerNote: null,
+      deliveryMethod: null,
+      deliveryMethodId: null,
+      discount: null,
+      discountId: null,
+      lockerId: null,
+      shippingAddress: null,
+    })
+  })
+
+  it("returns nothing for a checkout that does not exist", async () => {
+    await expect(getCheckoutForFulfillment("chk-missing")).resolves.toBeUndefined()
   })
 })

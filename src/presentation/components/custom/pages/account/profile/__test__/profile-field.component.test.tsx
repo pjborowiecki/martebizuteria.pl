@@ -2,7 +2,7 @@ import { type JSX } from "react"
 
 import { cleanup, screen } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
-import { useForm } from "react-hook-form"
+import { type FieldErrors, useForm } from "react-hook-form"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -14,6 +14,7 @@ import { type EditableField } from "~/src/presentation/components/custom/pages/a
 
 interface HarnessProps {
   readonly editing: boolean
+  readonly errors: FieldErrors<CustomerAccount["profileForm"]>
   readonly field: EditableField
   readonly onCancel: (field: EditableField) => void
   readonly onEdit: (field: EditableField) => void
@@ -21,8 +22,8 @@ interface HarnessProps {
   readonly values: CustomerAccount["profileForm"]
 }
 
-const Harness = ({ editing, field, onCancel, onEdit, onSave, values }: HarnessProps): JSX.Element => {
-  const { control } = useForm<CustomerAccount["profileForm"]>({ defaultValues: values })
+const Harness = ({ editing, errors, field, onCancel, onEdit, onSave, values }: HarnessProps): JSX.Element => {
+  const { control } = useForm<CustomerAccount["profileForm"]>({ defaultValues: values, errors })
 
   return (
     <ProfileField
@@ -46,7 +47,14 @@ const renderField = (overrides: Partial<HarnessProps> = {}) => {
   }
 
   renderWithProviders(
-    <Harness editing={false} field="name" values={{ name: "Anna Kowalska", phone: "+48123456789" }} {...handlers} {...overrides} />,
+    <Harness
+      editing={false}
+      errors={{}}
+      field="name"
+      values={{ name: "Anna Kowalska", phone: "+48123456789" }}
+      {...handlers}
+      {...overrides}
+    />,
   )
 
   return handlers
@@ -114,6 +122,29 @@ describe("ProfileField", () => {
     await userEvent.type(input, "Anna Nowak")
 
     expect(input).toHaveValue("Anna Nowak")
+  })
+
+  it("explains a validation error in the shopper's language and ties it to the input", () => {
+    renderField({ editing: true, errors: { name: { message: "nameRequired", type: "too_small" } } })
+
+    const message = screen.getByText("Please enter your name.")
+
+    expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true")
+    expect(screen.getByRole("textbox")).toHaveAttribute("aria-describedby", message.id)
+  })
+
+  it("falls back to a generic message for an error it has no translation for", () => {
+    renderField({ editing: true, errors: { name: { message: "server exploded", type: "server" } } })
+
+    expect(screen.getByText("We could not save that value.")).toBeInTheDocument()
+    expect(screen.queryByText("server exploded")).toBeNull()
+  })
+
+  it("describes a valid field by nothing but its label", () => {
+    renderField()
+
+    expect(screen.getByRole("textbox")).not.toHaveAttribute("aria-describedby")
+    expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "false")
   })
 
   it("edits the phone field through its own name", async () => {

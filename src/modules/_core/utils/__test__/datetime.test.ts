@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { formatRelativeFromNow, toCalendarDate } from "~/src/modules/_core/utils/datetime"
+import { coerceNumber, formatRelativeFromNow, formatTimestamp, toCalendarDate } from "~/src/modules/_core/utils/datetime"
 
 const NOW = new Date(2024, 5, 15, 12, 0, 0)
 
@@ -49,5 +49,41 @@ describe("formatRelativeFromNow", () => {
     const at = new Date(NOW.getTime() - 8 * 86_400_000)
 
     expect(formatRelativeFromNow(at, "en-US")).toBe("Jun 7, 2024")
+  })
+})
+
+describe("formatTimestamp", () => {
+  const SECOND_PRECISION = new Date(2024, 5, 15, 9, 5, 7)
+
+  it("prints the date and the time to the second in the Polish storefront locale by default", () => {
+    expect(formatTimestamp(SECOND_PRECISION)).toBe("15 cze 2024, 09:05:07")
+  })
+
+  it("prints in the locale it is given", () => {
+    expect(formatTimestamp(SECOND_PRECISION, "en-GB")).toBe("15 Jun 2024, 09:05:07")
+  })
+
+  it("accepts an ISO string as well as a date", () => {
+    expect(formatTimestamp(SECOND_PRECISION.toISOString(), "en-GB")).toBe(formatTimestamp(SECOND_PRECISION, "en-GB"))
+  })
+})
+
+describe("coerceNumber", () => {
+  it.each([
+    [null, 0],
+    [undefined, 0],
+  ])("reads %j as zero", (value, expected) => {
+    expect(coerceNumber(value)).toBe(expected)
+  })
+
+  it.each([
+    ["12.5", 12.5],
+    [7, 7],
+  ])("converts %j to the number %j", (value, expected) => {
+    expect(coerceNumber(value)).toBe(expected)
+  })
+
+  it("converts a bigint aggregate from the driver to a plain number", () => {
+    expect(coerceNumber(42n)).toBe(42)
   })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test"
 
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { DISCOUNT_CODE_MAX_LENGTH } from "~/src/modules/discount/discount.constants"
 
 import {
   CHECKOUT_STEP_DEFINITIONS,
@@ -78,6 +79,10 @@ describe("getFurthestReachableStepIndex", () => {
   ] as const)("validates the maximum length of optional $field before allowing payment", ({ field, limit }) => {
     expect(getFurthestReachableStepIndex({ ...COMPLETE, [field]: "a".repeat(limit) })).toBe(PAYMENT_INDEX)
     expect(getFurthestReachableStepIndex({ ...COMPLETE, [field]: "a".repeat(limit + 1) })).toBe(BILLING_INDEX)
+  })
+
+  it("does not hold the shopper on any step for a problem in a field no step asks for", () => {
+    expect(getFurthestReachableStepIndex({ ...COMPLETE, discountCode: "X".repeat(DISCOUNT_CODE_MAX_LENGTH + 1) })).toBe(PAYMENT_INDEX)
   })
 
   it("unlocks delivery once the addresses are complete but no method is chosen", () => {

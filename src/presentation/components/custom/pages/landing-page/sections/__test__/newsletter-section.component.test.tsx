@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react"
+import { IntlProvider } from "use-intl/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const { subscribe } = vi.hoisted(() => ({
@@ -9,7 +10,12 @@ vi.mock("~/src/modules/newsletter/use-cases/subscribe-to-newsletter", () => ({
   subscribeToNewsletterMutation: { mutationFn: subscribe, mutationKey: ["newsletter", "subscribe"] },
 }))
 
+import { TEST_LOCALE, TEST_MESSAGES } from "~/src/platform/testing/lib/messages"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
+
+import { NEWSLETTER_SOURCE } from "~/src/modules/newsletter/newsletter.constants"
 
 import { NewsletterSection } from "~/src/presentation/components/custom/pages/landing-page/sections/newsletter-section"
 
@@ -78,6 +84,26 @@ describe("NewsletterSection", () => {
     submit("anna@example.com")
 
     expect(await screen.findByText("We could not sign you up just now. Please try again.")).toBeInTheDocument()
+  })
+
+  it("asks for the confirmation mail in the language the visitor is browsing", async () => {
+    renderWithProviders(<NewsletterSection />)
+    submit("anna@example.com")
+
+    await screen.findByText(/check your inbox/u)
+    expect(subscribe.mock.calls[0]?.[0]).toMatchObject({ locale: TEST_LOCALE })
+  })
+
+  it("leaves the language to the server when the page locale is not one the store supports", async () => {
+    renderWithProviders(
+      <IntlProvider locale="de-DE" messages={TEST_MESSAGES} timeZone={I18N.DEFAULT_TIMEZONE}>
+        <NewsletterSection />
+      </IntlProvider>,
+    )
+    submit("anna@example.com")
+
+    await screen.findByText(/check your inbox/u)
+    expect(subscribe.mock.calls[0]?.[0]).toStrictEqual({ email: "anna@example.com", locale: undefined, source: NEWSLETTER_SOURCE.LANDING })
   })
 
   it("keeps the consent note visible alongside the form", () => {

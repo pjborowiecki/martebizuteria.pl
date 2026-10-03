@@ -261,6 +261,21 @@ describe("ProductEditorAttributeListPanel composer", () => {
 
     expect(JSON.parse(rowsJson())).toStrictEqual([{ attributeId: "attr-polished", value: "true" }])
   })
+
+  it("checks the draft against the attribute its trimmed id points to before appending it", async () => {
+    const paddedNote = definition({ id: "attr-finish ", title: "Finish note", type: PRODUCT_ATTRIBUTE_TYPE.TEXT })
+    const finish = definition({ id: "attr-finish", title: "Finish", type: PRODUCT_ATTRIBUTE_TYPE.BOOLEAN })
+    renderWithProviders(<Harness attributes={[paddedNote, finish]} />)
+    await pickDraftAttribute("Finish note")
+    await userEvent.type(screen.getByRole("textbox"), "matte")
+
+    expect(addButton()).toBeEnabled()
+
+    await userEvent.click(addButton())
+
+    expect(JSON.parse(rowsJson())).toStrictEqual([])
+    expect(screen.getByRole("textbox")).toHaveValue("matte")
+  })
 })
 
 describe("ProductEditorAttributeListPanel existing rows", () => {

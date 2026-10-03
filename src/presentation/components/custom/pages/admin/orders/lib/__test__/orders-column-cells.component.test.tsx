@@ -94,6 +94,20 @@ describe("order column cells", () => {
     expect(screen.getAllByText("anna@example.com").length).toBeGreaterThan(0)
   })
 
+  it("prefixes the email with the customer id of an account order", () => {
+    renderGrid()
+
+    expect(screen.getByText("user-1").parentElement).toHaveTextContent(/^user-1·anna@example\.com$/u)
+  })
+
+  it("shows only the email of a guest order", () => {
+    renderGrid([orderRow({ customerName: "guest@example.com", initials: "GU", userId: null })])
+
+    expect(screen.queryByText("user-1")).toBeNull()
+    expect(screen.getAllByText("guest@example.com").length).toBeGreaterThan(0)
+    expect(screen.queryByText("·")).toBeNull()
+  })
+
   it("shows the item count as its own cell", () => {
     renderGrid()
 

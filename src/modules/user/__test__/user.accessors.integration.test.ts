@@ -21,6 +21,7 @@ import {
   getCustomerOrderStatsQuery,
   getDefaultCustomerAddressesQuery,
   getUserById,
+  getUserIdByEmail,
 } from "~/src/modules/user/user.accessors"
 import { ADMIN_CUSTOMER_STAT_FILTER } from "~/src/modules/user/user.constants"
 
@@ -134,6 +135,16 @@ describe("getUserById", () => {
 
   it("reports nothing for an unknown id", async () => {
     expect(await getUserById("missing")).toBeUndefined()
+  })
+})
+
+describe("getUserIdByEmail", () => {
+  it("finds the account behind an address typed with stray spaces and capitals", async () => {
+    await expect(getUserIdByEmail("  Anna@Example.COM ")).resolves.toBe("u-anna")
+  })
+
+  it("reports no account for an address nobody registered", async () => {
+    await expect(getUserIdByEmail("nobody@example.com")).resolves.toBeUndefined()
   })
 })
 

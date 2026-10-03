@@ -2,7 +2,7 @@ import { type SQL } from "drizzle-orm"
 import { SQLiteSyncDialect, integer, sqliteTable } from "drizzle-orm/sqlite-core"
 import { describe, expect, it } from "vite-plus/test"
 
-import { DATE_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
+import { DATE_COLUMN_FILTER_OPERATOR, DATE_COLUMN_FILTER_OPERATORS } from "~/src/modules/_core/utils/column-filters"
 import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-column-filter.server"
 
 const auditEvent = sqliteTable("audit_event", {
@@ -108,5 +108,17 @@ describe("buildAdminDateTimeFilterSql with the between operator", () => {
     [{ operator: DATE_COLUMN_FILTER_OPERATOR.BETWEEN }],
   ])("matches every row for the incomplete range %j", (filter) => {
     expect(build(filter).sql).toBe("1 = 1")
+  })
+})
+
+const retiredOperator = <TOperator extends string>(operators: readonly TOperator[], name: string): TOperator =>
+  operators.find((operator) => operator === name)!
+
+describe("buildAdminDateTimeFilterSql with an operator it does not know", () => {
+  it("matches every row instead of guessing at a bound", () => {
+    const { params, sql } = build({ date: "2024-06-10T08:30", operator: retiredOperator(DATE_COLUMN_FILTER_OPERATORS, "sometime") })
+
+    expect(sql).toBe("1 = 1")
+    expect(params).toStrictEqual([])
   })
 })

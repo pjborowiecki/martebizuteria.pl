@@ -266,4 +266,11 @@ describe("toCategoryRow", () => {
   it("carries the supplied id and rank through", () => {
     expect(toCategoryRow(input, "category-9", 5)).toMatchObject({ id: "category-9", rank: 5 })
   })
+
+  it("keeps a chosen image and parent category", () => {
+    const row = toCategoryRow({ ...input, image: "categories/kolczyki.webp", parentId: "category-root" }, "category-1", 3)
+
+    expect(row.image).toBe("categories/kolczyki.webp")
+    expect(row.parentId).toBe("category-root")
+  })
 })
