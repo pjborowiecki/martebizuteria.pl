@@ -22,8 +22,10 @@ CI installs with `--ignore-scripts` and then calls `typegen` itself, so no hooks
 | `build`            | Alias for `build:preview`                                                                                                 |
 | `build:preview`    | `rm -rf dist`, `bun run content`, `CLOUDFLARE_ENV=preview vp build --mode preview`, `bun scripts/verify-build.ts preview` |
 | `build:production` | The same three stages with `production` in each place                                                                     |
+| `build:test`       | `rm -rf dist`, `bun run content`, `CLOUDFLARE_ENV=test vp build --mode test` — the local end-to-end Worker                |
 | `start`            | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                                           |
 | `preview`          | Alias for `start`                                                                                                         |
+| `start:test`       | `CLOUDFLARE_ENV=test vp preview --mode test --host 127.0.0.1 --port 3000`                                                 |
 | `stripe:listen`    | `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`                                                  |
 
 `stripe:listen` needs the Stripe CLI installed and authenticated on your machine; it is not a project dependency. Run it in a second terminal beside `bun run dev` when working on payments, and put the `whsec_…` it prints into `STRIPE_WEBHOOK_SECRET` in `.env.development`.
@@ -54,15 +56,22 @@ Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](
 
 ## Tests
 
-| Script             | Runs                                |
-| ------------------ | ----------------------------------- |
-| `test`             | `vp test run` — all three projects  |
-| `test:unit`        | `vp test run --project node`        |
-| `test:integration` | `vp test run --project integration` |
-| `test:component`   | `vp test run --project component`   |
-| `test:changed`     | `vp test run --changed`             |
-| `test:coverage`    | `vp test run --coverage`            |
-| `test:watch`       | `vp test`                           |
+| Script             | Runs                                             |
+| ------------------ | ------------------------------------------------ |
+| `test`             | `vp test run` — all three projects               |
+| `test:unit`        | `vp test run --project node`                     |
+| `test:integration` | `vp test run --project integration`              |
+| `test:component`   | `vp test run --project component`                |
+| `test:changed`     | `vp test run --changed`                          |
+| `test:coverage`    | `vp test run --coverage`                         |
+| `test:e2e`         | `playwright test` — both browsers                |
+| `test:e2e:pr`      | `playwright test --project=chromium`             |
+| `test:e2e:smoke`   | The smoke spec on Chromium                       |
+| `test:e2e:headed`  | `playwright test --headed`                       |
+| `test:e2e:ui`      | `playwright test --ui`                           |
+| `test:e2e:install` | `playwright install --with-deps chromium webkit` |
+| `test:all`         | `test`, then `test:e2e:smoke`                    |
+| `test:watch`       | `vp test`                                        |
 
 `test:watch` does not watch — `vp test` with no subcommand runs once. Use `vp test watch`. See [Testing](/docs/tooling/testing).
 
@@ -78,6 +87,8 @@ Every `db:*` script targets a named environment. The unsuffixed aliases are not 
 | `db:migrate:development`    | The same, `--remote` (the preview database)                                           |
 | `db:migrate:preview`        | The same for `--env preview --remote`                                                 |
 | `db:migrate:production`     | The same for `--env production --remote`                                              |
+| `db:migrate:test`           | `wrangler d1 migrations apply DB --env test --local --persist-to .wrangler/test`      |
+| `db:reset:test`             | Deletes `.wrangler/test`, then `db:migrate:test` and `db:seed:test`                   |
 | `db:migrations:development` | `wrangler d1 migrations list DB --env development --remote`                           |
 | `db:migrations:preview`     | The same for `preview`                                                                |
 | `db:migrations:production`  | The same for `production`                                                             |
@@ -97,6 +108,7 @@ Every `db:*` script targets a named environment. The unsuffixed aliases are not 
 | `db:seed`                   | Alias for `db:seed:preview`                                                           |
 | `db:seed:preview`           | Eleven chained `wrangler d1 execute DB --env preview --remote --file=…` calls         |
 | `db:seed:production`        | The same against production                                                           |
+| `db:seed:test`              | `bun scripts/seed-test.ts` — the catalog seeds and the two end-to-end accounts, local |
 
 The drizzle-kit scripts run through `bun --env-file=.env.<environment>` because `bunfig.toml` sets `env = false`; the Wrangler scripts run through `vp exec` and read `wrangler.jsonc` instead.
 
@@ -123,11 +135,11 @@ See [Agent skills](/docs/tooling/agent-skills).
 
 ## Cleaning
 
-| Script           | Removes                                                                                                                                                                                                                       |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `clean`          | `.source`, `.output`, `.tanstack`, `.wrangler`, `.bun-cache`, `dist`, `dist-ssr`, `coverage`, `playwright-report`, `test-results`, `blob-report`, `playwright/.cache`, `*.tsbuildinfo`, `src/types/worker-configuration.d.ts` |
-| `clean:deep`     | `clean` plus `node_modules`                                                                                                                                                                                                   |
-| `clean:hardcore` | `clean:deep` plus `bun.lock` and `opensrc`                                                                                                                                                                                    |
+| Script           | Removes                                                                                                                                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clean`          | `.source`, `.output`, `.tanstack`, `.wrangler`, `.bun-cache`, `dist`, `dist-ssr`, `coverage`, `playwright-report`, `test-results`, `blob-report`, `playwright/.cache`, `playwright/.auth`, `*.tsbuildinfo`, `src/types/worker-configuration.d.ts` |
+| `clean:deep`     | `clean` plus `node_modules`                                                                                                                                                                                                                       |
+| `clean:hardcore` | `clean:deep` plus `bun.lock` and `opensrc`                                                                                                                                                                                                        |
 
 `clean` deletes `.wrangler`, which holds the local D1 database used by `db:migrate:local` as well as the generated `secrets.*.json` files. After any `clean` you need `bun install` (or at least `bun run typegen`) before `bun run check` will pass, because it removes both generated type sources.
 

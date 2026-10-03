@@ -1,0 +1,8 @@
+export { AccountPage } from "./account-page"
+export { AdminOrderPage } from "./admin-order-page"
+export { AuthPage } from "./auth-page"
+export { BasePage } from "./base-page"
+export { CartPage } from "./cart-page"
+export { CheckoutPage } from "./checkout-page"
+export { CouponsPage } from "./coupons-page"
+export { ProductPage } from "./product-page"

@@ -1,15 +1,17 @@
 ---
 title: "CI/CD"
-description: "Trzy przepływy GitHub Actions, jedna wspólna akcja setup i sposób, w jaki wdrożenie składa sekrety Workera."
+description: "Pięć przepływów GitHub Actions, jedna wspólna akcja setup i sposób, w jaki wdrożenie składa sekrety Workera."
 ---
 
-`.github/workflows/` zawiera trzy przepływy. Wszystkie trzy instalują zestaw narzędzi przez akcję złożoną `.github/actions/setup` i wszystkie trzy uruchamiają `bun run check`. Tylko jeden z nich uruchamia testy.
+`.github/workflows/` zawiera pięć przepływów. Wszystkie instalują zestaw narzędzi przez akcję złożoną `.github/actions/setup`. Testy uruchamiają `ci.yml` i `e2e-full.yml`; przepływy wdrożeniowe uruchamiają tylko `bun run check`.
 
-| Przepływ                | Wyzwalacz                                               | Co robi                                                             |
-| ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------------- |
-| `ci.yml`                | Każdy pull request; pushe do `main`                     | `check`, `test:coverage`, `build:preview`, wysyła raport pokrycia   |
-| `deploy-preview.yml`    | Pull requesty do `main` (opened, synchronize, reopened) | `check`, potem `deploy:preview`, potem komentarz z adresem podglądu |
-| `deploy-production.yml` | Pushe do `main`                                         | `check`, potem `deploy:production`                                  |
+| Przepływ                | Wyzwalacz                                               | Co robi                                                                                          |
+| ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `ci.yml`                | Każdy pull request; pushe do `main`                     | `check`, `test:coverage`, `build:preview`, wysyła raport pokrycia; zestaw Playwrighta w Chromium |
+| `e2e-full.yml`          | Pushe do `main`; poniedziałki o 03:15 UTC; ręcznie      | Zestaw Playwrighta w WebKicie po pushu, w przeciwnym razie w Chromium i WebKicie                 |
+| `e2e-reusable.yml`      | Wywoływany przez `ci.yml` i `e2e-full.yml`              | Buduje testowego Workera i uruchamia zestaw Playwrighta w jednej przeglądarce                    |
+| `deploy-preview.yml`    | Pull requesty do `main` (opened, synchronize, reopened) | `check`, potem `deploy:preview`, potem komentarz z adresem podglądu                              |
+| `deploy-production.yml` | Pushe do `main`                                         | `check`, potem `deploy:production`                                                               |
 
 ## Akcja setup
 
@@ -43,9 +45,17 @@ permissions:
   contents: read
 ```
 
-Jedno zadanie, `verify`, z limitem 15 minut, na `ubuntu-latest`, z `persist-credentials: false` przy checkoucie. Kroki to `bun run check`, `bun run test:coverage`, `bun run build:preview` oraz wysłanie `coverage/` jako artefaktu `coverage` z siedmiodniowym okresem przechowywania (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
+Zadanie `verify`, z limitem 15 minut, na `ubuntu-latest`, z `persist-credentials: false` przy checkoucie. Kroki to `bun run check`, `bun run test:coverage`, `bun run build:preview` oraz wysłanie `coverage/` jako artefaktu `coverage` z siedmiodniowym okresem przechowywania (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
+
+Drugie zadanie, `e2e`, wywołuje `e2e-reusable.yml` z `browser: chromium`.
 
 Krok kompilacji działa na atrapowym `.env.preview`, który akcja setup skopiowała z `.env.test`, i to wystarcza, bo `scripts/verify-build.ts` sprawdza kształt wyniku — konfigurację wdrożenia, nazwę Workera, zmienną `APP_ENV`, obecność fontów, JS-a i CSS-a klienta oraz brak importów `cloudflare:workers` i `node:` w zasobach klienta — a nie wartości jakichkolwiek danych uwierzytelniających.
+
+## Przepływy end-to-end
+
+`e2e-reusable.yml` przyjmuje wejście `browser` i opcjonalną ścieżkę `suite` (domyślnie `e2e/specs`). Uruchamia akcję setup z `test-environment: "true"`, następnie `bun run db:reset:test`, które tworzy i seeduje lokalną bazę D1, `bun run build:test`, przywraca pamięć podręczną przeglądarek Playwrighta z kluczem złożonym z przeglądarki i `bun.lock`, instaluje przeglądarkę z zależnościami systemowymi i uruchamia `bunx playwright test <suite> --project=<browser>` z limitem 30 minut. Przy ustawionym `CI` Playwright tylko uruchamia zbudowanego Workera, powtarza nieudany test dwa razy i pracuje na dwóch workerach. Po błędzie wysyła na siedem dni `playwright-report/` i `test-results/` ze śladami, zrzutami ekranu i nagraniami.
+
+`e2e-full.yml` uruchamia ten sam przepływ jako macierz z `fail-fast: false`: po pushu do `main` w WebKicie, bo pull request przeszedł już Chromium, a w cotygodniowym harmonogramie lub ręcznie w obu przeglądarkach.
 
 ## Przepływy wdrożeniowe
 
@@ -67,7 +77,7 @@ Współbieżność różni się celowo. Podgląd grupuje po numerze pull request
 
 `deploy-preview.yml` bierze dodatkowo `pull-requests: write` i kończy krokiem `actions/github-script@v7`, który publikuje — albo aktualizuje, szukając w istniejących komentarzach napisu `Preview Deployment` — komentarz z odnośnikiem do `https://martebizuteria-preview.pjborowiecki.workers.dev`.
 
-> Przepływy wdrożeniowe uruchamiają `bun run check`, ale **nie** `bun run test:coverage`. Testy działają tylko w `ci.yml`, który jest osobnym przepływem bez relacji blokującej wdrożenia. Push do `main` z niedziałającymi testami i tak wdroży się na produkcję, dopóki formatowanie, lint i typy są w porządku. Jeśli chcesz twardej bramki, to jest rzecz do zmiany.
+> Przepływy wdrożeniowe uruchamiają `bun run check`, ale **nie** `bun run test:coverage` ani zestawu end-to-end. Testy działają tylko w `ci.yml` i `e2e-full.yml`, które są osobnymi przepływami bez relacji blokującej wdrożenia. Push do `main` z niedziałającymi testami i tak wdroży się na produkcję, dopóki formatowanie, lint i typy są w porządku. Jeśli chcesz twardej bramki, to jest rzecz do zmiany.
 
 Podgląd jest jednym wspólnym wdrożeniem: każdy pull request wdraża się na tego samego Workera (`martebizuteria-preview`) opartego na tej samej bazie D1 preview, przestrzeni KV i zasobniku R2, więc na żywo jest ostatnie wdrożenie podglądu.
 
@@ -122,7 +132,7 @@ env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json
 
 ## Migracje a CI
 
-Żaden przepływ nie nakłada migracji D1. Przed scaleniem pull requesta, którego kod potrzebuje nowej kolumny, nałóż ją samodzielnie:
+Żaden przepływ nie nakłada migracji na wdrożoną bazę D1; przepływ end-to-end odtwarza całą historię tylko we własnej lokalnej bazie, co przy okazji dowodzi, że historia wciąż buduje bazę od zera. Przed scaleniem pull requesta, którego kod potrzebuje nowej kolumny, nałóż ją samodzielnie:
 
 ```sh
 bun run db:migrate:preview     # zanim wdrożenie podglądu zacznie mieć znaczenie

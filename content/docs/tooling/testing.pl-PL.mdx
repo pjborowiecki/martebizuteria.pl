@@ -122,7 +122,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 `createTestD1Database` implementuje tyle powierzchni `D1Database`, ile potrzebuje Drizzle: `prepare`, `bind`, `all`, `raw`, `run` i `batch`. `batch` owija instrukcje w `begin` / `commit` i wycofuje je przy błędzie — i to właśnie czyni testy idempotencji checkoutu sensownymi, bo atomowa partia D1 jest ograniczeniem, na którym te testy się opierają. Opcjonalne wywołanie `onQuery` otrzymuje każdą parę `{ sql, params }`. `src/modules/product/__test__/product.accessors.integration.test.ts` zbiera je i sprawdza dokładnie, ile instrukcji wykonuje odczyt katalogu (`expect(queries).toHaveLength(3)`) oraz że żadna instrukcja nie wiąże więcej niż 100 parametrów — tak wyłapywane są regresje typu N+1 i przekroczenia limitu parametrów D1.
 
-Same tabele tworzy test przez `sqlite.exec(...)`, odwzorowując kolumny, które produkują migracje. Nic nie nakłada plików migracji automatycznie, więc zmiana schematu oznacza aktualizację zarówno migracji, jak i instrukcji `create table` w testach dotykających tej tabeli.
+Same tabele tworzy test przez `sqlite.exec(...)`, odwzorowując kolumny, które produkują migracje. Zestawy Vitesta nie nakładają plików migracji, więc zmiana schematu oznacza aktualizację zarówno migracji, jak i instrukcji `create table` w testach dotykających tej tabeli. Zestaw end-to-end przy każdym uruchomieniu nakłada całą historię na świeżą bazę i to właśnie utrzymuje ją odtwarzalną.
 
 Niezależnie od tego każdy moduł ma w projekcie `node` plik `*.schema.test.ts`, który czyta metadane tabeli Drizzle przez `getTableConfig` i sprawdza nazwę tabeli, pełną uporządkowaną listę kolumn, klucze obce razem z zachowaniem `onDelete` oraz zadeklarowane relacje. Te testy są powodem, dla którego zmiana nazwy kolumny nie może przejść niezauważona.
 
@@ -147,11 +147,48 @@ Pokrycie obejmuje `src/**/*.{ts,tsx}` i wyklucza testy, katalogi `__test__`, `*.
 
 Testuj rzeczywiste zachowanie. Jeśli jakaś gałąź jest nieosiągalna, usuń gałąź, zamiast podstawiać atrapę globalnej wartości, żeby do niej dotrzeć.
 
+## Testy end-to-end
+
+Playwright steruje zbudowanym Workerem w Chromium i WebKicie. Zestaw leży w `e2e/`, a jego konfiguracja w `playwright.config.ts`:
+
+```sh
+bun run test:e2e:install  # jednorazowo: przeglądarki Chromium i WebKit
+bun run test:e2e          # resetuje testową bazę, buduje testowego Workera, serwuje go i uruchamia wszystkie specyfikacje
+bun run test:e2e:pr       # to samo tylko w Chromium, tak jak CI na pull requestach
+bun run test:e2e:smoke    # e2e/specs/smoke.spec.ts w Chromium
+bun run test:e2e:ui       # tryb UI Playwrighta
+```
+
+Poza CI `webServer` Playwrighta sam uruchamia `db:reset:test`, `build:test` i `start:test` oraz używa serwera, który już słucha na porcie 3000; w CI bazę i build przygotowuje przepływ, a Playwright tylko uruchamia serwer.
+
+### Testowy Worker
+
+`wrangler.jsonc` ma środowisko `test`, którego `main` to `src/platform/testing/worker.ts`, a D1, KV, R2, Durable Object i kolejka audytu są w nim lokalne (`remote: false`) i zapisywane w `.wrangler/test`. `bun run build:test` buduje je z `CLOUDFLARE_ENV=test` i `--mode test`, więc każdy sekret pochodzi z commitowanego `.env.test`.
+
+Testowy Worker instaluje `src/platform/testing/mocks/providers.ts`, zanim wczyta aplikację, więc nic nie opuszcza maszyny:
+
+- **Resend.** Żądania do `api.resend.com` są przechwytywane zamiast wysyłane. `GET /__test/emails?to=<adres>` zwraca przechwycone wiadomości do danego odbiorcy.
+- **Stripe.** Żądania do `api.stripe.com` trafiają do działającego w pamięci emulatora wywołań, które wykonuje serwer: sesji Checkout (tworzenie, odczyt, lista, wygaszanie), kuponów, klientów, płatności, metod płatności i zwrotów. Każde inne wywołanie Stripe'a dostaje 400, więc nowe użycie Stripe'a oblewa specyfikację, zamiast przejść po cichu. `GET /__test/stripe/checkout-sessions?email=<adres>` wypisuje sesje otwarte dla kupującego, a `POST /__test/stripe/checkout-sessions/<id>/complete` oznacza jedną jako opłaconą i zwraca zdarzenie `checkout.session.completed` podpisane `STRIPE_WEBHOOK_SECRET`.
+
+Specyfikacja wysyła to podpisane zdarzenie do `/api/webhooks/stripe` tak jak Stripe, więc trasa webhooka weryfikuje podpis i realizuje zamówienie prawdziwym kodem. Poza zasięgiem zostaje tylko sam formularz karty, czyli Stripe.js.
+
+### Dane
+
+`bun run db:reset:test` usuwa `.wrangler/test`, nakłada całą historię migracji przez `wrangler d1 migrations apply --local` i uruchamia `scripts/seed-test.ts`. Seed wczytuje te same pliki katalogu co `db:seed:preview` (dwa naszyjniki ze stanem, kategorie, kolekcje, atrybuty i metody dostawy) oraz dwa zweryfikowane konta z `e2e/data/accounts.ts`: `admin@marte.example.test` i `customer@marte.example.test`.
+
+### Pisanie specyfikacji
+
+- Importuj `test` i `expect` z `e2e/fixtures/test.ts`. Jego automatyczne fixtures blokują każde żądanie, które nie idzie do lokalnej aplikacji (obrazy dostają PNG 1×1, reszta jest przerywana), i oblewają test, którego strony zalogują brakujące lub błędne tłumaczenie.
+- Każdy test wysyła własny `cf-connecting-ip`, więc limity na IP przy logowaniu, rejestracji i checkoucie nigdy nie wiążą testów ze sobą.
+- Projekt `setup` raz loguje zaseedowanego administratora i klienta i zapisuje ich sesje w `playwright/.auth/`; używaj ich przez `test.use({ storageState: STORAGE_STATE.admin })`. Nigdy nie wylogowuj zaseedowanego konta ani nie zmieniaj jego hasła w specyfikacji, bo te sesje współdzielą wszyscy workerzy.
+- Specyfikacja, która zmienia konto, zamówienie albo kupon, tworzy własne: `registerCustomer` rejestruje i weryfikuje nowego klienta, `uniqueEmail` i `uniqueCode` nazywają dane, a `placeOrder` kupuje produkt i płaci za niego przez emulator. Specyfikacje działają w pełni równolegle i nie mogą zależeć od liczb, które zmieniają inne specyfikacje.
+- Na stan czekaj asercjami web-first i `expect.poll`, nigdy stałymi opóźnieniami. Obiekty stron w `e2e/pages/` czekają na hydratację, zanim specyfikacja zacznie działać na stronie.
+
 ## Konwencje
 
 - Jeden katalog `__test__/` na funkcjonalność, obok kodu: `src/modules/order/__test__/order.accessors.integration.test.ts`.
 - Zestawy bazodanowe kończą się na `*.integration.test.ts`; wszystko, co renderuje Reacta, na `*.component.test.tsx`; pozostałe to zwykłe `*.test.ts`.
-- Mockuj zewnętrznych dostawców. Stripe, Resend, InPost i R2 nigdy nie są wywoływane z testu.
+- Mockuj zewnętrznych dostawców. Stripe, Resend, InPost i R2 nigdy nie są wywoływane z testu; zestaw end-to-end rozmawia zamiast nich z emulatorami w testowym Workerze.
 - Dane testowe są lokalne dla pliku testu albo dla katalogu `__test__` funkcjonalności. Do `src/platform/testing/` należy wyłącznie wspólna infrastruktura.
 
 ## Powiązane strony

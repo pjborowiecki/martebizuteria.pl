@@ -31,5 +31,5 @@
     "types": ["vite/client", "node"]
   },
   "exclude": ["opensrc", "node_modules", "dist", ".wrangler", ".tanstack"],
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts", "vite.config.ts", "scripts/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts", "vite.config.ts", "playwright.config.ts", "e2e/**/*.ts", "scripts/**/*.ts"]
 }

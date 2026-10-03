@@ -22,8 +22,10 @@ CI instaluje z `--ignore-scripts`, a potem samo wywołuje `typegen`, więc na ru
 | `build`            | Alias `build:preview`                                                                                                     |
 | `build:preview`    | `rm -rf dist`, `bun run content`, `CLOUDFLARE_ENV=preview vp build --mode preview`, `bun scripts/verify-build.ts preview` |
 | `build:production` | Te same trzy etapy z `production` w każdym miejscu                                                                        |
+| `build:test`       | `rm -rf dist`, `bun run content`, `CLOUDFLARE_ENV=test vp build --mode test` — lokalny Worker end-to-end                  |
 | `start`            | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                                           |
 | `preview`          | Alias `start`                                                                                                             |
+| `start:test`       | `CLOUDFLARE_ENV=test vp preview --mode test --host 127.0.0.1 --port 3000`                                                 |
 | `stripe:listen`    | `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`                                                  |
 
 `stripe:listen` wymaga zainstalowanego i zalogowanego Stripe CLI na Twojej maszynie; nie jest to zależność projektu. Uruchom go w drugim terminalu obok `bun run dev`, gdy pracujesz nad płatnościami, i wstaw wypisany `whsec_…` do `STRIPE_WEBHOOK_SECRET` w `.env.development`.
@@ -54,15 +56,22 @@ Oba uruchamiają `wrangler deploy` przez `env -u CLOUDFLARE_ENV vp exec`. Co spr
 
 ## Testy
 
-| Skrypt             | Uruchamia                               |
-| ------------------ | --------------------------------------- |
-| `test`             | `vp test run` — wszystkie trzy projekty |
-| `test:unit`        | `vp test run --project node`            |
-| `test:integration` | `vp test run --project integration`     |
-| `test:component`   | `vp test run --project component`       |
-| `test:changed`     | `vp test run --changed`                 |
-| `test:coverage`    | `vp test run --coverage`                |
-| `test:watch`       | `vp test`                               |
+| Skrypt             | Uruchamia                                        |
+| ------------------ | ------------------------------------------------ |
+| `test`             | `vp test run` — wszystkie trzy projekty          |
+| `test:unit`        | `vp test run --project node`                     |
+| `test:integration` | `vp test run --project integration`              |
+| `test:component`   | `vp test run --project component`                |
+| `test:changed`     | `vp test run --changed`                          |
+| `test:coverage`    | `vp test run --coverage`                         |
+| `test:e2e`         | `playwright test` — obie przeglądarki            |
+| `test:e2e:pr`      | `playwright test --project=chromium`             |
+| `test:e2e:smoke`   | Specyfikacja smoke w Chromium                    |
+| `test:e2e:headed`  | `playwright test --headed`                       |
+| `test:e2e:ui`      | `playwright test --ui`                           |
+| `test:e2e:install` | `playwright install --with-deps chromium webkit` |
+| `test:all`         | `test`, a potem `test:e2e:smoke`                 |
+| `test:watch`       | `vp test`                                        |
 
 `test:watch` nie obserwuje — `vp test` bez podkomendy wykonuje jeden przebieg. Użyj `vp test watch`. Zobacz [Testy](/docs/tooling/testing).
 
@@ -78,6 +87,8 @@ Każdy skrypt `db:*` celuje w konkretne środowisko. Aliasy bez sufiksu nie zaws
 | `db:migrate:development`    | To samo z `--remote` (baza preview)                                                              |
 | `db:migrate:preview`        | To samo dla `--env preview --remote`                                                             |
 | `db:migrate:production`     | To samo dla `--env production --remote`                                                          |
+| `db:migrate:test`           | `wrangler d1 migrations apply DB --env test --local --persist-to .wrangler/test`                 |
+| `db:reset:test`             | Usuwa `.wrangler/test`, potem `db:migrate:test` i `db:seed:test`                                 |
 | `db:migrations:development` | `wrangler d1 migrations list DB --env development --remote`                                      |
 | `db:migrations:preview`     | To samo dla `preview`                                                                            |
 | `db:migrations:production`  | To samo dla `production`                                                                         |
@@ -97,6 +108,7 @@ Każdy skrypt `db:*` celuje w konkretne środowisko. Aliasy bez sufiksu nie zaws
 | `db:seed`                   | Alias `db:seed:preview`                                                                          |
 | `db:seed:preview`           | Jedenaście połączonych wywołań `wrangler d1 execute DB --env preview --remote --file=…`          |
 | `db:seed:production`        | To samo na produkcji                                                                             |
+| `db:seed:test`              | `bun scripts/seed-test.ts` — seedy katalogu i dwa konta end-to-end, lokalnie                     |
 
 Skrypty drizzle-kita działają przez `bun --env-file=.env.<środowisko>`, bo `bunfig.toml` ustawia `env = false`; skrypty Wranglera działają przez `vp exec` i czytają `wrangler.jsonc`.
 
@@ -123,11 +135,11 @@ Zobacz [Umiejętności agentów](/docs/tooling/agent-skills).
 
 ## Czyszczenie
 
-| Skrypt           | Usuwa                                                                                                                                                                                                                         |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `clean`          | `.source`, `.output`, `.tanstack`, `.wrangler`, `.bun-cache`, `dist`, `dist-ssr`, `coverage`, `playwright-report`, `test-results`, `blob-report`, `playwright/.cache`, `*.tsbuildinfo`, `src/types/worker-configuration.d.ts` |
-| `clean:deep`     | `clean` oraz `node_modules`                                                                                                                                                                                                   |
-| `clean:hardcore` | `clean:deep` oraz `bun.lock` i `opensrc`                                                                                                                                                                                      |
+| Skrypt           | Usuwa                                                                                                                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clean`          | `.source`, `.output`, `.tanstack`, `.wrangler`, `.bun-cache`, `dist`, `dist-ssr`, `coverage`, `playwright-report`, `test-results`, `blob-report`, `playwright/.cache`, `playwright/.auth`, `*.tsbuildinfo`, `src/types/worker-configuration.d.ts` |
+| `clean:deep`     | `clean` oraz `node_modules`                                                                                                                                                                                                                       |
+| `clean:hardcore` | `clean:deep` oraz `bun.lock` i `opensrc`                                                                                                                                                                                                          |
 
 `clean` usuwa `.wrangler`, w którym leży lokalna baza D1 używana przez `db:migrate:local`, a także wygenerowane pliki `secrets.*.json`. Po każdym `clean` potrzebujesz `bun install` (albo co najmniej `bun run typegen`), zanim `bun run check` przejdzie, bo usuwa on oba generowane źródła typów.
 

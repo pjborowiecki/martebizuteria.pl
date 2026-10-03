@@ -1,15 +1,17 @@
 ---
 title: "CI/CD"
-description: "Three GitHub Actions workflows, one shared setup action, and how a deploy assembles its Worker secrets."
+description: "Five GitHub Actions workflows, one shared setup action, and how a deploy assembles its Worker secrets."
 ---
 
-`.github/workflows/` holds three workflows. All three install the toolchain through the composite action `.github/actions/setup`, and all three run `bun run check`. Only one of them runs the tests.
+`.github/workflows/` holds five workflows. All of them install the toolchain through the composite action `.github/actions/setup`. `ci.yml` and `e2e-full.yml` run the tests; the deploy workflows run `bun run check` only.
 
-| Workflow                | Trigger                                                 | What it does                                                            |
-| ----------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `ci.yml`                | Every pull request; pushes to `main`                    | `check`, `test:coverage`, `build:preview`, uploads the coverage report  |
-| `deploy-preview.yml`    | Pull requests to `main` (opened, synchronize, reopened) | `check`, then `deploy:preview`, then comments the preview URL on the PR |
-| `deploy-production.yml` | Pushes to `main`                                        | `check`, then `deploy:production`                                       |
+| Workflow                | Trigger                                                 | What it does                                                                                             |
+| ----------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `ci.yml`                | Every pull request; pushes to `main`                    | `check`, `test:coverage`, `build:preview`, uploads the coverage report; the Playwright suite on Chromium |
+| `e2e-full.yml`          | Pushes to `main`; Mondays at 03:15 UTC; manual          | The Playwright suite on WebKit after a push, on Chromium and WebKit otherwise                            |
+| `e2e-reusable.yml`      | Called by `ci.yml` and `e2e-full.yml`                   | Builds the test Worker and runs the Playwright suite in one browser                                      |
+| `deploy-preview.yml`    | Pull requests to `main` (opened, synchronize, reopened) | `check`, then `deploy:preview`, then comments the preview URL on the PR                                  |
+| `deploy-production.yml` | Pushes to `main`                                        | `check`, then `deploy:production`                                                                        |
 
 ## The setup action
 
@@ -43,9 +45,17 @@ permissions:
   contents: read
 ```
 
-One job, `verify`, with a 15-minute timeout, running on `ubuntu-latest` with `persist-credentials: false` on the checkout. The steps are `bun run check`, `bun run test:coverage`, `bun run build:preview`, and an upload of `coverage/` as the `coverage` artifact with a seven-day retention (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
+The `verify` job, with a 15-minute timeout, running on `ubuntu-latest` with `persist-credentials: false` on the checkout. The steps are `bun run check`, `bun run test:coverage`, `bun run build:preview`, and an upload of `coverage/` as the `coverage` artifact with a seven-day retention (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
+
+A second job, `e2e`, calls `e2e-reusable.yml` with `browser: chromium`.
 
 The build step runs against the dummy `.env.preview` the setup action copied from `.env.test`, which is enough because `scripts/verify-build.ts` checks the shape of the output — the deployment config, the Worker name, the `APP_ENV` var, the presence of fonts, client JS and CSS, and the absence of `cloudflare:workers` or `node:` imports in any client asset — not the values of any credential.
+
+## The end-to-end workflows
+
+`e2e-reusable.yml` takes a `browser` input and an optional `suite` path (default `e2e/specs`). It runs the setup action with `test-environment: "true"`, then `bun run db:reset:test` to create and seed the local D1 database, `bun run build:test`, restores the Playwright browser cache keyed on the browser and `bun.lock`, installs the browser with its system dependencies, and runs `bunx playwright test <suite> --project=<browser>` with a 30-minute timeout. With `CI` set, Playwright only starts the built Worker, retries a failed test twice and runs two workers. On failure it uploads `playwright-report/` and `test-results/`, which hold traces, screenshots and videos, for seven days.
+
+`e2e-full.yml` runs the same workflow as a matrix with `fail-fast: false`: WebKit after a push to `main`, because the pull request already ran Chromium, and both browsers on the weekly schedule or a manual run.
 
 ## The deploy workflows
 
@@ -67,7 +77,7 @@ Concurrency differs on purpose. Preview groups by pull request number and cancel
 
 `deploy-preview.yml` additionally takes `pull-requests: write` and finishes with an `actions/github-script@v7` step that posts — or updates, by searching existing comments for the string `Preview Deployment` — a comment linking to `https://martebizuteria-preview.pjborowiecki.workers.dev`.
 
-> The deploy workflows run `bun run check` but **not** `bun run test:coverage`. Tests run only in `ci.yml`, which is a separate workflow with no gating relationship to the deploys. A push to `main` with failing tests will still deploy to production as long as format, lint and types pass. If you want a hard gate, that is the thing to change.
+> The deploy workflows run `bun run check` but **not** `bun run test:coverage` or the end-to-end suite. Tests run only in `ci.yml` and `e2e-full.yml`, which are separate workflows with no gating relationship to the deploys. A push to `main` with failing tests will still deploy to production as long as format, lint and types pass. If you want a hard gate, that is the thing to change.
 
 Preview is a single shared deployment: every pull request deploys to the same Worker (`martebizuteria-preview`) backed by the same preview D1 database, KV namespace and R2 bucket, so the most recent preview deploy is the one that is live.
 
@@ -122,7 +132,7 @@ env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json
 
 ## Migrations and CI
 
-No workflow applies a D1 migration. Before merging a pull request whose code needs a new column, apply it yourself:
+No workflow applies a migration to a deployed D1 database; the end-to-end workflow only replays the full history into its own local one, which also proves the history still builds a database from scratch. Before merging a pull request whose code needs a new column, apply it yourself:
 
 ```sh
 bun run db:migrate:preview     # before the preview deploy matters

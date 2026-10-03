@@ -158,6 +158,75 @@
         ],
       },
     },
+    "test": {
+      "name": "martebizuteria-test",
+      "main": "./src/platform/testing/worker.ts",
+      "vars": {
+        "APP_ENV": "test",
+      },
+      "ratelimits": [],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "martebizuteria-test",
+          "database_id": "00000000-0000-0000-0000-000000000001",
+          "migrations_dir": "./src/integrations/drizzle-orm/migrations",
+          "remote": false,
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "IMAGES",
+          "bucket_name": "martebizuteria-test",
+          "remote": false,
+        },
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "CACHE",
+          "id": "00000000000000000000000000000001",
+          "remote": false,
+        },
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "REALTIME_INVALIDATION_HUB",
+            "class_name": "RealtimeInvalidationHub",
+          },
+        ],
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "AUDIT_LOG_QUEUE",
+            "queue": "martebizuteria-audit-log-test",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "martebizuteria-audit-log-test",
+            "max_batch_size": 50,
+            "max_batch_timeout": 1,
+            "max_retries": 3,
+          },
+        ],
+      },
+      "secrets": {
+        "required": [
+          "AUTH_GITHUB_CLIENT_ID",
+          "AUTH_GITHUB_CLIENT_SECRET",
+          "AUTH_GOOGLE_CLIENT_ID",
+          "AUTH_GOOGLE_CLIENT_SECRET",
+          "AUTH_SECRET",
+          "RESEND_API_KEY",
+          "RESEND_EMAIL_FROM",
+          "STRIPE_SECRET_KEY",
+          "STRIPE_WEBHOOK_SECRET",
+          "VITE_R2_URL",
+        ],
+      },
+    },
     "production": {
       "name": "martebizuteria",
       "vars": {
