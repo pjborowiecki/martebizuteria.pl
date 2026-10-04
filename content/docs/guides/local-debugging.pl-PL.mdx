@@ -126,17 +126,19 @@ vp exec wrangler tail --env preview
 
 `observability.enabled: true` w `wrangler.jsonc` oznacza, że logi są też zachowywane w panelu Cloudflare. Warte poznania linie logu, wszystkie z kodu cytowanego w innych przewodnikach:
 
-| Prefiks                                         | Źródło                                                                                                          |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `Server function failed`                        | `withRequest` przechwyciło nieoczekiwany błąd                                                                   |
-| `Rate-limit storage unavailable`                | `withinRateLimit` nie mogło zapisać do D1                                                                       |
-| `[Background Work Failed]:`                     | `runSafely` w `src/lib/background.ts`                                                                           |
-| `[Stripe] …`                                    | Trasa webhooka                                                                                                  |
-| `[Auth] Failed to send … email`                 | `recordAuthEmailFailure` w `auth.server.ts`; dodatkowo wpis `email.failed` w `/admin/audit`                     |
-| `[Better Auth]: Failed to run background task:` | Hook e-mailowy uruchomiony przez Better Auth w tle rzucił wyjątek; linia `[Auth]` przed nim zawiera błąd Resend |
-| `[Resend] Email sender availability unreadable` | `isEmailSenderUnavailable` nie odczytało flagi z KV `CACHE`; blokada w Better Auth przepuściła żądanie          |
-| `[Newsletter] Failed to send …`                 | `subscribeToNewsletter` w `subscribe-to-newsletter.ts`; dodatkowo wpis `email.failed` w `/admin/audit`          |
-| `[catalog] …`                                   | `catalogDebugLog`, wyłącznie w środowisku deweloperskim                                                         |
+| Prefiks                                                 | Źródło                                                                                                                                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Server function failed`                                | `withRequest` przechwyciło nieoczekiwany błąd                                                                                                                                  |
+| `Rate-limit storage unavailable`                        | `withinRateLimit` nie mogło zapisać do D1                                                                                                                                      |
+| `[Background Work Failed]:`                             | `runSafely` w `src/lib/background.ts`                                                                                                                                          |
+| `[Stripe] …`                                            | Trasa webhooka                                                                                                                                                                 |
+| `[Auth] Failed to send … email`                         | `recordAuthEmailFailure` w `auth.server.ts`; dodatkowo wpis `email.failed` w `/admin/audit`                                                                                    |
+| `[Better Auth]: Failed to run background task:`         | Hook e-mailowy uruchomiony przez Better Auth w tle rzucił wyjątek; linia `[Auth]` przed nim zawiera błąd Resend                                                                |
+| `[Resend] Email sender availability unreadable`         | `isEmailSenderUnavailable` nie odczytało flagi z KV `CACHE`; blokada w Better Auth przepuściła żądanie                                                                         |
+| `[Newsletter] Failed to send …`                         | `subscribeToNewsletter` w `subscribe-to-newsletter.ts`; dodatkowo wpis `email.failed` w `/admin/audit`                                                                         |
+| `Order confirmation … failed for order …`               | `recordOrderEmailOutcome` (e-mail o wysyłce loguje `Order shipped …`); dodatkowo wpis `email.failed` w aktywności zamówienia                                                   |
+| `Order confirmation for order … could not be prepared:` | `recordOrderEmailAttempt` przechwycił błąd przed wysyłką i zalogował go ze stosem wywołań (`Order shipped …` dla e-maila o wysyłce); po nim następuje linia `failed for order` |
+| `[catalog] …`                                           | `catalogDebugLog`, wyłącznie w środowisku deweloperskim                                                                                                                        |
 
 ## Uruchomienie buildu produkcyjnego lokalnie
 

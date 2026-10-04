@@ -29,7 +29,7 @@ Błąd samego wycofania jest przechwytywany i zapisywany do logu. Nieudane wycof
 
 ### E-mail potwierdzający wysyłany jest raz
 
-`notifyOrderConfirmed` w `src/integrations/stripe/stripe.webhooks.tsx` wysyła potwierdzenie i przekazuje wynik do `recordOrderEmailOutcome`, które przy błędzie zapisuje zdarzenie audytowe. Nie ma skrzynki wyjściowej (outbox) ani ponowień, więc awaria Resend w momencie zakupu oznacza, że klient ma zamówienie i nie ma e-maila — a dowiedzieć się o tym można tylko z dziennika audytu.
+`notifyOrderConfirmed` w `src/integrations/stripe/stripe.webhooks.tsx` wysyła potwierdzenie i przekazuje próbę do `recordOrderEmailAttempt`, które przy błędzie zapisuje wpis `email.failed` z treścią błędu. Nie ma skrzynki wyjściowej (outbox), ponowień ani akcji ponownej wysyłki w panelu, więc awaria Resend w momencie zakupu oznacza, że klient ma zamówienie i nie ma e-maila. Sklep widzi to w aktywności zamówienia i w `/admin/audit` i musi skontaktować się z klientem ręcznie. E-mail o wysyłce ma tę samą lukę, choć administrator, który wysyła zamówienie, dowiaduje się o porażce od razu.
 
 ### `isAdminPathname` dopasowuje zbyt szeroko
 

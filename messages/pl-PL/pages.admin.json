@@ -565,6 +565,8 @@
         "successTitle": "Zaktualizowano zamówienie",
         "fulfillSuccessDescription": "Rozpoczęto realizację zamówienia.",
         "shipSuccessDescription": "Zamówienie oznaczono jako wysłane.",
+        "shipEmailFailedTitle": "Klient nie otrzymał e-maila",
+        "shipEmailFailedDescription": "Nie udało się wysłać wiadomości o nadaniu przesyłki. Szczegóły błędu znajdziesz w sekcji „Aktywność” zamówienia.",
         "cancelSuccessDescription": "Zamówienie anulowane.",
         "errorTitle": "Nie udało się zaktualizować zamówienia",
         "errorDescription": "Spróbuj ponownie za chwilę.",

@@ -44,9 +44,11 @@ export const shipOrder = createServerFn({ method: "POST" })
     recordOrderShippedAudit(orderId, {
       detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
     })
-    scheduleBackgroundWork(notifyOrderShipped(orderId))
+    const shippedEmailDelivery = notifyOrderShipped(orderId)
+    scheduleBackgroundWork(shippedEmailDelivery)
+    const shippedEmailSent = await shippedEmailDelivery
 
-    return { ok: true, orderId }
+    return { ok: true, orderId, shippedEmailSent }
   })
 
 export const shipOrderMutation = mutationOptions({

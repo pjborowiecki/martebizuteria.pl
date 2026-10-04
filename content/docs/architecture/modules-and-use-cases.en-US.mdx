@@ -69,9 +69,11 @@ export const shipOrder = createServerFn({ method: "POST" })
     recordOrderShippedAudit(orderId, {
       detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
     })
-    scheduleBackgroundWork(notifyOrderShipped(orderId))
+    const shippedEmailDelivery = notifyOrderShipped(orderId)
+    scheduleBackgroundWork(shippedEmailDelivery)
+    const shippedEmailSent = await shippedEmailDelivery
 
-    return { ok: true, orderId }
+    return { ok: true, orderId, shippedEmailSent }
   })
 
 export const shipOrderMutation = mutationOptions({
@@ -85,7 +87,7 @@ Every part of that is load-bearing:
 - **Middleware** comes from `src/integrations/better-auth/auth.middleware.ts`. `withRequest` captures the request headers and normalizes errors; `authorized()` requires a session; `authorized({ order: ["update"] })` also checks the role's permission from `auth.access.ts`; `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` counts attempts per operation and IP.
 - **Validation** parses the input with the module's Zod schema before the handler runs, so the handler receives `zod.output` types.
 - **State guards** live in the module, not the component. `assertOrderActionState` refuses transitions that `order.admin-actions.utils.ts` says are impossible.
-- **Audit and email are background work.** The recorder enqueues to the Cloudflare Queue; the email is handed to `scheduleBackgroundWork`, so neither delays the response.
+- **Audit is background work; the email is awaited.** The recorder enqueues to the Cloudflare Queue, so it does not delay the response. The email is awaited because the admin is told whether it went out: `notifyOrderShipped` records a failure on the order and returns `false` instead of throwing, so a refused email never undoes the shipment. The same promise also goes to `scheduleBackgroundWork`, so the send and its audit entry finish even if the admin disconnects first.
 - **The mutation options are exported next to the function**, keyed by `ORDER_MUTATION_KEYS.SHIP`.
 
 ## A read use case

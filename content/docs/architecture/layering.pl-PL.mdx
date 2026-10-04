@@ -40,7 +40,7 @@ export const shipOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
   .handler(async ({ data: { orderId } }) => {
-    // czyta zamówienie, zapisuje fulfillmentStatus, rejestruje audyt, kolejkuje e-mail
+    // czyta zamówienie, zapisuje fulfillmentStatus, rejestruje audyt, wysyła e-mail o wysyłce
   })
 ```
 

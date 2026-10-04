@@ -74,7 +74,7 @@ Na flagę reaguje tylko blokada w Better Auth. Dopóki jest ustawiona, rejestrac
 | Zmiana adresu e-mail            | `src/presentation/emails/change-email.tsx`                  | `emails.change-email`                  | `sendChangeEmailConfirmation` w `auth.server.ts`                                                                                                                                                                        |
 | Konto usunięte                  | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail`, wywoływane z oczekiwaniem na wynik przez `src/modules/user/use-cases/delete-customer.ts` i `afterDelete` Better Auth                                                                         |
 | Potwierdzenie zamówienia        | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `stripe.webhooks.tsx` po zrealizowaniu sesji Checkout                                                                                                                                                                   |
-| Zamówienie wysłane              | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `notifyOrderShipped`, planowane przez `src/modules/order/use-cases/ship-order.ts`                                                                                                                                       |
+| Zamówienie wysłane              | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `notifyOrderShipped`, oczekiwane przez `src/modules/order/use-cases/ship-order.ts`                                                                                                                                      |
 | Potwierdzenie newslettera       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` w `newsletter-confirmation.server.ts`, wywoływane przez `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` z oczekiwaniem na wynik                                              |
 | Adres już na liście newslettera | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribed` w `newsletter-already-subscribed.server.ts`, wywoływane z oczekiwaniem na wynik przez `subscribe-to-newsletter.ts`, gdy potwierdzony adres wysyła ktoś inny niż zalogowany właściciel |
 
@@ -124,32 +124,39 @@ Plik `order-confirmation.utils.ts` zamienia wiersze bazy na właściwości szabl
 
 Plik `order-shipped.utils.ts` używa ich ponownie dla e-maila o wysyłce: `buildOrderShippedDetails` wybiera tekst o czasie dostawy według `type` metody (`courier`, `locker` lub `in_store`), a `buildOrderShippedAccountCta` deleguje do `buildOrderAccountCta`.
 
-Plik `order-shipped.notification.server.ts` zawiera cały przepływ e-maila o wysyłce. `notifyOrderShipped(orderId)` ładuje zamówienie przez `getOrderForShippedEmail`, kończy po cichu, jeśli nie ma adresu e-mail, ustala język z `order.metadata` przez `resolveOrderLocale`, ładuje kontekst zamówienia, gdy istnieje `checkoutId`, renderuje, wysyła i zapisuje wynik:
+Plik `order-shipped.notification.server.ts` zawiera cały przepływ e-maila o wysyłce. `sendOrderShippedEmail(orderId)` ładuje zamówienie przez `getOrderForShippedEmail`, ustala język z `order.metadata` przez `resolveOrderLocale`, ładuje kontekst zamówienia, gdy istnieje `checkoutId`, renderuje i wysyła. Zwraca wynik zamiast go zapisywać, a brak zamówienia albo pusty adres też jest wynikiem. `notifyOrderShipped(orderId)` przekazuje tę próbę do `recordOrderEmailAttempt` z `order-email.outcome.server.ts`, z którego korzysta też e-mail z potwierdzeniem:
 
 ```ts
-recordOrderEmailOutcome({ failure, label: `Order shipped → ${orderRow.email}`, orderId: orderRow.id })
+export const notifyOrderShipped = (orderId: string): Promise<boolean> =>
+  recordOrderEmailAttempt(sendOrderShippedEmail(orderId), { label: ORDER_SHIPPED_LABEL, orderId })
 ```
+
+`recordOrderEmailAttempt` loguje rzucony błąd razem ze stosem wywołań jako `Order shipped for order <id> could not be prepared:` i zamienia go w wynik, zapisuje wynik przy zamówieniu i mówi wywołującemu, czy e-mail wyszedł.
 
 Język pochodzi z zamówienia, a nie z bieżącego żądania, więc klient, który złożył zamówienie po polsku, otrzymuje polską wiadomość także wtedy, gdy przycisk kliknie administrator pracujący po angielsku.
 
-## Praca w tle
+## Czekanie na e-maile o zamówieniu
 
-Żaden z e-maili o zamówieniu nie blokuje swojego wywołującego. `ship-order.ts` planuje wysyłkę:
+Na oba e-maile o zamówieniu kod czeka i żaden nie może wywrócić swojego wywołującego. `ship-order.ts` czeka na e-mail o wysyłce i przekazuje wynik administratorowi:
 
 ```ts
 recordOrderShippedAudit(orderId, {
   detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
 })
-scheduleBackgroundWork(notifyOrderShipped(orderId))
+const shippedEmailDelivery = notifyOrderShipped(orderId)
+scheduleBackgroundWork(shippedEmailDelivery)
+const shippedEmailSent = await shippedEmailDelivery
 
-return { ok: true, orderId }
+return { ok: true, orderId, shippedEmailSent }
 ```
 
-`scheduleBackgroundWork` przekazuje obietnicę do `ctx.waitUntil` przez magazyn `AsyncLocalStorage` ustawiony w `src/server.ts` i pochłania oraz loguje odrzucenie. Żądanie administratora wraca, gdy tylko baza zostanie zaktualizowana.
+`scheduleBackgroundWork` przekazuje tę samą obietnicę do `ctx.waitUntil`, więc wysyłka i jej wpis w audycie kończą się nawet wtedy, gdy administrator zamknie kartę, zanim Resend odpowie. `useMarkOrderShipped` zawsze pokazuje „Zamówienie oznaczono jako wysłane.”, a gdy `shippedEmailSent` jest fałszem, także ostrzeżenie „Klient nie otrzymał e-maila”, które odsyła po szczegóły błędu do sekcji „Aktywność” zamówienia. Żądanie administratora trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`.
+
+Webhook Stripe w ten sam sposób rejestruje `notifyOrderConfirmed` przez `scheduleBackgroundWork` i czeka na wynik. Zapisuje on każdy wynik i nigdy nie rzuca wyjątku, więc webhook odpowiada 200 nawet wtedy, gdy Resend odrzuci potwierdzenie, a e-mail kończy się także wtedy, gdy Stripe przestanie czekać. Ponownie dostarczone zdarzenie i tak by go nie wysłało: `fulfillCheckout` zwraca `undefined` dla kasy, która nie jest już oczekująca, a handler kończy przed krokiem e-maila.
 
 ## Ślad w audycie
 
-Wysyłki są zapisywane, a nie tylko logowane. `recordOrderEmailOutcome({ failure, label, orderId })` w `src/modules/audit-log/audit-log.events.server.ts` zapisuje wpis sukcesu lub porażki, a przepływ potwierdzenia wywołuje dodatkowo `recordEmailFailedAudit(orderId, …)`, gdy ładunku nie udało się nawet _przygotować_ — brakujący adres e-mail klienta, nieparsowalny blok metadanych. Oba trafiają do `/admin/audit`.
+Wysyłki są zapisywane, a nie tylko logowane. `recordOrderEmailAttempt` przekazuje każdy wynik do `recordOrderEmailOutcome({ failure, label, orderId })` w `src/modules/audit-log/audit-log.events.server.ts`, który zapisuje przy zamówieniu `email.sent` albo `email.failed`. Przechodzi przez niego każdy sposób, w jaki e-mail o zamówieniu może zawieść: odmowa Resend lub brak odpowiedzi na czas, sesja Stripe albo zamówienie bez adresu, brak zamówienia oraz błąd podczas przygotowywania e-maila, na przykład nieudany odczyt z bazy. Wpisy z treścią błędu pojawiają się w karcie Aktywność zamówienia i w `/admin/audit`; szczegóły opisują [Szablony e-maili](/docs/features/email).
 
 E-maile Better Auth są zapisywane tylko wtedy, gdy się nie powiodą, przez `deliverAuthEmail` w `auth.server.ts`: celem wpisu jest adres, a szczegół wygląda jak `Auth verification email — The example.com domain is not verified`. Link z e-maila nigdy nie trafia do wpisu.
 

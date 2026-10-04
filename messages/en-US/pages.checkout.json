@@ -19,7 +19,7 @@
   },
   "checkoutSuccess": {
     "title": "Order Confirmed",
-    "description": "Thank you for your purchase. A confirmation is on its way to {email}.",
+    "description": "Thank you for your purchase. If the confirmation email has not reached {email} within a few minutes, contact us and quote the order number below.",
     "pendingTitle": "Confirming your payment",
     "pendingDescription": "This takes a moment. Your payment went through — we are just recording the order.",
     "unavailableTitle": "We could not load this order",

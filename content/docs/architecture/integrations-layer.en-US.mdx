@@ -48,7 +48,7 @@ const failure = await sendEmail({
 })
 ```
 
-`sendEmail` returns a failure string rather than throwing, so the caller decides what a failed send means: an audit entry and an error for the person (`subscribeToNewsletter`), an audit entry only (`recordOrderEmailOutcome`), or an audit entry plus a retryable `503` (`deliverAuthEmail` in `auth.server.ts`).
+`sendEmail` returns a failure string rather than throwing, so the caller decides what a failed send means: an audit entry and an error for the person (`subscribeToNewsletter`), an audit entry on the order and, when an admin ships it, a warning toast (`recordOrderEmailAttempt`), or an audit entry plus a retryable `503` (`deliverAuthEmail` in `auth.server.ts`).
 
 ## Integration scope worth knowing
 

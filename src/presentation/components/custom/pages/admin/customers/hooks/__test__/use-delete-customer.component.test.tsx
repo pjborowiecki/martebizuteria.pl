@@ -12,14 +12,15 @@ import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { useDeleteCustomer } from "~/src/presentation/components/custom/pages/admin/customers/hooks/use-delete-customer"
 
-const { deleteCustomerMutationFn, toastError, toastSuccess } = vi.hoisted(() => ({
+const { deleteCustomerMutationFn, toastError, toastSuccess, toastWarning } = vi.hoisted(() => ({
   deleteCustomerMutationFn:
     vi.fn<(input: { readonly userId: string }) => Promise<{ goodbyeEmailSent: boolean; ok: true; userId: string }>>(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
+  toastWarning: vi.fn(),
 }))
 
-vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess } }))
+vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess, warning: toastWarning } }))
 vi.mock("~/src/modules/user/use-cases/delete-customer", () => ({
   deleteCustomerMutation: { mutationFn: deleteCustomerMutationFn, mutationKey: ["users", "delete-customer"] },
 }))
@@ -40,6 +41,7 @@ beforeEach(() => {
   deleteCustomerMutationFn.mockReset()
   toastError.mockReset()
   toastSuccess.mockReset()
+  toastWarning.mockReset()
 })
 
 afterEach(() => {
@@ -60,19 +62,21 @@ describe("useDeleteCustomer on success", () => {
     })
 
     expect(toastError).not.toHaveBeenCalled()
+    expect(toastWarning).not.toHaveBeenCalled()
   })
 
-  it("tells the admin when the account is gone but the confirmation email could not be sent", async () => {
+  it("warns the admin when the account is gone but the confirmation email could not be sent", async () => {
     deleteCustomerMutationFn.mockResolvedValue({ goodbyeEmailSent: false, ok: true, userId: "usr_1" })
     const { result } = renderDeleteCustomer()
 
     result.current.mutate({ userId: "usr_1" })
 
     await waitFor(() => {
-      expect(toastSuccess).toHaveBeenCalledWith("Account deleted", {
-        description: "The account was deleted, but the confirmation email could not be sent. The failure is recorded in the audit log.",
+      expect(toastWarning).toHaveBeenCalledWith("Account deleted — email not sent", {
+        description: "The confirmation email to the customer could not be sent. The error is recorded in the audit log.",
       })
     })
+    expect(toastSuccess).not.toHaveBeenCalled()
     expect(toastError).not.toHaveBeenCalled()
   })
 

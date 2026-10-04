@@ -29,7 +29,7 @@ The rollback's own failure is caught and logged. A failed rollback therefore lea
 
 ### The confirmation email is attempted once
 
-`notifyOrderConfirmed` in `src/integrations/stripe/stripe.webhooks.tsx` sends the confirmation and passes the outcome to `recordOrderEmailOutcome`, which writes an audit event on failure. There is no outbox and no retry, so a Resend outage during a purchase means the customer has an order and no email — discoverable only in the audit log.
+`notifyOrderConfirmed` in `src/integrations/stripe/stripe.webhooks.tsx` sends the confirmation and passes the attempt to `recordOrderEmailAttempt`, which writes an `email.failed` entry with the error on failure. There is no outbox, no retry and no resend action in the admin, so a Resend outage during a purchase means the customer has an order and no email. The shop sees it in the order's activity and in `/admin/audit`, and has to contact the customer by hand. The shipped email has the same gap, although the admin who ships the order is told at once.
 
 ### `isAdminPathname` matches too broadly
 

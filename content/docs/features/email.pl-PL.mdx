@@ -61,7 +61,7 @@ Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane
 | `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmation` (Better Auth)                                                          |
 | `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, wywoływany przez `deleteCustomer` i `afterDelete` z oczekiwaniem na wynik |
 | `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `notifyOrderConfirmed`, z webhooka Stripe                                                            |
-| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, kolejkowany przez `shipOrder`                                                  |
+| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, oczekiwany przez `shipOrder`                                                   |
 | `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik       |
 | `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik  |
 
@@ -126,7 +126,7 @@ Layout wymusza też renderowanie w trybie jasnym:
 
 To najbardziej złożony szablon. `stripe.webhooks.tsx` buduje go w `buildOrderConfirmationEmailPayload`:
 
-1. Odbiorcą jest `session.customer_email ?? session.customer_details?.email`; przy jego braku cały payload jest porzucany.
+1. Odbiorcą jest `session.customer_email ?? session.customer_details?.email`. Jeśli go brak, nic nie jest budowane, a przy zamówieniu zapisywana jest porażka `The Stripe session has no email address`.
 2. `getCheckoutEmailContext(checkoutId)` wczytuje adresy, metodę dostawy, identyfikator paczkomatu i uwagę klienta.
 3. `resolveStripePaymentMethodLabel(session, messages)` zamienia metodę płatności Stripe w przetłumaczoną etykietę.
 4. `buildOrderConfirmationDetails(...)` składa blok szczegółów.
@@ -163,7 +163,35 @@ export const recordOrderEmailOutcome = ({
 }
 ```
 
-`label` to czytelny napis, na przykład `Order confirmation → jane@example.com`. Jeśli budowanie payloadu rzuci wyjątek, zanim dojdzie do wysyłki, `notifyOrderConfirmed` go przechwytuje i zapisuje `recordEmailFailedAudit` z komunikatem błędu. Kategoria `email` w dzienniku audytu jest więc miejscem, w które należy zajrzeć, gdy klient mówi, że nic nie dostał.
+`label` to czytelny napis, na przykład `Order confirmation → jane@example.com`. Oba e-maile dotyczące zamówień są podzielone tak samo. `sendOrderConfirmationEmail` w `stripe.webhooks.tsx` i `sendOrderShippedEmail` w `order-shipped.notification.server.ts` zwracają `{ failure, label }`, a `notifyOrderConfirmed` i `notifyOrderShipped` przekazują tę próbę do `recordOrderEmailAttempt` w `src/integrations/resend/order-email.outcome.server.ts`:
+
+```ts
+export const recordOrderEmailAttempt = async (
+  attempt: Promise<OrderEmailOutcome>,
+  { label, orderId }: Readonly<{ label: string; orderId: string }>,
+): Promise<boolean> => {
+  const outcome = await attempt.catch((error: unknown) => {
+    console.error(`${label} for order ${orderId} could not be prepared:`, error)
+
+    return { failure: error instanceof Error ? error.message : String(error), label }
+  })
+  recordOrderEmailOutcome({ failure: outcome.failure, label: outcome.label, orderId })
+
+  return outcome.failure === undefined
+}
+```
+
+Wyjątek rzucony podczas przygotowywania e-maila trafia do logu razem ze stosem wywołań i też staje się wynikiem, z etykietą bez odbiorcy i opisem utworzonym tak, jak `sendEmail` opisuje przechwycony błąd. Każda próba kończy się więc wpisem:
+
+| Co poszło nie tak                     | Szczegół wpisu `email.failed`                                                       |
+| ------------------------------------- | ----------------------------------------------------------------------------------- |
+| Resend odrzucił wysyłkę               | `Order confirmation → jane@example.com — The example.com domain is not verified…`   |
+| Sesja Stripe nie ma adresu            | `Order confirmation — The Stripe session has no email address`                      |
+| Zamówienie ma pusty adres             | `Order shipped — The order has no email address`                                    |
+| Wiersza zamówienia już nie ma         | `Order shipped — The order could not be found`                                      |
+| Przygotowanie e-maila rzuciło wyjątek | `Order shipped — D1_ERROR: …` albo rzucona wartość jako tekst, gdy nie jest `Error` |
+
+Identyfikator zamówienia jest celem i `resourceId` każdego wpisu. Porażkę widać więc w karcie **Aktywność** zamówienia w panelu, jako „Błąd wysyłki e-maila” z oznaczeniem „Niepowodzenie” i szczegółem pod spodem, oraz w `/admin/audit` w kategorii `email` z poziomem `error`. Wpisy audytu trafiają do D1 przez kolejkę kilka sekund po wysyłce, dlatego `processAuditLogQueueBatch` publikuje `ORDER_QUERY_KEYS.ADMIN.ORDERS` za każdym razem, gdy partia zawiera akcję z osi czasu zamówienia: każda otwarta karta panelu pobiera ponownie listę zamówień, statystyki zamówień i otwartą stronę zamówienia, która pokazuje wtedy wpis bez przeładowania. Porażki newslettera i Better Auth używają tej samej akcji `email.failed`, więc też wywołują to odświeżenie. Wpis może jeszcze zginąć w drodze do D1, gdy nie powiedzie się wysłanie do kolejki albo partia zawiedzie trzy razy, bo nie skonfigurowano kolejki martwych wiadomości; wtedy porażkę zna tylko log Workera. Panel nie ma jeszcze przycisku ponownej wysyłki e-maila dotyczącego zamówienia: po usunięciu przyczyny sklep kontaktuje się z klientem pod adresem widocznym w zamówieniu.
 
 E-mail newslettera odrzucony przez Resend również trafia do audytu. `subscribeToNewsletter` wywołuje `recordEmailFailedAudit(email, { detail })`: celem wpisu jest adres, a szczegół podaje rodzaj e-maila i błąd Resend, na przykład `Newsletter confirmation — The example.com domain is not verified` albo `Newsletter already-subscribed notice — …`. Niezweryfikowana domena nadawcy pojawia się więc w `/admin/audit` już przy pierwszym zapisie, a nie tylko w logu Workera. Wysłany e-mail nie jest zapisywany.
 
@@ -191,19 +219,29 @@ Celem wpisu jest adres odbiorcy, a szczegół podaje rodzaj e-maila, na przykła
 
 `AUDIT_LOG_ACTION.EMAIL_DEFERRED` istnieje, ale nic go nie emituje.
 
-## Wysyłka w tle
+## Czekanie na wysyłkę
 
-Jedna wysyłka jest świadomie nieoczekiwana przez żądanie:
+Własne wysyłki sklepu czekają na odpowiedź Resend, więc wynik trafia do tego, kto na niego patrzy. Wyjątkiem są hooki rejestracji, resetu hasła i zmiany adresu w Better Auth: Better Auth uruchamia je przez `advanced.backgroundTasks`, czyli `scheduleBackgroundWork` (`src/lib/background.ts`, `waitUntil` Workera), co opisuje [Better Auth](/docs/integrations/better-auth).
 
-- `shipOrder` — `scheduleBackgroundWork(notifyOrderShipped(orderId))`
+`shipOrder`, `deleteCustomer` i webhook Stripe przekazują też wysyłkę, na którą czekają, do `scheduleBackgroundWork`, zanim zaczną na nią czekać:
 
-`scheduleBackgroundWork` (`src/lib/background.ts`) korzysta z `waitUntil` Workera, więc żądanie wraca natychmiast.
+```ts
+const shippedEmailDelivery = notifyOrderShipped(orderId)
+scheduleBackgroundWork(shippedEmailDelivery)
+const shippedEmailSent = await shippedEmailDelivery
+```
 
-`deleteCustomer` czeka na `sendAccountDeletedEmail` po `removeUser` i zwraca `goodbyeEmailSent`, więc komunikat w panelu mówi administratorowi, czy e-mail pożegnalny wyszedł. Odmowa nigdy nie cofa usunięcia: `sendAccountDeletedEmail` zwraca `false` zamiast rzucać wyjątek, zarówno gdy Resend odrzuci e-mail, jak i gdy nie da się go nawet przygotować.
+Gdy administrator zamknie kartę albo Stripe przestanie czekać, środowisko Workers może przerwać to, na co żądanie jeszcze czekało, ale nie obietnicę przekazaną do `waitUntil`. Dzięki temu e-mail i tak wychodzi, a jego wynik zostaje zapisany. `afterDelete` w Better Auth czeka na `sendAccountDeletedEmail` bez tego zabezpieczenia, więc klient, który zamknie kartę podczas usuwania własnego konta, nadal może przerwać e-mail pożegnalny.
+
+`shipOrder` czeka na `notifyOrderShipped` po aktualizacji wiersza zamówienia i zwraca `shippedEmailSent`. Administrator zawsze widzi „Zamówienie oznaczono jako wysłane.”, a gdy e-mail nie wyszedł, także ostrzeżenie „Klient nie otrzymał e-maila”, które odsyła po szczegóły błędu do sekcji „Aktywność” zamówienia. Zamówienie i tak pozostaje oznaczone jako wysłane, bo `notifyOrderShipped` zapisuje porażkę i zwraca `false` zamiast rzucać wyjątek. Wysyłka z listy zamówień pokazuje te same komunikaty.
+
+`deleteCustomer` czeka na `sendAccountDeletedEmail` po `removeUser` i zwraca `goodbyeEmailSent`. Administrator widzi „Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.” albo, gdy e-mail nie wyszedł, ostrzeżenie „Konto usunięte — klient nie otrzymał e-maila”, które odsyła do dziennika zdarzeń. Odmowa nigdy nie cofa usunięcia: `sendAccountDeletedEmail` zwraca `false` zamiast rzucać wyjątek, zarówno gdy Resend odrzuci e-mail, jak i gdy nie da się go nawet przygotować.
 
 `subscribeToNewsletter` czeka na swój e-mail, bo osoba, która właśnie się zapisała, dowiaduje się, czy wyszedł. Nowy, oczekujący albo wypisany adres dostaje `sendNewsletterConfirmation`; adres już potwierdzony, wysłany przez kogokolwiek poza zalogowanym właścicielem, dostaje `sendNewsletterAlreadySubscribed`. Obie funkcje zwracają komunikat błędu Resend albo `undefined`, gdy wysyłka została przyjęta. Przy porażce przypadek użycia loguje ją, zapisuje w audycie i odpowiada `confirmationFailed`. Wiersz, który czekał na potwierdzenie, zostaje w stanie `pending`, więc ponowne wysłanie adresu nadaje nowy token i wysyła nowy e-mail. Żądanie trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`, co formularz pokrywa stanem „Zapisujemy...”.
 
-Webhook Stripe natomiast **czeka** na `notifyOrderConfirmed`. Nieobsłużony wyjątek sprawiłby, że handler zwróci 500, a Stripe ponownie dostarczy webhook, którego zamówienie już powstało — dlatego `notifyOrderConfirmed` owija wszystko w `try`/`catch` i pochłania błąd po jego zapisaniu.
+Webhook Stripe też czeka na `notifyOrderConfirmed`, ale nikt nie widzi jego odpowiedzi, więc porażka pojawia się w aktywności zamówienia. `notifyOrderConfirmed` nigdy nie rzuca wyjątku: zarówno odmowa, jak i rzucony błąd kończą się wpisem `email.failed`, a webhook i tak odpowiada 200. Rzucenie wyjątku nie wysłałoby zresztą e-maila ponownie. Handler odpowiedziałby 500 i Stripe dostarczyłby zdarzenie jeszcze raz, ale przy ponownym dostarczeniu `fulfillCheckout` nie znajduje oczekującej kasy i handler kończy przed krokiem e-maila, więc jedynym skutkiem byłyby nieudane dostarczenia w Stripe i sprzątanie kuponu przesunięte na ponowną próbę.
+
+Dlatego strona sukcesu kasy nie twierdzi, że potwierdzenie jest w drodze. Prosi kupującego o kontakt z numerem zamówienia, jeśli e-mail nie dotrze w ciągu kilku minut.
 
 ## Podglądanie
 

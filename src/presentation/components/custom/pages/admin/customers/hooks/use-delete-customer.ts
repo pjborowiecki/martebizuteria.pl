@@ -44,8 +44,16 @@ export const useDeleteCustomer = (): UseMutationResult<DeleteCustomerResult, Err
       void syncQueryInvalidation(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
     },
     onSuccess: ({ goodbyeEmailSent }) => {
-      toast.success(t("toast.deleteSuccessTitle"), {
-        description: goodbyeEmailSent ? t("toast.deleteSuccessDescription") : t("toast.deleteSuccessEmailFailedDescription"),
+      if (goodbyeEmailSent) {
+        toast.success(t("toast.deleteSuccessTitle"), {
+          description: t("toast.deleteSuccessDescription"),
+        })
+
+        return
+      }
+
+      toast.warning(t("toast.deleteEmailFailedTitle"), {
+        description: t("toast.deleteEmailFailedDescription"),
       })
     },
   })

@@ -104,7 +104,10 @@ try {
     message.ack()
   }
 
-  await publishRealtimeInvalidation({ admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] })
+  const changesOrderTimeline = batch.messages.some((message) => ORDER_TIMELINE_ACTIONS.has(message.body.action))
+  await publishRealtimeInvalidation({
+    admin: changesOrderTimeline ? [...AUDIT_LOG_ADMIN_QUERY_KEYS, ORDER_QUERY_KEYS.ADMIN.ORDERS] : AUDIT_LOG_ADMIN_QUERY_KEYS,
+  })
 } catch (error) {
   console.error("[AuditLog Queue] Batch insert failed:", error)
 
@@ -114,7 +117,7 @@ try {
 }
 ```
 
-So up to 50 events become one D1 insert, and a failed batch is retried up to three times. The consequence to keep in mind: **an audit entry is eventually consistent** — it can take up to `max_batch_timeout` (5 seconds) to appear, which is why the consumer publishes a realtime invalidation instead of relying on the writer to refresh the UI.
+So up to 50 events become one D1 insert, and a failed batch is retried up to three times. The consequence to keep in mind: **an audit entry is eventually consistent** — it can take up to `max_batch_timeout` (5 seconds) to appear, which is why the consumer publishes a realtime invalidation instead of relying on the writer to refresh the UI. `AUDIT_LOG_ADMIN_QUERY_KEYS` is the audit page and its stats. When a row in the batch is one of `ADMIN_ORDER_TIMELINE_ACTIONS`, the consumer adds `ORDER_QUERY_KEYS.ADMIN.ORDERS`. Every open admin tab then refetches its order list, the order stats and an open order page, so a new timeline row, such as a failed order email, appears without a reload. The `email.*` actions are part of that list whatever the email was for, so a failed newsletter or Better Auth email triggers the refetch too.
 
 ## Change diffs
 

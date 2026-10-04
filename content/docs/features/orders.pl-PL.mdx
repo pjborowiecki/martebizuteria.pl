@@ -117,16 +117,20 @@ Reguły leżą w `order.admin-actions.utils.ts`:
 
 `fulfillOrder` i `shipOrder` przekazują `paymentUiKey: "paid"` dosłownie, a żaden z tych predykatów go nie czyta, więc stan płatności nie jest sprawdzany wobec wiersza.
 
-Cztery strzeżone akcje zapisują zdarzenie audytu (`recordOrderFulfillmentStartedAudit`, `recordOrderShippedAudit`, `recordOrderReleasedAudit`, `recordOrderCancelledAudit`), a wszystkie pięć udostępnia opcje mutacji z kluczami ze `ORDER_MUTATION_KEYS`. `shipOrder` dodatkowo kolejkuje powiadomienie o wysyłce:
+Cztery strzeżone akcje zapisują zdarzenie audytu (`recordOrderFulfillmentStartedAudit`, `recordOrderShippedAudit`, `recordOrderReleasedAudit`, `recordOrderCancelledAudit`), a wszystkie pięć udostępnia opcje mutacji z kluczami ze `ORDER_MUTATION_KEYS`. `shipOrder` dodatkowo czeka na e-mail o wysyłce i zwraca, czy wyszedł:
 
 ```ts
 recordOrderShippedAudit(orderId, {
   detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
 })
-scheduleBackgroundWork(notifyOrderShipped(orderId))
+const shippedEmailDelivery = notifyOrderShipped(orderId)
+scheduleBackgroundWork(shippedEmailDelivery)
+const shippedEmailSent = await shippedEmailDelivery
+
+return { ok: true, orderId, shippedEmailSent }
 ```
 
-`scheduleBackgroundWork` (`src/lib/background.ts`) przekazuje obietnicę do `waitUntil` Workera, więc odpowiedź nie czeka na Resend.
+`notifyOrderShipped` nigdy nie rzuca wyjątku. Odmowa Resend, zamówienie bez adresu i błąd podczas przygotowywania e-maila są zapisywane przy zamówieniu jako `email.failed` i zwracane jako `false`, więc zamówienie pozostaje oznaczone jako wysłane. Ta sama obietnica trafia do `scheduleBackgroundWork`, czyli `waitUntil` Workera, więc e-mail i jego wpis kończą się nawet wtedy, gdy administrator wyjdzie, zanim Resend odpowie. `useMarkOrderShipped` zawsze pokazuje „Zamówienie oznaczono jako wysłane.”, a gdy e-mail nie wyszedł, także ostrzeżenie „Klient nie otrzymał e-maila”, które odsyła po szczegóły błędu do sekcji „Aktywność” zamówienia. Odpowiedź trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`.
 
 Numer i adres śledzenia pochodzą z `order-ship-dialog.tsx`; `shipOrder` je przycina i dla pustej wartości zapisuje `null`, a e-mail o wysyłce pokazuje numer i kieruje swój przycisk na adres śledzenia, jeśli taki istnieje. `markOrderDelivered` jest jedynym miejscem, które zapisuje `delivered_at`.
 
@@ -165,6 +169,8 @@ Numer i adres śledzenia pochodzą z `order-ship-dialog.tsx`; `shipOrder` je prz
 | `order-payment-card.tsx`        | `payment`, łącznie z kwotą i datą zwrotu                                     |
 | `order-tags-card.tsx`           | `tags` z `resolveAdminOrderDetailTags`                                       |
 | `order-notes-card.tsx`          | `customerNote`                                                               |
+
+Oś czasu obejmuje też wpisy e-maili zamówienia. Wiersz `email.failed` ma etykietę „Błąd wysyłki e-maila” z oznaczeniem „Niepowodzenie”, a jego szczegół zawiera błąd, na przykład `Order confirmation → jane@example.com — The example.com domain is not verified…`. Wiersze audytu trafiają do D1 przez kolejkę kilka sekund po akcji, dlatego `processAuditLogQueueBatch` publikuje `ORDER_QUERY_KEYS.ADMIN.ORDERS`, gdy partia zawiera akcję z `ADMIN_ORDER_TIMELINE_ACTIONS`. Każda otwarta karta panelu pobiera wtedy ponownie listę zamówień, statystyki zamówień i otwartą stronę zamówienia, która pokazuje nowe wiersze bez przeładowania. Nieudany e-mail newslettera albo Better Auth używa tej samej akcji `email.failed` i też wywołuje to odświeżenie. Nie ma akcji ponownej wysyłki e-maila o zamówieniu.
 
 `OrderDetailActions` (`order-detail-actions.tsx` z `use-order-detail-actions.ts`) umieszcza akcje w nagłówku. Drukuj wywołuje `globalThis.print()` i jest wyłączony dla anulowanego zamówienia. Zwrot, Anuluj zamówienie, Realizuj, Oznacz jako wysłane i Oznacz jako dostarczone renderują się tylko wtedy, gdy pozwala na to ich predykat; Oznacz jako wysłane otwiera `order-ship-dialog.tsx` z opcjonalnym numerem i adresem śledzenia, a Zwrot i Anuluj zamówienie najpierw proszą o potwierdzenie. Zwrot to `order-refund-button.tsx`: gdy `resolveAdminOrderRefundBlocker` zwraca blokadę dla sumy i `dispute` zamówienia, przycisk pozostaje widoczny, ale wyłączony, nadal osiągalny klawiaturą, i wyjaśnia blokadę w podpowiedzi.
 

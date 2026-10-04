@@ -43,7 +43,7 @@ GET /en-US/products/pierscionek-z-perla
 1. The build replaced the browser-side call with an RPC request. `shouldIgnorePath` matches `/_serverFn`, so `resolveLocale` skips it and `getCurrentLocale()` falls back to the `marte_locale` cookie instead of the URL.
 2. Middleware runs in declared order. `withRequest` captures `getRequest().headers` into context and wraps the rest in a `.catch(handleRequestError)`. `withRateLimit(kind, limit)` counts the attempt. `authorized(permission?)` loads the session and checks the permission.
 3. The validator parses the input with the module's Zod schema.
-4. The handler queries D1 or calls a provider, schedules any audit and email work in the background, and returns plain data.
+4. The handler queries D1 or calls a provider, schedules any audit work in the background, and returns plain data. An email the response reports on is awaited, and the same promise is handed to `waitUntil` so the send finishes if the caller disconnects.
 5. Errors are normalized on the way out. `handleRequestError` first re-throws a TanStack `notFound()` unchanged (`isNotFound`), so a route answers 404 instead of a 500. It then re-throws an `AppError` with its code and, when its message is a reason code such as `WISHLIST_FULL`, that reason, maps a Better Auth API error to `AUTH_API_ERROR` with a translation key, maps a `ZodError` to `VALIDATION`, and turns anything else into `INTERNAL_ERROR` after logging the original.
 6. The component receives the data, or an error whose message is a code. `useActionError()` turns that code into a translated string.
 
@@ -55,8 +55,9 @@ POST /_serverFn/…  (shipOrder)
   validator        orderZodSchemas.adminOrderIdInput.parse
   handler          assertOrderActionState → UPDATE order
                    recordOrderShippedAudit      → AUDIT_LOG_QUEUE (waitUntil)
-                   scheduleBackgroundWork(notifyOrderShipped)  (waitUntil)
-  response         { ok: true, orderId }  or  AppError code
+                   notifyOrderShipped            → Resend, outcome → AUDIT_LOG_QUEUE
+                                                   (waitUntil, then awaited)
+  response         { ok: true, orderId, shippedEmailSent }  or  AppError code
 ```
 
 ## Webhook request
@@ -77,7 +78,7 @@ The audit log is written by the queue consumer, not by the request that produced
 1. A recorder calls `scheduleAuditLog` or `scheduleAuditLogFromRequest`, which mints the row id with `uuidv7()` and stamps `createdAt` with `Date.now()` at enqueue time, so ordering survives batching.
 2. `scheduleBackgroundWork` hands the `env.AUDIT_LOG_QUEUE.send(...)` promise to `waitUntil`.
 3. Cloudflare delivers a batch of up to 50 messages to the `queue` export in `src/server.ts`.
-4. `processAuditLogQueueBatch` inserts the whole batch with `insertAuditLogs`, acks each message, then publishes a realtime invalidation for `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` and `.STATS`. If the insert throws, every message is retried; after three attempts the batch is dropped, because no dead-letter queue is configured.
+4. `processAuditLogQueueBatch` inserts the whole batch with `insertAuditLogs`, acks each message, then publishes a realtime invalidation for `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` and `.STATS`, plus `ORDER_QUERY_KEYS.ADMIN.ORDERS` when the batch carries an action from an order timeline, so open admin tabs refetch their order list, stats and order page and pick up a failed order email. If the insert throws, every message is retried; after three attempts the batch is dropped, because no dead-letter queue is configured.
 
 ## Related pages
 

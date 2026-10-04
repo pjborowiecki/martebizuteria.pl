@@ -17,18 +17,22 @@ import {
   useRefundOrder,
 } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions"
 
-const { cancelFn, deliverFn, fulfillFn, refundFn, shipFn, syncQueryInvalidation, toastError, toastSuccess } = vi.hoisted(() => ({
-  cancelFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
-  deliverFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
-  fulfillFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
-  refundFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
-  shipFn: vi.fn<(input: { orderId: string; trackingNumber?: string }) => Promise<{ ok: true; orderId: string }>>(),
-  syncQueryInvalidation: vi.fn(() => Promise.resolve(undefined)),
-  toastError: vi.fn(),
-  toastSuccess: vi.fn(),
-}))
+const { cancelFn, deliverFn, fulfillFn, refundFn, shipFn, syncQueryInvalidation, toastError, toastSuccess, toastWarning } = vi.hoisted(
+  () => ({
+    cancelFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+    deliverFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+    fulfillFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+    refundFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+    shipFn:
+      vi.fn<(input: { orderId: string; trackingNumber?: string }) => Promise<{ ok: true; orderId: string; shippedEmailSent: boolean }>>(),
+    syncQueryInvalidation: vi.fn(() => Promise.resolve(undefined)),
+    toastError: vi.fn(),
+    toastSuccess: vi.fn(),
+    toastWarning: vi.fn(),
+  }),
+)
 
-vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess } }))
+vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess, warning: toastWarning } }))
 
 vi.mock("~/src/integrations/tanstack-query/query.sync", () => ({ syncQueryInvalidation }))
 
@@ -58,7 +62,7 @@ describe("admin order action mutations", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fulfillFn.mockResolvedValue({ ok: true, orderId: "order-1" })
-    shipFn.mockResolvedValue({ ok: true, orderId: "order-1" })
+    shipFn.mockResolvedValue({ ok: true, orderId: "order-1", shippedEmailSent: true })
     cancelFn.mockResolvedValue({ ok: true, orderId: "order-1" })
     deliverFn.mockResolvedValue({ ok: true, orderId: "order-1" })
     refundFn.mockResolvedValue({ ok: true, orderId: "order-1" })
@@ -96,6 +100,22 @@ describe("admin order action mutations", () => {
     })
 
     expect(toastSuccess).toHaveBeenCalledWith("Order updated", { description: "Order marked as shipped." })
+    expect(toastWarning).not.toHaveBeenCalled()
+  })
+
+  it("warns the admin separately when the shipping email to the customer failed", async () => {
+    shipFn.mockResolvedValue({ ok: true, orderId: "order-1", shippedEmailSent: false })
+    const { result } = renderHook(() => useMarkOrderShipped(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastWarning).toHaveBeenCalledOnce()
+    })
+
+    expect(toastSuccess).toHaveBeenCalledExactlyOnceWith("Order updated", { description: "Order marked as shipped." })
+    expect(toastWarning).toHaveBeenCalledWith("Shipping email not sent", {
+      description: "The customer was not emailed about the shipment. See the order's Activity card for the error.",
+    })
   })
 
   it("forwards the captured tracking details to the ship server function", async () => {
@@ -160,7 +180,7 @@ describe("admin order action failures", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fulfillFn.mockResolvedValue({ ok: true, orderId: "order-1" })
-    shipFn.mockResolvedValue({ ok: true, orderId: "order-1" })
+    shipFn.mockResolvedValue({ ok: true, orderId: "order-1", shippedEmailSent: true })
     cancelFn.mockResolvedValue({ ok: true, orderId: "order-1" })
   })
 

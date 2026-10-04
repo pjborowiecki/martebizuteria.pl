@@ -104,7 +104,10 @@ try {
     message.ack()
   }
 
-  await publishRealtimeInvalidation({ admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] })
+  const changesOrderTimeline = batch.messages.some((message) => ORDER_TIMELINE_ACTIONS.has(message.body.action))
+  await publishRealtimeInvalidation({
+    admin: changesOrderTimeline ? [...AUDIT_LOG_ADMIN_QUERY_KEYS, ORDER_QUERY_KEYS.ADMIN.ORDERS] : AUDIT_LOG_ADMIN_QUERY_KEYS,
+  })
 } catch (error) {
   console.error("[AuditLog Queue] Batch insert failed:", error)
 
@@ -114,7 +117,7 @@ try {
 }
 ```
 
-Do 50 zdarzeń staje się więc jednym insertem do D1, a nieudany wsad jest ponawiany do trzech razy. Konsekwencja, o której trzeba pamiętać: **wpis audytu jest spójny ostatecznie** — może pojawić się nawet po `max_batch_timeout` (5 sekund), dlatego konsument publikuje unieważnienie realtime, a nie liczy na to, że interfejs odświeży sam zapisujący.
+Do 50 zdarzeń staje się więc jednym insertem do D1, a nieudany wsad jest ponawiany do trzech razy. Konsekwencja, o której trzeba pamiętać: **wpis audytu jest spójny ostatecznie** — może pojawić się nawet po `max_batch_timeout` (5 sekund), dlatego konsument publikuje unieważnienie realtime, a nie liczy na to, że interfejs odświeży sam zapisujący. `AUDIT_LOG_ADMIN_QUERY_KEYS` to strona audytu i jej statystyki. Gdy któryś wiersz wsadu należy do `ADMIN_ORDER_TIMELINE_ACTIONS`, konsument dodaje `ORDER_QUERY_KEYS.ADMIN.ORDERS`. Każda otwarta karta panelu pobiera wtedy ponownie listę zamówień, statystyki zamówień i otwartą stronę zamówienia, więc nowy wiersz osi czasu, na przykład nieudany e-mail o zamówieniu, pojawia się bez przeładowania. Akcje `email.*` należą do tej listy niezależnie od tego, czego dotyczył e-mail, więc nieudany e-mail newslettera albo Better Auth też wywołuje to odświeżenie.
 
 ## Różnice zmian
 

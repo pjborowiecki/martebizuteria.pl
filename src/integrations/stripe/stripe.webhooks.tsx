@@ -14,6 +14,7 @@ import {
   buildOrderConfirmationItems,
   resolveStripePaymentMethodLabel,
 } from "~/src/integrations/resend/order-confirmation.utils"
+import { type OrderEmailOutcome, recordOrderEmailAttempt } from "~/src/integrations/resend/order-email.outcome.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { STRIPE_CURRENCY, STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/stripe/stripe.constants"
 import { deleteCheckoutCoupons } from "~/src/integrations/stripe/stripe.coupons.server"
@@ -26,10 +27,8 @@ import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
 import {
-  recordEmailFailedAudit,
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
-  recordOrderEmailOutcome,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit,
   recordOrderPlacedAudit,
@@ -48,6 +47,8 @@ import { getOrderTotalsForEmail } from "~/src/modules/order/order.accessors"
 import { clearOrderDispute } from "~/src/modules/order/use-cases/clear-order-dispute"
 import { flagOrderDispute } from "~/src/modules/order/use-cases/flag-order-dispute"
 import { refundOrder } from "~/src/modules/order/use-cases/refund-order"
+
+import { scheduleBackgroundWork } from "~/src/lib/background"
 
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
@@ -151,31 +152,31 @@ const buildOrderConfirmationEmailPayload = async (
   }
 }
 
-const notifyOrderConfirmed = async (
+const ORDER_CONFIRMATION_LABEL = "Order confirmation"
+
+const sendOrderConfirmationEmail = async (
   session: StripeType.Checkout.Session,
   order: Readonly<{ currency: string; lines: CheckoutFulfillmentLine[]; orderId: string }>,
-): Promise<void> => {
-  try {
-    const payload = await buildOrderConfirmationEmailPayload(session, order)
-    if (payload === undefined) {
-      return
-    }
-
-    const failure = await sendEmail({
-      react: payload.react,
-      subject: payload.subject,
-      to: payload.email,
-    })
-
-    recordOrderEmailOutcome({ failure, label: `Order confirmation → ${payload.email}`, orderId: order.orderId })
-  } catch (error: unknown) {
-    console.error(`Order ${order.orderId} confirmation email could not be prepared:`, error)
-    recordEmailFailedAudit(order.orderId, {
-      detail: error instanceof Error ? error.message : "Unknown error",
-      resourceId: order.orderId,
-    })
+): Promise<OrderEmailOutcome> => {
+  const payload = await buildOrderConfirmationEmailPayload(session, order)
+  if (payload === undefined) {
+    return { failure: "The Stripe session has no email address", label: ORDER_CONFIRMATION_LABEL }
   }
+
+  const failure = await sendEmail({
+    react: payload.react,
+    subject: payload.subject,
+    to: payload.email,
+  })
+
+  return { failure, label: `${ORDER_CONFIRMATION_LABEL} → ${payload.email}` }
 }
+
+const notifyOrderConfirmed = (
+  session: StripeType.Checkout.Session,
+  order: Readonly<{ currency: string; lines: CheckoutFulfillmentLine[]; orderId: string }>,
+): Promise<boolean> =>
+  recordOrderEmailAttempt(sendOrderConfirmationEmail(session, order), { label: ORDER_CONFIRMATION_LABEL, orderId: order.orderId })
 
 const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session): Promise<void> => {
   if (!FULFILLABLE_PAYMENT_STATUSES.has(session.payment_status)) {
@@ -211,7 +212,9 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
   scheduleAdminOrdersInvalidation()
   scheduleProductCatalogInvalidation()
 
-  await notifyOrderConfirmed(session, { currency, lines, orderId })
+  const confirmationEmailDelivery = notifyOrderConfirmed(session, { currency, lines, orderId })
+  scheduleBackgroundWork(confirmationEmailDelivery)
+  await confirmationEmailDelivery
 }
 
 const handleReleaseCheckoutSession = async (session: StripeType.Checkout.Session): Promise<void> => {

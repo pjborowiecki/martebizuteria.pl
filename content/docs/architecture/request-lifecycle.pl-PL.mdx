@@ -43,7 +43,7 @@ GET /en-US/products/pierscionek-z-perla
 1. Build zastąpił wywołanie po stronie przeglądarki żądaniem RPC. `shouldIgnorePath` dopasowuje `/_serverFn`, więc `resolveLocale` je pomija, a `getCurrentLocale()` sięga do cookie `marte_locale` zamiast do URL-a.
 2. Middleware działa w zadeklarowanej kolejności. `withRequest` przechwytuje `getRequest().headers` do kontekstu i owija resztę w `.catch(handleRequestError)`. `withRateLimit(kind, limit)` liczy próbę. `authorized(permission?)` ładuje sesję i sprawdza uprawnienie.
 3. Walidator parsuje wejście schematem Zod modułu.
-4. Handler odpytuje D1 albo woła dostawcę, planuje pracę audytową i e-mailową w tle i zwraca zwykłe dane.
+4. Handler odpytuje D1 albo woła dostawcę, planuje pracę audytową w tle i zwraca zwykłe dane. Na e-mail, o którym mówi odpowiedź, handler czeka, a tę samą obietnicę przekazuje do `waitUntil`, więc wysyłka kończy się także wtedy, gdy wywołujący się rozłączy.
 5. Błędy są normalizowane po drodze na zewnątrz. `handleRequestError` najpierw rzuca dalej bez zmian `notFound()` TanStack (`isNotFound`), więc trasa odpowiada kodem 404 zamiast 500. Potem ponownie rzuca `AppError` z jego kodem oraz, gdy komunikat jest kodem przyczyny, takim jak `WISHLIST_FULL`, z tą przyczyną, mapuje błąd API Better Auth na `AUTH_API_ERROR` z kluczem tłumaczenia, mapuje `ZodError` na `VALIDATION`, a wszystko inne zamienia na `INTERNAL_ERROR` po zalogowaniu oryginału.
 6. Komponent otrzymuje dane albo błąd, którego wiadomość jest kodem. `useActionError()` zamienia ten kod na przetłumaczony tekst.
 
@@ -55,8 +55,9 @@ POST /_serverFn/…  (shipOrder)
   validator        orderZodSchemas.adminOrderIdInput.parse
   handler          assertOrderActionState → UPDATE order
                    recordOrderShippedAudit      → AUDIT_LOG_QUEUE (waitUntil)
-                   scheduleBackgroundWork(notifyOrderShipped)  (waitUntil)
-  odpowiedź        { ok: true, orderId }  albo kod AppError
+                   notifyOrderShipped            → Resend, wynik → AUDIT_LOG_QUEUE
+                                                   (waitUntil, potem await)
+  odpowiedź        { ok: true, orderId, shippedEmailSent }  albo kod AppError
 ```
 
 ## Żądanie webhooka
@@ -77,7 +78,7 @@ Dziennik audytu zapisuje konsument kolejki, a nie żądanie, które wygenerował
 1. Rejestrator woła `scheduleAuditLog` albo `scheduleAuditLogFromRequest`, które generuje identyfikator wiersza przez `uuidv7()` i stempluje `createdAt` wartością `Date.now()` w momencie wysłania do kolejki, żeby kolejność przetrwała grupowanie w batche.
 2. `scheduleBackgroundWork` przekazuje obietnicę `env.AUDIT_LOG_QUEUE.send(...)` do `waitUntil`.
 3. Cloudflare dostarcza batch do 50 wiadomości do eksportu `queue` w `src/server.ts`.
-4. `processAuditLogQueueBatch` wstawia cały batch przez `insertAuditLogs`, potwierdza każdą wiadomość, a następnie publikuje unieważnienie realtime dla `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` i `.STATS`. Jeśli wstawienie rzuci wyjątek, każda wiadomość jest ponawiana; po trzech próbach batch jest tracony, bo nie skonfigurowano kolejki martwych listów.
+4. `processAuditLogQueueBatch` wstawia cały batch przez `insertAuditLogs`, potwierdza każdą wiadomość, a następnie publikuje unieważnienie realtime dla `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` i `.STATS`, a także dla `ORDER_QUERY_KEYS.ADMIN.ORDERS`, gdy batch zawiera akcję z osi czasu zamówienia, więc otwarte karty panelu pobierają ponownie listę zamówień, statystyki i stronę zamówienia, a ta pokazuje nieudany e-mail o zamówieniu. Jeśli wstawienie rzuci wyjątek, każda wiadomość jest ponawiana; po trzech próbach batch jest tracony, bo nie skonfigurowano kolejki martwych listów.
 
 ## Powiązane strony
 

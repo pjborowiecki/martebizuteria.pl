@@ -74,7 +74,7 @@ Only the Better Auth gate acts on the flag. While it is set, sign-up, password r
 | Change e-mail                 | `src/presentation/emails/change-email.tsx`                  | `emails.change-email`                  | `sendChangeEmailConfirmation` in `auth.server.ts`                                                                                                                                               |
 | Account deleted               | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail`, awaited by `src/modules/user/use-cases/delete-customer.ts` and by Better Auth's `afterDelete`                                                                        |
 | Order confirmation            | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `stripe.webhooks.tsx` after a checkout session is fulfilled                                                                                                                                     |
-| Order shipped                 | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `notifyOrderShipped`, scheduled by `src/modules/order/use-cases/ship-order.ts`                                                                                                                  |
+| Order shipped                 | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `notifyOrderShipped`, awaited by `src/modules/order/use-cases/ship-order.ts`                                                                                                                    |
 | Newsletter confirmation       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` in `newsletter-confirmation.server.ts`, awaited by `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`                                                   |
 | Newsletter already subscribed | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribed` in `newsletter-already-subscribed.server.ts`, awaited by `subscribe-to-newsletter.ts` when a confirmed address is submitted by anyone but its signed-in owner |
 
@@ -124,32 +124,39 @@ The `typeof orderShippedMessages` import is a _type-only_ import of the English 
 
 `order-shipped.utils.ts` reuses them for the shipped e-mail: `buildOrderShippedDetails` picks the delivery timing string by the method's `type` (`courier`, `locker` or `in_store`), and `buildOrderShippedAccountCta` delegates to `buildOrderAccountCta`.
 
-`order-shipped.notification.server.ts` is the whole shipped-e-mail flow. `notifyOrderShipped(orderId)` loads the order with `getOrderForShippedEmail`, returns silently if there is no e-mail address, resolves the locale from `order.metadata` with `resolveOrderLocale`, loads the checkout context when there is a `checkoutId`, renders, sends, and records the outcome:
+`order-shipped.notification.server.ts` is the whole shipped-e-mail flow. `sendOrderShippedEmail(orderId)` loads the order with `getOrderForShippedEmail`, resolves the locale from `order.metadata` with `resolveOrderLocale`, loads the checkout context when there is a `checkoutId`, renders and sends. It returns the outcome instead of recording it, and a missing order or a blank address is an outcome too. `notifyOrderShipped(orderId)` hands that attempt to `recordOrderEmailAttempt` from `order-email.outcome.server.ts`, which the confirmation e-mail uses as well:
 
 ```ts
-recordOrderEmailOutcome({ failure, label: `Order shipped → ${orderRow.email}`, orderId: orderRow.id })
+export const notifyOrderShipped = (orderId: string): Promise<boolean> =>
+  recordOrderEmailAttempt(sendOrderShippedEmail(orderId), { label: ORDER_SHIPPED_LABEL, orderId })
 ```
+
+`recordOrderEmailAttempt` logs a thrown error with its stack as `Order shipped for order <id> could not be prepared:` and turns it into an outcome, records the outcome against the order and tells the caller whether the e-mail went out.
 
 The locale comes from the order rather than from the current request, so a customer who ordered in Polish is written to in Polish even when an English-speaking admin clicks the button.
 
-## Backgrounding
+## Waiting for the order e-mails
 
-Neither order e-mail blocks its caller. `ship-order.ts` schedules it:
+Both order e-mails are awaited, and neither can fail its caller. `ship-order.ts` waits for the shipped e-mail and hands the result to the admin:
 
 ```ts
 recordOrderShippedAudit(orderId, {
   detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
 })
-scheduleBackgroundWork(notifyOrderShipped(orderId))
+const shippedEmailDelivery = notifyOrderShipped(orderId)
+scheduleBackgroundWork(shippedEmailDelivery)
+const shippedEmailSent = await shippedEmailDelivery
 
-return { ok: true, orderId }
+return { ok: true, orderId, shippedEmailSent }
 ```
 
-`scheduleBackgroundWork` puts the promise on `ctx.waitUntil` through the `AsyncLocalStorage` store set up in `src/server.ts`, and swallows and logs a rejection. The admin's request returns as soon as the database is updated.
+`scheduleBackgroundWork` puts the same promise on `ctx.waitUntil`, so the send and its audit entry finish even if the admin closes the tab while Resend is answering. `useMarkOrderShipped` always shows "Order marked as shipped.", and when `shippedEmailSent` is false also a warning toast, "Shipping email not sent", that points to the order's Activity card for the error. The admin's request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`.
+
+The Stripe webhook registers `notifyOrderConfirmed` with `scheduleBackgroundWork` and awaits it the same way. It records every outcome and never throws, so the webhook answers 200 even when Resend refuses the confirmation, and the e-mail still finishes if Stripe stops waiting. A redelivered event would not send it again: `fulfillCheckout` returns `undefined` for a checkout that is no longer pending, and the handler stops before the e-mail step.
 
 ## Audit trail
 
-Sends are recorded, not just logged. `recordOrderEmailOutcome({ failure, label, orderId })` in `src/modules/audit-log/audit-log.events.server.ts` writes a success or failure entry, and the confirmation flow additionally calls `recordEmailFailedAudit(orderId, …)` when the payload could not even be _prepared_ — a missing customer e-mail, an unparseable metadata block. Both appear in `/admin/audit`.
+Sends are recorded, not just logged. `recordOrderEmailAttempt` passes every outcome to `recordOrderEmailOutcome({ failure, label, orderId })` in `src/modules/audit-log/audit-log.events.server.ts`, which writes `email.sent` or `email.failed` against the order. Every way an order e-mail can fail goes through it: a Resend refusal or timeout, a Stripe session or order without an address, a missing order, and an error while the e-mail is prepared, such as a failed database read. The entries appear with the error text in the order's Activity card and in `/admin/audit`; [E-mail templates](/docs/features/email) lists the details.
 
 Better Auth's e-mails are recorded only when they fail, by `deliverAuthEmail` in `auth.server.ts`: the address is the target and the detail reads like `Auth verification email — The example.com domain is not verified`. The link in the e-mail is never part of the entry.
 

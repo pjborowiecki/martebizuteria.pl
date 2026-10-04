@@ -28,6 +28,8 @@ vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderForShippedEmail 
 
 import { notifyOrderShipped } from "~/src/integrations/resend/order-shipped.notification.server"
 
+const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
 const addressRow = {
   address1: "Krucza 1",
   address2: null,
@@ -57,6 +59,8 @@ const orderRow = {
   userId: "user-1",
 }
 
+const DOMAIN_NOT_VERIFIED = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
+
 const sentSubject = (): string | undefined => {
   const [payload] = sendEmail.mock.calls[0] ?? []
 
@@ -74,21 +78,30 @@ beforeEach(() => {
 })
 
 describe("notifyOrderShipped", () => {
-  it("sends nothing when the order is unknown", async () => {
+  it("records a shipped email that has no order to go out for", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce(undefined)
 
-    await notifyOrderShipped("order-abcdef12")
+    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
-    expect(recordOrderEmailOutcome).not.toHaveBeenCalled()
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
+      failure: "The order could not be found",
+      label: "Order shipped",
+      orderId: "order-abcdef12",
+    })
   })
 
-  it.each([[""], ["   "]])("sends nothing when the order email is %j", async (email) => {
+  it.each([[""], ["   "]])("records a shipped email that has no recipient when the order email is %j", async (email) => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, email })
 
-    await notifyOrderShipped("order-abcdef12")
+    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
+      failure: "The order has no email address",
+      label: "Order shipped",
+      orderId: "order-abcdef12",
+    })
   })
 
   it("emails the shopper in the locale the order was placed in", async () => {
@@ -138,10 +151,10 @@ describe("notifyOrderShipped", () => {
     expect(sendEmail).toHaveBeenCalledTimes(1)
   })
 
-  it("records a successful send against the order", async () => {
+  it("records a successful send against the order and reports it", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
 
-    await notifyOrderShipped("order-abcdef12")
+    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(true)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: undefined,
@@ -150,15 +163,30 @@ describe("notifyOrderShipped", () => {
     })
   })
 
-  it("records the failure reported by the email transport", async () => {
+  it("records the refusal reported by the email transport and reports the send as failed", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
-    sendEmail.mockResolvedValueOnce("Invalid recipient")
+    sendEmail.mockResolvedValueOnce(DOMAIN_NOT_VERIFIED)
 
-    await notifyOrderShipped("order-abcdef12")
+    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(false)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
-      failure: "Invalid recipient",
+      failure: DOMAIN_NOT_VERIFIED,
       label: "Order shipped → anna@example.com",
+      orderId: "order-abcdef12",
+    })
+  })
+
+  it("records a shipped email that could not be prepared against the order instead of throwing", async () => {
+    getOrderForShippedEmail.mockResolvedValueOnce(orderRow)
+    getCheckoutEmailContext.mockRejectedValueOnce(new Error("D1_ERROR: no such table"))
+
+    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(false)
+
+    expect(sendEmail).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith("Order shipped for order order-abcdef12 could not be prepared:", expect.any(Error))
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
+      failure: "D1_ERROR: no such table",
+      label: "Order shipped",
       orderId: "order-abcdef12",
     })
   })
