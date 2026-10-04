@@ -144,3 +144,158 @@ test.describe("account forms close on the first press", () => {
     })
   }
 })
+
+const TIMEZONE_LIST_MAX_HEIGHT_PX = 320
+const LIST_WHEEL_PX = 600
+const BESIDE_LIST_PX = 40
+const LIST_SWIPE_PX = 400
+
+interface OpenTimezoneList {
+  readonly box: Readonly<{ height: number; width: number; x: number; y: number }>
+  readonly list: Locator
+}
+
+const timezoneField = (page: Page): Locator => page.getByRole("combobox", { name: "Timezone" })
+
+const settledTimezoneList = async (page: Page): Promise<OpenTimezoneList> => {
+  const list = page.locator('[data-slot="select-content"]')
+  await expect(page.getByRole("option", { name: "Europe/Warsaw" })).toBeInViewport()
+  await list.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished))
+  })
+  const box = await list.boundingBox()
+  if (box === null) {
+    throw new Error("expected the timezone list to be on screen")
+  }
+
+  return { box, list }
+}
+
+const openTimezoneList = async (page: Page): Promise<OpenTimezoneList> => {
+  await timezoneField(page).click()
+
+  return settledTimezoneList(page)
+}
+
+const recordWheelsLeftToTheBrowser = async (page: Page): Promise<void> => {
+  await page.evaluate(() => {
+    const leftToTheBrowser: boolean[] = []
+    Reflect.set(globalThis, "wheelsLeftToTheBrowser", leftToTheBrowser)
+    addEventListener("wheel", (event) => {
+      leftToTheBrowser.push(!event.defaultPrevented)
+    })
+  })
+}
+
+const wheelsLeftToTheBrowser = (page: Page): Promise<unknown> => page.evaluate(() => Reflect.get(globalThis, "wheelsLeftToTheBrowser"))
+
+const pageScroll = (page: Page): Promise<number> => page.evaluate(() => scrollY)
+
+const listScroll = (list: Locator): Promise<number> => list.evaluate((element) => element.scrollTop)
+
+test.describe("the timezone list on the profile page", () => {
+  test.use({ storageState: STORAGE_STATE.customer })
+
+  test("opens as a short panel on the customer's zone and scrolls on its own", async ({ accountPage, page }) => {
+    await accountPage.gotoSection("profile")
+    const { box, list } = await openTimezoneList(page)
+    const viewportHeight = await page.evaluate(() => innerHeight)
+
+    expect(box.height).toBeLessThanOrEqual(TIMEZONE_LIST_MAX_HEIGHT_PX)
+    expect(box.y).toBeGreaterThanOrEqual(0)
+    expect(box.y + box.height).toBeLessThanOrEqual(viewportHeight)
+    expect(await list.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+  })
+
+  test("the wheel scrolls the open list and leaves the page where it is", async ({ accountPage, page }) => {
+    await accountPage.gotoSection("profile")
+    const { box, list } = await openTimezoneList(page)
+    const pageScrollAtOpen = await pageScroll(page)
+    const listScrollAtOpen = await listScroll(list)
+    await recordWheelsLeftToTheBrowser(page)
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.wheel(0, -LIST_WHEEL_PX)
+    await page.mouse.move(box.x - BESIDE_LIST_PX, box.y + box.height / 2)
+    await page.mouse.wheel(0, LIST_WHEEL_PX)
+
+    await expect.poll(() => listScroll(list)).toBeLessThan(listScrollAtOpen)
+    await expect.poll(() => wheelsLeftToTheBrowser(page)).toStrictEqual([true, true])
+    expect(await pageScroll(page)).toBe(pageScrollAtOpen)
+    await expect(page.getByRole("listbox")).toBeVisible()
+  })
+
+  test("a wheel on the field that opened the list, or on the header, leaves the page and the list where they are", async ({ accountPage, page }) => {
+    await accountPage.gotoSection("profile")
+    const { list } = await openTimezoneList(page)
+    const pageScrollAtOpen = await pageScroll(page)
+    const sideAtOpen = await list.getAttribute("data-side")
+    await recordWheelsLeftToTheBrowser(page)
+
+    await page.mouse.wheel(0, LIST_WHEEL_PX)
+    await page.getByRole("banner").hover()
+    await page.mouse.wheel(0, LIST_WHEEL_PX)
+
+    await expect.poll(() => wheelsLeftToTheBrowser(page)).toStrictEqual([true, true])
+    expect(await pageScroll(page)).toBe(pageScrollAtOpen)
+    expect(await list.getAttribute("data-side")).toBe(sideAtOpen)
+    await expect(page.getByRole("listbox")).toBeVisible()
+  })
+
+  test("the keyboard opens the list on the customer's zone and keeps the highlighted zone in view", async ({ accountPage, page }) => {
+    await accountPage.gotoSection("profile")
+    await timezoneField(page).focus()
+    const pageScrollBeforeOpen = await pageScroll(page)
+
+    await page.keyboard.press("Enter")
+    await settledTimezoneList(page)
+    await expect(page.getByRole("option", { name: "Europe/Warsaw" })).toHaveAttribute("data-highlighted")
+    for (const { key, zone } of [
+      { key: "Home", zone: "Africa/Abidjan" },
+      { key: "End", zone: "UTC" },
+      { key: "ArrowUp", zone: "Pacific/Honolulu" },
+    ]) {
+      await page.keyboard.press(key)
+      const option = page.getByRole("option", { name: zone })
+      await expect(option).toHaveAttribute("data-highlighted")
+      await expect(option).toBeInViewport()
+    }
+    await page.keyboard.press("Escape")
+
+    await expect(timezoneField(page)).toContainText("Europe/Warsaw")
+    expect(await pageScroll(page)).toBe(pageScrollBeforeOpen)
+  })
+})
+
+test.describe("the timezone list on a touch screen", () => {
+  test.use({ hasTouch: true, storageState: STORAGE_STATE.customer })
+  test.skip(({ browserName }) => browserName !== "chromium", "only Chromium can play a touch scroll gesture")
+
+  test("a swipe scrolls the open list and stops at its end without moving the page", async ({ accountPage, page }) => {
+    await accountPage.gotoSection("profile")
+    await timezoneField(page).tap()
+    const { box, list } = await settledTimezoneList(page)
+    const pageScrollAtOpen = await pageScroll(page)
+    const listScrollAtOpen = await listScroll(list)
+    const touchscreen = await page.context().newCDPSession(page)
+    const swipeUpOverList = async (): Promise<void> => {
+      await touchscreen.send("Input.synthesizeScrollGesture", {
+        gestureSourceType: "touch",
+        x: box.x + box.width / 2,
+        y: box.y + box.height / 2,
+        yDistance: -LIST_SWIPE_PX,
+      })
+    }
+
+    expect(box.height).toBeLessThanOrEqual(TIMEZONE_LIST_MAX_HEIGHT_PX)
+    await swipeUpOverList()
+    await expect.poll(() => listScroll(list)).toBeGreaterThan(listScrollAtOpen)
+    await list.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+    })
+    await swipeUpOverList()
+
+    expect(await pageScroll(page)).toBe(pageScrollAtOpen)
+    await expect(page.getByRole("listbox")).toBeVisible()
+  })
+})

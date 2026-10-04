@@ -81,6 +81,8 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  document.documentElement.style.overflowY = ""
+  document.body.style.overflowY = ""
 })
 
 describe("SmoothScroll press with the real Lenis", () => {
@@ -111,5 +113,36 @@ describe("SmoothScroll press with the real Lenis", () => {
     expect(pressedAt).toBeGreaterThan(0)
     expect(pressedAt).toBeLessThan(SECTION_TOP_PX)
     expect(lenis.scroll).toBe(SECTION_TOP_PX)
+  })
+})
+
+describe("SmoothScroll with the page scroll-locked by an open popup", () => {
+  it.each([
+    { element: "body", lockedElement: () => document.body },
+    { element: "root element", lockedElement: () => document.documentElement },
+  ])("leaves the wheel to the browser while the $element is locked", ({ lockedElement }) => {
+    const lenis = renderWithLenis()
+    lockedElement().style.overflowY = "hidden"
+
+    const leftToTheBrowser = fireEvent.wheel(screen.getByText("content"), { deltaY: WHEEL_DELTA_PX })
+    runFrames(FRAMES_TO_SETTLE)
+
+    expect(leftToTheBrowser).toBe(true)
+    expect(lenis.targetScroll).toBe(0)
+    expect(viewport.scrollY).toBe(0)
+  })
+
+  it("takes the wheel again once the lock is lifted", () => {
+    const lenis = renderWithLenis()
+    document.body.style.overflowY = "hidden"
+    fireEvent.wheel(screen.getByText("content"), { deltaY: WHEEL_DELTA_PX })
+    document.body.style.overflowY = ""
+
+    const leftToTheBrowser = fireEvent.wheel(screen.getByText("content"), { deltaY: WHEEL_DELTA_PX })
+    runFrames(FRAMES_TO_SETTLE)
+
+    expect(leftToTheBrowser).toBe(false)
+    expect(lenis.targetScroll).toBe(WHEEL_DELTA_PX)
+    expect(viewport.scrollY).toBe(WHEEL_DELTA_PX)
   })
 })
