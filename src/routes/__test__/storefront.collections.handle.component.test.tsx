@@ -104,9 +104,17 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 })
 vi.mock("~/src/lib/catalog-debug-log", () => ({ catalogDebugLog: vi.fn() }))
 vi.mock("~/src/lib/image", () => ({ ImagePrefetchService: vi.fn() }))
-vi.mock("~/src/modules/product-collection/use-cases/get-storefront-collection", () => ({
-  getStorefrontCollection: collection.getStorefrontCollection,
-}))
+vi.mock("~/src/modules/product-collection/use-cases/get-storefront-collection", async () => {
+  const { COLLECTION_QUERY_KEYS, COLLECTION_QUERY_STALE_MS } = await import("~/src/modules/product-collection/product-collection.constants")
+
+  return {
+    getStorefrontCollectionQuery: (handle: string) => ({
+      queryFn: () => collection.getStorefrontCollection({ data: handle }),
+      queryKey: [...COLLECTION_QUERY_KEYS.BY_HANDLE, handle],
+      staleTime: COLLECTION_QUERY_STALE_MS,
+    }),
+  }
+})
 vi.mock("~/src/modules/product-collection/use-cases/get-collections", () => ({
   getCollectionsQuery: () => ({ queryFn: () => Promise.resolve([{ handle: "zloto", id: "collection-2" }]), queryKey: ["collections"] }),
 }))
@@ -176,19 +184,19 @@ const renderPage = () => {
   return renderWithProviders(<Page />)
 }
 
-const loaderArgs = (deps: StorefrontProductsSearch = {}): LoaderArgs => ({
-  context: { imagePrefetchService: new ImagePrefetchService(), locale: "en-US", queryClient: new QueryClient() },
+const loaderArgs = (deps: StorefrontProductsSearch = {}, queryClient = new QueryClient()): LoaderArgs => ({
+  context: { imagePrefetchService: new ImagePrefetchService(), locale: "en-US", queryClient },
   deps,
   params: { handle: state.handle },
 })
 
-const runLoader = (deps: StorefrontProductsSearch = {}): Promise<LoaderData> => {
+const runLoader = (deps: StorefrontProductsSearch = {}, queryClient = new QueryClient()): Promise<LoaderData> => {
   const { loader } = route
   if (loader === undefined) {
     throw new Error("the collection handle route has no loader")
   }
 
-  return loader(loaderArgs(deps))
+  return loader(loaderArgs(deps, queryClient))
 }
 
 const headMeta = (loaderData?: LoaderData): readonly MetaEntry[] => {
@@ -341,6 +349,30 @@ describe("the storefront collection loader", () => {
     })
   })
 
+  it("warms the catalog while the collection is still being looked up", async () => {
+    const lookup = Promise.withResolvers<unknown>()
+    collection.getStorefrontCollection.mockReturnValue(lookup.promise)
+
+    const loading = runLoader()
+    await vi.waitFor(() => {
+      expect(collection.getStorefrontCollection).toHaveBeenCalledOnce()
+    })
+
+    expect(collection.prefetchProductsCatalogPage).toHaveBeenCalledOnce()
+    lookup.resolve(COLLECTION_ROW)
+    await expect(loading).resolves.toMatchObject({ status: "found", title: "Sterling silver" })
+  })
+
+  it("looks the collection up once while the visitor sorts and filters it", async () => {
+    const queryClient = new QueryClient()
+
+    await runLoader({ sort: "price_asc" }, queryClient)
+    await runLoader({ minPrice: 1000, sort: "price_asc" }, queryClient)
+
+    expect(collection.getStorefrontCollection).toHaveBeenCalledOnce()
+    expect(collection.prefetchProductsCatalogPage).toHaveBeenCalledTimes(2)
+  })
+
   it("falls back to the catalog description when the collection has none", async () => {
     collection.getStorefrontCollection.mockResolvedValue({ ...COLLECTION_ROW, descriptions: null })
 
@@ -352,7 +384,7 @@ describe("the storefront collection loader", () => {
   })
 
   it("answers with the unavailable copy when no such collection exists", async () => {
-    collection.getStorefrontCollection.mockResolvedValue(undefined)
+    collection.getStorefrontCollection.mockResolvedValue(false)
 
     await expect(runLoader()).resolves.toStrictEqual({
       metaDescription:
@@ -363,20 +395,13 @@ describe("the storefront collection loader", () => {
   })
 
   it("warms the other collections and the new arrivals for the unavailable page", async () => {
-    collection.getStorefrontCollection.mockResolvedValue(undefined)
+    collection.getStorefrontCollection.mockResolvedValue(false)
     const args = loaderArgs()
     const { loader } = route
     await loader?.(args)
 
     expect(args.context.queryClient.getQueryData(["collections"])).toStrictEqual([{ handle: "zloto", id: "collection-2" }])
     expect(args.context.queryClient.getQueryData(["new-arrivals"])).toStrictEqual([{ handle: "nowosc", id: "product-1" }])
-  })
-
-  it("does not warm the catalog for a collection that does not exist", async () => {
-    collection.getStorefrontCollection.mockResolvedValue(undefined)
-    await runLoader()
-
-    expect(collection.prefetchProductsCatalogPage).not.toHaveBeenCalled()
   })
 })
 

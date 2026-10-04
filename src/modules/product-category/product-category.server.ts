@@ -33,8 +33,8 @@ export const getStorefrontRootCategoriesQuery = db.query.productCategory
 
 export const getStorefrontCategoryByHandleQuery = db.query.productCategory
   .findFirst({
+    columns: { descriptions: true, id: true, titles: true },
     where: and(eq(productCategory.handle, handlePlaceholder), eq(productCategory.status, CATEGORY_STATUS.ACTIVE)),
-    with: { parent: true },
   })
   .prepare()
 

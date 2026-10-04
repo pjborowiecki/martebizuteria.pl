@@ -61,11 +61,12 @@ Rozmiar strony zależy od tego, czy jakikolwiek filtr jest aktywny; stałe leż�
 
 Przed odpytaniem tabeli produktów handler rozwiązuje handle zakresu na identyfikatory:
 
-- `resolveStorefrontCategoryIdsForSearch` wczytuje kategorię po handle, a potem `collectDescendantCategoryIds(category.id, hierarchy)` z `product-category.utils.ts` — **filtr kategorii obejmuje więc całe jej poddrzewo**. Nieznany handle daje `[]`, a handler od razu zwraca pusty wynik.
+- `resolveStorefrontCategoryIdsForSearch` wczytuje jednocześnie kategorię po handle i hierarchię kategorii, a potem wywołuje `collectDescendantCategoryIds(category.id, hierarchy)` z `product-category.utils.ts` — **filtr kategorii obejmuje więc całe jej poddrzewo**.
 - `resolveStorefrontCollectionIdForSearch` rozwiązuje handle kolekcji na jeden identyfikator.
+- Handle, który nie wskazuje żadnej aktywnej kategorii ani kolekcji, ustawia `unknownScope`, a handler zwraca pustą stronę (`total: 0`), niczego nie listując. Nieznana kolekcja nigdy nie zamienia się w cały katalog.
 - `minPrice` i `maxPrice` przychodzą w złotych i są mnożone przez 100 na jednostki podrzędne.
 
-`catalogDebugLog` (`src/lib/catalog-debug-log.ts`) śledzi zdarzenia `storefrontProductsPage.start`, `.emptyCategory` i `.done` wraz z czasem w milisekundach.
+`catalogDebugLog` (`src/lib/catalog-debug-log.ts`) śledzi zdarzenia `storefrontProductsPage.start`, `.unknownScope` i `.done` wraz z czasem w milisekundach.
 
 ## Zapytanie SQL
 
@@ -112,6 +113,8 @@ Wzorzec jest escape'owany przez `buildAdminLikePattern` w `src/modules/_core/uti
 `useCatalogFilterSources` ukrywa filtr kategorii na stronie kategorii i filtr kolekcji na stronie kolekcji, całkowicie pomijając odpowiednie zapytanie — strona zawężona wykonuje więc o jedno zapytanie mniej.
 
 `prefetchProductsCatalogPage` uruchamia równolegle zapytanie nieskończone i dwa zapytania źródeł filtrów, a następnie wywołuje `prefetchProductThumbnails` na elementach pierwszej strony.
+
+Loadery `/categories/$handle` i `/collections/$handle` wyszukują swój wiersz i rozgrzewają siatkę w jednym `Promise.all`, więc zapytania o wiersz i o pierwszą stronę produktów są wysyłane jednocześnie. Wiersz pobiera `getStorefrontCategoryQuery(handle)` albo `getStorefrontCollectionQuery(handle)` pod kluczem `CATEGORY_QUERY_KEYS.BY_HANDLE` albo `COLLECTION_QUERY_KEYS.BY_HANDLE`, z 60-sekundowym czasem świeżości modułu. Odczyt obejmuje tylko `id`, `titles` i `descriptions`, czyli pola, których używają strona i handler produktów, dzięki czemu wiersz zapisywany przez render po stronie serwera w HTML-u pozostaje mały. Zmiana sortowania, filtra albo wstępne ładowanie po najechaniu na link tej samej strony korzysta z zapisanego wiersza i prosi serwer już tylko o produkty. Brakujący wiersz wraca jako `false`, bo cache zapytań nie przechowuje `undefined`. Strona kategorii rzuca wtedy `notFound`, a strona kolekcji rozgrzewa pozostałe kolekcje i nowości dla widoku niedostępnej kolekcji. Siatka rozgrzana równolegle dla nieistniejącego handle to opisana wyżej pusta strona.
 
 ## Nakładka wyszukiwania
 

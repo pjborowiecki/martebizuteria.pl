@@ -115,11 +115,12 @@ describe("getStorefrontRootCategoriesQuery", () => {
 })
 
 describe("getStorefrontCategoryByHandleQuery", () => {
-  it("serves an active category with its parent", async () => {
-    const row = await getStorefrontCategoryByHandleQuery.execute({ handle: "signet-rings" })
-
-    expect(row?.id).toBe("child-1")
-    expect(row?.parent?.handle).toBe("rings")
+  it("serves only the id, titles and descriptions of an active category", async () => {
+    await expect(getStorefrontCategoryByHandleQuery.execute({ handle: "signet-rings" })).resolves.toStrictEqual({
+      descriptions: null,
+      id: "child-1",
+      titles: { "en-US": "signet-rings", "pl-PL": "signet-rings" },
+    })
   })
 
   it("refuses a draft category", async () => {

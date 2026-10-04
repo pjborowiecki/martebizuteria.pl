@@ -3,6 +3,10 @@ export const PRODUCTS = {
   onyx: { handle: "onyx-necklace", price: "PLN 379.00", sku: "MRT-0002", title: "Onyx Necklace" },
 } as const
 
+export const CATEGORIES = {
+  necklaces: { handle: "naszyjniki", title: "Necklaces" },
+} as const
+
 export const COURIER = { name: /^Courier/u, price: "PLN 19.99" } as const
 
 export const MENU_SHOWCASE = {

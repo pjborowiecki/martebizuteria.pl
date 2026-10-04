@@ -33,6 +33,7 @@ export const getStorefrontCollectionsQuery = db.query.productCollection
 
 export const getStorefrontCollectionByHandleQuery = db.query.productCollection
   .findFirst({
+    columns: { descriptions: true, id: true, titles: true },
     where: storefrontCollectionByHandleWhere(handlePlaceholder),
   })
   .prepare()
