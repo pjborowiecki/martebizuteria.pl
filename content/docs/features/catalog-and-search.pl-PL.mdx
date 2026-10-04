@@ -92,9 +92,15 @@ Filtry zakresu to `inArray(product.id, <podzapytanie>)` na tabelach `category_on
 
 ## Fraza wyszukiwania produktu
 
-Parametr `q` korzysta z tego samego warunku, co wyszukiwanie w panelu: `buildAdminProductSearchCondition` w `src/modules/product/product.admin-list-search.server.ts`. Dopasowuje `LIKE` bez uwzględniania wielkości liter do `product.handle`, `product.id` oraz kolumn JSON `titles`, `subtitles` i `descriptions`, **albo** do dowolnego wariantu, którego `sku` pasuje. Ponieważ mapy lokalizacji są przechowywane jako tekst JSON, `LIKE` dopasowuje wszystkie języki jednocześnie.
+Parametr `q` przeszukuje indeks FTS5 `storefront_search` przez `storefrontProductMatches(term)` w `src/modules/storefront-search/storefront-search.accessors.server.ts`. `buildStorefrontSearchExpression` zamienia `ł` na `l`, dzieli frazę na słowa i z każdego słowa robi zapytanie o prefiks, więc `zlo pier` znajduje „Złoty pierścionek”. Fraza bez liter i cyfr nie daje niczego do szukania, a strona wraca pusta.
 
-Wzorzec jest escape'owany przez `buildAdminLikePattern` w `src/modules/_core/utils/search-conditions.server.ts`, który zabezpiecza `\`, `%` i `_` oraz generuje `... like ? escape '\'`.
+Produkt pasuje, gdy spełnia którykolwiek z tych warunków:
+
+- indeks dopasowuje jego własny tytuł, podtytuł, tagi, opis albo handle;
+- należy do aktywnej kategorii lub aktywnej kolekcji, której tekst pasuje do frazy;
+- jeden z jego wariantów ma dokładnie taki SKU, bez względu na wielkość liter. `product_variant_upperSku_idx` indeksuje `upper(sku)`, więc SKU wyszukuje się w indeksie, zamiast czytać wszystkie warianty. Dodaje go migracja `20261004120000_product_variant_sku_indexes.sql`, która usuwa też `product_variant_sku_idx`, bo powielał unikalny indeks na `sku`.
+
+`storefrontProductMatches` zbiera te produkty w jednym kroku: wyrażeniu tabelarycznym `storefront_product_matches`. Łączy wyniki czterech źródeł przez `union all` i grupuje je po produkcie, więc każdy produkt pojawia się raz, z trafnością `bm25` własnego tekstu albo z `null`, gdy dotarła do niego tylko kategoria, kolekcja lub SKU. Zliczenie i strona wyników zaczynają się od `with` tego kroku i zostawiają tylko produkty, których identyfikator występuje w dopasowaniach (`in`). Przy domyślnym sortowaniu `rank` strona dołącza jeszcze dopasowania przez `left join` i porządkuje po `coalesce(score, 0)`, potem po `rank` i `createdAt`. Sortowania `newest`, `price_asc` i `price_desc` mają pierwszeństwo przed trafnością, więc przy nich strona w ogóle nie dołącza dopasowań. SQLite materializuje ten krok raz na instrukcję, więc każda instrukcja przeszukuje indeks raz dla każdego rodzaju wpisu, niezależnie od liczby produktów w sklepie. `src/integrations/drizzle-orm/__test__/query-plans.integration.test.ts` zawodzi, gdy plan znów przeszukuje indeks wewnątrz pętli po produktach, gdy sortowanie pomijające trafność dołącza dopasowania albo gdy wyszukiwanie po SKU przestaje korzystać ze swojego indeksu.
 
 ## Komponenty
 
@@ -122,11 +128,13 @@ Wyszukiwanie w nagłówku to oddzielna funkcja oparta na `src/modules/storefront
 
 `searchStorefront` (`use-cases/search-storefront.ts`) jest publiczne, przyjmuje `{ locale, query }` i rozchodzi się na trzy akcesory w `storefront-search.server.ts`:
 
-| Akcesor                       | Tabela               | Dopasowywane kolumny                                                        |
-| ----------------------------- | -------------------- | --------------------------------------------------------------------------- |
-| `searchStorefrontProducts`    | `product`            | przez `buildAdminProductSearchCondition`, za bramką `publishedInStockWhere` |
-| `searchStorefrontCategories`  | `product_category`   | `handle`, `titles`, `subtitles`, `shortDescriptions`, status aktywny        |
-| `searchStorefrontCollections` | `product_collection` | `handle`, `titles`, `descriptions`, status aktywny                          |
+| Akcesor                       | Tabela               | Dopasowywane kolumny                                                                                                         |
+| ----------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `searchStorefrontProducts`    | `product`            | `titles`, `subtitles`, `tags`, `descriptions` i `handle` przez indeks `storefront_search`, za bramką `publishedInStockWhere` |
+| `searchStorefrontCategories`  | `product_category`   | `handle`, `titles`, `subtitles`, `shortDescriptions`, status aktywny                                                         |
+| `searchStorefrontCollections` | `product_collection` | `handle`, `titles`, `descriptions`, status aktywny                                                                           |
+
+Grupa produktów w nakładce dopasowuje wyłącznie własny tekst produktu. W przeciwieństwie do parametru `q` nie dociera do produktów przez ich kategorie, kolekcje ani SKU.
 
 Stałe w `storefront-search.constants.ts`:
 

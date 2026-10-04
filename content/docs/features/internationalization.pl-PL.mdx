@@ -234,7 +234,7 @@ export const resolveLocalizedString = (map: ProductAttribute["localeMap"], local
 
 Zapis idzie w drugą stronę: `normalizeProductAttributeLocaleMapForSave` wypełnia każdy język, a `normalizeOptionalProductLocaleMapForSave` zwraca `undefined`, gdy wszystkie języki są puste, żeby kolumna została pusta, a nie trzymała `{"pl-PL":"","en-US":""}`.
 
-Ponieważ mapy są przechowywane jako tekst JSON, wyszukiwanie `LIKE` po `titles` przeszukuje **wszystkie** języki naraz — zobacz [Katalog i wyszukiwanie](/docs/features/catalog-and-search).
+Wyszukiwanie obejmuje **wszystkie** języki naraz. Listy w panelu łączą przez `or` warunki `LIKE` na `json_extract` każdego języka z `I18N.SUPPORTED_LOCALES` (`localizedTextColumns` w `src/modules/_core/utils/search-conditions.server.ts`), a indeks `storefront_search` w sklepie przechowuje w każdej kolumnie wartości polskie i angielskie obok siebie — zobacz [Katalog i wyszukiwanie](/docs/features/catalog-and-search).
 
 Edytory w panelu udostępniają to per język. `catalog/form/components/catalog-locale-picker.tsx` iteruje po `I18N.SUPPORTED_LOCALES`, pokazuje licznik wypełnionych i pustych języków, a `product-form-locale-layout.tsx` renderuje zestaw pól dla wybranego. Eksport atrybutów do CSV zapisuje po jednej kolumnie `Title <LOCALE>` na język. Edytor stron treści pod `/admin/content/$handle` robi to samo z jedną zakładką na język w `content/content-page-locale-tabs.tsx` i oznacza zakładkę, której pola nie przechodzą walidacji.
 

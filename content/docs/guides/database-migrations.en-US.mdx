@@ -72,7 +72,7 @@ The normal sequence is: generate, read, apply to preview, exercise the app, then
 
 ## Hand-written migrations
 
-Several of the 66 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260606120000_rename_attribute_to_product_attribute.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql` and others. Hand-writing is the right call for:
+Several of the 69 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260606120000_rename_attribute_to_product_attribute.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql` and others. Hand-writing is the right call for:
 
 - **Renames.** drizzle-kit sees a rename as a drop plus an add, which loses the data.
 - **Index name alignment.** `20260604232955_curved_wallow.sql` is a good short example:
@@ -101,7 +101,7 @@ To hand-write one, create `src/integrations/drizzle-orm/migrations/<YYYYMMDDHHMM
 
 ### A caveat about the drizzle journal
 
-`migrations/meta/_journal.json` currently lists 52 tags while the directory holds 66 `.sql` files, and `meta/` holds 37 snapshots. The hand-written migrations were never added to the journal, and several generated ones have no snapshot. Wrangler does not care — it tracks its own state in D1. But **drizzle-kit does**: `bun run db:generate` diffs against the newest snapshot, which is older than the live schema, so it can emit SQL for changes that are already applied.
+`migrations/meta/_journal.json` currently lists 52 tags while the directory holds 69 `.sql` files, and `meta/` holds 37 snapshots. The hand-written migrations were never added to the journal, and several generated ones have no snapshot. Wrangler does not care — it tracks its own state in D1. But **drizzle-kit does**: `bun run db:generate` diffs against the newest snapshot, which is older than the live schema, so it can emit SQL for changes that are already applied.
 
 Before trusting a generated migration, either compare it against the current live schema with `bun run db:introspect:preview` (which writes `schema.ts` and `relations.ts` into the migrations folder), or read it line by line. Both `schema.ts` and `relations.ts` in `src/integrations/drizzle-orm/migrations/` are introspection output, not hand-maintained code.
 

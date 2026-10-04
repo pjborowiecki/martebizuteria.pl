@@ -280,6 +280,22 @@ describe("storefront catalog search ordering", () => {
   it("lets an explicit newest sort override relevance", async () => {
     await expect(pageIds({ searchTerm: "silver", sort: STOREFRONT_PRODUCTS_SORT.NEWEST })).resolves.toStrictEqual(["mid", "cuff"])
   })
+
+  it.each([
+    ["closest first", {}, { ids: ["cuff", "mid"], total: 2 }],
+    ["one per page", { limit: 1 }, { ids: ["cuff"], total: 2 }],
+    ["by the cheapest variant descending", { sort: STOREFRONT_PRODUCTS_SORT.PRICE_DESC }, { ids: ["mid", "cuff"], total: 2 }],
+    ["at or above a minimum price, closest first", { minPriceCents: 20_000 }, { ids: ["mid"], total: 1 }],
+    [
+      "at or below a maximum price, cheapest first",
+      { maxPriceCents: 20_000, sort: STOREFRONT_PRODUCTS_SORT.PRICE_ASC },
+      { ids: ["cuff"], total: 1 },
+    ],
+  ])("lists the matches %s and reports their total", async (_label, params, expected) => {
+    const result = await getStorefrontPublishedProductsPage({ ...PAGE, searchTerm: "silver", ...params })
+
+    expect({ ids: result.items.map((item) => item.id), total: result.total }).toStrictEqual(expected)
+  })
 })
 
 describe("storefront catalog without a count row", () => {

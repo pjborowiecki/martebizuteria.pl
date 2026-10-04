@@ -16,11 +16,7 @@ import {
   storefrontListVariantColumns,
 } from "~/src/modules/product/product.stock.server"
 import { STOREFRONT_PRODUCTS_SORT, type StorefrontProductsSort } from "~/src/modules/product/product.storefront-catalog"
-import {
-  buildStorefrontProductSearchCondition,
-  storefrontSearchMatches,
-} from "~/src/modules/storefront-search/storefront-search.accessors.server"
-import { buildStorefrontSearchExpression } from "~/src/modules/storefront-search/storefront-search.utils"
+import { storefrontProductMatches } from "~/src/modules/storefront-search/storefront-search.accessors.server"
 
 export interface StorefrontPublishedProductsParams extends ListPaginationParams {
   readonly categoryIds?: readonly string[] | undefined
@@ -30,6 +26,8 @@ export interface StorefrontPublishedProductsParams extends ListPaginationParams 
   readonly searchTerm?: string | undefined
   readonly sort?: StorefrontProductsSort | undefined
 }
+
+type StorefrontProductMatches = NonNullable<ReturnType<typeof storefrontProductMatches>>
 
 const storefrontProductsNeedsVariantStatsJoin = (
   params: Pick<StorefrontPublishedProductsParams, "maxPriceCents" | "minPriceCents" | "sort">,
@@ -67,10 +65,10 @@ const buildStorefrontProductsScopeConditions = (params: Pick<StorefrontPublished
 const buildStorefrontProductsOrderClauses = (
   sort: StorefrontProductsSort | undefined,
   variantStats: ReturnType<typeof productVariantStatsSubquery> | undefined,
-  searchMatches: ReturnType<typeof storefrontSearchMatches> | undefined,
+  relevance: StorefrontProductMatches | undefined,
 ) => {
-  if (searchMatches !== undefined && (sort === undefined || sort === STOREFRONT_PRODUCTS_SORT.RANK)) {
-    return [asc(sql`coalesce(${searchMatches.score}, ${0})`), asc(product.rank), desc(product.createdAt)]
+  if (relevance !== undefined) {
+    return [asc(sql`coalesce(${relevance.score}, ${0})`), asc(product.rank), desc(product.createdAt)]
   }
 
   if (sort === STOREFRONT_PRODUCTS_SORT.PRICE_ASC) {
@@ -115,25 +113,27 @@ const buildStorefrontProductsCombinedWhere = (
   return and(...joinConditions)!
 }
 
-const buildStorefrontProductsSearch = (searchTerm: string) => {
-  const expression = buildStorefrontSearchExpression(searchTerm)
+const buildStorefrontProductsSearch = (searchTerm: string, sort: StorefrontProductsSort | undefined) => {
+  const matches = storefrontProductMatches(searchTerm)
 
   return {
-    condition: buildStorefrontProductSearchCondition(searchTerm),
-    matches: expression === undefined ? undefined : storefrontSearchMatches("product", expression),
+    condition: matches === undefined ? sql`${0}` : inArray(product.id, db.select({ productId: matches.productId }).from(matches)),
+    matches,
+    relevance: sort === undefined || sort === STOREFRONT_PRODUCTS_SORT.RANK ? matches : undefined,
   }
 }
 
 const buildStorefrontProductIdsQuery = (
+  withSearchMatches: ReturnType<typeof db.with>,
   joinContext: StorefrontVariantJoinContext,
-  searchMatches: ReturnType<typeof storefrontSearchMatches> | undefined,
+  relevance: StorefrontProductMatches | undefined,
 ) => {
-  const base = db.select({ productId: product.id }).from(product).$dynamic()
+  const base = withSearchMatches.select({ productId: product.id }).from(product).$dynamic()
   const withVariants = joinContext.needsVariantJoin
     ? base.leftJoin(joinContext.variantStats, eq(joinContext.variantStats.productId, product.id))
     : base
 
-  return searchMatches === undefined ? withVariants : withVariants.leftJoin(searchMatches, eq(searchMatches.entityId, product.id))
+  return relevance === undefined ? withVariants : withVariants.leftJoin(relevance, eq(relevance.productId, product.id))
 }
 
 export const getStorefrontPublishedProductsPage = async (params: StorefrontPublishedProductsParams) => {
@@ -141,7 +141,7 @@ export const getStorefrontPublishedProductsPage = async (params: StorefrontPubli
   const needsVariantJoin = storefrontProductsNeedsVariantStatsJoin(params)
   const scopeConditions = buildStorefrontProductsScopeConditions(params)
   const searchTerm = normalizeAdminSearchTerm(params.searchTerm)
-  const search = searchTerm === undefined ? undefined : buildStorefrontProductsSearch(searchTerm)
+  const search = searchTerm === undefined ? undefined : buildStorefrontProductsSearch(searchTerm, params.sort)
   const stockWhere = publishedInStockWhere(...scopeConditions, search?.condition)
   const combinedWhere = buildStorefrontProductsCombinedWhere(
     {
@@ -155,20 +155,21 @@ export const getStorefrontPublishedProductsPage = async (params: StorefrontPubli
     },
   )
 
-  const orderClauses = buildStorefrontProductsOrderClauses(params.sort, needsVariantJoin ? variantStats : undefined, search?.matches)
+  const orderClauses = buildStorefrontProductsOrderClauses(params.sort, needsVariantJoin ? variantStats : undefined, search?.relevance)
+  const withSearchMatches = search?.matches === undefined ? db.with() : db.with(search.matches)
   const countQuery = needsVariantJoin
-    ? db
+    ? withSearchMatches
         .select({
           count: sql<number>`count(distinct ${product.id})`,
         })
         .from(product)
         .leftJoin(variantStats, eq(variantStats.productId, product.id))
-    : db
+    : withSearchMatches
         .select({
           count: sql<number>`count(*)`,
         })
         .from(product)
-  const idsBase = buildStorefrontProductIdsQuery({ needsVariantJoin, stockWhere, variantStats }, search?.matches)
+  const idsBase = buildStorefrontProductIdsQuery(withSearchMatches, { needsVariantJoin, stockWhere, variantStats }, search?.relevance)
   const idsQuery = needsVariantJoin
     ? idsBase
         .where(combinedWhere)

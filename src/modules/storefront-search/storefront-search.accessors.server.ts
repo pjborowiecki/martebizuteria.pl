@@ -1,4 +1,5 @@
-import { type SQL, and, eq, inArray, or, sql } from "drizzle-orm"
+import { type SQL, and, eq, inArray, sql } from "drizzle-orm"
+import { unionAll } from "drizzle-orm/sqlite-core"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
@@ -9,7 +10,6 @@ import { productCategory } from "~/src/modules/product-category/product-category
 import { COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants"
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
-import { product } from "~/src/modules/product/product.schema"
 import { storefrontSearch } from "~/src/modules/storefront-search/storefront-search.schema"
 import { type StorefrontSearch } from "~/src/modules/storefront-search/storefront-search.types"
 import { buildStorefrontSearchExpression } from "~/src/modules/storefront-search/storefront-search.utils"
@@ -48,7 +48,7 @@ const productsInMatchedCategories = (expression: string) => {
   const matchedCategoryIds = matchedEntityIds("category", expression)
 
   return db
-    .select({ productId: categoryOnProduct.productId })
+    .select({ productId: categoryOnProduct.productId, score: sql<number | null>`null`.as("score") })
     .from(categoryOnProduct)
     .innerJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
     .where(and(eq(productCategory.status, CATEGORY_STATUS.ACTIVE), inArray(productCategory.id, matchedCategoryIds)))
@@ -58,7 +58,7 @@ const productsInMatchedCollections = (expression: string) => {
   const matchedCollectionIds = matchedEntityIds("collection", expression)
 
   return db
-    .select({ productId: collectionOnProduct.productId })
+    .select({ productId: collectionOnProduct.productId, score: sql<number | null>`null`.as("score") })
     .from(collectionOnProduct)
     .innerJoin(productCollection, eq(productCollection.id, collectionOnProduct.collectionId))
     .where(and(eq(productCollection.status, COLLECTION_STATUS.ACTIVE), inArray(productCollection.id, matchedCollectionIds)))
@@ -66,20 +66,34 @@ const productsInMatchedCollections = (expression: string) => {
 
 const productsWithSku = (term: string) =>
   db
-    .select({ productId: productVariant.productId })
+    .select({ productId: productVariant.productId, score: sql<number | null>`null`.as("score") })
     .from(productVariant)
     .where(eq(sql`upper(${productVariant.sku})`, term.toUpperCase()))
 
-export const buildStorefrontProductSearchCondition = (term: string): SQL => {
-  const expression = buildStorefrontSearchExpression(term)
-  if (expression === undefined) {
-    return sql`${0}`
-  }
+const productsMatchingText = (expression: string) =>
+  db
+    .select({ productId: storefrontSearch.entityId, score: relevance.as("score") })
+    .from(storefrontSearch)
+    .where(indexMatches("product", expression))
 
-  return or(
-    inArray(product.id, matchedEntityIds("product", expression)),
-    inArray(product.id, productsInMatchedCategories(expression)),
-    inArray(product.id, productsInMatchedCollections(expression)),
-    inArray(product.id, productsWithSku(term)),
-  )!
+const groupedProductMatches = (term: string, expression: string) => {
+  const hits = unionAll(
+    productsWithSku(term),
+    productsInMatchedCategories(expression),
+    productsInMatchedCollections(expression),
+    productsMatchingText(expression),
+  ).as("storefront_product_hits")
+
+  return db.$with("storefront_product_matches").as(
+    db
+      .select({ productId: hits.productId, score: sql<number | null>`min(${hits.score})`.as("score") })
+      .from(hits)
+      .groupBy(hits.productId),
+  )
+}
+
+export const storefrontProductMatches = (term: string) => {
+  const expression = buildStorefrontSearchExpression(term)
+
+  return expression === undefined ? undefined : groupedProductMatches(term, expression)
 }

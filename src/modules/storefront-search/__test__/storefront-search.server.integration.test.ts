@@ -19,13 +19,13 @@ import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migratio
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { product } from "~/src/modules/product/product.schema"
-import { buildStorefrontProductSearchCondition } from "~/src/modules/storefront-search/storefront-search.accessors.server"
+import { storefrontProductMatches, storefrontSearchMatches } from "~/src/modules/storefront-search/storefront-search.accessors.server"
 import {
   searchStorefrontCategories,
   searchStorefrontCollections,
   searchStorefrontProducts,
 } from "~/src/modules/storefront-search/storefront-search.server"
+import { buildStorefrontSearchExpression } from "~/src/modules/storefront-search/storefront-search.utils"
 
 const LIMIT = 6
 
@@ -37,10 +37,24 @@ const productNames = async (term: string, locale = "pl-PL") => {
   return items.map((item) => item.name)
 }
 
-const matchingProductIds = async (term: string) => {
-  const rows = await db.select({ id: product.id }).from(product).where(buildStorefrontProductSearchCondition(term))
+const productMatches = async (term: string) => {
+  const matches = storefrontProductMatches(term)!
+  const rows = await db.with(matches).select({ id: matches.productId, score: matches.score }).from(matches)
 
-  return rows.map((row) => row.id).toSorted()
+  return rows.toSorted((left, right) => left.id.localeCompare(right.id))
+}
+
+const productTextRelevance = async (term: string) => {
+  const matches = storefrontSearchMatches("product", buildStorefrontSearchExpression(term)!)
+  const rows = await db.select({ id: matches.entityId, score: matches.score }).from(matches)
+
+  return rows.toSorted((left, right) => left.id.localeCompare(right.id))
+}
+
+const matchingProductIds = async (term: string) => {
+  const rows = await productMatches(term)
+
+  return rows.map((row) => row.id)
 }
 
 beforeEach(() => {
@@ -202,8 +216,8 @@ describe("storefront search index", () => {
   })
 })
 
-describe("buildStorefrontProductSearchCondition", () => {
-  it("narrows a catalogue query to the products the index matches", async () => {
+describe("storefrontProductMatches", () => {
+  it("collects the products whose text the index matches", async () => {
     await expect(matchingProductIds("zlot")).resolves.toStrictEqual(["p-gold", "p-luna"])
   })
 
@@ -225,8 +239,24 @@ describe("buildStorefrontProductSearchCondition", () => {
     await expect(matchingProductIds("archiwum")).resolves.toStrictEqual([])
   })
 
-  it("matches nothing for a term with no words in it", async () => {
-    await expect(matchingProductIds("!!!")).resolves.toStrictEqual([])
+  it("has nothing to collect for a term with no words in it", () => {
+    expect(storefrontProductMatches("!!!")).toBeUndefined()
+  })
+
+  it("lists a product reached by its text and by its category once, with the relevance of its text", async () => {
+    const rows = await productMatches("pierscion")
+
+    expect(rows.map((row) => row.id)).toStrictEqual(["p-aurora", "p-draft", "p-gold", "p-sold"])
+    await expect(searchStorefrontCategories("pierscion", "pl-PL", LIMIT)).resolves.toMatchObject([{ handle: "pierscionki" }])
+    await expect(productTextRelevance("pierscion")).resolves.toStrictEqual(rows)
+  })
+
+  it.each([
+    ["a category", "pierscionki", ["p-aurora", "p-gold"]],
+    ["a collection", "585", ["p-luna"]],
+    ["a SKU", "gld-001", ["p-gold"]],
+  ])("leaves the relevance empty for a product reached only through %s", async (_label, term, ids) => {
+    await expect(productMatches(term)).resolves.toStrictEqual(ids.map((id) => ({ id, score: null })))
   })
 })
 

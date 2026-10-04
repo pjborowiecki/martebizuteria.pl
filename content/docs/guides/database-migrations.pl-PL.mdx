@@ -72,7 +72,7 @@ Normalna kolejność jest taka: wygeneruj, przeczytaj, zastosuj na preview, prze
 
 ## Migracje pisane ręcznie
 
-Kilka z 66 migracji w katalogu napisano ręcznie, a nie wygenerowano, i ich nazwy mówią, co robią, zamiast nieść kryptonim nadany przez drizzle: `20260604120000_catalog_indexes_and_integrity.sql`, `20260606120000_rename_attribute_to_product_attribute.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql` i inne. Pisanie ręczne jest właściwym wyborem dla:
+Kilka z 69 migracji w katalogu napisano ręcznie, a nie wygenerowano, i ich nazwy mówią, co robią, zamiast nieść kryptonim nadany przez drizzle: `20260604120000_catalog_indexes_and_integrity.sql`, `20260606120000_rename_attribute_to_product_attribute.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql` i inne. Pisanie ręczne jest właściwym wyborem dla:
 
 - **Zmian nazw.** drizzle-kit widzi zmianę nazwy jako usunięcie plus dodanie, co niszczy dane.
 - **Uporządkowania nazw indeksów.** `20260604232955_curved_wallow.sql` to dobry, krótki przykład:
@@ -101,7 +101,7 @@ Dwa nawyki z tych plików warte skopiowania: komentarz `--` na początku, wyjaś
 
 ### Uwaga o dzienniku drizzle
 
-`migrations/meta/_journal.json` wymienia obecnie 52 znaczniki, podczas gdy w katalogu jest 66 plików `.sql`, a w `meta/` 37 snapshotów. Migracje pisane ręcznie nigdy nie zostały dopisane do dziennika, a kilka generowanych nie ma snapshotu. Wranglerowi to nie przeszkadza — trzyma własny stan w D1. Ale **drizzle-kit to obchodzi**: `bun run db:generate` porównuje z najnowszym snapshotem, który jest starszy niż schemat produkcyjny, więc może wygenerować SQL dla zmian już zastosowanych.
+`migrations/meta/_journal.json` wymienia obecnie 52 znaczniki, podczas gdy w katalogu jest 69 plików `.sql`, a w `meta/` 37 snapshotów. Migracje pisane ręcznie nigdy nie zostały dopisane do dziennika, a kilka generowanych nie ma snapshotu. Wranglerowi to nie przeszkadza — trzyma własny stan w D1. Ale **drizzle-kit to obchodzi**: `bun run db:generate` porównuje z najnowszym snapshotem, który jest starszy niż schemat produkcyjny, więc może wygenerować SQL dla zmian już zastosowanych.
 
 Przed zaufaniem wygenerowanej migracji albo porównaj ją z aktualnym schematem przez `bun run db:introspect:preview` (co zapisuje `schema.ts` i `relations.ts` do katalogu migracji), albo przeczytaj ją linia po linii. Zarówno `schema.ts`, jak i `relations.ts` w `src/integrations/drizzle-orm/migrations/` są wynikiem introspekcji, a nie kodem utrzymywanym ręcznie.
 

@@ -184,9 +184,9 @@ Those three variables come from the environment file, which is why the `db:*` sc
 
 ## The migration directory
 
-`src/integrations/drizzle-orm/migrations/` holds 68 `.sql` files. Wrangler applies them in filename order and records what it applied in its own `d1_migrations` table; Drizzle's `meta/_journal.json` is only consulted by `drizzle-kit generate` when it computes the next diff.
+`src/integrations/drizzle-orm/migrations/` holds 69 `.sql` files. Wrangler applies them in filename order and records what it applied in its own `d1_migrations` table; Drizzle's `meta/_journal.json` is only consulted by `drizzle-kit generate` when it computes the next diff.
 
-Those two views have drifted. The journal lists 52 entries, so sixteen files in the directory are not in it:
+Those two views have drifted. The journal lists 52 entries, so seventeen files in the directory are not in it:
 
 ```
 20260604143000_product_status_updated_at_idx
@@ -205,6 +205,7 @@ Those two views have drifted. The journal lists 52 entries, so sixteen files in 
 20261002120000_content_pages
 20261003120000_order_item_product_backfill
 20261003130000_query_indexes
+20261004120000_product_variant_sku_indexes
 ```
 
 Hand-written migrations such as `20260927120000_fix_silver_collection_handle.sql` are normal in this repository: data repairs, index-only changes and newer tables such as `order_number_sequence`, `discount_redemption`, `newsletter_subscriber`, `wishlist_item`, `storefront_search` and `content_page` are written directly and applied with Wrangler. But the journal is also missing index 38 entirely (it runs 0–52 with a gap), and the newest snapshot, `meta/20260930151544_snapshot.json`, predates every one of those tables, which means `drizzle-kit generate` computes its diff from a snapshot that does not include everything the database actually has. After a `db:generate`, read the produced SQL before applying it and delete anything that re-creates an object that already exists.
@@ -219,7 +220,7 @@ Hand-written migrations such as `20260927120000_fix_silver_collection_handle.sql
 2. Run `bun run db:generate`.
 3. Read the generated SQL. SQLite cannot drop or alter most constraints in place, so drizzle-kit sometimes emits a table rebuild — check that it preserves your data.
 4. Apply it with `bun run db:migrate:preview`, verify against the preview database, then `bun run db:migrate:production`.
-5. Run `bun run check` and `bun run test`. `src/integrations/drizzle-orm/__test__/query-plans.integration.test.ts` replays the whole migration history through `applyMigrationHistory` and fails when a foreign key has no index to serve it, when an index the schema declares is missing from the migrations, or when a hot read stops seeking through the index it relies on.
+5. Run `bun run check` and `bun run test`. `src/integrations/drizzle-orm/__test__/query-plans.integration.test.ts` replays the whole migration history through `applyMigrationHistory` and fails when a foreign key has no index to serve it, when an index the schema declares is missing from the migrations or covers other columns or expressions there, when a hot read stops seeking through the index it relies on, or when the storefront product search stops collecting its matches in one step before it walks the catalogue.
 
 ## Related pages
 
