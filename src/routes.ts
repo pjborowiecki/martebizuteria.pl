@@ -28,8 +28,10 @@ export const ROUTES = {
   ADMIN_PRODUCTS: "/admin/catalog/products",
   ADMIN_SETTINGS: "/admin/settings",
   API_AUTH: {
+    CHANGE_EMAIL: "/change-email",
     REQUEST_PASSWORD_RESET: "/request-password-reset",
     RESET_PASSWORD: "/reset-password",
+    SEND_VERIFICATION_EMAIL: "/send-verification-email",
     SIGN_IN_EMAIL: "/sign-in/email",
     SIGN_OUT: "/sign-out",
     SIGN_UP_EMAIL: "/sign-up/email",

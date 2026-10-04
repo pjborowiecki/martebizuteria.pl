@@ -69,11 +69,18 @@ export const ForgotPasswordForm = (): JSX.Element => {
     [form, onSubmit],
   )
 
+  const requestAnotherLink = useCallback(() => {
+    setHasSubmitted(false)
+  }, [])
+
   const { isSubmitting } = form.formState
   if (hasSubmitted) {
     return (
       <div className="space-y-4 text-center">
         <p className="text-sm text-muted-foreground">{t("pages.auth.forgot-password.checkEmail")}</p>
+        <Button className="w-full tracking-wide" onClick={requestAnotherLink} size="lg" type="button" variant="outline">
+          {t("pages.auth.forgot-password.requestAnother")}
+        </Button>
       </div>
     )
   }

@@ -42,7 +42,7 @@ Terms are listed alphabetically. Where a term corresponds to a concrete export, 
 - **Cloudflare Queue** — the audit-log transport. Events are enqueued through `AUDIT_LOG_QUEUE` and consumed by the `queue` export in `src/server.ts`, in batches of up to 50 with a 5-second timeout and 3 retries.
 - **D1** — Cloudflare's SQLite database, bound as `DB`. No interactive transactions; `db.batch()` is the atomicity primitive.
 - **Durable Object** — `RealtimeInvalidationHub` in `src/durable-objects/realtime-invalidation-hub.ts`, created by the `v1` migration tag. It fans out invalidation messages to connected WebSockets and holds no durable state.
-- **KV** — the `CACHE` namespace. Declared in every environment.
+- **KV** — the `CACHE` namespace. Declared in every environment; holds the email sender flag that the Better Auth gate reads.
 - **R2** — the `IMAGES` bucket, holding product media. Public reads go through the base URL in `VITE_R2_URL`.
 - **Vite+** — the unified toolchain, invoked as `vp`. It provides `vp dev`, `vp build`, `vp check`, `vp fmt`, `vp lint`, `vp test` and `vp staged`, all configured in `vite.config.ts`.
 

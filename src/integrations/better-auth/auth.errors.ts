@@ -5,6 +5,8 @@ export const AUTH_ERRORS = {
   BANNED_USER: "bannedUser",
   COULD_NOT_CREATE_SESSION: "couldNotCreateSession",
   CREDENTIAL_ACCOUNT_NOT_FOUND: "credentialAccountNotFound",
+  EMAIL_DELIVERY_FAILED: "emailDeliveryFailed",
+  EMAIL_DELIVERY_UNAVAILABLE: "emailDeliveryUnavailable",
   EMAIL_NOT_VERIFIED: "emailNotVerified",
   EMAIL_PASSWORD_DISABLED: "emailPasswordDisabled",
   EMAIL_PASSWORD_SIGN_UP_DISABLED: "emailPasswordSignUpDisabled",

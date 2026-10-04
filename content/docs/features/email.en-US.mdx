@@ -8,7 +8,10 @@ description: "Eight React Email templates rendered in the Worker, sent through R
 One function sends every email — `src/integrations/resend/resend.send.ts`:
 
 ```ts
-const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const refusesEverySend = ({ name, statusCode }: ErrorResponse): boolean =>
+  SENDER_REFUSAL_NAMES.has(name) || SENDER_REFUSAL_STATUSES.has(statusCode)
+
+const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   try {
     const { error } = await resend.emails.send({
       from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
@@ -16,6 +19,10 @@ const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>)
       subject,
       to,
     })
+
+    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error)) {
+      scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
+    }
 
     return error?.message
   } catch (error) {
@@ -39,22 +46,24 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 
 Note the contract: **it never throws.** It returns `undefined` on success and the failure message as a string otherwise. The Resend SDK has no timeout of its own, so `sendEmail` gives up after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) and returns `Resend did not answer within 10000 ms`; a stalled Resend cannot hold a signup or a webhook open indefinitely. Every caller is therefore written as `const failure = await sendEmail(...)` followed by a decision about what to do with `failure` — a mail outage cannot roll back an order or a deletion.
 
+Some refusals mean that no email from this sender can go out at all: a 401 or 403 from Resend (an invalid or restricted API key, or a sending domain that is not verified), an invalid `from` address, or an exhausted daily or monthly quota. For those, `sendEmail` also runs `markEmailSenderUnavailable` from `src/integrations/resend/resend.availability.server.ts` in the background, unless the caller passed `revealsAccountExistence: true`. Better Auth's verification, reset and change-email confirmation pass it, because they are sent only when an account does or does not exist, and a flag set by their refusal would reveal that. `markEmailSenderUnavailable` writes only when the flag is not set yet. It writes `email-sender-unavailable:<APP_ENV>` to the `CACHE` KV namespace with a five-minute expiry (`EMAIL_SENDER_UNAVAILABLE_SECONDS`). The key includes `APP_ENV` because development and preview share one namespace. A refusal that concerns one message, such as an invalid recipient, `rate_limit_exceeded`, a 5xx answer, a network error or the timeout, leaves the flag alone, so one bad address or one burst cannot stop every other email. Only the Better Auth gate acts on the flag, and it lets requests through when KV cannot be read; see [Better Auth](/docs/integrations/better-auth#email-delivery-gate). Nothing clears it early: once the sender is fixed, the first attempt after the flag expires goes out normally.
+
 The client is `src/integrations/resend/resend.config.ts`, a one-line `new Resend(env.RESEND_API_KEY)`. The default `from` is `APP_NAME <RESEND_EMAIL_FROM>`. Both `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in the `secrets.required` list of every environment in `wrangler.jsonc`.
 
 ## The eight templates
 
 All under `src/presentation/emails/`, built with `react-email` and rendered server-side inside the Worker:
 
-| Template                            | Namespace constant                        | Sent by                                                               |
-| ----------------------------------- | ----------------------------------------- | --------------------------------------------------------------------- |
-| `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerificationEmail` (Better Auth)                                 |
-| `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPassword` (Better Auth)                                     |
-| `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmation` (Better Auth)                           |
-| `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, queued by `deleteCustomer`                 |
-| `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `notifyOrderConfirmed`, from the Stripe webhook                       |
-| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, queued by `shipOrder`                           |
-| `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, awaited by `subscribeToNewsletter`      |
-| `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, awaited by `subscribeToNewsletter` |
+| Template                            | Namespace constant                        | Sent by                                                                  |
+| ----------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------ |
+| `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerificationEmail` (Better Auth)                                    |
+| `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPassword` (Better Auth)                                        |
+| `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmation` (Better Auth)                              |
+| `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, awaited by `deleteCustomer` and `afterDelete` |
+| `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `notifyOrderConfirmed`, from the Stripe webhook                          |
+| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, queued by `shipOrder`                              |
+| `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, awaited by `subscribeToNewsletter`         |
+| `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, awaited by `subscribeToNewsletter`    |
 
 Each template **exports its own namespace constant** next to the component, for example `export const ORDER_CONFIRMATION_NAMESPACE = "emails.order-confirmation"`. That is the convention: the template owns the name of its message catalogue, so there is no separate mapping to keep in step.
 
@@ -66,7 +75,7 @@ An email is never rendered with a React hook. Messages are loaded explicitly and
 
 ```ts
 const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
-const failure = await sendEmail({
+await requireAuthEmailDelivery("verification", {
   react: createElement(VerifyEmail, { locale, messages, name: user.name, verificationUrl }),
   subject: createTranslator({ locale, messages })("subject"),
   to: user.email,
@@ -158,26 +167,39 @@ The `label` is a human string such as `Order confirmation → jane@example.com`.
 
 A newsletter email that Resend refuses is audited as well. `subscribeToNewsletter` calls `recordEmailFailedAudit(email, { detail })`: the address is the audit target, and the detail names the email and the Resend error, such as `Newsletter confirmation — The example.com domain is not verified` or `Newsletter already-subscribed notice — …`. An unverified sender domain therefore shows up in `/admin/audit` on the first signup instead of only in the Worker log. An email that went out is not recorded.
 
-Better Auth's four emails are **not** audited. They only log:
+Better Auth's four emails are audited the same way, through `recordAuthEmailFailure` in `auth.server.ts`:
 
 ```ts
-const reportEmailFailure = (kind: string, recipient: string, failure: string | undefined): void => {
-  if (failure !== undefined) {
-    console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
+const recordAuthEmailFailure = (kind: string, recipient: string, failure: string): void => {
+  console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
+  recordEmailFailedAudit(recipient, { detail: `Auth ${kind} email — ${failure}` })
+}
+
+const deliverAuthEmail = async (kind: string, email: Parameters<typeof sendEmail>[0]): Promise<boolean> => {
+  const failure = await sendEmail(email)
+  if (failure === undefined) {
+    return true
   }
+
+  recordAuthEmailFailure(kind, email.to, failure)
+
+  return false
 }
 ```
+
+The target is the recipient's address and the detail names the email, for example `Auth reset-password email — The example.com domain is not verified`. The verification or reset link never goes into the audit log, because it is a credential. Whether the person is told depends on the endpoint; [Better Auth](/docs/integrations/better-auth) lists what each one answers.
 
 `AUDIT_LOG_ACTION.EMAIL_DEFERRED` exists but nothing emits it.
 
 ## Background delivery
 
-Two senders are deliberately not awaited by the request:
+One sender is deliberately not awaited by the request:
 
 - `shipOrder` — `scheduleBackgroundWork(notifyOrderShipped(orderId))`
-- `deleteCustomer` — `scheduleBackgroundWork(sendAccountDeletedEmail(goodbyeEmail))`
 
 `scheduleBackgroundWork` (`src/lib/background.ts`) uses the Worker's `waitUntil`, so the request returns immediately.
+
+`deleteCustomer` awaits `sendAccountDeletedEmail` after `removeUser` and returns `goodbyeEmailSent`, so the admin's toast says whether the goodbye email went out. A refusal never undoes the deletion: `sendAccountDeletedEmail` returns `false` instead of throwing, both when Resend refuses the email and when it cannot even be prepared.
 
 `subscribeToNewsletter` awaits its email, because the person who just signed up is told whether it went out. A new, pending or unsubscribed address gets `sendNewsletterConfirmation`; an address that is already confirmed, submitted by anyone but its signed-in owner, gets `sendNewsletterAlreadySubscribed`. Both return the Resend error message, or `undefined` when the send was accepted. On a failure the use case logs it, audits it and answers `confirmationFailed`. A subscriber row that was waiting for confirmation stays `pending`, so submitting the address again issues a fresh token and sends a new email. The request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`, which the form covers with its "Signing you up..." state.
 
@@ -210,7 +232,7 @@ Adding a template means: the component plus its namespace constant under `src/pr
 
 - No abandoned-cart email. The event is recorded in the audit log but nothing sends anything.
 - No delivered or refund notification. Only confirmation and shipped exist.
-- No retry or dead-letter queue for email; a failure is logged and, for order and newsletter emails, audited. A newsletter signup whose confirmation failed is retried by the person, from the landing form or with "Resend email" in the account preferences.
+- No retry or dead-letter queue for email; a failure is logged and audited. The person retries instead: a newsletter signup from the landing form or with "Resend email" in the account preferences, an unconfirmed account with "Send the confirmation link again" on the sign-in page, and a password reset with "Send a new link".
 
 ## Related pages
 

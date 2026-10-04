@@ -41,7 +41,7 @@ Aplikacja nie uruchomi się bez swoich bindingów. `wrangler.jsonc` deklaruje pi
 | --------------------------- | ---------------------------- | ----------------------------------------------------------- |
 | `DB`                        | baza D1                      | Wszystkie dane aplikacji — 37 tabel                         |
 | `IMAGES`                    | zasobnik R2 `martebizuteria` | Wysyłanie zdjęć produktów                                   |
-| `CACHE`                     | przestrzeń nazw KV           | Zadeklarowana, obecnie nieużywana przez kod aplikacji       |
+| `CACHE`                     | przestrzeń nazw KV           | Przechowuje flagę dostępności nadawcy e-maili               |
 | `AUDIT_LOG_QUEUE`           | kolejka Cloudflare Queues    | Zdarzenia audytu, zapisywane przez konsumenta kolejki       |
 | `REALTIME_INVALIDATION_HUB` | Durable Object               | Rozgłaszanie unieważnień pamięci podręcznej przez WebSocket |
 

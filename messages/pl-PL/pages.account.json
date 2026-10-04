@@ -320,7 +320,7 @@
       "submit": "Wyślij potwierdzenie",
       "errorTitle": "Nie udało się zmienić adresu e-mail",
       "successTitle": "Potwierdź zmianę",
-      "successDescription": "Wysłaliśmy link potwierdzający na {email}."
+      "successDescription": "Jeśli nowy adres jest dostępny, wysłaliśmy link potwierdzający na {email}. Jeśli wiadomość nie dotrze w ciągu kilku minut, spróbuj ponownie."
     },
     "editField": "Edytuj: {field}",
     "saveField": "Zapisz: {field}",

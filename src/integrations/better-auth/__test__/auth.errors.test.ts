@@ -14,6 +14,14 @@ describe("auth error keys", () => {
     )
   })
 
+  it.each([
+    ["EMAIL_DELIVERY_FAILED", AUTH_ERRORS.EMAIL_DELIVERY_FAILED],
+    ["EMAIL_DELIVERY_UNAVAILABLE", AUTH_ERRORS.EMAIL_DELIVERY_UNAVAILABLE],
+  ])("explains the %s answer the email delivery checks give", (code, key) => {
+    expect(authErrorKey(new APIError("SERVICE_UNAVAILABLE", { code, message: "Private details" }))).toBe(key)
+    expect(authErrorKey({ code, status: 503, statusText: "Service Unavailable" })).toBe(key)
+  })
+
   it.each([[{ code: "SOMETHING_NEW" }], [new Error("network down")], [null], [undefined], ["INVALID_EMAIL"], [{ body: {} }]])(
     "falls back to the unknown key for %j",
     (error) => {

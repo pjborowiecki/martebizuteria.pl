@@ -2,12 +2,14 @@ import { createElement } from "react"
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { emailsSend, env } = vi.hoisted(() => ({
+const { emailsSend, env, markEmailSenderUnavailable } = vi.hoisted(() => ({
   emailsSend: vi.fn(),
   env: { RESEND_API_KEY: "re_test", RESEND_EMAIL_FROM: "atelier@marte.test" },
+  markEmailSenderUnavailable: vi.fn<(reason: string) => Promise<void>>(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env }))
+vi.mock("~/src/integrations/resend/resend.availability.server", () => ({ markEmailSenderUnavailable }))
 vi.mock("resend", () => ({
   Resend: class {
     public readonly emails = { send: emailsSend }
@@ -20,8 +22,16 @@ import { APP_NAME } from "~/src/presentation/branding/app"
 
 const body = createElement("p", undefined, "Your order is on its way")
 
+const DOMAIN_NOT_VERIFIED = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
+
+const refuse = (error: { message: string; name: string; statusCode: number | null }) => {
+  emailsSend.mockResolvedValueOnce({ data: null, error })
+}
+
 beforeEach(() => {
   emailsSend.mockReset()
+  markEmailSenderUnavailable.mockReset()
+  markEmailSenderUnavailable.mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -105,5 +115,76 @@ describe("sendEmail when Resend does not answer", () => {
     await sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })
 
     expect(vi.getTimerCount()).toBe(0)
+  })
+})
+
+describe("sendEmail when Resend refuses every email from this sender", () => {
+  it.each([
+    ["an unverified sending domain", { message: DOMAIN_NOT_VERIFIED, name: "validation_error", statusCode: 403 }],
+    ["an invalid API key", { message: "API key is invalid", name: "invalid_api_key", statusCode: 403 }],
+    ["a key restricted to other work", { message: "This API key is restricted", name: "restricted_api_key", statusCode: 401 }],
+    ["a malformed sender address", { message: "Invalid `from` field", name: "invalid_from_address", statusCode: 422 }],
+    [
+      "an exhausted daily quota",
+      { message: "You have reached your daily email sending quota", name: "daily_quota_exceeded", statusCode: 429 },
+    ],
+    [
+      "an exhausted monthly quota",
+      { message: "You have reached your monthly email sending quota", name: "monthly_quota_exceeded", statusCode: 429 },
+    ],
+  ])("marks the sender unavailable for %s", async (_label, error) => {
+    refuse(error)
+
+    await expect(sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })).resolves.toBe(error.message)
+
+    expect(markEmailSenderUnavailable).toHaveBeenCalledWith(error.message)
+  })
+
+  it("leaves the sender flag to emails every address can trigger, so its state never tells whether an account exists", async () => {
+    refuse({ message: DOMAIN_NOT_VERIFIED, name: "validation_error", statusCode: 403 })
+
+    await expect(
+      sendEmail({ react: body, revealsAccountExistence: true, subject: "Reset your password", to: "anna@example.com" }),
+    ).resolves.toBe(DOMAIN_NOT_VERIFIED)
+
+    expect(markEmailSenderUnavailable).not.toHaveBeenCalled()
+  })
+
+  it("still reports the refusal when the sender cannot be marked unavailable", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    markEmailSenderUnavailable.mockRejectedValueOnce(new Error("KV PUT failed: 429 Too Many Requests"))
+    refuse({ message: DOMAIN_NOT_VERIFIED, name: "validation_error", statusCode: 403 })
+
+    await expect(sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })).resolves.toBe(DOMAIN_NOT_VERIFIED)
+  })
+})
+
+describe("sendEmail when Resend refuses one email", () => {
+  it.each([
+    ["an invalid recipient", { message: "Invalid `to` field", name: "validation_error", statusCode: 422 }],
+    ["a burst over the request rate", { message: "Too many requests", name: "rate_limit_exceeded", statusCode: 429 }],
+    ["an outage on Resend's side", { message: "Internal server error", name: "application_error", statusCode: 500 }],
+  ])("leaves the sender available after %s", async (_label, error) => {
+    refuse(error)
+
+    await expect(sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })).resolves.toBe(error.message)
+
+    expect(markEmailSenderUnavailable).not.toHaveBeenCalled()
+  })
+
+  it("leaves the sender available after a transport failure", async () => {
+    emailsSend.mockRejectedValueOnce(new Error("fetch failed"))
+
+    await sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })
+
+    expect(markEmailSenderUnavailable).not.toHaveBeenCalled()
+  })
+
+  it("leaves the sender available once an email is accepted", async () => {
+    emailsSend.mockResolvedValueOnce({ data: { id: "email_1" }, error: null })
+
+    await sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })
+
+    expect(markEmailSenderUnavailable).not.toHaveBeenCalled()
   })
 })

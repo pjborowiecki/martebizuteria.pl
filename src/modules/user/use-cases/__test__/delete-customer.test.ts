@@ -3,12 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
 
-const { auth, background, getRequestHeaders, getUserById, sendAccountDeletedEmail, serverContext } = vi.hoisted(() => ({
+const { auth, getRequestHeaders, getUserById, sendAccountDeletedEmail, serverContext } = vi.hoisted(() => ({
   auth: { api: { removeUser: vi.fn<(input: object) => Promise<{ success: boolean }>>() } },
-  background: vi.fn<(work: unknown) => void>(),
   getRequestHeaders: vi.fn<() => Record<string, string>>(),
   getUserById: vi.fn<(id: string) => Promise<{ email: string; id: string; name: string; role: string | null } | undefined>>(),
-  sendAccountDeletedEmail: vi.fn<(input: object) => Promise<void>>(),
+  sendAccountDeletedEmail: vi.fn<(input: object) => Promise<boolean>>(),
   serverContext: { auth: { user: { id: "admin-1" } } },
 }))
 
@@ -37,7 +36,6 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/better-auth/auth.server", () => ({ auth, sendAccountDeletedEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById }))
-vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork: background }))
 
 import { deleteCustomer, deleteCustomerMutation } from "~/src/modules/user/use-cases/delete-customer"
 
@@ -49,7 +47,7 @@ beforeEach(() => {
   getUserById.mockResolvedValue(customer)
   getRequestHeaders.mockReturnValue({ cookie: "session=abc" })
   auth.api.removeUser.mockResolvedValue({ success: true })
-  sendAccountDeletedEmail.mockResolvedValue(undefined)
+  sendAccountDeletedEmail.mockResolvedValue(true)
 })
 
 describe("deleteCustomer", () => {
@@ -89,15 +87,45 @@ describe("deleteCustomer", () => {
     expect(auth.api.removeUser).toHaveBeenCalledWith({ body: { userId: "user-1" }, headers: { cookie: "session=abc" } })
   })
 
-  it("confirms the deletion of the customer it was given", async () => {
-    await expect(deleteCustomer({ data: { userId: "user-1" } })).resolves.toStrictEqual({ ok: true, userId: "user-1" })
+  it("confirms the deletion of the customer it was given and the goodbye email", async () => {
+    await expect(deleteCustomer({ data: { userId: "user-1" } })).resolves.toStrictEqual({
+      goodbyeEmailSent: true,
+      ok: true,
+      userId: "user-1",
+    })
   })
 
-  it("sends the goodbye email in the background, using the details captured before the removal", async () => {
+  it("sends the goodbye email using the details captured before the removal", async () => {
     await deleteCustomer({ data: { userId: "user-1" } })
 
     expect(sendAccountDeletedEmail).toHaveBeenCalledWith({ email: "anna@example.com", locale: "pl-PL", name: "Anna Kowalska" })
-    expect(background).toHaveBeenCalledOnce()
+  })
+
+  it("answers only once the goodbye email has been handed over, so the admin hears how it went", async () => {
+    const delivery = Promise.withResolvers<boolean>()
+    sendAccountDeletedEmail.mockReturnValue(delivery.promise)
+    const answered = vi.fn<(result: unknown) => void>()
+
+    const deletion = deleteCustomer({ data: { userId: "user-1" } }).then(answered)
+    await vi.waitFor(() => {
+      expect(sendAccountDeletedEmail).toHaveBeenCalledOnce()
+    })
+
+    expect(answered).not.toHaveBeenCalled()
+    delivery.resolve(true)
+    await deletion
+    expect(answered).toHaveBeenCalledWith(expect.objectContaining({ goodbyeEmailSent: true }))
+  })
+
+  it("reports a goodbye email that could not be sent without undoing the deletion", async () => {
+    sendAccountDeletedEmail.mockResolvedValue(false)
+
+    await expect(deleteCustomer({ data: { userId: "user-1" } })).resolves.toStrictEqual({
+      goodbyeEmailSent: false,
+      ok: true,
+      userId: "user-1",
+    })
+    expect(auth.api.removeUser).toHaveBeenCalledOnce()
   })
 
   it("sends no goodbye email when the removal fails", async () => {
@@ -105,13 +133,13 @@ describe("deleteCustomer", () => {
 
     await expect(deleteCustomer({ data: { userId: "user-1" } })).rejects.toThrow("session expired")
 
-    expect(background).not.toHaveBeenCalled()
+    expect(sendAccountDeletedEmail).not.toHaveBeenCalled()
   })
 
   it("keeps a customer without a role deletable", async () => {
     getUserById.mockResolvedValue({ ...customer, role: null })
 
-    await expect(deleteCustomer({ data: { userId: "user-1" } })).resolves.toStrictEqual({ ok: true, userId: "user-1" })
+    await expect(deleteCustomer({ data: { userId: "user-1" } })).resolves.toMatchObject({ ok: true, userId: "user-1" })
   })
 })
 

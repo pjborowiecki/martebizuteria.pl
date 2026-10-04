@@ -8,7 +8,10 @@ description: "Osiem szablonów React Email renderowanych w Workerze, wysyłanych
 Każdy e-mail wysyła jedna funkcja — `src/integrations/resend/resend.send.ts`:
 
 ```ts
-const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const refusesEverySend = ({ name, statusCode }: ErrorResponse): boolean =>
+  SENDER_REFUSAL_NAMES.has(name) || SENDER_REFUSAL_STATUSES.has(statusCode)
+
+const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   try {
     const { error } = await resend.emails.send({
       from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
@@ -16,6 +19,10 @@ const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>)
       subject,
       to,
     })
+
+    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error)) {
+      scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
+    }
 
     return error?.message
   } catch (error) {
@@ -39,22 +46,24 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 
 Zwróć uwagę na kontrakt: **nigdy nie rzuca wyjątku.** Zwraca `undefined` przy sukcesie, a w przeciwnym razie komunikat błędu jako napis. SDK Resend nie ma własnego limitu czasu, więc `sendEmail` rezygnuje po `SEND_EMAIL_TIMEOUT_MS` (10 sekund) i zwraca `Resend did not answer within 10000 ms`; zawieszony Resend nie może bez końca blokować zapisu ani webhooka. Każdy wywołujący jest więc napisany jako `const failure = await sendEmail(...)`, po czym decyduje, co zrobić z `failure` — awaria poczty nie może wycofać zamówienia ani usunięcia konta.
 
+Niektóre odmowy oznaczają, że od tego nadawcy nie wyjdzie żaden e-mail: odpowiedź 401 lub 403 z Resend (nieprawidłowy albo ograniczony klucz API lub niezweryfikowana domena nadawcy), nieprawidłowy adres `from` albo wyczerpany dzienny lub miesięczny limit. W takich przypadkach `sendEmail` uruchamia też w tle `markEmailSenderUnavailable` z `src/integrations/resend/resend.availability.server.ts`, chyba że wywołujący przekazał `revealsAccountExistence: true`. Przekazują je weryfikacja, link do zmiany hasła i potwierdzenie zmiany adresu z Better Auth, bo wychodzą tylko wtedy, gdy konto istnieje albo nie istnieje, a flaga ustawiona przez ich odmowę by to zdradziła. `markEmailSenderUnavailable` zapisuje flagę tylko wtedy, gdy nie jest jeszcze ustawiona. Funkcja zapisuje klucz `email-sender-unavailable:<APP_ENV>` w przestrzeni KV `CACHE` z pięciominutowym wygaśnięciem (`EMAIL_SENDER_UNAVAILABLE_SECONDS`). Klucz zawiera `APP_ENV`, bo development i preview korzystają z tej samej przestrzeni. Odmowa dotycząca jednej wiadomości, na przykład nieprawidłowy odbiorca, `rate_limit_exceeded`, odpowiedź 5xx, błąd sieci albo przekroczony czas, nie ustawia flagi, więc jeden zły adres czy jeden nagły szczyt ruchu nie zatrzymuje pozostałych e-maili. Na flagę reaguje tylko blokada w Better Auth, która przepuszcza żądania, gdy KV nie da się odczytać; zobacz [Better Auth](/docs/integrations/better-auth#blokada-wysyłki-e-maili). Nic nie usuwa jej wcześniej: po naprawie nadawcy pierwsza próba po wygaśnięciu flagi wychodzi normalnie.
+
 Klientem jest `src/integrations/resend/resend.config.ts`, jednolinijkowe `new Resend(env.RESEND_API_KEY)`. Domyślne `from` to `APP_NAME <RESEND_EMAIL_FROM>`. Zarówno `RESEND_API_KEY`, jak i `RESEND_EMAIL_FROM` są na liście `secrets.required` każdego środowiska w `wrangler.jsonc`.
 
 ## Osiem szablonów
 
 Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane po stronie serwera wewnątrz Workera:
 
-| Szablon                             | Stała przestrzeni nazw                    | Wysyłany przez                                                                                      |
-| ----------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerificationEmail` (Better Auth)                                                               |
-| `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPassword` (Better Auth)                                                                   |
-| `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmation` (Better Auth)                                                         |
-| `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, kolejkowany przez `deleteCustomer`                                       |
-| `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `notifyOrderConfirmed`, z webhooka Stripe                                                           |
-| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, kolejkowany przez `shipOrder`                                                 |
-| `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik      |
-| `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik |
+| Szablon                             | Stała przestrzeni nazw                    | Wysyłany przez                                                                                       |
+| ----------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerificationEmail` (Better Auth)                                                                |
+| `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPassword` (Better Auth)                                                                    |
+| `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmation` (Better Auth)                                                          |
+| `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, wywoływany przez `deleteCustomer` i `afterDelete` z oczekiwaniem na wynik |
+| `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `notifyOrderConfirmed`, z webhooka Stripe                                                            |
+| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, kolejkowany przez `shipOrder`                                                  |
+| `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik       |
+| `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik  |
 
 Każdy szablon **eksportuje własną stałą przestrzeni nazw** obok komponentu, na przykład `export const ORDER_CONFIRMATION_NAMESPACE = "emails.order-confirmation"`. Taka jest konwencja: szablon jest właścicielem nazwy swojego katalogu komunikatów, więc nie ma osobnego mapowania, które trzeba utrzymywać w zgodzie.
 
@@ -66,7 +75,7 @@ E-mail nigdy nie jest renderowany hookiem Reacta. Komunikaty są wczytywane jawn
 
 ```ts
 const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
-const failure = await sendEmail({
+await requireAuthEmailDelivery("verification", {
   react: createElement(VerifyEmail, { locale, messages, name: user.name, verificationUrl }),
   subject: createTranslator({ locale, messages })("subject"),
   to: user.email,
@@ -158,26 +167,39 @@ export const recordOrderEmailOutcome = ({
 
 E-mail newslettera odrzucony przez Resend również trafia do audytu. `subscribeToNewsletter` wywołuje `recordEmailFailedAudit(email, { detail })`: celem wpisu jest adres, a szczegół podaje rodzaj e-maila i błąd Resend, na przykład `Newsletter confirmation — The example.com domain is not verified` albo `Newsletter already-subscribed notice — …`. Niezweryfikowana domena nadawcy pojawia się więc w `/admin/audit` już przy pierwszym zapisie, a nie tylko w logu Workera. Wysłany e-mail nie jest zapisywany.
 
-Cztery e-maile Better Auth **nie** są zapisywane w audycie. Tylko logują:
+Cztery e-maile Better Auth trafiają do audytu w ten sam sposób, przez `recordAuthEmailFailure` w `auth.server.ts`:
 
 ```ts
-const reportEmailFailure = (kind: string, recipient: string, failure: string | undefined): void => {
-  if (failure !== undefined) {
-    console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
+const recordAuthEmailFailure = (kind: string, recipient: string, failure: string): void => {
+  console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
+  recordEmailFailedAudit(recipient, { detail: `Auth ${kind} email — ${failure}` })
+}
+
+const deliverAuthEmail = async (kind: string, email: Parameters<typeof sendEmail>[0]): Promise<boolean> => {
+  const failure = await sendEmail(email)
+  if (failure === undefined) {
+    return true
   }
+
+  recordAuthEmailFailure(kind, email.to, failure)
+
+  return false
 }
 ```
+
+Celem wpisu jest adres odbiorcy, a szczegół podaje rodzaj e-maila, na przykład `Auth reset-password email — The example.com domain is not verified`. Link weryfikacyjny ani link do zmiany hasła nigdy nie trafia do audytu, bo jest poświadczeniem. To, czy osoba dowie się o porażce, zależy od punktu końcowego; [Better Auth](/docs/integrations/better-auth) opisuje odpowiedź każdego z nich.
 
 `AUDIT_LOG_ACTION.EMAIL_DEFERRED` istnieje, ale nic go nie emituje.
 
 ## Wysyłka w tle
 
-Dwie wysyłki są świadomie nieoczekiwane przez żądanie:
+Jedna wysyłka jest świadomie nieoczekiwana przez żądanie:
 
 - `shipOrder` — `scheduleBackgroundWork(notifyOrderShipped(orderId))`
-- `deleteCustomer` — `scheduleBackgroundWork(sendAccountDeletedEmail(goodbyeEmail))`
 
 `scheduleBackgroundWork` (`src/lib/background.ts`) korzysta z `waitUntil` Workera, więc żądanie wraca natychmiast.
+
+`deleteCustomer` czeka na `sendAccountDeletedEmail` po `removeUser` i zwraca `goodbyeEmailSent`, więc komunikat w panelu mówi administratorowi, czy e-mail pożegnalny wyszedł. Odmowa nigdy nie cofa usunięcia: `sendAccountDeletedEmail` zwraca `false` zamiast rzucać wyjątek, zarówno gdy Resend odrzuci e-mail, jak i gdy nie da się go nawet przygotować.
 
 `subscribeToNewsletter` czeka na swój e-mail, bo osoba, która właśnie się zapisała, dowiaduje się, czy wyszedł. Nowy, oczekujący albo wypisany adres dostaje `sendNewsletterConfirmation`; adres już potwierdzony, wysłany przez kogokolwiek poza zalogowanym właścicielem, dostaje `sendNewsletterAlreadySubscribed`. Obie funkcje zwracają komunikat błędu Resend albo `undefined`, gdy wysyłka została przyjęta. Przy porażce przypadek użycia loguje ją, zapisuje w audycie i odpowiada `confirmationFailed`. Wiersz, który czekał na potwierdzenie, zostaje w stanie `pending`, więc ponowne wysłanie adresu nadaje nowy token i wysyła nowy e-mail. Żądanie trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`, co formularz pokrywa stanem „Zapisujemy...”.
 
@@ -210,7 +232,7 @@ Dodanie szablonu oznacza: komponent wraz ze stałą przestrzeni nazw w `src/pres
 
 - Nie ma e-maila o porzuconym koszyku. Zdarzenie jest zapisywane w audycie, ale nic nie wysyła wiadomości.
 - Nie ma powiadomienia o dostarczeniu ani o zwrocie. Istnieją tylko potwierdzenie i wysyłka.
-- Nie ma ponawiania ani kolejki martwych listów dla poczty; porażka jest logowana, a dla e-maili zamówień i newslettera zapisywana w audycie. Zapis do newslettera, którego potwierdzenie nie wyszło, ponawia sama osoba: z formularza na stronie głównej albo przyciskiem „Wyślij ponownie” w preferencjach konta.
+- Nie ma ponawiania ani kolejki martwych listów dla poczty; porażka jest logowana i zapisywana w audycie. Ponawia sama osoba: zapis do newslettera z formularza na stronie głównej albo przyciskiem „Wyślij ponownie” w preferencjach konta, niepotwierdzone konto przyciskiem „Wyślij link potwierdzający ponownie” na stronie logowania, a zmianę hasła przyciskiem „Wyślij nowy link”.
 
 ## Powiązane strony
 

@@ -91,6 +91,7 @@
       "deleteErrorTitle": "Delete failed",
       "deleteNotFoundDescription": "This customer was not found. Refresh the table and try again.",
       "deleteSuccessDescription": "The account was deleted and a confirmation email was sent.",
+      "deleteSuccessEmailFailedDescription": "The account was deleted, but the confirmation email could not be sent. The failure is recorded in the audit log.",
       "deleteSuccessTitle": "Account deleted"
     },
     "viewDetails": "View {name}"

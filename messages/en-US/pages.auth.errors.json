@@ -3,6 +3,8 @@
   "bannedUser": "Your account has been suspended.",
   "couldNotCreateSession": "Could not create session. Please try again.",
   "credentialAccountNotFound": "No account found with these credentials.",
+  "emailDeliveryFailed": "We couldn't send the email just now. Please try again in a few minutes.",
+  "emailDeliveryUnavailable": "We can't send emails at the moment, so nothing has been changed. Please try again in a few minutes.",
   "emailNotVerified": "Please verify your email address first.",
   "emailPasswordDisabled": "Email/password sign-in is not available.",
   "emailPasswordSignUpDisabled": "Email/password sign-up is not available.",

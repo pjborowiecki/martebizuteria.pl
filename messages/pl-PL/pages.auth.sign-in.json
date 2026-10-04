@@ -10,6 +10,11 @@
   "submitting": "Logowanie…",
   "noAccount": "Nie masz konta?",
   "createAccount": "Utwórz konto",
+  "unverified": {
+    "description": "Ten adres nie został jeszcze potwierdzony. Możemy wysłać Ci nowy link potwierdzający.",
+    "resend": "Wyślij link potwierdzający ponownie",
+    "resending": "Wysyłanie…"
+  },
   "twoFactor": {
     "title": "Weryfikacja dwuetapowa",
     "description": "Wpisz sześciocyfrowy kod z aplikacji uwierzytelniającej.",

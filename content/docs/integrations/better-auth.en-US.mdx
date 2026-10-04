@@ -19,6 +19,7 @@ Better Auth owns identity: e-mail and password sign-in, Google and GitHub OAuth,
 | `baseURL.allowedHosts`         | `appHostsForMode(import.meta.env.MODE)` from `src/modules/_core/constants/api.ts`               |
 | `emailAndPassword`             | Enabled, `requireEmailVerification: true`, min 8 / max 1024 characters                          |
 | `emailVerification`            | `sendOnSignUp: true`, `autoSignInAfterVerification: true`                                       |
+| `hooks.before`                 | Refuses the four email-sending endpoints while the email sender is marked unavailable           |
 | `session`                      | `storeSessionInDatabase: true`, cookie cache enabled with `maxAge` 300 s and `version: "2"`     |
 | `verification`                 | `storeIdentifier: "hashed"`, `storeInDatabase: true`                                            |
 | `socialProviders`              | `google` and `github`, with `account.accountLinking.trustedProviders` covering both             |
@@ -52,7 +53,45 @@ This is separate from the application's own `withRateLimit` middleware described
 
 ### Transactional e-mail
 
-Four of the eight application e-mails are sent from this file: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` and `sendAccountDeletedEmail`. Each loads its own message namespace, renders its React Email component and hands it to `sendEmail`; failures are logged through `reportEmailFailure` rather than thrown, so a mail outage never breaks a sign-up. `resolveEmailVerificationCallbackUrl` additionally rewrites a verification link that would land on the storefront home so it lands on `/account/overview?verified=true` instead. See [Resend](/docs/integrations/resend).
+Four of the eight application e-mails are sent from this file: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` and `sendAccountDeletedEmail`. Each loads its own message namespace, renders its React Email component and hands it to `deliverAuthEmail`, which calls `sendEmail`. When Resend refuses the message, `recordAuthEmailFailure` logs `[Auth] Failed to send <kind> email to <address>: <error>` and records an `email.failed` audit entry. `resolveEmailVerificationCallbackUrl` additionally rewrites a verification link that would land on the storefront home so it lands on `/account/overview?verified=true` instead. See [Resend](/docs/integrations/resend).
+
+The first three hooks go through `requireAuthEmailDelivery`, which sends with `revealsAccountExistence: true` (see [Email delivery gate](#email-delivery-gate)) and throws `APIError.from("SERVICE_UNAVAILABLE", { code: "EMAIL_DELIVERY_FAILED" })` when Resend refuses the email. What the person sees depends on how Better Auth runs the hook:
+
+| Endpoint                                         | When Resend refuses the email                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/send-verification-email`                       | Better Auth awaits the hook, so the request answers `503` with `EMAIL_DELIVERY_FAILED`. The forms show "We couldn't send the email just now. Please try again in a few minutes."                                                                                                                                                                          |
+| `/sign-up/email`                                 | Better Auth runs the hook in the background and drops its error. The account is created unverified and the generic answer stands. The person asks for a new link from the sign-in page.                                                                                                                                                                   |
+| `/request-password-reset`                        | Background as well, and the generic answer must stand: a different answer for an address with an account would reveal that the account exists.                                                                                                                                                                                                            |
+| `/change-email`                                  | Background as well. Better Auth sends nothing when the new address is already taken, so the toast says "If the new address is available, we've sent a confirmation link to …" and asks the person to try again if nothing arrives. The verification sent to the new address once the change is confirmed also runs in the background, after the redirect. |
+| `/delete-user` (`afterDelete`), `deleteCustomer` | `sendAccountDeletedEmail` returns `false` and never throws, because the account is already gone. It catches a refusal from Resend and an error while preparing the email alike, and both are logged and audited. A throw from `afterDelete` would turn a finished deletion into a 500. `deleteCustomer` returns the result as `goodbyeEmailSent`.         |
+
+Removing `advanced.backgroundTasks` would not change the background rows: without a handler Better Auth awaits the hook but still catches and logs its error.
+
+### Email delivery gate
+
+`sendEmail` marks the sender unavailable for five minutes when Resend refuses every email, for example because the sending domain is not verified (see [Resend](/docs/integrations/resend)). While the flag is set, `hooks.before` refuses `/sign-up/email`, `/request-password-reset`, `/send-verification-email` and `/change-email` before the endpoint runs:
+
+```ts
+hooks: {
+  before: createAuthMiddleware(async (ctx) => {
+    if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
+      throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
+    }
+  }),
+},
+```
+
+The answer is `503` with `EMAIL_DELIVERY_UNAVAILABLE`, shown as "We can't send emails at the moment, so nothing has been changed. Please try again in a few minutes." No account is created, no token is stored, and known and unknown addresses get the same answer. The paths come from `ROUTES.API_AUTH`. Sign-in, verification links, account deletion and every other endpoint pass straight through without reading KV.
+
+Only an email whose sending says nothing about which accounts exist may set the flag: the newsletter emails (every submitted address gets one), the order confirmation and shipped emails, and the account-deleted email. The verification, reset and change-email confirmation go out only when an account does or does not exist, so `requireAuthEmailDelivery` sends them with `revealsAccountExistence: true` and `sendEmail` leaves the flag alone. Otherwise the flag would answer the question the generic responses hide: during an outage, request a reset for an address, then one for a random address, and a `503` on the second would mean the first has an account. Those refusals are still logged and audited.
+
+So the gate closes only once one of the other emails has been refused. Until then, sign-up, password reset and change-email keep their generic success while their emails fail, because a different answer for that one request would reveal whether the address has an account. The audit log has every failure, and the copy tells the person to sign in for a new confirmation link or to request a new reset link if nothing arrives. The gate only limits the damage; checking that the sending domain is verified before a deploy is what prevents it. After the flag expires, one real attempt goes through again; if the sender is still broken, the next refused email sets the flag again.
+
+If KV cannot be read, `isEmailSenderUnavailable` logs `[Resend] Email sender availability unreadable` with the error and answers `false`, so the gate lets the request through. Password reset is the way back into an account and must not depend on KV; a send that then fails is still logged and audited like any other.
+
+On the sign-in page, a sign-in refused with `EMAIL_NOT_VERIFIED` shows `UnverifiedEmailNotice` with "Send the confirmation link again". That call goes to `/send-verification-email`, so its success toast, "A new confirmation link is on its way to …", only appears after Resend has accepted the email. Better Auth returns `EMAIL_NOT_VERIFIED` only after the password has been checked, so the notice reveals nothing to someone who does not know the password.
+
+The endpoint itself can be called without the form, and there the honest answer has a cost. Signed out, Better Auth calls the hook only for an address with an unconfirmed account and answers `200` for any other address. While single sends fail (a Resend rate limit or outage, or a sender refusal before the flag is set), an unconfirmed account therefore gets `503 EMAIL_DELIVERY_FAILED` where an unknown or confirmed address gets `200`. This is how Better Auth treats a hook that throws, and it is the price of telling the person the truth about their resend. It reveals only unconfirmed accounts, only while sends are failing, at Better Auth's default limit of three requests per minute per IP, and while the flag is set the gate answers every address alike.
 
 ## Roles and permissions
 

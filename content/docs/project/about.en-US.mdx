@@ -43,13 +43,13 @@ Four request paths short-circuit inside `src/server.ts` before the React framewo
 
 `wrangler.jsonc` declares the same five application bindings in all three environments:
 
-| Binding                     | Resource         | Used for                                                        |
-| --------------------------- | ---------------- | --------------------------------------------------------------- |
-| `DB`                        | D1 database      | Every table — 37, including the `storefront_search` FTS5 index  |
-| `IMAGES`                    | R2 bucket        | Product image uploads                                           |
-| `CACHE`                     | KV namespace     | Declared but not referenced by any application code             |
-| `AUDIT_LOG_QUEUE`           | Cloudflare Queue | Audit events, drained by the `queue` handler in `src/server.ts` |
-| `REALTIME_INVALIDATION_HUB` | Durable Object   | WebSocket fan-out for realtime cache invalidation               |
+| Binding                     | Resource         | Used for                                                         |
+| --------------------------- | ---------------- | ---------------------------------------------------------------- |
+| `DB`                        | D1 database      | Every table — 37, including the `storefront_search` FTS5 index   |
+| `IMAGES`                    | R2 bucket        | Product image uploads                                            |
+| `CACHE`                     | KV namespace     | Holds the email sender flag from `resend.availability.server.ts` |
+| `AUDIT_LOG_QUEUE`           | Cloudflare Queue | Audit events, drained by the `queue` handler in `src/server.ts`  |
+| `REALTIME_INVALIDATION_HUB` | Durable Object   | WebSocket fan-out for realtime cache invalidation                |
 
 ## The stack
 

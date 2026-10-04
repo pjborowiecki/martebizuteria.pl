@@ -67,7 +67,7 @@ Logowanie przez Google i GitHub przechodzi przez `useOAuthSignIn` z `src/present
 
 `ROUTES.AUTH_EMAIL_VERIFICATION` (`/auth/email-verification`) jest zadeklarowana, ale nie ma pliku trasy i nic się do niej nie odwołuje, więc ta ścieżka zwraca obecnie 404.
 
-`ROUTES.API_AUTH` to zagnieżdżony obiekt ze ścieżkami endpointów Better Auth względem `/api/auth` — `/sign-in/email`, `/sign-up/email`, `/sign-out`, `/request-password-reset`, `/reset-password`. Służą do konfigurowania limitów zapytań per endpoint, a nie do budowania odnośników.
+`ROUTES.API_AUTH` to zagnieżdżony obiekt ze ścieżkami endpointów Better Auth względem `/api/auth` — `/change-email`, `/request-password-reset`, `/reset-password`, `/send-verification-email`, `/sign-in/email`, `/sign-out`, `/sign-up/email`. Służą do konfigurowania limitów zapytań per endpoint, wpisów audytu o logowaniu i wylogowaniu oraz blokady wysyłki e-maili w `auth.server.ts`, a nie do budowania odnośników.
 
 ## Konto klienta
 

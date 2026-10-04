@@ -47,7 +47,7 @@ Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed
 | --------------------------- | ------------------ | ----------------------------------------------------------------------- |
 | `DB`                        | baza D1            | wszystkie tabele — 37, wraz z indeksem FTS5 `storefront_search`         |
 | `IMAGES`                    | kubełek R2         | wgrywanie zdjęć produktów                                               |
-| `CACHE`                     | przestrzeń KV      | zadeklarowana, ale nieużywana przez kod aplikacji                       |
+| `CACHE`                     | przestrzeń KV      | przechowuje flagę nadawcy e-maili z `resend.availability.server.ts`     |
 | `AUDIT_LOG_QUEUE`           | kolejka Cloudflare | zdarzenia audytowe, konsumowane przez handler `queue` w `src/server.ts` |
 | `REALTIME_INVALIDATION_HUB` | Durable Object     | rozsyłanie unieważnień cache po WebSocketach                            |
 

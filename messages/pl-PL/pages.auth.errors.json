@@ -3,6 +3,8 @@
   "bannedUser": "Twoje konto zostało zawieszone.",
   "couldNotCreateSession": "Nie udało się utworzyć sesji. Spróbuj ponownie.",
   "credentialAccountNotFound": "Nie znaleziono konta z tymi danymi.",
+  "emailDeliveryFailed": "Nie udało się teraz wysłać wiadomości. Spróbuj ponownie za kilka minut.",
+  "emailDeliveryUnavailable": "Chwilowo nie możemy wysyłać wiadomości e-mail, więc niczego nie zmieniliśmy. Spróbuj ponownie za kilka minut.",
   "emailNotVerified": "Najpierw potwierdź swój adres e-mail.",
   "emailPasswordDisabled": "Logowanie e-mailem i hasłem jest niedostępne.",
   "emailPasswordSignUpDisabled": "Rejestracja e-mailem i hasłem jest niedostępna.",

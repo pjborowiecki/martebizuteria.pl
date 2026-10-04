@@ -54,7 +54,7 @@ emailVerification: {
 },
 ```
 
-Przy `sendOnSignUp: true` wiadomość weryfikacyjna wychodzi natychmiast, a `autoSignInAfterVerification: true` oznacza, że kliknięcie linku jednocześnie potwierdza adres i loguje użytkownika. Jeśli `RESEND_API_KEY` jest nieprawidłowy albo nadawca nie jest zweryfikowany w Resend, nic nie dotrze, a konto zostaje zawieszone — wiersz istnieje w tabeli `user` z `email_verified` nadal równym `0`, a logowanie jest odrzucane.
+Przy `sendOnSignUp: true` wiadomość weryfikacyjna wychodzi natychmiast, a `autoSignInAfterVerification: true` oznacza, że kliknięcie linku jednocześnie potwierdza adres i loguje użytkownika. Jeśli `RESEND_API_KEY` jest nieprawidłowy albo domena nadawcy nie jest zweryfikowana w Resend, nic nie dotrze. Wiersz nadal istnieje w tabeli `user` z `email_verified` równym `0`, a odmowa jest w `/admin/audit` jako `email.failed`. Gdy tę samą odmowę dostanie e-mail newslettera, zamówienia albo o usunięciu konta, przez kolejne pięć minut rejestracja, zmiana hasła, ponowne wysłanie weryfikacji i zmiana adresu odpowiadają, że nie można teraz wysyłać e-maili. Gdy nadawca zacznie działać, zaloguj się na nowe konto: strona logowania odrzuci niepotwierdzony adres i zaproponuje **Wyślij link potwierdzający ponownie**.
 
 Logowanie przez Google i GitHub pomija wiadomość weryfikacyjną, więc działająca aplikacja OAuth to szybsza droga, jeśli nadawca w Resend nie jest jeszcze gotowy.
 

@@ -91,6 +91,7 @@
       "deleteErrorTitle": "Usuwanie nie powiodło się",
       "deleteNotFoundDescription": "Nie znaleziono tego klienta. Odśwież tabelę i spróbuj ponownie.",
       "deleteSuccessDescription": "Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.",
+      "deleteSuccessEmailFailedDescription": "Konto zostało usunięte, ale nie udało się wysłać e-maila z potwierdzeniem. Błąd zapisano w dzienniku zdarzeń.",
       "deleteSuccessTitle": "Konto usunięte"
     },
     "viewDetails": "Zobacz {name}"
