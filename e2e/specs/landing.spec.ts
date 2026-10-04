@@ -1,6 +1,7 @@
 import { type Locator, type Page } from "@playwright/test"
 
 import { TRANSPARENT_PNG, expect, test } from "../fixtures/test"
+import { swipeUp } from "../fixtures/touch"
 
 const WIDE_SCREEN = { height: 900, width: 1440 }
 const IMAGE_LATENCY_MS = 350
@@ -184,17 +185,9 @@ test.describe("the categories under a finger on a wide screen", () => {
   test("every fling glides on through the categories as far as it does above them while their pictures load", async ({ page, productPage }) => {
     await delayEveryImage(page)
     await productPage.open("/en-US")
-    const touchscreen = await page.context().newCDPSession(page)
     const fling = async (): Promise<number> => {
       const startY = await pageScroll(page)
-      await touchscreen.send("Input.synthesizeScrollGesture", {
-        gestureSourceType: "touch",
-        preventFling: false,
-        speed: SWIPE_SPEED_PX_PER_S,
-        x: WIDE_SCREEN.width / 2,
-        y: WIDE_SCREEN.height - SWIPE_PX / 2,
-        yDistance: -SWIPE_PX,
-      })
+      await swipeUp(page, { distancePx: SWIPE_PX, speedPxPerS: SWIPE_SPEED_PX_PER_S, x: WIDE_SCREEN.width / 2, y: WIDE_SCREEN.height - SWIPE_PX / 2 })
 
       return (await stillPageScroll(page)) - startY
     }

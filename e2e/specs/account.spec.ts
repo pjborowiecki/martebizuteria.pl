@@ -6,6 +6,7 @@ import { registerCustomer } from "../fixtures/customers"
 import { placeOrder } from "../fixtures/orders"
 import { confirmCardSetupIntent, waitForCardSetupIntent } from "../fixtures/stripe"
 import { expect, test } from "../fixtures/test"
+import { swipeUp } from "../fixtures/touch"
 
 test.describe("customer account", () => {
   test("a saved piece shows up in the wishlist and can be removed again", async ({ accountPage, authPage, page, productPage, request }, testInfo) => {
@@ -149,6 +150,7 @@ const TIMEZONE_LIST_MAX_HEIGHT_PX = 320
 const LIST_WHEEL_PX = 600
 const BESIDE_LIST_PX = 40
 const LIST_SWIPE_PX = 400
+const LIST_SWIPE_SPEED_PX_PER_S = 800
 
 interface OpenTimezoneList {
   readonly box: Readonly<{ height: number; width: number; x: number; y: number }>
@@ -277,15 +279,8 @@ test.describe("the timezone list on a touch screen", () => {
     const { box, list } = await settledTimezoneList(page)
     const pageScrollAtOpen = await pageScroll(page)
     const listScrollAtOpen = await listScroll(list)
-    const touchscreen = await page.context().newCDPSession(page)
-    const swipeUpOverList = async (): Promise<void> => {
-      await touchscreen.send("Input.synthesizeScrollGesture", {
-        gestureSourceType: "touch",
-        x: box.x + box.width / 2,
-        y: box.y + box.height / 2,
-        yDistance: -LIST_SWIPE_PX,
-      })
-    }
+    const swipeUpOverList = (): Promise<void> =>
+      swipeUp(page, { distancePx: LIST_SWIPE_PX, speedPxPerS: LIST_SWIPE_SPEED_PX_PER_S, x: box.x + box.width / 2, y: box.y + box.height / 2 })
 
     expect(box.height).toBeLessThanOrEqual(TIMEZONE_LIST_MAX_HEIGHT_PX)
     await swipeUpOverList()
