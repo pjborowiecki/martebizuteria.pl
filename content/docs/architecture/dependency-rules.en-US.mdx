@@ -14,7 +14,7 @@ description: "Which folders may import which, how server-only code stays out of 
 | `src/integrations`           | `_core`, module schemas, accessors and the use cases a vendor calls back into                                      | components, except the email templates a vendor renders             |
 | `src/server.ts`              | the Start handler, `resolveLocale`, the realtime hub, the audit queue consumer, `src/lib`                          | the database, Better Auth or the Stripe SDK directly                |
 
-Browser-safe integrations are the ones with no `env` read and no server-only marker: `i18n.config.ts`, `i18n.paths.ts`, `i18n.utils.ts`, `auth.client.ts`, `auth.access.ts`, `auth.errors.ts`, `auth.zod.ts`, `auth.constraints.ts`, `stripe.client.ts`, `stripe.appearance.ts`, `gsap.config.ts`, `lenis.instance.ts`, `react-day-picker.locale.ts` and `query.sync.ts`.
+Browser-safe integrations are the ones with no `env` read and no server-only marker: `i18n.config.ts`, `i18n.paths.ts`, `i18n.utils.ts`, `auth.client.ts`, `auth.access.ts`, `auth.errors.ts`, `auth.zod.ts`, `auth.constraints.ts`, `stripe.client.ts`, `stripe.appearance.ts`, `gsap.config.ts`, `lenis.instance.ts`, `react-day-picker.locale.ts`, `query.invalidation.ts` and `query.sync.ts`.
 
 ## Server-only boundaries
 

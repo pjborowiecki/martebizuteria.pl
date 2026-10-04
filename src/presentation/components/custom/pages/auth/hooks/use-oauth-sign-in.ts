@@ -1,13 +1,10 @@
-import { type UseMutationResult, useMutation, useQueryClient } from "@tanstack/react-query"
+import { type UseMutationResult, useMutation } from "@tanstack/react-query"
 import { useLocation } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
-import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
-
-import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { useActionError } from "~/src/hooks/use-action-error"
 
@@ -16,7 +13,6 @@ const signInSocial = createClientOnlyFn((input: Parameters<typeof authClient.sig
 type OAuthProvider = "google" | "github"
 
 export const useOAuthSignIn = (): UseMutationResult<void, unknown, OAuthProvider> => {
-  const queryClient = useQueryClient()
   const t = useTranslations()
   const actionError = useActionError()
   const currentPage = useLocation({ select: (location) => location.publicHref })
@@ -39,9 +35,6 @@ export const useOAuthSignIn = (): UseMutationResult<void, unknown, OAuthProvider
       toast.error(t("pages.auth.toast.errorTitle"), {
         description: actionError(authError),
       })
-    },
-    onSettled: () => {
-      void syncQueryInvalidation(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
     },
     onSuccess: () => {
       toast.success(t("pages.auth.toast.signInTitle"), {

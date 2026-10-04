@@ -1,5 +1,7 @@
 import { type QueryClient, type QueryKey } from "@tanstack/react-query"
 
+import { invalidateQueryPrefix } from "~/src/integrations/tanstack-query/query.invalidation"
+
 const QUERY_INVALIDATION_CHANNEL = "marte-query-invalidation"
 
 const invalidationChannelStore: {
@@ -34,18 +36,12 @@ export const setupQueryClientInvalidationBroadcast = (queryClient: QueryClient):
     if (typeof data !== "object" || data === null || !("queryKey" in data) || !Array.isArray(data.queryKey)) {
       return
     }
-    void queryClient.invalidateQueries({
-      queryKey: data.queryKey,
-      refetchType: "all",
-    })
+    void invalidateQueryPrefix(queryClient, data.queryKey)
   })
 }
 
 export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryKey): Promise<void> => {
-  const invalidation = queryClient.invalidateQueries({
-    queryKey,
-    refetchType: "all",
-  })
+  const invalidation = invalidateQueryPrefix(queryClient, queryKey)
 
   try {
     getInvalidationChannel()?.postMessage({

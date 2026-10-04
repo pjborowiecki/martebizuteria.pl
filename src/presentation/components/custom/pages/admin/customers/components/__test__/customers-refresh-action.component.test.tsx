@@ -3,10 +3,8 @@ import { cleanup, fireEvent, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
-const { syncQueryInvalidation } = vi.hoisted(() => ({ syncQueryInvalidation: vi.fn() }))
-
-vi.mock("~/src/integrations/tanstack-query/query.sync", () => ({ syncQueryInvalidation }))
 vi.mock("~/src/modules/user/use-cases/get-admin-customer-stats", () => ({
   getAdminCustomerStatsQuery: () => ({ queryKey: ["admin", "users", "customers", "stats"] }),
 }))
@@ -16,6 +14,10 @@ import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 import { CustomersRefreshAction } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-refresh-action"
 
 const REFRESH_LABEL = "Reload table data"
+
+const CUSTOMER_DETAIL_KEY = [...USER_QUERY_KEYS.ADMIN.CUSTOMER_BY_ID, "usr_1"]
+
+vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)
 
 const newQueryClient = (): QueryClient => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
@@ -27,7 +29,7 @@ const withPendingQuery = (queryClient: QueryClient, queryKey: readonly unknown[]
 const spinningIcon = (): Element | null => screen.getByRole("button", { name: REFRESH_LABEL }).querySelector(".animate-spin")
 
 beforeEach(() => {
-  syncQueryInvalidation.mockReset()
+  StubBroadcastChannel.posted.mockClear()
 })
 
 afterEach(() => {
@@ -44,13 +46,15 @@ describe("CustomersRefreshAction", () => {
     expect(spinningIcon()).toBeNull()
   })
 
-  it("invalidates the admin customer queries when pressed", () => {
+  it("drops the cached customer queries off screen when pressed, without telling the browser's other tabs", () => {
     const queryClient = newQueryClient()
+    queryClient.setQueryData(CUSTOMER_DETAIL_KEY, { id: "usr_1" })
     renderWithProviders(<CustomersRefreshAction />, { queryClient })
 
     fireEvent.click(screen.getByRole("button", { name: REFRESH_LABEL }))
 
-    expect(syncQueryInvalidation).toHaveBeenCalledWith(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
+    expect(queryClient.getQueryState(CUSTOMER_DETAIL_KEY)).toBeUndefined()
+    expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
   })
 
   it("waits while the customers page is loading", () => {

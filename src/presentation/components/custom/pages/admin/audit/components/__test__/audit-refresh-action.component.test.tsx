@@ -3,12 +3,17 @@ import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 
 import { AuditRefreshAction } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-refresh-action"
 
 const REFRESH_LABEL = "Refresh table data"
+
+const AUDIT_PAGE_KEY = [...AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, { page: 2 }]
+
+vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)
 
 const renderRefreshAction = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -39,11 +44,13 @@ describe("AuditRefreshAction", () => {
     expect(button).toHaveAttribute("aria-busy", "false")
   })
 
-  it("refetches every audit query when pressed, not just the mounted ones", () => {
-    const { invalidateQueries } = renderRefreshAction()
+  it("drops the cached audit pages off screen when pressed, without telling the browser's other tabs", () => {
+    const { queryClient } = renderRefreshAction()
+    queryClient.setQueryData(AUDIT_PAGE_KEY, { items: [] })
     fireEvent.click(screen.getByRole("button", { name: REFRESH_LABEL }))
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: AUDIT_LOG_QUERY_KEYS.ADMIN.ALL, refetchType: "all" })
+    expect(queryClient.getQueryState(AUDIT_PAGE_KEY)).toBeUndefined()
+    expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
   })
 
   it("invalidates again on a second press rather than going inert", () => {

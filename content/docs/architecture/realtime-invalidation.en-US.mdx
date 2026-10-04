@@ -7,16 +7,17 @@ Admin dashboards go stale the moment a second person is working, and the admin l
 
 ## The pieces
 
-| File                                               | Role                                                             |
-| -------------------------------------------------- | ---------------------------------------------------------------- |
-| `src/durable-objects/realtime-invalidation-hub.ts` | `RealtimeInvalidationHub` — the connection fan-out object        |
-| `realtime-invalidation.subscriptions.ts`           | Hub names and the fixed prefix lists each audience subscribes to |
-| `realtime-invalidation.protocol.ts`                | Topic serialization and the prefix-overlap test                  |
-| `realtime-invalidation.publish.server.ts`          | `publishRealtimeInvalidation`, `scheduleRealtimeInvalidation`    |
-| `realtime-invalidation.catalog.server.ts`          | Six named publishers the domain layer actually calls             |
-| `realtime-invalidation.ws.server.ts`               | The upgrade handshake and the admin role check                   |
-| `src/hooks/use-realtime-query-sync.ts`             | The client subscription, matching and reconnect                  |
-| `src/integrations/tanstack-query/query.sync.ts`    | The `BroadcastChannel` mirror across tabs                        |
+| File                                                    | Role                                                                 |
+| ------------------------------------------------------- | -------------------------------------------------------------------- |
+| `src/durable-objects/realtime-invalidation-hub.ts`      | `RealtimeInvalidationHub` — the connection fan-out object            |
+| `realtime-invalidation.subscriptions.ts`                | Hub names and the fixed prefix lists each audience subscribes to     |
+| `realtime-invalidation.protocol.ts`                     | Topic serialization and the prefix-overlap test                      |
+| `realtime-invalidation.publish.server.ts`               | `publishRealtimeInvalidation`, `scheduleRealtimeInvalidation`        |
+| `realtime-invalidation.catalog.server.ts`               | Six named publishers the domain layer actually calls                 |
+| `realtime-invalidation.ws.server.ts`                    | The upgrade handshake and the admin role check                       |
+| `src/hooks/use-realtime-query-sync.ts`                  | The client subscription, matching and reconnect                      |
+| `src/integrations/tanstack-query/query.invalidation.ts` | `invalidateQueryPrefix`, the cache policy every invalidation applies |
+| `src/integrations/tanstack-query/query.sync.ts`         | The `BroadcastChannel` for local changes the hub does not carry      |
 
 ## Two audiences, one object each
 
@@ -91,9 +92,13 @@ useRealtimeQuerySync({
 })
 ```
 
-The hook opens `wss://<host>/api/realtime/{admin,storefront}/ws`, validates each message with `isRealtimeInvalidationPayload`, parses the topics back into query keys, keeps the subscriptions that overlap, and calls `syncQueryInvalidation(queryClient, prefix)` for each. Reconnect is exponential backoff from 1 s, doubling, capped at 30 s, reset to zero on a successful `open`, and the cleanup function closes the socket and clears any pending timer.
+The hook opens `wss://<host>/api/realtime/{admin,storefront}/ws`, validates each message with `isRealtimeInvalidationPayload`, parses the topics back into query keys, keeps the subscriptions that overlap, drops any of them that a broader match already covers, and calls `invalidateQueryPrefix(queryClient, prefix)` for each. A frame that names `["admin", "products"]` therefore refreshes the product list and its stats once, not once more through the nested `["admin", "products", "stats"]` subscription, which would cancel and restart the stats fetch. Reconnect is exponential backoff from 1 s, doubling, capped at 30 s, reset to zero on a successful `open`, and the cleanup function closes the socket and clears any pending timer.
 
-`syncQueryInvalidation` does two things: it invalidates locally with `refetchType: "all"`, and it posts the key to the `marte-query-invalidation` `BroadcastChannel`. `setupQueryClientInvalidationBroadcast` — wired in `getRouter` for the browser only — listens on that channel and invalidates the same key, so other tabs of the same browser stay in sync without a second WebSocket. Both sides are guarded with try/catch and a `WeakSet` so the listener is installed once per `QueryClient`.
+`invalidateQueryPrefix` refreshes only what a screen needs. It first removes every query under the prefix that has no observer and no fetch in flight, except an infinite list. It then calls `invalidateQueries` with `refetchType: "active"`, which marks what is left invalid and refetches the queries on screen, and `refetchQueries` with `type: "inactive"` and `fetchStatus: "fetching"`, which restarts the unobserved fetches already in flight. A query on screen refetches at once. A query that is cached but off screen is gone, so the next loader or mount fetches it fresh, even when the loader reads with `staleTime: "static"` and the query sets `refetchOnMount: false`. An infinite list off screen, the storefront catalogue, keeps the pages the shopper loaded and is only marked invalid: going back to it shows those pages at the same scroll position, and the next read, by its loader or by `useSuspenseInfiniteQuery`, refetches all of them, because both use a numeric stale time. A query that is observed but disabled is marked invalid and refetches when it is enabled. A fetch already in flight is never removed, because removing a query cancels its fetch and the loader awaiting it would reject: an unobserved fetch that started from cached data is restarted, so its caller gets the post-event response, and a first fetch finishes as it is. `refetchType: "active"` alone is not enough, because a `staleTime: "static"` loader would then return the stale cached entry when the admin opens the page again.
+
+The hook never posts to the `BroadcastChannel`. Every tab under the storefront and admin layouts (`_storefront.tsx`, `admin.tsx`) holds its own socket and receives every frame itself, so echoing a frame to the browser's other tabs would only make each of them fetch the same queries again. Tabs on `/checkout`, `/account`, `/auth` and `/docs` hold no socket and pick up a change on their next fetch; `handleCreateCheckoutSession` re-reads prices and stock from D1 and refuses a checkout if anything moved. The channel (`marte-query-invalidation` in `query.sync.ts`) stays for local mutations whose keys the server does not publish yet: coupon changes in `useCouponActions`, and order actions in `useOrderRowActions`, which otherwise reach other browsers only through the audit-log queue. `syncQueryInvalidation` applies `invalidateQueryPrefix` locally and posts the key, and `setupQueryClientInvalidationBroadcast` — wired in `getRouter` for the browser only — applies `invalidateQueryPrefix` to every key it receives. Both sides are guarded with try/catch and a `WeakSet` so the listener is installed once per `QueryClient`. The refresh buttons of the order, product, audit and customer tables, and customer deletion, call `invalidateQueryPrefix` directly: they refresh only the tab they were used in, and customer changes reach other admins through the Better Auth hooks.
+
+The tab that made a change still fetches its one or two queries on screen twice, once from its own `onSuccess` and once from the hub frame. That is deliberate: skipping the second fetch with `cancelRefetch: false` could let another tab join a fetch that started before the write was committed.
 
 ## Operational notes
 

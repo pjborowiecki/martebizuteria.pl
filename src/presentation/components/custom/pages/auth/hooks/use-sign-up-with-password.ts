@@ -1,4 +1,4 @@
-import { type UseMutationResult, useMutation, useQueryClient } from "@tanstack/react-query"
+import { type UseMutationResult, useMutation } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { toast } from "sonner"
@@ -6,9 +6,6 @@ import { useLocale, useTranslations } from "use-intl/react"
 
 import { signUp } from "~/src/integrations/better-auth/auth.client"
 import { type SignUpFormValues } from "~/src/integrations/better-auth/auth.zod"
-import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
-
-import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { useActionError } from "~/src/hooks/use-action-error"
 
@@ -19,7 +16,6 @@ import { ROUTES } from "~/src/routes"
 const signUpEmail = createClientOnlyFn((input: Parameters<typeof signUp.email>[0]) => signUp.email(input))
 
 export const useSignUpWithPassword = (): UseMutationResult<void, unknown, SignUpFormValues> => {
-  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const t = useTranslations()
   const actionError = useActionError()
@@ -45,9 +41,6 @@ export const useSignUpWithPassword = (): UseMutationResult<void, unknown, SignUp
       toast.error(t("pages.auth.toast.errorTitle"), {
         description: actionError(authError),
       })
-    },
-    onSettled: () => {
-      void syncQueryInvalidation(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
     },
     onSuccess: () => {
       toast.success(t("pages.auth.toast.signUpTitle"), {

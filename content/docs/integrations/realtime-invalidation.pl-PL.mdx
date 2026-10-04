@@ -191,7 +191,7 @@ useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.STOREFRONT, subscriptions:
 useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })
 ```
 
-Hook buduje `wss://` lub `ws://` z `globalThis.location.protocol`, łączy się, a przy każdej wiadomości parsuje ładunek, dopasowuje każdy temat do listy subskrypcji przez `queryKeyPrefixesOverlap` i unieważnia każde trafienie przez `syncQueryInvalidation` — które rozgłasza je również do pozostałych kart odwiedzającego. Zobacz [TanStack Query](/docs/integrations/tanstack-query).
+Hook buduje `wss://` lub `ws://` z `globalThis.location.protocol`, łączy się, a przy każdej wiadomości parsuje ładunek, dopasowuje każdy temat do listy subskrypcji przez `queryKeyPrefixesOverlap`, z zagnieżdżonych trafień zostawia tylko najszersze i stosuje do każdego `invalidateQueryPrefix`: zapytania widoczne na ekranie pobierają się ponownie, te, które są tylko w cache, zostają usunięte, więc następna wizyta pobiera je od nowa, a lista nieskończona, taka jak katalog sklepu, zachowuje wczytane strony i pobiera je ponownie przy następnej wizycie. Do pozostałych kart odwiedzającego nic nie trafia: każda karta sklepu i panelu odbiera tę samą ramkę przez własne gniazdo, a karty poza tymi układami nie mają gniazda i widzą zmianę przy następnym pobraniu. Zobacz [TanStack Query](/docs/integrations/tanstack-query).
 
 Ponowne łączenie jest wykładnicze z górnym ograniczeniem:
 

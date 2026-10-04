@@ -3,7 +3,7 @@ title: "TanStack Query"
 description: "The per-request QueryClient, query keys, loader prefetching and cross-tab invalidation."
 ---
 
-TanStack Query is the only data cache in the application. Route loaders prime it on the server, components read it on the client, mutations invalidate it, and two separate channels push invalidations in from outside: a `BroadcastChannel` between tabs and a WebSocket hub from the Worker.
+TanStack Query is the only data cache in the application. Route loaders prime it on the server, components read it on the client, mutations invalidate it, and two separate channels push invalidations in from outside: a WebSocket hub from the Worker, and a `BroadcastChannel` between tabs for the few local changes the hub does not carry.
 
 ## One client per request
 
@@ -142,13 +142,38 @@ Because it watches the cache, it catches a change whoever fetched the session: a
 
 After a password sign-in or a two-factor challenge, `usePostAuthRedirect` removes only the cached session entry, then clears the router's cached matches and invalidates the router. The `/auth` guard fetches the fresh session, and `clearCacheOnUserChange` forgets what was cached while signed out. Sign-out is a full page load, which discards the whole cache. The guards and the redirect flow are described in [Better Auth](/docs/integrations/better-auth).
 
+## Invalidating a prefix
+
+`src/integrations/tanstack-query/query.invalidation.ts` holds the policy that every pushed or cross-tab invalidation applies:
+
+```ts
+export const invalidateQueryPrefix = async (queryClient: QueryClient, queryKey: QueryKey): Promise<void> => {
+  queryClient.removeQueries({
+    fetchStatus: "idle",
+    predicate: (query) => query.getObserversCount() === 0 && query.queryType !== "infinite",
+    queryKey,
+  })
+
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey, refetchType: "active" }),
+    queryClient.refetchQueries({ fetchStatus: "fetching", queryKey, type: "inactive" }),
+  ])
+}
+```
+
+Removing the idle queries that nothing observes comes first. Removing a query whose fetch is in flight would cancel it silently and make the loader awaiting it reject, which is why only `fetchStatus: "idle"` queries go. An infinite list is kept as well: its entry holds every page the visitor loaded, which one fetch cannot rebuild, so the storefront catalogue keeps its pages and scroll position when the shopper comes back to it. `query.queryType` is the marker query-core sets on every infinite query; it is marked internal, so the `query.invalidation` tests fail if an upgrade renames it.
+
+`invalidateQueries` with `refetchType: "active"` then marks every remaining query invalid and refetches the ones on screen. A kept infinite list is only marked invalid, and its next loader or mount refetches all its pages. An observed but disabled query is only marked invalid and refetches once it is enabled. `refetchQueries` with `type: "inactive"` and `fetchStatus: "fetching"` restarts the unobserved fetches already in flight, so the loader awaiting one resolves with the post-event response. query-core skips a query that was never fetched, so a first fetch in flight finishes as it is.
+
+Every removed query is fetched fresh by the next loader or mount, even when the loader reads with `staleTime: "static"` and the query sets `refetchOnMount: false`. `refetchType: "active"` alone would leave such a loader returning the stale entry, because a `"static"` stale time never looks at `isInvalidated`. Call `invalidateQueryPrefix` directly for a refresh only this tab needs, such as the refresh buttons of the admin tables.
+
 ## Cross-tab invalidation
 
-`src/integrations/tanstack-query/query.sync.ts` is the only file in the `tanstack-query` folder. It mirrors invalidations across browser tabs of the same origin over a `BroadcastChannel` named `marte-query-invalidation`:
+`src/integrations/tanstack-query/query.sync.ts` mirrors invalidations across browser tabs of the same origin over a `BroadcastChannel` named `marte-query-invalidation`:
 
 ```ts
 export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryKey): Promise<void> => {
-  const invalidation = queryClient.invalidateQueries({ queryKey, refetchType: "all" })
+  const invalidation = invalidateQueryPrefix(queryClient, queryKey)
 
   try {
     getInvalidationChannel()?.postMessage({ queryKey })
@@ -160,13 +185,13 @@ export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryK
 }
 ```
 
-`setupQueryClientInvalidationBroadcast(queryClient)` installs the listener, and `src/router.tsx` calls it once per client, guarded by `if (!import.meta.env.SSR)`. Both functions are defensive: `getInvalidationChannel` returns `undefined` when `document` or `BroadcastChannel` is missing, a `WeakSet` prevents a duplicate listener on the same client, and the message handler ignores anything without an array `queryKey`.
+`setupQueryClientInvalidationBroadcast(queryClient)` installs the listener, which applies `invalidateQueryPrefix` to every key it receives, and `src/router.tsx` calls it once per client, guarded by `if (!import.meta.env.SSR)`. Both functions are defensive: `getInvalidationChannel` returns `undefined` when `document` or `BroadcastChannel` is missing, a `WeakSet` prevents a duplicate listener on the same client, and the message handler ignores anything without an array `queryKey`.
 
-Use `syncQueryInvalidation` rather than `queryClient.invalidateQueries` whenever the change should be visible in the customer's other tabs — a cart change, an address change, a placed order.
+Use `syncQueryInvalidation` only for a local mutation whose keys the server does not publish over the realtime hub: today the coupon actions (`DISCOUNT_QUERY_KEYS.ADMIN.ALL`) and the order row actions (`ORDER_QUERY_KEYS.ADMIN.ORDERS`, which otherwise reach other browsers only after an audit-log queue batch). A change the server publishes already reaches every storefront and admin tab on its own socket, so posting it as well would make every other tab of the browser fetch the same queries again.
 
 ## Server-pushed invalidation
 
-Writes on the Worker cannot reach a browser's cache directly. They publish a set of query-key prefixes into a Durable Object hub, which fans them out over WebSocket to every connected client; `useRealtimeQuerySync` matches the prefixes against the layout's subscription list and calls `syncQueryInvalidation` for each match, which then also fans out to the other tabs. The whole mechanism is documented in [Realtime invalidation](/docs/integrations/realtime-invalidation).
+Writes on the Worker cannot reach a browser's cache directly. They publish a set of query-key prefixes into a Durable Object hub, which fans them out over WebSocket to every connected client; `useRealtimeQuerySync` matches the prefixes against the layout's subscription list and calls `invalidateQueryPrefix` once for each match that no broader match already covers. It never posts to the `BroadcastChannel`, because every tab that mounts it receives the frame on its own socket. The whole mechanism is documented in [Realtime invalidation](/docs/integrations/realtime-invalidation).
 
 ## Devtools
 

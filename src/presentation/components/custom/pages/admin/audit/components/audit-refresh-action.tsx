@@ -5,7 +5,7 @@ import { cn } from "cn"
 import { RefreshCw } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
+import { invalidateQueryPrefix } from "~/src/integrations/tanstack-query/query.invalidation"
 
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 
@@ -22,7 +22,7 @@ export const AuditRefreshAction = (): JSX.Element => {
 
   const isRefreshing = auditFetching > 0
   const handleRefresh = useCallback(() => {
-    void syncQueryInvalidation(queryClient, AUDIT_LOG_QUERY_KEYS.ADMIN.ALL)
+    void invalidateQueryPrefix(queryClient, AUDIT_LOG_QUERY_KEYS.ADMIN.ALL)
   }, [queryClient])
 
   const button = useMemo(

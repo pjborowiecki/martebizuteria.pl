@@ -8,7 +8,7 @@ import {
   queryKeyPrefixesOverlap,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 import { type RealtimeInvalidationHubName } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
-import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
+import { invalidateQueryPrefix } from "~/src/integrations/tanstack-query/query.invalidation"
 
 import { ROUTES } from "~/src/routes"
 
@@ -25,15 +25,11 @@ const matchingSubscriptionPrefixes = (subscriptions: readonly QueryKey[], invali
   const invalidatedPrefixes = invalidatedTopics
     .map((topic) => parseSerializedQueryKeyPrefix(topic))
     .filter((prefix): prefix is QueryKey => prefix !== undefined)
-  const matches: QueryKey[] = []
-  for (const subscription of subscriptions) {
-    const hasOverlap = invalidatedPrefixes.some((invalidated) => queryKeyPrefixesOverlap(subscription, invalidated))
-    if (hasOverlap) {
-      matches.push(subscription)
-    }
-  }
+  const matches = subscriptions.filter((subscription) =>
+    invalidatedPrefixes.some((invalidated) => queryKeyPrefixesOverlap(subscription, invalidated)),
+  )
 
-  return matches
+  return matches.filter((match) => !matches.some((broader) => broader.length < match.length && queryKeyPrefixesOverlap(broader, match)))
 }
 
 export const useRealtimeQuerySync = ({ hub, subscriptions }: UseRealtimeQuerySyncOptions): void => {
@@ -58,7 +54,7 @@ export const useRealtimeQuerySync = ({ hub, subscriptions }: UseRealtimeQuerySyn
 
         const prefixes = matchingSubscriptionPrefixes(subscriptions, data.topics)
         for (const prefix of prefixes) {
-          void syncQueryInvalidation(queryClient, prefix)
+          void invalidateQueryPrefix(queryClient, prefix)
         }
       } catch {}
     }
