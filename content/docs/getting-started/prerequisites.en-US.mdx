@@ -41,7 +41,7 @@ The application cannot start without its bindings. `wrangler.jsonc` declares fiv
 | --------------------------- | -------------------------- | ------------------------------------------------- |
 | `DB`                        | D1 database                | All application data — 37 tables                  |
 | `IMAGES`                    | R2 bucket `martebizuteria` | Product image uploads                             |
-| `CACHE`                     | KV namespace               | Declared, currently unused by application code    |
+| `CACHE`                     | KV namespace               | Holds the email sender availability flag          |
 | `AUDIT_LOG_QUEUE`           | Cloudflare Queue           | Audit events, written by the queue consumer       |
 | `REALTIME_INVALIDATION_HUB` | Durable Object             | WebSocket fan-out for realtime cache invalidation |
 

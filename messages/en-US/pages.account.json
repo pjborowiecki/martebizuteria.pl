@@ -320,7 +320,7 @@
       "submit": "Send confirmation",
       "errorTitle": "We could not change your email",
       "successTitle": "Confirm the change",
-      "successDescription": "We sent a confirmation link to {email}."
+      "successDescription": "If the new address is available, we've sent a confirmation link to {email}. If nothing arrives within a few minutes, try again."
     },
     "editField": "Edit {field}",
     "saveField": "Save {field}",

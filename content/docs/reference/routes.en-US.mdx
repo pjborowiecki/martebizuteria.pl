@@ -67,7 +67,7 @@ Google and GitHub sign-in go through `useOAuthSignIn` in `src/presentation/compo
 
 `ROUTES.AUTH_EMAIL_VERIFICATION` (`/auth/email-verification`) is declared but has no route file and nothing references it, so that path currently 404s.
 
-`ROUTES.API_AUTH` is a nested object of Better Auth endpoint paths relative to `/api/auth` — `/sign-in/email`, `/sign-up/email`, `/sign-out`, `/request-password-reset`, `/reset-password`. They are used to configure per-endpoint rate limiting rather than to build links.
+`ROUTES.API_AUTH` is a nested object of Better Auth endpoint paths relative to `/api/auth` — `/change-email`, `/request-password-reset`, `/reset-password`, `/send-verification-email`, `/sign-in/email`, `/sign-out`, `/sign-up/email`. They configure per-endpoint rate limiting, the sign-in and sign-out audit entries and the email delivery gate in `auth.server.ts`, rather than build links.
 
 ## Customer account
 

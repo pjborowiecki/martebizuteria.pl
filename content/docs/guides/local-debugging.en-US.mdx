@@ -126,15 +126,17 @@ vp exec wrangler tail --env preview
 
 `observability.enabled: true` in `wrangler.jsonc` means logs are retained in the Cloudflare dashboard as well. The log lines worth knowing, all from code quoted elsewhere in these guides:
 
-| Prefix                           | Source                                                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `Server function failed`         | `withRequest` caught an unexpected error                                                                |
-| `Rate-limit storage unavailable` | `withinRateLimit` could not write to D1                                                                 |
-| `[Background Work Failed]:`      | `runSafely` in `src/lib/background.ts`                                                                  |
-| `[Stripe] …`                     | The webhook route                                                                                       |
-| `[Auth] Failed to send … email`  | `reportEmailFailure` in `auth.server.ts`                                                                |
-| `[Newsletter] Failed to send …`  | `subscribeToNewsletter` in `subscribe-to-newsletter.ts`; also an `email.failed` entry in `/admin/audit` |
-| `[catalog] …`                    | `catalogDebugLog`, development only                                                                     |
+| Prefix                                          | Source                                                                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `Server function failed`                        | `withRequest` caught an unexpected error                                                                     |
+| `Rate-limit storage unavailable`                | `withinRateLimit` could not write to D1                                                                      |
+| `[Background Work Failed]:`                     | `runSafely` in `src/lib/background.ts`                                                                       |
+| `[Stripe] …`                                    | The webhook route                                                                                            |
+| `[Auth] Failed to send … email`                 | `recordAuthEmailFailure` in `auth.server.ts`; also an `email.failed` entry in `/admin/audit`                 |
+| `[Better Auth]: Failed to run background task:` | An auth email hook Better Auth ran in the background threw; the `[Auth]` line before it has the Resend error |
+| `[Resend] Email sender availability unreadable` | `isEmailSenderUnavailable` could not read the `CACHE` KV flag; the Better Auth gate let the request through  |
+| `[Newsletter] Failed to send …`                 | `subscribeToNewsletter` in `subscribe-to-newsletter.ts`; also an `email.failed` entry in `/admin/audit`      |
+| `[catalog] …`                                   | `catalogDebugLog`, development only                                                                          |
 
 ## Running the production build locally
 

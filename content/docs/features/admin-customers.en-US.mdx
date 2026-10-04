@@ -191,13 +191,17 @@ It does **not** change email, name, role or ban state; those are Better Auth ope
 | `targetUser.id === context.auth.user.id` | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
 | `targetUser.role === ROLES.ADMIN`        | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
 
-It captures the email, name and current locale **before** deleting, hands the deletion to `auth.api.removeUser`, and then queues the goodbye email:
+It captures the email, name and current locale **before** deleting, hands the deletion to `auth.api.removeUser`, and then waits for the goodbye email:
 
 ```ts
 await auth.api.removeUser({ body: { userId }, headers: getRequestHeaders() })
 
-scheduleBackgroundWork(sendAccountDeletedEmail(goodbyeEmail))
+const goodbyeEmailSent = await sendAccountDeletedEmail(goodbyeEmail)
+
+return { goodbyeEmailSent, ok: true as const, userId }
 ```
+
+`sendAccountDeletedEmail` never throws; a refusal from Resend, or an error while preparing the email, is logged, recorded as `email.failed` in the audit log and returned as `false`, and the deletion stands. `useDeleteCustomer` picks the toast from `goodbyeEmailSent`: "The account was deleted and a confirmation email was sent." or "The account was deleted, but the confirmation email could not be sent. The failure is recorded in the audit log."
 
 Because deletion goes through Better Auth, the cascades on `session`, `account` and `address` apply, while `order.user_id` and `checkout.user_id` are `onDelete: "set null"` — so the orders survive as guest orders.
 

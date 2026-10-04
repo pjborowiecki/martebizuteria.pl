@@ -18,7 +18,7 @@ export const resend = new Resend(env.RESEND_API_KEY)
 `resend.send.ts` is the only thing that calls it, and it never throws:
 
 ```ts
-const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   try {
     const { error } = await resend.emails.send({
       from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
@@ -26,6 +26,10 @@ const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>)
       subject,
       to,
     })
+
+    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error)) {
+      scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
+    }
 
     return error?.message
   } catch (error) {
@@ -49,6 +53,18 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 
 It returns `undefined` on success and the failure message otherwise. The Resend SDK has no timeout and accepts no abort signal, so a call that has not answered after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) is also a failure, reported as `Resend did not answer within 10000 ms`. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`.
 
+### A sender that cannot send at all
+
+`refusesEverySend` picks out the refusals that will repeat for every message until someone fixes the configuration: any 401 or 403 (an invalid or restricted API key, or a sending domain that is not verified, which Resend reports as a 403 `validation_error`), `invalid_from_address`, and `daily_quota_exceeded` or `monthly_quota_exceeded`. For those, `markEmailSenderUnavailable(message)` from `resend.availability.server.ts` writes `email-sender-unavailable:<APP_ENV>` to the `CACHE` KV namespace with `expirationTtl: 300` (`EMAIL_SENDER_UNAVAILABLE_SECONDS`), through `scheduleBackgroundWork`, so a KV error is logged and never replaces Resend's message. It reads the flag first and writes only when it is not set yet, so a stream of refusals costs one KV write per five minutes instead of one per email; KV accepts about one write per second to a key and has a daily write quota. `isEmailSenderUnavailable()` reads it back; when KV cannot be read it logs `[Resend] Email sender availability unreadable` and answers `false`. The key carries `APP_ENV` because development and preview are bound to the same namespace.
+
+A missing API key never gets as far as Resend: `new Resend(undefined)` throws while `resend.config.ts` loads, and `scripts/prepare-deploy-secrets.ts` refuses to prepare a deploy without `RESEND_API_KEY`.
+
+A caller passes `revealsAccountExistence: true` when whether the email is sent at all depends on an account existing. Better Auth's verification, reset and change-email confirmation do: Better Auth sends them only for an address that has, or has not, an account. Their refusals never set the flag, because its state would otherwise tell an outsider whether such a send was attempted. The newsletter, order and account-deleted emails go out for any address that triggers them, so their refusals do set it.
+
+A refusal about one message leaves the flag alone: a 422 recipient error, `rate_limit_exceeded`, a 5xx, a network error or the 10-second timeout. Treating a rate limit as sender-wide would let one burst block every email for five minutes.
+
+Only the Better Auth gate acts on the flag. While it is set, sign-up, password reset, resend-verification and change-email answer `503 EMAIL_DELIVERY_UNAVAILABLE` instead of creating a token for an email that cannot leave; see [Better Auth](/docs/integrations/better-auth#email-delivery-gate). Newsletter and order emails are not gated, because they already tell the person or the audit log about each failure. The flag catches a broken sender after the first refusal of one of those emails; a domain that was never verified still costs every person who triggers an auth email before then, so verify the domain in Resend before deploying.
+
 ## The eight e-mails
 
 | E-mail                        | Template                                                    | Namespace                              | Sent from                                                                                                                                                                                       |
@@ -56,7 +72,7 @@ It returns `undefined` on success and the failure message otherwise. The Resend 
 | Verify e-mail                 | `src/presentation/emails/verify-email.tsx`                  | `emails.verify-email`                  | `sendVerificationEmail` in `auth.server.ts`, on sign-up                                                                                                                                         |
 | Reset password                | `src/presentation/emails/reset-password.tsx`                | `emails.reset-password`                | `sendResetPassword` in `auth.server.ts`                                                                                                                                                         |
 | Change e-mail                 | `src/presentation/emails/change-email.tsx`                  | `emails.change-email`                  | `sendChangeEmailConfirmation` in `auth.server.ts`                                                                                                                                               |
-| Account deleted               | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail`, scheduled by `src/modules/user/use-cases/delete-customer.ts`                                                                                                         |
+| Account deleted               | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail`, awaited by `src/modules/user/use-cases/delete-customer.ts` and by Better Auth's `afterDelete`                                                                        |
 | Order confirmation            | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `stripe.webhooks.tsx` after a checkout session is fulfilled                                                                                                                                     |
 | Order shipped                 | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `notifyOrderShipped`, scheduled by `src/modules/order/use-cases/ship-order.ts`                                                                                                                  |
 | Newsletter confirmation       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` in `newsletter-confirmation.server.ts`, awaited by `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`                                                   |
@@ -134,6 +150,8 @@ return { ok: true, orderId }
 ## Audit trail
 
 Sends are recorded, not just logged. `recordOrderEmailOutcome({ failure, label, orderId })` in `src/modules/audit-log/audit-log.events.server.ts` writes a success or failure entry, and the confirmation flow additionally calls `recordEmailFailedAudit(orderId, …)` when the payload could not even be _prepared_ — a missing customer e-mail, an unparseable metadata block. Both appear in `/admin/audit`.
+
+Better Auth's e-mails are recorded only when they fail, by `deliverAuthEmail` in `auth.server.ts`: the address is the target and the detail reads like `Auth verification email — The example.com domain is not verified`. The link in the e-mail is never part of the entry.
 
 Newsletter e-mails are recorded only when they fail. `subscribeToNewsletter` calls `recordEmailFailedAudit(email, { detail })` when Resend refuses or times out on the confirmation or the already-subscribed notice, with the address as the target and a detail such as `Newsletter confirmation — The example.com domain is not verified`. It also logs `[Newsletter] Failed to send confirmation to <address>: <error>`, and the visitor is told the email could not be sent.
 

@@ -63,10 +63,9 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 | Element               | Stan                                                                                                       |
 | --------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Przestrzeń KV `CACHE` | powiązana we wszystkich trzech środowiskach w `wrangler.jsonc`; żaden kod aplikacji jej nie używa          |
 | Wtyczka `anonymous()` | zarejestrowana w `src/integrations/better-auth/auth.server.ts`; żaden przepływ nie tworzy sesji anonimowej |
 
-Każdy z nich czeka na decyzję: użyć albo usunąć, żeby następny czytający nie zakładał, że coś jest nośne.
+Czeka na decyzję: użyć albo usunąć, żeby następny czytający nie zakładał, że coś jest nośne.
 
 ### Uprawnienie `refund` nie jest nigdzie sprawdzane
 

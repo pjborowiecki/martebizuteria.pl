@@ -18,7 +18,7 @@ export const resend = new Resend(env.RESEND_API_KEY)
 Plik `resend.send.ts` jest jedynym, który go wywołuje, i nigdy nie rzuca wyjątku:
 
 ```ts
-const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   try {
     const { error } = await resend.emails.send({
       from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
@@ -26,6 +26,10 @@ const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>)
       subject,
       to,
     })
+
+    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error)) {
+      scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
+    }
 
     return error?.message
   } catch (error) {
@@ -49,6 +53,18 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 
 Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. SDK Resend nie ma limitu czasu i nie przyjmuje sygnału przerwania, więc wywołanie, na które nie przyszła odpowiedź po `SEND_EMAIL_TIMEOUT_MS` (10 sekund), też jest porażką, zgłaszaną jako `Resend did not answer within 10000 ms`. Ta sygnatura niesie ciężar projektowy: awaria poczty nigdy nie może wycofać rejestracji ani zamówienia. Wywołujący logują komunikat albo zapisują go w dzienniku audytu i idą dalej. Domyślne `from` to `M'Arte <${env.RESEND_EMAIL_FROM}>`, zbudowane z `APP_NAME` w `src/presentation/branding/app.ts`.
 
+### Nadawca, który nie może wysłać niczego
+
+`refusesEverySend` wyłapuje odmowy, które powtórzą się przy każdej wiadomości, dopóki ktoś nie poprawi konfiguracji: każde 401 lub 403 (nieprawidłowy albo ograniczony klucz API lub niezweryfikowana domena nadawcy, którą Resend zgłasza jako `validation_error` z kodem 403), `invalid_from_address` oraz `daily_quota_exceeded` albo `monthly_quota_exceeded`. W takich przypadkach `markEmailSenderUnavailable(message)` z `resend.availability.server.ts` zapisuje klucz `email-sender-unavailable:<APP_ENV>` w przestrzeni KV `CACHE` z `expirationTtl: 300` (`EMAIL_SENDER_UNAVAILABLE_SECONDS`), przez `scheduleBackgroundWork`, więc błąd KV jest tylko logowany i nigdy nie zastępuje komunikatu Resend. Najpierw odczytuje flagę i zapisuje ją tylko wtedy, gdy nie jest jeszcze ustawiona, więc seria odmów kosztuje jeden zapis do KV na pięć minut zamiast jednego na każdy e-mail; KV przyjmuje około jednego zapisu na sekundę do jednego klucza i ma dzienny limit zapisów. `isEmailSenderUnavailable()` odczytuje flagę z powrotem; gdy KV nie da się odczytać, loguje `[Resend] Email sender availability unreadable` i odpowiada `false`. Klucz zawiera `APP_ENV`, bo development i preview są podpięte do tej samej przestrzeni.
+
+Brakujący klucz API nigdy nie dociera do Resend: `new Resend(undefined)` rzuca wyjątek już przy ładowaniu `resend.config.ts`, a `scripts/prepare-deploy-secrets.ts` nie przygotuje wdrożenia bez `RESEND_API_KEY`.
+
+Wywołujący przekazuje `revealsAccountExistence: true`, gdy to, czy e-mail w ogóle zostanie wysłany, zależy od istnienia konta. Tak jest z weryfikacją, linkiem do zmiany hasła i potwierdzeniem zmiany adresu z Better Auth: Better Auth wysyła je tylko dla adresu, który ma konto albo go nie ma. Ich odmowy nigdy nie ustawiają flagi, bo jej stan zdradzałby komuś z zewnątrz, czy taka wysyłka w ogóle nastąpiła. E-maile newslettera, zamówień i o usunięciu konta wychodzą dla każdego adresu, który je uruchomi, więc ich odmowy flagę ustawiają.
+
+Odmowa dotycząca jednej wiadomości nie zmienia flagi: błąd odbiorcy 422, `rate_limit_exceeded`, odpowiedź 5xx, błąd sieci albo dziesięciosekundowy limit czasu. Gdyby limit liczby żądań traktować jak awarię nadawcy, jeden nagły szczyt blokowałby wszystkie e-maile na pięć minut.
+
+Na flagę reaguje tylko blokada w Better Auth. Dopóki jest ustawiona, rejestracja, zmiana hasła, ponowne wysłanie weryfikacji i zmiana adresu odpowiadają `503 EMAIL_DELIVERY_UNAVAILABLE`, zamiast tworzyć token dla e-maila, który nie może wyjść; zobacz [Better Auth](/docs/integrations/better-auth#blokada-wysyłki-e-maili). E-maile newslettera i zamówień nie są blokowane, bo o każdej porażce i tak informują osobę albo dziennik audytu. Flaga wyłapuje zepsutego nadawcę po pierwszej odmowie któregoś z tych e-maili; domena, której nigdy nie zweryfikowano, nadal kosztuje każdą osobę, która wcześniej uruchomi e-mail uwierzytelniania, więc zweryfikuj domenę w Resend przed wdrożeniem.
+
 ## Osiem e-maili
 
 | E-mail                          | Szablon                                                     | Przestrzeń nazw                        | Wysyłany z                                                                                                                                                                                                              |
@@ -56,7 +72,7 @@ Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. SDK Res
 | Weryfikacja adresu              | `src/presentation/emails/verify-email.tsx`                  | `emails.verify-email`                  | `sendVerificationEmail` w `auth.server.ts`, przy rejestracji                                                                                                                                                            |
 | Reset hasła                     | `src/presentation/emails/reset-password.tsx`                | `emails.reset-password`                | `sendResetPassword` w `auth.server.ts`                                                                                                                                                                                  |
 | Zmiana adresu e-mail            | `src/presentation/emails/change-email.tsx`                  | `emails.change-email`                  | `sendChangeEmailConfirmation` w `auth.server.ts`                                                                                                                                                                        |
-| Konto usunięte                  | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail`, planowane przez `src/modules/user/use-cases/delete-customer.ts`                                                                                                                              |
+| Konto usunięte                  | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail`, wywoływane z oczekiwaniem na wynik przez `src/modules/user/use-cases/delete-customer.ts` i `afterDelete` Better Auth                                                                         |
 | Potwierdzenie zamówienia        | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `stripe.webhooks.tsx` po zrealizowaniu sesji Checkout                                                                                                                                                                   |
 | Zamówienie wysłane              | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `notifyOrderShipped`, planowane przez `src/modules/order/use-cases/ship-order.ts`                                                                                                                                       |
 | Potwierdzenie newslettera       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` w `newsletter-confirmation.server.ts`, wywoływane przez `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` z oczekiwaniem na wynik                                              |
@@ -134,6 +150,8 @@ return { ok: true, orderId }
 ## Ślad w audycie
 
 Wysyłki są zapisywane, a nie tylko logowane. `recordOrderEmailOutcome({ failure, label, orderId })` w `src/modules/audit-log/audit-log.events.server.ts` zapisuje wpis sukcesu lub porażki, a przepływ potwierdzenia wywołuje dodatkowo `recordEmailFailedAudit(orderId, …)`, gdy ładunku nie udało się nawet _przygotować_ — brakujący adres e-mail klienta, nieparsowalny blok metadanych. Oba trafiają do `/admin/audit`.
+
+E-maile Better Auth są zapisywane tylko wtedy, gdy się nie powiodą, przez `deliverAuthEmail` w `auth.server.ts`: celem wpisu jest adres, a szczegół wygląda jak `Auth verification email — The example.com domain is not verified`. Link z e-maila nigdy nie trafia do wpisu.
 
 E-maile newslettera są zapisywane tylko wtedy, gdy się nie powiodą. `subscribeToNewsletter` wywołuje `recordEmailFailedAudit(email, { detail })`, gdy Resend odrzuci potwierdzenie albo informację o tym, że adres jest już na liście, lub nie odpowie na czas; celem wpisu jest adres, a szczegół wygląda jak `Newsletter confirmation — The example.com domain is not verified`. Do logu trafia też `[Newsletter] Failed to send confirmation to <adres>: <błąd>`, a odwiedzający dowiaduje się, że e-maila nie udało się wysłać.
 

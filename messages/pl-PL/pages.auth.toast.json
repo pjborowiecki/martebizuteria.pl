@@ -3,13 +3,15 @@
   "signInTitle": "Witaj ponownie",
   "signInDescription": "Zalogowano do Twojego konta M'Arte.",
   "signUpTitle": "Już prawie gotowe",
-  "signUpDescription": "Jeśli ten adres nie był jeszcze zarejestrowany, wysłaliśmy na niego link potwierdzający. Sprawdź swoją skrzynkę.",
+  "signUpDescription": "Jeśli ten adres nie był jeszcze zarejestrowany, wysłaliśmy na niego link potwierdzający. Jeśli wiadomość nie dotrze w ciągu kilku minut, zaloguj się, aby poprosić o nowy link.",
   "signOutTitle": "Wylogowano",
   "signOutDescription": "Bezpiecznie wylogowano z konta. Z przyjemnością powitamy Cię ponownie.",
   "forgotPasswordTitle": "Sprawdź skrzynkę",
   "forgotPasswordDescription": "Jeśli konto dla tego adresu istnieje, bezpieczny link do zmiany hasła jest już w drodze.",
   "resetPasswordTitle": "Hasło zaktualizowane",
   "resetPasswordDescription": "Twoje nowe hasło zostało ustawione. Możesz się teraz zalogować.",
+  "verificationResentTitle": "Sprawdź skrzynkę",
+  "verificationResentDescription": "Nowy link potwierdzający jest już w drodze na adres {email}.",
   "verifiedTitle": "Adres e-mail potwierdzony",
   "verifiedDescription": "Witaj w M'Arte — masz już dostęp do swojego konta."
 }

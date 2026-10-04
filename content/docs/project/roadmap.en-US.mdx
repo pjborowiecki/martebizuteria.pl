@@ -63,10 +63,9 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 | Thing                | State                                                                                             |
 | -------------------- | ------------------------------------------------------------------------------------------------- |
-| `CACHE` KV namespace | Bound in all three environments in `wrangler.jsonc`; no application code references it            |
 | `anonymous()` plugin | Registered in `src/integrations/better-auth/auth.server.ts`; no flow creates an anonymous session |
 
-Each is a decision waiting to be made: use it, or remove it so the next reader does not assume it is load-bearing.
+It is a decision waiting to be made: use it, or remove it so the next reader does not assume it is load-bearing.
 
 ### The `refund` permission is never checked
 

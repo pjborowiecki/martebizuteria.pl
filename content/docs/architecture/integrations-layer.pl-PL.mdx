@@ -48,7 +48,7 @@ const failure = await sendEmail({
 })
 ```
 
-`sendEmail` zwraca tekst błędu, a nie rzuca wyjątku, więc wywołujący decyduje, czy nieudana wysyłka jest zdarzeniem audytowym (`recordOrderEmailOutcome`), czy tylko wpisem w logu (`reportEmailFailure`).
+`sendEmail` zwraca tekst błędu, a nie rzuca wyjątku, więc wywołujący decyduje, co oznacza nieudana wysyłka: wpis w audycie i błąd dla osoby (`subscribeToNewsletter`), sam wpis w audycie (`recordOrderEmailOutcome`) albo wpis w audycie i odpowiedź `503`, którą można ponowić (`deliverAuthEmail` w `auth.server.ts`).
 
 ## Zakres integracji wart zapamiętania
 

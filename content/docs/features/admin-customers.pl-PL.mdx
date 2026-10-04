@@ -191,13 +191,17 @@ Kolumna zawierająca zwykły tekst, a nie JSON, jest traktowana jako notatka, wi
 | `targetUser.id === context.auth.user.id` | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
 | `targetUser.role === ROLES.ADMIN`        | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
 
-Zapamiętuje adres e-mail, nazwę i bieżący język **przed** usunięciem, przekazuje usunięcie do `auth.api.removeUser`, a potem kolejkuje e-mail pożegnalny:
+Zapamiętuje adres e-mail, nazwę i bieżący język **przed** usunięciem, przekazuje usunięcie do `auth.api.removeUser`, a potem czeka na e-mail pożegnalny:
 
 ```ts
 await auth.api.removeUser({ body: { userId }, headers: getRequestHeaders() })
 
-scheduleBackgroundWork(sendAccountDeletedEmail(goodbyeEmail))
+const goodbyeEmailSent = await sendAccountDeletedEmail(goodbyeEmail)
+
+return { goodbyeEmailSent, ok: true as const, userId }
 ```
+
+`sendAccountDeletedEmail` nigdy nie rzuca wyjątku; gdy Resend odrzuci e-mail albo nie da się go przygotować, porażka jest logowana, zapisywana w dzienniku audytu jako `email.failed` i zwracana jako `false`, a usunięcie pozostaje w mocy. `useDeleteCustomer` dobiera komunikat na podstawie `goodbyeEmailSent`: „Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.” albo „Konto zostało usunięte, ale nie udało się wysłać e-maila z potwierdzeniem. Błąd zapisano w dzienniku zdarzeń.”
 
 Ponieważ usunięcie idzie przez Better Auth, działają kaskady na `session`, `account` i `address`, natomiast `order.user_id` i `checkout.user_id` mają `onDelete: "set null"` — zamówienia przeżywają więc jako zamówienia gościa.
 

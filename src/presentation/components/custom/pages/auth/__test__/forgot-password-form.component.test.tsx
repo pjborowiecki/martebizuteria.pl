@@ -15,7 +15,7 @@ interface ResetRequest {
 
 const auth = vi.hoisted(() => {
   const requests: ResetRequest[] = []
-  const outcome: { current: "error" | "success" } = { current: "success" }
+  const outcome: { current: "error" | "success"; error: unknown } = { current: "success", error: new Error("FORBIDDEN") }
 
   return {
     outcome,
@@ -25,7 +25,7 @@ const auth = vi.hoisted(() => {
       if (outcome.current === "success") {
         input.fetchOptions.onSuccess()
       } else {
-        input.fetchOptions.onError({ error: new Error("FORBIDDEN") })
+        input.fetchOptions.onError({ error: outcome.error })
       }
 
       return Promise.resolve(undefined)
@@ -64,7 +64,16 @@ beforeEach(() => {
   vi.clearAllMocks()
   auth.requests.length = 0
   auth.outcome.current = "success"
+  auth.outcome.error = new Error("FORBIDDEN")
 })
+
+const CHECK_EMAIL =
+  "If an account exists for this address, we've sent it a link to reset your password. If nothing arrives within a few minutes, check your spam folder or request a new link."
+
+const requestResetFor = async (email: string) => {
+  await userEvent.type(emailField(), email)
+  await userEvent.click(submit())
+}
 
 describe("ForgotPasswordForm", () => {
   it("renders the email field and the submit action", () => {
@@ -120,7 +129,7 @@ describe("ForgotPasswordForm", () => {
     await userEvent.type(emailField(), "ada@example.test")
     await userEvent.click(submit())
 
-    expect(await screen.findByText("We've sent a password reset link to your email. Please check your inbox.")).toBeInTheDocument()
+    expect(await screen.findByText(CHECK_EMAIL)).toBeInTheDocument()
     expect(toasts.success).toHaveBeenCalledWith("Check your inbox", {
       description: "If an account exists for this address, a secure link to reset your password is on its way.",
     })
@@ -137,5 +146,38 @@ describe("ForgotPasswordForm", () => {
       expect(toasts.error).toHaveBeenCalledWith("Something went wrong", { description: "You don't have permission to do this." })
     })
     expect(emailField()).toBeInTheDocument()
+  })
+
+  it("lets the person ask for a new link from the inbox notice, keeping the address", async () => {
+    renderWithProviders(<ForgotPasswordForm />)
+    await requestResetFor("ada@example.test")
+
+    await userEvent.click(await screen.findByRole("button", { name: "Send a new link" }))
+
+    expect(screen.queryByText(CHECK_EMAIL)).not.toBeInTheDocument()
+    expect(emailField()).toHaveValue("ada@example.test")
+
+    await userEvent.click(submit())
+
+    await waitFor(() => {
+      expect(auth.requestPasswordReset).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it("explains that emails are unavailable instead of claiming a link was sent", async () => {
+    auth.outcome.current = "error"
+    auth.outcome.error = { code: "EMAIL_DELIVERY_UNAVAILABLE", status: 503 }
+    renderWithProviders(<ForgotPasswordForm />)
+
+    await requestResetFor("ada@example.test")
+
+    await waitFor(() => {
+      expect(toasts.error).toHaveBeenCalledWith("Something went wrong", {
+        description: "We can't send emails at the moment, so nothing has been changed. Please try again in a few minutes.",
+      })
+    })
+    expect(toasts.success).not.toHaveBeenCalled()
+    expect(screen.queryByText(CHECK_EMAIL)).not.toBeInTheDocument()
+    expect(emailField()).toHaveValue("ada@example.test")
   })
 })

@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { signIn } from "~/src/integrations/better-auth/auth.client"
+import { AUTH_ERRORS, authErrorKey } from "~/src/integrations/better-auth/auth.errors"
 import { type SignInFormValues, signInWithPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
 
 import { useActionError } from "~/src/hooks/use-action-error"
@@ -18,6 +19,7 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { AuthPasswordField, AuthTextField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 import { TwoFactorChallengeForm } from "~/src/presentation/components/custom/pages/auth/two-factor-challenge-form"
+import { UnverifiedEmailNotice } from "~/src/presentation/components/custom/pages/auth/unverified-email-notice"
 
 import { ROUTES } from "~/src/routes"
 
@@ -29,6 +31,7 @@ const isTwoFactorRequired = (data: unknown): boolean =>
 export const SignInWithPasswordForm = (): JSX.Element => {
   const redirectAfterAuth = usePostAuthRedirect()
   const [twoFactorRequired, setTwoFactorRequired] = useState(false)
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string>()
   const t = useTranslations()
   const actionError = useActionError()
   const form = useForm<SignInFormValues>({
@@ -42,10 +45,14 @@ export const SignInWithPasswordForm = (): JSX.Element => {
 
   const onSubmit = useCallback(
     async (data: SignInFormValues) => {
+      setUnverifiedEmail(undefined)
       await signInEmail({
         email: data.email,
         fetchOptions: {
           onError: (ctx) => {
+            if (authErrorKey(ctx.error) === AUTH_ERRORS.EMAIL_NOT_VERIFIED) {
+              setUnverifiedEmail(data.email)
+            }
             toast.error(t("pages.auth.toast.errorTitle"), {
               description: actionError(ctx.error),
             })
@@ -126,6 +133,8 @@ export const SignInWithPasswordForm = (): JSX.Element => {
         {isSubmitting ? t("pages.auth.sign-in.submitting") : t("pages.auth.sign-in.submit")}
         {!isSubmitting && <ArrowRight className="size-4" />}
       </Button>
+
+      {unverifiedEmail !== undefined && <UnverifiedEmailNotice email={unverifiedEmail} />}
     </form>
   )
 }

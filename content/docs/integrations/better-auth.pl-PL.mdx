@@ -19,6 +19,7 @@ Plik `src/integrations/better-auth/auth.server.ts` konfiguruje jedną instancję
 | `baseURL.allowedHosts`         | `appHostsForMode(import.meta.env.MODE)` z `src/modules/_core/constants/api.ts`                                 |
 | `emailAndPassword`             | Włączone, `requireEmailVerification: true`, od 8 do 1024 znaków                                                |
 | `emailVerification`            | `sendOnSignUp: true`, `autoSignInAfterVerification: true`                                                      |
+| `hooks.before`                 | Odrzuca cztery punkty końcowe wysyłające e-maile, dopóki nadawca jest oznaczony jako niedostępny               |
 | `session`                      | `storeSessionInDatabase: true`, cache w ciasteczku włączony z `maxAge` 300 s i `version: "2"`                  |
 | `verification`                 | `storeIdentifier: "hashed"`, `storeInDatabase: true`                                                           |
 | `socialProviders`              | `google` i `github`, przy `account.accountLinking.trustedProviders` obejmującym oba                            |
@@ -52,7 +53,45 @@ Jest to mechanizm odrębny od własnego middleware `withRateLimit` opisanego pon
 
 ### E-maile transakcyjne
 
-Cztery z ośmiu e-maili aplikacji wysyłane są z tego pliku: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` i `sendAccountDeletedEmail`. Każda z tych funkcji ładuje własną przestrzeń nazw komunikatów, renderuje swój komponent React Email i przekazuje go do `sendEmail`; błędy są logowane przez `reportEmailFailure`, a nie rzucane, więc awaria poczty nigdy nie psuje rejestracji. Dodatkowo `resolveEmailVerificationCallbackUrl` przepisuje link weryfikacyjny, który prowadziłby na stronę główną sklepu, tak aby prowadził na `/account/overview?verified=true`. Zobacz [Resend](/docs/integrations/resend).
+Cztery z ośmiu e-maili aplikacji wysyłane są z tego pliku: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` i `sendAccountDeletedEmail`. Każda z tych funkcji ładuje własną przestrzeń nazw komunikatów, renderuje swój komponent React Email i przekazuje go do `deliverAuthEmail`, która wywołuje `sendEmail`. Gdy Resend odrzuci wiadomość, `recordAuthEmailFailure` loguje `[Auth] Failed to send <kind> email to <address>: <error>` i zapisuje wpis `email.failed` w dzienniku audytu. Dodatkowo `resolveEmailVerificationCallbackUrl` przepisuje link weryfikacyjny, który prowadziłby na stronę główną sklepu, tak aby prowadził na `/account/overview?verified=true`. Zobacz [Resend](/docs/integrations/resend).
+
+Pierwsze trzy hooki przechodzą przez `requireAuthEmailDelivery`, która wysyła z `revealsAccountExistence: true` (zobacz [Blokada wysyłki e-maili](#blokada-wysyłki-e-maili)) i rzuca `APIError.from("SERVICE_UNAVAILABLE", { code: "EMAIL_DELIVERY_FAILED" })`, gdy Resend odrzuci e-mail. To, co zobaczy osoba, zależy od tego, jak Better Auth uruchamia hook:
+
+| Punkt końcowy                                    | Gdy Resend odrzuci e-mail                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/send-verification-email`                       | Better Auth czeka na hook, więc żądanie odpowiada `503` z `EMAIL_DELIVERY_FAILED`. Formularze pokazują „Nie udało się teraz wysłać wiadomości. Spróbuj ponownie za kilka minut.”                                                                                                                                                      |
+| `/sign-up/email`                                 | Better Auth uruchamia hook w tle i pomija jego błąd. Konto powstaje jako niepotwierdzone, a ogólna odpowiedź zostaje. Osoba prosi o nowy link na stronie logowania.                                                                                                                                                                   |
+| `/request-password-reset`                        | Również w tle, a ogólna odpowiedź musi zostać: inna odpowiedź dla adresu z kontem zdradziłaby, że konto istnieje.                                                                                                                                                                                                                     |
+| `/change-email`                                  | Również w tle. Gdy nowy adres jest już zajęty, Better Auth niczego nie wysyła, więc komunikat brzmi „Jeśli nowy adres jest dostępny, wysłaliśmy link potwierdzający na …” i prosi o ponowną próbę, jeśli nic nie dotrze. Weryfikacja wysyłana na nowy adres po potwierdzeniu zmiany także idzie w tle, już po przekierowaniu.         |
+| `/delete-user` (`afterDelete`), `deleteCustomer` | `sendAccountDeletedEmail` zwraca `false` i nigdy nie rzuca wyjątku, bo konta już nie ma. Tak samo przechwytuje odmowę Resend i błąd przy przygotowaniu e-maila, a oba trafiają do logu i dziennika audytu. Wyjątek z `afterDelete` zamieniłby zakończone usunięcie w błąd 500. `deleteCustomer` zwraca wynik jako `goodbyeEmailSent`. |
+
+Usunięcie `advanced.backgroundTasks` nie zmieniłoby wierszy z wysyłką w tle: bez handlera Better Auth czeka na hook, ale nadal przechwytuje i loguje jego błąd.
+
+### Blokada wysyłki e-maili
+
+`sendEmail` oznacza nadawcę jako niedostępnego na pięć minut, gdy Resend odrzuca każdy e-mail, na przykład dlatego, że domena nadawcy nie jest zweryfikowana (zobacz [Resend](/docs/integrations/resend)). Dopóki flaga jest ustawiona, `hooks.before` odrzuca `/sign-up/email`, `/request-password-reset`, `/send-verification-email` i `/change-email`, zanim punkt końcowy się wykona:
+
+```ts
+hooks: {
+  before: createAuthMiddleware(async (ctx) => {
+    if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
+      throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
+    }
+  }),
+},
+```
+
+Odpowiedzią jest `503` z `EMAIL_DELIVERY_UNAVAILABLE`, pokazywane jako „Chwilowo nie możemy wysyłać wiadomości e-mail, więc niczego nie zmieniliśmy. Spróbuj ponownie za kilka minut.” Nie powstaje żadne konto, nie jest zapisywany żaden token, a znane i nieznane adresy dostają tę samą odpowiedź. Ścieżki pochodzą z `ROUTES.API_AUTH`. Logowanie, linki weryfikacyjne, usuwanie konta i wszystkie pozostałe punkty końcowe przechodzą od razu, bez odczytu z KV.
+
+Flagę może ustawić tylko e-mail, którego wysłanie nic nie mówi o tym, jakie konta istnieją: e-maile newslettera (dostaje je każdy podany adres), potwierdzenie zamówienia, informacja o wysyłce i e-mail o usunięciu konta. Weryfikacja, link do zmiany hasła i potwierdzenie zmiany adresu wychodzą tylko wtedy, gdy konto istnieje albo nie istnieje, więc `requireAuthEmailDelivery` wysyła je z `revealsAccountExistence: true`, a `sendEmail` nie rusza wtedy flagi. Inaczej flaga zdradzałaby to, co ukrywają ogólne odpowiedzi: w czasie awarii wystarczyłoby poprosić o zmianę hasła dla jednego adresu, potem dla przypadkowego, a `503` przy drugim oznaczałoby, że pierwszy ma konto. Takie odmowy nadal trafiają do logu i dziennika audytu.
+
+Blokada włącza się więc dopiero wtedy, gdy Resend odrzuci któryś z pozostałych e-maili. Do tego czasu rejestracja, zmiana hasła i zmiana adresu zachowują ogólną odpowiedź o powodzeniu, choć ich e-maile nie wychodzą, bo inna odpowiedź na to jedno żądanie zdradziłaby, czy adres ma konto. Każda porażka jest w dzienniku audytu, a komunikaty mówią osobie, żeby się zalogowała po nowy link potwierdzający albo poprosiła o nowy link do zmiany hasła, jeśli nic nie dotrze. Blokada tylko ogranicza szkody; zapobiega im sprawdzenie przed wdrożeniem, czy domena nadawcy jest zweryfikowana. Po wygaśnięciu flagi jedna prawdziwa próba znowu przechodzi; jeśli nadawca nadal nie działa, kolejny odrzucony e-mail ustawia flagę ponownie.
+
+Jeśli KV nie da się odczytać, `isEmailSenderUnavailable` loguje `[Resend] Email sender availability unreadable` razem z błędem i odpowiada `false`, więc blokada przepuszcza żądanie. Zmiana hasła to droga powrotu do konta i nie może zależeć od KV; jeśli wysyłka potem się nie powiedzie, trafi do logu i dziennika audytu jak każda inna.
+
+Na stronie logowania logowanie odrzucone z `EMAIL_NOT_VERIFIED` pokazuje `UnverifiedEmailNotice` z przyciskiem „Wyślij link potwierdzający ponownie”. To wywołanie trafia do `/send-verification-email`, więc komunikat o powodzeniu, „Nowy link potwierdzający jest już w drodze na adres …”, pojawia się dopiero wtedy, gdy Resend przyjął e-mail. Better Auth zwraca `EMAIL_NOT_VERIFIED` dopiero po sprawdzeniu hasła, więc ta informacja nic nie zdradza komuś, kto hasła nie zna.
+
+Sam punkt końcowy można jednak wywołać bez formularza i tam szczera odpowiedź ma swoją cenę. Bez zalogowania Better Auth wywołuje hook tylko dla adresu z niepotwierdzonym kontem, a dla każdego innego odpowiada `200`. Gdy pojedyncze wysyłki się nie udają (limit lub awaria po stronie Resend albo odmowa nadawcy, zanim flaga zostanie ustawiona), niepotwierdzone konto dostaje więc `503 EMAIL_DELIVERY_FAILED`, a nieznany lub potwierdzony adres `200`. Tak Better Auth traktuje hook, który rzuca wyjątek, i taka jest cena powiedzenia osobie prawdy o ponownej wysyłce. Zdradza to tylko niepotwierdzone konta, tylko gdy wysyłki zawodzą, przy domyślnym limicie Better Auth trzech żądań na minutę z jednego IP, a gdy flaga jest ustawiona, blokada odpowiada wszystkim adresom tak samo.
 
 ## Role i uprawnienia
 

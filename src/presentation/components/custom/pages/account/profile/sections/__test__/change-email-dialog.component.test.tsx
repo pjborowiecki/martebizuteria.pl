@@ -82,7 +82,7 @@ describe("ChangeEmailDialog", () => {
     expect(calls.changeEmail.mock.calls[0]?.[0].newEmail).toBe("anna.nowak@example.com")
   })
 
-  it("confirms the link was sent, clears the field and closes", async () => {
+  it("says the link was sent only if the new address can take it, then clears the field and closes", async () => {
     const { onOpenChange } = renderDialog()
 
     await submitNewEmail("anna.nowak@example.com")
@@ -91,7 +91,8 @@ describe("ChangeEmailDialog", () => {
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
     expect(calls.toastSuccess).toHaveBeenCalledWith("Confirm the change", {
-      description: "We sent a confirmation link to anna@example.com.",
+      description:
+        "If the new address is available, we've sent a confirmation link to anna@example.com. If nothing arrives within a few minutes, try again.",
     })
     expect(emailField()).toHaveValue("")
   })
@@ -113,6 +114,25 @@ describe("ChangeEmailDialog", () => {
     })
     expect(onOpenChange).not.toHaveBeenCalled()
     expect(emailField()).toHaveValue("taken@example.com")
+  })
+
+  it("explains that emails are unavailable instead of claiming a link was sent", async () => {
+    calls.changeEmail.mockImplementation((input) => {
+      input.fetchOptions.onError({ error: { code: "EMAIL_DELIVERY_UNAVAILABLE", status: 503 } })
+
+      return Promise.resolve({ data: null, error: { code: "EMAIL_DELIVERY_UNAVAILABLE", status: 503 } })
+    })
+    const { onOpenChange } = renderDialog()
+
+    await submitNewEmail("anna.nowak@example.com")
+
+    await waitFor(() => {
+      expect(calls.toastError).toHaveBeenCalledWith("We could not change your email", {
+        description: "We can't send emails at the moment, so nothing has been changed. Please try again in a few minutes.",
+      })
+    })
+    expect(calls.toastSuccess).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
   it("refuses an address that is not an email before asking the server", async () => {

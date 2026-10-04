@@ -4,6 +4,7 @@ import { createElement } from "react"
 
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { APIError, createAuthMiddleware } from "better-auth/api"
 import { admin, anonymous, multiSession, twoFactor } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { eq } from "drizzle-orm"
@@ -12,16 +13,23 @@ import { v7 as uuidv7 } from "uuid"
 
 import { ADMIN_PANEL_ROLES, DEFAULT_ROLE, ROLES_CONFIG, ac } from "~/src/integrations/better-auth/auth.access"
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "~/src/integrations/better-auth/auth.constraints"
+import { type AuthErrorCode } from "~/src/integrations/better-auth/auth.errors"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 import { scheduleAdminCustomersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
+import { isEmailSenderUnavailable } from "~/src/integrations/resend/resend.availability.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { appHostsForMode, isLocalMode } from "~/src/modules/_core/constants/api"
-import { recordAuthLoginAudit, recordCustomerRegisteredAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
+import {
+  recordAuthLoginAudit,
+  recordCustomerRegisteredAudit,
+  recordEmailFailedAudit,
+  resolveAuthAuditActor,
+} from "~/src/modules/audit-log/audit-log.events.server"
 import { linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
 import { user as userTable } from "~/src/modules/user/user.schema"
@@ -62,6 +70,23 @@ const SESSION_UPDATE_AGE_IN_SECONDS = 300
 
 const TRUSTED_AUTH_PROVIDERS = ["google", "github"]
 
+const EMAIL_SENDING_AUTH_PATHS: ReadonlySet<string> = new Set([
+  ROUTES.API_AUTH.CHANGE_EMAIL,
+  ROUTES.API_AUTH.REQUEST_PASSWORD_RESET,
+  ROUTES.API_AUTH.SEND_VERIFICATION_EMAIL,
+  ROUTES.API_AUTH.SIGN_UP_EMAIL,
+])
+
+const EMAIL_DELIVERY_FAILED = {
+  code: "EMAIL_DELIVERY_FAILED",
+  message: "The email could not be sent",
+} as const satisfies AuthEmailError
+
+const EMAIL_DELIVERY_UNAVAILABLE = {
+  code: "EMAIL_DELIVERY_UNAVAILABLE",
+  message: "Emails cannot be sent at the moment",
+} as const satisfies AuthEmailError
+
 const resolveEmailVerificationCallbackUrl = (url: string, locale: SupportedLocale): string => {
   try {
     const parsed = new URL(url)
@@ -86,9 +111,25 @@ const resolveEmailVerificationCallbackUrl = (url: string, locale: SupportedLocal
   }
 }
 
-const reportEmailFailure = (kind: string, recipient: string, failure: string | undefined): void => {
-  if (failure !== undefined) {
-    console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
+const recordAuthEmailFailure = (kind: string, recipient: string, failure: string): void => {
+  console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
+  recordEmailFailedAudit(recipient, { detail: `Auth ${kind} email — ${failure}` })
+}
+
+const deliverAuthEmail = async (kind: string, email: Parameters<typeof sendEmail>[0]): Promise<boolean> => {
+  const failure = await sendEmail(email)
+  if (failure === undefined) {
+    return true
+  }
+
+  recordAuthEmailFailure(kind, email.to, failure)
+
+  return false
+}
+
+const requireAuthEmailDelivery = async (kind: string, email: Parameters<typeof sendEmail>[0]): Promise<void> => {
+  if (!(await deliverAuthEmail(kind, { ...email, revealsAccountExistence: true }))) {
+    throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_FAILED)
   }
 }
 
@@ -96,7 +137,7 @@ export const sendVerificationEmail = async ({ user, url }: AuthEmailParams): Pro
   const locale = getCurrentLocale()
   const verificationUrl = resolveEmailVerificationCallbackUrl(url, locale)
   const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
-  const failure = await sendEmail({
+  await requireAuthEmailDelivery("verification", {
     react: createElement(VerifyEmail, {
       locale,
       messages,
@@ -106,13 +147,12 @@ export const sendVerificationEmail = async ({ user, url }: AuthEmailParams): Pro
     subject: createTranslator({ locale, messages })("subject"),
     to: user.email,
   })
-  reportEmailFailure("verification", user.email, failure)
 }
 
 export const sendResetPassword = async ({ user, url }: AuthEmailParams): Promise<void> => {
   const locale = getCurrentLocale()
   const messages = await loadNamespace<typeof resetPasswordMessages>({ locale, namespace: RESET_PASSWORD_NAMESPACE })
-  const failure = await sendEmail({
+  await requireAuthEmailDelivery("reset-password", {
     react: createElement(ResetPassword, {
       locale,
       messages,
@@ -122,13 +162,12 @@ export const sendResetPassword = async ({ user, url }: AuthEmailParams): Promise
     subject: createTranslator({ locale, messages })("subject"),
     to: user.email,
   })
-  reportEmailFailure("reset-password", user.email, failure)
 }
 
 export const sendChangeEmailConfirmation = async ({ user, url }: AuthEmailParams): Promise<void> => {
   const locale = getCurrentLocale()
   const messages = await loadNamespace<typeof changeEmailMessages>({ locale, namespace: CHANGE_EMAIL_NAMESPACE })
-  const failure = await sendEmail({
+  await requireAuthEmailDelivery("change-email confirmation", {
     react: createElement(ChangeEmail, {
       locale,
       messages,
@@ -138,24 +177,29 @@ export const sendChangeEmailConfirmation = async ({ user, url }: AuthEmailParams
     subject: createTranslator({ locale, messages })("subject"),
     to: user.email,
   })
-  reportEmailFailure("change-email confirmation", user.email, failure)
 }
 
-export const sendAccountDeletedEmail = async ({ email, locale, name }: AccountDeletedEmailParams): Promise<void> => {
-  const resolvedLocale = locale ?? getCurrentLocale()
-  const storefrontUrl = `${APP_URL}/${resolvedLocale}`
-  const messages = await loadNamespace<typeof accountDeletedMessages>({ locale: resolvedLocale, namespace: ACCOUNT_DELETED_NAMESPACE })
-  const failure = await sendEmail({
-    react: createElement(AccountDeleted, {
-      locale: resolvedLocale,
-      messages,
-      name,
-      storefrontUrl,
-    }),
-    subject: createTranslator({ locale: resolvedLocale, messages })("subject"),
-    to: email,
-  })
-  reportEmailFailure("account-deleted", email, failure)
+export const sendAccountDeletedEmail = async ({ email, locale, name }: AccountDeletedEmailParams): Promise<boolean> => {
+  try {
+    const resolvedLocale = locale ?? getCurrentLocale()
+    const storefrontUrl = `${APP_URL}/${resolvedLocale}`
+    const messages = await loadNamespace<typeof accountDeletedMessages>({ locale: resolvedLocale, namespace: ACCOUNT_DELETED_NAMESPACE })
+
+    return await deliverAuthEmail("account-deleted", {
+      react: createElement(AccountDeleted, {
+        locale: resolvedLocale,
+        messages,
+        name,
+        storefrontUrl,
+      }),
+      subject: createTranslator({ locale: resolvedLocale, messages })("subject"),
+      to: email,
+    })
+  } catch (error) {
+    recordAuthEmailFailure("account-deleted", email, String(error))
+
+    return false
+  }
 }
 
 export const auth = betterAuth({
@@ -237,6 +281,13 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     sendVerificationEmail,
   },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
+        throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
+      }
+    }),
+  },
   plugins: [
     admin({
       ac,
@@ -316,6 +367,11 @@ interface AuthEmailParams {
     readonly email: string
     readonly name: string
   }
+}
+
+interface AuthEmailError {
+  readonly code: AuthErrorCode
+  readonly message: string
 }
 
 interface AccountDeletedEmailParams {

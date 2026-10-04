@@ -10,6 +10,11 @@
   "submitting": "Signing in…",
   "noAccount": "Don't have an account?",
   "createAccount": "Create one",
+  "unverified": {
+    "description": "This address hasn't been confirmed yet. We can send you a new confirmation link.",
+    "resend": "Send the confirmation link again",
+    "resending": "Sending…"
+  },
   "twoFactor": {
     "title": "Two-step verification",
     "description": "Enter the six-digit code from your authenticator app.",

@@ -13,7 +13,8 @@ import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 import { useDeleteCustomer } from "~/src/presentation/components/custom/pages/admin/customers/hooks/use-delete-customer"
 
 const { deleteCustomerMutationFn, toastError, toastSuccess } = vi.hoisted(() => ({
-  deleteCustomerMutationFn: vi.fn<(input: { readonly userId: string }) => Promise<{ ok: true; userId: string }>>(),
+  deleteCustomerMutationFn:
+    vi.fn<(input: { readonly userId: string }) => Promise<{ goodbyeEmailSent: boolean; ok: true; userId: string }>>(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }))
@@ -47,7 +48,7 @@ afterEach(() => {
 
 describe("useDeleteCustomer on success", () => {
   it("confirms the deletion and the confirmation email", async () => {
-    deleteCustomerMutationFn.mockResolvedValue({ ok: true, userId: "usr_1" })
+    deleteCustomerMutationFn.mockResolvedValue({ goodbyeEmailSent: true, ok: true, userId: "usr_1" })
     const { result } = renderDeleteCustomer()
 
     result.current.mutate({ userId: "usr_1" })
@@ -61,8 +62,22 @@ describe("useDeleteCustomer on success", () => {
     expect(toastError).not.toHaveBeenCalled()
   })
 
+  it("tells the admin when the account is gone but the confirmation email could not be sent", async () => {
+    deleteCustomerMutationFn.mockResolvedValue({ goodbyeEmailSent: false, ok: true, userId: "usr_1" })
+    const { result } = renderDeleteCustomer()
+
+    result.current.mutate({ userId: "usr_1" })
+
+    await waitFor(() => {
+      expect(toastSuccess).toHaveBeenCalledWith("Account deleted", {
+        description: "The account was deleted, but the confirmation email could not be sent. The failure is recorded in the audit log.",
+      })
+    })
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
   it("refreshes the customers list", async () => {
-    deleteCustomerMutationFn.mockResolvedValue({ ok: true, userId: "usr_1" })
+    deleteCustomerMutationFn.mockResolvedValue({ goodbyeEmailSent: true, ok: true, userId: "usr_1" })
     const { invalidateQueries, result } = renderDeleteCustomer()
 
     result.current.mutate({ userId: "usr_1" })
@@ -73,7 +88,7 @@ describe("useDeleteCustomer on success", () => {
   })
 
   it("sends the target user id to the server", async () => {
-    deleteCustomerMutationFn.mockResolvedValue({ ok: true, userId: "usr_9" })
+    deleteCustomerMutationFn.mockResolvedValue({ goodbyeEmailSent: true, ok: true, userId: "usr_9" })
     const { result } = renderDeleteCustomer()
 
     result.current.mutate({ userId: "usr_9" })

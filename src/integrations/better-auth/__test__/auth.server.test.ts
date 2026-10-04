@@ -12,6 +12,7 @@ import verifyEmailPolish from "~/messages/pl-PL/emails.verify-email.json"
 
 interface SentEmail {
   readonly react: ReactElement<Record<string, unknown>>
+  readonly revealsAccountExistence?: boolean
   readonly subject: string
   readonly to: string
 }
@@ -21,9 +22,11 @@ const stubs = vi.hoisted(() => ({
   claimGuestOrdersForUser: vi.fn<(input: { email: string; userId: string }) => Promise<number>>(),
   findFirst: vi.fn(),
   getCurrentLocale: vi.fn<() => string>(),
+  isEmailSenderUnavailable: vi.fn<() => Promise<boolean>>(),
   linkSubscriberToUser: vi.fn<(email: string, userId: string) => Promise<void>>(),
   recordAuthLoginAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
+  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
   resolveAuthAuditActor: vi.fn(),
   scheduleAdminCustomersInvalidation: vi.fn(),
   sendEmail: vi.fn<(input: SentEmail) => Promise<string | undefined>>(),
@@ -50,6 +53,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
 }))
 
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: stubs.sendEmail }))
+vi.mock("~/src/integrations/resend/resend.availability.server", () => ({ isEmailSenderUnavailable: stubs.isEmailSenderUnavailable }))
 
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: stubs.getCurrentLocale }))
 
@@ -58,6 +62,7 @@ vi.mock("~/src/lib/seo", () => ({ buildLocalizedUrl: stubs.buildLocalizedUrl }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordAuthLoginAudit: stubs.recordAuthLoginAudit,
   recordCustomerRegisteredAudit: stubs.recordCustomerRegisteredAudit,
+  recordEmailFailedAudit: stubs.recordEmailFailedAudit,
   resolveAuthAuditActor: stubs.resolveAuthAuditActor,
 }))
 
@@ -129,6 +134,7 @@ beforeEach(() => {
   stubs.resolveAuthAuditActor.mockReturnValue("customer-actor")
   stubs.getCurrentLocale.mockReturnValue(LOCALE)
   stubs.sendEmail.mockResolvedValue(undefined)
+  stubs.isEmailSenderUnavailable.mockResolvedValue(false)
   stubs.buildLocalizedUrl.mockImplementation((_base, path, locale) => (path === "/" ? `/${locale}` : `/${locale}${path}`))
 })
 
@@ -295,48 +301,135 @@ describe("account emails", () => {
   })
 })
 
-describe("delivery reporting", () => {
-  it("stays quiet when the provider accepts the message", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+const DOMAIN_NOT_VERIFIED = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
 
-    await sendResetPassword({ url: "https://marte.test/reset", user })
+const RESET_URL = "https://marte.test/api/auth/reset-password/secret-reset-token?callbackURL=%2Fen-US%2Fauth%2Freset-password"
 
-    expect(log).not.toHaveBeenCalled()
+const refuseEmails = () => {
+  vi.spyOn(console, "error").mockImplementation(() => {})
+  stubs.sendEmail.mockResolvedValue(DOMAIN_NOT_VERIFIED)
+}
+
+const gate = (path: string): Promise<unknown> => {
+  const endpointContext = { headers: new Headers(), path }
+
+  return auth.options.hooks.before(endpointContext)
+}
+
+describe("auth email delivery", () => {
+  it.each([
+    ["reset-password", () => sendResetPassword({ url: RESET_URL, user })],
+    ["verification", () => sendVerificationEmail({ url: verifyUrl(), user })],
+    ["change-email confirmation", () => sendChangeEmailConfirmation({ url: "https://marte.test/change", user })],
+  ])("answers a refused %s email with a retryable EMAIL_DELIVERY_FAILED", async (_kind, send) => {
+    refuseEmails()
+
+    await expect(send()).rejects.toMatchObject({ body: { code: "EMAIL_DELIVERY_FAILED" }, statusCode: 503 })
   })
 
-  it("reports a transport failure", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {})
-    stubs.sendEmail.mockResolvedValue("network down")
+  it("records a refused auth email in the audit log without the link it carried", async () => {
+    refuseEmails()
 
-    await sendResetPassword({ url: "https://marte.test/reset", user })
+    await expect(sendResetPassword({ url: RESET_URL, user })).rejects.toThrow()
 
-    expect(log).toHaveBeenCalledWith(`[Auth] Failed to send reset-password email to ${user.email}: network down`)
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, { detail: `Auth reset-password email — ${DOMAIN_NOT_VERIFIED}` })
+    expect(JSON.stringify(stubs.recordEmailFailedAudit.mock.calls)).not.toContain("secret-reset-token")
   })
 
-  it("reports a provider rejection", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {})
-    stubs.sendEmail.mockResolvedValue("rejected")
+  it("logs a refused auth email with its kind and recipient", async () => {
+    refuseEmails()
 
-    await sendChangeEmailConfirmation({ url: "https://marte.test/change", user })
+    await expect(sendChangeEmailConfirmation({ url: "https://marte.test/change", user })).rejects.toThrow()
 
-    expect(log).toHaveBeenCalledWith(`[Auth] Failed to send change-email confirmation email to ${user.email}: rejected`)
+    expect(console.error).toHaveBeenCalledWith(
+      `[Auth] Failed to send change-email confirmation email to ${user.email}: ${DOMAIN_NOT_VERIFIED}`,
+    )
   })
 
-  it("reports a failed verification send", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {})
-    stubs.sendEmail.mockResolvedValue("rejected")
+  it.each([
+    ["reset-password", () => sendResetPassword({ url: RESET_URL, user })],
+    ["verification", () => sendVerificationEmail({ url: verifyUrl(), user })],
+    ["change-email confirmation", () => sendChangeEmailConfirmation({ url: "https://marte.test/change", user })],
+  ])("keeps the %s email, sent only for some addresses, from marking the sender unavailable", async (_kind, send) => {
+    await send()
 
-    await sendVerificationEmail({ url: verifyUrl(), user })
-
-    expect(log).toHaveBeenCalledWith(`[Auth] Failed to send verification email to ${user.email}: rejected`)
+    expect(sentEmail()?.revealsAccountExistence).toBe(true)
   })
 
-  it("reports a failed goodbye send", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {})
-    stubs.sendEmail.mockResolvedValue("rejected")
-
+  it("lets a goodbye note, whose sending says nothing about other accounts, mark the sender unavailable", async () => {
     await sendAccountDeletedEmail({ email: user.email, name: user.name })
 
-    expect(log).toHaveBeenCalledWith(`[Auth] Failed to send account-deleted email to ${user.email}: rejected`)
+    expect(sentEmail()?.revealsAccountExistence).toBeUndefined()
   })
+
+  it("records nothing when the provider accepts the message", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await expect(sendResetPassword({ url: RESET_URL, user })).resolves.toBeUndefined()
+
+    expect(log).not.toHaveBeenCalled()
+    expect(stubs.recordEmailFailedAudit).not.toHaveBeenCalled()
+  })
+
+  it("reports whether the goodbye note went out instead of throwing", async () => {
+    await expect(sendAccountDeletedEmail({ email: user.email, name: user.name })).resolves.toBe(true)
+
+    refuseEmails()
+
+    await expect(sendAccountDeletedEmail({ email: user.email, name: user.name })).resolves.toBe(false)
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, { detail: `Auth account-deleted email — ${DOMAIN_NOT_VERIFIED}` })
+  })
+
+  it("reports a goodbye note it could not even prepare instead of throwing", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    stubs.getCurrentLocale.mockImplementation(() => {
+      throw new Error("No request locale")
+    })
+
+    await expect(sendAccountDeletedEmail({ email: user.email, name: user.name })).resolves.toBe(false)
+    await expect(auth.options.user.deleteUser.afterDelete(createdUser)).resolves.toBeUndefined()
+
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
+      detail: "Auth account-deleted email — Error: No request locale",
+    })
+  })
+
+  it("keeps a completed deletion successful when the goodbye note is refused", async () => {
+    refuseEmails()
+
+    await expect(auth.options.user.deleteUser.afterDelete(createdUser)).resolves.toBeUndefined()
+
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
+      detail: `Auth account-deleted email — ${DOMAIN_NOT_VERIFIED}`,
+    })
+  })
+})
+
+describe("email delivery gate", () => {
+  it.each(["/sign-up/email", "/request-password-reset", "/send-verification-email", "/change-email"])(
+    "refuses %s while the sender is unavailable, before anything is created or sent",
+    async (path) => {
+      stubs.isEmailSenderUnavailable.mockResolvedValue(true)
+
+      await expect(gate(path)).rejects.toMatchObject({ body: { code: "EMAIL_DELIVERY_UNAVAILABLE" }, statusCode: 503 })
+    },
+  )
+
+  it("lets the email-sending endpoints through while the sender is available", async () => {
+    await gate("/request-password-reset")
+
+    expect(stubs.isEmailSenderUnavailable).toHaveBeenCalledOnce()
+  })
+
+  it.each(["/sign-in/email", "/verify-email", "/delete-user", "/get-session"])(
+    "lets %s through without reading the flag, even while the sender is unavailable",
+    async (path) => {
+      stubs.isEmailSenderUnavailable.mockResolvedValue(true)
+
+      await gate(path)
+
+      expect(stubs.isEmailSenderUnavailable).not.toHaveBeenCalled()
+    },
+  )
 })

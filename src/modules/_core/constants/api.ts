@@ -2,6 +2,7 @@ import { APP_DOMAIN } from "~/src/presentation/branding/app"
 
 export const HTTP_STATUS = {
   BAD_REQUEST: 400,
+  FORBIDDEN: 403,
   INTERNAL_SERVER_ERROR: 500,
   NOT_FOUND: 404,
   SWITCHING_PROTOCOLS: 101,

@@ -42,7 +42,7 @@ Pojęcia są uporządkowane alfabetycznie według angielskiej nazwy, bo tak brzm
 - **Cloudflare Queue** — transport dziennika audytu. Zdarzenia są kolejkowane przez `AUDIT_LOG_QUEUE` i konsumowane przez eksport `queue` w `src/server.ts`, w paczkach do 50, z 5-sekundowym limitem czasu i 3 ponowieniami.
 - **D1** — baza SQLite Cloudflare, powiązana jako `DB`. Brak transakcji interaktywnych; `db.batch()` jest mechanizmem atomowości.
 - **Durable Object** — `RealtimeInvalidationHub` w `src/durable-objects/realtime-invalidation-hub.ts`, utworzony migracją o tagu `v1`. Rozsyła komunikaty unieważniające do podłączonych WebSocketów i nie przechowuje trwałego stanu — `notifyInvalidation` iteruje po `ctx.getWebSockets(hubName)`.
-- **KV** — przestrzeń `CACHE`. Zadeklarowana w każdym środowisku.
+- **KV** — przestrzeń `CACHE`. Zadeklarowana w każdym środowisku; przechowuje flagę nadawcy e-maili, którą czyta blokada w Better Auth.
 - **R2** — bucket `IMAGES` przechowujący media produktów. Publiczne odczyty idą przez adres bazowy z `VITE_R2_URL`.
 - **Vite+** — ujednolicony łańcuch narzędzi wywoływany jako `vp`. Dostarcza `vp dev`, `vp build`, `vp check`, `vp fmt`, `vp lint`, `vp test` i `vp staged`, wszystko konfigurowane w `vite.config.ts`.
 

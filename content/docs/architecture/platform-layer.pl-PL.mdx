@@ -7,14 +7,14 @@ description: "Runtime Cloudflare: punkt wejścia Workera, jego bindingi, trzy ś
 
 `wrangler.jsonc` ustawia `./src/server.ts` jako `main`, z `compatibility_date` `2026-04-18`, flagą `nodejs_compat`, `placement.mode: "smart"` i włączoną obserwowalnością. Każde środowisko otrzymuje te same sześć bindingów:
 
-| Binding                     | Typ              | Służy do                                                                |
-| --------------------------- | ---------------- | ----------------------------------------------------------------------- |
-| `DB`                        | Baza D1          | Wszystkich 37 tabel, w tym sesji, weryfikacji i liczników limitów żądań |
-| `IMAGES`                    | Bucket R2        | Zdjęć produktów uploadowanych przez `src/integrations/cloudflare-r2`    |
-| `CACHE`                     | Namespace KV     | Zadeklarowany, ale dziś nieczytany przez żaden kod                      |
-| `ASSETS`                    | Zasoby statyczne | Wszystkiego z `public/`, w tym samodzielnie hostowanych fontów          |
-| `REALTIME_INVALIDATION_HUB` | Durable Object   | Klasy `RealtimeInvalidationHub`, jedna instancja na odbiorcę            |
-| `AUDIT_LOG_QUEUE`           | Kolejka          | Zdarzeń audytowych, produkowanych i konsumowanych przez ten sam Worker  |
+| Binding                     | Typ              | Służy do                                                                           |
+| --------------------------- | ---------------- | ---------------------------------------------------------------------------------- |
+| `DB`                        | Baza D1          | Wszystkich 37 tabel, w tym sesji, weryfikacji i liczników limitów żądań            |
+| `IMAGES`                    | Bucket R2        | Zdjęć produktów uploadowanych przez `src/integrations/cloudflare-r2`               |
+| `CACHE`                     | Namespace KV     | Przechowuje pięciominutową flagę nadawcy e-maili (`resend.availability.server.ts`) |
+| `ASSETS`                    | Zasoby statyczne | Wszystkiego z `public/`, w tym samodzielnie hostowanych fontów                     |
+| `REALTIME_INVALIDATION_HUB` | Durable Object   | Klasy `RealtimeInvalidationHub`, jedna instancja na odbiorcę                       |
+| `AUDIT_LOG_QUEUE`           | Kolejka          | Zdarzeń audytowych, produkowanych i konsumowanych przez ten sam Worker             |
 
 Durable Object jest zadeklarowany jako klasa SQLite w bloku `migrations` (`tag: "v1"`, `new_sqlite_classes: ["RealtimeInvalidationHub"]`), mimo że hub nie trzyma żadnego trwałego stanu. Kolejka jest skonfigurowana z `max_batch_size: 50`, `max_batch_timeout: 5` i `max_retries: 3`, a producent i konsument wskazują tę samą kolejkę, dlatego `src/server.ts` eksportuje zarówno handler `fetch`, jak i `queue`.
 

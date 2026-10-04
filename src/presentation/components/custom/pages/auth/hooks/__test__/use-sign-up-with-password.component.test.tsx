@@ -97,7 +97,7 @@ describe("useSignUpWithPassword", () => {
     expect(signUpEmail).toHaveBeenCalledWith(expect.objectContaining({ name: "Anna" }))
   })
 
-  it("tells the shopper to check the inbox and sends them to sign in", async () => {
+  it("tells the shopper to check the inbox, or sign in for a new link, and sends them to sign in", async () => {
     signUpEmail.mockResolvedValue({ error: null })
     const { result } = renderSignUp()
 
@@ -105,7 +105,8 @@ describe("useSignUpWithPassword", () => {
 
     await waitFor(() => {
       expect(toastSuccess).toHaveBeenCalledWith("Almost there", {
-        description: "If this address wasn't already registered, we've sent it a confirmation link. Please check your inbox.",
+        description:
+          "If this address wasn't already registered, we've sent it a confirmation link. If it doesn't arrive within a few minutes, sign in to request a new one.",
       })
     })
     expect(navigate).toHaveBeenCalledWith({ to: "/auth/sign-in" })
@@ -120,6 +121,19 @@ describe("useSignUpWithPassword", () => {
     await waitFor(() => {
       expect(toastError).toHaveBeenCalledWith("Something went wrong", { description: "Password is too short." })
     })
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("explains that emails are unavailable and that no account was created", async () => {
+    signUpEmail.mockResolvedValue({ error: { code: "EMAIL_DELIVERY_UNAVAILABLE" } })
+    const { result } = renderSignUp()
+
+    await expect(result.current.mutateAsync(values)).rejects.toThrow("SIGN_UP_FAILED")
+
+    expect(toastError).toHaveBeenCalledWith("Something went wrong", {
+      description: "We can't send emails at the moment, so nothing has been changed. Please try again in a few minutes.",
+    })
+    expect(toastSuccess).not.toHaveBeenCalled()
     expect(navigate).not.toHaveBeenCalled()
   })
 
