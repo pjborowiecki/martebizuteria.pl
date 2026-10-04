@@ -36,6 +36,8 @@ import { ChangeEmailDialog } from "~/src/presentation/components/custom/pages/ac
 
 const CURRENT_EMAIL = "anna@example.com"
 
+const ALERT_WAIT_MS = 200
+
 const renderDialog = (open = true) => {
   const onOpenChange = vi.fn<(open: boolean) => void>()
   renderWithProviders(<ChangeEmailDialog currentEmail={CURRENT_EMAIL} onOpenChange={onOpenChange} open={open} />)
@@ -142,6 +144,27 @@ describe("ChangeEmailDialog", () => {
 
     expect(await screen.findByText("Please enter a valid email address.")).toBeInTheDocument()
     expect(calls.changeEmail).not.toHaveBeenCalled()
+  })
+
+  it("flags a malformed address while the customer types it", async () => {
+    renderDialog()
+
+    await userEvent.type(emailField(), "anna@")
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Please enter a valid email address.")
+  })
+
+  it("adds no error under the empty field while Cancel is held, so Cancel stays under the pointer", async () => {
+    const user = userEvent.setup()
+    const { onOpenChange } = renderDialog()
+    const cancel = screen.getByRole("button", { name: "Cancel" })
+    await user.click(emailField())
+
+    await user.pointer({ keys: "[MouseLeft>]", target: cancel })
+
+    await expect(screen.findByRole("alert", {}, { timeout: ALERT_WAIT_MS })).rejects.toThrow()
+    await user.pointer({ keys: "[/MouseLeft]", target: cancel })
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it("discards the typed address when the customer cancels", async () => {

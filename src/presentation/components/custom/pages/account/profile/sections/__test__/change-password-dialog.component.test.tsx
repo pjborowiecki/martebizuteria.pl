@@ -53,6 +53,8 @@ const fillPasswords = async (): Promise<void> => {
 
 const submitButton = (): HTMLElement => screen.getByRole("button", { name: "Change password" })
 
+const ALERT_WAIT_MS = 200
+
 beforeEach(() => {
   vi.clearAllMocks()
   calls.changePassword.mockImplementation((input) => {
@@ -133,6 +135,27 @@ describe("ChangePasswordDialog", () => {
     })
     expect(onOpenChange).not.toHaveBeenCalled()
     expect(screen.getByLabelText("Current password")).toHaveValue("OldPassword1!")
+  })
+
+  it("says what the new password still needs while the customer types it", async () => {
+    renderDialog()
+
+    await userEvent.type(screen.getByLabelText("New password"), "short")
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("At least 8 characters long")
+  })
+
+  it("adds no error under the empty field while Cancel is held, so Cancel stays under the pointer", async () => {
+    const user = userEvent.setup()
+    const { onOpenChange } = renderDialog()
+    const cancel = screen.getByRole("button", { name: "Cancel" })
+    await user.click(screen.getByLabelText("Current password"))
+
+    await user.pointer({ keys: "[MouseLeft>]", target: cancel })
+
+    await expect(screen.findByRole("alert", {}, { timeout: ALERT_WAIT_MS })).rejects.toThrow()
+    await user.pointer({ keys: "[/MouseLeft]", target: cancel })
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it("discards what was typed when the customer cancels", async () => {

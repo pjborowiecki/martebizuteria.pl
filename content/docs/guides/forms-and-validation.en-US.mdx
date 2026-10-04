@@ -22,6 +22,8 @@ const form = useForm<SignInFormValues>({
 })
 ```
 
+`"onTouched"` checks a field when the customer leaves it, then again on every change. That suits a form on its own page. A form inside a `Dialog` uses `mode: "onChange"` instead, as the account dialogs do (see [Account](/docs/features/account)): leaving a field to press **Cancel** or the close button would add an error line under it, the centred dialog would grow, and its footer would move away from the pointer before the button is released, so the press would be lost.
+
 Its schema, in `auth.zod.ts`, carries keys rather than prose:
 
 ```ts
@@ -123,7 +125,7 @@ const form = useForm<ProductCategory["formValues"]>({
 })
 ```
 
-Note `mode: "onSubmit"` here versus `mode: "onTouched"` in the auth forms. A long multi-locale form should not light up in red while you are still filling the second language.
+Note `mode: "onSubmit"` here versus `mode: "onTouched"` in the auth forms and `mode: "onChange"` in the account dialogs. A long multi-locale form should not light up in red while you are still filling the second language.
 
 `defaultValues` come from one of two pure functions in `category-form.utils.ts` — `createDefaultCategoryFormValues()` for create, `adminListItemToFormValues(category)` for edit — so the edit form is always populated from the same row type the grid holds.
 
@@ -256,7 +258,7 @@ useEffect(() => {
 - The Zod schema lives in the module's `.zod.ts` (or `auth.zod.ts`), with message **keys**, and limits imported from the constants file.
 - Both message catalogues have an entry for every key the schema can emit.
 - Fields use `useController` and render `ValidationFieldError` with the right namespace.
-- `mode` is `"onTouched"` for a short form, `"onSubmit"` for a long multi-locale one.
+- `mode` is `"onTouched"` for a short form on its own page, `"onChange"` for a form inside a `Dialog`, so that leaving a field never moves the dialog's footer while a button is held, and `"onSubmit"` for a long multi-locale one.
 - Submit handlers `void` the promise and never return it to the DOM.
 - The error handler maps `errorCode(error)` onto a field where it can, and falls back to `useActionError`.
 - Success invalidates every affected query key.

@@ -32,7 +32,7 @@ export const ChangeEmailDialog = ({ currentEmail, onOpenChange, open }: Readonly
   const actionError = useActionError()
   const form = useForm<ChangeEmailFormValues>({
     defaultValues: { email: "" },
-    mode: "onTouched",
+    mode: "onChange",
     resolver: zodResolver(changeEmailSchema),
   })
 

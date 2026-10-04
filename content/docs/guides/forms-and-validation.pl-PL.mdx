@@ -22,6 +22,8 @@ const form = useForm<SignInFormValues>({
 })
 ```
 
+`"onTouched"` sprawdza pole, gdy klient je opuszcza, a potem przy każdej zmianie. Pasuje to do formularza na osobnej stronie. Formularz w `Dialog` używa zamiast tego `mode: "onChange"`, tak jak okna konta (zobacz [Konto](/docs/features/account)): opuszczenie pola, by nacisnąć **Anuluj** albo przycisk zamknięcia, dodałoby pod nim komunikat błędu, wyśrodkowane okno urosłoby, a jego stopka odsunęłaby się spod kursora, zanim przycisk zostanie puszczony, więc naciśnięcie by przepadło.
+
 Jego schemat w `auth.zod.ts` niesie klucze, nie prozę:
 
 ```ts
@@ -123,7 +125,7 @@ const form = useForm<ProductCategory["formValues"]>({
 })
 ```
 
-Zwróć uwagę na `mode: "onSubmit"` tutaj, w odróżnieniu od `mode: "onTouched"` w formularzach uwierzytelniania. Długi formularz wielojęzyczny nie powinien świecić się na czerwono, kiedy wciąż wypełniasz drugi język.
+Zwróć uwagę na `mode: "onSubmit"` tutaj, w odróżnieniu od `mode: "onTouched"` w formularzach uwierzytelniania i `mode: "onChange"` w oknach konta. Długi formularz wielojęzyczny nie powinien świecić się na czerwono, kiedy wciąż wypełniasz drugi język.
 
 `defaultValues` pochodzą z jednej z dwóch czystych funkcji w `category-form.utils.ts` — `createDefaultCategoryFormValues()` przy tworzeniu, `adminListItemToFormValues(category)` przy edycji — więc formularz edycji jest zawsze wypełniany z tego samego typu wiersza, jaki trzyma tabela.
 
@@ -256,7 +258,7 @@ useEffect(() => {
 - Schemat Zod mieszka w `.zod.ts` modułu (albo w `auth.zod.ts`), z **kluczami** komunikatów i limitami importowanymi z pliku stałych.
 - Oba katalogi tłumaczeń mają wpis dla każdego klucza, jaki schemat może wyemitować.
 - Pola używają `useController` i renderują `ValidationFieldError` z właściwą przestrzenią nazw.
-- `mode` to `"onTouched"` dla krótkiego formularza i `"onSubmit"` dla długiego, wielojęzycznego.
+- `mode` to `"onTouched"` dla krótkiego formularza na osobnej stronie, `"onChange"` dla formularza w `Dialog`, aby opuszczenie pola nigdy nie przesuwało stopki okna, gdy przycisk jest wciśnięty, i `"onSubmit"` dla długiego, wielojęzycznego.
 - Handlery wysyłki używają `void` na obietnicy i nigdy nie zwracają jej do DOM.
 - Handler błędu mapuje `errorCode(error)` na pole tam, gdzie może, a w pozostałych przypadkach sięga po `useActionError`.
 - Powodzenie unieważnia każdy dotknięty klucz zapytania.

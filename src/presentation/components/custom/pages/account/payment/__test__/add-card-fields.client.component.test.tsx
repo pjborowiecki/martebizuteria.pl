@@ -51,7 +51,7 @@ vi.mock("@stripe/react-stripe-js", () => ({
       }
     }, [onLoadError, onReady])
 
-    return <div data-testid="payment-element" />
+    return <input aria-label="Card number" />
   },
   useElements: () => (stripe.hasElements.current ? stripe.elements : null),
   useStripe: () => (stripe.hasStripe.current ? { confirmSetup: stripe.confirmSetup } : null),
@@ -158,6 +158,19 @@ describe("AddCardFields", () => {
 
     expect(onCancel).toHaveBeenCalledOnce()
     expect(stripe.confirmSetup).not.toHaveBeenCalled()
+  })
+
+  it("keeps focus in the card fields while Cancel is held, so Stripe adds no error that moves Cancel away", async () => {
+    const user = userEvent.setup()
+    renderFields()
+    const cancel = screen.getByRole("button", { name: "Cancel" })
+    await user.click(screen.getByLabelText("Card number"))
+
+    await user.pointer({ keys: "[MouseLeft>]", target: cancel })
+
+    expect(screen.getByLabelText("Card number")).toHaveFocus()
+    await user.pointer({ keys: "[/MouseLeft]", target: cancel })
+    expect(onCancel).toHaveBeenCalledOnce()
   })
 })
 

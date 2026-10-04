@@ -40,7 +40,7 @@ export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePass
   const queryClient = useQueryClient()
   const form = useForm<ChangePasswordFormValues>({
     defaultValues: { confirmPassword: "", currentPassword: "", password: "", revokeOtherSessions: true },
-    mode: "onTouched",
+    mode: "onChange",
     resolver: zodResolver(changePasswordSchema),
   })
 

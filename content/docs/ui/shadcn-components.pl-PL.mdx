@@ -88,7 +88,7 @@ const menuTrigger = useMemo(() => <DropdownMenuTrigger render={button} />, [butt
 
 ## Warianty warte znajomości
 
-`Button` (`button.tsx`) to najbogatszy prymityw. Warianty: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive` oraz zestaw sklepowy `account`, `account-outline`, `account-ghost`, `account-destructive`. Rozmiary: `xs`, `sm`, `default`, `lg`, `xl`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`, `account`, `account-sm`. Konsola administratora używa `outline` z `icon-lg` lub `icon-sm`; sklep używa zestawu `account-*`, pisany wersalikami z rozstrzelonym światłem liter.
+`Button` (`button.tsx`) to najbogatszy prymityw. Warianty: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive` oraz zestaw sklepowy `account`, `account-outline`, `account-ghost`, `account-destructive`. Rozmiary: `xs`, `sm`, `default`, `lg`, `xl`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`, `account`, `account-sm`. Konsola administratora używa `outline` z `icon-lg` lub `icon-sm`; sklep używa zestawu `account-*`, pisany wersalikami z rozstrzelonym światłem liter. `account-ghost` to sam tekst z `h-auto p-0`, cel wysoki na około 16,5 px, dlatego przezroczysta warstwa `after:` (`after:absolute after:inset-x-0 after:-inset-y-1`) sięga 4 px nad i pod niego. Daje to cel wysoki na około 24 px, czyli minimum z WCAG 2.5.8, bez zmiany układu i obrysu fokusu. Naciśnięcie górnego rzędu pikseli napisu zostaje też na przycisku, gdy `active:translate-y-px` przesuwa go o piksel w dół. Polega na tym **Anuluj** w formularzu adresu, a `e2e/specs/account.spec.ts` naciska tuż nad napisem.
 
 `Input` (`input.tsx`) ma sześć wariantów i domyślnie brak zaokrągleń — pola w tym sklepie to podkreślenia, nie ramki:
 

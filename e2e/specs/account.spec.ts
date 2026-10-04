@@ -1,4 +1,7 @@
+import { type Locator, type Page } from "@playwright/test"
+
 import { PRODUCTS } from "../data/catalog"
+import { STORAGE_STATE } from "../data/storage-state"
 import { registerCustomer } from "../fixtures/customers"
 import { placeOrder } from "../fixtures/orders"
 import { confirmCardSetupIntent, waitForCardSetupIntent } from "../fixtures/stripe"
@@ -49,4 +52,95 @@ test.describe("customer account", () => {
     await expect(accountPage.notification("Card removed")).toBeVisible()
     await expect(page.getByRole("heading", { name: "Saved Cards (0)" })).toBeVisible()
   })
+})
+
+const PRESS_MS = 250
+const PRESS_FROM_TOP_PX = 4
+const PRESS_ABOVE_LABEL_PX = -2
+const WHEEL_PX = 30
+
+const pointBelowTopEdge = async (control: Locator, offsetPx: number): Promise<Readonly<{ x: number; y: number }>> => {
+  const box = await control.boundingBox()
+  if (box === null) {
+    throw new Error("expected the control to be on screen")
+  }
+
+  return { x: box.x + box.width / 2, y: box.y + offsetPx }
+}
+
+const openAddressForm = async (page: Page): Promise<Readonly<{ cancel: Locator; drawer: Locator }>> => {
+  await page.getByRole("button", { exact: true, name: "Add New" }).click()
+  const form = page.locator("form").filter({ has: page.getByRole("button", { exact: true, name: "Save Address" }) })
+  const drawer = form.locator("..")
+  await expect.poll(() => drawer.evaluate((element) => element.scrollHeight - element.clientHeight)).toBe(0)
+
+  return { cancel: form.getByRole("button", { exact: true, name: "Cancel" }), drawer }
+}
+
+const recordScrollMovedWhileHeld = async (page: Page): Promise<void> => {
+  await page.evaluate(() => {
+    addEventListener(
+      "pointerdown",
+      () => {
+        const scrollAtPress = scrollY
+        addEventListener(
+          "pointerup",
+          () => {
+            Reflect.set(globalThis, "scrollMovedWhileHeld", scrollY - scrollAtPress)
+          },
+          { capture: true, once: true },
+        )
+      },
+      { capture: true, once: true },
+    )
+  })
+}
+
+test.describe("account forms close on the first press", () => {
+  test.use({ storageState: STORAGE_STATE.customer })
+
+  test("Cancel closes the address form with one press while the page is still gliding", async ({ accountPage, page }) => {
+    await accountPage.gotoSection("addresses")
+    const { cancel, drawer } = await openAddressForm(page)
+    await cancel.hover()
+    const press = await pointBelowTopEdge(cancel, PRESS_FROM_TOP_PX)
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight - scrollY)).toBeGreaterThanOrEqual(WHEEL_PX)
+    await recordScrollMovedWhileHeld(page)
+
+    await page.mouse.wheel(0, WHEEL_PX)
+    await page.mouse.click(press.x, press.y, { delay: PRESS_MS })
+
+    await expect(drawer).toBeHidden()
+    expect(await page.evaluate(() => Reflect.get(globalThis, "scrollMovedWhileHeld"))).toBe(0)
+  })
+
+  test("Cancel in the address form takes a press just above its label", async ({ accountPage, page }) => {
+    await accountPage.gotoSection("addresses")
+    const { cancel, drawer } = await openAddressForm(page)
+    await cancel.hover()
+    const press = await pointBelowTopEdge(cancel, PRESS_ABOVE_LABEL_PX)
+
+    await page.mouse.click(press.x, press.y, { delay: PRESS_MS })
+
+    await expect(drawer).toBeHidden()
+  })
+
+  for (const { dialogName, field, opener } of [
+    { dialogName: "Change your password", field: "Current password", opener: "Update" },
+    { dialogName: "Change your email address", field: "New email address", opener: "Change" },
+  ]) {
+    test(`Cancel closes "${dialogName}" with one press straight from its empty field`, async ({ accountPage, page }) => {
+      await accountPage.gotoSection("profile")
+      await page.getByRole("button", { exact: true, name: opener }).click()
+      const dialog = page.getByRole("dialog", { name: dialogName })
+      const cancel = dialog.getByRole("button", { exact: true, name: "Cancel" })
+      await expect(dialog.getByLabel(field)).toBeFocused()
+      await cancel.hover()
+      const press = await pointBelowTopEdge(cancel, PRESS_FROM_TOP_PX)
+
+      await page.mouse.click(press.x, press.y, { delay: PRESS_MS })
+
+      await expect(dialog).toBeHidden()
+    })
+  }
 })
