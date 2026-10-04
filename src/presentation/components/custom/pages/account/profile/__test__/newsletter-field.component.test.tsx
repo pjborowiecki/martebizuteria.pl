@@ -1,10 +1,15 @@
+import { QueryClient } from "@tanstack/react-query"
 import { cleanup, screen, waitFor } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
+import { IntlProvider } from "use-intl/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
+
 import englishAccount from "~/messages/en-US/pages.account.json"
+import polishAccount from "~/messages/pl-PL/pages.account.json"
 
 const mocks = vi.hoisted(() => ({
   status: { current: undefined as string | undefined },
@@ -36,7 +41,7 @@ vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-own-newsletter", async (
   return { unsubscribeOwnNewsletterMutation: { mutationFn: mocks.unsubscribe, mutationKey: NEWSLETTER_MUTATION_KEYS.UNSUBSCRIBE_OWN } }
 })
 
-import { NEWSLETTER_SOURCE, NEWSLETTER_STATUS } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_QUERY_KEYS, NEWSLETTER_SOURCE, NEWSLETTER_STATUS } from "~/src/modules/newsletter/newsletter.constants"
 
 import { NewsletterField } from "~/src/presentation/components/custom/pages/account/profile/newsletter-field"
 
@@ -47,6 +52,14 @@ const renderField = (status?: string) => {
   renderWithProviders(<NewsletterField email="anna@example.com" />)
 
   return screen.findByRole("button", { name: status === undefined ? "Subscribe" : "Unsubscribe" })
+}
+
+const queryClientWithLoadedStatus = (status: string): QueryClient => {
+  mocks.status.current = status
+  const queryClient = new QueryClient()
+  queryClient.setQueryData(NEWSLETTER_QUERY_KEYS.OWN_SUBSCRIPTION, { status })
+
+  return queryClient
 }
 
 beforeEach(() => {
@@ -195,5 +208,30 @@ describe("NewsletterField", () => {
     await waitFor(() => {
       expect(button).toBeDisabled()
     })
+  })
+})
+
+describe("NewsletterField with the status the page loaded", () => {
+  it("says a confirmed subscriber is subscribed on the first render", () => {
+    renderWithProviders(<NewsletterField email="anna@example.com" />, {
+      queryClient: queryClientWithLoadedStatus(NEWSLETTER_STATUS.CONFIRMED),
+    })
+
+    expect(screen.getByText(englishAccount.profile.subscribed)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: englishAccount.profile.newsletterUnsubscribeAction })).toBeEnabled()
+    expect(screen.queryByText(englishAccount.profile.notSubscribed)).not.toBeInTheDocument()
+  })
+
+  it("says a confirmed subscriber is subscribed in Polish on the first render", () => {
+    renderWithProviders(
+      <IntlProvider locale="pl-PL" messages={{ pages: { account: polishAccount } }} timeZone={I18N.DEFAULT_TIMEZONE}>
+        <NewsletterField email="anna@example.com" />
+      </IntlProvider>,
+      { queryClient: queryClientWithLoadedStatus(NEWSLETTER_STATUS.CONFIRMED) },
+    )
+
+    expect(screen.getByText(polishAccount.profile.subscribed)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: polishAccount.profile.newsletterUnsubscribeAction })).toBeEnabled()
+    expect(screen.queryByText(polishAccount.profile.notSubscribed)).not.toBeInTheDocument()
   })
 })

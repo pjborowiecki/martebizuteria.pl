@@ -13,12 +13,17 @@ const catalogue = {
   collections: [] as StorefrontCollection[],
 }
 
+const menu = vi.hoisted(() => ({ mounted: true }))
+
 vi.mock("~/src/lib/url", () => ({
   getAssetCdnBase: () => "https://assets.test",
   getAssetURL: (path: string) => `https://assets.test/${path}`,
   getBaseURL: () => "https://store.test",
   isAssetCdnUrl: () => true,
   resolveAssetURL: (pathOrUrl: string) => pathOrUrl,
+}))
+vi.mock("~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider", () => ({
+  useNavigation: () => ({ mounted: menu.mounted }),
 }))
 vi.mock("~/src/modules/product-collection/use-cases/get-collections", () => ({
   getCollectionsQuery: () => ({ queryFn: () => Promise.resolve(catalogue.collections), queryKey: ["product-collection", "all"] }),
@@ -31,6 +36,7 @@ const showcaseImages = (): HTMLElement[] => screen.getAllByAltText("Editorial je
 
 afterEach(() => {
   catalogue.collections = []
+  menu.mounted = true
   cleanup()
 })
 
@@ -95,5 +101,15 @@ describe("ImageShowcase", () => {
     renderWithProviders(<ImageShowcase />)
 
     expect(showcaseImages()[2]).toHaveAttribute("src", "https://assets.test/placeholder.svg")
+  })
+
+  it("keeps the slides but renders no picture while the menu is closed, so a closed menu downloads nothing", () => {
+    menu.mounted = false
+    catalogue.collections = [{ handle: "nowosci", id: "1", image: "https://assets.test/collections/arrivals.webp" }]
+    const { container } = renderWithProviders(<ImageShowcase />)
+
+    expect(container.querySelectorAll("[data-menu-image]")).toHaveLength(PRIMARY.length)
+    expect(screen.queryAllByAltText("Editorial jewelry")).toStrictEqual([])
+    expect(container.querySelector("img")).toBeNull()
   })
 })

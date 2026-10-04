@@ -7,8 +7,8 @@ description: "The four-step client-rendered form, the session-storage draft, and
 
 Two files:
 
-- `src/routes/checkout.tsx` — the layout. It validates the search params and renders `CheckoutHeader` plus an `Outlet`. It is **not** inside `_storefront`, so it has no shop navigation or footer.
-- `src/routes/checkout.index.tsx` — the page, which is either the success panel or the guarded form.
+- `src/routes/checkout.tsx` — the layout. It validates the search params, reads the `pages.checkout` messages in its loader and renders `CheckoutHeader` plus an `Outlet`. It is **not** inside `_storefront`, so it has no shop navigation or footer.
+- `src/routes/checkout.index.tsx` — the page, which is either the success panel or the guarded form. Its loader reads `listDeliveryMethodsQuery()` while the layout reads the messages, so the client-only form finds the delivery methods in the cache when it mounts. `loaderDeps` passes only `success`, so moving between steps does not run it again, and on `?success=true` it reads nothing. The read ends with `.catch(noop)`: if it fails, the page still renders and the form asks for the methods itself.
 
 The search schema tolerates junk:
 

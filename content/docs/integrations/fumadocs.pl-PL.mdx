@@ -105,11 +105,11 @@ Dlatego `index` **nie może** być wymieniony w tablicy `pages` w pliku `meta.<l
 
 ## Trasy
 
-| Trasa     | Plik                        | Działanie                                                                     |
-| --------- | --------------------------- | ----------------------------------------------------------------------------- |
-| `/docs`   | `src/routes/docs.tsx`       | Układ: nawigacja, `DocsSidebar`, stopka; loaderem jest `loadDocsNavigation()` |
-| `/docs`   | `src/routes/docs.index.tsx` | Strona główna, `loadDocsPage()` bez splata                                    |
-| `/docs/$` | `src/routes/docs.$.tsx`     | Każda inna strona, `loadDocsPage(params._splat)`                              |
+| Trasa     | Plik                        | Działanie                                                                                                               |
+| --------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `/docs`   | `src/routes/docs.tsx`       | Układ: nawigacja, `DocsSidebar`, stopka; loader uruchamia jednocześnie `loadDocsNavigation()` i `getCollectionsQuery()` |
+| `/docs`   | `src/routes/docs.index.tsx` | Strona główna, `loadDocsPage()` bez splata                                                                              |
+| `/docs/$` | `src/routes/docs.$.tsx`     | Każda inna strona, `loadDocsPage(params._splat)`                                                                        |
 
 Układ deklaruje `staticData: { namespaces: ["pages.docs"] }` — stąd pochodzą własne etykiety panelu bocznego (`messages/{locale}/pages.docs.json`: `navigation.title`, `navigation.label`, `navigation.overview`). Obie trasy stron ustawiają `head: pageHead` i `wrapInSuspense: false`.
 

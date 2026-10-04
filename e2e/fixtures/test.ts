@@ -9,6 +9,8 @@ export const TRANSPARENT_PNG = Buffer.from(
   "base64",
 )
 
+const REALTIME_SOCKET = /\/api\/realtime\//u
+
 const IP_OCTET_COUNT = 3
 const IP_OCTET_RANGE = 254
 
@@ -20,6 +22,10 @@ export const isolateNetwork = async (context: BrowserContext): Promise<void> => 
         ? route.fulfill({ body: TRANSPARENT_PNG, contentType: "image/png" })
         : route.abort("blockedbyclient"),
   )
+}
+
+export const muteRealtime = async (context: BrowserContext): Promise<void> => {
+  await context.routeWebSocket(REALTIME_SOCKET, () => undefined)
 }
 
 export const clientAddressFor = (testInfo: TestInfo, client = "visitor"): string => {

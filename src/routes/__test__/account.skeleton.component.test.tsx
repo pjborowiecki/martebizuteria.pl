@@ -12,6 +12,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   return { ...actual, Outlet: (): JSX.Element => <NeverLoads /> }
 })
 vi.mock("~/src/integrations/better-auth/auth.routes", () => ({ requireCustomer: vi.fn() }))
+vi.mock("~/src/modules/product-collection/use-cases/get-collections", () => ({ getCollectionsQuery: vi.fn() }))
 vi.mock("~/src/presentation/components/custom/pages/account/account-sidebar", () => ({
   AccountSidebar: (): JSX.Element => <NeverLoads />,
 }))

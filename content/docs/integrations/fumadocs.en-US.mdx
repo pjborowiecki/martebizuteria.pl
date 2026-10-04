@@ -105,11 +105,11 @@ This is why `index` must **not** be listed in a folder's `meta.<locale>.json` `p
 
 ## The routes
 
-| Route     | File                        | What it does                                                                    |
-| --------- | --------------------------- | ------------------------------------------------------------------------------- |
-| `/docs`   | `src/routes/docs.tsx`       | The layout: navigation, `DocsSidebar`, footer; loader is `loadDocsNavigation()` |
-| `/docs`   | `src/routes/docs.index.tsx` | The root page, `loadDocsPage()` with no splat                                   |
-| `/docs/$` | `src/routes/docs.$.tsx`     | Every other page, `loadDocsPage(params._splat)`                                 |
+| Route     | File                        | What it does                                                                                                               |
+| --------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `/docs`   | `src/routes/docs.tsx`       | The layout: navigation, `DocsSidebar`, footer; the loader runs `loadDocsNavigation()` and `getCollectionsQuery()` together |
+| `/docs`   | `src/routes/docs.index.tsx` | The root page, `loadDocsPage()` with no splat                                                                              |
+| `/docs/$` | `src/routes/docs.$.tsx`     | Every other page, `loadDocsPage(params._splat)`                                                                            |
 
 The layout declares `staticData: { namespaces: ["pages.docs"] }`, which is where the sidebar's own labels come from (`messages/{locale}/pages.docs.json`: `navigation.title`, `navigation.label`, `navigation.overview`). The page routes both set `head: pageHead` and `wrapInSuspense: false`.
 

@@ -1,8 +1,10 @@
 import { type JSX, Suspense, useEffect, useMemo } from "react"
 
+import { noop } from "@tanstack/react-query"
 import { ClientOnly, createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 
 import { useCartHydrated, useCartStore } from "~/src/modules/cart/cart.store"
+import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
@@ -55,4 +57,15 @@ const CheckoutGuard = (): JSX.Element => {
 
 export const Route = createFileRoute("/checkout/")({
   component: CheckoutPage,
+  loader: async ({ context, deps }) => {
+    if (deps.success !== true) {
+      await context.queryClient
+        .query({
+          ...listDeliveryMethodsQuery(),
+          staleTime: "static",
+        })
+        .catch(noop)
+    }
+  },
+  loaderDeps: ({ search }: { search: { success?: boolean | undefined } }) => ({ success: search.success }),
 })

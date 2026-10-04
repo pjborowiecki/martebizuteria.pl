@@ -36,7 +36,7 @@ A change of user is handled in one place: `clearCacheOnUserChange` (`src/integra
 
 An anonymous visitor is redirected to `/auth/sign-in?redirect=<path>`, where `<path>` is the localized public path, such as `/en-US/account/orders/order-1`. It is kept only when it matches `SAME_SITE_PATH_PATTERN`: visible ASCII characters only, a single leading slash and no backslash. After a password, two-factor, Google or GitHub sign-in, the `/auth` guard sends the visitor back to it. See [Integrations: Better Auth](/docs/integrations/better-auth).
 
-The layout renders the storefront `Navigation`, a two-column grid and the storefront `Footer`. Only the two grid cells are wrapped in `Suspense`: the `AccountSidebar` with the `AccountSidebarFallback` skeleton, and the outlet with the `AccountMainFallback` skeleton. It preloads four namespaces: `pages.account`, `pages.account.meta`, `pages.auth.errors` and `pages.auth.validations`.
+The layout renders the storefront `Navigation`, a two-column grid and the storefront `Footer`. Its loader reads the `pages.account.meta` messages and `getCollectionsQuery()` together, so the full-screen menu's collection pictures come with the page. Only the two grid cells are wrapped in `Suspense`: the `AccountSidebar` with the `AccountSidebarFallback` skeleton, and the outlet with the `AccountMainFallback` skeleton. It preloads four namespaces: `pages.account`, `pages.account.meta`, `pages.auth.errors` and `pages.auth.validations`.
 
 `/account` itself only redirects:
 
@@ -48,16 +48,16 @@ beforeLoad: () => {
 
 ## The seven pages
 
-| Route                 | File                       | Query                                                            | Status |
-| --------------------- | -------------------------- | ---------------------------------------------------------------- | ------ |
-| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                               | Live   |
-| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`                                      | Live   |
-| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                      | Live   |
-| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                      | Live   |
-| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                       | Live   |
-| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()` | Live   |
-| `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                 | Live   |
-| `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                 | Live   |
+| Route                 | File                       | Query                                                              | Status |
+| --------------------- | -------------------------- | ------------------------------------------------------------------ | ------ |
+| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                                 | Live   |
+| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`, `getOwnNewsletterSubscriptionQuery()` | Live   |
+| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                        | Live   |
+| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                        | Live   |
+| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                         | Live   |
+| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()`   | Live   |
+| `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                   | Live   |
+| `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                   | Live   |
 
 The sidebar order is `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`). The sidebar's sign-out button calls `signOut` and then does a full page load of `/`, which discards the query cache.
 
@@ -120,7 +120,7 @@ export const updateCustomerPhone = createServerFn({ method: "POST" })
 
 `RATE_LIMITS.SENSITIVE` is three calls per minute. An empty string clears the column to `NULL` rather than storing `""`. Name, email and password changes go through Better Auth, not through this module.
 
-`PreferencesSection` also holds `NewsletterField`, which reads `getOwnNewsletterSubscriptionQuery()` and calls `subscribeToNewsletter` with the account's own address and `source: "account"`. A `confirmationSent` answer shows a "check your inbox" toast, `alreadyConfirmed` says the customer is already subscribed, and `confirmationFailed` shows an error toast saying the email could not be sent. While the subscription is `pending`, the status reads "Not confirmed yet" rather than promising an email, and the field offers **Resend email** next to **Unsubscribe**, so a confirmation that failed or never arrived can be sent again with a fresh link. On a narrow screen the two actions wrap below the status.
+`PreferencesSection` also holds `NewsletterField`, which reads `getOwnNewsletterSubscriptionQuery()` and calls `subscribeToNewsletter` with the account's own address and `source: "account"`. A `confirmationSent` answer shows a "check your inbox" toast, `alreadyConfirmed` says the customer is already subscribed, and `confirmationFailed` shows an error toast saying the email could not be sent. While the subscription is `pending`, the status reads "Not confirmed yet" rather than promising an email, and the field offers **Resend email** next to **Unsubscribe**, so a confirmation that failed or never arrived can be sent again with a fresh link. On a narrow screen the two actions wrap below the status. The `account.profile.tsx` loader loads the subscription together with the profile, so the field renders the stored status straight away instead of showing "Not Subscribed" until its own request returns. If the subscription cannot be read, the profile page still opens and the field asks again after it mounts.
 
 ## Addresses
 

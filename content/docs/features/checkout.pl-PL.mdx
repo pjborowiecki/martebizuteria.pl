@@ -7,8 +7,8 @@ description: "Czterokrokowy formularz renderowany po stronie klienta, kopia robo
 
 Dwa pliki:
 
-- `src/routes/checkout.tsx` — layout. Waliduje parametry wyszukiwania i renderuje `CheckoutHeader` oraz `Outlet`. **Nie** leży wewnątrz `_storefront`, więc nie ma nawigacji sklepu ani stopki.
-- `src/routes/checkout.index.tsx` — strona, czyli albo panel sukcesu, albo formularz za strażnikiem.
+- `src/routes/checkout.tsx` — layout. Waliduje parametry wyszukiwania, w loaderze czyta teksty `pages.checkout` i renderuje `CheckoutHeader` oraz `Outlet`. **Nie** leży wewnątrz `_storefront`, więc nie ma nawigacji sklepu ani stopki.
+- `src/routes/checkout.index.tsx` — strona, czyli albo panel sukcesu, albo formularz za strażnikiem. Jej loader czyta `listDeliveryMethodsQuery()`, podczas gdy layout czyta teksty, więc formularz renderowany tylko po stronie klienta zastaje metody dostawy w cache, gdy się montuje. `loaderDeps` przekazuje tylko `success`, więc przejście między krokami nie uruchamia go ponownie, a przy `?success=true` niczego nie czyta. Odczyt kończy się `.catch(noop)`: jeśli się nie uda, strona i tak się renderuje, a formularz sam pyta o metody.
 
 Schemat parametrów toleruje śmieci:
 

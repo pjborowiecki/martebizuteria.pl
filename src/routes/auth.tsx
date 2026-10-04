@@ -1,8 +1,11 @@
 import { type JSX } from "react"
 
+import { noop } from "@tanstack/react-query"
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 
 import { redirectIfSignedIn } from "~/src/integrations/better-auth/auth.routes"
+
+import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 
 import { AuthEditorial } from "~/src/presentation/components/custom/pages/auth/auth-editorial"
 import { Navigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation"
@@ -27,6 +30,14 @@ const AuthLayoutRoute = (): JSX.Element => (
 export const Route = createFileRoute("/auth")({
   beforeLoad: redirectIfSignedIn,
   component: AuthLayoutRoute,
+  loader: async ({ context }) => {
+    await context.queryClient
+      .query({
+        ...getCollectionsQuery(),
+        staleTime: "static",
+      })
+      .catch(noop)
+  },
   staticData: {
     namespaces: ["pages.auth.errors", "pages.auth.validations", "pages.auth.oauth"],
   },

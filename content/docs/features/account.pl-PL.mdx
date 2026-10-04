@@ -36,7 +36,7 @@ Zmiana użytkownika jest obsługiwana w jednym miejscu: w `clearCacheOnUserChang
 
 Anonimowy gość jest przekierowywany na `/auth/sign-in?redirect=<path>`, gdzie `<path>` to zlokalizowana ścieżka publiczna, na przykład `/en-US/account/orders/order-1`. Zostaje ona zachowana tylko wtedy, gdy pasuje do `SAME_SITE_PATH_PATTERN`: wyłącznie widoczne znaki ASCII, jeden ukośnik na początku i brak ukośnika wstecznego. Po zalogowaniu hasłem, kodem dwuskładnikowym, przez Google albo przez GitHub strażnik `/auth` odsyła gościa z powrotem pod ten adres. Zobacz [Integracje: Better Auth](/docs/integrations/better-auth).
 
-Layout renderuje `Navigation` z witryny, dwukolumnową siatkę i `Footer` z witryny. W `Suspense` owinięte są tylko dwie komórki siatki: `AccountSidebar` ze szkieletem `AccountSidebarFallback` oraz outlet ze szkieletem `AccountMainFallback`. Wstępnie wczytuje cztery przestrzenie nazw: `pages.account`, `pages.account.meta`, `pages.auth.errors` i `pages.auth.validations`.
+Layout renderuje `Navigation` z witryny, dwukolumnową siatkę i `Footer` z witryny. Jego loader czyta teksty `pages.account.meta` i `getCollectionsQuery()` jednocześnie, więc zdjęcia kolekcji w pełnoekranowym menu przychodzą razem ze stroną. W `Suspense` owinięte są tylko dwie komórki siatki: `AccountSidebar` ze szkieletem `AccountSidebarFallback` oraz outlet ze szkieletem `AccountMainFallback`. Wstępnie wczytuje cztery przestrzenie nazw: `pages.account`, `pages.account.meta`, `pages.auth.errors` i `pages.auth.validations`.
 
 Samo `/account` tylko przekierowuje:
 
@@ -48,16 +48,16 @@ beforeLoad: () => {
 
 ## Siedem stron
 
-| Trasa                 | Plik                       | Zapytanie                                                        | Stan   |
-| --------------------- | -------------------------- | ---------------------------------------------------------------- | ------ |
-| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                               | działa |
-| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`                                      | działa |
-| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                      | działa |
-| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                      | działa |
-| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                       | działa |
-| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()` | działa |
-| `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                 | działa |
-| `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                 | działa |
+| Trasa                 | Plik                       | Zapytanie                                                          | Stan   |
+| --------------------- | -------------------------- | ------------------------------------------------------------------ | ------ |
+| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                                 | działa |
+| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`, `getOwnNewsletterSubscriptionQuery()` | działa |
+| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                        | działa |
+| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                        | działa |
+| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                         | działa |
+| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()`   | działa |
+| `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                   | działa |
+| `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                   | działa |
 
 Kolejność w panelu bocznym to `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`). Przycisk wylogowania w panelu bocznym wywołuje `signOut`, a potem pełnym przeładowaniem strony wczytuje `/`, co odrzuca cache zapytań.
 
@@ -120,7 +120,7 @@ export const updateCustomerPhone = createServerFn({ method: "POST" })
 
 `RATE_LIMITS.SENSITIVE` to trzy wywołania na minutę. Pusty napis czyści kolumnę do `NULL`, a nie zapisuje `""`. Zmiany nazwy, adresu e-mail i hasła przechodzą przez Better Auth, a nie przez ten moduł.
 
-`PreferencesSection` zawiera też `NewsletterField`, który czyta `getOwnNewsletterSubscriptionQuery()` i wywołuje `subscribeToNewsletter` z własnym adresem konta i `source: "account"`. Wynik `confirmationSent` pokazuje komunikat „sprawdź skrzynkę”, `alreadyConfirmed` informuje, że subskrypcja jest już aktywna, a `confirmationFailed` pokazuje błąd mówiący, że e-maila nie udało się wysłać. Dopóki subskrypcja ma status `pending`, status brzmi „Subskrypcja niepotwierdzona”, a nie obiecuje e-maila, a obok **Wypisz się** jest przycisk **Wyślij ponownie**, więc potwierdzenie, które nie wyszło albo nie dotarło, można wysłać jeszcze raz z nowym linkiem. Na wąskim ekranie oba przyciski przechodzą pod status.
+`PreferencesSection` zawiera też `NewsletterField`, który czyta `getOwnNewsletterSubscriptionQuery()` i wywołuje `subscribeToNewsletter` z własnym adresem konta i `source: "account"`. Wynik `confirmationSent` pokazuje komunikat „sprawdź skrzynkę”, `alreadyConfirmed` informuje, że subskrypcja jest już aktywna, a `confirmationFailed` pokazuje błąd mówiący, że e-maila nie udało się wysłać. Dopóki subskrypcja ma status `pending`, status brzmi „Subskrypcja niepotwierdzona”, a nie obiecuje e-maila, a obok **Wypisz się** jest przycisk **Wyślij ponownie**, więc potwierdzenie, które nie wyszło albo nie dotarło, można wysłać jeszcze raz z nowym linkiem. Na wąskim ekranie oba przyciski przechodzą pod status. Loader `account.profile.tsx` ładuje subskrypcję razem z profilem, więc pole od razu pokazuje zapisany status, zamiast wyświetlać „Nie zasubskrybowano”, dopóki nie wróci jego własne zapytanie. Jeśli subskrypcji nie da się odczytać, strona profilu i tak się otwiera, a pole pyta ponownie po zamontowaniu.
 
 ## Adresy
 

@@ -18,7 +18,7 @@ dzięki czemu `_storefront.products.$handle.tsx` obsługuje zarówno `/products/
 
 ## Sklep
 
-Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, który dostarcza `Navigation`, `Footer`, banner dostępności koszyka, tracker aktywności klienta, subskrypcję realtime dla sklepu oraz `storefront.css`. Żadna z nich nie ma strażnika.
+Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, który dostarcza `Navigation`, `Footer`, banner dostępności koszyka, tracker aktywności klienta, subskrypcję realtime dla sklepu oraz `storefront.css`. Jego loader ładuje `getCollectionsQuery()` dla pełnoekranowego menu, więc zdjęcia kolekcji w menu są w cache wyrenderowanym na serwerze. Żadna z nich nie ma strażnika.
 
 | Ścieżka                   | Stała w `ROUTES`         | Plik trasy                               |
 | ------------------------- | ------------------------ | ---------------------------------------- |
@@ -52,7 +52,7 @@ Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, kt�
 
 ## Uwierzytelnianie
 
-Layoutem `/auth` jest `auth.tsx`, a jego `beforeLoad` uruchamia `redirectIfSignedIn`, który odsyła już zalogowaną osobę na ścieżkę z parametru wyszukiwania `?redirect`, jeśli jest bezpieczną ścieżką w obrębie tej samej witryny, a w przeciwnym razie do `/admin` albo `/account/overview`, zależnie od roli. `auth.sign-in.tsx` deklaruje ten parametr w `validateSearch`.
+Layoutem `/auth` jest `auth.tsx`, a jego `beforeLoad` uruchamia `redirectIfSignedIn`, który odsyła już zalogowaną osobę na ścieżkę z parametru wyszukiwania `?redirect`, jeśli jest bezpieczną ścieżką w obrębie tej samej witryny, a w przeciwnym razie do `/admin` albo `/account/overview`, zależnie od roli. `auth.sign-in.tsx` deklaruje ten parametr w `validateSearch`. Layout renderuje `Navigation` sklepu, a jego loader ładuje `getCollectionsQuery()` dla pełnoekranowego menu.
 
 Po udanym logowaniu hasłem albo udanej weryfikacji dwuskładnikowej formularz wywołuje `usePostAuthRedirect` z `src/hooks/use-post-auth-redirect.ts`. Ten hook usuwa z cache wyłącznie wpis sesji, czyści dopasowania zapisane w routerze i unieważnia router. Strażnik layoutu `/auth` uruchamia się wtedy ponownie, pobiera świeżą sesję i przekierowuje, więc formularze nigdy same nie wybierają celu. Gdy świeża sesja dotrze, `clearCacheOnUserChange`, opisane niżej w sekcji Strażnicy, zapomina to, co trafiło do cache przed zalogowaniem.
 
@@ -71,7 +71,7 @@ Logowanie przez Google i GitHub przechodzi przez `useOAuthSignIn` z `src/present
 
 ## Konto klienta
 
-Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCustomer`, który przekierowuje anonimowego gościa do `/auth/sign-in` z żądaną ścieżką w `?redirect`, a administratora do `/admin`. `account.index.tsx` natychmiast przekierowuje `/account` na `/account/overview`.
+Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCustomer`, który przekierowuje anonimowego gościa do `/auth/sign-in` z żądaną ścieżką w `?redirect`, a administratora do `/admin`. `account.index.tsx` natychmiast przekierowuje `/account` na `/account/overview`. Loader layoutu czyta jednocześnie teksty `pages.account.meta` i `getCollectionsQuery()` dla pełnoekranowego menu.
 
 | Ścieżka               | Stała w `ROUTES`    | Plik trasy                                                   |
 | --------------------- | ------------------- | ------------------------------------------------------------ |
@@ -120,7 +120,7 @@ Szczegóły zamówienia w panelu to jedyna strona bez stałej w `ROUTES`; nawiga
 | `/docs`   | `DOCS`           | `docs.tsx` (layout), `docs.index.tsx` |
 | `/docs/*` | `DOCS_PAGE`      | `docs.$.tsx`                          |
 
-`docs.tsx` ładuje sidebar z `buildDocsNavigation`, które przechodzi po drzewie stron Fumadocs dla lokalizacji czytelnika i zamienia każdy katalog najwyższego poziomu w `content/docs` na sekcję. `docs.$.tsx` rozwiązuje splat na stronę przez `loadDocsPage` i rzuca `notFound()`, gdy żadna strona nie pasuje.
+`docs.tsx` ładuje sidebar z `buildDocsNavigation`, które przechodzi po drzewie stron Fumadocs dla lokalizacji czytelnika i zamienia każdy katalog najwyższego poziomu w `content/docs` na sekcję. Ten sam loader jednocześnie ładuje `getCollectionsQuery()` dla pełnoekranowego menu. `docs.$.tsx` rozwiązuje splat na stronę przez `loadDocsPage` i rzuca `notFound()`, gdy żadna strona nie pasuje.
 
 ## Tylko dla developerów
 

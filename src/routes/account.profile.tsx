@@ -1,12 +1,13 @@
 import { type JSX } from "react"
 
-import { useSuspenseQuery } from "@tanstack/react-query"
+import { noop, useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useTranslations } from "use-intl/react"
 
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
 import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { getCustomerProfileQuery } from "~/src/modules/customer-account/use-cases/get-customer-profile"
+import { getOwnNewsletterSubscriptionQuery } from "~/src/modules/newsletter/use-cases/get-own-newsletter-subscription"
 
 import { pageHead } from "~/src/lib/seo"
 
@@ -46,10 +47,18 @@ export const Route = createFileRoute("/account/profile")({
   component: ProfilePage,
   head: pageHead,
   loader: async ({ context }) => {
-    await context.queryClient.query({
-      ...getCustomerProfileQuery(),
-      staleTime: "static",
-    })
+    await Promise.all([
+      context.queryClient.query({
+        ...getCustomerProfileQuery(),
+        staleTime: "static",
+      }),
+      context.queryClient
+        .query({
+          ...getOwnNewsletterSubscriptionQuery(),
+          staleTime: "static",
+        })
+        .catch(noop),
+    ])
 
     return accountPageMeta(context.queryClient, context.locale, "profile")
   },

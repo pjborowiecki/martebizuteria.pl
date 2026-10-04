@@ -29,7 +29,7 @@ description: "The fifteen sections of /, the data they load, the GSAP scroll cho
 
 All copy comes from the `pages.landing` namespace (`messages/{locale}/pages.landing.json`). The route declares `staticData.namespaces: ["pages.landing", "pages.categories"]`, so both catalogues are preloaded before the page renders.
 
-The `_storefront` layout in `src/routes/_storefront.tsx` supplies the navigation, the cart availability banner and the footer.
+The `_storefront` layout in `src/routes/_storefront.tsx` supplies the navigation, the cart availability banner and the footer. Its loader loads `getCollectionsQuery()` for the full-screen menu's collection pictures, so every storefront page brings them in its server-rendered cache. If that read fails, the page still renders and the menu asks for the collections after it mounts. `ImageShowcase` keeps its slides in the closed menu but renders their pictures only while `mounted` from `useNavigation()` is true, from the moment the menu opens until its closing animation ends. A page load therefore downloads none of the showcase pictures, and the first one is fetched with `priority` when the menu opens, while the image frame is still fading in. The menu can be opened only below the `xl` breakpoint, and the showcase shows only from `lg` up.
 
 ## What the loader fetches
 

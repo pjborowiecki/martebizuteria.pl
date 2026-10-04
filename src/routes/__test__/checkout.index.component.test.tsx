@@ -23,6 +23,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   }
 })
 
+vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", () => ({ listDeliveryMethodsQuery: vi.fn() }))
+
 vi.mock("~/src/hooks/use-cart-availability", () => ({
   useCartAvailability: () => ({
     hasUnavailableItems: availability.hasUnavailableItems,

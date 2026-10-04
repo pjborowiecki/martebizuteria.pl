@@ -1,8 +1,11 @@
 import { type JSX } from "react"
 
+import { noop } from "@tanstack/react-query"
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 
 import { loadDocsNavigation } from "~/src/integrations/fumadocs/fumadocs.docs"
+
+import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 
 import { DocsSidebar } from "~/src/presentation/components/custom/pages/docs/docs-sidebar"
 import { Footer } from "~/src/presentation/components/custom/pages/landing-page/footer/footer"
@@ -29,7 +32,19 @@ const DocumentationLayout = (): JSX.Element => {
 
 export const Route = createFileRoute("/docs")({
   component: DocumentationLayout,
-  loader: () => loadDocsNavigation(),
+  loader: async ({ context }) => {
+    const [navigation] = await Promise.all([
+      loadDocsNavigation(),
+      context.queryClient
+        .query({
+          ...getCollectionsQuery(),
+          staleTime: "static",
+        })
+        .catch(noop),
+    ])
+
+    return navigation
+  },
   staticData: {
     namespaces: ["pages.docs"],
   },

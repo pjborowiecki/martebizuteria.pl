@@ -29,7 +29,7 @@ description: "Piętnaście sekcji strony /, dane które wczytują, choreografia 
 
 Cała treść pochodzi z przestrzeni nazw `pages.landing` (`messages/{locale}/pages.landing.json`). Trasa deklaruje `staticData.namespaces: ["pages.landing", "pages.categories"]`, więc oba katalogi komunikatów są wczytywane przed renderem strony.
 
-Layout `_storefront` w `src/routes/_storefront.tsx` dostarcza nawigację, banner dostępności koszyka i stopkę.
+Layout `_storefront` w `src/routes/_storefront.tsx` dostarcza nawigację, banner dostępności koszyka i stopkę. Jego loader ładuje `getCollectionsQuery()` dla zdjęć kolekcji w pełnoekranowym menu, więc każda strona sklepu przynosi je w cache wyrenderowanym na serwerze. Jeśli ten odczyt się nie uda, strona i tak się renderuje, a menu pyta o kolekcje po zamontowaniu. `ImageShowcase` trzyma swoje slajdy w zamkniętym menu, ale renderuje ich zdjęcia tylko wtedy, gdy `mounted` z `useNavigation()` ma wartość `true`, czyli od otwarcia menu do końca animacji zamykania. Wczytanie strony nie pobiera więc żadnego zdjęcia z pokazu, a pierwsze z nich przychodzi z `priority` po otwarciu menu, gdy ramka zdjęcia dopiero się pojawia. Menu da się otworzyć tylko poniżej progu `xl`, a pokaz jest widoczny dopiero od `lg`.
 
 ## Co wczytuje loader
 
