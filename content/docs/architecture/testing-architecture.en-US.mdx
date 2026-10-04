@@ -53,7 +53,7 @@ The practical effect: a test for `shipOrder` really passes through `withRequest`
 
 ## D1 over `node:sqlite`
 
-`src/platform/testing/mocks/d1.ts` exports `createTestD1Database(sqlite, onQuery?)`, a hand-written transport that presents the D1 `prepare/bind/all/run/raw/batch` surface over a `node:sqlite` `DatabaseSync`. `batch` runs one batch at a time and wraps the statements in `begin`/`commit` with a `rollback` on failure, so batch atomicity and ordering are emulated, and `bind` refuses more than 100 parameters, as D1 does. The optional `onQuery` callback records `{ sql, params }`, which lets a test assert the SQL a query compiles to.
+`src/platform/testing/mocks/d1.ts` exports `createTestD1Database(sqlite, onQuery?, onRoundTrip?)`, a hand-written transport that presents the D1 `prepare/bind/all/run/raw/batch` surface over a `node:sqlite` `DatabaseSync`. `batch` runs one batch at a time and wraps the statements in `begin`/`commit` with a `rollback` on failure, so batch atomicity and ordering are emulated, and `bind` refuses more than 100 parameters, as D1 does. The optional `onQuery` callback records `{ sql, params }`, which lets a test assert the SQL a query compiles to. The optional `onRoundTrip` callback records one `TestD1RoundTrip` per request to D1, when the request starts: `{ kind: "batch", sql }` for each `batch` call, however many statements it carries, and `{ kind: "statement", sql: [sql] }` for each `all`, `raw` or `run` outside a batch, which lets a test assert how many round trips an operation costs. It counts separate requests and does not show which of them waited for another.
 
 An integration test wires it in by mocking the database module:
 
@@ -78,7 +78,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 Coverage is broad, but the suites that earn their keep are the ones where a silent regression is expensive:
 
 - **Checkout idempotency** — `checkout-idempotency.integration.test.ts` drives two deliveries that both observe a `pending` checkout and asserts exactly one order results. The application guard in `resolvePendingCheckout` collapses Stripe's _sequential_ retries; the constraint that holds for genuinely concurrent deliveries is the database's, because `order.checkout_id` and `payment.transaction_id` are unique indexes and a D1 batch is atomic, so the losing insert rolls its whole batch back.
-- **Inventory** — `inventory-reservation.integration.test.ts` and `inventory-release.integration.test.ts` exercise the compare-and-set reserve and the `min`/`max`-clamped release.
+- **Inventory** — `inventory-reservation.integration.test.ts` and `inventory-release.integration.test.ts` exercise the compare-and-set reserve and the `min`/`max`-clamped release; the reservation suite also counts round trips, so a cart that stops being reserved in one batch fails it.
 - **Rate limiting** — `rate-limit.integration.test.ts` fires concurrent attempts at the real limiter over in-memory SQLite and asserts the admitted and rejected counts.
 - **Auth storage** — `auth.storage.integration.test.ts` pins the Better Auth configuration, including the absence of `secondaryStorage`.
 - **Checkout batches** — `checkout-batches.integration.test.ts` records the compiled SQL through `onQuery` and asserts the statement shape of the create, update-delivery and release batches.

@@ -148,7 +148,7 @@ const sqlite = new DatabaseSync(":memory:")
 const database = drizzle(createTestD1Database(sqlite))
 ```
 
-`createTestD1Database` in `src/platform/testing/mocks/d1.ts` adapts Node's `node:sqlite` to the `D1Database` surface — `prepare`, `bind`, `all`, `run`, `raw` and a `batch` that wraps the statements in a real `begin`/`commit`/`rollback`. It also takes an optional `onQuery` callback, so a test can assert on the SQL that was actually issued.
+`createTestD1Database` in `src/platform/testing/mocks/d1.ts` adapts Node's `node:sqlite` to the `D1Database` surface — `prepare`, `bind`, `all`, `run`, `raw` and a `batch` that wraps the statements in a real `begin`/`commit`/`rollback`. It also takes an optional `onQuery` callback, so a test can assert on the SQL that was actually issued, and an optional `onRoundTrip` callback that fires once per `batch` call and once per statement run outside a batch, so a test can assert how many requests reached D1.
 
 Declare the table locally rather than importing the production schema when you only need a few columns, create it in `beforeAll`, and `sqlite.close()` in `afterAll`. That search test is a good example of what integration tests are _for_: it feeds in `100%`, `ring_1`, `path\`, `%_\` and `x' OR 1=1 --` and asserts each one matches as literal text.
 

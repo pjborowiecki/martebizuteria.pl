@@ -53,7 +53,7 @@ Praktyczny skutek: test dla `shipOrder` naprawdę przechodzi przez `withRequest`
 
 ## D1 nad `node:sqlite`
 
-`src/platform/testing/mocks/d1.ts` eksportuje `createTestD1Database(sqlite, onQuery?)` — napisany ręcznie transport, który prezentuje powierzchnię D1 `prepare/bind/all/run/raw/batch` nad `DatabaseSync` z `node:sqlite`. `batch` wykonuje wsady po kolei i owija instrukcje w `begin`/`commit` z `rollback` przy błędzie, więc atomowość i kolejność batchy są emulowane, a `bind`, tak jak D1, odrzuca więcej niż 100 parametrów. Opcjonalny callback `onQuery` zapisuje `{ sql, params }`, co pozwala testowi sprawdzić SQL, do którego kompiluje się zapytanie.
+`src/platform/testing/mocks/d1.ts` eksportuje `createTestD1Database(sqlite, onQuery?, onRoundTrip?)` — napisany ręcznie transport, który prezentuje powierzchnię D1 `prepare/bind/all/run/raw/batch` nad `DatabaseSync` z `node:sqlite`. `batch` wykonuje wsady po kolei i owija instrukcje w `begin`/`commit` z `rollback` przy błędzie, więc atomowość i kolejność batchy są emulowane, a `bind`, tak jak D1, odrzuca więcej niż 100 parametrów. Opcjonalny callback `onQuery` zapisuje `{ sql, params }`, co pozwala testowi sprawdzić SQL, do którego kompiluje się zapytanie. Opcjonalny callback `onRoundTrip` zapisuje jeden `TestD1RoundTrip` na każde żądanie do D1, w chwili jego rozpoczęcia: `{ kind: "batch", sql }` na każde wywołanie `batch`, niezależnie od liczby instrukcji, oraz `{ kind: "statement", sql: [sql] }` na każde `all`, `raw` lub `run` poza batchem, co pozwala testowi sprawdzić, ile żądań do D1 kosztuje operacja. Liczy osobne żądania i nie pokazuje, które z nich czekało na inne.
 
 Test integracyjny podłącza go, mockując moduł bazy danych:
 
@@ -78,7 +78,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 Pokrycie jest szerokie, ale pakietami, które naprawdę zarabiają na siebie, są te dotyczące miejsc, gdzie cicha regresja jest kosztowna:
 
 - **Idempotencja checkoutu** — `checkout-idempotency.integration.test.ts` odtwarza dwie dostawy webhooka, które obie widzą checkout w stanie `pending`, i sprawdza, że powstaje dokładnie jedno zamówienie. Guard aplikacyjny w `resolvePendingCheckout` zwija _sekwencyjne_ ponowienia Stripe'a; ograniczeniem, które trzyma przy naprawdę współbieżnych dostawach, jest ograniczenie bazy, bo `order.checkout_id` i `payment.transaction_id` mają unikalne indeksy, a batch D1 jest atomowy, więc przegrywający `INSERT` wycofuje cały swój batch.
-- **Stan magazynowy** — `inventory-reservation.integration.test.ts` i `inventory-release.integration.test.ts` sprawdzają compare-and-set rezerwacji oraz zwolnienie ograniczone funkcjami `min`/`max`.
+- **Stan magazynowy** — `inventory-reservation.integration.test.ts` i `inventory-release.integration.test.ts` sprawdzają compare-and-set rezerwacji oraz zwolnienie ograniczone funkcjami `min`/`max`; zestaw rezerwacji liczy też żądania do bazy, więc koszyk, który przestanie być rezerwowany w jednym batchu, go nie przejdzie.
 - **Limity żądań** — `rate-limit.integration.test.ts` wysyła współbieżne próby do prawdziwego limitera nad SQLite w pamięci i sprawdza liczby dopuszczonych i odrzuconych.
 - **Magazyn uwierzytelniania** — `auth.storage.integration.test.ts` przypina konfigurację Better Auth, w tym brak `secondaryStorage`.
 - **Batche checkoutu** — `checkout-batches.integration.test.ts` zapisuje skompilowany SQL przez `onQuery` i sprawdza kształt instrukcji batchy tworzenia, aktualizacji dostawy i zwolnienia.
