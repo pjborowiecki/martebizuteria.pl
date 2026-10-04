@@ -95,6 +95,17 @@ Istnieje 889 plików testowych: 339 jednostkowych, 35 integracyjnych, 515 kompon
 
 - **Historia gita nie odpowiada kodowi.** Część commitów dotyka ponad dwóch tysięcy plików. Retroaktywnie nie ma tu czego naprawiać, ale warto tego nie powtarzać — zobacz [Współtworzenie](/docs/project/contributing).
 
+## Skalowanie zmierzone, ale jeszcze niewykonane
+
+Model obciążenia na prawdziwym schemacie (5 000 produktów, 20 000 klientów, 200 000 zamówień i rok dziennika aktywności, a także dziesięć razy więcej) wykazał poniższe koszty. Żaden z nich nie jest problemem przy obecnej wielkości sklepu; każdy punkt mówi, kiedy się nim stanie.
+
+- **Eksporty CSV w panelu** wczytują całą tabelę i wysyłają do D1 wszystkie identyfikatory jako jedną wartość, czego D1 odmawia powyżej około 51 000 wierszy. Zanim któraś tabela zbliży się do tej wielkości, CSV trzeba strumieniować z serwera stronami po 1 000.
+- **Pulpit administratora** przy każdym wejściu przelicza najlepiej sprzedające się produkty i liczby z zakresów dat z całej historii zamówień: około 2 s przy 200 000 zamówień. Wcześniej trzeba dodać indeks `order(status, created_at)` oraz utrzymywane przez wyzwalacze tabele podsumowań dziennych i produktowych.
+- **Dziennik aktywności** rośnie o około 2,6 GB rocznie przy takim ruchu, głównie przez odsłony stron, i przy każdym wczytaniu liczy całą tabelę. Na długo przed limitem 10 GB w D1 trzeba dodać indeksy `(category, created_at)` i `(severity, created_at)`, ograniczyć liczenie i przenieść odsłony do osobnej tabeli z zadaniem kasującym je po 13 miesiącach.
+- **Strona klientów w panelu** sumuje wszystkie zamówienia każdego klienta na potrzeby kart i filtrów: 1,25 mln wierszy na wejście przy 20 000 klientów. Naprawi to tabela podsumowań per klient utrzymywana przez wyzwalacze.
+- **Listy produktów w sklepie** przeliczają stan i zakres cen każdego produktu ze wszystkich wariantów: 40 000 wierszy na listę przy 5 000 produktów. Gdy katalog urośnie, łączny stan i najniższą cenę trzeba trzymać na produkcie, dokładnie aktualizowane przez wyzwalacze.
+- **Mniejsze podróże do bazy** zostały w zapisie adresów, webhookach sporów i zwrotów, zmianach statusu zamówień w panelu, tworzeniu i aktualizacji checkoutu oraz realizacji zamówienia, gdzie niezależne odczyty mogłyby trafić do jednego wsadu. W realtime brakuje jeszcze ograniczania odświeżeń per karta i odświeżenia po ponownym połączeniu.
+
 ## Jak utrzymać tę stronę w uczciwości
 
 Zamykając którykolwiek z punktów, usuń wpis, a nie oznaczaj go jako zrobiony, i zaktualizuj odpowiadający akapit w [O projekcie](/docs/project/about). Gdy znajdziesz nowy, dopisz go tutaj razem z plikiem, który go potwierdza. Plan rozwoju wymieniający rzeczy już naprawione jest dokładnie tak samo mylący jak ten, który pomija rzeczy zepsute.
