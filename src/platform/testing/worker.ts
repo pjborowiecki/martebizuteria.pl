@@ -1,4 +1,11 @@
-import { completeCheckoutSession, getSentEmails, installProviderMocks, listCheckoutSessions } from "~/src/platform/testing/mocks/providers"
+import {
+  completeCheckoutSession,
+  getSentEmails,
+  installProviderMocks,
+  listCheckoutSessions,
+  listSetupIntents,
+  succeedSetupIntent,
+} from "~/src/platform/testing/mocks/providers"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
 import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.queue.server"
@@ -10,6 +17,8 @@ installProviderMocks()
 const applicationModule = import("~/src/server")
 
 const COMPLETE_SESSION_PATTERN = /^\/__test\/stripe\/checkout-sessions\/(?<sessionId>cs_[\w-]+)\/complete$/u
+
+const SUCCEED_SETUP_INTENT_PATTERN = /^\/__test\/stripe\/setup-intents\/(?<setupIntentId>seti_[\w-]+)\/succeed$/u
 
 const loadApplication = async () => {
   const { default: application } = await applicationModule
@@ -35,6 +44,27 @@ const signCompletedCheckout = async (sessionId: string, webhookSecret: string): 
   return Response.json({ payload, signature })
 }
 
+const handleSetupIntentTestRequest = (request: Request, url: URL): Response | undefined => {
+  if (url.pathname === "/__test/stripe/setup-intents" && request.method === "GET") {
+    const email = requiredParam(url, "email")
+
+    return email === undefined
+      ? Response.json({ error: "A customer email is required" }, { status: HTTP_STATUS.BAD_REQUEST })
+      : Response.json(listSetupIntents(email))
+  }
+
+  const setupIntentId = SUCCEED_SETUP_INTENT_PATTERN.exec(url.pathname)?.groups?.["setupIntentId"]
+  if (setupIntentId === undefined || request.method !== "POST") {
+    return undefined
+  }
+
+  const succeeded = succeedSetupIntent(setupIntentId)
+
+  return succeeded === undefined
+    ? Response.json({ error: `No setup intent ${setupIntentId}` }, { status: HTTP_STATUS.NOT_FOUND })
+    : Response.json(succeeded)
+}
+
 const handleTestRequest = (request: Request, env: Env, url: URL): Promise<Response> | Response | undefined => {
   if (url.pathname === "/__test/emails" && request.method === "GET") {
     const recipient = requiredParam(url, "to")
@@ -53,8 +83,11 @@ const handleTestRequest = (request: Request, env: Env, url: URL): Promise<Respon
   }
 
   const sessionId = COMPLETE_SESSION_PATTERN.exec(url.pathname)?.groups?.["sessionId"]
+  if (sessionId !== undefined && request.method === "POST") {
+    return signCompletedCheckout(sessionId, env.STRIPE_WEBHOOK_SECRET)
+  }
 
-  return sessionId === undefined || request.method !== "POST" ? undefined : signCompletedCheckout(sessionId, env.STRIPE_WEBHOOK_SECRET)
+  return handleSetupIntentTestRequest(request, url)
 }
 
 export default {

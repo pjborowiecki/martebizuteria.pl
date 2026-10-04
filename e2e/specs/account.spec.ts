@@ -1,6 +1,7 @@
 import { PRODUCTS } from "../data/catalog"
 import { registerCustomer } from "../fixtures/customers"
 import { placeOrder } from "../fixtures/orders"
+import { confirmCardSetupIntent, waitForCardSetupIntent } from "../fixtures/stripe"
 import { expect, test } from "../fixtures/test"
 
 test.describe("customer account", () => {
@@ -28,5 +29,23 @@ test.describe("customer account", () => {
     const order = page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") })
     await expect(order).toContainText(/PLN\s398\.99/u)
     await expect(order).toContainText("Processing")
+  })
+
+  test("a card added from the wallet is listed and can be removed again", async ({ accountPage, authPage, page, request }, testInfo) => {
+    const customer = await registerCustomer({ authPage, page, request }, testInfo)
+    await accountPage.gotoSection("payment")
+    await expect(accountPage.navigation().getByRole("link", { name: "Payment Methods" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Saved Cards (0)" })).toBeVisible()
+
+    await page.getByRole("button", { name: "Add Card" }).click()
+    const setupIntentId = await waitForCardSetupIntent(request, customer.email)
+    await confirmCardSetupIntent(request, setupIntentId)
+    await page.reload()
+
+    await expect(page.getByRole("heading", { name: "Saved Cards (1)" })).toBeVisible()
+    await expect(page.getByText(/visa •••• 4242/iu)).toBeVisible()
+
+    await page.getByRole("button", { name: "Remove card" }).click()
+    await expect(page.getByRole("heading", { name: "Saved Cards (0)" })).toBeVisible()
   })
 })

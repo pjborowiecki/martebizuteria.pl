@@ -46,7 +46,7 @@ describe("SavedCardList", () => {
   it("explains an empty wallet instead of listing nothing", () => {
     renderWithProviders(<SavedCardList methods={[]} />)
 
-    expect(screen.getByText("No saved cards yet. Choose to save your card when you pay and it will appear here.")).toBeInTheDocument()
+    expect(screen.getByText("No saved cards yet. Add one here, or save your card the next time you pay.")).toBeInTheDocument()
     expect(screen.queryByRole("list")).toBeNull()
   })
 

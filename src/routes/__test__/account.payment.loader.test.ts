@@ -2,6 +2,7 @@ import type * as ReactRouter from "@tanstack/react-router"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 interface QueryRequest {
+  readonly queryFn?: () => Promise<unknown>
   readonly queryKey: readonly unknown[]
   readonly staleTime: unknown
 }
@@ -34,6 +35,9 @@ vi.mock("~/src/lib/url", () => ({
 vi.mock("~/src/modules/payment/use-cases/delete-saved-payment-method", () => ({
   deleteSavedPaymentMethodMutation: { mutationFn: vi.fn() },
 }))
+vi.mock("~/src/modules/payment/use-cases/create-card-setup-intent", () => ({
+  createCardSetupIntentMutation: { mutationFn: vi.fn() },
+}))
 vi.mock("~/src/modules/payment/use-cases/list-saved-payment-methods", async () => {
   const { PAYMENT_METHOD_QUERY_KEYS } = await import("~/src/modules/payment/payment.constants")
 
@@ -56,15 +60,15 @@ const query = vi.fn<(options: QueryRequest) => Promise<unknown>>()
 
 const isMessagesRequest = (options: QueryRequest): boolean => options.queryKey[0] === "messages"
 
-const load = () => loader({ context: { locale: "en-US", queryClient: { query } } })
+const load = (locale = "en-US") => loader({ context: { locale, queryClient: { query } } })
 
 beforeEach(() => {
   query
     .mockReset()
     .mockImplementation((options) =>
-      Promise.resolve(
-        options.queryKey[2] === "pages.account" ? { sidebar: { payment: "Payment" } } : { description: "Your account", title: "Account" },
-      ),
+      options.queryKey[2] === "pages.account" && options.queryFn !== undefined
+        ? options.queryFn()
+        : Promise.resolve({ description: "Your account", title: "Account" }),
     )
 })
 
@@ -77,8 +81,11 @@ describe("the payment route loader", () => {
     expect(pageQueries).toStrictEqual([expect.objectContaining({ queryKey: PAYMENT_METHOD_QUERY_KEYS.SAVED, staleTime: "static" })])
   })
 
-  it("titles the page after the payment section", async () => {
-    await expect(load()).resolves.toStrictEqual({ description: "Your account", title: "Payment | M'Arte" })
+  it.each([
+    ["en-US", "Payment Methods | M'Arte"],
+    ["pl-PL", "Metody płatności | M'Arte"],
+  ])("titles the %s page with the shipped name of the payment methods section", async (locale, title) => {
+    await expect(load(locale)).resolves.toStrictEqual({ description: "Your account", title })
   })
 
   it("lets a failed wallet read reach the route error boundary", async () => {

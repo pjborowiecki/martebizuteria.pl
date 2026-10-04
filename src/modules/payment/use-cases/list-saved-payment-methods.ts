@@ -6,7 +6,7 @@ import { getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.s
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 
 import { resolveTimezoneCode } from "~/src/modules/_core/constants/timezone"
-import { PAYMENT_METHOD_QUERY_KEYS, PAYMENT_METHOD_QUERY_STALE_MS } from "~/src/modules/payment/payment.constants"
+import { PAYMENT_METHOD_QUERY_KEYS, PAYMENT_METHOD_QUERY_STALE_MS, SAVED_CARDS_PAGE_LIMIT } from "~/src/modules/payment/payment.constants"
 import { type Payment } from "~/src/modules/payment/payment.types"
 import { isCardExpired } from "~/src/modules/payment/payment.utils"
 
@@ -18,7 +18,7 @@ export const listSavedPaymentMethods = createServerFn({ method: "GET" })
       return []
     }
 
-    const methods = await stripe.paymentMethods.list({ customer: customerId, type: "card" })
+    const methods = await stripe.paymentMethods.list({ customer: customerId, limit: SAVED_CARDS_PAGE_LIMIT, type: "card" })
     const timeZone = resolveTimezoneCode(context.auth.user.timezone)
 
     return methods.data.flatMap((method) => {

@@ -166,7 +166,32 @@ Dwie mutacje unieważniające:
 
 ## Zapisane metody płatności
 
-Karty są zapisywane w kasie, a nie na stronie konta. Dla zalogowanego klienta `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) wywołuje `ensureStripeCustomer` (`stripe.customer.server.ts`), które zwraca `stripe_customer_id` użytkownika albo tworzy klienta Stripe i zapisuje jego identyfikator w tej kolumnie. Sesja Checkout powstaje następnie dla tego klienta z włączonym `payment_method_save`, które pozwala klientowi wybrać, czy zapisać kartę:
+Zalogowany klient zapisuje kartę w jednym z dwóch miejsc: w kasie albo przyciskiem **Dodaj kartę** na `/account/payment`. W obu przypadkach karta trafia do jego klienta Stripe; nie ma tabeli zapisanych kart. Pozycja w panelu bocznym i tytuł karty przeglądarki korzystają z `pages.account.sidebar.payment`, czyli „Metody płatności” („Payment Methods” po angielsku), tych samych słów co nagłówek strony.
+
+### Klient Stripe
+
+`ensureStripeCustomer` (`src/integrations/stripe/stripe.customer.server.ts`) zwraca `stripe_customer_id` użytkownika albo tworzy klienta Stripe i zapisuje jego identyfikator w tej kolumnie. Dwa żądania mogą jednocześnie zastać pustą kolumnę, na przykład po podwójnym kliknięciu albo przy kasie otwartej w innej karcie, dlatego identyfikator jest zapisywany przez `coalesce`, a żądanie, które przegra wyścig, usuwa utworzonego przez siebie klienta:
+
+```ts
+const customer = await stripe.customers.create({ email, metadata: { userId }, name })
+const [stored] = await db
+  .update(user)
+  .set({ stripeCustomerId: sql`coalesce(${user.stripeCustomerId}, ${customer.id})`, updatedAt: new Date() })
+  .where(eq(user.id, userId))
+  .returning({ stripeCustomerId: user.stripeCustomerId })
+
+if (stored?.stripeCustomerId !== customer.id) {
+  await stripe.customers.del(customer.id).catch((deleteError: unknown) => {
+    console.error("Failed to delete an unused Stripe customer:", deleteError)
+  })
+}
+```
+
+`coalesce` zachowuje identyfikator zapisany jako pierwszy i to on trafia do każdego wywołującego, więc karta nigdy nie zostaje zapisana u klienta, o którym konto już nie wie. Przegrane żądanie usuwa własnego klienta, do którego nic jeszcze nie dołączono; nieudane usunięcie jest tylko logowane, bo zapisany klient i tak jest właściwy. Funkcja nie wysyła klucza idempotencji: kasa tworzy klienta z adresem e-mail wpisanym w formularzu zamówienia, a strona konta z adresem konta, a Stripe odrzuca ponownie użyty klucz z innymi parametrami, przez co jedno z dwóch żądań kończyłoby się błędem. Gdy wiersz użytkownika już nie istnieje, funkcja usuwa nowego klienta i rzuca `ERROR_CODES.NOT_FOUND`.
+
+### W kasie
+
+Dla zalogowanego klienta `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) wywołuje `ensureStripeCustomer` i tworzy sesję Checkout dla tego klienta z włączonym `payment_method_save`, które pozwala klientowi wybrać, czy zapisać kartę:
 
 ```ts
 ...(customerId === undefined
@@ -176,11 +201,54 @@ Karty są zapisywane w kasie, a nie na stronie konta. Dla zalogowanego klienta `
 
 Gość dostaje zamiast tego `customer_email` i nie ma klienta Stripe, do którego można by zapisać kartę. `handleUpdateCheckoutSession` korzysta z istniejącego klienta przez `getStripeCustomerId` i nigdy go nie tworzy. Zobacz [Płatności](/docs/features/payments).
 
-Nie ma tabeli zapisanych kart. `listSavedPaymentMethods` (`src/modules/payment/use-cases/list-saved-payment-methods.ts`) używa `authorized()` i pyta Stripe o metody płatności klienta typu `card` albo zwraca pustą listę, gdy użytkownik nie ma klienta Stripe. Każda karta staje się `{ brand, expMonth, expYear, id, isExpired, last4 }`. `isExpired` pochodzi z `isCardExpired` (`payment.utils.ts`), które porównuje datę ważności z dzisiejszą datą we własnej strefie czasowej klienta: `timezone` użytkownika przez `resolveTimezoneCode`, które w razie braku przyjmuje `Europe/Warsaw`.
+### Na stronie konta
 
-`/account/payment` wczytuje wstępnie `listSavedPaymentMethodsQuery()` i renderuje `SavedCardList`. Bez kart pokazuje ikonę `CreditCard` i `pages.account.payment.empty`; w przeciwnym razie po jednym wierszu na kartę z marką, czterema ostatnimi cyframi, datą ważności w formacie `MM/YYYY`, plakietką wygaśnięcia, gdy ustawione jest `isExpired`, i przyciskiem usuwania. Licznik w nagłówku to `methods.length`.
+**Dodaj kartę** wywołuje `createCardSetupIntent` (`src/modules/payment/use-cases/create-card-setup-intent.ts`), chronione przez `withRateLimit("create-card-setup-intent", RATE_LIMITS.SENSITIVE)` i `authorized()`. Funkcja wywołuje `ensureStripeCustomer` z adresem e-mail i imieniem z konta, więc klient, który jeszcze nigdy nie płacił, dostaje tu klienta Stripe, a następnie otwiera SetupIntent:
+
+```ts
+const intent = await stripe.setupIntents.create({
+  customer,
+  metadata: { userId },
+  payment_method_types: ["card"],
+  usage: "on_session",
+})
+```
+
+Dostępne są tylko karty, bo BLIK-a i Przelewy24 nie da się zapisać, a `on_session` odpowiada temu, jak zapisana karta jest używana ponownie: w kasie, przy obecnym kliencie. Funkcja zwraca wyłącznie `{ clientSecret }` i rzuca `ERROR_CODES.INTERNAL_ERROR`, gdy Stripe nie zwróci sekretu klienta.
+
+Zanim funkcja wywoła Stripe, rzuca `ERROR_CODES.FORBIDDEN` dla sesji anonimowej (`isAnonymous` z wtyczki `anonymous()` Better Auth) i dla konta z niepotwierdzonym adresem e-mail. `authorized()` sprawdza tylko, czy sesja istnieje, a sesję anonimową można uzyskać jednym żądaniem do `/api/auth/sign-in/anonymous`. Bez tej kontroli każdy mógłby otworzyć SetupIntent i raz za razem sprawdzać kradzione karty, potwierdzając je w przeglądarce sekretem klienta, czego limit żądań tej funkcji na adres IP w ogóle nie widzi.
+
+Strona przechowuje wynik `createCardSetupIntentMutation`, dopóki jest zamontowana. Zamknięcie formularza i ponowne jego otwarcie korzysta z tego samego SetupIntent, zamiast zużywać kolejne żądanie z limitu; nowy powstaje dopiero po zapisaniu karty albo gdy formularz zrezygnuje z dotychczasowego SetupIntent. Gdy otwarcie formularza się nie powiedzie, na przykład po przekroczeniu limitu, strona pokazuje `pages.account.payment.formUnavailable`, bo klient nie wpisał jeszcze żadnej karty.
+
+Przycisk **Dodaj kartę** pozostaje osiągalny z klawiatury także wtedy, gdy jest zablokowany: ma `focusableWhenDisabled`, więc na czas tworzenia SetupIntent i przez cały czas otwarcia formularza dostaje `aria-disabled` zamiast `disabled`, a fokus klawiatury i czytnika ekranu nie spada na stronę. Gdy Payment Element jest gotowy, jego `onReady` przenosi fokus do pól karty. Anulowanie, zapisanie karty i rezygnacja z SetupIntent przywracają fokus na **Dodaj kartę**.
+
+`account.payment.tsx` renderuje `LazyAddCardForm` z `add-card-form-loader.client.ts` wewnątrz `ClientOnly`. Loader opakowuje `AddCardForm` (`add-card-form.client.tsx`) w `lazy()`, więc jego fragment i Stripe.js są pobierane dopiero po pierwszym kliknięciu, a `ClientOnly` trzyma moduł przeznaczony tylko dla przeglądarki poza pakietem serwera, czego wymaga ochrona importów w buildzie. `AddCardForm` wczytuje Stripe.js przez `useQuery(stripeJsQuery(locale))` ze `stripe.client.ts`, które opakowuje `getStripe(locale)` z `retry: false`. Podczas pobierania skryptu pokazuje zaślepkę, a gdy pobranie się nie uda, na przykład przez blokadę reklam, `AddCardUnavailable` z `pages.account.payment.formUnavailable` i przyciskiem anulowania. `getStripe` zapomina nieudane pobranie, więc ponowne otwarcie formularza pobiera skrypt od nowa. Formularz korzysta z tej samej konfiguracji co kasa: `getStripeAppearance(theme)` i `STRIPE_FONTS` ze `stripe.appearance.ts`. Przekazuje też `locale: toStripeLocale(locale)` do `Elements`, bo `getStripe` zachowuje język, z którym Stripe.js wczytał się za pierwszym razem. `Elements` ma klucz równy sekretowi klienta, którego nie można zmienić po zamontowaniu.
+
+`AddCardFields` (`add-card-fields.client.tsx`) renderuje Payment Element bez Apple Pay, Google Pay i Link i potwierdza kartę wywołaniem:
+
+```ts
+stripe.confirmSetup({
+  confirmParams: { payment_method_data: { allow_redisplay: "always" } },
+  elements,
+  redirect: "if_required",
+})
+```
+
+Stripe Checkout proponuje tylko zapisane karty z `allow_redisplay` równym `"always"`, więc bez tego karta dodana tutaj byłaby widoczna w portfelu, ale nigdy w kasie. Przy samych kartach i `redirect: "if_required"` strona nigdy nie przekierowuje; weryfikacja 3D Secure otwiera się we własnym oknie Stripe. Formularz ignoruje wysłanie, dopóki Payment Element nie jest gotowy, i w trakcie zapisywania, bo Stripe wysyła otaczający formularz po naciśnięciu Enter w swoim iframe, a drugie `confirmSetup` na tym samym SetupIntent skończyłoby się błędem nawet wtedy, gdy pierwsze się powiodło.
+
+Błąd `card_error` lub `validation_error` jest pokazywany ze zlokalizowanym komunikatem Stripe, a gdy go brak, z `pages.account.payment.addError`; formularz zostaje wtedy otwarty na tym samym SetupIntent, który Stripe utrzymuje w stanie `requires_payment_method`. Każdy inny błąd, a także `confirmSetup`, które rzuci wyjątek, pokazuje `pages.account.payment.addError`, unieważnia `PAYMENT_METHOD_QUERY_KEYS.SAVED` na wypadek, gdyby karta jednak się zapisała, i wywołuje `onFailed`: strona zamyka formularz i następnym razem otwiera nowy SetupIntent, zamiast ponownie używać sekretu klienta, którego Stripe może już nie przyjąć.
+
+Po powodzeniu formularz wywołuje `removeDuplicateSavedCards` (`src/modules/payment/use-cases/remove-duplicate-saved-cards.ts`, chronione przez `withRateLimit("remove-duplicate-saved-cards", RATE_LIMITS.SENSITIVE)` i `authorized()`) z identyfikatorem nowej karty. Funkcja rzuca `ERROR_CODES.NOT_FOUND`, gdy użytkownik nie ma klienta Stripe, oraz `ERROR_CODES.FORBIDDEN`, chyba że karta należy do tego klienta, a następnie odłącza każdą inną zapisaną kartę o tym samym `card.fingerprint`. Dodanie karty, która była już zapisana w kasie albo tutaj, zastępuje więc starą kopię nową, razem z nową datą ważności, zamiast pokazywać tę samą kartę dwa razy w portfelu i w kasie. Niezależnie od wyniku tego wywołania formularz unieważnia potem `PAYMENT_METHOD_QUERY_KEYS.SAVED`, pokazuje `pages.account.payment.added` i się zamyka, bo karta i tak została zapisana. Gdy Payment Element zgłosi błąd wczytywania, jak przy fikcyjnym kluczu publicznym używanym w środowisku deweloperskim i w testach end-to-end, formularz pokazuje `pages.account.payment.formUnavailable` i pozostawia przycisk zapisu wyłączony.
+
+### Lista i usuwanie
+
+`listSavedPaymentMethods` (`src/modules/payment/use-cases/list-saved-payment-methods.ts`) używa `authorized()` i pyta Stripe o metody płatności klienta typu `card` z `limit: SAVED_CARDS_PAGE_LIMIT` (100, z `payment.constants.ts`), bo domyślna strona Stripe mieści dziesięć, albo zwraca pustą listę, gdy użytkownik nie ma klienta Stripe. Każda karta staje się `{ brand, expMonth, expYear, id, isExpired, last4 }`. `isExpired` pochodzi z `isCardExpired` (`payment.utils.ts`), które porównuje datę ważności z dzisiejszą datą we własnej strefie czasowej klienta: `timezone` użytkownika przez `resolveTimezoneCode`, które w razie braku przyjmuje `Europe/Warsaw`.
+
+`/account/payment` wczytuje wstępnie `listSavedPaymentMethodsQuery()` i renderuje `SavedCardList`. Bez kart pokazuje ikonę `CreditCard` i `pages.account.payment.empty`; w przeciwnym razie po jednym `SavedCardRow` na kartę z marką, czterema ostatnimi cyframi, datą ważności w formacie `MM/YYYY`, plakietką wygaśnięcia, gdy ustawione jest `isExpired`, i przyciskiem usuwania. Licznik w nagłówku to `methods.length`.
 
 Usunięcie karty wywołuje `deleteSavedPaymentMethod` (`delete-saved-payment-method.ts`), chronione przez `withRateLimit("delete-saved-payment-method", RATE_LIMITS.SENSITIVE)` i `authorized()`. Rzuca ono `ERROR_CODES.NOT_FOUND`, gdy użytkownik nie ma klienta Stripe, oraz `ERROR_CODES.FORBIDDEN`, chyba że metoda płatności należy do tego klienta, i dopiero wtedy odłącza ją w Stripe. Po powodzeniu lista unieważnia `PAYMENT_METHOD_QUERY_KEYS.SAVED`.
+
+Nie ma karty domyślnej. Nic nie odczytuje ani nie zapisuje `invoice_settings.default_payment_method`, a kasa wyświetla zapisane karty w kolejności Stripe.
 
 ## Lista życzeń
 
