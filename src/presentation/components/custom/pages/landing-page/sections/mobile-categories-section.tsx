@@ -36,7 +36,7 @@ const MobileCategoryPanel = ({
           className="absolute inset-0 size-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform group-hover:scale-[1.03]"
           height={1000}
           priority={index === 0}
-          sizes="100vw"
+          sizes="(min-width: 1024px) 33vw, 100vw"
           src={panel.image}
           width={1250}
         />
@@ -62,14 +62,14 @@ export const MobileCategoriesSection = (): JSX.Element => {
   const { data: categories } = useSuspenseQuery(getCategoriesQuery())
 
   return (
-    <section className="mx-auto max-w-400 space-y-8 px-6 pb-8 lg:hidden lg:px-12">
+    <section className="mx-auto max-w-400 space-y-8 px-6 pb-8 lg:hidden lg:px-12 motion-reduce:lg:block">
       <div className="reveal">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
         <h2 className="mt-3 font-serif text-4xl leading-tight md:text-5xl">{t("title")}</h2>
         <p className="mt-2 max-w-2xl text-sm/relaxed text-muted-foreground">{t("description")}</p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
         {categories.map((category, index) => (
           <MobileCategoryPanel key={category.id} category={category} index={index} />
         ))}

@@ -73,7 +73,15 @@ Kluczem zapytania jest `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`, jeden z kluczy
 
 ## Kategorie
 
-`MobileCategoriesSection` i `DesktopCategoriesSection` czytają `getCategoriesQuery()` przez `useSuspenseQuery`. Wariant desktopowy przypina sekcję i przewija panele kategorii poziomo; pomocniki do tego leżą w `landing-category-horizontal-scroll.ts`, a wspólne rozwiązywanie treści w `landing-category-panel.utils.ts` (`resolveLandingCategoryPanelCopy`).
+`MobileCategoriesSection` i `DesktopCategoriesSection` czytają `getCategoriesQuery()` przez `useSuspenseQuery`, a treść paneli rozwiązują wspólnie przez `landing-category-panel.utils.ts` (`resolveLandingCategoryPanelCopy`).
+
+Wariant desktopowy przypina sekcję i przewija panele kategorii poziomo. Jedno `gsap.to` na ścieżce paneli, tworzone w `gsap.matchMedia()` dla `(min-width: 1024px) and (prefers-reduced-motion: no-preference)`, ma `ScrollTrigger` o identyfikatorze `landing-categories` z `pin: true`, `scrub: true` i `invalidateOnRefresh: true`. Przypięcie trwa jedną wysokość okna na każdy panel po pierwszym, a ścieżka podąża bezpośrednio za pozycją przewinięcia. Pomocniki w `landing-category-horizontal-scroll.ts` tylko mierzą: `resolveHorizontalScrollEnd` podaje długość przypięcia, `resolveHorizontalTrackOffset` to, jak daleko przesuwa się ścieżka, a `resolveHorizontalPanelScrollTop` pozycję przewinięcia, przy której dany panel dochodzi do lewej krawędzi.
+
+Nic w tej sekcji nie odświeża `ScrollTrigger`. Każde zdjęcie panelu jest pozycjonowane absolutnie (`absolute inset-0`) w ramce o stałych proporcjach, więc leniwie ładowane zdjęcie, które dociera, gdy jego panel wjeżdża na ekran, nie zmienia układu, a wymuszone odświeżenie w trakcie przewijania zatrzymuje stronę w miejscu. ScrollTrigger sam mierzy wszystko na nowo po zmianie rozmiaru okna i przy zdarzeniu `load`, a `useGSAP` z `revertOnUpdate` buduje przewijanie od nowa, gdy zmienią się kategorie.
+
+Sekcja ma `overflow-clip`, a nie `overflow-hidden`, więc nie jest kontenerem przewijania i przeniesienie do niej fokusu nie przesunie paneli w bok pod animacją. Gdy odnośnik **Odkryj** dostaje fokus z klawiatury (`:focus-visible`), obsługa `onFocus` sekcji odnajduje wyzwalacz przez `ScrollTrigger.getById("landing-categories")` i od razu przenosi Lenis na pozycję przewinięcia tego panelu przez `getLenisInstance()?.scrollTo(top, { immediate: true })`. Dzięki temu Tab i Shift+Tab wsuwają kolejne kategorie na ekran, także wtedy, gdy Tab pada po kliknięciu zdjęcia panelu. Obsługa `onBlur` sekcji zapamiętuje odnośnik, który traci fokus, choć fokus nie trafia nigdzie indziej. Tak Chromium zgłasza przejście do innego okna albo karty. Gdy fokus wraca do tego samego odnośnika, strona zostaje tam, dokąd ją przewinięto. Kliknięcie odnośnika nie przesuwa strony.
+
+Osoby, które wybrały ograniczenie ruchu, nie dostają przewijania poziomego. Na szerokim ekranie sekcja desktopowa ma `motion-reduce:lg:hidden`, a sekcja mobilna `motion-reduce:lg:block`. Od `lg` jej karty układają się po trzy w rzędzie (`lg:grid-cols-3`), a zdjęcia są pobierane w rozmiarze jednej trzeciej szerokości ekranu (`sizes="(min-width: 1024px) 33vw, 100vw"`).
 
 ## Statyczne zasoby marketingowe
 

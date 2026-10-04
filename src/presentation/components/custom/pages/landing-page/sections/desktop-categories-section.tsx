@@ -1,9 +1,10 @@
-import { type JSX, useMemo, useRef } from "react"
+import { type FocusEvent, type JSX, useMemo, useRef } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+import { ScrollTrigger, gsap, useGSAP } from "~/src/integrations/gsap/gsap.config"
+import { getLenisInstance } from "~/src/integrations/lenis/lenis.instance"
 
 import { getCategoriesQuery } from "~/src/modules/product-category/use-cases/get-categories"
 
@@ -12,13 +13,10 @@ import { AspectRatio } from "~/src/presentation/components/shadcn/aspect-ratio"
 import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import {
-  HORIZONTAL_SCROLL_SCRUB,
   canRunHorizontalCategoryScroll,
-  observeHorizontalCategoryScrollLayout,
-  refreshHorizontalCategoryScroll,
+  resolveHorizontalPanelScrollTop,
   resolveHorizontalScrollEnd,
   resolveHorizontalTrackOffset,
-  scheduleHorizontalCategoryScrollRefresh,
 } from "~/src/presentation/components/custom/pages/landing-page/sections/landing-category-horizontal-scroll"
 import {
   type LandingCategoryPanel,
@@ -75,6 +73,7 @@ export const DesktopCategoriesSection = (): JSX.Element => {
   const { data: categories } = useSuspenseQuery(getCategoriesQuery())
   const sectionRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
+  const focusDroppedFromRef = useRef<EventTarget | undefined>(undefined)
   const panelCount = categories.length
   const categoryScrollKey = useMemo(() => categories.map((category) => category.id).join(":"), [categories])
   useGSAP(
@@ -85,42 +84,51 @@ export const DesktopCategoriesSection = (): JSX.Element => {
         return
       }
       gsap.matchMedia().add("(min-width: 1024px) and (prefers-reduced-motion: no-preference)", () => {
-        const animation = gsap.to(track, {
+        gsap.to(track, {
           ease: "none",
           scrollTrigger: {
-            anticipatePin: 1,
             end: () => resolveHorizontalScrollEnd(track),
+            id: CATEGORY_SCROLL_TRIGGER_ID,
             invalidateOnRefresh: true,
             pin: true,
-            scrub: HORIZONTAL_SCROLL_SCRUB,
+            scrub: true,
             start: "top top",
             trigger: section,
           },
           x: () => resolveHorizontalTrackOffset(track, section),
         })
-
-        const { scrollTrigger } = animation
-        if (scrollTrigger === undefined) {
-          animation.kill()
-
-          return () => {}
-        }
-
-        const clearLayoutObserver = observeHorizontalCategoryScrollLayout(track, refreshHorizontalCategoryScroll)
-        scheduleHorizontalCategoryScrollRefresh()
-
-        return () => {
-          clearLayoutObserver()
-          scrollTrigger.kill()
-          animation.kill()
-        }
       })
     },
-    { dependencies: [categoryScrollKey, panelCount], scope: sectionRef },
+    { dependencies: [categoryScrollKey, panelCount], revertOnUpdate: true, scope: sectionRef },
   )
+  const rememberWhereFocusDropped = (event: FocusEvent<HTMLElement>) => {
+    focusDroppedFromRef.current = event.relatedTarget === null ? event.target : undefined
+  }
+  const slideFocusedPanelIntoView = (event: FocusEvent<HTMLElement>) => {
+    const trigger = ScrollTrigger.getById(CATEGORY_SCROLL_TRIGGER_ID)
+    const panel = event.target.closest("article")
+    if (
+      trigger === undefined ||
+      panel === null ||
+      trackRef.current === null ||
+      event.target === focusDroppedFromRef.current ||
+      !event.target.matches(":focus-visible")
+    ) {
+      return
+    }
+
+    const trackOverflow = -resolveHorizontalTrackOffset(trackRef.current, event.currentTarget)
+    getLenisInstance()?.scrollTo(resolveHorizontalPanelScrollTop(trigger, panel.offsetLeft, trackOverflow), { immediate: true })
+  }
 
   return (
-    <section ref={sectionRef} id="kolekcje" className="horizontal-section relative hidden overflow-hidden bg-background lg:block">
+    <section
+      ref={sectionRef}
+      id="kolekcje"
+      className="horizontal-section relative hidden overflow-clip bg-background lg:block motion-reduce:lg:hidden"
+      onBlur={rememberWhereFocusDropped}
+      onFocus={slideFocusedPanelIntoView}
+    >
       <div ref={trackRef} className="horizontal-track flex w-max will-change-transform">
         <article className="flex h-screen w-screen shrink-0 items-center px-12">
           <div className="mx-auto max-w-400 space-y-4">
@@ -139,3 +147,5 @@ export const DesktopCategoriesSection = (): JSX.Element => {
 }
 
 const ASPECT_RATIO_PORTRAIT = 0.8
+
+const CATEGORY_SCROLL_TRIGGER_ID = "landing-categories"

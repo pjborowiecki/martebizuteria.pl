@@ -13,15 +13,8 @@ const { ticker } = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/integrations/gsap/gsap.config", () => ({
-  ScrollTrigger: {
-    addEventListener: vi.fn(),
-    refresh: vi.fn(),
-    removeEventListener: vi.fn(),
-    scrollerProxy: vi.fn(),
-    update: vi.fn(),
-  },
+  ScrollTrigger: { update: vi.fn() },
   gsap: {
-    delayedCall: vi.fn(),
     registerPlugin: vi.fn(),
     ticker,
   },

@@ -4,7 +4,7 @@ import { AccountPage, AdminOrderPage, AuthPage, CartPage, CheckoutPage, CouponsP
 
 const LOCAL_ORIGIN = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\//u
 const TRANSLATION_ERROR = /MISSING_MESSAGE|INVALID_MESSAGE|FORMATTING_ERROR|INVALID_KEY/u
-const TRANSPARENT_PNG = Buffer.from(
+export const TRANSPARENT_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
   "base64",
 )

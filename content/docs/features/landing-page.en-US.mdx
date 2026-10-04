@@ -73,7 +73,15 @@ The query key is `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`, which is one of the 
 
 ## Categories
 
-`MobileCategoriesSection` and `DesktopCategoriesSection` both read `getCategoriesQuery()` with `useSuspenseQuery`. The desktop variant pins the section and scrolls the category panels horizontally; the helpers for that live in `landing-category-horizontal-scroll.ts` and the shared copy resolution in `landing-category-panel.utils.ts` (`resolveLandingCategoryPanelCopy`).
+`MobileCategoriesSection` and `DesktopCategoriesSection` both read `getCategoriesQuery()` with `useSuspenseQuery`, and share their copy resolution through `landing-category-panel.utils.ts` (`resolveLandingCategoryPanelCopy`).
+
+The desktop variant pins the section and scrolls the category panels horizontally. A single `gsap.to` on the track, created in `gsap.matchMedia()` for `(min-width: 1024px) and (prefers-reduced-motion: no-preference)`, carries a `ScrollTrigger` with the id `landing-categories`, `pin: true`, `scrub: true` and `invalidateOnRefresh: true`. The pin lasts one viewport height for every panel after the first, and the track follows the scroll position directly. The helpers in `landing-category-horizontal-scroll.ts` only measure: `resolveHorizontalScrollEnd` gives the length of the pin, `resolveHorizontalTrackOffset` how far the track travels, and `resolveHorizontalPanelScrollTop` the scroll position at which a given panel reaches the left edge.
+
+Nothing in the section refreshes `ScrollTrigger`. Each panel image is positioned `absolute inset-0` inside a fixed-ratio box, so a lazy image that arrives as its panel slides in changes no layout, while a forced refresh in the middle of a scroll stops the page dead. ScrollTrigger re-measures by itself after a resize and on the window `load` event, and `useGSAP` with `revertOnUpdate` rebuilds the scroll when the categories change.
+
+The section is `overflow-clip`, not `overflow-hidden`, so it is not a scroll container, and moving focus into it cannot shift the panels sideways under the animation. When a **Discover** link receives keyboard focus (`:focus-visible`), the section's `onFocus` handler finds the trigger with `ScrollTrigger.getById("landing-categories")` and moves Lenis straight to that panel's scroll position with `getLenisInstance()?.scrollTo(top, { immediate: true })`. Tab and Shift+Tab therefore slide each category into view, including a Tab after a click on a panel's picture. The section's `onBlur` remembers a link that loses focus while focus goes nowhere else, which is how Chromium reports a switch to another window or tab. When focus comes back to that same link, the page stays where the shopper scrolled it. Clicking the link does not move the page.
+
+Shoppers who ask for reduced motion get no horizontal scroll. On wide screens the desktop section is `motion-reduce:lg:hidden` and the mobile section is `motion-reduce:lg:block`. From `lg` its cards sit three to a row (`lg:grid-cols-3`), and their pictures are requested at a third of the screen width (`sizes="(min-width: 1024px) 33vw, 100vw"`).
 
 ## Static marketing assets
 
