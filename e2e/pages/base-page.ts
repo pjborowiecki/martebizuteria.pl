@@ -14,6 +14,11 @@ export class BasePage {
     await this.waitForAppReady()
   }
 
+  async reload(): Promise<void> {
+    await this.page.reload({ waitUntil: "domcontentloaded" })
+    await this.waitForAppReady()
+  }
+
   async waitForAppReady(): Promise<void> {
     await this.page.waitForFunction(
       () => {

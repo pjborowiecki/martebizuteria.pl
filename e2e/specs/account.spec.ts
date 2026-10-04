@@ -40,12 +40,13 @@ test.describe("customer account", () => {
     await page.getByRole("button", { name: "Add Card" }).click()
     const setupIntentId = await waitForCardSetupIntent(request, customer.email)
     await confirmCardSetupIntent(request, setupIntentId)
-    await page.reload()
+    await accountPage.reload()
 
     await expect(page.getByRole("heading", { name: "Saved Cards (1)" })).toBeVisible()
     await expect(page.getByText(/visa •••• 4242/iu)).toBeVisible()
 
     await page.getByRole("button", { name: "Remove card" }).click()
+    await expect(accountPage.notification("Card removed")).toBeVisible()
     await expect(page.getByRole("heading", { name: "Saved Cards (0)" })).toBeVisible()
   })
 })
