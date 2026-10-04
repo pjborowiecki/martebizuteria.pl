@@ -45,22 +45,16 @@ Both catalog queries are fetched with `staleTime: "static"`, so the server rende
 
 ## New arrivals
 
-`getNewArrivals` is a `GET` server function with the `withRequest` middleware only — it is public. It resolves a single collection by handle and lists its published, in-stock products:
+`getNewArrivals` is a `GET` server function with the `withRequest` middleware only — it is public. It lists the published, in-stock products of a single collection, named by its handle:
 
 ```ts
-const collection = await getStorefrontCollectionByHandleQuery.execute({
-  handle: LANDING_NEW_ARRIVALS_COLLECTION_HANDLE,
-})
-
-if (collection === undefined) {
-  return []
-}
-
-const { items } = await getPublishedProductsByCollectionId(collection.id, {
+getPublishedProductsByCollectionHandle(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, {
   limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
   offset: 0,
 })
 ```
+
+`getPublishedProductsByCollectionHandle` in `src/modules/product/product.accessors.ts` reads the whole section in one D1 statement. Its subquery selects the members of the collection with that handle, matched by `storefrontCollectionByHandleWhere` from `src/modules/product-collection/product-collection.server.ts`, the same rule `/collections/$handle` uses, so only an active collection counts. The outer query keeps the published, in-stock members, orders them by `rank` and then newest first, and reads their variants.
 
 Both constants live in `src/modules/product/product.constants.ts`:
 

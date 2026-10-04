@@ -71,25 +71,24 @@ Każdy use case w `src/modules/customer-account/use-cases/` używa `authorized()
 
 ## Podsumowanie
 
-`getCustomerOverview` najpierw odczytuje identyfikatory i numery ostatnich zamówień klienta, potem rozsyła równolegle sześć zapytań, następnie odczytuje pozycje ostatnich zamówień, a na końcu buduje rekomendacje:
+`getCustomerOverview` najpierw odczytuje identyfikatory i numery ostatnich zamówień klienta, potem rozsyła równolegle pięć zapytań, następnie odczytuje pozycje ostatnich zamówień, a na końcu buduje rekomendacje:
 
-| Źródło                                                     | Zasila                                             |
-| ---------------------------------------------------------- | -------------------------------------------------- |
-| `getCustomerOrderNumbers(userId)`                          | identyfikatory i numery ostatnich zamówień         |
-| `getCustomerOrderRows(userId, { limit: 3 })`               | listę ostatnich zamówień                           |
-| `getCustomerSpendStats(userId)`                            | `totalOrders`, `totalSpentMinorUnits`              |
-| `getCustomerActivityAuditRows(userId, orderIds)`           | strumień aktywności                                |
-| `getUserById(userId)`                                      | `memberSinceYear` z `createdAt`                    |
-| `countWishlistItems(userId)`                               | `wishlistCount`                                    |
-| kolekcja `nowosci`                                         | zapasowe rekomendacje z nowości                    |
-| `getOrderItemsForOrders(recentOrderIds)`                   | pozycje pokazywane przy każdym ostatnim zamówieniu |
-| `buildCustomerRecommendations(userId, collection, locale)` | `recommendations`, `recommendationsSource`         |
+| Źródło                                           | Zasila                                             |
+| ------------------------------------------------ | -------------------------------------------------- |
+| `getCustomerOrderNumbers(userId)`                | identyfikatory i numery ostatnich zamówień         |
+| `getCustomerOrderRows(userId, { limit: 3 })`     | listę ostatnich zamówień                           |
+| `getCustomerSpendStats(userId)`                  | `totalOrders`, `totalSpentMinorUnits`              |
+| `getCustomerActivityAuditRows(userId, orderIds)` | strumień aktywności                                |
+| `getUserById(userId)`                            | `memberSinceYear` z `createdAt`                    |
+| `countWishlistItems(userId)`                     | `wishlistCount`                                    |
+| `getOrderItemsForOrders(recentOrderIds)`         | pozycje pokazywane przy każdym ostatnim zamówieniu |
+| `buildCustomerRecommendations(userId, locale)`   | `recommendations`, `recommendationsSource`         |
 
 `getCustomerSpendStats` liczy i sumuje wyłącznie zamówienia o statusie `processing` lub `completed`. Limity leżą w `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_ORDERS_LIMIT = 50` dla numerów zamówień, `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`, `CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2`.
 
 Dwie rzeczy warto wiedzieć:
 
-- **Rekomendacje wynikają z zamówień klienta.** `buildCustomerRecommendations` bierze dwie kategorie, które najczęściej występują w zamówieniach klienta o statusie `processing` i `completed`, odczytuje z nich opublikowane produkty i odrzuca każdy produkt, który klient już zamówił. Jeśli coś zostanie, pierwsze trzy wracają z `recommendationsSource: "orders"`. W przeciwnym razie sięga po pierwsze trzy opublikowane produkty kolekcji `nowosci`, tej samej, z której korzystają nowości na stronie głównej (`LANDING_NEW_ARRIVALS_COLLECTION_HANDLE`), z `recommendationsSource: "newArrivals"`, albo zwraca pustą listę, gdy ta kolekcja nie istnieje. Strona dobiera nagłówek i opis siatki do tego źródła.
+- **Rekomendacje wynikają z zamówień klienta.** `buildCustomerRecommendations` bierze dwie kategorie, które najczęściej występują w zamówieniach klienta o statusie `processing` i `completed`, odczytuje z nich przez `getPublishedProductsByCategoryIds` opublikowane, dostępne produkty i odrzuca każdy produkt, który klient już zamówił. Jeśli coś zostanie, pierwsze trzy wracają z `recommendationsSource: "orders"`. W przeciwnym razie sięga po pierwsze trzy opublikowane, dostępne produkty kolekcji `nowosci` z `recommendationsSource: "newArrivals"`. Korzysta przy tym z tego samego odczytu co nowości na stronie głównej, `getPublishedProductsByCollectionHandle(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, …)`, więc kieruje się tymi samymi zasadami co strona główna i zwraca pustą listę, dopóki żadna aktywna kolekcja nie ma tego handle. Każdy z tych dwóch odczytów to jedna instrukcja D1: podzapytanie wybiera produkty należące do tych kategorii albo do tej kolekcji, a zapytanie zewnętrzne odczytuje spośród nich opublikowane, dostępne produkty razem z wariantami. Strona dobiera nagłówek i opis siatki do tego źródła.
 - **`wishlistCount` jest prawdziwe.** `countWishlistItems` liczy wiersze `wishlist_item` klienta, te same, które wyświetla `/account/wishlist`, więc produkt, który nie jest już opublikowany, nadal się liczy.
 
 Strumień aktywności jest budowany z dziennika audytu: `getCustomerActivityAuditRows` czyta wiersze `audit_log`, których `resourceId` to użytkownik albo jedno z zamówień z `getCustomerOrderNumbers`, ograniczone do `auth.login`, `auth.login_failed`, `auth.logout`, `customer.cart_item_added`, `order.placed`, `order.shipped` i `order.released`. `mapAuditLogToActivityItem` zamienia każdy wiersz w `{ actionKey, params, createdAt }`, wstawiając numer zamówienia do `params` przy akcjach zamówień i odrzucając każdy wiersz, którego nie potrafi zmapować. Strona mapuje `actionKey` na ikonę przez lokalną mapę `ACTIVITY_ICONS` i formatuje znacznik czasu przez `formatRelativeFromNow`.

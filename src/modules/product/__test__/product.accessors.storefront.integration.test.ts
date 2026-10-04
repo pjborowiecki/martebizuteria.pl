@@ -1,28 +1,26 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { database, sqlite } = await vi.hoisted(async () => {
+import { type TestD1RoundTrip } from "~/src/platform/testing/mocks/d1"
+
+const { sqlite, trips } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
-  return { database: { dropsCountRows: false }, sqlite: new DatabaseSync(":memory:") }
+  return { sqlite: new DatabaseSync(":memory:"), trips: [] as TestD1RoundTrip[] }
 })
 
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
   const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
-  const client = new Proxy(createTestD1Database(sqlite), {
-    get: (target, property, receiver) => {
-      if (property === "prepare") {
-        return (query: string) =>
-          target.prepare(database.dropsCountRows && query.startsWith("select count(") ? `select * from (${query}) where 0` : query)
-      }
-      const value: unknown = Reflect.get(target, property, receiver)
 
-      return value
-    },
-  })
-
-  return { db: drizzle(client, { schema }) }
+  return {
+    db: drizzle(
+      createTestD1Database(sqlite, undefined, (trip) => {
+        trips.push(trip)
+      }),
+      { schema },
+    ),
+  }
 })
 
 const { LIST_PAGE_SIZE_MAX } = await import("~/src/modules/_core/utils/pagination")
@@ -45,8 +43,7 @@ const {
   getProductsWithInventoryByHandles,
   getPublishedProductByHandleQuery,
   getPublishedProductsByCategoryIds,
-  getPublishedProductsByCollectionId,
-  getPublishedProductsInStock,
+  getPublishedProductsByCollectionHandle,
   getPublishedRelatedProducts,
 } = await import("~/src/modules/product/product.accessors")
 
@@ -73,6 +70,7 @@ const NOW = 1_770_000_000_000
 const titlesJson = (title: string): string => JSON.stringify({ "en-US": title, "pl-PL": title })
 
 const insertProduct = (input: {
+  createdAt?: number
   handle: string
   id: string
   rank?: number
@@ -84,7 +82,7 @@ const insertProduct = (input: {
       `insert into product (id, handle, rank, status, titles, created_at, updated_at)
        values (?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(input.id, input.handle, input.rank ?? 0, input.status ?? "published", titlesJson(input.title), NOW, NOW)
+    .run(input.id, input.handle, input.rank ?? 0, input.status ?? "published", titlesJson(input.title), input.createdAt ?? NOW, NOW)
 }
 
 const insertVariant = (input: { id: string; price: number; productId: string; stock: number | null }): void => {
@@ -113,13 +111,13 @@ const insertCategory = (id: string, handle: string): void => {
     .run(id, handle, titlesJson(handle), NOW, NOW)
 }
 
-const insertCollection = (id: string, handle: string): void => {
+const insertCollection = (id: string, handle: string, status: "active" | "draft" = "active"): void => {
   sqlite
     .prepare(
       `insert into product_collection (id, handle, titles, status, rank, created_at, updated_at)
-       values (?, ?, ?, 'active', 0, ?, ?)`,
+       values (?, ?, ?, ?, 0, ?, ?)`,
     )
-    .run(id, handle, titlesJson(handle), NOW, NOW)
+    .run(id, handle, titlesJson(handle), status, NOW, NOW)
 }
 
 const linkCategory = (categoryId: string, productId: string): void => {
@@ -164,31 +162,13 @@ const seed = (): void => {
 }
 
 beforeEach(() => {
-  database.dropsCountRows = false
   createTables(sqlite, TABLES)
   seed()
+  trips.splice(0)
 })
 
 afterAll(() => {
   sqlite.close()
-})
-
-describe("getPublishedProductsInStock", () => {
-  it("lists published products that still have stock, by rank", async () => {
-    await expect(getPublishedProductsInStock().then(idsOf)).resolves.toStrictEqual(["p1", "p2"])
-  })
-
-  it("drops a product once its stock reaches zero", async () => {
-    sqlite.prepare("update inventory set quantity_available = 0 where variant_id = 'v1'").run()
-
-    await expect(getPublishedProductsInStock().then(idsOf)).resolves.toStrictEqual(["p2"])
-  })
-
-  it("carries only the storefront variant columns", async () => {
-    const [first] = await getPublishedProductsInStock()
-
-    expect(first?.variants[0]).toStrictEqual({ id: "v1", price: 9900, productId: "p1", title: "Default" })
-  })
 })
 
 describe("getProductsWithInventoryByHandles", () => {
@@ -308,39 +288,40 @@ describe("getPublishedProductsByCategoryIds", () => {
     linkCategory("cat-1", "p4")
   })
 
-  it("skips the database entirely for an empty category list", async () => {
-    await expect(getPublishedProductsByCategoryIds([], PAGE)).resolves.toStrictEqual({ items: [], total: 0 })
+  it("returns nothing for an empty category list", async () => {
+    await expect(getPublishedProductsByCategoryIds([], PAGE)).resolves.toStrictEqual([])
   })
 
   it("returns only published in-stock products of the given categories", async () => {
-    const page = await getPublishedProductsByCategoryIds(["cat-1"], PAGE)
-
-    expect(idsOf(page.items)).toStrictEqual(["p1"])
-    expect(page.total).toBe(1)
+    await expect(getPublishedProductsByCategoryIds(["cat-1"], PAGE).then(idsOf)).resolves.toStrictEqual(["p1"])
   })
 
-  it("counts a product once even when several requested categories hold it", async () => {
+  it("reads the products in one statement without counting them", async () => {
+    await getPublishedProductsByCategoryIds(["cat-1", "cat-2"], PAGE)
+
+    expect(trips).toStrictEqual([{ kind: "statement", sql: [expect.not.stringContaining("count(")] }])
+  })
+
+  it("lists a product once even when several requested categories hold it", async () => {
     linkCategory("cat-2", "p1")
 
-    const page = await getPublishedProductsByCategoryIds(["cat-1", "cat-2"], PAGE)
-
-    expect(idsOf(page.items)).toStrictEqual(["p1", "p2"])
-    expect(page.total).toBe(2)
+    await expect(getPublishedProductsByCategoryIds(["cat-1", "cat-2"], PAGE).then(idsOf)).resolves.toStrictEqual(["p1", "p2"])
   })
 
-  it("reports the full total while returning only the requested window", async () => {
+  it("returns only the requested window", async () => {
     linkCategory("cat-1", "p2")
 
-    const page = await getPublishedProductsByCategoryIds(["cat-1"], { limit: 1, offset: 1 })
-
-    expect(idsOf(page.items)).toStrictEqual(["p2"])
-    expect(page.total).toBe(2)
+    await expect(getPublishedProductsByCategoryIds(["cat-1"], { limit: 1, offset: 1 }).then(idsOf)).resolves.toStrictEqual(["p2"])
   })
 
-  it("returns an empty page past the end while keeping the total", async () => {
-    const page = await getPublishedProductsByCategoryIds(["cat-1"], { limit: 5, offset: 5 })
+  it("returns nothing past the end", async () => {
+    await expect(getPublishedProductsByCategoryIds(["cat-1"], { limit: 5, offset: 5 })).resolves.toStrictEqual([])
+  })
 
-    expect(page).toStrictEqual({ items: [], total: 1 })
+  it("carries only the storefront variant columns", async () => {
+    const [first] = await getPublishedProductsByCategoryIds(["cat-1"], PAGE)
+
+    expect(first?.variants).toStrictEqual([{ id: "v1", price: 9900, productId: "p1", title: "Default" }])
   })
 
   it("returns a full page of products from more categories than D1's SQL parameter limit, by rank", async () => {
@@ -350,32 +331,67 @@ describe("getPublishedProductsByCategoryIds", () => {
       linkCategory(`cat-${id}`, id)
     }
 
-    const page = await getPublishedProductsByCategoryIds(
+    const items = await getPublishedProductsByCategoryIds(
       BULK_PRODUCT_IDS.map((id) => `cat-${id}`),
       { limit: LIST_PAGE_SIZE_MAX, offset: 0 },
     )
 
-    expect(idsOf(page.items)).toStrictEqual(BULK_PRODUCT_IDS)
-    expect(page.total).toBe(LIST_PAGE_SIZE_MAX)
+    expect(idsOf(items)).toStrictEqual(BULK_PRODUCT_IDS)
   })
 })
 
-describe("getPublishedProductsByCollectionId", () => {
-  it("returns the published in-stock products of a collection", async () => {
-    insertCollection("col-1", "sale")
-    linkCollection("col-1", "p1")
-    linkCollection("col-1", "p3")
+describe("getPublishedProductsByCollectionHandle", () => {
+  const LATER = NOW + 1000
 
-    const page = await getPublishedProductsByCollectionId("col-1", PAGE)
-
-    expect(idsOf(page.items)).toStrictEqual(["p1"])
-    expect(page.total).toBe(1)
+  beforeEach(() => {
+    insertCollection("col-new", "nowosci")
+    insertCollection("col-sale", "sale")
+    insertProduct({ createdAt: LATER, handle: "newer-band", id: "p5", rank: 1, title: "Newer band" })
+    insertProduct({ handle: "sale-only", id: "p6", rank: 0, title: "Sale only" })
+    insertVariant({ id: "v5", price: 3900, productId: "p5", stock: 1 })
+    insertVariant({ id: "v6", price: 1900, productId: "p6", stock: 5 })
+    for (const productId of ["p5", "p4", "p3", "p2", "p1"]) {
+      linkCollection("col-new", productId)
+    }
+    linkCollection("col-sale", "p2")
+    linkCollection("col-sale", "p6")
   })
 
-  it("returns an empty page for a collection with nothing sellable", async () => {
-    insertCollection("col-2", "empty")
+  it("lists the collection's published in-stock products by rank, newest first within a rank", async () => {
+    await expect(getPublishedProductsByCollectionHandle("nowosci", PAGE).then(idsOf)).resolves.toStrictEqual(["p1", "p5", "p2"])
+  })
 
-    await expect(getPublishedProductsByCollectionId("col-2", PAGE)).resolves.toStrictEqual({ items: [], total: 0 })
+  it("drops a product once its stock reaches zero", async () => {
+    sqlite.prepare("update inventory set quantity_available = 0 where variant_id = 'v1'").run()
+
+    await expect(getPublishedProductsByCollectionHandle("nowosci", PAGE).then(idsOf)).resolves.toStrictEqual(["p5", "p2"])
+  })
+
+  it("resolves the collection and reads its products in one statement without counting them", async () => {
+    await getPublishedProductsByCollectionHandle("nowosci", PAGE)
+
+    expect(trips).toStrictEqual([{ kind: "statement", sql: [expect.not.stringContaining("count(")] }])
+  })
+
+  it("returns only the requested window", async () => {
+    await expect(getPublishedProductsByCollectionHandle("nowosci", { limit: 1, offset: 1 }).then(idsOf)).resolves.toStrictEqual(["p5"])
+  })
+
+  it("carries only the storefront variant columns", async () => {
+    const [first] = await getPublishedProductsByCollectionHandle("sale", PAGE)
+
+    expect(first?.variants).toStrictEqual([{ id: "v6", price: 1900, productId: "p6", title: "Default" }])
+  })
+
+  it("shows nothing from a collection that is not active", async () => {
+    insertCollection("col-hidden", "hidden", "draft")
+    linkCollection("col-hidden", "p1")
+
+    await expect(getPublishedProductsByCollectionHandle("hidden", PAGE)).resolves.toStrictEqual([])
+  })
+
+  it("shows nothing for a handle no collection carries", async () => {
+    await expect(getPublishedProductsByCollectionHandle("missing", PAGE)).resolves.toStrictEqual([])
   })
 })
 
@@ -416,18 +432,5 @@ describe("getPublishedRelatedProducts", () => {
     linkCategory("cat-1", "p1")
 
     await expect(getPublishedRelatedProducts("cat-1", "p1")).resolves.toStrictEqual([])
-  })
-})
-
-describe("published product pages without a count row", () => {
-  it("still lists the collection page and reports a zero total", async () => {
-    insertCollection("col-1", "sale")
-    linkCollection("col-1", "p1")
-    database.dropsCountRows = true
-
-    const page = await getPublishedProductsByCollectionId("col-1", PAGE)
-
-    expect(idsOf(page.items)).toStrictEqual(["p1"])
-    expect(page.total).toBe(0)
   })
 })

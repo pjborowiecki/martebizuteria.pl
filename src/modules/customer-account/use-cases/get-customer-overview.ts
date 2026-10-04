@@ -3,7 +3,6 @@ import { createServerFn } from "@tanstack/react-start"
 import zod from "zod/v4"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
-import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
@@ -24,7 +23,7 @@ import {
 } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { mapAuditLogToActivityItem, mapCustomerOrderSummaryRow } from "~/src/modules/customer-account/customer-account.utils"
-import { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionId } from "~/src/modules/product/product.accessors"
+import { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle } from "~/src/modules/product/product.accessors"
 import { LANDING_NEW_ARRIVALS_COLLECTION_HANDLE } from "~/src/modules/product/product.constants"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"
 import { getUserById } from "~/src/modules/user/user.accessors"
@@ -40,7 +39,7 @@ const localeInputSchema = zod
   })
   .default({})
 
-type RecommendedProducts = Awaited<ReturnType<typeof getPublishedProductsByCollectionId>>["items"]
+type RecommendedProducts = Awaited<ReturnType<typeof getPublishedProductsByCollectionHandle>>
 
 const toRecommendations = (items: RecommendedProducts, locale: string): CustomerAccount["overview"]["recommendations"] =>
   items.map((productRow) => {
@@ -57,7 +56,6 @@ const toRecommendations = (items: RecommendedProducts, locale: string): Customer
 
 const buildCustomerRecommendations = async (
   userId: string,
-  collection: { readonly id: string } | undefined,
   locale: string,
 ): Promise<{ recommendations: CustomerAccount["overview"]["recommendations"]; source: "newArrivals" | "orders" }> => {
   const [categoryIds, purchasedProductIds] = await Promise.all([
@@ -66,7 +64,7 @@ const buildCustomerRecommendations = async (
   ])
 
   if (categoryIds.length > NO_CATEGORIES) {
-    const { items } = await getPublishedProductsByCategoryIds(categoryIds, {
+    const items = await getPublishedProductsByCategoryIds(categoryIds, {
       limit: CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT + purchasedProductIds.length,
       offset: 0,
     })
@@ -77,11 +75,7 @@ const buildCustomerRecommendations = async (
     }
   }
 
-  if (collection === undefined) {
-    return { recommendations: [], source: "newArrivals" }
-  }
-
-  const { items } = await getPublishedProductsByCollectionId(collection.id, {
+  const items = await getPublishedProductsByCollectionHandle(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, {
     limit: CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT,
     offset: 0,
   })
@@ -96,7 +90,7 @@ export const getCustomerOverview = createServerFn({ method: "GET" })
     const locale = data.locale ?? I18N.DEFAULT_LOCALE
     const userId = context.auth.user.id
     const orderNumberRows = await getCustomerOrderNumbers(userId)
-    const [orderRows, spendStats, auditRows, userRow, wishlistCount, collection] = await Promise.all([
+    const [orderRows, spendStats, auditRows, userRow, wishlistCount] = await Promise.all([
       getCustomerOrderRows(userId, { limit: CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT }),
       getCustomerSpendStats(userId),
       getCustomerActivityAuditRows(
@@ -105,9 +99,6 @@ export const getCustomerOverview = createServerFn({ method: "GET" })
       ),
       getUserById(userId),
       countWishlistItems(userId),
-      db.query.productCollection.findFirst({
-        where: (collections, { eq: eqOp }) => eqOp(collections.handle, LANDING_NEW_ARRIVALS_COLLECTION_HANDLE),
-      }),
     ])
 
     const orderIds = orderRows.map((row) => row.id)
@@ -126,7 +117,7 @@ export const getCustomerOverview = createServerFn({ method: "GET" })
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
       .slice(0, CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT)
 
-    const { recommendations, source } = await buildCustomerRecommendations(userId, collection, locale)
+    const { recommendations, source } = await buildCustomerRecommendations(userId, locale)
     const memberSince = userRow?.createdAt ?? context.auth.user.createdAt
 
     return {

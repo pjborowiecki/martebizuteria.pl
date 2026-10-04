@@ -8,13 +8,10 @@ import {
   PRODUCT_QUERY_STALE_MS,
 } from "~/src/modules/product/product.constants"
 
-const access = vi.hoisted(() => ({ collection: vi.fn(), publishedProducts: vi.fn() }))
+const access = vi.hoisted(() => ({ publishedProducts: vi.fn() }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
-vi.mock("~/src/modules/product-collection/product-collection.server", () => ({
-  getStorefrontCollectionByHandleQuery: { execute: access.collection },
-}))
-vi.mock("~/src/modules/product/product.accessors", () => ({ getPublishedProductsByCollectionId: access.publishedProducts }))
+vi.mock("~/src/modules/product/product.accessors", () => ({ getPublishedProductsByCollectionHandle: access.publishedProducts }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -32,40 +29,23 @@ const product = { handle: "silver-ring", id: "product-1", titles: { "en-US": "Si
 
 beforeEach(() => {
   vi.clearAllMocks()
-  access.collection.mockResolvedValue(undefined)
-  access.publishedProducts.mockResolvedValue({ items: [] })
+  access.publishedProducts.mockResolvedValue([])
 })
 
 describe("getNewArrivals", () => {
-  it("looks the collection up by the landing page handle", async () => {
+  it("reads the first page of published products of the landing page collection by its handle", async () => {
     await getNewArrivals()
 
-    expect(access.collection).toHaveBeenCalledWith({ handle: LANDING_NEW_ARRIVALS_COLLECTION_HANDLE })
-  })
-
-  it("shows nothing while the new arrivals collection is missing", async () => {
-    await expect(getNewArrivals()).resolves.toStrictEqual([])
-    expect(access.publishedProducts).not.toHaveBeenCalled()
-  })
-
-  it("reads the first page of published products of that collection", async () => {
-    access.collection.mockResolvedValue({ id: "collection-1" })
-    await getNewArrivals()
-
-    expect(access.publishedProducts).toHaveBeenCalledWith("collection-1", { limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT, offset: 0 })
+    expect(access.publishedProducts).toHaveBeenCalledExactlyOnceWith(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, {
+      limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
+      offset: 0,
+    })
   })
 
   it("returns the products the collection holds", async () => {
-    access.collection.mockResolvedValue({ id: "collection-1" })
-    access.publishedProducts.mockResolvedValue({ items: [product] })
+    access.publishedProducts.mockResolvedValue([product])
 
     await expect(getNewArrivals()).resolves.toStrictEqual([product])
-  })
-
-  it("returns an empty list for a collection with nothing published", async () => {
-    access.collection.mockResolvedValue({ id: "collection-1" })
-
-    await expect(getNewArrivals()).resolves.toStrictEqual([])
   })
 })
 
@@ -79,9 +59,11 @@ describe("getNewArrivalsQuery", () => {
   })
 })
 
-it("loads the new arrivals collection through its cache query", async () => {
-  access.collection.mockResolvedValue({ id: "collection-1" })
-  access.publishedProducts.mockResolvedValue({ items: [product] })
+it("loads the new arrivals through their cache query", async () => {
+  access.publishedProducts.mockResolvedValue([product])
   await expect(new QueryClient().query(getNewArrivalsQuery())).resolves.toStrictEqual([product])
-  expect(access.publishedProducts).toHaveBeenCalledWith("collection-1", { limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT, offset: 0 })
+  expect(access.publishedProducts).toHaveBeenCalledExactlyOnceWith(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, {
+    limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
+    offset: 0,
+  })
 })
