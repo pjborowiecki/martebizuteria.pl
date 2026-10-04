@@ -142,7 +142,10 @@ describe("SmoothScroll mounting", () => {
   it("starts Lenis without its own animation frame loop", () => {
     render(<SmoothScroll>content</SmoothScroll>)
 
-    expect(lenis().options).toStrictEqual({ autoRaf: false, lerp: 0.09, touchMultiplier: 2, wheelMultiplier: 1 })
+    const { virtualScroll, ...options } = lenis().options
+
+    expect(options).toStrictEqual({ autoRaf: false, lerp: 0.09, touchMultiplier: 2, wheelMultiplier: 1 })
+    expect(virtualScroll).toBeTypeOf("function")
   })
 
   it("publishes the instance so the rest of the app can drive it", () => {

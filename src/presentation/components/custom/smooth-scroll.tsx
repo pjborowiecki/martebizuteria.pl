@@ -43,6 +43,8 @@ const setupLenisScrollTriggerProxy = (lenis: Lenis): (() => void) => {
   }
 }
 
+const isPageScrollLocked = (): boolean => [document.documentElement, document.body].some((element) => element.style.overflowY === "hidden")
+
 const stopInertiaOnPress = (lenis: Lenis): (() => void) => {
   const handlePointerDown = () => {
     const isGlidingTowardsWheelTarget = lenis.isScrolling === "smooth" && lenis.targetScroll !== lenis.scroll
@@ -73,6 +75,7 @@ export const SmoothScroll = ({
       autoRaf: false,
       lerp: 0.09,
       touchMultiplier: 2,
+      virtualScroll: () => !isPageScrollLocked(),
       wheelMultiplier: 1,
     })
     lenisRef.current = lenis
