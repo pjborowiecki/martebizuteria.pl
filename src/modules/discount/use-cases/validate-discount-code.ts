@@ -4,7 +4,7 @@ import type * as zod from "zod"
 
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
-import { countCustomerRedemptions, getDiscountByCode } from "~/src/modules/discount/discount.accessors"
+import { getDiscountByCodeForCustomerQuery } from "~/src/modules/discount/discount.accessors"
 import {
   DISCOUNT_MUTATION_KEYS,
   DISCOUNT_QUERY_KEYS,
@@ -18,20 +18,14 @@ import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
 export const validateDiscountCode = createServerFn({ method: "POST" })
   .validator((input: ValidateDiscountInput) => discountZodSchemas.validateDiscountInput.parse(input))
   .handler(async ({ data }): Promise<Discount["validation"]> => {
-    const code = normalizeDiscountCode(data.code)
-    const row = await getDiscountByCode(code)
+    const session = data.email === undefined ? await getRequestSession() : undefined
+    const email = data.email ?? session?.user.email
+    const row = await getDiscountByCodeForCustomerQuery(normalizeDiscountCode(data.code), email)
     if (row === undefined) {
       return { rejection: DISCOUNT_REJECTION.NOT_FOUND }
     }
 
-    const session = await getRequestSession()
-    const email = data.email ?? session?.user.email
-    const rejection = resolveDiscountRejection({
-      itemsSubtotal: data.itemsSubtotal,
-      now: new Date(),
-      redeemedByCustomer: await countCustomerRedemptions(row.id, email),
-      row,
-    })
+    const rejection = resolveDiscountRejection({ itemsSubtotal: data.itemsSubtotal, now: new Date(), row })
 
     if (rejection !== undefined) {
       return { rejection }

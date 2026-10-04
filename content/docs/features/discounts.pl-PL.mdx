@@ -90,16 +90,19 @@ Każdy z sześciu use case'ów to jedno `createServerFn`. `validate-discount-cod
 
 ## Reguły
 
-`discount.utils.ts` zawiera dwie czyste funkcje, z których korzysta zarówno sprawdzenie w sklepie, jak i serwer:
+`discount.utils.ts` zawiera czyste funkcje, które ustalają, ile kod jest wart. Z dwóch pierwszych korzysta zarówno sprawdzenie w sklepie, jak i serwer:
 
-- `resolveDiscountRejection` sprawdza po kolei `is_active`, `starts_at`, `ends_at`, `usage_count` względem `usage_limit`, wcześniejsze wykorzystania klienta względem `per_customer_limit` oraz sumę pozycji względem `min_order_total`. Zwraca pierwszą porażkę jako kod `DISCOUNT_REJECTION` (`inactive`, `notStarted`, `expired`, `exhausted`, `alreadyUsed` albo `minOrderNotMet`) albo `undefined`.
+- `resolveDiscountRejection` sprawdza po kolei `is_active`, `starts_at`, `ends_at`, `usage_count` względem `usage_limit`, wcześniejsze wykorzystania klienta (`redeemedByCustomer` w wierszu) względem `per_customer_limit` oraz sumę pozycji względem `min_order_total`. Zwraca pierwszą porażkę jako kod `DISCOUNT_REJECTION` (`inactive`, `notStarted`, `expired`, `exhausted`, `alreadyUsed` albo `minOrderNotMet`) albo `undefined`.
 - `calculateDiscountAmount` zwraca koszt dostawy dla `free_shipping`, `min(value, itemsSubtotal)` dla `fixed_amount`, a dla `percentage` zaokrągloną część sumy pozycji, ograniczoną przez `max_discount_amount` i przez samą sumę.
+- `resolveAppliedCheckoutDiscount` rozstrzyga, czy rabat trafi do zamówienia. Przyjmuje wiersz (albo jego brak), sumę pozycji, koszt dostawy i bieżący czas. Nic nie zwraca, gdy wiersza nie ma, gdy któraś reguła odrzuca kod (wtedy zapisuje to w logu) albo gdy kwota wynosi zero lub mniej; w pozostałych przypadkach zwraca zastosowany rabat.
+
+Reguły potrzebują jednego wiersza. `getDiscountByCodeForCustomerQuery(code, email)` (`discount.accessors.ts`) wybiera rabat o dokładnie tym kodzie, a w tej samej instrukcji także `redeemedByCustomer`: skorelowaną liczbę jego wierszy `discount_redemption`, których adres e-mail po zamianie na małe litery jest równy przekazanemu adresowi po przycięciu i zamianie na małe litery. Bez adresu e-mail liczba wynosi 0, a `discount_redemption` nie jest w ogóle odczytywana. Funkcja zwraca zapytanie Drizzle, więc wywołujący może je wykonać od razu (`await`) albo dodać do `db.batch`. SQLite znajduje kod w indeksie `discount_code_unique` i liczy wykorzystania z indeksu pokrywającego `discount_redemption_discountId_email_idx`, co sprawdza `query-plans.integration.test.ts`.
 
 Siódmy kod odrzucenia, `notFound`, pochodzi z walidatora, gdy żaden wiersz nie pasuje. Kody są porównywane po `normalizeDiscountCode`, które przycina je i zamienia na wielkie litery. Odrzucenie to kod, a nie zdanie, a kasa renderuje je z `pages.checkout.discount.rejection.<code>`.
 
 ## W kasie
 
-`validateDiscountCode` (`use-cases/validate-discount-code.ts`) sprawdza kod względem koszyka: przyjmuje kod, opcjonalny adres e-mail, sumę pozycji i koszt dostawy. Ta funkcja nie ma middleware `authorized`, więc gość może wypróbować kod, a `use-case-authorization.test.ts` wymienia ją wśród publicznych use case'ów. Odpowiada albo `applied` (kod, `discountId`, typ i kwota), albo `rejection`, i niczym więcej. Sprawdzenie limitu na klienta używa przesłanego adresu e-mail, a gdy żadnego nie przesłano, adresu zalogowanego użytkownika; pusty adres liczy się jako brak adresu, a błędny nie przechodzi walidacji.
+`validateDiscountCode` (`use-cases/validate-discount-code.ts`) sprawdza kod względem koszyka: przyjmuje kod, opcjonalny adres e-mail, sumę pozycji i koszt dostawy. Ta funkcja nie ma middleware `authorized`, więc gość może wypróbować kod, a `use-case-authorization.test.ts` wymienia ją wśród publicznych use case'ów. Odpowiada albo `applied` (kod, `discountId`, typ i kwota), albo `rejection`, i niczym więcej. Sprawdzenie limitu na klienta używa przesłanego adresu e-mail, a gdy żadnego nie przesłano, adresu zalogowanego użytkownika; pusty adres liczy się jako brak adresu, a błędny nie przechodzi walidacji. Gdy adres został przesłany, sesja w ogóle nie jest odczytywana, a sprawdzenie zajmuje jedno zapytanie do D1. Bez adresu funkcja najpierw odczytuje sesję. U zalogowanego klienta to jedno zapytanie o sesję i drugie o kod z adresem konta, czyli dwa. Gość nie ma ciasteczka sesji, więc Better Auth odpowiada bez sięgania do D1, a sprawdzenie nadal zajmuje jedno zapytanie.
 
 Ten sam plik eksportuje dwa sposoby, w jakie kasa ją wywołuje:
 
@@ -121,7 +124,7 @@ Gdy formularz ma kod, `CheckoutDiscountCode` (`checkout-discount-code.tsx`) poka
 
 Kod, który już nie obowiązuje, zostaje w formularzu i szkicu z powodem na ekranie, a serwer pomija go przy budowaniu sesji (niżej), więc pokazana suma to ta pobrana. Gdy sprawdzenie się nie uda, podsumowanie nie wie, jaką sumę naliczy serwer, więc nie pokazuje żadnej, dopóki ponowna próba nie da odpowiedzi. Usunięcie kodu czyści `discountCode`. `checkoutSchema` deklaruje `discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional()`, a żaden krok go nie waliduje.
 
-Odpowiedź walidacji to tylko podgląd. `handleCreateCheckoutSession` i `handleUpdateCheckoutSession` wywołują `resolveCheckoutDiscount` (`discount.checkout.server.ts`) z `checkoutValues.discountCode`, sumą pozycji wyliczoną z cen z bazy i kosztem dostawy. Funkcja ponownie stosuje te same reguły. Kod, który już nie obowiązuje, jest logowany i pomijany, a kod, który nic by nie odjął, jest pomijany, zamiast przerywać zakup. Wynikowy `discountId` jest zapisywany do `checkout.discount_id`.
+Odpowiedź walidacji to tylko podgląd. `handleCreateCheckoutSession` i `handleUpdateCheckoutSession` wywołują `resolveCheckoutDiscount` (`discount.checkout.server.ts`) z `checkoutValues.discountCode`, adresem e-mail zamówienia, sumą pozycji wyliczoną z cen z bazy i kosztem dostawy. Przy pustym kodzie funkcja niczego nie odczytuje. W przeciwnym razie odczytuje wiersz jedną instrukcją przez `getDiscountByCodeForCustomerQuery` i przekazuje go do `resolveAppliedCheckoutDiscount`, które ponownie stosuje te same reguły. Kod, który już nie obowiązuje, jest logowany i pomijany, a kod, który nic by nie odjął, jest pomijany, zamiast przerywać zakup. Wynikowy `discountId` jest zapisywany do `checkout.discount_id`.
 
 ## W sesji Stripe
 
@@ -165,7 +168,7 @@ Po wsadzie `fulfillCheckout` przekazuje `recordDiscountRedemption` (`discount.re
 | `order.discount_id`    | `prepareFulfillCheckoutBatch`                                      | nic                                                                                                  |
 | `order.discount_total` | `prepareFulfillCheckoutBatch`                                      | potwierdzenie w kasie, strona zamówienia na koncie, strona zamówienia w panelu, e-mail z zamówieniem |
 | `discount.usage_count` | `recordDiscountRedemption`                                         | `resolveDiscountRejection`, `resolveDiscountStatus`, `getAdminDiscountStats`                         |
-| `discount_redemption`  | `recordDiscountRedemption`                                         | `countCustomerRedemptions`, `getAdminDiscountStats`                                                  |
+| `discount_redemption`  | `recordDiscountRedemption`                                         | `getDiscountByCodeForCustomerQuery`, `getAdminDiscountStats`                                         |
 
 ## Strona kuponów w panelu
 

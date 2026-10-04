@@ -90,16 +90,19 @@ Each of the six use cases is one `createServerFn`. `validate-discount-code.ts` s
 
 ## Rules
 
-`discount.utils.ts` holds the two pure functions that both the storefront check and the server use:
+`discount.utils.ts` holds the pure functions that decide what a code is worth. The storefront check and the server both use the first two:
 
-- `resolveDiscountRejection` checks, in order, `is_active`, `starts_at`, `ends_at`, `usage_count` against `usage_limit`, the customer's earlier redemptions against `per_customer_limit`, and the item subtotal against `min_order_total`. It returns the first failure as a `DISCOUNT_REJECTION` code (`inactive`, `notStarted`, `expired`, `exhausted`, `alreadyUsed` or `minOrderNotMet`), or `undefined`.
+- `resolveDiscountRejection` checks, in order, `is_active`, `starts_at`, `ends_at`, `usage_count` against `usage_limit`, the customer's earlier redemptions (`redeemedByCustomer` on the row) against `per_customer_limit`, and the item subtotal against `min_order_total`. It returns the first failure as a `DISCOUNT_REJECTION` code (`inactive`, `notStarted`, `expired`, `exhausted`, `alreadyUsed` or `minOrderNotMet`), or `undefined`.
 - `calculateDiscountAmount` returns the shipping total for `free_shipping`, `min(value, itemsSubtotal)` for `fixed_amount`, and for `percentage` the rounded share of the item subtotal, capped by `max_discount_amount` and by the subtotal itself.
+- `resolveAppliedCheckoutDiscount` is the checkout's verdict. It takes the row (or none), the item subtotal, the shipping cost and the current time. It returns nothing when there is no row, when a rule rejects the code (which it logs) or when the amount is zero or less; otherwise it returns the applied discount.
+
+The rules read one row. `getDiscountByCodeForCustomerQuery(code, email)` (`discount.accessors.ts`) selects the discount with exactly that code and, in the same statement, `redeemedByCustomer`: a correlated count of its `discount_redemption` rows whose lower-cased e-mail equals the trimmed, lower-cased e-mail it was given. Without an e-mail the count is 0 and no redemption is read. The builder returns a Drizzle query, so a caller can await it or put it in a `db.batch`. SQLite finds the code through `discount_code_unique` and counts from the covering `discount_redemption_discountId_email_idx`, which `query-plans.integration.test.ts` checks.
 
 The seventh rejection code, `notFound`, comes from the validator when no row matches. Codes are compared after `normalizeDiscountCode`, which trims and upper-cases them. A rejection is a code rather than a sentence, and the checkout renders it from `pages.checkout.discount.rejection.<code>`.
 
 ## At checkout
 
-`validateDiscountCode` (`use-cases/validate-discount-code.ts`) checks a code against a basket: it takes the code, an optional e-mail, the item subtotal and the shipping cost. The function has no `authorized` middleware, so a guest can try a code, and `use-case-authorization.test.ts` lists it among the public use cases. It answers with `applied` (code, `discountId`, type and amount) or with a `rejection`, and nothing more. The per-customer check uses the e-mail it is sent, or the signed-in user's when none is sent; an empty e-mail counts as none, and a malformed one fails validation.
+`validateDiscountCode` (`use-cases/validate-discount-code.ts`) checks a code against a basket: it takes the code, an optional e-mail, the item subtotal and the shipping cost. The function has no `authorized` middleware, so a guest can try a code, and `use-case-authorization.test.ts` lists it among the public use cases. It answers with `applied` (code, `discountId`, type and amount) or with a `rejection`, and nothing more. The per-customer check uses the e-mail it is sent, or the signed-in user's when none is sent; an empty e-mail counts as none, and a malformed one fails validation. With an e-mail the session is not read at all, and the check is one D1 round trip. Without one, it reads the session first. For a signed-in shopper that is one round trip for the session and one for the code with the account's e-mail, so two. A guest has no session cookie, so Better Auth answers without reading D1 and the check stays at one round trip.
 
 The same file exports the two ways the checkout calls it:
 
@@ -121,7 +124,7 @@ While the form has a code, `CheckoutDiscountCode` (`checkout-discount-code.tsx`)
 
 A code that no longer applies stays in the form and the draft with its reason on screen, and the server drops it when it builds the session (below), so the total shown is the one charged. When the check fails the summary cannot know which total the server will charge, so it shows none until a retry answers. Removing the code clears `discountCode`. `checkoutSchema` declares `discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional()`, and no step validates it.
 
-The validation response is only a preview. `handleCreateCheckoutSession` and `handleUpdateCheckoutSession` call `resolveCheckoutDiscount` (`discount.checkout.server.ts`) with `checkoutValues.discountCode`, the item subtotal computed from database prices, and the shipping cost. It applies the same rules again. A code that no longer applies is logged and dropped, and one that would take nothing off is dropped, instead of failing the checkout. The resulting `discountId` is written to `checkout.discount_id`.
+The validation response is only a preview. `handleCreateCheckoutSession` and `handleUpdateCheckoutSession` call `resolveCheckoutDiscount` (`discount.checkout.server.ts`) with `checkoutValues.discountCode`, the checkout e-mail, the item subtotal computed from database prices, and the shipping cost. It skips the read for an empty code, reads the row with `getDiscountByCodeForCustomerQuery` in one statement, and passes it to `resolveAppliedCheckoutDiscount`, which applies the same rules again. A code that no longer applies is logged and dropped, and one that would take nothing off is dropped, instead of failing the checkout. The resulting `discountId` is written to `checkout.discount_id`.
 
 ## In the Stripe session
 
@@ -165,7 +168,7 @@ After the batch, `fulfillCheckout` hands `recordDiscountRedemption` (`discount.r
 | `order.discount_id`    | `prepareFulfillCheckoutBatch`                                      | nothing                                                                                   |
 | `order.discount_total` | `prepareFulfillCheckoutBatch`                                      | the checkout confirmation, the account order page, the admin order page, the order e-mail |
 | `discount.usage_count` | `recordDiscountRedemption`                                         | `resolveDiscountRejection`, `resolveDiscountStatus`, `getAdminDiscountStats`              |
-| `discount_redemption`  | `recordDiscountRedemption`                                         | `countCustomerRedemptions`, `getAdminDiscountStats`                                       |
+| `discount_redemption`  | `recordDiscountRedemption`                                         | `getDiscountByCodeForCustomerQuery`, `getAdminDiscountStats`                              |
 
 ## The admin coupons page
 

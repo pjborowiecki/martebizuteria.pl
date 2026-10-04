@@ -21,14 +21,16 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   }
 })
 
+import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import {
-  countCustomerRedemptions,
   deleteDiscountsByIds,
   getAdminDiscountStats,
   getAdminDiscountsPage,
   getDiscountByCode,
+  getDiscountByCodeForCustomerQuery,
   getDiscountById,
   insertDiscount,
   updateDiscountById,
@@ -88,6 +90,17 @@ const seedRedemption = ({ amount, discountId, email, id }: RedemptionSeed): void
 }
 
 const storedRow = (id: string) => sqlite.prepare(`select * from discount where id = ?`).get(id)
+
+const storedRedemptionCount = (discountId: string) =>
+  sqlite.prepare(`select count(*) as used from discount_redemption where discount_id = ?`).get(discountId)?.["used"]
+
+const separateRedemptionCount = (code: string, email: string) =>
+  sqlite
+    .prepare(
+      `select count(*) as used from discount_redemption
+       where discount_id = (select id from discount where code = ?) and lower(email) = ?`,
+    )
+    .get(code, email.trim().toLowerCase())?.["used"]
 
 const answerWithNoRows = (): void => {
   const prepare = sqlite.prepare.bind(sqlite)
@@ -161,9 +174,9 @@ describe("getDiscountByCode and getDiscountById", () => {
   })
 })
 
-describe("countCustomerRedemptions", () => {
+describe("getDiscountByCodeForCustomerQuery", () => {
   beforeEach(() => {
-    seedDiscount({ code: "SPRING-24", id: "discount-1" })
+    seedDiscount({ code: "SPRING-24", description: "Spring sale", endsAt: NOW + DAY_MS, id: "discount-1", usageLimit: 50 })
     seedDiscount({ code: "SUMMER-25", id: "discount-2" })
     seedRedemption({ amount: 1500, discountId: "discount-1", email: "ada@marte.test", id: "r-1" })
     seedRedemption({ amount: 1500, discountId: "discount-1", email: "ADA@Marte.test", id: "r-2" })
@@ -171,23 +184,59 @@ describe("countCustomerRedemptions", () => {
     seedRedemption({ amount: 1500, discountId: "discount-2", email: "ada@marte.test", id: "r-4" })
   })
 
-  it("counts this customer's redemptions of this discount whatever the email's case", async () => {
-    await expect(countCustomerRedemptions("discount-1", "  Ada@MARTE.test ")).resolves.toBe(2)
+  it("reads the discount in its app types with this customer's redemptions of it", async () => {
+    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", "  Ada@MARTE.test ")).resolves.toStrictEqual({
+      code: "SPRING-24",
+      createdAt: new Date(NOW),
+      description: "Spring sale",
+      endsAt: new Date(NOW + DAY_MS),
+      id: "discount-1",
+      isActive: true,
+      maxDiscountAmount: null,
+      minOrderTotal: null,
+      perCustomerLimit: null,
+      redeemedByCustomer: 2,
+      startsAt: null,
+      type: DISCOUNT_TYPE.PERCENTAGE,
+      updatedAt: new Date(NOW),
+      usageCount: 0,
+      usageLimit: 50,
+      value: 15,
+    })
   })
 
-  it("counts nothing for a customer who never used the discount", async () => {
-    await expect(countCustomerRedemptions("discount-2", "grace@marte.test")).resolves.toBe(0)
+  it.each([
+    ["SPRING-24", "  Ada@MARTE.test "],
+    ["SPRING-24", "GRACE@marte.TEST"],
+    ["SPRING-24", "linus@marte.test"],
+    ["SUMMER-25", "ada@marte.test"],
+    ["SUMMER-25", "grace@marte.test"],
+  ])("counts %s redemptions for %j exactly as a separate count of that email would", async (code, email) => {
+    const row = await getDiscountByCodeForCustomerQuery(code, email)
+
+    expect(row?.redeemedByCustomer).toBe(separateRedemptionCount(code, email))
   })
 
-  it.each([undefined, "   "])("counts nothing for a missing email (%j) without asking the database", async (email) => {
-    await expect(countCustomerRedemptions("discount-1", email)).resolves.toBe(0)
-    expect(queries).toStrictEqual([])
+  it("reads the discount and the count in one statement", async () => {
+    await getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test")
+
+    expect(queries).toHaveLength(1)
   })
 
-  it("reports zero when the database returns no count row", async () => {
-    answerWithNoRows()
+  it.each([undefined, "   "])("counts nothing for a missing email (%j) without reading redemptions", async (email) => {
+    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", email)).resolves.toMatchObject({ id: "discount-1", redeemedByCustomer: 0 })
+    expect(queries.join("\n")).not.toContain("discount_redemption")
+  })
 
-    await expect(countCustomerRedemptions("discount-1", "ada@marte.test")).resolves.toBe(0)
+  it("answers inside a batch exactly as it does on its own", async () => {
+    const alone = await getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test")
+
+    await expect(db.batch([getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test")])).resolves.toStrictEqual([alone])
+  })
+
+  it("matches the stored code exactly and reports nothing for an unknown one", async () => {
+    await expect(getDiscountByCodeForCustomerQuery("spring-24", "ada@marte.test")).resolves.toBeUndefined()
+    await expect(getDiscountByCodeForCustomerQuery("NOPE-99", undefined)).resolves.toBeUndefined()
   })
 })
 
@@ -374,6 +423,6 @@ describe("deleteDiscountsByIds", () => {
 
     await deleteDiscountsByIds(["discount-1"])
 
-    await expect(countCustomerRedemptions("discount-1", "ada@marte.test")).resolves.toBe(0)
+    expect(storedRedemptionCount("discount-1")).toBe(0)
   })
 })

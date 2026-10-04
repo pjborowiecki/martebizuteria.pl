@@ -21,18 +21,23 @@ export const getDiscountById = (id: string) =>
     where: eq(discount.id, id),
   })
 
-export const countCustomerRedemptions = async (discountId: string, email: string | undefined): Promise<number> => {
+const customerRedemptionCount = (email: string | undefined): SQL<number> => {
   const normalizedEmail = email?.trim().toLowerCase()
   if (normalizedEmail === undefined || normalizedEmail === "") {
-    return NO_ROWS
+    return sql<number>`${NO_ROWS}`
   }
 
-  const sameDiscount = eq(discountRedemption.discountId, discountId)
+  const sameDiscount = eq(discountRedemption.discountId, discount.id)
   const sameEmail = eq(sql`lower(${discountRedemption.email})`, normalizedEmail)
-  const [row] = await db.select({ used: count() }).from(discountRedemption).where(and(sameDiscount, sameEmail))
 
-  return row?.used ?? NO_ROWS
+  return sql<number>`${db.select({ used: count() }).from(discountRedemption).where(and(sameDiscount, sameEmail))}`
 }
+
+export const getDiscountByCodeForCustomerQuery = (code: string, email: string | undefined) =>
+  db.query.discount.findFirst({
+    extras: { redeemedByCustomer: customerRedemptionCount(email).as("redeemed_by_customer") },
+    where: eq(discount.code, code),
+  })
 
 const buildAdminDiscountsWhere = (search: string | undefined): SQL | undefined =>
   buildAdminSearchOrCondition(search, [discount.code, discount.description])
