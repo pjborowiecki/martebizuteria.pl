@@ -11,6 +11,7 @@ export const SERVER_FUNCTIONS = {
   getAdminProducts: serverFunctionId("src/modules/product/use-cases/get-admin-products.ts", "getAdminProducts"),
   getCollections: serverFunctionId("src/modules/product-collection/use-cases/get-collections.ts", "getCollections"),
   getCurrentSession: serverFunctionId("src/integrations/better-auth/auth.session.ts", "getCurrentSession"),
+  getStorefrontProductsPage: serverFunctionId("src/modules/product/use-cases/get-storefront-products-page.ts", "getStorefrontProductsPage"),
 } as const
 
 const calledServerFunction = (url: string): string | undefined => {

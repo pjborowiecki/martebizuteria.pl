@@ -90,8 +90,12 @@ describe("getStorefrontCollectionsQuery", () => {
 })
 
 describe("getStorefrontCollectionByHandleQuery", () => {
-  it("serves an active collection", async () => {
-    await expect(getStorefrontCollectionByHandleQuery.execute({ handle: "bestsellers" })).resolves.toMatchObject({ id: "col-3" })
+  it("serves only the id, titles and descriptions of an active collection", async () => {
+    await expect(getStorefrontCollectionByHandleQuery.execute({ handle: "bestsellers" })).resolves.toStrictEqual({
+      descriptions: null,
+      id: "col-3",
+      titles: { "en-US": "bestsellers", "pl-PL": "bestsellers" },
+    })
   })
 
   it("refuses a draft collection", async () => {

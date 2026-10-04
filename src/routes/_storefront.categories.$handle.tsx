@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl/react"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { resolveCategoryDescription, resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
-import { getStorefrontCategory } from "~/src/modules/product-category/use-cases/get-storefront-category"
+import { getStorefrontCategoryQuery } from "~/src/modules/product-category/use-cases/get-storefront-category"
 import {
   type StorefrontScopedCategoryCatalogSearch,
   applyStorefrontProductsSearchPatch,
@@ -94,11 +94,17 @@ export const Route = createFileRoute("/_storefront/categories/$handle")({
       search: deps,
     })
 
-    const category = await getStorefrontCategory({
-      data: params.handle,
-    })
+    const [category] = await Promise.all([
+      context.queryClient.query(getStorefrontCategoryQuery(params.handle)),
+      prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, {
+        scope: {
+          categoryHandle: params.handle,
+        },
+        search: deps,
+      }),
+    ])
 
-    if (category === undefined) {
+    if (category === false) {
       catalogDebugLog("category.loader.notFound", {
         handle: params.handle,
       })
@@ -111,12 +117,6 @@ export const Route = createFileRoute("/_storefront/categories/$handle")({
         title: "",
       }
     }
-    await prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, {
-      scope: {
-        categoryHandle: params.handle,
-      },
-      search: deps,
-    })
     catalogDebugLog("category.loader.done", {
       handle: params.handle,
       ms: Math.round(performance.now() - startedAt),

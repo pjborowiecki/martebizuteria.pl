@@ -1,11 +1,14 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { queryKeyPrefixesOverlap } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
+import { STOREFRONT_REALTIME_QUERY_PREFIXES } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
+
 import { COLLECTION_QUERY_KEYS, COLLECTION_QUERY_STALE_MS } from "~/src/modules/product-collection/product-collection.constants"
 import { getAdminCollections, getAdminCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-admin-collections"
 import { getCollectionStats, getCollectionStatsQuery } from "~/src/modules/product-collection/use-cases/get-collection-stats"
 import { getCollections, getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
-import { getStorefrontCollection } from "~/src/modules/product-collection/use-cases/get-storefront-collection"
+import { getStorefrontCollection, getStorefrontCollectionQuery } from "~/src/modules/product-collection/use-cases/get-storefront-collection"
 
 const operations = vi.hoisted(() => ({
   adminCollections: vi.fn(),
@@ -197,21 +200,49 @@ describe("getStorefrontCollection", () => {
   })
 
   it("looks the collection up by the validated handle", async () => {
-    operations.byHandle.mockResolvedValue({ handle: "srebro-925", id: "collection-1" })
+    const row = { descriptions: null, id: "collection-1", titles: { "en-US": "Silver 925", "pl-PL": "Srebro 925" } }
+    operations.byHandle.mockResolvedValue(row)
 
-    await expect(getStorefrontCollection({ data: "srebro-925" })).resolves.toStrictEqual({ handle: "srebro-925", id: "collection-1" })
+    await expect(getStorefrontCollection({ data: "srebro-925" })).resolves.toBe(row)
     expect(operations.byHandle).toHaveBeenCalledExactlyOnceWith({ handle: "srebro-925" })
   })
 
-  it("passes an unknown handle through as no collection", async () => {
+  it("answers false for a handle that names no active collection", async () => {
     operations.byHandle.mockResolvedValue(undefined)
 
-    await expect(getStorefrontCollection({ data: "missing" })).resolves.toBeUndefined()
+    await expect(getStorefrontCollection({ data: "missing" })).resolves.toBe(false)
   })
 
   it("rejects an empty handle before querying", async () => {
     await expect(getStorefrontCollection({ data: "" })).rejects.toThrow()
     expect(operations.byHandle).not.toHaveBeenCalled()
+  })
+})
+
+describe("getStorefrontCollectionQuery", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it("keys the collection by its handle under the prefix a collection edit invalidates", () => {
+    const { queryKey } = getStorefrontCollectionQuery("srebro-925")
+
+    expect(queryKey).toStrictEqual(["collection", "srebro-925"])
+    expect(STOREFRONT_REALTIME_QUERY_PREFIXES.some((prefix) => queryKeyPrefixesOverlap(prefix, queryKey))).toBe(true)
+  })
+
+  it("keeps the collection as fresh as the collection list", () => {
+    expect(getStorefrontCollectionQuery("srebro-925").staleTime).toBe(COLLECTION_QUERY_STALE_MS)
+  })
+
+  it("caches a missing collection instead of failing the query", async () => {
+    operations.byHandle.mockResolvedValue(undefined)
+    const queryClient = new QueryClient()
+
+    await expect(queryClient.query(getStorefrontCollectionQuery("missing"))).resolves.toBe(false)
+    await queryClient.query(getStorefrontCollectionQuery("missing"))
+
+    expect(operations.byHandle).toHaveBeenCalledExactlyOnceWith({ handle: "missing" })
   })
 })
 

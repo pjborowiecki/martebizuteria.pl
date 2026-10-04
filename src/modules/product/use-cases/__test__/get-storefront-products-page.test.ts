@@ -124,12 +124,28 @@ describe("getStorefrontProductsPage", () => {
     expect(access.page.mock.calls[0]?.[0]).toMatchObject({ categoryIds: ["cat-root", "cat-child"] })
   })
 
+  it("reads the category hierarchy while the category itself is still loading", async () => {
+    const category = Promise.withResolvers<{ id: string }>()
+    access.categoryByHandle.mockReturnValue(category.promise)
+    access.hierarchy.mockResolvedValue([{ id: "cat-root", parentId: null }])
+
+    const result = getStorefrontProductsPage({ data: { category: "rings" } })
+    await vi.waitFor(() => {
+      expect(access.categoryByHandle).toHaveBeenCalledOnce()
+    })
+
+    expect(access.hierarchy).toHaveBeenCalledOnce()
+    category.resolve({ id: "cat-root" })
+    await result
+    expect(access.page.mock.calls[0]?.[0]).toMatchObject({ categoryIds: ["cat-root"] })
+  })
+
   it("returns an empty page without touching the catalog when the category handle is unknown", async () => {
     access.categoryByHandle.mockResolvedValue(undefined)
+    access.hierarchy.mockResolvedValue([])
 
     const result = await getStorefrontProductsPage({ data: { category: "missing" } })
 
-    expect(access.hierarchy).not.toHaveBeenCalled()
     expect(access.page).not.toHaveBeenCalled()
     expect(result).toStrictEqual({ hasMore: false, items: [], limit: 100, offset: 0, total: 0 })
   })
@@ -143,12 +159,13 @@ describe("getStorefrontProductsPage", () => {
     expect(access.page.mock.calls[0]?.[0]).toMatchObject({ collectionId: "collection-1" })
   })
 
-  it("queries without a collection filter when the collection handle is unknown", async () => {
+  it("returns an empty page without touching the catalog when the collection handle is unknown", async () => {
     access.collectionByHandle.mockResolvedValue(undefined)
 
-    await getStorefrontProductsPage({ data: { collection: "missing" } })
+    const result = await getStorefrontProductsPage({ data: { collection: "missing" } })
 
-    expect(access.page.mock.calls[0]?.[0]).toMatchObject({ collectionId: undefined })
+    expect(access.page).not.toHaveBeenCalled()
+    expect(result).toStrictEqual({ hasMore: false, items: [], limit: 100, offset: 0, total: 0 })
   })
 
   it("drops unknown search keys before reaching the accessor", async () => {

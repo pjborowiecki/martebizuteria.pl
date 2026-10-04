@@ -2,15 +2,21 @@ import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
+import { queryKeyPrefixesOverlap } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
+import { STOREFRONT_REALTIME_QUERY_PREFIXES } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 
-import { CATEGORY_MUTATION_KEYS, CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
+import {
+  CATEGORY_MUTATION_KEYS,
+  CATEGORY_QUERY_KEYS,
+  CATEGORY_QUERY_STALE_MS,
+} from "~/src/modules/product-category/product-category.constants"
 
 import { createCategory } from "../create-category"
 import { deleteCategories, deleteCategoriesMutation } from "../delete-categories"
 import { getAdminCategories, getAdminCategoriesQuery } from "../get-admin-categories"
 import { getCategories, getCategoriesQuery } from "../get-categories"
 import { getCategoryStats, getCategoryStatsQuery } from "../get-category-stats"
-import { getStorefrontCategory } from "../get-storefront-category"
+import { getStorefrontCategory, getStorefrontCategoryQuery } from "../get-storefront-category"
 import { reorderCategories, reorderCategoriesMutation } from "../reorder-categories"
 import { updateCategory } from "../update-category"
 
@@ -488,11 +494,17 @@ describe("getStorefrontCategory", () => {
   })
 
   it("looks the category up by the handle it was asked for", async () => {
-    const row = { handle: "rings", id: CHILD_ID }
+    const row = { descriptions: null, id: CHILD_ID, titles: { "en-US": "Rings", "pl-PL": "Pierścionki" } }
     server.storefrontCategoryByHandle.mockResolvedValue(row)
 
     await expect(getStorefrontCategory({ data: "rings" })).resolves.toBe(row)
     expect(server.storefrontCategoryByHandle).toHaveBeenCalledExactlyOnceWith({ handle: "rings" })
+  })
+
+  it("answers false for a handle that names no active category", async () => {
+    server.storefrontCategoryByHandle.mockResolvedValue(undefined)
+
+    await expect(getStorefrontCategory({ data: "missing" })).resolves.toBe(false)
   })
 
   it("refuses an empty handle before querying", () => {
@@ -500,6 +512,33 @@ describe("getStorefrontCategory", () => {
       void getStorefrontCategory({ data: "" })
     }).toThrow()
     expect(server.storefrontCategoryByHandle).not.toHaveBeenCalled()
+  })
+})
+
+describe("getStorefrontCategoryQuery", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("keys the category by its handle under the prefix a category edit invalidates", () => {
+    const { queryKey } = getStorefrontCategoryQuery("rings")
+
+    expect(queryKey).toStrictEqual(["category", "rings"])
+    expect(STOREFRONT_REALTIME_QUERY_PREFIXES.some((prefix) => queryKeyPrefixesOverlap(prefix, queryKey))).toBe(true)
+  })
+
+  it("keeps the category as fresh as the category list", () => {
+    expect(getStorefrontCategoryQuery("rings").staleTime).toBe(CATEGORY_QUERY_STALE_MS)
+  })
+
+  it("caches a missing category instead of failing the query", async () => {
+    server.storefrontCategoryByHandle.mockResolvedValue(undefined)
+    const queryClient = new QueryClient()
+
+    await expect(queryClient.query(getStorefrontCategoryQuery("missing"))).resolves.toBe(false)
+    await queryClient.query(getStorefrontCategoryQuery("missing"))
+
+    expect(server.storefrontCategoryByHandle).toHaveBeenCalledExactlyOnceWith({ handle: "missing" })
   })
 })
 

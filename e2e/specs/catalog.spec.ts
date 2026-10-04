@@ -1,5 +1,8 @@
-import { PRODUCTS } from "../data/catalog"
-import { expect, test } from "../fixtures/test"
+import { CATEGORIES, PRODUCTS } from "../data/catalog"
+import { SERVER_FUNCTIONS, recordServerFunctionCalls } from "../fixtures/server-functions"
+import { expect, muteRealtime, test } from "../fixtures/test"
+
+const NECKLACES_PATH = `/en-US/categories/${CATEGORIES.necklaces.handle}`
 
 test.describe("catalog", () => {
   test("filtering by category narrows the listing and clearing it brings everything back", async ({ page, productPage }) => {
@@ -13,6 +16,24 @@ test.describe("catalog", () => {
 
     await filters.getByRole("button", { exact: true, name: "All categories" }).click()
     await expect(productLinks).toHaveCount(2)
+  })
+
+  test("sorting a category asks the server for the products alone, because the page already holds the category", async ({
+    context,
+    page,
+    productPage,
+  }) => {
+    await muteRealtime(context)
+    await productPage.open(NECKLACES_PATH)
+    await expect(productPage.heading()).toHaveText(CATEGORIES.necklaces.title)
+    const serverFunctionCallsFrom = recordServerFunctionCalls(page)
+    const productsPage = page.waitForResponse((response) => response.url().includes(SERVER_FUNCTIONS.getStorefrontProductsPage))
+
+    await page.getByRole("complementary").getByRole("button", { exact: true, name: "Price: low to high" }).click()
+    await productsPage
+
+    await expect(page).toHaveURL(`${NECKLACES_PATH}?sort=price_asc`)
+    expect(await serverFunctionCallsFrom(NECKLACES_PATH)).toStrictEqual([SERVER_FUNCTIONS.getStorefrontProductsPage])
   })
 
   test("search finds a necklace by name and opens it", async ({ page, productPage }) => {

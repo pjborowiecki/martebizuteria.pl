@@ -61,11 +61,12 @@ Page size depends on whether any filter is active, using the constants in `produ
 
 Before hitting the product table the handler resolves the scope handles into ids:
 
-- `resolveStorefrontCategoryIdsForSearch` loads the category by handle, then `collectDescendantCategoryIds(category.id, hierarchy)` from `product-category.utils.ts`, so **a category filter includes its whole subtree**. An unknown handle yields `[]`, and the handler short-circuits to an empty result.
+- `resolveStorefrontCategoryIdsForSearch` loads the category by handle and the category hierarchy at the same time, then calls `collectDescendantCategoryIds(category.id, hierarchy)` from `product-category.utils.ts`, so **a category filter includes its whole subtree**.
 - `resolveStorefrontCollectionIdForSearch` resolves the collection handle to one id.
+- A handle that names no active category or collection sets `unknownScope`, and the handler returns an empty page (`total: 0`) without listing anything. An unknown collection never falls back to the whole catalog.
 - `minPrice` and `maxPrice` arrive in złoty and are multiplied by 100 into minor units.
 
-`catalogDebugLog` (`src/lib/catalog-debug-log.ts`) traces `storefrontProductsPage.start`, `.emptyCategory` and `.done` with the elapsed milliseconds.
+`catalogDebugLog` (`src/lib/catalog-debug-log.ts`) traces `storefrontProductsPage.start`, `.unknownScope` and `.done` with the elapsed milliseconds.
 
 ## The SQL
 
@@ -112,6 +113,8 @@ The pattern is escaped by `buildAdminLikePattern` in `src/modules/_core/utils/se
 `useCatalogFilterSources` hides the category filter on a category page and the collection filter on a collection page, and skips the corresponding query entirely, so a scoped page makes one query fewer.
 
 `prefetchProductsCatalogPage` runs the infinite query and the two filter-source queries in parallel, then calls `prefetchProductThumbnails` on the first page's items.
+
+The `/categories/$handle` and `/collections/$handle` loaders look up their row and warm the grid in one `Promise.all`, so the lookup and the first products page are requested at the same time. The lookup goes through `getStorefrontCategoryQuery(handle)` or `getStorefrontCollectionQuery(handle)`, keyed under `CATEGORY_QUERY_KEYS.BY_HANDLE` or `COLLECTION_QUERY_KEYS.BY_HANDLE` with the module's 60-second stale time. It reads only `id`, `titles` and `descriptions`, the fields the page and the products handler use, so the row the server render writes into the HTML stays small. A sort, a filter or a hover preload on the same page reuses the cached row and asks the server only for the products. A missing row comes back as `false`, because the query cache cannot hold `undefined`. The category page then throws `notFound`, and the collection page warms the other collections and the new arrivals for its unavailable state. The grid warmed in parallel for a missing handle is the empty page described above.
 
 ## Search overlay
 

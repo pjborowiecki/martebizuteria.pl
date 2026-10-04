@@ -56,9 +56,17 @@ const catalog = vi.hoisted(() => ({
 const captured: { current: CategoryRouteDefinition | undefined } = { current: undefined }
 
 vi.mock("~/src/lib/catalog-debug-log", () => ({ catalogDebugLog: vi.fn() }))
-vi.mock("~/src/modules/product-category/use-cases/get-storefront-category", () => ({
-  getStorefrontCategory: catalog.getStorefrontCategory,
-}))
+vi.mock("~/src/modules/product-category/use-cases/get-storefront-category", async () => {
+  const { CATEGORY_QUERY_KEYS, CATEGORY_QUERY_STALE_MS } = await import("~/src/modules/product-category/product-category.constants")
+
+  return {
+    getStorefrontCategoryQuery: (handle: string) => ({
+      queryFn: () => catalog.getStorefrontCategory({ data: handle }),
+      queryKey: [...CATEGORY_QUERY_KEYS.BY_HANDLE, handle],
+      staleTime: CATEGORY_QUERY_STALE_MS,
+    }),
+  }
+})
 vi.mock("~/src/presentation/components/custom/pages/products-catalog/products-catalog.loader", () => ({
   prefetchProductsCatalogPage: catalog.prefetchProductsCatalogPage,
 }))
@@ -141,14 +149,18 @@ const renderCategory = () => {
   return renderWithProviders(<CategoryPage />)
 }
 
-const runLoader = (handle: string, deps: StorefrontProductsSearch = {}, locale: "en-US" | "pl-PL" = "en-US") => {
+const runLoader = (
+  handle: string,
+  deps: StorefrontProductsSearch = {},
+  { locale = "en-US", queryClient = new QueryClient() }: { readonly locale?: "en-US" | "pl-PL"; readonly queryClient?: QueryClient } = {},
+) => {
   const { loader } = route
   if (loader === undefined) {
     throw new Error("the category handle route registered no loader")
   }
 
   return loader({
-    context: { imagePrefetchService: { prefetch: vi.fn() }, locale, queryClient: new QueryClient() },
+    context: { imagePrefetchService: { prefetch: vi.fn() }, locale, queryClient },
     deps,
     params: { handle },
   })
@@ -247,7 +259,7 @@ describe("storefront category loader", () => {
   })
 
   it("reads the Polish copy for a Polish visitor", async () => {
-    const meta = await runLoader("pierscionki", {}, "pl-PL")
+    const meta = await runLoader("pierscionki", {}, { locale: "pl-PL" })
 
     expect(meta.title).toBe("Pierścionki")
     expect(meta.metaDescription).toBe("Pierścionki z naszej pracowni.")
@@ -262,6 +274,30 @@ describe("storefront category loader", () => {
     })
   })
 
+  it("warms the product grid while the category is still being looked up", async () => {
+    const lookup = Promise.withResolvers<unknown>()
+    catalog.getStorefrontCategory.mockReturnValue(lookup.promise)
+
+    const loading = runLoader("pierscionki")
+    await vi.waitFor(() => {
+      expect(catalog.getStorefrontCategory).toHaveBeenCalledOnce()
+    })
+
+    expect(catalog.prefetchProductsCatalogPage).toHaveBeenCalledOnce()
+    lookup.resolve({ descriptions: null, titles: { "en-US": "Rings" } })
+    await expect(loading).resolves.toMatchObject({ title: "Rings" })
+  })
+
+  it("looks the category up once while the visitor sorts and filters it", async () => {
+    const queryClient = new QueryClient()
+
+    await runLoader("pierscionki", { sort: "price_asc" }, { queryClient })
+    await runLoader("pierscionki", { maxPrice: 400, sort: "price_asc" }, { queryClient })
+
+    expect(catalog.getStorefrontCategory).toHaveBeenCalledOnce()
+    expect(catalog.prefetchProductsCatalogPage).toHaveBeenCalledTimes(2)
+  })
+
   it("falls back to the catalogue description when the category has none", async () => {
     catalog.getStorefrontCategory.mockResolvedValue({ descriptions: null, titles: { "en-US": "Rings" } })
 
@@ -271,8 +307,8 @@ describe("storefront category loader", () => {
     })
   })
 
-  it("reports an unknown handle as a missing page and warms nothing", async () => {
-    catalog.getStorefrontCategory.mockResolvedValue(undefined)
+  it("reports an unknown handle as a missing page", async () => {
+    catalog.getStorefrontCategory.mockResolvedValue(false)
     const caught: { thrown?: unknown } = {}
 
     try {
@@ -282,7 +318,6 @@ describe("storefront category loader", () => {
     }
 
     expect(isNotFound(caught.thrown)).toBe(true)
-    expect(catalog.prefetchProductsCatalogPage).not.toHaveBeenCalled()
   })
 })
 

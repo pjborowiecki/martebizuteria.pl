@@ -44,17 +44,14 @@ const resolveStorefrontCategoryIdsForSearch = async (categoryHandle: string | un
     return undefined
   }
 
-  const category = await getStorefrontCategoryByHandleQuery.execute({
-    handle: categoryHandle,
-  })
+  const [category, hierarchy] = await Promise.all([
+    getStorefrontCategoryByHandleQuery.execute({
+      handle: categoryHandle,
+    }),
+    getCategoryHierarchyQuery.execute(),
+  ])
 
-  if (category === undefined) {
-    return []
-  }
-
-  const hierarchy = await getCategoryHierarchyQuery.execute()
-
-  return collectDescendantCategoryIds(category.id, hierarchy)
+  return category === undefined ? [] : collectDescendantCategoryIds(category.id, hierarchy)
 }
 
 const resolveStorefrontCollectionIdForSearch = async (collectionHandle: string | undefined): Promise<string | undefined> => {
@@ -82,6 +79,7 @@ const resolveStorefrontCatalogFilters = async (search: StorefrontProductsSearch)
     minPriceCents: search.minPrice === undefined ? undefined : Math.round(search.minPrice * CENTS_PER_PLN),
     searchTerm: search.q,
     sort: search.sort,
+    unknownScope: categoryIds?.length === 0 || (search.collection !== undefined && collectionId === undefined),
   }
 }
 
@@ -106,8 +104,8 @@ export const getStorefrontProductsPage = createServerFn({
       search,
     })
 
-    if (filters.categoryIds?.length === 0) {
-      catalogDebugLog("storefrontProductsPage.emptyCategory", {
+    if (filters.unknownScope) {
+      catalogDebugLog("storefrontProductsPage.unknownScope", {
         search,
       })
 

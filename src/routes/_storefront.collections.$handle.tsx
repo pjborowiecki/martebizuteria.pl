@@ -7,7 +7,7 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { resolveCollectionDescription, resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
-import { getStorefrontCollection } from "~/src/modules/product-collection/use-cases/get-storefront-collection"
+import { getStorefrontCollectionQuery } from "~/src/modules/product-collection/use-cases/get-storefront-collection"
 import {
   type StorefrontScopedCollectionCatalogSearch,
   applyStorefrontProductsSearchPatch,
@@ -141,11 +141,17 @@ export const Route = createFileRoute("/_storefront/collections/$handle")({
       search: deps,
     })
 
-    const collection = await getStorefrontCollection({
-      data: params.handle,
-    })
+    const [collection] = await Promise.all([
+      context.queryClient.query(getStorefrontCollectionQuery(params.handle)),
+      prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, {
+        scope: {
+          collectionHandle: params.handle,
+        },
+        search: deps,
+      }),
+    ])
 
-    if (collection === undefined) {
+    if (collection === false) {
       catalogDebugLog("collection.loader.unavailable", {
         handle: params.handle,
       })
@@ -170,12 +176,6 @@ export const Route = createFileRoute("/_storefront/collections/$handle")({
         status: "unavailable",
       } satisfies CollectionUnavailableLoaderData
     }
-    await prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, {
-      scope: {
-        collectionHandle: params.handle,
-      },
-      search: deps,
-    })
     catalogDebugLog("collection.loader.done", {
       handle: params.handle,
       ms: Math.round(performance.now() - startedAt),
