@@ -117,16 +117,20 @@ The rules live in `order.admin-actions.utils.ts`:
 
 `fulfillOrder` and `shipOrder` pass `paymentUiKey: "paid"` literally, and neither predicate reads it, so payment state is not checked against the row.
 
-The four guarded actions record an audit event (`recordOrderFulfillmentStartedAudit`, `recordOrderShippedAudit`, `recordOrderReleasedAudit`, `recordOrderCancelledAudit`), and all five expose mutation options keyed by `ORDER_MUTATION_KEYS`. `shipOrder` additionally queues the shipping notification:
+The four guarded actions record an audit event (`recordOrderFulfillmentStartedAudit`, `recordOrderShippedAudit`, `recordOrderReleasedAudit`, `recordOrderCancelledAudit`), and all five expose mutation options keyed by `ORDER_MUTATION_KEYS`. `shipOrder` additionally waits for the shipping email and returns whether it went out:
 
 ```ts
 recordOrderShippedAudit(orderId, {
   detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
 })
-scheduleBackgroundWork(notifyOrderShipped(orderId))
+const shippedEmailDelivery = notifyOrderShipped(orderId)
+scheduleBackgroundWork(shippedEmailDelivery)
+const shippedEmailSent = await shippedEmailDelivery
+
+return { ok: true, orderId, shippedEmailSent }
 ```
 
-`scheduleBackgroundWork` (`src/lib/background.ts`) hands the promise to the Worker's `waitUntil`, so the response does not wait for Resend.
+`notifyOrderShipped` never throws. A refusal from Resend, an order without an address and an error while the email is prepared are all recorded as `email.failed` on the order and returned as `false`, so the order stays shipped. The same promise is handed to `scheduleBackgroundWork`, the Worker's `waitUntil`, so the email and its entry finish even if the admin leaves before Resend answers. `useMarkOrderShipped` always shows "Order marked as shipped.", and when the email failed also a warning toast, "Shipping email not sent", that points to the order's Activity card for the error. The response takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`.
 
 The tracking number and URL come from `order-ship-dialog.tsx`; `shipOrder` trims them and stores `null` for an empty value, and the shipped email shows the number and points its button at the tracking URL when there is one. `markOrderDelivered` is the only writer of `delivered_at`.
 
@@ -165,6 +169,8 @@ The tracking number and URL come from `order-ship-dialog.tsx`; `shipOrder` trims
 | `order-payment-card.tsx`        | `payment`, including the refunded amount and date                            |
 | `order-tags-card.tsx`           | `tags` from `resolveAdminOrderDetailTags`                                    |
 | `order-notes-card.tsx`          | `customerNote`                                                               |
+
+The timeline includes the order's email entries. An `email.failed` row reads "Email failed" with a "Failed" badge, and its detail carries the error, for example `Order confirmation → jane@example.com — The example.com domain is not verified…`. Audit rows reach D1 through the queue a few seconds after the action, so `processAuditLogQueueBatch` publishes `ORDER_QUERY_KEYS.ADMIN.ORDERS` whenever a batch carries an action from `ADMIN_ORDER_TIMELINE_ACTIONS`. Every open admin tab then refetches its order list, the order stats and an open order page, which shows the new rows without a reload. A failed newsletter or Better Auth email uses the same `email.failed` action and triggers the refetch too. There is no action to resend an order email.
 
 `OrderDetailActions` (`order-detail-actions.tsx` with `use-order-detail-actions.ts`) puts the actions in the header. Print calls `globalThis.print()` and is disabled for a cancelled order. Refund, Cancel order, Fulfill, Mark shipped and Mark delivered render only when their predicate allows; Mark shipped opens `order-ship-dialog.tsx` for the optional tracking number and URL, and Refund and Cancel order ask for confirmation first. Refund is `order-refund-button.tsx`: when `resolveAdminOrderRefundBlocker` returns a blocker for the order's total and `dispute`, the button stays visible but disabled, remains focusable, and explains the blocker in a tooltip.
 

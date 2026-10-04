@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modules/audit-log/audit-log.queue.server"
+import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 
 const queue = vi.hoisted(() => ({
   insertAuditLogs: vi.fn(() => Promise.resolve(undefined)),
@@ -29,10 +30,10 @@ const body = (id: string): AuditLogQueueMessage => ({
   target: `order-${id}`,
 })
 
-const createMessage = (id: string) => ({
+const createMessage = (id: string, overrides: Partial<AuditLogQueueMessage> = {}) => ({
   ack: vi.fn(),
   attempts: 1,
-  body: body(id),
+  body: { ...body(id), ...overrides },
   id,
   retry: vi.fn(),
   timestamp: new Date(1_700_000_000_000),
@@ -71,11 +72,24 @@ describe("processAuditLogQueueBatch", () => {
     expect(second.retry).not.toHaveBeenCalled()
   })
 
-  it("invalidates the admin audit log page and stats queries", async () => {
-    await processAuditLogQueueBatch(createBatch([createMessage("first")]))
+  it("invalidates only the admin audit log page and stats queries for events outside any order timeline", async () => {
+    await processAuditLogQueueBatch(createBatch([createMessage("first", { action: "product.updated", category: "catalog" })]))
 
     expect(queue.publishRealtimeInvalidation).toHaveBeenCalledWith({
       admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS],
+    })
+  })
+
+  it("refreshes the admin order queries when the batch adds to an order timeline, such as a failed order email", async () => {
+    await processAuditLogQueueBatch(
+      createBatch([
+        createMessage("first", { action: "product.updated", category: "catalog" }),
+        createMessage("second", { action: "email.failed", category: "email", severity: "error" }),
+      ]),
+    )
+
+    expect(queue.publishRealtimeInvalidation).toHaveBeenCalledWith({
+      admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS, ORDER_QUERY_KEYS.ADMIN.ORDERS],
     })
   })
 

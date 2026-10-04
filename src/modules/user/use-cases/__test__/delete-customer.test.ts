@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
 
+import { executionContextStorage } from "~/src/lib/background"
+
 const { auth, getRequestHeaders, getUserById, sendAccountDeletedEmail, serverContext } = vi.hoisted(() => ({
   auth: { api: { removeUser: vi.fn<(input: object) => Promise<{ success: boolean }>>() } },
   getRequestHeaders: vi.fn<() => Record<string, string>>(),
@@ -115,6 +117,22 @@ describe("deleteCustomer", () => {
     delivery.resolve(true)
     await deletion
     expect(answered).toHaveBeenCalledWith(expect.objectContaining({ goodbyeEmailSent: true }))
+  })
+
+  it("keeps the goodbye email running for the Worker if the admin disconnects while it is sent", async () => {
+    const kept: Promise<unknown>[] = []
+
+    await executionContextStorage.run(
+      {
+        waitUntil: (task) => {
+          kept.push(task)
+        },
+      },
+      () => deleteCustomer({ data: { userId: "user-1" } }),
+    )
+    await Promise.all(kept)
+
+    expect(kept).toHaveLength(1)
   })
 
   it("reports a goodbye email that could not be sent without undoing the deletion", async () => {

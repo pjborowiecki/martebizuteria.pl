@@ -19,7 +19,7 @@
   },
   "checkoutSuccess": {
     "title": "Zamówienie potwierdzone",
-    "description": "Dziękujemy za zakup. Potwierdzenie jest już w drodze na adres {email}.",
+    "description": "Dziękujemy za zakup. Jeśli w ciągu kilku minut e-mail z potwierdzeniem nie dotrze na adres {email}, napisz do nas i podaj numer zamówienia widoczny poniżej.",
     "pendingTitle": "Potwierdzamy płatność",
     "pendingDescription": "To chwilę potrwa. Płatność się powiodła — zapisujemy właśnie zamówienie.",
     "unavailableTitle": "Nie udało się wczytać tego zamówienia",

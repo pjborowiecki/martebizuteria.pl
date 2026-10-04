@@ -196,12 +196,14 @@ Zapamiętuje adres e-mail, nazwę i bieżący język **przed** usunięciem, prze
 ```ts
 await auth.api.removeUser({ body: { userId }, headers: getRequestHeaders() })
 
-const goodbyeEmailSent = await sendAccountDeletedEmail(goodbyeEmail)
+const goodbyeEmailDelivery = sendAccountDeletedEmail(goodbyeEmail)
+scheduleBackgroundWork(goodbyeEmailDelivery)
+const goodbyeEmailSent = await goodbyeEmailDelivery
 
 return { goodbyeEmailSent, ok: true as const, userId }
 ```
 
-`sendAccountDeletedEmail` nigdy nie rzuca wyjątku; gdy Resend odrzuci e-mail albo nie da się go przygotować, porażka jest logowana, zapisywana w dzienniku audytu jako `email.failed` i zwracana jako `false`, a usunięcie pozostaje w mocy. `useDeleteCustomer` dobiera komunikat na podstawie `goodbyeEmailSent`: „Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.” albo „Konto zostało usunięte, ale nie udało się wysłać e-maila z potwierdzeniem. Błąd zapisano w dzienniku zdarzeń.”
+`sendAccountDeletedEmail` nigdy nie rzuca wyjątku; gdy Resend odrzuci e-mail albo nie da się go przygotować, porażka jest logowana, zapisywana w dzienniku audytu jako `email.failed` i zwracana jako `false`, a usunięcie pozostaje w mocy. Przekazanie tej samej obietnicy do `scheduleBackgroundWork` umieszcza ją w `waitUntil` Workera, więc e-mail i jego wpis w audycie kończą się nawet wtedy, gdy administrator wcześniej zamknie kartę. `useDeleteCustomer` dobiera komunikat na podstawie `goodbyeEmailSent`: potwierdzenie „Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.” albo ostrzeżenie „Konto usunięte — klient nie otrzymał e-maila” z opisem „Nie udało się wysłać klientowi potwierdzenia usunięcia konta. Błąd zapisano w dzienniku zdarzeń.”
 
 Ponieważ usunięcie idzie przez Better Auth, działają kaskady na `session`, `account` i `address`, natomiast `order.user_id` i `checkout.user_id` mają `onDelete: "set null"` — zamówienia przeżywają więc jako zamówienia gościa.
 

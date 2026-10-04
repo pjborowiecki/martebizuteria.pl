@@ -87,11 +87,12 @@
     "toast": {
       "cannotDeleteAdminDescription": "Nie można usunąć konta administratora.",
       "cannotDeleteSelfDescription": "Nie możesz usunąć własnego konta z tego widoku.",
+      "deleteEmailFailedDescription": "Nie udało się wysłać klientowi potwierdzenia usunięcia konta. Błąd zapisano w dzienniku zdarzeń.",
+      "deleteEmailFailedTitle": "Konto usunięte — klient nie otrzymał e-maila",
       "deleteErrorDescription": "Nie udało się usunąć konta klienta. Spróbuj ponownie.",
       "deleteErrorTitle": "Usuwanie nie powiodło się",
       "deleteNotFoundDescription": "Nie znaleziono tego klienta. Odśwież tabelę i spróbuj ponownie.",
       "deleteSuccessDescription": "Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.",
-      "deleteSuccessEmailFailedDescription": "Konto zostało usunięte, ale nie udało się wysłać e-maila z potwierdzeniem. Błąd zapisano w dzienniku zdarzeń.",
       "deleteSuccessTitle": "Konto usunięte"
     },
     "viewDetails": "Zobacz {name}"

@@ -7,6 +7,8 @@ import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
+import { executionContextStorage } from "~/src/lib/background"
+
 import { cancelOrder, cancelOrderMutation } from "../cancel-order"
 import { fulfillOrder, fulfillOrderMutation } from "../fulfill-order"
 import { markOrderDelivered, markOrderDeliveredMutation } from "../mark-order-delivered"
@@ -41,7 +43,7 @@ const audit = vi.hoisted(() => ({
   shipped: vi.fn(),
 }))
 
-const background = vi.hoisted(() => ({ notifyOrderShipped: vi.fn(() => Promise.resolve(undefined)), scheduled: vi.fn() }))
+const shippedEmail = vi.hoisted(() => ({ notifyOrderShipped: vi.fn<(orderId: string) => Promise<boolean>>() }))
 
 const cancellation = vi.hoisted(() => ({
   catalogInvalidated: vi.fn(),
@@ -54,9 +56,8 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { update: () => ({ set: database.updateSet }) },
 }))
 vi.mock("~/src/integrations/resend/order-shipped.notification.server", () => ({
-  notifyOrderShipped: background.notifyOrderShipped,
+  notifyOrderShipped: shippedEmail.notifyOrderShipped,
 }))
-vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork: background.scheduled }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch: cancellation.runBatch }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: cancellation.catalogInvalidated,
@@ -112,6 +113,7 @@ const renderedSql = (value: unknown): string => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  shippedEmail.notifyOrderShipped.mockResolvedValue(true)
   database.updates.length = 0
   cancellation.restockLines.current = [{ quantity: 2, variantId: "v-1" }]
   orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
@@ -219,23 +221,51 @@ describe("shipOrder", () => {
   })
 
   it("marks a fulfilled order shipped and stamps the shipping time", async () => {
-    await expect(shipOrder({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({ ok: true, orderId: ORDER_ID })
+    await expect(shipOrder({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({ ok: true, orderId: ORDER_ID, shippedEmailSent: true })
     expect(database.updates[0]).toMatchObject({ fulfillmentStatus: "shipped" })
     expect(database.updates[0]?.["shippedAt"]).toBeInstanceOf(Date)
   })
 
-  it("sends the shipping notification in the background", async () => {
-    await shipOrder({ data: { orderId: ORDER_ID } })
+  it("answers with the shipping email result and keeps the send running for the Worker if the admin disconnects", async () => {
+    const delivery = Promise.withResolvers<boolean>()
+    shippedEmail.notifyOrderShipped.mockReturnValue(delivery.promise)
+    const kept: Promise<unknown>[] = []
 
-    expect(background.notifyOrderShipped).toHaveBeenCalledWith(ORDER_ID)
-    expect(background.scheduled).toHaveBeenCalledTimes(1)
+    const shipping = executionContextStorage.run(
+      {
+        waitUntil: (task) => {
+          kept.push(task)
+        },
+      },
+      () => shipOrder({ data: { orderId: ORDER_ID } }),
+    )
+    await vi.waitFor(() => {
+      expect(kept).toHaveLength(1)
+    })
+    delivery.resolve(false)
+
+    await expect(shipping).resolves.toStrictEqual({ ok: true, orderId: ORDER_ID, shippedEmailSent: false })
+    await Promise.all(kept)
+    expect(shippedEmail.notifyOrderShipped).toHaveBeenCalledExactlyOnceWith(ORDER_ID)
+  })
+
+  it("keeps the order shipped and tells the admin when the shipping email failed", async () => {
+    shippedEmail.notifyOrderShipped.mockResolvedValue(false)
+
+    await expect(shipOrder({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({
+      ok: true,
+      orderId: ORDER_ID,
+      shippedEmailSent: false,
+    })
+    expect(database.updates[0]).toMatchObject({ fulfillmentStatus: "shipped" })
+    expect(audit.shipped).toHaveBeenCalledOnce()
   })
 
   it("refuses to ship an order that was never fulfilled", async () => {
     orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
 
     await expect(shipOrder({ data: { orderId: ORDER_ID } })).rejects.toThrow(AppError)
-    expect(background.notifyOrderShipped).not.toHaveBeenCalled()
+    expect(shippedEmail.notifyOrderShipped).not.toHaveBeenCalled()
   })
 
   it("keys its mutation by the shared ship key", () => {
@@ -335,11 +365,12 @@ it("cancels an order through its mutation", async () => {
   })
   expect(database.updates[0]).toMatchObject({ status: "cancelled" })
 })
-it("ships a fulfilled order through its mutation and schedules the notification", async () => {
+it("ships a fulfilled order through its mutation and sends the notification", async () => {
   orderRow.current = { fulfillmentStatus: "fulfilled", status: "processing" }
   await expect(new MutationObserver(new QueryClient(), shipOrderMutation).mutate({ orderId: ORDER_ID })).resolves.toStrictEqual({
     ok: true,
     orderId: ORDER_ID,
+    shippedEmailSent: true,
   })
-  expect(background.notifyOrderShipped).toHaveBeenCalledWith(ORDER_ID)
+  expect(shippedEmail.notifyOrderShipped).toHaveBeenCalledWith(ORDER_ID)
 })

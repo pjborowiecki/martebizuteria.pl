@@ -69,9 +69,11 @@ export const shipOrder = createServerFn({ method: "POST" })
     recordOrderShippedAudit(orderId, {
       detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
     })
-    scheduleBackgroundWork(notifyOrderShipped(orderId))
+    const shippedEmailDelivery = notifyOrderShipped(orderId)
+    scheduleBackgroundWork(shippedEmailDelivery)
+    const shippedEmailSent = await shippedEmailDelivery
 
-    return { ok: true, orderId }
+    return { ok: true, orderId, shippedEmailSent }
   })
 
 export const shipOrderMutation = mutationOptions({
@@ -85,7 +87,7 @@ Każdy element jest tu istotny:
 - **Middleware** pochodzi z `src/integrations/better-auth/auth.middleware.ts`. `withRequest` przechwytuje nagłówki żądania i normalizuje błędy; `authorized()` wymaga sesji; `authorized({ order: ["update"] })` sprawdza dodatkowo uprawnienie roli z `auth.access.ts`; `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` liczy próby na operację i adres IP.
 - **Walidacja** parsuje wejście schematem Zod modułu przed uruchomieniem handlera, więc handler otrzymuje typy `zod.output`.
 - **Guardy stanu** mieszkają w module, nie w komponencie. `assertOrderActionState` odrzuca przejścia, które `order.admin-actions.utils.ts` uznaje za niemożliwe.
-- **Audyt i e-mail to praca w tle.** Rejestrator wysyła zdarzenie do kolejki Cloudflare; e-mail trafia do `scheduleBackgroundWork`, więc żadne z nich nie opóźnia odpowiedzi.
+- **Audyt to praca w tle, a na e-mail handler czeka.** Rejestrator wysyła zdarzenie do kolejki Cloudflare, więc nie opóźnia odpowiedzi. Na e-mail handler czeka, bo administrator dowiaduje się, czy wyszedł: `notifyOrderShipped` zapisuje porażkę przy zamówieniu i zwraca `false` zamiast rzucać wyjątek, więc odrzucony e-mail nigdy nie cofa wysyłki zamówienia. Ta sama obietnica trafia też do `scheduleBackgroundWork`, więc wysyłka i jej wpis w audycie kończą się nawet wtedy, gdy administrator wcześniej się rozłączy.
 - **Opcje mutacji są eksportowane obok funkcji**, z kluczem `ORDER_MUTATION_KEYS.SHIP`.
 
 ## Przypadek użycia odczytujący

@@ -196,12 +196,14 @@ It captures the email, name and current locale **before** deleting, hands the de
 ```ts
 await auth.api.removeUser({ body: { userId }, headers: getRequestHeaders() })
 
-const goodbyeEmailSent = await sendAccountDeletedEmail(goodbyeEmail)
+const goodbyeEmailDelivery = sendAccountDeletedEmail(goodbyeEmail)
+scheduleBackgroundWork(goodbyeEmailDelivery)
+const goodbyeEmailSent = await goodbyeEmailDelivery
 
 return { goodbyeEmailSent, ok: true as const, userId }
 ```
 
-`sendAccountDeletedEmail` never throws; a refusal from Resend, or an error while preparing the email, is logged, recorded as `email.failed` in the audit log and returned as `false`, and the deletion stands. `useDeleteCustomer` picks the toast from `goodbyeEmailSent`: "The account was deleted and a confirmation email was sent." or "The account was deleted, but the confirmation email could not be sent. The failure is recorded in the audit log."
+`sendAccountDeletedEmail` never throws; a refusal from Resend, or an error while preparing the email, is logged, recorded as `email.failed` in the audit log and returned as `false`, and the deletion stands. Handing the same promise to `scheduleBackgroundWork` puts it on the Worker's `waitUntil`, so the email and its audit entry finish even if the admin closes the tab first. `useDeleteCustomer` picks the toast from `goodbyeEmailSent`: a success toast, "The account was deleted and a confirmation email was sent.", or a warning toast, "Account deleted — email not sent", with "The confirmation email to the customer could not be sent. The error is recorded in the audit log."
 
 Because deletion goes through Better Auth, the cascades on `session`, `account` and `address` apply, while `order.user_id` and `checkout.user_id` are `onDelete: "set null"` — so the orders survive as guest orders.
 

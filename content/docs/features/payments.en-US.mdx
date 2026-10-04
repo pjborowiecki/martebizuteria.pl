@@ -136,7 +136,7 @@ Then it parses the item lines out of the metadata, calls `fulfillCheckout` and, 
 
 1. `recordOrderPlacedAudit(orderId, …)` and `recordOrderPaymentCapturedAudit(orderId, …)` with the formatted amount.
 2. `scheduleAdminOrdersInvalidation()` and `scheduleProductCatalogInvalidation()`.
-3. `notifyOrderConfirmed(session, { currency, lines, orderId })`.
+3. `notifyOrderConfirmed(session, { currency, lines, orderId })`, which records the outcome on the order and never throws, so a refused confirmation still leaves the webhook answering 200. Its promise goes to `scheduleBackgroundWork` before it is awaited, so the email finishes even if Stripe stops waiting.
 
 `fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) resolves the pending checkout from the transaction id, loads the checkout's delivery method and discount, computes the totals, allocates an order number and runs one D1 batch built by `prepareFulfillCheckoutBatch`:
 

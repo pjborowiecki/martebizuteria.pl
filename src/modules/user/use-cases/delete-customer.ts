@@ -13,6 +13,8 @@ import { getUserById } from "~/src/modules/user/user.accessors"
 import { USER_ERROR_CODES, USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
 import { userZodSchemas } from "~/src/modules/user/user.zod"
 
+import { scheduleBackgroundWork } from "~/src/lib/background"
+
 export const deleteCustomer = createServerFn({ method: "POST" })
   .middleware([authorized({ user: ["delete"] })])
   .validator((input: zod.input<typeof userZodSchemas.deleteCustomerInput>) => userZodSchemas.deleteCustomerInput.parse(input))
@@ -41,7 +43,9 @@ export const deleteCustomer = createServerFn({ method: "POST" })
       headers: getRequestHeaders(),
     })
 
-    const goodbyeEmailSent = await sendAccountDeletedEmail(goodbyeEmail)
+    const goodbyeEmailDelivery = sendAccountDeletedEmail(goodbyeEmail)
+    scheduleBackgroundWork(goodbyeEmailDelivery)
+    const goodbyeEmailSent = await goodbyeEmailDelivery
 
     return { goodbyeEmailSent, ok: true as const, userId }
   })

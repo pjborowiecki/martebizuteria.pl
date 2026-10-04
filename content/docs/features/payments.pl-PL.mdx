@@ -136,7 +136,7 @@ Następnie parsuje linie pozycji z metadanych, wywołuje `fulfillCheckout`, a je
 
 1. `recordOrderPlacedAudit(orderId, …)` i `recordOrderPaymentCapturedAudit(orderId, …)` ze sformatowaną kwotą.
 2. `scheduleAdminOrdersInvalidation()` i `scheduleProductCatalogInvalidation()`.
-3. `notifyOrderConfirmed(session, { currency, lines, orderId })`.
+3. `notifyOrderConfirmed(session, { currency, lines, orderId })`, które zapisuje wynik przy zamówieniu i nigdy nie rzuca wyjątku, więc odrzucone potwierdzenie nie zmienia odpowiedzi webhooka z 200. Jego obietnica trafia do `scheduleBackgroundWork`, zanim handler na nią poczeka, więc e-mail kończy się nawet wtedy, gdy Stripe przestanie czekać.
 
 `fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) rozwiązuje oczekujący checkout po identyfikatorze transakcji, wczytuje metodę dostawy i rabat checkoutu, wylicza kwoty, przydziela numer zamówienia i uruchamia jeden wsad D1 zbudowany przez `prepareFulfillCheckoutBatch`:
 

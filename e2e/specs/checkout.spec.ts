@@ -30,7 +30,7 @@ test.describe("guest checkout", () => {
     await checkoutPage.open(`/en-US/checkout?success=true&session_id=${session.id}`)
 
     await expect(page.getByRole("heading", { name: "Order Confirmed" })).toBeVisible()
-    await expect(page.getByRole("main")).toContainText(`A confirmation is on its way to ${email}`)
+    await expect(page.getByRole("main")).toContainText(`If the confirmation email has not reached ${email} within a few minutes`)
     await expect(page.getByRole("main")).toContainText(/MRT-\d{4}-\d{5}/u)
     await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s398\.99/u)
     await expect(page.getByRole("main")).toContainText(`${SHIPPING_ADDRESS.postalCode} ${SHIPPING_ADDRESS.city}`)

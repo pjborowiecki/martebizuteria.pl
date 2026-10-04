@@ -26,10 +26,10 @@ const resolveOrderActionErrorMessage = (error: Error, t: ReturnType<typeof useTr
   return t("toast.errorDescription")
 }
 
-const useAdminOrderActionMutation = <TInput extends OrderIdInput>(
-  options: UseMutationOptions<OrderActionResult, Error, TInput>,
+const useAdminOrderActionMutation = <TInput extends OrderIdInput, TResult extends OrderActionResult>(
+  options: UseMutationOptions<TResult, Error, TInput>,
   successDescriptionKey: OrderActionSuccessKey,
-): UseMutationResult<OrderActionResult, Error, TInput> => {
+): UseMutationResult<TResult, Error, TInput> => {
   const t = useTranslations("pages.admin.orders.rowActions")
   const queryClient = useQueryClient()
 
@@ -43,10 +43,12 @@ const useAdminOrderActionMutation = <TInput extends OrderIdInput>(
     onSettled: () => {
       void syncQueryInvalidation(queryClient, ORDER_QUERY_KEYS.ADMIN.ORDERS)
     },
-    onSuccess: () => {
+    onSuccess: (...successArguments) => {
       toast.success(t("toast.successTitle"), {
         description: t(successDescriptionKey),
       })
+
+      return options.onSuccess?.(...successArguments)
     },
   })
 }
@@ -54,8 +56,23 @@ const useAdminOrderActionMutation = <TInput extends OrderIdInput>(
 export const useFulfillOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
   useAdminOrderActionMutation(fulfillOrderMutation, "toast.fulfillSuccessDescription")
 
-export const useMarkOrderShipped = (): UseMutationResult<OrderActionResult, Error, ShipOrderInput> =>
-  useAdminOrderActionMutation(shipOrderMutation, "toast.shipSuccessDescription")
+export const useMarkOrderShipped = (): UseMutationResult<ShipOrderResult, Error, ShipOrderInput> => {
+  const t = useTranslations("pages.admin.orders.rowActions")
+
+  return useAdminOrderActionMutation(
+    {
+      ...shipOrderMutation,
+      onSuccess: ({ shippedEmailSent }) => {
+        if (!shippedEmailSent) {
+          toast.warning(t("toast.shipEmailFailedTitle"), {
+            description: t("toast.shipEmailFailedDescription"),
+          })
+        }
+      },
+    },
+    "toast.shipSuccessDescription",
+  )
+}
 
 export const useMarkOrderDelivered = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
   useAdminOrderActionMutation(markOrderDeliveredMutation, "toast.markDeliveredSuccessDescription")
@@ -85,4 +102,8 @@ interface ShipOrderInput extends OrderIdInput {
 interface OrderActionResult {
   readonly ok: true
   readonly orderId: string
+}
+
+interface ShipOrderResult extends OrderActionResult {
+  readonly shippedEmailSent: boolean
 }

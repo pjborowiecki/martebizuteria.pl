@@ -104,6 +104,17 @@ describe("CheckoutSuccess", () => {
     expect(screen.getByText(/anna@example\.com/u)).toBeInTheDocument()
   })
 
+  it("does not promise a confirmation email the page cannot know was sent", async () => {
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(
+      await screen.findByText(
+        "Thank you for your purchase. If the confirmation email has not reached anna@example.com within a few minutes, contact us and quote the order number below.",
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/on its way/u)).toBeNull()
+  })
+
   it("shows the order number the customer can quote to support", async () => {
     renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
 

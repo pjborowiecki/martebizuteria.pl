@@ -565,6 +565,8 @@
         "successTitle": "Order updated",
         "fulfillSuccessDescription": "Fulfillment started for this order.",
         "shipSuccessDescription": "Order marked as shipped.",
+        "shipEmailFailedTitle": "Shipping email not sent",
+        "shipEmailFailedDescription": "The customer was not emailed about the shipment. See the order's Activity card for the error.",
         "cancelSuccessDescription": "Order cancelled.",
         "errorTitle": "Could not update order",
         "errorDescription": "Please try again in a moment.",

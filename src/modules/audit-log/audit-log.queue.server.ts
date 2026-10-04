@@ -8,6 +8,7 @@ import {
   type AuditLogCategory,
   type AuditLogSeverity,
 } from "~/src/modules/audit-log/audit-log.constants"
+import { ADMIN_ORDER_TIMELINE_ACTIONS, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 
 export interface AuditLogQueueMessage {
   readonly action: AuditLogAction
@@ -24,6 +25,10 @@ export interface AuditLogQueueMessage {
   readonly severity: AuditLogSeverity
   readonly target: string
 }
+
+const ORDER_TIMELINE_ACTIONS: ReadonlySet<AuditLogAction> = new Set(ADMIN_ORDER_TIMELINE_ACTIONS)
+
+const AUDIT_LOG_ADMIN_QUERY_KEYS = [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] as const
 
 const toInsertRow = (message: AuditLogQueueMessage): AuditLogInsertRow => ({
   action: message.action,
@@ -51,8 +56,9 @@ export const processAuditLogQueueBatch = async (batch: MessageBatch<AuditLogQueu
       message.ack()
     }
 
+    const changesOrderTimeline = batch.messages.some((message) => ORDER_TIMELINE_ACTIONS.has(message.body.action))
     await publishRealtimeInvalidation({
-      admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS],
+      admin: changesOrderTimeline ? [...AUDIT_LOG_ADMIN_QUERY_KEYS, ORDER_QUERY_KEYS.ADMIN.ORDERS] : AUDIT_LOG_ADMIN_QUERY_KEYS,
     })
   } catch (error) {
     console.error("[AuditLog Queue] Batch insert failed:", error)

@@ -61,7 +61,7 @@ All under `src/presentation/emails/`, built with `react-email` and rendered serv
 | `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmation` (Better Auth)                              |
 | `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, awaited by `deleteCustomer` and `afterDelete` |
 | `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `notifyOrderConfirmed`, from the Stripe webhook                          |
-| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, queued by `shipOrder`                              |
+| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, awaited by `shipOrder`                             |
 | `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, awaited by `subscribeToNewsletter`         |
 | `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, awaited by `subscribeToNewsletter`    |
 
@@ -126,7 +126,7 @@ The layout also forces light rendering:
 
 This is the most involved template. `stripe.webhooks.tsx` builds it in `buildOrderConfirmationEmailPayload`:
 
-1. The recipient is `session.customer_email ?? session.customer_details?.email`; the whole payload is abandoned if there is none.
+1. The recipient is `session.customer_email ?? session.customer_details?.email`. If there is none, nothing is built and the failure `The Stripe session has no email address` is recorded against the order.
 2. `getCheckoutEmailContext(checkoutId)` loads the addresses, the delivery method, the locker id and the customer note.
 3. `resolveStripePaymentMethodLabel(session, messages)` turns the Stripe payment method into a translated label.
 4. `buildOrderConfirmationDetails(...)` assembles the details block.
@@ -163,7 +163,35 @@ export const recordOrderEmailOutcome = ({
 }
 ```
 
-The `label` is a human string such as `Order confirmation → jane@example.com`. If building the payload throws before a send is even attempted, `notifyOrderConfirmed` catches it and records `recordEmailFailedAudit` with the error message instead. So the audit log's `email` category is the place to look when a customer says they got nothing.
+The `label` is a human string such as `Order confirmation → jane@example.com`. Both order emails are split the same way. `sendOrderConfirmationEmail` in `stripe.webhooks.tsx` and `sendOrderShippedEmail` in `order-shipped.notification.server.ts` return `{ failure, label }`, and `notifyOrderConfirmed` and `notifyOrderShipped` hand that attempt to `recordOrderEmailAttempt` in `src/integrations/resend/order-email.outcome.server.ts`:
+
+```ts
+export const recordOrderEmailAttempt = async (
+  attempt: Promise<OrderEmailOutcome>,
+  { label, orderId }: Readonly<{ label: string; orderId: string }>,
+): Promise<boolean> => {
+  const outcome = await attempt.catch((error: unknown) => {
+    console.error(`${label} for order ${orderId} could not be prepared:`, error)
+
+    return { failure: error instanceof Error ? error.message : String(error), label }
+  })
+  recordOrderEmailOutcome({ failure: outcome.failure, label: outcome.label, orderId })
+
+  return outcome.failure === undefined
+}
+```
+
+An error thrown while the email is prepared is logged with its stack and becomes the outcome too, labelled without a recipient and described the way `sendEmail` describes an error it catches. Every attempt therefore ends in an entry:
+
+| What went wrong                   | Detail of the `email.failed` entry                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| Resend refused the send           | `Order confirmation → jane@example.com — The example.com domain is not verified…`    |
+| The Stripe session has no address | `Order confirmation — The Stripe session has no email address`                       |
+| The order has a blank address     | `Order shipped — The order has no email address`                                     |
+| The order row is gone             | `Order shipped — The order could not be found`                                       |
+| Preparing the email threw         | `Order shipped — D1_ERROR: …`, or the thrown value as text when it is not an `Error` |
+
+The order id is the target and `resourceId` of every entry. The failure therefore shows in the order's **Activity** card in the admin, as "Email failed" with a "Failed" badge and the detail underneath, and in `/admin/audit` under the `email` category with severity `error`. Audit entries reach D1 through the queue a few seconds after the send, so `processAuditLogQueueBatch` publishes `ORDER_QUERY_KEYS.ADMIN.ORDERS` whenever a batch carries an action from an order timeline: every open admin tab refetches its order list, the order stats and an open order page, which then shows the entry without a reload. Newsletter and Better Auth failures use the same `email.failed` action, so they trigger that refetch as well. An entry can still be lost on its way to D1, when the queue send fails or a batch fails three times, because no dead-letter queue is configured; only the Worker log has the failure then. The admin has no button to resend an order email yet: once the cause is fixed, the shop contacts the customer at the address shown on the order.
 
 A newsletter email that Resend refuses is audited as well. `subscribeToNewsletter` calls `recordEmailFailedAudit(email, { detail })`: the address is the audit target, and the detail names the email and the Resend error, such as `Newsletter confirmation — The example.com domain is not verified` or `Newsletter already-subscribed notice — …`. An unverified sender domain therefore shows up in `/admin/audit` on the first signup instead of only in the Worker log. An email that went out is not recorded.
 
@@ -191,19 +219,29 @@ The target is the recipient's address and the detail names the email, for exampl
 
 `AUDIT_LOG_ACTION.EMAIL_DEFERRED` exists but nothing emits it.
 
-## Background delivery
+## Waiting for the send
 
-One sender is deliberately not awaited by the request:
+The shop's own senders wait for Resend's answer, so the result reaches whoever is looking. Better Auth's sign-up, password reset and change-email hooks are the exception: Better Auth runs them through `advanced.backgroundTasks`, which is `scheduleBackgroundWork` (`src/lib/background.ts`, the Worker's `waitUntil`), as [Better Auth](/docs/integrations/better-auth) describes.
 
-- `shipOrder` — `scheduleBackgroundWork(notifyOrderShipped(orderId))`
+`shipOrder`, `deleteCustomer` and the Stripe webhook also hand the send they wait for to `scheduleBackgroundWork` before awaiting it:
 
-`scheduleBackgroundWork` (`src/lib/background.ts`) uses the Worker's `waitUntil`, so the request returns immediately.
+```ts
+const shippedEmailDelivery = notifyOrderShipped(orderId)
+scheduleBackgroundWork(shippedEmailDelivery)
+const shippedEmailSent = await shippedEmailDelivery
+```
 
-`deleteCustomer` awaits `sendAccountDeletedEmail` after `removeUser` and returns `goodbyeEmailSent`, so the admin's toast says whether the goodbye email went out. A refusal never undoes the deletion: `sendAccountDeletedEmail` returns `false` instead of throwing, both when Resend refuses the email and when it cannot even be prepared.
+When the admin closes the tab or Stripe stops waiting, the Workers runtime may cancel what the request was still awaiting, but not a promise passed to `waitUntil`. The email therefore still goes out and its outcome is still recorded. Better Auth's `afterDelete` awaits `sendAccountDeletedEmail` without this, so a customer who closes the tab during self-deletion can still cut the goodbye email short.
+
+`shipOrder` awaits `notifyOrderShipped` after the order row is updated and returns `shippedEmailSent`. The admin always sees "Order marked as shipped.", and when the email failed also a warning toast, "Shipping email not sent", that points to the order's Activity card for the error. The order stays shipped either way, because `notifyOrderShipped` records the failure and returns `false` instead of throwing. Shipping from the orders list shows the same toasts.
+
+`deleteCustomer` awaits `sendAccountDeletedEmail` after `removeUser` and returns `goodbyeEmailSent`. The admin sees "The account was deleted and a confirmation email was sent.", or, when the email failed, a warning toast titled "Account deleted — email not sent" that points to the audit log. A refusal never undoes the deletion: `sendAccountDeletedEmail` returns `false` instead of throwing, both when Resend refuses the email and when it cannot even be prepared.
 
 `subscribeToNewsletter` awaits its email, because the person who just signed up is told whether it went out. A new, pending or unsubscribed address gets `sendNewsletterConfirmation`; an address that is already confirmed, submitted by anyone but its signed-in owner, gets `sendNewsletterAlreadySubscribed`. Both return the Resend error message, or `undefined` when the send was accepted. On a failure the use case logs it, audits it and answers `confirmationFailed`. A subscriber row that was waiting for confirmation stays `pending`, so submitting the address again issues a fresh token and sends a new email. The request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`, which the form covers with its "Signing you up..." state.
 
-The Stripe webhook, by contrast, **awaits** `notifyOrderConfirmed`. An unhandled throw there would make the handler return 500 and Stripe would redeliver a webhook whose order has already been created — which is why `notifyOrderConfirmed` wraps everything in `try`/`catch` and swallows the error after recording it.
+The Stripe webhook awaits `notifyOrderConfirmed` too, but nobody sees its answer, so the order's activity is where a failure shows. `notifyOrderConfirmed` never throws: a refusal and a thrown error both end as an `email.failed` entry, and the webhook still answers 200. Throwing would not resend the email anyway. The handler would answer 500 and Stripe would redeliver the event, but on redelivery `fulfillCheckout` finds no pending checkout and the handler stops before the email step, so the only effects would be failed deliveries in Stripe and a coupon cleanup pushed to the retry.
+
+The checkout success page therefore does not say the confirmation is on its way. It asks the shopper to contact the shop and quote the order number if the email has not arrived within a few minutes.
 
 ## Previewing
 
