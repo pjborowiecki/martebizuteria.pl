@@ -34,9 +34,10 @@ import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { IP_ADDRESS_HEADER } from "~/src/lib/rate-limit"
+import { resolveRequestOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 
-import { APP_NAME, APP_URL } from "~/src/presentation/branding/app"
+import { APP_NAME } from "~/src/presentation/branding/app"
 
 import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
 import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"
@@ -209,10 +210,10 @@ export const sendChangeEmailConfirmation = async ({ user, url }: AuthEmailParams
   })
 }
 
-export const sendAccountDeletedEmail = async ({ email, locale, name }: AccountDeletedEmailParams): Promise<boolean> => {
+export const sendAccountDeletedEmail = async ({ email, locale, name, origin }: AccountDeletedEmailParams): Promise<boolean> => {
   try {
     const resolvedLocale = locale ?? getCurrentLocale()
-    const storefrontUrl = `${APP_URL}/${resolvedLocale}`
+    const storefrontUrl = buildLocalizedUrl(origin, ROUTES.HOME, resolvedLocale)
     const messages = await loadNamespace<typeof accountDeletedMessages>({ locale: resolvedLocale, namespace: ACCOUNT_DELETED_NAMESPACE })
 
     return await deliverAuthEmail("account-deleted", {
@@ -364,8 +365,18 @@ export const auth = betterAuth({
       sendChangeEmailConfirmation,
     },
     deleteUser: {
-      afterDelete: async (deleted) => {
-        await sendAccountDeletedEmail({ email: deleted.email, name: deleted.name })
+      afterDelete: async (deleted, request) => {
+        if (request === undefined) {
+          recordAuthEmailFailure("account-deleted", deleted.email, "The deletion came with no request to link the storefront from")
+
+          return
+        }
+
+        try {
+          await sendAccountDeletedEmail({ email: deleted.email, name: deleted.name, origin: resolveRequestOrigin(request) })
+        } catch (error) {
+          recordAuthEmailFailure("account-deleted", deleted.email, String(error))
+        }
       },
       enabled: true,
     },
@@ -390,4 +401,5 @@ interface AccountDeletedEmailParams {
   readonly email: string
   readonly locale?: SupportedLocale
   readonly name: string
+  readonly origin: string
 }

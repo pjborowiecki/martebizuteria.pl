@@ -123,7 +123,7 @@ The four guarded actions record an audit event (`recordOrderFulfillmentStartedAu
 recordOrderShippedAudit(orderId, {
   detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
 })
-const shippedEmailDelivery = notifyOrderShipped(orderId)
+const shippedEmailDelivery = notifyOrderShipped(orderId, origin)
 scheduleBackgroundWork(shippedEmailDelivery)
 const shippedEmailSent = await shippedEmailDelivery
 
@@ -182,7 +182,7 @@ The timeline includes the order's email entries. An `email.failed` row reads "Em
 
 Both pages show `order_number`. The filter tabs are `CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "processing", "shipped", "delivered", "cancelled", "refunded"]`.
 
-Guest orders have `user_id = null` and appear in no account until one claims them: `claimGuestOrdersForUser` (`order.claim.server.ts`) sets `user_id` on every guest order with the same email, ignoring case, when a user is created with a verified email or verifies it. The confirmation email's CTA points a guest at `/auth/sign-up` instead — see `buildOrderAccountCta` in `src/integrations/resend/order-confirmation.utils.ts`.
+Guest orders have `user_id = null` and appear in no account until one claims them: `claimGuestOrdersForUser` (`order.claim.server.ts`) sets `user_id` on every guest order with the same email, ignoring case, when a user is created with a verified email or verifies it. The confirmation email's CTA points a guest at `/auth/sign-up` instead — see `buildOrderAccountCta` in `src/integrations/resend/order-confirmation.utils.ts`, which builds both links on the origin it is given: the address the checkout was made on for the confirmation, and the admin's request for the shipping email.
 
 ## Locale on an order
 

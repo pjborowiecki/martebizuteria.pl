@@ -68,15 +68,15 @@ Four modules exist for operations rather than for rows.
 
 `_core/constants/`:
 
-| File             | Exports                                                                                        |
-| ---------------- | ---------------------------------------------------------------------------------------------- |
-| `errors.ts`      | `ERROR_CODES`, the `AppError` class and `errorCode`                                            |
-| `api.ts`         | `HTTP_STATUS`, `isLocalMode`, `appHostsForMode` — the host allowlist Better Auth is built with |
-| `currency.ts`    | `CURRENCIES`, the ISO 4217 table with numeric codes and exponents                              |
-| `country.ts`     | The ISO country reference table                                                                |
-| `timezone.ts`    | The IANA timezone reference table                                                              |
-| `placeholder.ts` | Placeholder image data                                                                         |
-| `tax.ts`         | `STANDARD_VAT_BASIS_POINTS` (23%), `BASIS_POINTS_SCALE` and `VAT_COUNTRY_CODE`                 |
+| File             | Exports                                                                                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `errors.ts`      | `ERROR_CODES`, the `AppError` class and `errorCode`                                                                                                                                                                 |
+| `api.ts`         | `HTTP_STATUS`, `isLocalMode`, `appHostsForMode` — the host allowlist Better Auth is built with and `resolveRequestOrigin` checks — and `isLocalHost` and `isDeploymentHost`, which `resolveDeploymentOrigin` checks |
+| `currency.ts`    | `CURRENCIES`, the ISO 4217 table with numeric codes and exponents                                                                                                                                                   |
+| `country.ts`     | The ISO country reference table                                                                                                                                                                                     |
+| `timezone.ts`    | The IANA timezone reference table                                                                                                                                                                                   |
+| `placeholder.ts` | Placeholder image data                                                                                                                                                                                              |
+| `tax.ts`         | `STANDARD_VAT_BASIS_POINTS` (23%), `BASIS_POINTS_SCALE` and `VAT_COUNTRY_CODE`                                                                                                                                      |
 
 `country.ts` is reference data kept intentionally; the only import from it is the `CountryCode` type in `timezone.ts`. `timezone.ts` is in use: the profile page's time zone field lists `TIMEZONES`, and `list-saved-payment-methods` resolves the customer's zone with `resolveTimezoneCode` to decide whether a saved card has expired.
 

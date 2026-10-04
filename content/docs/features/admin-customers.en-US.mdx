@@ -183,15 +183,16 @@ A column that holds plain text rather than JSON is treated as notes, so a legacy
 
 It does **not** change email, name, role or ban state; those are Better Auth operations.
 
-`deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, has three guards:
+`deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, has four guards:
 
-| Condition                                | Error                                                  |
-| ---------------------------------------- | ------------------------------------------------------ |
-| User not found                           | `ERROR_CODES.NOT_FOUND` / `USER_ERROR_CODES.NOT_FOUND` |
-| `targetUser.id === context.auth.user.id` | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
-| `targetUser.role === ROLES.ADMIN`        | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
+| Condition                                                            | Error                                                  |
+| -------------------------------------------------------------------- | ------------------------------------------------------ |
+| Request on a host this build does not serve (`resolveRequestOrigin`) | `ERROR_CODES.FORBIDDEN`                                |
+| User not found                                                       | `ERROR_CODES.NOT_FOUND` / `USER_ERROR_CODES.NOT_FOUND` |
+| `targetUser.id === context.auth.user.id`                             | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
+| `targetUser.role === ROLES.ADMIN`                                    | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
 
-It captures the email, name and current locale **before** deleting, hands the deletion to `auth.api.removeUser`, and then waits for the goodbye email:
+It captures the email, name, current locale and request origin **before** deleting, hands the deletion to `auth.api.removeUser`, and then waits for the goodbye email:
 
 ```ts
 await auth.api.removeUser({ body: { userId }, headers: getRequestHeaders() })

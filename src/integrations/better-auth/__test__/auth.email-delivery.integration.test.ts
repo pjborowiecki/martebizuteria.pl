@@ -253,7 +253,7 @@ describe("auth emails when Resend refuses them", () => {
     expect(emailsSend).toHaveBeenLastCalledWith(expect.objectContaining({ to: "anna@example.com" }))
   })
 
-  it("keeps account deletion successful when the goodbye email is refused", async () => {
+  it("keeps account deletion successful when the goodbye email, linked to the address the deletion came in on, is refused", async () => {
     await signUp("anna@example.com")
     await waitForSends(1)
     sqlite.prepare("update user set email_verified = 1 where email = ?").run("anna@example.com")
@@ -265,6 +265,7 @@ describe("auth emails when Resend refuses them", () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ success: true })
     expect(countUsers()).toBe(0)
+    expect(emailsSend.mock.lastCall?.[0]).toMatchObject({ react: { props: { storefrontUrl: "http://localhost:3000/en-US" } } })
     expect(recordEmailFailedAudit).toHaveBeenCalledWith("anna@example.com", {
       detail: `Auth account-deleted email — ${DOMAIN_NOT_VERIFIED.error.message}`,
     })

@@ -104,7 +104,7 @@ Several settings people expect to find in `.env` are constants:
 | `APP_NAME`, `APP_DOMAIN`, `APP_URL`, OG image, theme colour, R2 fallback URL | `src/presentation/branding/app.ts`                      |
 | Legal name, NIP, REGON, address, phone, opening hours                        | `src/presentation/branding/business.ts`                 |
 | Facebook and Instagram links                                                 | `src/presentation/branding/socials.ts`                  |
-| Hosts Better Auth accepts per mode                                           | `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts` |
+| Hosts each mode serves: auth, email links, the Stripe return URL             | `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts` |
 | Supported locales, default locale, locale cookie name, timezones             | `src/integrations/use-intl/i18n.config.ts`              |
 | D1, R2, KV and Queue identifiers, Worker names                               | `wrangler.jsonc`                                        |
 
@@ -121,6 +121,8 @@ const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]
 
 Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. A host missing from this list will have its auth requests rejected, which looks like sign-in silently failing on a new domain.
 
+`resolveRequestOrigin` (`src/lib/request.ts`) checks the same list before the app builds a link into an email or a Stripe `return_url`, so emails link back to the host the customer or admin used: `localhost:3000` or `127.0.0.1:3000` locally, the preview host on preview, and `martebizuteria.pl` or the production `workers.dev` name in production. A request on a host missing from the list is refused with `FORBIDDEN`. The order confirmation is sent from the Stripe webhook and takes the origin of the session's `return_url`, which `resolveDeploymentOrigin` checks against the hosts of every mode. `LOCAL_HOSTS` pins port 3000, which Vite's `strictPort` already enforces for the dev server.
+
 ## Provider callbacks to register
 
 | Provider | URL                                       | Verified with           |
@@ -129,7 +131,7 @@ Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.
 | GitHub   | `https://<host>/api/auth/callback/github` | Client id and secret    |
 | Stripe   | `https://<host>/api/webhooks/stripe`      | `STRIPE_WEBHOOK_SECRET` |
 
-The auth handler is `src/routes/api/auth.$.ts`, mounted at `/api/auth/$`; the Stripe handler is `src/routes/api/webhooks.stripe.ts` and accepts `POST` only.
+The auth handler is `src/routes/api/auth.$.ts`, mounted at `/api/auth/$`; the Stripe handler is `src/routes/api/webhooks.stripe.ts` and accepts `POST` only. The host the Stripe endpoint is registered on does not change any email: the order confirmation links to the address the checkout was made on, which the session's `return_url` carries.
 
 ## Declared but not wired
 

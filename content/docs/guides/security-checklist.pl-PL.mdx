@@ -43,6 +43,7 @@ Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli z
 - [ ] `emailAndPassword.requireEmailVerification: true`.
 - [ ] `advanced.useSecureCookies: !isLocalMode(import.meta.env.MODE)` — bezpieczne ciasteczka wszędzie poza `development` i `test`.
 - [ ] `baseURL.allowedHosts: appHostsForMode(import.meta.env.MODE)`. Lista dozwolonych hostów jest w `src/modules/_core/constants/api.ts` i zależy od trybu: produkcja dopuszcza `martebizuteria.pl` oraz nazwę `workers.dev`, preview dopuszcza swoją parę, a tryb lokalny wyłącznie `localhost:3000` i `127.0.0.1:3000`.
+- [ ] Każdy link w e-mailu i `return_url` Stripe są budowane z `resolveRequestOrigin(request)` (`src/lib/request.ts`), które czyta wyłącznie `request.url` i odrzuca host spoza tej listy z `FORBIDDEN`. Potwierdzenie zamówienia, wysyłane z webhooka, bierze origin z `return_url` sesji przez `resolveDeploymentOrigin`, które odrzuca host nieobsługiwany przez żadne wdrożenie. Nic nie buduje ich z `APP_URL` ani z nagłówków `Origin`, `Referer`, `Host` czy `X-Forwarded-*`.
 - [ ] `account.encryptOAuthTokens: true` i `verification.storeIdentifier: "hashed"`.
 - [ ] `multiSession({ maximumSessions: 5 })` i `session.storeSessionInDatabase: true`.
 - [ ] `telemetry.enabled: false`.

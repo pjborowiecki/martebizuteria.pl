@@ -22,3 +22,8 @@ const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]
 export const isLocalMode = (mode: string): boolean => LOCAL_MODES.has(mode)
 
 export const appHostsForMode = (mode: string): string[] => [...(HOSTS_BY_MODE[mode] ?? LOCAL_HOSTS)]
+
+export const isLocalHost = (host: string): boolean => LOCAL_HOSTS.includes(host)
+
+export const isDeploymentHost = (host: string): boolean =>
+  isLocalHost(host) || Object.values(HOSTS_BY_MODE).some((hosts) => hosts.includes(host))

@@ -1,4 +1,4 @@
-import { getRequestHeader } from "@tanstack/react-start/server"
+import { getRequest } from "@tanstack/react-start/server"
 import type StripeType from "stripe"
 import { type z } from "zod"
 
@@ -36,10 +36,9 @@ import { sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 import { createPendingPayment, getPaymentContextByTransactionId, repointPayment } from "~/src/modules/payment/payment.accessors"
 import { getProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 
+import { resolveRequestOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 import { resolveAssetURL } from "~/src/lib/url"
-
-import { APP_URL } from "~/src/presentation/branding/app"
 
 import { ROUTES } from "~/src/routes"
 
@@ -158,37 +157,20 @@ const toMetaItems = (lines: OrderLine[]): Record<string, string> =>
     })),
   )
 
-const resolveOrigin = (): string => {
-  const origin = getRequestHeader("origin")
-  if (origin !== undefined && origin !== "") {
-    return origin
-  }
-
-  const referer = getRequestHeader("referer")
-  if (referer !== undefined && referer !== "") {
-    try {
-      return new URL(referer).origin
-    } catch {
-      return APP_URL
-    }
-  }
-
-  return APP_URL
-}
-
 interface CreateSessionArgs {
   checkoutId: string
   customerId: string | undefined
   discount: Discount["applied"] | undefined
   email: string
   lines: OrderLine[]
+  origin: string
   shippingCost: number
   userId: string | undefined
 }
 
-const createStripeSession = async ({ checkoutId, customerId, discount, email, lines, shippingCost, userId }: CreateSessionArgs) => {
+const createStripeSession = async ({ checkoutId, customerId, discount, email, lines, origin, shippingCost, userId }: CreateSessionArgs) => {
   const locale = getCurrentLocale()
-  const returnUrl = `${buildLocalizedUrl(resolveOrigin(), ROUTES.CHECKOUT, locale)}?success=true&session_id={CHECKOUT_SESSION_ID}`
+  const returnUrl = `${buildLocalizedUrl(origin, ROUTES.CHECKOUT, locale)}?success=true&session_id={CHECKOUT_SESSION_ID}`
   const metadata = {
     checkoutId,
     discountCode: discount?.code ?? "",
@@ -266,6 +248,7 @@ interface PersistCheckoutSessionUpdateArgs {
   lines: OrderLine[]
   oldReservedLines: CheckoutReleaseLine[]
   oldSessionId: string
+  origin: string
   shippingCost: number
   userId: string | undefined
   validatedItems: ValidatedCheckoutItem[]
@@ -280,6 +263,7 @@ const persistCheckoutSessionUpdate = async ({
   lines,
   oldReservedLines,
   oldSessionId,
+  origin,
   shippingCost,
   userId,
   validatedItems,
@@ -293,6 +277,7 @@ const persistCheckoutSessionUpdate = async ({
       discount,
       email,
       lines,
+      origin,
       shippingCost,
       userId,
     })
@@ -324,6 +309,7 @@ const persistCheckoutSessionUpdate = async ({
 }
 
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
+  const origin = resolveRequestOrigin(getRequest())
   const session = await getRequestSession()
   const userId = session?.user.id
   const { email } = data.checkoutValues
@@ -356,6 +342,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
       discount,
       email,
       lines,
+      origin,
       shippingCost,
       userId,
     })
@@ -382,6 +369,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
 }
 
 export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInput) => {
+  const origin = resolveRequestOrigin(getRequest())
   const context = await getPaymentContextByTransactionId(data.sessionId)
   if (context === undefined) {
     throw new AppError(ERROR_CODES.NOT_FOUND)
@@ -417,6 +405,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
     lines,
     oldReservedLines,
     oldSessionId: data.sessionId,
+    origin,
     shippingCost,
     userId: context.userId,
     validatedItems,

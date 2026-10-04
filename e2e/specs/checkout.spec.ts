@@ -1,5 +1,5 @@
 import { COURIER, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
-import { waitForEmail } from "../fixtures/emails"
+import { linkIn, waitForEmail } from "../fixtures/emails"
 import { completeCheckoutSession, waitForOpenCheckoutSession } from "../fixtures/stripe"
 import { expect, test } from "../fixtures/test"
 import { uniqueEmail } from "../fixtures/unique"
@@ -36,6 +36,8 @@ test.describe("guest checkout", () => {
     await expect(page.getByRole("main")).toContainText(`${SHIPPING_ADDRESS.postalCode} ${SHIPPING_ADDRESS.city}`)
     const confirmation = await waitForEmail(request, email, "Order confirmation — M'Arte")
     expect(confirmation.html).toContain(PRODUCTS.lapis.title)
+    expect(linkIn(confirmation, /\/products\//u).origin).toBe("http://127.0.0.1:3000")
+    expect(linkIn(confirmation, /\/auth\/sign-up/u).origin).toBe("http://127.0.0.1:3000")
 
     await cartPage.gotoCart()
     await expect(cartPage.heading()).toHaveText("Your cart is empty")

@@ -1,6 +1,6 @@
 import { PRODUCTS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
-import { waitForEmail } from "../fixtures/emails"
+import { linkIn, waitForEmail } from "../fixtures/emails"
 import { placeOrder } from "../fixtures/orders"
 import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
 import { uniqueCode, uniqueEmail } from "../fixtures/unique"
@@ -63,5 +63,6 @@ test.describe("admin", () => {
     await expect(page.getByRole("main")).toContainText("Shipped")
     const shipped = await waitForEmail(request, email, "Your order has been shipped — M'Arte")
     expect(shipped.html).toContain("00259007123456789012")
+    expect(linkIn(shipped, /\/auth\/sign-up/u).origin).toBe("http://127.0.0.1:3000")
   })
 })

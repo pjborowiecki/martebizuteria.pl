@@ -58,7 +58,7 @@ On storefront routes `StorefrontCriticalFontsHead` inlines the critical `@font-f
 
 ## Branding
 
-`branding/app.ts` holds `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR` and the Open Graph image constants; `business.ts` holds the shop's legal and contact details; `socials.ts` holds `SOCIALS`. `src/lib/seo.ts` and `_core/constants/api.ts` both read from them, which is why the allowed-host list per build mode follows `APP_DOMAIN`.
+`branding/app.ts` holds `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR` and the Open Graph image constants; `business.ts` holds the shop's legal and contact details; `socials.ts` holds `SOCIALS`. `src/lib/seo.ts` and `_core/constants/api.ts` both read from them, which is why the allowed-host list per build mode follows `APP_DOMAIN`. `APP_URL` is the canonical production address for SEO metadata only. Email links and the Stripe return URL use the origin the customer or admin was on instead, through `resolveRequestOrigin` and `resolveDeploymentOrigin` in `src/lib/request.ts`.
 
 ## Emails
 

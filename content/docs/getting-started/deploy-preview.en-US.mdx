@@ -5,7 +5,7 @@ description: "Provision the Cloudflare resources, then build, verify and deploy 
 
 The `preview` environment deploys a Worker named `martebizuteria-preview`, which Cloudflare serves at `https://martebizuteria-preview.pjborowiecki.workers.dev` — the URL the preview workflow posts on each pull request. Production deploys `martebizuteria`.
 
-`wrangler.jsonc` declares no `routes` and no `custom_domain`, so both Workers are reachable on their `workers.dev` subdomains only. `APP_DOMAIN` in `src/presentation/branding/app.ts` is `martebizuteria.pl` and `HOSTS_BY_MODE` lists `preview.martebizuteria.pl` as an accepted auth host, but nothing in the Wrangler configuration attaches those hostnames. If you need a custom domain, adding it is a Wrangler configuration change, not a code change.
+`wrangler.jsonc` declares no `routes` and no `custom_domain`, so both Workers are reachable on their `workers.dev` subdomains only. `APP_DOMAIN` in `src/presentation/branding/app.ts` is `martebizuteria.pl` and `HOSTS_BY_MODE` lists `preview.martebizuteria.pl` as an accepted host for auth, email links and the Stripe return URL, but nothing in the Wrangler configuration attaches those hostnames. If you need a custom domain, adding it is a Wrangler configuration change, not a code change.
 
 ## Provision the resources
 
@@ -65,8 +65,8 @@ Note the placeholder check: an id of all zeroes and dashes is rejected, which is
 
 Two code changes go with it:
 
-- `APP_DOMAIN` in `src/presentation/branding/app.ts`, which `APP_URL`, the sitemap, the OG tags and the email links derive from.
-- `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts`. Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`, so a host absent from that list has its auth requests rejected and sign-in fails on the new domain with no obvious error.
+- `APP_DOMAIN` in `src/presentation/branding/app.ts`, which `APP_URL`, and through it the canonical links, the OG tags and the structured data, derive from.
+- `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts`. Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`, so a host absent from that list has its auth requests rejected and sign-in fails on the new domain with no obvious error. `resolveRequestOrigin` checks the same list before it builds an email link or a Stripe return URL, so on a missing host the newsletter sign-up, the checkout and the admin's shipping and customer-deletion actions answer `FORBIDDEN` as well.
 
 ## Deploy
 
@@ -135,7 +135,7 @@ Repository **variables**:
 
 ## After deploying
 
-Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` and the Stripe endpoint at `/api/webhooks/stripe`. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ.
+Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` and the Stripe endpoint at `/api/webhooks/stripe`. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ. The endpoint's host does not decide where the order confirmation links: it links to the address the checkout was made on, taken from the session's `return_url`.
 
 ## Related
 

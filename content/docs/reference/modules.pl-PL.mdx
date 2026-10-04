@@ -68,15 +68,15 @@ Cztery moduły istnieją dla operacji, a nie dla wierszy.
 
 `_core/constants/`:
 
-| Plik             | Eksportuje                                                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------------------------------- |
-| `errors.ts`      | `ERROR_CODES`, klasę `AppError` i `errorCode`                                                                 |
-| `api.ts`         | `HTTP_STATUS`, `isLocalMode`, `appHostsForMode` — listę dozwolonych hostów, z którą budowany jest Better Auth |
-| `currency.ts`    | `CURRENCIES`, tabelę ISO 4217 z kodami numerycznymi i wykładnikami                                            |
-| `country.ts`     | Tabelę referencyjną krajów ISO                                                                                |
-| `timezone.ts`    | Tabelę referencyjną stref czasowych IANA                                                                      |
-| `placeholder.ts` | Dane obrazu zastępczego                                                                                       |
-| `tax.ts`         | `STANDARD_VAT_BASIS_POINTS` (23%), `BASIS_POINTS_SCALE` i `VAT_COUNTRY_CODE`                                  |
+| Plik             | Eksportuje                                                                                                                                                                                                                                |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `errors.ts`      | `ERROR_CODES`, klasę `AppError` i `errorCode`                                                                                                                                                                                             |
+| `api.ts`         | `HTTP_STATUS`, `isLocalMode`, `appHostsForMode` — listę dozwolonych hostów, z którą budowany jest Better Auth i którą sprawdza `resolveRequestOrigin` — oraz `isLocalHost` i `isDeploymentHost`, które sprawdza `resolveDeploymentOrigin` |
+| `currency.ts`    | `CURRENCIES`, tabelę ISO 4217 z kodami numerycznymi i wykładnikami                                                                                                                                                                        |
+| `country.ts`     | Tabelę referencyjną krajów ISO                                                                                                                                                                                                            |
+| `timezone.ts`    | Tabelę referencyjną stref czasowych IANA                                                                                                                                                                                                  |
+| `placeholder.ts` | Dane obrazu zastępczego                                                                                                                                                                                                                   |
+| `tax.ts`         | `STANDARD_VAT_BASIS_POINTS` (23%), `BASIS_POINTS_SCALE` i `VAT_COUNTRY_CODE`                                                                                                                                                              |
 
 `country.ts` to dane referencyjne trzymane świadomie; jedynym importem z niego jest typ `CountryCode` w `timezone.ts`. `timezone.ts` jest w użyciu: pole strefy czasowej na stronie profilu wyświetla `TIMEZONES`, a `list-saved-payment-methods` ustala strefę klienta przez `resolveTimezoneCode`, żeby rozstrzygnąć, czy zapisana karta straciła ważność.
 

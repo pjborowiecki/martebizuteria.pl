@@ -13,8 +13,6 @@ vi.mock("~/src/lib/url", () => ({
 import { type CheckoutEmailContext } from "~/src/integrations/resend/order-confirmation.utils"
 import { buildOrderShippedAccountCta, buildOrderShippedDetails } from "~/src/integrations/resend/order-shipped.utils"
 
-import { APP_URL } from "~/src/presentation/branding/app"
-
 import englishCopy from "~/messages/en-US/emails.order-shipped.json"
 import polishCopy from "~/messages/pl-PL/emails.order-shipped.json"
 
@@ -110,25 +108,35 @@ describe("buildOrderShippedDetails", () => {
 })
 
 describe("buildOrderShippedAccountCta", () => {
-  it("links a signed-in shopper straight to the order", () => {
-    expect(buildOrderShippedAccountCta({ locale: "en-US", messages: englishCopy, orderId: "order-1", userId: "user-1" })).toStrictEqual({
-      href: `${APP_URL}/en-US/account/orders/order-1`,
+  const origin = "http://localhost:3000"
+
+  it("links a signed-in shopper straight to the order on the address the shop used", () => {
+    expect(
+      buildOrderShippedAccountCta({ locale: "en-US", messages: englishCopy, orderId: "order-1", origin, userId: "user-1" }),
+    ).toStrictEqual({
+      href: "http://localhost:3000/en-US/account/orders/order-1",
       isGuest: false,
       label: englishCopy.viewOrderCta,
     })
   })
 
   it.each([[null], [undefined], [""]])("treats the shopper as a guest when the user id is %j", (userId) => {
-    expect(buildOrderShippedAccountCta({ locale: "en-US", messages: englishCopy, orderId: "order-1", userId })).toStrictEqual({
-      href: `${APP_URL}/en-US/auth/sign-up`,
+    expect(buildOrderShippedAccountCta({ locale: "en-US", messages: englishCopy, orderId: "order-1", origin, userId })).toStrictEqual({
+      href: "http://localhost:3000/en-US/auth/sign-up",
       isGuest: true,
       label: englishCopy.createAccountCta,
     })
   })
 
-  it("leaves the default locale unprefixed", () => {
-    expect(buildOrderShippedAccountCta({ locale: "pl-PL", messages: polishCopy, orderId: "order-9", userId: "user-1" }).href).toBe(
-      `${APP_URL}/account/orders/order-9`,
-    )
+  it("leaves the default locale unprefixed on the production address", () => {
+    expect(
+      buildOrderShippedAccountCta({
+        locale: "pl-PL",
+        messages: polishCopy,
+        orderId: "order-9",
+        origin: "https://martebizuteria.pl",
+        userId: "user-1",
+      }).href,
+    ).toBe("https://martebizuteria.pl/account/orders/order-9")
   })
 })

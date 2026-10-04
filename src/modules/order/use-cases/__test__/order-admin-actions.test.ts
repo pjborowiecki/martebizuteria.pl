@@ -43,7 +43,9 @@ const audit = vi.hoisted(() => ({
   shipped: vi.fn(),
 }))
 
-const shippedEmail = vi.hoisted(() => ({ notifyOrderShipped: vi.fn<(orderId: string) => Promise<boolean>>() }))
+const shippedEmail = vi.hoisted(() => ({ notifyOrderShipped: vi.fn<(orderId: string, origin: string) => Promise<boolean>>() }))
+
+const incoming = vi.hoisted(() => ({ getRequest: vi.fn<() => Request>() }))
 
 const cancellation = vi.hoisted(() => ({
   catalogInvalidated: vi.fn(),
@@ -51,6 +53,7 @@ const cancellation = vi.hoisted(() => ({
   runBatch: vi.fn(() => Promise.resolve(undefined)),
 }))
 
+vi.mock("@tanstack/react-start/server", () => ({ getRequest: incoming.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { update: () => ({ set: database.updateSet }) },
@@ -113,6 +116,9 @@ const renderedSql = (value: unknown): string => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  incoming.getRequest.mockReturnValue(
+    new Request("http://127.0.0.1:3000/_serverFn/ship-order", { headers: { origin: "https://attacker.example" } }),
+  )
   shippedEmail.notifyOrderShipped.mockResolvedValue(true)
   database.updates.length = 0
   cancellation.restockLines.current = [{ quantity: 2, variantId: "v-1" }]
@@ -246,7 +252,15 @@ describe("shipOrder", () => {
 
     await expect(shipping).resolves.toStrictEqual({ ok: true, orderId: ORDER_ID, shippedEmailSent: false })
     await Promise.all(kept)
-    expect(shippedEmail.notifyOrderShipped).toHaveBeenCalledExactlyOnceWith(ORDER_ID)
+    expect(shippedEmail.notifyOrderShipped).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "http://127.0.0.1:3000")
+  })
+
+  it("refuses a request on a host this build does not serve before the order is touched", async () => {
+    incoming.getRequest.mockReturnValue(new Request("https://martebizuteria.pl.attacker.example/_serverFn/ship-order"))
+
+    await expect(shipOrder({ data: { orderId: ORDER_ID } })).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+    expect(database.updates).toHaveLength(0)
+    expect(shippedEmail.notifyOrderShipped).not.toHaveBeenCalled()
   })
 
   it("keeps the order shipped and tells the admin when the shipping email failed", async () => {
@@ -372,5 +386,5 @@ it("ships a fulfilled order through its mutation and sends the notification", as
     orderId: ORDER_ID,
     shippedEmailSent: true,
   })
-  expect(shippedEmail.notifyOrderShipped).toHaveBeenCalledWith(ORDER_ID)
+  expect(shippedEmail.notifyOrderShipped).toHaveBeenCalledWith(ORDER_ID, "http://127.0.0.1:3000")
 })

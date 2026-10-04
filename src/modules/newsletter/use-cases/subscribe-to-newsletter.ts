@@ -1,5 +1,6 @@
 import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import { getRequest } from "@tanstack/react-start/server"
 import type * as zod from "zod"
 
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
@@ -24,6 +25,8 @@ import {
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
 
+import { resolveRequestOrigin } from "~/src/lib/request"
+
 const reportDelivery = async ({
   delivery,
   email,
@@ -45,6 +48,7 @@ export const subscribeToNewsletter = createServerFn({ method: "POST" })
   .middleware([withRateLimit("newsletter-subscribe", RATE_LIMITS.SENSITIVE)])
   .validator((input: zod.input<typeof newsletterZodSchemas.subscribeInput>) => newsletterZodSchemas.subscribeInput.parse(input))
   .handler(async ({ data }): Promise<Newsletter["outcome"]> => {
+    const origin = resolveRequestOrigin(getRequest())
     const email = normalizeSubscriberEmail(data.email)
     const locale = data.locale ?? getCurrentLocale()
     const session = await getRequestSession()
@@ -61,7 +65,7 @@ export const subscribeToNewsletter = createServerFn({ method: "POST" })
         userId: session?.user.id,
       })
 
-      return reportDelivery({ delivery: sendNewsletterConfirmation({ email, locale, token }), email, kind: "confirmation" })
+      return reportDelivery({ delivery: sendNewsletterConfirmation({ email, locale, origin, token }), email, kind: "confirmation" })
     }
 
     if (existing.status === NEWSLETTER_STATUS.CONFIRMED && session?.user.email === email) {
@@ -70,7 +74,7 @@ export const subscribeToNewsletter = createServerFn({ method: "POST" })
 
     if (existing.status === NEWSLETTER_STATUS.CONFIRMED) {
       return reportDelivery({
-        delivery: sendNewsletterAlreadySubscribed({ email, locale }),
+        delivery: sendNewsletterAlreadySubscribed({ email, locale, origin }),
         email,
         kind: "already-subscribed notice",
       })
@@ -85,7 +89,7 @@ export const subscribeToNewsletter = createServerFn({ method: "POST" })
       userId: existing.userId ?? session?.user.id,
     })
 
-    return reportDelivery({ delivery: sendNewsletterConfirmation({ email, locale, token }), email, kind: "confirmation" })
+    return reportDelivery({ delivery: sendNewsletterConfirmation({ email, locale, origin, token }), email, kind: "confirmation" })
   })
 
 export const subscribeToNewsletterMutation = mutationOptions({

@@ -49,6 +49,7 @@ import { flagOrderDispute } from "~/src/modules/order/use-cases/flag-order-dispu
 import { refundOrder } from "~/src/modules/order/use-cases/refund-order"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
+import { resolveDeploymentOrigin } from "~/src/lib/request"
 
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
@@ -95,6 +96,7 @@ interface OrderConfirmationEmailPayload {
 const buildOrderConfirmationEmailPayload = async (
   session: StripeType.Checkout.Session,
   order: Readonly<{ currency: string; lines: CheckoutFulfillmentLine[]; orderId: string }>,
+  origin: string,
 ): Promise<OrderConfirmationEmailPayload | undefined> => {
   const email = session.customer_email ?? session.customer_details?.email
   if (email === null || email === undefined || email === "") {
@@ -123,10 +125,10 @@ const buildOrderConfirmationEmailPayload = async (
   )
 
   const totals = await getOrderTotalsForEmail(order.orderId)
-  const emailItems = buildOrderConfirmationItems(order.lines, locale)
+  const emailItems = buildOrderConfirmationItems(order.lines, locale, origin)
   const rawUserId = session.metadata?.["userId"]
   const isGuest = rawUserId === undefined || rawUserId === ""
-  const accountCta = buildOrderAccountCta({ isGuest, locale, messages, orderId: order.orderId })
+  const accountCta = buildOrderAccountCta({ isGuest, locale, messages, orderId: order.orderId, origin })
 
   return {
     email,
@@ -158,7 +160,11 @@ const sendOrderConfirmationEmail = async (
   session: StripeType.Checkout.Session,
   order: Readonly<{ currency: string; lines: CheckoutFulfillmentLine[]; orderId: string }>,
 ): Promise<OrderEmailOutcome> => {
-  const payload = await buildOrderConfirmationEmailPayload(session, order)
+  if (session.return_url === undefined) {
+    return { failure: "The Stripe session has no return URL to link the email to", label: ORDER_CONFIRMATION_LABEL }
+  }
+
+  const payload = await buildOrderConfirmationEmailPayload(session, order, resolveDeploymentOrigin(session.return_url))
   if (payload === undefined) {
     return { failure: "The Stripe session has no email address", label: ORDER_CONFIRMATION_LABEL }
   }
