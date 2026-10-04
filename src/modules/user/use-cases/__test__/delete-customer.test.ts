@@ -1,12 +1,14 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
 
 import { executionContextStorage } from "~/src/lib/background"
 
-const { auth, getRequestHeaders, getUserById, sendAccountDeletedEmail, serverContext } = vi.hoisted(() => ({
+const { auth, getRequest, getRequestHeaders, getUserById, sendAccountDeletedEmail, serverContext } = vi.hoisted(() => ({
   auth: { api: { removeUser: vi.fn<(input: object) => Promise<{ success: boolean }>>() } },
+  getRequest: vi.fn<() => Request>(),
   getRequestHeaders: vi.fn<() => Record<string, string>>(),
   getUserById: vi.fn<(id: string) => Promise<{ email: string; id: string; name: string; role: string | null } | undefined>>(),
   sendAccountDeletedEmail: vi.fn<(input: object) => Promise<boolean>>(),
@@ -33,7 +35,7 @@ vi.mock("@tanstack/react-start", () => ({
     return builder
   },
 }))
-vi.mock("@tanstack/react-start/server", () => ({ getRequestHeaders }))
+vi.mock("@tanstack/react-start/server", () => ({ getRequest, getRequestHeaders }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/better-auth/auth.server", () => ({ auth, sendAccountDeletedEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
@@ -47,6 +49,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   serverContext.auth.user.id = "admin-1"
   getUserById.mockResolvedValue(customer)
+  getRequest.mockReturnValue(new Request("http://127.0.0.1:3000/_serverFn/delete-customer", { headers: { host: "attacker.example" } }))
   getRequestHeaders.mockReturnValue({ cookie: "session=abc" })
   auth.api.removeUser.mockResolvedValue({ success: true })
   sendAccountDeletedEmail.mockResolvedValue(true)
@@ -100,7 +103,21 @@ describe("deleteCustomer", () => {
   it("sends the goodbye email using the details captured before the removal", async () => {
     await deleteCustomer({ data: { userId: "user-1" } })
 
-    expect(sendAccountDeletedEmail).toHaveBeenCalledWith({ email: "anna@example.com", locale: "pl-PL", name: "Anna Kowalska" })
+    expect(sendAccountDeletedEmail).toHaveBeenCalledWith({
+      email: "anna@example.com",
+      locale: "pl-PL",
+      name: "Anna Kowalska",
+      origin: "http://127.0.0.1:3000",
+    })
+  })
+
+  it("refuses a request on a host this build does not serve before removing anyone", async () => {
+    getRequest.mockReturnValue(new Request("https://martebizuteria.pl.attacker.example/_serverFn/delete-customer"))
+
+    await expect(deleteCustomer({ data: { userId: "user-1" } })).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+
+    expect(auth.api.removeUser).not.toHaveBeenCalled()
+    expect(sendAccountDeletedEmail).not.toHaveBeenCalled()
   })
 
   it("answers only once the goodbye email has been handed over, so the admin hears how it went", async () => {

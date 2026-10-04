@@ -160,7 +160,7 @@ export const APP_GITHUB_OWNER = "pjborowiecki"
 export const APP_GITHUB_REPO = APP_DOMAIN
 ```
 
-`APP_NAME` zasila tytuł dokumentu, `appName` w Better Auth, wystawcę dla uwierzytelniania dwuskładnikowego oraz klucz przechowywania motywu. `THEME_COLOR` to znacznik meta `theme-color` i pokrywa się z `--bg-base`. `APP_DOMAIN` zasila `appHostsForMode` w `src/modules/_core/constants/api.ts`, czyli `baseURL.allowedHosts` w Better Auth — zmiana domeny zmienia więc również listę dozwolonych hostów uwierzytelniania.
+`APP_NAME` zasila tytuł dokumentu, `appName` w Better Auth, wystawcę dla uwierzytelniania dwuskładnikowego oraz klucz przechowywania motywu. `THEME_COLOR` to znacznik meta `theme-color` i pokrywa się z `--bg-base`. `APP_DOMAIN` zasila `appHostsForMode` w `src/modules/_core/constants/api.ts`, czyli `baseURL.allowedHosts` w Better Auth — zmiana domeny zmienia więc również listę dozwolonych hostów uwierzytelniania, a wraz z nią hosty, które `resolveRequestOrigin` akceptuje dla linków w e-mailach i adresu powrotu ze Stripe. Sam `APP_URL` to tylko kanoniczny adres produkcyjny używany w metadanych SEO; e-maile linkują do hosta, na który przyszło żądanie.
 
 `business.ts` — podmiot prawny, używany w stopce, na stronach prawnych i w danych strukturalnych:
 

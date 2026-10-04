@@ -17,7 +17,7 @@ const mocked = vi.hoisted(() => ({
   getActiveDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getProductsWithInventoryByHandles: vi.fn(),
-  getRequestHeader: vi.fn(),
+  getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
   getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
   releaseInventoryByVariantLines: vi.fn(),
@@ -31,7 +31,7 @@ const mocked = vi.hoisted(() => ({
   updateCheckoutDelivery: vi.fn(),
 }))
 
-vi.mock("@tanstack/react-start/server", () => ({ getRequestHeader: mocked.getRequestHeader }))
+vi.mock("@tanstack/react-start/server", () => ({ getRequest: mocked.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: mocked.getRequestSession }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: mocked.scheduleProductCatalogInvalidation,
@@ -89,8 +89,6 @@ import {
   readCheckoutSessionItemsJson,
   toCheckoutSessionItemsMetadata,
 } from "~/src/modules/checkout/checkout-metadata.zod"
-
-import { APP_URL } from "~/src/presentation/branding/app"
 
 const CHECKOUT_VALUES = {
   address1: "ul. Mokotowska 12/4",
@@ -166,7 +164,7 @@ const EXPECTED_META_ITEMS = toCheckoutSessionItemsMetadata([
 beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, "error").mockImplementation(() => {})
-  mocked.getRequestHeader.mockImplementation((name: string) => (name === "origin" ? "https://store.test" : undefined))
+  mocked.getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))
   signInCustomerWithStripeAccount()
   mocked.releaseInventoryByVariantLines.mockResolvedValue(undefined)
   mocked.releaseInventoryForItems.mockResolvedValue(undefined)
@@ -215,6 +213,9 @@ const signInCustomerWithStripeAccount = (): void => {
   mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
   mocked.getStripeCustomerId.mockResolvedValue("cus_1")
 }
+
+const requestOn = (origin: string): Request =>
+  new Request(`${origin}/_serverFn/checkout`, { headers: { origin: "https://store.test", referer: "https://store.test/cart" } })
 
 const createdSessionMetadata = (): Record<string, string> => mocked.checkoutSessionsCreate.mock.lastCall?.[0].metadata ?? {}
 
@@ -360,41 +361,31 @@ describe("handleCreateCheckoutSession", () => {
 
 describe("checkout session return URL", () => {
   it.each([
-    {
-      expected: "https://store.test/checkout",
-      headers: { origin: "https://store.test" },
-      locale: "pl-PL",
-      to: "the origin the browser announced",
-    },
-    {
-      expected: "https://referer.test/checkout",
-      headers: { origin: "", referer: "https://referer.test/cart?step=2" },
-      locale: "pl-PL",
-      to: "the referer origin without an origin header",
-    },
-    {
-      expected: `${APP_URL}/checkout`,
-      headers: { referer: "not-a-url" },
-      locale: "pl-PL",
-      to: "the app URL when the referer is not a URL",
-    },
-    { expected: `${APP_URL}/checkout`, headers: {}, locale: "pl-PL", to: "the app URL when neither header is present" },
-    {
-      expected: "https://store.test/en-US/checkout",
-      headers: { origin: "https://store.test" },
-      locale: "en-US",
-      to: "the English confirmation for a shopper paying in English",
-    },
-  ])("returns to $to", async ({ expected, headers, locale }) => {
-    const requestHeaders: Readonly<Record<string, string>> = headers
+    { expected: "http://127.0.0.1:3000/checkout", locale: "pl-PL", origin: "http://127.0.0.1:3000" },
+    { expected: "http://localhost:3000/en-US/checkout", locale: "en-US", origin: "http://localhost:3000" },
+  ])("returns to $expected, on the address the checkout came in on, whatever the headers claim", async ({ expected, locale, origin }) => {
     mocked.requestLocale.value = locale
-    mocked.getRequestHeader.mockImplementation((name: string) => requestHeaders[name])
+    mocked.getRequest.mockReturnValue(requestOn(origin))
 
     await handleCreateCheckoutSession(createInput())
+    await handleUpdateCheckoutSession(updateInput())
 
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ return_url: `${expected}?success=true&session_id={CHECKOUT_SESSION_ID}` }),
-    )
+    for (const [params] of mocked.checkoutSessionsCreate.mock.calls) {
+      expect(params).toMatchObject({ return_url: `${expected}?success=true&session_id={CHECKOUT_SESSION_ID}` })
+    }
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledTimes(2)
+  })
+
+  it("refuses a checkout on a host this build does not serve before touching Stripe or stock", async () => {
+    mocked.getRequest.mockReturnValue(requestOn("https://store.test"))
+
+    await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+    expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
+    expect(mocked.getPaymentContextByTransactionId).not.toHaveBeenCalled()
+    expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
+    expect(mocked.releaseInventoryByVariantLines).not.toHaveBeenCalled()
+    expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()
   })
 })
 

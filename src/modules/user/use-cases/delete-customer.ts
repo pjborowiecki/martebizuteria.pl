@@ -1,6 +1,6 @@
 import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
-import { getRequestHeaders } from "@tanstack/react-start/server"
+import { getRequest, getRequestHeaders } from "@tanstack/react-start/server"
 import type * as zod from "zod"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
@@ -14,11 +14,13 @@ import { USER_ERROR_CODES, USER_MUTATION_KEYS } from "~/src/modules/user/user.co
 import { userZodSchemas } from "~/src/modules/user/user.zod"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
+import { resolveRequestOrigin } from "~/src/lib/request"
 
 export const deleteCustomer = createServerFn({ method: "POST" })
   .middleware([authorized({ user: ["delete"] })])
   .validator((input: zod.input<typeof userZodSchemas.deleteCustomerInput>) => userZodSchemas.deleteCustomerInput.parse(input))
   .handler(async ({ context, data: { userId } }) => {
+    const origin = resolveRequestOrigin(getRequest())
     const targetUser = await getUserById(userId)
     if (targetUser === undefined) {
       throw new AppError(ERROR_CODES.NOT_FOUND, USER_ERROR_CODES.NOT_FOUND)
@@ -36,6 +38,7 @@ export const deleteCustomer = createServerFn({ method: "POST" })
       email: targetUser.email,
       locale: getCurrentLocale(),
       name: targetUser.name,
+      origin,
     }
 
     await auth.api.removeUser({

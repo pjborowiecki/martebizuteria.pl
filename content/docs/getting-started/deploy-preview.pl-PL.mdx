@@ -5,7 +5,7 @@ description: "Przygotowanie zasobów Cloudflare, a potem zbudowanie, weryfikacja
 
 Środowisko `preview` wdraża Workera o nazwie `martebizuteria-preview`, którego Cloudflare udostępnia pod adresem `https://martebizuteria-preview.pjborowiecki.workers.dev` — to właśnie ten adres workflow podglądu publikuje w komentarzu przy każdym pull requeście. Produkcja wdraża Workera `martebizuteria`.
 
-`wrangler.jsonc` nie deklaruje ani `routes`, ani `custom_domain`, więc oba Workery są dostępne wyłącznie pod swoimi subdomenami `workers.dev`. `APP_DOMAIN` w `src/presentation/branding/app.ts` to `martebizuteria.pl`, a `HOSTS_BY_MODE` wymienia `preview.martebizuteria.pl` jako akceptowany host uwierzytelniania, ale nic w konfiguracji Wranglera nie podłącza tych nazw. Jeśli potrzebujesz domeny własnej, jej dodanie jest zmianą w konfiguracji Wranglera, a nie w kodzie.
+`wrangler.jsonc` nie deklaruje ani `routes`, ani `custom_domain`, więc oba Workery są dostępne wyłącznie pod swoimi subdomenami `workers.dev`. `APP_DOMAIN` w `src/presentation/branding/app.ts` to `martebizuteria.pl`, a `HOSTS_BY_MODE` wymienia `preview.martebizuteria.pl` jako akceptowany host dla uwierzytelniania, linków w e-mailach i adresu powrotu ze Stripe, ale nic w konfiguracji Wranglera nie podłącza tych nazw. Jeśli potrzebujesz domeny własnej, jej dodanie jest zmianą w konfiguracji Wranglera, a nie w kodzie.
 
 ## Przygotowanie zasobów
 
@@ -65,8 +65,8 @@ Zwróć uwagę na kontrolę wartości zastępczych: identyfikator złożony wył
 
 Idą z tym dwie zmiany w kodzie:
 
-- `APP_DOMAIN` w `src/presentation/branding/app.ts`, z którego wyprowadzane są `APP_URL`, mapa witryny, znaczniki OG i linki w wiadomościach e-mail.
-- `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts`. Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`, więc host nieobecny na tej liście ma odrzucane żądania uwierzytelniania, a logowanie na nowej domenie po prostu nie działa, bez wyraźnego błędu.
+- `APP_DOMAIN` w `src/presentation/branding/app.ts`, z którego wyprowadzany jest `APP_URL`, a przez niego linki kanoniczne, znaczniki OG i dane strukturalne.
+- `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts`. Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`, więc host nieobecny na tej liście ma odrzucane żądania uwierzytelniania, a logowanie na nowej domenie po prostu nie działa, bez wyraźnego błędu. `resolveRequestOrigin` sprawdza tę samą listę, zanim zbuduje link do e-maila albo adres powrotu ze Stripe, więc na brakującym hoście zapis do newslettera, checkout oraz wysyłka zamówienia i usuwanie klienta w panelu administratora też odpowiadają `FORBIDDEN`.
 
 ## Wdrożenie
 
@@ -135,7 +135,7 @@ Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull 
 
 ## Po wdrożeniu
 
-Zarejestruj adresy zwrotne dostawców dla nowego hosta, zgodnie z listą w [Zmiennych środowiskowych](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` oraz punkt końcowy Stripe pod `/api/webhooks/stripe`. Stripe wydaje osobny sekret podpisu dla każdego punktu końcowego, więc wartości `STRIPE_WEBHOOK_SECRET` dla preview i produkcji się różnią.
+Zarejestruj adresy zwrotne dostawców dla nowego hosta, zgodnie z listą w [Zmiennych środowiskowych](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` oraz punkt końcowy Stripe pod `/api/webhooks/stripe`. Stripe wydaje osobny sekret podpisu dla każdego punktu końcowego, więc wartości `STRIPE_WEBHOOK_SECRET` dla preview i produkcji się różnią. Host punktu końcowego nie decyduje, dokąd linkuje potwierdzenie zamówienia: linkuje ono pod adres, na którym złożono zamówienie, wzięty z `return_url` sesji.
 
 ## Powiązane
 

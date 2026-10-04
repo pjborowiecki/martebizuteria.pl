@@ -105,26 +105,41 @@ Import `typeof orderShippedMessages` jest importem _wyłącznie typu_ z angielsk
 
 Plik `src/presentation/emails/email-layout.tsx` otacza każdy szablon: znak słowny `M'ARTE`, złota linia, przetłumaczony podtytuł, treść i stopka, wewnątrz komponentu `Tailwind` z `react-email` z wbudowaną konfiguracją z `email-styles.ts`. Wymusza `color-scheme: light only`, ponieważ odwracanie kolorów w trybie ciemnym klientów pocztowych niszczy projekt.
 
+## Dokąd prowadzą linki
+
+Każdy link, który aplikacja sama wpisuje do e-maila, prowadzi pod adres, którego używał klient albo administrator: lokalnie i w testach do `http://localhost:3000` albo `http://127.0.0.1:3000`, na preview do hosta preview, a na produkcji do `https://martebizuteria.pl` albo `https://martebizuteria.pjborowiecki.workers.dev`, zależnie od tego, którego użyto. Origin jest ustalany, zanim powstanie e-mail, i przekazywany dalej jako napis. Żaden budownik nie czyta `APP_URL`.
+
+| Przepływ                                                         | Skąd pochodzi origin                                                                                                                                                                     |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Potwierdzenie newslettera i informacja o istniejącej subskrypcji | `subscribeToNewsletter`, przez `resolveRequestOrigin(getRequest())`                                                                                                                      |
+| Potwierdzenie zamówienia                                         | `return_url` sesji, zbudowany przez żądanie checkoutu: `resolveDeploymentOrigin(session.return_url)` w `sendOrderConfirmationEmail`                                                      |
+| Zamówienie wysłane                                               | `shipOrder`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora                                                                                                        |
+| Konto usunięte                                                   | `deleteCustomer`, przez `resolveRequestOrigin(getRequest())` przed `removeUser`; po samodzielnym usunięciu konta `afterDelete` ustala go z żądania, które Better Auth przekazuje hookowi |
+
+Obie funkcje leżą w `src/lib/request.ts`. Czytają wyłącznie adres URL, nigdy nagłówków `Host`, `Origin`, `Referer` ani `X-Forwarded-*`, wymagają `https:` wszędzie poza `localhost:3000` i `127.0.0.1:3000` i rzucają `AppError(FORBIDDEN)` dla hosta, którego nie akceptują. `resolveRequestOrigin(request)` akceptuje hosty z listy `appHostsForMode(import.meta.env.MODE)`, więc funkcja serwerowa odrzuca żądanie na każdym innym hoście, zanim cokolwiek zapisze. `resolveDeploymentOrigin(url)` akceptuje hosty wszystkich wdrożeń (`isDeploymentHost` w `src/modules/_core/constants/api.ts`), ponieważ webhook, który realizuje checkout, może należeć do innego wdrożenia: development i preview dzielą testowe konto Stripe i bazę danych, a `stripe:listen` zawsze przekazuje na `localhost:3000`.
+
+W webhooku odrzucony host albo sesja bez `return_url` zatrzymuje tylko próbę wysłania e-maila, więc zamówienie i tak zostaje zrealizowane, webhook i tak odpowiada 200, a niewysłane potwierdzenie jest zapisywane przy zamówieniu. W `afterDelete` odrzucony host albo usunięcie, które przyszło bez żądania, jest logowane i audytowane jako niewysłany e-mail pożegnalny, a usunięcie konta i tak się udaje. Better Auth buduje własne linki weryfikacji, resetu hasła i zmiany adresu z listy hostów dla danego trybu. Praca przekazywana do `scheduleBackgroundWork` dostaje już ustalony origin, więc nic nie czyta żądania po wysłaniu odpowiedzi. Przyszły konsument kolejki, który wysyła e-maile, musi nieść origin w wiadomości.
+
 ## Budowniki e-maili o zamówieniu
 
 Plik `order-confirmation.utils.ts` zamienia wiersze bazy na właściwości szablonów:
 
-| Eksport                                                        | Przeznaczenie                                                                              |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `formatEmailAddress(addressRow)`                               | Jeden wielolinijkowy łańcuch z adresem pocztowym albo `undefined`                          |
-| `resolveDeliveryMethodLabel(context, unavailable)`             | Etykieta dostawy widziana przez klienta, z zapasowym przetłumaczonym tekstem „niedostępne" |
-| `buildOrderConfirmationDetails(...)`                           | Cały blok szczegółów: adresy, metoda dostawy, metoda płatności, uwaga klienta              |
-| `buildOrderConfirmationItems(lines, locale)`                   | Wiersze pozycji, ze sformatowanymi cenami i adresami produktów                             |
-| `buildOrderAccountCta({ isGuest, locale, messages, orderId })` | Albo „załóż konto i śledź zamówienie", albo link do `/account/orders/<id>`                 |
-| `resolveStripePaymentMethodLabel(session, messages)`           | Czyta PaymentIntent, aby nazwać metodę, której klient faktycznie użył (karta, BLIK, P24)   |
+| Eksport                                                                | Przeznaczenie                                                                              |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `formatEmailAddress(addressRow)`                                       | Jeden wielolinijkowy łańcuch z adresem pocztowym albo `undefined`                          |
+| `resolveDeliveryMethodLabel(context, unavailable)`                     | Etykieta dostawy widziana przez klienta, z zapasowym przetłumaczonym tekstem „niedostępne" |
+| `buildOrderConfirmationDetails(...)`                                   | Cały blok szczegółów: adresy, metoda dostawy, metoda płatności, uwaga klienta              |
+| `buildOrderConfirmationItems(lines, locale, origin)`                   | Wiersze pozycji, ze sformatowanymi cenami i adresami produktów                             |
+| `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })` | Albo „załóż konto i śledź zamówienie", albo link do `/account/orders/<id>`                 |
+| `resolveStripePaymentMethodLabel(session, messages)`                   | Czyta PaymentIntent, aby nazwać metodę, której klient faktycznie użył (karta, BLIK, P24)   |
 
 Plik `order-shipped.utils.ts` używa ich ponownie dla e-maila o wysyłce: `buildOrderShippedDetails` wybiera tekst o czasie dostawy według `type` metody (`courier`, `locker` lub `in_store`), a `buildOrderShippedAccountCta` deleguje do `buildOrderAccountCta`.
 
-Plik `order-shipped.notification.server.ts` zawiera cały przepływ e-maila o wysyłce. `sendOrderShippedEmail(orderId)` ładuje zamówienie przez `getOrderForShippedEmail`, ustala język z `order.metadata` przez `resolveOrderLocale`, ładuje kontekst zamówienia, gdy istnieje `checkoutId`, renderuje i wysyła. Zwraca wynik zamiast go zapisywać, a brak zamówienia albo pusty adres też jest wynikiem. `notifyOrderShipped(orderId)` przekazuje tę próbę do `recordOrderEmailAttempt` z `order-email.outcome.server.ts`, z którego korzysta też e-mail z potwierdzeniem:
+Plik `order-shipped.notification.server.ts` zawiera cały przepływ e-maila o wysyłce. `sendOrderShippedEmail(orderId, origin)` ładuje zamówienie przez `getOrderForShippedEmail`, ustala język z `order.metadata` przez `resolveOrderLocale`, ładuje kontekst zamówienia, gdy istnieje `checkoutId`, renderuje i wysyła. Zwraca wynik zamiast go zapisywać, a brak zamówienia albo pusty adres też jest wynikiem. `notifyOrderShipped(orderId, origin)` przekazuje tę próbę do `recordOrderEmailAttempt` z `order-email.outcome.server.ts`, z którego korzysta też e-mail z potwierdzeniem:
 
 ```ts
-export const notifyOrderShipped = (orderId: string): Promise<boolean> =>
-  recordOrderEmailAttempt(sendOrderShippedEmail(orderId), { label: ORDER_SHIPPED_LABEL, orderId })
+export const notifyOrderShipped = (orderId: string, origin: string): Promise<boolean> =>
+  recordOrderEmailAttempt(sendOrderShippedEmail(orderId, origin), { label: ORDER_SHIPPED_LABEL, orderId })
 ```
 
 `recordOrderEmailAttempt` loguje rzucony błąd razem ze stosem wywołań jako `Order shipped for order <id> could not be prepared:` i zamienia go w wynik, zapisuje wynik przy zamówieniu i mówi wywołującemu, czy e-mail wyszedł.
@@ -139,7 +154,7 @@ Na oba e-maile o zamówieniu kod czeka i żaden nie może wywrócić swojego wyw
 recordOrderShippedAudit(orderId, {
   detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
 })
-const shippedEmailDelivery = notifyOrderShipped(orderId)
+const shippedEmailDelivery = notifyOrderShipped(orderId, origin)
 scheduleBackgroundWork(shippedEmailDelivery)
 const shippedEmailSent = await shippedEmailDelivery
 

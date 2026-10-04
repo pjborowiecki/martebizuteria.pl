@@ -120,14 +120,14 @@ export const THEME_COLOR = "#e7f3ec"
 
 These feed more than the chrome:
 
-| Constant                | Read by                                                                                                                                         |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `APP_NAME`              | `theme-init.ts` (the `localStorage` theme key), Better Auth, Stripe, Resend, the `og:site_name` and `title` meta, the auth and checkout headers |
-| `APP_URL`, `APP_DOMAIN` | Canonical URLs, hreflang links, structured data (`src/lib/seo.ts`), absolute asset URLs (`src/lib/url.ts`)                                      |
-| `APP_ICON`              | The `icon` and `apple-touch-icon` links in the root route                                                                                       |
-| `OG_IMAGE_*`            | The Open Graph and Twitter card meta in the root route                                                                                          |
-| `THEME_COLOR`           | The `theme-color` meta tag                                                                                                                      |
-| `DEFAULT_R2_PUBLIC_URL` | The fallback public base for R2 assets in `src/lib/image.ts`                                                                                    |
+| Constant                | Read by                                                                                                                                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_NAME`              | `theme-init.ts` (the `localStorage` theme key), Better Auth, Stripe, Resend, the `og:site_name` and `title` meta, the auth and checkout headers                                                                                                                           |
+| `APP_URL`, `APP_DOMAIN` | Canonical URLs, hreflang links and structured data (`src/lib/seo.ts`, `src/routes/__root.tsx`), the image host fallback (`src/lib/image.ts`), and through `APP_DOMAIN` the per-mode host list. Never email links or the Stripe return URL, which use the request's origin |
+| `APP_ICON`              | The `icon` and `apple-touch-icon` links in the root route                                                                                                                                                                                                                 |
+| `OG_IMAGE_*`            | The Open Graph and Twitter card meta in the root route                                                                                                                                                                                                                    |
+| `THEME_COLOR`           | The `theme-color` meta tag                                                                                                                                                                                                                                                |
+| `DEFAULT_R2_PUBLIC_URL` | The fallback public base for R2 assets in `src/lib/image.ts`                                                                                                                                                                                                              |
 
 Because `THEME_STORAGE_KEY` is derived from `APP_NAME`, renaming the app changes the `localStorage` key and silently resets every visitor's stored theme. That is acceptable today (there is no switcher) but worth remembering.
 

@@ -185,6 +185,8 @@ A spec posts that signed event to `/api/webhooks/stripe` like Stripe would, so t
 - The `setup` project signs the seeded admin and customer in once and stores their sessions in `playwright/.auth/`; use them with `test.use({ storageState: STORAGE_STATE.admin })`. Never sign out or change the password of a seeded account in a spec, because every worker shares those sessions.
 - A spec that changes an account, an order or a coupon creates its own: `registerCustomer` signs up and verifies a new customer, `uniqueEmail` and `uniqueCode` name the data, and `placeOrder` buys a product and pays for it through the emulator. Specs run fully parallel and must not depend on counts other specs can change.
 - Wait for state with web-first assertions and `expect.poll`, never fixed timeouts. A click that lands before React has hydrated the page is dropped without sending a request, so page objects in `e2e/pages/` wait for hydration: open and reload pages through them (`open`, `reload`), and call `waitForAppReady()` after any `page.goto` a spec makes itself, before it interacts with the page.
+- The landing page keeps each section hidden until it scrolls into view, so a spec reaches one the way a visitor does: `scrollUntilVisible(locator)` on the page object turns the mouse wheel until the element is visible.
+- Read an email with `waitForEmail` and take a link from it with `linkIn`. Check the link's origin as well as its path: the checkout, admin and newsletter specs assert that the order confirmation, the shipping email and the newsletter confirmation all link to `http://127.0.0.1:3000`, the address the suite uses, and the newsletter spec follows its link to the confirmed page.
 
 ## Conventions
 

@@ -183,15 +183,16 @@ Kolumna zawierająca zwykły tekst, a nie JSON, jest traktowana jako notatka, wi
 
 **Nie** zmienia adresu e-mail, nazwy, roli ani stanu bana; to operacje Better Auth.
 
-`deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, ma trzy zabezpieczenia:
+`deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, ma cztery zabezpieczenia:
 
-| Warunek                                  | Błąd                                                   |
-| ---------------------------------------- | ------------------------------------------------------ |
-| użytkownik nie istnieje                  | `ERROR_CODES.NOT_FOUND` / `USER_ERROR_CODES.NOT_FOUND` |
-| `targetUser.id === context.auth.user.id` | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
-| `targetUser.role === ROLES.ADMIN`        | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
+| Warunek                                                                   | Błąd                                                   |
+| ------------------------------------------------------------------------- | ------------------------------------------------------ |
+| żądanie na host, którego ten build nie obsługuje (`resolveRequestOrigin`) | `ERROR_CODES.FORBIDDEN`                                |
+| użytkownik nie istnieje                                                   | `ERROR_CODES.NOT_FOUND` / `USER_ERROR_CODES.NOT_FOUND` |
+| `targetUser.id === context.auth.user.id`                                  | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
+| `targetUser.role === ROLES.ADMIN`                                         | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
 
-Zapamiętuje adres e-mail, nazwę i bieżący język **przed** usunięciem, przekazuje usunięcie do `auth.api.removeUser`, a potem czeka na e-mail pożegnalny:
+Zapamiętuje adres e-mail, nazwę, bieżący język i origin żądania **przed** usunięciem, przekazuje usunięcie do `auth.api.removeUser`, a potem czeka na e-mail pożegnalny:
 
 ```ts
 await auth.api.removeUser({ body: { userId }, headers: getRequestHeaders() })

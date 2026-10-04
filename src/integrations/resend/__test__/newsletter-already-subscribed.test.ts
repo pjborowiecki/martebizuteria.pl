@@ -15,7 +15,7 @@ vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 
 import { sendNewsletterAlreadySubscribed } from "~/src/integrations/resend/newsletter-already-subscribed.server"
 
-import { APP_URL } from "~/src/presentation/branding/app"
+const notice = { email: "anna@example.com", locale: "en-US", origin: "http://127.0.0.1:3000" } as const
 
 const sentPayload = () => {
   const [payload] = sendEmail.mock.calls[0] ?? []
@@ -33,37 +33,36 @@ beforeEach(() => {
 
 describe("sendNewsletterAlreadySubscribed", () => {
   it("mails the address that was submitted", async () => {
-    await sendNewsletterAlreadySubscribed({ email: "anna@example.com", locale: "en-US" })
+    await sendNewsletterAlreadySubscribed(notice)
 
     expect(sendEmail).toHaveBeenCalledOnce()
     expect(sentPayload().to).toBe("anna@example.com")
   })
 
   it("writes the subject in the language the form was used in", async () => {
-    await sendNewsletterAlreadySubscribed({ email: "anna@example.com", locale: "pl-PL" })
+    await sendNewsletterAlreadySubscribed({ ...notice, locale: "pl-PL" })
 
     expect(sentPayload().subject).toBe(polishCopy.subject)
   })
 
-  it("links an English reader to the storefront in their language", async () => {
-    await sendNewsletterAlreadySubscribed({ email: "anna@example.com", locale: "en-US" })
+  it("links an English reader to the storefront in their language, on the address the form was used on", async () => {
+    await sendNewsletterAlreadySubscribed(notice)
 
     const html = await render(sentPayload().react)
 
     expect(sentPayload().subject).toBe(englishCopy.subject)
-    expect(html).toContain(`href="${APP_URL}/en-US"`)
+    expect(html).toContain('href="http://127.0.0.1:3000/en-US"')
+    expect(html).not.toContain("martebizuteria.pl/")
     expect(html).toContain(englishCopy.cta)
   })
 
   it("hands a refused send back to the caller", async () => {
     sendEmail.mockResolvedValueOnce("The pjborowiecki.com domain is not verified")
 
-    await expect(sendNewsletterAlreadySubscribed({ email: "anna@example.com", locale: "en-US" })).resolves.toBe(
-      "The pjborowiecki.com domain is not verified",
-    )
+    await expect(sendNewsletterAlreadySubscribed(notice)).resolves.toBe("The pjborowiecki.com domain is not verified")
   })
 
   it("reports no failure when the email went out", async () => {
-    await expect(sendNewsletterAlreadySubscribed({ email: "anna@example.com", locale: "en-US" })).resolves.toBeUndefined()
+    await expect(sendNewsletterAlreadySubscribed(notice)).resolves.toBeUndefined()
   })
 })

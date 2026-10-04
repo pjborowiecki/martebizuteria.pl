@@ -32,11 +32,13 @@ export const buildOrderShippedAccountCta = ({
   locale,
   messages,
   orderId,
+  origin,
   userId,
 }: Readonly<{
   locale: SupportedLocale
   messages: typeof orderShippedMessages
   orderId: string
+  origin: string
   userId: string | null | undefined
 }>): OrderAccountCta =>
-  buildOrderAccountCta({ isGuest: userId === null || userId === undefined || userId === "", locale, messages, orderId })
+  buildOrderAccountCta({ isGuest: userId === null || userId === undefined || userId === "", locale, messages, orderId, origin })

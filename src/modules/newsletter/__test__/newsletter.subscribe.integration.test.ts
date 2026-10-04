@@ -8,12 +8,16 @@ const { sqlite } = await vi.hoisted(async () => {
   return { sqlite: new DatabaseSync(":memory:") }
 })
 
-const { getRequestSession, recordEmailFailedAudit, sendNewsletterAlreadySubscribed, sendNewsletterConfirmation } = vi.hoisted(() => ({
-  getRequestSession: vi.fn<() => Promise<{ user: { email: string; id: string } } | undefined>>(),
-  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
-  sendNewsletterAlreadySubscribed: vi.fn<(input: { email: string; locale: string }) => Promise<string | undefined>>(),
-  sendNewsletterConfirmation: vi.fn<(input: { email: string; locale: string; token: string }) => Promise<string | undefined>>(),
-}))
+const { getRequest, getRequestSession, recordEmailFailedAudit, sendNewsletterAlreadySubscribed, sendNewsletterConfirmation } = vi.hoisted(
+  () => ({
+    getRequest: vi.fn<() => Request>(),
+    getRequestSession: vi.fn<() => Promise<{ user: { email: string; id: string } } | undefined>>(),
+    recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+    sendNewsletterAlreadySubscribed: vi.fn<(input: { email: string; locale: string; origin: string }) => Promise<string | undefined>>(),
+    sendNewsletterConfirmation:
+      vi.fn<(input: { email: string; locale: string; origin: string; token: string }) => Promise<string | undefined>>(),
+  }),
+)
 
 const UNVERIFIED_DOMAIN = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
 
@@ -28,6 +32,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   RATE_LIMITS: { SENSITIVE: { max: 3, window: 60 } },
   withRateLimit: () => ({}),
 }))
+vi.mock("@tanstack/react-start/server", () => ({ getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession }))
 vi.mock("~/src/integrations/resend/newsletter-already-subscribed.server", () => ({ sendNewsletterAlreadySubscribed }))
 vi.mock("~/src/integrations/resend/newsletter-confirmation.server", () => ({ sendNewsletterConfirmation }))
@@ -51,6 +56,7 @@ vi.mock("@tanstack/react-start", () => ({
   },
 }))
 
+import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import {
   NEWSLETTER_MUTATION_KEYS,
   NEWSLETTER_OUTCOME,
@@ -68,6 +74,11 @@ import {
 } from "~/src/modules/newsletter/use-cases/unsubscribe-from-newsletter"
 
 const mutationContext = { client: new QueryClient(), meta: undefined }
+
+const requestOn = (origin: string): Request =>
+  new Request(`${origin}/_serverFn/subscribe`, {
+    headers: { origin: "https://attacker.example", "x-forwarded-host": "attacker.example", "x-forwarded-proto": "https" },
+  })
 
 const subscriberRow = (email: string) =>
   z
@@ -94,6 +105,7 @@ const failNextConfirmation = () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  getRequest.mockReturnValue(requestOn("http://localhost:3000"))
   getRequestSession.mockResolvedValue(undefined)
   sendNewsletterAlreadySubscribed.mockResolvedValue(undefined)
   sendNewsletterConfirmation.mockResolvedValue(undefined)
@@ -161,7 +173,11 @@ describe("subscribeToNewsletter", () => {
 
     await subscribeToNewsletter({ data: { email: "anna@example.com", locale: "en-US" } })
 
-    expect(sendNewsletterAlreadySubscribed).toHaveBeenCalledExactlyOnceWith({ email: "anna@example.com", locale: "en-US" })
+    expect(sendNewsletterAlreadySubscribed).toHaveBeenCalledExactlyOnceWith({
+      email: "anna@example.com",
+      locale: "en-US",
+      origin: "http://localhost:3000",
+    })
     expect(sendNewsletterConfirmation).toHaveBeenCalledOnce()
   })
 
@@ -213,6 +229,40 @@ describe("subscribeToNewsletter", () => {
       void subscribeToNewsletter({ data: { email: "not-an-email" } })
     }).toThrow()
   })
+})
+
+describe("subscribeToNewsletter links", () => {
+  it.each(["http://localhost:3000", "http://127.0.0.1:3000"])(
+    "points the confirmation at %s, the address the request came in on, whatever the headers claim",
+    async (origin) => {
+      getRequest.mockReturnValue(requestOn(origin))
+
+      await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+      expect(sendNewsletterConfirmation).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ origin }))
+    },
+  )
+
+  it("points a repeat request from a confirmed subscriber at the same address", async () => {
+    await confirmAnna()
+    getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))
+
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    expect(sendNewsletterAlreadySubscribed).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ origin: "http://127.0.0.1:3000" }))
+  })
+
+  it.each(["https://martebizuteria.pl.attacker.example", "https://martebizuteria.pl", "http://localhost:3001"])(
+    "refuses a request on %s, which this build does not serve, before storing or sending anything",
+    async (origin) => {
+      getRequest.mockReturnValue(requestOn(origin))
+
+      await expect(subscribeToNewsletter({ data: { email: "anna@example.com" } })).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+      expect(countSubscribers()).toBe(0)
+      expect(sendNewsletterConfirmation).not.toHaveBeenCalled()
+      expect(sendNewsletterAlreadySubscribed).not.toHaveBeenCalled()
+    },
+  )
 })
 
 describe("subscribeToNewsletter when the confirmation email cannot be sent", () => {

@@ -4,6 +4,8 @@ import { STRIPE_API_VERSION, STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/st
 
 const EVENT_CREATED_AT = 1_700_000_000
 
+const LOCAL_CHECKOUT_RETURN_URL = "http://127.0.0.1:3000/checkout?success=true&session_id={CHECKOUT_SESSION_ID}"
+
 const EVENT_BASE: Omit<Stripe.EventBase, "data" | "type"> = {
   api_version: STRIPE_API_VERSION,
   created: EVENT_CREATED_AT,
@@ -24,6 +26,7 @@ export const checkoutSession = ({
   metadata = null,
   paymentIntent = null,
   paymentStatus = "paid",
+  returnUrl = LOCAL_CHECKOUT_RETURN_URL,
 }: Readonly<{
   amountTotal?: number | null
   currency?: string | null
@@ -34,6 +37,7 @@ export const checkoutSession = ({
   metadata?: Stripe.Metadata | null
   paymentIntent?: string | null
   paymentStatus?: Stripe.Checkout.Session["payment_status"]
+  returnUrl?: string | null
 }>): Stripe.Checkout.Session => ({
   adaptive_pricing: null,
   after_expiration: null,
@@ -80,6 +84,7 @@ export const checkoutSession = ({
   payment_status: paymentStatus,
   permissions: null,
   recovered_from: null,
+  ...(returnUrl === null ? {} : { return_url: returnUrl }),
   saved_payment_method_options: null,
   setup_intent: null,
   shipping_address_collection: null,

@@ -1,6 +1,12 @@
-import { type Locator, type Page } from "@playwright/test"
+import { type Locator, type Page, expect } from "@playwright/test"
 
 const APP_READY_TIMEOUT_MS = 30_000
+
+const WHEEL_STEP_PX = 600
+
+const WHEEL_STEP_SETTLE_MS = 400
+
+const SCROLL_TO_TIMEOUT_MS = 45_000
 
 export class BasePage {
   protected readonly page: Page
@@ -29,6 +35,18 @@ export class BasePage {
       undefined,
       { timeout: APP_READY_TIMEOUT_MS },
     )
+  }
+
+  async scrollUntilVisible(target: Locator): Promise<void> {
+    const viewport = this.page.viewportSize()
+    if (viewport === null) {
+      throw new Error("scrollUntilVisible needs a page with a fixed viewport")
+    }
+    await this.page.mouse.move(viewport.width / 2, viewport.height / 2)
+    await expect(async () => {
+      await this.page.mouse.wheel(0, WHEEL_STEP_PX)
+      await expect(target).toBeVisible({ timeout: WHEEL_STEP_SETTLE_MS })
+    }).toPass({ timeout: SCROLL_TO_TIMEOUT_MS })
   }
 
   heading(): Locator {

@@ -1,7 +1,7 @@
 import { type ComponentProps, type ReactElement } from "react"
 
 import type Stripe from "stripe"
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 type OrderConfirmationElement = ReactElement<ComponentProps<typeof OrderConfirmation>>
 
@@ -87,6 +87,15 @@ const itemsMetadata = JSON.stringify(fulfillmentLines)
 
 const UNSENT_CONFIRMATION = { label: "Order confirmation", orderId: "order-1" }
 
+const sessionCheckedOutOn = (origin: string, metadata: Stripe.Metadata): Stripe.Checkout.Session =>
+  checkoutSession({
+    amountTotal: AMOUNT_TOTAL,
+    customerEmail: "anna@example.com",
+    metadata,
+    paymentIntent: "pi_test_1",
+    returnUrl: `${origin}/en-US/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`,
+  })
+
 const dispatch = async (event: Stripe.Event): Promise<void> => {
   const handler = webhookHandlers[event.type]
   if (handler === undefined) {
@@ -120,6 +129,10 @@ beforeEach(() => {
   getCheckoutEmailContext.mockResolvedValue(undefined)
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
   sendEmail.mockResolvedValue(undefined)
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
 })
 
 describe("order confirmation email", () => {
@@ -242,12 +255,12 @@ describe("order confirmation email", () => {
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata, userId: "usr-1" })))
 
     expect(guestCta).toStrictEqual({
-      href: "https://martebizuteria.pl/auth/sign-up",
+      href: "http://127.0.0.1:3000/auth/sign-up",
       isGuest: true,
       label: polishCopy.createAccountCta,
     })
     expect(sentEmail().react.props.accountCta).toStrictEqual({
-      href: "https://martebizuteria.pl/account/orders/order-1",
+      href: "http://127.0.0.1:3000/account/orders/order-1",
       isGuest: false,
       label: polishCopy.viewOrderCta,
     })
@@ -260,11 +273,75 @@ describe("order confirmation email", () => {
       {
         imageUrl: "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/aurora.jpg",
         price: 24_900,
-        productUrl: "https://martebizuteria.pl/en-US/products/bransoletka-aurora",
+        productUrl: "http://127.0.0.1:3000/en-US/products/bransoletka-aurora",
         qty: 2,
         title: "Bransoletka Aurora",
       },
     ])
+  })
+})
+
+describe("order confirmation email links", () => {
+  it.each([
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://preview.martebizuteria.pl",
+    "https://martebizuteria-preview.pjborowiecki.workers.dev",
+    "https://martebizuteria.pl",
+    "https://martebizuteria.pjborowiecki.workers.dev",
+  ])("links an order checked out on %s back to that address", async (origin) => {
+    await dispatch(checkoutSessionCompletedEvent(sessionCheckedOutOn(origin, { items: itemsMetadata, locale: "en-US" })))
+
+    expect(sentEmail().react.props.accountCta.href).toBe(`${origin}/en-US/auth/sign-up`)
+    expect(sentEmail().react.props.items[0]?.productUrl).toBe(`${origin}/en-US/products/bransoletka-aurora`)
+  })
+
+  it.each(["preview", "production"])(
+    "links a checkout made on 127.0.0.1 back to 127.0.0.1 when the %s deployment's webhook fulfils it",
+    async (mode) => {
+      vi.stubEnv("MODE", mode)
+
+      await dispatch(checkoutSessionCompletedEvent(sessionCheckedOutOn("http://127.0.0.1:3000", { items: itemsMetadata, userId: "usr-1" })))
+
+      expect(sentEmail().react.props.accountCta.href).toBe("http://127.0.0.1:3000/account/orders/order-1")
+      expect(sentEmail().react.props.items[0]?.productUrl).toBe("http://127.0.0.1:3000/products/bransoletka-aurora")
+    },
+  )
+
+  it.each([
+    "https://martebizuteria.pl.attacker.example",
+    "https://fakemartebizuteria.pl",
+    "https://other.pjborowiecki.workers.dev",
+    "http://martebizuteria.pl",
+    "http://localhost:3001",
+    "http://[::1]:3000",
+  ])("still fulfils an order whose session returns to %s, and records the confirmation as unsent", async (origin) => {
+    const event = checkoutSessionCompletedEvent(sessionCheckedOutOn(origin, { items: itemsMetadata }))
+
+    await expect(dispatch(event)).resolves.toBeUndefined()
+
+    expect(fulfillCheckout).toHaveBeenCalledOnce()
+    expect(sendEmail).not.toHaveBeenCalled()
+    expect(recordOrderEmailOutcome).toHaveBeenCalledExactlyOnceWith({ ...UNSENT_CONFIRMATION, failure: "FORBIDDEN" })
+  })
+
+  it("still fulfils an order whose session has no return URL, and records why the confirmation was not sent", async () => {
+    const session = checkoutSession({
+      amountTotal: AMOUNT_TOTAL,
+      customerEmail: "anna@example.com",
+      metadata: { items: itemsMetadata },
+      paymentIntent: "pi_test_1",
+      returnUrl: null,
+    })
+
+    await expect(dispatch(checkoutSessionCompletedEvent(session))).resolves.toBeUndefined()
+
+    expect(fulfillCheckout).toHaveBeenCalledOnce()
+    expect(sendEmail).not.toHaveBeenCalled()
+    expect(recordOrderEmailOutcome).toHaveBeenCalledExactlyOnceWith({
+      ...UNSENT_CONFIRMATION,
+      failure: "The Stripe session has no return URL to link the email to",
+    })
   })
 })
 

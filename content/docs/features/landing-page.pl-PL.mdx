@@ -129,7 +129,7 @@ subscribe.mutate({
 })
 ```
 
-Funkcja serwerowa nie wymaga sesji i ma limit żądań `withRateLimit("newsletter-subscribe", RATE_LIMITS.SENSITIVE)`. Zapisuje adres w `newsletter_subscriber` ze statusem `pending` i nowym tokenem, a następnie czeka na `sendNewsletterConfirmation`, którego link otwiera `/newsletter/confirm`. To, co pokazuje sekcja, zależy od wyniku:
+Funkcja serwerowa nie wymaga sesji i ma limit żądań `withRateLimit("newsletter-subscribe", RATE_LIMITS.SENSITIVE)`. Zapisuje adres w `newsletter_subscriber` ze statusem `pending` i nowym tokenem, a następnie czeka na `sendNewsletterConfirmation`, którego link otwiera `/newsletter/confirm` pod adresem, z którego wysłano formularz. Ten origin pochodzi z `resolveRequestOrigin(getRequest())`, więc zapis na `localhost:3000` dostaje link do `localhost:3000`, a żądanie na host, którego ten build nie obsługuje, jest odrzucane z `FORBIDDEN`, zanim cokolwiek zostanie zapisane. To, co pokazuje sekcja, zależy od wyniku:
 
 | Wynik                | Kiedy                                                                                                               | Sekcja                                                                                     |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |

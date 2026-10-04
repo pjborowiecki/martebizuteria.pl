@@ -43,6 +43,7 @@ Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change t
 - [ ] `emailAndPassword.requireEmailVerification: true`.
 - [ ] `advanced.useSecureCookies: !isLocalMode(import.meta.env.MODE)` — secure cookies everywhere except `development` and `test`.
 - [ ] `baseURL.allowedHosts: appHostsForMode(import.meta.env.MODE)`. The host allow-list is in `src/modules/_core/constants/api.ts` and is per mode: production allows `martebizuteria.pl` and the `workers.dev` name, preview allows the preview pair, and local allows only `localhost:3000` and `127.0.0.1:3000`.
+- [ ] Every email link and the Stripe `return_url` are built from `resolveRequestOrigin(request)` (`src/lib/request.ts`), which reads `request.url` only and refuses a host outside that list with `FORBIDDEN`. The order confirmation, sent from the webhook, takes the origin of the session's `return_url` through `resolveDeploymentOrigin`, which refuses a host no deployment serves. Nothing builds them from `APP_URL` or from the `Origin`, `Referer`, `Host` or `X-Forwarded-*` headers.
 - [ ] `account.encryptOAuthTokens: true` and `verification.storeIdentifier: "hashed"`.
 - [ ] `multiSession({ maximumSessions: 5 })` and `session.storeSessionInDatabase: true`.
 - [ ] `telemetry.enabled: false`.

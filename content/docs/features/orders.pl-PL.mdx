@@ -123,7 +123,7 @@ Cztery strzeżone akcje zapisują zdarzenie audytu (`recordOrderFulfillmentStart
 recordOrderShippedAudit(orderId, {
   detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
 })
-const shippedEmailDelivery = notifyOrderShipped(orderId)
+const shippedEmailDelivery = notifyOrderShipped(orderId, origin)
 scheduleBackgroundWork(shippedEmailDelivery)
 const shippedEmailSent = await shippedEmailDelivery
 
@@ -182,7 +182,7 @@ Oś czasu obejmuje też wpisy e-maili zamówienia. Wiersz `email.failed` ma etyk
 
 Obie strony pokazują `order_number`. Zakładki filtrów to `CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "processing", "shipped", "delivered", "cancelled", "refunded"]`.
 
-Zamówienia gości mają `user_id = null` i nie pojawiają się w żadnym koncie, dopóki któreś ich nie przejmie: `claimGuestOrdersForUser` (`order.claim.server.ts`) ustawia `user_id` na każdym zamówieniu gościa z tym samym adresem e-mail, bez względu na wielkość liter, gdy użytkownik powstaje ze zweryfikowanym adresem albo go weryfikuje. Przycisk w e-mailu potwierdzającym kieruje wtedy gościa na `/auth/sign-up` — zobacz `buildOrderAccountCta` w `src/integrations/resend/order-confirmation.utils.ts`.
+Zamówienia gości mają `user_id = null` i nie pojawiają się w żadnym koncie, dopóki któreś ich nie przejmie: `claimGuestOrdersForUser` (`order.claim.server.ts`) ustawia `user_id` na każdym zamówieniu gościa z tym samym adresem e-mail, bez względu na wielkość liter, gdy użytkownik powstaje ze zweryfikowanym adresem albo go weryfikuje. Przycisk w e-mailu potwierdzającym kieruje wtedy gościa na `/auth/sign-up` — zobacz `buildOrderAccountCta` w `src/integrations/resend/order-confirmation.utils.ts`, który buduje oba linki na originie, który dostaje: przy potwierdzeniu jest to adres, na którym złożono zamówienie, a przy e-mailu o wysyłce żądanie administratora.
 
 ## Język zamówienia
 

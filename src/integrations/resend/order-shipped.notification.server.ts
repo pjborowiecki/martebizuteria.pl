@@ -35,7 +35,7 @@ const mapCheckoutEmailContext = (
 
 const ORDER_SHIPPED_LABEL = "Order shipped"
 
-const sendOrderShippedEmail = async (orderId: string): Promise<OrderEmailOutcome> => {
+const sendOrderShippedEmail = async (orderId: string, origin: string): Promise<OrderEmailOutcome> => {
   const orderRow = await getOrderForShippedEmail(orderId)
   if (orderRow === undefined) {
     return { failure: "The order could not be found", label: ORDER_SHIPPED_LABEL }
@@ -55,7 +55,7 @@ const sendOrderShippedEmail = async (orderId: string): Promise<OrderEmailOutcome
     trackingNumber: orderRow.trackingNumber,
     trackingUrl: orderRow.trackingUrl,
   })
-  const accountCta = buildOrderShippedAccountCta({ locale, messages, orderId: orderRow.id, userId: orderRow.userId })
+  const accountCta = buildOrderShippedAccountCta({ locale, messages, orderId: orderRow.id, origin, userId: orderRow.userId })
   const failure = await sendEmail({
     react: createElement(OrderShipped, {
       accountCta,
@@ -71,5 +71,5 @@ const sendOrderShippedEmail = async (orderId: string): Promise<OrderEmailOutcome
   return { failure, label: `${ORDER_SHIPPED_LABEL} → ${orderRow.email}` }
 }
 
-export const notifyOrderShipped = (orderId: string): Promise<boolean> =>
-  recordOrderEmailAttempt(sendOrderShippedEmail(orderId), { label: ORDER_SHIPPED_LABEL, orderId })
+export const notifyOrderShipped = (orderId: string, origin: string): Promise<boolean> =>
+  recordOrderEmailAttempt(sendOrderShippedEmail(orderId, origin), { label: ORDER_SHIPPED_LABEL, orderId })

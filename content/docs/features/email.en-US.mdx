@@ -94,6 +94,14 @@ Where the locale comes from differs by trigger:
 
 The last two matter: a webhook has no browser, so the locale must have been persisted at checkout time. `createStripeSession` puts `locale: getCurrentLocale()` in the session metadata and `prepareFulfillCheckoutBatch` copies it into `order.metadata`, which is why a Polish customer's shipping notice arrives in Polish days later.
 
+## Link origin
+
+Links the shop writes into its own emails point at the address the customer or admin was using, the way Better Auth's links follow the host it was called on. A server function resolves the origin before it writes anything, with `resolveRequestOrigin(request)` (`src/lib/request.ts`): it takes the origin from `request.url`, accepts only the hosts `appHostsForMode(import.meta.env.MODE)` lists, and throws `AppError(FORBIDDEN)` for anything else. The origin is then passed down as a string: `sendNewsletterConfirmation({ email, locale, origin, token })`, `sendNewsletterAlreadySubscribed({ email, locale, origin })`, `sendAccountDeletedEmail({ email, locale, name, origin })` and `notifyOrderShipped(orderId, origin)`. After a self-service deletion, Better Auth's `afterDelete` hook resolves it from the request Better Auth hands it.
+
+The order confirmation is sent from the Stripe webhook, whose request only says which endpoint Stripe called. It takes its origin from the session's `return_url` instead: the checkout request built that URL on its own validated origin, and it comes back inside the signature-checked event. `resolveDeploymentOrigin(session.return_url)` accepts a host that any deployment serves, local, preview or production, and requires `https:` everywhere but `localhost:3000` and `127.0.0.1:3000`. A local checkout therefore links back to the address it was made on, even though `stripe:listen` forwards the webhook to `localhost:3000`, and even when the preview deployment, which shares the Stripe test account and the database with development, fulfils it.
+
+Used on `http://127.0.0.1:3000`, the shop links to `http://127.0.0.1:3000`. On preview it links to the preview host in use, and in production to `https://martebizuteria.pl` or `https://martebizuteria.pjborowiecki.workers.dev`, whichever the customer or admin used. `APP_URL` is used for SEO only. [Resend](/docs/integrations/resend) lists where each flow gets its origin.
+
 ## Styling
 
 `email-layout.tsx` wraps everything in react-email's `<Tailwind config={EMAIL_TAILWIND_CONFIG}>` with a small palette:
@@ -124,12 +132,12 @@ The layout also forces light rendering:
 
 This is the most involved template. `stripe.webhooks.tsx` builds it in `buildOrderConfirmationEmailPayload`:
 
-1. The recipient is `session.customer_email ?? session.customer_details?.email`. If there is none, nothing is built and the failure `The Stripe session has no email address` is recorded against the order.
+1. The recipient is `session.customer_email ?? session.customer_details?.email`. If there is none, nothing is built and the failure `The Stripe session has no email address` is recorded against the order. Before that, `sendOrderConfirmationEmail` takes the link origin from `session.return_url` with `resolveDeploymentOrigin`. A session without one records `The Stripe session has no return URL to link the email to`, and one on a host no deployment serves records `FORBIDDEN`.
 2. `getCheckoutEmailContext(checkoutId)` loads the addresses, the delivery method, the locker id and the customer note.
 3. `resolveStripePaymentMethodLabel(session, messages)` turns the Stripe payment method into a translated label.
 4. `buildOrderConfirmationDetails(...)` assembles the details block.
-5. `buildOrderConfirmationItems(order.lines, locale)` formats the line items.
-6. `buildOrderAccountCta({ isGuest, locale, messages, orderId })` chooses the button: a signed-in customer gets a link to `/account/orders/<id>`, a guest gets `/auth/sign-up`. `isGuest` is derived from an empty `userId` in the session metadata.
+5. `buildOrderConfirmationItems(order.lines, locale, origin)` formats the line items, linking each one to its product page on `origin`, the address the checkout was made on.
+6. `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })` chooses the button: a signed-in customer gets a link to `/account/orders/<id>`, a guest gets `/auth/sign-up`. `isGuest` is derived from an empty `userId` in the session metadata.
 7. Totals: `itemsSubtotal` from the metadata lines and `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
 
 The helpers are in `src/integrations/resend/order-confirmation.utils.ts`, and `resolveDeliveryMethodLabel` there appends the locker id for a locker delivery.
@@ -224,7 +232,7 @@ The shop's own senders wait for Resend's answer, so the result reaches whoever i
 `shipOrder`, `deleteCustomer` and the Stripe webhook also hand the send they wait for to `scheduleBackgroundWork` before awaiting it:
 
 ```ts
-const shippedEmailDelivery = notifyOrderShipped(orderId)
+const shippedEmailDelivery = notifyOrderShipped(orderId, origin)
 scheduleBackgroundWork(shippedEmailDelivery)
 const shippedEmailSent = await shippedEmailDelivery
 ```

@@ -160,7 +160,7 @@ export const APP_GITHUB_OWNER = "pjborowiecki"
 export const APP_GITHUB_REPO = APP_DOMAIN
 ```
 
-`APP_NAME` feeds the document title, the Better Auth `appName`, the two-factor issuer and the theme storage key. `THEME_COLOR` is the `theme-color` meta tag and matches `--bg-base`. `APP_DOMAIN` feeds `appHostsForMode` in `src/modules/_core/constants/api.ts`, which is Better Auth's `baseURL.allowedHosts` — so changing the domain changes the auth host allow-list too.
+`APP_NAME` feeds the document title, the Better Auth `appName`, the two-factor issuer and the theme storage key. `THEME_COLOR` is the `theme-color` meta tag and matches `--bg-base`. `APP_DOMAIN` feeds `appHostsForMode` in `src/modules/_core/constants/api.ts`, which is Better Auth's `baseURL.allowedHosts` — so changing the domain changes the auth host allow-list too, and with it the hosts `resolveRequestOrigin` accepts for email links and the Stripe return URL. `APP_URL` itself is only the canonical production address used in SEO metadata; emails link to the host the request came in on.
 
 `business.ts` — the legal entity, used by the footer, the legal pages and structured data:
 

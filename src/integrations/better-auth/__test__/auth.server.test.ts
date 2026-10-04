@@ -2,7 +2,9 @@ import { type ReactElement } from "react"
 
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { APP_URL } from "~/src/presentation/branding/app"
+import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
+
+import type * as Seo from "~/src/lib/seo"
 
 import accountDeletedEnglish from "~/messages/en-US/emails.account-deleted.json"
 import accountDeletedPolish from "~/messages/pl-PL/emails.account-deleted.json"
@@ -88,6 +90,8 @@ vi.mock("~/src/presentation/emails/verify-email", () => ({
 const { auth, sendAccountDeletedEmail, sendChangeEmailConfirmation, sendResetPassword, sendVerificationEmail, signInAudit } =
   await import("~/src/integrations/better-auth/auth.server")
 
+const seo = await vi.importActual<typeof Seo>("~/src/lib/seo")
+
 const hooks = auth.options.databaseHooks
 
 const [signInHook] = signInAudit.hooks.after
@@ -120,6 +124,10 @@ const createdSession = {
 }
 
 const user = { email: "shopper@marte.test", name: "Ada" }
+
+const goodbye = { email: user.email, name: user.name, origin: "http://127.0.0.1:3000" }
+
+const deletionOn = (origin: string): Request => new Request(`${origin}/api/auth/delete-user`, { method: "POST" })
 
 const verifyUrl = (callback?: string): string =>
   callback === undefined
@@ -267,26 +275,65 @@ describe("account emails", () => {
     expect(sentEmail()?.subject).toBe(changeEmailPolish.subject)
   })
 
-  it("sends a goodbye note under the locale it is given", async () => {
-    await sendAccountDeletedEmail({ email: user.email, locale: "en-US", name: user.name })
+  it("sends a goodbye note under the locale it is given, linking to the storefront it was sent from", async () => {
+    stubs.buildLocalizedUrl.mockImplementation(seo.buildLocalizedUrl)
+
+    await sendAccountDeletedEmail({ ...goodbye, locale: "en-US" })
 
     expect(sentEmail()?.subject).toBe(accountDeletedEnglish.subject)
-    expect(sentProp("storefrontUrl")).toBe(`${APP_URL}/en-US`)
+    expect(sentProp("storefrontUrl")).toBe("http://127.0.0.1:3000/en-US")
   })
 
-  it("falls back to the request locale for a goodbye note", async () => {
-    await sendAccountDeletedEmail({ email: user.email, name: user.name })
+  it("falls back to the request locale for a goodbye note and links a Polish reader to the unprefixed storefront", async () => {
+    stubs.buildLocalizedUrl.mockImplementation(seo.buildLocalizedUrl)
+
+    await sendAccountDeletedEmail(goodbye)
 
     expect(sentEmail()?.subject).toBe(accountDeletedPolish.subject)
-    expect(sentProp("storefrontUrl")).toBe(`${APP_URL}/${LOCALE}`)
+    expect(sentProp("storefrontUrl")).toBe("http://127.0.0.1:3000/")
   })
 
   it("sends the goodbye note to the address of an account once it is deleted", async () => {
-    await auth.options.user.deleteUser.afterDelete(createdUser)
+    await auth.options.user.deleteUser.afterDelete(createdUser, deletionOn("http://localhost:3000"))
 
     expect(sentEmail()?.to).toBe(createdUser.email)
     expect(sentEmail()?.subject).toBe(accountDeletedPolish.subject)
     expect(sentProp("name")).toBe(createdUser.name)
+  })
+
+  it.each(["http://localhost:3000", "http://127.0.0.1:3000"])(
+    "links the goodbye note for an account deleted on %s back to that address",
+    async (origin) => {
+      stubs.buildLocalizedUrl.mockImplementation(seo.buildLocalizedUrl)
+
+      await auth.options.user.deleteUser.afterDelete(createdUser, deletionOn(origin))
+
+      expect(sentProp("storefrontUrl")).toBe(`${origin}/`)
+    },
+  )
+
+  it("records a goodbye note it will not link to a host this build does not serve, and keeps the deletion successful", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await expect(
+      auth.options.user.deleteUser.afterDelete(createdUser, deletionOn("https://martebizuteria.pl.attacker.example")),
+    ).resolves.toBeUndefined()
+
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
+      detail: `Auth account-deleted email — AppError: ${ERROR_CODES.FORBIDDEN}`,
+    })
+  })
+
+  it("records a goodbye note for a deletion that came with no request to link from, and keeps the deletion successful", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await expect(auth.options.user.deleteUser.afterDelete(createdUser, undefined)).resolves.toBeUndefined()
+
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
+      detail: "Auth account-deleted email — The deletion came with no request to link the storefront from",
+    })
   })
 })
 
@@ -346,7 +393,7 @@ describe("auth email delivery", () => {
   })
 
   it("lets a goodbye note, whose sending says nothing about other accounts, mark the sender unavailable", async () => {
-    await sendAccountDeletedEmail({ email: user.email, name: user.name })
+    await sendAccountDeletedEmail(goodbye)
 
     expect(sentEmail()?.revealsAccountExistence).toBeUndefined()
   })
@@ -361,11 +408,11 @@ describe("auth email delivery", () => {
   })
 
   it("reports whether the goodbye note went out instead of throwing", async () => {
-    await expect(sendAccountDeletedEmail({ email: user.email, name: user.name })).resolves.toBe(true)
+    await expect(sendAccountDeletedEmail(goodbye)).resolves.toBe(true)
 
     refuseEmails()
 
-    await expect(sendAccountDeletedEmail({ email: user.email, name: user.name })).resolves.toBe(false)
+    await expect(sendAccountDeletedEmail(goodbye)).resolves.toBe(false)
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, { detail: `Auth account-deleted email — ${DOMAIN_NOT_VERIFIED}` })
   })
 
@@ -375,8 +422,8 @@ describe("auth email delivery", () => {
       throw new Error("No request locale")
     })
 
-    await expect(sendAccountDeletedEmail({ email: user.email, name: user.name })).resolves.toBe(false)
-    await expect(auth.options.user.deleteUser.afterDelete(createdUser)).resolves.toBeUndefined()
+    await expect(sendAccountDeletedEmail(goodbye)).resolves.toBe(false)
+    await expect(auth.options.user.deleteUser.afterDelete(createdUser, deletionOn("http://localhost:3000"))).resolves.toBeUndefined()
 
     expect(stubs.sendEmail).not.toHaveBeenCalled()
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
@@ -387,7 +434,7 @@ describe("auth email delivery", () => {
   it("keeps a completed deletion successful when the goodbye note is refused", async () => {
     refuseEmails()
 
-    await expect(auth.options.user.deleteUser.afterDelete(createdUser)).resolves.toBeUndefined()
+    await expect(auth.options.user.deleteUser.afterDelete(createdUser, deletionOn("http://localhost:3000"))).resolves.toBeUndefined()
 
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
       detail: `Auth account-deleted email — ${DOMAIN_NOT_VERIFIED}`,

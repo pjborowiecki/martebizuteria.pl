@@ -58,7 +58,7 @@ Na trasach sklepu `StorefrontCriticalFontsHead` wstawia krytyczne reguły `@font
 
 ## Branding
 
-`branding/app.ts` zawiera `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR` i stałe obrazu Open Graph; `business.ts` — dane prawne i kontaktowe sklepu; `socials.ts` — `SOCIALS`. Zarówno `src/lib/seo.ts`, jak i `_core/constants/api.ts` czytają z nich, dlatego lista dozwolonych hostów dla każdego trybu builda wynika z `APP_DOMAIN`.
+`branding/app.ts` zawiera `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR` i stałe obrazu Open Graph; `business.ts` — dane prawne i kontaktowe sklepu; `socials.ts` — `SOCIALS`. Zarówno `src/lib/seo.ts`, jak i `_core/constants/api.ts` czytają z nich, dlatego lista dozwolonych hostów dla każdego trybu builda wynika z `APP_DOMAIN`. `APP_URL` to kanoniczny adres produkcyjny wyłącznie dla metadanych SEO. Linki w e-mailach i adres powrotu ze Stripe używają zamiast niego originu, na którym był klient albo administrator, przez `resolveRequestOrigin` i `resolveDeploymentOrigin` w `src/lib/request.ts`.
 
 ## E-maile
 

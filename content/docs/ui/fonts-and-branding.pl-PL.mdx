@@ -120,14 +120,14 @@ export const THEME_COLOR = "#e7f3ec"
 
 Zasilają one znacznie więcej niż chrom strony:
 
-| Stała                   | Czytana przez                                                                                                                          |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `APP_NAME`              | `theme-init.ts` (klucz motywu w `localStorage`), Better Auth, Stripe, Resend, meta `og:site_name` i `title`, nagłówki logowania i kasy |
-| `APP_URL`, `APP_DOMAIN` | Adresy kanoniczne, linki hreflang, dane strukturalne (`src/lib/seo.ts`), bezwzględne adresy zasobów (`src/lib/url.ts`)                 |
-| `APP_ICON`              | Linki `icon` i `apple-touch-icon` w trasie głównej                                                                                     |
-| `OG_IMAGE_*`            | Meta Open Graph i karty Twittera w trasie głównej                                                                                      |
-| `THEME_COLOR`           | Znacznik meta `theme-color`                                                                                                            |
-| `DEFAULT_R2_PUBLIC_URL` | Zapasowa publiczna baza zasobów R2 w `src/lib/image.ts`                                                                                |
+| Stała                   | Czytana przez                                                                                                                                                                                                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_NAME`              | `theme-init.ts` (klucz motywu w `localStorage`), Better Auth, Stripe, Resend, meta `og:site_name` i `title`, nagłówki logowania i kasy                                                                                                                                                 |
+| `APP_URL`, `APP_DOMAIN` | Adresy kanoniczne, linki hreflang i dane strukturalne (`src/lib/seo.ts`, `src/routes/__root.tsx`), zapasowy host obrazów (`src/lib/image.ts`), a przez `APP_DOMAIN` lista hostów dla każdego trybu. Nigdy linki w e-mailach ani adres powrotu ze Stripe, które używają originu żądania |
+| `APP_ICON`              | Linki `icon` i `apple-touch-icon` w trasie głównej                                                                                                                                                                                                                                     |
+| `OG_IMAGE_*`            | Meta Open Graph i karty Twittera w trasie głównej                                                                                                                                                                                                                                      |
+| `THEME_COLOR`           | Znacznik meta `theme-color`                                                                                                                                                                                                                                                            |
+| `DEFAULT_R2_PUBLIC_URL` | Zapasowa publiczna baza zasobów R2 w `src/lib/image.ts`                                                                                                                                                                                                                                |
 
 Ponieważ `THEME_STORAGE_KEY` wywodzi się z `APP_NAME`, zmiana nazwy aplikacji zmienia klucz w `localStorage` i po cichu resetuje zapisany motyw każdemu odwiedzającemu. Dziś to nieszkodliwe (nie ma przełącznika), ale warto o tym pamiętać.
 

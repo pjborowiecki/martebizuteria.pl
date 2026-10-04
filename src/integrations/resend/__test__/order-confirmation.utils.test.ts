@@ -23,8 +23,6 @@ import {
   formatEmailAddress,
 } from "~/src/integrations/resend/order-confirmation.utils"
 
-import { APP_URL } from "~/src/presentation/branding/app"
-
 import englishCopy from "~/messages/en-US/emails.order-confirmation.json"
 import polishCopy from "~/messages/pl-PL/emails.order-confirmation.json"
 
@@ -152,60 +150,71 @@ describe("buildOrderConfirmationDetails", () => {
 })
 
 describe("buildOrderConfirmationItems", () => {
+  const origin = "http://127.0.0.1:3000"
   const lines = [
     { handle: "srebrny-pierscionek", imageUrl: "products/ring.jpg", price: 12_000, qty: 2, title: "Silver ring", variantId: "v1" },
   ]
 
   it("carries the line copy and quantities through", () => {
-    expect(buildOrderConfirmationItems(lines, "pl-PL")[0]).toMatchObject({ price: 12_000, qty: 2, title: "Silver ring" })
+    expect(buildOrderConfirmationItems(lines, "pl-PL", origin)[0]).toMatchObject({ price: 12_000, qty: 2, title: "Silver ring" })
   })
 
   it("resolves the line image against the asset host", () => {
-    expect(buildOrderConfirmationItems(lines, "pl-PL")[0]?.imageUrl).toBe("https://assets.test/products/ring.jpg")
+    expect(buildOrderConfirmationItems(lines, "pl-PL", origin)[0]?.imageUrl).toBe("https://assets.test/products/ring.jpg")
   })
 
   it.each([[undefined], [""]])("falls back to the placeholder for the image %j", (imageUrl) => {
     expect(
-      buildOrderConfirmationItems([{ ...lines[0], imageUrl, price: 1, qty: 1, title: "t", variantId: "v" }], "pl-PL")[0]?.imageUrl,
+      buildOrderConfirmationItems([{ ...lines[0], imageUrl, price: 1, qty: 1, title: "t", variantId: "v" }], "pl-PL", origin)[0]?.imageUrl,
     ).toBe("https://assets.test/placeholder.svg")
   })
 
-  it("links to the product page in the shopper's locale", () => {
-    expect(buildOrderConfirmationItems(lines, "pl-PL")[0]?.productUrl).toBe(`${APP_URL}/products/srebrny-pierscionek`)
-    expect(buildOrderConfirmationItems(lines, "en-US")[0]?.productUrl).toBe(`${APP_URL}/en-US/products/srebrny-pierscionek`)
+  it("links to the product page in the shopper's locale on the address the order came from", () => {
+    expect(buildOrderConfirmationItems(lines, "pl-PL", origin)[0]?.productUrl).toBe("http://127.0.0.1:3000/products/srebrny-pierscionek")
+    expect(buildOrderConfirmationItems(lines, "en-US", "https://preview.martebizuteria.pl")[0]?.productUrl).toBe(
+      "https://preview.martebizuteria.pl/en-US/products/srebrny-pierscionek",
+    )
   })
 
   it.each([[undefined], [""]])("falls back to the catalog page when the handle is %j", (handle) => {
     expect(
-      buildOrderConfirmationItems([{ ...lines[0], handle, price: 1, qty: 1, title: "t", variantId: "v" }], "pl-PL")[0]?.productUrl,
-    ).toBe(`${APP_URL}/products`)
+      buildOrderConfirmationItems([{ ...lines[0], handle, price: 1, qty: 1, title: "t", variantId: "v" }], "pl-PL", origin)[0]?.productUrl,
+    ).toBe("http://127.0.0.1:3000/products")
   })
 
   it("produces nothing for an order with no lines", () => {
-    expect(buildOrderConfirmationItems([], "pl-PL")).toStrictEqual([])
+    expect(buildOrderConfirmationItems([], "pl-PL", origin)).toStrictEqual([])
   })
 })
 
 describe("buildOrderAccountCta", () => {
-  it("invites a guest to create an account", () => {
-    expect(buildOrderAccountCta({ isGuest: true, locale: "en-US", messages: englishCopy, orderId: "order-1" })).toStrictEqual({
-      href: `${APP_URL}/en-US/auth/sign-up`,
+  const origin = "http://localhost:3000"
+
+  it("invites a guest to create an account on the address the order came from", () => {
+    expect(buildOrderAccountCta({ isGuest: true, locale: "en-US", messages: englishCopy, orderId: "order-1", origin })).toStrictEqual({
+      href: "http://localhost:3000/en-US/auth/sign-up",
       isGuest: true,
       label: englishCopy.createAccountCta,
     })
   })
 
   it("links a signed-in shopper straight to the order", () => {
-    expect(buildOrderAccountCta({ isGuest: false, locale: "en-US", messages: englishCopy, orderId: "order-1" })).toStrictEqual({
-      href: `${APP_URL}/en-US/account/orders/order-1`,
+    expect(buildOrderAccountCta({ isGuest: false, locale: "en-US", messages: englishCopy, orderId: "order-1", origin })).toStrictEqual({
+      href: "http://localhost:3000/en-US/account/orders/order-1",
       isGuest: false,
       label: englishCopy.viewOrderCta,
     })
   })
 
-  it("leaves the default locale unprefixed", () => {
-    expect(buildOrderAccountCta({ isGuest: false, locale: "pl-PL", messages: polishCopy, orderId: "order-1" }).href).toBe(
-      `${APP_URL}/account/orders/order-1`,
-    )
+  it("leaves the default locale unprefixed on the production address", () => {
+    expect(
+      buildOrderAccountCta({
+        isGuest: false,
+        locale: "pl-PL",
+        messages: polishCopy,
+        orderId: "order-1",
+        origin: "https://martebizuteria.pl",
+      }).href,
+    ).toBe("https://martebizuteria.pl/account/orders/order-1")
   })
 })

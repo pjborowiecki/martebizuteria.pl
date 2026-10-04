@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { HTTP_STATUS, appHostsForMode, isLocalMode } from "~/src/modules/_core/constants/api"
+import { HTTP_STATUS, appHostsForMode, isDeploymentHost, isLocalHost, isLocalMode } from "~/src/modules/_core/constants/api"
 
 import { APP_DOMAIN } from "~/src/presentation/branding/app"
 
@@ -60,4 +60,29 @@ describe("application environments", () => {
     expect(appHostsForMode(mode)).toStrictEqual(original)
     expect(appHostsForMode(mode)).not.toContain("unexpected.example")
   })
+})
+
+describe("deployment hosts", () => {
+  it.each(["localhost:3000", "127.0.0.1:3000"])("treats %s as local", (host) => {
+    expect(isLocalHost(host)).toBe(true)
+    expect(isDeploymentHost(host)).toBe(true)
+  })
+
+  it.each([
+    `preview.${APP_DOMAIN}`,
+    "martebizuteria-preview.pjborowiecki.workers.dev",
+    APP_DOMAIN,
+    "martebizuteria.pjborowiecki.workers.dev",
+  ])("treats %s as a deployment that is not local", (host) => {
+    expect(isLocalHost(host)).toBe(false)
+    expect(isDeploymentHost(host)).toBe(true)
+  })
+
+  it.each(["localhost:3001", "[::1]:3000", `${APP_DOMAIN}.attacker.example`, `fake${APP_DOMAIN}`, "other.pjborowiecki.workers.dev", ""])(
+    "does not treat %s as any deployment",
+    (host) => {
+      expect(isLocalHost(host)).toBe(false)
+      expect(isDeploymentHost(host)).toBe(false)
+    },
+  )
 })

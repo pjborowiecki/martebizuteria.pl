@@ -21,8 +21,6 @@ import {
 } from "~/src/integrations/resend/order-confirmation.utils"
 import { paymentIntent } from "~/src/integrations/stripe/__test__/fixtures/stripe-webhook-events"
 
-import { APP_URL } from "~/src/presentation/branding/app"
-
 import englishCopy from "~/messages/en-US/emails.order-confirmation.json"
 
 const checkoutSession = (intent: Stripe.Checkout.Session["payment_intent"]): Stripe.Checkout.Session => ({
@@ -138,16 +136,18 @@ describe("resolveStripePaymentMethodLabel", () => {
   })
 })
 
-describe("app url resolution", () => {
-  it("builds the guest sign-up cta from the app url", () => {
-    expect(buildOrderAccountCta({ isGuest: true, locale: "en-US", messages: englishCopy, orderId: "order-1" }).href).toBe(
-      `${APP_URL}/en-US/auth/sign-up`,
+describe("link origin", () => {
+  const origin = "https://martebizuteria-preview.pjborowiecki.workers.dev"
+
+  it("builds the guest sign-up cta from the origin it is given", () => {
+    expect(buildOrderAccountCta({ isGuest: true, locale: "en-US", messages: englishCopy, orderId: "order-1", origin }).href).toBe(
+      `${origin}/en-US/auth/sign-up`,
     )
   })
 
-  it("builds product urls from the app url without a doubled slash", () => {
+  it("builds product urls from the origin it is given without a doubled slash", () => {
     expect(
-      buildOrderConfirmationItems([{ handle: "ring", price: 1, qty: 1, title: "Ring", variantId: "v1" }], "en-US")[0]?.productUrl,
-    ).toBe(`${APP_URL}/en-US/products/ring`)
+      buildOrderConfirmationItems([{ handle: "ring", price: 1, qty: 1, title: "Ring", variantId: "v1" }], "en-US", origin)[0]?.productUrl,
+    ).toBe(`${origin}/en-US/products/ring`)
   })
 })

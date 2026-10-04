@@ -62,7 +62,7 @@ const session = await stripe.checkout.sessions.create(params).catch(async (error
 
 `customerId` is set only for a signed-in shopper. `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) gets it from `ensureStripeCustomer`, which creates a Stripe customer on first use and stores its id in `user.stripe_customer_id`; `handleUpdateCheckoutSession` reads the stored id through `getStripeCustomerId`. Such a session belongs to that Stripe customer and lets the shopper save the card, which then appears on `/account/payment`. A guest's session carries `customer_email` instead. A signed-in customer can also add a card on `/account/payment` itself, through a card SetupIntent on the same Stripe customer, without paying. See [Account](/docs/features/account).
 
-`returnUrl` is `${resolveOrigin()}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, where Stripe fills in the session id and `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL` from `src/presentation/branding/app.ts`.
+`returnUrl` is `${origin}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, with the `/en-US` prefix for an English checkout, where Stripe fills in the session id and `origin` comes from `resolveRequestOrigin(getRequest())` in `src/lib/request.ts`. It is the address the checkout request came in on, checked against the hosts this build serves, so a local checkout returns to `localhost` or `127.0.0.1`, a preview checkout to the preview host and a production checkout to `martebizuteria.pl`. The `Origin`, `Referer`, `Host` and `X-Forwarded-*` headers are never read, and a request on any other host is refused with `FORBIDDEN` before the Stripe customer, the stock reservation or the checkout row is touched.
 
 The same `metadata` object is attached to the session and to the payment intent, so a webhook that only has the intent can still find the checkout. It carries `checkoutId`, `discountCode` and `discountTotal` (an empty string and `"0"` without a discount), `locale` (from `getCurrentLocale()`), `userId` (empty string for a guest) and the chunked `items0…N` list.
 
@@ -136,7 +136,7 @@ Then it parses the item lines out of the metadata, calls `fulfillCheckout` and, 
 
 1. `recordOrderPlacedAudit(orderId, …)` and `recordOrderPaymentCapturedAudit(orderId, …)` with the formatted amount.
 2. `scheduleAdminOrdersInvalidation()` and `scheduleProductCatalogInvalidation()`.
-3. `notifyOrderConfirmed(session, { currency, lines, orderId })`, which records the outcome on the order and never throws, so a refused confirmation still leaves the webhook answering 200. Its promise goes to `scheduleBackgroundWork` before it is awaited, so the email finishes even if Stripe stops waiting.
+3. `notifyOrderConfirmed(session, { currency, lines, orderId })`, which records the outcome on the order and never throws, so a refused confirmation still leaves the webhook answering 200. Its links use the origin of `session.return_url`, the address the checkout was made on, which `resolveDeploymentOrigin` accepts only on a host some deployment serves. Its promise goes to `scheduleBackgroundWork` before it is awaited, so the email finishes even if Stripe stops waiting.
 
 `fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) resolves the pending checkout from the transaction id, loads the checkout's delivery method and discount, computes the totals, allocates an order number and runs one D1 batch built by `prepareFulfillCheckoutBatch`:
 

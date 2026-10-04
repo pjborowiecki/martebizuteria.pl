@@ -1,3 +1,6 @@
+import { type ReactElement } from "react"
+
+import { render } from "react-email"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import englishCopy from "~/messages/en-US/emails.order-shipped.json"
@@ -9,7 +12,8 @@ const { env, getCheckoutEmailContext, getOrderForShippedEmail, loadNamespace, re
   getOrderForShippedEmail: vi.fn(),
   loadNamespace: vi.fn(),
   recordOrderEmailOutcome: vi.fn(),
-  sendEmail: vi.fn<(options: { readonly react: unknown; readonly subject: string; readonly to: string }) => Promise<string | undefined>>(),
+  sendEmail:
+    vi.fn<(options: { readonly react: ReactElement; readonly subject: string; readonly to: string }) => Promise<string | undefined>>(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env }))
@@ -59,12 +63,23 @@ const orderRow = {
   userId: "user-1",
 }
 
+const PREVIEW_ORIGIN = "https://preview.martebizuteria.pl"
+
 const DOMAIN_NOT_VERIFIED = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
 
 const sentSubject = (): string | undefined => {
   const [payload] = sendEmail.mock.calls[0] ?? []
 
   return payload?.subject
+}
+
+const sentHtml = (): Promise<string> => {
+  const [payload] = sendEmail.mock.calls[0] ?? []
+  if (payload === undefined) {
+    throw new Error("no shipped email was sent")
+  }
+
+  return render(payload.react)
 }
 
 beforeEach(() => {
@@ -81,7 +96,7 @@ describe("notifyOrderShipped", () => {
   it("records a shipped email that has no order to go out for", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce(undefined)
 
-    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(false)
+    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
@@ -94,7 +109,7 @@ describe("notifyOrderShipped", () => {
   it.each([[""], ["   "]])("records a shipped email that has no recipient when the order email is %j", async (email) => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, email })
 
-    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(false)
+    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
@@ -107,18 +122,29 @@ describe("notifyOrderShipped", () => {
   it("emails the shopper in the locale the order was placed in", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
 
-    await notifyOrderShipped("order-abcdef12")
+    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "en-US", namespace: "emails.order-shipped" })
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "anna@example.com" }))
     expect(sentSubject()).toBe(englishCopy.subject)
   })
 
+  it("links the shopper to their order on the deployment the order was shipped from", async () => {
+    getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
+
+    await notifyOrderShipped("order-abcdef12", "http://127.0.0.1:3000")
+
+    const html = await sentHtml()
+
+    expect(html).toContain('href="http://127.0.0.1:3000/en-US/account/orders/order-abcdef12"')
+    expect(html).not.toContain("https://martebizuteria.pl/")
+  })
+
   it("falls back to the default locale when the order carries no locale", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null, metadata: null })
     loadNamespace.mockResolvedValueOnce(polishCopy)
 
-    await notifyOrderShipped("order-abcdef12")
+    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "pl-PL", namespace: "emails.order-shipped" })
     expect(sentSubject()).toBe(polishCopy.subject)
@@ -127,7 +153,7 @@ describe("notifyOrderShipped", () => {
   it.each([[null], [""]])("skips the checkout lookup when the checkout id is %j", async (checkoutId) => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId })
 
-    await notifyOrderShipped("order-abcdef12")
+    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(getCheckoutEmailContext).not.toHaveBeenCalled()
     expect(sendEmail).toHaveBeenCalledTimes(1)
@@ -137,7 +163,7 @@ describe("notifyOrderShipped", () => {
     getOrderForShippedEmail.mockResolvedValueOnce(orderRow)
     getCheckoutEmailContext.mockResolvedValueOnce(checkoutContext)
 
-    await notifyOrderShipped("order-abcdef12")
+    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(getCheckoutEmailContext).toHaveBeenCalledWith("checkout-1")
   })
@@ -146,7 +172,7 @@ describe("notifyOrderShipped", () => {
     getOrderForShippedEmail.mockResolvedValueOnce(orderRow)
     getCheckoutEmailContext.mockResolvedValueOnce(undefined)
 
-    await notifyOrderShipped("order-abcdef12")
+    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(sendEmail).toHaveBeenCalledTimes(1)
   })
@@ -154,7 +180,7 @@ describe("notifyOrderShipped", () => {
   it("records a successful send against the order and reports it", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
 
-    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(true)
+    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(true)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: undefined,
@@ -167,7 +193,7 @@ describe("notifyOrderShipped", () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
     sendEmail.mockResolvedValueOnce(DOMAIN_NOT_VERIFIED)
 
-    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(false)
+    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: DOMAIN_NOT_VERIFIED,
@@ -180,7 +206,7 @@ describe("notifyOrderShipped", () => {
     getOrderForShippedEmail.mockResolvedValueOnce(orderRow)
     getCheckoutEmailContext.mockRejectedValueOnce(new Error("D1_ERROR: no such table"))
 
-    await expect(notifyOrderShipped("order-abcdef12")).resolves.toBe(false)
+    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(consoleError).toHaveBeenCalledWith("Order shipped for order order-abcdef12 could not be prepared:", expect.any(Error))

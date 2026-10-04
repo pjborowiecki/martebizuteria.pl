@@ -10,8 +10,6 @@ import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 import { resolveAssetURL } from "~/src/lib/url"
 
-import { APP_URL } from "~/src/presentation/branding/app"
-
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import { type OrderConfirmationDetails, type OrderConfirmationItem } from "~/src/presentation/emails/order-confirmation"
 import { ROUTES } from "~/src/routes"
@@ -74,29 +72,29 @@ export const buildOrderConfirmationDetails = (
   }
 }
 
-const resolveProductUrl = (appUrl: string, locale: SupportedLocale, handle: string | undefined): string => {
+const resolveProductUrl = (origin: string, locale: SupportedLocale, handle: string | undefined): string => {
   const productPath = handle !== undefined && handle !== "" ? ROUTES.PRODUCT.replace("$handle", handle) : ROUTES.PRODUCTS
 
-  return buildLocalizedUrl(appUrl, productPath, locale)
+  return buildLocalizedUrl(origin, productPath, locale)
 }
 
-export const buildOrderConfirmationItems = (lines: readonly FulfillmentLine[], locale: SupportedLocale): OrderConfirmationItem[] => {
-  const appUrl = APP_URL
-
-  return lines.map((line) => ({
+export const buildOrderConfirmationItems = (
+  lines: readonly FulfillmentLine[],
+  locale: SupportedLocale,
+  origin: string,
+): OrderConfirmationItem[] =>
+  lines.map((line) => ({
     imageUrl: line.imageUrl !== undefined && line.imageUrl !== "" ? resolveAssetURL(line.imageUrl) : PLACEHOLDER_IMAGE,
     price: line.price,
-    productUrl: resolveProductUrl(appUrl, locale, line.handle),
+    productUrl: resolveProductUrl(origin, locale, line.handle),
     qty: line.qty,
     title: line.title,
   }))
-}
 
-export const buildOrderAccountCta = ({ isGuest, locale, messages, orderId }: Readonly<OrderAccountCtaInput>): OrderAccountCta => {
-  const appUrl = APP_URL
+export const buildOrderAccountCta = ({ isGuest, locale, messages, orderId, origin }: Readonly<OrderAccountCtaInput>): OrderAccountCta => {
   if (isGuest) {
     return {
-      href: buildLocalizedUrl(appUrl, ROUTES.AUTH_SIGN_UP, locale),
+      href: buildLocalizedUrl(origin, ROUTES.AUTH_SIGN_UP, locale),
       isGuest: true,
       label: messages.createAccountCta,
     }
@@ -105,7 +103,7 @@ export const buildOrderAccountCta = ({ isGuest, locale, messages, orderId }: Rea
   const orderPath = ROUTES.ACCOUNT_ORDER.replace("$id", orderId)
 
   return {
-    href: buildLocalizedUrl(appUrl, orderPath, locale),
+    href: buildLocalizedUrl(origin, orderPath, locale),
     isGuest: false,
     label: messages.viewOrderCta,
   }
@@ -160,6 +158,7 @@ export interface OrderAccountCtaInput {
     readonly viewOrderCta: string
   }
   readonly orderId: string
+  readonly origin: string
 }
 
 interface EmailAddressRow {

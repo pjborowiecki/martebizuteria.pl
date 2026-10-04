@@ -99,14 +99,14 @@ Trzy wartości `CLOUDFLARE_*` są odczytywane przez `process.env` w konfiguracji
 
 Kilka ustawień, których ludzie szukają w `.env`, jest stałymi:
 
-| Co                                                                              | Gdzie                                                  |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, obrazek OG, kolor motywu, zapasowy URL R2  | `src/presentation/branding/app.ts`                     |
-| Nazwa firmy, NIP, REGON, adres, telefon, godziny otwarcia                       | `src/presentation/branding/business.ts`                |
-| Linki do Facebooka i Instagrama                                                 | `src/presentation/branding/socials.ts`                 |
-| Hosty akceptowane przez Better Auth w każdym trybie                             | `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts` |
-| Obsługiwane lokalizacje, lokalizacja domyślna, nazwa ciasteczka, strefy czasowe | `src/integrations/use-intl/i18n.config.ts`             |
-| Identyfikatory D1, R2, KV i kolejki, nazwy Workerów                             | `wrangler.jsonc`                                       |
+| Co                                                                                | Gdzie                                                  |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, obrazek OG, kolor motywu, zapasowy URL R2    | `src/presentation/branding/app.ts`                     |
+| Nazwa firmy, NIP, REGON, adres, telefon, godziny otwarcia                         | `src/presentation/branding/business.ts`                |
+| Linki do Facebooka i Instagrama                                                   | `src/presentation/branding/socials.ts`                 |
+| Hosty obsługiwane w każdym trybie: logowanie, linki w e-mailach, powrót ze Stripe | `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts` |
+| Obsługiwane lokalizacje, lokalizacja domyślna, nazwa ciasteczka, strefy czasowe   | `src/integrations/use-intl/i18n.config.ts`             |
+| Identyfikatory D1, R2, KV i kolejki, nazwy Workerów                               | `wrangler.jsonc`                                       |
 
 O `appHostsForMode` trzeba pamiętać przy każdej zmianie domeny:
 
@@ -121,6 +121,8 @@ const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]
 
 Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. Host, którego nie ma na tej liście, będzie miał odrzucane żądania uwierzytelniania — wygląda to jak ciche niedziałanie logowania na nowej domenie.
 
+Tę samą listę sprawdza `resolveRequestOrigin` (`src/lib/request.ts`), zanim aplikacja zbuduje link do e-maila albo `return_url` dla Stripe, więc e-maile linkują do hosta, którego używał klient albo administrator: lokalnie do `localhost:3000` albo `127.0.0.1:3000`, na preview do hosta preview, a na produkcji do `martebizuteria.pl` albo produkcyjnej nazwy `workers.dev`. Żądanie na host spoza listy jest odrzucane z `FORBIDDEN`. Potwierdzenie zamówienia wysyła webhook Stripe i bierze ono origin z `return_url` sesji, który `resolveDeploymentOrigin` sprawdza z hostami wszystkich trybów. `LOCAL_HOSTS` przypina port 3000, co dla serwera deweloperskiego i tak wymusza `strictPort` w Vite.
+
 ## Adresy zwrotne do zarejestrowania
 
 | Dostawca | URL                                       | Weryfikowany przez             |
@@ -129,7 +131,7 @@ Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(impo
 | GitHub   | `https://<host>/api/auth/callback/github` | Identyfikator i sekret klienta |
 | Stripe   | `https://<host>/api/webhooks/stripe`      | `STRIPE_WEBHOOK_SECRET`        |
 
-Handler uwierzytelniania to `src/routes/api/auth.$.ts`, zamontowany pod `/api/auth/$`; handler Stripe to `src/routes/api/webhooks.stripe.ts` i przyjmuje wyłącznie `POST`.
+Handler uwierzytelniania to `src/routes/api/auth.$.ts`, zamontowany pod `/api/auth/$`; handler Stripe to `src/routes/api/webhooks.stripe.ts` i przyjmuje wyłącznie `POST`. Host, na którym zarejestrowano punkt końcowy Stripe, nie zmienia żadnego e-maila: potwierdzenie zamówienia linkuje pod adres, na którym złożono zamówienie, a ten adres niesie `return_url` sesji.
 
 ## Zadeklarowane, ale niepodłączone
 
