@@ -104,6 +104,8 @@ export const runDrizzleBatch = async (statements: readonly DrizzleBatchStatement
 
 `DrizzleBatchStatement` is `BatchItem<"sqlite">`. A D1 batch is applied as a single implicit transaction, which makes `runDrizzleBatch` the atomicity tool of this codebase. Nothing in `src/` calls `db.transaction()`: the D1 driver implements it by emitting separate `begin` and `commit` statements, and D1 does not offer interactive transactions across separate statements. Multi-step writes therefore either go into one batch, or compensate explicitly on failure the way the checkout flow releases reserved inventory.
 
+A read that may match no row goes into a batch as a query-builder `select … limit 1`, never as `db.query.<table>.findFirst`. Awaited on its own, a `findFirst` that matches nothing resolves to `undefined`. Inside `db.batch`, the D1 driver of Drizzle 0.45 passes the empty result to the relational mapper as `[undefined]`, so `db.batch` throws after D1 has already run and committed every statement in it. The wishlist toggle reads its product this way (`getPublishedProductForCustomerQuery` in `wishlist.accessors.ts`).
+
 ### Staying within 100 bound parameters
 
 D1 refuses a statement that binds more than 100 parameters, and the limit applies to every statement inside a batch. Two rules keep each statement under it, whatever the size of the shop:

@@ -17,9 +17,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 import { PRODUCT_STATUS } from "~/src/modules/product/product.constants"
 import {
   countWishlistItems,
-  deleteWishlistItem,
-  getPublishedProductById,
-  getWishlistItem,
+  deleteWishlistItemQuery,
+  getPublishedProductForCustomerQuery,
   getWishlistProductIds,
   getWishlistRows,
   insertWishlistItem,
@@ -47,6 +46,9 @@ const insertSaved = ({ createdAt, id, productId, userId }: SavedFixture): void =
 
 const countRows = (userId: string): number =>
   Number(sqlite.prepare(`select count(*) as total from wishlist_item where user_id = ?`).get(userId)?.["total"])
+
+const readSaved = (userId: string, productId: string) =>
+  sqlite.prepare(`select * from wishlist_item where user_id = ? and product_id = ?`).get(userId, productId)
 
 beforeEach(() => {
   sqlite.exec(`
@@ -93,20 +95,20 @@ describe("saving and removing a wishlist item", () => {
 
     await insertWishlistItem(CUSTOMER, "p-aurora")
 
-    await expect(getWishlistItem(CUSTOMER, "p-aurora")).resolves.toMatchObject({
+    expect(readSaved(CUSTOMER, "p-aurora")).toMatchObject({
       id: "0199bb55-3f5e-4aaa-8c4e-d4f5a6b7c8d9",
-      productId: "p-aurora",
-      userId: CUSTOMER,
+      product_id: "p-aurora",
+      user_id: CUSTOMER,
     })
   })
 
   it("stamps a new row with the database clock", async () => {
     await insertWishlistItem(CUSTOMER, "p-aurora")
 
-    const saved = await getWishlistItem(CUSTOMER, "p-aurora")
+    const saved = readSaved(CUSTOMER, "p-aurora")
 
-    expect(saved?.createdAt).toBeInstanceOf(Date)
-    expect(saved?.updatedAt).toStrictEqual(saved?.createdAt)
+    expect(saved?.["created_at"]).toStrictEqual(expect.any(Number))
+    expect(saved?.["updated_at"]).toStrictEqual(saved?.["created_at"])
   })
 
   it("keeps a single row when the same product is saved twice", async () => {
@@ -116,21 +118,22 @@ describe("saving and removing a wishlist item", () => {
     expect(countRows(CUSTOMER)).toBe(1)
   })
 
-  it("does not find another customer's saved product", async () => {
-    insertSaved({ createdAt: savedAt(1), id: "saved-1", productId: "p-aurora", userId: OTHER_CUSTOMER })
-
-    await expect(getWishlistItem(CUSTOMER, "p-aurora")).resolves.toBeUndefined()
-  })
-
-  it("removes only the caller's own row for that product", async () => {
+  it("removes only the caller's own row for that product and returns its id", async () => {
     insertSaved({ createdAt: savedAt(1), id: "saved-1", productId: "p-aurora", userId: CUSTOMER })
     insertSaved({ createdAt: savedAt(2), id: "saved-2", productId: "p-luna", userId: CUSTOMER })
     insertSaved({ createdAt: savedAt(3), id: "saved-3", productId: "p-aurora", userId: OTHER_CUSTOMER })
 
-    await deleteWishlistItem(CUSTOMER, "p-aurora")
+    await expect(deleteWishlistItemQuery(CUSTOMER, "p-aurora")).resolves.toStrictEqual([{ id: "saved-1" }])
 
     await expect(getWishlistProductIds(CUSTOMER)).resolves.toStrictEqual(["p-luna"])
     await expect(getWishlistProductIds(OTHER_CUSTOMER)).resolves.toStrictEqual(["p-aurora"])
+  })
+
+  it("returns no row when the caller had not saved that product", async () => {
+    insertSaved({ createdAt: savedAt(1), id: "saved-1", productId: "p-aurora", userId: OTHER_CUSTOMER })
+
+    await expect(deleteWishlistItemQuery(CUSTOMER, "p-aurora")).resolves.toStrictEqual([])
+    expect(countRows(OTHER_CUSTOMER)).toBe(1)
   })
 })
 
@@ -153,13 +156,20 @@ describe("reading a customer's saved products", () => {
   })
 })
 
-describe("getPublishedProductById", () => {
-  it("finds a product that is on sale", async () => {
-    await expect(getPublishedProductById("p-aurora")).resolves.toStrictEqual({ id: "p-aurora", status: PRODUCT_STATUS.PUBLISHED })
+describe("getPublishedProductForCustomerQuery", () => {
+  it("finds a product that is on sale with how many products the caller alone has saved", async () => {
+    insertSaved({ createdAt: savedAt(1), id: "saved-1", productId: "p-luna", userId: CUSTOMER })
+    insertSaved({ createdAt: savedAt(2), id: "saved-2", productId: "p-draft", userId: CUSTOMER })
+    insertSaved({ createdAt: savedAt(3), id: "saved-3", productId: "p-aurora", userId: OTHER_CUSTOMER })
+
+    await expect(getPublishedProductForCustomerQuery(CUSTOMER, "p-aurora")).resolves.toStrictEqual([{ id: "p-aurora", wishlistCount: 2 }])
+    await expect(getPublishedProductForCustomerQuery("user-without-saves", "p-aurora")).resolves.toStrictEqual([
+      { id: "p-aurora", wishlistCount: 0 },
+    ])
   })
 
   it.each(["p-draft", "p-archived", "p-missing"])("finds nothing to save for %s", async (productId) => {
-    await expect(getPublishedProductById(productId)).resolves.toBeUndefined()
+    await expect(getPublishedProductForCustomerQuery(CUSTOMER, productId)).resolves.toStrictEqual([])
   })
 })
 
