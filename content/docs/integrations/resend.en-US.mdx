@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "The eight transactional e-mails, how they are composed, and how to preview them."
+description: "The eight transactional e-mails, the sender domain they need, how they are composed, and how to preview them."
 ---
 
 Every e-mail the shop sends goes out through Resend. The adapter in `src/integrations/resend/` holds the client, one `sendEmail` helper, the builders that turn order rows into e-mail props, and the developer preview renderer. The React Email templates themselves live in `src/presentation/emails/`, because they are presentation.
@@ -19,15 +19,11 @@ export const resend = new Resend(env.RESEND_API_KEY)
 
 ```ts
 const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({
-      from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
-      react,
-      subject,
-      to,
-    })
+    const { error } = await resend.emails.send({ from: sender, react, subject, to })
 
-    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error)) {
+    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
     }
 
@@ -55,15 +51,15 @@ It returns `undefined` on success and the failure message otherwise. The Resend 
 
 ### A sender that cannot send at all
 
-`refusesEverySend` picks out the refusals that will repeat for every message until someone fixes the configuration: any 401 or 403 (an invalid or restricted API key, or a sending domain that is not verified, which Resend reports as a 403 `validation_error`), `invalid_from_address`, and `daily_quota_exceeded` or `monthly_quota_exceeded`. For those, `markEmailSenderUnavailable(message)` from `resend.availability.server.ts` writes `email-sender-unavailable:<APP_ENV>` to the `CACHE` KV namespace with `expirationTtl: 300` (`EMAIL_SENDER_UNAVAILABLE_SECONDS`), through `scheduleBackgroundWork`, so a KV error is logged and never replaces Resend's message. It reads the flag first and writes only when it is not set yet, so a stream of refusals costs one KV write per five minutes instead of one per email; KV accepts about one write per second to a key and has a daily write quota. `isEmailSenderUnavailable()` reads it back; when KV cannot be read it logs `[Resend] Email sender availability unreadable` and answers `false`. The key carries `APP_ENV` because development and preview are bound to the same namespace.
+`refusesEverySend` picks out the refusals that will repeat for every message until someone fixes the configuration: any 401 or 403 (an invalid or restricted API key, or a sending domain that is not verified, which Resend reports as a 403 `validation_error`; not for a sender on Resend's `resend.dev` test domain), `invalid_from_address`, and `daily_quota_exceeded` or `monthly_quota_exceeded`. For those, `markEmailSenderUnavailable(message)` from `resend.availability.server.ts` writes `email-sender-unavailable:<APP_ENV>` to the `CACHE` KV namespace with `expirationTtl: 300` (`EMAIL_SENDER_UNAVAILABLE_SECONDS`), through `scheduleBackgroundWork`, so a KV error is logged and never replaces Resend's message. It reads the flag first and writes only when it is not set yet, so a stream of refusals costs one KV write per five minutes instead of one per email; KV accepts about one write per second to a key and has a daily write quota. `isEmailSenderUnavailable()` reads it back; when KV cannot be read it logs `[Resend] Email sender availability unreadable` and answers `false`. The key carries `APP_ENV` because development and preview are bound to the same namespace.
 
 A missing API key never gets as far as Resend: `new Resend(undefined)` throws while `resend.config.ts` loads, and `scripts/prepare-deploy-secrets.ts` refuses to prepare a deploy without `RESEND_API_KEY`.
 
 A caller passes `revealsAccountExistence: true` when whether the email is sent at all depends on an account existing. Better Auth's verification, reset and change-email confirmation do: Better Auth sends them only for an address that has, or has not, an account. Their refusals never set the flag, because its state would otherwise tell an outsider whether such a send was attempted. The newsletter, order and account-deleted emails go out for any address that triggers them, so their refusals do set it.
 
-A refusal about one message leaves the flag alone: a 422 recipient error, `rate_limit_exceeded`, a 5xx, a network error or the 10-second timeout. Treating a rate limit as sender-wide would let one burst block every email for five minutes.
+A refusal about one message leaves the flag alone: a 422 recipient error, `rate_limit_exceeded`, a 5xx, a network error or the 10-second timeout. Treating a rate limit as sender-wide would let one burst block every email for five minutes. The same goes for a 401 or 403 without one of the codes above when the sender is on `resend.dev` (`RESEND_TEST_SENDER`): Resend's test sender delivers only to the owner of the Resend account and answers any other recipient with a 403 `validation_error`, `You can only send testing emails to your own email address`, which says nothing about the next email to the owner. Its key and quota refusals carry their own codes and still set the flag.
 
-Only the Better Auth gate acts on the flag. While it is set, sign-up, password reset, resend-verification and change-email answer `503 EMAIL_DELIVERY_UNAVAILABLE` instead of creating a token for an email that cannot leave; see [Better Auth](/docs/integrations/better-auth#email-delivery-gate). Newsletter and order emails are not gated, because they already tell the person or the audit log about each failure. The flag catches a broken sender after the first refusal of one of those emails; a domain that was never verified still costs every person who triggers an auth email before then, so verify the domain in Resend before deploying.
+Only the Better Auth gate acts on the flag. While it is set, sign-up, password reset, resend-verification and change-email answer `503 EMAIL_DELIVERY_UNAVAILABLE` instead of creating a token for an email that cannot leave; see [Better Auth](/docs/integrations/better-auth#email-delivery-gate). Newsletter and order emails are not gated, because they already tell the person or the audit log about each failure. The flag catches a broken sender after the first refusal of one of those emails; a domain that was never verified would still cost every person who triggers an auth email before then, which is why a deploy first checks the sender; see [Sender domain](#sender-domain).
 
 ## The eight e-mails
 
@@ -198,9 +194,62 @@ With no `template` parameter it renders an index linking every previewed templat
 3. Check both locales and both formats at `/dev/emails`.
 4. If props changed, update the fixture in `email-previews.tsx`. `src/integrations/resend/__test__/email-previews.test.ts` asserts the exact slug-and-label list, renders previews to plain text and checks them against the real copy in `messages/en-US/emails.*.json` and `messages/pl-PL/emails.verify-email.json`, so a broken template or a renamed key fails the test run.
 
-## Secrets
+## Sender domain
 
-`RESEND_API_KEY` and `RESEND_EMAIL_FROM`, both in `secrets.required` for all three environments in `wrangler.jsonc`.
+Resend refuses every message whose `from` domain is not verified in the account that owns `RESEND_API_KEY`. The refusal is a 403 `validation_error`, `The <domain> domain is not verified. Please, add and verify your domain on https://resend.com/domains`, and it repeats for every e-mail until the domain is verified. The shop sees it in the server log and the audit log; the person who was waiting for the e-mail sees an error or nothing at all.
+
+`RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in `secrets.required` for all three environments in `wrangler.jsonc`. `RESEND_EMAIL_FROM` is a bare address such as `noreply@martebizuteria.pl`, with no display name, because `sendEmail` adds the name itself and sends as `M'Arte <noreply@martebizuteria.pl>`. Its domain must match a domain verified in Resend exactly: a subdomain such as `mail.martebizuteria.pl` is a separate Resend domain with its own records.
+
+### Verifying a domain
+
+1. On [resend.com/domains](https://resend.com/domains), add the domain of `RESEND_EMAIL_FROM` and choose a region. `eu-west-1` (Ireland) keeps the shop's mail in the EU.
+2. Publish the records Resend lists at the domain's DNS provider:
+
+| Record              | Type | Name                | Value                                                         |
+| ------------------- | ---- | ------------------- | ------------------------------------------------------------- |
+| DKIM                | TXT  | `resend._domainkey` | The public key Resend generates for the domain, starting `p=` |
+| SPF                 | MX   | `send`              | `feedback-smtp.<region>.amazonses.com`, priority `10`         |
+| SPF                 | TXT  | `send`              | `v=spf1 include:amazonses.com ~all`                           |
+| DMARC (recommended) | TXT  | `_dmarc`            | `v=DMARC1; p=none;`                                           |
+
+3. Press **Verify** on the domain's page. DNS changes take from a few minutes to a few hours to propagate; the domain turns `verified` once Resend can read the DKIM and SPF records.
+
+The SPF records sit on the `send` subdomain, which Resend uses as the bounce address, so they do not clash with the root domain's own MX or SPF records. The DKIM key and the region in the MX value differ per domain, so copy the exact values from the dashboard, or from the deploy check, which prints the records still missing. Resend does not require DMARC, but Gmail and Yahoo expect it from bulk senders.
+
+### Local development
+
+`.env.development` may set `RESEND_EMAIL_FROM=onboarding@resend.dev`, Resend's shared test sender, which needs no domain of your own. It delivers only to the e-mail address of the Resend account owner, so sign up, reset passwords and subscribe with that address while developing. Resend answers any other recipient with a 403, `You can only send testing emails to your own email address`. That e-mail fails and is reported like any other refused one, but the refusal concerns that recipient alone, so `sendEmail` does not mark the sender unavailable and auth e-mails to the owner keep going out. The deploy check refuses `onboarding@resend.dev` for preview and production, where customers would receive nothing.
+
+### Deploy check
+
+`deploy:preview` and `deploy:production` run `scripts/verify-email-sender.ts <environment>` right after `verify-bindings.ts` and before the build, so a sender Resend would refuse stops the deploy within seconds and the live Worker stays as it was. The script reads `RESEND_API_KEY`, `RESEND_EMAIL_FROM` and the optional `RESEND_MANAGEMENT_API_KEY` the way `prepare-deploy-secrets.ts` does, the process environment first and `.env.<environment>` second, so it checks the values that are about to be uploaded. A variable exported but empty takes precedence over the file, and a missing file counts as empty. The deploy workflows pass all three secrets to the step that runs the deploy script. The logic is `verifyEmailSender` in `src/integrations/resend/resend.sender.ts`, unit tested in `__test__/resend.sender.test.ts` with the Resend client mocked.
+
+The check fails, with a message that says what to fix, when:
+
+- `RESEND_API_KEY` is missing or blank;
+- `RESEND_EMAIL_FROM` is missing, carries a display name or spaces, or has no domain;
+- `RESEND_EMAIL_FROM` is on `resend.dev` outside development;
+- Resend rejects the key (`invalid_api_key`, `missing_api_key`, `validation_error`, or `restricted_api_key` for the management key), or still cannot list the account's domains after asking twice;
+- the sender's domain is not in the account, compared without case but otherwise exactly, so a subdomain needs its own entry;
+- sending is disabled for the domain;
+- the domain is not `verified` and its sending records do not make up for it: a DKIM or SPF record is not `verified`, or Resend lists no DKIM or no SPF record for the domain. The message lists the records still to publish with their type, name, value, priority and status. Receiving and tracking records do not count;
+- Resend does not answer within `VERIFY_EMAIL_SENDER_TIMEOUT_MS` (30 seconds).
+
+A domain Resend reports as `verified` passes without a look at its records. The record statuses decide only for a domain in another state, such as `partially_verified` while a receiving record is still pending.
+
+A key with Resend's **Sending access** permission, the right one for the Worker, may not list domains: Resend answers `restricted_api_key`, which the SDK logs as `[Resend API Error]` and which also shows that the key itself is valid. The check then reads the domain with `RESEND_MANAGEMENT_API_KEY` when it is set: an optional **Full access** key of the same Resend team, used by this script alone. Like the `CLOUDFLARE_*` credentials it is not in `secrets.required`, so it never reaches the Worker; in GitHub, add it as a secret of the `preview` and `production` environments.
+
+Without it, the check sends one e-mail from `M'Arte <RESEND_EMAIL_FROM>` to `delivered@resend.dev`, Resend's test inbox, and fails with Resend's own message when the send is refused. That e-mail counts against the same daily and monthly quota as the shop's mail, and every preview deploy, which means every push to a pull request, sends one. Once the quota runs out, live sends get `daily_quota_exceeded` or `monthly_quota_exceeded`, `sendEmail` marks the sender unavailable, and sign-up, password reset and change-email answer `503 EMAIL_DELIVERY_UNAVAILABLE`. Set `RESEND_MANAGEMENT_API_KEY` wherever deploys are frequent. For `onboarding@resend.dev` in development the check only confirms that Resend accepts the key, because that sender can reach no inbox but the owner's.
+
+Run it by hand against the real Resend API:
+
+```sh
+bun run email:verify development
+bun run email:verify preview
+bun run email:verify production
+```
+
+Resend's rate limit is shared with the live Worker's sends, so each request is asked again once, after `RESEND_RETRY_DELAY_MS` (one second), when Resend answers `rate_limit_exceeded`, `application_error` or `internal_server_error`. The Resend SDK has no timeout, so the whole check gives up after 30 seconds. Beyond that the check fails closed: an outage or a second rate limit fails the deploy as well, and there is no bypass flag. In an emergency, run the remaining steps of the deploy script by hand. A pass is a snapshot of the moment of the deploy; a DNS record removed later breaks sending again with no check running, and the failures then show in the audit log as described above.
 
 ## Related pages
 

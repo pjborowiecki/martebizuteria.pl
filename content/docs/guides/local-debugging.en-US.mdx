@@ -25,6 +25,8 @@ The port is fixed: `server: { port: 3000, strictPort: true }`. If 3000 is occupi
 
 `.env.development` is what `bun run dev` reads. Copy `.env.example` and fill it in; the file is gitignored. The private half needs `AUTH_SECRET`, the Google and GitHub OAuth pairs, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the three `CLOUDFLARE_*` values the Drizzle CLI needs. The public half is `VITE_R2_URL` and `VITE_STRIPE_PUBLISHABLE_KEY`.
 
+Without a verified domain of your own, set `RESEND_EMAIL_FROM=onboarding@resend.dev` and sign up with the Resend account owner's address, the only one that sender delivers to. `bun run email:verify development` asks Resend whether it accepts the key and sender in `.env.development`, and prints the DNS records a custom domain still lacks; see [Resend](/docs/integrations/resend#sender-domain).
+
 `.env.test` holds dummy values for every secret and is committed, which is how CI builds and the test suite run without credentials — `.github/actions/setup` literally copies it over `.env.development` and `.env.preview`.
 
 ### Regenerating types
@@ -149,7 +151,7 @@ bun run start           # vp preview --mode preview --host 127.0.0.1 --port 3000
 
 `bun run preview` is an alias for `start`. `scripts/verify-build.ts` runs as part of the build and fails it unless `.wrangler/deploy/config.json` points at `dist/server/wrangler.json`, the built Worker targets the right `APP_ENV` and name, the assets directory is `dist/client`, `dist/client/fonts` exists and `dist/client/assets` contains both JS and CSS. So a build that "succeeded" really did produce a servable Worker.
 
-`scripts/verify-bindings.ts` runs before a deploy and checks that `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE` and the `RealtimeInvalidationHub` Durable Object are all configured for the target environment, with the audit queue having a matching consumer. A placeholder id made of zeros is rejected.
+`scripts/verify-bindings.ts` runs before a deploy and checks that `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE` and the `RealtimeInvalidationHub` Durable Object are all configured for the target environment, with the audit queue having a matching consumer. A placeholder id made of zeros is rejected. `scripts/verify-email-sender.ts` runs right after it and stops the deploy when Resend would refuse `RESEND_EMAIL_FROM`.
 
 ## When the toolchain misbehaves
 

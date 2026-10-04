@@ -5,13 +5,13 @@ description: "Pliki .env, wartości docierające do przeglądarki i te wysyłane
 
 ## Pliki środowiskowe
 
-| Plik               | Wersjonowany w Git | Wczytywany przez                                                                          |
-| ------------------ | ------------------ | ----------------------------------------------------------------------------------------- |
-| `.env.example`     | Tak                | Nic — to szablon do skopiowania                                                           |
-| `.env.development` | Nie                | `bun run dev` (tryb Vite `development`, `CLOUDFLARE_ENV=development`)                     |
-| `.env.preview`     | Nie                | `bun run build:preview`, `bun run start` oraz `scripts/prepare-deploy-secrets.ts preview` |
-| `.env.production`  | Nie                | `bun run build:production` oraz `scripts/prepare-deploy-secrets.ts production`            |
-| `.env.test`        | Tak                | `vite.config.ts` przez `loadEnv("test", …)` dla projektów Vitest oraz buildy w CI         |
+| Plik               | Wersjonowany w Git | Wczytywany przez                                                                                                                                                             |
+| ------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Tak                | Nic — to szablon do skopiowania                                                                                                                                              |
+| `.env.development` | Nie                | `bun run dev` (tryb Vite `development`, `CLOUDFLARE_ENV=development`) oraz `bun run email:verify development`                                                                |
+| `.env.preview`     | Nie                | `bun run build:preview`, `bun run start`, `scripts/verify-email-sender.ts preview` oraz `scripts/prepare-deploy-secrets.ts preview`; dwa ostatnie uruchamia `deploy:preview` |
+| `.env.production`  | Nie                | `bun run build:production`, `scripts/verify-email-sender.ts production` oraz `scripts/prepare-deploy-secrets.ts production`; wszystkie trzy uruchamia `deploy:production`    |
+| `.env.test`        | Tak                | `vite.config.ts` przez `loadEnv("test", …)` dla projektów Vitest oraz buildy w CI                                                                                            |
 
 `.gitignore` realizuje dokładnie ten podział:
 
@@ -53,18 +53,18 @@ Ten podział jest tu ważniejszy niż sama lista nazw.
 
 **2. Sekrety Workera.** Deklarowane osobno dla każdego środowiska w sekcji `secrets.required` w `wrangler.jsonc` i odczytywane na serwerze przez `import { env } from "cloudflare:workers"`. Wszystkie trzy środowiska deklarują te same dziesięć:
 
-| Sekret                      | Odczytywany w                                                         |
-| --------------------------- | --------------------------------------------------------------------- |
-| `AUTH_SECRET`               | `src/integrations/better-auth/auth.server.ts`                         |
-| `AUTH_GOOGLE_CLIENT_ID`     | `socialProviders.google` w `auth.server.ts`                           |
-| `AUTH_GOOGLE_CLIENT_SECRET` | `socialProviders.google` w `auth.server.ts`                           |
-| `AUTH_GITHUB_CLIENT_ID`     | `socialProviders.github` w `auth.server.ts`                           |
-| `AUTH_GITHUB_CLIENT_SECRET` | `socialProviders.github` w `auth.server.ts`                           |
-| `RESEND_API_KEY`            | `src/integrations/resend/resend.config.ts`                            |
-| `RESEND_EMAIL_FROM`         | `src/integrations/resend/resend.send.ts`, opakowany jako `M'Arte <…>` |
-| `STRIPE_SECRET_KEY`         | `src/integrations/stripe/stripe.server.ts`                            |
-| `STRIPE_WEBHOOK_SECRET`     | `src/routes/api/webhooks.stripe.ts`, do weryfikacji podpisu           |
-| `VITE_R2_URL`               | `src/lib/url.ts` — gałąź serwera w `getAssetCdnBase()`                |
+| Sekret                      | Odczytywany w                                                                                                                                                                                                                          |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_SECRET`               | `src/integrations/better-auth/auth.server.ts`                                                                                                                                                                                          |
+| `AUTH_GOOGLE_CLIENT_ID`     | `socialProviders.google` w `auth.server.ts`                                                                                                                                                                                            |
+| `AUTH_GOOGLE_CLIENT_SECRET` | `socialProviders.google` w `auth.server.ts`                                                                                                                                                                                            |
+| `AUTH_GITHUB_CLIENT_ID`     | `socialProviders.github` w `auth.server.ts`                                                                                                                                                                                            |
+| `AUTH_GITHUB_CLIENT_SECRET` | `socialProviders.github` w `auth.server.ts`                                                                                                                                                                                            |
+| `RESEND_API_KEY`            | `src/integrations/resend/resend.config.ts`; przed wdrożeniem sprawdza go `scripts/verify-email-sender.ts`, zobacz [Resend](/docs/integrations/resend#domena-nadawcy)                                                                   |
+| `RESEND_EMAIL_FROM`         | `src/integrations/resend/resend.send.ts`, opakowany jako `M'Arte <…>`; sam adres w zweryfikowanej domenie, który przed wdrożeniem sprawdza `scripts/verify-email-sender.ts`, zobacz [Resend](/docs/integrations/resend#domena-nadawcy) |
+| `STRIPE_SECRET_KEY`         | `src/integrations/stripe/stripe.server.ts`                                                                                                                                                                                             |
+| `STRIPE_WEBHOOK_SECRET`     | `src/routes/api/webhooks.stripe.ts`, do weryfikacji podpisu                                                                                                                                                                            |
+| `VITE_R2_URL`               | `src/lib/url.ts` — gałąź serwera w `getAssetCdnBase()`                                                                                                                                                                                 |
 
 `VITE_R2_URL` celowo występuje na obu listach. To nie sekret, a publiczny adres bazowy R2 — potrzebują go zarówno render SSR, jak i przeglądarka, więc jest wysyłany jako binding Workera _i_ wstawiany do bundle'a klienckiego.
 
@@ -74,13 +74,14 @@ Ten podział jest tu ważniejszy niż sama lista nazw.
 // Only declared Worker bindings are uploaded; Cloudflare management tokens stay local.
 ```
 
-| Zmienna                   | Używana przez                                                                        |
-| ------------------------- | ------------------------------------------------------------------------------------ |
-| `CLOUDFLARE_ACCOUNT_ID`   | `src/integrations/drizzle-orm/drizzle.config.ts`, sterownik HTTP D1                  |
-| `CLOUDFLARE_DATABASE_ID`  | To samo — wskazuje bazę, na której działają `db:push`, `db:studio` i `db:introspect` |
-| `CLOUDFLARE_ACCESS_TOKEN` | To samo, jako token API                                                              |
+| Zmienna                     | Używana przez                                                                                                                                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CLOUDFLARE_ACCOUNT_ID`     | `src/integrations/drizzle-orm/drizzle.config.ts`, sterownik HTTP D1                                                                                                                                                                        |
+| `CLOUDFLARE_DATABASE_ID`    | To samo — wskazuje bazę, na której działają `db:push`, `db:studio` i `db:introspect`                                                                                                                                                       |
+| `CLOUDFLARE_ACCESS_TOKEN`   | To samo, jako token API                                                                                                                                                                                                                    |
+| `RESEND_MANAGEMENT_API_KEY` | `scripts/verify-email-sender.ts`, opcjonalny: klucz Resend z pełnym dostępem (Full access), który odczytuje rekordy DNS domeny nadawcy, gdy `RESEND_API_KEY` może tylko wysyłać; zobacz [Resend](/docs/integrations/resend#domena-nadawcy) |
 
-Wszystkie trzy są odczytywane przez `process.env` w konfiguracji Drizzle i domyślnie przyjmują `""`, więc brakująca wartość objawia się błędem uwierzytelnienia z API HTTP D1, a nie czytelnym komunikatem.
+Trzy wartości `CLOUDFLARE_*` są odczytywane przez `process.env` w konfiguracji Drizzle i domyślnie przyjmują `""`, więc brakująca wartość objawia się błędem uwierzytelnienia z API HTTP D1, a nie czytelnym komunikatem.
 
 ## Zwykłe zmienne, nie sekrety
 

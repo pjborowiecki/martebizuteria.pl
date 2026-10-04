@@ -77,10 +77,13 @@ bun run deploy:preview
 
 Migrations are never applied by a build or a deploy. Run `db:migrate:preview` first whenever you are shipping code that needs a new schema, or the Worker will deploy and then fail at runtime on a missing column.
 
-`deploy:preview` is four steps chained with `&&`:
+The domain of `RESEND_EMAIL_FROM` must also be verified in Resend before the first deploy; [Resend](/docs/integrations/resend#sender-domain) lists the DNS records. `bun run email:verify preview` runs the same check the deploy runs, on its own.
+
+`deploy:preview` is five steps chained with `&&`:
 
 ```sh
 bun scripts/verify-bindings.ts preview \
+  && bun scripts/verify-email-sender.ts preview \
   && bun run build:preview \
   && bun scripts/prepare-deploy-secrets.ts preview \
   && env -u CLOUDFLARE_ENV vp exec wrangler deploy \
@@ -89,9 +92,10 @@ bun scripts/verify-bindings.ts preview \
 ```
 
 1. **`verify-bindings.ts preview`** — the binding check above. Fails the deploy rather than warning.
-2. **`build:preview`** — `rm -rf dist`, regenerate `.source/`, `CLOUDFLARE_ENV=preview vp build --mode preview`, then `verify-build.ts preview`.
-3. **`prepare-deploy-secrets.ts preview`** — reads `secrets.required` from `wrangler.jsonc`, takes each value from the process environment or `.env.preview`, and writes `.wrangler/secrets.preview.json` with mode `0600`. A missing or blank value throws `Missing <NAME> in .env.preview or the process environment`. Only declared secrets are written, which is how `CLOUDFLARE_ACCESS_TOKEN` and the other management credentials stay off the Worker.
-4. **`wrangler deploy`** — deploys the generated `dist/server/wrangler.json` and uploads the secrets file in the same call. The generated config is flat: it already carries `"name": "martebizuteria-preview"` and `"vars": { "APP_ENV": "preview" }` at the top level with no `env` section, which is why the command unsets `CLOUDFLARE_ENV` first — with it set, Wrangler would look for an environment section that the generated file does not have.
+2. **`verify-email-sender.ts preview`** — takes `RESEND_API_KEY` and `RESEND_EMAIL_FROM` from the process environment or `.env.preview` and asks Resend whether it would send as that address. A domain that is missing from the Resend account or not verified fails the deploy here, before the build, with the DNS records still to publish.
+3. **`build:preview`** — `rm -rf dist`, regenerate `.source/`, `CLOUDFLARE_ENV=preview vp build --mode preview`, then `verify-build.ts preview`.
+4. **`prepare-deploy-secrets.ts preview`** — reads `secrets.required` from `wrangler.jsonc`, takes each value from the process environment or `.env.preview`, and writes `.wrangler/secrets.preview.json` with mode `0600`. A missing or blank value throws `Missing <NAME> in .env.preview or the process environment`. Only declared secrets are written, which is how `CLOUDFLARE_ACCESS_TOKEN` and the other management credentials stay off the Worker.
+5. **`wrangler deploy`** — deploys the generated `dist/server/wrangler.json` and uploads the secrets file in the same call. The generated config is flat: it already carries `"name": "martebizuteria-preview"` and `"vars": { "APP_ENV": "preview" }` at the top level with no `env` section, which is why the command unsets `CLOUDFLARE_ENV` first — with it set, Wrangler would look for an environment section that the generated file does not have.
 
 ### What the build verification catches
 
@@ -115,7 +119,7 @@ That last one is the interesting check. It scans each client bundle with `Bun.Tr
 | `deploy-preview.yml`    | Pull requests to `main`             | `preview`    |
 | `deploy-production.yml` | Pushes to `main`                    | `production` |
 
-Both deploy workflows use `.github/actions/setup`, re-run `bun run check`, then `touch .env.<env>` and run the deploy script with every value supplied through the job environment. `prepare-deploy-secrets.ts` prefers `process.env` over the file, so the empty file is intentional — it exists only so the `readFile` call succeeds.
+Both deploy workflows use `.github/actions/setup`, re-run `bun run check`, then `touch .env.<env>` and run the deploy script with every value supplied through the job environment. `verify-email-sender.ts` and `prepare-deploy-secrets.ts` prefer `process.env` over the file, so the empty file is intentional — it exists only so the `readFile` call in `prepare-deploy-secrets.ts` succeeds.
 
 The preview workflow finishes by posting or updating a comment on the pull request with the preview URL. Concurrency is keyed per pull request for preview and globally for production, with `cancel-in-progress: false` on production so two pushes to `main` cannot race.
 

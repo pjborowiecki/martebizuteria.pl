@@ -64,11 +64,12 @@ Dane dostępowe do zarządzania Cloudflare (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE
 Oba skrypty wdrożeniowe przerywają pracę, a nie tylko ostrzegają:
 
 ```sh
-bun run deploy:preview      # verify-bindings → build:preview → prepare-deploy-secrets → wrangler deploy
+bun run deploy:preview      # verify-bindings → verify-email-sender → build:preview → prepare-deploy-secrets → wrangler deploy
 bun run deploy:production   # to samo, względem środowiska production
 ```
 
 - `scripts/verify-bindings.ts` czyta konfigurację przez własną funkcję Wranglera `unstable_readConfig` i rzuca wyjątek, o ile identyfikatory D1 i KV nie są prawdziwe (a nie pozorne), bucket R2 nie jest nazwany, kolejka audytu nie ma zarówno producenta, jak i pasującego konsumenta, oraz binding Durable Object nie wskazuje na `RealtimeInvalidationHub`.
+- `scripts/verify-email-sender.ts` pyta Resend, czy wyśle pocztę z `RESEND_EMAIL_FROM`, i rzuca wyjątek, gdy domeny nadawcy nie ma na koncie Resend albo nie jest zweryfikowana; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 - `scripts/verify-build.ts` odrzuca bundle klienta, który wciąż zawiera niezbundlowany import `cloudflare:workers` lub `node:*`.
 - `scripts/prepare-deploy-secrets.ts` zapisuje `.wrangler/secrets.<env>.json` z odpowiedniego pliku `.env`, a wdrożenie przekazuje go przez `--secrets-file`.
 

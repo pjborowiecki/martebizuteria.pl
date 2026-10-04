@@ -25,6 +25,8 @@ Port jest ustalony: `server: { port: 3000, strictPort: true }`. Jeśli 3000 jest
 
 `bun run dev` czyta `.env.development`. Skopiuj `.env.example` i wypełnij; plik jest w `.gitignore`. Część prywatna potrzebuje `AUTH_SECRET`, par OAuth dla Google i GitHuba, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` oraz trzech wartości `CLOUDFLARE_*` wymaganych przez CLI Drizzle. Część publiczna to `VITE_R2_URL` i `VITE_STRIPE_PUBLISHABLE_KEY`.
 
+Bez własnej zweryfikowanej domeny ustaw `RESEND_EMAIL_FROM=onboarding@resend.dev` i rejestruj się adresem właściciela konta Resend — tylko tam ten nadawca dostarcza pocztę. `bun run email:verify development` pyta Resend, czy przyjmuje klucz i nadawcę z `.env.development`, i wypisuje rekordy DNS, których jeszcze brakuje własnej domenie; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
+
 `.env.test` przechowuje atrapy wszystkich sekretów i jest commitowany — dzięki temu buildy w CI i zestaw testów działają bez danych dostępowych. `.github/actions/setup` dosłownie kopiuje go na `.env.development` i `.env.preview`.
 
 ### Regenerowanie typów
@@ -149,7 +151,7 @@ bun run start           # vp preview --mode preview --host 127.0.0.1 --port 3000
 
 `bun run preview` jest aliasem `start`. `scripts/verify-build.ts` wykonuje się w ramach buildu i przerywa go, jeśli `.wrangler/deploy/config.json` nie wskazuje na `dist/server/wrangler.json`, jeśli zbudowany Worker nie celuje we właściwe `APP_ENV` i nazwę, jeśli katalog zasobów nie jest `dist/client`, jeśli nie istnieje `dist/client/fonts` albo jeśli `dist/client/assets` nie zawiera zarówno JS, jak i CSS. Dzięki temu build, który „się udał”, naprawdę wyprodukował Workera zdatnego do serwowania.
 
-`scripts/verify-bindings.ts` uruchamia się przed wdrożeniem i sprawdza, czy `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE` oraz Durable Object `RealtimeInvalidationHub` są skonfigurowane dla środowiska docelowego, przy czym kolejka audytu musi mieć pasującego konsumenta. Identyfikator-zaślepka złożony z zer jest odrzucany.
+`scripts/verify-bindings.ts` uruchamia się przed wdrożeniem i sprawdza, czy `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE` oraz Durable Object `RealtimeInvalidationHub` są skonfigurowane dla środowiska docelowego, przy czym kolejka audytu musi mieć pasującego konsumenta. Identyfikator-zaślepka złożony z zer jest odrzucany. Zaraz po nim uruchamia się `scripts/verify-email-sender.ts`, który przerywa wdrożenie, gdy Resend odrzuciłby `RESEND_EMAIL_FROM`.
 
 ## Kiedy toolchain zachowuje się dziwnie
 

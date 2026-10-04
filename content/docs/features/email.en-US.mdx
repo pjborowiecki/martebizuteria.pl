@@ -8,19 +8,17 @@ description: "Eight React Email templates rendered in the Worker, sent through R
 One function sends every email — `src/integrations/resend/resend.send.ts`:
 
 ```ts
-const refusesEverySend = ({ name, statusCode }: ErrorResponse): boolean =>
-  SENDER_REFUSAL_NAMES.has(name) || SENDER_REFUSAL_STATUSES.has(statusCode)
+const RESEND_TEST_SENDER = /@resend\.dev>?$/iu
+
+const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): boolean =>
+  SENDER_REFUSAL_NAMES.has(name) || (SENDER_REFUSAL_STATUSES.has(statusCode) && !RESEND_TEST_SENDER.test(sender))
 
 const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({
-      from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
-      react,
-      subject,
-      to,
-    })
+    const { error } = await resend.emails.send({ from: sender, react, subject, to })
 
-    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error)) {
+    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
     }
 
@@ -46,9 +44,9 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 
 Note the contract: **it never throws.** It returns `undefined` on success and the failure message as a string otherwise. The Resend SDK has no timeout of its own, so `sendEmail` gives up after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) and returns `Resend did not answer within 10000 ms`; a stalled Resend cannot hold a signup or a webhook open indefinitely. Every caller is therefore written as `const failure = await sendEmail(...)` followed by a decision about what to do with `failure` — a mail outage cannot roll back an order or a deletion.
 
-Some refusals mean that no email from this sender can go out at all: a 401 or 403 from Resend (an invalid or restricted API key, or a sending domain that is not verified), an invalid `from` address, or an exhausted daily or monthly quota. For those, `sendEmail` also runs `markEmailSenderUnavailable` from `src/integrations/resend/resend.availability.server.ts` in the background, unless the caller passed `revealsAccountExistence: true`. Better Auth's verification, reset and change-email confirmation pass it, because they are sent only when an account does or does not exist, and a flag set by their refusal would reveal that. `markEmailSenderUnavailable` writes only when the flag is not set yet. It writes `email-sender-unavailable:<APP_ENV>` to the `CACHE` KV namespace with a five-minute expiry (`EMAIL_SENDER_UNAVAILABLE_SECONDS`). The key includes `APP_ENV` because development and preview share one namespace. A refusal that concerns one message, such as an invalid recipient, `rate_limit_exceeded`, a 5xx answer, a network error or the timeout, leaves the flag alone, so one bad address or one burst cannot stop every other email. Only the Better Auth gate acts on the flag, and it lets requests through when KV cannot be read; see [Better Auth](/docs/integrations/better-auth#email-delivery-gate). Nothing clears it early: once the sender is fixed, the first attempt after the flag expires goes out normally.
+Some refusals mean that no email from this sender can go out at all: a 401 or 403 from Resend (an invalid or restricted API key, or a sending domain that is not verified), an invalid `from` address, or an exhausted daily or monthly quota. For those, `sendEmail` also runs `markEmailSenderUnavailable` from `src/integrations/resend/resend.availability.server.ts` in the background, unless the caller passed `revealsAccountExistence: true`. Better Auth's verification, reset and change-email confirmation pass it, because they are sent only when an account does or does not exist, and a flag set by their refusal would reveal that. `markEmailSenderUnavailable` writes only when the flag is not set yet. It writes `email-sender-unavailable:<APP_ENV>` to the `CACHE` KV namespace with a five-minute expiry (`EMAIL_SENDER_UNAVAILABLE_SECONDS`). The key includes `APP_ENV` because development and preview share one namespace. A refusal that concerns one message, such as an invalid recipient, `rate_limit_exceeded`, a 5xx answer, a network error, the timeout, or the 403 that Resend's `resend.dev` test sender gets for any recipient but the Resend account owner, leaves the flag alone, so one bad address or one burst cannot stop every other email. Only the Better Auth gate acts on the flag, and it lets requests through when KV cannot be read; see [Better Auth](/docs/integrations/better-auth#email-delivery-gate). Nothing clears it early: once the sender is fixed, the first attempt after the flag expires goes out normally.
 
-The client is `src/integrations/resend/resend.config.ts`, a one-line `new Resend(env.RESEND_API_KEY)`. The default `from` is `APP_NAME <RESEND_EMAIL_FROM>`. Both `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in the `secrets.required` list of every environment in `wrangler.jsonc`.
+The client is `src/integrations/resend/resend.config.ts`, a one-line `new Resend(env.RESEND_API_KEY)`. The default `from` is `APP_NAME <RESEND_EMAIL_FROM>`. Both `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in the `secrets.required` list of every environment in `wrangler.jsonc`. The sender's domain must be verified in Resend, and a deploy stops before the build when it is not; see [Resend](/docs/integrations/resend#sender-domain).
 
 ## The eight templates
 

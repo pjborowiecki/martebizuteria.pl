@@ -82,7 +82,7 @@ emailVerification: {
 },
 ```
 
-Without a working `RESEND_API_KEY` and a verified `RESEND_EMAIL_FROM` sender, the verification email never arrives and the account can never sign in. There is no seeded admin account and no way to skip verification from the UI, so this is a hard prerequisite for reaching `/admin` — see [First run](/docs/getting-started/first-run).
+Without a working `RESEND_API_KEY` and a verified `RESEND_EMAIL_FROM` sender, the verification email never arrives and the account can never sign in. There is no seeded admin account and no way to skip verification from the UI, so this is a hard prerequisite for reaching `/admin` — see [First run](/docs/getting-started/first-run). Locally, `onboarding@resend.dev` works without a domain of your own as long as you sign up with the Resend account owner's address; preview and production need a domain verified with the DNS records listed in [Resend](/docs/integrations/resend#sender-domain). `bun run email:verify development` checks the key and sender in `.env.development`.
 
 ### Stripe — required for checkout
 

@@ -82,7 +82,7 @@ emailVerification: {
 },
 ```
 
-Bez działającego `RESEND_API_KEY` i zweryfikowanego nadawcy `RESEND_EMAIL_FROM` wiadomość weryfikacyjna nigdy nie dotrze, a konto nigdy nie będzie mogło się zalogować. Nie ma konta administratora tworzonego przez seed ani sposobu pominięcia weryfikacji z interfejsu, więc to twarde wymaganie, by dostać się do `/admin` — zobacz [Pierwsze uruchomienie](/docs/getting-started/first-run).
+Bez działającego `RESEND_API_KEY` i zweryfikowanego nadawcy `RESEND_EMAIL_FROM` wiadomość weryfikacyjna nigdy nie dotrze, a konto nigdy nie będzie mogło się zalogować. Nie ma konta administratora tworzonego przez seed ani sposobu pominięcia weryfikacji z interfejsu, więc to twarde wymaganie, by dostać się do `/admin` — zobacz [Pierwsze uruchomienie](/docs/getting-started/first-run). Lokalnie `onboarding@resend.dev` działa bez własnej domeny, o ile rejestrujesz się adresem właściciela konta Resend; preview i produkcja potrzebują domeny zweryfikowanej rekordami DNS wymienionymi w [Resend](/docs/integrations/resend#domena-nadawcy). `bun run email:verify development` sprawdza klucz i nadawcę z `.env.development`.
 
 ### Stripe — wymagane do zamówień
 

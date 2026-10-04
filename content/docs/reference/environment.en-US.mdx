@@ -16,13 +16,13 @@ so nothing is ever loaded implicitly. Vite and Wrangler pick the file from the r
 
 ## Environment files
 
-| File               | Committed | Used by                                                                                                 |
-| ------------------ | --------- | ------------------------------------------------------------------------------------------------------- |
-| `.env.example`     | Yes       | The template; lists every variable with a placeholder or empty value                                    |
-| `.env.development` | No        | `bun run dev`, `db:push:development`, `db:studio:development`, `db:introspect:development`              |
-| `.env.preview`     | No        | `build:preview`, `deploy:preview` (through `prepare-deploy-secrets.ts`), the `:preview` Drizzle scripts |
-| `.env.production`  | No        | `build:production`, `deploy:production`, the `:production` Drizzle scripts                              |
-| `.env.test`        | Yes       | Vitest, via `env: loadEnv("test", import.meta.dirname, "")` in `vite.config.ts`; dummy values only      |
+| File               | Committed | Used by                                                                                               |
+| ------------------ | --------- | ----------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Yes       | The template; lists every variable with a placeholder or empty value                                  |
+| `.env.development` | No        | `bun run dev`, `email:verify development`, the `:development` Drizzle scripts                         |
+| `.env.preview`     | No        | `build:preview`, `deploy:preview`, `email:verify preview`, the `:preview` Drizzle scripts             |
+| `.env.production`  | No        | `build:production`, `deploy:production`, `email:verify production`, the `:production` Drizzle scripts |
+| `.env.test`        | Yes       | Vitest, via `env: loadEnv("test", import.meta.dirname, "")` in `vite.config.ts`; dummy values only    |
 
 Start from the template:
 
@@ -32,23 +32,24 @@ cp .env.example .env.development
 
 ## Variables
 
-| Variable                      | Read by                                                                                  | Worker secret |
-| ----------------------------- | ---------------------------------------------------------------------------------------- | ------------- |
-| `AUTH_SECRET`                 | Better Auth signing and encryption                                                       | Yes           |
-| `AUTH_GOOGLE_CLIENT_ID`       | Google OAuth                                                                             | Yes           |
-| `AUTH_GOOGLE_CLIENT_SECRET`   | Google OAuth                                                                             | Yes           |
-| `AUTH_GITHUB_CLIENT_ID`       | GitHub OAuth                                                                             | Yes           |
-| `AUTH_GITHUB_CLIENT_SECRET`   | GitHub OAuth                                                                             | Yes           |
-| `RESEND_API_KEY`              | The Resend client in `src/integrations/resend/resend.config.ts`                          | Yes           |
-| `RESEND_EMAIL_FROM`           | The default sender for outgoing email                                                    | Yes           |
-| `STRIPE_SECRET_KEY`           | The Stripe server client in `src/integrations/stripe/stripe.server.ts`                   | Yes           |
-| `STRIPE_WEBHOOK_SECRET`       | Signature verification in `src/routes/api/webhooks.stripe.ts`                            | Yes           |
-| `VITE_R2_URL`                 | Public R2 base URL, read as `import.meta.env["VITE_R2_URL"]` in `src/lib/url.ts`         | Yes           |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, inlined into the client bundle at build time | No            |
-| `CLOUDFLARE_ACCOUNT_ID`       | Drizzle Kit's D1 HTTP driver in `src/integrations/drizzle-orm/drizzle.config.ts`         | No            |
-| `CLOUDFLARE_DATABASE_ID`      | Drizzle Kit's D1 HTTP driver                                                             | No            |
-| `CLOUDFLARE_ACCESS_TOKEN`     | Drizzle Kit's D1 HTTP driver                                                             | No            |
-| `SENTRY_AUTH_TOKEN`           | Nothing yet — declared in `.env.example` ahead of error reporting being wired up         | No            |
+| Variable                      | Read by                                                                                                                          | Worker secret |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `AUTH_SECRET`                 | Better Auth signing and encryption                                                                                               | Yes           |
+| `AUTH_GOOGLE_CLIENT_ID`       | Google OAuth                                                                                                                     | Yes           |
+| `AUTH_GOOGLE_CLIENT_SECRET`   | Google OAuth                                                                                                                     | Yes           |
+| `AUTH_GITHUB_CLIENT_ID`       | GitHub OAuth                                                                                                                     | Yes           |
+| `AUTH_GITHUB_CLIENT_SECRET`   | GitHub OAuth                                                                                                                     | Yes           |
+| `RESEND_API_KEY`              | The Resend client in `src/integrations/resend/resend.config.ts`                                                                  | Yes           |
+| `RESEND_EMAIL_FROM`           | The default sender, a bare address on a domain verified in Resend                                                                | Yes           |
+| `STRIPE_SECRET_KEY`           | The Stripe server client in `src/integrations/stripe/stripe.server.ts`                                                           | Yes           |
+| `STRIPE_WEBHOOK_SECRET`       | Signature verification in `src/routes/api/webhooks.stripe.ts`                                                                    | Yes           |
+| `VITE_R2_URL`                 | Public R2 base URL, read as `import.meta.env["VITE_R2_URL"]` in `src/lib/url.ts`                                                 | Yes           |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, inlined into the client bundle at build time                                         | No            |
+| `CLOUDFLARE_ACCOUNT_ID`       | Drizzle Kit's D1 HTTP driver in `src/integrations/drizzle-orm/drizzle.config.ts`                                                 | No            |
+| `CLOUDFLARE_DATABASE_ID`      | Drizzle Kit's D1 HTTP driver                                                                                                     | No            |
+| `CLOUDFLARE_ACCESS_TOKEN`     | Drizzle Kit's D1 HTTP driver                                                                                                     | No            |
+| `RESEND_MANAGEMENT_API_KEY`   | Optional. `scripts/verify-email-sender.ts` reads the sender domain with this Full access key when `RESEND_API_KEY` may only send | No            |
+| `SENTRY_AUTH_TOKEN`           | Nothing yet — declared in `.env.example` ahead of error reporting being wired up                                                 | No            |
 
 Only variables listed under `secrets.required` in `wrangler.jsonc` are uploaded on deploy. All three environments declare the same ten names. The three `CLOUDFLARE_*` variables are Drizzle Kit credentials and stay on the machine that runs the CLI; `prepare-deploy-secrets.ts` writes only the declared set into `.wrangler/secrets.<environment>.json` with mode `0600` and fails loudly if one is blank:
 
@@ -105,11 +106,12 @@ Worker code reads bindings and secrets from `env` in `cloudflare:workers`. The g
 
 ## Deploy-time checks
 
-Both deploy scripts run three gates around the build, and each one throws rather than warning.
+Both deploy scripts run four gates around the build, and each one throws rather than warning.
 
 | Script                              | Checks                                                                                                                                                                                                     |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/verify-bindings.ts`        | Reads `wrangler.jsonc` with Wrangler's own loader and rejects a missing or placeholder `DB` id, `CACHE` id, `IMAGES` bucket, `AUDIT_LOG_QUEUE` producer/consumer pair or `REALTIME_INVALIDATION_HUB` class |
+| `scripts/verify-email-sender.ts`    | Asks Resend whether it would send as `RESEND_EMAIL_FROM` and rejects a display-name sender, `onboarding@resend.dev`, or an unknown or unverified domain, printing the DNS records to publish               |
 | `scripts/verify-build.ts`           | Confirms `dist/server/wrangler.json` targets the right environment and Worker name, that `dist/client` holds JS, CSS and fonts, and that no client asset imports `cloudflare:workers` or `node:*`          |
 | `scripts/prepare-deploy-secrets.ts` | Writes only the declared secrets to `.wrangler/secrets.<environment>.json` and fails on any blank value                                                                                                    |
 
@@ -117,7 +119,7 @@ The full sequence is visible in `package.json`:
 
 ```sh
 bun run deploy:preview
-# verify-bindings.ts → build:preview → prepare-deploy-secrets.ts → wrangler deploy
+# verify-bindings.ts → verify-email-sender.ts → build:preview → prepare-deploy-secrets.ts → wrangler deploy
 ```
 
 The deploy step passes `--config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json` and unsets `CLOUDFLARE_ENV` first, because the built config already carries the environment.

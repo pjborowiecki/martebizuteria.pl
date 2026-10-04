@@ -46,6 +46,7 @@ jobs:
           AUTH_GITHUB_CLIENT_SECRET: ${{ secrets.AUTH_GITHUB_CLIENT_SECRET }}
           RESEND_EMAIL_FROM: ${{ secrets.RESEND_EMAIL_FROM }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_MANAGEMENT_API_KEY: ${{ secrets.RESEND_MANAGEMENT_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           CLOUDFLARE_ENV: preview

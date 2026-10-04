@@ -1,6 +1,6 @@
 ---
 title: "Rozwiązywanie problemów"
-description: "Konkretne awarie w dev, check, test, skryptach bazodanowych i potoku wdrożeniowym oraz sposoby ich naprawy."
+description: "Konkretne awarie w dev, check, test, skryptach bazodanowych, wysyłce e-maili i potoku wdrożeniowym oraz sposoby ich naprawy."
 ---
 
 Każdy wpis nazywa objaw tak, jak faktycznie go zobaczysz, a potem podaje rozwiązanie. Tam, gdzie komunikat jest zacytowany, jest to dokładny łańcuch znaków rzucany przez kod.
@@ -110,9 +110,29 @@ co uruchamia `cf-typegen` (`wrangler types --env development`), a potem `content
 
 **Zamówienie jest opłacone, ale nic się nie stało.** Realizację napędza wyłącznie ścieżka webhooka: `fulfill-checkout.server.ts` dla `checkout.session.completed` i `release-checkout.server.ts` dla `checkout.session.expired`. Jeśli przekierowanie zdarzeń nie działało, wiersz `checkout` zostaje w stanie `pending` i zamówienie nie istnieje. `fulfillCheckout` kończy też działanie wcześnie, gdy `findPendingCheckoutByTransaction` niczego nie znajdzie — to właśnie czyni sekwencyjne ponowienia Stripe idempotentnymi.
 
+## E-mail
+
+**Żaden e-mail nie dociera, a log mówi `The <domain> domain is not verified`.** Resend odrzuca każdą wiadomość z domeny, która nie jest zweryfikowana na koncie przypisanym do `RESEND_API_KEY`, więc weryfikacja, reset hasła, newsletter, potwierdzenie zamówienia i e-mail o wysyłce zawodzą tak samo. Każda porażka trafia do logu i do `/admin/audit` jako `email.failed`. Zweryfikuj domenę z `RESEND_EMAIL_FROM` tak, jak opisuje [Resend](/docs/integrations/resend#domena-nadawcy), a potem uruchamiaj `bun run email:verify <środowisko>`, aż zgłosi domenę jako zweryfikowaną.
+
+**`You can only send testing emails to your own email address`.** `RESEND_EMAIL_FROM` to `onboarding@resend.dev`, który dostarcza pocztę wyłącznie właścicielowi konta Resend. Podczas pracy używaj tego adresu albo zweryfikuj własną domenę. Odmowa dotyczy tylko tego odbiorcy, więc nie oznacza nadawcy jako niedostępnego, a e-maile uwierzytelniania do właściciela nadal wychodzą.
+
 ## Budowanie i wdrożenie
 
 **`Missing database, cache, images, audit, or realtime binding for preview`.** Ze `scripts/verify-bindings.ts`. Docelowemu środowisku w `wrangler.jsonc` brakuje powiązania albo nadal ma identyfikator zastępczy (kontrola odrzuca identyfikatory złożone wyłącznie z `0` i `-`). Utwórz zasób w Cloudflare i wklej prawdziwy identyfikator.
+
+**`<domain> is not_started in Resend, so every e-mail from <address> is refused`.** Ze `scripts/verify-email-sender.ts`. Domena jest na koncie Resend, ale jej rekordy DKIM lub SPF nie są zweryfikowane; wiersze pod komunikatem to rekordy do opublikowania wraz z ich obecnym stanem. Zamiast `not_started` może stać `pending` albo `failed`. Gdy komunikat mówi zamiast tego `Resend does not list both a DKIM and an SPF record for it yet`, otwórz domenę na resend.com/domains, gdzie widać rekordy do opublikowania. Dodaj rekordy u dostawcy DNS domeny, naciśnij Verify na resend.com/domains i wdróż ponownie, gdy `bun run email:verify <środowisko>` przejdzie.
+
+**`Resend refuses to send as <address>: The <domain> domain is not verified…`.** Również z `verify-email-sender.ts`, z tej samej przyczyny. `RESEND_API_KEY` może tylko wysyłać, a `RESEND_MANAGEMENT_API_KEY` nie jest ustawiony, więc kontrola nie mogła odczytać rekordów domeny i spróbowała wysyłki testowej; rekordy są na stronie domeny w resend.com/domains. Ustaw `RESEND_MANAGEMENT_API_KEY` na klucz z pełnym dostępem, a kontrola je wypisze.
+
+**`<domain> is not a domain of this Resend account`.** Domena z `RESEND_EMAIL_FROM` nigdy nie została dodana do konta Resend, do którego należy `RESEND_API_KEY`, klucz należy do innego konta albo nadawca jest w subdomenie zweryfikowanej domeny, którą Resend traktuje jak osobną domenę. Dodaj dokładnie tę domenę na resend.com/domains albo zmień nadawcę.
+
+**`RESEND_API_KEY is missing for preview`** albo **`RESEND_EMAIL_FROM is missing for preview`**. Z `verify-email-sender.ts`. Wartość jest pusta w środowisku procesu albo nieustawiona tam i pusta lub nieobecna w `.env.preview`; zmienna wyeksportowana, ale pusta, ma pierwszeństwo przed plikiem. W GitHub Actions sekret, którego nie ustawiono dla środowiska `preview`, przychodzi jako pusty napis, więc dodaj go do sekretów tego środowiska.
+
+**`RESEND_EMAIL_FROM must be a bare address`** albo **`onboarding@resend.dev only delivers to the owner of the Resend account`.** Ustaw w sekrecie sam adres, na przykład `noreply@martebizuteria.pl`, bo `sendEmail` sam dodaje `M'Arte`. `onboarding@resend.dev` przechodzi kontrolę tylko w środowisku development.
+
+**`Resend rejected RESEND_API_KEY (<code>)`** albo **`Resend rejected RESEND_MANAGEMENT_API_KEY (<code>)`**. Klucz jest nieprawidłowy, unieważniony albo, w przypadku klucza zarządzającego, ograniczony do wysyłki (`restricted_api_key`). Utwórz nowy klucz na resend.com/api-keys; klucz zarządzający potrzebuje pełnego dostępu (Full access).
+
+**`Resend could not list the domains of RESEND_API_KEY (<code>)`** albo **`Resend did not answer within 30000 ms`**. Resend przy obu próbach ograniczał liczbę żądań (`rate_limit_exceeded`) lub zgłaszał awarię (`application_error`, `internal_server_error`) albo w ogóle nie odpowiedział. Ponów wdrożenie za chwilę.
 
 **`Missing STRIPE_SECRET_KEY in .env.preview or the process environment`.** Ze `scripts/prepare-deploy-secrets.ts`. Każda nazwa z `secrets.required` dla tego środowiska musi mieć niepustą wartość w odpowiadającym pliku `.env` albo w środowisku procesu.
 

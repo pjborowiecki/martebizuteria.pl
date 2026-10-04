@@ -5,13 +5,13 @@ description: "The .env files, which values reach the browser, and which are uplo
 
 ## The environment files
 
-| File               | Tracked by Git | Loaded by                                                                                 |
-| ------------------ | -------------- | ----------------------------------------------------------------------------------------- |
-| `.env.example`     | Yes            | Nothing — it is the template you copy                                                     |
-| `.env.development` | No             | `bun run dev` (Vite mode `development`, `CLOUDFLARE_ENV=development`)                     |
-| `.env.preview`     | No             | `bun run build:preview`, `bun run start`, and `scripts/prepare-deploy-secrets.ts preview` |
-| `.env.production`  | No             | `bun run build:production` and `scripts/prepare-deploy-secrets.ts production`             |
-| `.env.test`        | Yes            | `vite.config.ts` via `loadEnv("test", …)` for the Vitest projects, and CI builds          |
+| File               | Tracked by Git | Loaded by                                                                                                                                                              |
+| ------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Yes            | Nothing — it is the template you copy                                                                                                                                  |
+| `.env.development` | No             | `bun run dev` (Vite mode `development`, `CLOUDFLARE_ENV=development`) and `bun run email:verify development`                                                           |
+| `.env.preview`     | No             | `bun run build:preview`, `bun run start`, `scripts/verify-email-sender.ts preview` and `scripts/prepare-deploy-secrets.ts preview`; `deploy:preview` runs the last two |
+| `.env.production`  | No             | `bun run build:production`, `scripts/verify-email-sender.ts production` and `scripts/prepare-deploy-secrets.ts production`; `deploy:production` runs all three         |
+| `.env.test`        | Yes            | `vite.config.ts` via `loadEnv("test", …)` for the Vitest projects, and CI builds                                                                                       |
 
 `.gitignore` implements exactly that:
 
@@ -53,18 +53,18 @@ The distinction matters more here than the list of names does.
 
 **2. Worker secrets.** Declared per environment under `secrets.required` in `wrangler.jsonc` and read on the server with `import { env } from "cloudflare:workers"`. All three environments declare the same ten:
 
-| Secret                      | Read at                                                           |
-| --------------------------- | ----------------------------------------------------------------- |
-| `AUTH_SECRET`               | `src/integrations/better-auth/auth.server.ts`                     |
-| `AUTH_GOOGLE_CLIENT_ID`     | `socialProviders.google` in `auth.server.ts`                      |
-| `AUTH_GOOGLE_CLIENT_SECRET` | `socialProviders.google` in `auth.server.ts`                      |
-| `AUTH_GITHUB_CLIENT_ID`     | `socialProviders.github` in `auth.server.ts`                      |
-| `AUTH_GITHUB_CLIENT_SECRET` | `socialProviders.github` in `auth.server.ts`                      |
-| `RESEND_API_KEY`            | `src/integrations/resend/resend.config.ts`                        |
-| `RESEND_EMAIL_FROM`         | `src/integrations/resend/resend.send.ts`, wrapped as `M'Arte <…>` |
-| `STRIPE_SECRET_KEY`         | `src/integrations/stripe/stripe.server.ts`                        |
-| `STRIPE_WEBHOOK_SECRET`     | `src/routes/api/webhooks.stripe.ts`, for signature verification   |
-| `VITE_R2_URL`               | `src/lib/url.ts` — the server branch of `getAssetCdnBase()`       |
+| Secret                      | Read at                                                                                                                                                                                                                    |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_SECRET`               | `src/integrations/better-auth/auth.server.ts`                                                                                                                                                                              |
+| `AUTH_GOOGLE_CLIENT_ID`     | `socialProviders.google` in `auth.server.ts`                                                                                                                                                                               |
+| `AUTH_GOOGLE_CLIENT_SECRET` | `socialProviders.google` in `auth.server.ts`                                                                                                                                                                               |
+| `AUTH_GITHUB_CLIENT_ID`     | `socialProviders.github` in `auth.server.ts`                                                                                                                                                                               |
+| `AUTH_GITHUB_CLIENT_SECRET` | `socialProviders.github` in `auth.server.ts`                                                                                                                                                                               |
+| `RESEND_API_KEY`            | `src/integrations/resend/resend.config.ts`; checked before a deploy by `scripts/verify-email-sender.ts`, see [Resend](/docs/integrations/resend#sender-domain)                                                             |
+| `RESEND_EMAIL_FROM`         | `src/integrations/resend/resend.send.ts`, wrapped as `M'Arte <…>`; a bare address on a verified domain, checked before a deploy by `scripts/verify-email-sender.ts`, see [Resend](/docs/integrations/resend#sender-domain) |
+| `STRIPE_SECRET_KEY`         | `src/integrations/stripe/stripe.server.ts`                                                                                                                                                                                 |
+| `STRIPE_WEBHOOK_SECRET`     | `src/routes/api/webhooks.stripe.ts`, for signature verification                                                                                                                                                            |
+| `VITE_R2_URL`               | `src/lib/url.ts` — the server branch of `getAssetCdnBase()`                                                                                                                                                                |
 
 `VITE_R2_URL` is deliberately in both lists. It is not a secret; it is the public R2 base URL, and both the SSR render and the browser need it, so it is uploaded as a Worker binding _and_ inlined into the client bundle.
 
@@ -74,13 +74,14 @@ The distinction matters more here than the list of names does.
 // Only declared Worker bindings are uploaded; Cloudflare management tokens stay local.
 ```
 
-| Variable                  | Used by                                                                     |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `CLOUDFLARE_ACCOUNT_ID`   | `src/integrations/drizzle-orm/drizzle.config.ts`, D1 HTTP driver            |
-| `CLOUDFLARE_DATABASE_ID`  | The same — which database `db:push`, `db:studio` and `db:introspect` target |
-| `CLOUDFLARE_ACCESS_TOKEN` | The same, as the API token                                                  |
+| Variable                    | Used by                                                                                                                                                                                                    |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID`     | `src/integrations/drizzle-orm/drizzle.config.ts`, D1 HTTP driver                                                                                                                                           |
+| `CLOUDFLARE_DATABASE_ID`    | The same — which database `db:push`, `db:studio` and `db:introspect` target                                                                                                                                |
+| `CLOUDFLARE_ACCESS_TOKEN`   | The same, as the API token                                                                                                                                                                                 |
+| `RESEND_MANAGEMENT_API_KEY` | `scripts/verify-email-sender.ts`, optional: a Resend Full access key that reads the sender domain's DNS records when `RESEND_API_KEY` may only send, see [Resend](/docs/integrations/resend#sender-domain) |
 
-All three are read through `process.env` in the Drizzle config and default to `""`, so a missing value surfaces as an authentication failure from the D1 HTTP API rather than a clear error.
+The three `CLOUDFLARE_*` values are read through `process.env` in the Drizzle config and default to `""`, so a missing value surfaces as an authentication failure from the D1 HTTP API rather than a clear error.
 
 ## Plain vars, not secrets
 
