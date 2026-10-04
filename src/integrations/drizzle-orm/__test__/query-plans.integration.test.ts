@@ -33,6 +33,7 @@ const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/mig
 const { pageViewsQuery } = await import("~/src/modules/admin-dashboard/admin-dashboard.accessors")
 const { getCustomerActivityAuditRows, getCustomerLoginAuditRows } =
   await import("~/src/modules/customer-account/customer-account.accessors.server")
+const { getDiscountByCodeForCustomerQuery } = await import("~/src/modules/discount/discount.accessors")
 const { getAdminSubscribersPage } = await import("~/src/modules/newsletter/newsletter.accessors")
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
 const { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle, getPublishedRelatedProducts } =
@@ -156,5 +157,14 @@ describe("hot reads", () => {
 
   it("page newsletter subscribers newest first without sorting the whole list", async () => {
     await expect(planSteps(() => getAdminSubscribersPage({ limit: 25, offset: 0 }))).resolves.not.toContain("USE TEMP B-TREE FOR ORDER BY")
+  })
+
+  it("read a discount by its code and count the customer's redemptions of it from their indexes", async () => {
+    await expect(planSteps(() => getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test"))).resolves.toStrictEqual(
+      expect.arrayContaining([
+        "SEARCH discount USING INDEX discount_code_unique (code=?)",
+        "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+      ]),
+    )
   })
 })

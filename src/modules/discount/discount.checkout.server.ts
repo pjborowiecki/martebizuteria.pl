@@ -1,8 +1,6 @@
-import { countCustomerRedemptions, getDiscountByCode } from "~/src/modules/discount/discount.accessors"
+import { getDiscountByCodeForCustomerQuery } from "~/src/modules/discount/discount.accessors"
 import { type Discount } from "~/src/modules/discount/discount.types"
-import { calculateDiscountAmount, normalizeDiscountCode, resolveDiscountRejection } from "~/src/modules/discount/discount.utils"
-
-const NO_AMOUNT = 0
+import { normalizeDiscountCode, resolveAppliedCheckoutDiscount } from "~/src/modules/discount/discount.utils"
 
 export const resolveCheckoutDiscount = async ({
   code,
@@ -15,35 +13,12 @@ export const resolveCheckoutDiscount = async ({
     return undefined
   }
 
-  const row = await getDiscountByCode(normalized)
-  if (row === undefined) {
-    return undefined
-  }
-
-  const rejection = resolveDiscountRejection({
+  return resolveAppliedCheckoutDiscount({
     itemsSubtotal,
     now: new Date(),
-    redeemedByCustomer: await countCustomerRedemptions(row.id, email),
-    row,
+    row: await getDiscountByCodeForCustomerQuery(normalized, email),
+    shippingTotal,
   })
-
-  if (rejection !== undefined) {
-    console.info(`Discount ${normalized} not applied to checkout: ${rejection}.`)
-
-    return undefined
-  }
-
-  const amountMinorUnits = calculateDiscountAmount({ itemsSubtotal, row, shippingTotal })
-  if (amountMinorUnits <= NO_AMOUNT) {
-    return undefined
-  }
-
-  return {
-    amountMinorUnits,
-    code: row.code,
-    discountId: row.id,
-    type: row.type,
-  }
 }
 
 interface ResolveCheckoutDiscountInput {

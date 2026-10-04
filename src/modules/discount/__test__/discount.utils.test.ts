@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vite-plus/test"
+import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { DISCOUNT_REJECTION, DISCOUNT_STATUS } from "~/src/modules/discount/discount.constants"
+import { DISCOUNT_REJECTION, DISCOUNT_STATUS, DISCOUNT_TYPE } from "~/src/modules/discount/discount.constants"
+import { type Discount } from "~/src/modules/discount/discount.types"
 import {
   calculateDiscountAmount,
   normalizeDiscountCode,
+  resolveAppliedCheckoutDiscount,
   resolveDiscountRejection,
   resolveDiscountStatus,
 } from "~/src/modules/discount/discount.utils"
@@ -26,9 +28,30 @@ const rejectionRow = (overrides = {}) => ({
   isActive: true,
   minOrderTotal: null,
   perCustomerLimit: null,
+  redeemedByCustomer: 0,
   startsAt: null,
   usageCount: 0,
   usageLimit: null,
+  ...overrides,
+})
+
+const customerRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Discount["selectForCustomer"] => ({
+  code: "SPRING-24",
+  createdAt: BEFORE,
+  description: null,
+  endsAt: null,
+  id: "discount-1",
+  isActive: true,
+  maxDiscountAmount: null,
+  minOrderTotal: null,
+  perCustomerLimit: null,
+  redeemedByCustomer: 0,
+  startsAt: null,
+  type: DISCOUNT_TYPE.PERCENTAGE,
+  updatedAt: BEFORE,
+  usageCount: 0,
+  usageLimit: null,
+  value: 15,
   ...overrides,
 })
 
@@ -82,8 +105,7 @@ describe("calculateDiscountAmount", () => {
   })
 })
 
-const check = (overrides = {}, extra = {}) =>
-  resolveDiscountRejection({ itemsSubtotal: 20_000, now: NOW, redeemedByCustomer: 0, row: rejectionRow(overrides), ...extra })
+const check = (overrides = {}) => resolveDiscountRejection({ itemsSubtotal: 20_000, now: NOW, row: rejectionRow(overrides) })
 
 describe("resolveDiscountRejection", () => {
   it("accepts a code with no restrictions", () => {
@@ -115,11 +137,11 @@ describe("resolveDiscountRejection", () => {
   })
 
   it("turns down a code this customer has already used up", () => {
-    expect(check({ perCustomerLimit: 1 }, { redeemedByCustomer: 1 })).toBe(DISCOUNT_REJECTION.ALREADY_USED)
+    expect(check({ perCustomerLimit: 1, redeemedByCustomer: 1 })).toBe(DISCOUNT_REJECTION.ALREADY_USED)
   })
 
   it("still accepts a per-customer code the customer has not used", () => {
-    expect(check({ perCustomerLimit: 1 }, { redeemedByCustomer: 0 })).toBeUndefined()
+    expect(check({ perCustomerLimit: 1, redeemedByCustomer: 0 })).toBeUndefined()
   })
 
   it("turns down a basket below the minimum", () => {
@@ -132,6 +154,52 @@ describe("resolveDiscountRejection", () => {
 
   it("reports the most fundamental problem first", () => {
     expect(check({ endsAt: BEFORE, isActive: false, minOrderTotal: 99_999 })).toBe(DISCOUNT_REJECTION.INACTIVE)
+  })
+})
+
+const applyAtCheckout = (row: Discount["selectForCustomer"] | undefined, shippingTotal = 1500) =>
+  resolveAppliedCheckoutDiscount({ itemsSubtotal: 20_000, now: NOW, row, shippingTotal })
+
+describe("resolveAppliedCheckoutDiscount", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("applies a usable code to the checkout at its full value", () => {
+    expect(applyAtCheckout(customerRow())).toStrictEqual({
+      amountMinorUnits: 3000,
+      code: "SPRING-24",
+      discountId: "discount-1",
+      type: DISCOUNT_TYPE.PERCENTAGE,
+    })
+  })
+
+  it("applies nothing when no discount has the code", () => {
+    expect(applyAtCheckout(undefined)).toBeUndefined()
+  })
+
+  it("drops a code the customer has already used up and logs why", () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {})
+
+    expect(applyAtCheckout(customerRow({ perCustomerLimit: 1, redeemedByCustomer: 1 }))).toBeUndefined()
+    expect(info).toHaveBeenCalledWith(`Discount SPRING-24 not applied to checkout: ${DISCOUNT_REJECTION.ALREADY_USED}.`)
+  })
+
+  it("drops a code whose window closed before the checkout started", () => {
+    vi.spyOn(console, "info").mockImplementation(() => {})
+
+    expect(applyAtCheckout(customerRow({ endsAt: NOW }))).toBeUndefined()
+  })
+
+  it("applies nothing when the code would take nothing off", () => {
+    expect(applyAtCheckout(customerRow({ type: DISCOUNT_TYPE.FREE_SHIPPING, value: 0 }), 0)).toBeUndefined()
+  })
+
+  it("applies free shipping at the price of the chosen delivery", () => {
+    expect(applyAtCheckout(customerRow({ type: DISCOUNT_TYPE.FREE_SHIPPING, value: 0 }))).toMatchObject({
+      amountMinorUnits: 1500,
+      type: DISCOUNT_TYPE.FREE_SHIPPING,
+    })
   })
 })
 

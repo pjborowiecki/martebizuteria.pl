@@ -4,13 +4,12 @@ import { DISCOUNT_REJECTION, DISCOUNT_TYPE } from "~/src/modules/discount/discou
 import { type Discount } from "~/src/modules/discount/discount.types"
 
 const stubs = vi.hoisted(() => ({
-  countCustomerRedemptions: vi.fn<(discountId: string, email: string | undefined) => Promise<number>>(),
-  getDiscountByCode: vi.fn<(code: string) => Promise<Discount["select"] | undefined>>(),
+  getDiscountByCodeForCustomerQuery:
+    vi.fn<(code: string, email: string | undefined) => Promise<Discount["selectForCustomer"] | undefined>>(),
 }))
 
 vi.mock("~/src/modules/discount/discount.accessors", () => ({
-  countCustomerRedemptions: stubs.countCustomerRedemptions,
-  getDiscountByCode: stubs.getDiscountByCode,
+  getDiscountByCodeForCustomerQuery: stubs.getDiscountByCodeForCustomerQuery,
 }))
 
 const { resolveCheckoutDiscount } = await import("~/src/modules/discount/discount.checkout.server")
@@ -19,7 +18,7 @@ const NOW = new Date("2026-06-01T12:00:00.000Z")
 
 const BASKET = { email: "ada@marte.test", itemsSubtotal: 20_000, shippingTotal: 1500 }
 
-const discountRow = (overrides: Partial<Discount["select"]> = {}): Discount["select"] => ({
+const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Discount["selectForCustomer"] => ({
   code: "SPRING-24",
   createdAt: new Date("2026-05-01T00:00:00.000Z"),
   description: null,
@@ -29,6 +28,7 @@ const discountRow = (overrides: Partial<Discount["select"]> = {}): Discount["sel
   maxDiscountAmount: null,
   minOrderTotal: null,
   perCustomerLimit: null,
+  redeemedByCustomer: 0,
   startsAt: null,
   type: DISCOUNT_TYPE.PERCENTAGE,
   updatedAt: new Date("2026-05-01T00:00:00.000Z"),
@@ -41,8 +41,7 @@ const discountRow = (overrides: Partial<Discount["select"]> = {}): Discount["sel
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers({ now: NOW, toFake: ["Date"] })
-  stubs.getDiscountByCode.mockResolvedValue(discountRow())
-  stubs.countCustomerRedemptions.mockResolvedValue(0)
+  stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
 })
 
 afterEach(() => {
@@ -60,63 +59,35 @@ describe("resolveCheckoutDiscount", () => {
     })
   })
 
-  it("looks the code up however the shopper typed it", async () => {
+  it("reads the code however the shopper typed it, with the checkout email's redemptions", async () => {
     await resolveCheckoutDiscount({ ...BASKET, code: "  spring-24 " })
 
-    expect(stubs.getDiscountByCode).toHaveBeenCalledWith("SPRING-24")
+    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", "ada@marte.test")
   })
 
-  it("applies nothing and skips the lookup when no code was entered", async () => {
-    await expect(resolveCheckoutDiscount({ ...BASKET, code: undefined })).resolves.toBeUndefined()
-    expect(stubs.getDiscountByCode).not.toHaveBeenCalled()
-  })
-
-  it("applies nothing and skips the lookup for a code made only of spaces", async () => {
-    await expect(resolveCheckoutDiscount({ ...BASKET, code: "   " })).resolves.toBeUndefined()
-    expect(stubs.getDiscountByCode).not.toHaveBeenCalled()
+  it.each([undefined, "   "])("applies nothing and skips the lookup for the code %j", async (code) => {
+    await expect(resolveCheckoutDiscount({ ...BASKET, code })).resolves.toBeUndefined()
+    expect(stubs.getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
   })
 
   it("applies nothing for a code that matches no discount", async () => {
-    stubs.getDiscountByCode.mockResolvedValue(undefined)
+    stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(undefined)
 
     await expect(resolveCheckoutDiscount({ ...BASKET, code: "NOPE-99" })).resolves.toBeUndefined()
-    expect(stubs.countCustomerRedemptions).not.toHaveBeenCalled()
-  })
-
-  it("counts earlier redemptions against the checkout email", async () => {
-    await resolveCheckoutDiscount({ ...BASKET, code: "SPRING-24" })
-
-    expect(stubs.countCustomerRedemptions).toHaveBeenCalledWith("discount-1", "ada@marte.test")
   })
 
   it("drops a code the customer has already used up and logs why", async () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {})
-    stubs.getDiscountByCode.mockResolvedValue(discountRow({ perCustomerLimit: 1 }))
-    stubs.countCustomerRedemptions.mockResolvedValue(1)
+    stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ perCustomerLimit: 1, redeemedByCustomer: 1 }))
 
     await expect(resolveCheckoutDiscount({ ...BASKET, code: "SPRING-24" })).resolves.toBeUndefined()
     expect(info).toHaveBeenCalledWith(`Discount SPRING-24 not applied to checkout: ${DISCOUNT_REJECTION.ALREADY_USED}.`)
   })
 
-  it("drops a code whose window closed before the checkout started", async () => {
+  it("judges the window against the moment the checkout is priced", async () => {
     vi.spyOn(console, "info").mockImplementation(() => {})
-    stubs.getDiscountByCode.mockResolvedValue(discountRow({ endsAt: NOW }))
+    stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ endsAt: NOW }))
 
     await expect(resolveCheckoutDiscount({ ...BASKET, code: "SPRING-24" })).resolves.toBeUndefined()
-  })
-
-  it("applies nothing when the code would take nothing off", async () => {
-    stubs.getDiscountByCode.mockResolvedValue(discountRow({ type: DISCOUNT_TYPE.FREE_SHIPPING, value: 0 }))
-
-    await expect(resolveCheckoutDiscount({ ...BASKET, code: "SPRING-24", shippingTotal: 0 })).resolves.toBeUndefined()
-  })
-
-  it("applies free shipping at the price of the chosen delivery", async () => {
-    stubs.getDiscountByCode.mockResolvedValue(discountRow({ type: DISCOUNT_TYPE.FREE_SHIPPING, value: 0 }))
-
-    await expect(resolveCheckoutDiscount({ ...BASKET, code: "SPRING-24" })).resolves.toMatchObject({
-      amountMinorUnits: 1500,
-      type: DISCOUNT_TYPE.FREE_SHIPPING,
-    })
   })
 })

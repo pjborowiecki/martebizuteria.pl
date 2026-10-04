@@ -4,20 +4,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-const { countCustomerRedemptions, getDiscountByCode, onApplied } = vi.hoisted(() => ({
-  countCustomerRedemptions: vi.fn<(discountId: string, email: string | undefined) => Promise<number>>(),
-  getDiscountByCode: vi.fn<(code: string) => Promise<Discount["select"] | undefined>>(),
+const { getDiscountByCodeForCustomerQuery, onApplied } = vi.hoisted(() => ({
+  getDiscountByCodeForCustomerQuery:
+    vi.fn<(code: string, email: string | undefined) => Promise<Discount["selectForCustomer"] | undefined>>(),
   onApplied: vi.fn<(code: string) => void>(),
 }))
 
-vi.mock("~/src/modules/discount/discount.accessors", () => ({ countCustomerRedemptions, getDiscountByCode }))
+vi.mock("~/src/modules/discount/discount.accessors", () => ({ getDiscountByCodeForCustomerQuery }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: () => Promise.resolve(undefined) }))
 
 import { type Discount } from "~/src/modules/discount/discount.types"
 
 import { CheckoutDiscountField } from "~/src/presentation/components/custom/checkout/components/checkout-discount-field"
 
-const discountRow = (overrides: Partial<Discount["select"]> = {}): Discount["select"] => ({
+const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Discount["selectForCustomer"] => ({
   code: "SPRING",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   description: null,
@@ -27,6 +27,7 @@ const discountRow = (overrides: Partial<Discount["select"]> = {}): Discount["sel
   maxDiscountAmount: null,
   minOrderTotal: null,
   perCustomerLimit: null,
+  redeemedByCustomer: 0,
   startsAt: null,
   type: "fixed_amount",
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -46,8 +47,7 @@ const submitCode = async (code: string): Promise<void> => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  countCustomerRedemptions.mockResolvedValue(0)
-  getDiscountByCode.mockResolvedValue(discountRow())
+  getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
 })
 
 afterEach(cleanup)
@@ -61,12 +61,11 @@ describe("CheckoutDiscountField", () => {
     await waitFor(() => {
       expect(onApplied).toHaveBeenCalledExactlyOnceWith("SPRING")
     })
-    expect(getDiscountByCode).toHaveBeenCalledExactlyOnceWith("SPRING")
-    expect(countCustomerRedemptions).toHaveBeenCalledExactlyOnceWith("discount-1", "ada@marte.test")
+    expect(getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING", "ada@marte.test")
   })
 
   it("locks the button behind a spinner while the code is being checked", async () => {
-    getDiscountByCode.mockReturnValue(new Promise(() => {}))
+    getDiscountByCodeForCustomerQuery.mockReturnValue(new Promise(() => {}))
     renderField()
 
     await submitCode("SPRING")
@@ -80,7 +79,7 @@ describe("CheckoutDiscountField", () => {
   })
 
   it("explains a code it does not recognise and applies nothing", async () => {
-    getDiscountByCode.mockResolvedValue(undefined)
+    getDiscountByCodeForCustomerQuery.mockResolvedValue(undefined)
     renderField()
 
     await submitCode("NOPE")
@@ -90,7 +89,7 @@ describe("CheckoutDiscountField", () => {
   })
 
   it("drops the explanation as soon as the shopper edits the code", async () => {
-    getDiscountByCode.mockResolvedValue(undefined)
+    getDiscountByCodeForCustomerQuery.mockResolvedValue(undefined)
     renderField()
     await submitCode("NOPE")
     await screen.findByText("We do not recognise that code.")
@@ -101,7 +100,7 @@ describe("CheckoutDiscountField", () => {
   })
 
   it("asks the shopper to try again when the code could not be checked", async () => {
-    getDiscountByCode.mockRejectedValue(new Error("D1 unavailable"))
+    getDiscountByCodeForCustomerQuery.mockRejectedValue(new Error("D1 unavailable"))
     renderField()
 
     await submitCode("SPRING")
@@ -115,7 +114,7 @@ describe("CheckoutDiscountField", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Apply" }))
 
-    expect(getDiscountByCode).not.toHaveBeenCalled()
+    expect(getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
     expect(onApplied).not.toHaveBeenCalled()
   })
 })

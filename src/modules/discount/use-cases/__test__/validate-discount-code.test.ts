@@ -17,8 +17,8 @@ import {
 } from "~/src/modules/discount/use-cases/validate-discount-code"
 
 const stubs = vi.hoisted(() => ({
-  countCustomerRedemptions: vi.fn<(discountId: string, email: string | undefined) => Promise<number>>(),
-  getDiscountByCode: vi.fn<(code: string) => Promise<Discount["select"] | undefined>>(),
+  getDiscountByCodeForCustomerQuery:
+    vi.fn<(code: string, email: string | undefined) => Promise<Discount["selectForCustomer"] | undefined>>(),
   getRequestSession: vi.fn<() => Promise<{ user: { email: string } } | null>>(),
 }))
 
@@ -40,15 +40,14 @@ vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
 })
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: stubs.getRequestSession }))
 vi.mock("~/src/modules/discount/discount.accessors", () => ({
-  countCustomerRedemptions: stubs.countCustomerRedemptions,
-  getDiscountByCode: stubs.getDiscountByCode,
+  getDiscountByCodeForCustomerQuery: stubs.getDiscountByCodeForCustomerQuery,
 }))
 
 const NOW = new Date("2026-06-01T12:00:00.000Z")
 
 const BASKET = { itemsSubtotal: 20_000, shippingTotal: 1500 }
 
-const discountRow = (overrides: Partial<Discount["select"]> = {}): Discount["select"] => ({
+const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Discount["selectForCustomer"] => ({
   code: "SPRING-24",
   createdAt: new Date("2026-05-01T00:00:00.000Z"),
   description: null,
@@ -58,6 +57,7 @@ const discountRow = (overrides: Partial<Discount["select"]> = {}): Discount["sel
   maxDiscountAmount: null,
   minOrderTotal: null,
   perCustomerLimit: null,
+  redeemedByCustomer: 0,
   startsAt: null,
   type: DISCOUNT_TYPE.PERCENTAGE,
   updatedAt: new Date("2026-05-01T00:00:00.000Z"),
@@ -70,8 +70,7 @@ const discountRow = (overrides: Partial<Discount["select"]> = {}): Discount["sel
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers({ now: NOW, toFake: ["Date"] })
-  stubs.getDiscountByCode.mockResolvedValue(discountRow())
-  stubs.countCustomerRedemptions.mockResolvedValue(0)
+  stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
   stubs.getRequestSession.mockResolvedValue(null)
 })
 
@@ -89,32 +88,32 @@ describe("validateDiscountCode", () => {
   it("looks the code up however the shopper typed it", async () => {
     await validateDiscountCode({ data: { ...BASKET, code: " spring-24 " } })
 
-    expect(stubs.getDiscountByCode).toHaveBeenCalledWith("SPRING-24")
+    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledWith("SPRING-24", undefined)
   })
 
   it("says a code that matches no discount was not found", async () => {
-    stubs.getDiscountByCode.mockResolvedValue(undefined)
+    stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(undefined)
 
     await expect(validateDiscountCode({ data: { ...BASKET, code: "NOPE-99" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.NOT_FOUND,
     })
-    expect(stubs.countCustomerRedemptions).not.toHaveBeenCalled()
   })
 
   it("explains why a code that exists cannot be used yet", async () => {
-    stubs.getDiscountByCode.mockResolvedValue(discountRow({ startsAt: new Date("2026-07-01T00:00:00.000Z") }))
+    stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ startsAt: new Date("2026-07-01T00:00:00.000Z") }))
 
     await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.NOT_STARTED,
     })
   })
 
-  it("counts earlier redemptions against the email typed at checkout", async () => {
+  it("counts earlier redemptions against the email typed at checkout without reading the session", async () => {
     stubs.getRequestSession.mockResolvedValue({ user: { email: "account@marte.test" } })
 
     await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", email: "ada@marte.test" } })
 
-    expect(stubs.countCustomerRedemptions).toHaveBeenCalledWith("discount-1", "ada@marte.test")
+    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", "ada@marte.test")
+    expect(stubs.getRequestSession).not.toHaveBeenCalled()
   })
 
   it("counts earlier redemptions against the signed-in account when no email was typed", async () => {
@@ -122,18 +121,32 @@ describe("validateDiscountCode", () => {
 
     await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", email: "" } })
 
-    expect(stubs.countCustomerRedemptions).toHaveBeenCalledWith("discount-1", "account@marte.test")
+    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", "account@marte.test")
+  })
+
+  it("waits for the session before it reads the discount when no email was typed", async () => {
+    const session = Promise.withResolvers<{ user: { email: string } } | null>()
+    stubs.getRequestSession.mockReturnValue(session.promise)
+
+    const validation = validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })
+    await vi.waitFor(() => {
+      expect(stubs.getRequestSession).toHaveBeenCalledOnce()
+    })
+
+    expect(stubs.getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
+    session.resolve({ user: { email: "account@marte.test" } })
+    await validation
+    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", "account@marte.test")
   })
 
   it("checks a guest without an email against no one", async () => {
     await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })
 
-    expect(stubs.countCustomerRedemptions).toHaveBeenCalledWith("discount-1", undefined)
+    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", undefined)
   })
 
   it("turns down a code the shopper has already used up", async () => {
-    stubs.getDiscountByCode.mockResolvedValue(discountRow({ perCustomerLimit: 1 }))
-    stubs.countCustomerRedemptions.mockResolvedValue(1)
+    stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ perCustomerLimit: 1, redeemedByCustomer: 1 }))
 
     await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", email: "ada@marte.test" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.ALREADY_USED,
@@ -142,7 +155,7 @@ describe("validateDiscountCode", () => {
 
   it("rejects a code with characters a discount code cannot contain", async () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING 24!" } })).rejects.toBeInstanceOf(ZodError)
-    expect(stubs.getDiscountByCode).not.toHaveBeenCalled()
+    expect(stubs.getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
   })
 })
 

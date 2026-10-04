@@ -28,12 +28,7 @@ export const calculateDiscountAmount = ({ itemsSubtotal, row, shippingTotal }: C
   return Math.min(capped, itemsSubtotal)
 }
 
-export const resolveDiscountRejection = ({
-  itemsSubtotal,
-  now,
-  redeemedByCustomer,
-  row,
-}: ResolveRejectionInput): DiscountRejection | undefined => {
+export const resolveDiscountRejection = ({ itemsSubtotal, now, row }: ResolveRejectionInput): DiscountRejection | undefined => {
   if (!row.isActive) {
     return DISCOUNT_REJECTION.INACTIVE
   }
@@ -50,7 +45,7 @@ export const resolveDiscountRejection = ({
     return DISCOUNT_REJECTION.EXHAUSTED
   }
 
-  if (row.perCustomerLimit !== null && redeemedByCustomer >= row.perCustomerLimit) {
+  if (row.perCustomerLimit !== null && row.redeemedByCustomer >= row.perCustomerLimit) {
     return DISCOUNT_REJECTION.ALREADY_USED
   }
 
@@ -59,6 +54,36 @@ export const resolveDiscountRejection = ({
   }
 
   return undefined
+}
+
+export const resolveAppliedCheckoutDiscount = ({
+  itemsSubtotal,
+  now,
+  row,
+  shippingTotal,
+}: ResolveAppliedCheckoutDiscountInput): Discount["applied"] | undefined => {
+  if (row === undefined) {
+    return undefined
+  }
+
+  const rejection = resolveDiscountRejection({ itemsSubtotal, now, row })
+  if (rejection !== undefined) {
+    console.info(`Discount ${row.code} not applied to checkout: ${rejection}.`)
+
+    return undefined
+  }
+
+  const amountMinorUnits = calculateDiscountAmount({ itemsSubtotal, row, shippingTotal })
+  if (amountMinorUnits <= NO_AMOUNT) {
+    return undefined
+  }
+
+  return {
+    amountMinorUnits,
+    code: row.code,
+    discountId: row.id,
+    type: row.type,
+  }
 }
 
 export const resolveDiscountStatus = (row: DiscountStatusRow, now: Date = new Date()): DiscountStatus => {
@@ -90,11 +115,17 @@ interface CalculateDiscountAmountInput {
 interface ResolveRejectionInput {
   readonly itemsSubtotal: number
   readonly now: Date
-  readonly redeemedByCustomer: number
   readonly row: Pick<
-    Discount["select"],
-    "endsAt" | "isActive" | "minOrderTotal" | "perCustomerLimit" | "startsAt" | "usageCount" | "usageLimit"
+    Discount["selectForCustomer"],
+    "endsAt" | "isActive" | "minOrderTotal" | "perCustomerLimit" | "redeemedByCustomer" | "startsAt" | "usageCount" | "usageLimit"
   >
+}
+
+interface ResolveAppliedCheckoutDiscountInput {
+  readonly itemsSubtotal: number
+  readonly now: Date
+  readonly row: Discount["selectForCustomer"] | undefined
+  readonly shippingTotal: number
 }
 
 type DiscountStatusRow = Pick<Discount["select"], "endsAt" | "isActive" | "startsAt" | "usageCount" | "usageLimit">

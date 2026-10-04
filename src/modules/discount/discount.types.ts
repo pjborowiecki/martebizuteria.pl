@@ -8,6 +8,10 @@ interface AppliedDiscount {
   readonly type: DiscountType
 }
 
+interface CustomerRedemptions {
+  readonly redeemedByCustomer: number
+}
+
 interface DiscountValidationResult {
   readonly applied?: AppliedDiscount | undefined
   readonly rejection?: DiscountRejection | undefined
@@ -65,5 +69,6 @@ export interface Discount {
   insert: typeof discount.$inferInsert
   redemptionInsert: typeof discountRedemption.$inferInsert
   select: typeof discount.$inferSelect
+  selectForCustomer: typeof discount.$inferSelect & CustomerRedemptions
   validation: DiscountValidationResult
 }
