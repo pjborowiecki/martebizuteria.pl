@@ -1,5 +1,4 @@
-import { type SQL, and, asc, desc, eq, inArray, max, ne, or, sql } from "drizzle-orm"
-import { type SQLiteColumn, type SQLiteTable } from "drizzle-orm/sqlite-core"
+import { type SQL, type SQLWrapper, and, asc, desc, eq, inArray, max, ne, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -10,6 +9,8 @@ import { type ListPaginationParams, sortRowsByIdOrder } from "~/src/modules/_cor
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
+import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
+import { storefrontCollectionByHandleWhere } from "~/src/modules/product-collection/product-collection.server"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 import { buildAdminProductSearchCondition } from "~/src/modules/product/product.admin-list-search.server"
 import { type AdminProductsListSort, adminProductsListSortRequiresVariantStats } from "~/src/modules/product/product.admin-list-sort"
@@ -18,7 +19,6 @@ import {
   PRODUCT_INVENTORY_LEVEL,
   PRODUCT_LOW_STOCK_THRESHOLD,
   PRODUCT_STATUS,
-  PRODUCT_STOREFRONT_LIST_LIMIT,
   PRODUCT_TABLE_COLUMN_ID,
   type ProductInventoryLevel,
   type ProductStatus,
@@ -91,18 +91,6 @@ export const getProductsWithInventoryByHandles = (handles: readonly string[]) =>
         with: {
           inventory: true,
         },
-      },
-    },
-  })
-
-export const getPublishedProductsInStock = () =>
-  db.query.product.findMany({
-    limit: PRODUCT_STOREFRONT_LIST_LIMIT,
-    orderBy: (products, { asc: ascOrder, desc: descOrder }) => [ascOrder(products.rank), descOrder(products.createdAt)],
-    where: publishedInStockWhere(),
-    with: {
-      variants: {
-        columns: storefrontListVariantColumns,
       },
     },
   })
@@ -517,108 +505,52 @@ export const getAdminProductsFilteredList = async (params: AdminProductsExportLi
   return rows
 }
 
-type PublishedProductListRow = Awaited<ReturnType<typeof getPublishedProductsInStock>>[number]
-
-interface PublishedProductsPage {
-  readonly items: PublishedProductListRow[]
-  readonly total: number
-}
-
-const getPublishedProductsPageInRelation = async (
-  relation: {
-    productId: SQLiteColumn
-    table: SQLiteTable
-  },
-  scopeCondition: SQL,
-  params: ListPaginationParams,
-): Promise<PublishedProductsPage> => {
-  const whereClause = publishedInStockWhere(scopeCondition)
-  const [countRow] = await db
-    .select({
-      count: sql<number>`count(distinct ${product.id})`,
-    })
-    .from(product)
-    .innerJoin(relation.table, eq(relation.productId, product.id))
-    .where(whereClause)
-  const productIdRows = await db
-    .select({
-      productId: product.id,
-    })
-    .from(product)
-    .innerJoin(relation.table, eq(relation.productId, product.id))
-    .where(whereClause)
-    .groupBy(product.id)
-    .orderBy(asc(product.rank), desc(product.createdAt))
-    .limit(params.limit)
-    .offset(params.offset)
-  const total = countRow?.count ?? 0
-  const productIds = productIdRows.map((row) => row.productId)
-  if (productIds.length === 0) {
-    return {
-      items: [],
-      total,
-    }
-  }
-
-  return {
-    items: sortRowsByIdOrder(
-      await db.query.product.findMany({
-        where: inJsonList(product.id, productIds),
-        with: {
-          variants: {
-            columns: storefrontListVariantColumns,
-          },
-        },
-      }),
-      productIds,
-    ),
-    total,
-  }
-}
-
-export const getPublishedProductsByCategoryIds = (
-  categoryIds: readonly string[],
-  params: ListPaginationParams,
-): Promise<PublishedProductsPage> =>
-  categoryIds.length === 0
-    ? Promise.resolve({
-        items: [],
-        total: 0,
-      })
-    : getPublishedProductsPageInRelation(
-        {
-          productId: categoryOnProduct.productId,
-          table: categoryOnProduct,
-        },
-        inJsonList(categoryOnProduct.categoryId, categoryIds),
-        params,
-      )
-
-export const getPublishedProductsByCollectionId = (collectionId: string, params: ListPaginationParams): Promise<PublishedProductsPage> =>
-  getPublishedProductsPageInRelation(
-    {
-      productId: collectionOnProduct.productId,
-      table: collectionOnProduct,
-    },
-    eq(collectionOnProduct.collectionId, collectionId),
-    params,
-  )
-
-export const getPublishedRelatedProducts = (categoryId: string, excludeProductId: string) => {
-  const productIdsInCategory = db
-    .select({
-      id: categoryOnProduct.productId,
-    })
-    .from(categoryOnProduct)
-    .where(eq(categoryOnProduct.categoryId, categoryId))
-  return db.query.product.findMany({
-    limit: RELATED_PRODUCTS_LIMIT,
+const getPublishedProductsAmong = (productIds: SQLWrapper, params: ListPaginationParams) =>
+  db.query.product.findMany({
+    limit: params.limit,
+    offset: params.offset,
     orderBy: (products, { asc: ascOrder, desc: descOrder }) => [ascOrder(products.rank), descOrder(products.createdAt)],
-    where: publishedInStockWhere(ne(product.id, excludeProductId), inArray(product.id, productIdsInCategory)),
+    where: publishedInStockWhere(inArray(product.id, productIds)),
     with: {
       variants: {
         columns: storefrontListVariantColumns,
       },
     },
+  })
+
+export const getPublishedProductsByCategoryIds = (categoryIds: readonly string[], params: ListPaginationParams) => {
+  const productIdsInCategories = db
+    .select({
+      id: categoryOnProduct.productId,
+    })
+    .from(categoryOnProduct)
+    .where(inJsonList(categoryOnProduct.categoryId, categoryIds))
+
+  return getPublishedProductsAmong(productIdsInCategories, params)
+}
+
+export const getPublishedProductsByCollectionHandle = (handle: string, params: ListPaginationParams) => {
+  const productIdsInCollection = db
+    .select({
+      id: collectionOnProduct.productId,
+    })
+    .from(collectionOnProduct)
+    .innerJoin(productCollection, eq(productCollection.id, collectionOnProduct.collectionId))
+    .where(storefrontCollectionByHandleWhere(handle))
+
+  return getPublishedProductsAmong(productIdsInCollection, params)
+}
+
+export const getPublishedRelatedProducts = (categoryId: string, excludeProductId: string) => {
+  const otherProductIdsInCategory = db
+    .select({
+      id: categoryOnProduct.productId,
+    })
+    .from(categoryOnProduct)
+    .where(and(eq(categoryOnProduct.categoryId, categoryId), ne(categoryOnProduct.productId, excludeProductId)))
+
+  return getPublishedProductsAmong(otherProductIdsInCategory, {
+    limit: RELATED_PRODUCTS_LIMIT,
+    offset: 0,
   })
 }

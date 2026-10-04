@@ -30,7 +30,6 @@ const validated = vi.hoisted((): { parse?: (input: unknown) => unknown } => ({})
 
 const access = vi.hoisted(() => ({
   auditRows: vi.fn(),
-  collectionFindFirst: vi.fn(),
   orderItems: vi.fn(),
   orderNumbers: vi.fn(),
   orderRows: vi.fn(),
@@ -44,9 +43,6 @@ const access = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
-  db: { query: { productCollection: { findFirst: access.collectionFindFirst } } },
-}))
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) => `cdn/${path ?? "placeholder"}` }))
 vi.mock("~/src/modules/customer-account/customer-account.accessors.server", () => ({
   getCustomerActivityAuditRows: access.auditRows,
@@ -60,7 +56,7 @@ vi.mock("~/src/modules/customer-account/customer-account.accessors.server", () =
 vi.mock("~/src/modules/wishlist/wishlist.accessors", () => ({ countWishlistItems: access.wishlistCount }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
   getPublishedProductsByCategoryIds: access.publishedProductsByCategories,
-  getPublishedProductsByCollectionId: access.publishedProducts,
+  getPublishedProductsByCollectionHandle: access.publishedProducts,
 }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById: access.userById }))
 vi.mock("@tanstack/react-start", () => ({
@@ -105,16 +101,15 @@ describe("getCustomerOverview", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     access.auditRows.mockResolvedValue([])
-    access.collectionFindFirst.mockResolvedValue(undefined)
     access.orderItems.mockResolvedValue([])
     access.orderNumbers.mockResolvedValue([])
     access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([])
-    access.publishedProducts.mockResolvedValue({ items: [] })
+    access.publishedProducts.mockResolvedValue([])
     access.spendStats.mockResolvedValue({ orderCount: 0, totalSpent: 0 })
     access.purchasedCategoryIds.mockResolvedValue([])
     access.purchasedProductIds.mockResolvedValue([])
-    access.publishedProductsByCategories.mockResolvedValue({ items: [] })
+    access.publishedProductsByCategories.mockResolvedValue([])
     access.userById.mockResolvedValue(undefined)
   })
 
@@ -220,32 +215,29 @@ describe("getCustomerOverview recommendations", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     access.auditRows.mockResolvedValue([])
-    access.collectionFindFirst.mockResolvedValue(undefined)
     access.orderItems.mockResolvedValue([])
     access.orderNumbers.mockResolvedValue([])
     access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([])
-    access.publishedProducts.mockResolvedValue({ items: [] })
+    access.publishedProducts.mockResolvedValue([])
     access.spendStats.mockResolvedValue({ orderCount: 0, totalSpent: 0 })
     access.purchasedCategoryIds.mockResolvedValue([])
     access.purchasedProductIds.mockResolvedValue([])
-    access.publishedProductsByCategories.mockResolvedValue({ items: [] })
+    access.publishedProductsByCategories.mockResolvedValue([])
     access.userById.mockResolvedValue(undefined)
   })
 
   it("recommends from the categories the customer has bought from, and says so", async () => {
     access.purchasedCategoryIds.mockResolvedValue(["category-rings"])
-    access.publishedProductsByCategories.mockResolvedValue({
-      items: [
-        {
-          handle: "silver-ring",
-          id: "product-1",
-          thumbnail: null,
-          titles: { "en-US": "Silver ring", "pl-PL": "Srebrny" },
-          variants: [{ price: 120_000 }],
-        },
-      ],
-    })
+    access.publishedProductsByCategories.mockResolvedValue([
+      {
+        handle: "silver-ring",
+        id: "product-1",
+        thumbnail: null,
+        titles: { "en-US": "Silver ring", "pl-PL": "Srebrny" },
+        variants: [{ price: 120_000 }],
+      },
+    ])
 
     const result = await overview()
 
@@ -258,12 +250,10 @@ describe("getCustomerOverview recommendations", () => {
   it("leaves out a product the customer already owns", async () => {
     access.purchasedCategoryIds.mockResolvedValue(["category-rings"])
     access.purchasedProductIds.mockResolvedValue(["product-1"])
-    access.publishedProductsByCategories.mockResolvedValue({
-      items: [
-        { handle: "silver-ring", id: "product-1", thumbnail: null, titles: { "en-US": "Owned" }, variants: [] },
-        { handle: "gold-ring", id: "product-2", thumbnail: null, titles: { "en-US": "New" }, variants: [] },
-      ],
-    })
+    access.publishedProductsByCategories.mockResolvedValue([
+      { handle: "silver-ring", id: "product-1", thumbnail: null, titles: { "en-US": "Owned" }, variants: [] },
+      { handle: "gold-ring", id: "product-2", thumbnail: null, titles: { "en-US": "New" }, variants: [] },
+    ])
 
     const result = await overview()
 
@@ -273,13 +263,12 @@ describe("getCustomerOverview recommendations", () => {
   it("falls back to new arrivals when every product in those categories is already owned", async () => {
     access.purchasedCategoryIds.mockResolvedValue(["category-rings"])
     access.purchasedProductIds.mockResolvedValue(["product-1"])
-    access.publishedProductsByCategories.mockResolvedValue({
-      items: [{ handle: "silver-ring", id: "product-1", thumbnail: null, titles: { "en-US": "Owned" }, variants: [] }],
-    })
-    access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
-    access.publishedProducts.mockResolvedValue({
-      items: [{ handle: "new-arrival", id: "product-9", thumbnail: null, titles: { "en-US": "New arrival" }, variants: [] }],
-    })
+    access.publishedProductsByCategories.mockResolvedValue([
+      { handle: "silver-ring", id: "product-1", thumbnail: null, titles: { "en-US": "Owned" }, variants: [] },
+    ])
+    access.publishedProducts.mockResolvedValue([
+      { handle: "new-arrival", id: "product-9", thumbnail: null, titles: { "en-US": "New arrival" }, variants: [] },
+    ])
 
     const result = await overview()
 
@@ -288,10 +277,9 @@ describe("getCustomerOverview recommendations", () => {
   })
 
   it("falls back to new arrivals for a customer who has never ordered", async () => {
-    access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
-    access.publishedProducts.mockResolvedValue({
-      items: [{ handle: "new-arrival", id: "product-9", thumbnail: null, titles: { "en-US": "New arrival" }, variants: [] }],
-    })
+    access.publishedProducts.mockResolvedValue([
+      { handle: "new-arrival", id: "product-9", thumbnail: null, titles: { "en-US": "New arrival" }, variants: [] },
+    ])
 
     const result = await overview()
 
@@ -299,30 +287,27 @@ describe("getCustomerOverview recommendations", () => {
     expect(access.publishedProductsByCategories).not.toHaveBeenCalled()
   })
 
-  it("recommends nothing while the new arrivals collection is missing", async () => {
+  it("reports new arrivals as the source even when that read comes back empty", async () => {
     const result = await overview()
 
     expect(result.recommendations).toStrictEqual([])
-    expect(access.publishedProducts).not.toHaveBeenCalled()
+    expect(result.recommendationsSource).toBe("newArrivals")
   })
 
   it("recommends three products from the new arrivals collection", async () => {
-    access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
-    access.publishedProducts.mockResolvedValue({
-      items: [
-        {
-          handle: "silver-ring",
-          id: "product-1",
-          thumbnail: "products/ring.webp",
-          titles: { "en-US": "Silver ring", "pl-PL": "Srebrny pierscionek" },
-          variants: [{ price: 120_000 }],
-        },
-      ],
-    })
+    access.publishedProducts.mockResolvedValue([
+      {
+        handle: "silver-ring",
+        id: "product-1",
+        thumbnail: "products/ring.webp",
+        titles: { "en-US": "Silver ring", "pl-PL": "Srebrny pierscionek" },
+        variants: [{ price: 120_000 }],
+      },
+    ])
 
     const result = await overview()
 
-    expect(access.publishedProducts).toHaveBeenCalledWith("collection-1", { limit: 3, offset: 0 })
+    expect(access.publishedProducts).toHaveBeenCalledExactlyOnceWith(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, { limit: 3, offset: 0 })
     expect(result.recommendations).toStrictEqual([
       {
         handle: "silver-ring",
@@ -335,12 +320,9 @@ describe("getCustomerOverview recommendations", () => {
   })
 
   it("recommends a product without a variant price rather than hiding it", async () => {
-    access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
-    access.publishedProducts.mockResolvedValue({
-      items: [
-        { handle: "silver-ring", id: "product-1", thumbnail: null, titles: { "en-US": "Silver ring", "pl-PL": "Srebrny" }, variants: [] },
-      ],
-    })
+    access.publishedProducts.mockResolvedValue([
+      { handle: "silver-ring", id: "product-1", thumbnail: null, titles: { "en-US": "Silver ring", "pl-PL": "Srebrny" }, variants: [] },
+    ])
 
     const result = await overview()
 
@@ -348,54 +330,19 @@ describe("getCustomerOverview recommendations", () => {
   })
 
   it("names the recommendation in the requested locale", async () => {
-    access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
-    access.publishedProducts.mockResolvedValue({
-      items: [
-        {
-          handle: "silver-ring",
-          id: "product-1",
-          thumbnail: null,
-          titles: { "en-US": "Silver ring", "pl-PL": "Srebrny pierscionek" },
-          variants: [],
-        },
-      ],
-    })
+    access.publishedProducts.mockResolvedValue([
+      {
+        handle: "silver-ring",
+        id: "product-1",
+        thumbnail: null,
+        titles: { "en-US": "Silver ring", "pl-PL": "Srebrny pierscionek" },
+        variants: [],
+      },
+    ])
 
     const result = await getCustomerOverview({ data: { locale: "pl-PL" } })
 
     expect(result.recommendations[0]?.name).toBe("Srebrny pierscionek")
-  })
-})
-
-describe("getCustomerOverview recommendation collection", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    access.auditRows.mockResolvedValue([])
-    access.orderItems.mockResolvedValue([])
-    access.orderNumbers.mockResolvedValue([])
-    access.wishlistCount.mockResolvedValue(0)
-    access.orderRows.mockResolvedValue([])
-    access.publishedProducts.mockResolvedValue({ items: [] })
-    access.spendStats.mockResolvedValue({ orderCount: 0, totalSpent: 0 })
-    access.purchasedCategoryIds.mockResolvedValue([])
-    access.purchasedProductIds.mockResolvedValue([])
-    access.publishedProductsByCategories.mockResolvedValue({ items: [] })
-    access.userById.mockResolvedValue(undefined)
-  })
-
-  it("looks the recommendation collection up by the new arrivals handle", async () => {
-    const lookup: { current?: unknown } = {}
-    access.collectionFindFirst.mockImplementation(
-      (options: { where: (columns: { handle: string }, operators: { eq: (column: unknown, value: unknown) => unknown }) => unknown }) => {
-        lookup.current = options.where({ handle: "product_collection.handle" }, { eq: (column, value) => ({ column, value }) })
-
-        return Promise.resolve(undefined)
-      },
-    )
-
-    await overview()
-
-    expect(lookup.current).toStrictEqual({ column: "product_collection.handle", value: LANDING_NEW_ARRIVALS_COLLECTION_HANDLE })
   })
 })
 
@@ -417,18 +364,17 @@ describe("getCustomerOverview partial account data", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     access.auditRows.mockResolvedValue([])
-    access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
     access.orderItems.mockResolvedValue([])
     access.orderNumbers.mockResolvedValue([])
     access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([orderRow()])
-    access.publishedProducts.mockResolvedValue({
-      items: [{ handle: "ring", id: "product-1", thumbnail: null, titles: { "en-US": "Ring", "pl-PL": "Pierścionek" }, variants: [] }],
-    })
+    access.publishedProducts.mockResolvedValue([
+      { handle: "ring", id: "product-1", thumbnail: null, titles: { "en-US": "Ring", "pl-PL": "Pierścionek" }, variants: [] },
+    ])
     access.spendStats.mockResolvedValue({ orderCount: 0, totalSpent: 0 })
     access.purchasedCategoryIds.mockResolvedValue([])
     access.purchasedProductIds.mockResolvedValue([])
-    access.publishedProductsByCategories.mockResolvedValue({ items: [] })
+    access.publishedProductsByCategories.mockResolvedValue([])
     access.userById.mockResolvedValue(undefined)
   })
 
@@ -463,22 +409,19 @@ describe("getCustomerOverviewQuery fetching", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     access.auditRows.mockResolvedValue([])
-    access.collectionFindFirst.mockResolvedValue({ id: "collection-1" })
     access.orderItems.mockResolvedValue([])
     access.orderNumbers.mockResolvedValue([])
     access.wishlistCount.mockResolvedValue(0)
     access.orderRows.mockResolvedValue([])
-    access.publishedProducts.mockResolvedValue({
-      items: [
-        {
-          handle: "silver-ring",
-          id: "product-1",
-          thumbnail: null,
-          titles: { "en-US": "Silver ring", "pl-PL": "Srebrny pierscionek" },
-          variants: [{ price: 120_000 }],
-        },
-      ],
-    })
+    access.publishedProducts.mockResolvedValue([
+      {
+        handle: "silver-ring",
+        id: "product-1",
+        thumbnail: null,
+        titles: { "en-US": "Silver ring", "pl-PL": "Srebrny pierscionek" },
+        variants: [{ price: 120_000 }],
+      },
+    ])
     access.spendStats.mockResolvedValue({ orderCount: 2, totalSpent: 24_000 })
     access.userById.mockResolvedValue(undefined)
   })

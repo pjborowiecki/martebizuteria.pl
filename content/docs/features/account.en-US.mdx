@@ -71,25 +71,24 @@ Every use case in `src/modules/customer-account/use-cases/` uses `authorized()` 
 
 ## Overview
 
-`getCustomerOverview` first reads the ids and numbers of the customer's latest orders, then fans out six queries in parallel, then reads the items of the recent orders and finally builds the recommendations:
+`getCustomerOverview` first reads the ids and numbers of the customer's latest orders, then fans out five queries in parallel, then reads the items of the recent orders and finally builds the recommendations:
 
-| Source                                                     | Feeds                                         |
-| ---------------------------------------------------------- | --------------------------------------------- |
-| `getCustomerOrderNumbers(userId)`                          | The ids and numbers of the latest orders      |
-| `getCustomerOrderRows(userId, { limit: 3 })`               | The recent-orders list                        |
-| `getCustomerSpendStats(userId)`                            | `totalOrders`, `totalSpentMinorUnits`         |
-| `getCustomerActivityAuditRows(userId, orderIds)`           | The activity feed                             |
-| `getUserById(userId)`                                      | `memberSinceYear` from `createdAt`            |
-| `countWishlistItems(userId)`                               | `wishlistCount`                               |
-| The `nowosci` collection                                   | The new-arrivals fallback for recommendations |
-| `getOrderItemsForOrders(recentOrderIds)`                   | The items shown under each recent order       |
-| `buildCustomerRecommendations(userId, collection, locale)` | `recommendations`, `recommendationsSource`    |
+| Source                                           | Feeds                                      |
+| ------------------------------------------------ | ------------------------------------------ |
+| `getCustomerOrderNumbers(userId)`                | The ids and numbers of the latest orders   |
+| `getCustomerOrderRows(userId, { limit: 3 })`     | The recent-orders list                     |
+| `getCustomerSpendStats(userId)`                  | `totalOrders`, `totalSpentMinorUnits`      |
+| `getCustomerActivityAuditRows(userId, orderIds)` | The activity feed                          |
+| `getUserById(userId)`                            | `memberSinceYear` from `createdAt`         |
+| `countWishlistItems(userId)`                     | `wishlistCount`                            |
+| `getOrderItemsForOrders(recentOrderIds)`         | The items shown under each recent order    |
+| `buildCustomerRecommendations(userId, locale)`   | `recommendations`, `recommendationsSource` |
 
 `getCustomerSpendStats` counts and sums only orders in `processing` or `completed` status. The limits are in `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_ORDERS_LIMIT = 50` for the order numbers, `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`, `CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2`.
 
 Two things to know:
 
-- **Recommendations follow the customer's orders.** `buildCustomerRecommendations` takes the two categories that appear most in the customer's `processing` and `completed` orders, reads published products from them and drops every product the customer has already ordered. If any are left, the first three come back with `recommendationsSource: "orders"`. Otherwise it falls back to the first three published products of the `nowosci` collection, the same collection the landing page's new arrivals uses (`LANDING_NEW_ARRIVALS_COLLECTION_HANDLE`), with `recommendationsSource: "newArrivals"`, or to an empty list when that collection does not exist. The page picks the grid's heading and description from the source.
+- **Recommendations follow the customer's orders.** `buildCustomerRecommendations` takes the two categories that appear most in the customer's `processing` and `completed` orders, reads their published, in-stock products with `getPublishedProductsByCategoryIds` and drops every product the customer has already ordered. If any are left, the first three come back with `recommendationsSource: "orders"`. Otherwise it falls back to the first three published, in-stock products of the `nowosci` collection with `recommendationsSource: "newArrivals"`. That fallback is the landing page's new-arrivals read, `getPublishedProductsByCollectionHandle(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, …)`, so it follows the landing page's rules and returns an empty list while no active collection carries that handle. Each of the two reads is a single D1 statement: a subquery selects the members of those categories or of that collection, and the outer query reads the published, in-stock products among them with their variants. The page picks the grid's heading and description from the source.
 - **`wishlistCount` is real.** `countWishlistItems` counts the customer's `wishlist_item` rows, the same rows `/account/wishlist` lists, so a product that is no longer published still counts.
 
 The activity feed is built from the audit log: `getCustomerActivityAuditRows` reads `audit_log` rows whose `resourceId` is the user or one of the orders from `getCustomerOrderNumbers`, limited to `auth.login`, `auth.login_failed`, `auth.logout`, `customer.cart_item_added`, `order.placed`, `order.shipped` and `order.released`. `mapAuditLogToActivityItem` turns each row into `{ actionKey, params, createdAt }`, putting the order number into `params` for order actions and dropping any row it cannot map. The page maps `actionKey` to an icon through the local `ACTIVITY_ICONS` map and formats the timestamp with `formatRelativeFromNow`.

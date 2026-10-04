@@ -120,11 +120,13 @@ Specifications come from the product attribute system: `attribute_on_product` ro
 
 ## Related products
 
-`getRelatedProducts` takes `{ categoryId, excludeProductId, locale }` and returns `[]` when `categoryId` is null or undefined. Otherwise `getPublishedRelatedProducts` in `product.accessors.ts` selects up to `RELATED_PRODUCTS_LIMIT = 3` products from the same category, excluding the current one, behind `publishedInStockWhere`, ordered by `rank` then `createdAt`:
+`getRelatedProducts` takes `{ categoryId, excludeProductId, locale }` and returns `[]` when `categoryId` is null or undefined. Otherwise `getPublishedRelatedProducts` in `product.accessors.ts` selects the category's other products in a subquery:
 
 ```ts
-where: publishedInStockWhere(ne(product.id, excludeProductId), inArray(product.id, productIdsInCategory)),
+.where(and(eq(categoryOnProduct.categoryId, categoryId), ne(categoryOnProduct.productId, excludeProductId)))
 ```
+
+It hands them to the same storefront list read as the landing page's new arrivals, which keeps them behind `publishedInStockWhere`, orders them by `rank` and then newest first, and returns up to `RELATED_PRODUCTS_LIMIT = 3` with their variants in one D1 statement.
 
 The route maps the rows into the shape `ProductRelatedSection` needs, resolving titles for the locale and taking the first variant's `id`, `price` and `title`.
 

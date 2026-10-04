@@ -45,22 +45,16 @@ Oba zapytania katalogowe są wykonywane z `staleTime: "static"`, więc render se
 
 ## Nowości
 
-`getNewArrivals` to funkcja serwerowa `GET` wyłącznie z middleware `withRequest` — jest publiczna. Rozwiązuje jedną kolekcję po handle i listuje jej opublikowane, dostępne produkty:
+`getNewArrivals` to funkcja serwerowa `GET` wyłącznie z middleware `withRequest` — jest publiczna. Listuje opublikowane, dostępne produkty jednej kolekcji wskazanej przez handle:
 
 ```ts
-const collection = await getStorefrontCollectionByHandleQuery.execute({
-  handle: LANDING_NEW_ARRIVALS_COLLECTION_HANDLE,
-})
-
-if (collection === undefined) {
-  return []
-}
-
-const { items } = await getPublishedProductsByCollectionId(collection.id, {
+getPublishedProductsByCollectionHandle(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, {
   limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
   offset: 0,
 })
 ```
+
+`getPublishedProductsByCollectionHandle` z `src/modules/product/product.accessors.ts` odczytuje całą sekcję jedną instrukcją D1. Jej podzapytanie wybiera produkty należące do kolekcji o tym handle, dopasowanej przez `storefrontCollectionByHandleWhere` z `src/modules/product-collection/product-collection.server.ts`, czyli według tej samej reguły co `/collections/$handle`, więc liczy się tylko aktywna kolekcja. Zapytanie zewnętrzne zostawia opublikowane, dostępne produkty, porządkuje je według `rank`, a przy równym `rank` od najnowszych, i odczytuje ich warianty.
 
 Obie stałe leżą w `src/modules/product/product.constants.ts`:
 

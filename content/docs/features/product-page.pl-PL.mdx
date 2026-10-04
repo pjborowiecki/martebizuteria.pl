@@ -120,11 +120,13 @@ Specyfikacje pochodzą z systemu atrybutów produktu: wiersze `attribute_on_prod
 
 ## Produkty powiązane
 
-`getRelatedProducts` przyjmuje `{ categoryId, excludeProductId, locale }` i zwraca `[]`, gdy `categoryId` jest `null` albo `undefined`. W przeciwnym razie `getPublishedRelatedProducts` w `product.accessors.ts` wybiera do `RELATED_PRODUCTS_LIMIT = 3` produktów z tej samej kategorii, z wykluczeniem bieżącego, za bramką `publishedInStockWhere`, uporządkowanych po `rank`, a potem `createdAt`:
+`getRelatedProducts` przyjmuje `{ categoryId, excludeProductId, locale }` i zwraca `[]`, gdy `categoryId` jest `null` albo `undefined`. W przeciwnym razie `getPublishedRelatedProducts` w `product.accessors.ts` wybiera w podzapytaniu pozostałe produkty tej samej kategorii:
 
 ```ts
-where: publishedInStockWhere(ne(product.id, excludeProductId), inArray(product.id, productIdsInCategory)),
+.where(and(eq(categoryOnProduct.categoryId, categoryId), ne(categoryOnProduct.productId, excludeProductId)))
 ```
+
+Przekazuje je do tego samego odczytu listy witryny co nowości na stronie głównej, który trzyma je za bramką `publishedInStockWhere`, porządkuje według `rank`, a przy równym `rank` od najnowszych, i zwraca do `RELATED_PRODUCTS_LIMIT = 3` produktów razem z wariantami jedną instrukcją D1.
 
 Trasa mapuje wiersze na kształt wymagany przez `ProductRelatedSection`, rozwiązując tytuły dla języka i biorąc `id`, `price` i `title` pierwszego wariantu.
 

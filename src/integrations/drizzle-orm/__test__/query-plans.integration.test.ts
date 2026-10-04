@@ -35,6 +35,8 @@ const { getCustomerActivityAuditRows, getCustomerLoginAuditRows } =
   await import("~/src/modules/customer-account/customer-account.accessors.server")
 const { getAdminSubscribersPage } = await import("~/src/modules/newsletter/newsletter.accessors")
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
+const { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle, getPublishedRelatedProducts } =
+  await import("~/src/modules/product/product.accessors")
 const { getCustomerAuditTimelineQuery } = await import("~/src/modules/user/user.accessors")
 
 applyMigrationHistory(sqlite)
@@ -128,6 +130,27 @@ describe("hot reads", () => {
   it("count recent storefront page views from the index alone, without walking older ones", async () => {
     await expect(planSteps(() => pageViewsQuery(new Date("2026-09-01T00:00:00.000Z")))).resolves.toContain(
       "SEARCH audit_log USING COVERING INDEX audit_log_action_createdAt_idx (action=? AND created_at>?)",
+    )
+  })
+
+  it("list a collection's published products by its handle and membership instead of scanning every collection", async () => {
+    await expect(planSteps(() => getPublishedProductsByCollectionHandle("nowosci", { limit: 9, offset: 0 }))).resolves.toStrictEqual(
+      expect.arrayContaining([
+        "SEARCH product_collection USING INDEX product_collection_handle_unique (handle=?)",
+        "SEARCH collection_on_product USING INDEX collection_on_product_collection_rank_idx (collection_id=?)",
+      ]),
+    )
+  })
+
+  it("list the published products of several categories by membership instead of scanning every category link", async () => {
+    await expect(
+      planSteps(() => getPublishedProductsByCategoryIds(["category-1", "category-2"], { limit: 3, offset: 0 })),
+    ).resolves.toContain("SEARCH category_on_product USING INDEX category_on_product_category_id_idx (category_id=?)")
+  })
+
+  it("list a product's related products by its category's membership instead of scanning every category link", async () => {
+    await expect(planSteps(() => getPublishedRelatedProducts("category-1", "product-1"))).resolves.toContain(
+      "SEARCH category_on_product USING INDEX category_on_product_category_id_idx (category_id=?)",
     )
   })
 

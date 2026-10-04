@@ -1,4 +1,4 @@
-import { and, eq, max, sql } from "drizzle-orm"
+import { type Placeholder, and, eq, max, sql } from "drizzle-orm"
 
 import { type RankUpdate, chunkRankUpdates, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -8,6 +8,9 @@ import { COLLECTION_STATUS } from "~/src/modules/product-collection/product-coll
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
 
 const handlePlaceholder = sql.placeholder("handle")
+
+export const storefrontCollectionByHandleWhere = (handle: string | Placeholder) =>
+  and(eq(productCollection.handle, handle), eq(productCollection.status, COLLECTION_STATUS.ACTIVE))
 
 export const getAdminCollectionsQuery = db.query.productCollection
   .findMany({
@@ -30,7 +33,7 @@ export const getStorefrontCollectionsQuery = db.query.productCollection
 
 export const getStorefrontCollectionByHandleQuery = db.query.productCollection
   .findFirst({
-    where: and(eq(productCollection.handle, handlePlaceholder), eq(productCollection.status, COLLECTION_STATUS.ACTIVE)),
+    where: storefrontCollectionByHandleWhere(handlePlaceholder),
   })
   .prepare()
 

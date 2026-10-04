@@ -31,8 +31,6 @@ export type ProductStatus = (typeof PRODUCT_STATUSES)[number]
 
 export const DEFAULT_PRODUCT_STATUS: ProductStatus = PRODUCT_STATUS.DRAFT
 
-export const PRODUCT_STOREFRONT_LIST_LIMIT = 20
-
 export const PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE = 12
 
 export const PRODUCT_STOREFRONT_FILTERED_MAX = 100

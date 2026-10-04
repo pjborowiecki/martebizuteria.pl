@@ -3,8 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
-import { getStorefrontCollectionByHandleQuery } from "~/src/modules/product-collection/product-collection.server"
-import { getPublishedProductsByCollectionId } from "~/src/modules/product/product.accessors"
+import { getPublishedProductsByCollectionHandle } from "~/src/modules/product/product.accessors"
 import {
   LANDING_NEW_ARRIVALS_COLLECTION_HANDLE,
   LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
@@ -14,22 +13,12 @@ import {
 
 export const getNewArrivals = createServerFn({ method: "GET" })
   .middleware([withRequest])
-  .handler(async () => {
-    const collection = await getStorefrontCollectionByHandleQuery.execute({
-      handle: LANDING_NEW_ARRIVALS_COLLECTION_HANDLE,
-    })
-
-    if (collection === undefined) {
-      return []
-    }
-
-    const { items } = await getPublishedProductsByCollectionId(collection.id, {
+  .handler(() =>
+    getPublishedProductsByCollectionHandle(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, {
       limit: LANDING_NEW_ARRIVALS_PRODUCT_LIMIT,
       offset: 0,
-    })
-
-    return items
-  })
+    }),
+  )
 
 export const getNewArrivalsQuery = () =>
   queryOptions({
