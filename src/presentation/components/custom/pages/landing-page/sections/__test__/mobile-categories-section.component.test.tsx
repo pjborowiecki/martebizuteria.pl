@@ -80,6 +80,23 @@ describe("MobileCategoriesSection", () => {
     expect(screen.getByRole("link", { name: "Discover Earrings" })).toHaveAttribute("href", "/categories/kolczyki")
   })
 
+  it("stacks the categories on wide screens too for shoppers who ask for reduced motion", async () => {
+    const { container } = renderWithProviders(<MobileCategoriesSection />)
+
+    await screen.findByRole("heading", { level: 2, name: "Space of choice" })
+
+    expect(container.querySelector("section")).toHaveClass("lg:hidden", "motion-reduce:lg:block")
+  })
+
+  it("sets the categories three to a row on wide screens and fetches each picture for a third of the screen", async () => {
+    renderWithProviders(<MobileCategoriesSection />)
+
+    const [firstPanel] = await screen.findAllByRole("article")
+
+    expect(firstPanel?.parentElement).toHaveClass("lg:grid", "lg:grid-cols-3", "lg:gap-6", "lg:space-y-0")
+    expect(screen.getByAltText("Refined simplicity")).toHaveAttribute("sizes", "(min-width: 1024px) 33vw, 100vw")
+  })
+
   it("labels every panel image with the panel heading", async () => {
     renderWithProviders(<MobileCategoriesSection />)
 

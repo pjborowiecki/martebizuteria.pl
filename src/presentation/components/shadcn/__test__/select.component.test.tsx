@@ -6,15 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { SmoothScroll } from "~/src/presentation/components/custom/smooth-scroll"
 
 vi.mock("~/src/integrations/gsap/gsap.config", () => ({
-  ScrollTrigger: {
-    addEventListener: vi.fn(),
-    refresh: vi.fn(),
-    removeEventListener: vi.fn(),
-    scrollerProxy: vi.fn(),
-    update: vi.fn(),
-  },
+  ScrollTrigger: { update: vi.fn() },
   gsap: {
-    delayedCall: vi.fn(),
     registerPlugin: vi.fn(),
     ticker: { add: vi.fn(), lagSmoothing: vi.fn(), remove: vi.fn() },
   },

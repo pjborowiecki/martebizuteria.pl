@@ -3,12 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { getLenisInstance } from "~/src/integrations/lenis/lenis.instance"
 
-interface ScrollerProxyConfig {
-  getBoundingClientRect: () => { height: number; left: number; top: number; width: number }
-  pinType: string
-  scrollTop: (value?: number) => number
-}
-
 interface FakeLenis {
   readonly destroy: ReturnType<typeof vi.fn>
   isScrolling: false | "native" | "smooth"
@@ -16,7 +10,6 @@ interface FakeLenis {
   readonly on: (event: string, listener: () => void) => void
   readonly options: Record<string, unknown>
   readonly raf: ReturnType<typeof vi.fn>
-  readonly resize: ReturnType<typeof vi.fn>
   readonly scroll: number
   readonly scrollTo: ReturnType<typeof vi.fn>
   targetScroll: number
@@ -35,8 +28,6 @@ const { FakeLenisStub, lenisInstances, scrollTrigger, ticker, useLenisRouterScro
     public readonly options: Record<string, unknown>
 
     public readonly raf = vi.fn()
-
-    public readonly resize = vi.fn()
 
     public readonly scroll = 420
 
@@ -60,8 +51,7 @@ const { FakeLenisStub, lenisInstances, scrollTrigger, ticker, useLenisRouterScro
     scrollTrigger: {
       addEventListener: vi.fn<(event: string, listener: () => void) => void>(),
       refresh: vi.fn(),
-      removeEventListener: vi.fn<(event: string, listener: () => void) => void>(),
-      scrollerProxy: vi.fn<(element: unknown, config: Partial<ScrollerProxyConfig>) => void>(),
+      scrollerProxy: vi.fn(),
       update: vi.fn(),
     },
     ticker: {
@@ -102,15 +92,6 @@ const WHEEL_TARGET = 480
 const startWheelGlide = (instance: FakeLenis): void => {
   instance.isScrolling = "smooth"
   instance.targetScroll = WHEEL_TARGET
-}
-
-const proxyConfig = (): Partial<ScrollerProxyConfig> => {
-  const config = scrollTrigger.scrollerProxy.mock.calls[0]?.[1]
-  if (config === undefined) {
-    throw new Error("SmoothScroll never installed a ScrollTrigger scroller proxy")
-  }
-
-  return config
 }
 
 beforeEach(() => {
@@ -156,36 +137,10 @@ describe("SmoothScroll mounting", () => {
 })
 
 describe("SmoothScroll ScrollTrigger bridge", () => {
-  it("proxies the document element and pins with a transform", () => {
+  it("lets ScrollTrigger read the native scroll that Lenis drives", () => {
     render(<SmoothScroll>content</SmoothScroll>)
 
-    expect(scrollTrigger.scrollerProxy.mock.calls[0]?.[0]).toBe(document.documentElement)
-    expect(proxyConfig().pinType).toBe("transform")
-  })
-
-  it("reports the viewport rectangle from the window", () => {
-    render(<SmoothScroll>content</SmoothScroll>)
-
-    expect(proxyConfig().getBoundingClientRect?.()).toStrictEqual({
-      height: window.innerHeight,
-      left: 0,
-      top: 0,
-      width: document.documentElement.clientWidth,
-    })
-  })
-
-  it("reads the current Lenis offset when ScrollTrigger asks for the position", () => {
-    render(<SmoothScroll>content</SmoothScroll>)
-
-    expect(proxyConfig().scrollTop?.()).toBe(420)
-    expect(lenis().scrollTo).not.toHaveBeenCalled()
-  })
-
-  it("jumps Lenis straight to the position ScrollTrigger sets", () => {
-    render(<SmoothScroll>content</SmoothScroll>)
-    proxyConfig().scrollTop?.(900)
-
-    expect(lenis().scrollTo).toHaveBeenCalledWith(900, { immediate: true })
+    expect(scrollTrigger.scrollerProxy).not.toHaveBeenCalled()
   })
 
   it("pushes every Lenis scroll into ScrollTrigger", () => {
@@ -195,20 +150,16 @@ describe("SmoothScroll ScrollTrigger bridge", () => {
     expect(scrollTrigger.update).toHaveBeenCalledTimes(1)
   })
 
-  it("re-measures Lenis whenever ScrollTrigger refreshes", () => {
+  it("listens for no ScrollTrigger refresh, so a refresh mid-scroll never drops the distance Lenis still has to glide", () => {
     render(<SmoothScroll>content</SmoothScroll>)
-    const [event, listener] = scrollTrigger.addEventListener.mock.calls[0] ?? []
 
-    expect(event).toBe("refresh")
-    listener?.()
-
-    expect(lenis().resize).toHaveBeenCalledTimes(1)
+    expect(scrollTrigger.addEventListener).not.toHaveBeenCalled()
   })
 
-  it("refreshes ScrollTrigger once the first frame has been scheduled", () => {
+  it("forces no ScrollTrigger refresh of its own", () => {
     render(<SmoothScroll>content</SmoothScroll>)
 
-    expect(scrollTrigger.refresh).toHaveBeenCalledTimes(1)
+    expect(scrollTrigger.refresh).not.toHaveBeenCalled()
   })
 })
 
@@ -289,22 +240,6 @@ describe("SmoothScroll teardown", () => {
     unmount()
 
     expect(ticker.remove).toHaveBeenCalledWith(raf)
-  })
-
-  it("removes the refresh listener it added", () => {
-    const { unmount } = render(<SmoothScroll>content</SmoothScroll>)
-    const listener = scrollTrigger.addEventListener.mock.calls[0]?.[1]
-    unmount()
-
-    expect(scrollTrigger.removeEventListener).toHaveBeenCalledWith("refresh", listener)
-  })
-
-  it("clears the scroller proxy so ScrollTrigger falls back to the window", () => {
-    const { unmount } = render(<SmoothScroll>content</SmoothScroll>)
-    unmount()
-
-    expect(scrollTrigger.scrollerProxy).toHaveBeenCalledTimes(2)
-    expect(scrollTrigger.scrollerProxy.mock.calls[1]).toStrictEqual([document.documentElement, {}])
   })
 
   it("stops watching presses", () => {
