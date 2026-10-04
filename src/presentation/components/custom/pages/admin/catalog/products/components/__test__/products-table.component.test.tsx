@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
 import { type Product } from "~/src/modules/product/product.types"
 
 interface SheetProps {
@@ -16,7 +17,7 @@ interface SheetProps {
 }
 
 const captured = vi.hoisted(() => ({
-  gridOptions: [] as { onRowClick: (row: unknown) => void; onRowPointerEnter: (row: unknown) => void }[],
+  gridOptions: [] as { onRowClick: (row: unknown) => void; onRowPointerDown: (row: unknown) => void }[],
   sheetProps: [] as SheetProps[],
 }))
 
@@ -88,7 +89,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/compo
   ProductsVariantKindFilter: stub("variant filter"),
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-data-grid", () => ({
-  useProductsDataGrid: (options: { onRowClick: (row: unknown) => void; onRowPointerEnter: (row: unknown) => void }) => {
+  useProductsDataGrid: (options: { onRowClick: (row: unknown) => void; onRowPointerDown: (row: unknown) => void }) => {
     captured.gridOptions.push(options)
 
     return { persistenceKey: "test.products" }
@@ -239,14 +240,17 @@ describe("ProductsTable sheet", () => {
     expect(screen.queryByTestId("product-sheet")).toBeNull()
   })
 
-  it("prefetches the edit sheet when a row is hovered without opening it", async () => {
-    renderWithProviders(<ProductsTable />)
+  it("prefetches the edit sheet when a row is pressed without opening it", async () => {
+    const { queryClient } = renderWithProviders(<ProductsTable />)
 
     await act(async () => {
-      lastGridOptions().onRowPointerEnter(PRODUCT)
+      lastGridOptions().onRowPointerDown(PRODUCT)
       await Promise.resolve()
     })
 
+    await waitFor(() => {
+      expect(queryClient.getQueryData([...PRODUCT_QUERY_KEYS.ADMIN.BY_HANDLE, PRODUCT.handle])).toStrictEqual({ handle: PRODUCT.handle })
+    })
     expect(screen.queryByTestId("product-sheet")).toBeNull()
   })
 })

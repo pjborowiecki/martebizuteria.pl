@@ -47,10 +47,14 @@ const PRODUCT_COLUMNS = columnHelper.columns([
 export const ProductsGridHarness = ({
   children,
   isLoading = false,
+  onRowClick,
+  onRowPointerDown,
   rows,
 }: Readonly<{
   children: (table: ProductsTable) => ReactNode
   isLoading?: boolean
+  onRowClick?: (row: ProductRow) => void
+  onRowPointerDown?: (row: ProductRow) => void
   rows: readonly ProductRow[]
 }>): JSX.Element => {
   const table = useTable<DataGridFeatures, ProductRow>({
@@ -69,6 +73,8 @@ export const ProductsGridHarness = ({
     },
     hasPreferenceOverrides: false,
     isLoading,
+    onRowClick,
+    onRowPointerDown,
     persistenceKey: PRODUCTS_DATA_GRID_KEY,
     resetPreferences: () => {},
     rowReorder: undefined,

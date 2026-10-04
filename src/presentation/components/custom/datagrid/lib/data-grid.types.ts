@@ -46,7 +46,7 @@ export interface DataGridContextValue<TData extends RowData> {
   readonly columnReorder: ColumnReorderApi
   readonly persistenceKey: string
   readonly onRowClick?: ((row: TData) => void) | undefined
-  readonly onRowPointerEnter?: ((row: TData) => void) | undefined
+  readonly onRowPointerDown?: ((row: TData) => void) | undefined
   readonly hasPreferenceOverrides: boolean
   readonly isLoading: boolean
   readonly resetPreferences: () => void

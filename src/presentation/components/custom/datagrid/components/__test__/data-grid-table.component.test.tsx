@@ -22,12 +22,12 @@ const renderTable = ({
   data = HARNESS_ROWS,
   isLoading = false,
   onRowClick,
-  onRowPointerEnter,
+  onRowPointerDown,
 }: {
   data?: HarnessRow[]
   isLoading?: boolean
   onRowClick?: (row: HarnessRow) => void
-  onRowPointerEnter?: (row: HarnessRow) => void
+  onRowPointerDown?: (row: HarnessRow) => void
 } = {}) =>
   renderWithProviders(
     <DataGridHarness data={data}>
@@ -36,7 +36,7 @@ const renderTable = ({
           columnReorder={columnReorder}
           isLoading={isLoading}
           onRowClick={onRowClick}
-          onRowPointerEnter={onRowPointerEnter}
+          onRowPointerDown={onRowPointerDown}
           persistenceKey="test.products"
           rowReorder={undefined}
           table={table}
@@ -116,13 +116,17 @@ describe("DataGridTable", () => {
     expect(container.querySelector("tbody tr")?.className).not.toContain("cursor-pointer")
   })
 
-  it("reports the hovered row so the page can prefetch it", async () => {
-    const onRowPointerEnter = vi.fn<(row: HarnessRow) => void>()
-    renderTable({ onRowPointerEnter })
+  it("reports a pressed row, never a hovered one, so the page can prefetch it", async () => {
+    const onRowPointerDown = vi.fn<(row: HarnessRow) => void>()
+    renderTable({ onRowPointerDown })
 
     await userEvent.hover(screen.getByText("Gold ring"))
 
-    expect(onRowPointerEnter).toHaveBeenCalledWith(HARNESS_ROWS[1])
+    expect(onRowPointerDown).not.toHaveBeenCalled()
+
+    await userEvent.pointer({ keys: "[MouseLeft>]", target: screen.getByText("Gold ring") })
+
+    expect(onRowPointerDown).toHaveBeenCalledExactlyOnceWith(HARNESS_ROWS[1])
   })
 
   it("renders one column group entry per visible column", () => {

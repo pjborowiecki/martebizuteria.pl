@@ -125,7 +125,9 @@ const withInventoryAlwaysTracked = (input: CatalogUpsertInput): CatalogUpsertInp
 })
 ```
 
-The editor UI is a sheet, not a page. `catalog/product-editor/` has 26 files: `product-sheet.tsx` with `product-form-provider.tsx`, the sections `product-editor-basic`, `-pricing`, `-media`, `-organization`, `-status`, `-tags`, `-attributes`, `-variants-section`, `-variant-list`, `-variant-mode`, plus `product-form-locale-layout.tsx` for the per-locale fields and the `product-form.utils.ts` / `product-variant-form.utils.ts` / `product-image-form.utils.ts` helpers. `useProductsSheetState` / `ProductsSheetProvider` (`catalog/products/hooks/use-products-sheet.ts`) own the open/close state, which is why the index route wraps the table in that provider.
+The editor UI is a sheet, not a page. `catalog/product-editor/` has 26 files: `product-sheet.tsx` with `product-form-provider.tsx`, the sections `product-editor-basic`, `-pricing`, `-media`, `-organization`, `-status`, `-tags`, `-attributes`, `-variants-section`, `-variant-list`, `-variant-mode`, plus `product-form-locale-layout.tsx` for the per-locale fields and the `product-form.utils.ts` / `product-variant-form.utils.ts` / `product-image-form.utils.ts` helpers. `useProductsSheetState` / `ProductsSheetProvider` (`catalog/products/hooks/use-products-sheet.tsx`) own the open/close state, which is why the index route wraps the table in that provider.
+
+Opening a product costs one read. The grid passes `prefetchEdit` as `onRowPointerDown`, so pressing a row starts `getAdminProductQuery` before the click lands. `openEdit` opens the sheet at once when the product is cached; otherwise it awaits `queryClient.query` with `staleTime: "static"`, which joins the request the press started instead of sending another. Moving a mouse over the rows or scrolling with a wheel or trackpad reads nothing. On a touchscreen a swipe that starts on a row begins as a press, so it reads that one product. Pressing a checkbox, the drag handle or the row menu prefetches nothing, because none of them opens the sheet.
 
 ## Categories
 

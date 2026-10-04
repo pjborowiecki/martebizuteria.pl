@@ -165,14 +165,14 @@ columnHelper.accessor("createdAt", {
 
 `DataGridColumnMeta` (`datagrid/lib/data-grid.types.ts`) is how a column tells the grid how to behave:
 
-| Field                            | Effect                                                                             |
-| -------------------------------- | ---------------------------------------------------------------------------------- |
-| `cellClassName`, `headClassName` | Extra classes on the cell and header                                               |
-| `fillsRemainingWidth`            | This column grows to fill the container                                            |
-| `absorbsTrailingSlack`           | This column takes leftover pixels after layout                                     |
-| `filterOnly`                     | The column stays in the table for filtering but is left out of the rendered layout |
-| `preventRowClick`                | Clicks in this cell do not trigger `onRowClick`                                    |
-| `skeletonVariant`                | Which placeholder to draw while loading                                            |
+| Field                            | Effect                                                                              |
+| -------------------------------- | ----------------------------------------------------------------------------------- |
+| `cellClassName`, `headClassName` | Extra classes on the cell and header                                                |
+| `fillsRemainingWidth`            | This column grows to fill the container                                             |
+| `absorbsTrailingSlack`           | This column takes leftover pixels after layout                                      |
+| `filterOnly`                     | The column stays in the table for filtering but is left out of the rendered layout  |
+| `preventRowClick`                | Presses and clicks in this cell trigger neither `onRowClick` nor `onRowPointerDown` |
+| `skeletonVariant`                | Which placeholder to draw while loading                                             |
 
 The skeleton variants are `badge`, `checkbox`, `date`, `icon`, `iconEnd`, `number`, `recordId`, `text`, `thumbnail` and `title`; `renderDataGridSkeletonContent` maps each to a `Skeleton` shape, and an undefined variant falls back to a `h-4 w-full max-w-[80%]` bar.
 
@@ -228,6 +228,8 @@ All of the text lives in the `components.datagrid` namespace: `view.label`, `vie
 Column reordering is drag and drop via `useColumnReorder` and the `ColumnReorderApi` on the context. Row reordering is opt-in: the four catalog grids provide a `RowReorderApi` (`onRowDragStart`, `onRowDragEnter`, `onRowDrop`, `onRowMove`, `draggingId`, `enabled`), and the others pass `rowReorder: undefined`.
 
 Row clicks have one subtlety. `DataGridRow` marks cells whose column sets `meta.preventRowClick` with `data-prevent-row-click`, and before firing `onRowClick` it checks `consumeDataGridRowClickSuppression()`. Code that closes a dialog or a menu over the grid calls `suppressNextDataGridRowClick()` (300ms) or `suppressDataGridRowClickAfterDialogDismiss()` (500ms) from `lib/data-grid-row-click.ts`, so dismissing an overlay does not also open the row underneath.
+
+`onRowPointerDown` is the signal that a click is coming. `DataGridRow` calls it on a primary-button `pointerdown` inside the row's own cells — not in a `preventRowClick` cell, and not in a portal rendered from a cell such as a row menu — so a screen can start loading what the click will open. Moving a mouse over rows and scrolling with a wheel or trackpad never call it; on a touchscreen, a press that turns into a scroll still counts as a press. The products grid uses it to prefetch the product its sheet edits.
 
 ## Tests
 
