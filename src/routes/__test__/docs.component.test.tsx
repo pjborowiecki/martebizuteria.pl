@@ -1,5 +1,6 @@
 import { type JSX } from "react"
 
+import { QueryClient } from "@tanstack/react-query"
 import type * as ReactRouter from "@tanstack/react-router"
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
@@ -13,6 +14,7 @@ interface DocsPageMeta {
 }
 
 interface DocsLoaderContext {
+  readonly context: { readonly queryClient: QueryClient }
   readonly params: { readonly _splat?: string }
 }
 
@@ -36,6 +38,8 @@ const routing = vi.hoisted((): DocsRouting => ({
   loaderData: { current: { sections: [] } },
 }))
 
+const menu = vi.hoisted(() => ({ fetchCollections: vi.fn<() => Promise<unknown[]>>() }))
+
 const docs = vi.hoisted(() => ({
   loadDocsNavigation: vi.fn<() => Promise<{ readonly sections: readonly DocsNavigationSection[] }>>(),
   loadDocsPage: vi.fn<(splat?: string) => Promise<DocsPageMeta>>(),
@@ -55,6 +59,11 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   }
 })
 vi.mock("~/src/integrations/fumadocs/fumadocs.docs", () => docs)
+vi.mock("~/src/modules/product-collection/use-cases/get-collections", async () => {
+  const { COLLECTION_QUERY_KEYS } = await import("~/src/modules/product-collection/product-collection.constants")
+
+  return { getCollectionsQuery: () => ({ queryFn: menu.fetchCollections, queryKey: COLLECTION_QUERY_KEYS.ALL }) }
+})
 vi.mock("~/src/presentation/components/custom/pages/docs/docs-sidebar", () => ({
   DocsSidebar: (): JSX.Element => <nav data-testid="docs-sidebar" />,
 }))
@@ -70,6 +79,8 @@ vi.mock("~/src/presentation/components/custom/docs-content", () => ({
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { COLLECTION_QUERY_KEYS } from "~/src/modules/product-collection/product-collection.constants"
+
 import { pageHead } from "~/src/lib/seo"
 
 await import("~/src/routes/docs")
@@ -80,6 +91,8 @@ const SECTIONS: readonly DocsNavigationSection[] = [{ links: [{ splat: "project/
 
 const PAGE_META: DocsPageMeta = { description: "", path: "index.en-US.mdx", title: "Documentation" }
 
+const MENU_COLLECTIONS = [{ handle: "nowosci", id: "collection-1", image: "collections/arrivals.webp" }]
+
 const routeAt = (path: string): DocsRouteDefinition => {
   const options = routing.captured.get(path)
   if (options === undefined) {
@@ -89,13 +102,14 @@ const routeAt = (path: string): DocsRouteDefinition => {
   return options
 }
 
-const loadAt = (path: string, params: DocsLoaderContext["params"] = {}): Promise<DocsLoaderData> => {
+const loadAt = (path: string, params: DocsLoaderContext["params"] = {}, queryClient = new QueryClient()): Promise<DocsLoaderData> => {
   const { loader } = routeAt(path)
   if (loader === undefined) {
     throw new Error(`the route at ${path} registered no loader`)
   }
+  menu.fetchCollections.mockResolvedValue(MENU_COLLECTIONS)
 
-  return loader({ params })
+  return loader({ context: { queryClient }, params })
 }
 
 const renderRoute = (path: string, loaderData: DocsLoaderData) => {
@@ -140,6 +154,24 @@ describe("documentation layout", () => {
     docs.loadDocsNavigation.mockResolvedValue({ sections: SECTIONS })
 
     await expect(loadAt("/docs")).resolves.toStrictEqual({ sections: SECTIONS })
+  })
+
+  it("loads the collections the full-screen menu shows together with the page tree", async () => {
+    docs.loadDocsNavigation.mockResolvedValue({ sections: SECTIONS })
+    const queryClient = new QueryClient()
+
+    await loadAt("/docs", {}, queryClient)
+
+    expect(queryClient.getQueryData(COLLECTION_QUERY_KEYS.ALL)).toStrictEqual(MENU_COLLECTIONS)
+  })
+
+  it("still hands the sidebar its sections when the menu collections cannot be loaded", async () => {
+    docs.loadDocsNavigation.mockResolvedValue({ sections: SECTIONS })
+    menu.fetchCollections.mockRejectedValueOnce(new Error("D1 unavailable"))
+    const queryClient = new QueryClient()
+
+    await expect(loadAt("/docs", {}, queryClient)).resolves.toStrictEqual({ sections: SECTIONS })
+    expect(queryClient.getQueryState(COLLECTION_QUERY_KEYS.ALL)).toMatchObject({ data: undefined, status: "error" })
   })
 })
 

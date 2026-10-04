@@ -56,7 +56,7 @@ return rows.map((row) => Object.assign(row.deliveryMethod, { courier: row.courie
 
 Deactivating a courier therefore hides all of its methods at once.
 
-`listDeliveryMethodsQuery()` has no `staleTime`, so it follows the client's default. It is read by the delivery step, the courier sub-step and the payment step (which needs the price to compute the Stripe amount).
+`listDeliveryMethodsQuery()` has no `staleTime`, so it follows the client's default. It is read by the delivery step, the courier sub-step and the payment step (which needs the price to compute the Stripe amount). The `/checkout/` page loader loads it with `staleTime: "static"` while the layout reads the checkout messages, so those steps read the methods from the cache instead of requesting them after the form appears. The loader skips the read on the confirmation after payment, and a failed read leaves the steps to request the methods themselves.
 
 `getActiveDeliveryMethodByIdQuery(id)` in `delivery-method.accessors.ts` is the server-side lookup used by `resolveShippingCost`; it also filters on `isActive`, so a method deactivated mid-checkout resolves to a `0` shipping cost rather than an error.
 

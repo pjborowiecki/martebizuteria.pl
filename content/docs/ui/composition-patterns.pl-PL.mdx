@@ -26,12 +26,15 @@ const HomePage = (): JSX.Element => {
 }
 ```
 
-Trasa layoutu robi to samo dla chromu. `src/routes/_storefront.tsx` montuje `Navigation`, `Footer`, banner koszyka i tracker aktywności, subskrybuje unieważnianie w czasie rzeczywistym i dołącza swój arkusz stylów:
+Trasa layoutu robi to samo dla chromu. `src/routes/_storefront.tsx` montuje `Navigation`, `Footer`, banner koszyka i tracker aktywności, subskrybuje unieważnianie w czasie rzeczywistym, dołącza swój arkusz stylów i ładuje kolekcje pokazywane w pełnoekranowym menu nawigacji:
 
 ```tsx
 export const Route = createFileRoute("/_storefront")({
   component: StorefrontLayout,
   head: () => ({ links: [{ href: storefrontCss, rel: "stylesheet" }] }),
+  loader: async ({ context }) => {
+    await context.queryClient.query({ ...getCollectionsQuery(), staleTime: "static" }).catch(noop)
+  },
   staticData: { namespaces: ["pages.cart"] },
 })
 ```

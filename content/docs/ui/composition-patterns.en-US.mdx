@@ -26,12 +26,15 @@ const HomePage = (): JSX.Element => {
 }
 ```
 
-A layout route does the same for chrome. `src/routes/_storefront.tsx` mounts `Navigation`, `Footer`, the cart banner and the activity tracker, subscribes to realtime invalidation, and attaches its route stylesheet:
+A layout route does the same for chrome. `src/routes/_storefront.tsx` mounts `Navigation`, `Footer`, the cart banner and the activity tracker, subscribes to realtime invalidation, attaches its route stylesheet, and loads the collections the navigation's full-screen menu shows:
 
 ```tsx
 export const Route = createFileRoute("/_storefront")({
   component: StorefrontLayout,
   head: () => ({ links: [{ href: storefrontCss, rel: "stylesheet" }] }),
+  loader: async ({ context }) => {
+    await context.queryClient.query({ ...getCollectionsQuery(), staleTime: "static" }).catch(noop)
+  },
   staticData: { namespaces: ["pages.cart"] },
 })
 ```

@@ -56,7 +56,7 @@ return rows.map((row) => Object.assign(row.deliveryMethod, { courier: row.courie
 
 Dezaktywacja przewoźnika ukrywa więc od razu wszystkie jego metody.
 
-`listDeliveryMethodsQuery()` nie ma `staleTime`, więc podlega domyślnym ustawieniom klienta. Czytają je krok dostawy, podkrok kuriera i krok płatności (który potrzebuje ceny do wyliczenia kwoty dla Stripe).
+`listDeliveryMethodsQuery()` nie ma `staleTime`, więc podlega domyślnym ustawieniom klienta. Czytają je krok dostawy, podkrok kuriera i krok płatności (który potrzebuje ceny do wyliczenia kwoty dla Stripe). Loader strony `/checkout/` ładuje je z `staleTime: "static"`, podczas gdy layout czyta teksty zamówienia, więc te kroki czytają metody z cache, zamiast pytać o nie po pojawieniu się formularza. Na potwierdzeniu po płatności loader pomija ten odczyt, a gdy odczyt się nie uda, kroki same pytają o metody.
 
 `getActiveDeliveryMethodByIdQuery(id)` w `delivery-method.accessors.ts` to odczyt po stronie serwera używany przez `resolveShippingCost`; również filtruje po `isActive`, więc metoda zdezaktywowana w trakcie checkoutu daje koszt dostawy `0`, a nie błąd.
 

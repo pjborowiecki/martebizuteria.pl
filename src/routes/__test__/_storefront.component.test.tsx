@@ -1,5 +1,6 @@
 import { type JSX } from "react"
 
+import { QueryClient } from "@tanstack/react-query"
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
@@ -9,20 +10,37 @@ const realtime = vi.hoisted(() => ({
   sync: vi.fn<(options: { readonly hub: string; readonly subscriptions: readonly unknown[] }) => void>(),
 }))
 
-const metadata = vi.hoisted(() => ({ head: undefined as (() => { links: { href: string; rel: string }[] }) | undefined }))
+interface StorefrontRouteOptions {
+  readonly head: () => { links: { href: string; rel: string }[] }
+  readonly loader: (args: { readonly context: { readonly queryClient: QueryClient } }) => Promise<unknown>
+}
+
+const metadata = vi.hoisted(() => ({
+  head: undefined as StorefrontRouteOptions["head"] | undefined,
+  loader: undefined as StorefrontRouteOptions["loader"] | undefined,
+}))
+
+const menu = vi.hoisted(() => ({ fetchCollections: vi.fn<() => Promise<unknown[]>>() }))
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>()
 
   return {
     ...actual,
-    createFileRoute: () => (options: { head: () => { links: { href: string; rel: string }[] } }) => {
+    createFileRoute: () => (options: StorefrontRouteOptions) => {
       metadata.head = options.head
+      metadata.loader = options.loader
 
       return { options }
     },
     Outlet: (): JSX.Element => <div data-testid="storefront-outlet" />,
   }
+})
+
+vi.mock("~/src/modules/product-collection/use-cases/get-collections", async () => {
+  const { COLLECTION_QUERY_KEYS } = await import("~/src/modules/product-collection/product-collection.constants")
+
+  return { getCollectionsQuery: () => ({ queryFn: menu.fetchCollections, queryKey: COLLECTION_QUERY_KEYS.ALL }) }
 })
 
 vi.mock("~/src/hooks/use-realtime-query-sync", () => ({
@@ -48,6 +66,8 @@ vi.mock("~/src/presentation/components/custom/pages/landing-page/footer/footer",
 }))
 
 import { REALTIME_INVALIDATION_HUB } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
+
+import { COLLECTION_QUERY_KEYS } from "~/src/modules/product-collection/product-collection.constants"
 
 import { Route } from "~/src/routes/_storefront"
 
@@ -100,5 +120,26 @@ describe("storefront layout", () => {
 
   it("declares the cart namespace for the whole storefront", () => {
     expect(Route.options.staticData?.namespaces).toStrictEqual(["pages.cart"])
+  })
+})
+
+describe("storefront layout loader", () => {
+  it("loads the collections the full-screen menu shows together with the page", async () => {
+    const collections = [{ handle: "nowosci", id: "collection-1", image: "collections/arrivals.webp" }]
+    menu.fetchCollections.mockResolvedValue(collections)
+    const queryClient = new QueryClient()
+
+    await metadata.loader?.({ context: { queryClient } })
+
+    expect(menu.fetchCollections).toHaveBeenCalledOnce()
+    expect(queryClient.getQueryData(COLLECTION_QUERY_KEYS.ALL)).toStrictEqual(collections)
+  })
+
+  it("still opens the page when the menu collections cannot be loaded, leaving the menu to ask again", async () => {
+    menu.fetchCollections.mockRejectedValueOnce(new Error("D1 unavailable"))
+    const queryClient = new QueryClient()
+
+    await expect(metadata.loader?.({ context: { queryClient } })).resolves.toBeUndefined()
+    expect(queryClient.getQueryState(COLLECTION_QUERY_KEYS.ALL)).toMatchObject({ data: undefined, status: "error" })
   })
 })

@@ -18,7 +18,7 @@ so `_storefront.products.$handle.tsx` serves both `/products/kolczyki` (Polish, 
 
 ## Storefront
 
-All storefront pages sit under the pathless layout `_storefront.tsx`, which supplies `Navigation`, `Footer`, the cart-availability banner, the customer-activity tracker, the storefront realtime subscription and `storefront.css`. None of them has a guard.
+All storefront pages sit under the pathless layout `_storefront.tsx`, which supplies `Navigation`, `Footer`, the cart-availability banner, the customer-activity tracker, the storefront realtime subscription and `storefront.css`. Its loader loads `getCollectionsQuery()` for the full-screen menu, so the menu's collection pictures are in the server-rendered cache. None of them has a guard.
 
 | Path                      | `ROUTES` constant        | Route file                               |
 | ------------------------- | ------------------------ | ---------------------------------------- |
@@ -52,7 +52,7 @@ All storefront pages sit under the pathless layout `_storefront.tsx`, which supp
 
 ## Authentication
 
-The `/auth` layout is `auth.tsx` and its `beforeLoad` runs `redirectIfSignedIn`, which sends an already signed-in visitor to the `?redirect` search parameter when it is a safe same-site path, and otherwise to `/admin` or `/account/overview` depending on their role. `auth.sign-in.tsx` declares that parameter in `validateSearch`.
+The `/auth` layout is `auth.tsx` and its `beforeLoad` runs `redirectIfSignedIn`, which sends an already signed-in visitor to the `?redirect` search parameter when it is a safe same-site path, and otherwise to `/admin` or `/account/overview` depending on their role. `auth.sign-in.tsx` declares that parameter in `validateSearch`. The layout renders the storefront `Navigation`, and its loader loads `getCollectionsQuery()` for the full-screen menu.
 
 After a successful password sign-in or two-factor challenge, the form calls `usePostAuthRedirect` from `src/hooks/use-post-auth-redirect.ts`. It removes the cached session entry only, clears the router's cached matches and invalidates the router. The `/auth` layout guard then runs again, fetches the fresh session and redirects, so the forms never choose a destination themselves. When the fresh session arrives, `clearCacheOnUserChange`, described under Guards below, forgets what was cached while signed out.
 
@@ -71,7 +71,7 @@ Google and GitHub sign-in go through `useOAuthSignIn` in `src/presentation/compo
 
 ## Customer account
 
-The `/account` layout is `account.tsx` and its `beforeLoad` runs `requireCustomer`, which redirects an anonymous visitor to `/auth/sign-in` with the requested path in `?redirect`, and an admin to `/admin`. `account.index.tsx` immediately redirects `/account` to `/account/overview`.
+The `/account` layout is `account.tsx` and its `beforeLoad` runs `requireCustomer`, which redirects an anonymous visitor to `/auth/sign-in` with the requested path in `?redirect`, and an admin to `/admin`. `account.index.tsx` immediately redirects `/account` to `/account/overview`. The layout's loader reads the `pages.account.meta` messages and `getCollectionsQuery()` for the full-screen menu together.
 
 | Path                  | `ROUTES` constant   | Route file                                             |
 | --------------------- | ------------------- | ------------------------------------------------------ |
@@ -120,7 +120,7 @@ The admin order detail route is the one page with no `ROUTES` constant; navigati
 | `/docs`   | `DOCS`            | `docs.tsx` (layout), `docs.index.tsx` |
 | `/docs/*` | `DOCS_PAGE`       | `docs.$.tsx`                          |
 
-`docs.tsx` loads the sidebar from `buildDocsNavigation`, which walks the Fumadocs page tree for the reader's locale and turns each top-level folder in `content/docs` into a section. `docs.$.tsx` resolves the splat to a page with `loadDocsPage` and throws `notFound()` when no page matches.
+`docs.tsx` loads the sidebar from `buildDocsNavigation`, which walks the Fumadocs page tree for the reader's locale and turns each top-level folder in `content/docs` into a section. The same loader loads `getCollectionsQuery()` for the full-screen menu at the same time. `docs.$.tsx` resolves the splat to a page with `loadDocsPage` and throws `notFound()` when no page matches.
 
 ## Developer-only
 

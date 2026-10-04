@@ -1,11 +1,14 @@
 import { type JSX } from "react"
 
+import { noop } from "@tanstack/react-query"
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 
 import {
   REALTIME_INVALIDATION_HUB,
   STOREFRONT_REALTIME_QUERY_PREFIXES,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
+
+import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 
 import { useRealtimeQuerySync } from "~/src/hooks/use-realtime-query-sync"
 
@@ -45,6 +48,14 @@ export const Route = createFileRoute("/_storefront")({
       },
     ],
   }),
+  loader: async ({ context }) => {
+    await context.queryClient
+      .query({
+        ...getCollectionsQuery(),
+        staleTime: "static",
+      })
+      .catch(noop)
+  },
   staticData: {
     namespaces: ["pages.cart"],
   },

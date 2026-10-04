@@ -1,9 +1,12 @@
 import { type JSX, Suspense, useMemo } from "react"
 
+import { noop } from "@tanstack/react-query"
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 
 import { requireCustomer } from "~/src/integrations/better-auth/auth.routes"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
+
+import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
@@ -70,9 +73,15 @@ export const Route = createFileRoute("/account")({
   head: pageHead,
   loader: async ({ context }) => {
     const { locale } = context
-    const messages = await context.queryClient.query(
-      messagesQueryOptions<typeof accountMetaMessages>({ locale, namespace: "pages.account.meta" }),
-    )
+    const [messages] = await Promise.all([
+      context.queryClient.query(messagesQueryOptions<typeof accountMetaMessages>({ locale, namespace: "pages.account.meta" })),
+      context.queryClient
+        .query({
+          ...getCollectionsQuery(),
+          staleTime: "static",
+        })
+        .catch(noop),
+    ])
 
     return {
       description: messages.description,

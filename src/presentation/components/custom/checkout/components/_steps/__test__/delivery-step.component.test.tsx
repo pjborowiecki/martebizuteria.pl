@@ -1,5 +1,6 @@
 import { type JSX } from "react"
 
+import { QueryClient } from "@tanstack/react-query"
 import { cleanup, screen } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { type UseFormReturn, useForm } from "react-hook-form"
@@ -24,12 +25,16 @@ const { checkoutForm, methodsState } = vi.hoisted(() => ({
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-form-provider", () => ({
   useCheckoutForm: () => checkoutForm,
 }))
-vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", () => ({
-  listDeliveryMethodsQuery: () => ({
-    queryFn: () => (methodsState.pending ? new Promise(() => {}) : Promise.resolve(methodsState.rows)),
-    queryKey: ["deliveryMethods", methodsState.pending],
-  }),
-}))
+vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", async () => {
+  const { DELIVERY_METHOD_QUERY_KEYS } = await import("~/src/modules/delivery-method/delivery-method.constants")
+
+  return {
+    listDeliveryMethodsQuery: () => ({
+      queryFn: () => (methodsState.pending ? new Promise(() => {}) : Promise.resolve(methodsState.rows)),
+      queryKey: DELIVERY_METHOD_QUERY_KEYS.ALL,
+    }),
+  }
+})
 vi.mock("~/src/presentation/components/custom/checkout/components/_steps/delivery/courier/delivery-courier", () => ({
   DeliveryCourier: () => <p>courier substep</p>,
 }))
@@ -40,6 +45,7 @@ vi.mock("~/src/presentation/components/custom/checkout/components/_steps/deliver
   DeliveryInStore: () => <p>in-store substep</p>,
 }))
 
+const { DELIVERY_METHOD_QUERY_KEYS } = await import("~/src/modules/delivery-method/delivery-method.constants")
 const { DeliveryStep } = await import("~/src/presentation/components/custom/checkout/components/_steps/delivery-step")
 const { CHECKOUT_STEP_ID } = await import("~/src/presentation/components/custom/checkout/lib/checkout-steps")
 
@@ -167,6 +173,19 @@ describe("DeliveryStep options", () => {
     renderWithProviders(<DeliveryStepHarness />)
 
     expect(await screen.findByText("Free")).toBeInTheDocument()
+  })
+})
+
+describe("DeliveryStep with the methods the checkout loader cached", () => {
+  it("offers every delivery family on its first render, without placeholders", () => {
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(DELIVERY_METHOD_QUERY_KEYS.ALL, [method(), method({ id: "dm-locker", price: 1299, type: "locker" })])
+
+    const { container } = renderWithProviders(<DeliveryStepHarness />, { queryClient })
+
+    expect(screen.getByRole("radio", { name: /Courier/u })).toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: /Parcel Locker/u })).toBeInTheDocument()
+    expect(container.querySelector('[data-slot="skeleton"]')).not.toBeInTheDocument()
   })
 })
 

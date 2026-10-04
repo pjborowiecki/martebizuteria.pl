@@ -53,6 +53,14 @@ export class BasePage {
     return this.page.getByRole("heading", { level: 1 })
   }
 
+  async openMenu(): Promise<void> {
+    await this.page.getByRole("button", { name: "Open menu" }).click()
+  }
+
+  menuShowcaseImage(index: number): Locator {
+    return this.page.locator(`[data-menu-image='${String(index)}'] img`)
+  }
+
   notification(text: string | RegExp): Locator {
     return this.page.getByRole("region", { name: /Notifications/u }).getByText(text)
   }
