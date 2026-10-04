@@ -2,12 +2,11 @@ import { env } from "cloudflare:workers"
 
 import { createElement } from "react"
 
-import { betterAuth } from "better-auth"
+import { type BetterAuthPlugin, betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { APIError, createAuthMiddleware } from "better-auth/api"
 import { admin, anonymous, multiSession, twoFactor } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
-import { eq } from "drizzle-orm"
 import { createTranslator } from "use-intl"
 import { v7 as uuidv7 } from "uuid"
 
@@ -32,7 +31,6 @@ import {
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
-import { user as userTable } from "~/src/modules/user/user.schema"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { IP_ADDRESS_HEADER } from "~/src/lib/rate-limit"
@@ -64,8 +62,6 @@ const RATE_LIMIT_MAX_REQUESTS = 100
 
 const RATE_LIMIT_WINDOW_IN_SECONDS = 60
 
-const COOKIE_CACHE_MAX_AGE_IN_SECONDS = 300
-
 const SESSION_UPDATE_AGE_IN_SECONDS = 300
 
 const TRUSTED_AUTH_PROVIDERS = ["google", "github"]
@@ -86,6 +82,40 @@ const EMAIL_DELIVERY_UNAVAILABLE = {
   code: "EMAIL_DELIVERY_UNAVAILABLE",
   message: "Emails cannot be sent at the moment",
 } as const satisfies AuthEmailError
+
+const TWO_FACTOR_VERIFY_PATH_PREFIX = "/two-factor/verify-"
+
+const SIGN_IN_PATH_PREFIXES = ["/sign-in/", "/sign-up/", "/callback/", "/verify-email", TWO_FACTOR_VERIFY_PATH_PREFIX]
+
+export const signInAudit = {
+  hooks: {
+    after: [
+      {
+        handler: createAuthMiddleware(async (ctx) => {
+          const signedIn = ctx.context.newSession
+          const arrivedWith = ctx.context.session
+          if (signedIn === null) {
+            return
+          }
+
+          const continuesExistingSignIn =
+            arrivedWith !== null && (arrivedWith.session.id === signedIn.session.id || ctx.path.startsWith(TWO_FACTOR_VERIFY_PATH_PREFIX))
+          if (continuesExistingSignIn) {
+            return
+          }
+
+          recordAuthLoginAudit(resolveAuthAuditActor(signedIn.user), {
+            ip: signedIn.session.ipAddress ?? undefined,
+            resourceId: signedIn.user.id,
+          })
+          await Promise.resolve()
+        }),
+        matcher: (ctx) => SIGN_IN_PATH_PREFIXES.some((prefix) => ctx.path?.startsWith(prefix) === true),
+      },
+    ],
+  },
+  id: "sign-in-audit",
+} satisfies BetterAuthPlugin
 
 const resolveEmailVerificationCallbackUrl = (url: string, locale: SupportedLocale): string => {
   try {
@@ -222,25 +252,6 @@ export const auth = betterAuth({
   baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) },
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
   databaseHooks: {
-    session: {
-      create: {
-        after: async (createdSession) => {
-          const sessionUser = await db.query.user.findFirst({
-            where: eq(userTable.id, createdSession.userId),
-          })
-
-          if (sessionUser === undefined) {
-            return
-          }
-
-          recordAuthLoginAudit(resolveAuthAuditActor(sessionUser), {
-            ip: createdSession.ipAddress ?? undefined,
-            resourceId: sessionUser.id,
-          })
-          await Promise.resolve()
-        },
-      },
-    },
     user: {
       create: {
         after: async (user) => {
@@ -302,6 +313,7 @@ export const auth = betterAuth({
     twoFactor({
       issuer: APP_NAME,
     }),
+    signInAudit,
     tanstackStartCookies(),
   ],
   rateLimit: {
@@ -330,7 +342,7 @@ export const auth = betterAuth({
   },
   secret: env.AUTH_SECRET,
   session: {
-    cookieCache: { enabled: true, maxAge: COOKIE_CACHE_MAX_AGE_IN_SECONDS, version: "2" },
+    cookieCache: { enabled: false },
     storeSessionInDatabase: true,
     updateAge: SESSION_UPDATE_AGE_IN_SECONDS,
   },

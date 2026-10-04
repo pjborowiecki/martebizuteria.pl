@@ -19,7 +19,7 @@ export const ActiveSessionList = ({
       {sessions.map((session) => (
         <ActiveSessionCard key={session.id} session={session} />
       ))}
-      {hasOtherDevices ? undefined : <p className="py-6 text-[13px] text-muted-foreground">{t("emptySessions")}</p>}
+      {hasOtherDevices ? undefined : <p className="py-6 text-[13px] text-muted-foreground">{t("onlyThisDevice")}</p>}
     </div>
   )
 }

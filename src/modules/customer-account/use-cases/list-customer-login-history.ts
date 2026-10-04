@@ -18,7 +18,7 @@ export const listCustomerLoginHistory = createServerFn({ method: "GET" })
         ({
           createdAt: row.createdAt,
           ipAddress: row.ip ?? undefined,
-          status: row.action === AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED ? "blocked" : "success",
+          status: row.action === AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED ? "failed" : "success",
         }) satisfies CustomerAccount["loginHistoryItem"],
     )
   })

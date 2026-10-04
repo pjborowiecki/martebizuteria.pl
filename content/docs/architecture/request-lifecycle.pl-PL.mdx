@@ -68,7 +68,7 @@ POST /_serverFn/…  (shipOrder)
 3. Typ zdarzenia jest wyszukiwany w `webhookHandlers`. Nieobsługiwany typ jest logowany przez `console.info` i potwierdzany odpowiedzią `{ received: true }`, więc Stripe przestaje go ponawiać.
 4. Handler, który rzuci wyjątek, jest logowany i zwraca `500`, co sprawia, że Stripe ponawia próbę.
 
-`GET|POST /api/auth/$` to drugi handler. Deleguje do `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.server.ts`, które owija `auth.handler(request)`: przed wywołaniem klonuje ciało żądania, żeby odczytać e-mail logowania, i ustala sesję, która właśnie zostanie zniszczona; po wywołaniu nieudany `POST /sign-in/email` staje się zdarzeniem `auth.login_failed`, a udany `POST /sign-out` — zdarzeniem `auth.logout`. Zdarzenie udanego logowania powstaje w innym miejscu — w hooku `databaseHooks.session.create.after` Better Auth w `auth.server.ts`.
+`GET|POST /api/auth/$` to drugi handler. Deleguje do `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.server.ts`, które owija `auth.handler(request)`: przed wywołaniem klonuje ciało żądania, żeby odczytać e-mail logowania, i ustala sesję, która właśnie zostanie zniszczona; po wywołaniu nieudany `POST /sign-in/email` staje się zdarzeniem `auth.login_failed`, a udany `POST /sign-out` — zdarzeniem `auth.logout`. Zdarzenie udanego logowania powstaje w innym miejscu — w hooku „after” wtyczki `signInAudit` w `auth.server.ts`, który zapisuje logowanie za każdym razem, gdy ścieżka logowania tworzy sesję, chyba że ta sesja jedynie kontynuuje tę, z którą przyszło żądanie (potwierdzona zmiana adresu e-mail albo konfiguracja uwierzytelniania dwuskładnikowego).
 
 ## Wiadomość z kolejki
 

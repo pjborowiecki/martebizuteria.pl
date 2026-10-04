@@ -20,7 +20,7 @@ Better Auth owns identity: e-mail and password sign-in, Google and GitHub OAuth,
 | `emailAndPassword`             | Enabled, `requireEmailVerification: true`, min 8 / max 1024 characters                          |
 | `emailVerification`            | `sendOnSignUp: true`, `autoSignInAfterVerification: true`                                       |
 | `hooks.before`                 | Refuses the four email-sending endpoints while the email sender is marked unavailable           |
-| `session`                      | `storeSessionInDatabase: true`, cookie cache enabled with `maxAge` 300 s and `version: "2"`     |
+| `session`                      | `storeSessionInDatabase: true`, cookie cache turned off (`cookieCache: { enabled: false }`)     |
 | `verification`                 | `storeIdentifier: "hashed"`, `storeInDatabase: true`                                            |
 | `socialProviders`              | `google` and `github`, with `account.accountLinking.trustedProviders` covering both             |
 | `account.encryptOAuthTokens`   | `true`                                                                                          |
@@ -28,7 +28,7 @@ Better Auth owns identity: e-mail and password sign-in, Google and GitHub OAuth,
 | `user.additionalFields`        | `timezone` (string, optional, accepted as input)                                                |
 | `user.changeEmail`             | Enabled, with `sendChangeEmailConfirmation`                                                     |
 
-Plugins: `admin({ ac, adminRoles, defaultRole, roles })`, `anonymous()`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })` and `tanstackStartCookies()`. The last one is what makes Better Auth's cookies work with TanStack Start's response handling, and it must stay last in the array.
+Plugins: `admin({ ac, adminRoles, defaultRole, roles })`, `anonymous()`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })`, the local `signInAudit` and `tanstackStartCookies()`. The last one is what makes Better Auth's cookies work with TanStack Start's response handling, and it must stay last in the array.
 
 ### Built-in rate limiting
 
@@ -45,11 +45,14 @@ This is separate from the application's own `withRateLimit` middleware described
 
 ### Database hooks
 
-`databaseHooks` is where identity events reach the rest of the application:
+`databaseHooks` is where account events reach the rest of the application:
 
-- `session.create.after` looks the user up and calls `recordAuthLoginAudit(...)`.
 - `user.create.after` calls `scheduleAdminCustomersInvalidation()` and `recordCustomerRegisteredAudit(...)`.
 - `user.update.after` and `user.delete.after` both call `scheduleAdminCustomersInvalidation()`, so the admin customer list refreshes without a poll.
+
+### Sign-in audit
+
+A new session is not always a sign-in. Better Auth also creates one when the password step of a two-factor sign-in starts (and the `twoFactor` plugin deletes it again), when two-factor is turned on or off, and when a password change signs the other devices out. The `signInAudit` plugin therefore records `auth.login` from an after hook rather than from `databaseHooks`. It matches the sign-in paths (`/sign-in/`, `/sign-up/`, `/callback/`, `/verify-email` and `/two-factor/verify-`), runs after `twoFactor` so a pending two-factor challenge has already cleared `newSession`, and calls `recordAuthLoginAudit(...)` for every `ctx.context.newSession` except one that continues the session the request arrived with. Two requests do that: confirming a new e-mail address re-issues the same session, and confirming two-factor set-up through `/two-factor/verify-*` swaps the signed-in session for a fresh one. Completing a two-factor sign-in arrives without a session and records one login, and so does signing in again on a browser that is still signed in, because the customer entered their password again.
 
 ### Transactional e-mail
 
@@ -263,7 +266,7 @@ export const getRequestSession = createServerOnlyFn((request: Request = getReque
 })
 ```
 
-`disableCookieCache: true` means server-side authorization always reads the database rather than trusting the signed cookie cache; the 300-second cookie cache only serves Better Auth's own endpoints. `getCurrentSession` is the server function wrapper, and it strips `session.token` before returning — the token never reaches the browser payload. `getCurrentSessionQuery` is the matching query options object and the only way routes and components read the session: the route guards load it, and components read it with `useQuery(getCurrentSessionQuery)`. It is described in [TanStack Query](/docs/integrations/tanstack-query).
+`disableCookieCache: true` means server-side authorization always reads the database rather than trusting a signed cookie cache. The cookie cache is also turned off in `auth.server.ts`, so Better Auth's own endpoints behind its session middleware — `/update-user`, the two-factor routes, `/get-session` — read the session row too: a browser signed out from another device is refused at once instead of being trusted for as long as its cached cookie lived. `getCurrentSession` is the server function wrapper, and it strips `session.token` before returning — the token never reaches the browser payload. `getCurrentSessionQuery` is the matching query options object and the only way routes and components read the session: the route guards load it, and components read it with `useQuery(getCurrentSessionQuery)`. It is described in [TanStack Query](/docs/integrations/tanstack-query).
 
 ## The client
 
@@ -310,7 +313,7 @@ export const Route = createFileRoute("/api/auth/$")({
 })
 ```
 
-`handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts` inspects the path before delegating: for `POST /sign-in/email` it clones the request to read the e-mail, and records a failed-login audit entry if the response is not OK; for `POST /sign-out` it captures the session first and records a logout entry if the response is OK. Successful logins are audited from the `session.create.after` hook instead.
+`handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts` inspects the path before delegating: for `POST /sign-in/email` it clones the request to read the e-mail, and records a failed-login audit entry if the response is not OK; for `POST /sign-out` it captures the session first and records a logout entry if the response is OK. Successful sign-ins are audited by the `signInAudit` plugin instead (see "Sign-in audit" above).
 
 ## Tables
 

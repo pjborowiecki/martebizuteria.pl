@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
+
 interface ChangePasswordRequest {
   readonly currentPassword: string
   readonly fetchOptions: { readonly onError: (context: { error: unknown }) => void; readonly onSuccess: () => void }
@@ -38,9 +40,9 @@ import { ChangePasswordDialog } from "~/src/presentation/components/custom/pages
 
 const renderDialog = (open = true) => {
   const onOpenChange = vi.fn<(open: boolean) => void>()
-  renderWithProviders(<ChangePasswordDialog onOpenChange={onOpenChange} open={open} />)
+  const { queryClient } = renderWithProviders(<ChangePasswordDialog onOpenChange={onOpenChange} open={open} />)
 
-  return { onOpenChange }
+  return { invalidateQueries: vi.spyOn(queryClient, "invalidateQueries"), onOpenChange }
 }
 
 const fillPasswords = async (): Promise<void> => {
@@ -74,6 +76,17 @@ describe("ChangePasswordDialog", () => {
     })
     expect(calls.toastSuccess).toHaveBeenCalledWith("Password changed", { description: "Use your new password next time you sign in." })
     expect(screen.getByLabelText("Current password")).toHaveValue("")
+  })
+
+  it("refreshes the signed-in devices once the password is changed", async () => {
+    const { invalidateQueries } = renderDialog()
+    await fillPasswords()
+
+    await userEvent.click(submitButton())
+
+    await waitFor(() => {
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
+    })
   })
 
   it("signs the customer's other devices out by default", async () => {

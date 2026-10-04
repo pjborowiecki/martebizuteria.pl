@@ -30,6 +30,7 @@ export const SecuritySection = ({ twoFactorEnabled }: Readonly<{ twoFactorEnable
   const refreshTwoFactor = useCallback(() => {
     void Promise.all([
       queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE }),
+      queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS }),
       queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CURRENT }),
     ])
   }, [queryClient])

@@ -2,6 +2,7 @@ import { type JSX, type SyntheticEvent, useCallback } from "react"
 
 import { type ErrorContext } from "@better-fetch/fetch"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useQueryClient } from "@tanstack/react-query"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { Loader2 } from "lucide-react"
 import { Controller, useForm } from "react-hook-form"
@@ -10,6 +11,8 @@ import { useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
 import { type ChangePasswordFormValues, changePasswordSchema } from "~/src/integrations/better-auth/auth.zod"
+
+import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 
 import { useActionError } from "~/src/hooks/use-action-error"
 
@@ -34,6 +37,7 @@ const changePasswordRequest = createClientOnlyFn((input: Parameters<typeof authC
 export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePasswordDialogProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.passwordDialog")
   const actionError = useActionError()
+  const queryClient = useQueryClient()
   const form = useForm<ChangePasswordFormValues>({
     defaultValues: { confirmPassword: "", currentPassword: "", password: "", revokeOtherSessions: true },
     mode: "onTouched",
@@ -49,6 +53,7 @@ export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePass
             toast.error(t("errorTitle"), { description: actionError(ctx.error) })
           },
           onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
             toast.success(t("successTitle"), { description: t("successDescription") })
             form.reset()
             onOpenChange(false)
@@ -58,7 +63,7 @@ export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePass
         revokeOtherSessions: values.revokeOtherSessions,
       })
     },
-    [actionError, form, onOpenChange, t],
+    [actionError, form, onOpenChange, queryClient, t],
   )
 
   const handleFormSubmit = useCallback(

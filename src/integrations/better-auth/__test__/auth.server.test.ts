@@ -20,7 +20,6 @@ interface SentEmail {
 const stubs = vi.hoisted(() => ({
   buildLocalizedUrl: vi.fn<(base: string, path: string, locale: string) => string>(),
   claimGuestOrdersForUser: vi.fn<(input: { email: string; userId: string }) => Promise<number>>(),
-  findFirst: vi.fn(),
   getCurrentLocale: vi.fn<() => string>(),
   isEmailSenderUnavailable: vi.fn<() => Promise<boolean>>(),
   linkSubscriberToUser: vi.fn<(email: string, userId: string) => Promise<void>>(),
@@ -43,7 +42,7 @@ vi.mock("cloudflare:workers", () => ({
 }))
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
-  db: { query: { user: { findFirst: stubs.findFirst } } },
+  db: {},
 }))
 
 vi.mock("~/src/modules/newsletter/newsletter.accessors", () => ({ linkSubscriberToUser: stubs.linkSubscriberToUser }))
@@ -86,10 +85,12 @@ vi.mock("~/src/presentation/emails/verify-email", () => ({
   VerifyEmail: () => null,
 }))
 
-const { auth, sendAccountDeletedEmail, sendChangeEmailConfirmation, sendResetPassword, sendVerificationEmail } =
+const { auth, sendAccountDeletedEmail, sendChangeEmailConfirmation, sendResetPassword, sendVerificationEmail, signInAudit } =
   await import("~/src/integrations/better-auth/auth.server")
 
 const hooks = auth.options.databaseHooks
+
+const [signInHook] = signInAudit.hooks.after
 
 const NOW = new Date("2026-01-01T00:00:00.000Z")
 
@@ -99,16 +100,6 @@ const STOREFRONT_HOME = `/${LOCALE}`
 
 const ACCOUNT_CALLBACK = `/${LOCALE}/account/overview?verified=true`
 
-const createdSession = {
-  createdAt: NOW,
-  expiresAt: NOW,
-  id: "ses_1",
-  ipAddress: "203.0.113.7",
-  token: "tok",
-  updatedAt: NOW,
-  userId: "usr_1",
-}
-
 const createdUser = {
   createdAt: NOW,
   email: "shopper@marte.test",
@@ -116,6 +107,16 @@ const createdUser = {
   id: "usr_1",
   name: "Ada",
   updatedAt: NOW,
+}
+
+const createdSession = {
+  createdAt: NOW,
+  expiresAt: NOW,
+  id: "ses_1",
+  ipAddress: null,
+  token: "tok",
+  updatedAt: NOW,
+  userId: "usr_1",
 }
 
 const user = { email: "shopper@marte.test", name: "Ada" }
@@ -138,30 +139,18 @@ beforeEach(() => {
   stubs.buildLocalizedUrl.mockImplementation((_base, path, locale) => (path === "/" ? `/${locale}` : `/${locale}${path}`))
 })
 
-describe("session creation hook", () => {
-  it("records the sign-in against the user the session belongs to", async () => {
-    stubs.findFirst.mockResolvedValue(createdUser)
+describe("sign-in audit hook", () => {
+  it("leaves the address out when the new session carries none", async () => {
+    const signIn = {
+      context: { ...(await auth.$context), newSession: { session: createdSession, user: createdUser }, session: null },
+      headers: new Headers(),
+      path: "/sign-in/email",
+    }
 
-    await hooks.session.create.after(createdSession)
+    await signInHook?.handler(signIn)
 
     expect(stubs.resolveAuthAuditActor).toHaveBeenCalledWith(createdUser)
-    expect(stubs.recordAuthLoginAudit).toHaveBeenCalledWith("customer-actor", { ip: "203.0.113.7", resourceId: "usr_1" })
-  })
-
-  it("leaves the address out when the session carries none", async () => {
-    stubs.findFirst.mockResolvedValue(createdUser)
-
-    await hooks.session.create.after({ ...createdSession, ipAddress: null })
-
     expect(stubs.recordAuthLoginAudit).toHaveBeenCalledWith("customer-actor", { ip: undefined, resourceId: "usr_1" })
-  })
-
-  it("records nothing when the session has no user row to attribute it to", async () => {
-    stubs.findFirst.mockResolvedValue(undefined)
-
-    await hooks.session.create.after(createdSession)
-
-    expect(stubs.recordAuthLoginAudit).not.toHaveBeenCalled()
   })
 })
 
