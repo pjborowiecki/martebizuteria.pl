@@ -116,6 +116,8 @@ export const updateCustomerPhone = createServerFn({ method: "POST" })
 
 `RATE_LIMITS.SENSITIVE` to trzy wywołania na minutę. Pusty napis czyści kolumnę do `NULL`, a nie zapisuje `""`. Zmiany nazwy, adresu e-mail i hasła przechodzą przez Better Auth, a nie przez ten moduł.
 
+`PreferencesSection` zawiera też `NewsletterField`, który czyta `getOwnNewsletterSubscriptionQuery()` i wywołuje `subscribeToNewsletter` z własnym adresem konta i `source: "account"`. Wynik `confirmationSent` pokazuje komunikat „sprawdź skrzynkę”, `alreadyConfirmed` informuje, że subskrypcja jest już aktywna, a `confirmationFailed` pokazuje błąd mówiący, że e-maila nie udało się wysłać. Dopóki subskrypcja ma status `pending`, status brzmi „Subskrypcja niepotwierdzona”, a nie obiecuje e-maila, a obok **Wypisz się** jest przycisk **Wyślij ponownie**, więc potwierdzenie, które nie wyszło albo nie dotarło, można wysłać jeszcze raz z nowym linkiem. Na wąskim ekranie oba przyciski przechodzą pod status.
+
 ## Adresy
 
 `src/modules/address` ma pięć use case'ów, wszystkie z `authorized()` i wszystkie zawężone do bieżącego użytkownika:

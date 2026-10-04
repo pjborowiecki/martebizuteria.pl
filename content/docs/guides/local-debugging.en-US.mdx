@@ -100,7 +100,7 @@ http://127.0.0.1:3000/dev/emails
 /dev/emails?template=<slug>&locale=en-US&format=text
 ```
 
-The six previewed templates are `account-deleted`, `change-email`, `order-confirmation`, `order-shipped`, `reset-password` and `verify-email`; `newsletter-confirmation` has no preview entry. This renders the real component with the real message catalogue, so it catches a missing translation key or a broken layout without sending anything.
+The seven previewed templates are `account-deleted`, `change-email`, `newsletter-already-subscribed`, `order-confirmation`, `order-shipped`, `reset-password` and `verify-email`; `newsletter-confirmation` has no preview entry. This renders the real component with the real message catalogue, so it catches a missing translation key or a broken layout without sending anything.
 
 ## Reading the database
 
@@ -126,14 +126,15 @@ vp exec wrangler tail --env preview
 
 `observability.enabled: true` in `wrangler.jsonc` means logs are retained in the Cloudflare dashboard as well. The log lines worth knowing, all from code quoted elsewhere in these guides:
 
-| Prefix                           | Source                                   |
-| -------------------------------- | ---------------------------------------- |
-| `Server function failed`         | `withRequest` caught an unexpected error |
-| `Rate-limit storage unavailable` | `withinRateLimit` could not write to D1  |
-| `[Background Work Failed]:`      | `runSafely` in `src/lib/background.ts`   |
-| `[Stripe] …`                     | The webhook route                        |
-| `[Auth] Failed to send … email`  | `reportEmailFailure` in `auth.server.ts` |
-| `[catalog] …`                    | `catalogDebugLog`, development only      |
+| Prefix                           | Source                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `Server function failed`         | `withRequest` caught an unexpected error                                                                |
+| `Rate-limit storage unavailable` | `withinRateLimit` could not write to D1                                                                 |
+| `[Background Work Failed]:`      | `runSafely` in `src/lib/background.ts`                                                                  |
+| `[Stripe] …`                     | The webhook route                                                                                       |
+| `[Auth] Failed to send … email`  | `reportEmailFailure` in `auth.server.ts`                                                                |
+| `[Newsletter] Failed to send …`  | `subscribeToNewsletter` in `subscribe-to-newsletter.ts`; also an `email.failed` entry in `/admin/audit` |
+| `[catalog] …`                    | `catalogDebugLog`, development only                                                                     |
 
 ## Running the production build locally
 

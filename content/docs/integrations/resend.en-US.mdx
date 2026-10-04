@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "The seven transactional e-mails, how they are composed, and how to preview them."
+description: "The eight transactional e-mails, how they are composed, and how to preview them."
 ---
 
 Every e-mail the shop sends goes out through Resend. The adapter in `src/integrations/resend/` holds the client, one `sendEmail` helper, the builders that turn order rows into e-mail props, and the developer preview renderer. The React Email templates themselves live in `src/presentation/emails/`, because they are presentation.
@@ -18,7 +18,7 @@ export const resend = new Resend(env.RESEND_API_KEY)
 `resend.send.ts` is the only thing that calls it, and it never throws:
 
 ```ts
-export const sendEmail = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   try {
     const { error } = await resend.emails.send({
       from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
@@ -32,23 +32,37 @@ export const sendEmail = async ({ from, react, subject, to }: Readonly<SendEmail
     return error instanceof Error ? error.message : String(error)
   }
 }
+
+export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  const timeout = Promise.withResolvers<string>()
+  const timer = setTimeout(() => {
+    timeout.resolve(`Resend did not answer within ${SEND_EMAIL_TIMEOUT_MS} ms`)
+  }, SEND_EMAIL_TIMEOUT_MS)
+
+  try {
+    return await Promise.race([deliver(options), timeout.promise])
+  } finally {
+    clearTimeout(timer)
+  }
+}
 ```
 
-It returns `undefined` on success and the failure message otherwise. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`.
+It returns `undefined` on success and the failure message otherwise. The Resend SDK has no timeout and accepts no abort signal, so a call that has not answered after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) is also a failure, reported as `Resend did not answer within 10000 ms`. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`.
 
-## The seven e-mails
+## The eight e-mails
 
-| E-mail                  | Template                                              | Namespace                        | Sent from                                                                                                                                       |
-| ----------------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Verify e-mail           | `src/presentation/emails/verify-email.tsx`            | `emails.verify-email`            | `sendVerificationEmail` in `auth.server.ts`, on sign-up                                                                                         |
-| Reset password          | `src/presentation/emails/reset-password.tsx`          | `emails.reset-password`          | `sendResetPassword` in `auth.server.ts`                                                                                                         |
-| Change e-mail           | `src/presentation/emails/change-email.tsx`            | `emails.change-email`            | `sendChangeEmailConfirmation` in `auth.server.ts`                                                                                               |
-| Account deleted         | `src/presentation/emails/account-deleted.tsx`         | `emails.account-deleted`         | `sendAccountDeletedEmail`, scheduled by `src/modules/user/use-cases/delete-customer.ts`                                                         |
-| Order confirmation      | `src/presentation/emails/order-confirmation.tsx`      | `emails.order-confirmation`      | `stripe.webhooks.tsx` after a checkout session is fulfilled                                                                                     |
-| Order shipped           | `src/presentation/emails/order-shipped.tsx`           | `emails.order-shipped`           | `notifyOrderShipped`, scheduled by `src/modules/order/use-cases/ship-order.ts`                                                                  |
-| Newsletter confirmation | `src/presentation/emails/newsletter-confirmation.tsx` | `emails.newsletter-confirmation` | `sendNewsletterConfirmation` in `newsletter-confirmation.server.ts`, scheduled by `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` |
+| E-mail                        | Template                                                    | Namespace                              | Sent from                                                                                                                                                                                       |
+| ----------------------------- | ----------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verify e-mail                 | `src/presentation/emails/verify-email.tsx`                  | `emails.verify-email`                  | `sendVerificationEmail` in `auth.server.ts`, on sign-up                                                                                                                                         |
+| Reset password                | `src/presentation/emails/reset-password.tsx`                | `emails.reset-password`                | `sendResetPassword` in `auth.server.ts`                                                                                                                                                         |
+| Change e-mail                 | `src/presentation/emails/change-email.tsx`                  | `emails.change-email`                  | `sendChangeEmailConfirmation` in `auth.server.ts`                                                                                                                                               |
+| Account deleted               | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail`, scheduled by `src/modules/user/use-cases/delete-customer.ts`                                                                                                         |
+| Order confirmation            | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `stripe.webhooks.tsx` after a checkout session is fulfilled                                                                                                                                     |
+| Order shipped                 | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `notifyOrderShipped`, scheduled by `src/modules/order/use-cases/ship-order.ts`                                                                                                                  |
+| Newsletter confirmation       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` in `newsletter-confirmation.server.ts`, awaited by `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`                                                   |
+| Newsletter already subscribed | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribed` in `newsletter-already-subscribed.server.ts`, awaited by `subscribe-to-newsletter.ts` when a confirmed address is submitted by anyone but its signed-in owner |
 
-The first four are described in [Better Auth](/docs/integrations/better-auth); the last three are the ones this adapter builds.
+The first four are described in [Better Auth](/docs/integrations/better-auth); the last four are the ones this adapter builds.
 
 Each template exports its own namespace constant beside the component, so the caller cannot drift from the messages it renders:
 
@@ -121,6 +135,8 @@ return { ok: true, orderId }
 
 Sends are recorded, not just logged. `recordOrderEmailOutcome({ failure, label, orderId })` in `src/modules/audit-log/audit-log.events.server.ts` writes a success or failure entry, and the confirmation flow additionally calls `recordEmailFailedAudit(orderId, …)` when the payload could not even be _prepared_ — a missing customer e-mail, an unparseable metadata block. Both appear in `/admin/audit`.
 
+Newsletter e-mails are recorded only when they fail. `subscribeToNewsletter` calls `recordEmailFailedAudit(email, { detail })` when Resend refuses or times out on the confirmation or the already-subscribed notice, with the address as the target and a detail such as `Newsletter confirmation — The example.com domain is not verified`. It also logs `[Newsletter] Failed to send confirmation to <address>: <error>`, and the visitor is told the email could not be sent.
+
 ## Previewing templates
 
 `email-previews.tsx` declares one entry per template except `newsletter-confirmation`:
@@ -129,6 +145,7 @@ Sends are recorded, not just logged. `recordOrderEmailOutcome({ failure, label, 
 export const EMAIL_PREVIEWS = {
   "account-deleted": { element: async (locale) => <AccountDeleted … />, label: "Account deleted" },
   "change-email": { … },
+  "newsletter-already-subscribed": { … },
   "order-confirmation": { … },
   "order-shipped": { … },
   "reset-password": { … },

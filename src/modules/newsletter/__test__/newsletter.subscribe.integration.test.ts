@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query"
-import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod"
 
 const { sqlite } = await vi.hoisted(async () => {
@@ -8,11 +8,14 @@ const { sqlite } = await vi.hoisted(async () => {
   return { sqlite: new DatabaseSync(":memory:") }
 })
 
-const { getRequestSession, scheduleBackgroundWork, sendNewsletterConfirmation } = vi.hoisted(() => ({
+const { getRequestSession, recordEmailFailedAudit, sendNewsletterAlreadySubscribed, sendNewsletterConfirmation } = vi.hoisted(() => ({
   getRequestSession: vi.fn<() => Promise<{ user: { email: string; id: string } } | undefined>>(),
-  scheduleBackgroundWork: vi.fn(),
-  sendNewsletterConfirmation: vi.fn<(input: { email: string; locale: string; token: string }) => Promise<void>>(),
+  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+  sendNewsletterAlreadySubscribed: vi.fn<(input: { email: string; locale: string }) => Promise<string | undefined>>(),
+  sendNewsletterConfirmation: vi.fn<(input: { email: string; locale: string; token: string }) => Promise<string | undefined>>(),
 }))
+
+const UNVERIFIED_DOMAIN = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
 
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
@@ -26,9 +29,10 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   withRateLimit: () => ({}),
 }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession }))
+vi.mock("~/src/integrations/resend/newsletter-already-subscribed.server", () => ({ sendNewsletterAlreadySubscribed }))
 vi.mock("~/src/integrations/resend/newsletter-confirmation.server", () => ({ sendNewsletterConfirmation }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
-vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -77,11 +81,22 @@ const countSubscribers = (): number =>
 const lastConfirmationToken = (): string =>
   z.object({ token: z.string() }).parse({ token: sendNewsletterConfirmation.mock.calls.at(-1)?.[0]?.token }).token
 
+const confirmAnna = async () => {
+  await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+  await confirmNewsletterSubscription({ data: { token: lastConfirmationToken() } })
+}
+
+const failNextConfirmation = () => {
+  sendNewsletterConfirmation.mockResolvedValueOnce(UNVERIFIED_DOMAIN)
+
+  return vi.spyOn(console, "error").mockImplementation(() => {})
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   getRequestSession.mockResolvedValue(undefined)
+  sendNewsletterAlreadySubscribed.mockResolvedValue(undefined)
   sendNewsletterConfirmation.mockResolvedValue(undefined)
-  scheduleBackgroundWork.mockImplementation((promise: Promise<unknown>) => promise)
   sqlite.exec(`
     drop table if exists newsletter_subscriber;
     create table newsletter_subscriber (
@@ -91,6 +106,10 @@ beforeEach(() => {
     );
     create unique index newsletter_subscriber_email_unique on newsletter_subscriber (email);
   `)
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 afterAll(() => {
@@ -130,27 +149,43 @@ describe("subscribeToNewsletter", () => {
   })
 
   it("does not disclose that a confirmed address is on the list", async () => {
-    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
-    await confirmNewsletterSubscription({ data: { token: lastConfirmationToken() } })
+    await confirmAnna()
 
     await expect(subscribeToNewsletter({ data: { email: "anna@example.com" } })).resolves.toStrictEqual({
       outcome: NEWSLETTER_OUTCOME.CONFIRMATION_SENT,
     })
   })
 
-  it("tells the signed-in owner of that address that they are already subscribed", async () => {
+  it("mails a confirmed subscriber who is not signed in that they are already on the list", async () => {
+    await confirmAnna()
+
+    await subscribeToNewsletter({ data: { email: "anna@example.com", locale: "en-US" } })
+
+    expect(sendNewsletterAlreadySubscribed).toHaveBeenCalledExactlyOnceWith({ email: "anna@example.com", locale: "en-US" })
+    expect(sendNewsletterConfirmation).toHaveBeenCalledOnce()
+  })
+
+  it("keeps a confirmed subscriber's token so the links in letters already sent keep working", async () => {
+    await confirmAnna()
+    const token = subscriberRow("anna@example.com")?.token
+
     await subscribeToNewsletter({ data: { email: "anna@example.com" } })
-    await confirmNewsletterSubscription({ data: { token: lastConfirmationToken() } })
+
+    expect(subscriberRow("anna@example.com")?.token).toBe(token)
+  })
+
+  it("tells the signed-in owner of that address that they are already subscribed", async () => {
+    await confirmAnna()
     getRequestSession.mockResolvedValue({ user: { email: "anna@example.com", id: "user-1" } })
 
     await expect(subscribeToNewsletter({ data: { email: "anna@example.com" } })).resolves.toStrictEqual({
       outcome: NEWSLETTER_OUTCOME.ALREADY_CONFIRMED,
     })
+    expect(sendNewsletterAlreadySubscribed).not.toHaveBeenCalled()
   })
 
   it("leaves a confirmed subscription confirmed when someone else submits the address", async () => {
-    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
-    await confirmNewsletterSubscription({ data: { token: lastConfirmationToken() } })
+    await confirmAnna()
 
     await subscribeToNewsletter({ data: { email: "anna@example.com" } })
 
@@ -177,6 +212,109 @@ describe("subscribeToNewsletter", () => {
     expect(() => {
       void subscribeToNewsletter({ data: { email: "not-an-email" } })
     }).toThrow()
+  })
+})
+
+describe("subscribeToNewsletter when the confirmation email cannot be sent", () => {
+  it("waits for the confirmation email before answering", async () => {
+    const delivery = Promise.withResolvers<string | undefined>()
+    sendNewsletterConfirmation.mockReturnValueOnce(delivery.promise)
+    const settled = vi.fn<() => void>()
+
+    const subscribing = subscribeToNewsletter({ data: { email: "anna@example.com" } }).then(settled)
+    await vi.waitFor(() => {
+      expect(sendNewsletterConfirmation).toHaveBeenCalledOnce()
+    })
+
+    expect(settled).not.toHaveBeenCalled()
+    delivery.resolve(undefined)
+    await subscribing
+    expect(settled).toHaveBeenCalledOnce()
+  })
+
+  it("reports confirmationFailed and keeps the address pending", async () => {
+    failNextConfirmation()
+
+    await expect(subscribeToNewsletter({ data: { email: "anna@example.com" } })).resolves.toStrictEqual({
+      outcome: NEWSLETTER_OUTCOME.CONFIRMATION_FAILED,
+    })
+    expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.PENDING)
+  })
+
+  it("records the failed confirmation in the email audit log for the shop", async () => {
+    const consoleError = failNextConfirmation()
+
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    expect(recordEmailFailedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com", {
+      detail: `Newsletter confirmation — ${UNVERIFIED_DOMAIN}`,
+    })
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+      `[Newsletter] Failed to send confirmation to anna@example.com: ${UNVERIFIED_DOMAIN}`,
+    )
+  })
+
+  it("audits nothing when the confirmation went out", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    expect(recordEmailFailedAudit).not.toHaveBeenCalled()
+    expect(consoleError).not.toHaveBeenCalled()
+  })
+
+  it("sends again with a fresh token when the visitor retries", async () => {
+    failNextConfirmation()
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+    const failedToken = lastConfirmationToken()
+
+    await expect(subscribeToNewsletter({ data: { email: "anna@example.com" } })).resolves.toStrictEqual({
+      outcome: NEWSLETTER_OUTCOME.CONFIRMATION_SENT,
+    })
+    expect(sendNewsletterConfirmation).toHaveBeenCalledTimes(2)
+    expect(lastConfirmationToken()).not.toBe(failedToken)
+    expect(lastConfirmationToken()).toBe(subscriberRow("anna@example.com")?.token)
+  })
+
+  it("reports and audits a failed already-subscribed notice instead of claiming it went out", async () => {
+    await confirmAnna()
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    sendNewsletterAlreadySubscribed.mockResolvedValueOnce(UNVERIFIED_DOMAIN)
+
+    await expect(subscribeToNewsletter({ data: { email: "anna@example.com" } })).resolves.toStrictEqual({
+      outcome: NEWSLETTER_OUTCOME.CONFIRMATION_FAILED,
+    })
+    expect(recordEmailFailedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com", {
+      detail: `Newsletter already-subscribed notice — ${UNVERIFIED_DOMAIN}`,
+    })
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+      `[Newsletter] Failed to send already-subscribed notice to anna@example.com: ${UNVERIFIED_DOMAIN}`,
+    )
+    expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.CONFIRMED)
+  })
+
+  it("answers a confirmed address exactly like a new one while no email can be sent", async () => {
+    await confirmAnna()
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    sendNewsletterAlreadySubscribed.mockResolvedValue(UNVERIFIED_DOMAIN)
+    sendNewsletterConfirmation.mockResolvedValue(UNVERIFIED_DOMAIN)
+
+    const member = await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+    const stranger = await subscribeToNewsletter({ data: { email: "jan@example.com" } })
+
+    expect(member).toStrictEqual({ outcome: NEWSLETTER_OUTCOME.CONFIRMATION_FAILED })
+    expect(stranger).toStrictEqual(member)
+  })
+
+  it("reports a failed send to someone rejoining after leaving the list", async () => {
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+    await unsubscribeFromNewsletter({ data: { token: lastConfirmationToken() } })
+    failNextConfirmation()
+
+    await expect(subscribeToNewsletter({ data: { email: "anna@example.com" } })).resolves.toStrictEqual({
+      outcome: NEWSLETTER_OUTCOME.CONFIRMATION_FAILED,
+    })
+    expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.PENDING)
   })
 })
 

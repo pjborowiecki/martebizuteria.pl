@@ -19,11 +19,16 @@ interface AdminNewsletterStats {
   readonly unsubscribed: number
 }
 
+interface NewsletterSubscribeFormValues {
+  readonly email: string
+}
+
 export interface Newsletter {
   adminListItem: AdminNewsletterListItem
   adminStats: AdminNewsletterStats
   insert: typeof newsletterSubscriber.$inferInsert
   outcome: { readonly outcome: NewsletterOutcome }
   select: typeof newsletterSubscriber.$inferSelect
+  subscribeFormValues: NewsletterSubscribeFormValues
   tokenResult: { readonly email: string | undefined; readonly result: NewsletterTokenResult }
 }

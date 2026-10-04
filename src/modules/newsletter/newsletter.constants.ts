@@ -21,6 +21,7 @@ export const NEWSLETTER_SOURCE = {
 
 export const NEWSLETTER_OUTCOME = {
   ALREADY_CONFIRMED: "alreadyConfirmed",
+  CONFIRMATION_FAILED: "confirmationFailed",
   CONFIRMATION_SENT: "confirmationSent",
 } as const
 

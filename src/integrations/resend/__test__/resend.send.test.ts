@@ -1,6 +1,6 @@
 import { createElement } from "react"
 
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const { emailsSend, env } = vi.hoisted(() => ({
   emailsSend: vi.fn(),
@@ -14,7 +14,7 @@ vi.mock("resend", () => ({
   },
 }))
 
-import { sendEmail } from "~/src/integrations/resend/resend.send"
+import { SEND_EMAIL_TIMEOUT_MS, sendEmail } from "~/src/integrations/resend/resend.send"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 
@@ -22,6 +22,10 @@ const body = createElement("p", undefined, "Your order is on its way")
 
 beforeEach(() => {
   emailsSend.mockReset()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe("sendEmail", () => {
@@ -68,5 +72,38 @@ describe("sendEmail", () => {
     emailsSend.mockRejectedValueOnce("socket closed")
 
     await expect(sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })).resolves.toBe("socket closed")
+  })
+})
+
+describe("sendEmail when Resend does not answer", () => {
+  it("gives up after the time limit and reports it as a failure instead of hanging the caller", async () => {
+    vi.useFakeTimers()
+    emailsSend.mockReturnValueOnce(Promise.withResolvers().promise)
+
+    const sending = sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })
+    await vi.advanceTimersByTimeAsync(SEND_EMAIL_TIMEOUT_MS)
+
+    await expect(sending).resolves.toBe(`Resend did not answer within ${SEND_EMAIL_TIMEOUT_MS} ms`)
+  })
+
+  it("keeps waiting for a slow answer until the limit is reached", async () => {
+    vi.useFakeTimers()
+    const answer = Promise.withResolvers<{ data: { id: string }; error: null }>()
+    emailsSend.mockReturnValueOnce(answer.promise)
+
+    const sending = sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })
+    await vi.advanceTimersByTimeAsync(SEND_EMAIL_TIMEOUT_MS - 1)
+    answer.resolve({ data: { id: "email_1" }, error: null })
+
+    await expect(sending).resolves.toBeUndefined()
+  })
+
+  it("leaves no timer behind once Resend has answered", async () => {
+    vi.useFakeTimers()
+    emailsSend.mockResolvedValueOnce({ data: { id: "email_1" }, error: null })
+
+    await sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })
+
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

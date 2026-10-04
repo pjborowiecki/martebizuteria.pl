@@ -4,6 +4,7 @@ import { EMAIL_PREVIEWS, type EmailPreviewSlug, isEmailPreviewSlug, renderEmailP
 
 import accountDeletedCopy from "~/messages/en-US/emails.account-deleted.json"
 import changeEmailCopy from "~/messages/en-US/emails.change-email.json"
+import newsletterAlreadySubscribedCopy from "~/messages/en-US/emails.newsletter-already-subscribed.json"
 import orderConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
 import orderShippedCopy from "~/messages/en-US/emails.order-shipped.json"
 import resetPasswordCopy from "~/messages/en-US/emails.reset-password.json"
@@ -28,6 +29,7 @@ describe("EMAIL_PREVIEWS", () => {
     expect(Object.entries(EMAIL_PREVIEWS).map(([slug, preview]) => [slug, preview.label])).toStrictEqual([
       ["account-deleted", "Account deleted"],
       ["change-email", "Change email"],
+      ["newsletter-already-subscribed", "Newsletter already subscribed"],
       ["order-confirmation", "Order confirmation"],
       ["order-shipped", "Order shipped"],
       ["reset-password", "Reset password"],
@@ -75,6 +77,13 @@ describe("renderEmailPreview", () => {
 
   it("renders the change email notice", async () => {
     await expect(text("change-email")).resolves.toContain(changeEmailCopy.highlightTitle)
+  })
+
+  it("renders the notice for an address already on the newsletter", async () => {
+    const preview = await text("newsletter-already-subscribed")
+
+    expect(preview).toContain(newsletterAlreadySubscribedCopy.heading.toUpperCase())
+    expect(preview).toContain("https://martebizuteria.pl/en-US")
   })
 
   it("renders the password reset email", async () => {

@@ -116,6 +116,8 @@ export const updateCustomerPhone = createServerFn({ method: "POST" })
 
 `RATE_LIMITS.SENSITIVE` is three calls per minute. An empty string clears the column to `NULL` rather than storing `""`. Name, email and password changes go through Better Auth, not through this module.
 
+`PreferencesSection` also holds `NewsletterField`, which reads `getOwnNewsletterSubscriptionQuery()` and calls `subscribeToNewsletter` with the account's own address and `source: "account"`. A `confirmationSent` answer shows a "check your inbox" toast, `alreadyConfirmed` says the customer is already subscribed, and `confirmationFailed` shows an error toast saying the email could not be sent. While the subscription is `pending`, the status reads "Not confirmed yet" rather than promising an email, and the field offers **Resend email** next to **Unsubscribe**, so a confirmation that failed or never arrived can be sent again with a fresh link. On a narrow screen the two actions wrap below the status.
+
 ## Addresses
 
 `src/modules/address` has five use cases, all `authorized()` and all scoped to the current user:

@@ -119,17 +119,27 @@ Smooth scrolling itself is Lenis, mounted by `src/presentation/components/custom
 
 ## Newsletter section
 
-`newsletter-section.tsx` renders a form. On submit it checks the address against `EMAIL_PATTERN` and calls the `subscribeToNewsletter` mutation from `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`:
+`newsletter-section.tsx` renders a react-hook-form form validated by `newsletterZodSchemas.subscribeFormValues`, which trims the address and checks that it is an email. A valid address goes to the `subscribeToNewsletter` mutation from `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`:
 
 ```tsx
 subscribe.mutate({
-  email: candidate,
+  email,
   locale: isSupportedLocale(locale) ? locale : undefined,
   source: NEWSLETTER_SOURCE.LANDING,
 })
 ```
 
-The server function needs no session and is rate-limited with `withRateLimit("newsletter-subscribe", RATE_LIMITS.SENSITIVE)`. It saves the address in `newsletter_subscriber` as `pending` with a new token and queues `sendNewsletterConfirmation`, whose link opens `/newsletter/confirm`. An address that is already confirmed gets `alreadyConfirmed` only when it belongs to the signed-in visitor; anyone else sees the same success message as a new subscriber.
+The server function needs no session and is rate-limited with `withRateLimit("newsletter-subscribe", RATE_LIMITS.SENSITIVE)`. It saves the address in `newsletter_subscriber` as `pending` with a new token, then awaits `sendNewsletterConfirmation`, whose link opens `/newsletter/confirm`. What the section shows depends on the outcome:
+
+| Outcome              | When                                                                                             | The section                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `confirmationSent`   | Resend accepted the confirmation email, or the already-subscribed notice for a confirmed address | Replaces the form with the "check your inbox" message                         |
+| `confirmationFailed` | Resend refused either email, or did not answer within `SEND_EMAIL_TIMEOUT_MS`                    | Keeps the form open with the address filled in and a retryable error under it |
+| `alreadyConfirmed`   | The address is confirmed and belongs to the signed-in visitor                                    | Replaces the form with "You are already on the list."                         |
+
+A failed send logs the Resend error and records an `email.failed` entry in `/admin/audit`; a row that was waiting for confirmation stays `pending`. Pressing the button again resubmits the same address: the row gets a fresh token and the email is sent again. Every attempt counts towards the three-a-minute limit. The address field is read-only while a request is running, so the answer cannot be lost to an edit; editing it afterwards clears the error.
+
+An address that is already confirmed gets `alreadyConfirmed` only when it belongs to the signed-in visitor, and nothing is sent. Anyone else gets the same treatment as a new address: the request waits for `sendNewsletterAlreadySubscribed`, which tells the owner of the inbox that they are already on the list, and answers `confirmationSent` or `confirmationFailed` exactly as a new signup would. The row and its token stay as they are, so links in letters already sent keep working. The answer is therefore the same whether or not the address is on the list, both paths spend their time waiting for one Resend round trip, and a subscriber who is not signed in gets an email instead of a promise of one.
 
 ## Section anchors
 

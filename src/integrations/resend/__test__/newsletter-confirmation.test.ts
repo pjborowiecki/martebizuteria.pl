@@ -1,7 +1,7 @@
 import { type ReactElement } from "react"
 
 import { render } from "react-email"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import englishCopy from "~/messages/en-US/emails.newsletter-confirmation.json"
 import polishCopy from "~/messages/pl-PL/emails.newsletter-confirmation.json"
@@ -31,10 +31,6 @@ const sentPayload = () => {
 beforeEach(() => {
   sendEmail.mockReset()
   sendEmail.mockResolvedValue(undefined)
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
 })
 
 describe("buildNewsletterConfirmUrl", () => {
@@ -75,19 +71,15 @@ describe("sendNewsletterConfirmation", () => {
     expect(html).toContain(englishCopy.cta)
   })
 
-  it("logs a transport failure instead of throwing at the subscriber", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
-    sendEmail.mockResolvedValueOnce("Invalid recipient")
+  it("hands a refused send back to the caller so the subscriber is not told an email is on its way", async () => {
+    sendEmail.mockResolvedValueOnce("The pjborowiecki.com domain is not verified")
 
-    await expect(sendNewsletterConfirmation({ email: "anna@example.com", locale: "en-US", token: "token-1" })).resolves.toBeUndefined()
-    expect(consoleError).toHaveBeenCalledExactlyOnceWith("[Newsletter] Failed to send confirmation to anna@example.com: Invalid recipient")
+    await expect(sendNewsletterConfirmation({ email: "anna@example.com", locale: "en-US", token: "token-1" })).resolves.toBe(
+      "The pjborowiecki.com domain is not verified",
+    )
   })
 
-  it("logs nothing when the email went out", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
-
-    await sendNewsletterConfirmation({ email: "anna@example.com", locale: "en-US", token: "token-1" })
-
-    expect(consoleError).not.toHaveBeenCalled()
+  it("reports no failure when the email went out", async () => {
+    await expect(sendNewsletterConfirmation({ email: "anna@example.com", locale: "en-US", token: "token-1" })).resolves.toBeUndefined()
   })
 })
