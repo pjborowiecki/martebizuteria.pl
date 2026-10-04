@@ -3,10 +3,7 @@ import { cleanup, fireEvent, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
-
-const { syncQueryInvalidation } = vi.hoisted(() => ({ syncQueryInvalidation: vi.fn() }))
-
-vi.mock("~/src/integrations/tanstack-query/query.sync", () => ({ syncQueryInvalidation }))
+import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
 
@@ -14,10 +11,14 @@ import { ProductsRefreshAction } from "~/src/presentation/components/custom/page
 
 const REFRESH_LABEL = "Reload table data"
 
+const PRODUCT_DETAIL_KEY = [...PRODUCT_QUERY_KEYS.ADMIN.BY_HANDLE, "lapis"]
+
+vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)
+
 const newQueryClient = (): QueryClient => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
 beforeEach(() => {
-  syncQueryInvalidation.mockReset()
+  StubBroadcastChannel.posted.mockClear()
 })
 
 afterEach(() => {
@@ -31,12 +32,14 @@ describe("ProductsRefreshAction", () => {
     expect(screen.getByRole("button", { name: REFRESH_LABEL })).toBeEnabled()
   })
 
-  it("invalidates the admin product queries when pressed", () => {
+  it("drops the cached product queries off screen when pressed, without telling the browser's other tabs", () => {
     const queryClient = newQueryClient()
+    queryClient.setQueryData(PRODUCT_DETAIL_KEY, { handle: "lapis" })
     renderWithProviders(<ProductsRefreshAction />, { queryClient })
     fireEvent.click(screen.getByRole("button", { name: REFRESH_LABEL }))
 
-    expect(syncQueryInvalidation).toHaveBeenCalledWith(queryClient, PRODUCT_QUERY_KEYS.ADMIN.ALL)
+    expect(queryClient.getQueryState(PRODUCT_DETAIL_KEY)).toBeUndefined()
+    expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
   })
 
   it("waits while the admin product queries are loading", () => {

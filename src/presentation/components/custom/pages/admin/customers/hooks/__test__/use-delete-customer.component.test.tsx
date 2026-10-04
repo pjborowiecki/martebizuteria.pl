@@ -6,6 +6,7 @@ import { IntlProvider } from "use-intl/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TEST_LOCALE, TEST_MESSAGES } from "~/src/platform/testing/lib/messages"
+import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
@@ -25,16 +26,20 @@ vi.mock("~/src/modules/user/use-cases/delete-customer", () => ({
   deleteCustomerMutation: { mutationFn: deleteCustomerMutationFn, mutationKey: ["users", "delete-customer"] },
 }))
 
+vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)
+
+const CUSTOMERS_PAGE_KEY = [...USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE, { page: 1 }]
+
 const renderDeleteCustomer = () => {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
-  const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue()
+  queryClient.setQueryData(CUSTOMERS_PAGE_KEY, { rows: [{ id: "usr_1" }] })
   const wrapper = ({ children }: Readonly<{ children: ReactNode }>) => (
     <IntlProvider locale={TEST_LOCALE} messages={TEST_MESSAGES} timeZone="UTC">
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </IntlProvider>
   )
 
-  return { invalidateQueries, ...renderHook(() => useDeleteCustomer(), { wrapper }) }
+  return { queryClient, ...renderHook(() => useDeleteCustomer(), { wrapper }) }
 }
 
 beforeEach(() => {
@@ -42,6 +47,7 @@ beforeEach(() => {
   toastError.mockReset()
   toastSuccess.mockReset()
   toastWarning.mockReset()
+  StubBroadcastChannel.posted.mockClear()
 })
 
 afterEach(() => {
@@ -80,15 +86,16 @@ describe("useDeleteCustomer on success", () => {
     expect(toastError).not.toHaveBeenCalled()
   })
 
-  it("refreshes the customers list", async () => {
+  it("drops the cached customers list in this tab and leaves the other tabs to the realtime hub", async () => {
     deleteCustomerMutationFn.mockResolvedValue({ goodbyeEmailSent: true, ok: true, userId: "usr_1" })
-    const { invalidateQueries, result } = renderDeleteCustomer()
+    const { queryClient, result } = renderDeleteCustomer()
 
     result.current.mutate({ userId: "usr_1" })
 
     await waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: USER_QUERY_KEYS.ADMIN.CUSTOMERS, refetchType: "all" })
+      expect(queryClient.getQueryState(CUSTOMERS_PAGE_KEY)).toBeUndefined()
     })
+    expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
   })
 
   it("sends the target user id to the server", async () => {
@@ -137,14 +144,15 @@ describe("useDeleteCustomer on failure", () => {
     })
   })
 
-  it("still refreshes the customers list, so a stale row cannot linger", async () => {
+  it("still drops the cached customers list, so a stale row cannot linger", async () => {
     deleteCustomerMutationFn.mockRejectedValue(new AppError(ERROR_CODES.NOT_FOUND))
-    const { invalidateQueries, result } = renderDeleteCustomer()
+    const { queryClient, result } = renderDeleteCustomer()
 
     result.current.mutate({ userId: "usr_1" })
 
     await waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: USER_QUERY_KEYS.ADMIN.CUSTOMERS, refetchType: "all" })
+      expect(queryClient.getQueryState(CUSTOMERS_PAGE_KEY)).toBeUndefined()
     })
+    expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
   })
 })

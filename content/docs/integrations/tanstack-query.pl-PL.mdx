@@ -3,7 +3,7 @@ title: "TanStack Query"
 description: "Klient QueryClient na żądanie, klucze zapytań, wstępne pobieranie w loaderach i unieważnianie między kartami."
 ---
 
-TanStack Query jest jedynym cache danych w aplikacji. Loadery tras wypełniają go na serwerze, komponenty czytają go na kliencie, mutacje go unieważniają, a dwa osobne kanały wpuszczają unieważnienia z zewnątrz: `BroadcastChannel` między kartami przeglądarki oraz hub WebSocket z Workera.
+TanStack Query jest jedynym cache danych w aplikacji. Loadery tras wypełniają go na serwerze, komponenty czytają go na kliencie, mutacje go unieważniają, a dwa osobne kanały wpuszczają unieważnienia z zewnątrz: hub WebSocket z Workera oraz `BroadcastChannel` między kartami przeglądarki, używany dla nielicznych lokalnych zmian, których hub nie przenosi.
 
 ## Jeden klient na żądanie
 
@@ -142,13 +142,38 @@ Ponieważ funkcja obserwuje cache, wychwytuje zmianę bez względu na to, kto po
 
 Po logowaniu hasłem lub weryfikacji dwuskładnikowej `usePostAuthRedirect` usuwa z cache wyłącznie wpis sesji, a następnie czyści zapamiętane dopasowania routera i unieważnia router. Strażnik `/auth` pobiera świeżą sesję, a `clearCacheOnUserChange` zapomina to, co trafiło do cache przed zalogowaniem. Wylogowanie to pełne przeładowanie strony, które odrzuca cały cache. Strażników i przebieg przekierowań opisuje strona [Better Auth](/docs/integrations/better-auth).
 
+## Unieważnianie prefiksu
+
+`src/integrations/tanstack-query/query.invalidation.ts` zawiera politykę, którą stosuje każde unieważnienie wypchnięte z serwera albo przekazane z innej karty:
+
+```ts
+export const invalidateQueryPrefix = async (queryClient: QueryClient, queryKey: QueryKey): Promise<void> => {
+  queryClient.removeQueries({
+    fetchStatus: "idle",
+    predicate: (query) => query.getObserversCount() === 0 && query.queryType !== "infinite",
+    queryKey,
+  })
+
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey, refetchType: "active" }),
+    queryClient.refetchQueries({ fetchStatus: "fetching", queryKey, type: "inactive" }),
+  ])
+}
+```
+
+Najpierw usuwane są bezczynne zapytania, których nic nie obserwuje. Usunięcie zapytania w trakcie pobierania po cichu by je anulowało, a czekający na nie loader zakończyłby się błędem, dlatego znikają tylko zapytania z `fetchStatus: "idle"`. Zostaje też lista nieskończona: jej wpis przechowuje każdą stronę wczytaną przez odwiedzającego, a jednym pobraniem nie da się jej odtworzyć, więc katalog sklepu zachowuje strony i pozycję przewinięcia, gdy klient do niego wraca. `query.queryType` to znacznik, który query-core ustawia na każdym zapytaniu nieskończonym; jest oznaczony jako wewnętrzny, więc testy `query.invalidation` nie przejdą, jeśli aktualizacja zmieni jego nazwę.
+
+`invalidateQueries` z `refetchType: "active"` oznacza potem każde pozostałe zapytanie jako nieaktualne i pobiera ponownie te widoczne na ekranie. Zachowana lista nieskończona jest tylko oznaczana jako nieaktualna, a następny loader albo montowany komponent pobiera ponownie wszystkie jej strony. Zapytanie obserwowane, ale wyłączone, jest tylko oznaczane jako nieaktualne i pobiera się ponownie po włączeniu. `refetchQueries` z `type: "inactive"` i `fetchStatus: "fetching"` uruchamia od nowa trwające już pobrania bez obserwatora, więc czekający na nie loader dostaje odpowiedź już po zdarzeniu. query-core pomija zapytanie, którego nigdy nie pobrano, więc trwające pierwsze pobieranie kończy się normalnie.
+
+Każde usunięte zapytanie następny loader albo montowany komponent pobiera od nowa, nawet gdy loader czyta ze `staleTime: "static"`, a zapytanie ma `refetchOnMount: false`. Samo `refetchType: "active"` zostawiłoby takiemu loaderowi nieaktualny wpis, bo `staleTime` równe `"static"` w ogóle nie patrzy na `isInvalidated`. `invalidateQueryPrefix` wywołuj bezpośrednio przy odświeżeniu potrzebnym tylko tej karcie, na przykład w przyciskach odświeżania tabel panelu.
+
 ## Unieważnianie między kartami
 
-`src/integrations/tanstack-query/query.sync.ts` jest jedynym plikiem w katalogu `tanstack-query`. Powiela unieważnienia między kartami przeglądarki tego samego pochodzenia przez `BroadcastChannel` o nazwie `marte-query-invalidation`:
+`src/integrations/tanstack-query/query.sync.ts` powiela unieważnienia między kartami przeglądarki tego samego pochodzenia przez `BroadcastChannel` o nazwie `marte-query-invalidation`:
 
 ```ts
 export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryKey): Promise<void> => {
-  const invalidation = queryClient.invalidateQueries({ queryKey, refetchType: "all" })
+  const invalidation = invalidateQueryPrefix(queryClient, queryKey)
 
   try {
     getInvalidationChannel()?.postMessage({ queryKey })
@@ -160,13 +185,13 @@ export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryK
 }
 ```
 
-`setupQueryClientInvalidationBroadcast(queryClient)` instaluje nasłuchiwanie, a `src/router.tsx` wywołuje je raz na klienta, pod warunkiem `if (!import.meta.env.SSR)`. Obie funkcje są odporne na brak środowiska: `getInvalidationChannel` zwraca `undefined`, gdy brakuje `document` lub `BroadcastChannel`, `WeakSet` zapobiega zduplikowanemu nasłuchiwaniu na tym samym kliencie, a handler wiadomości ignoruje wszystko, co nie zawiera tablicowego `queryKey`.
+`setupQueryClientInvalidationBroadcast(queryClient)` instaluje nasłuchiwanie, które stosuje `invalidateQueryPrefix` do każdego odebranego klucza, a `src/router.tsx` wywołuje je raz na klienta, pod warunkiem `if (!import.meta.env.SSR)`. Obie funkcje są odporne na brak środowiska: `getInvalidationChannel` zwraca `undefined`, gdy brakuje `document` lub `BroadcastChannel`, `WeakSet` zapobiega zduplikowanemu nasłuchiwaniu na tym samym kliencie, a handler wiadomości ignoruje wszystko, co nie zawiera tablicowego `queryKey`.
 
-Używaj `syncQueryInvalidation`, a nie `queryClient.invalidateQueries`, zawsze gdy zmiana powinna być widoczna w pozostałych kartach klienta — zmiana koszyka, zmiana adresu, złożone zamówienie.
+Używaj `syncQueryInvalidation` tylko przy lokalnej mutacji, której kluczy serwer nie publikuje przez hub realtime: dziś są to akcje kuponów (`DISCOUNT_QUERY_KEYS.ADMIN.ALL`) i akcje w wierszach zamówień (`ORDER_QUERY_KEYS.ADMIN.ORDERS`, które inaczej docierają do innych przeglądarek dopiero po wsadzie z kolejki dziennika audytu). Zmiana publikowana przez serwer dociera już do każdej karty sklepu i panelu przez jej własne gniazdo, więc publikowanie jej także na kanale kazałoby każdej innej karcie przeglądarki pobrać te same zapytania jeszcze raz.
 
 ## Unieważnianie wypychane z serwera
 
-Zapisy na Workerze nie mogą dosięgnąć cache w przeglądarce bezpośrednio. Publikują zbiór prefiksów kluczy zapytań do huba w Durable Object, który rozsyła je przez WebSocket do wszystkich podłączonych klientów; `useRealtimeQuerySync` dopasowuje prefiksy do listy subskrypcji układu i wywołuje `syncQueryInvalidation` dla każdego trafienia, co z kolei rozsyła zmianę do pozostałych kart. Cały mechanizm opisuje strona [Unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation).
+Zapisy na Workerze nie mogą dosięgnąć cache w przeglądarce bezpośrednio. Publikują zbiór prefiksów kluczy zapytań do huba w Durable Object, który rozsyła je przez WebSocket do wszystkich podłączonych klientów; `useRealtimeQuerySync` dopasowuje prefiksy do listy subskrypcji układu i wywołuje `invalidateQueryPrefix` raz dla każdego trafienia, którego nie obejmuje już szersze trafienie. Nigdy nie publikuje na kanale `BroadcastChannel`, bo każda karta, która go montuje, odbiera ramkę przez własne gniazdo. Cały mechanizm opisuje strona [Unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation).
 
 ## Narzędzia deweloperskie
 

@@ -14,7 +14,7 @@ description: "Które katalogi mogą importować z których, jak kod wyłącznie 
 | `src/integrations`           | `_core`, schematy modułów, akcesory i przypadki użycia, do których dostawca wraca zwrotnie                              | komponentów, poza szablonami e-mail, które dostawca renderuje       |
 | `src/server.ts`              | handler Start, `resolveLocale`, hub realtime, konsumenta kolejki audytu, `src/lib`                                      | bazy danych, Better Auth ani SDK Stripe bezpośrednio                |
 
-Integracje bezpieczne dla przeglądarki to te bez odczytu `env` i bez markera server-only: `i18n.config.ts`, `i18n.paths.ts`, `i18n.utils.ts`, `auth.client.ts`, `auth.access.ts`, `auth.errors.ts`, `auth.zod.ts`, `auth.constraints.ts`, `stripe.client.ts`, `stripe.appearance.ts`, `gsap.config.ts`, `lenis.instance.ts`, `react-day-picker.locale.ts` i `query.sync.ts`.
+Integracje bezpieczne dla przeglądarki to te bez odczytu `env` i bez markera server-only: `i18n.config.ts`, `i18n.paths.ts`, `i18n.utils.ts`, `auth.client.ts`, `auth.access.ts`, `auth.errors.ts`, `auth.zod.ts`, `auth.constraints.ts`, `stripe.client.ts`, `stripe.appearance.ts`, `gsap.config.ts`, `lenis.instance.ts`, `react-day-picker.locale.ts`, `query.invalidation.ts` i `query.sync.ts`.
 
 ## Granice kodu wyłącznie serwerowego
 

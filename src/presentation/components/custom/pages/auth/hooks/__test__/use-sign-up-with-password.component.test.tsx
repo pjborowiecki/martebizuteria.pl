@@ -1,22 +1,21 @@
-import { type JSX, type ReactNode } from "react"
+import { type ReactNode } from "react"
 
 import { QueryClient } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
+import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
-const { navigate, signUpEmail, syncQueryInvalidation, toastError, toastSuccess } = vi.hoisted(() => ({
+const { navigate, signUpEmail, toastError, toastSuccess } = vi.hoisted(() => ({
   navigate: vi.fn(),
   signUpEmail: vi.fn<() => Promise<{ error: { code: string } | null }>>(),
-  syncQueryInvalidation: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }))
 
 vi.mock("~/src/lib/url", () => ({ getBaseURL: () => "https://marte.test" }))
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({ signUp: { email: signUpEmail } }))
-vi.mock("~/src/integrations/tanstack-query/query.sync", () => ({ syncQueryInvalidation }))
 vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess } }))
 vi.mock(import("@tanstack/react-router"), async (importOriginal) => {
   const actual = await importOriginal()
@@ -26,16 +25,13 @@ vi.mock(import("@tanstack/react-router"), async (importOriginal) => {
 
 import { type SignUpFormValues } from "~/src/integrations/better-auth/auth.zod"
 
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
+
 import { useSignUpWithPassword } from "~/src/presentation/components/custom/pages/auth/hooks/use-sign-up-with-password"
 
-const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => (
-  <TestProviders
-    queryClient={new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })}
-    router={createTestRouter()}
-  >
-    {children}
-  </TestProviders>
-)
+const ADMIN_CUSTOMERS_PAGE_KEY = [...USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE, { page: 1 }]
+
+vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)
 
 const values: SignUpFormValues = {
   confirmPassword: "Sup3rSecret!",
@@ -45,7 +41,17 @@ const values: SignUpFormValues = {
   password: "Sup3rSecret!",
 }
 
-const renderSignUp = () => renderHook(() => useSignUpWithPassword(), { wrapper: Wrapper })
+const renderSignUp = (queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })) => {
+  const router = createTestRouter()
+
+  return renderHook(() => useSignUpWithPassword(), {
+    wrapper: ({ children }: Readonly<{ children: ReactNode }>) => (
+      <TestProviders queryClient={queryClient} router={router}>
+        {children}
+      </TestProviders>
+    ),
+  })
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -62,7 +68,6 @@ describe("useSignUpWithPassword", () => {
     expect(toastError).toHaveBeenCalledWith("Something went wrong", { description: "Password is too short." })
     expect(navigate).not.toHaveBeenCalled()
     expect(toastSuccess).not.toHaveBeenCalled()
-    expect(syncQueryInvalidation).toHaveBeenCalledOnce()
   })
 
   it("registers the full name and a localized verification callback", async () => {
@@ -147,14 +152,15 @@ describe("useSignUpWithPassword", () => {
     expect(toastSuccess).not.toHaveBeenCalled()
   })
 
-  it("refreshes the admin customers list whichever way the sign up ends", async () => {
+  it("leaves the admin customer list to the realtime hub, which hears about every new account from the server", async () => {
     signUpEmail.mockResolvedValue({ error: null })
-    const { result } = renderSignUp()
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(ADMIN_CUSTOMERS_PAGE_KEY, { items: [] })
+    const { result } = renderSignUp(queryClient)
 
     await result.current.mutateAsync(values)
 
-    await waitFor(() => {
-      expect(syncQueryInvalidation).toHaveBeenCalledOnce()
-    })
+    expect(queryClient.getQueryState(ADMIN_CUSTOMERS_PAGE_KEY)?.isInvalidated).toBe(false)
+    expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
   })
 })

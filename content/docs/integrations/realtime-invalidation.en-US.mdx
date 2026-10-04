@@ -191,7 +191,7 @@ useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.STOREFRONT, subscriptions:
 useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })
 ```
 
-The hook builds `wss://` or `ws://` from `globalThis.location.protocol`, connects, and on each message parses the payload, matches every topic against the subscription list with `queryKeyPrefixesOverlap`, and invalidates each match through `syncQueryInvalidation` — which also broadcasts it to the viewer's other tabs. See [TanStack Query](/docs/integrations/tanstack-query).
+The hook builds `wss://` or `ws://` from `globalThis.location.protocol`, connects, and on each message parses the payload, matches every topic against the subscription list with `queryKeyPrefixesOverlap`, keeps only the broadest of any nested matches, and applies `invalidateQueryPrefix` to each: queries on screen refetch, queries that are only cached are dropped, so the next visit fetches them fresh, and an infinite list such as the storefront catalogue keeps its loaded pages and refetches them on the next visit. Nothing is posted to the viewer's other tabs: every storefront and admin tab receives the same frame on its own socket, and tabs outside those layouts hold no socket and see the change on their next fetch. See [TanStack Query](/docs/integrations/tanstack-query).
 
 Reconnection is exponential with a ceiling:
 

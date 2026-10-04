@@ -2,7 +2,7 @@ import { type UseMutationResult, useMutation, useQueryClient } from "@tanstack/r
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
+import { invalidateQueryPrefix } from "~/src/integrations/tanstack-query/query.invalidation"
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
 import { deleteCustomerMutation } from "~/src/modules/user/use-cases/delete-customer"
@@ -41,7 +41,7 @@ export const useDeleteCustomer = (): UseMutationResult<DeleteCustomerResult, Err
       })
     },
     onSettled: () => {
-      void syncQueryInvalidation(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
+      void invalidateQueryPrefix(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
     },
     onSuccess: ({ goodbyeEmailSent }) => {
       if (goodbyeEmailSent) {

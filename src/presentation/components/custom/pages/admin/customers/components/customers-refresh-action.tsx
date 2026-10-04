@@ -5,7 +5,7 @@ import { cn } from "cn"
 import { RefreshCw } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
+import { invalidateQueryPrefix } from "~/src/integrations/tanstack-query/query.invalidation"
 
 import { getAdminCustomerStatsQuery } from "~/src/modules/user/use-cases/get-admin-customer-stats"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
@@ -27,7 +27,7 @@ export const CustomersRefreshAction = (): JSX.Element => {
 
   const isRefreshing = customersFetching > 0 || statsFetching > 0
   const handleRefresh = useCallback(() => {
-    void syncQueryInvalidation(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
+    void invalidateQueryPrefix(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
   }, [queryClient])
 
   const button = useMemo(

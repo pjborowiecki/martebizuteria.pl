@@ -1,4 +1,4 @@
-import { type Page, type Request } from "@playwright/test"
+import { type Page, type Request, type Response } from "@playwright/test"
 import { createHash } from "node:crypto"
 
 const SERVER_FUNCTION_PATH = "/_serverFn/"
@@ -8,6 +8,7 @@ const serverFunctionId = (file: string, name: string): string =>
 
 export const SERVER_FUNCTIONS = {
   checkCartAvailability: serverFunctionId("src/modules/cart/use-cases/check-cart-availability.ts", "checkCartAvailability"),
+  getAdminProducts: serverFunctionId("src/modules/product/use-cases/get-admin-products.ts", "getAdminProducts"),
   getCollections: serverFunctionId("src/modules/product-collection/use-cases/get-collections.ts", "getCollections"),
   getCurrentSession: serverFunctionId("src/integrations/better-auth/auth.session.ts", "getCurrentSession"),
 } as const
@@ -39,3 +40,6 @@ export const recordServerFunctionCalls = (page: Page): ((documentPath: string) =
       .map(({ id }) => id)
   }
 }
+
+export const waitForServerFunctionResponse = (page: Page, id: string): Promise<Response> =>
+  page.waitForResponse((response) => calledServerFunction(response.url()) === id)

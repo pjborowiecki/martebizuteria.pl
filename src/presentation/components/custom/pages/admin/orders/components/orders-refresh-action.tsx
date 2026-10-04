@@ -5,7 +5,7 @@ import { cn } from "cn"
 import { RefreshCw } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
+import { invalidateQueryPrefix } from "~/src/integrations/tanstack-query/query.invalidation"
 
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { getAdminOrderStatsQuery } from "~/src/modules/order/use-cases/get-admin-order-stats"
@@ -27,7 +27,7 @@ export const OrdersRefreshAction = (): JSX.Element => {
 
   const isRefreshing = ordersFetching > 0 || statsFetching > 0
   const handleRefresh = useCallback(() => {
-    void syncQueryInvalidation(queryClient, ORDER_QUERY_KEYS.ADMIN.ORDERS)
+    void invalidateQueryPrefix(queryClient, ORDER_QUERY_KEYS.ADMIN.ORDERS)
   }, [queryClient])
 
   const button = useMemo(

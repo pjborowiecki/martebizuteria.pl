@@ -7,16 +7,17 @@ Panele administracyjne dezaktualizują się w chwili, gdy pracuje druga osoba, a
 
 ## Elementy
 
-| Plik                                               | Rola                                                                       |
-| -------------------------------------------------- | -------------------------------------------------------------------------- |
-| `src/durable-objects/realtime-invalidation-hub.ts` | `RealtimeInvalidationHub` — obiekt rozdzielający połączenia                |
-| `realtime-invalidation.subscriptions.ts`           | Nazwy hubów i stałe listy prefiksów, na które subskrybuje każdy odbiorca   |
-| `realtime-invalidation.protocol.ts`                | Serializacja tematów i test nakładania się prefiksów                       |
-| `realtime-invalidation.publish.server.ts`          | `publishRealtimeInvalidation`, `scheduleRealtimeInvalidation`              |
-| `realtime-invalidation.catalog.server.ts`          | Sześć nazwanych publikatorów, z których naprawdę korzysta warstwa domenowa |
-| `realtime-invalidation.ws.server.ts`               | Handshake upgrade'u i sprawdzenie roli administratora                      |
-| `src/hooks/use-realtime-query-sync.ts`             | Subskrypcja kliencka, dopasowywanie i ponowne łączenie                     |
-| `src/integrations/tanstack-query/query.sync.ts`    | Lustrzenie unieważnień między kartami przez `BroadcastChannel`             |
+| Plik                                                    | Rola                                                                        |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/durable-objects/realtime-invalidation-hub.ts`      | `RealtimeInvalidationHub` — obiekt rozdzielający połączenia                 |
+| `realtime-invalidation.subscriptions.ts`                | Nazwy hubów i stałe listy prefiksów, na które subskrybuje każdy odbiorca    |
+| `realtime-invalidation.protocol.ts`                     | Serializacja tematów i test nakładania się prefiksów                        |
+| `realtime-invalidation.publish.server.ts`               | `publishRealtimeInvalidation`, `scheduleRealtimeInvalidation`               |
+| `realtime-invalidation.catalog.server.ts`               | Sześć nazwanych publikatorów, z których naprawdę korzysta warstwa domenowa  |
+| `realtime-invalidation.ws.server.ts`                    | Handshake upgrade'u i sprawdzenie roli administratora                       |
+| `src/hooks/use-realtime-query-sync.ts`                  | Subskrypcja kliencka, dopasowywanie i ponowne łączenie                      |
+| `src/integrations/tanstack-query/query.invalidation.ts` | `invalidateQueryPrefix`, polityka cache stosowana przy każdym unieważnieniu |
+| `src/integrations/tanstack-query/query.sync.ts`         | `BroadcastChannel` dla lokalnych zmian, których hub nie przenosi            |
 
 ## Dwóch odbiorców, po jednym obiekcie
 
@@ -91,9 +92,13 @@ useRealtimeQuerySync({
 })
 ```
 
-Hook otwiera `wss://<host>/api/realtime/{admin,storefront}/ws`, waliduje każdą wiadomość przez `isRealtimeInvalidationPayload`, parsuje tematy z powrotem na klucze zapytań, zachowuje subskrypcje, które się nakładają, i woła dla każdej `syncQueryInvalidation(queryClient, prefix)`. Ponowne łączenie to wykładnicze wycofywanie od 1 s, z podwajaniem, z limitem 30 s, zerowane przy udanym zdarzeniu `open`; funkcja porządkująca zamyka gniazdo i czyści oczekujący timer.
+Hook otwiera `wss://<host>/api/realtime/{admin,storefront}/ws`, waliduje każdą wiadomość przez `isRealtimeInvalidationPayload`, parsuje tematy z powrotem na klucze zapytań, zachowuje subskrypcje, które się nakładają, odrzuca te, które obejmuje już szersze trafienie, i woła dla każdej `invalidateQueryPrefix(queryClient, prefix)`. Ramka z tematem `["admin", "products"]` odświeża więc listę produktów i jej statystyki raz, a nie drugi raz przez zagnieżdżoną subskrypcję `["admin", "products", "stats"]`, która anulowałaby i uruchomiła od nowa pobieranie statystyk. Ponowne łączenie to wykładnicze wycofywanie od 1 s, z podwajaniem, z limitem 30 s, zerowane przy udanym zdarzeniu `open`; funkcja porządkująca zamyka gniazdo i czyści oczekujący timer.
 
-`syncQueryInvalidation` robi dwie rzeczy: unieważnia lokalnie z `refetchType: "all"` i publikuje klucz na kanale `BroadcastChannel` o nazwie `marte-query-invalidation`. `setupQueryClientInvalidationBroadcast` — podłączane w `getRouter` wyłącznie dla przeglądarki — słucha na tym kanale i unieważnia ten sam klucz, więc inne karty tej samej przeglądarki pozostają zsynchronizowane bez drugiego WebSocketu. Obie strony są zabezpieczone try/catch i `WeakSet`, żeby listener został zainstalowany raz na `QueryClient`.
+`invalidateQueryPrefix` odświeża tylko to, czego potrzebuje ekran. Najpierw usuwa z cache każde zapytanie pod prefiksem, które nie ma obserwatora ani trwającego pobierania, z wyjątkiem listy nieskończonej. Potem wywołuje `invalidateQueries` z `refetchType: "active"`, które oznacza resztę jako nieaktualną i pobiera ponownie zapytania widoczne na ekranie, oraz `refetchQueries` z `type: "inactive"` i `fetchStatus: "fetching"`, które uruchamia od nowa trwające już pobrania bez obserwatora. Zapytanie widoczne na ekranie pobiera się od razu ponownie. Zapytanie zapisane w cache, ale niewidoczne, znika, więc następny loader albo montowany komponent pobiera je od nowa, nawet gdy loader czyta ze `staleTime: "static"`, a zapytanie ma `refetchOnMount: false`. Niewidoczna lista nieskończona, czyli katalog sklepu, zachowuje strony wczytane przez klienta i jest tylko oznaczana jako nieaktualna: po powrocie pokazuje te strony w tym samym miejscu przewinięcia, a następny odczyt, przez loader albo przez `useSuspenseInfiniteQuery`, pobiera ponownie wszystkie, bo oba używają liczbowego `staleTime`. Zapytanie obserwowane, ale wyłączone, zostaje oznaczone jako nieaktualne i pobierze się po włączeniu. Trwające pobieranie nigdy nie jest usuwane, bo usunięcie zapytania anuluje jego pobieranie, a czekający na nie loader zakończyłby się błędem: nieobserwowane pobieranie, które wystartowało przy danych w cache, rusza od nowa, więc wywołujący dostaje odpowiedź już po zdarzeniu, a pierwsze pobieranie kończy się normalnie. Samo `refetchType: "active"` nie wystarczy, bo loader ze `staleTime: "static"` zwróciłby wtedy nieaktualny wpis z cache, gdy administrator ponownie otworzy stronę.
+
+Hook nigdy nie publikuje na kanale `BroadcastChannel`. Każda karta w układach sklepu i panelu (`_storefront.tsx`, `admin.tsx`) ma własne gniazdo i sama odbiera każdą ramkę, więc powielanie ramki do pozostałych kart przeglądarki tylko kazałoby każdej z nich pobrać te same zapytania jeszcze raz. Karty na `/checkout`, `/account`, `/auth` i `/docs` nie mają gniazda i widzą zmianę przy następnym pobraniu; `handleCreateCheckoutSession` ponownie czyta ceny i stany magazynowe z D1 i odrzuca checkout, jeśli cokolwiek się zmieniło. Kanał (`marte-query-invalidation` w `query.sync.ts`) zostaje dla lokalnych mutacji, których kluczy serwer jeszcze nie publikuje: zmian kuponów w `useCouponActions` oraz akcji na zamówieniach w `useOrderRowActions`, które inaczej docierają do innych przeglądarek dopiero przez kolejkę dziennika audytu. `syncQueryInvalidation` stosuje lokalnie `invalidateQueryPrefix` i publikuje klucz, a `setupQueryClientInvalidationBroadcast` — podłączane w `getRouter` wyłącznie dla przeglądarki — stosuje `invalidateQueryPrefix` do każdego odebranego klucza. Obie strony są zabezpieczone try/catch i `WeakSet`, żeby listener został zainstalowany raz na `QueryClient`. Przyciski odświeżania w tabelach zamówień, produktów, audytu i klientów oraz usuwanie klienta wywołują `invalidateQueryPrefix` bezpośrednio: odświeżają tylko kartę, w której ich użyto, a zmiany klientów docierają do innych administratorów przez hooki Better Auth.
+
+Karta, która wprowadziła zmianę, nadal pobiera swoje jedno lub dwa widoczne zapytania dwa razy: raz z własnego `onSuccess` i raz z ramki huba. To świadoma decyzja: pominięcie drugiego pobrania przez `cancelRefetch: false` mogłoby sprawić, że inna karta dołączy do pobierania rozpoczętego przed zatwierdzeniem zapisu.
 
 ## Uwagi operacyjne
 

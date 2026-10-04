@@ -1,8 +1,10 @@
 import { type ReactNode } from "react"
 
-import { QueryClient, QueryClientProvider, type QueryKey } from "@tanstack/react-query"
-import { act, cleanup, renderHook } from "@testing-library/react"
+import { QueryClient, QueryClientProvider, type QueryKey, useQuery } from "@tanstack/react-query"
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+
+import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
 import { serializeQueryKeyPrefix } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 
@@ -43,9 +45,17 @@ class FakeWebSocket {
 
 const ORDERS_KEY: QueryKey = ["admin", "orders"]
 
+const ORDERS_PAGE_KEY: QueryKey = [...ORDERS_KEY, "page", { page: 1 }]
+
+const orderDetailKey = (orderId: string): QueryKey => [...ORDERS_KEY, "detail", orderId]
+
 const PRODUCTS_KEY: QueryKey = ["admin", "products"]
 
+const PRODUCT_STATS_KEY: QueryKey = [...PRODUCTS_KEY, "stats"]
+
 const SUBSCRIPTIONS: readonly QueryKey[] = [ORDERS_KEY, PRODUCTS_KEY]
+
+const NESTED_SUBSCRIPTIONS: readonly QueryKey[] = [PRODUCTS_KEY, PRODUCT_STATS_KEY]
 
 const invalidatePayload = (topics: readonly string[]): string => JSON.stringify({ topics, type: "invalidate" })
 
@@ -64,27 +74,41 @@ const emitInvalidation = (topics: readonly string[]): void => {
   latestSocket().emit("message", messageEvent(invalidatePayload(topics)))
 }
 
-const renderSync = (hub: "admin" | "storefront" = "admin") => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue()
-  const wrapper = ({ children }: Readonly<{ children: ReactNode }>) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
+const newQueryClient = (): QueryClient => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
+const providerFor =
+  (queryClient: QueryClient) =>
+  ({ children }: Readonly<{ children: ReactNode }>) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+
+const renderSync = (hub: "admin" | "storefront" = "admin") => {
+  const queryClient = newQueryClient()
+  const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue()
   const rendered = renderHook(
     () => {
       useRealtimeQuerySync({ hub, subscriptions: SUBSCRIPTIONS })
     },
-    { wrapper },
+    { wrapper: providerFor(queryClient) },
   )
 
   return { invalidateQueries, ...rendered }
 }
 
+const renderOrdersPage = (queryClient: QueryClient, ordersPage: () => Promise<string>) =>
+  renderHook(
+    () => {
+      useRealtimeQuerySync({ hub: "admin", subscriptions: SUBSCRIPTIONS })
+
+      return useQuery({ queryFn: ordersPage, queryKey: ORDERS_PAGE_KEY })
+    },
+    { wrapper: providerFor(queryClient) },
+  )
+
 beforeEach(() => {
   FakeWebSocket.instances = []
+  StubBroadcastChannel.posted.mockClear()
   vi.useFakeTimers()
   vi.stubGlobal("WebSocket", FakeWebSocket)
+  vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)
 })
 
 afterEach(() => {
@@ -129,7 +153,7 @@ describe("useRealtimeQuerySync invalidation", () => {
 
     emitInvalidation([serializeQueryKeyPrefix(ORDERS_KEY)])
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ORDERS_KEY, refetchType: "all" })
+    expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ queryKey: ORDERS_KEY }))
   })
 
   it("invalidates a subscription when the topic is a shorter overlapping prefix", () => {
@@ -165,6 +189,108 @@ describe("useRealtimeQuerySync invalidation", () => {
     emitInvalidation(['{"not":"an array"}'])
 
     expect(invalidateQueries).not.toHaveBeenCalled()
+  })
+})
+
+describe("useRealtimeQuerySync cache policy", () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("refetches the order page on screen and drops the cached order detail that is not", async () => {
+    const queryClient = newQueryClient()
+    const ordersPage = vi.fn(() => Promise.resolve("page"))
+    const orderDetail = vi.fn(() => Promise.resolve("detail"))
+    await queryClient.query({ queryFn: orderDetail, queryKey: orderDetailKey("o2") })
+    const { result } = renderOrdersPage(queryClient, ordersPage)
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+    ordersPage.mockClear()
+    orderDetail.mockClear()
+
+    emitInvalidation([serializeQueryKeyPrefix(ORDERS_KEY)])
+
+    await waitFor(() => {
+      expect(ordersPage).toHaveBeenCalledOnce()
+    })
+    expect(orderDetail).not.toHaveBeenCalled()
+    expect(queryClient.getQueryState(orderDetailKey("o2"))).toBeUndefined()
+  })
+
+  it("gives a static loader the post-event order when the admin opens it again", async () => {
+    const queryClient = newQueryClient()
+    const orderDetail = vi.fn<() => Promise<string>>().mockResolvedValueOnce("before the event").mockResolvedValue("after the event")
+    await queryClient.query({ queryFn: orderDetail, queryKey: orderDetailKey("o2") })
+    renderOrdersPage(queryClient, () => Promise.resolve("page"))
+
+    emitInvalidation([serializeQueryKeyPrefix(ORDERS_KEY)])
+    await waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0)
+    })
+
+    await expect(queryClient.query({ queryFn: orderDetail, queryKey: orderDetailKey("o2"), staleTime: "static" })).resolves.toBe(
+      "after the event",
+    )
+  })
+
+  it("lets a loader that is still fetching an order finish instead of cancelling it", async () => {
+    const queryClient = newQueryClient()
+    const response = Promise.withResolvers<string>()
+    renderOrdersPage(queryClient, () => Promise.resolve("page"))
+    const loading = queryClient.query({ queryFn: () => response.promise, queryKey: orderDetailKey("o3"), staleTime: "static" })
+
+    emitInvalidation([serializeQueryKeyPrefix(ORDERS_KEY)])
+    response.resolve("order")
+
+    await expect(loading).resolves.toBe("order")
+  })
+
+  it("restarts a loader's refetch of a cached order so it resolves with the post-event response", async () => {
+    const queryClient = newQueryClient()
+    const preEvent = Promise.withResolvers<string>()
+    const orderDetail = vi.fn<() => Promise<string>>().mockReturnValueOnce(preEvent.promise).mockResolvedValue("after the event")
+    queryClient.setQueryData(orderDetailKey("o2"), "cached")
+    renderOrdersPage(queryClient, () => Promise.resolve("page"))
+    const loading = queryClient.query({ queryFn: orderDetail, queryKey: orderDetailKey("o2") })
+
+    emitInvalidation([serializeQueryKeyPrefix(ORDERS_KEY)])
+    preEvent.resolve("before the event")
+
+    await expect(loading).resolves.toBe("after the event")
+    expect(orderDetail).toHaveBeenCalledTimes(2)
+  })
+
+  it("refetches a query on screen once when the frame matches both its subscription and a broader one", async () => {
+    const queryClient = newQueryClient()
+    const productStats = vi.fn(() => Promise.resolve("stats"))
+    const { result } = renderHook(
+      () => {
+        useRealtimeQuerySync({ hub: "admin", subscriptions: NESTED_SUBSCRIPTIONS })
+
+        return useQuery({ queryFn: productStats, queryKey: PRODUCT_STATS_KEY, staleTime: 60_000 })
+      },
+      { wrapper: providerFor(queryClient) },
+    )
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+    productStats.mockClear()
+
+    emitInvalidation([serializeQueryKeyPrefix(PRODUCTS_KEY), serializeQueryKeyPrefix(PRODUCT_STATS_KEY)])
+    await waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0)
+    })
+
+    expect(productStats).toHaveBeenCalledOnce()
+  })
+
+  it("keeps a hub event to its own tab instead of echoing it to the browser's other tabs", () => {
+    renderOrdersPage(newQueryClient(), () => Promise.resolve("page"))
+
+    emitInvalidation([serializeQueryKeyPrefix(["admin"])])
+
+    expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
   })
 })
 

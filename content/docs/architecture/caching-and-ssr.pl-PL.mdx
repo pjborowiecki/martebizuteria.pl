@@ -94,7 +94,7 @@ Dwie odpowiedzi, które jawnie ustawiają `Cache-Control`, to `/sitemap.xml` i `
 
 - **`localStorage`** przechowuje motyw (`@wrksz/themes`, klucz z `theme-init.ts`), preferencję panelu bocznego panelu administracyjnego i szerokości kolumn każdej siatki danych. Wszystkie trzy są czytane przez blokujące skrypty w `<head>` przed pierwszym renderem.
 - **Zustand z `persist`** przechowuje koszyk w `src/modules/cart/cart.store.ts`, z `CART_PERSIST_VERSION` równym 2 i type guardem per pozycja, więc nieaktualny kształt jest odrzucany, a nie rehydratowany.
-- **`BroadcastChannel`** (`marte-query-invalidation` w `query.sync.ts`) lustrzy unieważnienia do innych kart tej samej przeglądarki, bez otwierania drugiego WebSocketu.
+- **`BroadcastChannel`** (`marte-query-invalidation` w `query.sync.ts`) przekazuje do innych kart tej samej przeglądarki unieważnienia tych nielicznych lokalnych mutacji, których nie przenosi hub realtime: kuponów i akcji na zamówieniach. Ramki huba nie są na nim powielane, bo każda karta sklepu i panelu odbiera je przez własne gniazdo.
 
 Żadne z tych miejsc nie jest źródłem prawdy. Koszyk jest ponownie walidowany po stronie serwera przez `check-cart-availability.ts`, a potem jeszcze raz w `handleCreateCheckoutSession`, które ponownie czyta ceny i stany magazynowe z D1 i odrzuca checkout, jeśli cokolwiek się zmieniło.
 

@@ -1,21 +1,20 @@
-import { type JSX, type ReactNode } from "react"
+import { type ReactNode } from "react"
 
 import { QueryClient } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
+import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
-const { signInSocial, syncQueryInvalidation, toastError, toastSuccess } = vi.hoisted(() => ({
+const { signInSocial, toastError, toastSuccess } = vi.hoisted(() => ({
   signInSocial: vi.fn<() => Promise<{ error: { code: string } | null }>>(),
-  syncQueryInvalidation: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }))
 
 vi.mock("~/src/lib/url", () => ({ getBaseURL: () => "https://marte.test" }))
 vi.mock("~/src/integrations/better-auth/auth.client", () => ({ authClient: { signIn: { social: signInSocial } } }))
-vi.mock("~/src/integrations/tanstack-query/query.sync", () => ({ syncQueryInvalidation }))
 vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess } }))
 
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
@@ -24,23 +23,28 @@ import { useOAuthSignIn } from "~/src/presentation/components/custom/pages/auth/
 
 const SIGN_IN_PAGE = "/auth/sign-in?redirect=%2Fen-US%2Faccount%2Forders"
 
-const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => (
-  <TestProviders
-    queryClient={new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })}
-    router={createTestRouter(SIGN_IN_PAGE)}
-  >
-    {children}
-  </TestProviders>
-)
+const ADMIN_CUSTOMERS_PAGE_KEY = [...USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE, { page: 1 }]
 
-const renderSignIn = () => renderHook(() => useOAuthSignIn(), { wrapper: Wrapper })
+vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)
+
+const renderSignIn = (queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })) => {
+  const router = createTestRouter(SIGN_IN_PAGE)
+
+  return renderHook(() => useOAuthSignIn(), {
+    wrapper: ({ children }: Readonly<{ children: ReactNode }>) => (
+      <TestProviders queryClient={queryClient} router={router}>
+        {children}
+      </TestProviders>
+    ),
+  })
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
 describe("useOAuthSignIn", () => {
-  it("explains a structured rejection from the provider and still refreshes customers", async () => {
+  it("explains a structured rejection from the provider", async () => {
     const rejection = { code: "USER_ALREADY_EXISTS" }
     signInSocial.mockRejectedValue(rejection)
     const { result } = renderSignIn()
@@ -49,7 +53,6 @@ describe("useOAuthSignIn", () => {
 
     expect(toastError).toHaveBeenCalledWith("Something went wrong", { description: "An account with this email already exists." })
     expect(toastSuccess).not.toHaveBeenCalled()
-    expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), USER_QUERY_KEYS.ADMIN.CUSTOMERS)
   })
 
   it("brings the shopper back to the sign-in page they started from, so its guard can send them on", async () => {
@@ -113,25 +116,15 @@ describe("useOAuthSignIn", () => {
     })
   })
 
-  it("refreshes the admin customers list after a successful sign in", async () => {
+  it("leaves the admin customer list to the realtime hub, which hears about every new account from the server", async () => {
     signInSocial.mockResolvedValue({ error: null })
-    const { result } = renderSignIn()
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(ADMIN_CUSTOMERS_PAGE_KEY, { items: [] })
+    const { result } = renderSignIn(queryClient)
 
     await result.current.mutateAsync("google")
 
-    await waitFor(() => {
-      expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), USER_QUERY_KEYS.ADMIN.CUSTOMERS)
-    })
-  })
-
-  it("refreshes the admin customers list even after a failed sign in", async () => {
-    signInSocial.mockResolvedValue({ error: { code: "BANNED_USER" } })
-    const { result } = renderSignIn()
-
-    await expect(result.current.mutateAsync("google")).rejects.toThrow()
-
-    await waitFor(() => {
-      expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), USER_QUERY_KEYS.ADMIN.CUSTOMERS)
-    })
+    expect(queryClient.getQueryState(ADMIN_CUSTOMERS_PAGE_KEY)?.isInvalidated).toBe(false)
+    expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
   })
 })

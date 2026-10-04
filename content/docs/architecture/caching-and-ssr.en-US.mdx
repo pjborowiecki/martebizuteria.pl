@@ -94,7 +94,7 @@ The two responses that do set `Cache-Control` explicitly are `/sitemap.xml` and 
 
 - **`localStorage`** holds the theme (`@wrksz/themes`, key from `theme-init.ts`), the admin sidebar preference, and each data grid's column sizing. All three are read by blocking head scripts before first paint.
 - **Zustand with `persist`** holds the cart in `src/modules/cart/cart.store.ts`, with a `CART_PERSIST_VERSION` of 2 and a per-item type guard so a stale shape is dropped rather than rehydrated.
-- **`BroadcastChannel`** (`marte-query-invalidation` in `query.sync.ts`) mirrors invalidations to other tabs of the same browser without opening a second WebSocket.
+- **`BroadcastChannel`** (`marte-query-invalidation` in `query.sync.ts`) mirrors to other tabs of the same browser the invalidations of the few local mutations the realtime hub does not carry, coupons and order actions. Hub frames are not echoed on it, because every storefront and admin tab receives them on its own socket.
 
 None of these is a source of truth. The cart is re-validated server-side by `check-cart-availability.ts` and again inside `handleCreateCheckoutSession`, which re-reads prices and inventory from D1 and refuses the checkout if anything moved.
 

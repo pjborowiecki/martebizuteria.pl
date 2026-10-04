@@ -3,10 +3,8 @@ import { cleanup, fireEvent, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
-const { syncQueryInvalidation } = vi.hoisted(() => ({ syncQueryInvalidation: vi.fn() }))
-
-vi.mock("~/src/integrations/tanstack-query/query.sync", () => ({ syncQueryInvalidation }))
 vi.mock("~/src/modules/order/use-cases/get-admin-order-stats", () => ({
   getAdminOrderStatsQuery: () => ({ queryKey: ["admin", "orders", "stats"] }),
 }))
@@ -17,6 +15,10 @@ import { OrdersRefreshAction } from "~/src/presentation/components/custom/pages/
 
 const REFRESH_LABEL = "Refresh orders"
 
+const ORDER_DETAIL_KEY = [...ORDER_QUERY_KEYS.ADMIN.ORDER_BY_ID, "o1"]
+
+vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)
+
 const newQueryClient = (): QueryClient => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
 const withPendingQuery = (queryClient: QueryClient, queryKey: readonly unknown[]): void => {
@@ -25,7 +27,7 @@ const withPendingQuery = (queryClient: QueryClient, queryKey: readonly unknown[]
 }
 
 beforeEach(() => {
-  syncQueryInvalidation.mockReset()
+  StubBroadcastChannel.posted.mockClear()
 })
 
 afterEach(() => {
@@ -41,12 +43,14 @@ describe("OrdersRefreshAction", () => {
     expect(button).toHaveAttribute("aria-busy", "false")
   })
 
-  it("invalidates the admin order queries when pressed", () => {
+  it("drops the cached order queries off screen when pressed, without telling the browser's other tabs", () => {
     const queryClient = newQueryClient()
+    queryClient.setQueryData(ORDER_DETAIL_KEY, { id: "o1" })
     renderWithProviders(<OrdersRefreshAction />, { queryClient })
     fireEvent.click(screen.getByRole("button", { name: REFRESH_LABEL }))
 
-    expect(syncQueryInvalidation).toHaveBeenCalledWith(queryClient, ORDER_QUERY_KEYS.ADMIN.ORDERS)
+    expect(queryClient.getQueryState(ORDER_DETAIL_KEY)).toBeUndefined()
+    expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
   })
 
   it("waits while the orders page is loading", () => {

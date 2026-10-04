@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query"
+import { QueryClient, QueryObserver } from "@tanstack/react-query"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const channel = {
@@ -44,10 +44,10 @@ describe("cross-tab query invalidation", () => {
     await syncQueryInvalidation(client, ["products"])
 
     expect(BroadcastChannelMock).not.toHaveBeenCalled()
-    expect(client.getQueryState(["products"])?.isInvalidated).toBe(true)
+    expect(client.getQueryState(["products"])).toBeUndefined()
   })
 
-  it("invalidates only the received query prefix and registers each client once", async () => {
+  it("drops the cached queries under the received prefix only and registers each client once", async () => {
     const { setupQueryClientInvalidationBroadcast } = await import("~/src/integrations/tanstack-query/query.sync")
     const client = new QueryClient()
     client.setQueryData(["products", "list"], [])
@@ -59,9 +59,40 @@ describe("cross-tab query invalidation", () => {
     listener?.(new MessageEvent("message", { data: { queryKey: ["products"] } }))
 
     expect(channel.addEventListener).toHaveBeenCalledTimes(1)
-    expect(client.getQueryState(["products", "list"])?.isInvalidated).toBe(true)
+    expect(client.getQueryState(["products", "list"])).toBeUndefined()
     expect(client.getQueryState(["orders"])?.isInvalidated).toBe(false)
     expect(channel.postMessage).not.toHaveBeenCalled()
+  })
+
+  it("drops a cached query that no screen shows instead of refetching it", async () => {
+    const { setupQueryClientInvalidationBroadcast } = await import("~/src/integrations/tanstack-query/query.sync")
+    const client = new QueryClient()
+    const productList = vi.fn(() => Promise.resolve(["ring"]))
+    await client.query({ queryFn: productList, queryKey: ["products", "list"] })
+    setupQueryClientInvalidationBroadcast(client)
+    productList.mockClear()
+
+    channel.addEventListener.mock.calls[0]?.[1](new MessageEvent("message", { data: { queryKey: ["products"] } }))
+
+    expect(productList).not.toHaveBeenCalled()
+    expect(client.getQueryState(["products", "list"])).toBeUndefined()
+  })
+
+  it("refetches a query a screen shows when another tab invalidates it", async () => {
+    const { setupQueryClientInvalidationBroadcast } = await import("~/src/integrations/tanstack-query/query.sync")
+    const client = new QueryClient()
+    const productList = vi.fn(() => Promise.resolve(["ring"]))
+    await client.query({ queryFn: productList, queryKey: ["products", "list"] })
+    const observer = new QueryObserver(client, { queryFn: productList, queryKey: ["products", "list"], staleTime: Infinity })
+    const unsubscribe = observer.subscribe(vi.fn<() => void>())
+    setupQueryClientInvalidationBroadcast(client)
+    productList.mockClear()
+
+    channel.addEventListener.mock.calls[0]?.[1](new MessageEvent("message", { data: { queryKey: ["products"] } }))
+    await vi.waitFor(() => {
+      expect(productList).toHaveBeenCalledOnce()
+    })
+    unsubscribe()
   })
 
   it.each([undefined, null, {}, { queryKey: "products" }])("ignores malformed channel messages: %j", async (data) => {
@@ -75,7 +106,7 @@ describe("cross-tab query invalidation", () => {
     expect(client.getQueryState(["orders"])?.isInvalidated).toBe(false)
   })
 
-  it("broadcasts local invalidations to other tabs", async () => {
+  it("drops the cached queries here and posts the key to the other tabs", async () => {
     const { syncQueryInvalidation } = await import("~/src/integrations/tanstack-query/query.sync")
     const client = new QueryClient()
     client.setQueryData(["products"], [])
@@ -83,10 +114,10 @@ describe("cross-tab query invalidation", () => {
     await syncQueryInvalidation(client, ["products"])
 
     expect(channel.postMessage).toHaveBeenCalledWith({ queryKey: ["products"] })
-    expect(client.getQueryState(["products"])?.isInvalidated).toBe(true)
+    expect(client.getQueryState(["products"])).toBeUndefined()
   })
 
-  it("still refreshes local queries when the browser cannot open a channel", async () => {
+  it("still drops the cached queries here when the browser cannot open a channel", async () => {
     openChannelFails = true
     const { syncQueryInvalidation } = await import("~/src/integrations/tanstack-query/query.sync")
     const client = new QueryClient()
@@ -94,10 +125,10 @@ describe("cross-tab query invalidation", () => {
 
     await syncQueryInvalidation(client, ["products"])
 
-    expect(client.getQueryState(["products"])?.isInvalidated).toBe(true)
+    expect(client.getQueryState(["products"])).toBeUndefined()
   })
 
-  it("still refreshes local queries when broadcasting fails", async () => {
+  it("still drops the cached queries here when posting to the channel fails", async () => {
     channel.postMessage.mockImplementation(() => {
       throw new Error("Channel closed")
     })
@@ -108,6 +139,6 @@ describe("cross-tab query invalidation", () => {
 
     await syncQueryInvalidation(client, ["products"])
 
-    expect(client.getQueryState(["products"])?.isInvalidated).toBe(true)
+    expect(client.getQueryState(["products"])).toBeUndefined()
   })
 })
