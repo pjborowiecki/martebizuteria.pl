@@ -65,12 +65,12 @@ describe("listCustomerLoginHistory", () => {
     ])
   })
 
-  it("reports a rejected sign in as blocked, so a guessed password is visible", async () => {
+  it("reports a rejected sign in as a failed attempt, so a guessed password is visible", async () => {
     withAuditRows([auditRow({ action: AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED })])
 
     const history = await listCustomerLoginHistory()
 
-    expect(history[0]?.status).toBe("blocked")
+    expect(history[0]?.status).toBe("failed")
   })
 
   it("keeps the order the audit trail returned", async () => {

@@ -68,7 +68,7 @@ POST /_serverFn/…  (shipOrder)
 3. The event type is looked up in `webhookHandlers`. An unhandled type is logged with `console.info` and acknowledged `{ received: true }`, so Stripe stops retrying it.
 4. A handler that throws is logged and answered `500`, which makes Stripe retry.
 
-`GET|POST /api/auth/$` is the other handler. It delegates to `handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts`, which wraps `auth.handler(request)`: before the call it clones the body to read the sign-in email and resolves the session that is about to be destroyed; after it, a failed `POST /sign-in/email` becomes an `auth.login_failed` event and a successful `POST /sign-out` becomes an `auth.logout` event. The successful-login event comes from a different place — Better Auth's `databaseHooks.session.create.after` in `auth.server.ts`.
+`GET|POST /api/auth/$` is the other handler. It delegates to `handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts`, which wraps `auth.handler(request)`: before the call it clones the body to read the sign-in email and resolves the session that is about to be destroyed; after it, a failed `POST /sign-in/email` becomes an `auth.login_failed` event and a successful `POST /sign-out` becomes an `auth.logout` event. The successful-login event comes from a different place — the `signInAudit` plugin's after hook in `auth.server.ts`, which records a login whenever a sign-in path produces a session, unless that session only continues the one the request arrived with (a confirmed e-mail change or two-factor set-up).
 
 ## Queue message
 

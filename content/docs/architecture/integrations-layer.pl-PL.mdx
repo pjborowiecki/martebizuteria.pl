@@ -35,7 +35,7 @@ Integracja konfiguruje dostawcę i oddaje decyzję:
 
 - `src/routes/api/webhooks.stripe.ts` weryfikuje podpis sekretem `STRIPE_WEBHOOK_SECRET` i wyszukuje typ zdarzenia w `webhookHandlers`. Nieznany typ jest logowany i potwierdzany odpowiedzią `{ received: true }`; handler, który rzuci wyjątek, zwraca 500, żeby Stripe ponowił próbę.
 - `stripe.webhooks.tsx` woła następnie przypadki użycia zamówienia i checkoutu: `fulfillCheckout`, `releaseCheckout`, `refundOrder`, `flagOrderDispute`, `clearOrderDispute`. Nie jest właścicielem żadnej z tych logik.
-- `auth.server.ts` podłącza `databaseHooks` Better Auth do rejestratorów audytu i do `scheduleAdminCustomersInvalidation`, a swoje callbacki e-mailowe do szablonów w `src/presentation/emails`.
+- `auth.server.ts` podłącza `databaseHooks` Better Auth i lokalną wtyczkę `signInAudit` do rejestratorów audytu i do `scheduleAdminCustomersInvalidation`, a swoje callbacki e-mailowe do szablonów w `src/presentation/emails`.
 - Wzorzec wysyłki e-maila jest zawsze taki sam: ustal locale, załaduj przestrzeń nazw szablonu, wyrenderuj, wyślij.
 
 ```ts

@@ -78,7 +78,7 @@ describe("better Auth database storage", () => {
   it("uses database sessions, verifications and rate limits with stable joins", () => {
     expect(auth.options).not.toHaveProperty("secondaryStorage")
     expect(auth.options.advanced.database.joins).toBe(true)
-    expect(auth.options.session).toMatchObject({ cookieCache: { version: "2" }, storeSessionInDatabase: true })
+    expect(auth.options.session).toMatchObject({ cookieCache: { enabled: false }, storeSessionInDatabase: true })
     expect(auth.options.verification.storeInDatabase).toBe(true)
     expect(auth.options.rateLimit).toMatchObject({
       customRules: {

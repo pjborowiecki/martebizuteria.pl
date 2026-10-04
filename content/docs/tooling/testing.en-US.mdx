@@ -65,6 +65,7 @@ Because `test.env` loads `.env.test`, no test needs real credentials. `scripts/`
 | `lib/render.tsx`                 | `renderWithProviders`, `TestProviders`, `createTestRouter`                                         |
 | `lib/messages.ts`                | `TEST_LOCALE` (`en-US`) and `TEST_MESSAGES`, built from the real `messages/en-US/*.json` files     |
 | `lib/server-function.ts`         | `withTestRpc` — drives server functions through their real middleware and validation pipeline      |
+| `lib/auth-browser.ts`            | `openAuthBrowser(ip)`, a cookie-keeping `auth.handler` client, and `createPasswordCustomer`        |
 
 ### setup.ts
 

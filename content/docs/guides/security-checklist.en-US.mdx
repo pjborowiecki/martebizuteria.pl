@@ -84,7 +84,7 @@ Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change t
 - [ ] Administrative writes record an event through a helper in `src/modules/audit-log/audit-log.events.server.ts`, as `createCategory` does with `recordCatalogCategoryCreatedAudit(data.handle)`.
 - [ ] The call is **not** awaited. `scheduleAuditLogFromRequest` goes through `scheduleBackgroundWork`, which hands it to the Worker's `waitUntil` and swallows failures, so auditing cannot break the request.
 - [ ] The actor is resolved from the session by `resolveRequestAuditActor`, and falls back to `SYSTEM_AUDIT_ACTOR`. Do not pass an actor from the client.
-- [ ] Auth events are already covered: `databaseHooks.session.create.after` records a login and `databaseHooks.user.create.after` records a registration, and `/api/auth/$` routes through `handleAuthRequestWithAudit`.
+- [ ] Auth events are already covered: the `signInAudit` plugin records a login and `databaseHooks.user.create.after` records a registration, and `/api/auth/$` routes through `handleAuthRequestWithAudit`.
 
 ## Output and indexing
 

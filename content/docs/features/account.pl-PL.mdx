@@ -96,7 +96,7 @@ Strumień aktywności jest budowany z dziennika audytu: `getCustomerActivityAudi
 
 `getCustomerProfile` zwraca `{ createdAt, email, emailVerified, hasPassword, name, phone, timezone, twoFactorEnabled }` z wiersza `user`, przy czym `hasPassword` pochodzi z `hasCredentialAccount`.
 
-`account.profile.tsx` przekazuje `profile.twoFactorEnabled` do `SecuritySection` jako prop, więc stan uwierzytelniania dwuskładnikowego pochodzi z zapytania, które loader strony już wczytał wstępnie. Włączenie lub wyłączenie uwierzytelniania dwuskładnikowego unieważnia zarówno zapytanie profilu, jak i zapytanie sesji.
+`account.profile.tsx` przekazuje `profile.twoFactorEnabled` do `SecuritySection` jako prop, więc stan uwierzytelniania dwuskładnikowego pochodzi z zapytania, które loader strony już wczytał wstępnie. Włączenie lub wyłączenie uwierzytelniania dwuskładnikowego unieważnia zapytanie profilu, zapytanie sesji i `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, bo w obu przypadkach Better Auth zastępuje bieżącą sesję nową. Zmiana hasła również unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, ponieważ opcja „Wyloguj moje pozostałe urządzenia” usuwa wszystkie pozostałe sesje; strona sesji nie pokazuje więc urządzenia, które jest już wylogowane.
 
 `updateCustomerPhone` to jedyne pole, które klient może tu zmienić:
 
@@ -160,9 +160,13 @@ return rows.map((row) => {
 Dwie mutacje unieważniające:
 
 - `revokeCustomerSession({ sessionId })` — zwraca `false` bez usuwania, gdy identyfikator wskazuje **bieżącą** sesję, więc klient nie może się z tego ekranu wylogować. Usunięcie to `and(eq(session.id, sessionId), eq(session.userId, context.auth.user.id))`.
-- `revokeOtherCustomerSessions()` — usuwa wszystkie pozostałe sesje użytkownika.
+- `revokeOtherCustomerSessions()` — usuwa wszystkie pozostałe sesje użytkownika, nigdy bieżącej.
 
-`listCustomerLoginHistory` korzysta z tych samych wierszy audytu i zachowuje tylko `auth.login` oraz `auth.login_failed`, mapując niepowodzenie na `status: "blocked"`. Historia logowań jest więc widokiem na [dziennik audytu](/docs/features/audit-log), a nie osobną tabelą.
+Strona podpisuje akcję zbiorczą „Wyloguj pozostałe urządzenia” i pokazuje ją tylko wtedy, gdy na liście jest sesja inna niż bieżąca. Gdy zalogowane jest jedno urządzenie, akcja nie miałaby czego zrobić, więc zamiast niej lista informuje, że klient nie ma aktywnych sesji na innych urządzeniach. Wylogowanie bieżącego urządzenia pozostaje przy linku wylogowania w panelu bocznym konta.
+
+`listCustomerLoginHistory` korzysta z tych samych wierszy audytu i zachowuje tylko `auth.login` oraz `auth.login_failed`, mapując niepowodzenie na `status: "failed"`. Historia logowań jest więc widokiem na [dziennik audytu](/docs/features/audit-log), a nie osobną tabelą. `getCustomerLoginAuditRows` zwraca `CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT` (20) najnowszych wierszy; gdy lista osiąga ten limit, notka pod nią mówi, że widać tylko ostatnie próby. Każdy wiersz podaje wynik raz — „Udane logowanie” albo „Nieudana próba logowania” — z adresem i datą obok.
+
+Zamknięcia konta nie ma na tej stronie. Znajduje się wyłącznie na stronie profilu, gdzie `CloseAccountSection` otwiera okno potwierdzenia wywołujące `deleteUser` z Better Auth.
 
 ## Zapisane metody płatności
 

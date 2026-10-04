@@ -74,6 +74,7 @@ const renderSection = () => {
 
 const expectAccountReloaded = (invalidateQueries: ReturnType<typeof renderSection>["invalidateQueries"]): void => {
   expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS })
   expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: SESSION_QUERY_KEYS.CURRENT })
 }
 
@@ -256,7 +257,7 @@ describe("SecuritySection two-factor enrolment", () => {
     expect(screen.getByRole("button", { name: "Verify and enable" })).toBeDisabled()
   })
 
-  it("reloads the account and its session once enrolment finishes", async () => {
+  it("reloads the account, its session and the signed-in devices once enrolment finishes", async () => {
     const { invalidateQueries } = renderSection()
     openTwoFactor()
     await screen.findByLabelText("Password")
@@ -284,7 +285,7 @@ describe("SecuritySection two-factor removal", () => {
     expect(within(dialog).getByText(/protected by your password alone/u)).toBeInTheDocument()
   })
 
-  it("turns two-factor off and reloads the account and its session", async () => {
+  it("turns two-factor off and reloads the account, its session and the signed-in devices", async () => {
     accountState.twoFactorEnabled = true
     const { invalidateQueries } = renderSection()
     openTwoFactor()

@@ -47,7 +47,7 @@ Create `messages/en-US/<namespace>.json` and `messages/pl-PL/<namespace>.json` â
 
 ## Why does every server-side request read the session from D1?
 
-Better Auth is configured with a 300-second cookie cache, but `getRequestSession` passes `disableCookieCache: true` so a banned or signed-out user cannot ride a cached cookie. The cost is one D1 read per HTTP request, not per call: the lookup is memoized per `Request` in a `WeakMap`, so concurrent loaders and server functions in the same request share it.
+Better Auth's cookie cache is turned off, and `getRequestSession` also passes `disableCookieCache: true`, so a banned or signed-out user cannot ride a cached cookie â€” not even at Better Auth's own endpoints. The cost is one D1 read per HTTP request, not per call: the lookup is memoized per `Request` in a `WeakMap`, so concurrent loaders and server functions in the same request share it.
 
 ## Why is authorization inside the use cases rather than on the routes?
 

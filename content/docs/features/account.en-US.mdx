@@ -96,7 +96,7 @@ The activity feed is built from the audit log: `getCustomerActivityAuditRows` re
 
 `getCustomerProfile` returns `{ createdAt, email, emailVerified, hasPassword, name, phone, timezone, twoFactorEnabled }` from the `user` row, with `hasPassword` from `hasCredentialAccount`.
 
-`account.profile.tsx` passes `profile.twoFactorEnabled` to `SecuritySection` as a prop, so the two-factor status comes from the query the page loader already prefetched. Enabling or disabling two-factor invalidates both the profile query and the session query.
+`account.profile.tsx` passes `profile.twoFactorEnabled` to `SecuritySection` as a prop, so the two-factor status comes from the query the page loader already prefetched. Enabling or disabling two-factor invalidates the profile query, the session query and `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, because Better Auth replaces the current session when it does either. Changing the password invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS` as well, since "Sign out my other devices" deletes every other session; the sessions page never shows a device that is already signed out.
 
 `updateCustomerPhone` is the only field a customer can change here:
 
@@ -160,9 +160,13 @@ return rows.map((row) => {
 Two revoke mutations:
 
 - `revokeCustomerSession({ sessionId })` — returns `false` without deleting when the id is the **current** session, so a customer cannot sign themselves out from this screen. The delete is `and(eq(session.id, sessionId), eq(session.userId, context.auth.user.id))`.
-- `revokeOtherCustomerSessions()` — deletes every other session for the user.
+- `revokeOtherCustomerSessions()` — deletes every other session for the user and never the current one.
 
-`listCustomerLoginHistory` reuses the same audit rows and keeps only `auth.login` and `auth.login_failed`, mapping the failure to `status: "blocked"`. So the login history is a view over [the audit log](/docs/features/audit-log), not a separate table.
+The page labels the bulk action "Sign out other devices" and renders it only while the list holds a session other than the current one. With a single device signed in there is nothing for it to do, so the list says the customer is signed in on this device only instead. Signing out of the current device stays with the account sidebar's sign-out link.
+
+`listCustomerLoginHistory` reuses the same audit rows and keeps only `auth.login` and `auth.login_failed`, mapping the failure to `status: "failed"`. So the login history is a view over [the audit log](/docs/features/audit-log), not a separate table. `getCustomerLoginAuditRows` returns the newest `CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT` (20) rows; when the list reaches that limit, a note under it says only the most recent attempts are shown. Each row states its outcome once — "Successful sign-in" or "Failed sign-in attempt" — with the address and the date beside it.
+
+Closing the account is not offered here. It lives only on the profile page, where `CloseAccountSection` opens the confirmation dialog that calls Better Auth's `deleteUser`.
 
 ## Saved payment methods
 

@@ -20,7 +20,7 @@ Plik `src/integrations/better-auth/auth.server.ts` konfiguruje jedną instancję
 | `emailAndPassword`             | Włączone, `requireEmailVerification: true`, od 8 do 1024 znaków                                                |
 | `emailVerification`            | `sendOnSignUp: true`, `autoSignInAfterVerification: true`                                                      |
 | `hooks.before`                 | Odrzuca cztery punkty końcowe wysyłające e-maile, dopóki nadawca jest oznaczony jako niedostępny               |
-| `session`                      | `storeSessionInDatabase: true`, cache w ciasteczku włączony z `maxAge` 300 s i `version: "2"`                  |
+| `session`                      | `storeSessionInDatabase: true`, cache w ciasteczku wyłączony (`cookieCache: { enabled: false }`)               |
 | `verification`                 | `storeIdentifier: "hashed"`, `storeInDatabase: true`                                                           |
 | `socialProviders`              | `google` i `github`, przy `account.accountLinking.trustedProviders` obejmującym oba                            |
 | `account.encryptOAuthTokens`   | `true`                                                                                                         |
@@ -28,7 +28,7 @@ Plik `src/integrations/better-auth/auth.server.ts` konfiguruje jedną instancję
 | `user.additionalFields`        | `timezone` (łańcuch, opcjonalne, przyjmowane na wejściu)                                                       |
 | `user.changeEmail`             | Włączone, wraz z `sendChangeEmailConfirmation`                                                                 |
 
-Wtyczki: `admin({ ac, adminRoles, defaultRole, roles })`, `anonymous()`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })` oraz `tanstackStartCookies()`. Ostatnia sprawia, że ciasteczka Better Auth współpracują z obsługą odpowiedzi w TanStack Start, i musi pozostać ostatnia w tablicy.
+Wtyczki: `admin({ ac, adminRoles, defaultRole, roles })`, `anonymous()`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })`, lokalna `signInAudit` oraz `tanstackStartCookies()`. Ostatnia sprawia, że ciasteczka Better Auth współpracują z obsługą odpowiedzi w TanStack Start, i musi pozostać ostatnia w tablicy.
 
 ### Wbudowane ograniczanie liczby żądań
 
@@ -45,11 +45,14 @@ Jest to mechanizm odrębny od własnego middleware `withRateLimit` opisanego pon
 
 ### Hooki bazodanowe
 
-`databaseHooks` to miejsce, w którym zdarzenia tożsamości docierają do reszty aplikacji:
+`databaseHooks` to miejsce, w którym zdarzenia konta docierają do reszty aplikacji:
 
-- `session.create.after` odczytuje użytkownika i wywołuje `recordAuthLoginAudit(...)`.
 - `user.create.after` wywołuje `scheduleAdminCustomersInvalidation()` oraz `recordCustomerRegisteredAudit(...)`.
 - `user.update.after` i `user.delete.after` wywołują `scheduleAdminCustomersInvalidation()`, więc lista klientów w panelu odświeża się bez odpytywania.
+
+### Audyt logowań
+
+Nowa sesja nie zawsze oznacza logowanie. Better Auth tworzy ją także na etapie hasła przy logowaniu dwuskładnikowym (wtyczka `twoFactor` od razu ją usuwa), przy włączaniu i wyłączaniu uwierzytelniania dwuskładnikowego oraz przy zmianie hasła, która wylogowuje pozostałe urządzenia. Dlatego wtyczka `signInAudit` zapisuje `auth.login` z hooka „after”, a nie z `databaseHooks`. Dopasowuje ścieżki logowania (`/sign-in/`, `/sign-up/`, `/callback/`, `/verify-email` i `/two-factor/verify-`), działa po `twoFactor`, więc oczekujące wyzwanie dwuskładnikowe zdążyło już wyzerować `newSession`, i wywołuje `recordAuthLoginAudit(...)` dla każdego `ctx.context.newSession` poza takim, które kontynuuje sesję, z którą przyszło żądanie. Robią tak dwa żądania: potwierdzenie nowego adresu e-mail wydaje ponownie tę samą sesję, a potwierdzenie konfiguracji uwierzytelniania dwuskładnikowego przez `/two-factor/verify-*` zamienia zalogowaną sesję na nową. Dokończenie logowania dwuskładnikowego przychodzi bez sesji i zapisuje jedno logowanie; tak samo ponowne zalogowanie w przeglądarce, która wciąż jest zalogowana, bo klient znów podał hasło.
 
 ### E-maile transakcyjne
 
@@ -263,7 +266,7 @@ export const getRequestSession = createServerOnlyFn((request: Request = getReque
 })
 ```
 
-`disableCookieCache: true` oznacza, że autoryzacja po stronie serwera zawsze czyta bazę, a nie ufa podpisanemu cache w ciasteczku; 300-sekundowy cache w ciasteczku służy wyłącznie własnym punktom końcowym Better Auth. `getCurrentSession` to opakowanie w funkcję serwerową, które przed zwróceniem usuwa `session.token` — token nigdy nie trafia do danych przesyłanych do przeglądarki. `getCurrentSessionQuery` to odpowiadający mu obiekt opcji zapytania i jedyna droga, którą trasy i komponenty czytają sesję: ładują ją strażnicy tras, a komponenty czytają ją przez `useQuery(getCurrentSessionQuery)`. Opisuje go strona [TanStack Query](/docs/integrations/tanstack-query).
+`disableCookieCache: true` oznacza, że autoryzacja po stronie serwera zawsze czyta bazę, a nie ufa podpisanemu cache w ciasteczku. Cache w ciasteczku jest też wyłączony w `auth.server.ts`, więc własne punkty końcowe Better Auth za jego middleware sesji — `/update-user`, trasy uwierzytelniania dwuskładnikowego, `/get-session` — również czytają wiersz sesji: przeglądarka wylogowana z innego urządzenia zostaje od razu odrzucona, zamiast cieszyć się zaufaniem tak długo, jak żyło jej zapisane ciasteczko. `getCurrentSession` to opakowanie w funkcję serwerową, które przed zwróceniem usuwa `session.token` — token nigdy nie trafia do danych przesyłanych do przeglądarki. `getCurrentSessionQuery` to odpowiadający mu obiekt opcji zapytania i jedyna droga, którą trasy i komponenty czytają sesję: ładują ją strażnicy tras, a komponenty czytają ją przez `useQuery(getCurrentSessionQuery)`. Opisuje go strona [TanStack Query](/docs/integrations/tanstack-query).
 
 ## Klient
 
@@ -310,7 +313,7 @@ export const Route = createFileRoute("/api/auth/$")({
 })
 ```
 
-Funkcja `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.server.ts` sprawdza ścieżkę przed delegacją: dla `POST /sign-in/email` klonuje żądanie, aby odczytać adres e-mail, i zapisuje wpis audytu o nieudanym logowaniu, jeśli odpowiedź nie jest poprawna; dla `POST /sign-out` najpierw pobiera sesję i zapisuje wpis wylogowania, jeśli odpowiedź jest poprawna. Udane logowania audytowane są natomiast z hooka `session.create.after`.
+Funkcja `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.server.ts` sprawdza ścieżkę przed delegacją: dla `POST /sign-in/email` klonuje żądanie, aby odczytać adres e-mail, i zapisuje wpis audytu o nieudanym logowaniu, jeśli odpowiedź nie jest poprawna; dla `POST /sign-out` najpierw pobiera sesję i zapisuje wpis wylogowania, jeśli odpowiedź jest poprawna. Udane logowania audytuje natomiast wtyczka `signInAudit` (zobacz sekcję „Audyt logowań” wyżej).
 
 ## Tabele
 

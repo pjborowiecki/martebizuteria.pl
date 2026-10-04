@@ -84,7 +84,7 @@ Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli z
 - [ ] Zapisy administracyjne rejestrują zdarzenie przez funkcję z `src/modules/audit-log/audit-log.events.server.ts`, jak `createCategory` przez `recordCatalogCategoryCreatedAudit(data.handle)`.
 - [ ] Wywołanie **nie** jest oczekiwane. `scheduleAuditLogFromRequest` przechodzi przez `scheduleBackgroundWork`, które przekazuje je do `waitUntil` Workera i przechwytuje awarie, więc audyt nie może zepsuć żądania.
 - [ ] Wykonawcę ustala z sesji `resolveRequestAuditActor`, a w razie braku używany jest `SYSTEM_AUDIT_ACTOR`. Nie przyjmuj wykonawcy od klienta.
-- [ ] Zdarzenia uwierzytelniania są już pokryte: `databaseHooks.session.create.after` rejestruje logowanie, `databaseHooks.user.create.after` rejestruje rejestrację, a `/api/auth/$` przechodzi przez `handleAuthRequestWithAudit`.
+- [ ] Zdarzenia uwierzytelniania są już pokryte: wtyczka `signInAudit` rejestruje logowanie, `databaseHooks.user.create.after` rejestruje rejestrację, a `/api/auth/$` przechodzi przez `handleAuthRequestWithAudit`.
 
 ## Wyjście i indeksowanie
 

@@ -35,7 +35,7 @@ An integration configures a vendor and hands the decision back:
 
 - `src/routes/api/webhooks.stripe.ts` verifies the signature with `STRIPE_WEBHOOK_SECRET` and looks the event type up in `webhookHandlers`. An unknown type is logged and acknowledged with `{ received: true }`; a handler that throws returns 500 so Stripe retries.
 - `stripe.webhooks.tsx` then calls the checkout and order use cases: `fulfillCheckout`, `releaseCheckout`, `refundOrder`, `flagOrderDispute`, `clearOrderDispute`. It owns none of that logic.
-- `auth.server.ts` wires Better Auth's `databaseHooks` to the audit recorders and `scheduleAdminCustomersInvalidation`, and its email callbacks to the templates in `src/presentation/emails`.
+- `auth.server.ts` wires Better Auth's `databaseHooks` and its local `signInAudit` plugin to the audit recorders and `scheduleAdminCustomersInvalidation`, and its email callbacks to the templates in `src/presentation/emails`.
 - The pattern for sending email is always: resolve the locale, load the template's namespace, render, send.
 
 ```ts

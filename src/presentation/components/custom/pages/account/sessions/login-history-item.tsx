@@ -19,28 +19,17 @@ export const LoginHistoryItem = ({
         <Globe className="size-3.5 text-muted-foreground/40" strokeWidth={1.2} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[13px]">{t(`loginStatus.${entry.status}`)}</p>
+        <p className={entry.status === "failed" ? "text-[13px] text-destructive" : "text-[13px]"}>{t(`loginTitle.${entry.status}`)}</p>
         <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
           {entry.ipAddress === undefined ? t("unknownLocation") : t("loginFrom", { ip: entry.ipAddress })}
         </p>
       </div>
-      <div className="text-right">
-        <p className="text-[11px] text-muted-foreground tabular-nums">
-          {format.dateTime(entry.createdAt, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </p>
-        <p
-          className={
-            entry.status === "blocked"
-              ? "mt-0.5 text-[10px] tracking-widest text-destructive uppercase"
-              : "mt-0.5 text-[10px] tracking-widest text-muted-foreground/50 uppercase"
-          }
-        >
-          {t(`loginStatus.${entry.status}`)}
-        </p>
-      </div>
+      <p className="shrink-0 text-right text-[11px] text-muted-foreground tabular-nums">
+        {format.dateTime(entry.createdAt, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })}
+      </p>
     </div>
   )
 }

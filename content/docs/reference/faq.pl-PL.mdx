@@ -47,7 +47,7 @@ Utwórz `messages/en-US/<namespace>.json` i `messages/pl-PL/<namespace>.json` �
 
 ## Dlaczego każde zapytanie serwerowe czyta sesję z D1?
 
-Better Auth jest skonfigurowany z 300-sekundowym cache cookie, ale `getRequestSession` przekazuje `disableCookieCache: true`, żeby zablokowany lub wylogowany użytkownik nie mógł jechać na zapisanym cookie. Kosztem jest jeden odczyt D1 na zapytanie HTTP, a nie na wywołanie: wynik jest zapamiętywany per `Request` w `WeakMap`, więc równoległe loadery i funkcje serwerowe w tym samym zapytaniu go dzielą.
+Cache cookie w Better Auth jest wyłączony, a `getRequestSession` dodatkowo przekazuje `disableCookieCache: true`, żeby zablokowany lub wylogowany użytkownik nie mógł jechać na zapisanym cookie — nawet przy własnych punktach końcowych Better Auth. Kosztem jest jeden odczyt D1 na zapytanie HTTP, a nie na wywołanie: wynik jest zapamiętywany per `Request` w `WeakMap`, więc równoległe loadery i funkcje serwerowe w tym samym zapytaniu go dzielą.
 
 ## Dlaczego autoryzacja jest w przypadkach użycia, a nie na trasach?
 
