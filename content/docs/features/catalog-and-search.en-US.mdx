@@ -92,9 +92,15 @@ Scope filters are `inArray(product.id, <subquery>)` against `category_on_product
 
 ## Product search term
 
-The `q` parameter reuses the admin product search condition, `buildAdminProductSearchCondition` in `src/modules/product/product.admin-list-search.server.ts`. It matches a case-insensitive `LIKE` against `product.handle`, `product.id`, and the JSON columns `titles`, `subtitles` and `descriptions`, **or** any variant whose `sku` matches. Because the locale maps are stored as JSON text, the `LIKE` matches every locale at once.
+The `q` parameter searches the `storefront_search` FTS5 index through `storefrontProductMatches(term)` in `src/modules/storefront-search/storefront-search.accessors.server.ts`. `buildStorefrontSearchExpression` folds `ł` to `l`, splits the term into words and turns each word into a prefix query, so `zlo pier` finds "Złoty pierścionek". A term with no letters or digits has nothing to search for, and the page comes back empty.
 
-The pattern is escaped by `buildAdminLikePattern` in `src/modules/_core/utils/search-conditions.server.ts`, which escapes `\`, `%` and `_` and emits `... like ? escape '\'`.
+A product matches when any of these holds:
+
+- the index matches its own title, subtitle, tags, description or handle;
+- it belongs to an active category or an active collection whose text matches;
+- one of its variants has exactly that SKU, ignoring case. `product_variant_upperSku_idx` indexes `upper(sku)`, so this is an index lookup instead of a read of every variant. `20261004120000_product_variant_sku_indexes.sql` adds it and drops `product_variant_sku_idx`, which duplicated the unique index on `sku`.
+
+`storefrontProductMatches` collects those products in one step, the `storefront_product_matches` common table expression. It is a `union all` of the four sources grouped by product, so each product appears once, carrying the `bm25` relevance of its own text, or `null` when only a category, a collection or a SKU reached it. The count and the page both start `with` that step and keep only the products whose id is `in` the matches. Under the default `rank` sort the page also left-joins the matches to order by `coalesce(score, 0)`, then `rank` and `createdAt`. The `newest`, `price_asc` and `price_desc` sorts override relevance, so under them the page does not join the matches at all. SQLite materialises the step once per statement, so each statement searches the index once per kind of entry, however many products the shop holds. `src/integrations/drizzle-orm/__test__/query-plans.integration.test.ts` fails when a plan searches the index inside the product loop again, when a sort that ignores relevance joins the matches, or when the SKU lookup stops using its index.
 
 ## Components
 
@@ -122,11 +128,13 @@ The header search is a separate feature backed by `src/modules/storefront-search
 
 `searchStorefront` (`use-cases/search-storefront.ts`) is public, takes `{ locale, query }` and fans out to three accessors in `storefront-search.server.ts`:
 
-| Accessor                      | Table                | Matched columns                                                        |
-| ----------------------------- | -------------------- | ---------------------------------------------------------------------- |
-| `searchStorefrontProducts`    | `product`            | via `buildAdminProductSearchCondition`, behind `publishedInStockWhere` |
-| `searchStorefrontCategories`  | `product_category`   | `handle`, `titles`, `subtitles`, `shortDescriptions`, status active    |
-| `searchStorefrontCollections` | `product_collection` | `handle`, `titles`, `descriptions`, status active                      |
+| Accessor                      | Table                | Matched columns                                                                                                                  |
+| ----------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `searchStorefrontProducts`    | `product`            | `titles`, `subtitles`, `tags`, `descriptions` and `handle` through the `storefront_search` index, behind `publishedInStockWhere` |
+| `searchStorefrontCategories`  | `product_category`   | `handle`, `titles`, `subtitles`, `shortDescriptions`, status active                                                              |
+| `searchStorefrontCollections` | `product_collection` | `handle`, `titles`, `descriptions`, status active                                                                                |
+
+The overlay's product group matches a product's own text only. Unlike the `q` parameter, it does not reach products through their categories, collections or SKUs.
 
 Constants in `storefront-search.constants.ts`:
 

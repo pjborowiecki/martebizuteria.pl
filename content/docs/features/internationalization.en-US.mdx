@@ -234,7 +234,7 @@ Requested locale, then Polish, then any locale with content, then the empty stri
 
 Writing goes the other way: `normalizeProductAttributeLocaleMapForSave` fills every locale, and `normalizeOptionalProductLocaleMapForSave` returns `undefined` when every locale is empty so the column is left null rather than holding `{"pl-PL":"","en-US":""}`.
 
-Because the maps are stored as JSON text, a `LIKE` search against `titles` searches **all** locales at once — see [Catalog and search](/docs/features/catalog-and-search).
+Search covers **all** locales at once. The admin lists combine a `LIKE` over `json_extract` of every locale in `I18N.SUPPORTED_LOCALES` with `or` (`localizedTextColumns` in `src/modules/_core/utils/search-conditions.server.ts`), and the storefront `storefront_search` index stores the Polish and English values of each column side by side — see [Catalog and search](/docs/features/catalog-and-search).
 
 The admin editors expose this per-locale. `catalog/form/components/catalog-locale-picker.tsx` iterates `I18N.SUPPORTED_LOCALES`, shows a filled/empty count per locale, and `product-form-locale-layout.tsx` renders the field set for the selected one. The attribute CSV export writes one `Title <LOCALE>` column per locale. The content-page editor at `/admin/content/$handle` does the same with one tab per locale in `content/content-page-locale-tabs.tsx`, and marks a tab whose fields fail validation.
 

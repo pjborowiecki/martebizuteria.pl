@@ -1,5 +1,5 @@
 import { getTableName, is } from "drizzle-orm"
-import { SQLiteColumn, SQLiteTable, getTableConfig } from "drizzle-orm/sqlite-core"
+import { SQLiteColumn, SQLiteSyncDialect, SQLiteTable, getTableConfig } from "drizzle-orm/sqlite-core"
 import { afterAll, describe, expect, it, vi } from "vite-plus/test"
 
 import { type TestD1Query } from "~/src/platform/testing/mocks/d1"
@@ -38,6 +38,8 @@ const { getAdminSubscribersPage } = await import("~/src/modules/newsletter/newsl
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
 const { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle, getPublishedRelatedProducts } =
   await import("~/src/modules/product/product.accessors")
+const { STOREFRONT_PRODUCTS_SORT } = await import("~/src/modules/product/product.storefront-catalog")
+const { getStorefrontPublishedProductsPage } = await import("~/src/modules/product/product.storefront-catalog.accessors")
 const { getCustomerAuditTimelineQuery } = await import("~/src/modules/user/user.accessors")
 
 applyMigrationHistory(sqlite)
@@ -53,6 +55,25 @@ const planSteps = async (read: () => Promise<unknown>): Promise<string[]> => {
   await read()
 
   return queries.flatMap((query) => textColumn(sqlite.prepare(`explain query plan ${query.sql}`).all(...query.params), "detail"))
+}
+
+const planPaths = async (read: () => Promise<unknown>): Promise<string[]> => {
+  queries.length = 0
+  await read()
+
+  return queries.flatMap((query) => {
+    const pathById = new Map<number, string>()
+
+    return sqlite
+      .prepare(`explain query plan ${query.sql}`)
+      .all(...query.params)
+      .map((row) => {
+        const path = [pathById.get(Number(row["parent"])), String(row["detail"])].filter((step) => step !== undefined).join(" > ")
+        pathById.set(Number(row["id"]), path)
+
+        return path
+      })
+  })
 }
 
 const indexedPrefixes = (table: string): string[][] => {
@@ -88,23 +109,32 @@ describe("foreign keys", () => {
   })
 })
 
+const normalizedSql = (text: string): string => text.replaceAll(/[`"\s]/gu, "").toLowerCase()
+
+const indexedTerms = (definition: string): string =>
+  normalizedSql(definition.slice(definition.indexOf("(") + 1, definition.lastIndexOf(")")))
+
 describe("schema indexes", () => {
-  it("all exist in the database the migrations build, on the same columns", () => {
+  it("all exist in the database the migrations build, on the same columns and expressions", () => {
+    const dialect = new SQLiteSyncDialect()
     const tables = Object.values(schema).flatMap((value) => (is(value, SQLiteTable) ? [value] : []))
     const declared = tables.flatMap((table) =>
-      getTableConfig(table)
-        .indexes.filter((index) => index.config.columns.every((column) => column instanceof SQLiteColumn))
-        .map((index) => ({
-          columns: index.config.columns.map((column) => (column instanceof SQLiteColumn ? column.name : "")),
-          index: index.config.name,
-          table: getTableName(table),
-        })),
+      getTableConfig(table).indexes.map((index) => ({
+        index: index.config.name,
+        table: getTableName(table),
+        terms: normalizedSql(
+          index.config.columns
+            .map((column) => (column instanceof SQLiteColumn ? column.name : dialect.sqlToQuery(column, "indexes").sql))
+            .join(","),
+        ),
+      })),
     )
-    const built = declared.map(({ index }) => ({
-      columns: textColumn(sqlite.prepare(`select name from pragma_index_info(?) order by seqno`).all(index), "name"),
-      index,
-      table: textColumn(sqlite.prepare(`select tbl_name from sqlite_master where type = 'index' and name = ?`).all(index), "tbl_name")[0],
-    }))
+    const built = declared.flatMap(({ index }) =>
+      sqlite
+        .prepare(`select tbl_name, sql from sqlite_master where type = 'index' and name = ?`)
+        .all(index)
+        .map((row) => ({ index, table: row["tbl_name"], terms: indexedTerms(String(row["sql"])) })),
+    )
 
     expect(built).toStrictEqual(declared)
   })
@@ -165,6 +195,36 @@ describe("hot reads", () => {
         "SEARCH discount USING INDEX discount_code_unique (code=?)",
         "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
       ]),
+    )
+  })
+})
+
+describe("storefront product search", () => {
+  it("searches the index once per kind in each statement, while collecting the matches, never once per product", async () => {
+    const paths = await planPaths(() => getStorefrontPublishedProductsPage({ limit: 24, offset: 0, searchTerm: "srebrny" }))
+    const indexScans = paths.filter((path) => path.includes("SCAN storefront_search VIRTUAL TABLE"))
+
+    expect(indexScans.filter((path) => !path.includes("MATERIALIZE storefront_product_matches > "))).toStrictEqual([])
+    expect(indexScans).toHaveLength(6)
+  })
+
+  it.each([
+    [
+      "ranks by relevance",
+      STOREFRONT_PRODUCTS_SORT.RANK,
+      ["SEARCH storefront_product_matches USING AUTOMATIC COVERING INDEX (product_id=?) LEFT-JOIN"],
+    ],
+    ["sorts by date", STOREFRONT_PRODUCTS_SORT.NEWEST, []],
+    ["sorts by price", STOREFRONT_PRODUCTS_SORT.PRICE_ASC, []],
+  ])("joins the matches to the page only when it %s", async (_label, sort, joins) => {
+    const steps = await planSteps(() => getStorefrontPublishedProductsPage({ limit: 24, offset: 0, searchTerm: "srebrny", sort }))
+
+    expect(steps.filter((step) => step.startsWith("SEARCH storefront_product_matches"))).toStrictEqual(joins)
+  })
+
+  it("finds a variant by its SKU through the upper-case SKU index instead of reading every variant", async () => {
+    await expect(planSteps(() => getStorefrontPublishedProductsPage({ limit: 24, offset: 0, searchTerm: "mrt-0-1" }))).resolves.toContain(
+      "SEARCH product_variant USING INDEX product_variant_upperSku_idx (<expr>=?)",
     )
   })
 })

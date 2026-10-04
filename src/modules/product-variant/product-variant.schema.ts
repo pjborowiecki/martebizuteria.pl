@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm"
+import { relations, sql } from "drizzle-orm"
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -30,7 +30,10 @@ export const productVariant = sqliteTable(
     title: text("title", { length: PRODUCT_VARIANT_COLUMN_LENGTH.title }).notNull(),
     ...timestamps(),
   },
-  (table) => [index("product_variant_productId_idx").on(table.productId), index("product_variant_sku_idx").on(table.sku)],
+  (table) => [
+    index("product_variant_productId_idx").on(table.productId),
+    index("product_variant_upperSku_idx").on(sql`upper(${table.sku})`),
+  ],
 )
 
 export const productVariantRelations = relations(productVariant, ({ one, many }) => ({
