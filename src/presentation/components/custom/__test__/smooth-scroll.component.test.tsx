@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { getLenisInstance } from "~/src/integrations/lenis/lenis.instance"
@@ -11,6 +11,7 @@ interface ScrollerProxyConfig {
 
 interface FakeLenis {
   readonly destroy: ReturnType<typeof vi.fn>
+  isScrolling: false | "native" | "smooth"
   readonly listeners: Map<string, () => void>
   readonly on: (event: string, listener: () => void) => void
   readonly options: Record<string, unknown>
@@ -18,6 +19,7 @@ interface FakeLenis {
   readonly resize: ReturnType<typeof vi.fn>
   readonly scroll: number
   readonly scrollTo: ReturnType<typeof vi.fn>
+  targetScroll: number
 }
 
 const { FakeLenisStub, lenisInstances, scrollTrigger, ticker, useLenisRouterScrollSync } = vi.hoisted(() => {
@@ -25,6 +27,8 @@ const { FakeLenisStub, lenisInstances, scrollTrigger, ticker, useLenisRouterScro
 
   class LenisStub {
     public readonly destroy = vi.fn()
+
+    public isScrolling: false | "native" | "smooth" = false
 
     public readonly listeners = new Map<string, () => void>()
 
@@ -37,6 +41,8 @@ const { FakeLenisStub, lenisInstances, scrollTrigger, ticker, useLenisRouterScro
     public readonly scroll = 420
 
     public readonly scrollTo = vi.fn()
+
+    public targetScroll = 420
 
     public constructor(options: Record<string, unknown>) {
       this.options = options
@@ -89,6 +95,13 @@ const lenis = (): FakeLenis => {
   }
 
   return instance
+}
+
+const WHEEL_TARGET = 480
+
+const startWheelGlide = (instance: FakeLenis): void => {
+  instance.isScrolling = "smooth"
+  instance.targetScroll = WHEEL_TARGET
 }
 
 const proxyConfig = (): Partial<ScrollerProxyConfig> => {
@@ -212,6 +225,60 @@ describe("SmoothScroll frame loop", () => {
   })
 })
 
+describe("SmoothScroll press during a wheel glide", () => {
+  it("stops the glide where the page is, so the press and the release land on the same control", () => {
+    render(<SmoothScroll>content</SmoothScroll>)
+    startWheelGlide(lenis())
+
+    fireEvent.pointerDown(screen.getByText("content"))
+
+    expect(lenis().scrollTo).toHaveBeenCalledWith(420, { force: true, immediate: true })
+  })
+
+  it("stops the glide even when the pressed control keeps the press to itself", () => {
+    render(
+      <SmoothScroll>
+        <button type="button">Cancel</button>
+      </SmoothScroll>,
+    )
+    const cancel = screen.getByRole("button", { name: "Cancel" })
+    cancel.addEventListener("pointerdown", (event) => {
+      event.stopPropagation()
+    })
+    startWheelGlide(lenis())
+
+    fireEvent.pointerDown(cancel)
+
+    expect(lenis().scrollTo).toHaveBeenCalledWith(420, { force: true, immediate: true })
+  })
+
+  it("leaves a page at rest alone", () => {
+    render(<SmoothScroll>content</SmoothScroll>)
+
+    fireEvent.pointerDown(screen.getByText("content"))
+
+    expect(lenis().scrollTo).not.toHaveBeenCalled()
+  })
+
+  it("lets a scripted scroll run on, since Lenis only keeps a wheel target ahead of the page", () => {
+    render(<SmoothScroll>content</SmoothScroll>)
+    lenis().isScrolling = "smooth"
+
+    fireEvent.pointerDown(screen.getByText("content"))
+
+    expect(lenis().scrollTo).not.toHaveBeenCalled()
+  })
+
+  it("leaves native scrolling to the browser", () => {
+    render(<SmoothScroll>content</SmoothScroll>)
+    lenis().isScrolling = "native"
+
+    fireEvent.pointerDown(screen.getByText("content"))
+
+    expect(lenis().scrollTo).not.toHaveBeenCalled()
+  })
+})
+
 describe("SmoothScroll teardown", () => {
   it("takes the frame callback off the ticker", () => {
     const { unmount } = render(<SmoothScroll>content</SmoothScroll>)
@@ -235,6 +302,17 @@ describe("SmoothScroll teardown", () => {
 
     expect(scrollTrigger.scrollerProxy).toHaveBeenCalledTimes(2)
     expect(scrollTrigger.scrollerProxy.mock.calls[1]).toStrictEqual([document.documentElement, {}])
+  })
+
+  it("stops watching presses", () => {
+    const { unmount } = render(<SmoothScroll>content</SmoothScroll>)
+    const instance = lenis()
+    unmount()
+    startWheelGlide(instance)
+
+    fireEvent.pointerDown(document.body)
+
+    expect(instance.scrollTo).not.toHaveBeenCalled()
   })
 
   it("destroys Lenis and withdraws the shared instance", () => {

@@ -47,7 +47,8 @@ const buttonVariants = cva(
       variant: {
         account: "bg-foreground text-background hover:bg-foreground/90",
         "account-destructive": "border border-destructive/30 text-destructive hover:border-destructive hover:bg-destructive/5",
-        "account-ghost": "h-auto p-0 text-[11px] tracking-[0.15em] text-muted-foreground uppercase hover:text-foreground",
+        "account-ghost":
+          "relative h-auto p-0 text-[11px] tracking-[0.15em] text-muted-foreground uppercase after:absolute after:inset-x-0 after:-inset-y-1 hover:text-foreground",
         "account-outline": "border border-border bg-transparent text-foreground hover:bg-muted",
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:

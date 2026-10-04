@@ -43,6 +43,23 @@ const setupLenisScrollTriggerProxy = (lenis: Lenis): (() => void) => {
   }
 }
 
+const stopInertiaOnPress = (lenis: Lenis): (() => void) => {
+  const handlePointerDown = () => {
+    const isGlidingTowardsWheelTarget = lenis.isScrolling === "smooth" && lenis.targetScroll !== lenis.scroll
+    if (isGlidingTowardsWheelTarget) {
+      lenis.scrollTo(lenis.scroll, {
+        force: true,
+        immediate: true,
+      })
+    }
+  }
+  globalThis.addEventListener("pointerdown", handlePointerDown, { capture: true })
+
+  return () => {
+    globalThis.removeEventListener("pointerdown", handlePointerDown, { capture: true })
+  }
+}
+
 export const SmoothScroll = ({
   children,
 }: Readonly<{
@@ -61,6 +78,7 @@ export const SmoothScroll = ({
     lenisRef.current = lenis
     setLenisInstance(lenis)
     const clearScrollTriggerProxy = setupLenisScrollTriggerProxy(lenis)
+    const clearInertiaStop = stopInertiaOnPress(lenis)
     const raf = (time: number) => {
       lenis.raf(time * MS_PER_S)
     }
@@ -74,6 +92,7 @@ export const SmoothScroll = ({
     return () => {
       gsap.ticker.remove(raf)
       clearScrollTriggerProxy()
+      clearInertiaStop()
       lenis.destroy()
       lenisRef.current = globalThis.undefined
       setLenisInstance(undefined)

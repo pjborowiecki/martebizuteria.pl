@@ -88,7 +88,7 @@ const menuTrigger = useMemo(() => <DropdownMenuTrigger render={button} />, [butt
 
 ## Variants worth knowing
 
-`Button` (`button.tsx`) is the widest primitive. Variants: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive`, plus the storefront account set `account`, `account-outline`, `account-ghost`, `account-destructive`. Sizes: `xs`, `sm`, `default`, `lg`, `xl`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`, `account`, `account-sm`. The admin console uses `outline` with `icon-lg` or `icon-sm`; the storefront uses the `account-*` set, which is uppercase with wide tracking.
+`Button` (`button.tsx`) is the widest primitive. Variants: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive`, plus the storefront account set `account`, `account-outline`, `account-ghost`, `account-destructive`. Sizes: `xs`, `sm`, `default`, `lg`, `xl`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`, `account`, `account-sm`. The admin console uses `outline` with `icon-lg` or `icon-sm`; the storefront uses the `account-*` set, which is uppercase with wide tracking. `account-ghost` is bare text with `h-auto p-0`, a target about 16.5 px tall, so a transparent `after:` layer (`after:absolute after:inset-x-0 after:-inset-y-1`) reaches 4 px above and below it. That gives a target of about 24 px, the WCAG 2.5.8 minimum, without moving the layout or the focus ring. A press on the label's top row also stays on the button while `active:translate-y-px` moves it down a pixel. The address form's **Cancel** relies on it, and `e2e/specs/account.spec.ts` presses just above the label.
 
 `Input` (`input.tsx`) has six variants and no default border radius — the shop's inputs are underlines, not boxes:
 

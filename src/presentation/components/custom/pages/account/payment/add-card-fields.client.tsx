@@ -1,4 +1,4 @@
-import { type DOMAttributes, type JSX, useCallback, useState } from "react"
+import { type DOMAttributes, type JSX, type MouseEvent, useCallback, useState } from "react"
 
 import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js"
 import {
@@ -30,6 +30,10 @@ const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = {
 }
 
 const ERROR_TYPES_THE_SHOPPER_CAN_FIX = new Set<StripeError["type"]>(["card_error", "validation_error"])
+
+const keepFocusInCardFields = (event: MouseEvent<HTMLButtonElement>): void => {
+  event.preventDefault()
+}
 
 export const AddCardFields = ({ onCancel, onFailed, onSaved }: Readonly<AddCardFieldsProps>): JSX.Element => {
   const t = useTranslations("pages.account.payment")
@@ -120,7 +124,7 @@ export const AddCardFields = ({ onCancel, onFailed, onSaved }: Readonly<AddCardF
         <Button disabled={elementStatus !== "ready" || isSaving} size="account" type="submit" variant="account">
           {isSaving ? t("saving") : t("saveCard")}
         </Button>
-        <Button disabled={isSaving} onClick={onCancel} type="button" variant="account-ghost">
+        <Button disabled={isSaving} onClick={onCancel} onMouseDown={keepFocusInCardFields} type="button" variant="account-ghost">
           {t("cancel")}
         </Button>
       </div>
