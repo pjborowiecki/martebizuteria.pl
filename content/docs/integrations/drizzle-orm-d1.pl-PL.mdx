@@ -104,6 +104,8 @@ export const runDrizzleBatch = async (statements: readonly DrizzleBatchStatement
 
 `DrizzleBatchStatement` to `BatchItem<"sqlite">`. Wsad D1 wykonywany jest jako jedna niejawna transakcja, co czyni `runDrizzleBatch` narzędziem atomowości w tej bazie kodu. Nic w `src/` nie wywołuje `db.transaction()`: sterownik D1 realizuje tę metodę przez wysłanie osobnych instrukcji `begin` i `commit`, a D1 nie udostępnia transakcji interaktywnych rozciągniętych na osobne instrukcje. Zapisy wieloetapowe albo trafiają więc do jednego wsadu, albo jawnie kompensują błąd — tak jak proces zamówienia zwalnia zarezerwowany stan magazynowy.
 
+Odczyt, który może nie znaleźć żadnego wiersza, trafia do wsadu jako `select … limit 1` z konstruktora zapytań, nigdy jako `db.query.<table>.findFirst`. Wykonany samodzielnie `findFirst`, który niczego nie znajduje, zwraca `undefined`. Wewnątrz `db.batch` sterownik D1 w Drizzle 0.45 przekazuje pusty wynik do mapera relacyjnego jako `[undefined]`, więc `db.batch` rzuca wyjątek, gdy D1 wykonał już i zatwierdził wszystkie instrukcje wsadu. W ten sposób przełączanie listy życzeń odczytuje produkt (`getPublishedProductForCustomerQuery` w `wishlist.accessors.ts`).
+
 ### Limit 100 parametrów
 
 D1 odrzuca instrukcję, która wiąże więcej niż 100 parametrów, a limit obowiązuje każdą instrukcję wewnątrz wsadu. Dwie zasady utrzymują każdą instrukcję poniżej niego, niezależnie od wielkości sklepu:

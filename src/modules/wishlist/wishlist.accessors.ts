@@ -11,11 +11,6 @@ import { wishlistItem } from "~/src/modules/wishlist/wishlist.schema"
 
 const NO_ROWS = 0
 
-export const getWishlistItem = (userId: string, productId: string) =>
-  db.query.wishlistItem.findFirst({
-    where: and(eq(wishlistItem.userId, userId), eq(wishlistItem.productId, productId)),
-  })
-
 export const insertWishlistItem = async (userId: string, productId: string): Promise<void> => {
   await db
     .insert(wishlistItem)
@@ -23,9 +18,11 @@ export const insertWishlistItem = async (userId: string, productId: string): Pro
     .onConflictDoNothing({ target: [wishlistItem.userId, wishlistItem.productId] })
 }
 
-export const deleteWishlistItem = async (userId: string, productId: string): Promise<void> => {
-  await db.delete(wishlistItem).where(and(eq(wishlistItem.userId, userId), eq(wishlistItem.productId, productId)))
-}
+export const deleteWishlistItemQuery = (userId: string, productId: string) =>
+  db
+    .delete(wishlistItem)
+    .where(and(eq(wishlistItem.userId, userId), eq(wishlistItem.productId, productId)))
+    .returning({ id: wishlistItem.id })
 
 export const countWishlistItems = async (userId: string): Promise<number> => {
   const [row] = await db.select({ total: count() }).from(wishlistItem).where(eq(wishlistItem.userId, userId))
@@ -39,11 +36,12 @@ export const getWishlistProductIds = async (userId: string): Promise<string[]> =
   return rows.map((row) => row.productId)
 }
 
-export const getPublishedProductById = (productId: string) =>
-  db.query.product.findFirst({
-    columns: { id: true, status: true },
-    where: and(eq(product.id, productId), eq(product.status, PRODUCT_STATUS.PUBLISHED)),
-  })
+export const getPublishedProductForCustomerQuery = (userId: string, productId: string) =>
+  db
+    .select({ id: product.id, wishlistCount: db.$count(wishlistItem, eq(wishlistItem.userId, userId)) })
+    .from(product)
+    .where(and(eq(product.id, productId), eq(product.status, PRODUCT_STATUS.PUBLISHED)))
+    .limit(1)
 
 export const getWishlistRows = (userId: string, limit = WISHLIST_MAX_ITEMS) =>
   db

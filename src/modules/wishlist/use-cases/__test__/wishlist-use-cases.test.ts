@@ -18,22 +18,19 @@ const USER_ID = "user-1"
 const PRODUCT_ID = "0199bb55-3f5e-7aaa-8c4e-d4f5a6b7c8d9"
 
 const accessors = vi.hoisted(() => ({
-  countItems: vi.fn(),
-  deleteItem: vi.fn(),
-  getItem: vi.fn(),
   getProductIds: vi.fn(),
-  getPublishedProduct: vi.fn(),
   getRows: vi.fn(),
   insertItem: vi.fn(),
 }))
 
+const database = vi.hoisted(() => ({ batch: vi.fn() }))
+
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: { batch: database.batch } }))
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) => (path === null ? undefined : `cdn/${path}`) }))
 vi.mock("~/src/modules/wishlist/wishlist.accessors", () => ({
-  countWishlistItems: accessors.countItems,
-  deleteWishlistItem: accessors.deleteItem,
-  getPublishedProductById: accessors.getPublishedProduct,
-  getWishlistItem: accessors.getItem,
+  deleteWishlistItemQuery: (userId: string, productId: string) => ({ delete: [userId, productId] }),
+  getPublishedProductForCustomerQuery: (userId: string, productId: string) => ({ published: [userId, productId] }),
   getWishlistProductIds: accessors.getProductIds,
   getWishlistRows: accessors.getRows,
   insertWishlistItem: accessors.insertItem,
@@ -74,14 +71,22 @@ const wishlistRow = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
+interface ToggleReads {
+  readonly published?: readonly { id: string; wishlistCount: number }[]
+  readonly removed?: readonly { id: string }[]
+}
+
+const onSale = (wishlistCount: number) => [{ id: PRODUCT_ID, wishlistCount }]
+
+const toggleReads = ({ published = onSale(0), removed = [] }: ToggleReads = {}) => [removed, published]
+
+const ALREADY_SAVED = [{ id: "wishlist-1" }]
+
 beforeEach(() => {
   vi.clearAllMocks()
-  accessors.countItems.mockResolvedValue(0)
-  accessors.deleteItem.mockResolvedValue(undefined)
+  database.batch.mockResolvedValue(toggleReads())
   accessors.insertItem.mockResolvedValue(undefined)
-  accessors.getItem.mockResolvedValue(undefined)
   accessors.getProductIds.mockResolvedValue([])
-  accessors.getPublishedProduct.mockResolvedValue({ id: PRODUCT_ID, status: "published" })
   accessors.getRows.mockResolvedValue([])
 })
 
@@ -89,44 +94,41 @@ describe("toggleWishlistItem", () => {
   it("saves a product the customer has not saved yet", async () => {
     await expect(toggleWishlistItem({ data: { productId: PRODUCT_ID } })).resolves.toStrictEqual({ wishlisted: true })
     expect(accessors.insertItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID)
-    expect(accessors.deleteItem).not.toHaveBeenCalled()
   })
 
-  it("removes a product the customer had already saved", async () => {
-    accessors.getItem.mockResolvedValue({ id: "wishlist-1", productId: PRODUCT_ID, userId: USER_ID })
+  it("removes a product the customer had already saved without inserting it again", async () => {
+    database.batch.mockResolvedValue(toggleReads({ removed: ALREADY_SAVED }))
 
     await expect(toggleWishlistItem({ data: { productId: PRODUCT_ID } })).resolves.toStrictEqual({ wishlisted: false })
-    expect(accessors.deleteItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID)
     expect(accessors.insertItem).not.toHaveBeenCalled()
   })
 
-  it("reads and writes only the caller's own wishlist", async () => {
+  it("deletes the caller's own row first, then reads the product with the caller's count, in one batch", async () => {
     await toggleWishlistItem({ data: { productId: PRODUCT_ID } })
 
-    expect(accessors.getItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID)
+    expect(database.batch).toHaveBeenCalledExactlyOnceWith([{ delete: [USER_ID, PRODUCT_ID] }, { published: [USER_ID, PRODUCT_ID] }])
   })
 
   it("refuses to save a product that is not on sale", async () => {
-    accessors.getPublishedProduct.mockResolvedValue(undefined)
+    database.batch.mockResolvedValue(toggleReads({ published: [] }))
 
     await expect(toggleWishlistItem({ data: { productId: PRODUCT_ID } })).rejects.toMatchObject({ code: ERROR_CODES.NOT_FOUND })
     expect(accessors.insertItem).not.toHaveBeenCalled()
   })
 
   it("still lets go of a saved product that has since been withdrawn", async () => {
-    accessors.getItem.mockResolvedValue({ id: "wishlist-1", productId: PRODUCT_ID, userId: USER_ID })
-    accessors.getPublishedProduct.mockResolvedValue(undefined)
+    database.batch.mockResolvedValue(toggleReads({ published: [], removed: ALREADY_SAVED }))
 
     await expect(toggleWishlistItem({ data: { productId: PRODUCT_ID } })).resolves.toStrictEqual({ wishlisted: false })
   })
 
   it("rejects a blank product id", async () => {
     await expect(toggleWishlistItem({ data: { productId: "   " } })).rejects.toThrow()
-    expect(accessors.getItem).not.toHaveBeenCalled()
+    expect(database.batch).not.toHaveBeenCalled()
   })
 
   it("refuses to save beyond the wishlist ceiling instead of dropping items from the list", async () => {
-    accessors.countItems.mockResolvedValue(WISHLIST_MAX_ITEMS)
+    database.batch.mockResolvedValue(toggleReads({ published: onSale(WISHLIST_MAX_ITEMS) }))
 
     await expect(toggleWishlistItem({ data: { productId: PRODUCT_ID } })).rejects.toMatchObject({
       code: ERROR_CODES.VALIDATION,
@@ -136,14 +138,13 @@ describe("toggleWishlistItem", () => {
   })
 
   it("still saves the last product that fits", async () => {
-    accessors.countItems.mockResolvedValue(WISHLIST_MAX_ITEMS - 1)
+    database.batch.mockResolvedValue(toggleReads({ published: onSale(WISHLIST_MAX_ITEMS - 1) }))
 
     await expect(toggleWishlistItem({ data: { productId: PRODUCT_ID } })).resolves.toStrictEqual({ wishlisted: true })
   })
 
   it("lets a full wishlist give a product up", async () => {
-    accessors.countItems.mockResolvedValue(WISHLIST_MAX_ITEMS)
-    accessors.getItem.mockResolvedValue({ id: "wishlist-1", productId: PRODUCT_ID, userId: USER_ID })
+    database.batch.mockResolvedValue(toggleReads({ published: onSale(WISHLIST_MAX_ITEMS), removed: ALREADY_SAVED }))
 
     await expect(toggleWishlistItem({ data: { productId: PRODUCT_ID } })).resolves.toStrictEqual({ wishlisted: false })
   })
