@@ -25,8 +25,7 @@ test.describe("cart", () => {
 
   test("the cart is still there after a reload", async ({ cartPage, page }) => {
     await cartPage.gotoCart()
-    await page.reload()
-    await cartPage.waitForAppReady()
+    await cartPage.reload()
 
     await expect(page.getByRole("main").getByRole("link", { name: PRODUCTS.lapis.title }).first()).toBeVisible()
     await expect(cartPage.cartLink()).toContainText("1")

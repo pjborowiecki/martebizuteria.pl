@@ -184,7 +184,7 @@ Specyfikacja wysyła to podpisane zdarzenie do `/api/webhooks/stripe` tak jak St
 - Każdy test wysyła własny `cf-connecting-ip`, więc limity na IP przy logowaniu, rejestracji i checkoucie nigdy nie wiążą testów ze sobą.
 - Projekt `setup` raz loguje zaseedowanego administratora i klienta i zapisuje ich sesje w `playwright/.auth/`; używaj ich przez `test.use({ storageState: STORAGE_STATE.admin })`. Nigdy nie wylogowuj zaseedowanego konta ani nie zmieniaj jego hasła w specyfikacji, bo te sesje współdzielą wszyscy workerzy.
 - Specyfikacja, która zmienia konto, zamówienie albo kupon, tworzy własne: `registerCustomer` rejestruje i weryfikuje nowego klienta, `uniqueEmail` i `uniqueCode` nazywają dane, a `placeOrder` kupuje produkt i płaci za niego przez emulator. Specyfikacje działają w pełni równolegle i nie mogą zależeć od liczb, które zmieniają inne specyfikacje.
-- Na stan czekaj asercjami web-first i `expect.poll`, nigdy stałymi opóźnieniami. Obiekty stron w `e2e/pages/` czekają na hydratację, zanim specyfikacja zacznie działać na stronie.
+- Na stan czekaj asercjami web-first i `expect.poll`, nigdy stałymi opóźnieniami. Kliknięcie, które trafi na stronę, zanim React ją zhydratuje, przepada bez wysłania żądania, dlatego obiekty stron w `e2e/pages/` czekają na hydratację: otwieraj i przeładowuj strony przez nie (`open`, `reload`), a po każdym `page.goto` użytym bezpośrednio w specyfikacji wywołaj `waitForAppReady()`, zanim zaczniesz działać na stronie.
 
 ## Konwencje
 
