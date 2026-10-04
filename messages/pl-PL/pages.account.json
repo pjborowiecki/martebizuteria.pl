@@ -1,13 +1,13 @@
 {
   "sidebar": {
-    "overview": "Przegląd",
+    "overview": "Podsumowanie",
     "orders": "Zamówienia",
     "addresses": "Adresy",
     "payment": "Metody płatności",
     "wishlist": "Lista życzeń",
     "sessions": "Sesje",
     "signOut": "Wyloguj się",
-    "title": "Moje Konto",
+    "title": "Moje konto",
     "profile": "Profil",
     "signOutError": "Nie udało się wylogować. Spróbuj ponownie."
   },
@@ -37,7 +37,7 @@
     "noRecentOrders": "Nie złożyłeś jeszcze żadnych zamówień.",
     "recommendations": "Polecane dla Ciebie",
     "recommendationsDesc": "Na podstawie Twoich ostatnich zamówień",
-    "loyalty": "Program Lojalnościowy",
+    "loyalty": "Program lojalnościowy",
     "loyaltyTier": "Poziom {tier}",
     "loyaltyPoints": "{points} punktów",
     "loyaltyNext": "Jeszcze {points} pkt do poziomu {tier}",
@@ -214,8 +214,8 @@
     "unknownLocation": "Adres nie został zapisany"
   },
   "profile": {
-    "eyebrow": "Ustawienia Konta",
-    "title": "Twój Profil",
+    "eyebrow": "Ustawienia konta",
+    "title": "Twój profil",
     "personalInfo": "Dane osobowe",
     "email": "Adres e-mail",
     "phone": "Numer telefonu",

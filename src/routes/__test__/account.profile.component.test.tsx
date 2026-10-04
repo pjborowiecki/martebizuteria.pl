@@ -2,11 +2,16 @@ import { type JSX, Suspense } from "react"
 
 import type * as TanStackRouter from "@tanstack/react-router"
 import { cleanup, screen } from "@testing-library/react"
+import { IntlProvider } from "use-intl/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
+
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+
+import polishAccountMessages from "~/messages/pl-PL/pages.account.json"
 
 interface PrefetchedQuery {
   readonly queryKey: readonly unknown[]
@@ -143,6 +148,21 @@ describe("account profile page", () => {
 
     expect(screen.getByText(/^security/u)).toBeInTheDocument()
     expect(screen.getByText("close account")).toBeInTheDocument()
+  })
+})
+
+describe("account profile page in Polish", () => {
+  it("heads the page in Polish sentence case", async () => {
+    renderWithProviders(
+      <IntlProvider locale="pl-PL" messages={{ pages: { account: polishAccountMessages } }} timeZone={I18N.DEFAULT_TIMEZONE}>
+        <Suspense fallback={<p>loading profile</p>}>
+          <ProfilePage />
+        </Suspense>
+      </IntlProvider>,
+    )
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Twój profil" })).toBeInTheDocument()
+    expect(screen.getByText("Ustawienia konta")).toBeInTheDocument()
   })
 })
 

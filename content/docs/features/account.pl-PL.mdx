@@ -61,13 +61,15 @@ beforeLoad: () => {
 
 Kolejność w panelu bocznym to `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`). Przycisk wylogowania w panelu bocznym wywołuje `signOut`, a potem pełnym przeładowaniem strony wczytuje `/`, co odrzuca cache zapytań.
 
+Etykieta każdej pozycji pochodzi z `pages.account.sidebar`, a `accountPageMeta` (`customer-account.meta.ts`) używa jej też jako tytułu karty przeglądarki, więc strona startowa konta nazywa się w obu miejscach „Podsumowanie” („Overview” po angielsku). Nagłówek panelu bocznego, który jest też nazwą obszaru nawigacji odczytywaną przez czytniki ekranu, to `pages.account.sidebar.title`: „Moje konto” („Your Account” po angielsku). Polskie teksty konta piszemy zgodnie z polską pisownią, wielką literą tylko na początku, a nie jak angielskie tytuły, dlatego strona profilu ma nagłówek „Twój profil” pod nadtytułem „Ustawienia konta”.
+
 Każdy loader trasy wczytuje dane wstępnie z `staleTime: "static"`. `account.payment.tsx` i `account.wishlist.tsx` zostawiają `staleTime` trasy domyślnemu `defaultStaleTime` routera, również 60 000; pozostałe sześć plików tras ustawia je na `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
 
 ## Wzorzec autoryzacji
 
 Każdy use case w `src/modules/customer-account/use-cases/` używa `authorized()` bez argumentu uprawnień — czyli dowolny zalogowany użytkownik — a następnie sam zawęża zapytanie do `context.auth.user.id`. Nie ma sprawdzenia własności na poziomie trasy, które można by obejść; granicą jest funkcja serwerowa. `getCustomerOrder` filtruje na przykład po `and(eq(order.id, orderId), eq(order.userId, context.auth.user.id))`.
 
-## Przegląd
+## Podsumowanie
 
 `getCustomerOverview` najpierw odczytuje identyfikatory i numery ostatnich zamówień klienta, potem rozsyła równolegle sześć zapytań, następnie odczytuje pozycje ostatnich zamówień, a na końcu buduje rekomendacje:
 
