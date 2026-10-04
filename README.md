@@ -154,18 +154,19 @@ After sign-in, the `/auth` route guard sends an `admin` user to `/admin` and a `
 
 Use `.env.development`, `.env.preview` and `.env.production`, matching the Wrangler environments and Vite modes of the same names. They are gitignored; [`.env.example`](.env.example) lists every key. Only `VITE_`-prefixed values reach browser code — never prefix a credential.
 
-| Variable                                                                     | Purpose                                                                                                         |
-| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `VITE_R2_URL`                                                                | Public base URL for R2-hosted media. Browser-visible and also declared as a Worker secret.                      |
-| `VITE_STRIPE_PUBLISHABLE_KEY`                                                | Stripe publishable key used by the Payment Element.                                                             |
-| `AUTH_SECRET`                                                                | Better Auth signing secret. Generate a distinct value per environment.                                          |
-| `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`                         | GitHub OAuth application credentials.                                                                           |
-| `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`                         | Google OAuth application credentials.                                                                           |
-| `RESEND_API_KEY`, `RESEND_EMAIL_FROM`                                        | Resend API key and a sender address your Resend account accepts.                                                |
-| `STRIPE_SECRET_KEY`                                                          | Stripe server key used for intents, refunds and customer operations.                                            |
-| `STRIPE_WEBHOOK_SECRET`                                                      | Secret used to verify `/api/webhooks/stripe` deliveries.                                                        |
-| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, `CLOUDFLARE_ACCESS_TOKEN` | Drizzle Kit credentials for Studio, introspect and push over the D1 HTTP API. **Never uploaded to the Worker.** |
-| `SENTRY_AUTH_TOKEN`                                                          | Declared in `.env.example` only. No error reporting is wired; nothing in `src/` reads it.                       |
+| Variable                                                                     | Purpose                                                                                                                          |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_R2_URL`                                                                | Public base URL for R2-hosted media. Browser-visible and also declared as a Worker secret.                                       |
+| `VITE_STRIPE_PUBLISHABLE_KEY`                                                | Stripe publishable key used by the Payment Element.                                                                              |
+| `AUTH_SECRET`                                                                | Better Auth signing secret. Generate a distinct value per environment.                                                           |
+| `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`                         | GitHub OAuth application credentials.                                                                                            |
+| `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`                         | Google OAuth application credentials.                                                                                            |
+| `RESEND_API_KEY`, `RESEND_EMAIL_FROM`                                        | Resend API key and a bare sender address on a domain verified in Resend (`onboarding@resend.dev` locally).                       |
+| `RESEND_MANAGEMENT_API_KEY`                                                  | Optional Resend Full access key the deploy check uses to read the sender domain's DNS records. **Never uploaded to the Worker.** |
+| `STRIPE_SECRET_KEY`                                                          | Stripe server key used for intents, refunds and customer operations.                                                             |
+| `STRIPE_WEBHOOK_SECRET`                                                      | Secret used to verify `/api/webhooks/stripe` deliveries.                                                                         |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, `CLOUDFLARE_ACCESS_TOKEN` | Drizzle Kit credentials for Studio, introspect and push over the D1 HTTP API. **Never uploaded to the Worker.**                  |
+| `SENTRY_AUTH_TOKEN`                                                          | Declared in `.env.example` only. No error reporting is wired; nothing in `src/` reads it.                                        |
 
 Server code reads secrets through `env` from `cloudflare:workers`. The ten keys listed in `secrets.required` for each environment in [`wrangler.jsonc`](wrangler.jsonc) are the authoritative deployment list: `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `VITE_R2_URL`. [`scripts/prepare-deploy-secrets.ts`](scripts/prepare-deploy-secrets.ts) uploads exactly those and fails if one is missing, which keeps the Cloudflare management credentials out of the Worker.
 
@@ -188,7 +189,7 @@ The canonical URL is configured in source, not in an environment file. Rebuild a
 ### Provider setup
 
 - **GitHub and Google OAuth.** Callback URLs are `https://<host>/api/auth/callback/github` and `https://<host>/api/auth/callback/google`. Account linking is enabled with `github` and `google` as trusted providers, and OAuth tokens are encrypted at rest.
-- **Resend.** Configure the API key and a verified sender before testing sign-up, because `requireEmailVerification` blocks sign-in until the address is verified. Templates live in [`src/presentation/emails/`](src/presentation/emails) and are previewable at `/dev/emails`.
+- **Resend.** Configure the API key and a verified sender before testing sign-up, because `requireEmailVerification` blocks sign-in until the address is verified. Add the sender's domain at [resend.com/domains](https://resend.com/domains) and publish the DKIM (`resend._domainkey` TXT) and SPF (`send` MX and TXT) records it lists; locally, `onboarding@resend.dev` works but delivers only to the Resend account owner. `bun run email:verify <environment>` checks the key and sender, and the deploy scripts run the same check. Templates live in [`src/presentation/emails/`](src/presentation/emails) and are previewable at `/dev/emails`.
 - **Stripe.** Create the webhook endpoint at `https://<host>/api/webhooks/stripe` and store its signing secret. Handlers live in [`src/integrations/stripe/stripe.webhooks.tsx`](src/integrations/stripe/stripe.webhooks.tsx) and cover payment success, failure, refund and `checkout.session.expired`.
 - **R2.** Admin media upload writes to the `IMAGES` binding with a one-year immutable `Cache-Control`. Reads go through the public `VITE_R2_URL`, so the bucket needs public access or a custom domain.
 - **InPost.** [`src/integrations/inpost/inpost.api.ts`](src/integrations/inpost/inpost.api.ts) calls the public points API by city to power locker selection during checkout. It needs no credentials, and it creates no shipments and prints no labels.
@@ -201,7 +202,7 @@ content/
   docs/                       Localized MDX documentation (98 pages per locale) and meta.{locale}.json
 messages/{locale}/            48 JSON namespace files per locale
 public/                       Fonts, favicon, OG image, llms.txt, _headers, screenshots, video
-scripts/                      verify-bindings, verify-build, prepare-deploy-secrets, sync-skills, commit-msg
+scripts/                      verify-bindings, verify-email-sender, verify-build, prepare-deploy-secrets, sync-skills, commit-msg
 src/
   server.ts                   Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, queue consumer
   router.tsx                  Per-request QueryClient, SSR integration, locale rewrite, default components
@@ -486,7 +487,7 @@ Both deploy workflows use GitHub `environment: preview` / `environment: producti
 | Secret   | `AUTH_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | The Worker secrets that `prepare-deploy-secrets.ts` uploads.                                   |
 | Variable | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                   | Browser-visible values baked into the client bundle at build time.                             |
 
-The deploy jobs `touch .env.<environment>` and rely on the process environment, because `prepare-deploy-secrets.ts` prefers `process.env[name]` over the file. **Neither deploy workflow applies D1 migrations** — run `db:migrate:preview` or `db:migrate:production` yourself before merging a change that needs them, and keep schema changes backward compatible with the currently deployed Worker.
+The deploy jobs `touch .env.<environment>` and rely on the process environment, because `verify-email-sender.ts` and `prepare-deploy-secrets.ts` prefer `process.env[name]` over the file. **Neither deploy workflow applies D1 migrations** — run `db:migrate:preview` or `db:migrate:production` yourself before merging a change that needs them, and keep schema changes backward compatible with the currently deployed Worker.
 
 Use one deployment owner. If a Cloudflare Workers Builds trigger is also connected to this repository, disable it so a push does not deploy twice or bypass the CI gate.
 
@@ -506,12 +507,13 @@ bun run db:migrate:production
 bun run deploy:production
 ```
 
-Each deploy script runs four gates in order, and each one fails the deploy rather than warning:
+Each deploy script runs five gates in order, and each one fails the deploy rather than warning:
 
 1. [`verify-bindings.ts`](scripts/verify-bindings.ts) reads the same JSONC Wrangler reads and rejects a missing or placeholder `DB` id, `CACHE` id, `IMAGES` bucket, `AUDIT_LOG_QUEUE` producer without a matching consumer, or a renamed Durable Object class.
-2. `build:preview` / `build:production` clears `dist`, compiles content, and builds with `CLOUDFLARE_ENV` and `--mode` both set to the target environment.
-3. [`verify-build.ts`](scripts/verify-build.ts) checks that `.wrangler/deploy/config.json` points at `dist/server/wrangler.json`, that the built Worker's `APP_ENV` and name match the requested environment, that `main` and `dist/client` exist with fonts, CSS and JavaScript — and then transpile-scans every client chunk and **fails on any `cloudflare:workers` or `node:*` import** that leaked into the browser bundle.
-4. [`prepare-deploy-secrets.ts`](scripts/prepare-deploy-secrets.ts) writes a `0600` secrets file containing only the keys declared in `secrets.required`, which is what keeps `CLOUDFLARE_*` management credentials out of the Worker.
+2. [`verify-email-sender.ts`](scripts/verify-email-sender.ts) asks Resend whether it would send as `RESEND_EMAIL_FROM` with `RESEND_API_KEY`, and rejects a display-name sender, `onboarding@resend.dev`, or a domain that is missing from the Resend account or not verified, printing the DNS records still to publish. With a sending-only key it reads the domain through the optional `RESEND_MANAGEMENT_API_KEY`, or else sends one test e-mail to `delivered@resend.dev`.
+3. `build:preview` / `build:production` clears `dist`, compiles content, and builds with `CLOUDFLARE_ENV` and `--mode` both set to the target environment.
+4. [`verify-build.ts`](scripts/verify-build.ts) checks that `.wrangler/deploy/config.json` points at `dist/server/wrangler.json`, that the built Worker's `APP_ENV` and name match the requested environment, that `main` and `dist/client` exist with fonts, CSS and JavaScript — and then transpile-scans every client chunk and **fails on any `cloudflare:workers` or `node:*` import** that leaked into the browser bundle.
+5. [`prepare-deploy-secrets.ts`](scripts/prepare-deploy-secrets.ts) writes a `0600` secrets file containing only the keys declared in `secrets.required`, which is what keeps `CLOUDFLARE_*` management credentials out of the Worker.
 
 Only then does `wrangler deploy` run, against the generated `dist/server/wrangler.json` with `CLOUDFLARE_ENV` unset so the generated config is used verbatim. Builds alone deploy nothing and apply no migrations.
 

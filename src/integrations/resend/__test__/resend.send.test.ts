@@ -188,3 +188,40 @@ describe("sendEmail when Resend refuses one email", () => {
     expect(markEmailSenderUnavailable).not.toHaveBeenCalled()
   })
 })
+
+describe("sendEmail from Resend's resend.dev test sender", () => {
+  const TESTING_ONLY = "You can only send testing emails to your own email address (owner@marte.test)."
+
+  beforeEach(() => {
+    env.RESEND_EMAIL_FROM = "onboarding@resend.dev"
+  })
+
+  afterEach(() => {
+    env.RESEND_EMAIL_FROM = "atelier@marte.test"
+  })
+
+  it("leaves the sender available when Resend refuses a recipient other than the account owner", async () => {
+    refuse({ message: TESTING_ONLY, name: "validation_error", statusCode: 403 })
+
+    await expect(sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })).resolves.toBe(TESTING_ONLY)
+
+    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: `${APP_NAME} <onboarding@resend.dev>` }))
+    expect(markEmailSenderUnavailable).not.toHaveBeenCalled()
+  })
+
+  it("leaves the sender available for an explicit test sender too", async () => {
+    refuse({ message: TESTING_ONLY, name: "validation_error", statusCode: 403 })
+
+    await sendEmail({ from: "onboarding@Resend.dev", react: body, subject: "Order shipped", to: "anna@example.com" })
+
+    expect(markEmailSenderUnavailable).not.toHaveBeenCalled()
+  })
+
+  it("still marks the sender unavailable for a refusal every message would meet", async () => {
+    refuse({ message: "You have reached your daily email sending quota", name: "daily_quota_exceeded", statusCode: 429 })
+
+    await sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })
+
+    expect(markEmailSenderUnavailable).toHaveBeenCalledWith("You have reached your daily email sending quota")
+  })
+})

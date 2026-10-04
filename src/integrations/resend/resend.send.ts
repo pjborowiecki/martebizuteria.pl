@@ -25,19 +25,17 @@ const SENDER_REFUSAL_NAMES: ReadonlySet<string> = new Set([
   "restricted_api_key",
 ])
 
-const refusesEverySend = ({ name, statusCode }: ErrorResponse): boolean =>
-  SENDER_REFUSAL_NAMES.has(name) || SENDER_REFUSAL_STATUSES.has(statusCode)
+const RESEND_TEST_SENDER = /@resend\.dev>?$/iu
+
+const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): boolean =>
+  SENDER_REFUSAL_NAMES.has(name) || (SENDER_REFUSAL_STATUSES.has(statusCode) && !RESEND_TEST_SENDER.test(sender))
 
 const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({
-      from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
-      react,
-      subject,
-      to,
-    })
+    const { error } = await resend.emails.send({ from: sender, react, subject, to })
 
-    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error)) {
+    if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
     }
 

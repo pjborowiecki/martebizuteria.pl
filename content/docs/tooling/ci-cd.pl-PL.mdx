@@ -67,7 +67,7 @@ run: |
   bun run deploy:preview
 ```
 
-`touch` istnieje, bo `scripts/prepare-deploy-secrets.ts` czyta ten plik bezwarunkowo; same wartości pochodzą z bloku `env:` tego kroku, który skrypt przedkłada nad plik:
+`touch` istnieje, bo `scripts/prepare-deploy-secrets.ts` czyta ten plik bezwarunkowo (`scripts/verify-email-sender.ts` traktuje brakujący plik jak pusty); same wartości pochodzą z bloku `env:` tego kroku, który oba skrypty przedkładają nad plik:
 
 ```ts
 const value = process.env[name] ?? values[name]
@@ -84,10 +84,10 @@ Podgląd jest jednym wspólnym wdrożeniem: każdy pull request wdraża się na 
 ## Co dokładnie robi wdrożenie
 
 ```json
-"deploy:preview": "bun scripts/verify-bindings.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json"
+"deploy:preview": "bun scripts/verify-bindings.ts preview && bun scripts/verify-email-sender.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json"
 ```
 
-Cztery etapy.
+Pięć etapów.
 
 ### 1. verify-bindings.ts
 
@@ -101,17 +101,23 @@ Czyta `wrangler.jsonc` dla docelowego środowiska przez `unstable_readConfig` i 
 
 To ta kontrola wyłapuje zastępczy identyfikator skopiowany między środowiskami.
 
-### 2. kompilacja
+### 2. verify-email-sender.ts
+
+Czyta `RESEND_API_KEY` i `RESEND_EMAIL_FROM` najpierw z `process.env`, potem z `.env.<środowisko>`, i pyta Resend, czy wyśle pocztę z tego adresu. Przerywa przy braku klucza, nadawcy z nazwą wyświetlaną, `onboarding@resend.dev` poza środowiskiem development, domenie, której nie ma na koncie Resend przypisanym do klucza, oraz domenie z niezweryfikowanymi rekordami DKIM lub SPF — wtedy wypisuje rekordy, które trzeba jeszcze opublikować. Klucz tylko do wysyłki nie może czytać domen, więc kontrola odczytuje je kluczem `RESEND_MANAGEMENT_API_KEY` — opcjonalnym kluczem z pełnym dostępem, który krok bierze z sekretów środowiska w GitHubie i który nigdy nie trafia do Workera. Bez niego kontrola wysyła jeden testowy e-mail na `delivered@resend.dev` i przerywa, jeśli Resend go odrzuci. Każde żądanie do Resend jest ponawiane raz po przekroczeniu limitu żądań albo odpowiedzi 5xx, a cała kontrola rezygnuje po 30 sekundach.
+
+Działa przed kompilacją, żeby nadawca, którego Resend by odrzucił, zatrzymał wdrożenie w kilka sekund. Poza samym `wrangler deploy` to jedyny etap, który łączy się z zewnętrzną usługą, i nie należy do `build:*`, więc `ci.yml` nigdy nie wywołuje Resend z atrapowymi wartościami z `.env.test`. Rekordy i lokalną konfigurację z `onboarding@resend.dev` opisuje [Resend](/docs/integrations/resend#domena-nadawcy).
+
+### 3. kompilacja
 
 `bun run build:preview` usuwa `dist`, odtwarza `.source/`, uruchamia `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `bun scripts/verify-build.ts preview`. `verify-build.ts` czyta `.wrangler/deploy/config.json`, idzie za jego `configPath` i sprawdza, że wskazuje dokładnie na `dist/server/wrangler.json`; że `vars.APP_ENV` skompilowanej konfiguracji odpowiada celowi, a jej `name` to `martebizuteria-preview` (albo `martebizuteria` dla produkcji); że istnieją `main` i `dist/client`; że istnieje `dist/client/fonts`; że `dist/client/assets` zawiera co najmniej jeden plik `.js` i jeden `.css`; a na koniec skanuje każdy plik `.js` klienta przez `new Bun.Transpiler({ loader: "js" })` i przerywa przy jakimkolwiek imporcie `cloudflare:workers` lub modułu `node:`.
 
-### 3. prepare-deploy-secrets.ts
+### 4. prepare-deploy-secrets.ts
 
 Czyta `secrets.required` z bloku danego środowiska w `wrangler.jsonc`, rozwiązuje każdą nazwę najpierw z `process.env`, a potem z `.env.<środowisko>`, przerywa na pierwszej brakującej lub pustej wartości i zapisuje `.wrangler/secrets.<środowisko>.json` z uprawnieniami `0o600`.
 
 Zapisywane są wyłącznie nazwy zadeklarowane w `wrangler.jsonc`. `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` i `CLOUDFLARE_ACCESS_TOKEN` celowo nie są na tej liście: to dane uwierzytelniające do zarządzania, potrzebne drizzle-kitowi i Wranglerowi, a nie sekrety uruchomieniowe Workera, i wysłanie ich do Workera byłoby wyciekiem uprawnień.
 
-### 4. wrangler deploy
+### 5. wrangler deploy
 
 ```sh
 env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json

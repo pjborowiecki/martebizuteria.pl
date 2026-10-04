@@ -19,9 +19,9 @@ więc nic nie wczytuje się niejawnie. Vite i Wrangler wybierają plik na podsta
 | Plik               | W repozytorium | Używany przez                                                                                      |
 | ------------------ | -------------- | -------------------------------------------------------------------------------------------------- |
 | `.env.example`     | Tak            | Szablon; wymienia każdą zmienną z wartością zastępczą lub pustą                                    |
-| `.env.development` | Nie            | `bun run dev`, `db:push:development`, `db:studio:development`, `db:introspect:development`         |
-| `.env.preview`     | Nie            | `build:preview`, `deploy:preview` (przez `prepare-deploy-secrets.ts`), skrypty Drizzle `:preview`  |
-| `.env.production`  | Nie            | `build:production`, `deploy:production`, skrypty Drizzle `:production`                             |
+| `.env.development` | Nie            | `bun run dev`, `email:verify development`, skrypty Drizzle `:development`                          |
+| `.env.preview`     | Nie            | `build:preview`, `deploy:preview`, `email:verify preview`, skrypty Drizzle `:preview`              |
+| `.env.production`  | Nie            | `build:production`, `deploy:production`, `email:verify production`, skrypty Drizzle `:production`  |
 | `.env.test`        | Tak            | Vitest, przez `env: loadEnv("test", import.meta.dirname, "")` w `vite.config.ts`; wyłącznie atrapy |
 
 Zacznij od szablonu:
@@ -32,23 +32,24 @@ cp .env.example .env.development
 
 ## Zmienne
 
-| Zmienna                       | Czytana przez                                                                                                | Sekret Workera |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------- |
-| `AUTH_SECRET`                 | Podpisywanie i szyfrowanie w Better Auth                                                                     | Tak            |
-| `AUTH_GOOGLE_CLIENT_ID`       | OAuth Google                                                                                                 | Tak            |
-| `AUTH_GOOGLE_CLIENT_SECRET`   | OAuth Google                                                                                                 | Tak            |
-| `AUTH_GITHUB_CLIENT_ID`       | OAuth GitHub                                                                                                 | Tak            |
-| `AUTH_GITHUB_CLIENT_SECRET`   | OAuth GitHub                                                                                                 | Tak            |
-| `RESEND_API_KEY`              | Klient Resend: `new Resend(env.RESEND_API_KEY)` w `src/integrations/resend/resend.config.ts`                 | Tak            |
-| `RESEND_EMAIL_FROM`           | Domyślny nadawca wychodzącej poczty                                                                          | Tak            |
-| `STRIPE_SECRET_KEY`           | Serwerowy klient Stripe w `src/integrations/stripe/stripe.server.ts`                                         | Tak            |
-| `STRIPE_WEBHOOK_SECRET`       | Weryfikacja podpisu w `src/routes/api/webhooks.stripe.ts`                                                    | Tak            |
-| `VITE_R2_URL`                 | Publiczny adres bazowy R2, czytany jako `import.meta.env["VITE_R2_URL"]` w `src/lib/url.ts`                  | Tak            |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, wstrzykiwany do bundla klienta w czasie budowania                | Nie            |
-| `CLOUDFLARE_ACCOUNT_ID`       | Sterownik HTTP D1 w Drizzle Kit, `src/integrations/drizzle-orm/drizzle.config.ts`                            | Nie            |
-| `CLOUDFLARE_DATABASE_ID`      | Sterownik HTTP D1 w Drizzle Kit                                                                              | Nie            |
-| `CLOUDFLARE_ACCESS_TOKEN`     | Sterownik HTTP D1 w Drizzle Kit                                                                              | Nie            |
-| `SENTRY_AUTH_TOKEN`           | Na razie przez nic — zadeklarowana w `.env.example` z wyprzedzeniem, raportowanie błędów nie jest podłączone | Nie            |
+| Zmienna                       | Czytana przez                                                                                                                                | Sekret Workera |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `AUTH_SECRET`                 | Podpisywanie i szyfrowanie w Better Auth                                                                                                     | Tak            |
+| `AUTH_GOOGLE_CLIENT_ID`       | OAuth Google                                                                                                                                 | Tak            |
+| `AUTH_GOOGLE_CLIENT_SECRET`   | OAuth Google                                                                                                                                 | Tak            |
+| `AUTH_GITHUB_CLIENT_ID`       | OAuth GitHub                                                                                                                                 | Tak            |
+| `AUTH_GITHUB_CLIENT_SECRET`   | OAuth GitHub                                                                                                                                 | Tak            |
+| `RESEND_API_KEY`              | Klient Resend: `new Resend(env.RESEND_API_KEY)` w `src/integrations/resend/resend.config.ts`                                                 | Tak            |
+| `RESEND_EMAIL_FROM`           | Domyślny nadawca: sam adres w domenie zweryfikowanej w Resend                                                                                | Tak            |
+| `STRIPE_SECRET_KEY`           | Serwerowy klient Stripe w `src/integrations/stripe/stripe.server.ts`                                                                         | Tak            |
+| `STRIPE_WEBHOOK_SECRET`       | Weryfikacja podpisu w `src/routes/api/webhooks.stripe.ts`                                                                                    | Tak            |
+| `VITE_R2_URL`                 | Publiczny adres bazowy R2, czytany jako `import.meta.env["VITE_R2_URL"]` w `src/lib/url.ts`                                                  | Tak            |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, wstrzykiwany do bundla klienta w czasie budowania                                                | Nie            |
+| `CLOUDFLARE_ACCOUNT_ID`       | Sterownik HTTP D1 w Drizzle Kit, `src/integrations/drizzle-orm/drizzle.config.ts`                                                            | Nie            |
+| `CLOUDFLARE_DATABASE_ID`      | Sterownik HTTP D1 w Drizzle Kit                                                                                                              | Nie            |
+| `CLOUDFLARE_ACCESS_TOKEN`     | Sterownik HTTP D1 w Drizzle Kit                                                                                                              | Nie            |
+| `RESEND_MANAGEMENT_API_KEY`   | Opcjonalny. Tym kluczem z pełnym dostępem `scripts/verify-email-sender.ts` odczytuje domenę nadawcy, gdy `RESEND_API_KEY` może tylko wysyłać | Nie            |
+| `SENTRY_AUTH_TOKEN`           | Na razie przez nic — zadeklarowana w `.env.example` z wyprzedzeniem, raportowanie błędów nie jest podłączone                                 | Nie            |
 
 Przy wdrożeniu wysyłane są wyłącznie zmienne wymienione w `secrets.required` w `wrangler.jsonc`. Wszystkie trzy środowiska deklarują te same dziesięć nazw. Trzy zmienne `CLOUDFLARE_*` to poświadczenia Drizzle Kit i zostają na maszynie uruchamiającej CLI; `prepare-deploy-secrets.ts` zapisuje wyłącznie zadeklarowany zbiór do `.wrangler/secrets.<środowisko>.json` z uprawnieniami `0600` i głośno przerywa, jeśli któraś wartość jest pusta:
 
@@ -105,11 +106,12 @@ Kod Workera czyta powiązania i sekrety z `env` z modułu `cloudflare:workers`. 
 
 ## Kontrole przy wdrożeniu
 
-Oba skrypty wdrożeniowe uruchamiają trzy bramki wokół budowania i każda z nich rzuca wyjątkiem zamiast ostrzegać.
+Oba skrypty wdrożeniowe uruchamiają cztery bramki wokół budowania i każda z nich rzuca wyjątkiem zamiast ostrzegać.
 
 | Skrypt                              | Co sprawdza                                                                                                                                                                                                                      |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/verify-bindings.ts`        | Czyta `wrangler.jsonc` loaderem samego Wranglera i odrzuca brakujący lub zastępczy identyfikator `DB`, identyfikator `CACHE`, bucket `IMAGES`, parę producent/konsument `AUDIT_LOG_QUEUE` albo klasę `REALTIME_INVALIDATION_HUB` |
+| `scripts/verify-email-sender.ts`    | Pyta Resend, czy wyśle pocztę z `RESEND_EMAIL_FROM`, i odrzuca nadawcę z nazwą wyświetlaną, `onboarding@resend.dev` oraz nieznaną lub niezweryfikowaną domenę, wypisując rekordy DNS do opublikowania                            |
 | `scripts/verify-build.ts`           | Potwierdza, że `dist/server/wrangler.json` celuje we właściwe środowisko i nazwę Workera, że `dist/client` zawiera JS, CSS i fonty oraz że żaden zasób klienta nie importuje `cloudflare:workers` ani `node:*`                   |
 | `scripts/prepare-deploy-secrets.ts` | Zapisuje tylko zadeklarowane sekrety do `.wrangler/secrets.<środowisko>.json` i przerywa przy pustej wartości                                                                                                                    |
 
@@ -117,7 +119,7 @@ Całą sekwencję widać w `package.json`:
 
 ```sh
 bun run deploy:preview
-# verify-bindings.ts → build:preview → prepare-deploy-secrets.ts → wrangler deploy
+# verify-bindings.ts → verify-email-sender.ts → build:preview → prepare-deploy-secrets.ts → wrangler deploy
 ```
 
 Krok wdrożenia przekazuje `--config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json` i najpierw usuwa `CLOUDFLARE_ENV`, bo zbudowana konfiguracja już zawiera środowisko.

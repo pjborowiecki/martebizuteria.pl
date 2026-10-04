@@ -32,12 +32,13 @@ CI installs with `--ignore-scripts` and then calls `typegen` itself, so no hooks
 
 ## Deploy
 
-| Script              | Runs                                                                                                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `deploy:preview`    | `verify-bindings.ts preview` → `build:preview` → `prepare-deploy-secrets.ts preview` → `wrangler deploy` with `dist/server/wrangler.json` and `.wrangler/secrets.preview.json` |
-| `deploy:production` | The same chain for `production`                                                                                                                                                |
+| Script              | Runs                                                                                                                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deploy:preview`    | `verify-bindings.ts preview` → `verify-email-sender.ts preview` → `build:preview` → `prepare-deploy-secrets.ts preview` → `wrangler deploy` with `dist/server/wrangler.json` and `.wrangler/secrets.preview.json` |
+| `deploy:production` | The same chain for `production`                                                                                                                                                                                   |
+| `email:verify`      | `bun scripts/verify-email-sender.ts <environment>`: asks Resend whether it would send as `RESEND_EMAIL_FROM` with `RESEND_API_KEY`, for `development`, `preview` or `production`                                  |
 
-Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](/docs/tooling/ci-cd) for what each stage checks.
+Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](/docs/tooling/ci-cd) for what each stage checks. `email:verify` is the deploy's sender check on its own, for example `bun run email:verify development` after changing `.env.development`; it calls the real Resend API, and [Resend](/docs/integrations/resend#sender-domain) lists what it refuses.
 
 ## Checks
 

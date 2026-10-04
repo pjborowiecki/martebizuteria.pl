@@ -64,11 +64,12 @@ Cloudflare management credentials (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE
 Both deploy scripts fail rather than warn:
 
 ```sh
-bun run deploy:preview      # verify-bindings → build:preview → prepare-deploy-secrets → wrangler deploy
+bun run deploy:preview      # verify-bindings → verify-email-sender → build:preview → prepare-deploy-secrets → wrangler deploy
 bun run deploy:production   # the same, against the production environment
 ```
 
 - `scripts/verify-bindings.ts` reads the config through Wrangler's own `unstable_readConfig` and throws unless the D1 and KV ids are real rather than placeholders, the R2 bucket is named, the audit queue has both a producer and a matching consumer, and the Durable Object binding points at `RealtimeInvalidationHub`.
+- `scripts/verify-email-sender.ts` asks Resend whether it would send as `RESEND_EMAIL_FROM` and throws when the sender's domain is missing from the Resend account or not verified; see [Resend](/docs/integrations/resend#sender-domain).
 - `scripts/verify-build.ts` rejects a client bundle that still carries an unbundled `cloudflare:workers` or `node:*` import.
 - `scripts/prepare-deploy-secrets.ts` writes `.wrangler/secrets.<env>.json` from the matching `.env` file, and the deploy passes it with `--secrets-file`.
 
