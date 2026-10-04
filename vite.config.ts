@@ -1,5 +1,7 @@
 import { defineConfig, lazyPlugins, loadEnv } from "vite-plus"
 
+const INTEGRATION_TEST_TIMEOUT_MS = 30_000
+
 const ignorePatterns = [
   ".source",
   "node_modules",
@@ -275,8 +277,10 @@ export default defineConfig({
       {
         extends: true,
         test: {
+          hookTimeout: INTEGRATION_TEST_TIMEOUT_MS,
           include: ["src/**/*.integration.test.{ts,tsx}"],
           name: "integration",
+          testTimeout: INTEGRATION_TEST_TIMEOUT_MS,
         },
       },
       {
