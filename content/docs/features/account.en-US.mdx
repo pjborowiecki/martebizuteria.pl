@@ -61,6 +61,8 @@ beforeLoad: () => {
 
 The sidebar order is `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`). The sidebar's sign-out button calls `signOut` and then does a full page load of `/`, which discards the query cache.
 
+Each entry's label comes from `pages.account.sidebar`, and `accountPageMeta` (`customer-account.meta.ts`) reuses it as the page's browser tab title, so the landing page reads "Overview" in English and "Podsumowanie" in Polish in both places. The sidebar heading, which also names the navigation landmark for screen readers, is `pages.account.sidebar.title`: "Your Account", or "Moje konto" in Polish. The Polish account copy follows Polish sentence case rather than English title case, so the profile page is headed "Twój profil" under the eyebrow "Ustawienia konta".
+
 Every route loader prefetches with `staleTime: "static"`. `account.payment.tsx` and `account.wishlist.tsx` leave the route's `staleTime` to the router's `defaultStaleTime`, also 60 000; the other six route files set it to `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
 
 ## Authorization pattern

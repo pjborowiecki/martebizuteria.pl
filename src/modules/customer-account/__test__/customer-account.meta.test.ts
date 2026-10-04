@@ -9,6 +9,13 @@ import type accountMessages from "~/messages/en-US/pages.account.json"
 
 describe("accountPageMeta", () => {
   it.each([
+    ["en-US", "Overview | M'Arte"],
+    ["pl-PL", "Podsumowanie | M'Arte"],
+  ] as const)("titles the %s account landing page after its sidebar entry", async (locale, title) => {
+    await expect(accountPageMeta(new QueryClient(), locale, "overview")).resolves.toMatchObject({ title })
+  })
+
+  it.each([
     ["en-US", "Payment Methods | M'Arte"],
     ["pl-PL", "Metody płatności | M'Arte"],
   ] as const)("titles the %s payment page after the payment methods it lists", async (locale, title) => {

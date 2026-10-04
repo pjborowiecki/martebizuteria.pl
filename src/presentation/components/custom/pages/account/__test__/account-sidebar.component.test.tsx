@@ -1,8 +1,13 @@
 import { cleanup, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { IntlProvider } from "use-intl/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { createTestRouter, renderWithProviders } from "~/src/platform/testing/lib/render"
+
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
+
+import polishAccountMessages from "~/messages/pl-PL/pages.account.json"
 
 const { signOut, toastError } = vi.hoisted(() => ({
   signOut: vi.fn<() => Promise<{ error?: { message?: string } }>>(),
@@ -140,5 +145,27 @@ describe("AccountSidebar", () => {
       expect(location.href).toBe("/")
     })
     vi.unstubAllGlobals()
+  })
+})
+
+const renderPolishSidebar = () =>
+  renderWithProviders(
+    <IntlProvider locale="pl-PL" messages={{ pages: { account: polishAccountMessages } }} timeZone={I18N.DEFAULT_TIMEZONE}>
+      <AccountSidebar />
+    </IntlProvider>,
+  )
+
+describe("AccountSidebar in Polish", () => {
+  it("calls the account landing page Podsumowanie", () => {
+    renderPolishSidebar()
+
+    expect(screen.getByRole("link", { name: "Podsumowanie" })).toHaveAttribute("href", "/account/overview")
+  })
+
+  it("heads the sidebar and names its navigation in Polish sentence case", () => {
+    renderPolishSidebar()
+
+    expect(screen.getByRole("heading", { level: 2, name: "Moje konto" })).toBeInTheDocument()
+    expect(screen.getByRole("navigation", { name: "Moje konto" })).toBeInTheDocument()
   })
 })
