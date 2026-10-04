@@ -71,6 +71,19 @@ describe("removeDuplicateSavedCards", () => {
     expect(calls.detach.mock.calls).toStrictEqual([["pm_old_visa"]])
   })
 
+  it("asks Stripe for the customer's saved cards while it is still looking up the new one", async () => {
+    const lookup = Promise.withResolvers<StoredCard>()
+    calls.retrieve.mockReturnValue(lookup.promise)
+
+    const keeping = keep("pm_new")
+    await vi.waitFor(() => {
+      expect(calls.list).toHaveBeenCalledWith({ customer: "cus_1", limit: 100, type: "card" })
+    })
+    lookup.resolve(NEW_VISA)
+
+    await expect(keeping).resolves.toStrictEqual({ removed: 1 })
+  })
+
   it("leaves the wallet alone when the card was not saved before", async () => {
     calls.list.mockResolvedValue({ data: [NEW_VISA, card("pm_mastercard", "fp_mastercard")] })
 
@@ -85,7 +98,6 @@ describe("removeDuplicateSavedCards", () => {
     calls.retrieve.mockResolvedValue(saved)
 
     await expect(keep("pm_new")).resolves.toStrictEqual({ removed: 0 })
-    expect(calls.list).not.toHaveBeenCalled()
     expect(calls.detach).not.toHaveBeenCalled()
   })
 
@@ -95,7 +107,7 @@ describe("removeDuplicateSavedCards", () => {
     await expect(keep("pm_new")).resolves.toStrictEqual({ removed: 1 })
   })
 
-  it("refuses a card that belongs to another customer", async () => {
+  it("refuses a card that belongs to another customer without detaching any of the caller's copies", async () => {
     calls.retrieve.mockResolvedValue(card("pm_new", "fp_visa", "cus_someone_else"))
 
     await expect(keep("pm_new")).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
@@ -107,6 +119,7 @@ describe("removeDuplicateSavedCards", () => {
 
     await expect(keep("pm_new")).rejects.toMatchObject({ code: ERROR_CODES.NOT_FOUND })
     expect(calls.retrieve).not.toHaveBeenCalled()
+    expect(calls.list).not.toHaveBeenCalled()
   })
 
   it("rejects an empty payment method id before calling Stripe", async () => {

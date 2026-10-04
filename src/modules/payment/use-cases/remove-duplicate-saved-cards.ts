@@ -20,7 +20,10 @@ export const removeDuplicateSavedCards = createServerFn({ method: "POST" })
       throw new AppError(ERROR_CODES.NOT_FOUND)
     }
 
-    const kept = await stripe.paymentMethods.retrieve(paymentMethodId)
+    const [kept, saved] = await Promise.all([
+      stripe.paymentMethods.retrieve(paymentMethodId),
+      stripe.paymentMethods.list({ customer: customerId, limit: SAVED_CARDS_PAGE_LIMIT, type: "card" }),
+    ])
     if (resolveStripeObjectId(kept.customer) !== customerId) {
       throw new AppError(ERROR_CODES.FORBIDDEN)
     }
@@ -30,7 +33,6 @@ export const removeDuplicateSavedCards = createServerFn({ method: "POST" })
       return { removed: 0 }
     }
 
-    const saved = await stripe.paymentMethods.list({ customer: customerId, limit: SAVED_CARDS_PAGE_LIMIT, type: "card" })
     const duplicates = saved.data.filter((method) => method.id !== kept.id && method.card?.fingerprint === fingerprint)
     await Promise.all(duplicates.map((method) => stripe.paymentMethods.detach(method.id)))
 

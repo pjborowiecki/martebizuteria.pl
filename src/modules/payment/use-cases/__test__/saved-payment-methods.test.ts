@@ -176,6 +176,19 @@ describe("deleteSavedPaymentMethod", () => {
     expect(stripeCalls.detach).toHaveBeenCalledWith("pm_visa")
   })
 
+  it("looks up the card while it is still reading the caller's Stripe customer", async () => {
+    const lookup = Promise.withResolvers<string | undefined>()
+    stripeCalls.getCustomerId.mockReturnValue(lookup.promise)
+
+    const deleting = deleteSavedPaymentMethod({ data: { paymentMethodId: "pm_visa" } })
+    await vi.waitFor(() => {
+      expect(stripeCalls.retrieve).toHaveBeenCalledWith("pm_visa")
+    })
+    lookup.resolve("cus_1")
+
+    await expect(deleting).resolves.toStrictEqual({ ok: true })
+  })
+
   it("accepts an expanded customer object on the retrieved method", async () => {
     stripeCalls.retrieve.mockResolvedValue({ customer: { id: "cus_1" } })
 
@@ -199,13 +212,23 @@ describe("deleteSavedPaymentMethod", () => {
     })
   })
 
-  it("has nothing to detach for a caller with no Stripe customer", async () => {
+  it("has nothing to detach for a caller with no Stripe customer, even for a card attached to nobody", async () => {
     stripeCalls.getCustomerId.mockResolvedValue(undefined)
+    stripeCalls.retrieve.mockResolvedValue({ customer: null })
 
     await expect(deleteSavedPaymentMethod({ data: { paymentMethodId: "pm_visa" } })).rejects.toMatchObject({
       code: ERROR_CODES.NOT_FOUND,
     })
-    expect(stripeCalls.retrieve).not.toHaveBeenCalled()
+    expect(stripeCalls.detach).not.toHaveBeenCalled()
+  })
+
+  it("passes on Stripe's error for an unknown card even when the caller has no Stripe customer", async () => {
+    const unknownCard = new Error("No such PaymentMethod: 'pm_unknown'")
+    stripeCalls.getCustomerId.mockResolvedValue(undefined)
+    stripeCalls.retrieve.mockRejectedValue(unknownCard)
+
+    await expect(deleteSavedPaymentMethod({ data: { paymentMethodId: "pm_unknown" } })).rejects.toBe(unknownCard)
+    expect(stripeCalls.detach).not.toHaveBeenCalled()
   })
 
   it("rejects a blank payment method id", async () => {
