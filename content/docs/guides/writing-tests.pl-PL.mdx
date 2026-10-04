@@ -148,7 +148,7 @@ const sqlite = new DatabaseSync(":memory:")
 const database = drizzle(createTestD1Database(sqlite))
 ```
 
-`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje moduł Node'a `node:sqlite` do interfejsu `D1Database` — `prepare`, `bind`, `all`, `run`, `raw` oraz `batch`, które owija instrukcje w prawdziwe `begin`/`commit`/`rollback`. Przyjmuje też opcjonalne wywołanie zwrotne `onQuery`, więc test może sprawdzić, jaki SQL faktycznie poszedł do bazy.
+`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje moduł Node'a `node:sqlite` do interfejsu `D1Database` — `prepare`, `bind`, `all`, `run`, `raw` oraz `batch`, które owija instrukcje w prawdziwe `begin`/`commit`/`rollback`. Przyjmuje też opcjonalne wywołanie zwrotne `onQuery`, więc test może sprawdzić, jaki SQL faktycznie poszedł do bazy, oraz opcjonalne `onRoundTrip`, wywoływane raz na każde `batch` i raz na każdą instrukcję wykonaną poza nim, więc test może sprawdzić, ile żądań dotarło do D1.
 
 Deklaruj tabelę lokalnie, zamiast importować schemat produkcyjny, kiedy potrzebujesz tylko kilku kolumn, utwórz ją w `beforeAll` i zamknij bazę przez `sqlite.close()` w `afterAll`. Wspomniany test wyszukiwania dobrze pokazuje, _do czego_ służą testy integracyjne: podaje `100%`, `ring_1`, `path\`, `%_\` i `x' OR 1=1 --` i sprawdza, że każdy z nich jest dopasowywany jako dosłowny tekst.
 

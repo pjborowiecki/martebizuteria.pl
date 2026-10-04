@@ -1,17 +1,17 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod"
 
-import { type TestD1Query } from "~/src/platform/testing/mocks/d1"
+import { type TestD1RoundTrip } from "~/src/platform/testing/mocks/d1"
 
 import { getAvailabilityByVariantIds, releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
 import { reserveInventoryByVariantLines, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
 
-const { sqlite } = await vi.hoisted(async () => {
+const { sqlite, trips } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
   return {
-    queries: [] as TestD1Query[],
     sqlite: new DatabaseSync(":memory:"),
+    trips: [] as TestD1RoundTrip[],
   }
 })
 
@@ -20,14 +20,19 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
   const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
 
-  return { db: drizzle(createTestD1Database(sqlite), { schema }) }
+  return {
+    db: drizzle(
+      createTestD1Database(sqlite, undefined, (trip) => {
+        trips.push(trip)
+      }),
+      { schema },
+    ),
+  }
 })
 
 const STARTING_STOCK = 10
 
 const STARTING_VERSION = 1
-
-const { db } = await import("~/src/integrations/drizzle-orm/drizzle.database")
 
 const reserveOne = async (item: Parameters<typeof reserveInventoryRows>[0][number]): Promise<boolean> => {
   const reserved = await reserveInventoryRows([item])
@@ -45,6 +50,7 @@ const readRow = (inventoryId: string): z.infer<typeof inventoryRowSchema> =>
   )
 
 beforeEach(() => {
+  trips.splice(0)
   sqlite.exec(`
     drop table if exists inventory;
     create table inventory (
@@ -115,15 +121,12 @@ describe("inventory reservation across several lines", () => {
   })
 
   it("reserves every line of the cart in one round trip", async () => {
-    const batch = vi.spyOn(db.$client, "batch")
-
     await reserveInventoryForItems([
       { currentVersion: STARTING_VERSION, inventoryId: "inv_a", qty: 2, title: "A" },
       { currentVersion: STARTING_VERSION, inventoryId: "inv_b", qty: 5, title: "B" },
     ])
 
-    expect(batch).toHaveBeenCalledOnce()
-    batch.mockRestore()
+    expect(trips.map(({ kind, sql }) => [kind, sql.length])).toStrictEqual([["batch", 2]])
   })
 
   it("reserves two lines of the same variant together instead of failing the second on the version", async () => {
@@ -217,16 +220,15 @@ describe("inventory availability lookup", () => {
 
   it("returns an empty map without querying when given no ids", async () => {
     await expect(getAvailabilityByVariantIds([])).resolves.toEqual(new Map())
+
+    expect(trips).toStrictEqual([])
   })
 })
 
 describe("inventory reservation of an empty cart", () => {
   it("reserves nothing and never reaches the database", async () => {
-    const batch = vi.spyOn(db.$client, "batch")
-
     await expect(reserveInventoryRows([])).resolves.toStrictEqual(new Set())
 
-    expect(batch).not.toHaveBeenCalled()
-    batch.mockRestore()
+    expect(trips).toStrictEqual([])
   })
 })
