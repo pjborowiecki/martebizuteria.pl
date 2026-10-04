@@ -2,7 +2,6 @@ import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
-import { queryKeyPrefixesOverlap } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 import { STOREFRONT_REALTIME_QUERY_PREFIXES } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 
 import {
@@ -524,7 +523,7 @@ describe("getStorefrontCategoryQuery", () => {
     const { queryKey } = getStorefrontCategoryQuery("rings")
 
     expect(queryKey).toStrictEqual(["category", "rings"])
-    expect(STOREFRONT_REALTIME_QUERY_PREFIXES.some((prefix) => queryKeyPrefixesOverlap(prefix, queryKey))).toBe(true)
+    expect(STOREFRONT_REALTIME_QUERY_PREFIXES.some((prefix) => prefix.every((part, index) => queryKey[index] === part))).toBe(true)
   })
 
   it("keeps the category as fresh as the category list", () => {

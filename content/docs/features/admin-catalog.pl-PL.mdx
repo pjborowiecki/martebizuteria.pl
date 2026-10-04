@@ -160,7 +160,7 @@ Rangi przydziela serwer przez `getNextRankForParent` i nigdy nie są przysyłane
 
 Te same osiem use case'ów, tylko bez drzewa: `get-collections`, `get-storefront-collection`, `get-admin-collections`, `get-collection-stats`, `create-collection`, `update-collection`, `delete-collections`, `reorder-collections`. `COLLECTION_ERROR_CODES` ma `DUPLICATE_HANDLE` i `HAS_PRODUCTS`.
 
-Kolekcje mają znaczenie poza katalogiem: kolekcja `nowosci` napędza nowości na stronie głównej oraz zapasowe rekomendacje w podsumowaniu konta, dlatego `scheduleCollectionCatalogInvalidation()` unieważnia również `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`.
+Kolekcje mają znaczenie poza katalogiem: kolekcja `nowosci` napędza nowości na stronie głównej oraz zapasowe rekomendacje w podsumowaniu konta, dlatego `scheduleCollectionCatalogInvalidation()` unieważnia również `PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS`. Od pól `status` i `handle` kolekcji zależy też, które produkty pokazuje jej siatka w sklepie, więc to samo wywołanie unieważnia także `PRODUCT_QUERY_KEYS.STOREFRONT_PAGE`.
 
 ## Atrybuty
 

@@ -24,24 +24,21 @@ Obie listy to `as const satisfies readonly QueryKey[]`, więc zmiana nazwy stał
 
 ## Protokół
 
-Plik `realtime-invalidation.protocol.ts` to klucz zapytania serializowany jako JSON oraz porównanie prefiksów:
+Plik `realtime-invalidation.protocol.ts` to klucz zapytania serializowany jako JSON oraz reguła, która zamienia ramkę tematów na klucze unieważniane przez kartę:
 
 ```ts
 export const serializeQueryKeyPrefix = (queryKey: QueryKey): string => JSON.stringify(queryKey)
 
-export const queryKeyPrefixesOverlap = (left: QueryKey, right: QueryKey): boolean => {
-  const length = Math.min(left.length, right.length)
-  for (let index = 0; index < length; index++) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-
-  return true
-}
+export const resolveInvalidatedQueryKeys = (subscriptions: readonly QueryKey[], topics: readonly string[]): QueryKey[] =>
+  toMinimalQueryKeyPrefixes(
+    topics
+      .map((topic) => parseSerializedQueryKeyPrefix(topic))
+      .filter((topic): topic is QueryKey => topic !== undefined)
+      .flatMap((topic) => queryKeysInvalidatedByTopic(subscriptions, topic)),
+  )
 ```
 
-`queryKeyPrefixesOverlap` porównuje tylko do długości krótszego klucza, więc `["products"]` pokrywa się z `["products", "storefront-page"]` w obie strony. To właśnie pozwala publikującemu podać prefiks szeroki, a subskrybentowi węższy, albo odwrotnie, bez wiedzy żadnej ze stron o dokładnym kształcie drugiej.
+Dla każdego tematu, który nakłada się na subskrypcję, karta unieważnia węższy z dwóch kluczy, porównanych przez `partialMatchKey` z TanStack Query: temat, gdy mieści się w subskrypcji, a subskrypcję, gdy temat jest szerszy. Dzięki temu publikujący może podać prefiks szeroki, a subskrybent węższy, albo odwrotnie, bez wiedzy żadnej ze stron o dokładnym kształcie drugiej, a wąski temat pozostaje wąski: `["admin", "products", "stats"]` odświeża statystyki, a nie wszystko w subskrypcji `["admin", "products"]`. Następnie `toMinimalQueryKeyPrefixes` usuwa powtórzone klucze i klucze, które obejmuje już inny klucz z ramki, więc każde zapytanie jest unieważniane najwyżej raz na ramkę.
 
 Wiadomość na łączu jest minimalna:
 
@@ -85,13 +82,13 @@ Kod serwerowy prawie nigdy nie wywołuje żadnej z tych funkcji bezpośrednio. P
 | ----------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `scheduleProductCatalogInvalidation()`          | produkty `ALL`, `STATS`                   | produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY` |
 | `scheduleCategoryCatalogInvalidation()`         | kategorie `ALL`, `STATS`                  | kategorie `ALL`, `BY_HANDLE`                                                                                         |
-| `scheduleCollectionCatalogInvalidation()`       | kolekcje `ALL`, `STATS`                   | kolekcje `ALL`, `BY_HANDLE`, produkty `LANDING_NEW_ARRIVALS`                                                         |
+| `scheduleCollectionCatalogInvalidation()`       | kolekcje `ALL`, `STATS`                   | kolekcje `ALL`, `BY_HANDLE`, produkty `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE`                                      |
 | `scheduleContentPageInvalidation()`             | strony treści `ALL`, `BY_HANDLE`          | strony treści `BY_HANDLE`                                                                                            |
 | `scheduleProductAttributeCatalogInvalidation()` | atrybuty produktów `ALL`, `STATS`         | —                                                                                                                    |
 | `scheduleAdminCustomersInvalidation()`          | użytkownicy `CUSTOMERS`, `CUSTOMERS_PAGE` | —                                                                                                                    |
 | `scheduleAdminOrdersInvalidation()`             | zamówienia `ORDERS`                       | —                                                                                                                    |
 
-Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także sklepowy klucz nowości, ponieważ sekcja na stronie startowej napędzana jest kolekcją `nowosci`; a `scheduleProductCatalogInvalidation` unieważnia klucz dostępności koszyka, ponieważ zmiana stanu magazynowego może uczynić pozycję koszyka niemożliwą do kupienia.
+Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także sklepowy klucz nowości, ponieważ sekcja na stronie startowej napędzana jest kolekcją `nowosci`, oraz klucz strony katalogu, ponieważ `status` i `handle` kolekcji decydują o tym, które produkty pokazuje jej siatka w sklepie; a `scheduleProductCatalogInvalidation` unieważnia klucz dostępności koszyka, ponieważ zmiana stanu magazynowego może uczynić pozycję koszyka niemożliwą do kupienia.
 
 ### Kto je wywołuje
 
@@ -191,7 +188,7 @@ useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.STOREFRONT, subscriptions:
 useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })
 ```
 
-Hook buduje `wss://` lub `ws://` z `globalThis.location.protocol`, łączy się, a przy każdej wiadomości parsuje ładunek, dopasowuje każdy temat do listy subskrypcji przez `queryKeyPrefixesOverlap`, z zagnieżdżonych trafień zostawia tylko najszersze i stosuje do każdego `invalidateQueryPrefix`: zapytania widoczne na ekranie pobierają się ponownie, te, które są tylko w cache, zostają usunięte, więc następna wizyta pobiera je od nowa, a lista nieskończona, taka jak katalog sklepu, zachowuje wczytane strony i pobiera je ponownie przy następnej wizycie. Do pozostałych kart odwiedzającego nic nie trafia: każda karta sklepu i panelu odbiera tę samą ramkę przez własne gniazdo, a karty poza tymi układami nie mają gniazda i widzą zmianę przy następnym pobraniu. Zobacz [TanStack Query](/docs/integrations/tanstack-query).
+Hook buduje `wss://` lub `ws://` z `globalThis.location.protocol`, łączy się, a przy każdej wiadomości parsuje ładunek, zamienia tematy na klucze przez `resolveInvalidatedQueryKeys`, biorąc węższy klucz z każdej pary tematu i subskrypcji, które się nakładają, i każdy klucz tylko raz, i stosuje do każdego klucza `invalidateQueryPrefix`: zapytania widoczne na ekranie pobierają się ponownie, te, które są tylko w cache, zostają usunięte, więc następna wizyta pobiera je od nowa, a lista nieskończona, taka jak katalog sklepu, zachowuje wczytane strony i pobiera je ponownie przy następnej wizycie. Do pozostałych kart odwiedzającego nic nie trafia: każda karta sklepu i panelu odbiera tę samą ramkę przez własne gniazdo, a karty poza tymi układami nie mają gniazda i widzą zmianę przy następnym pobraniu. Zobacz [TanStack Query](/docs/integrations/tanstack-query).
 
 Ponowne łączenie jest wykładnicze z górnym ograniczeniem:
 
@@ -217,7 +214,7 @@ Prefiks publikowany, ale niesubskrybowany jest po cichu ignorowany przez każdeg
 
 ## Testy
 
-Katalog `src/integrations/realtime-invalidation/__test__/` zawiera cztery pliki obejmujące serializację i reguły pokrywania się w protokole, adresowanie huba w publikatorze, listy subskrypcji oraz sprawdzenia podniesienia połączenia i autoryzacji w odźwiernym WebSocket. Katalog `src/durable-objects/__test__/` pokrywa sam hub.
+Katalog `src/integrations/realtime-invalidation/__test__/` zawiera cztery pliki obejmujące serializację i rozwiązywanie tematów w protokole, adresowanie huba w publikatorze, listy subskrypcji oraz sprawdzenia podniesienia połączenia i autoryzacji w odźwiernym WebSocket. Katalog `src/durable-objects/__test__/` pokrywa sam hub.
 
 ## Powiązane strony
 

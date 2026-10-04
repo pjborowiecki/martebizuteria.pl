@@ -1,4 +1,4 @@
-import { type QueryKey } from "@tanstack/react-query"
+import { type QueryKey, hashKey, partialMatchKey } from "@tanstack/react-query"
 
 export const serializeQueryKeyPrefix = (queryKey: QueryKey): string => JSON.stringify(queryKey)
 
@@ -12,16 +12,26 @@ export const parseSerializedQueryKeyPrefix = (serialized: string): QueryKey | un
   }
 }
 
-export const queryKeyPrefixesOverlap = (left: QueryKey, right: QueryKey): boolean => {
-  const length = Math.min(left.length, right.length)
-  for (let index = 0; index < length; index++) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
+export const toMinimalQueryKeyPrefixes = (queryKeys: readonly QueryKey[]): QueryKey[] => {
+  const distinctQueryKeys = [...new Map(queryKeys.map((queryKey) => [hashKey(queryKey), queryKey])).values()]
 
-  return true
+  return distinctQueryKeys.filter(
+    (queryKey) => !distinctQueryKeys.some((prefix) => prefix !== queryKey && partialMatchKey(queryKey, prefix)),
+  )
 }
+
+const queryKeysInvalidatedByTopic = (subscriptions: readonly QueryKey[], topic: QueryKey): readonly QueryKey[] =>
+  subscriptions.some((subscription) => partialMatchKey(topic, subscription))
+    ? [topic]
+    : subscriptions.filter((subscription) => partialMatchKey(subscription, topic))
+
+export const resolveInvalidatedQueryKeys = (subscriptions: readonly QueryKey[], topics: readonly string[]): QueryKey[] =>
+  toMinimalQueryKeyPrefixes(
+    topics
+      .map((topic) => parseSerializedQueryKeyPrefix(topic))
+      .filter((topic): topic is QueryKey => topic !== undefined)
+      .flatMap((topic) => queryKeysInvalidatedByTopic(subscriptions, topic)),
+  )
 
 export const isRealtimeInvalidationPayload = (data: unknown): data is RealtimeInvalidationPayload =>
   typeof data === "object" &&

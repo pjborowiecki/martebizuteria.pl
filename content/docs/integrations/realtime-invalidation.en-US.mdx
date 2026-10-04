@@ -24,24 +24,21 @@ Both are `as const satisfies readonly QueryKey[]`, so a renamed key constant is 
 
 ## The protocol
 
-`realtime-invalidation.protocol.ts` is a query key serialized as JSON, and a prefix comparison:
+`realtime-invalidation.protocol.ts` is a query key serialized as JSON, and the rule that turns a frame of topics into the keys a tab invalidates:
 
 ```ts
 export const serializeQueryKeyPrefix = (queryKey: QueryKey): string => JSON.stringify(queryKey)
 
-export const queryKeyPrefixesOverlap = (left: QueryKey, right: QueryKey): boolean => {
-  const length = Math.min(left.length, right.length)
-  for (let index = 0; index < length; index++) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-
-  return true
-}
+export const resolveInvalidatedQueryKeys = (subscriptions: readonly QueryKey[], topics: readonly string[]): QueryKey[] =>
+  toMinimalQueryKeyPrefixes(
+    topics
+      .map((topic) => parseSerializedQueryKeyPrefix(topic))
+      .filter((topic): topic is QueryKey => topic !== undefined)
+      .flatMap((topic) => queryKeysInvalidatedByTopic(subscriptions, topic)),
+  )
 ```
 
-`queryKeyPrefixesOverlap` compares only as far as the shorter key, so `["products"]` overlaps `["products", "storefront-page"]` in both directions. That is what lets a publisher name a broad prefix and a subscriber name a narrow one, or the reverse, without either side knowing the other's exact shape.
+For each topic that overlaps a subscription, the tab invalidates the narrower of the two, compared with TanStack Query's `partialMatchKey`: the topic when it falls under the subscription, the subscription when the topic is broader. That lets a publisher name a broad prefix and a subscriber a narrow one, or the reverse, without either side knowing the other's exact shape, and it keeps a narrow topic narrow: `["admin", "products", "stats"]` refreshes the stats, not everything under the `["admin", "products"]` subscription. `toMinimalQueryKeyPrefixes` then drops duplicate keys and keys that another key in the frame already covers, so each query is invalidated at most once per frame.
 
 The message on the wire is minimal:
 
@@ -85,13 +82,13 @@ Server code almost never calls either of these directly. `realtime-invalidation.
 | ----------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `scheduleProductCatalogInvalidation()`          | product `ALL`, `STATS`             | product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY` |
 | `scheduleCategoryCatalogInvalidation()`         | category `ALL`, `STATS`            | category `ALL`, `BY_HANDLE`                                                                                       |
-| `scheduleCollectionCatalogInvalidation()`       | collection `ALL`, `STATS`          | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`                                                     |
+| `scheduleCollectionCatalogInvalidation()`       | collection `ALL`, `STATS`          | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE`                                  |
 | `scheduleContentPageInvalidation()`             | content-page `ALL`, `BY_HANDLE`    | content-page `BY_HANDLE`                                                                                          |
 | `scheduleProductAttributeCatalogInvalidation()` | product-attribute `ALL`, `STATS`   | —                                                                                                                 |
 | `scheduleAdminCustomersInvalidation()`          | user `CUSTOMERS`, `CUSTOMERS_PAGE` | —                                                                                                                 |
 | `scheduleAdminOrdersInvalidation()`             | order `ORDERS`                     | —                                                                                                                 |
 
-Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefront's new-arrivals key, because the landing section is driven by the `nowosci` collection; and that `scheduleProductCatalogInvalidation` invalidates the cart's availability key, because a stock change can make a cart line unpurchasable.
+Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefront's new-arrivals key, because the landing section is driven by the `nowosci` collection, and the catalogue page key, because a collection's `status` and `handle` decide which products its storefront grid lists; and that `scheduleProductCatalogInvalidation` invalidates the cart's availability key, because a stock change can make a cart line unpurchasable.
 
 ### Who calls them
 
@@ -191,7 +188,7 @@ useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.STOREFRONT, subscriptions:
 useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })
 ```
 
-The hook builds `wss://` or `ws://` from `globalThis.location.protocol`, connects, and on each message parses the payload, matches every topic against the subscription list with `queryKeyPrefixesOverlap`, keeps only the broadest of any nested matches, and applies `invalidateQueryPrefix` to each: queries on screen refetch, queries that are only cached are dropped, so the next visit fetches them fresh, and an infinite list such as the storefront catalogue keeps its loaded pages and refetches them on the next visit. Nothing is posted to the viewer's other tabs: every storefront and admin tab receives the same frame on its own socket, and tabs outside those layouts hold no socket and see the change on their next fetch. See [TanStack Query](/docs/integrations/tanstack-query).
+The hook builds `wss://` or `ws://` from `globalThis.location.protocol`, connects, and on each message parses the payload, resolves its topics against the subscription list with `resolveInvalidatedQueryKeys`, taking the narrower key of each overlapping topic and subscription, each key once, and applies `invalidateQueryPrefix` to each key: queries on screen refetch, queries that are only cached are dropped, so the next visit fetches them fresh, and an infinite list such as the storefront catalogue keeps its loaded pages and refetches them on the next visit. Nothing is posted to the viewer's other tabs: every storefront and admin tab receives the same frame on its own socket, and tabs outside those layouts hold no socket and see the change on their next fetch. See [TanStack Query](/docs/integrations/tanstack-query).
 
 Reconnection is exponential with a ceiling:
 
@@ -217,7 +214,7 @@ A prefix that is published but not subscribed is silently ignored by every clien
 
 ## Tests
 
-`src/integrations/realtime-invalidation/__test__/` holds four files covering the protocol's serialization and overlap rules, the publisher's hub addressing, the subscription lists, and the WebSocket gatekeeper's upgrade and authorization checks. `src/durable-objects/__test__/` covers the hub itself.
+`src/integrations/realtime-invalidation/__test__/` holds four files covering the protocol's serialization and topic resolution, the publisher's hub addressing, the subscription lists, and the WebSocket gatekeeper's upgrade and authorization checks. `src/durable-objects/__test__/` covers the hub itself.
 
 ## Related pages
 

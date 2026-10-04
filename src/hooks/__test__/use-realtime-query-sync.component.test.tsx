@@ -57,6 +57,18 @@ const SUBSCRIPTIONS: readonly QueryKey[] = [ORDERS_KEY, PRODUCTS_KEY]
 
 const NESTED_SUBSCRIPTIONS: readonly QueryKey[] = [PRODUCTS_KEY, PRODUCT_STATS_KEY]
 
+const CATALOGUE_KEY: QueryKey = ["products"]
+
+const CATALOGUE_PAGE_KEY: QueryKey = [...CATALOGUE_KEY, "storefront-page"]
+
+const PRODUCT_KEY: QueryKey = ["product"]
+
+const productKey = (handle: string): QueryKey => [...PRODUCT_KEY, handle]
+
+const NESTED_CATALOGUE_SUBSCRIPTIONS: readonly QueryKey[] = [CATALOGUE_KEY, CATALOGUE_PAGE_KEY]
+
+const PRODUCT_SUBSCRIPTIONS: readonly QueryKey[] = [PRODUCT_KEY]
+
 const invalidatePayload = (topics: readonly string[]): string => JSON.stringify({ topics, type: "invalidate" })
 
 const messageEvent = (data: string): MessageEvent<string> => new MessageEvent("message", { data })
@@ -80,12 +92,12 @@ const providerFor =
   (queryClient: QueryClient) =>
   ({ children }: Readonly<{ children: ReactNode }>) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 
-const renderSync = (hub: "admin" | "storefront" = "admin") => {
+const renderSync = (hub: "admin" | "storefront" = "admin", subscriptions: readonly QueryKey[] = SUBSCRIPTIONS) => {
   const queryClient = newQueryClient()
   const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue()
   const rendered = renderHook(
     () => {
-      useRealtimeQuerySync({ hub, subscriptions: SUBSCRIPTIONS })
+      useRealtimeQuerySync({ hub, subscriptions })
     },
     { wrapper: providerFor(queryClient) },
   )
@@ -291,6 +303,58 @@ describe("useRealtimeQuerySync cache policy", () => {
     emitInvalidation([serializeQueryKeyPrefix(["admin"])])
 
     expect(StubBroadcastChannel.posted).not.toHaveBeenCalled()
+  })
+})
+
+describe("useRealtimeQuerySync topic narrowing", () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("invalidates a broad topic once instead of again through each nested subscription it covers", () => {
+    const { invalidateQueries } = renderSync("storefront", NESTED_CATALOGUE_SUBSCRIPTIONS)
+
+    emitInvalidation([serializeQueryKeyPrefix(CATALOGUE_KEY)])
+
+    expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ queryKey: CATALOGUE_KEY }))
+  })
+
+  it("invalidates the narrow topic itself rather than the broader subscription it falls under", () => {
+    const { invalidateQueries } = renderSync("storefront", PRODUCT_SUBSCRIPTIONS)
+
+    emitInvalidation([serializeQueryKeyPrefix(productKey("p1"))])
+
+    expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ queryKey: productKey("p1") }))
+  })
+
+  it("refetches only the product a narrow topic names, not every product on screen", async () => {
+    const queryClient = newQueryClient()
+    const firstProduct = vi.fn(() => Promise.resolve("p1"))
+    const secondProduct = vi.fn(() => Promise.resolve("p2"))
+    const { result } = renderHook(
+      () => {
+        useRealtimeQuerySync({ hub: "storefront", subscriptions: PRODUCT_SUBSCRIPTIONS })
+
+        return [
+          useQuery({ queryFn: firstProduct, queryKey: productKey("p1") }),
+          useQuery({ queryFn: secondProduct, queryKey: productKey("p2") }),
+        ]
+      },
+      { wrapper: providerFor(queryClient) },
+    )
+    await waitFor(() => {
+      expect(result.current.every((query) => query.isSuccess)).toBe(true)
+    })
+    firstProduct.mockClear()
+    secondProduct.mockClear()
+
+    emitInvalidation([serializeQueryKeyPrefix(productKey("p1"))])
+    await waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0)
+    })
+
+    expect(firstProduct).toHaveBeenCalledOnce()
+    expect(secondProduct).not.toHaveBeenCalled()
   })
 })
 

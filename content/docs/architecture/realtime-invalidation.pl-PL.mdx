@@ -11,7 +11,7 @@ Panele administracyjne dezaktualizują się w chwili, gdy pracuje druga osoba, a
 | ------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `src/durable-objects/realtime-invalidation-hub.ts`      | `RealtimeInvalidationHub` — obiekt rozdzielający połączenia                 |
 | `realtime-invalidation.subscriptions.ts`                | Nazwy hubów i stałe listy prefiksów, na które subskrybuje każdy odbiorca    |
-| `realtime-invalidation.protocol.ts`                     | Serializacja tematów i test nakładania się prefiksów                        |
+| `realtime-invalidation.protocol.ts`                     | Serializacja tematów i zamiana ramki na klucze zapytań                      |
 | `realtime-invalidation.publish.server.ts`               | `publishRealtimeInvalidation`, `scheduleRealtimeInvalidation`               |
 | `realtime-invalidation.catalog.server.ts`               | Sześć nazwanych publikatorów, z których naprawdę korzysta warstwa domenowa  |
 | `realtime-invalidation.ws.server.ts`                    | Handshake upgrade'u i sprawdzenie roli administratora                       |
@@ -40,22 +40,18 @@ Temat to po prostu `JSON.stringify(queryKey)`, więc format przesyłu i klucze c
 export const serializeQueryKeyPrefix = (queryKey: QueryKey): string => JSON.stringify(queryKey)
 ```
 
-Dopasowanie to **symetryczne nakładanie się prefiksów** — celowo szersze niż jednokierunkowe dopasowanie prefiksu w TanStack Query:
+Dla każdej pary tematu i subskrypcji, które się nakładają, karta unieważnia węższy z dwóch kluczy, i to tylko raz. `resolveInvalidatedQueryKeys` dopasowuje je jednokierunkowym testem prefiksu z samego TanStack Query, `partialMatchKey`, stosowanym w obie strony:
 
 ```ts
-export const queryKeyPrefixesOverlap = (left: QueryKey, right: QueryKey): boolean => {
-  const length = Math.min(left.length, right.length)
-  for (let index = 0; index < length; index++) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-
-  return true
-}
+const queryKeysInvalidatedByTopic = (subscriptions: readonly QueryKey[], topic: QueryKey): readonly QueryKey[] =>
+  subscriptions.some((subscription) => partialMatchKey(topic, subscription))
+    ? [topic]
+    : subscriptions.filter((subscription) => partialMatchKey(subscription, topic))
 ```
 
-Ponieważ porównywana jest tylko wspólna długość, wąska publikacja (`["admin", "products", "page"]`) unieważnia również grubszą subskrypcję (`["admin", "products"]`) i odwrotnie. Hub rozgłasza do całej grupy odbiorców, a każda karta odrzuca to, co nie nakłada się na jej własną listę.
+Temat, który mieści się w subskrypcji, jest unieważniany dokładnie w tej postaci, bez poszerzania do subskrypcji: `["admin", "products", "page"]` w subskrypcji `["admin", "products"]` odświeża strony listy produktów, a statystyk produktów nie rusza. Temat szerszy niż subskrypcja zawęża się do subskrypcji, które obejmuje: `["admin"]` odświeża każdą subskrypcję panelu i nic więcej z tego, co karta trzyma w cache'u. Temat, który nie nakłada się na żadną subskrypcję albo nie daje się odczytać jako klucz zapytania, jest pomijany. Hub rozgłasza do całej grupy odbiorców, a każda karta odrzuca to, co nie nakłada się na jej własną listę.
+
+Następnie `toMinimalQueryKeyPrefixes` sprowadza ramkę do minimalnego zbioru kluczy. Usuwa duplikaty, porównywane przez `hashKey`, oraz każdy klucz, który obejmuje już inny klucz ze zbioru, więc ramka z tematami `["products"]` i `["products", "storefront-page"]` unieważnia `["products"]` raz. Unieważnienie także zagnieżdżonego klucza anulowałoby pobieranie katalogu, które uruchomiło pierwsze unieważnienie, i zaczęłoby je od nowa.
 
 ## Subskrypcje
 
@@ -67,15 +63,15 @@ Obie listy są zbudowane ze stałych `*_QUERY_KEYS` samych modułów i typowane 
 
 `realtime-invalidation.catalog.server.ts` udostępnia siedem publikatorów, z których korzysta warstwa domenowa; każdy nazywa odbiorców, których dotyczy:
 
-| Publikator                                    | Klucze administracyjne                         | Klucze sklepu                                   |
-| --------------------------------------------- | ---------------------------------------------- | ----------------------------------------------- |
-| `scheduleProductCatalogInvalidation`          | produkt `ADMIN.ALL`, `ADMIN.STATS`             | pięć kluczy produktu plus dostępność koszyka    |
-| `scheduleCategoryCatalogInvalidation`         | kategoria `ADMIN.ALL`, `ADMIN.STATS`           | kategoria `ALL`, `BY_HANDLE`                    |
-| `scheduleCollectionCatalogInvalidation`       | kolekcja `ADMIN.ALL`, `ADMIN.STATS`            | kolekcja `ALL`, `BY_HANDLE`, nowości produktowe |
-| `scheduleContentPageInvalidation`             | strona treści `ADMIN.ALL`, `ADMIN.BY_HANDLE`   | strona treści `BY_HANDLE`                       |
-| `scheduleProductAttributeCatalogInvalidation` | atrybut `ADMIN.ALL`, `ADMIN.STATS`             | —                                               |
-| `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                               |
-| `scheduleAdminOrdersInvalidation`             | zamówienie `ADMIN.ORDERS`                      | —                                               |
+| Publikator                                    | Klucze administracyjne                         | Klucze sklepu                                                                  |
+| --------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| `scheduleProductCatalogInvalidation`          | produkt `ADMIN.ALL`, `ADMIN.STATS`             | pięć kluczy produktu plus dostępność koszyka                                   |
+| `scheduleCategoryCatalogInvalidation`         | kategoria `ADMIN.ALL`, `ADMIN.STATS`           | kategoria `ALL`, `BY_HANDLE`                                                   |
+| `scheduleCollectionCatalogInvalidation`       | kolekcja `ADMIN.ALL`, `ADMIN.STATS`            | kolekcja `ALL`, `BY_HANDLE`, produkt `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
+| `scheduleContentPageInvalidation`             | strona treści `ADMIN.ALL`, `ADMIN.BY_HANDLE`   | strona treści `BY_HANDLE`                                                      |
+| `scheduleProductAttributeCatalogInvalidation` | atrybut `ADMIN.ALL`, `ADMIN.STATS`             | —                                                                              |
+| `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                                              |
+| `scheduleAdminOrdersInvalidation`             | zamówienie `ADMIN.ORDERS`                      | —                                                                              |
 
 Forma `schedule*` przekazuje publikację do `scheduleBackgroundWork`, więc wykonuje się pod `waitUntil` i nigdy nie opóźnia odpowiedzi. `publishRealtimeInvalidation` to forma oczekiwana, używana tam, gdzie nie ma żądania, z którego można wrócić — konsument kolejki audytu czeka na nią po udanym wstawieniu batcha.
 
@@ -92,7 +88,7 @@ useRealtimeQuerySync({
 })
 ```
 
-Hook otwiera `wss://<host>/api/realtime/{admin,storefront}/ws`, waliduje każdą wiadomość przez `isRealtimeInvalidationPayload`, parsuje tematy z powrotem na klucze zapytań, zachowuje subskrypcje, które się nakładają, odrzuca te, które obejmuje już szersze trafienie, i woła dla każdej `invalidateQueryPrefix(queryClient, prefix)`. Ramka z tematem `["admin", "products"]` odświeża więc listę produktów i jej statystyki raz, a nie drugi raz przez zagnieżdżoną subskrypcję `["admin", "products", "stats"]`, która anulowałaby i uruchomiła od nowa pobieranie statystyk. Ponowne łączenie to wykładnicze wycofywanie od 1 s, z podwajaniem, z limitem 30 s, zerowane przy udanym zdarzeniu `open`; funkcja porządkująca zamyka gniazdo i czyści oczekujący timer.
+Hook otwiera `wss://<host>/api/realtime/{admin,storefront}/ws`, waliduje każdą wiadomość przez `isRealtimeInvalidationPayload`, zamienia jej tematy na klucze przez `resolveInvalidatedQueryKeys` i woła `invalidateQueryPrefix(queryClient, queryKey)` raz dla każdego zwróconego klucza. Ramka z tematem `["admin", "products"]` odświeża więc listę produktów i jej statystyki raz, a nie drugi raz przez zagnieżdżoną subskrypcję `["admin", "products", "stats"]`, która anulowałaby i uruchomiła od nowa pobieranie statystyk, a ramka z samym tematem `["admin", "products", "stats"]` odświeża statystyki, ale nie listę. Ponowne łączenie to wykładnicze wycofywanie od 1 s, z podwajaniem, z limitem 30 s, zerowane przy udanym zdarzeniu `open`; funkcja porządkująca zamyka gniazdo i czyści oczekujący timer.
 
 `invalidateQueryPrefix` odświeża tylko to, czego potrzebuje ekran. Najpierw usuwa z cache każde zapytanie pod prefiksem, które nie ma obserwatora ani trwającego pobierania, z wyjątkiem listy nieskończonej. Potem wywołuje `invalidateQueries` z `refetchType: "active"`, które oznacza resztę jako nieaktualną i pobiera ponownie zapytania widoczne na ekranie, oraz `refetchQueries` z `type: "inactive"` i `fetchStatus: "fetching"`, które uruchamia od nowa trwające już pobrania bez obserwatora. Zapytanie widoczne na ekranie pobiera się od razu ponownie. Zapytanie zapisane w cache, ale niewidoczne, znika, więc następny loader albo montowany komponent pobiera je od nowa, nawet gdy loader czyta ze `staleTime: "static"`, a zapytanie ma `refetchOnMount: false`. Niewidoczna lista nieskończona, czyli katalog sklepu, zachowuje strony wczytane przez klienta i jest tylko oznaczana jako nieaktualna: po powrocie pokazuje te strony w tym samym miejscu przewinięcia, a następny odczyt, przez loader albo przez `useSuspenseInfiniteQuery`, pobiera ponownie wszystkie, bo oba używają liczbowego `staleTime`. Zapytanie obserwowane, ale wyłączone, zostaje oznaczone jako nieaktualne i pobierze się po włączeniu. Trwające pobieranie nigdy nie jest usuwane, bo usunięcie zapytania anuluje jego pobieranie, a czekający na nie loader zakończyłby się błędem: nieobserwowane pobieranie, które wystartowało przy danych w cache, rusza od nowa, więc wywołujący dostaje odpowiedź już po zdarzeniu, a pierwsze pobieranie kończy się normalnie. Samo `refetchType: "active"` nie wystarczy, bo loader ze `staleTime: "static"` zwróciłby wtedy nieaktualny wpis z cache, gdy administrator ponownie otworzy stronę.
 

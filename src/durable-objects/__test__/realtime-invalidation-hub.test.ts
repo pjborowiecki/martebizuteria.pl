@@ -4,7 +4,7 @@ vi.mock("cloudflare:workers", () => ({ DurableObject: Object }))
 
 import {
   parseSerializedQueryKeyPrefix,
-  queryKeyPrefixesOverlap,
+  resolveInvalidatedQueryKeys,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 
 import { toSerializedTopicPrefixes } from "~/src/durable-objects/realtime-invalidation-hub"
@@ -20,13 +20,10 @@ describe("toSerializedTopicPrefixes", () => {
     expect(parseSerializedQueryKeyPrefix(topic ?? "")).toStrictEqual(["orders", { page: 2 }])
   })
 
-  it("keeps a broader prefix overlapping the narrower keys it should invalidate", () => {
-    const [topic] = toSerializedTopicPrefixes([["products"]])
-    const parsed = parseSerializedQueryKeyPrefix(topic ?? "")
-
-    expect(parsed).toBeDefined()
-    expect(queryKeyPrefixesOverlap(parsed ?? [], ["products", "list", { page: 1 }])).toBe(true)
-    expect(queryKeyPrefixesOverlap(parsed ?? [], ["orders"])).toBe(false)
+  it("produces a broader topic the subscriber resolves to the narrower subscriptions it covers", () => {
+    expect(resolveInvalidatedQueryKeys([["products", "list"], ["orders"]], toSerializedTopicPrefixes([["products"]]))).toStrictEqual([
+      ["products", "list"],
+    ])
   })
 
   it("distinguishes two keys that differ only in a later segment", () => {

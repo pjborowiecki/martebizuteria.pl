@@ -1,7 +1,6 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { queryKeyPrefixesOverlap } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 import { STOREFRONT_REALTIME_QUERY_PREFIXES } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 
 import { COLLECTION_QUERY_KEYS, COLLECTION_QUERY_STALE_MS } from "~/src/modules/product-collection/product-collection.constants"
@@ -228,7 +227,7 @@ describe("getStorefrontCollectionQuery", () => {
     const { queryKey } = getStorefrontCollectionQuery("srebro-925")
 
     expect(queryKey).toStrictEqual(["collection", "srebro-925"])
-    expect(STOREFRONT_REALTIME_QUERY_PREFIXES.some((prefix) => queryKeyPrefixesOverlap(prefix, queryKey))).toBe(true)
+    expect(STOREFRONT_REALTIME_QUERY_PREFIXES.some((prefix) => prefix.every((part, index) => queryKey[index] === part))).toBe(true)
   })
 
   it("keeps the collection as fresh as the collection list", () => {
