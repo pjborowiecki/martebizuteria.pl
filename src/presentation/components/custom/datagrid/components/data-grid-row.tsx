@@ -1,4 +1,4 @@
-import { type CSSProperties, type DragEvent, type JSX, type MouseEvent, type ReactNode, useCallback } from "react"
+import { type CSSProperties, type DragEvent, type JSX, type MouseEvent, type PointerEvent, type ReactNode, useCallback } from "react"
 
 import { type Cell, type Column, type Row, type RowData, type Table, flexRender } from "@tanstack/react-table"
 import { cn } from "cn"
@@ -28,9 +28,15 @@ export const DATA_GRID_PLACEHOLDER_BODY_ROW_CLASS = cn(DATA_GRID_BODY_ROW_CLASS,
 
 export const DATA_GRID_PLACEHOLDER_BODY_CELL_CLASS = cn(DATA_GRID_BODY_CELL_CLASS, "border-b-0 group-hover:bg-card hover:bg-card")
 
+const isInsideRowClickOptOut = (target: EventTarget): boolean =>
+  target instanceof Element && target.closest("[data-prevent-row-click]") !== null
+
+const isPrimaryPressOnRowCells = ({ button, currentTarget, target }: PointerEvent<HTMLTableRowElement>): boolean =>
+  button === 0 && target instanceof Node && currentTarget.contains(target) && !isInsideRowClickOptOut(target)
+
 interface DataGridRowProps<TData extends RowData> {
   readonly onRowClick?: ((row: TData) => void) | undefined
-  readonly onRowPointerEnter?: ((row: TData) => void) | undefined
+  readonly onRowPointerDown?: ((row: TData) => void) | undefined
   readonly persistenceKey: string
   readonly row: Row<DataGridFeatures, TData>
   readonly rowReorder: RowReorderApi | undefined
@@ -96,7 +102,7 @@ const DataGridCell = <TData extends RowData>({
 
 export const DataGridRow = <TData extends RowData>({
   onRowClick,
-  onRowPointerEnter,
+  onRowPointerDown,
   persistenceKey,
   row,
   rowReorder,
@@ -125,29 +131,32 @@ export const DataGridRow = <TData extends RowData>({
 
   const handleRowClick = useCallback(
     (event: MouseEvent<HTMLTableRowElement>) => {
-      if (onRowClick === undefined || consumeDataGridRowClickSuppression()) {
+      if (onRowClick === undefined || consumeDataGridRowClickSuppression() || isInsideRowClickOptOut(event.target)) {
         return
       }
 
-      const { target } = event
-      if (target instanceof Element && target.closest("[data-prevent-row-click]") !== null) {
-        return
-      }
       onRowClick(row.original)
     },
     [onRowClick, row.original],
   )
 
-  const handleRowPointerEnter = useCallback(() => {
-    onRowPointerEnter?.(row.original)
-  }, [onRowPointerEnter, row.original])
+  const handleRowPointerDown = useCallback(
+    (event: PointerEvent<HTMLTableRowElement>) => {
+      if (onRowPointerDown === undefined || !isPrimaryPressOnRowCells(event)) {
+        return
+      }
+
+      onRowPointerDown(row.original)
+    },
+    [onRowPointerDown, row.original],
+  )
 
   return (
     <TableRow
       data-dragging={isDragging || undefined}
       data-state={row.getIsSelected() ? "selected" : undefined}
       onClick={onRowClick === undefined ? undefined : handleRowClick}
-      onPointerEnter={onRowPointerEnter === undefined ? undefined : handleRowPointerEnter}
+      onPointerDown={onRowPointerDown === undefined ? undefined : handleRowPointerDown}
       onDragEnter={reorderEnabled ? handleDragEnter : undefined}
       onDragOver={reorderEnabled ? handleDragOver : undefined}
       onDrop={reorderEnabled ? handleDrop : undefined}

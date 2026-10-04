@@ -14,7 +14,7 @@ interface DataGridTableBodyProps<TData extends RowData> {
   readonly isLoading: boolean
   readonly isPlaceholderBody: boolean
   readonly onRowClick?: ((row: TData) => void) | undefined
-  readonly onRowPointerEnter?: ((row: TData) => void) | undefined
+  readonly onRowPointerDown?: ((row: TData) => void) | undefined
   readonly persistenceKey: string
   readonly rowReorder: RowReorderApi | undefined
   readonly rows: Row<DataGridFeatures, TData>[]
@@ -29,7 +29,7 @@ export const DataGridTableBody = <TData extends RowData>({
   isLoading,
   isPlaceholderBody,
   onRowClick,
-  onRowPointerEnter,
+  onRowPointerDown,
   persistenceKey,
   rowReorder,
   rows,
@@ -61,7 +61,7 @@ export const DataGridTableBody = <TData extends RowData>({
       persistenceKey={persistenceKey}
       table={table}
       onRowClick={onRowClick}
-      onRowPointerEnter={onRowPointerEnter}
+      onRowPointerDown={onRowPointerDown}
     />
   ))
 }

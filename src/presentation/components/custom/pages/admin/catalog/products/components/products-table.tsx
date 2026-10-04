@@ -41,7 +41,7 @@ export const ProductsTableContent = (): JSX.Element => {
   const sheet = useProductsSheet()
   const grid = useProductsDataGrid({
     onRowClick: sheet.openEdit,
-    onRowPointerEnter: sheet.prefetchEdit,
+    onRowPointerDown: sheet.prefetchEdit,
   })
 
   const handleSheetOpenChange = useCallback(

@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom"
+
 import { cleanup, fireEvent, screen } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
@@ -15,6 +17,12 @@ import { DataGridHarness, HARNESS_COLUMNS, type HarnessRow, harnessColumnHelper 
 
 const selectColumn = selectionColumn(harnessColumnHelper, { all: "Select all rows", row: "Select row" })
 
+const portalMenuColumn = harnessColumnHelper.display({
+  cell: () => createPortal(<button type="button">Row menu item</button>, document.body),
+  header: "Menu",
+  id: "menu",
+})
+
 const reorderApi = (draggingId?: string): RowReorderApi => ({
   draggingId,
   enabled: true,
@@ -26,17 +34,21 @@ const reorderApi = (draggingId?: string): RowReorderApi => ({
 
 const renderRows = ({
   onRowClick,
-  onRowPointerEnter,
+  onRowPointerDown,
   rowReorder,
+  withPortalMenu = false,
   withSelection = false,
 }: {
   onRowClick?: (row: HarnessRow) => void
-  onRowPointerEnter?: (row: HarnessRow) => void
+  onRowPointerDown?: (row: HarnessRow) => void
   rowReorder?: RowReorderApi
+  withPortalMenu?: boolean
   withSelection?: boolean
 } = {}) =>
   renderWithProviders(
-    <DataGridHarness columns={withSelection ? [selectColumn, ...HARNESS_COLUMNS] : HARNESS_COLUMNS}>
+    <DataGridHarness
+      columns={[...(withSelection ? [selectColumn] : []), ...HARNESS_COLUMNS, ...(withPortalMenu ? [portalMenuColumn] : [])]}
+    >
       {(table) => (
         <Table>
           <TableBody>
@@ -44,7 +56,7 @@ const renderRows = ({
               <DataGridRow
                 key={row.id}
                 onRowClick={onRowClick}
-                onRowPointerEnter={onRowPointerEnter}
+                onRowPointerDown={onRowPointerDown}
                 persistenceKey="test.products"
                 row={row}
                 rowReorder={rowReorder}
@@ -86,16 +98,6 @@ describe("DataGridRow", () => {
     await userEvent.click(screen.getByText("Gold ring"))
 
     expect(onRowClick).toHaveBeenCalledWith({ id: "gold-ring", price: 400, title: "Gold ring" })
-  })
-
-  it("reports the hovered row original to the pointer enter handler", () => {
-    const onRowPointerEnter = vi.fn<(row: HarnessRow) => void>()
-    const { container } = renderRows({ onRowPointerEnter })
-    const row = container.querySelector("tbody tr")
-
-    fireEvent.pointerEnter(row ?? document.body)
-
-    expect(onRowPointerEnter).toHaveBeenCalledWith({ id: "silver-ring", price: 200, title: "Silver ring" })
   })
 
   it("ignores a click inside a cell that opts out of row clicks", async () => {
@@ -160,5 +162,49 @@ describe("DataGridRow", () => {
     await userEvent.click(firstCheckbox ?? document.body)
 
     expect(container.querySelector("tbody tr")).toHaveAttribute("data-state", "selected")
+  })
+})
+
+describe("DataGridRow presses", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("never reports a row the pointer only passes over", async () => {
+    const onRowPointerDown = vi.fn<(row: HarnessRow) => void>()
+    renderRows({ onRowPointerDown })
+    const row = screen.getByRole("row", { name: /Silver ring/u })
+
+    fireEvent.pointerEnter(row)
+    fireEvent.pointerMove(row)
+    fireEvent.pointerLeave(row)
+    await userEvent.hover(screen.getByText("Gold ring"))
+    await userEvent.unhover(screen.getByText("Gold ring"))
+
+    expect(onRowPointerDown).not.toHaveBeenCalled()
+  })
+
+  it("reports the pressed row original once", () => {
+    const onRowPointerDown = vi.fn<(row: HarnessRow) => void>()
+    renderRows({ onRowPointerDown })
+
+    fireEvent.pointerDown(screen.getByText("Gold ring"))
+
+    expect(onRowPointerDown).toHaveBeenCalledExactlyOnceWith({ id: "gold-ring", price: 400, title: "Gold ring" })
+  })
+
+  it("ignores presses that cannot open the row", () => {
+    const onRowPointerDown = vi.fn<(row: HarnessRow) => void>()
+    renderRows({ onRowPointerDown, withPortalMenu: true, withSelection: true })
+
+    fireEvent.pointerDown(screen.getByText("Gold ring"), { button: 2 })
+    for (const optedOut of [
+      ...screen.getAllByRole("checkbox", { name: "Select row" }),
+      ...screen.getAllByRole("button", { name: "Row menu item" }),
+    ]) {
+      fireEvent.pointerDown(optedOut)
+    }
+
+    expect(onRowPointerDown).not.toHaveBeenCalled()
   })
 })

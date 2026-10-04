@@ -152,7 +152,7 @@ const useUnfilteredProductsPageSize = (
   }, [hasServerListQuery, rowCount])
 }
 
-export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProductsDataGridOptions): ProductsDataGridValue => {
+export const useProductsDataGrid = ({ onRowClick, onRowPointerDown }: UseProductsDataGridOptions): ProductsDataGridValue => {
   const t = useTranslations("pages.admin.catalog.products.catalogList")
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -244,7 +244,7 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProduc
       hasServerListQuery,
       isLoading: showSkeletonRows,
       onRowClick,
-      onRowPointerEnter,
+      onRowPointerDown,
       persistenceKey: productsDataGrid.persistenceKey,
       resetPreferences,
       rowReorder,
@@ -259,7 +259,7 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerEnter }: UseProduc
       hasServerListQuery,
       serverListState,
       onRowClick,
-      onRowPointerEnter,
+      onRowPointerDown,
       resetPreferences,
       rowReorder,
       serverSearch,
@@ -309,5 +309,5 @@ export interface ProductsDataGridValue extends DataGridContextValue<Product["adm
 
 interface UseProductsDataGridOptions {
   readonly onRowClick?: (product: Product["adminListItem"]) => void
-  readonly onRowPointerEnter?: (product: Product["adminListItem"]) => void
+  readonly onRowPointerDown?: (product: Product["adminListItem"]) => void
 }
