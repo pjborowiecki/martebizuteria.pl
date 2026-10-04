@@ -95,6 +95,17 @@ Each of these already has some of its groundwork in place (an integration functi
 
 - **The git history does not match the code.** Several commits touch over two thousand files. Nothing to fix retroactively, but worth not repeating — see [Contributing](/docs/project/contributing).
 
+## Scaling work measured but not yet done
+
+A load model of the real schema (5,000 products, 20,000 customers, 200,000 orders and a year of activity log, and ten times that) found the costs below. None of them is a problem at the shop's current size; each line says when it becomes one.
+
+- **Admin CSV exports** load the whole table and send every id to D1 as one value, which D1 refuses above about 51,000 rows. Stream the CSV from the server in pages of 1,000 before any table nears that size.
+- **The admin dashboard** recomputes Top products and the date-bounded figures from the whole order history on every visit: about 2 s at 200,000 orders. Add an `order(status, created_at)` index and trigger-maintained daily and per-product summary tables before it reaches that.
+- **The activity log** grows by about 2.6 GB a year at that traffic, mostly page views, and counts the whole table on every load. Add `(category, created_at)` and `(severity, created_at)` indexes, cap the counts, and move page views to their own table with a 13-month retention job long before D1's 10 GB limit.
+- **The admin customers page** sums every order per customer for its cards and filters: 1.25M rows per visit at 20,000 customers. A per-customer summary table maintained by triggers fixes it.
+- **Storefront listings** recompute each product's stock and price range from every variant: 40,000 rows per listing at 5,000 products. Store total stock and the lowest price on the product, kept exact by triggers, when the catalogue grows.
+- **Smaller round trips** remain in address saves, dispute and refund webhooks, admin order transitions, checkout create and update, and fulfilment, where independent reads could share one batch. Realtime still lacks per-tab throttling and a catch-up refresh after a reconnect.
+
 ## How to keep this page honest
 
 When you close one of these, delete the entry rather than marking it done, and update the matching paragraph in [About](/docs/project/about). When you find a new one, add it here with the file that proves it. A roadmap that lists things already fixed is exactly as misleading as one that omits things that are broken.
