@@ -15,12 +15,14 @@ export const deleteSavedPaymentMethod = createServerFn({ method: "POST" })
   .middleware([withRateLimit("delete-saved-payment-method", RATE_LIMITS.SENSITIVE), authorized()])
   .validator((input: zod.input<typeof savedPaymentMethodInput>) => savedPaymentMethodInput.parse(input))
   .handler(async ({ context, data: { paymentMethodId } }) => {
-    const customerId = await getStripeCustomerId(context.auth.user.id)
+    const [customerId, method] = await Promise.all([
+      getStripeCustomerId(context.auth.user.id),
+      stripe.paymentMethods.retrieve(paymentMethodId),
+    ])
     if (customerId === undefined) {
       throw new AppError(ERROR_CODES.NOT_FOUND)
     }
 
-    const method = await stripe.paymentMethods.retrieve(paymentMethodId)
     if (resolveStripeObjectId(method.customer) !== customerId) {
       throw new AppError(ERROR_CODES.FORBIDDEN)
     }
