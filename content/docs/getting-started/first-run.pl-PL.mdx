@@ -95,14 +95,14 @@ Bez nasłuchu proces zakupu wygląda tak, jakby zawieszał się na kroku płatno
 
 ## Podglądanie wiadomości transakcyjnych
 
-`/dev/emails` renderuje sześć z siedmiu szablonów React Email bez wysyłania czegokolwiek; `newsletter-confirmation` nie ma wpisu podglądu. Strona główna wypisuje każdy szablon z linkami do wersji HTML i tekstowej w obu lokalizacjach:
+`/dev/emails` renderuje siedem z ośmiu szablonów React Email bez wysyłania czegokolwiek; `newsletter-confirmation` nie ma wpisu podglądu. Strona główna wypisuje każdy szablon z linkami do wersji HTML i tekstowej w obu lokalizacjach:
 
 ```
 /dev/emails?template=order-confirmation&locale=pl-PL
 /dev/emails?template=order-confirmation&locale=pl-PL&format=text
 ```
 
-Dostępne identyfikatory to `account-deleted`, `change-email`, `order-confirmation`, `order-shipped`, `reset-password` i `verify-email`. Handler zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdziwe, więc w zbudowanym Workerze ta trasa nie istnieje.
+Dostępne identyfikatory to `account-deleted`, `change-email`, `newsletter-already-subscribed`, `order-confirmation`, `order-shipped`, `reset-password` i `verify-email`. Handler zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdziwe, więc w zbudowanym Workerze ta trasa nie istnieje.
 
 ## Lokalne uruchomienie buildu produkcyjnego
 

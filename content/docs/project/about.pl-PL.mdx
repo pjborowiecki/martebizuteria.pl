@@ -16,7 +16,7 @@ Ten kod istnieje z dwóch powodów jednocześnie. Obsługuje sklep prawdziwej ma
 | Waluta              | wyłącznie `PLN` — `STORE_CURRENCY_CODE` w `src/modules/_core/constants/currency.ts`                    |
 | Płatności           | Stripe, karty i metody hostowane przez Stripe, realizacja zamówienia sterowana webhookiem              |
 | Dostawa             | kurier i paczkomaty InPost, zasilane do tabeli `delivery_method`                                       |
-| Poczta transakcyjna | Resend, siedem szablonów React Email w `src/presentation/emails/`                                      |
+| Poczta transakcyjna | Resend, osiem szablonów React Email w `src/presentation/emails/`                                       |
 | Nazwa Workera       | `martebizuteria` na produkcji, `martebizuteria-preview`, `martebizuteria-development`                  |
 
 `wrangler.jsonc` nie deklaruje bloku `routes` ani własnej domeny, więc każde środowisko jest obsługiwane pod swoim adresem `*.workers.dev`. Produkcyjny adres zapisany w `package.json` to `https://martebizuteria.pjborowiecki.workers.dev`.

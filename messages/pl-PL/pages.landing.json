@@ -152,6 +152,7 @@
     "alreadySubscribed": "Jesteś już na liście.",
     "invalidEmail": "Podaj prawidłowy adres e-mail.",
     "error": "Nie udało się teraz zapisać. Spróbuj ponownie.",
+    "confirmationFailed": "Nie udało się wysłać e-maila z potwierdzeniem. Spróbuj ponownie za chwilę.",
     "submitting": "Zapisujemy..."
   },
   "shopCategoriesSection": {

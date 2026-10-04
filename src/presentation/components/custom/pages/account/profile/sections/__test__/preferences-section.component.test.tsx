@@ -92,10 +92,17 @@ describe("PreferencesSection newsletter", () => {
     expect(screen.getByRole("button", { name: "Unsubscribe" })).toBeInTheDocument()
   })
 
-  it("says so while a signup is still waiting on the confirmation email", () => {
+  it("says a pending signup is not confirmed yet without claiming an email is waiting", () => {
     renderSection({ subscription: "pending" })
 
-    expect(screen.getByText("Awaiting your email confirmation")).toBeInTheDocument()
+    expect(screen.getByText("Not confirmed yet")).toBeInTheDocument()
+  })
+
+  it("offers to resend the confirmation email while the signup awaits it", () => {
+    renderSection({ subscription: "pending" })
+
+    expect(screen.getByRole("button", { name: "Resend email" })).toBeEnabled()
+    expect(screen.getByRole("button", { name: "Unsubscribe" })).toBeEnabled()
   })
 
   it("signs the customer up with their own address and says to check the inbox", async () => {

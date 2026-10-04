@@ -52,7 +52,7 @@ Jest to mechanizm odrębny od własnego middleware `withRateLimit` opisanego pon
 
 ### E-maile transakcyjne
 
-Cztery z siedmiu e-maili aplikacji wysyłane są z tego pliku: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` i `sendAccountDeletedEmail`. Każda z tych funkcji ładuje własną przestrzeń nazw komunikatów, renderuje swój komponent React Email i przekazuje go do `sendEmail`; błędy są logowane przez `reportEmailFailure`, a nie rzucane, więc awaria poczty nigdy nie psuje rejestracji. Dodatkowo `resolveEmailVerificationCallbackUrl` przepisuje link weryfikacyjny, który prowadziłby na stronę główną sklepu, tak aby prowadził na `/account/overview?verified=true`. Zobacz [Resend](/docs/integrations/resend).
+Cztery z ośmiu e-maili aplikacji wysyłane są z tego pliku: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` i `sendAccountDeletedEmail`. Każda z tych funkcji ładuje własną przestrzeń nazw komunikatów, renderuje swój komponent React Email i przekazuje go do `sendEmail`; błędy są logowane przez `reportEmailFailure`, a nie rzucane, więc awaria poczty nigdy nie psuje rejestracji. Dodatkowo `resolveEmailVerificationCallbackUrl` przepisuje link weryfikacyjny, który prowadziłby na stronę główną sklepu, tak aby prowadził na `/account/overview?verified=true`. Zobacz [Resend](/docs/integrations/resend).
 
 ## Role i uprawnienia
 

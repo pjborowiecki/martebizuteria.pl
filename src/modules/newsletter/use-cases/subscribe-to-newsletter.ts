@@ -4,9 +4,11 @@ import type * as zod from "zod"
 
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { sendNewsletterAlreadySubscribed } from "~/src/integrations/resend/newsletter-already-subscribed.server"
 import { sendNewsletterConfirmation } from "~/src/integrations/resend/newsletter-confirmation.server"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
+import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   getSubscriberByEmail,
   insertSubscriber,
@@ -22,7 +24,22 @@ import {
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
 
-import { scheduleBackgroundWork } from "~/src/lib/background"
+const reportDelivery = async ({
+  delivery,
+  email,
+  kind,
+}: Readonly<{ delivery: Promise<string | undefined>; email: string; kind: string }>): Promise<Newsletter["outcome"]> => {
+  const failure = await delivery
+
+  if (failure === undefined) {
+    return { outcome: NEWSLETTER_OUTCOME.CONFIRMATION_SENT }
+  }
+
+  console.error(`[Newsletter] Failed to send ${kind} to ${email}: ${failure}`)
+  recordEmailFailedAudit(email, { detail: `Newsletter ${kind} — ${failure}` })
+
+  return { outcome: NEWSLETTER_OUTCOME.CONFIRMATION_FAILED }
+}
 
 export const subscribeToNewsletter = createServerFn({ method: "POST" })
   .middleware([withRateLimit("newsletter-subscribe", RATE_LIMITS.SENSITIVE)])
@@ -43,15 +60,20 @@ export const subscribeToNewsletter = createServerFn({ method: "POST" })
         token,
         userId: session?.user.id,
       })
-      scheduleBackgroundWork(sendNewsletterConfirmation({ email, locale, token }))
 
-      return { outcome: NEWSLETTER_OUTCOME.CONFIRMATION_SENT }
+      return reportDelivery({ delivery: sendNewsletterConfirmation({ email, locale, token }), email, kind: "confirmation" })
+    }
+
+    if (existing.status === NEWSLETTER_STATUS.CONFIRMED && session?.user.email === email) {
+      return { outcome: NEWSLETTER_OUTCOME.ALREADY_CONFIRMED }
     }
 
     if (existing.status === NEWSLETTER_STATUS.CONFIRMED) {
-      return session?.user.email === email
-        ? { outcome: NEWSLETTER_OUTCOME.ALREADY_CONFIRMED }
-        : { outcome: NEWSLETTER_OUTCOME.CONFIRMATION_SENT }
+      return reportDelivery({
+        delivery: sendNewsletterAlreadySubscribed({ email, locale }),
+        email,
+        kind: "already-subscribed notice",
+      })
     }
 
     const token = crypto.randomUUID()
@@ -62,9 +84,8 @@ export const subscribeToNewsletter = createServerFn({ method: "POST" })
       updatedAt: new Date(),
       userId: existing.userId ?? session?.user.id,
     })
-    scheduleBackgroundWork(sendNewsletterConfirmation({ email, locale, token }))
 
-    return { outcome: NEWSLETTER_OUTCOME.CONFIRMATION_SENT }
+    return reportDelivery({ delivery: sendNewsletterConfirmation({ email, locale, token }), email, kind: "confirmation" })
   })
 
 export const subscribeToNewsletterMutation = mutationOptions({

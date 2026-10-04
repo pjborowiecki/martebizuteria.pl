@@ -152,6 +152,7 @@
     "alreadySubscribed": "You are already on the list.",
     "invalidEmail": "Enter a valid email address.",
     "error": "We could not sign you up just now. Please try again.",
+    "confirmationFailed": "We could not send your confirmation email. Please try again in a moment.",
     "submitting": "Signing you up..."
   },
   "shopCategoriesSection": {

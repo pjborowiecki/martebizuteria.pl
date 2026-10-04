@@ -52,7 +52,7 @@ This is separate from the application's own `withRateLimit` middleware described
 
 ### Transactional e-mail
 
-Four of the seven application e-mails are sent from this file: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` and `sendAccountDeletedEmail`. Each loads its own message namespace, renders its React Email component and hands it to `sendEmail`; failures are logged through `reportEmailFailure` rather than thrown, so a mail outage never breaks a sign-up. `resolveEmailVerificationCallbackUrl` additionally rewrites a verification link that would land on the storefront home so it lands on `/account/overview?verified=true` instead. See [Resend](/docs/integrations/resend).
+Four of the eight application e-mails are sent from this file: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation` and `sendAccountDeletedEmail`. Each loads its own message namespace, renders its React Email component and hands it to `sendEmail`; failures are logged through `reportEmailFailure` rather than thrown, so a mail outage never breaks a sign-up. `resolveEmailVerificationCallbackUrl` additionally rewrites a verification link that would land on the storefront home so it lands on `/account/overview?verified=true` instead. See [Resend](/docs/integrations/resend).
 
 ## Roles and permissions
 

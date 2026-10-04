@@ -1,6 +1,6 @@
 ---
 title: "E-maile transakcyjne"
-description: "Siedem szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
+description: "Osiem szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
 ---
 
 ## Wysyłka
@@ -8,7 +8,7 @@ description: "Siedem szablonów React Email renderowanych w Workerze, wysyłanyc
 Każdy e-mail wysyła jedna funkcja — `src/integrations/resend/resend.send.ts`:
 
 ```ts
-export const sendEmail = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({ from, react, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   try {
     const { error } = await resend.emails.send({
       from: from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`,
@@ -22,25 +22,39 @@ export const sendEmail = async ({ from, react, subject, to }: Readonly<SendEmail
     return error instanceof Error ? error.message : String(error)
   }
 }
+
+export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  const timeout = Promise.withResolvers<string>()
+  const timer = setTimeout(() => {
+    timeout.resolve(`Resend did not answer within ${SEND_EMAIL_TIMEOUT_MS} ms`)
+  }, SEND_EMAIL_TIMEOUT_MS)
+
+  try {
+    return await Promise.race([deliver(options), timeout.promise])
+  } finally {
+    clearTimeout(timer)
+  }
+}
 ```
 
-Zwróć uwagę na kontrakt: **nigdy nie rzuca wyjątku.** Zwraca `undefined` przy sukcesie, a w przeciwnym razie komunikat błędu jako napis. Każdy wywołujący jest więc napisany jako `const failure = await sendEmail(...)`, po czym decyduje, co zrobić z `failure` — awaria poczty nie może wycofać zamówienia ani usunięcia konta.
+Zwróć uwagę na kontrakt: **nigdy nie rzuca wyjątku.** Zwraca `undefined` przy sukcesie, a w przeciwnym razie komunikat błędu jako napis. SDK Resend nie ma własnego limitu czasu, więc `sendEmail` rezygnuje po `SEND_EMAIL_TIMEOUT_MS` (10 sekund) i zwraca `Resend did not answer within 10000 ms`; zawieszony Resend nie może bez końca blokować zapisu ani webhooka. Każdy wywołujący jest więc napisany jako `const failure = await sendEmail(...)`, po czym decyduje, co zrobić z `failure` — awaria poczty nie może wycofać zamówienia ani usunięcia konta.
 
 Klientem jest `src/integrations/resend/resend.config.ts`, jednolinijkowe `new Resend(env.RESEND_API_KEY)`. Domyślne `from` to `APP_NAME <RESEND_EMAIL_FROM>`. Zarówno `RESEND_API_KEY`, jak i `RESEND_EMAIL_FROM` są na liście `secrets.required` każdego środowiska w `wrangler.jsonc`.
 
-## Siedem szablonów
+## Osiem szablonów
 
 Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane po stronie serwera wewnątrz Workera:
 
-| Szablon                       | Stała przestrzeni nazw              | Wysyłany przez                                                          |
-| ----------------------------- | ----------------------------------- | ----------------------------------------------------------------------- |
-| `verify-email.tsx`            | `VERIFY_EMAIL_NAMESPACE`            | `sendVerificationEmail` (Better Auth)                                   |
-| `reset-password.tsx`          | `RESET_PASSWORD_NAMESPACE`          | `sendResetPassword` (Better Auth)                                       |
-| `change-email.tsx`            | `CHANGE_EMAIL_NAMESPACE`            | `sendChangeEmailConfirmation` (Better Auth)                             |
-| `account-deleted.tsx`         | `ACCOUNT_DELETED_NAMESPACE`         | `sendAccountDeletedEmail`, kolejkowany przez `deleteCustomer`           |
-| `order-confirmation.tsx`      | `ORDER_CONFIRMATION_NAMESPACE`      | `notifyOrderConfirmed`, z webhooka Stripe                               |
-| `order-shipped.tsx`           | `ORDER_SHIPPED_NAMESPACE`           | `notifyOrderShipped`, kolejkowany przez `shipOrder`                     |
-| `newsletter-confirmation.tsx` | `NEWSLETTER_CONFIRMATION_NAMESPACE` | `sendNewsletterConfirmation`, kolejkowany przez `subscribeToNewsletter` |
+| Szablon                             | Stała przestrzeni nazw                    | Wysyłany przez                                                                                      |
+| ----------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerificationEmail` (Better Auth)                                                               |
+| `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPassword` (Better Auth)                                                                   |
+| `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmation` (Better Auth)                                                         |
+| `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, kolejkowany przez `deleteCustomer`                                       |
+| `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `notifyOrderConfirmed`, z webhooka Stripe                                                           |
+| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, kolejkowany przez `shipOrder`                                                 |
+| `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik      |
+| `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik |
 
 Każdy szablon **eksportuje własną stałą przestrzeni nazw** obok komponentu, na przykład `export const ORDER_CONFIRMATION_NAMESPACE = "emails.order-confirmation"`. Taka jest konwencja: szablon jest właścicielem nazwy swojego katalogu komunikatów, więc nie ma osobnego mapowania, które trzeba utrzymywać w zgodzie.
 
@@ -67,7 +81,7 @@ const failure = await sendEmail({
 | ------------------------- | ---------------------------------------------------------------------------- |
 | e-maile Better Auth       | `getCurrentLocale()` — z żądania wykonywanego przez użytkownika              |
 | `sendAccountDeletedEmail` | `locale` zapamiętany przed usunięciem, z fallbackiem na `getCurrentLocale()` |
-| potwierdzenie newslettera | `locale` przesłany z zapisem, z fallbackiem na `getCurrentLocale()`          |
+| e-maile newslettera       | `locale` przesłany z zapisem, z fallbackiem na `getCurrentLocale()`          |
 | potwierdzenie zamówienia  | `resolveLocale(session)` z metadanych sesji Stripe                           |
 | wysyłka zamówienia        | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia       |
 
@@ -142,6 +156,8 @@ export const recordOrderEmailOutcome = ({
 
 `label` to czytelny napis, na przykład `Order confirmation → jane@example.com`. Jeśli budowanie payloadu rzuci wyjątek, zanim dojdzie do wysyłki, `notifyOrderConfirmed` go przechwytuje i zapisuje `recordEmailFailedAudit` z komunikatem błędu. Kategoria `email` w dzienniku audytu jest więc miejscem, w które należy zajrzeć, gdy klient mówi, że nic nie dostał.
 
+E-mail newslettera odrzucony przez Resend również trafia do audytu. `subscribeToNewsletter` wywołuje `recordEmailFailedAudit(email, { detail })`: celem wpisu jest adres, a szczegół podaje rodzaj e-maila i błąd Resend, na przykład `Newsletter confirmation — The example.com domain is not verified` albo `Newsletter already-subscribed notice — …`. Niezweryfikowana domena nadawcy pojawia się więc w `/admin/audit` już przy pierwszym zapisie, a nie tylko w logu Workera. Wysłany e-mail nie jest zapisywany.
+
 Cztery e-maile Better Auth **nie** są zapisywane w audycie. Tylko logują:
 
 ```ts
@@ -156,13 +172,14 @@ const reportEmailFailure = (kind: string, recipient: string, failure: string | u
 
 ## Wysyłka w tle
 
-Trzy wysyłki są świadomie nieoczekiwane przez żądanie:
+Dwie wysyłki są świadomie nieoczekiwane przez żądanie:
 
 - `shipOrder` — `scheduleBackgroundWork(notifyOrderShipped(orderId))`
 - `deleteCustomer` — `scheduleBackgroundWork(sendAccountDeletedEmail(goodbyeEmail))`
-- `subscribeToNewsletter`: `scheduleBackgroundWork(sendNewsletterConfirmation({ email, locale, token }))`
 
-`scheduleBackgroundWork` (`src/lib/background.ts`) korzysta z `waitUntil` Workera, więc żądanie wraca natychmiast. `sendNewsletterConfirmation` loguje nieudaną wysyłkę i nie zapisuje jej w audycie.
+`scheduleBackgroundWork` (`src/lib/background.ts`) korzysta z `waitUntil` Workera, więc żądanie wraca natychmiast.
+
+`subscribeToNewsletter` czeka na swój e-mail, bo osoba, która właśnie się zapisała, dowiaduje się, czy wyszedł. Nowy, oczekujący albo wypisany adres dostaje `sendNewsletterConfirmation`; adres już potwierdzony, wysłany przez kogokolwiek poza zalogowanym właścicielem, dostaje `sendNewsletterAlreadySubscribed`. Obie funkcje zwracają komunikat błędu Resend albo `undefined`, gdy wysyłka została przyjęta. Przy porażce przypadek użycia loguje ją, zapisuje w audycie i odpowiada `confirmationFailed`. Wiersz, który czekał na potwierdzenie, zostaje w stanie `pending`, więc ponowne wysłanie adresu nadaje nowy token i wysyła nowy e-mail. Żądanie trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`, co formularz pokrywa stanem „Zapisujemy...”.
 
 Webhook Stripe natomiast **czeka** na `notifyOrderConfirmed`. Nieobsłużony wyjątek sprawiłby, że handler zwróci 500, a Stripe ponownie dostarczy webhook, którego zamówienie już powstało — dlatego `notifyOrderConfirmed` owija wszystko w `try`/`catch` i pochłania błąd po jego zapisaniu.
 
@@ -193,7 +210,7 @@ Dodanie szablonu oznacza: komponent wraz ze stałą przestrzeni nazw w `src/pres
 
 - Nie ma e-maila o porzuconym koszyku. Zdarzenie jest zapisywane w audycie, ale nic nie wysyła wiadomości.
 - Nie ma powiadomienia o dostarczeniu ani o zwrocie. Istnieją tylko potwierdzenie i wysyłka.
-- Nie ma ponawiania ani kolejki martwych listów dla poczty; porażka jest logowana, a dla e-maili zamówień zapisywana w audycie.
+- Nie ma ponawiania ani kolejki martwych listów dla poczty; porażka jest logowana, a dla e-maili zamówień i newslettera zapisywana w audycie. Zapis do newslettera, którego potwierdzenie nie wyszło, ponawia sama osoba: z formularza na stronie głównej albo przyciskiem „Wyślij ponownie” w preferencjach konta.
 
 ## Powiązane strony
 

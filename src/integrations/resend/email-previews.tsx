@@ -9,12 +9,17 @@ import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 
 import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
 import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"
+import type newsletterAlreadySubscribedMessages from "~/messages/en-US/emails.newsletter-already-subscribed.json"
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
 import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.json"
 import type verifyEmailMessages from "~/messages/en-US/emails.verify-email.json"
 import { ACCOUNT_DELETED_NAMESPACE, AccountDeleted } from "~/src/presentation/emails/account-deleted"
 import { CHANGE_EMAIL_NAMESPACE, ChangeEmail } from "~/src/presentation/emails/change-email"
+import {
+  NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE,
+  NewsletterAlreadySubscribed,
+} from "~/src/presentation/emails/newsletter-already-subscribed"
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
 import { ORDER_SHIPPED_NAMESPACE, OrderShipped } from "~/src/presentation/emails/order-shipped"
 import { RESET_PASSWORD_NAMESPACE, ResetPassword } from "~/src/presentation/emails/reset-password"
@@ -90,6 +95,19 @@ export const EMAIL_PREVIEWS = {
       />
     ),
     label: "Change email",
+  },
+  "newsletter-already-subscribed": {
+    element: async (locale) => (
+      <NewsletterAlreadySubscribed
+        locale={locale}
+        messages={await loadNamespace<typeof newsletterAlreadySubscribedMessages>({
+          locale,
+          namespace: NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE,
+        })}
+        storefrontUrl={`https://martebizuteria.pl/${locale}`}
+      />
+    ),
+    label: "Newsletter already subscribed",
   },
   "order-confirmation": {
     element: async (locale) => (

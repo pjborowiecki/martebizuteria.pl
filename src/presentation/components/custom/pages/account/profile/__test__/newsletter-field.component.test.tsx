@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import englishAccount from "~/messages/en-US/pages.account.json"
+
 const mocks = vi.hoisted(() => ({
   status: { current: undefined as string | undefined },
   subscribe: vi.fn<(variables: { email: string; source: string }) => Promise<unknown>>(),
@@ -72,7 +74,7 @@ describe("NewsletterField", () => {
 
     await userEvent.click(button)
 
-    expect(await screen.findByText("Awaiting your email confirmation")).toBeInTheDocument()
+    expect(await screen.findByText(englishAccount.profile.newsletterPending)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Unsubscribe" })).toBeEnabled()
   })
 
@@ -117,6 +119,71 @@ describe("NewsletterField", () => {
       expect(mocks.unsubscribe).toHaveBeenCalledOnce()
     })
     expect(mocks.subscribe).not.toHaveBeenCalled()
+  })
+
+  it("warns that the confirmation email could not be sent and claims nothing", async () => {
+    mocks.subscribe.mockResolvedValue({ outcome: "confirmationFailed" })
+
+    await userEvent.click(await renderField())
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(englishAccount.profile.newsletterConfirmationFailed)
+    })
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
+
+  it("offers to resend the confirmation while the signup is pending", async () => {
+    await renderField(NEWSLETTER_STATUS.PENDING)
+
+    await userEvent.click(screen.getByRole("button", { name: englishAccount.profile.newsletterResendAction }))
+
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(englishAccount.profile.newsletterConfirmationSent)
+    })
+    expect(mocks.subscribe.mock.calls[0]?.[0]).toStrictEqual({ email: "anna@example.com", source: NEWSLETTER_SOURCE.ACCOUNT })
+    expect(mocks.unsubscribe).not.toHaveBeenCalled()
+  })
+
+  it("warns when a resend could not be sent and keeps the resend on offer", async () => {
+    mocks.subscribe.mockResolvedValue({ outcome: "confirmationFailed" })
+    await renderField(NEWSLETTER_STATUS.PENDING)
+
+    await userEvent.click(screen.getByRole("button", { name: englishAccount.profile.newsletterResendAction }))
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(englishAccount.profile.newsletterConfirmationFailed)
+    })
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+    expect(screen.getByRole("button", { name: englishAccount.profile.newsletterResendAction })).toBeEnabled()
+    expect(screen.getByText(englishAccount.profile.newsletterPending)).toBeInTheDocument()
+  })
+
+  it("refreshes the status after a failed send so the resend appears for the pending signup", async () => {
+    mocks.subscribe.mockResolvedValue({ outcome: "confirmationFailed" })
+    const button = await renderField()
+    mocks.status.current = NEWSLETTER_STATUS.PENDING
+
+    await userEvent.click(button)
+
+    expect(await screen.findByRole("button", { name: englishAccount.profile.newsletterResendAction })).toBeEnabled()
+    expect(screen.getByText(englishAccount.profile.newsletterPending)).toBeInTheDocument()
+  })
+
+  it("offers no resend once the subscription is confirmed", async () => {
+    await renderField(NEWSLETTER_STATUS.CONFIRMED)
+
+    expect(screen.queryByRole("button", { name: englishAccount.profile.newsletterResendAction })).not.toBeInTheDocument()
+  })
+
+  it("says the customer is already subscribed instead of sending them to their inbox", async () => {
+    mocks.subscribe.mockResolvedValue({ outcome: "alreadyConfirmed" })
+
+    await userEvent.click(await renderField())
+
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(englishAccount.profile.newsletterAlreadySubscribed)
+    })
+    expect(mocks.toastSuccess).not.toHaveBeenCalledWith(englishAccount.profile.newsletterConfirmationSent)
   })
 
   it("locks the button while a change is in flight so it cannot be sent twice", async () => {

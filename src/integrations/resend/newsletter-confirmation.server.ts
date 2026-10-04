@@ -17,9 +17,14 @@ import { ROUTES } from "~/src/routes"
 export const buildNewsletterConfirmUrl = (token: string, locale: SupportedLocale): string =>
   `${buildLocalizedUrl(APP_URL, ROUTES.NEWSLETTER_CONFIRM, locale)}?token=${encodeURIComponent(token)}`
 
-export const sendNewsletterConfirmation = async ({ email, locale, token }: SendNewsletterConfirmationInput): Promise<void> => {
+export const sendNewsletterConfirmation = async ({
+  email,
+  locale,
+  token,
+}: SendNewsletterConfirmationInput): Promise<string | undefined> => {
   const messages = await loadNamespace<typeof newsletterMessages>({ locale, namespace: NEWSLETTER_CONFIRMATION_NAMESPACE })
-  const failure = await sendEmail({
+
+  return sendEmail({
     react: createElement(NewsletterConfirmation, {
       confirmUrl: buildNewsletterConfirmUrl(token, locale),
       locale,
@@ -28,10 +33,6 @@ export const sendNewsletterConfirmation = async ({ email, locale, token }: SendN
     subject: createTranslator({ locale, messages })("subject"),
     to: email,
   })
-
-  if (failure !== undefined) {
-    console.error(`[Newsletter] Failed to send confirmation to ${email}: ${failure}`)
-  }
 }
 
 interface SendNewsletterConfirmationInput {

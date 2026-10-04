@@ -21,6 +21,9 @@ export const newsletterZodSchemas = {
   }),
   insert: createInsertSchema(newsletterSubscriber),
   select: createSelectSchema(newsletterSubscriber),
+  subscribeFormValues: zod.object({
+    email: zod.string().trim().pipe(zod.email().max(NEWSLETTER_EMAIL_MAX_LENGTH)),
+  }),
   subscribeInput: zod.object({
     email: zod.email({ message: "validation.emailInvalid" }).max(NEWSLETTER_EMAIL_MAX_LENGTH),
     locale: localeField.optional(),
