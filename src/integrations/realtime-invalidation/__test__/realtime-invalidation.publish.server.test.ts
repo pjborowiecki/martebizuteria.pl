@@ -9,10 +9,7 @@ import {
   scheduleProductAttributeCatalogInvalidation,
   scheduleProductCatalogInvalidation,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
-import {
-  parseSerializedQueryKeyPrefix,
-  queryKeyPrefixesOverlap,
-} from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
+import { resolveInvalidatedQueryKeys } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 import {
   publishRealtimeInvalidation,
   scheduleRealtimeInvalidation,
@@ -132,12 +129,17 @@ describe("catalog invalidation scheduling", () => {
     expect(topicsFor("storefront")).toStrictEqual(serialized([[...CATEGORY_QUERY_KEYS.ALL], [...CATEGORY_QUERY_KEYS.BY_HANDLE]]))
   })
 
-  it("refreshes the landing new arrivals when a collection changes", async () => {
+  it("refreshes the landing new arrivals and the catalogue grid when a collection changes", async () => {
     scheduleCollectionCatalogInvalidation()
     await Promise.all(background.scheduled)
 
     expect(topicsFor("storefront")).toStrictEqual(
-      serialized([[...COLLECTION_QUERY_KEYS.ALL], [...COLLECTION_QUERY_KEYS.BY_HANDLE], [...PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS]]),
+      serialized([
+        [...COLLECTION_QUERY_KEYS.ALL],
+        [...COLLECTION_QUERY_KEYS.BY_HANDLE],
+        [...PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS],
+        [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE],
+      ]),
     )
   })
 
@@ -168,31 +170,59 @@ describe("catalog invalidation scheduling", () => {
   })
 
   it.each([
-    ["product", scheduleProductCatalogInvalidation],
-    ["category", scheduleCategoryCatalogInvalidation],
-    ["collection", scheduleCollectionCatalogInvalidation],
-    ["content page", scheduleContentPageInvalidation],
-    ["attribute", scheduleProductAttributeCatalogInvalidation],
-    ["customers", scheduleAdminCustomersInvalidation],
-    ["orders", scheduleAdminOrdersInvalidation],
-  ])("broadcasts %s topics that a subscribed client would actually match", async (_name, schedule) => {
+    [
+      "product",
+      scheduleProductCatalogInvalidation,
+      {
+        admin: [PRODUCT_QUERY_KEYS.ADMIN.ALL],
+        storefront: [
+          PRODUCT_QUERY_KEYS.ALL,
+          PRODUCT_QUERY_KEYS.BY_HANDLE,
+          PRODUCT_QUERY_KEYS.RELATED_BY_CATEGORY,
+          CART_QUERY_KEYS.AVAILABILITY,
+        ],
+      },
+    ],
+    [
+      "category",
+      scheduleCategoryCatalogInvalidation,
+      { admin: [CATEGORY_QUERY_KEYS.ADMIN.ALL], storefront: [CATEGORY_QUERY_KEYS.ALL, CATEGORY_QUERY_KEYS.BY_HANDLE] },
+    ],
+    [
+      "collection",
+      scheduleCollectionCatalogInvalidation,
+      {
+        admin: [COLLECTION_QUERY_KEYS.ADMIN.ALL],
+        storefront: [
+          COLLECTION_QUERY_KEYS.ALL,
+          COLLECTION_QUERY_KEYS.BY_HANDLE,
+          PRODUCT_QUERY_KEYS.LANDING_NEW_ARRIVALS,
+          PRODUCT_QUERY_KEYS.STOREFRONT_PAGE,
+        ],
+      },
+    ],
+    [
+      "content page",
+      scheduleContentPageInvalidation,
+      {
+        admin: [CONTENT_PAGE_QUERY_KEYS.ADMIN.ALL, CONTENT_PAGE_QUERY_KEYS.ADMIN.BY_HANDLE],
+        storefront: [CONTENT_PAGE_QUERY_KEYS.BY_HANDLE],
+      },
+    ],
+    ["attribute", scheduleProductAttributeCatalogInvalidation, { admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL] }],
+    ["customers", scheduleAdminCustomersInvalidation, { admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS] }],
+    ["orders", scheduleAdminOrdersInvalidation, { admin: [ORDER_QUERY_KEYS.ADMIN.ORDERS] }],
+  ])("resolves the %s topics to the exact keys a subscribed tab invalidates", async (_name, schedule, expected) => {
     schedule()
     await Promise.all(background.scheduled)
 
-    const subscribed = {
-      admin: ADMIN_REALTIME_QUERY_PREFIXES,
-      storefront: STOREFRONT_REALTIME_QUERY_PREFIXES,
-    }
-
-    expect(hub.notified.length).toBeGreaterThan(0)
-    for (const { name, topics } of hub.notified) {
-      const prefixes = name === "admin" ? subscribed.admin : subscribed.storefront
-      for (const topic of topics) {
-        const published = parseSerializedQueryKeyPrefix(topic)
-
-        expect(published).toBeDefined()
-        expect(prefixes.some((prefix) => queryKeyPrefixesOverlap([...prefix], published ?? []))).toBe(true)
-      }
-    }
+    expect(
+      Object.fromEntries(
+        hub.notified.map(({ name, topics }) => [
+          name,
+          resolveInvalidatedQueryKeys(name === "admin" ? ADMIN_REALTIME_QUERY_PREFIXES : STOREFRONT_REALTIME_QUERY_PREFIXES, topics),
+        ]),
+      ),
+    ).toStrictEqual(expected)
   })
 })

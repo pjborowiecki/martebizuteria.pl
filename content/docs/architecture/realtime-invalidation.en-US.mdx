@@ -11,7 +11,7 @@ Admin dashboards go stale the moment a second person is working, and the admin l
 | ------------------------------------------------------- | -------------------------------------------------------------------- |
 | `src/durable-objects/realtime-invalidation-hub.ts`      | `RealtimeInvalidationHub` — the connection fan-out object            |
 | `realtime-invalidation.subscriptions.ts`                | Hub names and the fixed prefix lists each audience subscribes to     |
-| `realtime-invalidation.protocol.ts`                     | Topic serialization and the prefix-overlap test                      |
+| `realtime-invalidation.protocol.ts`                     | Topic serialization and resolving a frame into query keys            |
 | `realtime-invalidation.publish.server.ts`               | `publishRealtimeInvalidation`, `scheduleRealtimeInvalidation`        |
 | `realtime-invalidation.catalog.server.ts`               | Six named publishers the domain layer actually calls                 |
 | `realtime-invalidation.ws.server.ts`                    | The upgrade handshake and the admin role check                       |
@@ -40,22 +40,18 @@ A topic is just `JSON.stringify(queryKey)`, so the wire format and the cache key
 export const serializeQueryKeyPrefix = (queryKey: QueryKey): string => JSON.stringify(queryKey)
 ```
 
-Matching is a **symmetric prefix overlap** — deliberately broader than TanStack Query's one-directional prefix match:
+A tab invalidates the narrower key of each overlapping topic and subscription, once. `resolveInvalidatedQueryKeys` matches them with TanStack Query's own one-directional prefix test, `partialMatchKey`, applied in both directions:
 
 ```ts
-export const queryKeyPrefixesOverlap = (left: QueryKey, right: QueryKey): boolean => {
-  const length = Math.min(left.length, right.length)
-  for (let index = 0; index < length; index++) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-
-  return true
-}
+const queryKeysInvalidatedByTopic = (subscriptions: readonly QueryKey[], topic: QueryKey): readonly QueryKey[] =>
+  subscriptions.some((subscription) => partialMatchKey(topic, subscription))
+    ? [topic]
+    : subscriptions.filter((subscription) => partialMatchKey(subscription, topic))
 ```
 
-Because it compares only the shared length, a narrow publish (`["admin", "products", "page"]`) still invalidates a coarser subscription (`["admin", "products"]`), and vice versa. The hub broadcasts to the whole audience and each tab discards what does not overlap its own list.
+A topic that falls under a subscription is invalidated as itself: `["admin", "products", "page"]` under the `["admin", "products"]` subscription refreshes the product list pages and leaves the product stats alone. A topic broader than a subscription is narrowed to the subscriptions it covers: `["admin"]` refreshes every admin subscription and nothing else the tab has cached. A topic that overlaps no subscription, or does not parse as a query key, is ignored. The hub broadcasts to the whole audience and each tab discards what does not overlap its own list.
+
+`toMinimalQueryKeyPrefixes` then reduces the frame to a minimal set of keys. It drops duplicates, compared with `hashKey`, and every key that another key in the set already covers, so a frame that names both `["products"]` and `["products", "storefront-page"]` invalidates `["products"]` once. Invalidating the nested key as well would cancel the catalogue fetch the first invalidation started and start it again.
 
 ## Subscriptions
 
@@ -67,15 +63,15 @@ Both lists are built from the modules' own `*_QUERY_KEYS` constants and typed `a
 
 `realtime-invalidation.catalog.server.ts` exposes the seven publishers the domain layer calls, each naming the audiences it affects:
 
-| Publisher                                     | Admin keys                                     | Storefront keys                                     |
-| --------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
-| `scheduleProductCatalogInvalidation`          | product `ADMIN.ALL`, `ADMIN.STATS`             | the five product keys plus cart availability        |
-| `scheduleCategoryCatalogInvalidation`         | category `ADMIN.ALL`, `ADMIN.STATS`            | category `ALL`, `BY_HANDLE`                         |
-| `scheduleCollectionCatalogInvalidation`       | collection `ADMIN.ALL`, `ADMIN.STATS`          | collection `ALL`, `BY_HANDLE`, product new arrivals |
-| `scheduleContentPageInvalidation`             | content page `ADMIN.ALL`, `ADMIN.BY_HANDLE`    | content page `BY_HANDLE`                            |
-| `scheduleProductAttributeCatalogInvalidation` | attribute `ADMIN.ALL`, `ADMIN.STATS`           | —                                                   |
-| `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                   |
-| `scheduleAdminOrdersInvalidation`             | order `ADMIN.ORDERS`                           | —                                                   |
+| Publisher                                     | Admin keys                                     | Storefront keys                                                                  |
+| --------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------- |
+| `scheduleProductCatalogInvalidation`          | product `ADMIN.ALL`, `ADMIN.STATS`             | the five product keys plus cart availability                                     |
+| `scheduleCategoryCatalogInvalidation`         | category `ADMIN.ALL`, `ADMIN.STATS`            | category `ALL`, `BY_HANDLE`                                                      |
+| `scheduleCollectionCatalogInvalidation`       | collection `ADMIN.ALL`, `ADMIN.STATS`          | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
+| `scheduleContentPageInvalidation`             | content page `ADMIN.ALL`, `ADMIN.BY_HANDLE`    | content page `BY_HANDLE`                                                         |
+| `scheduleProductAttributeCatalogInvalidation` | attribute `ADMIN.ALL`, `ADMIN.STATS`           | —                                                                                |
+| `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                                                |
+| `scheduleAdminOrdersInvalidation`             | order `ADMIN.ORDERS`                           | —                                                                                |
 
 The `schedule*` form hands the publish to `scheduleBackgroundWork`, so it runs under `waitUntil` and never delays the response. `publishRealtimeInvalidation` is the awaited form, used where there is no request to return from — the audit-log queue consumer awaits it after a successful batch insert.
 
@@ -92,7 +88,7 @@ useRealtimeQuerySync({
 })
 ```
 
-The hook opens `wss://<host>/api/realtime/{admin,storefront}/ws`, validates each message with `isRealtimeInvalidationPayload`, parses the topics back into query keys, keeps the subscriptions that overlap, drops any of them that a broader match already covers, and calls `invalidateQueryPrefix(queryClient, prefix)` for each. A frame that names `["admin", "products"]` therefore refreshes the product list and its stats once, not once more through the nested `["admin", "products", "stats"]` subscription, which would cancel and restart the stats fetch. Reconnect is exponential backoff from 1 s, doubling, capped at 30 s, reset to zero on a successful `open`, and the cleanup function closes the socket and clears any pending timer.
+The hook opens `wss://<host>/api/realtime/{admin,storefront}/ws`, validates each message with `isRealtimeInvalidationPayload`, resolves its topics with `resolveInvalidatedQueryKeys`, and calls `invalidateQueryPrefix(queryClient, queryKey)` once for each key it returns. A frame that names `["admin", "products"]` therefore refreshes the product list and its stats once, not once more through the nested `["admin", "products", "stats"]` subscription, which would cancel and restart the stats fetch, and a frame that names only `["admin", "products", "stats"]` refreshes the stats and not the list. Reconnect is exponential backoff from 1 s, doubling, capped at 30 s, reset to zero on a successful `open`, and the cleanup function closes the socket and clears any pending timer.
 
 `invalidateQueryPrefix` refreshes only what a screen needs. It first removes every query under the prefix that has no observer and no fetch in flight, except an infinite list. It then calls `invalidateQueries` with `refetchType: "active"`, which marks what is left invalid and refetches the queries on screen, and `refetchQueries` with `type: "inactive"` and `fetchStatus: "fetching"`, which restarts the unobserved fetches already in flight. A query on screen refetches at once. A query that is cached but off screen is gone, so the next loader or mount fetches it fresh, even when the loader reads with `staleTime: "static"` and the query sets `refetchOnMount: false`. An infinite list off screen, the storefront catalogue, keeps the pages the shopper loaded and is only marked invalid: going back to it shows those pages at the same scroll position, and the next read, by its loader or by `useSuspenseInfiniteQuery`, refetches all of them, because both use a numeric stale time. A query that is observed but disabled is marked invalid and refetches when it is enabled. A fetch already in flight is never removed, because removing a query cancels its fetch and the loader awaiting it would reject: an unobserved fetch that started from cached data is restarted, so its caller gets the post-event response, and a first fetch finishes as it is. `refetchType: "active"` alone is not enough, because a `staleTime: "static"` loader would then return the stale cached entry when the admin opens the page again.
 

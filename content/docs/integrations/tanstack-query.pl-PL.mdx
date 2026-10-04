@@ -191,7 +191,7 @@ Używaj `syncQueryInvalidation` tylko przy lokalnej mutacji, której kluczy serw
 
 ## Unieważnianie wypychane z serwera
 
-Zapisy na Workerze nie mogą dosięgnąć cache w przeglądarce bezpośrednio. Publikują zbiór prefiksów kluczy zapytań do huba w Durable Object, który rozsyła je przez WebSocket do wszystkich podłączonych klientów; `useRealtimeQuerySync` dopasowuje prefiksy do listy subskrypcji układu i wywołuje `invalidateQueryPrefix` raz dla każdego trafienia, którego nie obejmuje już szersze trafienie. Nigdy nie publikuje na kanale `BroadcastChannel`, bo każda karta, która go montuje, odbiera ramkę przez własne gniazdo. Cały mechanizm opisuje strona [Unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation).
+Zapisy na Workerze nie mogą dosięgnąć cache w przeglądarce bezpośrednio. Publikują zbiór prefiksów kluczy zapytań do huba w Durable Object, który rozsyła je przez WebSocket do wszystkich podłączonych klientów; `useRealtimeQuerySync` zamienia prefiksy na klucze względem listy subskrypcji układu przez `resolveInvalidatedQueryKeys` i wywołuje `invalidateQueryPrefix` raz dla każdego wynikowego klucza, czyli węższego klucza z każdej pary tematu i subskrypcji, które się nakładają, bez powtórzeń i bez kluczy, które obejmuje już inny klucz. Nigdy nie publikuje na kanale `BroadcastChannel`, bo każda karta, która go montuje, odbiera ramkę przez własne gniazdo. Cały mechanizm opisuje strona [Unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation).
 
 ## Narzędzia deweloperskie
 

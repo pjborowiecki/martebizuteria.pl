@@ -4,9 +4,13 @@ import {
   REALTIME_INVALIDATION_MESSAGE,
   isRealtimeInvalidationPayload,
   parseSerializedQueryKeyPrefix,
-  queryKeyPrefixesOverlap,
+  resolveInvalidatedQueryKeys,
   serializeQueryKeyPrefix,
+  toMinimalQueryKeyPrefixes,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
+
+const topicsFor = (...queryKeys: readonly (readonly unknown[])[]): string[] =>
+  queryKeys.map((queryKey) => serializeQueryKeyPrefix(queryKey))
 
 describe("query key prefix serialization", () => {
   it.each([[["admin", "products"]], [["admin", "products", { page: 2 }]], [[]]])("round-trips the prefix %j", (queryKey) => {
@@ -25,30 +29,94 @@ describe("query key prefix serialization", () => {
   )
 })
 
-describe("queryKeyPrefixesOverlap", () => {
-  it("matches a broadcast prefix against the longer key of a live query", () => {
-    expect(queryKeyPrefixesOverlap(["admin", "products"], ["admin", "products", { page: 2 }])).toBe(true)
+describe("toMinimalQueryKeyPrefixes", () => {
+  it("drops a key that a shorter key in the set already covers", () => {
+    expect(toMinimalQueryKeyPrefixes([["products", "storefront-page"], ["products"], ["products", "landing-new-arrivals"]])).toStrictEqual([
+      ["products"],
+    ])
   })
 
-  it("matches in either direction because only the shared length is compared", () => {
-    expect(queryKeyPrefixesOverlap(["admin", "products", { page: 2 }], ["admin", "products"])).toBe(true)
+  it("collapses equal keys into one, in the order they first appear", () => {
+    expect(toMinimalQueryKeyPrefixes([["product", "p1"], ["cart"], ["product", "p1"]])).toStrictEqual([["product", "p1"], ["cart"]])
   })
 
-  it("stops at the first differing segment", () => {
-    expect(queryKeyPrefixesOverlap(["admin", "products"], ["admin", "categories"])).toBe(false)
-    expect(queryKeyPrefixesOverlap(["storefront", "products"], ["admin", "products"])).toBe(false)
+  it("keeps sibling keys that share a parent the set does not name", () => {
+    expect(
+      toMinimalQueryKeyPrefixes([
+        ["admin", "products", "page"],
+        ["admin", "products", "stats"],
+      ]),
+    ).toStrictEqual([
+      ["admin", "products", "page"],
+      ["admin", "products", "stats"],
+    ])
   })
 
-  it("treats an empty prefix as matching everything", () => {
-    expect(queryKeyPrefixesOverlap([], ["admin", "products"])).toBe(true)
+  it("compares object segments by structure, as TanStack Query's filters do", () => {
+    expect(
+      toMinimalQueryKeyPrefixes([
+        ["admin", "products", { page: 2, size: 25 }],
+        ["admin", "products", { page: 2, size: 25 }],
+        ["admin", "products", { page: 2 }],
+      ]),
+    ).toStrictEqual([["admin", "products", { page: 2 }]])
+  })
+})
+
+describe("resolveInvalidatedQueryKeys", () => {
+  it("invalidates a topic narrower than its subscription as the topic itself", () => {
+    expect(resolveInvalidatedQueryKeys([["product"], ["products"]], topicsFor(["product", "p1"]))).toStrictEqual([["product", "p1"]])
   })
 
-  it("compares object segments by identity, not by structure", () => {
-    const filters = { page: 2 }
-
-    expect(queryKeyPrefixesOverlap(["admin", filters], ["admin", filters])).toBe(true)
-    expect(queryKeyPrefixesOverlap(["admin", { page: 2 }], ["admin", { page: 2 }])).toBe(false)
+  it("invalidates the subscriptions a broader topic covers", () => {
+    expect(
+      resolveInvalidatedQueryKeys(
+        [
+          ["admin", "orders"],
+          ["admin", "products"],
+          ["storefront", "cart"],
+        ],
+        topicsFor(["admin"]),
+      ),
+    ).toStrictEqual([
+      ["admin", "orders"],
+      ["admin", "products"],
+    ])
   })
+
+  it("invalidates a topic equal to its subscription once, even when a nested subscription also matches", () => {
+    expect(resolveInvalidatedQueryKeys([["products"], ["products", "storefront-page"]], topicsFor(["products"]))).toStrictEqual([
+      ["products"],
+    ])
+  })
+
+  it("removes duplicate topics and topics another topic in the frame already covers", () => {
+    expect(
+      resolveInvalidatedQueryKeys(
+        [["products"], ["products", "storefront-page"], ["cart", "availability"]],
+        topicsFor(["products", "storefront-page"], ["products"], ["cart", "availability"], ["products"]),
+      ),
+    ).toStrictEqual([["products"], ["cart", "availability"]])
+  })
+
+  it("keeps the object segment of a narrower topic", () => {
+    expect(resolveInvalidatedQueryKeys([["admin", "products"]], topicsFor(["admin", "products", { page: 2 }]))).toStrictEqual([
+      ["admin", "products", { page: 2 }],
+    ])
+  })
+
+  it("ignores a topic no subscription overlaps", () => {
+    expect(resolveInvalidatedQueryKeys([["admin", "orders"]], topicsFor(["admin", "products"], ["storefront"]))).toStrictEqual([])
+  })
+
+  it.each([["not json"], ['{"admin":true}'], ['"admin"'], [""]])(
+    "ignores the malformed topic %j and keeps the rest of the frame",
+    (malformed) => {
+      expect(resolveInvalidatedQueryKeys([["admin", "orders"]], [malformed, serializeQueryKeyPrefix(["admin", "orders"])])).toStrictEqual([
+        ["admin", "orders"],
+      ])
+    },
+  )
 })
 
 describe("isRealtimeInvalidationPayload", () => {

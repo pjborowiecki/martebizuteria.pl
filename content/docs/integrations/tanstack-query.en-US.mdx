@@ -191,7 +191,7 @@ Use `syncQueryInvalidation` only for a local mutation whose keys the server does
 
 ## Server-pushed invalidation
 
-Writes on the Worker cannot reach a browser's cache directly. They publish a set of query-key prefixes into a Durable Object hub, which fans them out over WebSocket to every connected client; `useRealtimeQuerySync` matches the prefixes against the layout's subscription list and calls `invalidateQueryPrefix` once for each match that no broader match already covers. It never posts to the `BroadcastChannel`, because every tab that mounts it receives the frame on its own socket. The whole mechanism is documented in [Realtime invalidation](/docs/integrations/realtime-invalidation).
+Writes on the Worker cannot reach a browser's cache directly. They publish a set of query-key prefixes into a Durable Object hub, which fans them out over WebSocket to every connected client; `useRealtimeQuerySync` resolves the prefixes against the layout's subscription list with `resolveInvalidatedQueryKeys` and calls `invalidateQueryPrefix` once for each resulting key: the narrower key of each overlapping topic and subscription, without duplicates or keys another key already covers. It never posts to the `BroadcastChannel`, because every tab that mounts it receives the frame on its own socket. The whole mechanism is documented in [Realtime invalidation](/docs/integrations/realtime-invalidation).
 
 ## Devtools
 

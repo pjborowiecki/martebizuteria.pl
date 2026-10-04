@@ -4,8 +4,7 @@ import { type QueryKey, useQueryClient } from "@tanstack/react-query"
 
 import {
   isRealtimeInvalidationPayload,
-  parseSerializedQueryKeyPrefix,
-  queryKeyPrefixesOverlap,
+  resolveInvalidatedQueryKeys,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 import { type RealtimeInvalidationHubName } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 import { invalidateQueryPrefix } from "~/src/integrations/tanstack-query/query.invalidation"
@@ -19,17 +18,6 @@ const buildWebSocketUrl = (hub: RealtimeInvalidationHubName): string => {
   const protocol = globalThis.location.protocol === "https:" ? "wss:" : "ws:"
 
   return `${protocol}//${globalThis.location.host}${resolveWebSocketPath(hub)}`
-}
-
-const matchingSubscriptionPrefixes = (subscriptions: readonly QueryKey[], invalidatedTopics: readonly string[]): QueryKey[] => {
-  const invalidatedPrefixes = invalidatedTopics
-    .map((topic) => parseSerializedQueryKeyPrefix(topic))
-    .filter((prefix): prefix is QueryKey => prefix !== undefined)
-  const matches = subscriptions.filter((subscription) =>
-    invalidatedPrefixes.some((invalidated) => queryKeyPrefixesOverlap(subscription, invalidated)),
-  )
-
-  return matches.filter((match) => !matches.some((broader) => broader.length < match.length && queryKeyPrefixesOverlap(broader, match)))
 }
 
 export const useRealtimeQuerySync = ({ hub, subscriptions }: UseRealtimeQuerySyncOptions): void => {
@@ -52,9 +40,8 @@ export const useRealtimeQuerySync = ({ hub, subscriptions }: UseRealtimeQuerySyn
           return
         }
 
-        const prefixes = matchingSubscriptionPrefixes(subscriptions, data.topics)
-        for (const prefix of prefixes) {
-          void invalidateQueryPrefix(queryClient, prefix)
+        for (const queryKey of resolveInvalidatedQueryKeys(subscriptions, data.topics)) {
+          void invalidateQueryPrefix(queryClient, queryKey)
         }
       } catch {}
     }
