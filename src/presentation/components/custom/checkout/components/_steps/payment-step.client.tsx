@@ -11,7 +11,7 @@ import { AlertCircle, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
+import { STRIPE_FONTS, getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
 import {
   buildCheckoutLinesFingerprint,
   buildCheckoutValuesFingerprint,
@@ -289,11 +289,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
       clientSecret: checkoutSession.clientSecret,
       elementsOptions: {
         appearance: getStripeAppearance(theme === "dark" ? "dark" : "light"),
-        fonts: [
-          {
-            cssSrc: FONT_CSS_SRC,
-          },
-        ],
+        fonts: STRIPE_FONTS,
       },
     }
   }, [checkoutSession, sessionMatches, theme])
@@ -334,8 +330,6 @@ export const PaymentStep = (): JSX.Element => {
     </div>
   )
 }
-
-const FONT_CSS_SRC = "https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&display=swap"
 
 const PAYMENT_ELEMENT_OPTIONS: StripeCheckoutPaymentElementOptions = {
   fields: {

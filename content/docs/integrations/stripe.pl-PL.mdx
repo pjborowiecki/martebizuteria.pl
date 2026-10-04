@@ -37,7 +37,7 @@ Plik `stripe.client.ts` leniwie ładuje Stripe.js raz na stronę i mapuje język
 const STRIPE_LOCALES = { "en-US": "en", "pl-PL": "pl" } as const satisfies Record<SupportedLocale, StripeElementLocale>
 ```
 
-Czyta `import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY`, ostrzega w konsoli, jeśli klucza brakuje, i memoizuje obietnicę `loadStripe` w `stripeRef` na poziomie modułu, więc zmiana języka nie przeładowuje skryptu.
+Czyta `import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY`, ostrzega w konsoli, jeśli klucza brakuje, i memoizuje obietnicę `loadStripe` w `stripeRef` na poziomie modułu, więc zmiana języka nie przeładowuje skryptu. Odrzucone pobranie znika ze `stripeRef`, więc następne wywołanie pobiera Stripe.js od nowa, zamiast zwracać ten sam błąd aż do przeładowania strony. `stripeJsQuery(locale)` opakowuje `getStripe` w opcje zapytania z kluczem `STRIPE_QUERY_KEYS.JS` i językiem oraz z `retry: false`, dla komponentu, który podczas pobierania skryptu lub po błędzie musi pokazać własny stan; korzysta z niego formularz karty na stronie konta. Ponieważ `stripeRef` zachowuje język pierwszego wywołania, eksportowane jest też `toStripeLocale`: formularz karty na stronie konta przekazuje `locale: toStripeLocale(locale)` do własnego `Elements`, więc mówi w bieżącym języku klienta.
 
 ## Dwie funkcje serwerowe
 
@@ -96,7 +96,7 @@ const session = await stripe.checkout.sessions.create(params).catch(async (error
 })
 ```
 
-`customerId` jest ustawiane tylko dla zalogowanego kupującego: przed krokiem 1 `handleCreateCheckoutSession` wywołuje `ensureStripeCustomer` (`stripe.customer.server.ts`), które przy pierwszym użyciu tworzy klienta Stripe i zapisuje jego identyfikator w `user.stripe_customer_id`. Sesja należy wtedy do tego klienta Stripe i pozwala kupującemu zapisać kartę, którą potem wyświetla `/account/payment`. Sesja gościa dostaje zamiast tego `customer_email`. Zobacz [Konto](/docs/features/account).
+`customerId` jest ustawiane tylko dla zalogowanego kupującego: przed krokiem 1 `handleCreateCheckoutSession` wywołuje `ensureStripeCustomer` (`stripe.customer.server.ts`), które przy pierwszym użyciu tworzy klienta Stripe i zapisuje jego identyfikator w `user.stripe_customer_id`. Sesja należy wtedy do tego klienta Stripe i pozwala kupującemu zapisać kartę, którą potem wyświetla `/account/payment`. Sesja gościa dostaje zamiast tego `customer_email`. `ensureStripeCustomer` zapisuje nowy identyfikator przez `coalesce`, a żądanie, które zastanie już zapisany inny identyfikator, usuwa właśnie utworzonego klienta, więc równoległe pierwsze żądania kończą się jednym klientem. Drugim wywołującym jest strona konta: `createCardSetupIntent` otwiera dla tego samego klienta SetupIntent na kartę, który `stripe.confirmSetup` potwierdza w przeglądarce. Zobacz [Konto](/docs/features/account).
 
 `ui_mode: "elements"` daje wbudowane doświadczenie płatności. `return_url` to `${origin}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, gdzie Stripe wstawia identyfikator sesji, a `resolveOrigin()` preferuje nagłówek `origin`, następnie pochodzenie z `referer`, a na końcu `APP_URL`. Strona sukcesu używa `session_id`, aby wczytać zamówienie przez `getOrderConfirmationQuery`. Koszt dostawy dodawany jest jako dodatkowa pozycja o nazwie `Shipping`, a nie jako stawka wysyłki Stripe. Rabat trafia do `discounts`: dla każdej sesji, która go ma, `toSessionDiscounts` (`stripe.coupons.server.ts`) wywołuje `stripe.coupons.create` z `amount_off: discount.amountMinorUnits`, `currency: STRIPE_CURRENCY`, `duration: "once"`, `metadata: { checkoutId, source: STRIPE_COUPON_SOURCE }` i `name: discount.code`. Po tych metadanych `deleteCheckoutCoupons` rozpoznaje kupony, które może usunąć: usuwa kupon sesji tylko wtedy, gdy kupon niesie `source: "marte_checkout"` i `checkoutId` tej samej sesji, a każdy inny kupon na koncie zostawia w spokoju. Kiedy to się dzieje, opisuje strona [Rabaty](/docs/features/discounts).
 
@@ -141,9 +141,9 @@ export type ConfirmOutcome = { status: "success" } | { status: "error"; message:
 
 Błąd jest `recoverable`, o ile jego kod nie brzmi `paymentFailed` — tak interfejs decyduje między pozwoleniem klientowi na ponowną próbę w miejscu a zresetowaniem sesji. `buildCheckoutContact(values)` wybiera adres do faktury, gdy `sameAsShipping === false`, a w przeciwnym razie adres dostawy.
 
-Komponent `PaymentStep` w `src/presentation/components/custom/checkout/components/_steps/payment-step.client.tsx` montuje `CheckoutElementsProvider` kluczowany przez `sessionId`, przekazuje `getStripeAppearance(theme)` oraz krój Manrope i renderuje Payment Element jako akordeon z wyłączonymi portfelami i Link, a `paymentMethodOrder` bierze z `CHECKOUT_PAYMENT_METHOD_ORDER`.
+Komponent `PaymentStep` w `src/presentation/components/custom/checkout/components/_steps/payment-step.client.tsx` montuje `CheckoutElementsProvider` kluczowany przez `sessionId`, przekazuje `getStripeAppearance(theme)` oraz `STRIPE_FONTS` i renderuje Payment Element jako akordeon z wyłączonymi portfelami i Link, a `paymentMethodOrder` bierze z `CHECKOUT_PAYMENT_METHOD_ORDER`.
 
-Plik `stripe.appearance.ts` eksportuje `getStripeAppearance("light" | "dark")` — pełny obiekt `Appearance` dla Elements, w płaskim, kanciastym języku wizualnym sklepu opartym na obramowaniach. Jego kolory to dosłowne wartości szesnastkowe odpowiadające tokenom projektowym, więc zmiana tokenu wymaga zmiany także tych wartości.
+Plik `stripe.appearance.ts` eksportuje `getStripeAppearance("light" | "dark")` — pełny obiekt `Appearance` dla Elements, w płaskim, kanciastym języku wizualnym sklepu opartym na obramowaniach — oraz `STRIPE_FONTS`, arkusz stylów Manrope potrzebny czcionce z wyglądu wewnątrz ramek Stripe. Korzystają z nich zarówno kasa, jak i formularz karty na stronie konta. Jego kolory to dosłowne wartości szesnastkowe odpowiadające tokenom projektowym, więc zmiana tokenu wymaga zmiany także tych wartości.
 
 ## Webhooki
 

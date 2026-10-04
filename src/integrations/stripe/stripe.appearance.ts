@@ -1,4 +1,8 @@
-import { type Appearance } from "@stripe/stripe-js"
+import { type Appearance, type CssFontSource } from "@stripe/stripe-js"
+
+export const STRIPE_FONTS: CssFontSource[] = [
+  { cssSrc: "https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600&display=swap" },
+]
 
 export const getStripeAppearance = (theme: "light" | "dark"): Appearance => {
   const isDark = theme === "dark"

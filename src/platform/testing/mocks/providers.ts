@@ -48,6 +48,13 @@ const stripeCustomerParamsSchema = z.object({
   name: z.string().optional(),
 })
 
+const stripeSetupIntentParamsSchema = z.object({
+  customer: z.string(),
+  metadata: stripeMetadataSchema,
+  payment_method_types: z.record(z.string(), z.string()),
+  usage: z.enum(["off_session", "on_session"]),
+})
+
 const stripeRefundParamsSchema = z.object({
   amount: stripeAmountSchema.optional(),
   payment_intent: z.string(),
@@ -101,11 +108,37 @@ interface EmulatedCustomer {
   readonly object: "customer"
 }
 
+interface EmulatedSetupIntent {
+  readonly client_secret: string
+  readonly customer: string
+  readonly id: string
+  readonly livemode: false
+  readonly metadata: Readonly<Record<string, string>>
+  readonly object: "setup_intent"
+  readonly payment_method: string | null
+  readonly payment_method_types: readonly string[]
+  readonly status: "requires_payment_method" | "succeeded"
+  readonly usage: "off_session" | "on_session"
+}
+
+interface EmulatedPaymentMethod {
+  readonly allow_redisplay: "always"
+  readonly card: { readonly brand: string; readonly exp_month: number; readonly exp_year: number; readonly last4: string }
+  readonly customer: string | null
+  readonly id: string
+  readonly object: "payment_method"
+  readonly type: "card"
+}
+
 const sentEmails: CapturedEmail[] = []
 const checkoutSessions = new Map<string, EmulatedCheckoutSession>()
 const coupons = new Map<string, EmulatedCoupon>()
 const customers = new Map<string, EmulatedCustomer>()
 const paymentIntents = new Map<string, Readonly<Record<string, unknown>>>()
+const paymentMethods = new Map<string, EmulatedPaymentMethod>()
+const setupIntents = new Map<string, EmulatedSetupIntent>()
+
+const SAVED_CARD_VALID_YEARS = 5
 
 const stripeId = (prefix: string): string => `${prefix}_test_${crypto.randomUUID().replaceAll("-", "")}`
 
@@ -115,6 +148,33 @@ export const getSentEmails = (recipient: string): CapturedEmail[] => sentEmails.
 
 export const listCheckoutSessions = (email: string): EmulatedCheckoutSession[] =>
   [...checkoutSessions.values()].filter((session) => session.customer_details.email === email)
+
+export const listSetupIntents = (email: string): EmulatedSetupIntent[] => {
+  const customerIds = new Set([...customers.values()].filter((customer) => customer.email === email).map((customer) => customer.id))
+
+  return [...setupIntents.values()].filter((intent) => customerIds.has(intent.customer))
+}
+
+export const succeedSetupIntent = (setupIntentId: string): EmulatedSetupIntent | undefined => {
+  const intent = setupIntents.get(setupIntentId)
+  if (intent === undefined) {
+    return undefined
+  }
+
+  const paymentMethod: EmulatedPaymentMethod = {
+    allow_redisplay: "always",
+    card: { brand: "visa", exp_month: 12, exp_year: new Date().getUTCFullYear() + SAVED_CARD_VALID_YEARS, last4: "4242" },
+    customer: intent.customer,
+    id: stripeId("pm"),
+    object: "payment_method",
+    type: "card",
+  }
+  paymentMethods.set(paymentMethod.id, paymentMethod)
+  const succeeded: EmulatedSetupIntent = { ...intent, payment_method: paymentMethod.id, status: "succeeded" }
+  setupIntents.set(setupIntentId, succeeded)
+
+  return succeeded
+}
 
 const captureEmail = async (request: Request): Promise<Response> => {
   const payload = resendEmailSchema.parse(await request.json())
@@ -266,6 +326,77 @@ const handlePaymentIntents = (paymentIntentId: string | undefined): Response => 
   return paymentIntent === undefined ? stripeError(`No such payment_intent: '${String(paymentIntentId)}'`) : Response.json(paymentIntent)
 }
 
+const unhandledStripeCall = (request: Request, url: URL): Response =>
+  stripeError(`The e2e Stripe emulator does not handle ${request.method} ${url.pathname}`)
+
+const listPaymentMethods = (url: URL): Response => {
+  const customer = url.searchParams.get("customer")
+  const type = url.searchParams.get("type")
+
+  return stripeList(
+    url,
+    [...paymentMethods.values()].filter(
+      (paymentMethod) => paymentMethod.customer === customer && (type === null || paymentMethod.type === type),
+    ),
+  )
+}
+
+const withPaymentMethod = (paymentMethodId: string, respond: (paymentMethod: EmulatedPaymentMethod) => Response): Response => {
+  const paymentMethod = paymentMethods.get(paymentMethodId)
+
+  return paymentMethod === undefined
+    ? stripeError(`No such PaymentMethod: '${paymentMethodId}'`, HTTP_STATUS.NOT_FOUND)
+    : respond(paymentMethod)
+}
+
+const detachPaymentMethod = (paymentMethod: EmulatedPaymentMethod): Response => {
+  const detached: EmulatedPaymentMethod = { ...paymentMethod, customer: null }
+  paymentMethods.set(paymentMethod.id, detached)
+
+  return Response.json(detached)
+}
+
+const handlePaymentMethods = (request: Request, url: URL, path: readonly (string | undefined)[]): Response => {
+  const [paymentMethodId, action, ...extra] = path
+  if (extra.length > 0) {
+    return unhandledStripeCall(request, url)
+  }
+
+  if (request.method === "GET" && paymentMethodId === undefined) {
+    return listPaymentMethods(url)
+  }
+
+  if (request.method === "GET" && paymentMethodId !== undefined && action === undefined) {
+    return withPaymentMethod(paymentMethodId, (paymentMethod) => Response.json(paymentMethod))
+  }
+
+  if (request.method === "POST" && paymentMethodId !== undefined && action === "detach") {
+    return withPaymentMethod(paymentMethodId, detachPaymentMethod)
+  }
+
+  return unhandledStripeCall(request, url)
+}
+
+const createSetupIntent = (form: StripeForm): Response => {
+  const params = stripeSetupIntentParamsSchema.parse(form)
+  const id = stripeId("seti")
+  const intent: EmulatedSetupIntent = {
+    client_secret: `${id}_secret_${crypto.randomUUID().replaceAll("-", "")}`,
+    customer: params.customer,
+    id,
+    livemode: false,
+    metadata: params.metadata,
+    object: "setup_intent",
+    payment_method: null,
+    payment_method_types: Object.values(params.payment_method_types),
+    status: "requires_payment_method",
+    usage: params.usage,
+  }
+  setupIntents.set(id, intent)
+
+  return Response.json(intent)
+}
+
 const handleRefunds = (form: StripeForm): Response => {
   const params = stripeRefundParamsSchema.parse(form)
 
@@ -298,8 +429,9 @@ const emulateStripe = async (request: Request, url: URL): Promise<Response> => {
     case "GET payment_intents": {
       return handlePaymentIntents(resourceId)
     }
-    case "GET payment_methods": {
-      return stripeList(url, [])
+    case "GET payment_methods":
+    case "POST payment_methods": {
+      return handlePaymentMethods(request, url, [resourceId, ...rest])
     }
     case "POST customers": {
       return handleCustomers(form)
@@ -307,8 +439,11 @@ const emulateStripe = async (request: Request, url: URL): Promise<Response> => {
     case "POST refunds": {
       return handleRefunds(form)
     }
+    case "POST setup_intents": {
+      return createSetupIntent(form)
+    }
     default: {
-      return stripeError(`The e2e Stripe emulator does not handle ${request.method} ${url.pathname}`)
+      return unhandledStripeCall(request, url)
     }
   }
 }

@@ -166,7 +166,32 @@ Two revoke mutations:
 
 ## Saved payment methods
 
-Cards are saved at checkout, not on the account page. For a signed-in customer, `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) calls `ensureStripeCustomer` (`stripe.customer.server.ts`), which returns the user's `stripe_customer_id` or creates a Stripe customer and writes its id to that column. The Checkout Session is then created for that customer with `payment_method_save` enabled, which lets the customer choose to save the card:
+A signed-in customer saves a card in one of two places: at checkout, or with **Add Card** on `/account/payment`. Either way the card is attached to the customer's Stripe customer; there is no saved-card table. The sidebar entry and the browser tab title use `pages.account.sidebar.payment`, "Payment Methods" ("Metody płatności" in Polish), the same words as the page heading.
+
+### The Stripe customer
+
+`ensureStripeCustomer` (`src/integrations/stripe/stripe.customer.server.ts`) returns the user's `stripe_customer_id`, or creates a Stripe customer and stores its id in that column. Two requests can both find the column empty, for example after a double click or with checkout open in another tab, so the id is written with `coalesce` and the request that loses the race deletes the customer it created:
+
+```ts
+const customer = await stripe.customers.create({ email, metadata: { userId }, name })
+const [stored] = await db
+  .update(user)
+  .set({ stripeCustomerId: sql`coalesce(${user.stripeCustomerId}, ${customer.id})`, updatedAt: new Date() })
+  .where(eq(user.id, userId))
+  .returning({ stripeCustomerId: user.stripeCustomerId })
+
+if (stored?.stripeCustomerId !== customer.id) {
+  await stripe.customers.del(customer.id).catch((deleteError: unknown) => {
+    console.error("Failed to delete an unused Stripe customer:", deleteError)
+  })
+}
+```
+
+`coalesce` keeps whichever id was stored first and every caller receives that id, so a card is never saved to a customer the account has lost track of. The losing request deletes its own customer, which nothing has been attached to yet; a failed delete is only logged, because the stored customer is already correct. No idempotency key is sent: checkout creates the customer with the email typed into the checkout form and the account page with the account email, and Stripe rejects a reused key whose parameters differ, which would fail one of the two requests. A user row that no longer exists throws `ERROR_CODES.NOT_FOUND` once the new customer has been deleted.
+
+### At checkout
+
+For a signed-in customer, `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) calls `ensureStripeCustomer` and creates the Checkout Session for that customer with `payment_method_save` enabled, which lets the customer choose to save the card:
 
 ```ts
 ...(customerId === undefined
@@ -176,11 +201,54 @@ Cards are saved at checkout, not on the account page. For a signed-in customer, 
 
 A guest gets `customer_email` instead and has no Stripe customer to save a card to. `handleUpdateCheckoutSession` reuses an existing customer through `getStripeCustomerId` and never creates one. See [Payments](/docs/features/payments).
 
-There is no saved-card table. `listSavedPaymentMethods` (`src/modules/payment/use-cases/list-saved-payment-methods.ts`) is `authorized()` and asks Stripe for the customer's `card` payment methods, or returns an empty list when the user has no Stripe customer. Each card becomes `{ brand, expMonth, expYear, id, isExpired, last4 }`. `isExpired` comes from `isCardExpired` (`payment.utils.ts`), which compares the expiry with today's date in the customer's own time zone: the user's `timezone` through `resolveTimezoneCode`, which falls back to `Europe/Warsaw`.
+### On the account page
 
-`/account/payment` prefetches `listSavedPaymentMethodsQuery()` and renders `SavedCardList`. With no cards it shows a `CreditCard` icon and `pages.account.payment.empty`; otherwise one row per card with the brand, the last four digits, the expiry as `MM/YYYY`, an expired badge when `isExpired` is set and a remove button. The heading count is `methods.length`.
+**Add Card** calls `createCardSetupIntent` (`src/modules/payment/use-cases/create-card-setup-intent.ts`), behind `withRateLimit("create-card-setup-intent", RATE_LIMITS.SENSITIVE)` and `authorized()`. It calls `ensureStripeCustomer` with the account's email and name, so a customer who has never paid gets a Stripe customer here, and then opens a SetupIntent:
+
+```ts
+const intent = await stripe.setupIntents.create({
+  customer,
+  metadata: { userId },
+  payment_method_types: ["card"],
+  usage: "on_session",
+})
+```
+
+Only cards are offered, because BLIK and Przelewy24 cannot be saved, and `on_session` matches how a saved card is reused: at checkout, with the customer present. The function returns only `{ clientSecret }` and throws `ERROR_CODES.INTERNAL_ERROR` when Stripe returns no client secret.
+
+Before it touches Stripe, the function throws `ERROR_CODES.FORBIDDEN` for an anonymous session (`isAnonymous`, from Better Auth's `anonymous()` plugin) and for an account whose email is not verified. `authorized()` only checks that a session exists, and an anonymous session costs a single request to `/api/auth/sign-in/anonymous`. Without the check anyone could open a SetupIntent and confirm stolen cards against its client secret again and again from the browser, which the per-IP rate limit on this function never sees.
+
+The page keeps the result of `createCardSetupIntentMutation` while it is mounted. Closing the form and opening it again reuses the same SetupIntent instead of spending another request of the rate limit; a new one is opened once a card has been saved or the form has given up on the SetupIntent. When opening the form fails, for example because the rate limit was reached, the page shows `pages.account.payment.formUnavailable`, since no card has been entered yet.
+
+**Add Card** stays focusable while it is held: it is rendered with `focusableWhenDisabled`, so it carries `aria-disabled` instead of `disabled` while the SetupIntent is being created and while the form is open, and keyboard and screen-reader focus never drops to the page. When the Payment Element is ready, its `onReady` handler moves focus into the card fields. Cancelling, saving a card and giving up on the SetupIntent all return focus to **Add Card**.
+
+`account.payment.tsx` renders `LazyAddCardForm` from `add-card-form-loader.client.ts` inside `ClientOnly`. The loader wraps `AddCardForm` (`add-card-form.client.tsx`) in `lazy()`, so its chunk and Stripe.js are only downloaded after the first click, and `ClientOnly` keeps the client-only module out of the server bundle, which the build's import protection requires. `AddCardForm` reads Stripe.js through `useQuery(stripeJsQuery(locale))` from `stripe.client.ts`, which wraps `getStripe(locale)` with `retry: false`. It shows a placeholder while Stripe.js downloads and `AddCardUnavailable` (`pages.account.payment.formUnavailable` and a cancel button) when the download fails, for example behind an ad blocker. `getStripe` forgets a failed download, so opening the form again downloads the script again. The form reuses the checkout setup: `getStripeAppearance(theme)` and `STRIPE_FONTS` from `stripe.appearance.ts`. It also passes `locale: toStripeLocale(locale)` to `Elements`, because `getStripe` keeps the locale Stripe.js first loaded with. `Elements` is keyed by the client secret, which cannot change once it has mounted.
+
+`AddCardFields` (`add-card-fields.client.tsx`) renders the Payment Element without Apple Pay, Google Pay or Link and confirms with:
+
+```ts
+stripe.confirmSetup({
+  confirmParams: { payment_method_data: { allow_redisplay: "always" } },
+  elements,
+  redirect: "if_required",
+})
+```
+
+Stripe Checkout only offers saved cards whose `allow_redisplay` is `"always"`, so without it a card added here would appear in the wallet but never at checkout. With cards only and `redirect: "if_required"` the page never navigates away; a 3D Secure challenge opens in Stripe's own dialog. The form ignores a submit until the Payment Element is ready and while a save is in progress, because Stripe submits the surrounding form when Enter is pressed inside its iframe, and a second `confirmSetup` on the same SetupIntent would fail even when the first one succeeds.
+
+A `card_error` or `validation_error` is shown with Stripe's localized message, or `pages.account.payment.addError` when it has none, and the form stays open on the same SetupIntent, which Stripe keeps in `requires_payment_method`. Any other error, and a `confirmSetup` that throws, shows `pages.account.payment.addError`, invalidates `PAYMENT_METHOD_QUERY_KEYS.SAVED` in case the card was saved after all, and calls `onFailed`: the page closes the form and opens a fresh SetupIntent next time, instead of reusing a client secret Stripe may no longer accept.
+
+On success the form calls `removeDuplicateSavedCards` (`src/modules/payment/use-cases/remove-duplicate-saved-cards.ts`, behind `withRateLimit("remove-duplicate-saved-cards", RATE_LIMITS.SENSITIVE)` and `authorized()`) with the new card's id. It throws `ERROR_CODES.NOT_FOUND` when the user has no Stripe customer and `ERROR_CODES.FORBIDDEN` unless the card belongs to that customer, then detaches every other saved card with the same `card.fingerprint`. Adding a card that was already saved, at checkout or here, therefore replaces the old copy with the new one, including its new expiry date, instead of listing the card twice in the wallet and at checkout. Whether or not that call succeeds, the form then invalidates `PAYMENT_METHOD_QUERY_KEYS.SAVED`, shows `pages.account.payment.added` and closes; the card is saved either way. When the Payment Element reports a load error, as it does with the dummy publishable key used in development and the end-to-end tests, the form shows `pages.account.payment.formUnavailable` and keeps the save button disabled.
+
+### Listing and removing
+
+`listSavedPaymentMethods` (`src/modules/payment/use-cases/list-saved-payment-methods.ts`) is `authorized()` and asks Stripe for the customer's `card` payment methods with `limit: SAVED_CARDS_PAGE_LIMIT` (100, from `payment.constants.ts`), because Stripe's default page holds ten, or returns an empty list when the user has no Stripe customer. Each card becomes `{ brand, expMonth, expYear, id, isExpired, last4 }`. `isExpired` comes from `isCardExpired` (`payment.utils.ts`), which compares the expiry with today's date in the customer's own time zone: the user's `timezone` through `resolveTimezoneCode`, which falls back to `Europe/Warsaw`.
+
+`/account/payment` prefetches `listSavedPaymentMethodsQuery()` and renders `SavedCardList`. With no cards it shows a `CreditCard` icon and `pages.account.payment.empty`; otherwise one `SavedCardRow` per card with the brand, the last four digits, the expiry as `MM/YYYY`, an expired badge when `isExpired` is set and a remove button. The heading count is `methods.length`.
 
 Removing a card calls `deleteSavedPaymentMethod` (`delete-saved-payment-method.ts`), behind `withRateLimit("delete-saved-payment-method", RATE_LIMITS.SENSITIVE)` and `authorized()`. It throws `ERROR_CODES.NOT_FOUND` when the user has no Stripe customer and `ERROR_CODES.FORBIDDEN` unless the payment method belongs to that customer, and only then detaches it in Stripe. On success the list invalidates `PAYMENT_METHOD_QUERY_KEYS.SAVED`.
+
+There is no default card. Nothing reads or writes `invoice_settings.default_payment_method`, and checkout lists saved cards in Stripe's order.
 
 ## Wishlist
 

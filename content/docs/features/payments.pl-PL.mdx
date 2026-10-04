@@ -60,7 +60,7 @@ const session = await stripe.checkout.sessions.create(params).catch(async (error
 })
 ```
 
-`customerId` jest ustawiane tylko dla zalogowanego kupującego. `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) bierze je z `ensureStripeCustomer`, które przy pierwszym użyciu tworzy klienta Stripe i zapisuje jego identyfikator w `user.stripe_customer_id`; `handleUpdateCheckoutSession` odczytuje zapisany identyfikator przez `getStripeCustomerId`. Taka sesja należy do tego klienta Stripe i pozwala kupującemu zapisać kartę, która potem pojawia się na `/account/payment`. Sesja gościa dostaje zamiast tego `customer_email`. Zobacz [Konto](/docs/features/account).
+`customerId` jest ustawiane tylko dla zalogowanego kupującego. `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) bierze je z `ensureStripeCustomer`, które przy pierwszym użyciu tworzy klienta Stripe i zapisuje jego identyfikator w `user.stripe_customer_id`; `handleUpdateCheckoutSession` odczytuje zapisany identyfikator przez `getStripeCustomerId`. Taka sesja należy do tego klienta Stripe i pozwala kupującemu zapisać kartę, która potem pojawia się na `/account/payment`. Sesja gościa dostaje zamiast tego `customer_email`. Zalogowany klient może też dodać kartę bezpośrednio na `/account/payment`, bez płacenia, przez SetupIntent na kartę dla tego samego klienta Stripe. Zobacz [Konto](/docs/features/account).
 
 `returnUrl` to `${resolveOrigin()}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, gdzie Stripe wstawia identyfikator sesji, a `resolveOrigin()` preferuje nagłówek `origin`, następnie origin z `referer`, a na końcu `APP_URL` z `src/presentation/branding/app.ts`.
 

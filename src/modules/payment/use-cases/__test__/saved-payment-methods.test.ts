@@ -77,7 +77,13 @@ describe("listSavedPaymentMethods", () => {
     await listSavedPaymentMethods()
 
     expect(stripeCalls.getCustomerId).toHaveBeenCalledWith(USER_ID)
-    expect(stripeCalls.list).toHaveBeenCalledWith({ customer: "cus_1", type: "card" })
+    expect(stripeCalls.list).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_1", type: "card" }))
+  })
+
+  it("asks for a full page of cards instead of Stripe's default of ten", async () => {
+    await listSavedPaymentMethods()
+
+    expect(stripeCalls.list).toHaveBeenCalledWith({ customer: "cus_1", limit: 100, type: "card" })
   })
 
   it("returns an empty wallet without calling Stripe for a customer who never paid", async () => {

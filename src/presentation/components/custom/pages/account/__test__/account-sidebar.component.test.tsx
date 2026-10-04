@@ -39,7 +39,7 @@ describe("AccountSidebar", () => {
       "Profile",
       "Orders",
       "Addresses",
-      "Payment",
+      "Payment Methods",
       "Wishlist",
       "Sessions",
     ])

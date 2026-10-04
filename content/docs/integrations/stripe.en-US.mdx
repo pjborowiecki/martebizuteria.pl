@@ -37,7 +37,7 @@ BLIK and Przelewy24 sit next to card because they are what Polish customers expe
 const STRIPE_LOCALES = { "en-US": "en", "pl-PL": "pl" } as const satisfies Record<SupportedLocale, StripeElementLocale>
 ```
 
-It reads `import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY`, warns to the console if it is missing, and memoizes the `loadStripe` promise in a module-level `stripeRef` so a locale change does not reload the script.
+It reads `import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY`, warns to the console if it is missing, and memoizes the `loadStripe` promise in a module-level `stripeRef` so a locale change does not reload the script. A rejected download is dropped from `stripeRef`, so the next call downloads Stripe.js again instead of handing out the same failure until the page reloads. `stripeJsQuery(locale)` wraps `getStripe` in query options keyed by `STRIPE_QUERY_KEYS.JS` and the locale, with `retry: false`, for a component that has to show its own state while the script downloads or after it fails; the account page's card form uses it. Because `stripeRef` keeps the locale of the first call, `toStripeLocale` is exported too: the account page's card form passes `locale: toStripeLocale(locale)` to its own `Elements`, so it follows the shopper's current language.
 
 ## The two server functions
 
@@ -96,7 +96,7 @@ const session = await stripe.checkout.sessions.create(params).catch(async (error
 })
 ```
 
-`customerId` is set only for a signed-in shopper: before step 1, `handleCreateCheckoutSession` calls `ensureStripeCustomer` (`stripe.customer.server.ts`), which creates a Stripe customer on first use and stores its id in `user.stripe_customer_id`. The session then belongs to that Stripe customer and lets the shopper save the card, which `/account/payment` lists afterwards. A guest's session carries `customer_email` instead. See [Account](/docs/features/account).
+`customerId` is set only for a signed-in shopper: before step 1, `handleCreateCheckoutSession` calls `ensureStripeCustomer` (`stripe.customer.server.ts`), which creates a Stripe customer on first use and stores its id in `user.stripe_customer_id`. The session then belongs to that Stripe customer and lets the shopper save the card, which `/account/payment` lists afterwards. A guest's session carries `customer_email` instead. `ensureStripeCustomer` stores the new id with `coalesce`, and a request that finds another id already stored deletes the customer it just created, so parallel first requests end up with one customer. The account page is the other caller: `createCardSetupIntent` opens a card SetupIntent for the same customer, which `stripe.confirmSetup` confirms in the browser. See [Account](/docs/features/account).
 
 `ui_mode: "elements"` is what gives the embedded experience. `return_url` is `${origin}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, where Stripe fills in the session id and `resolveOrigin()` prefers the `origin` header, falls back to the origin of `referer`, and finally to `APP_URL`. The success page uses `session_id` to load the order through `getOrderConfirmationQuery`. Shipping is added as an extra line item named `Shipping` rather than as a Stripe shipping rate. A discount goes into `discounts`: for every session that carries one, `toSessionDiscounts` (`stripe.coupons.server.ts`) calls `stripe.coupons.create` with `amount_off: discount.amountMinorUnits`, `currency: STRIPE_CURRENCY`, `duration: "once"`, `metadata: { checkoutId, source: STRIPE_COUPON_SOURCE }` and `name: discount.code`. That metadata is how `deleteCheckoutCoupons` recognises the coupons it may delete: it deletes a session's coupon only when the coupon carries `source: "marte_checkout"` and the session's own `checkoutId`, and leaves every other coupon in the account alone. See [Discounts](/docs/features/discounts) for when it runs.
 
@@ -141,9 +141,9 @@ export type ConfirmOutcome = { status: "success" } | { status: "error"; message:
 
 An error is `recoverable` unless its code is `paymentFailed`, which is how the UI decides between letting the customer retry in place and resetting the session. `buildCheckoutContact(values)` picks the billing address when `sameAsShipping === false` and the shipping address otherwise.
 
-`PaymentStep` in `src/presentation/components/custom/checkout/components/_steps/payment-step.client.tsx` mounts `CheckoutElementsProvider` keyed by `sessionId`, passes `getStripeAppearance(theme)` and the Manrope font, and renders the Payment Element as an accordion with wallets and Link disabled and `paymentMethodOrder` taken from `CHECKOUT_PAYMENT_METHOD_ORDER`.
+`PaymentStep` in `src/presentation/components/custom/checkout/components/_steps/payment-step.client.tsx` mounts `CheckoutElementsProvider` keyed by `sessionId`, passes `getStripeAppearance(theme)` and `STRIPE_FONTS`, and renders the Payment Element as an accordion with wallets and Link disabled and `paymentMethodOrder` taken from `CHECKOUT_PAYMENT_METHOD_ORDER`.
 
-`stripe.appearance.ts` exports `getStripeAppearance("light" | "dark")`, a full Elements `Appearance` with the storefront's flat, square, border-first visual language. Its colours are literal hex values matching the design tokens, so when a token changes the values here have to be changed with it.
+`stripe.appearance.ts` exports `getStripeAppearance("light" | "dark")`, a full Elements `Appearance` with the storefront's flat, square, border-first visual language, and `STRIPE_FONTS`, the Manrope stylesheet the appearance's font stack needs inside Stripe's iframes. Checkout and the account page's card form both use them. Its colours are literal hex values matching the design tokens, so when a token changes the values here have to be changed with it.
 
 ## Webhooks
 

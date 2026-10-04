@@ -3,7 +3,7 @@ import { type Locator } from "@playwright/test"
 import { BasePage } from "./base-page"
 
 export class AccountPage extends BasePage {
-  async gotoSection(section: "orders" | "overview" | "profile" | "wishlist"): Promise<void> {
+  async gotoSection(section: "orders" | "overview" | "payment" | "profile" | "wishlist"): Promise<void> {
     await this.open(`/en-US/account/${section}`)
   }
 
