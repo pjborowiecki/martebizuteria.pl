@@ -31,6 +31,7 @@ export const getPaymentContextByTransactionId = async (transactionId: string): P
   const paymentRow = await db.query.payment.findFirst({
     columns: {
       checkoutId: true,
+      status: true,
     },
     where: eq(payment.transactionId, transactionId),
   })
@@ -42,6 +43,7 @@ export const getPaymentContextByTransactionId = async (transactionId: string): P
   const checkoutRow = await db.query.checkout.findFirst({
     columns: {
       email: true,
+      status: true,
       userId: true,
     },
     where: eq(checkout.id, paymentRow.checkoutId),
@@ -53,19 +55,11 @@ export const getPaymentContextByTransactionId = async (transactionId: string): P
 
   return {
     checkoutId: paymentRow.checkoutId,
+    checkoutStatus: checkoutRow.status,
     email: checkoutRow.email,
+    paymentStatus: paymentRow.status,
     userId: checkoutRow.userId ?? undefined,
   }
-}
-
-export const repointPayment = async (data: RepointPaymentInput) => {
-  await db
-    .update(payment)
-    .set({
-      amount: data.amount,
-      transactionId: data.newTransactionId,
-    })
-    .where(eq(payment.transactionId, data.oldTransactionId))
 }
 
 interface CreatePaymentInput {
@@ -78,12 +72,8 @@ interface CreatePaymentInput {
 
 interface PaymentContext {
   checkoutId: string
+  checkoutStatus: (typeof checkout.$inferSelect)["status"]
   email: string
+  paymentStatus: (typeof payment.$inferSelect)["status"]
   userId: string | undefined
-}
-
-interface RepointPaymentInput {
-  amount: number
-  newTransactionId: string
-  oldTransactionId: string
 }

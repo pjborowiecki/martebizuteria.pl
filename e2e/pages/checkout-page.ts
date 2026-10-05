@@ -42,6 +42,10 @@ export class CheckoutPage extends BasePage {
     await this.nextButton("Delivery Method").click()
   }
 
+  async editStep(title: string): Promise<void> {
+    await this.page.getByRole("button", { name: title }).click()
+  }
+
   async chooseDelivery(method: RegExp): Promise<void> {
     await this.page.getByRole("radio", { name: method }).check()
     await this.nextButton("Payment").click()

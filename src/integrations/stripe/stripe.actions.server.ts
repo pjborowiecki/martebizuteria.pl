@@ -26,14 +26,16 @@ import {
 } from "~/src/modules/checkout/checkout-metadata.zod"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { createCheckout } from "~/src/modules/checkout/use-cases/create-checkout.server"
+import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
+import { supersedeCheckoutSession } from "~/src/modules/checkout/use-cases/supersede-checkout-session.server"
 import { updateCheckoutDelivery } from "~/src/modules/checkout/use-cases/update-checkout-delivery.server"
 import { getActiveDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { resolveCheckoutDiscount } from "~/src/modules/discount/discount.checkout.server"
 import { type Discount } from "~/src/modules/discount/discount.types"
-import { releaseInventoryByVariantLines, releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
+import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
 import { reserveInventoryByVariantLines, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
 import { sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
-import { createPendingPayment, getPaymentContextByTransactionId, repointPayment } from "~/src/modules/payment/payment.accessors"
+import { createPendingPayment, getPaymentContextByTransactionId } from "~/src/modules/payment/payment.accessors"
 import { getProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
@@ -104,14 +106,17 @@ const resolveVariant = (products: ResolvedProducts, item: CartItem): { product: 
   return { product, variant }
 }
 
-const validateAndCalculateItems = async (items: CartItem[]) => {
+const sumHeldQuantity = (heldLines: readonly CheckoutReleaseLine[], variantId: string): number =>
+  heldLines.reduce((total, line) => (line.variantId === variantId ? total + line.qty : total), 0)
+
+const validateAndCalculateItems = async (items: CartItem[], heldLines: readonly CheckoutReleaseLine[]) => {
   const products = await getProductsWithInventoryByHandles(items.map((item) => item.slug))
 
   return items.map((item) => {
     const { product, variant } = resolveVariant(products, item)
 
     const inv = variant.inventory
-    if (inv === null || inv.quantityAvailable < item.qty) {
+    if (inv === null || inv.quantityAvailable + sumHeldQuantity(heldLines, variant.id) < item.qty) {
       throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY)
     }
 
@@ -222,92 +227,6 @@ const toOrderLines = (validatedItems: ValidatedCheckoutItem[]): OrderLine[] =>
     variantId: item.variantId,
   }))
 
-const swapCheckoutInventory = async (oldReservedLines: CheckoutReleaseLine[], items: CartItem[]): Promise<ValidatedCheckoutItem[]> => {
-  await releaseInventoryByVariantLines(oldReservedLines)
-
-  try {
-    const validatedItems = await validateAndCalculateItems(items)
-    await reserveInventoryForItems(validatedItems)
-
-    return validatedItems
-  } catch (error) {
-    await reserveInventoryByVariantLines(oldReservedLines).catch((restoreError: unknown) => {
-      console.error("Failed to restore prior inventory after checkout update validation error:", restoreError)
-    })
-
-    throw error
-  }
-}
-
-interface PersistCheckoutSessionUpdateArgs {
-  checkoutId: string
-  checkoutValues: CheckoutFormSchema
-  customerId: string | undefined
-  discount: Discount["applied"] | undefined
-  email: string
-  lines: OrderLine[]
-  oldReservedLines: CheckoutReleaseLine[]
-  oldSessionId: string
-  origin: string
-  shippingCost: number
-  userId: string | undefined
-  validatedItems: ValidatedCheckoutItem[]
-}
-
-const persistCheckoutSessionUpdate = async ({
-  checkoutId,
-  checkoutValues,
-  customerId,
-  discount,
-  email,
-  lines,
-  oldReservedLines,
-  oldSessionId,
-  origin,
-  shippingCost,
-  userId,
-  validatedItems,
-}: PersistCheckoutSessionUpdateArgs) => {
-  try {
-    await updateCheckoutDelivery(checkoutId, checkoutValues, discount?.discountId)
-
-    const result = await createStripeSession({
-      checkoutId,
-      customerId,
-      discount,
-      email,
-      lines,
-      origin,
-      shippingCost,
-      userId,
-    })
-
-    await repointPayment({
-      amount: result.amount,
-      newTransactionId: result.sessionId,
-      oldTransactionId: oldSessionId,
-    })
-
-    await stripe.checkout.sessions.expire(oldSessionId).catch((expireError: unknown) => {
-      console.error("Failed to expire previous Checkout Session:", expireError)
-    })
-
-    scheduleProductCatalogInvalidation()
-
-    return result
-  } catch (error) {
-    await releaseInventoryForItems(validatedItems).catch((releaseError: unknown) => {
-      console.error("Failed to release inventory after checkout update error:", releaseError)
-    })
-    await reserveInventoryByVariantLines(oldReservedLines).catch((restoreError: unknown) => {
-      console.error("Failed to restore prior inventory after checkout update error:", restoreError)
-    })
-    console.error("Stripe/DB error during checkout session update:", error)
-
-    throw error
-  }
-}
-
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
   const origin = resolveRequestOrigin(getRequest())
   const session = await getRequestSession()
@@ -316,7 +235,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
   const customerId =
     session?.user === undefined ? undefined : await ensureStripeCustomer({ email, name: session.user.name, userId: session.user.id })
 
-  const validatedItems = await validateAndCalculateItems(data.items)
+  const validatedItems = await validateAndCalculateItems(data.items, [])
   const lines = toOrderLines(validatedItems)
   const shippingCost = await resolveShippingCost(data.checkoutValues.deliveryMethod)
   const discount = await resolveCheckoutDiscount({
@@ -368,11 +287,16 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
   }
 }
 
-export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInput) => {
-  const origin = resolveRequestOrigin(getRequest())
-  const context = await getPaymentContextByTransactionId(data.sessionId)
+interface UpdatableCheckout {
+  checkoutId: string
+  heldLines: CheckoutReleaseLine[]
+  userId: string | undefined
+}
+
+const resolveUpdatableCheckout = async (sessionId: string): Promise<UpdatableCheckout> => {
+  const context = await getPaymentContextByTransactionId(sessionId)
   if (context === undefined) {
-    throw new AppError(ERROR_CODES.NOT_FOUND)
+    throw new AppError(ERROR_CODES.NOT_FOUND, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
   }
 
   if (context.userId !== undefined) {
@@ -382,9 +306,99 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
     }
   }
 
-  const oldStripeSession = await stripe.checkout.sessions.retrieve(data.sessionId)
-  const oldReservedLines = parseCheckoutSessionReleaseLines(readCheckoutSessionItemsJson(oldStripeSession.metadata))
-  const validatedItems = await swapCheckoutInventory(oldReservedLines, data.items)
+  if (context.checkoutStatus !== "pending" || context.paymentStatus !== "pending") {
+    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
+  }
+
+  const stripeSession = await stripe.checkout.sessions.retrieve(sessionId)
+  if (stripeSession.status !== "open") {
+    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
+  }
+
+  return {
+    checkoutId: context.checkoutId,
+    heldLines: parseCheckoutSessionReleaseLines(readCheckoutSessionItemsJson(stripeSession.metadata)),
+    userId: context.userId,
+  }
+}
+
+const expireCheckoutSession = async (sessionId: string): Promise<void> => {
+  await stripe.checkout.sessions.expire(sessionId).catch((expireError: unknown) => {
+    console.error(`Failed to expire Checkout Session ${sessionId}:`, expireError)
+  })
+}
+
+interface RetireCheckoutSessionArgs {
+  heldLines: CheckoutReleaseLine[]
+  oldSessionId: string
+  replacement: { amount: number; sessionId: string }
+}
+
+const retireCheckoutSession = async ({ heldLines, oldSessionId, replacement }: RetireCheckoutSessionArgs): Promise<void> => {
+  try {
+    await stripe.checkout.sessions.expire(oldSessionId)
+    const superseded = await supersedeCheckoutSession({
+      amount: replacement.amount,
+      heldLines,
+      newTransactionId: replacement.sessionId,
+      oldTransactionId: oldSessionId,
+    })
+    if (!superseded) {
+      throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
+    }
+  } catch (error) {
+    await expireCheckoutSession(replacement.sessionId)
+
+    throw error
+  }
+}
+
+const abandonReplacementCheckout = async (replacementSessionId: string, reservedLines: CheckoutReleaseLine[]): Promise<void> => {
+  await releaseCheckout({ lines: reservedLines, transactionId: replacementSessionId }).catch((releaseError: unknown) => {
+    console.error("Failed to release checkout after checkout update error:", releaseError)
+  })
+  await expireCheckoutSession(replacementSessionId)
+  scheduleProductCatalogInvalidation()
+}
+
+interface ReserveReplacementCheckoutArgs {
+  checkoutId: string
+  checkoutValues: CheckoutFormSchema
+  discountId: string | undefined
+  replacementSessionId: string
+  validatedItems: ValidatedCheckoutItem[]
+}
+
+const reserveReplacementCheckout = async ({
+  checkoutId,
+  checkoutValues,
+  discountId,
+  replacementSessionId,
+  validatedItems,
+}: ReserveReplacementCheckoutArgs): Promise<void> => {
+  try {
+    await reserveInventoryByVariantLines(validatedItems)
+  } catch (error) {
+    console.error("Failed to reserve the edited cart during checkout session update:", error)
+    await abandonReplacementCheckout(replacementSessionId, [])
+
+    throw error
+  }
+
+  try {
+    await updateCheckoutDelivery(checkoutId, checkoutValues, discountId)
+  } catch (error) {
+    console.error("Failed to save the edited delivery during checkout session update:", error)
+    await abandonReplacementCheckout(replacementSessionId, validatedItems)
+
+    throw error
+  }
+}
+
+export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInput) => {
+  const origin = resolveRequestOrigin(getRequest())
+  const { checkoutId, heldLines, userId } = await resolveUpdatableCheckout(data.sessionId)
+  const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
   const shippingCost = await resolveShippingCost(data.checkoutValues.deliveryMethod)
   const discount = await resolveCheckoutDiscount({
@@ -394,20 +408,27 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
     shippingTotal: shippingCost,
   })
 
-  const customerId = context.userId === undefined ? undefined : await getStripeCustomerId(context.userId)
-
-  return persistCheckoutSessionUpdate({
-    checkoutId: context.checkoutId,
-    checkoutValues: data.checkoutValues,
+  const customerId = userId === undefined ? undefined : await getStripeCustomerId(userId)
+  const replacement = await createStripeSession({
+    checkoutId,
     customerId,
     discount,
     email: data.checkoutValues.email,
     lines,
-    oldReservedLines,
-    oldSessionId: data.sessionId,
     origin,
     shippingCost,
-    userId: context.userId,
+    userId,
+  })
+
+  await retireCheckoutSession({ heldLines, oldSessionId: data.sessionId, replacement })
+  await reserveReplacementCheckout({
+    checkoutId,
+    checkoutValues: data.checkoutValues,
+    discountId: discount?.discountId,
+    replacementSessionId: replacement.sessionId,
     validatedItems,
   })
+  scheduleProductCatalogInvalidation()
+
+  return replacement
 }

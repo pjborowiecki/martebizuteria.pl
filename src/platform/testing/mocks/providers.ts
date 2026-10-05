@@ -448,6 +448,19 @@ const emulateStripe = async (request: Request, url: URL): Promise<Response> => {
   }
 }
 
+const checkoutSessionEvent = (type: "checkout.session.completed" | "checkout.session.expired", session: EmulatedCheckoutSession): string =>
+  JSON.stringify({
+    api_version: STRIPE_API_VERSION,
+    created: nowInSeconds(),
+    data: { object: session },
+    id: stripeId("evt"),
+    livemode: false,
+    object: "event",
+    pending_webhooks: 1,
+    request: { id: null, idempotency_key: null },
+    type,
+  })
+
 export const completeCheckoutSession = (sessionId: string): string | undefined => {
   const session = checkoutSessions.get(sessionId)
   if (session === undefined) {
@@ -466,17 +479,19 @@ export const completeCheckoutSession = (sessionId: string): string | undefined =
   const completed: EmulatedCheckoutSession = { ...session, payment_intent: paymentIntentId, payment_status: "paid", status: "complete" }
   checkoutSessions.set(sessionId, completed)
 
-  return JSON.stringify({
-    api_version: STRIPE_API_VERSION,
-    created: nowInSeconds(),
-    data: { object: completed },
-    id: stripeId("evt"),
-    livemode: false,
-    object: "event",
-    pending_webhooks: 1,
-    request: { id: null, idempotency_key: null },
-    type: "checkout.session.completed",
-  })
+  return checkoutSessionEvent("checkout.session.completed", completed)
+}
+
+export const expireCheckoutSession = (sessionId: string): string | undefined => {
+  const session = checkoutSessions.get(sessionId)
+  if (session === undefined) {
+    return undefined
+  }
+
+  const expired: EmulatedCheckoutSession = { ...session, status: "expired" }
+  checkoutSessions.set(sessionId, expired)
+
+  return checkoutSessionEvent("checkout.session.expired", expired)
 }
 
 export const installProviderMocks = (): void => {

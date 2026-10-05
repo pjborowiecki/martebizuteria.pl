@@ -150,7 +150,7 @@ Preserve the tuple values when you move code. The same constants are used by loa
 
 ## Server functions without an RPC boundary
 
-Not every operation is a server function. The four files in `src/modules/checkout/use-cases/*.server.ts` export plain async functions. `fulfillCheckout` and `releaseCheckout` are only ever called from the Stripe webhook handler, which is already authenticated by signature verification. `createCheckout` and `updateCheckoutDelivery` are called from `src/integrations/stripe/stripe.actions.server.ts`, behind the rate-limited `createCheckoutSessionFn` and `updateCheckoutSessionFn`. Exposing any of them as its own endpoint would only widen the surface.
+Not every operation is a server function. The five files in `src/modules/checkout/use-cases/*.server.ts` export plain async functions. `fulfillCheckout` is only ever called from the Stripe webhook handler, which is already authenticated by signature verification. `createCheckout`, `supersedeCheckoutSession` and `updateCheckoutDelivery` are called from `src/integrations/stripe/stripe.actions.server.ts`, behind the rate-limited `createCheckoutSessionFn` and `updateCheckoutSessionFn`. `releaseCheckout` is called from both: by the webhook handler, and by a checkout update that fails after its old session was expired. Exposing any of them as its own endpoint would only widen the surface.
 
 ## Calling a use case from a component
 

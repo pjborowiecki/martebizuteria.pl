@@ -18,6 +18,7 @@ describe("getCheckoutErrorKey", () => {
       "errors.insufficientInventory",
       "errors.invalidPrice",
       "errors.productNotFound",
+      "errors.sessionClosed",
       "errors.unknownError",
       "errors.variantNotFound",
     ])

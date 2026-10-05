@@ -85,7 +85,7 @@ Line items are built from the server-validated prices, plus a literal `"Shipping
 
 `transaction_id` holding the session id — not the payment intent id — is why several webhook handlers call `resolveTransactionId(paymentIntent)`, which lists sessions filtered by `payment_intent` and takes the first one. The admin refund needs the opposite lookup: it retrieves the session to find the PaymentIntent that Stripe can refund (see [Admin refunds](#admin-refunds)).
 
-Accessors in `payment.accessors.ts`: `createPendingPayment`, `getPaymentByTransactionId`, `getPaymentContextByTransactionId` (joins through to the checkout's `email` and `userId`) and `repointPayment` (moves a row from an expired session id to a new one, updating the amount).
+Accessors in `payment.accessors.ts`: `createPendingPayment`, `getPaymentByTransactionId` and `getPaymentContextByTransactionId` (joins through to the checkout's `email`, `userId` and `status`, and returns the payment's own `status`). A checkout update moves the row onto its replacement session through `supersedeCheckoutSession` in `src/modules/checkout/use-cases/supersede-checkout-session.server.ts`, which moves only a `pending` payment of a `pending` checkout, updating the amount.
 
 ## The webhook endpoint
 
@@ -163,7 +163,7 @@ The reservation is converted, not released: each line runs `quantityReserved = q
 
 ## Release
 
-`prepareReleaseCheckoutBatch` sets the payment to `failed`, the checkout to `failed`, and gives the stock back:
+`releaseCheckout` runs `prepareReleaseCheckoutBatch` without reading anything first. The batch gives the stock back, then sets the checkout to `failed`, then the payment:
 
 ```ts
 db.update(inventory)
@@ -171,8 +171,10 @@ db.update(inventory)
     quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${line.qty})`,
     quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${line.qty})`,
   })
-  .where(eq(inventory.variantId, line.variantId))
+  .where(and(eq(inventory.variantId, line.variantId), exists(releasableSession)))
 ```
+
+`releasableSession` selects the payment with this `transaction_id` and `status = "pending"`, joined to its checkout while that is still `pending`. The checkout update requires the same pending payment, and the payment update requires its checkout to be `failed` by then. Each statement sees the ones before it in the D1 batch, so the stock goes back only while both rows are still `pending`, and the whole batch acts or none of it does. A redelivered event, two deliveries running side by side, and an expiry webhook for a session that a checkout update has already replaced (`supersedeCheckoutSession` moved the payment off it) all find nothing to release.
 
 The `min`/`max` clamps mean a double release cannot inflate available stock beyond what was actually reserved.
 

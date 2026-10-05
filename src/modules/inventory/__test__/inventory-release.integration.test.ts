@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod"
 
-import { releaseInventoryByVariantLines, releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
+import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -43,16 +43,13 @@ afterAll(() => {
   sqlite.close()
 })
 
-describe.each([
-  { label: "inventory IDs", release: releaseInventoryForItems },
-  { label: "variant IDs", release: releaseInventoryByVariantLines },
-])("inventory release by $label", ({ release }) => {
+describe("releaseInventoryForItems", () => {
   it.each([
     { available: 8, qty: 2, reserved: 2 },
     { available: 10, qty: 4, reserved: 0 },
     { available: 10, qty: 9, reserved: 0 },
   ])("conserves stock when releasing $qty units", async ({ available, qty, reserved }) => {
-    await release([{ inventoryId: "inv_a", qty, variantId: "var_a" }])
+    await releaseInventoryForItems([{ inventoryId: "inv_a", qty }])
 
     expect(readInventory()).toStrictEqual({ available, reserved, version: 2 })
     expect(readInventory("inv_b")).toStrictEqual({ available: 8, reserved: 2, version: 1 })
@@ -61,33 +58,33 @@ describe.each([
   it("does not create stock when no units remain reserved", async () => {
     sqlite.exec("update inventory set quantity_available = 10, quantity_reserved = 0 where id = 'inv_a'")
 
-    await release([{ inventoryId: "inv_a", qty: 4, variantId: "var_a" }])
+    await releaseInventoryForItems([{ inventoryId: "inv_a", qty: 4 }])
 
     expect(readInventory()).toStrictEqual({ available: 10, reserved: 0, version: 2 })
   })
 
   it("keeps quantities unchanged when an exhausted release is retried", async () => {
-    const lines = [{ inventoryId: "inv_a", qty: 4, variantId: "var_a" }]
+    const lines = [{ inventoryId: "inv_a", qty: 4 }]
 
-    await release(lines)
-    await release(lines)
+    await releaseInventoryForItems(lines)
+    await releaseInventoryForItems(lines)
 
     expect(readInventory()).toStrictEqual({ available: 10, reserved: 0, version: 3 })
   })
 
   it("caps overlapping release requests at the remaining reservation", async () => {
     await Promise.all([
-      release([{ inventoryId: "inv_a", qty: 3, variantId: "var_a" }]),
-      release([{ inventoryId: "inv_a", qty: 3, variantId: "var_a" }]),
+      releaseInventoryForItems([{ inventoryId: "inv_a", qty: 3 }]),
+      releaseInventoryForItems([{ inventoryId: "inv_a", qty: 3 }]),
     ])
 
     expect(readInventory()).toStrictEqual({ available: 10, reserved: 0, version: 3 })
   })
 
   it("releases each row independently without transferring stock between variants", async () => {
-    await release([
-      { inventoryId: "inv_a", qty: 2, variantId: "var_a" },
-      { inventoryId: "inv_b", qty: 5, variantId: "var_b" },
+    await releaseInventoryForItems([
+      { inventoryId: "inv_a", qty: 2 },
+      { inventoryId: "inv_b", qty: 5 },
     ])
 
     expect(readInventory()).toStrictEqual({ available: 8, reserved: 2, version: 2 })
@@ -95,7 +92,7 @@ describe.each([
   })
 
   it("ignores a missing inventory row", async () => {
-    await release([{ inventoryId: "missing", qty: 4, variantId: "missing" }])
+    await releaseInventoryForItems([{ inventoryId: "missing", qty: 4 }])
 
     expect(readInventory()).toStrictEqual({ available: 6, reserved: 4, version: 1 })
   })

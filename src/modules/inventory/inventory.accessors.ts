@@ -11,18 +11,13 @@ interface ReleaseInventoryItem {
   qty: number
 }
 
-interface ReleaseInventoryVariantLine {
-  qty: number
-  variantId: string
-}
-
 interface ReserveInventoryInput {
   currentVersion: number
   inventoryId: string
   qty: number
 }
 
-const releaseValues = (qty: number) => ({
+export const inventoryReleaseValues = (qty: number) => ({
   quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qty})`,
   quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qty})`,
   version: sql`${inventory.version} + 1`,
@@ -52,10 +47,7 @@ export const reserveInventoryRows = async (items: readonly ReserveInventoryInput
 }
 
 export const releaseInventoryForItems = (items: ReleaseInventoryItem[]): Promise<void> =>
-  runDrizzleBatch(items.map((item) => db.update(inventory).set(releaseValues(item.qty)).where(eq(inventory.id, item.inventoryId))))
-
-export const releaseInventoryByVariantLines = (lines: ReleaseInventoryVariantLine[]): Promise<void> =>
-  runDrizzleBatch(lines.map((line) => db.update(inventory).set(releaseValues(line.qty)).where(eq(inventory.variantId, line.variantId))))
+  runDrizzleBatch(items.map((item) => db.update(inventory).set(inventoryReleaseValues(item.qty)).where(eq(inventory.id, item.inventoryId))))
 
 export const getInventoryByVariantIds = async (
   variantIds: readonly string[],

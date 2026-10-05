@@ -2,6 +2,7 @@ import { type StripeCheckoutElementsValue } from "@stripe/react-stripe-js/checko
 import { type StripeCheckoutContact } from "@stripe/stripe-js"
 
 import { createCheckoutSessionFn, updateCheckoutSessionFn } from "~/src/integrations/stripe/stripe.actions"
+import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { type CartItem } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
@@ -39,6 +40,24 @@ export const buildCheckoutContact = (values: CheckoutFormSchema): StripeCheckout
   }
 }
 
+interface CheckoutSessionChange {
+  checkoutValues: CheckoutFormSchema
+  items: CartItem[]
+  sessionId: string
+}
+
+const updateOrRestartCheckoutSession = async ({ checkoutValues, items, sessionId }: CheckoutSessionChange) => {
+  try {
+    return await updateCheckoutSessionFn({ data: { checkoutValues, items, sessionId } })
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== CHECKOUT_ERROR_CODES.SESSION_CLOSED) {
+      throw error
+    }
+
+    return createCheckoutSessionFn({ data: { checkoutValues, items } })
+  }
+}
+
 interface EnsureSessionArgs {
   amount: number
   existing: CheckoutSession | undefined
@@ -59,9 +78,7 @@ export const ensureCheckoutSession = async ({ amount, existing, items, values }:
   }
 
   if (existing.amount !== amount || existing.linesFingerprint !== linesFingerprint || existing.valuesFingerprint !== valuesFingerprint) {
-    const updated = await updateCheckoutSessionFn({
-      data: { checkoutValues: values, items, sessionId: existing.sessionId },
-    })
+    const updated = await updateOrRestartCheckoutSession({ checkoutValues: values, items, sessionId: existing.sessionId })
 
     return { amount, clientSecret: updated.clientSecret, linesFingerprint, sessionId: updated.sessionId, valuesFingerprint }
   }
@@ -78,9 +95,7 @@ interface ResetSessionArgs {
 
 export const resetCheckoutSession = async ({ amount, items, session, values }: ResetSessionArgs): Promise<CheckoutSession> => {
   const valuesFingerprint = buildCheckoutValuesFingerprint(values)
-  const updated = await updateCheckoutSessionFn({
-    data: { checkoutValues: values, items, sessionId: session.sessionId },
-  })
+  const updated = await updateOrRestartCheckoutSession({ checkoutValues: values, items, sessionId: session.sessionId })
 
   const linesFingerprint = buildCheckoutLinesFingerprint(items)
 
