@@ -383,6 +383,15 @@ export const recordOrderPaymentFailedAudit = (paymentIntentId: string, options?:
   })
 }
 
+export const recordOrderFulfillmentFailedAudit = (sessionId: string, options?: AuditEventOptions): void => {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_FAILED,
+    category: "orders",
+    severity: "error",
+    ...withResourceId(sessionId, options),
+  })
+}
+
 export const recordOrderDisputeOpenedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED,

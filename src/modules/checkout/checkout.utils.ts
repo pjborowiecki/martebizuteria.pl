@@ -4,12 +4,14 @@ import { type BatchItem } from "drizzle-orm/batch"
 import { insertRowChunks } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { address } from "~/src/modules/address/address.schema"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
+import { prepareOrderNumberAllocation } from "~/src/modules/order/order.number.server"
 import { order } from "~/src/modules/order/order.schema"
 import { type OrderTotals } from "~/src/modules/order/order.totals"
 import { payment } from "~/src/modules/payment/payment.schema"
@@ -47,7 +49,6 @@ export interface FulfillCheckoutInput {
   currency: string
   lines: FulfillmentLine[]
   locale?: string | undefined
-  orderNumber: string
   totals: OrderTotals
   transactionId: string
 }
@@ -159,15 +160,21 @@ export const resolvePendingCheckout = (
   transactionId: string,
 ): PendingCheckout | undefined => {
   if (paymentRow === undefined) {
-    console.info(`No live payment for transaction ${transactionId}; ignoring.`)
+    throw new AppError(ERROR_CODES.NOT_FOUND, `No payment carries Checkout Session ${transactionId}`)
+  }
+
+  if (checkoutRow === undefined) {
+    throw new AppError(ERROR_CODES.NOT_FOUND, `Checkout ${paymentRow.checkoutId} no longer exists`)
+  }
+
+  if (checkoutRow.status === "completed") {
+    console.info(`Checkout ${paymentRow.checkoutId} already completed.`)
 
     return undefined
   }
 
-  if (checkoutRow?.status !== "pending") {
-    console.info(`Checkout ${paymentRow.checkoutId} missing or already processed.`)
-
-    return undefined
+  if (checkoutRow.status !== "pending") {
+    throw new AppError(ERROR_CODES.NOT_FOUND, `Checkout ${paymentRow.checkoutId} is ${checkoutRow.status}, so it cannot become an order`)
   }
 
   return { checkoutId: paymentRow.checkoutId, email: checkoutRow.email, paymentId: paymentRow.id, userId: checkoutRow.userId }
@@ -337,10 +344,11 @@ const toOrderAddressValues = (
 
 export const prepareFulfillCheckoutBatch = (
   context: PendingCheckout,
-  { currency, lines, locale, orderNumber, totals, transactionId }: FulfillCheckoutInput,
+  { currency, lines, locale, totals, transactionId }: FulfillCheckoutInput,
   checkoutSnapshot?: CheckoutFulfillmentSnapshot,
 ): { orderId: string; statements: BatchItem<"sqlite">[] } => {
   const orderId = crypto.randomUUID()
+  const orderNumberAllocation = prepareOrderNumberAllocation()
 
   const addressSnapshots = toOrderAddressValues(orderId, checkoutSnapshot)
   const tail =
@@ -357,7 +365,7 @@ export const prepareFulfillCheckoutBatch = (
                 title: line.title,
                 total: line.price * line.qty,
                 unitPrice: line.price,
-                variantId: line.variantId,
+                variantId: sql`(select ${productVariant.id} from ${productVariant} where ${productVariant.id} = ${line.variantId})`,
               })),
             ),
           ),
@@ -378,6 +386,7 @@ export const prepareFulfillCheckoutBatch = (
         .update(checkout)
         .set({ status: "completed" })
         .where(and(eq(checkout.id, context.checkoutId), eq(checkout.status, "pending"))),
+      orderNumberAllocation.statement,
       db.insert(order).values({
         billingCompanyName: checkoutSnapshot?.billingCompanyName,
         billingNip: checkoutSnapshot?.billingNip,
@@ -391,7 +400,7 @@ export const prepareFulfillCheckoutBatch = (
         id: orderId,
         lockerId: checkoutSnapshot?.lockerId,
         metadata: locale === undefined || locale === "" ? undefined : JSON.stringify({ locale }),
-        orderNumber,
+        orderNumber: orderNumberAllocation.orderNumber,
         paymentId: context.paymentId,
         shippingTotal: totals.shippingTotal,
         status: "processing",

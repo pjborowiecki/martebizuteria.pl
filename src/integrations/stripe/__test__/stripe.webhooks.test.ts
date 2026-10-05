@@ -13,6 +13,7 @@ const {
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
   recordOrderEmailOutcome,
+  recordOrderFulfillmentFailedAudit,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit,
   recordOrderPlacedAudit,
@@ -35,6 +36,7 @@ const {
   recordOrderDisputeClosedAudit: vi.fn(),
   recordOrderDisputeOpenedAudit: vi.fn(),
   recordOrderEmailOutcome: vi.fn(),
+  recordOrderFulfillmentFailedAudit: vi.fn<(sessionId: string, options: { detail: string }) => void>(),
   recordOrderPaymentCapturedAudit: vi.fn(),
   recordOrderPaymentFailedAudit: vi.fn(),
   recordOrderPlacedAudit: vi.fn(),
@@ -67,6 +69,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
   recordOrderEmailOutcome,
+  recordOrderFulfillmentFailedAudit,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit,
   recordOrderPlacedAudit,
@@ -85,6 +88,8 @@ vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder }))
 
 import { STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/stripe/stripe.constants"
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
+
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 
 import {
   charge,
@@ -221,6 +226,8 @@ describe("checkout session fulfillment", () => {
 
     await expect(dispatch(event)).rejects.toThrow()
     expect(fulfillCheckout).not.toHaveBeenCalled()
+    expect(recordOrderFulfillmentFailedAudit).toHaveBeenCalledOnce()
+    expect(recordOrderFulfillmentFailedAudit.mock.calls[0]?.[1].detail).toMatch(/^548,00 PLN — anna@example\.com — /u)
   })
 
   it("records the placed and captured audits and refreshes the admin and catalog caches", async () => {
@@ -238,7 +245,7 @@ describe("checkout session fulfillment", () => {
     expect(recordOrderPaymentCapturedAudit).toHaveBeenCalledWith("order-1", { detail: "548.00 PLN", resourceId: "order-1" })
   })
 
-  it("stops when the session matches no pending checkout", async () => {
+  it("stops when another delivery already turned the session into an order", async () => {
     fulfillCheckout.mockResolvedValue(undefined)
 
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
@@ -246,6 +253,54 @@ describe("checkout session fulfillment", () => {
     expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it("records the paid session it could not turn into an order as an error and lets Stripe retry it", async () => {
+    fulfillCheckout.mockRejectedValue(new Error("D1_ERROR: FOREIGN KEY constraint failed"))
+    const event = checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata }))
+
+    await expect(dispatch(event)).rejects.toThrow("FOREIGN KEY")
+
+    expect(recordOrderFulfillmentFailedAudit).toHaveBeenCalledExactlyOnceWith("cs_test_1", {
+      detail: "548,00 PLN — anna@example.com — D1_ERROR: FOREIGN KEY constraint failed",
+    })
+    expect(consoleError).toHaveBeenCalledWith("Paid Checkout Session cs_test_1 created no order:", expect.any(Error))
+    expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it("records a paid session that matches no open checkout and acknowledges it, since a retry cannot help", async () => {
+    fulfillCheckout.mockRejectedValue(new AppError(ERROR_CODES.NOT_FOUND, "No payment carries Checkout Session cs_test_1"))
+    const event = checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata }, null))
+
+    await expect(dispatch(event)).resolves.toBeUndefined()
+
+    expect(recordOrderFulfillmentFailedAudit).toHaveBeenCalledExactlyOnceWith("cs_test_1", {
+      detail: "548,00 PLN — No payment carries Checkout Session cs_test_1",
+    })
+    expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
+    expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
+  })
+
+  it("names the address Stripe collected and the bare cause when the session has no amount", async () => {
+    fulfillCheckout.mockRejectedValue("D1 unavailable")
+    const session = checkoutSession({
+      customerDetails: {
+        address: null,
+        business_name: null,
+        email: "jan@example.com",
+        individual_name: null,
+        name: null,
+        phone: null,
+        tax_exempt: null,
+        tax_ids: null,
+      },
+      metadata: { items: itemsMetadata },
+    })
+
+    await expect(dispatch(checkoutSessionAsyncPaymentSucceededEvent(session))).rejects.toBe("D1 unavailable")
+
+    expect(recordOrderFulfillmentFailedAudit).toHaveBeenCalledExactlyOnceWith("cs_test_1", { detail: "jan@example.com — D1 unavailable" })
   })
 
   it("fulfills a session whose asynchronous payment succeeded", async () => {

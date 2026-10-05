@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
+import { isReservedInCheckoutMutationError } from "~/src/modules/product/product.mutation-errors"
 import { deleteProductsMutation } from "~/src/modules/product/use-cases/delete-products"
 
 export const useDeleteProducts = (): UseMutationResult<DeleteResult, Error, string[]> => {
@@ -11,9 +12,11 @@ export const useDeleteProducts = (): UseMutationResult<DeleteResult, Error, stri
 
   return useMutation({
     ...deleteProductsMutation,
-    onError: () => {
+    onError: (error) => {
       toast.error(t("toast.deleteErrorTitle"), {
-        description: t("toast.deleteErrorDescription"),
+        description: isReservedInCheckoutMutationError(error)
+          ? t("toast.deleteReservedInCheckoutDescription")
+          : t("toast.deleteErrorDescription"),
       })
     },
     onSettled: async () => {

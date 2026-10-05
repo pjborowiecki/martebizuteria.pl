@@ -34,6 +34,7 @@ import {
   isDuplicateAttributeOnProductMutationError,
   isDuplicateHandleMutationError,
   isDuplicateSkuMutationError,
+  isReservedInCheckoutMutationError,
   resolveProductMutationErrorMessage,
 } from "~/src/modules/product/product.mutation-errors"
 import { type AdminProductDetail } from "~/src/modules/product/product.utils"
@@ -76,6 +77,10 @@ const resolveProductMutationErrorDescription = (error: unknown, t: (key: string)
 
   if (isDuplicateAttributeOnProductMutationError(error)) {
     return t("toast.duplicateAttribute")
+  }
+
+  if (isReservedInCheckoutMutationError(error)) {
+    return t("toast.variantReservedInCheckout")
   }
 
   if (isDatabaseSchemaOutdatedMutationError(error)) {

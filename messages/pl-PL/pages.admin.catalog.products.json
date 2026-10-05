@@ -99,6 +99,7 @@
     "duplicateHandle": "Ten adres URL jest już używany przez inny produkt. Jeśli listy produktów nie widać tego wpisu, kliknij „Utwórz produkt” jeszcze raz — poprzednia próba mogła zostać wycofana.",
     "duplicateSku": "Ten kod SKU jest już używany przez inny wariant.",
     "duplicateAttribute": "Ten sam atrybut nie może być przypisany do produktu więcej niż raz.",
+    "variantReservedInCheckout": "Klient właśnie płaci za wariant, który usuwasz, więc nie można go jeszcze usunąć. Zostaw wariant i zarchiwizuj produkt, aby wycofać go ze sprzedaży, a wariant usuń dopiero wtedy, gdy ta płatność się zakończy albo wygaśnie.",
     "databaseSchemaOutdated": "Baza danych jest nieaktualna. Uruchom migracje: bun run db:migrate"
   },
   "basic": {

@@ -33,6 +33,7 @@ import {
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
   recordOrderEmailOutcome,
+  recordOrderFulfillmentFailedAudit,
   recordOrderFulfillmentStartedAudit,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit,
@@ -416,6 +417,12 @@ const ORDER_CASES: readonly TargetAuditCase[] = [
   { action: AUDIT_LOG_ACTION.ORDER_RELEASED, name: "a released reservation", record: recordOrderReleasedAudit, severity: "info" },
   { action: AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED, name: "an opened dispute", record: recordOrderDisputeOpenedAudit, severity: "warning" },
   { action: AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED, name: "a closed dispute", record: recordOrderDisputeClosedAudit, severity: "info" },
+  {
+    action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_FAILED,
+    name: "a paid session that created no order",
+    record: recordOrderFulfillmentFailedAudit,
+    severity: "error",
+  },
 ]
 
 describe("remaining order audit events", () => {

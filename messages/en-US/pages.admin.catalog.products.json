@@ -99,6 +99,7 @@
     "duplicateHandle": "This URL slug is already used by another product. If it is not in the list, click Create product again — the previous attempt may have been rolled back.",
     "duplicateSku": "This SKU is already used by another variant.",
     "duplicateAttribute": "The same attribute cannot be assigned to a product more than once.",
+    "variantReservedInCheckout": "A customer is paying for a variant you removed, so it cannot be deleted yet. Keep the variant and archive the product to take it off sale, then remove the variant once that payment has finished or expired.",
     "databaseSchemaOutdated": "The database schema is out of date. Run migrations: bun run db:migrate"
   },
   "basic": {

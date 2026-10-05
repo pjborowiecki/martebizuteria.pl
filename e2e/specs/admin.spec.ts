@@ -1,13 +1,14 @@
 import { type APIRequestContext, type Browser, type Page, type TestInfo } from "@playwright/test"
 
-import { PRODUCTS } from "../data/catalog"
+import { COURIER, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
 import { linkIn, waitForEmail } from "../fixtures/emails"
 import { placeOrder } from "../fixtures/orders"
 import { SERVER_FUNCTIONS, waitForServerFunctionResponse } from "../fixtures/server-functions"
+import { type CheckoutSession, expireCheckoutSession, waitForOpenCheckoutSession } from "../fixtures/stripe"
 import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
 import { uniqueCode, uniqueEmail } from "../fixtures/unique"
-import { AdminOrderPage, BasePage } from "../pages"
+import { AdminOrderPage, BasePage, CheckoutPage, ProductPage } from "../pages"
 
 const QUERY_INVALIDATION_CHANNEL = "marte-query-invalidation"
 
@@ -30,6 +31,32 @@ const placeGuestOrder = async ({ browser, handle, label, request, testInfo }: Gu
   await shopper.close()
 
   return email
+}
+
+const RESERVED_IN_CHECKOUT =
+  "A customer is paying for one of these products right now, so it cannot be deleted. Archive the product to take it off sale, and delete it only once that payment has finished or expired."
+
+const openGuestPayment = async ({ browser, handle, label, request, testInfo }: GuestOrderInput): Promise<CheckoutSession> => {
+  const shopper = await browser.newContext({
+    extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, label) },
+    storageState: { cookies: [], origins: [] },
+  })
+  await isolateNetwork(shopper)
+  const shopperPage = await shopper.newPage()
+  const productPage = new ProductPage(shopperPage)
+  const checkoutPage = new CheckoutPage(shopperPage)
+  const email = uniqueEmail(testInfo, label)
+  await productPage.gotoProduct(handle)
+  await productPage.addToCart()
+  await checkoutPage.gotoCheckout()
+  await checkoutPage.fillContact(email, SHIPPING_ADDRESS.phone)
+  await checkoutPage.fillAddress(SHIPPING_ADDRESS)
+  await checkoutPage.chooseDelivery(COURIER.name)
+  const session = await waitForOpenCheckoutSession(request, email)
+  await expect(checkoutPage.paymentStep()).toBeVisible()
+  await shopper.close()
+
+  return session
 }
 
 const listenForInvalidationEchoes = (channelName: string): void => {
@@ -130,6 +157,25 @@ test.describe("admin", () => {
     await adminOrderPage.backToOrders()
 
     await expect(adminOrderPage.orderRow(email)).toContainText("Shipped")
+  })
+
+  test("an admin is told to archive a necklace a shopper is paying for instead of deleting it", async ({
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const session = await openGuestPayment({ browser, handle: PRODUCTS.onyx.handle, label: "paying", request, testInfo })
+    await new BasePage(page).open("/en-US/admin/catalog/products")
+    const row = page.getByRole("row").filter({ hasText: PRODUCTS.onyx.sku })
+
+    await row.getByRole("button").last().click()
+    await page.getByRole("menuitem", { name: "Delete product" }).click()
+    await page.getByRole("alertdialog", { name: "Delete product?" }).getByRole("button", { name: "Delete" }).click()
+
+    await expect(page.getByText(RESERVED_IN_CHECKOUT)).toBeVisible()
+    await new BasePage(page).reload()
+    await expect(row).toContainText(PRODUCTS.onyx.title)
+    await expireCheckoutSession(request, session.id)
   })
 
   test("two admin tabs in one browser do not echo a catalogue event to each other", async ({

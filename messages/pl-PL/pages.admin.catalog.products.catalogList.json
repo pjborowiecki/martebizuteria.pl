@@ -110,6 +110,7 @@
     "deleteSuccessDescription": "Usunięto {count} produkt(ów).",
     "deleteErrorTitle": "Nie udało się usunąć",
     "deleteErrorDescription": "Nie można było usunąć wybranych produktów. Spróbuj ponownie.",
+    "deleteReservedInCheckoutDescription": "Klient właśnie płaci za jeden z tych produktów, więc nie można go usunąć. Zarchiwizuj produkt, aby wycofać go ze sprzedaży, a usuń go dopiero wtedy, gdy ta płatność się zakończy albo wygaśnie.",
     "reorderErrorTitle": "Nie udało się zapisać kolejności",
     "reorderErrorDescription": "Nie udało się zapisać nowej kolejności produktów. Spróbuj ponownie."
   },

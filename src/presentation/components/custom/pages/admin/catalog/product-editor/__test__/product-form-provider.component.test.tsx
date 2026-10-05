@@ -440,6 +440,17 @@ describe("ProductFormProvider mutation error handling", () => {
     })
   })
 
+  it("tells the admin to archive instead of removing a variant a customer is paying for", async () => {
+    await failInvalidation(new Error(PRODUCT_ERROR_CODES.RESERVED_IN_CHECKOUT))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith("Could not save product", {
+        description:
+          "A customer is paying for a variant you removed, so it cannot be deleted yet. Keep the variant and archive the product to take it off sale, then remove the variant once that payment has finished or expired.",
+      })
+    })
+  })
+
   it("tells the operator to run migrations when a column is missing", async () => {
     await failInvalidation(new Error("no such column: titles"))
 

@@ -109,6 +109,31 @@ describe("useDeleteProducts", () => {
   })
 })
 
+describe("useDeleteProducts while a checkout holds the stock", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("tells the admin to archive a product a customer is paying for instead of deleting it", async () => {
+    mutations.deleteProducts.mockRejectedValueOnce(new Error("RESERVED_IN_CHECKOUT"))
+    const { result } = renderProductMutationHook(useDeleteProducts)
+
+    result.current.mutate(["product-1"])
+
+    await waitFor(() => {
+      expect(toasts.error).toHaveBeenCalledTimes(1)
+    })
+    expect(toasts.error).toHaveBeenCalledWith("Couldn't delete", {
+      description:
+        "A customer is paying for one of these products right now, so it cannot be deleted. Archive the product to take it off sale, and delete it only once that payment has finished or expired.",
+    })
+  })
+})
+
 describe("useReorderProducts", () => {
   beforeEach(() => {
     vi.clearAllMocks()

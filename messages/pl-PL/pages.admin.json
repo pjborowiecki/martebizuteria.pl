@@ -399,6 +399,7 @@
       "order_dispute_opened": "Spór otwarty",
       "order_dispute_closed": "Spór zamknięty",
       "order_payment_failed": "Płatność nieudana",
+      "order_fulfillment_failed": "Nie utworzono opłaconego zamówienia",
       "customer_tier_upgrade": "Awans poziomu",
       "customer_registered": "Klient zarejestrowany",
       "auth_login": "Logowanie",

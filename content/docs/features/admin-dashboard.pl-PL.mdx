@@ -116,13 +116,13 @@ Zakres własny to druga funkcja serwerowa. `getDashboardChartRange` przyjmuje `{
 .groupBy(orderItem.productId)
 ```
 
-a migawka odrzuca wiersze z pustym identyfikatorem, który mają już tylko pozycje, których wariant później usunięto:
+a migawka odrzuca wiersze z pustym identyfikatorem, który mają tylko pozycje, których wariant zniknął, zanim zapisano ich produkt: pozycje zapisane przed opisanym niżej uzupełnieniem, których wariant usunięto wcześniej, oraz pozycje, których wariant usunięto, gdy klient płacił:
 
 ```ts
 const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
 ```
 
-`prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) zapisuje produkt każdej pozycji, odczytując go przez wariant pozycji w tym samym insercie, a migracja `20261003120000_order_item_product_backfill.sql` uzupełniła go w pozycjach zapisanych wcześniej, których wariant wciąż istniał. Miniaturę zapytanie odczytuje przez `max(...)` ze zgrupowanych pozycji.
+`prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) zapisuje produkt i wariant każdej pozycji, odczytując je przez wariant pozycji w tym samym insercie, a migracja `20261003120000_order_item_product_backfill.sql` uzupełniła go w pozycjach zapisanych wcześniej, których wariant wciąż istniał. Miniaturę zapytanie odczytuje przez `max(...)` ze zgrupowanych pozycji.
 
 `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` to 4. `resolveTopProductName` i `resolveTopProductCategoryLabel` wybierają język z map tytułów w JSON, z fallbackiem na zapisane `order_item.title`.
 

@@ -6,7 +6,6 @@ import { findPendingCheckoutByTransaction } from "~/src/modules/checkout/checkou
 import { type FulfillCheckoutInput, prepareFulfillCheckoutBatch } from "~/src/modules/checkout/checkout.utils"
 import { recordDiscountRedemption } from "~/src/modules/discount/discount.redeem.server"
 import { calculateDiscountAmount } from "~/src/modules/discount/discount.utils"
-import { allocateOrderNumber } from "~/src/modules/order/order.number.server"
 import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
@@ -44,14 +43,12 @@ export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): P
   })
   reconcileTotals(totals, input.paidAmount, input.transactionId)
 
-  const orderNumber = await allocateOrderNumber()
   const { orderId, statements } = prepareFulfillCheckoutBatch(
     context,
     {
       currency: input.currency,
       lines: input.lines,
       locale: input.locale,
-      orderNumber,
       totals,
       transactionId: input.transactionId,
     },

@@ -27,6 +27,9 @@ export const isDuplicateSkuMutationError = (error: unknown): boolean =>
     (message) => message === PRODUCT_ERROR_CODES.DUPLICATE_SKU || message.includes(UNIQUE_PRODUCT_VARIANT_SKU_CONSTRAINT),
   )
 
+export const isReservedInCheckoutMutationError = (error: unknown): boolean =>
+  collectErrorMessages(error).includes(PRODUCT_ERROR_CODES.RESERVED_IN_CHECKOUT)
+
 export const isDuplicateAttributeOnProductMutationError = (error: unknown): boolean =>
   collectErrorMessages(error).some(
     (message) =>

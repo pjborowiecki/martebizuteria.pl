@@ -132,6 +132,13 @@ const englishTitleOf = (productId: string): unknown =>
 
 const silenceFailureLog = () => vi.spyOn(console, "error").mockImplementation(() => {})
 
+const holdInOpenCheckout = (variantId: string): void => {
+  sqlite.exec("insert into checkout (id, status) values ('checkout-open', 'pending')")
+  sqlite
+    .prepare("insert into payment (id, checkout_id, reserved_lines, status) values ('payment-open', 'checkout-open', ?, 'pending')")
+    .run(JSON.stringify([{ qty: 1, variantId }]))
+}
+
 const variantIdOf = (productId: string): string => {
   const [id] = column("select id from product_variant where product_id = ?", "id", productId)
   if (typeof id !== "string") {
@@ -143,6 +150,12 @@ const variantIdOf = (productId: string): string => {
 
 beforeEach(() => {
   createTables(sqlite, TABLES)
+  sqlite.exec(`
+    drop table if exists payment;
+    drop table if exists checkout;
+    create table checkout (id text primary key, status text not null);
+    create table payment (id text primary key, checkout_id text not null, reserved_lines text not null, status text not null);
+  `)
   sqlite
     .prepare(
       `insert into product_category (id, handle, titles, status, rank, created_at, updated_at)
@@ -228,5 +241,33 @@ describe("updateCompleteProduct", () => {
     expect(thumbnailOf(id)).toBe("kept-0.webp")
     expect(attributeValuesOf(id)).toStrictEqual(["value 0", "value 1"])
     expect(englishTitleOf(id)).toBe(catalog.titles["en-US"])
+  })
+
+  it("keeps a variant a customer is still paying for and saves nothing", async () => {
+    const { id } = await createProduct({ attributeValues: [], images: gallery(1, "kept") })
+    const variantId = variantIdOf(id)
+    holdInOpenCheckout(variantId)
+
+    await expect(
+      updateCompleteProduct({
+        data: { ...catalog, attributeValues: [], id, images: gallery(1, "new"), simpleVariant: SIMPLE_VARIANT, variantAttributeValues: [] },
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT", message: "RESERVED_IN_CHECKOUT" })
+
+    expect(variantIdOf(id)).toBe(variantId)
+    expect(imageUrls(id)).toStrictEqual(["kept-0.webp"])
+  })
+
+  it("replaces the variant once the checkout that held it has closed", async () => {
+    const { id } = await createProduct({ attributeValues: [], images: [] })
+    const variantId = variantIdOf(id)
+    holdInOpenCheckout(variantId)
+    sqlite.exec("update payment set status = 'failed'; update checkout set status = 'failed';")
+
+    await updateCompleteProduct({
+      data: { ...catalog, attributeValues: [], id, images: [], simpleVariant: SIMPLE_VARIANT, variantAttributeValues: [] },
+    })
+
+    expect(variantIdOf(id)).not.toBe(variantId)
   })
 })

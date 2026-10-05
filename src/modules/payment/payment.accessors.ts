@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
@@ -37,6 +37,23 @@ export const getHeldLinesByTransactionId = async (transactionId: string): Promis
     .where(and(eq(payment.transactionId, transactionId), eq(payment.status, "pending"), eq(checkout.status, "pending")))
 
   return rows.flatMap((row) => row.reservedLines)
+}
+
+export const isAnyVariantHeldByOpenCheckout = async (variantIds: readonly string[]): Promise<boolean> => {
+  const rows = await db
+    .select({ id: payment.id })
+    .from(payment)
+    .innerJoin(checkout, eq(checkout.id, payment.checkoutId))
+    .where(
+      and(
+        eq(payment.status, "pending"),
+        eq(checkout.status, "pending"),
+        sql`exists (select 1 from json_each(${payment.reservedLines}) as reserved_line where json_extract(reserved_line.value, '$.variantId') in (select value from json_each(${JSON.stringify(variantIds)})))`,
+      ),
+    )
+    .limit(1)
+
+  return rows.length > 0
 }
 
 export const getPaymentContextByTransactionId = async (transactionId: string): Promise<PaymentContext | undefined> => {

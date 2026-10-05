@@ -10,6 +10,7 @@ interface AuditPayload {
 }
 
 const operations = vi.hoisted(() => ({
+  assertNotHeld: vi.fn<(variantIds: readonly string[]) => Promise<void>>(),
   assertSkus: vi.fn(),
   attributes: vi.fn(),
   audit: vi.fn<(handle: string, payload: AuditPayload) => void>(),
@@ -20,7 +21,8 @@ const operations = vi.hoisted(() => ({
   invalidate: vi.fn(),
   loadAttributes: vi.fn(),
   productByHandle: vi.fn(),
-  update: vi.fn<(id: string, input: Record<string, unknown>, ownedVariantIds: ReadonlySet<string>) => string[]>(),
+  update:
+    vi.fn<(id: string, input: Record<string, unknown>, catalogPayload: { readonly variantRows: readonly { id: string }[] }) => string[]>(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: operations.authorized }))
@@ -40,6 +42,7 @@ vi.mock("~/src/modules/product/product.accessors", () => ({
 }))
 vi.mock("~/src/modules/product/product.catalog.server", () => ({
   assertCatalogSkusAvailable: operations.assertSkus,
+  assertVariantsNotHeldByOpenCheckouts: operations.assertNotHeld,
   prepareProductUpdateBatch: operations.update,
 }))
 vi.mock("@tanstack/react-start", () => ({
@@ -72,7 +75,7 @@ const productInput = productZodSchemas.updateCompleteInput.parse({
   images: [{ rank: 0, url: "silver-ring.webp" }],
   options: [],
   primaryCategoryId: "01965030-0000-7000-8000-000000000001",
-  simpleVariant: { compareAtPrice: "", manageInventory: true, price: "120", quantity: 5, sku: "SILVER-RING" },
+  simpleVariant: { compareAtPrice: "", id: "variant-1", manageInventory: true, price: "120", quantity: 5, sku: "SILVER-RING" },
   status: "draft",
   subtitles: { "en-US": "", "pl-PL": "" },
   tags: { "en-US": [], "pl-PL": [] },
@@ -90,6 +93,7 @@ const auditPayload = (): AuditPayload | undefined => operations.audit.mock.calls
 
 beforeEach(() => {
   vi.resetAllMocks()
+  operations.assertNotHeld.mockResolvedValue(undefined)
   operations.assertSkus.mockResolvedValue(undefined)
   operations.attributes.mockReturnValue(["attribute statement"])
   operations.batch.mockResolvedValue(undefined)
@@ -123,7 +127,28 @@ describe("complete product update", () => {
   it("keeps the variant ids the product already owns", async () => {
     await updateCompleteProduct({ data: productInput })
 
-    expect(operations.update.mock.calls[0]?.[2]).toStrictEqual(new Set(["variant-1"]))
+    expect(operations.update.mock.calls[0]?.[2].variantRows.map((row) => row.id)).toStrictEqual(["variant-1"])
+  })
+
+  it("checks no open checkout holds a variant only when the save keeps every variant", async () => {
+    await updateCompleteProduct({ data: productInput })
+
+    expect(operations.assertNotHeld).toHaveBeenCalledExactlyOnceWith([])
+  })
+
+  it("checks the variants the save drops against open checkouts before writing", async () => {
+    operations.detailById.mockResolvedValueOnce({
+      status: "draft",
+      variants: [
+        { id: "variant-1", inventory: { quantityAvailable: 5 }, price: 12_000, sku: "SILVER-RING" },
+        { id: "variant-retired", inventory: { quantityAvailable: 1 }, price: 12_000, sku: "SILVER-RING-OLD" },
+      ],
+    })
+
+    await updateCompleteProduct({ data: productInput })
+
+    expect(operations.assertNotHeld).toHaveBeenCalledExactlyOnceWith(["variant-retired"])
+    expect(operations.assertNotHeld).toHaveBeenCalledBefore(operations.batch)
   })
 
   it("writes the catalog row without the detail collections it handles separately", async () => {
@@ -244,6 +269,16 @@ describe("complete product update failures", () => {
 
     await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("FOREIGN KEY constraint failed")
 
+    expect(operations.audit).not.toHaveBeenCalled()
+    expect(operations.invalidate).not.toHaveBeenCalled()
+  })
+
+  it("keeps a variant a customer is paying for and writes nothing", async () => {
+    operations.assertNotHeld.mockRejectedValueOnce(new Error("RESERVED_IN_CHECKOUT"))
+
+    await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("RESERVED_IN_CHECKOUT")
+
+    expect(operations.batch).not.toHaveBeenCalled()
     expect(operations.audit).not.toHaveBeenCalled()
     expect(operations.invalidate).not.toHaveBeenCalled()
   })

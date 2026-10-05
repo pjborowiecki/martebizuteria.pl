@@ -399,6 +399,7 @@
       "order_dispute_opened": "Dispute opened",
       "order_dispute_closed": "Dispute closed",
       "order_payment_failed": "Payment failed",
+      "order_fulfillment_failed": "Paid order not created",
       "customer_tier_upgrade": "Tier upgrade",
       "customer_registered": "Customer registered",
       "auth_login": "Login",

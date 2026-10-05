@@ -8,7 +8,6 @@ interface PendingContext {
 }
 
 const {
-  allocateOrderNumber,
   findPendingCheckoutByTransaction,
   getCheckoutForFulfillment,
   prepareFulfillCheckoutBatch,
@@ -17,14 +16,13 @@ const {
   runDrizzleBatch,
   scheduleBackgroundWork,
 } = vi.hoisted(() => ({
-  allocateOrderNumber: vi.fn<() => Promise<string>>(),
   findPendingCheckoutByTransaction: vi.fn<(transactionId: string) => Promise<PendingContext | undefined>>(),
   getCheckoutForFulfillment: vi.fn<(checkoutId: string) => Promise<Record<string, unknown> | undefined>>(),
   prepareFulfillCheckoutBatch:
     vi.fn<
       (
         context: PendingContext,
-        input: { orderNumber: string; totals: Record<string, number> },
+        input: { totals: Record<string, number> },
         snapshot: Record<string, unknown>,
       ) => { orderId: string; statements: string[] }
     >(),
@@ -38,7 +36,6 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutForFulfillment }))
 vi.mock("~/src/modules/checkout/checkout.pending.server", () => ({ findPendingCheckoutByTransaction }))
 vi.mock("~/src/modules/checkout/checkout.utils", () => ({ prepareFulfillCheckoutBatch }))
-vi.mock("~/src/modules/order/order.number.server", () => ({ allocateOrderNumber }))
 vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDiscountRedeemedAudit }))
 vi.mock("~/src/modules/discount/discount.redeem.server", () => ({ recordDiscountRedemption }))
@@ -96,7 +93,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   findPendingCheckoutByTransaction.mockResolvedValue(context)
   getCheckoutForFulfillment.mockResolvedValue(checkoutRow)
-  allocateOrderNumber.mockResolvedValue("MRT-2026-00042")
   recordDiscountRedemption.mockResolvedValue(true)
   prepareFulfillCheckoutBatch.mockReturnValue({ orderId: "order-1", statements: ["stmt-a", "stmt-b"] })
   runDrizzleBatch.mockResolvedValue(undefined)
@@ -112,13 +108,6 @@ describe("fulfillCheckout", () => {
   it("returns the new order id once the batch has run", async () => {
     await expect(fulfillCheckout(input)).resolves.toBe("order-1")
     expect(runDrizzleBatch).toHaveBeenCalledWith(["stmt-a", "stmt-b"])
-  })
-
-  it("stamps the order with a freshly allocated number", async () => {
-    await fulfillCheckout(input)
-
-    expect(allocateOrderNumber).toHaveBeenCalledOnce()
-    expect(batchInput()?.orderNumber).toBe("MRT-2026-00042")
   })
 
   it("takes shipping from the delivery method rather than inferring it from the paid amount", async () => {
@@ -230,12 +219,11 @@ describe("fulfillCheckout", () => {
     error.mockRestore()
   })
 
-  it("does nothing when no pending checkout matches the transaction", async () => {
+  it("does nothing for a checkout another delivery already completed", async () => {
     findPendingCheckoutByTransaction.mockResolvedValue(undefined)
 
     await expect(fulfillCheckout(input)).resolves.toBeUndefined()
     expect(getCheckoutForFulfillment).not.toHaveBeenCalled()
-    expect(allocateOrderNumber).not.toHaveBeenCalled()
     expect(prepareFulfillCheckoutBatch).not.toHaveBeenCalled()
     expect(runDrizzleBatch).not.toHaveBeenCalled()
   })

@@ -116,13 +116,13 @@ A custom range is a second server function. `getDashboardChartRange` takes `{ st
 .groupBy(orderItem.productId)
 ```
 
-and the snapshot drops rows with a null id, which only lines whose variant was later deleted still have:
+and the snapshot drops rows with a null id, which only lines whose variant was gone before their product was recorded have: lines written before the backfill below whose variant had since been deleted, and lines whose variant was deleted while the customer paid:
 
 ```ts
 const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
 ```
 
-`prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) records each line's product by looking it up through the line's variant in the same insert, and the migration `20261003120000_order_item_product_backfill.sql` filled in the lines written before that whose variant still existed. The thumbnail is read with `max(...)` from the grouped lines.
+`prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) records each line's product and variant by looking them up through the line's variant in the same insert, and the migration `20261003120000_order_item_product_backfill.sql` filled in the lines written before that whose variant still existed. The thumbnail is read with `max(...)` from the grouped lines.
 
 `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` is 4. `resolveTopProductName` and `resolveTopProductCategoryLabel` pick the locale out of the JSON title maps, falling back to the stored `order_item.title`.
 

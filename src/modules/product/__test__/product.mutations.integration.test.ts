@@ -154,6 +154,33 @@ describe("deleteProducts", () => {
     expect(rows("select id from inventory")).toStrictEqual([])
   })
 
+  it("keeps the order lines of a deleted product, with what was sold and no variant to point at", async () => {
+    insertProduct("p1", "one", 0)
+    insertVariant("v1", "p1", "SKU-1")
+    sqlite.prepare(`insert into "order" (id, email) values ('order-1', 'buyer@example.com')`).run()
+    sqlite
+      .prepare(
+        `insert into order_item (id, order_id, variant_id, product_id, quantity, unit_price, subtotal, total, title, thumbnail, created_at, updated_at)
+         values ('line-1', 'order-1', 'v1', 'p1', 2, 2500, 5000, 5000, 'Onyx earrings — Silver', 'onyx.webp', ?, ?)`,
+      )
+      .run(NOW, NOW)
+
+    await deleteProducts(["p1"])
+
+    expect(rows("select order_id, variant_id, product_id, quantity, unit_price, total, title, thumbnail from order_item")).toStrictEqual([
+      {
+        order_id: "order-1",
+        product_id: "p1",
+        quantity: 2,
+        thumbnail: "onyx.webp",
+        title: "Onyx earrings — Silver",
+        total: 5000,
+        unit_price: 2500,
+        variant_id: null,
+      },
+    ])
+  })
+
   it("deletes a full admin page of selected products at once", async () => {
     const ids = insertProducts(LIST_PAGE_SIZE_MAX)
     insertProduct("kept", "kept", 0)
@@ -342,6 +369,14 @@ describe("prepareProductCatalogBatch on a product that has already sold", () => 
 
     expect(column("select variant_id from order_item", "variant_id")).toStrictEqual(["v-sold"])
     expect(column("select id from product_variant", "id")).toStrictEqual(["v-sold"])
+  })
+
+  it("keeps a sold line with what was sold when the save drops the variant it bought", async () => {
+    await saveCatalog("p1", simpleCatalog([{ id: "v-replacement", quantity: 3, sku: "NEW" }]))
+
+    expect(rows("select variant_id, title, unit_price, total from order_item")).toStrictEqual([
+      { title: "Sold piece", total: 2500, unit_price: 2500, variant_id: null },
+    ])
   })
 
   it("keeps the stock that open checkouts have reserved and its lock version when nothing changed", async () => {
