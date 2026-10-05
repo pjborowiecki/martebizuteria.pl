@@ -68,7 +68,7 @@ An email template in `presentation/emails` contains markup only and exports its 
 export const VERIFY_EMAIL_NAMESPACE = "emails.verify-email"
 ```
 
-It translates with use-intl's `createTranslator`, receiving `locale` and `messages` as props. The caller — `auth.server.ts` for the account emails, `stripe.webhooks.tsx` for the order confirmation and the failed-payment notice, `order-shipped.notification.server.ts`, `order-cancelled.notification.server.ts` and `order-refunded.notification.server.ts` for the shipping, cancellation and refund notices — loads the namespace with `loadNamespace` and renders the element. Templates: `verify-email`, `reset-password`, `change-email`, `account-deleted`, `order-confirmation`, `order-shipped`, `order-cancelled`, `order-refunded`, `payment-failed`. `src/routes/dev.emails.tsx` previews them, backed by `src/integrations/resend/email-previews.tsx`.
+It translates with use-intl's `createTranslator`, receiving `locale` and `messages` as props. The caller — `auth.server.ts` for the account emails, `stripe.webhooks.tsx` for the order confirmation and the failed-payment notice, `order-shipped.notification.server.ts`, `order-cancelled.notification.server.ts` and `order-refunded.notification.server.ts` for the shipping, cancellation and refund notices, `new-order.notification.server.ts` for the shop's new-order notice — loads the namespace with `loadNamespace` and renders the element. Templates: `verify-email`, `reset-password`, `change-email`, `account-deleted`, `order-confirmation`, `order-shipped`, `order-cancelled`, `order-refunded`, `payment-failed`, `new-order`. `src/routes/dev.emails.tsx` previews them, backed by `src/integrations/resend/email-previews.tsx`.
 
 ## The admin data grid
 

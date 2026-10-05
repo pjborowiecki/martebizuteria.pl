@@ -3,7 +3,7 @@ title: "Orders"
 description: "The order and order_item tables, the admin list with its filters and actions, the customer's own order history, and the admin detail screen."
 ---
 
-An order is created by a Stripe webhook, never by a form. See [Payments](/docs/features/payments) for how a paid session becomes a row.
+An order is created by a Stripe webhook, never by a form. See [Payments](/docs/features/payments) for how a paid session becomes a row. The same webhook emails the shop about every new order at `RESEND_EMAIL_FROM`, with the pieces, the delivery, the customer's contact and a button that opens the order in the admin; see [Transactional email](/docs/features/email#the-shops-new-order-email).
 
 ## The tables
 

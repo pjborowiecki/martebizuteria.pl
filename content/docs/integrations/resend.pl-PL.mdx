@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "Jedenaście e-maili transakcyjnych, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
+description: "Dwanaście e-maili transakcyjnych, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
 ---
 
 Każdy e-mail wysyłany przez sklep przechodzi przez Resend. Adapter w `src/integrations/resend/` zawiera klienta, jeden pomocnik `sendEmail`, budowniki zamieniające wiersze zamówień na właściwości szablonów oraz renderer podglądów dla programisty. Same szablony React Email mieszkają w `src/presentation/emails/`, ponieważ należą do warstwy prezentacji.
@@ -65,7 +65,7 @@ Odmowa dotycząca jednej wiadomości nie zmienia flagi: błąd odbiorcy 422, `ra
 
 Na flagę reaguje tylko blokada w Better Auth. Dopóki jest ustawiona, rejestracja, zmiana hasła, ponowne wysłanie weryfikacji i zmiana adresu odpowiadają `503 EMAIL_DELIVERY_UNAVAILABLE`, zamiast tworzyć token dla e-maila, który nie może wyjść; zobacz [Better Auth](/docs/integrations/better-auth#blokada-wysyłki-e-maili). E-maile newslettera i zamówień nie są blokowane, bo o każdej porażce i tak informują osobę albo dziennik audytu. Flaga wyłapuje zepsutego nadawcę po pierwszej odmowie któregoś z tych e-maili; domena, której nigdy nie zweryfikowano, nadal kosztowałaby każdą osobę, która wcześniej uruchomi e-mail uwierzytelniania, dlatego wdrożenie najpierw sprawdza nadawcę; zobacz [Domena nadawcy](#domena-nadawcy).
 
-## Jedenaście e-maili
+## Dwanaście e-maili
 
 | E-mail                          | Szablon                                                     | Przestrzeń nazw                        | Wysyłany z                                                                                                                                                                                                              |
 | ------------------------------- | ----------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -78,10 +78,11 @@ Na flagę reaguje tylko blokada w Better Auth. Dopóki jest ustawiona, rejestrac
 | Zamówienie anulowane            | `src/presentation/emails/order-cancelled.tsx`               | `emails.order-cancelled`               | `notifyOrderCancelled`, oczekiwane przez `src/modules/order/use-cases/cancel-order.ts`, gdy zamówienie zostało anulowane                                                                                                |
 | Zwrot środków                   | `src/presentation/emails/order-refunded.tsx`                | `emails.order-refunded`                | `notifyOrderRefunded`, oczekiwane przez `handleChargeRefunded` w `stripe.webhooks.tsx` dla zwrotu, o którym klient jeszcze nie wie                                                                                      |
 | Nieudana płatność               | `src/presentation/emails/payment-failed.tsx`                | `emails.payment-failed`                | `stripe.webhooks.tsx` po tym, jak `checkout.session.async_payment_failed` zwolniło sesję                                                                                                                                |
+| Nowe zamówienie, do sklepu      | `src/presentation/emails/new-order.tsx`                     | `emails.new-order`                     | `notifyShopOfNewOrder`, oczekiwane przez `handleFulfillCheckoutSession` w `stripe.webhooks.tsx`, gdy zamówienie już istnieje, wysyłane na `RESEND_EMAIL_FROM`                                                           |
 | Potwierdzenie newslettera       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` w `newsletter-confirmation.server.ts`, wywoływane przez `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` z oczekiwaniem na wynik                                              |
 | Adres już na liście newslettera | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribed` w `newsletter-already-subscribed.server.ts`, wywoływane z oczekiwaniem na wynik przez `subscribe-to-newsletter.ts`, gdy potwierdzony adres wysyła ktoś inny niż zalogowany właściciel |
 
-Pierwsze cztery opisuje strona [Better Auth](/docs/integrations/better-auth); pozostałe siedem buduje ten adapter.
+Pierwsze cztery opisuje strona [Better Auth](/docs/integrations/better-auth); pozostałe osiem buduje ten adapter.
 
 Każdy szablon eksportuje własną stałą przestrzeni nazw obok komponentu, więc wywołujący nie może rozjechać się z komunikatami, które renderuje:
 
@@ -124,6 +125,7 @@ Każdy link, który aplikacja sama wpisuje do e-maila, prowadzi pod adres, któr
 | Zamówienie anulowane                                             | `cancelOrder`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora                                                                                                      |
 | Zwrot środków                                                    | `return_url` sesji Checkout, którą `resolveCheckoutSession` znajduje dla zwróconej płatności: `resolveDeploymentOrigin(returnUrl)` w `sendOrderRefundedEmail`                            |
 | Nieudana płatność                                                | `return_url` sesji: `resolveDeploymentOrigin(session.return_url)` w `sendPaymentFailedEmail`                                                                                             |
+| Nowe zamówienie, do sklepu                                       | `return_url` sesji, która utworzyła zamówienie: `resolveDeploymentOrigin(returnUrl)` w `sendNewOrderEmail`, który linkuje `/admin/orders/<id>`                                           |
 | Konto usunięte                                                   | `deleteCustomer`, przez `resolveRequestOrigin(getRequest())` przed `removeUser`; po samodzielnym usunięciu konta `afterDelete` ustala go z żądania, które Better Auth przekazuje hookowi |
 
 Obie funkcje leżą w `src/lib/request.ts`. Czytają wyłącznie adres URL, nigdy nagłówków `Host`, `Origin`, `Referer` ani `X-Forwarded-*`, wymagają `https:` wszędzie poza `localhost:3000` i `127.0.0.1:3000` i rzucają `AppError(FORBIDDEN)` dla hosta, którego nie akceptują. `resolveRequestOrigin(request)` akceptuje hosty z listy `appHostsForMode(import.meta.env.MODE)`, więc funkcja serwerowa odrzuca żądanie na każdym innym hoście, zanim cokolwiek zapisze. `resolveDeploymentOrigin(url)` akceptuje hosty wszystkich wdrożeń (`isDeploymentHost` w `src/modules/_core/constants/api.ts`), ponieważ webhook, który realizuje checkout, może należeć do innego wdrożenia: development i preview dzielą testowe konto Stripe i bazę danych, a `stripe:listen` zawsze przekazuje na `localhost:3000`.
@@ -164,7 +166,9 @@ export const notifyOrderShipped = (orderId: string, origin: string): Promise<boo
 
 `order-cancelled.notification.server.ts` i `order-refunded.notification.server.ts` mają ten sam kształt. Oba czytają zamówienie przez `getOrderForRefundEmail`, które wybiera adres, numer, walutę, sumę, metadane i konto zamówienia, i oba budują przycisk przez `buildOrderAccountCta`. `notifyOrderCancelled({ orderId, refundedAmount }, origin)` podaje zwrot, który `requestFullOrderRefund` dostał z powrotem ze Stripe, albo informuje, że bezpłatne zamówienie nie ma czego zwracać. `notifyOrderRefunded(refund, returnUrl)` dostaje `Order["unannouncedRefund"]`, które zwraca `refundOrder`, więc podaje kwotę tego zwrotu wobec sumy zamówienia i to, czy zamówienie jest już zwrócone w całości, a origin ustala z `returnUrl` wewnątrz próby, więc brakujący albo odrzucony adres jest zapisywany jak każda inna porażka. E-mail o nieudanej płatności nie ma zamówienia do odczytania: `sendPaymentFailedEmail` w `stripe.webhooks.tsx` buduje go z sesji, wymieniając jej linie z metadanych przez `buildOrderConfirmationItems`.
 
-Język pochodzi z zamówienia, a nie z bieżącego żądania, więc klient, który złożył zamówienie po polsku, otrzymuje polską wiadomość także wtedy, gdy przycisk kliknie administrator pracujący po angielsku.
+`new-order.notification.server.ts` pisze do sklepu, a nie do klienta. `notifyShopOfNewOrder(orderId, returnUrl)` wysyła powiadomienie na `RESEND_EMAIL_FROM`: `sendNewOrderEmail` ustala origin z `returnUrl` wewnątrz próby, czyta zamówienie przez `getAdminOrderDetailRow` i `getAdminOrderItemRows`, te same odczyty, na których stoi strona zamówienia w panelu, i renderuje `new-order.tsx`. Wiersz dostawy korzysta z `resolveDeliveryMethodLabel`, pozycje z `mapAdminOrderDetailItem`, a adres dostawy z `resolveAdminOrderDetailAddresses`, a przycisk otwiera `ROUTES.ADMIN_ORDER` na tym originie.
+
+Język pochodzi z zamówienia, a nie z bieżącego żądania, więc klient, który złożył zamówienie po polsku, otrzymuje polską wiadomość także wtedy, gdy przycisk kliknie administrator pracujący po angielsku. Powiadomienie sklepu o nowym zamówieniu jest zawsze w języku sklepu, `I18N.DEFAULT_LOCALE`.
 
 ## Czekanie na e-maile o zamówieniu
 
@@ -183,7 +187,7 @@ return { ok: true, orderId, shippedEmailSent }
 
 `scheduleBackgroundWork` przekazuje tę samą obietnicę do `ctx.waitUntil`, więc wysyłka i jej wpis w audycie kończą się nawet wtedy, gdy administrator zamknie kartę, zanim Resend odpowie. `useMarkOrderShipped` zawsze pokazuje „Zamówienie oznaczono jako wysłane.”, a gdy `shippedEmailSent` jest fałszem, także ostrzeżenie „Klient nie otrzymał e-maila”, które odsyła po szczegóły błędu do sekcji „Aktywność” zamówienia. Żądanie administratora trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`. `cancel-order.ts` robi to samo z `notifyOrderCancelled` i zwraca `cancelledEmailSent`, a `useCancelOrder` ostrzega „Klient nie otrzymał e-maila”, gdy ma ono wartość `false`.
 
-Webhook Stripe w ten sam sposób rejestruje `notifyOrderConfirmed`, `notifyOrderRefunded` i próbę wysłania e-maila o nieudanej płatności przez `scheduleBackgroundWork` i czeka na wynik. Zapisuje on każdy wynik i nigdy nie rzuca wyjątku, więc webhook odpowiada 200 nawet wtedy, gdy Resend odrzuci potwierdzenie, a e-mail kończy się także wtedy, gdy Stripe przestanie czekać. Ponownie dostarczone zdarzenie i tak by go nie wysłało: `fulfillCheckout` zwraca `undefined` dla kasy, która nie jest już oczekująca, a handler kończy przed krokiem e-maila. Dwa pozostałe mają taką samą osłonę: `releaseCheckout` zgłasza, czy to dostarczenie ustawiło płatność sesji na `failed`, a `refundOrder` zwraca zwrot tylko wtedy, gdy płatność zwróciła więcej, niż miała zapisane, a sklep nie anulował zamówienia.
+Webhook Stripe w ten sam sposób rejestruje `notifyOrderConfirmed` razem z `notifyShopOfNewOrder`, `notifyOrderRefunded` i próbę wysłania e-maila o nieudanej płatności przez `scheduleBackgroundWork` i czeka na wynik. Zapisuje on każdy wynik i nigdy nie rzuca wyjątku, więc webhook odpowiada 200 nawet wtedy, gdy Resend odrzuci potwierdzenie, a e-mail kończy się także wtedy, gdy Stripe przestanie czekać. Ponownie dostarczone zdarzenie i tak nie wysłałoby ponownie potwierdzenia ani powiadomienia sklepu: `fulfillCheckout` zwraca `undefined` dla kasy, która nie jest już oczekująca, a handler kończy przed krokiem e-maila. Dwa pozostałe mają taką samą osłonę: `releaseCheckout` zgłasza, czy to dostarczenie ustawiło płatność sesji na `failed`, a `refundOrder` zwraca zwrot tylko wtedy, gdy płatność zwróciła więcej, niż miała zapisane, a sklep nie anulował zamówienia.
 
 ## Ślad w audycie
 
@@ -201,6 +205,7 @@ Plik `email-previews.tsx` deklaruje po jednym wpisie na szablon, z wyjątkiem `n
 export const EMAIL_PREVIEWS = {
   "account-deleted": { element: async (locale) => <AccountDeleted … />, label: "Account deleted" },
   "change-email": { … },
+  "new-order": { … },
   "newsletter-already-subscribed": { … },
   "order-cancelled": { … },
   "order-confirmation": { … },
@@ -238,7 +243,9 @@ Resend odrzuca każdą wiadomość, której domena w polu `from` nie jest zweryf
 
 `RESEND_API_KEY` i `RESEND_EMAIL_FROM` są w `secrets.required` dla wszystkich trzech środowisk w `wrangler.jsonc`. `RESEND_EMAIL_FROM` to sam adres, na przykład `noreply@martebizuteria.pl`, bez nazwy wyświetlanej, bo nazwę dodaje `sendEmail` i wysyła jako `M'Arte <noreply@martebizuteria.pl>`. Jego domena musi dokładnie odpowiadać domenie zweryfikowanej w Resend: subdomena, na przykład `mail.martebizuteria.pl`, to w Resend osobna domena z własnymi rekordami.
 
-Odpowiedzi nigdy nie trafiają na ten adres. `sendEmail` przekazuje przy każdej wiadomości `replyTo: BUSINESS.EMAIL`, więc każdy e-mail niesie nagłówek `Reply-To: kontakt@martebizuteria.pl`, a program pocztowy odbiorcy kieruje tam odpowiedź. `RESEND_EMAIL_FROM` może więc być adresem, którego nikt nie czyta, a `kontakt@martebizuteria.pl` musi być skrzynką, którą sklep czyta: klienci wysyłają na nią pytania, anulowania, odstąpienia od umowy i reklamacje. To, z jakiej domeny sklep wysyła pocztę, jest ustawieniem właściciela. [Kontrola przed wdrożeniem](#kontrola-przed-wdrożeniem) sprawdza, czy Resend wyśle e-mail jako `RESEND_EMAIL_FROM`, a nie, czy jego domeną jest `martebizuteria.pl`.
+Odpowiedzi nigdy nie trafiają na ten adres. `sendEmail` przekazuje przy każdej wiadomości `replyTo: BUSINESS.EMAIL`, więc każdy e-mail niesie nagłówek `Reply-To: kontakt@martebizuteria.pl`, a program pocztowy odbiorcy kieruje tam odpowiedź. `kontakt@martebizuteria.pl` musi więc być skrzynką, którą sklep czyta: klienci wysyłają na nią pytania, anulowania, odstąpienia od umowy i reklamacje. To, z jakiej domeny sklep wysyła pocztę, jest ustawieniem właściciela. [Kontrola przed wdrożeniem](#kontrola-przed-wdrożeniem) sprawdza, czy Resend wyśle e-mail jako `RESEND_EMAIL_FROM`, a nie, czy jego domeną jest `martebizuteria.pl`.
+
+Własne powiadomienie sklepu o każdym nowym zamówieniu trafia natomiast na sam `RESEND_EMAIL_FROM`, w każdym środowisku, więc ten adres też potrzebuje skrzynki, którą właściciel czyta.
 
 ### Weryfikacja domeny
 

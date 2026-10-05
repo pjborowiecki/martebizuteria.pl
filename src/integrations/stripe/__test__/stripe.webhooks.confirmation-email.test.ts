@@ -14,6 +14,7 @@ const {
   getFulfillmentTimeAttributesByVariantId,
   getOrderTotalsForEmail,
   loadWithdrawalFormAttachment,
+  notifyShopOfNewOrder,
   paymentIntentsRetrieve,
   recordOrderEmailOutcome,
   recordOrderPaymentCapturedAudit,
@@ -25,6 +26,7 @@ const {
     vi.fn<(variantIds: readonly string[]) => Promise<ReadonlyMap<string, FulfillmentTimeAttribute>>>(),
   getOrderTotalsForEmail: vi.fn<(orderId: string) => Promise<Record<string, unknown> | undefined>>(),
   loadWithdrawalFormAttachment: vi.fn<(origin: string) => Promise<Attachment>>(),
+  notifyShopOfNewOrder: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<void>>(),
   paymentIntentsRetrieve: vi.fn<(id: string, params: object) => Promise<{ payment_method: { type: string } | null }>>(),
   recordOrderEmailOutcome: vi.fn(),
   recordOrderPaymentCapturedAudit: vi.fn(),
@@ -39,6 +41,7 @@ const {
 vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { paymentIntents: { retrieve: paymentIntentsRetrieve } } }))
 vi.mock("~/src/integrations/stripe/stripe.coupons.server", () => ({ deleteCheckoutCoupons: vi.fn(() => Promise.resolve(undefined)) }))
+vi.mock("~/src/integrations/resend/new-order.notification.server", () => ({ notifyShopOfNewOrder }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/resend/withdrawal-form.attachment.server", () => ({ loadWithdrawalFormAttachment }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
@@ -146,6 +149,7 @@ beforeEach(() => {
   getCheckoutEmailContext.mockResolvedValue(undefined)
   getFulfillmentTimeAttributesByVariantId.mockResolvedValue(new Map())
   loadWithdrawalFormAttachment.mockResolvedValue(WITHDRAWAL_FORM)
+  notifyShopOfNewOrder.mockResolvedValue(undefined)
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
   sendEmail.mockResolvedValue(undefined)
 })
@@ -563,5 +567,42 @@ describe("order confirmation email delivery", () => {
       label: "Order confirmation → anna@example.com",
       orderId: "order-1",
     })
+    expect(notifyShopOfNewOrder).toHaveBeenCalledOnce()
+  })
+})
+
+describe("new order email to the shop", () => {
+  it("tells the shop about the order the session created, linked on the deployment the checkout returned to", async () => {
+    await dispatch(checkoutSessionCompletedEvent(sessionCheckedOutOn("https://preview.martebizuteria.pl", { items: itemsMetadata })))
+
+    expect(notifyShopOfNewOrder).toHaveBeenCalledExactlyOnceWith(
+      "order-1",
+      "https://preview.martebizuteria.pl/en-US/checkout?success=true&session_id={CHECKOUT_SESSION_ID}",
+    )
+  })
+
+  it("tells the shop about a free order the customer paid nothing for", async () => {
+    const session = checkoutSession({ amountTotal: 0, metadata: { items: itemsMetadata }, paymentStatus: "no_payment_required" })
+
+    await dispatch(checkoutSessionCompletedEvent(session))
+
+    expect(notifyShopOfNewOrder).toHaveBeenCalledOnce()
+  })
+
+  it("tells the shop about an order whose confirmation the customer could not be sent", async () => {
+    sendEmail.mockResolvedValue(DOMAIN_NOT_VERIFIED)
+    const event = checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata }))
+
+    await expect(dispatch(event)).resolves.toBeUndefined()
+
+    expect(notifyShopOfNewOrder).toHaveBeenCalledOnce()
+  })
+
+  it("sends nothing to the shop when Stripe redelivers the event of an order already created", async () => {
+    fulfillCheckout.mockResolvedValue(undefined)
+
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
+
+    expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
   })
 })

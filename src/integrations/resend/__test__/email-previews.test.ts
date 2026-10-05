@@ -6,6 +6,7 @@ import { formatPrice } from "~/src/modules/_core/utils/currency"
 
 import accountDeletedCopy from "~/messages/en-US/emails.account-deleted.json"
 import changeEmailCopy from "~/messages/en-US/emails.change-email.json"
+import newOrderCopy from "~/messages/en-US/emails.new-order.json"
 import newsletterAlreadySubscribedCopy from "~/messages/en-US/emails.newsletter-already-subscribed.json"
 import orderCancelledCopy from "~/messages/en-US/emails.order-cancelled.json"
 import orderConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
@@ -14,6 +15,7 @@ import orderShippedCopy from "~/messages/en-US/emails.order-shipped.json"
 import paymentFailedCopy from "~/messages/en-US/emails.payment-failed.json"
 import resetPasswordCopy from "~/messages/en-US/emails.reset-password.json"
 import verifyEmailCopy from "~/messages/en-US/emails.verify-email.json"
+import polishNewOrderCopy from "~/messages/pl-PL/emails.new-order.json"
 import polishOrderConfirmationCopy from "~/messages/pl-PL/emails.order-confirmation.json"
 import polishPaymentFailedCopy from "~/messages/pl-PL/emails.payment-failed.json"
 import polishVerifyEmailCopy from "~/messages/pl-PL/emails.verify-email.json"
@@ -36,6 +38,7 @@ describe("EMAIL_PREVIEWS", () => {
     expect(Object.entries(EMAIL_PREVIEWS).map(([slug, preview]) => [slug, preview.label])).toStrictEqual([
       ["account-deleted", "Account deleted"],
       ["change-email", "Change email"],
+      ["new-order", "New order for the shop"],
       ["newsletter-already-subscribed", "Newsletter already subscribed"],
       ["order-cancelled", "Order cancelled"],
       ["order-confirmation", "Order confirmation"],
@@ -152,6 +155,18 @@ describe("renderEmailPreview", () => {
     expect(preview).toContain(orderRefundedCopy.messagePartial)
     expect(preview).toContain(`${orderRefundedCopy.refundLabel}\n\n${formatPrice(18_900, "PLN", "en-US")}`)
     expect(preview).toContain(`${orderRefundedCopy.orderTotalLabel}\n\n${formatPrice(64_600, "PLN", "en-US")}`)
+  })
+
+  it("previews the shop's new order notice with the pieces, the customer and the admin link in the language asked for", async () => {
+    const english = await text("new-order")
+    const polish = await text("new-order", "pl-PL")
+
+    expect(english).toContain(newOrderCopy.heading.toUpperCase())
+    expect(english).toContain("Kolczyki Luna")
+    expect(english).toContain(`${newOrderCopy.totalLabel}: ${formatPrice(64_600, "PLN", "en-US")}`)
+    expect(english).toContain("anna.kowalska@example.com")
+    expect(english).toContain(`${newOrderCopy.adminCta} http://localhost:3000/admin/orders/abc123`)
+    expect(polish).toContain(polishNewOrderCopy.heading.toUpperCase())
   })
 
   it("previews the failed payment with the basket and a way back to the shop in the language asked for", async () => {

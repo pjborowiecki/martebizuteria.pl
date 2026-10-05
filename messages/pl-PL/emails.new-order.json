@@ -1,0 +1,18 @@
+{
+  "subject": "Nowe zamówienie {orderNumber} — M'Arte",
+  "preview": "Klient złożył zamówienie. Oto, co przygotować i dokąd je wysłać.",
+  "heading": "Nowe zamówienie",
+  "message": "Klient właśnie złożył zamówienie w sklepie.",
+  "messageSecondary": "Poniżej znajdziesz produkty do przygotowania, wybraną dostawę i dane kontaktowe klienta.",
+  "orderLabel": "Numer zamówienia",
+  "itemsLabel": "Produkty",
+  "skuLabel": "SKU",
+  "totalLabel": "Razem z dostawą",
+  "customerLabel": "Klient",
+  "deliveryMethodLabel": "Sposób dostawy",
+  "shippingAddressLabel": "Adres dostawy",
+  "customerNoteLabel": "Uwagi klienta",
+  "unavailable": "Brak danych",
+  "adminCta": "Otwórz zamówienie w panelu",
+  "tagline": "Powiadomienie sklepu"
+}

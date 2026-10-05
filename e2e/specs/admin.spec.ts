@@ -1,5 +1,6 @@
 import { type APIRequestContext, type Browser, type Page, type TestInfo } from "@playwright/test"
 
+import { ORDER_NOTIFICATION_INBOX } from "../data/accounts"
 import { COURIER, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
 import { linkIn, waitForEmail } from "../fixtures/emails"
@@ -150,6 +151,32 @@ test.describe("admin", () => {
     expect(cancelled.html).toContain(orderNumber)
     expect(cancelled.html).toMatch(/PLN\s398\.99/u)
     expect(linkIn(cancelled, /\/auth\/sign-up/u).origin).toBe("http://127.0.0.1:3000")
+  })
+
+  test("a guest's order emails the shop a notice whose link opens the order in the admin", async ({
+    adminOrderPage,
+    browser,
+    request,
+  }, testInfo) => {
+    const shopper = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(shopper)
+    const email = uniqueEmail(testInfo, "notice")
+    const { orderNumber } = await placeOrder({ email, handle: PRODUCTS.onyx.handle, page: await shopper.newPage(), request })
+    await shopper.close()
+
+    const notice = await waitForEmail(request, ORDER_NOTIFICATION_INBOX, `Nowe zamówienie ${orderNumber} — M'Arte`)
+    expect(notice.html).toContain(PRODUCTS.onyx.title)
+    expect(notice.html).toContain(email)
+    expect(notice.html).toContain(`${SHIPPING_ADDRESS.postalCode} ${SHIPPING_ADDRESS.city}`)
+    expect(notice.html).toMatch(/398,99\szł/u)
+    const adminLink = linkIn(notice, /\/admin\/orders\//u)
+    expect(adminLink.origin).toBe("http://127.0.0.1:3000")
+
+    await adminOrderPage.open(adminLink.pathname)
+    await expect(adminOrderPage.heading()).toHaveText(orderNumber)
   })
 
   test("an admin back on the order list sees the order a colleague shipped while they had it open", async ({

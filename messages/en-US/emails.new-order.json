@@ -1,0 +1,18 @@
+{
+  "subject": "New order {orderNumber} — M'Arte",
+  "preview": "A customer has placed an order. Here is what to prepare and where to send it.",
+  "heading": "New order",
+  "message": "A customer has just placed an order in the shop.",
+  "messageSecondary": "Below are the pieces to prepare, the delivery the customer chose and how to reach them.",
+  "orderLabel": "Order number",
+  "itemsLabel": "Items",
+  "skuLabel": "SKU",
+  "totalLabel": "Total with delivery",
+  "customerLabel": "Customer",
+  "deliveryMethodLabel": "Delivery method",
+  "shippingAddressLabel": "Shipping address",
+  "customerNoteLabel": "Customer note",
+  "unavailable": "Not provided",
+  "adminCta": "Open the order in the admin",
+  "tagline": "Shop notification"
+}

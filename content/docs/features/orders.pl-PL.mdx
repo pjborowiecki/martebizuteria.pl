@@ -3,7 +3,7 @@ title: "Zamówienia"
 description: "Tabele order i order_item, lista w panelu z filtrami i akcjami, historia zamówień klienta oraz ekran szczegółów w panelu."
 ---
 
-Zamówienie tworzy webhook Stripe, nigdy formularz. Drogę od opłaconej sesji do wiersza opisują [Płatności](/docs/features/payments).
+Zamówienie tworzy webhook Stripe, nigdy formularz. Drogę od opłaconej sesji do wiersza opisują [Płatności](/docs/features/payments). Ten sam webhook wysyła sklepowi e-mail o każdym nowym zamówieniu na `RESEND_EMAIL_FROM`, z produktami, dostawą, danymi kontaktowymi klienta i przyciskiem, który otwiera zamówienie w panelu; zobacz [E-maile transakcyjne](/docs/features/email#e-mail-sklepu-o-nowym-zamówieniu).
 
 ## Tabele
 
