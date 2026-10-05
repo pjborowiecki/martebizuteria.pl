@@ -268,6 +268,46 @@ describe("AddressStep billing address", () => {
   })
 })
 
+describe("AddressStep company invoice", () => {
+  it("offers an invoice for a company without asking for one", () => {
+    renderWithProviders(<AddressStepHarness />)
+
+    expect(screen.getByRole("checkbox", { name: "I want an invoice for a company" })).not.toBeChecked()
+    expect(screen.queryByLabelText(/Company Name/u)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Tax ID \(NIP\)/u)).not.toBeInTheDocument()
+  })
+
+  it("asks for the company name and NIP once the shopper wants an invoice for a company", async () => {
+    renderWithProviders(<AddressStepHarness />)
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "I want an invoice for a company" }))
+
+    const companyName = await screen.findByLabelText(/Company Name/u)
+    const nip = screen.getByLabelText(/Tax ID \(NIP\)/u)
+
+    expect(screen.getByText(/We will issue the invoice to this company at the billing address/u)).toBeInTheDocument()
+    expect(companyName).toHaveAttribute("aria-required", "true")
+    expect(companyName).toHaveAttribute("autocomplete", "billing organization")
+    expect(companyName).toHaveAttribute("maxlength", "256")
+    expect(nip).toHaveAttribute("aria-required", "true")
+    expect(nip).toHaveAttribute("inputmode", "numeric")
+  })
+
+  it("keeps the company name and NIP the shopper types in the checkout values", async () => {
+    renderWithProviders(<AddressStepHarness />)
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "I want an invoice for a company" }))
+    await userEvent.type(await screen.findByLabelText(/Company Name/u), "Pracownia Złotnicza")
+    await userEvent.type(screen.getByLabelText(/Tax ID \(NIP\)/u), "526-000-12-46")
+
+    expect(observed.form?.getValues()).toMatchObject({
+      billingCompanyName: "Pracownia Złotnicza",
+      billingNip: "526-000-12-46",
+      companyInvoice: true,
+    })
+  })
+})
+
 describe("AddressStep continue button", () => {
   it("advances the checkout from the address step", async () => {
     renderWithProviders(<AddressStepHarness />)

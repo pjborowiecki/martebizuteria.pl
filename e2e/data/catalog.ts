@@ -28,3 +28,5 @@ export const SHIPPING_ADDRESS = {
   phone: "501234567",
   postalCode: "00-001",
 } as const
+
+export const INVOICED_COMPANY = { companyName: "Pracownia Złotnicza sp. z o.o.", nip: "526-000-12-46", storedNip: "5260001246" } as const

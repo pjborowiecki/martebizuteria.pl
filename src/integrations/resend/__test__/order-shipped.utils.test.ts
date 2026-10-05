@@ -30,6 +30,8 @@ const addressRow = {
 const context: CheckoutEmailContext = {
   billingAddress: null,
   billingAddressId: null,
+  billingCompanyName: null,
+  billingNip: null,
   customerNote: null,
   deliveryMethod: { name: "Kurier", type: "courier" },
   lockerId: null,

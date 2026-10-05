@@ -50,6 +50,20 @@ export const resolveDeliveryMethodLabel = (
   return method.name
 }
 
+const isPresent = (value: string | null): value is string => value !== null && value.trim() !== ""
+
+export const describeCompanyInvoice = (
+  { billingCompanyName, billingNip }: Readonly<Pick<CheckoutEmailContext, "billingCompanyName" | "billingNip">>,
+  nipLabel: string,
+): string | undefined => {
+  const lines = [
+    ...(isPresent(billingCompanyName) ? [billingCompanyName] : []),
+    ...(isPresent(billingNip) ? [`${nipLabel} ${billingNip}`] : []),
+  ]
+
+  return lines.length === EMPTY_COUNT ? undefined : lines.join("\n")
+}
+
 const resolveBillingAddress = (context: CheckoutEmailContext | undefined, messages: OrderConfirmationMessages): string => {
   if (context === undefined) {
     return messages.unavailable
@@ -72,6 +86,7 @@ export const buildOrderConfirmationDetails = ({
 
   return {
     billingAddress: resolveBillingAddress(context, messages),
+    companyInvoice: context === undefined ? undefined : describeCompanyInvoice(context, messages.nipLabel),
     deliveryMethod: resolveDeliveryMethodLabel(context, messages.unavailable),
     estimatedDelivery: messages.estimatedDelivery[deliveryType],
     fulfillmentTime: describeOrderFulfillmentTime(fulfillmentTimes, messages),
@@ -196,6 +211,8 @@ interface EmailAddressRow {
 export interface CheckoutEmailContext {
   readonly billingAddress: EmailAddressRow | null
   readonly billingAddressId: string | null
+  readonly billingCompanyName: string | null
+  readonly billingNip: string | null
   readonly customerNote: string | null
   readonly deliveryMethod: {
     readonly name: string

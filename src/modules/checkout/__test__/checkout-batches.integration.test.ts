@@ -82,6 +82,8 @@ const addressRowSchema = z.object({
 
 const checkoutRowSchema = z.object({
   billing_address_id: z.string().nullable(),
+  billing_company_name: z.string().nullable(),
+  billing_nip: z.string().nullable(),
   customer_note: z.string().nullable(),
   delivery_method_id: z.string().nullable(),
   email: z.string(),
@@ -444,6 +446,43 @@ describe("prepareCreateCheckoutBatch with no billing country", () => {
     const checkoutId = await createdCheckoutIdFrom({ ...shippingForm, sameAsShipping: false, saveBillingAddress: false })
 
     expect(readAddress(readCheckout(checkoutId).billing_address_id ?? "").country_code).toBe("")
+  })
+})
+
+const companyInvoiceForm: CheckoutFormSchema = {
+  ...shippingForm,
+  billingCompanyName: "Pracownia Złotnicza sp. z o.o.",
+  billingNip: "5260001246",
+  companyInvoice: true,
+}
+
+describe("checkout batches for a company invoice", () => {
+  beforeEach(resetSchema)
+
+  it("stores the company and its NIP when the shopper asks for an invoice", async () => {
+    const checkoutId = await createdCheckoutIdFrom(companyInvoiceForm)
+
+    expect(readCheckout(checkoutId)).toMatchObject({ billing_company_name: "Pracownia Złotnicza sp. z o.o.", billing_nip: "5260001246" })
+  })
+
+  it("stores no company when the shopper unticked the invoice after typing one", async () => {
+    const checkoutId = await createdCheckoutIdFrom({ ...companyInvoiceForm, companyInvoice: false })
+
+    expect(readCheckout(checkoutId)).toMatchObject({ billing_company_name: null, billing_nip: null })
+  })
+
+  it("adds the company when an edit asks for an invoice and clears it when a later edit no longer does", async () => {
+    const checkoutId = await createdCheckoutIdFrom(shippingForm)
+
+    await runDrizzleBatch(prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), companyInvoiceForm))
+
+    expect(readCheckout(checkoutId)).toMatchObject({ billing_company_name: "Pracownia Złotnicza sp. z o.o.", billing_nip: "5260001246" })
+
+    await runDrizzleBatch(
+      prepareUpdateCheckoutDeliveryBatch(readCheckoutContext(checkoutId), { ...companyInvoiceForm, companyInvoice: undefined }),
+    )
+
+    expect(readCheckout(checkoutId)).toMatchObject({ billing_company_name: null, billing_nip: null })
   })
 })
 

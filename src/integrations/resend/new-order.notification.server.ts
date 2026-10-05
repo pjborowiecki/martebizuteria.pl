@@ -4,7 +4,7 @@ import { createElement } from "react"
 
 import { createTranslator } from "use-intl"
 
-import { resolveDeliveryMethodLabel } from "~/src/integrations/resend/order-confirmation.utils"
+import { describeCompanyInvoice, resolveDeliveryMethodLabel } from "~/src/integrations/resend/order-confirmation.utils"
 import { type OrderEmailOutcome, recordOrderEmailAttempt } from "~/src/integrations/resend/order-email.outcome.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
@@ -26,21 +26,34 @@ const NEW_ORDER_LABEL = "New order notification"
 const joinLines = (lines: readonly (string | undefined)[]): string =>
   lines.filter((line): line is string => line !== undefined && line.trim() !== "").join("\n")
 
-const describeShippingAddress = ({ city, countryCode, line1, line2, postalCode }: Order["adminOrderDetailAddress"]): string =>
+const describeAddress = ({ city, countryCode, line1, line2, postalCode }: Order["adminOrderDetailAddress"]): string =>
   joinLines([line1, line2, postalCode === undefined ? city : `${postalCode} ${city}`, countryCode])
 
+const describeInvoicedCompany = (
+  orderRow: AdminOrderDetailRow,
+  billingAddress: Order["adminOrderDetailAddress"] | undefined,
+  messages: typeof newOrderMessages,
+): string | undefined => {
+  const company = describeCompanyInvoice(orderRow, messages.nipLabel)
+
+  return company === undefined
+    ? undefined
+    : joinLines([company, billingAddress === undefined ? undefined : describeAddress(billingAddress)])
+}
+
 const buildNewOrderDetails = (orderRow: AdminOrderDetailRow, messages: typeof newOrderMessages): NewOrderDetails => {
-  const { shippingAddress } = resolveAdminOrderDetailAddresses(orderRow)
+  const { billingAddress, shippingAddress } = resolveAdminOrderDetailAddresses(orderRow)
   const customerNote = orderRow.customerNote?.trim()
 
   return {
+    companyInvoice: describeInvoicedCompany(orderRow, billingAddress, messages),
     customer: joinLines([shippingAddress?.name, orderRow.email, shippingAddress?.phone]),
     customerNote: customerNote === undefined || customerNote === "" ? undefined : customerNote,
     deliveryMethod: resolveDeliveryMethodLabel(
       { deliveryMethod: orderRow.deliveryMethod, lockerId: orderRow.lockerId },
       messages.unavailable,
     ),
-    shippingAddress: shippingAddress === undefined ? messages.unavailable : describeShippingAddress(shippingAddress),
+    shippingAddress: shippingAddress === undefined ? messages.unavailable : describeAddress(shippingAddress),
   }
 }
 

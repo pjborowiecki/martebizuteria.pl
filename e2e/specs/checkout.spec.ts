@@ -383,6 +383,17 @@ test.describe("guest checkout", () => {
     await expect(checkoutPage.field("Postal Code *")).toHaveAttribute("aria-invalid", "true")
   })
 
+  test("the address step refuses a company NIP whose check digit is wrong", async ({ checkoutPage, page }, testInfo) => {
+    await checkoutPage.gotoCheckout()
+    await checkoutPage.fillContact(uniqueEmail(testInfo, "nip"), SHIPPING_ADDRESS.phone)
+
+    await checkoutPage.fillAddress(SHIPPING_ADDRESS, { companyName: "Pracownia Złotnicza sp. z o.o.", nip: "526-000-12-45" })
+
+    await expect(page).toHaveURL(/\/en-US\/checkout\?step=2$/u)
+    await expect(checkoutPage.field("Tax ID (NIP) *")).toHaveAttribute("aria-invalid", "true")
+    await expect(page.getByText("Please enter a valid 10-digit Polish tax ID (NIP)")).toBeVisible()
+  })
+
   test("a guest whose saved checkout names a delivery method the shop withdrew is sent back to choose another, with nothing held", async ({
     checkoutPage,
     page,

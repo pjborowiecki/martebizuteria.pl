@@ -31,7 +31,12 @@ export const OrderDetailPage = ({ order }: Readonly<OrderDetailPageProps>): JSX.
           trackingNumber={order.trackingNumber}
           trackingUrl={order.trackingUrl}
         />
-        <OrderBillingCard billingAddress={order.billingAddress} sameAsShipping={order.billingSameAsShipping} />
+        <OrderBillingCard
+          billingAddress={order.billingAddress}
+          billingCompanyName={order.billingCompanyName}
+          billingNip={order.billingNip}
+          sameAsShipping={order.billingSameAsShipping}
+        />
         <OrderPaymentCard currencyCode={order.currencyCode} payment={order.payment} />
         <OrderTagsCard tags={order.tags} />
         <OrderNotesCard customerNote={order.customerNote} />

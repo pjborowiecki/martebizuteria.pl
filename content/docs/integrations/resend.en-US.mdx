@@ -136,15 +136,16 @@ In the webhook, a refused host or a session with no `return_url` stops only the 
 
 `order-confirmation.utils.ts` turns database rows into template props:
 
-| Export                                                                                  | Purpose                                                                                            |
-| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `formatEmailAddress(addressRow)`                                                        | One multi-line postal address string, or `undefined`                                               |
-| `resolveDeliveryMethodLabel(context, unavailable)`                                      | The customer-facing delivery label, falling back to the translated "unavailable" text              |
-| `buildOrderConfirmationDetails({ context, fulfillmentTimes, messages, paymentMethod })` | The whole details block: addresses, delivery method, payment method, delivery and fulfilment times |
-| `buildOrderConfirmationItems(lines, locale, origin)`                                    | The item rows, with formatted prices and product URLs                                              |
-| `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })`                  | Either "create an account and track this order" or a link into `/account/orders/<id>`              |
-| `buildOrderLegalLinks(origin, locale)`                                                  | Links to the terms of service, the exchanges-and-returns page and the privacy policy               |
-| `resolveStripePaymentMethodLabel(session, messages)`                                    | Reads the PaymentIntent to name the method the customer actually used (card, BLIK, P24)            |
+| Export                                                                                  | Purpose                                                                                                                |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `formatEmailAddress(addressRow)`                                                        | One multi-line postal address string, or `undefined`                                                                   |
+| `resolveDeliveryMethodLabel(context, unavailable)`                                      | The customer-facing delivery label, falling back to the translated "unavailable" text                                  |
+| `describeCompanyInvoice({ billingCompanyName, billingNip }, nipLabel)`                  | The company to invoice and `NIP <digits>`, one per line, or `undefined` when neither was given                         |
+| `buildOrderConfirmationDetails({ context, fulfillmentTimes, messages, paymentMethod })` | The whole details block: addresses, company to invoice, delivery method, payment method, delivery and fulfilment times |
+| `buildOrderConfirmationItems(lines, locale, origin)`                                    | The item rows, with formatted prices and product URLs                                                                  |
+| `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })`                  | Either "create an account and track this order" or a link into `/account/orders/<id>`                                  |
+| `buildOrderLegalLinks(origin, locale)`                                                  | Links to the terms of service, the exchanges-and-returns page and the privacy policy                                   |
+| `resolveStripePaymentMethodLabel(session, messages)`                                    | Reads the PaymentIntent to name the method the customer actually used (card, BLIK, P24)                                |
 
 `order-fulfillment-time.utils.ts` turns the ordered products' `czas-realizacji` attribute into the fulfilment time the confirmation states:
 

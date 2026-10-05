@@ -162,18 +162,20 @@ Numer i adres śledzenia pochodzą z `order-ship-dialog.tsx`; `shipOrder` je prz
 
 `getAdminOrder` (`use-cases/get-admin-order.ts`) wymaga `order: ["read"]`. `getAdminOrderDetailRow` wczytuje zamówienie z migawkami `order_address`, adresami checkoutu, metodą dostawy i kurierem, płatnością i użytkownikiem; potem równolegle wykonują się trzy odczyty: `getAdminOrderItemRows` (pozycje złączone z wariantem i produktem dla SKU, handle i miniatury), `getAdminOrderTimelineRows` (wiersze `audit_log` zamówienia) oraz, gdy zamówienie ma `user_id`, `getAdminOrderCustomerStats`. `resolveAdminOrderDetailAddresses` (`order.detail.utils.ts`) bierze każdy adres z jego migawki, sięgając po wiersz checkoutu tylko wtedy, gdy tej migawki brakuje, i ustala `billingSameAsShipping`, porównując migawkę rozliczeniową z migawką dostawy pole po polu. Tylko zamówienie bez migawek, złożone, zanim były zapisywane, porównuje zamiast tego `billing_address_id` checkoutu z jego `shipping_address_id`. Gdy zamówienie nie istnieje, `getAdminOrderQuery` rzuca `notFound()`.
 
-| Komponent                       | Czyta ze szczegółów                                                          |
-| ------------------------------- | ---------------------------------------------------------------------------- |
-| `order-meta-strip.tsx`          | `status`, `paymentUiKey`, `fulfillmentUiKey`, `createdAt`, `totalMinorUnits` |
-| `order-fulfillment-tracker.tsx` | `fulfillmentSteps` z `buildAdminOrderFulfillmentSteps`, `canceledAt`         |
-| `order-line-items-card.tsx`     | `items`, `delivery` i pięć kwot `*MinorUnits`                                |
-| `order-timeline-card.tsx`       | `timeline` z `mapAdminOrderTimeline`                                         |
-| `order-customer-card.tsx`       | `customer` z `buildAdminOrderDetailCustomer`                                 |
-| `order-shipping-card.tsx`       | `delivery`, `shippingAddress`, `trackingNumber`, `trackingUrl`               |
-| `order-billing-card.tsx`        | `billingAddress`, `billingSameAsShipping`                                    |
-| `order-payment-card.tsx`        | `payment`, łącznie z kwotą i datą zwrotu                                     |
-| `order-tags-card.tsx`           | `tags` z `resolveAdminOrderDetailTags`                                       |
-| `order-notes-card.tsx`          | `customerNote`                                                               |
+| Komponent                       | Czyta ze szczegółów                                                           |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `order-meta-strip.tsx`          | `status`, `paymentUiKey`, `fulfillmentUiKey`, `createdAt`, `totalMinorUnits`  |
+| `order-fulfillment-tracker.tsx` | `fulfillmentSteps` z `buildAdminOrderFulfillmentSteps`, `canceledAt`          |
+| `order-line-items-card.tsx`     | `items`, `delivery` i pięć kwot `*MinorUnits`                                 |
+| `order-timeline-card.tsx`       | `timeline` z `mapAdminOrderTimeline`                                          |
+| `order-customer-card.tsx`       | `customer` z `buildAdminOrderDetailCustomer`                                  |
+| `order-shipping-card.tsx`       | `delivery`, `shippingAddress`, `trackingNumber`, `trackingUrl`                |
+| `order-billing-card.tsx`        | `billingAddress`, `billingSameAsShipping`, `billingCompanyName`, `billingNip` |
+| `order-payment-card.tsx`        | `payment`, łącznie z kwotą i datą zwrotu                                      |
+| `order-tags-card.tsx`           | `tags` z `resolveAdminOrderDetailTags`                                        |
+| `order-notes-card.tsx`          | `customerNote`                                                                |
+
+Gdy klient poprosił przy zamówieniu o fakturę na firmę, karta rozliczeniowa dodaje pod adresem blok „Faktura na firmę” z nazwą firmy i `NIP <cyfry>`, które `getAdminOrder` czyta z `billing_company_name` i `billing_nip` zamówienia. Blok pokazuje to z tych dwóch, co zamówienie ma, i nie pojawia się, gdy nie ma żadnego. Samą fakturę wystawia się poza aplikacją.
 
 Oś czasu obejmuje też wpisy e-maili zamówienia. Wiersz `email.failed` ma etykietę „Błąd wysyłki e-maila” z oznaczeniem „Niepowodzenie”, a jego szczegół zawiera błąd, na przykład `Order confirmation → jane@example.com — The example.com domain is not verified…`. Wiersze audytu trafiają do D1 przez kolejkę kilka sekund po akcji, dlatego `processAuditLogQueueBatch` publikuje `ORDER_QUERY_KEYS.ADMIN.ORDERS`, gdy partia zawiera akcję z `ADMIN_ORDER_TIMELINE_ACTIONS`. Każda otwarta karta panelu pobiera wtedy ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc otwarta strona zamówienia pokazuje nowe wiersze bez przeładowania. Nieudany e-mail newslettera albo Better Auth używa tej samej akcji `email.failed` i też wywołuje to odświeżenie. Nie ma akcji ponownej wysyłki e-maila o zamówieniu.
 

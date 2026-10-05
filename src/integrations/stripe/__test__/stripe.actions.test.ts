@@ -56,7 +56,13 @@ const CHECKOUT_VALUES = {
   postalCode: "00-640",
 }
 
-const PARSED_CHECKOUT_VALUES = { ...CHECKOUT_VALUES, sameAsShipping: true, saveBillingAddress: false, saveShippingAddress: false }
+const PARSED_CHECKOUT_VALUES = {
+  ...CHECKOUT_VALUES,
+  companyInvoice: false,
+  sameAsShipping: true,
+  saveBillingAddress: false,
+  saveShippingAddress: false,
+}
 
 const CART_LINE = {
   id: "line-1",
@@ -82,6 +88,17 @@ describe("createCheckoutSessionFn", () => {
 
     expect(result).toStrictEqual({ created: { checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_LINE] } })
     expect(state.createHandler).toHaveBeenCalledWith({ checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_LINE] })
+  })
+
+  it("hands the server handler the company to invoice with the NIP reduced to its ten digits", async () => {
+    const company = { billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "PL 526-000-12-46", companyInvoice: true }
+
+    await createCheckoutSessionFn({ data: { checkoutValues: { ...CHECKOUT_VALUES, ...company }, items: [CART_ITEM] } })
+
+    expect(state.createHandler).toHaveBeenCalledWith({
+      checkoutValues: { ...PARSED_CHECKOUT_VALUES, ...company, billingNip: "5260001246" },
+      items: [CART_LINE],
+    })
   })
 
   it("refuses an empty cart before reaching Stripe", () => {

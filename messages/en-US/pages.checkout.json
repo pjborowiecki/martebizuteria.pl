@@ -126,6 +126,10 @@
     "sameAsShipping": "Same as shipping address",
     "saveShippingAddress": "Save this shipping address for future use",
     "saveBillingAddress": "Save this billing address for future use",
+    "companyInvoice": "I want an invoice for a company",
+    "companyInvoiceHint": "We will issue the invoice to this company at the billing address. If the company's address is not the delivery address, untick “Same as shipping address” above and enter it.",
+    "companyName": "Company Name",
+    "nip": "Tax ID (NIP)",
     "estDeliveryPlaceholder": "Est. delivery in 2–4 business days",
     "deliveryNotes": "Delivery Instructions (Optional)",
     "deliveryNotesPlaceholder": "e.g. Leave at the front door",
@@ -161,7 +165,10 @@
       "countryNotDelivered": "We currently deliver only within Poland",
       "deliveryRequired": "Please select a delivery method",
       "lockerIdRequired": "Please select a parcel locker",
-      "paymentRequired": "Please select a payment method"
+      "paymentRequired": "Please select a payment method",
+      "companyNameRequired": "Company name is required",
+      "nipRequired": "Tax ID (NIP) is required",
+      "nipInvalid": "Please enter a valid 10-digit Polish tax ID (NIP)"
     },
     "errors": {
       "deliveryMethodUnavailable": "The delivery method you chose is no longer available. Please choose another one.",

@@ -12,6 +12,18 @@ const POSTAL_CODE_PATTERNS: Record<string, RegExp> = {
   PL: /^\d{2}-\d{3}$/u,
 }
 
+const NIP_CHECK_WEIGHTS = Array.from("657234567", Number)
+
+const NIP_CHECK_MODULUS = 11
+
+const NIP_PATTERN = /^\d{10}$/u
+
+const NIP_SEPARATORS = /[\s-]/gu
+
+const NIP_COUNTRY_PREFIX = /^PL/iu
+
+const NO_WEIGHTED_SUM = 0
+
 const REQUIRED_BILLING_FIELDS = [
   ["billingAddress1", "validation.addressRequired"],
   ["billingFirstName", "validation.firstNameRequired"],
@@ -45,6 +57,30 @@ const refineBillingAddress = (data: CheckoutValues, ctx: zod.RefinementCtx): voi
   }
 }
 
+export const normalizeNip = (value: string): string => value.replaceAll(NIP_SEPARATORS, "").replace(NIP_COUNTRY_PREFIX, "")
+
+const isValidNip = (nip: string): boolean => {
+  if (!NIP_PATTERN.test(nip)) {
+    return false
+  }
+
+  const weightedSum = NIP_CHECK_WEIGHTS.reduce((sum, weight, index) => sum + weight * Number(nip.charAt(index)), NO_WEIGHTED_SUM)
+
+  return weightedSum % NIP_CHECK_MODULUS === Number(nip.charAt(NIP_CHECK_WEIGHTS.length))
+}
+
+const refineCompanyInvoice = (data: CheckoutValues, ctx: zod.RefinementCtx): void => {
+  if (!isFilled(data.billingCompanyName)) {
+    addCheckoutIssue(ctx, "billingCompanyName", "validation.companyNameRequired")
+  }
+
+  if (!isFilled(data.billingNip)) {
+    addCheckoutIssue(ctx, "billingNip", "validation.nipRequired")
+  } else if (!isValidNip(data.billingNip)) {
+    addCheckoutIssue(ctx, "billingNip", "validation.nipInvalid")
+  }
+}
+
 export const isValidCheckoutPhone = (value: string): boolean => isValidPhoneNumber(value, DEFAULT_COUNTRY)
 
 export const refineCheckout = (data: CheckoutValues, ctx: zod.RefinementCtx): void => {
@@ -58,6 +94,10 @@ export const refineCheckout = (data: CheckoutValues, ctx: zod.RefinementCtx): vo
 
   if (!data.sameAsShipping) {
     refineBillingAddress(data, ctx)
+  }
+
+  if (data.companyInvoice) {
+    refineCompanyInvoice(data, ctx)
   }
 
   if (data.deliveryMethodType === LOCKER_DELIVERY_TYPE && !isFilled(data.lockerId)) {

@@ -62,12 +62,12 @@ On `/checkout` the check acts on its first answer only. The payment step navigat
 
 `src/presentation/components/custom/checkout/lib/checkout-steps.ts` is the single definition of the steps and their fields:
 
-| Index | `id`       | `titleKey`       | Validated fields                                                                                                                              |
-| ----- | ---------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0     | `contact`  | `steps.contact`  | `email`, `phone`                                                                                                                              |
-| 1     | `billing`  | `steps.billing`  | `firstName`, `lastName`, `address1`, `address2`, `postalCode`, `city`, `countryCode`, `province`, `sameAsShipping`, and the `billing*` fields |
-| 2     | `delivery` | `steps.delivery` | `deliveryMethod`, `lockerId`                                                                                                                  |
-| 3     | `payment`  | `steps.payment`  | none                                                                                                                                          |
+| Index | `id`       | `titleKey`       | Validated fields                                                                                                                                                |
+| ----- | ---------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | `contact`  | `steps.contact`  | `email`, `phone`                                                                                                                                                |
+| 1     | `billing`  | `steps.billing`  | `firstName`, `lastName`, `address1`, `address2`, `postalCode`, `city`, `countryCode`, `province`, `sameAsShipping`, `companyInvoice`, and the `billing*` fields |
+| 2     | `delivery` | `steps.delivery` | `deliveryMethod`, `lockerId`                                                                                                                                    |
+| 3     | `payment`  | `steps.payment`  | none                                                                                                                                                            |
 
 `getFurthestReachableStepIndex(values)` parses the whole form with `checkoutSchema` and returns the index of the first step that owns an invalid field, or the last index when everything validates. The provider clamps the requested `?step=` to that index, so a visitor cannot deep-link past an incomplete step.
 
@@ -108,14 +108,17 @@ The same file keeps the id of the browser's open Checkout Session in **`localSto
 
 `src/modules/checkout/checkout.zod.ts` builds `checkoutSchema` from a Drizzle-derived address schema plus the checkout-only fields. Its messages are **message keys**, not sentences: `"validation.addressRequired"`, `"validation.phoneInvalid"` and so on, resolved against `pages.checkout` by `validation-field-error.tsx`.
 
-Four rules go beyond field presence, all in the `superRefine`:
+Five rules go beyond field presence, all in the `superRefine`:
 
 1. **Destination country.** `countryCode` must be one of `DELIVERY_COUNTRY_CODES` in `src/modules/delivery-method/delivery-method.constants.ts`, currently only `PL`, or the field reports `validation.countryNotDelivered`. No table records the countries the shop serves; the set holds what the address form offers, the delivery methods reach and § 7 of the terms states. The server functions parse with the same schema, so a request for another country is refused before the handler runs. The billing country is not restricted.
 2. **Polish postal code.** `POSTAL_CODE_PATTERNS` currently contains only `PL: /^\d{2}-\d{3}$/u`. A billing country with no pattern passes.
 3. **Billing address.** When `sameAsShipping` is `false`, each `billing*` field becomes required and the billing postal code is pattern-checked too.
-4. **Locker.** When `deliveryMethodType === "locker"`, `lockerId` must be a non-empty string. This only guides the form: the server decides from the method's type in the database, see [Server side](#server-side).
+4. **Company invoice.** When `companyInvoice` is `true`, `billingCompanyName` is required (`validation.companyNameRequired`, at most `COMPANY_NAME_MAX_LENGTH`, 256, characters) and so is `billingNip` (`validation.nipRequired`), which must also be a valid Polish NIP or the field reports `validation.nipInvalid`. The schema's `overwrite(normalizeNip)` strips spaces, hyphens and a leading `PL` first, so `526-000-12-46` and `PL5260001246` both reach the rule, and the server, as `5260001246`. `isValidNip` then wants ten digits whose first nine, weighted 6, 5, 7, 2, 3, 4, 5, 6, 7, sum to a number whose remainder modulo 11 is the tenth digit; a remainder of 10 matches no digit. While the box is unticked neither field is checked.
+5. **Locker.** When `deliveryMethodType === "locker"`, `lockerId` must be a non-empty string. This only guides the form: the server decides from the method's type in the database, see [Server side](#server-side).
 
 The country field of the address step is read-only, so the step offers as a shipping address only the saved addresses in one of `DELIVERY_COUNTRY_CODES`; picking one abroad would leave a country the shopper cannot change. Every saved address is still offered for billing.
+
+Below the billing address the step offers `checkoutForm.companyInvoice`, "I want an invoice for a company". Ticking it shows the company name field (`autocomplete="billing organization"`, `maxLength` 256) and the NIP field (`inputMode="numeric"`) with a note that the invoice goes to the company at the billing address, so a buyer whose company is elsewhere unticks "Same as shipping address" and enters it. The labels, the note and the three validation messages are in `pages.checkout` in both languages. The app records what to invoice; it does not issue the invoice, which the owner does from the accounting system.
 
 Phone numbers are validated with `libphonenumber-js/mobile`'s `isValidPhoneNumber(value, "PL")`, so a mobile number must be valid for Poland.
 
@@ -194,9 +197,11 @@ A single `items` key is still read for sessions created before the chunking, and
 
 ## The checkout row
 
-`checkout` (`src/modules/checkout/checkout.schema.ts`) holds `email`, `customer_note`, `locker_id`, `delivery_method_id`, `shipping_address_id`, `billing_address_id`, `cart_id`, `discount_id`, `user_id` and a `status` of `pending | processing | completed | failed | abandoned`. In practice the code uses `pending`, `completed` (fulfilled) and `failed` (released); `processing` and `abandoned` are never written.
+`checkout` (`src/modules/checkout/checkout.schema.ts`) holds `email`, `customer_note`, `locker_id`, `delivery_method_id`, `shipping_address_id`, `billing_address_id`, `billing_company_name`, `billing_nip`, `cart_id`, `discount_id`, `user_id` and a `status` of `pending | processing | completed | failed | abandoned`. In practice the code uses `pending`, `completed` (fulfilled) and `failed` (released); `processing` and `abandoned` are never written.
 
 When `sameAsShipping` is true, `prepareCreateCheckoutBatch` points both address columns at the **same** `address` row rather than duplicating it.
+
+`billing_company_name` and `billing_nip` hold the company a business buyer asked to be invoiced. `resolveCompanyInvoice` hands both batches the two values only while `companyInvoice` is `true`, so a company typed and then unticked is never stored, and `prepareUpdateCheckoutDeliveryBatch` sets them back to `NULL` when an edit unticks the box. They travel with the rest of the form through `createCheckoutSessionFn` and `updateCheckoutSessionFn`, and because the form's fingerprint changes, editing them replaces the open Stripe session like any other edit. Fulfilment copies them onto the order through `getCheckoutForFulfillment`, and the confirmation email reads them through `getCheckoutEmailContext`.
 
 `discount_id` holds the code that `resolveCheckoutDiscount` accepted on the server. `prepareCreateCheckoutBatch` writes it, and `prepareUpdateCheckoutDeliveryBatch` rewrites it on every session update, setting it to `NULL` when no code applies. Fulfilment reads it back through `getCheckoutForFulfillment`.
 

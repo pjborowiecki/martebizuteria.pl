@@ -119,6 +119,8 @@ interface AdminOrderDetailTimelineEvent {
 
 interface AdminOrderDetail {
   readonly billingAddress: AdminOrderDetailAddress | undefined
+  readonly billingCompanyName: string | undefined
+  readonly billingNip: string | undefined
   readonly billingSameAsShipping: boolean
   readonly canceledAt: Date | undefined
   readonly createdAt: Date

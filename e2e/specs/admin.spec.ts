@@ -1,7 +1,7 @@
 import { type APIRequestContext, type Browser, type Page, type TestInfo } from "@playwright/test"
 
 import { ORDER_NOTIFICATION_INBOX } from "../data/accounts"
-import { COURIER, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
+import { COURIER, INVOICED_COMPANY, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
 import { linkIn, waitForEmail } from "../fixtures/emails"
 import { placeOrder } from "../fixtures/orders"
@@ -177,6 +177,44 @@ test.describe("admin", () => {
 
     await adminOrderPage.open(adminLink.pathname)
     await expect(adminOrderPage.heading()).toHaveText(orderNumber)
+  })
+
+  test("a business buyer's company and NIP reach their confirmation, the shop's notice and the admin order", async ({
+    adminOrderPage,
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const shopper = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(shopper)
+    const email = uniqueEmail(testInfo, "company")
+    const { orderNumber } = await placeOrder({
+      company: INVOICED_COMPANY,
+      email,
+      handle: PRODUCTS.onyx.handle,
+      page: await shopper.newPage(),
+      request,
+    })
+    await shopper.close()
+
+    const confirmation = await waitForEmail(request, email, "Order confirmation — M'Arte")
+    expect(confirmation.html).toContain("Invoice for a company")
+    expect(confirmation.html).toContain(INVOICED_COMPANY.companyName)
+    expect(confirmation.html).toContain(`NIP ${INVOICED_COMPANY.storedNip}`)
+    const notice = await waitForEmail(request, ORDER_NOTIFICATION_INBOX, `Nowe zamówienie ${orderNumber} — M'Arte`)
+    expect(notice.html).toContain("Faktura na firmę")
+    expect(notice.html).toContain(INVOICED_COMPANY.companyName)
+    expect(notice.html).toContain(`NIP ${INVOICED_COMPANY.storedNip}`)
+
+    await adminOrderPage.gotoOrderFor(email)
+    await expect(adminOrderPage.heading()).toHaveText(orderNumber)
+    const main = page.getByRole("main")
+    await expect(main.getByText("Invoice for a company")).toBeVisible()
+    await expect(main.getByText(INVOICED_COMPANY.companyName)).toBeVisible()
+    await expect(main.getByText(`NIP ${INVOICED_COMPANY.storedNip}`)).toBeVisible()
   })
 
   test("an admin back on the order list sees the order a colleague shipped while they had it open", async ({

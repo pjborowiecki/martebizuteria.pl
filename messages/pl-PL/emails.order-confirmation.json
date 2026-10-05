@@ -19,6 +19,8 @@
   "deliveryMethodLabel": "Sposób dostawy",
   "shippingAddressLabel": "Adres dostawy",
   "billingAddressLabel": "Adres rozliczeniowy",
+  "companyInvoiceLabel": "Faktura na firmę",
+  "nipLabel": "NIP",
   "fulfillmentTimeLabel": "Czas realizacji",
   "estimatedDeliveryLabel": "Szacowany czas dostawy",
   "unavailable": "Niedostępne",

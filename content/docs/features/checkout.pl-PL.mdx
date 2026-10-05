@@ -62,12 +62,12 @@ Na `/checkout` sprawdzenie działa tylko na pierwszą odpowiedź. Krok płatnoś
 
 `src/presentation/components/custom/checkout/lib/checkout-steps.ts` to jedyna definicja kroków i ich pól:
 
-| Indeks | `id`       | `titleKey`       | Walidowane pola                                                                                                                      |
-| ------ | ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 0      | `contact`  | `steps.contact`  | `email`, `phone`                                                                                                                     |
-| 1      | `billing`  | `steps.billing`  | `firstName`, `lastName`, `address1`, `address2`, `postalCode`, `city`, `countryCode`, `province`, `sameAsShipping` i pola `billing*` |
-| 2      | `delivery` | `steps.delivery` | `deliveryMethod`, `lockerId`                                                                                                         |
-| 3      | `payment`  | `steps.payment`  | brak                                                                                                                                 |
+| Indeks | `id`       | `titleKey`       | Walidowane pola                                                                                                                                        |
+| ------ | ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0      | `contact`  | `steps.contact`  | `email`, `phone`                                                                                                                                       |
+| 1      | `billing`  | `steps.billing`  | `firstName`, `lastName`, `address1`, `address2`, `postalCode`, `city`, `countryCode`, `province`, `sameAsShipping`, `companyInvoice` i pola `billing*` |
+| 2      | `delivery` | `steps.delivery` | `deliveryMethod`, `lockerId`                                                                                                                           |
+| 3      | `payment`  | `steps.payment`  | brak                                                                                                                                                   |
 
 `getFurthestReachableStepIndex(values)` parsuje cały formularz przez `checkoutSchema` i zwraca indeks pierwszego kroku, który posiada niepoprawne pole, albo ostatni indeks, gdy wszystko jest poprawne. Provider ogranicza żądany `?step=` do tej wartości, więc nie da się wejść linkiem w krok dalszy niż nieukończony.
 
@@ -108,14 +108,17 @@ Ten sam plik trzyma identyfikator otwartej sesji Checkout przeglądarki w **`loc
 
 `src/modules/checkout/checkout.zod.ts` buduje `checkoutSchema` ze schematu adresu wyprowadzonego z Drizzle oraz pól występujących tylko w kasie. Jego komunikaty to **klucze komunikatów**, a nie zdania: `"validation.addressRequired"`, `"validation.phoneInvalid"` i tak dalej, rozwiązywane względem `pages.checkout` przez `validation-field-error.tsx`.
 
-Cztery reguły wychodzą poza samą obecność pól i wszystkie leżą w `superRefine`:
+Pięć reguł wychodzi poza samą obecność pól i wszystkie leżą w `superRefine`:
 
 1. **Kraj dostawy.** `countryCode` musi należeć do `DELIVERY_COUNTRY_CODES` z `src/modules/delivery-method/delivery-method.constants.ts`, obecnie tylko `PL`, inaczej pole zgłasza `validation.countryNotDelivered`. Żadna tabela nie zapisuje krajów, do których sklep wysyła; zbiór zawiera to, co oferuje formularz adresu, dokąd docierają metody dostawy i co mówi § 7 regulaminu. Funkcje serwerowe parsują tym samym schematem, więc żądanie dla innego kraju jest odrzucane, zanim ruszy handler. Kraj rozliczeniowy nie jest ograniczony.
 2. **Polski kod pocztowy.** `POSTAL_CODE_PATTERNS` zawiera obecnie tylko `PL: /^\d{2}-\d{3}$/u`. Kraj rozliczeniowy bez wzorca przechodzi walidację.
 3. **Adres rozliczeniowy.** Gdy `sameAsShipping` jest `false`, każde pole `billing*` staje się wymagane, a kod pocztowy rozliczeniowy jest dodatkowo sprawdzany wzorcem.
-4. **Paczkomat.** Gdy `deliveryMethodType === "locker"`, `lockerId` musi być niepustym napisem. To tylko podpowiedź dla formularza: serwer rozstrzyga na podstawie typu metody w bazie, zobacz [Strona serwera](#strona-serwera).
+4. **Faktura na firmę.** Gdy `companyInvoice` jest `true`, wymagane jest `billingCompanyName` (`validation.companyNameRequired`, najwyżej `COMPANY_NAME_MAX_LENGTH`, czyli 256 znaków) oraz `billingNip` (`validation.nipRequired`), który musi też być poprawnym polskim NIP-em, inaczej pole zgłasza `validation.nipInvalid`. `overwrite(normalizeNip)` w schemacie najpierw usuwa spacje, myślniki i początkowe `PL`, więc `526-000-12-46` i `PL5260001246` trafiają do reguły, a także na serwer, jako `5260001246`. `isValidNip` wymaga dziesięciu cyfr, z których pierwsze dziewięć, z wagami 6, 5, 7, 2, 3, 4, 5, 6, 7, daje sumę, której reszta z dzielenia przez 11 jest dziesiątą cyfrą; reszta 10 nie pasuje do żadnej cyfry. Dopóki pole wyboru jest odznaczone, żadne z tych pól nie jest sprawdzane.
+5. **Paczkomat.** Gdy `deliveryMethodType === "locker"`, `lockerId` musi być niepustym napisem. To tylko podpowiedź dla formularza: serwer rozstrzyga na podstawie typu metody w bazie, zobacz [Strona serwera](#strona-serwera).
 
 Pole kraju w kroku adresu jest tylko do odczytu, więc krok proponuje jako adres dostawy wyłącznie zapisane adresy w jednym z krajów `DELIVERY_COUNTRY_CODES`; wybór adresu za granicą zostawiłby kraj, którego kupujący nie może zmienić. Jako adres rozliczeniowy nadal można wybrać każdy zapisany adres.
+
+Pod adresem rozliczeniowym krok proponuje `checkoutForm.companyInvoice`, „Chcę otrzymać fakturę na firmę”. Zaznaczenie pokazuje pole nazwy firmy (`autocomplete="billing organization"`, `maxLength` 256) i pole NIP (`inputMode="numeric"`) z informacją, że faktura trafi na firmę pod adresem rozliczeniowym, więc kupujący, którego firma ma inny adres, odznacza „Taki sam jak adres dostawy” i go podaje. Etykiety, informacja i trzy komunikaty walidacji są w `pages.checkout` w obu językach. Aplikacja zapisuje, na kogo wystawić fakturę; samej faktury nie wystawia, robi to właściciel w systemie księgowym.
 
 Numery telefonów są walidowane przez `isValidPhoneNumber(value, "PL")` z `libphonenumber-js/mobile`, więc numer komórkowy musi być poprawny dla Polski.
 
@@ -194,9 +197,11 @@ Pojedynczy klucz `items` jest wciąż czytany dla sesji utworzonych przed wprowa
 
 ## Wiersz checkoutu
 
-`checkout` (`src/modules/checkout/checkout.schema.ts`) trzyma `email`, `customer_note`, `locker_id`, `delivery_method_id`, `shipping_address_id`, `billing_address_id`, `cart_id`, `discount_id`, `user_id` oraz `status` o wartościach `pending | processing | completed | failed | abandoned`. W praktyce kod używa `pending`, `completed` (zrealizowane) i `failed` (zwolnione); `processing` i `abandoned` nigdy nie są zapisywane.
+`checkout` (`src/modules/checkout/checkout.schema.ts`) trzyma `email`, `customer_note`, `locker_id`, `delivery_method_id`, `shipping_address_id`, `billing_address_id`, `billing_company_name`, `billing_nip`, `cart_id`, `discount_id`, `user_id` oraz `status` o wartościach `pending | processing | completed | failed | abandoned`. W praktyce kod używa `pending`, `completed` (zrealizowane) i `failed` (zwolnione); `processing` i `abandoned` nigdy nie są zapisywane.
 
 Gdy `sameAsShipping` jest prawdziwe, `prepareCreateCheckoutBatch` wskazuje oba identyfikatory adresu na **ten sam** wiersz `address`, zamiast go duplikować.
+
+`billing_company_name` i `billing_nip` przechowują firmę, na którą kupujący chce fakturę. `resolveCompanyInvoice` przekazuje obu wsadom te dwie wartości tylko wtedy, gdy `companyInvoice` jest `true`, więc firma wpisana, a potem odznaczona, nigdy nie zostaje zapisana, a `prepareUpdateCheckoutDeliveryBatch` ustawia je z powrotem na `NULL`, gdy zmiana odznacza pole. Wędrują z resztą formularza przez `createCheckoutSessionFn` i `updateCheckoutSessionFn`, a ponieważ zmienia się odcisk formularza, ich edycja zastępuje otwartą sesję Stripe jak każda inna zmiana. Realizacja kopiuje je do zamówienia przez `getCheckoutForFulfillment`, a e-mail z potwierdzeniem czyta je przez `getCheckoutEmailContext`.
 
 `discount_id` wskazuje kod, który `resolveCheckoutDiscount` zaakceptował na serwerze. `prepareCreateCheckoutBatch` go zapisuje, a `prepareUpdateCheckoutDeliveryBatch` nadpisuje przy każdej aktualizacji sesji i ustawia na `NULL`, gdy żaden kod nie obowiązuje. Realizacja odczytuje go przez `getCheckoutForFulfillment`.
 

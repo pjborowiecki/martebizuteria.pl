@@ -53,6 +53,8 @@ const shippingSnapshot = {
 
 const orderRow = {
   addresses: [shippingSnapshot, { ...shippingSnapshot, address1: "ul. Fakturowa 1", type: "billing" }],
+  billingCompanyName: null,
+  billingNip: null,
   checkout: null,
   currencyCode: "PLN",
   customerNote: "  Please gift-wrap the bracelet.  ",
@@ -152,11 +154,39 @@ describe("notifyShopOfNewOrder", () => {
     await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details).toStrictEqual({
+      companyInvoice: undefined,
       customer: "Anna Kowalska\nanna@example.com\n+48 600 123 456",
       customerNote: "Please gift-wrap the bracelet.",
       deliveryMethod: "InPost Paczkomat · WAW01M",
       shippingAddress: "ul. Mokotowska 12/4\n00-640 Warszawa\nPL",
     })
+  })
+
+  it("names the company, its NIP and the billing address when the customer asked for an invoice", async () => {
+    getAdminOrderDetailRow.mockResolvedValue({
+      ...orderRow,
+      billingCompanyName: "Pracownia Złotnicza sp. z o.o.",
+      billingNip: "5260001246",
+    })
+
+    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+
+    expect(sentEmail().react.props.details.companyInvoice).toBe(
+      `Pracownia Złotnicza sp. z o.o.\n${polishCopy.nipLabel} 5260001246\nul. Fakturowa 1\n00-640 Warszawa\nPL`,
+    )
+  })
+
+  it("names the company to invoice even when the order kept no billing address", async () => {
+    getAdminOrderDetailRow.mockResolvedValue({
+      ...orderRow,
+      addresses: [shippingSnapshot],
+      billingCompanyName: null,
+      billingNip: "5260001246",
+    })
+
+    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+
+    expect(sentEmail().react.props.details.companyInvoice).toBe(`${polishCopy.nipLabel} 5260001246`)
   })
 
   it("keeps the second address line and a missing postal code out of the way", async () => {
@@ -180,6 +210,7 @@ describe("notifyShopOfNewOrder", () => {
     await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details).toStrictEqual({
+      companyInvoice: undefined,
       customer: "anna@example.com",
       customerNote: undefined,
       deliveryMethod: englishCopy.unavailable,

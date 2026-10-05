@@ -25,6 +25,8 @@ const mapCheckoutEmailContext = (
   return {
     billingAddress: checkoutContext.billingAddress,
     billingAddressId: checkoutContext.billingAddressId,
+    billingCompanyName: checkoutContext.billingCompanyName,
+    billingNip: checkoutContext.billingNip,
     customerNote: checkoutContext.customerNote,
     deliveryMethod: checkoutContext.deliveryMethod,
     lockerId: checkoutContext.lockerId,

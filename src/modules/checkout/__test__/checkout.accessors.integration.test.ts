@@ -100,12 +100,22 @@ describe("getCheckoutEmailContext", () => {
     expect(Object.keys(context ?? {}).toSorted()).toStrictEqual([
       "billingAddress",
       "billingAddressId",
+      "billingCompanyName",
+      "billingNip",
       "customerNote",
       "deliveryMethod",
       "lockerId",
       "shippingAddress",
       "shippingAddressId",
     ])
+  })
+
+  it("reads the company and NIP a business buyer asked to be invoiced", async () => {
+    await expect(getCheckoutEmailContext("chk-business")).resolves.toMatchObject({
+      billingCompanyName: "Pracownia Złotnicza sp. z o.o.",
+      billingNip: "5260001246",
+    })
+    await expect(getCheckoutEmailContext("chk-full")).resolves.toMatchObject({ billingCompanyName: null, billingNip: null })
   })
 
   it("joins the shipping and billing addresses of the checkout", async () => {

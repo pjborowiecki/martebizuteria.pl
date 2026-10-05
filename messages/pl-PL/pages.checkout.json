@@ -127,6 +127,10 @@
     "sameAsShipping": "Taki sam jak adres dostawy",
     "saveShippingAddress": "Zapisz ten adres dostawy na przyszłość",
     "saveBillingAddress": "Zapisz ten adres rozliczeniowy na przyszłość",
+    "companyInvoice": "Chcę otrzymać fakturę na firmę",
+    "companyInvoiceHint": "Fakturę wystawimy na tę firmę na adres rozliczeniowy. Jeśli adres firmy jest inny niż adres dostawy, odznacz powyżej „Taki sam jak adres dostawy” i podaj go.",
+    "companyName": "Nazwa firmy",
+    "nip": "NIP",
     "estDeliveryPlaceholder": "Przewidywana dostawa w 2–4 dni robocze",
     "deliveryNotes": "Instrukcje dostawy (opcjonalnie)",
     "deliveryNotesPlaceholder": "np. Zostaw pod drzwiami",
@@ -162,7 +166,10 @@
       "countryNotDelivered": "Obecnie wysyłamy zamówienia wyłącznie na terenie Polski",
       "deliveryRequired": "Wybierz metodę dostawy",
       "lockerIdRequired": "Wybierz paczkomat",
-      "paymentRequired": "Wybierz metodę płatności"
+      "paymentRequired": "Wybierz metodę płatności",
+      "companyNameRequired": "Nazwa firmy jest wymagana",
+      "nipRequired": "NIP jest wymagany",
+      "nipInvalid": "Wprowadź prawidłowy 10-cyfrowy NIP"
     },
     "errors": {
       "deliveryMethodUnavailable": "Wybrana metoda dostawy nie jest już dostępna. Wybierz inną.",

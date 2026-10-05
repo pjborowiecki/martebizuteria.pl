@@ -16,6 +16,7 @@ const ADMIN_ORDER_URL = "https://martebizuteria.pl/admin/orders/order-1"
 const ORDER_TOTAL = 64_600
 
 const details: NewOrderDetails = {
+  companyInvoice: undefined,
   customer: "Anna Kowalska\nanna@example.com\n+48 600 123 456",
   customerNote: undefined,
   deliveryMethod: "InPost Paczkomat · WAW01M",
@@ -112,6 +113,19 @@ describe("NewOrder", () => {
     const text = await renderNewOrder({ details: { ...details, customerNote: "Please gift-wrap the bracelet." } })
 
     expect(text).toContain(`${englishCopy.customerNoteLabel}\n\nPlease gift-wrap the bracelet.`)
+  })
+
+  it("shows the company to invoice only when the customer asked for an invoice", async () => {
+    await expect(renderNewOrder()).resolves.not.toContain(englishCopy.companyInvoiceLabel)
+
+    const companyInvoice = "Pracownia Złotnicza sp. z o.o.\nNIP 5260001246\nul. Marszałkowska 1\n00-001 Warszawa\nPL"
+    const text = await renderNewOrder({ details: { ...details, companyInvoice } })
+    const html = await renderNewOrder({ details: { ...details, companyInvoice } }, false)
+
+    expect(text).toContain(
+      `${englishCopy.companyInvoiceLabel}\n\nPracownia Złotnicza sp. z o.o. NIP 5260001246 ul. Marszałkowska 1 00-001 Warszawa PL`,
+    )
+    expect(html).toContain(companyInvoice)
   })
 
   it("links the button to the order in the admin", async () => {

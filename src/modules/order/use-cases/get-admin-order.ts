@@ -53,6 +53,8 @@ const buildAdminOrderDetail = ({
 
   return {
     billingAddress,
+    billingCompanyName: orderRow.billingCompanyName ?? undefined,
+    billingNip: orderRow.billingNip ?? undefined,
     billingSameAsShipping,
     canceledAt: orderRow.canceledAt ?? undefined,
     createdAt: orderRow.createdAt,

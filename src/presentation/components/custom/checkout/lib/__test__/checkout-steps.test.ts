@@ -73,6 +73,13 @@ describe("getFurthestReachableStepIndex", () => {
     expect(getFurthestReachableStepIndex({ ...COMPLETE, sameAsShipping: false })).toBe(BILLING_INDEX)
   })
 
+  it("keeps the shopper on billing while the company to invoice has a NIP that fails its check digit", () => {
+    const company = { billingCompanyName: "Pracownia Złotnicza", billingNip: "5260001245", companyInvoice: true }
+
+    expect(getFurthestReachableStepIndex({ ...COMPLETE, ...company })).toBe(BILLING_INDEX)
+    expect(getFurthestReachableStepIndex({ ...COMPLETE, ...company, billingNip: "5260001246" })).toBe(PAYMENT_INDEX)
+  })
+
   it.each([
     { field: "address2", limit: 512 },
     { field: "province", limit: 256 },

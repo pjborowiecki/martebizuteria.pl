@@ -126,6 +126,12 @@ describe("renderEmailPreview", () => {
     expect(preview).toContain(`${polishOrderConfirmationCopy.documents.termsOfService} http://localhost:3000/terms-of-service`)
   })
 
+  it("previews the company the buyer asked to be invoiced", async () => {
+    await expect(text("order-confirmation", "pl-PL")).resolves.toContain(
+      `${polishOrderConfirmationCopy.companyInvoiceLabel}\n\nPracownia Złotnicza sp. z o.o. NIP 5260001246`,
+    )
+  })
+
   it("invites the guest buyer to create an account", async () => {
     await expect(text("order-confirmation")).resolves.toContain("Załóż konto i śledź zamówienie")
   })
@@ -167,6 +173,9 @@ describe("renderEmailPreview", () => {
     expect(english).toContain("anna.kowalska@example.com")
     expect(english).toContain(`${newOrderCopy.adminCta} http://localhost:3000/admin/orders/abc123`)
     expect(polish).toContain(polishNewOrderCopy.heading.toUpperCase())
+    expect(polish).toContain(
+      `${polishNewOrderCopy.companyInvoiceLabel}\n\nPracownia Złotnicza sp. z o.o. NIP 5260001246 ul. Mokotowska 12/4`,
+    )
   })
 
   it("previews the failed payment with the basket and a way back to the shop in the language asked for", async () => {

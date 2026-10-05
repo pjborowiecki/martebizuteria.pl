@@ -2,6 +2,7 @@ import { type APIRequestContext, type Page } from "@playwright/test"
 
 import { COURIER, SHIPPING_ADDRESS } from "../data/catalog"
 import { CheckoutPage, ProductPage } from "../pages"
+import { type InvoicedCompany } from "../pages/checkout-page"
 import { completeCheckoutSession, waitForOpenCheckoutSession } from "./stripe"
 import { expect } from "./test"
 
@@ -13,6 +14,7 @@ export interface PlacedOrder {
 }
 
 interface PlaceOrderInput {
+  readonly company?: InvoicedCompany
   readonly discountCode?: string
   readonly email: string
   readonly handle: string
@@ -20,7 +22,7 @@ interface PlaceOrderInput {
   readonly request: APIRequestContext
 }
 
-export const placeOrder = async ({ discountCode, email, handle, page, request }: PlaceOrderInput): Promise<PlacedOrder> => {
+export const placeOrder = async ({ company, discountCode, email, handle, page, request }: PlaceOrderInput): Promise<PlacedOrder> => {
   const productPage = new ProductPage(page)
   const checkoutPage = new CheckoutPage(page)
   await productPage.gotoProduct(handle)
@@ -32,7 +34,7 @@ export const placeOrder = async ({ discountCode, email, handle, page, request }:
   }
 
   await checkoutPage.fillContact(email, SHIPPING_ADDRESS.phone)
-  await checkoutPage.fillAddress(SHIPPING_ADDRESS)
+  await checkoutPage.fillAddress(SHIPPING_ADDRESS, company)
   await checkoutPage.chooseDelivery(COURIER.name)
   const session = await waitForOpenCheckoutSession(request, email)
   await completeCheckoutSession(request, session.id)

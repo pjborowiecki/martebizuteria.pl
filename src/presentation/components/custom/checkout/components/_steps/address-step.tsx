@@ -10,6 +10,7 @@ import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.sess
 
 import { type Address } from "~/src/modules/address/address.types"
 import { listUserAddressesQuery } from "~/src/modules/address/use-cases/list-user-addresses"
+import { COMPANY_NAME_MAX_LENGTH } from "~/src/modules/checkout/checkout.constants"
 import { DELIVERY_COUNTRY_CODES } from "~/src/modules/delivery-method/delivery-method.constants"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -147,6 +148,8 @@ export const AddressStep = (): JSX.Element => {
         </div>
       )}
 
+      <CompanyInvoiceFields />
+
       <div>
         <Button
           size="lg"
@@ -158,6 +161,37 @@ export const AddressStep = (): JSX.Element => {
           <ArrowRight aria-hidden className="ml-2 size-4 transition-transform group-hover:translate-x-1" strokeWidth={1.15} />
         </Button>
       </div>
+    </div>
+  )
+}
+
+const CompanyInvoiceFields = (): JSX.Element => {
+  const t = useTranslations("pages.checkout.checkoutForm")
+  const { control } = useCheckoutForm()
+  const companyInvoice = useWatch({ control, name: "companyInvoice" })
+
+  return (
+    <div className="flex flex-col gap-5 border-t border-border/50 pt-4">
+      <div className="w-fit">
+        <CheckoutCheckboxField control={control} name="companyInvoice" label={t("companyInvoice")} />
+      </div>
+      {companyInvoice === true && (
+        <div className="flex flex-col gap-5">
+          <p className="text-xs leading-relaxed text-muted-foreground">{t("companyInvoiceHint")}</p>
+          <FieldGroup className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+            <CheckoutTextField
+              control={control}
+              name="billingCompanyName"
+              label={t("companyName")}
+              className="sm:col-span-2"
+              autoComplete="billing organization"
+              maxLength={COMPANY_NAME_MAX_LENGTH}
+              required
+            />
+            <CheckoutTextField control={control} name="billingNip" label={t("nip")} autoComplete="off" inputMode="numeric" required />
+          </FieldGroup>
+        </div>
+      )}
     </div>
   )
 }

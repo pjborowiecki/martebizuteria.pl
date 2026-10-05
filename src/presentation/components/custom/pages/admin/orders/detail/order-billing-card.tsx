@@ -10,7 +10,12 @@ import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { OrderAddressLines } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-address-lines"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 
-export const OrderBillingCard = ({ billingAddress, sameAsShipping }: Readonly<OrderBillingCardProps>): JSX.Element => {
+export const OrderBillingCard = ({
+  billingAddress,
+  billingCompanyName,
+  billingNip,
+  sameAsShipping,
+}: Readonly<OrderBillingCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
 
   return (
@@ -29,6 +34,13 @@ export const OrderBillingCard = ({ billingAddress, sameAsShipping }: Readonly<Or
         ) : (
           <OrderAddressLines address={billingAddress} />
         )}
+        {billingCompanyName === undefined && billingNip === undefined ? undefined : (
+          <div className="mt-4 space-y-1 border-t border-border/40 pt-4 text-[13px] text-muted-foreground">
+            <p className="text-[11px] font-medium tracking-wide text-foreground uppercase">{t("orderDetail.billing.companyInvoice")}</p>
+            {billingCompanyName !== undefined && <p className="font-medium text-foreground">{billingCompanyName}</p>}
+            {billingNip !== undefined && <p className="tabular-nums">{t("orderDetail.billing.nip", { nip: billingNip })}</p>}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -36,5 +48,7 @@ export const OrderBillingCard = ({ billingAddress, sameAsShipping }: Readonly<Or
 
 interface OrderBillingCardProps {
   readonly billingAddress: Order["adminOrderDetailAddress"] | undefined
+  readonly billingCompanyName: string | undefined
+  readonly billingNip: string | undefined
   readonly sameAsShipping: boolean
 }
