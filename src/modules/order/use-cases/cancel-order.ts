@@ -3,14 +3,17 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
-import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
+import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordOrderCancelledAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { getRestockLinesForOrder } from "~/src/modules/order/order.accessors"
-import { assertOrderActionState, getAdminOrderActionRow } from "~/src/modules/order/order.admin-action.server"
-import { canCancelAdminOrder } from "~/src/modules/order/order.admin-actions.utils"
-import { ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
+import { getAdminOrderRefundTarget, getRestockLinesForOrder } from "~/src/modules/order/order.accessors"
+import { assertOrderActionState } from "~/src/modules/order/order.admin-action.server"
+import { canCancelAdminOrder, cancelRefundsAdminOrderPayment } from "~/src/modules/order/order.admin-actions.utils"
+import { ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
+import { resolveAdminOrderPaymentUiKey } from "~/src/modules/order/order.display.utils"
+import { requestFullOrderRefund } from "~/src/modules/order/order.refund.server"
 import { prepareCancelOrderBatch } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
@@ -18,8 +21,7 @@ export const cancelOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
   .handler(async ({ data: { orderId } }) => {
-    assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) => canCancelAdminOrder({ status: snapshot.status }))
-
+    const target = assertOrderActionState(await getAdminOrderRefundTarget(orderId), canCancelAdminOrder)
     const orderLines = await getRestockLinesForOrder(orderId)
     const restockLines = orderLines.filter(
       (
@@ -29,7 +31,18 @@ export const cancelOrder = createServerFn({ method: "POST" })
         variantId: string
       } => line.variantId !== null,
     )
-    await runDrizzleBatch(prepareCancelOrderBatch(orderId, restockLines))
+
+    const paymentUiKey = resolveAdminOrderPaymentUiKey(target.paymentStatus)
+    if (cancelRefundsAdminOrderPayment({ paymentUiKey, totalMinorUnits: target.total })) {
+      await requestFullOrderRefund(orderId, target)
+    }
+
+    const [first, ...rest] = prepareCancelOrderBatch(orderId, restockLines)
+    const results = await db.batch([first, ...rest])
+    const cancelled: unknown = results.at(-1)
+    if (!Array.isArray(cancelled) || cancelled.length === 0) {
+      throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE)
+    }
 
     recordOrderCancelledAudit(orderId)
     scheduleProductCatalogInvalidation()

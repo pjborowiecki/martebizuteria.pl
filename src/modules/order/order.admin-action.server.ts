@@ -16,10 +16,10 @@ export const getAdminOrderActionRow = (orderId: string): Promise<AdminOrderActio
     where: eq(order.id, orderId),
   })
 
-export const assertOrderActionState = (
-  row: AdminOrderActionRow | undefined,
-  predicate: (snapshot: AdminOrderActionRow) => boolean,
-): AdminOrderActionRow => {
+export const assertOrderActionState = <TRow extends AdminOrderActionRow>(
+  row: TRow | undefined,
+  predicate: (snapshot: TRow) => boolean,
+): TRow => {
   if (row === undefined) {
     throw new AppError(ERROR_CODES.NOT_FOUND, ORDER_ERROR_CODES.NOT_FOUND)
   }

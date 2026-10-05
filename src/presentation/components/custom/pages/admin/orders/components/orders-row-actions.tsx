@@ -103,7 +103,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
         <CatalogDeleteConfirmDialog
           cancelLabel={t("cancelDialog.cancel")}
           confirmLabel={t("cancelDialog.confirm")}
-          description={t("cancelDialog.description", {
+          description={t(handlers.cancelRefundsPayment ? "cancelDialog.refundDescription" : "cancelDialog.description", {
             id: order.id,
           })}
           isPending={handlers.isPending}

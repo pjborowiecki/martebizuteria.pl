@@ -7,6 +7,7 @@ import {
   canMarkAdminOrderShipped,
   canPrintAdminOrderInvoice,
   canRefundAdminOrder,
+  cancelRefundsAdminOrderPayment,
   resolveAdminOrderRefundBlocker,
 } from "~/src/modules/order/order.admin-actions.utils"
 import { type AdminOrderRefundBlocker } from "~/src/modules/order/order.constants"
@@ -96,6 +97,7 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
       status: order.status,
     }),
     cancelDialogOpen,
+    cancelRefundsPayment: cancelRefundsAdminOrderPayment(order),
     handleConfirmCancel,
     handleConfirmRefund,
     handleConfirmShip,
@@ -123,6 +125,7 @@ interface UseOrderDetailActionsResult {
   readonly canRefund: boolean
   readonly canShip: boolean
   readonly cancelDialogOpen: boolean
+  readonly cancelRefundsPayment: boolean
   readonly handleConfirmCancel: () => void
   readonly handleConfirmRefund: () => void
   readonly handleConfirmShip: (tracking: { readonly trackingNumber: string | undefined; readonly trackingUrl: string | undefined }) => void

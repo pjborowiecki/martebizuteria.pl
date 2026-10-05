@@ -362,6 +362,7 @@ describe("single order lookups", () => {
 
   it("resolves the Checkout Session an admin refund would target", async () => {
     expect(await getAdminOrderRefundTarget("o-unfulfilled")).toStrictEqual({
+      fulfillmentStatus: "not_fulfilled",
       metadata: null,
       paymentStatus: "succeeded",
       status: "processing",
@@ -381,6 +382,7 @@ describe("single order lookups", () => {
 
   it("reports an unpayable order rather than inventing a payment intent", async () => {
     expect(await getAdminOrderRefundTarget("o-cancelled")).toStrictEqual({
+      fulfillmentStatus: "cancelled",
       metadata: null,
       paymentStatus: null,
       status: "cancelled",

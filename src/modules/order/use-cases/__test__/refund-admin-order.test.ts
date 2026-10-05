@@ -14,6 +14,7 @@ const IDEMPOTENCY = { idempotencyKey: `admin-order-refund-${ORDER_ID}` }
 const INVALID_STATE = { code: ERROR_CODES.CONFLICT, message: ORDER_ERROR_CODES.INVALID_STATE }
 
 const PAID_TARGET: AdminOrderRefundTarget = {
+  fulfillmentStatus: "not_fulfilled",
   metadata: null,
   paymentStatus: "succeeded",
   status: "processing",
@@ -39,6 +40,7 @@ const stripeApi = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   stripe: { checkout: { sessions: { retrieve: stripeApi.sessionsRetrieve } }, refunds: { create: stripeApi.refundsCreate } },
 }))
@@ -128,6 +130,14 @@ describe("refundAdminOrder", () => {
     stripeApi.sessionsRetrieve.mockResolvedValue({ payment_intent: null, payment_status: "paid" })
 
     await expect(refundAdminOrder({ data: { orderId: ORDER_ID } })).rejects.toMatchObject(INVALID_STATE)
+    expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
+  })
+
+  it("refuses an order that was cancelled without calling Stripe", async () => {
+    target.current = { ...PAID_TARGET, fulfillmentStatus: "cancelled", status: "cancelled" }
+
+    await expect(refundAdminOrder({ data: { orderId: ORDER_ID } })).rejects.toMatchObject(INVALID_STATE)
+    expect(stripeApi.sessionsRetrieve).not.toHaveBeenCalled()
     expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
   })
 

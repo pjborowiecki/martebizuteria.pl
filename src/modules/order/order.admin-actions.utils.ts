@@ -1,4 +1,10 @@
-import { ADMIN_ORDER_REFUND_BLOCKER, type AdminOrderRefundBlocker } from "~/src/modules/order/order.constants"
+import {
+  ADMIN_ORDER_REFUND_BLOCKER,
+  type AdminOrderRefundBlocker,
+  CANCELLED_ORDER_STATUSES,
+  DISPATCHED_FULFILLMENT_STATUSES,
+  OPEN_ORDER_STATUSES,
+} from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 const isCancelledOrderStatus = (status: Order["select"]["status"]): boolean =>
@@ -35,8 +41,14 @@ export const canMarkAdminOrderDelivered = ({
   return fulfillmentStatus === "shipped"
 }
 
-export const canCancelAdminOrder = ({ status }: Pick<OrderActionSnapshot, "status">): boolean =>
-  (OPEN_ORDER_STATUSES as readonly string[]).includes(status)
+export const canCancelAdminOrder = ({ fulfillmentStatus, status }: Pick<OrderActionSnapshot, "fulfillmentStatus" | "status">): boolean =>
+  (OPEN_ORDER_STATUSES as readonly string[]).includes(status) &&
+  !(DISPATCHED_FULFILLMENT_STATUSES as readonly string[]).includes(fulfillmentStatus)
+
+export const cancelRefundsAdminOrderPayment = ({
+  paymentUiKey,
+  totalMinorUnits,
+}: Pick<Order["adminListItem"], "paymentUiKey" | "totalMinorUnits">): boolean => paymentUiKey === "paid" && totalMinorUnits > 0
 
 export const canRefundAdminOrder = ({ paymentUiKey, status }: Pick<OrderActionSnapshot, "paymentUiKey" | "status">): boolean =>
   paymentUiKey === "paid" && status !== "refunded" && status !== "cancelled"
@@ -57,10 +69,6 @@ export const resolveAdminOrderRefundBlocker = ({
 }
 
 export const canPrintAdminOrderInvoice = ({ status }: Pick<OrderActionSnapshot, "status">): boolean => status !== "cancelled"
-
-const CANCELLED_ORDER_STATUSES = ["cancelled", "refunded"] as const
-
-const OPEN_ORDER_STATUSES = ["pending", "processing"] as const
 
 const FULFILLABLE_FULFILLMENT_STATUSES = ["not_fulfilled", "partially_fulfilled"] as const
 

@@ -197,7 +197,7 @@ if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
 }
 ```
 
-`prepareRefundBatch` writes `refundedAmount`, `refundedAt` and `status` (`refunded` when fully refunded, otherwise back to `succeeded`), sets the order to `refunded` on a full refund, and adds `quantityAvailable + quantity` per restock line.
+`prepareRefundBatch` writes `refundedAmount`, `refundedAt` and `status` (`refunded` when fully refunded, otherwise back to `succeeded`). On a full refund of a payment that has an order, it then adds `quantityAvailable + quantity` per restock line and sets the order to `refunded`, but only while the order still holds its stock, that is while its status is neither `cancelled` nor `refunded`. The batch checks that condition in SQL and runs the increments before the status change, so an order's stock goes back at most once across a cancellation, the Refund button and a refund made in the Stripe dashboard, even when Stripe delivers the event twice at once. A cancelled order keeps the status `cancelled`, and only its payment becomes `refunded`.
 
 Disputes are stored in `order.metadata` rather than in columns: `flagOrderDispute` merges `{ id, reason, status, amount }` into the JSON with `mergeDisputeMetadata` (`order.display.utils.ts`). A lost dispute is treated as a full refund with `restock: false` and logs `review inventory manually` — the goods are gone, so the stock is not returned. `clearOrderDispute` removes the flag when a dispute closes any other way, and while the flag is present the admin refund is refused (see [Admin refunds](#admin-refunds)).
 
@@ -234,7 +234,7 @@ A missing order throws `ERROR_CODES.NOT_FOUND` with `ORDER_NOT_FOUND`. Every ref
 
 The page runs the same predicates on the loaded order. Refund appears when `canRefundAdminOrder` allows it. When `resolveAdminOrderRefundBlocker` returns a blocker, `order-refund-button.tsx` keeps the button visible but disabled and still focusable, and its tooltip explains the blocker with the `pages.admin.orderDetail.refundBlocked` messages.
 
-`refundAdminOrder` writes nothing to the database. The payment and order statuses, the audit entry and the restock arrive with the resulting `charge.refunded` event, through the same `refundOrder` path as a refund made in the Stripe dashboard. The `order: ["refund"]` permission in `auth.access.ts` is still not used by any server function.
+`refundAdminOrder` writes nothing to the database. The payment and order statuses, the audit entry and the restock arrive with the resulting `charge.refunded` event, through the same `refundOrder` path as a refund made in the Stripe dashboard. The blocker, `transaction_id` and session checks and the `stripe.refunds.create` call live in `requestFullOrderRefund` (`src/modules/order/order.refund.server.ts`), which Cancel order also calls for a paid order before cancelling it, under the same idempotency key, so a Refund and a Cancel of one order cannot refund it twice either. The `order: ["refund"]` permission in `auth.access.ts` is still not used by any server function.
 
 ## Related pages
 

@@ -110,7 +110,9 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
       <CatalogDeleteConfirmDialog
         cancelLabel={t("cancelDialog.cancel")}
         confirmLabel={t("cancelDialog.confirm")}
-        description={t("cancelDialog.description", { id: order.displayId })}
+        description={t(actions.cancelRefundsPayment ? "cancelDialog.refundDescription" : "cancelDialog.description", {
+          id: order.displayId,
+        })}
         isPending={actions.isPending}
         onConfirm={actions.handleConfirmCancel}
         onOpenChange={setCancelDialogOpen}

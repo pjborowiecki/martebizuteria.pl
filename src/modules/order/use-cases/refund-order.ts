@@ -13,7 +13,7 @@ const resolveRefundAfterSnapshot = (
   input: Order["refundInput"],
   orderId: string | undefined,
 ): Order["auditSnapshot"] => ({
-  orderStatus: input.fullyRefunded && orderId !== undefined ? "refunded" : before.orderStatus,
+  orderStatus: input.fullyRefunded && orderId !== undefined && before.orderStatus !== "cancelled" ? "refunded" : before.orderStatus,
   paymentStatus: input.fullyRefunded ? "refunded" : before.paymentStatus,
   refundedAmount: input.refundedAmount,
 })

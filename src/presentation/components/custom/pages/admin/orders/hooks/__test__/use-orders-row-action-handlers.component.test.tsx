@@ -135,6 +135,27 @@ describe("useOrdersRowActionHandlers availability", () => {
 
     expect(result.current.canRefund).toBe(false)
   })
+
+  it.each<Order["adminListItem"]["fulfillmentStatus"]>(["shipped", "delivered"])(
+    "withdraws the cancellation once the order is %s",
+    (fulfillmentStatus) => {
+      const { result } = renderHandlers(order({ fulfillmentStatus }))
+
+      expect(result.current.canCancel).toBe(false)
+    },
+  )
+
+  it("says the cancellation of a paid order refunds its payment", () => {
+    const { result } = renderHandlers(order())
+
+    expect(result.current.cancelRefundsPayment).toBe(true)
+  })
+
+  it("says the cancellation of a free order has nothing to refund", () => {
+    const { result } = renderHandlers(order({ totalMinorUnits: 0 }))
+
+    expect(result.current.cancelRefundsPayment).toBe(false)
+  })
 })
 
 describe("useOrdersRowActionHandlers actions", () => {

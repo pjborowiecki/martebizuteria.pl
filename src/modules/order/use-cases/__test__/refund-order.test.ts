@@ -158,6 +158,22 @@ describe("refundOrder audit trail", () => {
     })
   })
 
+  it("keeps a cancelled order cancelled while recording its payment refunded", async () => {
+    state.orderRow = { status: "cancelled" }
+
+    await refundOrder(input())
+
+    expect(calls.audit).toHaveBeenCalledWith("order-1", {
+      detail: "Payment status: succeeded → refunded; Refunded amount: 0 → 1999",
+      metadata: {
+        changed: ["paymentStatus", "refundedAmount"],
+        new: { paymentStatus: "refunded", refundedAmount: 1999 },
+        old: { paymentStatus: "succeeded", refundedAmount: 0 },
+      },
+      resourceId: "order-1",
+    })
+  })
+
   it("leaves the order status untouched for a partial refund", async () => {
     await refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))
 

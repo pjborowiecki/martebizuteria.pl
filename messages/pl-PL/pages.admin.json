@@ -557,7 +557,8 @@
       "cancel": "Anuluj zamówienie",
       "cancelDialog": {
         "title": "Anulować zamówienie?",
-        "description": "Zamówienie #{id} zostanie anulowane. Tej operacji nie można cofnąć.",
+        "description": "Zamówienie #{id} zostanie anulowane, a jego produkty wrócą na stan magazynowy. Nie ma płatności do zwrotu. Sklep nie wysyła klientowi e-maila w tej sprawie. Tej operacji nie można cofnąć.",
+        "refundDescription": "Zamówienie #{id} zostanie anulowane, jego produkty wrócą na stan magazynowy, a Stripe zwróci klientowi całą płatność. Sklep nie wysyła klientowi e-maila w tej sprawie. Tej operacji nie można cofnąć.",
         "cancel": "Zostaw zamówienie",
         "confirm": "Anuluj zamówienie"
       },
@@ -567,7 +568,7 @@
         "shipSuccessDescription": "Zamówienie oznaczono jako wysłane.",
         "shipEmailFailedTitle": "Klient nie otrzymał e-maila",
         "shipEmailFailedDescription": "Nie udało się wysłać wiadomości o nadaniu przesyłki. Szczegóły błędu znajdziesz w sekcji „Aktywność” zamówienia.",
-        "cancelSuccessDescription": "Zamówienie anulowane.",
+        "cancelSuccessDescription": "Zamówienie anulowane, a jego produkty wróciły na stan magazynowy. Opłacone zamówienie pokaże zwrot po potwierdzeniu przez Stripe.",
         "errorTitle": "Nie udało się zaktualizować zamówienia",
         "errorDescription": "Spróbuj ponownie za chwilę.",
         "notFoundDescription": "To zamówienie już nie istnieje.",
@@ -728,7 +729,8 @@
     },
     "cancelDialog": {
       "title": "Anulować to zamówienie?",
-      "description": "Zamówienie {id} zostanie oznaczone jako anulowane. Nie powoduje to zwrotu płatności.",
+      "description": "Zamówienie {id} zostanie anulowane, a jego produkty wrócą na stan magazynowy. Nie ma płatności do zwrotu. Sklep nie wysyła klientowi e-maila w tej sprawie. Tej operacji nie można cofnąć.",
+      "refundDescription": "Zamówienie {id} zostanie anulowane, jego produkty wrócą na stan magazynowy, a Stripe zwróci klientowi całą płatność. Sklep nie wysyła klientowi e-maila w tej sprawie. Tej operacji nie można cofnąć.",
       "cancel": "Zachowaj zamówienie",
       "confirm": "Anuluj zamówienie"
     }

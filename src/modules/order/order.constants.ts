@@ -46,6 +46,12 @@ export const ADMIN_ORDER_FULFILLMENT_UI_KEY = {
 
 export const ADMIN_ORDER_STATUSES = ["pending", "processing", "completed", "cancelled", "refunded"] as const
 
+export const OPEN_ORDER_STATUSES = ["pending", "processing"] as const
+
+export const CANCELLED_ORDER_STATUSES = ["cancelled", "refunded"] as const
+
+export const DISPATCHED_FULFILLMENT_STATUSES = ["shipped", "delivered"] as const
+
 const ADMIN_ORDER_PAYMENT_UI_KEYS = Object.values(ADMIN_ORDER_PAYMENT_UI_KEY)
 
 const ADMIN_ORDER_FULFILLMENT_UI_KEYS = Object.values(ADMIN_ORDER_FULFILLMENT_UI_KEY)
