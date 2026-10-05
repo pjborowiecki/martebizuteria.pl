@@ -463,6 +463,7 @@ test.describe("a guest who signs in during checkout", () => {
 
     await authPage.signIn(customer.email, customer.password)
     await expect(page).toHaveURL(/\/en-US\/account\/overview$/u)
+    await expect(accountPage.navigation()).toBeVisible()
     await fillCheckoutUpToPayment(checkoutPage, customer.email)
     const accountSession = await waitForOpenCheckoutSession(request, customer.email, guestSession)
 

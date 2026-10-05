@@ -19,6 +19,8 @@ export const registerCustomer = async (
 ): Promise<RegisteredCustomer> => {
   const customer = { email: uniqueEmail(testInfo, "customer"), firstName: "Zofia", lastName: "Nowak", password: NEW_CUSTOMER_PASSWORD }
   await authPage.signUp(customer)
+  await expect(page).toHaveURL(/\/en-US\/auth\/sign-in$/u)
+  await expect(authPage.emailField()).toBeVisible()
   const verification = await waitForEmail(request, customer.email, "Welcome to M'Arte — confirm your email")
 
   await page.goto(linkIn(verification, /verify-email/u).href)
