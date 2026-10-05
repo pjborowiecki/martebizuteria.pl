@@ -87,7 +87,7 @@ Pozycje sesji są budowane z cen zwalidowanych na serwerze, plus dosłowna linia
 | `refunded_at`     | nullowalny znacznik czasu                                                    |
 | `reserved_lines`  | JSON `{ qty, variantId }[]` trzymanych przez sesję, not null, domyślnie `[]` |
 
-To, że `transaction_id` trzyma identyfikator sesji, a nie payment intentu, jest powodem, dla którego kilka handlerów webhooka wywołuje `resolveTransactionId(paymentIntent)` — funkcja listuje sesje filtrowane po `payment_intent` i bierze pierwszą. Zwrot z panelu potrzebuje odwrotnego odczytu: pobiera sesję, aby znaleźć PaymentIntent, który Stripe może zwrócić (zobacz [Zwroty z panelu](#zwroty-z-panelu)).
+To, że `transaction_id` trzyma identyfikator sesji, a nie payment intentu, jest powodem, dla którego kilka handlerów webhooka wywołuje `resolveCheckoutSession(paymentIntent)` — funkcja listuje sesje filtrowane po `payment_intent` i bierze pierwszą. Zwrot z panelu potrzebuje odwrotnego odczytu: pobiera sesję, aby znaleźć PaymentIntent, który Stripe może zwrócić (zobacz [Zwroty z panelu](#zwroty-z-panelu)).
 
 Akcesory w `payment.accessors.ts`: `createPendingPayment` (zapisuje zarezerwowane linie), `getPaymentByTransactionId`, `getPaymentContextByTransactionId` (dołącza `email`, `userId` i `status` z checkoutu oraz zwraca własny `status` płatności) oraz `getHeldLinesByTransactionId`, które zwraca `reserved_lines` tylko wtedy, gdy płatność i jej checkout są oba `pending`, i przez które sprawdzenie dostępności koszyka liczy własną rezerwację kupującego. Aktualizacja checkoutu przenosi wiersz na zastępczą sesję przez `supersedeCheckoutSession` w `src/modules/checkout/use-cases/supersede-checkout-session.server.ts`, który przenosi tylko płatność `pending` checkoutu `pending` i aktualizuje kwotę oraz zarezerwowane linie. Metadane Stripe pozostają zapisem, z którego webhooki zwalniają i realizują zamówienie; `reserved_lines` służy tylko do odpowiedzi na pytanie o dostępność bez wywoływania Stripe.
 
@@ -111,18 +111,18 @@ Typ zdarzenia bez handlera loguje `[Stripe] Safely ignoring unhandled event` i z
 
 ## Osiem obsługiwanych zdarzeń
 
-`webhookHandlers` w `src/integrations/stripe/stripe.webhooks.tsx` (plik `.tsx`, bo buduje element e-maila potwierdzającego):
+`webhookHandlers` w `src/integrations/stripe/stripe.webhooks.tsx` (plik `.tsx`, bo buduje elementy e-maili potwierdzenia i nieudanej płatności):
 
-| Zdarzenie                                  | Handler                        | Skutek                                                                       |
-| ------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------------- |
-| `checkout.session.completed`               | `handleFulfillCheckoutSession` | tworzy zamówienie, potem `deleteCheckoutCoupons` usuwa oznaczony kupon sesji |
-| `checkout.session.async_payment_succeeded` | `handleFulfillCheckoutSession` | to samo, dla BLIK/P24 rozliczanych później                                   |
-| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` | zwalnia rezerwację, ustawia płatność i checkout na `failed`                  |
-| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | to samo, potem `deleteCheckoutCoupons` usuwa oznaczony kupon sesji           |
-| `payment_intent.payment_failed`            | `handlePaymentIntentFailed`    | tylko wpis do audytu i ostrzeżenie w logach — bez zmiany stanu               |
-| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` z `restock: true`                                              |
-| `charge.dispute.created`                   | `handleChargeDisputeCreated`   | `flagOrderDispute`, wpis do audytu, unieważnienie listy zamówień w panelu    |
-| `charge.dispute.closed`                    | `handleChargeDisputeClosed`    | przegrany → `refundOrder` z `restock: false`; inaczej `clearOrderDispute`    |
+| Zdarzenie                                  | Handler                        | Skutek                                                                        |
+| ------------------------------------------ | ------------------------------ | ----------------------------------------------------------------------------- |
+| `checkout.session.completed`               | `handleFulfillCheckoutSession` | tworzy zamówienie, potem `deleteCheckoutCoupons` usuwa oznaczony kupon sesji  |
+| `checkout.session.async_payment_succeeded` | `handleFulfillCheckoutSession` | to samo, dla BLIK/P24 rozliczanych później                                    |
+| `checkout.session.async_payment_failed`    | `handleAsyncPaymentFailed`     | zwalnia rezerwację, ustawia płatność i checkout na `failed`, pisze do klienta |
+| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | to samo zwolnienie, potem `deleteCheckoutCoupons` usuwa oznaczony kupon sesji |
+| `payment_intent.payment_failed`            | `handlePaymentIntentFailed`    | tylko wpis do audytu i ostrzeżenie w logach — bez zmiany stanu                |
+| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` z `restock: true`, potem e-mail o zwrocie, gdy zwrot jest nowy  |
+| `charge.dispute.created`                   | `handleChargeDisputeCreated`   | `flagOrderDispute`, wpis do audytu, unieważnienie listy zamówień w panelu     |
+| `charge.dispute.closed`                    | `handleChargeDisputeClosed`    | przegrany → `refundOrder` z `restock: false`; inaczej `clearOrderDispute`     |
 
 Klucze pochodzą ze `STRIPE_WEBHOOK_EVENTS` w `stripe.constants.ts`, więc ta stała jest listą zdarzeń do zarejestrowania w panelu Stripe.
 
@@ -187,6 +187,8 @@ db.update(inventory)
 
 `releasableSession` wybiera płatność z tym `transaction_id` i `status = "pending"`, złączoną z jej checkoutem, dopóki ten jest nadal `pending`. Aktualizacja checkoutu wymaga tej samej oczekującej płatności, a aktualizacja płatności wymaga, żeby jej checkout był już `failed`. Każda instrukcja widzi wynik poprzednich w tym samym wsadzie D1, więc stan wraca tylko, dopóki oba wiersze są `pending`, i wsad działa w całości albo wcale. Ponownie dostarczone zdarzenie, dwa dostarczenia obsługiwane równolegle i webhook wygaśnięcia sesji, którą aktualizacja checkoutu już zastąpiła (`supersedeCheckoutSession` przeniósł z niej płatność), nie znajdują nic do zwolnienia.
 
+Aktualizacja płatności zwraca identyfikator płatności, którą ustawiła na `failed`, a `releaseCheckout` zwraca, czy taka była. `handleAsyncPaymentFailed` wysyła klientowi e-mail o nieudanej płatności tylko wtedy, więc e-mail wychodzi raz na nieudaną płatność, niezależnie od tego, co Stripe dostarczy ponownie; zobacz [E-maile transakcyjne](/docs/features/email#anulowanie-zwrot-i-nieudana-płatność). Wygasła sesja jest zwalniana tak samo i nikomu nie wysyła e-maila.
+
 Ograniczenia `min`/`max` sprawiają, że podwójne zwolnienie nie może zawyżyć dostępnego stanu powyżej tego, co faktycznie zarezerwowano.
 
 Linie do zwolnienia są parsowane przez `checkoutReleaseLinesSchema`, które jest `.loose()` — przyjmuje pełny kształt linii realizacji i wymaga tylko `variantId` oraz `qty`.
@@ -195,7 +197,7 @@ Linie do zwolnienia są parsowane przez `checkoutReleaseLinesSchema`, które jes
 
 `handleChargeRefunded` rozwiązuje sesję z payment intentu obciążenia i wywołuje `refundOrder({ fullyRefunded: charge.amount_refunded >= charge.amount, refundedAmount: charge.amount_refunded, restock: true, transactionId })`.
 
-`refundOrder` (`src/modules/order/use-cases/refund-order.ts`) **nie** jest funkcją serwerową — to zwykła funkcja asynchroniczna wywoływana wyłącznie z webhooka. Wraca wcześnie, gdy płatność ma już status `refunded`, więc ponownie dostarczone zdarzenie zwrotu nic nie robi. Zwrot do magazynu następuje tylko przy pełnym zwrocie pieniędzy:
+`refundOrder` (`src/modules/order/use-cases/refund-order.ts`) **nie** jest funkcją serwerową — to zwykła funkcja asynchroniczna wywoływana wyłącznie z webhooka. Wraca wcześnie, gdy płatność ma już status `refunded`, więc ponownie dostarczony pełny zwrot nic nie robi. Zwrot do magazynu następuje tylko przy pełnym zwrocie pieniędzy:
 
 ```ts
 if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
@@ -204,7 +206,9 @@ if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
 }
 ```
 
-`prepareRefundBatch` zapisuje `refundedAmount`, `refundedAt` i `status` (`refunded` przy pełnym zwrocie, w przeciwnym razie powrót do `succeeded`). Przy pełnym zwrocie płatności, która ma zamówienie, dodaje potem `quantityAvailable + quantity` dla każdej linii zwracanej do magazynu i ustawia zamówienie na `refunded`, ale tylko dopóki zamówienie wciąż trzyma swój towar, czyli dopóki jego status nie jest ani `cancelled`, ani `refunded`. Wsad sprawdza ten warunek w SQL i zwiększa stan przed zmianą statusu, więc towar zamówienia wraca na stan najwyżej raz, niezależnie od tego, czy zamówienie anulowano, zwrócono przyciskiem Zwrot, czy w panelu Stripe, nawet gdy Stripe dostarczy zdarzenie dwa razy jednocześnie. Anulowane zamówienie zachowuje status `cancelled`, a `refunded` dostaje tylko jego płatność.
+`prepareRefundBatch` zapisuje `refundedAmount`, `refundedAt` i `status` (`refunded` przy pełnym zwrocie, w przeciwnym razie powrót do `succeeded`). `refundedAmount` staje się większą z kwot: zapisanej i tej ze zdarzenia, przez `max()` SQLite, więc tylko rośnie. Przy pełnym zwrocie płatności, która ma zamówienie, dodaje potem `quantityAvailable + quantity` dla każdej linii zwracanej do magazynu i ustawia zamówienie na `refunded`, ale tylko dopóki zamówienie wciąż trzyma swój towar, czyli dopóki jego status nie jest ani `cancelled`, ani `refunded`. Wsad sprawdza ten warunek w SQL i zwiększa stan przed zmianą statusu, więc towar zamówienia wraca na stan najwyżej raz, niezależnie od tego, czy zamówienie anulowano, zwrócono przyciskiem Zwrot, czy w panelu Stripe, nawet gdy Stripe dostarczy zdarzenie dwa razy jednocześnie. Anulowane zamówienie zachowuje status `cancelled`, a `refunded` dostaje tylko jego płatność.
+
+Wsad zaczyna się od odczytu `refunded_amount` płatności i statusu jej zamówienia, który biegnie w tej samej transakcji D1 przed zapisami. `refundOrder` zwraca zwrot, o którym klient jeszcze nie wie, `{ amount, fullyRefunded, orderId }`, gdzie `amount` to `amount_refunded` płatności pomniejszone o to, co płatność miała zapisane, tylko wtedy, gdy jest większe od zera, a zamówienie nie było `cancelled`; anulowanie samo już napisało klientowi o swoim zwrocie. `handleChargeRefunded` przekazuje go do `notifyOrderRefunded` razem z `return_url` sesji, więc każdy zwrot, częściowy czy pełny, trafia do klienta e-mailem raz, niezależnie od tego, jak często i w jakiej kolejności Stripe dostarcza swoje zdarzenia: starsze zdarzenie dostarczone po nowszym zostawia większą kwotę, więc ponowne dostarczenie nowszego nie znajduje niczego nowego. Przegrany spór także wywołuje `refundOrder`, ale nie wysyła e-maila.
 
 Spory są zapisywane w `order.metadata`, a nie w kolumnach: `flagOrderDispute` scala `{ id, reason, status, amount }` do JSON-a przez `mergeDisputeMetadata` (`order.display.utils.ts`). Przegrany spór jest traktowany jak pełny zwrot z `restock: false` i loguje `review inventory manually` — towar przepadł, więc stan nie jest przywracany. `clearOrderDispute` usuwa flagę, gdy spór zamyka się w inny sposób, a dopóki flaga istnieje, zwrot z panelu jest odrzucany (zobacz [Zwroty z panelu](#zwroty-z-panelu)).
 
@@ -241,7 +245,7 @@ Brak zamówienia rzuca `ERROR_CODES.NOT_FOUND` z `ORDER_NOT_FOUND`. Każdy odrzu
 
 Strona uruchamia te same predykaty na wczytanym zamówieniu. Zwrot pojawia się, gdy pozwala na to `canRefundAdminOrder`. Gdy `resolveAdminOrderRefundBlocker` zwraca blokadę, `order-refund-button.tsx` pozostawia przycisk widoczny, ale wyłączony i nadal osiągalny klawiaturą, a jego podpowiedź wyjaśnia blokadę komunikatami z `pages.admin.orderDetail.refundBlocked`.
 
-`refundAdminOrder` niczego nie zapisuje w bazie. Statusy płatności i zamówienia, wpis audytu i zwrot do magazynu przychodzą z wynikowym zdarzeniem `charge.refunded`, tą samą ścieżką `refundOrder` co zwrot wykonany w panelu Stripe. Sprawdzenia blokady, `transaction_id` i sesji oraz wywołanie `stripe.refunds.create` leżą w `requestFullOrderRefund` (`src/modules/order/order.refund.server.ts`), które wywołuje też Anuluj zamówienie dla opłaconego zamówienia przed jego anulowaniem, z tym samym kluczem idempotencji, więc Zwrot i Anulowanie jednego zamówienia również nie zwrócą za nie pieniędzy dwa razy. Uprawnienie `order: ["refund"]` w `auth.access.ts` wciąż nie jest używane przez żadną funkcję serwerową.
+`refundAdminOrder` niczego nie zapisuje w bazie. Statusy płatności i zamówienia, wpis audytu, zwrot do magazynu i e-mail o zwrocie do klienta przychodzą z wynikowym zdarzeniem `charge.refunded`, tą samą ścieżką `refundOrder` co zwrot wykonany w panelu Stripe. Sprawdzenia blokady, `transaction_id` i sesji oraz wywołanie `stripe.refunds.create` leżą w `requestFullOrderRefund` (`src/modules/order/order.refund.server.ts`), które wywołuje też Anuluj zamówienie dla opłaconego zamówienia przed jego anulowaniem, z tym samym kluczem idempotencji, więc Zwrot i Anulowanie jednego zamówienia również nie zwrócą za nie pieniędzy dwa razy. Zwraca `amount` zwrotu utworzonego w Stripe, które podaje e-mail o anulowaniu. Uprawnienie `order: ["refund"]` w `auth.access.ts` wciąż nie jest używane przez żadną funkcję serwerową.
 
 ## Powiązane strony
 

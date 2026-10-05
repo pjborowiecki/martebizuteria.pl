@@ -1,0 +1,14 @@
+{
+  "subject": "Your payment did not go through — M'Arte",
+  "preview": "We did not receive your payment, so your order was not placed.",
+  "heading": "Payment not completed",
+  "message": "Your bank did not complete the payment for the pieces below, so we have not placed your order.",
+  "messageSecondary": "The pieces we held for you are back in our collection. If you would still like them, you are welcome to order them again.",
+  "itemsLabel": "Pieces",
+  "amountLabel": "Amount",
+  "closingNote": "If you have any questions about the payment, simply reply to this email — we are happy to help.",
+  "shopCta": "Return to the shop",
+  "signoff": "With warm regards,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}

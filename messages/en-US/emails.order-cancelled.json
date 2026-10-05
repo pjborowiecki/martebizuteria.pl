@@ -1,0 +1,17 @@
+{
+  "subject": "Your order has been cancelled — M'Arte",
+  "preview": "We have cancelled your order. Here is what it means for your payment.",
+  "heading": "Order cancelled",
+  "message": "We are sorry to let you know that we have had to cancel your order.",
+  "messageSecondary": "Below is what the cancellation means for your payment.",
+  "orderLabel": "Order reference",
+  "refundLabel": "Refund",
+  "refundNote": "We have refunded this amount to the payment method you used. Depending on your bank, it usually appears within 5–10 business days.",
+  "noPaymentNote": "No payment was taken for this order, so there is nothing to refund.",
+  "closingNote": "If you have any questions about the cancellation, simply reply to this email — we are happy to help.",
+  "createAccountCta": "Create an account to see your orders",
+  "viewOrderCta": "View your order",
+  "signoff": "With warm regards,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}

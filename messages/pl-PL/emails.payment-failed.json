@@ -1,0 +1,14 @@
+{
+  "subject": "Płatność nie została zrealizowana — M'Arte",
+  "preview": "Nie otrzymaliśmy płatności, więc zamówienie nie zostało złożone.",
+  "heading": "Płatność niezrealizowana",
+  "message": "Twój bank nie zrealizował płatności za poniższe produkty, więc nie przyjęliśmy zamówienia.",
+  "messageSecondary": "Produkty zarezerwowane dla Ciebie wróciły do kolekcji. Jeśli nadal chcesz je kupić, zapraszamy do ponownego złożenia zamówienia.",
+  "itemsLabel": "Produkty",
+  "amountLabel": "Kwota",
+  "closingNote": "Jeśli masz pytania dotyczące płatności, odpowiedz na tę wiadomość — chętnie pomożemy.",
+  "shopCta": "Wróć do sklepu",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

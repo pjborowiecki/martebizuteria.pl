@@ -1,0 +1,17 @@
+{
+  "subject": "Twoje zamówienie zostało anulowane — M'Arte",
+  "preview": "Anulowaliśmy Twoje zamówienie. Oto, co to oznacza dla Twojej płatności.",
+  "heading": "Zamówienie anulowane",
+  "message": "Z przykrością informujemy, że musieliśmy anulować Twoje zamówienie.",
+  "messageSecondary": "Poniżej wyjaśniamy, co anulowanie oznacza dla Twojej płatności.",
+  "orderLabel": "Numer zamówienia",
+  "refundLabel": "Zwrot",
+  "refundNote": "Zwróciliśmy tę kwotę na metodę płatności, której użyto przy zamówieniu. W zależności od banku pieniądze pojawiają się zwykle w ciągu 5–10 dni roboczych.",
+  "noPaymentNote": "Za to zamówienie nie pobraliśmy płatności, więc nie ma czego zwracać.",
+  "closingNote": "Jeśli masz pytania dotyczące anulowania, odpowiedz na tę wiadomość — chętnie pomożemy.",
+  "createAccountCta": "Załóż konto i zobacz swoje zamówienia",
+  "viewOrderCta": "Zobacz zamówienie",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

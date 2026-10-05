@@ -2,14 +2,20 @@ import { describe, expect, it } from "vite-plus/test"
 
 import { EMAIL_PREVIEWS, type EmailPreviewSlug, isEmailPreviewSlug, renderEmailPreview } from "~/src/integrations/resend/email-previews"
 
+import { formatPrice } from "~/src/modules/_core/utils/currency"
+
 import accountDeletedCopy from "~/messages/en-US/emails.account-deleted.json"
 import changeEmailCopy from "~/messages/en-US/emails.change-email.json"
 import newsletterAlreadySubscribedCopy from "~/messages/en-US/emails.newsletter-already-subscribed.json"
+import orderCancelledCopy from "~/messages/en-US/emails.order-cancelled.json"
 import orderConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
+import orderRefundedCopy from "~/messages/en-US/emails.order-refunded.json"
 import orderShippedCopy from "~/messages/en-US/emails.order-shipped.json"
+import paymentFailedCopy from "~/messages/en-US/emails.payment-failed.json"
 import resetPasswordCopy from "~/messages/en-US/emails.reset-password.json"
 import verifyEmailCopy from "~/messages/en-US/emails.verify-email.json"
 import polishOrderConfirmationCopy from "~/messages/pl-PL/emails.order-confirmation.json"
+import polishPaymentFailedCopy from "~/messages/pl-PL/emails.payment-failed.json"
 import polishVerifyEmailCopy from "~/messages/pl-PL/emails.verify-email.json"
 
 const text = (slug: EmailPreviewSlug, locale: "en-US" | "pl-PL" = "en-US"): Promise<string> => renderEmailPreview(slug, locale, true)
@@ -20,7 +26,7 @@ describe("isEmailPreviewSlug", () => {
   })
 
   it("rejects a slug that has no preview", () => {
-    expect(isEmailPreviewSlug("order-cancelled")).toBe(false)
+    expect(isEmailPreviewSlug("order-delivered")).toBe(false)
     expect(isEmailPreviewSlug("")).toBe(false)
   })
 })
@@ -31,8 +37,11 @@ describe("EMAIL_PREVIEWS", () => {
       ["account-deleted", "Account deleted"],
       ["change-email", "Change email"],
       ["newsletter-already-subscribed", "Newsletter already subscribed"],
+      ["order-cancelled", "Order cancelled"],
       ["order-confirmation", "Order confirmation"],
+      ["order-refunded", "Order refunded"],
       ["order-shipped", "Order shipped"],
+      ["payment-failed", "Payment failed"],
       ["reset-password", "Reset password"],
       ["verify-email", "Verify email"],
     ])
@@ -127,5 +136,31 @@ describe("renderEmailPreview", () => {
 
   it("points the returning buyer at their own order", async () => {
     await expect(text("order-shipped")).resolves.toContain("Zobacz zamówienie")
+  })
+
+  it("previews the cancellation with the refund it issued", async () => {
+    const preview = await text("order-cancelled")
+
+    expect(preview).toContain(orderCancelledCopy.heading.toUpperCase())
+    expect(preview).toContain(`${orderCancelledCopy.refundLabel}\n\n${formatPrice(64_600, "PLN", "en-US")}`)
+    expect(preview).toContain(orderCancelledCopy.refundNote)
+  })
+
+  it("previews a partial refund against the order total", async () => {
+    const preview = await text("order-refunded")
+
+    expect(preview).toContain(orderRefundedCopy.messagePartial)
+    expect(preview).toContain(`${orderRefundedCopy.refundLabel}\n\n${formatPrice(18_900, "PLN", "en-US")}`)
+    expect(preview).toContain(`${orderRefundedCopy.orderTotalLabel}\n\n${formatPrice(64_600, "PLN", "en-US")}`)
+  })
+
+  it("previews the failed payment with the basket and a way back to the shop in the language asked for", async () => {
+    const english = await text("payment-failed")
+    const polish = await text("payment-failed", "pl-PL")
+
+    expect(english).toContain("Bransoletka Aurora")
+    expect(english).toContain(`${paymentFailedCopy.shopCta} http://localhost:3000/en-US/products`)
+    expect(polish).toContain(polishPaymentFailedCopy.heading.toUpperCase())
+    expect(polish).toContain("http://localhost:3000/pl-PL/products")
   })
 })

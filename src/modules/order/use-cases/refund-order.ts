@@ -1,4 +1,4 @@
-import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
+import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { recordOrderRefundAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { buildOrderRefundAuditChange } from "~/src/modules/order/order-audit.utils"
@@ -15,13 +15,25 @@ const resolveRefundAfterSnapshot = (
 ): Order["auditSnapshot"] => ({
   orderStatus: input.fullyRefunded && orderId !== undefined && before.orderStatus !== "cancelled" ? "refunded" : before.orderStatus,
   paymentStatus: input.fullyRefunded ? "refunded" : before.paymentStatus,
-  refundedAmount: input.refundedAmount,
+  refundedAmount: before.refundedAmount === undefined ? input.refundedAmount : Math.max(before.refundedAmount, input.refundedAmount),
 })
 
-export const refundOrder = async (input: Order["refundInput"]): Promise<void> => {
+const resolveUnannouncedRefund = (
+  recorded: RecordedRefund | undefined,
+  { fullyRefunded, refundedAmount }: Order["refundInput"],
+  orderId: string,
+): Order["unannouncedRefund"] | undefined => {
+  if (recorded === undefined || recorded.orderStatus === "cancelled" || refundedAmount <= recorded.refundedAmount) {
+    return undefined
+  }
+
+  return { amount: refundedAmount - recorded.refundedAmount, fullyRefunded, orderId }
+}
+
+export const refundOrder = async (input: Order["refundInput"]): Promise<Order["unannouncedRefund"] | undefined> => {
   const settled = await findSettledOrder(input.transactionId)
   if (settled === undefined || settled.paymentStatus === "refunded") {
-    return
+    return undefined
   }
 
   const paymentRow = await getPaymentByTransactionId(input.transactionId)
@@ -50,9 +62,9 @@ export const refundOrder = async (input: Order["refundInput"]): Promise<void> =>
       ),
     )
   }
-  await runDrizzleBatch(prepareRefundBatch(settled, input, restockLines))
+  const [[recorded]] = await db.batch(prepareRefundBatch(settled, input, restockLines))
   if (settled.orderId === undefined) {
-    return
+    return undefined
   }
 
   const after = resolveRefundAfterSnapshot(before, input, settled.orderId)
@@ -62,4 +74,11 @@ export const refundOrder = async (input: Order["refundInput"]): Promise<void> =>
     metadata: auditChange.metadata,
     resourceId: settled.orderId,
   })
+
+  return resolveUnannouncedRefund(recorded, input, settled.orderId)
+}
+
+interface RecordedRefund {
+  readonly orderStatus: Order["select"]["status"] | null
+  readonly refundedAmount: number
 }

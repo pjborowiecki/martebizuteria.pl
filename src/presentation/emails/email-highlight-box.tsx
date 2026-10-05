@@ -21,6 +21,13 @@ export const EmailBodyText = ({ children, className = "" }: Readonly<EmailBodyTe
   <Text className={`text-ink m-0 text-[15px] leading-[26px] ${className}`.trim()}>{children}</Text>
 )
 
+export const EmailDetailRow = ({ children, isFirst = false, label }: Readonly<EmailDetailRowProps>): JSX.Element => (
+  <Section className={isFirst ? "m-0" : "mt-[20px]"}>
+    <Text className={EMAIL_DETAIL_LABEL_CLASS}>{label}</Text>
+    <Text className="text-ink mt-[6px] mb-0 text-[14px] leading-[22px] whitespace-pre-line">{children}</Text>
+  </Section>
+)
+
 export { EMAIL_HIGHLIGHT_BOX_STYLE } from "~/src/presentation/emails/email-styles"
 
 interface EmailBorderedSectionProps {
@@ -37,6 +44,12 @@ interface EmailBodyTextProps {
   readonly className?: string
 }
 
+interface EmailDetailRowProps {
+  readonly children: ReactNode
+  readonly isFirst?: boolean
+  readonly label: string
+}
+
 export const EMAIL_CTA_BUTTON_CLASS =
   "bg-ink rounded-none px-[32px] py-[15px] text-center text-[11px] leading-[11px] font-semibold tracking-[0.2em] text-white uppercase no-underline box-border"
 
@@ -45,3 +58,5 @@ export const EMAIL_CTA_SECTION_CLASS = "mb-[28px] text-center"
 export const EMAIL_CTA_SECTION_WITH_TOP_SPACING_CLASS = "my-[28px] text-center"
 
 export const EMAIL_MUTED_TEXT_CLASS = "m-0 text-[13px] leading-[22px] text-muted"
+
+export const EMAIL_DETAIL_LABEL_CLASS = "text-ink m-0 text-[11px] leading-[16px] font-semibold tracking-[0.22em] uppercase"

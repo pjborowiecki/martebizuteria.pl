@@ -9,9 +9,15 @@ interface RestockLine {
   readonly variantId: string | null
 }
 
+interface RecordedRefund {
+  readonly orderStatus: string | null
+  readonly refundedAmount: number
+}
+
 const state = vi.hoisted(() => ({
   orderRow: { status: "processing" } as { status: string } | undefined,
   paymentRow: { checkoutId: "checkout-1", refundedAmount: 0 } as { checkoutId: string; refundedAmount: number } | undefined,
+  recorded: [] as RecordedRefund[],
   restockLines: [] as RestockLine[],
   settled: undefined as Order["settled"] | undefined,
 }))
@@ -23,11 +29,13 @@ const calls = vi.hoisted(() => ({
   restockRequests: [] as string[],
 }))
 
-vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({
-  runDrizzleBatch: (statements: unknown[]) => {
-    calls.batches.push(statements)
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
+  db: {
+    batch: (statements: unknown[]) => {
+      calls.batches.push(statements)
 
-    return Promise.resolve(undefined)
+      return Promise.resolve([state.recorded])
+    },
   },
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderRefundAudit: calls.audit }))
@@ -48,7 +56,7 @@ vi.mock("~/src/modules/order/order.utils", () => ({
   ) => {
     calls.prepared.push(restockLines)
 
-    return ["payment-update"]
+    return ["refund-snapshot", "payment-update"]
   },
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({ getPaymentByTransactionId: () => Promise.resolve(state.paymentRow) }))
@@ -68,6 +76,7 @@ beforeEach(() => {
   calls.restockRequests.length = 0
   state.orderRow = { status: "processing" }
   state.paymentRow = { checkoutId: "checkout-1", refundedAmount: 0 }
+  state.recorded = [{ orderStatus: "processing", refundedAmount: 0 }]
   state.restockLines = []
   state.settled = { checkoutId: "checkout-1", orderId: "order-1", paymentId: "payment-1", paymentStatus: "succeeded" }
 })
@@ -140,7 +149,7 @@ describe("refundOrder audit trail", () => {
   it("runs the prepared batch before recording the refund", async () => {
     await refundOrder(input())
 
-    expect(calls.batches).toStrictEqual([["payment-update"]])
+    expect(calls.batches).toStrictEqual([["refund-snapshot", "payment-update"]])
     expect(calls.audit).toHaveBeenCalledTimes(1)
   })
 
@@ -192,6 +201,26 @@ describe("refundOrder audit trail", () => {
     expect(calls.audit).toHaveBeenCalledWith("order-1", { detail: undefined, metadata: undefined, resourceId: "order-1" })
   })
 
+  it("records no drop in the refunded amount for an older refund delivered after a later one", async () => {
+    state.paymentRow = { checkoutId: "checkout-1", refundedAmount: 1500 }
+
+    await refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))
+
+    expect(calls.audit).toHaveBeenCalledWith("order-1", { detail: undefined, metadata: undefined, resourceId: "order-1" })
+  })
+
+  it("records the event's amount when the payment's earlier refund could not be read", async () => {
+    state.paymentRow = undefined
+
+    await refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))
+
+    expect(calls.audit).toHaveBeenCalledWith("order-1", {
+      detail: "Refunded amount: undefined → 500",
+      metadata: { changed: ["refundedAmount"], new: { refundedAmount: 500 }, old: { refundedAmount: undefined } },
+      resourceId: "order-1",
+    })
+  })
+
   it("skips the audit entry when the payment has no order", async () => {
     state.settled = { checkoutId: "checkout-1", orderId: undefined, paymentId: "payment-1", paymentStatus: "succeeded" }
 
@@ -199,5 +228,58 @@ describe("refundOrder audit trail", () => {
 
     expect(calls.batches).toHaveLength(1)
     expect(calls.audit).not.toHaveBeenCalled()
+  })
+})
+
+describe("refundOrder unannounced refund", () => {
+  it("hands back a full refund the batch recorded for an open order", async () => {
+    await expect(refundOrder(input())).resolves.toStrictEqual({ amount: 1999, fullyRefunded: true, orderId: "order-1" })
+  })
+
+  it("hands back only the amount refunded since the refund the payment already recorded", async () => {
+    state.recorded = [{ orderStatus: "completed", refundedAmount: 500 }]
+
+    await expect(refundOrder(input({ fullyRefunded: false, refundedAmount: 1500 }))).resolves.toStrictEqual({
+      amount: 1000,
+      fullyRefunded: false,
+      orderId: "order-1",
+    })
+  })
+
+  it("hands back nothing for a redelivered refund the payment already recorded", async () => {
+    state.recorded = [{ orderStatus: "processing", refundedAmount: 500 }]
+
+    await expect(refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))).resolves.toBeUndefined()
+  })
+
+  it("hands back nothing for an older refund delivered after a later one", async () => {
+    state.recorded = [{ orderStatus: "processing", refundedAmount: 1500 }]
+
+    await expect(refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))).resolves.toBeUndefined()
+  })
+
+  it("hands back nothing for the refund of an order the shop cancelled, which the cancellation already announced", async () => {
+    state.recorded = [{ orderStatus: "cancelled", refundedAmount: 0 }]
+
+    await expect(refundOrder(input())).resolves.toBeUndefined()
+    expect(calls.audit).toHaveBeenCalledOnce()
+  })
+
+  it("hands back nothing when the payment row was gone by the time the batch ran", async () => {
+    state.recorded = []
+
+    await expect(refundOrder(input())).resolves.toBeUndefined()
+  })
+
+  it("hands back nothing for a refund whose payment has no order", async () => {
+    state.settled = { checkoutId: "checkout-1", orderId: undefined, paymentId: "payment-1", paymentStatus: "succeeded" }
+
+    await expect(refundOrder(input())).resolves.toBeUndefined()
+  })
+
+  it("hands back nothing for an already refunded payment", async () => {
+    state.settled = { checkoutId: "checkout-1", orderId: "order-1", paymentId: "payment-1", paymentStatus: "refunded" }
+
+    await expect(refundOrder(input())).resolves.toBeUndefined()
   })
 })

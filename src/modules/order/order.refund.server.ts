@@ -7,7 +7,7 @@ import { resolveAdminOrderRefundBlocker } from "~/src/modules/order/order.admin-
 import { ORDER_ERROR_CODES } from "~/src/modules/order/order.constants"
 import { resolveAdminOrderDispute } from "~/src/modules/order/order.detail.utils"
 
-export const requestFullOrderRefund = async (orderId: string, target: AdminOrderRefundTarget): Promise<void> => {
+export const requestFullOrderRefund = async (orderId: string, target: AdminOrderRefundTarget): Promise<number> => {
   const { transactionId } = target
   const blocker = resolveAdminOrderRefundBlocker({
     hasOpenDispute: resolveAdminOrderDispute(target.metadata) !== undefined,
@@ -24,7 +24,7 @@ export const requestFullOrderRefund = async (orderId: string, target: AdminOrder
     throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE)
   }
 
-  await stripe.refunds.create(
+  const refund = await stripe.refunds.create(
     {
       metadata: {
         orderId,
@@ -33,4 +33,6 @@ export const requestFullOrderRefund = async (orderId: string, target: AdminOrder
     },
     { idempotencyKey: `admin-order-refund-${orderId}` },
   )
+
+  return refund.amount
 }

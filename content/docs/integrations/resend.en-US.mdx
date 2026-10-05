@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "The eight transactional e-mails, the sender domain they need, how they are composed, and how to preview them."
+description: "The eleven transactional e-mails, the sender domain they need, how they are composed, and how to preview them."
 ---
 
 Every e-mail the shop sends goes out through Resend. The adapter in `src/integrations/resend/` holds the client, one `sendEmail` helper, the builders that turn order rows into e-mail props, and the developer preview renderer. The React Email templates themselves live in `src/presentation/emails/`, because they are presentation.
@@ -65,7 +65,7 @@ A refusal about one message leaves the flag alone: a 422 recipient error, `rate_
 
 Only the Better Auth gate acts on the flag. While it is set, sign-up, password reset, resend-verification and change-email answer `503 EMAIL_DELIVERY_UNAVAILABLE` instead of creating a token for an email that cannot leave; see [Better Auth](/docs/integrations/better-auth#email-delivery-gate). Newsletter and order emails are not gated, because they already tell the person or the audit log about each failure. The flag catches a broken sender after the first refusal of one of those emails; a domain that was never verified would still cost every person who triggers an auth email before then, which is why a deploy first checks the sender; see [Sender domain](#sender-domain).
 
-## The eight e-mails
+## The eleven e-mails
 
 | E-mail                        | Template                                                    | Namespace                              | Sent from                                                                                                                                                                                       |
 | ----------------------------- | ----------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -75,10 +75,13 @@ Only the Better Auth gate acts on the flag. While it is set, sign-up, password r
 | Account deleted               | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail`, awaited by `src/modules/user/use-cases/delete-customer.ts` and by Better Auth's `afterDelete`                                                                        |
 | Order confirmation            | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `stripe.webhooks.tsx` after a checkout session is fulfilled                                                                                                                                     |
 | Order shipped                 | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `notifyOrderShipped`, awaited by `src/modules/order/use-cases/ship-order.ts`                                                                                                                    |
+| Order cancelled               | `src/presentation/emails/order-cancelled.tsx`               | `emails.order-cancelled`               | `notifyOrderCancelled`, awaited by `src/modules/order/use-cases/cancel-order.ts` once the order is cancelled                                                                                    |
+| Order refunded                | `src/presentation/emails/order-refunded.tsx`                | `emails.order-refunded`                | `notifyOrderRefunded`, awaited by `handleChargeRefunded` in `stripe.webhooks.tsx` for a refund the customer was not told about                                                                  |
+| Payment failed                | `src/presentation/emails/payment-failed.tsx`                | `emails.payment-failed`                | `stripe.webhooks.tsx` after `checkout.session.async_payment_failed` released the session                                                                                                        |
 | Newsletter confirmation       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` in `newsletter-confirmation.server.ts`, awaited by `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`                                                   |
 | Newsletter already subscribed | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribed` in `newsletter-already-subscribed.server.ts`, awaited by `subscribe-to-newsletter.ts` when a confirmed address is submitted by anyone but its signed-in owner |
 
-The first four are described in [Better Auth](/docs/integrations/better-auth); the last four are the ones this adapter builds.
+The first four are described in [Better Auth](/docs/integrations/better-auth); the other seven are the ones this adapter builds.
 
 Each template exports its own namespace constant beside the component, so the caller cannot drift from the messages it renders:
 
@@ -118,11 +121,14 @@ Every link the app writes into an e-mail itself points at the address the custom
 | Newsletter confirmation and already-subscribed notice | `subscribeToNewsletter`, with `resolveRequestOrigin(getRequest())`                                                                                                                     |
 | Order confirmation                                    | The session's `return_url`, which the checkout request built: `resolveDeploymentOrigin(session.return_url)` in `sendOrderConfirmationEmail`                                            |
 | Order shipped                                         | `shipOrder`, with `resolveRequestOrigin(getRequest())` on the admin's request                                                                                                          |
+| Order cancelled                                       | `cancelOrder`, with `resolveRequestOrigin(getRequest())` on the admin's request                                                                                                        |
+| Order refunded                                        | The `return_url` of the Checkout Session `resolveCheckoutSession` finds for the refunded charge: `resolveDeploymentOrigin(returnUrl)` in `sendOrderRefundedEmail`                      |
+| Payment failed                                        | The session's `return_url`: `resolveDeploymentOrigin(session.return_url)` in `sendPaymentFailedEmail`                                                                                  |
 | Account deleted                                       | `deleteCustomer`, with `resolveRequestOrigin(getRequest())` before `removeUser`; after a self-service deletion, `afterDelete` resolves it from the request Better Auth passes the hook |
 
 Both resolvers live in `src/lib/request.ts`. They read only a URL, never the `Host`, `Origin`, `Referer` or `X-Forwarded-*` headers, require `https:` everywhere but `localhost:3000` and `127.0.0.1:3000`, and throw `AppError(FORBIDDEN)` for a host they do not accept. `resolveRequestOrigin(request)` accepts the hosts on `appHostsForMode(import.meta.env.MODE)`, so a server function refuses a request on any other host before it writes anything. `resolveDeploymentOrigin(url)` accepts the hosts of every deployment (`isDeploymentHost` in `src/modules/_core/constants/api.ts`), because the webhook that fulfils a checkout can belong to another deployment: development and preview share the Stripe test account and the database, and `stripe:listen` always forwards to `localhost:3000`.
 
-In the webhook, a refused host or a session with no `return_url` stops only the e-mail attempt, so the order is still fulfilled, the webhook still answers 200 and the unsent confirmation is recorded against the order. In `afterDelete`, a refused host or a deletion that came with no request is logged and audited as an unsent goodbye e-mail, and the deletion still succeeds. Better Auth builds its own verify, reset and change-email links from the per-mode host list. Work handed to `scheduleBackgroundWork` gets the origin already resolved, so nothing reads the request after the response. A future queue consumer that sends e-mail must carry the origin in its message.
+In the webhook, a refused host or a session with no `return_url` stops only the e-mail attempt, so the order is still fulfilled, the refund still recorded and the session still released, the webhook still answers 200, and the unsent e-mail is recorded against the order, or against the session for a failed payment. In `afterDelete`, a refused host or a deletion that came with no request is logged and audited as an unsent goodbye e-mail, and the deletion still succeeds. Better Auth builds its own verify, reset and change-email links from the per-mode host list. Work handed to `scheduleBackgroundWork` gets the origin already resolved, so nothing reads the request after the response. A future queue consumer that sends e-mail must carry the origin in its message.
 
 ## Order e-mail builders
 
@@ -156,11 +162,13 @@ export const notifyOrderShipped = (orderId: string, origin: string): Promise<boo
 
 `recordOrderEmailAttempt` logs a thrown error with its stack as `Order shipped for order <id> could not be prepared:` and turns it into an outcome, records the outcome against the order and tells the caller whether the e-mail went out.
 
+`order-cancelled.notification.server.ts` and `order-refunded.notification.server.ts` follow the same shape. Both read the order with `getOrderForRefundEmail`, which selects the address, number, currency, total, metadata and account of the order, and both build the button with `buildOrderAccountCta`. `notifyOrderCancelled({ orderId, refundedAmount }, origin)` states the refund `requestFullOrderRefund` got back from Stripe, or that a free order has nothing to refund. `notifyOrderRefunded(refund, returnUrl)` takes the `Order["unannouncedRefund"]` that `refundOrder` returns, so it states the amount of this refund against the order's total and whether the order is now refunded in full, and it resolves its origin from `returnUrl` inside the attempt, so a missing or refused URL is recorded like any other failure. The failed-payment e-mail has no order to read: `sendPaymentFailedEmail` in `stripe.webhooks.tsx` builds it from the session, listing its metadata lines with `buildOrderConfirmationItems`.
+
 The locale comes from the order rather than from the current request, so a customer who ordered in Polish is written to in Polish even when an English-speaking admin clicks the button.
 
 ## Waiting for the order e-mails
 
-Both order e-mails are awaited, and neither can fail its caller. `ship-order.ts` waits for the shipped e-mail and hands the result to the admin:
+Every order e-mail is awaited, and none can fail its caller. `ship-order.ts` waits for the shipped e-mail and hands the result to the admin:
 
 ```ts
 recordOrderShippedAudit(orderId, {
@@ -173,9 +181,9 @@ const shippedEmailSent = await shippedEmailDelivery
 return { ok: true, orderId, shippedEmailSent }
 ```
 
-`scheduleBackgroundWork` puts the same promise on `ctx.waitUntil`, so the send and its audit entry finish even if the admin closes the tab while Resend is answering. `useMarkOrderShipped` always shows "Order marked as shipped.", and when `shippedEmailSent` is false also a warning toast, "Shipping email not sent", that points to the order's Activity card for the error. The admin's request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`.
+`scheduleBackgroundWork` puts the same promise on `ctx.waitUntil`, so the send and its audit entry finish even if the admin closes the tab while Resend is answering. `useMarkOrderShipped` always shows "Order marked as shipped.", and when `shippedEmailSent` is false also a warning toast, "Shipping email not sent", that points to the order's Activity card for the error. The admin's request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`. `cancel-order.ts` does the same with `notifyOrderCancelled` and returns `cancelledEmailSent`, and `useCancelOrder` warns "Cancellation email not sent" when it is false.
 
-The Stripe webhook registers `notifyOrderConfirmed` with `scheduleBackgroundWork` and awaits it the same way. It records every outcome and never throws, so the webhook answers 200 even when Resend refuses the confirmation, and the e-mail still finishes if Stripe stops waiting. A redelivered event would not send it again: `fulfillCheckout` returns `undefined` for a checkout that is no longer pending, and the handler stops before the e-mail step.
+The Stripe webhook registers `notifyOrderConfirmed`, `notifyOrderRefunded` and the failed-payment attempt with `scheduleBackgroundWork` and awaits them the same way. It records every outcome and never throws, so the webhook answers 200 even when Resend refuses the confirmation, and the e-mail still finishes if Stripe stops waiting. A redelivered event would not send it again: `fulfillCheckout` returns `undefined` for a checkout that is no longer pending, and the handler stops before the e-mail step. The other two have the same guard: `releaseCheckout` reports whether this delivery failed the session's payment, and `refundOrder` returns a refund only when the charge refunded more than the payment had recorded for an order the shop had not cancelled.
 
 ## Audit trail
 
@@ -194,8 +202,11 @@ export const EMAIL_PREVIEWS = {
   "account-deleted": { element: async (locale) => <AccountDeleted … />, label: "Account deleted" },
   "change-email": { … },
   "newsletter-already-subscribed": { … },
+  "order-cancelled": { … },
   "order-confirmation": { … },
+  "order-refunded": { … },
   "order-shipped": { … },
+  "payment-failed": { … },
   "reset-password": { … },
   "verify-email": { … },
 } satisfies Record<string, EmailPreview>

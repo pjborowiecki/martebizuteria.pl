@@ -416,7 +416,10 @@ export const prepareFulfillCheckoutBatch = (
   }
 }
 
-export const prepareReleaseCheckoutBatch = ({ lines, transactionId }: ReleaseCheckoutInput): BatchItem<"sqlite">[] => {
+export const prepareReleaseCheckoutBatch = ({
+  lines,
+  transactionId,
+}: ReleaseCheckoutInput): [...BatchItem<"sqlite">[], BatchItem<"sqlite">] => {
   const pendingSessionPayment = and(eq(payment.transactionId, transactionId), eq(payment.status, "pending"))
   const releasableSession = db
     .select({ id: payment.id })
@@ -449,6 +452,7 @@ export const prepareReleaseCheckoutBatch = ({ lines, transactionId }: ReleaseChe
     db
       .update(payment)
       .set({ status: "failed" })
-      .where(and(pendingSessionPayment, exists(failedCheckoutOfPayment))),
+      .where(and(pendingSessionPayment, exists(failedCheckoutOfPayment)))
+      .returning({ id: payment.id }),
   ]
 }

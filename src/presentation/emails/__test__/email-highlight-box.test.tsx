@@ -5,6 +5,7 @@ import {
   EMAIL_HIGHLIGHT_BOX_STYLE,
   EmailBodyText,
   EmailBorderedSection,
+  EmailDetailRow,
   EmailHighlightBox,
 } from "~/src/presentation/emails/email-highlight-box"
 
@@ -74,5 +75,25 @@ describe("EmailBodyText", () => {
     const html = await render(<EmailBodyText className="">Dear Jane,</EmailBodyText>)
 
     expect(html).not.toContain('leading-[26px] "')
+  })
+})
+
+describe("EmailDetailRow", () => {
+  it("puts the label above its value", async () => {
+    const text = await render(<EmailDetailRow label="Refund">PLN 398.99</EmailDetailRow>, { plainText: true })
+
+    expect(text).toContain("Refund\n\nPLN 398.99")
+  })
+
+  it("spaces a row from the one above it unless it opens the group", async () => {
+    const following = await render(<EmailDetailRow label="Order total">PLN 398.99</EmailDetailRow>)
+    const first = await render(
+      <EmailDetailRow isFirst label="Refund">
+        PLN 398.99
+      </EmailDetailRow>,
+    )
+
+    expect(following).toContain("mt-[20px]")
+    expect(first).not.toContain("mt-[20px]")
   })
 })

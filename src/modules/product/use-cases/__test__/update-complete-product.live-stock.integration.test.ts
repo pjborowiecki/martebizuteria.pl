@@ -133,7 +133,7 @@ const holdInCheckout = async (): Promise<void> => {
   `)
 }
 
-const releaseHeldPiece = (): Promise<void> => releaseCheckout({ lines: [HELD_LINE], transactionId: TRANSACTION_ID })
+const releaseHeldPiece = (): Promise<boolean> => releaseCheckout({ lines: [HELD_LINE], transactionId: TRANSACTION_ID })
 
 const sellHeldPiece = (): Promise<string | undefined> =>
   fulfillCheckout({

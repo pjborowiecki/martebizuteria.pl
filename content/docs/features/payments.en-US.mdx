@@ -87,7 +87,7 @@ Line items are built from the server-validated prices, plus a literal `"Shipping
 | `refunded_at`     | Nullable timestamp                                                             |
 | `reserved_lines`  | JSON `{ qty, variantId }[]` the session holds in stock, not null, default `[]` |
 
-`transaction_id` holding the session id — not the payment intent id — is why several webhook handlers call `resolveTransactionId(paymentIntent)`, which lists sessions filtered by `payment_intent` and takes the first one. The admin refund needs the opposite lookup: it retrieves the session to find the PaymentIntent that Stripe can refund (see [Admin refunds](#admin-refunds)).
+`transaction_id` holding the session id — not the payment intent id — is why several webhook handlers call `resolveCheckoutSession(paymentIntent)`, which lists sessions filtered by `payment_intent` and takes the first one. The admin refund needs the opposite lookup: it retrieves the session to find the PaymentIntent that Stripe can refund (see [Admin refunds](#admin-refunds)).
 
 Accessors in `payment.accessors.ts`: `createPendingPayment` (which records the reserved lines), `getPaymentByTransactionId`, `getPaymentContextByTransactionId` (joins through to the checkout's `email`, `userId` and `status`, and returns the payment's own `status`) and `getHeldLinesByTransactionId`, which returns `reserved_lines` only while the payment and its checkout are both `pending` and is how the cart's availability check counts a shopper's own reservation. A checkout update moves the row onto its replacement session through `supersedeCheckoutSession` in `src/modules/checkout/use-cases/supersede-checkout-session.server.ts`, which moves only a `pending` payment of a `pending` checkout, updating the amount and the reserved lines. The Stripe metadata stays the record the webhooks release and fulfil from; `reserved_lines` is read only to answer the availability question without calling Stripe.
 
@@ -111,16 +111,16 @@ An event type with no handler logs `[Stripe] Safely ignoring unhandled event` an
 
 ## The eight handled events
 
-`webhookHandlers` in `src/integrations/stripe/stripe.webhooks.tsx` (a `.tsx` file because it builds the confirmation email element):
+`webhookHandlers` in `src/integrations/stripe/stripe.webhooks.tsx` (a `.tsx` file because it builds the confirmation and failed-payment email elements):
 
 | Event                                      | Handler                        | Effect                                                                              |
 | ------------------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------- |
 | `checkout.session.completed`               | `handleFulfillCheckoutSession` | Creates the order, then `deleteCheckoutCoupons` deletes the session's tagged coupon |
 | `checkout.session.async_payment_succeeded` | `handleFulfillCheckoutSession` | Same, for BLIK/P24 settling later                                                   |
-| `checkout.session.async_payment_failed`    | `handleReleaseCheckoutSession` | Releases the reservation, marks payment and checkout `failed`                       |
-| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | Same, then `deleteCheckoutCoupons` deletes the session's tagged coupon              |
+| `checkout.session.async_payment_failed`    | `handleAsyncPaymentFailed`     | Releases the reservation, marks payment and checkout `failed`, emails the customer  |
+| `checkout.session.expired`                 | `handleReleaseCheckoutSession` | Same release, then `deleteCheckoutCoupons` deletes the session's tagged coupon      |
 | `payment_intent.payment_failed`            | `handlePaymentIntentFailed`    | Audit entry and a warning log only — no state change                                |
-| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` with `restock: true`                                                  |
+| `charge.refunded`                          | `handleChargeRefunded`         | `refundOrder` with `restock: true`, then the refund email when there is news        |
 | `charge.dispute.created`                   | `handleChargeDisputeCreated`   | `flagOrderDispute`, audit entry, admin-orders invalidation                          |
 | `charge.dispute.closed`                    | `handleChargeDisputeClosed`    | Lost → `refundOrder` with `restock: false`; otherwise `clearOrderDispute`           |
 
@@ -187,6 +187,8 @@ db.update(inventory)
 
 `releasableSession` selects the payment with this `transaction_id` and `status = "pending"`, joined to its checkout while that is still `pending`. The checkout update requires the same pending payment, and the payment update requires its checkout to be `failed` by then. Each statement sees the ones before it in the D1 batch, so the stock goes back only while both rows are still `pending`, and the whole batch acts or none of it does. A redelivered event, two deliveries running side by side, and an expiry webhook for a session that a checkout update has already replaced (`supersedeCheckoutSession` moved the payment off it) all find nothing to release.
 
+The payment update returns the id of the payment it failed, and `releaseCheckout` resolves to whether there was one. `handleAsyncPaymentFailed` emails the customer that the payment failed only then, so the email goes out once per failed payment whatever Stripe redelivers; see [Transactional email](/docs/features/email#cancellation-refund-and-failed-payment). An expired session is released the same way and emails nobody.
+
 The `min`/`max` clamps mean a double release cannot inflate available stock beyond what was actually reserved.
 
 Release lines are parsed with `checkoutReleaseLinesSchema`, which is `.loose()` — it accepts the full fulfilment line shape and only requires `variantId` and `qty`.
@@ -195,7 +197,7 @@ Release lines are parsed with `checkoutReleaseLinesSchema`, which is `.loose()` 
 
 `handleChargeRefunded` resolves the session from the charge's payment intent and calls `refundOrder({ fullyRefunded: charge.amount_refunded >= charge.amount, refundedAmount: charge.amount_refunded, restock: true, transactionId })`.
 
-`refundOrder` (`src/modules/order/use-cases/refund-order.ts`) is **not** a server function — it is a plain async function callable only from the webhook. It returns early when the payment is already `refunded`, so a redelivered refund event is a no-op. Restocking only happens for a full refund:
+`refundOrder` (`src/modules/order/use-cases/refund-order.ts`) is **not** a server function — it is a plain async function callable only from the webhook. It returns early when the payment is already `refunded`, so a redelivered full refund is a no-op. Restocking only happens for a full refund:
 
 ```ts
 if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
@@ -204,7 +206,9 @@ if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
 }
 ```
 
-`prepareRefundBatch` writes `refundedAmount`, `refundedAt` and `status` (`refunded` when fully refunded, otherwise back to `succeeded`). On a full refund of a payment that has an order, it then adds `quantityAvailable + quantity` per restock line and sets the order to `refunded`, but only while the order still holds its stock, that is while its status is neither `cancelled` nor `refunded`. The batch checks that condition in SQL and runs the increments before the status change, so an order's stock goes back at most once across a cancellation, the Refund button and a refund made in the Stripe dashboard, even when Stripe delivers the event twice at once. A cancelled order keeps the status `cancelled`, and only its payment becomes `refunded`.
+`prepareRefundBatch` writes `refundedAmount`, `refundedAt` and `status` (`refunded` when fully refunded, otherwise back to `succeeded`). `refundedAmount` becomes the larger of the recorded amount and the event's, through SQLite's `max()`, so it only ever grows. On a full refund of a payment that has an order, it then adds `quantityAvailable + quantity` per restock line and sets the order to `refunded`, but only while the order still holds its stock, that is while its status is neither `cancelled` nor `refunded`. The batch checks that condition in SQL and runs the increments before the status change, so an order's stock goes back at most once across a cancellation, the Refund button and a refund made in the Stripe dashboard, even when Stripe delivers the event twice at once. A cancelled order keeps the status `cancelled`, and only its payment becomes `refunded`.
+
+The batch opens with a select of the payment's `refunded_amount` and its order's status, which runs inside the same D1 transaction before the writes. `refundOrder` returns the refund the customer has not been told about, `{ amount, fullyRefunded, orderId }` with `amount` the charge's `amount_refunded` minus what the payment had recorded, only when that is above zero and the order was not `cancelled`; a cancellation already emailed the customer about its own refund. `handleChargeRefunded` passes it to `notifyOrderRefunded` with the session's `return_url`, so each refund, partial or full, is emailed once, however often and in whatever order Stripe delivers its events: an older event delivered after a newer one leaves the larger amount in place, so a later redelivery of the newer one finds nothing new. A lost dispute calls `refundOrder` too but sends no email.
 
 Disputes are stored in `order.metadata` rather than in columns: `flagOrderDispute` merges `{ id, reason, status, amount }` into the JSON with `mergeDisputeMetadata` (`order.display.utils.ts`). A lost dispute is treated as a full refund with `restock: false` and logs `review inventory manually` — the goods are gone, so the stock is not returned. `clearOrderDispute` removes the flag when a dispute closes any other way, and while the flag is present the admin refund is refused (see [Admin refunds](#admin-refunds)).
 
@@ -241,7 +245,7 @@ A missing order throws `ERROR_CODES.NOT_FOUND` with `ORDER_NOT_FOUND`. Every ref
 
 The page runs the same predicates on the loaded order. Refund appears when `canRefundAdminOrder` allows it. When `resolveAdminOrderRefundBlocker` returns a blocker, `order-refund-button.tsx` keeps the button visible but disabled and still focusable, and its tooltip explains the blocker with the `pages.admin.orderDetail.refundBlocked` messages.
 
-`refundAdminOrder` writes nothing to the database. The payment and order statuses, the audit entry and the restock arrive with the resulting `charge.refunded` event, through the same `refundOrder` path as a refund made in the Stripe dashboard. The blocker, `transaction_id` and session checks and the `stripe.refunds.create` call live in `requestFullOrderRefund` (`src/modules/order/order.refund.server.ts`), which Cancel order also calls for a paid order before cancelling it, under the same idempotency key, so a Refund and a Cancel of one order cannot refund it twice either. The `order: ["refund"]` permission in `auth.access.ts` is still not used by any server function.
+`refundAdminOrder` writes nothing to the database. The payment and order statuses, the audit entry, the restock and the customer's refund email arrive with the resulting `charge.refunded` event, through the same `refundOrder` path as a refund made in the Stripe dashboard. The blocker, `transaction_id` and session checks and the `stripe.refunds.create` call live in `requestFullOrderRefund` (`src/modules/order/order.refund.server.ts`), which Cancel order also calls for a paid order before cancelling it, under the same idempotency key, so a Refund and a Cancel of one order cannot refund it twice either. It returns the `amount` of the refund Stripe created, which the cancellation email states. The `order: ["refund"]` permission in `auth.access.ts` is still not used by any server function.
 
 ## Related pages
 

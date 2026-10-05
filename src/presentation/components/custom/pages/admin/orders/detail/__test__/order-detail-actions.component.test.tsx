@@ -150,7 +150,7 @@ describe("OrderDetailActions cancel", () => {
 
     expect(
       await screen.findByText(
-        "Order #A1B2C3D4 will be cancelled, its items returned to stock and the customer's payment refunded in full through Stripe. The shop does not email the customer about it. This cannot be undone.",
+        "Order #A1B2C3D4 will be cancelled, its items returned to stock and the customer's payment refunded in full through Stripe. The customer is emailed about the cancellation and the refund. This cannot be undone.",
       ),
     ).toBeInTheDocument()
   })
@@ -166,7 +166,7 @@ describe("OrderDetailActions cancel", () => {
 
     expect(
       await screen.findByText(
-        "Order #A1B2C3D4 will be cancelled and its items returned to stock. There is no payment to refund. The shop does not email the customer about it. This cannot be undone.",
+        "Order #A1B2C3D4 will be cancelled and its items returned to stock. There is no payment to refund. The customer is emailed about the cancellation. This cannot be undone.",
       ),
     ).toBeInTheDocument()
   })

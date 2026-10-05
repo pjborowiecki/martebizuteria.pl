@@ -457,6 +457,19 @@ export const getOrderForShippedEmail = (orderId: string) =>
     where: eq(order.id, orderId),
   })
 
+export const getOrderForRefundEmail = (orderId: string) =>
+  db.query.order.findFirst({
+    columns: {
+      currencyCode: true,
+      email: true,
+      metadata: true,
+      orderNumber: true,
+      total: true,
+      userId: true,
+    },
+    where: eq(order.id, orderId),
+  })
+
 export const getRestockLinesForOrder = (orderId: string) =>
   db
     .select({

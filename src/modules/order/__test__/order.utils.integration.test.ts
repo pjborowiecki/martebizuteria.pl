@@ -192,6 +192,26 @@ describe("prepareRefundBatch against the database", () => {
     expect(readStock()).toStrictEqual(STOCK_BEFORE)
   })
 
+  it("reads the refund the payment had recorded and the order's status before the batch changes them", async () => {
+    seedOrder("cancelled", "cancelled")
+    sqlite.exec(`update payment set refunded_amount = 500 where id = 'payment-1'`)
+
+    const [recorded] = await db.batch(prepareRefundBatch(SETTLED, FULL_REFUND, LINES))
+
+    expect(recorded).toStrictEqual([{ orderStatus: "cancelled", refundedAmount: 500 }])
+    expect(readPayment()).toMatchObject({ refunded_amount: PAID_AMOUNT, status: "refunded" })
+  })
+
+  it("keeps the larger refund the payment recorded when an older refund event arrives after it", async () => {
+    seedOrder("processing", "not_fulfilled")
+    sqlite.exec(`update payment set refunded_amount = 30000 where id = 'payment-1'`)
+
+    const [recorded] = await db.batch(prepareRefundBatch(SETTLED, { ...FULL_REFUND, fullyRefunded: false, refundedAmount: 10_000 }, LINES))
+
+    expect(recorded).toStrictEqual([{ orderStatus: "processing", refundedAmount: 30_000 }])
+    expect(readPayment()).toMatchObject({ refunded_amount: 30_000, status: "succeeded" })
+  })
+
   it("records a refund whose payment has no order on the payment alone", async () => {
     seedOrder("processing", "not_fulfilled")
 

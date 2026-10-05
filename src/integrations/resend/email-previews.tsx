@@ -11,8 +11,11 @@ import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
 import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"
 import type newsletterAlreadySubscribedMessages from "~/messages/en-US/emails.newsletter-already-subscribed.json"
+import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled.json"
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
+import type orderRefundedMessages from "~/messages/en-US/emails.order-refunded.json"
 import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
+import type paymentFailedMessages from "~/messages/en-US/emails.payment-failed.json"
 import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.json"
 import type verifyEmailMessages from "~/messages/en-US/emails.verify-email.json"
 import { ACCOUNT_DELETED_NAMESPACE, AccountDeleted } from "~/src/presentation/emails/account-deleted"
@@ -21,8 +24,11 @@ import {
   NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE,
   NewsletterAlreadySubscribed,
 } from "~/src/presentation/emails/newsletter-already-subscribed"
+import { ORDER_CANCELLED_NAMESPACE, OrderCancelled } from "~/src/presentation/emails/order-cancelled"
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
+import { ORDER_REFUNDED_NAMESPACE, OrderRefunded } from "~/src/presentation/emails/order-refunded"
 import { ORDER_SHIPPED_NAMESPACE, OrderShipped } from "~/src/presentation/emails/order-shipped"
+import { PAYMENT_FAILED_NAMESPACE, PaymentFailed } from "~/src/presentation/emails/payment-failed"
 import { RESET_PASSWORD_NAMESPACE, ResetPassword } from "~/src/presentation/emails/reset-password"
 import { VERIFY_EMAIL_NAMESPACE, VerifyEmail } from "~/src/presentation/emails/verify-email"
 
@@ -35,6 +41,8 @@ const PREVIEW_IMAGE = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/place
 const PREVIEW_ADDRESS = "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa\nPL\n+48 600 123 456"
 
 const PREVIEW_TRACKING_NUMBER = "00259007123456789012"
+
+const PREVIEW_ORDER_TOTAL = 64_600
 
 const PREVIEW_ORDER_CONFIRMATION_DETAILS = {
   billingAddress: "Tak jak adres dostawy",
@@ -115,6 +123,19 @@ export const EMAIL_PREVIEWS = {
     ),
     label: "Newsletter already subscribed",
   },
+  "order-cancelled": {
+    element: async (locale) => (
+      <OrderCancelled
+        accountCta={PREVIEW_CUSTOMER_CTA}
+        currency="PLN"
+        locale={locale}
+        messages={await loadNamespace<typeof orderCancelledMessages>({ locale, namespace: ORDER_CANCELLED_NAMESPACE })}
+        orderNumber={PREVIEW_ORDER_NUMBER}
+        refundedAmount={PREVIEW_ORDER_TOTAL}
+      />
+    ),
+    label: "Order cancelled",
+  },
   "order-confirmation": {
     element: async (locale) => {
       const messages = await loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE })
@@ -141,11 +162,26 @@ export const EMAIL_PREVIEWS = {
           subtotal={62_700}
           taxBasisPoints={STANDARD_VAT_BASIS_POINTS}
           taxTotal={12_080}
-          total={64_600}
+          total={PREVIEW_ORDER_TOTAL}
         />
       )
     },
     label: "Order confirmation",
+  },
+  "order-refunded": {
+    element: async (locale) => (
+      <OrderRefunded
+        accountCta={PREVIEW_GUEST_CTA}
+        currency="PLN"
+        fullyRefunded={false}
+        locale={locale}
+        messages={await loadNamespace<typeof orderRefundedMessages>({ locale, namespace: ORDER_REFUNDED_NAMESPACE })}
+        orderNumber={PREVIEW_ORDER_NUMBER}
+        orderTotal={PREVIEW_ORDER_TOTAL}
+        refundedAmount={18_900}
+      />
+    ),
+    label: "Order refunded",
   },
   "order-shipped": {
     element: async (locale) => (
@@ -164,6 +200,19 @@ export const EMAIL_PREVIEWS = {
       />
     ),
     label: "Order shipped",
+  },
+  "payment-failed": {
+    element: async (locale) => (
+      <PaymentFailed
+        amount={PREVIEW_ORDER_TOTAL}
+        currency="PLN"
+        items={PREVIEW_ORDER_ITEMS}
+        locale={locale}
+        messages={await loadNamespace<typeof paymentFailedMessages>({ locale, namespace: PAYMENT_FAILED_NAMESPACE })}
+        shopUrl={`http://localhost:3000/${locale}/products`}
+      />
+    ),
+    label: "Payment failed",
   },
   "reset-password": {
     element: async (locale) => (
