@@ -1,13 +1,13 @@
 ---
 title: "Rabaty"
-description: "Kody rabatowe od strony kuponów w panelu, przez pole w kasie i kupon Stripe, po wykorzystanie zapisywane po płatności."
+description: "Kody rabatowe od strony kuponów w panelu, przez pole w kasie, wykorzystanie trzymane przez otwarty checkout i kupon Stripe, po wykorzystanie zapisywane razem z zamówieniem."
 ---
 
-Kody rabatowe działają od początku do końca. Administrator tworzy je na `/admin/coupons`, kupujący wpisuje kod w podsumowaniu kasy, serwer sprawdza go ponownie podczas budowania sesji Stripe, a realizacja zapisuje wykorzystanie kodu. Implementacja znajduje się w `src/modules/discount/`.
+Kody rabatowe działają od początku do końca. Administrator tworzy je na `/admin/coupons`, kupujący wpisuje kod w podsumowaniu kasy, serwer sprawdza go ponownie i rezerwuje jedno jego wykorzystanie podczas budowania sesji Stripe, a realizacja zamienia tę rezerwację w wykorzystanie we wsadzie, który tworzy zamówienie. Implementacja znajduje się w `src/modules/discount/`.
 
 ## Tabele
 
-`discount` i `discount_redemption` (`src/modules/discount/discount.schema.ts`):
+`discount`, `discount_redemption` i `discount_claim` (`src/modules/discount/discount.schema.ts`):
 
 ```ts
 export const discount = sqliteTable(
@@ -54,11 +54,34 @@ export const discountRedemption = sqliteTable(
     uniqueIndex("discount_redemption_orderId_unique").on(table.orderId),
   ],
 )
+
+export const discountClaim = sqliteTable(
+  "discount_claim",
+  {
+    checkoutId: text("checkout_id")
+      .references(() => checkout.id, { onDelete: "cascade" })
+      .notNull(),
+    discountId: text("discount_id")
+      .references(() => discount.id, { onDelete: "cascade" })
+      .notNull(),
+    email: text("email", { length: 320 }).notNull(),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ...timestamps(),
+  },
+  (table) => [
+    uniqueIndex("discount_claim_checkoutId_discountId_unique").on(table.checkoutId, table.discountId),
+    index("discount_claim_discountId_email_idx").on(table.discountId, table.email),
+  ],
+)
 ```
 
 Trzy typy to `percentage`, `fixed_amount` i `free_shipping` (`DISCOUNT_TYPES` w `discount.constants.ts`). `value` to jedna liczba całkowita: cały procent dla `percentage`, kwota w jednostkach podrzędnych dla `fixed_amount`, a dla `free_shipping` jest ignorowana. Kolumny limitów są nullowalne, a `null` oznacza brak limitu: `usage_limit` ogranicza łączną liczbę wykorzystań, `per_customer_limit` ogranicza ją dla jednego adresu e-mail, `min_order_total` to minimalna suma pozycji w jednostkach podrzędnych, a `max_discount_amount` ogranicza, ile może odjąć rabat procentowy.
 
-`discountRelations` deklaruje `many(cart)`, `many(checkout)`, `many(order)` i `many(discountRedemption)`. Każda z tabel `cart`, `checkout` i `order` ma kolumnę `discount_id`, a `order` ma dodatkowo `discount_total`. Kolumna `description`, trzy kolumny reguł, indeks `is_active` i tabela `discount_redemption` pochodzą z `20260930200000_discount_rules_and_redemptions.sql`.
+`discountRelations` deklaruje `many(cart)`, `many(checkout)`, `many(discountClaim)`, `many(order)` i `many(discountRedemption)`. Każda z tabel `cart`, `checkout` i `order` ma kolumnę `discount_id`, a `order` ma dodatkowo `discount_total`. Kolumna `description`, trzy kolumny reguł, indeks `is_active` i tabela `discount_redemption` pochodzą z `20260930200000_discount_rules_and_redemptions.sql`.
+
+Wiersz `discount_claim` to wykorzystanie kodu, które trzyma otwarty checkout: checkout, kod i adres e-mail, dla którego je zarezerwowano. Trwa od chwili, gdy sesja Stripe checkoutu zostaje zbudowana z kodem, aż do jej opłacenia, wygaśnięcia, nieudanej płatności albo zastąpienia (zobacz [Utrzymanie wykorzystania na czas płatności](#utrzymanie-wykorzystania-na-czas-płatności)). `discount_claim_checkoutId_discountId_unique` pozwala checkoutowi trzymać każdy kod raz, a `discount_claim_discountId_email_idx` liczy rezerwacje kodu, wszystkie albo jednego adresu. Oba klucze obce są kaskadowe, więc usunięcie checkoutu albo kodu usuwa jego rezerwacje. Tabela pochodzi z `20261005400000_discount_claims.sql`.
 
 ## Moduł
 
@@ -70,6 +93,7 @@ src/modules/discount/
 │   └── discount.zod.test.ts
 ├── discount.accessors.ts
 ├── discount.checkout.server.ts
+├── discount.claim.server.ts
 ├── discount.constants.ts
 ├── discount.persist.utils.ts
 ├── discount.redeem.server.ts
@@ -102,7 +126,7 @@ Siódmy kod odrzucenia, `notFound`, pochodzi z walidatora, gdy żaden wiersz nie
 
 ## W kasie
 
-`validateDiscountCode` (`use-cases/validate-discount-code.ts`) sprawdza kod względem koszyka: przyjmuje kod, opcjonalny adres e-mail, sumę pozycji i koszt dostawy. Ta funkcja nie ma middleware `authorized`, więc gość może wypróbować kod, a `use-case-authorization.test.ts` wymienia ją wśród publicznych use case'ów. Odpowiada albo `applied` (kod, `discountId`, typ i kwota), albo `rejection`, i niczym więcej. Sprawdzenie limitu na klienta używa przesłanego adresu e-mail, a gdy żadnego nie przesłano, adresu zalogowanego użytkownika; pusty adres liczy się jako brak adresu, a błędny nie przechodzi walidacji. Gdy adres został przesłany, sesja w ogóle nie jest odczytywana, a sprawdzenie zajmuje jedno żądanie do D1. Bez adresu funkcja najpierw odczytuje sesję. U zalogowanego klienta to jedno żądanie o sesję i drugie o kod z adresem konta, czyli dwa. Gość nie ma ciasteczka sesji, więc Better Auth odpowiada bez sięgania do D1, a sprawdzenie nadal zajmuje jedno żądanie.
+`validateDiscountCode` (`use-cases/validate-discount-code.ts`) sprawdza kod względem koszyka: przyjmuje kod, opcjonalny adres e-mail, sumę pozycji i koszt dostawy. Ta funkcja nie ma middleware `authorized`, więc gość może wypróbować kod, a `use-case-authorization.test.ts` wymienia ją wśród publicznych use case'ów. Stoi za `withRateLimit("discount-validate", RATE_LIMITS.CHECKOUT)`, czyli dziesięcioma sprawdzeniami na minutę z jednego adresu klienta we własnym koszyku limitu, więc pola nie da się użyć do szybkiego zgadywania kodów ani tego, które adresy już z kodu skorzystały; po przekroczeniu limitu odpowiada `TOO_MANY_REQUESTS`, a pole pokazuje `pages.checkout.discount.rejection.error`. Odpowiada albo `applied` (kod, `discountId`, typ i kwota), albo `rejection`, i niczym więcej. Sprawdzenie limitu na klienta używa przesłanego adresu e-mail, a gdy żadnego nie przesłano, adresu zalogowanego użytkownika; pusty adres liczy się jako brak adresu, a błędny nie przechodzi walidacji. Licznik limitu to jedno żądanie do D1 przed uruchomieniem handlera. Po nim, gdy adres został przesłany, sesja w ogóle nie jest odczytywana, a sprawdzenie zajmuje jeszcze jedno żądanie. Bez adresu funkcja najpierw odczytuje sesję. U zalogowanego klienta to jedno żądanie o sesję i drugie o kod z adresem konta, czyli dwa po liczniku. Gość nie ma ciasteczka sesji, więc Better Auth odpowiada bez sięgania do D1, a sprawdzenie nadal zajmuje jedno żądanie po liczniku.
 
 Ten sam plik eksportuje dwa sposoby, w jakie kasa ją wywołuje:
 
@@ -124,7 +148,24 @@ Gdy formularz ma kod, `CheckoutDiscountCode` (`checkout-discount-code.tsx`) poka
 
 Kod, który już nie obowiązuje, zostaje w formularzu i szkicu z powodem na ekranie, a serwer pomija go przy budowaniu sesji (niżej). Od tej chwili podsumowanie pokazuje rabat i sumę, które serwer wycenił dla tej sesji, więc pokazana suma to ta pobrana. Gdy sprawdzenie się nie uda, podsumowanie nie wie, jaką sumę naliczy serwer, więc nie pokazuje żadnej, dopóki ponowna próba nie da odpowiedzi. Usunięcie kodu czyści `discountCode`. `checkoutSchema` deklaruje `discountCode: zod.string().trim().max(DISCOUNT_CODE_MAX_LENGTH).optional()`, a żaden krok go nie waliduje.
 
-Odpowiedź walidacji to tylko podgląd. `handleCreateCheckoutSession` i `handleUpdateCheckoutSession` wywołują `resolveCheckoutDiscount` (`discount.checkout.server.ts`) z `checkoutValues.discountCode`, adresem e-mail zamówienia, sumą pozycji wyliczoną z cen z bazy i kosztem dostawy. Przy pustym kodzie funkcja niczego nie odczytuje. W przeciwnym razie odczytuje wiersz jedną instrukcją przez `getDiscountByCodeForCustomerQuery` i przekazuje go do `resolveAppliedCheckoutDiscount`, które ponownie stosuje te same reguły. Kod, który już nie obowiązuje, jest logowany i pomijany, a kod, który nic by nie odjął, jest pomijany, zamiast przerywać zakup. Wynikowy `discountId` jest zapisywany do `checkout.discount_id`.
+Odpowiedź walidacji to tylko podgląd. `handleCreateCheckoutSession` i `handleUpdateCheckoutSession` wywołują `resolveCheckoutDiscount` (`discount.checkout.server.ts`) z `checkoutValues.discountCode`, adresem e-mail zamówienia, sumą pozycji wyliczoną z cen z bazy i kosztem dostawy. Przy pustym kodzie funkcja niczego nie odczytuje. W przeciwnym razie odczytuje wiersz jedną instrukcją przez `getDiscountByCodeForCustomerQuery` i przekazuje go do `resolveAppliedCheckoutDiscount`, które ponownie stosuje te same reguły. Kod, który już nie obowiązuje, jest logowany i pomijany, a kod, który nic by nie odjął, jest pomijany, zamiast przerywać zakup. Kod, który przejdzie reguły, zostaje następnie zarezerwowany dla checkoutu (niżej) i tylko zarezerwowany kod trafia do sesji i do `checkout.discount_id`.
+
+## Utrzymanie wykorzystania na czas płatności
+
+Reguły porównują `usage_count` z `usage_limit`, a wykorzystania klienta z `per_customer_limit`, ale oba rosną dopiero po opłaceniu sesji. Samo sprawdzenie dałoby kod każdemu checkoutowi otwartemu, gdy zostało jedno wykorzystanie, i każdemu równoległemu checkoutowi klienta z limitem jednego wykorzystania. Dlatego checkout rezerwuje wykorzystanie, zanim Stripe zobaczy kupon, tak jak rezerwuje towar, i trzyma je w `discount_claim`, dopóki jego sesję można opłacić.
+
+`prepareDiscountClaim` z `discount.claim.server.ts` buduje rezerwację jako jedną instrukcję: `INSERT … SELECT … FROM discount WHERE id = ? … ON CONFLICT (checkout_id, discount_id) DO UPDATE`. `SELECT` zwraca wiersz kodu tylko wtedy, gdy `usage_count` plus rezerwacje innych checkoutów jest mniejsze od `usage_limit`, a wykorzystania klienta plus jego rezerwacje w innych checkoutach, dopasowane po adresie e-mail zamienionym na małe litery, są mniejsze od `per_customer_limit`; limit `null` zawsze przechodzi. Zwraca zapisaną rezerwację albo nic. D1 wykonuje jedną instrukcję naraz, więc z dwóch checkoutów walczących o ostatnie wykorzystanie kodu tylko jeden dostaje wiersz. Checkout, który rezerwuje kod już przez siebie trzymany, aktualizuje adres e-mail swojej rezerwacji, a jego własne rezerwacje nigdy nie liczą się przeciwko niemu.
+
+| Moment                                      | Gdzie                                                                                           | Rezerwacja                                                                                                                                   |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checkout zostaje otwarty z kodem            | `prepareCreateCheckoutBatch`, we wsadzie, który zapisuje checkout                               | Zarezerwowana. Ten sam wsad ustawia `checkout.discount_id` tylko tam, gdzie rezerwacja istnieje, a `createCheckout` zwraca `discountClaimed` |
+| Otwarta sesja zostaje zmieniona             | `claimCheckoutDiscount` w `handleUpdateCheckoutSession`, przed zbudowaniem sesji zastępczej     | Zarezerwowana albo zachowana, jeśli checkout już trzyma ten kod. Rezerwacja starej sesji trwa do zamiany                                     |
+| Sesja zastępcza przejmuje płatność          | `supersedeCheckoutSession`, we wsadzie, który przenosi płatność                                 | Rezerwacje checkoutu dla wszystkich innych kodów zostają zwolnione, dopiero gdy płatność została przeniesiona                                |
+| Zbudowanie albo zamiana sesji się nie udaje | `releaseDiscountClaims` dla nowego checkoutu, `releaseUnappliedDiscountClaims` dla zmiany       | Zwolniona. Zmiana zachowuje rezerwację kodu z `checkout.discount_id`, z której korzysta wciąż otwarta stara sesja                            |
+| Sesja wygasa albo płatność się nie udaje    | `prepareReleaseCheckoutBatch`, z tym samym warunkiem oczekującej płatności i checkoutu co towar | Zwolniona raz; ponowione zdarzenie zastaje checkout już nieudany                                                                             |
+| Sesja zostaje opłacona                      | `prepareDiscountRedemption`, we wsadzie zamówienia                                              | Zastąpiona wykorzystaniem (zobacz [Przy realizacji](#przy-realizacji))                                                                       |
+
+Gdy rezerwacja się nie uda, kod jest pomijany jak każdy kod, który już nie obowiązuje: `keepClaimedDiscount` loguje `Discount <code> not applied to checkout: other checkouts hold the uses its limits allow.`, a sesja zostaje utworzona albo zastąpiona bez kuponu i w pełnej cenie, którą podsumowanie pokazuje potem z wyceny serwera. Endpoint walidacji pozostaje podglądem: liczy wykorzystania, a nie rezerwacje, więc kod, którego wszystkie pozostałe wykorzystania są zarezerwowane, wygląda na obowiązujący, dopóki sesja nie zostanie zbudowana.
 
 ## W sesji Stripe
 
@@ -159,16 +200,17 @@ Każda sesja utworzona lub zastąpiona z kodem dostaje własny kupon, oznaczony 
 
 `fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) wczytuje checkout razem z wierszem `discount`, ponownie wylicza kwotę przez `calculateDiscountAmount` z linii z metadanych i ceny metody dostawy, a następnie przekazuje ją do `computeOrderTotals`, które ogranicza rabat do sumy pozycji i dostawy. `prepareFulfillCheckoutBatch` kopiuje `discount_id` na zamówienie i zapisuje `discount_total`. Reguły nie są w tym miejscu sprawdzane ponownie, bo klient już zapłacił.
 
-Po wsadzie `fulfillCheckout` przekazuje `recordDiscountRedemption` (`discount.redeem.server.ts`) do `scheduleBackgroundWork`. Funkcja wstawia wiersz `discount_redemption` z `onConflictDoNothing` na `order_id` i zwiększa `discount.usage_count` tylko wtedy, gdy to wstawienie zapisało wiersz. Gdy zgłosi sukces, `fulfillCheckout` zapisuje wpis audytu `discount.redeemed`. Błąd jest logowany i połykany: zapis wykorzystania jest oddzielony od wsadu zamówienia, żeby nigdy nie mógł kosztować zamówienia.
+`fulfillCheckout` dokłada do tego wsadu instrukcje z `prepareDiscountRedemption` (`discount.redeem.server.ts`), więc zamówienie i jego wykorzystanie to jedna transakcja D1. Usuwają one rezerwacje checkoutu, wstawiają wiersz `discount_redemption` z kwotą, adresem e-mail checkoutu, zamówieniem i kontem oraz zwiększają `discount.usage_count`. Wykorzystanie to `INSERT … SELECT … FROM discount WHERE id = ?`, więc kod usunięty w trakcie płatności nie zapisuje niczego, zamiast łamać klucz obcy, a żadna z trzech instrukcji nie sprawdza limitu: klient, który zapłacił, nigdy nie zostaje odrzucony, nawet jeśli kod się w międzyczasie wyczerpał. Ponieważ `order.checkout_id` jest unikalne, drugie dostarczenie tej samej płatności przepada w całości, a wykorzystanie liczy się raz. Checkout bez kodu ma tylko usuwane rezerwacje. Po wsadzie `fulfillCheckout` zapisuje wpis audytu `discount.redeemed` z kwotą.
 
-| Kolumna lub tabela     | Zapisywana przez                                                   | Czytana przez                                                                                        |
-| ---------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `cart.discount_id`     | nic                                                                | nic                                                                                                  |
-| `checkout.discount_id` | `prepareCreateCheckoutBatch`, `prepareUpdateCheckoutDeliveryBatch` | `getCheckoutForFulfillment`                                                                          |
-| `order.discount_id`    | `prepareFulfillCheckoutBatch`                                      | nic                                                                                                  |
-| `order.discount_total` | `prepareFulfillCheckoutBatch`                                      | potwierdzenie w kasie, strona zamówienia na koncie, strona zamówienia w panelu, e-mail z zamówieniem |
-| `discount.usage_count` | `recordDiscountRedemption`                                         | `resolveDiscountRejection`, `resolveDiscountStatus`, `getAdminDiscountStats`                         |
-| `discount_redemption`  | `recordDiscountRedemption`                                         | `getDiscountByCodeForCustomerQuery`, `getAdminDiscountStats`                                         |
+| Kolumna lub tabela     | Zapisywana przez                                                                                                  | Czytana przez                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `cart.discount_id`     | nic                                                                                                               | nic                                                                                                  |
+| `checkout.discount_id` | `prepareCreateCheckoutBatch`, `prepareUpdateCheckoutDeliveryBatch`                                                | `getCheckoutForFulfillment`, `releaseUnappliedDiscountClaims`                                        |
+| `order.discount_id`    | `prepareFulfillCheckoutBatch`                                                                                     | nic                                                                                                  |
+| `order.discount_total` | `prepareFulfillCheckoutBatch`                                                                                     | potwierdzenie w kasie, strona zamówienia na koncie, strona zamówienia w panelu, e-mail z zamówieniem |
+| `discount.usage_count` | `prepareDiscountRedemption`                                                                                       | `resolveDiscountRejection`, `resolveDiscountStatus`, `getAdminDiscountStats`, `prepareDiscountClaim` |
+| `discount_redemption`  | `prepareDiscountRedemption`                                                                                       | `getDiscountByCodeForCustomerQuery`, `getAdminDiscountStats`, `prepareDiscountClaim`                 |
+| `discount_claim`       | `prepareDiscountClaim`; usuwana przez wsady zwolnienia, zastąpienia i wykorzystania oraz dwie funkcje zwalniające | `prepareDiscountClaim`                                                                               |
 
 ## Strona kuponów w panelu
 
@@ -196,7 +238,8 @@ To szwy, które zostawia obecny kod, a nie rekomendacje produktowe:
 2. **Uprawnienia.** W `src/integrations/better-auth/auth.access.ts` nie ma zasobu `discount`, więc funkcje kuponów korzystają z uprawnień `order` do odczytu i aktualizacji.
 3. **Unieważnianie w czasie rzeczywistym.** `ADMIN_REALTIME_QUERY_PREFIXES` nie ma wpisu `DISCOUNT_QUERY_KEYS`, a w `realtime-invalidation.catalog.server.ts` nie ma `scheduleDiscountInvalidation()`, więc zmiana wprowadzona w innej przeglądarce nie dociera do już otwartej strony kuponów.
 4. **Stronicowanie.** `CouponListTable` pobiera tylko pierwszą stronę i nie ma przełącznika stron, więc pokazuje najwyżej 25 kodów.
-5. **Usuwanie.** Usunięcie kodu usuwa też jego wiersze `discount_redemption` (`onDelete: "cascade"`). `checkout.discount_id` i `order.discount_id` nie mają klucza obcego i zachowują stary identyfikator, a oczekujący checkout, którego kod usunięto, zostaje zrealizowany bez rabatu w sumach, co `reconcileTotals` loguje jako niezgodność z kwotą pobraną przez Stripe.
+5. **Usuwanie.** Usunięcie kodu usuwa też jego wiersze `discount_redemption` i `discount_claim` (`onDelete: "cascade"`). `checkout.discount_id` i `order.discount_id` nie mają klucza obcego i zachowują stary identyfikator, a oczekujący checkout, którego kod usunięto, zostaje zrealizowany bez rabatu w sumach, co `reconcileTotals` loguje jako niezgodność z kwotą pobraną przez Stripe.
+6. **Rezerwacje na ekranie.** Ani podgląd w kasie, ani kolumna wykorzystania w panelu nie liczą zarezerwowanych wykorzystań: kod, którego wszystkie pozostałe wykorzystania są zarezerwowane, wygląda na obowiązujący, dopóki serwer nie pominie go w sesji, a `/admin/coupons` pokazuje tylko `usage_count`.
 
 ## Powiązane strony
 

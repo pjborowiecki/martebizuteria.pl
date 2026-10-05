@@ -36,6 +36,7 @@ const RESERVED_LINES = [{ qty: 3, variantId: "var-1" }]
 const continueAs = (userId: string | undefined, oldTransactionId: string, newTransactionId = NEW_SESSION) =>
   supersedeCheckoutSession({
     amount: 51_300,
+    discountId: undefined,
     heldLines: HELD_LINES,
     newTransactionId,
     oldTransactionId,
@@ -45,6 +46,17 @@ const continueAs = (userId: string | undefined, oldTransactionId: string, newTra
 
 const supersede = (oldTransactionId = OLD_SESSION, newTransactionId = NEW_SESSION) =>
   continueAs("user-1", oldTransactionId, newTransactionId)
+
+const supersedeApplying = (discountId: string) =>
+  supersedeCheckoutSession({
+    amount: 51_300,
+    discountId,
+    heldLines: HELD_LINES,
+    newTransactionId: NEW_SESSION,
+    oldTransactionId: OLD_SESSION,
+    reservedLines: RESERVED_LINES,
+    userId: "user-1",
+  })
 
 const inventoryRow = (variantId: string) =>
   sqlite
@@ -56,6 +68,9 @@ const paymentRow = (paymentId: string) =>
 
 const checkoutStatus = (checkoutId: string) => sqlite.prepare("select status from checkout where id = ?").get(checkoutId)
 
+const claimsOf = (checkoutId: string) =>
+  sqlite.prepare("select discount_id as discountId from discount_claim where checkout_id = ? order by discount_id").all(checkoutId)
+
 const checkoutOwner = (checkoutId: string) => sqlite.prepare("select user_id as userId from checkout where id = ?").get(checkoutId)
 
 beforeEach(() => {
@@ -63,6 +78,7 @@ beforeEach(() => {
     drop table if exists inventory;
     drop table if exists payment;
     drop table if exists checkout;
+    drop table if exists discount_claim;
 
     create table checkout (
       id text primary key, billing_company_name text, billing_nip text, email text not null, status text not null default 'pending', user_id text,
@@ -87,9 +103,19 @@ beforeEach(() => {
       values ('pay-1', 49800, 'chk-1', 'stripe', 'pending', '${OLD_SESSION}', ${AT}, ${AT}),
              ('pay-other', 24900, 'chk-other', 'stripe', 'pending', 'cs_other', ${AT}, ${AT});
 
+    create table discount_claim (
+      id text primary key, checkout_id text not null, discount_id text not null, email text not null,
+      created_at integer, updated_at integer
+    );
+
     insert into inventory (id, quantity_available, quantity_reserved, variant_id, version, created_at, updated_at)
       values ('inv-1', 3, 4, 'var-1', 1, ${AT}, ${AT}),
              ('inv-2', 0, 1, 'var-2', 1, ${AT}, ${AT});
+
+    insert into discount_claim (id, checkout_id, discount_id, email)
+      values ('claim-spring', 'chk-1', 'disc-spring', 'anna@example.com'),
+             ('claim-summer', 'chk-1', 'disc-summer', 'anna@example.com'),
+             ('claim-other', 'chk-other', 'disc-spring', 'jan@example.com');
   `)
 })
 
@@ -125,6 +151,7 @@ describe("supersedeCheckoutSession", () => {
     await expect(
       supersedeCheckoutSession({
         amount: 0,
+        discountId: undefined,
         heldLines: [],
         newTransactionId: NEW_SESSION,
         oldTransactionId: OLD_SESSION,
@@ -239,5 +266,29 @@ describe("supersedeCheckoutSession", () => {
     expect(checkoutStatus("chk-1")).toEqual({ status: "failed" })
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "failed", transactionId: NEW_SESSION })
     expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2, version: 2 })
+  })
+})
+
+describe("supersedeCheckoutSession and the discount uses the checkout holds", () => {
+  it("keeps the discount use the replacement session applies and gives back the rest of the checkout's", async () => {
+    await supersedeApplying("disc-summer")
+
+    expect(claimsOf("chk-1")).toEqual([{ discountId: "disc-summer" }])
+    expect(claimsOf("chk-other")).toEqual([{ discountId: "disc-spring" }])
+  })
+
+  it("gives back every discount use of the checkout when the replacement session applies no code", async () => {
+    await supersede()
+
+    expect(claimsOf("chk-1")).toEqual([])
+    expect(claimsOf("chk-other")).toEqual([{ discountId: "disc-spring" }])
+  })
+
+  it("keeps the old session's discount use when its payment could not be moved", async () => {
+    sqlite.exec("update payment set status = 'failed' where id = 'pay-1'")
+
+    await expect(supersedeApplying("disc-summer")).resolves.toBe(false)
+
+    expect(claimsOf("chk-1")).toEqual([{ discountId: "disc-spring" }, { discountId: "disc-summer" }])
   })
 })

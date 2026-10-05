@@ -1,46 +1,55 @@
 import { eq, sql } from "drizzle-orm"
+import { type BatchItem } from "drizzle-orm/batch"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { discount, discountRedemption } from "~/src/modules/discount/discount.schema"
+import { discount, discountClaim, discountRedemption } from "~/src/modules/discount/discount.schema"
 
-export const recordDiscountRedemption = async ({
-  amount,
-  discountId,
+export const prepareDiscountRedemption = ({
+  checkoutId,
   email,
   orderId,
+  redeemed,
   userId,
-}: RecordDiscountRedemptionInput): Promise<boolean> => {
-  try {
-    const inserted = await db
-      .insert(discountRedemption)
-      .values({ amount, discountId, email, orderId, userId })
-      .onConflictDoNothing({ target: discountRedemption.orderId })
-      .returning({ id: discountRedemption.id })
-
-    if (inserted.length === NO_ROWS) {
-      return false
-    }
-
-    await db
-      .update(discount)
-      .set({ updatedAt: new Date(), usageCount: sql`${discount.usageCount} + 1` })
-      .where(eq(discount.id, discountId))
-
-    return true
-  } catch (error) {
-    console.error(`Failed to record redemption of discount ${discountId} for order ${orderId}:`, error)
-
-    return false
+}: DiscountRedemptionInput): [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] => {
+  const releaseCheckoutClaims = db.delete(discountClaim).where(eq(discountClaim.checkoutId, checkoutId))
+  if (redeemed === undefined) {
+    return [releaseCheckoutClaims]
   }
+
+  const redeemedAt = new Date()
+  const redemptionColumns = {
+    amount: sql<number>`${redeemed.amountMinorUnits}`.as("amount"),
+    discountId: discount.id,
+    email: sql<string>`${email}`.as("email"),
+    id: sql<string>`${crypto.randomUUID()}`.as("id"),
+    orderId: sql<string>`${orderId}`.as("order_id"),
+    userId: sql<string | null>`${userId}`.as("user_id"),
+  }
+  const redemptionRowInTableOrder = Object.assign(redemptionColumns, {
+    createdAt: sql<Date>`${sql.param(redeemedAt, discountRedemption.createdAt)}`.as("created_at"),
+    updatedAt: sql<Date>`${sql.param(redeemedAt, discountRedemption.updatedAt)}`.as("updated_at"),
+  })
+
+  return [
+    releaseCheckoutClaims,
+    db.insert(discountRedemption).select(db.select(redemptionRowInTableOrder).from(discount).where(eq(discount.id, redeemed.discountId))),
+    db
+      .update(discount)
+      .set({ updatedAt: redeemedAt, usageCount: sql`${discount.usageCount} + 1` })
+      .where(eq(discount.id, redeemed.discountId)),
+  ]
 }
 
-const NO_ROWS = 0
-
-interface RecordDiscountRedemptionInput {
-  readonly amount: number
-  readonly discountId: string
+interface DiscountRedemptionInput {
+  readonly checkoutId: string
   readonly email: string
   readonly orderId: string
+  readonly redeemed: RedeemedDiscount | undefined
   readonly userId: string | null
+}
+
+interface RedeemedDiscount {
+  readonly amountMinorUnits: number
+  readonly discountId: string
 }

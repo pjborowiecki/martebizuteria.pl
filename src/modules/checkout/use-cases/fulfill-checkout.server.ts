@@ -4,11 +4,9 @@ import { recordDiscountRedeemedAudit } from "~/src/modules/audit-log/audit-log.e
 import { getCheckoutForFulfillment } from "~/src/modules/checkout/checkout.accessors"
 import { findPendingCheckoutByTransaction } from "~/src/modules/checkout/checkout.pending.server"
 import { type FulfillCheckoutInput, prepareFulfillCheckoutBatch } from "~/src/modules/checkout/checkout.utils"
-import { recordDiscountRedemption } from "~/src/modules/discount/discount.redeem.server"
+import { prepareDiscountRedemption } from "~/src/modules/discount/discount.redeem.server"
 import { calculateDiscountAmount } from "~/src/modules/discount/discount.utils"
 import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
-
-import { scheduleBackgroundWork } from "~/src/lib/background"
 
 const NO_AMOUNT = 0
 
@@ -63,22 +61,19 @@ export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): P
       shippingAddress: checkoutRow?.shippingAddress,
     },
   )
-  await runDrizzleBatch(statements)
+  await runDrizzleBatch([
+    ...statements,
+    ...prepareDiscountRedemption({
+      checkoutId: context.checkoutId,
+      email: context.email,
+      orderId,
+      redeemed: discount,
+      userId: context.userId,
+    }),
+  ])
 
   if (discount !== undefined) {
-    scheduleBackgroundWork(
-      recordDiscountRedemption({
-        amount: discount.amountMinorUnits,
-        discountId: discount.discountId,
-        email: context.email,
-        orderId,
-        userId: context.userId,
-      }).then((recorded) => {
-        if (recorded) {
-          recordDiscountRedeemedAudit(orderId, { detail: String(discount.amountMinorUnits) })
-        }
-      }),
-    )
+    recordDiscountRedeemedAudit(orderId, { detail: String(discount.amountMinorUnits) })
   }
 
   return orderId

@@ -136,6 +136,7 @@ const resetSchema = (): void => {
       drop table if exists payment;
       drop table if exists checkout;
       drop table if exists inventory;
+      drop table if exists discount_claim;
 
       create table address (
         id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
@@ -152,6 +153,7 @@ const resetSchema = (): void => {
         id text primary key, variant_id text, quantity_available integer, quantity_reserved integer,
         version integer, created_at integer, updated_at integer
       );
+      create table discount_claim (id text primary key, checkout_id text not null, discount_id text not null, email text not null);
 
       insert into payment (id, checkout_id, status, transaction_id) values ('pay_1', 'chk_1', 'pending', '${TRANSACTION_ID}');
       insert into inventory (id, variant_id, quantity_available, quantity_reserved, version)
@@ -382,10 +384,32 @@ describe("prepareUpdateCheckoutDeliveryBatch", () => {
   })
 })
 
+const readDiscountClaims = () => sqlite.prepare("select checkout_id, discount_id, email from discount_claim order by checkout_id").all()
+
 describe("prepareReleaseCheckoutBatch", () => {
   beforeEach(() => {
     resetSchema()
-    sqlite.exec(`insert into checkout (id, status, email) values ('chk_1', 'pending', 'buyer@example.com')`)
+    sqlite.exec(`
+      insert into checkout (id, status, email) values ('chk_1', 'pending', 'buyer@example.com'), ('chk_2', 'pending', 'other@example.com');
+      insert into payment (id, checkout_id, status, transaction_id) values ('pay_2', 'chk_2', 'pending', 'cs_test_2');
+      insert into discount_claim (id, checkout_id, discount_id, email) values
+        ('claim_1', 'chk_1', 'disc_last', 'buyer@example.com'),
+        ('claim_2', 'chk_2', 'disc_last', 'other@example.com');
+    `)
+  })
+
+  it("gives back the discount use the released checkout held and no other", async () => {
+    await runDrizzleBatch(prepareReleaseCheckoutBatch({ lines: [], transactionId: TRANSACTION_ID }))
+
+    expect(readDiscountClaims()).toEqual([{ checkout_id: "chk_2", discount_id: "disc_last", email: "other@example.com" }])
+  })
+
+  it("gives back no discount use for a session whose checkout was already settled", async () => {
+    sqlite.exec(`update checkout set status = 'completed' where id = 'chk_1'`)
+
+    await runDrizzleBatch(prepareReleaseCheckoutBatch({ lines: [], transactionId: TRANSACTION_ID }))
+
+    expect(readDiscountClaims()).toHaveLength(2)
   })
 
   it("fails the payment and the checkout together", async () => {
@@ -419,7 +443,7 @@ describe("prepareReleaseCheckoutBatch", () => {
     expect(readPaymentStatus(TRANSACTION_ID)).toBe("failed")
   })
 
-  it("emits one inventory statement per line plus the two status updates", () => {
+  it("emits one inventory statement per line, the discount release and the two status updates", () => {
     const statements = prepareReleaseCheckoutBatch({
       lines: [
         { qty: 1, variantId: VARIANT_ID },
@@ -428,7 +452,7 @@ describe("prepareReleaseCheckoutBatch", () => {
       transactionId: TRANSACTION_ID,
     })
 
-    expect(statements).toHaveLength(4)
+    expect(statements).toHaveLength(5)
   })
 })
 

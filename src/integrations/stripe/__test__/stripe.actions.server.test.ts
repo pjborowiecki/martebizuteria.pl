@@ -1,17 +1,31 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+interface AppliedDiscount {
+  amountMinorUnits: number
+  code: string
+  discountId: string
+}
+
 const mocked = vi.hoisted(() => ({
   checkoutSessionsCreate:
     vi.fn<(params: { metadata: Record<string, string>; payment_intent_data?: { setup_future_usage?: string } }) => Promise<unknown>>(),
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
+  claimCheckoutDiscount: vi.fn(({ applied }: { applied: AppliedDiscount | undefined }) => Promise.resolve(applied)),
   couponsCreate: vi.fn<(params: object) => Promise<{ id: string }>>(),
   couponsDel: vi.fn((couponId: string) => Promise.resolve({ deleted: true, id: couponId })),
   couponsRetrieve: vi.fn((couponId: string) =>
     Promise.resolve({ id: couponId, metadata: { checkoutId: "checkout-1", source: "marte_checkout" } }),
   ),
   createCheckout:
-    vi.fn<(input: { checkoutValues: { email: string }; discountId?: string; userEmail: string; userId?: string }) => Promise<string>>(),
+    vi.fn<
+      (input: {
+        checkoutValues: { email: string }
+        discountId?: string
+        userEmail: string
+        userId?: string
+      }) => Promise<{ checkoutId: string; discountClaimed: boolean }>
+    >(),
   createPendingPayment: vi.fn(),
   ensureStripeCustomer: vi.fn<() => Promise<string>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
@@ -21,7 +35,9 @@ const mocked = vi.hoisted(() => ({
   getRequestSession: vi.fn(),
   getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
   releaseCheckout: vi.fn(),
+  releaseDiscountClaims: vi.fn((_checkoutId: string) => Promise.resolve()),
   releaseInventoryForItems: vi.fn(),
+  releaseUnappliedDiscountClaims: vi.fn((_checkoutId: string) => Promise.resolve()),
   requestLocale: { value: "pl-PL" },
   reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
@@ -62,6 +78,12 @@ vi.mock("~/src/modules/checkout/use-cases/update-checkout-delivery.server", () =
   updateCheckoutDelivery: mocked.updateCheckoutDelivery,
 }))
 vi.mock("~/src/modules/discount/discount.checkout.server", () => ({ resolveCheckoutDiscount: mocked.resolveCheckoutDiscount }))
+vi.mock("~/src/modules/discount/discount.claim.server", () => ({
+  claimCheckoutDiscount: mocked.claimCheckoutDiscount,
+  keepClaimedDiscount: (applied: AppliedDiscount | undefined, claimed: boolean) => (claimed ? applied : undefined),
+  releaseDiscountClaims: mocked.releaseDiscountClaims,
+  releaseUnappliedDiscountClaims: mocked.releaseUnappliedDiscountClaims,
+}))
 vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
   getOfferedDeliveryMethodByIdQuery: mocked.getOfferedDeliveryMethodByIdQuery,
 }))
@@ -128,7 +150,7 @@ beforeEach(() => {
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
   mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
   mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1500, type: "courier" })
-  mocked.createCheckout.mockResolvedValue("checkout-1")
+  mocked.createCheckout.mockResolvedValue({ checkoutId: "checkout-1", discountClaimed: true })
   mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_300, client_secret: "cs_secret_1", id: "cs_new" })
   mocked.checkoutSessionsExpire.mockResolvedValue({})
   mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: { items: JSON.stringify(HELD_LINES) }, status: "open" })
@@ -559,6 +581,96 @@ describe("checkout session discounts", () => {
     await handleCreateCheckoutSession(createInput())
 
     expect(mocked.createCheckout).toHaveBeenCalledWith(expect.objectContaining({ discountId: "disc-1" }))
+  })
+
+  it("opens the session at full price when another checkout holds the code's last use", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    mocked.createCheckout.mockResolvedValue({ checkoutId: "checkout-1", discountClaimed: false })
+
+    const result = await handleCreateCheckoutSession(createInput({ discountCode: "SPRING" }))
+
+    expect(mocked.couponsCreate).not.toHaveBeenCalled()
+    expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).not.toHaveProperty("discounts")
+    expect(createdSessionMetadata()).toMatchObject({ discountCode: "", discountTotal: "0" })
+    expect(result.totals.discountTotal).toBe(0)
+  })
+
+  it.each([
+    { failure: "Stripe refuses the session", stub: () => mocked.checkoutSessionsCreate.mockRejectedValue(new Error("stripe down")) },
+    { failure: "its payment cannot be recorded", stub: () => mocked.createPendingPayment.mockRejectedValue(new Error("d1 down")) },
+  ])("gives back the claimed use and the stock when $failure", async ({ stub }) => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    stub()
+
+    await expect(handleCreateCheckoutSession(createInput())).rejects.toThrow(/down/u)
+    expect(mocked.releaseDiscountClaims).toHaveBeenCalledExactlyOnceWith("checkout-1")
+    expect(mocked.releaseInventoryForItems).toHaveBeenCalledOnce()
+  })
+
+  it("has no use to give back when a checkout without a code fails", async () => {
+    mocked.checkoutSessionsCreate.mockRejectedValue(new Error("stripe down"))
+
+    await expect(handleCreateCheckoutSession(createInput())).rejects.toThrow("stripe down")
+    expect(mocked.releaseDiscountClaims).not.toHaveBeenCalled()
+  })
+
+  it("still reports the session failure when giving back the use fails", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    mocked.checkoutSessionsCreate.mockRejectedValue(new Error("stripe down"))
+    mocked.releaseDiscountClaims.mockRejectedValueOnce(new Error("d1 down"))
+
+    await expect(handleCreateCheckoutSession(createInput())).rejects.toThrow("stripe down")
+    expect(console.error).toHaveBeenCalledWith("Failed to release the discount claim after checkout error:", expect.any(Error))
+  })
+
+  it("claims the code for the checkout it updates before Stripe creates the replacement", async () => {
+    const applied = { amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" }
+    mocked.resolveCheckoutDiscount.mockResolvedValue(applied)
+
+    await handleUpdateCheckoutSession(updateInput())
+
+    expect(mocked.claimCheckoutDiscount).toHaveBeenCalledExactlyOnceWith({ applied, checkoutId: "checkout-1", email: "anna@example.com" })
+    expect(mocked.claimCheckoutDiscount).toHaveBeenCalledBefore(mocked.checkoutSessionsCreate)
+    expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ discountId: "disc-1" }))
+  })
+
+  it("replaces the session at full price when the code's last use is held elsewhere", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    mocked.claimCheckoutDiscount.mockResolvedValueOnce(undefined)
+
+    const result = await handleUpdateCheckoutSession(updateInput())
+
+    expect(mocked.couponsCreate).not.toHaveBeenCalled()
+    expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ discountId: undefined }))
+    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", expect.any(Object), undefined)
+    expect(result.totals.discountTotal).toBe(0)
+  })
+
+  it.each([
+    { failure: "Stripe refuses the replacement", stub: () => mocked.checkoutSessionsCreate.mockRejectedValue(new Error("refused")) },
+    { failure: "the old session cannot be retired", stub: () => mocked.supersedeCheckoutSession.mockRejectedValue(new Error("refused")) },
+  ])("gives back the use claimed for the replacement when $failure", async ({ stub }) => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    stub()
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toThrow("refused")
+    expect(mocked.releaseUnappliedDiscountClaims).toHaveBeenCalledExactlyOnceWith("checkout-1")
+  })
+
+  it("has no use to give back when an update without a code fails", async () => {
+    mocked.checkoutSessionsCreate.mockRejectedValue(new Error("refused"))
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toThrow("refused")
+    expect(mocked.releaseUnappliedDiscountClaims).not.toHaveBeenCalled()
+  })
+
+  it("still reports the update failure when giving back the use fails", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    mocked.checkoutSessionsCreate.mockRejectedValue(new Error("refused"))
+    mocked.releaseUnappliedDiscountClaims.mockRejectedValueOnce(new Error("d1 down"))
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toThrow("refused")
+    expect(console.error).toHaveBeenCalledWith("Failed to release the discount claim after checkout update error:", expect.any(Error))
   })
 
   it("creates no coupon and attaches no discount when no code applies", async () => {

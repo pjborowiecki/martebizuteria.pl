@@ -21,7 +21,7 @@ session                 storefront-search       two-factor
 user                    verification            wishlist
 ```
 
-34 of them export Drizzle tables, 36 in all, and `src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports every one so that the Drizzle client, the Better Auth adapter and `drizzle-kit` see one schema registry. `storefront-search` declares the FTS5 virtual table `storefront_search`, which a hand-written migration creates and which stays out of that registry. `admin-dashboard`, `customer-account` and `customer-activity` are read models over other modules' tables and have no schema of their own; `_core` is the shared kernel.
+34 of them export Drizzle tables, 37 in all, and `src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports every one so that the Drizzle client, the Better Auth adapter and `drizzle-kit` see one schema registry. `storefront-search` declares the FTS5 virtual table `storefront_search`, which a hand-written migration creates and which stays out of that registry. `admin-dashboard`, `customer-account` and `customer-activity` are read models over other modules' tables and have no schema of their own; `_core` is the shared kernel.
 
 ## File suffixes
 

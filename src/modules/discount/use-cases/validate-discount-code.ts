@@ -2,6 +2,7 @@ import { mutationOptions, queryOptions, skipToken } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
+import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
 import { getDiscountByCodeForCustomerQuery } from "~/src/modules/discount/discount.accessors"
@@ -16,6 +17,7 @@ import { calculateDiscountAmount, normalizeDiscountCode, resolveDiscountRejectio
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
 
 export const validateDiscountCode = createServerFn({ method: "POST" })
+  .middleware([withRateLimit("discount-validate", RATE_LIMITS.CHECKOUT)])
   .validator((input: ValidateDiscountInput) => discountZodSchemas.validateDiscountInput.parse(input))
   .handler(async ({ data }): Promise<Discount["validation"]> => {
     const session = data.email === undefined ? await getRequestSession() : undefined

@@ -143,7 +143,7 @@ Dwa limitery dzielą tabelę `rate_limit`.
 })
 ```
 
-Kluczem jest `${kind}:${clientAddress(headers)}`, a `clientAddress` czyta **wyłącznie** `cf-connecting-ip`, którego klient nie może podrobić. Jeśli magazyn licznika zawiedzie, żądanie jest odrzucane, a nie dopuszczane. Obecnie stosowane do `checkout-create`, `checkout-update`, `checkout-status`, `create-user-address`, `update-customer-phone` i `revoke-other-customer-sessions`. Limity są per IP; nie ma blokady per konto.
+Kluczem jest `${kind}:${clientAddress(headers)}`, a `clientAddress` czyta **wyłącznie** `cf-connecting-ip`, którego klient nie może podrobić. Jeśli magazyn licznika zawiedzie, żądanie jest odrzucane, a nie dopuszczane. Obecnie stosowane do `checkout-create`, `checkout-update`, `checkout-status`, `discount-validate`, `create-user-address`, `update-customer-phone` i `revoke-other-customer-sessions`. Limity są per IP; nie ma blokady per konto.
 
 Zwróć uwagę, że `resolveRequestIp` w `src/lib/request.ts` — używane wyłącznie dla _dziennika audytu_ — sięga w drugiej kolejności do `x-forwarded-for`, który klient może podrobić. Limitowania żądań to nie dotyczy, bo nie korzysta z tego helpera.
 

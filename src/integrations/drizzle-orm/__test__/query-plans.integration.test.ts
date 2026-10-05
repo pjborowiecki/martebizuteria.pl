@@ -34,6 +34,7 @@ const { pageViewsQuery } = await import("~/src/modules/admin-dashboard/admin-das
 const { getCustomerActivityAuditRows, getCustomerLoginAuditRows } =
   await import("~/src/modules/customer-account/customer-account.accessors.server")
 const { getDiscountByCodeForCustomerQuery } = await import("~/src/modules/discount/discount.accessors")
+const { prepareDiscountClaim } = await import("~/src/modules/discount/discount.claim.server")
 const { getAdminSubscribersPage } = await import("~/src/modules/newsletter/newsletter.accessors")
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
 const { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle, getPublishedRelatedProducts } =
@@ -193,6 +194,18 @@ describe("hot reads", () => {
     await expect(planSteps(() => getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test"))).resolves.toStrictEqual(
       expect.arrayContaining([
         "SEARCH discount USING INDEX discount_code_unique (code=?)",
+        "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+      ]),
+    )
+  })
+
+  it("claim a discount use by its id and count the holds and the customer's redemptions of it from their indexes", async () => {
+    await expect(
+      planSteps(() => prepareDiscountClaim({ checkoutId: "checkout-1", discountId: "discount-1", email: "ada@marte.test" })),
+    ).resolves.toStrictEqual(
+      expect.arrayContaining([
+        "SEARCH discount USING INDEX sqlite_autoindex_discount_1 (id=?)",
+        "SEARCH discount_claim USING INDEX discount_claim_discountId_email_idx (discount_id=?)",
         "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
       ]),
     )

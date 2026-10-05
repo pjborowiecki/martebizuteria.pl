@@ -49,6 +49,12 @@ vi.mock("~/src/modules/checkout/use-cases/update-checkout-delivery.server", () =
   updateCheckoutDelivery: mocked.updateCheckoutDelivery,
 }))
 vi.mock("~/src/modules/discount/discount.checkout.server", () => ({ resolveCheckoutDiscount: mocked.resolveCheckoutDiscount }))
+vi.mock("~/src/modules/discount/discount.claim.server", () => ({
+  claimCheckoutDiscount: ({ applied }: { applied: unknown }) => Promise.resolve(applied),
+  keepClaimedDiscount: vi.fn(),
+  releaseDiscountClaims: vi.fn(),
+  releaseUnappliedDiscountClaims: vi.fn(),
+}))
 vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
   getOfferedDeliveryMethodByIdQuery: mocked.getOfferedDeliveryMethodByIdQuery,
 }))
@@ -225,6 +231,7 @@ describe("handleUpdateCheckoutSession", () => {
     expect(mocked.checkoutSessionsExpire).toHaveBeenCalledExactlyOnceWith("cs_old")
     expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith({
       amount: 51_300,
+      discountId: undefined,
       heldLines: HELD_LINES,
       newTransactionId: "cs_new",
       oldTransactionId: "cs_old",

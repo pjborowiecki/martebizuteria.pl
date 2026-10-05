@@ -435,7 +435,7 @@ Then replace `database_id`, the KV `id` and both queue names under `env.developm
 
 ### Migrations
 
-Module schemas are collected by [`drizzle.schemas.ts`](src/integrations/drizzle-orm/drizzle.schemas.ts): 36 tables from 34 modules, each exported with its relations where it has any. The FTS5 search index `storefront_search` is declared in its module but left out of that file, because a hand-written migration creates it. Generate a migration with:
+Module schemas are collected by [`drizzle.schemas.ts`](src/integrations/drizzle-orm/drizzle.schemas.ts): 37 tables from 34 modules, each exported with its relations where it has any. The FTS5 search index `storefront_search` is declared in its module but left out of that file, because a hand-written migration creates it. Generate a migration with:
 
 ```sh
 bun run db:generate

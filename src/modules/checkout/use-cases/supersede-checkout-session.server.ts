@@ -1,15 +1,17 @@
-import { and, eq, exists, isNull } from "drizzle-orm"
+import { and, eq, exists, inArray, isNull, ne } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
+import { discountClaim } from "~/src/modules/discount/discount.schema"
 import { inventoryReleaseValues } from "~/src/modules/inventory/inventory.accessors"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 import { payment } from "~/src/modules/payment/payment.schema"
 
 export const supersedeCheckoutSession = async ({
   amount,
+  discountId,
   heldLines,
   newTransactionId,
   oldTransactionId,
@@ -21,7 +23,11 @@ export const supersedeCheckoutSession = async ({
     .from(checkout)
     .where(and(eq(checkout.id, payment.checkoutId), eq(checkout.status, "pending")))
   const pendingOldPayment = and(eq(payment.transactionId, oldTransactionId), eq(payment.status, "pending"), exists(pendingCheckout))
-  const supersedingPayment = db.select({ id: payment.id }).from(payment).where(eq(payment.transactionId, newTransactionId))
+  const supersedingPayment = db.select({ checkoutId: payment.checkoutId }).from(payment).where(eq(payment.transactionId, newTransactionId))
+  const claimsTheReplacementDoesNotUse = and(
+    inArray(discountClaim.checkoutId, supersedingPayment),
+    discountId === undefined ? undefined : ne(discountClaim.discountId, discountId),
+  )
   const supersedingPaymentOfCheckout = db
     .select({ id: payment.id })
     .from(payment)
@@ -48,6 +54,7 @@ export const supersedeCheckoutSession = async ({
         .set(inventoryReleaseValues(line.qty))
         .where(and(eq(inventory.variantId, line.variantId), exists(supersedingPayment))),
     ),
+    db.delete(discountClaim).where(claimsTheReplacementDoesNotUse),
     ...claimGuestCheckout,
   ])
 
@@ -56,6 +63,7 @@ export const supersedeCheckoutSession = async ({
 
 export interface SupersedeCheckoutSessionInput {
   readonly amount: number
+  readonly discountId: string | undefined
   readonly heldLines: readonly ReleaseLine[]
   readonly newTransactionId: string
   readonly oldTransactionId: string

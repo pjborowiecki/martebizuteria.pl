@@ -1,7 +1,8 @@
 import { getTableConfig } from "drizzle-orm/sqlite-core"
 import { describe, expect, it } from "vite-plus/test"
 
-import { discount, discountRedemption } from "~/src/modules/discount/discount.schema"
+import { checkout } from "~/src/modules/checkout/checkout.schema"
+import { discount, discountClaim, discountRedemption } from "~/src/modules/discount/discount.schema"
 import { order } from "~/src/modules/order/order.schema"
 import { user } from "~/src/modules/user/user.schema"
 
@@ -164,6 +165,67 @@ describe("discount_redemption table", () => {
       { columns: ["discount_id", "email"], name: "discount_redemption_discountId_email_idx", unique: false },
       { columns: ["user_id"], name: "discount_redemption_userId_idx", unique: false },
       { columns: ["order_id"], name: "discount_redemption_orderId_unique", unique: true },
+    ])
+  })
+})
+
+const claimConfig = getTableConfig(discountClaim)
+
+const claimColumnByName = new Map(claimConfig.columns.map((column) => [column.name, column]))
+
+describe("discount_claim table", () => {
+  it("maps to the discount_claim table name", () => {
+    expect(claimConfig.name).toBe("discount_claim")
+  })
+
+  it("records which checkout holds which discount for which e-mail", () => {
+    expect(claimConfig.columns.map((column) => column.name).toSorted()).toStrictEqual([
+      "checkout_id",
+      "created_at",
+      "discount_id",
+      "email",
+      "id",
+      "updated_at",
+    ])
+    expect(claimColumnByName.get("checkout_id")?.notNull).toBe(true)
+    expect(claimColumnByName.get("discount_id")?.notNull).toBe(true)
+    expect(claimColumnByName.get("email")?.notNull).toBe(true)
+  })
+
+  it("generates an id when the caller supplies none", () => {
+    const id = claimColumnByName.get("id")
+
+    expect(id?.primary).toBe(true)
+    expect(typeof id?.defaultFn?.()).toBe("string")
+  })
+
+  it("removes a claim with its checkout or its discount", () => {
+    const references = claimConfig.foreignKeys.map((foreignKey) => {
+      const reference = foreignKey.reference()
+
+      return {
+        columns: reference.columns.map((column) => column.name),
+        foreignTable: getTableConfig(reference.foreignTable).name,
+        onDelete: foreignKey.onDelete,
+      }
+    })
+
+    expect(references).toStrictEqual([
+      { columns: ["checkout_id"], foreignTable: getTableConfig(checkout).name, onDelete: "cascade" },
+      { columns: ["discount_id"], foreignTable: getTableConfig(discount).name, onDelete: "cascade" },
+    ])
+  })
+
+  it("lets a checkout hold each discount once and counts a discount's holds by e-mail from an index", () => {
+    const indexes = claimConfig.indexes.map((entry) => ({
+      columns: entry.config.columns.map((column) => ("name" in column ? column.name : column)),
+      name: entry.config.name,
+      unique: entry.config.unique,
+    }))
+
+    expect(indexes).toStrictEqual([
+      { columns: ["checkout_id", "discount_id"], name: "discount_claim_checkoutId_discountId_unique", unique: true },
+      { columns: ["discount_id", "email"], name: "discount_claim_discountId_email_idx", unique: false },
     ])
   })
 })
