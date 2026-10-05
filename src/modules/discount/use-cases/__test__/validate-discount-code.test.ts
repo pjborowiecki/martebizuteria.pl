@@ -1,7 +1,7 @@
 import { MutationObserver, QueryClient, skipToken } from "@tanstack/react-query"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
-import { ZodError } from "zod"
 
+import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import {
   DISCOUNT_MUTATION_KEYS,
   DISCOUNT_QUERY_KEYS,
@@ -20,6 +20,7 @@ const stubs = vi.hoisted(() => ({
   getDiscountByCodeForCustomerQuery:
     vi.fn<(code: string, email: string | undefined) => Promise<Discount["selectForCustomer"] | undefined>>(),
   getRequestSession: vi.fn<() => Promise<{ user: { email: string } } | null>>(),
+  withinRateLimit: vi.fn<(input: { key: string; limit: number; windowSeconds: number }) => Promise<boolean>>(),
 }))
 
 vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
@@ -36,9 +37,13 @@ vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
 vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
   const actual = await importOriginal()
 
-  return { ...actual, getRequest: () => new Request("https://marte.test/checkout") }
+  return { ...actual, getRequest: () => new Request("https://marte.test/checkout", { headers: { "cf-connecting-ip": "203.0.113.7" } }) }
 })
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: stubs.getRequestSession }))
+vi.mock("~/src/lib/rate-limit", () => ({
+  clientAddress: (headers: Headers) => headers.get("cf-connecting-ip"),
+  withinRateLimit: stubs.withinRateLimit,
+}))
 vi.mock("~/src/modules/discount/discount.accessors", () => ({
   getDiscountByCodeForCustomerQuery: stubs.getDiscountByCodeForCustomerQuery,
 }))
@@ -72,6 +77,7 @@ beforeEach(() => {
   vi.useFakeTimers({ now: NOW, toFake: ["Date"] })
   stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
   stubs.getRequestSession.mockResolvedValue(null)
+  stubs.withinRateLimit.mockResolvedValue(true)
 })
 
 afterEach(() => {
@@ -79,6 +85,21 @@ afterEach(() => {
 })
 
 describe("validateDiscountCode", () => {
+  it("counts every check against the client address at the checkout rate, in a bucket of its own", async () => {
+    await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })
+
+    expect(stubs.withinRateLimit).toHaveBeenCalledExactlyOnceWith({ key: "discount-validate:203.0.113.7", limit: 10, windowSeconds: 60 })
+  })
+
+  it("refuses an address that checks codes faster than the rate allows, before reading any discount", async () => {
+    stubs.withinRateLimit.mockResolvedValue(false)
+
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).rejects.toMatchObject({
+      code: ERROR_CODES.TOO_MANY_REQUESTS,
+    })
+    expect(stubs.getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
+  })
+
   it("applies a usable code and prices it against the basket", async () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).resolves.toStrictEqual({
       applied: { amountMinorUnits: 3000, code: "SPRING-24", discountId: "discount-1", type: DISCOUNT_TYPE.PERCENTAGE },
@@ -154,7 +175,7 @@ describe("validateDiscountCode", () => {
   })
 
   it("rejects a code with characters a discount code cannot contain", async () => {
-    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING 24!" } })).rejects.toBeInstanceOf(ZodError)
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING 24!" } })).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION })
     expect(stubs.getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
   })
 })

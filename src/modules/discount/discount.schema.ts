@@ -54,9 +54,31 @@ export const discountRedemption = sqliteTable(
   ],
 )
 
+export const discountClaim = sqliteTable(
+  "discount_claim",
+  {
+    checkoutId: text("checkout_id")
+      .references(() => checkout.id, { onDelete: "cascade" })
+      .notNull(),
+    discountId: text("discount_id")
+      .references(() => discount.id, { onDelete: "cascade" })
+      .notNull(),
+    email: text("email", { length: 320 }).notNull(),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ...timestamps(),
+  },
+  (table) => [
+    uniqueIndex("discount_claim_checkoutId_discountId_unique").on(table.checkoutId, table.discountId),
+    index("discount_claim_discountId_email_idx").on(table.discountId, table.email),
+  ],
+)
+
 export const discountRelations = relations(discount, ({ many }) => ({
   carts: many(cart),
   checkouts: many(checkout),
+  claims: many(discountClaim),
   orders: many(order),
   redemptions: many(discountRedemption),
 }))
@@ -73,5 +95,16 @@ export const discountRedemptionRelations = relations(discountRedemption, ({ one 
   user: one(user, {
     fields: [discountRedemption.userId],
     references: [user.id],
+  }),
+}))
+
+export const discountClaimRelations = relations(discountClaim, ({ one }) => ({
+  checkout: one(checkout, {
+    fields: [discountClaim.checkoutId],
+    references: [checkout.id],
+  }),
+  discount: one(discount, {
+    fields: [discountClaim.discountId],
+    references: [discount.id],
   }),
 }))

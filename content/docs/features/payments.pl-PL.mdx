@@ -168,13 +168,13 @@ Każda pozycja zamówienia zachowuje to, za co klient zapłacił: tytuł, cena, 
 
 Kwoty zamówienia są wyliczane, a nie brane od klienta: `itemsSubtotal` to suma `price * qty` po liniach z metadanych, `shippingTotal` to cena metody dostawy checkoutu, a rabat jest ponownie wyliczany przez `calculateDiscountAmount` z wiersza `discount` checkoutu. `computeOrderTotals` (`src/modules/order/order.totals.ts`) ogranicza rabat do sumy pozycji i dostawy oraz wylicza `total` i `taxTotal`. `reconcileTotals` porównuje tę sumę z `session.amount_total`, przekazanym jako `paidAmount`, i gdy się różnią, jedynie loguje błąd.
 
-Gdy zamówienie ma rabat, `fulfillCheckout` planuje następnie w tle `recordDiscountRedemption`, które zapisuje wiersz `discount_redemption` i zwiększa `discount.usage_count`. Zobacz [Rabaty](/docs/features/discounts).
+Ten sam wsad przekształca rezerwację kodu rabatowego checkoutu: `prepareDiscountRedemption` usuwa wiersze `discount_claim` checkoutu, a gdy zamówienie ma rabat, zapisuje wiersz `discount_redemption` i zwiększa `discount.usage_count`, nie sprawdzając żadnego limitu, bo klient już zapłacił. Zamówienie i jego wykorzystanie zatwierdzają się więc razem, a drugie dostarczenie, które przepada na `order.checkout_id`, niczego nie liczy. Zobacz [Rabaty](/docs/features/discounts#przy-realizacji).
 
 Rezerwacja jest przekształcana, a nie zwalniana: każda linia wykonuje `quantityReserved = quantityReserved - qty`, zostawiając `quantityAvailable` w stanie po rezerwacji. Zobacz [Stany magazynowe](/docs/features/inventory).
 
 ## Zwolnienie
 
-`releaseCheckout` uruchamia `prepareReleaseCheckoutBatch` bez wcześniejszego odczytu. Wsad zwraca stan magazynowy, potem ustawia checkout na `failed`, a na końcu płatność:
+`releaseCheckout` uruchamia `prepareReleaseCheckoutBatch` bez wcześniejszego odczytu. Wsad zwraca stan magazynowy, usuwa wiersze `discount_claim` checkoutu, żeby trzymane przez niego wykorzystanie kodu znów było wolne, potem ustawia checkout na `failed`, a na końcu płatność:
 
 ```ts
 db.update(inventory)
@@ -185,7 +185,7 @@ db.update(inventory)
   .where(and(eq(inventory.variantId, line.variantId), exists(releasableSession)))
 ```
 
-`releasableSession` wybiera płatność z tym `transaction_id` i `status = "pending"`, złączoną z jej checkoutem, dopóki ten jest nadal `pending`. Aktualizacja checkoutu wymaga tej samej oczekującej płatności, a aktualizacja płatności wymaga, żeby jej checkout był już `failed`. Każda instrukcja widzi wynik poprzednich w tym samym wsadzie D1, więc stan wraca tylko, dopóki oba wiersze są `pending`, i wsad działa w całości albo wcale. Ponownie dostarczone zdarzenie, dwa dostarczenia obsługiwane równolegle i webhook wygaśnięcia sesji, którą aktualizacja checkoutu już zastąpiła (`supersedeCheckoutSession` przeniósł z niej płatność), nie znajdują nic do zwolnienia.
+`releasableSession` wybiera checkout płatności z tym `transaction_id` i `status = "pending"`, złączonej z tym checkoutem, dopóki ten jest nadal `pending`; aktualizacje stanu wymagają, żeby istniał, a usuwanie rezerwacji ogranicza się do jego checkoutu. Aktualizacja checkoutu wymaga tej samej oczekującej płatności, a aktualizacja płatności wymaga, żeby jej checkout był już `failed`. Każda instrukcja widzi wynik poprzednich w tym samym wsadzie D1, więc stan wraca tylko, dopóki oba wiersze są `pending`, i wsad działa w całości albo wcale. Ponownie dostarczone zdarzenie, dwa dostarczenia obsługiwane równolegle i webhook wygaśnięcia sesji, którą aktualizacja checkoutu już zastąpiła (`supersedeCheckoutSession` przeniósł z niej płatność), nie znajdują nic do zwolnienia.
 
 Aktualizacja płatności zwraca identyfikator płatności, którą ustawiła na `failed`, a `releaseCheckout` zwraca, czy taka była. `handleAsyncPaymentFailed` wysyła klientowi e-mail o nieudanej płatności tylko wtedy, więc e-mail wychodzi raz na nieudaną płatność, niezależnie od tego, co Stripe dostarczy ponownie; zobacz [E-maile transakcyjne](/docs/features/email#anulowanie-zwrot-i-nieudana-płatność). Wygasła sesja jest zwalniana tak samo i nikomu nie wysyła e-maila.
 

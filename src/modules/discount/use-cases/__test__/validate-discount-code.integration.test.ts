@@ -45,12 +45,17 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
+const { ERROR_CODES } = await import("~/src/modules/_core/constants/errors")
 const { DISCOUNT_REJECTION, DISCOUNT_TYPE } = await import("~/src/modules/discount/discount.constants")
 const { validateDiscountCode } = await import("~/src/modules/discount/use-cases/validate-discount-code")
 
 const NOW = Date.UTC(2026, 5, 1, 12)
 
 const BASKET = { itemsSubtotal: 20_000, shippingTotal: 1500 }
+
+const CHECKOUT_RATE_LIMIT = 10
+
+const RATE_LIMIT_ROUND_TRIP = { kind: "statement", sql: [expect.stringContaining("rate_limit")] }
 
 const ONCE_PER_CUSTOMER = {
   applied: { amountMinorUnits: 3000, code: "ONCE-24", discountId: "discount-once", type: DISCOUNT_TYPE.PERCENTAGE },
@@ -73,6 +78,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  sqlite.exec("delete from rate_limit")
   roundTrips.length = 0
   stubs.getRequestSession.mockReset()
   stubs.getRequestSession.mockResolvedValue(null)
@@ -83,11 +89,11 @@ afterAll(() => {
 })
 
 describe("validateDiscountCode against the database", () => {
-  it("checks a code against the typed email's redemptions in one round trip, without the session", async () => {
+  it("checks a code against the typed email's redemptions in one round trip after the rate count, without the session", async () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "once-24", email: "ada@marte.test" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.ALREADY_USED,
     })
-    expect(roundTrips).toStrictEqual([{ kind: "statement", sql: [expect.stringContaining("discount_redemption")] }])
+    expect(roundTrips).toStrictEqual([RATE_LIMIT_ROUND_TRIP, { kind: "statement", sql: [expect.stringContaining("discount_redemption")] }])
     expect(stubs.getRequestSession).not.toHaveBeenCalled()
   })
 
@@ -103,17 +109,28 @@ describe("validateDiscountCode against the database", () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "ONCE-24" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.ALREADY_USED,
     })
-    expect(roundTrips).toHaveLength(1)
+    expect(roundTrips).toHaveLength(2)
   })
 
   it("checks a guest with no email against no one", async () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "ONCE-24", email: "" } })).resolves.toStrictEqual(ONCE_PER_CUSTOMER)
   })
 
-  it("says an unknown code was not found in one round trip", async () => {
+  it("says an unknown code was not found in one round trip after the rate count", async () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "NOPE-99", email: "ada@marte.test" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.NOT_FOUND,
     })
-    expect(roundTrips).toHaveLength(1)
+    expect(roundTrips).toStrictEqual([RATE_LIMIT_ROUND_TRIP, { kind: "statement", sql: [expect.stringContaining("discount")] }])
+  })
+
+  it("refuses an address that checks codes more often than the checkout rate allows", async () => {
+    const answers = await Promise.allSettled(
+      Array.from({ length: CHECKOUT_RATE_LIMIT + 1 }, () =>
+        validateDiscountCode({ data: { ...BASKET, code: "NOPE-99", email: "ada@marte.test" } }),
+      ),
+    )
+
+    expect(answers.filter((answer) => answer.status === "fulfilled")).toHaveLength(CHECKOUT_RATE_LIMIT)
+    expect(answers.find((answer) => answer.status === "rejected")?.reason).toMatchObject({ code: ERROR_CODES.TOO_MANY_REQUESTS })
   })
 })

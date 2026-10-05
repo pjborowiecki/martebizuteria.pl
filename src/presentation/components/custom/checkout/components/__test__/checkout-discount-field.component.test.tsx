@@ -11,6 +11,14 @@ const { getDiscountByCodeForCustomerQuery, onApplied } = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/modules/discount/discount.accessors", () => ({ getDiscountByCodeForCustomerQuery }))
+vi.mock("~/src/integrations/better-auth/auth.middleware", async () => {
+  const { createMiddleware } = await import("@tanstack/react-start")
+
+  return {
+    RATE_LIMITS: { CHECKOUT: { max: 10, window: 60 } },
+    withRateLimit: () => createMiddleware({ type: "function" }).server(({ next }) => next()),
+  }
+})
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: () => Promise.resolve(undefined) }))
 
 import { type Discount } from "~/src/modules/discount/discount.types"

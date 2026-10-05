@@ -29,6 +29,14 @@ vi.mock("~/src/lib/url", () => ({
 }))
 vi.mock("~/src/modules/discount/discount.accessors", () => ({ getDiscountByCodeForCustomerQuery }))
 vi.mock("~/src/integrations/stripe/stripe.actions", () => ({ createCheckoutSessionFn: vi.fn(), updateCheckoutSessionFn: vi.fn() }))
+vi.mock("~/src/integrations/better-auth/auth.middleware", async () => {
+  const { createMiddleware } = await import("@tanstack/react-start")
+
+  return {
+    RATE_LIMITS: { CHECKOUT: { max: 10, window: 60 } },
+    withRateLimit: () => createMiddleware({ type: "function" }).server(({ next }) => next()),
+  }
+})
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: () => Promise.resolve(undefined) }))
 vi.mock("@tanstack/react-router", async () => {
   const actual = await vi.importActual<typeof TanStackRouter>("@tanstack/react-router")

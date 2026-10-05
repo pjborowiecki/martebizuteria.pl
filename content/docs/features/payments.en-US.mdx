@@ -168,13 +168,13 @@ Each order line keeps what the customer was charged for: the title, price, quant
 
 The order totals are derived, not taken from the client: `itemsSubtotal` is the sum of `price * qty` over the metadata lines, `shippingTotal` is the price of the checkout's delivery method, and the discount is recalculated by `calculateDiscountAmount` from the checkout's `discount` row. `computeOrderTotals` (`src/modules/order/order.totals.ts`) caps the discount at items plus shipping and derives `total` and `taxTotal`. `reconcileTotals` compares that total with `session.amount_total`, passed in as `paidAmount`, and only logs an error when they differ.
 
-When the order has a discount, `fulfillCheckout` then schedules `recordDiscountRedemption` in the background, which writes a `discount_redemption` row and increments `discount.usage_count`. See [Discounts](/docs/features/discounts).
+The same batch converts the checkout's hold on its discount code: `prepareDiscountRedemption` deletes the checkout's `discount_claim` rows and, when the order has a discount, writes a `discount_redemption` row and increments `discount.usage_count`, without checking any limit, because the customer has already paid. The order and its redemption therefore commit together, and a second delivery that fails on `order.checkout_id` counts nothing. See [Discounts](/docs/features/discounts#on-fulfilment).
 
 The reservation is converted, not released: each line runs `quantityReserved = quantityReserved - qty`, leaving `quantityAvailable` as it was after the reservation. See [Inventory](/docs/features/inventory).
 
 ## Release
 
-`releaseCheckout` runs `prepareReleaseCheckoutBatch` without reading anything first. The batch gives the stock back, then sets the checkout to `failed`, then the payment:
+`releaseCheckout` runs `prepareReleaseCheckoutBatch` without reading anything first. The batch gives the stock back, deletes the checkout's `discount_claim` rows so the discount use it held is free again, then sets the checkout to `failed`, then the payment:
 
 ```ts
 db.update(inventory)
@@ -185,7 +185,7 @@ db.update(inventory)
   .where(and(eq(inventory.variantId, line.variantId), exists(releasableSession)))
 ```
 
-`releasableSession` selects the payment with this `transaction_id` and `status = "pending"`, joined to its checkout while that is still `pending`. The checkout update requires the same pending payment, and the payment update requires its checkout to be `failed` by then. Each statement sees the ones before it in the D1 batch, so the stock goes back only while both rows are still `pending`, and the whole batch acts or none of it does. A redelivered event, two deliveries running side by side, and an expiry webhook for a session that a checkout update has already replaced (`supersedeCheckoutSession` moved the payment off it) all find nothing to release.
+`releasableSession` selects the checkout of the payment with this `transaction_id` and `status = "pending"`, joined to that checkout while it is still `pending`; the stock updates require it to exist and the claim delete is limited to its checkout. The checkout update requires the same pending payment, and the payment update requires its checkout to be `failed` by then. Each statement sees the ones before it in the D1 batch, so the stock goes back only while both rows are still `pending`, and the whole batch acts or none of it does. A redelivered event, two deliveries running side by side, and an expiry webhook for a session that a checkout update has already replaced (`supersedeCheckoutSession` moved the payment off it) all find nothing to release.
 
 The payment update returns the id of the payment it failed, and `releaseCheckout` resolves to whether there was one. `handleAsyncPaymentFailed` emails the customer that the payment failed only then, so the email goes out once per failed payment whatever Stripe redelivers; see [Transactional email](/docs/features/email#cancellation-refund-and-failed-payment). An expired session is released the same way and emails nobody.
 

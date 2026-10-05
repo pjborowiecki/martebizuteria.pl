@@ -66,6 +66,10 @@ const readCheckout = (checkoutId: string) => checkoutRowSchema.parse(sqlite.prep
 
 const readAddress = (addressId: string) => addressRowSchema.parse(sqlite.prepare(`select * from address where id = ?`).get(addressId))
 
+const readDiscountId = (checkoutId: string) => sqlite.prepare("select discount_id from checkout where id = ?").get(checkoutId)
+
+const readDiscountClaims = () => sqlite.prepare("select checkout_id, discount_id, email from discount_claim").all()
+
 const countAddresses = (): number =>
   z.object({ total: z.number() }).parse(sqlite.prepare(`select count(*) as total from address`).get()).total
 
@@ -73,6 +77,9 @@ const resetSchema = (): void => {
   sqlite.exec(`
       drop table if exists address;
       drop table if exists checkout;
+      drop table if exists discount_claim;
+      drop table if exists discount_redemption;
+      drop table if exists discount;
 
       create table address (
         id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
@@ -84,6 +91,15 @@ const resetSchema = (): void => {
         customer_note text, delivery_method_id text, locker_id text, billing_address_id text, shipping_address_id text,
         created_at integer, updated_at integer
       );
+      create table discount (
+        id text primary key, usage_count integer not null default 0, usage_limit integer, per_customer_limit integer
+      );
+      create table discount_redemption (id text primary key, discount_id text not null, email text not null);
+      create table discount_claim (
+        id text primary key, checkout_id text not null, discount_id text not null, email text not null,
+        created_at integer, updated_at integer, unique (checkout_id, discount_id)
+      );
+      insert into discount (id, usage_count, usage_limit) values ('disc_last', 0, 1);
   `)
 }
 
@@ -95,7 +111,7 @@ afterAll(() => {
 
 describe("createCheckout", () => {
   it("opens a pending checkout and hands back its id", async () => {
-    const checkoutId = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
+    const { checkoutId } = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
 
     expect(readCheckout(checkoutId)).toMatchObject({
       customer_note: "Leave with the concierge",
@@ -107,7 +123,7 @@ describe("createCheckout", () => {
   })
 
   it("stores the shipping address and bills it to the same place when the shopper asked for that", async () => {
-    const checkoutId = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
+    const { checkoutId } = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
     const row = readCheckout(checkoutId)
 
     expect(countAddresses()).toBe(1)
@@ -121,7 +137,7 @@ describe("createCheckout", () => {
   })
 
   it("stores a second address when the shopper typed a separate billing address", async () => {
-    const checkoutId = await createCheckout({ checkoutValues: separateBillingForm, userEmail: "account@example.com", userId: USER_ID })
+    const { checkoutId } = await createCheckout({ checkoutValues: separateBillingForm, userEmail: "account@example.com", userId: USER_ID })
     const row = readCheckout(checkoutId)
 
     expect(countAddresses()).toBe(2)
@@ -130,7 +146,7 @@ describe("createCheckout", () => {
   })
 
   it("keeps a guest checkout unattached to any account", async () => {
-    const checkoutId = await createCheckout({ checkoutValues: shippingForm, userEmail: "guest@example.com", userId: undefined })
+    const { checkoutId } = await createCheckout({ checkoutValues: shippingForm, userEmail: "guest@example.com", userId: undefined })
 
     expect(readCheckout(checkoutId).user_id).toBeNull()
   })
@@ -139,6 +155,34 @@ describe("createCheckout", () => {
     const first = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
     const second = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
 
-    expect(second).not.toBe(first)
+    expect(second.checkoutId).not.toBe(first.checkoutId)
+  })
+
+  it("reports no claimed discount when the shopper entered no code", async () => {
+    await expect(
+      createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID }),
+    ).resolves.toMatchObject({ discountClaimed: false })
+  })
+
+  it("claims the code's last use for the first checkout and applies the code to it in the batch that opens it", async () => {
+    const input = { checkoutValues: shippingForm, discountId: "disc_last", userEmail: "account@example.com", userId: USER_ID }
+
+    const holder = await createCheckout(input)
+
+    expect(holder.discountClaimed).toBe(true)
+    expect(readDiscountId(holder.checkoutId)).toEqual({ discount_id: "disc_last" })
+    expect(readDiscountClaims()).toEqual([{ checkout_id: holder.checkoutId, discount_id: "disc_last", email: "account@example.com" }])
+  })
+
+  it("opens the next checkout without the code while another holds its last use", async () => {
+    const input = { checkoutValues: shippingForm, discountId: "disc_last", userEmail: "account@example.com", userId: USER_ID }
+    const holder = await createCheckout(input)
+
+    const latecomer = await createCheckout({ ...input, userEmail: "other@example.com" })
+
+    expect(latecomer.discountClaimed).toBe(false)
+    expect(readCheckout(latecomer.checkoutId).status).toBe("pending")
+    expect(readDiscountId(latecomer.checkoutId)).toEqual({ discount_id: null })
+    expect(readDiscountClaims()).toEqual([{ checkout_id: holder.checkoutId, discount_id: "disc_last", email: "account@example.com" }])
   })
 })

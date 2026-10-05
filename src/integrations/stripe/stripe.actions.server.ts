@@ -33,6 +33,12 @@ import { updateCheckoutDelivery } from "~/src/modules/checkout/use-cases/update-
 import { getOfferedDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { DELIVERY_METHOD } from "~/src/modules/delivery-method/delivery-method.constants"
 import { resolveCheckoutDiscount } from "~/src/modules/discount/discount.checkout.server"
+import {
+  claimCheckoutDiscount,
+  keepClaimedDiscount,
+  releaseDiscountClaims,
+  releaseUnappliedDiscountClaims,
+} from "~/src/modules/discount/discount.claim.server"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
 import { sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.utils"
@@ -271,6 +277,34 @@ const toOrderLines = (validatedItems: ValidatedCheckoutItem[]): OrderLine[] =>
 const toReservedLines = (validatedItems: ValidatedCheckoutItem[]): CheckoutReleaseLine[] =>
   validatedItems.map((item) => ({ qty: item.qty, variantId: item.variantId }))
 
+interface OpenCheckoutSessionArgs extends CreateSessionArgs {
+  reservedLines: CheckoutReleaseLine[]
+}
+
+const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenCheckoutSessionArgs) => {
+  try {
+    const result = await createStripeSession(sessionArgs)
+    await createPendingPayment({
+      amount: result.amount,
+      checkoutId: sessionArgs.checkoutId,
+      currency: STRIPE_CURRENCY.toUpperCase(),
+      provider: "stripe",
+      reservedLines,
+      transactionId: result.sessionId,
+    })
+
+    return result
+  } catch (error) {
+    if (sessionArgs.discount !== undefined) {
+      await releaseDiscountClaims(sessionArgs.checkoutId).catch((releaseError: unknown) => {
+        console.error("Failed to release the discount claim after checkout error:", releaseError)
+      })
+    }
+
+    throw error
+  }
+}
+
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
   const origin = resolveRequestOrigin(getRequest())
   const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)
@@ -282,7 +316,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
 
   const validatedItems = await validateAndCalculateItems(data.items, [])
   const lines = toOrderLines(validatedItems)
-  const discount = await resolveCheckoutDiscount({
+  const applicableDiscount = await resolveCheckoutDiscount({
     code: checkoutValues.discountCode,
     email,
     itemsSubtotal: sumItemsSubtotal(lines),
@@ -292,31 +326,23 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
   await reserveInventoryForItems(validatedItems)
 
   try {
-    const checkoutId = await createCheckout({
+    const { checkoutId, discountClaimed } = await createCheckout({
       checkoutValues,
-      discountId: discount?.discountId,
+      discountId: applicableDiscount?.discountId,
       userEmail: email,
       userId,
     })
-
-    const result = await createStripeSession({
+    const discount = keepClaimedDiscount(applicableDiscount, discountClaimed)
+    const result = await openCheckoutSession({
       checkoutId,
       customerId,
       discount,
       email,
       lines,
       origin,
+      reservedLines: toReservedLines(validatedItems),
       shippingCost,
       userId,
-    })
-
-    await createPendingPayment({
-      amount: result.amount,
-      checkoutId,
-      currency: STRIPE_CURRENCY.toUpperCase(),
-      provider: "stripe",
-      reservedLines: toReservedLines(validatedItems),
-      transactionId: result.sessionId,
     })
 
     scheduleProductCatalogInvalidation()
@@ -413,6 +439,7 @@ const expireCheckoutSession = async (sessionId: string): Promise<void> => {
 }
 
 interface RetireCheckoutSessionArgs {
+  discountId: string | undefined
   heldLines: CheckoutReleaseLine[]
   oldSessionId: string
   replacement: { amount: number; sessionId: string }
@@ -421,6 +448,7 @@ interface RetireCheckoutSessionArgs {
 }
 
 const retireCheckoutSession = async ({
+  discountId,
   heldLines,
   oldSessionId,
   replacement,
@@ -431,6 +459,7 @@ const retireCheckoutSession = async ({
     await stripe.checkout.sessions.expire(oldSessionId)
     const superseded = await supersedeCheckoutSession({
       amount: replacement.amount,
+      discountId,
       heldLines,
       newTransactionId: replacement.sessionId,
       oldTransactionId: oldSessionId,
@@ -442,6 +471,27 @@ const retireCheckoutSession = async ({
     }
   } catch (error) {
     await expireCheckoutSession(replacement.sessionId)
+
+    throw error
+  }
+}
+
+interface ReplaceCheckoutSessionArgs extends Omit<RetireCheckoutSessionArgs, "discountId" | "replacement"> {
+  session: CreateSessionArgs
+}
+
+const replaceCheckoutSession = async ({ session, ...retirement }: ReplaceCheckoutSessionArgs) => {
+  try {
+    const replacement = await createStripeSession(session)
+    await retireCheckoutSession({ ...retirement, discountId: session.discount?.discountId, replacement })
+
+    return replacement
+  } catch (error) {
+    if (session.discount !== undefined) {
+      await releaseUnappliedDiscountClaims(session.checkoutId).catch((releaseError: unknown) => {
+        console.error("Failed to release the discount claim after checkout update error:", releaseError)
+      })
+    }
 
     throw error
   }
@@ -495,7 +545,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
   const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)
-  const discount = await resolveCheckoutDiscount({
+  const applicableDiscount = await resolveCheckoutDiscount({
     code: checkoutValues.discountCode,
     email: checkoutValues.email,
     itemsSubtotal: sumItemsSubtotal(lines),
@@ -504,22 +554,21 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
 
   const customerId =
     signedInUser === undefined ? undefined : await findReplacementCustomerId({ email: checkoutValues.email, ownerId, signedInUser })
-  const replacement = await createStripeSession({
-    checkoutId,
-    customerId,
-    discount,
-    email: checkoutValues.email,
-    lines,
-    origin,
-    shippingCost,
-    userId: signedInUser?.id,
-  })
-
-  await retireCheckoutSession({
+  const discount = await claimCheckoutDiscount({ applied: applicableDiscount, checkoutId, email: checkoutValues.email })
+  const replacement = await replaceCheckoutSession({
     heldLines,
     oldSessionId: data.sessionId,
-    replacement,
     reservedLines: toReservedLines(validatedItems),
+    session: {
+      checkoutId,
+      customerId,
+      discount,
+      email: checkoutValues.email,
+      lines,
+      origin,
+      shippingCost,
+      userId: signedInUser?.id,
+    },
     userId: signedInUser?.id,
   })
   await reserveReplacementCheckout({

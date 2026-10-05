@@ -54,7 +54,14 @@ export { courier, courierRelations } from "~/src/modules/courier/courier.schema"
 
 export { deliveryMethod, deliveryMethodRelations } from "~/src/modules/delivery-method/delivery-method.schema"
 
-export { discount, discountRedemption, discountRedemptionRelations, discountRelations } from "~/src/modules/discount/discount.schema"
+export {
+  discount,
+  discountClaim,
+  discountClaimRelations,
+  discountRedemption,
+  discountRedemptionRelations,
+  discountRelations,
+} from "~/src/modules/discount/discount.schema"
 
 export { productOption, productOptionRelations } from "~/src/modules/product-option/product-option.schema"
 

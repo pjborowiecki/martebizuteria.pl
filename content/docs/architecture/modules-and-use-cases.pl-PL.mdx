@@ -21,7 +21,7 @@ session                 storefront-search       two-factor
 user                    verification            wishlist
 ```
 
-34 z nich eksportuje tabele Drizzle, łącznie 36, a `src/integrations/drizzle-orm/drizzle.schemas.ts` re-eksportuje każdą z nich, żeby klient Drizzle, adapter Better Auth i `drizzle-kit` widziały jeden rejestr schematu. `storefront-search` deklaruje wirtualną tabelę FTS5 `storefront_search`, którą tworzy ręcznie napisana migracja i która pozostaje poza tym rejestrem. `admin-dashboard`, `customer-account` i `customer-activity` to modele odczytu nad tabelami innych modułów i nie mają własnego schematu; `_core` jest współdzielonym jądrem.
+34 z nich eksportuje tabele Drizzle, łącznie 37, a `src/integrations/drizzle-orm/drizzle.schemas.ts` re-eksportuje każdą z nich, żeby klient Drizzle, adapter Better Auth i `drizzle-kit` widziały jeden rejestr schematu. `storefront-search` deklaruje wirtualną tabelę FTS5 `storefront_search`, którą tworzy ręcznie napisana migracja i która pozostaje poza tym rejestrem. `admin-dashboard`, `customer-account` i `customer-activity` to modele odczytu nad tabelami innych modułów i nie mają własnego schematu; `_core` jest współdzielonym jądrem.
 
 ## Sufiksy plików
 

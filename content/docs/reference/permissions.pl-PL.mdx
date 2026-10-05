@@ -171,11 +171,11 @@ Dwie warstwy, obie zapisujące do tabeli `rate_limit`.
 
 **Middleware aplikacji `withRateLimit`**, z trzema nazwanymi budżetami w `auth.middleware.ts`, wszystkie w oknie 60 sekund:
 
-| Budżet      | Maks. | Zastosowany do                                                                         |
-| ----------- | ----- | -------------------------------------------------------------------------------------- |
-| `CHECKOUT`  | 10    | `checkout-create` i `checkout-update` w `src/integrations/stripe/stripe.actions.ts`    |
-| `SENSITIVE` | 3     | `create-user-address`, `update-customer-phone`, `revoke-other-customer-sessions`       |
-| `TOKEN`     | 5     | Na razie do niczego; sprawdzany tylko względem `SENSITIVE` w `auth.middleware.test.ts` |
+| Budżet      | Maks. | Zastosowany do                                                                                                                             |
+| ----------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CHECKOUT`  | 10    | `checkout-create` i `checkout-update` w `src/integrations/stripe/stripe.actions.ts` oraz `discount-validate` w `validate-discount-code.ts` |
+| `SENSITIVE` | 3     | `create-user-address`, `update-customer-phone`, `revoke-other-customer-sessions`                                                           |
+| `TOKEN`     | 5     | Na razie do niczego; sprawdzany tylko względem `SENSITIVE` w `auth.middleware.test.ts`                                                     |
 
 Obie warstwy kluczują po adresie IP klienta. `clientAddress` w `src/lib/rate-limit.ts` czyta wyłącznie nagłówek `cf-connecting-ip`, który ustawia brzeg sieci i którego klient nie podrobi. Sam licznik to jedno `INSERT ... ON CONFLICT DO UPDATE` ze strażnikiem `setWhere`, więc reset okna i inkrementacja są jedną atomową instrukcją. Jeśli tabela jest niedostępna, helper loguje `Rate-limit storage unavailable` i zwraca `false`, więc middleware rzuca `TOO_MANY_REQUESTS` — zawodzi w stronę zamkniętą.
 

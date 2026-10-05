@@ -4,7 +4,8 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsCreate: vi.fn<(params: { line_items: unknown[] }) => Promise<unknown>>(),
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
-  createCheckout: vi.fn<(input: { checkoutValues: { lockerId?: string | undefined } }) => Promise<string>>(),
+  createCheckout:
+    vi.fn<(input: { checkoutValues: { lockerId?: string | undefined } }) => Promise<{ checkoutId: string; discountClaimed: boolean }>>(),
   ensureStripeCustomer: vi.fn<() => Promise<string>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn<(id: string) => Promise<{ price: number; type: string } | undefined>>(),
   getPaymentContextByTransactionId: vi.fn(),
@@ -48,6 +49,12 @@ vi.mock("~/src/modules/checkout/use-cases/update-checkout-delivery.server", () =
   updateCheckoutDelivery: mocked.updateCheckoutDelivery,
 }))
 vi.mock("~/src/modules/discount/discount.checkout.server", () => ({ resolveCheckoutDiscount: () => Promise.resolve(undefined) }))
+vi.mock("~/src/modules/discount/discount.claim.server", () => ({
+  claimCheckoutDiscount: () => Promise.resolve(),
+  keepClaimedDiscount: vi.fn(),
+  releaseDiscountClaims: vi.fn(),
+  releaseUnappliedDiscountClaims: vi.fn(),
+}))
 vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
   getOfferedDeliveryMethodByIdQuery: mocked.getOfferedDeliveryMethodByIdQuery,
 }))
@@ -96,7 +103,7 @@ beforeEach(() => {
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
   mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
   mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(COURIER)
-  mocked.createCheckout.mockResolvedValue("checkout-1")
+  mocked.createCheckout.mockResolvedValue({ checkoutId: "checkout-1", discountClaimed: false })
   mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_799, client_secret: "cs_secret_1", id: "cs_new" })
   mocked.checkoutSessionsExpire.mockResolvedValue({})
   mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: { items: JSON.stringify(HELD_LINES) }, status: "open" })

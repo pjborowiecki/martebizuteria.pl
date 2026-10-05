@@ -29,6 +29,8 @@ const inventoryRow = (variantId: string) => {
   return row
 }
 
+const claimedCheckouts = () => sqlite.prepare("select checkout_id from discount_claim order by checkout_id").all()
+
 const statusOf = (table: "checkout" | "payment", column: "id" | "transaction_id", value: string) =>
   sqlite.prepare(`select status from ${table} where ${column} = ?`).get(value)
 
@@ -37,6 +39,7 @@ beforeEach(() => {
     drop table if exists inventory;
     drop table if exists payment;
     drop table if exists checkout;
+    drop table if exists discount_claim;
 
     create table checkout (
       id text primary key, billing_company_name text, billing_nip text, email text not null, status text not null default 'pending', user_id text,
@@ -62,9 +65,18 @@ beforeEach(() => {
              ('pay-done', 24900, 'chk-done', 'stripe', 'pending', 'pi_done', ${AT}, ${AT}),
              ('pay-orphan', 24900, 'chk-missing', 'stripe', 'pending', 'pi_orphan', ${AT}, ${AT});
 
+    create table discount_claim (
+      id text primary key, checkout_id text not null, discount_id text not null, email text not null,
+      created_at integer, updated_at integer
+    );
+
     insert into inventory (id, quantity_available, quantity_reserved, variant_id, version, created_at, updated_at)
       values ('inv-1', 5, 3, 'var-1', 1, ${AT}, ${AT}),
              ('inv-2', 0, 1, 'var-2', 1, ${AT}, ${AT});
+
+    insert into discount_claim (id, checkout_id, discount_id, email)
+      values ('claim-1', 'chk-1', 'disc-spring', 'anna@example.com'),
+             ('claim-done', 'chk-done', 'disc-spring', 'done@example.com');
   `)
 })
 
@@ -111,6 +123,16 @@ describe("releaseCheckout", () => {
     expect(statusOf("checkout", "id", "chk-1")).toEqual({ status: "failed" })
     expect(inventoryRow("var-1")).toEqual({ available: 7, reserved: 1 })
     expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
+  })
+
+  it("gives back the discount use the checkout held, once, and leaves other checkouts' uses held", async () => {
+    const input = { lines: [], transactionId: TRANSACTION_ID }
+
+    await releaseCheckout(input)
+    sqlite.exec("insert into discount_claim (id, checkout_id, discount_id, email) values ('claim-late', 'chk-1', 'disc-summer', 'a@b.c')")
+    await releaseCheckout(input)
+
+    expect(claimedCheckouts()).toEqual([{ checkout_id: "chk-1" }, { checkout_id: "chk-done" }])
   })
 
   it("restores only the remaining reservation when the requested release is larger", async () => {

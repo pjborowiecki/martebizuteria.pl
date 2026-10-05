@@ -7,17 +7,25 @@ interface PendingContext {
   userId: string | null
 }
 
+interface DiscountRedemptionInput {
+  checkoutId: string
+  email: string
+  orderId: string
+  redeemed: { amountMinorUnits: number; discountId: string } | undefined
+  userId: string | null
+}
+
 const {
   findPendingCheckoutByTransaction,
   getCheckoutForFulfillment,
+  prepareDiscountRedemption,
   prepareFulfillCheckoutBatch,
   recordDiscountRedeemedAudit,
-  recordDiscountRedemption,
   runDrizzleBatch,
-  scheduleBackgroundWork,
 } = vi.hoisted(() => ({
   findPendingCheckoutByTransaction: vi.fn<(transactionId: string) => Promise<PendingContext | undefined>>(),
   getCheckoutForFulfillment: vi.fn<(checkoutId: string) => Promise<Record<string, unknown> | undefined>>(),
+  prepareDiscountRedemption: vi.fn<(input: DiscountRedemptionInput) => string[]>(),
   prepareFulfillCheckoutBatch:
     vi.fn<
       (
@@ -27,18 +35,15 @@ const {
       ) => { orderId: string; statements: string[] }
     >(),
   recordDiscountRedeemedAudit: vi.fn<(orderId: string, options: { detail: string }) => void>(),
-  recordDiscountRedemption: vi.fn<() => Promise<boolean>>(),
   runDrizzleBatch: vi.fn<(statements: readonly string[]) => Promise<void>>(),
-  scheduleBackgroundWork: vi.fn<(work: Promise<unknown>) => void>(),
 }))
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch }))
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutForFulfillment }))
 vi.mock("~/src/modules/checkout/checkout.pending.server", () => ({ findPendingCheckoutByTransaction }))
 vi.mock("~/src/modules/checkout/checkout.utils", () => ({ prepareFulfillCheckoutBatch }))
-vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDiscountRedeemedAudit }))
-vi.mock("~/src/modules/discount/discount.redeem.server", () => ({ recordDiscountRedemption }))
+vi.mock("~/src/modules/discount/discount.redeem.server", () => ({ prepareDiscountRedemption }))
 
 import { type FulfillCheckoutFromSessionInput, fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 
@@ -85,15 +90,11 @@ const discountedCheckoutRow = {
 
 const batchInput = () => prepareFulfillCheckoutBatch.mock.calls[0]?.[1]
 
-const scheduledWork = async (): Promise<void> => {
-  await scheduleBackgroundWork.mock.calls[0]?.[0]
-}
-
 beforeEach(() => {
   vi.clearAllMocks()
   findPendingCheckoutByTransaction.mockResolvedValue(context)
   getCheckoutForFulfillment.mockResolvedValue(checkoutRow)
-  recordDiscountRedemption.mockResolvedValue(true)
+  prepareDiscountRedemption.mockReturnValue(["release-claims"])
   prepareFulfillCheckoutBatch.mockReturnValue({ orderId: "order-1", statements: ["stmt-a", "stmt-b"] })
   runDrizzleBatch.mockResolvedValue(undefined)
 })
@@ -107,7 +108,7 @@ describe("fulfillCheckout", () => {
 
   it("returns the new order id once the batch has run", async () => {
     await expect(fulfillCheckout(input)).resolves.toBe("order-1")
-    expect(runDrizzleBatch).toHaveBeenCalledWith(["stmt-a", "stmt-b"])
+    expect(runDrizzleBatch).toHaveBeenCalledExactlyOnceWith(["stmt-a", "stmt-b", "release-claims"])
   })
 
   it("takes shipping from the delivery method rather than inferring it from the paid amount", async () => {
@@ -175,39 +176,43 @@ describe("fulfillCheckout", () => {
     await fulfillCheckout({ ...input, paidAmount: 19_500 })
 
     expect(batchInput()?.totals).toMatchObject({ discountTotal: 2000, total: 19_500 })
-    expect(recordDiscountRedemption).toHaveBeenCalledWith({
-      amount: 2000,
-      discountId: "disc-1",
+    expect(prepareDiscountRedemption).toHaveBeenCalledExactlyOnceWith({
+      checkoutId: "chk-1",
       email: "buyer@example.com",
       orderId: "order-1",
+      redeemed: { amountMinorUnits: 2000, discountId: "disc-1" },
       userId: null,
     })
   })
 
-  it("audits the redemption with the amount saved once the code is spent", async () => {
+  it("records the redemption in the batch that creates the order", async () => {
+    prepareDiscountRedemption.mockReturnValue(["release-claims", "insert-redemption", "count-use"])
     getCheckoutForFulfillment.mockResolvedValue(discountedCheckoutRow)
     await fulfillCheckout({ ...input, paidAmount: 19_500 })
 
-    await scheduledWork()
+    expect(runDrizzleBatch).toHaveBeenCalledExactlyOnceWith(["stmt-a", "stmt-b", "release-claims", "insert-redemption", "count-use"])
+  })
+
+  it("audits the redemption with the amount saved once the order's batch has run", async () => {
+    getCheckoutForFulfillment.mockResolvedValue(discountedCheckoutRow)
+    await fulfillCheckout({ ...input, paidAmount: 19_500 })
 
     expect(recordDiscountRedeemedAudit).toHaveBeenCalledExactlyOnceWith("order-1", { detail: "2000" })
   })
 
-  it("does not audit a redemption the discount ledger refused to record", async () => {
-    recordDiscountRedemption.mockResolvedValue(false)
+  it("does not audit a redemption whose batch failed", async () => {
+    runDrizzleBatch.mockRejectedValue(new Error("D1_ERROR"))
     getCheckoutForFulfillment.mockResolvedValue(discountedCheckoutRow)
-    await fulfillCheckout({ ...input, paidAmount: 19_500 })
 
-    await scheduledWork()
-
-    expect(recordDiscountRedemption).toHaveBeenCalledOnce()
+    await expect(fulfillCheckout({ ...input, paidAmount: 19_500 })).rejects.toThrow("D1_ERROR")
     expect(recordDiscountRedeemedAudit).not.toHaveBeenCalled()
   })
 
-  it("does not spend a code when the checkout carries none", async () => {
+  it("only lets go of the checkout's discount holds when it carries no code", async () => {
     await fulfillCheckout(input)
 
-    expect(recordDiscountRedemption).not.toHaveBeenCalled()
+    expect(prepareDiscountRedemption).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ redeemed: undefined }))
+    expect(recordDiscountRedeemedAudit).not.toHaveBeenCalled()
     expect(batchInput()?.totals).toMatchObject({ discountTotal: 0 })
   })
 

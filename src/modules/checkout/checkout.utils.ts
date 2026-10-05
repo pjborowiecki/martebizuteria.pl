@@ -1,4 +1,4 @@
-import { and, eq, exists, notInArray, sql } from "drizzle-orm"
+import { and, eq, exists, inArray, notInArray, sql } from "drizzle-orm"
 import { type BatchItem } from "drizzle-orm/batch"
 
 import { insertRowChunks } from "~/src/integrations/drizzle-orm/drizzle.batch"
@@ -8,6 +8,8 @@ import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { address } from "~/src/modules/address/address.schema"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { prepareDiscountClaim } from "~/src/modules/discount/discount.claim.server"
+import { discountClaim } from "~/src/modules/discount/discount.schema"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
@@ -93,12 +95,36 @@ export interface ReleaseCheckoutInput {
   transactionId: string
 }
 
+const prepareCheckoutDiscountClaim = (
+  checkoutId: string,
+  discountId: string | undefined,
+  email: string,
+): [] | [BatchItem<"sqlite">, BatchItem<"sqlite">] => {
+  if (discountId === undefined) {
+    return []
+  }
+
+  const claimOfCheckout = db
+    .select({ id: discountClaim.id })
+    .from(discountClaim)
+    .where(and(eq(discountClaim.checkoutId, checkoutId), eq(discountClaim.discountId, discountId)))
+
+  return [
+    prepareDiscountClaim({ checkoutId, discountId, email }),
+    db
+      .update(checkout)
+      .set({ discountId })
+      .where(and(eq(checkout.id, checkoutId), exists(claimOfCheckout)))
+      .returning({ discountId: checkout.discountId }),
+  ]
+}
+
 export const prepareCreateCheckoutBatch = ({
   checkoutValues,
   discountId,
   userEmail,
   userId,
-}: PrepareCreateCheckoutInput): { checkoutId: string; statements: BatchItem<"sqlite">[] } => {
+}: PrepareCreateCheckoutInput): { checkoutId: string; statements: [...BatchItem<"sqlite">[], BatchItem<"sqlite">] } => {
   const checkoutId = crypto.randomUUID()
   const shippingAddressId = crypto.randomUUID()
   const billingAddressId = checkoutValues.sameAsShipping === true ? shippingAddressId : crypto.randomUUID()
@@ -125,7 +151,6 @@ export const prepareCreateCheckoutBatch = ({
     billingNip: companyInvoice.billingNip,
     customerNote: checkoutValues.deliveryNotes,
     deliveryMethodId: checkoutValues.deliveryMethod,
-    discountId,
     email: userEmail,
     id: checkoutId,
     lockerId: checkoutValues.lockerId,
@@ -162,7 +187,10 @@ export const prepareCreateCheckoutBatch = ({
       : []
   const addressInserts = billingInsert === undefined ? [shippingInsert] : [shippingInsert, billingInsert]
 
-  return { checkoutId, statements: [...clearDefaults, ...addressInserts, checkoutInsert] }
+  return {
+    checkoutId,
+    statements: [...clearDefaults, ...addressInserts, checkoutInsert, ...prepareCheckoutDiscountClaim(checkoutId, discountId, userEmail)],
+  }
 }
 
 export const resolvePendingCheckout = (
@@ -434,7 +462,7 @@ export const prepareReleaseCheckoutBatch = ({
 }: ReleaseCheckoutInput): [...BatchItem<"sqlite">[], BatchItem<"sqlite">] => {
   const pendingSessionPayment = and(eq(payment.transactionId, transactionId), eq(payment.status, "pending"))
   const releasableSession = db
-    .select({ id: payment.id })
+    .select({ checkoutId: payment.checkoutId })
     .from(payment)
     .innerJoin(checkout, eq(checkout.id, payment.checkoutId))
     .where(and(pendingSessionPayment, eq(checkout.status, "pending")))
@@ -457,6 +485,7 @@ export const prepareReleaseCheckoutBatch = ({
         })
         .where(and(eq(inventory.variantId, line.variantId), exists(releasableSession))),
     ),
+    db.delete(discountClaim).where(inArray(discountClaim.checkoutId, releasableSession)),
     db
       .update(checkout)
       .set({ status: "failed" })
