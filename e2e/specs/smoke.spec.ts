@@ -5,7 +5,6 @@ const PUBLIC_PAGES = [
   { heading: "All Products", path: "/en-US/products" },
   { heading: PRODUCTS.lapis.title, path: `/en-US/products/${PRODUCTS.lapis.handle}` },
   { heading: "Your cart is empty", path: "/en-US/cart" },
-  { heading: "Terms of Service", path: "/en-US/terms-of-service" },
   { heading: "Welcome back", path: "/en-US/auth/sign-in" },
   { heading: "Stay with us a little longer", path: "/en-US/auth/sign-up" },
 ] as const
@@ -13,6 +12,7 @@ const PUBLIC_PAGES = [
 const CONTENT_PAGES = [
   { path: "/en-US/privacy-policy", title: "Privacy policy" },
   { path: "/en-US/exchanges-and-returns", title: "Exchanges and returns" },
+  { path: "/en-US/terms-of-service", title: "Terms of Service" },
 ] as const
 
 test.describe("smoke", () => {

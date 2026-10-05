@@ -1,9 +1,9 @@
 ---
 title: "Legal pages"
-description: "The privacy policy and the exchanges-and-returns page: Markdown rows in D1, edited in the admin panel with MDXEditor and rendered on the storefront."
+description: "The terms of service, the privacy policy and the exchanges-and-returns page: Markdown rows in D1, edited in the admin panel with MDXEditor and rendered on the storefront."
 ---
 
-M'Arte has two real legal documents, the privacy policy at `/privacy-policy` and the returns policy at `/exchanges-and-returns`. Each one is a row in the D1 `content_page` table. Admins edit them at `/admin/content` in a rich-text editor that writes Markdown, and the storefront renders that Markdown with the same typography the editor shows.
+M'Arte has three legal documents: the terms of service (the regulamin) at `/terms-of-service`, the privacy policy at `/privacy-policy` and the returns policy at `/exchanges-and-returns`. Each one is a row in the D1 `content_page` table. Admins edit them at `/admin/content` in a rich-text editor that writes Markdown, and the storefront renders that Markdown with the same typography the editor shows.
 
 ## The table
 
@@ -11,7 +11,7 @@ M'Arte has two real legal documents, the privacy policy at `/privacy-policy` and
 
 | Column         | Holds                                                                    |
 | -------------- | ------------------------------------------------------------------------ |
-| `handle`       | `privacy-policy` or `exchanges-and-returns`, unique                      |
+| `handle`       | `terms-of-service`, `privacy-policy` or `exchanges-and-returns`, unique  |
 | `titles`       | A JSON map from locale to the page title                                 |
 | `descriptions` | A JSON map from locale to the meta description                           |
 | `bodies`       | A JSON map from locale to the Markdown body                              |
@@ -20,13 +20,29 @@ M'Arte has two real legal documents, the privacy policy at `/privacy-policy` and
 
 The handle column is an enum over `CONTENT_PAGE_HANDLES` in `content-page.constants.ts`, so a page the code does not know about cannot be stored or requested.
 
-The migration `20261002120000_content_pages.sql` creates the table and seeds both pages with the text that used to live in `content/legal`. It inserts with `ON CONFLICT(handle) DO NOTHING`, so running it again never overwrites text an admin has already edited.
+The migration `20261002120000_content_pages.sql` creates the table and seeds the privacy and returns pages with the text that used to live in `content/legal`. `20261005200000_terms_of_service_page.sql` adds the terms of service. Both insert with `ON CONFLICT(handle) DO NOTHING`, so running them again never overwrites text an admin has already edited.
 
 The Polish documents are the authoritative ones. They cite Polish statute directly, such as the 14-day right of withdrawal, art. 556⁴ of the Civil Code and the GDPR article for each processing purpose, and they name the data controller. Keep the English versions in step as translations, not as separate texts.
 
+## The terms of service
+
+The terms are the regulamin that Article 8 of the Polish Act on the Provision of Services by Electronic Means requires, and they carry the pre-contract information of Article 12 of the Consumer Rights Act that the checkout does not show itself. The checkout, the sign-up form and the newsletter form all ask the customer to accept them. Every fact in them comes from the code, so a change to one of these sources needs a matching edit to the terms in `/admin/content`:
+
+| Section | What it states                                                                                                           | Where it comes from                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| § 1     | The seller's legal name, address, NIP, REGON, e-mail and telephone                                                       | `BUSINESS` in `src/presentation/branding/business.ts`                                                                  |
+| § 4     | The account, the wishlist of up to 200 products, the newsletter confirmed by e-mail and the cart kept in the browser     | Better Auth, `WISHLIST_MAX_ITEMS`, the newsletter use cases and `cart.store.ts`                                        |
+| § 5     | The checkout steps, the "Zamawiam i płacę" button and a contract concluded once the paid order is accepted               | The checkout steps, `placeOrder` and `handleFulfillCheckoutSession`                                                    |
+| § 6     | Card, BLIK and Przelewy24 through Stripe, paid in advance, and one discount code per order                               | `CHECKOUT_PAYMENT_METHOD_ORDER` and the discount module                                                                |
+| § 7     | Delivery in Poland only by Kurier InPost, Paczkomat InPost or free collection in Bochnia from 09:00 to 17:00             | The fixed `PL` country, `delivery-methods.sql` and `BUSINESS.OPENING_HOURS_*`                                          |
+| § 7     | A fulfilment time taken from the product page, 10 business days when it has none, plus up to 4 business days with InPost | The `czas-realizacji` attribute, its `fallbackTime` in `pages.product` and the longest transit time the emails promise |
+| § 8–10  | Withdrawal, conformity, complaints and out-of-court routes under the Consumer Rights Act                                 | The statute; the returns page, the privacy policy and the two PDF forms are linked rather than repeated                |
+
+The courier and locker prices are not written into the terms. They live in `delivery_method` rows, which the seed file does not keep in step with production, so the terms say the checkout shows each price before the order is placed. The terms do not link the EU online dispute resolution platform, which closed on 20 July 2025.
+
 ## The storefront pages
 
-Both routes load the page through one query and hand rendering to a shared article:
+All three routes load the page through one query and hand rendering to a shared article:
 
 ```tsx
 const PrivacyPolicyPage = (): JSX.Element => <ContentPageArticle handle={CONTENT_PAGE_HANDLE.PRIVACY_POLICY} />
@@ -56,11 +72,11 @@ const { Markdown } = createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkH
 
 The typography lives in `CONTENT_PROSE_CLASS` in `content-page.styles.ts`. The admin editor applies the same class to its editable area, so what an admin sees while typing is what customers see.
 
-Both routes sit under `_storefront`, so they get the navigation, the cart availability banner and the footer.
+All three routes sit under `_storefront`, so they get the navigation, the cart availability banner and the footer.
 
 ## Editing in the admin panel
 
-The **Content** item in the admin sidebar opens `/admin/content`, which lists both pages with their last save. Each one opens `/admin/content/$handle`. The route rejects any handle outside `CONTENT_PAGE_HANDLES` with a 404.
+The **Content** item in the admin sidebar opens `/admin/content`, which lists every page with its last save. Each one opens `/admin/content/$handle`. The route rejects any handle outside `CONTENT_PAGE_HANDLES` with a 404.
 
 The editor page has one tab per locale. Each tab holds three fields:
 
@@ -80,7 +96,7 @@ The body field is [MDXEditor](https://mdxeditor.dev), which is built on Lexical.
 
 Quotes are available through Markdown shortcuts, such as typing `> ` at the start of a line. Shift+Enter starts a new line inside a paragraph, which is how a postal address stays on separate lines. The editor writes it as a trailing backslash, and a custom export visitor keeps two consecutive line breaks as a paragraph break instead.
 
-MDXEditor serialises through `mdast-util-to-markdown`, so text that would otherwise read as Markdown is escaped. A line that starts with `1.` or `-`, a trailing `#` in a heading and emphasis next to punctuation all survive a save unchanged. The editor tests load both seeded pages in both locales into the real editor and check that they come back byte-identical.
+MDXEditor serialises through `mdast-util-to-markdown`, so text that would otherwise read as Markdown is escaped. A line that starts with `1.` or `-`, a trailing `#` in a heading and emphasis next to punctuation all survive a save unchanged. The editor tests load every seeded page in both locales into the real editor and check that they come back byte-identical.
 
 The editor's own labels, such as the link dialog and the heading names, come from `pages.admin.content.editor.mdx` in the admin message files through `useContentEditorTranslation`. The editable area takes its accessible name from the field label.
 
@@ -110,22 +126,21 @@ Edits typed while a save is in flight are kept after it completes.
 
 1. Add the handle to `CONTENT_PAGE_HANDLE` and `CONTENT_PAGE_HANDLES`, and its route to `ROUTES` and `CONTENT_PAGE_PATHS`.
 2. Write a migration that inserts the row with every locale's title, description and body, using `ON CONFLICT(handle) DO NOTHING`.
-3. Copy one of the two storefront routes and change the handle.
+3. Copy one of the storefront routes and change the handle.
 4. Link the page from the footer if customers should find it there.
 
 The admin list and editor pick the new page up without changes.
 
 ## Message-only storefront pages
 
-Three other pages in the footer's information column are not content pages and have no long-form text:
+Two other pages in the footer's information column are not content pages and have no long-form text:
 
-| Route               | File                               | What it renders                                                    |
-| ------------------- | ---------------------------------- | ------------------------------------------------------------------ |
-| `/terms-of-service` | `_storefront.terms-of-service.tsx` | `t("title")`, one `t("description")` paragraph, a link home        |
-| `/faq`              | `_storefront.faq.tsx`              | The same three-element shape                                       |
-| `/about`            | `_storefront.about.tsx`            | An eyebrow, a title, a lead and four paragraphs from `pages.about` |
+| Route    | File                    | What it renders                                                    |
+| -------- | ----------------------- | ------------------------------------------------------------------ |
+| `/faq`   | `_storefront.faq.tsx`   | `t("title")`, one `t("description")` paragraph, a link home        |
+| `/about` | `_storefront.about.tsx` | An eyebrow, a title, a lead and four paragraphs from `pages.about` |
 
-`/about` is finished copy authored in `messages/{locale}/pages.about.json`. `/terms-of-service` and `/faq` are placeholders, and both render a centred "go home" link. Terms of service can become an editable document by following the steps above.
+`/about` is finished copy authored in `messages/{locale}/pages.about.json`. `/faq` is a placeholder and renders a centred "go home" link.
 
 ## Footer links
 
@@ -141,8 +156,10 @@ The checkout payment step also links the terms and privacy pages through `t.rich
 
 ## Tests
 
-- `content-page.integration.test.ts` runs the migration against SQLite and covers reading with the Polish fallback, the admin reads, trimming, conflicting saves, per-locale revision dates and the link and image rules.
-- `mdxeditor.plugins.component.test.tsx` round-trips both seeded pages through the real editor, plus the escaping and line-break cases.
+- `content-page.integration.test.ts` runs both migrations against SQLite and covers reading with the Polish fallback, the admin reads, trimming, conflicting saves, per-locale revision dates and the link and image rules. It also checks that the seeded terms save back unchanged through the editor's validation and that running the terms migration again keeps an admin's edits.
+- `business.test.ts` fails if a seeded page stops naming the business details in `src/presentation/branding/business.ts`.
+- `legal-routes.test.ts` covers the three storefront routes.
+- `mdxeditor.plugins.component.test.tsx` round-trips every seeded page through the real editor, plus the escaping and line-break cases.
 - The admin component tests cover saving, validation, conflicts, edits during a save, the save shortcut and the leave dialog.
 - `content-page-article.component.test.tsx` covers the storefront rendering, heading anchors, localised links and dropped HTML.
 

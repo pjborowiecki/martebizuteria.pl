@@ -83,10 +83,11 @@ Ta strona dotyczy licencji na kod. Własne dokumenty prawne sklepu to odrębna t
 
 | Dokument             | Handle                  | Trasa                    |
 | -------------------- | ----------------------- | ------------------------ |
+| Regulamin            | `terms-of-service`      | `/terms-of-service`      |
 | Polityka prywatności | `privacy-policy`        | `/privacy-policy`        |
 | Wymiana i zwroty     | `exchanges-and-returns` | `/exchanges-and-returns` |
 
-Administratorzy edytują je w `/admin/content`, a zapis od razu je publikuje. Zapis, który zmienia tytuł lub treść w danym języku, przesuwa datę „Ostatnia aktualizacja” tego języka, więc zmiany w dokumencie prawnym skierowanym do klienta nie da się opublikować bez opatrzenia datą. Trasa `/terms-of-service` też istnieje, ale `src/routes/_storefront.terms-of-service.tsx` renderuje obecnie krótki tekst zastępczy z przestrzeni nazw `pages.terms-of-service`, a nie wiersz z `content_page`.
+Administratorzy edytują je w `/admin/content`, a zapis od razu je publikuje. Zapis, który zmienia tytuł lub treść w danym języku, przesuwa datę „Ostatnia aktualizacja” tego języka, więc zmiany w dokumencie prawnym skierowanym do klienta nie da się opublikować bez opatrzenia datą.
 
 ## Pełny tekst
 

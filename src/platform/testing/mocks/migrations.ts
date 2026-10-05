@@ -14,6 +14,7 @@ export const MIGRATION = {
   CONTENT_PAGES: "20261002120000_content_pages",
   ORDER_ITEM_PRODUCT_BACKFILL: "20261003120000_order_item_product_backfill",
   STOREFRONT_SEARCH: "20261002100000_storefront_search",
+  TERMS_OF_SERVICE_PAGE: "20261005200000_terms_of_service_page",
 } as const
 
 export const applyMigration = (sqlite: DatabaseSync, migration: (typeof MIGRATION)[keyof typeof MIGRATION]): void => {

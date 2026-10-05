@@ -10,6 +10,7 @@ import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/bran
 const seededBody = (handle: string, locale: string): string => {
   const sqlite = new DatabaseSync(":memory:")
   applyMigration(sqlite, MIGRATION.CONTENT_PAGES)
+  applyMigration(sqlite, MIGRATION.TERMS_OF_SERVICE_PAGE)
   const row = sqlite.prepare("select json_extract(bodies, ?) as body from content_page where handle = ?").get(`$."${locale}"`, handle)
   sqlite.close()
 
@@ -35,5 +36,16 @@ describe("published business details", () => {
       expect(returns).toContain(line)
     }
     expect(returns).toContain(`mailto:${BUSINESS.EMAIL}`)
+  })
+
+  it.each(I18N.SUPPORTED_LOCALES)("names the seller of the %s terms of service with every business detail", (locale) => {
+    const terms = seededBody("terms-of-service", locale)
+
+    for (const detail of [BUSINESS.LEGAL_NAME, BUSINESS.NIP, BUSINESS.REGON, BUSINESS.PHONE, ...BUSINESS_POSTAL_ADDRESS_LINES]) {
+      expect(terms).toContain(detail)
+    }
+    expect(terms).toContain(`mailto:${BUSINESS.EMAIL}`)
+    expect(terms).toContain(`tel:${BUSINESS.PHONE.replaceAll(" ", "")}`)
+    expect(terms).toContain(`${BUSINESS.OPENING_HOURS_OPEN}–${BUSINESS.OPENING_HOURS_CLOSE}`)
   })
 })

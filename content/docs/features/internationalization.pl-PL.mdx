@@ -202,7 +202,7 @@ descriptions: text("descriptions", { mode: "json" }).$type<Product["localeMap"] 
 tags: text("tags", { mode: "json" }).$type<Product["tagsLocaleMap"] | null>(),
 ```
 
-Ten sam kształt pojawia się w `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles` oraz etykiety wewnątrz `allowed_values`) i `content_page` (`titles`, `descriptions` i `bodies`, przy czym `bodies` zawiera Markdown stron `/privacy-policy` i `/exchanges-and-returns`).
+Ten sam kształt pojawia się w `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles` oraz etykiety wewnątrz `allowed_values`) i `content_page` (`titles`, `descriptions` i `bodies`, przy czym `bodies` zawiera Markdown stron `/terms-of-service`, `/privacy-policy` i `/exchanges-and-returns`).
 
 Odczyt ma trzy poziomy fallbacku. `resolveLocalizedString` w `src/modules/product-attribute/product-attribute.utils.ts` to wspólna implementacja:
 
