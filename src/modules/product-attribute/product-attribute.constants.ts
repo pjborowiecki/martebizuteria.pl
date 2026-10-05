@@ -52,6 +52,8 @@ export const PRODUCT_ATTRIBUTE_DEFAULT_RANK = 0
 
 export const PRODUCT_ATTRIBUTE_HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 
+export const FULFILLMENT_TIME_ATTRIBUTE_HANDLE = "czas-realizacji"
+
 export const PRODUCT_ATTRIBUTE_ALLOWED_VALUE_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 
 export const PRODUCT_ATTRIBUTE_ERROR_CODES = {

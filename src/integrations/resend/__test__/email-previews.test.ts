@@ -9,6 +9,7 @@ import orderConfirmationCopy from "~/messages/en-US/emails.order-confirmation.js
 import orderShippedCopy from "~/messages/en-US/emails.order-shipped.json"
 import resetPasswordCopy from "~/messages/en-US/emails.reset-password.json"
 import verifyEmailCopy from "~/messages/en-US/emails.verify-email.json"
+import polishOrderConfirmationCopy from "~/messages/pl-PL/emails.order-confirmation.json"
 import polishVerifyEmailCopy from "~/messages/pl-PL/emails.verify-email.json"
 
 const text = (slug: EmailPreviewSlug, locale: "en-US" | "pl-PL" = "en-US"): Promise<string> => renderEmailPreview(slug, locale, true)
@@ -99,6 +100,18 @@ describe("renderEmailPreview", () => {
     expect(preview).toContain("Bransoletka Aurora")
     expect(preview).toContain("Kolczyki Luna")
     expect(preview).toContain(orderConfirmationCopy.totalLabel)
+  })
+
+  it("previews the delivery promise and the contract information in the language asked for", async () => {
+    const preview = await text("order-confirmation", "pl-PL")
+
+    expect(preview).toContain(
+      `${polishOrderConfirmationCopy.fulfillmentTimeLabel}\n\n${polishOrderConfirmationCopy.fulfillmentTime.fallback}`,
+    )
+    expect(preview).toContain(polishOrderConfirmationCopy.fulfillmentTime.note)
+    expect(preview).toContain(polishOrderConfirmationCopy.estimatedDelivery.courier)
+    expect(preview).toContain(polishOrderConfirmationCopy.withdrawal.period)
+    expect(preview).toContain(`${polishOrderConfirmationCopy.documents.termsOfService} http://localhost:3000/terms-of-service`)
   })
 
   it("invites the guest buyer to create an account", async () => {

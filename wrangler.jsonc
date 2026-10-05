@@ -11,10 +11,6 @@
   "placement": {
     "mode": "smart",
   },
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS",
-  },
   "migrations": [
     {
       "tag": "v1",
@@ -26,6 +22,10 @@
       "name": "martebizuteria-development",
       "vars": {
         "APP_ENV": "development",
+      },
+      "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
       },
       "ratelimits": [],
       "d1_databases": [
@@ -94,6 +94,10 @@
       "name": "martebizuteria-preview",
       "vars": {
         "APP_ENV": "preview",
+      },
+      "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
       },
       "ratelimits": [],
       "d1_databases": [
@@ -164,6 +168,10 @@
       "vars": {
         "APP_ENV": "test",
       },
+      "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
+      },
       "ratelimits": [],
       "d1_databases": [
         {
@@ -231,6 +239,10 @@
       "name": "martebizuteria",
       "vars": {
         "APP_ENV": "production",
+      },
+      "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
       },
       "ratelimits": [],
       "d1_databases": [

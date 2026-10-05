@@ -160,14 +160,20 @@ if (method.type === "locker" && lockerId !== undefined && lockerId !== "") {
 }
 ```
 
-The estimated delivery and fulfilment times are **not** stored anywhere — they are copy, looked up by delivery type:
+The estimated delivery is copy, looked up by delivery type. The fulfilment time is read from the catalogue when the email is built:
 
 ```ts
 const deliveryType = context?.deliveryMethod?.type ?? "courier"
-const { estimatedDelivery, fulfillmentTime } = messages.deliveryTiming[deliveryType]
+
+return {
+  estimatedDelivery: messages.estimatedDelivery[deliveryType],
+  fulfillmentTime: describeOrderFulfillmentTime(fulfillmentTimes, messages),
+}
 ```
 
-So `messages/{locale}/emails.order-confirmation.json` has a `deliveryTiming` object keyed by `courier`, `locker` and `in_store`. Changing the promised lead time is a message-catalogue edit.
+`getFulfillmentTimeAttributesByVariantId` in `attribute-on-product.server.ts` reads the `czas-realizacji` attribute (`FULFILLMENT_TIME_ATTRIBUTE_HANDLE`) the way the product page shows it: the variant's own value when the variant has attributes of its own, otherwise the product's, and none when the value is blank. `resolveOrderLineFulfillmentTimes` in `src/integrations/resend/order-fulfillment-time.utils.ts` labels each value in the order's locale, and a product without one takes `fulfillmentTime.fallback`, 10 business days. `describeOrderFulfillmentTime` reads the number and unit of each label (hours, days, business days, weeks or months, in Polish or English) and states the longest, followed by `fulfillmentTime.note`, which says it runs from the acceptance of the order and that the order ships in one parcel. When a label has no number and unit it can compare, such as "na zamówienie", it lists every product with its own time instead. The email therefore states the period itself, as Article 21 of the Consumer Rights Act requires, rather than pointing at product pages that can change after the order.
+
+`messages/{locale}/emails.order-confirmation.json` has the `fulfillmentTime` object with `fallback` and `note`, and an `estimatedDelivery` object keyed by `courier`, `locker` and `in_store`. Both repeat § 7 of the terms of service: the fulfilment time stated on each product page, or up to 10 business days when a page gives none, with the longest applying to the whole order, then up to 4 business days in transit with InPost, or collection at the atelier once the fulfilment time ends. Changing the fallback or the transit time is a message-catalogue edit and an edit to § 7 in `/admin/content`, and changing a product's time is an edit to its `czas-realizacji` attribute. The shipped email keeps its own `deliveryTiming` in `emails.order-shipped.json`.
 
 ## What is not there
 

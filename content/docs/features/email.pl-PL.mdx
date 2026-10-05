@@ -13,10 +13,10 @@ const RESEND_TEST_SENDER = /@resend\.dev>?$/iu
 const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): boolean =>
   SENDER_REFUSAL_NAMES.has(name) || (SENDER_REFUSAL_STATUSES.has(statusCode) && !RESEND_TEST_SENDER.test(sender))
 
-const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({ from: sender, react, subject, to })
+    const { error } = await resend.emails.send({ ...message, from: sender })
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -41,6 +41,8 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
   }
 }
 ```
+
+Wiadomość, czyli `react`, `subject`, `to` i ewentualne `attachments`, trafia do Resend w takiej postaci, w jakiej ją przekazano. Załącznik ma tylko potwierdzenie zamówienia.
 
 Zwróć uwagę na kontrakt: **nigdy nie rzuca wyjątku.** Zwraca `undefined` przy sukcesie, a w przeciwnym razie komunikat błędu jako napis. SDK Resend nie ma własnego limitu czasu, więc `sendEmail` rezygnuje po `SEND_EMAIL_TIMEOUT_MS` (10 sekund) i zwraca `Resend did not answer within 10000 ms`; zawieszony Resend nie może bez końca blokować zapisu ani webhooka. Każdy wywołujący jest więc napisany jako `const failure = await sendEmail(...)`, po czym decyduje, co zrobić z `failure` — awaria poczty nie może wycofać zamówienia ani usunięcia konta.
 
@@ -135,18 +137,26 @@ To najbardziej złożony szablon. `stripe.webhooks.tsx` buduje go w `buildOrderC
 1. Odbiorcą jest `session.customer_email ?? session.customer_details?.email`. Jeśli go brak, nic nie jest budowane, a przy zamówieniu zapisywana jest porażka `The Stripe session has no email address`. Wcześniej `sendOrderConfirmationEmail` bierze origin linków z `session.return_url` przez `resolveDeploymentOrigin`. Sesja bez tego adresu zapisuje `The Stripe session has no return URL to link the email to`, a sesja na hoście, którego nie obsługuje żadne wdrożenie, zapisuje `FORBIDDEN`.
 2. `getCheckoutEmailContext(checkoutId)` wczytuje adresy, metodę dostawy, identyfikator paczkomatu i uwagę klienta.
 3. `resolveStripePaymentMethodLabel(session, messages)` zamienia metodę płatności Stripe w przetłumaczoną etykietę.
-4. `buildOrderConfirmationDetails(...)` składa blok szczegółów.
+4. `getFulfillmentTimeAttributesByVariantId(variantIds)` czyta atrybut `czas-realizacji`, który pokazuje strona produktu każdego zamówionego wariantu, a `resolveOrderLineFulfillmentTimes(order.lines, attributes, locale)` zamienia go na etykietę w języku zamówienia. Potem `buildOrderConfirmationDetails({ context, fulfillmentTimes, messages, paymentMethod })` składa blok szczegółów.
 5. `buildOrderConfirmationItems(order.lines, locale, origin)` formatuje pozycje i linkuje każdą do strony produktu na `origin`, czyli pod adresem, na którym złożono zamówienie.
 6. `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })` wybiera przycisk: zalogowany klient dostaje odnośnik do `/account/orders/<id>`, a gość do `/auth/sign-up`. `isGuest` wynika z pustego `userId` w metadanych sesji.
 7. Kwoty: `itemsSubtotal` z linii metadanych i `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
+8. `buildOrderLegalLinks(origin, locale)` linkuje regulamin, stronę wymiany i zwrotów oraz politykę prywatności na `origin`, w języku zamówienia.
+9. `loadWithdrawalFormAttachment(origin)` z `src/integrations/resend/withdrawal-form.attachment.server.ts` czyta `/forms/formularz_zwrotu.pdf` przez binding `ASSETS` Workera i zwraca go zakodowanego w base64 jako załącznik Resend. W developmencie binding serwuje `public/` przez Vite, a w preview i produkcji wdrożone zasoby statyczne, więc PDF jest dołączany wszędzie, także przy lokalnym zamówieniu, którego adresu `localhost` Resend nie mógłby pobrać. Jeśli formularza nie da się odczytać, wiadomość nie jest budowana, a przy zamówieniu zapisywana jest porażka, na przykład `The withdrawal form /forms/formularz_zwrotu.pdf could not be read from the static assets: HTTP 404`, zamiast potwierdzenia wysłanego bez formularza.
 
 Pomocniki leżą w `src/integrations/resend/order-confirmation.utils.ts`, a `resolveDeliveryMethodLabel` dokleja tam identyfikator paczkomatu przy dostawie do paczkomatu.
 
-Obietnice terminów dostawy są treścią, nie danymi — zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery):
+Ten e-mail jest potwierdzeniem zawarcia umowy na trwałym nośniku, którego wymaga art. 21 ustawy o prawach konsumenta, więc pod podpisem powtarza to, na co klient się zgodził: nazwę, adres pocztowy, NIP, e-mail i telefon Sprzedawcy z `BUSINESS` w `src/presentation/branding/business.ts`, 14-dniowe prawo odstąpienia od umowy wraz ze sposobem skorzystania z niego, to, kto płaci za odesłanie towaru i jak następuje zwrot płatności, tryb reklamacji z pozasądowymi sposobami z § 10 regulaminu oraz trzy linki do dokumentów. Łączna cena z VAT i dostawą, sposób płatności i dostawy oraz termin dostawy są w podsumowaniu zamówienia powyżej. Zobacz [Strony prawne](/docs/features/legal-pages#potwierdzenie-zamówienia).
+
+Czas doręczenia jest treścią wybieraną według rodzaju dostawy, a czas realizacji to najdłuższy z czasów podanych na stronach zamówionych produktów, zapisany jako okres, a nie odesłanie do tych stron, które mogą się zmienić po zamówieniu. Zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery#dostawa-w-e-mailach):
 
 ```ts
 const deliveryType = context?.deliveryMethod?.type ?? "courier"
-const { estimatedDelivery, fulfillmentTime } = messages.deliveryTiming[deliveryType]
+
+return {
+  estimatedDelivery: messages.estimatedDelivery[deliveryType],
+  fulfillmentTime: describeOrderFulfillmentTime(fulfillmentTimes, messages),
+}
 ```
 
 ## Zapis w audycie

@@ -1,15 +1,20 @@
 import { render } from "react-email"
+import { createTranslator } from "use-intl"
 import { describe, expect, it } from "vite-plus/test"
 
 import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 
+import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+
 import englishCopy from "~/messages/en-US/emails.order-confirmation.json"
+import polishCopy from "~/messages/pl-PL/emails.order-confirmation.json"
 import {
   ORDER_CONFIRMATION_NAMESPACE,
   OrderConfirmation,
   type OrderConfirmationDetails,
   type OrderConfirmationItem,
+  type OrderConfirmationLegalLinks,
 } from "~/src/presentation/emails/order-confirmation"
 
 const ORDER_NUMBER = "MRT-2026-00042"
@@ -18,7 +23,7 @@ const details: OrderConfirmationDetails = {
   billingAddress: "Same as shipping",
   deliveryMethod: "DPD courier",
   estimatedDelivery: "2-4 business days after dispatch",
-  fulfillmentTime: "1-3 business days",
+  fulfillmentTime: `3 weeks\n${englishCopy.fulfillmentTime.note}`,
   paymentMethod: "Card",
   shippingAddress: "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa",
 }
@@ -40,6 +45,12 @@ const items: OrderConfirmationItem[] = [
   },
 ]
 
+const legalLinks: OrderConfirmationLegalLinks = {
+  exchangesAndReturns: "https://martebizuteria.pl/en-US/exchanges-and-returns",
+  privacyPolicy: "https://martebizuteria.pl/en-US/privacy-policy",
+  termsOfService: "https://martebizuteria.pl/en-US/terms-of-service",
+}
+
 const guestCta = { href: "https://martebizuteria.pl/auth/sign-up", isGuest: true, label: "Create an account" }
 
 const customerCta = { href: "https://martebizuteria.pl/account/orders/abc", isGuest: false, label: "View your order" }
@@ -55,6 +66,7 @@ const renderConfirmation = (
       currency="PLN"
       details={details}
       items={items}
+      legalLinks={legalLinks}
       locale="en-US"
       messages={englishCopy}
       discountTotal={discountTotal}
@@ -129,7 +141,8 @@ describe("OrderConfirmation", () => {
     expect(text).toContain(details.deliveryMethod)
     expect(text).toContain("ul. Mokotowska 12/4")
     expect(text).toContain(details.billingAddress)
-    expect(text).toContain(details.fulfillmentTime)
+    expect(text).toContain(`${englishCopy.fulfillmentTimeLabel}\n\n3 weeks`)
+    expect(text).toContain(englishCopy.fulfillmentTime.note)
     expect(text).toContain(details.estimatedDelivery)
   })
 
@@ -151,5 +164,116 @@ describe("OrderConfirmation", () => {
     const html = await renderConfirmation(customerCta, false)
 
     expect(html).toContain(`href="${customerCta.href}"`)
+  })
+})
+
+const contractCopies = [
+  ["en-US", englishCopy],
+  ["pl-PL", polishCopy],
+] as const
+
+const renderContract = (locale: (typeof contractCopies)[number][0], messages: typeof englishCopy, plainText = true): Promise<string> =>
+  render(
+    <OrderConfirmation
+      accountCta={customerCta}
+      currency="PLN"
+      details={details}
+      items={items}
+      legalLinks={legalLinks}
+      locale={locale}
+      messages={messages}
+      discountTotal={0}
+      orderNumber={ORDER_NUMBER}
+      shippingTotal={1900}
+      subtotal={62_700}
+      taxBasisPoints={STANDARD_VAT_BASIS_POINTS}
+      taxTotal={12_080}
+      total={64_600}
+    />,
+    plainText ? { plainText: true } : { plainText: false },
+  )
+
+const translate = (locale: (typeof contractCopies)[number][0], messages: typeof englishCopy) =>
+  createTranslator({ locale, messages: { emails: { "order-confirmation": messages } }, namespace: ORDER_CONFIRMATION_NAMESPACE })
+
+describe("OrderConfirmation as the confirmation of the contract", () => {
+  it.each(contractCopies)("names the seller in %s with the legal name, address, NIP, e-mail and phone", async (locale, messages) => {
+    const text = await renderContract(locale, messages)
+
+    for (const line of BUSINESS_POSTAL_ADDRESS_LINES) {
+      expect(text).toContain(line)
+    }
+    expect(text).toContain(messages.seller.country)
+    expect(text).toContain(`${messages.seller.taxIdLabel}: ${BUSINESS.NIP}`)
+    expect(text).toContain(`${messages.seller.emailLabel}: ${BUSINESS.EMAIL}`)
+    expect(text).toContain(`${messages.seller.phoneLabel}: ${BUSINESS.PHONE}`)
+  })
+
+  it.each(contractCopies)(
+    "states in %s the 14-day right of withdrawal, how to use it, the return cost and the refund",
+    async (locale, messages) => {
+      const text = await renderContract(locale, messages)
+      const t = translate(locale, messages)
+
+      expect(text).toContain(messages.contract.body)
+      expect(text).toContain(messages.withdrawal.period)
+      expect(text).toContain(t("withdrawal.how", { email: BUSINESS.EMAIL }))
+      expect(text).toContain(messages.withdrawal.returnShipping)
+      expect(text).toContain(messages.withdrawal.refund)
+      expect(text).toContain(messages.withdrawal.exception)
+    },
+  )
+
+  it.each(contractCopies)("explains in %s how to make a complaint and when it counts as accepted", async (locale, messages) => {
+    const text = await renderContract(locale, messages)
+    const t = translate(locale, messages)
+
+    expect(text).toContain(messages.complaints.liability)
+    expect(text).toContain(t("complaints.how", { email: BUSINESS.EMAIL }))
+  })
+
+  it.each(contractCopies)(
+    "names in %s the consumer ombudsman, the Trade Inspection and consumer organisations as out-of-court routes, and where to find them",
+    async (locale, messages) => {
+      const text = await renderContract(locale, messages)
+
+      expect(text).toContain(messages.complaints.outOfCourt)
+      expect(messages.complaints.outOfCourt).toContain("rzecznik")
+      expect(messages.complaints.outOfCourt).toContain("Wojewódzki")
+      expect(messages.complaints.outOfCourt).toContain("Federacja Konsumentów")
+      expect(messages.complaints.outOfCourt).toContain("uokik.gov.pl")
+    },
+  )
+
+  it("names the withdrawal and complaint routes with the shop's e-mail address", () => {
+    for (const [locale, messages] of contractCopies) {
+      const t = translate(locale, messages)
+
+      expect(t("withdrawal.how", { email: BUSINESS.EMAIL })).toContain(BUSINESS.EMAIL)
+      expect(t("complaints.how", { email: BUSINESS.EMAIL })).toContain(BUSINESS.EMAIL)
+    }
+  })
+
+  it("links the terms of service, the returns page and the privacy policy it was given", async () => {
+    const html = await renderContract("en-US", englishCopy, false)
+
+    expect(html).toContain(`href="${legalLinks.termsOfService}"`)
+    expect(html).toContain(`href="${legalLinks.exchangesAndReturns}"`)
+    expect(html).toContain(`href="${legalLinks.privacyPolicy}"`)
+  })
+
+  it("labels each legal link with the page it opens", async () => {
+    const text = await renderContract("pl-PL", polishCopy)
+
+    expect(text).toContain(`${polishCopy.documents.termsOfService} ${legalLinks.termsOfService}`)
+    expect(text).toContain(`${polishCopy.documents.exchangesAndReturns} ${legalLinks.exchangesAndReturns}`)
+    expect(text).toContain(`${polishCopy.documents.privacyPolicy} ${legalLinks.privacyPolicy}`)
+  })
+
+  it("lets the customer write to or call the seller straight from the email", async () => {
+    const html = await renderContract("en-US", englishCopy, false)
+
+    expect(html).toContain(`href="mailto:${BUSINESS.EMAIL}"`)
+    expect(html).toContain(`href="tel:${BUSINESS.PHONE.replaceAll(" ", "")}"`)
   })
 })

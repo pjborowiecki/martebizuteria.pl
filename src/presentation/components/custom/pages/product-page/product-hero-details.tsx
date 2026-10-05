@@ -2,6 +2,7 @@ import { type JSX, type ReactNode, useMemo } from "react"
 
 import { useLocale, useTranslations } from "use-intl/react"
 
+import { FULFILLMENT_TIME_ATTRIBUTE_HANDLE } from "~/src/modules/product-attribute/product-attribute.constants"
 import {
   formatProductAttributeValueForDisplay,
   resolveProductAttributeTitle,
@@ -166,8 +167,6 @@ export const ProductHeroDetails = ({ description, specifications }: ProductHeroD
     </Accordion>
   )
 }
-
-const FULFILLMENT_TIME_ATTRIBUTE_HANDLE = "czas-realizacji"
 
 interface ProductHeroDetailsProps {
   readonly description: string

@@ -58,6 +58,21 @@ describe("sendEmail", () => {
     })
   })
 
+  it("hands the attachments to Resend with the message", async () => {
+    emailsSend.mockResolvedValueOnce({ data: { id: "email_1" }, error: null })
+    const attachments = [{ content: "JVBERi0=", contentType: "application/pdf", filename: "formularz_zwrotu.pdf" }]
+
+    await sendEmail({ attachments, react: body, subject: "Order confirmation", to: "anna@example.com" })
+
+    expect(emailsSend).toHaveBeenCalledWith({
+      attachments,
+      from: `${APP_NAME} <atelier@marte.test>`,
+      react: body,
+      subject: "Order confirmation",
+      to: "anna@example.com",
+    })
+  })
+
   it("keeps an explicit sender address", async () => {
     emailsSend.mockResolvedValueOnce({ data: { id: "email_1" }, error: null })
 

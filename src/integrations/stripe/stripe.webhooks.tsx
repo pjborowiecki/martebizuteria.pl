@@ -1,5 +1,6 @@
 import { type ReactElement } from "react"
 
+import { type Attachment } from "resend"
 import type StripeType from "stripe"
 import { createTranslator } from "use-intl"
 import { z } from "zod"
@@ -12,10 +13,13 @@ import {
   buildOrderAccountCta,
   buildOrderConfirmationDetails,
   buildOrderConfirmationItems,
+  buildOrderLegalLinks,
   resolveStripePaymentMethodLabel,
 } from "~/src/integrations/resend/order-confirmation.utils"
 import { type OrderEmailOutcome, recordOrderEmailAttempt } from "~/src/integrations/resend/order-email.outcome.server"
+import { resolveOrderLineFulfillmentTimes } from "~/src/integrations/resend/order-fulfillment-time.utils"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
+import { loadWithdrawalFormAttachment } from "~/src/integrations/resend/withdrawal-form.attachment.server"
 import { STRIPE_CURRENCY, STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/stripe/stripe.constants"
 import { deleteCheckoutCoupons } from "~/src/integrations/stripe/stripe.coupons.server"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
@@ -26,6 +30,7 @@ import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
 import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
+import { getFulfillmentTimeAttributesByVariantId } from "~/src/modules/attribute-on-product/attribute-on-product.server"
 import {
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
@@ -87,6 +92,7 @@ const resolveLocale = (session: StripeType.Checkout.Session): SupportedLocale =>
 }
 
 interface OrderConfirmationEmailPayload {
+  readonly attachments: Attachment[]
   readonly email: string
   readonly locale: SupportedLocale
   readonly react: ReactElement
@@ -108,21 +114,24 @@ const buildOrderConfirmationEmailPayload = async (
   const checkoutContext = typeof checkoutId === "string" && checkoutId !== "" ? await getCheckoutEmailContext(checkoutId) : undefined
   const messages = await loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE })
   const paymentMethod = await resolveStripePaymentMethodLabel(session, messages)
-  const details = buildOrderConfirmationDetails(
-    checkoutContext === undefined
-      ? undefined
-      : {
-          billingAddress: checkoutContext.billingAddress,
-          billingAddressId: checkoutContext.billingAddressId,
-          customerNote: checkoutContext.customerNote,
-          deliveryMethod: checkoutContext.deliveryMethod,
-          lockerId: checkoutContext.lockerId,
-          shippingAddress: checkoutContext.shippingAddress,
-          shippingAddressId: checkoutContext.shippingAddressId,
-        },
-    paymentMethod,
+  const fulfillmentTimeAttributes = await getFulfillmentTimeAttributesByVariantId(order.lines.map((line) => line.variantId))
+  const details = buildOrderConfirmationDetails({
+    context:
+      checkoutContext === undefined
+        ? undefined
+        : {
+            billingAddress: checkoutContext.billingAddress,
+            billingAddressId: checkoutContext.billingAddressId,
+            customerNote: checkoutContext.customerNote,
+            deliveryMethod: checkoutContext.deliveryMethod,
+            lockerId: checkoutContext.lockerId,
+            shippingAddress: checkoutContext.shippingAddress,
+            shippingAddressId: checkoutContext.shippingAddressId,
+          },
+    fulfillmentTimes: resolveOrderLineFulfillmentTimes(order.lines, fulfillmentTimeAttributes, locale),
     messages,
-  )
+    paymentMethod,
+  })
 
   const totals = await getOrderTotalsForEmail(order.orderId)
   const emailItems = buildOrderConfirmationItems(order.lines, locale, origin)
@@ -131,6 +140,7 @@ const buildOrderConfirmationEmailPayload = async (
   const accountCta = buildOrderAccountCta({ isGuest, locale, messages, orderId: order.orderId, origin })
 
   return {
+    attachments: [await loadWithdrawalFormAttachment(origin)],
     email,
     locale,
     react: (
@@ -139,6 +149,7 @@ const buildOrderConfirmationEmailPayload = async (
         currency={order.currency}
         details={details}
         items={emailItems}
+        legalLinks={buildOrderLegalLinks(origin, locale)}
         locale={locale}
         messages={messages}
         discountTotal={totals?.discountTotal ?? NO_AMOUNT}
@@ -170,6 +181,7 @@ const sendOrderConfirmationEmail = async (
   }
 
   const failure = await sendEmail({
+    attachments: payload.attachments,
     react: payload.react,
     subject: payload.subject,
     to: payload.email,

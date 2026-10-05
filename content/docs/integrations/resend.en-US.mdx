@@ -18,10 +18,10 @@ export const resend = new Resend(env.RESEND_API_KEY)
 `resend.send.ts` is the only thing that calls it, and it never throws:
 
 ```ts
-const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({ from: sender, react, subject, to })
+    const { error } = await resend.emails.send({ ...message, from: sender })
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -48,6 +48,10 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 ```
 
 It returns `undefined` on success and the failure message otherwise. The Resend SDK has no timeout and accepts no abort signal, so a call that has not answered after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) is also a failure, reported as `Resend did not answer within 10000 ms`. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`.
+
+### Attachments
+
+`attachments` goes to Resend unchanged. Resend can fetch an attachment from a `path` URL, but not from `localhost` or `127.0.0.1`, so a file the shop serves is read inside the Worker and sent as base64 `content` instead. The order confirmation attaches the model withdrawal form this way: `loadWithdrawalFormAttachment(origin)` in `withdrawal-form.attachment.server.ts` fetches `/forms/formularz_zwrotu.pdf` from `env.ASSETS`, the static assets binding every environment in `wrangler.jsonc` declares. `vp dev` answers it from `public/` through Vite, and a deployed Worker from the uploaded assets. A form the binding does not return throws, and the confirmation is recorded as failed rather than sent without it.
 
 ### A sender that cannot send at all
 
@@ -124,16 +128,24 @@ In the webhook, a refused host or a session with no `return_url` stops only the 
 
 `order-confirmation.utils.ts` turns database rows into template props:
 
-| Export                                                                 | Purpose                                                                                 |
-| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `formatEmailAddress(addressRow)`                                       | One multi-line postal address string, or `undefined`                                    |
-| `resolveDeliveryMethodLabel(context, unavailable)`                     | The customer-facing delivery label, falling back to the translated "unavailable" text   |
-| `buildOrderConfirmationDetails(...)`                                   | The whole details block: addresses, delivery method, payment method, customer note      |
-| `buildOrderConfirmationItems(lines, locale, origin)`                   | The item rows, with formatted prices and product URLs                                   |
-| `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })` | Either "create an account and track this order" or a link into `/account/orders/<id>`   |
-| `resolveStripePaymentMethodLabel(session, messages)`                   | Reads the PaymentIntent to name the method the customer actually used (card, BLIK, P24) |
+| Export                                                                                  | Purpose                                                                                            |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `formatEmailAddress(addressRow)`                                                        | One multi-line postal address string, or `undefined`                                               |
+| `resolveDeliveryMethodLabel(context, unavailable)`                                      | The customer-facing delivery label, falling back to the translated "unavailable" text              |
+| `buildOrderConfirmationDetails({ context, fulfillmentTimes, messages, paymentMethod })` | The whole details block: addresses, delivery method, payment method, delivery and fulfilment times |
+| `buildOrderConfirmationItems(lines, locale, origin)`                                    | The item rows, with formatted prices and product URLs                                              |
+| `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })`                  | Either "create an account and track this order" or a link into `/account/orders/<id>`              |
+| `buildOrderLegalLinks(origin, locale)`                                                  | Links to the terms of service, the exchanges-and-returns page and the privacy policy               |
+| `resolveStripePaymentMethodLabel(session, messages)`                                    | Reads the PaymentIntent to name the method the customer actually used (card, BLIK, P24)            |
 
-`order-shipped.utils.ts` reuses them for the shipped e-mail: `buildOrderShippedDetails` picks the delivery timing string by the method's `type` (`courier`, `locker` or `in_store`), and `buildOrderShippedAccountCta` delegates to `buildOrderAccountCta`.
+`order-fulfillment-time.utils.ts` turns the ordered products' `czas-realizacji` attribute into the fulfilment time the confirmation states:
+
+| Export                                                                   | Purpose                                                                                                                                                  |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `resolveOrderLineFulfillmentTimes(lines, attributesByVariantId, locale)` | Each line's title with the time its product page shows, labelled in the order's locale, or `undefined` when it shows none                                |
+| `describeOrderFulfillmentTime(lines, messages)`                          | The longest of those times, 10 business days for a line without one, then the note on when it runs; each product's own time when they cannot be compared |
+
+`order-shipped.utils.ts` reuses the order-confirmation builders for the shipped e-mail: `buildOrderShippedDetails` picks the delivery timing string by the method's `type` (`courier`, `locker` or `in_store`), and `buildOrderShippedAccountCta` delegates to `buildOrderAccountCta`.
 
 `order-shipped.notification.server.ts` is the whole shipped-e-mail flow. `sendOrderShippedEmail(orderId, origin)` loads the order with `getOrderForShippedEmail`, resolves the locale from `order.metadata` with `resolveOrderLocale`, loads the checkout context when there is a `checkoutId`, renders and sends. It returns the outcome instead of recording it, and a missing order or a blank address is an outcome too. `notifyOrderShipped(orderId, origin)` hands that attempt to `recordOrderEmailAttempt` from `order-email.outcome.server.ts`, which the confirmation e-mail uses as well:
 

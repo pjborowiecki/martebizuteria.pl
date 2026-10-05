@@ -20,6 +20,7 @@ import {
   buildOrderAccountCta,
   buildOrderConfirmationDetails,
   buildOrderConfirmationItems,
+  buildOrderLegalLinks,
   formatEmailAddress,
 } from "~/src/integrations/resend/order-confirmation.utils"
 
@@ -83,8 +84,13 @@ describe("formatEmailAddress", () => {
 })
 
 describe("buildOrderConfirmationDetails", () => {
+  const ringWithoutStatedTime = [{ time: undefined, title: "Silver ring" }]
+
+  const detailsFor = (checkout: CheckoutEmailContext | undefined, messages = englishCopy, paymentMethod = "Card") =>
+    buildOrderConfirmationDetails({ context: checkout, fulfillmentTimes: ringWithoutStatedTime, messages, paymentMethod })
+
   it("renders the shipping address and delivery method from the checkout", () => {
-    const details = buildOrderConfirmationDetails(context, "Card", englishCopy)
+    const details = detailsFor(context)
 
     expect(details.deliveryMethod).toBe("Kurier")
     expect(details.paymentMethod).toBe("Card")
@@ -92,7 +98,7 @@ describe("buildOrderConfirmationDetails", () => {
   })
 
   it("notes that billing matches shipping when both point at the same address", () => {
-    expect(buildOrderConfirmationDetails(context, "Card", englishCopy).billingAddress).toBe(englishCopy.billingSameAsShipping)
+    expect(detailsFor(context).billingAddress).toBe(englishCopy.billingSameAsShipping)
   })
 
   it("renders a separate billing address when there is one", () => {
@@ -102,11 +108,11 @@ describe("buildOrderConfirmationDetails", () => {
       billingAddressId: "address-2",
     }
 
-    expect(buildOrderConfirmationDetails(withBilling, "Card", englishCopy).billingAddress).toContain("Kraków")
+    expect(detailsFor(withBilling).billingAddress).toContain("Kraków")
   })
 
   it("falls back to the unavailable copy when the checkout context is missing", () => {
-    const details = buildOrderConfirmationDetails(undefined, "Card", englishCopy)
+    const details = detailsFor(undefined)
 
     expect(details.billingAddress).toBe(englishCopy.unavailable)
     expect(details.deliveryMethod).toBe(englishCopy.unavailable)
@@ -116,36 +122,59 @@ describe("buildOrderConfirmationDetails", () => {
   it("falls back to the unavailable copy when the billing address row was not loaded", () => {
     const withoutBillingRow: CheckoutEmailContext = { ...context, billingAddress: null, billingAddressId: "address-2" }
 
-    expect(buildOrderConfirmationDetails(withoutBillingRow, "Card", englishCopy).billingAddress).toBe(englishCopy.unavailable)
+    expect(detailsFor(withoutBillingRow).billingAddress).toBe(englishCopy.unavailable)
   })
 
   it("appends the locker code to a locker delivery", () => {
     const locker: CheckoutEmailContext = { ...context, deliveryMethod: { name: "Paczkomat", type: "locker" }, lockerId: " WAW01A " }
 
-    expect(buildOrderConfirmationDetails(locker, "Card", englishCopy).deliveryMethod).toBe("Paczkomat · WAW01A")
+    expect(detailsFor(locker).deliveryMethod).toBe("Paczkomat · WAW01A")
   })
 
   it("leaves the locker name alone when no code was captured", () => {
     const locker: CheckoutEmailContext = { ...context, deliveryMethod: { name: "Paczkomat", type: "locker" }, lockerId: "  " }
 
-    expect(buildOrderConfirmationDetails(locker, "Card", englishCopy).deliveryMethod).toBe("Paczkomat")
+    expect(detailsFor(locker).deliveryMethod).toBe("Paczkomat")
   })
 
-  it.each([["courier"], ["locker"], ["in_store"]] as const)("uses the %s delivery timings", (type) => {
-    const details = buildOrderConfirmationDetails({ ...context, deliveryMethod: { name: "Method", type } }, "Card", englishCopy)
+  it.each([["courier"], ["locker"], ["in_store"]] as const)("promises the %s delivery time", (type) => {
+    const details = detailsFor({ ...context, deliveryMethod: { name: "Method", type } })
 
-    expect(details.fulfillmentTime).toBe(englishCopy.deliveryTiming[type].fulfillmentTime)
-    expect(details.estimatedDelivery).toBe(englishCopy.deliveryTiming[type].estimatedDelivery)
+    expect(details.estimatedDelivery).toBe(englishCopy.estimatedDelivery[type])
+  })
+
+  it.each([["courier"], ["locker"], ["in_store"]] as const)(
+    "states the fulfillment time of § 7 for a product page without one for %s delivery",
+    (type) => {
+      const details = detailsFor({ ...context, deliveryMethod: { name: "Method", type } }, polishCopy, "Karta")
+
+      expect(details.fulfillmentTime).toBe(`${polishCopy.fulfillmentTime.fallback}\n${polishCopy.fulfillmentTime.note}`)
+    },
+  )
+
+  it("states the longest fulfillment time among the products ordered", () => {
+    const details = buildOrderConfirmationDetails({
+      context,
+      fulfillmentTimes: [
+        { time: "3 tygodnie", title: "Pierścionek Luna" },
+        { time: undefined, title: "Zawieszka Sol" },
+      ],
+      messages: polishCopy,
+      paymentMethod: "Karta",
+    })
+
+    expect(details.fulfillmentTime).toBe(`3 tygodnie\n${polishCopy.fulfillmentTime.note}`)
   })
 
   it("assumes courier timings when the delivery method was not loaded", () => {
-    const details = buildOrderConfirmationDetails({ ...context, deliveryMethod: null }, "Card", englishCopy)
+    const details = detailsFor({ ...context, deliveryMethod: null })
 
-    expect(details.fulfillmentTime).toBe(englishCopy.deliveryTiming.courier.fulfillmentTime)
+    expect(details.estimatedDelivery).toBe(englishCopy.estimatedDelivery.courier)
+    expect(details.fulfillmentTime).toBe(`${englishCopy.fulfillmentTime.fallback}\n${englishCopy.fulfillmentTime.note}`)
   })
 
   it("renders the Polish copy for a Polish order", () => {
-    expect(buildOrderConfirmationDetails(undefined, "Karta", polishCopy).billingAddress).toBe(polishCopy.unavailable)
+    expect(detailsFor(undefined, polishCopy, "Karta").billingAddress).toBe(polishCopy.unavailable)
   })
 })
 
@@ -216,5 +245,23 @@ describe("buildOrderAccountCta", () => {
         origin: "https://martebizuteria.pl",
       }).href,
     ).toBe("https://martebizuteria.pl/account/orders/order-1")
+  })
+})
+
+describe("buildOrderLegalLinks", () => {
+  it("links the terms, the returns page and the privacy policy on the address the order came from", () => {
+    expect(buildOrderLegalLinks("https://preview.martebizuteria.pl", "en-US")).toStrictEqual({
+      exchangesAndReturns: "https://preview.martebizuteria.pl/en-US/exchanges-and-returns",
+      privacyPolicy: "https://preview.martebizuteria.pl/en-US/privacy-policy",
+      termsOfService: "https://preview.martebizuteria.pl/en-US/terms-of-service",
+    })
+  })
+
+  it("leaves the Polish pages unprefixed", () => {
+    expect(buildOrderLegalLinks("http://127.0.0.1:3000", "pl-PL")).toStrictEqual({
+      exchangesAndReturns: "http://127.0.0.1:3000/exchanges-and-returns",
+      privacyPolicy: "http://127.0.0.1:3000/privacy-policy",
+      termsOfService: "http://127.0.0.1:3000/terms-of-service",
+    })
   })
 })

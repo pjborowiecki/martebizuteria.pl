@@ -71,7 +71,7 @@ interface ImportMetaEnv {
 
 ## Bindings
 
-`wrangler.jsonc` gives every environment the same five bindings, plus `ASSETS`, which is declared once at the top level. Only the underlying resources differ.
+`wrangler.jsonc` gives every environment the same six bindings, `ASSETS` included, so `wrangler types --env development` declares it on `Env`. Only the underlying resources differ.
 
 | Binding                     | Type           | `development`                         | `preview`                          | `production`               |
 | --------------------------- | -------------- | ------------------------------------- | ---------------------------------- | -------------------------- |
@@ -80,7 +80,7 @@ interface ImportMetaEnv {
 | `IMAGES`                    | R2             | bucket `martebizuteria`, remote       | bucket `martebizuteria`, remote    | bucket `martebizuteria`    |
 | `AUDIT_LOG_QUEUE`           | Queue producer | `martebizuteria-audit-log-preview`    | `martebizuteria-audit-log-preview` | `martebizuteria-audit-log` |
 | `REALTIME_INVALIDATION_HUB` | Durable Object | class `RealtimeInvalidationHub`       | same                               | same                       |
-| `ASSETS`                    | Static assets  | `./public`, declared at the top level | same                               | same                       |
+| `ASSETS`                    | Static assets  | `./public`, in each environment block | same                               | same                       |
 
 `development` and `preview` point at the **same** D1 database, KV namespace and Queue. `bun run dev` therefore writes to the preview database, and `vite.config.ts` turns remote bindings on only for that mode:
 

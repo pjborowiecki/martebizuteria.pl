@@ -1,14 +1,19 @@
 import { type ComponentProps, type ReactElement } from "react"
 
+import { type Attachment } from "resend"
 import type Stripe from "stripe"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+
+import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.server"
 
 type OrderConfirmationElement = ReactElement<ComponentProps<typeof OrderConfirmation>>
 
 const {
   fulfillCheckout,
   getCheckoutEmailContext,
+  getFulfillmentTimeAttributesByVariantId,
   getOrderTotalsForEmail,
+  loadWithdrawalFormAttachment,
   paymentIntentsRetrieve,
   recordOrderEmailOutcome,
   recordOrderPaymentCapturedAudit,
@@ -16,17 +21,26 @@ const {
 } = vi.hoisted(() => ({
   fulfillCheckout: vi.fn<(input: object) => Promise<string | undefined>>(),
   getCheckoutEmailContext: vi.fn<(checkoutId: string) => Promise<object | undefined>>(),
+  getFulfillmentTimeAttributesByVariantId:
+    vi.fn<(variantIds: readonly string[]) => Promise<ReadonlyMap<string, FulfillmentTimeAttribute>>>(),
   getOrderTotalsForEmail: vi.fn<(orderId: string) => Promise<Record<string, unknown> | undefined>>(),
+  loadWithdrawalFormAttachment: vi.fn<(origin: string) => Promise<Attachment>>(),
   paymentIntentsRetrieve: vi.fn<(id: string, params: object) => Promise<{ payment_method: { type: string } | null }>>(),
   recordOrderEmailOutcome: vi.fn(),
   recordOrderPaymentCapturedAudit: vi.fn(),
-  sendEmail: vi.fn<(options: Readonly<{ react: OrderConfirmationElement; subject: string; to: string }>) => Promise<string | undefined>>(),
+  sendEmail:
+    vi.fn<
+      (
+        options: Readonly<{ attachments?: Attachment[]; react: OrderConfirmationElement; subject: string; to: string }>,
+      ) => Promise<string | undefined>
+    >(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { paymentIntents: { retrieve: paymentIntentsRetrieve } } }))
 vi.mock("~/src/integrations/stripe/stripe.coupons.server", () => ({ deleteCheckoutCoupons: vi.fn(() => Promise.resolve(undefined)) }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
+vi.mock("~/src/integrations/resend/withdrawal-form.attachment.server", () => ({ loadWithdrawalFormAttachment }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),
@@ -40,6 +54,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderPlacedAudit: vi.fn(),
   recordOrderReleasedAudit: vi.fn(),
 }))
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({ getFulfillmentTimeAttributesByVariantId }))
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailContext }))
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout }))
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout: vi.fn() }))
@@ -77,6 +92,8 @@ const ITEMS_TOTAL = 49_800
 const SHIPPING_TOTAL = 5000
 
 const AMOUNT_TOTAL = ITEMS_TOTAL + SHIPPING_TOTAL
+
+const WITHDRAWAL_FORM: Attachment = { content: "JVBERi0=", contentType: "application/pdf", filename: "formularz_zwrotu.pdf" }
 
 const DOMAIN_NOT_VERIFIED = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
 
@@ -127,6 +144,8 @@ beforeEach(() => {
     total: AMOUNT_TOTAL,
   })
   getCheckoutEmailContext.mockResolvedValue(undefined)
+  getFulfillmentTimeAttributesByVariantId.mockResolvedValue(new Map())
+  loadWithdrawalFormAttachment.mockResolvedValue(WITHDRAWAL_FORM)
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
   sendEmail.mockResolvedValue(undefined)
 })
@@ -201,7 +220,6 @@ describe("order confirmation email", () => {
     expect(details.billingAddress).toBe(polishCopy.unavailable)
     expect(details.shippingAddress).toBe(polishCopy.unavailable)
     expect(details.deliveryMethod).toBe(polishCopy.unavailable)
-    expect(details.fulfillmentTime).toBe(polishCopy.deliveryTiming.courier.fulfillmentTime)
   })
 
   it("reads the checkout the session metadata points at", async () => {
@@ -232,7 +250,7 @@ describe("order confirmation email", () => {
     expect(details.deliveryMethod).toBe("Paczkomat InPost · WAW01A")
     expect(details.billingAddress).toBe(polishCopy.billingSameAsShipping)
     expect(details.shippingAddress).toBe("Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa\nPL")
-    expect(details.estimatedDelivery).toBe(polishCopy.deliveryTiming.locker.estimatedDelivery)
+    expect(details.estimatedDelivery).toBe(polishCopy.estimatedDelivery.locker)
   })
 
   it("invites a guest buyer to create an account and links a signed-in buyer to the order", async () => {
@@ -281,6 +299,61 @@ describe("order confirmation email", () => {
   })
 })
 
+describe("order confirmation email as the confirmation of the contract", () => {
+  it("states the fulfillment time of § 7 when no ordered product's page gives one", async () => {
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
+
+    expect(getFulfillmentTimeAttributesByVariantId).toHaveBeenCalledExactlyOnceWith(["var-aurora"])
+    expect(sentEmail().react.props.details.fulfillmentTime).toBe(
+      `${polishCopy.fulfillmentTime.fallback}\n${polishCopy.fulfillmentTime.note}`,
+    )
+  })
+
+  it("states the longest fulfillment time the ordered products' pages give, in the language of the order", async () => {
+    const lines = [
+      ...fulfillmentLines,
+      { handle: "pierscionek-luna", price: 31_900, qty: 1, title: "Pierścionek Luna", variantId: "var-luna" },
+    ]
+    getFulfillmentTimeAttributesByVariantId.mockResolvedValue(
+      new Map<string, FulfillmentTimeAttribute>([
+        [
+          "var-luna",
+          {
+            allowedValues: [{ labels: { "en-US": "3 weeks", "pl-PL": "3 tygodnie" }, value: "3-tygodnie" }],
+            type: "select",
+            unit: null,
+            value: "3-tygodnie",
+          },
+        ],
+      ]),
+    )
+
+    const items = JSON.stringify(lines)
+
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ items, locale: "en-US" })))
+
+    expect(getFulfillmentTimeAttributesByVariantId).toHaveBeenCalledExactlyOnceWith(["var-aurora", "var-luna"])
+    expect(sentEmail().react.props.details.fulfillmentTime).toBe(`3 weeks\n${englishCopy.fulfillmentTime.note}`)
+  })
+
+  it("attaches the model withdrawal form read from the deployment the order was placed on", async () => {
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
+
+    expect(loadWithdrawalFormAttachment).toHaveBeenCalledExactlyOnceWith("http://127.0.0.1:3000")
+    expect(sentEmail().attachments).toStrictEqual([WITHDRAWAL_FORM])
+  })
+
+  it("links the terms, the returns page and the privacy policy in the locale of the order", async () => {
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata, locale: "en-US" })))
+
+    expect(sentEmail().react.props.legalLinks).toStrictEqual({
+      exchangesAndReturns: "http://127.0.0.1:3000/en-US/exchanges-and-returns",
+      privacyPolicy: "http://127.0.0.1:3000/en-US/privacy-policy",
+      termsOfService: "http://127.0.0.1:3000/en-US/terms-of-service",
+    })
+  })
+})
+
 describe("order confirmation email links", () => {
   it.each([
     "http://localhost:3000",
@@ -294,6 +367,8 @@ describe("order confirmation email links", () => {
 
     expect(sentEmail().react.props.accountCta.href).toBe(`${origin}/en-US/auth/sign-up`)
     expect(sentEmail().react.props.items[0]?.productUrl).toBe(`${origin}/en-US/products/bransoletka-aurora`)
+    expect(sentEmail().react.props.legalLinks.termsOfService).toBe(`${origin}/en-US/terms-of-service`)
+    expect(loadWithdrawalFormAttachment).toHaveBeenCalledExactlyOnceWith(origin)
   })
 
   it.each(["preview", "production"])(
@@ -437,6 +512,22 @@ describe("order confirmation email delivery", () => {
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({ ...UNSENT_CONFIRMATION, failure: "D1_ERROR: no such table" })
+  })
+
+  it("records the confirmation as unsent rather than sending it without the withdrawal form", async () => {
+    loadWithdrawalFormAttachment.mockRejectedValue(
+      new Error("The withdrawal form /forms/formularz_zwrotu.pdf could not be read from the static assets: HTTP 404"),
+    )
+    const event = checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata }))
+
+    await expect(dispatch(event)).resolves.toBeUndefined()
+
+    expect(fulfillCheckout).toHaveBeenCalledOnce()
+    expect(sendEmail).not.toHaveBeenCalled()
+    expect(recordOrderEmailOutcome).toHaveBeenCalledExactlyOnceWith({
+      ...UNSENT_CONFIRMATION,
+      failure: "The withdrawal form /forms/formularz_zwrotu.pdf could not be read from the static assets: HTTP 404",
+    })
   })
 
   it("hands the refusal Resend reports to the audit trail and keeps the webhook successful", async () => {
