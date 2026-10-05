@@ -49,6 +49,22 @@ export class BasePage {
     }).toPass({ timeout: SCROLL_TO_TIMEOUT_MS })
   }
 
+  async leaveTab(): Promise<void> {
+    await this.page.context().setOffline(true)
+    await this.page.evaluate(() => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" })
+      document.dispatchEvent(new Event("visibilitychange", { bubbles: true }))
+    })
+  }
+
+  async returnToTab(): Promise<void> {
+    await this.page.context().setOffline(false)
+    await this.page.evaluate(() => {
+      Reflect.deleteProperty(document, "visibilityState")
+      document.dispatchEvent(new Event("visibilitychange", { bubbles: true }))
+    })
+  }
+
   heading(): Locator {
     return this.page.getByRole("heading", { level: 1 })
   }

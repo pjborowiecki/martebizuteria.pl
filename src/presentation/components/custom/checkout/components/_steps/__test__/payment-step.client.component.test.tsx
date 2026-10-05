@@ -1,6 +1,7 @@
 import { type JSX, type ReactNode, useEffect } from "react"
 
 import { type StripeCheckoutElementsSdkOptions } from "@stripe/stripe-js"
+import { QueryClient } from "@tanstack/react-query"
 import type * as TanStackRouter from "@tanstack/react-router"
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
@@ -147,6 +148,7 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({
 
 import { buildCheckoutValuesFingerprint } from "~/src/integrations/stripe/stripe.checkout"
 
+import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 
 import { PaymentStep } from "~/src/presentation/components/custom/checkout/components/_steps/payment-step.client"
@@ -185,6 +187,14 @@ const seedCart = (): void => {
 }
 
 const payButton = (): HTMLElement => screen.getByRole("button", { name: PAY_BUTTON })
+
+const renderWatchingInvalidations = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
+  renderWithProviders(<PaymentStep />, { queryClient })
+
+  return invalidateQueries
+}
 
 const clickPay = async (): Promise<void> => {
   const user = userEvent.setup()
@@ -429,6 +439,18 @@ describe("PaymentStep when the session expires", () => {
     expect(screen.getByText("Your payment session has expired")).toBeInTheDocument()
     expect(setCheckoutSession).not.toHaveBeenCalled()
   })
+
+  it("checks the cart again when the piece was sold after the hold ran out, so the checkout can send the shopper back", async () => {
+    formState.session = { ...session, expiresAt: Date.now() - 1 }
+    resetCheckoutSession.mockRejectedValue(new Error("INSUFFICIENT_INVENTORY"))
+    const invalidateQueries = renderWatchingInvalidations()
+
+    await userEvent.click(await screen.findByRole("button", { name: RESTART_BUTTON }))
+
+    await waitFor(() => {
+      expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith({ queryKey: CART_QUERY_KEYS.AVAILABILITY })
+    })
+  })
 })
 
 describe("PaymentStep session failures", () => {
@@ -464,13 +486,23 @@ describe("PaymentStep session failures", () => {
     ).toBeInTheDocument()
   })
 
-  it("falls back to the unknown-error copy for an unrecognised failure", async () => {
+  it("checks the cart again when the shop no longer has the stock to hold for it", async () => {
+    ensureCheckoutSession.mockRejectedValue(new Error("INSUFFICIENT_INVENTORY"))
+    const invalidateQueries = renderWatchingInvalidations()
+
+    await waitFor(() => {
+      expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith({ queryKey: CART_QUERY_KEYS.AVAILABILITY })
+    })
+  })
+
+  it("falls back to the unknown-error copy for an unrecognised failure and leaves the cart check alone", async () => {
     ensureCheckoutSession.mockRejectedValue(new Error("boom"))
-    renderWithProviders(<PaymentStep />)
+    const invalidateQueries = renderWatchingInvalidations()
 
     await waitFor(() => {
       expect(toastError).toHaveBeenCalledWith("Something went wrong. Please try again.")
     })
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 
   it("retries the session when the shopper presses Try again", async () => {

@@ -67,5 +67,7 @@ export const checkCartAvailabilityQuery = (lines: readonly CartAvailabilityLine[
     placeholderData: keepPreviousData,
     queryFn: () => checkCartAvailability({ data: { heldSessionId, lines: [...lines] } }),
     queryKey: [...CART_QUERY_KEYS.AVAILABILITY, lines, heldSessionId],
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
     staleTime: CART_AVAILABILITY_STALE_MS,
   })

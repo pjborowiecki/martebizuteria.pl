@@ -49,6 +49,13 @@ const renderCartAvailability = () => {
   return { ...renderHook(() => useCartAvailability(), { wrapper }), queryClient }
 }
 
+const leaveTab = (): void => {
+  const visibility = vi.spyOn(document, "visibilityState", "get")
+  visibility.mockReturnValue("hidden")
+  document.dispatchEvent(new Event("visibilitychange", { bubbles: true }))
+  visibility.mockRestore()
+}
+
 beforeEach(() => {
   getAvailabilityByVariantIds.mockReset()
   getHeldLinesByTransactionId.mockReset()
@@ -223,5 +230,28 @@ describe("useCartAvailability for a browser that holds an open checkout", () => 
     await waitFor(() => {
       expect(result.current.hasUnavailableItems).toBe(false)
     })
+  })
+
+  it("does not check again when the shopper comes back from the banking app after paying for the last piece", async () => {
+    localStorage.setItem("marte-checkout-session", "cs_test_held")
+    const { queryClient, result } = renderCartAvailability()
+    await waitFor(() => {
+      expect(result.current.isChecking).toBe(false)
+    })
+    getHeldLinesByTransactionId.mockResolvedValue([])
+
+    await act(async () => {
+      leaveTab()
+      globalThis.dispatchEvent(new Event("offline"))
+      globalThis.dispatchEvent(new Event("online"))
+      document.dispatchEvent(new Event("visibilitychange", { bubbles: true }))
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0)
+      })
+    })
+
+    expect(queryClient.isFetching()).toBe(0)
+    expect(getAvailabilityByVariantIds).toHaveBeenCalledOnce()
+    expect(result.current.hasUnavailableItems).toBe(false)
   })
 })

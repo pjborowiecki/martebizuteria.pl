@@ -42,5 +42,16 @@ export const recordServerFunctionCalls = (page: Page): ((documentPath: string) =
   }
 }
 
+export const recordServerFunctionRequests = (page: Page, id: string): readonly Request[] => {
+  const requests: Request[] = []
+  page.on("request", (request) => {
+    if (calledServerFunction(request.url()) === id) {
+      requests.push(request)
+    }
+  })
+
+  return requests
+}
+
 export const waitForServerFunctionResponse = (page: Page, id: string): Promise<Response> =>
   page.waitForResponse((response) => calledServerFunction(response.url()) === id)
