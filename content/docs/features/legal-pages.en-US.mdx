@@ -22,7 +22,9 @@ The handle column is an enum over `CONTENT_PAGE_HANDLES` in `content-page.consta
 
 The migration `20261002120000_content_pages.sql` creates the table and seeds the privacy and returns pages with the text that used to live in `content/legal`. `20261005200000_terms_of_service_page.sql` adds the terms of service. Both insert with `ON CONFLICT(handle) DO NOTHING`, so running them again never overwrites text an admin has already edited.
 
-The Polish documents are the authoritative ones. They cite Polish statute directly, such as the 14-day right of withdrawal, art. 556⁴ of the Civil Code and the GDPR article for each processing purpose, and they name the data controller. Keep the English versions in step as translations, not as separate texts.
+`20261005210000_returns_and_complaints_page.sql` replaces the seeded returns text, which contradicted Polish consumer law. It updates both bodies only while each one still equals the text the first migration seeded, compared per locale with `json_extract`, so a returns page an admin has edited in either language is left alone. A page saved without changes is still rewritten. The update sets `revised_ats` and `updated_at` to 5 October 2026, 10:00 UTC, so the page shows the date of the new text and an editor opened before the migration reports a conflict instead of saving over it.
+
+The Polish documents are the authoritative ones. They cite Polish statute directly, such as the 14-day right of withdrawal, articles 7a, 38 and 38a of the Consumer Rights Act and the GDPR article for each processing purpose, and they name the data controller. Keep the English versions in step as translations, not as separate texts.
 
 ## The terms of service
 
@@ -39,6 +41,25 @@ The terms are the regulamin that Article 8 of the Polish Act on the Provision of
 | § 8–10  | Withdrawal, conformity, complaints and out-of-court routes under the Consumer Rights Act                                 | The statute; the returns page, the privacy policy and the two PDF forms are linked rather than repeated                |
 
 The courier and locker prices are not written into the terms. They live in `delivery_method` rows, which the seed file does not keep in step with production, so the terms say the checkout shows each price before the order is placed. The terms do not link the EU online dispute resolution platform, which closed on 20 July 2025.
+
+## The returns page and the forms
+
+The returns page is the practical guide to § 8 and § 9 of the terms and links to them, so the two must not disagree. It states only what the Consumer Rights Act allows:
+
+| Topic      | What the page says                                                                                                                                                                                        |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Withdrawal | 14 days from receipt, by e-mail or by post, with or without the form; the goods go back within 14 days of withdrawing, at the customer's direct cost; liability only for diminished value                 |
+| Refunds    | Within 14 days of the statement, including the cheapest standard delivery, to the same means of payment (card, BLIK or Przelewy24), which is where Stripe refunds go; no bank account number is collected |
+| Exception  | Article 38(1)(3) covers only pieces made to the customer's own specification, not the sizes and finishes offered as variants                                                                              |
+| Complaints | Liability for non-conformity for 2 years under articles 43a–43g, not a guarantee; repair or replacement first, then price reduction or withdrawal; the seller pays to ship the item both ways             |
+| Reply      | Within 14 calendar days of receiving the complaint, after which it is deemed accepted under article 7a                                                                                                    |
+
+The two PDFs are static files in `public/forms`, linked from the returns page and the terms in both languages, so keep their paths:
+
+- `formularz_zwrotu.pdf` is the model withdrawal form from Annex 2 to the Consumer Rights Act, word for word, with the seller's name, postal address and e-mail filled in as the addressee.
+- `formularz_reklamacji.pdf` is a complaint form addressed to the seller that offers the four statutory remedies and asks for no bank account, because refunds go back to the original means of payment.
+
+Both forms are in Polish. The English returns page says so at the top and gives the English wording of the model withdrawal form from Annex I(B) to Directive 2011/83/EU as a list the customer can copy into an e-mail. The PDFs were printed from HTML with Chromium's `page.pdf()` in the Manrope and Cormorant Garamond faces from `public/fonts`, with the fonts embedded so Polish characters render in any viewer. If anything in `BUSINESS` changes, print both forms again with the new details.
 
 ## The storefront pages
 
@@ -68,7 +89,7 @@ const { Markdown } = createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkH
 <Markdown components={MARKDOWN_COMPONENTS}>{page.body}</Markdown>
 ```
 
-`createMarkdownRenderer` comes from `fumadocs-core` and compiles Markdown at render time, not at build time. Raw HTML in a body is dropped rather than rendered. `remarkHeading` gives every heading a slug `id`, so a link such as `/exchanges-and-returns#returning-goods` lands on its section. The only component override is the link, which adds the reader's locale prefix to store paths and leaves files such as `/forms/formularz_zwrotu.pdf` alone.
+`createMarkdownRenderer` comes from `fumadocs-core` and compiles Markdown at render time, not at build time. Raw HTML in a body is dropped rather than rendered. `remarkHeading` gives every heading a slug `id`, so a link such as `/exchanges-and-returns#complaints` lands on its section. The only component override is the link, which adds the reader's locale prefix to store paths and leaves files such as `/forms/formularz_zwrotu.pdf` alone.
 
 The typography lives in `CONTENT_PROSE_CLASS` in `content-page.styles.ts`. The admin editor applies the same class to its editable area, so what an admin sees while typing is what customers see.
 
@@ -156,7 +177,8 @@ The checkout payment step also links the terms and privacy pages through `t.rich
 
 ## Tests
 
-- `content-page.integration.test.ts` runs both migrations against SQLite and covers reading with the Polish fallback, the admin reads, trimming, conflicting saves, per-locale revision dates and the link and image rules. It also checks that the seeded terms save back unchanged through the editor's validation and that running the terms migration again keeps an admin's edits.
+- `content-page.integration.test.ts` runs the content migrations against SQLite and covers reading with the Polish fallback, the admin reads, trimming, conflicting saves, per-locale revision dates and the link and image rules. It also checks that the seeded terms save back unchanged through the editor's validation and that running the terms migration again keeps an admin's edits.
+- The same suite holds the rewritten returns page to the law: each statement the old text made against the Consumer Rights Act is gone in both languages, the statutory deadlines, refund route and remedies are present, both forms and the terms are linked, and the English page says the forms are in Polish. It also checks that the rewrite saves back unchanged through the editor, replaces a page saved without changes, leaves both languages alone when an admin edited either, and keeps a later edit when the migration runs again.
 - `business.test.ts` fails if a seeded page stops naming the business details in `src/presentation/branding/business.ts`.
 - `legal-routes.test.ts` covers the three storefront routes.
 - `mdxeditor.plugins.component.test.tsx` round-trips every seeded page through the real editor, plus the escaping and line-break cases.

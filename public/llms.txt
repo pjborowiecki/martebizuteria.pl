@@ -17,7 +17,7 @@ Polish is the default language and is served without a prefix. English is served
 
 ## Policies
 
-- [Exchanges and returns](/exchanges-and-returns): Return window, condition requirements and how to start an exchange.
+- [Exchanges and returns](/exchanges-and-returns): The 14-day right of withdrawal, refunds, complaints about faulty items and the forms for both.
 - [Terms of service](/terms-of-service): Ordering, delivery and contract terms.
 - [Privacy policy](/privacy-policy): What personal data the store processes and on what basis.
 

@@ -36,6 +36,7 @@ const seededBodies = (): { readonly body: string; readonly label: string }[] => 
   const sqlite = new DatabaseSync(":memory:")
   applyMigration(sqlite, MIGRATION.CONTENT_PAGES)
   applyMigration(sqlite, MIGRATION.TERMS_OF_SERVICE_PAGE)
+  applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
   const rows = sqlite
     .prepare("select handle, json_extract(bodies, '$.\"pl-PL\"') as pl, json_extract(bodies, '$.\"en-US\"') as en from content_page")
     .all()

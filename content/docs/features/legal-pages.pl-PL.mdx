@@ -22,7 +22,9 @@ Kolumna `handle` jest enumem nad `CONTENT_PAGE_HANDLES` z `content-page.constant
 
 Migracja `20261002120000_content_pages.sql` tworzy tabelę i wypełnia politykę prywatności oraz stronę zwrotów tekstem, który wcześniej leżał w `content/legal`. `20261005200000_terms_of_service_page.sql` dodaje regulamin. Obie wstawiają wiersze z `ON CONFLICT(handle) DO NOTHING`, więc ponowne uruchomienie nigdy nie nadpisze tekstu, który administrator już zmienił.
 
-Wiążące są dokumenty polskie. Powołują się wprost na polskie przepisy, takie jak 14-dniowe prawo odstąpienia, art. 556⁴ Kodeksu cywilnego i artykuł RODO dla każdego celu przetwarzania, oraz wskazują administratora danych. Wersje angielskie utrzymuj jako tłumaczenia, a nie osobne teksty.
+`20261005210000_returns_and_complaints_page.sql` zastępuje zasiany tekst strony zwrotów, który był sprzeczny z polskim prawem konsumenckim. Aktualizuje obie treści tylko wtedy, gdy każda z nich nadal jest równa tekstowi zasianemu przez pierwszą migrację, porównując je osobno dla każdego języka przez `json_extract`, więc strona zwrotów zmieniona przez administratora w którymkolwiek języku zostaje nietknięta. Strona zapisana bez zmian i tak zostaje przepisana. Aktualizacja ustawia `revised_ats` i `updated_at` na 5 października 2026 r., godz. 10:00 UTC, więc strona pokazuje datę nowego tekstu, a edytor otwarty przed migracją zgłosi konflikt, zamiast go nadpisać.
+
+Wiążące są dokumenty polskie. Powołują się wprost na polskie przepisy, takie jak 14-dniowe prawo odstąpienia, art. 7a, 38 i 38a ustawy o prawach konsumenta i artykuł RODO dla każdego celu przetwarzania, oraz wskazują administratora danych. Wersje angielskie utrzymuj jako tłumaczenia, a nie osobne teksty.
 
 ## Regulamin
 
@@ -39,6 +41,25 @@ Regulamin to dokument wymagany przez art. 8 ustawy o świadczeniu usług drogą 
 | § 8–10   | Odstąpienie od umowy, zgodność z umową, reklamacje i pozasądowe sposoby dochodzenia roszczeń                          | Ustawa; strona zwrotów, polityka prywatności i dwa formularze PDF są linkowane, a nie powtarzane                   |
 
 Ceny dostawy kurierem i do paczkomatu nie są wpisane w regulamin. Leżą w wierszach `delivery_method`, których plik seed nie utrzymuje w zgodzie z produkcją, więc regulamin mówi, że kasa pokazuje każdą cenę przed złożeniem zamówienia. Regulamin nie linkuje unijnej platformy ODR, którą zamknięto 20 lipca 2025 r.
+
+## Strona zwrotów i formularze
+
+Strona zwrotów jest praktycznym przewodnikiem po § 8 i § 9 regulaminu i do nich linkuje, więc oba teksty nie mogą sobie przeczyć. Podaje tylko to, na co pozwala ustawa o prawach konsumenta:
+
+| Temat           | Co mówi strona                                                                                                                                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Odstąpienie     | 14 dni od odbioru, e-mailem albo listownie, z formularzem lub bez; zwrot towaru w ciągu 14 dni od odstąpienia na bezpośredni koszt klienta; odpowiedzialność tylko za zmniejszenie wartości                   |
+| Zwrot płatności | W ciągu 14 dni od oświadczenia, z najtańszą zwykłą dostawą, tym samym sposobem płatności (karta, BLIK albo Przelewy24), czyli tam, dokąd trafiają zwroty Stripe; numer rachunku nie jest zbierany             |
+| Wyjątek         | Art. 38 ust. 1 pkt 3 obejmuje tylko wyroby według specyfikacji klienta, a nie rozmiary i wykończenia oferowane jako warianty                                                                                  |
+| Reklamacje      | Odpowiedzialność za brak zgodności przez 2 lata na podstawie art. 43a–43g, a nie gwarancja; najpierw naprawa albo wymiana, potem obniżenie ceny albo odstąpienie; sprzedawca płaci za przesyłkę w obie strony |
+| Odpowiedź       | W ciągu 14 dni kalendarzowych od otrzymania reklamacji, po których reklamację uważa się za uznaną na podstawie art. 7a                                                                                        |
+
+Dwa pliki PDF to statyczne pliki w `public/forms`, linkowane ze strony zwrotów i z regulaminu w obu językach, więc zachowaj ich ścieżki:
+
+- `formularz_zwrotu.pdf` to wzór formularza odstąpienia od umowy z załącznika nr 2 do ustawy o prawach konsumenta, słowo w słowo, z nazwą sprzedawcy, adresem pocztowym i adresem e-mail wpisanymi jako adresat.
+- `formularz_reklamacji.pdf` to formularz reklamacji zaadresowany do sprzedawcy, który wymienia cztery ustawowe uprawnienia i nie prosi o numer rachunku, bo pieniądze wracają tym samym sposobem płatności.
+
+Oba formularze są po polsku. Angielska strona zwrotów mówi o tym na początku i podaje angielskie brzmienie wzoru formularza odstąpienia z załącznika I część B do dyrektywy 2011/83/UE jako listę, którą klient może skopiować do e-maila. Pliki PDF wydrukowano z HTML przez `page.pdf()` w Chromium krojami Manrope i Cormorant Garamond z `public/fonts`, z osadzonymi fontami, więc polskie znaki wyświetlają się w każdej przeglądarce PDF. Jeśli zmieni się cokolwiek w `BUSINESS`, wydrukuj oba formularze ponownie z nowymi danymi.
 
 ## Strony w sklepie
 
@@ -68,7 +89,7 @@ const { Markdown } = createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkH
 <Markdown components={MARKDOWN_COMPONENTS}>{page.body}</Markdown>
 ```
 
-`createMarkdownRenderer` pochodzi z `fumadocs-core` i kompiluje Markdown w czasie renderowania, a nie budowania. Surowy HTML w treści jest pomijany, a nie renderowany. `remarkHeading` nadaje każdemu nagłówkowi `id` ze slugiem, więc odnośnik w rodzaju `/exchanges-and-returns#returning-goods` trafia do właściwej sekcji. Jedynym nadpisanym komponentem jest odnośnik, który dodaje prefiks języka czytelnika do ścieżek sklepu i zostawia w spokoju pliki takie jak `/forms/formularz_zwrotu.pdf`.
+`createMarkdownRenderer` pochodzi z `fumadocs-core` i kompiluje Markdown w czasie renderowania, a nie budowania. Surowy HTML w treści jest pomijany, a nie renderowany. `remarkHeading` nadaje każdemu nagłówkowi `id` ze slugiem, więc odnośnik w rodzaju `/exchanges-and-returns#reklamacje` trafia do właściwej sekcji. Jedynym nadpisanym komponentem jest odnośnik, który dodaje prefiks języka czytelnika do ścieżek sklepu i zostawia w spokoju pliki takie jak `/forms/formularz_zwrotu.pdf`.
 
 Typografia leży w `CONTENT_PROSE_CLASS` w `content-page.styles.ts`. Edytor w panelu nakłada tę samą klasę na obszar edycji, więc administrator widzi podczas pisania to, co zobaczą klienci.
 
@@ -156,7 +177,8 @@ Krok płatności w kasie również linkuje regulamin i politykę prywatności pr
 
 ## Testy
 
-- `content-page.integration.test.ts` uruchamia obie migracje na SQLite i sprawdza odczyt z polskim zapasowym językiem, odczyty w panelu, przycinanie, konfliktujące zapisy, daty rewizji per język oraz reguły odnośników i obrazów. Sprawdza też, że zasiany regulamin przechodzi walidację edytora i zapisuje się bez zmian oraz że ponowne uruchomienie migracji regulaminu zachowuje zmiany administratora.
+- `content-page.integration.test.ts` uruchamia migracje treści na SQLite i sprawdza odczyt z polskim zapasowym językiem, odczyty w panelu, przycinanie, konfliktujące zapisy, daty rewizji per język oraz reguły odnośników i obrazów. Sprawdza też, że zasiany regulamin przechodzi walidację edytora i zapisuje się bez zmian oraz że ponowne uruchomienie migracji regulaminu zachowuje zmiany administratora.
+- Ten sam zestaw pilnuje zgodności przepisanej strony zwrotów z prawem: w obu językach nie ma już żadnego ze sformułowań starego tekstu sprzecznych z ustawą o prawach konsumenta, są ustawowe terminy, sposób zwrotu pieniędzy i uprawnienia, linki do obu formularzy i regulaminu, a strona angielska mówi, że formularze są po polsku. Sprawdza też, że nowy tekst zapisuje się w edytorze bez zmian, że migracja przepisuje stronę zapisaną bez zmian, zostawia oba języki, gdy administrator zmienił którykolwiek z nich, i zachowuje późniejszą zmianę przy ponownym uruchomieniu.
 - `business.test.ts` zawodzi, jeśli zasiana strona przestanie podawać dane firmy z `src/presentation/branding/business.ts`.
 - `legal-routes.test.ts` obejmuje trzy trasy sklepu.
 - `mdxeditor.plugins.component.test.tsx` przepuszcza każdą zasianą stronę przez prawdziwy edytor w obie strony, razem z przypadkami escapowania i złamań wiersza.
