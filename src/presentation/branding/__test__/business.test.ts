@@ -11,6 +11,7 @@ const seededBody = (handle: string, locale: string): string => {
   const sqlite = new DatabaseSync(":memory:")
   applyMigration(sqlite, MIGRATION.CONTENT_PAGES)
   applyMigration(sqlite, MIGRATION.TERMS_OF_SERVICE_PAGE)
+  applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
   const row = sqlite.prepare("select json_extract(bodies, ?) as body from content_page where handle = ?").get(`$."${locale}"`, handle)
   sqlite.close()
 

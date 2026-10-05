@@ -68,22 +68,29 @@ const SEEDED_AT = new Date("2026-09-29T12:00:00.000Z")
 
 const TERMS_SEEDED_AT = new Date("2026-10-05T12:00:00.000Z")
 
+const RETURNS_REVISED_AT = new Date("2026-10-05T10:00:00.000Z")
+
 const both = (pl: string, en: string): ContentPage["localeMap"] => ({ "en-US": en, "pl-PL": pl })
 
 const edit = (overrides: Partial<ContentPage["updateInput"]> = {}): ContentPage["updateInput"] => ({
   bodies: both("## Zwroty\n\nNowa treść.", "## Returns\n\nNew copy."),
   descriptions: both("Nowy opis.", "New description."),
-  expectedUpdatedAt: SEEDED_AT,
+  expectedUpdatedAt: RETURNS_REVISED_AT,
   handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS,
   titles: both("Zwroty", "Returns"),
   ...overrides,
 })
 
-beforeEach(() => {
-  vi.clearAllMocks()
+const seedContentPagesBeforeReturnsRewrite = (): void => {
   sqlite.exec("drop table if exists content_page")
   applyMigration(sqlite, MIGRATION.CONTENT_PAGES)
   applyMigration(sqlite, MIGRATION.TERMS_OF_SERVICE_PAGE)
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  seedContentPagesBeforeReturnsRewrite()
+  applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
 })
 
 afterAll(() => {
@@ -94,8 +101,8 @@ describe("getContentPage", () => {
   it("serves the seeded page in the requested locale", async () => {
     const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale: "en-US" } })
 
-    expect(page).toMatchObject({ revisedAt: SEEDED_AT, title: "Exchanges and returns" })
-    expect(page.body).toContain("## Returning goods")
+    expect(page).toMatchObject({ revisedAt: RETURNS_REVISED_AT, title: "Exchanges and returns" })
+    expect(page.body).toContain("## Complaints")
     expect(page.description).not.toBe("")
   })
 
@@ -128,7 +135,7 @@ describe("getContentPage", () => {
 describe("getAdminContentPages", () => {
   it("lists every page with its titles and last update", async () => {
     await expect(getAdminContentPages()).resolves.toStrictEqual([
-      { handle: "exchanges-and-returns", titles: both("Wymiana i zwroty", "Exchanges and returns"), updatedAt: SEEDED_AT },
+      { handle: "exchanges-and-returns", titles: both("Wymiana i zwroty", "Exchanges and returns"), updatedAt: RETURNS_REVISED_AT },
       { handle: "privacy-policy", titles: both("Polityka prywatności", "Privacy policy"), updatedAt: SEEDED_AT },
       { handle: "terms-of-service", titles: both("Regulamin", "Terms of Service"), updatedAt: TERMS_SEEDED_AT },
     ])
@@ -148,10 +155,10 @@ describe("updateContentPage", () => {
   it("saves every locale, moves the revision forward and announces the change", async () => {
     const { updatedAt } = await updateContentPage({ data: edit() })
 
-    expect(updatedAt.getTime()).toBeGreaterThan(SEEDED_AT.getTime())
+    expect(updatedAt.getTime()).toBeGreaterThan(RETURNS_REVISED_AT.getTime())
     const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale: "en-US" } })
     expect(page).toMatchObject({ body: "## Returns\n\nNew copy.", description: "New description.", title: "Returns" })
-    expect(page.revisedAt.getTime()).toBeGreaterThan(SEEDED_AT.getTime())
+    expect(page.revisedAt.getTime()).toBeGreaterThan(RETURNS_REVISED_AT.getTime())
     expect(effects.invalidate).toHaveBeenCalledOnce()
     expect(effects.audit).toHaveBeenCalledExactlyOnceWith("exchanges-and-returns")
   })
@@ -187,8 +194,8 @@ describe("updateContentPage", () => {
 
     const polish = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale: "pl-PL" } })
     const english = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale: "en-US" } })
-    expect(polish.revisedAt).toStrictEqual(SEEDED_AT)
-    expect(english.revisedAt.getTime()).toBeGreaterThan(SEEDED_AT.getTime())
+    expect(polish.revisedAt).toStrictEqual(RETURNS_REVISED_AT)
+    expect(english.revisedAt.getTime()).toBeGreaterThan(RETURNS_REVISED_AT.getTime())
   })
 
   it.each([
@@ -320,5 +327,151 @@ describe("the terms of service migration", () => {
 
     const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE, locale: "en-US" } })
     expect(page.body).toBe("## Terms\n\nThe owner's text.")
+  })
+})
+
+describe("the returns and complaints migration", () => {
+  it.each([
+    ["pl-PL", "Wymiana i zwroty", "## Reklamacje"],
+    ["en-US", "Exchanges and returns", "## Complaints"],
+  ] as const)("rewrites the seeded %s returns page and dates the rewrite", async (locale, title, section) => {
+    const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale } })
+
+    expect(page).toMatchObject({ revisedAt: RETURNS_REVISED_AT, title })
+    expect(page.body).toContain(section)
+  })
+
+  it.each([
+    ["pl-PL", "14 dni roboczych"],
+    ["pl-PL", "nie może nosić śladów użytkowania"],
+    ["pl-PL", "konkretny rozmiar"],
+    ["pl-PL", "Koszt wysyłki ponosi kupujący"],
+    ["pl-PL", "w sposób wskazany przez Klienta"],
+    ["pl-PL", "Okres gwarancji"],
+    ["en-US", "14 working days"],
+    ["en-US", "must show no signs of use"],
+    ["en-US", "made in a specific size"],
+    ["en-US", "The buyer covers the cost of shipping"],
+    ["en-US", "by the method the customer indicated"],
+    ["en-US", "The warranty period"],
+  ] as const)("drops the %s statement %j that consumer law overrides", async (locale, statement) => {
+    const { body } = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale } })
+
+    expect(body).not.toContain(statement)
+  })
+
+  it.each([
+    [
+      "pl-PL",
+      [
+        "w ciągu 14 dni kalendarzowych",
+        "uważa się, że uznaliśmy reklamację",
+        "takiego samego sposobu płatności",
+        "do nas i z powrotem ponosimy my",
+        "naprawy albo wymiany",
+        "obniżeniu ceny albo o odstąpieniu od umowy",
+        "art. 38 ust. 1 pkt 3",
+      ],
+    ],
+    [
+      "en-US",
+      [
+        "within 14 calendar days",
+        "your complaint is deemed accepted",
+        "same means of payment",
+        "sending the product to us and back",
+        "repaired or replaced",
+        "reducing the price or withdrawing from the contract",
+        "Article 38(1)(3)",
+      ],
+    ],
+  ] as const)("gives the %s statutory deadlines, refund route and remedies", async (locale, statements) => {
+    const { body } = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale } })
+
+    for (const statement of statements) {
+      expect(body).toContain(statement)
+    }
+  })
+
+  it.each(["pl-PL", "en-US"] as const)("links the %s page to both forms and the terms of service", async (locale) => {
+    const { body } = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale } })
+
+    for (const path of ["/forms/formularz_zwrotu.pdf", "/forms/formularz_reklamacji.pdf", "/terms-of-service"]) {
+      expect(body).toContain(`](${path})`)
+    }
+  })
+
+  it("tells English readers the forms are in Polish and gives the model withdrawal form in English", async () => {
+    const { body } = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale: "en-US" } })
+
+    expect(body).toContain("**The withdrawal and complaint forms linked below are in Polish.**")
+    expect(body).toContain("- I/We hereby give notice that I/We withdraw from my/our contract of sale of the following goods: …")
+  })
+
+  it("rewrites text the admin editor can save back unchanged", async () => {
+    const rewritten = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS } })
+
+    await updateContentPage({
+      data: {
+        bodies: rewritten.bodies,
+        descriptions: rewritten.descriptions,
+        expectedUpdatedAt: rewritten.updatedAt,
+        handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS,
+        titles: rewritten.titles,
+      },
+    })
+
+    const saved = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS } })
+    expect(saved.bodies).toStrictEqual(rewritten.bodies)
+    expect(saved.revisedAts).toStrictEqual(rewritten.revisedAts)
+  })
+
+  it("rewrites a page an admin saved without changing its text", async () => {
+    seedContentPagesBeforeReturnsRewrite()
+    const seeded = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS } })
+    await updateContentPage({
+      data: {
+        bodies: seeded.bodies,
+        descriptions: seeded.descriptions,
+        expectedUpdatedAt: SEEDED_AT,
+        handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS,
+        titles: seeded.titles,
+      },
+    })
+
+    applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
+
+    const page = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS } })
+    expect(page.bodies["pl-PL"]).toContain("## Reklamacje\n\n### Za co odpowiadamy")
+    expect(page.bodies["en-US"]).toContain("## Complaints\n\n### What we are liable for")
+    expect(page.updatedAt).toStrictEqual(RETURNS_REVISED_AT)
+  })
+
+  it("leaves both languages alone once an admin has edited either of them", async () => {
+    seedContentPagesBeforeReturnsRewrite()
+    const seeded = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS } })
+    await updateContentPage({
+      data: edit({
+        bodies: { ...seeded.bodies, "en-US": "## Returns\n\nThe owner's text." },
+        descriptions: seeded.descriptions,
+        expectedUpdatedAt: SEEDED_AT,
+        titles: seeded.titles,
+      }),
+    })
+
+    applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
+
+    const page = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS } })
+    expect(page.bodies).toStrictEqual({ ...seeded.bodies, "en-US": "## Returns\n\nThe owner's text." })
+    expect(page.revisedAts["pl-PL"]).toBe(SEEDED_AT.getTime())
+  })
+
+  it("keeps an admin's later edit when it runs again", async () => {
+    await updateContentPage({ data: edit() })
+
+    applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
+
+    const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale: "en-US" } })
+    expect(page.body).toBe("## Returns\n\nNew copy.")
   })
 })
