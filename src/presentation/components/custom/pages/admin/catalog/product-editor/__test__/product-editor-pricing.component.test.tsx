@@ -14,6 +14,16 @@ import { createEmptyProductFormValues } from "~/src/presentation/components/cust
 
 afterEach(cleanup)
 
+const HELD_SIMPLE_VARIANT = {
+  compareAtPrice: "",
+  id: "variant-unique",
+  loadedQuantity: 0,
+  manageInventory: true,
+  price: "120.00",
+  quantity: 0,
+  sku: "",
+}
+
 type ProductForm = UseFormReturn<ProductFormValues>
 
 const PricingHarness = ({
@@ -100,6 +110,43 @@ describe("ProductEditorPricing for a simple product", () => {
 
     expect(screen.getByDisplayValue("120.00")).toBeInTheDocument()
     expect(screen.getByDisplayValue("7")).toBeInTheDocument()
+  })
+
+  it("shows under the stock field how many units customers are paying for", () => {
+    renderPricing({
+      overrides: {
+        simpleVariant: { ...HELD_SIMPLE_VARIANT, quantityInCheckout: 1 },
+      },
+    })
+
+    expect(screen.getByText("1 in checkout")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("0")).toBeInTheDocument()
+  })
+
+  it("adds no checkout note while no unit is held or the stock was never loaded", () => {
+    renderPricing({ overrides: { simpleVariant: { ...HELD_SIMPLE_VARIANT, quantityInCheckout: 0 } } })
+    renderPricing()
+
+    expect(screen.queryByText(/in checkout/u)).not.toBeInTheDocument()
+  })
+
+  it("explains that the number is what is available for sale and that saving applies the difference", () => {
+    renderPricing()
+
+    expect(
+      screen.getByRole("button", {
+        name: /^Units available for sale now\. Units customers are paying for are not included; they are shown under the field\. Saving adds or removes the difference from the number shown when you opened the product\./u,
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it("keeps the stock baseline it loaded when the admin types a new quantity", async () => {
+    const values = renderPricing({ overrides: { simpleVariant: { ...HELD_SIMPLE_VARIANT, loadedQuantity: 0 } } })
+
+    await userEvent.type(screen.getByDisplayValue("0"), "3")
+    await userEvent.tab()
+
+    expect(values().simpleVariant).toMatchObject({ loadedQuantity: 0, quantity: 3 })
   })
 
   it("refuses a non numeric stock quantity and settles back on zero", async () => {

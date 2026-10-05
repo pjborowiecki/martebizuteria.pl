@@ -22,15 +22,20 @@ export const inventory = sqliteTable(
     version: integer("version").default(INVENTORY_DEFAULT_VERSION).notNull(),
     ...timestamps(),
   },
-  (table) => [index("inventory_variantId_idx").on(table.variantId), uniqueIndex("inventory_variantId_unique").on(table.variantId)],
+  (table) => [
+    uniqueIndex("inventory_variantId_unique").on(table.variantId),
+    check(INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK, sql`${table.quantityAvailable} >= 0`),
+  ],
 )
 ```
 
 `INVENTORY_DEFAULT_QUANTITY` is `0` and `INVENTORY_DEFAULT_VERSION` is `1` (`inventory.constants.ts`). The unique index on `variant_id` guarantees the one-to-one relationship, and the cascade means deleting a variant removes its stock row.
 
+The check `inventory_quantity_available_non_negative` (`INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK`, added by `20261005300000_inventory_available_never_negative.sql`) keeps `quantity_available` at zero or above. A statement that would take it below zero fails, and so does the D1 batch it runs in. A reservation never trips it, because its own guard asks for enough available stock; it is what refuses a product save whose stock change a customer overtook (see [Changing stock](#changing-stock)).
+
 There are no warehouses, no locations and no stock ledger — the two counters and the version are the whole model.
 
-Rows are created alongside variants: `product.mutations.ts` pushes `db.insert(inventory).values(inventoryRows)` into the same D1 batch that inserts the variants, from the `quantity` field of the product form. Every variant is persisted with `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` in `product.utils.ts`), so the `product_variant.manage_inventory` column exists but is never `false` in practice.
+Rows are created alongside variants: `prepareProductCatalogBatch` in `product.mutations.ts` inserts a stock row from the `quantity` field of the product form, in the same D1 batch that inserts the variants, for every variant that has none yet, and leaves an existing row alone (`onConflictDoNothing` on `variant_id`). Every variant is persisted with `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` in `product.utils.ts`), so the `product_variant.manage_inventory` column exists but is never `false` in practice.
 
 ## Reading availability
 
@@ -103,15 +108,16 @@ Both release statements use `min`/`max` so a duplicate release cannot invent sto
 
 ## The full cycle
 
-| Moment                                                                  | Effect on the row                                                                             |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Stripe session created (`handleCreateCheckoutSession`)                  | `available -= qty`, `reserved += qty`, `version += 1`                                         |
-| Checkout edited (`handleUpdateCheckoutSession`)                         | Old lines released as the payment moves (`supersedeCheckoutSession`), then new lines reserved |
-| Session paid (`prepareFulfillCheckoutBatch`)                            | `reserved -= qty`; `available` untouched — the reservation is consumed                        |
-| Session expired or async payment failed (`prepareReleaseCheckoutBatch`) | `available += min(reserved, qty)`, `reserved -= qty`                                          |
-| Order cancelled by an admin (`prepareCancelOrderBatch`)                 | `available += quantity` while the order is open and unshipped                                 |
-| Full refund with restock (`prepareRefundBatch`)                         | `available += quantity`, from `getRestockLinesForOrder(orderId)`                              |
-| Lost dispute                                                            | Nothing — `refundOrder` is called with `restock: false`                                       |
+| Moment                                                                       | Effect on the row                                                                             |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Stripe session created (`handleCreateCheckoutSession`)                       | `available -= qty`, `reserved += qty`, `version += 1`                                         |
+| Checkout edited (`handleUpdateCheckoutSession`)                              | Old lines released as the payment moves (`supersedeCheckoutSession`), then new lines reserved |
+| Session paid (`prepareFulfillCheckoutBatch`)                                 | `reserved -= qty`; `available` untouched — the reservation is consumed                        |
+| Session expired or async payment failed (`prepareReleaseCheckoutBatch`)      | `available += min(reserved, qty)`, `reserved -= qty`                                          |
+| Order cancelled by an admin (`prepareCancelOrderBatch`)                      | `available += quantity` while the order is open and unshipped                                 |
+| Full refund with restock (`prepareRefundBatch`)                              | `available += quantity`, from `getRestockLinesForOrder(orderId)`                              |
+| Lost dispute                                                                 | Nothing — `refundOrder` is called with `restock: false`                                       |
+| Admin changes the stock in the product editor (`prepareProductCatalogBatch`) | `available += new − loaded`, `version += 1`; refused when it would go below zero              |
 
 A reservation lasts only as long as its Checkout Session can be paid. Every session expires `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minutes, from `stripe.constants.ts`) after it opens, instead of after Stripe's 24-hour default, and its `checkout.session.expired` webhook releases the lines. A checkout update that finds Stripe already reporting the session expired runs the same guarded release first, and so does the session check the checkout page runs on a stored session, so the fresh checkout the shopper starts does not wait for the webhook. A browser keeps one open session: the checkout continues the session it stored through the update path, which releases the old lines as it reserves the new ones, rather than reserving the basket again on a reload, in a second tab or after a visit to the basket.
 
@@ -169,7 +175,14 @@ Unpublished products are always reported as `ok`, so a draft with no stock is no
 
 ## Changing stock
 
-There is **no dedicated stock adjustment use case**. Quantities are written through the product editor: `createCompleteProduct` and `updateCompleteProduct` carry a `quantity` per variant and persist it into `inventory`. Everything else — reserve, convert, release, restock — happens automatically around a checkout.
+There is **no dedicated stock adjustment use case**. Stock is changed in the product editor, which follows the Shopify model: the field shows what is available for sale, and a save writes only the change the admin made, as a difference.
+
+- `mapProductDetailToFormValues` (`product-form.utils.ts`) loads `quantityAvailable` into the field and keeps it as `loadedQuantity`, and keeps `quantityReserved` as `quantityInCheckout`. The editor shows that count under the field ("1 in checkout", "1 szt. w trakcie płatności"), and the help text says the field is the stock available for sale. `quantityInCheckout` is only in the form schema, so `parseCatalogUpsertInput` drops it; `loadedQuantity` is sent with `quantity`.
+- `prepareCatalogReplacePayload` (`product.utils.ts`) turns a variant the product already owns, whose `quantity` differs from its `loadedQuantity`, into an `inventoryAdjustments` entry of `quantity − loadedQuantity`. An untouched field, or a variant whose stock the editor never loaded, writes no stock.
+- `prepareProductCatalogBatch` applies each adjustment in the save's batch as `quantity_available = quantity_available + change` and `version = version + 1`, so a reservation, release or sale that happened while the editor was open stays counted. A new product or a new variant still gets its first stock from the typed quantity; an existing row is never overwritten.
+- When a customer reserved or bought the stock meanwhile and the adjustment would take `quantity_available` below zero, the check fails the statement and D1 rolls back the whole batch, so nothing about the product is saved. `rethrowProductMutationError` turns the failure into `ERROR_CODES.CONFLICT` with `PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING`; the editor stays open with the admin's input and shows `toast.stockChangedWhileEditing`, which says that nothing was saved and to reload the page to see the current stock.
+
+Everything else — reserve, convert, release, restock — happens automatically around a checkout.
 
 If you need a stock-adjustment screen, the place to add it is a new use case under `src/modules/inventory/use-cases/` with `authorized({ product: ["update"] })`, using the same version-guarded prepared statement so it cannot race a live checkout, followed by `scheduleProductCatalogInvalidation()`.
 

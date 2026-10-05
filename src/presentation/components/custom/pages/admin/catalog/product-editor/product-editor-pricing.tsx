@@ -7,7 +7,7 @@ import { PRODUCT_FORM_VALIDATION_KEYS } from "~/src/modules/product/product.cons
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
-import { Field, FieldError } from "~/src/presentation/components/shadcn/field"
+import { Field, FieldDescription, FieldError } from "~/src/presentation/components/shadcn/field"
 
 import { CatalogFormFieldError } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-error"
 import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-label"
@@ -24,6 +24,10 @@ export const ProductEditorPricing = (): JSX.Element => {
   const hasVariants = useWatch({
     control,
     name: "hasVariants",
+  })
+  const quantityInCheckout = useWatch({
+    control,
+    name: "simpleVariant.quantityInCheckout",
   })
 
   const validationKeySet = useMemo(() => new Set<string>(Object.values(PRODUCT_FORM_VALIDATION_KEYS)), [])
@@ -100,6 +104,13 @@ export const ProductEditorPricing = (): JSX.Element => {
               onValueChange={handleQuantityChange}
               value={quantityField.value ?? DEFAULT_QUANTITY_MIN}
             />
+            {quantityInCheckout !== undefined && quantityInCheckout > 0 && (
+              <FieldDescription>
+                {t("form.stockInCheckout", {
+                  count: quantityInCheckout,
+                })}
+              </FieldDescription>
+            )}
             <CatalogFormFieldError fieldState={quantityFieldState} translate={t} validationKeySet={validationKeySet} />
           </Field>
         </div>

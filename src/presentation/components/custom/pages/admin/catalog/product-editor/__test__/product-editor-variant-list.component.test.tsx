@@ -304,6 +304,40 @@ describe("ProductEditorVariantList field writes", () => {
   })
 })
 
+describe("ProductEditorVariantList stock held in checkout", () => {
+  it("shows under a variant's stock how many of its units customers are paying for", () => {
+    renderVariantList({
+      options: [NAMED_OPTION],
+      variants: [
+        createVariantRow({ loadedQuantity: 0, quantityInCheckout: 1 }),
+        createVariantRow({ id: "variant-2", loadedQuantity: 4, quantity: 4, quantityInCheckout: 0 }),
+      ],
+    })
+
+    expect(screen.getAllByText(/in checkout/u)).toHaveLength(1)
+    expect(screen.getByText("1 in checkout")).toBeInTheDocument()
+    expect(elementAt(screen.getAllByRole("textbox", { name: "Stock quantity (units)" }), 0)).toHaveValue("0")
+  })
+
+  it("adds no checkout note to a new variant", () => {
+    renderTwoRows()
+
+    expect(screen.queryByText(/in checkout/u)).not.toBeInTheDocument()
+  })
+
+  it("keeps the loaded stock baseline on the row when the admin changes its stock", async () => {
+    const seen = renderVariantList({
+      options: [NAMED_OPTION],
+      variants: [createVariantRow({ loadedQuantity: 2, quantity: 2, quantityInCheckout: 1 }), createVariantRow({ id: "variant-2" })],
+    })
+
+    await userEvent.type(elementAt(screen.getAllByRole("textbox", { name: "Stock quantity (units)" }), 0), "5")
+    await userEvent.tab()
+
+    expect(seen.form?.getValues("variants.0")).toMatchObject({ loadedQuantity: 2, quantity: 5, quantityInCheckout: 1 })
+  })
+})
+
 describe("ProductEditorVariantList gallery and attributes", () => {
   it("renders the existing variant gallery and its main image", () => {
     renderVariantList({

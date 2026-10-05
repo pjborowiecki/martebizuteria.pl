@@ -53,7 +53,7 @@
       "subtitle": "Optional short line under the title on the product page.",
       "description": "Full description shown on the storefront product page.",
       "price": "Sell price in PLN for a single-variant product.",
-      "stockQuantity": "How many units are available to sell (whole numbers only).",
+      "stockQuantity": "Units available for sale now. Units customers are paying for are not included; they are shown under the field. Saving adds or removes the difference from the number shown when you opened the product.",
       "primaryCategory": "Main category in the catalog tree (breadcrumbs, SEO).",
       "additionalCategories": "Optional extra categories where this product should also appear.",
       "collections": "Merchandising collections (e.g. New arrivals and Sterling 925 at the same time).",
@@ -87,7 +87,8 @@
       "submitBlockedDescription": "Check highlighted fields and try again.",
       "duplicateAttribute": "This attribute is already assigned to the product — each attribute can only appear once.",
       "duplicateSku": "This SKU is already used by another variant."
-    }
+    },
+    "stockInCheckout": "{count} in checkout"
   },
   "toast": {
     "createSuccessTitle": "Product created",
@@ -100,6 +101,7 @@
     "duplicateSku": "This SKU is already used by another variant.",
     "duplicateAttribute": "The same attribute cannot be assigned to a product more than once.",
     "variantReservedInCheckout": "A customer is paying for a variant you removed, so it cannot be deleted yet. Keep the variant and archive the product to take it off sale, then remove the variant once that payment has finished or expired.",
+    "stockChangedWhileEditing": "A customer reserved or bought this product while you were editing it, so the stock you entered would fall below zero. Nothing was saved. Reload the page to see the current stock, then make your changes again.",
     "databaseSchemaOutdated": "The database schema is out of date. Run migrations: bun run db:migrate"
   },
   "basic": {
@@ -240,7 +242,7 @@
   "title": "Add New Product",
   "editTitle": "Edit Product",
   "variants": {
-    "sectionHint": "Each row is one variant (e.g. Silver, Gold plated). Set name, price, stock, and photos. Use the PL/EN picker at the top to translate names.",
+    "sectionHint": "Each row is one variant (e.g. Silver, Gold plated). Set name, price, stock, and photos. Use the PL/EN picker at the top to translate names. Stock is the number available for sale; units customers are paying for are shown under it and are not included.",
     "listHint": "Variant name in {locale}. Switch PL/EN at the top of the form to add the translation.",
     "addVariant": "Add variant",
     "removeVariant": "Remove variant",

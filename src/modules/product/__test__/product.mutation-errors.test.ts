@@ -7,6 +7,7 @@ import {
   isDuplicateHandleMutationError,
   isDuplicateSkuMutationError,
   isReservedInCheckoutMutationError,
+  isStockChangedWhileEditingMutationError,
   resolveProductMutationErrorMessage,
   rethrowProductMutationError,
 } from "~/src/modules/product/product.mutation-errors"
@@ -70,6 +71,24 @@ describe("isReservedInCheckoutMutationError", () => {
   it("does not fire on another product error or a non-error", () => {
     expect(isReservedInCheckoutMutationError(new Error(PRODUCT_ERROR_CODES.DUPLICATE_SKU))).toBe(false)
     expect(isReservedInCheckoutMutationError(PRODUCT_ERROR_CODES.RESERVED_IN_CHECKOUT)).toBe(false)
+  })
+})
+
+describe("isStockChangedWhileEditingMutationError", () => {
+  it("recognises the check that keeps available stock at zero or above, also behind the driver's wrapper", () => {
+    const refused = "D1_ERROR: CHECK constraint failed: inventory_quantity_available_non_negative: SQLITE_CONSTRAINT"
+
+    expect(isStockChangedWhileEditingMutationError(new Error(refused))).toBe(true)
+    expect(isStockChangedWhileEditingMutationError(nested("Failed query: update inventory", refused))).toBe(true)
+  })
+
+  it("recognises the error code the server sends to the editor", () => {
+    expect(isStockChangedWhileEditingMutationError(new Error(PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING))).toBe(true)
+  })
+
+  it("does not fire on another constraint or a non-error", () => {
+    expect(isStockChangedWhileEditingMutationError(new Error("CHECK constraint failed: some_other_check"))).toBe(false)
+    expect(isStockChangedWhileEditingMutationError(PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING)).toBe(false)
   })
 })
 
@@ -145,6 +164,14 @@ describe("rethrowProductMutationError", () => {
     expect(caught).toBeInstanceOf(Error)
     expect(caught instanceof Error ? caught.message : "").toBe(PRODUCT_ERROR_CODES.DUPLICATE_SKU)
     expect(caught instanceof Error ? caught.cause : undefined).toBe(driverError)
+  })
+
+  it("turns a stock change that would go below zero into a conflict the editor can explain", () => {
+    const driverError = new Error("D1_ERROR: CHECK constraint failed: inventory_quantity_available_non_negative: SQLITE_CONSTRAINT")
+
+    expect(() => rethrowProductMutationError(driverError)).toThrow(
+      expect.objectContaining({ code: "CONFLICT", message: PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING, name: "AppError" }),
+    )
   })
 
   it("rethrows an unrecognised error untouched", () => {

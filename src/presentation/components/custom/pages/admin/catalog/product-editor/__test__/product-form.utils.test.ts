@@ -103,15 +103,16 @@ const variant = (
     readonly title: string
     readonly valueId?: string
     readonly quantityAvailable?: number
+    readonly quantityReserved?: number
     readonly images?: readonly ProductImage[]
     readonly attributes?: readonly ProductAttributeRow[]
   },
 ): ProductVariant => {
-  const { attributes, images: variantImages, quantityAvailable, valueId, ...columns } = overrides
+  const { attributes, images: variantImages, quantityAvailable, quantityReserved = 0, valueId, ...columns } = overrides
   const inventoryRow =
     quantityAvailable === undefined
       ? null
-      : { id: `inv-${columns.id}`, quantityAvailable, quantityReserved: 0, variantId: columns.id, version: 1, ...stamps }
+      : { id: `inv-${columns.id}`, quantityAvailable, quantityReserved, variantId: columns.id, version: 1, ...stamps }
   const links =
     valueId === undefined
       ? []
@@ -205,12 +206,21 @@ describe("mapProductDetailToFormValues for a simple product", () => {
     expect(values.simpleVariant).toStrictEqual({
       compareAtPrice: "150.00",
       id: "var-1",
+      loadedQuantity: 7,
       manageInventory: true,
       price: "120.50",
       quantity: 7,
+      quantityInCheckout: 0,
       sku: "GC-1",
     })
     expect(values.variants).toStrictEqual([])
+  })
+
+  it("shows the stock available for sale, remembers it as the baseline of a stock change and counts the units in checkout", () => {
+    const reserved = variant({ id: "var-1", quantityAvailable: 0, quantityReserved: 1, title: "Default" })
+    const { simpleVariant } = mapProductDetailToFormValues(detail({ variants: [reserved] }))
+
+    expect(simpleVariant).toMatchObject({ loadedQuantity: 0, quantity: 0, quantityInCheckout: 1 })
   })
 
   it("blanks a missing compare-at price and defaults missing inventory and sku", () => {
@@ -220,6 +230,14 @@ describe("mapProductDetailToFormValues for a simple product", () => {
     expect(values.simpleVariant?.compareAtPrice).toBe("")
     expect(values.simpleVariant?.quantity).toBe(0)
     expect(values.simpleVariant?.sku).toBe("")
+  })
+
+  it("loads no stock baseline for a variant without a stock row, so saving gives it its first stock", () => {
+    const bare = variant({ id: "var-1", title: "Default" })
+    const { simpleVariant } = mapProductDetailToFormValues(detail({ variants: [bare] }))
+
+    expect(simpleVariant?.loadedQuantity).toBeUndefined()
+    expect(simpleVariant?.quantityInCheckout).toBeUndefined()
   })
 
   it("falls back to the empty simple variant when the product has no variant row", () => {
@@ -321,6 +339,7 @@ describe("mapProductDetailToFormValues for a variant product", () => {
     expect(values.variants.map((row) => row.sku)).toStrictEqual(["GC-S", "GC-M"])
     expect(values.variants.map((row) => row.price)).toStrictEqual(["120.00", "130.00"])
     expect(values.variants.map((row) => row.quantity)).toStrictEqual([5, 2])
+    expect(values.variants.map((row) => row.loadedQuantity)).toStrictEqual([5, 2])
     expect(values.variants.map((row) => row.optionValues)).toStrictEqual([{ "option-1": "value-s" }, { "option-1": "value-m" }])
     expect(values.variants.map((row) => row.title)).toStrictEqual(["S", "M"])
   })
@@ -331,11 +350,20 @@ describe("mapProductDetailToFormValues for a variant product", () => {
     expect(mapProductDetailToFormValues(product).simpleVariant).toStrictEqual({
       compareAtPrice: "",
       id: "var-m",
+      loadedQuantity: 2,
       manageInventory: true,
       price: "130.00",
       quantity: 2,
+      quantityInCheckout: 0,
       sku: "GC-M",
     })
+  })
+
+  it("counts the units in checkout on each variant row", () => {
+    const held = variant({ id: "var-m", quantityAvailable: 0, quantityReserved: 2, title: "M", valueId: "value-m" })
+    const values = mapProductDetailToFormValues(detail({ options: [twoValueOption], variants: [small, held] }))
+
+    expect(values.variants.map((row) => row.quantityInCheckout)).toStrictEqual([0, 2])
   })
 
   it("creates a blank row for an option value that has no variant yet", () => {
@@ -507,6 +535,7 @@ describe("regenerateVariantRows", () => {
     expect(rows.map((row) => row.optionValues)).toStrictEqual([{ "option-1": "value-s" }, { "option-1": "value-m" }])
     expect(rows.map((row) => row.title)).toStrictEqual(["S", "M"])
     expect(rows.every((row) => row.price === "" && row.quantity === 0 && row.sku === "")).toBe(true)
+    expect(rows.every((row) => row.loadedQuantity === undefined && row.quantityInCheckout === undefined)).toBe(true)
   })
 
   it("issues a distinct id for every generated row", () => {
@@ -522,16 +551,26 @@ describe("regenerateVariantRows", () => {
         compareAtPrice: "150.00",
         id: "var-s",
         images: [{ alt: "front", id: "img-1", url: "https://cdn.test/img-1.webp" }],
+        loadedQuantity: 3,
         manageInventory: true,
         optionValues: { "option-1": "value-s" },
         price: "120.00",
         quantity: 4,
+        quantityInCheckout: 1,
         sku: "GC-S",
       },
     ]
     const rows = regenerateVariantRows([sizeOptionDraft], existing)
 
-    expect(rows[0]).toMatchObject({ compareAtPrice: "150.00", id: "var-s", price: "120.00", quantity: 4, sku: "GC-S" })
+    expect(rows[0]).toMatchObject({
+      compareAtPrice: "150.00",
+      id: "var-s",
+      loadedQuantity: 3,
+      price: "120.00",
+      quantity: 4,
+      quantityInCheckout: 1,
+      sku: "GC-S",
+    })
     expect(rows[0]?.mainImageId).toBe("img-1")
     expect(rows[0]?.attributeValues).toStrictEqual([{ attributeId: "attr-1", value: "gold" }])
     expect(rows[1]?.sku).toBe("")

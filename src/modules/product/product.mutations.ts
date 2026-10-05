@@ -55,7 +55,7 @@ export const findTakenSkus = async (skus: readonly string[], excludeProductId?: 
 }
 
 export const prepareProductCatalogBatch = (productId: string, payload: ProductCatalogReplacePayload): DrizzleBatchStatement[] => {
-  const { inventoryRows, optionOnVariantRows, optionRows, optionValueRows, variantRows } = payload
+  const { inventoryAdjustments, inventoryRows, optionOnVariantRows, optionRows, optionValueRows, variantRows } = payload
   const productVariants = eq(productVariant.productId, productId)
   const keptVariantIds = variantRows.map((row) => row.id)
   const droppedVariants = and(productVariants, notInJsonList(productVariant.id, keptVariantIds))
@@ -85,15 +85,17 @@ export const prepareProductCatalogBatch = (productId: string, payload: ProductCa
           target: productVariant.id,
         }),
     ),
-    ...insertRowChunks(inventory, inventoryRows).map((rows) =>
+    ...inventoryAdjustments.map(({ quantityChange, variantId }) =>
       db
-        .insert(inventory)
-        .values(rows)
-        .onConflictDoUpdate({
-          set: { quantityAvailable: sql`excluded.quantity_available`, version: sql`${inventory.version} + 1` },
-          setWhere: sql`${inventory.quantityAvailable} <> excluded.quantity_available`,
-          target: inventory.variantId,
-        }),
+        .update(inventory)
+        .set({
+          quantityAvailable: sql`${inventory.quantityAvailable} + ${quantityChange}`,
+          version: sql`${inventory.version} + 1`,
+        })
+        .where(eq(inventory.variantId, variantId)),
+    ),
+    ...insertRowChunks(inventory, inventoryRows).map((rows) =>
+      db.insert(inventory).values(rows).onConflictDoNothing({ target: inventory.variantId }),
     ),
     ...insertRowChunks(optionOnVariant, optionOnVariantRows).map((rows) => db.insert(optionOnVariant).values(rows)),
   ]

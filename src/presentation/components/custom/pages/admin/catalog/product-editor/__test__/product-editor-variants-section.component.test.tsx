@@ -56,7 +56,7 @@ describe("ProductEditorVariantsSection", () => {
     expect(screen.getByText("Variants")).toBeInTheDocument()
     expect(
       screen.getByText(
-        "Each row is one variant (e.g. Silver, Gold plated). Set name, price, stock, and photos. Use the PL/EN picker at the top to translate names.",
+        "Each row is one variant (e.g. Silver, Gold plated). Set name, price, stock, and photos. Use the PL/EN picker at the top to translate names. Stock is the number available for sale; units customers are paying for are shown under it and are not included.",
       ),
     ).toBeInTheDocument()
   })

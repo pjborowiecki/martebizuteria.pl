@@ -13,7 +13,7 @@ import { PRODUCT_COLUMN_LENGTH, PRODUCT_FORM_VALIDATION_KEYS } from "~/src/modul
 import { type ProductFormValues } from "~/src/modules/product/product.zod"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
-import { Field } from "~/src/presentation/components/shadcn/field"
+import { Field, FieldDescription } from "~/src/presentation/components/shadcn/field"
 import { Input } from "~/src/presentation/components/shadcn/input"
 
 import { ImageGalleryUpload } from "~/src/presentation/components/custom/image-upload/components/image-gallery-upload"
@@ -190,15 +190,6 @@ const VariantListRow = ({
     [index, setValue],
   )
 
-  const handleStockChange = useCallback(
-    (quantity: number) => {
-      setValue(`variants.${index}.quantity`, quantity, {
-        shouldDirty: true,
-      })
-    },
-    [index, setValue],
-  )
-
   const handleRemoveClick = useCallback(() => {
     onRemove(index)
   }, [index, onRemove])
@@ -252,14 +243,7 @@ const VariantListRow = ({
           <span className="pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2 text-sm text-muted-foreground/40">PLN</span>
           <CatalogMoneyInput aria-label={t("price")} className="pl-12" onValueChange={handlePriceChange} value={variant?.price ?? ""} />
         </div>
-        <CatalogIntegerInput
-          aria-label={t("stockQuantity")}
-          className="min-w-0 text-center"
-          min={0}
-          onValueChange={handleStockChange}
-          placeholder="0"
-          value={variant?.quantity ?? 0}
-        />
+        <VariantListRowStock index={index} variant={variant} />
         {showRemove ? (
           <Button
             aria-label={t("removeVariant")}
@@ -284,6 +268,45 @@ const VariantListRow = ({
         </Suspense>
       </div>
     </section>
+  )
+}
+
+const VariantListRowStock = ({
+  index,
+  variant,
+}: Readonly<{
+  index: number
+  variant: ProductFormValues["variants"][number] | undefined
+}>): JSX.Element => {
+  const t = useTranslations("pages.admin.catalog.products")
+  const { setValue } = useFormContext<ProductFormValues>()
+  const handleStockChange = useCallback(
+    (quantity: number) => {
+      setValue(`variants.${index}.quantity`, quantity, {
+        shouldDirty: true,
+      })
+    },
+    [index, setValue],
+  )
+
+  return (
+    <Field className="min-w-0 gap-1">
+      <CatalogIntegerInput
+        aria-label={t("variants.stockQuantity")}
+        className="min-w-0 text-center"
+        min={0}
+        onValueChange={handleStockChange}
+        placeholder="0"
+        value={variant?.quantity ?? 0}
+      />
+      {variant?.quantityInCheckout !== undefined && variant.quantityInCheckout > 0 && (
+        <FieldDescription className="text-center">
+          {t("form.stockInCheckout", {
+            count: variant.quantityInCheckout,
+          })}
+        </FieldDescription>
+      )}
+    </Field>
   )
 }
 

@@ -483,6 +483,38 @@ describe("parseCatalogUpsertInput", () => {
     expect(parseCatalogUpsertInput(withoutSimpleVariant).simpleVariant).toBeUndefined()
   })
 
+  it("hands the database layer the stock baseline the editor loaded but not the units held in checkout", () => {
+    const parsed = parseCatalogUpsertInput(
+      formValues({
+        hasVariants: true,
+        options: [sizeOption],
+        simpleVariant: {
+          compareAtPrice: "",
+          loadedQuantity: 1,
+          manageInventory: true,
+          price: "120.00",
+          quantity: 2,
+          quantityInCheckout: 1,
+          sku: "",
+        },
+        variants: [{ ...variantRow({ id: VARIANT_ID, loadedQuantity: 0, quantity: 3 }), quantityInCheckout: 2 }],
+      }),
+    )
+
+    expect(parsed.simpleVariant).toMatchObject({ loadedQuantity: 1, quantity: 2 })
+    expect(parsed.simpleVariant).not.toHaveProperty("quantityInCheckout")
+    expect(parsed.variants[0]).toMatchObject({ loadedQuantity: 0, quantity: 3 })
+    expect(parsed.variants[0]).not.toHaveProperty("quantityInCheckout")
+  })
+
+  it("refuses a negative stock baseline", () => {
+    const input = catalogInput({
+      simpleVariant: { compareAtPrice: "", loadedQuantity: -1, manageInventory: true, price: "120.00", quantity: 5, sku: "" },
+    })
+
+    expect(catalogIssues(input)).toStrictEqual([{ message: "Too small: expected number to be >=0", path: "simpleVariant.loadedQuantity" }])
+  })
+
   it("throws when the form values do not satisfy the catalog schema", () => {
     expect(() => parseCatalogUpsertInput(formValues({ handle: "NOT A SLUG" }))).toThrow()
   })

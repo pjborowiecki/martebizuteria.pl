@@ -71,6 +71,7 @@ type SimpleVariantInput = NonNullable<CatalogUpsertInput["simpleVariant"]>
 export interface ProductVariantPersistRow {
   readonly compareAtPrice: number | undefined
   readonly id: string
+  readonly loadedQuantity: number | undefined
   readonly manageInventory: boolean
   readonly optionValues: Readonly<Record<string, string>>
   readonly price: number
@@ -79,7 +80,13 @@ export interface ProductVariantPersistRow {
   readonly title: string
 }
 
+export interface InventoryAdjustment {
+  readonly quantityChange: number
+  readonly variantId: string
+}
+
 export interface ProductCatalogReplacePayload {
+  readonly inventoryAdjustments: readonly InventoryAdjustment[]
   readonly inventoryRows: (typeof inventory.$inferInsert)[]
   readonly optionOnVariantRows: (typeof optionOnVariant.$inferInsert)[]
   readonly optionRows: (typeof productOption.$inferInsert)[]
@@ -451,6 +458,7 @@ const buildSimpleVariantRows = (simple: SimpleVariantInput, ownedVariantIds: Rea
   {
     compareAtPrice: simple.compareAtPrice === "" ? undefined : requireMoneyMinorUnits(simple.compareAtPrice),
     id: ownedVariantId(simple.id, ownedVariantIds),
+    loadedQuantity: simple.loadedQuantity,
     manageInventory: MANAGE_INVENTORY_ALWAYS,
     optionValues: {},
     price: requireMoneyMinorUnits(simple.price),
@@ -487,6 +495,7 @@ const mergeVariantRows = ({
           ? undefined
           : requireMoneyMinorUnits(existing.compareAtPrice),
       id: ownedVariantId(existing?.id, ownedVariantIds),
+      loadedQuantity: existing?.loadedQuantity,
       manageInventory: MANAGE_INVENTORY_ALWAYS,
       optionValues: combination.optionValues,
       price: requireMoneyMinorUnits(existing?.price ?? ""),
@@ -579,6 +588,11 @@ export const prepareCatalogReplacePayload = (
     variantId: variantRow.id,
     version: 1,
   }))
+  const inventoryAdjustments = variantPersistRows.flatMap(({ id, loadedQuantity, quantity }) =>
+    ownedVariantIds.has(id) && loadedQuantity !== undefined && quantity !== loadedQuantity
+      ? [{ quantityChange: quantity - loadedQuantity, variantId: id }]
+      : [],
+  )
 
   const optionOnVariantRows = variantPersistRows.flatMap((variantRow) =>
     Object.entries(variantRow.optionValues).flatMap(([optionId, valueKey]) => {
@@ -599,6 +613,7 @@ export const prepareCatalogReplacePayload = (
   )
 
   return {
+    inventoryAdjustments,
     inventoryRows,
     optionOnVariantRows,
     optionRows,

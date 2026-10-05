@@ -1,8 +1,12 @@
 import { getTableName } from "drizzle-orm"
-import { getTableConfig } from "drizzle-orm/sqlite-core"
+import { SQLiteSyncDialect, getTableConfig } from "drizzle-orm/sqlite-core"
 import { describe, expect, it } from "vite-plus/test"
 
-import { INVENTORY_DEFAULT_QUANTITY, INVENTORY_DEFAULT_VERSION } from "~/src/modules/inventory/inventory.constants"
+import {
+  INVENTORY_DEFAULT_QUANTITY,
+  INVENTORY_DEFAULT_VERSION,
+  INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK,
+} from "~/src/modules/inventory/inventory.constants"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 
 const config = getTableConfig(inventory)
@@ -79,6 +83,14 @@ describe("inventory table", () => {
     }))
 
     expect(indexes).toStrictEqual([{ columns: ["variant_id"], name: "inventory_variantId_unique", unique: true }])
+  })
+
+  it("never lets the stock available for sale fall below zero", () => {
+    const dialect = new SQLiteSyncDialect()
+
+    expect(config.checks.map((entry) => ({ name: entry.name, sql: dialect.sqlToQuery(entry.value).sql }))).toStrictEqual([
+      { name: INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK, sql: '"inventory"."quantity_available" >= 0' },
+    ])
   })
 })
 
