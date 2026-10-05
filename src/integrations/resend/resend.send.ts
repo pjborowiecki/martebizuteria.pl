@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers"
 
 import { type ReactElement } from "react"
 
-import { type ErrorResponse } from "resend"
+import { type Attachment, type ErrorResponse } from "resend"
 
 import { markEmailSenderUnavailable } from "~/src/integrations/resend/resend.availability.server"
 import { resend } from "~/src/integrations/resend/resend.config"
@@ -30,10 +30,10 @@ const RESEND_TEST_SENDER = /@resend\.dev>?$/iu
 const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): boolean =>
   SENDER_REFUSAL_NAMES.has(name) || (SENDER_REFUSAL_STATUSES.has(statusCode) && !RESEND_TEST_SENDER.test(sender))
 
-const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({ from: sender, react, subject, to })
+    const { error } = await resend.emails.send({ ...message, from: sender })
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -59,6 +59,7 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 }
 
 interface SendEmailOptions {
+  readonly attachments?: Attachment[]
   readonly from?: string
   readonly react: ReactElement
   readonly revealsAccountExistence?: boolean

@@ -41,6 +41,7 @@ class TestEnv implements Env {
   declare IMAGES: Env["IMAGES"]
   declare DB: Env["DB"]
   declare AUDIT_LOG_QUEUE: Env["AUDIT_LOG_QUEUE"]
+  declare ASSETS: Env["ASSETS"]
   declare AUTH_GITHUB_CLIENT_ID: Env["AUTH_GITHUB_CLIENT_ID"]
   declare AUTH_GITHUB_CLIENT_SECRET: Env["AUTH_GITHUB_CLIENT_SECRET"]
   declare AUTH_GOOGLE_CLIENT_ID: Env["AUTH_GOOGLE_CLIENT_ID"]

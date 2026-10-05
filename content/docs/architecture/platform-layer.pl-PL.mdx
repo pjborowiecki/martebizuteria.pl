@@ -12,7 +12,7 @@ description: "Runtime Cloudflare: punkt wejścia Workera, jego bindingi, trzy ś
 | `DB`                        | Baza D1          | Wszystkich 37 tabel, w tym sesji, weryfikacji i liczników limitów żądań            |
 | `IMAGES`                    | Bucket R2        | Zdjęć produktów uploadowanych przez `src/integrations/cloudflare-r2`               |
 | `CACHE`                     | Namespace KV     | Przechowuje pięciominutową flagę nadawcy e-maili (`resend.availability.server.ts`) |
-| `ASSETS`                    | Zasoby statyczne | Wszystkiego z `public/`, w tym samodzielnie hostowanych fontów                     |
+| `ASSETS`                    | Zasoby statyczne | Wszystkiego z `public/`, w tym fontów i PDF formularza odstąpienia od umowy        |
 | `REALTIME_INVALIDATION_HUB` | Durable Object   | Klasy `RealtimeInvalidationHub`, jedna instancja na odbiorcę                       |
 | `AUDIT_LOG_QUEUE`           | Kolejka          | Zdarzeń audytowych, produkowanych i konsumowanych przez ten sam Worker             |
 

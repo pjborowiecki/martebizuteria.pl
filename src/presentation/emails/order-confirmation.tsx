@@ -1,4 +1,4 @@
-import { type JSX } from "react"
+import { type JSX, type ReactNode } from "react"
 
 import { Button, Column, Heading, Hr, Img, Link, Row, Section, Text } from "react-email"
 import { createTranslator } from "use-intl"
@@ -8,6 +8,8 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
+
+import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 
 import type emailMessages from "~/messages/en-US/emails.order-confirmation.json"
 import {
@@ -55,11 +57,86 @@ const OrderItemRow = ({ currency, isFirst, item, locale, viewProductLabel }: Rea
   </Section>
 )
 
+const ContractSection = ({ children, isFirst = false, label }: Readonly<ContractSectionProps>): JSX.Element => (
+  <Section className={isFirst ? "m-0" : DETAIL_GROUP_TOP_MARGIN}>
+    <Text className={DETAIL_LABEL_CLASS}>{label}</Text>
+    {children}
+  </Section>
+)
+
+const OrderContractInformation = ({ legalLinks, locale, messages }: Readonly<OrderContractInformationProps>): JSX.Element => {
+  const t = createTranslator({
+    locale,
+    messages: { emails: { "order-confirmation": messages } },
+    namespace: ORDER_CONFIRMATION_NAMESPACE,
+  })
+
+  return (
+    <>
+      <ContractSection isFirst label={t("contract.label")}>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("contract.body")}</Text>
+      </ContractSection>
+
+      <ContractSection label={t("withdrawal.label")}>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.period")}</Text>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.how", { email: BUSINESS.EMAIL })}</Text>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.returnShipping")}</Text>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.refund")}</Text>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.exception")}</Text>
+      </ContractSection>
+
+      <ContractSection label={t("complaints.label")}>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("complaints.liability")}</Text>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("complaints.how", { email: BUSINESS.EMAIL })}</Text>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("complaints.outOfCourt")}</Text>
+      </ContractSection>
+
+      <ContractSection label={t("documents.label")}>
+        <Text className={CONTRACT_TEXT_CLASS}>
+          <Link className={CONTRACT_LINK_CLASS} href={legalLinks.termsOfService}>
+            {t("documents.termsOfService")}
+          </Link>
+          {DOCUMENT_LINK_SEPARATOR}
+          <Link className={CONTRACT_LINK_CLASS} href={legalLinks.exchangesAndReturns}>
+            {t("documents.exchangesAndReturns")}
+          </Link>
+          {DOCUMENT_LINK_SEPARATOR}
+          <Link className={CONTRACT_LINK_CLASS} href={legalLinks.privacyPolicy}>
+            {t("documents.privacyPolicy")}
+          </Link>
+        </Text>
+      </ContractSection>
+
+      <ContractSection label={t("seller.label")}>
+        <Text className={`${CONTRACT_TEXT_CLASS} whitespace-pre-line`}>
+          {[...BUSINESS_POSTAL_ADDRESS_LINES, t("seller.country")].join("\n")}
+        </Text>
+        <Text className={CONTRACT_TEXT_CLASS}>
+          {t("seller.taxIdLabel")}: {BUSINESS.NIP}
+        </Text>
+        <Text className={CONTRACT_TEXT_CLASS}>
+          {t("seller.emailLabel")}:{" "}
+          <Link className={CONTRACT_LINK_CLASS} href={`mailto:${BUSINESS.EMAIL}`}>
+            {BUSINESS.EMAIL}
+          </Link>
+        </Text>
+        <Text className={CONTRACT_TEXT_CLASS}>
+          {t("seller.phoneLabel")}:{" "}
+          <Link className={CONTRACT_LINK_CLASS} href={SELLER_PHONE_HREF}>
+            {BUSINESS.PHONE}
+          </Link>
+        </Text>
+      </ContractSection>
+    </>
+  )
+}
+
 export const OrderConfirmation = ({
   accountCta,
   currency,
   details,
   items,
+  legalLinks,
   discountTotal,
   locale,
   messages,
@@ -151,6 +228,10 @@ export const OrderConfirmation = ({
 
       <EmailBodyText className="mt-[34px]">{t("signoff")}</EmailBodyText>
       <EmailBodyText className="font-serif italic">{t("sender")}</EmailBodyText>
+
+      <Hr className="border-line mt-[44px] mb-[28px]" />
+
+      <OrderContractInformation legalLinks={legalLinks} locale={locale} messages={messages} />
     </EmailLayout>
   )
 }
@@ -171,6 +252,14 @@ const DETAIL_VALUE_CLASS = "text-ink mt-[6px] mb-0 text-[14px] leading-[22px] wh
 
 const PRODUCT_LINK_CLASS = "text-muted mt-[6px] inline-block text-[12px] leading-[18px] underline"
 
+const CONTRACT_TEXT_CLASS = "text-ink mt-[8px] mb-0 text-[13px] leading-[22px]"
+
+const CONTRACT_LINK_CLASS = "text-ink underline"
+
+const DOCUMENT_LINK_SEPARATOR = " · "
+
+const SELLER_PHONE_HREF = `tel:${BUSINESS.PHONE.replaceAll(" ", "")}`
+
 export interface OrderConfirmationItem {
   readonly imageUrl: string
   readonly price: number
@@ -188,11 +277,18 @@ export interface OrderConfirmationDetails {
   readonly shippingAddress: string
 }
 
+export interface OrderConfirmationLegalLinks {
+  readonly exchangesAndReturns: string
+  readonly privacyPolicy: string
+  readonly termsOfService: string
+}
+
 interface OrderConfirmationProps {
   readonly accountCta: OrderAccountCta
   readonly currency: string
   readonly details: OrderConfirmationDetails
   readonly items: readonly OrderConfirmationItem[]
+  readonly legalLinks: OrderConfirmationLegalLinks
   readonly locale: SupportedLocale
   readonly discountTotal: number
   readonly messages: typeof emailMessages
@@ -202,6 +298,18 @@ interface OrderConfirmationProps {
   readonly taxBasisPoints: number
   readonly taxTotal: number
   readonly total: number
+}
+
+interface ContractSectionProps {
+  readonly children: ReactNode
+  readonly isFirst?: boolean
+  readonly label: string
+}
+
+interface OrderContractInformationProps {
+  readonly legalLinks: OrderConfirmationLegalLinks
+  readonly locale: SupportedLocale
+  readonly messages: typeof emailMessages
 }
 
 interface DetailRowProps {

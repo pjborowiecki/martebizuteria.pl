@@ -13,10 +13,10 @@ const RESEND_TEST_SENDER = /@resend\.dev>?$/iu
 const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): boolean =>
   SENDER_REFUSAL_NAMES.has(name) || (SENDER_REFUSAL_STATUSES.has(statusCode) && !RESEND_TEST_SENDER.test(sender))
 
-const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({ from: sender, react, subject, to })
+    const { error } = await resend.emails.send({ ...message, from: sender })
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -41,6 +41,8 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
   }
 }
 ```
+
+The message, which is `react`, `subject`, `to` and any `attachments`, goes to Resend as it was passed. Only the order confirmation carries an attachment.
 
 Note the contract: **it never throws.** It returns `undefined` on success and the failure message as a string otherwise. The Resend SDK has no timeout of its own, so `sendEmail` gives up after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) and returns `Resend did not answer within 10000 ms`; a stalled Resend cannot hold a signup or a webhook open indefinitely. Every caller is therefore written as `const failure = await sendEmail(...)` followed by a decision about what to do with `failure` — a mail outage cannot roll back an order or a deletion.
 
@@ -135,18 +137,26 @@ This is the most involved template. `stripe.webhooks.tsx` builds it in `buildOrd
 1. The recipient is `session.customer_email ?? session.customer_details?.email`. If there is none, nothing is built and the failure `The Stripe session has no email address` is recorded against the order. Before that, `sendOrderConfirmationEmail` takes the link origin from `session.return_url` with `resolveDeploymentOrigin`. A session without one records `The Stripe session has no return URL to link the email to`, and one on a host no deployment serves records `FORBIDDEN`.
 2. `getCheckoutEmailContext(checkoutId)` loads the addresses, the delivery method, the locker id and the customer note.
 3. `resolveStripePaymentMethodLabel(session, messages)` turns the Stripe payment method into a translated label.
-4. `buildOrderConfirmationDetails(...)` assembles the details block.
+4. `getFulfillmentTimeAttributesByVariantId(variantIds)` reads the `czas-realizacji` attribute each ordered variant's product page shows, and `resolveOrderLineFulfillmentTimes(order.lines, attributes, locale)` labels it in the order's locale. `buildOrderConfirmationDetails({ context, fulfillmentTimes, messages, paymentMethod })` then assembles the details block.
 5. `buildOrderConfirmationItems(order.lines, locale, origin)` formats the line items, linking each one to its product page on `origin`, the address the checkout was made on.
 6. `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })` chooses the button: a signed-in customer gets a link to `/account/orders/<id>`, a guest gets `/auth/sign-up`. `isGuest` is derived from an empty `userId` in the session metadata.
 7. Totals: `itemsSubtotal` from the metadata lines and `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
+8. `buildOrderLegalLinks(origin, locale)` links the terms of service, the exchanges-and-returns page and the privacy policy on `origin`, in the order's locale.
+9. `loadWithdrawalFormAttachment(origin)` in `src/integrations/resend/withdrawal-form.attachment.server.ts` reads `/forms/formularz_zwrotu.pdf` through the Worker's `ASSETS` binding and returns it base64-encoded as a Resend attachment. The binding serves `public/` through Vite in development and the deployed static assets in preview and production, so the PDF is attached everywhere, including a local checkout whose `localhost` address Resend could not fetch. If the form cannot be read, the payload is not built and the order records the failure, such as `The withdrawal form /forms/formularz_zwrotu.pdf could not be read from the static assets: HTTP 404`, instead of sending a confirmation without it.
 
 The helpers are in `src/integrations/resend/order-confirmation.utils.ts`, and `resolveDeliveryMethodLabel` there appends the locker id for a locker delivery.
 
-Delivery promises are copy, not data — see [Shipping and delivery](/docs/features/shipping-and-delivery):
+The email is the confirmation of the contract on a durable medium that Article 21 of the Consumer Rights Act requires, so below the sign-off it repeats what the customer agreed to: the seller's legal name, postal address, NIP, e-mail and phone from `BUSINESS` in `src/presentation/branding/business.ts`, the 14-day right of withdrawal with how to use it, who pays to send the goods back and how the refund is made, the complaint procedure with the out-of-court routes of § 10 of the terms, and the three legal links. The total with VAT and delivery, the payment and delivery method and the delivery time are in the order summary above it. See [Legal pages](/docs/features/legal-pages#the-order-confirmation).
+
+The transit estimate is copy chosen by delivery type, and the fulfilment time is the longest one the ordered products' pages give, stated as a period rather than a reference to those pages, which can change after the order. See [Shipping and delivery](/docs/features/shipping-and-delivery#delivery-in-the-emails):
 
 ```ts
 const deliveryType = context?.deliveryMethod?.type ?? "courier"
-const { estimatedDelivery, fulfillmentTime } = messages.deliveryTiming[deliveryType]
+
+return {
+  estimatedDelivery: messages.estimatedDelivery[deliveryType],
+  fulfillmentTime: describeOrderFulfillmentTime(fulfillmentTimes, messages),
+}
 ```
 
 ## Auditing

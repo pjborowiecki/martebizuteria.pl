@@ -160,14 +160,20 @@ if (method.type === "locker" && lockerId !== undefined && lockerId !== "") {
 }
 ```
 
-Przewidywany czas dostawy i czas realizacji **nie** są nigdzie przechowywane — to treść wyszukiwana po typie dostawy:
+Przewidywany czas dostawy to treść wyszukiwana po typie dostawy. Czas realizacji jest odczytywany z katalogu w chwili budowania e-maila:
 
 ```ts
 const deliveryType = context?.deliveryMethod?.type ?? "courier"
-const { estimatedDelivery, fulfillmentTime } = messages.deliveryTiming[deliveryType]
+
+return {
+  estimatedDelivery: messages.estimatedDelivery[deliveryType],
+  fulfillmentTime: describeOrderFulfillmentTime(fulfillmentTimes, messages),
+}
 ```
 
-Plik `messages/{locale}/emails.order-confirmation.json` ma więc obiekt `deliveryTiming` z kluczami `courier`, `locker` i `in_store`. Zmiana obiecywanego terminu to edycja katalogu komunikatów.
+`getFulfillmentTimeAttributesByVariantId` w `attribute-on-product.server.ts` czyta atrybut `czas-realizacji` (`FULFILLMENT_TIME_ATTRIBUTE_HANDLE`) tak, jak pokazuje go strona produktu: wartość wariantu, gdy wariant ma własne atrybuty, w przeciwnym razie wartość produktu, a przy pustej wartości nic. `resolveOrderLineFulfillmentTimes` w `src/integrations/resend/order-fulfillment-time.utils.ts` zamienia każdą wartość na etykietę w języku zamówienia, a produkt bez niej dostaje `fulfillmentTime.fallback`, czyli 10 dni roboczych. `describeOrderFulfillmentTime` odczytuje z każdej etykiety liczbę i jednostkę (godziny, dni, dni robocze, tygodnie albo miesiące, po polsku lub po angielsku) i podaje najdłuższy czas, a po nim `fulfillmentTime.note`, które mówi, że czas biegnie od przyjęcia zamówienia i że zamówienie jest wysyłane w jednej przesyłce. Gdy etykieta nie ma liczby i jednostki, które da się porównać, na przykład „na zamówienie”, e-mail wymienia zamiast tego każdy produkt z jego własnym czasem. E-mail podaje więc sam termin, czego wymaga art. 21 ustawy o prawach konsumenta, a nie odsyła do stron produktów, które mogą się zmienić po zamówieniu.
+
+Plik `messages/{locale}/emails.order-confirmation.json` ma obiekt `fulfillmentTime` z kluczami `fallback` i `note` oraz obiekt `estimatedDelivery` z kluczami `courier`, `locker` i `in_store`. Oba powtarzają § 7 regulaminu: czas realizacji podany na stronie każdego produktu, a gdy strona go nie podaje, do 10 dni roboczych, przy czym dla całego zamówienia obowiązuje najdłuższy, a potem do 4 dni roboczych doręczenia przez InPost albo odbiór w pracowni po upływie czasu realizacji. Zmiana czasu zastępczego albo czasu doręczenia to edycja katalogu komunikatów i § 7 w `/admin/content`, a zmiana czasu produktu to edycja jego atrybutu `czas-realizacji`. E-mail o wysyłce ma własne `deliveryTiming` w `emails.order-shipped.json`.
 
 ## Czego nie ma
 

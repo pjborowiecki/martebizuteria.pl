@@ -1,5 +1,6 @@
 import type Stripe from "stripe"
 
+import { type OrderLineFulfillmentTime, describeOrderFulfillmentTime } from "~/src/integrations/resend/order-fulfillment-time.utils"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
@@ -11,7 +12,11 @@ import { buildLocalizedUrl } from "~/src/lib/seo"
 import { resolveAssetURL } from "~/src/lib/url"
 
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
-import { type OrderConfirmationDetails, type OrderConfirmationItem } from "~/src/presentation/emails/order-confirmation"
+import {
+  type OrderConfirmationDetails,
+  type OrderConfirmationItem,
+  type OrderConfirmationLegalLinks,
+} from "~/src/presentation/emails/order-confirmation"
 import { ROUTES } from "~/src/routes"
 
 export const formatEmailAddress = (addressRow: EmailAddressRow | null | undefined): string | undefined => {
@@ -54,19 +59,19 @@ const resolveBillingAddress = (context: CheckoutEmailContext | undefined, messag
   return formatEmailAddress(context.billingAddress) ?? messages.unavailable
 }
 
-export const buildOrderConfirmationDetails = (
-  context: CheckoutEmailContext | undefined,
-  paymentMethod: string,
-  messages: OrderConfirmationMessages,
-): OrderConfirmationDetails => {
+export const buildOrderConfirmationDetails = ({
+  context,
+  fulfillmentTimes,
+  messages,
+  paymentMethod,
+}: Readonly<OrderConfirmationDetailsInput>): OrderConfirmationDetails => {
   const deliveryType = context?.deliveryMethod?.type ?? "courier"
-  const { estimatedDelivery, fulfillmentTime } = messages.deliveryTiming[deliveryType]
 
   return {
     billingAddress: resolveBillingAddress(context, messages),
     deliveryMethod: resolveDeliveryMethodLabel(context, messages.unavailable),
-    estimatedDelivery,
-    fulfillmentTime,
+    estimatedDelivery: messages.estimatedDelivery[deliveryType],
+    fulfillmentTime: describeOrderFulfillmentTime(fulfillmentTimes, messages),
     paymentMethod,
     shippingAddress: formatEmailAddress(context?.shippingAddress) ?? messages.unavailable,
   }
@@ -109,6 +114,12 @@ export const buildOrderAccountCta = ({ isGuest, locale, messages, orderId, origi
   }
 }
 
+export const buildOrderLegalLinks = (origin: string, locale: SupportedLocale): OrderConfirmationLegalLinks => ({
+  exchangesAndReturns: buildLocalizedUrl(origin, ROUTES.EXCHANGES_AND_RETURNS, locale),
+  privacyPolicy: buildLocalizedUrl(origin, ROUTES.PRIVACY_POLICY, locale),
+  termsOfService: buildLocalizedUrl(origin, ROUTES.TERMS_OF_SERVICE, locale),
+})
+
 export const resolveStripePaymentMethodLabel = async (
   session: Stripe.Checkout.Session,
   messages: OrderConfirmationMessages,
@@ -149,6 +160,13 @@ export const resolveStripePaymentMethodLabel = async (
 }
 
 type OrderConfirmationMessages = typeof orderConfirmationMessages
+
+interface OrderConfirmationDetailsInput {
+  readonly context: CheckoutEmailContext | undefined
+  readonly fulfillmentTimes: readonly OrderLineFulfillmentTime[]
+  readonly messages: OrderConfirmationMessages
+  readonly paymentMethod: string
+}
 
 export interface OrderAccountCtaInput {
   readonly isGuest: boolean

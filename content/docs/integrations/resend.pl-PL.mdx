@@ -18,10 +18,10 @@ export const resend = new Resend(env.RESEND_API_KEY)
 Plik `resend.send.ts` jest jedynym, który go wywołuje, i nigdy nie rzuca wyjątku:
 
 ```ts
-const deliver = async ({ from, react, revealsAccountExistence, subject, to }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({ from: sender, react, subject, to })
+    const { error } = await resend.emails.send({ ...message, from: sender })
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -48,6 +48,10 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 ```
 
 Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. SDK Resend nie ma limitu czasu i nie przyjmuje sygnału przerwania, więc wywołanie, na które nie przyszła odpowiedź po `SEND_EMAIL_TIMEOUT_MS` (10 sekund), też jest porażką, zgłaszaną jako `Resend did not answer within 10000 ms`. Ta sygnatura niesie ciężar projektowy: awaria poczty nigdy nie może wycofać rejestracji ani zamówienia. Wywołujący logują komunikat albo zapisują go w dzienniku audytu i idą dalej. Domyślne `from` to `M'Arte <${env.RESEND_EMAIL_FROM}>`, zbudowane z `APP_NAME` w `src/presentation/branding/app.ts`.
+
+### Załączniki
+
+`attachments` trafia do Resend bez zmian. Resend potrafi pobrać załącznik z adresu `path`, ale nie z `localhost` ani `127.0.0.1`, więc plik serwowany przez sklep jest czytany w Workerze i wysyłany jako `content` w base64. Tak potwierdzenie zamówienia dołącza wzór formularza odstąpienia od umowy: `loadWithdrawalFormAttachment(origin)` z `withdrawal-form.attachment.server.ts` pobiera `/forms/formularz_zwrotu.pdf` z `env.ASSETS`, bindingu zasobów statycznych, który deklaruje każde środowisko w `wrangler.jsonc`. `vp dev` odpowiada na nie z `public/` przez Vite, a wdrożony Worker z przesłanych zasobów. Formularz, którego binding nie zwróci, kończy się wyjątkiem, a potwierdzenie zostaje zapisane jako nieudane, zamiast wyjść bez niego.
 
 ### Nadawca, który nie może wysłać niczego
 
@@ -124,16 +128,24 @@ W webhooku odrzucony host albo sesja bez `return_url` zatrzymuje tylko próbę w
 
 Plik `order-confirmation.utils.ts` zamienia wiersze bazy na właściwości szablonów:
 
-| Eksport                                                                | Przeznaczenie                                                                              |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `formatEmailAddress(addressRow)`                                       | Jeden wielolinijkowy łańcuch z adresem pocztowym albo `undefined`                          |
-| `resolveDeliveryMethodLabel(context, unavailable)`                     | Etykieta dostawy widziana przez klienta, z zapasowym przetłumaczonym tekstem „niedostępne" |
-| `buildOrderConfirmationDetails(...)`                                   | Cały blok szczegółów: adresy, metoda dostawy, metoda płatności, uwaga klienta              |
-| `buildOrderConfirmationItems(lines, locale, origin)`                   | Wiersze pozycji, ze sformatowanymi cenami i adresami produktów                             |
-| `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })` | Albo „załóż konto i śledź zamówienie", albo link do `/account/orders/<id>`                 |
-| `resolveStripePaymentMethodLabel(session, messages)`                   | Czyta PaymentIntent, aby nazwać metodę, której klient faktycznie użył (karta, BLIK, P24)   |
+| Eksport                                                                                 | Przeznaczenie                                                                                     |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `formatEmailAddress(addressRow)`                                                        | Jeden wielolinijkowy łańcuch z adresem pocztowym albo `undefined`                                 |
+| `resolveDeliveryMethodLabel(context, unavailable)`                                      | Etykieta dostawy widziana przez klienta, z zapasowym przetłumaczonym tekstem „niedostępne"        |
+| `buildOrderConfirmationDetails({ context, fulfillmentTimes, messages, paymentMethod })` | Cały blok szczegółów: adresy, metoda dostawy, metoda płatności, czas doręczenia i czas realizacji |
+| `buildOrderConfirmationItems(lines, locale, origin)`                                    | Wiersze pozycji, ze sformatowanymi cenami i adresami produktów                                    |
+| `buildOrderAccountCta({ isGuest, locale, messages, orderId, origin })`                  | Albo „załóż konto i śledź zamówienie", albo link do `/account/orders/<id>`                        |
+| `buildOrderLegalLinks(origin, locale)`                                                  | Linki do regulaminu, strony wymiany i zwrotów oraz polityki prywatności                           |
+| `resolveStripePaymentMethodLabel(session, messages)`                                    | Czyta PaymentIntent, aby nazwać metodę, której klient faktycznie użył (karta, BLIK, P24)          |
 
-Plik `order-shipped.utils.ts` używa ich ponownie dla e-maila o wysyłce: `buildOrderShippedDetails` wybiera tekst o czasie dostawy według `type` metody (`courier`, `locker` lub `in_store`), a `buildOrderShippedAccountCta` deleguje do `buildOrderAccountCta`.
+Plik `order-fulfillment-time.utils.ts` zamienia atrybut `czas-realizacji` zamówionych produktów na czas realizacji, który podaje potwierdzenie:
+
+| Eksport                                                                  | Przeznaczenie                                                                                                                                                 |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `resolveOrderLineFulfillmentTimes(lines, attributesByVariantId, locale)` | Nazwa każdej pozycji z czasem, który pokazuje strona jej produktu, w języku zamówienia, albo `undefined`, gdy go nie ma                                       |
+| `describeOrderFulfillmentTime(lines, messages)`                          | Najdłuższy z tych czasów, 10 dni roboczych dla pozycji bez czasu, a po nim uwaga, od kiedy biegnie; czas każdego produktu osobno, gdy nie da się ich porównać |
+
+Plik `order-shipped.utils.ts` używa budowników potwierdzenia ponownie dla e-maila o wysyłce: `buildOrderShippedDetails` wybiera tekst o czasie dostawy według `type` metody (`courier`, `locker` lub `in_store`), a `buildOrderShippedAccountCta` deleguje do `buildOrderAccountCta`.
 
 Plik `order-shipped.notification.server.ts` zawiera cały przepływ e-maila o wysyłce. `sendOrderShippedEmail(orderId, origin)` ładuje zamówienie przez `getOrderForShippedEmail`, ustala język z `order.metadata` przez `resolveOrderLocale`, ładuje kontekst zamówienia, gdy istnieje `checkoutId`, renderuje i wysyła. Zwraca wynik zamiast go zapisywać, a brak zamówienia albo pusty adres też jest wynikiem. `notifyOrderShipped(orderId, origin)` przekazuje tę próbę do `recordOrderEmailAttempt` z `order-email.outcome.server.ts`, z którego korzysta też e-mail z potwierdzeniem:
 

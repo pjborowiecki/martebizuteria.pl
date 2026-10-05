@@ -71,7 +71,7 @@ interface ImportMetaEnv {
 
 ## Powiązania
 
-`wrangler.jsonc` daje każdemu środowisku te same pięć powiązań, plus `ASSETS`, zadeklarowane raz na najwyższym poziomie. Różnią się tylko zasoby pod spodem.
+`wrangler.jsonc` daje każdemu środowisku te same sześć powiązań, łącznie z `ASSETS`, więc `wrangler types --env development` deklaruje je w `Env`. Różnią się tylko zasoby pod spodem.
 
 | Powiązanie                  | Typ               | `development`                      | `preview`                          | `production`               |
 | --------------------------- | ----------------- | ---------------------------------- | ---------------------------------- | -------------------------- |
@@ -80,7 +80,7 @@ interface ImportMetaEnv {
 | `IMAGES`                    | R2                | bucket `martebizuteria`, zdalny    | bucket `martebizuteria`, zdalny    | bucket `martebizuteria`    |
 | `AUDIT_LOG_QUEUE`           | Producent kolejki | `martebizuteria-audit-log-preview` | `martebizuteria-audit-log-preview` | `martebizuteria-audit-log` |
 | `REALTIME_INVALIDATION_HUB` | Durable Object    | klasa `RealtimeInvalidationHub`    | ta sama                            | ta sama                    |
-| `ASSETS`                    | Zasoby statyczne  | `./public`, na najwyższym poziomie | to samo                            | to samo                    |
+| `ASSETS`                    | Zasoby statyczne  | `./public`, w każdym środowisku    | to samo                            | to samo                    |
 
 `development` i `preview` wskazują na **tę samą** bazę D1, tę samą przestrzeń KV i tę samą kolejkę. `bun run dev` zapisuje więc do bazy preview, a `vite.config.ts` włącza zdalne powiązania tylko dla tego trybu:
 

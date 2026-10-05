@@ -29,22 +29,48 @@
     "blik": "BLIK",
     "p24": "Przelewy24"
   },
-  "deliveryTiming": {
-    "courier": {
-      "fulfillmentTime": "1–3 dni robocze",
-      "estimatedDelivery": "2–4 dni robocze od wysyłki"
-    },
-    "locker": {
-      "fulfillmentTime": "1–3 dni robocze",
-      "estimatedDelivery": "2–3 dni robocze od wysyłki"
-    },
-    "in_store": {
-      "fulfillmentTime": "1–2 dni robocze",
-      "estimatedDelivery": "Odbiór w pracowni po powiadomieniu"
-    }
+  "fulfillmentTime": {
+    "fallback": "10 dni roboczych",
+    "note": "Liczony od przyjęcia zamówienia. Gdy zamówienie obejmuje kilka produktów, obowiązuje najdłuższy z ich czasów realizacji, a zamówienie wysyłamy w jednej przesyłce."
+  },
+  "estimatedDelivery": {
+    "courier": "Do 4 dni roboczych od wysyłki",
+    "locker": "Do 4 dni roboczych od wysyłki",
+    "in_store": "Gotowe do odbioru w pracowni najpóźniej z upływem czasu realizacji; powiadomimy Cię o tym"
   },
   "closingNote": "Wyślemy kolejną wiadomość, gdy tylko Twoje zamówienie zostanie wysłane. Jeśli masz pytania dotyczące zamówienia, odpowiedz na tę wiadomość — chętnie pomożemy.",
   "signoff": "Z serdecznymi pozdrowieniami,",
   "sender": "Pracownia M'Arte",
+  "contract": {
+    "label": "Twoja umowa",
+    "body": "Ta wiadomość potwierdza umowę sprzedaży zawartą ze Sprzedawcą wskazanym niżej z chwilą przyjęcia Twojego opłaconego zamówienia, na warunkach Regulaminu zaakceptowanego przy składaniu zamówienia. Zachowaj ją jako potwierdzenie zawarcia umowy."
+  },
+  "withdrawal": {
+    "label": "Prawo odstąpienia od umowy",
+    "period": "Jako konsument możesz odstąpić od tej umowy w ciągu 14 dni bez podawania przyczyny. Termin biegnie od dnia objęcia produktów w posiadanie przez Ciebie albo wskazaną przez Ciebie osobę trzecią inną niż przewoźnik. Do zachowania terminu wystarczy wysłanie oświadczenia przed jego upływem.",
+    "how": "Aby odstąpić od umowy, wyślij nam jednoznaczne oświadczenie e-mailem na adres {email} albo listownie na adres Sprzedawcy podany niżej. Możesz skorzystać z wzoru formularza odstąpienia od umowy dołączonego do tej wiadomości, ale nie musisz.",
+    "returnShipping": "Produkty odeślij na ten adres najpóźniej w ciągu 14 dni od odstąpienia od umowy; wystarczy nadać je przed upływem tego terminu. Bezpośredni koszt zwrotu produktów ponosisz Ty.",
+    "refund": "Zwrócimy wszystkie otrzymane od Ciebie płatności, w tym koszt najtańszego zwykłego sposobu dostawy oferowanego przez sklep, najpóźniej w ciągu 14 dni od otrzymania Twojego oświadczenia, przy użyciu takiego samego sposobu płatności, jakiego użyto przy zamówieniu. Możemy wstrzymać się ze zwrotem do chwili otrzymania produktów z powrotem albo dowodu ich odesłania, w zależności od tego, co nastąpi wcześniej.",
+    "exception": "Prawo odstąpienia nie dotyczy produktów wykonanych według Twojej specyfikacji, na przykład w rozmiarze spoza oferty sklepu albo z grawerem uzgodnionym z nami indywidualnie. Obejmuje natomiast rozmiary i wykończenia dostępne do wyboru w sklepie."
+  },
+  "complaints": {
+    "label": "Reklamacje",
+    "liability": "Odpowiadamy za brak zgodności produktów z umową, który ujawni się w ciągu 2 lat od ich dostarczenia. Możesz żądać naprawy albo wymiany, a w przypadkach wskazanych w ustawie obniżyć cenę albo odstąpić od umowy.",
+    "how": "Reklamację wyślij e-mailem na adres {email} albo listownie na adres Sprzedawcy podany niżej, podając numer zamówienia i opis problemu. Koszt przesłania produktu do nas i z powrotem ponosimy my. Odpowiemy w ciągu 14 dni od otrzymania reklamacji, a reklamację pozostawioną w tym terminie bez odpowiedzi uważa się za uznaną.",
+    "outOfCourt": "Możesz też skorzystać z pozasądowych sposobów rozpatrywania reklamacji i dochodzenia roszczeń, co jest dobrowolne i wymaga zgody obu stron: zwrócić się o bezpłatną pomoc do powiatowego lub miejskiego rzecznika konsumentów w starostwie albo urzędzie miasta, złożyć wniosek o pozasądowe rozwiązanie sporu do Wojewódzkiego Inspektoratu Inspekcji Handlowej albo poprosić o pomoc organizację konsumencką, taką jak Federacja Konsumentów lub Stowarzyszenie Konsumentów Polskich. Ich dane kontaktowe oraz rejestr podmiotów uprawnionych do pozasądowego rozwiązywania sporów konsumenckich znajdziesz w serwisie Urzędu Ochrony Konkurencji i Konsumentów: uokik.gov.pl."
+  },
+  "documents": {
+    "label": "Pełne zasady",
+    "termsOfService": "Regulamin",
+    "exchangesAndReturns": "Wymiana i zwroty",
+    "privacyPolicy": "Polityka prywatności"
+  },
+  "seller": {
+    "label": "Sprzedawca",
+    "country": "Polska",
+    "taxIdLabel": "NIP",
+    "emailLabel": "E-mail",
+    "phoneLabel": "Telefon"
+  },
   "tagline": "Ręcznie tworzona biżuteria"
 }

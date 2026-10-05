@@ -56,6 +56,9 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   },
 }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
+vi.mock("~/src/integrations/resend/withdrawal-form.attachment.server", () => ({
+  loadWithdrawalFormAttachment: vi.fn(() => Promise.resolve({ content: "JVBERi0=", filename: "formularz_zwrotu.pdf" })),
+}))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminOrdersInvalidation,
   scheduleProductCatalogInvalidation,
@@ -68,6 +71,9 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderPaymentFailedAudit,
   recordOrderPlacedAudit,
   recordOrderReleasedAudit,
+}))
+vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
+  getFulfillmentTimeAttributesByVariantId: vi.fn(() => Promise.resolve(new Map())),
 }))
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailContext }))
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout }))

@@ -2,6 +2,7 @@ import { type ReactElement } from "react"
 
 import { render } from "react-email"
 
+import { describeOrderFulfillmentTime } from "~/src/integrations/resend/order-fulfillment-time.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
@@ -39,7 +40,6 @@ const PREVIEW_ORDER_CONFIRMATION_DETAILS = {
   billingAddress: "Tak jak adres dostawy",
   deliveryMethod: "Kurier DPD · dostawa do domu",
   estimatedDelivery: "2–4 dni robocze od wysyłki",
-  fulfillmentTime: "1–3 dni robocze",
   paymentMethod: "Karta płatnicza",
   shippingAddress: PREVIEW_ADDRESS,
 }
@@ -60,6 +60,12 @@ const PREVIEW_ORDER_ITEMS = [
     title: "Kolczyki Luna",
   },
 ]
+
+const PREVIEW_LEGAL_LINKS = {
+  exchangesAndReturns: "http://localhost:3000/exchanges-and-returns",
+  privacyPolicy: "http://localhost:3000/privacy-policy",
+  termsOfService: "http://localhost:3000/terms-of-service",
+}
 
 const PREVIEW_GUEST_CTA = {
   href: "http://localhost:3000/auth/sign-up",
@@ -110,23 +116,35 @@ export const EMAIL_PREVIEWS = {
     label: "Newsletter already subscribed",
   },
   "order-confirmation": {
-    element: async (locale) => (
-      <OrderConfirmation
-        accountCta={PREVIEW_GUEST_CTA}
-        currency="PLN"
-        details={PREVIEW_ORDER_CONFIRMATION_DETAILS}
-        items={PREVIEW_ORDER_ITEMS}
-        locale={locale}
-        messages={await loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE })}
-        discountTotal={0}
-        orderNumber={PREVIEW_ORDER_NUMBER}
-        shippingTotal={1900}
-        subtotal={62_700}
-        taxBasisPoints={STANDARD_VAT_BASIS_POINTS}
-        taxTotal={12_080}
-        total={64_600}
-      />
-    ),
+    element: async (locale) => {
+      const messages = await loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE })
+
+      return (
+        <OrderConfirmation
+          accountCta={PREVIEW_GUEST_CTA}
+          currency="PLN"
+          details={{
+            ...PREVIEW_ORDER_CONFIRMATION_DETAILS,
+            estimatedDelivery: messages.estimatedDelivery.courier,
+            fulfillmentTime: describeOrderFulfillmentTime(
+              PREVIEW_ORDER_ITEMS.map((item) => ({ time: undefined, title: item.title })),
+              messages,
+            ),
+          }}
+          items={PREVIEW_ORDER_ITEMS}
+          legalLinks={PREVIEW_LEGAL_LINKS}
+          locale={locale}
+          messages={messages}
+          discountTotal={0}
+          orderNumber={PREVIEW_ORDER_NUMBER}
+          shippingTotal={1900}
+          subtotal={62_700}
+          taxBasisPoints={STANDARD_VAT_BASIS_POINTS}
+          taxTotal={12_080}
+          total={64_600}
+        />
+      )
+    },
     label: "Order confirmation",
   },
   "order-shipped": {
