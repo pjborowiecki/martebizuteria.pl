@@ -23,6 +23,10 @@ vi.mock("@tanstack/react-router", async () => {
 })
 
 import { CheckoutFormProvider, useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+import {
+  loadCheckoutSessionId,
+  wasCheckoutSessionOpenedForAnotherCart,
+} from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 import { CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
 
 afterEach(cleanup)
@@ -339,11 +343,13 @@ describe("CheckoutFormProvider payment session", () => {
     expect(screen.getByTestId("session")).toHaveTextContent("cs_live_1")
   })
 
-  it("remembers the session id across reloads and tabs so the browser keeps one open checkout", async () => {
+  it("remembers the session and the cart it was opened for across reloads and tabs so the browser keeps one open checkout", async () => {
     renderProvider()
 
     await userEvent.click(screen.getByRole("button", { name: "store session" }))
 
-    expect(localStorage.getItem("marte-checkout-session")).toBe("cs_live_1")
+    expect(loadCheckoutSessionId()).toBe("cs_live_1")
+    expect(wasCheckoutSessionOpenedForAnotherCart("cs_live_1", [{ qty: 2, variantId: "v-1" }])).toBe(false)
+    expect(wasCheckoutSessionOpenedForAnotherCart("cs_live_1", [{ qty: 1, variantId: "v-1" }])).toBe(true)
   })
 })

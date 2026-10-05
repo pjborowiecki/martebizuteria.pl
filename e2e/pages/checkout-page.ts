@@ -27,6 +27,14 @@ export class CheckoutPage extends BasePage {
     return this.page.getByRole("complementary")
   }
 
+  paymentStep(): Locator {
+    return this.page.getByText("Choose how you'd like to pay. All transactions are encrypted and securely processed by Stripe.")
+  }
+
+  confirmationHeading(): Locator {
+    return this.page.getByRole("heading", { name: "Order Confirmed" })
+  }
+
   async fillContact(email: string, phone: string): Promise<void> {
     await this.field("Email *").fill(email)
     await this.field("Mobile Phone *").fill(phone)

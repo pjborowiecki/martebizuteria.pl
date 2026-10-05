@@ -10,7 +10,7 @@ import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
-import { saveCheckoutSessionId } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
+import { saveCheckoutSession } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 
 const { getAvailabilityByVariantIds, getHeldLinesByTransactionId, getSellPricesByVariantIds } = vi.hoisted(() => ({
   getAvailabilityByVariantIds: vi.fn<(variantIds: readonly string[]) => Promise<Map<string, number>>>(),
@@ -197,7 +197,7 @@ describe("useCartAvailability for a browser that holds an open checkout", () => 
   })
 
   it("counts the last piece its own checkout holds as available after a reload", async () => {
-    localStorage.setItem("marte-checkout-session", "cs_test_held")
+    saveCheckoutSession({ lines: [{ qty: 1, variantId: "var_last" }], sessionId: "cs_test_held" })
     const { result } = renderCartAvailability()
 
     await waitFor(() => {
@@ -217,7 +217,7 @@ describe("useCartAvailability for a browser that holds an open checkout", () => 
     getHeldLinesByTransactionId.mockReturnValue(recheck.promise)
 
     act(() => {
-      saveCheckoutSessionId("cs_test_opened")
+      saveCheckoutSession({ lines: [{ qty: 1, variantId: "var_last" }], sessionId: "cs_test_opened" })
     })
 
     await waitFor(() => {
@@ -237,7 +237,7 @@ describe("useCartAvailability for a browser that holds an open checkout", () => 
   })
 
   it("does not check again when the shopper comes back from the banking app after paying for the last piece", async () => {
-    localStorage.setItem("marte-checkout-session", "cs_test_held")
+    saveCheckoutSession({ lines: [{ qty: 1, variantId: "var_last" }], sessionId: "cs_test_held" })
     const { queryClient, result } = renderCartAvailability()
     await waitFor(() => {
       expect(result.current.isChecking).toBe(false)

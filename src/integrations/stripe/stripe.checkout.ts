@@ -53,6 +53,16 @@ export const buildCheckoutContact = (values: CheckoutFormSchema): StripeCheckout
   }
 }
 
+export class PaidCheckoutSessionError extends Error {
+  readonly sessionId: string
+
+  constructor(sessionId: string) {
+    super(CHECKOUT_ERROR_CODES.SESSION_COMPLETE)
+    this.name = "PaidCheckoutSessionError"
+    this.sessionId = sessionId
+  }
+}
+
 interface CheckoutSessionChange {
   checkoutValues: CheckoutFormSchema
   items: CartItem[]
@@ -63,7 +73,12 @@ const updateOrRestartCheckoutSession = async ({ checkoutValues, items, sessionId
   try {
     return await updateCheckoutSessionFn({ data: { checkoutValues, items, sessionId } })
   } catch (error) {
-    if (!(error instanceof Error) || error.message !== CHECKOUT_ERROR_CODES.SESSION_CLOSED) {
+    const code = error instanceof Error ? error.message : undefined
+    if (code === CHECKOUT_ERROR_CODES.SESSION_COMPLETE) {
+      throw new PaidCheckoutSessionError(sessionId)
+    }
+
+    if (code !== CHECKOUT_ERROR_CODES.SESSION_CLOSED) {
       throw error
     }
 

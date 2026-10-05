@@ -47,10 +47,16 @@ export const waitForOpenCheckoutSession = async (
   return session
 }
 
-const settleCheckoutSession = async (request: APIRequestContext, sessionId: string, outcome: "complete" | "expire"): Promise<void> => {
+export type SignedStripeEvent = z.infer<typeof signedEventSchema>
+
+const signSettlement = async (request: APIRequestContext, sessionId: string, outcome: "complete" | "expire"): Promise<SignedStripeEvent> => {
   const signing = await request.post(`/__test/stripe/checkout-sessions/${sessionId}/${outcome}`)
   expect(signing.ok()).toBe(true)
-  const { payload, signature } = signedEventSchema.parse(await signing.json())
+
+  return signedEventSchema.parse(await signing.json())
+}
+
+export const deliverStripeEvent = async (request: APIRequestContext, { payload, signature }: SignedStripeEvent): Promise<void> => {
   const webhook = await request.post("/api/webhooks/stripe", {
     data: payload,
     headers: { "content-type": "application/json", "stripe-signature": signature },
@@ -58,8 +64,15 @@ const settleCheckoutSession = async (request: APIRequestContext, sessionId: stri
   expect(webhook.status(), await webhook.text()).toBe(200)
 }
 
+const settleCheckoutSession = async (request: APIRequestContext, sessionId: string, outcome: "complete" | "expire"): Promise<void> => {
+  await deliverStripeEvent(request, await signSettlement(request, sessionId, outcome))
+}
+
 export const completeCheckoutSession = (request: APIRequestContext, sessionId: string): Promise<void> =>
   settleCheckoutSession(request, sessionId, "complete")
+
+export const completeCheckoutSessionBeforeItsWebhook = (request: APIRequestContext, sessionId: string): Promise<SignedStripeEvent> =>
+  signSettlement(request, sessionId, "complete")
 
 export const expireCheckoutSession = (request: APIRequestContext, sessionId: string): Promise<void> =>
   settleCheckoutSession(request, sessionId, "expire")

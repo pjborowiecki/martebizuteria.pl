@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { ZodError } from "zod/v4"
 
+import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 
 import { getOrderConfirmation, getOrderConfirmationQuery } from "../get-order-confirmation"
@@ -37,6 +38,7 @@ const order = vi.hoisted(() => ({
   deliveryMethod: null as { name: string } | null,
   exists: true,
   itemRows: [] as readonly object[],
+  lookupsBeforeRecorded: 0,
   sessionUserId: undefined as string | undefined,
   transactionIds: [] as string[],
   userId: null as string | null,
@@ -67,7 +69,7 @@ vi.mock("~/src/modules/order/order.accessors", () => ({
     order.transactionIds.push(transactionId)
 
     return Promise.resolve(
-      order.exists
+      order.exists && order.transactionIds.length > order.lookupsBeforeRecorded
         ? {
             addresses: order.addresses,
             checkout: { shippingAddress: editedAddress },
@@ -95,6 +97,7 @@ beforeEach(() => {
   order.deliveryMethod = null
   order.exists = true
   order.itemRows = []
+  order.lookupsBeforeRecorded = 0
   order.sessionUserId = undefined
   order.transactionIds = []
   order.userId = null
@@ -232,5 +235,23 @@ describe("getOrderConfirmationQuery", () => {
   it("fetches the confirmation through the server function", async () => {
     await expect(new QueryClient().query(getOrderConfirmationQuery("cs_test_1"))).resolves.toMatchObject({ id: "order-1" })
     expect(order.transactionIds).toStrictEqual(["cs_test_1"])
+  })
+
+  it("asks again until the webhook has written the order, as after a payment the page confirmed first", async () => {
+    order.lookupsBeforeRecorded = 2
+
+    await expect(new QueryClient().query({ ...getOrderConfirmationQuery("cs_test_1"), retryDelay: 0 })).resolves.toMatchObject({
+      id: "order-1",
+    })
+    expect(order.transactionIds).toStrictEqual(["cs_test_1", "cs_test_1", "cs_test_1"])
+  })
+
+  it("gives up once its retries run out without an order, so the page can say it could not load it", async () => {
+    order.exists = false
+
+    await expect(new QueryClient().query({ ...getOrderConfirmationQuery("cs_test_1"), retryDelay: 0 })).rejects.toMatchObject({
+      code: ERROR_CODES.NOT_FOUND,
+    })
+    expect(order.transactionIds).toHaveLength(6)
   })
 })

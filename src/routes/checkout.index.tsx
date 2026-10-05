@@ -11,13 +11,19 @@ import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 import { CheckoutFormSkeleton } from "~/src/presentation/components/custom/checkout/components/checkout-form-skeleton"
 import { CheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form.client"
 import { CheckoutSuccess } from "~/src/presentation/components/custom/checkout/components/checkout-success"
+import { useCheckoutSessionEntry } from "~/src/presentation/components/custom/checkout/hooks/use-checkout-session-entry"
 
 const CheckoutPage = (): JSX.Element => {
   const search = useSearch({
     from: "/checkout",
   })
+  const entryView = useCheckoutSessionEntry(search)
 
-  if (search.success === true) {
+  if (entryView === "checking") {
+    return <CheckoutFormSkeleton />
+  }
+
+  if (entryView === "confirmation") {
     return <CheckoutSuccess sessionId={search.session_id ?? ""} />
   }
 

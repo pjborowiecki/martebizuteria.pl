@@ -166,8 +166,10 @@
       "invalidPrice": "A product in your cart has an invalid price. Please remove it and try again.",
       "productNotFound": "A product in your cart is no longer available.",
       "sessionClosed": "This payment can no longer be changed. Please start the payment again.",
+      "sessionComplete": "This payment has already been completed.",
       "variantNotFound": "A selected option is no longer available.",
       "paymentSessionStale": "Your previous payment attempt is still processing or has expired. We've refreshed the payment — please choose a method and try again.",
+      "paymentNotCompleted": "Your payment was not completed. Choose a payment method to try again.",
       "unknownError": "Something went wrong. Please try again."
     },
     "countries": {

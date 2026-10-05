@@ -143,7 +143,7 @@ Two limiters share the `rate_limit` table.
 })
 ```
 
-The key is `${kind}:${clientAddress(headers)}`, and `clientAddress` reads **only** `cf-connecting-ip`, which a client cannot spoof. If the counter storage fails the request is refused, not admitted. Currently applied to `checkout-create`, `checkout-update`, `create-user-address`, `update-customer-phone` and `revoke-other-customer-sessions`. Limits are per IP; there is no per-account lockout.
+The key is `${kind}:${clientAddress(headers)}`, and `clientAddress` reads **only** `cf-connecting-ip`, which a client cannot spoof. If the counter storage fails the request is refused, not admitted. Currently applied to `checkout-create`, `checkout-update`, `checkout-status`, `create-user-address`, `update-customer-phone` and `revoke-other-customer-sessions`. Limits are per IP; there is no per-account lockout.
 
 Note that `resolveRequestIp` in `src/lib/request.ts` — used for the _audit log_ only — falls back to `x-forwarded-for`, which is client-spoofable. Rate limiting is unaffected because it does not use that helper.
 

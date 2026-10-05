@@ -27,6 +27,7 @@ import { useCheckoutElements as loadStubbedCheckout } from "@stripe/react-stripe
 
 import {
   type CheckoutSession,
+  PaidCheckoutSessionError,
   buildCheckoutContact,
   buildCheckoutLinesFingerprint,
   buildCheckoutValuesFingerprint,
@@ -302,6 +303,16 @@ describe("ensureCheckoutSession with a session the browser holds", () => {
     expect(session.sessionId).toBe("cs_fresh")
     expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({ data: { checkoutValues: shippingValues, items } })
   })
+
+  it("names the held session the server reports paid instead of opening a second payment for it", async () => {
+    updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_COMPLETE))
+
+    const continuing = ensureCheckoutSession({ existing: undefined, heldSessionId: "cs_paid", items, values: shippingValues })
+
+    await expect(continuing).rejects.toBeInstanceOf(PaidCheckoutSessionError)
+    await expect(continuing).rejects.toMatchObject({ message: CHECKOUT_ERROR_CODES.SESSION_COMPLETE, sessionId: "cs_paid" })
+    expect(createCheckoutSessionFn).not.toHaveBeenCalled()
+  })
 })
 
 describe("ensureCheckoutSession with the session on screen", () => {
@@ -484,7 +495,7 @@ describe("resetCheckoutSession", () => {
     expect(session.totals).toBe(QUOTED_TOTALS)
   })
 
-  it("starts a fresh checkout when the session it was paying has expired or completed", async () => {
+  it("starts a fresh checkout when the session it was paying has expired", async () => {
     updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_CLOSED))
     createCheckoutSessionFn.mockResolvedValue(opened("cs_fresh", "cs_secret_fresh"))
 
@@ -492,6 +503,15 @@ describe("resetCheckoutSession", () => {
 
     expect(session).toMatchObject({ clientSecret: "cs_secret_fresh", expiresAt: EXPIRES_AT, sessionId: "cs_fresh" })
     expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({ data: { checkoutValues: shippingValues, items } })
+  })
+
+  it("names the session it was paying when the server reports it paid, instead of opening a fresh checkout", async () => {
+    updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_COMPLETE))
+
+    await expect(
+      resetCheckoutSession({ heldSessionId: undefined, items, session: existingSession, values: shippingValues }),
+    ).rejects.toMatchObject({ name: "PaidCheckoutSessionError", sessionId: "cs_existing" })
+    expect(createCheckoutSessionFn).not.toHaveBeenCalled()
   })
 })
 

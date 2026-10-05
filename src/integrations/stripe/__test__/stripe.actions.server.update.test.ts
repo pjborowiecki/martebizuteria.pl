@@ -150,6 +150,18 @@ describe("handleUpdateCheckoutSession authorization", () => {
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
   })
 
+  it("tells a browser holding another account's paid session that it was paid, as the confirmation page would", async () => {
+    mocked.getRequestSession.mockResolvedValue(null)
+    mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext({ checkoutStatus: "completed", paymentStatus: "succeeded" }))
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: CHECKOUT_ERROR_CODES.SESSION_COMPLETE,
+    })
+    expect(mocked.checkoutSessionsRetrieve).not.toHaveBeenCalled()
+    expectNothingTouched()
+  })
+
   it("continues a guest's checkout as a guest's while nobody is signed in", async () => {
     mocked.getRequestSession.mockResolvedValue(null)
     mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext({ email: "guest@example.com", userId: undefined }))
@@ -305,8 +317,6 @@ describe("handleUpdateCheckoutSession", () => {
 describe("handleUpdateCheckoutSession on a checkout that can no longer change", () => {
   it.each([
     { checkoutStatus: "failed", paymentStatus: "failed" },
-    { checkoutStatus: "completed", paymentStatus: "succeeded" },
-    { checkoutStatus: "pending", paymentStatus: "succeeded" },
     { checkoutStatus: "failed", paymentStatus: "pending" },
   ])("refuses a $checkoutStatus checkout with a $paymentStatus payment before asking Stripe", async (statuses) => {
     mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext(statuses))
@@ -319,12 +329,27 @@ describe("handleUpdateCheckoutSession on a checkout that can no longer change", 
     expectNothingTouched()
   })
 
-  it("refuses a Stripe session that is already complete and leaves its stock to fulfilment", async () => {
+  it.each([
+    { checkoutStatus: "completed", paymentStatus: "succeeded" },
+    { checkoutStatus: "pending", paymentStatus: "succeeded" },
+    { checkoutStatus: "completed", paymentStatus: "refunded" },
+  ])("reports a $checkoutStatus checkout with a $paymentStatus payment as paid, not closed, before asking Stripe", async (statuses) => {
+    mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext(statuses))
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: CHECKOUT_ERROR_CODES.SESSION_COMPLETE,
+    })
+    expect(mocked.checkoutSessionsRetrieve).not.toHaveBeenCalled()
+    expectNothingTouched()
+  })
+
+  it("reports a Stripe session paid before its webhook as paid, not closed, and leaves its stock to fulfilment", async () => {
     mocked.checkoutSessionsRetrieve.mockResolvedValue({ id: "cs_old", metadata: { items: JSON.stringify(HELD_LINES) }, status: "complete" })
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
       code: ERROR_CODES.CONFLICT,
-      message: CHECKOUT_ERROR_CODES.SESSION_CLOSED,
+      message: CHECKOUT_ERROR_CODES.SESSION_COMPLETE,
     })
     expectNothingTouched()
     expect(mocked.releaseCheckout).not.toHaveBeenCalled()
@@ -351,7 +376,7 @@ describe("handleUpdateCheckoutSession on a checkout that can no longer change", 
       code: ERROR_CODES.CONFLICT,
       message: CHECKOUT_ERROR_CODES.SESSION_CLOSED,
     })
-    expect(console.error).toHaveBeenCalledWith("Failed to release expired Checkout Session cs_old before replacing it:", failure)
+    expect(console.error).toHaveBeenCalledWith("Failed to release expired Checkout Session cs_old ahead of its webhook:", failure)
     expect(mocked.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
     expectNothingTouched()
   })

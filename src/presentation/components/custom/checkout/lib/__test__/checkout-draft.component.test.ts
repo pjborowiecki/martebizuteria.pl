@@ -2,16 +2,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
   clearCheckoutDraft,
+  forgetCheckoutSessionId,
   loadCheckoutDraft,
   loadCheckoutSessionId,
   saveCheckoutDraft,
-  saveCheckoutSessionId,
+  saveCheckoutSession,
   subscribeToCheckoutSessionId,
+  wasCheckoutSessionOpenedForAnotherCart,
 } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 
 const STORAGE_KEY = "marte-checkout-draft"
 
 const SESSION_ID_STORAGE_KEY = "marte-checkout-session"
+
+const RING_AND_TWO_EARRINGS = [
+  { qty: 1, variantId: "variant-ring" },
+  { qty: 2, variantId: "variant-earring" },
+]
+
+const openedForRingAndEarrings = (sessionId: string) => ({ lines: RING_AND_TWO_EARRINGS, sessionId })
 
 beforeEach(() => {
   sessionStorage.clear()
@@ -89,24 +98,75 @@ describe("loadCheckoutDraft rejecting untrusted storage", () => {
   })
 })
 
-describe("saveCheckoutSessionId and loadCheckoutSessionId", () => {
+describe("saveCheckoutSession and loadCheckoutSessionId", () => {
   it("reports no open session before one is saved", () => {
     expect(loadCheckoutSessionId()).toBeUndefined()
   })
 
-  it("keeps the open session in storage every tab of the browser shares", () => {
-    saveCheckoutSessionId("cs_test_open")
+  it("keeps the open session and the cart it was opened for in storage every tab of the browser shares", () => {
+    const quoted = { lines: [{ qty: 2, unitPrice: 9900, variantId: "variant-earring" }], sessionId: "cs_test_open" }
+
+    saveCheckoutSession(quoted)
 
     expect(loadCheckoutSessionId()).toBe("cs_test_open")
-    expect(localStorage.getItem(SESSION_ID_STORAGE_KEY)).toBe("cs_test_open")
+    expect(JSON.parse(localStorage.getItem(SESSION_ID_STORAGE_KEY) ?? "null")).toStrictEqual({
+      cart: "variant-earring:2",
+      sessionId: "cs_test_open",
+    })
     expect(sessionStorage.getItem(SESSION_ID_STORAGE_KEY)).toBeNull()
   })
 
   it("replaces the session the browser held with the one that superseded it", () => {
-    saveCheckoutSessionId("cs_test_old")
-    saveCheckoutSessionId("cs_test_new")
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_old"))
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_new"))
 
     expect(loadCheckoutSessionId()).toBe("cs_test_new")
+  })
+})
+
+describe("loadCheckoutSessionId rejecting untrusted storage", () => {
+  it.each([
+    { stored: "cs_test_bare", why: "a bare id an older build stored" },
+    { stored: JSON.stringify({ sessionId: "cs_test_open" }), why: "a session without the cart it was opened for" },
+    { stored: JSON.stringify({ cart: "variant-ring:1", sessionId: 7 }), why: "a session id that is not text" },
+    { stored: "null", why: "a JSON null" },
+  ])("holds no session for $why", ({ stored }) => {
+    localStorage.setItem(SESSION_ID_STORAGE_KEY, stored)
+
+    expect(loadCheckoutSessionId()).toBeUndefined()
+  })
+})
+
+describe("wasCheckoutSessionOpenedForAnotherCart", () => {
+  beforeEach(() => {
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_paid"))
+  })
+
+  it("matches the cart the held session was opened for, in any order and at any price", () => {
+    const sameCart = [
+      { qty: 2, rawPrice: 12_900, variantId: "variant-earring" },
+      { qty: 1, rawPrice: 18_900, variantId: "variant-ring" },
+    ]
+
+    expect(wasCheckoutSessionOpenedForAnotherCart("cs_test_paid", sameCart)).toBe(false)
+  })
+
+  it.each([
+    { cart: [{ qty: 1, variantId: "variant-ring" }], change: "a line was removed" },
+    { cart: [...RING_AND_TWO_EARRINGS, { qty: 1, variantId: "variant-necklace" }], change: "a line was added" },
+    {
+      cart: [
+        { qty: 1, variantId: "variant-ring" },
+        { qty: 3, variantId: "variant-earring" },
+      ],
+      change: "a quantity changed",
+    },
+  ])("tells the held session apart from a cart in which $change", ({ cart }) => {
+    expect(wasCheckoutSessionOpenedForAnotherCart("cs_test_paid", cart)).toBe(true)
+  })
+
+  it("knows nothing against a session the browser does not hold", () => {
+    expect(wasCheckoutSessionOpenedForAnotherCart("cs_test_other", [])).toBe(false)
   })
 })
 
@@ -115,7 +175,7 @@ describe("subscribeToCheckoutSessionId", () => {
     const onChange = vi.fn<() => void>()
     const unsubscribe = subscribeToCheckoutSessionId(onChange)
 
-    saveCheckoutSessionId("cs_test_open")
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_open"))
     unsubscribe()
 
     expect(onChange).toHaveBeenCalledOnce()
@@ -135,9 +195,37 @@ describe("subscribeToCheckoutSessionId", () => {
     const onChange = vi.fn<() => void>()
     subscribeToCheckoutSessionId(onChange)()
 
-    saveCheckoutSessionId("cs_test_open")
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_open"))
     globalThis.dispatchEvent(new StorageEvent("storage", { key: SESSION_ID_STORAGE_KEY }))
 
+    expect(onChange).not.toHaveBeenCalled()
+  })
+})
+
+describe("forgetCheckoutSessionId", () => {
+  it("forgets the held session but keeps the draft, so a fresh checkout starts from the same details", () => {
+    saveCheckoutDraft({ email: "shopper@example.com" })
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_expired"))
+    const onChange = vi.fn<() => void>()
+    const unsubscribe = subscribeToCheckoutSessionId(onChange)
+
+    forgetCheckoutSessionId("cs_test_expired")
+    unsubscribe()
+
+    expect(loadCheckoutSessionId()).toBeUndefined()
+    expect(loadCheckoutDraft()).toStrictEqual({ email: "shopper@example.com" })
+    expect(onChange).toHaveBeenCalledOnce()
+  })
+
+  it("keeps a newer session another tab stored in its place", () => {
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_other_tab"))
+    const onChange = vi.fn<() => void>()
+    const unsubscribe = subscribeToCheckoutSessionId(onChange)
+
+    forgetCheckoutSessionId("cs_test_expired")
+    unsubscribe()
+
+    expect(loadCheckoutSessionId()).toBe("cs_test_other_tab")
     expect(onChange).not.toHaveBeenCalled()
   })
 })
@@ -152,7 +240,7 @@ describe("clearCheckoutDraft", () => {
   })
 
   it("forgets the open session too and tells subscribers it is gone", () => {
-    saveCheckoutSessionId("cs_test_paid")
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_paid"))
     const onChange = vi.fn<() => void>()
     const unsubscribe = subscribeToCheckoutSessionId(onChange)
 
@@ -192,7 +280,7 @@ describe("storage that refuses to cooperate", () => {
 
     expect(loadCheckoutSessionId()).toBeUndefined()
     expect(() => {
-      saveCheckoutSessionId("cs_test_open")
+      saveCheckoutSession(openedForRingAndEarrings("cs_test_open"))
     }).not.toThrow()
     unsubscribe()
 
@@ -206,7 +294,7 @@ describe("storage that refuses to cooperate", () => {
     const onChange = vi.fn<() => void>()
     const unsubscribe = subscribeToCheckoutSessionId(onChange)
 
-    saveCheckoutSessionId("cs_test_open")
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_open"))
     unsubscribe()
 
     expect(loadCheckoutSessionId()).toBeUndefined()
@@ -257,7 +345,7 @@ describe("an environment without web storage", () => {
   it("accepts a save without anywhere to put it", () => {
     expect(() => {
       saveCheckoutDraft({ email: "shopper@example.com" })
-      saveCheckoutSessionId("cs_test_open")
+      saveCheckoutSession(openedForRingAndEarrings("cs_test_open"))
     }).not.toThrow()
   })
 

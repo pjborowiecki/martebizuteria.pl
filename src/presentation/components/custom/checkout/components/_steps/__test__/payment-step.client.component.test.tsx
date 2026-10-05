@@ -93,6 +93,11 @@ vi.mock("~/src/integrations/stripe/stripe.checkout", async () => {
 
   return { ...actual, confirmCheckoutSession, ensureCheckoutSession, resetCheckoutSession }
 })
+vi.mock("~/src/modules/checkout/use-cases/get-checkout-session-status", async () => {
+  const { CHECKOUT_QUERY_KEYS } = await import("~/src/modules/checkout/checkout.constants")
+
+  return { checkoutSessionStatusQuery: (sessionId: string) => ({ queryKey: [...CHECKOUT_QUERY_KEYS.SESSION_STATUS, sessionId] }) }
+})
 vi.mock("~/src/hooks/use-cart-availability", () => ({
   useCartAvailability: () => ({ hasUnavailableItems: false, isChecking: false, issues: [], issuesByVariantId: new Map() }),
 }))
@@ -143,8 +148,10 @@ import { buildCheckoutValuesFingerprint } from "~/src/integrations/stripe/stripe
 
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { useCartStore } from "~/src/modules/cart/cart.store"
+import { CHECKOUT_QUERY_KEYS } from "~/src/modules/checkout/checkout.constants"
 
 import { PaymentStep } from "~/src/presentation/components/custom/checkout/components/_steps/payment-step.client"
+import { saveCheckoutSession } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 
 const PAY_BUTTON = /^Order & Pay/u
 
@@ -395,7 +402,7 @@ describe("PaymentStep prices", () => {
 
 describe("PaymentStep with a session the browser already holds", () => {
   beforeEach(() => {
-    localStorage.setItem("marte-checkout-session", "cs_test_held")
+    saveCheckoutSession({ lines: [{ qty: 1, variantId: "v-1" }], sessionId: "cs_test_held" })
   })
 
   it("continues the held session after a reload instead of opening another", async () => {
@@ -590,9 +597,9 @@ describe("PaymentStep payment form", () => {
 })
 
 describe("PaymentStep confirmation", () => {
-  it("confirms the session and opens the confirmation of the order it paid for", async () => {
+  it("confirms the session, records it as paid and opens the confirmation of the order it paid for", async () => {
     formState.session = session
-    renderWithProviders(<PaymentStep />)
+    const { queryClient } = renderWithProviders(<PaymentStep />)
     await clickPay()
 
     await waitFor(() => {
@@ -604,6 +611,7 @@ describe("PaymentStep confirmation", () => {
 
     expect(options?.to).toBe(".")
     expect(options?.search({ step: 4 })).toStrictEqual({ session_id: "cs_test_1", step: 4, success: true })
+    expect(queryClient.getQueryData([...CHECKOUT_QUERY_KEYS.SESSION_STATUS, "cs_test_1"])).toBe("complete")
   })
 
   it("surfaces an unrecoverable failure message without resetting the session", async () => {

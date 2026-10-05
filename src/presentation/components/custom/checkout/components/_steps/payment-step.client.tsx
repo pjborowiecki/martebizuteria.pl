@@ -14,6 +14,7 @@ import { useLocale, useTranslations } from "use-intl/react"
 import { STRIPE_FONTS, getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
 import {
   type CheckoutSession,
+  PaidCheckoutSessionError,
   buildCheckoutValuesFingerprint,
   confirmCheckoutSession,
   ensureCheckoutSession,
@@ -27,6 +28,7 @@ import { CHECKOUT_ERROR_CODES, getCheckoutErrorKey } from "~/src/integrations/st
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { checkoutSessionStatusQuery } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
@@ -34,7 +36,11 @@ import { Button, buttonVariants } from "~/src/presentation/components/shadcn/but
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
-import { loadCheckoutSessionId } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
+import {
+  forgetCheckoutSessionId,
+  loadCheckoutSessionId,
+  wasCheckoutSessionOpenedForAnotherCart,
+} from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 import { CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
@@ -102,17 +108,37 @@ const PaymentError = ({
   )
 }
 
+const useCheckoutConfirmation = (): ((sessionId: string) => Promise<void>) => {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  return useCallback(
+    async (sessionId: string) => {
+      queryClient.setQueryData(checkoutSessionStatusQuery(sessionId).queryKey, "complete")
+      await navigate({
+        search: (prev) => ({
+          ...prev,
+          session_id: sessionId,
+          success: true,
+        }),
+        to: ".",
+      })
+    },
+    [navigate, queryClient],
+  )
+}
+
 const PaymentForm = ({
   checkoutBlocked,
   onReset,
   onRetry,
 }: Readonly<{
   checkoutBlocked: boolean
-  onReset: () => Promise<void>
+  onReset: () => Promise<PaymentStepDestination>
   onRetry: () => void
 }>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
-  const navigate = useNavigate()
+  const showConfirmation = useCheckoutConfirmation()
   const { checkoutSession, getValues } = useCheckoutForm()
   const checkoutState = useCheckoutElements()
   const [isReady, setIsReady] = useState(false)
@@ -136,8 +162,10 @@ const PaymentForm = ({
 
       if (outcome.status === "error") {
         if (outcome.recoverable) {
-          await onReset()
-          toast.error(t("errors.paymentSessionStale"))
+          const destination = await onReset()
+          if (destination === "payment") {
+            toast.error(t("errors.paymentSessionStale"))
+          }
         } else {
           toast.error(outcome.message === "" ? t("validation.paymentFailed") : outcome.message)
         }
@@ -145,20 +173,13 @@ const PaymentForm = ({
         return
       }
 
-      await navigate({
-        search: (prev) => ({
-          ...prev,
-          session_id: checkoutSession.sessionId,
-          success: true,
-        }),
-        to: ".",
-      })
+      await showConfirmation(checkoutSession.sessionId)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("validation.paymentFailed"))
     } finally {
       setIsProcessing(false)
     }
-  }, [checkout, checkoutSession, getValues, navigate, onReset, t])
+  }, [checkout, checkoutSession, getValues, onReset, showConfirmation, t])
 
   const onFormSubmit = useCallback(
     (event: BaseSyntheticEvent) => {
@@ -238,10 +259,32 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
     setLoadError(false)
     setRetryToken((token) => token + 1)
   }, [setLoadError])
+  const showConfirmation = useCheckoutConfirmation()
+  const handleSessionError = useCallback(
+    async (error: unknown): Promise<PaymentStepDestination> => {
+      if (!(error instanceof PaidCheckoutSessionError)) {
+        reportFailure(error)
 
-  const resetSession = useCallback(async () => {
+        return "payment"
+      }
+
+      if (wasCheckoutSessionOpenedForAnotherCart(error.sessionId, items)) {
+        forgetCheckoutSessionId(error.sessionId)
+        retry()
+
+        return "payment"
+      }
+
+      await showConfirmation(error.sessionId)
+
+      return "confirmation"
+    },
+    [items, reportFailure, retry, showConfirmation],
+  )
+
+  const resetSession = useCallback(async (): Promise<PaymentStepDestination> => {
     if (checkoutSession === undefined || inFlightRef.current) {
-      return
+      return "payment"
     }
     inFlightRef.current = true
     try {
@@ -252,12 +295,14 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
         values: getValues(),
       })
       adoptSession(session)
+
+      return "payment"
     } catch (error) {
-      reportFailure(error)
+      return await handleSessionError(error)
     } finally {
       inFlightRef.current = false
     }
-  }, [adoptSession, checkoutSession, getValues, items, reportFailure])
+  }, [adoptSession, checkoutSession, getValues, handleSessionError, items])
   useEffect(() => {
     if (!isCheckoutComplete(getValues())) {
       onEdit(CHECKOUT_STEP_ID.CONTACT)
@@ -281,13 +326,24 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
         })
         adoptSession(session)
       } catch (error) {
-        reportFailure(error)
+        await handleSessionError(error)
       } finally {
         inFlightRef.current = false
       }
     }
     void run()
-  }, [adoptSession, checkoutSession, getValues, items, onEdit, reportFailure, setLoadError, retryToken, sessionMatches, valuesFingerprint])
+  }, [
+    adoptSession,
+    checkoutSession,
+    getValues,
+    handleSessionError,
+    items,
+    onEdit,
+    setLoadError,
+    retryToken,
+    sessionMatches,
+    valuesFingerprint,
+  ])
 
   const options = useMemo<StripeCheckoutElementsSdkOptions | undefined>(() => {
     if (checkoutSession === undefined || !sessionMatches) {
@@ -404,10 +460,12 @@ interface CheckoutSessionFailure {
   setLoadError: (failed: boolean) => void
 }
 
+type PaymentStepDestination = "confirmation" | "payment"
+
 interface CheckoutSessionLoader {
   checkoutSession: CheckoutSession | undefined
   loadError: boolean
   options: StripeCheckoutElementsSdkOptions | undefined
-  resetSession: () => Promise<void>
+  resetSession: () => Promise<PaymentStepDestination>
   retry: () => void
 }
