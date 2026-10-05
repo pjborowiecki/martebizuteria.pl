@@ -28,7 +28,9 @@ export const getAvailabilityByVariantIds = async (variantIds: readonly string[])
   const rows = await db
     .select({ quantityAvailable: inventory.quantityAvailable, variantId: inventory.variantId })
     .from(inventory)
-    .where(inJsonList(inventory.variantId, variantIds))
+    .innerJoin(productVariant, eq(productVariant.id, inventory.variantId))
+    .innerJoin(product, eq(product.id, productVariant.productId))
+    .where(and(inJsonList(inventory.variantId, variantIds), eq(product.status, PRODUCT_STATUS.PUBLISHED)))
   return new Map(rows.map((row) => [row.variantId, row.quantityAvailable]))
 }
 ```

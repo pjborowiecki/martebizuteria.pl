@@ -220,6 +220,11 @@ const PaymentForm = ({
   )
 }
 
+const UNAVAILABLE_CART_ITEM_ERROR_CODES: ReadonlySet<string> = new Set([
+  CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY,
+  CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND,
+])
+
 const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const queryClient = useQueryClient()
@@ -228,7 +233,7 @@ const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
     (error: unknown) => {
       setLoadError(true)
       toast.error(t(getCheckoutErrorKey(error)))
-      if (error instanceof Error && error.message === CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY) {
+      if (error instanceof Error && UNAVAILABLE_CART_ITEM_ERROR_CODES.has(error.message)) {
         void queryClient.invalidateQueries({ queryKey: CART_QUERY_KEYS.AVAILABILITY })
       }
     },

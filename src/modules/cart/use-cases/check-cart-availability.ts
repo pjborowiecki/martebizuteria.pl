@@ -51,7 +51,8 @@ export const checkCartAvailability = createServerFn({ method: "POST" })
     ])
 
     const issues = lines.flatMap((line) => {
-      const available = (availabilityByVariantId.get(line.variantId) ?? 0) + sumHeldQuantity(heldLines, line.variantId)
+      const stockOnSale = availabilityByVariantId.get(line.variantId)
+      const available = stockOnSale === undefined ? 0 : stockOnSale + sumHeldQuantity(heldLines, line.variantId)
       if (available >= line.qty) {
         return []
       }

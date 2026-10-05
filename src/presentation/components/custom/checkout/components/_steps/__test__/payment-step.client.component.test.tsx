@@ -516,13 +516,17 @@ describe("PaymentStep session failures", () => {
     ).toBeInTheDocument()
   })
 
-  it("checks the cart again when the shop no longer has the stock to hold for it", async () => {
-    ensureCheckoutSession.mockRejectedValue(new Error("INSUFFICIENT_INVENTORY"))
+  it.each([
+    ["the shop no longer has the stock to hold for it", "INSUFFICIENT_INVENTORY", "Some items in your cart are out of stock."],
+    ["the shop took a piece in it off sale", "PRODUCT_NOT_FOUND", "A product in your cart is no longer available."],
+  ])("checks the cart again when %s", async (_reason, code, toastMessage) => {
+    ensureCheckoutSession.mockRejectedValue(new Error(code))
     const invalidateQueries = renderWatchingInvalidations()
 
     await waitFor(() => {
       expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith({ queryKey: CART_QUERY_KEYS.AVAILABILITY })
     })
+    expect(toastError).toHaveBeenCalledWith(toastMessage)
   })
 
   it("falls back to the unknown-error copy for an unrecognised failure and leaves the cart check alone", async () => {

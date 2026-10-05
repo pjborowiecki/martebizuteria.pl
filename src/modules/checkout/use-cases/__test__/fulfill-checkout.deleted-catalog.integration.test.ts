@@ -129,6 +129,18 @@ describe("fulfilling a paid session whose catalogue changed while the customer p
     expect(readOrderLines()).toStrictEqual([SNAPSHOT_WITHOUT_CATALOG])
   })
 
+  it.each(["archived", "draft"])(
+    "creates the order, linked to its product, when the product was made %s while the customer paid",
+    async (status) => {
+      sqlite.prepare("update product set status = ? where id = 'product-onyx'").run(status)
+
+      await expect(fulfillCheckout(paidSession)).resolves.toStrictEqual(expect.any(String))
+
+      expect(readOrderLines()).toStrictEqual([{ ...SNAPSHOT_WITHOUT_CATALOG, product_id: "product-onyx", variant_id: "variant-onyx" }])
+      expect(readStatuses()).toStrictEqual({ checkout: "completed", payment: "succeeded" })
+    },
+  )
+
   it("links the line to its product and variant while they still exist", async () => {
     await fulfillCheckout(paidSession)
 

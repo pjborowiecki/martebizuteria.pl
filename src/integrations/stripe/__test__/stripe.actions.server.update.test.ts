@@ -7,7 +7,7 @@ const mocked = vi.hoisted(() => ({
   ensureStripeCustomer: vi.fn<() => Promise<string>>(),
   getActiveDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
-  getProductsWithInventoryByHandles: vi.fn(),
+  getPublishedProductsWithInventoryByHandles: vi.fn(),
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
   getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
@@ -62,7 +62,7 @@ vi.mock("~/src/modules/payment/payment.accessors", () => ({
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
 }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
-  getProductsWithInventoryByHandles: mocked.getProductsWithInventoryByHandles,
+  getPublishedProductsWithInventoryByHandles: mocked.getPublishedProductsWithInventoryByHandles,
 }))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
@@ -91,7 +91,7 @@ beforeEach(() => {
   mocked.reserveInventoryByVariantLines.mockResolvedValue(undefined)
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
-  mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
+  mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
   mocked.getActiveDeliveryMethodByIdQuery.mockResolvedValue({ id: "dpd-courier", price: 1500 })
   mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_300, client_secret: "cs_secret_1", id: "cs_new" })
   mocked.checkoutSessionsExpire.mockResolvedValue({})
@@ -272,7 +272,7 @@ describe("handleUpdateCheckoutSession", () => {
   })
 
   it("quotes the replacement at the catalogue price the shop charges now", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), price: 26_900 }])])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), price: 26_900 }])])
 
     const result = await handleUpdateCheckoutSession(updateInput())
 
@@ -286,14 +286,14 @@ describe("handleUpdateCheckoutSession", () => {
       status: "open",
     })
     const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1, version: 7 } }
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
 
     await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
   })
 
   it("keeps the old session untouched when the edited cart needs more stock than is left", async () => {
     const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1, version: 7 } }
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
       message: CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY,
@@ -304,7 +304,7 @@ describe("handleUpdateCheckoutSession", () => {
   })
 
   it("does not move the payment when the update is rejected by validation", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([])
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
       message: CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND,

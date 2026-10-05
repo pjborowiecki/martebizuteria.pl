@@ -51,7 +51,7 @@ Rows are created alongside variants: `prepareProductCatalogBatch` in `product.mu
 
 A missing `inventory` row therefore reads as zero rather than as unknown.
 
-`getAvailabilityByVariantIds(variantIds)` in `inventory.accessors.ts` returns a `Map<variantId, quantityAvailable>` for a batch of ids and is what the cart's availability check uses, adding back with `sumHeldQuantity` the units the shopper's own open checkout holds.
+`getAvailabilityByVariantIds(variantIds)` in `inventory.accessors.ts` returns a `Map<variantId, quantityAvailable>` for a batch of ids and is what the cart's availability check uses, adding back with `sumHeldQuantity` the units the shopper's own open checkout holds. It joins `product_variant` and `product` and keeps only `published` products, so the stock of an archived or draft product is never on sale: archiving does not touch `inventory`, and the basket reports such a line as no longer available even while a checkout holds it.
 
 ## Optimistic reservation
 

@@ -37,7 +37,7 @@ import { sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.
 import { reserveInventoryByVariantLines, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
 import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 import { createPendingPayment, getPaymentContextByTransactionId } from "~/src/modules/payment/payment.accessors"
-import { getProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
+import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
@@ -73,7 +73,7 @@ interface SessionLineItem {
   quantity: number
 }
 
-type ResolvedProducts = Awaited<ReturnType<typeof getProductsWithInventoryByHandles>>
+type ResolvedProducts = Awaited<ReturnType<typeof getPublishedProductsWithInventoryByHandles>>
 
 type ResolvedProduct = ResolvedProducts[number]
 
@@ -110,7 +110,7 @@ const resolveVariant = (products: ResolvedProducts, item: CartItem): { product: 
 }
 
 const validateAndCalculateItems = async (items: CartItem[], heldLines: readonly CheckoutReleaseLine[]) => {
-  const products = await getProductsWithInventoryByHandles(items.map((item) => item.slug))
+  const products = await getPublishedProductsWithInventoryByHandles(items.map((item) => item.slug))
 
   return items.map((item) => {
     const { product, variant } = resolveVariant(products, item)

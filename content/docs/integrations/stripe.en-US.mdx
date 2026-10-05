@@ -60,7 +60,7 @@ export const createCheckoutSessionFn = createServerFn({ method: "POST" })
 
 `handleCreateCheckoutSession` in `stripe.actions.server.ts` runs this sequence:
 
-1. `validateAndCalculateItems(items)` loads the products with their inventory by handle, resolves each variant, and **reads the price from the database** — `cartItemSchema` has no `price` or `rawPrice`, so the basket's price never reaches the handler. It rejects with `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (via `isSellPriceCentsValid`) or `INSUFFICIENT_INVENTORY`, and returns each line enriched with `inventoryId` and `currentVersion`.
+1. `validateAndCalculateItems(items)` loads the products with their inventory by handle, only those whose `status` is `published` (`getPublishedProductsWithInventoryByHandles`), resolves each variant, and **reads the price from the database** — `cartItemSchema` has no `price` or `rawPrice`, so the basket's price never reaches the handler. It rejects with `PRODUCT_NOT_FOUND`, which is also the answer for a product archived or returned to draft while it sat in a basket, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (via `isSellPriceCentsValid`) or `INSUFFICIENT_INVENTORY`, and returns each line enriched with `inventoryId` and `currentVersion`.
 2. `resolveShippingCost(deliveryMethodId)` reads the price from `delivery_method`, or zero when no method is chosen.
 3. `resolveCheckoutDiscount(...)` checks `checkoutValues.discountCode` again against the subtotal of the database prices and the shipping cost; a code that does not apply is dropped. See [Discounts](/docs/features/discounts).
 4. `reserveInventoryForItems(validatedItems)` takes the stock, using the optimistic `version` column.

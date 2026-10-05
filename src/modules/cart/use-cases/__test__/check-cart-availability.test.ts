@@ -89,6 +89,25 @@ describe("checkCartAvailability", () => {
     expect(result.issues).toStrictEqual([{ available: 0, qty: 1, variantId: "variant-ghost" }])
   })
 
+  it("reports a line whose product the shop archived or returned to draft as no longer available", async () => {
+    withAvailability([["variant-on-sale", 3]])
+
+    const result = await checkCartAvailability({
+      data: {
+        lines: [
+          { qty: 1, variantId: "variant-on-sale" },
+          { qty: 1, variantId: "variant-withdrawn" },
+        ],
+      },
+    })
+
+    expect(result).toStrictEqual({
+      hasUnavailableItems: true,
+      issues: [{ available: 0, qty: 1, variantId: "variant-withdrawn" }],
+      prices: [],
+    })
+  })
+
   it("keeps only the short lines and preserves their order", async () => {
     withAvailability([
       ["variant-a", 10],
@@ -239,6 +258,17 @@ describe("checkCartAvailability for a browser that holds an open checkout", () =
     const result = await checkCartAvailability({ data: { heldSessionId: "cs_test_held", lines: [{ qty: 2, variantId: "variant-a" }] } })
 
     expect(result.hasUnavailableItems).toBe(false)
+  })
+
+  it("reports a withdrawn product as no longer available even while its own checkout holds the piece", async () => {
+    withAvailability([])
+    payments.heldLines.mockResolvedValue([{ qty: 1, variantId: "variant-withdrawn" }])
+
+    const result = await checkCartAvailability({
+      data: { heldSessionId: "cs_test_held", lines: [{ qty: 1, variantId: "variant-withdrawn" }] },
+    })
+
+    expect(result.issues).toStrictEqual([{ available: 0, qty: 1, variantId: "variant-withdrawn" }])
   })
 
   it("counts nothing extra for a session that no longer holds stock", async () => {

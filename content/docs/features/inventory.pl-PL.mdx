@@ -51,7 +51,7 @@ Wiersze powstają razem z wariantami: `prepareProductCatalogBatch` w `product.mu
 
 Brakujący wiersz `inventory` jest więc odczytywany jako zero, a nie jako wartość nieznana.
 
-`getAvailabilityByVariantIds(variantIds)` w `inventory.accessors.ts` zwraca `Map<variantId, quantityAvailable>` dla partii identyfikatorów i z tego korzysta sprawdzenie dostępności koszyka, doliczając przez `sumHeldQuantity` sztuki trzymane przez otwarty checkout samego kupującego.
+`getAvailabilityByVariantIds(variantIds)` w `inventory.accessors.ts` zwraca `Map<variantId, quantityAvailable>` dla partii identyfikatorów i z tego korzysta sprawdzenie dostępności koszyka, doliczając przez `sumHeldQuantity` sztuki trzymane przez otwarty checkout samego kupującego. Łączy `product_variant` i `product` i zostawia tylko produkty `published`, więc stan produktu zarchiwizowanego albo szkicu nigdy nie jest w sprzedaży: archiwizacja nie zmienia `inventory`, a koszyk zgłasza taką linię jako już niedostępną, nawet gdy trzyma ją checkout.
 
 ## Rezerwacja optymistyczna
 

@@ -26,10 +26,19 @@ const TABLES = [product, productVariant, inventory]
 
 const NOW = 1_770_000_000_000
 
-const insertStockedVariant = (variantId: string, quantityAvailable: number): void => {
+const insertProduct = (productId: string, status: "archived" | "draft" | "published"): void => {
   sqlite
-    .prepare(`insert into product_variant (id, product_id, title, created_at, updated_at) values (?, 'p-ring', 'One size', ?, ?)`)
-    .run(variantId, NOW, NOW)
+    .prepare(
+      `insert into product (id, handle, rank, status, titles, created_at, updated_at)
+       values (?, ?, 0, ?, '{"en-US":"Ring"}', ?, ?)`,
+    )
+    .run(productId, productId, status, NOW, NOW)
+}
+
+const insertStockedVariant = (variantId: string, quantityAvailable: number, productId = "p-ring"): void => {
+  sqlite
+    .prepare(`insert into product_variant (id, product_id, title, created_at, updated_at) values (?, ?, 'One size', ?, ?)`)
+    .run(variantId, productId, NOW, NOW)
   sqlite
     .prepare(`insert into inventory (id, variant_id, quantity_available, created_at, updated_at) values (?, ?, ?, ?, ?)`)
     .run(`inv-${variantId}`, variantId, quantityAvailable, NOW, NOW)
@@ -37,12 +46,7 @@ const insertStockedVariant = (variantId: string, quantityAvailable: number): voi
 
 beforeEach(() => {
   createTables(sqlite, TABLES)
-  sqlite
-    .prepare(
-      `insert into product (id, handle, rank, status, titles, created_at, updated_at)
-       values ('p-ring', 'p-ring', 0, 'published', '{"en-US":"Ring"}', ?, ?)`,
-    )
-    .run(NOW, NOW)
+  insertProduct("p-ring", "published")
 })
 
 afterAll(() => {
@@ -66,5 +70,17 @@ describe("getAvailabilityByVariantIds", () => {
     insertStockedVariant("var-stocked", 3)
 
     await expect(getAvailabilityByVariantIds(["var-stocked", "var-untracked"])).resolves.toStrictEqual(new Map([["var-stocked", 3]]))
+  })
+
+  it("leaves out the stock of a product the shop archived or returned to draft", async () => {
+    insertProduct("p-archived", "archived")
+    insertProduct("p-draft", "draft")
+    insertStockedVariant("var-on-sale", 2)
+    insertStockedVariant("var-archived", 4, "p-archived")
+    insertStockedVariant("var-draft", 6, "p-draft")
+
+    await expect(getAvailabilityByVariantIds(["var-on-sale", "var-archived", "var-draft"])).resolves.toStrictEqual(
+      new Map([["var-on-sale", 2]]),
+    )
   })
 })
