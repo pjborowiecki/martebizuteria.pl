@@ -16,3 +16,9 @@ export const getSellPricesByVariantIds = async (variantIds: readonly string[]): 
 
   return new Map(rows.filter((row) => isSellPriceCentsValid(row.price)).map((row) => [row.variantId, row.price]))
 }
+
+export const getVariantIdsByProductIds = async (productIds: readonly string[]): Promise<string[]> => {
+  const rows = await db.select({ id: productVariant.id }).from(productVariant).where(inJsonList(productVariant.productId, productIds))
+
+  return rows.map((row) => row.id)
+}

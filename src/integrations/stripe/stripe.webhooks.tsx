@@ -28,12 +28,14 @@ import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.con
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
+import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
 import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
 import { getFulfillmentTimeAttributesByVariantId } from "~/src/modules/attribute-on-product/attribute-on-product.server"
 import {
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
+  recordOrderFulfillmentFailedAudit,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit,
   recordOrderPlacedAudit,
@@ -196,6 +198,36 @@ const notifyOrderConfirmed = (
 ): Promise<boolean> =>
   recordOrderEmailAttempt(sendOrderConfirmationEmail(session, order), { label: ORDER_CONFIRMATION_LABEL, orderId: order.orderId })
 
+const formatPaidAmount = (amountMinorUnits: number, currency: string, locale: SupportedLocale): string =>
+  `${formatMinorUnitsAsDecimal(amountMinorUnits, { currencyCode: currency, locale, useGrouping: false })} ${currency}`
+
+const describeUnfulfilledPaidSession = (session: StripeType.Checkout.Session, currency: string, error: unknown): string => {
+  const payer = session.customer_email ?? session.customer_details?.email ?? undefined
+  const facts = [
+    session.amount_total === null ? undefined : formatPaidAmount(session.amount_total, currency, resolveLocale(session)),
+    payer,
+    error instanceof Error ? error.message : String(error),
+  ]
+
+  return facts.filter((fact): fact is string => fact !== undefined).join(" — ")
+}
+
+const createOrderFromPaidSession = async (
+  session: StripeType.Checkout.Session,
+  currency: string,
+): Promise<{ lines: CheckoutFulfillmentLine[]; orderId: string } | undefined> => {
+  const lines = checkoutFulfillmentLinesSchema.parse(JSON.parse(parseMetadataItems(session)))
+  const orderId = await fulfillCheckout({
+    currency,
+    lines,
+    locale: resolveLocale(session),
+    paidAmount: session.amount_total ?? NO_AMOUNT,
+    transactionId: session.id,
+  })
+
+  return orderId === undefined ? undefined : { lines, orderId }
+}
+
 const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session): Promise<void> => {
   if (!FULFILLABLE_PAYMENT_STATUSES.has(session.payment_status)) {
     console.info(`Session ${session.id} completed with payment_status=${session.payment_status}; awaiting async settlement.`)
@@ -203,20 +235,22 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
     return
   }
 
-  const lines = checkoutFulfillmentLinesSchema.parse(JSON.parse(parseMetadataItems(session)))
   const currency = (session.currency ?? STRIPE_CURRENCY).toUpperCase()
   const locale = resolveLocale(session)
-  const orderId = await fulfillCheckout({
-    currency,
-    lines,
-    locale,
-    paidAmount: session.amount_total ?? NO_AMOUNT,
-    transactionId: session.id,
+  const created = await createOrderFromPaidSession(session, currency).catch((error: unknown) => {
+    console.error(`Paid Checkout Session ${session.id} created no order:`, error)
+    recordOrderFulfillmentFailedAudit(session.id, { detail: describeUnfulfilledPaidSession(session, currency, error) })
+    if (errorCode(error) === ERROR_CODES.NOT_FOUND) {
+      return
+    }
+
+    throw error
   })
 
-  if (orderId === undefined) {
+  if (created === undefined) {
     return
   }
+  const { lines, orderId } = created
   console.info(`Checkout converted to Order ${orderId} from session ${session.id}.`)
 
   recordOrderPlacedAudit(orderId, {
@@ -224,7 +258,7 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
     resourceId: orderId,
   })
   recordOrderPaymentCapturedAudit(orderId, {
-    detail: `${formatMinorUnitsAsDecimal(session.amount_total ?? NO_AMOUNT, { currencyCode: currency, locale, useGrouping: false })} ${currency.toUpperCase()}`,
+    detail: formatPaidAmount(session.amount_total ?? NO_AMOUNT, currency, locale),
     resourceId: orderId,
   })
   scheduleAdminOrdersInvalidation()

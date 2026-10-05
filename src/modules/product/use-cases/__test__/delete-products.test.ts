@@ -1,8 +1,16 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { deleteProductRows, recordCatalogProductDeletedAudit, scheduleProductCatalogInvalidation } = vi.hoisted(() => ({
+const {
+  assertVariantsNotHeldByOpenCheckouts,
+  deleteProductRows,
+  getVariantIdsByProductIds,
+  recordCatalogProductDeletedAudit,
+  scheduleProductCatalogInvalidation,
+} = vi.hoisted(() => ({
+  assertVariantsNotHeldByOpenCheckouts: vi.fn<(variantIds: readonly string[]) => Promise<void>>(),
   deleteProductRows: vi.fn<(ids: readonly string[]) => Promise<void>>(),
+  getVariantIdsByProductIds: vi.fn<(productIds: readonly string[]) => Promise<string[]>>(),
   recordCatalogProductDeletedAudit: vi.fn<(target: string) => void>(),
   scheduleProductCatalogInvalidation: vi.fn<() => void>(),
 }))
@@ -11,6 +19,8 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({ scheduleProductCatalogInvalidation }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCatalogProductDeletedAudit }))
 vi.mock("~/src/modules/product/product.mutations", () => ({ deleteProducts: deleteProductRows }))
+vi.mock("~/src/modules/product/product.catalog.server", () => ({ assertVariantsNotHeldByOpenCheckouts }))
+vi.mock("~/src/modules/product-variant/product-variant.accessors", () => ({ getVariantIdsByProductIds }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const state: { validator?: (input: unknown) => unknown } = {}
@@ -41,6 +51,8 @@ const SECOND_ID = "0195b6f4-0000-7000-8000-000000000002"
 beforeEach(() => {
   vi.clearAllMocks()
   deleteProductRows.mockResolvedValue()
+  getVariantIdsByProductIds.mockResolvedValue(["variant-a", "variant-b"])
+  assertVariantsNotHeldByOpenCheckouts.mockResolvedValue()
 })
 
 describe("deleteProducts", () => {
@@ -86,6 +98,24 @@ describe("deleteProducts", () => {
     await expect(deleteProducts({ data: [""] })).rejects.toThrow()
 
     expect(deleteProductRows).not.toHaveBeenCalled()
+  })
+
+  it("checks every variant of the selected products against open checkouts first", async () => {
+    await deleteProducts({ data: [FIRST_ID, SECOND_ID] })
+
+    expect(getVariantIdsByProductIds).toHaveBeenCalledWith([FIRST_ID, SECOND_ID])
+    expect(assertVariantsNotHeldByOpenCheckouts).toHaveBeenCalledWith(["variant-a", "variant-b"])
+    expect(assertVariantsNotHeldByOpenCheckouts).toHaveBeenCalledBefore(deleteProductRows)
+  })
+
+  it("deletes nothing while a customer can still pay for one of the products", async () => {
+    assertVariantsNotHeldByOpenCheckouts.mockRejectedValue(new Error("RESERVED_IN_CHECKOUT"))
+
+    await expect(deleteProducts({ data: [FIRST_ID, SECOND_ID] })).rejects.toThrow("RESERVED_IN_CHECKOUT")
+
+    expect(deleteProductRows).not.toHaveBeenCalled()
+    expect(scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
+    expect(recordCatalogProductDeletedAudit).not.toHaveBeenCalled()
   })
 
   it("neither invalidates nor audits when the deletion fails", async () => {

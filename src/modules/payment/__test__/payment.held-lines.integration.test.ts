@@ -15,7 +15,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
-const { createPendingPayment, getHeldLinesByTransactionId } = await import("~/src/modules/payment/payment.accessors")
+const { createPendingPayment, getHeldLinesByTransactionId, isAnyVariantHeldByOpenCheckout } =
+  await import("~/src/modules/payment/payment.accessors")
 
 const AT = Date.UTC(2026, 9, 5)
 
@@ -82,5 +83,33 @@ describe("getHeldLinesByTransactionId", () => {
     `)
 
     await expect(getHeldLinesByTransactionId("cs_legacy")).resolves.toStrictEqual([])
+  })
+})
+
+describe("isAnyVariantHeldByOpenCheckout", () => {
+  it("finds a variant that a checkout the customer can still pay holds", async () => {
+    await openCheckout("chk-1", "cs_open")
+
+    await expect(isAnyVariantHeldByOpenCheckout(["var-other", "var-chain"])).resolves.toBe(true)
+  })
+
+  it("finds nothing for variants no open checkout holds", async () => {
+    await openCheckout("chk-1", "cs_open")
+
+    await expect(isAnyVariantHeldByOpenCheckout(["var-other"])).resolves.toBe(false)
+    await expect(isAnyVariantHeldByOpenCheckout([])).resolves.toBe(false)
+  })
+
+  it.each([
+    { checkout: "failed", payment: "failed" },
+    { checkout: "completed", payment: "succeeded" },
+    { checkout: "pending", payment: "failed" },
+    { checkout: "failed", payment: "pending" },
+  ])("lets go of the lines once a $checkout checkout has a $payment payment", async ({ checkout, payment }) => {
+    await openCheckout("chk-1", "cs_closed")
+    sqlite.prepare("update checkout set status = ? where id = 'chk-1'").run(checkout)
+    sqlite.prepare("update payment set status = ? where transaction_id = 'cs_closed'").run(payment)
+
+    await expect(isAnyVariantHeldByOpenCheckout(["var-ring", "var-chain"])).resolves.toBe(false)
   })
 })

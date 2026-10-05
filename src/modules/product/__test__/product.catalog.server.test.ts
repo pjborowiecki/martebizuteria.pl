@@ -2,12 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
   assertCatalogSkusAvailable,
+  assertVariantsNotHeldByOpenCheckouts,
   deleteOrphanProductByHandle,
   getNextProductRank,
   prepareProductInsertBatch,
   prepareProductUpdateBatch,
 } from "~/src/modules/product/product.catalog.server"
-import { type ProductCatalogReplacePayload, type ProductOrganizationReplacePayload } from "~/src/modules/product/product.utils"
+import {
+  type ProductCatalogReplacePayload,
+  type ProductOrganizationReplacePayload,
+  prepareCatalogReplacePayload,
+} from "~/src/modules/product/product.utils"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
 
 const database = vi.hoisted(() => ({
@@ -17,6 +22,7 @@ const database = vi.hoisted(() => ({
 
 const access = vi.hoisted(() => ({
   byHandle: vi.fn(),
+  heldByOpenCheckout: vi.fn<(variantIds: readonly string[]) => Promise<boolean>>(),
   maxRank: vi.fn(),
 }))
 
@@ -47,6 +53,8 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
     }),
   },
 }))
+
+vi.mock("~/src/modules/payment/payment.accessors", () => ({ isAnyVariantHeldByOpenCheckout: access.heldByOpenCheckout }))
 
 vi.mock("~/src/modules/product/product.accessors", () => ({
   getMaxRankQuery: { execute: access.maxRank },
@@ -80,6 +88,8 @@ const catalogInput = (overrides: Record<string, unknown> = {}) =>
     ...overrides,
   })
 
+const catalogPayload = (): ProductCatalogReplacePayload => prepareCatalogReplacePayload("product-1", catalogInput(), new Set())
+
 beforeEach(() => {
   vi.resetAllMocks()
   mutations.findTakenSkus.mockResolvedValue([])
@@ -103,6 +113,24 @@ describe("assertCatalogSkusAvailable", () => {
     mutations.findTakenSkus.mockResolvedValue(["SILVER-RING"])
 
     await expect(assertCatalogSkusAvailable(catalogInput())).rejects.toThrow("DUPLICATE_SKU")
+  })
+})
+
+describe("assertVariantsNotHeldByOpenCheckouts", () => {
+  it("lets variants no open checkout holds go", async () => {
+    access.heldByOpenCheckout.mockResolvedValue(false)
+
+    await expect(assertVariantsNotHeldByOpenCheckouts(["variant-1", "variant-2"])).resolves.toBeUndefined()
+    expect(access.heldByOpenCheckout).toHaveBeenCalledWith(["variant-1", "variant-2"])
+  })
+
+  it("refuses while a checkout the customer can still pay holds one of them", async () => {
+    access.heldByOpenCheckout.mockResolvedValue(true)
+
+    await expect(assertVariantsNotHeldByOpenCheckouts(["variant-1"])).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "RESERVED_IN_CHECKOUT",
+    })
   })
 })
 
@@ -195,7 +223,7 @@ describe("prepareProductInsertBatch", () => {
 
 describe("prepareProductUpdateBatch", () => {
   it("updates only the catalog level columns of the product", () => {
-    prepareProductUpdateBatch("product-1", catalogInput(), new Set())
+    prepareProductUpdateBatch("product-1", catalogInput(), catalogPayload())
 
     expect(database.update.mock.calls[0]?.[0]).toStrictEqual({
       descriptions: undefined,
@@ -208,13 +236,13 @@ describe("prepareProductUpdateBatch", () => {
   })
 
   it("drops empty descriptions instead of storing blank locales", () => {
-    prepareProductUpdateBatch("product-1", catalogInput({ descriptions: { "en-US": "  ", "pl-PL": "" } }), new Set())
+    prepareProductUpdateBatch("product-1", catalogInput({ descriptions: { "en-US": "  ", "pl-PL": "" } }), catalogPayload())
 
     expect(database.update.mock.calls[0]?.[0]).toMatchObject({ descriptions: undefined })
   })
 
   it("keeps a description that has content in one locale", () => {
-    prepareProductUpdateBatch("product-1", catalogInput({ descriptions: { "en-US": " Sterling silver ", "pl-PL": "" } }), new Set())
+    prepareProductUpdateBatch("product-1", catalogInput({ descriptions: { "en-US": " Sterling silver ", "pl-PL": "" } }), catalogPayload())
 
     expect(database.update.mock.calls[0]?.[0]).toMatchObject({
       descriptions: { "en-US": "Sterling silver", "pl-PL": "" },
@@ -222,7 +250,7 @@ describe("prepareProductUpdateBatch", () => {
   })
 
   it("updates the product before replacing its organization and catalog rows", () => {
-    expect(prepareProductUpdateBatch("product-1", catalogInput(), new Set())).toStrictEqual([
+    expect(prepareProductUpdateBatch("product-1", catalogInput(), catalogPayload())).toStrictEqual([
       "update product",
       "organization statement",
       "catalog statement",
@@ -230,8 +258,16 @@ describe("prepareProductUpdateBatch", () => {
     expect(mutations.prepareCatalog.mock.calls[0]?.[0]).toBe("product-1")
   })
 
+  it("writes the catalog rows it was handed, so the save drops exactly the variants that were checked", () => {
+    const payload = catalogPayload()
+
+    prepareProductUpdateBatch("product-1", catalogInput(), payload)
+
+    expect(mutations.prepareCatalog).toHaveBeenCalledWith("product-1", payload)
+  })
+
   it("does not re-check skus while preparing the update", () => {
-    prepareProductUpdateBatch("product-1", catalogInput(), new Set())
+    prepareProductUpdateBatch("product-1", catalogInput(), catalogPayload())
 
     expect(mutations.findTakenSkus).not.toHaveBeenCalled()
   })

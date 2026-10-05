@@ -110,6 +110,7 @@
     "deleteSuccessDescription": "Deleted {count} product(s).",
     "deleteErrorTitle": "Couldn't delete",
     "deleteErrorDescription": "The selected products could not be deleted. Please try again.",
+    "deleteReservedInCheckoutDescription": "A customer is paying for one of these products right now, so it cannot be deleted. Archive the product to take it off sale, and delete it only once that payment has finished or expired.",
     "reorderErrorTitle": "Couldn't save order",
     "reorderErrorDescription": "The new product order could not be saved. Please try again."
   },

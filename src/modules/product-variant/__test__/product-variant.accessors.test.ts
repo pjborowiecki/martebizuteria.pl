@@ -3,10 +3,10 @@ import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { MIN_PRICE_CENTS } from "~/src/modules/_core/utils/currency"
-import { getSellPricesByVariantIds } from "~/src/modules/product-variant/product-variant.accessors"
+import { getSellPricesByVariantIds, getVariantIdsByProductIds } from "~/src/modules/product-variant/product-variant.accessors"
 
 const access = vi.hoisted(() => ({
-  selectWhere: vi.fn<(condition: SQL | undefined) => Promise<{ price: number; variantId: string }[]>>(),
+  selectWhere: vi.fn<(condition: SQL | undefined) => Promise<{ id?: string; price?: number; variantId?: string }[]>>(),
 }))
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
@@ -61,5 +61,25 @@ describe("getSellPricesByVariantIds", () => {
     await expect(getSellPricesByVariantIds(["variant-floor", "variant-below", "variant-unpriced"])).resolves.toStrictEqual(
       new Map([["variant-floor", MIN_PRICE_CENTS]]),
     )
+  })
+})
+
+describe("getVariantIdsByProductIds", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("lists every variant of the given products in one query", async () => {
+    access.selectWhere.mockResolvedValue([{ id: "variant-a" }, { id: "variant-b" }])
+
+    await expect(getVariantIdsByProductIds(["product-1", "product-2"])).resolves.toStrictEqual(["variant-a", "variant-b"])
+    const condition = access.selectWhere.mock.calls[0]?.[0]
+    if (condition === undefined) {
+      throw new Error("expected a where condition")
+    }
+    expect(dialect.sqlToQuery(condition)).toMatchObject({
+      params: ['["product-1","product-2"]'],
+      sql: '"product_variant"."product_id" in (select value from json_each(?))',
+    })
   })
 })

@@ -12,6 +12,7 @@ import {
   prepareFulfillCheckoutBatch,
   resolvePendingCheckout,
 } from "~/src/modules/checkout/checkout.utils"
+import { currentOrderNumberPeriod } from "~/src/modules/order/order.number.server"
 import { computeOrderTotals } from "~/src/modules/order/order.totals"
 
 const { queries, sqlite } = await vi.hoisted(async () => {
@@ -52,11 +53,12 @@ const paymentRow = { checkoutId: CHECKOUT_ID, id: "pay_1" }
 
 const pendingCheckoutRow = { email: "buyer@example.com", status: "pending", userId: null }
 
+const fulfillLine = { price: UNIT_PRICE, qty: RESERVED_QTY, title: "Onyx earrings", variantId: VARIANT_ID }
+
 const fulfillInput: FulfillCheckoutInput = {
   currency: "PLN",
-  lines: [{ price: UNIT_PRICE, qty: RESERVED_QTY, title: "Onyx earrings", variantId: VARIANT_ID }],
+  lines: [fulfillLine],
   locale: "pl",
-  orderNumber: "MRT-2026-00001",
   totals: computeOrderTotals({ itemsSubtotal: UNIT_PRICE * RESERVED_QTY, shippingTotal: 0 }),
   transactionId: TRANSACTION_ID,
 }
@@ -70,6 +72,12 @@ const readReservedQuantity = (variantId: string): number =>
   z
     .object({ quantity_reserved: z.number() })
     .parse(sqlite.prepare(`select quantity_reserved from inventory where variant_id = ?`).get(variantId)).quantity_reserved
+
+const readOrderNumbers = (): string[] =>
+  z
+    .array(z.object({ order_number: z.string() }))
+    .parse(sqlite.prepare(`select order_number from "order"`).all())
+    .map((row) => row.order_number)
 
 const readPaymentStatus = (): string =>
   z.object({ status: z.string() }).parse(sqlite.prepare(`select status from payment where transaction_id = ?`).get(TRANSACTION_ID)).status
@@ -101,6 +109,7 @@ beforeEach(() => {
       drop table if exists checkout;
       drop table if exists inventory;
       drop table if exists product_variant;
+      drop table if exists order_number_sequence;
 
       create table checkout (id text primary key, billing_company_name text, billing_nip text, status text not null, email text, user_id text, customer_note text, delivery_method_id text, locker_id text, created_at integer, updated_at integer);
       create table payment (id text primary key, checkout_id text, status text, transaction_id text unique, created_at integer, updated_at integer);
@@ -121,6 +130,7 @@ beforeEach(() => {
         created_at integer, updated_at integer
       );
       create table product_variant (id text primary key, product_id text not null);
+      create table order_number_sequence (period text primary key, last_value integer not null);
       create table inventory (
         id text primary key, variant_id text, quantity_available integer, quantity_reserved integer,
         version integer, created_at integer, updated_at integer
@@ -143,6 +153,15 @@ afterAll(() => {
   sqlite.close()
 })
 
+const pendingContext = (): PendingCheckout => {
+  const context = resolvePendingCheckout(paymentRow, pendingCheckoutRow, TRANSACTION_ID)
+  if (context === undefined) {
+    throw new Error("expected a pending checkout")
+  }
+
+  return context
+}
+
 describe("resolvePendingCheckout", () => {
   it("returns the context while the checkout is still pending", () => {
     expect(resolvePendingCheckout(paymentRow, pendingCheckoutRow, TRANSACTION_ID)).toEqual({
@@ -157,8 +176,20 @@ describe("resolvePendingCheckout", () => {
     expect(resolvePendingCheckout(paymentRow, { ...pendingCheckoutRow, status: "completed" }, TRANSACTION_ID)).toBeUndefined()
   })
 
-  it("refuses when no payment row matches the transaction", () => {
-    expect(resolvePendingCheckout(undefined, pendingCheckoutRow, TRANSACTION_ID)).toBeUndefined()
+  it("reports a paid session that no payment row carries instead of passing it over", () => {
+    expect(() => resolvePendingCheckout(undefined, pendingCheckoutRow, TRANSACTION_ID)).toThrow(
+      "No payment carries Checkout Session cs_test_1",
+    )
+  })
+
+  it("reports a payment whose checkout is gone", () => {
+    expect(() => resolvePendingCheckout(paymentRow, undefined, TRANSACTION_ID)).toThrow("Checkout chk_1 no longer exists")
+  })
+
+  it("reports a paid session whose checkout was already released", () => {
+    expect(() => resolvePendingCheckout(paymentRow, { ...pendingCheckoutRow, status: "failed" }, TRANSACTION_ID)).toThrow(
+      "Checkout chk_1 is failed, so it cannot become an order",
+    )
   })
 })
 
@@ -172,7 +203,6 @@ describe("fulfilment input boundaries", () => {
     const { orderId, statements } = prepareFulfillCheckoutBatch(context, {
       ...fulfillInput,
       lines: [],
-      orderNumber: "MRT-2026-00002",
       totals: computeOrderTotals({ itemsSubtotal: 0, shippingTotal: 0 }),
     })
 
@@ -326,6 +356,41 @@ describe("fulfilment batch", () => {
     await expect(runDrizzleBatch(prepareFulfillCheckoutBatch(second, fulfillInput).statements)).rejects.toThrow()
 
     expect(countOrders()).toBe(1)
+    expect(sqlite.prepare("select last_value from order_number_sequence").all()).toEqual([{ last_value: 1 }])
+  })
+
+  it("numbers the order from the yearly sequence inside the batch that creates it", async () => {
+    sqlite.prepare("insert into order_number_sequence (period, last_value) values (?, 41)").run(currentOrderNumberPeriod())
+
+    await runDrizzleBatch(prepareFulfillCheckoutBatch(pendingContext(), fulfillInput).statements)
+
+    expect(readOrderNumbers()).toStrictEqual([`MRT-${currentOrderNumberPeriod()}-00042`])
+  })
+
+  it("keeps what the customer paid for when the variant was deleted while they paid", async () => {
+    sqlite.prepare("delete from product_variant where id = ?").run(VARIANT_ID)
+
+    const { orderId, statements } = prepareFulfillCheckoutBatch(pendingContext(), {
+      ...fulfillInput,
+      lines: [{ ...fulfillLine, imageUrl: "onyx.webp" }],
+    })
+    await runDrizzleBatch(statements)
+
+    expect(
+      sqlite.prepare("select order_id, product_id, variant_id, title, thumbnail, quantity, unit_price, total from order_item").all(),
+    ).toEqual([
+      {
+        order_id: orderId,
+        product_id: null,
+        quantity: RESERVED_QTY,
+        thumbnail: "onyx.webp",
+        title: "Onyx earrings",
+        total: UNIT_PRICE * RESERVED_QTY,
+        unit_price: UNIT_PRICE,
+        variant_id: null,
+      },
+    ])
+    expect(readCheckoutStatus()).toBe("completed")
   })
 
   it("does not re-complete a checkout that is no longer pending", async () => {
@@ -335,20 +400,11 @@ describe("fulfilment batch", () => {
     }
     sqlite.exec(`update checkout set status = 'cancelled' where id = '${CHECKOUT_ID}'`)
 
-    await runDrizzleBatch(prepareFulfillCheckoutBatch(context, fulfillInput).statements.filter((_statement, index) => index !== 2))
+    await runDrizzleBatch(prepareFulfillCheckoutBatch(context, fulfillInput).statements.filter((_statement, index) => index !== 3))
 
     expect(readCheckoutStatus()).toBe("cancelled")
   })
 })
-
-const pendingContext = (): PendingCheckout => {
-  const context = resolvePendingCheckout(paymentRow, pendingCheckoutRow, TRANSACTION_ID)
-  if (context === undefined) {
-    throw new Error("expected a pending checkout")
-  }
-
-  return context
-}
 
 const businessSnapshot: CheckoutFulfillmentSnapshot = {
   billingAddress: {

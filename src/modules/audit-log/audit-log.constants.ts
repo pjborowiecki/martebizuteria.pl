@@ -77,6 +77,7 @@ export const AUDIT_LOG_ACTION = {
   ORDER_CANCELLED: "order.cancelled",
   ORDER_DISPUTE_CLOSED: "order.dispute_closed",
   ORDER_DISPUTE_OPENED: "order.dispute_opened",
+  ORDER_FULFILLMENT_FAILED: "order.fulfillment_failed",
   ORDER_FULFILLMENT_STARTED: "order.fulfillment_started",
   ORDER_PAYMENT_CAPTURED: "order.payment_captured",
   ORDER_PAYMENT_FAILED: "order.payment_failed",

@@ -6,6 +6,7 @@ import {
   isDuplicateAttributeOnProductMutationError,
   isDuplicateHandleMutationError,
   isDuplicateSkuMutationError,
+  isReservedInCheckoutMutationError,
   resolveProductMutationErrorMessage,
   rethrowProductMutationError,
 } from "~/src/modules/product/product.mutation-errors"
@@ -57,6 +58,18 @@ describe("isDuplicateSkuMutationError", () => {
 
   it("does not fire on an unrelated unique constraint", () => {
     expect(isDuplicateSkuMutationError(new Error("UNIQUE constraint failed: product.handle"))).toBe(false)
+  })
+})
+
+describe("isReservedInCheckoutMutationError", () => {
+  it("recognises the refusal to remove stock a checkout holds, also behind a wrapper", () => {
+    expect(isReservedInCheckoutMutationError(new Error(PRODUCT_ERROR_CODES.RESERVED_IN_CHECKOUT))).toBe(true)
+    expect(isReservedInCheckoutMutationError(nested("Server function failed", PRODUCT_ERROR_CODES.RESERVED_IN_CHECKOUT))).toBe(true)
+  })
+
+  it("does not fire on another product error or a non-error", () => {
+    expect(isReservedInCheckoutMutationError(new Error(PRODUCT_ERROR_CODES.DUPLICATE_SKU))).toBe(false)
+    expect(isReservedInCheckoutMutationError(PRODUCT_ERROR_CODES.RESERVED_IN_CHECKOUT)).toBe(false)
   })
 })
 

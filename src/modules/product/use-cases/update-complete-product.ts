@@ -11,9 +11,14 @@ import { recordCatalogProductUpdatedAudit } from "~/src/modules/audit-log/audit-
 import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.persist.utils"
 import { buildProductAuditChange, extractProductAuditSnapshot } from "~/src/modules/product/product-audit.utils"
 import { getAdminProductDetailByIdQuery, getProductByHandleQuery } from "~/src/modules/product/product.accessors"
-import { assertCatalogSkusAvailable, prepareProductUpdateBatch } from "~/src/modules/product/product.catalog.server"
+import {
+  assertCatalogSkusAvailable,
+  assertVariantsNotHeldByOpenCheckouts,
+  prepareProductUpdateBatch,
+} from "~/src/modules/product/product.catalog.server"
 import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
 import { rethrowProductMutationError } from "~/src/modules/product/product.mutation-errors"
+import { prepareCatalogReplacePayload } from "~/src/modules/product/product.utils"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
 
 const updateProductRecord = async (
@@ -48,8 +53,12 @@ const updateProductRecord = async (
   await assertCatalogSkusAvailable(catalogInput, id)
 
   const ownedVariantIds = new Set(beforeProduct?.variants.map((variant) => variant.id))
+  const catalogPayload = prepareCatalogReplacePayload(id, catalogInput, ownedVariantIds)
+  const keptVariantIds = new Set(catalogPayload.variantRows.map((row) => row.id))
+  await assertVariantsNotHeldByOpenCheckouts([...ownedVariantIds].filter((variantId) => !keptVariantIds.has(variantId)))
+
   await runDrizzleBatch([
-    ...prepareProductUpdateBatch(id, catalogInput, ownedVariantIds),
+    ...prepareProductUpdateBatch(id, catalogInput, catalogPayload),
     ...prepareProductImagesBatch(id, images),
     ...prepareAttributeOnProductBatch(id, attributeRows),
   ])

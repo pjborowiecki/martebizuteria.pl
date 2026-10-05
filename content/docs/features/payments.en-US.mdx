@@ -142,7 +142,7 @@ Then it parses the item lines out of the metadata, calls `fulfillCheckout` and, 
 2. `scheduleAdminOrdersInvalidation()` and `scheduleProductCatalogInvalidation()`.
 3. `notifyOrderConfirmed(session, { currency, lines, orderId })`, which records the outcome on the order and never throws, so a refused confirmation still leaves the webhook answering 200. Its links use the origin of `session.return_url`, the address the checkout was made on, which `resolveDeploymentOrigin` accepts only on a host some deployment serves. Its promise goes to `scheduleBackgroundWork` before it is awaited, so the email finishes even if Stripe stops waiting.
 
-`fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) resolves the pending checkout from the transaction id, loads the checkout's delivery method and discount, computes the totals, allocates an order number and runs one D1 batch built by `prepareFulfillCheckoutBatch`:
+`fulfillCheckout` (`src/modules/checkout/use-cases/fulfill-checkout.server.ts`) resolves the pending checkout from the transaction id, loads the checkout's delivery method and discount, computes the totals and runs one D1 batch built by `prepareFulfillCheckoutBatch`:
 
 ```ts
 statements: [
@@ -151,13 +151,20 @@ statements: [
     .update(checkout)
     .set({ status: "completed" })
     .where(and(eq(checkout.id, context.checkoutId), eq(checkout.status, "pending"))),
-  db.insert(order).values({/* … */}),
+  orderNumberAllocation.statement, // bumps this year's order_number_sequence row
+  db.insert(order).values({ /* …, */ orderNumber: orderNumberAllocation.orderNumber }),
   ...(addressSnapshots.length > 0 ? [db.insert(orderAddress).values(addressSnapshots)] : []),
   ...tail, // orderItem insert + one inventory update per line
 ]
 ```
 
 The `checkout` update is conditional on `status = "pending"`, which makes the whole webhook **idempotent**: a redelivered event finds the checkout already `completed`, `resolvePendingCheckout` returns `undefined` and `fulfillCheckout` returns without writing anything.
+
+The order number comes from `prepareOrderNumberAllocation` (`src/modules/order/order.number.server.ts`): one statement bumps the year's counter in `order_number_sequence` and the order insert reads the number back with a subquery, formatted as `MRT-<year>-<five digits>`. Both are in the batch, so a delivery whose batch fails rolls the counter back with everything else and the retry gets the same number instead of leaving a gap.
+
+Each order line keeps what the customer was charged for: the title, price, quantity and image come from the session metadata. Its `variant_id` and `product_id` are looked up in the same insert (`select id from product_variant where id = …`), so a variant or product deleted while the customer was paying leaves both `null` instead of failing the `order_item.variant_id` foreign key, and the order is still created. The admin normally cannot delete such a variant at all (see [Admin catalog](/docs/features/admin-catalog)); the lookup covers a checkout opened in the moment between that check and the delete.
+
+**When a paid session creates no order**, `handleFulfillCheckoutSession` logs the error and records `order.fulfillment_failed` through `recordOrderFulfillmentFailedAudit` at `error` severity, so it shows in the admin audit log and its errors count. The entry's target is the session id and its detail reads `<amount> — <customer email> — <cause>`. A failure from the code path or the database, including metadata that does not parse, is then rethrown, the route answers `500` and Stripe retries the event. `resolvePendingCheckout` throws `ERROR_CODES.NOT_FOUND` when no payment row carries the session, when its checkout is gone, or when the checkout is in any state but `pending` or `completed` (for example `failed` after a release); a retry cannot change that, so after recording it the handler answers `200`, and the admin refunds the customer in Stripe.
 
 The order totals are derived, not taken from the client: `itemsSubtotal` is the sum of `price * qty` over the metadata lines, `shippingTotal` is the price of the checkout's delivery method, and the discount is recalculated by `calculateDiscountAmount` from the checkout's `discount` row. `computeOrderTotals` (`src/modules/order/order.totals.ts`) caps the discount at items plus shipping and derives `total` and `taxTotal`. `reconcileTotals` compares that total with `session.amount_total`, passed in as `paidAmount`, and only logs an error when they differ.
 

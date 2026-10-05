@@ -6,6 +6,8 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { recordCatalogProductDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { getVariantIdsByProductIds } from "~/src/modules/product-variant/product-variant.accessors"
+import { assertVariantsNotHeldByOpenCheckouts } from "~/src/modules/product/product.catalog.server"
 import { PRODUCT_MUTATION_KEYS } from "~/src/modules/product/product.constants"
 import { deleteProducts as productDeleteProducts } from "~/src/modules/product/product.mutations"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
@@ -14,6 +16,7 @@ export const deleteProducts = createServerFn({ method: "POST" })
   .middleware([authorized({ product: ["delete"] })])
   .validator((input: zod.input<typeof productZodSchemas.deleteInput>) => productZodSchemas.deleteInput.parse(input))
   .handler(async ({ data: ids }) => {
+    await assertVariantsNotHeldByOpenCheckouts(await getVariantIdsByProductIds(ids))
     await productDeleteProducts(ids)
 
     scheduleProductCatalogInvalidation()

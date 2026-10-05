@@ -82,16 +82,16 @@ describe("findPendingCheckoutByTransaction", () => {
     })
   })
 
-  it("ignores a transaction that has no payment row", async () => {
-    await expect(findPendingCheckoutByTransaction("pi_unknown")).resolves.toBeUndefined()
+  it("reports a transaction that has no payment row", async () => {
+    await expect(findPendingCheckoutByTransaction("pi_unknown")).rejects.toThrow("No payment carries Checkout Session pi_unknown")
   })
 
   it("ignores a checkout that was already processed", async () => {
     await expect(findPendingCheckoutByTransaction("pi_done")).resolves.toBeUndefined()
   })
 
-  it("ignores a payment whose checkout no longer exists", async () => {
-    await expect(findPendingCheckoutByTransaction("pi_orphan")).resolves.toBeUndefined()
+  it("reports a payment whose checkout no longer exists", async () => {
+    await expect(findPendingCheckoutByTransaction("pi_orphan")).rejects.toThrow("Checkout chk-missing no longer exists")
   })
 })
 
