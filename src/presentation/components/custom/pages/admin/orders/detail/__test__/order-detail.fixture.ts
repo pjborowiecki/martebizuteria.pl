@@ -31,6 +31,8 @@ export const ORDER_ITEM: Order["adminOrderDetailItem"] = {
 
 export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail"]> = {}): Order["adminOrderDetail"] => ({
   billingAddress: SHIPPING_ADDRESS,
+  billingCompanyName: undefined,
+  billingNip: undefined,
   billingSameAsShipping: true,
   canceledAt: undefined,
   createdAt: PLACED_AT,

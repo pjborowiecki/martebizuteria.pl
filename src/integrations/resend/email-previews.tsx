@@ -44,10 +44,13 @@ const PREVIEW_ADDRESS = "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa\nPL
 
 const PREVIEW_TRACKING_NUMBER = "00259007123456789012"
 
+const PREVIEW_COMPANY_INVOICE = "Pracownia Złotnicza sp. z o.o.\nNIP 5260001246"
+
 const PREVIEW_ORDER_TOTAL = 64_600
 
 const PREVIEW_ORDER_CONFIRMATION_DETAILS = {
   billingAddress: "Tak jak adres dostawy",
+  companyInvoice: PREVIEW_COMPANY_INVOICE,
   deliveryMethod: "Kurier DPD · dostawa do domu",
   estimatedDelivery: "2–4 dni robocze od wysyłki",
   paymentMethod: "Karta płatnicza",
@@ -93,6 +96,7 @@ const PREVIEW_SHOP_ORDER_ITEMS = [
 ]
 
 const PREVIEW_SHOP_ORDER_DETAILS = {
+  companyInvoice: `${PREVIEW_COMPANY_INVOICE}\nul. Mokotowska 12/4\n00-640 Warszawa\nPL`,
   customer: "Anna Kowalska\nanna.kowalska@example.com\n+48 600 123 456",
   customerNote: "Proszę o zapakowanie na prezent.",
   deliveryMethod: PREVIEW_ORDER_CONFIRMATION_DETAILS.deliveryMethod,

@@ -21,6 +21,7 @@ import {
   buildOrderConfirmationDetails,
   buildOrderConfirmationItems,
   buildOrderLegalLinks,
+  describeCompanyInvoice,
   formatEmailAddress,
 } from "~/src/integrations/resend/order-confirmation.utils"
 
@@ -41,6 +42,8 @@ const addressRow = {
 const context: CheckoutEmailContext = {
   billingAddress: null,
   billingAddressId: "address-1",
+  billingCompanyName: null,
+  billingNip: null,
   customerNote: null,
   deliveryMethod: { name: "Kurier", type: "courier" },
   lockerId: null,
@@ -83,6 +86,24 @@ describe("formatEmailAddress", () => {
   })
 })
 
+describe("describeCompanyInvoice", () => {
+  it("puts the company name above its NIP", () => {
+    expect(describeCompanyInvoice({ billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246" }, "NIP")).toBe(
+      "Pracownia Złotnicza sp. z o.o.\nNIP 5260001246",
+    )
+  })
+
+  it("keeps whichever of the two was recorded", () => {
+    expect(describeCompanyInvoice({ billingCompanyName: "Pracownia Złotnicza", billingNip: null }, "NIP")).toBe("Pracownia Złotnicza")
+    expect(describeCompanyInvoice({ billingCompanyName: "  ", billingNip: "5260001246" }, "NIP")).toBe("NIP 5260001246")
+  })
+
+  it("reports no company when the customer did not ask for an invoice", () => {
+    expect(describeCompanyInvoice({ billingCompanyName: null, billingNip: null }, "NIP")).toBeUndefined()
+    expect(describeCompanyInvoice({ billingCompanyName: null, billingNip: " " }, "NIP")).toBeUndefined()
+  })
+})
+
 describe("buildOrderConfirmationDetails", () => {
   const ringWithoutStatedTime = [{ time: undefined, title: "Silver ring" }]
 
@@ -111,9 +132,17 @@ describe("buildOrderConfirmationDetails", () => {
     expect(detailsFor(withBilling).billingAddress).toContain("Kraków")
   })
 
+  it("names the company to invoice from the checkout, and none when the customer did not ask for one", () => {
+    expect(detailsFor({ ...context, billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246" }).companyInvoice).toBe(
+      `Pracownia Złotnicza sp. z o.o.\n${englishCopy.nipLabel} 5260001246`,
+    )
+    expect(detailsFor(context).companyInvoice).toBeUndefined()
+  })
+
   it("falls back to the unavailable copy when the checkout context is missing", () => {
     const details = detailsFor(undefined)
 
+    expect(details.companyInvoice).toBeUndefined()
     expect(details.billingAddress).toBe(englishCopy.unavailable)
     expect(details.deliveryMethod).toBe(englishCopy.unavailable)
     expect(details.shippingAddress).toBe(englishCopy.unavailable)

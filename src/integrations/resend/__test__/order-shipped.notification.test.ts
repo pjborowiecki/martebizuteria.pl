@@ -48,6 +48,8 @@ const addressRow = {
 const checkoutContext = {
   billingAddress: null,
   billingAddressId: null,
+  billingCompanyName: null,
+  billingNip: null,
   customerNote: null,
   deliveryMethod: { name: "Paczkomat", type: "locker" },
   lockerId: "WAW01A",

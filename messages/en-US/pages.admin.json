@@ -683,7 +683,9 @@
     "billing": {
       "title": "Billing Address",
       "sameAsShipping": "Same as shipping",
-      "missing": "No billing address recorded."
+      "missing": "No billing address recorded.",
+      "companyInvoice": "Invoice for a company",
+      "nip": "NIP {nip}"
     },
     "paymentDetails": {
       "title": "Payment",

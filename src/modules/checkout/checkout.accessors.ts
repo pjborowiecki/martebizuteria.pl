@@ -36,6 +36,8 @@ export const getCheckoutEmailContext = (checkoutId: string) =>
   db.query.checkout.findFirst({
     columns: {
       billingAddressId: true,
+      billingCompanyName: true,
+      billingNip: true,
       customerNote: true,
       lockerId: true,
       shippingAddressId: true,

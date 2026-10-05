@@ -175,6 +175,50 @@ describe("checkoutSchema separate billing address", () => {
   })
 })
 
+describe("checkoutSchema company invoice", () => {
+  const COMPANY = { billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246", companyInvoice: true }
+
+  it("does not ask for a company unless the shopper wants an invoice for one", () => {
+    expect(checkoutSchema.parse(VALID_SHIPPING).companyInvoice).toBe(false)
+    expect(issuePaths({ ...VALID_SHIPPING, billingNip: "123" })).toStrictEqual([])
+  })
+
+  it("accepts a company with a NIP whose check digit matches", () => {
+    expect(issuePaths({ ...VALID_SHIPPING, ...COMPANY })).toStrictEqual([])
+  })
+
+  it("requires the company name and the NIP once an invoice is asked for", () => {
+    const values = { ...VALID_SHIPPING, billingCompanyName: "  ", billingNip: "", companyInvoice: true }
+
+    expect(issueMessagesFor(values, "billingCompanyName")).toStrictEqual(["validation.companyNameRequired"])
+    expect(issueMessagesFor(values, "billingNip")).toStrictEqual(["validation.nipRequired"])
+    expect(issueMessagesFor({ ...VALID_SHIPPING, companyInvoice: true }, "billingNip")).toStrictEqual(["validation.nipRequired"])
+  })
+
+  it.each([
+    ["a wrong check digit", "5260001245"],
+    ["a check sum of ten, which no digit can match", "1234567890"],
+    ["nine digits", "526000124"],
+    ["eleven digits", "52600012460"],
+    ["letters", "52600O1246"],
+  ])("rejects a NIP with %s", (_case, billingNip) => {
+    expect(issueMessagesFor({ ...VALID_SHIPPING, ...COMPANY, billingNip }, "billingNip")).toStrictEqual(["validation.nipInvalid"])
+  })
+
+  it.each([["526-000-12-46"], ["526 000 12 46"], ["PL5260001246"], ["pl 526-00-01-246"], [" 5260001246 "]])(
+    "reads %j as the ten digits of the NIP",
+    (billingNip) => {
+      expect(checkoutSchema.parse({ ...VALID_SHIPPING, ...COMPANY, billingNip }).billingNip).toBe("5260001246")
+    },
+  )
+
+  it("trims the company name", () => {
+    expect(checkoutSchema.parse({ ...VALID_SHIPPING, ...COMPANY, billingCompanyName: "  Pracownia  " }).billingCompanyName).toBe(
+      "Pracownia",
+    )
+  })
+})
+
 describe("checkoutSchema locker delivery", () => {
   it("requires a locker id for a locker delivery method", () => {
     expect(issueMessagesFor({ ...VALID_SHIPPING, deliveryMethodType: "locker" }, "lockerId")).toStrictEqual(["validation.lockerIdRequired"])

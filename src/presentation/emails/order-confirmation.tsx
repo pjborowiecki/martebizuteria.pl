@@ -208,6 +208,7 @@ export const OrderConfirmation = ({
         <DetailRow label={t("deliveryMethodLabel")} value={details.deliveryMethod} />
         <DetailRow label={t("shippingAddressLabel")} value={details.shippingAddress} />
         <DetailRow label={t("billingAddressLabel")} value={details.billingAddress} />
+        {details.companyInvoice === undefined ? undefined : <DetailRow label={t("companyInvoiceLabel")} value={details.companyInvoice} />}
         <DetailRow label={t("fulfillmentTimeLabel")} value={details.fulfillmentTime} />
         <DetailRow label={t("estimatedDeliveryLabel")} value={details.estimatedDelivery} />
       </EmailBorderedSection>
@@ -270,6 +271,7 @@ export interface OrderConfirmationItem {
 
 export interface OrderConfirmationDetails {
   readonly billingAddress: string
+  readonly companyInvoice: string | undefined
   readonly deliveryMethod: string
   readonly estimatedDelivery: string
   readonly fulfillmentTime: string

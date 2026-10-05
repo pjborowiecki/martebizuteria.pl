@@ -81,6 +81,9 @@ export const NewOrder = ({
         </EmailDetailRow>
         <EmailDetailRow label={t("deliveryMethodLabel")}>{details.deliveryMethod}</EmailDetailRow>
         <EmailDetailRow label={t("shippingAddressLabel")}>{details.shippingAddress}</EmailDetailRow>
+        {details.companyInvoice === undefined ? undefined : (
+          <EmailDetailRow label={t("companyInvoiceLabel")}>{details.companyInvoice}</EmailDetailRow>
+        )}
         {details.customerNote === undefined ? undefined : (
           <EmailDetailRow label={t("customerNoteLabel")}>{details.customerNote}</EmailDetailRow>
         )}
@@ -101,6 +104,7 @@ type NewOrderItem = Pick<
 >
 
 export interface NewOrderDetails {
+  readonly companyInvoice: string | undefined
   readonly customer: string
   readonly customerNote: string | undefined
   readonly deliveryMethod: string

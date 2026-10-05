@@ -19,6 +19,8 @@
   "deliveryMethodLabel": "Delivery method",
   "shippingAddressLabel": "Shipping address",
   "billingAddressLabel": "Billing address",
+  "companyInvoiceLabel": "Invoice for a company",
+  "nipLabel": "NIP",
   "fulfillmentTimeLabel": "Fulfillment time",
   "estimatedDeliveryLabel": "Estimated delivery",
   "unavailable": "Unavailable",

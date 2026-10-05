@@ -11,6 +11,8 @@
   "customerLabel": "Customer",
   "deliveryMethodLabel": "Delivery method",
   "shippingAddressLabel": "Shipping address",
+  "companyInvoiceLabel": "Invoice for a company",
+  "nipLabel": "NIP",
   "customerNoteLabel": "Customer note",
   "unavailable": "Not provided",
   "adminCta": "Open the order in the admin",

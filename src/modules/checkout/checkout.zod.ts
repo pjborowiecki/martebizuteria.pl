@@ -2,15 +2,14 @@ import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { address } from "~/src/modules/address/address.schema"
+import { COMPANY_NAME_MAX_LENGTH } from "~/src/modules/checkout/checkout.constants"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
-import { isValidCheckoutPhone, refineCheckout } from "~/src/modules/checkout/checkout.validation.utils"
+import { isValidCheckoutPhone, normalizeNip, refineCheckout } from "~/src/modules/checkout/checkout.validation.utils"
 import { DISCOUNT_CODE_MAX_LENGTH } from "~/src/modules/discount/discount.constants"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
   zodInstance: zod,
 })
-
-const COMPANY_NAME_MAX_LENGTH = 256
 
 const baseAddressSchema = createInsertSchema(address)
   .pick({
@@ -39,13 +38,9 @@ const checkoutBaseSchema = baseAddressSchema.extend({
   billingCountryCode: zod.string().optional(),
   billingFirstName: zod.string().optional(),
   billingLastName: zod.string().optional(),
-  billingNip: zod
-    .string()
-    .trim()
-    .regex(/^\d{10}$/u, "validation.nipInvalid")
-    .optional()
-    .or(zod.literal("")),
+  billingNip: zod.string().overwrite(normalizeNip).optional(),
   billingPostalCode: zod.string().optional(),
+  companyInvoice: zod.boolean().default(false),
   deliveryMethod: zod.string().min(1, "validation.deliveryRequired"),
   deliveryMethodType: zod.string().optional(),
   deliveryNotes: zod.string().optional(),

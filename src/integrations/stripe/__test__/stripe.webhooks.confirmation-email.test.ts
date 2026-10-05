@@ -230,6 +230,8 @@ describe("order confirmation email", () => {
     getCheckoutEmailContext.mockResolvedValue({
       billingAddress: null,
       billingAddressId: "adr-1",
+      billingCompanyName: "Pracownia Złotnicza sp. z o.o.",
+      billingNip: "5260001246",
       customerNote: null,
       deliveryMethod: { name: "Paczkomat InPost", type: "locker" },
       lockerId: "WAW01A",
@@ -255,6 +257,7 @@ describe("order confirmation email", () => {
     expect(details.billingAddress).toBe(polishCopy.billingSameAsShipping)
     expect(details.shippingAddress).toBe("Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa\nPL")
     expect(details.estimatedDelivery).toBe(polishCopy.estimatedDelivery.locker)
+    expect(details.companyInvoice).toBe(`Pracownia Złotnicza sp. z o.o.\n${polishCopy.nipLabel} 5260001246`)
   })
 
   it("invites a guest buyer to create an account and links a signed-in buyer to the order", async () => {

@@ -162,18 +162,20 @@ The tracking number and URL come from `order-ship-dialog.tsx`; `shipOrder` trims
 
 `getAdminOrder` (`use-cases/get-admin-order.ts`) requires `order: ["read"]`. `getAdminOrderDetailRow` loads the order with its `order_address` snapshots, its checkout addresses, delivery method and courier, payment and user; then three reads run in parallel: `getAdminOrderItemRows` (lines joined to their variant and product for SKU, handle and thumbnail), `getAdminOrderTimelineRows` (the order's `audit_log` rows) and, when the order has a `user_id`, `getAdminOrderCustomerStats`. `resolveAdminOrderDetailAddresses` (`order.detail.utils.ts`) takes each address from its snapshot, falling back to the checkout's row only when that snapshot is missing, and sets `billingSameAsShipping` by comparing the billing and shipping snapshots field by field. Only an order with no snapshots, placed before they were written, compares the checkout's `billing_address_id` with its `shipping_address_id` instead. When the order does not exist, `getAdminOrderQuery` throws `notFound()`.
 
-| Component                       | Reads from the detail                                                        |
-| ------------------------------- | ---------------------------------------------------------------------------- |
-| `order-meta-strip.tsx`          | `status`, `paymentUiKey`, `fulfillmentUiKey`, `createdAt`, `totalMinorUnits` |
-| `order-fulfillment-tracker.tsx` | `fulfillmentSteps` from `buildAdminOrderFulfillmentSteps`, `canceledAt`      |
-| `order-line-items-card.tsx`     | `items`, `delivery` and the five `*MinorUnits` totals                        |
-| `order-timeline-card.tsx`       | `timeline` from `mapAdminOrderTimeline`                                      |
-| `order-customer-card.tsx`       | `customer` from `buildAdminOrderDetailCustomer`                              |
-| `order-shipping-card.tsx`       | `delivery`, `shippingAddress`, `trackingNumber`, `trackingUrl`               |
-| `order-billing-card.tsx`        | `billingAddress`, `billingSameAsShipping`                                    |
-| `order-payment-card.tsx`        | `payment`, including the refunded amount and date                            |
-| `order-tags-card.tsx`           | `tags` from `resolveAdminOrderDetailTags`                                    |
-| `order-notes-card.tsx`          | `customerNote`                                                               |
+| Component                       | Reads from the detail                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `order-meta-strip.tsx`          | `status`, `paymentUiKey`, `fulfillmentUiKey`, `createdAt`, `totalMinorUnits`  |
+| `order-fulfillment-tracker.tsx` | `fulfillmentSteps` from `buildAdminOrderFulfillmentSteps`, `canceledAt`       |
+| `order-line-items-card.tsx`     | `items`, `delivery` and the five `*MinorUnits` totals                         |
+| `order-timeline-card.tsx`       | `timeline` from `mapAdminOrderTimeline`                                       |
+| `order-customer-card.tsx`       | `customer` from `buildAdminOrderDetailCustomer`                               |
+| `order-shipping-card.tsx`       | `delivery`, `shippingAddress`, `trackingNumber`, `trackingUrl`                |
+| `order-billing-card.tsx`        | `billingAddress`, `billingSameAsShipping`, `billingCompanyName`, `billingNip` |
+| `order-payment-card.tsx`        | `payment`, including the refunded amount and date                             |
+| `order-tags-card.tsx`           | `tags` from `resolveAdminOrderDetailTags`                                     |
+| `order-notes-card.tsx`          | `customerNote`                                                                |
+
+When the customer asked for an invoice for a company at checkout, the billing card adds an "Invoice for a company" block under the address with the company name and `NIP <digits>`, which `getAdminOrder` reads from the order's `billing_company_name` and `billing_nip`. The block shows whichever of the two the order has and is absent when it has neither. The invoice itself is issued outside the app.
 
 The timeline includes the order's email entries. An `email.failed` row reads "Email failed" with a "Failed" badge, and its detail carries the error, for example `Order confirmation → jane@example.com — The example.com domain is not verified…`. Audit rows reach D1 through the queue a few seconds after the action, so `processAuditLogQueueBatch` publishes `ORDER_QUERY_KEYS.ADMIN.ORDERS` whenever a batch carries an action from `ADMIN_ORDER_TIMELINE_ACTIONS`. Every open admin tab then refetches the order list, stats or order page it has on screen and drops the order queries it only has cached, so an open order page shows the new rows without a reload. A failed newsletter or Better Auth email uses the same `email.failed` action and triggers the refetch too. There is no action to resend an order email.
 

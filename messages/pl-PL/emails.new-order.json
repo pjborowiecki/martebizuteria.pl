@@ -11,6 +11,8 @@
   "customerLabel": "Klient",
   "deliveryMethodLabel": "Sposób dostawy",
   "shippingAddressLabel": "Adres dostawy",
+  "companyInvoiceLabel": "Faktura na firmę",
+  "nipLabel": "NIP",
   "customerNoteLabel": "Uwagi klienta",
   "unavailable": "Brak danych",
   "adminCta": "Otwórz zamówienie w panelu",

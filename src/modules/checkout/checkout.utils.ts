@@ -78,6 +78,16 @@ export interface CheckoutFulfillmentSnapshot {
   readonly shippingAddress?: CheckoutAddressSnapshot | null | undefined
 }
 
+interface CompanyInvoiceDetails {
+  readonly billingCompanyName: string | undefined
+  readonly billingNip: string | undefined
+}
+
+const NO_COMPANY_INVOICE: CompanyInvoiceDetails = { billingCompanyName: undefined, billingNip: undefined }
+
+const resolveCompanyInvoice = ({ billingCompanyName, billingNip, companyInvoice }: CheckoutFormSchema): CompanyInvoiceDetails =>
+  companyInvoice === true ? { billingCompanyName, billingNip } : NO_COMPANY_INVOICE
+
 export interface ReleaseCheckoutInput {
   lines: ReleaseLine[]
   transactionId: string
@@ -92,6 +102,7 @@ export const prepareCreateCheckoutBatch = ({
   const checkoutId = crypto.randomUUID()
   const shippingAddressId = crypto.randomUUID()
   const billingAddressId = checkoutValues.sameAsShipping === true ? shippingAddressId : crypto.randomUUID()
+  const companyInvoice = resolveCompanyInvoice(checkoutValues)
 
   const shippingInsert = db.insert(address).values({
     address1: checkoutValues.address1,
@@ -110,8 +121,8 @@ export const prepareCreateCheckoutBatch = ({
 
   const checkoutInsert = db.insert(checkout).values({
     billingAddressId,
-    billingCompanyName: checkoutValues.billingCompanyName,
-    billingNip: checkoutValues.billingNip,
+    billingCompanyName: companyInvoice.billingCompanyName,
+    billingNip: companyInvoice.billingNip,
     customerNote: checkoutValues.deliveryNotes,
     deliveryMethodId: checkoutValues.deliveryMethod,
     discountId,
@@ -277,6 +288,7 @@ export const prepareUpdateCheckoutDeliveryBatch = (
           userId: checkoutValues.saveBillingAddress === true ? context.userId : undefined,
         }
   const statements: [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] = [preparePendingCheckoutAddressUpsert(context.id, shippingValues)]
+  const companyInvoice = resolveCompanyInvoice(checkoutValues)
 
   if (billingValues !== undefined) {
     statements.push(preparePendingCheckoutAddressUpsert(context.id, billingValues))
@@ -297,8 +309,8 @@ export const prepareUpdateCheckoutDeliveryBatch = (
       .update(checkout)
       .set({
         billingAddressId,
-        billingCompanyName: checkoutValues.billingCompanyName ?? sql`NULL`,
-        billingNip: checkoutValues.billingNip ?? sql`NULL`,
+        billingCompanyName: companyInvoice.billingCompanyName ?? sql`NULL`,
+        billingNip: companyInvoice.billingNip ?? sql`NULL`,
         customerNote: checkoutValues.deliveryNotes,
         deliveryMethodId: checkoutValues.deliveryMethod,
         discountId: discountId ?? sql`NULL`,

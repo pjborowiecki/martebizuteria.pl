@@ -264,6 +264,8 @@ const detailAddress = (overrides: Record<string, unknown> = {}) => ({
 
 const detailRow = (overrides: Record<string, unknown> = {}) => ({
   addresses: [],
+  billingCompanyName: null,
+  billingNip: null,
   canceledAt: null,
   checkout: {
     billingAddress: detailAddress({ address1: "ul. Firmowa 2" }),
@@ -402,6 +404,28 @@ describe("getAdminOrder addresses", () => {
 
     expect(detail?.shippingAddress).toBeUndefined()
     expect(detail?.billingAddress).toBeUndefined()
+  })
+})
+
+describe("getAdminOrder company invoice", () => {
+  it("shows the company and NIP the customer asked to be invoiced", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(
+      detailRow({ billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246" }),
+    )
+
+    await expect(fetchAdminOrder()).resolves.toMatchObject({
+      billingCompanyName: "Pracownia Złotnicza sp. z o.o.",
+      billingNip: "5260001246",
+    })
+  })
+
+  it("leaves both out of an order without an invoice request", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow())
+
+    const detail = await fetchAdminOrder()
+
+    expect(detail?.billingCompanyName).toBeUndefined()
+    expect(detail?.billingNip).toBeUndefined()
   })
 })
 

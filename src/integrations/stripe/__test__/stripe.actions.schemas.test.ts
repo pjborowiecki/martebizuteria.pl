@@ -132,6 +132,18 @@ describe("createCheckoutSessionInputSchema", () => {
     ])
   })
 
+  it("hands the server the ten digits of a company's NIP and refuses one whose check digit is wrong", () => {
+    const company = { billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "526-000-12-46", companyInvoice: true }
+    const parsed = createCheckoutSessionInputSchema.parse({ checkoutValues: { ...checkoutValues, ...company }, items: [cartItem] })
+    const refused = createCheckoutSessionInputSchema.safeParse({
+      checkoutValues: { ...checkoutValues, ...company, billingNip: "5260001245" },
+      items: [cartItem],
+    })
+
+    expect(parsed.checkoutValues).toMatchObject({ billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246" })
+    expect(firstIssue(refused)).toMatchObject({ message: "validation.nipInvalid", path: ["checkoutValues", "billingNip"] })
+  })
+
   it("does not accept a session id it has no session to update", () => {
     const parsed = createCheckoutSessionInputSchema.parse({ checkoutValues, items: [cartItem], sessionId: "cs_test_1" })
 

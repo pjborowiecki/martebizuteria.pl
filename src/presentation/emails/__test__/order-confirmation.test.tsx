@@ -21,6 +21,7 @@ const ORDER_NUMBER = "MRT-2026-00042"
 
 const details: OrderConfirmationDetails = {
   billingAddress: "Same as shipping",
+  companyInvoice: undefined,
   deliveryMethod: "DPD courier",
   estimatedDelivery: "2-4 business days after dispatch",
   fulfillmentTime: `3 weeks\n${englishCopy.fulfillmentTime.note}`,
@@ -58,13 +59,16 @@ const customerCta = { href: "https://martebizuteria.pl/account/orders/abc", isGu
 const renderConfirmation = (
   accountCta: { href: string; isGuest: boolean; label: string },
   plainText = true,
-  discountTotal = 0,
+  {
+    confirmationDetails = details,
+    discountTotal = 0,
+  }: Readonly<{ confirmationDetails?: OrderConfirmationDetails; discountTotal?: number }> = {},
 ): Promise<string> =>
   render(
     <OrderConfirmation
       accountCta={accountCta}
       currency="PLN"
-      details={details}
+      details={confirmationDetails}
       items={items}
       legalLinks={legalLinks}
       locale="en-US"
@@ -107,7 +111,7 @@ describe("OrderConfirmation", () => {
   })
 
   it("subtracts the redeemed discount on its own line", async () => {
-    const text = await renderConfirmation(customerCta, true, 5000)
+    const text = await renderConfirmation(customerCta, true, { discountTotal: 5000 })
 
     expect(text).toContain(`${englishCopy.discountLabel}: −${formatPrice(5000, "PLN", "en-US")}`)
   })
@@ -144,6 +148,19 @@ describe("OrderConfirmation", () => {
     expect(text).toContain(`${englishCopy.fulfillmentTimeLabel}\n\n3 weeks`)
     expect(text).toContain(englishCopy.fulfillmentTime.note)
     expect(text).toContain(details.estimatedDelivery)
+  })
+
+  it("names the company to be invoiced only when the shopper asked for an invoice", async () => {
+    await expect(renderConfirmation(customerCta)).resolves.not.toContain(englishCopy.companyInvoiceLabel)
+
+    const companyInvoice = "Pracownia Złotnicza sp. z o.o.\nNIP 5260001246"
+    const text = await renderConfirmation(customerCta, true, { confirmationDetails: { ...details, companyInvoice } })
+    const html = await renderConfirmation(customerCta, false, { confirmationDetails: { ...details, companyInvoice } })
+
+    expect(text).toContain(
+      `${englishCopy.billingAddressLabel}\n\n${details.billingAddress}\n\n${englishCopy.companyInvoiceLabel}\n\nPracownia Złotnicza sp. z o.o. NIP 5260001246`,
+    )
+    expect(html).toContain(companyInvoice)
   })
 
   it("invites a guest to open an account before showing the button", async () => {

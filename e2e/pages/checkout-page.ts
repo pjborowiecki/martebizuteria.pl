@@ -10,6 +10,11 @@ interface ShippingAddress {
   readonly postalCode: string
 }
 
+export interface InvoicedCompany {
+  readonly companyName: string
+  readonly nip: string
+}
+
 export class CheckoutPage extends BasePage {
   async gotoCheckout(): Promise<void> {
     await this.open("/en-US/checkout")
@@ -41,12 +46,18 @@ export class CheckoutPage extends BasePage {
     await this.nextButton("Address").click()
   }
 
-  async fillAddress(address: ShippingAddress): Promise<void> {
+  async fillAddress(address: ShippingAddress, company?: InvoicedCompany): Promise<void> {
     await this.field("First Name *").fill(address.firstName)
     await this.field("Last Name *").fill(address.lastName)
     await this.field("Address *").fill(address.address1)
     await this.field("Postal Code *").fill(address.postalCode)
     await this.field("City *").fill(address.city)
+    if (company !== undefined) {
+      await this.page.getByRole("checkbox", { name: "I want an invoice for a company" }).check()
+      await this.field("Company Name *").fill(company.companyName)
+      await this.field("Tax ID (NIP) *").fill(company.nip)
+    }
+
     await this.nextButton("Delivery Method").click()
   }
 

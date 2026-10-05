@@ -683,7 +683,9 @@
     "billing": {
       "title": "Adres rozliczeniowy",
       "sameAsShipping": "Taki sam jak wysyłki",
-      "missing": "Brak zapisanego adresu rozliczeniowego."
+      "missing": "Brak zapisanego adresu rozliczeniowego.",
+      "companyInvoice": "Faktura na firmę",
+      "nip": "NIP {nip}"
     },
     "paymentDetails": {
       "title": "Płatność",
