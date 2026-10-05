@@ -9,6 +9,7 @@ const {
   fulfillCheckout,
   getCheckoutEmailContext,
   getOrderTotalsForEmail,
+  notifyShopOfNewOrder,
   paymentIntentsRetrieve,
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
@@ -32,6 +33,7 @@ const {
   fulfillCheckout: vi.fn<(input: object) => Promise<string | undefined>>(),
   getCheckoutEmailContext: vi.fn<(checkoutId: string) => Promise<object | undefined>>(),
   getOrderTotalsForEmail: vi.fn<(orderId: string) => Promise<Record<string, unknown> | undefined>>(),
+  notifyShopOfNewOrder: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<void>>(),
   paymentIntentsRetrieve: vi.fn<(id: string, params: object) => Promise<{ payment_method: { type: string } | null }>>(),
   recordOrderDisputeClosedAudit: vi.fn(),
   recordOrderDisputeOpenedAudit: vi.fn(),
@@ -57,6 +59,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
     paymentIntents: { retrieve: paymentIntentsRetrieve },
   },
 }))
+vi.mock("~/src/integrations/resend/new-order.notification.server", () => ({ notifyShopOfNewOrder }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/resend/withdrawal-form.attachment.server", () => ({
   loadWithdrawalFormAttachment: vi.fn(() => Promise.resolve({ content: "JVBERi0=", filename: "formularz_zwrotu.pdf" })),
@@ -162,6 +165,7 @@ beforeEach(() => {
   flagOrderDispute.mockResolvedValue(undefined)
   clearOrderDispute.mockResolvedValue(undefined)
   sendEmail.mockResolvedValue(undefined)
+  notifyShopOfNewOrder.mockResolvedValue(undefined)
   sessionsList.mockResolvedValue({ data: [{ id: "cs_resolved_1" }] })
   couponsDel.mockImplementation((couponId) => Promise.resolve({ deleted: true, id: couponId }))
   couponsRetrieve.mockImplementation((couponId) =>
@@ -253,6 +257,7 @@ describe("checkout session fulfillment", () => {
     expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
+    expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
   })
 
   it("records the paid session it could not turn into an order as an error and lets Stripe retry it", async () => {
@@ -267,6 +272,7 @@ describe("checkout session fulfillment", () => {
     expect(consoleError).toHaveBeenCalledWith("Paid Checkout Session cs_test_1 created no order:", expect.any(Error))
     expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
+    expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
   })
 
   it("records a paid session that matches no open checkout and acknowledges it, since a retry cannot help", async () => {
@@ -280,6 +286,7 @@ describe("checkout session fulfillment", () => {
     })
     expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
+    expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
   })
 
   it("names the address Stripe collected and the bare cause when the session has no amount", async () => {
@@ -308,6 +315,10 @@ describe("checkout session fulfillment", () => {
 
     expect(fulfillCheckout).toHaveBeenCalledOnce()
     expect(releaseCheckout).not.toHaveBeenCalled()
+    expect(notifyShopOfNewOrder).toHaveBeenCalledExactlyOnceWith(
+      "order-1",
+      "http://127.0.0.1:3000/checkout?success=true&session_id={CHECKOUT_SESSION_ID}",
+    )
   })
 })
 

@@ -1,6 +1,6 @@
 ---
 title: "Transactional email"
-description: "Eleven React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales."
+description: "Twelve React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales."
 ---
 
 ## Sending
@@ -50,7 +50,7 @@ Some refusals mean that no email from this sender can go out at all: a 401 or 40
 
 The client is `src/integrations/resend/resend.config.ts`, a one-line `new Resend(env.RESEND_API_KEY)`. The default `from` is `APP_NAME <RESEND_EMAIL_FROM>`. Both `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in the `secrets.required` list of every environment in `wrangler.jsonc`. The sender's domain must be verified in Resend, and a deploy stops before the build when it is not; see [Resend](/docs/integrations/resend#sender-domain).
 
-## The eleven templates
+## The twelve templates
 
 All under `src/presentation/emails/`, built with `react-email` and rendered server-side inside the Worker:
 
@@ -65,6 +65,7 @@ All under `src/presentation/emails/`, built with `react-email` and rendered serv
 | `order-cancelled.tsx`               | `ORDER_CANCELLED_NAMESPACE`               | `notifyOrderCancelled`, awaited by `cancelOrder`                         |
 | `order-refunded.tsx`                | `ORDER_REFUNDED_NAMESPACE`                | `notifyOrderRefunded`, from the `charge.refunded` webhook                |
 | `payment-failed.tsx`                | `PAYMENT_FAILED_NAMESPACE`                | `sendPaymentFailedEmail`, from the `async_payment_failed` webhook        |
+| `new-order.tsx`                     | `NEW_ORDER_NAMESPACE`                     | `notifyShopOfNewOrder`, from the Stripe webhook, to the shop             |
 | `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, awaited by `subscribeToNewsletter`         |
 | `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, awaited by `subscribeToNewsletter`    |
 
@@ -98,6 +99,7 @@ Where the locale comes from differs by trigger:
 | Payment failed            | `resolveLocale(session)` from the Stripe session metadata                       |
 | Order shipped             | `resolveOrderLocale(orderRow.metadata)` from the order's stored JSON            |
 | Order cancelled, refunded | `resolveOrderLocale(orderRow.metadata)` from the order's stored JSON            |
+| Shop's new-order notice   | `I18N.DEFAULT_LOCALE`, the shop's own language, whatever the customer used      |
 
 The order emails matter: a webhook has no browser, and an admin's language is not the customer's, so the locale must have been persisted at checkout time. `createStripeSession` puts `locale: getCurrentLocale()` in the session metadata and `prepareFulfillCheckoutBatch` copies it into `order.metadata`, which is why a Polish customer's shipping notice arrives in Polish days later.
 
@@ -105,7 +107,7 @@ The order emails matter: a webhook has no browser, and an admin's language is no
 
 Links the shop writes into its own emails point at the address the customer or admin was using, the way Better Auth's links follow the host it was called on. A server function resolves the origin before it writes anything, with `resolveRequestOrigin(request)` (`src/lib/request.ts`): it takes the origin from `request.url`, accepts only the hosts `appHostsForMode(import.meta.env.MODE)` lists, and throws `AppError(FORBIDDEN)` for anything else. The origin is then passed down as a string: `sendNewsletterConfirmation({ email, locale, origin, token })`, `sendNewsletterAlreadySubscribed({ email, locale, origin })`, `sendAccountDeletedEmail({ email, locale, name, origin })`, `notifyOrderShipped(orderId, origin)` and `notifyOrderCancelled({ orderId, refundedAmount }, origin)`. After a self-service deletion, Better Auth's `afterDelete` hook resolves it from the request Better Auth hands it.
 
-The order confirmation is sent from the Stripe webhook, whose request only says which endpoint Stripe called. It takes its origin from the session's `return_url` instead: the checkout request built that URL on its own validated origin, and it comes back inside the signature-checked event. `resolveDeploymentOrigin(session.return_url)` accepts a host that any deployment serves, local, preview or production, and requires `https:` everywhere but `localhost:3000` and `127.0.0.1:3000`. A local checkout therefore links back to the address it was made on, even though `stripe:listen` forwards the webhook to `localhost:3000`, and even when the preview deployment, which shares the Stripe test account and the database with development, fulfils it. The failed-payment email does the same with the session in its event, and the refund email with the Checkout Session `resolveCheckoutSession` finds for the refunded charge.
+The order confirmation is sent from the Stripe webhook, whose request only says which endpoint Stripe called. It takes its origin from the session's `return_url` instead: the checkout request built that URL on its own validated origin, and it comes back inside the signature-checked event. `resolveDeploymentOrigin(session.return_url)` accepts a host that any deployment serves, local, preview or production, and requires `https:` everywhere but `localhost:3000` and `127.0.0.1:3000`. A local checkout therefore links back to the address it was made on, even though `stripe:listen` forwards the webhook to `localhost:3000`, and even when the preview deployment, which shares the Stripe test account and the database with development, fulfils it. The failed-payment email does the same with the session in its event, the shop's new-order email with the session that created the order, and the refund email with the Checkout Session `resolveCheckoutSession` finds for the refunded charge.
 
 Used on `http://127.0.0.1:3000`, the shop links to `http://127.0.0.1:3000`. On preview it links to the preview host in use, and in production to `https://martebizuteria.pl` or `https://martebizuteria.pjborowiecki.workers.dev`, whichever the customer or admin used. `APP_URL` is used for SEO only. [Resend](/docs/integrations/resend) lists where each flow gets its origin.
 
@@ -172,6 +174,16 @@ return {
 
 **Payment failed.** `checkout.session.async_payment_failed` arrives when a delayed payment fails after the customer left the checkout. `releaseCheckout` returns whether its batch moved the session's payment from `pending` to `failed`, and `handleAsyncPaymentFailed` sends `payment-failed.tsx` only then, so a redelivered event finds nothing pending and sends nothing, and an expired session sends nothing at all. The email goes to the session's address in the session's locale, lists the pieces with links to their product pages, states the amount and links back to `/products`. No order exists, so `recordOrderEmailAttempt` records the outcome against the session id, the target of the `order.released` entry of the same release; it shows in `/admin/audit` rather than on an order.
 
+## The shop's new-order email
+
+Every order the Stripe webhook creates is also emailed to the shop, so the owner learns of it without watching the admin. `handleFulfillCheckoutSession` starts `notifyShopOfNewOrder(orderId, session.return_url)` from `src/integrations/resend/new-order.notification.server.ts` next to the customer's confirmation, hands both to `scheduleBackgroundWork` as one `Promise.all` and awaits it. A redelivered event creates no order and sends neither email.
+
+The recipient is `RESEND_EMAIL_FROM`, the address the shop sends from, which every environment requires, so every environment sends the notice. In the `test` environment the end-to-end suite builds, `.env.test` sets it to `noreply@example.test`, a dummy inbox the mocked Resend captures.
+
+The email is in the shop's language, `I18N.DEFAULT_LOCALE`, whatever language the customer used. It reads the order with `getAdminOrderDetailRow` and `getAdminOrderItemRows`, the reads behind the admin order page, and states the order number in the subject and heading, every piece with its variant, SKU, quantity, unit price and line total (`mapAdminOrderDetailItem`), the total with delivery, the customer's name, e-mail and phone, the delivery method with the locker id, the shipping address from the order's snapshot (`resolveAdminOrderDetailAddresses`) and the customer's note. Its button opens `/admin/orders/<id>` (`ROUTES.ADMIN_ORDER`) on the origin of the session's `return_url`, the origin of the confirmation's links.
+
+The attempt goes through `recordOrderEmailAttempt` like every order email, labelled `New order notification → <address>`, so a refusal shows on the order's Activity card and in `/admin/audit`. It never touches the order or the customer's confirmation: `notifyShopOfNewOrder` does not throw, and the webhook still answers 200.
+
 ## Auditing
 
 Order emails record their outcome in the audit log:
@@ -192,7 +204,7 @@ export const recordOrderEmailOutcome = ({
 }
 ```
 
-The `label` is a human string such as `Order confirmation → jane@example.com`. Every order email is split the same way. `sendOrderConfirmationEmail` and `sendPaymentFailedEmail` in `stripe.webhooks.tsx`, and `sendOrderShippedEmail`, `sendOrderCancelledEmail` and `sendOrderRefundedEmail` in their `*.notification.server.ts` files, return `{ failure, label }`, and the caller hands that attempt to `recordOrderEmailAttempt` in `src/integrations/resend/order-email.outcome.server.ts`:
+The `label` is a human string such as `Order confirmation → jane@example.com`. Every order email is split the same way. `sendOrderConfirmationEmail` and `sendPaymentFailedEmail` in `stripe.webhooks.tsx`, and `sendOrderShippedEmail`, `sendOrderCancelledEmail`, `sendOrderRefundedEmail` and `sendNewOrderEmail` in their `*.notification.server.ts` files, return `{ failure, label }`, and the caller hands that attempt to `recordOrderEmailAttempt` in `src/integrations/resend/order-email.outcome.server.ts`:
 
 ```ts
 export const recordOrderEmailAttempt = async (
@@ -271,7 +283,7 @@ When the admin closes the tab or Stripe stops waiting, the Workers runtime may c
 
 `subscribeToNewsletter` awaits its email, because the person who just signed up is told whether it went out. A new, pending or unsubscribed address gets `sendNewsletterConfirmation`; an address that is already confirmed, submitted by anyone but its signed-in owner, gets `sendNewsletterAlreadySubscribed`. Both return the Resend error message, or `undefined` when the send was accepted. On a failure the use case logs it, audits it and answers `confirmationFailed`. A subscriber row that was waiting for confirmation stays `pending`, so submitting the address again issues a fresh token and sends a new email. The request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`, which the form covers with its "Signing you up..." state.
 
-The Stripe webhook awaits `notifyOrderConfirmed` too, but nobody sees its answer, so the order's activity is where a failure shows. `notifyOrderConfirmed` never throws: a refusal and a thrown error both end as an `email.failed` entry, and the webhook still answers 200. Throwing would not resend the email anyway. The handler would answer 500 and Stripe would redeliver the event, but on redelivery `fulfillCheckout` finds no pending checkout and the handler stops before the email step, so the only effects would be failed deliveries in Stripe and a coupon cleanup pushed to the retry.
+The Stripe webhook awaits `notifyOrderConfirmed` and `notifyShopOfNewOrder` too, but nobody sees its answer, so the order's activity is where a failure shows. Neither throws: a refusal and a thrown error both end as an `email.failed` entry, and the webhook still answers 200. Throwing would not resend the email anyway. The handler would answer 500 and Stripe would redeliver the event, but on redelivery `fulfillCheckout` finds no pending checkout and the handler stops before the email step, so the only effects would be failed deliveries in Stripe and a coupon cleanup pushed to the retry.
 
 The checkout success page therefore does not say the confirmation is on its way. It asks the shopper to contact the shop and quote the order number if the email has not arrived within a few minutes.
 

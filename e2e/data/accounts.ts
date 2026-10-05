@@ -6,3 +6,5 @@ export const TEST_ACCOUNTS = {
 } as const
 
 export type TestAccountRole = keyof typeof TEST_ACCOUNTS
+
+export const ORDER_NOTIFICATION_INBOX = "noreply@example.test"

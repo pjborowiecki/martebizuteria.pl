@@ -9,6 +9,7 @@ import {
   scheduleAdminOrdersInvalidation,
   scheduleProductCatalogInvalidation,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
+import { notifyShopOfNewOrder } from "~/src/integrations/resend/new-order.notification.server"
 import {
   buildOrderAccountCta,
   buildOrderConfirmationDetails,
@@ -303,9 +304,12 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
   scheduleAdminOrdersInvalidation()
   scheduleProductCatalogInvalidation()
 
-  const confirmationEmailDelivery = notifyOrderConfirmed(session, { currency, lines, orderId })
-  scheduleBackgroundWork(confirmationEmailDelivery)
-  await confirmationEmailDelivery
+  const orderEmailDeliveries = Promise.all([
+    notifyOrderConfirmed(session, { currency, lines, orderId }),
+    notifyShopOfNewOrder(orderId, session.return_url),
+  ])
+  scheduleBackgroundWork(orderEmailDeliveries)
+  await orderEmailDeliveries
 }
 
 const handleReleaseCheckoutSession = async (session: StripeType.Checkout.Session): Promise<boolean> => {

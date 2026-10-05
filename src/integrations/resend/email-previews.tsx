@@ -10,6 +10,7 @@ import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 
 import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
 import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"
+import type newOrderMessages from "~/messages/en-US/emails.new-order.json"
 import type newsletterAlreadySubscribedMessages from "~/messages/en-US/emails.newsletter-already-subscribed.json"
 import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled.json"
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
@@ -20,6 +21,7 @@ import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.j
 import type verifyEmailMessages from "~/messages/en-US/emails.verify-email.json"
 import { ACCOUNT_DELETED_NAMESPACE, AccountDeleted } from "~/src/presentation/emails/account-deleted"
 import { CHANGE_EMAIL_NAMESPACE, ChangeEmail } from "~/src/presentation/emails/change-email"
+import { NEW_ORDER_NAMESPACE, NewOrder } from "~/src/presentation/emails/new-order"
 import {
   NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE,
   NewsletterAlreadySubscribed,
@@ -69,6 +71,34 @@ const PREVIEW_ORDER_ITEMS = [
   },
 ]
 
+const PREVIEW_SHOP_ORDER_ITEMS = [
+  {
+    id: "item-aurora",
+    quantity: 1,
+    sku: "MRT-0101",
+    title: "Bransoletka Aurora",
+    totalMinorUnits: 24_900,
+    unitPriceMinorUnits: 24_900,
+    variantTitle: undefined,
+  },
+  {
+    id: "item-luna",
+    quantity: 2,
+    sku: "MRT-0102",
+    title: "Kolczyki Luna",
+    totalMinorUnits: 37_800,
+    unitPriceMinorUnits: 18_900,
+    variantTitle: "Srebro",
+  },
+]
+
+const PREVIEW_SHOP_ORDER_DETAILS = {
+  customer: "Anna Kowalska\nanna.kowalska@example.com\n+48 600 123 456",
+  customerNote: "Proszę o zapakowanie na prezent.",
+  deliveryMethod: PREVIEW_ORDER_CONFIRMATION_DETAILS.deliveryMethod,
+  shippingAddress: "ul. Mokotowska 12/4\n00-640 Warszawa\nPL",
+}
+
 const PREVIEW_LEGAL_LINKS = {
   exchangesAndReturns: "http://localhost:3000/exchanges-and-returns",
   privacyPolicy: "http://localhost:3000/privacy-policy",
@@ -109,6 +139,21 @@ export const EMAIL_PREVIEWS = {
       />
     ),
     label: "Change email",
+  },
+  "new-order": {
+    element: async (locale) => (
+      <NewOrder
+        adminOrderUrl="http://localhost:3000/admin/orders/abc123"
+        currency="PLN"
+        details={PREVIEW_SHOP_ORDER_DETAILS}
+        items={PREVIEW_SHOP_ORDER_ITEMS}
+        locale={locale}
+        messages={await loadNamespace<typeof newOrderMessages>({ locale, namespace: NEW_ORDER_NAMESPACE })}
+        orderNumber={PREVIEW_ORDER_NUMBER}
+        total={PREVIEW_ORDER_TOTAL}
+      />
+    ),
+    label: "New order for the shop",
   },
   "newsletter-already-subscribed": {
     element: async (locale) => (

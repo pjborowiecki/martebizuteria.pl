@@ -33,7 +33,10 @@ export const formatEmailAddress = (addressRow: EmailAddressRow | null | undefine
   return lines.length === EMPTY_COUNT ? undefined : lines.join("\n")
 }
 
-export const resolveDeliveryMethodLabel = (context: CheckoutEmailContext | undefined, unavailable: string): string => {
+export const resolveDeliveryMethodLabel = (
+  context: Pick<CheckoutEmailContext, "deliveryMethod" | "lockerId"> | undefined,
+  unavailable: string,
+): string => {
   const method = context?.deliveryMethod
   if (method === null || method === undefined) {
     return unavailable

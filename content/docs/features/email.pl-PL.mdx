@@ -1,6 +1,6 @@
 ---
 title: "E-maile transakcyjne"
-description: "Jedenaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
+description: "Dwanaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
 ---
 
 ## Wysyłka
@@ -50,7 +50,7 @@ Niektóre odmowy oznaczają, że od tego nadawcy nie wyjdzie żaden e-mail: odpo
 
 Klientem jest `src/integrations/resend/resend.config.ts`, jednolinijkowe `new Resend(env.RESEND_API_KEY)`. Domyślne `from` to `APP_NAME <RESEND_EMAIL_FROM>`. Zarówno `RESEND_API_KEY`, jak i `RESEND_EMAIL_FROM` są na liście `secrets.required` każdego środowiska w `wrangler.jsonc`. Domena nadawcy musi być zweryfikowana w Resend, a wdrożenie zatrzymuje się przed kompilacją, gdy nie jest; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 
-## Jedenaście szablonów
+## Dwanaście szablonów
 
 Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane po stronie serwera wewnątrz Workera:
 
@@ -65,6 +65,7 @@ Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane
 | `order-cancelled.tsx`               | `ORDER_CANCELLED_NAMESPACE`               | `notifyOrderCancelled`, oczekiwany przez `cancelOrder`                                               |
 | `order-refunded.tsx`                | `ORDER_REFUNDED_NAMESPACE`                | `notifyOrderRefunded`, z webhooka `charge.refunded`                                                  |
 | `payment-failed.tsx`                | `PAYMENT_FAILED_NAMESPACE`                | `sendPaymentFailedEmail`, z webhooka `async_payment_failed`                                          |
+| `new-order.tsx`                     | `NEW_ORDER_NAMESPACE`                     | `notifyShopOfNewOrder`, z webhooka Stripe, do sklepu                                                 |
 | `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik       |
 | `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik  |
 
@@ -98,6 +99,7 @@ await requireAuthEmailDelivery("verification", {
 | nieudana płatność         | `resolveLocale(session)` z metadanych sesji Stripe                           |
 | wysyłka zamówienia        | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia       |
 | anulowanie, zwrot         | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia       |
+| powiadomienie sklepu      | `I18N.DEFAULT_LOCALE`, język sklepu, niezależnie od języka klienta           |
 
 E-maile dotyczące zamówień mają tu znaczenie: webhook nie ma przeglądarki, a język administratora nie jest językiem klienta, więc język musiał zostać utrwalony w momencie składania zamówienia. `createStripeSession` wkłada `locale: getCurrentLocale()` do metadanych sesji, a `prepareFulfillCheckoutBatch` kopiuje go do `order.metadata` — dlatego polski klient dostaje powiadomienie o wysyłce po polsku nawet kilka dni później.
 
@@ -105,7 +107,7 @@ E-maile dotyczące zamówień mają tu znaczenie: webhook nie ma przeglądarki, 
 
 Linki, które sklep wpisuje do własnych e-maili, prowadzą pod adres, którego używał klient albo administrator, tak jak linki Better Auth prowadzą do hosta, na którym go wywołano. Funkcja serwerowa ustala origin, zanim cokolwiek zapisze, przez `resolveRequestOrigin(request)` (`src/lib/request.ts`): bierze go z `request.url`, akceptuje tylko hosty z listy `appHostsForMode(import.meta.env.MODE)`, a dla każdego innego rzuca `AppError(FORBIDDEN)`. Dalej origin jest przekazywany jako napis: `sendNewsletterConfirmation({ email, locale, origin, token })`, `sendNewsletterAlreadySubscribed({ email, locale, origin })`, `sendAccountDeletedEmail({ email, locale, name, origin })`, `notifyOrderShipped(orderId, origin)` i `notifyOrderCancelled({ orderId, refundedAmount }, origin)`. Po samodzielnym usunięciu konta hook `afterDelete` ustala go z żądania, które przekazuje mu Better Auth.
 
-Potwierdzenie zamówienia wysyła webhook Stripe, którego żądanie mówi tylko, który endpoint wywołał Stripe. Dlatego bierze ono origin z `return_url` sesji: żądanie checkoutu zbudowało ten adres na własnym, sprawdzonym originie, a wraca on w zdarzeniu ze sprawdzonym podpisem. `resolveDeploymentOrigin(session.return_url)` akceptuje host obsługiwany przez dowolne wdrożenie, lokalne, preview albo produkcyjne, i wymaga `https:` wszędzie poza `localhost:3000` i `127.0.0.1:3000`. Lokalny checkout linkuje więc pod adres, na którym go złożono, choć `stripe:listen` przekazuje webhook na `localhost:3000`, i nawet wtedy, gdy realizuje go wdrożenie preview, które dzieli z developmentem testowe konto Stripe i bazę danych. E-mail o nieudanej płatności robi to samo z sesją ze swojego zdarzenia, a e-mail o zwrocie z sesją Checkout, którą `resolveCheckoutSession` znajduje dla zwróconej płatności.
+Potwierdzenie zamówienia wysyła webhook Stripe, którego żądanie mówi tylko, który endpoint wywołał Stripe. Dlatego bierze ono origin z `return_url` sesji: żądanie checkoutu zbudowało ten adres na własnym, sprawdzonym originie, a wraca on w zdarzeniu ze sprawdzonym podpisem. `resolveDeploymentOrigin(session.return_url)` akceptuje host obsługiwany przez dowolne wdrożenie, lokalne, preview albo produkcyjne, i wymaga `https:` wszędzie poza `localhost:3000` i `127.0.0.1:3000`. Lokalny checkout linkuje więc pod adres, na którym go złożono, choć `stripe:listen` przekazuje webhook na `localhost:3000`, i nawet wtedy, gdy realizuje go wdrożenie preview, które dzieli z developmentem testowe konto Stripe i bazę danych. E-mail o nieudanej płatności robi to samo z sesją ze swojego zdarzenia, e-mail sklepu o nowym zamówieniu z sesją, która utworzyła zamówienie, a e-mail o zwrocie z sesją Checkout, którą `resolveCheckoutSession` znajduje dla zwróconej płatności.
 
 Używany pod `http://127.0.0.1:3000` sklep linkuje do `http://127.0.0.1:3000`. Na preview linkuje do używanego hosta preview, a na produkcji do `https://martebizuteria.pl` albo `https://martebizuteria.pjborowiecki.workers.dev`, zależnie od tego, którego używał klient albo administrator. `APP_URL` służy wyłącznie SEO. Strona [Resend](/docs/integrations/resend) opisuje, skąd origin bierze każdy przepływ.
 
@@ -172,6 +174,16 @@ return {
 
 **Nieudana płatność.** `checkout.session.async_payment_failed` przychodzi, gdy płatność odroczona nie powiedzie się już po wyjściu klienta z kasy. `releaseCheckout` zwraca, czy jego wsad przestawił płatność sesji z `pending` na `failed`, a `handleAsyncPaymentFailed` wysyła `payment-failed.tsx` tylko wtedy, więc ponownie dostarczone zdarzenie nie znajduje niczego oczekującego i niczego nie wysyła, a wygasła sesja nie wysyła nic. E-mail trafia na adres z sesji, w języku sesji, wymienia produkty z linkami do ich stron, podaje kwotę i linkuje z powrotem do `/products`. Zamówienie nie istnieje, więc `recordOrderEmailAttempt` zapisuje wynik przy identyfikatorze sesji, który jest celem wpisu `order.released` z tego samego zwolnienia; widać go w `/admin/audit`, a nie przy zamówieniu.
 
+## E-mail sklepu o nowym zamówieniu
+
+Każde zamówienie utworzone przez webhook Stripe trafia też e-mailem do sklepu, więc właściciel dowiaduje się o nim bez pilnowania panelu. `handleFulfillCheckoutSession` uruchamia `notifyShopOfNewOrder(orderId, session.return_url)` z `src/integrations/resend/new-order.notification.server.ts` obok potwierdzenia dla klienta, przekazuje oba do `scheduleBackgroundWork` jako jedno `Promise.all` i czeka na nie. Ponownie dostarczone zdarzenie nie tworzy zamówienia i nie wysyła żadnego z tych e-maili.
+
+Odbiorcą jest `RESEND_EMAIL_FROM`, adres, z którego sklep wysyła pocztę, wymagany w każdym środowisku, więc powiadomienie wychodzi w każdym środowisku. W środowisku `test`, które buduje zestaw testów end-to-end, `.env.test` ustawia go na `noreply@example.test`, atrapową skrzynkę przechwytywaną przez zamockowany Resend.
+
+E-mail jest w języku sklepu, `I18N.DEFAULT_LOCALE`, niezależnie od języka klienta. Odczytuje zamówienie przez `getAdminOrderDetailRow` i `getAdminOrderItemRows`, te same odczyty, na których stoi strona zamówienia w panelu, i podaje numer zamówienia w temacie i nagłówku, każdy produkt z wariantem, SKU, ilością, ceną jednostkową i wartością pozycji (`mapAdminOrderDetailItem`), sumę z dostawą, imię i nazwisko, e-mail i telefon klienta, sposób dostawy z identyfikatorem paczkomatu, adres dostawy z kopii zapisanej przy zamówieniu (`resolveAdminOrderDetailAddresses`) i uwagi klienta. Jego przycisk otwiera `/admin/orders/<id>` (`ROUTES.ADMIN_ORDER`) na originie z `return_url` sesji, tym samym, na który prowadzą linki potwierdzenia.
+
+Próba przechodzi przez `recordOrderEmailAttempt` jak każdy e-mail dotyczący zamówienia, z etykietą `New order notification → <adres>`, więc odmowa pojawia się w sekcji „Aktywność” zamówienia i w `/admin/audit`. Nigdy nie wpływa na zamówienie ani na potwierdzenie dla klienta: `notifyShopOfNewOrder` nie rzuca wyjątku, a webhook i tak odpowiada 200.
+
 ## Zapis w audycie
 
 E-maile dotyczące zamówień zapisują swój wynik w dzienniku audytu:
@@ -192,7 +204,7 @@ export const recordOrderEmailOutcome = ({
 }
 ```
 
-`label` to czytelny napis, na przykład `Order confirmation → jane@example.com`. Każdy e-mail dotyczący zamówienia jest podzielony tak samo. `sendOrderConfirmationEmail` i `sendPaymentFailedEmail` w `stripe.webhooks.tsx` oraz `sendOrderShippedEmail`, `sendOrderCancelledEmail` i `sendOrderRefundedEmail` w swoich plikach `*.notification.server.ts` zwracają `{ failure, label }`, a wywołujący przekazuje tę próbę do `recordOrderEmailAttempt` w `src/integrations/resend/order-email.outcome.server.ts`:
+`label` to czytelny napis, na przykład `Order confirmation → jane@example.com`. Każdy e-mail dotyczący zamówienia jest podzielony tak samo. `sendOrderConfirmationEmail` i `sendPaymentFailedEmail` w `stripe.webhooks.tsx` oraz `sendOrderShippedEmail`, `sendOrderCancelledEmail`, `sendOrderRefundedEmail` i `sendNewOrderEmail` w swoich plikach `*.notification.server.ts` zwracają `{ failure, label }`, a wywołujący przekazuje tę próbę do `recordOrderEmailAttempt` w `src/integrations/resend/order-email.outcome.server.ts`:
 
 ```ts
 export const recordOrderEmailAttempt = async (
@@ -271,7 +283,7 @@ Gdy administrator zamknie kartę albo Stripe przestanie czekać, środowisko Wor
 
 `subscribeToNewsletter` czeka na swój e-mail, bo osoba, która właśnie się zapisała, dowiaduje się, czy wyszedł. Nowy, oczekujący albo wypisany adres dostaje `sendNewsletterConfirmation`; adres już potwierdzony, wysłany przez kogokolwiek poza zalogowanym właścicielem, dostaje `sendNewsletterAlreadySubscribed`. Obie funkcje zwracają komunikat błędu Resend albo `undefined`, gdy wysyłka została przyjęta. Przy porażce przypadek użycia loguje ją, zapisuje w audycie i odpowiada `confirmationFailed`. Wiersz, który czekał na potwierdzenie, zostaje w stanie `pending`, więc ponowne wysłanie adresu nadaje nowy token i wysyła nowy e-mail. Żądanie trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`, co formularz pokrywa stanem „Zapisujemy...”.
 
-Webhook Stripe też czeka na `notifyOrderConfirmed`, ale nikt nie widzi jego odpowiedzi, więc porażka pojawia się w aktywności zamówienia. `notifyOrderConfirmed` nigdy nie rzuca wyjątku: zarówno odmowa, jak i rzucony błąd kończą się wpisem `email.failed`, a webhook i tak odpowiada 200. Rzucenie wyjątku nie wysłałoby zresztą e-maila ponownie. Handler odpowiedziałby 500 i Stripe dostarczyłby zdarzenie jeszcze raz, ale przy ponownym dostarczeniu `fulfillCheckout` nie znajduje oczekującej kasy i handler kończy przed krokiem e-maila, więc jedynym skutkiem byłyby nieudane dostarczenia w Stripe i sprzątanie kuponu przesunięte na ponowną próbę.
+Webhook Stripe też czeka na `notifyOrderConfirmed` i `notifyShopOfNewOrder`, ale nikt nie widzi jego odpowiedzi, więc porażka pojawia się w aktywności zamówienia. Żadna z nich nie rzuca wyjątku: zarówno odmowa, jak i rzucony błąd kończą się wpisem `email.failed`, a webhook i tak odpowiada 200. Rzucenie wyjątku nie wysłałoby zresztą e-maila ponownie. Handler odpowiedziałby 500 i Stripe dostarczyłby zdarzenie jeszcze raz, ale przy ponownym dostarczeniu `fulfillCheckout` nie znajduje oczekującej kasy i handler kończy przed krokiem e-maila, więc jedynym skutkiem byłyby nieudane dostarczenia w Stripe i sprzątanie kuponu przesunięte na ponowną próbę.
 
 Dlatego strona sukcesu kasy nie twierdzi, że potwierdzenie jest w drodze. Prosi kupującego o kontakt z numerem zamówienia, jeśli e-mail nie dotrze w ciągu kilku minut.
 
