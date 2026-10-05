@@ -58,30 +58,30 @@ const CHECKOUT_VALUES = {
 
 const PARSED_CHECKOUT_VALUES = { ...CHECKOUT_VALUES, sameAsShipping: true, saveBillingAddress: false, saveShippingAddress: false }
 
-const CART_ITEM = {
+const CART_LINE = {
   id: "line-1",
   image: "https://assets.test/bracelet.jpg",
-  price: "249,00 zł",
   qty: 2,
-  rawPrice: 24_900,
   slug: "bransoletka-aurora",
   title: "Bransoletka Aurora",
   variantId: "variant-1",
   variantTitle: "Rozmiar M",
 }
 
+const CART_ITEM = { ...CART_LINE, price: "249,00 zł", rawPrice: 24_900 }
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
 describe("createCheckoutSessionFn", () => {
-  it("hands a valid cart to the server handler and returns its answer", async () => {
+  it("hands a valid cart to the server handler, without the prices the browser remembers, and returns its answer", async () => {
     const data = { checkoutValues: CHECKOUT_VALUES, items: [CART_ITEM] }
 
     const result = await createCheckoutSessionFn({ data })
 
-    expect(result).toStrictEqual({ created: { checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_ITEM] } })
-    expect(state.createHandler).toHaveBeenCalledWith({ checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_ITEM] })
+    expect(result).toStrictEqual({ created: { checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_LINE] } })
+    expect(state.createHandler).toHaveBeenCalledWith({ checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_LINE] })
   })
 
   it("refuses an empty cart before reaching Stripe", () => {
@@ -105,7 +105,7 @@ describe("updateCheckoutSessionFn", () => {
 
   it("hands the session id and the cart to the server handler", async () => {
     const data = { checkoutValues: CHECKOUT_VALUES, items: [CART_ITEM], sessionId: "cs_test_1" }
-    const expected = { checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_ITEM], sessionId: "cs_test_1" }
+    const expected = { checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_LINE], sessionId: "cs_test_1" }
 
     const result = await updateCheckoutSessionFn({ data })
 

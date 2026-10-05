@@ -10,6 +10,7 @@
   "removeItem": "Remove item",
   "decreaseQty": "Decrease quantity",
   "increaseQty": "Increase quantity",
+  "priceChanged": "The price has changed since you added this piece to your cart.",
   "availability": {
     "banner": "Some items in your cart are no longer available. Update your cart before checkout.",
     "itemUnavailable": "No longer available",

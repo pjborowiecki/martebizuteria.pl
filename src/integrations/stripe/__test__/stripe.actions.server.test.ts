@@ -169,12 +169,43 @@ const signInCustomerWithStripeAccount = (): void => {
 
 const createdSessionMetadata = (): Record<string, string> => mocked.checkoutSessionsCreate.mock.lastCall?.[0].metadata ?? {}
 
+describe("handleCreateCheckoutSession quote", () => {
+  it("quotes the catalogue price, not the one the browser remembers", async () => {
+    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), price: 26_900 }])])
+    mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 55_300, client_secret: "cs_secret_1", id: "cs_new" })
+
+    const result = await handleCreateCheckoutSession(createInput({}, [{ ...CART_ITEM, price: "199,00 zł", rawPrice: 19_900 }]))
+
+    expect(result.lines).toStrictEqual([{ qty: 2, unitPrice: 26_900, variantId: "variant-1" }])
+    expect(result.totals).toMatchObject({ subtotal: 53_800, total: 55_300 })
+  })
+
+  it("quotes the discount the session carries, so the total shown is the one Stripe takes", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 49_300, client_secret: "cs_secret_1", id: "cs_new" })
+
+    const result = await handleCreateCheckoutSession(createInput({ discountCode: "SPRING" }))
+
+    expect(result.totals).toStrictEqual({
+      discountTotal: 2000,
+      shippingTotal: 1500,
+      subtotal: 49_800,
+      taxTotal: 9219,
+      total: 49_300,
+      vatBasisPoints: 2300,
+    })
+    expect(result.totals.total).toBe(result.amount)
+  })
+})
+
 describe("handleCreateCheckoutSession", () => {
-  it("returns the Stripe amount, client secret and session id", async () => {
+  it("returns the Stripe session with the catalogue prices and totals it charges", async () => {
     await expect(handleCreateCheckoutSession(createInput())).resolves.toStrictEqual({
       amount: 51_300,
       clientSecret: "cs_secret_1",
+      lines: [{ qty: 2, unitPrice: 24_900, variantId: "variant-1" }],
       sessionId: "cs_new",
+      totals: { discountTotal: 0, shippingTotal: 1500, subtotal: 49_800, taxTotal: 9593, total: 51_300, vatBasisPoints: 2300 },
     })
   })
 

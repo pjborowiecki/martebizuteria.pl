@@ -72,6 +72,19 @@ describe("CartItemCard", () => {
     expect(screen.getByText("PLN 420.00")).toBeInTheDocument()
   })
 
+  it("tells the shopper when the shop changed the price since the piece was added", () => {
+    renderWithProviders(<CartItemCard item={cartItem({ priceChanged: true, rawPrice: 36_000 })} />)
+
+    expect(screen.getByRole("status")).toHaveTextContent("The price has changed since you added this piece to your cart.")
+    expect(screen.getByText("PLN 360.00")).toBeInTheDocument()
+  })
+
+  it("says nothing about the price while it is the one the piece was added at", () => {
+    renderWithProviders(<CartItemCard item={cartItem()} />)
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+  })
+
   it("falls back to parsing the label when the raw price is below the store minimum", () => {
     renderWithProviders(<CartItemCard item={cartItem({ price: "12.50", rawPrice: 0 })} />)
 

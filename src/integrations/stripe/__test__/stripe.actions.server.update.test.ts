@@ -250,7 +250,22 @@ describe("handleUpdateCheckoutSession", () => {
     )
     expect(mocked.releaseCheckout).not.toHaveBeenCalled()
     expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
-    expect(result).toStrictEqual({ amount: 51_300, clientSecret: "cs_secret_1", sessionId: "cs_new" })
+    expect(result).toStrictEqual({
+      amount: 51_300,
+      clientSecret: "cs_secret_1",
+      lines: [{ qty: 2, unitPrice: 24_900, variantId: "variant-1" }],
+      sessionId: "cs_new",
+      totals: { discountTotal: 0, shippingTotal: 1500, subtotal: 49_800, taxTotal: 9593, total: 51_300, vatBasisPoints: 2300 },
+    })
+  })
+
+  it("quotes the replacement at the catalogue price the shop charges now", async () => {
+    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), price: 26_900 }])])
+
+    const result = await handleUpdateCheckoutSession(updateInput())
+
+    expect(result.lines).toStrictEqual([{ qty: 2, unitPrice: 26_900, variantId: "variant-1" }])
+    expect(result.totals).toMatchObject({ discountTotal: 0, shippingTotal: 1500, subtotal: 53_800, total: 55_300 })
   })
 
   it("counts the stock its own session holds when checking the edited cart", async () => {

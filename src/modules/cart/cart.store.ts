@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
-import { getCartLineTotalCents } from "~/src/modules/cart/cart.pricing"
+import { type CartUnitPrice, getCartLineTotalCents, getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 
 const MIN_QUANTITY = 1
 
@@ -18,6 +18,7 @@ export interface CartItem {
   readonly image: string
   readonly price: string
   readonly rawPrice: number
+  readonly priceChanged?: boolean
   qty: number
 }
 
@@ -27,6 +28,7 @@ interface CartActions {
       readonly qty?: number
     },
   ) => void
+  readonly applyCurrentPrices: (prices: readonly CartUnitPrice[]) => void
   readonly removeItem: (id: string) => void
   readonly updateQuantity: (id: string, qty: number) => void
   readonly clearCart: () => void
@@ -55,8 +57,18 @@ const isPersistedCartItem = (value: unknown): value is CartItem => {
     typeof row.image === "string" &&
     typeof row.price === "string" &&
     typeof row.rawPrice === "number" &&
+    (row.priceChanged === undefined || typeof row.priceChanged === "boolean") &&
     typeof row.qty === "number"
   )
+}
+
+const repriceItem = (item: CartItem, priceByVariantId: ReadonlyMap<string, number>): CartItem => {
+  const unitPrice = priceByVariantId.get(item.variantId)
+  if (unitPrice === undefined || unitPrice === getCartLineUnitPriceCents(item)) {
+    return item
+  }
+
+  return { ...item, priceChanged: true, rawPrice: unitPrice }
 }
 
 export const useCartStore = create<CartState>()(
@@ -91,6 +103,14 @@ export const useCartStore = create<CartState>()(
             ],
           }
         })
+      },
+      applyCurrentPrices: (prices) => {
+        const priceByVariantId = new Map(prices.map((line) => [line.variantId, line.unitPrice]))
+        const { items } = get()
+        const repriced = items.map((item) => repriceItem(item, priceByVariantId))
+        if (repriced.some((item, index) => item !== items[index])) {
+          set({ items: repriced })
+        }
       },
       cartTotal: () => get().items.reduce((total, item) => total + getCartLineTotalCents(item), 0),
       clearCart: () => {

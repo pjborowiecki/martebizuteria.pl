@@ -8,6 +8,8 @@ const captured = vi.hoisted((): { validate?: (input: unknown) => unknown } => ({
 
 const inventory = vi.hoisted(() => ({ availability: vi.fn(() => Promise.resolve(new Map<string, number>())) }))
 
+const variants = vi.hoisted(() => ({ prices: vi.fn(() => Promise.resolve(new Map<string, number>())) }))
+
 const payments = vi.hoisted(() => ({
   heldLines: vi.fn<(transactionId: string) => Promise<{ qty: number; variantId: string }[]>>(() => Promise.resolve([])),
 }))
@@ -15,6 +17,7 @@ const payments = vi.hoisted(() => ({
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ getAvailabilityByVariantIds: inventory.availability }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({ getHeldLinesByTransactionId: payments.heldLines }))
+vi.mock("~/src/modules/product-variant/product-variant.accessors", () => ({ getSellPricesByVariantIds: variants.prices }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -55,7 +58,7 @@ describe("checkCartAvailability", () => {
       },
     })
 
-    expect(result).toStrictEqual({ hasUnavailableItems: false, issues: [] })
+    expect(result).toStrictEqual({ hasUnavailableItems: false, issues: [], prices: [] })
   })
 
   it("treats availability equal to the requested quantity as sufficient", async () => {
@@ -74,6 +77,7 @@ describe("checkCartAvailability", () => {
     expect(result).toStrictEqual({
       hasUnavailableItems: true,
       issues: [{ available: 1, qty: 3, variantId: "variant-a" }],
+      prices: [],
     })
   })
 
@@ -128,7 +132,7 @@ describe("checkCartAvailability", () => {
 
     const result = await checkCartAvailability({ data: { lines: [] } })
 
-    expect(result).toStrictEqual({ hasUnavailableItems: false, issues: [] })
+    expect(result).toStrictEqual({ hasUnavailableItems: false, issues: [], prices: [] })
     expect(inventory.availability).toHaveBeenCalledWith([])
   })
 
@@ -138,6 +142,63 @@ describe("checkCartAvailability", () => {
     await checkCartAvailability({ data: { lines: [{ qty: 1, variantId: "variant-a" }] } })
 
     expect(payments.heldLines).not.toHaveBeenCalled()
+  })
+})
+
+describe("checkCartAvailability prices", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("asks for the current price of exactly the requested variant ids", async () => {
+    withAvailability([["variant-a", 1]])
+
+    await checkCartAvailability({
+      data: {
+        lines: [
+          { qty: 1, variantId: "variant-a" },
+          { qty: 1, variantId: "variant-b" },
+        ],
+      },
+    })
+
+    expect(variants.prices).toHaveBeenCalledExactlyOnceWith(["variant-a", "variant-b"])
+  })
+
+  it("reports the price each variant sells for now, whatever the cart remembers", async () => {
+    withAvailability([
+      ["variant-a", 5],
+      ["variant-b", 5],
+    ])
+    variants.prices.mockResolvedValueOnce(
+      new Map([
+        ["variant-a", 39_900],
+        ["variant-b", 12_500],
+      ]),
+    )
+
+    const result = await checkCartAvailability({
+      data: {
+        lines: [
+          { qty: 1, variantId: "variant-a" },
+          { qty: 2, variantId: "variant-b" },
+        ],
+      },
+    })
+
+    expect(result.prices).toStrictEqual([
+      { unitPrice: 39_900, variantId: "variant-a" },
+      { unitPrice: 12_500, variantId: "variant-b" },
+    ])
+  })
+
+  it("reports no price for a variant without a price checkout accepts", async () => {
+    withAvailability([["variant-unpriced", 5]])
+    variants.prices.mockResolvedValueOnce(new Map())
+
+    const result = await checkCartAvailability({ data: { lines: [{ qty: 1, variantId: "variant-unpriced" }] } })
+
+    expect(result.prices).toStrictEqual([])
   })
 })
 
@@ -152,7 +213,7 @@ describe("checkCartAvailability for a browser that holds an open checkout", () =
 
     const result = await checkCartAvailability({ data: { heldSessionId: "cs_test_held", lines: [{ qty: 1, variantId: "variant-a" }] } })
 
-    expect(result).toStrictEqual({ hasUnavailableItems: false, issues: [] })
+    expect(result).toStrictEqual({ hasUnavailableItems: false, issues: [], prices: [] })
     expect(payments.heldLines).toHaveBeenCalledExactlyOnceWith("cs_test_held")
   })
 

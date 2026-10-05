@@ -1,9 +1,9 @@
 ---
 title: "Koszyk"
-description: "Koszyk to utrwalany store zustand w przeglądarce; serwer odpowiada wyłącznie na pytanie o dostępność."
+description: "Koszyk to utrwalany store zustand w przeglądarce; serwer odpowiada, co jest na stanie i ile teraz kosztuje."
 ---
 
-M'Arte nie ma koszyka po stronie serwera. Koszyk żyje w `localStorage` pod kluczem `marte-cart`, a tabele `cart` i `cart_item` w bazie są nieużywane. Jedyne odwołanie do serwera to sprawdzenie stanu magazynowego.
+M'Arte nie ma koszyka po stronie serwera. Koszyk żyje w `localStorage` pod kluczem `marte-cart`, a tabele `cart` i `cart_item` w bazie są nieużywane. Jedyne odwołanie do serwera to sprawdzenie stanu magazynowego i aktualnych cen.
 
 ## Store
 
@@ -31,13 +31,14 @@ export interface CartItem {
   readonly image: string
   readonly price: string
   readonly rawPrice: number
+  readonly priceChanged?: boolean
   qty: number
 }
 ```
 
-`id` jest zawsze ustawiane przez `addItem` na `variantId`, więc **tożsamością linii jest wariant**: dodanie tego samego wariantu dwa razy zwiększa `qty`, a nie tworzy drugiej linii. `price` to gotowy napis do wyświetlenia, a `rawPrice` to jednostki podrzędne.
+`id` jest zawsze ustawiane przez `addItem` na `variantId`, więc **tożsamością linii jest wariant**: dodanie tego samego wariantu dwa razy zwiększa `qty`, a nie tworzy drugiej linii. `price` to gotowy napis do wyświetlenia, a `rawPrice` to jednostki podrzędne. `priceChanged` oznacza linię, której cenę sklep zmienił, gdy leżała w koszyku.
 
-Akcje: `addItem`, `removeItem(id)`, `updateQuantity(id, qty)` (ograniczane do minimum 1), `clearCart`, `itemCount()` i `cartTotal()`.
+Akcje: `addItem`, `applyCurrentPrices(prices)`, `removeItem(id)`, `updateQuantity(id, qty)` (ograniczane do minimum 1), `clearCart`, `itemCount()` i `cartTotal()`.
 
 Obok store'a eksportowane jest `useCartHydrated()`. Subskrybuje `useCartStore.persist.onFinishHydration` i zwraca `false`, dopóki rehydratacja się nie zakończy — korzysta z niego każdy odbiorca, który nie może działać na pustym koszyku przed hydratacją, a przede wszystkim strażnik kasy.
 
@@ -60,15 +61,17 @@ export const getCartLineTotalCents = (item: { readonly price: string; readonly q
 
 `rawPrice` ma priorytet; parsowanie napisu to fallback dla koszyków zapisanych, zanim `rawPrice` istniało. `MIN_PRICE_CENTS` i `parseMoneyInputToMinorUnits` pochodzą z `src/modules/_core/utils/currency.ts`.
 
-**Ceny w koszyku to migawka.** Nie są ponownie walidowane, dopóki koszyk leży w przeglądarce. Cena wiążąca jest odczytywana na nowo po stronie serwera w `validateAndCalculateItems` przy tworzeniu sesji Stripe — zobacz [Kasa](/docs/features/checkout).
+**Ceny w koszyku podążają za katalogiem.** `rawPrice` zaczyna od ceny ze strony, z której dodano produkt. Każde sprawdzenie dostępności zwraca też cenę, za jaką wariant sprzedaje się teraz, a każda sesja checkoutu otwarta przez serwer zwraca ceny, po których ją wyceniono. Obie trafiają do `applyCurrentPrices(prices)`, które ustawia `rawPrice` w każdej linii, której wyświetlana cena się różni, i oznacza ją `priceChanged`. Oznaczona linia pokazuje `pages.cart.priceChanged` w koszyku i `checkoutSummary.priceChanged` w podsumowaniu kasy, dopóki nie zostanie usunięta albo zamówienie nie zostanie złożone; stara cena nie jest pokazywana. Linia, dla której serwer nie podał ceny, zachowuje swoją, a kasa odrzuca ją z `INVALID_PRICE`, `VARIANT_NOT_FOUND` albo `PRODUCT_NOT_FOUND`. Ceny z koszyka służą wyłącznie do wyświetlania: serwer nigdy ich nie dostaje, bo `cartItemSchema` nie ma `price` ani `rawPrice`, a sesję Stripe wycenia z `variant.price` w `validateAndCalculateItems` — zobacz [Kasa](/docs/features/checkout).
 
 ## Sprawdzenie dostępności
 
-`src/modules/cart/use-cases/check-cart-availability.ts` to jedyna funkcja serwerowa w tym module. Jest publiczna (`withRequest`), przyjmuje `{ heldSessionId?, lines: [{ variantId, qty }] }` i odpowiada dla każdej linii:
+`src/modules/cart/use-cases/check-cart-availability.ts` to jedyna funkcja serwerowa w tym module. Jest publiczna (`withRequest`), przyjmuje `{ heldSessionId?, lines: [{ variantId, qty }] }` i odpowiada dla każdej linii, razem z aktualną ceną każdego wariantu:
 
 ```ts
-const [availabilityByVariantId, heldLines] = await Promise.all([
-  getAvailabilityByVariantIds(lines.map((line) => line.variantId)),
+const variantIds = lines.map((line) => line.variantId)
+const [availabilityByVariantId, priceByVariantId, heldLines] = await Promise.all([
+  getAvailabilityByVariantIds(variantIds),
+  getSellPricesByVariantIds(variantIds),
   heldSessionId === undefined ? [] : getHeldLinesByTransactionId(heldSessionId),
 ])
 
@@ -81,21 +84,25 @@ const issues = lines.flatMap((line) => {
   return [{ available, qty: line.qty, variantId: line.variantId }]
 })
 
-return { hasUnavailableItems: issues.length > 0, issues }
+return {
+  hasUnavailableItems: issues.length > 0,
+  issues,
+  prices: [...priceByVariantId].map(([variantId, unitPrice]) => ({ unitPrice, variantId })),
+}
 ```
 
-Wariant bez wiersza w `inventory` liczy się jako `0` dostępnych sztuk. `heldSessionId` to otwarta sesja Checkout przeglądarki, którą kasa trzyma w `localStorage` (zobacz [Kasa](/docs/features/checkout)). `getHeldLinesByTransactionId` w `payment.accessors.ts` zwraca `reserved_lines` płatności tej sesji, dopóki płatność i jej checkout są oba `pending`, czyli pod tym samym warunkiem, pod którym zwolnienie nadal by je oddało, a w przeciwnym razie nic. Te sztuki są doliczane tylko tej przeglądarce, więc kupujący, którego własny checkout trzyma ostatnią sztukę, nadal widzi ją jako dostępną w koszyku i w kasie po odświeżeniu, a każdy inny kupujący widzi ją jako zarezerwowaną. Endpoint jest publiczny, więc jego wejście jest ograniczone: najwyżej `CART_LINES_MAX` linii, całkowite ilości od jednej sztuki, identyfikatory wariantów nie dłuższe niż zapisany identyfikator i identyfikator sesji o długości najwyżej 255 znaków. Identyfikator sesji dolicza tylko to, co ta sesja już trzyma, więc odgadnięcie go nic nie daje.
+Wariant bez wiersza w `inventory` liczy się jako `0` dostępnych sztuk. `prices` pochodzi z `getSellPricesByVariantIds` w `src/modules/product-variant/product-variant.accessors.ts`, jednego zapytania do `product_variant`, które pomija wariant, którego cena nie przechodzi `isSellPriceCentsValid`. `heldSessionId` to otwarta sesja Checkout przeglądarki, którą kasa trzyma w `localStorage` (zobacz [Kasa](/docs/features/checkout)). `getHeldLinesByTransactionId` w `payment.accessors.ts` zwraca `reserved_lines` płatności tej sesji, dopóki płatność i jej checkout są oba `pending`, czyli pod tym samym warunkiem, pod którym zwolnienie nadal by je oddało, a w przeciwnym razie nic. Te sztuki są doliczane tylko tej przeglądarce, więc kupujący, którego własny checkout trzyma ostatnią sztukę, nadal widzi ją jako dostępną w koszyku i w kasie po odświeżeniu, a każdy inny kupujący widzi ją jako zarezerwowaną. Endpoint jest publiczny, więc jego wejście jest ograniczone: najwyżej `CART_LINES_MAX` linii, całkowite ilości od jednej sztuki, identyfikatory wariantów nie dłuższe niż zapisany identyfikator i identyfikator sesji o długości najwyżej 255 znaków. Identyfikator sesji dolicza tylko to, co ta sesja już trzyma, więc odgadnięcie go nic nie daje.
 
-`checkCartAvailabilityQuery(lines, heldSessionId)` jest `enabled` tylko wtedy, gdy jest co najmniej jedna linia, i używa `staleTime: 0`, więc sprawdzenie jest świeże przy każdym montowaniu. Ustawia `refetchOnWindowFocus: false` i `refetchOnReconnect: false`, więc powrót do karty ani odzyskanie połączenia nie uruchamiają go ponownie. Kupujący, który płaci BLIK-iem na telefonie, opuszcza krok płatności, żeby zatwierdzić płatność w aplikacji banku, i wraca, gdy płatność się kończy. Gdy już się zakończy, sesja nie trzyma już sztuki, więc sprawdzenie uruchomione przy powrocie uznałoby ostatnią sztukę za sprzedaną, a strażnik kasy odesłałby jej nabywcę do koszyka, zanim strona zdążyłaby pokazać potwierdzenie. Klucz to `[...CART_QUERY_KEYS.AVAILABILITY, lines, heldSessionId]` — linie i trzymana sesja są częścią klucza, więc zmiana ilości albo otwarcie sesji wywołuje ponowne zapytanie. `placeholderData: keepPreviousData` zachowuje ostatnią odpowiedź, dopóki nowy klucz jest sprawdzany, więc strażnik kasy nie wraca do pierwszego sprawdzenia i nie odmontowuje formularza, gdy krok płatności zapisuje swoją sesję. `CART_QUERY_KEYS.AVAILABILITY` to `["cart", "availability"]` i występuje w `STOREFRONT_REALTIME_QUERY_PREFIXES`, więc zmiana stanu wypchnięta z panelu ponawia sprawdzenie w otwartych kartach.
+`checkCartAvailabilityQuery(lines, heldSessionId)` jest `enabled` tylko wtedy, gdy jest co najmniej jedna linia, i używa `staleTime: 0`, więc sprawdzenie jest świeże przy każdym montowaniu. Ustawia `refetchOnWindowFocus: false` i `refetchOnReconnect: false`, więc powrót do karty ani odzyskanie połączenia nie uruchamiają go ponownie. Kupujący, który płaci BLIK-iem na telefonie, opuszcza krok płatności, żeby zatwierdzić płatność w aplikacji banku, i wraca, gdy płatność się kończy. Gdy już się zakończy, sesja nie trzyma już sztuki, więc sprawdzenie uruchomione przy powrocie uznałoby ostatnią sztukę za sprzedaną, a strażnik kasy odesłałby jej nabywcę do koszyka, zanim strona zdążyłaby pokazać potwierdzenie. Klucz to `[...CART_QUERY_KEYS.AVAILABILITY, lines, heldSessionId]` — linie i trzymana sesja są częścią klucza, więc zmiana ilości albo otwarcie sesji wywołuje ponowne zapytanie. `placeholderData: keepPreviousData` zachowuje ostatnią odpowiedź, dopóki nowy klucz jest sprawdzany, więc strażnik kasy nie wraca do pierwszego sprawdzenia i nie odmontowuje formularza, gdy krok płatności zapisuje swoją sesję. `CART_QUERY_KEYS.AVAILABILITY` to `["cart", "availability"]` i występuje w `STOREFRONT_REALTIME_QUERY_PREFIXES`, więc zmiana stanu albo ceny wypchnięta z panelu ponawia sprawdzenie w otwartych kartach, a nowa cena trafia do koszyka i kasy bez przeładowania.
 
-`src/hooks/use-cart-availability.ts` odczytuje trzymaną sesję przez `useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, …)`, bez sesji na serwerze, owija zapytanie i zwraca `{ hasUnavailableItems, isChecking, issues, issuesByVariantId }`. `isChecking` jest prawdziwe, gdy `isPending || isFetching` i jest co najmniej jedna linia.
+`src/hooks/use-cart-availability.ts` odczytuje trzymaną sesję przez `useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, …)`, bez sesji na serwerze, owija zapytanie i zwraca `{ hasUnavailableItems, isChecking, issues, issuesByVariantId }`. Efekt przekazuje `prices` z każdej odpowiedzi do `applyCurrentPrices`, więc każda strona, która uruchamia sprawdzenie, a dzięki `CartAvailabilityBanner` jest to każda strona sklepu przy niepustym koszyku, utrzymuje ceny w koszyku aktualne. `isChecking` jest prawdziwe, gdy `isPending || isFetching` i jest co najmniej jedna linia.
 
 ## Strony i komponenty
 
 | Plik                                                                     | Rola                                                                 |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | `src/routes/_storefront.cart.tsx`                                        | `/cart`; renderuje `EmptyCart`, gdy nie ma linii                     |
-| `.../custom/pages/cart-page/cart-item-card.tsx`                          | jedna linia: zdjęcie, tytuły, kontrolka ilości, usunięcie            |
+| `.../custom/pages/cart-page/cart-item-card.tsx`                          | jedna linia: zdjęcie, tytuły, zmiana ceny, ilość, usunięcie          |
 | `.../custom/pages/cart-page/cart-summary.tsx`                            | podsumowanie i odnośnik do kasy                                      |
 | `.../custom/cart-availability-banner.tsx`                                | banner na całą witrynę, renderowany przez layout `_storefront`       |
 | `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | licznik w nagłówku, `items.reduce((sum, item) => sum + item.qty, 0)` |

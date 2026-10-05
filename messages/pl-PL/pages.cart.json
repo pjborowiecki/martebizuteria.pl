@@ -10,6 +10,7 @@
   "removeItem": "Usuń produkt",
   "decreaseQty": "Zmniejsz ilość",
   "increaseQty": "Zwiększ ilość",
+  "priceChanged": "Cena zmieniła się od czasu dodania tego produktu do koszyka.",
   "availability": {
     "banner": "Niektóre produkty w koszyku nie są już dostępne. Zaktualizuj koszyk przed przejściem do kasy.",
     "itemUnavailable": "Niedostępny",

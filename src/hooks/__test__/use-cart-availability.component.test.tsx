@@ -12,9 +12,10 @@ import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
 import { saveCheckoutSessionId } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 
-const { getAvailabilityByVariantIds, getHeldLinesByTransactionId } = vi.hoisted(() => ({
+const { getAvailabilityByVariantIds, getHeldLinesByTransactionId, getSellPricesByVariantIds } = vi.hoisted(() => ({
   getAvailabilityByVariantIds: vi.fn<(variantIds: readonly string[]) => Promise<Map<string, number>>>(),
   getHeldLinesByTransactionId: vi.fn<(transactionId: string) => Promise<{ qty: number; variantId: string }[]>>(),
+  getSellPricesByVariantIds: vi.fn<(variantIds: readonly string[]) => Promise<Map<string, number>>>(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env: {} }))
@@ -25,6 +26,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", async () => {
 })
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ getAvailabilityByVariantIds }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({ getHeldLinesByTransactionId }))
+vi.mock("~/src/modules/product-variant/product-variant.accessors", () => ({ getSellPricesByVariantIds }))
 
 const cartItem = (variantId: string, qty: number): CartItem => ({
   id: variantId,
@@ -59,6 +61,8 @@ const leaveTab = (): void => {
 beforeEach(() => {
   getAvailabilityByVariantIds.mockReset()
   getHeldLinesByTransactionId.mockReset()
+  getSellPricesByVariantIds.mockReset()
+  getSellPricesByVariantIds.mockResolvedValue(new Map())
   localStorage.clear()
   useCartStore.setState({ items: [] })
 })
@@ -253,5 +257,63 @@ describe("useCartAvailability for a browser that holds an open checkout", () => 
     expect(queryClient.isFetching()).toBe(0)
     expect(getAvailabilityByVariantIds).toHaveBeenCalledOnce()
     expect(result.current.hasUnavailableItems).toBe(false)
+  })
+})
+
+describe("useCartAvailability when the shop has changed a price since the piece was added", () => {
+  beforeEach(() => {
+    useCartStore.setState({ items: [cartItem("var_1", 2), cartItem("var_2", 1)] })
+    getAvailabilityByVariantIds.mockResolvedValue(
+      new Map([
+        ["var_1", 5],
+        ["var_2", 5],
+      ]),
+    )
+  })
+
+  it("puts the price the shop charges now into the cart and marks the line", async () => {
+    getSellPricesByVariantIds.mockResolvedValue(
+      new Map([
+        ["var_1", 24_900],
+        ["var_2", 19_900],
+      ]),
+    )
+    renderCartAvailability()
+
+    await waitFor(() => {
+      expect(useCartStore.getState().items[0]).toMatchObject({ priceChanged: true, rawPrice: 24_900 })
+    })
+    expect(useCartStore.getState().items[1]).toStrictEqual(cartItem("var_2", 1))
+    expect(useCartStore.getState().cartTotal()).toBe(69_700)
+    expect(getSellPricesByVariantIds).toHaveBeenCalledExactlyOnceWith(["var_1", "var_2"])
+  })
+
+  it("leaves the cart as it is while every price is still current", async () => {
+    getSellPricesByVariantIds.mockResolvedValue(new Map([["var_1", 19_900]]))
+    const before = useCartStore.getState().items
+    const { result } = renderCartAvailability()
+
+    await waitFor(() => {
+      expect(result.current.isChecking).toBe(false)
+    })
+
+    expect(useCartStore.getState().items).toBe(before)
+  })
+
+  it("takes a price the shop changes while the page is open once the check runs again", async () => {
+    getSellPricesByVariantIds.mockResolvedValue(new Map([["var_1", 19_900]]))
+    const { queryClient, result } = renderCartAvailability()
+    await waitFor(() => {
+      expect(result.current.isChecking).toBe(false)
+    })
+    getSellPricesByVariantIds.mockResolvedValue(new Map([["var_1", 17_900]]))
+
+    act(() => {
+      void queryClient.invalidateQueries()
+    })
+
+    await waitFor(() => {
+      expect(useCartStore.getState().items[0]).toMatchObject({ priceChanged: true, rawPrice: 17_900 })
+    })
   })
 })

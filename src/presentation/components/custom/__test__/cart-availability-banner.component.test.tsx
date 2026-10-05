@@ -19,6 +19,9 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", async () => {
 })
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ getAvailabilityByVariantIds }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({ getHeldLinesByTransactionId: vi.fn() }))
+vi.mock("~/src/modules/product-variant/product-variant.accessors", () => ({
+  getSellPricesByVariantIds: () => Promise.resolve(new Map([["var_1", 19_900]])),
+}))
 
 const BANNER_TEXT = "Some items in your cart are no longer available. Update your cart before checkout."
 

@@ -35,7 +35,7 @@ import { type Discount } from "~/src/modules/discount/discount.types"
 import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
 import { sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.utils"
 import { reserveInventoryByVariantLines, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
-import { sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
+import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 import { createPendingPayment, getPaymentContextByTransactionId } from "~/src/modules/payment/payment.accessors"
 import { getProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 
@@ -150,6 +150,29 @@ const toLineItems = (lines: OrderLine[], shippingCost: number): SessionLineItem[
   return lineItems
 }
 
+const sumItemsSubtotal = (lines: OrderLine[]): number =>
+  sumOrderLineSubtotal(lines.map((line) => ({ price: line.priceCents, qty: line.qty })))
+
+interface CheckoutQuoteArgs {
+  discount: Discount["applied"] | undefined
+  lines: OrderLine[]
+  shippingCost: number
+}
+
+interface CheckoutQuote {
+  lines: { qty: number; unitPrice: number; variantId: string }[]
+  totals: OrderTotals
+}
+
+const quoteCheckout = ({ discount, lines, shippingCost }: CheckoutQuoteArgs): CheckoutQuote => ({
+  lines: lines.map((line) => ({ qty: line.qty, unitPrice: line.priceCents, variantId: line.variantId })),
+  totals: computeOrderTotals({
+    discountTotal: discount?.amountMinorUnits,
+    itemsSubtotal: sumItemsSubtotal(lines),
+    shippingTotal: shippingCost,
+  }),
+})
+
 const toMetaItems = (lines: OrderLine[]): Record<string, string> =>
   toCheckoutSessionItemsMetadata(
     lines.map((line) => ({
@@ -245,7 +268,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
   const discount = await resolveCheckoutDiscount({
     code: data.checkoutValues.discountCode,
     email,
-    itemsSubtotal: sumOrderLineSubtotal(lines.map((line) => ({ price: line.priceCents, qty: line.qty }))),
+    itemsSubtotal: sumItemsSubtotal(lines),
     shippingTotal: shippingCost,
   })
 
@@ -281,7 +304,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
 
     scheduleProductCatalogInvalidation()
 
-    return result
+    return { ...result, ...quoteCheckout({ discount, lines, shippingCost }) }
   } catch (error) {
     await releaseInventoryForItems(validatedItems).catch((releaseError: unknown) => {
       console.error("Failed to release inventory after checkout error:", releaseError)
@@ -450,7 +473,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   const discount = await resolveCheckoutDiscount({
     code: data.checkoutValues.discountCode,
     email: data.checkoutValues.email,
-    itemsSubtotal: sumOrderLineSubtotal(lines.map((line) => ({ price: line.priceCents, qty: line.qty }))),
+    itemsSubtotal: sumItemsSubtotal(lines),
     shippingTotal: shippingCost,
   })
 
@@ -483,5 +506,5 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   })
   scheduleProductCatalogInvalidation()
 
-  return replacement
+  return { ...replacement, ...quoteCheckout({ discount, lines, shippingCost }) }
 }

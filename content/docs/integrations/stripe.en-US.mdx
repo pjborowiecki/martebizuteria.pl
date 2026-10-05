@@ -60,7 +60,7 @@ export const createCheckoutSessionFn = createServerFn({ method: "POST" })
 
 `handleCreateCheckoutSession` in `stripe.actions.server.ts` runs this sequence:
 
-1. `validateAndCalculateItems(items)` loads the products with their inventory by handle, resolves each variant, and **re-reads the price from the database** — the client's `rawPrice` is never trusted. It rejects with `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (via `isSellPriceCentsValid`) or `INSUFFICIENT_INVENTORY`, and returns each line enriched with `inventoryId` and `currentVersion`.
+1. `validateAndCalculateItems(items)` loads the products with their inventory by handle, resolves each variant, and **reads the price from the database** — `cartItemSchema` has no `price` or `rawPrice`, so the basket's price never reaches the handler. It rejects with `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (via `isSellPriceCentsValid`) or `INSUFFICIENT_INVENTORY`, and returns each line enriched with `inventoryId` and `currentVersion`.
 2. `resolveShippingCost(deliveryMethodId)` reads the price from `delivery_method`, or zero when no method is chosen.
 3. `resolveCheckoutDiscount(...)` checks `checkoutValues.discountCode` again against the subtotal of the database prices and the shipping cost; a code that does not apply is dropped. See [Discounts](/docs/features/discounts).
 4. `reserveInventoryForItems(validatedItems)` takes the stock, using the optimistic `version` column.
@@ -110,9 +110,9 @@ const session = await stripe.checkout.sessions.create(params).catch(async (error
 When the cart or the form changes, the client does not create a second session — it updates the existing one. `stripe.checkout.ts` decides this with two fingerprints:
 
 ```ts
-export const buildCheckoutLinesFingerprint = (items: readonly { qty: number; variantId: string }[]): string =>
-  items
-    .map((item) => `${item.variantId}:${item.qty}`)
+export const buildCheckoutLinesFingerprint = (lines: readonly CheckoutSessionLine[]): string =>
+  lines
+    .map((line) => `${line.variantId}:${line.qty}:${line.unitPrice}`)
     .toSorted((left, right) => left.localeCompare(right))
     .join("|")
 
@@ -120,7 +120,7 @@ export const buildCheckoutValuesFingerprint = (values: CheckoutFormSchema): stri
   JSON.stringify(Object.fromEntries(Object.entries(values).toSorted(([left], [right]) => left.localeCompare(right))))
 ```
 
-`ensureCheckoutSession` takes the session on screen and `heldSessionId`, the id the browser stored for its open session. It continues the held session, or the one on screen when nothing is stored, calling `updateCheckoutSessionFn` when the amount or either fingerprint has moved or when the held session is not the one on screen, and creates a session only when the browser holds none. So a reload, a second tab or a return from the basket replace the open session instead of reserving the basket again. `resetCheckoutSession` forces the update of the held session, which the UI uses after a declined payment and when the shopper restarts a payment whose session expired. Each returned session carries `expiresAt`, `CHECKOUT_SESSION_LIFETIME_SECONDS` after it arrived, which the payment step uses to show that the session has expired.
+`ensureCheckoutSession` takes the session on screen and `heldSessionId`, the id the browser stored for its open session. It continues the held session, or the one on screen when nothing is stored, calling `updateCheckoutSessionFn` when either fingerprint has moved or when the held session is not the one on screen, and creates a session only when the browser holds none. So a reload, a second tab or a return from the basket replace the open session instead of reserving the basket again. `isCheckoutSessionFor` builds the session's lines fingerprint from the `lines` the server quoted and the basket's from its current prices, so a price the shop changed, which the availability check writes into the basket, replaces the session too. `resetCheckoutSession` forces the update of the held session, which the UI uses after a declined payment and when the shopper restarts a payment whose session expired. Each returned session keeps the server's `lines` and `totals`, which the checkout summary and the basket take their prices from, and carries `expiresAt`, `CHECKOUT_SESSION_LIFETIME_SECONDS` after it arrived, which the payment step uses to show that the session has expired.
 
 Server-side, `handleUpdateCheckoutSession` is the most delicate function in the codebase:
 

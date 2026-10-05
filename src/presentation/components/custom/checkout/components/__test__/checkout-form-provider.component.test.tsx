@@ -91,11 +91,11 @@ const Probe = (): JSX.Element => {
       <button
         onClick={() => {
           setCheckoutSession({
-            amount: 24_900,
             clientSecret: "cs_test",
             expiresAt: Date.UTC(2026, 9, 5, 12, 32),
-            linesFingerprint: "v-1:2",
+            lines: [{ qty: 2, unitPrice: 12_450, variantId: "v-1" }],
             sessionId: "cs_live_1",
+            totals: { discountTotal: 0, shippingTotal: 0, subtotal: 24_900, taxTotal: 4656, total: 24_900, vatBasisPoints: 2300 },
             valuesFingerprint: "checkout-values",
           })
         }}

@@ -15,6 +15,7 @@
     "edit": "Edytuj",
     "free": "Za darmo",
     "itemsCount": "Produkty ({count})",
+    "priceChanged": "Cena zmieniła się od czasu dodania tego produktu do koszyka.",
     "vatIncluded": "W tym VAT ({rate}%)"
   },
   "checkoutSuccess": {
@@ -138,6 +139,7 @@
     "lockerChoosePoint": "Kliknij, aby wybrać ten punkt",
     "cardSummary": "Karta kończąca się na {endingDigits}",
     "placeOrder": "Zamawiam i płacę",
+    "placeOrderFor": "Zamawiam i płacę {amount}",
     "termsAgreement": "Składając zamówienie, akceptujesz <terms>Regulamin</terms> i <privacy>Politykę Prywatności</privacy>.",
     "placeholderItemName": "Aura Hoop I",
     "placeholderItemDetails": "Srebro 925 / lustrzane · Rozmiar uniwersalny",

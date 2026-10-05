@@ -5,9 +5,11 @@ import zod from "zod/v4"
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
 import { CART_LINES_MAX, CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
+import { type CartUnitPrice } from "~/src/modules/cart/cart.pricing"
 import { getAvailabilityByVariantIds } from "~/src/modules/inventory/inventory.accessors"
 import { sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.utils"
 import { getHeldLinesByTransactionId } from "~/src/modules/payment/payment.accessors"
+import { getSellPricesByVariantIds } from "~/src/modules/product-variant/product-variant.accessors"
 import { PRODUCT_VARIANT_COLUMN_LENGTH } from "~/src/modules/product-variant/product-variant.constants"
 
 const CHECKOUT_SESSION_ID_MAX_LENGTH = 255
@@ -33,6 +35,7 @@ export interface CartAvailabilityIssue {
 export interface CartAvailabilityResult {
   readonly hasUnavailableItems: boolean
   readonly issues: readonly CartAvailabilityIssue[]
+  readonly prices: readonly CartUnitPrice[]
 }
 
 const CART_AVAILABILITY_STALE_MS = 0
@@ -41,8 +44,10 @@ export const checkCartAvailability = createServerFn({ method: "POST" })
   .middleware([withRequest])
   .validator((input: zod.input<typeof cartAvailabilityInputSchema>) => cartAvailabilityInputSchema.parse(input))
   .handler(async ({ data: { heldSessionId, lines } }): Promise<CartAvailabilityResult> => {
-    const [availabilityByVariantId, heldLines] = await Promise.all([
-      getAvailabilityByVariantIds(lines.map((line) => line.variantId)),
+    const variantIds = lines.map((line) => line.variantId)
+    const [availabilityByVariantId, priceByVariantId, heldLines] = await Promise.all([
+      getAvailabilityByVariantIds(variantIds),
+      getSellPricesByVariantIds(variantIds),
       heldSessionId === undefined ? [] : getHeldLinesByTransactionId(heldSessionId),
     ])
 
@@ -58,6 +63,7 @@ export const checkCartAvailability = createServerFn({ method: "POST" })
     return {
       hasUnavailableItems: issues.length > 0,
       issues,
+      prices: [...priceByVariantId].map(([variantId, unitPrice]) => ({ unitPrice, variantId })),
     }
   })
 

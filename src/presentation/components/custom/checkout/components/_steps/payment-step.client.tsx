@@ -2,7 +2,7 @@ import { type BaseSyntheticEvent, type JSX, type ReactNode, useCallback, useEffe
 
 import { CheckoutElementsProvider, PaymentElement, useCheckoutElements } from "@stripe/react-stripe-js/checkout"
 import { type StripeCheckoutElementsSdkOptions, type StripeCheckoutPaymentElementOptions } from "@stripe/stripe-js"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import "@tanstack/react-start/client-only"
 import { useTheme } from "@wrksz/themes/client"
@@ -14,10 +14,10 @@ import { useLocale, useTranslations } from "use-intl/react"
 import { STRIPE_FONTS, getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
 import {
   type CheckoutSession,
-  buildCheckoutLinesFingerprint,
   buildCheckoutValuesFingerprint,
   confirmCheckoutSession,
   ensureCheckoutSession,
+  isCheckoutSessionFor,
   resetCheckoutSession,
 } from "~/src/integrations/stripe/stripe.checkout"
 import { getStripe } from "~/src/integrations/stripe/stripe.client"
@@ -27,7 +27,6 @@ import { CHECKOUT_ERROR_CODES, getCheckoutErrorKey } from "~/src/integrations/st
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
-import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
@@ -123,6 +122,7 @@ const PaymentForm = ({
   }, [])
 
   const checkout = checkoutState.type === "success" ? checkoutState.checkout : undefined
+  const placeOrderLabel = checkout === undefined ? t("placeOrder") : t("placeOrderFor", { amount: checkout.total.total.amount })
   const handlePay = useCallback(async () => {
     if (checkout === undefined || checkoutSession === undefined) {
       return
@@ -185,7 +185,7 @@ const PaymentForm = ({
           disabled={checkoutBlocked || !isReady || isProcessing || checkout === undefined}
           className="group min-h-13 w-full cursor-pointer rounded-none text-sm tracking-[0.2em] uppercase disabled:pointer-events-auto disabled:cursor-not-allowed"
         >
-          {isProcessing ? t("processingPayment") : t("placeOrder")}
+          {isProcessing ? t("processingPayment") : placeOrderLabel}
           <ArrowRight aria-hidden className="ml-2 size-4 transition-transform group-hover:translate-x-1" strokeWidth={1.15} />
         </Button>
         <p className="text-center text-xs text-muted-foreground/70 italic">
@@ -220,21 +220,20 @@ const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
 const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
   const { theme } = useTheme()
   const { checkoutSession, getValues, onEdit, setCheckoutSession } = useCheckoutForm()
-  const cartTotal = useCartStore((state) => state.cartTotal)
   const items = useCartStore((state) => state.items)
-  const deliveryMethodId = getValues("deliveryMethod")
+  const applyCurrentPrices = useCartStore((state) => state.applyCurrentPrices)
   const { loadError, reportFailure, setLoadError } = useCheckoutSessionFailure()
   const [retryToken, setRetryToken] = useState(0)
-  const { data: deliveryMethods, isLoading } = useQuery(listDeliveryMethodsQuery())
-  const deliveryCost = deliveryMethods?.find((m) => m.id === deliveryMethodId)?.price ?? 0
-  const amountCents = cartTotal() + deliveryCost
-  const linesFingerprint = buildCheckoutLinesFingerprint(items)
   const valuesFingerprint = buildCheckoutValuesFingerprint(getValues())
-  const sessionMatches =
-    checkoutSession?.amount === amountCents &&
-    checkoutSession.linesFingerprint === linesFingerprint &&
-    checkoutSession.valuesFingerprint === valuesFingerprint
+  const sessionMatches = checkoutSession !== undefined && isCheckoutSessionFor(checkoutSession, { items, values: getValues() })
   const inFlightRef = useRef(false)
+  const adoptSession = useCallback(
+    (session: CheckoutSession) => {
+      applyCurrentPrices(session.lines)
+      setCheckoutSession(session)
+    },
+    [applyCurrentPrices, setCheckoutSession],
+  )
   const retry = useCallback(() => {
     setLoadError(false)
     setRetryToken((token) => token + 1)
@@ -247,31 +246,26 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
     inFlightRef.current = true
     try {
       const session = await resetCheckoutSession({
-        amount: amountCents,
         heldSessionId: loadCheckoutSessionId(),
         items,
         session: checkoutSession,
         values: getValues(),
       })
-      setCheckoutSession(session)
+      adoptSession(session)
     } catch (error) {
       reportFailure(error)
     } finally {
       inFlightRef.current = false
     }
-  }, [amountCents, checkoutSession, getValues, items, reportFailure, setCheckoutSession])
+  }, [adoptSession, checkoutSession, getValues, items, reportFailure])
   useEffect(() => {
-    if (isLoading) {
-      return
-    }
-
     if (!isCheckoutComplete(getValues())) {
       onEdit(CHECKOUT_STEP_ID.CONTACT)
 
       return
     }
 
-    if (amountCents <= 0 || inFlightRef.current || sessionMatches) {
+    if (items.length === 0 || inFlightRef.current || sessionMatches) {
       return
     }
 
@@ -280,13 +274,12 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
       setLoadError(false)
       try {
         const session = await ensureCheckoutSession({
-          amount: amountCents,
           existing: checkoutSession,
           heldSessionId: loadCheckoutSessionId(),
           items,
           values: getValues(),
         })
-        setCheckoutSession(session)
+        adoptSession(session)
       } catch (error) {
         reportFailure(error)
       } finally {
@@ -294,20 +287,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
       }
     }
     void run()
-  }, [
-    amountCents,
-    isLoading,
-    checkoutSession,
-    getValues,
-    items,
-    onEdit,
-    reportFailure,
-    setCheckoutSession,
-    setLoadError,
-    retryToken,
-    sessionMatches,
-    valuesFingerprint,
-  ])
+  }, [adoptSession, checkoutSession, getValues, items, onEdit, reportFailure, setLoadError, retryToken, sessionMatches, valuesFingerprint])
 
   const options = useMemo<StripeCheckoutElementsSdkOptions | undefined>(() => {
     if (checkoutSession === undefined || !sessionMatches) {
@@ -325,7 +305,6 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
 
   return {
     checkoutSession,
-    isLoading,
     loadError,
     options,
     resetSession,
@@ -361,7 +340,7 @@ export const PaymentStep = (): JSX.Element => {
   const { hasUnavailableItems, isChecking } = useCartAvailability()
   const checkoutBlocked = hasUnavailableItems || isChecking
   const stripePromise = useMemo(() => getStripe(locale), [locale])
-  const { checkoutSession, isLoading, loadError, options, resetSession, retry } = useCheckoutSessionLoader()
+  const { checkoutSession, loadError, options, resetSession, retry } = useCheckoutSessionLoader()
   const isExpired = useCheckoutSessionExpired(checkoutSession)
   const restartPayment = useCallback(() => {
     void resetSession()
@@ -374,7 +353,7 @@ export const PaymentStep = (): JSX.Element => {
     return <PaymentError onRetry={retry} reason="unavailable" />
   }
 
-  if (isLoading || options === undefined) {
+  if (options === undefined) {
     return <PaymentSkeleton />
   }
 
@@ -427,7 +406,6 @@ interface CheckoutSessionFailure {
 
 interface CheckoutSessionLoader {
   checkoutSession: CheckoutSession | undefined
-  isLoading: boolean
   loadError: boolean
   options: StripeCheckoutElementsSdkOptions | undefined
   resetSession: () => Promise<void>
