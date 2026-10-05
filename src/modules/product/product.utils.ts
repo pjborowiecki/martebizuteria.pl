@@ -586,7 +586,6 @@ export const prepareCatalogReplacePayload = (
     quantityAvailable: variantRow.quantity,
     quantityReserved: 0,
     variantId: variantRow.id,
-    version: 1,
   }))
   const inventoryAdjustments = variantPersistRows.flatMap(({ id, loadedQuantity, quantity }) =>
     ownedVariantIds.has(id) && loadedQuantity !== undefined && quantity !== loadedQuantity

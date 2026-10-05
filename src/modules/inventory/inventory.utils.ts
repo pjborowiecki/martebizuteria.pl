@@ -1,7 +1,6 @@
-import { getInventoryByVariantIds, releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
+import { getInventoryIdsByVariantIds, releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
 
 export interface ReserveInventoryItem {
-  currentVersion: number
   inventoryId: string
   qty: number
   title: string
@@ -38,24 +37,19 @@ export const reserveInventoryForItems = async (items: readonly ReserveInventoryI
       console.error("Failed to roll back partial inventory reservation:", error)
     })
 
-    throw new Error(`Inventory reservation failed for ${firstFailure.title}. Stock changed or unavailable.`)
+    throw new Error(`Inventory reservation failed for ${firstFailure.title}. Not enough stock available.`)
   }
 }
 
 export const reserveInventoryByVariantLines = async (lines: readonly ReserveInventoryVariantLine[]): Promise<void> => {
-  const inventories = await getInventoryByVariantIds(lines.map((line) => line.variantId))
+  const inventoryIds = await getInventoryIdsByVariantIds(lines.map((line) => line.variantId))
   const items = lines.map((line) => {
-    const inv = inventories.get(line.variantId)
-    if (inv === undefined) {
+    const inventoryId = inventoryIds.get(line.variantId)
+    if (inventoryId === undefined) {
       throw new Error(`Inventory not found for variant ${line.variantId}.`)
     }
 
-    return {
-      currentVersion: inv.version,
-      inventoryId: inv.id,
-      qty: line.qty,
-      title: line.variantId,
-    }
+    return { inventoryId, qty: line.qty, title: line.variantId }
   })
   await reserveInventoryForItems(items)
 }

@@ -86,7 +86,7 @@ With no store — the queue consumer, unit tests, the paths that short-circuit b
 
 ## Consistency without transactions
 
-D1 has no interactive transactions. `db.batch()` is atomic, so anything that must be all-or-nothing is assembled as an array of statements and handed to `runDrizzleBatch` from `src/integrations/drizzle-orm/drizzle.batch.ts`. Anything that must read, decide, then write uses optimistic concurrency instead: each inventory reserve statement in `src/modules/inventory/inventory.accessors.ts` is a compare-and-set guarded on both the row `version` observed during validation and `quantityAvailable >= qty`, and uses the length of `.returning()` as its success signal.
+D1 has no interactive transactions. `db.batch()` is atomic, so anything that must be all-or-nothing is assembled as an array of statements and handed to `runDrizzleBatch` from `src/integrations/drizzle-orm/drizzle.batch.ts`. Anything that must read, decide, then write puts the decision in the write instead: each inventory reserve statement in `src/modules/inventory/inventory.accessors.ts` is an `UPDATE` guarded on `quantityAvailable >= qty`, which SQLite checks and applies in one statement, and uses the length of `.returning()` as its success signal. It does not also compare a version read during validation, so a checkout is refused only when the stock has run out, not because another checkout reserved the same variant a moment earlier.
 
 Multi-line carts reserve in one batch and compensate. `reserveInventoryForItems` releases the reservations that already succeeded when any line fails its guard — and the compensation itself is wrapped in `.catch()` and only logged, so a failed rollback leaves stock reserved. That is a saga with a known hole, not a distributed transaction.
 

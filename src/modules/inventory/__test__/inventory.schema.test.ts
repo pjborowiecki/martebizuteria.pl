@@ -18,7 +18,7 @@ describe("inventory table", () => {
     expect(config.name).toBe("inventory")
   })
 
-  it("declares the stock counters, the variant link and the optimistic version", () => {
+  it("declares the stock counters, the variant link and the version column the table still holds", () => {
     expect(config.columns.map((column) => column.name).toSorted()).toStrictEqual([
       "created_at",
       "id",
@@ -47,7 +47,7 @@ describe("inventory table", () => {
     }
   })
 
-  it("starts the optimistic version at one so a first reservation can compare it", () => {
+  it("defaults the version column, which nothing writes any more, so a new stock row can leave it out", () => {
     const version = columnByName.get("version")
 
     expect(version?.notNull).toBe(true)

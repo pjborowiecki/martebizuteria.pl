@@ -7,19 +7,14 @@ import {
 } from "~/src/modules/inventory/inventory.utils"
 
 const accessors = vi.hoisted(() => ({
-  getInventoryByVariantIds: vi.fn<(variantIds: readonly string[]) => Promise<ReadonlyMap<string, { id: string; version: number }>>>(),
+  getInventoryIdsByVariantIds: vi.fn<(variantIds: readonly string[]) => Promise<ReadonlyMap<string, string>>>(),
   releaseInventoryForItems: vi.fn<(items: readonly { inventoryId: string; qty: number }[]) => Promise<void>>(),
   reserveInventoryRows: vi.fn<(items: readonly { inventoryId: string }[]) => Promise<ReadonlySet<string>>>(),
 }))
 
 vi.mock("~/src/modules/inventory/inventory.accessors", () => accessors)
 
-const item = (inventoryId: string, title: string, qty = 1): ReserveInventoryItem => ({
-  currentVersion: 3,
-  inventoryId,
-  qty,
-  title,
-})
+const item = (inventoryId: string, title: string, qty = 1): ReserveInventoryItem => ({ inventoryId, qty, title })
 
 const reserveAllBut = (...failing: string[]) => {
   accessors.reserveInventoryRows.mockImplementation((items) =>
@@ -58,7 +53,7 @@ describe("reserveInventoryForItems", () => {
     reserveAllBut("inv-b", "inv-c")
 
     await expect(reserveInventoryForItems([item("inv-a", "Ring"), item("inv-b", "Bracelet"), item("inv-c", "Pendant")])).rejects.toThrow(
-      "Inventory reservation failed for Bracelet. Stock changed or unavailable.",
+      "Inventory reservation failed for Bracelet. Not enough stock available.",
     )
   })
 
@@ -76,7 +71,7 @@ describe("reserveInventoryForItems", () => {
     accessors.releaseInventoryForItems.mockRejectedValue(new Error("d1 unavailable"))
 
     await expect(reserveInventoryForItems([item("inv-a", "Ring"), item("inv-b", "Bracelet")])).rejects.toThrow(
-      "Inventory reservation failed for Bracelet. Stock changed or unavailable.",
+      "Inventory reservation failed for Bracelet. Not enough stock available.",
     )
     expect(consoleError).toHaveBeenCalledWith("Failed to roll back partial inventory reservation:", new Error("d1 unavailable"))
 
@@ -96,15 +91,15 @@ describe("reserveInventoryByVariantLines", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     accessors.releaseInventoryForItems.mockResolvedValue()
-    accessors.getInventoryByVariantIds.mockResolvedValue(new Map())
+    accessors.getInventoryIdsByVariantIds.mockResolvedValue(new Map())
     reserveAllBut()
   })
 
-  it("reads every stock row at once and reserves each line against the version it found", async () => {
-    accessors.getInventoryByVariantIds.mockResolvedValue(
+  it("finds every line's stock row in one read and reserves each line on it", async () => {
+    accessors.getInventoryIdsByVariantIds.mockResolvedValue(
       new Map([
-        ["variant-a", { id: "inv-variant-a", version: 7 }],
-        ["variant-b", { id: "inv-variant-b", version: 2 }],
+        ["variant-a", "inv-variant-a"],
+        ["variant-b", "inv-variant-b"],
       ]),
     )
 
@@ -113,15 +108,15 @@ describe("reserveInventoryByVariantLines", () => {
       { qty: 1, variantId: "variant-b" },
     ])
 
-    expect(accessors.getInventoryByVariantIds).toHaveBeenCalledExactlyOnceWith(["variant-a", "variant-b"])
+    expect(accessors.getInventoryIdsByVariantIds).toHaveBeenCalledExactlyOnceWith(["variant-a", "variant-b"])
     expect(accessors.reserveInventoryRows).toHaveBeenCalledExactlyOnceWith([
-      { currentVersion: 7, inventoryId: "inv-variant-a", qty: 2, title: "variant-a" },
-      { currentVersion: 2, inventoryId: "inv-variant-b", qty: 1, title: "variant-b" },
+      { inventoryId: "inv-variant-a", qty: 2, title: "variant-a" },
+      { inventoryId: "inv-variant-b", qty: 1, title: "variant-b" },
     ])
   })
 
   it("refuses the whole batch when a variant has no inventory row", async () => {
-    accessors.getInventoryByVariantIds.mockResolvedValue(new Map([["variant-a", { id: "inv-a", version: 1 }]]))
+    accessors.getInventoryIdsByVariantIds.mockResolvedValue(new Map([["variant-a", "inv-a"]]))
 
     await expect(
       reserveInventoryByVariantLines([

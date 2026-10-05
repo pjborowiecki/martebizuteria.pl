@@ -341,7 +341,6 @@ const stockRow = (variantId: string, quantityAvailable: number): ProductCatalogR
   quantityAvailable,
   quantityReserved: 0,
   variantId,
-  version: 1,
 })
 
 const simpleCatalog = (
@@ -385,35 +384,35 @@ describe("prepareProductCatalogBatch on a product that has already sold", () => 
     ])
   })
 
-  it("keeps the stock that open checkouts have reserved and its lock version when nothing changed", async () => {
+  it("keeps the stock that open checkouts have reserved when nothing changed", async () => {
     await saveCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 3, sku: "SOLD" }]))
 
-    expect(rows("select quantity_available, quantity_reserved, version from inventory")).toStrictEqual([
-      { quantity_available: 3, quantity_reserved: 2, version: 1 },
+    expect(rows("select quantity_available, quantity_reserved from inventory")).toStrictEqual([
+      { quantity_available: 3, quantity_reserved: 2 },
     ])
   })
 
   it("never writes the quantity a save carries over the stock row a variant already has", async () => {
     await saveCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 10, sku: "SOLD" }]))
 
-    expect(rows("select quantity_available, quantity_reserved, version from inventory")).toStrictEqual([
-      { quantity_available: 3, quantity_reserved: 2, version: 1 },
+    expect(rows("select quantity_available, quantity_reserved from inventory")).toStrictEqual([
+      { quantity_available: 3, quantity_reserved: 2 },
     ])
   })
 
-  it("adds a stock change to what is available without touching reservations and moves the lock version", async () => {
+  it("adds a stock change to what is available without touching reservations", async () => {
     await saveCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 10, sku: "SOLD" }], [{ quantityChange: 7, variantId: "v-sold" }]))
 
-    expect(rows("select quantity_available, quantity_reserved, version from inventory")).toStrictEqual([
-      { quantity_available: 10, quantity_reserved: 2, version: 2 },
+    expect(rows("select quantity_available, quantity_reserved from inventory")).toStrictEqual([
+      { quantity_available: 10, quantity_reserved: 2 },
     ])
   })
 
   it("takes a stock change away from what is available", async () => {
     await saveCatalog("p1", simpleCatalog([{ id: "v-sold", quantity: 1, sku: "SOLD" }], [{ quantityChange: -2, variantId: "v-sold" }]))
 
-    expect(rows("select quantity_available, quantity_reserved, version from inventory")).toStrictEqual([
-      { quantity_available: 1, quantity_reserved: 2, version: 2 },
+    expect(rows("select quantity_available, quantity_reserved from inventory")).toStrictEqual([
+      { quantity_available: 1, quantity_reserved: 2 },
     ])
   })
 
@@ -429,9 +428,9 @@ describe("prepareProductCatalogBatch on a product that has already sold", () => 
       ),
     )
 
-    expect(rows("select variant_id, quantity_available, quantity_reserved, version from inventory order by variant_id")).toStrictEqual([
-      { quantity_available: 6, quantity_reserved: 0, variant_id: "v-added", version: 1 },
-      { quantity_available: 4, quantity_reserved: 2, variant_id: "v-sold", version: 2 },
+    expect(rows("select variant_id, quantity_available, quantity_reserved from inventory order by variant_id")).toStrictEqual([
+      { quantity_available: 6, quantity_reserved: 0, variant_id: "v-added" },
+      { quantity_available: 4, quantity_reserved: 2, variant_id: "v-sold" },
     ])
   })
 })

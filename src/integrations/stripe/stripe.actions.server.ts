@@ -152,7 +152,6 @@ const validateAndCalculateItems = async (items: CartItem[], heldLines: readonly 
 
     return {
       ...item,
-      currentVersion: inv.version,
       inventoryId: inv.id,
       lineTitle: item.variantTitle === "" ? item.title : `${item.title} — ${item.variantTitle}`,
       priceCents: variant.price,

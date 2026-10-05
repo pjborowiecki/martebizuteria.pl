@@ -27,7 +27,6 @@ export const HELD_LINES = [{ qty: 1, variantId: "variant-old" }]
 interface CatalogueInventory {
   id: string
   quantityAvailable: number
-  version: number
 }
 
 export interface CatalogueVariant {
@@ -41,7 +40,7 @@ export const catalogueProduct = (variants: CatalogueVariant[]) => ({ handle: CAR
 
 export const availableVariant = (): CatalogueVariant => ({
   id: CART_ITEM.variantId,
-  inventory: { id: "inventory-1", quantityAvailable: 5, version: 7 },
+  inventory: { id: "inventory-1", quantityAvailable: 5 },
   price: 24_900,
   title: "Rozmiar M (katalog)",
 })
