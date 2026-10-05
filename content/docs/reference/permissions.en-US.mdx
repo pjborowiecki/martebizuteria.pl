@@ -49,7 +49,7 @@ Note that `product` covers the whole catalog, not only the `product` table: cate
 
 ## Where each permission is checked
 
-Of the 102 server functions in `src/modules/*/use-cases/`, 62 require a permission, 21 require only a session and 19 are public.
+Of the 107 server functions in `src/modules/*/use-cases/`, 63 require a permission, 23 require only a session and 21 are public.
 
 | Permission               | Checked by                                                                                                                                                                                                                                                                                                                                                |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -61,7 +61,7 @@ Of the 102 server functions in `src/modules/*/use-cases/`, 62 require a permissi
 | `order: ["update"]`      | `ship-order`, `fulfill-order`, `mark-order-delivered`, `cancel-order`, `refund-admin-order`, `restock-order`, `create-discount`, `update-discount`, `delete-discounts`                                                                                                                                                                                    |
 | `content: ["read"]`      | `get-admin-content-pages`, `get-admin-content-page`                                                                                                                                                                                                                                                                                                       |
 | `content: ["update"]`    | `update-content-page`                                                                                                                                                                                                                                                                                                                                     |
-| `settings: ["manage"]`   | `get-dashboard-snapshot`, `get-dashboard-chart-range`, `list-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`                                                                                                                                                                                                                                      |
+| `settings: ["manage"]`   | `get-dashboard-snapshot`, `get-dashboard-chart-range`, `list-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`, `set-sales-paused`                                                                                                                                                                                                                  |
 | `user: ["list"]`         | `get-admin-customers-page`, `get-admin-customer-stats`, `export-admin-customers`, `get-admin-newsletter-page`, `get-newsletter-stats`                                                                                                                                                                                                                     |
 | `user: ["get"]`          | `get-admin-customer`                                                                                                                                                                                                                                                                                                                                      |
 | `user: ["update"]`       | `update-customer`                                                                                                                                                                                                                                                                                                                                         |
@@ -72,11 +72,12 @@ Of the 102 server functions in `src/modules/*/use-cases/`, 62 require a permissi
 
 ## Public endpoints
 
-Nineteen use cases deliberately take no `authorized` middleware, because the storefront must serve anonymous visitors. The list is not implicit — it is written down in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` as `PUBLIC_USE_CASES`:
+Twenty-one use cases deliberately take no `authorized` middleware, because the storefront must serve anonymous visitors. The list is not implicit — it is written down in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` as `PUBLIC_USE_CASES`:
 
 | Use case                                                    |
 | ----------------------------------------------------------- |
 | `cart/use-cases/check-cart-availability.ts`                 |
+| `checkout/use-cases/get-checkout-session-status.ts`         |
 | `content-page/use-cases/get-content-page.ts`                |
 | `customer-activity/use-cases/record-customer-activity.ts`   |
 | `delivery-method/use-cases/list-delivery-methods.ts`        |
@@ -93,6 +94,7 @@ Nineteen use cases deliberately take no `authorized` middleware, because the sto
 | `product/use-cases/get-product.ts`                          |
 | `product/use-cases/get-related-products.ts`                 |
 | `product/use-cases/get-storefront-products-page.ts`         |
+| `store-setting/use-cases/get-sales-status.ts`               |
 | `storefront-search/use-cases/get-trending-searches.ts`      |
 | `storefront-search/use-cases/search-storefront.ts`          |
 

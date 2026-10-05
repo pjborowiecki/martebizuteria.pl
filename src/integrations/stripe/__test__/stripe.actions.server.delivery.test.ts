@@ -70,6 +70,7 @@ vi.mock("~/src/modules/payment/payment.accessors", () => ({
 vi.mock("~/src/modules/product/product.accessors", () => ({
   getPublishedProductsWithInventoryByHandles: mocked.getPublishedProductsWithInventoryByHandles,
 }))
+vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ isSalesPaused: () => Promise.resolve(false) }))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
 import {

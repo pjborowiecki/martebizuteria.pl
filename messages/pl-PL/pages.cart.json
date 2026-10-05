@@ -16,6 +16,10 @@
     "itemUnavailable": "Nie jest już dostępny",
     "itemLimited": "Pozostało tylko {available} szt."
   },
+  "salesPaused": {
+    "banner": "Tymczasowo wstrzymaliśmy przyjmowanie zamówień. Możesz przeglądać sklep i dodawać produkty do koszyka, ale kasa pozostanie zamknięta do czasu wznowienia sprzedaży.",
+    "checkoutClosed": "Przyjmowanie zamówień jest wstrzymane, więc kasa jest teraz zamknięta. Twój koszyk poczeka tu do wznowienia sprzedaży."
+  },
   "summary": {
     "title": "Podsumowanie",
     "subtotal": "Produkty",

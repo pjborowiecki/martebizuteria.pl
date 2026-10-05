@@ -1,5 +1,6 @@
 import { type JSX } from "react"
 
+import { noop } from "@tanstack/react-query"
 import type * as ReactRouter from "@tanstack/react-router"
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
@@ -62,6 +63,14 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 
 const availability = vi.hoisted(() => ({ hasUnavailableItems: false, isChecking: false }))
 
+const sales = vi.hoisted(() => ({ fetchStatus: vi.fn<() => Promise<{ salesPaused: boolean }>>() }))
+
+vi.mock("~/src/modules/store-setting/use-cases/get-sales-status", async () => {
+  const { STORE_SETTING_QUERY_KEYS: keys } = await import("~/src/modules/store-setting/store-setting.constants")
+
+  return { getSalesStatusQuery: () => ({ queryFn: sales.fetchStatus, queryKey: keys.SALES }) }
+})
+
 vi.mock("~/src/hooks/use-cart-availability", () => ({
   useCartAvailability: () => ({
     hasUnavailableItems: availability.hasUnavailableItems,
@@ -74,8 +83,12 @@ vi.mock("~/src/presentation/components/custom/pages/cart-page/cart-item-card", (
   CartItemCard: ({ item }: Readonly<{ item: { title: string } }>): JSX.Element => <li data-testid="cart-line">{item.title}</li>,
 }))
 vi.mock("~/src/presentation/components/custom/pages/cart-page/cart-summary", () => ({
-  CartSummary: ({ checkoutDisabled, subtotal }: Readonly<{ checkoutDisabled: boolean; subtotal: string }>): JSX.Element => (
-    <aside data-testid="cart-summary" data-disabled={String(checkoutDisabled)}>
+  CartSummary: ({
+    checkoutDisabled,
+    salesPaused,
+    subtotal,
+  }: Readonly<{ checkoutDisabled: boolean; salesPaused: boolean; subtotal: string }>): JSX.Element => (
+    <aside data-testid="cart-summary" data-disabled={String(checkoutDisabled)} data-sales-paused={String(salesPaused)}>
       {subtotal}
     </aside>
   ),
@@ -126,6 +139,7 @@ const zloty = (minor: number) => formatPrice(minor, STORE_CURRENCY_CODE, TEST_LO
 beforeEach(() => {
   availability.hasUnavailableItems = false
   availability.isChecking = false
+  sales.fetchStatus.mockResolvedValue({ salesPaused: false })
   useCartStore.getState().clearCart()
 })
 
@@ -220,6 +234,27 @@ describe("cart page with items", () => {
     renderCart()
 
     expect(screen.getByTestId("cart-summary")).toHaveAttribute("data-disabled", "true")
+  })
+
+  it("tells the summary that sales are paused once the shop says so", async () => {
+    sales.fetchStatus.mockResolvedValue({ salesPaused: true })
+    fillCart([cartLine()])
+
+    renderCart()
+
+    await vi.waitFor(() => {
+      expect(screen.getByTestId("cart-summary")).toHaveAttribute("data-sales-paused", "true")
+    })
+    expect(screen.getByTestId("cart-summary")).toHaveAttribute("data-disabled", "false")
+  })
+
+  it("treats sales as open until the shop's answer arrives", () => {
+    sales.fetchStatus.mockReturnValue(new Promise(noop))
+    fillCart([cartLine()])
+
+    renderCart()
+
+    expect(screen.getByTestId("cart-summary")).toHaveAttribute("data-sales-paused", "false")
   })
 
   it("offers the continue shopping link on both breakpoints", () => {

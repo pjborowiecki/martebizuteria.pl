@@ -46,6 +46,7 @@ import { reserveInventoryByVariantLines, reserveInventoryForItems } from "~/src/
 import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 import { createPendingPayment, getPaymentContextByTransactionId } from "~/src/modules/payment/payment.accessors"
 import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
+import { isSalesPaused } from "~/src/modules/store-setting/store-setting.accessors"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
@@ -94,6 +95,12 @@ type ResolvedVariant = Omit<ResolvedProduct["variants"][number], "inventory"> & 
 interface ResolvedDelivery {
   checkoutValues: CheckoutSessionValues
   shippingCost: number
+}
+
+const assertSalesOpen = async (): Promise<void> => {
+  if (await isSalesPaused()) {
+    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SALES_PAUSED)
+  }
 }
 
 const resolveDelivery = async (checkoutValues: CheckoutSessionValues): Promise<ResolvedDelivery> => {
@@ -306,6 +313,7 @@ const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenChecko
 }
 
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
+  await assertSalesOpen()
   const origin = resolveRequestOrigin(getRequest())
   const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)
   const session = await getRequestSession()
@@ -542,6 +550,7 @@ const reserveReplacementCheckout = async ({
 export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInput) => {
   const origin = resolveRequestOrigin(getRequest())
   const { checkoutId, heldLines, ownerId, signedInUser } = await resolveUpdatableCheckout(data.sessionId)
+  await assertSalesOpen()
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
   const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)

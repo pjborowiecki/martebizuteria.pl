@@ -89,6 +89,8 @@ export const AUDIT_LOG_ACTION = {
   PRODUCT_CREATED: "product.created",
   PRODUCT_DELETED: "product.deleted",
   PRODUCT_UPDATED: "product.updated",
+  SALES_PAUSED: "sales.paused",
+  SALES_RESUMED: "sales.resumed",
   SETTINGS_UPDATED: "settings.updated",
 } as const
 

@@ -20,6 +20,7 @@ describe("getCheckoutErrorKey", () => {
       "errors.invalidPrice",
       "errors.lockerRequired",
       "errors.productNotFound",
+      "errors.salesPaused",
       "errors.sessionClosed",
       "errors.sessionComplete",
       "errors.unknownError",

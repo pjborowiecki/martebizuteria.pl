@@ -212,6 +212,24 @@ export const recordDiscountDeletedAudit = (code: string, options?: AuditEventOpt
   })
 }
 
+export const recordSalesPausedAudit = (target: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.SALES_PAUSED,
+    category: "settings",
+    severity: "warning",
+    ...withResourceId(target, options),
+  })
+}
+
+export const recordSalesResumedAudit = (target: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.SALES_RESUMED,
+    category: "settings",
+    severity: "success",
+    ...withResourceId(target, options),
+  })
+}
+
 export const recordDiscountRedeemedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.DISCOUNT_REDEEMED,

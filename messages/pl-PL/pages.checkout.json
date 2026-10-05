@@ -40,6 +40,10 @@
     "createAccount": "Załóż konto",
     "continueShopping": "Wróć do sklepu"
   },
+  "salesPaused": {
+    "title": "Przyjmowanie zamówień jest wstrzymane",
+    "description": "Na pewien czas przestaliśmy przyjmować zamówienia, więc kasa jest zamknięta. Twój koszyk poczeka, a zamówienie złożysz zaraz po wznowieniu sprzedaży."
+  },
   "checkoutForm": {
     "paymentCard": "Karta",
     "paymentBlik": "BLIK",
@@ -177,6 +181,7 @@
       "insufficientInventory": "Niektórych produktów z koszyka brakuje na stanie.",
       "invalidPrice": "Jeden z produktów w koszyku ma nieprawidłową cenę. Usuń go i spróbuj ponownie.",
       "productNotFound": "Produkt z koszyka nie jest już dostępny.",
+      "salesPaused": "Tymczasowo wstrzymaliśmy przyjmowanie zamówień, więc tej płatności nie można teraz przeprowadzić. Twój koszyk poczeka do wznowienia sprzedaży.",
       "sessionClosed": "Tej płatności nie można już zmienić. Rozpocznij płatność od nowa.",
       "sessionComplete": "Ta płatność została już zrealizowana.",
       "variantNotFound": "Wybrany wariant nie jest już dostępny.",

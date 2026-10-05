@@ -40,6 +40,10 @@
     "createAccount": "Create an account",
     "continueShopping": "Return to store"
   },
+  "salesPaused": {
+    "title": "Orders are paused",
+    "description": "We have stopped taking orders for a while, so checkout is closed. Your cart will wait here, and you can place your order as soon as we reopen."
+  },
   "checkoutForm": {
     "paymentCard": "Card",
     "paymentBlik": "BLIK",
@@ -176,6 +180,7 @@
       "insufficientInventory": "Some items in your cart are out of stock.",
       "invalidPrice": "A product in your cart has an invalid price. Please remove it and try again.",
       "productNotFound": "A product in your cart is no longer available.",
+      "salesPaused": "We have paused orders for a while, so this payment cannot go ahead. Your cart will wait until we reopen.",
       "sessionClosed": "This payment can no longer be changed. Please start the payment again.",
       "sessionComplete": "This payment has already been completed.",
       "variantNotFound": "A selected option is no longer available.",

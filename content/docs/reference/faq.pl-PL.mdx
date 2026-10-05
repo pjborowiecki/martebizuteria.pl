@@ -53,7 +53,7 @@ Cache cookie w Better Auth jest wyłączony, a `getRequestSession` dodatkowo prz
 
 Bo funkcja serwerowa jest publicznym endpointem HTTP. Można ją wywołać bezpośrednio, bez załadowania trasy, która zwykle ją wywołuje — więc strażnik w `beforeLoad` nie może jej chronić, a dodatkowo strażnicy działają też w przeglądarce. Middleware `authorized` działa na serwerze, przed jakimkolwiek dostępem do bazy. Strażnicy tras istnieją wyłącznie dla nawigacji.
 
-Test w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` to wymusza: każdy przypadek użycia z `createServerFn` musi zawierać `authorized(`, o ile nie jest na dziewiętnastoelementowej liście publicznej.
+Test w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` to wymusza: każdy przypadek użycia z `createServerFn` musi zawierać `authorized(`, o ile nie jest na liście publicznej liczącej 21 pozycji.
 
 ## Dlaczego nie ma transakcji bazodanowych?
 

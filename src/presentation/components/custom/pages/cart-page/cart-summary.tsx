@@ -9,7 +9,7 @@ import { LocalizedLink } from "~/src/presentation/components/custom/localized-li
 
 import { ROUTES } from "~/src/routes"
 
-export const CartSummary = ({ checkoutDisabled = false, subtotal }: Readonly<CartSummaryProps>): JSX.Element => {
+export const CartSummary = ({ checkoutDisabled = false, salesPaused = false, subtotal }: Readonly<CartSummaryProps>): JSX.Element => {
   const t = useTranslations("pages.cart")
 
   return (
@@ -36,7 +36,13 @@ export const CartSummary = ({ checkoutDisabled = false, subtotal }: Readonly<Car
           <span className="font-medium">{subtotal}</span>
         </div>
 
-        {checkoutDisabled ? (
+        {salesPaused && (
+          <p className="text-center text-sm leading-relaxed text-foreground" role="status">
+            {t("salesPaused.checkoutClosed")}
+          </p>
+        )}
+
+        {checkoutDisabled || salesPaused ? (
           <span
             aria-disabled="true"
             className="flex h-13 w-full cursor-not-allowed items-center justify-center bg-primary/50 text-sm font-medium tracking-wide text-primary-foreground/80"
@@ -71,5 +77,6 @@ export const CartSummary = ({ checkoutDisabled = false, subtotal }: Readonly<Car
 
 interface CartSummaryProps {
   readonly checkoutDisabled?: boolean
+  readonly salesPaused?: boolean
   readonly subtotal: string
 }

@@ -70,3 +70,5 @@ export { productOptionValue, productOptionValueRelations } from "~/src/modules/p
 export { optionOnVariant, optionOnVariantRelations } from "~/src/modules/option-on-variant/option-on-variant.schema"
 
 export { contentPage } from "~/src/modules/content-page/content-page.schema"
+
+export { storeSetting } from "~/src/modules/store-setting/store-setting.schema"

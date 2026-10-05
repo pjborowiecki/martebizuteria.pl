@@ -42,6 +42,8 @@ import {
   recordOrderReleasedAudit,
   recordOrderRestockedAudit,
   recordOrderShippedAudit,
+  recordSalesPausedAudit,
+  recordSalesResumedAudit,
   resolveAuthAuditActor,
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.record.server"
@@ -582,6 +584,28 @@ describe("recordDiscountRedeemedAudit", () => {
       resourceId: "order-9",
       severity: "info",
       target: "order-9",
+    })
+  })
+})
+
+const SALES_SWITCH_CASES: readonly TargetAuditCase[] = [
+  { action: AUDIT_LOG_ACTION.SALES_PAUSED, name: "pausing sales", record: recordSalesPausedAudit, severity: "warning" },
+  { action: AUDIT_LOG_ACTION.SALES_RESUMED, name: "resuming sales", record: recordSalesResumedAudit, severity: "success" },
+]
+
+describe("sales switch audit events", () => {
+  it.each(SALES_SWITCH_CASES)("files $name under settings against the requesting admin", ({ action, record: recordAudit, severity }) => {
+    recordAudit("store")
+
+    expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action,
+      category: "settings",
+      detail: undefined,
+      metadata: undefined,
+      resourceId: "store",
+      severity,
+      target: "store",
     })
   })
 })

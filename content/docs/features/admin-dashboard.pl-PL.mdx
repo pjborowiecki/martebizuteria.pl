@@ -26,7 +26,7 @@ useRealtimeQuerySync({
 })
 ```
 
-`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) wymienia czternaście prefiksów kluczy — strona i statystyki dziennika audytu, zamówienia w panelu, klienci w panelu, klucze all/stats kategorii, kolekcji, produktów i atrybutów produktu oraz klucze all/by-handle stron treści. Mutacja w dowolnym miejscu panelu odświeża każdą inną otwartą kartę panelu.
+`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) wymienia piętnaście prefiksów kluczy — strona i statystyki dziennika audytu, zamówienia w panelu, klienci w panelu, klucze all/stats kategorii, kolekcji, produktów i atrybutów produktu, klucze all/by-handle stron treści oraz stan sprzedaży w panelu. Mutacja w dowolnym miejscu panelu odświeża każdą inną otwartą kartę panelu.
 
 Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefaultOpen()` z ciasteczka `sidebar_state` (`src/presentation/theme/sidebar-preference.ts`), a wstawiony inline `SIDEBAR_INIT_SCRIPT` kopiuje wartość z `localStorage` do tego ciasteczka jeszcze przed hydratacją, żeby panel nie migał.
 
@@ -49,7 +49,7 @@ Przycisk wylogowania w stopce panelu bocznego wywołuje `signOut`, a potem pełn
 
 ## Przegląd
 
-`/admin/overview` (`src/routes/admin.overview.tsx`) wczytuje wstępnie jedno zapytanie i renderuje `DashboardOverviewContent`, czyli jeden `Suspense` wokół czterech komponentów:
+`/admin/overview` (`src/routes/admin.overview.tsx`) wczytuje wstępnie migawkę i stan sprzedaży, a nad `DashboardOverviewContent` renderuje [przełącznik sprzedaży](#przełącznik-sprzedaży); `DashboardOverviewContent` to jeden `Suspense` wokół czterech komponentów:
 
 ```tsx
 <Suspense fallback={dashboardOverviewFallback}>
@@ -63,6 +63,14 @@ Przycisk wylogowania w stopce panelu bocznego wywołuje `signOut`, a potem pełn
   </div>
 </Suspense>
 ```
+
+## Przełącznik sprzedaży
+
+Pierwsza karta przeglądu, `DashboardSalesSwitch` (`dashboard/components/dashboard-sales-switch.tsx`), wstrzymuje i wznawia sprzedaż. Pokazuje stan jako odznakę „Otwarta” albo „Wstrzymana” ze zdaniem, co widzą klienci, oraz przełącznik „Wstrzymaj sprzedaż” („Pause sales”); teksty leżą pod `pages.admin.dashboard.sales` w obu językach. Gdy sprzedaż jest wstrzymana, karta robi się bursztynowa.
+
+Czyta `getAdminSalesStatusQuery()`, które wywołuje publiczne `getSalesStatus` pod kluczem panelu `STORE_SETTING_QUERY_KEYS.ADMIN.SALES`, a loader trasy wczytuje je wstępnie. Przestawienie przełącznika uruchamia `setSalesPausedMutation`, które wywołuje `setSalesPaused` z `src/modules/store-setting/use-cases/set-sales-paused.ts`. Ta funkcja serwerowa jest strzeżona przez `authorized({ settings: ["manage"] })`, to samo uprawnienie co reszta pulpitu, więc klient sklepu albo żądanie bez sesji dostaje odmowę od serwera niezależnie od tego, co pokazuje strona. Zapisuje kolumnę `sales_paused` jedynego wiersza `store_setting` jednym upsertem, który zmienia wiersz tylko wtedy, gdy wartość jest inna, a gdy ją zmienił, planuje `scheduleSalesStatusInvalidation()` i zapisuje w dzienniku audytu `sales.paused` albo `sales.resumed` na konto administratora wysyłającego żądanie (zobacz [Dziennik audytu](/docs/features/audit-log)). Drugi administrator, który prosi o stan, w jakim sklep już jest, niczego nie zmienia ani nie zapisuje. Na czas żądania przełącznik jest wyłączony; po sukcesie karta wpisuje odpowiedź do wpisów cache panelu i sklepu i pokazuje toast „Sprzedaż wstrzymana” albo „Sprzedaż wznowiona”, a po błędzie zostawia pokazany stan i pokazuje toast z błędem.
+
+Co wstrzymanie robi ze sklepem i kasą, opisuje [Kasa: wstrzymanie sprzedaży](/docs/features/checkout#wstrzymanie-sprzedaży).
 
 ## Migawka
 
@@ -138,7 +146,7 @@ const validTopProductRows = topProductRows.filter((row): row is typeof row & { p
 | `/admin/coupons`   | `admin.coupons.tsx`   | `CouponStats`, `CouponListTable` z `CouponFormDialog`                                  | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; zobacz [Rabaty](/docs/features/discounts)  |
 | `/admin/settings`  | `admin.settings.tsx`  | `SettingsPage` z `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`) |
 
-Marketing i ustawienia nie mają loadera, zapytania ani mutacji, a przyciski eksportu i tworzenia w marketingu nie mają obsługi zdarzeń. Zakładka General w ustawieniach renderuje `STORE_INFO_DEFAULTS` do pól i `TOGGLE_SETTING_KEYS` do przełączników trzymających wyłącznie stan lokalny; pozostałe zakładki renderują `settings-placeholder.tsx`.
+Marketing i ustawienia nie mają loadera, zapytania ani mutacji, a przyciski eksportu i tworzenia w marketingu nie mają obsługi zdarzeń. Zakładka General w ustawieniach renderuje `STORE_INFO_DEFAULTS` do pól i `TOGGLE_SETTING_KEYS` do przełączników trzymających wyłącznie stan lokalny, więc jej przełącznik trybu konserwacji nic nie robi; sprzedaż wstrzymuje się [przełącznikiem sprzedaży](#przełącznik-sprzedaży) na przeglądzie. Pozostałe zakładki renderują `settings-placeholder.tsx`.
 
 Kupony to działający ekran: jego loader wczytuje wstępnie `getAdminDiscountsPageQuery({})` i `getDiscountStatsQuery()`, a `use-coupon-actions.ts` wywołuje `createDiscount`, `updateDiscount` i `deleteDiscounts`.
 

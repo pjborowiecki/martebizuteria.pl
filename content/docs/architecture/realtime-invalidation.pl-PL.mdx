@@ -55,13 +55,13 @@ Następnie `toMinimalQueryKeyPrefixes` sprowadza ramkę do minimalnego zbioru kl
 
 ## Subskrypcje
 
-`ADMIN_REALTIME_QUERY_PREFIXES` ma 14 wpisów: strona i statystyki dziennika audytu, zamówienia administracyjne, klienci administracyjni, pary `ALL`/`STATS` dla kategorii, kolekcji, produktów i atrybutów produktów oraz para `ADMIN.ALL`/`ADMIN.BY_HANDLE` stron treści. `STOREFRONT_REALTIME_QUERY_PREFIXES` ma 11: klucze produktów (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), dostępność koszyka, pary `ALL`/`BY_HANDLE` kategorii i kolekcji oraz `BY_HANDLE` stron treści.
+`ADMIN_REALTIME_QUERY_PREFIXES` ma 15 wpisów: strona i statystyki dziennika audytu, zamówienia administracyjne, klienci administracyjni, pary `ALL`/`STATS` dla kategorii, kolekcji, produktów i atrybutów produktów, para `ADMIN.ALL`/`ADMIN.BY_HANDLE` stron treści oraz `ADMIN.SALES` ustawień sklepu. `STOREFRONT_REALTIME_QUERY_PREFIXES` ma 12: klucze produktów (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), dostępność koszyka, pary `ALL`/`BY_HANDLE` kategorii i kolekcji, `BY_HANDLE` stron treści oraz `SALES` ustawień sklepu.
 
 Obie listy są zbudowane ze stałych `*_QUERY_KEYS` samych modułów i typowane jako `as const satisfies readonly QueryKey[]`, więc zmiana nazwy klucza jest błędem typu, a nie po cichu martwą subskrypcją.
 
 ## Publikowanie
 
-`realtime-invalidation.catalog.server.ts` udostępnia siedem publikatorów, z których korzysta warstwa domenowa; każdy nazywa odbiorców, których dotyczy:
+`realtime-invalidation.catalog.server.ts` udostępnia osiem publikatorów, z których korzysta warstwa domenowa; każdy nazywa odbiorców, których dotyczy:
 
 | Publikator                                    | Klucze administracyjne                         | Klucze sklepu                                                                  |
 | --------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -72,10 +72,11 @@ Obie listy są zbudowane ze stałych `*_QUERY_KEYS` samych modułów i typowane 
 | `scheduleProductAttributeCatalogInvalidation` | atrybut `ADMIN.ALL`, `ADMIN.STATS`             | —                                                                              |
 | `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                                              |
 | `scheduleAdminOrdersInvalidation`             | zamówienie `ADMIN.ORDERS`                      | —                                                                              |
+| `scheduleSalesStatusInvalidation`             | ustawienia sklepu `ADMIN.SALES`                | ustawienia sklepu `SALES`                                                      |
 
 Forma `schedule*` przekazuje publikację do `scheduleBackgroundWork`, więc wykonuje się pod `waitUntil` i nigdy nie opóźnia odpowiedzi. `publishRealtimeInvalidation` to forma oczekiwana, używana tam, gdzie nie ma żądania, z którego można wrócić — konsument kolejki audytu czeka na nią po udanym wstawieniu batcha.
 
-Wywołujący warci zapamiętania: handlery webhooków Stripe (`scheduleAdminOrdersInvalidation` po realizacji, zwrocie lub sporze oraz `scheduleProductCatalogInvalidation` po realizacji lub zwolnieniu, bo zwrot pieniędzy nie zmienia stanu magazynowego), akcje panelu zamówień, które przywracają towar na stan (`cancelOrder` i `returnOrderToStock`, katalog produktów), `handleCreateCheckoutSession` i `handleUpdateCheckoutSession` (katalog produktów, bo zmienił się stan magazynowy), hooki tworzenia, aktualizacji i usunięcia użytkownika w Better Auth (`scheduleAdminCustomersInvalidation`) oraz mutacje katalogu w panelu administracyjnym.
+Wywołujący warci zapamiętania: handlery webhooków Stripe (`scheduleAdminOrdersInvalidation` po realizacji, zwrocie lub sporze oraz `scheduleProductCatalogInvalidation` po realizacji lub zwolnieniu, bo zwrot pieniędzy nie zmienia stanu magazynowego), akcje panelu zamówień, które przywracają towar na stan (`cancelOrder` i `returnOrderToStock`, katalog produktów), `handleCreateCheckoutSession` i `handleUpdateCheckoutSession` (katalog produktów, bo zmienił się stan magazynowy), hooki tworzenia, aktualizacji i usunięcia użytkownika w Better Auth (`scheduleAdminCustomersInvalidation`), `setSalesPaused`, gdy wstrzymuje albo wznawia sprzedaż (`scheduleSalesStatusInvalidation`, żeby każda otwarta karta sklepu pokazała albo schowała komunikat o wstrzymaniu), oraz mutacje katalogu w panelu administracyjnym.
 
 ## Strona kliencka
 

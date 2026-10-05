@@ -106,6 +106,7 @@ return {
 | `.../custom/pages/cart-page/cart-item-card.tsx`                          | One line: image, titles, price-change note, quantity, remove       |
 | `.../custom/pages/cart-page/cart-summary.tsx`                            | Totals and the checkout link                                       |
 | `.../custom/cart-availability-banner.tsx`                                | Store-wide banner, rendered by the `_storefront` layout            |
+| `.../custom/sales-paused-banner.tsx`                                     | Store-wide notice while sales are paused, above the banner         |
 | `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | The header badge, `items.reduce((sum, item) => sum + item.qty, 0)` |
 
 The cart page formats its own totals rather than going through `useFormatter`:
@@ -131,14 +132,14 @@ const subtotal = new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "curre
 
 Delivery cost is not known until a delivery method is chosen, which happens in checkout. The real total including shipping is computed by Stripe from the session line items.
 
-When `checkoutDisabled` is true the checkout link is replaced by a non-interactive `<span aria-disabled="true">`, so there is no clickable-but-dead button.
+When `checkoutDisabled` or `salesPaused` is true the checkout link is replaced by a non-interactive `<span aria-disabled="true">`, so there is no clickable-but-dead button. With `salesPaused` the summary also says why above it, in a `role="status"` paragraph with `pages.cart.salesPaused.checkoutClosed`: "Orders are paused for now, so checkout is closed. Your cart will wait here until we reopen."
 
 ## Blocking a bad basket
 
 Two guards use the availability result:
 
-- `/cart` disables the checkout link while `hasUnavailableItems || isChecking`.
-- `CartAvailabilityBanner` renders an `role="alert"` strip with `pages.cart.availability.banner` when lines are unavailable.
+- `/cart` disables the checkout link while `hasUnavailableItems || isChecking`, and also while `getSalesStatusQuery()` reports that sales are paused, which it passes to the summary as `salesPaused`. The basket itself stays usable, so a shopper can keep pieces in it until the shop reopens.
+- `CartAvailabilityBanner` renders an `role="alert"` strip with `pages.cart.availability.banner` when lines are unavailable. Above it, `SalesPausedBanner` renders a `role="status"` strip with `pages.cart.salesPaused.banner` on every storefront page while sales are paused. See [Checkout: Pausing sales](/docs/features/checkout#pausing-sales).
 - `/checkout` redirects back to `/cart` when the hydrated basket is empty or has stock issues. See [Checkout](/docs/features/checkout).
 
 ## Abandonment tracking

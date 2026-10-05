@@ -26,7 +26,7 @@ useRealtimeQuerySync({
 })
 ```
 
-`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) lists fourteen key prefixes — audit log page and stats, admin orders, admin customers, the admin all/stats keys for categories, collections, products and product attributes, and the admin all/by-handle keys for content pages. A mutation anywhere in the console refreshes every other open console tab.
+`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) lists fifteen key prefixes — audit log page and stats, admin orders, admin customers, the admin all/stats keys for categories, collections, products and product attributes, the admin all/by-handle keys for content pages, and the admin sales status. A mutation anywhere in the console refreshes every other open console tab.
 
 The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` from the `sidebar_state` cookie (`src/presentation/theme/sidebar-preference.ts`), and an inline `SIDEBAR_INIT_SCRIPT` copies the `localStorage` value into that cookie before hydration so the sidebar does not flash.
 
@@ -49,7 +49,7 @@ The sidebar footer's sign-out button calls `signOut` and then does a full page l
 
 ## Overview
 
-`/admin/overview` (`src/routes/admin.overview.tsx`) prefetches one query and renders `DashboardOverviewContent`, which is a single `Suspense` around four components:
+`/admin/overview` (`src/routes/admin.overview.tsx`) prefetches the snapshot and the sales status, and renders the [Sales switch](#sales-switch) above `DashboardOverviewContent`, which is a single `Suspense` around four components:
 
 ```tsx
 <Suspense fallback={dashboardOverviewFallback}>
@@ -63,6 +63,14 @@ The sidebar footer's sign-out button calls `signOut` and then does a full page l
   </div>
 </Suspense>
 ```
+
+## Sales switch
+
+The first card on the overview, `DashboardSalesSwitch` (`dashboard/components/dashboard-sales-switch.tsx`), stops and restarts sales. It shows the state as an "Open" or "Paused" badge with a sentence saying what customers get, and a switch labelled "Pause sales" ("Wstrzymaj sprzedaż"); the copy is under `pages.admin.dashboard.sales` in both languages. While sales are paused the card turns amber.
+
+It reads `getAdminSalesStatusQuery()`, which calls the public `getSalesStatus` under the admin key `STORE_SETTING_QUERY_KEYS.ADMIN.SALES`, and the route loader prefetches it. Flipping the switch runs `setSalesPausedMutation`, which calls `setSalesPaused` in `src/modules/store-setting/use-cases/set-sales-paused.ts`. That server function is guarded by `authorized({ settings: ["manage"] })`, the dashboard's own permission, so a customer, or a request without a session, is refused by the server whatever the page shows. It writes the `sales_paused` column of the single `store_setting` row with one upsert that changes the row only when the value differs, and when it did change it schedules `scheduleSalesStatusInvalidation()` and records `sales.paused` or `sales.resumed` in the audit log against the admin making the request (see [Audit log](/docs/features/audit-log)). A second admin asking for the state the shop is already in changes nothing and records nothing. The switch is disabled while the request is in flight; on success the card writes the answer into both the admin and the storefront cache entries and toasts "Sales paused" or "Sales resumed", and on failure it keeps the state it showed and toasts an error.
+
+What a pause does to the storefront and the checkout is described in [Checkout: Pausing sales](/docs/features/checkout#pausing-sales).
 
 ## The snapshot
 
@@ -138,7 +146,7 @@ const validTopProductRows = topProductRows.filter((row): row is typeof row & { p
 | `/admin/coupons`   | `admin.coupons.tsx`   | `CouponStats`, `CouponListTable` with `CouponFormDialog`                                  | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; see [Discounts](/docs/features/discounts)  |
 | `/admin/settings`  | `admin.settings.tsx`  | `SettingsPage` with `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`) |
 
-Marketing and settings have no loader, query or mutation, and the marketing Export and Create buttons have no handlers. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only; the other tabs render `settings-placeholder.tsx`.
+Marketing and settings have no loader, query or mutation, and the marketing Export and Create buttons have no handlers. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only, so its maintenance switch does nothing; sales are paused from the [Sales switch](#sales-switch) on the overview. The other tabs render `settings-placeholder.tsx`.
 
 Coupons is a working screen: its loader prefetches `getAdminDiscountsPageQuery({})` and `getDiscountStatsQuery()`, and `use-coupon-actions.ts` calls `createDiscount`, `updateDiscount` and `deleteDiscounts`.
 

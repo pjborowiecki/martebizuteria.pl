@@ -16,6 +16,10 @@
     "itemUnavailable": "No longer available",
     "itemLimited": "Only {available} left in stock"
   },
+  "salesPaused": {
+    "banner": "We have paused orders for a while. You can still browse and keep pieces in your cart, but checkout is closed until we reopen.",
+    "checkoutClosed": "Orders are paused for now, so checkout is closed. Your cart will wait here until we reopen."
+  },
   "summary": {
     "title": "Order summary",
     "subtotal": "Subtotal",

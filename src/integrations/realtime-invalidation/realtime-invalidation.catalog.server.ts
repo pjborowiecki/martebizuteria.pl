@@ -7,6 +7,7 @@ import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/pr
 import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
 import { COLLECTION_QUERY_KEYS } from "~/src/modules/product-collection/product-collection.constants"
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
+import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 export const scheduleProductCatalogInvalidation = (): void => {
@@ -64,5 +65,12 @@ export const scheduleAdminCustomersInvalidation = (): void => {
 export const scheduleAdminOrdersInvalidation = (): void => {
   scheduleRealtimeInvalidation({
     admin: [ORDER_QUERY_KEYS.ADMIN.ORDERS],
+  })
+}
+
+export const scheduleSalesStatusInvalidation = (): void => {
+  scheduleRealtimeInvalidation({
+    admin: [STORE_SETTING_QUERY_KEYS.ADMIN.SALES],
+    storefront: [STORE_SETTING_QUERY_KEYS.SALES],
   })
 }

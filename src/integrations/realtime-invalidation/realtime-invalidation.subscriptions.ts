@@ -8,6 +8,7 @@ import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/pr
 import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
 import { COLLECTION_QUERY_KEYS } from "~/src/modules/product-collection/product-collection.constants"
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
+import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 export const REALTIME_INVALIDATION_HUB = {
@@ -32,6 +33,7 @@ export const ADMIN_REALTIME_QUERY_PREFIXES = [
   PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.STATS,
   CONTENT_PAGE_QUERY_KEYS.ADMIN.ALL,
   CONTENT_PAGE_QUERY_KEYS.ADMIN.BY_HANDLE,
+  STORE_SETTING_QUERY_KEYS.ADMIN.SALES,
 ] as const satisfies readonly QueryKey[]
 
 export const STOREFRONT_REALTIME_QUERY_PREFIXES = [
@@ -46,4 +48,5 @@ export const STOREFRONT_REALTIME_QUERY_PREFIXES = [
   COLLECTION_QUERY_KEYS.ALL,
   COLLECTION_QUERY_KEYS.BY_HANDLE,
   CONTENT_PAGE_QUERY_KEYS.BY_HANDLE,
+  STORE_SETTING_QUERY_KEYS.SALES,
 ] as const satisfies readonly QueryKey[]

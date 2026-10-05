@@ -9,6 +9,7 @@ import {
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
+import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { useRealtimeQuerySync } from "~/src/hooks/use-realtime-query-sync"
 
@@ -16,6 +17,7 @@ import { CartAvailabilityBanner } from "~/src/presentation/components/custom/car
 import { CustomerActivityTracker } from "~/src/presentation/components/custom/customer-activity-tracker"
 import { Footer } from "~/src/presentation/components/custom/pages/landing-page/footer/footer"
 import { Navigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation"
+import { SalesPausedBanner } from "~/src/presentation/components/custom/sales-paused-banner"
 
 import storefrontCss from "~/src/presentation/styles/storefront.css?url"
 
@@ -29,6 +31,7 @@ const StorefrontLayout = (): JSX.Element => {
     <div className="flex min-h-dvh flex-col">
       <CustomerActivityTracker />
       <Navigation />
+      <SalesPausedBanner />
       <CartAvailabilityBanner />
       <div className="flex flex-1 flex-col">
         <Outlet />
@@ -49,12 +52,15 @@ export const Route = createFileRoute("/_storefront")({
     ],
   }),
   loader: async ({ context }) => {
-    await context.queryClient
-      .query({
-        ...getCollectionsQuery(),
-        staleTime: "static",
-      })
-      .catch(noop)
+    await Promise.all([
+      context.queryClient
+        .query({
+          ...getCollectionsQuery(),
+          staleTime: "static",
+        })
+        .catch(noop),
+      context.queryClient.query(getSalesStatusQuery()).catch(noop),
+    ])
   },
   staticData: {
     namespaces: ["pages.cart"],

@@ -8,8 +8,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
 const snapshot = vi.hoisted(() => ({ fetch: vi.fn<(locale: string) => Promise<{ locale: string }>>() }))
+
+const sales = vi.hoisted(() => ({ fetchStatus: vi.fn<() => Promise<{ salesPaused: boolean }>>() }))
 
 interface RouteDefinition {
   readonly component?: () => JSX.Element
@@ -38,6 +41,14 @@ vi.mock("~/src/modules/admin-dashboard/use-cases/get-dashboard-snapshot", () => 
     queryKey: ["admin", "dashboard", "snapshot", locale],
   }),
 }))
+vi.mock("~/src/modules/store-setting/use-cases/get-sales-status", async () => {
+  const { STORE_SETTING_QUERY_KEYS: keys } = await import("~/src/modules/store-setting/store-setting.constants")
+
+  return { getAdminSalesStatusQuery: () => ({ queryFn: sales.fetchStatus, queryKey: keys.ADMIN.SALES }) }
+})
+vi.mock("~/src/presentation/components/custom/pages/admin/dashboard/components/dashboard-sales-switch", () => ({
+  DashboardSalesSwitch: (): JSX.Element => <section data-testid="dashboard-sales-switch" />,
+}))
 vi.mock("~/src/presentation/components/custom/pages/admin/admin-header", () => ({
   AdminHeader: ({ description, title }: Readonly<{ description?: string; title: ReactNode }>): JSX.Element => (
     <header>
@@ -65,6 +76,7 @@ const AdminOverviewPage = route.component
 beforeEach(() => {
   vi.clearAllMocks()
   snapshot.fetch.mockImplementation((locale: string) => Promise.resolve({ locale }))
+  sales.fetchStatus.mockResolvedValue({ salesPaused: false })
 })
 
 afterEach(cleanup)
@@ -82,6 +94,14 @@ describe("admin overview page", () => {
 
     expect(screen.getByTestId("dashboard-overview")).toBeInTheDocument()
   })
+
+  it("leads the dashboard with the switch that pauses sales", () => {
+    renderWithProviders(<AdminOverviewPage />)
+
+    expect(screen.getByTestId("dashboard-sales-switch").compareDocumentPosition(screen.getByTestId("dashboard-overview"))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
 })
 
 describe("admin overview route", () => {
@@ -92,6 +112,15 @@ describe("admin overview route", () => {
 
     expect(snapshot.fetch).toHaveBeenCalledExactlyOnceWith("en-US")
     expect(queryClient.getQueryData(["admin", "dashboard", "snapshot", "en-US"])).toStrictEqual({ locale: "en-US" })
+  })
+
+  it("knows whether sales are paused before the page renders", async () => {
+    sales.fetchStatus.mockResolvedValue({ salesPaused: true })
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    await route.loader?.({ context: { locale: "en-US", queryClient } })
+
+    expect(queryClient.getQueryData(STORE_SETTING_QUERY_KEYS.ADMIN.SALES)).toStrictEqual({ salesPaused: true })
   })
 
   it("serves the warmed snapshot from the cache on a second visit", async () => {

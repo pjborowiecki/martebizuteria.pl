@@ -49,7 +49,7 @@ Zwróć uwagę, że `product` obejmuje cały katalog, nie tylko tabelę `product
 
 ## Gdzie sprawdzane jest każde uprawnienie
 
-Ze 102 funkcji serwerowych w `src/modules/*/use-cases/` 62 wymaga uprawnienia, 21 wymaga tylko sesji, a 19 jest publicznych.
+Ze 107 funkcji serwerowych w `src/modules/*/use-cases/` 63 wymagają uprawnienia, 23 wymagają tylko sesji, a 21 jest publicznych.
 
 | Uprawnienie            | Sprawdzane przez                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -61,7 +61,7 @@ Ze 102 funkcji serwerowych w `src/modules/*/use-cases/` 62 wymaga uprawnienia, 2
 | `order: ["update"]`    | `ship-order`, `fulfill-order`, `mark-order-delivered`, `cancel-order`, `refund-admin-order`, `restock-order`, `create-discount`, `update-discount`, `delete-discounts`                                                                                                                                                                                    |
 | `content: ["read"]`    | `get-admin-content-pages`, `get-admin-content-page`                                                                                                                                                                                                                                                                                                       |
 | `content: ["update"]`  | `update-content-page`                                                                                                                                                                                                                                                                                                                                     |
-| `settings: ["manage"]` | `get-dashboard-snapshot`, `get-dashboard-chart-range`, `list-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`                                                                                                                                                                                                                                      |
+| `settings: ["manage"]` | `get-dashboard-snapshot`, `get-dashboard-chart-range`, `list-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`, `set-sales-paused`                                                                                                                                                                                                                  |
 | `user: ["list"]`       | `get-admin-customers-page`, `get-admin-customer-stats`, `export-admin-customers`, `get-admin-newsletter-page`, `get-newsletter-stats`                                                                                                                                                                                                                     |
 | `user: ["get"]`        | `get-admin-customer`                                                                                                                                                                                                                                                                                                                                      |
 | `user: ["update"]`     | `update-customer`                                                                                                                                                                                                                                                                                                                                         |
@@ -72,11 +72,12 @@ Ze 102 funkcji serwerowych w `src/modules/*/use-cases/` 62 wymaga uprawnienia, 2
 
 ## Publiczne endpointy
 
-Dziewiętnaście przypadków użycia świadomie nie ma middleware `authorized`, bo sklep musi obsługiwać anonimowych odwiedzających. Ta lista nie jest domyślna — jest zapisana w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` jako `PUBLIC_USE_CASES`:
+Dwadzieścia jeden przypadków użycia świadomie nie ma middleware `authorized`, bo sklep musi obsługiwać anonimowych odwiedzających. Ta lista nie jest domyślna — jest zapisana w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` jako `PUBLIC_USE_CASES`:
 
 | Przypadek użycia                                            |
 | ----------------------------------------------------------- |
 | `cart/use-cases/check-cart-availability.ts`                 |
+| `checkout/use-cases/get-checkout-session-status.ts`         |
 | `content-page/use-cases/get-content-page.ts`                |
 | `customer-activity/use-cases/record-customer-activity.ts`   |
 | `delivery-method/use-cases/list-delivery-methods.ts`        |
@@ -93,6 +94,7 @@ Dziewiętnaście przypadków użycia świadomie nie ma middleware `authorized`, 
 | `product/use-cases/get-product.ts`                          |
 | `product/use-cases/get-related-products.ts`                 |
 | `product/use-cases/get-storefront-products-page.ts`         |
+| `store-setting/use-cases/get-sales-status.ts`               |
 | `storefront-search/use-cases/get-trending-searches.ts`      |
 | `storefront-search/use-cases/search-storefront.ts`          |
 

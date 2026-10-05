@@ -15,10 +15,10 @@ Plik `realtime-invalidation.subscriptions.ts` nazywa je i wypisuje, co każdy z 
 export const REALTIME_INVALIDATION_HUB = { ADMIN: "admin", STOREFRONT: "storefront" } as const
 ```
 
-| Hub          | Subskrybowane prefiksy                                                                                                                                                                                                                          |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — strona i statystyki dziennika audytu, zamówienia panelu, klienci panelu, klucze `ALL` i `STATS` kategorii, kolekcji, produktów i atrybutów produktów oraz klucze `ADMIN.ALL` i `ADMIN.BY_HANDLE` stron treści |
-| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY`, kategorie i kolekcje `ALL` / `BY_HANDLE` oraz strony treści `BY_HANDLE`            |
+| Hub          | Subskrybowane prefiksy                                                                                                                                                                                                                                                              |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — strona i statystyki dziennika audytu, zamówienia panelu, klienci panelu, klucze `ALL` i `STATS` kategorii, kolekcji, produktów i atrybutów produktów klucze `ADMIN.ALL` i `ADMIN.BY_HANDLE` stron treści oraz klucz `ADMIN.SALES` ustawień sklepu |
+| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY`, kategorie i kolekcje `ALL` / `BY_HANDLE`, strony treści `BY_HANDLE` oraz ustawienia sklepu `SALES`                     |
 
 Obie listy to `as const satisfies readonly QueryKey[]`, więc zmiana nazwy stałej klucza jest błędem typowania, a nie cicho martwą subskrypcją. Podział ma znaczenie zarówno dla prywatności, jak i dla ograniczenia szumu: hub sklepu nigdy nie niesie prefiksu `["admin", …]`, więc przeglądarka klienta nie dowiaduje się niczego o działaniach administratora.
 
@@ -87,6 +87,7 @@ Kod serwerowy prawie nigdy nie wywołuje żadnej z tych funkcji bezpośrednio. P
 | `scheduleProductAttributeCatalogInvalidation()` | atrybuty produktów `ALL`, `STATS`         | —                                                                                                                    |
 | `scheduleAdminCustomersInvalidation()`          | użytkownicy `CUSTOMERS`, `CUSTOMERS_PAGE` | —                                                                                                                    |
 | `scheduleAdminOrdersInvalidation()`             | zamówienia `ORDERS`                       | —                                                                                                                    |
+| `scheduleSalesStatusInvalidation()`             | ustawienia sklepu `ADMIN.SALES`           | ustawienia sklepu `SALES`                                                                                            |
 
 Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także sklepowy klucz nowości, ponieważ sekcja na stronie startowej napędzana jest kolekcją `nowosci`, oraz klucz strony katalogu, ponieważ `status` i `handle` kolekcji decydują o tym, które produkty pokazuje jej siatka w sklepie; a `scheduleProductCatalogInvalidation` unieważnia klucz dostępności koszyka, ponieważ zmiana stanu magazynowego może uczynić pozycję koszyka niemożliwą do kupienia.
 
@@ -97,6 +98,7 @@ Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także s
 - **Webhooki.** `stripe.webhooks.tsx` wywołuje `scheduleAdminOrdersInvalidation()` przy realizacji, zwrocie i sporze, a `scheduleProductCatalogInvalidation()` przy realizacji i zwolnieniu. Zwrot pieniędzy nie odświeża katalogu, bo nigdy nie przywraca stanu; robią to `cancelOrder` i `returnOrderToStock`, gdy administrator przywraca produkty zamówienia na stan.
 - **Tożsamość.** `auth.server.ts` wywołuje `scheduleAdminCustomersInvalidation()` z hooków tworzenia, aktualizacji i usuwania użytkownika.
 - **Strony treści.** `update-content-page.ts` wywołuje `scheduleContentPageInvalidation()` po zapisie.
+- **Przełącznik sprzedaży.** `set-sales-paused.ts` wywołuje `scheduleSalesStatusInvalidation()`, gdy administrator wstrzymuje albo wznawia sprzedaż, więc komunikat o wstrzymaniu pojawia się albo znika w każdej otwartej karcie sklepu, a inne karty panelu przestawiają przełącznik.
 - **Audyt.** `audit-log.queue.server.ts` i `delete-audit-logs.ts`.
 
 ## Durable Object
