@@ -163,6 +163,10 @@ export const resolveAdminOrderDetailTags = (snapshot: AdminOrderTagSnapshot): re
     tags.push(ADMIN_ORDER_DETAIL_TAG.PARTIALLY_REFUNDED)
   }
 
+  if (snapshot.awaitsRestock) {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.NOT_RESTOCKED)
+  }
+
   if (snapshot.hasCustomerNote) {
     tags.push(ADMIN_ORDER_DETAIL_TAG.NOTE)
   }
@@ -249,6 +253,7 @@ export interface AdminOrderFulfillmentSnapshot {
 }
 
 interface AdminOrderTagSnapshot {
+  readonly awaitsRestock: boolean
   readonly customerOrderCount: number
   readonly deliveryType: DeliveryMethodType | undefined
   readonly hasCustomerNote: boolean

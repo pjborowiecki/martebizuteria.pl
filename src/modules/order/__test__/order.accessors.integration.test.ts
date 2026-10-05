@@ -455,7 +455,7 @@ const createPlacedOrderTables = (): void => {
       currency_code text not null default 'PLN', customer_note text, delivered_at integer, delivery_method_id text,
       discount_id text, discount_total integer not null default 0, email text not null,
       fulfillment_status text not null default 'not_fulfilled', locker_id text, metadata text, order_number text not null,
-      payment_id text, shipped_at integer, shipping_total integer not null default 0, status text not null default 'pending',
+      payment_id text, restocked_at integer, shipped_at integer, shipping_total integer not null default 0, status text not null default 'pending',
       subtotal integer not null default 0, tax_basis_points integer not null default 2300, tax_total integer not null default 0,
       total integer not null default 0, tracking_number text, tracking_url text, user_id text,
       created_at integer not null, updated_at integer not null

@@ -2,7 +2,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { recordOrderRefundAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { buildOrderRefundAuditChange } from "~/src/modules/order/order-audit.utils"
-import { getOrderByCheckoutId, getRestockLinesForOrder } from "~/src/modules/order/order.accessors"
+import { getOrderByCheckoutId } from "~/src/modules/order/order.accessors"
 import { findSettledOrder } from "~/src/modules/order/order.settled.server"
 import { type Order } from "~/src/modules/order/order.types"
 import { prepareRefundBatch } from "~/src/modules/order/order.utils"
@@ -44,25 +44,7 @@ export const refundOrder = async (input: Order["refundInput"]): Promise<Order["u
     refundedAmount: paymentRow?.refundedAmount,
   }
 
-  const restockLines: {
-    quantity: number
-    variantId: string
-  }[] = []
-
-  if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
-    const lines = await getRestockLinesForOrder(settled.orderId)
-    restockLines.push(
-      ...lines.filter(
-        (
-          line,
-        ): line is {
-          quantity: number
-          variantId: string
-        } => line.variantId !== null,
-      ),
-    )
-  }
-  const [[recorded]] = await db.batch(prepareRefundBatch(settled, input, restockLines))
+  const [[recorded]] = await db.batch(prepareRefundBatch(settled, input))
   if (settled.orderId === undefined) {
     return undefined
   }

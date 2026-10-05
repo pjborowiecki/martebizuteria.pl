@@ -6,7 +6,9 @@ import {
   canMarkAdminOrderShipped,
   canPrintAdminOrderInvoice,
   canRefundAdminOrder,
+  canRestockAdminOrder,
   cancelRefundsAdminOrderPayment,
+  refundRestocksByDefault,
   resolveAdminOrderRefundBlocker,
 } from "~/src/modules/order/order.admin-actions.utils"
 import { ADMIN_ORDER_REFUND_BLOCKER, type AdminOrderPaymentUiKey } from "~/src/modules/order/order.constants"
@@ -112,6 +114,30 @@ describe("canRefundAdminOrder", () => {
 
   it.each(CLOSED_STATUSES)("refuses to refund a %s order twice", (status) => {
     expect(canRefundAdminOrder({ paymentUiKey: "paid", status })).toBe(false)
+  })
+})
+
+describe("refundRestocksByDefault", () => {
+  it.each(STILL_IN_THE_SHOP)("expects the goods of an order that is still %s in the shop back in stock", (fulfillmentStatus) => {
+    expect(refundRestocksByDefault({ fulfillmentStatus })).toBe(true)
+  })
+
+  it.each(DISPATCHED)("expects nothing back in stock from an order that was %s until the admin says so", (fulfillmentStatus) => {
+    expect(refundRestocksByDefault({ fulfillmentStatus })).toBe(false)
+  })
+})
+
+describe("canRestockAdminOrder", () => {
+  it("offers to return the items of a refunded order whose stock never went back", () => {
+    expect(canRestockAdminOrder({ restockedAt: undefined, status: "refunded" })).toBe(true)
+  })
+
+  it("refuses to return the items of a refunded order a second time", () => {
+    expect(canRestockAdminOrder({ restockedAt: new Date("2026-10-05T10:00:00.000Z"), status: "refunded" })).toBe(false)
+  })
+
+  it.each<OrderStatus>(["pending", "processing", "completed", "cancelled"])("refuses to return the items of a %s order", (status) => {
+    expect(canRestockAdminOrder({ restockedAt: undefined, status })).toBe(false)
   })
 })
 

@@ -286,6 +286,7 @@ const detailRow = (overrides: Record<string, unknown> = {}) => ({
   metadata: null,
   orderNumber: "MRT-2026-00001",
   payment: null,
+  restockedAt: null,
   shippedAt: null,
   shippingTotal: 1500,
   status: "processing",
@@ -486,6 +487,27 @@ describe("getAdminOrder delivery and payment", () => {
     expect(detail?.delivery?.lockerId).toBeUndefined()
     expect(detail?.payment).toMatchObject({ refundedAmountMinorUnits: 5000, refundedAt, transactionId: undefined })
     expect(detail?.tags).toContain(ADMIN_ORDER_DETAIL_TAG.PARTIALLY_REFUNDED)
+  })
+
+  it("flags a refunded order whose items never went back to stock", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow({ payment: paymentRow({ status: "refunded" }), status: "refunded" }))
+
+    const detail = await fetchAdminOrder()
+
+    expect(detail?.restockedAt).toBeUndefined()
+    expect(detail?.tags).toContain(ADMIN_ORDER_DETAIL_TAG.NOT_RESTOCKED)
+  })
+
+  it("dates the return to stock of a refunded order and drops the flag", async () => {
+    const restockedAt = new Date(1_700_000_300_000)
+    accessors.getAdminOrderDetailRow.mockResolvedValue(
+      detailRow({ payment: paymentRow({ status: "refunded" }), restockedAt, status: "refunded" }),
+    )
+
+    const detail = await fetchAdminOrder()
+
+    expect(detail?.restockedAt).toBe(restockedAt)
+    expect(detail?.tags).not.toContain(ADMIN_ORDER_DETAIL_TAG.NOT_RESTOCKED)
   })
 })
 

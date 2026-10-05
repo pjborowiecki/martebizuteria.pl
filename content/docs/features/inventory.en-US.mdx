@@ -108,20 +108,20 @@ Both release statements use `min`/`max` so a duplicate release cannot invent sto
 
 ## The full cycle
 
-| Moment                                                                       | Effect on the row                                                                             |
-| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Stripe session created (`handleCreateCheckoutSession`)                       | `available -= qty`, `reserved += qty`, `version += 1`                                         |
-| Checkout edited (`handleUpdateCheckoutSession`)                              | Old lines released as the payment moves (`supersedeCheckoutSession`), then new lines reserved |
-| Session paid (`prepareFulfillCheckoutBatch`)                                 | `reserved -= qty`; `available` untouched — the reservation is consumed                        |
-| Session expired or async payment failed (`prepareReleaseCheckoutBatch`)      | `available += min(reserved, qty)`, `reserved -= qty`                                          |
-| Order cancelled by an admin (`prepareCancelOrderBatch`)                      | `available += quantity` while the order is open and unshipped                                 |
-| Full refund with restock (`prepareRefundBatch`)                              | `available += quantity`, from `getRestockLinesForOrder(orderId)`                              |
-| Lost dispute                                                                 | Nothing — `refundOrder` is called with `restock: false`                                       |
-| Admin changes the stock in the product editor (`prepareProductCatalogBatch`) | `available += new − loaded`, `version += 1`; refused when it would go below zero              |
+| Moment                                                                            | Effect on the row                                                                             |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Stripe session created (`handleCreateCheckoutSession`)                            | `available -= qty`, `reserved += qty`, `version += 1`                                         |
+| Checkout edited (`handleUpdateCheckoutSession`)                                   | Old lines released as the payment moves (`supersedeCheckoutSession`), then new lines reserved |
+| Session paid (`prepareFulfillCheckoutBatch`)                                      | `reserved -= qty`; `available` untouched — the reservation is consumed                        |
+| Session expired or async payment failed (`prepareReleaseCheckoutBatch`)           | `available += min(reserved, qty)`, `reserved -= qty`                                          |
+| Order cancelled by an admin (`prepareCancelOrderBatch`)                           | `available += quantity` while the order is unshipped and its stock has not gone back yet      |
+| Admin says a refunded order's items came back (`prepareRestockOrderBatch`)        | `available += quantity`, from `getRestockLinesForOrder(orderId)`, once per order              |
+| Refund on its own, from the Refund button, the Stripe dashboard or a lost dispute | Nothing — `refundOrder` never restocks                                                        |
+| Admin changes the stock in the product editor (`prepareProductCatalogBatch`)      | `available += new − loaded`, `version += 1`; refused when it would go below zero              |
 
 A reservation lasts only as long as its Checkout Session can be paid. Every session expires `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minutes, from `stripe.constants.ts`) after it opens, instead of after Stripe's 24-hour default, and its `checkout.session.expired` webhook releases the lines. A checkout update that finds Stripe already reporting the session expired runs the same guarded release first, and so does the session check the checkout page runs on a stored session, so the fresh checkout the shopper starts does not wait for the webhook. A browser keeps one open session: the checkout continues the session it stored through the update path, which releases the old lines as it reserves the new ones, rather than reserving the basket again on a reload, in a second tab or after a visit to the basket.
 
-Both restocks check the order in the same batch, before its status changes, so an order's stock goes back at most once. A cancellation matches only an open order that has not shipped, and a full refund only an order that is neither `cancelled` nor `refunded`, so the refund of a cancelled order, and a second delivery of the same refund, return nothing.
+Every restock goes through `prepareRestockOrderBatch` (`order.utils.ts`), which adds each line back only while the order is not `cancelled` and its `restocked_at` is empty, and sets `restocked_at` in the same batch, so an order's stock goes back at most once, whichever of a cancellation, the Refund dialog and Return to stock comes first and however often each is repeated. A cancellation also requires the order to be unshipped. A refund on its own returns nothing, because it says nothing about where the goods are: a refund for a lost parcel or a goodwill refund must not put a one-off piece back on sale. The admin answers that question in the Refund dialog, whose box starts ticked only for an order that has not shipped, or later with Return to stock on the order (see [Orders](/docs/features/orders#admin-actions)).
 
 Note that the fulfilment and release batches update `inventory` **without** bumping `version`, because they run inside a D1 batch alongside the order writes rather than through `reserveInventoryRows` and the release helpers.
 
@@ -182,7 +182,7 @@ There is **no dedicated stock adjustment use case**. Stock is changed in the pro
 - `prepareProductCatalogBatch` applies each adjustment in the save's batch as `quantity_available = quantity_available + change` and `version = version + 1`, so a reservation, release or sale that happened while the editor was open stays counted. A new product or a new variant still gets its first stock from the typed quantity; an existing row is never overwritten.
 - When a customer reserved or bought the stock meanwhile and the adjustment would take `quantity_available` below zero, the check fails the statement and D1 rolls back the whole batch, so nothing about the product is saved. `rethrowProductMutationError` turns the failure into `ERROR_CODES.CONFLICT` with `PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING`; the editor stays open with the admin's input and shows `toast.stockChangedWhileEditing`, which says that nothing was saved and to reload the page to see the current stock.
 
-Everything else — reserve, convert, release, restock — happens automatically around a checkout.
+Everything else — reserve, convert, release — happens automatically around a checkout, and an order's items go back to stock when an admin cancels it or says they came back.
 
 If you need a stock-adjustment screen, the place to add it is a new use case under `src/modules/inventory/use-cases/` with `authorized({ product: ["update"] })`, using the same version-guarded prepared statement so it cannot race a live checkout, followed by `scheduleProductCatalogInvalidation()`.
 

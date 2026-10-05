@@ -187,6 +187,31 @@ test.describe("admin", () => {
     expect(linkIn(cancelled, /\/auth\/sign-up/u).origin).toBe("http://127.0.0.1:3000")
   })
 
+  test("refunding a shipped order returns its piece to stock only when the admin says it came back", async ({
+    adminOrderPage,
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const email = await placeGuestOrder({ browser, handle: PRODUCTS.onyx.handle, label: "refund", request, testInfo })
+    await adminOrderPage.gotoOrderFor(email)
+    await adminOrderPage.action("Fulfill").click()
+    await adminOrderPage.dismissNotification("Fulfillment started for this order.")
+    await adminOrderPage.action("Mark shipped").click()
+    await page.getByRole("dialog", { name: "Mark order as shipped" }).getByRole("button", { name: "Mark shipped" }).click()
+    await expect(adminOrderPage.action("Mark delivered")).toBeVisible()
+
+    await adminOrderPage.action("Refund").click()
+    const confirmation = page.getByRole("alertdialog", { name: "Refund this order?" })
+    const cameBack = confirmation.getByRole("checkbox", { name: "The items came back to stock" })
+    await expect(cameBack).not.toBeChecked()
+    await cameBack.click()
+    await confirmation.getByRole("button", { name: "Refund order" }).click()
+
+    await expect(page.getByText("Refund submitted to Stripe. The order updates once Stripe confirms it.")).toBeVisible()
+    await expect(page.getByRole("main")).toContainText("Items returned to stock")
+  })
+
   test("a guest's order emails the shop a notice whose link opens the order in the admin", async ({
     adminOrderPage,
     browser,

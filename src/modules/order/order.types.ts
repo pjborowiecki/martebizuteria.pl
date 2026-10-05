@@ -139,6 +139,7 @@ interface AdminOrderDetail {
   readonly items: readonly AdminOrderDetailItem[]
   readonly payment: AdminOrderDetailPayment | undefined
   readonly paymentUiKey: AdminOrderPaymentUiKey
+  readonly restockedAt: Date | undefined
   readonly shippedAt: Date | undefined
   readonly shippingAddress: AdminOrderDetailAddress | undefined
   readonly shippingTotalMinorUnits: number
@@ -190,7 +191,6 @@ type AdminOrdersPageInput = AdminOrdersListFilters & {
 interface OrderRefundInput {
   fullyRefunded: boolean
   refundedAmount: number
-  restock: boolean
   transactionId: string
 }
 

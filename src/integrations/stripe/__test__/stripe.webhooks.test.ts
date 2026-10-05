@@ -470,23 +470,21 @@ describe("charge refunds", () => {
     expect(refundOrder).toHaveBeenCalledWith({
       fullyRefunded: false,
       refundedAmount: SHIPPING_TOTAL,
-      restock: true,
       transactionId: "cs_resolved_1",
     })
   })
 
-  it("resolves the checkout session behind the refunded charge", async () => {
+  it("resolves the checkout session behind the refunded charge and records the refund without touching stock", async () => {
     await dispatch(chargeRefundedEvent(charge({ amount: AMOUNT_TOTAL, amountRefunded: AMOUNT_TOTAL, paymentIntent: "pi_test_1" })))
 
     expect(sessionsList).toHaveBeenCalledWith({ limit: 1, payment_intent: "pi_test_1" })
     expect(refundOrder).toHaveBeenCalledWith({
       fullyRefunded: true,
       refundedAmount: AMOUNT_TOTAL,
-      restock: true,
       transactionId: "cs_resolved_1",
     })
     expect(scheduleAdminOrdersInvalidation).toHaveBeenCalledOnce()
-    expect(scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
+    expect(scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
   })
 
   it("reports a partial refund as such", async () => {
@@ -495,7 +493,6 @@ describe("charge refunds", () => {
     expect(refundOrder).toHaveBeenCalledWith({
       fullyRefunded: false,
       refundedAmount: SHIPPING_TOTAL,
-      restock: true,
       transactionId: "cs_resolved_1",
     })
   })
@@ -550,13 +547,12 @@ describe("dispute opened", () => {
 })
 
 describe("dispute closed", () => {
-  it("refunds the order without restocking when the dispute is lost", async () => {
+  it("refunds the order, leaving its stock alone, when the dispute is lost", async () => {
     await dispatch(chargeDisputeClosedEvent(dispute({ amount: AMOUNT_TOTAL, paymentIntent: "pi_test_1", status: "lost" })))
 
     expect(refundOrder).toHaveBeenCalledWith({
       fullyRefunded: true,
       refundedAmount: AMOUNT_TOTAL,
-      restock: false,
       transactionId: "cs_resolved_1",
     })
     expect(clearOrderDispute).not.toHaveBeenCalled()

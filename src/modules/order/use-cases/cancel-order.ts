@@ -45,13 +45,13 @@ export const cancelOrder = createServerFn({ method: "POST" })
 
     const [first, ...rest] = prepareCancelOrderBatch(orderId, restockLines)
     const results = await db.batch([first, ...rest])
+    scheduleProductCatalogInvalidation()
     const cancelled: unknown = results.at(-1)
     if (!Array.isArray(cancelled) || cancelled.length === 0) {
       throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE)
     }
 
     recordOrderCancelledAudit(orderId)
-    scheduleProductCatalogInvalidation()
     const cancelledEmailDelivery = notifyOrderCancelled({ orderId, refundedAmount }, origin)
     scheduleBackgroundWork(cancelledEmailDelivery)
     const cancelledEmailSent = await cancelledEmailDelivery

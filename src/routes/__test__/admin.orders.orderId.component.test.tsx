@@ -51,6 +51,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order
   useMarkOrderDelivered: stubMutation,
   useMarkOrderShipped: stubMutation,
   useRefundOrder: stubMutation,
+  useRestockOrder: stubMutation,
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/orders/detail/order-detail-page", () => ({
   OrderDetailPage: (): JSX.Element => <p>order detail body</p>,
@@ -133,6 +134,14 @@ describe("admin order detail route", () => {
     expect(screen.queryByRole("button", { name: "Refund" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Fulfill" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Return to stock" })).not.toBeInTheDocument()
+  })
+
+  it("offers to return the items of a refunded order whose stock never went back", () => {
+    renderRoute({ fulfillmentStatus: "delivered", paymentUiKey: "refunded", status: "refunded" })
+
+    expect(screen.getByRole("button", { name: "Return to stock" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Refund" })).not.toBeInTheDocument()
   })
 })
 

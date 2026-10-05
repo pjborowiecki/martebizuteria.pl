@@ -76,6 +76,7 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
     transactionId: "pi_3Ns8wK2eZvKY",
   },
   paymentUiKey: "paid",
+  restockedAt: undefined,
   shippedAt: SHIPPED_AT,
   shippingAddress: SHIPPING_ADDRESS,
   shippingTotalMinorUnits: 1900,

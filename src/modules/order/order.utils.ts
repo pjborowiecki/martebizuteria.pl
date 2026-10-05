@@ -1,4 +1,4 @@
-import { type SQL, and, eq, exists, inArray, notInArray, sql } from "drizzle-orm"
+import { type SQL, and, eq, exists, inArray, isNull, ne, notInArray, sql } from "drizzle-orm"
 import { type BatchItem } from "drizzle-orm/batch"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -48,18 +48,33 @@ const prepareRestockWhile = (orderHoldsStock: SQL, line: RestockLine): BatchItem
     })
     .where(and(eq(inventory.variantId, line.variantId), orderHoldsStock))
 
+export const prepareRestockOrderBatch = (
+  orderId: string,
+  restockLines: readonly RestockLine[],
+  onlyWhile?: SQL,
+): [...BatchItem<"sqlite">[], BatchItem<"sqlite">] => {
+  const orderNotYetRestocked = and(eq(order.id, orderId), ne(order.status, "cancelled"), onlyWhile, isNull(order.restockedAt))
+
+  return [
+    ...restockLines.map((line) => prepareRestockWhile(existsOrderWhere(orderNotYetRestocked), line)),
+    db
+      .update(order)
+      .set({
+        restockedAt: new Date(),
+      })
+      .where(orderNotYetRestocked)
+      .returning({ id: order.id }),
+  ]
+}
+
 export const prepareCancelOrderBatch = (
   orderId: string,
   restockLines: readonly RestockLine[],
 ): [...BatchItem<"sqlite">[], BatchItem<"sqlite">] => {
-  const cancellableOrder = and(
-    eq(order.id, orderId),
-    inArray(order.status, [...OPEN_ORDER_STATUSES]),
-    notInArray(order.fulfillmentStatus, [...DISPATCHED_FULFILLMENT_STATUSES]),
-  )
+  const unshipped = notInArray(order.fulfillmentStatus, [...DISPATCHED_FULFILLMENT_STATUSES])
 
   return [
-    ...restockLines.map((line) => prepareRestockWhile(existsOrderWhere(cancellableOrder), line)),
+    ...prepareRestockOrderBatch(orderId, restockLines, unshipped),
     db
       .update(order)
       .set({
@@ -68,30 +83,20 @@ export const prepareCancelOrderBatch = (
         status: "cancelled",
         updatedAt: new Date(),
       })
-      .where(cancellableOrder)
+      .where(and(eq(order.id, orderId), inArray(order.status, [...OPEN_ORDER_STATUSES]), unshipped))
       .returning({ id: order.id }),
   ]
 }
 
-const prepareFullOrderRefund = (orderId: string, restockLines: readonly RestockLine[]): BatchItem<"sqlite">[] => {
-  const orderHoldingStock = and(eq(order.id, orderId), notInArray(order.status, [...CANCELLED_ORDER_STATUSES]))
+const prepareFullOrderRefund = (orderId: string): BatchItem<"sqlite"> =>
+  db
+    .update(order)
+    .set({
+      status: "refunded",
+    })
+    .where(and(eq(order.id, orderId), notInArray(order.status, [...CANCELLED_ORDER_STATUSES])))
 
-  return [
-    ...restockLines.map((line) => prepareRestockWhile(existsOrderWhere(orderHoldingStock), line)),
-    db
-      .update(order)
-      .set({
-        status: "refunded",
-      })
-      .where(orderHoldingStock),
-  ]
-}
-
-export const prepareRefundBatch = (
-  settled: Order["settled"],
-  { fullyRefunded, refundedAmount }: Order["refundInput"],
-  restockLines: readonly RestockLine[],
-) =>
+export const prepareRefundBatch = (settled: Order["settled"], { fullyRefunded, refundedAmount }: Order["refundInput"]) =>
   [
     db
       .select({ orderStatus: order.status, refundedAmount: payment.refundedAmount })
@@ -106,7 +111,7 @@ export const prepareRefundBatch = (
         status: fullyRefunded ? "refunded" : "succeeded",
       })
       .where(eq(payment.id, settled.paymentId)),
-    ...(fullyRefunded && settled.orderId !== undefined ? prepareFullOrderRefund(settled.orderId, restockLines) : []),
+    ...(fullyRefunded && settled.orderId !== undefined ? [prepareFullOrderRefund(settled.orderId)] : []),
   ] as const
 
 interface RestockLine {

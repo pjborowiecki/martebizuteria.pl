@@ -10,16 +10,20 @@ import { canRefundAdminOrder } from "~/src/modules/order/order.admin-actions.uti
 import { ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
 import { resolveAdminOrderPaymentUiKey } from "~/src/modules/order/order.display.utils"
 import { requestFullOrderRefund } from "~/src/modules/order/order.refund.server"
+import { returnOrderToStock } from "~/src/modules/order/order.restock.server"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
 export const refundAdminOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
-  .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
-  .handler(async ({ data: { orderId } }) => {
+  .validator((input: zod.input<typeof orderZodSchemas.adminRefundOrderInput>) => orderZodSchemas.adminRefundOrderInput.parse(input))
+  .handler(async ({ data: { orderId, restock } }) => {
     const target = assertOrderActionState(await getAdminOrderRefundTarget(orderId), (snapshot) =>
       canRefundAdminOrder({ paymentUiKey: resolveAdminOrderPaymentUiKey(snapshot.paymentStatus), status: snapshot.status }),
     )
     await requestFullOrderRefund(orderId, target)
+    if (restock) {
+      await returnOrderToStock(orderId)
+    }
 
     return { ok: true, orderId }
   })

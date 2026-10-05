@@ -15,22 +15,23 @@ import {
   useMarkOrderDelivered,
   useMarkOrderShipped,
   useRefundOrder,
+  useRestockOrder,
 } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions"
 
-const { cancelFn, deliverFn, fulfillFn, refundFn, shipFn, syncQueryInvalidation, toastError, toastSuccess, toastWarning } = vi.hoisted(
-  () => ({
+const { cancelFn, deliverFn, fulfillFn, refundFn, restockFn, shipFn, syncQueryInvalidation, toastError, toastSuccess, toastWarning } =
+  vi.hoisted(() => ({
     cancelFn: vi.fn<(input: { orderId: string }) => Promise<{ cancelledEmailSent: boolean; ok: true; orderId: string }>>(),
     deliverFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
     fulfillFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
-    refundFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+    refundFn: vi.fn<(input: { orderId: string; restock: boolean }) => Promise<{ ok: true; orderId: string }>>(),
+    restockFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
     shipFn:
       vi.fn<(input: { orderId: string; trackingNumber?: string }) => Promise<{ ok: true; orderId: string; shippedEmailSent: boolean }>>(),
     syncQueryInvalidation: vi.fn(() => Promise.resolve(undefined)),
     toastError: vi.fn(),
     toastSuccess: vi.fn(),
     toastWarning: vi.fn(),
-  }),
-)
+  }))
 
 vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess, warning: toastWarning } }))
 
@@ -50,6 +51,9 @@ vi.mock("~/src/modules/order/use-cases/mark-order-delivered", () => ({
 }))
 vi.mock("~/src/modules/order/use-cases/refund-admin-order", () => ({
   refundAdminOrderMutation: { mutationFn: refundFn, mutationKey: ["order", "refund"] },
+}))
+vi.mock("~/src/modules/order/use-cases/restock-order", () => ({
+  restockOrderMutation: { mutationFn: restockFn, mutationKey: ["order", "restock"] },
 }))
 
 const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => (
@@ -140,14 +144,15 @@ describe("admin order action mutations", () => {
     expect(toastSuccess).toHaveBeenCalledWith("Order updated", { description: "Order marked as delivered." })
   })
 
-  it("announces a refund as pending Stripe confirmation", async () => {
+  it("announces a refund as pending Stripe confirmation and sends the admin's stock choice", async () => {
     const { result } = renderHook(() => useRefundOrder(), { wrapper: Wrapper })
 
-    result.current.mutate({ orderId: "order-1" })
+    result.current.mutate({ orderId: "order-1", restock: false })
     await waitFor(() => {
       expect(toastSuccess).toHaveBeenCalledOnce()
     })
 
+    expect(refundFn.mock.calls[0]?.[0]).toStrictEqual({ orderId: "order-1", restock: false })
     expect(toastSuccess).toHaveBeenCalledWith("Order updated", {
       description: "Refund submitted to Stripe. The order updates once Stripe confirms it.",
     })
@@ -193,6 +198,25 @@ describe("admin order action mutations", () => {
     })
 
     expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), ORDER_QUERY_KEYS.ADMIN.ORDERS)
+  })
+})
+
+describe("admin order return to stock", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    restockFn.mockResolvedValue({ ok: true, orderId: "order-1" })
+  })
+
+  it("announces the items of an order returned to stock", async () => {
+    const { result } = renderHook(() => useRestockOrder(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastSuccess).toHaveBeenCalledOnce()
+    })
+
+    expect(restockFn.mock.calls[0]?.[0]).toStrictEqual({ orderId: "order-1" })
+    expect(toastSuccess).toHaveBeenCalledWith("Order updated", { description: "The order's items are back in stock." })
   })
 })
 

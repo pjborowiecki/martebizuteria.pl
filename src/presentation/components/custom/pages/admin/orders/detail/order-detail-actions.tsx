@@ -1,6 +1,6 @@
 import { type JSX, useCallback } from "react"
 
-import { CheckCheck, Loader2, Package, Printer, Truck, XCircle } from "lucide-react"
+import { CheckCheck, Loader2, Package, PackagePlus, Printer, Truck, XCircle } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { type Order } from "~/src/modules/order/order.types"
@@ -13,13 +13,14 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
 import { OrderRefundButton } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-refund-button"
+import { OrderRefundDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-refund-dialog"
 import { OrderShipDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-ship-dialog"
 import { useOrderDetailActions } from "~/src/presentation/components/custom/pages/admin/orders/detail/use-order-detail-actions"
 
 export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>): JSX.Element => {
   const t = useTranslations("pages.admin.orderDetail")
   const actions = useOrderDetailActions(order)
-  const { setCancelDialogOpen, setRefundDialogOpen, setShipDialogOpen } = actions
+  const { setCancelDialogOpen, setRefundDialogOpen, setRestockDialogOpen, setShipDialogOpen } = actions
   const handleOpenShipDialog = useCallback(() => {
     setShipDialogOpen(true)
   }, [setShipDialogOpen])
@@ -29,6 +30,9 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
   const handleOpenCancelDialog = useCallback(() => {
     setCancelDialogOpen(true)
   }, [setCancelDialogOpen])
+  const handleOpenRestockDialog = useCallback(() => {
+    setRestockDialogOpen(true)
+  }, [setRestockDialogOpen])
 
   return (
     <>
@@ -45,6 +49,19 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
 
       {actions.canRefund && (
         <OrderRefundButton blocker={actions.refundBlocker} isPending={actions.isPending} onClick={handleOpenRefundDialog} />
+      )}
+
+      {actions.canRestock && (
+        <Button
+          className={ADMIN_HEADER_SECONDARY_BUTTON_CLASS}
+          disabled={actions.isPending}
+          onClick={handleOpenRestockDialog}
+          size="sm"
+          variant="outline"
+        >
+          <PackagePlus className="size-3.5" strokeWidth={1.5} />
+          {t("actions.restock")}
+        </Button>
       )}
 
       {actions.canCancel && (
@@ -96,15 +113,24 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
         open={actions.shipDialogOpen}
       />
 
-      <CatalogDeleteConfirmDialog
-        cancelLabel={t("refundDialog.cancel")}
-        confirmLabel={t("refundDialog.confirm")}
-        description={t("refundDialog.description", { id: order.displayId })}
+      <OrderRefundDialog
+        displayId={order.displayId}
         isPending={actions.isPending}
         onConfirm={actions.handleConfirmRefund}
         onOpenChange={setRefundDialogOpen}
         open={actions.refundDialogOpen}
-        title={t("refundDialog.title")}
+        restockByDefault={actions.refundRestocksByDefault}
+      />
+
+      <CatalogDeleteConfirmDialog
+        cancelLabel={t("restockDialog.cancel")}
+        confirmLabel={t("restockDialog.confirm")}
+        description={t("restockDialog.description", { id: order.displayId })}
+        isPending={actions.isPending}
+        onConfirm={actions.handleConfirmRestock}
+        onOpenChange={setRestockDialogOpen}
+        open={actions.restockDialogOpen}
+        title={t("restockDialog.title")}
       />
 
       <CatalogDeleteConfirmDialog

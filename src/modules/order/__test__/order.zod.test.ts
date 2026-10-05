@@ -18,6 +18,20 @@ describe("orderZodSchemas.adminOrderIdInput", () => {
   })
 })
 
+describe("orderZodSchemas.adminRefundOrderInput", () => {
+  it.each([true, false])("keeps the admin's answer to whether the items came back to stock (%s)", (restock) => {
+    expect(orderZodSchemas.adminRefundOrderInput.parse({ orderId: ORDER_UUID, restock })).toStrictEqual({ orderId: ORDER_UUID, restock })
+  })
+
+  it("refuses a refund that does not say whether the items came back to stock", () => {
+    expect(orderZodSchemas.adminRefundOrderInput.safeParse({ orderId: ORDER_UUID }).success).toBe(false)
+  })
+
+  it("refuses a refund of an order id that is not a uuid", () => {
+    expect(orderZodSchemas.adminRefundOrderInput.safeParse({ orderId: "order-1", restock: false }).success).toBe(false)
+  })
+})
+
 describe("orderZodSchemas.adminOrdersPageInput", () => {
   it("accepts an empty filter set", () => {
     expect(orderZodSchemas.adminOrdersPageInput.parse({})).toStrictEqual({})

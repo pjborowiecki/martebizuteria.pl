@@ -37,6 +37,7 @@ export const order = sqliteTable(
     metadata: text("metadata"),
     orderNumber: text("order_number").notNull(),
     paymentId: text("payment_id").references(() => payment.id, { onDelete: "set null" }),
+    restockedAt: timestamp("restocked_at"),
     shippedAt: timestamp("shipped_at"),
     shippingTotal: integer("shipping_total").default(0).notNull(),
     status: text("status", {

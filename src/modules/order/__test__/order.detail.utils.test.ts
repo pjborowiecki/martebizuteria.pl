@@ -43,6 +43,7 @@ const fulfillmentSnapshot = (overrides: Partial<AdminOrderFulfillmentSnapshot> =
 })
 
 const tagSnapshot = (overrides = {}) => ({
+  awaitsRestock: false,
   customerOrderCount: 1,
   deliveryType: undefined,
   hasCustomerNote: false,
@@ -346,6 +347,12 @@ describe("resolveAdminOrderDetailTags", () => {
 
   it("flags disputes and customer notes", () => {
     expect(resolveAdminOrderDetailTags(tagSnapshot({ hasCustomerNote: true, hasDispute: true }))).toStrictEqual(["disputed", "note"])
+  })
+
+  it("flags a refunded order whose items have not gone back to stock", () => {
+    expect(
+      resolveAdminOrderDetailTags(tagSnapshot({ awaitsRestock: true, paymentStatus: "refunded", refundedAmount: 38_900 })),
+    ).toStrictEqual(["refunded", "notRestocked"])
   })
 })
 

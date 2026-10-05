@@ -56,6 +56,10 @@ export const orderZodSchemas = {
   }),
   adminOrdersExportInput,
   adminOrdersPageInput,
+  adminRefundOrderInput: zod.object({
+    orderId: uuidField,
+    restock: zod.boolean(),
+  }),
   adminShipOrderInput: zod.object({
     orderId: uuidField,
     trackingNumber: zod.string().trim().max(ORDER_TRACKING_NUMBER_MAX_LENGTH).optional(),

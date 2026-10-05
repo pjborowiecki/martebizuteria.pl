@@ -23,9 +23,9 @@ await releaseInventoryForItems(reserved).catch((error: unknown) => {
 
 Błąd samego wycofania jest przechwytywany i zapisywany do logu. Nieudane wycofanie zostawia więc rezerwację bez pokrycia, bez alertu i bez przebiegu uzgadniającego, który by ją znalazł. To saga ze znaną dziurą, a jej zamknięcie wymaga albo dziennika kompensacji, albo zadania uzgadniającego opisanego niżej.
 
-### Częściowe zwroty nie przywracają stanu magazynowego
+### Częściowy zwrot towaru nie ma ścieżki powrotu na stan
 
-`refundOrder` w `src/modules/order/use-cases/refund-order.ts` zbiera pozycje do przywrócenia tylko wtedy, gdy `input.restock && input.fullyRefunded` jest prawdą. `handleChargeRefunded` w `src/integrations/stripe/stripe.webhooks.tsx` zawsze przekazuje `restock: true`, a `fullyRefunded` wyznacza z `charge.amount_refunded >= charge.amount` — częściowy zwrot zapisuje więc pieniądze i zostawia obniżony stan magazynowy.
+Towar wraca na stan całym zamówieniem, wszystkie pozycje naraz: `returnOrderToStock` w `src/modules/order/order.restock.server.ts` działa, gdy administrator zaznaczy „Produkty wróciły na stan magazynowy” w oknie zwrotu albo naciśnie Przywróć na stan, a `canRestockAdminOrder` w `src/modules/order/order.admin-actions.utils.ts` oferuje Przywróć na stan tylko dla zamówienia o statusie `refunded`. Częściowy zwrot zrobiony w panelu Stripe zostawia zamówienie otwarte, więc gdy wróci jeden egzemplarz z większego zamówienia, administrator musi ręcznie podnieść stan tego wariantu w edytorze produktu.
 
 ### E-mail potwierdzający wysyłany jest raz
 

@@ -356,11 +356,9 @@ const handleChargeRefunded = async (charge: StripeType.Charge): Promise<void> =>
   const unannouncedRefund = await refundOrder({
     fullyRefunded: charge.amount_refunded >= charge.amount,
     refundedAmount: charge.amount_refunded,
-    restock: true,
     transactionId: session.id,
   })
   scheduleAdminOrdersInvalidation()
-  scheduleProductCatalogInvalidation()
   console.info(`Recorded refund of ${charge.amount_refunded} for charge ${charge.id}.`)
   if (unannouncedRefund === undefined) {
     return
@@ -407,7 +405,6 @@ const handleChargeDisputeClosed = async (dispute: StripeType.Dispute): Promise<v
     await refundOrder({
       fullyRefunded: true,
       refundedAmount: dispute.amount,
-      restock: false,
       transactionId,
     })
     scheduleAdminOrdersInvalidation()
