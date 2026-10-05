@@ -53,7 +53,7 @@
       "subtitle": "Opcjonalna krótka linia pod tytułem na stronie produktu.",
       "description": "Pełny opis widoczny na stronie produktu w sklepie.",
       "price": "Cena sprzedaży w PLN dla produktu z jednym wariantem.",
-      "stockQuantity": "Liczba sztuk dostępnych do sprzedaży (całkowita liczba, nie ułamek).",
+      "stockQuantity": "Liczba sztuk dostępnych teraz do sprzedaży. Nie obejmuje sztuk, za które klienci właśnie płacą; są one pokazane pod polem. Zapis dodaje lub odejmuje różnicę względem liczby widocznej po otwarciu produktu.",
       "primaryCategory": "Główna kategoria w drzewie katalogu (breadcrumbs, SEO).",
       "additionalCategories": "Opcjonalnie: dodatkowe kategorie, w których produkt ma się pojawiać.",
       "collections": "Kolekcje merchandisingowe (np. Nowości i Srebro 925 jednocześnie).",
@@ -87,7 +87,8 @@
       "submitBlockedDescription": "Sprawdź podświetlone pola i spróbuj ponownie.",
       "duplicateAttribute": "Ten atrybut jest już przypisany do produktu — każdy atrybut może wystąpić tylko raz.",
       "duplicateSku": "Ten kod SKU jest już używany przez inny wariant."
-    }
+    },
+    "stockInCheckout": "{count} szt. w trakcie płatności"
   },
   "toast": {
     "createSuccessTitle": "Produkt utworzony",
@@ -100,6 +101,7 @@
     "duplicateSku": "Ten kod SKU jest już używany przez inny wariant.",
     "duplicateAttribute": "Ten sam atrybut nie może być przypisany do produktu więcej niż raz.",
     "variantReservedInCheckout": "Klient właśnie płaci za wariant, który usuwasz, więc nie można go jeszcze usunąć. Zostaw wariant i zarchiwizuj produkt, aby wycofać go ze sprzedaży, a wariant usuń dopiero wtedy, gdy ta płatność się zakończy albo wygaśnie.",
+    "stockChangedWhileEditing": "Podczas edycji klient zarezerwował lub kupił ten produkt, więc wpisany stan magazynowy spadłby poniżej zera. Nic nie zostało zapisane. Odśwież stronę, aby zobaczyć aktualny stan, i wprowadź zmiany ponownie.",
     "databaseSchemaOutdated": "Baza danych jest nieaktualna. Uruchom migracje: bun run db:migrate"
   },
   "basic": {
@@ -240,7 +242,7 @@
   "title": "Dodaj Nowy Produkt",
   "editTitle": "Edytuj Produkt",
   "variants": {
-    "sectionHint": "Każdy wiersz to jeden wariant (np. Srebrny, Pozłacany). Ustaw nazwę, cenę, stan i zdjęcia. Przełącz PL/EN u góry, aby przetłumaczyć nazwy.",
+    "sectionHint": "Każdy wiersz to jeden wariant (np. Srebrny, Pozłacany). Ustaw nazwę, cenę, stan i zdjęcia. Przełącz PL/EN u góry, aby przetłumaczyć nazwy. Stan to liczba sztuk dostępnych do sprzedaży; sztuki, za które klienci właśnie płacą, są pokazane pod nim i nie są w nim wliczone.",
     "listHint": "Nazwa wariantu w języku {locale}. Przełącz PL/EN u góry formularza, aby dodać tłumaczenie.",
     "addVariant": "Dodaj wariant",
     "removeVariant": "Usuń wariant",

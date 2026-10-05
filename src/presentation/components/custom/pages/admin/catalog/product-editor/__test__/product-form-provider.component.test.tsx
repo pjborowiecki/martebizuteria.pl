@@ -25,6 +25,7 @@ vi.mock("~/src/modules/product/use-cases/update-complete-product", () => ({ upda
 vi.mock("~/src/modules/product/use-cases/validate-product-skus", () => ({ validateProductSkus }))
 vi.mock("~/src/modules/attribute-on-product/use-cases/set-all-product-attributes", () => ({ setAllProductAttributes }))
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { ATTRIBUTE_ON_PRODUCT_QUERY_KEYS } from "~/src/modules/attribute-on-product/attribute-on-product.constants"
 import { PRODUCT_IMAGE_QUERY_KEYS } from "~/src/modules/product-image/product-image.constants"
 import { PRODUCT_ADMIN_STATUS, PRODUCT_ERROR_CODES, PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
@@ -382,6 +383,56 @@ describe("ProductFormProvider edit submissions", () => {
     await waitFor(() => {
       expect(validateProductSkus).toHaveBeenCalledWith({ data: { productId: PRODUCT_ID, skus: ["SKU-9"] } })
     })
+  })
+
+  it("sends the stock baseline it loaded with the new quantity and keeps the checkout count to itself", async () => {
+    const heldSimpleVariant = {
+      compareAtPrice: "",
+      id: "variant-unique",
+      loadedQuantity: 0,
+      manageInventory: true,
+      price: "120.00",
+      quantity: 1,
+      quantityInCheckout: 1,
+      sku: "",
+    }
+    renderWithProviders(<EditHarness values={formValues({ simpleVariant: heldSimpleVariant })} />)
+
+    await seedAndSave()
+
+    await waitFor(() => {
+      expect(updateCompleteProduct).toHaveBeenCalledTimes(1)
+    })
+    expect(updateCompleteProduct.mock.calls[0]?.[0]).toMatchObject({
+      data: { simpleVariant: { id: "variant-unique", loadedQuantity: 0, quantity: 1 } },
+    })
+    expect(updateCompleteProduct.mock.calls[0]?.[0]).not.toHaveProperty("data.simpleVariant.quantityInCheckout")
+  })
+
+  it("tells the admin that nothing was saved and to reload when a customer took the stock they were changing", async () => {
+    const onSuccess = vi.fn<() => void>()
+    updateCompleteProduct.mockRejectedValue(new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING))
+    renderWithProviders(
+      <CatalogFormLocaleControlsProvider>
+        <ProductFormProvider initialProduct={productDetail()} mode="edit" onDismiss={vi.fn<() => void>()} onSuccess={onSuccess} open>
+          <Seed values={formValues()} />
+          <ProductForm>
+            <button type="submit">Save</button>
+          </ProductForm>
+        </ProductFormProvider>
+      </CatalogFormLocaleControlsProvider>,
+    )
+
+    await seedAndSave()
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith("Could not save product", {
+        description:
+          "A customer reserved or bought this product while you were editing it, so the stock you entered would fall below zero. Nothing was saved. Reload the page to see the current stock, then make your changes again.",
+      })
+    })
+    expect(toastSuccess).not.toHaveBeenCalled()
+    expect(onSuccess).not.toHaveBeenCalled()
   })
 
   it("publishes the edited product id through the context", () => {

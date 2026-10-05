@@ -178,6 +178,23 @@ test.describe("admin", () => {
     await expireCheckoutSession(request, session.id)
   })
 
+  test("an admin editing a necklace a shopper is paying for sees the held piece under its stock and can still save it", async ({
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const session = await openGuestPayment({ browser, handle: PRODUCTS.lapis.handle, label: "held", request, testInfo })
+    await new BasePage(page).open("/en-US/admin/catalog/products")
+    await page.getByRole("row").filter({ hasText: PRODUCTS.lapis.sku }).getByText(PRODUCTS.lapis.title).click()
+    const editor = page.getByRole("dialog", { name: "Edit product" })
+
+    await expect(editor.getByText(/^\d+ in checkout$/u)).toBeVisible()
+    await editor.getByRole("button", { name: "Save changes" }).click()
+
+    await expect(page.getByText("Your changes have been saved.")).toBeVisible()
+    await expireCheckoutSession(request, session.id)
+  })
+
   test("two admin tabs in one browser do not echo a catalogue event to each other", async ({
     browser,
     context,

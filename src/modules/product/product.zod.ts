@@ -78,12 +78,15 @@ const plnMoneyInputSchema = zod
     }
   })
 
+const stockQuantitySchema = zod.number().int().min(0)
+
 const simpleVariantInputSchema = zod.object({
   compareAtPrice: plnMoneyInputSchema,
   id: zod.string().optional(),
+  loadedQuantity: stockQuantitySchema.optional(),
   manageInventory: zod.boolean(),
   price: plnMoneyInputSchema,
-  quantity: zod.number().int().min(0),
+  quantity: stockQuantitySchema,
   sku: zod.string().trim().max(PRODUCT_COLUMN_LENGTH.sku),
 })
 
@@ -116,11 +119,12 @@ const variantRowInputSchema = zod.object({
   compareAtPrice: plnMoneyInputSchema,
   id: zod.string().optional(),
   images: zod.array(productImageFormRowSchema).optional(),
+  loadedQuantity: stockQuantitySchema.optional(),
   mainImageId: zod.string().optional(),
   manageInventory: zod.boolean(),
   optionValues: zod.record(zod.string(), zod.string()),
   price: plnMoneyInputSchema,
-  quantity: zod.number().int().min(0),
+  quantity: stockQuantitySchema,
   sku: zod.string().trim().max(PRODUCT_COLUMN_LENGTH.sku),
   title: zod.string().trim().optional(),
 })
@@ -257,6 +261,10 @@ const productMediaFormFields = {
   mainImageId: zod.string().optional(),
 } as const
 
+const stockInCheckoutFormField = {
+  quantityInCheckout: stockQuantitySchema.optional(),
+} as const
+
 const refineDuplicateSkusInForm = (data: ProductFormValues, ctx: zod.RefinementCtx): void => {
   const entries = collectProductFormSkuEntries(data)
   const entriesBySku = new Map<string, (typeof entries)[number][]>()
@@ -352,9 +360,11 @@ const productFormSchemaDefinition = zod
   .object({
     ...catalogUpsertBaseSchema.shape,
     descriptions: productLocaleMapSchema(PRODUCT_COLUMN_LENGTH.description, PRODUCT_FORM_VALIDATION_KEYS.descriptionTooLong),
+    simpleVariant: simpleVariantInputSchema.extend(stockInCheckoutFormField).optional(),
     subtitles: productLocaleMapSchema(PRODUCT_COLUMN_LENGTH.subtitle, PRODUCT_FORM_VALIDATION_KEYS.subtitleTooLong),
     tags: productTagsLocaleMapSchema(),
     titles: productTitlesSchema,
+    variants: zod.array(variantRowInputSchema.extend(stockInCheckoutFormField)),
     ...productMediaFormFields,
   })
   .superRefine((data, ctx) => {

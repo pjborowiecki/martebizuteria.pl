@@ -1,9 +1,14 @@
-import { relations } from "drizzle-orm"
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { relations, sql } from "drizzle-orm"
+import { check, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
 import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { INVENTORY_COLUMN_LENGTH, INVENTORY_DEFAULT_QUANTITY, INVENTORY_DEFAULT_VERSION } from "~/src/modules/inventory/inventory.constants"
+import {
+  INVENTORY_COLUMN_LENGTH,
+  INVENTORY_DEFAULT_QUANTITY,
+  INVENTORY_DEFAULT_VERSION,
+  INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK,
+} from "~/src/modules/inventory/inventory.constants"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 
 export const inventory = sqliteTable(
@@ -20,7 +25,10 @@ export const inventory = sqliteTable(
     version: integer("version").default(INVENTORY_DEFAULT_VERSION).notNull(),
     ...timestamps(),
   },
-  (table) => [uniqueIndex("inventory_variantId_unique").on(table.variantId)],
+  (table) => [
+    uniqueIndex("inventory_variantId_unique").on(table.variantId),
+    check(INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK, sql`${table.quantityAvailable} >= 0`),
+  ],
 )
 
 export const inventoryRelations = relations(inventory, ({ one }) => ({

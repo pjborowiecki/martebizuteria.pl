@@ -461,6 +461,64 @@ describe("prepareCatalogReplacePayload for a variant product", () => {
   })
 })
 
+const ownedSimpleVariant = (stock: Pick<CatalogUpsertInput["variants"][number], "loadedQuantity" | "quantity">) =>
+  catalogInput({ simpleVariant: { compareAtPrice: "", id: "variant-1", manageInventory: true, price: "120.00", sku: "SR-1", ...stock } })
+
+describe("prepareCatalogReplacePayload stock changes", () => {
+  it("changes no stock of a variant whose stock the admin left as loaded", () => {
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      ownedSimpleVariant({ loadedQuantity: 5, quantity: 5 }),
+      new Set(["variant-1"]),
+    )
+
+    expect(payload.inventoryAdjustments).toStrictEqual([])
+  })
+
+  it("turns a changed stock into the difference from the number the editor loaded", () => {
+    const added = prepareCatalogReplacePayload("product-1", ownedSimpleVariant({ loadedQuantity: 1, quantity: 3 }), new Set(["variant-1"]))
+    const removed = prepareCatalogReplacePayload(
+      "product-1",
+      ownedSimpleVariant({ loadedQuantity: 1, quantity: 0 }),
+      new Set(["variant-1"]),
+    )
+
+    expect(added.inventoryAdjustments).toStrictEqual([{ quantityChange: 2, variantId: "variant-1" }])
+    expect(removed.inventoryAdjustments).toStrictEqual([{ quantityChange: -1, variantId: "variant-1" }])
+  })
+
+  it("changes no stock of a variant whose stock the editor never loaded", () => {
+    const payload = prepareCatalogReplacePayload("product-1", ownedSimpleVariant({ quantity: 9 }), new Set(["variant-1"]))
+
+    expect(payload.inventoryAdjustments).toStrictEqual([])
+  })
+
+  it("gives a variant new to the product the typed stock as its first stock rather than a change", () => {
+    const payload = prepareCatalogReplacePayload("product-1", ownedSimpleVariant({ loadedQuantity: 1, quantity: 4 }), new Set())
+
+    expect(payload.inventoryAdjustments).toStrictEqual([])
+    expect(payload.inventoryRows.map((row) => row.quantityAvailable)).toStrictEqual([4])
+    expect(payload.inventoryRows[0]?.variantId).not.toBe("variant-1")
+  })
+
+  it("changes only the variants whose stock the admin edited", () => {
+    const payload = prepareCatalogReplacePayload(
+      "product-1",
+      {
+        ...variantInput,
+        variants: variantInput.variants.map((row, index) => ({
+          ...row,
+          id: `existing-${String(index)}`,
+          loadedQuantity: row.sku === "SR-L" ? 1 : row.quantity,
+        })),
+      },
+      new Set(["existing-0", "existing-1"]),
+    )
+
+    expect(payload.inventoryAdjustments).toStrictEqual([{ quantityChange: 2, variantId: "existing-1" }])
+  })
+})
+
 describe("prepareCatalogReplacePayload naming and matching variant rows", () => {
   it("names a variant after its combination when the submitted title is blank", () => {
     const payload = prepareCatalogReplacePayload(

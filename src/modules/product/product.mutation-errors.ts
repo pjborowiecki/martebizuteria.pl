@@ -1,8 +1,12 @@
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK } from "~/src/modules/inventory/inventory.constants"
 import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
 
 const UNIQUE_PRODUCT_HANDLE_CONSTRAINT = "UNIQUE constraint failed: product.handle"
 
 const UNIQUE_PRODUCT_VARIANT_SKU_CONSTRAINT = "UNIQUE constraint failed: product_variant.sku"
+
+const NEGATIVE_AVAILABLE_STOCK_CONSTRAINT = `CHECK constraint failed: ${INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK}`
 
 const collectErrorMessages = (error: unknown): string[] => {
   const messages: string[] = []
@@ -30,6 +34,11 @@ export const isDuplicateSkuMutationError = (error: unknown): boolean =>
 export const isReservedInCheckoutMutationError = (error: unknown): boolean =>
   collectErrorMessages(error).includes(PRODUCT_ERROR_CODES.RESERVED_IN_CHECKOUT)
 
+export const isStockChangedWhileEditingMutationError = (error: unknown): boolean =>
+  collectErrorMessages(error).some(
+    (message) => message === PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING || message.includes(NEGATIVE_AVAILABLE_STOCK_CONSTRAINT),
+  )
+
 export const isDuplicateAttributeOnProductMutationError = (error: unknown): boolean =>
   collectErrorMessages(error).some(
     (message) =>
@@ -55,6 +64,10 @@ export const rethrowProductMutationError = (error: unknown): never => {
     throw new Error(PRODUCT_ERROR_CODES.DUPLICATE_SKU, {
       cause: error,
     })
+  }
+
+  if (isStockChangedWhileEditingMutationError(error)) {
+    throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING)
   }
 
   throw error

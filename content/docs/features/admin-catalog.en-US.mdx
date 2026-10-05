@@ -97,19 +97,21 @@ await runDrizzleBatch([
 
 `prepareProductInsertBatch` and `prepareProductUpdateBatch` (`product.catalog.server.ts`) write the product row and append `prepareProductOrganizationBatch` and `prepareProductCatalogBatch` from `product.mutations.ts`. `prepareProductImagesBatch` replaces the images and sets `product.thumbnail` to the lowest ranked one in the same batch, and `prepareAttributeOnProductBatch` replaces the attribute values. `createCompleteProduct` still calls `deleteOrphanProductByHandle(data.handle)` first, which clears a product left without variants by an older, non-atomic save.
 
-`rethrowProductMutationError` (`product.mutation-errors.ts`) maps a D1 unique-constraint failure onto `PRODUCT_ERROR_CODES.DUPLICATE_HANDLE` or `DUPLICATE_SKU` so the form can show the right field error.
+`rethrowProductMutationError` (`product.mutation-errors.ts`) maps a D1 unique-constraint failure onto `PRODUCT_ERROR_CODES.DUPLICATE_HANDLE` or `DUPLICATE_SKU` so the form can show the right field error, and a failed `inventory_quantity_available_non_negative` check onto `ERROR_CODES.CONFLICT` with `PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING`.
 
 `updateCompleteProduct` reads the product's handle owner, its current detail and the attribute definitions in parallel, rejects a handle already taken by a different product (`ERROR_CODES.CONFLICT` with `DUPLICATE_HANDLE`), calls `assertCatalogSkusAvailable`, and builds an audit diff by reading the product before and after (`extractProductAuditSnapshot` and `buildProductAuditChange` in `product-audit.utils.ts`).
 
-Saving keeps every variant the product already owns under its id. The statements from `prepareProductCatalogBatch` delete only the variants the form dropped, upserts the rest by id, and upserts inventory by variant id, changing `quantityAvailable` and bumping `version` only when the stock actually changed. Order lines, cart lines and stock reservations therefore stay attached to the variants they point at. A variant id is reused only when `updateCompleteProduct` read it from this product, so a forged id never takes over another product's variant. Every multi-row insert, including images, attribute values and category and collection links, is split with `insertRowChunks` to stay within D1's 100 bound parameters per statement, so a large gallery or a long specification list saves like any other.
+Saving keeps every variant the product already owns under its id. The statements from `prepareProductCatalogBatch` delete only the variants the form dropped, upserts the rest by id, inserts a stock row only for a variant that has none, and changes existing stock only by the difference between the stock field and the stock the editor loaded, bumping `version`. Order lines, cart lines and stock reservations therefore stay attached to the variants they point at. A variant id is reused only when `updateCompleteProduct` read it from this product, so a forged id never takes over another product's variant. Every multi-row insert, including images, attribute values and category and collection links, is split with `insertRowChunks` to stay within D1's 100 bound parameters per statement, so a large gallery or a long specification list saves like any other.
 
 **Stock a customer is paying for.** Neither a delete nor a save removes a variant that a checkout the customer can still pay holds. `assertVariantsNotHeldByOpenCheckouts` (`product.catalog.server.ts`) asks `isAnyVariantHeldByOpenCheckout` (`payment.accessors.ts`) whether a `pending` payment of a `pending` checkout lists any of the variants in its `reserved_lines`, and if one does it throws `ERROR_CODES.CONFLICT` with `PRODUCT_ERROR_CODES.RESERVED_IN_CHECKOUT` before anything is written. `deleteProducts` checks every variant of the selected products, read with `getVariantIdsByProductIds`, so the row action and the bulk action are covered alike. `updateCompleteProduct` first builds the catalog rows with `prepareCatalogReplacePayload`, checks the variants the product owns that those rows no longer keep, and then passes the same rows to `prepareProductUpdateBatch`, so the variants it checked are exactly the ones the batch deletes. The admin sees `toast.deleteReservedInCheckoutDescription` in the product list or `toast.variantReservedInCheckout` in the editor; both say to archive the product instead and to delete once that payment has finished or expired. The check runs just before the batch, so a checkout opened in between can still pay for a variant that is then deleted; fulfilment creates that order from what the customer was charged for (see [Payments: Fulfilment](/docs/features/payments#fulfilment)).
+
+**Stock that changed while the editor was open.** The stock field shows what is available for sale, with the units held in open checkouts under it ("1 in checkout"), and a save writes a stock field only when the admin changed it, as the difference from the stock the editor loaded, so reservations, releases and sales made in the meantime stay counted. If a customer reserved or bought the stock meanwhile and the difference would take available stock below zero, the whole save is refused, nothing is written, and the editor shows `toast.stockChangedWhileEditing`, which says so and asks the admin to reload the page to see the current stock. A new product or variant still gets the typed stock as its first stock. [Inventory: Changing stock](/docs/features/inventory#changing-stock) has the details.
 
 Every write ends with `scheduleProductCatalogInvalidation()` and a `recordCatalogProduct*Audit` call.
 
 ### The form
 
-`product.zod.ts` is the largest `*.zod.ts` file in the repository, at 472 lines. `productFormSchemaDefinition` extends the shared `catalogUpsertBaseSchema` with the locale maps and media fields, and adds three refinements:
+`product.zod.ts` is the largest `*.zod.ts` file in the repository, at 479 lines. `productFormSchemaDefinition` extends the shared `catalogUpsertBaseSchema` with the locale maps, the media fields and the read-only `quantityInCheckout` of each variant, and adds three refinements:
 
 - `refineDuplicateSkusInForm`
 - `refineDuplicateProductAttributes`
@@ -117,7 +119,7 @@ Every write ends with `scheduleProductCatalogInvalidation()` and a `recordCatalo
 
 All messages are keys from `PRODUCT_FORM_VALIDATION_KEYS`.
 
-`parseCatalogUpsertInput(values)` strips the media and attribute fields, parses the rest and then forces inventory tracking on:
+`parseCatalogUpsertInput(values)` strips the media and attribute fields, parses the rest, which drops `quantityInCheckout` and keeps each variant's `loadedQuantity`, and then forces inventory tracking on:
 
 ```ts
 const withInventoryAlwaysTracked = (input: CatalogUpsertInput): CatalogUpsertInput => ({
