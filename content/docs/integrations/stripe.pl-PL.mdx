@@ -207,6 +207,17 @@ export const CHECKOUT_ERROR_CODES = {
 
 `STRIPE_SECRET_KEY` i `STRIPE_WEBHOOK_SECRET` to sekrety Workera wymienione w `wrangler.jsonc`; `VITE_STRIPE_PUBLISHABLE_KEY` to zmienna przeglądarkowa w plikach środowiska.
 
+Oba klucze muszą pochodzić z tego samego trybu Stripe, a tryb musi odpowiadać środowisku. `deploy:preview` i `deploy:production` uruchamiają `scripts/verify-stripe-keys.ts <środowisko>` zaraz po `verify-bindings.ts`, przed kompilacją, i skrypt przerywa wdrożenie, jeśli klucze nie przejdą `verifyStripeKeys` z `stripe.keys.ts`:
+
+| Środowisko               | `VITE_STRIPE_PUBLISHABLE_KEY` | `STRIPE_SECRET_KEY`        |
+| ------------------------ | ----------------------------- | -------------------------- |
+| `production`             | `pk_live_`                    | `sk_live_` albo `rk_live_` |
+| `preview`, `development` | `pk_test_`                    | `sk_test_` albo `rk_test_` |
+
+Klucz publiczny live obok testowego klucza tajnego, albo odwrotnie, jest odrzucany w każdym środowisku, bo formularz płatności nie otworzyłby sesji Checkout, które tworzy serwer. Klucze testowe na produkcji przyjmowałyby testowe karty Stripe przy prawdziwych zamówieniach, a klucze live w preview obciążyłyby prawdziwą kartę za testowe zamówienie. Odrzucany jest też brakujący lub pusty klucz oraz wartość, która nie jest kluczem właściwym dla swojej zmiennej, na przykład klucz tajny w `VITE_STRIPE_PUBLISHABLE_KEY`. Skrypt czyta każdy klucz najpierw ze środowiska procesu, potem z `.env.<środowisko>`, tak jak dostarczają je przepływy wdrożeniowe, i wypisuje nazwy zmiennych oraz ich tryb, nigdy sam klucz. `bun scripts/verify-stripe-keys.ts development` uruchamia tę samą kontrolę dla `.env.development`. Reguły mają testy jednostkowe w `__test__/stripe.keys.test.ts`.
+
+Kontrola czyta tylko przedrostki. Nie pyta Stripe, czy klucze są nadal ważne, czy klucz ograniczony może zapisywać sesje Checkout, kupony, klientów, metody płatności, zwroty i SetupIntents, którymi zarządza sklep, i odczytywać jego PaymentIntents, ani czy istnieje produkcyjny endpoint webhooka. Przed pierwszym wdrożeniem produkcyjnym utwórz endpoint live pod `https://<host>/api/webhooks/stripe`, zasubskrybuj w nim osiem zdarzeń z `STRIPE_WEBHOOK_EVENTS`, zapisz jego własny `whsec_` jako produkcyjny `STRIPE_WEBHOOK_SECRET` i włącz BLIK oraz Przelewy24 w trybie live.
+
 ## Powiązane strony
 
 - [Zamówienia i płatności](/docs/features/checkout)
