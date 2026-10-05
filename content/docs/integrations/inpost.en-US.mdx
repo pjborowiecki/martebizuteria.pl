@@ -116,6 +116,8 @@ if (data.deliveryMethodType === "locker" && (typeof data.lockerId !== "string" |
 }
 ```
 
+That check reads the `deliveryMethodType` the browser keeps, so it only guides the form. When a payment session is opened or replaced, `resolveDelivery` in `stripe.actions.server.ts` reads the method's `type` from the database instead: a `locker` method needs a `lockerId` that, trimmed, matches `INPOST_POINT_NAME_PATTERN` from `inpost.constants.ts` (3 to 32 letters, digits, `_` or `-`, starting with a letter or digit), or the session is refused with `LOCKER_REQUIRED`, and any other method drops the `lockerId`. The pattern checks the shape of a point name; nothing asks InPost whether the point exists.
+
 From there `lockerId` is persisted on the `checkout` row, copied onto the order at fulfilment, and read back by the confirmation and shipped e-mails through `getCheckoutEmailContext`, where `resolveDeliveryMethodLabel` composes the label the customer sees. See [Resend](/docs/integrations/resend) and [Checkout and payments](/docs/features/checkout).
 
 ## Tests

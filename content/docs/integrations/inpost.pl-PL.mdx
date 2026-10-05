@@ -116,6 +116,8 @@ if (data.deliveryMethodType === "locker" && (typeof data.lockerId !== "string" |
 }
 ```
 
+To sprawdzenie czyta `deliveryMethodType` trzymany przez przeglądarkę, więc tylko prowadzi formularz. Gdy sesja płatności jest otwierana albo zastępowana, `resolveDelivery` w `stripe.actions.server.ts` czyta `type` metody z bazy: metoda `locker` wymaga `lockerId`, który po przycięciu pasuje do `INPOST_POINT_NAME_PATTERN` z `inpost.constants.ts` (od 3 do 32 liter, cyfr, `_` albo `-`, zaczynając od litery lub cyfry), inaczej sesja dostaje odmowę `LOCKER_REQUIRED`, a każda inna metoda porzuca `lockerId`. Wzorzec sprawdza kształt nazwy punktu; nic nie pyta InPostu, czy punkt istnieje.
+
 Dalej `lockerId` zapisywany jest w wierszu `checkout`, kopiowany na zamówienie przy realizacji i odczytywany przez e-maile potwierdzające oraz o wysyłce przez `getCheckoutEmailContext`, gdzie `resolveDeliveryMethodLabel` składa etykietę widzianą przez klienta. Zobacz [Resend](/docs/integrations/resend) oraz [Zamówienia i płatności](/docs/features/checkout).
 
 ## Testy

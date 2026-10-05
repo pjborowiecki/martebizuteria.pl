@@ -3,6 +3,7 @@ import type StripeType from "stripe"
 import { type z } from "zod"
 
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { INPOST_POINT_NAME_PATTERN } from "~/src/integrations/inpost/inpost.constants"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import {
   type CreateCheckoutSessionInput,
@@ -29,7 +30,8 @@ import { createCheckout } from "~/src/modules/checkout/use-cases/create-checkout
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { supersedeCheckoutSession } from "~/src/modules/checkout/use-cases/supersede-checkout-session.server"
 import { updateCheckoutDelivery } from "~/src/modules/checkout/use-cases/update-checkout-delivery.server"
-import { getActiveDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
+import { getOfferedDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
+import { DELIVERY_METHOD } from "~/src/modules/delivery-method/delivery-method.constants"
 import { resolveCheckoutDiscount } from "~/src/modules/discount/discount.checkout.server"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
@@ -59,6 +61,8 @@ const MILLISECONDS_PER_SECOND = 1000
 
 type CartItem = z.infer<typeof cartItemSchema>
 
+type CheckoutSessionValues = CreateCheckoutSessionInput["checkoutValues"]
+
 interface OrderLine {
   handle: string
   imageUrl: string
@@ -81,14 +85,27 @@ type ResolvedVariant = Omit<ResolvedProduct["variants"][number], "inventory"> & 
   inventory: ResolvedProduct["variants"][number]["inventory"] | null
 }
 
-const resolveShippingCost = async (deliveryMethodId: string): Promise<number> => {
-  if (deliveryMethodId === "") {
-    return NO_COST
+interface ResolvedDelivery {
+  checkoutValues: CheckoutSessionValues
+  shippingCost: number
+}
+
+const resolveDelivery = async (checkoutValues: CheckoutSessionValues): Promise<ResolvedDelivery> => {
+  const method = await getOfferedDeliveryMethodByIdQuery(checkoutValues.deliveryMethod)
+  if (method === undefined) {
+    throw new AppError(ERROR_CODES.VALIDATION, CHECKOUT_ERROR_CODES.DELIVERY_METHOD_UNAVAILABLE)
   }
 
-  const method = await getActiveDeliveryMethodByIdQuery(deliveryMethodId)
+  if (method.type !== DELIVERY_METHOD.LOCKER) {
+    return { checkoutValues: { ...checkoutValues, lockerId: undefined }, shippingCost: method.price }
+  }
 
-  return method?.price ?? NO_COST
+  const lockerId = checkoutValues.lockerId?.trim()
+  if (lockerId === undefined || !INPOST_POINT_NAME_PATTERN.test(lockerId)) {
+    throw new AppError(ERROR_CODES.VALIDATION, CHECKOUT_ERROR_CODES.LOCKER_REQUIRED)
+  }
+
+  return { checkoutValues: { ...checkoutValues, lockerId }, shippingCost: method.price }
 }
 
 const resolveVariant = (products: ResolvedProducts, item: CartItem): { product: ResolvedProduct; variant: ResolvedVariant } => {
@@ -256,17 +273,17 @@ const toReservedLines = (validatedItems: ValidatedCheckoutItem[]): CheckoutRelea
 
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
   const origin = resolveRequestOrigin(getRequest())
+  const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)
   const session = await getRequestSession()
   const userId = session?.user.id
-  const { email } = data.checkoutValues
+  const { email } = checkoutValues
   const customerId =
     session?.user === undefined ? undefined : await ensureStripeCustomer({ email, name: session.user.name, userId: session.user.id })
 
   const validatedItems = await validateAndCalculateItems(data.items, [])
   const lines = toOrderLines(validatedItems)
-  const shippingCost = await resolveShippingCost(data.checkoutValues.deliveryMethod)
   const discount = await resolveCheckoutDiscount({
-    code: data.checkoutValues.discountCode,
+    code: checkoutValues.discountCode,
     email,
     itemsSubtotal: sumItemsSubtotal(lines),
     shippingTotal: shippingCost,
@@ -276,7 +293,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
 
   try {
     const checkoutId = await createCheckout({
-      checkoutValues: data.checkoutValues,
+      checkoutValues,
       discountId: discount?.discountId,
       userEmail: email,
       userId,
@@ -477,21 +494,21 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   const { checkoutId, heldLines, ownerId, signedInUser } = await resolveUpdatableCheckout(data.sessionId)
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
-  const shippingCost = await resolveShippingCost(data.checkoutValues.deliveryMethod)
+  const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)
   const discount = await resolveCheckoutDiscount({
-    code: data.checkoutValues.discountCode,
-    email: data.checkoutValues.email,
+    code: checkoutValues.discountCode,
+    email: checkoutValues.email,
     itemsSubtotal: sumItemsSubtotal(lines),
     shippingTotal: shippingCost,
   })
 
   const customerId =
-    signedInUser === undefined ? undefined : await findReplacementCustomerId({ email: data.checkoutValues.email, ownerId, signedInUser })
+    signedInUser === undefined ? undefined : await findReplacementCustomerId({ email: checkoutValues.email, ownerId, signedInUser })
   const replacement = await createStripeSession({
     checkoutId,
     customerId,
     discount,
-    email: data.checkoutValues.email,
+    email: checkoutValues.email,
     lines,
     origin,
     shippingCost,
@@ -507,7 +524,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   })
   await reserveReplacementCheckout({
     checkoutId,
-    checkoutValues: data.checkoutValues,
+    checkoutValues,
     discountId: discount?.discountId,
     replacementSessionId: replacement.sessionId,
     validatedItems,

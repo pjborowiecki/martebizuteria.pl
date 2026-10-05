@@ -29,6 +29,7 @@ import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { checkoutSessionStatusQuery } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
+import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
@@ -225,9 +226,15 @@ const UNAVAILABLE_CART_ITEM_ERROR_CODES: ReadonlySet<string> = new Set([
   CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND,
 ])
 
+const REFUSED_DELIVERY_ERROR_CODES: ReadonlySet<string> = new Set([
+  CHECKOUT_ERROR_CODES.DELIVERY_METHOD_UNAVAILABLE,
+  CHECKOUT_ERROR_CODES.LOCKER_REQUIRED,
+])
+
 const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const queryClient = useQueryClient()
+  const { onEdit } = useCheckoutForm()
   const [loadError, setLoadError] = useState(false)
   const reportFailure = useCallback(
     (error: unknown) => {
@@ -236,8 +243,13 @@ const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
       if (error instanceof Error && UNAVAILABLE_CART_ITEM_ERROR_CODES.has(error.message)) {
         void queryClient.invalidateQueries({ queryKey: CART_QUERY_KEYS.AVAILABILITY })
       }
+
+      if (error instanceof Error && REFUSED_DELIVERY_ERROR_CODES.has(error.message)) {
+        void queryClient.invalidateQueries({ queryKey: DELIVERY_METHOD_QUERY_KEYS.ALL })
+        onEdit(CHECKOUT_STEP_ID.DELIVERY)
+      }
     },
-    [queryClient, t],
+    [onEdit, queryClient, t],
   )
 
   return { loadError, reportFailure, setLoadError }

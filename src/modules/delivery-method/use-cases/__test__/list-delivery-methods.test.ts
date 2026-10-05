@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { offeredDeliveryMethod } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 
 import { listDeliveryMethods, listDeliveryMethodsQuery } from "../list-delivery-methods"
@@ -66,7 +67,7 @@ describe("listDeliveryMethods", () => {
 
     expect(query.select).toHaveBeenCalledTimes(1)
     expect(query.innerJoin).toHaveBeenCalledTimes(1)
-    expect(query.where).toHaveBeenCalledTimes(1)
+    expect(query.where).toHaveBeenCalledExactlyOnceWith(offeredDeliveryMethod)
   })
 
   it("returns an empty list when nothing is active", async () => {

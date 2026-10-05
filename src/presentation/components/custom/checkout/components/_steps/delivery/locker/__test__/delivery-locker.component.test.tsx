@@ -71,9 +71,9 @@ describe("DeliveryLocker", () => {
   })
 
   it("translates the validation message of an invalid field", async () => {
-    const { container } = renderWithProviders(<LockerHarness errorMessage="validation.deliveryRequired" lockerId="" />)
+    const { container } = renderWithProviders(<LockerHarness errorMessage="validation.lockerIdRequired" lockerId="" />)
 
-    expect(await screen.findByText("Please select a delivery method")).toBeInTheDocument()
+    expect(await screen.findByText("Please select a parcel locker")).toBeInTheDocument()
     expect(container.querySelector("[data-invalid='true']")).not.toBeNull()
   })
 })

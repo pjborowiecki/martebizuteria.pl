@@ -42,14 +42,16 @@ export const DELIVERY_METHOD_QUERY_KEYS = { ALL: ["deliveryMethods"] as const } 
 
 ## Listing methods
 
-`listDeliveryMethods` (`use-cases/list-delivery-methods.ts`) is public (`withRequest`) and returns only rows whose method **and** courier are both active:
+`listDeliveryMethods` (`use-cases/list-delivery-methods.ts`) is public (`withRequest`) and returns only rows whose method **and** courier are both active. The rule is `offeredDeliveryMethod` in `delivery-method.accessors.ts`, which the checkout's server-side lookup shares:
 
 ```ts
+export const offeredDeliveryMethod = and(eq(deliveryMethod.isActive, true), eq(courier.isActive, true))
+
 const rows = await db
   .select({ courier, deliveryMethod })
   .from(deliveryMethod)
   .innerJoin(courier, eq(deliveryMethod.courierId, courier.id))
-  .where(and(eq(deliveryMethod.isActive, true), eq(courier.isActive, true)))
+  .where(offeredDeliveryMethod)
 
 return rows.map((row) => Object.assign(row.deliveryMethod, { courier: row.courier }))
 ```
@@ -58,7 +60,9 @@ Deactivating a courier therefore hides all of its methods at once.
 
 `listDeliveryMethodsQuery()` has no `staleTime`, so it follows the client's default. It is read by the delivery step, the courier sub-step and the payment step (which needs the price to compute the Stripe amount). The `/checkout/` page loader loads it with `staleTime: "static"` while the layout reads the checkout messages, so those steps read the methods from the cache instead of requesting them after the form appears. The loader skips the read on the confirmation after payment, and a failed read leaves the steps to request the methods themselves.
 
-`getActiveDeliveryMethodByIdQuery(id)` in `delivery-method.accessors.ts` is the server-side lookup used by `resolveShippingCost`; it also filters on `isActive`, so a method deactivated mid-checkout resolves to a `0` shipping cost rather than an error.
+`getOfferedDeliveryMethodByIdQuery(id)` in `delivery-method.accessors.ts` is the server-side lookup `resolveDelivery` in `stripe.actions.server.ts` uses when a payment session is opened or replaced. It joins the courier and applies `offeredDeliveryMethod`, and returns only the method's `price` and `type`. A method that is unknown, switched off, or whose courier is switched off, including one deactivated mid-checkout, is refused with `DELIVERY_METHOD_UNAVAILABLE`; the payment step then toasts `errors.deliveryMethodUnavailable` and sends the shopper back to the delivery step with the method list fetched again. See [Checkout](/docs/features/checkout#server-side).
+
+Delivery goes only to the countries in `DELIVERY_COUNTRY_CODES` (`delivery-method.constants.ts`), currently `PL`. `checkoutSchema` refuses any other shipping `countryCode`; nothing in `delivery_method` or `courier` records a country.
 
 ## Seed data
 
@@ -99,7 +103,7 @@ Picking a type writes `deliveryMethodType` and either auto-selects the single me
 
 ### Locker
 
-`delivery/locker/delivery-locker.tsx` shows the currently selected locker id and hosts `InpostSelector`. The `lockerId` field is required by the `superRefine` in `checkoutSchema` whenever `deliveryMethodType === "locker"`.
+`delivery/locker/delivery-locker.tsx` shows the currently selected locker id and hosts `InpostSelector`. The `lockerId` field is required by the `superRefine` in `checkoutSchema` whenever `deliveryMethodType === "locker"`, which shows `validation.lockerIdRequired` on the step. The server does not trust that type: `resolveDelivery` requires a `lockerId` matching `INPOST_POINT_NAME_PATTERN` whenever the method's `type` in the database is `locker`, and refuses the session with `LOCKER_REQUIRED` otherwise. For any other type it drops `lockerId`, so `checkout.locker_id` and `order.locker_id` stay empty for courier and in-store orders.
 
 ## InPost point picker
 
@@ -146,8 +150,8 @@ The map is `react-map-gl/maplibre` with the Carto Voyager basemap (`https://base
 ## How delivery reaches the order
 
 1. `deliveryMethod` (the method id) is submitted with the checkout form.
-2. `prepareCreateCheckoutBatch` writes it to `checkout.delivery_method_id`, and `lockerId` to `checkout.locker_id`.
-3. `resolveShippingCost` reads the method's `price` and `createStripeSession` adds a `"Shipping"` line item for it when it is above zero.
+2. `resolveDelivery` refuses a method the shop does not offer and a locker method without a locker, keeps `lockerId` only for a locker method, and reads the method's `price`.
+3. `prepareCreateCheckoutBatch` writes the method to `checkout.delivery_method_id`, and `lockerId` to `checkout.locker_id`; `createStripeSession` adds a `"Shipping"` line item for the price when it is above zero.
 4. `prepareFulfillCheckoutBatch` copies `deliveryMethodId`, `lockerId` and `customerNote` from the checkout snapshot onto the new `order` row, and computes `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
 
 ## Delivery in the emails
@@ -179,7 +183,7 @@ return {
 
 - No label generation, no shipment booking, no carrier API call besides the public points lookup.
 - No carrier tracking: `order.tracking_number` and `order.tracking_url` are typed in by an admin in the ship dialog on `/admin/orders/$orderId`, and nothing fetches or updates them from a carrier.
-- No shipping rules: the price is a flat per-method amount with no weight, size, basket-value or destination logic.
+- No shipping rules: the price is a flat per-method amount with no weight, size, basket-value or destination logic. The only destination rule is the `DELIVERY_COUNTRY_CODES` check.
 - No store locations table for `in_store`.
 - No admin screen for couriers or delivery methods — rows are managed directly in D1.
 

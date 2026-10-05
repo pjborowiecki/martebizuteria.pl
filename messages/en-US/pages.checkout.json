@@ -158,10 +158,14 @@
       "cityRequired": "City is required",
       "postCodeRequired": "Postal code is required",
       "countryRequired": "Country is required",
+      "countryNotDelivered": "We currently deliver only within Poland",
       "deliveryRequired": "Please select a delivery method",
+      "lockerIdRequired": "Please select a parcel locker",
       "paymentRequired": "Please select a payment method"
     },
     "errors": {
+      "deliveryMethodUnavailable": "The delivery method you chose is no longer available. Please choose another one.",
+      "lockerRequired": "Please choose a parcel locker for this delivery method.",
       "insufficientInventory": "Some items in your cart are out of stock.",
       "invalidPrice": "A product in your cart has an invalid price. Please remove it and try again.",
       "productNotFound": "A product in your cart is no longer available.",
