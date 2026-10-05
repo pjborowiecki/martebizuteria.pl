@@ -32,12 +32,13 @@ Strona wyrenderuje się bez każdego z tych trzech zapytań, więc każdy loader
 
 ## Nadpisania dla poszczególnych zapytań
 
-| Zapytanie                                     | Zachowanie                                                                    |
-| --------------------------------------------- | ----------------------------------------------------------------------------- |
-| `messagesQueryOptions({ locale, namespace })` | `staleTime: Infinity`, `gcTime: Infinity` — przestrzeń nazw ładowana raz      |
-| `getCurrentSessionQuery`                      | `staleTime` 60 s, `retry: false`, brak odświeżania na focus i reconnect       |
-| Zapytania list administracyjnych              | `*_QUERY_STALE_MS` modułu, `refetchOnMount: false`, brak odświeżania na focus |
-| Publiczne zapytania katalogu                  | Domyślne routera; unieważniane przez hub realtime, nie odpytywane cyklicznie  |
+| Zapytanie                                     | Zachowanie                                                                            |
+| --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `messagesQueryOptions({ locale, namespace })` | `staleTime: Infinity`, `gcTime: Infinity` — przestrzeń nazw ładowana raz              |
+| `getCurrentSessionQuery`                      | `staleTime` 60 s, `retry: false`, brak odświeżania na focus i reconnect               |
+| `checkCartAvailabilityQuery`                  | `staleTime: 0`, zachowuje poprzednią odpowiedź, brak odświeżania na focus i reconnect |
+| Zapytania list administracyjnych              | `*_QUERY_STALE_MS` modułu, `refetchOnMount: false`, brak odświeżania na focus         |
+| Publiczne zapytania katalogu                  | Domyślne routera; unieważniane przez hub realtime, nie odpytywane cyklicznie          |
 
 Listy administracyjne świadomie nie odświeżają się przy montowaniu ani przy powrocie do okna. Świeżość zapewnia hub Durable Object — zobacz [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation) — więc zmiana drugiego administratora przychodzi jako push, a nie jako odpytywanie.
 

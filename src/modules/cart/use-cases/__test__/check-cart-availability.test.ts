@@ -246,4 +246,11 @@ describe("checkCartAvailabilityQuery", () => {
   it("keeps the last answer on screen while a changed key is checked again", () => {
     expect(checkCartAvailabilityQuery([{ qty: 1, variantId: "variant-a" }], "cs_test_held").placeholderData).toBe(keepPreviousData)
   })
+
+  it("does not check again because the shopper returned to the tab or the connection came back", () => {
+    const options = checkCartAvailabilityQuery([{ qty: 1, variantId: "variant-a" }], "cs_test_held")
+
+    expect(options.refetchOnWindowFocus).toBe(false)
+    expect(options.refetchOnReconnect).toBe(false)
+  })
 })

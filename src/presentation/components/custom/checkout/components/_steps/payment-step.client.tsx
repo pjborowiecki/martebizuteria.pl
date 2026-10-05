@@ -2,7 +2,7 @@ import { type BaseSyntheticEvent, type JSX, type ReactNode, useCallback, useEffe
 
 import { CheckoutElementsProvider, PaymentElement, useCheckoutElements } from "@stripe/react-stripe-js/checkout"
 import { type StripeCheckoutElementsSdkOptions, type StripeCheckoutPaymentElementOptions } from "@stripe/stripe-js"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import "@tanstack/react-start/client-only"
 import { useTheme } from "@wrksz/themes/client"
@@ -22,8 +22,9 @@ import {
 } from "~/src/integrations/stripe/stripe.checkout"
 import { getStripe } from "~/src/integrations/stripe/stripe.client"
 import { CHECKOUT_PAYMENT_METHOD_ORDER } from "~/src/integrations/stripe/stripe.constants"
-import { getCheckoutErrorKey } from "~/src/integrations/stripe/stripe.errors"
+import { CHECKOUT_ERROR_CODES, getCheckoutErrorKey } from "~/src/integrations/stripe/stripe.errors"
 
+import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
@@ -198,14 +199,31 @@ const PaymentForm = ({
   )
 }
 
-const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
+const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
   const t = useTranslations("pages.checkout.checkoutForm")
+  const queryClient = useQueryClient()
+  const [loadError, setLoadError] = useState(false)
+  const reportFailure = useCallback(
+    (error: unknown) => {
+      setLoadError(true)
+      toast.error(t(getCheckoutErrorKey(error)))
+      if (error instanceof Error && error.message === CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY) {
+        void queryClient.invalidateQueries({ queryKey: CART_QUERY_KEYS.AVAILABILITY })
+      }
+    },
+    [queryClient, t],
+  )
+
+  return { loadError, reportFailure, setLoadError }
+}
+
+const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
   const { theme } = useTheme()
   const { checkoutSession, getValues, onEdit, setCheckoutSession } = useCheckoutForm()
   const cartTotal = useCartStore((state) => state.cartTotal)
   const items = useCartStore((state) => state.items)
   const deliveryMethodId = getValues("deliveryMethod")
-  const [loadError, setLoadError] = useState(false)
+  const { loadError, reportFailure, setLoadError } = useCheckoutSessionFailure()
   const [retryToken, setRetryToken] = useState(0)
   const { data: deliveryMethods, isLoading } = useQuery(listDeliveryMethodsQuery())
   const deliveryCost = deliveryMethods?.find((m) => m.id === deliveryMethodId)?.price ?? 0
@@ -220,7 +238,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
   const retry = useCallback(() => {
     setLoadError(false)
     setRetryToken((token) => token + 1)
-  }, [])
+  }, [setLoadError])
 
   const resetSession = useCallback(async () => {
     if (checkoutSession === undefined || inFlightRef.current) {
@@ -237,12 +255,11 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
       })
       setCheckoutSession(session)
     } catch (error) {
-      setLoadError(true)
-      toast.error(t(getCheckoutErrorKey(error)))
+      reportFailure(error)
     } finally {
       inFlightRef.current = false
     }
-  }, [amountCents, checkoutSession, getValues, items, setCheckoutSession, t])
+  }, [amountCents, checkoutSession, getValues, items, reportFailure, setCheckoutSession])
   useEffect(() => {
     if (isLoading) {
       return
@@ -271,8 +288,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
         })
         setCheckoutSession(session)
       } catch (error) {
-        setLoadError(true)
-        toast.error(t(getCheckoutErrorKey(error)))
+        reportFailure(error)
       } finally {
         inFlightRef.current = false
       }
@@ -285,8 +301,9 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
     getValues,
     items,
     onEdit,
+    reportFailure,
     setCheckoutSession,
-    t,
+    setLoadError,
     retryToken,
     sessionMatches,
     valuesFingerprint,
@@ -401,6 +418,12 @@ const renderPrivacyLink = (chunks: ReactNode): JSX.Element => (
     {chunks}
   </LocalizedLink>
 )
+
+interface CheckoutSessionFailure {
+  loadError: boolean
+  reportFailure: (error: unknown) => void
+  setLoadError: (failed: boolean) => void
+}
 
 interface CheckoutSessionLoader {
   checkoutSession: CheckoutSession | undefined

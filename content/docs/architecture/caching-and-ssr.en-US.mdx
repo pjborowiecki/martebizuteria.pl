@@ -32,12 +32,13 @@ The page can render without any of these three, so each loader ends its read wit
 
 ## Per-query overrides
 
-| Query                                         | Behaviour                                                               |
-| --------------------------------------------- | ----------------------------------------------------------------------- |
-| `messagesQueryOptions({ locale, namespace })` | `staleTime: Infinity`, `gcTime: Infinity` — a namespace is loaded once  |
-| `getCurrentSessionQuery`                      | 60 s `staleTime`, `retry: false`, no refetch on focus or reconnect      |
-| Admin list queries                            | Module `*_QUERY_STALE_MS`, `refetchOnMount: false`, no refetch on focus |
-| Public catalog queries                        | Router defaults; invalidated over the realtime hub instead of polled    |
+| Query                                         | Behaviour                                                                   |
+| --------------------------------------------- | --------------------------------------------------------------------------- |
+| `messagesQueryOptions({ locale, namespace })` | `staleTime: Infinity`, `gcTime: Infinity` — a namespace is loaded once      |
+| `getCurrentSessionQuery`                      | 60 s `staleTime`, `retry: false`, no refetch on focus or reconnect          |
+| `checkCartAvailabilityQuery`                  | `staleTime: 0`, keeps the previous answer, no refetch on focus or reconnect |
+| Admin list queries                            | Module `*_QUERY_STALE_MS`, `refetchOnMount: false`, no refetch on focus     |
+| Public catalog queries                        | Router defaults; invalidated over the realtime hub instead of polled        |
 
 Admin lists deliberately do not refetch on mount or on window focus. Freshness comes from the Durable Object hub instead — see [Realtime invalidation](/docs/architecture/realtime-invalidation) — so a second admin's change arrives as a push rather than as a poll.
 

@@ -3,6 +3,7 @@ import { type APIRequestContext } from "@playwright/test"
 import { COURIER, IN_STORE_PICKUP, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { registerCustomer } from "../fixtures/customers"
 import { linkIn, waitForEmail } from "../fixtures/emails"
+import { SERVER_FUNCTIONS, recordServerFunctionRequests } from "../fixtures/server-functions"
 import {
   type CheckoutSession,
   completeCheckoutSession,
@@ -167,6 +168,28 @@ test.describe("guest checkout", () => {
 
     expect(continued.metadata["checkoutId"]).toBe(first.metadata["checkoutId"])
     await expectOnlyOpenSession(request, email, continued)
+  })
+
+  test("a guest who approves the payment in the banking app comes back to the payment step without another stock check", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "banking-app")
+    const availabilityChecks = recordServerFunctionRequests(page, SERVER_FUNCTIONS.checkCartAvailability)
+    const session = await reachPayment(checkoutPage, request, email)
+    await expect.poll(() => availabilityChecks.some((check) => check.postData()?.includes(session.id) === true)).toBe(true)
+    await Promise.all(availabilityChecks.map((check) => check.response()))
+    const checksBeforeLeaving = availabilityChecks.length
+
+    await checkoutPage.leaveTab()
+    await completeCheckoutSession(request, session.id)
+    await checkoutPage.returnToTab()
+
+    await expect(page).toHaveURL(/\/en-US\/checkout\?step=4$/u)
+    await checkoutPage.open(`/en-US/checkout?success=true&session_id=${session.id}`)
+    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    expect(availabilityChecks).toHaveLength(checksBeforeLeaving)
   })
 
   test("the address step refuses a postal code that is not Polish", async ({ checkoutPage, page }, testInfo) => {
