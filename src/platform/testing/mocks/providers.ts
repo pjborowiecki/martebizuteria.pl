@@ -30,6 +30,7 @@ const stripeSessionParamsSchema = z.object({
   customer: z.string().optional(),
   customer_email: z.string().optional(),
   discounts: z.record(z.string(), stripeDiscountSchema).default({}),
+  expires_at: stripeAmountSchema,
   line_items: z.record(z.string(), stripeLineItemSchema),
   metadata: stripeMetadataSchema,
   return_url: z.string(),
@@ -77,6 +78,7 @@ interface EmulatedCheckoutSession {
   readonly customer: string | null
   readonly customer_details: { readonly email: string | null }
   readonly customer_email: string | null
+  readonly expires_at: number
   readonly id: string
   readonly livemode: false
   readonly metadata: Readonly<Record<string, string>>
@@ -139,6 +141,8 @@ const paymentMethods = new Map<string, EmulatedPaymentMethod>()
 const setupIntents = new Map<string, EmulatedSetupIntent>()
 
 const SAVED_CARD_VALID_YEARS = 5
+
+const CHECKOUT_SESSION_EXPIRY_WINDOW_SECONDS = { max: 86_400, min: 1800 } as const
 
 const stripeId = (prefix: string): string => `${prefix}_test_${crypto.randomUUID().replaceAll("-", "")}`
 
@@ -232,6 +236,10 @@ const stripeList = (url: URL, data: readonly unknown[]): Response =>
 
 const createCheckoutSession = (form: StripeForm): Response => {
   const params = stripeSessionParamsSchema.parse(form)
+  const lifetime = params.expires_at - nowInSeconds()
+  if (lifetime < CHECKOUT_SESSION_EXPIRY_WINDOW_SECONDS.min || lifetime > CHECKOUT_SESSION_EXPIRY_WINDOW_SECONDS.max) {
+    return stripeError("The `expires_at` timestamp must be between 30 minutes and 24 hours after the Checkout Session is created.")
+  }
   const subtotal = Object.values(params.line_items).reduce((sum, line) => sum + line.price_data.unit_amount * line.quantity, 0)
   const discount = Object.values(params.discounts).reduce((sum, { coupon }) => sum + (coupons.get(coupon)?.amount_off ?? 0), 0)
   const customerEmail = params.customer === undefined ? params.customer_email : customers.get(params.customer)?.email
@@ -245,6 +253,7 @@ const createCheckoutSession = (form: StripeForm): Response => {
     customer: params.customer ?? null,
     customer_details: { email: customerEmail ?? null },
     customer_email: params.customer_email ?? null,
+    expires_at: params.expires_at,
     id,
     livemode: false,
     metadata: params.metadata,

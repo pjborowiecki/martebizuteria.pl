@@ -45,11 +45,11 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 `wrangler.jsonc` declares no `crons` and `src/server.ts` exports no `scheduled` handler. Three things need one:
 
-| Job                                 | Why                                                                                                                                                   |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Reservation reconciliation          | Stale reservations are released only when Stripe emits `checkout.session.expired`; a reservation orphaned by a failed compensation is never reclaimed |
-| `session` and `verification` expiry | Nothing deletes expired rows                                                                                                                          |
-| `rate_limit` expiry                 | Counters accumulate rows forever                                                                                                                      |
+| Job                                 | Why                                                                                                                                                                                     |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reservation reconciliation          | Stale reservations are released only when Stripe emits `checkout.session.expired`, 32 minutes after a session opens; a reservation orphaned by a failed compensation is never reclaimed |
+| `session` and `verification` expiry | Nothing deletes expired rows                                                                                                                                                            |
+| `rate_limit` expiry                 | Counters accumulate rows forever                                                                                                                                                        |
 
 ### No dead-letter queue
 

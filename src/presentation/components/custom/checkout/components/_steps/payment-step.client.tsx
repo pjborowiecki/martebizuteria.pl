@@ -13,6 +13,7 @@ import { useLocale, useTranslations } from "use-intl/react"
 
 import { STRIPE_FONTS, getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
 import {
+  type CheckoutSession,
   buildCheckoutLinesFingerprint,
   buildCheckoutValuesFingerprint,
   confirmCheckoutSession,
@@ -33,6 +34,7 @@ import { Button, buttonVariants } from "~/src/presentation/components/shadcn/but
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+import { loadCheckoutSessionId } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 import { CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
@@ -58,23 +60,31 @@ const PaymentSkeleton = (): JSX.Element => (
   </div>
 )
 
+const PAYMENT_ERROR_COPY = {
+  expired: { action: "restartPayment", hint: "paymentExpiredHint", title: "paymentExpired" },
+  unavailable: { action: "retry", hint: "paymentUnavailableHint", title: "paymentUnavailable" },
+} as const
+
 const PaymentError = ({
   onRetry,
+  reason,
 }: Readonly<{
   onRetry: () => void
+  reason: keyof typeof PAYMENT_ERROR_COPY
 }>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
+  const copy = PAYMENT_ERROR_COPY[reason]
 
   return (
     <div className="flex flex-col items-center gap-4 border border-destructive/30 bg-destructive/5 px-6 py-10 text-center">
       <AlertCircle aria-hidden className="size-7 text-destructive" strokeWidth={1.3} />
       <div className="space-y-1.5">
-        <p className="text-sm font-medium text-foreground">{t("paymentUnavailable")}</p>
-        <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground">{t("paymentUnavailableHint")}</p>
+        <p className="text-sm font-medium text-foreground">{t(copy.title)}</p>
+        <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground">{t(copy.hint)}</p>
       </div>
       <div className="mt-2 flex flex-col gap-3 sm:flex-row">
         <Button type="button" onClick={onRetry} className="cursor-pointer rounded-none text-xs tracking-[0.15em] uppercase">
-          {t("retry")}
+          {t(copy.action)}
         </Button>
         <LocalizedLink
           to={ROUTES.CART}
@@ -158,7 +168,7 @@ const PaymentForm = ({
   )
 
   if (checkoutState.type === "error") {
-    return <PaymentError onRetry={onRetry} />
+    return <PaymentError onRetry={onRetry} reason="unavailable" />
   }
 
   return (
@@ -220,6 +230,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
     try {
       const session = await resetCheckoutSession({
         amount: amountCents,
+        heldSessionId: loadCheckoutSessionId(),
         items,
         session: checkoutSession,
         values: getValues(),
@@ -254,6 +265,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
         const session = await ensureCheckoutSession({
           amount: amountCents,
           existing: checkoutSession,
+          heldSessionId: loadCheckoutSessionId(),
           items,
           values: getValues(),
         })
@@ -295,13 +307,35 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
   }, [checkoutSession, sessionMatches, theme])
 
   return {
+    checkoutSession,
     isLoading,
     loadError,
     options,
     resetSession,
     retry,
-    sessionId: checkoutSession?.sessionId,
   }
+}
+
+const useCheckoutSessionExpired = (checkoutSession: CheckoutSession | undefined): boolean => {
+  const [expiredSession, setExpiredSession] = useState<CheckoutSession>()
+  useEffect(() => {
+    if (checkoutSession === undefined) {
+      return
+    }
+
+    const expiry = globalThis.setTimeout(
+      () => {
+        setExpiredSession(checkoutSession)
+      },
+      Math.max(0, checkoutSession.expiresAt - Date.now()),
+    )
+
+    return () => {
+      globalThis.clearTimeout(expiry)
+    }
+  }, [checkoutSession])
+
+  return checkoutSession !== undefined && expiredSession === checkoutSession
 }
 
 export const PaymentStep = (): JSX.Element => {
@@ -310,9 +344,17 @@ export const PaymentStep = (): JSX.Element => {
   const { hasUnavailableItems, isChecking } = useCartAvailability()
   const checkoutBlocked = hasUnavailableItems || isChecking
   const stripePromise = useMemo(() => getStripe(locale), [locale])
-  const { isLoading, loadError, options, resetSession, retry, sessionId } = useCheckoutSessionLoader()
+  const { checkoutSession, isLoading, loadError, options, resetSession, retry } = useCheckoutSessionLoader()
+  const isExpired = useCheckoutSessionExpired(checkoutSession)
+  const restartPayment = useCallback(() => {
+    void resetSession()
+  }, [resetSession])
+  if (isExpired) {
+    return <PaymentError onRetry={restartPayment} reason="expired" />
+  }
+
   if (loadError && options === undefined) {
-    return <PaymentError onRetry={retry} />
+    return <PaymentError onRetry={retry} reason="unavailable" />
   }
 
   if (isLoading || options === undefined) {
@@ -323,7 +365,7 @@ export const PaymentStep = (): JSX.Element => {
     <div className="flex flex-col gap-2">
       <p className="text-sm text-muted-foreground">{t("paymentMethodsIntro")}</p>
       <div className="mt-4">
-        <CheckoutElementsProvider key={sessionId} stripe={stripePromise} options={options}>
+        <CheckoutElementsProvider key={checkoutSession?.sessionId} stripe={stripePromise} options={options}>
           <PaymentForm checkoutBlocked={checkoutBlocked} onReset={resetSession} onRetry={retry} />
         </CheckoutElementsProvider>
       </div>
@@ -361,10 +403,10 @@ const renderPrivacyLink = (chunks: ReactNode): JSX.Element => (
 )
 
 interface CheckoutSessionLoader {
+  checkoutSession: CheckoutSession | undefined
   isLoading: boolean
   loadError: boolean
   options: StripeCheckoutElementsSdkOptions | undefined
   resetSession: () => Promise<void>
   retry: () => void
-  sessionId: string | undefined
 }

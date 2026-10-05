@@ -93,6 +93,7 @@ const Probe = (): JSX.Element => {
           setCheckoutSession({
             amount: 24_900,
             clientSecret: "cs_test",
+            expiresAt: Date.UTC(2026, 9, 5, 12, 32),
             linesFingerprint: "v-1:2",
             sessionId: "cs_live_1",
             valuesFingerprint: "checkout-values",
@@ -134,6 +135,7 @@ beforeEach(() => {
   searchState.step = 1
   prevented.value = false
   sessionStorage.clear()
+  localStorage.clear()
 })
 
 describe("useCheckoutForm", () => {
@@ -335,5 +337,13 @@ describe("CheckoutFormProvider payment session", () => {
     await userEvent.click(screen.getByRole("button", { name: "store session" }))
 
     expect(screen.getByTestId("session")).toHaveTextContent("cs_live_1")
+  })
+
+  it("remembers the session id across reloads and tabs so the browser keeps one open checkout", async () => {
+    renderProvider()
+
+    await userEvent.click(screen.getByRole("button", { name: "store session" }))
+
+    expect(localStorage.getItem("marte-checkout-session")).toBe("cs_live_1")
   })
 })

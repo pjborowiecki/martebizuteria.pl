@@ -4,6 +4,7 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsCreate: vi.fn<(params: { metadata: Record<string, string> }) => Promise<unknown>>(),
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
+  ensureStripeCustomer: vi.fn<() => Promise<string>>(),
   getActiveDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getProductsWithInventoryByHandles: vi.fn(),
@@ -35,7 +36,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   },
 }))
 vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
-  ensureStripeCustomer: vi.fn(),
+  ensureStripeCustomer: mocked.ensureStripeCustomer,
   getStripeCustomerId: mocked.getStripeCustomerId,
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
@@ -85,6 +86,7 @@ beforeEach(() => {
   mocked.getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))
   mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1", name: "Anna Kowalska" } })
   mocked.getStripeCustomerId.mockResolvedValue("cus_1")
+  mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
   mocked.releaseCheckout.mockResolvedValue(undefined)
   mocked.reserveInventoryByVariantLines.mockResolvedValue(undefined)
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
@@ -121,16 +123,24 @@ describe("handleUpdateCheckoutSession authorization", () => {
     expect(mocked.checkoutSessionsRetrieve).not.toHaveBeenCalled()
   })
 
-  it("refuses to update another signed-in customer's checkout", async () => {
+  it("refuses to update another signed-in customer's checkout and tells the browser to start its own", async () => {
     mocked.getRequestSession.mockResolvedValue({ user: { id: "user-2" } })
 
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      code: ERROR_CODES.FORBIDDEN,
+      message: CHECKOUT_ERROR_CODES.SESSION_CLOSED,
+    })
+    expect(mocked.checkoutSessionsRetrieve).not.toHaveBeenCalled()
+    expect(mocked.releaseCheckout).not.toHaveBeenCalled()
   })
 
-  it("refuses an anonymous request against a checkout owned by a user", async () => {
+  it("refuses an anonymous request against a checkout owned by a user, as after signing out with the session stored", async () => {
     mocked.getRequestSession.mockResolvedValue(undefined)
 
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      code: ERROR_CODES.FORBIDDEN,
+      message: CHECKOUT_ERROR_CODES.SESSION_CLOSED,
+    })
   })
 
   it("refuses another customer's checkout before saying whether it is still open", async () => {
@@ -140,13 +150,46 @@ describe("handleUpdateCheckoutSession authorization", () => {
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
   })
 
-  it("does not ask for a session when the checkout has no owner", async () => {
+  it("continues a guest's checkout as a guest's while nobody is signed in", async () => {
+    mocked.getRequestSession.mockResolvedValue(null)
     mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext({ email: "guest@example.com", userId: undefined }))
 
     await handleUpdateCheckoutSession(updateInput())
 
-    expect(mocked.getRequestSession).not.toHaveBeenCalled()
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ customer_email: CHECKOUT_VALUES.email }))
+    const params = mocked.checkoutSessionsCreate.mock.calls[0]?.[0]
+
+    expect(params).toMatchObject({ customer_email: CHECKOUT_VALUES.email, metadata: { userId: "" } })
+    expect(params).not.toHaveProperty("customer")
+    expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
+    expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ userId: undefined }))
+  })
+
+  it("hands a guest's checkout to the account that signed in while it was held, with that account's Stripe customer", async () => {
+    mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext({ email: "guest@example.com", userId: undefined }))
+
+    await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
+
+    expect(mocked.ensureStripeCustomer).toHaveBeenCalledExactlyOnceWith({
+      email: CHECKOUT_VALUES.email,
+      name: "Anna Kowalska",
+      userId: "user-1",
+    })
+    expect(mocked.getStripeCustomerId).not.toHaveBeenCalled()
+    expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).toMatchObject({
+      customer: "cus_1",
+      metadata: { userId: "user-1" },
+      saved_payment_method_options: { payment_method_save: "enabled" },
+    })
+    expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ oldTransactionId: "cs_old", userId: "user-1" }))
+  })
+
+  it("leaves the guest's checkout and session untouched when Stripe cannot make the account a customer", async () => {
+    const failure = new Error("stripe is unreachable")
+    mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext({ email: "guest@example.com", userId: undefined }))
+    mocked.ensureStripeCustomer.mockRejectedValue(failure)
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(failure)
+    expectNothingTouched()
   })
 })
 
@@ -173,6 +216,8 @@ describe("handleUpdateCheckoutSession", () => {
       heldLines: HELD_LINES,
       newTransactionId: "cs_new",
       oldTransactionId: "cs_old",
+      reservedLines: [{ qty: 2, variantId: "variant-1" }],
+      userId: "user-1",
     })
     expect(mocked.reserveInventoryByVariantLines).toHaveBeenCalledWith([expect.objectContaining({ qty: 2, variantId: "variant-1" })])
 
@@ -259,13 +304,40 @@ describe("handleUpdateCheckoutSession on a checkout that can no longer change", 
     expectNothingTouched()
   })
 
-  it.each(["expired", "complete"])("refuses a Stripe session that is already %s", async (status) => {
-    mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: { items: JSON.stringify(HELD_LINES) }, status })
+  it("refuses a Stripe session that is already complete and leaves its stock to fulfilment", async () => {
+    mocked.checkoutSessionsRetrieve.mockResolvedValue({ id: "cs_old", metadata: { items: JSON.stringify(HELD_LINES) }, status: "complete" })
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
       code: ERROR_CODES.CONFLICT,
       message: CHECKOUT_ERROR_CODES.SESSION_CLOSED,
     })
+    expectNothingTouched()
+    expect(mocked.releaseCheckout).not.toHaveBeenCalled()
+  })
+
+  it("returns the stock of a session Stripe has expired before its webhook arrives, so a fresh checkout can take it", async () => {
+    mocked.checkoutSessionsRetrieve.mockResolvedValue({ id: "cs_old", metadata: { items: JSON.stringify(HELD_LINES) }, status: "expired" })
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: CHECKOUT_ERROR_CODES.SESSION_CLOSED,
+    })
+    expect(mocked.releaseCheckout).toHaveBeenCalledExactlyOnceWith({ lines: HELD_LINES, transactionId: "cs_old" })
+    expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
+    expectNothingTouched()
+  })
+
+  it("still refuses an expired session when returning its stock fails, leaving the release to the webhook", async () => {
+    const failure = new Error("d1 batch failed")
+    mocked.checkoutSessionsRetrieve.mockResolvedValue({ id: "cs_old", metadata: { items: JSON.stringify(HELD_LINES) }, status: "expired" })
+    mocked.releaseCheckout.mockRejectedValue(failure)
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: CHECKOUT_ERROR_CODES.SESSION_CLOSED,
+    })
+    expect(console.error).toHaveBeenCalledWith("Failed to release expired Checkout Session cs_old before replacing it:", failure)
+    expect(mocked.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
     expectNothingTouched()
   })
 

@@ -39,6 +39,7 @@ Sesje są tworzone z `ui_mode: "elements"`, co oznacza, że formularz płatnośc
 
 ```ts
 const params: StripeType.Checkout.SessionCreateParams = {
+  expires_at: Math.floor(Date.now() / MILLISECONDS_PER_SECOND) + CHECKOUT_SESSION_LIFETIME_SECONDS,
   line_items: toLineItems(lines, shippingCost),
   metadata,
   mode: "payment",
@@ -60,7 +61,9 @@ const session = await stripe.checkout.sessions.create(params).catch(async (error
 })
 ```
 
-`customerId` jest ustawiane tylko dla zalogowanego kupującego. `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) bierze je z `ensureStripeCustomer`, które przy pierwszym użyciu tworzy klienta Stripe i zapisuje jego identyfikator w `user.stripe_customer_id`; `handleUpdateCheckoutSession` odczytuje zapisany identyfikator przez `getStripeCustomerId`. Taka sesja należy do tego klienta Stripe i pozwala kupującemu zapisać kartę, która potem pojawia się na `/account/payment`. Sesja gościa dostaje zamiast tego `customer_email`. Zalogowany klient może też dodać kartę bezpośrednio na `/account/payment`, bez płacenia, przez SetupIntent na kartę dla tego samego klienta Stripe. Zobacz [Konto](/docs/features/account).
+`expires_at` to `CHECKOUT_SESSION_LIFETIME_SECONDS` (1920 sekund, w `stripe.constants.ts`) od teraz. Stripe przyjmuje od 30 minut do 24 godzin i domyślnie ustawia 24 godziny, a sesja trzyma towar, dopóki nie wygaśnie, więc wartość domyślna pozwalała jednemu porzuconemu albo skryptowemu checkoutowi zabrać sztukę wszystkim innym kupującym na dobę. 32 minuty to minimum Stripe plus zapas na czas trwania żądania i z nawiązką wystarcza na kartę, BLIK albo przelew Przelewy24. Towar zwalnia potem webhook wygaśnięcia (zobacz [Stany magazynowe](/docs/features/inventory)).
+
+`customerId` jest ustawiane tylko dla zalogowanego kupującego. `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) bierze je z `ensureStripeCustomer`, które przy pierwszym użyciu tworzy klienta Stripe i zapisuje jego identyfikator w `user.stripe_customer_id`; `handleUpdateCheckoutSession` odczytuje zapisany identyfikator przez `getStripeCustomerId`, gdy checkout już należy do konta, a wywołuje `ensureStripeCustomer`, gdy przekazuje checkout gościa kontu, na które od tego czasu się zalogowano, co ustawia też `user_id` checkoutu, więc zamówienie trafia na to konto (zobacz [Checkout](/docs/features/checkout)). Taka sesja należy do tego klienta Stripe i pozwala kupującemu zapisać kartę, która potem pojawia się na `/account/payment`. Sesja gościa dostaje zamiast tego `customer_email`. Zalogowany klient może też dodać kartę bezpośrednio na `/account/payment`, bez płacenia, przez SetupIntent na kartę dla tego samego klienta Stripe. Zobacz [Konto](/docs/features/account).
 
 `returnUrl` to `${origin}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`, z prefiksem `/en-US` dla checkoutu po angielsku, gdzie Stripe wstawia identyfikator sesji, a `origin` pochodzi z `resolveRequestOrigin(getRequest())` w `src/lib/request.ts`. To adres, na który przyszło żądanie checkoutu, sprawdzony z listą hostów obsługiwanych przez ten build, więc checkout lokalny wraca na `localhost` albo `127.0.0.1`, checkout na preview na host preview, a produkcyjny na `martebizuteria.pl`. Nagłówki `Origin`, `Referer`, `Host` i `X-Forwarded-*` nie są odczytywane, a żądanie na każdy inny host jest odrzucane z `FORBIDDEN`, zanim zostanie dotknięty klient Stripe, rezerwacja stanu magazynowego czy wiersz checkoutu.
 
@@ -72,20 +75,21 @@ Pozycje sesji są budowane z cen zwalidowanych na serwerze, plus dosłowna linia
 
 `payment` (`src/modules/payment/payment.schema.ts`):
 
-| Kolumna           | Uwagi                                                              |
-| ----------------- | ------------------------------------------------------------------ |
-| `checkout_id`     | `references(() => checkout.id, { onDelete: "cascade" })`, not null |
-| `amount`          | jednostki podrzędne, not null                                      |
-| `currency`        | 3 znaki, domyślnie `"PLN"`                                         |
-| `provider`        | not null; jedyna zapisywana wartość to `"stripe"`                  |
-| `transaction_id`  | identyfikator **sesji Checkout** Stripe, z unikalnym indeksem      |
-| `status`          | `pending \| succeeded \| failed \| refunded`, domyślnie `pending`  |
-| `refunded_amount` | jednostki podrzędne, domyślnie `0`                                 |
-| `refunded_at`     | nullowalny znacznik czasu                                          |
+| Kolumna           | Uwagi                                                                        |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `checkout_id`     | `references(() => checkout.id, { onDelete: "cascade" })`, not null           |
+| `amount`          | jednostki podrzędne, not null                                                |
+| `currency`        | 3 znaki, domyślnie `"PLN"`                                                   |
+| `provider`        | not null; jedyna zapisywana wartość to `"stripe"`                            |
+| `transaction_id`  | identyfikator **sesji Checkout** Stripe, z unikalnym indeksem                |
+| `status`          | `pending \| succeeded \| failed \| refunded`, domyślnie `pending`            |
+| `refunded_amount` | jednostki podrzędne, domyślnie `0`                                           |
+| `refunded_at`     | nullowalny znacznik czasu                                                    |
+| `reserved_lines`  | JSON `{ qty, variantId }[]` trzymanych przez sesję, not null, domyślnie `[]` |
 
 To, że `transaction_id` trzyma identyfikator sesji, a nie payment intentu, jest powodem, dla którego kilka handlerów webhooka wywołuje `resolveTransactionId(paymentIntent)` — funkcja listuje sesje filtrowane po `payment_intent` i bierze pierwszą. Zwrot z panelu potrzebuje odwrotnego odczytu: pobiera sesję, aby znaleźć PaymentIntent, który Stripe może zwrócić (zobacz [Zwroty z panelu](#zwroty-z-panelu)).
 
-Akcesory w `payment.accessors.ts`: `createPendingPayment`, `getPaymentByTransactionId` oraz `getPaymentContextByTransactionId` (dołącza `email`, `userId` i `status` z checkoutu oraz zwraca własny `status` płatności). Aktualizacja checkoutu przenosi wiersz na zastępczą sesję przez `supersedeCheckoutSession` w `src/modules/checkout/use-cases/supersede-checkout-session.server.ts`, który przenosi tylko płatność `pending` checkoutu `pending` i aktualizuje kwotę.
+Akcesory w `payment.accessors.ts`: `createPendingPayment` (zapisuje zarezerwowane linie), `getPaymentByTransactionId`, `getPaymentContextByTransactionId` (dołącza `email`, `userId` i `status` z checkoutu oraz zwraca własny `status` płatności) oraz `getHeldLinesByTransactionId`, które zwraca `reserved_lines` tylko wtedy, gdy płatność i jej checkout są oba `pending`, i przez które sprawdzenie dostępności koszyka liczy własną rezerwację kupującego. Aktualizacja checkoutu przenosi wiersz na zastępczą sesję przez `supersedeCheckoutSession` w `src/modules/checkout/use-cases/supersede-checkout-session.server.ts`, który przenosi tylko płatność `pending` checkoutu `pending` i aktualizuje kwotę oraz zarezerwowane linie. Metadane Stripe pozostają zapisem, z którego webhooki zwalniają i realizują zamówienie; `reserved_lines` służy tylko do odpowiedzi na pytanie o dostępność bez wywoływania Stripe.
 
 ## Punkt końcowy webhooka
 

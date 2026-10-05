@@ -18,6 +18,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", async () => {
   return { withRequest: createMiddleware({ type: "function" }).server(({ next }) => next()) }
 })
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ getAvailabilityByVariantIds }))
+vi.mock("~/src/modules/payment/payment.accessors", () => ({ getHeldLinesByTransactionId: vi.fn() }))
 
 const BANNER_TEXT = "Some items in your cart are no longer available. Update your cart before checkout."
 

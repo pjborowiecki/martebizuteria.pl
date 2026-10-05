@@ -1,5 +1,5 @@
 import { type StripeCheckoutConfirmResult, type StripeCheckoutContact, type StripeCheckoutRedirectBehavior } from "@stripe/stripe-js"
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const { confirm, createCheckoutSessionFn, updateCheckoutSessionFn } = vi.hoisted(() => ({
   confirm:
@@ -58,6 +58,7 @@ const items = [cartItem("variant-b", 1), cartItem("variant-a", 2)]
 const existingSession: CheckoutSession = {
   amount: 74_700,
   clientSecret: "cs_secret_existing",
+  expiresAt: Date.UTC(2026, 9, 5, 12, 32),
   linesFingerprint: buildCheckoutLinesFingerprint(items),
   sessionId: "cs_existing",
   valuesFingerprint: buildCheckoutValuesFingerprint(shippingValues),
@@ -146,17 +147,34 @@ describe("buildCheckoutContact", () => {
   })
 })
 
+const OPENED_AT = Date.UTC(2026, 9, 5, 12)
+
+const EXPIRES_AT = OPENED_AT + 1_920_000
+
+const useOpeningTime = (): void => {
+  vi.useFakeTimers({ toFake: ["Date"] })
+  vi.setSystemTime(OPENED_AT)
+}
+
 describe("ensureCheckoutSession", () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    useOpeningTime()
   })
 
-  it("creates a session when there is none yet", async () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("creates a session when the browser holds none yet", async () => {
     createCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_new", sessionId: "cs_new" })
 
-    await expect(ensureCheckoutSession({ amount: 74_700, existing: undefined, items, values: shippingValues })).resolves.toStrictEqual({
+    await expect(
+      ensureCheckoutSession({ amount: 74_700, existing: undefined, heldSessionId: undefined, items, values: shippingValues }),
+    ).resolves.toStrictEqual({
       amount: 74_700,
       clientSecret: "cs_secret_new",
+      expiresAt: EXPIRES_AT,
       linesFingerprint: "variant-a:2|variant-b:1",
       sessionId: "cs_new",
       valuesFingerprint: buildCheckoutValuesFingerprint(shippingValues),
@@ -164,12 +182,103 @@ describe("ensureCheckoutSession", () => {
     expect(createCheckoutSessionFn).toHaveBeenCalledWith({ data: { checkoutValues: shippingValues, items } })
     expect(updateCheckoutSessionFn).not.toHaveBeenCalled()
   })
+})
+
+describe("ensureCheckoutSession with a session the browser holds", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    useOpeningTime()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("continues the session the browser holds instead of opening a second one after a reload", async () => {
+    updateCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_replacement", sessionId: "cs_replacement" })
+
+    const session = await ensureCheckoutSession({
+      amount: 74_700,
+      existing: undefined,
+      heldSessionId: "cs_held",
+      items,
+      values: shippingValues,
+    })
+
+    expect(updateCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
+      data: { checkoutValues: shippingValues, items, sessionId: "cs_held" },
+    })
+    expect(createCheckoutSessionFn).not.toHaveBeenCalled()
+    expect(session).toMatchObject({ clientSecret: "cs_secret_replacement", expiresAt: EXPIRES_AT, sessionId: "cs_replacement" })
+  })
+
+  it("continues the session another tab moved the browser to rather than the one this tab still shows", async () => {
+    updateCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_replacement", sessionId: "cs_replacement" })
+
+    await ensureCheckoutSession({
+      amount: existingSession.amount,
+      existing: existingSession,
+      heldSessionId: "cs_other_tab",
+      items,
+      values: shippingValues,
+    })
+
+    expect(updateCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
+      data: { checkoutValues: shippingValues, items, sessionId: "cs_other_tab" },
+    })
+  })
+
+  it("starts a fresh checkout when the session the browser held has closed", async () => {
+    updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_CLOSED))
+    createCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_fresh", sessionId: "cs_fresh" })
+
+    const session = await ensureCheckoutSession({
+      amount: 74_700,
+      existing: undefined,
+      heldSessionId: "cs_expired",
+      items,
+      values: shippingValues,
+    })
+
+    expect(session.sessionId).toBe("cs_fresh")
+    expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({ data: { checkoutValues: shippingValues, items } })
+  })
+})
+
+describe("ensureCheckoutSession with the session on screen", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    useOpeningTime()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
 
   it("reuses an unchanged session without calling Stripe again", async () => {
     await expect(
-      ensureCheckoutSession({ amount: existingSession.amount, existing: existingSession, items, values: shippingValues }),
+      ensureCheckoutSession({
+        amount: existingSession.amount,
+        existing: existingSession,
+        heldSessionId: existingSession.sessionId,
+        items,
+        values: shippingValues,
+      }),
     ).resolves.toBe(existingSession)
     expect(createCheckoutSessionFn).not.toHaveBeenCalled()
+    expect(updateCheckoutSessionFn).not.toHaveBeenCalled()
+  })
+
+  it("reuses an unchanged session when the browser could not store its id", async () => {
+    await expect(
+      ensureCheckoutSession({
+        amount: existingSession.amount,
+        existing: existingSession,
+        heldSessionId: undefined,
+        items,
+        values: shippingValues,
+      }),
+    ).resolves.toBe(existingSession)
     expect(updateCheckoutSessionFn).not.toHaveBeenCalled()
   })
 
@@ -177,10 +286,11 @@ describe("ensureCheckoutSession", () => {
     updateCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_updated", sessionId: "cs_existing" })
 
     await expect(
-      ensureCheckoutSession({ amount: 99_600, existing: existingSession, items, values: shippingValues }),
+      ensureCheckoutSession({ amount: 99_600, existing: existingSession, heldSessionId: undefined, items, values: shippingValues }),
     ).resolves.toStrictEqual({
       amount: 99_600,
       clientSecret: "cs_secret_updated",
+      expiresAt: EXPIRES_AT,
       linesFingerprint: "variant-a:2|variant-b:1",
       sessionId: "cs_existing",
       valuesFingerprint: buildCheckoutValuesFingerprint(shippingValues),
@@ -197,6 +307,7 @@ describe("ensureCheckoutSession", () => {
     const session = await ensureCheckoutSession({
       amount: existingSession.amount,
       existing: existingSession,
+      heldSessionId: existingSession.sessionId,
       items: swapped,
       values: shippingValues,
     })
@@ -216,7 +327,13 @@ describe("ensureCheckoutSession", () => {
     updateCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_updated", sessionId: "cs_existing" })
     const values = { ...shippingValues, ...changes }
 
-    const updated = await ensureCheckoutSession({ amount: existingSession.amount, existing: existingSession, items, values })
+    const updated = await ensureCheckoutSession({
+      amount: existingSession.amount,
+      existing: existingSession,
+      heldSessionId: undefined,
+      items,
+      values,
+    })
 
     expect(updateCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
       data: { checkoutValues: values, items, sessionId: "cs_existing" },
@@ -224,14 +341,22 @@ describe("ensureCheckoutSession", () => {
     expect(createCheckoutSessionFn).not.toHaveBeenCalled()
     expect(updated.valuesFingerprint).toBe(buildCheckoutValuesFingerprint(values))
 
-    await expect(ensureCheckoutSession({ amount: updated.amount, existing: updated, items, values })).resolves.toBe(updated)
+    await expect(
+      ensureCheckoutSession({ amount: updated.amount, existing: updated, heldSessionId: undefined, items, values }),
+    ).resolves.toBe(updated)
     expect(updateCheckoutSessionFn).toHaveBeenCalledTimes(1)
   })
 
   it("adopts the session id Stripe returns when it replaces the old one", async () => {
     updateCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_replacement", sessionId: "cs_replacement" })
 
-    const session = await ensureCheckoutSession({ amount: 1, existing: existingSession, items, values: shippingValues })
+    const session = await ensureCheckoutSession({
+      amount: 1,
+      existing: existingSession,
+      heldSessionId: undefined,
+      items,
+      values: shippingValues,
+    })
 
     expect(session.sessionId).toBe("cs_replacement")
   })
@@ -241,10 +366,11 @@ describe("ensureCheckoutSession", () => {
     createCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_fresh", sessionId: "cs_fresh" })
 
     await expect(
-      ensureCheckoutSession({ amount: 99_600, existing: existingSession, items, values: shippingValues }),
+      ensureCheckoutSession({ amount: 99_600, existing: existingSession, heldSessionId: undefined, items, values: shippingValues }),
     ).resolves.toStrictEqual({
       amount: 99_600,
       clientSecret: "cs_secret_fresh",
+      expiresAt: EXPIRES_AT,
       linesFingerprint: "variant-a:2|variant-b:1",
       sessionId: "cs_fresh",
       valuesFingerprint: buildCheckoutValuesFingerprint(shippingValues),
@@ -257,9 +383,9 @@ describe("ensureCheckoutSession", () => {
     async (failure) => {
       updateCheckoutSessionFn.mockRejectedValue(failure)
 
-      await expect(ensureCheckoutSession({ amount: 99_600, existing: existingSession, items, values: shippingValues })).rejects.toBe(
-        failure,
-      )
+      await expect(
+        ensureCheckoutSession({ amount: 99_600, existing: existingSession, heldSessionId: undefined, items, values: shippingValues }),
+      ).rejects.toBe(failure)
       expect(createCheckoutSessionFn).not.toHaveBeenCalled()
     },
   )
@@ -268,27 +394,63 @@ describe("ensureCheckoutSession", () => {
 describe("resetCheckoutSession", () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    useOpeningTime()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it("always updates the session, even when nothing changed", async () => {
     updateCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_reset", sessionId: "cs_existing" })
 
     await expect(
-      resetCheckoutSession({ amount: existingSession.amount, items, session: existingSession, values: shippingValues }),
+      resetCheckoutSession({
+        amount: existingSession.amount,
+        heldSessionId: undefined,
+        items,
+        session: existingSession,
+        values: shippingValues,
+      }),
     ).resolves.toStrictEqual({
       amount: existingSession.amount,
       clientSecret: "cs_secret_reset",
+      expiresAt: EXPIRES_AT,
       linesFingerprint: "variant-a:2|variant-b:1",
       sessionId: "cs_existing",
       valuesFingerprint: buildCheckoutValuesFingerprint(shippingValues),
     })
-    expect(updateCheckoutSessionFn).toHaveBeenCalledTimes(1)
+    expect(updateCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
+      data: { checkoutValues: shippingValues, items, sessionId: "cs_existing" },
+    })
+  })
+
+  it("resets the session the browser holds when another tab has replaced the one on screen", async () => {
+    updateCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_reset", sessionId: "cs_replacement" })
+
+    await resetCheckoutSession({
+      amount: existingSession.amount,
+      heldSessionId: "cs_other_tab",
+      items,
+      session: existingSession,
+      values: shippingValues,
+    })
+
+    expect(updateCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
+      data: { checkoutValues: shippingValues, items, sessionId: "cs_other_tab" },
+    })
   })
 
   it("recomputes the fingerprint from the cart it is given", async () => {
     updateCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_reset", sessionId: "cs_existing" })
 
-    const session = await resetCheckoutSession({ amount: 1, items: [], session: existingSession, values: shippingValues })
+    const session = await resetCheckoutSession({
+      amount: 1,
+      heldSessionId: undefined,
+      items: [],
+      session: existingSession,
+      values: shippingValues,
+    })
 
     expect(session.linesFingerprint).toBe("")
   })
@@ -297,9 +459,15 @@ describe("resetCheckoutSession", () => {
     updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_CLOSED))
     createCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_fresh", sessionId: "cs_fresh" })
 
-    const session = await resetCheckoutSession({ amount: existingSession.amount, items, session: existingSession, values: shippingValues })
+    const session = await resetCheckoutSession({
+      amount: existingSession.amount,
+      heldSessionId: undefined,
+      items,
+      session: existingSession,
+      values: shippingValues,
+    })
 
-    expect(session).toMatchObject({ clientSecret: "cs_secret_fresh", sessionId: "cs_fresh" })
+    expect(session).toMatchObject({ clientSecret: "cs_secret_fresh", expiresAt: EXPIRES_AT, sessionId: "cs_fresh" })
     expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({ data: { checkoutValues: shippingValues, items } })
   })
 })

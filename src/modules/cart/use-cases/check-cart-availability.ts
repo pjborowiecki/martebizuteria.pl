@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query"
+import { keepPreviousData, queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import zod from "zod/v4"
 
@@ -6,7 +6,11 @@ import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
 import { CART_LINES_MAX, CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { getAvailabilityByVariantIds } from "~/src/modules/inventory/inventory.accessors"
+import { sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.utils"
+import { getHeldLinesByTransactionId } from "~/src/modules/payment/payment.accessors"
 import { PRODUCT_VARIANT_COLUMN_LENGTH } from "~/src/modules/product-variant/product-variant.constants"
+
+const CHECKOUT_SESSION_ID_MAX_LENGTH = 255
 
 const cartAvailabilityLineSchema = zod.object({
   qty: zod.number().int().min(1),
@@ -14,6 +18,7 @@ const cartAvailabilityLineSchema = zod.object({
 })
 
 const cartAvailabilityInputSchema = zod.object({
+  heldSessionId: zod.string().min(1).max(CHECKOUT_SESSION_ID_MAX_LENGTH).optional(),
   lines: zod.array(cartAvailabilityLineSchema).max(CART_LINES_MAX),
 })
 
@@ -35,11 +40,14 @@ const CART_AVAILABILITY_STALE_MS = 0
 export const checkCartAvailability = createServerFn({ method: "POST" })
   .middleware([withRequest])
   .validator((input: zod.input<typeof cartAvailabilityInputSchema>) => cartAvailabilityInputSchema.parse(input))
-  .handler(async ({ data: { lines } }): Promise<CartAvailabilityResult> => {
-    const availabilityByVariantId = await getAvailabilityByVariantIds(lines.map((line) => line.variantId))
+  .handler(async ({ data: { heldSessionId, lines } }): Promise<CartAvailabilityResult> => {
+    const [availabilityByVariantId, heldLines] = await Promise.all([
+      getAvailabilityByVariantIds(lines.map((line) => line.variantId)),
+      heldSessionId === undefined ? [] : getHeldLinesByTransactionId(heldSessionId),
+    ])
 
     const issues = lines.flatMap((line) => {
-      const available = availabilityByVariantId.get(line.variantId) ?? 0
+      const available = (availabilityByVariantId.get(line.variantId) ?? 0) + sumHeldQuantity(heldLines, line.variantId)
       if (available >= line.qty) {
         return []
       }
@@ -53,10 +61,11 @@ export const checkCartAvailability = createServerFn({ method: "POST" })
     }
   })
 
-export const checkCartAvailabilityQuery = (lines: readonly CartAvailabilityLine[]) =>
+export const checkCartAvailabilityQuery = (lines: readonly CartAvailabilityLine[], heldSessionId: string | undefined) =>
   queryOptions({
     enabled: lines.length > 0,
-    queryFn: () => checkCartAvailability({ data: { lines: [...lines] } }),
-    queryKey: [...CART_QUERY_KEYS.AVAILABILITY, lines],
+    placeholderData: keepPreviousData,
+    queryFn: () => checkCartAvailability({ data: { heldSessionId, lines: [...lines] } }),
+    queryKey: [...CART_QUERY_KEYS.AVAILABILITY, lines, heldSessionId],
     staleTime: CART_AVAILABILITY_STALE_MS,
   })

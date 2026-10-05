@@ -6,6 +6,7 @@ import {
   isProductInStock,
   isVariantPurchasable,
   resolveProductTotalAvailableStock,
+  sumHeldQuantity,
 } from "~/src/modules/inventory/inventory.availability.utils"
 
 const variant = (quantityAvailable: number | undefined, id = "variant-1"): VariantWithInventory => ({
@@ -83,5 +84,25 @@ describe("isProductInStock", () => {
   it("is out of stock when every variant is empty or unlinked", () => {
     expect(isProductInStock([variant(0, "a"), variant(undefined, "b")])).toBe(false)
     expect(isProductInStock([])).toBe(false)
+  })
+})
+
+describe("sumHeldQuantity", () => {
+  it("adds up every held line of the variant and ignores the others", () => {
+    expect(
+      sumHeldQuantity(
+        [
+          { qty: 1, variantId: "a" },
+          { qty: 2, variantId: "b" },
+          { qty: 3, variantId: "a" },
+        ],
+        "a",
+      ),
+    ).toBe(4)
+  })
+
+  it("is zero when nothing of the variant is held", () => {
+    expect(sumHeldQuantity([{ qty: 2, variantId: "b" }], "a")).toBe(0)
+    expect(sumHeldQuantity([], "a")).toBe(0)
   })
 })

@@ -556,7 +556,7 @@ Kept here rather than hidden, because an accurate map is more useful than a flat
 
 **Missing infrastructure**
 
-- No cron or reconciliation job. Stale inventory reservations are reclaimed only when Stripe emits `checkout.session.expired`.
+- No cron or reconciliation job. Stale inventory reservations are reclaimed only when Stripe emits `checkout.session.expired`, 32 minutes after a Checkout Session opens.
 - No dead-letter queue. An audit batch that fails three times is dropped.
 - No expiry sweep for `session`, `verification` or `rate_limit` rows. The rate-limit table grows one row per distinct key forever.
 - No error reporting. `SENTRY_AUTH_TOKEN` appears in `.env.example` and nothing in `src/` reads it.

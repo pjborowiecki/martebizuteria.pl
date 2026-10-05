@@ -64,13 +64,16 @@ export const getCartLineTotalCents = (item: { readonly price: string; readonly q
 
 ## Sprawdzenie dostępności
 
-`src/modules/cart/use-cases/check-cart-availability.ts` to jedyna funkcja serwerowa w tym module. Jest publiczna (`withRequest`), przyjmuje `{ lines: [{ variantId, qty }] }` i odpowiada dla każdej linii:
+`src/modules/cart/use-cases/check-cart-availability.ts` to jedyna funkcja serwerowa w tym module. Jest publiczna (`withRequest`), przyjmuje `{ heldSessionId?, lines: [{ variantId, qty }] }` i odpowiada dla każdej linii:
 
 ```ts
-const availabilityByVariantId = await getAvailabilityByVariantIds(lines.map((line) => line.variantId))
+const [availabilityByVariantId, heldLines] = await Promise.all([
+  getAvailabilityByVariantIds(lines.map((line) => line.variantId)),
+  heldSessionId === undefined ? [] : getHeldLinesByTransactionId(heldSessionId),
+])
 
 const issues = lines.flatMap((line) => {
-  const available = availabilityByVariantId.get(line.variantId) ?? 0
+  const available = (availabilityByVariantId.get(line.variantId) ?? 0) + sumHeldQuantity(heldLines, line.variantId)
   if (available >= line.qty) {
     return []
   }
@@ -81,11 +84,11 @@ const issues = lines.flatMap((line) => {
 return { hasUnavailableItems: issues.length > 0, issues }
 ```
 
-Wariant bez wiersza w `inventory` liczy się jako `0` dostępnych sztuk. Endpoint jest publiczny, więc jego wejście jest ograniczone: najwyżej `CART_LINES_MAX` linii, całkowite ilości od jednej sztuki i identyfikatory wariantów nie dłuższe niż zapisany identyfikator.
+Wariant bez wiersza w `inventory` liczy się jako `0` dostępnych sztuk. `heldSessionId` to otwarta sesja Checkout przeglądarki, którą kasa trzyma w `localStorage` (zobacz [Kasa](/docs/features/checkout)). `getHeldLinesByTransactionId` w `payment.accessors.ts` zwraca `reserved_lines` płatności tej sesji, dopóki płatność i jej checkout są oba `pending`, czyli pod tym samym warunkiem, pod którym zwolnienie nadal by je oddało, a w przeciwnym razie nic. Te sztuki są doliczane tylko tej przeglądarce, więc kupujący, którego własny checkout trzyma ostatnią sztukę, nadal widzi ją jako dostępną w koszyku i w kasie po odświeżeniu, a każdy inny kupujący widzi ją jako zarezerwowaną. Endpoint jest publiczny, więc jego wejście jest ograniczone: najwyżej `CART_LINES_MAX` linii, całkowite ilości od jednej sztuki, identyfikatory wariantów nie dłuższe niż zapisany identyfikator i identyfikator sesji o długości najwyżej 255 znaków. Identyfikator sesji dolicza tylko to, co ta sesja już trzyma, więc odgadnięcie go nic nie daje.
 
-`checkCartAvailabilityQuery(lines)` jest `enabled` tylko wtedy, gdy jest co najmniej jedna linia, i używa `staleTime: 0`, więc sprawdzenie jest świeże przy każdym montowaniu. Klucz to `[...CART_QUERY_KEYS.AVAILABILITY, lines]` — linie są częścią klucza, więc zmiana ilości wywołuje ponowne zapytanie. `CART_QUERY_KEYS.AVAILABILITY` to `["cart", "availability"]` i występuje w `STOREFRONT_REALTIME_QUERY_PREFIXES`, więc zmiana stanu wypchnięta z panelu ponawia sprawdzenie w otwartych kartach.
+`checkCartAvailabilityQuery(lines, heldSessionId)` jest `enabled` tylko wtedy, gdy jest co najmniej jedna linia, i używa `staleTime: 0`, więc sprawdzenie jest świeże przy każdym montowaniu. Klucz to `[...CART_QUERY_KEYS.AVAILABILITY, lines, heldSessionId]` — linie i trzymana sesja są częścią klucza, więc zmiana ilości albo otwarcie sesji wywołuje ponowne zapytanie. `placeholderData: keepPreviousData` zachowuje ostatnią odpowiedź, dopóki nowy klucz jest sprawdzany, więc strażnik kasy nie wraca do pierwszego sprawdzenia i nie odmontowuje formularza, gdy krok płatności zapisuje swoją sesję. `CART_QUERY_KEYS.AVAILABILITY` to `["cart", "availability"]` i występuje w `STOREFRONT_REALTIME_QUERY_PREFIXES`, więc zmiana stanu wypchnięta z panelu ponawia sprawdzenie w otwartych kartach.
 
-`src/hooks/use-cart-availability.ts` owija to i zwraca `{ hasUnavailableItems, isChecking, issues, issuesByVariantId }`. `isChecking` jest prawdziwe, gdy `isPending || isFetching` i jest co najmniej jedna linia.
+`src/hooks/use-cart-availability.ts` odczytuje trzymaną sesję przez `useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, …)`, bez sesji na serwerze, owija zapytanie i zwraca `{ hasUnavailableItems, isChecking, issues, issuesByVariantId }`. `isChecking` jest prawdziwe, gdy `isPending || isFetching` i jest co najmniej jedna linia.
 
 ## Strony i komponenty
 

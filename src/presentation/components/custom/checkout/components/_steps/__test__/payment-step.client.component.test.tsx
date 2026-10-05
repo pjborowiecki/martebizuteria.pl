@@ -19,6 +19,7 @@ type ConfirmOutcome = StripeCheckout.ConfirmOutcome
 interface SessionRequest {
   amount: number
   existing: CheckoutSession | undefined
+  heldSessionId: string | undefined
   items: readonly { qty: number; variantId: string }[]
   values: CheckoutFormSchema
 }
@@ -152,9 +153,12 @@ import { PaymentStep } from "~/src/presentation/components/custom/checkout/compo
 
 const PAY_BUTTON = "Order & Pay"
 
+const SESSION_LIFETIME_MS = 1_920_000
+
 const session: CheckoutSession = {
   amount: 21_500,
   clientSecret: "cs_test_secret",
+  expiresAt: Date.now() + SESSION_LIFETIME_MS,
   linesFingerprint: "v-1:1",
   sessionId: "cs_test_1",
   valuesFingerprint: buildCheckoutValuesFingerprint(completeValues),
@@ -200,6 +204,7 @@ beforeEach(() => {
   deliveryMethods.current = [{ id: "courier", name: "Courier", price: 1500 }]
   formState.session = undefined
   formState.values = completeValues
+  localStorage.clear()
   getStripe.mockResolvedValue(null)
   ensureCheckoutSession.mockResolvedValue(session)
   resetCheckoutSession.mockResolvedValue(refreshedSession)
@@ -288,6 +293,7 @@ describe("PaymentStep session bootstrap", () => {
       expect(ensureCheckoutSession).toHaveBeenCalledWith({
         amount: session.amount,
         existing: session,
+        heldSessionId: undefined,
         items: useCartStore.getState().items,
         values: formState.values,
       })
@@ -351,6 +357,77 @@ describe("PaymentStep session bootstrap", () => {
       clientSecret: session.clientSecret,
       elementsOptions: { appearance: { theme: "night" } },
     })
+  })
+})
+
+describe("PaymentStep with a session the browser already holds", () => {
+  beforeEach(() => {
+    localStorage.setItem("marte-checkout-session", "cs_test_held")
+  })
+
+  it("continues the held session after a reload instead of opening another", async () => {
+    renderWithProviders(<PaymentStep />)
+
+    await waitFor(() => {
+      expect(ensureCheckoutSession).toHaveBeenCalledTimes(1)
+    })
+
+    expect(ensureCheckoutSession.mock.calls[0]?.[0]).toMatchObject({ existing: undefined, heldSessionId: "cs_test_held" })
+  })
+
+  it("resets the held session when a confirmation asks for a fresh one", async () => {
+    formState.session = session
+    confirmCheckoutSession.mockResolvedValue({ message: "expired", recoverable: true, status: "error" })
+    renderWithProviders(<PaymentStep />)
+    await clickPay()
+
+    await waitFor(() => {
+      expect(resetCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ heldSessionId: "cs_test_held", session }))
+    })
+  })
+})
+
+describe("PaymentStep when the session expires", () => {
+  const RESTART_BUTTON = "Start the payment again"
+
+  it("replaces the payment form with an expiry notice once the hold runs out", async () => {
+    formState.session = { ...session, expiresAt: Date.now() + 50 }
+    renderWithProviders(<PaymentStep />)
+
+    expect(await screen.findByText("Your payment session has expired")).toBeInTheDocument()
+    expect(screen.queryByTestId("payment-element")).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Back to cart" })).toHaveAttribute("href", "/cart")
+    expect(resetCheckoutSession).not.toHaveBeenCalled()
+  })
+
+  it("opens a fresh session only when the shopper asks to pay again", async () => {
+    formState.session = { ...session, expiresAt: Date.now() - 1 }
+    renderWithProviders(<PaymentStep />)
+
+    await userEvent.click(await screen.findByRole("button", { name: RESTART_BUTTON }))
+
+    await waitFor(() => {
+      expect(setCheckoutSession).toHaveBeenCalledWith(refreshedSession)
+    })
+    expect(resetCheckoutSession).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ amount: 21_500, heldSessionId: undefined, session: formState.session }),
+    )
+    expect(await screen.findByTestId("payment-element")).toBeInTheDocument()
+    expect(screen.queryByText("Your payment session has expired")).not.toBeInTheDocument()
+  })
+
+  it("keeps the notice and explains why when a fresh session cannot be opened", async () => {
+    formState.session = { ...session, expiresAt: Date.now() - 1 }
+    resetCheckoutSession.mockRejectedValue(new Error("INSUFFICIENT_INVENTORY"))
+    renderWithProviders(<PaymentStep />)
+
+    await userEvent.click(await screen.findByRole("button", { name: RESTART_BUTTON }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith("Some items in your cart are out of stock.")
+    })
+    expect(screen.getByText("Your payment session has expired")).toBeInTheDocument()
+    expect(setCheckoutSession).not.toHaveBeenCalled()
   })
 })
 

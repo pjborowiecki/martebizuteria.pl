@@ -48,6 +48,7 @@ describe("createPendingPayment", () => {
       checkoutId: "checkout-1",
       currency: "PLN",
       provider: "stripe",
+      reservedLines: [{ qty: 1, variantId: "variant-1" }],
       transactionId: "pi_123",
     })
 
@@ -56,6 +57,7 @@ describe("createPendingPayment", () => {
       checkoutId: "checkout-1",
       currency: "PLN",
       provider: "stripe",
+      reservedLines: [{ qty: 1, variantId: "variant-1" }],
       status: "pending",
       transactionId: "pi_123",
     })

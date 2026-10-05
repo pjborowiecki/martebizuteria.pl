@@ -433,7 +433,7 @@ const createPlacedOrderTables = (): void => {
     create table user (id text primary key, name text not null, phone text);
     create table payment (
       id text primary key, amount integer not null, checkout_id text not null, currency text not null default 'PLN',
-      provider text not null, refunded_amount integer not null default 0, refunded_at integer,
+      provider text not null, refunded_amount integer not null default 0, refunded_at integer, reserved_lines text not null default '[]',
       status text not null default 'pending', transaction_id text, created_at integer not null, updated_at integer not null
     );
     create table courier (id text primary key, name text not null);

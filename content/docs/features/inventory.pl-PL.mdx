@@ -36,16 +36,17 @@ Wiersze powstają razem z wariantami: `product.mutations.ts` wrzuca `db.insert(i
 
 `inventory.availability.utils.ts` zawiera czyste pomocniki używane zarówno przez witrynę, jak i koszyk:
 
-| Funkcja                                       | Znaczenie                                    |
-| --------------------------------------------- | -------------------------------------------- |
-| `getVariantQuantityAvailable(variant)`        | `variant?.inventory?.quantityAvailable ?? 0` |
-| `isVariantPurchasable(variant, qty)`          | `qty > 0` i dostępne `>= qty`                |
-| `resolveProductTotalAvailableStock(variants)` | suma po wariantach                           |
-| `isProductInStock(variants)`                  | suma większa od zera                         |
+| Funkcja                                       | Znaczenie                                      |
+| --------------------------------------------- | ---------------------------------------------- |
+| `getVariantQuantityAvailable(variant)`        | `variant?.inventory?.quantityAvailable ?? 0`   |
+| `isVariantPurchasable(variant, qty)`          | `qty > 0` i dostępne `>= qty`                  |
+| `resolveProductTotalAvailableStock(variants)` | suma po wariantach                             |
+| `isProductInStock(variants)`                  | suma większa od zera                           |
+| `sumHeldQuantity(heldLines, variantId)`       | sztuki wariantu trzymane przez sesję checkoutu |
 
 Brakujący wiersz `inventory` jest więc odczytywany jako zero, a nie jako wartość nieznana.
 
-`getAvailabilityByVariantIds(variantIds)` w `inventory.accessors.ts` zwraca `Map<variantId, quantityAvailable>` dla partii identyfikatorów i z tego korzysta sprawdzenie dostępności koszyka.
+`getAvailabilityByVariantIds(variantIds)` w `inventory.accessors.ts` zwraca `Map<variantId, quantityAvailable>` dla partii identyfikatorów i z tego korzysta sprawdzenie dostępności koszyka, doliczając przez `sumHeldQuantity` sztuki trzymane przez otwarty checkout samego kupującego.
 
 ## Rezerwacja optymistyczna
 
@@ -110,6 +111,8 @@ Obie instrukcje zwolnienia używają `min`/`max`, więc podwójne zwolnienie nie
 | sesja wygasła albo płatność asynchroniczna nieudana (`prepareReleaseCheckoutBatch`) | `available += min(reserved, qty)`, `reserved -= qty`                                                      |
 | pełny zwrot z powrotem na magazyn (`prepareRefundBatch`)                            | `available += quantity`, z `getRestockLinesForOrder(orderId)`                                             |
 | przegrany spór                                                                      | nic — `refundOrder` jest wywoływane z `restock: false`                                                    |
+
+Rezerwacja trwa tylko tak długo, jak długo jej sesję Checkout da się opłacić. Każda sesja wygasa `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minuty, ze `stripe.constants.ts`) po otwarciu, a nie po domyślnych 24 godzinach Stripe, a jej webhook `checkout.session.expired` zwalnia linie. Aktualizacja checkoutu, która zastaje sesję już wygaszoną przez Stripe, sama najpierw uruchamia to samo strzeżone zwolnienie, więc nowy checkout kupującego nie czeka na webhook. Przeglądarka trzyma jedną otwartą sesję: kasa kontynuuje zapisaną sesję ścieżką aktualizacji, która zwalnia stare linie, rezerwując nowe, zamiast rezerwować koszyk ponownie po odświeżeniu, w drugiej karcie albo po wizycie w koszyku.
 
 Zwróć uwagę, że wsady realizacji i zwolnienia aktualizują `inventory` **bez** zwiększania `version`, bo działają wewnątrz wsadu D1 razem z zapisami zamówienia, a nie przez `reserveInventoryRows` i funkcje zwalniające.
 

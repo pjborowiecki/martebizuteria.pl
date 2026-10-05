@@ -45,11 +45,11 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 `wrangler.jsonc` nie deklaruje `crons`, a `src/server.ts` nie eksportuje handlera `scheduled`. Potrzebują go trzy rzeczy:
 
-| Zadanie                              | Dlaczego                                                                                                                                                                      |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Uzgadnianie rezerwacji               | przestarzałe rezerwacje zwalniane są tylko wtedy, gdy Stripe wyemituje `checkout.session.expired`; rezerwacja osierocona przez nieudaną kompensację nigdy nie wraca do obiegu |
-| Wygasanie `session` i `verification` | nic nie usuwa wygasłych wierszy                                                                                                                                               |
-| Wygasanie `rate_limit`               | liczniki odkładają wiersze bez końca                                                                                                                                          |
+| Zadanie                              | Dlaczego                                                                                                                                                                                                   |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Uzgadnianie rezerwacji               | przestarzałe rezerwacje zwalniane są tylko wtedy, gdy Stripe wyemituje `checkout.session.expired`, 32 minuty po otwarciu sesji; rezerwacja osierocona przez nieudaną kompensację nigdy nie wraca do obiegu |
+| Wygasanie `session` i `verification` | nic nie usuwa wygasłych wierszy                                                                                                                                                                            |
+| Wygasanie `rate_limit`               | liczniki odkładają wiersze bez końca                                                                                                                                                                       |
 
 ### Brak kolejki martwych listów
 

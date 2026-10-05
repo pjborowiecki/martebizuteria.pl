@@ -23,6 +23,7 @@ describe("payment table", () => {
       "provider",
       "refunded_amount",
       "refunded_at",
+      "reserved_lines",
       "status",
       "transaction_id",
       "updated_at",
@@ -61,6 +62,15 @@ describe("payment table", () => {
     expect(columnByName.get("refunded_amount")?.default).toBe(0)
     expect(columnByName.get("refunded_amount")?.notNull).toBe(true)
     expect(columnByName.get("refunded_at")?.notNull).toBe(false)
+  })
+
+  it("records the stock lines its session holds, as JSON that is empty unless written", () => {
+    const reservedLines = columnByName.get("reserved_lines")
+
+    expect(reservedLines?.notNull).toBe(true)
+    expect(reservedLines?.default).toStrictEqual([])
+    expect(reservedLines?.getSQLType()).toBe("text")
+    expect(reservedLines?.mapToDriverValue([{ qty: 1, variantId: "variant-1" }])).toBe('[{"qty":1,"variantId":"variant-1"}]')
   })
 
   it("keeps the provider transaction id optional until the provider answers", () => {

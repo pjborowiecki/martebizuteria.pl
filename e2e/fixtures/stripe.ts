@@ -6,6 +6,8 @@ import { expect } from "./test"
 const checkoutSessionsSchema = z.array(
   z.object({
     amount_total: z.number(),
+    created: z.number(),
+    expires_at: z.number(),
     id: z.string(),
     metadata: z.record(z.string(), z.string()),
     return_url: z.string(),
@@ -19,7 +21,7 @@ const setupIntentsSchema = z.array(z.object({ id: z.string(), status: z.string()
 
 export type CheckoutSession = z.infer<typeof checkoutSessionsSchema>[number]
 
-const openSessions = async (request: APIRequestContext, email: string): Promise<CheckoutSession[]> => {
+export const openCheckoutSessions = async (request: APIRequestContext, email: string): Promise<CheckoutSession[]> => {
   const response = await request.get("/__test/stripe/checkout-sessions", { params: { email } }).catch(() => undefined)
   if (response === undefined) {
     return []
@@ -35,7 +37,7 @@ export const waitForOpenCheckoutSession = async (
   email: string,
   replacing?: CheckoutSession,
 ): Promise<CheckoutSession> => {
-  const candidates = async () => (await openSessions(request, email)).filter((session) => session.id !== replacing?.id)
+  const candidates = async () => (await openCheckoutSessions(request, email)).filter((session) => session.id !== replacing?.id)
   await expect.poll(async () => (await candidates()).length, { message: `Waiting for a Stripe session for ${email}` }).toBeGreaterThan(0)
   const session = (await candidates()).at(-1)
   if (session === undefined) {

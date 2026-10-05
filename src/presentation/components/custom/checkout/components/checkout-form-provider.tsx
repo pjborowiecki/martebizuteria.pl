@@ -26,7 +26,11 @@ import { type CheckoutSession } from "~/src/integrations/stripe/stripe.checkout"
 
 import { type CheckoutFormSchema, checkoutSchema } from "~/src/modules/checkout/checkout.zod"
 
-import { loadCheckoutDraft, saveCheckoutDraft } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
+import {
+  loadCheckoutDraft,
+  saveCheckoutDraft,
+  saveCheckoutSessionId,
+} from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 import {
   CHECKOUT_STEP_DEFINITIONS,
   type CheckoutStepId,
@@ -145,7 +149,11 @@ export const CheckoutFormProvider = ({ children }: Readonly<{ children: ReactNod
   } = form
 
   const { activeStepIndex, isPending, onEdit, onNext } = useCheckoutNavigation(form)
-  const [checkoutSession, setCheckoutSession] = useState<CheckoutSession>()
+  const [checkoutSession, setCurrentCheckoutSession] = useState<CheckoutSession>()
+  const setCheckoutSession = useCallback((session: CheckoutSession) => {
+    saveCheckoutSessionId(session.sessionId)
+    setCurrentCheckoutSession(session)
+  }, [])
 
   const value = useMemo(
     () => ({
@@ -161,7 +169,7 @@ export const CheckoutFormProvider = ({ children }: Readonly<{ children: ReactNod
       setValue,
       trigger,
     }),
-    [activeStepIndex, checkoutSession, control, getValues, isFormValid, isPending, onEdit, onNext, setValue, trigger],
+    [activeStepIndex, checkoutSession, control, getValues, isFormValid, isPending, onEdit, onNext, setCheckoutSession, setValue, trigger],
   )
 
   return (
