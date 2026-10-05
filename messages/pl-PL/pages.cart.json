@@ -13,7 +13,7 @@
   "priceChanged": "Cena zmieniła się od czasu dodania tego produktu do koszyka.",
   "availability": {
     "banner": "Niektóre produkty w koszyku nie są już dostępne. Zaktualizuj koszyk przed przejściem do kasy.",
-    "itemUnavailable": "Niedostępny",
+    "itemUnavailable": "Nie jest już dostępny",
     "itemLimited": "Pozostało tylko {available} szt."
   },
   "summary": {

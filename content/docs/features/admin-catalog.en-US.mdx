@@ -50,7 +50,7 @@ The catalog is eleven tables. All the title-like columns are **JSON locale maps*
 
 Plus `category_on_product` (with `is_primary`) and `collection_on_product`.
 
-`product.status` is `draft | published | archived` with `DEFAULT_PRODUCT_STATUS = draft`. Categories and collections use a different two-value status, `draft | active`, also defaulting to `draft`.
+`product.status` is `draft | published | archived` with `DEFAULT_PRODUCT_STATUS = draft`. Only a `published` product is on sale. Archiving a product or returning it to draft leaves its stock untouched, but the storefront and search stop listing it, a basket that already holds it marks the line as no longer available, and checkout refuses it with `PRODUCT_NOT_FOUND`; a session the customer already paid still becomes an order (see [Cart](/docs/features/cart) and [Payments](/docs/features/payments)). Categories and collections use a different two-value status, `draft | active`, also defaulting to `draft`.
 
 Handles are validated against the same pattern in each module, for example `PRODUCT_HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u`.
 

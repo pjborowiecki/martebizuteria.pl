@@ -60,7 +60,7 @@ Plik `stripe.actions.schemas.ts` definiuje ładunek: `{ checkoutValues: checkout
 
 Funkcja `handleCreateCheckoutSession` w `stripe.actions.server.ts` wykonuje następującą sekwencję:
 
-1. `validateAndCalculateItems(items)` ładuje produkty wraz ze stanem magazynowym po identyfikatorze `handle`, rozwiązuje każdy wariant i **czyta cenę z bazy** — `cartItemSchema` nie ma `price` ani `rawPrice`, więc cena z koszyka w ogóle nie dociera do handlera. Odrzuca z błędem `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (przez `isSellPriceCentsValid`) lub `INSUFFICIENT_INVENTORY`, a zwraca każdą pozycję wzbogaconą o `inventoryId` i `currentVersion`.
+1. `validateAndCalculateItems(items)` ładuje produkty wraz ze stanem magazynowym po identyfikatorze `handle`, tylko te o statusie `published` (`getPublishedProductsWithInventoryByHandles`), rozwiązuje każdy wariant i **czyta cenę z bazy** — `cartItemSchema` nie ma `price` ani `rawPrice`, więc cena z koszyka w ogóle nie dociera do handlera. Odrzuca z błędem `PRODUCT_NOT_FOUND`, którym kończy się też próba zakupu produktu zarchiwizowanego albo przywróconego do szkicu, gdy leżał w koszyku, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (przez `isSellPriceCentsValid`) lub `INSUFFICIENT_INVENTORY`, a zwraca każdą pozycję wzbogaconą o `inventoryId` i `currentVersion`.
 2. `resolveShippingCost(deliveryMethodId)` czyta cenę z `delivery_method` albo zero, gdy nie wybrano metody.
 3. `resolveCheckoutDiscount(...)` ponownie sprawdza `checkoutValues.discountCode` względem sumy cen z bazy i kosztu dostawy; kod, który nie obowiązuje, jest pomijany. Zobacz [Rabaty](/docs/features/discounts).
 4. `reserveInventoryForItems(validatedItems)` zajmuje stan magazynowy, korzystając z optymistycznej kolumny `version`.

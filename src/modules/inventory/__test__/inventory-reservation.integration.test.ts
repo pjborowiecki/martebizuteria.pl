@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { type TestD1RoundTrip } from "~/src/platform/testing/mocks/d1"
 
-import { getAvailabilityByVariantIds, releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
+import { releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
 import { reserveInventoryByVariantLines, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
 
 const { sqlite, trips } = await vi.hoisted(async () => {
@@ -205,23 +205,6 @@ describe("inventory release after reservation", () => {
     await releaseInventoryForItems([])
 
     expect(readRow("inv_a").version).toBe(STARTING_VERSION)
-  })
-})
-
-describe("inventory availability lookup", () => {
-  it("maps availability by variant id", async () => {
-    await expect(getAvailabilityByVariantIds(["var_a", "var_b"])).resolves.toEqual(
-      new Map([
-        ["var_a", STARTING_STOCK],
-        ["var_b", STARTING_STOCK],
-      ]),
-    )
-  })
-
-  it("returns an empty map without querying when given no ids", async () => {
-    await expect(getAvailabilityByVariantIds([])).resolves.toEqual(new Map())
-
-    expect(trips).toStrictEqual([])
   })
 })
 

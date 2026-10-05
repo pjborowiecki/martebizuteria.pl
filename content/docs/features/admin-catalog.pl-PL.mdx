@@ -50,7 +50,7 @@ Katalog to jedenaście tabel. Wszystkie kolumny tytułowe są **mapami lokalizac
 
 Do tego `category_on_product` (z `is_primary`) i `collection_on_product`.
 
-`product.status` to `draft | published | archived` z `DEFAULT_PRODUCT_STATUS = draft`. Kategorie i kolekcje używają innego, dwuwartościowego statusu `draft | active`, również domyślnie `draft`.
+`product.status` to `draft | published | archived` z `DEFAULT_PRODUCT_STATUS = draft`. W sprzedaży jest tylko produkt `published`. Archiwizacja produktu albo przywrócenie go do szkicu nie zmienia jego stanu magazynowego, ale sklep i wyszukiwarka przestają go pokazywać, koszyk, który już go zawiera, oznacza linię jako już niedostępną, a kasa odrzuca go z `PRODUCT_NOT_FOUND`; sesja, którą klient już opłacił, nadal staje się zamówieniem (zobacz [Koszyk](/docs/features/cart) i [Płatności](/docs/features/payments)). Kategorie i kolekcje używają innego, dwuwartościowego statusu `draft | active`, również domyślnie `draft`.
 
 Handle są walidowane tym samym wzorcem w każdym module, na przykład `PRODUCT_HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u`.
 

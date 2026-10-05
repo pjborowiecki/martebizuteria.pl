@@ -8,11 +8,11 @@ const access = vi.hoisted(() => ({
   selectWhere: vi.fn<(condition: SQL | undefined) => Promise<Record<string, number | string>[]>>(),
 }))
 
-vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
-  db: {
-    select: () => ({ from: () => ({ where: access.selectWhere }) }),
-  },
-}))
+vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => {
+  const filterable = { innerJoin: () => filterable, where: access.selectWhere }
+
+  return { db: { select: () => ({ from: () => filterable }) } }
+})
 
 const dialect = new SQLiteSyncDialect()
 
@@ -79,14 +79,14 @@ describe("getAvailabilityByVariantIds", () => {
     )
   })
 
-  it("asks for exactly the requested variants", async () => {
+  it("asks for exactly the requested variants of published products", async () => {
     access.selectWhere.mockResolvedValue([])
 
     await getAvailabilityByVariantIds(["variant-a", "variant-b"])
 
     expect(query(access.selectWhere.mock.calls[0]?.[0])).toMatchObject({
-      params: ['["variant-a","variant-b"]'],
-      sql: '"inventory"."variant_id" in (select value from json_each(?))',
+      params: ['["variant-a","variant-b"]', "published"],
+      sql: '("inventory"."variant_id" in (select value from json_each(?)) and "product"."status" = ?)',
     })
   })
 

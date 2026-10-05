@@ -5,6 +5,9 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { inventory } from "~/src/modules/inventory/inventory.schema"
+import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
+import { PRODUCT_STATUS } from "~/src/modules/product/product.constants"
+import { product } from "~/src/modules/product/product.schema"
 
 interface ReleaseInventoryItem {
   inventoryId: string
@@ -75,6 +78,8 @@ export const getAvailabilityByVariantIds = async (variantIds: readonly string[])
       variantId: inventory.variantId,
     })
     .from(inventory)
-    .where(inJsonList(inventory.variantId, variantIds))
+    .innerJoin(productVariant, eq(productVariant.id, inventory.variantId))
+    .innerJoin(product, eq(product.id, productVariant.productId))
+    .where(and(inJsonList(inventory.variantId, variantIds), eq(product.status, PRODUCT_STATUS.PUBLISHED)))
   return new Map(rows.map((row) => [row.variantId, row.quantityAvailable]))
 }

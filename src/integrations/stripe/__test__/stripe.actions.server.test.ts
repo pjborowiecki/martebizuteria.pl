@@ -16,7 +16,7 @@ const mocked = vi.hoisted(() => ({
   ensureStripeCustomer: vi.fn<() => Promise<string>>(),
   getActiveDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
-  getProductsWithInventoryByHandles: vi.fn(),
+  getPublishedProductsWithInventoryByHandles: vi.fn(),
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
   getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
@@ -75,7 +75,7 @@ vi.mock("~/src/modules/payment/payment.accessors", () => ({
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
 }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
-  getProductsWithInventoryByHandles: mocked.getProductsWithInventoryByHandles,
+  getPublishedProductsWithInventoryByHandles: mocked.getPublishedProductsWithInventoryByHandles,
 }))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
@@ -126,7 +126,7 @@ beforeEach(() => {
   mocked.createPendingPayment.mockResolvedValue(undefined)
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
-  mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
+  mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
   mocked.getActiveDeliveryMethodByIdQuery.mockResolvedValue({ id: "dpd-courier", price: 1500 })
   mocked.createCheckout.mockResolvedValue("checkout-1")
   mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_300, client_secret: "cs_secret_1", id: "cs_new" })
@@ -152,7 +152,7 @@ const multiItemCart = (size: number) =>
   }))
 
 const stubCatalogueForCart = (cartItems: ReturnType<typeof multiItemCart>): void => {
-  mocked.getProductsWithInventoryByHandles.mockResolvedValue(
+  mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue(
     cartItems.map((item) => ({
       handle: item.slug,
       id: `product-${item.variantId}`,
@@ -171,7 +171,7 @@ const createdSessionMetadata = (): Record<string, string> => mocked.checkoutSess
 
 describe("handleCreateCheckoutSession quote", () => {
   it("quotes the catalogue price, not the one the browser remembers", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), price: 26_900 }])])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), price: 26_900 }])])
     mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 55_300, client_secret: "cs_secret_1", id: "cs_new" })
 
     const result = await handleCreateCheckoutSession(createInput({}, [{ ...CART_ITEM, price: "199,00 zł", rawPrice: 19_900 }]))
@@ -397,8 +397,8 @@ describe("checkout session return URL", () => {
 })
 
 describe("checkout validation failures", () => {
-  it("rejects a cart line whose product is no longer in the catalogue", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([])
+  it("rejects a cart line whose product was deleted, archived or returned to draft", async () => {
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([])
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject({
       code: ERROR_CODES.NOT_FOUND,
@@ -408,7 +408,7 @@ describe("checkout validation failures", () => {
   })
 
   it("rejects a product that has lost all of its variants", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([])])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([])])
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject({
       message: CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND,
@@ -416,7 +416,7 @@ describe("checkout validation failures", () => {
   })
 
   it("rejects a cart line pointing at a variant that no longer exists", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), id: "variant-2" }])])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), id: "variant-2" }])])
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject({
       code: ERROR_CODES.NOT_FOUND,
@@ -425,7 +425,7 @@ describe("checkout validation failures", () => {
   })
 
   it("refuses a catalogue price below the Stripe minimum", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), price: 199 }])])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), price: 199 }])])
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject({
       code: ERROR_CODES.VALIDATION,
@@ -434,7 +434,7 @@ describe("checkout validation failures", () => {
   })
 
   it("refuses a variant that carries no inventory row", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), inventory: null }])])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), inventory: null }])])
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject({
       code: ERROR_CODES.CONFLICT,
@@ -444,7 +444,7 @@ describe("checkout validation failures", () => {
 
   it("refuses a quantity larger than the available stock", async () => {
     const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1, version: 7 } }
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject({
       message: CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY,
@@ -454,7 +454,7 @@ describe("checkout validation failures", () => {
   it("looks the catalogue up by the handles the cart carries", async () => {
     await handleCreateCheckoutSession(createInput())
 
-    expect(mocked.getProductsWithInventoryByHandles).toHaveBeenCalledWith([CART_ITEM.slug])
+    expect(mocked.getPublishedProductsWithInventoryByHandles).toHaveBeenCalledWith([CART_ITEM.slug])
   })
 })
 

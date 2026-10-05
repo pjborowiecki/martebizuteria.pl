@@ -40,10 +40,10 @@ const { product } = await import("~/src/modules/product/product.schema")
 const {
   getAdminProductDetailByIdQuery,
   getProductByHandleQuery,
-  getProductsWithInventoryByHandles,
   getPublishedProductByHandleQuery,
   getPublishedProductsByCategoryIds,
   getPublishedProductsByCollectionHandle,
+  getPublishedProductsWithInventoryByHandles,
   getPublishedRelatedProducts,
 } = await import("~/src/modules/product/product.accessors")
 
@@ -171,31 +171,40 @@ afterAll(() => {
   sqlite.close()
 })
 
-describe("getProductsWithInventoryByHandles", () => {
+describe("getPublishedProductsWithInventoryByHandles", () => {
   it("loads each requested handle with its variants and inventory", async () => {
-    const rows = await getProductsWithInventoryByHandles(["silver-ring", "draft-pin"])
+    const rows = await getPublishedProductsWithInventoryByHandles(["silver-ring", "gold-chain"])
 
-    expect(rows.map((row) => row.handle).toSorted()).toStrictEqual(["draft-pin", "silver-ring"])
+    expect(rows.map((row) => row.handle).toSorted()).toStrictEqual(["gold-chain", "silver-ring"])
     expect(rows.find((row) => row.id === "p1")?.variants[0]?.inventory.quantityAvailable).toBe(4)
+  })
+
+  it("leaves out a draft or archived product that still has stock, so checkout cannot sell it", async () => {
+    insertProduct({ handle: "archived-brooch", id: "p6", status: "archived", title: "Archived brooch" })
+    insertVariant({ id: "v6", price: 3900, productId: "p6", stock: 5 })
+
+    const rows = await getPublishedProductsWithInventoryByHandles(["silver-ring", "draft-pin", "archived-brooch"])
+
+    expect(rows.map((row) => row.handle)).toStrictEqual(["silver-ring"])
   })
 
   it("reports a null inventory for a variant that has none", async () => {
     insertProduct({ handle: "no-stock-row", id: "p5", title: "No stock row" })
     insertVariant({ id: "v5", price: 1000, productId: "p5", stock: null })
 
-    const [row] = await getProductsWithInventoryByHandles(["no-stock-row"])
+    const [row] = await getPublishedProductsWithInventoryByHandles(["no-stock-row"])
 
     expect(row?.variants[0]?.inventory).toBeNull()
   })
 
   it("returns nothing for handles that do not exist", async () => {
-    await expect(getProductsWithInventoryByHandles(["missing"])).resolves.toStrictEqual([])
+    await expect(getPublishedProductsWithInventoryByHandles(["missing"])).resolves.toStrictEqual([])
   })
 
   it("loads every handle of a cart larger than D1's SQL parameter limit with its own stock", async () => {
     insertBulkProducts()
 
-    const rows = await getProductsWithInventoryByHandles(BULK_PRODUCT_IDS)
+    const rows = await getPublishedProductsWithInventoryByHandles(BULK_PRODUCT_IDS)
 
     expect(
       Object.fromEntries(rows.map((row) => [row.handle, row.variants.map((variant) => variant.inventory.quantityAvailable)])),

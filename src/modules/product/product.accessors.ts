@@ -83,9 +83,9 @@ export const getProductStatusCountsQuery = db
   .from(product)
   .prepare()
 
-export const getProductsWithInventoryByHandles = (handles: readonly string[]) =>
+export const getPublishedProductsWithInventoryByHandles = (handles: readonly string[]) =>
   db.query.product.findMany({
-    where: inJsonList(product.handle, handles),
+    where: and(inJsonList(product.handle, handles), eq(product.status, PRODUCT_STATUS.PUBLISHED)),
     with: {
       variants: {
         with: {
