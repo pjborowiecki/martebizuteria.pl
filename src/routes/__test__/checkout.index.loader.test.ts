@@ -34,6 +34,7 @@ vi.mock("~/src/hooks/use-cart-availability", () => ({ useCartAvailability: vi.fn
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-form.client", () => ({ CheckoutForm: () => null }))
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-form-skeleton", () => ({ CheckoutFormSkeleton: () => null }))
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-success", () => ({ CheckoutSuccess: () => null }))
+vi.mock("~/src/presentation/components/custom/checkout/hooks/use-checkout-session-entry", () => ({ useCheckoutSessionEntry: vi.fn() }))
 
 await import("~/src/routes/checkout.index")
 

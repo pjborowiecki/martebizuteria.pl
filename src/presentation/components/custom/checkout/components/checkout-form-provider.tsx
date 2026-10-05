@@ -26,11 +26,7 @@ import { type CheckoutSession } from "~/src/integrations/stripe/stripe.checkout"
 
 import { type CheckoutFormSchema, checkoutSchema } from "~/src/modules/checkout/checkout.zod"
 
-import {
-  loadCheckoutDraft,
-  saveCheckoutDraft,
-  saveCheckoutSessionId,
-} from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
+import { loadCheckoutDraft, saveCheckoutDraft, saveCheckoutSession } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 import {
   CHECKOUT_STEP_DEFINITIONS,
   type CheckoutStepId,
@@ -151,7 +147,7 @@ export const CheckoutFormProvider = ({ children }: Readonly<{ children: ReactNod
   const { activeStepIndex, isPending, onEdit, onNext } = useCheckoutNavigation(form)
   const [checkoutSession, setCurrentCheckoutSession] = useState<CheckoutSession>()
   const setCheckoutSession = useCallback((session: CheckoutSession) => {
-    saveCheckoutSessionId(session.sessionId)
+    saveCheckoutSession(session)
     setCurrentCheckoutSession(session)
   }, [])
 

@@ -5,9 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-const search = vi.hoisted(() => ({ success: undefined as boolean | undefined }))
+const search = vi.hoisted(() => ({ session_id: undefined as string | undefined, success: undefined as boolean | undefined }))
 
-const availability = vi.hoisted(() => ({ hasUnavailableItems: false, isChecking: false, isFirstCheck: false }))
+const availability = vi.hoisted(() => ({ checks: 0, hasUnavailableItems: false, isChecking: false, isFirstCheck: false }))
+
+const entry = vi.hoisted(() => ({
+  check: vi.fn<(search: { readonly session_id?: string | undefined; readonly success?: boolean | undefined }) => void>(),
+  view: "checkout" as "checking" | "checkout" | "confirmation",
+}))
 
 const navigation = vi.hoisted(() => ({
   navigate: vi.fn<(options: { readonly params?: (previous: Record<string, never>) => unknown; readonly to: string }) => Promise<void>>(),
@@ -19,20 +24,24 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   return {
     ...actual,
     useNavigate: () => navigation.navigate,
-    useSearch: () => ({ success: search.success }),
+    useSearch: () => ({ session_id: search.session_id, success: search.success }),
   }
 })
 
 vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", () => ({ listDeliveryMethodsQuery: vi.fn() }))
 
 vi.mock("~/src/hooks/use-cart-availability", () => ({
-  useCartAvailability: () => ({
-    hasUnavailableItems: availability.hasUnavailableItems,
-    isChecking: availability.isChecking,
-    isFirstCheck: availability.isFirstCheck,
-    issues: [],
-    issuesByVariantId: new Map(),
-  }),
+  useCartAvailability: () => {
+    availability.checks += 1
+
+    return {
+      hasUnavailableItems: availability.hasUnavailableItems,
+      isChecking: availability.isChecking,
+      isFirstCheck: availability.isFirstCheck,
+      issues: [],
+      issuesByVariantId: new Map(),
+    }
+  },
 }))
 
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-form.client", () => ({
@@ -44,7 +53,17 @@ vi.mock("~/src/presentation/components/custom/checkout/components/checkout-form-
 }))
 
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-success", () => ({
-  CheckoutSuccess: (): JSX.Element => <div data-testid="checkout-success" />,
+  CheckoutSuccess: ({ sessionId }: Readonly<{ sessionId: string }>): JSX.Element => (
+    <div data-session-id={sessionId} data-testid="checkout-success" />
+  ),
+}))
+
+vi.mock("~/src/presentation/components/custom/checkout/hooks/use-checkout-session-entry", () => ({
+  useCheckoutSessionEntry: (current: { readonly session_id?: string | undefined; readonly success?: boolean | undefined }) => {
+    entry.check(current)
+
+    return entry.view
+  },
 }))
 
 import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
@@ -74,7 +93,11 @@ const renderCheckout = () => {
 }
 
 beforeEach(() => {
+  search.session_id = undefined
   search.success = undefined
+  entry.view = "checkout"
+  entry.check.mockReset()
+  availability.checks = 0
   availability.hasUnavailableItems = false
   availability.isChecking = false
   availability.isFirstCheck = false
@@ -85,18 +108,43 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe("checkout page after payment", () => {
-  it("shows the confirmation instead of the form", () => {
+  it("shows the confirmation of the paid session instead of the form", () => {
+    search.session_id = "cs_paid"
     search.success = true
+    entry.view = "confirmation"
     renderCheckout()
 
-    expect(screen.getByTestId("checkout-success")).toBeInTheDocument()
+    expect(screen.getByTestId("checkout-success")).toHaveAttribute("data-session-id", "cs_paid")
     expect(screen.queryByTestId("checkout-form")).toBeNull()
   })
 
   it("does not send the shopper back to the cart", () => {
     search.success = true
+    entry.view = "confirmation"
     renderCheckout()
 
+    expect(navigation.navigate).not.toHaveBeenCalled()
+  })
+})
+
+describe("checkout page with a payment session to check", () => {
+  it("asks about the session the address or the browser names", () => {
+    search.session_id = "cs_returned"
+    search.success = true
+    renderCheckout()
+
+    expect(entry.check).toHaveBeenCalledWith({ session_id: "cs_returned", success: true })
+  })
+
+  it("holds the skeleton and runs no availability check until the session's state is known", () => {
+    useCartStore.setState({ items: [cartLine()] })
+    entry.view = "checking"
+    renderCheckout()
+
+    expect(screen.getByTestId("checkout-skeleton")).toBeInTheDocument()
+    expect(screen.queryByTestId("checkout-form")).toBeNull()
+    expect(screen.queryByTestId("checkout-success")).toBeNull()
+    expect(availability.checks).toBe(0)
     expect(navigation.navigate).not.toHaveBeenCalled()
   })
 })

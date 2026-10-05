@@ -6,6 +6,8 @@ export const CHECKOUT_PAYMENT_METHOD_ORDER = ["card", "blik", "p24"] as const
 
 export const CHECKOUT_SESSION_LIFETIME_SECONDS = 1920
 
+export const CHECKOUT_SESSION_ID_MAX_LENGTH = 255
+
 export const STRIPE_QUERY_KEYS = {
   JS: ["stripe", "js"] as const,
 } as const

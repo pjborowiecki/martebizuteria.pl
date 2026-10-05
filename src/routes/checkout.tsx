@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 import { z } from "zod/v4"
 
+import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
@@ -38,10 +39,8 @@ const MIN_STEP = 1
 
 const MAX_STEP = 4
 
-const STRIPE_SESSION_ID_MAX_LENGTH = 255
-
 const checkoutSearchSchema = z.object({
-  session_id: z.string().trim().max(STRIPE_SESSION_ID_MAX_LENGTH).optional(),
+  session_id: z.string().trim().max(CHECKOUT_SESSION_ID_MAX_LENGTH).optional(),
   step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
   success: z.preprocess(coerceSuccess, z.boolean().optional()),
 })

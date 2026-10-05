@@ -4,6 +4,7 @@ import type * as zod from "zod"
 
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getAdminOrderItemRows, getOrderByTransactionId } from "~/src/modules/order/order.accessors"
 import { ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
 import { mapAdminOrderDetailAddress, mapAdminOrderDetailItem } from "~/src/modules/order/order.detail.utils"
@@ -42,10 +43,19 @@ export const getOrderConfirmation = createServerFn({ method: "GET" })
     }
   })
 
+const fetchRecordedOrderConfirmation = async (sessionId: string): Promise<Order["confirmation"]> => {
+  const confirmation = await getOrderConfirmation({ data: { sessionId } })
+  if (confirmation === undefined) {
+    throw new AppError(ERROR_CODES.NOT_FOUND)
+  }
+
+  return confirmation
+}
+
 export const getOrderConfirmationQuery = (sessionId: string) =>
   queryOptions({
     enabled: sessionId !== "",
-    queryFn: () => getOrderConfirmation({ data: { sessionId } }),
+    queryFn: () => fetchRecordedOrderConfirmation(sessionId),
     queryKey: [...ORDER_QUERY_KEYS.CONFIRMATION, sessionId],
     retry: CONFIRMATION_RETRIES,
     retryDelay: CONFIRMATION_RETRY_DELAY_MS,

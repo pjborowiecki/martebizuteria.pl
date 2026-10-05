@@ -8,10 +8,12 @@ const serverFunctionId = (file: string, name: string): string =>
 
 export const SERVER_FUNCTIONS = {
   checkCartAvailability: serverFunctionId("src/modules/cart/use-cases/check-cart-availability.ts", "checkCartAvailability"),
+  createCheckoutSession: serverFunctionId("src/integrations/stripe/stripe.actions.ts", "createCheckoutSessionFn"),
   getAdminProducts: serverFunctionId("src/modules/product/use-cases/get-admin-products.ts", "getAdminProducts"),
   getCollections: serverFunctionId("src/modules/product-collection/use-cases/get-collections.ts", "getCollections"),
   getCurrentSession: serverFunctionId("src/integrations/better-auth/auth.session.ts", "getCurrentSession"),
   getStorefrontProductsPage: serverFunctionId("src/modules/product/use-cases/get-storefront-products-page.ts", "getStorefrontProductsPage"),
+  updateCheckoutSession: serverFunctionId("src/integrations/stripe/stripe.actions.ts", "updateCheckoutSessionFn"),
 } as const
 
 const calledServerFunction = (url: string): string | undefined => {
@@ -55,3 +57,14 @@ export const recordServerFunctionRequests = (page: Page, id: string): readonly R
 
 export const waitForServerFunctionResponse = (page: Page, id: string): Promise<Response> =>
   page.waitForResponse((response) => calledServerFunction(response.url()) === id)
+
+export const runBeforeServerFunction = async (page: Page, id: string, run: () => Promise<void>): Promise<void> => {
+  await page.route(
+    (url) => calledServerFunction(url.href) === id,
+    async (route) => {
+      await run()
+      await route.continue()
+    },
+    { times: 1 },
+  )
+}

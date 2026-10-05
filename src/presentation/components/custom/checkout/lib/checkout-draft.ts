@@ -13,10 +13,29 @@ interface CheckoutDraftEnvelope {
   readonly values: Partial<CheckoutFormSchema>
 }
 
+interface CheckoutCartLine {
+  readonly qty: number
+  readonly variantId: string
+}
+
+interface HeldCheckoutSession {
+  readonly cart: string
+  readonly sessionId: string
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
 
 const isDraftEnvelope = (value: unknown): value is CheckoutDraftEnvelope =>
   isRecord(value) && value["v"] === SCHEMA_VERSION && isRecord(value["values"])
+
+const isHeldCheckoutSession = (value: unknown): value is HeldCheckoutSession =>
+  isRecord(value) && typeof value["cart"] === "string" && typeof value["sessionId"] === "string"
+
+const fingerprintCart = (lines: readonly CheckoutCartLine[]): string =>
+  lines
+    .map((line) => `${line.variantId}:${line.qty}`)
+    .toSorted((left, right) => left.localeCompare(right))
+    .join("|")
 
 const getStore = (readStorage: () => Storage | undefined): Storage | undefined => {
   try {
@@ -62,31 +81,47 @@ export const saveCheckoutDraft = (values: Partial<CheckoutFormSchema>): void => 
   } catch {}
 }
 
-export const loadCheckoutSessionId = (): string | undefined => {
+const loadHeldCheckoutSession = (): HeldCheckoutSession | undefined => {
   const store = getSessionIdStore()
   if (store === undefined) {
     return undefined
   }
 
   try {
-    return store.getItem(SESSION_ID_STORAGE_KEY) ?? undefined
+    const raw = store.getItem(SESSION_ID_STORAGE_KEY)
+    if (raw === null) {
+      return undefined
+    }
+
+    const parsed: unknown = JSON.parse(raw)
+
+    return isHeldCheckoutSession(parsed) ? parsed : undefined
   } catch {
     return undefined
   }
+}
+
+export const loadCheckoutSessionId = (): string | undefined => loadHeldCheckoutSession()?.sessionId
+
+export const wasCheckoutSessionOpenedForAnotherCart = (sessionId: string, cart: readonly CheckoutCartLine[]): boolean => {
+  const held = loadHeldCheckoutSession()
+
+  return held?.sessionId === sessionId && held.cart !== fingerprintCart(cart)
 }
 
 const announceCheckoutSessionIdChange = (): void => {
   globalThis.dispatchEvent(new Event(SESSION_ID_CHANGE_EVENT))
 }
 
-export const saveCheckoutSessionId = (sessionId: string): void => {
+export const saveCheckoutSession = ({ lines, sessionId }: Readonly<{ lines: readonly CheckoutCartLine[]; sessionId: string }>): void => {
   const store = getSessionIdStore()
   if (store === undefined) {
     return
   }
 
   try {
-    store.setItem(SESSION_ID_STORAGE_KEY, sessionId)
+    const held: HeldCheckoutSession = { cart: fingerprintCart(lines), sessionId }
+    store.setItem(SESSION_ID_STORAGE_KEY, JSON.stringify(held))
   } catch {}
   announceCheckoutSessionIdChange()
 }
@@ -107,8 +142,18 @@ const forget = (store: Storage | undefined, key: string): void => {
   } catch {}
 }
 
-export const clearCheckoutDraft = (): void => {
-  forget(getDraftStore(), STORAGE_KEY)
+const forgetHeldCheckoutSession = (): void => {
   forget(getSessionIdStore(), SESSION_ID_STORAGE_KEY)
   announceCheckoutSessionIdChange()
+}
+
+export const forgetCheckoutSessionId = (sessionId: string): void => {
+  if (loadCheckoutSessionId() === sessionId) {
+    forgetHeldCheckoutSession()
+  }
+}
+
+export const clearCheckoutDraft = (): void => {
+  forget(getDraftStore(), STORAGE_KEY)
+  forgetHeldCheckoutSession()
 }

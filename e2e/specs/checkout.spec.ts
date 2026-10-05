@@ -1,18 +1,21 @@
-import { type APIRequestContext } from "@playwright/test"
+import { type APIRequestContext, type Page, type Request } from "@playwright/test"
 
 import { COURIER, IN_STORE_PICKUP, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { rememberPriceWhenAdded } from "../fixtures/cart"
 import { registerCustomer } from "../fixtures/customers"
 import { linkIn, waitForEmail } from "../fixtures/emails"
-import { SERVER_FUNCTIONS, recordServerFunctionRequests } from "../fixtures/server-functions"
+import { SERVER_FUNCTIONS, recordServerFunctionRequests, runBeforeServerFunction } from "../fixtures/server-functions"
 import {
   type CheckoutSession,
+  type SignedStripeEvent,
   completeCheckoutSession,
+  completeCheckoutSessionBeforeItsWebhook,
+  deliverStripeEvent,
   expireCheckoutSession,
   openCheckoutSessions,
   waitForOpenCheckoutSession,
 } from "../fixtures/stripe"
-import { expect, test } from "../fixtures/test"
+import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
 import { uniqueEmail } from "../fixtures/unique"
 import { CheckoutPage } from "../pages/checkout-page"
 
@@ -23,6 +26,8 @@ const ORDER_NUMBER = /MRT-\d{4}-\d{5}/u
 const CHECKOUT_HOLD_SECONDS = 1920
 
 const PRICE_WHEN_ADDED = 29_900
+
+const PAYMENT_NOT_COMPLETED = "Your payment was not completed. Choose a payment method to try again."
 
 const fillCheckoutUpToPayment = async (checkoutPage: CheckoutPage, email: string): Promise<void> => {
   await checkoutPage.gotoCheckout()
@@ -41,6 +46,22 @@ const reachPayment = async (checkoutPage: CheckoutPage, request: APIRequestConte
 const expectOnlyOpenSession = async (request: APIRequestContext, email: string, session: CheckoutSession): Promise<void> => {
   expect((await openCheckoutSessions(request, email)).map(({ id }) => id)).toStrictEqual([session.id])
 }
+
+const reachPaymentForm = async (checkoutPage: CheckoutPage, request: APIRequestContext, email: string): Promise<CheckoutSession> => {
+  const session = await reachPayment(checkoutPage, request, email)
+  await expect(checkoutPage.paymentStep()).toBeVisible()
+
+  return session
+}
+
+const recordPaymentSessionRequests = (page: Page): readonly (readonly Request[])[] => [
+  recordServerFunctionRequests(page, SERVER_FUNCTIONS.createCheckoutSession),
+  recordServerFunctionRequests(page, SERVER_FUNCTIONS.updateCheckoutSession),
+  recordServerFunctionRequests(page, SERVER_FUNCTIONS.checkCartAvailability),
+]
+
+const confirmationUrl = (session: CheckoutSession): RegExp =>
+  new RegExp(`/en-US/checkout\\?(?=.*\\bsuccess=true\\b)(?=.*\\bsession_id=${session.id}\\b)`, "u")
 
 const switchToInStorePickup = async (checkoutPage: CheckoutPage): Promise<void> => {
   await checkoutPage.editStep("Delivery Method")
@@ -207,6 +228,139 @@ test.describe("guest checkout", () => {
     expect(availabilityChecks).toHaveLength(checksBeforeLeaving)
   })
 
+  test("a guest whose tab reloads after paying sees the order confirmation instead of a second payment form", async ({
+    cartPage,
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "reloaded-after-paying")
+    const session = await reachPaymentForm(checkoutPage, request, email)
+    await completeCheckoutSession(request, session.id)
+    const paymentSessionRequests = recordPaymentSessionRequests(page)
+
+    await checkoutPage.reload()
+
+    await expect(page).toHaveURL(confirmationUrl(session))
+    await expect(checkoutPage.confirmationHeading()).toBeVisible()
+    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    await expect(checkoutPage.paymentStep()).toBeHidden()
+    expect(paymentSessionRequests.flat()).toHaveLength(0)
+    expect(await openCheckoutSessions(request, email)).toStrictEqual([])
+    await cartPage.gotoCart()
+    await expect(cartPage.heading()).toHaveText("Your cart is empty")
+  })
+
+  test("a guest whose tab reloads after paying, before Stripe's webhook arrives, sees the order once it is recorded", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "reloaded-before-webhook")
+    const session = await reachPaymentForm(checkoutPage, request, email)
+    const paid = await completeCheckoutSessionBeforeItsWebhook(request, session.id)
+    const paymentSessionRequests = recordPaymentSessionRequests(page)
+
+    await checkoutPage.reload()
+    await expect(page).toHaveURL(confirmationUrl(session))
+    await deliverStripeEvent(request, paid)
+
+    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    await expect(checkoutPage.paymentStep()).toBeHidden()
+    expect(paymentSessionRequests.flat()).toHaveLength(0)
+  })
+
+  test("a second tab opened after paying shows the order confirmation instead of a payment form", async ({
+    checkoutPage,
+    context,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "second-tab-after-paying")
+    const session = await reachPaymentForm(checkoutPage, request, email)
+    await completeCheckoutSession(request, session.id)
+    const secondTab = await context.newPage()
+    const paymentSessionRequests = recordPaymentSessionRequests(secondTab)
+
+    await new CheckoutPage(secondTab).gotoCheckout()
+
+    await expect(secondTab).toHaveURL(confirmationUrl(session))
+    await expect(secondTab.getByRole("main")).toContainText(ORDER_NUMBER)
+    expect(paymentSessionRequests.flat()).toHaveLength(0)
+    expect(await openCheckoutSessions(request, email)).toStrictEqual([])
+  })
+
+  test("a guest whose payment completes while the reloaded checkout continues it sees the order instead of a second payment form", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "paid-during-update")
+    const session = await reachPaymentForm(checkoutPage, request, email)
+    const paid = Promise.withResolvers<SignedStripeEvent>()
+    await runBeforeServerFunction(page, SERVER_FUNCTIONS.updateCheckoutSession, async () => {
+      paid.resolve(await completeCheckoutSessionBeforeItsWebhook(request, session.id))
+    })
+    const freshCheckouts = recordServerFunctionRequests(page, SERVER_FUNCTIONS.createCheckoutSession)
+
+    await checkoutPage.reload()
+
+    await expect(page).toHaveURL(confirmationUrl(session))
+    await deliverStripeEvent(request, await paid.promise)
+    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    await expect(checkoutPage.paymentStep()).toBeHidden()
+    expect(freshCheckouts).toHaveLength(0)
+    expect(await openCheckoutSessions(request, email)).toStrictEqual([])
+  })
+
+  test("a guest who paid in the banking app and later checks out another basket gets a fresh checkout, not the old confirmation", async ({
+    cartPage,
+    checkoutPage,
+    page,
+    productPage,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "paid-and-left")
+    const paidSession = await reachPaymentForm(checkoutPage, request, email)
+    await completeCheckoutSession(request, paidSession.id)
+    await productPage.gotoProduct(PRODUCTS.onyx.handle)
+    await productPage.addToCart()
+
+    await checkoutPage.gotoCheckout()
+
+    await expect(checkoutPage.field("Email *")).toBeVisible()
+    await expect(checkoutPage.summary()).toContainText(PRODUCTS.lapis.title)
+    await expect(checkoutPage.summary()).toContainText(PRODUCTS.onyx.title)
+    await expect(checkoutPage.confirmationHeading()).toBeHidden()
+    await expect(page).not.toHaveURL(/success=true/u)
+    await checkoutPage.fillContact(email, SHIPPING_ADDRESS.phone)
+    await checkoutPage.fillAddress(SHIPPING_ADDRESS)
+    await checkoutPage.chooseDelivery(COURIER.name)
+    const fresh = await waitForOpenCheckoutSession(request, email)
+    expect(fresh.metadata["checkoutId"]).not.toBe(paidSession.metadata["checkoutId"])
+    expect(fresh.amount_total).toBe(77_799)
+    await cartPage.gotoCart()
+    await expect(cartPage.summary()).toContainText(/Total\s*PLN\s758\.00/u)
+  })
+
+  test("a guest who comes back from the bank without paying returns to the payment step with the basket kept", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "abandoned-redirect")
+    const session = await reachPaymentForm(checkoutPage, request, email)
+
+    await checkoutPage.open(`/en-US/checkout?success=true&session_id=${session.id}`)
+
+    await expect(page).toHaveURL(/\/en-US\/checkout\?step=4$/u)
+    await expect(checkoutPage.notification(PAYMENT_NOT_COMPLETED)).toBeVisible()
+    await expect(checkoutPage.confirmationHeading()).toBeHidden()
+    await expect(checkoutPage.summary()).toContainText(PRODUCTS.lapis.title)
+    const continued = await waitForOpenCheckoutSession(request, email, session)
+    expect(continued.metadata["checkoutId"]).toBe(session.metadata["checkoutId"])
+    await expectOnlyOpenSession(request, email, continued)
+  })
+
   test("the address step refuses a postal code that is not Polish", async ({ checkoutPage, page }, testInfo) => {
     await checkoutPage.gotoCheckout()
     await checkoutPage.fillContact(uniqueEmail(testInfo, "postal"), SHIPPING_ADDRESS.phone)
@@ -253,5 +407,39 @@ test.describe("a guest who signs in during checkout", () => {
 
     await accountPage.gotoSection("orders")
     await expect(page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") })).toBeVisible()
+  })
+})
+
+test.describe("a signed-in customer paying by redirect", () => {
+  test("whose bank returns them to a browser where they are not signed in sees the order, not a failed payment", async ({
+    authPage,
+    browser,
+    checkoutPage,
+    page,
+    productPage,
+    request,
+  }, testInfo) => {
+    const customer = await registerCustomer({ authPage, page, request }, testInfo)
+    await productPage.gotoProduct(PRODUCTS.lapis.handle)
+    await productPage.addToCart()
+    const session = await reachPayment(checkoutPage, request, customer.email)
+    expect(session.metadata["userId"]).not.toBe("")
+    const paid = await completeCheckoutSessionBeforeItsWebhook(request, session.id)
+    const bankBrowser = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "bank-browser") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(bankBrowser)
+    const returnedPage = await bankBrowser.newPage()
+    const returnedTab = new CheckoutPage(returnedPage)
+
+    await returnedTab.open(`/en-US/checkout?success=true&session_id=${session.id}`)
+    await deliverStripeEvent(request, paid)
+
+    await expect(returnedTab.confirmationHeading()).toBeVisible()
+    await expect(returnedPage.getByRole("main")).toContainText(ORDER_NUMBER)
+    await expect(returnedPage).toHaveURL(confirmationUrl(session))
+    await expect(returnedTab.notification(PAYMENT_NOT_COMPLETED)).toBeHidden()
+    await bankBrowser.close()
   })
 })

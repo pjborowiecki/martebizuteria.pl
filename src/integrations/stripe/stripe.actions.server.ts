@@ -330,12 +330,12 @@ interface UpdatableCheckout {
 const readHeldLines = (session: StripeType.Checkout.Session): CheckoutReleaseLine[] =>
   parseCheckoutSessionReleaseLines(readCheckoutSessionItemsJson(session.metadata))
 
-const releaseExpiredCheckoutSession = async (session: StripeType.Checkout.Session): Promise<void> => {
+export const releaseExpiredCheckoutSession = async (session: StripeType.Checkout.Session): Promise<void> => {
   try {
     await releaseCheckout({ lines: readHeldLines(session), transactionId: session.id })
     scheduleProductCatalogInvalidation()
   } catch (releaseError) {
-    console.error(`Failed to release expired Checkout Session ${session.id} before replacing it:`, releaseError)
+    console.error(`Failed to release expired Checkout Session ${session.id} ahead of its webhook:`, releaseError)
   }
 }
 
@@ -343,6 +343,10 @@ const resolveUpdatableCheckout = async (sessionId: string): Promise<UpdatableChe
   const context = await getPaymentContextByTransactionId(sessionId)
   if (context === undefined) {
     throw new AppError(ERROR_CODES.NOT_FOUND, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
+  }
+
+  if (context.paymentStatus === "succeeded" || context.paymentStatus === "refunded") {
+    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_COMPLETE)
   }
 
   const requestSession = await getRequestSession()
@@ -356,6 +360,10 @@ const resolveUpdatableCheckout = async (sessionId: string): Promise<UpdatableChe
   }
 
   const stripeSession = await stripe.checkout.sessions.retrieve(sessionId)
+  if (stripeSession.status === "complete") {
+    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_COMPLETE)
+  }
+
   if (stripeSession.status === "expired") {
     await releaseExpiredCheckoutSession(stripeSession)
   }

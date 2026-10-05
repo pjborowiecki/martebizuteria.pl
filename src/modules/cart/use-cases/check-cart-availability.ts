@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import zod from "zod/v4"
 
 import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
+import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
 
 import { CART_LINES_MAX, CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { type CartUnitPrice } from "~/src/modules/cart/cart.pricing"
@@ -11,8 +12,6 @@ import { sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.
 import { getHeldLinesByTransactionId } from "~/src/modules/payment/payment.accessors"
 import { getSellPricesByVariantIds } from "~/src/modules/product-variant/product-variant.accessors"
 import { PRODUCT_VARIANT_COLUMN_LENGTH } from "~/src/modules/product-variant/product-variant.constants"
-
-const CHECKOUT_SESSION_ID_MAX_LENGTH = 255
 
 const cartAvailabilityLineSchema = zod.object({
   qty: zod.number().int().min(1),
